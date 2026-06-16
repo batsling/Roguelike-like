@@ -9,17 +9,13 @@ id = &"blasma_pistol"
 display_name = "Blasma Pistol"
 kind = 3
 rarity = 0
-description = "Add the card \"Blasma Pistol\" to your deck. If you opened more than 10 chests, gain (10/20) gold."
+description = "Add the Card \"Blasma Pistol\" into your Deck. If you open more than 10 chests, Gain (10/20) Gold"
 triggers = []
 stat_bonuses = {}
-scaling = []
-max_uses = -1
 weapon_card_id = &"blasma_pistol"
 verification_question = "Did you open more than 10 chests?"
-verification_effects = [{
-"type": "gain_gold",
-"increments": [10, 20]
-}]
+verification_effects = [{"type": "gain_gold", "increments": [10, 20]}]
+max_uses = -1
 source_game = "Flinthook"
 tags = PackedStringArray("gun")
 image = ExtResource("2_img")

@@ -9,14 +9,9 @@ id = &"campfire"
 display_name = "Campfire"
 kind = 0
 rarity = 1
-description = "Gain +3 Intelligence and +1 Regeneration, but -1 Speed."
+description = "Gain +3 Intelligence and +1 Regeneration, but -1 Speed"
 triggers = []
-stat_bonuses = {
-"intelligence": 3,
-"regeneration": 1,
-"speed": -1
-}
-scaling = []
+stat_bonuses = {"intelligence": 3, "regeneration": 1, "speed": -1}
 max_uses = -1
 source_game = "Brotato"
 tags = PackedStringArray()

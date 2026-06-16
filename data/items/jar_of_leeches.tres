@@ -6,22 +6,13 @@
 [resource]
 script = ExtResource("1_item")
 id = &"jar_of_leeches"
+display_name = "Jar of Leeches"
 kind = 1
 rarity = 2
-display_name = "Jar of Leeches"
-description = "Your Strikes inflict Leeches."
+description = "Your Strikes inflict Leeches"
 triggers = []
-card_grants = [{
-"if_card_tag": "strike",
-"effects": [{
-"type": "status",
-"status": "leeches",
-"stacks": 1,
-"target": "enemy"
-}]
-}]
+card_grants = [{"if_card_tag": "strike", "effects": [{"type": "status", "status": "leeches", "stacks": 1, "target": "enemy"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Mewgenics"
 tags = PackedStringArray("leech", "jar")

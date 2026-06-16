@@ -9,16 +9,12 @@ id = &"steady_investment"
 display_name = "Steady Investment"
 kind = 1
 rarity = 0
-description = "Whenever you perfect a game (beat it without losing a run), gain 10 Gold."
+description = "Whenever you perfect a game (beat a game/combat without losing a run), Gain +10 Gold"
 triggers = []
 stat_bonuses = {}
-scaling = []
-max_uses = -1
 perfect_aware = true
-perfect_effects = [{
-"type": "gain_gold",
-"value": 10
-}]
+perfect_effects = [{"type": "gain_gold", "value": 10}]
+max_uses = -1
 source_game = "Haste"
 tags = PackedStringArray()
 image = ExtResource("2_img")

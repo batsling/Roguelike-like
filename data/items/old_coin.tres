@@ -9,17 +9,9 @@ id = &"old_coin"
 display_name = "Old Coin"
 kind = 5
 rarity = 2
-description = "Gain 100 Gold."
-triggers = [{
-"on": "item_acquired",
-"effects": [{
-"type": "gain_gold",
-"value": 100
-}]
-}]
-card_grants = []
+description = "Gain 100 Gold"
+triggers = [{"on": "item_acquired", "effects": [{"type": "gain_gold", "value": 100}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray("coin")

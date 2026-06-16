@@ -9,12 +9,9 @@ id = &"oddly_smooth_stone"
 display_name = "Oddly Smooth Stone"
 kind = 0
 rarity = 0
-description = "Gain +3 Dexterity."
+description = "Gain +3 Dexterity"
 triggers = []
-stat_bonuses = {
-"dexterity": 3
-}
-scaling = []
+stat_bonuses = {"dexterity": 3}
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray("stone")

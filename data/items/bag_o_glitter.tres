@@ -9,18 +9,13 @@ id = &"bag_o_glitter"
 display_name = "Bag o' Glitter"
 kind = 3
 rarity = 1
-description = "Add the card \"Bag o' Glitter\" to your deck. If you obtain something glittery, it gains (+1/+2) Blind."
+description = "Add the Card \"Bag o' Glitter\" into your Deck. If you obtain something glittery at least one time, \"Bag o' Glitter\" Gains (+1/+2) Blind"
 triggers = []
 stat_bonuses = {}
-max_uses = -1
 weapon_card_id = &"bag_o_glitter"
 verification_question = "Did you obtain something glittery?"
-verification_effects = [{
-"type": "bump_card_effect",
-"effect_index": 0,
-"field": "stacks",
-"increments": [1, 2]
-}]
+verification_effects = [{"type": "bump_card_effect", "effect_index": 0, "field": "stacks", "increments": [1, 2]}]
+max_uses = -1
 source_game = "Mewgenics"
 tags = PackedStringArray("bag")
 image = ExtResource("2_img")

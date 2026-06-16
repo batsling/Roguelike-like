@@ -9,19 +9,13 @@ id = &"blood_magic"
 display_name = "Blood Magic"
 kind = 3
 rarity = 2
-description = "Add the card \"Blood Magic\" to your deck. If you created or used a magic circle, it gains (+1/+2) Infuse."
+description = "Add the Card \"Blood Magic\" into your Deck. If you create or use a magic circle, \"Blood Magic\" Gains  (+1/+2/) Infuse"
 triggers = []
 stat_bonuses = {}
-scaling = []
-max_uses = -1
 weapon_card_id = &"blood_magic"
 verification_question = "Did you create or use a magic circle?"
-verification_effects = [{
-"type": "bump_card_effect",
-"effect_index": 0,
-"field": "infuse",
-"increments": [1, 2]
-}]
+verification_effects = [{"type": "bump_card_effect", "effect_index": 0, "field": "infuse", "increments": [1, 2]}]
+max_uses = -1
 source_game = "Megabonk"
-tags = PackedStringArray("magic", "blood")
+tags = PackedStringArray()
 image = ExtResource("2_img")

@@ -11,18 +11,9 @@ kind = 1
 rarity = 2
 description = "Your Strikes inflict Soul Link."
 triggers = []
-card_grants = [{
-"if_card_tag": "strike",
-"effects": [{
-"type": "status",
-"status": "soul_link",
-"stacks": 1,
-"target": "enemy"
-}]
-}]
+card_grants = [{"if_card_tag": "strike", "effects": [{"type": "status", "status": "soul_link", "stacks": 1, "target": "enemy"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Mewgenics"
-tags = PackedStringArray("head", "bird")
+tags = PackedStringArray("bird", "devilish")
 image = ExtResource("2_img")

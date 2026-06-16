@@ -9,18 +9,13 @@ id = &"barrel"
 display_name = "Barrel"
 kind = 3
 rarity = 1
-description = "Add the card \"Barrel\" to your deck. If you obtained at least 1 fish, it gains (+1/+2) Dmg."
+description = "Add the Card \"Barrel\" into your Deck. If you obtain at least 1 fish, Gain (1/2) random fish"
 triggers = []
 stat_bonuses = {}
-max_uses = -1
 weapon_card_id = &"barrel"
 verification_question = "Did you obtain at least 1 fish?"
-verification_effects = [{
-"type": "bump_card_effect",
-"effect_index": 0,
-"field": "value",
-"increments": [1, 2]
-}]
+verification_effects = [{"type": "bump_card_effect", "effect_index": 0, "field": "value", "increments": [1, 2]}]
+max_uses = -1
 source_game = "Enter the Gungeon"
 tags = PackedStringArray("gun", "fish")
 image = ExtResource("2_img")

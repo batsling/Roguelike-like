@@ -9,17 +9,9 @@ id = &"d6"
 display_name = "D6"
 kind = 6
 rarity = 1
-description = "Gain +1 Reroll."
-triggers = [{
-"on": "item_used",
-"effects": [{
-"type": "gain_stat",
-"stat": "reroll",
-"value": 1
-}]
-}]
+description = "Gain +1 Reroll"
+triggers = [{"on": "item_used", "effects": [{"type": "gain_stat", "stat": "reroll", "value": 1}]}]
 stat_bonuses = {}
-scaling = []
 charge_cost = 4
 starts_charged = true
 source_game = "The Binding of Isaac"

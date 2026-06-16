@@ -9,12 +9,9 @@ id = &"ballistic_boots"
 display_name = "Ballistic Boots"
 kind = 0
 rarity = 0
-description = "Gain 1 Speed."
+description = "Gain +1 Speed"
 triggers = []
-stat_bonuses = {
-"speed": 1
-}
-scaling = []
+stat_bonuses = {"speed": 1}
 max_uses = -1
 source_game = "Enter the Gungeon"
 tags = PackedStringArray("wearable", "shoes")

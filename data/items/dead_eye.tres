@@ -6,31 +6,12 @@
 [resource]
 script = ExtResource("1_item")
 id = &"dead_eye"
+display_name = "Dead Eye"
 kind = 1
 rarity = 2
-display_name = "Dead Eye"
 description = "Every time you hit with an Attack on the same target, every Attack Gains +1 Dmg. Bonus goes away when you miss or change targets."
-triggers = [{
-"on": "attack_landed",
-"silent": true,
-"effects": [{
-"type": "streak_hit",
-"key": "dead_eye",
-"attack_bonus": true,
-"label": "Dead Eye",
-"target": "enemy"
-}]
-}, {
-"on": "attack_missed",
-"silent": true,
-"effects": [{
-"type": "streak_reset",
-"key": "dead_eye"
-}]
-}]
-card_grants = []
+triggers = [{"on": "attack_landed", "silent": true, "effects": [{"type": "streak_hit", "key": "dead_eye", "attack_bonus": true, "label": "Dead Eye", "target": "enemy"}]}, {"on": "attack_missed", "silent": true, "effects": [{"type": "streak_reset", "key": "dead_eye"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "The Binding of Isaac"
 tags = PackedStringArray("eye")

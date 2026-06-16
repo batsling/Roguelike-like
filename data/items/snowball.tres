@@ -9,13 +9,10 @@ id = &"snowball"
 display_name = "Snowball"
 kind = 1
 rarity = 1
-description = "Whenever you would gain permanent Intelligence, gain +1 additional Intelligence."
+description = "Whenever you would Gain permanent Intelligence, Gain +1 Intelligence"
 triggers = []
 stat_bonuses = {}
-scaling = []
-stat_gain_bonus = {
-"intelligence": 1
-}
+stat_gain_bonus = {"intelligence": 1}
 max_uses = -1
 source_game = "Brotato"
 tags = PackedStringArray("snow")

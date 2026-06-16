@@ -9,13 +9,9 @@ id = &"busted_crown"
 display_name = "Busted Crown"
 kind = 0
 rarity = 2
-description = "Gain +1 Max Energy, but -2 Discovery."
+description = "Gain +1 Max Energy, but -2 Discovery"
 triggers = []
-stat_bonuses = {
-"discovery": -2,
-"max_energy": 1
-}
-scaling = []
+stat_bonuses = {"max_energy": 1, "discovery": -2}
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray("wearable", "hat", "crown")

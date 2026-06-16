@@ -9,17 +9,9 @@ id = &"vitality_orb"
 display_name = "Vitality Orb"
 kind = 1
 rarity = 2
-description = "Gain +8 Max Health whenever you obtain a Curse."
-triggers = [{
-"on": "curse_applied",
-"effects": [{
-"type": "gain_max_hp",
-"value": 8
-}]
-}]
-card_grants = []
+description = "Gain +8 Max Health whenever you obtain a Curse"
+triggers = [{"on": "curse_applied", "effects": [{"type": "gain_max_hp", "value": 8}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Forward: Escape the Fold"
 tags = PackedStringArray("orb")

@@ -9,23 +9,9 @@ id = &"prayer_card"
 display_name = "Prayer Card"
 kind = 1
 rarity = 2
-description = "Each time you take damage, 33% chance to gain +1 Buffer."
-triggers = [{
-"on": "damage_taken",
-"silent": true,
-"effects": [{
-"type": "chance",
-"percent": 33,
-"effect": {
-"type": "status",
-"status": "buffer",
-"stacks": 1,
-"target": "self"
-}
-}]
-}]
+description = "33% chance to gain +1 Buffer each time you take damage"
+triggers = [{"on": "damage_taken", "silent": true, "effects": [{"type": "chance", "percent": 33, "effect": {"type": "status", "status": "buffer", "stacks": 1, "target": "self"}}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Mewgenics"
 tags = PackedStringArray("card", "paper", "holy", "cardboard")

@@ -9,12 +9,9 @@ id = &"more_options"
 display_name = "More Options"
 kind = 0
 rarity = 1
-description = "Gain +1 Field of View (an extra portal option on the overworld)."
+description = "Gain +1 Field of View, get an extra option in the space choice"
 triggers = []
-stat_bonuses = {
-"fov_bonus": 1
-}
-scaling = []
+stat_bonuses = {"fov_bonus": 1}
 max_uses = -1
 source_game = "The Binding of Isaac"
 tags = PackedStringArray()

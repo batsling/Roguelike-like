@@ -9,18 +9,9 @@ id = &"bronze_scales"
 display_name = "Bronze Scales"
 kind = 1
 rarity = 1
-description = "At the start of combat, gain 3 Thorns."
-triggers = [{
-"on": "combat_started",
-"effects": [{
-"type": "status",
-"status": "thorns",
-"stacks": 3,
-"target": "self"
-}]
-}]
+description = "At the start of combat, Gain +3 Thorns"
+triggers = [{"on": "combat_started", "effects": [{"type": "status", "status": "thorns", "stacks": 3, "target": "self"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray("metal")

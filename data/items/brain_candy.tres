@@ -9,18 +9,10 @@ id = &"brain_candy"
 display_name = "Brain Candy"
 kind = 2
 rarity = 0
-description = "Gain +5 Intelligence this combat/event."
-triggers = [{
-"on": "item_used",
-"effects": [{
-"type": "temp_stat",
-"stat": "intelligence",
-"value": 5
-}]
-}]
+description = "Gain +5 Intelligence this combat/event"
+triggers = [{"on": "item_used", "effects": [{"type": "temp_stat", "stat": "intelligence", "value": 5}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = 1
 source_game = "Mewgenics"
-tags = PackedStringArray("drug", "pill", "devilish")
+tags = PackedStringArray("drug", "pill", "consumable")
 image = ExtResource("2_img")

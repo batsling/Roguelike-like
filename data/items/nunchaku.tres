@@ -6,28 +6,12 @@
 [resource]
 script = ExtResource("1_item")
 id = &"nunchaku"
+display_name = "Nunchaku"
 kind = 1
 rarity = 0
-display_name = "Nunchaku"
-description = "Every time you play 10 Attacks, Gain +1 Energy."
-triggers = [{
-"on": "card_played",
-"if_card_type": "attack",
-"silent": true,
-"effects": [{
-"type": "counter",
-"key": "attacks_total",
-"every": 10,
-"label": "Nunchaku",
-"effects": [{
-"type": "gain_energy",
-"value": 1
-}]
-}]
-}]
-card_grants = []
+description = "Every time you play 10 attacks, gain +1 Energy"
+triggers = [{"on": "card_played", "if_card_type": "attack", "silent": true, "effects": [{"type": "counter", "key": "attacks_total", "every": 10, "effects": [{"type": "gain_energy", "value": 1}], "label": "Nunchaku"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray("ninja")

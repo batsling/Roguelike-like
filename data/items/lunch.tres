@@ -9,19 +9,9 @@ id = &"lunch"
 display_name = "Lunch"
 kind = 5
 rarity = 0
-description = "Gain 6 Max HP and 6 HP."
-triggers = [{
-"on": "item_acquired",
-"effects": [{
-"type": "gain_max_hp",
-"value": 6
-}, {
-"type": "gain_hp",
-"value": 6
-}]
-}]
+description = "Gain +8 Max Health and +8 Health"
+triggers = [{"on": "item_acquired", "effects": [{"type": "gain_max_hp", "value": 6}, {"type": "gain_hp", "value": 6}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "The Binding of Isaac"
 tags = PackedStringArray("food")

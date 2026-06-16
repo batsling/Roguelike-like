@@ -10,18 +10,9 @@ display_name = "Ring of the Snake"
 kind = 1
 rarity = 0
 starter = true
-description = "At the start of combat, Draw 2 Cards."
-triggers = [{
-"on": "combat_started",
-"effects": [{
-"type": "draw",
-"value": 2,
-"target": "self"
-}]
-}]
-card_grants = []
+description = "At the start of combat, Draw 2 Cards"
+triggers = [{"on": "combat_started", "effects": [{"type": "draw", "value": 2, "target": "self"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray("ring")
