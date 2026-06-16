@@ -63,13 +63,21 @@ style). The **first token is the archetype**; the rest are params in any order:
 
 | Token | Meaning | Applies to |
 |---|---|---|
-| `Short` `Medium` `Large` `Full` | reach (bare size word) | reach-based shapes |
+| `Short` `Medium` `Large` `Full` | the archetype's **primary dimension** (see below) | size-based shapes |
 | `arc=<deg>` | swing arc in degrees (`arc=360` = full ring) | `swing` |
-| `radius=<small\|medium\|large>` | AOE disc size | `smash` `nova` `auto_aoe` `lob` |
 | `target=<nearest\|random\|all>` | who the auto-targeting picks | `smite` `homing` `auto_aoe` |
 | `spread=<n>` | fan of N projectiles | `projectile` |
 | `pierce` | projectile passes through enemies | `projectile` |
 | `crescent` | crescent-shaped projectile body (vs default bolt) | `projectile` |
+
+The bare size word maps to whichever dimension defines that archetype, so
+authoring stays intuitive (`Smash, Large` = a big blast; `Projectile, Large` =
+a far-travelling bolt):
+
+| Bare size means… | Archetypes |
+|---|---|
+| **reach** (how far it extends / travels) | `poke` `swing` `projectile` `beam` `homing` |
+| **radius** (AOE disc size) | `smash` `nova` `lob` `auto_aoe` |
 
 Volleys (firing the whole attack N times) come from the **Effects** `VALUExHITS`
 form, not the Attack cell, so `Twin Strike` (`dmg:5x2:melee`, `Attack: Swing,
@@ -119,7 +127,7 @@ Notes:
 | Carnage | `Smash, Medium` | `dmg:20` |
 | Cleave | `Swing, arc=360` | `dmg:8` |
 | Heavy Blade | `Smash, Medium` | `dmg:14; power_multiplier:3` |
-| Iron Wave | `Projectile, crescent, pierce, Medium` | `gain:block:5; dmg:5` |
+| Iron Wave | `Projectile, Medium, crescent, pierce` | `gain:block:5; dmg:5` |
 | Pommel Strike | `Swing, Medium` | `dmg:9; draw:1` |
 | Strike (Ironclad) | `Swing, Medium` | `dmg:6` |
 | Thunderclap | `Smite, target=all` | `dmg:4; inflict:vulnerable:1` |
@@ -127,15 +135,15 @@ Notes:
 | Shiv | `Projectile, Medium` | `dmg:4` |
 | Backstab | `Poke, Medium` | `dmg:11` |
 | Beam Cell | `Beam` | `dmg:3; inflict:vulnerable:1` |
-| Bludgeon | `Smash, radius=large` | `dmg:32` |
-| Dagger Spray | `Projectile, spread=4` | `dmg:4x2` (two volleys of 4) |
+| Bludgeon | `Smash, Large` | `dmg:32` |
+| Dagger Spray | `Projectile, Medium, spread=4` | `dmg:4x2` (two volleys of 4) |
 | All for One | `Poke, Medium` | `dmg:10; recall:cost=0` |
 | All-Out Attack | `Nova` | `dmg:10; discard:1:random` |
 | Bane | `Swing, Medium` | `dmg:7; dmg:7:if_status=poison` |
 | Bag o' Glitter | `Swing, Medium` | `inflict:blind:2; ...` |
 | Barrel | `Projectile, Medium` | `dmg:6` |
 | Blasma Pistol | `Projectile, Medium` | `dmg:3` |
-| Blood Magic | `Auto_aoe, target=random, radius=small` | `dmg:2x3` |
+| Blood Magic | `Auto_aoe, target=random, Small` | `dmg:2x3` |
 
 ---
 
