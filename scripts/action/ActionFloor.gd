@@ -37,6 +37,7 @@ var _visited: Dictionary = {}             # index -> true (for the minimap)
 
 var _arena: ActionCombat = null
 var _minimap: FloorMinimap = null
+var _right_column: VBoxContainer = null
 var _active_overlay: Control = null
 var _floor_done: bool = false
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -57,6 +58,7 @@ func _ready() -> void:
 
 	_generate_floor()
 	_build_arena()
+	_build_right_column()
 	_build_minimap()
 	_build_inventory_panel()
 	_update_header()
@@ -122,39 +124,41 @@ func _build_arena() -> void:
 	_arena.stairs_entered.connect(_on_stairs_entered)
 	add_child(_arena)
 
+# The minimap and item rack share a column pinned to the right edge of the
+# screen — the strip the (now narrower) arena leaves free. A right-anchored
+# VBox stacks them top-down so neither floats over the play area nor drifts off
+# screen as the floor reveals more rooms / the inventory fills out.
+func _build_right_column() -> void:
+	_right_column = VBoxContainer.new()
+	_right_column.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_right_column.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_right_column.offset_right = -12
+	_right_column.offset_top = 40
+	_right_column.add_theme_constant_override("separation", 12)
+	add_child(_right_column)
+
 func _build_minimap() -> void:
 	_minimap = FloorMinimap.new()
 	_minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Pin the minimap's right edge to the top-right corner and let it grow
-	# leftward/downward as the floor reveals more rooms. Previously it was
-	# anchored by its left edge at a fixed inset, so larger floors crept left
-	# into the play area (or spilled off the right). Right-anchoring keeps it
-	# tucked into the corner, out of the way, at any size.
-	_minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_minimap.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_minimap.grow_vertical = Control.GROW_DIRECTION_END
-	_minimap.offset_right = -16
-	_minimap.offset_top = 16
-	add_child(_minimap)
+	# SHRINK_END keeps the map at its drawn size and flush to the column's right
+	# edge; the VBox owns vertical stacking so the map no longer overlaps the
+	# item rack or creeps into the arena.
+	_minimap.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_right_column.add_child(_minimap)
 	_minimap.setup(_floor)
 
-# Small, semi-opaque item rack tucked under the minimap on the right (Isaac's
+# Small, semi-opaque item rack under the minimap on the right (Isaac's
 # active-item / pickups corner). Charged actives show a charge bar and fire on
 # click when full.
 func _build_inventory_panel() -> void:
 	var inv := CombatInventory.new()
-	inv.columns = 4
+	inv.columns = 3
 	inv.tile_px = 38
 	inv.show_title = true
 	inv.title_text = "Items"
 	inv.panel_opacity = 0.82
-	inv.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	inv.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	inv.grow_vertical = Control.GROW_DIRECTION_END
-	# Slot it directly beneath the corner-tucked minimap.
-	var below_y: float = 16.0 + _minimap.custom_minimum_size.y + 12.0
-	inv.position = Vector2(-16, maxf(below_y, 200.0))
-	add_child(inv)
+	inv.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_right_column.add_child(inv)
 
 # ---------------------------------------------------------------------------
 # Room transitions

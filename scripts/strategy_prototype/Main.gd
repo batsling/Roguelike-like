@@ -564,10 +564,18 @@ func _handle_map_click(screen_pos: Vector2) -> void:
 	var tile = map.get_tile(g.x, g.y)
 	var reachable: bool = map.is_walkable(g) and not _find_path(player.grid_pos, g).is_empty()
 
+	# Stairs are walkable, so a click just paths onto them and descends on
+	# arrival — `_try_descend` needs the player standing ON the stairs, which is
+	# why descending from an adjacent tile (the old context-menu option) failed.
+	# This honours the "click to descend" tile hint with a single click.
+	if tile == StrategyState.TileType.STAIRS_DOWN:
+		if reachable:
+			_begin_travel(g, "descend")
+		else:
+			StrategyLog.add("Can't reach the stairs from here.", Color.GRAY)
+		return
+
 	var options: Array = []
-	# Stairs you can reach this step → offer descend at the top.
-	if tile == StrategyState.TileType.STAIRS_DOWN and _cheby(player.grid_pos, g) <= 1:
-		options.append({"text": "Go down stairs", "id": "descend"})
 	# A visible item under the cursor → offer pickup-by-walking.
 	var clicked_item = _item_at(g) if vis else null
 	if clicked_item != null and reachable:

@@ -38,8 +38,22 @@ func _ready() -> void:
 	if GameState.character_id == &"" or GameState.start_game_id == &"" or GameState.amulet_game_id == &"":
 		_bootstrap_fallback_run()
 
+	# A freshly started run (MainMenu stashes "pending_start_bonus"; the debug
+	# bootstrap stashes "pending_first_game") drops the player straight into the
+	# first game's combat area rather than the overworld — entering the run *is*
+	# arriving at the start game, so its floor should play before the overworld
+	# opens up the connected-game portals. A loaded/continued save has neither
+	# flag and resumes at the overworld as before.
+	var fresh_start: bool = GameState.has_meta("pending_start_bonus") \
+		or GameState.has_meta("pending_first_game")
+	if GameState.has_meta("pending_first_game"):
+		GameState.remove_meta("pending_first_game")
+
 	_apply_pending_start_bonus()
-	_show_overworld()
+	if fresh_start and GameState.start_game_id != &"":
+		_on_portal_entered(GameState.start_game_id)
+	else:
+		_show_overworld()
 
 func _bootstrap_fallback_run() -> void:
 	var ironclad: CharacterData = Data.get_character(&"ironclad")
@@ -52,6 +66,7 @@ func _bootstrap_fallback_run() -> void:
 	GameState.start_game_id = &"slay_the_spire"
 	GameState.amulet_game_id = &"hades"
 	GameState.set_current_game(GameState.start_game_id)
+	GameState.set_meta("pending_first_game", true)
 	GameLog.add("---- Debug run: Ironclad ----", Color(0.7, 0.9, 1.0))
 
 # Starting-game-type bonus: granted once, at the very start of the run.

@@ -12,13 +12,23 @@ extends RefCounted
 
 const DAMAGE_COLOR := Color(1.0, 0.33, 0.33)
 const HEAL_COLOR := Color(0.45, 1.0, 0.5)
+# Misses (e.g. an attacker blinded into a whiff) float a muted yellow "MISS".
+const MISS_COLOR := Color(0.95, 0.9, 0.5)
 
 static func spawn(parent: CanvasItem, local_pos: Vector2, amount: int,
 		color: Color = DAMAGE_COLOR) -> void:
-	if parent == null or amount == 0 or not parent.is_inside_tree():
+	if amount == 0:
+		return
+	spawn_text(parent, local_pos, str(absi(amount)), color)
+
+# Floats arbitrary text (used for "MISS", "DODGE", etc.) with the same drift +
+# fade as the numeric variant.
+static func spawn_text(parent: CanvasItem, local_pos: Vector2, text: String,
+		color: Color = DAMAGE_COLOR) -> void:
+	if parent == null or text == "" or not parent.is_inside_tree():
 		return
 	var lbl := Label.new()
-	lbl.text = str(absi(amount))
+	lbl.text = text
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl.z_index = 100
 	lbl.add_theme_font_size_override("font_size", 22)
