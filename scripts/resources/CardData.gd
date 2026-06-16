@@ -43,6 +43,8 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, LEGENDARY }
 @export var retain: bool = false          # not discarded at end of turn
 @export var unplayable: bool = false      # cannot be played manually
 @export var eternal: bool = false         # cannot be removed from the deck (curse cards)
+@export var destroy: bool = false         # removed from the run deck permanently when played/used
+@export var sly: bool = false             # unplayable, but resolves its effects when it would be discarded
 
 # Triggered effects — UNLIKE `effects` (which resolve when the card is PLAYED),
 # these fire on a trigger while the card merely sits in hand. Mirrors ItemData's

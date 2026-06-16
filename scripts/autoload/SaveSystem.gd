@@ -353,6 +353,10 @@ func _serialize_deck(deck: Array) -> Array:
 				"upgraded": c.upgraded,
 				"source_weapon_id": c.source_weapon_id,
 				"effect_bonuses": _stringify_effect_bonus_keys(c.effect_bonuses),
+				# Vorpal's once-per-card roll persists with the deck so the bound
+				# combat type/weight survives save/load.
+				"vorpal_type": c.vorpal_type,
+				"vorpal_weight": c.vorpal_weight,
 			})
 		elif c is CardData:
 			# Defensive: handle bare CardData if anything still appends it.
@@ -370,6 +374,10 @@ func _resolve_deck(entries: Array) -> Array:
 		var ci: CardInstance = CardInstance.from_data(c, bool(e.get("upgraded", false)))
 		ci.source_weapon_id = int(e.get("source_weapon_id", 0))
 		ci.effect_bonuses = _intify_effect_bonus_keys(e.get("effect_bonuses", {}))
+		# Restore the persisted Vorpal roll (-2 default = re-roll lazily for an
+		# old save that predates the field but carries a Vorpal weapon).
+		ci.vorpal_type = int(e.get("vorpal_type", -2))
+		ci.vorpal_weight = int(e.get("vorpal_weight", 0))
 		out.append(ci)
 	return out
 

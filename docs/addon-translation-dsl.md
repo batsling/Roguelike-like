@@ -124,3 +124,26 @@ satisfiable.
 
 Deckbuilder keeps its existing CardData-flag code for all of these — it already
 worked — so `AddonSystem` powers Action/Strategy only.
+
+## New addons (Sly / Lifesteal / Retain / Destroy / Vorpal)
+Five addons added to `addonsnew`. The first four are pure data/flag plumbing
+(no new verb vocabulary); Vorpal adds one declarative hook. All are wired across
+all three modes where the mechanic exists. **Unverified in-engine.**
+
+| Addon | Key / Hook / Expr | Wiring | Modes |
+| --- | --- | --- | --- |
+| **Lifesteal** | `lifesteal` / `effect_flag` / `lifesteal` | `apply_addons_to_effect` stamps `lifesteal` on the dmg effect; each scene's damage path heals the attacker for the unblocked HP dealt. | DB / Action / Strategy |
+| **Retain** | `retain` / `structural` / — | Existing `CardData.retain` flag (kept in hand at end of turn). Catalog entry only; behavior already lived in deckbuilder. | DB (no end-of-turn discard in Action/Strategy) |
+| **Destroy** | `destroy` / `structural` / — | New `CardData.destroy` flag. On play/use the physical card is removed from the run deck (`GameState.destroy_card_instance` / `destroy_first_card_with_id`) instead of going to discard/exhaust. | DB / Action (retires from rotation) / Strategy |
+| **Sly** | `sly` / `structural` / — | New `CardData.sly` flag (implies `unplayable`). When the card would be discarded it resolves its effects first (auto-targets a random live enemy), then files to discard. | DB only — Action/Strategy have no hand-discard concept |
+| **Vorpal** | `vorpal` / `effect_vorpal` / — | Per-`CardInstance` roll (combat type = one of the three modes + 1-5 weight), persisted in saves. `Stats.vorpal_damage_bonus` adds `Stats.VORPAL_BONUS` (10) when the swing's mode and the target's `weight` both match. | DB / Action / Strategy |
+
+Enemy `weight` (the Vorpal match key, 1-5) lives on `EnemyData.weight`,
+`ActionEnemyData.weight`, and `BattleUnit.weight`; it's copied onto the runtime
+actor (`CombatActor.weight` / `BattleUnit.weight`) at spawn so `Stats` reads it
+uniformly. Action mode flattens the deck to `CardData`, so Vorpal's per-instance
+roll is recovered via `GameState.vorpal_for_card_data` (first deck copy wins).
+
+These four flag/slug addons need no new verb vocabulary — Retain/Destroy/Sly
+mirror Eternal as plain `structural` flags, Lifesteal reuses `effect_flag`. The
+only importer change is the declarative `effect_vorpal` hook (empty Expr).

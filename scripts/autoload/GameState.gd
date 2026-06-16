@@ -1108,6 +1108,9 @@ func add_card_to_deck(card) -> CardInstance:
 		ci.upgraded = true
 		Notifications.notify("%s was upgraded by an Egg!" % ci.data.display_name,
 			Color(1.0, 0.72, 0.3))
+	# Vorpal weapons roll their bound combat type + weight once, at acquisition,
+	# so the badge is visible immediately and the roll persists with the save.
+	ci.roll_vorpal_if_needed()
 	deck.append(ci)
 	emit_signal("deck_changed")
 	return ci
@@ -1250,6 +1253,56 @@ func remove_card_at(deck_index: int) -> void:
 				emit_signal("inventory_changed")
 				break
 	emit_signal("deck_changed")
+
+# Destroy addon: permanently remove a specific physical card (by reference)
+# from the run deck when it's played/used. Self-initiated, so it bypasses the
+# Eternal guard in remove_card_at (a card removing ITSELF is its whole point).
+# No-op if the card isn't in the deck (already gone, or a combat-only copy).
+func destroy_card_instance(card: CardInstance) -> bool:
+	if card == null:
+		return false
+	var idx: int = deck.find(card)
+	if idx < 0:
+		return false
+	deck.remove_at(idx)
+	if card.data != null and card.data.type == CardData.CardType.CURSE:
+		TriggerBus.emit_signal("curse_card_removed", {"card": card.data})
+	if card.source_weapon_id != 0:
+		for i in range(inventory.size() - 1, -1, -1):
+			var it = inventory[i]
+			if it is ItemData and it.instance_id == card.source_weapon_id:
+				inventory.remove_at(i)
+				_recompute_item_bonuses()
+				emit_signal("inventory_changed")
+				break
+	emit_signal("deck_changed")
+	return true
+
+# Destroy in Action mode: the loadout is flattened to CardData, so destroy the
+# FIRST deck CardInstance sharing this CardData's id (one physical copy per
+# destroy event). Returns true if a copy was removed.
+func destroy_first_card_with_id(card_data) -> bool:
+	if card_data == null:
+		return false
+	for c in deck:
+		if c is CardInstance and c.data != null and c.data.id == card_data.id:
+			return destroy_card_instance(c)
+	return false
+
+# Action mode flattens the deck to CardData for its auto-slots, so per-instance
+# Vorpal state isn't on the played card. Recover it by looking up the first deck
+# CardInstance sharing this CardData's id. Returns { type, weight } or {} when
+# the card carries no live Vorpal roll.
+func vorpal_for_card_data(card_data) -> Dictionary:
+	if card_data == null:
+		return {}
+	for c in deck:
+		if c is CardInstance and c.data != null and c.data.id == card_data.id:
+			c.roll_vorpal_if_needed()
+			if c.vorpal_type >= 0 and c.vorpal_weight > 0:
+				return {"type": c.vorpal_type, "weight": c.vorpal_weight}
+			return {}
+	return {}
 
 func _remove_deck_cards_for_weapon(weapon_instance_id: int) -> void:
 	# Internal: drop every CardInstance whose source_weapon_id matches.

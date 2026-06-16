@@ -63,6 +63,10 @@ HOOK_EXPR = {
     "effect_flag":      re.compile(r"^[a-z_]+$"),
     "effect_value":     None,
     "card_replay":      None,
+    # Vorpal: a per-instance flat damage bonus vs a rolled combat type + enemy
+    # weight. Declarative — the runtime reads the `vorpal` addon slug off the
+    # card and the once-per-card roll off CardInstance, so no Expr is needed.
+    "effect_vorpal":    None,
     "structural":       None,
 }
 

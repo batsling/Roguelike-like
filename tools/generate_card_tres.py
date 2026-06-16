@@ -60,7 +60,8 @@ RARITY = {
 }
 
 # Keywords column tokens that map onto a CardData bool flag (rest -> addons[]).
-FLAG_KEYWORDS = {"exhaust", "ethereal", "innate", "retain", "unplayable", "eternal"}
+FLAG_KEYWORDS = {"exhaust", "ethereal", "innate", "retain", "unplayable", "eternal",
+                 "destroy", "sly"}
 
 # Action-combat attack archetypes + the tokens the Attack column understands.
 # See docs/action-attack-translation.md. The Attack cell is the repurposed Range
@@ -132,6 +133,10 @@ def parse_keywords(raw):
             # Addon names are stored as slugs in the .tres (the form the engine
             # matches): "Fishing Weight" -> fishing_weight, "Wealth" -> wealth.
             addons.append(slugify(t))
+    # Sly cards are unplayable by definition (they only resolve when discarded),
+    # so the keyword implies the unplayable flag without authors repeating it.
+    if flags.get("sly"):
+        flags["unplayable"] = True
     return flags, addons
 
 

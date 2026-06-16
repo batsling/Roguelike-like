@@ -32,6 +32,20 @@ var source_weapon_id: int = 0
 # GameState on TriggerBus.game_beaten; ignored when data.destroy_after_games < 0.
 var games_beaten_held: int = 0
 
+# Vorpal addon state — rolled ONCE per physical card and persisted with the
+# deck (saved/loaded). A Vorpal weapon binds to a random combat type (which of
+# the three modes — Stats.Mode int) and a random weight class (1-5), and deals
+# Stats.VORPAL_BONUS extra damage when used in the matching mode against an
+# enemy whose weight matches. -2 = not yet rolled (rolled lazily / on acquire);
+# -1 = the card has no Vorpal addon (never bonuses).
+var vorpal_type: int = -2
+var vorpal_weight: int = 0
+
+# Shared RNG for the once-per-instance Vorpal roll when a caller doesn't hand
+# one in (e.g. acquisition outside combat). Roll is persisted, so determinism
+# across a save round-trip is irrelevant — it only fires once.
+static var _vorpal_rng: RandomNumberGenerator = null
+
 static func from_data(d: CardData, is_upgraded: bool = false) -> CardInstance:
 	var c := CardInstance.new()
 	c.data = d
@@ -42,6 +56,51 @@ func get_cost() -> int:
 	if temp_cost_override != -999:
 		return temp_cost_override
 	return data.get_effective_cost(upgraded)
+
+# --- Vorpal -----------------------------------------------------------------
+
+func has_vorpal() -> bool:
+	return data != null and data.addons.has("vorpal")
+
+# Roll this card's Vorpal type/weight if it carries the addon and hasn't rolled
+# yet. Safe to call repeatedly — the -2 sentinel guards the one-time roll, so
+# acquisition and a lazy combat-time fallback both land on the same result.
+func roll_vorpal_if_needed(rng: RandomNumberGenerator = null) -> void:
+	if vorpal_type != -2:
+		return
+	if not has_vorpal():
+		vorpal_type = -1          # mark "no Vorpal" so we never re-check the addon list
+		return
+	var r: RandomNumberGenerator = rng
+	if r == null:
+		if _vorpal_rng == null:
+			_vorpal_rng = RandomNumberGenerator.new()
+			_vorpal_rng.randomize()
+		r = _vorpal_rng
+	# Combat type = one of the three modes (Stats.Mode: DECKBUILDER/ACTION/STRATEGY).
+	vorpal_type = r.randi_range(0, 2)
+	vorpal_weight = r.randi_range(1, 5)
+
+# Stamp this instance's rolled Vorpal type/weight onto an outgoing effect dict so
+# the per-mode damage path (Stats.vorpal_damage_bonus) can apply the bonus. Returns
+# the original dict untouched when the card has no live Vorpal roll.
+func apply_vorpal_to_effect(effect: Dictionary) -> Dictionary:
+	roll_vorpal_if_needed()
+	if vorpal_type < 0 or vorpal_weight <= 0:
+		return effect
+	var dup: Dictionary = effect.duplicate()
+	dup["vorpal_type"] = vorpal_type
+	dup["vorpal_weight"] = vorpal_weight
+	return dup
+
+# Human-readable suffix for the card name/description (mirrors the legacy badge).
+func vorpal_badge() -> String:
+	roll_vorpal_if_needed()
+	if vorpal_type < 0 or vorpal_weight <= 0:
+		return ""
+	const MODE_NAMES := ["Deckbuilder", "Action", "Strategy"]
+	var mode_name: String = MODE_NAMES[vorpal_type] if vorpal_type < MODE_NAMES.size() else "?"
+	return "[Vorpal vs %s W%d]" % [mode_name, vorpal_weight]
 
 func get_effects() -> Array:
 	# Layer per-instance effect_bonuses on top of CardData's effects
@@ -97,6 +156,11 @@ func _decorate(base: String) -> String:
 	var grant_extra: String = CardMods.describe(data)
 	if grant_extra != "":
 		base = "%s %s" % [base, grant_extra]
+	# Vorpal: show this physical card's rolled type/weight so the player knows
+	# which mode + enemy weight earns the bonus.
+	var vorpal_extra: String = vorpal_badge()
+	if vorpal_extra != "":
+		base = "%s  %s" % [base, vorpal_extra]
 	# NOTE: item boosts (Strike Dummy) are NOT annotated here — CardScaling folds
 	# them straight into the card's Dmg/Block number, so "Deal 9 Dmg" already
 	# reflects the +3 instead of trailing a separate "[+3 Dmg]".

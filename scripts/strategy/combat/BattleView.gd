@@ -1616,7 +1616,16 @@ func _resolve_ability_against(target) -> void:
 		card.data.display_name, empower_str, GameState.card_uses_remaining(card), _card_plays_remaining,
 	]
 	_fire_item_triggers("card_played", {"card": card.data})
-	_apply_card_or_spell_effects(_effective_card_effects(card.data), u, target, card.data, empower)
+	# Vorpal rides the physical card instance; recover its roll and pass it down.
+	var vorpal: Dictionary = {}
+	card.roll_vorpal_if_needed()
+	if card.vorpal_type >= 0 and card.vorpal_weight > 0:
+		vorpal = {"type": card.vorpal_type, "weight": card.vorpal_weight}
+	_apply_card_or_spell_effects(_effective_card_effects(card.data), u, target, card.data, empower, vorpal)
+	# Destroy: remove the played card from the run deck permanently after it resolves.
+	if card.data != null and card.data.destroy:
+		GameState.destroy_card_instance(card)
+		_status_label.text = "%s is Destroyed — removed from your deck." % card.data.display_name
 	_pending_kind = Pending.NONE
 	_pending_card = null
 	_grid_view.enter_idle()
@@ -1852,16 +1861,22 @@ func apply_status(target, status: StringName, stacks: int, source = null) -> voi
 	if Stats.apply_status_to(target, status, stacks, source) > 0:
 		_grid_view.notify_units_changed()
 
-func _apply_card_or_spell_effects(effects: Array, source, target, card = null, empower: int = 0) -> void:
+func _apply_card_or_spell_effects(effects: Array, source, target, card = null, empower: int = 0, vorpal: Dictionary = {}) -> void:
 	# Replay addon: a card with Replay X resolves its full effect list X extra
 	# times. `card` is null for enemy AI moves (CardMods.replay_count(null) is
 	# 0), so only player cards / abilities / spells / weapon attacks replay.
 	# Duplicator grants Replay 1 to weapon attack cards — the strategy weapon
 	# attack (above) routes through here, so it picks the extra play up too.
+	# `vorpal` ({type, weight}) carries the played card instance's Vorpal roll,
+	# stamped onto each effect so _apply_damage can apply the per-target bonus.
 	var plays: int = 1 + CardMods.replay_count(card)
 	for _play in plays:
 		for raw_effect in effects:
 			var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
+			if not vorpal.is_empty():
+				effect = effect.duplicate()
+				effect["vorpal_type"] = int(vorpal["type"])
+				effect["vorpal_weight"] = int(vorpal["weight"])
 			if empower > 0:
 				effect = _tr.apply_empower(effect, empower)
 			var resolved_targets: Array = _resolve_effect_targets(effect, source, target)
@@ -2014,6 +2029,9 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		and not target.is_player
 	if is_player_attack:
 		raw_dmg += GameState.streak_attack_bonus(target)
+	# Vorpal: flat bonus when this swing's bound mode (Strategy) + the target's
+	# weight match the weapon's roll. Pre-resolve so Power/Vulnerable layer on top.
+	raw_dmg += Stats.vorpal_damage_bonus(effect, target, Stats.Mode.STRATEGY)
 	# Canonical damage math in Stats.resolve_damage (Power/Weak, Vulnerable,
 	# Blind, Dodge, block soak) so strategy matches deckbuilder/action. The
 	# death / Infuse / loot tail below stays strategy-specific.
@@ -2033,6 +2051,11 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		return
 	target.hp = maxi(0, target.hp - int(res.hp_loss))
 	_float_number(target, int(res.hp_loss))
+	# Lifesteal: the attacker heals for the unblocked HP it just dealt. Self-hits
+	# and reflected reactions (no_reaction) never lifesteal.
+	if bool(effect.get("lifesteal", false)) and source != null and source != target \
+			and not bool(effect.get("no_reaction", false)) and int(res.hp_loss) > 0:
+		heal(source, int(res.hp_loss))
 	# Item reactions to the player taking damage (Prayer Card, Prayer Beads).
 	if target.is_player and int(res.hp_loss) > 0:
 		_fire_item_triggers("damage_taken", {"target": target})
