@@ -1,9 +1,54 @@
-# Next session: data-drive addons
+# Data-drive addons
 
 **Goal (decided with the user):** make addon *behavior* sheet-authored via a
-small per-mode effect DSL, the way items/cards are now generated from
-`tools/Roguelikes.xlsx`. Today the addon **catalog** is already generated from
-the `addonsnew` sheet; only the **runtime behavior** is still hardcoded.
+small effect DSL, the way items/cards are now generated from
+`tools/Roguelikes.xlsx`.
+
+## ✅ Status — effect-modifier addons are now data-driven
+The four addons whose behavior lived in name-keyed `match` arms (Cleave,
+Indiscriminate, Wealth, Fishing Weight) now dispatch off the `addonsnew` sheet's
+new **Key / Hook / Expr** columns. See "DSL columns" and "Dispatcher" below.
+Parity with the old arms is proven by `tools/test_addon_dispatch.py` (4557
+old-vs-new comparisons, identical). Verify in-game when convenient.
+
+Remaining (the user wants *everything* on `addonsnew` to flow through this):
+the `effect_value` (Infuse), `card_replay` (Replay) and `structural` (Melee /
+Ranged / Exhaust / Ethereal / Innate / Unplayable / Eternal) rows are already
+authored with Key/Hook/Expr but are still handled in their original homes — the
+dispatcher treats them as no-ops for now. Routing those through it later is a
+larger refactor (touches `generate_card_tres.py`, `CardMods`, EffectSystem and
+the three scenes) and was deferred to keep this step bit-identical.
+
+## DSL columns (`addonsnew`)
+Three machine-readable columns sit beside the prose Deckbuilder/Action/Strategy
+cells and are emitted into `ReferenceCatalog.ADDONS` by
+`tools/import-reference-godot.py`:
+- **Key** — runtime slug the engine matches, i.e. the form
+  `generate_card_tres.slugify` bakes into `CardData.addons` ("Fishing Weight" →
+  `fishing_weight`). Falls back to `slugify(Name)` when blank.
+- **Hook** — which dispatch slot the behavior runs in: `effect_dmg_bonus`,
+  `effect_retarget`, `effect_flag` (live in the dispatcher today);
+  `effect_value`, `card_replay`, `structural` (declarative, handled elsewhere).
+- **Expr** — closed-vocabulary parameter (no general arithmetic, so each token
+  maps 1:1 to the old code): `gold/10`, `fish`, `enemy->all_enemies`,
+  `indiscriminate`; empty for declarative rows.
+
+## Dispatcher
+`Stats.gd` builds a cached `Key → catalog entry` index (`_addon_index`) and the
+two old arms now read it:
+- `addon_damage_bonus` sums `effect_dmg_bonus` rows via `_eval_bonus_expr`
+  (`gold/10` → `_wealth_bonus`, `fish` → `_fishing_weight_bonus`).
+- `apply_addons_to_effect` applies `effect_flag` (sets `dup[expr] = true`) and
+  `effect_retarget` (rewrites target when it matches the Expr's FROM side).
+The audited bonus helpers (`_wealth_bonus`, `_fishing_weight_bonus`) are kept so
+the math is unchanged; only the *dispatch* moved to data.
+
+---
+
+## Original handoff (pre-implementation notes, kept for context)
+
+The addon **catalog** was already generated from the `addonsnew` sheet; only the
+**runtime behavior** was hardcoded.
 
 ## ⚠️ Read first — the hard constraint
 There is **no Godot runtime in this environment** and **no generated artifact to

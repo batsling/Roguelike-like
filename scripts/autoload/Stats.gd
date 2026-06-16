@@ -545,6 +545,25 @@ func crit_multiplier(source) -> float:
 # any addon-driven values folded in. Damage downstream (Vulnerable,
 # Weak, Power) layers on top, matching how boost_cards already works.
 
+# Addon behavior is now data-driven from the `addonsnew` sheet's Key/Hook/Expr
+# columns (emitted into ReferenceCatalog.ADDONS by import-reference-godot.py).
+# This index maps an addon's runtime slug — the form baked into CardData.addons
+# by generate_card_tres.slugify — to its catalog entry, so the dispatcher below
+# reads { hook, expr } instead of a hardcoded match. Built lazily and cached;
+# parity with the old match arms is asserted in tools/test_addon_dispatch.py.
+var _addon_index_cache: Dictionary = {}
+
+func _addon_index() -> Dictionary:
+	if _addon_index_cache.is_empty():
+		for a in ReferenceCatalog.ADDONS:
+			var key: String = String(a.get("key", ""))
+			if key != "":
+				_addon_index_cache[key] = a
+	return _addon_index_cache
+
+func _addon_entry(slug: String) -> Dictionary:
+	return _addon_index().get(slug, {})
+
 func apply_addons_to_effect(effect: Dictionary, card) -> Dictionary:
 	# Returns the effect dict, modified for any addons on the card.
 	# Today only `dmg` effects get touched (addon-driven block / heal /
@@ -558,48 +577,69 @@ func apply_addons_to_effect(effect: Dictionary, card) -> Dictionary:
 	if String(effect.get("type", "")) != "dmg":
 		return effect
 	var bonus: int = addon_damage_bonus(card, String(effect.get("damage_type", "")))
-	var indiscriminate: bool = addons.has("indiscriminate")
-	# Cleave: spread a single-target hit across the whole recipient side. Every
-	# mode's effect resolver already fans "all_enemies" over its living enemies
-	# (deckbuilder sweep, action radius, strategy AoE), so Cleave is just a
-	# target rewrite from the single "enemy" to "all_enemies". Like
-	# Indiscriminate it also lets the play UI skip the manual target picker
-	# (see CardInstance.wants_target).
-	var cleave: bool = addons.has("cleave") \
-		and String(effect.get("target", "enemy")) == "enemy"
-	if bonus == 0 and not indiscriminate and not cleave:
+	# Walk the card's addons once, consulting each one's catalog hook:
+	#   effect_flag     — set a bool key on the effect (Indiscriminate flags the
+	#                     dmg handler to re-roll the target per hit; the flag also
+	#                     feeds CardInstance.wants_target so the UI skips the picker).
+	#   effect_retarget — rewrite the effect's target when it currently matches the
+	#                     Expr's "FROM" side (Cleave: enemy -> all_enemies; every
+	#                     mode already fans all_enemies over its living enemies).
+	# Other hooks (effect_dmg_bonus already folded into `bonus`, plus the
+	# declarative effect_value / card_replay / structural rows) are no-ops here.
+	var flags: PackedStringArray = PackedStringArray()
+	var new_target: String = ""
+	for addon_name in addons:
+		var entry: Dictionary = _addon_entry(String(addon_name))
+		if entry.is_empty():
+			continue
+		match String(entry.get("hook", "")):
+			"effect_flag":
+				var flag: String = String(entry.get("expr", ""))
+				if flag != "":
+					flags.append(flag)
+			"effect_retarget":
+				var parts: PackedStringArray = String(entry.get("expr", "")).split("->")
+				if parts.size() == 2 and String(effect.get("target", "enemy")) == parts[0]:
+					new_target = parts[1]
+	if bonus == 0 and flags.is_empty() and new_target == "":
 		return effect
 	var dup: Dictionary = effect.duplicate()
 	if bonus != 0:
 		dup["value"] = int(dup.get("value", 0)) + bonus
-	if indiscriminate:
-		# Flag the effect so the dmg handler re-rolls the target per hit
-		# (Blood Magic's `2x3` becomes "2 dmg to 3 random enemies"). The
-		# flag also feeds CardInstance.wants_target so the play UI skips
-		# the manual target picker.
-		dup["indiscriminate"] = true
-	if cleave:
-		dup["target"] = "all_enemies"
+	for flag in flags:
+		dup[flag] = true
+	if new_target != "":
+		dup["target"] = new_target
 	return dup
 
 func addon_damage_bonus(card, _damage_type: String) -> int:
-	# Sum every addon-driven flat damage modifier on the card. Add a
-	# damage_type gate inside each arm if an addon should only apply
-	# to certain types (Fishing Weight is intentionally type-agnostic
-	# since the user said "more damage" — applies to whatever the
-	# card already deals).
+	# Sum every addon-driven flat damage modifier on the card. An addon
+	# contributes when its catalog hook is `effect_dmg_bonus`; the Expr names a
+	# closed-vocabulary bonus source (see _eval_bonus_expr). Fishing Weight is
+	# intentionally type-agnostic ("more damage" — applies to whatever the card
+	# already deals), so _damage_type is unused, matching the old behavior.
 	if card == null or not ("addons" in card):
 		return 0
 	var total: int = 0
 	for addon_name in card.addons:
-		match String(addon_name):
-			"fishing_weight":
-				total += _fishing_weight_bonus()
-			"wealth":
-				total += _wealth_bonus()
-			_:
-				pass
+		var entry: Dictionary = _addon_entry(String(addon_name))
+		if entry.is_empty():
+			continue
+		if String(entry.get("hook", "")) == "effect_dmg_bonus":
+			total += _eval_bonus_expr(String(entry.get("expr", "")))
 	return total
+
+func _eval_bonus_expr(expr: String) -> int:
+	# Resolve a flat-damage-bonus Expr token to an int. The vocabulary is closed
+	# (no general arithmetic) so every token maps 1:1 to the old hardcoded arms,
+	# keeping the dispatcher bit-identical. Unknown tokens contribute 0.
+	match expr:
+		"gold/10":
+			return _wealth_bonus()
+		"fish":
+			return _fishing_weight_bonus()
+		_:
+			return 0
 
 func _fishing_weight_bonus() -> int:
 	# +1 dmg for every 3 Common, 2 Uncommon, or 1 Rare fish in the

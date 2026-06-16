@@ -12,6 +12,7 @@ generated) so the catalog stays in sync with the Excel source.
 
 import openpyxl
 import os
+import re
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,6 +29,15 @@ def esc(s) -> str:
 
 def yes(v) -> str:
     return "true" if str(v).strip().lower() in ("yes", "true", "y", "1") else "false"
+
+
+def slugify(name) -> str:
+    # Mirrors generate_card_tres.slugify so an addon's runtime key matches the
+    # slug baked into CardData.addons ("Fishing Weight" -> fishing_weight). Used
+    # as the fallback when the sheet's Key column is blank.
+    s = ("" if name is None else str(name)).strip().lower()
+    s = re.sub(r"[^a-z0-9]+", "_", s)
+    return s.strip("_")
 
 
 def rows(sheet):
@@ -61,14 +71,25 @@ def main() -> int:
 
     addon_lines = []
     for r in rows(wb["addonsnew"]):
+        # Machine-readable DSL columns (see docs/addon-sheet-authoring-handoff.md):
+        #   Key  — runtime slug the engine matches (falls back to slugify(Name))
+        #   Hook — which dispatch slot the behavior runs in (effect_dmg_bonus /
+        #          effect_retarget / effect_flag drive AddonSystem today; the
+        #          effect_value / card_replay / structural rows are declarative
+        #          for now and handled elsewhere).
+        #   Expr — closed-vocabulary parameter for the hook (gold/10, fish,
+        #          enemy->all_enemies, indiscriminate, …); empty for the rest.
+        key = esc(r.get("Key")) or slugify(r.get("Name"))
         addon_lines.append(
             "\t{{ \"name\": \"{name}\", \"deckbuilder\": \"{db}\", \"action\": \"{ac}\", "
             "\"strategy\": \"{st}\", \"has_value\": {hv}, \"attaches_to\": \"{at}\", "
-            "\"forms\": \"{forms}\" }},".format(
+            "\"forms\": \"{forms}\", \"key\": \"{key}\", \"hook\": \"{hook}\", "
+            "\"expr\": \"{expr}\" }},".format(
                 name=esc(r.get("Name")), db=esc(r.get("Deckbuilder")), ac=esc(r.get("Action")),
                 st=esc(r.get("Strategy")), hv=yes(r.get("Has Value")),
                 at=esc(r.get("Can Be Attatched To")),
-                forms=esc("" if str(r.get("Forms")).strip() in ("N/A", "None") else r.get("Forms"))))
+                forms=esc("" if str(r.get("Forms")).strip() in ("N/A", "None") else r.get("Forms")),
+                key=key, hook=esc(r.get("Hook")), expr=esc(r.get("Expr"))))
 
     out = []
     out.append("class_name ReferenceCatalog")
