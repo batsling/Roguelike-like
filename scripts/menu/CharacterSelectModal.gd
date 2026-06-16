@@ -106,7 +106,7 @@ func _format_deck(ch: CharacterData) -> String:
 		counts[cid] = int(counts.get(cid, 0)) + 1
 	var lines: Array = ["[b]Starting Deck[/b]"]
 	for cid in counts:
-		var card: CardData = Data.get_card(cid)
+		var card: CardData = Data.get_card_for_character(cid, ch.id)
 		var label := String(cid) if card == null else card.display_name
 		lines.append("  %dx %s" % [counts[cid], label])
 	if not ch.starting_items.is_empty():

@@ -81,6 +81,24 @@ func _load_dir(path: String, target: Dictionary) -> void:
 func get_card(id: StringName) -> CardData:
 	return _cards.get(id)
 
+# Resolve a (possibly generic) card id to a character-specific variant when one
+# exists. Convention: a card named "<base>_<character_id>" (e.g. strike_ironclad)
+# is that character's version of a generic basic (strike/defend). Characters keep
+# the generic id (&"strike") in their starting_deck and this swaps in their
+# variant, falling back to the generic id when no variant exists. Lets each
+# character carry its own Strike/Defend (different art, Attack archetype, etc.)
+# without bespoke deck lists.
+func variant_card_id(base_id: StringName, character_id: StringName) -> StringName:
+	if character_id == &"":
+		return base_id
+	var variant := StringName("%s_%s" % [base_id, character_id])
+	if _cards.has(variant):
+		return variant
+	return base_id
+
+func get_card_for_character(base_id: StringName, character_id: StringName) -> CardData:
+	return _cards.get(variant_card_id(base_id, character_id))
+
 func get_curse(id: StringName) -> CurseData:
 	return _curses.get(id)
 

@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_strike"]
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_strike_ironclad"]
 
 [ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
 [ext_resource type="Texture2D" path="res://images/cards/StrikeIronclad.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_card")
-id = &"strike"
+id = &"strike_ironclad"
 display_name = "Strike"
 type = 0
 rarity = 0
