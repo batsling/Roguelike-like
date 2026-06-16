@@ -100,11 +100,28 @@ safety role `tools/test_addon_dispatch.py` plays for the four live arms:
 - The importer already fails if `Key`/`Hook`/`Expr` columns go missing.
 - Extend it to parse each verb token and error on any verb not in the registry.
 
-## Implementation order (when greenlit)
-1. **Infuse** via the `on_kill` family — cheap, hook points exist, bit-identical
-   checkable. Proves the `trigger:condition:action` grammar.
-2. **Generic `AddonSystem` interpreter** + verb registry; migrate the four live
-   effect arms onto it (bare tokens → `verb()` form).
-3. **Lifecycle verbs** — the real work: implement `uses_per_combat`,
-   `cooldown_mult`, `deactivate_if_idle`, `free_play`, etc. in Action/Strategy,
-   then expose them to the sheet.
+## Implementation status
+The generic interpreter and the lifecycle verbs are now wired
+(`scripts/runtime/AddonSystem.gd` + per-scene hooks). **Unverified in-engine**
+(no Godot runtime in this environment) — verify in-game. Each hook is guarded to
+no-op when a card carries none of these addons, so the 9 previously-working
+addons and normal combat are unaffected.
+
+| Verb | Mode | Where wired | Status |
+| --- | --- | --- | --- |
+| `cooldown_mult` (Ethereal, Unplayable) | Action | `ActionCombat._cooldown_for` | ✅ wired |
+| `uses_per_combat` (Exhaust) | Action | auto-slot rotation (`_addon_uses`) | ✅ wired |
+| `auto_play` (Innate) | Action | `_auto_play_innate_addons` at room start | ✅ wired |
+| `uses_per_combat` (Exhaust) | Strategy | `GameState.max_card_uses` cap | ✅ wired |
+| `free_play` (Innate) | Strategy | turn-1 `_free_ability_card` | ✅ wired |
+| `deactivate_if_idle` (Ethereal) | Strategy | turn-end check + picker/pick gating | ✅ wired |
+| `requires_equipped` (Unplayable) | Strategy | pre-combat loadout validation | ⏸ deferred |
+
+`requires_equipped` is deferred: it's a pre-combat loadout-UI constraint (force
+the player to equip an Unplayable/curse card), not combat behavior, and the rule
+itself warrants design confirmation before it gates combat start. The verb is
+authored in the sheet and queryable via `AddonSystem.requires_equipped`; only the
+enforcement is unwired.
+
+Deckbuilder keeps its existing CardData-flag code for all of these — it already
+worked — so `AddonSystem` powers Action/Strategy only.
