@@ -82,7 +82,9 @@ static func _clauses_for_key(key: String, mode) -> Array:
 # The lifecycle keywords live on CardData as bool fields (parse_keywords routes
 # them to flags, not the addons[] array), so map each true flag back to its
 # addon key when gathering verbs. Names match the CardData field + the catalog
-# Key exactly. `retain` is a flag but not a catalog addon, so it's excluded.
+# Key exactly. Only flags that carry per-mode VERB clauses belong here; the
+# flag-only keywords (retain / destroy / sly) drive their behavior straight off
+# CardData in the scenes and have no verbs to gather, so they're excluded.
 const _FLAG_KEYS: Array[String] = ["exhaust", "ethereal", "innate", "unplayable", "eternal"]
 
 # All clauses across every addon on `card` for `mode` — both the free-form

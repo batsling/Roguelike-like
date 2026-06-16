@@ -529,6 +529,7 @@ func _make_enemy_actor(data: ActionEnemyData) -> CombatActor:
 	var hp: int = int(round(_rng.randi_range(data.hp_min, data.hp_max) * enemy_hp_mult))
 	var a := CombatActor.new()
 	a.display_name = data.display_name
+	a.weight = data.weight
 	a.max_hp = hp
 	a.hp = hp
 	return a
@@ -747,6 +748,11 @@ func _fire_click_card(card: CardData) -> void:
 	for _i in CardMods.replay_count(card):
 		_resolve_card_effects(card)
 		GameLog.add("%s replays!" % card.display_name, Color(0.7, 1.0, 0.7))
+	# Destroy: a click-fired card removed permanently from the run deck on use.
+	if card.destroy:
+		GameLog.add("%s is Destroyed — removed from your deck." % card.display_name,
+			Color(0.9, 0.55, 0.55))
+		GameState.destroy_first_card_with_id(card)
 
 func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, power_multiplier: int = 1, effect: Dictionary = {}) -> void:
 	# Shared damage math (Stats.resolve_damage): player Blind whiff,
@@ -762,6 +768,9 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 	var is_player_attack: bool = (dmg_type == "melee" or dmg_type == "ranged")
 	if is_player_attack:
 		base_dmg += GameState.streak_attack_bonus(inst.actor)
+	# Vorpal: flat bonus when this swing's bound mode (Action) + the target's
+	# weight match the weapon's roll. Pre-resolve so Power/Vulnerable layer on top.
+	base_dmg += Stats.vorpal_damage_bonus(atk, inst.actor, Stats.Mode.ACTION)
 	var res := Stats.resolve_damage(player_actor, inst.actor, base_dmg, atk, Stats.Mode.ACTION, _rng)
 	if res.missed:
 		GameLog.add("You swing blind and miss!", Color(0.85, 0.85, 0.55))
@@ -781,6 +790,11 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 	if amount > 0:
 		inst.actor.hp = maxi(0, inst.actor.hp - amount)
 		FloatingNumbers.spawn(self, inst.pos, amount)
+		# Lifesteal: the player heals for the unblocked damage dealt. Reflected
+		# contact reactions carry no_reaction, so they never lifesteal.
+		if bool(effect.get("lifesteal", false)) and not bool(effect.get("no_reaction", false)):
+			_resolve_heal_self(amount)
+			GameLog.add("Lifesteal: healed %d HP." % amount, Color(0.7, 1.0, 0.7))
 		if inst.actor.hp <= 0:
 			inst.actor.dead = true
 			GameLog.add("%s defeated." % inst.actor.display_name, Color(0.6, 1.0, 0.6))
@@ -977,9 +991,17 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 				# Pain (on_play_other -> on_action): a slot activation bites the player.
 				_fire_pain_curses()
 				_addon_uses[slot.card] = used + 1
+				# Destroy: a card removed permanently from the run deck on use. It
+				# retires from the rotation (never re-queued) and one physical copy
+				# is dropped from the deck. Checked before the use-cap re-queue.
+				var destroyed: bool = slot.card.destroy
+				if destroyed:
+					GameLog.add("%s is Destroyed — removed from your deck." % slot.card.display_name,
+						Color(0.9, 0.55, 0.55))
+					GameState.destroy_first_card_with_id(slot.card)
 				# Re-queue to the discard UNLESS the card just spent its last use
-				# (uses_per_combat) — then it leaves the combat entirely.
-				if cap < 0 or used + 1 < cap:
+				# (uses_per_combat) or was Destroyed — then it leaves combat entirely.
+				if not destroyed and (cap < 0 or used + 1 < cap):
 					auto_discard.append(slot.card)
 				var next: CardData = _auto_draw_one()
 				slot.card = next
@@ -1095,6 +1117,19 @@ func _trigger_has_player_effect(trig: Dictionary) -> bool:
 func _effective_effects(card: CardData) -> Array:
 	return CardMods.resolved_effects(card.effects, card)
 
+# Per-effect addon resolution for the damage paths: the shared
+# apply_addons_to_effect pass (Cleave / Wealth / Lifesteal flag / …) plus the
+# per-instance Vorpal stamp. Action flattens the deck to CardData, so Vorpal's
+# rolled type/weight is recovered from the matching deck CardInstance.
+func _resolve_addon_effect(raw: Dictionary, card: CardData) -> Dictionary:
+	var e: Dictionary = Stats.apply_addons_to_effect(raw, card)
+	var v: Dictionary = GameState.vorpal_for_card_data(card)
+	if not v.is_empty():
+		e = e.duplicate()
+		e["vorpal_type"] = int(v["type"])
+		e["vorpal_weight"] = int(v["weight"])
+	return e
+
 func _resolve_card_effects(card: CardData) -> void:
 	# Archetype path (the attack-delivery overhaul): when the card names an
 	# attack_shape it is the single source of truth for delivery. Aim at the
@@ -1147,7 +1182,7 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 		aoe_targets = _enemies_in_radius(ABILITY_AOE_RADIUS)
 
 	for raw_effect in effs:
-		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
+		var effect: Dictionary = _resolve_addon_effect(raw_effect, card)
 		var t: String = String(effect.get("type", ""))
 		var tgt: String = String(effect.get("target", "enemy"))
 		match t:
@@ -1240,7 +1275,7 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 		_legacy_swing_visual((nearest.pos - player_pos).normalized())
 
 	for raw_effect in _effective_effects(card):
-		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
+		var effect: Dictionary = _resolve_addon_effect(raw_effect, card)
 		var t: String = String(effect.get("type", ""))
 		var tgt: String = String(effect.get("target", "enemy"))
 		match t:
@@ -1323,7 +1358,7 @@ func _attack_volleys(effects: Array) -> int:
 # blocks, Bleed windows and Persistence all behave like the other modes.
 func _apply_enemy_effects(card: CardData, effects: Array, hit_list: Array) -> void:
 	for raw in effects:
-		var effect: Dictionary = Stats.apply_addons_to_effect(raw, card)
+		var effect: Dictionary = _resolve_addon_effect(raw, card)
 		match String(effect.get("type", "")):
 			"dmg":
 				var value: int = int(effect.get("value", 0))
@@ -2110,7 +2145,7 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 	# AOE cards (Thunderclap) cover their area by FIRING MORE BOLTS in
 	# a fan — there is no explosion radius here.
 	for raw_effect in card.effects:
-		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
+		var effect: Dictionary = _resolve_addon_effect(raw_effect, card)
 		var tgt: String = String(effect.get("target", ""))
 		if tgt != "enemy" and tgt != "all_enemies":
 			continue

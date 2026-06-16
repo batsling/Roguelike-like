@@ -446,6 +446,9 @@ func _on_end_turn() -> void:
 		c.temp_cost_override = -999
 		if c.data != null and c.data.retain:
 			kept.append(c)
+		elif c.data != null and c.data.sly:
+			_resolve_sly_on_discard(c)
+			discard_pile.append(c)
 		elif c.data != null and c.data.ethereal:
 			exhaust_pile.append(c)
 			GameLog.add("%s is Ethereal — exhausted." % c.data.display_name, Color(0.75, 0.85, 1.0))
@@ -922,11 +925,23 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 		player.add_status(&"fear", -1)
 		GameLog.add("Fear -1 (Skill played).", Color(0.7, 0.9, 1.0))
 
+	# Destroy: the card is removed from the run deck permanently when played. It
+	# leaves hand (no discard/exhaust pile) and is dropped from GameState.deck so
+	# it never returns. Takes precedence over exhaust/discard below.
+	if card.data.destroy:
+		hand.erase(card)
+		GameState.destroy_card_instance(card)
+		GameLog.add("%s is Destroyed — removed from your deck." % card.get_display_name(),
+			Color(0.9, 0.55, 0.55))
+		TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
+		_fire_power_triggers("card_exhausted", {"card": card})
 	# Powers exhaust on play; cards with the exhaust flag exhaust; else discard.
-	if card.data.exhaust or card.is_power():
+	elif card.data.exhaust or card.is_power():
 		exhaust_card(card)
 	else:
-		discard_card(card)
+		# from_play: a Sly card that was just played normally must NOT re-trigger
+		# its play-on-discard as it heads to the pile (that would double-resolve).
+		discard_card(card, true)
 	_refresh_ui()
 	# Killing the last enemy with a card ends combat immediately.
 	_check_combat_end()
@@ -938,6 +953,9 @@ func _apply_card_effects(card: CardInstance, target_enemy: CombatActor) -> void:
 	for raw_effect in card.get_effects():
 		var effect: Dictionary = _apply_card_boosts(raw_effect, card)
 		effect = Stats.apply_addons_to_effect(effect, card.data)
+		# Vorpal rides the physical card instance (per-instance roll), so stamp it
+		# here where the CardInstance is in scope; deal_damage reads it per target.
+		effect = card.apply_vorpal_to_effect(effect)
 		var t_str: String = effect.get("target", "enemy")
 		# Indiscriminate (Blood Magic) skips the manual picker — re-route
 		# enemy-targeted dmg through random_enemy so a seed target lands
@@ -1059,6 +1077,11 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 	if is_player_attack:
 		base_amount += GameState.streak_attack_bonus(target)
 
+	# Vorpal: flat bonus when this swing's bound mode (here, Deckbuilder) and the
+	# target's weight match the card's roll. Added to base so Power/Vulnerable/etc.
+	# still layer on top, matching the other pre-resolve flat bonuses.
+	base_amount += Stats.vorpal_damage_bonus(effect, target, Stats.Mode.DECKBUILDER)
+
 	# Canonical damage math lives in Stats.resolve_damage (Blind whiff,
 	# Power/Weak, Vulnerable, Dodge, block soak) so all three modes agree.
 	# The scene-specific tail below — logging, triggers, Soul Link, death,
@@ -1096,6 +1119,14 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 			"target": target, "attacker": source, "amount": amount, "scene": self,
 		})
 		_fire_power_triggers("damage_taken")
+		# Lifesteal: the attacker heals for the unblocked HP it just dealt to a
+		# foe. `amount` is post-block HP loss, matching the legacy rule. Self-hits
+		# (curse cards) and reflected reactions never lifesteal.
+		if bool(effect.get("lifesteal", false)) and source != null and source != target \
+				and not effect.get("no_reaction", false):
+			heal(source, amount)
+			var lsy := "You" if source.is_player else source.display_name
+			GameLog.add("%s drains %d HP (Lifesteal)." % [lsy, amount], Color(0.7, 1.0, 0.7))
 		# Item reactions to the PLAYER taking damage (Prayer Card, Prayer Beads).
 		# Gated to the player so "whenever you take damage" never fires off an
 		# enemy being hit.
@@ -1304,12 +1335,37 @@ func draw_cards(n: int) -> void:
 		_fire_power_triggers("card_drawn", {"card": c})
 	_refresh_ui()
 
-func discard_card(card: CardInstance) -> void:
+func discard_card(card: CardInstance, from_play: bool = false) -> void:
 	hand.erase(card)
+	# Sly: a card resolves its effects the moment it would be discarded, then
+	# still heads to the discard pile. Skipped when the card is being discarded
+	# AS PART OF a normal play (from_play) — it already resolved, so re-firing
+	# here would double it.
+	if not from_play and card != null and card.data != null and card.data.sly:
+		_resolve_sly_on_discard(card)
 	discard_pile.append(card)
 	TriggerBus.emit_signal("card_discarded", {"card": card, "scene": self})
 	_fire_power_triggers("card_discarded", {"card": card})
 	_refresh_ui()
+
+func _resolve_sly_on_discard(card: CardInstance) -> void:
+	# Sly: play the card's effects as it leaves hand (end of turn, a discard
+	# effect, …). Auto-targets a random live enemy since there's no manual pick
+	# on the discard path. No energy cost — it triggers off the discard, not a
+	# play. The caller files it into the discard pile afterward.
+	if card == null:
+		return
+	var tgt: CombatActor = null
+	var live: Array = []
+	for e in enemies:
+		if e.is_alive():
+			live.append(e)
+	if not live.is_empty():
+		tgt = live[_rng.randi() % live.size()]
+	GameLog.add("%s is Sly — it plays as it's discarded!" % card.get_display_name(),
+		Color(0.8, 1.0, 0.8))
+	_apply_card_effects(card, tgt)
+	_check_combat_end()
 
 func exhaust_card(card: CardInstance) -> void:
 	hand.erase(card)

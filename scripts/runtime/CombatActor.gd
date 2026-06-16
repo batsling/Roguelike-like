@@ -32,6 +32,11 @@ var statuses: Dictionary = {}
 var data: EnemyData = null
 var planned_move: Dictionary = {}     # one entry of EnemyData.pattern
 
+# Enemy weight class (1-5). Drives spawn frequency (future) and Vorpal matching.
+# Copied off the source EnemyData/ActionEnemyData at spawn so every mode reads it
+# the same way (actor.weight) regardless of which data resource built the actor.
+var weight: int = 0
+
 # Misc
 var dead: bool = false
 
@@ -58,6 +63,7 @@ static func from_enemy(d: EnemyData, rng: RandomNumberGenerator) -> CombatActor:
 	a.is_player = false
 	a.display_name = d.display_name
 	a.data = d
+	a.weight = d.weight
 	a.max_hp = rng.randi_range(d.hp_min, d.hp_max)
 	a.hp = a.max_hp
 	# Apply spawn-time item modifiers (Alien Baby's +3 HP, future

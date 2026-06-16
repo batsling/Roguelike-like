@@ -318,3 +318,76 @@ func test_bleed_thorns_reaction_scales_with_owner_persistence() -> void:
 	Stats.fire_contact_reactions(player, enemy, scene)
 	assert_eq(enemy.get_status(&"bleed"), 5,
 		"player Bleed Thorns 2 + Persistence 3 inflicts 5 Bleed on the attacker")
+
+# --- Vorpal addon --------------------------------------------------------
+# Vorpal binds a card to a random combat type (one of the three modes) and a
+# 1-5 weight class, then deals Stats.VORPAL_BONUS extra only when the swing's
+# mode + the target's weight both match. The roll lives on the CardInstance.
+
+func _vorpal_card_inst() -> CardInstance:
+	var c := CardData.new()
+	c.addons = PackedStringArray(["vorpal"])
+	return CardInstance.from_data(c)
+
+func test_vorpal_rolls_once_within_valid_ranges() -> void:
+	var inst := _vorpal_card_inst()
+	inst.roll_vorpal_if_needed()
+	assert_true(inst.vorpal_type >= 0 and inst.vorpal_type <= 2,
+		"combat type is one of the three modes (0-2)")
+	assert_true(inst.vorpal_weight >= 1 and inst.vorpal_weight <= 5,
+		"weight class is 1-5")
+	# Re-rolling is a no-op: the bound type/weight are stable.
+	var t: int = inst.vorpal_type
+	var w: int = inst.vorpal_weight
+	inst.roll_vorpal_if_needed()
+	assert_eq(inst.vorpal_type, t, "type is fixed after the first roll")
+	assert_eq(inst.vorpal_weight, w, "weight is fixed after the first roll")
+
+func test_vorpal_bonus_only_in_matching_mode_and_weight() -> void:
+	var enemy := CombatActor.new()
+	enemy.weight = 3
+	# Bound to Deckbuilder + weight 3: matches a weight-3 enemy in Deckbuilder only.
+	var effect := {"vorpal_type": int(Stats.Mode.DECKBUILDER), "vorpal_weight": 3}
+	assert_eq(Stats.vorpal_damage_bonus(effect, enemy, Stats.Mode.DECKBUILDER),
+		Stats.VORPAL_BONUS, "matching mode + weight grants the flat bonus")
+	assert_eq(Stats.vorpal_damage_bonus(effect, enemy, Stats.Mode.ACTION), 0,
+		"a different combat type never bonuses")
+	enemy.weight = 2
+	assert_eq(Stats.vorpal_damage_bonus(effect, enemy, Stats.Mode.DECKBUILDER), 0,
+		"a non-matching enemy weight never bonuses")
+
+func test_vorpal_bonus_zero_without_a_roll() -> void:
+	var enemy := CombatActor.new()
+	enemy.weight = 1
+	assert_eq(Stats.vorpal_damage_bonus({}, enemy, Stats.Mode.DECKBUILDER), 0,
+		"an effect with no Vorpal stamp never bonuses")
+
+func test_vorpal_stamp_carries_roll_onto_effect() -> void:
+	var inst := _vorpal_card_inst()
+	inst.vorpal_type = int(Stats.Mode.STRATEGY)
+	inst.vorpal_weight = 4
+	var out: Dictionary = inst.apply_vorpal_to_effect({"type": "dmg", "value": 6})
+	assert_eq(int(out.get("vorpal_type", -1)), int(Stats.Mode.STRATEGY))
+	assert_eq(int(out.get("vorpal_weight", 0)), 4)
+	assert_eq(int(out.get("value", 0)), 6, "the original damage value is preserved")
+
+func test_non_vorpal_card_never_stamps() -> void:
+	var c := CardData.new()
+	var inst := CardInstance.from_data(c)
+	inst.roll_vorpal_if_needed()
+	assert_eq(inst.vorpal_type, -1, "a card without the addon marks itself 'no Vorpal'")
+	var eff := {"type": "dmg", "value": 5}
+	assert_false(inst.apply_vorpal_to_effect(eff).has("vorpal_type"),
+		"a non-Vorpal card leaves the effect untouched")
+
+# --- Lifesteal addon -----------------------------------------------------
+# Lifesteal is an effect_flag in the catalog, so apply_addons_to_effect stamps
+# `lifesteal` onto a dmg effect; each scene's deal_damage then heals the source.
+
+func test_lifesteal_flag_stamped_onto_dmg_effect() -> void:
+	var card := CardData.new()
+	card.addons = PackedStringArray(["lifesteal"])
+	var out: Dictionary = Stats.apply_addons_to_effect(
+		{"type": "dmg", "value": 6, "target": "enemy"}, card)
+	assert_true(bool(out.get("lifesteal", false)),
+		"Lifesteal sets the lifesteal flag the damage path reads")

@@ -662,6 +662,34 @@ func _wealth_bonus() -> int:
 	@warning_ignore("integer_division")
 	return int(GameState.gold) / 10
 
+# ---------------------------------------------------------------------------
+# Vorpal — flat bonus damage vs a card's bound combat type + enemy weight.
+# ---------------------------------------------------------------------------
+#
+# A Vorpal weapon (CardInstance.vorpal_type / vorpal_weight, rolled once and
+# stamped onto the dmg effect via CardInstance.apply_vorpal_to_effect) deals
+# VORPAL_BONUS extra damage, but ONLY when it's swung in its bound mode against
+# an enemy of its bound weight class. The effect carries the binding; this just
+# checks it against the live mode + target so all three scenes share one rule.
+const VORPAL_BONUS := 10
+
+func vorpal_damage_bonus(effect: Dictionary, target, mode: Mode) -> int:
+	var vt: int = int(effect.get("vorpal_type", -1))
+	# Combat type is one of the three modes; no bonus unless this swing is in it.
+	if vt < 0 or vt != int(mode):
+		return 0
+	var vw: int = int(effect.get("vorpal_weight", 0))
+	if vw <= 0:
+		return 0
+	return VORPAL_BONUS if _target_weight(target) == vw else 0
+
+# An enemy's weight class, read uniformly across actor types: CombatActor and
+# BattleUnit both expose `weight`. Returns -1 when unknown (never matches).
+func _target_weight(target) -> int:
+	if target != null and ("weight" in target):
+		return int(target.weight)
+	return -1
+
 func tick_actor_statuses(actor, scene) -> void:
 	# Per-turn damage / heal effects from statuses. MUST run BEFORE
 	# decay_actor_statuses on the same boundary so the bite uses the

@@ -60,7 +60,8 @@ RARITY = {
 }
 
 # Keywords column tokens that map onto a CardData bool flag (rest -> addons[]).
-FLAG_KEYWORDS = {"exhaust", "ethereal", "innate", "retain", "unplayable", "eternal"}
+FLAG_KEYWORDS = {"exhaust", "ethereal", "innate", "retain", "unplayable", "eternal",
+                 "destroy", "sly"}
 
 # Action-combat attack archetypes + the tokens the Attack column understands.
 # See docs/action-attack-translation.md. The Attack cell is the repurposed Range

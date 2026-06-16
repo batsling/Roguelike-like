@@ -27,6 +27,11 @@ extends Resource
 # at least 1 so a heavy penalty can't pin a unit in place.
 @export var move_range: int = 4
 
+# Enemy weight class (1-5). Drives spawn frequency (future) and Vorpal matching.
+# Mirrors CombatActor.weight so Stats.vorpal_damage_bonus reads `unit.weight`
+# the same way in every mode.
+@export var weight: int = 0
+
 # Mewgenics-style mana drives the Spellbook (Phase 6).
 @export var int_stat: int = 0
 @export var cha_stat: int = 0
@@ -114,21 +119,24 @@ static func from_player(entity: StrategyEntity) -> BattleUnit:
 # `move` is the tile budget modifier: base 4 + this value (0 = 4 tiles), so
 # a faster/slower archetype walks ±1 tile per point without touching turn
 # cadence. The per-archetype hp/attack spread is kept.
+# `weight` is the 1-5 weight class (Vorpal matching / future spawn scaling),
+# scaled here to the archetype's heft — tune freely.
 const ENEMY_PRESETS := {
-	"rat":   { "max_hp":  8, "speed": 4, "move": 0, "attack": 3 },
-	"snake": { "max_hp": 10, "speed": 4, "move": 0, "attack": 4 },
-	"orc":   { "max_hp": 18, "speed": 4, "move": 0, "attack": 6 },
-	"troll": { "max_hp": 30, "speed": 4, "move": 0, "attack": 10 },
+	"rat":   { "max_hp":  8, "speed": 4, "move": 0, "attack": 3, "weight": 1 },
+	"snake": { "max_hp": 10, "speed": 4, "move": 0, "attack": 4, "weight": 2 },
+	"orc":   { "max_hp": 18, "speed": 4, "move": 0, "attack": 6, "weight": 3 },
+	"troll": { "max_hp": 30, "speed": 4, "move": 0, "attack": 10, "weight": 5 },
 }
 
 static func from_enemy_kind(kind: String) -> BattleUnit:
 	var u := BattleUnit.new()
 	u.unit_name = kind
 	u.is_player = false
-	var preset = ENEMY_PRESETS.get(kind, { "max_hp": 10, "speed": 4, "move": 0, "attack": 3 })
+	var preset = ENEMY_PRESETS.get(kind, { "max_hp": 10, "speed": 4, "move": 0, "attack": 3, "weight": 3 })
 	u.max_hp = preset.max_hp
 	u.hp = preset.max_hp
 	u.speed = preset.speed
+	u.weight = int(preset.get("weight", 3))
 	u.move_range = maxi(1, BASE_MOVE + int(preset.get("move", 0)))
 	u.basic_attack_def = { "damage": preset.attack, "range": 1, "shape": "melee" }
 	# Enemies don't use mana yet; cooldown abilities arrive in Phase 7.
