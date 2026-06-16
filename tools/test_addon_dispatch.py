@@ -171,10 +171,86 @@ def check_card_addon_refs(index):
     print(f"[test_addon_dispatch] card refs OK — {sorted(used)} all resolve")
 
 
+def _parse_cell(text):
+    # Mirror of AddonSystem._parse_cell — clause := [trigger:][condition:]action
+    out = []
+    for raw in (text or "").split(";"):
+        clause = raw.strip()
+        if not clause:
+            continue
+        segs = [s.strip() for s in clause.split(":")]
+        action = segs[-1]
+        trigger = condition = ""
+        for lead in segs[:-1]:
+            if lead.startswith("chance("):
+                condition = lead
+            elif lead:
+                trigger = lead
+        verb, args = action, ""
+        m = re.match(r"^([a-z_]+)(?:\((.*)\))?$", action)
+        if m:
+            verb, args = m.group(1), (m.group(2) or "")
+        out.append({"trigger": trigger, "condition": condition,
+                    "verb": verb, "args": args.strip()})
+    return out
+
+
+def check_lifecycle_verbs(index):
+    # Mirror of AddonSystem's per-mode queries: confirm the authored verb cells
+    # resolve to the lifecycle values each scene will read.
+    field = {"action": "action_verb", "strategy": "strategy_verb"}
+
+    def clauses(key, mode):
+        return _parse_cell(index[key].get(field[mode], ""))
+
+    def cooldown_mult(key, mode):
+        m = 1.0
+        for c in clauses(key, mode):
+            if c["verb"] == "cooldown_mult":
+                m *= float(c["args"])
+        return m
+
+    def uses_per_combat(key, mode):
+        cap = -1
+        for c in clauses(key, mode):
+            if c["verb"] == "uses_per_combat":
+                n = int(c["args"])
+                cap = n if cap < 0 else min(cap, n)
+        return cap
+
+    def auto_play(key, mode):
+        return any(c["verb"] == "auto_play" and c["trigger"] == "on_combat_start"
+                   for c in clauses(key, mode))
+
+    def free_play(key, mode):
+        return sum(int(c["args"]) for c in clauses(key, mode) if c["verb"] == "free_play")
+
+    def requires_equipped(key, mode):
+        return max([0] + [int(c["args"]) for c in clauses(key, mode)
+                          if c["verb"] == "requires_equipped"])
+
+    def deactivate_if_idle(key, mode):
+        return any(c["verb"] == "deactivate_if_idle" for c in clauses(key, mode))
+
+    # Action
+    assert uses_per_combat("exhaust", "action") == 1
+    assert cooldown_mult("ethereal", "action") == 2.0
+    assert auto_play("innate", "action") is True
+    assert cooldown_mult("unplayable", "action") == 2.0
+    # Strategy
+    assert uses_per_combat("exhaust", "strategy") == 1
+    assert deactivate_if_idle("ethereal", "strategy") is True
+    assert free_play("innate", "strategy") == 1
+    assert requires_equipped("unplayable", "strategy") == 1
+    print("[test_addon_dispatch] lifecycle verbs OK — Exhaust/Ethereal/Innate/"
+          "Unplayable resolve to expected Action + Strategy values")
+
+
 def main():
     addons = load_addons()
     index = build_index(addons)
     check_card_addon_refs(index)
+    check_lifecycle_verbs(index)
 
     # Catalog sanity: the four live arms must carry the expected hook/expr.
     expected = {
