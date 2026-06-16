@@ -40,3 +40,5 @@ upgraded_effects = [{
 "destination": "discard",
 "count": 1
 }]
+attack_shape = &"poke"
+attack_params = {"size": "short"}

@@ -264,14 +264,13 @@ build:
   the deckbuilder-side spells panel still needs wiring).
 - **Events** — the event system and first authored events are in (see Recent
   changes); port the remaining pre-combat events and author new ones.
-- **Attack / weapon card → action-combat translation** — fix and flesh out how
-  **attack** and **weapon** cards translate into the real-time action arena.
-  Today turn-based concepts (energy, draw/discard, turns) map through
-  `data/action_translation.tres`, but the mapping from a card's attack —
-  its damage type (melee/ranged/cleave), `Range` column, and weapon behaviour —
-  onto click slots, projectiles, and swing geometry is inconsistent. Make the
-  translation faithful and data-driven so any attack/weapon card behaves
-  sensibly in action combat without bespoke per-card handling.
+- **Attack / weapon card → action-combat translation** — *first pass done.* A
+  named, data-driven **attack-archetype** vocabulary (poke/swing/smash/nova/
+  projectile/lob/beam/homing/smite/auto_aoe) now drives delivery in the action
+  arena, authored in the sheet's Attack column and tuned in
+  `data/action_attacks.tres`. See `docs/action-attack-translation.md`. Still
+  ahead: per-archetype art/polish, the unused `lob`/`homing` shapes wired to
+  real cards, and tuning passes on reach/radius feel.
 - **Shop / gold scaling** — tune merchant pricing and gold rewards so they
   scale across a run (the shop screen itself is in place).
 - **Difficulty-change boss** — a boss encounter triggered when the run's

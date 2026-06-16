@@ -5,8 +5,12 @@ Action arena. This is the design spec for the attack-delivery overhaul; it
 replaces the old "guess the shape from `damage_type`" behaviour with an
 explicit, named, data-driven **attack archetype** vocabulary.
 
-> Status: design agreed, implementation pending. The fallback path (below)
-> keeps every existing card working until it is annotated.
+> Status: **implemented** (first pass). `CardData.attack_shape` /
+> `attack_params`, the `ActionAttackLibrary` (`data/action_attacks.tres`), the
+> `ActionCombat._deliver_attack` dispatcher + white-smear renderer, and the
+> `generate_card_tres.py` parser are all in. The 22 attack cards are annotated
+> in `data/cards/*.tres`. The fallback path (below) still covers any
+> un-annotated card.
 
 ---
 

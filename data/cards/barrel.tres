@@ -25,3 +25,5 @@ can_upgrade = false
 upgraded_cost = 1
 range_class = &"medium"
 addons = PackedStringArray("fishing_weight")
+attack_shape = &"projectile"
+attack_params = {"size": "medium"}

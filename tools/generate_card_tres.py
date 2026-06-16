@@ -53,6 +53,18 @@ RARITY = {
 
 # Keywords column tokens that map onto a CardData bool flag (rest -> addons[]).
 FLAG_KEYWORDS = {"exhaust", "ethereal", "innate", "retain", "unplayable", "eternal"}
+
+# Action-combat attack archetypes + the tokens the Attack column understands.
+# See docs/action-attack-translation.md. The Attack cell is the repurposed Range
+# column: "<shape>[, <token>]*", e.g. "Swing, arc=360" or
+# "Projectile, Medium, crescent, pierce". Bare size words map to reach/radius
+# (per archetype); arc=/spread=/target= are key=value; pierce/crescent are flags.
+ATTACK_SHAPES = {"poke", "swing", "smash", "nova", "projectile", "lob",
+                 "beam", "homing", "smite", "auto_aoe"}
+ATTACK_SIZE_WORDS = {"short", "medium", "large", "full", "small"}
+ATTACK_FLAG_TOKENS = {"pierce", "crescent"}
+# Bare size words that also seed range_class for the legacy fallback path.
+RANGE_CLASS_WORDS = {"short", "medium", "large"}
 # Tokens that name a damage type (vs a target) in a dmg clause.
 DAMAGE_TYPES = {"melee", "ranged", "cleave"}
 TRIGGERS = {"eot", "on_action", "lifecycle"}
@@ -176,6 +188,60 @@ def parse_effects(raw):
     return on_play, triggers, destroy_after
 
 
+def parse_attack(raw):
+    """Parse the Attack/Range cell -> (attack_shape, attack_params, range_class).
+
+    Empty / "self" / "n/a" -> ("", {}, "") so non-attacks (and curses) emit no
+    archetype. range_class is still seeded from a bare size word so the legacy
+    fallback path has a reach for partially-annotated cards.
+    """
+    s = ("" if raw is None else str(raw)).strip()
+    if not s or s.upper() in ("N/A", "NONE", "SELF"):
+        return "", {}, ""
+    tokens = [t.strip() for t in re.split(r"[,:]", s) if t.strip()]
+    shape = ""
+    params = {}
+    range_class = ""
+    for i, tok in enumerate(tokens):
+        low = tok.lower()
+        if i == 0 and low in ATTACK_SHAPES:
+            shape = low
+            continue
+        if "=" in tok:
+            k, v = tok.split("=", 1)
+            k = k.strip().lower()
+            v = v.strip()
+            if k in ("arc", "spread"):
+                try:
+                    params[k] = int(float(v))
+                except ValueError:
+                    pass
+            elif k in ("target", "size", "radius", "reach"):
+                params[k] = v.lower()
+            continue
+        if low in ATTACK_FLAG_TOKENS:
+            params[low] = True
+            continue
+        if low in ATTACK_SIZE_WORDS:
+            params["size"] = low
+            if low in RANGE_CLASS_WORDS:
+                range_class = low
+    return shape, params, range_class
+
+
+def gd_dict(d) -> str:
+    parts = []
+    for k, v in d.items():
+        if isinstance(v, bool):
+            vs = "true" if v else "false"
+        elif isinstance(v, (int, float)):
+            vs = str(v)
+        else:
+            vs = '"%s"' % gd_str(v)
+        parts.append('"%s": %s' % (gd_str(k), vs))
+    return "{" + ", ".join(parts) + "}"
+
+
 def gd_str(s) -> str:
     s = "" if s is None else str(s)
     return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ").replace("\r", " ")
@@ -209,6 +275,10 @@ def card_tres(row) -> tuple:
 
     on_play, triggers, destroy_after = parse_effects(row.get("Effects"))
     flags, addons = parse_keywords(row.get("Keywords"))
+    # Attack delivery (action mode). The "Attack" header supersedes the legacy
+    # "Range" header when present; either holds the same DSL.
+    attack_raw = row.get("Attack", row.get("Range"))
+    attack_shape, attack_params, range_class = parse_attack(attack_raw)
 
     lines = []
     load_steps = 3 if img_res else 2
@@ -245,6 +315,12 @@ def card_tres(row) -> tuple:
             lines.append("%s = true" % flag)
     if addons:
         lines.append("addons = %s" % packed_string_array(addons))
+    if range_class:
+        lines.append('range_class = &"%s"' % range_class)
+    if attack_shape:
+        lines.append('attack_shape = &"%s"' % attack_shape)
+    if attack_params:
+        lines.append("attack_params = %s" % gd_dict(attack_params))
     return cid, "\n".join(lines) + "\n"
 
 

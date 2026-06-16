@@ -39,3 +39,5 @@ upgraded_effects = [{
 "damage_type": "ranged"
 }]
 range_class = &"medium"
+attack_shape = &"projectile"
+attack_params = {"size": "medium", "crescent": true, "pierce": true}

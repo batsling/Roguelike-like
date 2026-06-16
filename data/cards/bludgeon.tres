@@ -31,3 +31,5 @@ upgraded_effects = [{
 "damage_type": "melee"
 }]
 range_class = &"large"
+attack_shape = &"smash"
+attack_params = {"size": "large"}

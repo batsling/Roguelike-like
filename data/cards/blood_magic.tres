@@ -27,3 +27,5 @@ can_upgrade = false
 upgraded_cost = 1
 range_class = &"large"
 addons = PackedStringArray("indiscriminate")
+attack_shape = &"auto_aoe"
+attack_params = {"target": "random", "size": "small"}

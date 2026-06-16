@@ -39,3 +39,4 @@ upgraded_effects = [{
 "random": true
 }]
 range_class = &"medium"
+attack_shape = &"nova"

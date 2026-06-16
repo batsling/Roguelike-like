@@ -36,3 +36,5 @@ upgraded_effects = [{
 "type": "draw",
 "value": 2
 }]
+attack_shape = &"swing"
+attack_params = {"size": "medium"}

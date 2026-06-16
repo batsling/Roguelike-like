@@ -33,3 +33,5 @@ upgraded_effects = [{
 innate = true
 exhaust = true
 range_class = &"medium"
+attack_shape = &"poke"
+attack_params = {"size": "medium"}

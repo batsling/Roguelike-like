@@ -41,3 +41,5 @@ upgraded_effects = [{
 "target": "all_enemies"
 }]
 range_class = &"short"
+attack_shape = &"smite"
+attack_params = {"target": "all"}

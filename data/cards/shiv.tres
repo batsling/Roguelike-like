@@ -32,3 +32,5 @@ upgraded_effects = [{
 }]
 exhaust = true
 range_class = &"medium"
+attack_shape = &"projectile"
+attack_params = {"size": "medium"}

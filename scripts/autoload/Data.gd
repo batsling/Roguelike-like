@@ -20,6 +20,11 @@ var _curses: Dictionary = {}            # StringName -> CurseData
 var action_translation: ActionTranslation = null
 var strategy_translation: StrategyTranslation = null
 
+# Per-archetype action-attack tunables (reach/radius/arc/speed/smear look) for
+# the attack-delivery overhaul. Edit data/action_attacks.tres to retune the
+# feel; reference via Data.action_attacks. See ActionAttackLibrary.
+var action_attacks: ActionAttackLibrary = null
+
 func _ready() -> void:
 	_load_dir("res://data/cards/", _cards)
 	_load_dir("res://data/items/", _items)
@@ -37,6 +42,9 @@ func _ready() -> void:
 	strategy_translation = (_load_config("res://data/strategy_translation.tres") as StrategyTranslation)
 	if strategy_translation == null:
 		strategy_translation = StrategyTranslation.new()
+	action_attacks = (_load_config("res://data/action_attacks.tres") as ActionAttackLibrary)
+	if action_attacks == null:
+		action_attacks = ActionAttackLibrary.new()
 	print("[Data] Loaded %d cards, %d items, %d enemies (+%d action), %d events, %d games, %d characters" % [
 		_cards.size(), _items.size(), _enemies.size(), _action_enemies.size(),
 		_events.size(), _games.size(), _characters.size()

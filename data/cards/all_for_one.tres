@@ -41,3 +41,5 @@ upgraded_effects = [{
 "filter": {"cost": 0}
 }]
 range_class = &"medium"
+attack_shape = &"poke"
+attack_params = {"size": "medium"}

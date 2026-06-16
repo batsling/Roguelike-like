@@ -40,3 +40,5 @@ upgraded_effects = [{
 "stacks": 3,
 "target": "enemy"
 }]
+attack_shape = &"smash"
+attack_params = {"size": "medium"}

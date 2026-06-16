@@ -41,3 +41,4 @@ upgraded_effects = [{
 "target": "enemy"
 }]
 range_class = &"short"
+attack_shape = &"beam"

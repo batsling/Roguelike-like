@@ -30,3 +30,5 @@ upgraded_effects = [{
 "target": "all_enemies",
 "damage_type": "melee"
 }]
+attack_shape = &"swing"
+attack_params = {"arc": 360}

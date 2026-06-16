@@ -20,3 +20,5 @@ can_upgrade = true
 upgraded_description = "Deal 9 Dmg Melee."
 upgraded_cost = -999
 upgraded_effects = [{"type": "dmg", "value": 9, "target": "enemy", "damage_type": "melee"}]
+attack_shape = &"swing"
+attack_params = {"size": "medium"}

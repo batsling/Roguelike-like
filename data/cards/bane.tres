@@ -43,3 +43,5 @@ upgraded_effects = [{
 "if_target_status": "poison"
 }]
 range_class = &"medium"
+attack_shape = &"swing"
+attack_params = {"size": "medium"}
