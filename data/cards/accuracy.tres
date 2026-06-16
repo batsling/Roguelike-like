@@ -5,28 +5,17 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"accuracy"
 display_name = "Accuracy"
 type = 2
 rarity = 2
 cost = 1
-description = "Shivs deal 4 additional damage."
-effects = [{
-"type": "boost_cards",
-"match_tag": "shiv",
-"stat": "dmg",
-"value": 4
-}]
+description = "Shivs deal +4 Dmg."
+effects = [{"type": "boost_cards", "match_tag": "shiv", "stat": "dmg", "value": 4}]
 tags = PackedStringArray("silent", "scaling")
 source_game = "Slay the Spire"
-portrait_color = Color(0.65, 0.65, 0.45, 1)
 can_upgrade = true
-upgraded_description = "Shivs deal 6 additional damage."
+upgraded_description = "Shivs deal +6 Dmg."
 upgraded_cost = -999
-upgraded_effects = [{
-"type": "boost_cards",
-"match_tag": "shiv",
-"stat": "dmg",
-"value": 6
-}]
+upgraded_effects = [{"type": "boost_cards", "match_tag": "shiv", "stat": "dmg", "value": 6}]
+image = ExtResource("2_img")

@@ -837,7 +837,7 @@ func _show_character_detail(ch: CharacterData) -> void:
 		_detail_box.add_child(_detail_section("Starting Deck"))
 		var names: Array = []
 		for cid in ch.starting_deck:
-			var cd: CardData = Data.get_card(cid)
+			var cd: CardData = Data.get_card_for_character(cid, ch.id)
 			names.append(cd.display_name if cd != null else String(cid))
 		_detail_box.add_child(_label(", ".join(names), Color(0.8, 0.85, 0.95), 11, false, true))
 	if ch.starting_items.size() > 0:

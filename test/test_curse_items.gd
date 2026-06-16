@@ -30,7 +30,7 @@ func test_curse_count_tracks_active_curses() -> void:
 func test_curse_card_count_counts_only_curse_type_cards() -> void:
 	GameState.reset_run()
 	GameState.deck.clear()
-	GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike")))   # Attack
+	GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike_ironclad")))   # Attack
 	GameState.deck.append(CardInstance.from_data(Data.get_card(&"guilty")))   # Curse
 	assert_eq(GameState.curse_card_count(), 1, "only CURSE-type cards count")
 	# Curses (active_curses) are a separate quantity from curse cards.
@@ -171,7 +171,7 @@ func test_removing_a_non_curse_card_banks_no_chest() -> void:
 	GameState.reset_run()
 	GameState.add_item(Data.get_item(&"golden_beetle"))
 	GameState.deck.clear()
-	GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike")))   # not a curse
+	GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike_ironclad")))   # not a curse
 	GameState.remove_card_at(0)
 	assert_eq(GameState.pending_chests, 0, "only curse cards feed Golden Beetle")
 

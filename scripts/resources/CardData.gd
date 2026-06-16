@@ -91,6 +91,24 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, LEGENDARY }
 # how long a melee swing reaches). Empty defaults to "medium".
 @export var range_class: StringName = &""
 
+# Action-mode attack delivery (the archetype overhaul). When set, this is the
+# SINGLE source of truth for how the card lands in real-time action combat —
+# it drives hit-detection and the on-screen smear, and supersedes the old
+# damage_type/range inference (which stays only as the fallback for cards with
+# no shape yet). Authored in the spreadsheet's Attack column (the repurposed
+# Range column), parsed by tools/generate_card_tres.py.
+#   attack_shape  — one of: poke, swing, smash, nova, projectile, lob, beam,
+#                   homing, smite, auto_aoe. Empty -> legacy inference.
+#   attack_params — optional overrides: {"size": "medium", "arc": 360,
+#                   "spread": 4, "target": "random"|"nearest"|"all",
+#                   "pierce": true, "crescent": true}. The bare size word maps
+#                   to reach for poke/swing/projectile/beam/homing and to AOE
+#                   radius for smash/nova/lob/auto_aoe. See
+#                   docs/action-attack-translation.md and ActionAttackLibrary.
+@export var attack_shape: StringName = &""
+@export var attack_params: Dictionary = {}
+
+
 func is_attack() -> bool:
 	return type == CardType.ATTACK
 

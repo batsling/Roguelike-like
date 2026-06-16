@@ -5,35 +5,18 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"after_image"
 display_name = "After Image"
 type = 2
 rarity = 3
 cost = 1
-description = "Innate. Whenever you play a card, gain 1 Block."
-effects = [{
-"type": "trigger",
-"on": "card_played",
-"effect": {
-"type": "block",
-"value": 1,
-"target": "self"
-}
-}]
+description = "Whenever you play a Card, Gain 1 Block"
+effects = [{"type": "trigger", "on": "card_played", "effect": {"type": "block", "value": 1, "target": "self"}}]
 tags = PackedStringArray("silent", "defense")
 source_game = "Slay the Spire"
-portrait_color = Color(0.50, 0.55, 0.70, 1)
 can_upgrade = true
-upgraded_description = "Innate. Whenever you play a card, gain 1 Block."
-upgraded_cost = 0
-upgraded_effects = [{
-"type": "trigger",
-"on": "card_played",
-"effect": {
-"type": "block",
-"value": 1,
-"target": "self"
-}
-}]
+upgraded_description = "Innate. Whenever you play a Card, Gain 1 Block"
+upgraded_cost = -999
+upgraded_effects = [{"type": "trigger", "on": "card_played", "effect": {"type": "block", "value": 1, "target": "self"}}]
+image = ExtResource("2_img")
 innate = true

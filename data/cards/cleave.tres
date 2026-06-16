@@ -11,22 +11,13 @@ type = 0
 rarity = 1
 cost = 1
 description = "Deal 8 Dmg Melee Cleave."
-effects = [{
-"type": "dmg",
-"value": 8,
-"target": "all_enemies",
-"damage_type": "melee"
-}]
+effects = [{"type": "dmg", "value": 8, "target": "all_enemies", "damage_type": "melee"}]
 tags = PackedStringArray("ironclad", "aoe", "cleave", "offense")
 source_game = "Slay the Spire"
-image = ExtResource("2_img")
-portrait_color = Color(0.75, 0.25, 0.25, 1)
 can_upgrade = true
 upgraded_description = "Deal 11 Dmg Melee Cleave."
 upgraded_cost = -999
-upgraded_effects = [{
-"type": "dmg",
-"value": 11,
-"target": "all_enemies",
-"damage_type": "melee"
-}]
+upgraded_effects = [{"type": "dmg", "value": 11, "target": "all_enemies", "damage_type": "melee"}]
+image = ExtResource("2_img")
+attack_shape = &"swing"
+attack_params = {"arc": 360}

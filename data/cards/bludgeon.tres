@@ -5,29 +5,19 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"bludgeon"
 display_name = "Bludgeon"
 type = 0
 rarity = 3
 cost = 3
 description = "Deal 32 Dmg Melee."
-effects = [{
-"type": "dmg",
-"value": 32,
-"target": "enemy",
-"damage_type": "melee"
-}]
+effects = [{"type": "dmg", "value": 32, "target": "enemy", "damage_type": "melee"}]
 tags = PackedStringArray("ironclad", "offense")
 source_game = "Slay the Spire"
-portrait_color = Color(0.65, 0.30, 0.25, 1)
 can_upgrade = true
 upgraded_description = "Deal 42 Dmg Melee."
 upgraded_cost = -999
-upgraded_effects = [{
-"type": "dmg",
-"value": 42,
-"target": "enemy",
-"damage_type": "melee"
-}]
-range_class = &"large"
+upgraded_effects = [{"type": "dmg", "value": 42, "target": "enemy", "damage_type": "melee"}]
+image = ExtResource("2_img")
+attack_shape = &"smash"
+attack_params = {"size": "large"}

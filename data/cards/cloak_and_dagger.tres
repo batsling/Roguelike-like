@@ -5,36 +5,17 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"cloak_and_dagger"
 display_name = "Cloak and Dagger"
 type = 1
 rarity = 1
 cost = 1
 description = "Gain 6 Block. Conjure 1 Shiv to Hand."
-effects = [{
-"type": "block",
-"value": 6,
-"target": "self"
-}, {
-"type": "conjure",
-"card_id": "shiv",
-"destination": "hand",
-"count": 1
-}]
+effects = [{"type": "block", "value": 6, "target": "self"}, {"type": "conjure", "card_id": "shiv", "destination": "hand", "count": 1}]
 tags = PackedStringArray("silent", "defense")
 source_game = "Slay the Spire"
-portrait_color = Color(0.45, 0.55, 0.75, 1)
 can_upgrade = true
 upgraded_description = "Gain 6 Block. Conjure 2 Shivs to Hand."
 upgraded_cost = -999
-upgraded_effects = [{
-"type": "block",
-"value": 6,
-"target": "self"
-}, {
-"type": "conjure",
-"card_id": "shiv",
-"destination": "hand",
-"count": 2
-}]
+upgraded_effects = [{"type": "block", "value": 6, "target": "self"}, {"type": "conjure", "card_id": "shiv", "destination": "hand", "count": 2}]
+image = ExtResource("2_img")

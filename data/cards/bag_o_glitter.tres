@@ -5,24 +5,16 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"bag_o_glitter"
 display_name = "Bag o' Glitter"
 type = 1
-rarity = 1
-cost = 0
+rarity = 2
+cost = 1
 description = "Inflict 2 Blind. 10% chance to Exhaust."
-effects = [{
-"type": "status",
-"status": "blind",
-"stacks": 2,
-"target": "enemy"
-}, {
-"type": "chance",
-"percent": 10,
-"effect": {"type": "exhaust_self"}
-}]
-tags = PackedStringArray("debuff", "blind", "weapon", "exhaust")
-portrait_color = Color(0.85, 0.75, 0.40, 1)
+effects = [{"type": "status", "status": "blind", "stacks": 2, "target": "enemy"}, {"type": "chance", "percent": 10, "effect": {"type": "exhaust_self"}}]
+tags = PackedStringArray("weapon", "debuff", "exhaust", "blind")
+source_game = "Mewgenics"
 can_upgrade = false
-range_class = &"medium"
+image = ExtResource("2_img")
+attack_shape = &"swing"
+attack_params = {"size": "medium"}

@@ -5,23 +5,17 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"blasma_pistol"
 display_name = "Blasma Pistol"
 type = 0
 rarity = 1
 cost = 1
 description = "Deal 3 Dmg Ranged. Wealth."
-effects = [{
-"type": "dmg",
-"value": 3,
-"target": "enemy",
-"damage_type": "ranged"
-}]
+effects = [{"type": "dmg", "value": 3, "target": "enemy", "damage_type": "ranged"}]
 tags = PackedStringArray("weapon")
 source_game = "Flinthook"
-portrait_color = Color(0.55, 0.55, 0.7, 1)
 can_upgrade = false
-upgraded_cost = 1
-range_class = &"medium"
+image = ExtResource("2_img")
 addons = PackedStringArray("wealth")
+attack_shape = &"projectile"
+attack_params = {"size": "medium"}

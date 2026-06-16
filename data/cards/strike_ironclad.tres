@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_strike"]
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_strike_ironclad"]
 
 [ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
 [ext_resource type="Texture2D" path="res://images/cards/StrikeIronclad.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_card")
-id = &"strike"
+id = &"strike_ironclad"
 display_name = "Strike"
 type = 0
 rarity = 0
@@ -14,9 +14,10 @@ description = "Deal 6 Dmg Melee."
 effects = [{"type": "dmg", "value": 6, "target": "enemy", "damage_type": "melee"}]
 tags = PackedStringArray("strike")
 source_game = "Slay the Spire"
-image = ExtResource("2_img")
-portrait_color = Color(0.75, 0.25, 0.25, 1)
 can_upgrade = true
 upgraded_description = "Deal 9 Dmg Melee."
 upgraded_cost = -999
 upgraded_effects = [{"type": "dmg", "value": 9, "target": "enemy", "damage_type": "melee"}]
+image = ExtResource("2_img")
+attack_shape = &"swing"
+attack_params = {"size": "medium"}

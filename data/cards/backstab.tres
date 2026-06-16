@@ -5,31 +5,21 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"backstab"
 display_name = "Backstab"
 type = 0
 rarity = 2
 cost = 0
 description = "Innate. Deal 11 Dmg Melee. Exhaust."
-effects = [{
-"type": "dmg",
-"value": 11,
-"target": "enemy",
-"damage_type": "melee"
-}]
+effects = [{"type": "dmg", "value": 11, "target": "enemy", "damage_type": "melee"}]
 tags = PackedStringArray("silent", "offense", "exhaust")
 source_game = "Slay the Spire"
-portrait_color = Color(0.55, 0.40, 0.55, 1)
 can_upgrade = true
 upgraded_description = "Innate. Deal 15 Dmg Melee. Exhaust."
-upgraded_cost = 0
-upgraded_effects = [{
-"type": "dmg",
-"value": 15,
-"target": "enemy",
-"damage_type": "melee"
-}]
-innate = true
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 15, "target": "enemy", "damage_type": "melee"}]
+image = ExtResource("2_img")
 exhaust = true
-range_class = &"medium"
+innate = true
+attack_shape = &"poke"
+attack_params = {"size": "medium"}

@@ -61,13 +61,13 @@ func test_replay_count_folds_native_and_granted() -> void:
 	assert_eq(CardMods.replay_count(weapon_attack), 1,
 		"Duplicator grants Replay 1 to weapon attacks")
 	# A non-weapon card (Strike) is untouched by Duplicator.
-	assert_eq(CardMods.replay_count(Data.get_card(&"strike")), 0)
+	assert_eq(CardMods.replay_count(Data.get_card(&"strike_ironclad")), 0)
 
 func test_card_type_gate_matches_attack_cards() -> void:
 	# The if_card_type gate Duplicator's grant leans on must resolve a weapon
 	# attack card (type ATTACK) to "attack" and reject other types.
-	var strike: CardData = Data.get_card(&"strike")
-	assert_not_null(strike, "strike.tres should load")
+	var strike: CardData = Data.get_card(&"strike_ironclad")
+	assert_not_null(strike, "strike_ironclad.tres should load")
 	assert_true(ItemTriggers._card_type_is(strike, "attack"))
 	assert_false(ItemTriggers._card_type_is(strike, "skill"))
 
@@ -118,16 +118,16 @@ func test_molten_egg_upgrades_attack_card_on_add() -> void:
 	GameState.reset_run()
 	GameState.add_item(Data.get_item(&"molten_egg"))
 	# An Attack card (Strike) is upgraded the moment it enters the deck.
-	var added: CardInstance = GameState.add_card_to_deck(Data.get_card(&"strike"))
+	var added: CardInstance = GameState.add_card_to_deck(Data.get_card(&"strike_ironclad"))
 	assert_not_null(added)
 	assert_true(added.upgraded, "Molten Egg upgrades a freshly added Attack card")
 	# A non-Attack card (Defend, a Skill) is left alone.
-	var skill: CardInstance = GameState.add_card_to_deck(Data.get_card(&"defend"))
+	var skill: CardInstance = GameState.add_card_to_deck(Data.get_card(&"defend_ironclad"))
 	assert_false(skill.upgraded, "Molten Egg ignores non-Attack cards")
 
 func test_no_egg_means_no_upgrade() -> void:
 	GameState.reset_run()
-	var added: CardInstance = GameState.add_card_to_deck(Data.get_card(&"strike"))
+	var added: CardInstance = GameState.add_card_to_deck(Data.get_card(&"strike_ironclad"))
 	assert_false(added.upgraded, "no egg owned -> card added unupgraded")
 
 # --- Focus Crystal -------------------------------------------------------
@@ -205,7 +205,7 @@ func test_leeching_seed_grants_heal_to_strikes() -> void:
 func test_leeches_grant_shows_on_strike_text_when_owned() -> void:
 	# The grant should fold into a Strike's resolved effects + text.
 	GameState.reset_run()
-	var strike: CardData = Data.get_card(&"strike")
+	var strike: CardData = Data.get_card(&"strike_ironclad")
 	GameState.add_item(Data.get_item(&"jar_of_leeches"))
 	GameState.add_item(Data.get_item(&"leeching_seed"))
 	var ci := CardInstance.from_data(strike)
@@ -607,7 +607,7 @@ func test_strike_dummy_boosts_strikes() -> void:
 
 func test_strike_dummy_raises_strike_damage_as_one_hit() -> void:
 	GameState.reset_run()
-	var strike: CardData = Data.get_card(&"strike")  # base "Deal 6 Dmg"
+	var strike: CardData = Data.get_card(&"strike_ironclad")  # base "Deal 6 Dmg"
 	# Before owning it, the Strike is a single 6-Dmg effect.
 	var before := CardInstance.from_data(strike).get_effects()
 	assert_eq(before.size(), 1, "Strike has one effect")
@@ -621,7 +621,7 @@ func test_strike_dummy_raises_strike_damage_as_one_hit() -> void:
 
 func test_strike_dummy_stacks_and_respects_upgrade() -> void:
 	GameState.reset_run()
-	var strike: CardData = Data.get_card(&"strike")
+	var strike: CardData = Data.get_card(&"strike_ironclad")
 	GameState.add_item(Data.get_item(&"strike_dummy"))
 	GameState.add_item(Data.get_item(&"strike_dummy"))
 	# Two copies: +6 on top of the upgraded base (9 -> 15).
@@ -631,7 +631,7 @@ func test_strike_dummy_stacks_and_respects_upgrade() -> void:
 
 func test_strike_dummy_boost_folds_into_card_number() -> void:
 	GameState.reset_run()
-	var strike: CardData = Data.get_card(&"strike")  # "Deal 6 Dmg Melee."
+	var strike: CardData = Data.get_card(&"strike_ironclad")  # "Deal 6 Dmg Melee."
 	GameState.add_item(Data.get_item(&"strike_dummy"))
 	# The +3 is folded into the card's own number (6 -> 9), not a "+3" suffix.
 	var desc := CardInstance.from_data(strike).get_description()
@@ -711,8 +711,8 @@ func test_whetstone_upgrades_two_random_attacks_only() -> void:
 	GameState.reset_run()
 	GameState.deck.clear()
 	for _i in range(4):
-		GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike")))   # Attack
-	GameState.deck.append(CardInstance.from_data(Data.get_card(&"defend")))        # Skill
+		GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike_ironclad")))   # Attack
+	GameState.deck.append(CardInstance.from_data(Data.get_card(&"defend_ironclad")))        # Skill
 	GameState.add_item(Data.get_item(&"whetstone"))
 	var atk_up := 0
 	var skill_up := 0
@@ -728,8 +728,8 @@ func test_war_paint_upgrades_two_random_skills_only() -> void:
 	GameState.reset_run()
 	GameState.deck.clear()
 	for _i in range(3):
-		GameState.deck.append(CardInstance.from_data(Data.get_card(&"defend")))   # Skill
-	GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike")))        # Attack
+		GameState.deck.append(CardInstance.from_data(Data.get_card(&"defend_ironclad")))   # Skill
+	GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike_ironclad")))        # Attack
 	GameState.add_item(Data.get_item(&"war_paint"))
 	var skill_up := 0
 	var atk_up := 0
@@ -745,7 +745,7 @@ func test_upgrade_random_caps_at_available_and_skips_upgraded() -> void:
 	GameState.reset_run()
 	GameState.deck.clear()
 	# Only one upgradeable Attack present -> upgrades just the one.
-	GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike")))
+	GameState.deck.append(CardInstance.from_data(Data.get_card(&"strike_ironclad")))
 	var names: Array = GameState.upgrade_random_deck_cards("attack", 2)
 	assert_eq(names.size(), 1, "caps at the number of eligible cards")
 	# Re-running finds nothing new (already upgraded).

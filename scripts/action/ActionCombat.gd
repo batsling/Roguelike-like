@@ -94,6 +94,20 @@ enum Phase { INIT, PLAYING, WON, LOST }
 var phase: Phase = Phase.INIT
 var _ability_swing_remaining: float = 0.0
 var _ability_swing_facing: Vector2 = Vector2.RIGHT
+# Attack-smear visual state (the archetype overhaul). One smear is shown at a
+# time; _ability_swing_remaining is the shared countdown. _swing_kind selects
+# how _draw_attack_smear renders it:
+#   "arc"/"thrust" cone (poke/swing), "ring" full circle (swing arc>=300),
+#   "disc" filled circle at _swing_center (smash/nova/auto_aoe/lob),
+#   "beam" line from the player, "smite" zaps to each point in _smear_points.
+var _swing_kind: String = "arc"
+var _swing_arc_deg: float = ABILITY_MELEE_ANGLE_DEG
+var _swing_reach: float = ABILITY_MELEE_RANGE
+var _swing_center: Vector2 = Vector2.ZERO
+var _swing_color: Color = Color(1.0, 0.55, 0.25, 1.0)
+var _smear_points: PackedVector2Array = PackedVector2Array()
+# Cached attack-archetype library (reach/radius/arc/speed/smear). See _ready.
+var _atk: ActionAttackLibrary
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 # --- Loadout ---------------------------------------------------------------
@@ -223,6 +237,9 @@ func _ready() -> void:
 	_tr = Data.action_translation
 	if _tr == null:
 		_tr = ActionTranslation.new()  # defensive: never run without the map
+	_atk = Data.action_attacks
+	if _atk == null:
+		_atk = ActionAttackLibrary.new()  # defensive: never run without the library
 	_turn_tick_remaining = _tr.turn_tick_secs
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	if not embedded:
@@ -1049,6 +1066,15 @@ func _effective_effects(card: CardData) -> Array:
 	return CardMods.resolved_effects(card.effects, card)
 
 func _resolve_card_effects(card: CardData) -> void:
+	# Archetype path (the attack-delivery overhaul): when the card names an
+	# attack_shape it is the single source of truth for delivery. Aim at the
+	# cursor (player_facing) for click slots.
+	if card.attack_shape != &"":
+		_deliver_attack(card, player_facing, false)
+		return
+	_resolve_card_effects_legacy(card)
+
+func _resolve_card_effects_legacy(card: CardData) -> void:
 	# Cards with any ranged-typed damage effect resolve via a
 	# projectile that carries every enemy-targeted effect on the card.
 	# Self-targeted effects (block / heal / self status) still apply at
@@ -1086,8 +1112,7 @@ func _resolve_card_effects(card: CardData) -> void:
 			needs_aoe = true
 	if needs_cone:
 		cone_targets = _enemies_in_cone(ABILITY_MELEE_RANGE, ABILITY_MELEE_ANGLE_DEG)
-		_ability_swing_remaining = SWING_VISUAL_DURATION
-		_ability_swing_facing = player_facing
+		_legacy_swing_visual(player_facing)
 	if needs_aoe:
 		aoe_targets = _enemies_in_radius(ABILITY_AOE_RADIUS)
 
@@ -1125,6 +1150,14 @@ func _resolve_card_effects(card: CardData) -> void:
 # enemy (single) and all_enemies hits everyone alive. Ranged damage fires a
 # bolt straight at the nearest enemy.
 func _resolve_card_effects_auto(card: CardData) -> void:
+	# Archetype path: the auto-runner isn't aiming, so point the attack at the
+	# nearest enemy (smite/auto_aoe/homing pick their own target regardless).
+	if card.attack_shape != &"":
+		_deliver_attack(card, _auto_aim_dir(), true)
+		return
+	_resolve_card_effects_auto_legacy(card)
+
+func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 	if _card_has_ranged_damage(card):
 		_apply_self_effects(card)
 		var tgt_inst: Dictionary = _nearest_enemy()
@@ -1154,8 +1187,7 @@ func _resolve_card_effects_auto(card: CardData) -> void:
 	# Brief swing visual toward the nearest enemy if this card melees one.
 	var nearest: Dictionary = _nearest_enemy()
 	if not nearest.is_empty():
-		_ability_swing_facing = (nearest.pos - player_pos).normalized()
-		_ability_swing_remaining = SWING_VISUAL_DURATION
+		_legacy_swing_visual((nearest.pos - player_pos).normalized())
 
 	for raw_effect in _effective_effects(card):
 		var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
@@ -1194,6 +1226,297 @@ func _resolve_card_effects_auto(card: CardData) -> void:
 				lose_energy(int(effect.get("value", 1)))
 			_:
 				pass
+
+# ---------------------------------------------------------------------------
+# Attack-archetype delivery (the overhaul)
+# ---------------------------------------------------------------------------
+# A card's attack_shape names HOW it lands; its Effects say WHAT lands. We
+# resolve the shape to a numeric spec (ActionAttackLibrary), apply self-side
+# effects once, then deliver the enemy-side effects via the family's geometry.
+# Multi-hit volleys (Effects `dmg:VxN`) repeat the whole delivery N times,
+# paced like the legacy multi-hit so each lands as its own visible smear.
+
+func _auto_aim_dir() -> Vector2:
+	var n: Dictionary = _nearest_enemy()
+	if n.is_empty():
+		return player_facing
+	var d: Vector2 = n.pos - player_pos
+	return d.normalized() if d.length() > 0.01 else player_facing
+
+# Enemy-side effects only (dmg / status aimed at enemy or all_enemies). Self
+# effects (block/heal/self-status/draw/discard/energy) are handled separately
+# by _apply_self_effects so they fire once regardless of the delivery shape.
+func _enemy_effects(card: CardData) -> Array:
+	var out: Array = []
+	for raw in _effective_effects(card):
+		var t: String = String(raw.get("type", ""))
+		if t != "dmg" and t != "status":
+			continue
+		var tgt: String = String(raw.get("target", "enemy"))
+		if tgt == "self" or tgt == "player":
+			continue
+		out.append(raw)
+	return out
+
+# Volley count = the largest `hits` across the card's dmg effects (Twin Strike
+# 5x2 -> 2 swings). Each volley applies the base value once; the per-effect
+# `hits` is consumed here, not re-multiplied inside a delivery.
+func _attack_volleys(effects: Array) -> int:
+	var best := 1
+	for e in effects:
+		if String(e.get("type", "")) == "dmg":
+			best = maxi(best, int(e.get("hits", 1)))
+	return best
+
+# Apply each enemy effect ONCE to every actor in hit_list (volleys handle
+# repetition). Reuses the shared damage/status math so Power/Weak/Vulnerable,
+# blocks, Bleed windows and Persistence all behave like the other modes.
+func _apply_enemy_effects(card: CardData, effects: Array, hit_list: Array) -> void:
+	for raw in effects:
+		var effect: Dictionary = Stats.apply_addons_to_effect(raw, card)
+		match String(effect.get("type", "")):
+			"dmg":
+				var value: int = int(effect.get("value", 0))
+				var dmg_type: String = String(effect.get("damage_type", "melee"))
+				var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
+				var gate: StringName = StringName(String(effect.get("if_target_status", "")))
+				for inst in hit_list:
+					if gate != &"" and inst.actor.get_status(gate) <= 0:
+						continue
+					_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
+			"status":
+				var status: StringName = StringName(String(effect.get("status", "")))
+				var stacks: int = int(effect.get("stacks", 0))
+				if status == &"" or stacks == 0:
+					continue
+				for inst in hit_list:
+					Stats.apply_status_to(inst.actor, status, stacks, player_actor)
+
+func _deliver_attack(card: CardData, aim_dir: Vector2, is_auto: bool) -> void:
+	if aim_dir == Vector2.ZERO:
+		aim_dir = player_facing
+	var spec: Dictionary = _atk.resolve(card)
+	_apply_self_effects(card)
+	var effects: Array = _enemy_effects(card)
+	var volleys: int = _attack_volleys(effects)
+	_deliver_attack_once(card, effects, spec, aim_dir, is_auto)
+	# Queue the remaining volleys, paced like the legacy multi-hit. Random-target
+	# families (smite/auto_aoe) re-pick at fire time, so a stored aim is harmless.
+	for i in range(volleys - 1):
+		_pending_hits.append({
+			"time": MULTIHIT_INTERVAL * float(i + 1),
+			"mode": "attack_volley",
+			"card": card,
+			"effects": effects,
+			"spec": spec,
+			"facing": aim_dir,
+			"is_auto": is_auto,
+		})
+
+func _deliver_attack_once(card: CardData, effects: Array, spec: Dictionary, aim_dir: Vector2, _is_auto: bool) -> void:
+	match String(spec.get("family", "cone")):
+		"cone":
+			_deliver_cone(card, effects, spec, aim_dir)
+		"disc":
+			_deliver_disc(card, effects, spec, player_pos + aim_dir * float(spec.radius_px))
+		"disc_self":
+			_deliver_disc(card, effects, spec, player_pos)
+		"beam":
+			_deliver_beam(card, effects, spec, aim_dir)
+		"smite":
+			_deliver_smite(card, effects, spec)
+		"auto_aoe":
+			_deliver_auto_aoe(card, effects, spec)
+		"projectile":
+			_spawn_attack_bolts(card, spec, aim_dir, false)
+		"homing":
+			_spawn_attack_bolts(card, spec, aim_dir, true)
+		"lob":
+			_spawn_attack_bolts(card, spec, aim_dir, false)
+		_:
+			_deliver_cone(card, effects, spec, aim_dir)
+
+func _deliver_cone(card: CardData, effects: Array, spec: Dictionary, dir: Vector2) -> void:
+	var reach: float = float(spec.reach_px)
+	var arc: float = float(spec.arc_deg)
+	var hits: Array = _enemies_in_cone_dir(dir, reach, arc)
+	var kind: String = "ring" if arc >= 300.0 else ("thrust" if String(spec.shape) == "poke" else "arc")
+	_show_smear(kind, dir, reach, arc, player_pos)
+	_apply_enemy_effects(card, effects, hits)
+
+func _deliver_disc(card: CardData, effects: Array, spec: Dictionary, center: Vector2) -> void:
+	var radius: float = float(spec.radius_px)
+	_show_disc(center, radius)
+	_apply_enemy_effects(card, effects, _enemies_in_disc(center, radius))
+
+func _deliver_beam(card: CardData, effects: Array, spec: Dictionary, dir: Vector2) -> void:
+	var length: float = float(spec.reach_px)
+	_show_beam(dir, length)
+	_apply_enemy_effects(card, effects, _enemies_on_beam(dir, length, _atk.beam_half_width))
+
+func _deliver_smite(card: CardData, effects: Array, spec: Dictionary) -> void:
+	var hits: Array = _smite_target_set(String(spec.target_mode))
+	_smear_points = PackedVector2Array()
+	for inst in hits:
+		_smear_points.append(inst.pos)
+	if not hits.is_empty():
+		_swing_kind = "smite"
+		_swing_color = _atk.smear_color
+		_ability_swing_remaining = _atk.smear_duration
+	_apply_enemy_effects(card, effects, hits)
+
+func _deliver_auto_aoe(card: CardData, effects: Array, spec: Dictionary) -> void:
+	var t: Dictionary = _pick_target(String(spec.target_mode))
+	if t.is_empty():
+		return
+	_deliver_disc(card, effects, spec, t.pos)
+
+# --- Geometry / target selection -------------------------------------------
+
+# Like _enemies_in_cone but aimed along an arbitrary `dir` (the cast direction)
+# rather than the player's current facing, so auto-cast melee hits its target.
+func _enemies_in_cone_dir(dir: Vector2, range_px: float, angle_deg: float) -> Array:
+	var result: Array = []
+	var half: float = deg_to_rad(angle_deg * 0.5)
+	var facing: Vector2 = dir.normalized() if dir.length() > 0.01 else player_facing
+	for inst in enemies:
+		if not inst.actor.is_alive():
+			continue
+		var to: Vector2 = inst.pos - player_pos
+		if to.length() > range_px + inst.data.size:
+			continue
+		if absf(facing.angle_to(to)) > half:
+			continue
+		result.append(inst)
+	return result
+
+func _enemies_in_disc(center: Vector2, radius: float) -> Array:
+	var result: Array = []
+	for inst in enemies:
+		if not inst.actor.is_alive():
+			continue
+		if inst.pos.distance_to(center) <= radius + inst.data.size:
+			result.append(inst)
+	return result
+
+# Enemies lying along the ray from the player in `dir` for `length` px, within
+# `half_width` of the line. Used by the beam archetype.
+func _enemies_on_beam(dir: Vector2, length: float, half_width: float) -> Array:
+	var result: Array = []
+	var d: Vector2 = dir.normalized() if dir.length() > 0.01 else player_facing
+	for inst in enemies:
+		if not inst.actor.is_alive():
+			continue
+		var rel: Vector2 = inst.pos - player_pos
+		var along: float = rel.dot(d)
+		if along < 0.0 or along > length:
+			continue
+		var perp: float = absf(rel.dot(Vector2(-d.y, d.x)))
+		if perp <= half_width + inst.data.size:
+			result.append(inst)
+	return result
+
+# A random or nearest single living enemy (for auto_aoe / smite:random).
+func _pick_target(mode: String) -> Dictionary:
+	var alive: Array = []
+	for inst in enemies:
+		if inst.actor.is_alive():
+			alive.append(inst)
+	if alive.is_empty():
+		return {}
+	if mode == "random":
+		return alive[_rng.randi_range(0, alive.size() - 1)]
+	return _nearest_enemy()
+
+# The set of enemies a smite hits: every living enemy for "all", else a single
+# random/nearest one.
+func _smite_target_set(mode: String) -> Array:
+	if mode == "all":
+		var all: Array = []
+		for inst in enemies:
+			if inst.actor.is_alive():
+				all.append(inst)
+		return all
+	var one: Dictionary = _pick_target(mode)
+	return [] if one.is_empty() else [one]
+
+# --- Smear visuals ----------------------------------------------------------
+
+func _show_smear(kind: String, facing: Vector2, reach: float, arc_deg: float, center: Vector2) -> void:
+	_swing_kind = kind
+	_ability_swing_facing = facing.normalized() if facing.length() > 0.01 else player_facing
+	_swing_reach = reach
+	_swing_arc_deg = arc_deg
+	_swing_center = center
+	_swing_color = _atk.smear_color
+	_ability_swing_remaining = _atk.smear_duration
+
+func _show_disc(center: Vector2, radius: float) -> void:
+	_swing_kind = "disc"
+	_swing_center = center
+	_swing_reach = radius
+	_swing_color = _atk.smear_color
+	_ability_swing_remaining = _atk.smear_duration
+
+func _show_beam(dir: Vector2, length: float) -> void:
+	_swing_kind = "beam"
+	_ability_swing_facing = dir.normalized() if dir.length() > 0.01 else player_facing
+	_swing_reach = length
+	_swing_color = _atk.beam_color
+	_ability_swing_remaining = _atk.smear_duration
+
+# The orange melee cone used by the legacy (un-annotated) attack path. Resets
+# the smear state so a stale archetype kind (beam/disc) can't carry over.
+func _legacy_swing_visual(facing: Vector2) -> void:
+	_swing_kind = "arc"
+	_ability_swing_facing = facing if facing.length() > 0.01 else player_facing
+	_swing_arc_deg = ABILITY_MELEE_ANGLE_DEG
+	_swing_reach = ABILITY_MELEE_RANGE
+	_swing_color = Color(1.0, 0.55, 0.25, 1.0)
+	_ability_swing_remaining = SWING_VISUAL_DURATION
+
+# --- Archetype projectiles --------------------------------------------------
+
+# Spawn the projectile/homing/lob body (or a `spread` fan of them). The bolts
+# carry the card so _on_player_projectile_hit applies its enemy effects on
+# contact, exactly like the legacy ranged path.
+func _spawn_attack_bolts(card: CardData, spec: Dictionary, aim_dir: Vector2, homing: bool) -> void:
+	var dir: Vector2 = aim_dir.normalized() if aim_dir.length() > 0.01 else player_facing
+	var count: int = maxi(1, int(spec.spread))
+	var range_px: float = float(spec.reach_px)
+	var speed: float = _atk.projectile_speed
+	var lifetime: float = range_px / speed if speed > 0.0 else 1.0
+	# A spread shares one hit_set so a fan converging on one enemy applies the
+	# card's effects once, not once per bolt.
+	var shared: Dictionary = {}
+	var base_angle: float = dir.angle()
+	var fan: float = deg_to_rad(_atk.spread_fan_deg)
+	for i in range(count):
+		var angle: float = base_angle
+		if count > 1:
+			var t: float = float(i) / float(count - 1)
+			angle = base_angle - fan * 0.5 + t * fan
+		_spawn_attack_bolt(card, Vector2.RIGHT.rotated(angle), range_px, lifetime, shared, spec, homing)
+
+func _spawn_attack_bolt(card: CardData, dir: Vector2, range_px: float, lifetime: float, hit_set: Dictionary, spec: Dictionary, homing: bool) -> void:
+	var crescent: bool = bool(spec.crescent)
+	var proj: Dictionary = {
+		"pos": player_pos + dir * (PLAYER_RADIUS + 4.0),
+		"velocity": dir * _atk.projectile_speed,
+		"owner": "player",
+		"radius": 11.0 if crescent else PLAYER_PROJECTILE_RADIUS,
+		"color": _atk.crescent_color if crescent else PLAYER_PROJECTILE_COLOR,
+		"lifetime": lifetime,
+		"range_px": range_px,
+		"card": card,
+		"hit_set": hit_set,
+		"pen_nib_double": GameState.pen_nib_double_active,
+		"pierce": bool(spec.pierce),
+		"shape": "crescent" if crescent else "bolt",
+		"homing": homing,
+		"facing": dir,
+	}
+	projectiles.append(proj)
 
 # Auto-aim target list for a given effect `target` field: nearest single
 # living enemy for "enemy", everyone alive for "all_enemies", recomputed on
@@ -1246,6 +1569,11 @@ func _process_pending_hits(delta: float) -> void:
 					_resolve_delayed_aoe_hit(p.effect)
 				"projectile":
 					_spawn_player_projectile(p.card, p.get("facing", Vector2.ZERO))
+				"attack_volley":
+					# A repeat volley of an archetype attack (Twin Strike's 2nd
+					# swing, Dagger Spray's 2nd spread, Blood Magic's later blasts).
+					_deliver_attack_once(p.card, p.effects, p.spec,
+						p.get("facing", player_facing), bool(p.get("is_auto", false)))
 			_pending_hits.remove_at(i)
 		else:
 			i += 1
@@ -1254,8 +1582,7 @@ func _resolve_delayed_cone_hit(effect: Dictionary) -> void:
 	# Re-acquire targets each swing so enemies that died between hits
 	# (or moved out of the cone) aren't hit a second time.
 	var targets: Array = _enemies_in_cone(ABILITY_MELEE_RANGE, ABILITY_MELEE_ANGLE_DEG)
-	_ability_swing_remaining = SWING_VISUAL_DURATION
-	_ability_swing_facing = player_facing
+	_legacy_swing_visual(player_facing)
 	var value: int = int(effect.get("value", 0))
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
 	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
@@ -1670,6 +1997,15 @@ func _process_projectiles(delta: float) -> void:
 	var i := 0
 	while i < projectiles.size():
 		var p: Dictionary = projectiles[i]
+		# Homing bolts steer toward the nearest living enemy each frame, keeping
+		# their speed. Straight bolts just keep their velocity.
+		if p.get("homing", false):
+			var tgt: Dictionary = _nearest_enemy()
+			if not tgt.is_empty():
+				var want: Vector2 = (tgt.pos - p.pos)
+				if want.length() > 0.01:
+					var speed: float = p.velocity.length()
+					p.velocity = p.velocity.lerp(want.normalized() * speed, clampf(delta * 6.0, 0.0, 1.0))
 		p.pos += p.velocity * delta
 		p.lifetime -= delta
 
@@ -1685,11 +2021,14 @@ func _process_projectiles(delta: float) -> void:
 					# Bolts from the same cast share a hit_set so a
 					# fan that converges on one enemy doesn't apply
 					# the card's effects multiple times to that
-					# enemy. The bolt still dies on contact.
+					# enemy.
 					if not hit_set.has(inst.actor):
 						hit_set[inst.actor] = true
 						_on_player_projectile_hit(p, inst)
-					consumed = true
+					# Piercing bolts (Iron Wave's crescent "wave") punch
+					# through and keep travelling; others die on contact.
+					if not p.get("pierce", false):
+						consumed = true
 					break
 			"enemy":
 				if p.pos.distance_to(player_pos) <= p.radius + PLAYER_RADIUS:
@@ -2029,9 +2368,9 @@ func _draw() -> void:
 	if _stairs_active:
 		_draw_exit_stairs()
 
-	# Swing arc (drawn under enemies so the cone outline frames them)
+	# Attack smear (drawn under enemies so the shape frames them)
 	if _ability_swing_remaining > 0.0:
-		_draw_ability_swing_cone()
+		_draw_attack_smear()
 
 	# Enemies
 	for inst in enemies:
@@ -2069,9 +2408,17 @@ func _draw() -> void:
 	# Projectiles (rendered last so they're on top)
 	for p in projectiles:
 		var pcol: Color = p.get("color", Color.WHITE)
-		draw_circle(p.pos, p.radius, pcol)
-		# Inner highlight
-		draw_circle(p.pos, p.radius * 0.5, pcol.lightened(0.5))
+		if String(p.get("shape", "bolt")) == "crescent":
+			# A crescent bolt (Iron Wave's "wave"): an arc swept perpendicular to
+			# its travel so it reads as a curved blade slicing forward.
+			var facing: Vector2 = p.get("facing", Vector2.RIGHT)
+			var ang: float = facing.angle()
+			draw_arc(p.pos, p.radius + 5.0, ang - 1.3, ang + 1.3, 14, pcol, 5.0)
+			draw_arc(p.pos, p.radius + 1.0, ang - 1.1, ang + 1.1, 12, Color(1, 1, 1, pcol.a), 2.0)
+		else:
+			draw_circle(p.pos, p.radius, pcol)
+			# Inner highlight
+			draw_circle(p.pos, p.radius * 0.5, pcol.lightened(0.5))
 
 # Boss-exit stairs: a glowing descending staircase at the arena centre. Drawn
 # as a stack of receding steps with a pulsing golden halo so it clearly reads
@@ -2173,15 +2520,35 @@ func _draw_shield(c: Vector2, r: float, col: Color) -> void:
 		c + Vector2(r, r * 0.25), c + Vector2(0, r), c + Vector2(-r, r * 0.25)])
 	draw_colored_polygon(pts, col)
 
-func _draw_ability_swing_cone() -> void:
-	var half_angle: float = deg_to_rad(ABILITY_MELEE_ANGLE_DEG * 0.5)
-	var base_angle: float = _ability_swing_facing.angle()
-	var steps := 16
-	var points := PackedVector2Array()
-	points.append(player_pos)
-	for i in range(steps + 1):
-		var t: float = float(i) / float(steps)
-		var ang: float = base_angle - half_angle + t * (half_angle * 2.0)
-		points.append(player_pos + Vector2.RIGHT.rotated(ang) * ABILITY_MELEE_RANGE)
-	var alpha: float = clampf(_ability_swing_remaining / SWING_VISUAL_DURATION, 0.0, 1.0) * 0.55
-	draw_polygon(points, PackedColorArray([Color(1.0, 0.55, 0.25, alpha)]))
+# Render whichever attack smear is currently fading out. The melee archetypes
+# (poke/swing/smash/nova) read as a white smear shaped to their hitbox; beam is
+# a line; smite flashes a zap to each struck enemy.
+func _draw_attack_smear() -> void:
+	# Fade from the smear's base alpha as the timer runs out.
+	var dur: float = maxf(0.01, _atk.smear_duration if _atk != null else SWING_VISUAL_DURATION)
+	var fade: float = clampf(_ability_swing_remaining / dur, 0.0, 1.0)
+	var col: Color = _swing_color
+	col.a *= fade
+	match _swing_kind:
+		"arc", "thrust", "ring":
+			var half_angle: float = deg_to_rad(_swing_arc_deg * 0.5)
+			var base_angle: float = _ability_swing_facing.angle()
+			var steps: int = maxi(8, int(_swing_arc_deg / 12.0))
+			var points := PackedVector2Array()
+			points.append(player_pos)
+			for i in range(steps + 1):
+				var t: float = float(i) / float(steps)
+				var ang: float = base_angle - half_angle + t * (half_angle * 2.0)
+				points.append(player_pos + Vector2.RIGHT.rotated(ang) * _swing_reach)
+			draw_polygon(points, PackedColorArray([col]))
+		"disc":
+			draw_circle(_swing_center, _swing_reach, Color(col.r, col.g, col.b, col.a * 0.6))
+			draw_arc(_swing_center, _swing_reach, 0.0, TAU, 32, col, 3.0)
+		"beam":
+			var end: Vector2 = player_pos + _ability_swing_facing * _swing_reach
+			draw_line(player_pos, end, col, 9.0)
+			draw_line(player_pos, end, Color(1, 1, 1, col.a), 3.0)
+		"smite":
+			for pt in _smear_points:
+				draw_line(player_pos, pt, Color(col.r, col.g, col.b, col.a * 0.7), 3.0)
+				draw_circle(pt, 16.0, Color(col.r, col.g, col.b, col.a * 0.5))

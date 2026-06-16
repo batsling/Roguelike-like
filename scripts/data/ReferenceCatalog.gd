@@ -25,6 +25,7 @@ const STATUSES: Array = [
 	{ "name": "Buffer", "description": "Prevent the next X times the target would lose Health", "type": "Buff", "stackable": true, "decay": "Down when player was going to lose health", "who": "All", "preference": "Positive", "rarity": "Rare", "icon": "Buffer" },
 	{ "name": "Crit Chance Up", "description": "Chance for a hit on an enemy to become a Critical Hit dealing Critical Damage, which starts at 100%.", "type": "Buff", "stackable": true, "decay": "None", "who": "All", "preference": "Positive", "rarity": "Common", "icon": "CritChanceUp" },
 	{ "name": "Bruise", "description": "Increases all non-magic melee and ranged damage taken by 1 per stack.", "type": "Debuff", "stackable": true, "decay": "None", "who": "All", "preference": "Negative", "rarity": "Common", "icon": "Bruise" },
+	{ "name": "Fear", "description": "Your non-Skill Cards cost 1 more Energy, lose 1 Fear whenever you play a Skill Card", "type": "Debuff", "stackable": true, "decay": "Down by 1 on played Skill Card", "who": "Player", "preference": "Negative", "rarity": "Uncommon", "icon": "Fear" },
 ]
 
 const ADDONS: Array = [
@@ -39,4 +40,6 @@ const ADDONS: Array = [
 	{ "name": "Wealth", "deckbuilder": "Add +1 for every 10 Gold the player has", "action": "Add +1 for every 10 Gold the player has", "strategy": "Add +1 for every 10 Gold the player has", "has_value": false, "attaches_to": "All", "forms": "" },
 	{ "name": "Indiscriminate", "deckbuilder": "Will use random applicable targets", "action": "Will use random applicable targets in an area", "strategy": "Will use random applicable targets in an area", "has_value": false, "attaches_to": "All", "forms": "" },
 	{ "name": "Replay", "deckbuilder": "This card gets played again X times", "action": "This card gets played again X times", "strategy": "This ability gets played again X times", "has_value": true, "attaches_to": "Cards", "forms": "" },
+	{ "name": "Unplayable", "deckbuilder": "This card cannot be played", "action": "Cooldown time is doubled", "strategy": "If the player has an Unplayable card, at least one Unplayable card must be equipped", "has_value": false, "attaches_to": "Cards", "forms": "" },
+	{ "name": "Eternal", "deckbuilder": "This card cannot be removed", "action": "This card cannot be removed", "strategy": "This card cannot be removed", "has_value": false, "attaches_to": "Cards", "forms": "" },
 ]

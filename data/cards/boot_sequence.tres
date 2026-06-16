@@ -5,28 +5,19 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"boot_sequence"
 display_name = "Boot Sequence"
 type = 1
 rarity = 2
 cost = 0
-description = "Innate. Gain 10 Block. Exhaust."
-effects = [{
-"type": "block",
-"value": 10,
-"target": "self"
-}]
+description = "Innate. Gain 10 Block. Exhaust"
+effects = [{"type": "block", "value": 10, "target": "self"}]
 tags = PackedStringArray("defect", "defense", "exhaust")
 source_game = "Slay the Spire"
-portrait_color = Color(0.40, 0.55, 0.75, 1)
 can_upgrade = true
-upgraded_description = "Innate. Gain 13 Block. Exhaust."
+upgraded_description = "Innate. Gain 13 Block. Exhaust"
 upgraded_cost = -999
-upgraded_effects = [{
-"type": "block",
-"value": 13,
-"target": "self"
-}]
-innate = true
+upgraded_effects = [{"type": "block", "value": 13, "target": "self"}]
+image = ExtResource("2_img")
 exhaust = true
+innate = true

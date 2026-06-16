@@ -18,6 +18,10 @@ extends Resource
 @export var base_hand_size: int = 5
 
 # Starting deck — array of card ids. Duplicates are allowed (e.g. five Strikes).
+# Generic basics (&"strike" / &"defend") are resolved to this character's
+# variant at deck-build time when a card named "<base>_<id>" exists — e.g.
+# &"strike" -> &"strike_ironclad". See Data.variant_card_id. So every character
+# can keep the same generic deck list yet get its own Strike/Defend.
 @export var starting_deck: Array[StringName] = []
 
 # Starting items — array of item ids

@@ -568,7 +568,9 @@ func apply_character(char_data: CharacterData) -> void:
 
 	deck.clear()
 	for card_id in char_data.starting_deck:
-		var c: CardData = Data.get_card(card_id)
+		# Generic basics (strike/defend) resolve to this character's variant
+		# (strike_ironclad/…) when one exists. See Data.variant_card_id.
+		var c: CardData = Data.get_card_for_character(card_id, char_data.id)
 		if c != null:
 			deck.append(CardInstance.from_data(c))
 

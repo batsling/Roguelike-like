@@ -94,7 +94,7 @@ func test_rich_mode_wraps_changed_numbers_in_bbcode() -> void:
 func test_strike_dummy_boost_folds_into_number_with_power() -> void:
 	GameState.reset_run()
 	GameState.add_item(Data.get_item(&"strike_dummy"))
-	var strike: CardData = Data.get_card(&"strike")   # "Deal 6 Dmg Melee."
+	var strike: CardData = Data.get_card(&"strike_ironclad")   # "Deal 6 Dmg Melee."
 	var p := CombatActor.new()
 	p.is_player = true
 	p.add_status(&"power", 3)
@@ -104,13 +104,13 @@ func test_strike_dummy_boost_folds_into_number_with_power() -> void:
 func test_strike_dummy_boost_folds_even_without_player() -> void:
 	GameState.reset_run()
 	GameState.add_item(Data.get_item(&"strike_dummy"))
-	var strike: CardData = Data.get_card(&"strike")
+	var strike: CardData = Data.get_card(&"strike_ironclad")
 	# No combat scaling, but the +3 boost still folds in (6 -> 9).
 	assert_eq(CardScaling.scale_text(strike.description, null, false, strike), "Deal 9 Dmg Melee.")
 
 func test_no_boost_card_unchanged_without_player() -> void:
 	GameState.reset_run()
-	var strike: CardData = Data.get_card(&"strike")
+	var strike: CardData = Data.get_card(&"strike_ironclad")
 	# No item owned, no player -> text is returned untouched.
 	assert_eq(CardScaling.scale_text(strike.description, null, false, strike), "Deal 6 Dmg Melee.")
 
