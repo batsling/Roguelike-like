@@ -16,14 +16,17 @@ class_name AddonSystem
 # Everything here is READ-ONLY over the catalog and the card's addon slugs, so
 # consulting it can never mutate state — scenes ask it questions, then act.
 
-const _MODE_FIELD := {
-	Stats.Mode.DECKBUILDER: "db_verb",
-	Stats.Mode.ACTION: "action_verb",
-	Stats.Mode.STRATEGY: "strategy_verb",
-}
-
 static var _index: Dictionary = {}          # addon key -> catalog entry
 static var _clause_cache: Dictionary = {}   # "key|field" -> Array[Dictionary]
+
+# Stats.Mode -> catalog verb field. A function (not a const) because the autoload
+# enum isn't constant-foldable in a const initializer.
+static func _mode_field(mode) -> String:
+	match mode:
+		Stats.Mode.DECKBUILDER: return "db_verb"
+		Stats.Mode.ACTION: return "action_verb"
+		Stats.Mode.STRATEGY: return "strategy_verb"
+	return ""
 
 static func _addon_index() -> Dictionary:
 	if _index.is_empty():
@@ -67,7 +70,7 @@ static func _parse_cell(text: String) -> Array:
 
 # All parsed clauses for a single addon key in one mode (cached).
 static func _clauses_for_key(key: String, mode) -> Array:
-	var field: String = _MODE_FIELD.get(mode, "")
+	var field: String = _mode_field(mode)
 	if field == "":
 		return []
 	var cache_key: String = key + "|" + field
@@ -76,13 +79,24 @@ static func _clauses_for_key(key: String, mode) -> Array:
 		_clause_cache[cache_key] = _parse_cell(String(entry.get(field, "")))
 	return _clause_cache[cache_key]
 
-# All clauses across every addon slug on `card` for `mode`.
+# The lifecycle keywords live on CardData as bool fields (parse_keywords routes
+# them to flags, not the addons[] array), so map each true flag back to its
+# addon key when gathering verbs. Names match the CardData field + the catalog
+# Key exactly. `retain` is a flag but not a catalog addon, so it's excluded.
+const _FLAG_KEYS: Array[String] = ["exhaust", "ethereal", "innate", "unplayable", "eternal"]
+
+# All clauses across every addon on `card` for `mode` — both the free-form
+# slugs in card.addons AND the bool-flag lifecycle keywords.
 static func clauses_for(card, mode) -> Array:
 	var out: Array = []
-	if card == null or not ("addons" in card):
+	if card == null:
 		return out
-	for addon_name in card.addons:
-		out.append_array(_clauses_for_key(String(addon_name), mode))
+	if "addons" in card:
+		for addon_name in card.addons:
+			out.append_array(_clauses_for_key(String(addon_name), mode))
+	for flag in _FLAG_KEYS:
+		if (flag in card) and bool(card.get(flag)):
+			out.append_array(_clauses_for_key(flag, mode))
 	return out
 
 # ---------------------------------------------------------------------------
