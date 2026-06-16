@@ -40,6 +40,9 @@ XLSX_PATH = os.environ.get(
     "CARDS_XLSX", os.path.join(PROJECT_ROOT, "tools", "Roguelikes.xlsx"))
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "cards")
 CARD_IMG_DIR = os.path.join(PROJECT_ROOT, "images", "cards")
+# Weapon-derived cards (Barrel, Blasma Pistol, Blood Magic) keep their art with
+# the items, so resolve images from cards/ first, then items/.
+ITEM_IMG_DIR = os.path.join(PROJECT_ROOT, "images", "items")
 
 # CardData.CardType enum order.
 CARD_TYPE = {
@@ -65,9 +68,31 @@ ATTACK_SIZE_WORDS = {"short", "medium", "large", "full", "small"}
 ATTACK_FLAG_TOKENS = {"pierce", "crescent"}
 # Bare size words that also seed range_class for the legacy fallback path.
 RANGE_CLASS_WORDS = {"short", "medium", "large"}
-# Tokens that name a damage type (vs a target) in a dmg clause.
-DAMAGE_TYPES = {"melee", "ranged", "cleave"}
+# Tokens that name a damage type in a dmg clause. NOTE: `cleave` is NOT a damage
+# type — it's a target modifier meaning "hit all enemies" (target: all_enemies),
+# matching how the hand-authored .tres encode Cleave/Thunderclap/Dagger Spray.
+DAMAGE_TYPES = {"melee", "ranged"}
 TRIGGERS = {"eot", "on_action", "lifecycle"}
+
+
+def _value_hits(s):
+    """'5x2' -> (5, 2); '6' -> (6, None); non-numeric -> (0, None)."""
+    m = re.match(r"^(-?\d+)(?:x(\d+))?$", str(s).strip())
+    if not m:
+        return 0, None
+    return int(m.group(1)), (int(m.group(2)) if m.group(2) else None)
+
+
+def _split_pos_kv(args):
+    """Split a clause's args into positional tokens and key=value pairs."""
+    pos, kv = [], {}
+    for a in args:
+        if "=" in a:
+            k, v = a.split("=", 1)
+            kv[k.strip().lower()] = v.strip()
+        else:
+            pos.append(a)
+    return pos, kv
 
 
 def slugify(name: str) -> str:
@@ -93,64 +118,112 @@ def parse_keywords(raw):
         return flags, addons
     for tok in str(raw).split(","):
         t = tok.strip()
-        if not t:
+        if not t or t.lower() in ("n/a", "none"):
             continue
         key = t.lower()
         if key in FLAG_KEYWORDS:
             flags[key] = True
         else:
-            addons.append(t)
+            # Addon names are stored as slugs in the .tres (the form the engine
+            # matches): "Fishing Weight" -> fishing_weight, "Wealth" -> wealth.
+            addons.append(slugify(t))
     return flags, addons
 
 
 def _effect_from_tokens(tokens):
-    """verb:arg:arg... -> structured effect dict, or ('destroy_after', n)."""
+    """verb:arg:arg... -> structured effect dict, or a marker tuple
+    ('destroy_after', n) / ('merge', field, value) for cross-clause fields."""
     if not tokens:
         return None
     verb = tokens[0]
     args = tokens[1:]
 
-    if verb == "inflict":
-        status = args[0] if len(args) > 0 else ""
-        stacks = int(args[1]) if len(args) > 1 and args[1].isdigit() else 1
-        target = "self" if "self" in args[2:] else "enemy"
-        return {"type": "status", "status": status, "stacks": stacks, "target": target}
+    # Tolerate a glued damage token like "dmg2x3" (== "dmg:2x3").
+    m = re.match(r"^dmg(\d.*)$", verb)
+    if m:
+        verb, args = "dmg", [m.group(1)] + args
+
+    pos, kv = _split_pos_kv(args)
 
     if verb == "dmg":
-        value = int(args[0]) if args and args[0].lstrip("-").isdigit() else 0
+        value, hits = _value_hits(pos[0]) if pos else (0, None)
         eff = {"type": "dmg", "value": value, "target": "enemy"}
-        for a in args[1:]:
-            if a == "self":
+        for a in pos[1:]:
+            al = a.lower()
+            if al in DAMAGE_TYPES:
+                eff["damage_type"] = al
+            elif al == "cleave":
+                eff["target"] = "all_enemies"
+            elif al == "self":
                 eff["target"] = "self"
-            elif a in DAMAGE_TYPES:
-                eff["damage_type"] = a
+        if hits:
+            eff["hits"] = hits
+        # key=value modifiers on a dmg clause.
+        if "if_status" in kv:
+            eff["if_target_status"] = kv["if_status"]
+        if "infuse" in kv:
+            eff["infuse"] = int(float(kv["infuse"]))
+        if "power_multiplier" in kv:
+            eff["power_multiplier"] = int(float(kv["power_multiplier"]))
         return eff
 
+    if verb == "inflict":
+        status = pos[0] if len(pos) > 0 else ""
+        stacks = int(pos[1]) if len(pos) > 1 and pos[1].isdigit() else 1
+        rest = [p.lower() for p in pos[2:]]
+        target = "enemy"
+        if "self" in rest:
+            target = "self"
+        elif "cleave" in rest:
+            target = "all_enemies"
+        return {"type": "status", "status": status, "stacks": stacks, "target": target}
+
     if verb == "lose_hp":
-        value = int(args[0]) if args and args[0].isdigit() else 1
+        value = int(pos[0]) if pos and pos[0].isdigit() else 1
         eff = {"type": "lose_hp", "value": value}
-        if "per_action" in args[1:]:
+        rest = [p.lower() for p in pos[1:]]
+        if "per_action" in rest:
             eff["per"] = "action"
-        elif "per_card_in_hand" in args[1:]:
+        elif "per_card_in_hand" in rest:
             eff["per"] = "card_in_hand"
         return eff
 
     if verb == "conjure":
-        card_id = args[0] if len(args) > 0 else "self"
-        dest = args[1] if len(args) > 1 else "discard"
-        return {"type": "conjure", "card_id": card_id, "destination": dest}
+        card_id = pos[0] if len(pos) > 0 else "self"
+        dest = pos[1] if len(pos) > 1 else "discard"
+        count = int(float(kv["count"])) if "count" in kv else 1
+        return {"type": "conjure", "card_id": card_id, "destination": dest, "count": count}
+
+    if verb == "recall":
+        # recall:cost=0 -> pull matching cards from discard to hand.
+        eff = {"type": "recall", "from": "discard", "to": "hand"}
+        if "cost" in kv:
+            eff["filter"] = {"cost": int(float(kv["cost"]))}
+        return eff
+
+    if verb == "discard":
+        value = int(pos[0]) if pos and pos[0].isdigit() else 1
+        eff = {"type": "discard", "value": value}
+        if "random" in [p.lower() for p in pos[1:]]:
+            eff["random"] = True
+        return eff
+
+    if verb == "power_multiplier":
+        # Authored as its own clause (e.g. Heavy Blade) but stored as a field on
+        # the preceding dmg effect — fold it in during parse_effects.
+        n = int(float(pos[0])) if pos else 1
+        return ("merge", "power_multiplier", n)
 
     if verb == "destroy_after":
-        n = int(args[0]) if args and args[0].isdigit() else -1
+        n = int(pos[0]) if pos and pos[0].isdigit() else -1
         return ("destroy_after", n)
 
-    # Generic passthrough for simple on-play verbs (block/draw/gain etc.) so the
-    # --all path has a fighting chance; refine as the full catalogue is ported.
-    if verb == "gain" and len(args) >= 2:
-        return {"type": args[0], "value": int(args[1]) if args[1].isdigit() else 0,
+    # Generic passthrough for simple on-play verbs (block/draw/gain etc.).
+    if verb == "gain" and len(pos) >= 2:
+        return {"type": pos[0], "value": int(pos[1]) if pos[1].isdigit() else 0,
                 "target": "self"}
-    if verb in ("draw", "block", "heal") and args:
-        return {"type": verb, "value": int(args[0]) if args[0].isdigit() else 0}
+    if verb in ("draw", "block", "heal") and pos:
+        return {"type": verb, "value": int(pos[0]) if pos[0].isdigit() else 0}
 
     # Unknown verb -> keep raw so it's visible in the .tres rather than dropped.
     return {"type": verb, "raw": ":".join(tokens)}
@@ -178,8 +251,17 @@ def parse_effects(raw):
         eff = _effect_from_tokens([t.strip() for t in clause.split(":") if t.strip()])
         if eff is None:
             continue
-        if isinstance(eff, tuple) and eff[0] == "destroy_after":
-            destroy_after = eff[1]
+        if isinstance(eff, tuple):
+            if eff[0] == "destroy_after":
+                destroy_after = eff[1]
+            elif eff[0] == "merge":
+                # Fold a modifier (power_multiplier) onto the most recent dmg
+                # effect in the same group.
+                bucket = triggers[-1]["effects"] if trig and triggers else on_play
+                for e in reversed(bucket):
+                    if e.get("type") == "dmg":
+                        e[eff[1]] = eff[2]
+                        break
             continue
         if trig in ("eot", "on_play_other"):
             triggers.append({"on": trig, "effects": [eff]})
@@ -255,11 +337,15 @@ def packed_string_array(items) -> str:
 def card_tres(row) -> tuple:
     name = str(row["Name"]).strip()
     cid = slugify(name)
+    # The id keeps the disambiguating suffix ("Strike (Ironclad)" -> strike_ironclad),
+    # but the in-game display name drops it ("Strike").
+    display = re.sub(r"\s*\([^)]*\)\s*$", "", name).strip() or name
     ctype = CARD_TYPE.get(str(row.get("Type", "")).strip().lower(), 0)
     rarity = RARITY.get(str(row.get("Rarity", "")).strip().lower(), 1)
     cost = parse_cost(row.get("Cost"))
     desc = str(row.get("Description") or "").strip()
-    tags = [t.strip() for t in str(row.get("Tags") or "").split(",") if t.strip()]
+    tags = [t.strip() for t in str(row.get("Tags") or "").split(",")
+            if t.strip() and t.strip().lower() not in ("n/a", "none")]
     source = str(row.get("Game") or "").strip()
     if source.upper() in ("", "N/A"):
         source = ""
@@ -272,6 +358,8 @@ def card_tres(row) -> tuple:
     img_res = None
     if os.path.exists(os.path.join(CARD_IMG_DIR, img_name + ".png")):
         img_res = "res://images/cards/%s.png" % img_name
+    elif os.path.exists(os.path.join(ITEM_IMG_DIR, img_name + ".png")):
+        img_res = "res://images/items/%s.png" % img_name
 
     on_play, triggers, destroy_after = parse_effects(row.get("Effects"))
     flags, addons = parse_keywords(row.get("Keywords"))
@@ -279,6 +367,24 @@ def card_tres(row) -> tuple:
     # "Range" header when present; either holds the same DSL.
     attack_raw = row.get("Attack", row.get("Range"))
     attack_shape, attack_params, range_class = parse_attack(attack_raw)
+
+    # Upgrade form (the "↑" columns). A card is upgradable only when something
+    # actually changes — matching the hand-authored cards where weapons whose
+    # "↑" cells merely echo the base stay can_upgrade = false.
+    up_desc = str(row.get("↑ Description") or "").strip()
+    up_eff_s = str(row.get("↑ Effects") or "").strip()
+    base_eff_s = str(row.get("Effects") or "").strip()
+    up_cost_raw = row.get("↑ Cost")
+    up_cost_present = up_cost_raw is not None and str(up_cost_raw).strip() != ""
+    up_cost_val = parse_cost(up_cost_raw) if up_cost_present else cost
+    can_up = (
+        (up_eff_s != "" and up_eff_s != base_eff_s)
+        or (up_desc != "" and up_desc != desc)
+        or (up_cost_present and up_cost_val != cost)
+    )
+    up_on_play: list = []
+    if can_up:
+        up_on_play, _, _ = parse_effects(up_eff_s if up_eff_s else base_eff_s)
 
     lines = []
     load_steps = 3 if img_res else 2
@@ -294,7 +400,7 @@ def card_tres(row) -> tuple:
     lines.append("[resource]")
     lines.append('script = ExtResource("1_card")')
     lines.append("id = &\"%s\"" % cid)
-    lines.append('display_name = "%s"' % gd_str(name))
+    lines.append('display_name = "%s"' % gd_str(display))
     lines.append("type = %d" % ctype)
     lines.append("rarity = %d" % rarity)
     lines.append("cost = %d" % cost)
@@ -307,7 +413,12 @@ def card_tres(row) -> tuple:
     lines.append("tags = %s" % packed_string_array(tags))
     if source:
         lines.append('source_game = "%s"' % gd_str(source))
-    lines.append("can_upgrade = false")
+    lines.append("can_upgrade = %s" % ("true" if can_up else "false"))
+    if can_up:
+        if up_desc:
+            lines.append('upgraded_description = "%s"' % gd_str(up_desc))
+        lines.append("upgraded_cost = %d" % (up_cost_val if up_cost_val != cost else -999))
+        lines.append("upgraded_effects = %s" % json.dumps(up_on_play))
     if img_res:
         lines.append('image = ExtResource("2_img")')
     for flag in sorted(FLAG_KEYWORDS):
@@ -315,7 +426,9 @@ def card_tres(row) -> tuple:
             lines.append("%s = true" % flag)
     if addons:
         lines.append("addons = %s" % packed_string_array(addons))
-    if range_class:
+    # range_class is only the legacy-fallback reach for un-annotated cards; when
+    # an attack_shape drives delivery it's unused, so don't emit it.
+    if range_class and not attack_shape:
         lines.append('range_class = &"%s"' % range_class)
     if attack_shape:
         lines.append('attack_shape = &"%s"' % attack_shape)
