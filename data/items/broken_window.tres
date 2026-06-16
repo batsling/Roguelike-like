@@ -10,22 +10,8 @@ display_name = "Broken Window"
 kind = 1
 rarity = 2
 description = "At the start of combat, gain 3 Bleed Thorns and 1 Bleed."
-triggers = [{
-"on": "combat_started",
-"effects": [{
-"type": "status",
-"status": "bleed_thorns",
-"stacks": 3,
-"target": "self"
-}, {
-"type": "status",
-"status": "bleed",
-"stacks": 1,
-"target": "self"
-}]
-}]
+triggers = [{"on": "combat_started", "effects": [{"type": "status", "status": "bleed_thorns", "stacks": 3, "target": "self"}, {"type": "status", "status": "bleed", "stacks": 1, "target": "self"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Mewgenics"
 tags = PackedStringArray("glass", "wood")

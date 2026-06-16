@@ -10,18 +10,8 @@ display_name = "Philosopher's Stone"
 kind = 0
 rarity = 2
 description = "Gain +1 Max Energy, but all enemies start with 1 Power."
-triggers = [{
-"on": "enemy_spawned",
-"effects": [{
-"type": "status",
-"status": "power",
-"stacks": 1
-}]
-}]
-stat_bonuses = {
-"max_energy": 1
-}
-scaling = []
+triggers = [{"on": "enemy_spawned", "effects": [{"type": "status", "status": "power", "stacks": 1}]}]
+stat_bonuses = {"max_energy": 1}
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray("stone")

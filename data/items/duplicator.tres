@@ -6,18 +6,13 @@
 [resource]
 script = ExtResource("1_item")
 id = &"duplicator"
+display_name = "Duplicator"
 kind = 1
 rarity = 2
-display_name = "Duplicator"
 description = "Your Weapon Attack Cards gain Replay 1."
 triggers = []
-card_grants = [{
-"if_card_tag": "weapon",
-"if_card_type": "attack",
-"addons": ["replay"]
-}]
+card_grants = [{"if_card_tag": "weapon", "if_card_type": "attack", "addons": ["replay"]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Vampire Survivors"
 tags = PackedStringArray("wearable", "ring")

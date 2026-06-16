@@ -11,10 +11,7 @@ kind = 0
 rarity = 1
 description = "Gain +1 Field of View (an extra portal option on the overworld)."
 triggers = []
-stat_bonuses = {
-"fov_bonus": 1
-}
-scaling = []
+stat_bonuses = {"fov_bonus": 1}
 max_uses = -1
 source_game = "The Binding of Isaac"
 tags = PackedStringArray()

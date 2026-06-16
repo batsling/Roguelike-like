@@ -10,17 +10,8 @@ display_name = "Metal Plate"
 kind = 1
 rarity = 1
 description = "When you kill an enemy, gain +1 Brace."
-triggers = [{
-"on": "enemy_killed",
-"effects": [{
-"type": "status",
-"status": "brace",
-"stacks": 1,
-"target": "self"
-}]
-}]
+triggers = [{"on": "enemy_killed", "effects": [{"type": "status", "status": "brace", "stacks": 1, "target": "self"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Mewgenics"
 tags = PackedStringArray("scrap", "metal")

@@ -55,9 +55,12 @@ gain_gold/gain_hp/gain_max_hp/gain_chest/lose_hp N`, `gain_stat <s> N`,
 it field-by-field against the in-memory parse, normalizing away cosmetic noise
 (field order, implicit `enemy` target, log-only `label`/`notify`/`silent`).
 
-**Status: 0 gameplay-critical diffs across all 89 implemented items.** Remaining
-diffs are cosmetic: `description` wording (sheet prose vs. the polished `.tres`
-text) and 6 `tags` disagreements (see below).
+**Status: items are flipped — all 89 `data/items/*.tres` are generated from the
+sheet, with 0 gameplay-critical diffs** (verified by parsing the pre-flip files
+and semantically diffing them against the regenerated output: descriptions,
+tags, `source_game`, effects, and charge/use fields all preserved). The only
+change in the files is formatting (multi-line arrays collapse to single-line
+JSON). Re-run `generate_item_tres.py` after any sheet edit.
 
 ## Cell changes applied to `tools/Roguelikes.xlsx`
 
@@ -77,6 +80,9 @@ whether the sheet's old value was actually intended:
 - **Hollow Heart** `Rating` `Common` → `Uncommon`.
 - **Mango** `Rating` `Rare` → `Uncommon`.
 
-Still-open cosmetic `tags` disagreements (sheet vs. code), not yet reconciled:
-`bear_trap_mask` (trap↔wearable), `beefy_ring` (scaling↔wearable), `bird_head`
-(head↔devilish), and 3 more — surfaced by the parity harness.
+Prose backport (so the sheet is the single source and the flip kept the
+polished text): the 89 `.tres` descriptions were copied into the `Description`
+column (87 changed), and 6 `tags` cells were reconciled to the `.tres` values
+(`bear_trap_mask` mask,trap; `beefy_ring` ring,scaling; `bird_head` head,bird;
+`blood_magic` magic,blood; `brain_candy` drug,pill,devilish; `brass_knuckles`
+offense).

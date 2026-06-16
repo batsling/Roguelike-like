@@ -10,17 +10,8 @@ display_name = "Holy Mantle"
 kind = 1
 rarity = 4
 description = "At the start of combat, gain 1 Buffer."
-triggers = [{
-"on": "combat_started",
-"effects": [{
-"type": "status",
-"status": "buffer",
-"stacks": 1,
-"target": "self"
-}]
-}]
+triggers = [{"on": "combat_started", "effects": [{"type": "status", "status": "buffer", "stacks": 1, "target": "self"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "The Binding of Isaac"
 tags = PackedStringArray("holy")

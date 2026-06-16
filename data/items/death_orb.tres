@@ -10,20 +10,8 @@ display_name = "Death Orb"
 kind = 1
 rarity = 1
 description = "When you play a Power, deal Xx2 damage to each enemy, where X is the number of Curses you have."
-triggers = [{
-"on": "card_played",
-"if_card_type": "power",
-"effects": [{
-"type": "dmg",
-"value_from": "curses",
-"value_mult": 2,
-"damage_type": "true",
-"target": "all_enemies"
-}]
-}]
-card_grants = []
+triggers = [{"on": "card_played", "if_card_type": "power", "effects": [{"type": "dmg", "value_mult": 2, "value_from": "curses", "damage_type": "true", "target": "all_enemies"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Forward: Escape the Fold"
 tags = PackedStringArray("orb", "devilroom")

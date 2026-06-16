@@ -10,17 +10,8 @@ display_name = "Garlic"
 kind = 1
 rarity = 1
 description = "At the start of combat, gain +1 Brace."
-triggers = [{
-"on": "combat_started",
-"effects": [{
-"type": "status",
-"status": "brace",
-"stacks": 1,
-"target": "self"
-}]
-}]
+triggers = [{"on": "combat_started", "effects": [{"type": "status", "status": "brace", "stacks": 1, "target": "self"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Super Auto Pets"
 tags = PackedStringArray("food")

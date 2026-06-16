@@ -11,10 +11,7 @@ kind = 0
 rarity = 2
 description = "Gain +6 Dexterity."
 triggers = []
-stat_bonuses = {
-"dexterity": 6
-}
-scaling = []
+stat_bonuses = {"dexterity": 6}
 max_uses = -1
 source_game = "Caves of Qud"
 tags = PackedStringArray("cybernetics")

@@ -6,27 +6,12 @@
 [resource]
 script = ExtResource("1_item")
 id = &"happy_flower"
+display_name = "Happy Flower"
 kind = 1
 rarity = 0
-display_name = "Happy Flower"
 description = "Every 3 turns, Gain +1 Energy."
-triggers = [{
-"on": "turn_tick",
-"silent": true,
-"effects": [{
-"type": "counter",
-"key": "turns",
-"every": 3,
-"label": "Happy Flower",
-"effects": [{
-"type": "gain_energy",
-"value": 1
-}]
-}]
-}]
-card_grants = []
+triggers = [{"on": "turn_tick", "silent": true, "effects": [{"type": "counter", "key": "turns", "every": 3, "effects": [{"type": "gain_energy", "value": 1}], "label": "Happy Flower"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray("flower")

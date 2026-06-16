@@ -10,19 +10,8 @@ display_name = "Wooden Nickel"
 kind = 6
 rarity = 0
 description = "50% chance to gain 1, 5, or 10 gold. Luck biases the payout toward the bigger amounts."
-triggers = [{
-"on": "item_used",
-"effects": [{
-"type": "chance",
-"percent": 50,
-"effect": {
-"type": "roll_gold",
-"amounts": [1, 5, 10]
-}
-}]
-}]
+triggers = [{"on": "item_used", "effects": [{"type": "chance", "percent": 50, "effect": {"type": "roll_gold", "amounts": [1, 5, 10]}}]}]
 stat_bonuses = {}
-scaling = []
 charge_cost = 1
 starts_charged = true
 source_game = "The Binding of Isaac"

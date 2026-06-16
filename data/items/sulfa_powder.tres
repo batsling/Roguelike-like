@@ -10,16 +10,8 @@ display_name = "Sulfa Powder"
 kind = 1
 rarity = 1
 description = "At the start of your turn, gain Block equal to a D12 roll (Luck helps as it normally does)."
-triggers = [{
-"on": "turn_started",
-"effects": [{
-"type": "roll_block",
-"sides": 12,
-"target": "self"
-}]
-}]
+triggers = [{"on": "turn_started", "effects": [{"type": "roll_block", "sides": 12, "target": "self"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Brutal Orchestra"
 tags = PackedStringArray()

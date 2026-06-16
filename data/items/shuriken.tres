@@ -6,30 +6,12 @@
 [resource]
 script = ExtResource("1_item")
 id = &"shuriken"
+display_name = "Shuriken"
 kind = 1
 rarity = 1
-display_name = "Shuriken"
 description = "Every time you play 3 Attacks in a single turn, Gain +1 Power."
-triggers = [{
-"on": "card_played",
-"if_card_type": "attack",
-"silent": true,
-"effects": [{
-"type": "counter",
-"key": "attacks_this_turn",
-"every": 3,
-"label": "Shuriken",
-"effects": [{
-"type": "status",
-"status": "power",
-"stacks": 1,
-"target": "self"
-}]
-}]
-}]
-card_grants = []
+triggers = [{"on": "card_played", "if_card_type": "attack", "silent": true, "effects": [{"type": "counter", "key": "attacks_this_turn", "every": 3, "effects": [{"type": "status", "status": "power", "stacks": 1, "target": "self"}], "label": "Shuriken"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray("ninja")

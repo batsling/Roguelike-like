@@ -10,20 +10,8 @@ display_name = "Head of the Keeper"
 kind = 1
 rarity = 1
 description = "When you deal damage to an enemy, 5% chance to gain 1 Gold."
-triggers = [{
-"on": "attack_landed",
-"silent": true,
-"effects": [{
-"type": "chance",
-"percent": 5,
-"effect": {
-"type": "gain_gold",
-"value": 1
-}
-}]
-}]
+triggers = [{"on": "attack_landed", "silent": true, "effects": [{"type": "chance", "percent": 5, "effect": {"type": "gain_gold", "value": 1}}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "The Binding of Isaac"
 tags = PackedStringArray("coin")

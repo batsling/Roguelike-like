@@ -10,18 +10,8 @@ display_name = "Mango"
 kind = 5
 rarity = 1
 description = "Gain 14 Max HP and 14 HP."
-triggers = [{
-"on": "item_acquired",
-"effects": [{
-"type": "gain_max_hp",
-"value": 14
-}, {
-"type": "gain_hp",
-"value": 14
-}]
-}]
+triggers = [{"on": "item_acquired", "effects": [{"type": "gain_max_hp", "value": 14}, {"type": "gain_hp", "value": 14}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray("food", "fruit")

@@ -10,16 +10,8 @@ display_name = "Roid Rage"
 kind = 2
 rarity = 0
 description = "Gain +5 Strength this combat/event."
-triggers = [{
-"on": "item_used",
-"effects": [{
-"type": "temp_stat",
-"stat": "strength",
-"value": 5
-}]
-}]
+triggers = [{"on": "item_used", "effects": [{"type": "temp_stat", "stat": "strength", "value": 5}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = 1
 source_game = "Mewgenics"
 tags = PackedStringArray("drug", "pill", "consumable")

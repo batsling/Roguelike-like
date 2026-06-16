@@ -6,14 +6,12 @@
 [resource]
 script = ExtResource("1_item")
 id = &"molten_egg"
+display_name = "Molten Egg"
 kind = 1
 rarity = 1
-display_name = "Molten Egg"
 description = "Whenever you add an Attack card to your deck, Upgrade it."
 triggers = []
-card_grants = []
 stat_bonuses = {}
-scaling = []
 upgrade_card_types = PackedStringArray("attack")
 max_uses = -1
 source_game = "Slay the Spire"

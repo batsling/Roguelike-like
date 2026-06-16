@@ -10,17 +10,8 @@ display_name = "Horn Cleat"
 kind = 1
 rarity = 1
 description = "Start the 2nd turn of combat with 14 Block."
-triggers = [{
-"on": "turn_started",
-"if_turn": 2,
-"effects": [{
-"type": "block",
-"value": 14,
-"target": "self"
-}]
-}]
+triggers = [{"on": "turn_started", "if_turn": 2, "effects": [{"type": "block", "value": 14, "target": "self"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray("sea", "ship")

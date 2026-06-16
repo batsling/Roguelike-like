@@ -12,10 +12,7 @@ rarity = 1
 description = "Whenever you would gain permanent Intelligence, gain +1 additional Intelligence."
 triggers = []
 stat_bonuses = {}
-scaling = []
-stat_gain_bonus = {
-"intelligence": 1
-}
+stat_gain_bonus = {"intelligence": 1}
 max_uses = -1
 source_game = "Brotato"
 tags = PackedStringArray("snow")

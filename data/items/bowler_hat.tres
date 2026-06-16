@@ -11,12 +11,7 @@ kind = 0
 rarity = 1
 description = "Gain +3 Luck and +18 Harvesting, but -3% Crit Chance."
 triggers = []
-stat_bonuses = {
-"crit_chance": -3,
-"harvesting": 18,
-"luck": 3
-}
-scaling = []
+stat_bonuses = {"luck": 3, "harvesting": 18, "crit_chance": -3}
 max_uses = -1
 source_game = "Brotato"
 tags = PackedStringArray("wearable", "hat")

@@ -10,17 +10,8 @@ display_name = "Whetstone"
 kind = 5
 rarity = 0
 description = "Upgrade 2 random Attacks."
-triggers = [{
-"on": "item_acquired",
-"effects": [{
-"type": "upgrade_random_cards",
-"card_type": "attack",
-"count": 2
-}]
-}]
-card_grants = []
+triggers = [{"on": "item_acquired", "effects": [{"type": "upgrade_random_cards", "card_type": "attack", "count": 2}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray("stone")

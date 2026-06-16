@@ -10,22 +10,8 @@ display_name = "Golden Beetle"
 kind = 1
 rarity = 2
 description = "Whenever you get rid of a Curse or a Curse Card, gain one Chest."
-triggers = [{
-"on": "curse_removed",
-"effects": [{
-"type": "gain_chest",
-"value": 1
-}]
-}, {
-"on": "curse_card_removed",
-"effects": [{
-"type": "gain_chest",
-"value": 1
-}]
-}]
-card_grants = []
+triggers = [{"on": "curse_removed", "effects": [{"type": "gain_chest", "value": 1}]}, {"on": "curse_card_removed", "effects": [{"type": "gain_chest", "value": 1}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Forward: Escape the Fold"
 tags = PackedStringArray("bug")

@@ -10,15 +10,8 @@ display_name = "Hollow Heart"
 kind = 5
 rarity = 1
 description = "Gain 6 Max HP."
-triggers = [{
-"on": "item_acquired",
-"effects": [{
-"type": "gain_max_hp",
-"value": 6
-}]
-}]
+triggers = [{"on": "item_acquired", "effects": [{"type": "gain_max_hp", "value": 6}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Vampire Survivors"
 tags = PackedStringArray("heart")

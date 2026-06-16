@@ -6,14 +6,12 @@
 [resource]
 script = ExtResource("1_item")
 id = &"ice_cream"
+display_name = "Ice Cream"
 kind = 1
 rarity = 2
-display_name = "Ice Cream"
 description = "Energy carries over between turns. (Strategy: skipping your ability banks an empower charge.)"
 triggers = []
-card_grants = []
 stat_bonuses = {}
-scaling = []
 carries_leftover_energy = true
 max_uses = -1
 source_game = "Slay the Spire"

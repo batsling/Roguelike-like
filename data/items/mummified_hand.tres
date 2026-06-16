@@ -6,20 +6,12 @@
 [resource]
 script = ExtResource("1_item")
 id = &"mummified_hand"
+display_name = "Mummified Hand"
 kind = 1
 rarity = 2
-display_name = "Mummified Hand"
 description = "When you play a Power, a random card becomes free this turn (deckbuilder: a hand card costs 0; strategy: another ability needs no play; action: cooldowns are slashed)."
-triggers = [{
-"on": "card_played",
-"if_card_type": "power",
-"effects": [{
-"type": "free_random_hand_card"
-}]
-}]
-card_grants = []
+triggers = [{"on": "card_played", "if_card_type": "power", "effects": [{"type": "free_random_hand_card"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray("mummy")

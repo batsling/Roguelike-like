@@ -6,21 +6,13 @@
 [resource]
 script = ExtResource("1_item")
 id = &"leeching_seed"
+display_name = "Leeching Seed"
 kind = 0
 rarity = 1
-display_name = "Leeching Seed"
 description = "Your Strikes Gain Heal 1."
 triggers = []
-card_grants = [{
-"if_card_tag": "strike",
-"effects": [{
-"type": "heal",
-"value": 1,
-"target": "self"
-}]
-}]
+card_grants = [{"if_card_tag": "strike", "effects": [{"type": "heal", "value": 1, "target": "self"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Risk of Rain 2"
 tags = PackedStringArray("seed")

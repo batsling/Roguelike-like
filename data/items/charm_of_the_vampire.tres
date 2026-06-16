@@ -1,7 +1,6 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_charm_of_the_vampire"]
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://item_charm_of_the_vampire"]
 
 [ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
-[ext_resource type="Texture2D" path="res://images/items/CharmoftheVampire.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_item")
@@ -10,21 +9,8 @@ display_name = "Charm of the Vampire"
 kind = 1
 rarity = 1
 description = "When you defeat an enemy, 50% chance to heal 2 HP."
-triggers = [{
-"on": "enemy_killed",
-"effects": [{
-"type": "chance",
-"percent": 50,
-"effect": {
-"type": "heal",
-"value": 2,
-"target": "self",
-"notify": "Charm of the Vampire: +2 HP"
-}
-}]
-}]
+triggers = [{"on": "enemy_killed", "effects": [{"type": "chance", "percent": 50, "effect": {"type": "heal", "value": 2, "target": "self"}}]}]
 stat_bonuses = {}
 max_uses = -1
 source_game = "The Binding of Isaac"
 tags = PackedStringArray()
-image = ExtResource("2_img")

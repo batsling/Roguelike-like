@@ -6,17 +6,13 @@
 [resource]
 script = ExtResource("1_item")
 id = &"focus_crystal"
+display_name = "Focus Crystal"
 kind = 0
 rarity = 0
-display_name = "Focus Crystal"
 description = "Melee Attacks deal +1 Dmg."
 triggers = []
-card_grants = []
 stat_bonuses = {}
-scaling = []
-attack_damage_bonus = {
-"melee": 1
-}
+attack_damage_bonus = {"melee": 1}
 max_uses = -1
 source_game = "Risk of Rain 2"
 tags = PackedStringArray("crystal")

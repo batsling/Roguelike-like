@@ -12,7 +12,6 @@ rarity = 2
 description = "Your Strength, Dexterity, Intelligence, Charisma, FoV, Discovery, and Luck can never fall below the highest values they have reached."
 triggers = []
 stat_bonuses = {}
-scaling = []
 stat_floor = PackedStringArray("strength", "dexterity", "intelligence", "charisma", "fov_bonus", "discovery", "luck")
 max_uses = -1
 source_game = "The Binding of Isaac"

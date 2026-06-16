@@ -10,16 +10,8 @@ display_name = "Clover"
 kind = 2
 rarity = 0
 description = "Gain +5 Luck this combat/event."
-triggers = [{
-"on": "item_used",
-"effects": [{
-"type": "temp_stat",
-"stat": "luck",
-"value": 5
-}]
-}]
+triggers = [{"on": "item_used", "effects": [{"type": "temp_stat", "stat": "luck", "value": 5}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = 1
 source_game = "Mewgenics"
 tags = PackedStringArray("drug", "pill", "consumable")

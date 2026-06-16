@@ -12,12 +12,7 @@ rarity = 2
 description = "Gain +1 Strength per 20 Max HP."
 triggers = []
 stat_bonuses = {}
-scaling = [{
-"stat": "strength",
-"value": 1,
-"per": 20,
-"of": "max_hp"
-}]
+scaling = [{"stat": "strength", "value": 1, "per": 20, "of": "max_hp"}]
 max_uses = -1
 source_game = "Megabonk"
 tags = PackedStringArray("ring", "scaling")

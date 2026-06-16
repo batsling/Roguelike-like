@@ -10,14 +10,7 @@ display_name = "Blood Vial"
 kind = 1
 rarity = 0
 description = "At the start of combat, gain 2 HP."
-triggers = [{
-"on": "combat_started",
-"effects": [{
-"type": "heal",
-"value": 2,
-"target": "self"
-}]
-}]
+triggers = [{"on": "combat_started", "effects": [{"type": "heal", "value": 2, "target": "self"}]}]
 stat_bonuses = {}
 max_uses = -1
 source_game = "Slay the Spire"

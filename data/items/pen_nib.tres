@@ -6,27 +6,12 @@
 [resource]
 script = ExtResource("1_item")
 id = &"pen_nib"
+display_name = "Pen Nib"
 kind = 1
 rarity = 0
-display_name = "Pen Nib"
 description = "Every 10th Attack you play deals double damage."
-triggers = [{
-"on": "card_played",
-"if_card_type": "attack",
-"silent": true,
-"effects": [{
-"type": "counter",
-"key": "attacks_total",
-"every": 10,
-"label": "Pen Nib",
-"effects": [{
-"type": "attack_double"
-}]
-}]
-}]
-card_grants = []
+triggers = [{"on": "card_played", "if_card_type": "attack", "silent": true, "effects": [{"type": "counter", "key": "attacks_total", "every": 10, "effects": [{"type": "attack_double"}], "label": "Pen Nib"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray()

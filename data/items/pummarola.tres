@@ -10,17 +10,8 @@ display_name = "Pummarola"
 kind = 1
 rarity = 0
 description = "At the start of combat, gain 1 Regeneration."
-triggers = [{
-"on": "combat_started",
-"effects": [{
-"type": "status",
-"status": "regeneration",
-"stacks": 1,
-"target": "self"
-}]
-}]
+triggers = [{"on": "combat_started", "effects": [{"type": "status", "status": "regeneration", "stacks": 1, "target": "self"}]}]
 stat_bonuses = {}
-scaling = []
 max_uses = -1
 source_game = "Vampire Survivors"
 tags = PackedStringArray("heart")

@@ -11,14 +11,7 @@ kind = 1
 rarity = 0
 starter = true
 description = "At the end of combat, heal 6 HP."
-triggers = [{
-"on": "combat_ended",
-"effects": [{
-"type": "heal",
-"value": 6,
-"target": "self"
-}]
-}]
+triggers = [{"on": "combat_ended", "effects": [{"type": "heal", "value": 6, "target": "self"}]}]
 stat_bonuses = {}
 max_uses = -1
 source_game = "Slay the Spire"
