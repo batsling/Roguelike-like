@@ -1423,16 +1423,25 @@ func get_loot_count(kind: String) -> int:
 func max_card_uses(card: CardData) -> int:
 	if card == null:
 		return 0
+	var result: int
 	if card.max_uses >= 0:
-		return card.max_uses
-	var base: int = 3
-	var r: int = card.rarity
-	if r >= 0 and r < DEFAULT_CARD_USES_BY_RARITY.size():
-		base = DEFAULT_CARD_USES_BY_RARITY[r]
-	var cost: int = card.cost
-	if cost < 0:  # X-cost
-		cost = 1
-	return maxi(1, base - maxi(0, cost - 1))
+		result = card.max_uses
+	else:
+		var base: int = 3
+		var r: int = card.rarity
+		if r >= 0 and r < DEFAULT_CARD_USES_BY_RARITY.size():
+			base = DEFAULT_CARD_USES_BY_RARITY[r]
+		var cost: int = card.cost
+		if cost < 0:  # X-cost
+			cost = 1
+		result = maxi(1, base - maxi(0, cost - 1))
+	# uses_per_combat addon (Exhaust -> uses_per_combat(1) in Strategy): cap the
+	# per-combat uses. AddonSystem returns -1 (no cap) for cards without the
+	# verb, so this is a no-op for everything else. card_uses is strategy-only.
+	var addon_cap: int = AddonSystem.uses_per_combat(card, Stats.Mode.STRATEGY)
+	if addon_cap >= 0:
+		result = mini(result, addon_cap)
+	return result
 
 # Remaining uses for a card, lazily seeded to its max on first read so a
 # freshly acquired card always starts full.
