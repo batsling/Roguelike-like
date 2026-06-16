@@ -1083,6 +1083,14 @@ func _on_unit_turn_started(unit) -> void:
 		_card_plays_remaining = 1
 		_ability_used_this_turn = false
 		_free_ability_card = null
+		# Innate -> free_play (Strategy): on the first player turn, one innate
+		# slotted ability is free to play (reuses the Mummified-Hand free slot).
+		if _player_turn_count == 1 and _loadout != null:
+			for c in _loadout.cards:
+				if AddonSystem.free_play_count(c.data, Stats.Mode.STRATEGY) > 0 \
+						and GameState.card_uses_remaining(c) > 0:
+					_free_ability_card = c
+					break
 		_pending_kind = Pending.NONE
 		_pending_card = null
 		_pending_spell = null
