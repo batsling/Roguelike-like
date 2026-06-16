@@ -10,20 +10,25 @@ Keywords column into the CardData bool flags + addon names, and the curse
 trigger tokens (eot:/on_action:/lifecycle:) into CardData.triggers /
 destroy_after_games.
 
-Scope: by default only CURSE-type rows are emitted (the curse-cards-first
-rollout). Pass --all to attempt every row (the full-catalogue path, which would
-overwrite the 34 hand-authored .tres — use with care).
+The whole `cardsnew` catalogue is now sheet-authored — every card type
+(attack/skill/power/curse) round-trips through this parser, so there are no
+hand-authored card .tres left to clobber.
 
-  python3 tools/generate_card_tres.py          # curses only
-  python3 tools/generate_card_tres.py --all     # whole sheet
+  python3 tools/generate_card_tres.py            # curses only (quick default)
+  python3 tools/generate_card_tres.py --attacks  # only ATTACK-type rows
+  python3 tools/generate_card_tres.py --all       # the whole sheet (full regen)
 
 Effects DSL (one card = `clause; clause; ...`):
   on-play (no prefix):  dmg:8:melee | gain:block:5 | inflict:vulnerable:2
   triggered:            eot: inflict:weak:1:self | on_action: lose_hp:1
   lifecycle:            lifecycle: destroy_after:3:games_beaten
-Target token `self` (vs default enemy) works on dmg/inflict; the damage-type
-tokens (melee/ranged/cleave) are a separate vocabulary so the parser tells them
-apart.
+Target token `self` (vs default enemy) works on dmg/inflict; `cleave` is a
+target modifier (-> all_enemies), not a damage type. Verbs covered include
+dmg (V or VxN, +if_status/infuse/power_multiplier), inflict, gain:block,
+gain:<status>, draw/discard/gain_energy/upgrade_hand(:all), conjure (+count),
+recall, boost_cards, gain_loot, chance:<pct>:<effect>, on_card_played:<effect>,
+exhaust_self, lose_hp. The "↑ Description/Effects/Cost" columns drive the
+upgrade form (N/A = no upgrade).
 """
 
 import argparse
@@ -191,7 +196,11 @@ def _effect_from_tokens(tokens):
     if verb == "conjure":
         card_id = pos[0] if len(pos) > 0 else "self"
         dest = pos[1] if len(pos) > 1 else "discard"
-        count = int(float(kv["count"])) if "count" in kv else 1
+        count = 1
+        if len(pos) > 2 and pos[2].isdigit():
+            count = int(pos[2])
+        if "count" in kv:
+            count = int(float(kv["count"]))
         return {"type": "conjure", "card_id": card_id, "destination": dest, "count": count}
 
     if verb == "recall":
@@ -214,15 +223,56 @@ def _effect_from_tokens(tokens):
         n = int(float(pos[0])) if pos else 1
         return ("merge", "power_multiplier", n)
 
+    if verb == "boost_cards":
+        # boost_cards:tag=shiv:dmg:4 -> match a tag, raise a stat by value.
+        eff = {"type": "boost_cards"}
+        if "tag" in kv:
+            eff["match_tag"] = kv["tag"]
+        if len(pos) >= 2:
+            eff["stat"] = pos[0]
+            eff["value"] = int(pos[1]) if pos[1].lstrip("-").isdigit() else 0
+        return eff
+
+    if verb == "gain_loot":
+        kind = pos[0] if pos else ""
+        value = int(pos[1]) if len(pos) > 1 and pos[1].isdigit() else 1
+        return {"type": "gain_loot", "kind": kind, "value": value}
+
+    if verb == "chance":
+        # chance:10:exhaust_self -> roll percent, then resolve the wrapped effect.
+        percent = int(pos[0]) if pos and pos[0].isdigit() else 0
+        inner = _effect_from_tokens(args[1:]) if len(args) > 1 else None
+        eff = {"type": "chance", "percent": percent}
+        if isinstance(inner, dict):
+            eff["effect"] = inner
+        return eff
+
+    if verb == "on_card_played":
+        # An installed power trigger stored as an on-play effect (After Image).
+        inner = _effect_from_tokens(args) if args else None
+        return {"type": "trigger", "on": "card_played",
+                "effect": inner if isinstance(inner, dict) else {}}
+
+    if verb == "exhaust_self":
+        return {"type": "exhaust_self"}
+
     if verb == "destroy_after":
         n = int(pos[0]) if pos and pos[0].isdigit() else -1
         return ("destroy_after", n)
 
     # Generic passthrough for simple on-play verbs (block/draw/gain etc.).
     if verb == "gain" and len(pos) >= 2:
-        return {"type": pos[0], "value": int(pos[1]) if pos[1].isdigit() else 0,
-                "target": "self"}
-    if verb in ("draw", "block", "heal") and pos:
+        what = pos[0]
+        val = int(pos[1]) if pos[1].lstrip("-").isdigit() else 0
+        # Block is a first-class effect type; other gains (power/dexterity/…)
+        # are buff statuses applied to the player.
+        if what == "block":
+            return {"type": "block", "value": val, "target": "self"}
+        return {"type": "status", "status": what, "stacks": val, "target": "self"}
+    if verb in ("draw", "block", "heal", "gain_energy", "lose_energy", "upgrade_hand") and pos:
+        # upgrade_hand:all upgrades every card in hand (Armaments+).
+        if verb == "upgrade_hand" and pos[0].lower() == "all":
+            return {"type": "upgrade_hand", "value": "all"}
         return {"type": verb, "value": int(pos[0]) if pos[0].isdigit() else 0}
 
     # Unknown verb -> keep raw so it's visible in the .tres rather than dropped.
@@ -370,13 +420,17 @@ def card_tres(row) -> tuple:
 
     # Upgrade form (the "↑" columns). A card is upgradable only when something
     # actually changes — matching the hand-authored cards where weapons whose
-    # "↑" cells merely echo the base stay can_upgrade = false.
-    up_desc = str(row.get("↑ Description") or "").strip()
-    up_eff_s = str(row.get("↑ Effects") or "").strip()
+    # "↑" cells merely echo the base stay can_upgrade = false. "N/A"/"None"/blank
+    # in any ↑ cell means "no upgrade" (curses fill them with N/A).
+    def _clean(v):
+        s = "" if v is None else str(v).strip()
+        return "" if s.upper() in ("", "N/A", "NONE") else s
+    up_desc = _clean(row.get("↑ Description"))
+    up_eff_s = _clean(row.get("↑ Effects"))
     base_eff_s = str(row.get("Effects") or "").strip()
-    up_cost_raw = row.get("↑ Cost")
-    up_cost_present = up_cost_raw is not None and str(up_cost_raw).strip() != ""
-    up_cost_val = parse_cost(up_cost_raw) if up_cost_present else cost
+    up_cost_clean = _clean(row.get("↑ Cost"))
+    up_cost_present = up_cost_clean != ""
+    up_cost_val = parse_cost(row.get("↑ Cost")) if up_cost_present else cost
     can_up = (
         (up_eff_s != "" and up_eff_s != base_eff_s)
         or (up_desc != "" and up_desc != desc)

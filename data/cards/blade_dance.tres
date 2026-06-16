@@ -5,28 +5,17 @@
 
 [resource]
 script = ExtResource("1_card")
-image = ExtResource("2_img")
 id = &"blade_dance"
 display_name = "Blade Dance"
 type = 1
 rarity = 1
 cost = 1
 description = "Conjure 3 Shivs to Hand."
-effects = [{
-"type": "conjure",
-"card_id": "shiv",
-"destination": "hand",
-"count": 3
-}]
+effects = [{"type": "conjure", "card_id": "shiv", "destination": "hand", "count": 3}]
 tags = PackedStringArray("silent", "offense")
 source_game = "Slay the Spire"
-portrait_color = Color(0.65, 0.55, 0.45, 1)
 can_upgrade = true
 upgraded_description = "Conjure 4 Shivs to Hand."
 upgraded_cost = -999
-upgraded_effects = [{
-"type": "conjure",
-"card_id": "shiv",
-"destination": "hand",
-"count": 4
-}]
+upgraded_effects = [{"type": "conjure", "card_id": "shiv", "destination": "hand", "count": 4}]
+image = ExtResource("2_img")
