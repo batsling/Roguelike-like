@@ -1045,6 +1045,13 @@ func _on_toggle_loadout_weapon(card) -> void:
 	_populate_loadout_pool()
 
 func _on_confirm_loadout() -> void:
+	# Unplayable -> requires_equipped (Strategy): block starting until the
+	# required number of Unplayable cards are slotted (only when the player
+	# actually owns any). Shown on the loadout screen, not the in-combat label.
+	var req_err: String = _loadout_requirement_error()
+	if req_err != "":
+		_loadout_slots_label.text = req_err
+		return
 	_loadout.cards = _selected_cards.duplicate()
 	_loadout.weapon = _selected_weapon
 	_weapon_card = _selected_weapon
@@ -1053,6 +1060,25 @@ func _on_confirm_loadout() -> void:
 	_status_label.text = "Waiting for first turn..."
 	_fire_item_triggers("combat_started")
 	StrategyCombatSession.begin_battle()
+
+# Unplayable -> requires_equipped: if the player owns any card carrying the verb,
+# the loadout must slot at least the required count of them. "" = requirement met
+# (or none owned). Detected via AddonSystem so it stays data-driven.
+func _loadout_requirement_error() -> String:
+	var required: int = 0
+	for card in _available_cards:
+		required = maxi(required, AddonSystem.requires_equipped(card.data, Stats.Mode.STRATEGY))
+	if required <= 0:
+		return ""
+	var slotted: int = 0
+	for card in _selected_cards:
+		if AddonSystem.requires_equipped(card.data, Stats.Mode.STRATEGY) > 0:
+			slotted += 1
+	if slotted >= required:
+		return ""
+	return "Must slot at least %d Unplayable card%s before starting." % [
+		required, "s" if required > 1 else "",
+	]
 
 # ----------------------------------------------------------------------
 # Turn flow

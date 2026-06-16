@@ -115,13 +115,12 @@ addons and normal combat are unaffected.
 | `uses_per_combat` (Exhaust) | Strategy | `GameState.max_card_uses` cap | ✅ wired |
 | `free_play` (Innate) | Strategy | turn-1 `_free_ability_card` | ✅ wired |
 | `deactivate_if_idle` (Ethereal) | Strategy | turn-end check + picker/pick gating | ✅ wired |
-| `requires_equipped` (Unplayable) | Strategy | pre-combat loadout validation | ⏸ deferred |
+| `requires_equipped` (Unplayable) | Strategy | loadout-confirm validation (`_loadout_requirement_error`) | ✅ wired |
 
-`requires_equipped` is deferred: it's a pre-combat loadout-UI constraint (force
-the player to equip an Unplayable/curse card), not combat behavior, and the rule
-itself warrants design confirmation before it gates combat start. The verb is
-authored in the sheet and queryable via `AddonSystem.requires_equipped`; only the
-enforcement is unwired.
+`requires_equipped` blocks "Start Battle" (with a loadout-screen message) until
+the player slots the required number of Unplayable cards — only when they own
+any. Unplayable cards pass through the loadout pool, so the rule is always
+satisfiable.
 
 Deckbuilder keeps its existing CardData-flag code for all of these — it already
 worked — so `AddonSystem` powers Action/Strategy only.
