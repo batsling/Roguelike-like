@@ -114,6 +114,9 @@ var _smear_points: PackedVector2Array = PackedVector2Array()
 # swing so consecutive hits alternate (a real back-and-forth swipe).
 var _swing_total: float = SWING_VISUAL_DURATION
 var _swing_from_left: bool = true
+# Bounce-hop visual: the line the orb travelled along + where it landed.
+var _bounce_from: Vector2 = Vector2.ZERO
+var _bounce_to: Vector2 = Vector2.ZERO
 # Cached attack-archetype library (reach/radius/arc/speed/smear). See _ready.
 var _atk: ActionAttackLibrary
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -817,6 +820,12 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 		TriggerBus.emit_signal("attack_landed",
 			{"source": player_actor, "target": inst.actor, "scene": self})
 		_fire_item_triggers("attack_landed", {"target": inst.actor})
+	# Element "Effect on Attack" (Elements registry): a surviving enemy struck by
+	# an elemental hit picks up the element's on-hit status (Fire -> Burn, etc).
+	if inst.actor.is_alive():
+		var oh: Dictionary = Elements.on_hit_status(effect.get("element", ""), inst.actor, null)
+		if not oh.is_empty():
+			Stats.apply_status_to(inst.actor, StringName(oh["status"]), int(oh["stacks"]), player_actor)
 	# Thorns / Bleed-thorns: a melee swing is contact, so the struck enemy
 	# reflects back at the player. Ranged bolts don't make contact and skip it.
 	if dmg_type == "melee" and not bool(effect.get("no_reaction", false)):
@@ -1437,8 +1446,20 @@ func _deliver_attack_once(card: CardData, effects: Array, spec: Dictionary, aim_
 			_spawn_attack_bolts(card, spec, aim_dir, true)
 		"lob":
 			_spawn_attack_bolts(card, spec, aim_dir, false)
+		"bounce":
+			_deliver_bounce(card, effects, spec)
 		_:
 			_deliver_cone(card, effects, spec, aim_dir)
+
+# Element tint for a card's outward attack visual. Returns the element's colour
+# (keeping `fallback`'s alpha so smears/beams stay translucent) when the card
+# carries an element, else the archetype's default colour.
+func _attack_color_for(card: CardData, fallback: Color) -> Color:
+	if card != null and Elements.has_color(card.element):
+		var c: Color = Elements.color(card.element)
+		c.a = fallback.a
+		return c
+	return fallback
 
 func _deliver_cone(card: CardData, effects: Array, spec: Dictionary, dir: Vector2) -> void:
 	var reach: float = float(spec.reach_px)
@@ -1452,6 +1473,7 @@ func _deliver_cone(card: CardData, effects: Array, spec: Dictionary, dir: Vector
 		return
 	var hits: Array = _enemies_in_cone_dir(dir, reach, arc)
 	_show_smear(kind, dir, reach, arc, player_pos)
+	_swing_color = _attack_color_for(card, _swing_color)
 	_apply_enemy_effects(card, effects, hits)
 
 # Start an animated blade swipe: kick off the sweep visual and queue each
@@ -1461,6 +1483,7 @@ func _deliver_swing(card: CardData, effects: Array, reach: float, arc: float, di
 	var dur: float = _atk.swing_duration if _atk != null else SWING_VISUAL_DURATION
 	_swing_from_left = not _swing_from_left
 	_begin_swing_visual(facing, reach, arc, dur)
+	_swing_color = _attack_color_for(card, _swing_color)
 	var half: float = deg_to_rad(arc * 0.5)
 	for inst in _enemies_in_cone_dir(facing, reach, arc):
 		var to: Vector2 = inst.pos - player_pos
@@ -1489,11 +1512,13 @@ func _begin_swing_visual(facing: Vector2, reach: float, arc: float, dur: float) 
 func _deliver_disc(card: CardData, effects: Array, spec: Dictionary, center: Vector2) -> void:
 	var radius: float = float(spec.radius_px)
 	_show_disc(center, radius)
+	_swing_color = _attack_color_for(card, _swing_color)
 	_apply_enemy_effects(card, effects, _enemies_in_disc(center, radius))
 
 func _deliver_beam(card: CardData, effects: Array, spec: Dictionary, dir: Vector2) -> void:
 	var length: float = float(spec.reach_px)
 	_show_beam(dir, length)
+	_swing_color = _attack_color_for(card, _swing_color)
 	_apply_enemy_effects(card, effects, _enemies_on_beam(dir, length, _atk.beam_half_width))
 
 func _deliver_smite(card: CardData, effects: Array, spec: Dictionary) -> void:
@@ -1503,7 +1528,7 @@ func _deliver_smite(card: CardData, effects: Array, spec: Dictionary) -> void:
 		_smear_points.append(inst.pos)
 	if not hits.is_empty():
 		_swing_kind = "smite"
-		_swing_color = _atk.smear_color
+		_swing_color = _attack_color_for(card, _atk.smear_color)
 		_ability_swing_remaining = _atk.smear_duration
 	_apply_enemy_effects(card, effects, hits)
 
@@ -1512,6 +1537,40 @@ func _deliver_auto_aoe(card: CardData, effects: Array, spec: Dictionary) -> void
 	if t.is_empty():
 		return
 	_deliver_disc(card, effects, spec, t.pos)
+
+# bounce: a thrown orb that hops between random enemies, applying the card's
+# effects on each landing. The hop count is the effect repeat (`times`/`xN`), so
+# Bouncing Flask's `times=3` poisons three random foes in sequence. The orb is
+# tinted by the card's element (Poison -> light green) via the bounce projectile.
+func _deliver_bounce(card: CardData, effects: Array, _spec: Dictionary) -> void:
+	var count: int = _max_effect_hits(effects)
+	var prev: Vector2 = player_pos
+	var tint: Color = _attack_color_for(card, _atk.smear_color)
+	for b in range(count):
+		var target: Dictionary = _pick_target("random")
+		if target.is_empty():
+			break
+		# Each hop lands a beat apart; the first lands almost immediately.
+		_pending_hits.append({
+			"time": maxf(0.001, _atk.bounce_interval * float(b)),
+			"mode": "bounce_hop",
+			"card": card,
+			"effects": effects,
+			"inst": target,
+			"from": prev,
+			"color": tint,
+		})
+		prev = target.pos
+
+# Highest repeat across a card's enemy effects — dmg `hits` (xN volleys) or a
+# status `hits` (`times=N`). Drives the bounce hop count.
+func _max_effect_hits(effects: Array) -> int:
+	var best: int = 1
+	for e in effects:
+		var t: String = String(e.get("type", ""))
+		if t == "dmg" or t == "status":
+			best = maxi(best, int(e.get("hits", 1)))
+	return best
 
 # --- Geometry / target selection -------------------------------------------
 
@@ -1600,6 +1659,13 @@ func _show_disc(center: Vector2, radius: float) -> void:
 	_swing_color = _atk.smear_color
 	_ability_swing_remaining = _atk.smear_duration
 
+func _show_bounce(from: Vector2, to: Vector2, col: Color) -> void:
+	_swing_kind = "bounce"
+	_bounce_from = from
+	_bounce_to = to
+	_swing_color = col
+	_ability_swing_remaining = _atk.smear_duration if _atk != null else SWING_VISUAL_DURATION
+
 func _show_beam(dir: Vector2, length: float) -> void:
 	_swing_kind = "beam"
 	_ability_swing_facing = dir.normalized() if dir.length() > 0.01 else player_facing
@@ -1652,7 +1718,7 @@ func _spawn_attack_bolt(card: CardData, dir: Vector2, range_px: float, lifetime:
 		"velocity": dir * _atk.projectile_speed,
 		"owner": "player",
 		"radius": 11.0 if crescent else PLAYER_PROJECTILE_RADIUS,
-		"color": _atk.crescent_color if crescent else PLAYER_PROJECTILE_COLOR,
+		"color": _attack_color_for(card, _atk.crescent_color if crescent else PLAYER_PROJECTILE_COLOR),
 		"lifetime": lifetime,
 		"range_px": range_px,
 		"card": card,
@@ -1727,6 +1793,13 @@ func _process_pending_hits(delta: float) -> void:
 					var inst = p.get("inst")
 					if inst != null and inst.actor != null and inst.actor.is_alive():
 						_apply_enemy_effects(p.card, p.effects, [inst])
+				"bounce_hop":
+					# The thrown orb landed on this enemy — apply the card's effects
+					# and show the hop (line from the previous point + a burst orb).
+					var binst = p.get("inst")
+					if binst != null and binst.actor != null and binst.actor.is_alive():
+						_show_bounce(p.get("from", player_pos), binst.pos, p.get("color", Color.WHITE))
+						_apply_enemy_effects(p.card, p.effects, [binst])
 			_pending_hits.remove_at(i)
 		else:
 			i += 1
@@ -2144,7 +2217,7 @@ func _spawn_single_projectile(card: CardData, dir: Vector2, range_px: float, lif
 		"velocity": dir * PLAYER_PROJECTILE_SPEED,
 		"owner": "player",
 		"radius": PLAYER_PROJECTILE_RADIUS,
-		"color": PLAYER_PROJECTILE_COLOR,
+		"color": _attack_color_for(card, PLAYER_PROJECTILE_COLOR),
 		"lifetime": lifetime,
 		"range_px": range_px,
 		"card": card,
@@ -2730,6 +2803,12 @@ func _draw_attack_smear() -> void:
 			for pt in _smear_points:
 				draw_line(player_pos, pt, Color(col.r, col.g, col.b, col.a * 0.7), 3.0)
 				draw_circle(pt, 16.0, Color(col.r, col.g, col.b, col.a * 0.5))
+		"bounce":
+			# The orb's flight path plus a burst where it landed, element-tinted.
+			var r: float = _atk.bounce_orb_radius if _atk != null else 12.0
+			draw_line(_bounce_from, _bounce_to, Color(col.r, col.g, col.b, col.a * 0.5), 3.0)
+			draw_circle(_bounce_to, r, Color(col.r, col.g, col.b, col.a * 0.85))
+			draw_circle(_bounce_to, r * 1.6, Color(col.r, col.g, col.b, col.a * 0.3))
 
 # The arc swing: a white blade sweeping across the arc with a fading trail. The
 # leading edge is where the hit lands this frame; the trailing copies blur out
@@ -2756,8 +2835,11 @@ func _draw_swing_blade() -> void:
 		var a: Color = _swing_color
 		a.a *= (1.0 - t) * 0.45
 		_draw_blade(ang, 8.0, a)
-	# Bright white leading edge — the blade itself.
-	_draw_blade(lead, 6.0, Color(1.0, 1.0, 1.0, _swing_color.a))
+	# Leading edge — the blade itself, brightened toward white so an elemental
+	# swing keeps a hot core while still reading as its element colour.
+	var edge: Color = _swing_color.lerp(Color(1, 1, 1, _swing_color.a), 0.5)
+	edge.a = _swing_color.a
+	_draw_blade(lead, 6.0, edge)
 
 # A single blade as a thin wedge from the player out to `_swing_reach`, centred
 # on `angle` with a half-width of `width_deg` degrees.

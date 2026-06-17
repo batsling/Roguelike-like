@@ -2105,6 +2105,12 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		TriggerBus.emit_signal("attack_landed",
 			{"source": source, "target": target, "scene": self})
 		_fire_item_triggers("attack_landed", {"target": target})
+	# Element "Effect on Attack" (Elements registry): a surviving target struck by
+	# an elemental hit picks up the element's on-hit status.
+	if target.is_alive():
+		var oh: Dictionary = Elements.on_hit_status(effect.get("element", ""), target, null)
+		if not oh.is_empty():
+			apply_status(target, StringName(oh["status"]), int(oh["stacks"]), source)
 	if was_alive and not target.is_alive() and not target.is_player:
 		# Infuse: strategy mirrors deckbuilder — every killing blow with
 		# infuse > 0 grants the player Max HP equal to the stack count.

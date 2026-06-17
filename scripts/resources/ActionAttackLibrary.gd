@@ -61,6 +61,10 @@ extends Resource
 # so the sweep reads as a swing rather than a flash.
 @export var swing_duration: float = 0.22
 @export var swing_trail_segments: int = 6
+# bounce: seconds between hops, and the travelling-orb radius (px). The orb is
+# tinted by the card's element (Elements.color) so the bounce reads in-theme.
+@export var bounce_interval: float = 0.18
+@export var bounce_orb_radius: float = 12.0
 @export var beam_color: Color = Color(0.85, 0.95, 1.0, 0.9)
 @export var crescent_color: Color = Color(0.95, 0.97, 1.0, 1.0)
 
@@ -77,6 +81,10 @@ const ARCHETYPES: Dictionary = {
 	"homing":     {"family": "homing",     "size": "medium"},
 	"smite":      {"family": "smite",      "size": "", "target": "nearest"},
 	"auto_aoe":   {"family": "auto_aoe",   "size": "small", "target": "random"},
+	# bounce: a thrown body that hops between random enemies, applying the card's
+	# effects on each landing. Bounce count comes from the effect repeat (`times`
+	# / dmg `xN`); the visual is a travelling orb tinted by the card's element.
+	"bounce":     {"family": "bounce",     "size": "", "target": "random"},
 }
 
 func _size_word(card_params: Dictionary, default_size: String) -> String:

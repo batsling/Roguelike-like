@@ -26,6 +26,14 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, LEGENDARY }
 # Source game (the real-world game this card is from)
 @export var source_game: String = ""
 
+# Damage element (Fire / Poison / Electric / …) from the spreadsheet's Element
+# column. Drives two things via the Elements registry (scripts/runtime/Elements.gd):
+#   1. an on-hit side effect when a damaging attack of this element lands
+#      (Poison -> inflict 1 Poison, Fire -> 1 Burn, …), and
+#   2. the colour of the card's outward attack visual in action combat.
+# Empty / "physical" means no element. Stored lower-case.
+@export var element: StringName = &""
+
 # Visuals
 @export var image: Texture2D
 @export var portrait_color: Color = Color(0.7, 0.7, 0.7)

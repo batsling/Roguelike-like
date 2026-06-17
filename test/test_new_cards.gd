@@ -97,6 +97,60 @@ func test_bouncing_flask_tres_repeats_more_when_upgraded() -> void:
 	assert_eq(int(card.effects[0].get("hits", 0)), 3, "base = 3 applications")
 	assert_eq(int(card.upgraded_effects[0].get("hits", 0)), 4, "upgraded = 4 applications")
 
+func test_bouncing_flask_uses_keyword_and_bounce_shape() -> void:
+	var card: CardData = Data.get_card(&"bouncing_flask")
+	assert_true(card.addons.has(&"indiscriminate"),
+		"random targeting comes from the Indiscriminate keyword, not an inline token")
+	assert_false(card.effects[0].has("indiscriminate"),
+		"the inline indiscriminate token is gone — the keyword stamps it at play time")
+	assert_eq(String(card.attack_shape), "bounce", "action delivery is the bounce archetype")
+	assert_eq(String(card.element), "poison", "carries the Poison element")
+
+# --- Elements registry ---------------------------------------------------
+
+func test_element_colors_match_the_sheet() -> void:
+	assert_true(Elements.has_color("poison"))
+	assert_true(Elements.has_color("Fire"), "lookup is case-insensitive")
+	assert_false(Elements.has_color(""), "no element -> no colour")
+	assert_false(Elements.has_color("physical"), "physical is colourless")
+	# Light Green poison vs orange fire — distinct hues.
+	assert_true(Elements.color("poison").g > Elements.color("poison").r,
+		"poison is greenish")
+
+func test_fire_element_inflicts_one_burn_only_when_target_has_none() -> void:
+	var enemy := CombatActor.new()
+	var oh: Dictionary = Elements.on_hit_status("fire", enemy, null)
+	assert_eq(StringName(oh.get("status", &"")), &"burn")
+	assert_eq(int(oh.get("stacks", 0)), 1)
+	# Already burning -> the element adds nothing (per the sheet's condition).
+	enemy.add_status(&"burn", 2)
+	assert_true(Elements.on_hit_status("fire", enemy, null).is_empty())
+
+func test_poison_element_skips_a_card_that_already_poisons() -> void:
+	var enemy := CombatActor.new()
+	# A card whose own effects already inflict Poison gets no bonus stack.
+	var poisoner := CardData.new()
+	poisoner.effects = [{"type": "status", "status": "poison", "stacks": 3, "target": "enemy"}]
+	assert_true(Elements.on_hit_status("poison", enemy, poisoner).is_empty(),
+		"Bouncing Flask already poisons, so the Poison element doesn't double up")
+	# A pure damage card with the Poison element DOES apply 1 Poison on hit.
+	var dmg_only := CardData.new()
+	dmg_only.effects = [{"type": "dmg", "value": 5, "target": "enemy"}]
+	var oh: Dictionary = Elements.on_hit_status("poison", enemy, dmg_only)
+	assert_eq(StringName(oh.get("status", &"")), &"poison")
+
+func test_no_element_or_earth_has_no_on_hit() -> void:
+	var enemy := CombatActor.new()
+	assert_true(Elements.on_hit_status("", enemy, null).is_empty())
+	assert_true(Elements.on_hit_status("earth", enemy, null).is_empty(),
+		"Earth's Effect on Attack is N/A")
+
+func test_blood_magic_wires_its_element() -> void:
+	var card: CardData = Data.get_card(&"blood_magic")
+	assert_eq(String(card.element), "blood", "Blood Magic carries the Blood element")
+	assert_eq(String(card.effects[0].get("element", "")), "blood",
+		"the element is stamped on the dmg effect for the on-hit path")
+
 # --- Burning Pact / Bloodletting: parse round-trip -----------------------
 
 func test_burning_pact_parses_exhaust_then_draw() -> void:

@@ -69,7 +69,7 @@ FLAG_KEYWORDS = {"exhaust", "ethereal", "innate", "retain", "unplayable", "etern
 # "Projectile, Medium, crescent, pierce". Bare size words map to reach/radius
 # (per archetype); arc=/spread=/target= are key=value; pierce/crescent are flags.
 ATTACK_SHAPES = {"poke", "swing", "smash", "nova", "projectile", "lob",
-                 "beam", "homing", "smite", "auto_aoe"}
+                 "beam", "homing", "smite", "auto_aoe", "bounce"}
 ATTACK_SIZE_WORDS = {"short", "medium", "large", "full", "small"}
 ATTACK_FLAG_TOKENS = {"pierce", "crescent"}
 # Bare size words that also seed range_class for the legacy fallback path.
@@ -431,6 +431,12 @@ def card_tres(row) -> tuple:
     if source.upper() in ("", "N/A"):
         source = ""
 
+    # Element column -> CardData.element (lower-case). "physical"/blank/N/A means
+    # no element. Drives the Elements registry (on-hit effect + action colour).
+    element = str(row.get("Element") or "").strip().lower()
+    if element in ("", "n/a", "none", "physical"):
+        element = ""
+
     # Image: use the Img column when set, else auto-resolve by card name from
     # godot/images/cards/<Name>.png. Curse cards leave Img blank, so most resolve
     # by name (Doubt.png, Decay.png, …); Pride/Greed have no art and stay blank.
@@ -471,6 +477,15 @@ def card_tres(row) -> tuple:
     if can_up:
         up_on_play, _, _ = parse_effects(up_eff_s if up_eff_s else base_eff_s)
 
+    # Stamp the card's element onto each dmg effect so the per-mode deal_damage
+    # paths can apply the element's on-hit side effect (Elements registry) without
+    # needing the whole card in scope.
+    if element:
+        for bucket in (on_play, up_on_play):
+            for e in bucket:
+                if isinstance(e, dict) and e.get("type") == "dmg":
+                    e["element"] = element
+
     lines = []
     load_steps = 3 if img_res else 2
     lines.append(
@@ -498,6 +513,8 @@ def card_tres(row) -> tuple:
     lines.append("tags = %s" % packed_string_array(tags))
     if source:
         lines.append('source_game = "%s"' % gd_str(source))
+    if element:
+        lines.append('element = &"%s"' % gd_str(element))
     lines.append("can_upgrade = %s" % ("true" if can_up else "false"))
     if can_up:
         if up_desc:
