@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_bloodletting"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Bloodletting.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"bloodletting"
+display_name = "Bloodletting"
+type = 1
+rarity = 1
+cost = 0
+description = "Lose 3 Health. Gain 2 Energy."
+effects = [{"type": "lose_hp", "value": 3}, {"type": "gain_energy", "value": 2}]
+tags = PackedStringArray("ironclad", "energy")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Lose 3 Health. Gain 3 Energy."
+upgraded_cost = -999
+upgraded_effects = [{"type": "lose_hp", "value": 3}, {"type": "gain_energy", "value": 3}]
+image = ExtResource("2_img")

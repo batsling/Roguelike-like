@@ -1483,7 +1483,7 @@ func _on_force_lose() -> void:
 func _on_ability_button() -> void:
 	if not _is_player_turn():
 		return
-	if _card_plays_remaining <= 0:
+	if _card_plays_remaining <= 0 and not _has_free_play_available():
 		_status_label.text = "No card plays left this turn."
 		return
 	_clear_pending()
@@ -1507,6 +1507,26 @@ func _is_ethereal_locked(card) -> bool:
 	return _ethereal_deactivated \
 		and AddonSystem.deactivates_if_idle(card.data, Stats.Mode.STRATEGY)
 
+# Retain (Strategy): after the first turn, a Retain card is a free action — it
+# doesn't spend the turn's single card play. Folds together with the
+# Mummified-Hand free-ability slot (the one-shot _free_ability_card).
+func _is_free_play(card) -> bool:
+	if card == _free_ability_card:
+		return true
+	return card != null and card.data != null and card.data.retain and _player_turn_count > 1
+
+# Any free play available right now — lets the Ability button open even after the
+# turn's normal play is spent (so a Retain card can still be played for free).
+func _has_free_play_available() -> bool:
+	if _free_ability_card != null and GameState.card_uses_remaining(_free_ability_card) > 0:
+		return true
+	if _loadout != null and _player_turn_count > 1:
+		for c in _loadout.cards:
+			if c.data != null and c.data.retain and not c.data.unplayable \
+					and GameState.card_uses_remaining(c) > 0 and not _is_ethereal_locked(c):
+				return true
+	return false
+
 func _populate_ability_picker() -> void:
 	for child in _ability_list_container.get_children():
 		child.queue_free()
@@ -1525,7 +1545,7 @@ func _populate_ability_picker() -> void:
 		var lbl := Label.new()
 		var uses: int = GameState.card_uses_remaining(card)
 		var cap: int = GameState.card_uses_max(card)
-		var is_free: bool = card == _free_ability_card
+		var is_free: bool = _is_free_play(card)
 		var is_unplayable: bool = card.data != null and card.data.unplayable
 		var castable: bool = uses > 0 and (_card_plays_remaining > 0 or is_free) \
 			and not _is_ethereal_locked(card) and not is_unplayable
@@ -1560,8 +1580,9 @@ func _populate_ability_picker() -> void:
 func _on_pick_ability(card) -> void:
 	_ability_dialog.visible = false
 	# Re-check: the picker may have been left open across state changes. A
-	# Mummified-Hand free ability is playable even with no plays remaining.
-	var is_free: bool = card == _free_ability_card
+	# Mummified-Hand free ability (or a turn-2+ Retain card) is playable even
+	# with no plays remaining.
+	var is_free: bool = _is_free_play(card)
 	if card.data != null and card.data.unplayable:
 		_status_label.text = "%s is unplayable." % card.get_display_name()
 		return
@@ -1591,10 +1612,12 @@ func _resolve_ability_against(target) -> void:
 		_pending_card = null
 		_grid_view.enter_idle()
 		return
-	# Mummified Hand: if this is the ability the item made free, it costs no
-	# per-turn play (the use was still spent above); otherwise spend a play.
-	if card == _free_ability_card:
-		_free_ability_card = null
+	# Free plays cost no per-turn play (the use was still spent above): the
+	# Mummified-Hand one-shot free ability, or a Retain card after turn 1.
+	# Otherwise spend the turn's single play.
+	if _is_free_play(card):
+		if card == _free_ability_card:
+			_free_ability_card = null
 	else:
 		_card_plays_remaining -= 1
 	_ability_used_this_turn = true
@@ -1893,6 +1916,11 @@ func _apply_card_or_spell_effects(effects: Array, source, target, card = null, e
 
 func _resolve_effect_targets(effect: Dictionary, source, picked) -> Array:
 	var kind: String = str(effect.get("target", "self"))
+	# Indiscriminate enemy effects don't use the clicked target — seed a random
+	# enemy (EffectSystem re-rolls per hit from there). Blood Magic / Bouncing Flask.
+	if bool(effect.get("indiscriminate", false)) and kind == "enemy":
+		var seed_target = pick_random_enemy(source)
+		return [seed_target] if seed_target != null else []
 	match kind:
 		"self":
 			return [source]
@@ -1914,6 +1942,18 @@ func _resolve_effect_targets(effect: Dictionary, source, picked) -> Array:
 			return [picked] if picked != null else [source]
 
 # --- EffectSystem callbacks (named exactly as deckbuilder combat). ---
+
+# Random living enemy unit relative to `source` (for indiscriminate effects —
+# Bouncing Flask, Blood Magic). Lets EffectSystem re-roll a target per hit in
+# tactical combat the same way it does on the deckbuilder enemy list.
+func pick_random_enemy(source):
+	var foes: Array = []
+	for u in _units:
+		if u.is_alive() and (source == null or u.is_player != source.is_player):
+			foes.append(u)
+	if foes.is_empty():
+		return null
+	return foes[randi() % foes.size()]
 
 func deal_damage(source, target, value: int, effect: Dictionary = {}) -> void:
 	if target == null:
@@ -2065,6 +2105,12 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		TriggerBus.emit_signal("attack_landed",
 			{"source": source, "target": target, "scene": self})
 		_fire_item_triggers("attack_landed", {"target": target})
+	# Element "Effect on Attack" (Elements registry): a surviving target struck by
+	# an elemental hit picks up the element's on-hit status.
+	if target.is_alive():
+		var oh: Dictionary = Elements.on_hit_status(effect.get("element", ""), target, null)
+		if not oh.is_empty():
+			apply_status(target, StringName(oh["status"]), int(oh["stacks"]), source)
 	if was_alive and not target.is_alive() and not target.is_player:
 		# Infuse: strategy mirrors deckbuilder — every killing blow with
 		# infuse > 0 grants the player Max HP equal to the stack count.
@@ -2276,7 +2322,8 @@ func _refresh_button_states() -> void:
 	# Cards button: live while plays remain and at least one slotted card
 	# still has uses. Per-card use/affordability is gated per-row in
 	# `_populate_ability_picker`.
-	_btn_ability.disabled = (_card_plays_remaining <= 0 and _free_ability_card == null) \
+	_btn_ability.disabled = (_card_plays_remaining <= 0 and _free_ability_card == null \
+		and not _has_free_play_available()) \
 		or not _has_playable_card()
 	_btn_spell.disabled = _spellbook == null or _spellbook.spells.is_empty()
 	_btn_dash.disabled = not u.dash_available

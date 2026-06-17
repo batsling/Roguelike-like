@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_body_slam"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/BodySlam.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"body_slam"
+display_name = "Body Slam"
+type = 0
+rarity = 1
+cost = 1
+description = "Deal Melee Dmg equal to your Block."
+effects = [{"type": "dmg", "value": 0, "target": "enemy", "value_from": "block", "damage_type": "melee"}]
+tags = PackedStringArray("ironclad", "offense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal Melee Dmg equal to your Block."
+upgraded_cost = 0
+upgraded_effects = [{"type": "dmg", "value": 0, "target": "enemy", "value_from": "block", "damage_type": "melee"}]
+image = ExtResource("2_img")
+attack_shape = &"smash"
+attack_params = {"size": "small"}

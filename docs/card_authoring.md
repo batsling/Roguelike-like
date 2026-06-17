@@ -88,16 +88,31 @@ modifiers), and put the addon name in any card's Keywords column.
 
 ## Element column
 
-Single element word. Currently advisory (used by the dmg renderer and
-tags); future status side-effects (Burn / Chill / Shock) hang off this.
+Single element word → `CardData.element` (lower-cased; `Physical`/blank/`N/A`
+means none). Wired through the `Elements` registry (`scripts/runtime/Elements.gd`,
+the code side of the `elements` sheet) for two things:
 
-| Element | Notes |
-|---|---|
-| `Electric` | Lightning visuals; future Shock interaction. |
-| `Fire` | Future Burn application. |
-| `Ice` | Future Chill / Frostbite. |
-| `Poison` | Future Poison stacks. |
-| `Physical` | Default, leave blank. |
+1. **Effect on Attack** — when a *damaging* elemental hit lands, the element
+   applies a 1-stack on-hit status, gated by the sheet's condition. Fires in all
+   three combat modes.
+2. **Colour** — in action combat, the card's outward attack visual (smear /
+   swing / projectile / beam / disc / smite / bounce) is tinted the element's
+   colour.
+
+| Element | On-hit effect | Colour |
+|---|---|---|
+| `Blood` | If target has no Bleed, inflict 1 Bleed | Red |
+| `Dark` | If target has no Blind, inflict 1 Blind | Purple |
+| `Fire` | If target has no Burn, inflict 1 Burn | Orange |
+| `Poison` | Inflict 1 Poison unless the attack already poisons / target already poisoned | Light Green |
+| `Earth` | None (sheet: N/A) | Brown |
+| `Electric` | Colour-only for now (rule needs the Wet status) | Yellow |
+| `Water` | Colour-only for now (needs Wet) | Blue |
+| `Physical` | Default, leave blank | — |
+
+To add a new element: add a row to the `elements` sheet (Color + Effect on
+Attack), then add its colour to `Elements.COLORS` and, if it has an on-hit
+effect, a `match` arm in `Elements.on_hit_status`.
 
 ## Effects DSL
 
@@ -138,6 +153,20 @@ Semicolon-delimited list of effect lines. Each line is
 - `dmg:4:ranged:cleave` — Thunderclap (ranged + `target: all_enemies`)
 - `dmg:14:melee; power_multiplier:3` — Heavy Blade (Power counts triple)
 - `dmg:8:melee:cleave` — Cleave (melee + all_enemies)
+- `dmg:block:melee` — Body Slam (a non-numeric value slot names a dynamic
+  source; `block` = deal damage equal to the attacker's current Block. Stored
+  as `value_from: "block"`, resolved at hit time in every mode so Power/Weak/
+  Vulnerable still layer on top.)
+
+### Repeating an inflict (`times=N`) + random targeting
+
+`inflict:STATUS:STACKS:times=N` applies the whole inflict N times (stored as
+`hits: N`, mirroring dmg's `xN`). Pair it with the **`Indiscriminate` keyword**
+(Keywords column) to re-roll a random enemy for each application —
+`inflict:poison:3:times=3` + `Keywords: Indiscriminate` is Bouncing Flask: 3
+Poison to a random foe, three times. The keyword (not an inline token) is what
+makes the play UI skip the target picker, matching Blood Magic. In action combat
+pair it with `Attack: Bounce` for the hopping-orb delivery.
 
 `cleave` in slot 4 is the modifier that flips `target` from `enemy`
 to `all_enemies`. Anywhere else it's a tag.

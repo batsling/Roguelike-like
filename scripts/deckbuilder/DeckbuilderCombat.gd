@@ -1063,6 +1063,15 @@ func _resolve_curse_effect(effect: Dictionary, hand_size: int) -> Dictionary:
 # Effect callbacks (invoked by EffectSystem handlers via ctx.scene)
 # ------------------------------------------------------------------
 
+# Applies a damaging effect's element on-hit side effect (Elements registry) to
+# a target that just took a connecting hit. No-op when the effect has no element
+# or the element's condition isn't met.
+func _apply_element_on_hit(effect: Dictionary, source, target) -> void:
+	var oh: Dictionary = Elements.on_hit_status(effect.get("element", ""), target, null)
+	if oh.is_empty():
+		return
+	apply_status(target, StringName(oh["status"]), int(oh["stacks"]), source)
+
 func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, effect: Dictionary) -> void:
 	if target == null or not target.is_alive():
 		return
@@ -1103,6 +1112,11 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 	if res.get("buffered", false):
 		var bwho: String = "You" if target.is_player else target.display_name
 		GameLog.add("%s's Buffer absorbs the blow!" % bwho, Color(0.8, 0.9, 1.0))
+	# Element "Effect on Attack": a connecting elemental hit applies its on-hit
+	# status (Fire -> Burn, Blood -> Bleed, Poison -> Poison, …) per the Elements
+	# registry. Fires on a landed hit regardless of block; the registry gates the
+	# per-element condition.
+	_apply_element_on_hit(effect, source, target)
 	var amount: int = int(res.hp_loss)
 	var absorbed: int = int(res.blocked)
 

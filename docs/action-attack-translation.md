@@ -89,6 +89,24 @@ Volleys (firing the whole attack N times) come from the **Effects** `VALUExHITS`
 form, not the Attack cell, so `Twin Strike` (`dmg:5x2:melee`, `Attack: Swing,
 Medium`) swings twice.
 
+### Element colour
+
+A card's **Element** column tints its outward attack visual in the arena (smear,
+swing blade, projectile, beam, disc, smite zap, bounce orb). The colour comes
+from the `elements` sheet's Color column via the `Elements` registry
+(`scripts/runtime/Elements.gd`) — e.g. a Fire swing is orange, a Poison flask is
+light green. A card with no element keeps the default white smear. The same
+registry also applies the element's "Effect on Attack" (Fire → 1 Burn, Blood →
+1 Bleed, Poison → 1 Poison) when a *damaging* elemental hit lands.
+
+### Swing is animated
+
+The `swing` archetype isn't a static AOE wedge: it renders a blade that sweeps
+across its arc with a motion-blur trail, and each enemy is struck the instant
+the blade crosses its angle (a timed per-enemy hit) rather than all at once.
+`poke` stays a thrust and `swing, arc=360` stays a full ring. Tunables live on
+`ActionAttackLibrary` (`swing_duration`, `swing_trail_segments`).
+
 A bare legacy value (`Medium`, `Projectile, Short`, `Self`) with no recognised
 archetype falls through to the old inference, so nothing breaks mid-migration.
 
@@ -112,8 +130,15 @@ hitbox, so no per-card art is needed.
 | `homing` | projectile that tracks a target | bolt body | target=nearest |
 | `smite` | instant **direct** hit on a target set (no travel, no disc) | white zap/flash on each struck enemy | target=nearest |
 | `auto_aoe` | auto-pick a target, disc AOE at **their** location | impact marker at location | target=random, radius=small |
+| `bounce` | a thrown orb that hops between **random** enemies, applying the card's effects on each landing | travelling orb + burst, element-tinted | target=random |
 
 Notes:
+- `bounce` is **Bouncing Flask**: the hop count is the effect repeat
+  (`times=N` on an inflict, or `dmg:VxN`), so `inflict:poison:3:times=3` poisons
+  three random foes in sequence. Each hop applies the effect once; the
+  `Indiscriminate` keyword (which drives random targeting in the other two
+  modes) is what flags the card so the deckbuilder/strategy play UI skips the
+  manual picker.
 - `smite:target=all` is **Thunderclap**: auto-target like Blood Magic, but it
   hits every enemy directly with no AOE disc — just a zap on each.
 - `auto_aoe:target=random` is **Blood Magic** (Megabonk-style): pick a random

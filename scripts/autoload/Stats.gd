@@ -574,9 +574,12 @@ func apply_addons_to_effect(effect: Dictionary, card) -> Dictionary:
 	var addons: PackedStringArray = card.addons if "addons" in card else PackedStringArray()
 	if addons.is_empty():
 		return effect
-	if String(effect.get("type", "")) != "dmg":
-		return effect
-	var bonus: int = addon_damage_bonus(card, String(effect.get("damage_type", "")))
+	# Damage bonuses only make sense on dmg effects; the flag/retarget hooks below
+	# (Indiscriminate, Cleave) apply to inflict/status effects too — Bouncing
+	# Flask's Indiscriminate keyword must flag its Poison inflict, and a Cleave
+	# keyword fans an inflict across the side just like it fans a hit.
+	var is_dmg: bool = String(effect.get("type", "")) == "dmg"
+	var bonus: int = addon_damage_bonus(card, String(effect.get("damage_type", ""))) if is_dmg else 0
 	# Walk the card's addons once, consulting each one's catalog hook:
 	#   effect_flag     — set a bool key on the effect (Indiscriminate flags the
 	#                     dmg handler to re-roll the target per hit; the flag also

@@ -69,7 +69,7 @@ FLAG_KEYWORDS = {"exhaust", "ethereal", "innate", "retain", "unplayable", "etern
 # "Projectile, Medium, crescent, pierce". Bare size words map to reach/radius
 # (per archetype); arc=/spread=/target= are key=value; pierce/crescent are flags.
 ATTACK_SHAPES = {"poke", "swing", "smash", "nova", "projectile", "lob",
-                 "beam", "homing", "smite", "auto_aoe"}
+                 "beam", "homing", "smite", "auto_aoe", "bounce"}
 ATTACK_SIZE_WORDS = {"short", "medium", "large", "full", "small"}
 ATTACK_FLAG_TOKENS = {"pierce", "crescent"}
 # Bare size words that also seed range_class for the legacy fallback path.
@@ -152,8 +152,19 @@ def _effect_from_tokens(tokens):
     pos, kv = _split_pos_kv(args)
 
     if verb == "dmg":
-        value, hits = _value_hits(pos[0]) if pos else (0, None)
+        # Dynamic damage: a non-numeric value slot names a live source instead of
+        # a flat number. `block` -> deal damage equal to the attacker's current
+        # Block (Body Slam). The handler reads it off ctx.source at resolve time.
+        value_from = ""
+        if pos and pos[0].strip().lower() == "block":
+            value, hits = 0, None
+            value_from = "block"
+            pos = ["0"] + pos[1:]  # keep slot alignment for the type/modifier scan
+        else:
+            value, hits = _value_hits(pos[0]) if pos else (0, None)
         eff = {"type": "dmg", "value": value, "target": "enemy"}
+        if value_from != "":
+            eff["value_from"] = value_from
         for a in pos[1:]:
             al = a.lower()
             if al in DAMAGE_TYPES:
@@ -182,7 +193,15 @@ def _effect_from_tokens(tokens):
             target = "self"
         elif "cleave" in rest:
             target = "all_enemies"
-        return {"type": "status", "status": status, "stacks": stacks, "target": target}
+        eff = {"type": "status", "status": status, "stacks": stacks, "target": target}
+        # `indiscriminate` -> re-roll a random enemy for each application; `times=N`
+        # -> apply the whole inflict N times (Bouncing Flask: 3 Poison to a random
+        # target, N times). Stored as `hits` so it mirrors dmg's NxM multi-hit.
+        if "indiscriminate" in rest:
+            eff["indiscriminate"] = True
+        if "times" in kv:
+            eff["hits"] = int(float(kv["times"]))
+        return eff
 
     if verb == "lose_hp":
         value = int(pos[0]) if pos and pos[0].isdigit() else 1
@@ -214,6 +233,17 @@ def _effect_from_tokens(tokens):
     if verb == "discard":
         value = int(pos[0]) if pos and pos[0].isdigit() else 1
         eff = {"type": "discard", "value": value}
+        if "random" in [p.lower() for p in pos[1:]]:
+            eff["random"] = True
+        return eff
+
+    if verb == "exhaust":
+        # exhaust:N[:random] -> pick N cards from hand to exhaust (Burning Pact).
+        # Mirrors `discard`; deckbuilder opens the picker unless `random` is set,
+        # action/strategy no-op (no piles). Distinct from the Exhaust keyword,
+        # which exhausts the played card itself.
+        value = int(pos[0]) if pos and pos[0].isdigit() else 1
+        eff = {"type": "exhaust", "value": value}
         if "random" in [p.lower() for p in pos[1:]]:
             eff["random"] = True
         return eff
@@ -401,6 +431,12 @@ def card_tres(row) -> tuple:
     if source.upper() in ("", "N/A"):
         source = ""
 
+    # Element column -> CardData.element (lower-case). "physical"/blank/N/A means
+    # no element. Drives the Elements registry (on-hit effect + action colour).
+    element = str(row.get("Element") or "").strip().lower()
+    if element in ("", "n/a", "none", "physical"):
+        element = ""
+
     # Image: use the Img column when set, else auto-resolve by card name from
     # godot/images/cards/<Name>.png. Curse cards leave Img blank, so most resolve
     # by name (Doubt.png, Decay.png, …); Pride/Greed have no art and stay blank.
@@ -441,6 +477,15 @@ def card_tres(row) -> tuple:
     if can_up:
         up_on_play, _, _ = parse_effects(up_eff_s if up_eff_s else base_eff_s)
 
+    # Stamp the card's element onto each dmg effect so the per-mode deal_damage
+    # paths can apply the element's on-hit side effect (Elements registry) without
+    # needing the whole card in scope.
+    if element:
+        for bucket in (on_play, up_on_play):
+            for e in bucket:
+                if isinstance(e, dict) and e.get("type") == "dmg":
+                    e["element"] = element
+
     lines = []
     load_steps = 3 if img_res else 2
     lines.append(
@@ -468,6 +513,8 @@ def card_tres(row) -> tuple:
     lines.append("tags = %s" % packed_string_array(tags))
     if source:
         lines.append('source_game = "%s"' % gd_str(source))
+    if element:
+        lines.append('element = &"%s"' % gd_str(element))
     lines.append("can_upgrade = %s" % ("true" if can_up else "false"))
     if can_up:
         if up_desc:
