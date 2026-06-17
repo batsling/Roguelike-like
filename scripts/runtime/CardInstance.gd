@@ -245,6 +245,10 @@ func wants_target() -> bool:
 	if data != null and (data.addons.has("indiscriminate") or data.addons.has("cleave")):
 		return false
 	for e in get_effects():
+		# An effect that re-rolls its own random target (Bouncing Flask) never
+		# needs the player to pick — the engine chooses per hit.
+		if bool(e.get("indiscriminate", false)):
+			return false
 		var t = e.get("target", "")
 		if t == "enemy":
 			return true

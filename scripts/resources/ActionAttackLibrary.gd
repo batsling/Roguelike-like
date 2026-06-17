@@ -53,6 +53,14 @@ extends Resource
 # Smear / FX look. Melee archetypes draw a white smear shaped to their hitbox.
 @export var smear_color: Color = Color(1.0, 1.0, 1.0, 0.85)
 @export var smear_duration: float = 0.14
+# Swing animation: the arc `swing` archetype isn't a static cone — it renders as
+# a white blade sweeping across its arc over `swing_duration`, trailing
+# `swing_trail_segments` fading copies for motion blur. Each enemy is struck the
+# instant the blade crosses its angle (not all-at-once like an AOE), so the
+# collision lines up with the visible swipe. A touch longer than smear_duration
+# so the sweep reads as a swing rather than a flash.
+@export var swing_duration: float = 0.22
+@export var swing_trail_segments: int = 6
 @export var beam_color: Color = Color(0.85, 0.95, 1.0, 0.9)
 @export var crescent_color: Color = Color(0.95, 0.97, 1.0, 1.0)
 

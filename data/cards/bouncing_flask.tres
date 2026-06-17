@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_bouncing_flask"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/BouncingFlask.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"bouncing_flask"
+display_name = "Bouncing Flask"
+type = 1
+rarity = 2
+cost = 2
+description = "Inflict 3 Poison to a Random target. Repeat 2 times."
+effects = [{"type": "status", "status": "poison", "stacks": 3, "target": "enemy", "indiscriminate": true, "hits": 3}]
+tags = PackedStringArray("silent", "debuff", "poison")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Inflict 3 Poison on Random target. Repeat 3 times."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status", "status": "poison", "stacks": 3, "target": "enemy", "indiscriminate": true, "hits": 4}]
+image = ExtResource("2_img")

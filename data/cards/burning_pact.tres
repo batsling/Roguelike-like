@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_burning_pact"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/BurningPact.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"burning_pact"
+display_name = "Burning Pact"
+type = 1
+rarity = 2
+cost = 1
+description = "Exhaust 1 Card. Draw 2 Cards."
+effects = [{"type": "exhaust", "value": 1}, {"type": "draw", "value": 2}]
+tags = PackedStringArray("ironclad", "draw", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Exhaust 1 Card. Draw 3 Cards."
+upgraded_cost = -999
+upgraded_effects = [{"type": "exhaust", "value": 1}, {"type": "draw", "value": 3}]
+image = ExtResource("2_img")
+exhaust = true

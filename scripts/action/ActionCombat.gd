@@ -109,6 +109,11 @@ var _swing_reach: float = ABILITY_MELEE_RANGE
 var _swing_center: Vector2 = Vector2.ZERO
 var _swing_color: Color = Color(1.0, 0.55, 0.25, 1.0)
 var _smear_points: PackedVector2Array = PackedVector2Array()
+# Arc-swing animation state. The "arc" smear is a blade that sweeps across the
+# arc over _swing_total seconds; _swing_from_left flips the sweep direction each
+# swing so consecutive hits alternate (a real back-and-forth swipe).
+var _swing_total: float = SWING_VISUAL_DURATION
+var _swing_from_left: bool = true
 # Cached attack-archetype library (reach/radius/arc/speed/smear). See _ready.
 var _atk: ActionAttackLibrary
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -482,12 +487,9 @@ func _load_loadout() -> void:
 	_addon_uses.clear()
 	var first: CardData = _auto_draw_one()
 	if first != null:
-		auto_slots.append({
-			"card": first,
-			"cooldown": _auto_cd(first),
-			"max_cooldown": _auto_cd(first),
-			"ttl": INF,
-		})
+		var base_slot: Dictionary = {"card": null, "cooldown": 0.0, "max_cooldown": 0.0, "ttl": INF}
+		auto_slots.append(base_slot)
+		_arm_slot(base_slot, first)
 
 func _accumulate_block_cap(card: CardData) -> void:
 	if card == null:
@@ -960,9 +962,7 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 			# Pool was empty when this slot last tried to draw; retry.
 			var redraw: CardData = _auto_draw_one()
 			if redraw != null:
-				slot.card = redraw
-				slot.cooldown = _auto_cd(redraw)
-				slot.max_cooldown = slot.cooldown
+				_arm_slot(slot, redraw)
 			i += 1
 			continue
 		slot.cooldown = maxf(0.0, slot.cooldown - scaled_delta)
@@ -972,10 +972,7 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 			var cap: int = AddonSystem.uses_per_combat(slot.card, Stats.Mode.ACTION)
 			var used: int = int(_addon_uses.get(slot.card, 0))
 			if cap >= 0 and used >= cap:
-				var spent_next: CardData = _auto_draw_one()
-				slot.card = spent_next
-				slot.cooldown = _auto_cd(spent_next)
-				slot.max_cooldown = slot.cooldown
+				_arm_slot(slot, _auto_draw_one())
 				i += 1
 				continue
 			# Fire at the nearest enemy, then cycle this slot's card to the
@@ -1003,10 +1000,7 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 				# (uses_per_combat) or was Destroyed — then it leaves combat entirely.
 				if not destroyed and (cap < 0 or used + 1 < cap):
 					auto_discard.append(slot.card)
-				var next: CardData = _auto_draw_one()
-				slot.card = next
-				slot.cooldown = _auto_cd(next)
-				slot.max_cooldown = slot.cooldown
+				_arm_slot(slot, _auto_draw_one())
 		i += 1
 
 func _cooldown_for(card: CardData) -> float:
@@ -1024,6 +1018,31 @@ func _auto_cd(card: CardData) -> float:
 	if card == null:
 		return 0.0
 	return maxf(_tr.min_click_cooldown, _cooldown_for(card))
+
+# Assign `card` as a slot's active card, starting its cooldown. Retain (Action):
+# the moment a Retain card's cooldown starts it "opens another slot" — one extra
+# temporary auto-cast slot, so a Retain ability gives you a parallel cast while
+# it cools. `allow_retain` is false for the retain-spawned slot itself so a chain
+# of Retain draws can't cascade into infinite slots on a single frame.
+func _arm_slot(slot: Dictionary, card: CardData, allow_retain: bool = true) -> void:
+	slot.card = card
+	slot.cooldown = _auto_cd(card)
+	slot.max_cooldown = slot.cooldown
+	if allow_retain and card != null and card.retain:
+		_open_retain_slot()
+
+func _open_retain_slot() -> void:
+	var card: CardData = _auto_draw_one()
+	if card == null:
+		return  # auto pool exhausted — nothing to add
+	auto_slots.append({
+		"card": card,
+		"cooldown": _auto_cd(card),
+		"max_cooldown": _auto_cd(card),
+		"ttl": _tr.draw_temp_slot_secs,
+	})
+	GameLog.add("Retain: +1 auto-cast for %.0fs." % _tr.draw_temp_slot_secs,
+		Color(0.8, 0.95, 1.0))
 
 # ---------------------------------------------------------------------------
 # Curse cards (action translation of the deckbuilder hand-curses)
@@ -1361,7 +1380,7 @@ func _apply_enemy_effects(card: CardData, effects: Array, hit_list: Array) -> vo
 		var effect: Dictionary = _resolve_addon_effect(raw, card)
 		match String(effect.get("type", "")):
 			"dmg":
-				var value: int = int(effect.get("value", 0))
+				var value: int = _resolve_dmg_value(effect)
 				var dmg_type: String = String(effect.get("damage_type", "melee"))
 				var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
 				var gate: StringName = StringName(String(effect.get("if_target_status", "")))
@@ -1424,10 +1443,48 @@ func _deliver_attack_once(card: CardData, effects: Array, spec: Dictionary, aim_
 func _deliver_cone(card: CardData, effects: Array, spec: Dictionary, dir: Vector2) -> void:
 	var reach: float = float(spec.reach_px)
 	var arc: float = float(spec.arc_deg)
-	var hits: Array = _enemies_in_cone_dir(dir, reach, arc)
 	var kind: String = "ring" if arc >= 300.0 else ("thrust" if String(spec.shape) == "poke" else "arc")
+	# A true swing (arc cone, not a poke thrust or a 360 ring) sweeps a blade
+	# across its arc and strikes each enemy as the blade crosses it, so the hit
+	# matches the visible swipe instead of landing AOE-style all at once.
+	if kind == "arc":
+		_deliver_swing(card, effects, reach, arc, dir)
+		return
+	var hits: Array = _enemies_in_cone_dir(dir, reach, arc)
 	_show_smear(kind, dir, reach, arc, player_pos)
 	_apply_enemy_effects(card, effects, hits)
+
+# Start an animated blade swipe: kick off the sweep visual and queue each
+# candidate enemy's hit for the moment the blade crosses its angle.
+func _deliver_swing(card: CardData, effects: Array, reach: float, arc: float, dir: Vector2) -> void:
+	var facing: Vector2 = dir.normalized() if dir.length() > 0.01 else player_facing
+	var dur: float = _atk.swing_duration if _atk != null else SWING_VISUAL_DURATION
+	_swing_from_left = not _swing_from_left
+	_begin_swing_visual(facing, reach, arc, dur)
+	var half: float = deg_to_rad(arc * 0.5)
+	for inst in _enemies_in_cone_dir(facing, reach, arc):
+		var to: Vector2 = inst.pos - player_pos
+		# Fraction of the sweep at which the blade reaches this enemy's angle.
+		var p: float = clampf((facing.angle_to(to) + half) / maxf(0.0001, half * 2.0), 0.0, 1.0)
+		if not _swing_from_left:
+			p = 1.0 - p
+		_pending_hits.append({
+			"time": maxf(0.001, p * dur),
+			"mode": "swing_hit",
+			"card": card,
+			"effects": effects,
+			"inst": inst,
+		})
+
+func _begin_swing_visual(facing: Vector2, reach: float, arc: float, dur: float) -> void:
+	_swing_kind = "arc"
+	_ability_swing_facing = facing.normalized() if facing.length() > 0.01 else player_facing
+	_swing_reach = reach
+	_swing_arc_deg = arc
+	_swing_center = player_pos
+	_swing_color = _atk.smear_color if _atk != null else Color(1.0, 1.0, 1.0, 0.85)
+	_swing_total = dur
+	_ability_swing_remaining = dur
 
 func _deliver_disc(card: CardData, effects: Array, spec: Dictionary, center: Vector2) -> void:
 	var radius: float = float(spec.radius_px)
@@ -1553,11 +1610,16 @@ func _show_beam(dir: Vector2, length: float) -> void:
 # The orange melee cone used by the legacy (un-annotated) attack path. Resets
 # the smear state so a stale archetype kind (beam/disc) can't carry over.
 func _legacy_swing_visual(facing: Vector2) -> void:
+	# Un-annotated melee still hits instantly (the caller applies damage), but it
+	# reuses the same animated blade sweep so every swing reads as a swipe.
+	_swing_from_left = not _swing_from_left
 	_swing_kind = "arc"
 	_ability_swing_facing = facing if facing.length() > 0.01 else player_facing
 	_swing_arc_deg = ABILITY_MELEE_ANGLE_DEG
 	_swing_reach = ABILITY_MELEE_RANGE
+	_swing_center = player_pos
 	_swing_color = Color(1.0, 0.55, 0.25, 1.0)
+	_swing_total = SWING_VISUAL_DURATION
 	_ability_swing_remaining = SWING_VISUAL_DURATION
 
 # --- Archetype projectiles --------------------------------------------------
@@ -1659,6 +1721,12 @@ func _process_pending_hits(delta: float) -> void:
 					# swing, Dagger Spray's 2nd spread, Blood Magic's later blasts).
 					_deliver_attack_once(p.card, p.effects, p.spec,
 						p.get("facing", player_facing), bool(p.get("is_auto", false)))
+				"swing_hit":
+					# The sweeping blade reached this enemy — strike it now if it's
+					# still alive (it may have died or been knocked out mid-swing).
+					var inst = p.get("inst")
+					if inst != null and inst.actor != null and inst.actor.is_alive():
+						_apply_enemy_effects(p.card, p.effects, [inst])
 			_pending_hits.remove_at(i)
 		else:
 			i += 1
@@ -1803,8 +1871,18 @@ func _apply_self_effects(card: CardData) -> void:
 				var status: StringName = StringName(String(effect.get("status", "")))
 				Stats.apply_status_to(player_actor, status, int(effect.get("stacks", 0)), player_actor)
 
+# Resolve a dmg effect's flat value, honouring dynamic sources. `value_from`
+# "block" deals damage equal to the player's current Block (Body Slam); a plain
+# effect just returns its `value`. Power/Weak/Vulnerable still apply afterwards
+# in _deal_damage_to_enemy, matching the other modes.
+func _resolve_dmg_value(effect: Dictionary) -> int:
+	if String(effect.get("value_from", "")) == "block":
+		var blk: int = player_actor.block if player_actor != null else 0
+		return blk * int(effect.get("value_mult", 1))
+	return int(effect.get("value", 0))
+
 func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array) -> void:
-	var value: int = int(effect.get("value", 0))
+	var value: int = _resolve_dmg_value(effect)
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
 	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
 	var gate: StringName = StringName(String(effect.get("if_target_status", "")))
@@ -1842,6 +1920,16 @@ func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 	# pass through unscaled; enemy debuffs scale with the player's Persistence.
 	if tgt == "self":
 		Stats.apply_status_to(player_actor, status, stacks, player_actor)
+		return
+	# Indiscriminate inflicts (Bouncing Flask) ignore the cone and re-roll a
+	# random living enemy for each of `hits` applications.
+	if bool(effect.get("indiscriminate", false)):
+		var times: int = maxi(1, int(effect.get("hits", 1)))
+		for _i in times:
+			var pick: Dictionary = _pick_target("random")
+			if pick.is_empty():
+				return
+			Stats.apply_status_to(pick.actor, status, stacks, player_actor)
 		return
 	var hit_list: Array
 	if tgt == "enemy":
@@ -2616,7 +2704,11 @@ func _draw_attack_smear() -> void:
 	var col: Color = _swing_color
 	col.a *= fade
 	match _swing_kind:
-		"arc", "thrust", "ring":
+		"arc":
+			# Animated swipe: a bright white blade sweeping across the arc with a
+			# fading motion-blur trail behind it.
+			_draw_swing_blade()
+		"thrust", "ring":
 			var half_angle: float = deg_to_rad(_swing_arc_deg * 0.5)
 			var base_angle: float = _ability_swing_facing.angle()
 			var steps: int = maxi(8, int(_swing_arc_deg / 12.0))
@@ -2638,3 +2730,41 @@ func _draw_attack_smear() -> void:
 			for pt in _smear_points:
 				draw_line(player_pos, pt, Color(col.r, col.g, col.b, col.a * 0.7), 3.0)
 				draw_circle(pt, 16.0, Color(col.r, col.g, col.b, col.a * 0.5))
+
+# The arc swing: a white blade sweeping across the arc with a fading trail. The
+# leading edge is where the hit lands this frame; the trailing copies blur out
+# behind it to sell the swing's motion.
+func _draw_swing_blade() -> void:
+	var total: float = maxf(0.01, _swing_total)
+	var progress: float = clampf(1.0 - _ability_swing_remaining / total, 0.0, 1.0)
+	var half: float = deg_to_rad(_swing_arc_deg * 0.5)
+	var base_angle: float = _ability_swing_facing.angle()
+	# Sweep one edge of the arc to the other; _swing_from_left flips the start.
+	var start: float = base_angle - half
+	var span: float = half * 2.0
+	if not _swing_from_left:
+		start = base_angle + half
+		span = -span
+	var lead: float = start + span * progress
+	var segs: int = maxi(2, _atk.swing_trail_segments if _atk != null else 6)
+	var trail: float = minf(deg_to_rad(_swing_arc_deg), deg_to_rad(60.0))
+	var dir_sign: float = signf(span)
+	# Trail copies fade back from the leading edge for the motion-blur look.
+	for i in range(segs, 0, -1):
+		var t: float = float(i) / float(segs)
+		var ang: float = lead - dir_sign * trail * t
+		var a: Color = _swing_color
+		a.a *= (1.0 - t) * 0.45
+		_draw_blade(ang, 8.0, a)
+	# Bright white leading edge — the blade itself.
+	_draw_blade(lead, 6.0, Color(1.0, 1.0, 1.0, _swing_color.a))
+
+# A single blade as a thin wedge from the player out to `_swing_reach`, centred
+# on `angle` with a half-width of `width_deg` degrees.
+func _draw_blade(angle: float, width_deg: float, col: Color) -> void:
+	var w: float = deg_to_rad(width_deg)
+	var tip: Vector2 = player_pos + Vector2.RIGHT.rotated(angle) * _swing_reach
+	var p1: Vector2 = player_pos + Vector2.RIGHT.rotated(angle - w) * (_swing_reach * 0.5)
+	var p2: Vector2 = player_pos + Vector2.RIGHT.rotated(angle + w) * (_swing_reach * 0.5)
+	draw_polygon(PackedVector2Array([player_pos, p1, tip, p2]),
+		PackedColorArray([col, col, col, col]))

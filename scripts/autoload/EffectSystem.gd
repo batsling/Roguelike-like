@@ -145,15 +145,32 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	# `target: "self"` routes the hit back onto the source (curse cards: Decay
 	# deals to the player), mirroring how status/block/heal resolve "self".
 	var self_target: bool = String(effect.get("target", "")) == "self"
-	# Damage may be curse-scaled (Death Orb: Xx2 where X = curse count).
-	var dmg_value: int = _dyn_amount(effect, "value", "value_from", "value_mult")
+	# Damage may be curse-scaled (Death Orb: Xx2 where X = curse count) or scaled
+	# off a live attacker stat (Body Slam: value_from "block" = the source's
+	# current Block, resolved here so deal_damage still applies Power/Weak/etc).
+	var dmg_value: int
+	if String(effect.get("value_from", "")) == "block":
+		var src: Variant = ctx.get("source")
+		var blk: int = int(src.block) if src != null and "block" in src else 0
+		dmg_value = blk * int(effect.get("value_mult", 1))
+	else:
+		dmg_value = _dyn_amount(effect, "value", "value_from", "value_mult")
 	for _i in hits:
 		var tgt: Variant = ctx.get("source") if self_target else ctx.get("target")
 		if indiscriminate:
-			tgt = _pick_random_enemy(ctx.get("scene"))
+			tgt = _resolve_random_enemy(ctx)
 			if tgt == null:
 				return
 		scene.deal_damage(ctx.get("source"), tgt, dmg_value, effect)
+
+# Mode-agnostic random living enemy for indiscriminate effects. Prefers the
+# scene's own picker (strategy's units, action's enemy dicts) and falls back to
+# the deckbuilder-style `enemies` array of actors.
+func _resolve_random_enemy(ctx: Dictionary) -> Variant:
+	var scene: Variant = ctx.get("scene")
+	if scene != null and scene.has_method("pick_random_enemy"):
+		return scene.pick_random_enemy(ctx.get("source"))
+	return _pick_random_enemy(scene)
 
 func _pick_random_enemy(scene: Variant) -> Variant:
 	if scene == null or not ("enemies" in scene):
@@ -218,14 +235,28 @@ func _h_lose_energy(effect: Dictionary, ctx: Dictionary) -> void:
 	scene.lose_energy(effect.get("value", 1))
 
 func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
-	var target: Variant = ctx.get("target") if effect.get("target", "enemy") != "self" else ctx.get("source")
 	var status_id := StringName(effect.get("status", ""))
 	# Stacks may be curse-scaled (Du-Vu Doll: gain X Power where X = curse count).
 	var stacks: int = _dyn_amount(effect, "stacks", "stacks_from", "stacks_mult")
 	if not effect.has("stacks") and not effect.has("stacks_from"):
 		stacks = 1
-	if status_id == &"" or stacks == 0 or target == null:
+	if status_id == &"" or stacks == 0:
 		return
+	# `hits` applies the inflict N times; `indiscriminate` re-rolls a random
+	# enemy each time (Bouncing Flask: 3 Poison to a random target, 3 times).
+	# Both default to the single-target, single-application case.
+	var self_target: bool = String(effect.get("target", "enemy")) == "self"
+	var indiscriminate: bool = bool(effect.get("indiscriminate", false))
+	var hits: int = maxi(1, int(effect.get("hits", 1)))
+	for _i in hits:
+		var target: Variant = ctx.get("source") if self_target else ctx.get("target")
+		if indiscriminate and not self_target:
+			target = _resolve_random_enemy(ctx)
+		if target == null:
+			continue
+		_apply_one_status(effect, ctx, target, status_id, stacks)
+
+func _apply_one_status(effect: Dictionary, ctx: Dictionary, target: Variant, status_id: StringName, stacks: int) -> void:
 	var scene: Variant = ctx.get("scene")
 	if scene != null and scene.has_method("apply_status"):
 		# In-combat path — the scene's apply_status routes through
