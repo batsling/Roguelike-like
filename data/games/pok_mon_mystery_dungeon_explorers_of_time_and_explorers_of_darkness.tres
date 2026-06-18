@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_pok_mon_mystery_dungeon_explorers_of_time_and_explorers_of_darkness"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://assets/games/no-cover.svg" id="2_cover"]
+[ext_resource type="Texture2D" path="res://assets/games/pokemon-mystery-dungeon-explorers-of-time-and-explorers-of-darkness.png" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")
