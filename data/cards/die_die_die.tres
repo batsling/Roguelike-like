@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_die_die_die"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/DieDieDie.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"die_die_die"
+display_name = "Die Die Die"
+type = 0
+rarity = 3
+cost = 1
+description = "Deal 13 Dmg Ranged Cleave. Exhaust."
+effects = [{"type": "dmg", "value": 13, "target": "all_enemies", "damage_type": "ranged"}]
+tags = PackedStringArray("silent", "offense", "aoe", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 17 Dmg Ranged Cleave. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 17, "target": "all_enemies", "damage_type": "ranged"}]
+image = ExtResource("2_img")
+exhaust = true
+attack_shape = &"projectile"
+attack_params = {"size": "medium", "spread": 8}

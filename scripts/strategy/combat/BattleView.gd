@@ -144,6 +144,11 @@ var _free_ability_card = null
 var _ethereal_deactivated: bool = false
 var _ethereal_used_this_turn: bool = false
 
+# Persistent in-combat card boosts (Accuracy -> Shivs, Claw -> Claws), registered
+# by boost_cards effects and folded into matching cards' dmg/block when they
+# resolve. Combat-scoped: cleared in set_encounter. Same shape as the deckbuilder.
+var card_boosts: Array = []
+
 # Energy charge banked from gain-energy effects. It persists across turns
 # within a combat until spent: the next card play consumes ALL of it and is
 # empowered by that amount (+dmg / +block / +status stacks), then it resets
@@ -204,18 +209,21 @@ func _living_enemy_units() -> Array:
 			out.append(u)
 	return out
 
-# A card's base effects with item boosts folded in (Strike Dummy) plus any
-# appended granted effects (Brass Knuckles etc.). Strategy resolves CardData
-# directly, so the shared CardMods pass is applied here (deckbuilder gets it via
-# CardInstance.get_effects()).
-func _effective_card_effects(card: CardData) -> Array:
-	return CardMods.resolved_effects(card.effects, card)
+# A card's effects with item boosts folded in (Strike Dummy) plus any appended
+# granted effects (Brass Knuckles etc.). Strategy resolves CardData directly, so
+# the shared CardMods pass is applied here (deckbuilder gets it via
+# CardInstance.get_effects()). `upgraded` selects the upgraded_effects, so an
+# upgraded slotted card fires its upgraded numbers — callers pass the playing
+# instance's flag (spells/basics stay base).
+func _effective_card_effects(card: CardData, upgraded: bool = false) -> Array:
+	return CardMods.resolved_effects(card.get_effective_effects(upgraded), card)
 
 # Card text with live stat scaling AND item boosts folded into the numbers
 # (Power / Arcane / Defense / Persistence + Strike Dummy — rich=false since these
-# are plain Labels) plus the granted-effect line appended, for display.
-func _card_desc(card: CardData) -> String:
-	var out: String = CardScaling.scale_text(card.description, get_player_unit(), false, card)
+# are plain Labels) plus the granted-effect line appended, for display. `upgraded`
+# shows the upgraded text so a "+"-named card doesn't read its base description.
+func _card_desc(card: CardData, upgraded: bool = false) -> String:
+	var out: String = CardScaling.scale_text(card.get_effective_description(upgraded), get_player_unit(), false, card)
 	var extra: String = CardMods.describe(card)
 	if extra != "":
 		out = "%s %s" % [out, extra]
@@ -229,6 +237,7 @@ func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager 
 	_encounter = encounter
 	_grid_view.set_battle(battle_map, _units)
 	_layout_board()
+	card_boosts.clear()
 
 	_available_cards = CombatLoadoutScript.available_from_deck(GameState.deck)
 	_available_weapons = CombatLoadoutScript.weapon_cards_from_deck(GameState.deck)
@@ -1030,7 +1039,7 @@ func _make_loadout_tile(inst, chosen: bool, cb: Callable, show_uses: bool, disab
 	tile.add_child(meta_l)
 
 	var desc_l := Label.new()
-	desc_l.text = _card_desc(inst.data)
+	desc_l.text = _card_desc(inst.data, inst.upgraded)
 	desc_l.position = Vector2(text_x, 54)
 	desc_l.size = Vector2(text_w, 56)
 	desc_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1557,7 +1566,7 @@ func _populate_ability_picker() -> void:
 			var k: int = int(seen_counts.get(card.data.id, 0)) + 1
 			seen_counts[card.data.id] = k
 			copy_tag = "  (copy %d)" % k
-		lbl.text = "%s%s%s  (uses %d/%d)  —  %s" % [card.get_display_name(), copy_tag, free_tag, uses, cap, _card_desc(card.data)]
+		lbl.text = "%s%s%s  (uses %d/%d)  —  %s" % [card.get_display_name(), copy_tag, free_tag, uses, cap, _card_desc(card.data, card.upgraded)]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
 		lbl.custom_minimum_size = Vector2(196, 0)
@@ -1644,7 +1653,7 @@ func _resolve_ability_against(target) -> void:
 	card.roll_vorpal_if_needed()
 	if card.vorpal_type >= 0 and card.vorpal_weight > 0:
 		vorpal = {"type": card.vorpal_type, "weight": card.vorpal_weight}
-	_apply_card_or_spell_effects(_effective_card_effects(card.data), u, target, card.data, empower, vorpal)
+	_apply_card_or_spell_effects(_effective_card_effects(card.data, card.upgraded), u, target, card.data, empower, vorpal)
 	# Destroy: remove the played card from the run deck permanently after it resolves.
 	if card.data != null and card.data.destroy:
 		GameState.destroy_card_instance(card)
@@ -1825,7 +1834,7 @@ func _on_attack_requested(target) -> void:
 		# against the target. Unlimited uses, but once per turn (it's the
 		# Attack action, gated by _action_used). Energy empower applies to
 		# slotted cards only, not the weapon, so pass empower 0.
-		_apply_card_or_spell_effects(_effective_card_effects(_weapon_card.data), attacker, target, _weapon_card.data)
+		_apply_card_or_spell_effects(_effective_card_effects(_weapon_card.data, _weapon_card.upgraded), attacker, target, _weapon_card.data)
 		_status_label.text = "You attack %s with %s." % [target.unit_name, _weapon_card.data.display_name]
 	else:
 		var dmg := DEFAULT_BASIC_ATTACK
@@ -1896,6 +1905,11 @@ func _apply_card_or_spell_effects(effects: Array, source, target, card = null, e
 	for _play in plays:
 		for raw_effect in effects:
 			var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
+			# Fold active card boosts (Accuracy / Claw) into matching dmg/block
+			# before vorpal/empower so the bonus rides through the same math. The
+			# boost_cards effect that registers them resolves later in this same
+			# list, so a card that boosts its own id doesn't buff this play.
+			effect = Stats.apply_card_boosts(effect, card, card_boosts)
 			if not vorpal.is_empty():
 				effect = effect.duplicate()
 				effect["vorpal_type"] = int(vorpal["type"])
@@ -2003,6 +2017,61 @@ func heal(target, value: int) -> void:
 	var before: int = target.hp
 	target.hp = mini(target.max_hp, target.hp + int(value))
 	_float_number(target, target.hp - before, FloatingNumbers.HEAL_COLOR)
+
+# EffectSystem callback for boost_cards (Accuracy / Claw). Banks a persistent
+# in-combat modifier; _apply_card_or_spell_effects folds it into matching plays.
+func add_card_boost(boost: Dictionary) -> void:
+	card_boosts.append(boost)
+	GameLog.add("Active boost: %s." % _boost_label(boost), Color(0.7, 1.0, 0.7))
+
+func _boost_label(boost: Dictionary) -> String:
+	var who: String = ""
+	if String(boost.get("match_tag", "")) != "":
+		who = "tag=%s" % boost.match_tag
+	elif String(boost.get("match_type", "")) != "":
+		who = "type=%s" % boost.match_type
+	elif String(boost.get("match_id", "")) != "":
+		who = "id=%s" % boost.match_id
+	return "%s %s +%d" % [who, boost.get("stat", "dmg"), int(boost.get("value", 0))]
+
+# EffectSystem callback for conjure (Blade Dance, Cloak and Dagger, Anger).
+# Strategy has no draw/hand/discard piles, so a conjure adds a TEMPORARY card
+# that lives only for this combat: a fresh CardInstance appended to the loadout's
+# playable set. Its uses ride on the instance (CardInstance.uses) so it never
+# touches the run-scope deck. Destination is ignored (no piles to distinguish).
+func conjure_card(card_id: StringName, _destination: String, count: int, source_card, force_upgraded: bool = false) -> void:
+	if _loadout == null:
+		return
+	var data: CardData = null
+	var upgraded: bool = false
+	if card_id == &"self":
+		if source_card is CardInstance:
+			data = source_card.data
+			upgraded = source_card.upgraded
+		elif source_card is CardData:
+			data = source_card
+	else:
+		var id_str: String = String(card_id)
+		if id_str.ends_with("+"):
+			upgraded = true
+			id_str = id_str.substr(0, id_str.length() - 1)
+		if force_upgraded:
+			upgraded = true
+		data = Data.get_card(StringName(id_str))
+		if data != null and upgraded and not data.can_upgrade:
+			upgraded = false
+	if data == null:
+		push_warning("conjure_card (strategy): unknown card id '%s'" % card_id)
+		return
+	var made: int = 0
+	for _i in range(maxi(1, count)):
+		var copy: CardInstance = CardInstance.from_data(data, upgraded)
+		_loadout.cards.append(copy)
+		made += 1
+	if made > 0:
+		GameLog.add("Conjured %d %s (this combat)." % [made, data.display_name],
+			Color(0.7, 1.0, 0.7))
+		_refresh_button_states()
 
 func gain_energy(n: int) -> void:
 	# Energy is empower charge: it banks (across turns within the combat)

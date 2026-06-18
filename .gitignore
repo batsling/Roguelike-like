@@ -11,3 +11,7 @@ node_modules/
 dist/
 .cache/
 games-data.js.backup
+
+# ── Python bytecode (generator/test scripts) ─────────────────────────────
+__pycache__/
+*.pyc
