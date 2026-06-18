@@ -16,5 +16,5 @@ item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
 cover_image = ExtResource("2_cover")
 owned = true
-file_location = ""
-steam_page = ""
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Spirit Hunters Infinite Horde.url"
+steam_page = "https://store.steampowered.com/app/1914580/Spirit_Hunters_Infinite_Horde/"

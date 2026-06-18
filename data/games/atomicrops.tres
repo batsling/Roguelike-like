@@ -16,5 +16,5 @@ item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
 cover_image = ExtResource("2_cover")
 owned = true
-file_location = ""
-steam_page = ""
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Atomicrops.url"
+steam_page = "https://store.steampowered.com/app/757320/Atomicrops/"

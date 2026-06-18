@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_guild_of_dungeoneering"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/guild-of-dungeoneering.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"guild_of_dungeoneering"
+display_name = "Guild of Dungeoneering"
+year = 2015
+type = 2
+games_influenced = Array[StringName]([&"deck_of_ashes"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = false
+file_location = ""
+steam_page = "https://store.steampowered.com/app/317820/Guild_of_Dungeoneering_Ultimate_Edition/"

@@ -16,5 +16,5 @@ item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
 cover_image = ExtResource("2_cover")
 owned = true
-file_location = ""
-steam_page = ""
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Return to abyss 重返深渊.url"
+steam_page = "https://store.steampowered.com/app/2185780/Return_to_abyss/"

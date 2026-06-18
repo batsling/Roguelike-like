@@ -16,5 +16,5 @@ item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
 cover_image = ExtResource("2_cover")
 owned = true
-file_location = ""
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Elemental Survivors.url"
 steam_page = "https://store.steampowered.com/app/2217740/Kitty_Survivors_Rogues_of_Catmere/"

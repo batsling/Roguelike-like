@@ -16,5 +16,5 @@ item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
 cover_image = ExtResource("2_cover")
 owned = true
-file_location = ""
-steam_page = ""
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Super House of Dead Ninjas.url"
+steam_page = "https://store.steampowered.com/app/224820/Super_House_of_Dead_Ninjas/"
