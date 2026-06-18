@@ -156,6 +156,11 @@ var auto_slots: Array = []                           # Array of Dictionary {card
 # (Exhaust -> uses_per_combat(1) in Action). Reset each room in _load_loadout.
 var _addon_uses: Dictionary = {}
 
+# Persistent in-combat card boosts (Accuracy -> Shivs, Claw -> Claws). Registered
+# by boost_cards effects via add_card_boost and folded into matching dmg/block in
+# _resolve_addon_effect. Combat-scoped: cleared in _load_loadout.
+var card_boosts: Array = []
+
 # Curse cards in action (the translation of the deckbuilder hand-curses):
 #   _curse_slots — eot curses run as EXTRA dedicated bad-slots; each counts down
 #     a long real-time cooldown and, on elapse, applies its translated eot effect
@@ -488,6 +493,7 @@ func _load_loadout() -> void:
 	auto_discard.clear()
 	auto_slots.clear()
 	_addon_uses.clear()
+	card_boosts.clear()
 	var first: CardData = _auto_draw_one()
 	if first != null:
 		var base_slot: Dictionary = {"card": null, "cooldown": 0.0, "max_cooldown": 0.0, "ttl": INF}
@@ -976,11 +982,15 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 			continue
 		slot.cooldown = maxf(0.0, slot.cooldown - scaled_delta)
 		if slot.cooldown <= 0.0:
+			# Conjured "to hand" cards are one-shot: they fire once and the slot is
+			# removed, rather than cycling back into the deck (matches the
+			# deckbuilder, where conjured Shivs are spent on their single play).
+			var one_shot: bool = bool(slot.get("one_shot", false))
 			# uses_per_combat (Exhaust): a card that has hit its per-combat cap
 			# retires from the rotation without firing — drawn next, not re-queued.
 			var cap: int = AddonSystem.uses_per_combat(slot.card, Stats.Mode.ACTION)
 			var used: int = int(_addon_uses.get(slot.card, 0))
-			if cap >= 0 and used >= cap:
+			if not one_shot and cap >= 0 and used >= cap:
 				_arm_slot(slot, _auto_draw_one())
 				i += 1
 				continue
@@ -996,6 +1006,11 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 					GameLog.add("%s replays!" % slot.card.display_name, Color(0.7, 1.0, 0.7))
 				# Pain (on_play_other -> on_action): a slot activation bites the player.
 				_fire_pain_curses()
+				# A one-shot conjured card fires once and is gone — don't recycle it
+				# into the discard or count it against the shared use cap.
+				if one_shot:
+					auto_slots.remove_at(i)
+					continue
 				_addon_uses[slot.card] = used + 1
 				# Destroy: a card removed permanently from the run deck on use. It
 				# retires from the rotation (never re-queued) and one physical copy
@@ -1052,6 +1067,57 @@ func _open_retain_slot() -> void:
 	})
 	GameLog.add("Retain: +1 auto-cast for %.0fs." % _tr.draw_temp_slot_secs,
 		Color(0.8, 0.95, 1.0))
+
+# ---------------------------------------------------------------------------
+# Card boosts + conjure (Accuracy / Claw / Blade Dance) — action translations
+# ---------------------------------------------------------------------------
+
+# EffectSystem-style callback for boost_cards. Banks a persistent in-combat
+# modifier; _resolve_addon_effect folds it into matching dmg/block.
+func add_card_boost(boost: Dictionary) -> void:
+	card_boosts.append(boost)
+
+# Conjure into the action deck. Action runs a real draw(auto_draw) / hand
+# (auto_slots = active cooldowns) / discard(auto_discard) cycle, so each
+# destination maps onto a pile:
+#   hand    -> a one-shot auto-slot that starts its cooldown now and fires once.
+#   draw    -> the draw pile (gets shuffled out like any other card).
+#   discard -> the discard pile (already-played stack; recycles on reshuffle).
+# Upgrade variants aren't modelled in action's CardData pool, so the "+"/upgraded
+# flag is stripped and the base card is conjured.
+func conjure_card(card_id: StringName, destination: String, count: int, source_card, _force_upgraded: bool = false) -> void:
+	var data: CardData = null
+	if card_id == &"self":
+		data = source_card if source_card is CardData else null
+	else:
+		var id_str: String = String(card_id)
+		if id_str.ends_with("+"):
+			id_str = id_str.substr(0, id_str.length() - 1)
+		data = Data.get_card(StringName(id_str))
+	if data == null:
+		push_warning("conjure_card (action): unknown card id '%s'" % card_id)
+		return
+	for _i in range(maxi(1, count)):
+		match destination:
+			"hand":
+				_conjure_into_hand(data)
+			"draw":
+				auto_draw.append(data)
+			_:
+				auto_discard.append(data)
+	GameLog.add("Conjured %d %s." % [maxi(1, count), data.display_name], Color(0.7, 1.0, 0.7))
+
+# A conjured "to hand" card becomes a one-shot auto-slot: it starts its cooldown
+# immediately and, when it fires, is removed instead of cycling back to the deck
+# (matching the deckbuilder, where conjured Shivs are spent on their single play).
+func _conjure_into_hand(card: CardData) -> void:
+	auto_slots.append({
+		"card": card,
+		"cooldown": _auto_cd(card),
+		"max_cooldown": _auto_cd(card),
+		"ttl": INF,
+		"one_shot": true,
+	})
 
 # ---------------------------------------------------------------------------
 # Curse cards (action translation of the deckbuilder hand-curses)
@@ -1151,6 +1217,10 @@ func _effective_effects(card: CardData) -> Array:
 # rolled type/weight is recovered from the matching deck CardInstance.
 func _resolve_addon_effect(raw: Dictionary, card: CardData) -> Dictionary:
 	var e: Dictionary = Stats.apply_addons_to_effect(raw, card)
+	# Fold active card boosts (Accuracy / Claw) into matching dmg/block. Boosts
+	# register AFTER a card's own damage (see _apply_utility_effects), so a card
+	# that boosts its own id never buffs the hit that registered it.
+	e = Stats.apply_card_boosts(e, card, card_boosts)
 	var v: Dictionary = GameState.vorpal_for_card_data(card)
 	if not v.is_empty():
 		e = e.duplicate()
@@ -1164,8 +1234,34 @@ func _resolve_card_effects(card: CardData) -> void:
 	# cursor (player_facing) for click slots.
 	if card.attack_shape != &"":
 		_deliver_attack(card, player_facing, false)
-		return
-	_resolve_card_effects_legacy(card)
+	else:
+		_resolve_card_effects_legacy(card)
+	_apply_utility_effects(card)
+
+# boost_cards / conjure register AFTER the card's damage has been delivered (or
+# launched) so a card that boosts its own id (Claw) doesn't buff the very hit
+# that registered the boost — matching the deckbuilder's in-order resolution.
+# Both verbs are untargeted utility effects with no per-hit delivery, so running
+# them in a trailing pass is equivalent to listing them last in the deckbuilder.
+func _apply_utility_effects(card: CardData) -> void:
+	for raw in card.effects:
+		match String(raw.get("type", "")):
+			"boost_cards":
+				add_card_boost({
+					"match_tag": String(raw.get("match_tag", "")),
+					"match_type": String(raw.get("match_type", "")),
+					"match_id": String(raw.get("match_id", "")),
+					"stat": String(raw.get("stat", "dmg")),
+					"value": int(raw.get("value", 0)),
+				})
+			"conjure":
+				conjure_card(
+					StringName(String(raw.get("card_id", "self"))),
+					String(raw.get("destination", "discard")),
+					maxi(1, int(raw.get("count", 1))),
+					card,
+					bool(raw.get("upgraded", false)),
+				)
 
 func _resolve_card_effects_legacy(card: CardData) -> void:
 	# Cards with any ranged-typed damage effect resolve via a
@@ -1247,8 +1343,9 @@ func _resolve_card_effects_auto(card: CardData) -> void:
 	# nearest enemy (smite/auto_aoe/homing pick their own target regardless).
 	if card.attack_shape != &"":
 		_deliver_attack(card, _auto_aim_dir(), true)
-		return
-	_resolve_card_effects_auto_legacy(card)
+	else:
+		_resolve_card_effects_auto_legacy(card)
+	_apply_utility_effects(card)
 
 # Innate -> auto_play (Action): resolve each innate card's effects once when a
 # combat room opens, mirroring deckbuilder's "starts in the opening hand". The
@@ -1937,7 +2034,10 @@ func _apply_self_effects(card: CardData) -> void:
 			continue
 		match t:
 			"block":
-				_gain_block(int(effect.get("value", 0)))
+				# Fold card boosts into self block too (the archetype/ranged path
+				# doesn't pass block through _resolve_addon_effect).
+				var be: Dictionary = Stats.apply_card_boosts(effect, card, card_boosts)
+				_gain_block(int(be.get("value", 0)))
 			"heal":
 				_resolve_heal_self(int(effect.get("value", 0)))
 			"status":

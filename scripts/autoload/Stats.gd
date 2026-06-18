@@ -615,6 +615,59 @@ func apply_addons_to_effect(effect: Dictionary, card) -> Dictionary:
 		dup["target"] = new_target
 	return dup
 
+# ---------------------------------------------------------------------------
+# Card boosts (Accuracy -> Shivs, Claw -> Claws). Shared by all three combat
+# modes so the tag/type/id matcher and the fold-in math live in one place.
+# A boost is {match_tag/match_type/match_id, stat: "dmg"|"block", value}.
+# ---------------------------------------------------------------------------
+
+# CardData.CardType enum order, used to resolve a type= matcher to a name.
+const CARD_TYPE_NAMES: Array[String] = ["attack", "skill", "power", "dice", "status", "curse", "training"]
+
+# True when `card` (a CardData, or anything exposing tags/type/id) satisfies the
+# boost's single matcher. Exactly one of match_tag/match_type/match_id is set;
+# an all-empty boost matches nothing.
+func card_matches_boost(card, boost: Dictionary) -> bool:
+	if card == null:
+		return false
+	var match_tag: String = String(boost.get("match_tag", ""))
+	var match_type: String = String(boost.get("match_type", ""))
+	var match_id: String = String(boost.get("match_id", ""))
+	if match_tag != "":
+		return "tags" in card and card.tags.has(match_tag)
+	if match_type != "":
+		if not ("type" in card):
+			return false
+		var idx: int = int(card.type)
+		if idx < 0 or idx >= CARD_TYPE_NAMES.size():
+			return false
+		return CARD_TYPE_NAMES[idx] == match_type.to_lower()
+	if match_id != "":
+		return "id" in card and String(card.id) == match_id
+	return false
+
+# Fold every matching boost into a `dmg` or `block` effect's value, returning a
+# (possibly new) effect dict. Other effect types and the empty-boost case pass
+# through untouched so this is cheap to call on every effect.
+func apply_card_boosts(effect: Dictionary, card, boosts: Array) -> Dictionary:
+	if boosts.is_empty():
+		return effect
+	var effect_type: String = String(effect.get("type", ""))
+	if effect_type != "dmg" and effect_type != "block":
+		return effect
+	var bonus: int = 0
+	for boost in boosts:
+		if String(boost.get("stat", "")) != effect_type:
+			continue
+		if not card_matches_boost(card, boost):
+			continue
+		bonus += int(boost.get("value", 0))
+	if bonus == 0:
+		return effect
+	var out: Dictionary = effect.duplicate(true)
+	out["value"] = int(out.get("value", 0)) + bonus
+	return out
+
 func addon_damage_bonus(card, _damage_type: String) -> int:
 	# Sum every addon-driven flat damage modifier on the card. An addon
 	# contributes when its catalog hook is `effect_dmg_bonus`; the Expr names a

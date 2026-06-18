@@ -1473,8 +1473,6 @@ func make_random_hand_card_free(exclude = null) -> void:
 # Discard / card-boost effect plumbing (deckbuilder)
 # ------------------------------------------------------------------
 
-const _TYPE_NAMES: Array[String] = ["attack", "skill", "power", "dice", "status", "curse", "training"]
-
 func discard_cards(n: int, source_card = null, random: bool = false) -> void:
 	# Two paths: random (All-Out Attack) silently picks; player-choice
 	# (Acrobatics et al, the default) opens the CardPickerModal. Both
@@ -1706,41 +1704,11 @@ func _apply_card_boosts(effect: Dictionary, card: CardInstance) -> Dictionary:
 	# Returns either the original effect or a copy with the value bumped
 	# by every matching active boost. Only `dmg` and `block` effects
 	# scale today; cost boosts route through CardInstance.temp_cost_override.
-	if card_boosts.is_empty():
+	# The matcher + fold-in math is shared with action/strategy via Stats so
+	# all three modes agree on tag/type/id matching.
+	if card == null:
 		return effect
-	var effect_type: String = String(effect.get("type", ""))
-	if effect_type != "dmg" and effect_type != "block":
-		return effect
-	var bonus := 0
-	for boost in card_boosts:
-		if String(boost.get("stat", "")) != effect_type:
-			continue
-		if not _card_matches_boost(card, boost):
-			continue
-		bonus += int(boost.get("value", 0))
-	if bonus == 0:
-		return effect
-	var out: Dictionary = effect.duplicate(true)
-	out["value"] = int(out.get("value", 0)) + bonus
-	return out
-
-func _card_matches_boost(card: CardInstance, boost: Dictionary) -> bool:
-	var data: CardData = card.data
-	if data == null:
-		return false
-	var match_tag: String = String(boost.get("match_tag", ""))
-	var match_type: String = String(boost.get("match_type", ""))
-	var match_id: String = String(boost.get("match_id", ""))
-	if match_tag != "":
-		return data.tags.has(match_tag)
-	if match_type != "":
-		var idx: int = data.type
-		if idx < 0 or idx >= _TYPE_NAMES.size():
-			return false
-		return _TYPE_NAMES[idx] == match_type.to_lower()
-	if match_id != "":
-		return String(data.id) == match_id
-	return false
+	return Stats.apply_card_boosts(effect, card.data, card_boosts)
 
 func _shuffle(arr: Array) -> void:
 	for i in range(arr.size() - 1, 0, -1):
