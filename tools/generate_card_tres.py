@@ -255,10 +255,18 @@ def _effect_from_tokens(tokens):
         return ("merge", "power_multiplier", n)
 
     if verb == "boost_cards":
-        # boost_cards:tag=shiv:dmg:4 -> match a tag, raise a stat by value.
+        # boost_cards:<MATCH>:<stat>:<value> -> register a persistent boost.
+        # MATCH is exactly one of tag=X (Accuracy -> Shivs), id=X (Claw -> all
+        # Claws), or type=X (e.g. all Attacks). The runtime matcher in
+        # DeckbuilderCombat._card_matches_boost reads whichever of match_tag /
+        # match_id / match_type is set.
         eff = {"type": "boost_cards"}
         if "tag" in kv:
             eff["match_tag"] = kv["tag"]
+        if "id" in kv:
+            eff["match_id"] = kv["id"]
+        if "type" in kv:
+            eff["match_type"] = kv["type"]
         if len(pos) >= 2:
             eff["stat"] = pos[0]
             eff["value"] = int(pos[1]) if pos[1].lstrip("-").isdigit() else 0
