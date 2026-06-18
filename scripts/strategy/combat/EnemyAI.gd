@@ -71,8 +71,15 @@ func execute_turn(scene, all_units: Array, battle_map) -> String:
 	if intent.range_max >= 1 and _distance(unit.position, target.position) > intent.range_max:
 		return "%s advances (%d)." % [unit.unit_name, moved] if moved > 0 else "%s holds." % unit.unit_name
 
-	# In range — apply effects through the shared BattleView path.
-	scene.apply_effects(intent.effects, unit, target)
+	# In range — apply effects through the shared BattleView path. A shaped
+	# attack hits every unit caught in its footprint (friendly fire included, so
+	# a Bash can clip a second enemy); a shapeless intent hits the single target.
+	if intent.attack_shape != &"" and intent.target_kind != "self":
+		var spec: Dictionary = Data.strategy_attacks.resolve(intent.attack_shape, intent.attack_params)
+		var shaped: Array = scene.shaped_targets(spec, unit, target.position)
+		scene.apply_effects(intent.effects, unit, target, null, shaped)
+	else:
+		scene.apply_effects(intent.effects, unit, target)
 	if intent.cooldown > 0:
 		# +1 so the end-of-turn tick lands us at exactly `cooldown` turns
 		# before the intent comes off cooldown.

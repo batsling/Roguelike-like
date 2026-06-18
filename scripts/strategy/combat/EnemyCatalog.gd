@@ -13,48 +13,56 @@ const EnemyIntentScript := preload("res://scripts/strategy/combat/EnemyIntent.gd
 # block in the structured EffectSystem form):
 #   { "id": StringName, "name": String, "icon": String,
 #     "range": int, "cd": int, "prio": int, "target": String,
-#     "effects": Array, "cond": String (optional) }
+#     "shape": String (optional), "effects": Array, "cond": String (optional) }
+#
+# `shape` ties the intent to the shared StrategyAttackLibrary vocabulary
+# (poke/swing/smash/projectile/…), exactly like a player card's Attack column —
+# the enemies sheet has no Attack column, so shapes are authored here. When set,
+# it overrides `range` with the archetype's library reach and gives the attack a
+# grid footprint (so e.g. an Orc's Bash is a forward blast that can clip several
+# targets, friendly fire included). Melee defaults to a single-tile poke.
 const _ARCHETYPES: Dictionary = {
 	"rat": [
 		{
 			"id": &"bite", "name": "Bite", "icon": "x",
-			"range": 1, "cd": 0, "prio": 1, "target": "enemy",
+			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "swing",
 			"effects": [{"type": "dmg", "value": 3, "target": "enemy"}],
 		},
 	],
 	"snake": [
 		{
 			"id": &"strike", "name": "Strike", "icon": "x",
-			"range": 1, "cd": 0, "prio": 1, "target": "enemy",
+			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "swing",
 			"effects": [{"type": "dmg", "value": 4, "target": "enemy"}],
 		},
 		{
 			"id": &"venom_bite", "name": "Venom", "icon": "*",
-			"range": 1, "cd": 3, "prio": 2, "target": "enemy",
+			"range": 1, "cd": 3, "prio": 2, "target": "enemy", "shape": "swing",
 			"effects": [{"type": "dmg", "value": 6, "target": "enemy"}],
 		},
 	],
 	"orc": [
 		{
 			"id": &"chop", "name": "Chop", "icon": "x",
-			"range": 1, "cd": 0, "prio": 1, "target": "enemy",
+			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "swing",
 			"effects": [{"type": "dmg", "value": 6, "target": "enemy"}],
 		},
 		{
 			"id": &"bash", "name": "Bash", "icon": "!",
-			"range": 1, "cd": 3, "prio": 2, "target": "enemy",
+			"range": 1, "cd": 3, "prio": 2, "target": "enemy", "shape": "smash",
 			"effects": [{"type": "dmg", "value": 9, "target": "enemy"}],
 		},
 	],
 	"troll": [
 		{
 			"id": &"smash", "name": "Smash", "icon": "x",
-			"range": 1, "cd": 0, "prio": 1, "target": "enemy",
+			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "swing",
 			"effects": [{"type": "dmg", "value": 10, "target": "enemy"}],
 		},
 		{
 			"id": &"crush", "name": "Crush", "icon": "!",
 			"range": 1, "cd": 4, "prio": 2, "target": "enemy",
+			"shape": "smash", "params": {"size": "large"},
 			"effects": [{"type": "dmg", "value": 14, "target": "enemy"}],
 		},
 		{
@@ -86,6 +94,13 @@ static func _build(def: Dictionary) -> EnemyIntent:
 	i.target_kind = def["target"]
 	i.effects = def["effects"].duplicate(true)
 	i.condition = str(def.get("cond", ""))
+	i.attack_shape = StringName(def.get("shape", ""))
+	i.attack_params = (def.get("params", {}) as Dictionary).duplicate(true)
+	# A shaped attack takes its reach from the shared library so the enemy's grid
+	# range and its on-grid footprint stay in lock-step.
+	if i.attack_shape != &"" and i.target_kind != "self":
+		var spec: Dictionary = Data.strategy_attacks.resolve(i.attack_shape, i.attack_params)
+		i.range_max = int(spec.get("range_tiles", i.range_max))
 	return i
 
 static func _fallback_intent(unit: BattleUnit) -> EnemyIntent:
