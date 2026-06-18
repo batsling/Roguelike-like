@@ -209,18 +209,21 @@ func _living_enemy_units() -> Array:
 			out.append(u)
 	return out
 
-# A card's base effects with item boosts folded in (Strike Dummy) plus any
-# appended granted effects (Brass Knuckles etc.). Strategy resolves CardData
-# directly, so the shared CardMods pass is applied here (deckbuilder gets it via
-# CardInstance.get_effects()).
-func _effective_card_effects(card: CardData) -> Array:
-	return CardMods.resolved_effects(card.effects, card)
+# A card's effects with item boosts folded in (Strike Dummy) plus any appended
+# granted effects (Brass Knuckles etc.). Strategy resolves CardData directly, so
+# the shared CardMods pass is applied here (deckbuilder gets it via
+# CardInstance.get_effects()). `upgraded` selects the upgraded_effects, so an
+# upgraded slotted card fires its upgraded numbers — callers pass the playing
+# instance's flag (spells/basics stay base).
+func _effective_card_effects(card: CardData, upgraded: bool = false) -> Array:
+	return CardMods.resolved_effects(card.get_effective_effects(upgraded), card)
 
 # Card text with live stat scaling AND item boosts folded into the numbers
 # (Power / Arcane / Defense / Persistence + Strike Dummy — rich=false since these
-# are plain Labels) plus the granted-effect line appended, for display.
-func _card_desc(card: CardData) -> String:
-	var out: String = CardScaling.scale_text(card.description, get_player_unit(), false, card)
+# are plain Labels) plus the granted-effect line appended, for display. `upgraded`
+# shows the upgraded text so a "+"-named card doesn't read its base description.
+func _card_desc(card: CardData, upgraded: bool = false) -> String:
+	var out: String = CardScaling.scale_text(card.get_effective_description(upgraded), get_player_unit(), false, card)
 	var extra: String = CardMods.describe(card)
 	if extra != "":
 		out = "%s %s" % [out, extra]
@@ -1036,7 +1039,7 @@ func _make_loadout_tile(inst, chosen: bool, cb: Callable, show_uses: bool, disab
 	tile.add_child(meta_l)
 
 	var desc_l := Label.new()
-	desc_l.text = _card_desc(inst.data)
+	desc_l.text = _card_desc(inst.data, inst.upgraded)
 	desc_l.position = Vector2(text_x, 54)
 	desc_l.size = Vector2(text_w, 56)
 	desc_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1563,7 +1566,7 @@ func _populate_ability_picker() -> void:
 			var k: int = int(seen_counts.get(card.data.id, 0)) + 1
 			seen_counts[card.data.id] = k
 			copy_tag = "  (copy %d)" % k
-		lbl.text = "%s%s%s  (uses %d/%d)  —  %s" % [card.get_display_name(), copy_tag, free_tag, uses, cap, _card_desc(card.data)]
+		lbl.text = "%s%s%s  (uses %d/%d)  —  %s" % [card.get_display_name(), copy_tag, free_tag, uses, cap, _card_desc(card.data, card.upgraded)]
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
 		lbl.custom_minimum_size = Vector2(196, 0)
@@ -1650,7 +1653,7 @@ func _resolve_ability_against(target) -> void:
 	card.roll_vorpal_if_needed()
 	if card.vorpal_type >= 0 and card.vorpal_weight > 0:
 		vorpal = {"type": card.vorpal_type, "weight": card.vorpal_weight}
-	_apply_card_or_spell_effects(_effective_card_effects(card.data), u, target, card.data, empower, vorpal)
+	_apply_card_or_spell_effects(_effective_card_effects(card.data, card.upgraded), u, target, card.data, empower, vorpal)
 	# Destroy: remove the played card from the run deck permanently after it resolves.
 	if card.data != null and card.data.destroy:
 		GameState.destroy_card_instance(card)
@@ -1831,7 +1834,7 @@ func _on_attack_requested(target) -> void:
 		# against the target. Unlimited uses, but once per turn (it's the
 		# Attack action, gated by _action_used). Energy empower applies to
 		# slotted cards only, not the weapon, so pass empower 0.
-		_apply_card_or_spell_effects(_effective_card_effects(_weapon_card.data), attacker, target, _weapon_card.data)
+		_apply_card_or_spell_effects(_effective_card_effects(_weapon_card.data, _weapon_card.upgraded), attacker, target, _weapon_card.data)
 		_status_label.text = "You attack %s with %s." % [target.unit_name, _weapon_card.data.display_name]
 	else:
 		var dmg := DEFAULT_BASIC_ATTACK
