@@ -1083,17 +1083,19 @@ func add_card_boost(boost: Dictionary) -> void:
 #   hand    -> a one-shot auto-slot that starts its cooldown now and fires once.
 #   draw    -> the draw pile (gets shuffled out like any other card).
 #   discard -> the discard pile (already-played stack; recycles on reshuffle).
-# Upgrade variants aren't modelled in action's CardData pool, so the "+"/upgraded
-# flag is stripped and the base card is conjured.
-func conjure_card(card_id: StringName, destination: String, count: int, source_card, _force_upgraded: bool = false) -> void:
+# An upgraded form (`shiv+` / force_upgraded) resolves to the cached upgraded
+# CardData so a Blade Dance+ conjures upgraded Shivs.
+func conjure_card(card_id: StringName, destination: String, count: int, source_card, force_upgraded: bool = false) -> void:
 	var data: CardData = null
 	if card_id == &"self":
 		data = source_card if source_card is CardData else null
 	else:
 		var id_str: String = String(card_id)
+		var upgraded: bool = force_upgraded
 		if id_str.ends_with("+"):
+			upgraded = true
 			id_str = id_str.substr(0, id_str.length() - 1)
-		data = Data.get_card(StringName(id_str))
+		data = GameState.effective_action_card_data(Data.get_card(StringName(id_str)), upgraded)
 	if data == null:
 		push_warning("conjure_card (action): unknown card id '%s'" % card_id)
 		return

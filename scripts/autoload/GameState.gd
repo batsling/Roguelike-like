@@ -204,6 +204,12 @@ const DEFAULT_CARD_USES_BY_RARITY := [4, 4, 3, 2, 2]
 var action_left_card_id: StringName = &""
 var action_right_card_id: StringName = &""
 
+# Cache of upgraded-form CardData duplicates for action mode, keyed by card id.
+# Built lazily by effective_action_card_data so every upgraded copy of an id
+# shares one resource (matching how base copies share Data.get_card's). Cleared
+# on run reset.
+var _action_upgraded_cache: Dictionary = {}
+
 # Action-mode item slots, assigned on the equipment screen:
 #   * action_active_item_id  — one USABLE consumable (pill), popped with Q.
 #                              Cleared when the item is spent.
@@ -504,6 +510,7 @@ func reset_run() -> void:
 	action_right_card_id = &""
 	action_active_item_id = &""
 	action_charged_item_id = &""
+	_action_upgraded_cache.clear()
 	temp_stat_bonus.clear()
 	event_block = 0
 	combat_scene = null
@@ -1571,35 +1578,95 @@ func recharge_card_use_inst(inst: CardInstance, n: int = 1) -> int:
 # like everything else. Duplicates are preserved (three Strikes in the deck
 # means three entries in the pool).
 func get_action_loadout() -> Dictionary:
-	var left: CardData = Data.get_card(action_left_card_id)
-	var right: CardData = Data.get_card(action_right_card_id)
+	# Resolve each click slot to a concrete deck instance when its chosen id is
+	# present in the deck, so an UPGRADED copy fires its upgraded numbers (action
+	# otherwise flattens to base CardData). Falls back to a base CardData (id with
+	# no live instance) and then to an auto-picked instance.
+	var left_inst: CardInstance = _find_deck_instance(action_left_card_id, [])
+	var right_inst: CardInstance = _find_deck_instance(action_right_card_id, [left_inst])
+
+	var left: CardData = _effective_action_card(left_inst)
+	if left == null and action_left_card_id != &"":
+		left = Data.get_card(action_left_card_id)
 	if left == null:
-		left = _auto_pick_click(&"")
+		left_inst = _auto_pick_click(&"", false, [])
+		left = _effective_action_card(left_inst)
+
+	var right: CardData = _effective_action_card(right_inst)
+	if right == null and action_right_card_id != &"":
+		right = Data.get_card(action_right_card_id)
 	if right == null:
 		var left_is_strike: bool = left != null and left.tags.has("strike")
-		right = _auto_pick_click(left.id if left != null else &"", left_is_strike)
+		right_inst = _auto_pick_click(left.id if left != null else &"", left_is_strike, [left_inst])
+		right = _effective_action_card(right_inst)
 
-	# Build the auto pool from the deck, holding back one copy each of the
-	# left/right cards (the rest of their copies still auto-play).
-	var skip_left: bool = left != null
-	var skip_right: bool = right != null
+	# Build the auto pool from the deck, holding back the two click instances (by
+	# identity, so mixed base/upgraded copies of the same id are distinguished).
+	var held: Array = []
+	if left_inst != null:
+		held.append(left_inst)
+	if right_inst != null:
+		held.append(right_inst)
 	var auto: Array = []
 	for c in deck:
 		if not (c is CardInstance) or c.data == null:
 			continue
+		var hi: int = held.find(c)
+		if hi != -1:
+			held.remove_at(hi)  # consumed one copy for a click slot
+			continue
 		var data: CardData = c.data
-		if skip_left and data.id == left.id:
-			skip_left = false  # consumed one copy for the left slot
-			continue
-		if skip_right and data.id == right.id:
-			skip_right = false  # consumed one copy for the right slot
-			continue
 		if data.unplayable:
 			continue
 		if data.type == CardData.CardType.CURSE or data.type == CardData.CardType.STATUS:
 			continue
-		auto.append(data)
+		auto.append(_effective_action_card(c))
 	return {"left": left, "right": right, "auto": auto}
+
+# The CardData action should fire for a deck instance: the shared base resource,
+# or — for an upgraded instance — a cached duplicate carrying the upgraded
+# effects/cost/description. Action keys per-card state (cooldowns, use caps) by
+# CardData identity, so every upgraded copy of an id resolves to ONE cached
+# resource, exactly like base copies share Data.get_card's resource.
+func _effective_action_card(inst: CardInstance) -> CardData:
+	if inst == null or inst.data == null:
+		return null
+	return effective_action_card_data(inst.data, inst.upgraded)
+
+# Public form for callers that hold a base CardData + a known upgrade flag (the
+# action conjure path resolving `shiv+`). Returns the base resource untouched
+# when not upgraded (or the card can't upgrade).
+func effective_action_card_data(base: CardData, upgraded: bool) -> CardData:
+	if base == null:
+		return null
+	if not upgraded or not base.can_upgrade:
+		return base
+	var key: StringName = base.id
+	if not _action_upgraded_cache.has(key):
+		_action_upgraded_cache[key] = _make_upgraded_card_data(base)
+	return _action_upgraded_cache[key]
+
+func _make_upgraded_card_data(base: CardData) -> CardData:
+	# Shallow-duplicate the resource (image/script/flags carried over) and fold in
+	# the upgrade-only fields. Upgrade in this project changes exactly effects /
+	# cost / description (keywords are shared), so nothing else needs touching.
+	var dup: CardData = base.duplicate() as CardData
+	dup.effects = base.get_effective_effects(true).duplicate(true)
+	dup.cost = base.get_effective_cost(true)
+	dup.description = base.get_effective_description(true)
+	dup.display_name = base.display_name + "+"
+	dup.can_upgrade = false
+	return dup
+
+# First deck instance with `card_id`, skipping any already-claimed instances
+# (so two slotted Strikes resolve to two different physical cards).
+func _find_deck_instance(card_id: StringName, exclude: Array) -> CardInstance:
+	if card_id == &"":
+		return null
+	for c in deck:
+		if c is CardInstance and c.data != null and c.data.id == card_id and not (c in exclude):
+			return c
+	return null
 
 # True if the card id may be slotted into a click slot: it's a Strike
 # (tagged) or a weapon-granted card (some deck instance links to a weapon).
@@ -1614,23 +1681,25 @@ func is_click_eligible(card_id: StringName) -> bool:
 			return true
 	return false
 
-func _auto_pick_click(exclude_id: StringName, forbid_strike: bool = false) -> CardData:
+func _auto_pick_click(exclude_id: StringName, forbid_strike: bool = false, exclude: Array = []) -> CardInstance:
 	# Prefer a Strike; otherwise the first weapon-granted card. Skips
-	# `exclude_id` so left and right don't auto-pick the same card, and
-	# `forbid_strike` enforces one-Strike-at-a-time across the two slots.
+	# `exclude_id` (so left and right don't auto-pick the same id), any instance
+	# in `exclude` (the other slot's physical card), and enforces
+	# one-Strike-at-a-time across the two slots via `forbid_strike`. Returns the
+	# deck INSTANCE so the caller can keep its upgrade state + hold it back.
 	if not forbid_strike:
 		for c in deck:
 			if not (c is CardInstance) or c.data == null:
 				continue
-			if c.data.id == exclude_id:
+			if c.data.id == exclude_id or c in exclude:
 				continue
 			if c.data.tags.has("strike"):
-				return c.data
+				return c
 	for c in deck:
 		if not (c is CardInstance) or c.data == null:
 			continue
-		if c.data.id == exclude_id:
+		if c.data.id == exclude_id or c in exclude:
 			continue
 		if c.source_weapon_id != 0:
-			return c.data
+			return c
 	return null
