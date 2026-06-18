@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_cataclysm"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://assets/games/no-cover.svg" id="2_cover"]
+[ext_resource type="Texture2D" path="res://assets/games/cataclysm.png" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")
@@ -10,11 +10,11 @@ display_name = "Cataclysm"
 year = 2010
 type = 1
 games_influenced = Array[StringName]([&"cataclysm_bright_nights", &"cataclysm_dark_days_ahead"])
-tags = PackedStringArray("zombies", "traditional")
+tags = PackedStringArray("undead", "traditional")
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
 cover_image = ExtResource("2_cover")
-owned = false
-file_location = ""
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\cataclysm.lnk"
 steam_page = ""

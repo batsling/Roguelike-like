@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_shiren_the_wanderer_4_the_eye_of_god_and_the_devil_s_navel"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://assets/games/no-cover.svg" id="2_cover"]
+[ext_resource type="Texture2D" path="res://assets/games/shiren-the-wanderer-4-the-eye-of-god-and-the-devils-navel.png" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")

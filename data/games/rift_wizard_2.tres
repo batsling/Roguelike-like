@@ -16,5 +16,5 @@ item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
 cover_image = ExtResource("2_cover")
 owned = true
-file_location = ""
-steam_page = ""
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Rift Wizard 2.url"
+steam_page = "https://store.steampowered.com/app/2058570/Rift_Wizard_2/"

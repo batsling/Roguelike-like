@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_doomrl"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://assets/games/no-cover.svg" id="2_cover"]
+[ext_resource type="Texture2D" path="res://assets/games/doomrl.png" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")
@@ -9,7 +9,7 @@ id = &"doomrl"
 display_name = "DoomRL"
 year = 2002
 type = 1
-games_influenced = Array[StringName]([&"jupiter_hell", &"quasimorph", &"infra_arcana"])
+games_influenced = Array[StringName]([&"jupiter_hell", &"quasimorph", &"infra_arcana", &"cataclysm"])
 tags = PackedStringArray("traditional")
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
