@@ -25,6 +25,11 @@ var strategy_translation: StrategyTranslation = null
 # feel; reference via Data.action_attacks. See ActionAttackLibrary.
 var action_attacks: ActionAttackLibrary = null
 
+# Strategy sibling of action_attacks: per-archetype grid range (tiles) + area
+# footprint for tactical combat. Edit data/strategy_attacks.tres to retune;
+# reference via Data.strategy_attacks. See StrategyAttackLibrary.
+var strategy_attacks: StrategyAttackLibrary = null
+
 func _ready() -> void:
 	_load_dir("res://data/cards/", _cards)
 	_load_dir("res://data/items/", _items)
@@ -45,6 +50,9 @@ func _ready() -> void:
 	action_attacks = (_load_config("res://data/action_attacks.tres") as ActionAttackLibrary)
 	if action_attacks == null:
 		action_attacks = ActionAttackLibrary.new()
+	strategy_attacks = (_load_config("res://data/strategy_attacks.tres") as StrategyAttackLibrary)
+	if strategy_attacks == null:
+		strategy_attacks = StrategyAttackLibrary.new()
 	print("[Data] Loaded %d cards, %d items, %d enemies (+%d action), %d events, %d games, %d characters" % [
 		_cards.size(), _items.size(), _enemies.size(), _action_enemies.size(),
 		_events.size(), _games.size(), _characters.size()

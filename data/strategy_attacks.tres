@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="StrategyAttackLibrary" load_steps=2 format=3 uid="uid://strategy_attacks"]
+
+[ext_resource type="Script" path="res://scripts/resources/StrategyAttackLibrary.gd" id="1_sal"]
+
+[resource]
+script = ExtResource("1_sal")
+reach_tiles = {
+"full": 99,
+"large": 5,
+"medium": 3,
+"short": 2
+}
+radius_tiles = {
+"large": 3,
+"medium": 2,
+"small": 1
+}
+lob_throw_tiles = 4

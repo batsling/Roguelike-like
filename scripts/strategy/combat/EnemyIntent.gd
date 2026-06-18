@@ -11,8 +11,16 @@ var display_name: String = ""
 # Single glyph / short prefix shown above the sprite. Keep it short — the
 # grid view crowds quickly once the field has 3+ enemies.
 var icon: String = "*"
-# Maximum range (Manhattan). 1 = melee adjacency; 0 = self-only.
+# Maximum range (tiles). 1 = melee adjacency; 0 = self-only. When `attack_shape`
+# is set, this is derived from the StrategyAttackLibrary so the enemy's reach
+# matches its on-grid footprint.
 var range_max: int = 1
+# Attack archetype from the shared StrategyAttackLibrary vocabulary (poke / swing
+# / smash / projectile / beam / …). Empty -> a plain single-target melee hit.
+# Drives the enemy's grid range + the tiles its attack covers, exactly like a
+# player card's Attack column.
+var attack_shape: StringName = &""
+var attack_params: Dictionary = {}
 var cooldown: int = 0
 # Higher wins ties; off-cooldown intents always beat on-cooldown ones
 # regardless of priority. Lets `regenerate` outrank `bash` when the

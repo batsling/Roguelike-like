@@ -40,14 +40,19 @@ const COLOR_THREAT_ATK   := Color(1.0,  0.35, 0.32, 0.24)
 # in blue, the attack reach that extends BEYOND movement in orange.
 const COLOR_PREVIEW_MOVE := Color(0.2,  0.7,  1.0, 0.28)
 const COLOR_PREVIEW_ATK  := Color(1.0,  0.55, 0.2, 0.34)
+# AIM mode: the in-range band the cursor is gated to (dim), and the live attack
+# footprint under the cursor (bright), which rotates to face the aimed tile.
+const COLOR_AIM_BAND     := Color(1.0,  0.55, 0.2, 0.18)
+const COLOR_AIM_HIT      := Color(1.0,  0.3,  0.25, 0.5)
 
-enum Mode { IDLE, MOVE, ATTACK_TARGET, UNIT_TARGET }
+enum Mode { IDLE, MOVE, ATTACK_TARGET, UNIT_TARGET, AIM }
 enum TargetFilter { ENEMY, ALLY, ANY }
 
 signal move_requested(path: Array)        # Array[Vector2i], excluding start
 signal attack_requested(target)           # BattleUnit (adjacent only)
 signal target_requested(target)           # BattleUnit (any range, filter-aware)
-signal target_cancelled                   # right-click in UNIT_TARGET aborts
+signal aim_confirmed(pos: Vector2i)       # tile clicked inside an attack's range
+signal target_cancelled                   # right-click in UNIT_TARGET / AIM aborts
 signal hover_changed(pos: Vector2i)       # Vector2i(-1,-1) when outside grid
 
 var tile_size: int = BASE_TILE_SIZE
@@ -74,6 +79,14 @@ var _player_icon: Texture2D = null
 var _preview_active: bool = false
 var _preview_move: Dictionary = {}
 var _preview_attack: Dictionary = {}
+
+# AIM mode state: the resolved StrategyAttackLibrary spec for the attack being
+# aimed, the set of tiles the cursor is allowed to click (in range), and the
+# live footprint tiles under the current aim (recomputed on hover so directional
+# shapes rotate as the cursor moves).
+var _aim_spec: Dictionary = {}
+var _aim_tiles: Dictionary = {}
+var _aim_footprint: Array = []
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -136,10 +149,43 @@ func enter_unit_target_mode(filter: int = TargetFilter.ENEMY) -> void:
 	_path_preview.clear()
 	queue_redraw()
 
+# Mewgenics-style aimed attack: the cursor is gated to tiles within the attack's
+# range, and a live footprint (which rotates for directional shapes) previews the
+# tiles it will hit. `spec` is a StrategyAttackLibrary.resolve() result.
+func enter_aim_mode(spec: Dictionary) -> void:
+	if active_unit == null:
+		return
+	mode = Mode.AIM
+	_aim_spec = spec
+	_aim_tiles = Data.strategy_attacks.aimable_tiles(spec, active_unit.position, battle_map)
+	_aim_footprint = []
+	_reach.clear()
+	_path_preview.clear()
+	queue_redraw()
+
+# Unit positions (other than the attacker) that halt a non-piercing line — kept
+# in sync at footprint time so a projectile stops on the first body it meets.
+func _unit_stops() -> Dictionary:
+	var stops: Dictionary = {}
+	for u in units:
+		if u != active_unit and u.is_alive():
+			stops[u.position] = true
+	return stops
+
+func _recompute_aim_footprint(aim: Vector2i) -> void:
+	if active_unit == null or _aim_spec.is_empty():
+		_aim_footprint = []
+		return
+	_aim_footprint = Data.strategy_attacks.footprint(
+		_aim_spec, active_unit.position, aim, battle_map, _unit_stops())
+
 func enter_idle() -> void:
 	mode = Mode.IDLE
 	_reach.clear()
 	_path_preview.clear()
+	_aim_spec = {}
+	_aim_tiles = {}
+	_aim_footprint = []
 	queue_redraw()
 
 func notify_units_changed() -> void:
@@ -399,6 +445,14 @@ func _draw() -> void:
 				continue
 			draw_rect(Rect2(pos.x * ts, pos.y * ts, ts, ts), COLOR_REACH, true)
 
+	# AIM mode: the in-range band (where the cursor may click) plus the live
+	# footprint under the current aim — the exact tiles this attack will hit.
+	if mode == Mode.AIM:
+		for pos in _aim_tiles.keys():
+			draw_rect(Rect2(pos.x * ts, pos.y * ts, ts, ts), COLOR_AIM_BAND, true)
+		for pos in _aim_footprint:
+			draw_rect(Rect2(pos.x * ts, pos.y * ts, ts, ts), COLOR_AIM_HIT, true)
+
 	# Hover range preview (movement band + attack ring outside it).
 	if mode == Mode.IDLE and _preview_active:
 		for pos in _preview_move.keys():
@@ -511,6 +565,10 @@ func _gui_input(event: InputEvent) -> void:
 				_path_preview = _build_path(pos)
 			else:
 				_path_preview = []
+			if mode == Mode.AIM:
+				# Clamp the aimed tile to the in-range band so the footprint preview
+				# always reads from a legal aim, then rotate it to face the cursor.
+				_recompute_aim_footprint(pos if _aim_tiles.has(pos) else active_unit.position)
 			emit_signal("hover_changed", pos)
 			queue_redraw()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -530,6 +588,10 @@ func _gui_input(event: InputEvent) -> void:
 			var tgt2 = _unit_at(pos)
 			if _target_allowed(tgt2):
 				emit_signal("target_requested", tgt2)
+		elif mode == Mode.AIM:
+			# Hard range gate: only tiles inside the band are clickable.
+			if _aim_tiles.has(pos):
+				emit_signal("aim_confirmed", pos)
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-		if mode == Mode.UNIT_TARGET:
+		if mode == Mode.UNIT_TARGET or mode == Mode.AIM:
 			emit_signal("target_cancelled")

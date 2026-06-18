@@ -59,7 +59,7 @@ const ENEMY_LOOT_TABLE := {
 }
 
 # What the player is currently selecting in the grid view.
-enum Pending { NONE, ABILITY, SPELL }
+enum Pending { NONE, ABILITY, SPELL, ATTACK }
 
 var _battle_map = null
 var _turn_manager = null
@@ -79,6 +79,9 @@ var _spellbook = null      # Spellbook
 var _pending_kind: int = Pending.NONE
 var _pending_card = null     # CardData (slotted loadout card)
 var _pending_spell = null    # Spellbook.Entry
+# The StrategyAttackLibrary spec for the attack currently being aimed (ABILITY /
+# ATTACK pending kinds), cleared once the aim resolves or is cancelled.
+var _pending_aim_spec: Dictionary = {}
 
 var _grid_view: BattleGridView
 var _initiative_label: Label
@@ -298,6 +301,7 @@ func _build_ui() -> void:
 	_grid_view.move_requested.connect(_on_move_requested)
 	_grid_view.attack_requested.connect(_on_attack_requested)
 	_grid_view.target_requested.connect(_on_target_requested)
+	_grid_view.aim_confirmed.connect(_on_aim_confirmed)
 	_grid_view.target_cancelled.connect(_on_target_cancelled)
 	_grid_view.hover_changed.connect(_on_grid_hover)
 	panel.add_child(_grid_view)
@@ -1447,9 +1451,56 @@ func _on_attack_button() -> void:
 	if not _is_player_turn() or _action_used:
 		return
 	_clear_pending()
-	_grid_view.enter_attack_mode()
+	# The weapon card's (or the basic strike's) Attack archetype drives the
+	# Attack action's range + footprint, same as a played card.
+	_pending_kind = Pending.ATTACK
+	_pending_aim_spec = _attack_spec_for_weapon_or_basic()
+	_grid_view.enter_aim_mode(_pending_aim_spec)
 	var with_what: String = _weapon_card.data.display_name if _weapon_card != null else "your strike"
-	_status_label.text = "Click an adjacent enemy to attack with %s." % with_what
+	_status_label.text = "Attacking with %s — aim within range (right-click to cancel)." % with_what
+
+# The grid attack spec for the Attack action: the equipped weapon's archetype, or
+# a plain melee poke at the unit's basic-attack range when bare-handed.
+func _attack_spec_for_weapon_or_basic() -> Dictionary:
+	if _weapon_card != null:
+		return _attack_spec_for_card(_weapon_card.data)
+	var spec: Dictionary = Data.strategy_attacks.resolve(&"poke", {})
+	# A bare strike is melee (range 1) unless the unit's basic attack defines a
+	# longer reach — keep it from inheriting poke's default 2-tile range.
+	var u = get_player_unit()
+	spec["range_tiles"] = maxi(1, int(u.basic_attack_def.get("range", 1))) if u != null else 1
+	return spec
+
+# Resolve the Attack action against the aimed footprint. Weapon effects route
+# through the shared path (friendly fire applies); a bare strike damages whoever
+# the footprint catches other than the attacker.
+func _resolve_attack_against_aim(pos: Vector2i) -> void:
+	if not _is_player_turn() or _action_used:
+		return
+	var attacker = _turn_manager.current_unit
+	var shaped: Array = _shaped_targets_for(_pending_aim_spec, attacker, pos)
+	if _weapon_card != null:
+		_apply_card_or_spell_effects(_effective_card_effects(_weapon_card.data, _weapon_card.upgraded), attacker, null, _weapon_card.data, 0, {}, shaped)
+		_status_label.text = "You attack with %s." % _weapon_card.data.display_name
+	else:
+		var dmg := DEFAULT_BASIC_ATTACK
+		if attacker.basic_attack_def.has("damage"):
+			dmg = int(attacker.basic_attack_def["damage"])
+		var hit_any := false
+		for t in shaped:
+			if t != attacker:
+				_apply_damage(attacker, t, dmg)
+				hit_any = true
+		_status_label.text = "You strike for %d." % dmg if hit_any else "Your strike hits nothing."
+	_action_used = true
+	_register_player_action()
+	_pending_kind = Pending.NONE
+	_pending_aim_spec = {}
+	_grid_view.enter_idle()
+	_grid_view.notify_units_changed()
+	_refresh_initiative()
+	_refresh_button_states()
+	_check_battle_end_after_effect()
 
 func _on_defend_button() -> void:
 	if not _is_player_turn() or _action_used:
@@ -1604,12 +1655,19 @@ func _on_pick_ability(card) -> void:
 	_pending_kind = Pending.ABILITY
 	_pending_card = card
 	if CombatLoadout.wants_enemy_target(card.data):
-		_grid_view.enter_unit_target_mode(BattleGridView.TargetFilter.ENEMY)
-		_status_label.text = "Playing %s — click an enemy (right-click to cancel)." % card.data.display_name
+		# Aimed attack: the Attack column's archetype drives range + footprint on
+		# the grid (Mewgenics-style). The cursor is gated to in-range tiles and the
+		# footprint rotates to face the aim; resolution hits whoever stands in it.
+		_pending_aim_spec = _attack_spec_for_card(card.data)
+		_grid_view.enter_aim_mode(_pending_aim_spec)
+		_status_label.text = "Playing %s — aim within range (right-click to cancel)." % card.data.display_name
 	else:
 		_resolve_ability_against(null)
 
-func _resolve_ability_against(target) -> void:
+# `shaped_targets` (non-empty for aimed attacks) is the set of units standing in
+# the attack's grid footprint; damaging enemy/all_enemies effects resolve against
+# it instead of the legacy single-target / all-enemies broadcast.
+func _resolve_ability_against(target, shaped_targets: Array = []) -> void:
 	if _pending_card == null:
 		return
 	var u = _turn_manager.current_unit
@@ -1653,13 +1711,14 @@ func _resolve_ability_against(target) -> void:
 	card.roll_vorpal_if_needed()
 	if card.vorpal_type >= 0 and card.vorpal_weight > 0:
 		vorpal = {"type": card.vorpal_type, "weight": card.vorpal_weight}
-	_apply_card_or_spell_effects(_effective_card_effects(card.data, card.upgraded), u, target, card.data, empower, vorpal)
+	_apply_card_or_spell_effects(_effective_card_effects(card.data, card.upgraded), u, target, card.data, empower, vorpal, shaped_targets)
 	# Destroy: remove the played card from the run deck permanently after it resolves.
 	if card.data != null and card.data.destroy:
 		GameState.destroy_card_instance(card)
 		_status_label.text = "%s is Destroyed — removed from your deck." % card.data.display_name
 	_pending_kind = Pending.NONE
 	_pending_card = null
+	_pending_aim_spec = {}
 	_grid_view.enter_idle()
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
@@ -1868,10 +1927,52 @@ func _on_target_cancelled() -> void:
 	_grid_view.enter_idle()
 	_status_label.text = "Cancelled."
 
+# A tile was clicked inside an attack's range (BattleGridView gates this to the
+# in-range band). Resolve the pending ability / Attack-action against the
+# footprint anchored at the attacker and oriented toward `pos`.
+func _on_aim_confirmed(pos: Vector2i) -> void:
+	if not _is_player_turn():
+		return
+	var attacker = _turn_manager.current_unit
+	match _pending_kind:
+		Pending.ABILITY:
+			var shaped: Array = _shaped_targets_for(_pending_aim_spec, attacker, pos)
+			_resolve_ability_against(null, shaped)
+		Pending.ATTACK:
+			_resolve_attack_against_aim(pos)
+		_:
+			pass
+
 func _clear_pending() -> void:
 	_pending_kind = Pending.NONE
 	_pending_card = null
 	_pending_spell = null
+	_pending_aim_spec = {}
+
+# The grid attack spec for a card, from its Attack-column archetype (with the
+# legacy melee/ranged fallback for un-annotated cards). See StrategyAttackLibrary.
+func _attack_spec_for_card(card_data) -> Dictionary:
+	return Data.strategy_attacks.resolve_for_card(card_data)
+
+# The living units standing in `spec`'s footprint when anchored at `source` and
+# aimed at `aim`. Friendly fire: every unit in the footprint is returned (both
+# sides), so a poorly-aimed blast can catch your own allies.
+func _shaped_targets_for(spec: Dictionary, source, aim: Vector2i) -> Array:
+	if spec.is_empty() or source == null:
+		return []
+	var stops: Dictionary = {}
+	for u in _units:
+		if u != source and u.is_alive():
+			stops[u.position] = true
+	var tiles: Array = Data.strategy_attacks.footprint(spec, source.position, aim, _battle_map, stops)
+	var tileset: Dictionary = {}
+	for t in tiles:
+		tileset[t] = true
+	var out: Array = []
+	for u in _units:
+		if u.is_alive() and tileset.has(u.position):
+			out.append(u)
+	return out
 
 # ----------------------------------------------------------------------
 # Effect resolution (called by EffectSystem handlers via this scene)
@@ -1882,8 +1983,14 @@ func _clear_pending() -> void:
 # `card` is the CardData driving the effects (ability/spell card or
 # null for enemy AI moves); used by Stats.apply_addons_to_effect to
 # fold compute-addon bonuses (Fishing Weight et al) into dmg values.
-func apply_effects(effects: Array, source, target, card = null) -> void:
-	_apply_card_or_spell_effects(effects, source, target, card)
+func apply_effects(effects: Array, source, target, card = null, shaped_targets: Array = []) -> void:
+	_apply_card_or_spell_effects(effects, source, target, card, 0, {}, shaped_targets)
+
+# Public wrapper around the footprint resolver so EnemyAI (and any caller) can
+# ask which units an attack spec would hit when anchored at `source`, aimed at
+# `aim`. See _shaped_targets_for for the friendly-fire semantics.
+func shaped_targets(spec: Dictionary, source, aim: Vector2i) -> Array:
+	return _shaped_targets_for(spec, source, aim)
 
 # Status application entry point (called by EffectSystem._h_status and the shared
 # contact reactions). Shared apply (guard + Persistence + add) lives in
@@ -1893,7 +2000,7 @@ func apply_status(target, status: StringName, stacks: int, source = null) -> voi
 	if Stats.apply_status_to(target, status, stacks, source) > 0:
 		_grid_view.notify_units_changed()
 
-func _apply_card_or_spell_effects(effects: Array, source, target, card = null, empower: int = 0, vorpal: Dictionary = {}) -> void:
+func _apply_card_or_spell_effects(effects: Array, source, target, card = null, empower: int = 0, vorpal: Dictionary = {}, shaped_targets: Array = []) -> void:
 	# Replay addon: a card with Replay X resolves its full effect list X extra
 	# times. `card` is null for enemy AI moves (CardMods.replay_count(null) is
 	# 0), so only player cards / abilities / spells / weapon attacks replay.
@@ -1916,10 +2023,11 @@ func _apply_card_or_spell_effects(effects: Array, source, target, card = null, e
 				effect["vorpal_weight"] = int(vorpal["weight"])
 			if empower > 0:
 				effect = _tr.apply_empower(effect, empower)
-			var resolved_targets: Array = _resolve_effect_targets(effect, source, target)
-			if resolved_targets.is_empty():
-				# self-only effects with no explicit target — treat source as target.
-				resolved_targets = [source]
+			# _resolve_effect_targets already maps self/untargeted effects to the
+			# source, so an empty list here means an enemy/AOE effect with no valid
+			# target (e.g. an aimed attack that landed on no one) — it simply does
+			# nothing rather than falling back onto the caster.
+			var resolved_targets: Array = _resolve_effect_targets(effect, source, target, shaped_targets)
 			for t in resolved_targets:
 				EffectSystem.apply(effect, {
 					"source": source,
@@ -1928,13 +2036,18 @@ func _apply_card_or_spell_effects(effects: Array, source, target, card = null, e
 					"card": card,
 				})
 
-func _resolve_effect_targets(effect: Dictionary, source, picked) -> Array:
+func _resolve_effect_targets(effect: Dictionary, source, picked, shaped_targets: Array = []) -> Array:
 	var kind: String = str(effect.get("target", "self"))
 	# Indiscriminate enemy effects don't use the clicked target — seed a random
 	# enemy (EffectSystem re-rolls per hit from there). Blood Magic / Bouncing Flask.
 	if bool(effect.get("indiscriminate", false)) and kind == "enemy":
 		var seed_target = pick_random_enemy(source)
 		return [seed_target] if seed_target != null else []
+	# Spatial attack: damaging enemy / AOE effects hit whoever stands in the
+	# aimed footprint (friendly fire included), rather than a single clicked
+	# enemy or every enemy globally. self / ally effects still resolve normally.
+	if not shaped_targets.is_empty() and (kind == "enemy" or kind == "all_enemies"):
+		return shaped_targets
 	match kind:
 		"self":
 			return [source]
