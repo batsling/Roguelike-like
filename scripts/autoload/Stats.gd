@@ -29,11 +29,14 @@ const DECAY_STATUSES: Array[StringName] = [
 	&"blind",
 ]
 
-# Statuses that GROW by 1 at end of turn (Bleed). Mirror of
-# DECAY_STATUSES — same callsites, opposite operation. Per-turn DoT
-# damage still happens BEFORE the grow (see tick_actor_statuses) so
-# the player takes the current-stack bite, then the next turn's bite
-# is one bigger.
+# Statuses that GROW by 1 at end of turn (Bleed) in STRATEGY mode. Mirror of
+# DECAY_STATUSES — same callsites, opposite operation. Per-turn DoT damage
+# happens BEFORE the grow (see tick_actor_statuses) so the unit takes the
+# current-stack bite, then the next turn's bite is one bigger.
+#
+# Deckbuilder opts out (decay_actor_statuses(actor, false)): its Bleed is
+# attack-triggered and cleared each turn, never a growing DoT. Action also
+# passes do_grow = false (action_bleed_step ramps it instead).
 const GROW_STATUSES: Array[StringName] = [
 	&"bleed",
 ]
@@ -746,7 +749,7 @@ func _target_weight(target) -> int:
 		return int(target.weight)
 	return -1
 
-func tick_actor_statuses(actor, scene) -> void:
+func tick_actor_statuses(actor, scene, tick_bleed: bool = true) -> void:
 	# Per-turn damage / heal effects from statuses. MUST run BEFORE
 	# decay_actor_statuses on the same boundary so the bite uses the
 	# stack count the player has been carrying (and Bleed grows AFTER
@@ -756,13 +759,19 @@ func tick_actor_statuses(actor, scene) -> void:
 	# Poison) land here too once their tick rules are authored — the
 	# canonical order in this function IS the contract.
 	#
+	# Bleed is now MODE-DIVERGENT (the second such status after Fear).
+	# Strategy + Action keep the turn-boundary DoT bite below (Strategy then
+	# grows +1 via GROW_STATUSES; Action ramps/clears via action_bleed_step).
+	# The deckbuilder passes tick_bleed = false because its Bleed is
+	# attack-triggered, not turn-based: see deckbuilder_bleed_on_attack().
+	#
 	# Untyped actor for cross-mode use: actor must expose
 	# is_alive() -> bool and get_status(name) -> int.
 	if actor == null or not actor.has_method("is_alive") or not actor.is_alive():
 		return
 	if scene == null or not scene.has_method("apply_dot") or not actor.has_method("get_status"):
 		return
-	var bleed: int = actor.get_status(&"bleed")
+	var bleed: int = actor.get_status(&"bleed") if tick_bleed else 0
 	if bleed > 0:
 		scene.apply_dot(actor, bleed, "bleed")
 	# Poison: bites for X = current stacks (the sheet's start-of-turn DoT).
@@ -889,6 +898,34 @@ func action_bleed_step(actor, was_hit: bool) -> void:
 	if was_hit:
 		actor.add_status(&"bleed", 1)
 	else:
+		actor.add_status(&"bleed", -bleed)
+
+# Deckbuilder-only Bleed rule (Breach-Wanderers style). Bleed is NOT a
+# turn-boundary DoT here; instead, every time the player plays an ATTACK card,
+# each actor afflicted with Bleed takes raw HP equal to its current stacks.
+# Called by DeckbuilderCombat AFTER the attack card has fully resolved (so
+# stacks added/removed mid-resolution count), against the player plus every
+# living enemy. All Bleed is then wiped at end of turn (clear_bleed). Untyped
+# actors: each must expose get_status / is_alive; scene needs apply_dot.
+func deckbuilder_bleed_on_attack(actors: Array, scene) -> void:
+	if scene == null or not scene.has_method("apply_dot"):
+		return
+	for a in actors:
+		if a == null or not a.has_method("get_status") or not a.has_method("is_alive"):
+			continue
+		if not a.is_alive():
+			continue
+		var bleed: int = a.get_status(&"bleed")
+		if bleed > 0:
+			scene.apply_dot(a, bleed, "bleed")
+
+# Strip all Bleed stacks from an actor (deckbuilder end-of-turn: "all ranks of
+# Bleed are lost at end of turn"). No-op when the actor isn't bleeding.
+func clear_bleed(actor) -> void:
+	if actor == null or not actor.has_method("get_status"):
+		return
+	var bleed: int = actor.get_status(&"bleed")
+	if bleed > 0:
 		actor.add_status(&"bleed", -bleed)
 
 func roll_blind_miss(rng: RandomNumberGenerator, source_is_player: bool) -> bool:

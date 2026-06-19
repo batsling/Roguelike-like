@@ -113,7 +113,6 @@ var _item_list_container: VBoxContainer
 var _inventory_panel: CombatInventory
 
 var _enemy_turn_timer: Timer
-var _fear_turn_timer: Timer
 
 # Counts the player unit's turns this combat so turn-based items (Horn Cleat,
 # Happy Flower) and the turn-1 draw bonus fire correctly. Reset per encounter.
@@ -321,14 +320,6 @@ func _build_ui() -> void:
 	_enemy_turn_timer.wait_time = ENEMY_TURN_DELAY
 	_enemy_turn_timer.timeout.connect(_auto_end_enemy_turn)
 	add_child(_enemy_turn_timer)
-
-	# Fear: a feared unit (player OR enemy) flees at the start of its turn, then
-	# its turn ends after this beat — no AI, no player control.
-	_fear_turn_timer = Timer.new()
-	_fear_turn_timer.one_shot = true
-	_fear_turn_timer.wait_time = ENEMY_TURN_DELAY
-	_fear_turn_timer.timeout.connect(_auto_end_feared_turn)
-	add_child(_fear_turn_timer)
 
 # --- Chrome helpers ----------------------------------------------------
 
@@ -721,14 +712,16 @@ func _on_hover_preview_end() -> void:
 func _on_unit_turn_started(unit) -> void:
 	_grid_view.set_active_unit(unit, unit.move_range)
 	_refresh_initiative()
-	# Fear: spend the whole turn fleeing, then end the turn. Same for both sides.
+	# Fear: the unit automatically repositions as far from its foes as possible
+	# at the start of its turn — a FREE move that costs no movement energy and
+	# does NOT consume the turn. After fleeing it takes its normal turn. Same
+	# rule for both sides; _fear_flee also decays Fear by 1.
 	if unit.get_status(&"fear") > 0:
-		_set_player_buttons_enabled(false)
-		_grid_view.enter_idle()
 		_fear_flee(unit)
-		_status_label.text = "%s is gripped by Fear and flees!" % str(unit.unit_name).capitalize()
-		_fear_turn_timer.start()
-		return
+		_grid_view.set_active_unit(unit, unit.move_range)
+		_refresh_initiative()
+		GameLog.add("%s is gripped by Fear and flees!" % str(unit.unit_name).capitalize(),
+			Color(0.8, 0.7, 1.0))
 	if unit.is_player:
 		_player_turn_count += 1
 		# Refresh energy; Ice Cream pours last turn's leftover on top (may exceed
@@ -921,11 +914,6 @@ func _fear_flee_score(tile: Vector2i, foes: Array) -> int:
 	for f in foes:
 		total += absi(tile.x - f.position.x) + absi(tile.y - f.position.y)
 	return total
-
-func _auto_end_feared_turn() -> void:
-	if _turn_manager == null or _turn_manager.current_unit == null:
-		return
-	_turn_manager.end_current_turn()
 
 func _auto_end_enemy_turn() -> void:
 	if _turn_manager == null or _turn_manager.current_unit == null:

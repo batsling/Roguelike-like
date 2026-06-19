@@ -75,17 +75,28 @@ handler. `X` / `N` in an arg refer to the card-supplied magnitude.
 ### Lifecycle per-addon, per-mode (verbs the cells would carry)
 | Addon | Deckbuilder | Action | Strategy |
 | --- | --- | --- | --- |
-| Exhaust | `on_play: to_pile(exhaust)` ✅ | `uses_per_combat(1)` ❌ | `uses_per_combat(1)` ❌ |
-| Ethereal | `eot_in_hand: to_pile(exhaust)` ✅ | `cooldown_mult(2)` ❌ | `deactivate_if_idle` ❌ |
-| Innate | `on_combat_start: to_hand` ✅ | `on_combat_start: auto_play` ❌ | `on_combat_start: free_play(1)` ❌ |
-| Unplayable | `not_playable` ✅ | `cooldown_mult(2)` ❌ | `requires_equipped(1)` ❌ |
+| Exhaust | `on_play: to_pile(exhaust)` ✅ | `uses_per_combat(1)` ✅ | — (same as Deckbuilder) |
+| Ethereal | `eot_in_hand: to_pile(exhaust)` ✅ | `cooldown_mult(2)` ✅ | — (same as Deckbuilder) |
+| Innate | `on_combat_start: to_hand` ✅ | `on_combat_start: auto_play` ✅ | — (same as Deckbuilder) |
+| Unplayable | `not_playable` ✅ | `cooldown_mult(2)` ✅ | — (same as Deckbuilder) |
 | Eternal | `removable(false)` ✅ | `removable(false)` ✅ | `removable(false)` ✅ |
 
-✅ = the verb maps to code that exists today; ❌ = behavior not implemented in
-that mode yet. `cooldown_mult` rides the existing `AbilityCooldownConfig` /
-`ActionTranslation` plumbing, so it's a knob on a system you already have rather
-than a new one. Eternal is mode-agnostic (`Expr = removable(false)`), so it needs
-no Verb cells.
+✅ = the verb maps to code that exists today. `cooldown_mult` rides the existing
+`AbilityCooldownConfig` / `ActionTranslation` plumbing, so it's a knob on a
+system you already have rather than a new one. Eternal is mode-agnostic
+(`Expr = removable(false)`), so it needs no Verb cells.
+
+> **Strategy is now a grid deckbuilder.** When the tactical mode was converted
+> to play like the deckbuilder (real hand / draw / discard / exhaust piles),
+> these lifecycle addons stopped needing bespoke Strategy verbs: Strategy reads
+> the same `CardData` flags (`exhaust` / `ethereal` / `innate` / `unplayable` /
+> `retain` / `sly` / `destroy`) the deckbuilder does, so they behave identically
+> in both modes. The old Strategy verbs (`uses_per_combat`, `deactivate_if_idle`,
+> `free_play`, `requires_equipped`) belonged to the retired loadout/per-run-uses
+> model and have been removed from `AddonSystem.gd`; their `addonsnew` Strategy
+> Verb cells are now blank and the Strategy prose column mirrors the Deckbuilder
+> column. `AddonSystem` still drives **Action** behavior (`uses_per_combat`,
+> `cooldown_mult`, `auto_play`).
 
 ## What stays in the TranslationResource (do NOT move to the sheet)
 Global *feel* tunables — `haste_multiplier`, `turn_tick_secs`, base cooldown
@@ -112,15 +123,13 @@ addons and normal combat are unaffected.
 | `cooldown_mult` (Ethereal, Unplayable) | Action | `ActionCombat._cooldown_for` | ✅ wired |
 | `uses_per_combat` (Exhaust) | Action | auto-slot rotation (`_addon_uses`) | ✅ wired |
 | `auto_play` (Innate) | Action | `_auto_play_innate_addons` at room start | ✅ wired |
-| `uses_per_combat` (Exhaust) | Strategy | `GameState.max_card_uses` cap | ✅ wired |
-| `free_play` (Innate) | Strategy | turn-1 `_free_ability_card` | ✅ wired |
-| `deactivate_if_idle` (Ethereal) | Strategy | turn-end check + picker/pick gating | ✅ wired |
-| `requires_equipped` (Unplayable) | Strategy | loadout-confirm validation (`_loadout_requirement_error`) | ✅ wired |
 
-`requires_equipped` blocks "Start Battle" (with a loadout-screen message) until
-the player slots the required number of Unplayable cards — only when they own
-any. Unplayable cards pass through the loadout pool, so the rule is always
-satisfiable.
+The Strategy verbs that used to live here (`uses_per_combat`, `free_play`,
+`deactivate_if_idle`, `requires_equipped`) were **removed** when Strategy became
+a grid deckbuilder. Strategy now reads the deckbuilder `CardData` flags directly
+(see the note under the lifecycle table above), so Exhaust / Ethereal / Innate /
+Unplayable / Retain / Sly behave exactly as in the deckbuilder. `AddonSystem`
+drives Action only.
 
 Deckbuilder keeps its existing CardData-flag code for all of these — it already
 worked — so `AddonSystem` powers Action/Strategy only.
