@@ -9,6 +9,9 @@ signal gold_changed(new_gold: int)
 signal stats_changed
 signal deck_changed
 signal inventory_changed
+# Fired when a card permanently evolves into another (EvolutionSystem): carries
+# the old + new card ids so id-keyed buff systems can follow the identity change.
+signal card_evolved(from_id: StringName, to_id: StringName)
 signal current_game_changed(game_id: StringName)
 
 # === Identity / progression ===

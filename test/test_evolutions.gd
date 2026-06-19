@@ -136,6 +136,40 @@ func test_evolution_swaps_card_and_keeps_buffs() -> void:
 	GameState.inventory.clear()
 	GameState.inventory.append_array(inv_bak)
 
+# Minimal stand-in for a combat scene that holds id-keyed card boosts.
+class _BoostScene:
+	extends RefCounted
+	var card_boosts: Array = []
+
+func test_evolution_remaps_id_specific_card_boosts() -> void:
+	var deck_bak: Array = GameState.deck.duplicate()
+	var inv_bak: Array = GameState.inventory.duplicate()
+	var scene_bak = GameState.combat_scene
+	GameState.deck.clear()
+	GameState.inventory.clear()
+
+	var ci := CardInstance.from_data(Data.get_card(&"lil_bomber"))
+	GameState.deck.append(ci)
+	var crown: ItemData = Data.get_item(&"crown")
+	if crown != null:
+		GameState.inventory.append(crown.duplicate(true))
+	# A buff that targets the base card by id (e.g. a future card-specific buff).
+	var scene := _BoostScene.new()
+	scene.card_boosts = [{"match_id": "lil_bomber", "stat": "dmg", "value": 2}]
+	GameState.combat_scene = scene
+
+	EvolutionSystem.check_all()
+
+	assert_eq(String(ci.data.id), "king_bomber", "the card evolved")
+	assert_eq(String(scene.card_boosts[0].get("match_id", "")), "king_bomber",
+		"an id-specific boost is re-pointed onto the evolved card")
+
+	GameState.combat_scene = scene_bak
+	GameState.deck.clear()
+	GameState.deck.append_array(deck_bak)
+	GameState.inventory.clear()
+	GameState.inventory.append_array(inv_bak)
+
 func test_evolution_catalog_maps_lil_to_king_bomber() -> void:
 	assert_gt(EvolutionCatalog.EVOLUTIONS.size(), 0, "at least one evolution catalogued")
 	var found: Dictionary = {}

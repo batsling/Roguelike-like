@@ -62,13 +62,24 @@ func _try_evolve(evo: Dictionary) -> void:
 			# Swap only the card IDENTITY (its CardData), preserving every
 			# per-instance buff the base card accumulated: persistent effect
 			# bonuses (weapon verifications / "+N Dmg" gains), the upgrade flag,
-			# strategy uses, and any Vorpal roll. The evolved card's effect layout
-			# matches the base (same dmg effect at index 0, gold rider merged onto
-			# it), so index-keyed effect_bonuses still land on the right effect.
+			# and any Vorpal roll (e.g. a future Scroll of Vorpalize Weapon stamps
+			# vorpal_type/weight straight onto the instance, so it carries here).
+			# The evolved card's effect layout matches the base (same dmg effect at
+			# index 0, gold rider merged onto it), so index-keyed effect_bonuses
+			# still land on the right effect.
 			ci.data = to_card
+			# Strategy per-card `uses` belonged to the shelved strategy-loadout
+			# system (since superseded by the deckbuilder-style grid), so don't
+			# carry a stale count — let it re-seed from the default if ever read.
+			ci.uses = -1
 			swapped += 1
 	if swapped <= 0:
 		return
+	# Re-point any id-specific buffs from the base card onto the evolved one so
+	# they follow the evolution. Today that's the active combat scene's per-id
+	# card boosts; the card_evolved signal lets any future per-card-id buff store
+	# (card-specific buffs, etc.) remap itself the same way.
+	_remap_id_buffs(from_id, to_id)
 	var evolved_name: String = String(evo.get("name", String(to_id)))
 	var base_label: String = String(evo.get("req1_label", String(from_id)))
 	Notifications.notify("%s evolved into %s!" % [base_label, evolved_name],
@@ -77,6 +88,26 @@ func _try_evolve(evo: Dictionary) -> void:
 		Color(1.0, 0.85, 0.4))
 	# Surface the swap to every listener (hand views, backpack, collection).
 	GameState.emit_signal("deck_changed")
+	# Broadcast the identity change so any system that keys off a card id can
+	# follow it (Stats card boosts already do via the remap above; future
+	# per-card-id buff stores can connect to this).
+	GameState.emit_signal("card_evolved", from_id, to_id)
+
+
+# Re-point id-specific buffs from `from_id` onto `to_id`. The only id-keyed buff
+# store today is the active combat scene's `card_boosts` (a boost authored with
+# match_id targets a card by id, e.g. "all Lil' Bombers gain +2 Dmg"); rewriting
+# the id keeps the boost applying to the evolved card. Instance-level buffs
+# (effect_bonuses, Vorpal) travel on the CardInstance itself and need no remap.
+func _remap_id_buffs(from_id: StringName, to_id: StringName) -> void:
+	var scene = GameState.combat_scene
+	if scene == null or not ("card_boosts" in scene):
+		return
+	var from_s: String = String(from_id)
+	var to_s: String = String(to_id)
+	for boost in scene.card_boosts:
+		if typeof(boost) == TYPE_DICTIONARY and String(boost.get("match_id", "")) == from_s:
+			boost["match_id"] = to_s
 
 
 func _deck_has(card_id: StringName) -> bool:
