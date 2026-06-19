@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_lil_bomber"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/LilBomber.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"lil_bomber"
+display_name = "Lil' Bomber"
+kind = 3
+rarity = 0
+description = "Add the Card \"Lil' Bomber\" into your Deck. If you kill an enemy with a bomb at least one time, \"Lil' Bomber\" Gains (+1/+2) Dmg"
+triggers = []
+stat_bonuses = {}
+weapon_card_id = &"lil_bomber"
+verification_question = "Did you kill an enemy with a bomb?"
+verification_effects = [{"type": "bump_card_effect", "effect_index": 0, "field": "stacks", "increments": [1, 2]}]
+max_uses = -1
+source_game = "Enter the Gungeon"
+tags = PackedStringArray("gun")
+image = ExtResource("2_img")
