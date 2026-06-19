@@ -116,6 +116,7 @@ func _register_defaults() -> void:
 	register("attack_double", _h_attack_double)
 	register("if_hp", _h_if_hp)
 	register("free_random_hand_card", _h_free_random_hand_card)
+	register("reduce_card_cost", _h_reduce_card_cost)
 	register("gain_chest", _h_gain_chest)
 	register("roll_gold", _h_roll_gold)
 
@@ -699,3 +700,19 @@ func _h_free_random_hand_card(_effect: Dictionary, ctx: Dictionary) -> void:
 	if scene == null or not scene.has_method("make_random_hand_card_free"):
 		return
 	scene.make_random_hand_card_free(ctx.get("card"))
+
+func _h_reduce_card_cost(effect: Dictionary, ctx: Dictionary) -> void:
+	# Empty Tome. At combat start, knock `amount` off the cost of `count` random
+	# cards matching an optional tag/type filter (weapon Attack) for the rest of
+	# the fight. Cost IS cooldown in action mode (2*cost + rarity), so the same
+	# discount shortens the card's cooldown there — one knob, three modes. Each
+	# scene owns the mode-appropriate application via reduce_random_card_cost.
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("reduce_random_card_cost"):
+		return
+	scene.reduce_random_card_cost(
+		maxi(1, int(effect.get("count", 1))),
+		maxi(1, int(effect.get("amount", 1))),
+		String(effect.get("if_card_tag", "")),
+		String(effect.get("if_card_type", "")),
+	)

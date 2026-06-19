@@ -179,6 +179,12 @@ var _addon_uses: Dictionary = {}
 # _resolve_addon_effect. Combat-scoped: cleared in _load_loadout.
 var card_boosts: Array = []
 
+# Per-combat cost discounts (Empty Tome). CardData -> int cost reduction. Action
+# mode holds raw CardData (no CardInstance), so the discount lives here and
+# _cooldown_for folds it in — cooldown is derived from cost (2*cost + rarity),
+# so a -1 cost is a shorter cooldown. Combat-scoped: cleared in _load_loadout.
+var _cost_discounts: Dictionary = {}
+
 # Curse cards in action (the translation of the deckbuilder hand-curses):
 #   _curse_slots — eot curses run as EXTRA dedicated bad-slots; each counts down
 #     a long real-time cooldown and, on elapse, applies its translated eot effect
@@ -526,6 +532,7 @@ func _load_loadout() -> void:
 	auto_slots.clear()
 	_addon_uses.clear()
 	card_boosts.clear()
+	_cost_discounts.clear()
 	var first: CardData = _auto_draw_one()
 	if first != null:
 		var base_slot: Dictionary = {"card": null, "cooldown": 0.0, "max_cooldown": 0.0, "ttl": INF}
@@ -1067,8 +1074,11 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 func _cooldown_for(card: CardData) -> float:
 	if card == null:
 		return 0.0
-	# 2 * energy_cost + rarity_modifier (0/1/2/3 for starter/common/uncommon/rare)
-	var base: float = 2.0 * float(maxi(0, card.cost)) + float(card.rarity)
+	# 2 * energy_cost + rarity_modifier (0/1/2/3 for starter/common/uncommon/rare).
+	# A per-combat cost discount (Empty Tome) folds straight in here so lowering a
+	# card's cost shortens its cooldown.
+	var cost: int = maxi(0, card.cost - int(_cost_discounts.get(card, 0)))
+	var base: float = 2.0 * float(cost) + float(card.rarity)
 	# Addon cooldown multipliers (Ethereal / Unplayable -> cooldown_mult(2) in
 	# Action). Single chokepoint for both click and auto slots. 1.0 = unchanged.
 	return base * AddonSystem.cooldown_mult(card, Stats.Mode.ACTION)
@@ -2261,6 +2271,46 @@ func make_random_hand_card_free(_card = null) -> void:
 	for slot in auto_slots:
 		slot.cooldown = maxf(0.0, float(slot.cooldown) * 0.5)
 	GameLog.add("Mummified Hand: cooldowns slashed!", Color(0.7, 1.0, 0.7))
+
+func reduce_random_card_cost(count: int, amount: int, tag: String, type: String) -> void:
+	# Empty Tome in Action: cost IS cooldown here (2*cost + rarity), so trimming a
+	# card's cost shortens its cooldown for the fight. Pick `count` random loadout
+	# cards matching the filter (weapon Attack) and record a per-combat discount
+	# that _cooldown_for honours, then refresh the cached/armed cooldowns.
+	var pool: Array = []
+	for cd in [left_card, right_card]:
+		if cd != null and cd.cost > 0 and not pool.has(cd) and ItemTriggers.card_matches(cd, tag, type):
+			pool.append(cd)
+	for arr in [auto_draw, auto_discard]:
+		for cd in arr:
+			if cd != null and cd.cost > 0 and not pool.has(cd) and ItemTriggers.card_matches(cd, tag, type):
+				pool.append(cd)
+	for slot in auto_slots:
+		var sc = slot.get("card")
+		if sc != null and sc.cost > 0 and not pool.has(sc) and ItemTriggers.card_matches(sc, tag, type):
+			pool.append(sc)
+	if pool.is_empty():
+		return
+	pool.shuffle()
+	for i in mini(count, pool.size()):
+		var pick: CardData = pool[i]
+		_cost_discounts[pick] = int(_cost_discounts.get(pick, 0)) + amount
+		GameLog.add("Empty Tome: %s's cooldown is reduced this combat!" % pick.display_name,
+			Color(0.7, 1.0, 0.7))
+	# Recompute the cached click-slot caps and any armed auto slot that was hit so
+	# the discount takes effect immediately rather than only on the next arm.
+	if left_card != null:
+		left_max_cd = maxf(_tr.min_click_cooldown, _cooldown_for(left_card))
+		left_cd = minf(left_cd, left_max_cd)
+	if right_card != null:
+		right_max_cd = maxf(_tr.min_click_cooldown, _cooldown_for(right_card))
+		right_cd = minf(right_cd, right_max_cd)
+	for slot in auto_slots:
+		var armed = slot.get("card")
+		if armed != null and _cost_discounts.has(armed):
+			var new_max: float = _auto_cd(armed)
+			slot.max_cooldown = new_max
+			slot.cooldown = minf(float(slot.cooldown), new_max)
 
 # Status apply entry point used by EffectSystem._h_status, the shared contact
 # reactions, and the curse path. Routes through the shared core like every mode.

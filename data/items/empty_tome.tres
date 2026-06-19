@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_empty_tome"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/EmptyTome.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"empty_tome"
+display_name = "Empty Tome"
+kind = 1
+rarity = 1
+description = "At the start of combat, a random Weapon Attack card in your deck costs 1 less for the rest of the combat."
+triggers = [{"on": "combat_started", "effects": [{"type": "reduce_card_cost", "amount": 1, "count": 1, "if_card_tag": "weapon", "if_card_type": "attack"}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Vampire Survivors"
+tags = PackedStringArray("book")
+image = ExtResource("2_img")

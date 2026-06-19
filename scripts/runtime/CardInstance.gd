@@ -9,6 +9,14 @@ var data: CardData = null
 var upgraded: bool = false
 var temp_cost_override: int = -999      # -999 sentinel = no override
 
+# Per-combat additive cost change (negative = discount). Empty Tome grants a
+# random Weapon Attack card -1 cost for the fight; because action-mode cooldown
+# is derived from cost, the same discount shortens its cooldown there too. Reset
+# to 0 at the start of every combat in each scene's _init_deck (and cleared on
+# combat end) so it never leaks into the persistent deck. Distinct from
+# temp_cost_override, which is an absolute per-turn override (Mummified Hand).
+var combat_cost_delta: int = 0
+
 # Persistent additive bonuses to specific effect fields, set by weapon
 # verification (and any future "this card permanently gains +N" hook).
 # Shape: { effect_index(int) -> { field(String) -> bonus(int) } }
@@ -49,7 +57,12 @@ static func from_data(d: CardData, is_upgraded: bool = false) -> CardInstance:
 func get_cost() -> int:
 	if temp_cost_override != -999:
 		return temp_cost_override
-	return data.get_effective_cost(upgraded)
+	# X-cost cards (effective cost -1) ignore the combat delta — they spend all
+	# energy regardless, and the discount targets fixed-cost cards.
+	var base: int = data.get_effective_cost(upgraded)
+	if base < 0:
+		return base
+	return maxi(0, base + combat_cost_delta)
 
 # --- Vorpal -----------------------------------------------------------------
 
