@@ -26,7 +26,13 @@ signal stairs_entered                # player stepped onto the boss-exit stairs
 # get a dedicated column down the right edge (see ActionFloor) instead of
 # floating over the play area.
 const ARENA_W := 980
-const ARENA_H := 600           # leaves 120 px at bottom for slot bar + HUD
+# A top strip (ARENA_TOP) holds the player's health bar + gold, drawn ABOVE the
+# play field; the bottom 120 px holds the slot bar. The play area itself is
+# rendered shifted down by ARENA_TOP, but its internal coordinates still run
+# [0..ARENA_H] — _draw applies the offset and input/FX undo it.
+const ARENA_TOP := 40
+const ARENA_H := 560           # play height; top strip + bottom bar sit outside it
+const HUD_BOTTOM_Y := ARENA_TOP + ARENA_H   # screen Y where the bottom bar begins
 
 # Door geometry: a gap centered on each wall. The player triggers a
 # transition by walking into the gap once the room's doors are open.
@@ -41,7 +47,10 @@ const PLAYER_RADIUS := 18.0
 # tight.
 const PLAYER_SPRITE_RADIUS := PLAYER_RADIUS * 1.3
 const PLAYER_IFRAME_DURATION := 1.0
-const SWING_VISUAL_DURATION := 0.12
+const SWING_VISUAL_DURATION := 0.10
+# The whole blade-swipe animation (sweep + smear) is scaled by this so swings
+# read a touch snappier than the library's stored timings.
+const SWING_SPEED_MULT := 0.82
 
 # Persistence's debuff set now lives on Stats (Stats.PERSISTENCE_DEBUFFS), shared
 # by every mode through Stats.apply_status_to — no per-mode copy to drift.
@@ -132,6 +141,15 @@ var left_max_cd: float = 0.0
 var right_cd: float = 0.0
 var right_max_cd: float = 0.0
 var player_max_block: int = 0
+# Block earned in action combat decays over time. Each entry is a chunk
+# {amt: float, rate: float}; `rate` is block-per-second (a card's energy cost, so
+# pricier cards' block lingers). Reset each room. See _gain_block / _decay_block.
+var _block_pool: Array = []
+const DEFAULT_BLOCK_DECAY := 1.0   # block/sec for sources with no card cost (items)
+# The integer block value we last wrote to player_actor.block. Lets _decay_block
+# tell a real combat soak (player_actor.block dropped) apart from the harmless
+# rounding gap between the float pool total and its floored integer display.
+var _block_synced_int: int = 0
 
 # Turn-based -> Action concept mapping (turns->rooms, energy->Haste,
 # draw->auto-slots, click-cooldown floor, …). Single editable source of truth;
@@ -243,6 +261,16 @@ var projectiles: Array = []
 
 @onready var _hp_label: Label = $HPLabel
 
+# Floating combat numbers live under this node so they ride the same ARENA_TOP
+# offset the drawn play field uses (the labels position in arena coords).
+var _fx_root: Control = null
+
+# Top HUD strip (above the play field): a health bar + gold readout.
+var _top_hud_hp_fill: ColorRect = null
+var _top_hud_hp_label: Label = null
+var _top_hud_gold_label: Label = null
+var _hud_last_gold: int = -1
+
 # ---------------------------------------------------------------------------
 
 func _exit_tree() -> void:
@@ -282,10 +310,12 @@ func _ready() -> void:
 			# projectiles can be observed without setup.
 			enemies_to_spawn = [&"walker", &"shooter"]
 
-	# Common setup (both modes): player actor, loadout, slot bar.
+	# Common setup (both modes): player actor, loadout, slot bar, HUD.
 	_init_player()
 	_load_loadout()
+	_build_top_hud()
 	_build_slot_bar()
+	_build_fx_root()
 	Stats.apply_derived_statuses(player_actor, Stats.Mode.ACTION)
 	set_process_input(true)
 
@@ -337,6 +367,8 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	player_actor.hp = GameState.hp
 	player_actor.max_hp = GameState.max_hp
 	player_actor.block = 0
+	_block_pool.clear()
+	_block_synced_int = 0
 	player_actor.statuses.clear()
 	Stats.apply_derived_statuses(player_actor, Stats.Mode.ACTION)
 	_load_loadout()
@@ -580,6 +612,7 @@ func _process(delta: float) -> void:
 	_process_enemies(delta)
 	_process_projectiles(delta)
 	_process_pending_hits(delta)
+	_decay_block(delta)
 	_check_combat_end()
 	_refresh_hud()
 	_refresh_slot_bar()
@@ -689,8 +722,9 @@ func _process_player_input(delta: float) -> void:
 		player_pos.x = clampf(player_pos.x, PLAYER_RADIUS, ARENA_W - PLAYER_RADIUS)
 		player_pos.y = clampf(player_pos.y, PLAYER_RADIUS, ARENA_H - PLAYER_RADIUS)
 
-	# Aim toward mouse cursor.
-	var mouse_pos: Vector2 = get_local_mouse_position()
+	# Aim toward mouse cursor. The play field is drawn shifted down by ARENA_TOP,
+	# so undo that offset to read the cursor in arena coordinates.
+	var mouse_pos: Vector2 = get_local_mouse_position() - Vector2(0, ARENA_TOP)
 	var to_mouse: Vector2 = mouse_pos - player_pos
 	if to_mouse.length() > 5.0:
 		player_facing = to_mouse.normalized()
@@ -785,7 +819,7 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 	var res := Stats.resolve_damage(player_actor, inst.actor, base_dmg, atk, Stats.Mode.ACTION, _rng)
 	if res.missed:
 		GameLog.add("You swing blind and miss!", Color(0.85, 0.85, 0.55))
-		FloatingNumbers.spawn_text(self, inst.pos, "MISS", FloatingNumbers.MISS_COLOR)
+		FloatingNumbers.spawn_text(_fx_root, inst.pos, "MISS", FloatingNumbers.MISS_COLOR)
 		# A whiff breaks Dead Eye's streak.
 		if is_player_attack:
 			TriggerBus.emit_signal("attack_missed",
@@ -800,7 +834,7 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 	var amount: int = int(res.hp_loss)
 	if amount > 0:
 		inst.actor.hp = maxi(0, inst.actor.hp - amount)
-		FloatingNumbers.spawn(self, inst.pos, amount)
+		FloatingNumbers.spawn(_fx_root, inst.pos, amount)
 		# Lifesteal: the player heals for the unblocked damage dealt. Reflected
 		# contact reactions carry no_reaction, so they never lifesteal.
 		if bool(effect.get("lifesteal", false)) and not bool(effect.get("no_reaction", false)):
@@ -1316,7 +1350,7 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 				_apply_damage_effect(effect, tgt, cone_targets, aoe_targets)
 			"block":
 				if tgt == "self" or tgt == "player":
-					_gain_block(int(effect.get("value", 0)))
+					_gain_block(int(effect.get("value", 0)), _block_decay_for(card))
 			"status":
 				_apply_status_effect(effect, tgt, cone_targets, aoe_targets)
 			"heal":
@@ -1396,9 +1430,11 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 	for inst in enemies:
 		if inst.actor.is_alive():
 			all_alive.append(inst)
-	# Brief swing visual toward the nearest enemy if this card melees one.
+	# Brief swing visual toward the nearest enemy — but ONLY when the card
+	# actually swings at one. A pure skill (Defend) carries no enemy damage and
+	# must not mime an attack just because an enemy is in range.
 	var nearest: Dictionary = _nearest_enemy()
-	if not nearest.is_empty():
+	if not nearest.is_empty() and _card_has_melee_damage(card):
 		_legacy_swing_visual((nearest.pos - player_pos).normalized())
 
 	for raw_effect in _effective_effects(card):
@@ -1419,7 +1455,7 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 						_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
 			"block":
 				if tgt == "self" or tgt == "player":
-					_gain_block(int(effect.get("value", 0)))
+					_gain_block(int(effect.get("value", 0)), _block_decay_for(card))
 			"status":
 				# Reuse the shared status path: nearest as the "enemy" list,
 				# all living as the "all_enemies" list.
@@ -1575,11 +1611,19 @@ func _deliver_cone(card: CardData, effects: Array, spec: Dictionary, dir: Vector
 	_swing_color = _attack_color_for(card, _swing_color)
 	_apply_enemy_effects(card, effects, hits)
 
+# Swipe timing helpers — the library's stored sweep/smear durations scaled by
+# SWING_SPEED_MULT so a single tweak speeds up every swing.
+func _swing_dur() -> float:
+	return (_atk.swing_duration if _atk != null else SWING_VISUAL_DURATION) * SWING_SPEED_MULT
+
+func _smear_dur() -> float:
+	return (_atk.smear_duration if _atk != null else SWING_VISUAL_DURATION) * SWING_SPEED_MULT
+
 # Start an animated blade swipe: kick off the sweep visual and queue each
 # candidate enemy's hit for the moment the blade crosses its angle.
 func _deliver_swing(card: CardData, effects: Array, reach: float, arc: float, dir: Vector2) -> void:
 	var facing: Vector2 = dir.normalized() if dir.length() > 0.01 else player_facing
-	var dur: float = _atk.swing_duration if _atk != null else SWING_VISUAL_DURATION
+	var dur: float = _swing_dur()
 	_swing_from_left = not _swing_from_left
 	_begin_swing_visual(facing, reach, arc, dur)
 	_swing_color = _attack_color_for(card, _swing_color)
@@ -1628,7 +1672,7 @@ func _deliver_smite(card: CardData, effects: Array, spec: Dictionary) -> void:
 	if not hits.is_empty():
 		_swing_kind = "smite"
 		_swing_color = _attack_color_for(card, _atk.smear_color)
-		_ability_swing_remaining = _atk.smear_duration
+		_ability_swing_remaining = _smear_dur()
 	_apply_enemy_effects(card, effects, hits)
 
 func _deliver_auto_aoe(card: CardData, effects: Array, spec: Dictionary) -> void:
@@ -1749,28 +1793,28 @@ func _show_smear(kind: String, facing: Vector2, reach: float, arc_deg: float, ce
 	_swing_arc_deg = arc_deg
 	_swing_center = center
 	_swing_color = _atk.smear_color
-	_ability_swing_remaining = _atk.smear_duration
+	_ability_swing_remaining = _smear_dur()
 
 func _show_disc(center: Vector2, radius: float) -> void:
 	_swing_kind = "disc"
 	_swing_center = center
 	_swing_reach = radius
 	_swing_color = _atk.smear_color
-	_ability_swing_remaining = _atk.smear_duration
+	_ability_swing_remaining = _smear_dur()
 
 func _show_bounce(from: Vector2, to: Vector2, col: Color) -> void:
 	_swing_kind = "bounce"
 	_bounce_from = from
 	_bounce_to = to
 	_swing_color = col
-	_ability_swing_remaining = _atk.smear_duration if _atk != null else SWING_VISUAL_DURATION
+	_ability_swing_remaining = _smear_dur()
 
 func _show_beam(dir: Vector2, length: float) -> void:
 	_swing_kind = "beam"
 	_ability_swing_facing = dir.normalized() if dir.length() > 0.01 else player_facing
 	_swing_reach = length
 	_swing_color = _atk.beam_color
-	_ability_swing_remaining = _atk.smear_duration
+	_ability_swing_remaining = _smear_dur()
 
 # The orange melee cone used by the legacy (un-annotated) attack path. Resets
 # the smear state so a stale archetype kind (beam/disc) can't carry over.
@@ -1852,6 +1896,20 @@ func _auto_targets_for(tgt: String) -> Array:
 func _card_has_ranged_damage(card: CardData) -> bool:
 	for effect in card.effects:
 		if String(effect.get("type", "")) == "dmg" and String(effect.get("damage_type", "melee")) == "ranged":
+			return true
+	return false
+
+# True only when the card actually lands a melee/default damage effect on an
+# enemy. Pure skills (Defend and the like) carry no enemy dmg, so this gates the
+# auto-cast swing visual — using a skill no longer mimes an attack swing.
+func _card_has_melee_damage(card: CardData) -> bool:
+	for effect in card.effects:
+		if String(effect.get("type", "")) != "dmg":
+			continue
+		if String(effect.get("damage_type", "melee")) == "ranged":
+			continue
+		var tgt: String = String(effect.get("target", "enemy"))
+		if tgt == "enemy" or tgt == "all_enemies":
 			return true
 	return false
 
@@ -2039,7 +2097,7 @@ func _apply_self_effects(card: CardData) -> void:
 				# Fold card boosts into self block too (the archetype/ranged path
 				# doesn't pass block through _resolve_addon_effect).
 				var be: Dictionary = Stats.apply_card_boosts(effect, card, card_boosts)
-				_gain_block(int(be.get("value", 0)))
+				_gain_block(int(be.get("value", 0)), _block_decay_for(card))
 			"heal":
 				_resolve_heal_self(int(effect.get("value", 0)))
 			"status":
@@ -2144,7 +2202,7 @@ func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 		target.hp = GameState.hp
 	else:
 		target.hp = maxi(0, target.hp - amount)
-	FloatingNumbers.spawn(self, _actor_arena_pos(target), amount)
+	FloatingNumbers.spawn(_fx_root, _actor_arena_pos(target), amount)
 	var who := "You" if target.is_player else target.display_name
 	GameLog.add("%s takes %d %s damage." % [who, amount, source_name],
 		Color(1.0, 0.5, 0.6))
@@ -2166,7 +2224,7 @@ func heal(target, value: int) -> void:
 		player_actor.hp = GameState.hp
 	else:
 		target.hp = mini(target.max_hp, target.hp + int(value))
-	FloatingNumbers.spawn(self, _actor_arena_pos(target), target.hp - before,
+	FloatingNumbers.spawn(_fx_root, _actor_arena_pos(target), target.hp - before,
 		FloatingNumbers.HEAL_COLOR)
 
 # Leeches drain -> player heal (Jar of Leeches). Called by
@@ -2205,7 +2263,7 @@ func deal_damage(_source, target, amount: int, _effect: Dictionary = {}) -> void
 	if target == player_actor:
 		GameState.change_hp(-amount)
 		player_actor.hp = GameState.hp
-		FloatingNumbers.spawn(self, player_pos, amount)
+		FloatingNumbers.spawn(_fx_root, player_pos, amount)
 		GameLog.add("Thorns hit you for %d." % amount, Color(1.0, 0.6, 0.6))
 		return
 	for inst in enemies:
@@ -2213,7 +2271,7 @@ func deal_damage(_source, target, amount: int, _effect: Dictionary = {}) -> void
 			if not inst.actor.is_alive():
 				return
 			inst.actor.hp = maxi(0, inst.actor.hp - amount)
-			FloatingNumbers.spawn(self, inst.pos, amount)
+			FloatingNumbers.spawn(_fx_root, inst.pos, amount)
 			GameLog.add("Thorns hit %s for %d." % [inst.actor.display_name, amount],
 				Color(0.8, 1.0, 0.7))
 			if inst.actor.hp <= 0:
@@ -2253,12 +2311,30 @@ func _enemies_in_radius(radius: float) -> Array:
 		result.append(inst)
 	return result
 
-func _gain_block(base_amount: int) -> void:
+# Block-decay rate for block a card grants: 1 block/sec per point of energy the
+# card costs, so a 2-energy card's block drains at 2/sec. Floored at the default
+# so 0/X-cost cards still fade rather than lingering forever.
+func _block_decay_for(card: CardData) -> float:
+	if card == null:
+		return DEFAULT_BLOCK_DECAY
+	return maxf(DEFAULT_BLOCK_DECAY, float(card.cost))
+
+func _gain_block(base_amount: int, decay_rate: float = DEFAULT_BLOCK_DECAY) -> void:
 	# Shared block math (Defense adds, Frail cuts 25%) via Stats.resolve_block.
 	var amt: int = Stats.resolve_block(base_amount, player_actor, true)
 	if amt <= 0:
 		return
+	var before: int = player_actor.block
 	player_actor.block = mini(player_max_block, player_actor.block + amt)
+	# Record only the block that actually landed (the cap may have clipped it) as
+	# a decaying chunk. Each chunk fades at its own rate so block earned in action
+	# bleeds away over time instead of lingering all room (see _decay_block).
+	var added: int = player_actor.block - before
+	if added > 0:
+		_block_pool.append({"amt": float(added), "rate": maxf(0.0, decay_rate)})
+	# Advance the synced marker too so _decay_block doesn't mistake this gain for
+	# an external block change and double-count it.
+	_block_synced_int = player_actor.block
 
 # EffectSystem-compatible entry point (mirrors the deckbuilder's
 # gain_block(target, amount)). Item/effect-granted block raises the
@@ -2266,6 +2342,53 @@ func _gain_block(base_amount: int) -> void:
 func gain_block(_target, amount: int) -> void:
 	player_max_block += amount
 	_gain_block(amount)
+
+# Block earned in action combat decays over time: each chunk drains at its
+# source card's energy cost (1 block/sec per energy), so a pricier card's block
+# bleeds away faster. Reconciles against combat soak first (incoming hits eat
+# block via Stats.resolve_damage, lowering player_actor.block), then fades each
+# chunk and re-syncs the integer total the rest of the game reads.
+func _decay_block(delta: float) -> void:
+	# Reconcile any change made to player_actor.block since we last wrote it,
+	# measured against the synced marker (NOT the float pool total, so the
+	# floor-rounding gap is never mistaken for a soak).
+	var ext: int = player_actor.block - _block_synced_int
+	if ext < 0:
+		# A hit soaked block — drain that much from the oldest chunks first.
+		_drain_block_pool(float(-ext))
+	elif ext > 0:
+		# Block appeared from a path that bypassed _gain_block — track it.
+		_block_pool.append({"amt": float(ext), "rate": DEFAULT_BLOCK_DECAY})
+	if _block_pool.is_empty():
+		if player_actor.block != 0:
+			player_actor.block = 0
+			_block_synced_int = 0
+		return
+	for chunk in _block_pool:
+		chunk.amt -= chunk.rate * delta
+	for i in range(_block_pool.size() - 1, -1, -1):
+		if _block_pool[i].amt <= 0.0:
+			_block_pool.remove_at(i)
+	var shown: int = int(floor(_block_pool_total() + 0.0001))
+	player_actor.block = shown
+	_block_synced_int = shown
+
+func _block_pool_total() -> float:
+	var t: float = 0.0
+	for chunk in _block_pool:
+		t += chunk.amt
+	return t
+
+# Remove `amount` of block from the front (oldest chunks) of the pool.
+func _drain_block_pool(amount: float) -> void:
+	while amount > 0.0 and not _block_pool.is_empty():
+		var chunk: Dictionary = _block_pool[0]
+		if chunk.amt <= amount + 0.001:
+			amount -= chunk.amt
+			_block_pool.remove_at(0)
+		else:
+			chunk.amt -= amount
+			amount = 0.0
 
 # Fires item triggers through the shared runner so the same declarative item
 # data drives all three modes. `_combat_room_index` is the action-mode "turn"
@@ -2442,6 +2565,13 @@ var _slot_cd_labels: Array[Label] = []
 var _click_tex: Array[TextureRect] = []
 var _click_swatch: Array[ColorRect] = []
 
+# Charged-active slot in the bottom bar: the item fired with Space (or E).
+var _charged_panel: Panel = null
+var _charged_tex: TextureRect = null
+var _charged_swatch: ColorRect = null
+var _charged_name_lbl: Label = null
+var _charged_cd_lbl: Label = null
+
 # Auto-cast thumbnail strip — one slot per active auto-cast, each showing the
 # art of the card currently counting down (the one "about to play").
 const AUTO_THUMB_MAX := 8
@@ -2452,13 +2582,13 @@ var _auto_thumbs: Array = []   # each: {panel, tex, swatch, name, cd}
 func _build_slot_bar() -> void:
 	# Header line above the bar with the live auto-deck counts.
 	_auto_label = Label.new()
-	_auto_label.position = Vector2(20, ARENA_H + 2)
+	_auto_label.position = Vector2(20, HUD_BOTTOM_Y + 2)
 	_auto_label.add_theme_font_size_override("font_size", 11)
 	_auto_label.add_theme_color_override("font_color", Color(0.7, 0.9, 1.0))
 	add_child(_auto_label)
 
 	var bar := HBoxContainer.new()
-	bar.position = Vector2(20, ARENA_H + 18)
+	bar.position = Vector2(20, HUD_BOTTOM_Y + 18)
 	bar.add_theme_constant_override("separation", 10)
 	add_child(bar)
 
@@ -2499,6 +2629,34 @@ func _build_slot_bar() -> void:
 		_slot_cd_labels.append(cd_lbl)
 		_click_tex.append(tex)
 		_click_swatch.append(swatch)
+
+	# Charged-active slot: the item fired with Space (also E). Mirrors a click
+	# slot but shows the charge state so the player can see when it's ready.
+	_charged_panel = Panel.new()
+	_charged_panel.custom_minimum_size = Vector2(208, 58)
+	bar.add_child(_charged_panel)
+	_charged_swatch = ColorRect.new()
+	_charged_swatch.position = Vector2(5, 7)
+	_charged_swatch.size = Vector2(44, 44)
+	_charged_panel.add_child(_charged_swatch)
+	_charged_tex = TextureRect.new()
+	_charged_tex.position = Vector2(5, 7)
+	_charged_tex.size = Vector2(44, 44)
+	_charged_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_charged_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_charged_panel.add_child(_charged_tex)
+	_charged_name_lbl = Label.new()
+	_charged_name_lbl.position = Vector2(56, 6)
+	_charged_name_lbl.size = Vector2(146, 22)
+	_charged_name_lbl.add_theme_font_size_override("font_size", 12)
+	_charged_name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 1.0))
+	_charged_panel.add_child(_charged_name_lbl)
+	_charged_cd_lbl = Label.new()
+	_charged_cd_lbl.position = Vector2(56, 30)
+	_charged_cd_lbl.size = Vector2(146, 22)
+	_charged_cd_lbl.add_theme_font_size_override("font_size", 12)
+	_charged_cd_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
+	_charged_panel.add_child(_charged_cd_lbl)
 
 	# Auto-cast thumbnails: a fixed pool we show/hide so node count is stable.
 	_auto_thumbs.clear()
@@ -2549,6 +2707,7 @@ func _refresh_slot_bar() -> void:
 		return
 	_refresh_click_slot(0, "[LMB] ", left_card, left_cd, left_max_cd)
 	_refresh_click_slot(1, "[RMB] ", right_card, right_cd, right_max_cd)
+	_refresh_charged_slot()
 	if _auto_label != null:
 		# Only the three deck sizes drive this label; skip the rebuild otherwise.
 		var counts := Vector3i(auto_slots.size(), auto_draw.size(), auto_discard.size())
@@ -2588,6 +2747,41 @@ func _refresh_click_slot(panel_idx: int, prefix: String, card: CardData, cd: flo
 		_slot_cd_labels[panel_idx].text = "ready"
 		_slot_cd_labels[panel_idx].add_theme_color_override("font_color", Color(0.7, 1.0, 0.7))
 
+# The Space/E charged-active slot: shows the slotted item's icon, name and live
+# charge so the player can see the spacebar active and whether it's ready.
+func _refresh_charged_slot() -> void:
+	if _charged_panel == null:
+		return
+	var item: ItemData = null
+	var id: StringName = GameState.action_charged_item_id
+	if id != &"":
+		for it in GameState.inventory:
+			if it is ItemData and it.id == id and it.is_charged():
+				item = it
+				break
+	if item == null:
+		_charged_tex.visible = false
+		_charged_swatch.visible = true
+		_charged_swatch.color = Color(0.16, 0.17, 0.22)
+		_charged_name_lbl.text = "[Space] (empty)"
+		_charged_cd_lbl.text = ""
+		return
+	if item.image != null:
+		_charged_tex.texture = item.image
+		_charged_tex.visible = true
+		_charged_swatch.visible = false
+	else:
+		_charged_tex.visible = false
+		_charged_swatch.visible = true
+		_charged_swatch.color = Color(0.22, 0.20, 0.30)
+	_charged_name_lbl.text = "[Space] " + item.display_name
+	if item.is_fully_charged():
+		_charged_cd_lbl.text = "ready"
+		_charged_cd_lbl.add_theme_color_override("font_color", Color(0.7, 1.0, 0.7))
+	else:
+		_charged_cd_lbl.text = "charge %d / %d" % [item.current_charge, item.max_charge()]
+		_charged_cd_lbl.add_theme_color_override("font_color", Color(0.9, 0.6, 0.4))
+
 # ---------------------------------------------------------------------------
 
 func _enemy_hit_player(inst: Dictionary) -> void:
@@ -2603,7 +2797,7 @@ func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatA
 	var res := Stats.resolve_damage(attacker, player_actor, amount, {"damage_type": "melee"}, Stats.Mode.ACTION, _rng)
 	if res.missed:
 		GameLog.add("%s swings blind and misses!" % source_name, Color(0.85, 0.85, 0.55))
-		FloatingNumbers.spawn_text(self, player_pos, "MISS", FloatingNumbers.MISS_COLOR)
+		FloatingNumbers.spawn_text(_fx_root, player_pos, "MISS", FloatingNumbers.MISS_COLOR)
 		return
 	if res.dodged:
 		GameLog.add("You dodge %s!" % source_name, Color(0.7, 0.9, 1.0))
@@ -2615,7 +2809,7 @@ func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatA
 	if dmg > 0:
 		GameState.change_hp(-dmg)
 		player_actor.hp = GameState.hp
-		FloatingNumbers.spawn(self, player_pos, dmg)
+		FloatingNumbers.spawn(_fx_root, player_pos, dmg)
 		GameLog.add("%s hits you for %d." % [source_name, dmg], Color(1.0, 0.6, 0.6))
 		# Item reactions to the player taking damage (Prayer Card, Prayer Beads).
 		_fire_item_triggers("damage_taken", {"target": player_actor})
@@ -2667,28 +2861,105 @@ func _check_combat_end() -> void:
 
 var _hud_last := {"hp": -1, "max_hp": -1, "block": -1, "iframes": -1.0}
 
+# Floating-number host: a zero-size Control shifted down by ARENA_TOP so the
+# labels (positioned in arena coords) line up with the drawn play field.
+func _build_fx_root() -> void:
+	_fx_root = Control.new()
+	_fx_root.position = Vector2(0, ARENA_TOP)
+	_fx_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_fx_root)
+
+# Top strip above the play field: the player's health bar (with current/max)
+# and their gold. Sits in the ARENA_TOP band the arena leaves free up top.
+const _HP_BAR := Rect2(44, 11, 300, 18)
+func _build_top_hud() -> void:
+	var bg := ColorRect.new()
+	bg.position = Vector2(0, 0)
+	bg.size = Vector2(ARENA_W, ARENA_TOP - 2)
+	bg.color = Color(0.08, 0.09, 0.13, 0.95)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg)
+
+	var hp_tag := Label.new()
+	hp_tag.text = "HP"
+	hp_tag.position = Vector2(14, 9)
+	hp_tag.add_theme_font_size_override("font_size", 15)
+	hp_tag.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0))
+	add_child(hp_tag)
+
+	var hp_back := ColorRect.new()
+	hp_back.position = _HP_BAR.position
+	hp_back.size = _HP_BAR.size
+	hp_back.color = Color(0.18, 0.05, 0.06, 1.0)
+	hp_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(hp_back)
+
+	_top_hud_hp_fill = ColorRect.new()
+	_top_hud_hp_fill.position = _HP_BAR.position
+	_top_hud_hp_fill.size = _HP_BAR.size
+	_top_hud_hp_fill.color = Color(0.85, 0.27, 0.30, 1.0)
+	_top_hud_hp_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_top_hud_hp_fill)
+
+	_top_hud_hp_label = Label.new()
+	_top_hud_hp_label.position = _HP_BAR.position
+	_top_hud_hp_label.size = _HP_BAR.size
+	_top_hud_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_top_hud_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_top_hud_hp_label.add_theme_font_size_override("font_size", 13)
+	_top_hud_hp_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+	_top_hud_hp_label.add_theme_constant_override("outline_size", 3)
+	_top_hud_hp_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	_top_hud_hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_top_hud_hp_label)
+
+	_top_hud_gold_label = Label.new()
+	_top_hud_gold_label.position = Vector2(_HP_BAR.position.x + _HP_BAR.size.x + 24, 9)
+	_top_hud_gold_label.add_theme_font_size_override("font_size", 15)
+	_top_hud_gold_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
+	add_child(_top_hud_gold_label)
+
+	# Relocate the legacy HP line into the top strip; it now carries only the
+	# transient combat readouts (block / i-frames). Its old bottom position
+	# overlapped the relocated slot bar.
+	if _hp_label != null:
+		_hp_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		_hp_label.position = Vector2(_HP_BAR.position.x + _HP_BAR.size.x + 150, 9)
+		_hp_label.size = Vector2(420, 22)
+
 func _refresh_hud() -> void:
 	if _hp_label == null:
 		return
-	# Called every frame from _process; the HUD text only changes when one of
-	# these four inputs does, so skip the string build + assignment otherwise.
+	# Called every frame from _process; the HUD only rebuilds when one of these
+	# inputs changes, so skip the string/size churn otherwise.
+	var gold: int = GameState.gold
 	if player_actor.hp == _hud_last.hp and player_actor.max_hp == _hud_last.max_hp \
-			and player_actor.block == _hud_last.block and player_iframes == _hud_last.iframes:
+			and player_actor.block == _hud_last.block and player_iframes == _hud_last.iframes \
+			and gold == _hud_last_gold:
 		return
 	_hud_last.hp = player_actor.hp
 	_hud_last.max_hp = player_actor.max_hp
 	_hud_last.block = player_actor.block
 	_hud_last.iframes = player_iframes
-	_hp_label.text = "HP %d / %d   |   Block %d   |   iFrames %.1fs" % [
-		player_actor.hp, player_actor.max_hp, player_actor.block,
-		player_iframes,
-	]
+	_hud_last_gold = gold
+	# Top strip: health bar + gold.
+	if _top_hud_hp_fill != null:
+		var frac: float = clampf(float(player_actor.hp) / float(maxi(1, player_actor.max_hp)), 0.0, 1.0)
+		_top_hud_hp_fill.size = Vector2(_HP_BAR.size.x * frac, _HP_BAR.size.y)
+		_top_hud_hp_label.text = "%d / %d" % [player_actor.hp, player_actor.max_hp]
+		_top_hud_gold_label.text = "⛁ %d" % gold
+	# The old bottom line now carries only the transient combat readouts.
+	_hp_label.text = "Block %d   |   iFrames %.1fs" % [player_actor.block, player_iframes]
 
 # ---------------------------------------------------------------------------
 # Drawing
 # ---------------------------------------------------------------------------
 
 func _draw() -> void:
+	# Shift the whole play field down past the top HUD strip. Every arena draw
+	# below uses internal [0..ARENA_H] coords; this one transform places them on
+	# screen (input and floating FX undo the same offset). Reset before the HUD.
+	draw_set_transform(Vector2(0, ARENA_TOP), 0.0, Vector2.ONE)
 	# Arena background
 	draw_rect(Rect2(0, 0, ARENA_W, ARENA_H), Color(0.10, 0.12, 0.16), true)
 	# Arena border for visibility
@@ -2874,7 +3145,7 @@ func _draw_shield(c: Vector2, r: float, col: Color) -> void:
 # a line; smite flashes a zap to each struck enemy.
 func _draw_attack_smear() -> void:
 	# Fade from the smear's base alpha as the timer runs out.
-	var dur: float = maxf(0.01, _atk.smear_duration if _atk != null else SWING_VISUAL_DURATION)
+	var dur: float = maxf(0.01, _smear_dur())
 	var fade: float = clampf(_ability_swing_remaining / dur, 0.0, 1.0)
 	var col: Color = _swing_color
 	col.a *= fade

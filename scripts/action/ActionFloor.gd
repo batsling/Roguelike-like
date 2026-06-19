@@ -133,9 +133,20 @@ func _build_right_column() -> void:
 	_right_column.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_right_column.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_right_column.offset_right = -12
-	_right_column.offset_top = 40
+	_right_column.offset_top = 12
 	_right_column.add_theme_constant_override("separation", 12)
 	add_child(_right_column)
+
+	# The arena now hosts a top HUD strip (health + gold) above the play field,
+	# so move the floor status line out of that band into the right column above
+	# the minimap, where it wraps to the column width.
+	_header.reparent(_right_column)
+	_right_column.move_child(_header, 0)
+	_header.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_header.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_header.custom_minimum_size = Vector2(232, 0)
+	_header.add_theme_font_size_override("font_size", 12)
 
 func _build_minimap() -> void:
 	_minimap = FloorMinimap.new()
