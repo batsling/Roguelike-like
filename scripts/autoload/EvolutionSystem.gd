@@ -68,10 +68,6 @@ func _try_evolve(evo: Dictionary) -> void:
 			# index 0, gold rider merged onto it), so index-keyed effect_bonuses
 			# still land on the right effect.
 			ci.data = to_card
-			# Strategy per-card `uses` belonged to the shelved strategy-loadout
-			# system (since superseded by the deckbuilder-style grid), so don't
-			# carry a stale count — let it re-seed from the default if ever read.
-			ci.uses = -1
 			swapped += 1
 	if swapped <= 0:
 		return
