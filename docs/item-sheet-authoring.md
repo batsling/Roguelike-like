@@ -38,7 +38,11 @@ gain_gold/gain_hp/gain_max_hp/gain_chest/lose_hp N`, `gain_stat <s> N`,
 `temp_stat <s> +N`, `N% chance <effect>`, `counter key=K every=N -> <effect>`,
 `if_hp above|below F -> <effect>`, `roll_block sides=N`, `roll_gold [a,b,c]`,
 `upgrade_random_cards card_type=X count=N`, `+N <name> streak` / `reset <name>`,
-`free_random_hand_card`, `attack_double`, `+Replay N`.
+`free_random_hand_card`, `attack_double`, `+Replay N`,
+`reduce_card_cost N [tag=X type=Y count=N]` (Empty Tome: at combat start, shave
+N off the cost of `count` random cards matching the tag/type filter for the rest
+of the fight — and since action cooldown is `2*cost + rarity`, the same discount
+shortens that card's cooldown there too).
 
 ### Conventions the generator applies (so the sheet stays terse)
 - High-frequency hooks (`attack_landed`, `attack_missed`, `turn_tick`,

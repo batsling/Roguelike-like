@@ -1162,3 +1162,50 @@ func test_snowball_does_not_amplify_when_unowned() -> void:
 	var int_before: int = GameState.intelligence
 	GameState.apply_level_up_stats({"intelligence": 2})
 	assert_eq(GameState.intelligence, int_before + 2, "no bonus without Snowball")
+
+# --- Empty Tome: reduce_card_cost (combat-start cost discount) -------------
+
+func test_empty_tome_loads_with_combat_started_cost_reducer() -> void:
+	var it: ItemData = Data.get_item(&"empty_tome")
+	assert_not_null(it, "empty_tome.tres should load")
+	assert_eq(it.kind, ItemData.ItemKind.TRIGGERED, "Empty Tome is triggered")
+	assert_eq(it.rarity, ItemData.Rarity.UNCOMMON, "bumped to Uncommon")
+	var trig: Dictionary = _trigger_for(it, "combat_started")
+	assert_false(trig.is_empty(), "fires at combat start")
+	var e: Dictionary = trig.get("effects", [{}])[0]
+	assert_eq(String(e.get("type", "")), "reduce_card_cost")
+	assert_eq(int(e.get("amount", 0)), 1, "shaves 1 cost")
+	assert_eq(int(e.get("count", 0)), 1, "one card")
+	assert_eq(String(e.get("if_card_tag", "")), "weapon")
+	assert_eq(String(e.get("if_card_type", "")), "attack")
+
+func test_combat_cost_delta_lowers_get_cost_and_floors_at_zero() -> void:
+	var d := CardData.new()
+	d.cost = 2
+	var ci := CardInstance.from_data(d)
+	assert_eq(ci.get_cost(), 2, "base cost with no delta")
+	ci.combat_cost_delta = -1
+	assert_eq(ci.get_cost(), 1, "Empty Tome's -1 lowers the cost")
+	ci.combat_cost_delta = -5
+	assert_eq(ci.get_cost(), 0, "cost never goes negative")
+
+func test_combat_cost_delta_ignores_x_cost_cards() -> void:
+	var d := CardData.new()
+	d.cost = -1  # X-cost: spends all energy regardless
+	var ci := CardInstance.from_data(d)
+	ci.combat_cost_delta = -1
+	assert_eq(ci.get_cost(), -1, "X-cost cards ignore the combat discount")
+
+func test_card_matches_filters_weapon_attack() -> void:
+	var bomber: CardData = Data.get_card(&"lil_bomber")
+	assert_not_null(bomber, "lil_bomber is a weapon Attack")
+	assert_true(ItemTriggers.card_matches(bomber, "weapon", "attack"),
+		"weapon Attack passes the Empty Tome filter")
+	assert_false(ItemTriggers.card_matches(bomber, "weapon", "skill"),
+		"wrong type fails")
+	assert_false(ItemTriggers.card_matches(bomber, "nonexistent_tag", "attack"),
+		"missing tag fails")
+	assert_true(ItemTriggers.card_matches(bomber, "", ""),
+		"empty filter matches anything")
+	assert_false(ItemTriggers.card_matches(null, "weapon", "attack"),
+		"null card never matches")

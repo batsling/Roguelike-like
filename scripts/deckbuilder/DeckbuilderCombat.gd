@@ -360,6 +360,9 @@ func _init_deck() -> void:
 		if c is CardData:
 			draw_pile.append(CardInstance.from_data(c))
 		elif c is CardInstance:
+			# Clear any leftover per-combat cost discount (Empty Tome) so a new
+			# fight starts from the card's real cost.
+			c.combat_cost_delta = 0
 			draw_pile.append(c)
 	_shuffle(draw_pile)
 	_promote_innate()
@@ -571,6 +574,10 @@ func _check_combat_end() -> bool:
 		# Consumable buffs last one combat — drop them and the live context.
 		GameState.clear_combat_context()
 		GameState.clear_temp_buffs()
+		# Per-combat card cost discounts (Empty Tome) expire with the fight.
+		for c in GameState.deck:
+			if c is CardInstance:
+				c.combat_cost_delta = 0
 		_refresh_ui()
 		_show_reward_modal()
 		return true
@@ -1573,6 +1580,27 @@ func make_random_hand_card_free(exclude = null) -> void:
 	pick.temp_cost_override = 0
 	GameLog.add("Mummified Hand: %s costs 0 this turn!" % pick.data.display_name,
 		Color(0.7, 1.0, 0.7))
+	_refresh_ui()
+
+func reduce_random_card_cost(count: int, amount: int, tag: String, type: String) -> void:
+	# Empty Tome: at combat start, pick `count` random cards from this fight's
+	# deck matching the filter (weapon Attack) and shave `amount` off their cost
+	# for the rest of the combat. The discount rides on the CardInstance, so it
+	# follows the card through draw/hand/discard and is cleared in _init_deck.
+	var pool: Array[CardInstance] = []
+	for src in [draw_pile, hand, discard_pile]:
+		for c in src:
+			if c is CardInstance and c.get_cost() > 0 \
+					and ItemTriggers.card_matches(c.data, tag, type) and not pool.has(c):
+				pool.append(c)
+	if pool.is_empty():
+		return
+	pool.shuffle()
+	for i in mini(count, pool.size()):
+		var pick: CardInstance = pool[i]
+		pick.combat_cost_delta -= amount
+		GameLog.add("Empty Tome: %s costs %d less this combat!" % [pick.data.display_name, amount],
+			Color(0.7, 1.0, 0.7))
 	_refresh_ui()
 
 # ------------------------------------------------------------------

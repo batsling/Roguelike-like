@@ -123,6 +123,14 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #   free_random_hand_card (Mummified Hand: deckbuilder zeroes a random hand
 #   card's cost this turn; strategy frees a random other slotted ability;
 #   action slashes attack cooldowns — each scene implements its own) /
+#   reduce_card_cost (Empty Tome: at combat start, knock `amount` off the cost of
+#   `count` random cards matching `if_card_tag` / `if_card_type` for the rest of
+#   the combat. Deckbuilder/strategy ride the discount on the CardInstance;
+#   action — where cooldown is derived from cost (2*cost + rarity) — records a
+#   per-combat discount so the same reduction shortens the card's cooldown.
+#   Empty Tome: triggers = [{on: "combat_started", effects: [{type:
+#   "reduce_card_cost", amount: 1, count: 1, if_card_tag: "weapon",
+#   if_card_type: "attack"}]}]) /
 #   counter (the "every Nth …" incremental items — Happy Flower, Nunchaku,
 #   Ornamental Fan, Shuriken, Pen Nib — fires its nested `effects` only when a
 #   shared GameState progress counter trips. The counter itself is bumped

@@ -212,6 +212,8 @@ func _init_deck() -> void:
 		if c is CardData:
 			draw_pile.append(CardInstance.from_data(c))
 		elif c is CardInstance:
+			# Clear any leftover per-combat cost discount (Empty Tome).
+			c.combat_cost_delta = 0
 			draw_pile.append(c)
 	_shuffle(draw_pile)
 	_promote_innate()
@@ -936,6 +938,10 @@ func _on_battle_ended(result) -> void:
 	_status_label.text = "Battle ended: %s" % result
 	_set_player_buttons_enabled(false)
 	_fire_item_triggers("combat_ended")
+	# Per-combat card cost discounts (Empty Tome) expire with the fight.
+	for c in GameState.deck:
+		if c is CardInstance:
+			c.combat_cost_delta = 0
 
 # ----------------------------------------------------------------------
 # Player actions — movement
@@ -1593,6 +1599,26 @@ func make_random_hand_card_free(played_card = null) -> void:
 	var pick = cands[randi() % cands.size()]
 	pick.temp_cost_override = 0
 	_status_label.text = "Mummified Hand: %s is free this turn!" % pick.get_display_name()
+	_refresh_hand()
+
+func reduce_random_card_cost(count: int, amount: int, tag: String, type: String) -> void:
+	# Empty Tome: shave `amount` off the cost of `count` random weapon Attack
+	# cards in this fight's deck for the rest of the combat. Mirrors the
+	# deckbuilder; the discount rides on the CardInstance and is reset in
+	# _init_deck / on battle end.
+	var pool: Array = []
+	for src in [draw_pile, hand, discard_pile]:
+		for c in src:
+			if c is CardInstance and c.get_cost() > 0 \
+					and ItemTriggers.card_matches(c.data, tag, type) and not pool.has(c):
+				pool.append(c)
+	if pool.is_empty():
+		return
+	pool.shuffle()
+	for i in mini(count, pool.size()):
+		var pick: CardInstance = pool[i]
+		pick.combat_cost_delta -= amount
+	_status_label.text = "Empty Tome: a weapon costs %d less this combat!" % amount
 	_refresh_hand()
 
 # ----------------------------------------------------------------------

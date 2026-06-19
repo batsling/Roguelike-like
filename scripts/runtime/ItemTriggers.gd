@@ -160,6 +160,18 @@ static func _event_card_data(event_card):
 		return event_card.data
 	return null
 
+# True when a CardData clears an optional tag + type filter. Shared by the
+# reduce_card_cost scene methods (Empty Tome) so the "weapon Attack" match reads
+# the same in all three modes. Empty filters pass.
+static func card_matches(data, tag: String, type: String) -> bool:
+	if data == null:
+		return false
+	if tag != "" and not data.tags.has(tag):
+		return false
+	if type != "" and not _card_type_is(data, type):
+		return false
+	return true
+
 static func _card_type_is(data, wanted: String) -> bool:
 	if data == null:
 		return false

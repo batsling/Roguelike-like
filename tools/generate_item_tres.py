@@ -288,6 +288,24 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
     if verb in ("free_random_hand_card", "attack_double"):
         return {"type": verb}
 
+    # reduce_card_cost <amount> [count=N] [tag=X] [type=Y] — Empty Tome.
+    # Cost reduction on N random cards matching the filter, for the combat.
+    if verb == "reduce_card_cost":
+        rest, kv = _kv(toks[1:])
+        nums = [int(x) for x in rest if re.match(r"^-?\d+$", x)]
+        if nums:
+            amount = abs(nums[0])
+        elif "amount" in kv:
+            amount = abs(_int(kv["amount"], 1))
+        else:
+            amount = 1
+        count = _int(kv["count"], 1) if "count" in kv else 1
+        return {"type": "reduce_card_cost",
+                "amount": max(1, amount),
+                "count": max(1, count),
+                "if_card_tag": kv.get("tag", kv.get("if_card_tag", "")),
+                "if_card_type": kv.get("type", kv.get("if_card_type", ""))}
+
     # "reset <key>" -> clears a named streak counter (Dead Eye on a miss).
     if verb == "reset":
         rest = [t for t in toks[1:] if re.match(r"^[a-z_]+$", t)]
