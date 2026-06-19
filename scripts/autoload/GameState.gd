@@ -581,6 +581,13 @@ func apply_character(char_data: CharacterData) -> void:
 		if c != null:
 			deck.append(CardInstance.from_data(c))
 
+	# A run always opens with the character's basic Strike bound to left click,
+	# so the player can attack from the very first action-combat room without
+	# first visiting the Gear screen. They can still swap it there.
+	var strike_card: CardData = Data.get_card_for_character(&"strike", char_data.id)
+	if strike_card != null:
+		action_left_card_id = strike_card.id
+
 	inventory.clear()
 	_reset_item_tracking()
 	for item_id in char_data.starting_items:
@@ -959,6 +966,10 @@ func use_item(item: ItemData, target = null) -> bool:
 		if String(trig.get("on", "")) != "item_used":
 			continue
 		EffectSystem.apply_all(trig.get("effects", []), ctx)
+	# Surface the activation as a toast so the outcome of using an item is always
+	# visible (individual effects may add their own specific `notify` on top, e.g.
+	# Wooden Nickel's "+N gold").
+	Notifications.notify("Used %s" % item.display_name, Color(0.8, 0.95, 1.0))
 	TriggerBus.emit_signal("item_used", {"item": item})
 	if item.is_charged():
 		# Empty the bar; it refills via the charging hooks.

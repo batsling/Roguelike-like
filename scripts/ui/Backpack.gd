@@ -949,9 +949,9 @@ func _render_gear() -> void:
 	_list_vbox.add_child(_gear_card_slot("Left click", "LMB", 0, locked))
 	_list_vbox.add_child(_gear_card_slot("Right click", "RMB", 1, locked))
 	_list_vbox.add_child(_gear_item_slot("Usable item", "Q", locked))
-	_list_vbox.add_child(_gear_charged_item_slot("Charged item", "E", locked))
+	_list_vbox.add_child(_gear_charged_item_slot("Charged item", "Space", locked))
 	_hint_label.text = "Locked while fighting." if locked \
-		else "Pick the card fired by each mouse button, the pill you pop with Q, and the charged active you fire with E. Only Strikes and weapons fit the click slots."
+		else "Pick the card fired by each mouse button, the pill you pop with Q, and the charged active you fire with Space. Only Strikes and weapons fit the click slots."
 
 # Shared frame for a gear slot: an icon preview, the slot's name + binding key,
 # and a dropdown to pick what's slotted. Returns {row, preview, opt}.

@@ -23,6 +23,6 @@ offset_left = 16.0
 offset_top = 696.0
 offset_right = 1264.0
 offset_bottom = 720.0
-text = "WASD = move  |  Mouse = aim  |  LMB = attack  |  1 / 2 / 3 = abilities  |  walk into a door to move rooms  |  Tab = equipment"
+text = "WASD = move  |  Mouse = aim  |  LMB / RMB = attack  |  Q = item  |  Space = charged item  |  walk into a door to move rooms  |  Tab = equipment"
 theme_override_colors/font_color = Color(0.75, 0.75, 0.85, 1)
 theme_override_font_sizes/font_size = 13
