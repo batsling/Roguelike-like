@@ -101,6 +101,41 @@ func test_gold_on_hit_grants_gold_in_range() -> void:
 	assert_eq(GameState.gold, 0, "a plain dmg effect grants no gold")
 	GameState.set_gold(before)
 
+func test_evolution_swaps_card_and_keeps_buffs() -> void:
+	# Snapshot the live run state so the test can stage its own deck/inventory.
+	var deck_bak: Array = GameState.deck.duplicate()
+	var inv_bak: Array = GameState.inventory.duplicate()
+	GameState.deck.clear()
+	GameState.inventory.clear()
+
+	# A Lil' Bomber that has accrued buffs: an upgrade flag + a persistent
+	# +4 Dmg effect bonus (the kind weapon verification grants).
+	var bomber: CardData = Data.get_card(&"lil_bomber")
+	var ci := CardInstance.from_data(bomber)
+	ci.upgraded = true
+	ci.bump_effect(0, "value", 4)
+	GameState.deck.append(ci)
+	# Satisfy requirement 2 with a Crown (tagged "crown").
+	var crown: ItemData = Data.get_item(&"crown")
+	if crown != null:
+		GameState.inventory.append(crown.duplicate(true))
+
+	EvolutionSystem.check_all()
+
+	assert_eq(String(ci.data.id), "king_bomber", "the instance evolved in place")
+	assert_true(ci.upgraded, "the upgrade buff carries through the evolution")
+	# 12 base damage + the preserved +4 effect bonus = 16 on the evolved card.
+	assert_eq(int(ci.get_effects()[0].get("value", 0)), 16,
+		"persistent effect bonuses (buffs) survive the swap")
+	assert_eq(int(ci.get_effects()[0].get("gold_on_hit_min", 0)), 5,
+		"and the evolved card's own gold-on-hit rider is present")
+
+	# Restore the run state.
+	GameState.deck.clear()
+	GameState.deck.append_array(deck_bak)
+	GameState.inventory.clear()
+	GameState.inventory.append_array(inv_bak)
+
 func test_evolution_catalog_maps_lil_to_king_bomber() -> void:
 	assert_gt(EvolutionCatalog.EVOLUTIONS.size(), 0, "at least one evolution catalogued")
 	var found: Dictionary = {}

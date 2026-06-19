@@ -59,10 +59,13 @@ func _try_evolve(evo: Dictionary) -> void:
 	var swapped: int = 0
 	for ci in GameState.deck:
 		if ci is CardInstance and ci.data != null and ci.data.id == from_id:
+			# Swap only the card IDENTITY (its CardData), preserving every
+			# per-instance buff the base card accumulated: persistent effect
+			# bonuses (weapon verifications / "+N Dmg" gains), the upgrade flag,
+			# strategy uses, and any Vorpal roll. The evolved card's effect layout
+			# matches the base (same dmg effect at index 0, gold rider merged onto
+			# it), so index-keyed effect_bonuses still land on the right effect.
 			ci.data = to_card
-			# The evolved form is terminal (can_upgrade = false); drop any stale
-			# upgrade flag so the card reads as its plain evolved self.
-			ci.upgraded = false
 			swapped += 1
 	if swapped <= 0:
 		return
