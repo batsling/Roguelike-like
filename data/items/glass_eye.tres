@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_glass_eye"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/GlassEye.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"glass_eye"
+display_name = "Glass Eye"
+kind = 0
+rarity = 0
+description = "Gain +2 Strength and +1 Luck"
+triggers = []
+stat_bonuses = {"strength": 2}
+max_uses = -1
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("eye", "glass")
+image = ExtResource("2_img")
