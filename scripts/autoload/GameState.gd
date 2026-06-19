@@ -1495,12 +1495,9 @@ func max_card_uses(card: CardData) -> int:
 		if cost < 0:  # X-cost
 			cost = 1
 		result = maxi(1, base - maxi(0, cost - 1))
-	# uses_per_combat addon (Exhaust -> uses_per_combat(1) in Strategy): cap the
-	# per-combat uses. AddonSystem returns -1 (no cap) for cards without the
-	# verb, so this is a no-op for everything else. card_uses is strategy-only.
-	var addon_cap: int = AddonSystem.uses_per_combat(card, Stats.Mode.STRATEGY)
-	if addon_cap >= 0:
-		result = mini(result, addon_cap)
+	# (Strategy's old uses_per_combat cap for Exhaust was dropped when Strategy
+	# became a deckbuilder — Exhaust now sends the card to the exhaust pile like
+	# the deckbuilder, rather than rationing per-combat uses.)
 	return result
 
 # Remaining uses for a card, lazily seeded to its max on first read so a

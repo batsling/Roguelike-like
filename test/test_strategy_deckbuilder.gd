@@ -151,3 +151,88 @@ func test_turn_start_refreshes_energy_and_draws_a_full_hand() -> void:
 	bv._on_unit_turn_started(p)
 	assert_eq(bv.energy, 3, "energy refreshed to max at turn start")
 	assert_eq(bv.hand.size(), GameState.hand_size, "drew a full hand at turn start")
+
+# --- Fear (strategy-specific behavior, kept distinct from the deckbuilder) ---
+# A feared unit auto-flees as far from its foes as possible at the START of its
+# turn. That flee is FREE (no movement energy) and does NOT consume the turn —
+# the unit then takes its normal turn. Fear decays by 1 per turn.
+
+# A fully-walkable rectangular map so _reachable_from has tiles to flee across.
+func _open_map(w: int, h: int) -> BattleMap:
+	var bm := BattleMap.new()
+	bm.width = w
+	bm.height = h
+	bm.tiles = []
+	for _i in range(w * h):
+		bm.tiles.append(BattleMap.TileType.FLOOR)
+	return bm
+
+func test_fear_flees_for_free_at_turn_start_without_consuming_the_turn() -> void:
+	var p := _player()
+	p.position = Vector2i(4, 4)
+	p.add_status(&"fear", 2)
+	var e := _enemy()
+	e.position = Vector2i(4, 5)             # adjacent: starting distance 1
+	bv._units = [p, e]
+	var tm = TurnManagerScript.new()
+	tm.setup([p, e])
+	tm.current_unit = p
+	bv._turn_manager = tm
+	bv._grid_view.set_battle(_open_map(9, 9), bv._units)
+	bv.max_energy = 3
+	bv.hand = []
+	bv.draw_pile = []
+	for _i in range(10):
+		bv.draw_pile.append(_mk(&"strike_ironclad"))
+
+	var start_dist: int = absi(p.position.x - e.position.x) + absi(p.position.y - e.position.y)
+	bv._on_unit_turn_started(p)
+
+	var end_dist: int = absi(p.position.x - e.position.x) + absi(p.position.y - e.position.y)
+	assert_gt(end_dist, start_dist, "feared unit fled farther from the enemy")
+	assert_eq(bv.energy, 3, "the flee was FREE — energy still refreshed to full, none spent")
+	assert_eq(p.get_status(&"fear"), 1, "Fear decayed by 1 this turn")
+	assert_eq(bv.hand.size(), GameState.hand_size, "the turn proceeded normally — a full hand was drawn")
+
+func test_unfeared_unit_does_not_flee() -> void:
+	var p := _player()
+	p.position = Vector2i(4, 4)
+	var e := _enemy()
+	e.position = Vector2i(4, 5)
+	bv._units = [p, e]
+	var tm = TurnManagerScript.new()
+	tm.setup([p, e])
+	tm.current_unit = p
+	bv._turn_manager = tm
+	bv._grid_view.set_battle(_open_map(9, 9), bv._units)
+	bv.max_energy = 3
+	bv.draw_pile = []
+	for _i in range(10):
+		bv.draw_pile.append(_mk(&"strike_ironclad"))
+	bv._on_unit_turn_started(p)
+	assert_eq(p.position, Vector2i(4, 4), "a unit without Fear stays put at turn start")
+
+# --- Addon lifecycle parity with the deckbuilder ----------------------------
+# Strategy now reads the deckbuilder CardData flags directly (no bespoke
+# strategy verbs), so Ethereal/Retain behave exactly as in the deckbuilder.
+
+func test_ethereal_card_in_hand_exhausts_at_end_of_turn() -> void:
+	var p := _player(); var e := _enemy(); _wire(p, e)
+	var carnage := _mk(&"carnage")          # carnage.tres is flagged ethereal
+	assert_true(carnage.data.ethereal, "precondition: Carnage is Ethereal")
+	bv.hand = [carnage]
+	bv._on_unit_turn_ended(p)
+	assert_true(bv.exhaust_pile.has(carnage), "an Ethereal card left in hand exhausts at end of turn")
+	assert_false(bv.discard_pile.has(carnage), "it did not also discard")
+
+func test_retain_card_stays_in_hand_at_end_of_turn() -> void:
+	var p := _player(); var e := _enemy(); _wire(p, e)
+	var d := CardData.new()
+	d.id = &"_test_retainer"
+	d.display_name = "Retainer"
+	d.retain = true
+	var inst := CardInstance.from_data(d)
+	bv.hand = [inst]
+	bv._on_unit_turn_ended(p)
+	assert_true(bv.hand.has(inst), "a Retain card is kept in hand across the turn boundary")
+	assert_false(bv.discard_pile.has(inst), "a Retain card is not discarded")

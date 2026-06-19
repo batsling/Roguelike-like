@@ -129,26 +129,9 @@ static func auto_plays_at_start(card, mode) -> bool:
 			return true
 	return false
 
-# Free plays granted at combat start (Innate, Strategy).
-static func free_play_count(card, mode) -> int:
-	var total: int = 0
-	for c in clauses_for(card, mode):
-		if c["verb"] == "free_play":
-			total += int(c["args"])
-	return total
-
-# Minimum number of this card that must stay equipped (Unplayable, Strategy).
-static func requires_equipped(card, mode) -> int:
-	var req: int = 0
-	for c in clauses_for(card, mode):
-		if c["verb"] == "requires_equipped":
-			req = maxi(req, int(c["args"]))
-	return req
-
-# True if an unused ability deactivates for the rest of combat (Ethereal,
-# Strategy).
-static func deactivates_if_idle(card, mode) -> bool:
-	for c in clauses_for(card, mode):
-		if c["verb"] == "deactivate_if_idle":
-			return true
-	return false
+# NOTE: the Strategy-only lifecycle verbs (free_play / requires_equipped /
+# deactivate_if_idle) were removed when Strategy became a grid deckbuilder. It
+# now reads the deckbuilder CardData flags (innate / unplayable / ethereal /
+# exhaust) directly, so Exhaust/Innate/Ethereal/Unplayable behave exactly as in
+# the deckbuilder. Only Action still drives behavior through AddonSystem verbs
+# (uses_per_combat / cooldown_mult / auto_play above).

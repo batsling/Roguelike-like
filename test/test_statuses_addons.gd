@@ -391,3 +391,62 @@ func test_lifesteal_flag_stamped_onto_dmg_effect() -> void:
 		{"type": "dmg", "value": 6, "target": "enemy"}, card)
 	assert_true(bool(out.get("lifesteal", false)),
 		"Lifesteal sets the lifesteal flag the damage path reads")
+
+# --- Bleed: now MODE-DIVERGENT (the second special status after Fear) -----
+# Strategy/Action keep the turn-boundary DoT bite (Strategy then grows +1).
+# Deckbuilder skips the turn tick (tick_bleed=false) and is attack-triggered
+# instead (deckbuilder_bleed_on_attack), wiping all stacks at end of turn.
+
+func test_bleed_strategy_bites_then_grows() -> void:
+	GameState.reset_run()
+	var enemy := CombatActor.new()
+	enemy.max_hp = 20
+	enemy.hp = 20
+	enemy.add_status(&"bleed", 3)
+	var scene := _TickScene.new()
+	# Strategy passes the default tick_bleed=true: bite for current stacks...
+	Stats.tick_actor_statuses(enemy, scene)
+	assert_eq(enemy.hp, 17, "Strategy Bleed bites for X = current stacks")
+	# ...then GROW_STATUSES bumps it by 1 at end of turn (do_grow=true).
+	Stats.decay_actor_statuses(enemy, true)
+	assert_eq(enemy.get_status(&"bleed"), 4, "Strategy Bleed grows +1 each turn")
+
+func test_bleed_deckbuilder_skips_the_turn_tick() -> void:
+	GameState.reset_run()
+	var enemy := CombatActor.new()
+	enemy.max_hp = 20
+	enemy.hp = 20
+	enemy.add_status(&"bleed", 3)
+	var scene := _TickScene.new()
+	# Deckbuilder passes tick_bleed=false: no turn-boundary Bleed bite...
+	Stats.tick_actor_statuses(enemy, scene, false)
+	assert_eq(enemy.hp, 20, "Deckbuilder Bleed does NOT bite at the turn boundary")
+	# ...and do_grow=false means it never grows either.
+	Stats.decay_actor_statuses(enemy, false)
+	assert_eq(enemy.get_status(&"bleed"), 3, "Deckbuilder Bleed does not grow")
+
+func test_bleed_deckbuilder_on_attack_hits_every_bleeder_for_its_stacks() -> void:
+	GameState.reset_run()
+	var player := CombatActor.new()
+	player.is_player = true
+	player.max_hp = 50
+	player.hp = 50
+	GameState.hp = 50
+	GameState.max_hp = 50
+	player.add_status(&"bleed", 2)
+	var e1 := CombatActor.new()
+	e1.max_hp = 20; e1.hp = 20; e1.add_status(&"bleed", 4)
+	var e2 := CombatActor.new()   # not bleeding -> untouched
+	e2.max_hp = 20; e2.hp = 20
+	var scene := _TickScene.new()
+	Stats.deckbuilder_bleed_on_attack([player, e1, e2], scene)
+	assert_eq(player.hp, 48, "player took raw HP = its own Bleed stacks (2)")
+	assert_eq(e1.hp, 16, "bleeding enemy took raw HP = its stacks (4)")
+	assert_eq(e2.hp, 20, "a non-bleeding actor is untouched")
+
+func test_clear_bleed_strips_all_stacks() -> void:
+	GameState.reset_run()
+	var enemy := CombatActor.new()
+	enemy.add_status(&"bleed", 5)
+	Stats.clear_bleed(enemy)
+	assert_eq(enemy.get_status(&"bleed"), 0, "all Bleed lost (end of deckbuilder turn)")

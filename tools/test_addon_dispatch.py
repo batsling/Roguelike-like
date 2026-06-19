@@ -222,28 +222,19 @@ def check_lifecycle_verbs(index):
         return any(c["verb"] == "auto_play" and c["trigger"] == "on_combat_start"
                    for c in clauses(key, mode))
 
-    def free_play(key, mode):
-        return sum(int(c["args"]) for c in clauses(key, mode) if c["verb"] == "free_play")
-
-    def requires_equipped(key, mode):
-        return max([0] + [int(c["args"]) for c in clauses(key, mode)
-                          if c["verb"] == "requires_equipped"])
-
-    def deactivate_if_idle(key, mode):
-        return any(c["verb"] == "deactivate_if_idle" for c in clauses(key, mode))
-
     # Action
     assert uses_per_combat("exhaust", "action") == 1
     assert cooldown_mult("ethereal", "action") == 2.0
     assert auto_play("innate", "action") is True
     assert cooldown_mult("unplayable", "action") == 2.0
-    # Strategy
-    assert uses_per_combat("exhaust", "strategy") == 1
-    assert deactivate_if_idle("ethereal", "strategy") is True
-    assert free_play("innate", "strategy") == 1
-    assert requires_equipped("unplayable", "strategy") == 1
-    print("[test_addon_dispatch] lifecycle verbs OK — Exhaust/Ethereal/Innate/"
-          "Unplayable resolve to expected Action + Strategy values")
+    # Strategy: now a grid deckbuilder, so the lifecycle addons read the
+    # deckbuilder CardData flags directly — NO bespoke Strategy verbs. Every
+    # Strategy Verb cell for these must be blank (parity with Deckbuilder).
+    for key in ("exhaust", "ethereal", "innate", "unplayable", "sly", "retain"):
+        assert clauses(key, "strategy") == [], (
+            f"{key!r} must have no Strategy verb — Strategy mirrors the deckbuilder flag")
+    print("[test_addon_dispatch] lifecycle verbs OK — Action verbs resolve; "
+          "Strategy verbs are blank (deckbuilder parity)")
 
 
 def main():

@@ -460,12 +460,19 @@ func _on_end_turn() -> void:
 	TriggerBus.emit_signal("turn_ended", {"turn": turn, "scene": self})
 	_fire_item_triggers("turn_ended")
 	_fire_power_triggers("turn_ended")
-	# Per-turn DoT tick (Bleed today) BEFORE decay so the bite uses
-	# the carried stack count, then grow/decay applies.
-	Stats.tick_actor_statuses(player, self)
+	# Per-turn DoT tick (Poison/Burn/Regen/Leeches). Bleed is excluded here
+	# (tick_bleed = false) — in the deckbuilder it's attack-triggered, not a
+	# turn-boundary DoT (see _resolve_card / deckbuilder_bleed_on_attack).
+	Stats.tick_actor_statuses(player, self, false)
 	# Decay player statuses BEFORE enemies act so debuffs the player
-	# just applied to enemies survive through the enemy turn.
+	# just applied to enemies survive through the enemy turn. do_grow = false:
+	# deckbuilder Bleed never grows, it's cleared wholesale below.
 	_decay_statuses(player)
+	# All ranks of Bleed are lost at end of the player's turn — on the player
+	# and on every enemy (Bleed is a within-your-turn, attack-synergy status).
+	Stats.clear_bleed(player)
+	for _e in enemies:
+		Stats.clear_bleed(_e)
 	# Curse cards' end-of-turn effects land here — AFTER decay — so a status they
 	# grant the player (Doubt -> Weak, Punctured Eye -> Blind) persists to the next
 	# turn. HP-loss curses (Decay/Regret) resolve here too; a lethal one is caught
@@ -485,7 +492,7 @@ func _on_end_turn() -> void:
 	# Enemies tick and decay after their actions.
 	for e in enemies:
 		if e.is_alive():
-			Stats.tick_actor_statuses(e, self)
+			Stats.tick_actor_statuses(e, self, false)
 			_decay_statuses(e)
 
 	# An enemy may have died from their own Bleed tick — re-check.
@@ -679,7 +686,9 @@ func _show_reward_modal() -> void:
 	reward.setup(GameState.card_reward_tag())
 
 func _decay_statuses(actor: CombatActor) -> void:
-	Stats.decay_actor_statuses(actor)
+	# do_grow = false: deckbuilder Bleed is attack-triggered and wiped each
+	# turn (see _on_end_turn), so it must never grow at the turn boundary.
+	Stats.decay_actor_statuses(actor, false)
 
 # ------------------------------------------------------------------
 # Card play
@@ -913,6 +922,15 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	var replays: int = CardMods.replay_count(card.data)
 	for _i in replays:
 		replay_card_effects(card, target_enemy)
+
+	# Bleed (deckbuilder rule): once an ATTACK card has fully resolved (incl.
+	# Replays), everything afflicted with Bleed takes raw HP = its stacks — the
+	# player for their own Bleed, each enemy for theirs. Runs AFTER resolution
+	# so stacks added/removed by the card count. Non-attack cards don't proc it.
+	if card.is_attack():
+		var bleeders: Array = [player]
+		bleeders.append_array(enemies)
+		Stats.deckbuilder_bleed_on_attack(bleeders, self)
 
 	# Playing a card fires any on_play_other curse in hand (Pain: lose HP when
 	# you play another card). Curse cards are unplayable, so `card` is never a
