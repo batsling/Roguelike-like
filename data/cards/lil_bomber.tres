@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_lil_bomber"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/items/LilBomber.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"lil_bomber"
+display_name = "Lil' Bomber"
+type = 0
+rarity = 1
+cost = 2
+description = "Deal 12 Dmg Ranged."
+effects = [{"type": "dmg", "value": 12, "target": "enemy", "damage_type": "ranged", "element": "fire"}]
+tags = PackedStringArray("weapon")
+source_game = "Enter the Gungeon"
+element = &"fire"
+can_upgrade = false
+image = ExtResource("2_img")
+attack_shape = &"projectile"
+attack_params = {"size": "medium", "explosive": true}

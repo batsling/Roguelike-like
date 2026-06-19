@@ -772,6 +772,30 @@ func set_gold(new_gold: int) -> void:
 func change_gold(delta: int) -> void:
 	set_gold(gold + delta)
 
+# Gold-on-hit rider (King Bomber evolution): an attack effect carrying
+# gold_on_hit_min/max grants a random amount in that range when it connects with
+# an enemy. Shared by all three combat modes so the roll + log live in one place.
+# `rng` lets each mode pass its seeded generator; null falls back to a global one.
+var _gold_on_hit_rng: RandomNumberGenerator = null
+func gain_gold_on_hit(effect: Dictionary, rng: RandomNumberGenerator = null) -> void:
+	var hi: int = int(effect.get("gold_on_hit_max", 0))
+	if hi <= 0:
+		return
+	var lo: int = int(effect.get("gold_on_hit_min", 0))
+	if lo > hi:
+		lo = hi
+	var r: RandomNumberGenerator = rng
+	if r == null:
+		if _gold_on_hit_rng == null:
+			_gold_on_hit_rng = RandomNumberGenerator.new()
+			_gold_on_hit_rng.randomize()
+		r = _gold_on_hit_rng
+	var amt: int = r.randi_range(maxi(0, lo), hi)
+	if amt <= 0:
+		return
+	change_gold(amt)
+	GameLog.add("Gold on hit: +%d Gold." % amt, Color(1.0, 0.85, 0.35))
+
 # Gold the player actively SPENDS (shop purchases, card removal, …). Deducts
 # and counts toward Keeper's Sack. Use this — NOT change_gold — wherever the
 # player chooses to pay: gold lost to events / curses must not count as

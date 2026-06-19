@@ -856,11 +856,22 @@ func _show_card_preview(card_data: CardData, upgraded: bool) -> void:
 
 	var inst := CardInstance.from_data(card_data, upgraded)
 
-	var panel := PanelContainer.new()
+	# Card panel on the left; a "keywords" tooltip column on the right explaining
+	# every Element / Addon / Status the card carries (so a zoomed card teaches
+	# the player what Fire / Finesse / Burn actually do).
+	var lore: Array = CardLore.entries_for(card_data)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
 	var psize := Vector2(380, 600)
+	var lore_w: float = 300.0 if not lore.is_empty() else 0.0
+	row.position = (get_viewport_rect().size - Vector2(psize.x + (lore_w + 14.0 if lore_w > 0.0 else 0.0), psize.y)) / 2.0
+	layer.add_child(row)
+
+	var panel := PanelContainer.new()
 	panel.custom_minimum_size = psize
-	panel.position = (get_viewport_rect().size - psize) / 2.0
-	layer.add_child(panel)
+	row.add_child(panel)
+	if not lore.is_empty():
+		row.add_child(_build_lore_panel(lore, psize.y))
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
@@ -928,6 +939,79 @@ func _close_card_preview() -> void:
 	if _card_preview != null:
 		_card_preview.queue_free()
 		_card_preview = null
+
+# Tooltip-style sidebar for the card zoom: one panel per Element / Addon / Status
+# the card carries, each with its name (tinted) and an explanation. Mirrors how
+# the in-game hover card reads, so the player can learn keywords up close.
+func _build_lore_panel(lore: Array, height: float) -> Control:
+	var outer := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.07, 0.07, 0.1, 0.97)
+	sb.set_corner_radius_all(10)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(1, 1, 1, 0.08)
+	sb.set_content_margin_all(12)
+	outer.add_theme_stylebox_override("panel", sb)
+	outer.custom_minimum_size = Vector2(300, height)
+
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	outer.add_child(scroll)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 8)
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.custom_minimum_size = Vector2(276, 0)
+	scroll.add_child(vb)
+
+	var title := Label.new()
+	title.text = "Keywords"
+	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.45))
+	vb.add_child(title)
+	vb.add_child(HSeparator.new())
+
+	for entry in lore:
+		vb.add_child(_lore_entry_row(entry))
+	return outer
+
+func _lore_entry_row(entry: Dictionary) -> Control:
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.11, 0.12, 0.16, 0.9)
+	sb.set_corner_radius_all(8)
+	sb.border_width_left = 3
+	sb.border_color = entry.get("color", Color(0.6, 0.6, 0.6))
+	sb.content_margin_left = 9
+	sb.content_margin_right = 9
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+	card.add_theme_stylebox_override("panel", sb)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 2)
+	card.add_child(vb)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 6)
+	vb.add_child(head)
+	var nm := Label.new()
+	nm.text = String(entry.get("name", ""))
+	nm.add_theme_font_size_override("font_size", 13)
+	nm.add_theme_color_override("font_color", entry.get("color", Color.WHITE))
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(nm)
+	var kind := Label.new()
+	kind.text = String(entry.get("kind", "")).to_upper()
+	kind.add_theme_font_size_override("font_size", 9)
+	kind.add_theme_color_override("font_color", Color(0.6, 0.6, 0.66))
+	head.add_child(kind)
+	var desc := Label.new()
+	desc.text = String(entry.get("desc", ""))
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.custom_minimum_size = Vector2(258, 0)
+	desc.add_theme_font_size_override("font_size", 11)
+	desc.add_theme_color_override("font_color", Color(0.84, 0.84, 0.87))
+	vb.add_child(desc)
+	return card
 
 # ------------------------------------------------------------------
 # Gear tab — action-combat loadout (doubles as the equipment screen).

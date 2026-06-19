@@ -28,6 +28,8 @@ var _cost_label: Label
 var _name_label: Label
 var _type_label: Label
 var _desc_label: RichTextLabel
+var _element_badge: Panel
+var _element_label: Label
 
 var _selected: bool = false
 var _enabled: bool = true
@@ -120,6 +122,23 @@ func _build() -> void:
 	_desc_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_desc_label)
 
+	# Element badge — a small coloured pill at the top-right naming the card's
+	# damage element (Fire / Poison / …), so the player can read the element at a
+	# glance. Hidden for elementless cards. Tinted by the Elements registry.
+	_element_badge = Panel.new()
+	_element_badge.position = Vector2(CARD_W - 56, 6)
+	_element_badge.size = Vector2(50, 18)
+	_element_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_element_badge.visible = false
+	add_child(_element_badge)
+	_element_label = Label.new()
+	_element_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_element_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_element_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_element_label.add_theme_font_size_override("font_size", 10)
+	_element_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_element_badge.add_child(_element_label)
+
 	# The card root itself captures mouse input (children are MOUSE_FILTER_IGNORE),
 	# so _gui_input drives both click-to-play and drag-to-play.
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -149,7 +168,30 @@ func refresh() -> void:
 		_art.texture = card.data.image
 		_type_label.text = _type_label_text(card.data.type)
 		_rarity_stripe.color = _rarity_color(card.data.rarity)
+		_update_element_badge(card.data)
 	_update_frame()
+
+# Show / hide the element pill and tint it to the card's element.
+func _update_element_badge(data: CardData) -> void:
+	if _element_badge == null:
+		return
+	var elem_name: String = Elements.display_name(data.element)
+	if elem_name == "":
+		_element_badge.visible = false
+		return
+	_element_badge.visible = true
+	var col: Color = Elements.color(data.element)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(col.r, col.g, col.b, 0.9)
+	sb.set_corner_radius_all(9)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(0, 0, 0, 0.35)
+	_element_badge.add_theme_stylebox_override("panel", sb)
+	_element_label.text = elem_name
+	# Dark elements need light text; light ones need dark text for legibility.
+	var lum: float = col.r * 0.299 + col.g * 0.587 + col.b * 0.114
+	_element_label.add_theme_color_override("font_color",
+		Color(0.08, 0.06, 0.04) if lum > 0.55 else Color(1, 1, 1))
 
 func set_selected(sel: bool) -> void:
 	_selected = sel

@@ -30,8 +30,34 @@ const COLORS: Dictionary = {
 	"water": Color(0.231, 0.545, 0.839),     # Blue
 }
 
+# Element -> player-facing display name (Title Case).
+const NAMES: Dictionary = {
+	"blood": "Blood", "dark": "Dark", "earth": "Earth", "electric": "Electric",
+	"fire": "Fire", "poison": "Poison", "water": "Water",
+}
+
+# Element -> its "Effect on Attack" blurb (the elements sheet). Shown in card
+# tooltips so the player knows what an element does on a connecting hit.
+const DESCRIPTIONS: Dictionary = {
+	"blood": "If the target has no Bleed, inflict 1 Bleed.",
+	"dark": "If the target has no Blind, inflict 1 Blind.",
+	"earth": "No on-hit effect.",
+	"electric": "Electric damage to a Wet target also hits adjacent Wet targets.",
+	"fire": "If the target has no Burn, inflict 1 Burn.",
+	"poison": "Inflict 1 Poison unless the attack already applies Poison.",
+	"water": "Inflict 1 Wet and remove all Burn from the target.",
+}
+
 static func _key(element) -> String:
 	return String(element).strip_edges().to_lower()
+
+# Title-case display name for an element, or "" when none/physical/unknown.
+static func display_name(element) -> String:
+	return String(NAMES.get(_key(element), ""))
+
+# The element's on-hit blurb, or "" when it has none.
+static func description(element) -> String:
+	return String(DESCRIPTIONS.get(_key(element), ""))
 
 # True when the element has a defined colour (i.e. it's a real, non-physical
 # element). "physical" / "" / unknown -> false.

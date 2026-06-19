@@ -14,12 +14,15 @@ func test_reference_tab_renders_statuses_and_addons() -> void:
 	# Tab order is Items, Cards, Characters, Reference — Items is the default.
 	assert_eq(col._tab, Collection.Tab.ITEMS)
 	col._set_tab(Collection.Tab.REFERENCE)
-	assert_eq(ReferenceCatalog.STATUSES.size(), 19, "19 implemented statuses")
-	assert_eq(ReferenceCatalog.ADDONS.size(), 11, "11 implemented addons")
-	assert_eq(col._grid.get_child_count(), 19, "all status cards render")
+	# Counts track the sheet-generated ReferenceCatalog (statusesnew / addonsnew).
+	assert_eq(col._grid.get_child_count(), ReferenceCatalog.STATUSES.size(), "all status cards render")
 	col._ref_subtab = "addons"
 	col._refresh()
-	assert_eq(col._grid.get_child_count(), 11, "all addon cards render")
+	assert_eq(col._grid.get_child_count(), ReferenceCatalog.ADDONS.size(), "all addon cards render")
+	# Evolutions sub-tab renders one card per catalogued evolution.
+	col._ref_subtab = "evolutions"
+	col._refresh()
+	assert_eq(col._grid.get_child_count(), EvolutionCatalog.EVOLUTIONS.size(), "all evolution cards render")
 
 func test_reference_search_filters() -> void:
 	var col := _new_collection()

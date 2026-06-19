@@ -116,7 +116,15 @@ func resolve(card: CardData) -> Dictionary:
 		"target_mode": String(p.get("target", base.get("target", "nearest"))).to_lower(),
 		"pierce": bool(p.get("pierce", false)),
 		"crescent": bool(p.get("crescent", false)),
+		# Explosive (Lil' Bomber): a projectile that bursts into an AOE on impact.
+		# The direct hit deals nothing; the blast deals the card's effects to every
+		# enemy in `blast_px`. blast_px is sized off the same word that sets travel
+		# (Medium -> the Medium disc radius), defaulting to the medium disc.
+		"explosive": bool(p.get("explosive", false)),
+		"blast_px": 0.0,
 	}
+	if spec["explosive"]:
+		spec["blast_px"] = _lookup_px(radius_px, size_word, radius_px["medium"])
 
 	match family:
 		"cone":

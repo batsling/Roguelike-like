@@ -831,6 +831,9 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 		return
 	# Any landed swing (even fully blocked) refreshes the enemy's Bleed window.
 	inst["was_hit"] = true
+	# Gold on hit (King Bomber evolution): a connecting player hit on an enemy
+	# grants random gold. Fires on contact regardless of block, once per enemy.
+	GameState.gain_gold_on_hit(effect, _rng)
 	var amount: int = int(res.hp_loss)
 	if amount > 0:
 		inst.actor.hp = maxi(0, inst.actor.hp - amount)
@@ -1658,6 +1661,16 @@ func _deliver_disc(card: CardData, effects: Array, spec: Dictionary, center: Vec
 	_swing_color = _attack_color_for(card, _swing_color)
 	_apply_enemy_effects(card, effects, _enemies_in_disc(center, radius))
 
+# Explosive bolt burst: a filled AOE disc at the impact point that deals the
+# card's enemy-side effects (dmg + the Fire-on-hit Burn, etc.) to every enemy
+# inside it, exactly once. Reuses the disc visual + the shared enemy-effect path.
+func _explode_bolt(card: CardData, center: Vector2, radius: float) -> void:
+	if radius <= 0.0:
+		radius = float(_atk.radius_px.get("medium", 140.0)) if _atk != null else 140.0
+	_show_disc(center, radius)
+	_swing_color = _attack_color_for(card, _swing_color)
+	_apply_enemy_effects(card, _enemy_effects(card), _enemies_in_disc(center, radius))
+
 func _deliver_beam(card: CardData, effects: Array, spec: Dictionary, dir: Vector2) -> void:
 	var length: float = float(spec.reach_px)
 	_show_beam(dir, length)
@@ -1871,6 +1884,9 @@ func _spawn_attack_bolt(card: CardData, dir: Vector2, range_px: float, lifetime:
 		"shape": "crescent" if crescent else "bolt",
 		"homing": homing,
 		"facing": dir,
+		# Explosive bolts burst on impact instead of dealing a direct hit.
+		"explosive": bool(spec.get("explosive", false)),
+		"blast_px": float(spec.get("blast_px", 0.0)),
 	}
 	projectiles.append(proj)
 
@@ -2525,6 +2541,12 @@ func _on_enemy_projectile_hit(p: Dictionary) -> void:
 func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 	var card: CardData = p.get("card")
 	if card == null:
+		return
+	# Explosive (Lil' Bomber): the bolt bursts where it struck. The direct hit
+	# deals nothing — the blast disc deals the card's enemy effects to everyone in
+	# radius (the struck enemy is at the centre, so it still takes the hit once).
+	if bool(p.get("explosive", false)):
+		_explode_bolt(card, p.pos, float(p.get("blast_px", 0.0)))
 		return
 	# Each bolt is independent: dmg + status from the card's enemy-side
 	# effects land on whichever single enemy the bolt struck. Ranged

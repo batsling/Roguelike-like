@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_dexecutioner"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/items/Dexecutioner.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"dexecutioner"
+display_name = "Dexecutioner"
+type = 0
+rarity = 2
+cost = 1
+description = "Deal 5 Dmg. Finesse."
+effects = [{"type": "dmg", "value": 5, "target": "enemy", "damage_type": "melee"}]
+tags = PackedStringArray("weapon")
+source_game = "Megabonk"
+can_upgrade = false
+image = ExtResource("2_img")
+addons = PackedStringArray("finesse")
+attack_shape = &"poke"
+attack_params = {"size": "medium"}
