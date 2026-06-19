@@ -561,7 +561,8 @@ func _build_reference() -> void:
 	sub.add_theme_constant_override("separation", 6)
 	_content.add_child(sub)
 	for entry in [["statuses", "Statuses (%d)" % ReferenceCatalog.STATUSES.size()],
-			["addons", "Addons (%d)" % ReferenceCatalog.ADDONS.size()]]:
+			["addons", "Addons (%d)" % ReferenceCatalog.ADDONS.size()],
+			["evolutions", "Evolutions (%d)" % EvolutionCatalog.EVOLUTIONS.size()]]:
 		var key: String = entry[0]
 		var b := Button.new()
 		b.text = entry[1]
@@ -602,6 +603,15 @@ func _populate_reference() -> void:
 			_grid.add_child(_status_card(s))
 			shown += 1
 		_set_count(shown, ReferenceCatalog.STATUSES.size())
+	elif _ref_subtab == "evolutions":
+		for e in EvolutionCatalog.EVOLUTIONS:
+			if term != "" and not (term in String(e.get("name", "")).to_lower() \
+					or term in String(e.get("description", "")).to_lower() \
+					or term in String(e.get("req1_label", "")).to_lower()):
+				continue
+			_grid.add_child(_evolution_card(e))
+			shown += 1
+		_set_count(shown, EvolutionCatalog.EVOLUTIONS.size())
 	else:
 		for a in ReferenceCatalog.ADDONS:
 			if term != "" and not (term in String(a.get("name", "")).to_lower() \
@@ -679,6 +689,58 @@ func _addon_card(a: Dictionary) -> Control:
 	if forms != "":
 		vb.add_child(_label("Forms: %s" % forms, Color(0.78, 0.63, 0.25), 10))
 	return cell.panel
+
+# An evolution reference card: the evolved art + name, its two requirements, the
+# gains line, and an "ACHIEVED" marker when the player currently owns the evolved
+# card (deck-driven, since the swap is irreversible).
+func _evolution_card(e: Dictionary) -> Control:
+	var accent := Color(0.95, 0.78, 0.28)
+	var cell := _cell(accent, Callable())
+	cell.panel.custom_minimum_size = Vector2(380, 0)
+	var vb: VBoxContainer = cell.vbox
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
+	vb.add_child(top)
+	var img: String = String(e.get("img", ""))
+	var path := "res://images/Evolutions/%s.png" % img
+	var tex: Texture2D = load(path) if (img != "" and ResourceLoader.exists(path)) else null
+	if tex == null:
+		# Fall back to the evolved card's own art if the Evolutions image is absent.
+		var cd: CardData = Data.get_card(StringName(String(e.get("to_card", ""))))
+		if cd != null:
+			tex = cd.image
+	if tex != null:
+		top.add_child(_image_with_bg(tex, 64, accent))
+	var head := VBoxContainer.new()
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(head)
+	var name_row := HBoxContainer.new()
+	name_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(name_row)
+	var nm := _label(String(e.get("name", "")), accent, 15)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_row.add_child(nm)
+	if _owns_evolution(e):
+		name_row.add_child(_label("★ ACHIEVED", Color(0.5, 0.95, 0.55), 10))
+	var arrow := "%s  →  %s" % [String(e.get("req1_label", "")), String(e.get("name", ""))]
+	head.add_child(_label(arrow, Color(0.75, 0.78, 0.85), 11, false, true))
+	# Requirements + gains.
+	vb.add_child(_label("Requires: %s  +  %s" % [
+		String(e.get("req1_label", "")), String(e.get("req2_label", ""))],
+		Color(0.7, 0.8, 0.95), 11, false, true))
+	var gains: String = String(e.get("description", ""))
+	if gains != "":
+		vb.add_child(_label("Gains: %s" % gains, Color(0.85, 0.85, 0.87), 11, false, true))
+	return cell.panel
+
+# True when the player's current deck holds the evolved card (the irreversible
+# swap already happened this run).
+func _owns_evolution(e: Dictionary) -> bool:
+	var to_id := StringName(String(e.get("to_card", "")))
+	for ci in GameState.deck:
+		if ci is CardInstance and ci.data != null and ci.data.id == to_id:
+			return true
+	return false
 
 func _mode_line(tag: String, desc: String) -> Control:
 	if desc == "":

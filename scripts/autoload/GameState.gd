@@ -9,6 +9,9 @@ signal gold_changed(new_gold: int)
 signal stats_changed
 signal deck_changed
 signal inventory_changed
+# Fired when a card permanently evolves into another (EvolutionSystem): carries
+# the old + new card ids so id-keyed buff systems can follow the identity change.
+signal card_evolved(from_id: StringName, to_id: StringName)
 signal current_game_changed(game_id: StringName)
 
 # === Identity / progression ===
@@ -184,17 +187,6 @@ var _streaks: Dictionary = {}
 # strategy/tactical Spellbook (Phase 6). Spell defs live in
 # `SpellsCatalog` until designers ship .tres files for them.
 var learned_spells: Array[StringName] = []
-
-# Strategy/tactical card uses. Run-persistent: a slotted card spends a use
-# each time it's played and the remaining count persists across combats AND
-# across leaving / re-entering a strategy game within the run. Only refilled
-# by "draw"-style effects (and future rest hooks). Keyed by CardData.id ->
-# remaining uses; lazily seeded to the card's max on first read.
-var card_uses: Dictionary = {}
-# Default starting/max uses by CardData.Rarity (STARTER, COMMON, UNCOMMON,
-# RARE, LEGENDARY). Stronger/rarer cards bring fewer uses. Overridden
-# per-card by CardData.max_uses (>= 0).
-const DEFAULT_CARD_USES_BY_RARITY := [4, 4, 3, 2, 2]
 
 # === Action-mode loadout (StringName ids resolved via Data) ===
 # Two manual click slots — left (LMB) and right (RMB). Only Strikes or
@@ -505,7 +497,6 @@ func reset_run() -> void:
 	_reset_item_tracking()
 	loot = {"potion": 0, "scroll": 0, "key": 0}
 	learned_spells.clear()
-	card_uses.clear()
 	action_left_card_id = &""
 	action_right_card_id = &""
 	action_active_item_id = &""
@@ -771,6 +762,30 @@ func set_gold(new_gold: int) -> void:
 
 func change_gold(delta: int) -> void:
 	set_gold(gold + delta)
+
+# Gold-on-hit rider (King Bomber evolution): an attack effect carrying
+# gold_on_hit_min/max grants a random amount in that range when it connects with
+# an enemy. Shared by all three combat modes so the roll + log live in one place.
+# `rng` lets each mode pass its seeded generator; null falls back to a global one.
+var _gold_on_hit_rng: RandomNumberGenerator = null
+func gain_gold_on_hit(effect: Dictionary, rng: RandomNumberGenerator = null) -> void:
+	var hi: int = int(effect.get("gold_on_hit_max", 0))
+	if hi <= 0:
+		return
+	var lo: int = int(effect.get("gold_on_hit_min", 0))
+	if lo > hi:
+		lo = hi
+	var r: RandomNumberGenerator = rng
+	if r == null:
+		if _gold_on_hit_rng == null:
+			_gold_on_hit_rng = RandomNumberGenerator.new()
+			_gold_on_hit_rng.randomize()
+		r = _gold_on_hit_rng
+	var amt: int = r.randi_range(maxi(0, lo), hi)
+	if amt <= 0:
+		return
+	change_gold(amt)
+	GameLog.add("Gold on hit: +%d Gold." % amt, Color(1.0, 0.85, 0.35))
 
 # Gold the player actively SPENDS (shop purchases, card removal, …). Deducts
 # and counts toward Keeper's Sack. Use this — NOT change_gold — wherever the
@@ -1482,95 +1497,6 @@ func add_loot(kind: String, amount: int = 1) -> void:
 
 func get_loot_count(kind: String) -> int:
 	return int(loot.get(kind, 0))
-
-# ---------------------------------------------------------------------------
-# Strategy/tactical card uses (run-persistent)
-# ---------------------------------------------------------------------------
-
-# Starting / maximum uses for a card: the per-card override when set,
-# otherwise a rarity-based default that cost shaves down — stronger
-# (higher-cost) cards bring fewer uses. cost 0-1 keeps the full rarity
-# value; each point above 1 removes a use (X-cost cards count as 1).
-func max_card_uses(card: CardData) -> int:
-	if card == null:
-		return 0
-	var result: int
-	if card.max_uses >= 0:
-		result = card.max_uses
-	else:
-		var base: int = 3
-		var r: int = card.rarity
-		if r >= 0 and r < DEFAULT_CARD_USES_BY_RARITY.size():
-			base = DEFAULT_CARD_USES_BY_RARITY[r]
-		var cost: int = card.cost
-		if cost < 0:  # X-cost
-			cost = 1
-		result = maxi(1, base - maxi(0, cost - 1))
-	# (Strategy's old uses_per_combat cap for Exhaust was dropped when Strategy
-	# became a deckbuilder — Exhaust now sends the card to the exhaust pile like
-	# the deckbuilder, rather than rationing per-combat uses.)
-	return result
-
-# Remaining uses for a card, lazily seeded to its max on first read so a
-# freshly acquired card always starts full.
-func get_card_uses(card: CardData) -> int:
-	if card == null:
-		return 0
-	if not card_uses.has(card.id):
-		card_uses[card.id] = max_card_uses(card)
-	return int(card_uses[card.id])
-
-# Spend one use. Returns false (and changes nothing) if none remain.
-func spend_card_use(card: CardData) -> bool:
-	if card == null:
-		return false
-	var remaining: int = get_card_uses(card)
-	if remaining <= 0:
-		return false
-	card_uses[card.id] = remaining - 1
-	return true
-
-# Restore up to `n` uses, capped at the card's max. Returns how many were
-# actually restored (0 if already full).
-func recharge_card_use(card: CardData, n: int = 1) -> int:
-	if card == null or n <= 0:
-		return 0
-	var cur: int = get_card_uses(card)
-	var cap: int = max_card_uses(card)
-	var restored: int = mini(n, maxi(0, cap - cur))
-	if restored > 0:
-		card_uses[card.id] = cur + restored
-	return restored
-
-# --- Per-INSTANCE uses (strategy loadout). Each CardInstance carries its own
-# remaining uses (CardInstance.uses), so two copies of the same card are
-# independent. Max is still derived from the card data (max_card_uses). ---
-
-func card_uses_max(inst: CardInstance) -> int:
-	return max_card_uses(inst.data) if inst != null else 0
-
-func card_uses_remaining(inst: CardInstance) -> int:
-	if inst == null or inst.data == null:
-		return 0
-	if inst.uses < 0:
-		inst.uses = max_card_uses(inst.data)
-	return inst.uses
-
-func spend_card_use_inst(inst: CardInstance) -> bool:
-	if card_uses_remaining(inst) <= 0:
-		return false
-	inst.uses -= 1
-	return true
-
-func recharge_card_use_inst(inst: CardInstance, n: int = 1) -> int:
-	if inst == null or inst.data == null or n <= 0:
-		return 0
-	var cap: int = max_card_uses(inst.data)
-	var cur: int = card_uses_remaining(inst)
-	var restored: int = mini(n, maxi(0, cap - cur))
-	if restored > 0:
-		inst.uses = cur + restored
-	return restored
 
 # ---------------------------------------------------------------------------
 # Action-mode loadout

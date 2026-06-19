@@ -48,6 +48,9 @@ CARD_IMG_DIR = os.path.join(PROJECT_ROOT, "images", "cards")
 # Weapon-derived cards (Barrel, Blasma Pistol, Blood Magic) keep their art with
 # the items, so resolve images from cards/ first, then items/.
 ITEM_IMG_DIR = os.path.join(PROJECT_ROOT, "images", "items")
+# Evolved cards (King Bomber, …) keep their art in images/Evolutions/, so the
+# evolution generator's rows resolve there after cards/ and items/.
+EVO_IMG_DIR = os.path.join(PROJECT_ROOT, "images", "Evolutions")
 
 # CardData.CardType enum order.
 CARD_TYPE = {
@@ -71,7 +74,11 @@ FLAG_KEYWORDS = {"exhaust", "ethereal", "innate", "retain", "unplayable", "etern
 ATTACK_SHAPES = {"poke", "swing", "smash", "nova", "projectile", "lob",
                  "beam", "homing", "smite", "auto_aoe", "bounce"}
 ATTACK_SIZE_WORDS = {"short", "medium", "large", "full", "small"}
-ATTACK_FLAG_TOKENS = {"pierce", "crescent"}
+# Bare flag tokens on the Attack cell. `explosive` makes a projectile burst into
+# an AOE on impact (Lil' Bomber): the direct hit deals no damage, the blast deals
+# the card's damage to everything in radius (Action + Strategy). See the two
+# *AttackLibrary scripts.
+ATTACK_FLAG_TOKENS = {"pierce", "crescent", "explosive"}
 # Bare size words that also seed range_class for the legacy fallback path.
 RANGE_CLASS_WORDS = {"short", "medium", "large"}
 # Tokens that name a damage type in a dmg clause. NOTE: `cleave` is NOT a damage
@@ -182,6 +189,16 @@ def _effect_from_tokens(tokens):
             eff["infuse"] = int(float(kv["infuse"]))
         if "power_multiplier" in kv:
             eff["power_multiplier"] = int(float(kv["power_multiplier"]))
+        # gold_on_hit=MIN-MAX (King Bomber evolution): a connecting player hit on
+        # an enemy grants a random MIN..MAX gold. Stored as two ints so the
+        # per-mode damage tails can roll + gain without re-parsing.
+        if "gold_on_hit" in kv:
+            m2 = re.match(r"^(\d+)(?:-(\d+))?$", kv["gold_on_hit"].strip())
+            if m2:
+                lo = int(m2.group(1))
+                hi = int(m2.group(2)) if m2.group(2) else lo
+                eff["gold_on_hit_min"] = lo
+                eff["gold_on_hit_max"] = hi
         return eff
 
     if verb == "inflict":
@@ -455,6 +472,8 @@ def card_tres(row) -> tuple:
         img_res = "res://images/cards/%s.png" % img_name
     elif os.path.exists(os.path.join(ITEM_IMG_DIR, img_name + ".png")):
         img_res = "res://images/items/%s.png" % img_name
+    elif os.path.exists(os.path.join(EVO_IMG_DIR, img_name + ".png")):
+        img_res = "res://images/Evolutions/%s.png" % img_name
 
     on_play, triggers, destroy_after = parse_effects(row.get("Effects"))
     flags, addons = parse_keywords(row.get("Keywords"))

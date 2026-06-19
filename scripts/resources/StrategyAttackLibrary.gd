@@ -103,7 +103,14 @@ func resolve(shape_name: StringName, params: Dictionary = {}) -> Dictionary:
 		"arc360": int(p.get("arc", 0)) >= 360,
 		"target_mode": String(p.get("target", base.get("target", "nearest"))).to_lower(),
 		"blocked_by_walls": bool(base.get("blocked_by_walls", false)),
+		# Explosive (Lil' Bomber): a line projectile that bursts into a disc where
+		# it first hits. The footprint becomes the travelled line plus a blast disc
+		# centred on the impact tile, so damage hits everything in the blast once.
+		"explosive": bool(p.get("explosive", false)),
+		"blast": 0,
 	}
+	if spec["explosive"]:
+		spec["blast"] = _lookup(radius_tiles, size_word, radius_tiles["medium"])
 
 	match family:
 		"single":
@@ -195,6 +202,9 @@ func footprint(spec: Dictionary, origin: Vector2i, aim: Vector2i, map = null, st
 			var spread: bool = bool(spec.get("spread", false))
 			var pierce: bool = bool(spec.get("pierce", false))
 			var blocked: bool = bool(spec.get("blocked_by_walls", false))
+			var explosive: bool = bool(spec.get("explosive", false))
+			var blast: int = maxi(0, int(spec.get("blast", 0)))
+			var impact: Vector2i = origin
 			for step in range(1, reach + 1):
 				var cell: Vector2i = origin + f3 * step
 				if map != null and not map.in_bounds(cell):
@@ -202,11 +212,20 @@ func footprint(spec: Dictionary, origin: Vector2i, aim: Vector2i, map = null, st
 				if blocked and map != null and map.get_tile(cell.x, cell.y) == BattleMap.TileType.WALL:
 					break
 				_add(out, seen, cell, map)
+				impact = cell
 				if spread:
 					_add(out, seen, cell + l3, map)
 					_add(out, seen, cell - l3, map)
 				if not pierce and stops.has(cell):
 					break
+			# Explosive: drop a blast disc on the tile the line reached (the first
+			# unit hit, or the end of range) so the burst hits everyone around it.
+			if explosive and blast > 0:
+				for dy in range(-blast, blast + 1):
+					for dx in range(-blast, blast + 1):
+						if maxi(absi(dx), absi(dy)) > blast:
+							continue
+						_add(out, seen, impact + Vector2i(dx, dy), map)
 		"disc":
 			# Aim is the disc centre (nova passes aim == origin).
 			var r: int = maxi(0, int(spec.get("radius", 0)))

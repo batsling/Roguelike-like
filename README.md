@@ -202,6 +202,7 @@ editing the sheet, then review the diff):
 | Script | Generates |
 |---|---|
 | `generate_card_tres.py` | `data/cards/*.tres` from the `cardsnew` sheet |
+| `generate_evolution_tres.py` | the evolved card `.tres` + `scripts/data/EvolutionCatalog.gd` from the `Evolutions` sheet |
 | `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesnew` sheet |
 | `generate_event_tres.py` | `data/events/*.tres` from authored Python dicts |
 | `generate_game_tres.py` | `data/games/*.tres` from the curated games subgraph |
@@ -227,6 +228,20 @@ Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
 
+- **Weapon evolutions + Finesse / Explosive / element UX** — a new **Evolution**
+  mechanic (sheet-authored in the `Evolutions` tab) irreversibly transforms a
+  base weapon card the instant its two requirements are met: **Lil' Bomber** + any
+  Crown item → **King Bomber** (gains 5–9 Gold on an enemy hit, art swaps to the
+  `images/Evolutions/` form), with a notification and an **Evolutions** sub-tab in
+  the Collection. Lil' Bomber also gains the **Fire** element (1 Burn on hit) and
+  an **Explosive** projectile that bursts into an AOE on impact in both Action and
+  Strategy. **Dexecutioner** carries the new **Finesse** addon (bonus damage also
+  scales with Defense / Dexterity). Cards now show an **element badge**, the
+  backpack card-zoom explains a card's elements/addons/statuses in a tooltip
+  sidebar, and dragging a targeting card over an enemy shows a **dynamic hover
+  card** reflecting conditional effects against that specific target. Regenerate
+  with `generate_card_tres.py --attacks`, `generate_evolution_tres.py`, and
+  `import-reference-godot.py`.
 - **Strategy combat → grid deckbuilder** — the tactical mode now plays like the
   deckbuilder on a grid. Combat starts immediately (no pre-combat loadout); your
   whole run deck shuffles into a draw pile and you draw a fresh hand each turn

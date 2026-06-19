@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_king_bomber"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/Evolutions/KingBomber.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"king_bomber"
+display_name = "King Bomber"
+type = 0
+rarity = 1
+cost = 2
+description = "Deal 12 Dmg Ranged. Gain 5-9 Gold on an enemy hit."
+effects = [{"type": "dmg", "value": 12, "target": "enemy", "damage_type": "ranged", "gold_on_hit_min": 5, "gold_on_hit_max": 9, "element": "fire"}]
+tags = PackedStringArray("weapon")
+source_game = "Enter the Gungeon"
+element = &"fire"
+can_upgrade = false
+image = ExtResource("2_img")
+attack_shape = &"projectile"
+attack_params = {"size": "medium", "explosive": true}

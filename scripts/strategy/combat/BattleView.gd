@@ -1624,6 +1624,10 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		return
 	target.hp = maxi(0, target.hp - int(res.hp_loss))
 	_float_number(target, int(res.hp_loss))
+	# Gold on hit (King Bomber evolution): a connecting player hit on an enemy
+	# grants random gold.
+	if is_player_attack:
+		GameState.gain_gold_on_hit(effect)
 	if bool(effect.get("lifesteal", false)) and source != null and source != target \
 			and not bool(effect.get("no_reaction", false)) and int(res.hp_loss) > 0:
 		heal(source, int(res.hp_loss))

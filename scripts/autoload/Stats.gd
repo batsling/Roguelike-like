@@ -261,6 +261,24 @@ func damage_bonus(source, damage_type: String, mode: Mode, power_multiplier: int
 		bonus += GameState.attack_damage_bonus(damage_type)
 	return bonus
 
+# Finesse addon's secondary-stat damage bonus. The sheet frames it per mode:
+# Deckbuilder scales with Defense "as well as Power"; Action/Strategy scale with
+# Dexterity "as well as Strength". Defense is read off the live source (so an
+# enemy could theoretically wield a Finesse weapon too); Dexterity is a
+# player-only stat, so non-player sources get none there. Full value: +1 dmg per
+# point, mirroring how Power already adds.
+func finesse_bonus(source, mode: Mode) -> int:
+	if source == null:
+		return 0
+	if mode == Mode.DECKBUILDER:
+		if source.has_method("get_status"):
+			return maxi(0, source.get_status(&"defense"))
+		return 0
+	# Action / Strategy: Dexterity (player stat).
+	if ("is_player" in source) and source.is_player:
+		return maxi(0, get_value(&"dexterity"))
+	return 0
+
 # ---------------------------------------------------------------------------
 # Canonical combat resolvers — the single source of truth shared by all
 # three modes (deckbuilder / action / strategy). These are PURE math: they
@@ -301,6 +319,12 @@ func resolve_damage(
 	if has_src:
 		var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
 		amount += damage_bonus(source, damage_type, mode, power_mult)
+		# Finesse (addon): bonus damage also scales with a secondary stat — the
+		# player's Defense status in Deckbuilder, their Dexterity stat in
+		# Action/Strategy — stacked on top of the usual Power scaling. The flag is
+		# stamped onto the effect by apply_addons_to_effect (effect_flag: finesse).
+		if bool(effect.get("finesse", false)):
+			amount += finesse_bonus(source, mode)
 		if source.get_status(&"weak") > 0:
 			amount = int(floor(amount * 0.75))
 	# Incoming: Vulnerable (+50%, ceil).
