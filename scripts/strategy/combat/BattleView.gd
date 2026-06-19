@@ -1,56 +1,55 @@
 extends CanvasLayer
 
-# The tactical battle UI. Hosts a pre-combat loadout screen, the
-# BattleGridView, an action bar, an initiative panel, and the
-# Cards/Spellbook pickers.
+# The tactical battle UI — now a GRID DECKBUILDER.
 #
-# Pre-combat: the player sees the enemy + telegraphed intents and slots up
-# to 3 cards from the deck into a `CombatLoadout`. Confirming kicks the
-# initiative engine (StrategyCombatSession.begin_battle).
+# Combat starts immediately (no pre-combat loadout). The player's whole run deck
+# shuffles into a draw pile; each turn refreshes energy and draws a fresh hand,
+# exactly like the deckbuilder mode. The grid adds positioning on top:
 #
 # Player turn rules:
-#   - Move up to `unit.move_range` tiles, ONE move action per turn (no chaining).
-#   - One of Attack OR Defend (`_action_used`).
-#   - One slotted card play per turn baseline (`_card_plays_remaining`);
-#     each play spends one of the card's run-persistent uses (GameState).
-#     gain-energy effects grant extra plays this turn; draw effects recharge
-#     a use; discard effects cost a play (tempo).
-#   - Any number of Spells while mana lasts.
-#   - Dash once per combat: spends `dash_available` for a bonus turn.
-#   - End Turn closes out the turn.
+#   - Energy refreshes to `max_energy` (GameState.max_energy) each turn; draw a
+#     full hand (GameState.hand_size), discarding leftovers at end of turn.
+#   - MOVEMENT costs energy: each move spends 1 energy and walks up to the unit's
+#     move_range (Speed-stat) tiles. Repeatable while energy remains.
+#   - Playing a CARD spends its energy cost. Attacks must be aimed at an in-range
+#     target/footprint (StrategyAttackLibrary) — out-of-range enemies can't be
+#     hit, so you move into range first. AOE hits only units inside the footprint.
+#   - Block resets at the START of the player's turn (so Defend soaks the enemy
+#     turn), matching the deckbuilder.
+#   - Dash once per combat: a bonus full turn (refresh energy + new hand) after
+#     this one ends.
+#   - Curse cards clog the hand and fire their eot / on_play_other triggers, just
+#     like the deckbuilder.
 #
-# Effect resolution: card and spell effects route through the autoloaded
-# `EffectSystem`, with `self` as the `scene` ctx so the tactical
-# implementations of deal_damage/gain_block/heal handle the actual mutations.
+# Effect resolution: card effects route through the autoloaded `EffectSystem`,
+# with `self` as the `scene` ctx so the tactical implementations of
+# deal_damage / gain_block / heal / draw / discard / exhaust / conjure handle the
+# actual mutations. The footprint resolver restricts AOE to the aimed tiles.
 
 const BattleGridViewScript := preload("res://scripts/strategy/combat/BattleGridView.gd")
-const CombatLoadoutScript := preload("res://scripts/strategy/combat/CombatLoadout.gd")
-const SpellbookScript := preload("res://scripts/strategy/combat/Spellbook.gd")
-const SpellsCatalogScript := preload("res://scripts/strategy/combat/SpellsCatalog.gd")
 
 const ENEMY_TURN_DELAY := 0.45
-const DEFAULT_BASIC_ATTACK := 6
-const DEFAULT_BASIC_DEFEND := 6
 
 # Layout (designed against the 1280x720 base viewport). The board fills the
-# big left panel; the turn order + log stack on the right; the action bar runs
-# along the bottom.
-const BOARD_RECT := Rect2(14, 78, 902, 566)
+# big left panel; the turn order + log stack on the right; the hand + a small
+# control strip run along the bottom.
+const BOARD_RECT := Rect2(14, 78, 902, 558)
 const TURN_RECT := Rect2(928, 78, 338, 360)
-const LOG_RECT := Rect2(928, 446, 338, 198)
-const BAR_Y := 656
+const LOG_RECT := Rect2(928, 446, 338, 190)
+# Bottom strip: a readout line, the hand row, and the control buttons.
+const READOUT_Y := 640
+const HAND_RECT := Rect2(14, 660, 902, 56)
+const CTRL_X := 930
+const CTRL_Y := 666
 
 # Shared palette for the chrome.
 const ACCENT := Color(1.0, 0.78, 0.36)
 const PANEL_BG := Color(0.09, 0.07, 0.13, 0.96)
 const PANEL_BORDER := Color(0.42, 0.33, 0.55, 0.9)
-# Full-screen backdrop behind both the battle UI and the loadout screen, so the
-# two read as one cohesive screen.
 const BACKDROP := Color(0.04, 0.035, 0.07, 1.0)
 
-# Phase 8: per-archetype drop weights. Rolled when an enemy dies; the
-# spawned items go onto the battlefield and persist back to the source
-# room on combat end (see `CombatSession._sync_loot_back`).
+# Per-archetype drop weights. Rolled when an enemy dies; the spawned items go
+# onto the battlefield and persist back to the source room on combat end.
 const ENEMY_LOOT_TABLE := {
 	"rat":   { "gold_chance": 0.50, "gold_min":  2, "gold_max":  6, "item_chance": 0.05 },
 	"snake": { "gold_chance": 0.50, "gold_min":  3, "gold_max":  8, "item_chance": 0.10 },
@@ -59,7 +58,7 @@ const ENEMY_LOOT_TABLE := {
 }
 
 # What the player is currently selecting in the grid view.
-enum Pending { NONE, ABILITY, SPELL, ATTACK }
+enum Pending { NONE, AIM }
 
 var _battle_map = null
 var _turn_manager = null
@@ -67,26 +66,31 @@ var _units: Array = []
 var _room_data = null
 var _encounter: Array = []
 
-var _loadout = null        # CombatLoadout (the 3 chosen cards + weapon)
-var _available_cards: Array = []  # choosable pool for the loadout screen
-var _selected_cards: Array = []   # mid-selection on the loadout screen
-var _available_weapons: Array = []  # weapon cards in the deck
-var _selected_weapon = null         # CardData chosen on the loadout screen
-var _weapon_card = null             # CardData equipped for this combat (or null)
-var _spellbook = null      # Spellbook
+# --- Deckbuilder state (the four piles + energy) -----------------------
+var draw_pile: Array = []
+var hand: Array = []
+var discard_pile: Array = []
+var exhaust_pile: Array = []
+var energy: int = 0
+var max_energy: int = 3
+# Ice Cream: leftover energy banked at end of turn, poured on next turn start.
+var _energy_carryover: int = 0
 
-# Mid-action state: which card/spell is mid-cast while we wait for a target click.
+# Persistent in-combat power triggers (After Image -> on card played gain Block)
+# and card boosts (Accuracy -> Shivs). Combat-scoped; cleared in _init_deck.
+var power_triggers: Array = []
+var card_boosts: Array = []
+
+# Mid-action state: which card is mid-aim while we wait for a target click.
 var _pending_kind: int = Pending.NONE
-var _pending_card = null     # CardData (slotted loadout card)
-var _pending_spell = null    # Spellbook.Entry
-# The StrategyAttackLibrary spec for the attack currently being aimed (ABILITY /
-# ATTACK pending kinds), cleared once the aim resolves or is cancelled.
+var _pending_card = null     # CardInstance being played
 var _pending_aim_spec: Dictionary = {}
 
 var _grid_view: BattleGridView
 var _initiative_label: Label
 var _status_label: Label
 var _info_label: Label
+var _readout_label: Label
 var _root_panel: Panel
 
 # Floating Mewgenics-style enemy info card, populated on hover.
@@ -94,103 +98,41 @@ var _enemy_tooltip: Panel
 var _enemy_tooltip_name: Label
 var _enemy_tooltip_body: Label
 
+var _hand_panel: Panel
+var _hand_container: HBoxContainer
+
 var _btn_move: Button
-var _btn_attack: Button
-var _btn_defend: Button
-var _btn_ability: Button
-var _btn_spell: Button
 var _btn_dash: Button
 var _btn_item: Button
 var _btn_end: Button
 var _btn_win: Button
 var _btn_lose: Button
 
-var _ability_dialog: Panel
-var _ability_list_container: VBoxContainer
-var _spell_dialog: Panel
-var _spell_list_container: VBoxContainer
 var _item_dialog: Panel
 var _item_list_container: VBoxContainer
 var _inventory_panel: CombatInventory
 
-# Pre-combat loadout screen.
-var _loadout_overlay: Panel
-var _loadout_enemy_container: VBoxContainer   # styled enemy chips
-var _loadout_field_label: Label               # battlefield summary line
-var _loadout_slots_label: Label               # "Card slots filled" readout
-var _loadout_pips: HBoxContainer              # visual slot pips
-var _loadout_pool_container: VBoxContainer    # weapon + card grids
-var _loadout_start_btn: Button
-
 var _enemy_turn_timer: Timer
 var _fear_turn_timer: Timer
 
-# Per-turn state.
-var _action_used: bool = false
-var _move_used: bool = false   # one Move action per turn (no chaining)
-var _move_remaining: int = 0
-
-# Card plays left this turn. Baseline 1 (one card per turn); discard effects
-# subtract plays. Each card play spends one of the card's run-persistent uses
-# (GameState.spend_card_use).
-var _card_plays_remaining: int = 0
-# Ice Cream: did the player resolve an ability card this turn? A turn that
-# ends without one banks an empower charge (see _on_unit_turn_ended).
-var _ability_used_this_turn: bool = false
-# Mummified Hand: a slotted ability INSTANCE that costs no per-turn play this
-# turn (it still spends a use). null = none. Reset each turn.
-var _free_ability_card = null
-
-# Ethereal -> deactivate_if_idle (Strategy): once the player ends a turn without
-# playing any Ethereal ability, every Ethereal ability is locked out for the
-# rest of the combat. `_ethereal_used_this_turn` resets each player turn.
-var _ethereal_deactivated: bool = false
-var _ethereal_used_this_turn: bool = false
-
-# Persistent in-combat card boosts (Accuracy -> Shivs, Claw -> Claws), registered
-# by boost_cards effects and folded into matching cards' dmg/block when they
-# resolve. Combat-scoped: cleared in set_encounter. Same shape as the deckbuilder.
-var card_boosts: Array = []
-
-# Energy charge banked from gain-energy effects. It persists across turns
-# within a combat until spent: the next card play consumes ALL of it and is
-# empowered by that amount (+dmg / +block / +status stacks), then it resets
-# to 0. gain_energy adds, lose_energy removes. Empower-only — energy grants
-# no extra plays.
-var _energy_charge: int = 0
-
-# Turn-based -> Strategy concept mapping (energy->empower charge, draw->card-use
-# recharge, discard->tempo). Single editable source of truth; see
-# StrategyTranslation.gd / data/strategy_translation.tres. Cached in _ready.
-var _tr: StrategyTranslation
-
-# Counts the player unit's turns this combat so turn-based items (e.g.
-# Horn Cleat: +Block on the 2nd turn) fire on the right turn. Reset per
-# encounter; incremented at the start of each player turn.
+# Counts the player unit's turns this combat so turn-based items (Horn Cleat,
+# Happy Flower) and the turn-1 draw bonus fire correctly. Reset per encounter.
 var _player_turn_count: int = 0
 
-# Curse-of-the-turn (strategy translation of the curse cards): at the start of
-# each player turn ONE random owned curse is chosen and telegraphed; only it
-# acts this turn. eot curses fire at turn end (status/dmg/Regret); Pain bites per
-# action; bricks impose all-stats-down for the turn. _turn_actions counts the
-# player's actions this turn (move/attack/spell/card) for Regret/Pain.
-var _turn_curse: CardData = null
-var _turn_actions: int = 0
-var _turn_stat_debuff: bool = false
-const _CURSE_STAT_DOWN := ["strength", "dexterity", "intelligence", "charisma"]
+# Snapshot of the hand's curse cards at end of turn, so their eot effects can
+# fire AFTER status decay (a granted Weak/Blind must survive into next turn).
+var _eot_curses: Array = []
+var _eot_hand_size: int = 0
 
 var _loot_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
 	layer = 10
 	_loot_rng.randomize()
-	_tr = Data.strategy_translation
-	if _tr == null:
-		_tr = StrategyTranslation.new()  # defensive: never run without the map
+	max_energy = GameState.max_energy
 	_build_ui()
 
-# The player-controlled unit in this battle, or null. Used by the backpack /
-# consumable system to target pill effects at the player.
+# The player-controlled unit in this battle, or null.
 func get_player_unit():
 	for u in _units:
 		if u != null and u.is_player:
@@ -213,18 +155,12 @@ func _living_enemy_units() -> Array:
 	return out
 
 # A card's effects with item boosts folded in (Strike Dummy) plus any appended
-# granted effects (Brass Knuckles etc.). Strategy resolves CardData directly, so
-# the shared CardMods pass is applied here (deckbuilder gets it via
-# CardInstance.get_effects()). `upgraded` selects the upgraded_effects, so an
-# upgraded slotted card fires its upgraded numbers — callers pass the playing
-# instance's flag (spells/basics stay base).
+# granted effects (Brass Knuckles etc.). `upgraded` selects the upgraded_effects.
 func _effective_card_effects(card: CardData, upgraded: bool = false) -> Array:
 	return CardMods.resolved_effects(card.get_effective_effects(upgraded), card)
 
-# Card text with live stat scaling AND item boosts folded into the numbers
-# (Power / Arcane / Defense / Persistence + Strike Dummy — rich=false since these
-# are plain Labels) plus the granted-effect line appended, for display. `upgraded`
-# shows the upgraded text so a "+"-named card doesn't read its base description.
+# Card text with live stat scaling AND item boosts folded into the numbers, plus
+# the granted-effect line appended, for display.
 func _card_desc(card: CardData, upgraded: bool = false) -> String:
 	var out: String = CardScaling.scale_text(card.get_effective_description(upgraded), get_player_unit(), false, card)
 	var extra: String = CardMods.describe(card)
@@ -240,19 +176,14 @@ func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager 
 	_encounter = encounter
 	_grid_view.set_battle(battle_map, _units)
 	_layout_board()
-	card_boosts.clear()
 
-	_available_cards = CombatLoadoutScript.available_from_deck(GameState.deck)
-	_available_weapons = CombatLoadoutScript.weapon_cards_from_deck(GameState.deck)
-	_loadout = CombatLoadoutScript.new()
-	_selected_cards = []
-	_selected_weapon = null
-	_weapon_card = null
-	_energy_charge = 0
+	max_energy = GameState.max_energy
 	_player_turn_count = 0
-	_spellbook = SpellbookScript.build_from_ids(GameState.learned_spells)
+	_init_deck()
 
 	_info_label.text = _format_info(room_data, encounter)
+	_readout_label.text = ""
+	_refresh_hand()
 
 	if turn_manager != null:
 		turn_manager.unit_turn_started.connect(_on_unit_turn_started)
@@ -261,8 +192,52 @@ func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager 
 
 	_refresh_initiative()
 	_set_player_buttons_enabled(false)
-	# Show the pre-combat loadout screen; battle starts on confirm.
-	_open_loadout_screen()
+	_status_label.text = "Battle begins!"
+	# No loadout — go straight to combat. The first player turn draws the
+	# opening hand and refreshes energy via _on_unit_turn_started.
+	_fire_item_triggers("combat_started")
+	StrategyCombatSession.begin_battle()
+
+# Build the four piles from the run deck. Mirrors DeckbuilderCombat._init_deck.
+func _init_deck() -> void:
+	draw_pile.clear()
+	hand.clear()
+	discard_pile.clear()
+	exhaust_pile.clear()
+	card_boosts.clear()
+	power_triggers.clear()
+	GameState.streak_clear()
+	_energy_carryover = 0
+	energy = 0
+	for c in GameState.deck:
+		if c is CardData:
+			draw_pile.append(CardInstance.from_data(c))
+		elif c is CardInstance:
+			draw_pile.append(c)
+	_shuffle(draw_pile)
+	_promote_innate()
+
+# Innate cards start in the opening hand. draw_cards pulls from the BACK of the
+# draw pile, so moving innate cards to the end after shuffling draws them first.
+func _promote_innate() -> void:
+	var innate: Array = []
+	var rest: Array = []
+	for ci in draw_pile:
+		if ci != null and ci.data != null and ci.data.innate:
+			innate.append(ci)
+		else:
+			rest.append(ci)
+	if innate.is_empty():
+		return
+	rest.append_array(innate)
+	draw_pile = rest
+
+func _shuffle(pile: Array) -> void:
+	for i in range(pile.size() - 1, 0, -1):
+		var j: int = randi() % (i + 1)
+		var tmp = pile[i]
+		pile[i] = pile[j]
+		pile[j] = tmp
 
 # ----------------------------------------------------------------------
 # UI construction
@@ -327,10 +302,18 @@ func _build_ui() -> void:
 	_status_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.5))
 	panel.add_child(_status_label)
 
-	_build_action_bar(panel)
-	_build_pickers()
+	# Energy + pile readout above the hand.
+	_readout_label = Label.new()
+	_readout_label.position = Vector2(20, READOUT_Y)
+	_readout_label.size = Vector2(896, 18)
+	_readout_label.add_theme_font_size_override("font_size", 13)
+	_readout_label.add_theme_color_override("font_color", Color(1.0, 0.86, 0.5))
+	panel.add_child(_readout_label)
+
+	_build_hand_panel(panel)
+	_build_control_bar(panel)
+	_build_item_dialog()
 	_build_inventory_panel(panel)
-	_build_loadout_overlay()
 	_build_enemy_tooltip()
 
 	_enemy_turn_timer = Timer.new()
@@ -340,8 +323,7 @@ func _build_ui() -> void:
 	add_child(_enemy_turn_timer)
 
 	# Fear: a feared unit (player OR enemy) flees at the start of its turn, then
-	# its turn ends after this beat — no AI, no player control. Separate from the
-	# enemy timer because _auto_end_enemy_turn runs AI and ignores player units.
+	# its turn ends after this beat — no AI, no player control.
 	_fear_turn_timer = Timer.new()
 	_fear_turn_timer.one_shot = true
 	_fear_turn_timer.wait_time = ENEMY_TURN_DELAY
@@ -375,50 +357,6 @@ func _section_header(text: String, rect: Rect2) -> Label:
 	l.add_theme_color_override("font_color", ACCENT)
 	return l
 
-func _build_action_bar(panel: Panel) -> void:
-	# Framed strip behind the action buttons so the bar reads as a panel like the
-	# rest of the chrome (mouse-ignored, so it doesn't eat button clicks).
-	panel.add_child(_section_panel(Rect2(8, BAR_Y - 8, 824, 56)))
-	var x := 16
-	var spacing := 8
-	var btn_h := 40
-	var specs := [
-		["Move", 84, _on_move_button], ["Attack", 92, _on_attack_button],
-		["Defend", 92, _on_defend_button], ["Cards", 92, _on_ability_button],
-		["Spellbook", 112, _on_spell_button], ["Dash", 84, _on_dash_button],
-		["Item", 84, _on_item_button], ["End Turn", 104, _on_end_turn_button],
-	]
-	var btns := []
-	for spec in specs:
-		var b := _make_button(spec[0], x, BAR_Y, spec[1], btn_h, spec[2])
-		panel.add_child(b)
-		btns.append(b)
-		x += spec[1] + spacing
-	_btn_move = btns[0]; _btn_attack = btns[1]; _btn_defend = btns[2]
-	_btn_ability = btns[3]; _btn_spell = btns[4]; _btn_dash = btns[5]
-	_btn_item = btns[6]; _btn_end = btns[7]
-	# End Turn is the main per-turn confirm — give it the same gold CTA look as
-	# the loadout screen's Start Battle.
-	_style_primary(_btn_end)
-
-	# Hovering an action button previews the relevant ranges on the board:
-	# Move/Attack show movement + strike reach; Cards/Spellbook show movement +
-	# every enemy you could target. Mouse-out clears the preview.
-	for b in [_btn_move, _btn_attack]:
-		b.mouse_entered.connect(_on_hover_attack_preview)
-		b.mouse_exited.connect(_on_hover_preview_end)
-	for b in [_btn_ability, _btn_spell]:
-		b.mouse_entered.connect(_on_hover_targets_preview)
-		b.mouse_exited.connect(_on_hover_preview_end)
-
-	# Debug force win/lose — only mounted in dev mode so they can't be clicked
-	# by accident during a normal playthrough.
-	if Settings.dev_mode:
-		_btn_win = _make_button("Win▸", 1110, BAR_Y, 72, btn_h, _on_force_win, true)
-		panel.add_child(_btn_win)
-		_btn_lose = _make_button("Lose▸", 1190, BAR_Y, 72, btn_h, _on_force_lose, true)
-		panel.add_child(_btn_lose)
-
 func _make_button(text: String, x: int, y: int, w: int, h: int, cb: Callable, subtle: bool = false) -> Button:
 	var b := Button.new()
 	b.text = text
@@ -437,6 +375,170 @@ func _make_button(text: String, x: int, y: int, w: int, h: int, cb: Callable, su
 	b.add_theme_color_override("font_hover_color", Color(1, 0.95, 0.8))
 	b.add_theme_color_override("font_disabled_color", Color(0.45, 0.45, 0.5))
 	return b
+
+# Repaints a button as the gold primary CTA (End Turn).
+func _style_primary(b: Button, font_size: int = 16) -> void:
+	b.add_theme_stylebox_override("normal", _panel_stylebox(Color(0.5, 0.36, 0.12), ACCENT, 2, 10))
+	b.add_theme_stylebox_override("hover", _panel_stylebox(Color(0.64, 0.46, 0.16), Color(1, 0.92, 0.55), 2, 10))
+	b.add_theme_stylebox_override("pressed", _panel_stylebox(Color(0.42, 0.3, 0.1), ACCENT, 2, 10))
+	b.add_theme_color_override("font_color", Color(1, 0.97, 0.86))
+	b.add_theme_color_override("font_hover_color", Color(1, 1, 0.92))
+	b.add_theme_color_override("font_disabled_color", Color(0.55, 0.5, 0.42))
+	b.add_theme_font_size_override("font_size", font_size)
+
+func _build_control_bar(panel: Panel) -> void:
+	var specs := [
+		["Move", 76, _on_move_button], ["Dash", 72, _on_dash_button],
+		["Item", 64, _on_item_button], ["End Turn", 104, _on_end_turn_button],
+	]
+	var x := CTRL_X
+	var btns := []
+	for spec in specs:
+		var b := _make_button(spec[0], x, CTRL_Y, spec[1], 40, spec[2])
+		panel.add_child(b)
+		btns.append(b)
+		x += spec[1] + 4
+	_btn_move = btns[0]; _btn_dash = btns[1]; _btn_item = btns[2]; _btn_end = btns[3]
+	_style_primary(_btn_end)
+
+	# Debug force win/lose — only mounted in dev mode.
+	if Settings.dev_mode:
+		_btn_win = _make_button("Win▸", 1110, 626, 72, 26, _on_force_win, true)
+		panel.add_child(_btn_win)
+		_btn_lose = _make_button("Lose▸", 1190, 626, 72, 26, _on_force_lose, true)
+		panel.add_child(_btn_lose)
+
+# --- Hand row ----------------------------------------------------------
+
+func _build_hand_panel(panel: Panel) -> void:
+	_hand_panel = Panel.new()
+	_hand_panel.position = HAND_RECT.position
+	_hand_panel.size = HAND_RECT.size
+	_hand_panel.add_theme_stylebox_override("panel", _panel_stylebox(PANEL_BG, PANEL_BORDER))
+	panel.add_child(_hand_panel)
+
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(8, 5)
+	scroll.size = Vector2(HAND_RECT.size.x - 16, HAND_RECT.size.y - 10)
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_hand_panel.add_child(scroll)
+
+	_hand_container = HBoxContainer.new()
+	_hand_container.add_theme_constant_override("separation", 6)
+	scroll.add_child(_hand_container)
+
+func _refresh_hand() -> void:
+	if _hand_container == null:
+		return
+	for c in _hand_container.get_children():
+		c.queue_free()
+	for card in hand:
+		_hand_container.add_child(_make_hand_card_button(card))
+	_refresh_readout()
+
+func _refresh_readout() -> void:
+	if _readout_label == null:
+		return
+	_readout_label.text = "⚡ Energy %d/%d        Draw %d  ·  Hand %d  ·  Discard %d  ·  Exhaust %d" % [
+		energy, max_energy, draw_pile.size(), hand.size(), discard_pile.size(), exhaust_pile.size(),
+	]
+
+# One clickable hand-card tile. Disabled when unaffordable, unplayable, or an
+# attack with no enemy in range (so you must move into range first).
+func _make_hand_card_button(card) -> Button:
+	var data: CardData = card.data
+	var tile := Button.new()
+	tile.custom_minimum_size = Vector2(132, 46)
+	tile.focus_mode = Control.FOCUS_NONE
+	tile.clip_text = true
+
+	var cost: int = _card_cost(card)
+	var is_attack: bool = _is_attack_card(data)
+	var blocked_range: bool = is_attack and not _attack_has_target(_attack_spec_for_card(data))
+	var playable: bool = _is_player_turn() and not data.unplayable \
+		and cost <= energy and not blocked_range
+	tile.disabled = not playable
+	tile.pressed.connect(_on_hand_card_pressed.bind(card))
+	tile.mouse_entered.connect(_on_hover_hand_card.bind(card))
+	tile.mouse_exited.connect(_on_hover_preview_end)
+
+	var border: Color = ACCENT if (card == _pending_card) else PANEL_BORDER
+	var base: Color = Color(0.16, 0.13, 0.2)
+	if data.type == CardData.CardType.CURSE:
+		base = Color(0.2, 0.12, 0.14)
+	tile.add_theme_stylebox_override("normal", _panel_stylebox(base, border, 1, 8))
+	tile.add_theme_stylebox_override("hover", _panel_stylebox(base.lightened(0.14), ACCENT, 2, 8))
+	tile.add_theme_stylebox_override("pressed", _panel_stylebox(base.darkened(0.12), ACCENT, 2, 8))
+	tile.add_theme_stylebox_override("disabled", _panel_stylebox(Color(0.1, 0.09, 0.12), Color(0.22, 0.22, 0.26), 1, 8))
+
+	var dim: bool = not playable
+	var name_l := Label.new()
+	name_l.text = card.get_display_name()
+	name_l.position = Vector2(8, 4)
+	name_l.size = Vector2(118, 18)
+	name_l.clip_text = true
+	name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_l.add_theme_font_size_override("font_size", 13)
+	name_l.add_theme_color_override("font_color",
+		Color(0.55, 0.55, 0.6) if dim else Color(1, 0.93, 0.82))
+	tile.add_child(name_l)
+
+	var meta: String = "⚡%d" % cost
+	if data.unplayable:
+		meta = "—"
+	elif blocked_range:
+		meta = "⚡%d · move in" % cost
+	var meta_l := Label.new()
+	meta_l.text = meta
+	meta_l.position = Vector2(8, 24)
+	meta_l.size = Vector2(118, 16)
+	meta_l.clip_text = true
+	meta_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	meta_l.add_theme_font_size_override("font_size", 11)
+	meta_l.add_theme_color_override("font_color",
+		Color(0.9, 0.55, 0.35) if blocked_range else Color(0.62, 0.7, 0.9))
+	tile.add_child(meta_l)
+	return tile
+
+# --- Items: the active-item action button + picker --------------------
+
+func _build_item_dialog() -> void:
+	var p := Panel.new()
+	p.position = Vector2(922, 74)
+	p.size = Vector2(352, 560)
+	p.add_theme_stylebox_override("panel", _panel_stylebox(Color(0.1, 0.08, 0.15, 0.99), ACCENT, 2, 12))
+	var t := Label.new()
+	t.text = "Items"
+	t.position = Vector2(16, 12)
+	t.size = Vector2(320, 30)
+	t.add_theme_font_size_override("font_size", 20)
+	t.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
+	p.add_child(t)
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(14, 48)
+	scroll.size = Vector2(324, 460)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	p.add_child(scroll)
+	var vbox := VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 4)
+	scroll.add_child(vbox)
+	_item_list_container = vbox
+	var close := _make_button("Close", 126, 516, 100, 36, _close_item_dialog)
+	p.add_child(close)
+	add_child(p)
+	p.visible = false
+	_item_dialog = p
+
+# Compact item rack pinned to the top-right corner so actives are visible.
+func _build_inventory_panel(panel: Panel) -> void:
+	_inventory_panel = CombatInventory.new()
+	_inventory_panel.columns = 8
+	_inventory_panel.tile_px = 26
+	_inventory_panel.show_title = false
+	_inventory_panel.panel_opacity = 0.92
+	_inventory_panel.position = Vector2(940, 44)
+	panel.add_child(_inventory_panel)
 
 # --- Enemy hover tooltip ----------------------------------------------
 
@@ -469,8 +571,6 @@ func _unit_at_grid(pos: Vector2i):
 	return null
 
 func _on_grid_hover(pos: Vector2i) -> void:
-	# Enemies show their stat/intent card; battlefield items (loot, gold, keys,
-	# scrolls) show what they are. Anything else hides the tooltip.
 	var u = _unit_at_grid(pos)
 	if u != null and not u.is_player and u.is_alive():
 		_enemy_tooltip_name.add_theme_color_override("font_color", Color(1.0, 0.6, 0.55))
@@ -484,8 +584,6 @@ func _on_grid_hover(pos: Vector2i) -> void:
 		return
 	_enemy_tooltip.visible = false
 
-# Sizes the shared tooltip from its body line count and parks it next to the
-# hovered tile, clamped on-screen.
 func _show_tooltip(name_text: String, body_text: String, pos: Vector2i) -> void:
 	_enemy_tooltip_name.text = name_text
 	_enemy_tooltip_body.text = body_text
@@ -502,53 +600,6 @@ func _show_tooltip(name_text: String, body_text: String, pos: Vector2i) -> void:
 	_enemy_tooltip.position = screen
 	_enemy_tooltip.visible = true
 
-# --- Hover range previews ---------------------------------------------
-
-# Movement budget still available for a preview: 0 once the turn's single move
-# is spent, otherwise the remaining tiles.
-func _hover_move_budget() -> int:
-	return 0 if _move_used else _move_remaining
-
-# The player's strike reach in tiles (weapon range, or the basic-attack range,
-# default melee/1).
-func _player_attack_range() -> int:
-	if _weapon_card != null:
-		if "range" in _weapon_card.data:
-			return maxi(1, int(_weapon_card.data.range))
-		return 1
-	var u = get_player_unit()
-	if u != null and u.basic_attack_def.has("range"):
-		return int(u.basic_attack_def.get("range", 1))
-	return 1
-
-func _enemy_positions() -> Array:
-	var out: Array = []
-	for u in _units:
-		if u != null and u.is_alive() and not u.is_player:
-			out.append(u.position)
-	return out
-
-func _on_hover_attack_preview() -> void:
-	if not _is_player_turn():
-		return
-	_grid_view.show_range_preview(_hover_move_budget(), _player_attack_range())
-
-func _on_hover_targets_preview() -> void:
-	if not _is_player_turn():
-		return
-	# Cards/spells target any enemy on the field — flag them all as reachable.
-	_grid_view.show_range_preview(_hover_move_budget(), 0, _enemy_positions())
-
-# Card/spell row hover: movement plus the targets that ability could hit.
-func _on_hover_card_preview(targets_enemies: bool) -> void:
-	if not _is_player_turn():
-		return
-	var targets: Array = _enemy_positions() if targets_enemies else []
-	_grid_view.show_range_preview(_hover_move_budget(), 0, targets)
-
-func _on_hover_preview_end() -> void:
-	_grid_view.clear_range_preview()
-
 func _item_entry_at_grid(pos: Vector2i) -> Dictionary:
 	if _battle_map == null:
 		return {}
@@ -557,7 +608,6 @@ func _item_entry_at_grid(pos: Vector2i) -> Dictionary:
 			return entry
 	return {}
 
-# Short "what is this" blurb for a battlefield item, by kind.
 func _item_tooltip_text(item) -> String:
 	var lines: Array = []
 	match item.item_type:
@@ -583,8 +633,6 @@ func _item_tooltip_text(item) -> String:
 		lines.append("Walk over it to pick up (needs a pack slot).")
 	return "\n".join(lines)
 
-# Multi-line body: ranges + the full intent "pattern" with the telegraphed
-# next move flagged, then any active statuses.
 func _enemy_tooltip_text(u) -> String:
 	var lines: Array = []
 	lines.append("Move range: %d" % u.move_range)
@@ -632,493 +680,39 @@ func _layout_board() -> void:
 	_grid_view.position = BOARD_RECT.position + Vector2(
 		(BOARD_RECT.size.x - gw) / 2.0, (BOARD_RECT.size.y - gh) / 2.0)
 
-func _build_pickers() -> void:
-	_ability_dialog = _make_picker_dialog("Abilities", _close_ability_dialog)
-	_ability_list_container = _ability_dialog.get_meta("list")
-	add_child(_ability_dialog)
-	_ability_dialog.visible = false
+# --- Hover range previews ---------------------------------------------
 
-	_spell_dialog = _make_picker_dialog("Spellbook", _close_spell_dialog)
-	_spell_list_container = _spell_dialog.get_meta("list")
-	add_child(_spell_dialog)
-	_spell_dialog.visible = false
+func _hover_move_budget() -> int:
+	var u = get_player_unit()
+	if u == null or energy <= 0:
+		return 0
+	return u.move_range
 
-	_item_dialog = _make_picker_dialog("Items", _close_item_dialog)
-	_item_list_container = _item_dialog.get_meta("list")
-	add_child(_item_dialog)
-	_item_dialog.visible = false
-
-# The pickers dock over the right-hand column (turn order / status) so the
-# battlefield stays fully visible while choosing a card or spell — letting the
-# on-hover range preview read against the board.
-func _make_picker_dialog(title_text: String, close_cb: Callable) -> Panel:
-	var p := Panel.new()
-	p.position = Vector2(922, 74)
-	p.size = Vector2(352, 578)
-	p.add_theme_stylebox_override("panel", _panel_stylebox(Color(0.1, 0.08, 0.15, 0.99), ACCENT, 2, 12))
-
-	var t := Label.new()
-	t.text = title_text
-	t.position = Vector2(16, 12)
-	t.size = Vector2(320, 30)
-	t.add_theme_font_size_override("font_size", 20)
-	t.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
-	p.add_child(t)
-
-	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(14, 48)
-	scroll.size = Vector2(324, 478)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	p.add_child(scroll)
-
-	var vbox := VBoxContainer.new()
-	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_theme_constant_override("separation", 4)
-	scroll.add_child(vbox)
-	p.set_meta("list", vbox)
-
-	var close := _make_button("Close", 126, 534, 100, 36, close_cb)
-	p.add_child(close)
-	return p
-
-# Compact item rack pinned to the top-right corner so the player's actives are
-# visible at a glance during a tactical battle (charged actives show their bar).
-# The full list with Use buttons lives behind the "Item" action button.
-func _build_inventory_panel(panel: Panel) -> void:
-	_inventory_panel = CombatInventory.new()
-	_inventory_panel.columns = 8
-	_inventory_panel.tile_px = 26
-	_inventory_panel.show_title = false
-	_inventory_panel.panel_opacity = 0.92
-	_inventory_panel.position = Vector2(940, 44)
-	panel.add_child(_inventory_panel)
-
-# ----------------------------------------------------------------------
-# Pre-combat loadout screen
-# ----------------------------------------------------------------------
-
-# Left column shows the enemy roster; the right column holds the weapon + card
-# loadout as a grid of selectable tiles. Both columns are framed with the same
-# chrome as the in-combat panels for a consistent look.
-const LO_LEFT := Rect2(32, 96, 372, 540)
-const LO_RIGHT := Rect2(420, 96, 828, 540)
-
-func _build_loadout_overlay() -> void:
-	_loadout_overlay = Panel.new()
-	_loadout_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_loadout_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = BACKDROP
-	_loadout_overlay.add_theme_stylebox_override("panel", bg)
-
-	# Header band.
-	var title := Label.new()
-	title.text = "⚔  PREPARE FOR BATTLE"
-	title.position = Vector2(40, 26)
-	title.size = Vector2(820, 36)
-	title.add_theme_font_size_override("font_size", 28)
-	title.add_theme_color_override("font_color", ACCENT)
-	_loadout_overlay.add_child(title)
-
-	_loadout_field_label = Label.new()
-	_loadout_field_label.position = Vector2(44, 64)
-	_loadout_field_label.size = Vector2(1000, 22)
-	_loadout_field_label.add_theme_font_size_override("font_size", 13)
-	_loadout_field_label.add_theme_color_override("font_color", Color(0.72, 0.74, 0.82))
-	_loadout_overlay.add_child(_loadout_field_label)
-
-	# Left column — enemy roster.
-	_loadout_overlay.add_child(_section_panel(LO_LEFT))
-	_loadout_overlay.add_child(_section_header("ENEMIES", LO_LEFT))
-	var enemy_scroll := ScrollContainer.new()
-	enemy_scroll.position = LO_LEFT.position + Vector2(16, 40)
-	enemy_scroll.size = Vector2(LO_LEFT.size.x - 32, LO_LEFT.size.y - 56)
-	enemy_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_loadout_overlay.add_child(enemy_scroll)
-	_loadout_enemy_container = VBoxContainer.new()
-	_loadout_enemy_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_loadout_enemy_container.add_theme_constant_override("separation", 10)
-	enemy_scroll.add_child(_loadout_enemy_container)
-
-	# Right column — loadout.
-	_loadout_overlay.add_child(_section_panel(LO_RIGHT))
-	_loadout_overlay.add_child(_section_header("YOUR LOADOUT", LO_RIGHT))
-
-	var pips_label := Label.new()
-	pips_label.text = "CARD SLOTS"
-	pips_label.position = Vector2(LO_RIGHT.end.x - 210, LO_RIGHT.position.y + 12)
-	pips_label.size = Vector2(106, 20)
-	pips_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	pips_label.add_theme_font_size_override("font_size", 12)
-	pips_label.add_theme_color_override("font_color", Color(0.7, 0.72, 0.8))
-	_loadout_overlay.add_child(pips_label)
-
-	_loadout_pips = HBoxContainer.new()
-	_loadout_pips.position = Vector2(LO_RIGHT.end.x - 90, LO_RIGHT.position.y + 11)
-	_loadout_pips.add_theme_constant_override("separation", 6)
-	_loadout_overlay.add_child(_loadout_pips)
-
-	_loadout_slots_label = Label.new()
-	_loadout_slots_label.position = LO_RIGHT.position + Vector2(16, 42)
-	_loadout_slots_label.size = Vector2(LO_RIGHT.size.x - 32, 24)
-	_loadout_slots_label.add_theme_font_size_override("font_size", 14)
-	_loadout_slots_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.7))
-	_loadout_overlay.add_child(_loadout_slots_label)
-
-	var scroll := ScrollContainer.new()
-	scroll.position = LO_RIGHT.position + Vector2(16, 74)
-	scroll.size = Vector2(LO_RIGHT.size.x - 32, LO_RIGHT.size.y - 90)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_loadout_overlay.add_child(scroll)
-	_loadout_pool_container = VBoxContainer.new()
-	_loadout_pool_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_loadout_pool_container.add_theme_constant_override("separation", 8)
-	scroll.add_child(_loadout_pool_container)
-
-	# Footer.
-	var hint := Label.new()
-	hint.text = "Uses carry over between fights — spend them wisely.  Hover cards in battle to preview range."
-	hint.position = Vector2(40, 650)
-	hint.size = Vector2(900, 24)
-	hint.add_theme_font_size_override("font_size", 12)
-	hint.add_theme_color_override("font_color", Color(0.6, 0.6, 0.68))
-	_loadout_overlay.add_child(hint)
-
-	_loadout_start_btn = _make_primary_button("Start Battle  ▸", 1040, 648, 208, 48, _on_confirm_loadout)
-	_loadout_overlay.add_child(_loadout_start_btn)
-
-	add_child(_loadout_overlay)
-	_loadout_overlay.visible = false
-
-# A gold, high-emphasis variant of the action button for the primary CTA.
-func _make_primary_button(text: String, x: int, y: int, w: int, h: int, cb: Callable) -> Button:
-	var b := _make_button(text, x, y, w, h, cb)
-	_style_primary(b, 18)
-	return b
-
-# Repaints an existing button as the gold primary CTA. Shared by the loadout's
-# "Start Battle" and the in-combat "End Turn" so the main confirm action looks
-# the same on both screens.
-func _style_primary(b: Button, font_size: int = 16) -> void:
-	b.add_theme_stylebox_override("normal", _panel_stylebox(Color(0.5, 0.36, 0.12), ACCENT, 2, 10))
-	b.add_theme_stylebox_override("hover", _panel_stylebox(Color(0.64, 0.46, 0.16), Color(1, 0.92, 0.55), 2, 10))
-	b.add_theme_stylebox_override("pressed", _panel_stylebox(Color(0.42, 0.3, 0.1), ACCENT, 2, 10))
-	b.add_theme_color_override("font_color", Color(1, 0.97, 0.86))
-	b.add_theme_color_override("font_hover_color", Color(1, 1, 0.92))
-	b.add_theme_color_override("font_disabled_color", Color(0.55, 0.5, 0.42))
-	b.add_theme_font_size_override("font_size", font_size)
-
-func _open_loadout_screen() -> void:
-	_loadout_field_label.text = _format_field_summary()
-	_rebuild_enemy_chips()
-	_populate_loadout_pool()
-	_loadout_overlay.visible = true
-
-func _format_field_summary() -> String:
-	var enc: Array = []
-	for e in _encounter:
-		enc.append(str(e))
-	var enc_str: String = ", ".join(enc) if not enc.is_empty() else "(none)"
-	var size_name := "?"
-	var dims := "?"
-	if _battle_map != null:
-		size_name = ["Small", "Medium", "Large"][clampi(_battle_map.size_class, 0, 2)]
-		dims = "%dx%d" % [_battle_map.width, _battle_map.height]
-	return "Encounter:  %s        Battlefield:  %s  (%s)" % [enc_str, size_name, dims]
-
-func _rebuild_enemy_chips() -> void:
-	for c in _loadout_enemy_container.get_children():
-		c.queue_free()
-	var any := false
+func _enemy_positions() -> Array:
+	var out: Array = []
 	for u in _units:
-		if u.is_player or not u.is_alive():
-			continue
-		any = true
-		_loadout_enemy_container.add_child(_make_enemy_chip(u))
-	if not any:
-		_loadout_enemy_container.add_child(_picker_note("No enemies in this room."))
+		if u != null and u.is_alive() and not u.is_player:
+			out.append(u.position)
+	return out
 
-# Per-archetype accent for the enemy chip dot.
-func _enemy_color(enemy_name: String) -> Color:
-	match enemy_name:
-		"rat": return Color(0.78, 0.74, 0.6)
-		"snake": return Color(0.55, 0.85, 0.45)
-		"orc": return Color(0.5, 0.78, 0.42)
-		"troll": return Color(0.5, 0.62, 0.85)
-		_: return Color(1.0, 0.5, 0.5)
-
-func _enemy_intent_line(u) -> String:
-	if u.intent_telegraph.is_empty():
-		return "Intends:  waiting…"
-	var t: Dictionary = u.intent_telegraph
-	var val: int = int(t.get("value", 0))
-	var tail: String = "  (%d)" % val if val > 0 else ""
-	return "Intends:  %s %s%s" % [str(t.get("icon", "")), str(t.get("name", "")), tail]
-
-# A framed enemy card: name, an HP bar, the key ranges, and the telegraphed
-# next move.
-func _make_enemy_chip(u) -> Panel:
-	const IW := 300  # inner content width
-	var chip := Panel.new()
-	chip.custom_minimum_size = Vector2(316, 96)
-	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chip.add_theme_stylebox_override("panel",
-		_panel_stylebox(Color(0.14, 0.09, 0.12, 0.96), Color(0.55, 0.3, 0.32, 0.9), 1, 8))
-
-	var dot := ColorRect.new()
-	dot.color = _enemy_color(String(u.unit_name))
-	dot.position = Vector2(14, 13)
-	dot.size = Vector2(14, 14)
-	chip.add_child(dot)
-
-	var name_l := Label.new()
-	name_l.text = String(u.unit_name).capitalize()
-	name_l.position = Vector2(36, 8)
-	name_l.size = Vector2(IW - 22, 24)
-	name_l.add_theme_font_size_override("font_size", 16)
-	name_l.add_theme_color_override("font_color", Color(1, 0.86, 0.84))
-	chip.add_child(name_l)
-
-	var frac: float = clampf(float(u.hp) / float(maxi(1, u.max_hp)), 0.0, 1.0)
-	var hp_bg := ColorRect.new()
-	hp_bg.color = Color(0.22, 0.2, 0.22)
-	hp_bg.position = Vector2(14, 38)
-	hp_bg.size = Vector2(IW, 9)
-	chip.add_child(hp_bg)
-	var hp_fg := ColorRect.new()
-	hp_fg.color = Color(0.82, 0.32, 0.32)
-	hp_fg.position = Vector2(14, 38)
-	hp_fg.size = Vector2(IW * frac, 9)
-	chip.add_child(hp_fg)
-
-	var stat_l := Label.new()
-	stat_l.text = "HP %d/%d     Move %d     Reach %d" % [
-		u.hp, u.max_hp, u.move_range, _grid_view.enemy_attack_range(u)]
-	stat_l.position = Vector2(14, 50)
-	stat_l.size = Vector2(IW, 18)
-	stat_l.add_theme_font_size_override("font_size", 11)
-	stat_l.add_theme_color_override("font_color", Color(0.8, 0.8, 0.86))
-	chip.add_child(stat_l)
-
-	var intent_l := Label.new()
-	intent_l.text = _enemy_intent_line(u)
-	intent_l.position = Vector2(14, 70)
-	intent_l.size = Vector2(IW, 20)
-	intent_l.add_theme_font_size_override("font_size", 11)
-	intent_l.add_theme_color_override("font_color", Color(1.0, 0.72, 0.5))
-	chip.add_child(intent_l)
-	return chip
-
-func _populate_loadout_pool() -> void:
-	for child in _loadout_pool_container.get_children():
-		child.queue_free()
-	_refresh_slot_pips()
-	var weapon_name: String = _selected_weapon.data.display_name if _selected_weapon != null else "default strike"
-	_loadout_slots_label.text = "Weapon:  %s        Cards slotted:  %d / %d" % [
-		weapon_name, _selected_cards.size(), CombatLoadout.MAX_SLOTS,
-	]
-
-	# Weapon section (single-select; replaces the basic Attack action).
-	_loadout_pool_container.add_child(_make_loadout_header("WEAPON — replaces your Attack, usable every turn"))
-	if _available_weapons.is_empty():
-		_loadout_pool_container.add_child(_picker_note("No weapon cards in your deck — Attack will use the default strike."))
+# Hovering a hand card previews movement plus that card's reach (attacks) or
+# every enemy it could touch (auto/AOE).
+func _on_hover_hand_card(card) -> void:
+	if not _is_player_turn() or card == null or card.data == null:
+		return
+	if not _is_attack_card(card.data):
+		_grid_view.show_range_preview(_hover_move_budget(), 0)
+		return
+	var spec: Dictionary = _attack_spec_for_card(card.data)
+	if String(spec.get("aim", "tile")) == "auto":
+		_grid_view.show_range_preview(_hover_move_budget(), 0, _enemy_positions())
 	else:
-		var wgrid := _make_tile_grid()
-		for wcard in _available_weapons:
-			var equipped: bool = _selected_weapon == wcard
-			wgrid.add_child(_make_loadout_tile(
-				wcard, equipped, _on_toggle_loadout_weapon, false, false, "", "Weapon", "✓ EQUIPPED"))
-		_loadout_pool_container.add_child(wgrid)
+		var reach: int = maxi(int(spec.get("range_tiles", 1)), int(spec.get("radius", 0)))
+		_grid_view.show_range_preview(_hover_move_budget(), reach)
 
-	# Card section (up to MAX_SLOTS, limited uses).
-	_loadout_pool_container.add_child(_make_loadout_header("CARDS — up to %d; each play spends a use" % CombatLoadout.MAX_SLOTS))
-	if _available_cards.is_empty():
-		_loadout_pool_container.add_child(_picker_note("No cards available. You'll fight with Attack/Defend and spells."))
-		return
-	# Number duplicate copies so two of the same card read as distinct slots.
-	var totals: Dictionary = {}
-	for c in _available_cards:
-		totals[c.data.id] = int(totals.get(c.data.id, 0)) + 1
-	var seen_counts: Dictionary = {}
-	var cgrid := _make_tile_grid()
-	for card in _available_cards:
-		var chosen: bool = _selected_cards.has(card)
-		var disabled: bool = (not chosen) and _selected_cards.size() >= CombatLoadout.MAX_SLOTS
-		var suffix: String = ""
-		if int(totals.get(card.data.id, 1)) > 1:
-			var k: int = int(seen_counts.get(card.data.id, 0)) + 1
-			seen_counts[card.data.id] = k
-			suffix = "  (%d)" % k
-		cgrid.add_child(_make_loadout_tile(
-			card, chosen, _on_toggle_loadout_card, true, disabled, suffix, "Card", "✓ SLOTTED"))
-	_loadout_pool_container.add_child(cgrid)
-
-func _make_tile_grid() -> GridContainer:
-	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
-	return grid
-
-func _refresh_slot_pips() -> void:
-	for c in _loadout_pips.get_children():
-		c.queue_free()
-	for i in CombatLoadout.MAX_SLOTS:
-		var pip := Panel.new()
-		pip.custom_minimum_size = Vector2(18, 18)
-		var filled: bool = i < _selected_cards.size()
-		var fill: Color = ACCENT if filled else Color(0.16, 0.14, 0.2)
-		var border: Color = ACCENT if filled else PANEL_BORDER
-		pip.add_theme_stylebox_override("panel", _panel_stylebox(fill, border, 1, 5))
-		_loadout_pips.add_child(pip)
-
-# One selectable loadout tile (weapon or card). The whole tile is a Button so it
-# styles its hover/pressed/selected states; the content labels sit on top with
-# mouse input ignored so clicks reach the button. `inst` is a CardInstance.
-func _make_loadout_tile(inst, chosen: bool, cb: Callable, show_uses: bool, disabled: bool, name_suffix: String, kind_label: String, chosen_tag: String) -> Button:
-	var tile := Button.new()
-	tile.custom_minimum_size = Vector2(242, 138)
-	tile.focus_mode = Control.FOCUS_NONE
-	tile.disabled = disabled
-	tile.pressed.connect(cb.bind(inst))
-	var fill: Color = Color(0.2, 0.16, 0.12) if chosen else Color(0.15, 0.13, 0.2)
-	var border: Color = ACCENT if chosen else PANEL_BORDER
-	var bw: int = 2 if chosen else 1
-	tile.add_theme_stylebox_override("normal", _panel_stylebox(fill, border, bw, 10))
-	tile.add_theme_stylebox_override("hover", _panel_stylebox(fill.lightened(0.12), ACCENT, 2, 10))
-	tile.add_theme_stylebox_override("pressed", _panel_stylebox(fill.darkened(0.12), ACCENT, 2, 10))
-	tile.add_theme_stylebox_override("disabled", _panel_stylebox(Color(0.1, 0.09, 0.12), Color(0.22, 0.22, 0.26), 1, 10))
-
-	var out_of_uses: bool = show_uses and GameState.card_uses_remaining(inst) <= 0 and not chosen
-	var dim: bool = disabled or out_of_uses
-
-	# Card art thumbnail down the left edge, with a subtle backing panel so dark
-	# / transparent art reads cleanly. When a card has no art the text reclaims
-	# the full tile width. `text_x` / `text_w` shift the labels accordingly.
-	var text_x: int = 12
-	var text_w: int = 218
-	var art: Texture2D = inst.data.image
-	if art != null:
-		var art_bg := Panel.new()
-		art_bg.position = Vector2(10, 10)
-		art_bg.size = Vector2(70, 118)
-		art_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		art_bg.add_theme_stylebox_override("panel",
-			_panel_stylebox(Color(0.1, 0.09, 0.13), Color(border.r, border.g, border.b, 0.5), 1, 6))
-		tile.add_child(art_bg)
-		var art_rect := TextureRect.new()
-		art_rect.texture = art
-		art_rect.position = Vector2(15, 15)
-		art_rect.size = Vector2(60, 108)
-		art_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		art_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		if dim:
-			art_rect.modulate = Color(0.6, 0.6, 0.6)
-		tile.add_child(art_rect)
-		text_x = 88
-		text_w = 142
-
-	var name_l := Label.new()
-	name_l.text = inst.get_display_name() + name_suffix
-	name_l.position = Vector2(text_x, 10)
-	name_l.size = Vector2(text_w, 22)
-	name_l.clip_text = true
-	name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_l.add_theme_font_size_override("font_size", 15)
-	name_l.add_theme_color_override("font_color",
-		Color(0.55, 0.55, 0.6) if dim else (ACCENT if chosen else Color(1, 0.93, 0.82)))
-	tile.add_child(name_l)
-
-	var meta_text: String = kind_label
-	if show_uses:
-		meta_text += "    uses %d/%d" % [GameState.card_uses_remaining(inst), GameState.card_uses_max(inst)]
-	var meta_l := Label.new()
-	meta_l.text = meta_text
-	meta_l.position = Vector2(text_x, 34)
-	meta_l.size = Vector2(text_w, 18)
-	meta_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	meta_l.add_theme_font_size_override("font_size", 11)
-	meta_l.add_theme_color_override("font_color", Color(0.62, 0.64, 0.74))
-	tile.add_child(meta_l)
-
-	var desc_l := Label.new()
-	desc_l.text = _card_desc(inst.data, inst.upgraded)
-	desc_l.position = Vector2(text_x, 54)
-	desc_l.size = Vector2(text_w, 56)
-	desc_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	desc_l.add_theme_font_size_override("font_size", 11)
-	desc_l.add_theme_color_override("font_color",
-		Color(0.5, 0.5, 0.55) if dim else Color(0.82, 0.82, 0.88))
-	tile.add_child(desc_l)
-
-	if chosen:
-		var tag := Label.new()
-		tag.text = chosen_tag
-		tag.position = Vector2(12, 114)
-		tag.size = Vector2(218, 18)
-		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tag.add_theme_font_size_override("font_size", 11)
-		tag.add_theme_color_override("font_color", ACCENT)
-		tile.add_child(tag)
-	return tile
-
-func _make_loadout_header(text: String) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", 13)
-	l.add_theme_color_override("font_color", ACCENT)
-	return l
-
-func _on_toggle_loadout_card(card) -> void:
-	if _selected_cards.has(card):
-		_selected_cards.erase(card)
-	elif _selected_cards.size() < CombatLoadout.MAX_SLOTS:
-		_selected_cards.append(card)
-	_populate_loadout_pool()
-
-func _on_toggle_loadout_weapon(card) -> void:
-	# Single weapon slot: toggling a new weapon replaces any previous pick.
-	_selected_weapon = null if _selected_weapon == card else card
-	_populate_loadout_pool()
-
-func _on_confirm_loadout() -> void:
-	# Unplayable -> requires_equipped (Strategy): block starting until the
-	# required number of Unplayable cards are slotted (only when the player
-	# actually owns any). Shown on the loadout screen, not the in-combat label.
-	var req_err: String = _loadout_requirement_error()
-	if req_err != "":
-		_loadout_slots_label.text = req_err
-		return
-	_loadout.cards = _selected_cards.duplicate()
-	_loadout.weapon = _selected_weapon
-	_weapon_card = _selected_weapon
-	_loadout_overlay.visible = false
-	_info_label.text = _format_info(_room_data, _encounter)
-	_status_label.text = "Waiting for first turn..."
-	_fire_item_triggers("combat_started")
-	StrategyCombatSession.begin_battle()
-
-# Unplayable -> requires_equipped: if the player owns any card carrying the verb,
-# the loadout must slot at least the required count of them. "" = requirement met
-# (or none owned). Detected via AddonSystem so it stays data-driven.
-func _loadout_requirement_error() -> String:
-	var required: int = 0
-	for card in _available_cards:
-		required = maxi(required, AddonSystem.requires_equipped(card.data, Stats.Mode.STRATEGY))
-	if required <= 0:
-		return ""
-	var slotted: int = 0
-	for card in _selected_cards:
-		if AddonSystem.requires_equipped(card.data, Stats.Mode.STRATEGY) > 0:
-			slotted += 1
-	if slotted >= required:
-		return ""
-	return "Must slot at least %d Unplayable card%s before starting." % [
-		required, "s" if required > 1 else "",
-	]
+func _on_hover_preview_end() -> void:
+	if _grid_view != null:
+		_grid_view.clear_range_preview()
 
 # ----------------------------------------------------------------------
 # Turn flow
@@ -1127,9 +721,7 @@ func _loadout_requirement_error() -> String:
 func _on_unit_turn_started(unit) -> void:
 	_grid_view.set_active_unit(unit, unit.move_range)
 	_refresh_initiative()
-	# Fear: too afraid to fight — spend the whole turn fleeing as far from all
-	# opposing units as possible, then end the turn. Same rule for player and
-	# enemy units (the one symmetric Fear behavior).
+	# Fear: spend the whole turn fleeing, then end the turn. Same for both sides.
 	if unit.get_status(&"fear") > 0:
 		_set_player_buttons_enabled(false)
 		_grid_view.enter_idle()
@@ -1139,85 +731,86 @@ func _on_unit_turn_started(unit) -> void:
 		return
 	if unit.is_player:
 		_player_turn_count += 1
-		# Energy (empower charge): unless it banks across turns, leftover charge
-		# from last turn is lost at the start of this one — the energy-carryover
-		# item (Ice Cream) overrides that, mirroring the deckbuilder.
-		if not _tr.energy_banks_across_turns and not GameState.has_energy_carryover_item():
-			_energy_charge = 0
+		# Refresh energy; Ice Cream pours last turn's leftover on top (may exceed
+		# max), mirroring the deckbuilder's carry-over.
+		energy = max_energy
+		if _energy_carryover > 0 and GameState.has_energy_carryover_item():
+			energy += _energy_carryover
+			GameLog.add("Ice Cream: +%d bonus energy!" % _energy_carryover, Color(0.7, 1.0, 0.7))
+		_energy_carryover = 0
+		# Block resets at the start of the player's own turn (deckbuilder rule).
+		unit.block = 0
+		_clear_pending()
 		_fire_item_turn_triggers(unit, _player_turn_count)
-		# Recurring turn heartbeat through the shared item path (EffectSystem):
-		# resets the per-turn attack window and procs Happy Flower's "every N
-		# turns" counter, which the custom turn-trigger path above doesn't cover.
 		_fire_item_triggers("turn_tick")
-		_action_used = false
-		_move_used = false
-		_move_remaining = unit.move_range
-		_card_plays_remaining = 1
-		_ability_used_this_turn = false
-		_ethereal_used_this_turn = false
-		_free_ability_card = null
-		# Innate -> free_play (Strategy): on the first player turn, one innate
-		# slotted ability is free to play (reuses the Mummified-Hand free slot).
-		if _player_turn_count == 1 and _loadout != null:
-			for c in _loadout.cards:
-				if AddonSystem.free_play_count(c.data, Stats.Mode.STRATEGY) > 0 \
-						and GameState.card_uses_remaining(c) > 0:
-					_free_ability_card = c
-					break
-		_pending_kind = Pending.NONE
-		_pending_card = null
-		_pending_spell = null
-		var charge_str: String = "  |  Charge %d" % _energy_charge if _energy_charge > 0 else ""
-		_status_label.text = "Your turn. Move %d  |  Plays %d  |  Mana %d/%d%s" % [
-			_move_remaining, _card_plays_remaining, unit.mana, unit.max_mana, charge_str,
-		]
+		# Draw a fresh hand; Speed grants extra cards on the opening hand only.
+		var draw_count: int = GameState.hand_size
+		if _player_turn_count == 1:
+			draw_count += Stats.deckbuilder_bonus_draws_turn_1()
+		draw_cards(maxi(0, draw_count))
+		TriggerBus.emit_signal("turn_started", {"turn": _player_turn_count, "scene": self})
+		_fire_item_triggers("turn_started")
+		_fire_power_triggers("turn_started")
+		TriggerBus.emit_signal("turn_tick", {"turn": _player_turn_count, "scene": self})
+		GameState.charge_all_items(1)
 		_set_player_buttons_enabled(true)
-		_refresh_button_states()
-		_begin_turn_curse(unit)
+		_refresh_initiative()
+		_refresh_hand()
+		_status_label.text = "Your turn. Energy %d/%d  ·  each Move costs 1 (up to %d tiles)." % [
+			energy, max_energy, unit.move_range,
+		]
 	else:
 		_status_label.text = "%s acts..." % unit.unit_name
 		_set_player_buttons_enabled(false)
 		_enemy_turn_timer.start()
 
 func _on_unit_turn_ended(unit) -> void:
-	# Ice Cream: a player turn that ends without an ability play banks empower
-	# charge. It accumulates with no cap and persists indefinitely — skip any
-	# number of turns and bank that many charges — until a card play spends the
-	# whole charge at once. Strategy has no per-turn energy pool, so this is its
-	# analogue of the deckbuilder's leftover-energy carry-over. The carryover
-	# item also forces _energy_charge to survive turn starts (see
-	# _on_unit_turn_started), so banked charge is never silently wiped.
-	if unit != null and unit.is_player and not _ability_used_this_turn \
-			and GameState.has_energy_carryover_item():
-		_energy_charge += _tr.empower_per_skipped_turn
-		_status_label.text = "Ice Cream: banked an empower charge (now %d)." % _energy_charge
-	# Damage-over-time bite (Bleed, Leeches) at the end of the unit's own turn,
-	# BEFORE decay so the bite uses the current stack count (then Bleed ramps
-	# via decay's grow pass). Mirrors the deckbuilder/action contract.
+	_eot_curses = []
+	_eot_hand_size = 0
+	# Player end-of-turn: bank leftover energy (Ice Cream) and clear the hand —
+	# Retain keeps cards, Sly resolves as it leaves, Ethereal exhausts.
+	if unit != null and unit.is_player:
+		_eot_curses = hand.duplicate()
+		_eot_hand_size = hand.size()
+		if energy > 0 and GameState.has_energy_carryover_item():
+			_energy_carryover = energy
+		var kept: Array = []
+		while not hand.is_empty():
+			var c = hand.pop_back()
+			# Any "free this turn" discount (Mummified Hand) expires now.
+			c.temp_cost_override = -999
+			if c.data != null and c.data.retain:
+				kept.append(c)
+			elif c.data != null and c.data.sly:
+				_resolve_sly_on_discard(c)
+				discard_pile.append(c)
+			elif c.data != null and c.data.ethereal:
+				exhaust_pile.append(c)
+				GameLog.add("%s is Ethereal — exhausted." % c.data.display_name, Color(0.75, 0.85, 1.0))
+				TriggerBus.emit_signal("card_exhausted", {"card": c, "scene": self})
+				_fire_power_triggers("card_exhausted", {"card": c})
+			else:
+				discard_pile.append(c)
+		hand = kept
+		TriggerBus.emit_signal("turn_ended", {"turn": _player_turn_count, "scene": self})
+		_fire_item_triggers("turn_ended")
+		_fire_power_triggers("turn_ended")
+	# Damage-over-time bite (Bleed, Leeches) BEFORE decay so it uses the current
+	# stack count, then decay grows/ticks it down.
 	if unit != null:
 		Stats.tick_actor_statuses(unit, self)
 		if unit.is_alive():
 			Stats.decay_actor_statuses(unit)
-	# The chosen curse's end-of-turn effect lands here — AFTER decay — so a status
-	# it grants (Doubt -> Weak) survives into the next turn, and the brick's
-	# all-stats-down debuff is lifted now that the turn is over.
+	# Curse cards' eot effects land here — AFTER decay — so a status they grant
+	# (Doubt -> Weak) survives into the next turn.
 	if unit != null and unit.is_player:
-		_end_turn_curse(unit)
-		# Ethereal -> deactivate_if_idle: a player turn that ends without playing
-		# any Ethereal ability locks every Ethereal ability for the rest of combat.
-		if not _ethereal_deactivated and not _ethereal_used_this_turn \
-				and _has_ethereal_ability():
-			_ethereal_deactivated = true
-			_status_label.text = "Ethereal abilities deactivated — none was used this turn."
+		_fire_curse_triggers("eot", _eot_curses, _eot_hand_size)
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
+	_refresh_hand()
 	_check_battle_end_after_effect()
 
-# Applies turn-based item effects to the player unit at the start of its
-# turn. Strategy uses the BattleUnit model rather than the deckbuilder's
-# CombatActor/EffectSystem, so the common turn-based effect types (block /
-# status / heal) are applied directly here. Gated on if_turn like the
-# other modes (Horn Cleat: +14 Block on the 2nd turn).
+# Applies turn-based item effects to the player unit at the start of its turn.
 func _fire_item_turn_triggers(unit, turn_number: int) -> void:
 	if unit == null:
 		return
@@ -1250,124 +843,56 @@ func _apply_turn_effect_to_unit(unit, effect: Dictionary) -> void:
 			_float_number(unit, unit.hp - before, FloatingNumbers.HEAL_COLOR)
 
 # ----------------------------------------------------------------------
-# Curse-of-the-turn
+# Curse cards (deckbuilder model: clog the hand, fire eot / on_play_other)
 # ----------------------------------------------------------------------
 
-# Start of the player's turn: choose one random owned curse, telegraph it, and
-# apply its during-turn effect (bricks -> all-stats-down). eot / Pain effects
-# resolve later (turn end / per action).
-func _begin_turn_curse(unit) -> void:
-	_clear_turn_stat_debuff()
-	_turn_actions = 0
-	_turn_curse = _pick_random_owned_curse()
-	if _turn_curse == null:
-		return
-	Notifications.notify("Curse this turn: %s" % _turn_curse.display_name,
-		Color(0.85, 0.6, 0.85))
-	GameLog.add("Curse active this turn: %s." % _turn_curse.display_name,
-		Color(0.85, 0.6, 0.85))
-	if _curse_strategy_kind(_turn_curse) == "brick":
-		_apply_turn_stat_debuff()
-
-# End of the player's turn: an eot curse fires its effect (status / dmg / Regret).
-# Pain already bit per action; the brick debuff is lifted in _begin_turn_curse /
-# here. Runs AFTER status decay so a granted status persists to the next turn.
-func _end_turn_curse(_unit) -> void:
-	if _turn_curse != null and _curse_strategy_kind(_turn_curse) == "eot":
-		for trig in _turn_curse.triggers:
-			if String(trig.get("on", "")) != "eot":
-				continue
-			for e in trig.get("effects", []):
-				if e is Dictionary:
-					_apply_strategy_curse_effect(e, _turn_actions)
-	_clear_turn_stat_debuff()
-	_turn_curse = null
-
-# Called from each committed player action (move / attack / spell / card). Counts
-# the action for Regret and, when Pain is the active curse, bites 1 HP live.
-func _register_player_action() -> void:
-	if _turn_curse == null:
-		return
-	_turn_actions += 1
-	if _curse_strategy_kind(_turn_curse) == "pain":
-		var p = get_player_unit()
-		if p != null:
-			apply_dot(p, 1, "Curse")
-
-func _pick_random_owned_curse() -> CardData:
-	var pool: Array = []
-	for c in GameState.deck:
-		var cd: CardData = c.data if c is CardInstance else (c as CardData)
-		if cd != null and cd.type == CardData.CardType.CURSE:
-			pool.append(cd)
-	if pool.is_empty():
-		return null
-	return pool[randi() % pool.size()]
-
-# Applies one translated curse effect to the player unit. status -> add_status;
-# dmg/lose_hp -> apply_dot. per:card_in_hand is translated to per action taken
-# this turn (Regret).
-func _apply_strategy_curse_effect(effect: Dictionary, actions: int) -> void:
+# Fires the matching trigger on every curse card in `cards`. Curse effects are
+# applied directly to the player UNIT (not GameState.hp) so they bite the combat
+# correctly; hand_size feeds Regret's per-card-in-hand scaling.
+func _fire_curse_triggers(trigger: String, cards: Array, hand_size: int) -> void:
 	var p = get_player_unit()
 	if p == null:
 		return
+	for c in cards:
+		if c == null or c.data == null or c.data.triggers.is_empty():
+			continue
+		for trig in c.data.triggers:
+			if String(trig.get("on", "")) != trigger:
+				continue
+			for raw in trig.get("effects", []):
+				if raw is Dictionary:
+					_apply_curse_effect(raw, c, p, hand_size)
+	_refresh_hand()
+
+func _apply_curse_effect(effect: Dictionary, card, p, hand_size: int) -> void:
 	match String(effect.get("type", "")):
 		"status":
-			Stats.apply_status_to(p, StringName(effect.get("status", "")), int(effect.get("stacks", 1)))
+			if Stats.apply_status_to(p, StringName(effect.get("status", "")), int(effect.get("stacks", 1))) > 0:
+				_grid_view.notify_units_changed()
 		"dmg":
-			var dv := int(effect.get("value", 0))
+			var dv: int = int(effect.get("value", 0))
 			if dv > 0:
 				apply_dot(p, dv, "Curse")
-		"lose_hp":
-			var lv := int(effect.get("value", 1))
+		"lose_hp", "lose_health":
+			var lv: int = int(effect.get("value", 1))
 			if String(effect.get("per", "")) == "card_in_hand":
-				lv *= maxi(0, actions)
+				lv *= maxi(0, hand_size)
 			if lv > 0:
 				apply_dot(p, lv, "Curse")
+		"conjure":
+			conjure_card(
+				StringName(String(effect.get("card_id", "self"))),
+				String(effect.get("destination", "draw")),
+				maxi(1, int(effect.get("count", 1))),
+				card, bool(effect.get("upgraded", false)))
+		_:
+			# Anything exotic falls back to the shared dispatch against the player.
+			EffectSystem.apply(effect, {"source": p, "target": p, "scene": self, "card": card})
 
-# Strategy behaviour of a curse: "eot" (status/dmg/Regret at turn end), "pain"
-# (per action), or "brick" (no player-affecting trigger -> all-stats-down).
-func _curse_strategy_kind(cd: CardData) -> String:
-	var has_eot := false
-	var has_pain := false
-	for trig in cd.triggers:
-		if not _curse_trigger_has_player_effect(trig):
-			continue
-		match String(trig.get("on", "")):
-			"eot": has_eot = true
-			"on_play_other": has_pain = true
-	if has_eot:
-		return "eot"
-	if has_pain:
-		return "pain"
-	return "brick"
+# ----------------------------------------------------------------------
+# Fear flee (shared by player + enemy units)
+# ----------------------------------------------------------------------
 
-func _curse_trigger_has_player_effect(trig: Dictionary) -> bool:
-	for e in trig.get("effects", []):
-		if e is Dictionary and String(e.get("type", "")) in ["status", "dmg", "lose_hp"]:
-			return true
-	return false
-
-func _apply_turn_stat_debuff() -> void:
-	if _turn_stat_debuff:
-		return
-	for s in _CURSE_STAT_DOWN:
-		GameState.add_temp_stat(s, -1)
-	_turn_stat_debuff = true
-	GameLog.add("Curse: all stats down this turn.", Color(0.85, 0.6, 0.85))
-
-func _clear_turn_stat_debuff() -> void:
-	if not _turn_stat_debuff:
-		return
-	for s in _CURSE_STAT_DOWN:
-		GameState.add_temp_stat(s, 1)
-	_turn_stat_debuff = false
-
-# Fear flee: move the unit to the reachable tile that maximizes the summed
-# Manhattan distance to all living opposing units, then shed 1 Fear (strategy's
-# turn-end decay, so N stacks == N turns of forced retreat). Only moves when a
-# strictly-farther tile exists, so a cornered/surrounded unit just holds. Shared
-# by player and enemy units.
 func _fear_flee(unit) -> void:
 	var foes: Array = []
 	for u in _units:
@@ -1381,7 +906,6 @@ func _fear_flee(unit) -> void:
 		for tile in reachable.keys():
 			var score: int = _fear_flee_score(tile, foes)
 			var steps: int = int(reachable[tile])
-			# Prefer the farthest tile; on ties take the one that moves the least.
 			if score > best_score or (score == best_score and steps < best_steps):
 				best_score = score
 				best_tile = tile
@@ -1392,14 +916,12 @@ func _fear_flee(unit) -> void:
 	if unit.get_status(&"fear") > 0:
 		unit.add_status(&"fear", -1)
 
-# Sum of Manhattan distances from a tile to every living opposing unit.
 func _fear_flee_score(tile: Vector2i, foes: Array) -> int:
 	var total: int = 0
 	for f in foes:
 		total += absi(tile.x - f.position.x) + absi(tile.y - f.position.y)
 	return total
 
-# End a feared unit's turn after the flee beat — no AI, no player control.
 func _auto_end_feared_turn() -> void:
 	if _turn_manager == null or _turn_manager.current_unit == null:
 		return
@@ -1416,11 +938,8 @@ func _auto_end_enemy_turn() -> void:
 		_status_label.text = msg
 		_grid_view.notify_units_changed()
 		_refresh_initiative()
-		# Bail before re-telegraphing if the action ended the battle.
 		if _turn_manager.check_battle_end_now():
 			return
-		# Pick the next intent now so the player sees the updated
-		# telegraph for any survivor before their own turn starts.
 		enemy.ai.plan_next(_units)
 		_grid_view.notify_units_changed()
 	_turn_manager.end_current_turn()
@@ -1431,420 +950,55 @@ func _on_battle_ended(result) -> void:
 	_fire_item_triggers("combat_ended")
 
 # ----------------------------------------------------------------------
-# Player actions — basic
+# Player actions — movement
 # ----------------------------------------------------------------------
 
 func _on_move_button() -> void:
 	if not _is_player_turn():
 		return
-	if _move_used:
-		_status_label.text = "You've already moved this turn."
-		return
-	if _move_remaining <= 0:
-		_status_label.text = "No movement left."
+	if energy <= 0:
+		_status_label.text = "No energy left to move."
 		return
 	_clear_pending()
+	var u = _turn_manager.current_unit
+	_grid_view.set_active_unit(u, u.move_range)
 	_grid_view.enter_move_mode()
-	_status_label.text = "Click a tile to move (up to %d tiles, one move per turn)." % _move_remaining
-
-func _on_attack_button() -> void:
-	if not _is_player_turn() or _action_used:
-		return
-	_clear_pending()
-	# The weapon card's (or the basic strike's) Attack archetype drives the
-	# Attack action's range + footprint, same as a played card.
-	_pending_kind = Pending.ATTACK
-	_pending_aim_spec = _attack_spec_for_weapon_or_basic()
-	_grid_view.enter_aim_mode(_pending_aim_spec)
-	var with_what: String = _weapon_card.data.display_name if _weapon_card != null else "your strike"
-	_status_label.text = "Attacking with %s — aim within range (right-click to cancel)." % with_what
-
-# The grid attack spec for the Attack action: the equipped weapon's archetype, or
-# a plain melee poke at the unit's basic-attack range when bare-handed.
-func _attack_spec_for_weapon_or_basic() -> Dictionary:
-	if _weapon_card != null:
-		return _attack_spec_for_card(_weapon_card.data)
-	var spec: Dictionary = Data.strategy_attacks.resolve(&"poke", {})
-	# A bare strike is melee (range 1) unless the unit's basic attack defines a
-	# longer reach — keep it from inheriting poke's default 2-tile range.
-	var u = get_player_unit()
-	spec["range_tiles"] = maxi(1, int(u.basic_attack_def.get("range", 1))) if u != null else 1
-	return spec
-
-# Resolve the Attack action against the aimed footprint. Weapon effects route
-# through the shared path (friendly fire applies); a bare strike damages whoever
-# the footprint catches other than the attacker.
-func _resolve_attack_against_aim(pos: Vector2i) -> void:
-	if not _is_player_turn() or _action_used:
-		return
-	var attacker = _turn_manager.current_unit
-	var shaped: Array = _shaped_targets_for(_pending_aim_spec, attacker, pos)
-	if _weapon_card != null:
-		_apply_card_or_spell_effects(_effective_card_effects(_weapon_card.data, _weapon_card.upgraded), attacker, null, _weapon_card.data, 0, {}, shaped)
-		_status_label.text = "You attack with %s." % _weapon_card.data.display_name
-	else:
-		var dmg := DEFAULT_BASIC_ATTACK
-		if attacker.basic_attack_def.has("damage"):
-			dmg = int(attacker.basic_attack_def["damage"])
-		var hit_any := false
-		for t in shaped:
-			if t != attacker:
-				_apply_damage(attacker, t, dmg)
-				hit_any = true
-		_status_label.text = "You strike for %d." % dmg if hit_any else "Your strike hits nothing."
-	_action_used = true
-	_register_player_action()
-	_pending_kind = Pending.NONE
-	_pending_aim_spec = {}
-	_grid_view.enter_idle()
-	_grid_view.notify_units_changed()
-	_refresh_initiative()
-	_refresh_button_states()
-	_check_battle_end_after_effect()
-
-func _on_defend_button() -> void:
-	if not _is_player_turn() or _action_used:
-		return
-	_clear_pending()
-	var u = _turn_manager.current_unit
-	u.block += DEFAULT_BASIC_DEFEND
-	_action_used = true
-	_grid_view.enter_idle()
-	_status_label.text = "You brace. +%d block (now %d)." % [DEFAULT_BASIC_DEFEND, u.block]
-	_grid_view.notify_units_changed()
-	_refresh_button_states()
-
-func _on_dash_button() -> void:
-	if not _is_player_turn():
-		return
-	if _turn_manager.consume_dash():
-		_status_label.text = "Dash! Bonus turn queued."
-		_refresh_initiative()
-		_refresh_button_states()
-
-func _on_end_turn_button() -> void:
-	if not _is_player_turn():
-		return
-	_clear_pending()
-	_grid_view.enter_idle()
-	_set_player_buttons_enabled(false)
-	_turn_manager.end_current_turn()
-
-func _on_force_win() -> void:
-	StrategyCombatSession.resolve_combat("victory")
-
-func _on_force_lose() -> void:
-	StrategyCombatSession.resolve_combat("defeat")
-
-# ----------------------------------------------------------------------
-# Player actions — Cards (slotted loadout)
-# ----------------------------------------------------------------------
-
-func _on_ability_button() -> void:
-	if not _is_player_turn():
-		return
-	if _card_plays_remaining <= 0 and not _has_free_play_available():
-		_status_label.text = "No card plays left this turn."
-		return
-	_clear_pending()
-	_grid_view.enter_idle()
-	_populate_ability_picker()
-	_ability_dialog.visible = true
-	_spell_dialog.visible = false
-
-# True if any slotted ability is Ethereal (deactivate_if_idle) — gates the
-# end-of-turn deactivation so it no-ops when the player has no Ethereal cards.
-func _has_ethereal_ability() -> bool:
-	if _loadout == null:
-		return false
-	for c in _loadout.cards:
-		if AddonSystem.deactivates_if_idle(c.data, Stats.Mode.STRATEGY):
-			return true
-	return false
-
-# True if `card` is an Ethereal ability that has been locked out for the combat.
-func _is_ethereal_locked(card) -> bool:
-	return _ethereal_deactivated \
-		and AddonSystem.deactivates_if_idle(card.data, Stats.Mode.STRATEGY)
-
-# Retain (Strategy): after the first turn, a Retain card is a free action — it
-# doesn't spend the turn's single card play. Folds together with the
-# Mummified-Hand free-ability slot (the one-shot _free_ability_card).
-func _is_free_play(card) -> bool:
-	if card == _free_ability_card:
-		return true
-	return card != null and card.data != null and card.data.retain and _player_turn_count > 1
-
-# Any free play available right now — lets the Ability button open even after the
-# turn's normal play is spent (so a Retain card can still be played for free).
-func _has_free_play_available() -> bool:
-	if _free_ability_card != null and GameState.card_uses_remaining(_free_ability_card) > 0:
-		return true
-	if _loadout != null and _player_turn_count > 1:
-		for c in _loadout.cards:
-			if c.data != null and c.data.retain and not c.data.unplayable \
-					and GameState.card_uses_remaining(c) > 0 and not _is_ethereal_locked(c):
-				return true
-	return false
-
-func _populate_ability_picker() -> void:
-	for child in _ability_list_container.get_children():
-		child.queue_free()
-	if _loadout == null or _loadout.cards.is_empty():
-		_ability_list_container.add_child(_picker_note(
-			"No cards slotted. Pick a loadout before combat to bring cards."
-		))
-		return
-	var totals: Dictionary = {}
-	for c in _loadout.cards:
-		totals[c.data.id] = int(totals.get(c.data.id, 0)) + 1
-	var seen_counts: Dictionary = {}
-	for card in _loadout.cards:
-		var row := HBoxContainer.new()
-		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var lbl := Label.new()
-		var uses: int = GameState.card_uses_remaining(card)
-		var cap: int = GameState.card_uses_max(card)
-		var is_free: bool = _is_free_play(card)
-		var is_unplayable: bool = card.data != null and card.data.unplayable
-		var castable: bool = uses > 0 and (_card_plays_remaining > 0 or is_free) \
-			and not _is_ethereal_locked(card) and not is_unplayable
-		var free_tag: String = "  [FREE]" if is_free else ""
-		if is_unplayable:
-			free_tag += "  [UNPLAYABLE]"
-		var copy_tag: String = ""
-		if int(totals.get(card.data.id, 1)) > 1:
-			var k: int = int(seen_counts.get(card.data.id, 0)) + 1
-			seen_counts[card.data.id] = k
-			copy_tag = "  (copy %d)" % k
-		lbl.text = "%s%s%s  (uses %d/%d)  —  %s" % [card.get_display_name(), copy_tag, free_tag, uses, cap, _card_desc(card.data, card.upgraded)]
-		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-		lbl.custom_minimum_size = Vector2(196, 0)
-		lbl.add_theme_font_size_override("font_size", 13)
-		if uses <= 0:
-			lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
-		# Hovering the row previews movement + this card's targets on the board.
-		var hits_enemy: bool = CombatLoadout.wants_enemy_target(card.data)
-		lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-		lbl.mouse_entered.connect(_on_hover_card_preview.bind(hits_enemy))
-		lbl.mouse_exited.connect(_on_hover_preview_end)
-		row.add_child(lbl)
-		var btn := Button.new()
-		btn.text = "Play"
-		btn.disabled = not castable
-		btn.pressed.connect(_on_pick_ability.bind(card))
-		row.add_child(btn)
-		_ability_list_container.add_child(row)
-
-func _on_pick_ability(card) -> void:
-	_ability_dialog.visible = false
-	# Re-check: the picker may have been left open across state changes. A
-	# Mummified-Hand free ability (or a turn-2+ Retain card) is playable even
-	# with no plays remaining.
-	var is_free: bool = _is_free_play(card)
-	if card.data != null and card.data.unplayable:
-		_status_label.text = "%s is unplayable." % card.get_display_name()
-		return
-	if _is_ethereal_locked(card):
-		_status_label.text = "%s is Ethereal and has been deactivated." % card.data.display_name
-		return
-	if GameState.card_uses_remaining(card) <= 0 or (_card_plays_remaining <= 0 and not is_free):
-		_status_label.text = "%s can't be played right now." % card.data.display_name
-		return
-	_pending_kind = Pending.ABILITY
-	_pending_card = card
-	if CombatLoadout.wants_enemy_target(card.data):
-		# Aimed attack: the Attack column's archetype drives range + footprint on
-		# the grid (Mewgenics-style). The cursor is gated to in-range tiles and the
-		# footprint rotates to face the aim; resolution hits whoever stands in it.
-		_pending_aim_spec = _attack_spec_for_card(card.data)
-		_grid_view.enter_aim_mode(_pending_aim_spec)
-		_status_label.text = "Playing %s — aim within range (right-click to cancel)." % card.data.display_name
-	else:
-		_resolve_ability_against(null)
-
-# `shaped_targets` (non-empty for aimed attacks) is the set of units standing in
-# the attack's grid footprint; damaging enemy/all_enemies effects resolve against
-# it instead of the legacy single-target / all-enemies broadcast.
-func _resolve_ability_against(target, shaped_targets: Array = []) -> void:
-	if _pending_card == null:
-		return
-	var u = _turn_manager.current_unit
-	var card = _pending_card
-	# Spend one of this instance's uses; bail if somehow empty.
-	if not GameState.spend_card_use_inst(card):
-		_status_label.text = "%s is out of uses." % card.data.display_name
-		_pending_kind = Pending.NONE
-		_pending_card = null
-		_grid_view.enter_idle()
-		return
-	# Free plays cost no per-turn play (the use was still spent above): the
-	# Mummified-Hand one-shot free ability, or a Retain card after turn 1.
-	# Otherwise spend the turn's single play.
-	if _is_free_play(card):
-		if card == _free_ability_card:
-			_free_ability_card = null
-	else:
-		_card_plays_remaining -= 1
-	_ability_used_this_turn = true
-	# Ethereal -> deactivate_if_idle: playing an Ethereal ability keeps the whole
-	# set alive for the turn.
-	if AddonSystem.deactivates_if_idle(card.data, Stats.Mode.STRATEGY):
-		_ethereal_used_this_turn = true
-	_register_player_action()
-	# Spend any banked energy charge to empower this card, then clear it.
-	var empower: int = _energy_charge
-	_energy_charge = 0
-	# card_played fires BEFORE the ability's effects resolve (the documented
-	# contract, and what the other two modes do) so attack counters / Pen Nib's
-	# double-damage window arm in time for this attack. The "Played …" status
-	# text is set first so a card_played item that posts its own message
-	# (Mummified Hand) still wins.
-	var empower_str: String = "  (empowered +%d)" % empower if empower > 0 else ""
-	_status_label.text = "Played %s%s. (%d uses left, %d plays left)" % [
-		card.data.display_name, empower_str, GameState.card_uses_remaining(card), _card_plays_remaining,
-	]
-	_fire_item_triggers("card_played", {"card": card.data})
-	# Vorpal rides the physical card instance; recover its roll and pass it down.
-	var vorpal: Dictionary = {}
-	card.roll_vorpal_if_needed()
-	if card.vorpal_type >= 0 and card.vorpal_weight > 0:
-		vorpal = {"type": card.vorpal_type, "weight": card.vorpal_weight}
-	_apply_card_or_spell_effects(_effective_card_effects(card.data, card.upgraded), u, target, card.data, empower, vorpal, shaped_targets)
-	# Destroy: remove the played card from the run deck permanently after it resolves.
-	if card.data != null and card.data.destroy:
-		GameState.destroy_card_instance(card)
-		_status_label.text = "%s is Destroyed — removed from your deck." % card.data.display_name
-	_pending_kind = Pending.NONE
-	_pending_card = null
-	_pending_aim_spec = {}
-	_grid_view.enter_idle()
-	_grid_view.notify_units_changed()
-	_refresh_initiative()
-	_refresh_button_states()
-	_check_battle_end_after_effect()
-
-# ----------------------------------------------------------------------
-# Player actions — Spell
-# ----------------------------------------------------------------------
-
-func _on_spell_button() -> void:
-	if not _is_player_turn():
-		return
-	_clear_pending()
-	_grid_view.enter_idle()
-	_populate_spell_picker()
-	_spell_dialog.visible = true
-	_ability_dialog.visible = false
-
-func _populate_spell_picker() -> void:
-	for child in _spell_list_container.get_children():
-		child.queue_free()
-	if _spellbook == null or _spellbook.spells.is_empty():
-		_spell_list_container.add_child(_picker_note(
-			"No spells learned. Learn spells from card rewards to populate."
-		))
-		return
-	var u = _turn_manager.current_unit
-	for entry in _spellbook.spells:
-		var row := HBoxContainer.new()
-		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var lbl := Label.new()
-		var affordable: bool = _spellbook.can_cast(u, entry)
-		lbl.text = "%s  (%d mana)  —  %s" % [
-			entry.data.display_name, entry.data.cost, _card_desc(entry.data),
-		]
-		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-		lbl.custom_minimum_size = Vector2(196, 0)
-		lbl.add_theme_font_size_override("font_size", 13)
-		# Hovering the row previews movement + this spell's targets on the board.
-		var hits_enemy: bool = entry.wants_target and entry.data.target_kind != "friendly"
-		lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-		lbl.mouse_entered.connect(_on_hover_card_preview.bind(hits_enemy))
-		lbl.mouse_exited.connect(_on_hover_preview_end)
-		row.add_child(lbl)
-		var btn := Button.new()
-		btn.text = "Cast"
-		btn.disabled = not affordable
-		btn.pressed.connect(_on_pick_spell.bind(entry))
-		row.add_child(btn)
-		_spell_list_container.add_child(row)
-
-func _on_pick_spell(entry) -> void:
-	_spell_dialog.visible = false
-	var u = _turn_manager.current_unit
-	if not _spellbook.can_cast(u, entry):
-		_status_label.text = "Not enough mana for %s." % entry.data.display_name
-		return
-	_pending_kind = Pending.SPELL
-	_pending_spell = entry
-	if entry.wants_target:
-		var filter: int = BattleGridView.TargetFilter.ENEMY
-		if entry.data.target_kind == "friendly":
-			filter = BattleGridView.TargetFilter.ALLY
-		_grid_view.enter_unit_target_mode(filter)
-		_status_label.text = "Casting %s — pick a target (right-click to cancel)." % entry.data.display_name
-	else:
-		_resolve_spell_against(null)
-
-func _resolve_spell_against(target) -> void:
-	if _pending_spell == null:
-		return
-	var u = _turn_manager.current_unit
-	var entry = _pending_spell
-	_spellbook.spend_mana(u, entry)
-	_apply_card_or_spell_effects(_effective_card_effects(entry.data), u, target, entry.data)
-	_register_player_action()
-	_pending_kind = Pending.NONE
-	_pending_spell = null
-	_grid_view.enter_idle()
-	_status_label.text = "Cast %s (mana now %d/%d)." % [
-		entry.data.display_name, u.mana, u.max_mana,
-	]
-	_grid_view.notify_units_changed()
-	_refresh_initiative()
-	_refresh_button_states()
-	_check_battle_end_after_effect()
-
-# ----------------------------------------------------------------------
-# Grid-view callbacks
-# ----------------------------------------------------------------------
+	_status_label.text = "Click a tile to move (1 energy, up to %d tiles)." % u.move_range
 
 func _on_move_requested(path: Array) -> void:
 	if not _is_player_turn() or path.is_empty():
 		return
-	var u = _turn_manager.current_unit
-	var cost: int = path.size()
-	if cost > _move_remaining:
+	if energy <= 0:
+		_status_label.text = "No energy left to move."
 		return
+	var u = _turn_manager.current_unit
+	if path.size() > u.move_range:
+		return
+	energy -= 1
 	u.position = path[-1]
-	_move_remaining -= cost
-	# One move action per turn (no chaining): lock movement once committed,
-	# even if tiles remain in the budget.
-	_move_used = true
-	_register_player_action()
-	# Phase 8: walking over an item collects it (auto-pickup goes to
-	# run-scope counters; non-auto goes to the overworld inventory while
-	# there's room). Each path step is checked so passing-by loot grabs.
+	# Walking over an item collects it (each path step is checked).
 	var pickup_msgs: Array = []
 	for step in path:
 		_try_pickup_at(step, pickup_msgs)
-	_grid_view.set_active_unit(u, _move_remaining)
-	_grid_view.enter_idle()
-	var line: String = "Moved %d." % cost
+	var line: String = "Moved %d tile(s)  (−1 energy, %d left)." % [path.size(), energy]
 	if not pickup_msgs.is_empty():
 		line += "  " + ", ".join(pickup_msgs)
 	_status_label.text = line
+	# Keep moving while energy remains; otherwise drop back to idle.
+	if energy > 0:
+		_grid_view.set_active_unit(u, u.move_range)
+		_grid_view.enter_move_mode()
+	else:
+		_grid_view.set_active_unit(u, u.move_range)
+		_grid_view.enter_idle()
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
+	_refresh_hand()
 	_refresh_button_states()
 
 func _try_pickup_at(pos: Vector2i, messages: Array) -> void:
 	if _battle_map == null:
 		return
-	# Snapshot first — `_collect_item` mutates `_battle_map.items`.
 	var hits: Array = []
 	for entry in _battle_map.items:
 		if entry.pos == pos:
@@ -1854,18 +1008,12 @@ func _try_pickup_at(pos: Vector2i, messages: Array) -> void:
 		if msg != "":
 			messages.append(msg)
 
-# Returns a short message describing the pickup (empty string if nothing
-# happened, e.g. pack-full on a non-auto item). Battle items live only in
-# `_battle_map.items` during combat (CombatSession removes room originals
-# at combat start), so removing the entry there is enough to drop them
-# from the persistence-back pass.
 func _collect_item(entry: Dictionary) -> String:
 	var item = entry.item
 	var player_entity = StrategyState.player
 	if item.auto_pickup:
 		match item.item_type:
 			StrategyItem.ItemType.GOLD:
-				# Gold persists across sections — write straight to GameState.
 				GameState.change_gold(int(item.amount))
 				_battle_map.remove_item_entry(entry)
 				return "+%d gold" % int(item.amount)
@@ -1884,79 +1032,219 @@ func _collect_item(entry: Dictionary) -> String:
 	_battle_map.remove_item_entry(entry)
 	return "picked up %s" % str(item.item_name)
 
-func _on_attack_requested(target) -> void:
-	if not _is_player_turn() or _action_used:
+# ----------------------------------------------------------------------
+# Player actions — Dash / End Turn / dev
+# ----------------------------------------------------------------------
+
+func _on_dash_button() -> void:
+	if not _is_player_turn():
 		return
-	var attacker = _turn_manager.current_unit
-	if _weapon_card != null:
-		# Equipped weapon replaces the basic strike: its effects resolve once
-		# against the target. Unlimited uses, but once per turn (it's the
-		# Attack action, gated by _action_used). Energy empower applies to
-		# slotted cards only, not the weapon, so pass empower 0.
-		_apply_card_or_spell_effects(_effective_card_effects(_weapon_card.data, _weapon_card.upgraded), attacker, target, _weapon_card.data)
-		_status_label.text = "You attack %s with %s." % [target.unit_name, _weapon_card.data.display_name]
+	if _turn_manager.consume_dash():
+		_status_label.text = "Dash! End your turn to take a bonus turn (fresh energy + hand)."
+		_refresh_initiative()
+		_refresh_button_states()
+
+func _on_end_turn_button() -> void:
+	if not _is_player_turn():
+		return
+	_clear_pending()
+	_grid_view.enter_idle()
+	_set_player_buttons_enabled(false)
+	_turn_manager.end_current_turn()
+
+func _on_force_win() -> void:
+	StrategyCombatSession.resolve_combat("victory")
+
+func _on_force_lose() -> void:
+	StrategyCombatSession.resolve_combat("defeat")
+
+# ----------------------------------------------------------------------
+# Player actions — playing a card from hand
+# ----------------------------------------------------------------------
+
+# A card is an "attack" (needs aiming / an in-range target) if it carries an
+# attack shape or any damaging/debuffing effect aimed at enemies.
+func _is_attack_card(data: CardData) -> bool:
+	if data == null:
+		return false
+	if data.attack_shape != &"":
+		return true
+	for e in data.effects:
+		if not (e is Dictionary):
+			continue
+		var t := String(e.get("target", ""))
+		var ty := String(e.get("type", ""))
+		if (t == "enemy" or t == "all_enemies") and ty in ["dmg", "status", "dmg_fraction_max_hp"]:
+			return true
+	return false
+
+# The grid attack spec for a card, from its Attack-column archetype (with the
+# legacy melee/ranged fallback for un-annotated cards).
+func _attack_spec_for_card(card_data) -> Dictionary:
+	return Data.strategy_attacks.resolve_for_card(card_data)
+
+# True if at least one living enemy could actually be hit by `spec` from the
+# player's current tile — so an attack with no reachable target is disabled and
+# you must move into range first. Auto attacks (smite/bounce) reach the whole
+# board; tile/self attacks test their real footprint against every legal aim.
+func _attack_has_target(spec: Dictionary) -> bool:
+	var p = get_player_unit()
+	if p == null or spec.is_empty():
+		return false
+	match String(spec.get("aim", "tile")):
+		"auto":
+			return not _living_enemy_units().is_empty()
+		"self":
+			return _footprint_hits_enemy(spec, p, p.position)
+		_:  # tile-aimed: any in-range aim whose footprint catches a foe
+			var aimable: Dictionary = Data.strategy_attacks.aimable_tiles(spec, p.position, _battle_map)
+			for tile in aimable.keys():
+				if _footprint_hits_enemy(spec, p, tile):
+					return true
+			return false
+
+func _footprint_hits_enemy(spec: Dictionary, source, aim: Vector2i) -> bool:
+	for unit in _shaped_targets_for(spec, source, aim):
+		if not unit.is_player:
+			return true
+	return false
+
+func _on_hand_card_pressed(card) -> void:
+	_play_card(card)
+
+func _play_card(card) -> void:
+	if not _is_player_turn() or card == null or card.data == null:
+		return
+	# Clicking the already-armed card cancels the aim.
+	if _pending_kind == Pending.AIM and _pending_card == card:
+		_clear_pending()
+		_grid_view.enter_idle()
+		_refresh_hand()
+		return
+	_clear_pending()
+	_grid_view.enter_idle()
+	var data: CardData = card.data
+	if data.unplayable:
+		_status_label.text = "%s is unplayable." % card.get_display_name()
+		return
+	var cost: int = _card_cost(card)
+	if cost > energy:
+		_status_label.text = "Not enough energy for %s." % card.get_display_name()
+		return
+	if _is_attack_card(data):
+		var spec: Dictionary = _attack_spec_for_card(data)
+		if not _attack_has_target(spec):
+			_status_label.text = "No target in range — move closer first."
+			return
+		if String(spec.get("aim", "tile")) == "tile":
+			# Aimed attack: gate the cursor to in-range tiles; the footprint rotates
+			# to face the aim and resolution hits whoever stands in it.
+			_pending_kind = Pending.AIM
+			_pending_card = card
+			_pending_aim_spec = spec
+			_grid_view.set_active_unit(_turn_manager.current_unit, _turn_manager.current_unit.move_range)
+			_grid_view.enter_aim_mode(spec)
+			_status_label.text = "Playing %s — aim within range (right-click to cancel)." % card.get_display_name()
+			_refresh_hand()
+			return
+		# Self-centred (nova) resolves on the attacker's tile; auto picks its own.
+		var shaped: Array = []
+		if String(spec.get("aim", "tile")) == "self":
+			shaped = _shaped_targets_for(spec, _turn_manager.current_unit, _turn_manager.current_unit.position)
+		_resolve_card(card, null, shaped)
 	else:
-		var dmg := DEFAULT_BASIC_ATTACK
-		if attacker.basic_attack_def.has("damage"):
-			dmg = int(attacker.basic_attack_def["damage"])
-		_apply_damage(attacker, target, dmg)
-		_status_label.text = "You strike %s for %d." % [target.unit_name, dmg]
-	_action_used = true
-	_register_player_action()
+		# Self / skill card — resolves immediately, no targeting.
+		_resolve_card(card, null, [])
+
+func _card_cost(card) -> int:
+	var c: int = card.get_cost()
+	if c < 0:
+		return energy  # X-cost: spend all remaining energy
+	return maxi(0, c + Stats.fear_card_surcharge(get_player_unit(), card))
+
+# Core play: pay energy, fire triggers, resolve effects against the footprint /
+# target, then route the card to discard / exhaust / destroy. Mirrors the
+# DeckbuilderCombat contract so the two modes behave identically.
+func _resolve_card(card, target, shaped_targets: Array = []) -> void:
+	if card == null:
+		return
+	var u = _turn_manager.current_unit
+	var data: CardData = card.data
+	energy -= _card_cost(card)
+	# Power-card triggers fire BEFORE the card's own effects (so a Power being
+	# played doesn't self-trigger), then item card_played hooks.
+	_fire_power_triggers("card_played", {"card": card})
+	_fire_item_triggers("card_played", {"card": card, "target": target})
+	# Vorpal rides the physical card instance; recover its roll and pass it down.
+	card.roll_vorpal_if_needed()
+	var vorpal: Dictionary = {}
+	if card.vorpal_type >= 0 and card.vorpal_weight > 0:
+		vorpal = {"type": card.vorpal_type, "weight": card.vorpal_weight}
+	_apply_card_or_spell_effects(_effective_card_effects(data, card.upgraded), u, target, card, vorpal, shaped_targets)
+	_fire_item_triggers("card_resolved", {"card": card, "target": target})
+	# Playing a card fires any on_play_other curse in hand (Pain: lose HP).
+	_fire_curse_triggers("on_play_other", hand, hand.size())
+	# Fear: playing a Skill steadies the player — shed 1 Fear.
+	if card.is_skill() and u.get_status(&"fear") > 0:
+		u.add_status(&"fear", -1)
+		GameLog.add("Fear -1 (Skill played).", Color(0.7, 0.9, 1.0))
+	# Route the played card: Destroy > exhaust (flag or Power) > discard.
+	if data.destroy:
+		hand.erase(card)
+		GameState.destroy_card_instance(card)
+		GameLog.add("%s is Destroyed — removed from your deck." % card.get_display_name(),
+			Color(0.9, 0.55, 0.55))
+		TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
+		_fire_power_triggers("card_exhausted", {"card": card})
+	elif data.exhaust or card.is_power():
+		exhaust_card(card)
+	else:
+		discard_card(card, true)
+	_clear_pending()
 	_grid_view.enter_idle()
 	_grid_view.notify_units_changed()
 	_refresh_initiative()
+	_refresh_hand()
 	_refresh_button_states()
 	_check_battle_end_after_effect()
 
-func _on_target_requested(target) -> void:
-	if not _is_player_turn():
+# ----------------------------------------------------------------------
+# Grid-view callbacks
+# ----------------------------------------------------------------------
+
+# A tile was clicked inside an aimed attack's range. Resolve the pending card
+# against the footprint anchored at the attacker and oriented toward `pos`.
+func _on_aim_confirmed(pos: Vector2i) -> void:
+	if not _is_player_turn() or _pending_kind != Pending.AIM or _pending_card == null:
 		return
-	match _pending_kind:
-		Pending.ABILITY:
-			_resolve_ability_against(target)
-		Pending.SPELL:
-			_resolve_spell_against(target)
-		_:
-			pass
+	var attacker = _turn_manager.current_unit
+	var card = _pending_card
+	var shaped: Array = _shaped_targets_for(_pending_aim_spec, attacker, pos)
+	_resolve_card(card, null, shaped)
 
 func _on_target_cancelled() -> void:
 	if _pending_kind == Pending.NONE:
 		return
 	_clear_pending()
 	_grid_view.enter_idle()
+	_refresh_hand()
 	_status_label.text = "Cancelled."
 
-# A tile was clicked inside an attack's range (BattleGridView gates this to the
-# in-range band). Resolve the pending ability / Attack-action against the
-# footprint anchored at the attacker and oriented toward `pos`.
-func _on_aim_confirmed(pos: Vector2i) -> void:
-	if not _is_player_turn():
-		return
-	var attacker = _turn_manager.current_unit
-	match _pending_kind:
-		Pending.ABILITY:
-			var shaped: Array = _shaped_targets_for(_pending_aim_spec, attacker, pos)
-			_resolve_ability_against(null, shaped)
-		Pending.ATTACK:
-			_resolve_attack_against_aim(pos)
-		_:
-			pass
+# Unused now (no range-less unit targeting / basic-attack mode) but the grid view
+# still wires the signals — keep harmless stubs.
+func _on_target_requested(_target) -> void:
+	pass
+
+func _on_attack_requested(_target) -> void:
+	pass
 
 func _clear_pending() -> void:
 	_pending_kind = Pending.NONE
 	_pending_card = null
-	_pending_spell = null
 	_pending_aim_spec = {}
 
-# The grid attack spec for a card, from its Attack-column archetype (with the
-# legacy melee/ranged fallback for un-annotated cards). See StrategyAttackLibrary.
-func _attack_spec_for_card(card_data) -> Dictionary:
-	return Data.strategy_attacks.resolve_for_card(card_data)
-
 # The living units standing in `spec`'s footprint when anchored at `source` and
-# aimed at `aim`. Friendly fire: every unit in the footprint is returned (both
-# sides), so a poorly-aimed blast can catch your own allies.
+# aimed at `aim`. Friendly fire: every unit in the footprint is returned.
 func _shaped_targets_for(spec: Dictionary, source, aim: Vector2i) -> Array:
 	if spec.is_empty() or source == null:
 		return []
@@ -1978,55 +1266,38 @@ func _shaped_targets_for(spec: Dictionary, source, aim: Vector2i) -> Array:
 # Effect resolution (called by EffectSystem handlers via this scene)
 # ----------------------------------------------------------------------
 
-# Public entry point used by both player flows (_apply_card_or_spell_effects)
-# and EnemyAI.execute_turn — keeps targeting + dispatch in one place.
-# `card` is the CardData driving the effects (ability/spell card or
-# null for enemy AI moves); used by Stats.apply_addons_to_effect to
-# fold compute-addon bonuses (Fishing Weight et al) into dmg values.
+# Public entry point used by EnemyAI.execute_turn (and any caller).
 func apply_effects(effects: Array, source, target, card = null, shaped_targets: Array = []) -> void:
-	_apply_card_or_spell_effects(effects, source, target, card, 0, {}, shaped_targets)
+	_apply_card_or_spell_effects(effects, source, target, card, {}, shaped_targets)
 
-# Public wrapper around the footprint resolver so EnemyAI (and any caller) can
-# ask which units an attack spec would hit when anchored at `source`, aimed at
-# `aim`. See _shaped_targets_for for the friendly-fire semantics.
+# Public wrapper so EnemyAI can ask which units an attack spec would hit.
 func shaped_targets(spec: Dictionary, source, aim: Vector2i) -> Array:
 	return _shaped_targets_for(spec, source, aim)
 
-# Status application entry point (called by EffectSystem._h_status and the shared
-# contact reactions). Shared apply (guard + Persistence + add) lives in
-# Stats.apply_status_to so all three modes agree; strategy's reaction is a grid
-# refresh so the unit's status badges update. Skip it when nothing landed.
+# Status application entry point (called by EffectSystem._h_status).
 func apply_status(target, status: StringName, stacks: int, source = null) -> void:
 	if Stats.apply_status_to(target, status, stacks, source) > 0:
 		_grid_view.notify_units_changed()
 
-func _apply_card_or_spell_effects(effects: Array, source, target, card = null, empower: int = 0, vorpal: Dictionary = {}, shaped_targets: Array = []) -> void:
-	# Replay addon: a card with Replay X resolves its full effect list X extra
-	# times. `card` is null for enemy AI moves (CardMods.replay_count(null) is
-	# 0), so only player cards / abilities / spells / weapon attacks replay.
-	# Duplicator grants Replay 1 to weapon attack cards — the strategy weapon
-	# attack (above) routes through here, so it picks the extra play up too.
-	# `vorpal` ({type, weight}) carries the played card instance's Vorpal roll,
-	# stamped onto each effect so _apply_damage can apply the per-target bonus.
-	var plays: int = 1 + CardMods.replay_count(card)
+func _apply_card_or_spell_effects(effects: Array, source, target, card = null, vorpal: Dictionary = {}, shaped_targets: Array = []) -> void:
+	# `card` is the played CardInstance (or null for enemy AI moves). The addon /
+	# boost / replay maths key off the static CardData, while the EffectSystem ctx
+	# carries the live INSTANCE so handlers that mutate a specific physical card
+	# (exhaust_self, Mummified Hand, discard/exhaust exclusion) target the right one.
+	var card_data = card.data if card is CardInstance else card
+	# Replay addon: a card with Replay X resolves its full effect list X extra times.
+	var plays: int = 1 + CardMods.replay_count(card_data)
 	for _play in plays:
 		for raw_effect in effects:
-			var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card)
-			# Fold active card boosts (Accuracy / Claw) into matching dmg/block
-			# before vorpal/empower so the bonus rides through the same math. The
-			# boost_cards effect that registers them resolves later in this same
-			# list, so a card that boosts its own id doesn't buff this play.
-			effect = Stats.apply_card_boosts(effect, card, card_boosts)
+			var effect: Dictionary = Stats.apply_addons_to_effect(raw_effect, card_data)
+			# Fold active card boosts (Accuracy / Claw) into matching dmg/block.
+			effect = Stats.apply_card_boosts(effect, card_data, card_boosts)
 			if not vorpal.is_empty():
 				effect = effect.duplicate()
 				effect["vorpal_type"] = int(vorpal["type"])
 				effect["vorpal_weight"] = int(vorpal["weight"])
-			if empower > 0:
-				effect = _tr.apply_empower(effect, empower)
-			# _resolve_effect_targets already maps self/untargeted effects to the
-			# source, so an empty list here means an enemy/AOE effect with no valid
-			# target (e.g. an aimed attack that landed on no one) — it simply does
-			# nothing rather than falling back onto the caster.
+			# An empty target list means an enemy/AOE effect that landed on no one —
+			# it simply does nothing rather than falling back onto the caster.
 			var resolved_targets: Array = _resolve_effect_targets(effect, source, target, shaped_targets)
 			for t in resolved_targets:
 				EffectSystem.apply(effect, {
@@ -2038,14 +1309,13 @@ func _apply_card_or_spell_effects(effects: Array, source, target, card = null, e
 
 func _resolve_effect_targets(effect: Dictionary, source, picked, shaped_targets: Array = []) -> Array:
 	var kind: String = str(effect.get("target", "self"))
-	# Indiscriminate enemy effects don't use the clicked target — seed a random
-	# enemy (EffectSystem re-rolls per hit from there). Blood Magic / Bouncing Flask.
+	# Indiscriminate enemy effects seed a random enemy (EffectSystem re-rolls per
+	# hit from there). Blood Magic / Bouncing Flask.
 	if bool(effect.get("indiscriminate", false)) and kind == "enemy":
 		var seed_target = pick_random_enemy(source)
 		return [seed_target] if seed_target != null else []
-	# Spatial attack: damaging enemy / AOE effects hit whoever stands in the
-	# aimed footprint (friendly fire included), rather than a single clicked
-	# enemy or every enemy globally. self / ally effects still resolve normally.
+	# Spatial attack: damaging enemy / AOE effects hit whoever stands in the aimed
+	# footprint (friendly fire included). self / ally effects resolve normally.
 	if not shaped_targets.is_empty() and (kind == "enemy" or kind == "all_enemies"):
 		return shaped_targets
 	match kind:
@@ -2070,9 +1340,6 @@ func _resolve_effect_targets(effect: Dictionary, source, picked, shaped_targets:
 
 # --- EffectSystem callbacks (named exactly as deckbuilder combat). ---
 
-# Random living enemy unit relative to `source` (for indiscriminate effects —
-# Bouncing Flask, Blood Magic). Lets EffectSystem re-roll a target per hit in
-# tactical combat the same way it does on the deckbuilder enemy list.
 func pick_random_enemy(source):
 	var foes: Array = []
 	for u in _units:
@@ -2090,9 +1357,6 @@ func deal_damage(source, target, value: int, effect: Dictionary = {}) -> void:
 		raw = int(round(target.max_hp * float(effect.get("value", 0))))
 	_apply_damage(source, target, raw, effect)
 
-# Pops a floating number over a unit (red for HP lost, green for HP healed),
-# parented to the grid view at the unit's tile centre (units carry a Vector2i
-# grid position).
 func _float_number(target, amount: int, color: Color = FloatingNumbers.DAMAGE_COLOR) -> void:
 	if amount <= 0 or _grid_view == null or not _grid_view.is_inside_tree():
 		return
@@ -2104,7 +1368,6 @@ func _float_number(target, amount: int, color: Color = FloatingNumbers.DAMAGE_CO
 		target.position.y * ts + ts * 0.5)
 	FloatingNumbers.spawn(_grid_view, center, amount, color)
 
-# Floating text ("MISS", etc.) over a unit, reusing the tile-centre math above.
 func _float_text(target, text: String, color: Color = FloatingNumbers.DAMAGE_COLOR) -> void:
 	if _grid_view == null or not _grid_view.is_inside_tree():
 		return
@@ -2119,10 +1382,8 @@ func _float_text(target, text: String, color: Color = FloatingNumbers.DAMAGE_COL
 func gain_block(target, value: int) -> void:
 	if target == null:
 		return
-	# Shared block math: Defense status adds, Frail cuts gained block 25%
-	# (Stats.resolve_block) — same rule as deckbuilder/action so Defense
-	# works in every mode.
 	target.block = maxi(0, target.block) + Stats.resolve_block(int(value), target, true)
+	_grid_view.notify_units_changed()
 
 func heal(target, value: int) -> void:
 	if target == null:
@@ -2131,8 +1392,7 @@ func heal(target, value: int) -> void:
 	target.hp = mini(target.max_hp, target.hp + int(value))
 	_float_number(target, target.hp - before, FloatingNumbers.HEAL_COLOR)
 
-# EffectSystem callback for boost_cards (Accuracy / Claw). Banks a persistent
-# in-combat modifier; _apply_card_or_spell_effects folds it into matching plays.
+# EffectSystem callback for boost_cards (Accuracy / Claw).
 func add_card_boost(boost: Dictionary) -> void:
 	card_boosts.append(boost)
 	GameLog.add("Active boost: %s." % _boost_label(boost), Color(0.7, 1.0, 0.7))
@@ -2147,14 +1407,138 @@ func _boost_label(boost: Dictionary) -> String:
 		who = "id=%s" % boost.match_id
 	return "%s %s +%d" % [who, boost.get("stat", "dmg"), int(boost.get("value", 0))]
 
-# EffectSystem callback for conjure (Blade Dance, Cloak and Dagger, Anger).
-# Strategy has no draw/hand/discard piles, so a conjure adds a TEMPORARY card
-# that lives only for this combat: a fresh CardInstance appended to the loadout's
-# playable set. Its uses ride on the instance (CardInstance.uses) so it never
-# touches the run-scope deck. Destination is ignored (no piles to distinguish).
-func conjure_card(card_id: StringName, _destination: String, count: int, source_card, force_upgraded: bool = false) -> void:
-	if _loadout == null:
+# EffectSystem callback for the `trigger` effect (After Image). Registers a
+# persistent in-combat listener; _fire_power_triggers dispatches it.
+func register_trigger(on: String, inner_effect: Dictionary) -> void:
+	if on == "" or inner_effect.is_empty():
 		return
+	power_triggers.append({"on": on, "effect": inner_effect})
+	GameLog.add("Trigger armed on %s." % on, Color(0.7, 1.0, 0.7))
+
+func _fire_power_triggers(event_name: String, ctx_extras: Dictionary = {}) -> void:
+	if power_triggers.is_empty():
+		return
+	var p = get_player_unit()
+	for trig in power_triggers:
+		if String(trig.get("on", "")) != event_name:
+			continue
+		var inner: Dictionary = trig.get("effect", {})
+		if inner.is_empty():
+			continue
+		EffectSystem.apply(inner, {
+			"source": p, "target": p, "scene": self, "card": ctx_extras.get("card"),
+		})
+
+# --- Card piles (real draw / discard / exhaust now) -------------------
+
+func draw_cards(n: int) -> void:
+	for _i in range(n):
+		if draw_pile.is_empty():
+			if discard_pile.is_empty():
+				break
+			while not discard_pile.is_empty():
+				draw_pile.append(discard_pile.pop_back())
+			_shuffle(draw_pile)
+		var c = draw_pile.pop_back()
+		hand.append(c)
+		TriggerBus.emit_signal("card_drawn", {"card": c, "scene": self})
+		_fire_power_triggers("card_drawn", {"card": c})
+	_refresh_hand()
+
+func discard_card(card, from_play: bool = false) -> void:
+	hand.erase(card)
+	# Sly: resolve effects the moment it would be discarded (unless it just
+	# resolved AS a normal play — from_play skips the double-fire).
+	if not from_play and card != null and card.data != null and card.data.sly:
+		_resolve_sly_on_discard(card)
+	discard_pile.append(card)
+	TriggerBus.emit_signal("card_discarded", {"card": card, "scene": self})
+	_fire_power_triggers("card_discarded", {"card": card})
+	_refresh_hand()
+
+func _resolve_sly_on_discard(card) -> void:
+	if card == null:
+		return
+	var tgt = pick_random_enemy(get_player_unit())
+	GameLog.add("%s is Sly — it plays as it's discarded!" % card.get_display_name(),
+		Color(0.8, 1.0, 0.8))
+	_apply_card_or_spell_effects(_effective_card_effects(card.data, card.upgraded), get_player_unit(), tgt, card)
+	_check_battle_end_after_effect()
+
+func exhaust_card(card) -> void:
+	hand.erase(card)
+	exhaust_pile.append(card)
+	TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
+	_fire_power_triggers("card_exhausted", {"card": card})
+	_refresh_hand()
+
+# Discard N cards from hand (random pick; excludes the playing card). All-Out
+# Attack / Acrobatics.
+func discard_cards(n: int, source_card = null, _random: bool = false) -> void:
+	for _i in range(n):
+		var pool: Array = []
+		for c in hand:
+			if c != source_card:
+				pool.append(c)
+		if pool.is_empty():
+			break
+		discard_card(pool[randi() % pool.size()])
+	_refresh_hand()
+
+# Exhaust N cards from hand (random; excludes the playing card). Burning Pact.
+func exhaust_cards(n: int, source_card = null, _random: bool = false) -> void:
+	for _i in range(n):
+		var pool: Array = []
+		for c in hand:
+			if c != source_card:
+				pool.append(c)
+		if pool.is_empty():
+			break
+		exhaust_card(pool[randi() % pool.size()])
+	_refresh_hand()
+
+# Move cards between piles, no copies. All for One: recall 0-cost cards from the
+# discard pile to hand.
+func recall_cards(from_pile: String, to_pile: String, filter: Dictionary) -> void:
+	var src: Array = _pile_for(from_pile)
+	var dst: Array = _pile_for(to_pile)
+	if src == null or dst == null:
+		return
+	for c in src.duplicate():
+		if filter.has("cost") and (c == null or c.get_cost() != int(filter["cost"])):
+			continue
+		src.erase(c)
+		dst.append(c)
+	_refresh_hand()
+
+func _pile_for(name: String) -> Array:
+	match name:
+		"hand": return hand
+		"draw": return draw_pile
+		"discard": return discard_pile
+		"exhaust": return exhaust_pile
+		_: return hand
+
+# Upgrade cards in hand (Armaments). `value` is an int count or "all".
+func upgrade_hand_cards(value, source_card = null, _random: bool = false) -> void:
+	var eligible: Array = []
+	for c in hand:
+		if c != source_card and c.data != null and c.data.can_upgrade and not c.upgraded:
+			eligible.append(c)
+	if str(value) == "all":
+		for c in eligible:
+			c.upgraded = true
+			GameLog.add("Upgraded %s." % c.get_display_name(), Color(0.6, 0.9, 1.0))
+	else:
+		var n: int = int(value)
+		for i in range(mini(n, eligible.size())):
+			eligible[i].upgraded = true
+			GameLog.add("Upgraded %s." % eligible[i].get_display_name(), Color(0.6, 0.9, 1.0))
+	_refresh_hand()
+
+# Conjure (Blade Dance, Cloak and Dagger, Anger, Pride) — drop `count` copies of
+# `card_id` into the named pile (real piles now).
+func conjure_card(card_id: StringName, destination: String, count: int, source_card, force_upgraded: bool = false) -> void:
 	var data: CardData = null
 	var upgraded: bool = false
 	if card_id == &"self":
@@ -2176,65 +1560,52 @@ func conjure_card(card_id: StringName, _destination: String, count: int, source_
 	if data == null:
 		push_warning("conjure_card (strategy): unknown card id '%s'" % card_id)
 		return
-	var made: int = 0
 	for _i in range(maxi(1, count)):
 		var copy: CardInstance = CardInstance.from_data(data, upgraded)
-		_loadout.cards.append(copy)
-		made += 1
-	if made > 0:
-		GameLog.add("Conjured %d %s (this combat)." % [made, data.display_name],
-			Color(0.7, 1.0, 0.7))
-		_refresh_button_states()
+		match destination:
+			"hand":
+				hand.append(copy)
+			# draw_cards pops from the BACK of the pile, so appending puts the copy
+			# on TOP (drawn next) — what "draw_top" (Pride) wants.
+			"draw", "draw_top":
+				draw_pile.append(copy)
+			"discard":
+				discard_pile.append(copy)
+			_:
+				discard_pile.append(copy)
+	# A plain "draw" conjure shuffles in; "draw_top" must stay on top, unshuffled.
+	if destination == "draw":
+		_shuffle(draw_pile)
+	GameLog.add("Conjured %d %s." % [maxi(1, count), data.display_name], Color(0.7, 1.0, 0.7))
+	_refresh_hand()
 
 func gain_energy(n: int) -> void:
-	# Energy is empower charge: it banks (across turns within the combat)
-	# until the next card play consumes ALL of it as a bonus (+dmg/+block/
-	# +status stacks). It grants no extra plays.
-	if n <= 0:
+	if n == 0:
 		return
-	_energy_charge += n
-	_status_label.text = "Energy +%d (charge %d). Empowers your next card." % [n, _energy_charge]
+	energy += n
+	_status_label.text = "Energy +%d (now %d)." % [n, energy]
+	_refresh_hand()
 	_refresh_button_states()
 
 func lose_energy(n: int) -> void:
-	# Symmetric to gain_energy: drains banked empower charge, floored at 0.
 	if n <= 0:
 		return
-	_energy_charge = maxi(0, _energy_charge - n)
+	energy = maxi(0, energy - n)
+	_refresh_hand()
 	_refresh_button_states()
 
-func draw_cards(n: int) -> void:
-	# Strategy mode has no hand to draw into. Per the translator, each "draw"
-	# event RECHARGES _tr.draw_recharges_per_point use(s) on a slotted card —
-	# restoring the card with the fewest current uses first so it lands
-	# meaningfully. Stops if every slotted card is already at max.
-	if _loadout == null or n <= 0:
+# Mummified Hand: a random OTHER card in hand becomes free this turn.
+func make_random_hand_card_free(played_card = null) -> void:
+	var cands: Array = []
+	for c in hand:
+		if c != played_card and c.get_cost() > 0:
+			cands.append(c)
+	if cands.is_empty():
 		return
-	var restores: int = n * _tr.draw_recharges_per_point
-	var restored_any: bool = false
-	for _i in range(restores):
-		var best_card = null
-		var best_uses: int = 1 << 30
-		for card in _loadout.cards:
-			var uses: int = GameState.card_uses_remaining(card)
-			if uses < GameState.card_uses_max(card) and uses < best_uses:
-				best_uses = uses
-				best_card = card
-		if best_card == null:
-			break
-		if GameState.recharge_card_use_inst(best_card, 1) > 0:
-			restored_any = true
-	if restored_any:
-		_status_label.text = "Recharged a card use."
-		_refresh_button_states()
-
-func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
-	# No hand to discard. Strategy treats discard as a tempo cost: it spends
-	# _tr.discard_plays_per_point card play(s) this turn, floored at 0.
-	if n <= 0:
-		return
-	_card_plays_remaining = maxi(0, _card_plays_remaining - n * _tr.discard_plays_per_point)
-	_refresh_button_states()
+	var pick = cands[randi() % cands.size()]
+	pick.temp_cost_override = 0
+	_status_label.text = "Mummified Hand: %s is free this turn!" % pick.get_display_name()
+	_refresh_hand()
 
 # ----------------------------------------------------------------------
 # Damage / death helpers
@@ -2243,27 +1614,19 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> void:
 	if target == null or raw_dmg <= 0:
 		return
-	# A player melee/ranged swing is an "attack" for streak items (Dead Eye):
-	# fold the active streak bonus in before resolving, same as the other modes.
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
 	var is_player_attack: bool = (dmg_type == "melee" or dmg_type == "ranged") \
 		and source != null and "is_player" in source and source.is_player \
 		and not target.is_player
 	if is_player_attack:
 		raw_dmg += GameState.streak_attack_bonus(target)
-	# Vorpal: flat bonus when this swing's bound mode (Strategy) + the target's
-	# weight match the weapon's roll. Pre-resolve so Power/Vulnerable layer on top.
 	raw_dmg += Stats.vorpal_damage_bonus(effect, target, Stats.Mode.STRATEGY)
-	# Canonical damage math in Stats.resolve_damage (Power/Weak, Vulnerable,
-	# Blind, Dodge, block soak) so strategy matches deckbuilder/action. The
-	# death / Infuse / loot tail below stays strategy-specific.
 	var was_alive: bool = target.is_alive()
 	var res := Stats.resolve_damage(source, target, raw_dmg, effect, Stats.Mode.STRATEGY)
 	if res.missed:
 		var who: String = "You" if source.is_player else source.display_name
 		GameLog.add("%s swings blind and misses!" % who, Color(0.85, 0.85, 0.55))
 		_float_text(target, "MISS", FloatingNumbers.MISS_COLOR)
-		# A whiff breaks Dead Eye's streak.
 		if is_player_attack:
 			TriggerBus.emit_signal("attack_missed",
 				{"source": source, "target": target, "scene": self})
@@ -2273,41 +1636,28 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		return
 	target.hp = maxi(0, target.hp - int(res.hp_loss))
 	_float_number(target, int(res.hp_loss))
-	# Lifesteal: the attacker heals for the unblocked HP it just dealt. Self-hits
-	# and reflected reactions (no_reaction) never lifesteal.
 	if bool(effect.get("lifesteal", false)) and source != null and source != target \
 			and not bool(effect.get("no_reaction", false)) and int(res.hp_loss) > 0:
 		heal(source, int(res.hp_loss))
-	# Item reactions to the player taking damage (Prayer Card, Prayer Beads).
 	if target.is_player and int(res.hp_loss) > 0:
 		_fire_item_triggers("damage_taken", {"target": target})
-	# The attack connected (block counts). Dead Eye's streak grows here, skipped
-	# on a killing blow (the streak against a corpse is never read).
 	if is_player_attack and target.is_alive():
 		TriggerBus.emit_signal("attack_landed",
 			{"source": source, "target": target, "scene": self})
 		_fire_item_triggers("attack_landed", {"target": target})
-	# Element "Effect on Attack" (Elements registry): a surviving target struck by
-	# an elemental hit picks up the element's on-hit status.
 	if target.is_alive():
 		var oh: Dictionary = Elements.on_hit_status(effect.get("element", ""), target, null)
 		if not oh.is_empty():
 			apply_status(target, StringName(oh["status"]), int(oh["stacks"]), source)
 	if was_alive and not target.is_alive() and not target.is_player:
-		# Infuse: strategy mirrors deckbuilder — every killing blow with
-		# infuse > 0 grants the player Max HP equal to the stack count.
 		var infuse_stacks: int = int(effect.get("infuse", 0))
 		if infuse_stacks > 0 and source != null and "is_player" in source and source.is_player:
 			GameState.set_max_hp(GameState.max_hp + infuse_stacks, false)
-		# Item procs on a kill (Charm of the Vampire, …).
 		_fire_item_triggers("enemy_killed")
-		# Phase 8: enemy death -> roll loot onto the tile it fell on.
 		_drop_enemy_loot(target)
 
-# Raw HP loss from a damage-over-time status (Bleed, Leeches). Bypasses block /
-# Weak / Vulnerable and never re-triggers reactions — matches the
-# deckbuilder/action DoT contract. Called by Stats.tick_actor_statuses at each
-# unit's turn end (see _on_unit_turn_ended).
+# Raw HP loss from a damage-over-time status (Bleed, Leeches) or a curse — bypasses
+# block / Weak / Vulnerable and never re-triggers reactions.
 func apply_dot(target, amount: int, _source_name: String) -> void:
 	if target == null or not target.is_alive() or amount <= 0:
 		return
@@ -2317,35 +1667,12 @@ func apply_dot(target, amount: int, _source_name: String) -> void:
 		_fire_item_triggers("enemy_killed")
 		_drop_enemy_loot(target)
 
-# Leeches drain -> player heal (Jar of Leeches). Called by
-# Stats.tick_actor_statuses when a leeched enemy bleeds HP into the player.
 func leech_to_player(amount: int) -> void:
 	if amount <= 0:
 		return
 	var p = get_player_unit()
 	if p != null:
 		heal(p, amount)
-
-# Mummified Hand (strategy analogue of "a card becomes free"): playing a Power
-# ability marks a random OTHER slotted ability free to play this turn — it
-# costs no per-turn play, though it still spends one of its uses. `played_card`
-# is the power that triggered this and is excluded from the pick.
-func make_random_hand_card_free(played_card = null) -> void:
-	if _loadout == null:
-		return
-	# `played_card` is the CardData that triggered this; exclude slotted copies
-	# of it from the free pick (with duplicate copies, all copies are excluded —
-	# an acceptable edge for a rare item interaction).
-	var played_id: String = String(played_card.id) if played_card != null and ("id" in played_card) else ""
-	var candidates: Array = []
-	for c in _loadout.cards:
-		if c != null and c.data != null and String(c.data.id) != played_id:
-			candidates.append(c)
-	if candidates.is_empty():
-		return
-	var pick = candidates[randi() % candidates.size()]
-	_free_ability_card = pick
-	_status_label.text = "Mummified Hand: %s is free to play this turn!" % pick.data.display_name
 
 func _drop_enemy_loot(unit) -> void:
 	if _battle_map == null:
@@ -2370,15 +1697,11 @@ func _drop_enemy_loot(unit) -> void:
 	_grid_view.notify_units_changed()
 
 func _check_battle_end_after_effect() -> void:
-	# Spells/abilities can finish a fight; let the engine wrap up
-	# immediately rather than waiting for End Turn.
 	if _turn_manager != null:
 		_turn_manager.check_battle_end_now()
 
-# Register handler for the custom max-HP-fraction damage type so SPELLS_DATA
-# spells (Abyss, Infinity) work without touching the global registry.
-# Called once per BattleView instance — safe because EffectSystem.register
-# is idempotent (last writer wins, and we always write the same callable).
+# Register handler for the custom max-HP-fraction damage type (SPELLS_DATA
+# spells) — idempotent, mirrors the deckbuilder.
 func _enter_tree() -> void:
 	EffectSystem.register("dmg_fraction_max_hp", _h_dmg_fraction_max_hp)
 
@@ -2390,24 +1713,8 @@ func _h_dmg_fraction_max_hp(effect: Dictionary, ctx: Dictionary) -> void:
 	deal_damage(ctx.get("source"), target, raw, effect)
 
 # ----------------------------------------------------------------------
-# Picker helpers
+# Items: the active-item picker
 # ----------------------------------------------------------------------
-
-func _picker_note(text: String) -> Control:
-	var l := Label.new()
-	l.text = text
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD
-	l.add_theme_font_size_override("font_size", 13)
-	l.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
-	return l
-
-func _close_ability_dialog() -> void:
-	_ability_dialog.visible = false
-
-func _close_spell_dialog() -> void:
-	_spell_dialog.visible = false
-
-# --- Items: the active-item action button + picker -------------------------
 
 func _on_item_button() -> void:
 	if not _is_player_turn():
@@ -2416,8 +1723,6 @@ func _on_item_button() -> void:
 	_grid_view.enter_idle()
 	_populate_item_picker()
 	_item_dialog.visible = true
-	_ability_dialog.visible = false
-	_spell_dialog.visible = false
 
 func _populate_item_picker() -> void:
 	for child in _item_list_container.get_children():
@@ -2458,6 +1763,7 @@ func _on_pick_item(item) -> void:
 	if GameState.use_item(item):
 		_status_label.text = "Used %s." % item.display_name
 		_populate_item_picker()
+		_refresh_hand()
 		_refresh_button_states()
 	else:
 		_status_label.text = "%s isn't ready yet." % item.display_name
@@ -2470,6 +1776,14 @@ func _has_usable_item() -> bool:
 		if item is ItemData and GameState.can_fire_item(item):
 			return true
 	return false
+
+func _picker_note(text: String) -> Control:
+	var l := Label.new()
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+	return l
 
 # ----------------------------------------------------------------------
 # State refresh
@@ -2484,10 +1798,6 @@ func _is_player_turn() -> bool:
 
 func _set_player_buttons_enabled(enabled: bool) -> void:
 	_btn_move.disabled = not enabled
-	_btn_attack.disabled = not enabled
-	_btn_defend.disabled = not enabled
-	_btn_ability.disabled = not enabled
-	_btn_spell.disabled = not enabled
 	_btn_dash.disabled = not enabled
 	_btn_item.disabled = not enabled
 	_btn_end.disabled = not enabled
@@ -2498,27 +1808,10 @@ func _refresh_button_states() -> void:
 	if not _is_player_turn():
 		return
 	var u = _turn_manager.current_unit
-	_btn_move.disabled = _move_used or _move_remaining <= 0
-	_btn_attack.disabled = _action_used
-	_btn_defend.disabled = _action_used
-	# Cards button: live while plays remain and at least one slotted card
-	# still has uses. Per-card use/affordability is gated per-row in
-	# `_populate_ability_picker`.
-	_btn_ability.disabled = (_card_plays_remaining <= 0 and _free_ability_card == null \
-		and not _has_free_play_available()) \
-		or not _has_playable_card()
-	_btn_spell.disabled = _spellbook == null or _spellbook.spells.is_empty()
+	_btn_move.disabled = energy <= 0
 	_btn_dash.disabled = not u.dash_available
-	# Items don't cost the turn's move/action budget — live whenever one is ready.
 	_btn_item.disabled = not _has_usable_item()
-
-func _has_playable_card() -> bool:
-	if _loadout == null:
-		return false
-	for card in _loadout.cards:
-		if GameState.card_uses_remaining(card) > 0:
-			return true
-	return false
+	_btn_end.disabled = false
 
 func _refresh_initiative() -> void:
 	if _turn_manager == null:
@@ -2529,15 +1822,12 @@ func _refresh_initiative() -> void:
 	for u in _turn_manager.units:
 		var marker = ">" if u == cur else " "
 		var dead = "" if u.is_alive() else " [DEAD]"
-		var mana = ""
-		if u.is_player:
-			mana = "  mana %d/%d" % [u.mana, u.max_mana]
 		var block = ""
 		if u.block > 0:
 			block = "  blk %d" % u.block
-		lines.append("%s %-8s hp %d/%d  mv %d  ctr %d%s%s%s" % [
+		lines.append("%s %-8s hp %d/%d  mv %d  ctr %d%s%s" % [
 			marker, u.unit_name, u.hp, u.max_hp, u.move_range,
-			u.act_counter, mana, block, dead,
+			u.act_counter, block, dead,
 		])
 		if u.is_alive() and not u.is_player and not u.intent_telegraph.is_empty():
 			var tel: Dictionary = u.intent_telegraph
@@ -2555,15 +1845,11 @@ func _format_info(_room_data, encounter: Array) -> String:
 		for i in range(encounter.size()):
 			if i > 0: enc_str += ", "
 			enc_str += str(encounter[i])
-
 	var size_name := "?"
 	var dims := "?"
 	if _battle_map != null:
 		size_name = ["S", "M", "L"][_battle_map.size_class]
 		dims = "%dx%d" % [_battle_map.width, _battle_map.height]
-
-	var card_count: int = _loadout.cards.size() if _loadout != null else 0
-	var spell_count: int = _spellbook.spells.size() if _spellbook != null else 0
-	return (
-		"Encounter: %s   |   Field: %s (%s)   |   Cards slotted: %d/%d   |   Spellbook: %d"
-	) % [enc_str, size_name, dims, card_count, CombatLoadout.MAX_SLOTS, spell_count]
+	return "Encounter: %s   |   Field: %s (%s)   |   Deck: %d cards" % [
+		enc_str, size_name, dims, GameState.deck.size(),
+	]

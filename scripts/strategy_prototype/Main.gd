@@ -123,9 +123,9 @@ func _load_floor() -> void:
 
 	if StrategyState.player == null:
 		# HP/MaxHP come from GameState so the strategy floor shares vitals
-		# with the deckbuilder/action sections. Attack/defense are still
-		# strategy-local since the tactical combat layer uses its own
-		# basic-attack constants (see BattleView.DEFAULT_BASIC_ATTACK).
+		# with the deckbuilder/action sections. Tactical combat is now a grid
+		# deckbuilder: the player fights with the run deck (Strike/Defend are
+		# ordinary cards), so there are no strategy-local basic-attack constants.
 		var player = StrategyEntity.new()
 		player.grid_pos = start
 		player.glyph = GameState.player_initial()

@@ -227,6 +227,18 @@ Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
 
+- **Strategy combat → grid deckbuilder** — the tactical mode now plays like the
+  deckbuilder on a grid. Combat starts immediately (no pre-combat loadout); your
+  whole run deck shuffles into a draw pile and you draw a fresh hand each turn
+  with **energy** (`GameState.max_energy`). **Movement costs energy** — each move
+  spends 1 energy to walk up to your Speed-stat tiles, repeatable. The basic
+  attack is just a **Strike card**; attacks are **in-range only** (footprint
+  aiming via `StrategyAttackLibrary`) so positioning matters, and AOE hits only
+  units inside the footprint. **Block** resets at the start of your turn, **Dash**
+  is a once-per-combat bonus turn, and **curse cards** clog the hand and fire
+  their eot / on_play_other triggers — all matching the deckbuilder. Drops the
+  old loadout, weapon-slot, per-run card-uses, empower-charge translation, and
+  the in-combat Spellbook/mana (shelved). See `scripts/strategy/combat/BattleView.gd`.
 - **Status-effect system + Fear** — a mode-aware status system wired across
   deckbuilder, action, and strategy combat, with **Fear** as the first fully
   designed status (`docs/fear-status-design.md`). `statusesnew`/`addonsnew`
