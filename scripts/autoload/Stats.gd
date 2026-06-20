@@ -27,6 +27,7 @@ const DECAY_STATUSES: Array[StringName] = [
 	&"burn", &"poison", &"regeneration",
 	&"dodge",   # dodge decays on use too; the 1/turn safety mirrors JS
 	&"blind",
+	&"confused",
 ]
 
 # Statuses that GROW by 1 at end of turn (Bleed) in STRATEGY mode. Mirror of
@@ -87,6 +88,7 @@ const STATUS_ICONS := {
 	&"curl_up": "CurlUp.png",
 	&"ritual": "Ritual.png",
 	&"fading": "Fading.png",
+	&"confused": "Confused.png",
 	&"split": "Split.png",
 }
 
@@ -869,6 +871,10 @@ func tick_actor_statuses(actor, scene, tick_bleed: bool = true) -> void:
 	# _on_damage_taken_tally), so clear the spent flag at the turn boundary.
 	if "curl_up_used_this_turn" in actor:
 		actor.curl_up_used_this_turn = false
+	# Per-turn damage scaling (Transient): count this actor's completed turns so
+	# `dmg:N:per_turn=M` ramps by M each turn (see EffectSystem._h_dmg).
+	if "turns_taken" in actor:
+		actor.turns_taken += 1
 	# Fading: a turn-boundary death countdown ("dies in X turns"). Tick down by
 	# one each turn; when it reaches zero the actor dies. Routed through apply_dot
 	# for its current HP so every mode's death handling (views, kill triggers)

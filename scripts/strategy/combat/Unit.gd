@@ -58,6 +58,10 @@ var determined_rolls: Dictionary = {}
 # Curl Up: cleared each turn so the gain-block-on-first-hit fires once per turn.
 var curl_up_used_this_turn: bool = false
 
+# Turns this unit has completed (bumped at its turn boundary by Stats). Drives
+# per-turn damage scaling (Transient's "+10 each turn").
+var turns_taken: int = 0
+
 # Split (status): what this unit splits into + how many copies (0 = no split).
 var split_into: StringName = &""
 var split_count: int = 0

@@ -418,6 +418,10 @@ func _start_player_turn() -> void:
 		# Ambush carryover adjusts the opening hand (+2 ambush / -2 ambushed).
 		draw_count += _ambush_draw_delta
 	draw_cards(maxi(0, draw_count))
+	# Confused (Snecko): re-randomize every hand card's cost each turn. Runs after
+	# the draw so retained cards get a fresh roll too. The hand cost display reads
+	# get_cost(), so the randomized number shows and is what play charges.
+	_apply_confused_to_hand()
 	TriggerBus.emit_signal("turn_started", {"turn": turn, "scene": self})
 	_fire_item_triggers("turn_started")
 	_fire_power_triggers("turn_started")
@@ -750,6 +754,19 @@ func _decay_statuses(actor: CombatActor) -> void:
 # own context-free cost (used by shop / rest / collection).
 func _card_cost(card: CardInstance) -> int:
 	return card.get_cost() + Stats.fear_card_surcharge(player, card)
+
+# Confused (Snecko): true while the player carries the status.
+func _is_confused() -> bool:
+	return player != null and player.get_status(&"confused") > 0
+
+# Re-roll every hand card's cost to a random 0..max_energy value while Confused.
+# A no-op otherwise. temp_cost_override is the same absolute-override slot the
+# hand/play sites already honour, so the randomized cost is what's shown and paid.
+func _apply_confused_to_hand() -> void:
+	if not _is_confused():
+		return
+	for c in hand:
+		c.temp_cost_override = _rng.randi_range(0, max_energy)
 
 func _try_play_card(card: CardInstance) -> void:
 	if phase != Phase.PLAYER:
@@ -1495,6 +1512,10 @@ func draw_cards(n: int) -> void:
 			_shuffle(draw_pile)
 		var c: CardInstance = draw_pile.pop_back()
 		hand.append(c)
+		# Confused: a card's cost is rolled the moment it's drawn (covers mid-turn
+		# draws from card effects, not just the turn-start hand).
+		if _is_confused():
+			c.temp_cost_override = _rng.randi_range(0, max_energy)
 		TriggerBus.emit_signal("card_drawn", {"card": c, "scene": self})
 		_fire_power_triggers("card_drawn", {"card": c})
 	_refresh_ui()

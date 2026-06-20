@@ -78,6 +78,14 @@ STATUS_ROWS = {
         "Debuff", "Yes", "N/A", "Down by 1 at end of turn", "All", "Negative",
         "Fading", "N/A", "Yes", "N/A",
     ],
+    "Confused": [
+        "Confused",
+        "Each card's energy cost is randomized between 0 and your max energy "
+        "each turn",
+        "on_turn_start:randomize_card_costs:0:max_energy",
+        "Debuff", "Yes", "N/A", "Down by 1 at end of turn", "Player", "Negative",
+        "Confused", "N/A", "Yes", "N/A",
+    ],
 }
 
 

@@ -146,6 +146,7 @@ func test_from_enemy_stamps_split_marker() -> void:
 class FakeScene:
 	extends RefCounted
 	var dot_calls: Array = []
+	var last_damage: int = -1
 	func apply_dot(actor, amount: int, source_name: String) -> void:
 		dot_calls.append({"actor": actor, "amount": amount, "src": source_name})
 		actor.hp = maxi(0, actor.hp - amount)
@@ -153,6 +154,8 @@ class FakeScene:
 			actor.dead = true
 	func heal(actor, amount: int) -> void:
 		actor.hp = mini(actor.max_hp, actor.hp + amount)
+	func deal_damage(_source, _target, amount: int, _effect: Dictionary) -> void:
+		last_damage = amount
 
 func test_ritual_gains_power_each_turn() -> void:
 	var a := _actor()
@@ -198,3 +201,24 @@ func test_from_enemy_rolls_determined_curl_up() -> void:
 	rng.seed = 99
 	var a := CombatActor.from_enemy(d, rng)
 	assert_between(a.get_status(&"curl_up"), 3, 7, "Determined Curl Up rolled in range at spawn")
+
+# --- Per-turn damage scaling ---------------------------------------------
+
+func test_turns_taken_increments_each_turn() -> void:
+	var a := _actor()
+	var scene := FakeScene.new()
+	assert_eq(a.turns_taken, 0, "Starts at zero (first attack unscaled)")
+	Stats.tick_actor_statuses(a, scene)
+	assert_eq(a.turns_taken, 1, "Bumped at the turn boundary")
+
+func test_per_turn_scaling_adds_per_completed_turn() -> void:
+	var src := _actor()
+	var scene := FakeScene.new()
+	var effect := {"type": "dmg", "value": 30, "per_turn": 10, "target": "player"}
+	# Turn 1 (0 turns taken): base only.
+	EffectSystem.apply(effect, {"source": src, "target": _actor(), "scene": scene})
+	assert_eq(scene.last_damage, 30, "First attack is unscaled")
+	# After two completed turns: +10 each.
+	src.turns_taken = 2
+	EffectSystem.apply(effect, {"source": src, "target": _actor(), "scene": scene})
+	assert_eq(scene.last_damage, 50, "Scales +per_turn for each completed turn")

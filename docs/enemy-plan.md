@@ -173,6 +173,14 @@ statuses where the legacy ability column lists them.
   turn boundary (Louse).
 - **Fading** — turn-end countdown; the actor dies (via `apply_dot`) at zero
   (Transient). Carried as a starting status, not in DECAY_STATUSES.
+- **Confused** — randomizes each card's energy cost to 0..max-energy every turn,
+  in all three modes (Snecko). Deckbuilder/strategy roll `temp_cost_override` on
+  draw + each turn; action rolls a per-card cost that drives the cooldown and is
+  shown on the card art while it's cooling down. In DECAY_STATUSES.
+- **Per-turn damage scaling** — `dmg:N:per_turn=M` adds M per completed source
+  turn (`turns_taken`, bumped at the turn boundary), resolved in `_h_dmg`
+  (Transient's "+10/turn"). Deckbuilder + strategy; action resolves dmg on its
+  own path.
 
-Still inert pending future work: Confused, `per_turn` damage scaling (Transient's
-+10/turn), and the Slimed status-card pressure beyond the basic conjure.
+Still inert pending future work: the Slimed status-card pressure beyond the basic
+conjure.

@@ -48,6 +48,10 @@ var damage_taken_this_turn: int = 0
 # Curl Up: cleared each turn so the gain-block-on-first-hit fires once per turn.
 var curl_up_used_this_turn: bool = false
 
+# Turns this actor has completed (bumped at its turn boundary by Stats). Drives
+# per-turn damage scaling (Transient's "+10 each turn").
+var turns_taken: int = 0
+
 # Determined (addon): values rolled ONCE at first use and fixed for the rest of
 # combat. key -> rolled int. Lives on the actor so a fresh CombatActor each
 # combat re-rolls. Populated/read by Stats.resolve_determined.

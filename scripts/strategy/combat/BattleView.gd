@@ -743,6 +743,8 @@ func _on_unit_turn_started(unit) -> void:
 		if _player_turn_count == 1:
 			draw_count += Stats.deckbuilder_bonus_draws_turn_1()
 		draw_cards(maxi(0, draw_count))
+		# Confused: re-randomize the whole hand each turn (retained cards included).
+		_apply_confused_to_hand()
 		TriggerBus.emit_signal("turn_started", {"turn": _player_turn_count, "scene": self})
 		_fire_item_triggers("turn_started")
 		_fire_power_triggers("turn_started")
@@ -1494,9 +1496,26 @@ func draw_cards(n: int) -> void:
 			_shuffle(draw_pile)
 		var c = draw_pile.pop_back()
 		hand.append(c)
+		# Confused: roll the drawn card's cost (covers mid-turn draws).
+		if _is_confused() and c != null:
+			c.temp_cost_override = randi() % (maxi(0, max_energy) + 1)
 		TriggerBus.emit_signal("card_drawn", {"card": c, "scene": self})
 		_fire_power_triggers("card_drawn", {"card": c})
 	_refresh_hand()
+
+# Confused (Snecko): true while the player unit carries the status.
+func _is_confused() -> bool:
+	var p = get_player_unit()
+	return p != null and p.get_status(&"confused") > 0
+
+# Re-roll every hand card's cost to a random 0..max_energy while Confused; a no-op
+# otherwise. Same temp_cost_override slot the hand/play sites already honour.
+func _apply_confused_to_hand() -> void:
+	if not _is_confused():
+		return
+	for c in hand:
+		if c != null:
+			c.temp_cost_override = randi() % (maxi(0, max_energy) + 1)
 
 func discard_card(card, from_play: bool = false) -> void:
 	hand.erase(card)

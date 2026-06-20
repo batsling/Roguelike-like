@@ -173,6 +173,14 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 		dmg_value = _dyn_amount(effect, "value", "value_from", "value_mult")
 	# Determined (addon): a fixed-per-combat rolled value overrides the static one.
 	dmg_value = _resolve_determined(effect, ctx, dmg_value, "dmg")
+	# Per-turn scaling (Transient): +M damage for each turn the source has taken.
+	# turns_taken is bumped at the actor's turn boundary, so its first attack is
+	# unscaled (turns_taken 0) and each subsequent turn adds another M.
+	var per_turn: int = int(effect.get("per_turn", 0))
+	if per_turn != 0:
+		var pt_src: Variant = ctx.get("source")
+		if pt_src != null and ("turns_taken" in pt_src):
+			dmg_value += per_turn * int(pt_src.turns_taken)
 	for _i in hits:
 		var tgt: Variant = ctx.get("source") if self_target else ctx.get("target")
 		if indiscriminate:
