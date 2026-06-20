@@ -1,14 +1,16 @@
 extends Node
 
 # Developer overlay: press ` (backtick) to add any card / curse / item to the
-# player. Gated on Settings.dev_mode. Built entirely in code, lives on an
-# autoload so it floats above whatever scene is running (overworld, combat, …)
-# and survives scene changes.
+# player, or jump into a test combat against a single enemy. Gated on
+# Settings.dev_mode. Built entirely in code, lives on an autoload so it floats
+# above whatever scene is running (overworld, combat, …) and survives scene
+# changes.
 #
 # Cards (including curses — type CURSE) go to GameState.deck via
 # add_card_to_deck; items go to inventory via add_item. A card added mid-combat
 # lands in the run deck, not the live piles, so to see a curse fire you add it on
-# the overworld and then enter a combat.
+# the overworld and then enter a combat. The Enemies tab starts a deckbuilder
+# combat against the picked enemy (mid-run only) via Main.dev_start_combat.
 
 const TOGGLE_KEY := KEY_QUOTELEFT     # the ` / ~ key
 const MAX_RESULTS := 150
@@ -20,6 +22,7 @@ var _list: VBoxContainer = null
 var _tab: String = "cards"            # "cards" | "items"
 
 const _TYPE_NAMES := ["Attack", "Skill", "Power", "Dice", "Status", "Curse", "Training"]
+const _DIFF_NAMES := ["Low", "Medium", "High", "Boss"]
 
 
 func _ready() -> void:
@@ -93,7 +96,7 @@ func _build() -> void:
 	margin.add_child(vbox)
 
 	var title := Label.new()
-	title.text = "Dev — add to player"
+	title.text = "Dev — add to player / start combat"
 	title.add_theme_font_size_override("font_size", 22)
 	vbox.add_child(title)
 
@@ -111,19 +114,25 @@ func _build() -> void:
 	var curses_btn := Button.new()
 	curses_btn.text = "Curses"
 	curses_btn.toggle_mode = true
+	var enemies_btn := Button.new()
+	enemies_btn.text = "Enemies"
+	enemies_btn.toggle_mode = true
 	var group := ButtonGroup.new()
 	cards_btn.button_group = group
 	items_btn.button_group = group
 	curses_btn.button_group = group
+	enemies_btn.button_group = group
 	cards_btn.pressed.connect(func() -> void: _set_tab("cards"))
 	items_btn.pressed.connect(func() -> void: _set_tab("items"))
 	curses_btn.pressed.connect(func() -> void: _set_tab("curses"))
+	enemies_btn.pressed.connect(func() -> void: _set_tab("enemies"))
 	tabs.add_child(cards_btn)
 	tabs.add_child(items_btn)
 	tabs.add_child(curses_btn)
+	tabs.add_child(enemies_btn)
 
 	_search = LineEdit.new()
-	_search.placeholder_text = "Search (try a name or \"curse\")…"
+	_search.placeholder_text = "Search a name (Enemies tab → start a test combat)…"
 	_search.text_changed.connect(func(_t: String) -> void: _rebuild_list())
 	vbox.add_child(_search)
 
@@ -200,6 +209,17 @@ func _collect(query: String) -> Array:
 				continue
 			var curse: CurseData = cu
 			out.append({"label": label, "add": _add_curse.bind(curse)})
+	elif _tab == "enemies":
+		for en in Data.all_enemies():
+			if not (en is EnemyData):
+				continue
+			var diff: String = _DIFF_NAMES[en.difficulty] if en.difficulty < _DIFF_NAMES.size() else "?"
+			var label: String = "%s  [%s · w%d · %d-%d HP]" % [
+				en.display_name, diff, en.weight, en.hp_min, en.hp_max]
+			if query != "" and not label.to_lower().contains(query):
+				continue
+			var enemy: EnemyData = en
+			out.append({"label": label, "add": _start_combat_with.bind(enemy)})
 	else:
 		for it in Data.all_items():
 			if not (it is ItemData):
@@ -227,3 +247,17 @@ func _add_item(item: ItemData) -> void:
 func _add_curse(curse: CurseData) -> void:
 	GameState.add_active_curse(curse)
 	GameLog.add("[dev] Cursed: %s." % curse.display_name, Color(0.85, 0.6, 0.85))
+
+
+# Drops the player straight into a deckbuilder combat against this single enemy.
+# Only works mid-run (the Main run scene owns dev_start_combat); at the menu it
+# just notifies. Closes the overlay so the fight is visible.
+func _start_combat_with(enemy: EnemyData) -> void:
+	var scene: Node = get_tree().current_scene
+	if scene == null or not scene.has_method("dev_start_combat"):
+		Notifications.notify("Start a run first to test combat.", Color(1.0, 0.8, 0.4))
+		return
+	_close()
+	scene.dev_start_combat([enemy.id])
+	Notifications.notify("Test combat: %s" % enemy.display_name, Color(1.0, 0.7, 0.7))
+	GameLog.add("[dev] Started test combat vs %s." % enemy.display_name, Color(1.0, 0.7, 0.7))

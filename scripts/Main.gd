@@ -163,6 +163,23 @@ func _on_combat_closed(was_victory: bool, target_game_id: StringName) -> void:
 	_pending_outcome = {"victory": was_victory, "game_id": target_game_id}
 	_show_overworld()
 
+# Dev/testing entry: drop straight into a deckbuilder combat against an explicit
+# enemy list (DevTools "Enemies" tab). Skips the reward/verification flow on
+# close — it just returns to the overworld — so it never touches run progress.
+func dev_start_combat(enemy_ids: Array) -> void:
+	if enemy_ids.is_empty():
+		return
+	GameState.phase = GameState.Phase.COMBAT
+	var combat: DeckbuilderCombat = COMBAT_SCENE.instantiate()
+	combat.target_game_id = &""
+	combat.enemies_to_spawn = enemy_ids.duplicate()
+	combat.closed.connect(_on_dev_combat_closed)
+	_swap_to(combat)
+
+func _on_dev_combat_closed(_was_victory: bool, _target_game_id: StringName) -> void:
+	_pending_outcome = {}
+	_show_overworld()
+
 func _swap_to(new_scene: Node) -> void:
 	if _current_scene != null:
 		_current_scene.queue_free()
