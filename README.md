@@ -236,6 +236,14 @@ Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
 
+- **Weighted enemy encounters** — combats now field a **scaled group** instead of
+  a single random enemy. `scripts/runtime/EnemySpawner.gd` ports the legacy
+  budget/tier "weight" spawn: the run's **RunDifficulty** tier sets a spend budget
+  (first combat 2, then Low=4 / Med=6 / High=9 / Insane=12), enemies are picked
+  weighted by their `weight` cost up to the 5-enemy cap, the pool is gated by tier
+  (Boss-difficulty reserved for boss fights), and a new
+  `GameState.total_combats_completed` counter eases the opening fight. Wired into
+  `GameMap` / `Main`; pure logic covered by `test/test_enemy_spawner.gd`.
 - **Deckbuilder enemy system (data-driven)** — deckbuilder enemies are now
   generated from a dedicated **`enemiesD`** sheet by `tools/generate_enemy_tres.py`
   into `data/enemies/*.tres` (12 Slay-the-Spire enemies). Each enemy's **Moves**
@@ -324,12 +332,6 @@ build:
 - **Fix the deckbuilder map screen** — polish/repair the in-combat map view.
 - **Finish the content catalogs** — port the remaining **cards**, **items**,
   and **addons** so the Godot catalog matches the spreadsheet.
-- **Enemy encounter generation** — the deckbuilder enemy roster + mechanics are in
-  (see Recent changes), but combats still spawn a single uniform-random enemy.
-  Port the legacy **budget/tier weighted spawn** (difficulty tier sets a budget,
-  enemies are picked weighted by their `weight` cost, up to
-  `DeckbuilderCombat.MAX_ENEMIES`) so fights field scaled groups. The dev menu can
-  already stage arbitrary groups for testing. See `docs/enemy-plan.md`.
 - **Spells** — port the spell system and add new spells (`SpellData` exists;
   the deckbuilder-side spells panel still needs wiring).
 - **Events** — the event system and first authored events are in (see Recent

@@ -29,6 +29,11 @@ var total_games_beaten: int = 0
 # games played.
 var games_played: int = 0
 
+# Combats won this run. Drives the enemy-spawn budget: the first combat of a run
+# (count 0) gets the gentle opening budget; see EnemySpawner. Bumped on victory
+# via TriggerBus.combat_ended.
+var total_combats_completed: int = 0
+
 # Character level. Starts at 1; bumped when the player meets their
 # character's level_up_condition on the verification modal (see Overworld's
 # level-up flow and CharacterData level-up fields).
@@ -293,6 +298,13 @@ func _connect_lifecycle_hooks() -> void:
 		TriggerBus.curse_removed.connect(_on_curse_removed)
 	if not TriggerBus.curse_card_removed.is_connected(_on_curse_card_removed):
 		TriggerBus.curse_card_removed.connect(_on_curse_card_removed)
+	# Combats-won tally drives the enemy-spawn budget (first fight is gentler).
+	if not TriggerBus.combat_ended.is_connected(_on_combat_ended_tally):
+		TriggerBus.combat_ended.connect(_on_combat_ended_tally)
+
+func _on_combat_ended_tally(ctx: Dictionary) -> void:
+	if bool(ctx.get("victory", false)):
+		total_combats_completed += 1
 
 func _on_game_beaten(_ctx: Dictionary) -> void:
 	_tick_card_lifecycles()
@@ -474,6 +486,7 @@ func reset_run() -> void:
 	beaten_games.clear()
 	total_games_beaten = 0
 	games_played = 0
+	total_combats_completed = 0
 	player_level = 1
 	last_game_perfected = false
 	max_hp = 75

@@ -166,7 +166,7 @@ func _start_combat_for_node(node: Dictionary) -> void:
 		return
 	_active_combat = COMBAT_SCENE.instantiate()
 	_active_combat.target_game_id = target_game_id
-	_active_combat.enemies_to_spawn = [_pick_enemy_for_combat()]
+	_active_combat.enemies_to_spawn = _build_encounter()
 	_active_combat.is_elite = (int(node.type) == DeckbuilderMap.NodeType.ELITE)
 	_active_combat.closed.connect(_on_combat_closed)
 	# Added as a child of the map; combat's opaque background covers
@@ -283,22 +283,12 @@ func _on_treasure_closed() -> void:
 # Enemy pool helper
 # ---------------------------------------------------------------------------
 
-func _pick_enemy_for_combat() -> StringName:
-	# Per-game enemy pool first, full roster as fallback. Mirrors the
-	# same logic Main used before the mini-map intercepted portal entry.
-	var pool: Array[StringName] = []
-	var g: GameData = Data.get_game(target_game_id)
-	if g != null and not g.enemy_pool.is_empty():
-		for eid in g.enemy_pool:
-			pool.append(eid)
-	if pool.is_empty():
-		for e in Data.all_enemies():
-			# weight 0 = never spawned by the random roster (e.g. the Fly,
-			# which only appears as an event-summoned swarm).
-			if e is EnemyData and e.weight > 0:
-				pool.append(e.id)
-	if pool.is_empty():
+func _build_encounter() -> Array:
+	# Weighted group sized by the run's difficulty tier + budget (EnemySpawner).
+	# weight 0 enemies (e.g. the event-only Fly) are excluded by the spawner.
+	var group: Array = EnemySpawner.build_for_game(target_game_id, _rng, DeckbuilderCombat.MAX_ENEMIES)
+	if group.is_empty():
 		push_warning("[GameMap] no enemies available; falling back to jaw_worm")
-		return &"jaw_worm"
-	return pool[_rng.randi() % pool.size()]
+		return [&"jaw_worm"]
+	return group
 

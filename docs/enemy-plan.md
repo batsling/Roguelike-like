@@ -122,13 +122,17 @@ Extend verbs as enemies need them; keep parity with the card compiler.
    - Default `glyph` (first letter) and `portrait_color` (by type/hash) unless columns added.
    - Wipe + regenerate deckbuilder `data/enemies/*.tres`; warn on unparseable
      effects / missing images.
-2. **Spawn logic** — port `preGenerateEnemiesForGame()` into
-   `GameMap.gd._pick_enemy_for_combat()` (and dedupe `Main.gd:213`):
-   - Tier from `RunDifficulty.current_tier()`.
-   - Pool = deckbuilder enemies, `weight > 0`, difficulty tier ≤ current.
-   - Budget by tier (first combat = 2, then Low=4 / Med=6 / High=9).
-   - Weighted-pick loop, **cap at DeckbuilderCombat.MAX_ENEMIES (5)**.
-   - Return the list to `enemies_to_spawn` (already an Array).
+2. **Spawn logic** — ✅ **done.** `preGenerateEnemiesForGame()` is ported to
+   `scripts/runtime/EnemySpawner.gd` (`build_for_game`), called from
+   `GameMap._build_encounter()` and `Main._build_encounter()`:
+   - Tier from `RunDifficulty.current_tier()` (Low/Med/High/Insane).
+   - Pool = deckbuilder enemies, `weight > 0`, difficulty ≤ tier band (Boss
+     excluded from random spawns); a game's `enemy_pool` overrides if set.
+   - Budget by tier — first combat (`GameState.total_combats_completed == 0`) = 2,
+     then Low=4 / Med=6 / High=9 / Insane=12.
+   - Weighted-pick loop (`pick_group`), **cap at DeckbuilderCombat.MAX_ENEMIES (5)**.
+   - Returns the id list into `enemies_to_spawn`. Pure core is unit-tested in
+     `test/test_enemy_spawner.gd`.
 
 ## 5b. Implemented mechanics (Determined / Split / Shifting / Shackled)
 
