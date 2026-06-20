@@ -26,8 +26,8 @@ pattern = [
  }
 ]
 pattern_mode = "random"
-starting_abilities = PackedStringArray("Fading 4")
-starting_statuses = {"shifting": 1}
+starting_abilities = PackedStringArray()
+starting_statuses = {"fading": 4, "shifting": 1}
 source_game = "Slay the Spire"
 tags = PackedStringArray()
 image = ExtResource("2_img")

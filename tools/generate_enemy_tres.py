@@ -152,10 +152,18 @@ def parse_moves(cell):
 
 _SPLIT = re.compile(r"^Split\s+(\d+)\s+(.+)$", re.IGNORECASE)
 _SHACKLED = re.compile(r"^Shackled\s+(\d+)$", re.IGNORECASE)
+_FADING = re.compile(r"^Fading\s+(\d+)$", re.IGNORECASE)
+# Curl Up's block amount may be a Determined range (Curl Up Determined(3-7)) or a
+# flat number (Curl Up 5). The range is stored as [lo, hi] and rolled at spawn.
+_CURLUP_DET = re.compile(r"^Curl\s*Up\s+Determined\((\d+)\s*-\s*(\d+)\)$", re.IGNORECASE)
+_CURLUP_N = re.compile(r"^Curl\s*Up\s+(\d+)$", re.IGNORECASE)
 
 
 def parse_abilities(cell):
-    """Return (split_into, split_count, starting_statuses, leftover_abilities)."""
+    """Return (split_into, split_count, starting_statuses, leftover_abilities).
+
+    starting_statuses values are ints, or [lo, hi] for a Determined roll.
+    """
     split_into, split_count = "", 0
     statuses, leftover = {}, []
     if _is_na(cell):
@@ -178,6 +186,18 @@ def parse_abilities(cell):
             continue
         if tok.lower() == "shackled":
             statuses["shackled"] = 1
+            continue
+        mf = _FADING.match(tok)
+        if mf:
+            statuses["fading"] = int(mf.group(1))
+            continue
+        mc = _CURLUP_DET.match(tok)
+        if mc:
+            statuses["curl_up"] = [int(mc.group(1)), int(mc.group(2))]
+            continue
+        mcn = _CURLUP_N.match(tok)
+        if mcn:
+            statuses["curl_up"] = int(mcn.group(1))
             continue
         leftover.append(tok)
     return split_into, split_count, statuses, leftover
@@ -233,8 +253,13 @@ def enemy_tres(rec: dict) -> str:
         f'starting_abilities = {packed_str_array(rec["starting_abilities"])}',
     ]
     if rec["starting_statuses"]:
-        kv = ", ".join('"%s": %d' % (k, v) for k, v in rec["starting_statuses"].items())
-        lines.append("starting_statuses = {%s}" % kv)
+        kv_parts = []
+        for k, v in rec["starting_statuses"].items():
+            if isinstance(v, list):
+                kv_parts.append('"%s": [%d, %d]' % (k, int(v[0]), int(v[1])))
+            else:
+                kv_parts.append('"%s": %d' % (k, int(v)))
+        lines.append("starting_statuses = {%s}" % ", ".join(kv_parts))
     lines += [
         f'source_game = "{esc(rec["source_game"])}"',
         f'tags = {packed_str_array(rec["tags"])}',

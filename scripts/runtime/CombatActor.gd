@@ -45,6 +45,9 @@ var dead: bool = false
 # reset each time Stats.tick_actor_statuses processes this actor.
 var damage_taken_this_turn: int = 0
 
+# Curl Up: cleared each turn so the gain-block-on-first-hit fires once per turn.
+var curl_up_used_this_turn: bool = false
+
 # Determined (addon): values rolled ONCE at first use and fixed for the rest of
 # combat. key -> rolled int. Lives on the actor so a fresh CombatActor each
 # combat re-rolls. Populated/read by Stats.resolve_determined.
@@ -89,11 +92,18 @@ static func from_enemy(d: EnemyData, rng: RandomNumberGenerator) -> CombatActor:
 	a.split_count = d.split_count
 	if d.split_count > 0 and d.split_into != &"":
 		a.statuses[&"split"] = 1
-	# Starting statuses (e.g. Transient's Shifting). Set directly to skip the
-	# player-amplify path in add_status — these are the enemy's own kit.
+	# Starting statuses (e.g. Transient's Shifting, a Louse's Curl Up). Set
+	# directly to skip the player-amplify path in add_status — it's the enemy's
+	# own kit. A value of [lo, hi] is a Determined roll resolved once at spawn
+	# (Curl Up Determined(3-7)); a plain int is the literal stack count.
 	for sk in d.starting_statuses:
 		var st := StringName(sk)
-		var sv := int(d.starting_statuses[sk])
+		var raw: Variant = d.starting_statuses[sk]
+		var sv: int
+		if raw is Array and raw.size() == 2:
+			sv = rng.randi_range(int(raw[0]), int(raw[1]))
+		else:
+			sv = int(raw)
 		if st != &"" and sv != 0:
 			a.statuses[st] = sv
 	# Apply spawn-time item modifiers (Alien Baby's +3 HP, future

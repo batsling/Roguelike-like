@@ -55,6 +55,9 @@ var damage_taken_this_turn: int = 0
 # Determined (addon): values rolled once and fixed for the combat. key -> int.
 var determined_rolls: Dictionary = {}
 
+# Curl Up: cleared each turn so the gain-block-on-first-hit fires once per turn.
+var curl_up_used_this_turn: bool = false
+
 # Split (status): what this unit splits into + how many copies (0 = no split).
 var split_into: StringName = &""
 var split_count: int = 0

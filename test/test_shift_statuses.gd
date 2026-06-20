@@ -139,3 +139,62 @@ func test_from_enemy_stamps_split_marker() -> void:
 	assert_eq(a.get_status(&"split"), 1, "Split marker stamped at spawn")
 	assert_eq(a.split_count, 2)
 	assert_eq(String(a.split_into), "acid_slime_m")
+
+# --- Ritual / Curl Up / Fading -------------------------------------------
+
+# Minimal scene stub: tick_actor_statuses only needs apply_dot (+ optional heal).
+class FakeScene:
+	extends RefCounted
+	var dot_calls: Array = []
+	func apply_dot(actor, amount: int, source_name: String) -> void:
+		dot_calls.append({"actor": actor, "amount": amount, "src": source_name})
+		actor.hp = maxi(0, actor.hp - amount)
+		if actor.hp <= 0:
+			actor.dead = true
+	func heal(actor, amount: int) -> void:
+		actor.hp = mini(actor.max_hp, actor.hp + amount)
+
+func test_ritual_gains_power_each_turn() -> void:
+	var a := _actor()
+	var scene := FakeScene.new()
+	a.add_status(&"ritual", 3)
+	Stats.tick_actor_statuses(a, scene)
+	assert_eq(a.get_status(&"power"), 3, "Ritual grants Power = stacks at turn end")
+	Stats.tick_actor_statuses(a, scene)
+	assert_eq(a.get_status(&"power"), 6, "Ritual ramps every turn (no decay)")
+	assert_eq(a.get_status(&"ritual"), 3, "Ritual itself does not decay")
+
+func test_curl_up_blocks_first_hit_only_per_turn() -> void:
+	var a := _actor()
+	var scene := FakeScene.new()
+	a.add_status(&"curl_up", 5)
+	TriggerBus.emit_signal("damage_taken", {"target": a, "amount": 3})
+	assert_eq(a.block, 5, "Curl Up grants Block on first attack damage")
+	TriggerBus.emit_signal("damage_taken", {"target": a, "amount": 3})
+	assert_eq(a.block, 5, "Curl Up does not re-trigger same turn")
+	# Turn boundary re-arms it; a fresh hit hardens again.
+	Stats.tick_actor_statuses(a, scene)
+	TriggerBus.emit_signal("damage_taken", {"target": a, "amount": 3})
+	assert_eq(a.block, 10, "Curl Up re-arms next turn")
+
+func test_fading_counts_down_and_kills() -> void:
+	var a := _actor()
+	var scene := FakeScene.new()
+	a.add_status(&"fading", 2)
+	Stats.tick_actor_statuses(a, scene)
+	assert_eq(a.get_status(&"fading"), 1, "Fading ticks down by 1")
+	assert_true(a.is_alive(), "Still alive above zero")
+	Stats.tick_actor_statuses(a, scene)
+	assert_false(a.is_alive(), "Fading to zero kills the actor")
+	assert_eq(scene.dot_calls.size(), 1, "Death routed through apply_dot once")
+
+func test_from_enemy_rolls_determined_curl_up() -> void:
+	var d := EnemyData.new()
+	d.display_name = "Red Louse"
+	d.hp_min = 12
+	d.hp_max = 12
+	d.starting_statuses = {"curl_up": [3, 7]}
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	var a := CombatActor.from_enemy(d, rng)
+	assert_between(a.get_status(&"curl_up"), 3, 7, "Determined Curl Up rolled in range at spawn")

@@ -29,6 +29,9 @@ const STATUSES: Array = [
 	{ "name": "Split", "description": "When target's HP is at or below 50%, its intent becomes Splitting and it spawns its split targets at its current HP on its turn", "type": "Ability", "stackable": false, "decay": "None", "who": "Enemy", "preference": "Positive", "rarity": "N/A", "icon": "Split" },
 	{ "name": "Shifting", "description": "At the end of the target's turn, it loses Power equal to the damage it took this turn and gains that much Shackled", "type": "Debuff", "stackable": false, "decay": "None", "who": "All", "preference": "Negative", "rarity": "N/A", "icon": "Shifting" },
 	{ "name": "Shackled", "description": "Regains X Power at the end of the target's turn, then all Shackled is removed", "type": "Buff", "stackable": true, "decay": "Lose all when triggered", "who": "All", "preference": "Positive", "rarity": "N/A", "icon": "Shackled" },
+	{ "name": "Curl Up", "description": "Gains X Block the first time it takes attack damage each turn", "type": "Ability", "stackable": false, "decay": "None", "who": "All", "preference": "Positive", "rarity": "N/A", "icon": "CurlUp" },
+	{ "name": "Ritual", "description": "At the end of its turn, gains X Power", "type": "Buff", "stackable": true, "decay": "None", "who": "All", "preference": "Positive", "rarity": "Rare", "icon": "Ritual" },
+	{ "name": "Fading", "description": "Dies in X turns", "type": "Debuff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "All", "preference": "Negative", "rarity": "N/A", "icon": "Fading" },
 ]
 
 const ADDONS: Array = [

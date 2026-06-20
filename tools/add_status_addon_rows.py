@@ -57,6 +57,27 @@ STATUS_ROWS = {
         "Buff", "Yes", "N/A", "Lose all when triggered", "All", "Positive",
         "Shackled", "N/A", "Yes", "N/A",
     ],
+    "Curl Up": [
+        "Curl Up",
+        "Gains X Block the first time it takes attack damage each turn",
+        "on_first_damage_taken:gain_block:per_stack",
+        "Ability", "No", "N/A", "None", "All", "Positive",
+        "CurlUp", "N/A", "Yes", "N/A",
+    ],
+    "Ritual": [
+        "Ritual",
+        "At the end of its turn, gains X Power",
+        "on_turn_end:gain_power:per_stack:1",
+        "Buff", "Yes", "N/A", "None", "All", "Positive",
+        "Ritual", "Rare", "Yes", "N/A",
+    ],
+    "Fading": [
+        "Fading",
+        "Dies in X turns",
+        "on_turn_end:countdown:die_at_zero",
+        "Debuff", "Yes", "N/A", "Down by 1 at end of turn", "All", "Negative",
+        "Fading", "N/A", "Yes", "N/A",
+    ],
 }
 
 

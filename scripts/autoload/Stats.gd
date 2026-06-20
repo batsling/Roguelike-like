@@ -84,6 +84,10 @@ const STATUS_ICONS := {
 	&"shackled": "Shackled.png",
 	&"shifting": "Shifting.png",
 	&"split": "Split.png",
+	&"curl_up": "CurlUp.png",
+	&"ritual": "Ritual.png",
+	&"fading": "Fading.png",
+	&"split": "Split.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -120,8 +124,19 @@ func _ready() -> void:
 # event drains) is ignored.
 func _on_damage_taken_tally(ctx: Dictionary) -> void:
 	var tgt = ctx.get("target")
-	if tgt != null and is_instance_valid(tgt) and ("damage_taken_this_turn" in tgt):
-		tgt.damage_taken_this_turn += maxi(0, int(ctx.get("amount", 0)))
+	if tgt == null or not is_instance_valid(tgt):
+		return
+	var amount: int = maxi(0, int(ctx.get("amount", 0)))
+	if "damage_taken_this_turn" in tgt:
+		tgt.damage_taken_this_turn += amount
+	# Curl Up: the first time the actor takes damage each turn it hardens, gaining
+	# Block = its Curl Up stacks. The per-turn re-arm flag is cleared in
+	# tick_actor_statuses. Shared here so every mode's damage_taken triggers it.
+	if amount > 0 and tgt.has_method("get_status") and tgt.get_status(&"curl_up") > 0 \
+			and ("curl_up_used_this_turn" in tgt) and not tgt.curl_up_used_this_turn \
+			and ("block" in tgt):
+		tgt.block += tgt.get_status(&"curl_up")
+		tgt.curl_up_used_this_turn = true
 
 func _on_game_beaten(_ctx: Dictionary) -> void:
 	var harvest: int = get_value(&"harvesting")
@@ -838,6 +853,11 @@ func tick_actor_statuses(actor, scene, tick_bleed: bool = true) -> void:
 		scene.apply_dot(actor, leeches, "leeches")
 		if scene.has_method("leech_to_player"):
 			scene.leech_to_player(leeches)
+	# Ritual: gains X Power (X = stacks) at its turn end. Does not decay, so it
+	# ramps every turn (Cultist). Applied before the power-shift cycle below.
+	var ritual: int = actor.get_status(&"ritual")
+	if ritual > 0:
+		actor.add_status(&"power", ritual)
 	# Shackled / Shifting (Transient-style Power shift), then clear the
 	# per-turn damage tally that Shifting just consumed. Runs on every actor
 	# at its turn boundary in all three modes, so the cycle is identical
@@ -845,6 +865,20 @@ func tick_actor_statuses(actor, scene, tick_bleed: bool = true) -> void:
 	process_power_shift(actor)
 	if "damage_taken_this_turn" in actor:
 		actor.damage_taken_this_turn = 0
+	# Curl Up re-arms: the gain-block-on-first-hit fires once per turn (see
+	# _on_damage_taken_tally), so clear the spent flag at the turn boundary.
+	if "curl_up_used_this_turn" in actor:
+		actor.curl_up_used_this_turn = false
+	# Fading: a turn-boundary death countdown ("dies in X turns"). Tick down by
+	# one each turn; when it reaches zero the actor dies. Routed through apply_dot
+	# for its current HP so every mode's death handling (views, kill triggers)
+	# fires the same way. Handled here rather than via DECAY_STATUSES so the
+	# zero-crossing death is caught.
+	var fading: int = actor.get_status(&"fading")
+	if fading > 0:
+		actor.add_status(&"fading", -1)
+		if actor.get_status(&"fading") <= 0 and actor.is_alive():
+			scene.apply_dot(actor, int(actor.hp), "fading")
 
 # Shackled + Shifting end-of-turn cycle (StS Transient). Ordered so the two
 # don't cancel on the same boundary:

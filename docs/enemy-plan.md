@@ -160,5 +160,19 @@ statuses where the legacy ability column lists them.
   (`GameState.total_combats_completed` or similar) or drop it.
 - Decide whether `pattern_mode` should ever be `sequence`/`forgetful` per enemy
   (add a column) or stay `random`.
-- `Split`/`Curl Up`/`Fading`/`Shifting` ability semantics must exist in EffectSystem
-  before those enemies behave correctly.
+
+## 7. Status mechanics now wired (shared in Stats.gd, all modes)
+
+- **Determined** — `resolve_determined` rolls an X-Y range once per combat
+  (cached on the actor); Curl Up's block amount rolls at spawn in `from_enemy`.
+- **Split** — `should_split` + per-mode spawn (see §5).
+- **Shifting / Shackled** — `process_power_shift` at each actor's turn boundary,
+  fed by the shared `damage_taken` tally.
+- **Ritual** — turn-end `+X Power` (X = stacks), no decay (Cultist).
+- **Curl Up** — first attack damage each turn grants `+X Block`; re-armed at the
+  turn boundary (Louse).
+- **Fading** — turn-end countdown; the actor dies (via `apply_dot`) at zero
+  (Transient). Carried as a starting status, not in DECAY_STATUSES.
+
+Still inert pending future work: Confused, `per_turn` damage scaling (Transient's
++10/turn), and the Slimed status-card pressure beyond the basic conjure.
