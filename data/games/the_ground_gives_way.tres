@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_the_ground_gives_way"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/the-ground-gives-way.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"the_ground_gives_way"
+display_name = "The Ground Gives Way"
+year = 2014
+type = 1
+games_influenced = Array[StringName]([&"zmangband"])
+tags = PackedStringArray("traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\The Ground Gives Way.lnk"
+steam_page = ""
