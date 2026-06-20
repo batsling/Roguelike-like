@@ -81,6 +81,9 @@ const STATUS_ICONS := {
 	&"buffer": "Buffer.png",
 	&"brace": "Brace.png",
 	&"fear": "Fear.png",
+	&"shackled": "Shackled.png",
+	&"shifting": "Shifting.png",
+	&"split": "Split.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -106,6 +109,19 @@ func _ready() -> void:
 	_load_stat_defs()
 	# Harvesting payout: beating a game grants gold equal to the stat.
 	TriggerBus.game_beaten.connect(_on_game_beaten)
+	# Shifting needs "damage taken this turn" per actor; every combat mode
+	# already emits damage_taken, so we tally it here once instead of touching
+	# each scene's damage sites. The counter is reset per actor in
+	# tick_actor_statuses.
+	TriggerBus.damage_taken.connect(_on_damage_taken_tally)
+
+# Accumulate per-actor damage for the Shifting status. The actor (CombatActor or
+# BattleUnit) carries `damage_taken_this_turn`; anything else (null target,
+# event drains) is ignored.
+func _on_damage_taken_tally(ctx: Dictionary) -> void:
+	var tgt = ctx.get("target")
+	if tgt != null and is_instance_valid(tgt) and ("damage_taken_this_turn" in tgt):
+		tgt.damage_taken_this_turn += maxi(0, int(ctx.get("amount", 0)))
 
 func _on_game_beaten(_ctx: Dictionary) -> void:
 	var harvest: int = get_value(&"harvesting")
@@ -822,6 +838,52 @@ func tick_actor_statuses(actor, scene, tick_bleed: bool = true) -> void:
 		scene.apply_dot(actor, leeches, "leeches")
 		if scene.has_method("leech_to_player"):
 			scene.leech_to_player(leeches)
+	# Shackled / Shifting (Transient-style Power shift), then clear the
+	# per-turn damage tally that Shifting just consumed. Runs on every actor
+	# at its turn boundary in all three modes, so the cycle is identical
+	# everywhere.
+	process_power_shift(actor)
+	if "damage_taken_this_turn" in actor:
+		actor.damage_taken_this_turn = 0
+
+# Shackled + Shifting end-of-turn cycle (StS Transient). Ordered so the two
+# don't cancel on the same boundary:
+#   1. Shackled returns its banked Power (gain stacks as Power) then clears.
+#   2. Shifting banks THIS turn's damage as fresh Power loss + Shackled, which
+#      the step above returns at the NEXT turn boundary.
+# Untyped actor: needs get_status / add_status, optionally damage_taken_this_turn.
+func process_power_shift(actor) -> void:
+	if actor == null or not actor.has_method("get_status") or not actor.has_method("add_status"):
+		return
+	var shackled: int = actor.get_status(&"shackled")
+	if shackled > 0:
+		actor.add_status(&"power", shackled)
+		actor.add_status(&"shackled", -shackled)   # "lose all when triggered"
+	if actor.get_status(&"shifting") > 0:
+		var dmg: int = int(actor.damage_taken_this_turn) if "damage_taken_this_turn" in actor else 0
+		if dmg > 0:
+			actor.add_status(&"power", -dmg)
+			actor.add_status(&"shackled", dmg)
+
+# Determined (addon): resolve an X-Y range to a value rolled ONCE and then fixed
+# for the rest of combat. The roll is cached on `holder.determined_rolls` (keyed
+# by `key`), so an enemy whose Bite is Determined(5-7) deals the same number all
+# fight, and a fresh actor next combat re-rolls. holder lacking the cache (or
+# null) just rolls fresh each call.
+func resolve_determined(holder, key: String, min_v: int, max_v: int, rng: RandomNumberGenerator = null) -> int:
+	if min_v > max_v:
+		var tmp: int = min_v
+		min_v = max_v
+		max_v = tmp
+	var r: RandomNumberGenerator = rng if rng != null else _resolve_rng
+	if holder != null and ("determined_rolls" in holder):
+		var cache: Dictionary = holder.determined_rolls
+		if cache.has(key):
+			return int(cache[key])
+		var rolled: int = r.randi_range(min_v, max_v)
+		cache[key] = rolled
+		return rolled
+	return r.randi_range(min_v, max_v)
 
 func fire_contact_reactions(target, attacker, scene) -> void:
 	# Cross-mode "actor A made physical contact with actor B" hook.

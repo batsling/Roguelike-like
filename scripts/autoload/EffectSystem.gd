@@ -120,6 +120,21 @@ func _register_defaults() -> void:
 	register("gain_chest", _h_gain_chest)
 	register("roll_gold", _h_roll_gold)
 
+# Determined (addon): an effect may carry `determined: [min, max]`, meaning its
+# value is a number rolled ONCE at first use and fixed for the rest of combat
+# (e.g. a Louse whose Bite is Determined(5-7)). Resolves through Stats so the
+# roll is cached on the source actor; effects without the field keep `fallback`.
+# `slot` distinguishes a determined dmg value from a determined block value on
+# the same actor when the effect doesn't name an explicit `determined_key`.
+func _resolve_determined(effect: Dictionary, ctx: Dictionary, fallback: int, slot: String) -> int:
+	var det: Variant = effect.get("determined", null)
+	if not (det is Array) or det.size() < 2:
+		return fallback
+	var lo: int = int(det[0])
+	var hi: int = int(det[1])
+	var key: String = String(effect.get("determined_key", "%s_%d_%d" % [slot, lo, hi]))
+	return Stats.resolve_determined(ctx.get("source"), key, lo, hi)
+
 func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("deal_damage"):
@@ -156,6 +171,8 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 		dmg_value = blk * int(effect.get("value_mult", 1))
 	else:
 		dmg_value = _dyn_amount(effect, "value", "value_from", "value_mult")
+	# Determined (addon): a fixed-per-combat rolled value overrides the static one.
+	dmg_value = _resolve_determined(effect, ctx, dmg_value, "dmg")
 	for _i in hits:
 		var tgt: Variant = ctx.get("source") if self_target else ctx.get("target")
 		if indiscriminate:
@@ -190,7 +207,8 @@ func _h_block(effect: Dictionary, ctx: Dictionary) -> void:
 		if scene.has_method("gain_block"):
 			# Block defaults to gaining on self
 			var target: Variant = ctx.get("target") if effect.get("target", "self") != "self" else ctx.get("source")
-			scene.gain_block(target, effect.get("value", 0))
+			var blk_value: int = _resolve_determined(effect, ctx, int(effect.get("value", 0)), "block")
+			scene.gain_block(target, blk_value)
 		return
 	# Scene-less (event use): bank the block so the next chunk of event
 	# damage is soaked. Percs uses this path when played from the event bar.

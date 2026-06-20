@@ -40,6 +40,22 @@ var weight: int = 0
 # Misc
 var dead: bool = false
 
+# Damage taken since this actor's last turn boundary. Accumulated from the
+# TriggerBus.damage_taken signal (see Stats), read by the Shifting status, and
+# reset each time Stats.tick_actor_statuses processes this actor.
+var damage_taken_this_turn: int = 0
+
+# Determined (addon): values rolled ONCE at first use and fixed for the rest of
+# combat. key -> rolled int. Lives on the actor so a fresh CombatActor each
+# combat re-rolls. Populated/read by Stats.resolve_determined.
+var determined_rolls: Dictionary = {}
+
+# Split (status): the enemy this actor splits into and how many copies, copied
+# off EnemyData at spawn so the combat scene can read it without the resource.
+# Empty / 0 = does not split. Set by whoever wires the split status.
+var split_into: StringName = &""
+var split_count: int = 0
+
 # ------------------------------------------------------------------
 # Construction
 # ------------------------------------------------------------------
