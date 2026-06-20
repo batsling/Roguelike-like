@@ -19,7 +19,13 @@ var _layer: CanvasLayer = null
 var _panel: Control = null
 var _search: LineEdit = null
 var _list: VBoxContainer = null
-var _tab: String = "cards"            # "cards" | "items"
+var _tab: String = "cards"            # "cards" | "items" | "curses" | "enemies"
+
+# Enemies tab: ticked enemy ids (StringName -> true), and the action bar's
+# Start Combat button. Selection survives search/tab changes within a session.
+var _selected_enemies: Dictionary = {}
+var _start_btn: Button = null
+var _hint: Label = null               # per-tab one-line instruction
 
 const _TYPE_NAMES := ["Attack", "Skill", "Power", "Dice", "Status", "Curse", "Training"]
 const _DIFF_NAMES := ["Low", "Medium", "High", "Boss"]
@@ -50,6 +56,8 @@ func _toggle() -> void:
 		_build()
 	_layer.visible = not _layer.visible
 	if _layer.visible:
+		_update_start_btn()
+		_update_hint()
 		_rebuild_list()
 		_search.grab_focus()
 
@@ -80,9 +88,9 @@ func _build() -> void:
 	panel.anchor_right = 0.5
 	panel.anchor_bottom = 0.5
 	panel.offset_left = -300
-	panel.offset_top = -290
+	panel.offset_top = -320
 	panel.offset_right = 300
-	panel.offset_bottom = 290
+	panel.offset_bottom = 320
 	_layer.add_child(panel)
 	_panel = panel
 
@@ -132,9 +140,14 @@ func _build() -> void:
 	tabs.add_child(enemies_btn)
 
 	_search = LineEdit.new()
-	_search.placeholder_text = "Search a name (Enemies tab → start a test combat)…"
+	_search.placeholder_text = "Search a name…"
 	_search.text_changed.connect(func(_t: String) -> void: _rebuild_list())
 	vbox.add_child(_search)
+
+	_hint = Label.new()
+	_hint.add_theme_font_size_override("font_size", 12)
+	_hint.add_theme_color_override("font_color", Color(0.7, 0.7, 0.78))
+	vbox.add_child(_hint)
 
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(560, 380)
@@ -146,16 +159,47 @@ func _build() -> void:
 	_list.add_theme_constant_override("separation", 2)
 	scroll.add_child(_list)
 
+	# Action bar: Start Combat (Enemies tab only) on the left, Close on the right.
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 8)
+	vbox.add_child(bar)
+
+	_start_btn = Button.new()
+	_start_btn.text = "Start Combat"
+	_start_btn.disabled = true
+	_start_btn.visible = false
+	_start_btn.pressed.connect(_start_selected_combat)
+	bar.add_child(_start_btn)
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.add_child(spacer)
+
 	var close_btn := Button.new()
 	close_btn.text = "Close (`)"
-	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	close_btn.pressed.connect(_close)
-	vbox.add_child(close_btn)
+	bar.add_child(close_btn)
 
 
 func _set_tab(tab: String) -> void:
 	_tab = tab
+	_update_start_btn()
+	_update_hint()
 	_rebuild_list()
+
+# One-line instruction for the active tab.
+func _update_hint() -> void:
+	if _hint == null:
+		return
+	match _tab:
+		"enemies":
+			_hint.text = "Tick up to %d enemies, then Start Combat (mid-run only)." % DeckbuilderCombat.MAX_ENEMIES
+		"curses":
+			_hint.text = "Click a curse to apply it to the run."
+		"items":
+			_hint.text = "Click an item to add it to your inventory."
+		_:
+			_hint.text = "Click a card to add it to your deck."
 
 # ---------------------------------------------------------------------------
 # List + add
@@ -173,11 +217,20 @@ func _rebuild_list() -> void:
 	for e in entries:
 		if shown >= MAX_RESULTS:
 			break
-		var btn := Button.new()
-		btn.text = e["label"]
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.pressed.connect(e["add"])
-		_list.add_child(btn)
+		if _tab == "enemies":
+			# Tick-box rows: toggling selects/deselects for a batch Start Combat.
+			var cb := CheckBox.new()
+			cb.text = e["label"]
+			var eid: StringName = e["id"]
+			cb.button_pressed = _selected_enemies.has(eid)
+			cb.toggled.connect(_on_enemy_toggled.bind(eid, cb))
+			_list.add_child(cb)
+		else:
+			var btn := Button.new()
+			btn.text = e["label"]
+			btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			btn.pressed.connect(e["add"])
+			_list.add_child(btn)
 		shown += 1
 	if entries.size() > MAX_RESULTS:
 		var more := Label.new()
@@ -218,8 +271,7 @@ func _collect(query: String) -> Array:
 				en.display_name, diff, en.weight, en.hp_min, en.hp_max]
 			if query != "" and not label.to_lower().contains(query):
 				continue
-			var enemy: EnemyData = en
-			out.append({"label": label, "add": _start_combat_with.bind(enemy)})
+			out.append({"label": label, "id": en.id})
 	else:
 		for it in Data.all_items():
 			if not (it is ItemData):
@@ -249,15 +301,46 @@ func _add_curse(curse: CurseData) -> void:
 	GameLog.add("[dev] Cursed: %s." % curse.display_name, Color(0.85, 0.6, 0.85))
 
 
-# Drops the player straight into a deckbuilder combat against this single enemy.
-# Only works mid-run (the Main run scene owns dev_start_combat); at the menu it
-# just notifies. Closes the overlay so the fight is visible.
-func _start_combat_with(enemy: EnemyData) -> void:
+# ---------------------------------------------------------------------------
+# Enemies tab: tick a roster (up to MAX_ENEMIES) then Start Combat
+# ---------------------------------------------------------------------------
+
+func _on_enemy_toggled(pressed: bool, eid: StringName, box: CheckBox) -> void:
+	if pressed:
+		if _selected_enemies.size() >= DeckbuilderCombat.MAX_ENEMIES \
+				and not _selected_enemies.has(eid):
+			# Already at the cap — bounce the tick and tell the player.
+			box.set_pressed_no_signal(false)
+			Notifications.notify("Max %d enemies per combat." % DeckbuilderCombat.MAX_ENEMIES,
+				Color(1.0, 0.8, 0.4))
+			return
+		_selected_enemies[eid] = true
+	else:
+		_selected_enemies.erase(eid)
+	_update_start_btn()
+
+# Refreshes the Start Combat button's label/visibility/enabled for the tab.
+func _update_start_btn() -> void:
+	if _start_btn == null:
+		return
+	_start_btn.visible = _tab == "enemies"
+	var n: int = _selected_enemies.size()
+	_start_btn.disabled = n == 0
+	_start_btn.text = "Start Combat (%d/%d)" % [n, DeckbuilderCombat.MAX_ENEMIES]
+
+# Drops the player into a deckbuilder combat against the ticked roster. Mid-run
+# only (the Main run scene owns dev_start_combat); at the menu it just notifies.
+func _start_selected_combat() -> void:
+	if _selected_enemies.is_empty():
+		return
 	var scene: Node = get_tree().current_scene
 	if scene == null or not scene.has_method("dev_start_combat"):
 		Notifications.notify("Start a run first to test combat.", Color(1.0, 0.8, 0.4))
 		return
+	var ids: Array = _selected_enemies.keys()
+	_selected_enemies.clear()
+	_update_start_btn()
 	_close()
-	scene.dev_start_combat([enemy.id])
-	Notifications.notify("Test combat: %s" % enemy.display_name, Color(1.0, 0.7, 0.7))
-	GameLog.add("[dev] Started test combat vs %s." % enemy.display_name, Color(1.0, 0.7, 0.7))
+	scene.dev_start_combat(ids)
+	Notifications.notify("Test combat: %d enemies." % ids.size(), Color(1.0, 0.7, 0.7))
+	GameLog.add("[dev] Started test combat vs %d enemies." % ids.size(), Color(1.0, 0.7, 0.7))

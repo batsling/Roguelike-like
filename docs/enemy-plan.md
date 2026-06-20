@@ -4,7 +4,7 @@ Status: **planning / not yet implemented.** This is the agreed design for adding
 enemies to deckbuilder combat. Action and Strategy modes reuse the same data
 later; this pass is deckbuilder-only because its combat is the simplest.
 
-Goal: deckbuilder combats spawn a **weighted group of up to 3 enemies**, drawn
+Goal: deckbuilder combats spawn a **weighted group of up to 5 enemies**, drawn
 only from deckbuilder enemies, using the budget/tier "weight" system from the
 old HTML build.
 
@@ -127,7 +127,7 @@ Extend verbs as enemies need them; keep parity with the card compiler.
    - Tier from `RunDifficulty.current_tier()`.
    - Pool = deckbuilder enemies, `weight > 0`, difficulty tier ≤ current.
    - Budget by tier (first combat = 2, then Low=4 / Med=6 / High=9).
-   - Weighted-pick loop, **cap at 3 enemies**.
+   - Weighted-pick loop, **cap at DeckbuilderCombat.MAX_ENEMIES (5)**.
    - Return the list to `enemies_to_spawn` (already an Array).
 
 ## 5b. Implemented mechanics (Determined / Split / Shifting / Shackled)

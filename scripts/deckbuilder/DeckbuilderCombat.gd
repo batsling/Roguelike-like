@@ -15,6 +15,11 @@ extends Control
 signal combat_ended(victory: bool)
 signal closed(was_victory: bool, target_game_id: StringName)
 
+# Hard cap on how many enemies can share the battlefield. Spawns past this (event
+# summons, slime Splits) are dropped so the row never overflows. Shared so other
+# systems (the dev test-combat picker) agree on the same ceiling.
+const MAX_ENEMIES := 5
+
 # Configuration set by the caller before _ready (or via start_combat).
 var enemies_to_spawn: Array = []
 var target_game_id: StringName = &""
@@ -331,6 +336,8 @@ func _init_actors(spawn_list: Array) -> void:
 	player = CombatActor.from_player()
 	enemies.clear()
 	for entry in spawn_list:
+		if enemies.size() >= MAX_ENEMIES:
+			break
 		var d: EnemyData = null
 		if entry is EnemyData:
 			d = entry
@@ -570,7 +577,10 @@ func _commit_split_spawns(spawns: Array[CombatActor]) -> void:
 	for e in enemies:
 		if e.is_alive():
 			survivors.append(e)
-	survivors.append_array(spawns)
+	# Respect the battlefield cap — a split into a full row drops the overflow.
+	var room: int = maxi(0, MAX_ENEMIES - survivors.size())
+	if room > 0:
+		survivors.append_array(spawns.slice(0, room))
 	enemies = survivors
 	_build_enemy_views()
 	_refresh_ui()
