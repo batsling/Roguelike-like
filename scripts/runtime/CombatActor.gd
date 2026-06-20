@@ -89,6 +89,13 @@ static func from_enemy(d: EnemyData, rng: RandomNumberGenerator) -> CombatActor:
 	a.split_count = d.split_count
 	if d.split_count > 0 and d.split_into != &"":
 		a.statuses[&"split"] = 1
+	# Starting statuses (e.g. Transient's Shifting). Set directly to skip the
+	# player-amplify path in add_status — these are the enemy's own kit.
+	for sk in d.starting_statuses:
+		var st := StringName(sk)
+		var sv := int(d.starting_statuses[sk])
+		if st != &"" and sv != 0:
+			a.statuses[st] = sv
 	# Apply spawn-time item modifiers (Alien Baby's +3 HP, future
 	# "all enemies start with X" items). Runs against every consumer
 	# of from_enemy automatically, so action/strategy modes pick it

@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3 uid="uid://enemy_snecko"]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://assets/enemies/Snecko.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"snecko"
+display_name = "Snecko"
+difficulty = 1
+weight = 6
+hp_min = 114
+hp_max = 120
+pattern = [
+ {
+  "display": "Perplexing Glare (6 Confused)",
+  "weight": 0,
+  "effects": [
+   {
+    "type": "status",
+    "status": "confused",
+    "stacks": 6,
+    "target": "player"
+   }
+  ],
+  "first_turn_only": true
+ },
+ {
+  "display": "Tail Whip (8 dmg, 2 Vulnerable)",
+  "weight": 60,
+  "effects": [
+   {
+    "type": "dmg",
+    "value": 8,
+    "target": "player"
+   },
+   {
+    "type": "status",
+    "status": "vulnerable",
+    "stacks": 2,
+    "target": "player"
+   }
+  ]
+ },
+ {
+  "display": "Bite (15)",
+  "weight": 40,
+  "effects": [
+   {
+    "type": "dmg",
+    "value": 15,
+    "target": "player"
+   }
+  ]
+ }
+]
+pattern_mode = "random"
+starting_abilities = PackedStringArray()
+source_game = "Slay the Spire"
+tags = PackedStringArray()
+image = ExtResource("2_img")
+portrait_color = Color(0.379, 0.350, 0.700, 1)
+glyph = "s"

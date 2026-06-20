@@ -8,37 +8,71 @@ script = ExtResource("1_enemy")
 id = &"jaw_worm"
 display_name = "Jaw Worm"
 difficulty = 0
-weight = 10
+weight = 3
 hp_min = 40
 hp_max = 44
-pattern = [{
-"display": "Chomp (11)",
-"weight": 0,
-"first_turn_only": true,
-"effects": [{"type": "dmg", "value": 11, "target": "player"}]
-}, {
-"display": "Bellow (+3 Power, +6 Block)",
-"weight": 45,
-"effects": [
-{"type": "status", "status": "power", "stacks": 3, "target": "self"},
-{"type": "block", "value": 6, "target": "self"}
+pattern = [
+ {
+  "display": "Chomp (11)",
+  "weight": 0,
+  "effects": [
+   {
+    "type": "dmg",
+    "value": 11,
+    "target": "player"
+   }
+  ],
+  "first_turn_only": true
+ },
+ {
+  "display": "Bellow (+3 Power, +6 Block)",
+  "weight": 45,
+  "effects": [
+   {
+    "type": "status",
+    "status": "power",
+    "stacks": 3,
+    "target": "self"
+   },
+   {
+    "type": "block",
+    "value": 6,
+    "target": "self"
+   }
+  ]
+ },
+ {
+  "display": "Thrash (7 dmg, 6 Block)",
+  "weight": 30,
+  "effects": [
+   {
+    "type": "dmg",
+    "value": 7,
+    "target": "player"
+   },
+   {
+    "type": "block",
+    "value": 6,
+    "target": "self"
+   }
+  ]
+ },
+ {
+  "display": "Chomp (11)",
+  "weight": 25,
+  "effects": [
+   {
+    "type": "dmg",
+    "value": 11,
+    "target": "player"
+   }
+  ]
+ }
 ]
-}, {
-"display": "Thrash (7 dmg, 6 Block)",
-"weight": 30,
-"effects": [
-{"type": "dmg", "value": 7, "target": "player"},
-{"type": "block", "value": 6, "target": "self"}
-]
-}, {
-"display": "Chomp (11)",
-"weight": 25,
-"effects": [{"type": "dmg", "value": 11, "target": "player"}]
-}]
 pattern_mode = "random"
 starting_abilities = PackedStringArray()
 source_game = "Slay the Spire"
 tags = PackedStringArray()
 image = ExtResource("2_img")
-portrait_color = Color(0.6, 0.4, 0.2, 1)
+portrait_color = Color(0.350, 0.647, 0.700, 1)
 glyph = "j"

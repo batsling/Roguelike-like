@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3 uid="uid://enemy_acid_slime_m"]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://assets/enemies/AcidSlimeM.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"acid_slime_m"
+display_name = "Acid Slime (M)"
+difficulty = 0
+weight = 2
+hp_min = 28
+hp_max = 32
+pattern = [
+ {
+  "display": "Corrosive Spit (7, +1 Slimed)",
+  "weight": 30,
+  "effects": [
+   {
+    "type": "dmg",
+    "value": 7,
+    "target": "player",
+    "damage_type": "ranged"
+   },
+   {
+    "type": "conjure",
+    "card_id": "slimed",
+    "destination": "discard",
+    "count": 1
+   }
+  ]
+ },
+ {
+  "display": "Tackle (10)",
+  "weight": 40,
+  "effects": [
+   {
+    "type": "dmg",
+    "value": 10,
+    "target": "player"
+   }
+  ]
+ },
+ {
+  "display": "Lick (1 Weak)",
+  "weight": 30,
+  "effects": [
+   {
+    "type": "status",
+    "status": "weak",
+    "stacks": 1,
+    "target": "player"
+   }
+  ]
+ }
+]
+pattern_mode = "random"
+starting_abilities = PackedStringArray()
+source_game = "Slay the Spire"
+tags = PackedStringArray("slime")
+image = ExtResource("2_img")
+portrait_color = Color(0.700, 0.537, 0.350, 1)
+glyph = "a"

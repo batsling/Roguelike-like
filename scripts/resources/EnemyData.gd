@@ -30,6 +30,12 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 # Parsed into structured data by EffectSystem at load.
 @export var starting_abilities: PackedStringArray = PackedStringArray()
 
+# Statuses the enemy begins combat with (e.g. Transient starts with Shifting).
+# Keys are status ids (String), values are stacks. Applied at spawn by
+# CombatActor.from_enemy. Emitted by the enemy generator from the legacy
+# ability column.
+@export var starting_statuses: Dictionary = {}
+
 # Source game and tags
 @export var source_game: String = ""
 @export var tags: PackedStringArray = PackedStringArray()

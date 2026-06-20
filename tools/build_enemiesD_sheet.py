@@ -56,11 +56,11 @@ MOVES = {
         ("any", 25, "Chomp (11)", "dmg:11"),
     ],
     "Red Louse": [
-        ("any", 75, "Bite (5-7)", "dmg:5-7"),
+        ("any", 75, "Bite (5-7)", "dmg:determined(5,7)"),
         ("any", 25, "Grow (+3 Power)", "gain:power:3"),
     ],
     "Green Louse": [
-        ("any", 75, "Bite (5-7)", "dmg:5-7"),
+        ("any", 75, "Bite (5-7)", "dmg:determined(5,7)"),
         ("any", 25, "Spit Web (2 Weak)", "inflict:weak:2"),
     ],
     "Acid Slime (L)": [
