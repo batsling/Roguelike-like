@@ -55,9 +55,11 @@ compiler can serve both.
 
 ## 4. Excel format — single sheet, packed `Moves` column (chosen)
 
-Keep the one-row-per-enemy `enemies` sheet (chosen over a move-per-row sheet because
-some enemies have 10+ moves). Replace the bespoke `Pattern` text with a structured
-`Moves` column. Columns:
+Deckbuilder enemies live in a dedicated **`enemiesD`** sheet (built by
+`tools/build_enemiesD_sheet.py`); the legacy `enemies` sheet is left untouched.
+One row per enemy (chosen over a move-per-row sheet because some enemies have 10+
+moves). It mirrors the `enemies` columns but replaces the bespoke `Pattern` text
+with a structured `Moves` column. Columns:
 
 ```
 Name | Type | Difficulty | Weight | Min HP | Max HP | Ability | Game | Location | Moves | File | Variant | Tag
@@ -95,6 +97,8 @@ t1 @ 0 | Chomp (11) | dmg:11
 | `dmg:N`                 | `{type:dmg, value:N, target:player}` (melee default)                   |
 | `dmg:N:ranged`          | ranged variant                                                         |
 | `dmg:NxH`               | multi-hit (H hits)                                                     |
+| `dmg:MIN-MAX`           | damage rolled in a range, Determined at combat start (Louse Bite)      |
+| `dmg:N:per_turn=M`      | scaling damage, +M each turn (Transient)                               |
 | `block:N`               | `{type:block, value:N, target:self}`                                   |
 | `gain:<status>:N`       | `{type:status, status:<status>, stacks:N, target:self}` (power, …)     |
 | `inflict:<status>:N`    | `{type:status, status:<status>, stacks:N, target:player}` (weak, vuln, frail, confused) |
@@ -111,7 +115,7 @@ Extend verbs as enemies need them; keep parity with the card compiler.
 ## 5. Build steps (when implementing)
 
 1. **`tools/generate_enemy_tres.py`** (mirror `generate_card_tres.py`):
-   - Read `enemies`; filter to deckbuilder enemies (`Type == "Charisma"`).
+   - Read the **`enemiesD`** sheet (already deckbuilder-only — no Type filter needed).
    - Parse `Moves` → `pattern` array; map `Difficulty` Low/Med/High/Boss → `0/1/2/3`;
      carry `weight`, `hp_min/max`, abilities, `source_game`, `tag`,
      `image = res://assets/enemies/<File>.png`, `pattern_mode = "random"`.
