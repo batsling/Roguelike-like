@@ -923,6 +923,14 @@ func _auto_end_enemy_turn() -> void:
 	var enemy = _turn_manager.current_unit
 	if enemy.is_player:
 		return
+	# Split: a unit at/below half HP spawns its copies on free tiles and is
+	# consumed instead of taking its normal turn.
+	if Stats.should_split(enemy):
+		_perform_strategy_split(enemy)
+		if _turn_manager.check_battle_end_now():
+			return
+		_turn_manager.end_current_turn()
+		return
 	if enemy.ai != null:
 		var msg: String = enemy.ai.execute_turn(self, _units, _battle_map)
 		_status_label.text = msg
@@ -933,6 +941,57 @@ func _auto_end_enemy_turn() -> void:
 		enemy.ai.plan_next(_units)
 		_grid_view.notify_units_changed()
 	_turn_manager.end_current_turn()
+
+# Spawn a strategy splitter's copies on free tiles around it, each at its
+# current HP and with its own AI, then consume the parent. _units aliases
+# turn_manager.units (and the grid's list), so appending registers the new unit
+# with the initiative engine and the grid in one step.
+func _perform_strategy_split(unit) -> void:
+	var count: int = int(unit.split_count)
+	var child_hp: int = maxi(1, int(unit.hp))
+	var kind: String = String(unit.split_into)
+	unit.hp = 0   # consume the parent first so its tile reads as free
+	var spawned: int = 0
+	for _i in count:
+		var tile: Vector2i = _free_tile_near(unit.position)
+		if tile.x == _NO_TILE.x and tile.y == _NO_TILE.y:
+			break
+		var child = BattleUnit.from_enemy_kind(kind)
+		child.max_hp = child_hp
+		child.hp = child_hp
+		child.position = tile
+		child.ai = EnemyAI.build_for(child, kind)
+		_turn_manager.units.append(child)
+		child.ai.plan_next(_units)
+		spawned += 1
+	GameLog.add("%s splits into %d!" % [str(unit.unit_name).capitalize(), spawned],
+		Color(0.7, 1.0, 0.7))
+	_grid_view.notify_units_changed()
+	_refresh_initiative()
+
+const _NO_TILE := Vector2i(-9999, -9999)
+
+# Nearest walkable, unoccupied tile to `origin` (origin itself first), or
+# _NO_TILE if the splitter is fully boxed in.
+func _free_tile_near(origin: Vector2i) -> Vector2i:
+	var candidates: Array = [origin,
+		origin + Vector2i(1, 0), origin + Vector2i(-1, 0),
+		origin + Vector2i(0, 1), origin + Vector2i(0, -1),
+		origin + Vector2i(1, 1), origin + Vector2i(-1, 1),
+		origin + Vector2i(1, -1), origin + Vector2i(-1, -1)]
+	for c in candidates:
+		if _battle_map != null and (not _battle_map.in_bounds(c) or not _battle_map.is_walkable(c)):
+			continue
+		if _tile_occupied(c):
+			continue
+		return c
+	return _NO_TILE
+
+func _tile_occupied(tile: Vector2i) -> bool:
+	for u in _units:
+		if u != null and u.is_alive() and u.position == tile:
+			return true
+	return false
 
 func _on_battle_ended(result) -> void:
 	_status_label.text = "Battle ended: %s" % result

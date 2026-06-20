@@ -885,6 +885,28 @@ func resolve_determined(holder, key: String, min_v: int, max_v: int, rng: Random
 		return rolled
 	return r.randi_range(min_v, max_v)
 
+# Split (status): true when this actor should split THIS turn — it carries the
+# split marker + a valid split target/count, is alive, and has dropped to half
+# HP or below. Each combat mode calls this at the actor's turn and then runs its
+# own spawn (deckbuilder rebuilds views, action drops enemy dicts, strategy
+# registers units), so the trigger rule lives here and nowhere else. Untyped
+# actor: needs get_status / is_alive plus split_into / split_count / hp / max_hp.
+func should_split(actor) -> bool:
+	if actor == null or not actor.has_method("get_status") or not actor.has_method("is_alive"):
+		return false
+	if not actor.is_alive():
+		return false
+	if actor.get_status(&"split") <= 0:
+		return false
+	if not ("split_count" in actor) or int(actor.split_count) <= 0:
+		return false
+	if not ("split_into" in actor) or String(actor.split_into) == "":
+		return false
+	if not ("hp" in actor) or not ("max_hp" in actor) or int(actor.max_hp) <= 0:
+		return false
+	# At or below 50% HP (integer-safe: hp*2 <= max_hp).
+	return int(actor.hp) * 2 <= int(actor.max_hp)
+
 func fire_contact_reactions(target, attacker, scene) -> void:
 	# Cross-mode "actor A made physical contact with actor B" hook.
 	# Deckbuilder calls this after melee damage resolves; strategy

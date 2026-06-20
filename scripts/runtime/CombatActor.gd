@@ -82,6 +82,13 @@ static func from_enemy(d: EnemyData, rng: RandomNumberGenerator) -> CombatActor:
 	a.weight = d.weight
 	a.max_hp = rng.randi_range(d.hp_min, d.hp_max)
 	a.hp = a.max_hp
+	# Split (status): copy the split config off the data and stamp the marker
+	# status so every mode reads it the same way (Stats.should_split). Set the
+	# stack directly to skip add_status's player-amplify path — it's a marker.
+	a.split_into = d.split_into
+	a.split_count = d.split_count
+	if d.split_count > 0 and d.split_into != &"":
+		a.statuses[&"split"] = 1
 	# Apply spawn-time item modifiers (Alien Baby's +3 HP, future
 	# "all enemies start with X" items). Runs against every consumer
 	# of from_enemy automatically, so action/strategy modes pick it

@@ -93,3 +93,49 @@ func test_damage_taken_ignores_null_target() -> void:
 	# Should not crash when an event drain emits with no actor target.
 	TriggerBus.emit_signal("damage_taken", {"target": null, "amount": 5})
 	pass_test("null target tolerated")
+
+# --- Split predicate ------------------------------------------------------
+
+func _splitter(hp: int) -> CombatActor:
+	var a := _actor()
+	a.max_hp = 60
+	a.hp = hp
+	a.split_into = &"acid_slime_m"
+	a.split_count = 2
+	a.statuses[&"split"] = 1
+	return a
+
+func test_should_split_only_at_half_hp() -> void:
+	assert_false(Stats.should_split(_splitter(31)), "Above half HP: no split")
+	assert_true(Stats.should_split(_splitter(30)), "Exactly half HP: split")
+	assert_true(Stats.should_split(_splitter(10)), "Below half HP: split")
+
+func test_should_split_requires_marker_and_config() -> void:
+	var no_marker := _splitter(10)
+	no_marker.statuses.erase(&"split")
+	assert_false(Stats.should_split(no_marker), "No split status: no split")
+	var no_target := _splitter(10)
+	no_target.split_into = &""
+	assert_false(Stats.should_split(no_target), "No split_into: no split")
+	var no_count := _splitter(10)
+	no_count.split_count = 0
+	assert_false(Stats.should_split(no_count), "Zero split_count: no split")
+
+func test_should_split_false_when_dead() -> void:
+	var a := _splitter(10)
+	a.dead = true
+	assert_false(Stats.should_split(a), "Dead actor never splits")
+
+func test_from_enemy_stamps_split_marker() -> void:
+	# A CombatActor built from EnemyData with split config carries the marker.
+	var d := EnemyData.new()
+	d.display_name = "Acid Slime"
+	d.hp_min = 60
+	d.hp_max = 60
+	d.split_into = &"acid_slime_m"
+	d.split_count = 2
+	var rng := RandomNumberGenerator.new()
+	var a := CombatActor.from_enemy(d, rng)
+	assert_eq(a.get_status(&"split"), 1, "Split marker stamped at spawn")
+	assert_eq(a.split_count, 2)
+	assert_eq(String(a.split_into), "acid_slime_m")

@@ -510,6 +510,9 @@ func _on_end_turn() -> void:
 	_start_player_turn()
 
 func _execute_enemy_turn() -> void:
+	# Split spawns are collected and applied after the loop so we never mutate
+	# `enemies` mid-iteration; consumed splitters are marked dead by _perform_split.
+	var split_spawns: Array[CombatActor] = []
 	for enemy in enemies:
 		if not enemy.is_alive() or not player.is_alive():
 			continue
@@ -518,6 +521,9 @@ func _execute_enemy_turn() -> void:
 		enemy.block = 0
 		var move: Dictionary = enemy.planned_move
 		if move.is_empty():
+			continue
+		if move.get("split", false):
+			split_spawns.append_array(_perform_split(enemy))
 			continue
 		GameLog.add("%s: %s" % [enemy.display_name, move.get("display", "?")],
 			Color(0.9, 0.8, 0.6))
@@ -533,6 +539,37 @@ func _execute_enemy_turn() -> void:
 				"card": null,
 			}
 			EffectSystem.apply(effect, ctx)
+	if not split_spawns.is_empty():
+		_commit_split_spawns(split_spawns)
+
+# Spawn this splitter's copies (each at its CURRENT HP) and consume the parent.
+# Returns the new actors; the caller commits them to `enemies` after the loop.
+func _perform_split(splitter: CombatActor) -> Array[CombatActor]:
+	var spawns: Array[CombatActor] = []
+	var child_data: EnemyData = Data.get_enemy(splitter.split_into)
+	if child_data == null:
+		return spawns
+	var child_hp: int = maxi(1, splitter.hp)
+	for _i in splitter.split_count:
+		var child: CombatActor = CombatActor.from_enemy(child_data, _rng)
+		child.max_hp = child_hp
+		child.hp = child_hp
+		spawns.append(child)
+	GameLog.add("%s splits into %d %s!" % [splitter.display_name,
+		splitter.split_count, child_data.display_name], Color(0.7, 1.0, 0.7))
+	splitter.dead = true   # the parent is consumed by the split
+	return spawns
+
+# Drop consumed splitters, fold in the new copies, and rebuild the enemy row.
+func _commit_split_spawns(spawns: Array[CombatActor]) -> void:
+	var survivors: Array[CombatActor] = []
+	for e in enemies:
+		if e.is_alive():
+			survivors.append(e)
+	survivors.append_array(spawns)
+	enemies = survivors
+	_build_enemy_views()
+	_refresh_ui()
 
 func _resolve_enemy_effect_target(enemy: CombatActor, target_str: String) -> CombatActor:
 	match target_str:
@@ -1856,6 +1893,11 @@ func _shuffle(arr: Array) -> void:
 # ------------------------------------------------------------------
 
 func _roll_intent(enemy: CombatActor) -> void:
+	# Split overrides the normal pattern: a slime at/below half HP telegraphs
+	# "Splitting" instead of attacking and spawns its copies when it acts.
+	if Stats.should_split(enemy):
+		enemy.planned_move = {"display": "Splitting", "split": true, "effects": []}
+		return
 	if enemy.data == null or enemy.data.pattern.is_empty():
 		enemy.planned_move = {}
 		return

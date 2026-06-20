@@ -130,6 +130,29 @@ Extend verbs as enemies need them; keep parity with the card compiler.
    - Weighted-pick loop, **cap at 3 enemies**.
    - Return the list to `enemies_to_spawn` (already an Array).
 
+## 5b. Implemented mechanics (Determined / Split / Shifting / Shackled)
+
+Data: Determined lives in `addonsnew` (effect_value, has-value); Split / Shifting
+/ Shackled live in `statusesnew`; both flow into `ReferenceCatalog`.
+
+Runtime (shared in `Stats.gd`, so all three modes get it):
+- **Shackled / Shifting** run in `tick_actor_statuses` at each actor's turn
+  boundary (`process_power_shift`). Shackled returns its stacks as Power then
+  clears; Shifting loses Power = damage-taken-this-turn and banks an equal
+  Shackled. Damage-this-turn is tallied per actor off `TriggerBus.damage_taken`.
+- **Determined** resolves an effect's `determined: [min,max]` to a once-per-combat
+  roll cached on the actor (`Stats.resolve_determined`), applied to `dmg`/`block`
+  in `EffectSystem`.
+- **Split** uses `Stats.should_split(actor)` (split marker + config + ≤50% HP).
+  Each mode spawns copies at the splitter's current HP and consumes the parent:
+  deckbuilder rebuilds the enemy row, action drops enemy dicts in a ring,
+  strategy registers BattleUnits (with AI) on free tiles.
+
+The enemy generator should emit: `determined: [lo,hi]` on Determined dmg/block
+effects; `split_into` / `split_count` on EnemyData (and ActionEnemyData) from the
+legacy "Split N <enemy>" ability; and `shifting` / `shackled` as starting
+statuses where the legacy ability column lists them.
+
 ## 6. Open items
 
 - Reconcile games-played-÷3 (Godot) vs games-beaten thresholds (HTML) for the budget.

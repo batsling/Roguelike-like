@@ -44,3 +44,9 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 
 @export var source_game: String = ""
 @export var tags: PackedStringArray = PackedStringArray()
+
+# Split (status): when at or below 50% HP, spawns `split_count` copies of the
+# action enemy id `split_into` at its position, each at its current HP, then is
+# removed. Empty / 0 = never splits.
+@export var split_into: StringName = &""
+@export var split_count: int = 0

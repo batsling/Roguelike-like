@@ -582,6 +582,11 @@ func _make_enemy_actor(data: ActionEnemyData) -> CombatActor:
 	a.weight = data.weight
 	a.max_hp = hp
 	a.hp = hp
+	# Split (status): carry the config + marker so Stats.should_split fires.
+	a.split_into = data.split_into
+	a.split_count = data.split_count
+	if data.split_count > 0 and data.split_into != &"":
+		a.statuses[&"split"] = 1
 	return a
 
 # ---------------------------------------------------------------------------
@@ -890,8 +895,15 @@ func _process_enemies(delta: float) -> void:
 	if _enemy_stun_remaining > 0.0:
 		_enemy_stun_remaining = maxf(0.0, _enemy_stun_remaining - delta)
 		return
+	# Split: a slime that has dropped to half HP spawns its copies at its
+	# position and is consumed. Collected here and appended after the loop so we
+	# never mutate `enemies` mid-iteration.
+	var split_spawns: Array = []
 	for inst in enemies:
 		if not inst.actor.is_alive():
+			continue
+		if Stats.should_split(inst.actor):
+			split_spawns.append_array(_perform_action_split(inst))
 			continue
 		# Fear: a frightened enemy abandons its normal behavior and flees the
 		# player, never attacking, until its Fear ticks off (stack == flee-time).
@@ -908,6 +920,32 @@ func _process_enemies(delta: float) -> void:
 		# Keep everyone inside the arena bounds.
 		inst.pos.x = clampf(inst.pos.x, inst.data.size, ARENA_W - inst.data.size)
 		inst.pos.y = clampf(inst.pos.y, inst.data.size, ARENA_H - inst.data.size)
+	if not split_spawns.is_empty():
+		enemies.append_array(split_spawns)
+
+# Spawn an action splitter's copies in a ring around it, each at its current HP,
+# and consume the parent. Returns the new enemy dicts (caller appends them).
+func _perform_action_split(inst: Dictionary) -> Array:
+	var spawns: Array = []
+	var child_data: ActionEnemyData = Data.get_action_enemy(inst.actor.split_into)
+	if child_data == null:
+		return spawns
+	var count: int = inst.actor.split_count
+	var child_hp: int = maxi(1, inst.actor.hp)
+	for i in count:
+		var child_actor: CombatActor = _make_enemy_actor(child_data)
+		child_actor.max_hp = child_hp
+		child_actor.hp = child_hp
+		var angle: float = TAU * float(i) / float(maxi(1, count))
+		var offset: Vector2 = Vector2(cos(angle), sin(angle)) * (child_data.size + 8.0)
+		spawns.append({
+			"data": child_data,
+			"actor": child_actor,
+			"pos": inst.pos + offset,
+			"cooldown": child_data.attack_cooldown,
+		})
+	inst.actor.dead = true   # the parent is consumed by the split
+	return spawns
 
 # Fear (action enemy): run directly away from the player at a small speed boost
 # and never attack. Fear is spent over real time — each Fear stack lasts
