@@ -1638,9 +1638,10 @@ func _deliver_attack_once(card: CardData, effects: Array, spec: Dictionary, aim_
 		"disc_self":
 			_deliver_disc(card, effects, spec, player_pos)
 		"beam":
-			_deliver_beam(card, effects, spec, aim_dir)
-		"sweep_beam":
-			_deliver_sweep_beam(card, effects, spec, aim_dir)
+			if bool(spec.get("sweep", false)):
+				_deliver_sweep_beam(card, effects, spec, aim_dir)
+			else:
+				_deliver_beam(card, effects, spec, aim_dir)
 		"smite":
 			_deliver_smite(card, effects, spec)
 		"auto_aoe":

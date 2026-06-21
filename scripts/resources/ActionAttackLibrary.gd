@@ -79,11 +79,10 @@ const ARCHETYPES: Dictionary = {
 	"nova":       {"family": "disc_self",  "size": "medium"},
 	"projectile": {"family": "projectile", "size": "medium"},
 	"lob":        {"family": "lob",        "size": "medium"},
+	# beam fires one instant full-length line; the `sweep` subtype (Sweeping Beam)
+	# makes it pan left-to-right across a wide arc instead, striking each enemy as
+	# the beam crosses its angle (handled in ActionCombat off spec.sweep).
 	"beam":       {"family": "beam",       "size": "full"},
-	# sweep_beam: a full-length beam that sweeps across a wide arc in front of the
-	# player (left to right) rather than firing as one instant line. Hits each
-	# enemy as the beam crosses its angle, like the swing blade does.
-	"sweep_beam": {"family": "sweep_beam", "size": "full"},
 	"homing":     {"family": "homing",     "size": "medium"},
 	"smite":      {"family": "smite",      "size": "", "target": "nearest"},
 	"auto_aoe":   {"family": "auto_aoe",   "size": "small", "target": "random"},
@@ -128,6 +127,9 @@ func resolve(card: CardData) -> Dictionary:
 		# (Medium -> the Medium disc radius), defaulting to the medium disc.
 		"explosive": bool(p.get("explosive", false)),
 		"blast_px": 0.0,
+		# sweep (Sweeping Beam): a beam that pans across an arc rather than firing
+		# as one instant line. Only meaningful on the beam family.
+		"sweep": bool(p.get("sweep", false)),
 	}
 	if spec["explosive"]:
 		spec["blast_px"] = _lookup_px(radius_px, size_word, radius_px["medium"])
@@ -143,9 +145,9 @@ func resolve(card: CardData) -> Dictionary:
 			spec["reach_px"] = _lookup_px(travel_px, size_word, travel_px["medium"])
 		"beam":
 			spec["reach_px"] = _lookup_px(travel_px, size_word, travel_px["full"])
-		"sweep_beam":
-			spec["reach_px"] = _lookup_px(travel_px, size_word, travel_px["full"])
-			spec["arc_deg"] = float(p.get("arc", sweep_beam_arc_deg))
+			# The sweep subtype pans the beam across this arc as it fires.
+			if spec["sweep"]:
+				spec["arc_deg"] = float(p.get("arc", sweep_beam_arc_deg))
 		_:
 			pass
 	return spec

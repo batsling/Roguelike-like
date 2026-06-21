@@ -54,13 +54,11 @@ const ARCHETYPES: Dictionary = {
 	"swing":      {"family": "front_arc", "size": "medium", "aim": "tile"},
 	"smash":      {"family": "blast",     "size": "medium", "aim": "tile"},
 	"projectile": {"family": "line",      "size": "medium", "aim": "tile"},
+	# beam is a thin full-length line; the `sweep` subtype (Sweeping Beam) fans it
+	# to the flanking tiles (spread, below) so it reads as one big sweeping attack
+	# covering beam-level range.
 	"beam":       {"family": "line",      "size": "full",   "aim": "tile",
 		"pierce": true, "blocked_by_walls": true},
-	# sweep_beam: a wide (3-tile) full-length beam — reads as one big sweeping
-	# attack covering beam-level range, vs the thin single-target `beam`. Built on
-	# the line family with spread so the footprint fans to the flanking tiles.
-	"sweep_beam": {"family": "line",      "size": "full",   "aim": "tile",
-		"pierce": true, "spread": true, "blocked_by_walls": true},
 	"nova":       {"family": "disc",      "size": "small",  "aim": "self"},
 	"lob":        {"family": "disc",      "size": "medium", "aim": "tile",
 		"thrown": true},
@@ -104,7 +102,7 @@ func resolve(shape_name: StringName, params: Dictionary = {}) -> Dictionary:
 		"radius": 0,
 		"rotates": false,
 		"pierce": bool(p.get("pierce", base.get("pierce", false))),
-		"spread": int(p.get("spread", 1)) > 1 or bool(base.get("spread", false)),
+		"spread": int(p.get("spread", 1)) > 1 or bool(base.get("spread", false)) or bool(p.get("sweep", false)),
 		"arc360": int(p.get("arc", 0)) >= 360,
 		"target_mode": String(p.get("target", base.get("target", "nearest"))).to_lower(),
 		"blocked_by_walls": bool(base.get("blocked_by_walls", false)),

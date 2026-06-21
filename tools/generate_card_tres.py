@@ -72,13 +72,15 @@ FLAG_KEYWORDS = {"exhaust", "ethereal", "innate", "retain", "unplayable", "etern
 # "Projectile, Medium, crescent, pierce". Bare size words map to reach/radius
 # (per archetype); arc=/spread=/target= are key=value; pierce/crescent are flags.
 ATTACK_SHAPES = {"poke", "swing", "smash", "nova", "projectile", "lob",
-                 "beam", "sweep_beam", "homing", "smite", "auto_aoe", "bounce"}
+                 "beam", "homing", "smite", "auto_aoe", "bounce"}
 ATTACK_SIZE_WORDS = {"short", "medium", "large", "full", "small"}
 # Bare flag tokens on the Attack cell. `explosive` makes a projectile burst into
 # an AOE on impact (Lil' Bomber): the direct hit deals no damage, the blast deals
-# the card's damage to everything in radius (Action + Strategy). See the two
-# *AttackLibrary scripts.
-ATTACK_FLAG_TOKENS = {"pierce", "crescent", "explosive"}
+# the card's damage to everything in radius (Action + Strategy). `sweep` is a
+# subtype for the `beam` shape (Sweeping Beam): the beam pans left-to-right across
+# a wide arc in Action and fans wide in Strategy, instead of a thin instant line.
+# See the two *AttackLibrary scripts.
+ATTACK_FLAG_TOKENS = {"pierce", "crescent", "explosive", "sweep"}
 # Bare size words that also seed range_class for the legacy fallback path.
 RANGE_CLASS_WORDS = {"short", "medium", "large"}
 # Tokens that name a damage type in a dmg clause. NOTE: `cleave` is NOT a damage

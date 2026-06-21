@@ -19,4 +19,5 @@ upgraded_description = "Deal 9 Dmg Ranged Cleave. Draw 1 Card."
 upgraded_cost = -999
 upgraded_effects = [{"type": "dmg", "value": 9, "target": "all_enemies", "damage_type": "ranged"}, {"type": "draw", "value": 1}]
 image = ExtResource("2_img")
-attack_shape = &"sweep_beam"
+attack_shape = &"beam"
+attack_params = {"sweep": true}
