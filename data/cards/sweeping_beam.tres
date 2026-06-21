@@ -1,12 +1,12 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_beam"]
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_sweeping_beam"]
 
 [ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
 [ext_resource type="Texture2D" path="res://images/cards/SweepingBeam.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_card")
-id = &"beam"
-display_name = "Beam"
+id = &"sweeping_beam"
+display_name = "Sweeping Beam"
 type = 0
 rarity = 1
 cost = 1

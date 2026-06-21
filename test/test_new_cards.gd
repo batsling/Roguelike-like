@@ -186,10 +186,10 @@ func test_claw_parses_dmg_and_self_boost() -> void:
 	assert_eq(int(card.effects[1].get("value", 0)), 2)
 	assert_eq(int(card.upgraded_effects[1].get("value", 0)), 3, "upgraded boosts by 3")
 
-func test_beam_is_cleave_draw_with_sweep_shape() -> void:
-	var card: CardData = Data.get_card(&"beam")
-	assert_not_null(card, "beam.tres should load")
-	assert_eq(card.display_name, "Beam", "renamed from Sweeping Beam")
+func test_sweeping_beam_is_cleave_draw_with_sweep_shape() -> void:
+	var card: CardData = Data.get_card(&"sweeping_beam")
+	assert_not_null(card, "sweeping_beam.tres should load")
+	assert_eq(card.display_name, "Sweeping Beam", "name unchanged")
 	# Cleave -> all_enemies, ranged, plus a card draw.
 	assert_eq(String(card.effects[0].get("type", "")), "dmg")
 	assert_eq(int(card.effects[0].get("value", 0)), 6)
@@ -209,7 +209,7 @@ func test_slimed_draws_one_and_exhausts() -> void:
 
 func test_sweep_beam_resolves_in_both_attack_libraries() -> void:
 	# Action: a full-reach beam family carrying a sweep arc.
-	var a: Dictionary = Data.action_attacks.resolve(Data.get_card(&"beam"))
+	var a: Dictionary = Data.action_attacks.resolve(Data.get_card(&"sweeping_beam"))
 	assert_eq(String(a.get("family", "")), "sweep_beam")
 	assert_gt(float(a.get("reach_px", 0.0)), 0.0, "sweep beam has reach")
 	assert_gt(float(a.get("arc_deg", 0.0)), 0.0, "sweep beam pans across an arc")
