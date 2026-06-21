@@ -89,7 +89,6 @@ const STATUS_ICONS := {
 	&"ritual": "Ritual.png",
 	&"fading": "Fading.png",
 	&"confused": "Confused.png",
-	&"split": "Split.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
