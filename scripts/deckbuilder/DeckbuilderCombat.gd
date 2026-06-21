@@ -15,12 +15,21 @@ extends Control
 signal combat_ended(victory: bool)
 signal closed(was_victory: bool, target_game_id: StringName)
 
+# Hard cap on how many enemies can share the battlefield. Spawns past this (event
+# summons, slime Splits) are dropped so the row never overflows. Shared so other
+# systems (the dev test-combat picker) agree on the same ceiling.
+const MAX_ENEMIES := 5
+
 # Configuration set by the caller before _ready (or via start_combat).
 var enemies_to_spawn: Array = []
 var target_game_id: StringName = &""
 # Elite combats bump enemy HP, give the enemy a starting Power, and pay
 # out a larger gold reward. Set by GameMap before add_child.
 var is_elite: bool = false
+
+# Dev test combat (DevTools): exempt from run-scope tallies like the
+# combats-completed counter, so testing never skews the real run's spawn budget.
+var dev_combat: bool = false
 
 # Tuning constants for the elite multiplier — easy to dial in one place.
 const ELITE_HP_MULT := 1.5
@@ -331,6 +340,8 @@ func _init_actors(spawn_list: Array) -> void:
 	player = CombatActor.from_player()
 	enemies.clear()
 	for entry in spawn_list:
+		if enemies.size() >= MAX_ENEMIES:
+			break
 		var d: EnemyData = null
 		if entry is EnemyData:
 			d = entry
@@ -418,6 +429,10 @@ func _start_player_turn() -> void:
 		# Ambush carryover adjusts the opening hand (+2 ambush / -2 ambushed).
 		draw_count += _ambush_draw_delta
 	draw_cards(maxi(0, draw_count))
+	# Confused (Snecko): re-randomize every hand card's cost each turn. Runs after
+	# the draw so retained cards get a fresh roll too. The hand cost display reads
+	# get_cost(), so the randomized number shows and is what play charges.
+	_apply_confused_to_hand()
 	TriggerBus.emit_signal("turn_started", {"turn": turn, "scene": self})
 	_fire_item_triggers("turn_started")
 	_fire_power_triggers("turn_started")
@@ -510,6 +525,9 @@ func _on_end_turn() -> void:
 	_start_player_turn()
 
 func _execute_enemy_turn() -> void:
+	# Split spawns are collected and applied after the loop so we never mutate
+	# `enemies` mid-iteration; consumed splitters are marked dead by _perform_split.
+	var split_spawns: Array[CombatActor] = []
 	for enemy in enemies:
 		if not enemy.is_alive() or not player.is_alive():
 			continue
@@ -518,6 +536,9 @@ func _execute_enemy_turn() -> void:
 		enemy.block = 0
 		var move: Dictionary = enemy.planned_move
 		if move.is_empty():
+			continue
+		if move.get("split", false):
+			split_spawns.append_array(_perform_split(enemy))
 			continue
 		GameLog.add("%s: %s" % [enemy.display_name, move.get("display", "?")],
 			Color(0.9, 0.8, 0.6))
@@ -533,6 +554,40 @@ func _execute_enemy_turn() -> void:
 				"card": null,
 			}
 			EffectSystem.apply(effect, ctx)
+	if not split_spawns.is_empty():
+		_commit_split_spawns(split_spawns)
+
+# Spawn this splitter's copies (each at its CURRENT HP) and consume the parent.
+# Returns the new actors; the caller commits them to `enemies` after the loop.
+func _perform_split(splitter: CombatActor) -> Array[CombatActor]:
+	var spawns: Array[CombatActor] = []
+	var child_data: EnemyData = Data.get_enemy(splitter.split_into)
+	if child_data == null:
+		return spawns
+	var child_hp: int = maxi(1, splitter.hp)
+	for _i in splitter.split_count:
+		var child: CombatActor = CombatActor.from_enemy(child_data, _rng)
+		child.max_hp = child_hp
+		child.hp = child_hp
+		spawns.append(child)
+	GameLog.add("%s splits into %d %s!" % [splitter.display_name,
+		splitter.split_count, child_data.display_name], Color(0.7, 1.0, 0.7))
+	splitter.dead = true   # the parent is consumed by the split
+	return spawns
+
+# Drop consumed splitters, fold in the new copies, and rebuild the enemy row.
+func _commit_split_spawns(spawns: Array[CombatActor]) -> void:
+	var survivors: Array[CombatActor] = []
+	for e in enemies:
+		if e.is_alive():
+			survivors.append(e)
+	# Respect the battlefield cap — a split into a full row drops the overflow.
+	var room: int = maxi(0, MAX_ENEMIES - survivors.size())
+	if room > 0:
+		survivors.append_array(spawns.slice(0, room))
+	enemies = survivors
+	_build_enemy_views()
+	_refresh_ui()
 
 func _resolve_enemy_effect_target(enemy: CombatActor, target_str: String) -> CombatActor:
 	match target_str:
@@ -550,7 +605,7 @@ func _check_combat_end() -> bool:
 		phase = Phase.LOST
 		GameState.phase = GameState.Phase.DEAD
 		GameLog.add("You have been defeated.", Color(1.0, 0.4, 0.4))
-		TriggerBus.emit_signal("combat_ended", {"victory": false, "scene": self})
+		TriggerBus.emit_signal("combat_ended", {"victory": false, "scene": self, "dev": dev_combat})
 		emit_signal("combat_ended", false)
 		# Consumable buffs last one combat — drop them and the live context.
 		GameState.clear_combat_context()
@@ -568,7 +623,7 @@ func _check_combat_end() -> bool:
 		GameLog.add("Victory!", Color(0.4, 1.0, 0.6))
 		# Items with combat_ended triggers fire on victory only.
 		_fire_item_triggers("combat_ended")
-		TriggerBus.emit_signal("combat_ended", {"victory": true, "scene": self})
+		TriggerBus.emit_signal("combat_ended", {"victory": true, "scene": self, "dev": dev_combat})
 		emit_signal("combat_ended", true)
 		_award_combat_gold()
 		# Consumable buffs last one combat — drop them and the live context.
@@ -713,6 +768,19 @@ func _decay_statuses(actor: CombatActor) -> void:
 # own context-free cost (used by shop / rest / collection).
 func _card_cost(card: CardInstance) -> int:
 	return card.get_cost() + Stats.fear_card_surcharge(player, card)
+
+# Confused (Snecko): true while the player carries the status.
+func _is_confused() -> bool:
+	return player != null and player.get_status(&"confused") > 0
+
+# Re-roll every hand card's cost to a random 0..max_energy value while Confused.
+# A no-op otherwise. temp_cost_override is the same absolute-override slot the
+# hand/play sites already honour, so the randomized cost is what's shown and paid.
+func _apply_confused_to_hand() -> void:
+	if not _is_confused():
+		return
+	for c in hand:
+		c.temp_cost_override = _rng.randi_range(0, max_energy)
 
 func _try_play_card(card: CardInstance) -> void:
 	if phase != Phase.PLAYER:
@@ -1458,6 +1526,10 @@ func draw_cards(n: int) -> void:
 			_shuffle(draw_pile)
 		var c: CardInstance = draw_pile.pop_back()
 		hand.append(c)
+		# Confused: a card's cost is rolled the moment it's drawn (covers mid-turn
+		# draws from card effects, not just the turn-start hand).
+		if _is_confused():
+			c.temp_cost_override = _rng.randi_range(0, max_energy)
 		TriggerBus.emit_signal("card_drawn", {"card": c, "scene": self})
 		_fire_power_triggers("card_drawn", {"card": c})
 	_refresh_ui()
@@ -1856,6 +1928,11 @@ func _shuffle(arr: Array) -> void:
 # ------------------------------------------------------------------
 
 func _roll_intent(enemy: CombatActor) -> void:
+	# Split overrides the normal pattern: a slime at/below half HP telegraphs
+	# "Splitting" instead of attacking and spawns its copies when it acts.
+	if Stats.should_split(enemy):
+		enemy.planned_move = {"display": "Splitting", "split": true, "effects": []}
+		return
 	if enemy.data == null or enemy.data.pattern.is_empty():
 		enemy.planned_move = {}
 		return

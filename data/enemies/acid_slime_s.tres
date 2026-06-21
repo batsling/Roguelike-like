@@ -6,24 +6,40 @@
 [resource]
 script = ExtResource("1_enemy")
 id = &"acid_slime_s"
-display_name = "Acid Slime"
+display_name = "Acid Slime (S)"
 difficulty = 0
-weight = 5
+weight = 1
 hp_min = 8
 hp_max = 12
-pattern = [{
-"display": "Spit (3)",
-"weight": 50,
-"effects": [{"type": "dmg", "value": 3, "target": "player"}]
-}, {
-"display": "Inflict 1 Weak",
-"weight": 50,
-"effects": [{"type": "status", "status": "weak", "stacks": 1, "target": "player"}]
-}]
+pattern = [
+ {
+  "display": "Tackle (3)",
+  "weight": 50,
+  "effects": [
+   {
+    "type": "dmg",
+    "value": 3,
+    "target": "player"
+   }
+  ]
+ },
+ {
+  "display": "Lick (1 Weak)",
+  "weight": 50,
+  "effects": [
+   {
+    "type": "status",
+    "status": "weak",
+    "stacks": 1,
+    "target": "player"
+   }
+  ]
+ }
+]
 pattern_mode = "random"
 starting_abilities = PackedStringArray()
 source_game = "Slay the Spire"
-tags = PackedStringArray()
+tags = PackedStringArray("slime")
 image = ExtResource("2_img")
-portrait_color = Color(0.4, 0.7, 0.3, 1)
-glyph = "s"
+portrait_color = Color(0.350, 0.700, 0.659, 1)
+glyph = "a"

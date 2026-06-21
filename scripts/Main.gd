@@ -155,12 +155,30 @@ func _show_combat(game_id: StringName) -> void:
 	GameState.phase = GameState.Phase.COMBAT
 	var combat: DeckbuilderCombat = COMBAT_SCENE.instantiate()
 	combat.target_game_id = game_id
-	combat.enemies_to_spawn = [_pick_enemy_for_game(game_id)]
+	combat.enemies_to_spawn = _build_encounter(game_id)
 	combat.closed.connect(_on_combat_closed)
 	_swap_to(combat)
 
 func _on_combat_closed(was_victory: bool, target_game_id: StringName) -> void:
 	_pending_outcome = {"victory": was_victory, "game_id": target_game_id}
+	_show_overworld()
+
+# Dev/testing entry: drop straight into a deckbuilder combat against an explicit
+# enemy list (DevTools "Enemies" tab). Skips the reward/verification flow on
+# close — it just returns to the overworld — so it never touches run progress.
+func dev_start_combat(enemy_ids: Array) -> void:
+	if enemy_ids.is_empty():
+		return
+	GameState.phase = GameState.Phase.COMBAT
+	var combat: DeckbuilderCombat = COMBAT_SCENE.instantiate()
+	combat.target_game_id = &""
+	combat.enemies_to_spawn = enemy_ids.duplicate()
+	combat.dev_combat = true
+	combat.closed.connect(_on_dev_combat_closed)
+	_swap_to(combat)
+
+func _on_dev_combat_closed(_was_victory: bool, _target_game_id: StringName) -> void:
+	_pending_outcome = {}
 	_show_overworld()
 
 func _swap_to(new_scene: Node) -> void:
@@ -206,21 +224,13 @@ func _mount_pause_menu() -> void:
 	layer.add_child(_pause_menu)
 
 # ---------------------------------------------------------------------------
-# Enemy pool helper — currently mode-agnostic since every fight is
-# deckbuilder; per-game/per-mode enemy pools land in Phase 3/4.
+# Encounter builder — weighted group by the run's difficulty tier + budget
+# (EnemySpawner). Mode-agnostic since every fight is deckbuilder today.
 # ---------------------------------------------------------------------------
 
-func _pick_enemy_for_game(game_id: StringName) -> StringName:
-	var pool: Array[StringName] = []
-	var g: GameData = Data.get_game(game_id)
-	if g != null and not g.enemy_pool.is_empty():
-		for eid in g.enemy_pool:
-			pool.append(eid)
-	if pool.is_empty():
-		for e in Data.all_enemies():
-			if e is EnemyData:
-				pool.append(e.id)
-	if pool.is_empty():
+func _build_encounter(game_id: StringName) -> Array:
+	var group: Array = EnemySpawner.build_for_game(game_id, _rng, DeckbuilderCombat.MAX_ENEMIES)
+	if group.is_empty():
 		push_warning("[Main] no enemies available; falling back to jaw_worm")
-		return &"jaw_worm"
-	return pool[_rng.randi() % pool.size()]
+		return [&"jaw_worm"]
+	return group

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_incursion"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/incursion.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"incursion"
+display_name = "Incursion"
+year = 2007
+type = 1
+games_influenced = Array[StringName]([&"the_ground_gives_way"])
+tags = PackedStringArray("traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Incursion.lnk"
+steam_page = ""

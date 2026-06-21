@@ -1,0 +1,53 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3 uid="uid://enemy_spike_slime_l"]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://assets/enemies/SpikeSlimeL.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"spike_slime_l"
+display_name = "Spike Slime (L)"
+difficulty = 0
+weight = 4
+hp_min = 64
+hp_max = 70
+pattern = [
+ {
+  "display": "Flame Tackle (16, +2 Slimed)",
+  "weight": 30,
+  "effects": [
+   {
+    "type": "dmg",
+    "value": 16,
+    "target": "player"
+   },
+   {
+    "type": "conjure",
+    "card_id": "slimed",
+    "destination": "discard",
+    "count": 2
+   }
+  ]
+ },
+ {
+  "display": "Lick (2 Frail)",
+  "weight": 70,
+  "effects": [
+   {
+    "type": "status",
+    "status": "frail",
+    "stacks": 2,
+    "target": "player"
+   }
+  ]
+ }
+]
+pattern_mode = "random"
+starting_abilities = PackedStringArray()
+source_game = "Slay the Spire"
+tags = PackedStringArray("slime")
+image = ExtResource("2_img")
+portrait_color = Color(0.700, 0.379, 0.350, 1)
+glyph = "s"
+split_into = &"spike_slime_m"
+split_count = 2

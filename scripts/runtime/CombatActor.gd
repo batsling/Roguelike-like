@@ -40,6 +40,29 @@ var weight: int = 0
 # Misc
 var dead: bool = false
 
+# Damage taken since this actor's last turn boundary. Accumulated from the
+# TriggerBus.damage_taken signal (see Stats), read by the Shifting status, and
+# reset each time Stats.tick_actor_statuses processes this actor.
+var damage_taken_this_turn: int = 0
+
+# Curl Up: cleared each turn so the gain-block-on-first-hit fires once per turn.
+var curl_up_used_this_turn: bool = false
+
+# Turns this actor has completed (bumped at its turn boundary by Stats). Drives
+# per-turn damage scaling (Transient's "+10 each turn").
+var turns_taken: int = 0
+
+# Determined (addon): values rolled ONCE at first use and fixed for the rest of
+# combat. key -> rolled int. Lives on the actor so a fresh CombatActor each
+# combat re-rolls. Populated/read by Stats.resolve_determined.
+var determined_rolls: Dictionary = {}
+
+# Split (status): the enemy this actor splits into and how many copies, copied
+# off EnemyData at spawn so the combat scene can read it without the resource.
+# Empty / 0 = does not split. Set by whoever wires the split status.
+var split_into: StringName = &""
+var split_count: int = 0
+
 # ------------------------------------------------------------------
 # Construction
 # ------------------------------------------------------------------
@@ -66,6 +89,27 @@ static func from_enemy(d: EnemyData, rng: RandomNumberGenerator) -> CombatActor:
 	a.weight = d.weight
 	a.max_hp = rng.randi_range(d.hp_min, d.hp_max)
 	a.hp = a.max_hp
+	# Split (status): copy the split config off the data and stamp the marker
+	# status so every mode reads it the same way (Stats.should_split). Set the
+	# stack directly to skip add_status's player-amplify path — it's a marker.
+	a.split_into = d.split_into
+	a.split_count = d.split_count
+	if d.split_count > 0 and d.split_into != &"":
+		a.statuses[&"split"] = 1
+	# Starting statuses (e.g. Transient's Shifting, a Louse's Curl Up). Set
+	# directly to skip the player-amplify path in add_status — it's the enemy's
+	# own kit. A value of [lo, hi] is a Determined roll resolved once at spawn
+	# (Curl Up Determined(3-7)); a plain int is the literal stack count.
+	for sk in d.starting_statuses:
+		var st := StringName(sk)
+		var raw: Variant = d.starting_statuses[sk]
+		var sv: int
+		if raw is Array and raw.size() == 2:
+			sv = rng.randi_range(int(raw[0]), int(raw[1]))
+		else:
+			sv = int(raw)
+		if st != &"" and sv != 0:
+			a.statuses[st] = sv
 	# Apply spawn-time item modifiers (Alien Baby's +3 HP, future
 	# "all enemies start with X" items). Runs against every consumer
 	# of from_enemy automatically, so action/strategy modes pick it

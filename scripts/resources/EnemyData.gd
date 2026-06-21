@@ -30,9 +30,22 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 # Parsed into structured data by EffectSystem at load.
 @export var starting_abilities: PackedStringArray = PackedStringArray()
 
+# Statuses the enemy begins combat with (e.g. Transient starts with Shifting).
+# Keys are status ids (String), values are stacks. Applied at spawn by
+# CombatActor.from_enemy. Emitted by the enemy generator from the legacy
+# ability column.
+@export var starting_statuses: Dictionary = {}
+
 # Source game and tags
 @export var source_game: String = ""
 @export var tags: PackedStringArray = PackedStringArray()
+
+# Split (status): when this enemy is at or below 50% HP on its turn, it spawns
+# `split_count` copies of the enemy id `split_into`, each at its current HP, and
+# is removed. Empty / 0 = never splits. The enemy generator emits these from the
+# legacy "Split N <enemy>" ability.
+@export var split_into: StringName = &""
+@export var split_count: int = 0
 
 # Visuals
 @export var image: Texture2D

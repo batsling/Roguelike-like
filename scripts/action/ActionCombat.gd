@@ -185,6 +185,11 @@ var card_boosts: Array = []
 # so a -1 cost is a shorter cooldown. Combat-scoped: cleared in _load_loadout.
 var _cost_discounts: Dictionary = {}
 
+# Confused: per-card randomized energy cost (CardData -> int), re-rolled each turn
+# while the player is Confused, empty otherwise. Overrides the base/discounted
+# cost in _action_card_cost.
+var _confused_costs: Dictionary = {}
+
 # Curse cards in action (the translation of the deckbuilder hand-curses):
 #   _curse_slots — eot curses run as EXTRA dedicated bad-slots; each counts down
 #     a long real-time cooldown and, on elapse, applies its translated eot effect
@@ -582,6 +587,11 @@ func _make_enemy_actor(data: ActionEnemyData) -> CombatActor:
 	a.weight = data.weight
 	a.max_hp = hp
 	a.hp = hp
+	# Split (status): carry the config + marker so Stats.should_split fires.
+	a.split_into = data.split_into
+	a.split_count = data.split_count
+	if data.split_count > 0 and data.split_into != &"":
+		a.statuses[&"split"] = 1
 	return a
 
 # ---------------------------------------------------------------------------
@@ -689,6 +699,8 @@ func _process_turn_tick(delta: float) -> void:
 	if player_actor != null and player_actor.is_alive():
 		_tick_actor_turn(player_actor, _player_was_hit)
 	_player_was_hit = false
+	# Confused re-rolls every loadout card's cost (and so its cooldown) each turn.
+	_reroll_confused_costs()
 	for inst in enemies:
 		if inst.actor.is_alive():
 			_tick_actor_turn(inst.actor, bool(inst.get("was_hit", false)))
@@ -890,8 +902,15 @@ func _process_enemies(delta: float) -> void:
 	if _enemy_stun_remaining > 0.0:
 		_enemy_stun_remaining = maxf(0.0, _enemy_stun_remaining - delta)
 		return
+	# Split: a slime that has dropped to half HP spawns its copies at its
+	# position and is consumed. Collected here and appended after the loop so we
+	# never mutate `enemies` mid-iteration.
+	var split_spawns: Array = []
 	for inst in enemies:
 		if not inst.actor.is_alive():
+			continue
+		if Stats.should_split(inst.actor):
+			split_spawns.append_array(_perform_action_split(inst))
 			continue
 		# Fear: a frightened enemy abandons its normal behavior and flees the
 		# player, never attacking, until its Fear ticks off (stack == flee-time).
@@ -908,6 +927,32 @@ func _process_enemies(delta: float) -> void:
 		# Keep everyone inside the arena bounds.
 		inst.pos.x = clampf(inst.pos.x, inst.data.size, ARENA_W - inst.data.size)
 		inst.pos.y = clampf(inst.pos.y, inst.data.size, ARENA_H - inst.data.size)
+	if not split_spawns.is_empty():
+		enemies.append_array(split_spawns)
+
+# Spawn an action splitter's copies in a ring around it, each at its current HP,
+# and consume the parent. Returns the new enemy dicts (caller appends them).
+func _perform_action_split(inst: Dictionary) -> Array:
+	var spawns: Array = []
+	var child_data: ActionEnemyData = Data.get_action_enemy(inst.actor.split_into)
+	if child_data == null:
+		return spawns
+	var count: int = inst.actor.split_count
+	var child_hp: int = maxi(1, inst.actor.hp)
+	for i in count:
+		var child_actor: CombatActor = _make_enemy_actor(child_data)
+		child_actor.max_hp = child_hp
+		child_actor.hp = child_hp
+		var angle: float = TAU * float(i) / float(maxi(1, count))
+		var offset: Vector2 = Vector2(cos(angle), sin(angle)) * (child_data.size + 8.0)
+		spawns.append({
+			"data": child_data,
+			"actor": child_actor,
+			"pos": inst.pos + offset,
+			"cooldown": child_data.attack_cooldown,
+		})
+	inst.actor.dead = true   # the parent is consumed by the split
+	return spawns
 
 # Fear (action enemy): run directly away from the player at a small speed boost
 # and never attack. Fear is spent over real time — each Fear stack lasts
@@ -1071,14 +1116,24 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 				_arm_slot(slot, _auto_draw_one())
 		i += 1
 
+# Effective energy cost of a card in Action. A Confused roll (re-rolled each turn
+# while the player is Confused) overrides the base cost; otherwise the per-combat
+# discount (Empty Tome) applies. Single source for cooldown derivation AND the
+# cost shown on the card art.
+func _action_card_cost(card: CardData) -> int:
+	if card == null:
+		return 0
+	if _confused_costs.has(card):
+		return maxi(0, int(_confused_costs[card]))
+	return maxi(0, card.cost - int(_cost_discounts.get(card, 0)))
+
 func _cooldown_for(card: CardData) -> float:
 	if card == null:
 		return 0.0
 	# 2 * energy_cost + rarity_modifier (0/1/2/3 for starter/common/uncommon/rare).
-	# A per-combat cost discount (Empty Tome) folds straight in here so lowering a
-	# card's cost shortens its cooldown.
-	var cost: int = maxi(0, card.cost - int(_cost_discounts.get(card, 0)))
-	var base: float = 2.0 * float(cost) + float(card.rarity)
+	# Cost folds in the Empty Tome discount and any Confused roll via
+	# _action_card_cost, so both shorten/lengthen the cooldown immediately.
+	var base: float = 2.0 * float(_action_card_cost(card)) + float(card.rarity)
 	# Addon cooldown multipliers (Ethereal / Unplayable -> cooldown_mult(2) in
 	# Action). Single chokepoint for both click and auto slots. 1.0 = unchanged.
 	return base * AddonSystem.cooldown_mult(card, Stats.Mode.ACTION)
@@ -2297,8 +2352,14 @@ func reduce_random_card_cost(count: int, amount: int, tag: String, type: String)
 		_cost_discounts[pick] = int(_cost_discounts.get(pick, 0)) + amount
 		GameLog.add("Empty Tome: %s's cooldown is reduced this combat!" % pick.display_name,
 			Color(0.7, 1.0, 0.7))
-	# Recompute the cached click-slot caps and any armed auto slot that was hit so
-	# the discount takes effect immediately rather than only on the next arm.
+	# Recompute the cached caps so the discount takes effect immediately rather
+	# than only on the next arm.
+	_refresh_armed_cooldowns()
+
+# Recompute the cached click-slot caps and every armed auto slot from the live
+# cost (discounts + Confused rolls), clamping any in-flight countdown to the new
+# cap. Shared by Empty Tome's discount and the Confused re-roll.
+func _refresh_armed_cooldowns() -> void:
 	if left_card != null:
 		left_max_cd = maxf(_tr.min_click_cooldown, _cooldown_for(left_card))
 		left_cd = minf(left_cd, left_max_cd)
@@ -2307,10 +2368,39 @@ func reduce_random_card_cost(count: int, amount: int, tag: String, type: String)
 		right_cd = minf(right_cd, right_max_cd)
 	for slot in auto_slots:
 		var armed = slot.get("card")
-		if armed != null and _cost_discounts.has(armed):
+		if armed != null:
 			var new_max: float = _auto_cd(armed)
 			slot.max_cooldown = new_max
 			slot.cooldown = minf(float(slot.cooldown), new_max)
+
+# Every distinct card in the active loadout (click slots + auto slots).
+func _loadout_cards() -> Array:
+	var out: Array = []
+	if left_card != null:
+		out.append(left_card)
+	if right_card != null and not out.has(right_card):
+		out.append(right_card)
+	for slot in auto_slots:
+		var c = slot.get("card")
+		if c != null and not out.has(c):
+			out.append(c)
+	return out
+
+# Confused (all combats): each loadout card's energy cost is randomized between 0
+# and max energy each turn. In Action the cost drives cooldown, so a re-roll also
+# re-arms the cached caps; the rolled number is shown on the card art during
+# cooldown. Clears (costs snap back) once the status is gone.
+func _reroll_confused_costs() -> void:
+	if player_actor == null or player_actor.get_status(&"confused") <= 0:
+		if not _confused_costs.is_empty():
+			_confused_costs.clear()
+			_refresh_armed_cooldowns()
+		return
+	var hi: int = maxi(0, GameState.max_energy)
+	_confused_costs.clear()
+	for c in _loadout_cards():
+		_confused_costs[c] = _rng.randi_range(0, hi)
+	_refresh_armed_cooldowns()
 
 # Status apply entry point used by EffectSystem._h_status, the shared contact
 # reactions, and the curse path. Routes through the shared core like every mode.
@@ -2632,6 +2722,8 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 var _slot_panels: Array[Panel] = []
 var _slot_name_labels: Array[Label] = []
 var _slot_cd_labels: Array[Label] = []
+# Energy-cost badge drawn over each click slot's card art while it's cooling down.
+var _slot_cost_labels: Array[Label] = []
 
 # Card-art nodes for the two click slots (index 0 = LMB, 1 = RMB).
 var _click_tex: Array[TextureRect] = []
@@ -2668,6 +2760,7 @@ func _build_slot_bar() -> void:
 	_slot_panels.clear()
 	_slot_name_labels.clear()
 	_slot_cd_labels.clear()
+	_slot_cost_labels.clear()
 	_click_tex.clear()
 	_click_swatch.clear()
 	for i in range(2):
@@ -2696,9 +2789,21 @@ func _build_slot_bar() -> void:
 		cd_lbl.add_theme_font_size_override("font_size", 12)
 		cd_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
 		panel.add_child(cd_lbl)
+		# Energy-cost badge over the card art (top-left), shown only while cooling
+		# down so the player can read the (possibly Confused-randomized) cost.
+		var cost_lbl := Label.new()
+		cost_lbl.position = Vector2(7, 5)
+		cost_lbl.size = Vector2(20, 18)
+		cost_lbl.add_theme_font_size_override("font_size", 15)
+		cost_lbl.add_theme_color_override("font_color", Color(1.0, 0.95, 0.4))
+		cost_lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+		cost_lbl.add_theme_constant_override("outline_size", 4)
+		cost_lbl.visible = false
+		panel.add_child(cost_lbl)
 		_slot_panels.append(panel)
 		_slot_name_labels.append(name_lbl)
 		_slot_cd_labels.append(cd_lbl)
+		_slot_cost_labels.append(cost_lbl)
 		_click_tex.append(tex)
 		_click_swatch.append(swatch)
 
@@ -2807,17 +2912,24 @@ func _refresh_slot_bar() -> void:
 
 func _refresh_click_slot(panel_idx: int, prefix: String, card: CardData, cd: float, max_cd: float) -> void:
 	_apply_card_visual(_click_tex[panel_idx], _click_swatch[panel_idx], card)
+	var cost_lbl: Label = _slot_cost_labels[panel_idx]
 	if card == null:
 		_slot_name_labels[panel_idx].text = prefix + "(empty)"
 		_slot_cd_labels[panel_idx].text = ""
+		cost_lbl.visible = false
 		return
 	_slot_name_labels[panel_idx].text = prefix + card.display_name
 	if cd > 0.0:
 		_slot_cd_labels[panel_idx].text = "%.1fs / %.1fs" % [cd, max_cd]
 		_slot_cd_labels[panel_idx].add_theme_color_override("font_color", Color(0.9, 0.6, 0.4))
+		# Show the card's energy cost over its art while it's on cooldown so the
+		# (possibly Confused-randomized) cost driving the cooldown is visible.
+		cost_lbl.text = str(_action_card_cost(card))
+		cost_lbl.visible = true
 	else:
 		_slot_cd_labels[panel_idx].text = "ready"
 		_slot_cd_labels[panel_idx].add_theme_color_override("font_color", Color(0.7, 1.0, 0.7))
+		cost_lbl.visible = false
 
 # The Space/E charged-active slot: shows the slotted item's icon, name and live
 # charge so the player can see the spacebar active and whether it's ready.

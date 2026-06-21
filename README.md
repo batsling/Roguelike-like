@@ -76,6 +76,10 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_curse_tres.py
 │   ├── generate_event_tres.py
 │   ├── generate_game_tres.py
+│   ├── generate_item_tres.py
+│   ├── generate_enemy_tres.py     #   data/enemies from the enemiesD sheet
+│   ├── build_enemiesD_sheet.py    #   (re)builds the enemiesD sheet itself
+│   ├── add_status_addon_rows.py   #   adds status/addon rows to the sheets
 │   ├── import-games-godot.py
 │   └── import-reference-godot.py
 │
@@ -160,7 +164,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Settings` | Run-independent preferences (e.g. game-filter) persisted to `user://settings.cfg`. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified). |
-| `DevTools` | Developer overlay (press `` ` ``) to grant any card/curse/item. Gated on `Settings.dev_mode`. |
+| `DevTools` | Developer overlay (press `` ` ``) to grant any card/curse/item, or tick up to 5 enemies and start a test combat. Gated on `Settings.dev_mode`. |
 | `StrategyState` / `StrategyTurnManager` / `StrategyLog` / `StrategyCombatSession` | Singletons for the strategy-combat prototype. |
 
 ### Game modes & scene flow
@@ -204,8 +208,12 @@ editing the sheet, then review the diff):
 | `generate_card_tres.py` | `data/cards/*.tres` from the `cardsnew` sheet |
 | `generate_evolution_tres.py` | the evolved card `.tres` + `scripts/data/EvolutionCatalog.gd` from the `Evolutions` sheet |
 | `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesnew` sheet |
+| `generate_item_tres.py` | `data/items/*.tres` from the items sheet |
 | `generate_event_tres.py` | `data/events/*.tres` from authored Python dicts |
 | `generate_game_tres.py` | `data/games/*.tres` from the curated games subgraph |
+| `generate_enemy_tres.py` | `data/enemies/*.tres` from the `enemiesD` sheet (+ copies enemy art into `assets/enemies/`) |
+| `build_enemiesD_sheet.py` | (re)builds the deckbuilder-enemy `enemiesD` sheet from the legacy `enemies` rows |
+| `add_status_addon_rows.py` | adds/updates status + addon rows in `statusesnew` / `addonsnew` |
 | `import-games-godot.py` | `data/games/*.tres` + copies covers into `assets/games/` |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 
@@ -228,6 +236,43 @@ Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
 
+- **Weighted enemy encounters** — combats now field a **scaled group** instead of
+  a single random enemy. `scripts/runtime/EnemySpawner.gd` ports the legacy
+  budget/tier "weight" spawn: the run's **RunDifficulty** tier sets a spend budget
+  (first combat 2, then Low=4 / Med=6 / High=9 / Insane=12), enemies are picked
+  weighted by their `weight` cost up to the 5-enemy cap, the pool is gated by tier
+  (Boss-difficulty reserved for boss fights), and a new
+  `GameState.total_combats_completed` counter eases the opening fight. Wired into
+  `GameMap` / `Main`; pure logic covered by `test/test_enemy_spawner.gd`.
+- **Deckbuilder enemy system (data-driven)** — deckbuilder enemies are now
+  generated from a dedicated **`enemiesD`** sheet by `tools/generate_enemy_tres.py`
+  into `data/enemies/*.tres` (12 Slay-the-Spire enemies). Each enemy's **Moves**
+  column compiles into a weighted **intent pattern** (`t1` forced opener +
+  `any @ weight` moves → per-turn probabilities), and the legacy ability column
+  becomes structured data (split target/count, starting statuses). A minimal
+  **Slimed** status card was added to `cardsnew` for the slimes' card pressure,
+  and a **5-enemy battlefield cap** (`DeckbuilderCombat.MAX_ENEMIES`) bounds spawns
+  and Splits. Regenerate with `build_enemiesD_sheet.py` → `generate_enemy_tres.py`.
+  See `docs/enemy-plan.md`.
+- **Enemy status mechanics across all combats** — eight enemy-facing mechanics now
+  run in the shared `Stats.gd` status core, so deckbuilder, action, and strategy
+  all get them: **Determined** (a value rolled once per combat), **Split** (slimes
+  spawn copies at ≤50% HP), **Shifting** / **Shackled** (Transient's power-shift
+  cycle, fed by a shared damage-taken tally), **Ritual** (gains Power each turn),
+  **Curl Up** (Block on the first hit each turn), **Fading** (turn countdown to
+  death), and **Confused** (randomizes card energy costs each turn — shown on the
+  Action card art during cooldown), plus **per-turn damage scaling**
+  (`dmg:N:per_turn=M`, Transient's +10/turn). Authored in `addonsnew` /
+  `statusesnew` and folded into `ReferenceCatalog`.
+- **Dev test-combat menu** — the `` ` `` DevTools overlay gains an **Enemies** tab:
+  tick up to 5 enemies (organized with per-tab hints + an action bar) and
+  **Start Combat** to drop straight into a deckbuilder fight against that roster,
+  mid-run and with no run-progress side effects, for isolated mechanic testing.
+- **Games/connections refresh + new items** — regenerated the games graph from the
+  spreadsheet (now **685** games, incl. 6 new traditional roguelikes) with
+  refreshed influence edges and launch links; added the **Empty Tome**
+  (combat-start weapon cost discount via the new `reduce_card_cost` effect) and the
+  **Dexecutioner / Lil' Bomber / Glass Eye** weapon items.
 - **Weapon evolutions + Finesse / Explosive / element UX** — a new **Evolution**
   mechanic (sheet-authored in the `Evolutions` tab) irreversibly transforms a
   base weapon card the instant its two requirements are met: **Lil' Bomber** + any

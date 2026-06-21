@@ -48,6 +48,24 @@ extends Resource
 # each combat; rendered as icons when the unit is hovered (BattleGridView).
 var statuses: Dictionary = {}               # StringName -> int stacks
 
+# Damage taken since this unit's last turn boundary (Shifting status). Fed by
+# the TriggerBus.damage_taken signal and reset by Stats.tick_actor_statuses.
+var damage_taken_this_turn: int = 0
+
+# Determined (addon): values rolled once and fixed for the combat. key -> int.
+var determined_rolls: Dictionary = {}
+
+# Curl Up: cleared each turn so the gain-block-on-first-hit fires once per turn.
+var curl_up_used_this_turn: bool = false
+
+# Turns this unit has completed (bumped at its turn boundary by Stats). Drives
+# per-turn damage scaling (Transient's "+10 each turn").
+var turns_taken: int = 0
+
+# Split (status): what this unit splits into + how many copies (0 = no split).
+var split_into: StringName = &""
+var split_count: int = 0
+
 # Battlefield position (battle-grid coords, set by CombatSession).
 @export var position: Vector2i = Vector2i.ZERO
 

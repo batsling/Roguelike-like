@@ -1,0 +1,50 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3 uid="uid://enemy_green_louse"]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://assets/enemies/GreenLouse.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"green_louse"
+display_name = "Green Louse"
+difficulty = 0
+weight = 1
+hp_min = 11
+hp_max = 17
+pattern = [
+ {
+  "display": "Bite (5-7)",
+  "weight": 75,
+  "effects": [
+   {
+    "type": "dmg",
+    "value": 0,
+    "target": "player",
+    "determined": [
+     5,
+     7
+    ]
+   }
+  ]
+ },
+ {
+  "display": "Spit Web (2 Weak)",
+  "weight": 25,
+  "effects": [
+   {
+    "type": "status",
+    "status": "weak",
+    "stacks": 2,
+    "target": "player"
+   }
+  ]
+ }
+]
+pattern_mode = "random"
+starting_abilities = PackedStringArray()
+starting_statuses = {"curl_up": [3, 7]}
+source_game = "Slay the Spire"
+tags = PackedStringArray("bug")
+image = ExtResource("2_img")
+portrait_color = Color(0.350, 0.519, 0.700, 1)
+glyph = "g"
