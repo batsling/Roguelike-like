@@ -27,7 +27,7 @@ var _name_label: Label
 var _hp_bar: ProgressBar
 var _hp_label: Label
 var _poison_overlay: ColorRect
-var _block_badge: Panel
+var _block_badge: TextureRect
 var _block_label: Label
 var _status_row: HBoxContainer
 var _click_area: Button
@@ -150,17 +150,16 @@ func _build() -> void:
 	_hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_hp_label)
 
-	# Block badge — circular blue shield over the portrait's right edge (the round
-	# blue shape is the shield; the label holds the count), as in the old HTML.
-	_block_badge = Panel.new()
-	_block_badge.position = Vector2(VIEW_W - 48, 50)
-	_block_badge.size = Vector2(38, 38)
-	var shield_sb := StyleBoxFlat.new()
-	shield_sb.bg_color = Color(0.16, 0.5, 0.78, 0.97)
-	shield_sb.set_corner_radius_all(19)
-	shield_sb.set_border_width_all(3)
-	shield_sb.border_color = Color(0.1, 0.1, 0.22)
-	_block_badge.add_theme_stylebox_override("panel", shield_sb)
+	# Block badge — a shield icon (the same Defense art the intent bar uses) with
+	# the block count inside it, parked at the left end of the HP bar so it reads
+	# like Slay the Spire: shield-by-the-healthbar instead of a floating circle.
+	_block_badge = TextureRect.new()
+	_block_badge.texture = _intent_icon_for("defend")
+	_block_badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_block_badge.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_block_badge.position = Vector2(2, 263)
+	_block_badge.size = Vector2(28, 28)
+	_block_badge.modulate = Color(0.7, 0.85, 1.0)  # cool tint so it reads as Block
 	_block_badge.visible = false
 	_block_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_block_badge)
@@ -172,7 +171,7 @@ func _build() -> void:
 	_block_label.add_theme_font_size_override("font_size", 13)
 	_block_label.add_theme_color_override("font_color", Color.WHITE)
 	_block_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	_block_label.add_theme_constant_override("outline_size", 3)
+	_block_label.add_theme_constant_override("outline_size", 4)
 	_block_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_block_badge.add_child(_block_label)
 

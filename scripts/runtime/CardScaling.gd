@@ -30,7 +30,7 @@ const COL_DOWN := "ff7d7d"
 
 static var _re_cache: Dictionary = {}
 
-static func scale_text(text: String, player, rich: bool = true, card: CardData = null) -> String:
+static func scale_text(text: String, player, rich: bool = true, card: CardData = null, target = null) -> String:
 	if text == "":
 		return text
 	var has_player: bool = player != null and player.has_method("get_status")
@@ -40,6 +40,17 @@ static func scale_text(text: String, player, rich: bool = true, card: CardData =
 	var persistence: int = player.get_status(&"persistence") if has_player else 0
 	var weak: bool = has_player and player.get_status(&"weak") > 0
 	var frail: bool = has_player and player.get_status(&"frail") > 0
+
+	# Incoming-damage modifiers read off the TARGET (when previewing an attack
+	# against a specific enemy): Vulnerable (+50%, ceil, all dmg types), Bruise
+	# (+1 flat per stack, melee/ranged only) and Brace (-1 flat per stack, all
+	# types, min 1). Mirrors the incoming section of Stats.resolve_damage so the
+	# previewed "Deal N Dmg" matches what actually lands on THAT enemy. No target
+	# (in-hand display, out of combat) leaves these neutral.
+	var has_tgt: bool = target != null and target.has_method("get_status")
+	var tgt_vulnerable: bool = has_tgt and target.get_status(&"vulnerable") > 0
+	var tgt_bruise: int = target.get_status(&"bruise") if has_tgt else 0
+	var tgt_brace: int = target.get_status(&"brace") if has_tgt else 0
 
 	# Item boosts that fold straight into the card's own numbers (Strike Dummy:
 	# +3 to a Strike's Dmg). These ride the SAME number the player reads, so a
@@ -63,10 +74,12 @@ static func scale_text(text: String, player, rich: bool = true, card: CardData =
 	out = _sub(out, "Deal (\\d+)[xX](\\d+) Dmg", func(m):
 		var base := int(m.get_string(1))
 		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), power, weak)
+		v = CardScaling._incoming(v, tgt_vulnerable, tgt_bruise, tgt_brace, true)
 		return "Deal %sx%s Dmg" % [CardScaling._num(v, base, COL_DMG_UP, rich), m.get_string(2)])
 	out = _sub(out, "Deal (\\d+) Dmg", func(m):
 		var base := int(m.get_string(1))
 		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), power, weak)
+		v = CardScaling._incoming(v, tgt_vulnerable, tgt_bruise, tgt_brace, true)
 		return "Deal %s Dmg" % CardScaling._num(v, base, COL_DMG_UP, rich))
 
 	# Magic damage (Strike Dummy-style dmg boosts apply to the first dmg effect
@@ -74,10 +87,12 @@ static func scale_text(text: String, player, rich: bool = true, card: CardData =
 	out = _sub(out, "Deal (\\d+)[xX](\\d+) Magic Dmg", func(m):
 		var base := int(m.get_string(1))
 		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), arcane, weak)
+		v = CardScaling._incoming(v, tgt_vulnerable, 0, tgt_brace, false)
 		return "Deal %sx%s Magic Dmg" % [CardScaling._num(v, base, COL_DMG_UP, rich), m.get_string(2)])
 	out = _sub(out, "Deal (\\d+) Magic Dmg", func(m):
 		var base := int(m.get_string(1))
 		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), arcane, weak)
+		v = CardScaling._incoming(v, tgt_vulnerable, 0, tgt_brace, false)
 		return "Deal %s Magic Dmg" % CardScaling._num(v, base, COL_DMG_UP, rich))
 
 	# Block — "Gain N Block" / "Gain +N Block".
@@ -112,6 +127,18 @@ static func _atk(base: int, bonus: int, weak: bool) -> int:
 	var v := base + bonus
 	if weak:
 		v = int(floor(v * 0.75))
+	return maxi(0, v)
+
+# Folds the target's incoming-damage statuses onto an already power/weak-scaled
+# hit, in the same order Stats.resolve_damage applies them: Vulnerable (+50%,
+# ceil) → Bruise (+1/stack, physical only) → Brace (-1/stack, min 1, all types).
+static func _incoming(v: int, vulnerable: bool, bruise: int, brace: int, physical: bool) -> int:
+	if vulnerable:
+		v = int(ceil(v * 1.5))
+	if physical:
+		v += bruise
+	if brace > 0 and v > 0:
+		v = maxi(1, v - brace)
 	return maxi(0, v)
 
 static func _blk(base: int, defense: int, frail: bool) -> int:

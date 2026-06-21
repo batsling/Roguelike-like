@@ -89,6 +89,40 @@ func test_rich_mode_wraps_changed_numbers_in_bbcode() -> void:
 	var p0 = _player({})
 	assert_eq(CardScaling.scale_text("Deal 6 Dmg.", p0, true), "Deal 6 Dmg.")
 
+# --- Target-side incoming modifiers (preview vs a specific enemy) ---------
+
+func _enemy(stats: Dictionary):
+	var e := CombatActor.new()
+	e.is_player = false
+	for k in stats.keys():
+		e.statuses[StringName(k)] = int(stats[k])  # set raw (bypass amplifier math)
+	return e
+
+func test_vulnerable_target_raises_previewed_damage() -> void:
+	var p = _player({"power": 2})
+	var t = _enemy({"vulnerable": 1})
+	# (6 base + 2 Power) * 1.5 = 12 — the bug report's exact case.
+	assert_eq(CardScaling.scale_text("Deal 6 Dmg Melee.", p, false, null, t), "Deal 12 Dmg Melee.")
+
+func test_vulnerable_scales_per_hit_on_multihit() -> void:
+	var p = _player({"power": 1})
+	var t = _enemy({"vulnerable": 1})
+	# ceil((3 + 1) * 1.5) = 6 per hit.
+	assert_eq(CardScaling.scale_text("Deal 3x2 Dmg.", p, false, null, t), "Deal 6x2 Dmg.")
+
+func test_bruise_adds_flat_after_vulnerable_physical_only() -> void:
+	var p = _player({"power": 0})
+	var t = _enemy({"vulnerable": 1, "bruise": 2})
+	# ceil(6 * 1.5) = 9, + 2 Bruise = 11.
+	assert_eq(CardScaling.scale_text("Deal 6 Dmg Melee.", p, false, null, t), "Deal 11 Dmg Melee.")
+	# Magic ignores Bruise but still takes Vulnerable: ceil(6 * 1.5) = 9.
+	assert_eq(CardScaling.scale_text("Deal 6 Magic Dmg.", p, false, null, t), "Deal 9 Magic Dmg.")
+
+func test_no_target_leaves_incoming_modifiers_off() -> void:
+	var p = _player({"power": 2})
+	# Without a target, only Power applies (in-hand display) -> 8.
+	assert_eq(CardScaling.scale_text("Deal 6 Dmg Melee.", p, false), "Deal 8 Dmg Melee.")
+
 # --- Item boosts folded into the number (Strike Dummy) -------------------
 
 func test_strike_dummy_boost_folds_into_number_with_power() -> void:

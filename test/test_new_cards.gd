@@ -172,3 +172,73 @@ func test_bloodletting_parses_lose_hp_and_energy() -> void:
 	assert_eq(String(card.effects[1].get("type", "")), "gain_energy")
 	assert_eq(int(card.effects[1].get("value", 0)), 2)
 	assert_eq(int(card.upgraded_effects[1].get("value", 0)), 3, "upgraded gains 3 energy")
+
+# --- Claw / Beam / Slimed: new cardsnew rows -> generated .tres -----------
+
+func test_claw_parses_dmg_and_self_boost() -> void:
+	var card: CardData = Data.get_card(&"claw")
+	assert_not_null(card, "claw.tres should load")
+	assert_eq(String(card.effects[0].get("type", "")), "dmg")
+	assert_eq(int(card.effects[0].get("value", 0)), 3)
+	# boost_cards matching all Claws by id, +2 dmg this combat (+3 upgraded).
+	assert_eq(String(card.effects[1].get("type", "")), "boost_cards")
+	assert_eq(String(card.effects[1].get("match_id", "")), "claw")
+	assert_eq(int(card.effects[1].get("value", 0)), 2)
+	assert_eq(int(card.upgraded_effects[1].get("value", 0)), 3, "upgraded boosts by 3")
+
+func test_sweeping_beam_is_cleave_draw_with_sweep_shape() -> void:
+	var card: CardData = Data.get_card(&"sweeping_beam")
+	assert_not_null(card, "sweeping_beam.tres should load")
+	assert_eq(card.display_name, "Sweeping Beam", "name unchanged")
+	# Cleave -> all_enemies, ranged, plus a card draw.
+	assert_eq(String(card.effects[0].get("type", "")), "dmg")
+	assert_eq(int(card.effects[0].get("value", 0)), 6)
+	assert_eq(String(card.effects[0].get("target", "")), "all_enemies")
+	assert_eq(String(card.effects[0].get("damage_type", "")), "ranged")
+	assert_eq(String(card.effects[1].get("type", "")), "draw")
+	assert_eq(int(card.effects[1].get("value", 0)), 1)
+	# Attack column is the base "beam" shape plus the "sweep" subtype.
+	assert_eq(String(card.attack_shape), "beam", "shares the beam shape")
+	assert_true(bool(card.attack_params.get("sweep", false)), "carries the sweep subtype")
+	assert_eq(int(card.upgraded_effects[0].get("value", 0)), 9, "upgraded deals 9")
+
+func test_beam_cell_is_a_plain_beam_without_sweep() -> void:
+	var card: CardData = Data.get_card(&"beam_cell")
+	assert_not_null(card, "beam_cell.tres should load")
+	assert_eq(String(card.attack_shape), "beam", "same beam shape")
+	assert_false(bool(card.attack_params.get("sweep", false)), "no sweep subtype -> instant beam")
+
+func test_terror_inflicts_vulnerable_and_exhausts() -> void:
+	var card: CardData = Data.get_card(&"terror")
+	assert_not_null(card, "terror.tres should load")
+	assert_eq(String(card.effects[0].get("type", "")), "status")
+	assert_eq(String(card.effects[0].get("status", "")), "vulnerable")
+	assert_eq(int(card.effects[0].get("stacks", 0)), 99, "Terror piles on Vulnerable")
+	assert_true(card.exhaust, "Terror Exhausts")
+
+func test_slimed_draws_one_and_exhausts() -> void:
+	var card: CardData = Data.get_card(&"slimed")
+	assert_not_null(card, "slimed.tres should load")
+	assert_eq(String(card.effects[0].get("type", "")), "draw")
+	assert_eq(int(card.effects[0].get("value", 0)), 1, "Slimed draws 1 (StS2)")
+	assert_true(card.exhaust, "Slimed still Exhausts when played")
+
+func test_sweep_subtype_resolves_in_both_attack_libraries() -> void:
+	# Action: the beam family, but the sweep subtype gives it a pan arc.
+	var a: Dictionary = Data.action_attacks.resolve(Data.get_card(&"sweeping_beam"))
+	assert_eq(String(a.get("family", "")), "beam")
+	assert_true(bool(a.get("sweep", false)), "carries the sweep flag")
+	assert_gt(float(a.get("reach_px", 0.0)), 0.0, "sweep beam has reach")
+	assert_gt(float(a.get("arc_deg", 0.0)), 0.0, "sweep beam pans across an arc")
+	# A plain beam (no sweep) stays an instant line with no arc.
+	var plain: Dictionary = Data.action_attacks.resolve(Data.get_card(&"beam_cell"))
+	assert_false(bool(plain.get("sweep", false)), "plain beam doesn't sweep")
+	assert_eq(float(plain.get("arc_deg", 0.0)), 0.0, "plain beam has no arc")
+	# Strategy: the sweep subtype fans the full-range line wide -> a large sweep.
+	var s: Dictionary = Data.strategy_attacks.resolve(&"beam", {"sweep": true})
+	assert_eq(String(s.get("family", "")), "line")
+	assert_true(bool(s.get("spread", false)), "strategy sweep beam fans wide")
+	assert_gt(int(s.get("range_tiles", 0)), 5, "covers beam-level range")
+	# A plain beam stays a thin line.
+	var sp: Dictionary = Data.strategy_attacks.resolve(&"beam", {})
+	assert_false(bool(sp.get("spread", false)), "plain beam stays thin")
