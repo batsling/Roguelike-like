@@ -27,6 +27,10 @@ var target_game_id: StringName = &""
 # out a larger gold reward. Set by GameMap before add_child.
 var is_elite: bool = false
 
+# Dev test combat (DevTools): exempt from run-scope tallies like the
+# combats-completed counter, so testing never skews the real run's spawn budget.
+var dev_combat: bool = false
+
 # Tuning constants for the elite multiplier — easy to dial in one place.
 const ELITE_HP_MULT := 1.5
 const ELITE_POWER_BONUS := 3
@@ -601,7 +605,7 @@ func _check_combat_end() -> bool:
 		phase = Phase.LOST
 		GameState.phase = GameState.Phase.DEAD
 		GameLog.add("You have been defeated.", Color(1.0, 0.4, 0.4))
-		TriggerBus.emit_signal("combat_ended", {"victory": false, "scene": self})
+		TriggerBus.emit_signal("combat_ended", {"victory": false, "scene": self, "dev": dev_combat})
 		emit_signal("combat_ended", false)
 		# Consumable buffs last one combat — drop them and the live context.
 		GameState.clear_combat_context()
@@ -619,7 +623,7 @@ func _check_combat_end() -> bool:
 		GameLog.add("Victory!", Color(0.4, 1.0, 0.6))
 		# Items with combat_ended triggers fire on victory only.
 		_fire_item_triggers("combat_ended")
-		TriggerBus.emit_signal("combat_ended", {"victory": true, "scene": self})
+		TriggerBus.emit_signal("combat_ended", {"victory": true, "scene": self, "dev": dev_combat})
 		emit_signal("combat_ended", true)
 		_award_combat_gold()
 		# Consumable buffs last one combat — drop them and the live context.

@@ -303,6 +303,9 @@ func _connect_lifecycle_hooks() -> void:
 		TriggerBus.combat_ended.connect(_on_combat_ended_tally)
 
 func _on_combat_ended_tally(ctx: Dictionary) -> void:
+	# Dev test combats are exempt so testing never skews the run's spawn budget.
+	if bool(ctx.get("dev", false)):
+		return
 	if bool(ctx.get("victory", false)):
 		total_combats_completed += 1
 

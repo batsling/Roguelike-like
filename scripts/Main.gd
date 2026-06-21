@@ -173,6 +173,7 @@ func dev_start_combat(enemy_ids: Array) -> void:
 	var combat: DeckbuilderCombat = COMBAT_SCENE.instantiate()
 	combat.target_game_id = &""
 	combat.enemies_to_spawn = enemy_ids.duplicate()
+	combat.dev_combat = true
 	combat.closed.connect(_on_dev_combat_closed)
 	_swap_to(combat)
 
