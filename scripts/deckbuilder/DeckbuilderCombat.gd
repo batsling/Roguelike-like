@@ -121,9 +121,13 @@ var _player_hp_overlay: Label = null
 var _player_status_row: HBoxContainer = null
 var _player_poison_overlay: ColorRect = null
 var _player_block_label: Label = null
+var _player_block_badge: TextureRect = null
 
 # Shared green poison tint used on every HP bar (player + enemies).
 const POISON_BAR_COLOR := Color(0.35, 0.8, 0.3, 0.85)
+# Shield art for the Block badge — the same Defense icon the enemy intent bar
+# uses, so Block reads consistently across the player and enemy panels.
+const BLOCK_SHIELD_PATH := "res://images/moves/Defense.png"
 @onready var _hand_area: HBoxContainer = $Layout/Bottom/HandRow/HandArea
 @onready var _end_turn_btn: Button = $Layout/Bottom/HandRow/EndTurnButton
 @onready var _energy_label: Label = $Layout/Bottom/StatusBar/EnergyLabel
@@ -274,18 +278,32 @@ func _build_player_view() -> void:
 	_player_hp_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hp_holder.add_child(_player_hp_overlay)
 
-	# Player block reads as a blue "BLK N" tag to the right of the HP overlay,
-	# matching the old HTML's player zone (enemies get the round shield badge).
+	# Player block reads as a shield badge with the count inside it, parked at the
+	# left end of the HP bar — the same Defense art + layout the enemy panels use,
+	# so Block is consistent and sits right by the health bar (Slay the Spire-style).
+	_player_block_badge = TextureRect.new()
+	if ResourceLoader.exists(BLOCK_SHIELD_PATH):
+		_player_block_badge.texture = load(BLOCK_SHIELD_PATH)
+	_player_block_badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_player_block_badge.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_player_block_badge.custom_minimum_size = Vector2(24, 24)
+	_player_block_badge.size = Vector2(24, 24)
+	_player_block_badge.position = Vector2(-2, -4)
+	_player_block_badge.modulate = Color(0.7, 0.85, 1.0)  # cool tint -> reads as Block
+	_player_block_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_player_block_badge.visible = false
+	hp_holder.add_child(_player_block_badge)
+
 	_player_block_label = Label.new()
 	_player_block_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_player_block_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_player_block_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_player_block_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_player_block_label.add_theme_font_size_override("font_size", 11)
-	_player_block_label.add_theme_color_override("font_color", Color(0.36, 0.68, 0.92))
+	_player_block_label.add_theme_font_size_override("font_size", 12)
+	_player_block_label.add_theme_color_override("font_color", Color.WHITE)
 	_player_block_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	_player_block_label.add_theme_constant_override("outline_size", 3)
+	_player_block_label.add_theme_constant_override("outline_size", 4)
 	_player_block_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hp_holder.add_child(_player_block_label)
+	_player_block_badge.add_child(_player_block_label)
 
 	_player_status_row = HBoxContainer.new()
 	_player_status_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -320,9 +338,9 @@ func _refresh_player_view() -> void:
 	_player_hp_bar.max_value = maxi(1, player.max_hp)
 	_player_hp_bar.value = player.hp
 	_player_hp_overlay.text = "%d / %d" % [player.hp, player.max_hp]
-	if _player_block_label != null:
-		_player_block_label.visible = player.block > 0
-		_player_block_label.text = "BLK %d" % player.block
+	if _player_block_badge != null:
+		_player_block_badge.visible = player.block > 0
+		_player_block_label.text = str(player.block)
 	_update_poison_overlay(_player_poison_overlay, player.hp, player.max_hp,
 		player.get_status(&"poison"))
 	for c in _player_status_row.get_children():
