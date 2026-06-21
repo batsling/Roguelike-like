@@ -75,15 +75,11 @@ func _center_for_node(node: Dictionary) -> Vector2:
 	var fl: int = int(node.floor)
 	# Floor 0 at the BOTTOM. Bigger floor index sits higher on screen.
 	var y: float = FLOOR_TOP_Y + (DeckbuilderMap.FLOOR_COUNT - 1 - fl) * FLOOR_STEP_Y
-	var fl_nodes: Array = map.floors[fl]
-	var n_cols: int = fl_nodes.size()
+	# Position by the node's grid column over the fixed map width, so a column
+	# always lands at the same x on every floor and the path-web's edges stay
+	# visually non-crossing (matching the generator's no-cross rule).
 	var col: int = int(node.col)
-	var x: float
-	if n_cols == 1:
-		x = CENTER_X
-	else:
-		var first_x: float = CENTER_X - (n_cols - 1) * COL_SPACING_X * 0.5
-		x = first_x + col * COL_SPACING_X
+	var x: float = CENTER_X + (float(col) - (DeckbuilderMap.MAP_WIDTH - 1) * 0.5) * COL_SPACING_X
 	return Vector2(x, y)
 
 # ---------------------------------------------------------------------------
