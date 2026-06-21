@@ -1639,6 +1639,8 @@ func _deliver_attack_once(card: CardData, effects: Array, spec: Dictionary, aim_
 			_deliver_disc(card, effects, spec, player_pos)
 		"beam":
 			_deliver_beam(card, effects, spec, aim_dir)
+		"sweep_beam":
+			_deliver_sweep_beam(card, effects, spec, aim_dir)
 		"smite":
 			_deliver_smite(card, effects, spec)
 		"auto_aoe":
@@ -1741,6 +1743,36 @@ func _deliver_beam(card: CardData, effects: Array, spec: Dictionary, dir: Vector
 	_show_beam(dir, length)
 	_swing_color = _attack_color_for(card, _swing_color)
 	_apply_enemy_effects(card, effects, _enemies_on_beam(dir, length, _atk.beam_half_width))
+
+# sweep_beam: a full-length beam that pans across a wide arc in front of the
+# player. Like _deliver_swing, each enemy is struck the instant the sweeping beam
+# crosses its angle (left to right), so the hit lines up with the visible sweep;
+# the visual is a beam line rather than a blade wedge.
+func _deliver_sweep_beam(card: CardData, effects: Array, spec: Dictionary, dir: Vector2) -> void:
+	var length: float = float(spec.reach_px)
+	var arc: float = float(spec.get("arc_deg", 150.0))
+	var facing: Vector2 = dir.normalized() if dir.length() > 0.01 else player_facing
+	var dur: float = _swing_dur()
+	_swing_from_left = not _swing_from_left
+	# Reuse the swing visual timing state, but tag it so _draw_attack_smear paints
+	# a beam sweeping across the arc instead of the blade wedge.
+	_begin_swing_visual(facing, length, arc, dur)
+	_swing_kind = "sweep_beam"
+	_swing_color = _attack_color_for(card, _atk.beam_color if _atk != null else _swing_color)
+	var half: float = deg_to_rad(arc * 0.5)
+	for inst in _enemies_in_cone_dir(facing, length, arc):
+		var to: Vector2 = inst.pos - player_pos
+		# Fraction of the sweep at which the beam reaches this enemy's angle.
+		var p: float = clampf((facing.angle_to(to) + half) / maxf(0.0001, half * 2.0), 0.0, 1.0)
+		if not _swing_from_left:
+			p = 1.0 - p
+		_pending_hits.append({
+			"time": maxf(0.001, p * dur),
+			"mode": "swing_hit",
+			"card": card,
+			"effects": effects,
+			"inst": inst,
+		})
 
 func _deliver_smite(card: CardData, effects: Array, spec: Dictionary) -> void:
 	var hits: Array = _smite_target_set(String(spec.target_mode))
@@ -3356,6 +3388,8 @@ func _draw_attack_smear() -> void:
 			var end: Vector2 = player_pos + _ability_swing_facing * _swing_reach
 			draw_line(player_pos, end, col, 9.0)
 			draw_line(player_pos, end, Color(1, 1, 1, col.a), 3.0)
+		"sweep_beam":
+			_draw_sweep_beam(col)
 		"smite":
 			for pt in _smear_points:
 				draw_line(player_pos, pt, Color(col.r, col.g, col.b, col.a * 0.7), 3.0)
@@ -3366,6 +3400,42 @@ func _draw_attack_smear() -> void:
 			draw_line(_bounce_from, _bounce_to, Color(col.r, col.g, col.b, col.a * 0.5), 3.0)
 			draw_circle(_bounce_to, r, Color(col.r, col.g, col.b, col.a * 0.85))
 			draw_circle(_bounce_to, r * 1.6, Color(col.r, col.g, col.b, col.a * 0.3))
+
+# The sweep_beam: a full-length beam line panning across its arc over the swing
+# duration, leaving a faint wedge showing the swept area plus a short motion-blur
+# trail of dimmer beams behind the leading edge.
+func _draw_sweep_beam(col: Color) -> void:
+	var total: float = maxf(0.01, _swing_total)
+	var progress: float = clampf(1.0 - _ability_swing_remaining / total, 0.0, 1.0)
+	var half: float = deg_to_rad(_swing_arc_deg * 0.5)
+	var base_angle: float = _ability_swing_facing.angle()
+	# Sweep one edge of the arc to the other; _swing_from_left flips the start.
+	var start: float = base_angle - half
+	var span: float = half * 2.0
+	if not _swing_from_left:
+		start = base_angle + half
+		span = -span
+	var lead: float = start + span * progress
+	# Faint wedge marking the full swept area.
+	var steps: int = maxi(8, int(_swing_arc_deg / 12.0))
+	var wedge := PackedVector2Array([player_pos])
+	for i in range(steps + 1):
+		var t: float = float(i) / float(steps)
+		wedge.append(player_pos + Vector2.RIGHT.rotated(start + span * t) * _swing_reach)
+	draw_polygon(wedge, PackedColorArray([Color(col.r, col.g, col.b, col.a * 0.12)]))
+	# Motion-blur trail of dimmer beams trailing the leading edge.
+	var segs: int = maxi(2, _atk.swing_trail_segments if _atk != null else 6)
+	var trail: float = minf(absf(span), deg_to_rad(50.0))
+	var dir_sign: float = signf(span)
+	for j in range(segs, 0, -1):
+		var tt: float = float(j) / float(segs)
+		var ang: float = lead - dir_sign * trail * tt
+		var beam_end: Vector2 = player_pos + Vector2.RIGHT.rotated(ang) * _swing_reach
+		draw_line(player_pos, beam_end, Color(col.r, col.g, col.b, col.a * (1.0 - tt) * 0.4), 6.0)
+	# Leading edge — the bright beam itself.
+	var tip: Vector2 = player_pos + Vector2.RIGHT.rotated(lead) * _swing_reach
+	draw_line(player_pos, tip, col, 9.0)
+	draw_line(player_pos, tip, Color(1, 1, 1, col.a), 3.0)
 
 # The arc swing: a white blade sweeping across the arc with a fading trail. The
 # leading edge is where the hit lands this frame; the trailing copies blur out

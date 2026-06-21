@@ -43,6 +43,8 @@ extends Resource
 # Default swing arc (degrees) and the narrower poke arc.
 @export var swing_arc_deg: float = 110.0
 @export var poke_arc_deg: float = 34.0
+# Arc the sweep_beam travels across as it pans left to right.
+@export var sweep_beam_arc_deg: float = 150.0
 # Beam half-width (px) for the hit test, and the projectile fan width per
 # `spread` bolt.
 @export var beam_half_width: float = 26.0
@@ -78,6 +80,10 @@ const ARCHETYPES: Dictionary = {
 	"projectile": {"family": "projectile", "size": "medium"},
 	"lob":        {"family": "lob",        "size": "medium"},
 	"beam":       {"family": "beam",       "size": "full"},
+	# sweep_beam: a full-length beam that sweeps across a wide arc in front of the
+	# player (left to right) rather than firing as one instant line. Hits each
+	# enemy as the beam crosses its angle, like the swing blade does.
+	"sweep_beam": {"family": "sweep_beam", "size": "full"},
 	"homing":     {"family": "homing",     "size": "medium"},
 	"smite":      {"family": "smite",      "size": "", "target": "nearest"},
 	"auto_aoe":   {"family": "auto_aoe",   "size": "small", "target": "random"},
@@ -137,6 +143,9 @@ func resolve(card: CardData) -> Dictionary:
 			spec["reach_px"] = _lookup_px(travel_px, size_word, travel_px["medium"])
 		"beam":
 			spec["reach_px"] = _lookup_px(travel_px, size_word, travel_px["full"])
+		"sweep_beam":
+			spec["reach_px"] = _lookup_px(travel_px, size_word, travel_px["full"])
+			spec["arc_deg"] = float(p.get("arc", sweep_beam_arc_deg))
 		_:
 			pass
 	return spec

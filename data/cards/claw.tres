@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_claw"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Claw.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"claw"
+display_name = "Claw"
+type = 0
+rarity = 1
+cost = 0
+description = "Deal 3 Dmg Melee. Increase the Dmg of ALL Claw Cards by 2 this combat."
+effects = [{"type": "dmg", "value": 3, "target": "enemy", "damage_type": "melee"}, {"type": "boost_cards", "match_id": "claw", "stat": "dmg", "value": 2}]
+tags = PackedStringArray("defect", "offense", "scaling")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 4 Dmg Melee. Increase the damage of ALL Claw cards by 3 this combat."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 4, "target": "enemy", "damage_type": "melee"}, {"type": "boost_cards", "match_id": "claw", "stat": "dmg", "value": 3}]
+image = ExtResource("2_img")
+attack_shape = &"swing"
+attack_params = {"size": "small"}

@@ -172,3 +172,49 @@ func test_bloodletting_parses_lose_hp_and_energy() -> void:
 	assert_eq(String(card.effects[1].get("type", "")), "gain_energy")
 	assert_eq(int(card.effects[1].get("value", 0)), 2)
 	assert_eq(int(card.upgraded_effects[1].get("value", 0)), 3, "upgraded gains 3 energy")
+
+# --- Claw / Beam / Slimed: new cardsnew rows -> generated .tres -----------
+
+func test_claw_parses_dmg_and_self_boost() -> void:
+	var card: CardData = Data.get_card(&"claw")
+	assert_not_null(card, "claw.tres should load")
+	assert_eq(String(card.effects[0].get("type", "")), "dmg")
+	assert_eq(int(card.effects[0].get("value", 0)), 3)
+	# boost_cards matching all Claws by id, +2 dmg this combat (+3 upgraded).
+	assert_eq(String(card.effects[1].get("type", "")), "boost_cards")
+	assert_eq(String(card.effects[1].get("match_id", "")), "claw")
+	assert_eq(int(card.effects[1].get("value", 0)), 2)
+	assert_eq(int(card.upgraded_effects[1].get("value", 0)), 3, "upgraded boosts by 3")
+
+func test_beam_is_cleave_draw_with_sweep_shape() -> void:
+	var card: CardData = Data.get_card(&"beam")
+	assert_not_null(card, "beam.tres should load")
+	assert_eq(card.display_name, "Beam", "renamed from Sweeping Beam")
+	# Cleave -> all_enemies, ranged, plus a card draw.
+	assert_eq(String(card.effects[0].get("type", "")), "dmg")
+	assert_eq(int(card.effects[0].get("value", 0)), 6)
+	assert_eq(String(card.effects[0].get("target", "")), "all_enemies")
+	assert_eq(String(card.effects[0].get("damage_type", "")), "ranged")
+	assert_eq(String(card.effects[1].get("type", "")), "draw")
+	assert_eq(int(card.effects[1].get("value", 0)), 1)
+	assert_eq(String(card.attack_shape), "sweep_beam", "uses the sweeping-beam archetype")
+	assert_eq(int(card.upgraded_effects[0].get("value", 0)), 9, "upgraded deals 9")
+
+func test_slimed_draws_one_and_exhausts() -> void:
+	var card: CardData = Data.get_card(&"slimed")
+	assert_not_null(card, "slimed.tres should load")
+	assert_eq(String(card.effects[0].get("type", "")), "draw")
+	assert_eq(int(card.effects[0].get("value", 0)), 1, "Slimed draws 1 (StS2)")
+	assert_true(card.exhaust, "Slimed still Exhausts when played")
+
+func test_sweep_beam_resolves_in_both_attack_libraries() -> void:
+	# Action: a full-reach beam family carrying a sweep arc.
+	var a: Dictionary = Data.action_attacks.resolve(Data.get_card(&"beam"))
+	assert_eq(String(a.get("family", "")), "sweep_beam")
+	assert_gt(float(a.get("reach_px", 0.0)), 0.0, "sweep beam has reach")
+	assert_gt(float(a.get("arc_deg", 0.0)), 0.0, "sweep beam pans across an arc")
+	# Strategy: a wide (spread) full-range line, reading as a large sweep.
+	var s: Dictionary = Data.strategy_attacks.resolve(&"sweep_beam", {})
+	assert_eq(String(s.get("family", "")), "line")
+	assert_true(bool(s.get("spread", false)), "strategy sweep beam fans wide")
+	assert_gt(int(s.get("range_tiles", 0)), 5, "covers beam-level range")

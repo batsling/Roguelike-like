@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_beam"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/SweepingBeam.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"beam"
+display_name = "Beam"
+type = 0
+rarity = 1
+cost = 1
+description = "Deal 6 Dmg Ranged Cleave. Draw 1 Card."
+effects = [{"type": "dmg", "value": 6, "target": "all_enemies", "damage_type": "ranged"}, {"type": "draw", "value": 1}]
+tags = PackedStringArray("defect", "offense", "draw")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 9 Dmg Ranged Cleave. Draw 1 Card."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 9, "target": "all_enemies", "damage_type": "ranged"}, {"type": "draw", "value": 1}]
+image = ExtResource("2_img")
+attack_shape = &"sweep_beam"

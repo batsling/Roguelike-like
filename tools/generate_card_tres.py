@@ -72,7 +72,7 @@ FLAG_KEYWORDS = {"exhaust", "ethereal", "innate", "retain", "unplayable", "etern
 # "Projectile, Medium, crescent, pierce". Bare size words map to reach/radius
 # (per archetype); arc=/spread=/target= are key=value; pierce/crescent are flags.
 ATTACK_SHAPES = {"poke", "swing", "smash", "nova", "projectile", "lob",
-                 "beam", "homing", "smite", "auto_aoe", "bounce"}
+                 "beam", "sweep_beam", "homing", "smite", "auto_aoe", "bounce"}
 ATTACK_SIZE_WORDS = {"short", "medium", "large", "full", "small"}
 # Bare flag tokens on the Attack cell. `explosive` makes a projectile burst into
 # an AOE on impact (Lil' Bomber): the direct hit deals no damage, the blast deals
