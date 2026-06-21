@@ -773,13 +773,13 @@ func _show_end_overlay(victory: bool) -> void:
 	if victory:
 		info.text = "HP %d / %d   Turn %d" % [GameState.hp, GameState.max_hp, turn]
 	else:
-		info.text = "The run ends. Restart to try again."
+		info.text = "The run ends."
 	panel.add_child(info)
 
 	var btn := Button.new()
 	btn.position = Vector2(120, 180)
 	btn.size = Vector2(240, 56)
-	btn.text = "Next combat" if victory else "Restart run"
+	btn.text = "Next combat" if victory else "Main Menu"
 	btn.pressed.connect(func(): _close(victory))
 	panel.add_child(btn)
 
@@ -991,7 +991,7 @@ func _update_drag(pos: Vector2) -> void:
 		_drag_hover_enemy = hovered
 		if hovered != null:
 			hovered.modulate = Color(1.3, 1.3, 1.3)
-		_update_hover_card(hovered)
+		_update_ghost_preview(hovered)
 
 func _finish_drag(pos: Vector2) -> void:
 	var card := _drag_card
@@ -1033,77 +1033,20 @@ func _clear_drag_visuals() -> void:
 	# Restores dimmed hand-card modulate + clears enemy targetable highlight.
 	_refresh_ui()
 
-# Rebuilds the dynamic hover card for the enemy currently under the cursor (or
-# clears it when not over an enemy / the dragged card isn't a targeting attack).
-# The preview resolves the card's text against THIS enemy so conditional riders
-# (the Fire element's "Inflict 1 Burn", etc.) reflect the live target state.
-func _update_hover_card(view: EnemyView) -> void:
-	_clear_hover_card()
-	if view == null or _drag_card == null or _drag_card.data == null:
+# Re-points the floating drag ghost's number preview at the enemy under the
+# cursor (or clears it), so the card's OWN "Deal N Dmg" rewrites to what would
+# land on THAT enemy — folding in its Vulnerable / Bruise / Brace — instead of a
+# separate damage number popping up next to the enemy. Non-targeting drags and
+# empty hovers fall back to the plain self-scaled card text.
+func _update_ghost_preview(view: EnemyView) -> void:
+	if _drag_ghost == null or _drag_card == null:
 		return
-	if not _drag_card.wants_target():
-		return
-	var idx: int = _enemy_views.find(view)
-	if idx < 0 or idx >= enemies.size():
-		return
-	var enemy: CombatActor = enemies[idx]
-	if enemy == null or not enemy.is_alive():
-		return
-
-	var panel := PanelContainer.new()
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.z_index = 210
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.08, 0.08, 0.12, 0.97)
-	sb.set_corner_radius_all(8)
-	sb.set_border_width_all(1)
-	sb.border_color = Color(1.0, 0.85, 0.45, 0.6)
-	sb.set_content_margin_all(9)
-	panel.add_theme_stylebox_override("panel", sb)
-	panel.custom_minimum_size = Vector2(220, 0)
-
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 4)
-	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(vb)
-
-	var head := Label.new()
-	head.text = "%s  →  %s" % [_drag_card.get_display_name(), enemy.display_name]
-	head.add_theme_font_size_override("font_size", 12)
-	head.add_theme_color_override("font_color", Color(1.0, 0.88, 0.55))
-	vb.add_child(head)
-
-	var desc := RichTextLabel.new()
-	desc.bbcode_enabled = true
-	desc.fit_content = true
-	desc.scroll_active = false
-	desc.custom_minimum_size = Vector2(202, 0)
-	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	desc.add_theme_font_size_override("normal_font_size", 11)
-	desc.text = _drag_card.combat_description(player, true, enemy)
-	vb.add_child(desc)
-
-	# Conditional / keyword lines resolved against this enemy (Fire -> Burn only
-	# when it isn't already burning, plus any addons the card carries).
-	for entry in CardLore.entries_for_target(_drag_card.data, enemy):
-		var line := Label.new()
-		line.text = "• %s: %s" % [String(entry.get("name", "")), String(entry.get("desc", ""))]
-		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		line.custom_minimum_size = Vector2(202, 0)
-		line.add_theme_font_size_override("font_size", 10)
-		line.add_theme_color_override("font_color", entry.get("color", Color(0.8, 0.8, 0.85)))
-		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		vb.add_child(line)
-
-	add_child(panel)
-	_hover_card = panel
-	# Park it just above the enemy view (clamped onto the screen).
-	var rect: Rect2 = view.get_global_rect()
-	var target_pos := Vector2(rect.position.x + rect.size.x + 8.0, rect.position.y)
-	var vp: Vector2 = get_viewport_rect().size
-	target_pos.x = clampf(target_pos.x, 8.0, vp.x - 228.0)
-	target_pos.y = clampf(target_pos.y, 8.0, vp.y - 160.0)
-	panel.global_position = target_pos
+	var target_actor: CombatActor = null
+	if view != null and _drag_card.wants_target():
+		var idx: int = _enemy_views.find(view)
+		if idx >= 0 and idx < enemies.size() and enemies[idx].is_alive():
+			target_actor = enemies[idx]
+	_drag_ghost.set_preview_target(target_actor)
 
 func _clear_hover_card() -> void:
 	if _hover_card != null:
@@ -2164,6 +2107,19 @@ func _refresh_ui() -> void:
 
 	_refresh_player_view()
 
+	# Re-predict attack intents against the live state so a damaged Transient
+	# (Shifting drops its Power on the hit) shows its reduced number immediately,
+	# rather than the value rolled at the start of the turn.
+	for e in enemies:
+		if not e.is_alive() or e.planned_move.is_empty():
+			continue
+		if String(e.planned_move.get("intent_type", "")) != "attack":
+			continue
+		for eff in e.planned_move.get("effects", []):
+			if eff is Dictionary and String(eff.get("type", "")) == "dmg":
+				e.planned_move["intent_dmg"] = _predict_intent_damage(e, eff)
+				break
+
 	# Enemies — refresh existing views instead of rebuilding.
 	for view in _enemy_views:
 		view.refresh()
@@ -2204,12 +2160,16 @@ func _input(event: InputEvent) -> void:
 			_cancel_drag()
 		elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 			_cancel_drag()
+			# Consume it so the shared PauseMenu doesn't also open on this Esc.
+			get_viewport().set_input_as_handled()
 		return
 	# Right-click or ESC cancels targeting.
 	if not _targeting:
 		return
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		_cancel_targeting()
+		# Consume it so the shared PauseMenu doesn't also open on this Esc.
+		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		_cancel_targeting()
 

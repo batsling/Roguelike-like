@@ -130,6 +130,12 @@ func _on_damage_taken_tally(ctx: Dictionary) -> void:
 	var amount: int = maxi(0, int(ctx.get("amount", 0)))
 	if "damage_taken_this_turn" in tgt:
 		tgt.damage_taken_this_turn += amount
+	# Shifting (Transient): whenever it loses HP, it loses that much Power right
+	# away, so chipping it immediately weakens its scaling attack (its Power ramps
+	# back up on its own turn). Applied here so every combat mode shares the rule.
+	if amount > 0 and tgt.has_method("get_status") and tgt.has_method("add_status") \
+			and tgt.get_status(&"shifting") > 0:
+		tgt.add_status(&"power", -amount)
 	# Curl Up: the first time the actor takes damage each turn it hardens, gaining
 	# Block = its Curl Up stacks. The per-turn re-arm flag is cleared in
 	# tick_actor_statuses. Shared here so every mode's damage_taken triggers it.
@@ -885,12 +891,11 @@ func tick_actor_statuses(actor, scene, tick_bleed: bool = true) -> void:
 		if actor.get_status(&"fading") <= 0 and actor.is_alive():
 			scene.apply_dot(actor, int(actor.hp), "fading")
 
-# Shackled + Shifting end-of-turn cycle (StS Transient). Ordered so the two
-# don't cancel on the same boundary:
-#   1. Shackled returns its banked Power (gain stacks as Power) then clears.
-#   2. Shifting banks THIS turn's damage as fresh Power loss + Shackled, which
-#      the step above returns at the NEXT turn boundary.
-# Untyped actor: needs get_status / add_status, optionally damage_taken_this_turn.
+# Shackled end-of-turn return (StS): an enemy with Shackled gains that much Power
+# at its turn boundary, then clears the stacks. Shifting's Power loss is applied
+# immediately on the hit (see _on_damage_taken_tally), not banked here, so a
+# damaged Transient is weakened on the spot rather than a turn later.
+# Untyped actor: needs get_status / add_status.
 func process_power_shift(actor) -> void:
 	if actor == null or not actor.has_method("get_status") or not actor.has_method("add_status"):
 		return
@@ -898,11 +903,6 @@ func process_power_shift(actor) -> void:
 	if shackled > 0:
 		actor.add_status(&"power", shackled)
 		actor.add_status(&"shackled", -shackled)   # "lose all when triggered"
-	if actor.get_status(&"shifting") > 0:
-		var dmg: int = int(actor.damage_taken_this_turn) if "damage_taken_this_turn" in actor else 0
-		if dmg > 0:
-			actor.add_status(&"power", -dmg)
-			actor.add_status(&"shackled", dmg)
 
 # Determined (addon): resolve an X-Y range to a value rolled ONCE and then fixed
 # for the rest of combat. The roll is cached on `holder.determined_rolls` (keyed

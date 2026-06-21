@@ -221,11 +221,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			GameLog.add("Saved.", Color(0.7, 0.9, 1.0))
 		else:
 			GameLog.add("Save failed.", Color(0.9, 0.5, 0.5))
-	elif event.keycode == KEY_ESCAPE:
-		# Quick "back to menu" — autosaves first so the run lives on the
-		# Continue list.
-		_save_run()
-		get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
+	# Escape is intentionally NOT handled here: it falls through to the shared
+	# PauseMenu (mounted by Main) so Esc opens the pause menu rather than bailing
+	# straight to the main menu.
 
 func _can_act() -> bool:
 	return _verification_modal == null and _win_overlay == null and _dash_modal == null \

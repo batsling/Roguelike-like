@@ -37,11 +37,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Esc/Enter and frees itself first.
 	if _overlay_open():
 		return
-	if event.is_action_pressed("pause_menu"):
+	# Enter (pause_menu) toggles; Escape (ui_cancel) also toggles so it opens the
+	# pause menu from any run scene instead of bailing to the main menu. Scenes
+	# that want Escape for their own thing (combat targeting, open sub-modals)
+	# consume it in _input/_gui_input first, so it never reaches here.
+	if event.is_action_pressed("pause_menu") or event.is_action_pressed("ui_cancel"):
 		toggle()
-		get_viewport().set_input_as_handled()
-	elif visible and event.is_action_pressed("ui_cancel"):
-		close()
 		get_viewport().set_input_as_handled()
 
 func _overlay_open() -> bool:

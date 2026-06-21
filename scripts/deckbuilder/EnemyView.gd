@@ -41,7 +41,9 @@ const INTENT_ICON_PATHS := {
 	"attack": "res://images/moves/Attack.png",
 	"defend": "res://images/moves/Defense.png",
 	"debuff": "res://images/moves/Status.png",
-	"buff": "res://images/moves/Vitality.png",
+	# Gaining a buff reads as the status swirl (not the heart), so "enemy gains
+	# something" is visually distinct from healing.
+	"buff": "res://images/moves/Status.png",
 	"heal": "res://images/moves/Health.png",
 	"waiting": "res://images/statuses/Unknown.png",
 	"unknown": "res://images/statuses/Unknown.png",

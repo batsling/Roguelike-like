@@ -74,6 +74,11 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("backpack"):
 		toggle()
 		get_viewport().set_input_as_handled()
+	# Esc closes the bag when it's open (and is consumed here so it doesn't also
+	# pop the pause menu underneath). Runs in _input, before PauseMenu's handler.
+	elif visible and event.is_action_pressed("ui_cancel"):
+		close()
+		get_viewport().set_input_as_handled()
 
 func _on_state_changed() -> void:
 	if visible:
