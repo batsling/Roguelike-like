@@ -69,7 +69,7 @@ func test_death_orb_damage_scales_with_curse_count() -> void:
 	_add_curses(3)
 	var scene := _CaptureScene.new()
 	var enemy := CombatActor.new()
-	var eff := Data.get_item(&"death_orb").triggers[0]["effects"][0]
+	var eff: Dictionary = Data.get_item(&"death_orb").triggers[0]["effects"][0]
 	EffectSystem.apply(eff, {"source": null, "target": enemy, "scene": scene})
 	assert_eq(scene.last_amount, 6, "3 curses -> 3x2 = 6 damage")
 	# No curses -> no damage.
@@ -98,7 +98,7 @@ func test_du_vu_doll_grants_power_equal_to_curse_count() -> void:
 	GameState.reset_run()
 	_add_curses(2)
 	var player := CombatActor.from_player()
-	var eff := Data.get_item(&"du_vu_doll").triggers[0]["effects"][0]
+	var eff: Dictionary = Data.get_item(&"du_vu_doll").triggers[0]["effects"][0]
 	EffectSystem.apply(eff, {"source": player, "target": player, "scene": null})
 	assert_eq(player.get_status(&"power"), 2, "2 curses -> +2 Power")
 
