@@ -20,15 +20,34 @@ var actor: CombatActor = null
 
 var _frame: ColorRect
 var _intent_bg: ColorRect
+var _intent_icon: TextureRect
 var _intent_label: Label
 var _portrait: TextureRect
 var _name_label: Label
 var _hp_bar: ProgressBar
 var _hp_label: Label
-var _block_badge: ColorRect
+var _poison_overlay: ColorRect
+var _block_badge: Panel
 var _block_label: Label
 var _status_row: HBoxContainer
 var _click_area: Button
+
+# Green poison tint applied to the rightmost slice of the HP bar (StS-style).
+const POISON_BAR_COLOR := Color(0.35, 0.8, 0.3, 0.85)
+
+# Intent-type → icon art. Mirrors the old HTML's move icons. Loaded lazily and
+# cached so every enemy view shares one Texture per type.
+const INTENT_ICON_PATHS := {
+	"attack": "res://images/moves/Attack.png",
+	"defend": "res://images/moves/Defense.png",
+	"debuff": "res://images/moves/Status.png",
+	"buff": "res://images/moves/Vitality.png",
+	"heal": "res://images/moves/Health.png",
+	"waiting": "res://images/statuses/Unknown.png",
+	"unknown": "res://images/statuses/Unknown.png",
+	"stunned": "res://images/statuses/Stun.png",
+}
+static var _intent_icon_cache: Dictionary = {}
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(VIEW_W, VIEW_H)
@@ -57,9 +76,19 @@ func _build() -> void:
 	_intent_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_intent_bg)
 
+	# Intent icon (move type art) sits at the left of the bar; the label (damage
+	# number / move name) fills the rest.
+	_intent_icon = TextureRect.new()
+	_intent_icon.position = Vector2(10, 9)
+	_intent_icon.size = Vector2(22, 22)
+	_intent_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_intent_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_intent_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_intent_icon)
+
 	_intent_label = Label.new()
-	_intent_label.position = Vector2(6, 6)
-	_intent_label.size = Vector2(VIEW_W - 12, 28)
+	_intent_label.position = Vector2(34, 6)
+	_intent_label.size = Vector2(VIEW_W - 44, 28)
 	_intent_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_intent_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_intent_label.add_theme_font_size_override("font_size", 13)
@@ -104,6 +133,14 @@ func _build() -> void:
 	_hp_bar.add_theme_stylebox_override("background", bar_bg)
 	add_child(_hp_bar)
 
+	# Poison overlay: green tint on the rightmost slice of the HP fill equal to
+	# pending poison damage. Anchored by fraction (set in refresh).
+	_poison_overlay = ColorRect.new()
+	_poison_overlay.color = POISON_BAR_COLOR
+	_poison_overlay.visible = false
+	_poison_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hp_bar.add_child(_poison_overlay)
+
 	_hp_label = Label.new()
 	_hp_label.position = Vector2(10, 270)
 	_hp_label.size = Vector2(VIEW_W - 20, 18)
@@ -113,24 +150,31 @@ func _build() -> void:
 	_hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_hp_label)
 
-	# Block badge (top-left corner over portrait)
-	_block_badge = ColorRect.new()
-	_block_badge.position = Vector2(10, 42)
-	_block_badge.size = Vector2(64, 26)
-	_block_badge.color = Color(0.3, 0.55, 0.85, 0.95)
+	# Block badge — circular blue shield over the portrait's right edge (the round
+	# blue shape is the shield; the label holds the count), as in the old HTML.
+	_block_badge = Panel.new()
+	_block_badge.position = Vector2(VIEW_W - 48, 50)
+	_block_badge.size = Vector2(38, 38)
+	var shield_sb := StyleBoxFlat.new()
+	shield_sb.bg_color = Color(0.16, 0.5, 0.78, 0.97)
+	shield_sb.set_corner_radius_all(19)
+	shield_sb.set_border_width_all(3)
+	shield_sb.border_color = Color(0.1, 0.1, 0.22)
+	_block_badge.add_theme_stylebox_override("panel", shield_sb)
 	_block_badge.visible = false
 	_block_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_block_badge)
 
 	_block_label = Label.new()
-	_block_label.position = Vector2(10, 42)
-	_block_label.size = Vector2(64, 26)
+	_block_label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_block_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_block_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_block_label.add_theme_font_size_override("font_size", 13)
 	_block_label.add_theme_color_override("font_color", Color.WHITE)
+	_block_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	_block_label.add_theme_constant_override("outline_size", 3)
 	_block_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_block_label)
+	_block_badge.add_child(_block_label)
 
 	# Status row (bottom)
 	_status_row = HBoxContainer.new()
@@ -165,18 +209,17 @@ func refresh() -> void:
 	if actor.data != null:
 		_portrait.texture = actor.data.image
 
-	var intent_text: String = "?"
-	if not actor.planned_move.is_empty():
-		intent_text = String(actor.planned_move.get("display", "?"))
-	_intent_label.text = intent_text
+	_refresh_intent()
 
 	_hp_bar.max_value = max(1, actor.max_hp)
 	_hp_bar.value = actor.hp
 	_hp_label.text = "%d / %d" % [actor.hp, actor.max_hp]
+	_update_poison_overlay()
 
+	# The round blue badge itself reads as the shield; the label is just the count
+	# (Godot's default font has no shield-emoji glyph).
 	_block_badge.visible = actor.block > 0
-	_block_label.visible = actor.block > 0
-	_block_label.text = "BLK %d" % actor.block
+	_block_label.text = str(actor.block)
 
 	# Statuses — icon badges below the enemy (icon art from
 	# res://images/statuses/ via Stats.status_icon).
@@ -187,6 +230,62 @@ func refresh() -> void:
 		if stacks <= 0:
 			continue
 		_status_row.add_child(_make_status_badge(s, stacks))
+
+# Renders the intent type icon + the move readout. Stun overrides everything
+# (the enemy skips its turn); an empty plan shows a "Waiting" icon. Attack moves
+# show just the predicted damage number (StS-style); other moves show their name.
+func _refresh_intent() -> void:
+	var itype: String = "unknown"
+	var text: String = ""
+	if actor.get_status(&"stun") > 0:
+		itype = "stunned"
+		text = "Stunned"
+	elif actor.planned_move.is_empty():
+		itype = "waiting"
+		text = "Waiting"
+	else:
+		var move: Dictionary = actor.planned_move
+		itype = String(move.get("intent_type", "unknown"))
+		if itype == "attack" and move.has("intent_dmg"):
+			var dmg: int = int(move.get("intent_dmg", 0))
+			var hits: int = int(move.get("intent_hits", 1))
+			text = "%d×%d" % [dmg, hits] if hits > 1 else str(dmg)
+		else:
+			text = String(move.get("display", "?"))
+	_intent_label.text = text
+	var icon: Texture2D = _intent_icon_for(itype)
+	_intent_icon.texture = icon
+	_intent_icon.visible = icon != null
+
+func _intent_icon_for(itype: String) -> Texture2D:
+	if _intent_icon_cache.has(itype):
+		return _intent_icon_cache[itype]
+	var path: String = String(INTENT_ICON_PATHS.get(itype, INTENT_ICON_PATHS.get("unknown", "")))
+	var tex: Texture2D = null
+	if path != "" and ResourceLoader.exists(path):
+		tex = load(path)
+	_intent_icon_cache[itype] = tex
+	return tex
+
+# Tints the rightmost `poison` worth of the HP bar green, anchored by fraction so
+# it tracks the bar at any width. Hidden when the enemy isn't poisoned.
+func _update_poison_overlay() -> void:
+	var poison: int = actor.get_status(&"poison")
+	var hp: int = actor.hp
+	var max_hp: int = maxi(1, actor.max_hp)
+	if poison <= 0 or hp <= 0:
+		_poison_overlay.visible = false
+		return
+	var shown: int = mini(poison, hp)
+	_poison_overlay.anchor_left = float(hp - shown) / float(max_hp)
+	_poison_overlay.anchor_right = float(hp) / float(max_hp)
+	_poison_overlay.anchor_top = 0.0
+	_poison_overlay.anchor_bottom = 1.0
+	_poison_overlay.offset_left = 0.0
+	_poison_overlay.offset_right = 0.0
+	_poison_overlay.offset_top = 0.0
+	_poison_overlay.offset_bottom = 0.0
+	_poison_overlay.visible = true
 
 const STATUS_ICON_SIZE := 22
 

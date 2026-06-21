@@ -119,6 +119,11 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _player_hp_bar: ProgressBar = null
 var _player_hp_overlay: Label = null
 var _player_status_row: HBoxContainer = null
+var _player_poison_overlay: ColorRect = null
+var _player_block_label: Label = null
+
+# Shared green poison tint used on every HP bar (player + enemies).
+const POISON_BAR_COLOR := Color(0.35, 0.8, 0.3, 0.85)
 @onready var _hand_area: HBoxContainer = $Layout/Bottom/HandRow/HandArea
 @onready var _end_turn_btn: Button = $Layout/Bottom/HandRow/EndTurnButton
 @onready var _energy_label: Label = $Layout/Bottom/StatusBar/EnergyLabel
@@ -243,12 +248,23 @@ func _build_player_view() -> void:
 	_player_hp_bar.show_percentage = false
 	_player_hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var fill := StyleBoxFlat.new()
-	fill.bg_color = Color(0.35, 0.7, 0.35)
+	# Player health bar is red, matching the enemy bars / the old HTML build.
+	fill.bg_color = Color(0.78, 0.18, 0.18)
 	_player_hp_bar.add_theme_stylebox_override("fill", fill)
 	var bg := StyleBoxFlat.new()
 	bg.bg_color = Color(0.08, 0.05, 0.05)
 	_player_hp_bar.add_theme_stylebox_override("background", bg)
 	hp_holder.add_child(_player_hp_bar)
+
+	# Poison overlay: a green segment tinting the rightmost portion of the HP
+	# fill equal to the pending poison damage (StS-style "this much HP will
+	# rot"). Anchored by fraction so it tracks the bar at any width; positioned
+	# in _refresh_player_view.
+	_player_poison_overlay = ColorRect.new()
+	_player_poison_overlay.color = POISON_BAR_COLOR
+	_player_poison_overlay.visible = false
+	_player_poison_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_player_hp_bar.add_child(_player_poison_overlay)
 
 	_player_hp_overlay = Label.new()
 	_player_hp_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -258,6 +274,19 @@ func _build_player_view() -> void:
 	_player_hp_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hp_holder.add_child(_player_hp_overlay)
 
+	# Player block reads as a blue "BLK N" tag to the right of the HP overlay,
+	# matching the old HTML's player zone (enemies get the round shield badge).
+	_player_block_label = Label.new()
+	_player_block_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_player_block_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_player_block_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_player_block_label.add_theme_font_size_override("font_size", 11)
+	_player_block_label.add_theme_color_override("font_color", Color(0.36, 0.68, 0.92))
+	_player_block_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	_player_block_label.add_theme_constant_override("outline_size", 3)
+	_player_block_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hp_holder.add_child(_player_block_label)
+
 	_player_status_row = HBoxContainer.new()
 	_player_status_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_player_status_row.custom_minimum_size = Vector2(0, 24)
@@ -265,15 +294,37 @@ func _build_player_view() -> void:
 	_player_status_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	area.add_child(_player_status_row)
 
+# Tints the rightmost `poison` worth of an HP bar green to preview pending rot.
+# overlay is a ColorRect child of the ProgressBar; anchors are set by HP/poison
+# fraction so it works at any bar width. Hidden when the actor isn't poisoned.
+func _update_poison_overlay(overlay: ColorRect, hp: int, max_hp: int, poison: int) -> void:
+	if overlay == null:
+		return
+	if poison <= 0 or hp <= 0 or max_hp <= 0:
+		overlay.visible = false
+		return
+	var shown: int = mini(poison, hp)
+	overlay.anchor_left = float(hp - shown) / float(max_hp)
+	overlay.anchor_right = float(hp) / float(max_hp)
+	overlay.anchor_top = 0.0
+	overlay.anchor_bottom = 1.0
+	overlay.offset_left = 0.0
+	overlay.offset_right = 0.0
+	overlay.offset_top = 0.0
+	overlay.offset_bottom = 0.0
+	overlay.visible = true
+
 func _refresh_player_view() -> void:
 	if player == null or _player_hp_bar == null:
 		return
 	_player_hp_bar.max_value = maxi(1, player.max_hp)
 	_player_hp_bar.value = player.hp
-	if player.block > 0:
-		_player_hp_overlay.text = "%d / %d   BLK %d" % [player.hp, player.max_hp, player.block]
-	else:
-		_player_hp_overlay.text = "%d / %d" % [player.hp, player.max_hp]
+	_player_hp_overlay.text = "%d / %d" % [player.hp, player.max_hp]
+	if _player_block_label != null:
+		_player_block_label.visible = player.block > 0
+		_player_block_label.text = "BLK %d" % player.block
+	_update_poison_overlay(_player_poison_overlay, player.hp, player.max_hp,
+		player.get_status(&"poison"))
 	for c in _player_status_row.get_children():
 		c.queue_free()
 	for s in player.statuses.keys():
@@ -1123,6 +1174,20 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	# Killing the last enemy with a card ends combat immediately.
 	_check_combat_end()
 
+# Effect types that operate on the player / combat scene rather than a chosen
+# actor. They're routed to the player so they resolve once even on cards played
+# without an enemy target. deal_damage/status/etc. are NOT in here — those still
+# default to the enemy.
+const _SCENE_EFFECT_TYPES := [
+	"draw", "gain_energy", "lose_energy", "discard", "exhaust", "exhaust_self",
+	"conjure", "recall", "gain_gold", "gain_loot", "gain_chest", "roll_gold",
+	"upgrade_hand", "upgrade_random_cards", "boost_cards", "free_random_hand_card",
+	"reduce_card_cost",
+]
+
+func _is_scene_effect(effect_type: String) -> bool:
+	return effect_type in _SCENE_EFFECT_TYPES
+
 func _apply_card_effects(card: CardInstance, target_enemy: CombatActor) -> void:
 	# Resolves a card's own effect list against the picked target. Split out
 	# of _resolve_card so the Replay addon can re-run JUST the effects (no
@@ -1133,7 +1198,13 @@ func _apply_card_effects(card: CardInstance, target_enemy: CombatActor) -> void:
 		# Vorpal rides the physical card instance (per-instance roll), so stamp it
 		# here where the CardInstance is in scope; deal_damage reads it per target.
 		effect = card.apply_vorpal_to_effect(effect)
-		var t_str: String = effect.get("target", "enemy")
+		# Scene-scoped effects (draw, gain energy, etc.) ignore any actor target —
+		# they act on the player/scene. Default them to "self" so they still fire
+		# when a card was played WITHOUT picking an enemy (e.g. Shrug It Off's
+		# "Draw 1", Adrenaline's energy/draw). Otherwise they'd fall to the
+		# default "enemy" target and get dropped when no enemy is selected.
+		var default_target: String = "self" if _is_scene_effect(effect.get("type", "")) else "enemy"
+		var t_str: String = effect.get("target", default_target)
 		# Indiscriminate (Blood Magic) skips the manual picker — re-route
 		# enemy-targeted dmg through random_enemy so a seed target lands
 		# and _h_dmg can re-roll per hit from there.
@@ -1931,7 +2002,7 @@ func _roll_intent(enemy: CombatActor) -> void:
 	# Split overrides the normal pattern: a slime at/below half HP telegraphs
 	# "Splitting" instead of attacking and spawns its copies when it acts.
 	if Stats.should_split(enemy):
-		enemy.planned_move = {"display": "Splitting", "split": true, "effects": []}
+		enemy.planned_move = {"display": "Splitting", "split": true, "effects": [], "intent_type": "buff"}
 		return
 	if enemy.data == null or enemy.data.pattern.is_empty():
 		enemy.planned_move = {}
@@ -1942,7 +2013,7 @@ func _roll_intent(enemy: CombatActor) -> void:
 	if turn == 1:
 		for m in pattern:
 			if m.get("first_turn_only", false):
-				enemy.planned_move = m
+				enemy.planned_move = _annotate_intent(enemy, m)
 				return
 
 	# Weighted random selection ignoring first_turn_only moves.
@@ -1962,9 +2033,90 @@ func _roll_intent(enemy: CombatActor) -> void:
 	for entry in pool:
 		acc += entry.weight
 		if roll <= acc:
-			enemy.planned_move = entry.move
+			enemy.planned_move = _annotate_intent(enemy, entry.move)
 			return
-	enemy.planned_move = pool[-1].move
+	enemy.planned_move = _annotate_intent(enemy, pool[-1].move)
+
+# Returns a copy of a chosen pattern move tagged with the data EnemyView needs to
+# draw an StS-style intent: `intent_type` (attack/defend/debuff/buff/heal) for the
+# icon, plus `intent_dmg` / `intent_hits` for attacks so the panel shows the
+# damage number instead of the raw move text (e.g. a Louse shows "6", not
+# "Bite (5-7)"). Duplicated so the shared pattern data is never mutated; the
+# determined roll is resolved here and cached on the enemy so the value shown is
+# exactly what the attack deals.
+func _annotate_intent(enemy: CombatActor, move: Dictionary) -> Dictionary:
+	var m: Dictionary = move.duplicate(true)
+	var effects: Array = m.get("effects", [])
+	m["intent_type"] = _classify_intent(effects)
+	if m["intent_type"] == "attack":
+		var per_hit: int = 0
+		var hits: int = 0
+		for e in effects:
+			if e is Dictionary and String(e.get("type", "")) == "dmg":
+				per_hit = _predict_intent_damage(enemy, e)
+				hits += 1
+		if hits > 0:
+			m["intent_dmg"] = per_hit
+			m["intent_hits"] = hits
+	return m
+
+# Buckets a move's effects into one intent category for the icon. Damage wins
+# (attack), then block (defend), then a debuff applied to the player, then a
+# self-buff / heal. Mirrors the old HTML's getIntentType.
+func _classify_intent(effects: Array) -> String:
+	var has_block := false
+	var has_player_debuff := false
+	var has_buff := false
+	var has_heal := false
+	for e in effects:
+		if not (e is Dictionary):
+			continue
+		match String(e.get("type", "")):
+			"dmg":
+				return "attack"
+			"block", "roll_block":
+				has_block = true
+			"heal", "gain_hp":
+				has_heal = true
+			"status":
+				var tgt: String = String(e.get("target", "player"))
+				if tgt == "player":
+					has_player_debuff = true
+				else:
+					has_buff = true
+			"gain_stat", "add_max_hp", "gain_max_hp":
+				has_buff = true
+	if has_block:
+		return "defend"
+	if has_player_debuff:
+		return "debuff"
+	if has_heal:
+		return "heal"
+	if has_buff:
+		return "buff"
+	return "unknown"
+
+# Side-effect-free damage preview for the intent number: resolves the move's
+# determined roll (cached on the enemy, so it matches the real hit) then folds in
+# Power/Weak on the attacker and Vulnerable/Bruise on the player — the same flat /
+# multiplier order Stats.resolve_damage uses, minus the random bits (Blind/crit).
+func _predict_intent_damage(enemy: CombatActor, effect: Dictionary) -> int:
+	var damage_type: String = String(effect.get("damage_type", "melee"))
+	var base: int = int(effect.get("value", 0))
+	var det: Variant = effect.get("determined", null)
+	if det is Array and (det as Array).size() >= 2:
+		var lo: int = int(det[0])
+		var hi: int = int(det[1])
+		var key: String = String(effect.get("determined_key", "dmg_%d_%d" % [lo, hi]))
+		base = Stats.resolve_determined(enemy, key, lo, hi, _rng)
+	var amount: int = base + Stats.damage_bonus(enemy, damage_type, Stats.Mode.DECKBUILDER)
+	if enemy.get_status(&"weak") > 0:
+		amount = int(floor(amount * 0.75))
+	if player != null and player.get_status(&"vulnerable") > 0:
+		amount = int(ceil(amount * 1.5))
+	if player != null and (damage_type == "melee" or damage_type == "ranged"):
+		amount += player.get_status(&"bruise")
+	return maxi(0, amount)
 
 # ------------------------------------------------------------------
 # UI

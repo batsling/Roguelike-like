@@ -22,6 +22,8 @@ const W_COMMON := 75.0
 const W_UNCOMMON := 20.0
 const W_RARE := 5.0
 const BASE_CARD_CHOICES := 3
+# Reward tiles render ~25% larger than the in-combat hand cards.
+const REWARD_CARD_SCALE := 1.25
 # Pre-upgrade chance keyed by RunDifficulty tier (LOW, MEDIUM, HIGH, INSANE).
 const UPGRADE_CHANCE_BY_TIER := [0.0, 0.25, 0.5, 0.5]
 
@@ -74,8 +76,9 @@ func _build_ui() -> void:
 	add_child(dim)
 
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(900, 460)
-	panel.position = (get_viewport_rect().size - Vector2(900, 460)) / 2.0
+	var panel_size := Vector2(960, 540)
+	panel.custom_minimum_size = panel_size
+	panel.position = (get_viewport_rect().size - panel_size) / 2.0
 	add_child(panel)
 
 	var root := VBoxContainer.new()
@@ -128,6 +131,9 @@ func _refresh() -> void:
 		var view := CardView.new()
 		_choices_box.add_child(view)
 		view.setup(ci)
+		# Reward tiles read a touch bigger than in-combat hand cards (~25%).
+		view.scale = Vector2(REWARD_CARD_SCALE, REWARD_CARD_SCALE)
+		view.custom_minimum_size = Vector2(CardView.CARD_W, CardView.CARD_H) * REWARD_CARD_SCALE
 		view.play_requested.connect(_on_select)
 		_tiles.append(view)
 	if _confirm_btn != null:
