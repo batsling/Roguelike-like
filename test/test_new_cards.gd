@@ -208,6 +208,14 @@ func test_beam_cell_is_a_plain_beam_without_sweep() -> void:
 	assert_eq(String(card.attack_shape), "beam", "same beam shape")
 	assert_false(bool(card.attack_params.get("sweep", false)), "no sweep subtype -> instant beam")
 
+func test_terror_inflicts_vulnerable_and_exhausts() -> void:
+	var card: CardData = Data.get_card(&"terror")
+	assert_not_null(card, "terror.tres should load")
+	assert_eq(String(card.effects[0].get("type", "")), "status")
+	assert_eq(String(card.effects[0].get("status", "")), "vulnerable")
+	assert_eq(int(card.effects[0].get("stacks", 0)), 99, "Terror piles on Vulnerable")
+	assert_true(card.exhaust, "Terror Exhausts")
+
 func test_slimed_draws_one_and_exhausts() -> void:
 	var card: CardData = Data.get_card(&"slimed")
 	assert_not_null(card, "slimed.tres should load")
