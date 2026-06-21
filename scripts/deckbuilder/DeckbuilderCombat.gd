@@ -1062,7 +1062,7 @@ func _update_hover_card(view: EnemyView) -> void:
 	desc.custom_minimum_size = Vector2(202, 0)
 	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	desc.add_theme_font_size_override("normal_font_size", 11)
-	desc.text = _drag_card.combat_description(player)
+	desc.text = _drag_card.combat_description(player, true, enemy)
 	vb.add_child(desc)
 
 	# Conditional / keyword lines resolved against this enemy (Fire -> Burn only

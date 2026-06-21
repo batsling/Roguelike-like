@@ -143,9 +143,9 @@ func get_description() -> String:
 # Defense / Persistence) on top of any item boosts — see CardScaling. Used by the
 # in-combat hand view so the displayed numbers match what actually resolves.
 # `rich` toggles BBCode colouring.
-func combat_description(player, rich: bool = true) -> String:
+func combat_description(player, rich: bool = true, target = null) -> String:
 	return _decorate(CardScaling.scale_text(
-		data.get_effective_description(upgraded), player, rich, data))
+		data.get_effective_description(upgraded), player, rich, data, target))
 
 # Appends the item-driven addenda (card_played trigger preview, granted effects,
 # granted boosts, weapon effect_bonuses) onto a base description string. Shared
