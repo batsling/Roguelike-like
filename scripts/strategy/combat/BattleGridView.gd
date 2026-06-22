@@ -364,7 +364,9 @@ func _draw_unit_status_icons(u) -> void:
 	# Centered row of icons floated above the unit, shown on hover.
 	var icons: Array = []
 	for s in u.statuses.keys():
-		if int(u.statuses[s]) <= 0:
+		# Negative stacks (e.g. Power drained below 0) still draw, with a red
+		# minus count; only an exactly-zero status is skipped.
+		if int(u.statuses[s]) == 0:
 			continue
 		var tex: Texture2D = Stats.status_icon(s)
 		if tex != null:
@@ -382,9 +384,11 @@ func _draw_unit_status_icons(u) -> void:
 	var font: Font = ThemeDB.fallback_font
 	for entry in icons:
 		draw_texture_rect(entry["tex"], Rect2(x, top_y, sz, sz), false)
-		if entry["stacks"] > 1:
+		var stacks: int = int(entry["stacks"])
+		if stacks > 1 or stacks < 0:
+			var col: Color = Color(1.0, 0.35, 0.3) if stacks < 0 else Color.WHITE
 			draw_string(font, Vector2(x + sz - 3, top_y + sz),
-				str(entry["stacks"]), HORIZONTAL_ALIGNMENT_RIGHT, -1, 9, Color.WHITE)
+				str(stacks), HORIZONTAL_ALIGNMENT_RIGHT, -1, 9, col)
 		x += sz + gap
 
 # Mewgenics-style threat preview for a hovered enemy: every tile it could move

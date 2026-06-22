@@ -211,7 +211,11 @@ func get_value(stat_id: StringName) -> int:
 # (pill) buff. This is what get_value returns before any mirror derivation.
 func _natural_stat_value(stat_id: StringName) -> int:
 	var field := String(stat_id)
-	var base: int = int(GameState.get(field))
+	# Most stats back onto a GameState field of the same name. A few (Range) have
+	# no direct field — they're item-granted only — so a missing property reads 0
+	# and the item/temp bonuses below supply the value.
+	var raw = GameState.get(field)
+	var base: int = int(raw) if raw != null else 0
 	var bonus: int = int(GameState.item_stat_bonus.get(field, 0))
 	# Temporary consumable buffs (pills) layer on top; cleared at the
 	# combat/room/event boundary by GameState.clear_temp_buffs().
@@ -545,6 +549,25 @@ func strategy_tiles_per_turn() -> int:
 	var base: int = _knob_int(&"speed", "strategy_base_tiles", 1)
 	var per: int = _knob_int(&"speed", "strategy_tiles_per_point", 1)
 	return base + get_value(&"speed") * per
+
+# ---------------------------------------------------------------------------
+# Range — mode-specific accessors. Range does nothing in the deckbuilder; in
+# Action each point slightly stretches every attack's spatial reach, and in
+# Strategy every N Range (default 3) adds a tile to each attack's grid reach.
+# ---------------------------------------------------------------------------
+
+# Multiplier applied to an Action attack's reach/radius/blast extents. 1.0 with
+# no Range. Player-only — enemies never resolve through ActionAttackLibrary.
+func action_range_multiplier() -> float:
+	var per: float = _knob_float(&"range", "action_reach_mult_per_point", 0.04)
+	return 1.0 + maxf(0.0, float(get_value(&"range")) * per)
+
+# Extra tiles of grid reach a Strategy attack gains from the player's Range.
+# floor(Range / strategy_tiles_per); 0 (and never negative) with no Range.
+func strategy_range_bonus_tiles() -> int:
+	var per: int = maxi(1, _knob_int(&"range", "strategy_tiles_per", 3))
+	@warning_ignore("integer_division")
+	return maxi(0, get_value(&"range")) / per
 
 # ---------------------------------------------------------------------------
 # Dash (action mode — others spend the GameState counter directly)

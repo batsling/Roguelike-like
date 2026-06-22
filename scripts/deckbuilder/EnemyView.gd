@@ -228,7 +228,9 @@ func refresh() -> void:
 		c.queue_free()
 	for s in actor.statuses.keys():
 		var stacks: int = int(actor.statuses[s])
-		if stacks <= 0:
+		# Negative stacks (e.g. a Transient's Power drained below 0 by Shifting)
+		# still show — rendered with a minus and red text by the badge.
+		if stacks == 0:
 			continue
 		_status_row.add_child(_make_status_badge(s, stacks))
 
@@ -289,6 +291,8 @@ func _update_poison_overlay() -> void:
 	_poison_overlay.visible = true
 
 const STATUS_ICON_SIZE := 22
+# Stack-count colour for a status drained below zero (e.g. negative Power).
+const NEG_STATUS_COLOR := Color(1.0, 0.35, 0.3)
 
 func _make_status_badge(status_name, stacks: int) -> Control:
 	# A small icon with the stack count overlaid in the bottom-right.
@@ -324,7 +328,8 @@ func _make_status_badge(status_name, stacks: int) -> Control:
 	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	count.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	count.add_theme_font_size_override("font_size", 11)
-	count.add_theme_color_override("font_color", Color.WHITE)
+	# A negative stack count (drained-below-zero status) reads in red.
+	count.add_theme_color_override("font_color", NEG_STATUS_COLOR if stacks < 0 else Color.WHITE)
 	count.add_theme_color_override("font_outline_color", Color.BLACK)
 	count.add_theme_constant_override("outline_size", 3)
 	count.mouse_filter = Control.MOUSE_FILTER_IGNORE

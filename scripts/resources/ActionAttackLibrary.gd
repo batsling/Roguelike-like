@@ -151,3 +151,15 @@ func resolve(card: CardData) -> Dictionary:
 		_:
 			pass
 	return spec
+
+# Stretch a resolved spec's spatial extents by the player's Range multiplier
+# (Stats.action_range_multiplier). Touches reach_px (melee/projectile/beam),
+# radius_px (disc AOEs and self-novas), and blast_px (explosive bursts) so every
+# attack family reaches a little farther per Range point. mult == 1.0 is a no-op.
+# Only the player's casts route through here; enemy attacks don't use this lib.
+func apply_range_to_spec(spec: Dictionary, mult: float) -> void:
+	if mult == 1.0 or spec == null:
+		return
+	for key in ["reach_px", "radius_px", "blast_px"]:
+		if spec.has(key) and float(spec[key]) > 0.0:
+			spec[key] = float(spec[key]) * mult

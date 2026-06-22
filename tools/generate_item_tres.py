@@ -390,9 +390,11 @@ def parse_passive(payload):
     bonuses = {}
     for part in split_top(payload, ","):
         part, _, _ = strip_notes(part)
-        m = re.match(r"^([+-]?\d+)\s+([a-z_]+)$", part)
+        # Stat names are matched case-insensitively and stored lowercase so a
+        # sheet entry like "-2 Strength" still lands on the `strength` field.
+        m = re.match(r"^([+-]?\d+)\s+([a-zA-Z_]+)$", part)
         if m:
-            bonuses[m.group(2)] = int(m.group(1))
+            bonuses[m.group(2).lower()] = int(m.group(1))
     return bonuses
 
 

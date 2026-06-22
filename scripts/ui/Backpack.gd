@@ -343,6 +343,7 @@ func _refresh_stats() -> void:
 	_add_attribute(combat, &"crit_damage", Color(1.0, 0.7, 0.4), "%")
 	_add_attribute(combat, &"luck", Color(0.7, 1.0, 0.7))
 	_add_attribute(combat, &"speed", Color(0.6, 0.9, 1.0))
+	_add_attribute(combat, &"range", Color(0.95, 0.75, 0.55))
 	_add_attribute(combat, &"harvesting", Color(1.0, 0.85, 0.4))
 	_add_attribute(combat, &"regeneration", Color(0.55, 0.95, 0.7))
 

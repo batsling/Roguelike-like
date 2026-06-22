@@ -146,6 +146,24 @@ func resolve(shape_name: StringName, params: Dictionary = {}) -> Dictionary:
 			spec["range_tiles"] = _lookup(reach_tiles, "full", 99)
 	return spec
 
+# Extend a resolved spec's grid reach by the player's Range bonus tiles
+# (Stats.strategy_range_bonus_tiles). Only families with a real aim/travel range
+# grow: straight pokes (single) and projectile/beam lines, plus a thrown lob's
+# aim range. Self-centred novas, fixed melee arcs (swing), forward blast clusters
+# and auto-target attacks have no extendable reach, so they're left as-is ("where
+# possible"). bonus_tiles <= 0 is a no-op. Player attacks only.
+func apply_range_to_spec(spec: Dictionary, bonus_tiles: int) -> void:
+	if bonus_tiles <= 0 or spec == null:
+		return
+	match String(spec.get("family", "single")):
+		"single", "line":
+			spec["range_tiles"] = int(spec.get("range_tiles", 1)) + bonus_tiles
+		"disc":
+			# Only a thrown disc (lob) has an aim range to extend; nova is centred
+			# on the attacker (range_tiles == 0).
+			if int(spec.get("range_tiles", 0)) > 0:
+				spec["range_tiles"] = int(spec["range_tiles"]) + bonus_tiles
+
 # Resolve straight from a CardData, applying the legacy fallback when the card
 # carries no explicit attack_shape (mirrors the Action fallback): a ranged dmg
 # effect implies a projectile, otherwise a melee swing.

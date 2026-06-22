@@ -1139,7 +1139,10 @@ func _is_attack_card(data: CardData) -> bool:
 # The grid attack spec for a card, from its Attack-column archetype (with the
 # legacy melee/ranged fallback for un-annotated cards).
 func _attack_spec_for_card(card_data) -> Dictionary:
-	return Data.strategy_attacks.resolve_for_card(card_data)
+	var spec: Dictionary = Data.strategy_attacks.resolve_for_card(card_data)
+	# Range stat extends the player's attack reach: every few points adds a tile.
+	Data.strategy_attacks.apply_range_to_spec(spec, Stats.strategy_range_bonus_tiles())
+	return spec
 
 # True if at least one living enemy could actually be hit by `spec` from the
 # player's current tile — so an attack with no reachable target is disabled and

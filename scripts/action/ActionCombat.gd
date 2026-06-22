@@ -1612,6 +1612,8 @@ func _deliver_attack(card: CardData, aim_dir: Vector2, is_auto: bool) -> void:
 	if aim_dir == Vector2.ZERO:
 		aim_dir = player_facing
 	var spec: Dictionary = _atk.resolve(card)
+	# Range stat stretches every player attack's reach a little per point.
+	_atk.apply_range_to_spec(spec, Stats.action_range_multiplier())
 	_apply_self_effects(card)
 	var effects: Array = _enemy_effects(card)
 	var volleys: int = _attack_volleys(effects)
@@ -3298,7 +3300,9 @@ func _draw_status_icons(actor: CombatActor, center_x: float, bottom_y: float) ->
 		return
 	var icons: Array = []
 	for s in actor.statuses.keys():
-		if int(actor.statuses[s]) <= 0:
+		# Negative stacks (e.g. Power drained below 0) still draw, with a red
+		# minus count; only an exactly-zero status is skipped.
+		if int(actor.statuses[s]) == 0:
 			continue
 		var tex: Texture2D = Stats.status_icon(s)
 		if tex != null:
@@ -3313,10 +3317,11 @@ func _draw_status_icons(actor: CombatActor, center_x: float, bottom_y: float) ->
 	var font: Font = ThemeDB.fallback_font
 	for entry in icons:
 		draw_texture_rect(entry["tex"], Rect2(x, top_y, size, size), false)
-		if entry["stacks"] > 1:
-			var label := str(entry["stacks"])
+		var stacks: int = int(entry["stacks"])
+		if stacks > 1 or stacks < 0:
+			var col: Color = Color(1.0, 0.35, 0.3) if stacks < 0 else Color.WHITE
 			draw_string(font, Vector2(x + size - 4, top_y + size),
-				label, HORIZONTAL_ALIGNMENT_RIGHT, -1, 9, Color.WHITE)
+				str(stacks), HORIZONTAL_ALIGNMENT_RIGHT, -1, 9, col)
 		x += size + gap
 
 # Player buff/debuff readout above the head: the Block shield chip (a number,
