@@ -130,12 +130,16 @@ func _on_damage_taken_tally(ctx: Dictionary) -> void:
 	var amount: int = maxi(0, int(ctx.get("amount", 0)))
 	if "damage_taken_this_turn" in tgt:
 		tgt.damage_taken_this_turn += amount
-	# Shifting (Transient): whenever it loses HP, it loses that much Power right
-	# away, so chipping it immediately weakens its scaling attack (its Power ramps
-	# back up on its own turn). Applied here so every combat mode shares the rule.
-	if amount > 0 and tgt.has_method("get_status") and tgt.has_method("add_status") \
-			and tgt.get_status(&"shifting") > 0:
-		tgt.add_status(&"power", -amount)
+	# Shifting (Transient): whenever it loses HP it loses that much Power for the
+	# rest of THIS turn, so chipping it on your turn weakens the attack it's about
+	# to make, then it recovers. The loss is applied on the hit (banked as an equal
+	# Shackled that process_power_shift returns at its turn boundary). Power is set
+	# straight on the dict so it can go negative — add_status clamps at 0, which
+	# would stop the loss from cutting the turn-scaled base damage.
+	if amount > 0 and tgt.has_method("get_status") and tgt.get_status(&"shifting") > 0 \
+			and "statuses" in tgt and tgt.has_method("add_status"):
+		tgt.statuses[&"power"] = int(tgt.statuses.get(&"power", 0)) - amount
+		tgt.add_status(&"shackled", amount)
 	# Curl Up: the first time the actor takes damage each turn it hardens, gaining
 	# Block = its Curl Up stacks. The per-turn re-arm flag is cleared in
 	# tick_actor_statuses. Shared here so every mode's damage_taken triggers it.
@@ -891,10 +895,11 @@ func tick_actor_statuses(actor, scene, tick_bleed: bool = true) -> void:
 		if actor.get_status(&"fading") <= 0 and actor.is_alive():
 			scene.apply_dot(actor, int(actor.hp), "fading")
 
-# Shackled end-of-turn return (StS): an enemy with Shackled gains that much Power
-# at its turn boundary, then clears the stacks. Shifting's Power loss is applied
-# immediately on the hit (see _on_damage_taken_tally), not banked here, so a
-# damaged Transient is weakened on the spot rather than a turn later.
+# Shackled end-of-turn return (StS GainStrength): an enemy with Shackled gains
+# that much Power back at its turn boundary, then clears the stacks. This is what
+# restores Shifting's temporary Power loss — the loss itself is applied on the hit
+# during the player's turn (see _on_damage_taken_tally), so a damaged Transient
+# attacks weakened that same round and recovers afterward.
 # Untyped actor: needs get_status / add_status.
 func process_power_shift(actor) -> void:
 	if actor == null or not actor.has_method("get_status") or not actor.has_method("add_status"):

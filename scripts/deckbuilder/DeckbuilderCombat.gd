@@ -2070,6 +2070,12 @@ func _predict_intent_damage(enemy: CombatActor, effect: Dictionary) -> int:
 		var hi: int = int(det[1])
 		var key: String = String(effect.get("determined_key", "dmg_%d_%d" % [lo, hi]))
 		base = Stats.resolve_determined(enemy, key, lo, hi, _rng)
+	# Per-turn scaling (Transient): +M for each completed turn, mirroring _h_dmg so
+	# the shown intent ramps with the real attack. Folded into the base before Power
+	# (which Shifting may have driven negative) so the preview matches the hit.
+	var per_turn: int = int(effect.get("per_turn", 0))
+	if per_turn != 0 and "turns_taken" in enemy:
+		base += per_turn * int(enemy.turns_taken)
 	var amount: int = base + Stats.damage_bonus(enemy, damage_type, Stats.Mode.DECKBUILDER)
 	if enemy.get_status(&"weak") > 0:
 		amount = int(floor(amount * 0.75))

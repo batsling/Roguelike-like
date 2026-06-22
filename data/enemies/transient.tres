@@ -19,14 +19,15 @@ pattern = [
    {
     "type": "dmg",
     "value": 30,
-    "target": "player"
+    "target": "player",
+    "per_turn": 10
    }
   ]
  }
 ]
 pattern_mode = "random"
 starting_abilities = PackedStringArray()
-starting_statuses = {"fading": 5, "shifting": 1, "ritual": 10}
+starting_statuses = {"fading": 4, "shifting": 1}
 source_game = "Slay the Spire"
 tags = PackedStringArray()
 image = ExtResource("2_img")

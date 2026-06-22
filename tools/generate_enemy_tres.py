@@ -153,10 +153,6 @@ def parse_moves(cell):
 _SPLIT = re.compile(r"^Split\s+(\d+)\s+(.+)$", re.IGNORECASE)
 _SHACKLED = re.compile(r"^Shackled\s+(\d+)$", re.IGNORECASE)
 _FADING = re.compile(r"^Fading\s+(\d+)$", re.IGNORECASE)
-# Ritual N / Power N (a.k.a. Strength): per-turn Power gain and a starting Power
-# stat. Transient pairs Ritual (its attack ramps +N each turn) with Shifting.
-_RITUAL = re.compile(r"^Ritual\s+(\d+)$", re.IGNORECASE)
-_POWER = re.compile(r"^(?:Power|Strength)\s+(\d+)$", re.IGNORECASE)
 # Curl Up's block amount may be a Determined range (Curl Up Determined(3-7)) or a
 # flat number (Curl Up 5). The range is stored as [lo, hi] and rolled at spawn.
 _CURLUP_DET = re.compile(r"^Curl\s*Up\s+Determined\((\d+)\s*-\s*(\d+)\)$", re.IGNORECASE)
@@ -194,14 +190,6 @@ def parse_abilities(cell):
         mf = _FADING.match(tok)
         if mf:
             statuses["fading"] = int(mf.group(1))
-            continue
-        mr = _RITUAL.match(tok)
-        if mr:
-            statuses["ritual"] = int(mr.group(1))
-            continue
-        mp = _POWER.match(tok)
-        if mp:
-            statuses["power"] = int(mp.group(1))
             continue
         mc = _CURLUP_DET.match(tok)
         if mc:

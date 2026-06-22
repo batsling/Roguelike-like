@@ -21,23 +21,36 @@ func test_shackled_returns_power_then_clears() -> void:
 	assert_eq(a.get_status(&"shackled"), 0, "Shackled clears after triggering")
 
 # --- Shifting -------------------------------------------------------------
-# Shifting now applies on the hit (Transient loses Power equal to damage dealt
-# the instant it takes HP loss), instead of being banked + regained at the turn
-# boundary, so chipping it immediately weakens its scaling attack.
+# StS Transient: on each hit it loses Strength equal to the HP lost FOR THAT TURN
+# (Power can go negative so it cuts the turn-scaled base attack), banked as an
+# equal Shackled that process_power_shift returns at its turn boundary.
 
-func test_shifting_loses_power_on_damage_immediately() -> void:
+func test_shifting_loses_power_on_hit_and_banks_shackled() -> void:
 	var a := _actor()
 	a.add_status(&"shifting", 1)
-	a.add_status(&"power", 8)
 	TriggerBus.emit_signal("damage_taken", {"target": a, "amount": 5})
-	assert_eq(a.get_status(&"power"), 3, "Shifting drops Power by damage on the hit")
+	assert_eq(a.get_status(&"power"), -5, "Shifting drops Power (can go negative) on the hit")
+	assert_eq(a.get_status(&"shackled"), 5, "An equal Shackled is banked to restore it")
 
-func test_shifting_power_loss_clamps_at_zero() -> void:
+func test_shifting_loss_restored_at_turn_boundary() -> void:
 	var a := _actor()
 	a.add_status(&"shifting", 1)
-	a.add_status(&"power", 2)
-	TriggerBus.emit_signal("damage_taken", {"target": a, "amount": 5})
-	assert_eq(a.get_status(&"power"), 0, "Power can't fall below zero from Shifting")
+	# Player turn: takes 6, loses 6 Power for the turn, banks 6 Shackled.
+	TriggerBus.emit_signal("damage_taken", {"target": a, "amount": 6})
+	assert_eq(a.get_status(&"power"), -6)
+	assert_eq(a.get_status(&"shackled"), 6)
+	# Its turn boundary: Shackled returns the Power and clears (StS GainStrength).
+	Stats.process_power_shift(a)
+	assert_eq(a.get_status(&"power"), 0, "Power is restored at the turn boundary")
+	assert_eq(a.get_status(&"shackled"), 0, "Shackled clears after returning")
+
+func test_shifting_multi_hit_compounds_within_turn() -> void:
+	var a := _actor()
+	a.add_status(&"shifting", 1)
+	TriggerBus.emit_signal("damage_taken", {"target": a, "amount": 4})
+	TriggerBus.emit_signal("damage_taken", {"target": a, "amount": 3})
+	assert_eq(a.get_status(&"power"), -7, "Each hit compounds the Power loss this turn")
+	assert_eq(a.get_status(&"shackled"), 7, "Shackled banks the whole turn's damage")
 
 func test_shifting_no_effect_without_the_status() -> void:
 	var a := _actor()
@@ -45,13 +58,13 @@ func test_shifting_no_effect_without_the_status() -> void:
 	TriggerBus.emit_signal("damage_taken", {"target": a, "amount": 5})
 	assert_eq(a.get_status(&"power"), 8, "No Shifting: Power is untouched by damage")
 
-func test_process_power_shift_no_longer_banks_shifting() -> void:
+func test_process_power_shift_does_not_bank_shifting() -> void:
 	var a := _actor()
 	a.add_status(&"shifting", 1)
 	a.damage_taken_this_turn = 5
 	Stats.process_power_shift(a)
 	assert_eq(a.get_status(&"power"), 0, "Shifting is applied on-hit, not at the boundary")
-	assert_eq(a.get_status(&"shackled"), 0, "No Shackled is banked anymore")
+	assert_eq(a.get_status(&"shackled"), 0, "No Shackled is banked at the boundary")
 
 # --- Determined -----------------------------------------------------------
 
