@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="StatDefinition" load_steps=2 format=3 uid="uid://stat_range"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatDefinition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"range"
+display_name = "Range"
+description = "Deckbuilder: no effect. Action: each point slightly extends the reach of every attack. Strategy: every 3 Range extends each attack by 1 tile where possible."
+grants_event_roll_bonus = false
+derived_status = &""
+derived_per = 1
+mode_data = {
+"action_reach_mult_per_point": 0.04,
+"strategy_tiles_per": 3,
+}

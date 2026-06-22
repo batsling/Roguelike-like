@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_panda"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/Panda.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"panda"
+display_name = "Panda"
+kind = 5
+rarity = 2
+description = "Gain +20 Max Health and +2 Luck, but -2 Strength"
+triggers = [{"on": "item_acquired", "effects": [{"type": "gain_max_hp", "value": 20}]}]
+stat_bonuses = {"luck": 2, "strength": -2}
+max_uses = -1
+source_game = "Brotato"
+tags = PackedStringArray()
+image = ExtResource("2_img")

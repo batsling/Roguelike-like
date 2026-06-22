@@ -32,6 +32,7 @@
 | Constitution | — | — | — | — |
 | Luck | (10% advantage per point on rolls) | — | — | — |
 | Speed | — | +1 turn-1 draw per 3 Speed | +10 px/s per point (base 200) | +1 extra tile per turn per point (base 1) |
+| Range | — | — | +4% attack reach per point | +1 attack tile per 3 Range (where the family has reach) |
 
 **Event roll bonus** (overworld + map ? nodes): Strength / Dexterity /
 Intelligence / Charisma / Constitution each contribute +1 per point to
@@ -98,6 +99,7 @@ extends Resource
 | `constitution` | (empty) |
 | `luck` | `advantage_pct_per_point: 10` |
 | `speed` | `deckbuilder_draws_per_3: 1`, `action_base_movespeed: 200`, `action_movespeed_per_point: 10`, `strategy_base_tiles: 1`, `strategy_tiles_per_point: 1` |
+| `range` | `action_reach_mult_per_point: 0.04`, `strategy_tiles_per: 3` (Range has no GameState field — it's item-granted only, read straight from `item_stat_bonus`) |
 
 Empty `mode_data` is fine — the dispatcher uses safe defaults for unknown keys.
 

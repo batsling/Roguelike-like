@@ -347,7 +347,8 @@ func _refresh_player_view() -> void:
 		c.queue_free()
 	for s in player.statuses.keys():
 		var stacks: int = int(player.statuses[s])
-		if stacks <= 0:
+		# Negative stacks (a status drained below 0) still show, in red.
+		if stacks == 0:
 			continue
 		_player_status_row.add_child(_make_status_badge(s, stacks))
 
@@ -382,6 +383,9 @@ func _make_status_badge(status_name, stacks: int) -> Control:
 	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	count.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	count.add_theme_font_size_override("font_size", 11)
+	# Negative stacks (drained below zero) read in red.
+	count.add_theme_color_override("font_color",
+		Color(1.0, 0.35, 0.3) if stacks < 0 else Color.WHITE)
 	count.add_theme_color_override("font_outline_color", Color.BLACK)
 	count.add_theme_constant_override("outline_size", 3)
 	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
