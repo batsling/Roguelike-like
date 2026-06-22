@@ -16,5 +16,5 @@ item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
 cover_image = ExtResource("2_cover")
 owned = true
-file_location = ""
-steam_page = ""
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Double Dragon Gaiden Rise of the Dragons.url"
+steam_page = "https://store.steampowered.com/app/1967260/Double_Dragon_Gaiden_Rise_Of_The_Dragons/"
