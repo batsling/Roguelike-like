@@ -34,6 +34,12 @@ var _element_label: Label
 var _selected: bool = false
 var _enabled: bool = true
 
+# Optional combat target the card's numbers are previewed against. When a drag
+# ghost hovers an enemy, the scene sets this to that enemy so the card's own
+# "Deal N Dmg" reflects the target's Vulnerable / Bruise / Brace (instead of a
+# separate damage popup next to the enemy). Null = plain self-scaled text.
+var _preview_target = null
+
 # Press/drag bookkeeping for distinguishing a click from a drag.
 var _pressing: bool = false
 var _dragging: bool = false
@@ -160,7 +166,8 @@ func refresh() -> void:
 	# In combat, fold the player's live Power / Arcane / Defense / Persistence
 	# into the shown numbers (GameState.combat_player is null outside combat, so
 	# this reads as the authored text in shop / rest / collection).
-	_desc_label.text = "[center]%s[/center]" % card.combat_description(GameState.combat_player)
+	_desc_label.text = "[center]%s[/center]" % card.combat_description(
+		GameState.combat_player, true, _preview_target)
 	if card.data != null:
 		# Assign unconditionally (null clears it) so a reused view doesn't keep
 		# stale art when re-pointed at a card with no image — refresh() must be
@@ -192,6 +199,14 @@ func _update_element_badge(data: CardData) -> void:
 	var lum: float = col.r * 0.299 + col.g * 0.587 + col.b * 0.114
 	_element_label.add_theme_color_override("font_color",
 		Color(0.08, 0.06, 0.04) if lum > 0.55 else Color(1, 1, 1))
+
+# Re-point the card's number preview at a combat target (or null to clear) and
+# repaint. Used by the drag ghost so its damage updates as it passes over enemies.
+func set_preview_target(target) -> void:
+	if _preview_target == target:
+		return
+	_preview_target = target
+	refresh()
 
 func set_selected(sel: bool) -> void:
 	_selected = sel

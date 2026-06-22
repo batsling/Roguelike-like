@@ -447,9 +447,12 @@ func _make_hand_card_button(card) -> Button:
 
 	var cost: int = _card_cost(card)
 	var is_attack: bool = _is_attack_card(data)
-	var blocked_range: bool = is_attack and not _attack_has_target(_attack_spec_for_card(data))
+	# Whether any enemy is actually in range — used only as a soft "no target"
+	# hint now. Attacks stay playable regardless so the player can swing into
+	# empty tiles (whiff) rather than being forced to move into range first.
+	var no_target: bool = is_attack and not _attack_has_target(_attack_spec_for_card(data))
 	var playable: bool = _is_player_turn() and not data.unplayable \
-		and cost <= energy and not blocked_range
+		and cost <= energy
 	tile.disabled = not playable
 	tile.pressed.connect(_on_hand_card_pressed.bind(card))
 	tile.mouse_entered.connect(_on_hover_hand_card.bind(card))
@@ -479,8 +482,8 @@ func _make_hand_card_button(card) -> Button:
 	var meta: String = "⚡%d" % cost
 	if data.unplayable:
 		meta = "—"
-	elif blocked_range:
-		meta = "⚡%d · move in" % cost
+	elif no_target:
+		meta = "⚡%d · no target" % cost
 	var meta_l := Label.new()
 	meta_l.text = meta
 	meta_l.position = Vector2(8, 24)
@@ -489,7 +492,7 @@ func _make_hand_card_button(card) -> Button:
 	meta_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	meta_l.add_theme_font_size_override("font_size", 11)
 	meta_l.add_theme_color_override("font_color",
-		Color(0.9, 0.55, 0.35) if blocked_range else Color(0.62, 0.7, 0.9))
+		Color(0.9, 0.55, 0.35) if no_target else Color(0.62, 0.7, 0.9))
 	tile.add_child(meta_l)
 	return tile
 
@@ -1188,9 +1191,10 @@ func _play_card(card) -> void:
 		return
 	if _is_attack_card(data):
 		var spec: Dictionary = _attack_spec_for_card(data)
-		if not _attack_has_target(spec):
-			_status_label.text = "No target in range — move closer first."
-			return
+		# No "must have a target" gate: attacks can be used even when nothing is in
+		# range. Tile-aimed swings enter aim mode (aim within range, hitting whoever
+		# stands there — possibly no one); self/auto attacks resolve on whatever
+		# they catch, which may be nothing.
 		if String(spec.get("aim", "tile")) == "tile":
 			# Aimed attack: gate the cursor to in-range tiles; the footprint rotates
 			# to face the aim and resolution hits whoever stands in it.

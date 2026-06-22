@@ -229,6 +229,8 @@ func _input(event: InputEvent) -> void:
 		if event is InputEventKey and event.pressed:
 			if event.keycode == KEY_I or event.keycode == KEY_ESCAPE:
 				_hud.hide_inventory()
+				# Consume Esc so it closes the bag without also opening the pause menu.
+				get_viewport().set_input_as_handled()
 			elif event.unicode >= ord('a') and event.unicode <= ord('z'):
 				var idx = event.unicode - ord('a')
 				if idx < player.inventory.size():
@@ -775,7 +777,9 @@ func _show_game_over_overlay() -> void:
 	# Main can run the standard defeat flow (run restart, etc).
 	# Standalone: in-place restart matching the prototype loop.
 	if _embedded:
-		btn.text = "Continue"
+		# Losing the run drops straight back to the main menu (the project Main
+		# routes a closed-as-defeat floor through Overworld._handle_defeat).
+		btn.text = "Main Menu"
 		btn.pressed.connect(_close_defeat)
 	else:
 		btn.text = "Restart run"
