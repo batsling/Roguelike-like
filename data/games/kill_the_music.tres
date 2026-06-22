@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_kill_the_music"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/kill-the-music.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"kill_the_music"
+display_name = "Kill The Music"
+year = 2025
+type = 0
+games_influenced = Array[StringName]([])
+tags = PackedStringArray("rhythm")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Kill The Music.url"
+steam_page = "https://store.steampowered.com/app/3093050/Kill_The_Music/"

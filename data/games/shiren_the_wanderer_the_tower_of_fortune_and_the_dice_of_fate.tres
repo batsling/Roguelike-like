@@ -16,5 +16,5 @@ item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
 cover_image = ExtResource("2_cover")
 owned = true
-file_location = ""
-steam_page = ""
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Shiren the Wanderer The Tower of Fortune and the Dice of Fate.url"
+steam_page = "https://store.steampowered.com/app/1178790/Shiren_the_Wanderer_The_Tower_of_Fortune_and_the_Dice_of_Fate/"
