@@ -31,16 +31,58 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 # default in ActionCombat.
 @export var projectile_speed: float = 0.0
 
+# SHOOTER/STATIONARY: projectile lifetime in seconds. 0 falls back to
+# ActionCombat.ENEMY_PROJECTILE_LIFETIME. A deliberately slow shot that must
+# still cross the whole arena needs a longer life than the default (e.g. the
+# Horf fires slow blood tears that travel the full room).
+@export var projectile_lifetime: float = 0.0
+
 # Free-movement params
 @export var move_speed: float = 100.0     # pixels / second
 @export var size: float = 24.0            # collision + display radius
 
 @export var behavior: BehaviorKind = BehaviorKind.WALKER
 
-# Visuals — for the Phase 3 slice we render as colored circles, but
-# the field is here so we can drop in textures later.
+# Visuals — enemies render as frame animations when `anim_frames` is
+# populated; otherwise ActionCombat falls back to a colored circle of radius
+# `size`. `color` doubles as the circle-fallback color and is not applied to
+# sprites (they carry their own art).
 @export var color: Color = Color(0.85, 0.3, 0.3, 1.0)
 @export var image: Texture2D
+
+# --- Frame animation ----------------------------------------------------
+# Animations are stored as parallel arrays (name / fps / loop / frame-count)
+# plus one flat frame list sliced by the cumulative counts. This keeps the
+# generated .tres trivial (no nested resource type) and is read back through
+# get_anim(). `directional` flags that the frames are facing-prefixed (unused
+# by the non-directional starter enemies; reserved for walkers/gapers).
+@export var directional: bool = false
+@export var anim_names: PackedStringArray = PackedStringArray()
+@export var anim_fps: PackedFloat32Array = PackedFloat32Array()
+@export var anim_loop: PackedByteArray = PackedByteArray()        # 1 = loop, 0 = play once
+@export var anim_frame_counts: PackedInt32Array = PackedInt32Array()
+@export var anim_frames: Array[Texture2D] = []
+
+func has_anims() -> bool:
+	return anim_frames.size() > 0
+
+# Returns {frames: Array[Texture2D], fps: float, loop: bool} for `anim`, or an
+# empty Dictionary when this enemy has no animation by that name.
+func get_anim(anim: StringName) -> Dictionary:
+	var start := 0
+	for i in anim_names.size():
+		var count: int = anim_frame_counts[i] if i < anim_frame_counts.size() else 0
+		if StringName(anim_names[i]) == anim:
+			var frames: Array[Texture2D] = []
+			for f in range(start, mini(start + count, anim_frames.size())):
+				frames.append(anim_frames[f])
+			return {
+				"frames": frames,
+				"fps": (anim_fps[i] if i < anim_fps.size() else 8.0),
+				"loop": (i < anim_loop.size() and anim_loop[i] != 0),
+			}
+		start += count
+	return {}
 
 @export var source_game: String = ""
 @export var tags: PackedStringArray = PackedStringArray()

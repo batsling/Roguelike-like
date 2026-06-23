@@ -270,6 +270,17 @@ const ENEMY_PROJECTILE_RADIUS := 7.0
 const ENEMY_PROJECTILE_LIFETIME := 3.0
 const ENEMY_PROJECTILE_COLOR := Color(1.0, 0.45, 0.2)
 
+# Enemy sprite radius relative to the collision radius (data.size), mirroring
+# the player's PLAYER_SPRITE_RADIUS = PLAYER_RADIUS * 1.3 so a size-1 enemy
+# reads at the same scale as the player.
+const ENEMY_SPRITE_SCALE := 1.3
+# A small decaying nudge applied when an enemy is hit (and a tiny recoil when it
+# fires). Total knockback distance ~ SPEED^2 / (2 * DECEL) ≈ 12px — a flutter,
+# not a lunge.
+const ENEMY_KNOCKBACK_SPEED := 150.0     # initial px/s on a landed hit
+const ENEMY_KNOCKBACK_DECEL := 900.0     # px/s^2 the nudge bleeds off
+const ENEMY_FIRE_RECOIL_SPEED := 60.0    # backward kick when an enemy shoots
+
 # Live projectiles (player- and enemy-owned). Each entry is a
 # Dictionary: {pos, velocity, owner, radius, color, lifetime, ...}
 var projectiles: Array = []
@@ -598,6 +609,9 @@ func _spawn_enemies() -> void:
 			"actor": _make_enemy_actor(data),
 			"pos": spots[idx % spots.size()],
 			"cooldown": 0.0,
+			"anim": &"idle",
+			"anim_t": 0.0,
+			"knockback": Vector2.ZERO,
 		}
 		enemies.append(inst)
 		idx += 1
@@ -879,6 +893,11 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 	if amount > 0:
 		inst.actor.hp = maxi(0, inst.actor.hp - amount)
 		FloatingNumbers.spawn(_fx_root, inst.pos, amount)
+		# Knock the enemy back a little, away from the player, when a hit lands.
+		if inst.actor.hp > 0:
+			var away: Vector2 = inst.pos - player_pos
+			away = away.normalized() if away.length() > 0.0 else Vector2.RIGHT
+			inst["knockback"] = inst.get("knockback", Vector2.ZERO) + away * ENEMY_KNOCKBACK_SPEED
 		# Lifesteal: the player heals for the unblocked damage dealt. Reflected
 		# contact reactions carry no_reaction, so they never lifesteal.
 		if bool(effect.get("lifesteal", false)) and not bool(effect.get("no_reaction", false)):
@@ -946,6 +965,13 @@ func _process_enemies(delta: float) -> void:
 					_process_stationary(inst, delta)
 				_:
 					_process_walker(inst, delta)
+		# Knockback (hit nudge / fire recoil) layered on top of the AI move, then
+		# bled off. Applies whether the enemy is feared or fighting.
+		var kb: Vector2 = inst.get("knockback", Vector2.ZERO)
+		if kb != Vector2.ZERO:
+			inst.pos += kb * delta
+			inst["knockback"] = kb.move_toward(Vector2.ZERO, ENEMY_KNOCKBACK_DECEL * delta)
+		_advance_enemy_anim(inst, delta)
 		# Keep everyone inside the arena bounds.
 		inst.pos.x = clampf(inst.pos.x, inst.data.size, ARENA_W - inst.data.size)
 		inst.pos.y = clampf(inst.pos.y, inst.data.size, ARENA_H - inst.data.size)
@@ -1041,18 +1067,71 @@ func _enemy_fire_projectile(inst: Dictionary) -> void:
 	if dir.length() == 0.0:
 		dir = Vector2.RIGHT
 	var speed: float = data.projectile_speed if data.projectile_speed > 0.0 else ENEMY_PROJECTILE_DEFAULT_SPEED
+	var life: float = data.projectile_lifetime if data.projectile_lifetime > 0.0 else ENEMY_PROJECTILE_LIFETIME
+	# Play the attack animation and give the shooter a tiny backward recoil
+	# (the Horf "twitches" with every shot).
+	_play_enemy_anim(inst, &"attack")
+	inst["knockback"] = inst.get("knockback", Vector2.ZERO) - dir * ENEMY_FIRE_RECOIL_SPEED
 	var proj: Dictionary = {
 		"pos": inst.pos + dir * (data.size + 4.0),
 		"velocity": dir * speed,
 		"owner": "enemy",
 		"radius": ENEMY_PROJECTILE_RADIUS,
 		"color": ENEMY_PROJECTILE_COLOR,
-		"lifetime": ENEMY_PROJECTILE_LIFETIME,
+		"lifetime": life,
 		"damage": data.contact_damage,
 		"source_name": data.display_name,
 		"attacker": inst.actor,
 	}
 	projectiles.append(proj)
+
+# --- Enemy frame animation -------------------------------------------------
+
+# Switch an enemy to animation `anim` (no-op if it has no such anim or is
+# already playing it). Resets the playhead.
+func _play_enemy_anim(inst: Dictionary, anim: StringName) -> void:
+	if inst.get("anim", &"") == anim:
+		return
+	if inst.data.get_anim(anim).is_empty():
+		return
+	inst["anim"] = anim
+	inst["anim_t"] = 0.0
+
+# Advance the playhead; a finished `once` animation falls back to idle.
+func _advance_enemy_anim(inst: Dictionary, delta: float) -> void:
+	var data: ActionEnemyData = inst.data
+	if not data.has_anims():
+		return
+	var a: Dictionary = data.get_anim(inst.get("anim", &"idle"))
+	if a.is_empty():
+		_play_enemy_anim(inst, &"idle")
+		return
+	var t: float = float(inst.get("anim_t", 0.0)) + delta
+	var frames: Array = a["frames"]
+	var dur: float = float(frames.size()) / maxf(0.001, float(a["fps"]))
+	if not bool(a["loop"]) and t >= dur:
+		_play_enemy_anim(inst, &"idle")
+		return
+	inst["anim_t"] = t
+
+# The texture to draw this frame, or null when the enemy has no usable anim
+# (callers fall back to a colored circle).
+func _enemy_current_frame(inst: Dictionary) -> Texture2D:
+	var data: ActionEnemyData = inst.data
+	if not data.has_anims():
+		return null
+	var a: Dictionary = data.get_anim(inst.get("anim", &"idle"))
+	if a.is_empty():
+		a = data.get_anim(&"idle")
+	if a.is_empty() or (a["frames"] as Array).is_empty():
+		return null
+	var frames: Array = a["frames"]
+	var idx: int = int(float(inst.get("anim_t", 0.0)) * float(a["fps"]))
+	if bool(a["loop"]):
+		idx = idx % frames.size()
+	else:
+		idx = mini(idx, frames.size() - 1)
+	return frames[idx]
 
 # ---------------------------------------------------------------------------
 # Auto-play deck runner
@@ -3241,10 +3320,18 @@ func _draw() -> void:
 		if not inst.actor.is_alive():
 			continue
 		var data: ActionEnemyData = inst.data
-		draw_circle(inst.pos, data.size, data.color)
+		var frame: Texture2D = _enemy_current_frame(inst)
+		var draw_r: float = data.size
+		if frame != null:
+			# Sprite drawn a touch larger than the hitbox, like the player token.
+			draw_r = data.size * ENEMY_SPRITE_SCALE
+			var rect := Rect2(inst.pos - Vector2(draw_r, draw_r), Vector2(draw_r * 2.0, draw_r * 2.0))
+			draw_texture_rect(frame, rect, false)
+		else:
+			draw_circle(inst.pos, data.size, data.color)
 		# HP bar above
 		var bar_w: float = data.size * 2.0
-		var bar_y: float = inst.pos.y - data.size - 10
+		var bar_y: float = inst.pos.y - draw_r - 10
 		draw_rect(Rect2(inst.pos.x - bar_w * 0.5, bar_y, bar_w, 5), Color(0.05, 0.05, 0.05))
 		var frac: float = float(inst.actor.hp) / float(maxi(1, inst.actor.max_hp))
 		draw_rect(Rect2(inst.pos.x - bar_w * 0.5, bar_y, bar_w * frac, 5), Color(0.85, 0.30, 0.30))

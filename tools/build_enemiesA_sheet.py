@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""
+Build the `enemiesA` sheet (action-mode enemies) in tools/Roguelikes.xlsx.
+
+Action enemies use a different schema from deckbuilder (`enemiesD`) — they are
+real-time creatures with positions, projectiles and frame animations rather
+than turn-based move patterns. The columns mirror ActionEnemyData.gd, with two
+authoring conveniences:
+
+  * `Size` is player-relative: 1 = the player's starting size. The importer
+    (tools/generate_action_enemy_tres.py) multiplies by the player radius to get
+    pixels.
+  * `Animations` is a packed cell declaring which frame animations the enemy has
+    and how to play / slice them. Grammar (`;`-separated):
+
+        <name> @ <fps> <loop|once> [grid WxH]
+
+    e.g.  idle @ 4 loop ; attack @ 8 once grid 32x32
+    - no `grid` clause  -> the whole source PNG is a single frame
+    - `grid WxH`        -> the source PNG is sliced into WxH cells, left-to-right
+                           then top-to-bottom
+    Source art lives in images/enemies/action_enemies/<Name>/, one PNG per
+    animation named <id>_<anim>*.png (e.g. horf_idle.png, horf_attack_1.png).
+
+Re-run safe: drops and rebuilds `enemiesA` each time. Leaves every other sheet
+untouched.
+"""
+
+import os
+import openpyxl
+from openpyxl.styles import Font, Alignment, PatternFill
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+XLSX_PATH = os.path.join(SCRIPT_DIR, "Roguelikes.xlsx")
+
+HEADERS = [
+    "Name", "Id", "Difficulty", "Weight", "Game", "Tag",
+    "Min HP", "Max HP", "Contact Damage", "Attack Cooldown", "Attack Range",
+    "Preferred Distance", "Projectile Speed", "Projectile Lifetime",
+    "Move Speed", "Size", "Behavior",
+    "Color", "Directional", "Animations",
+    "Split Into", "Split Count",
+]
+
+# One dict per action enemy, keyed by HEADERS.
+ENEMIES = [
+    {
+        "Name": "Horf", "Id": "horf", "Difficulty": "Low", "Weight": 2,
+        "Game": "The Binding of Isaac", "Tag": "",
+        "Min HP": 40, "Max HP": 40, "Contact Damage": 6,
+        "Attack Cooldown": 2.2, "Attack Range": 480,
+        "Preferred Distance": 0, "Projectile Speed": 200,
+        "Projectile Lifetime": 5.0, "Move Speed": 0, "Size": 1,
+        "Behavior": "Stationary",
+        "Color": "0.8,0.1,0.1", "Directional": "No",
+        "Animations": "idle @ 4 loop ; attack @ 8 once grid 32x32",
+        "Split Into": "", "Split Count": 0,
+    },
+]
+
+
+def main() -> int:
+    wb = openpyxl.load_workbook(XLSX_PATH)  # default keeps formulas/tables
+
+    if "enemiesA" in wb.sheetnames:
+        del wb["enemiesA"]
+    ws = wb.create_sheet("enemiesA")
+
+    head_fill = PatternFill("solid", fgColor="7F2D2D")
+    head_font = Font(bold=True, color="FFFFFF")
+    for ci, name in enumerate(HEADERS, start=1):
+        c = ws.cell(row=1, column=ci, value=name)
+        c.fill = head_fill
+        c.font = head_font
+
+    wrap = Alignment(vertical="top", wrap_text=True)
+    for ri, rec in enumerate(ENEMIES, start=2):
+        for ci, name in enumerate(HEADERS, start=1):
+            c = ws.cell(row=ri, column=ci, value=rec.get(name, ""))
+            if name == "Animations":
+                c.alignment = wrap
+
+    widths = {"Name": 14, "Id": 12, "Game": 20, "Animations": 42,
+              "Color": 14, "Behavior": 12, "Split Into": 12}
+    for ci, name in enumerate(HEADERS, start=1):
+        ws.column_dimensions[ws.cell(row=1, column=ci).column_letter].width = widths.get(name, 11)
+    ws.freeze_panes = "A2"
+
+    wb.save(XLSX_PATH)
+    print(f"[build_enemiesA] wrote enemiesA with {len(ENEMIES)} action enemies")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
