@@ -145,6 +145,12 @@ func _ready() -> void:
 	_targeting_arrow = TargetingArrow.new()
 	add_child(_targeting_arrow)
 	_end_turn_btn.pressed.connect(_on_end_turn)
+	# GameState.hp is the run-HP truth and `player` mirrors it. An item acquired
+	# mid-combat (e.g. Mango's +Max HP / +HP via item_acquired) writes straight to
+	# GameState, so mirror it onto the live actor + HP bar at once instead of
+	# waiting for the next combat to rebuild `player`. Auto-disconnects when freed.
+	if not GameState.hp_changed.is_connected(_on_gamestate_hp_changed):
+		GameState.hp_changed.connect(_on_gamestate_hp_changed)
 	_draw_btn.pressed.connect(_on_pile_clicked.bind("draw"))
 	_discard_btn.pressed.connect(_on_pile_clicked.bind("discard"))
 	_exhaust_btn.pressed.connect(_on_pile_clicked.bind("exhaust"))
@@ -331,6 +337,17 @@ func _update_poison_overlay(overlay: ColorRect, hp: int, max_hp: int, poison: in
 	overlay.offset_top = 0.0
 	overlay.offset_bottom = 0.0
 	overlay.visible = true
+
+# Mirror a GameState HP/Max-HP change (mid-combat item/event) onto the live actor
+# so the HP bar updates immediately. The damage sites already keep them in step,
+# so this is a no-op for them; the win is the item-acquired path that bypasses
+# those sites.
+func _on_gamestate_hp_changed(new_hp: int, new_max: int) -> void:
+	if player == null:
+		return
+	player.hp = new_hp
+	player.max_hp = new_max
+	_refresh_player_view()
 
 func _refresh_player_view() -> void:
 	if player == null or _player_hp_bar == null:

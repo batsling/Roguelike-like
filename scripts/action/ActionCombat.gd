@@ -305,6 +305,13 @@ func _ready() -> void:
 		_atk = ActionAttackLibrary.new()  # defensive: never run without the library
 	_turn_tick_remaining = _tr.turn_tick_secs
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# In Action, GameState.hp is the source of truth and player_actor mirrors it
+	# (synced at every damage site). An item acquired mid-room (e.g. Mango's
+	# +14 Max HP / +14 HP via item_acquired) writes straight to GameState, so
+	# mirror that onto the live actor + HUD immediately instead of waiting for the
+	# next room to rebuild the actor from GameState. Auto-disconnects when freed.
+	if not GameState.hp_changed.is_connected(_on_gamestate_hp_changed):
+		GameState.hp_changed.connect(_on_gamestate_hp_changed)
 	if not embedded:
 		# Standalone bootstrap: if a parent didn't apply a character / pick
 		# enemies, set up a default test fight so the scene is runnable from
@@ -554,6 +561,17 @@ func _accumulate_block_cap(card: CardData) -> void:
 	for eff in card.effects:
 		if String(eff.get("type", "")) == "block":
 			player_max_block += int(eff.get("value", 0))
+
+# Mirror any GameState HP/Max-HP change (item pickups, events firing mid-room)
+# onto the live actor so the HUD updates at once. The damage sites already keep
+# the two in lockstep, so re-applying GameState.hp here is a harmless no-op for
+# them; the win is the item-acquired path that bypasses those sites.
+func _on_gamestate_hp_changed(new_hp: int, new_max: int) -> void:
+	if player_actor == null:
+		return
+	player_actor.hp = new_hp
+	player_actor.max_hp = new_max
+	_refresh_hud()
 
 func _init_player() -> void:
 	player_actor = CombatActor.from_player()
