@@ -169,6 +169,10 @@ class FakeScene:
 		actor.hp = mini(actor.max_hp, actor.hp + amount)
 	func deal_damage(_source, _target, amount: int, _effect: Dictionary) -> void:
 		last_damage = amount
+	# Mirrors the deckbuilder's gain_block (Defense adds, Frail cuts) so a player
+	# actor's Plated Armor grant routes through the scene like it does in combat.
+	func gain_block(actor, amount: int) -> void:
+		actor.block += Stats.resolve_block(amount, actor, true)
 
 func test_ritual_gains_power_each_turn() -> void:
 	var a := _actor()
@@ -235,3 +239,49 @@ func test_per_turn_scaling_adds_per_completed_turn() -> void:
 	src.turns_taken = 2
 	EffectSystem.apply(effect, {"source": src, "target": _actor(), "scene": scene})
 	assert_eq(scene.last_damage, 50, "Scales +per_turn for each completed turn")
+
+# --- Plated Armor ---------------------------------------------------------
+# StS rule: gain Block = stacks at the end of your turn; lose 1 stack whenever
+# you take unblocked damage. The block grant routes through the scene's
+# gain_block, and the on-hit shed lives in resolve_damage — so the same rule
+# holds in every combat mode.
+
+func _player() -> CombatActor:
+	var a := CombatActor.new()
+	a.is_player = true
+	a.max_hp = 100
+	a.hp = 100
+	return a
+
+func test_plated_armor_grants_block_each_turn() -> void:
+	var a := _player()
+	var scene := FakeScene.new()
+	a.add_status(&"plated_armor", 4)
+	Stats.tick_actor_statuses(a, scene)
+	assert_eq(a.block, 4, "Plated Armor grants Block = stacks at the turn boundary")
+	Stats.tick_actor_statuses(a, scene)
+	assert_eq(a.block, 8, "It grants again every turn (block accrues; no turn-clock decay)")
+	assert_eq(a.get_status(&"plated_armor"), 4, "Plated Armor itself does not decay on the turn clock")
+
+func test_plated_armor_enemy_path_adds_block_directly() -> void:
+	# A non-player owner has no scene.gain_block routing; it adds to block directly.
+	var a := _actor()
+	var scene := FakeScene.new()
+	a.add_status(&"plated_armor", 3)
+	Stats.tick_actor_statuses(a, scene)
+	assert_eq(a.block, 3, "Enemy Plated Armor still grants Block = stacks")
+
+func test_plated_armor_sheds_a_stack_on_unblocked_hit() -> void:
+	var a := _actor()
+	a.add_status(&"plated_armor", 4)
+	var res := Stats.resolve_damage(null, a, 10, {"damage_type": "melee"}, Stats.Mode.DECKBUILDER)
+	assert_eq(res.hp_loss, 10, "Unblocked hit lands its damage")
+	assert_eq(a.get_status(&"plated_armor"), 3, "An unblocked hit sheds one Plated Armor stack")
+
+func test_plated_armor_intact_on_fully_blocked_hit() -> void:
+	var a := _actor()
+	a.add_status(&"plated_armor", 4)
+	a.block = 20
+	var res := Stats.resolve_damage(null, a, 10, {"damage_type": "melee"}, Stats.Mode.DECKBUILDER)
+	assert_eq(res.hp_loss, 0, "Block soaks the whole hit")
+	assert_eq(a.get_status(&"plated_armor"), 4, "A fully-blocked hit leaves Plated Armor intact")

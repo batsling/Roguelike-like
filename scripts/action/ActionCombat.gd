@@ -145,7 +145,11 @@ var player_max_block: int = 0
 # {amt: float, rate: float}; `rate` is block-per-second (a card's energy cost, so
 # pricier cards' block lingers). Reset each room. See _gain_block / _decay_block.
 var _block_pool: Array = []
-const DEFAULT_BLOCK_DECAY := 1.0   # block/sec for sources with no card cost (items)
+const DEFAULT_BLOCK_DECAY := 1.0   # block/sec floor for any source with no card cost
+# Block from items / statuses (Plated Armor, combat_start grants, …) fades as if
+# it came from a 2-cost card: 2 block/sec (mirrors _block_decay_for(cost=2)). One
+# rate for every non-card block source so they all bleed away on the same clock.
+const ITEM_BLOCK_DECAY := 2.0
 # The integer block value we last wrote to player_actor.block. Lets _decay_block
 # tell a real combat soak (player_actor.block dropped) apart from the harmless
 # rounding gap between the float pool total and its floored integer display.
@@ -2532,7 +2536,10 @@ func _gain_block(base_amount: int, decay_rate: float = DEFAULT_BLOCK_DECAY) -> v
 # card-derived soft cap first so it isn't immediately clamped away.
 func gain_block(_target, amount: int) -> void:
 	player_max_block += amount
-	_gain_block(amount)
+	# Item- and status-granted block fades on the 2-cost-card clock, not the slow
+	# default — so Plated Armor's per-turn block (and every other item block) bleeds
+	# away over time instead of lingering all room.
+	_gain_block(amount, ITEM_BLOCK_DECAY)
 
 # Block earned in action combat decays over time: each chunk drains at its
 # source card's energy cost (1 block/sec per energy), so a pricier card's block

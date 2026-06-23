@@ -33,6 +33,7 @@ const STATUSES: Array = [
 	{ "name": "Ritual", "description": "At the end of its turn, gains X Power", "type": "Buff", "stackable": true, "decay": "None", "who": "All", "preference": "Positive", "rarity": "Rare", "icon": "Ritual" },
 	{ "name": "Fading", "description": "Dies in X turns", "type": "Debuff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "All", "preference": "Negative", "rarity": "N/A", "icon": "Fading" },
 	{ "name": "Confused", "description": "Each card's energy cost is randomized between 0 and your max energy each turn", "type": "Debuff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "Player", "preference": "Negative", "rarity": "N/A", "icon": "Confused" },
+	{ "name": "Plated Armor", "description": "At the end of your turn, Gain X Block", "type": "Buff", "stackable": true, "decay": "Down by 1 when receiving unblocked Dmg", "who": "All", "preference": "Positive", "rarity": "Uncommon", "icon": "PlatedArmor" },
 ]
 
 const ADDONS: Array = [
