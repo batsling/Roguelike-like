@@ -66,8 +66,8 @@ The importer parses the `Ability` string into the existing/added fields, so the
 | **Directional rendering** | ⚠️ `Directional` flag is inert | importer splits frames per direction; runtime picks facing from velocity, mirrors `side` |
 | **Death animation / dying state** | ❌ enemies vanish at HP 0 | play `death` anim, *then* remove + fire on-death effects |
 | **Weighted death-transform** | ❌ | parse `On Death`, weighted roll, spawn at death pos |
-| **Pacer behavior** | ❌ | `BehaviorKind.PACER`: pace/bounce, ignore player, contact damage |
-| **Creep hazard** | ❌ | persistent damaging floor zones (pos/radius/dmg/interval/life), trail or on-death |
+| **Pacer behavior** | ❌ | `BehaviorKind.PACER`: **wander aimlessly** (random heading, redirect on a timer / wall hit), ignore the player, contact damage. Used by both Pacer and Gusher. |
+| **Creep hazard** | ❌ | persistent damaging floor zones (pos/radius/dmg/interval/life), trail or on-death, drawn with the provided blood-puddle sprites |
 
 ### 2a. Composite (layered) sprites — head + body
 Many Isaac enemies are a **body** with a **head** drawn on top as a separate
@@ -125,9 +125,11 @@ Details:
   enemy before the corpse clears, so the room stays active seamlessly.
 
 ### 2d. Creep hazard
-- New `_creep: Array` of `{pos, radius, dmg, interval, life, t}` zones, ticked in
-  `_process` (damage the player on overlap on the interval, respecting iframes),
-  decayed by `life`, drawn as translucent red puddles **under** the actors.
+- New `_creep: Array` of `{pos, radius, dmg, interval, life, t, tex}` zones,
+  ticked in `_process` (damage the player on overlap on the interval, respecting
+  iframes), decayed by `life`, drawn **under** the actors using the provided
+  blood-puddle sprites (a random puddle from the sheet per zone; faded out as
+  `life` runs down).
 - A `mode=trail` enemy drops a zone on a timer while moving; `mode=on_death`
   drops one in the dying step.
 
@@ -137,7 +139,7 @@ Details:
 
 | | Gaper | Pacer | Gusher |
 |---|---|---|---|
-| Behavior | Walker | **Pacer** | Walker (tune) |
+| Behavior | Walker | **Pacer** (wander) | **Pacer** (wander) |
 | Directional | body only (head fixed) | Yes | body only (gush fixed) |
 | HP (min/max) | 25 | 25 | 25 |
 | Weight | 3 | **0** | **0** |
@@ -149,7 +151,7 @@ Details:
 | Animations | `body.walk @ 8 loop ; body.death @ 10 once ; head.idle @ 4 loop ; head.attack @ 12 once` | `walk @ 8 loop ; death @ 10 once` | `body.walk @ 8 loop ; body.death @ 10 once ; gush.spew @ 10 loop` |
 
 (Pacer & Gusher `body` = the one shared walk-cycle sheet; Gusher adds the
-looping `gush` geyser layer. Gusher's chase-vs-pace behavior is a tuning call.)
+looping `gush` geyser layer. **Both wander aimlessly**, ignoring the player.)
 
 - **Weight 0** on Pacer/Gusher = never randomly spawned; they only appear via the
   Gaper's transform. Give them weight > 0 if you also want them as standalone
@@ -177,11 +179,22 @@ Pacer & Gusher — **share one headless-body walk cycle** (directional `walk` +
   **shared source** (e.g. both point `body` at the one `pacer`/shared walk set)
   rather than requiring `pacer_body_*` and `gusher_body_*` copies.
 
+**Creep:** the damaging floor puddle uses a provided blood-puddle sprite sheet
+(several puddle shapes/sizes) — store it as a shared creep asset (e.g.
+`assets/enemies/creep/*` or `images/enemies/action_enemies/_shared/creep*`); the
+creep renderer picks a puddle per zone. Not procedural.
+
 Single-layer enemies (Horf) keep the un-prefixed `<id>_<anim>*` form. Grid sheets
 are fine; declare them in `Animations` (e.g. `body.walk @ 8 loop grid 32x32`).
 
 Frames are trimmed-to-content and normalised onto one shared square per enemy
 (consistent scale across directions/anims), same as the Horf.
+
+### Art status
+- ✅ in hand (posted): Gaper body + head, shared Pacer/Gusher body walk cycle,
+  Gusher blood-gush geyser, creep blood-puddle sheet.
+- ⬜ still needed: the above committed into the repo at the paths above (chat
+  images aren't in the repo yet), so the importer can pick them up.
 
 ---
 
