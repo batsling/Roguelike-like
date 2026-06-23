@@ -57,6 +57,11 @@ var _map_view: RunMapView = null
 var _section_reward_layer: CanvasLayer = null
 var _chest_reward_layer: CanvasLayer = null
 var _rate_modal: RateGameModal = null
+# Door hover preview: game info + a mini run-map re-centered on the hovered game.
+const PREVIEW_W := 340.0
+var _preview_layer: CanvasLayer = null
+var _preview_panel: Control = null
+var _preview_game_id: StringName = &""
 # Game whose section reward is pending — set when a victory is handed to us,
 # consumed when the item reward opens after the verification screen.
 var _pending_reward_game_id: StringName = &""
@@ -126,6 +131,7 @@ func _apply_player_avatar() -> void:
 # ------------------------------------------------------------------
 
 func _spawn_portals_for_current_game() -> void:
+	_hide_portal_preview()
 	for p in _portals:
 		p.queue_free()
 	_portals.clear()
@@ -182,6 +188,119 @@ func _connected_game_ids(game_id: StringName) -> Array[StringName]:
 	# start/amulet path was generated from — in the restricted Owned/Downloaded
 	# modes the next-game choices stay inside that pool too.
 	return RunGraph.neighbors(game_id)
+
+# ------------------------------------------------------------------
+# Door hover preview — game info + a mini run-map re-centered on the hovered
+# game, so you can see what it is and where it leads before committing.
+# ------------------------------------------------------------------
+
+# Polled each frame: show the preview for whichever door the mouse is over, and
+# hide it otherwise. Suppressed while the walker is locked (a modal / combat
+# transition is up), so previews never linger over a dialog.
+func _process(_delta: float) -> void:
+	if _player != null and _player.is_input_locked():
+		if _preview_game_id != &"":
+			_hide_portal_preview()
+		return
+	var mouse: Vector2 = get_global_mouse_position()
+	var over: StringName = &""
+	for p in _portals:
+		if p.game_data != null and p.door_global_rect().has_point(mouse):
+			over = p.game_data.id
+			break
+	if over == _preview_game_id:
+		return
+	if over == &"":
+		_hide_portal_preview()
+	else:
+		_show_portal_preview(over)
+
+func _show_portal_preview(game_id: StringName) -> void:
+	_hide_portal_preview()
+	var gd: GameData = Data.get_game(game_id)
+	if gd == null:
+		return
+	_preview_game_id = game_id
+	if _preview_layer == null:
+		_preview_layer = CanvasLayer.new()
+		# Above the HUD (1) but below the modal layer (10) so an open modal always
+		# covers a lingering preview.
+		_preview_layer.layer = 9
+		add_child(_preview_layer)
+
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.07, 0.06, 0.11, 0.97)
+	sb.border_color = Color(0.5, 0.4, 0.7, 0.9)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.set_content_margin_all(10)
+	panel.add_theme_stylebox_override("panel", sb)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	vbox.custom_minimum_size = Vector2(PREVIEW_W, 0)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(vbox)
+
+	var title := Label.new()
+	title.text = gd.display_name
+	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.45))
+	vbox.add_child(title)
+
+	var info := Label.new()
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.add_theme_font_size_override("font_size", 12)
+	info.text = _preview_info_text(gd, game_id)
+	vbox.add_child(info)
+
+	# Mini run-map re-centered on this game (only when the run endpoints exist).
+	if GameState.start_game_id != &"" and GameState.amulet_game_id != &"":
+		var hdr := Label.new()
+		hdr.text = "Map if you enter:"
+		hdr.add_theme_font_size_override("font_size", 11)
+		hdr.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
+		vbox.add_child(hdr)
+		var mini := MapGraphView.new()
+		mini.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Re-root the route at the hovered game so the mini-map shows where it leads
+		# from there to the Amulet — "what the map looks like if you enter".
+		mini.build(game_id, GameState.amulet_game_id, game_id, "IF YOU ENTER")
+		var bw: float = mini.get_base_size().x
+		if bw > 0.0:
+			mini.set_zoom(clampf((PREVIEW_W - 4.0) / bw, MapGraphView.ZOOM_MIN, 1.0))
+		vbox.add_child(mini)
+
+	# Park it top-left, clear of the centered door row and item rack.
+	panel.position = Vector2(16.0, 140.0)
+	_preview_layer.add_child(panel)
+	_preview_panel = panel
+
+func _preview_info_text(gd: GameData, game_id: StringName) -> String:
+	var lines: Array = []
+	if gd.year > 0:
+		lines.append("Year: %d" % gd.year)
+	lines.append("Type: %s" % RunGraph.type_label(gd.type))
+	var tags: Array = []
+	for t in gd.tags:
+		tags.append(String(t))
+	if not tags.is_empty():
+		lines.append("Tags: %s" % ", ".join(tags))
+	lines.append("Connections: %d" % RunGraph.neighbors(game_id).size())
+	if game_id == GameState.amulet_game_id:
+		lines.append("The Amulet — your goal")
+	else:
+		var hops: int = int(RunGraph.bfs_distances(game_id).get(GameState.amulet_game_id, -1))
+		lines.append("Hops to Amulet: %s" % (str(hops) if hops >= 0 else "—"))
+	return "\n".join(lines)
+
+func _hide_portal_preview() -> void:
+	_preview_game_id = &""
+	if _preview_panel != null:
+		_preview_panel.queue_free()
+		_preview_panel = null
 
 # ------------------------------------------------------------------
 # Player interaction
