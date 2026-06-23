@@ -72,17 +72,29 @@ The importer parses the `Ability` string into the existing/added fields, so the
 ### 2a. Composite (layered) sprites — head + body
 Many Isaac enemies are a **body** with a **head** drawn on top as a separate
 image; the Gaper is one. Model an enemy as an ordered list of **layers** drawn
-back-to-front, each with its own animations (directional or not) and a draw
-offset from the enemy origin.
-- **Authoring:** animation names may be layer-prefixed — `body.walk`,
-  `head.walk`. No prefix = a single default layer (the Horf is unchanged).
-  Source art: `<id>_<layer>_<anim>_<dir>_*.png`
-  (e.g. `gaper_body_walk_side_0.png`, `gaper_head_walk_side_0.png`).
+back-to-front, each with its own animations and a draw offset from the enemy
+origin. **Layers can differ in directionality and animation state**, e.g. the
+Gaper:
+- `body` — **directional** (down / up / side), plays `walk` driven by movement,
+  `death` on dying.
+- `head` — **non-directional** (never turns to face the player), drawn on top at
+  an upward offset, plays `idle` normally and an `attack` (gape) animation when
+  the Gaper attacks.
+
+Details:
+- **Authoring:** animation names are layer-prefixed — `body.walk`, `head.attack`.
+  No prefix = a single default layer (the Horf is unchanged). Source art:
+  `<id>_<layer>_<anim>[_<dir>]_*.png` (e.g. `gaper_body_walk_side_0.png`,
+  `gaper_head_attack_0.png`).
+- **Directionality is per-layer/anim, inferred from the art:** the importer emits
+  facing variants only for anims that have `_down/_up/_side` source frames; the
+  runtime tries `<layer>.<base>_<facing>` and falls back to `<layer>.<base>`
+  (so the head's non-directional `attack` just works).
+- **Per-layer animation state:** body anim follows movement; head anim follows
+  attack events (idle → attack → idle).
 - **Layer order + offset:** a small `Layers` spec (order = draw order, offset in
-  source px, scaled by `Size`): `body @ 0,0 ; head @ 0,-10`. This is sprite
-  layout, separate from the mechanic-only `Ability` column.
-- **Runtime:** for each layer, resolve `<layer>.<base>_<facing>` (same facing +
-  mirror logic as below) and draw at origin + scaled offset.
+  source px, scaled by `Size`): `body @ 0,0 ; head @ 0,-10`. Sprite layout only,
+  separate from the mechanic-only `Ability` column.
 
 ### 2b. Directional rendering (3-dir + mirror)
 - Stored directions: `down`, `up`, `side`. **`side` art faces RIGHT**; moving
@@ -102,12 +114,10 @@ offset from the enemy origin.
 - On HP≤0, set `inst.dying = true`, play `death` anim, start a timer = death-anim
   length. When it elapses: run the `Ability` `OnDeath(...)` (spawn the transform
   as a live enemy), then mark the corpse fully dead.
-- **The transform is "the head pops off."** The Gaper's `death` is really its
-  *head* being destroyed; the **body** continues as a Pacer (headless, paces) or
-  Gusher (headless, gushes creep). So Pacer/Gusher should **reuse the Gaper's
-  body animation with the head layer dropped** — they likely need no new body
-  art, just the headless body + their behavior/ability. (Confirm vs. authoring
-  them as fully separate sprites.)
+- **Pacer/Gusher are separate enemies with their own dedicated sprites**
+  (provided art), spawned by `OnDeath(...)` at the corpse position — not the
+  Gaper's body re-used. So the transform is a plain weighted spawn; no
+  head-layer-dropping logic needed.
 - **Room-clear guard:** a room must NOT count cleared while any enemy is `dying`
   or a transform is pending — otherwise doors open before the Pacer appears.
   Extend the `_pending_spawns` guard in `start_room` / `_check_combat_end` /
@@ -128,14 +138,15 @@ offset from the enemy origin.
 | | Gaper | Pacer | Gusher |
 |---|---|---|---|
 | Behavior | Walker | **Pacer** | Walker |
-| Directional | Yes | Yes | Yes |
+| Directional | body only (head fixed) | Yes | Yes |
 | HP (min/max) | 25 | 25 | 25 |
 | Weight | 3 | **0** | **0** |
 | Contact Damage | 6 | 6 | 6 |
 | Move Speed | ~90 | ~70 | ~60 |
 | Size | 1 | 1 | 1 |
 | Ability | `OnDeath(pacer:80, gusher:20)` | — | `Creep(dmg=4, radius=36, interval=0.6, life=2.5, mode=trail)` |
-| Animations | `walk @ 8 loop ; death @ 10 once` | same | same |
+| Layers | `body @ 0,0 ; head @ 0,-10` | single | single |
+| Animations | `body.walk @ 8 loop ; body.death @ 10 once ; head.idle @ 4 loop ; head.attack @ 12 once` | `walk @ 8 loop ; death @ 10 once` | `walk @ 8 loop ; death @ 10 once` |
 
 - **Weight 0** on Pacer/Gusher = never randomly spawned; they only appear via the
   Gaper's transform. Give them weight > 0 if you also want them as standalone
@@ -147,16 +158,18 @@ offset from the enemy origin.
 
 ## 4. Art to provide
 
-Per enemy, under `images/enemies/action_enemies/<Name>/`, **per layer** for
-composites (`body`, `head`):
-- **Directional walk:** `<id>_<layer>_walk_<dir>*` for `dir ∈ {down, up, side}`
-  (side faces RIGHT; left is mirrored at runtime). One grid sheet per direction
-  is fine — declare it in `Animations` (e.g. `body.walk @ 8 loop grid 32x32`).
-- **Death / head-pop:** `<id>_<layer>_death*` (non-directional) as needed.
-- Single-layer enemies (Horf) keep the un-prefixed `<id>_<anim>*` form.
+Under `images/enemies/action_enemies/<Name>/`, **per layer** for composites:
 
-Since Pacer/Gusher are the headless Gaper body, they may reuse the Gaper's
-`body` frames rather than shipping their own.
+Gaper:
+- `body` (directional): `gaper_body_walk_down*`, `gaper_body_walk_up*`,
+  `gaper_body_walk_side*` (side faces RIGHT, left mirrored), `gaper_body_death*`.
+- `head` (non-directional): `gaper_head_idle*`, `gaper_head_attack*` (the gape).
+
+Pacer, Gusher: their own dedicated sprites (separate enemies) — directional
+`walk` + `death`, single-layer unless they also have a head.
+
+Single-layer enemies (Horf) keep the un-prefixed `<id>_<anim>*` form. Grid sheets
+are fine; declare them in `Animations` (e.g. `body.walk @ 8 loop grid 32x32`).
 
 Frames are trimmed-to-content and normalised onto one shared square per enemy
 (consistent scale across directions/anims), same as the Horf.
