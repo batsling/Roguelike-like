@@ -74,9 +74,11 @@ LAYER_SLICES = {
         {"layer": "body", "offset": (0.0, 0.0),
          "anims": _body_anims("Gaper/gaper_body_sheet.png", _GAPER_VERT, _GAPER_SIDE)},
         {"layer": "head", "offset": (0.0, -10.0), "anims": [
-            ("idle", 5.0, True, ("file", "Gaper/gaper_idle.png")),
-            ("attack", 12.0, False, ("sheet", "Gaper/gaper_head_sheet.png", 32,
-                                     [(0, 0), (0, 1), (1, 0), (1, 1)])),
+            # Idle = the open-eyed bloody resting head (head-only frame 0,1), NOT
+            # gaper_idle.png which is a full head+body sprite and would double the
+            # body. Attack opens to the wide gape (1,1).
+            ("idle", 5.0, True, ("sheet", "Gaper/gaper_head_sheet.png", 32, [(0, 1)])),
+            ("attack", 10.0, False, ("sheet", "Gaper/gaper_head_sheet.png", 32, [(0, 1), (1, 1)])),
         ]},
     ],
     "pacer": [

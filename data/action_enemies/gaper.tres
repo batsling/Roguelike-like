@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="ActionEnemyData" load_steps=27 format=3 uid="uid://action_enemy_gaper"]
+[gd_resource type="Resource" script_class="ActionEnemyData" load_steps=25 format=3 uid="uid://action_enemy_gaper"]
 
 [ext_resource type="Script" path="res://scripts/resources/ActionEnemyData.gd" id="1"]
 [ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_idle_0.png" id="2"]
@@ -24,8 +24,6 @@
 [ext_resource type="Texture2D" path="res://assets/enemies/gaper/head_idle_0.png" id="22"]
 [ext_resource type="Texture2D" path="res://assets/enemies/gaper/head_attack_0.png" id="23"]
 [ext_resource type="Texture2D" path="res://assets/enemies/gaper/head_attack_1.png" id="24"]
-[ext_resource type="Texture2D" path="res://assets/enemies/gaper/head_attack_2.png" id="25"]
-[ext_resource type="Texture2D" path="res://assets/enemies/gaper/head_attack_3.png" id="26"]
 
 [resource]
 script = ExtResource("1")
@@ -57,7 +55,7 @@ layer_names = PackedStringArray("body", "head")
 layer_offsets = PackedVector2Array(Vector2(0, 0), Vector2(0, -10))
 directional = true
 anim_names = PackedStringArray("body.idle", "body.walk_vert", "body.walk_side", "head.idle", "head.attack")
-anim_fps = PackedFloat32Array(5, 12, 12, 5, 12)
+anim_fps = PackedFloat32Array(5, 12, 12, 5, 10)
 anim_loop = PackedByteArray(1, 1, 1, 1, 0)
-anim_frame_counts = PackedInt32Array(1, 9, 10, 1, 4)
-anim_frames = Array[Texture2D]([ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7"), ExtResource("8"), ExtResource("9"), ExtResource("10"), ExtResource("11"), ExtResource("12"), ExtResource("13"), ExtResource("14"), ExtResource("15"), ExtResource("16"), ExtResource("17"), ExtResource("18"), ExtResource("19"), ExtResource("20"), ExtResource("21"), ExtResource("22"), ExtResource("23"), ExtResource("24"), ExtResource("25"), ExtResource("26")])
+anim_frame_counts = PackedInt32Array(1, 9, 10, 1, 2)
+anim_frames = Array[Texture2D]([ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7"), ExtResource("8"), ExtResource("9"), ExtResource("10"), ExtResource("11"), ExtResource("12"), ExtResource("13"), ExtResource("14"), ExtResource("15"), ExtResource("16"), ExtResource("17"), ExtResource("18"), ExtResource("19"), ExtResource("20"), ExtResource("21"), ExtResource("22"), ExtResource("23"), ExtResource("24")])
