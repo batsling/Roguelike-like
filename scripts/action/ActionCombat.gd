@@ -102,6 +102,9 @@ var player_pos: Vector2 = Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
 var player_facing: Vector2 = Vector2.RIGHT
 var player_iframes: float = 0.0
 var enemies: Array = []          # Array of Dictionary: {data, actor, pos, cooldown}
+# Telegraphed spawns not yet materialised. Each: {data, pos, t} where t counts
+# up to SPAWN_TELEGRAPH_TIME before the enemy is added to `enemies`.
+var _pending_spawns: Array = []
 enum Phase { INIT, PLAYING, WON, LOST }
 var phase: Phase = Phase.INIT
 var _ability_swing_remaining: float = 0.0
@@ -281,6 +284,12 @@ const ENEMY_KNOCKBACK_SPEED := 150.0     # initial px/s on a landed hit
 const ENEMY_KNOCKBACK_DECEL := 900.0     # px/s^2 the nudge bleeds off
 const ENEMY_FIRE_RECOIL_SPEED := 60.0    # backward kick when an enemy shoots
 
+# Enemies don't appear the instant a room loads — a red telegraph circle (sized
+# to the enemy) marks each spawn for this long first, so the player can read the
+# room before the fight starts.
+const SPAWN_TELEGRAPH_TIME := 1.0
+const SPAWN_TELEGRAPH_COLOR := Color(0.95, 0.15, 0.15)
+
 # Live projectiles (player- and enemy-owned). Each entry is a
 # Dictionary: {pos, velocity, owner, radius, color, lifetime, ...}
 var projectiles: Array = []
@@ -378,6 +387,7 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	room_is_safe = is_safe
 	enemy_hp_mult = maxf(1.0, hp_mult)
 	enemies.clear()
+	_pending_spawns.clear()
 	projectiles.clear()
 	_pending_hits.clear()
 	_ability_swing_remaining = 0.0
@@ -440,8 +450,9 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 		# Innate -> auto_play: fire innate cards once now that enemies exist.
 		_auto_play_innate_addons()
 
-	if _living_enemy_count() == 0:
-		# Safe room or already empty — doors stay open.
+	if _living_enemy_count() == 0 and _pending_spawns.is_empty():
+		# Safe room or already empty — doors stay open. (A room mid-telegraph
+		# has pending spawns and must NOT count as resolved.)
 		_room_resolved = true
 
 	paused = false
@@ -453,7 +464,7 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 # Public: true while the current room still has at least one living enemy.
 # The global Backpack uses this to keep equipment swaps to between rooms.
 func has_live_enemies() -> bool:
-	return _living_enemy_count() > 0
+	return _living_enemy_count() > 0 or not _pending_spawns.is_empty()
 
 func _living_enemy_count() -> int:
 	var n := 0
@@ -603,17 +614,39 @@ func _spawn_enemies() -> void:
 			continue
 		# Start at the top and go clockwise; a single enemy sits dead centre-top.
 		var ang: float = -PI * 0.5 + TAU * (float(idx) / float(n))
-		var inst := {
+		# Telegraph the spawn rather than dropping the enemy in immediately.
+		_pending_spawns.append({
 			"data": data,
-			"actor": _make_enemy_actor(data),
 			"pos": center + Vector2(cos(ang) * rx, sin(ang) * ry),
-			"cooldown": 0.0,
-			"anim": &"idle",
-			"anim_t": 0.0,
-			"knockback": Vector2.ZERO,
-		}
-		enemies.append(inst)
+			"t": 0.0,
+		})
 		idx += 1
+
+# Builds a live enemy instance dict from its template at `pos`.
+func _make_enemy_inst(data: ActionEnemyData, pos: Vector2) -> Dictionary:
+	return {
+		"data": data,
+		"actor": _make_enemy_actor(data),
+		"pos": pos,
+		"cooldown": 0.0,
+		"anim": &"idle",
+		"anim_t": 0.0,
+		"knockback": Vector2.ZERO,
+	}
+
+# Tick telegraphed spawns; materialise each into a live enemy once its warning
+# window elapses.
+func _process_pending_spawns(delta: float) -> void:
+	if _pending_spawns.is_empty():
+		return
+	var still: Array = []
+	for p in _pending_spawns:
+		p["t"] = float(p["t"]) + delta
+		if float(p["t"]) >= SPAWN_TELEGRAPH_TIME:
+			enemies.append(_make_enemy_inst(p["data"], p["pos"]))
+		else:
+			still.append(p)
+	_pending_spawns = still
 
 func _make_enemy_actor(data: ActionEnemyData) -> CombatActor:
 	var hp: int = int(round(_rng.randi_range(data.hp_min, data.hp_max) * enemy_hp_mult))
@@ -661,6 +694,7 @@ func _process(delta: float) -> void:
 	if embedded:
 		_check_doors()
 		_check_stairs()
+	_process_pending_spawns(delta)
 	_process_enemies(delta)
 	_process_projectiles(delta)
 	_process_pending_hits(delta)
@@ -1045,31 +1079,50 @@ func _process_shooter(inst: Dictionary, delta: float) -> void:
 	elif dist > preferred + margin:
 		# Too far — close in until in firing range.
 		inst.pos += to_player.normalized() * data.move_speed * delta
-	# Fire when player is in range and cooldown ready.
-	inst.cooldown = maxf(0.0, inst.cooldown - delta)
-	if dist <= data.attack_range and inst.cooldown <= 0.0:
-		_enemy_fire_projectile(inst)
-		inst.cooldown = data.attack_cooldown
+	_enemy_update_ranged_attack(inst, delta, dist)
 
 func _process_stationary(inst: Dictionary, delta: float) -> void:
 	# Hold position; fire on cooldown if player is in range.
-	var data: ActionEnemyData = inst.data
 	var dist: float = player_pos.distance_to(inst.pos)
+	_enemy_update_ranged_attack(inst, delta, dist)
+
+# Shared ranged-attack driver (SHOOTER / STATIONARY). When in range and off
+# cooldown the enemy enters a wind-up: it plays its attack animation as a
+# telegraph for `attack_windup` seconds (or the animation's own length when 0),
+# THEN releases the projectile. This is what lets the player read the tell and
+# dodge — the shot no longer leaves the instant the animation starts.
+func _enemy_update_ranged_attack(inst: Dictionary, delta: float, dist: float) -> void:
+	var data: ActionEnemyData = inst.data
+	if inst.get("winding", false):
+		inst["windup_t"] = float(inst.get("windup_t", 0.0)) + delta
+		var wind: float = data.attack_windup if data.attack_windup > 0.0 else _anim_duration(data, &"attack")
+		if float(inst["windup_t"]) >= wind:
+			inst["winding"] = false
+			_enemy_release_projectile(inst)
+			inst.cooldown = data.attack_cooldown
+		return
 	inst.cooldown = maxf(0.0, inst.cooldown - delta)
 	if dist <= data.attack_range and inst.cooldown <= 0.0:
-		_enemy_fire_projectile(inst)
-		inst.cooldown = data.attack_cooldown
+		# Begin the wind-up: show the attack animation as a warning.
+		inst["winding"] = true
+		inst["windup_t"] = 0.0
+		_play_enemy_anim(inst, &"attack")
 
-func _enemy_fire_projectile(inst: Dictionary) -> void:
+# Playback length of an animation in seconds, or 0 if the enemy lacks it.
+func _anim_duration(data: ActionEnemyData, anim: StringName) -> float:
+	var a: Dictionary = data.get_anim(anim)
+	if a.is_empty():
+		return 0.0
+	return float((a["frames"] as Array).size()) / maxf(0.001, float(a["fps"]))
+
+# Releases the actual projectile at the end of the wind-up (with a small recoil).
+func _enemy_release_projectile(inst: Dictionary) -> void:
 	var data: ActionEnemyData = inst.data
 	var dir: Vector2 = (player_pos - inst.pos).normalized()
 	if dir.length() == 0.0:
 		dir = Vector2.RIGHT
 	var speed: float = data.projectile_speed if data.projectile_speed > 0.0 else ENEMY_PROJECTILE_DEFAULT_SPEED
 	var life: float = data.projectile_lifetime if data.projectile_lifetime > 0.0 else ENEMY_PROJECTILE_LIFETIME
-	# Play the attack animation and give the shooter a tiny backward recoil
-	# (the Horf "twitches" with every shot).
-	_play_enemy_anim(inst, &"attack")
 	inst["knockback"] = inst.get("knockback", Vector2.ZERO) - dir * ENEMY_FIRE_RECOIL_SPEED
 	var proj: Dictionary = {
 		"pos": inst.pos + dir * (data.size + 4.0),
@@ -3157,7 +3210,8 @@ func _check_combat_end() -> void:
 		queue_free()
 		return
 
-	if _living_enemy_count() > 0:
+	# Still spawning in (telegraph) or enemies alive — the room isn't done.
+	if _living_enemy_count() > 0 or not _pending_spawns.is_empty():
 		return
 
 	# All enemies down.
@@ -3313,6 +3367,18 @@ func _draw() -> void:
 	# Attack smear (drawn under enemies so the shape frames them)
 	if _ability_swing_remaining > 0.0:
 		_draw_attack_smear()
+
+	# Spawn telegraphs: a red circle (sized to the enemy) that fills in and
+	# pulses while the spawn warning counts down.
+	for p in _pending_spawns:
+		var pdata: ActionEnemyData = p["data"]
+		var prog: float = clampf(float(p["t"]) / SPAWN_TELEGRAPH_TIME, 0.0, 1.0)
+		var pr: float = pdata.size * ENEMY_SPRITE_SCALE
+		var pulse: float = 0.5 + 0.5 * sin(float(p["t"]) * 18.0)
+		var fill := Color(SPAWN_TELEGRAPH_COLOR.r, SPAWN_TELEGRAPH_COLOR.g, SPAWN_TELEGRAPH_COLOR.b,
+			0.20 + 0.30 * pulse)
+		draw_circle(p["pos"], pr * prog, fill)                          # growing core
+		draw_arc(p["pos"], pr, 0.0, TAU, 28, SPAWN_TELEGRAPH_COLOR, 2.0)  # fixed outline
 
 	# Enemies
 	for inst in enemies:

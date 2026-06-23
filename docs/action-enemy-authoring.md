@@ -33,6 +33,7 @@ Both need `openpyxl` + `Pillow`.
 | Min/Max HP | HP rolled in range at spawn. |
 | Contact Damage | Damage per touch (walker) or per projectile (shooter/stationary). |
 | Attack Cooldown | Seconds between attacks. |
+| Attack Windup | Telegraph lead-time: a ranged enemy plays its `attack` animation for this many seconds as a warning *before* the projectile is released (the shot lands as the wind-up ends). `0` = use the attack animation's own length. Tune this to speed up / slow down the tell. |
 | Attack Range | Melee radius, or the distance at which a shooter/stationary enemy opens fire. |
 | Preferred Distance | SHOOTER kiting distance (0 = `0.7 × Attack Range`). |
 | Projectile Speed | px/s (0 = engine default). |
@@ -61,6 +62,11 @@ reuses the deckbuilder weighted pick loop, `EnemySpawner.pick_group`):
   (`ActionFloor.BOSS_HP_MULT`).
 
 Tune the budgets in `scripts/runtime/ActionEnemySpawner.gd` (`TIER_BUDGET`).
+
+Enemies don't appear instantly: each spawn is **telegraphed** by a red circle
+(sized to the enemy) for `ActionCombat.SPAWN_TELEGRAPH_TIME` (1s) before the
+enemy materialises, so the player can read the room first. A room mid-telegraph
+never counts as cleared.
 
 ## `Animations` grammar
 

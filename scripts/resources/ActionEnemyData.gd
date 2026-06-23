@@ -21,6 +21,10 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 # Damage applied per touch (WALKER) or per projectile (SHOOTER).
 @export var contact_damage: int = 5
 @export var attack_cooldown: float = 1.0  # seconds between hits
+# Telegraph lead-time: a ranged enemy plays its attack animation for this long
+# as a warning BEFORE the projectile is released. 0 falls back to the attack
+# animation's own duration, so the shot lands exactly as the wind-up finishes.
+@export var attack_windup: float = 0.0
 @export var attack_range: float = 50.0    # melee radius / max firing distance
 
 # SHOOTER-only: distance the enemy tries to maintain from the player.

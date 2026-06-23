@@ -17,8 +17,9 @@ func test_horf_is_a_stationary_shooter() -> void:
 	assert_eq(horf.id, &"horf")
 	assert_eq(horf.behavior, ActionEnemyData.BehaviorKind.STATIONARY)
 	assert_eq(horf.move_speed, 0.0, "Horf never relocates")
-	assert_eq(horf.hp_min, 40)
-	assert_eq(horf.hp_max, 40)
+	assert_eq(horf.hp_min, 25)
+	assert_eq(horf.hp_max, 25)
+	assert_gt(horf.attack_windup, 0.0, "Horf telegraphs its shot with a wind-up")
 	# Slow shot, but a long enough life to cross the full arena (~980px).
 	assert_eq(horf.projectile_speed, 200.0)
 	assert_gt(horf.projectile_lifetime * horf.projectile_speed, 980.0,

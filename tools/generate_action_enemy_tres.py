@@ -222,6 +222,7 @@ def write_tres(rec, eid, name, anim_meta, frame_assets):
         f"hp_max = {int(rec['Max HP'])}",
         f"contact_damage = {int(rec['Contact Damage'])}",
         f"attack_cooldown = {_num(rec['Attack Cooldown'])}",
+        f"attack_windup = {_num(rec.get('Attack Windup') or 0)}",
         f"attack_range = {_num(rec['Attack Range'])}",
         f"preferred_distance = {_num(rec['Preferred Distance'])}",
         f"projectile_speed = {_num(rec['Projectile Speed'])}",

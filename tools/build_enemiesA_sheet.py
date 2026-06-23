@@ -35,8 +35,8 @@ XLSX_PATH = os.path.join(SCRIPT_DIR, "Roguelikes.xlsx")
 
 HEADERS = [
     "Name", "Id", "Difficulty", "Weight", "Game", "Tag",
-    "Min HP", "Max HP", "Contact Damage", "Attack Cooldown", "Attack Range",
-    "Preferred Distance", "Projectile Speed", "Projectile Lifetime",
+    "Min HP", "Max HP", "Contact Damage", "Attack Cooldown", "Attack Windup",
+    "Attack Range", "Preferred Distance", "Projectile Speed", "Projectile Lifetime",
     "Move Speed", "Size", "Behavior",
     "Color", "Directional", "Animations",
     "Split Into", "Split Count",
@@ -47,13 +47,13 @@ ENEMIES = [
     {
         "Name": "Horf", "Id": "horf", "Difficulty": "Low", "Weight": 2,
         "Game": "The Binding of Isaac", "Tag": "",
-        "Min HP": 40, "Max HP": 40, "Contact Damage": 6,
-        "Attack Cooldown": 2.2, "Attack Range": 480,
+        "Min HP": 25, "Max HP": 25, "Contact Damage": 6,
+        "Attack Cooldown": 2.2, "Attack Windup": 0.35, "Attack Range": 480,
         "Preferred Distance": 0, "Projectile Speed": 200,
         "Projectile Lifetime": 5.0, "Move Speed": 0, "Size": 1,
         "Behavior": "Stationary",
         "Color": "0.8,0.1,0.1", "Directional": "No",
-        "Animations": "idle @ 4 loop ; attack @ 8 once grid 32x32",
+        "Animations": "idle @ 4 loop ; attack @ 12 once grid 32x32",
         "Split Into": "", "Split Count": 0,
     },
 ]
