@@ -28,7 +28,7 @@ Both need `openpyxl` + `Pillow`.
 |---|---|
 | Name / Id | Display name / `StringName` id and asset-folder name. |
 | Difficulty | `Low/Medium/High/Boss` → `0..3`. |
-| Weight | Spawn weight. **Note:** action spawning currently picks uniformly by count (`ActionFloor._pick_enemies`); weight is forward-looking metadata until a budget spawner is ported to action. |
+| Weight | Spend **cost** for the weighted room budget (`ActionEnemySpawner`). A Horf costs 2, so the Low-tier budget of 8 fields up to four. See "Spawning" below. |
 | Game / Tag | Source attribution / free tag. |
 | Min/Max HP | HP rolled in range at spawn. |
 | Contact Damage | Damage per touch (walker) or per projectile (shooter/stationary). |
@@ -44,6 +44,23 @@ Both need `openpyxl` + `Pillow`.
 | Directional | `Yes/No` — reserved for facing-prefixed frames (walkers/gapers); non-directional enemies use plain frames. |
 | Animations | Packed; see below. |
 | Split Into / Split Count | Split status: spawn N copies of `<id>` at ≤50% HP. |
+
+## Spawning (weighted budget)
+
+Each **room** is one encounter, built by `ActionEnemySpawner.build_room` (which
+reuses the deckbuilder weighted pick loop, `EnemySpawner.pick_group`):
+
+- The run's difficulty tier (`RunDifficulty.current_tier`) sets a per-room spend
+  **budget**: Low **8** / Medium **10** / High **12** / Insane **15**.
+- Each enemy's `Weight` is its **cost**. Enemies are picked until the budget or
+  the room cap (`MAX_ENEMIES`, 8) runs out — so budget 8 + Horf (weight 2) = up
+  to four Horfs.
+- The candidate pool is gated to `difficulty ≤ tier` (Low tier → Low enemies
+  only); `Boss` difficulty is reserved and never rolls into a random room.
+- **Boss rooms** spend `BOSS_BUDGET_MULT` (1.5×) the tier budget, plus an HP bump
+  (`ActionFloor.BOSS_HP_MULT`).
+
+Tune the budgets in `scripts/runtime/ActionEnemySpawner.gd` (`TIER_BUDGET`).
 
 ## `Animations` grammar
 

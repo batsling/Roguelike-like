@@ -590,24 +590,23 @@ func _init_player() -> void:
 	player_pos = Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
 
 func _spawn_enemies() -> void:
-	# Spread the spawn points around the perimeter so multiple enemies
-	# don't stack on top of each other on turn 1.
-	var spots := [
-		Vector2(200, 150),
-		Vector2(ARENA_W - 200, 150),
-		Vector2(200, ARENA_H - 150),
-		Vector2(ARENA_W - 200, ARENA_H - 150),
-		Vector2(ARENA_W * 0.5, 100),
-	]
+	# Spread spawns evenly around a ring centred on the arena so any number of
+	# enemies (up to ActionEnemySpawner.MAX_ENEMIES) fan out without stacking.
+	var center := Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
+	var rx: float = ARENA_W * 0.34
+	var ry: float = ARENA_H * 0.32
+	var n: int = maxi(1, enemies_to_spawn.size())
 	var idx := 0
 	for id in enemies_to_spawn:
 		var data: ActionEnemyData = Data.get_action_enemy(id)
 		if data == null:
 			continue
+		# Start at the top and go clockwise; a single enemy sits dead centre-top.
+		var ang: float = -PI * 0.5 + TAU * (float(idx) / float(n))
 		var inst := {
 			"data": data,
 			"actor": _make_enemy_actor(data),
-			"pos": spots[idx % spots.size()],
+			"pos": center + Vector2(cos(ang) * rx, sin(ang) * ry),
 			"cooldown": 0.0,
 			"anim": &"idle",
 			"anim_t": 0.0,
