@@ -6,10 +6,10 @@
 script = ExtResource("1_portal")
 
 [node name="NameLabel" type="Label" parent="."]
-offset_left = -64.0
-offset_top = 42.0
-offset_right = 64.0
-offset_bottom = 58.0
+offset_left = -72.0
+offset_top = 48.0
+offset_right = 72.0
+offset_bottom = 64.0
 text = "Game"
 horizontal_alignment = 1
 clip_text = true

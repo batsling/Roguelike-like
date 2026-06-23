@@ -12,15 +12,16 @@ const TILE_SIZE := 32
 
 # Door geometry, centered on the node origin (the grid point sits at the door's
 # vertical middle). Portrait proportions so it reads as a door, not a card.
-const DOOR_W := 76.0
-const DOOR_H := 96.0
-const DOOR_TOP := -58.0          # y of the door's top edge
-const FRAME := 6.0               # jamb thickness around the cover face
+const DOOR_W := 84.0
+const DOOR_H := 108.0
+const DOOR_TOP := -64.0          # y of the door's top edge
+const FRAME := 7.0               # jamb thickness around the cover face
 
 var game_data: GameData = null
 var grid_pos: Vector2i = Vector2i.ZERO
 var beaten: bool = false
 var _active: bool = false
+var _hovered: bool = false
 
 @onready var _label: Label = $NameLabel
 
@@ -42,14 +43,23 @@ func _apply_visuals() -> void:
 	queue_redraw()
 
 # The door's rect in global (canvas) coords — the Overworld polls the mouse
-# against this to drive the hover preview, which is more robust than a Control or
-# Area2D under a Node2D.
+# against this to drive the hover highlight + click-to-open preview.
 func door_global_rect() -> Rect2:
 	return Rect2(global_position + Vector2(-DOOR_W / 2.0, DOOR_TOP),
 		Vector2(DOOR_W, DOOR_H))
 
 func set_highlight(active: bool) -> void:
+	if _active == active:
+		return
 	_active = active
+	queue_redraw()
+
+# Mouse-hover cue (distinct from the walked-onto `_active` selection): a bright
+# outline so the player knows the door is clickable.
+func set_hovered(hovered: bool) -> void:
+	if _hovered == hovered:
+		return
+	_hovered = hovered
 	queue_redraw()
 
 func _draw() -> void:
@@ -57,9 +67,9 @@ func _draw() -> void:
 	var door_rect := Rect2(-half, DOOR_TOP, DOOR_W, DOOR_H)
 	var border: Color = _color_for_type(game_data.type if game_data != null else 3)
 
-	# Selection glow behind the whole door.
+	# Selection glow behind the whole door (walked onto it).
 	if _active:
-		draw_rect(door_rect.grow(6.0), Color(1.0, 0.85, 0.2, 0.5), true)
+		draw_rect(door_rect.grow(7.0), Color(1.0, 0.85, 0.2, 0.5), true)
 
 	# Door frame / jamb — type-tinted wood.
 	draw_rect(door_rect, border, true)
@@ -72,14 +82,19 @@ func _draw() -> void:
 			Color(0.55, 0.55, 0.6) if beaten else Color.WHITE)
 	else:
 		draw_rect(face, Color(0.18, 0.18, 0.22, 1.0), true)
-	# A horizontal lintel line near the top + the outer frame outline read as a door.
+	# A horizontal lintel line near the top + a bold outer outline read as a door.
 	var lintel_y := DOOR_TOP + DOOR_H * 0.18
 	draw_line(Vector2(-half + FRAME, lintel_y), Vector2(half - FRAME, lintel_y),
-		border.darkened(0.35), 2.0)
-	draw_rect(door_rect, border.darkened(0.35), false, 2.0)
-	# Brass knob on the latch side.
-	draw_circle(Vector2(half - FRAME - 4.0, DOOR_TOP + DOOR_H * 0.56), 3.5,
-		Color(0.95, 0.82, 0.45))
+		border.darkened(0.4), 2.0)
+	draw_rect(door_rect, Color(0.04, 0.03, 0.02, 1.0), false, 3.0)
+	# Brass knob on the latch side, with a dark ring outline.
+	var knob_c := Vector2(half - FRAME - 5.0, DOOR_TOP + DOOR_H * 0.56)
+	draw_circle(knob_c, 5.0, Color(0.10, 0.08, 0.04))
+	draw_circle(knob_c, 4.0, Color(0.95, 0.82, 0.45))
+
+	# Hover cue: bright outline outside the frame so the door reads as clickable.
+	if _hovered:
+		draw_rect(door_rect.grow(3.0), Color(1.0, 0.95, 0.55, 0.95), false, 3.0)
 
 func _color_for_type(t: int) -> Color:
 	# Match GameData.GameType enum: ACTION=0, STRATEGY=1, DECKBUILDER=2, TRADITIONAL=3
