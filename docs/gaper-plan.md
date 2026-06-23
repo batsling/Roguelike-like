@@ -137,16 +137,19 @@ Details:
 
 | | Gaper | Pacer | Gusher |
 |---|---|---|---|
-| Behavior | Walker | **Pacer** | Walker |
-| Directional | body only (head fixed) | Yes | Yes |
+| Behavior | Walker | **Pacer** | Walker (tune) |
+| Directional | body only (head fixed) | Yes | body only (gush fixed) |
 | HP (min/max) | 25 | 25 | 25 |
 | Weight | 3 | **0** | **0** |
 | Contact Damage | 6 | 6 | 6 |
 | Move Speed | ~90 | ~70 | ~60 |
 | Size | 1 | 1 | 1 |
 | Ability | `OnDeath(pacer:80, gusher:20)` | — | `Creep(dmg=4, radius=36, interval=0.6, life=2.5, mode=trail)` |
-| Layers | `body @ 0,0 ; head @ 0,-10` | single | single |
-| Animations | `body.walk @ 8 loop ; body.death @ 10 once ; head.idle @ 4 loop ; head.attack @ 12 once` | `walk @ 8 loop ; death @ 10 once` | `walk @ 8 loop ; death @ 10 once` |
+| Layers | `body @ 0,0 ; head @ 0,-10` | single (`body`) | `body @ 0,0 ; gush @ 0,-14` |
+| Animations | `body.walk @ 8 loop ; body.death @ 10 once ; head.idle @ 4 loop ; head.attack @ 12 once` | `walk @ 8 loop ; death @ 10 once` | `body.walk @ 8 loop ; body.death @ 10 once ; gush.spew @ 10 loop` |
+
+(Pacer & Gusher `body` = the one shared walk-cycle sheet; Gusher adds the
+looping `gush` geyser layer. Gusher's chase-vs-pace behavior is a tuning call.)
 
 - **Weight 0** on Pacer/Gusher = never randomly spawned; they only appear via the
   Gaper's transform. Give them weight > 0 if you also want them as standalone
@@ -165,8 +168,14 @@ Gaper:
   `gaper_body_walk_side*` (side faces RIGHT, left mirrored), `gaper_body_death*`.
 - `head` (non-directional): `gaper_head_idle*`, `gaper_head_attack*` (the gape).
 
-Pacer, Gusher: their own dedicated sprites (separate enemies) — directional
-`walk` + `death`, single-layer unless they also have a head.
+Pacer & Gusher — **share one headless-body walk cycle** (directional `walk` +
+`death` from the same sheet):
+- `pacer`: just that body. `gusher`: that body **plus** a non-directional
+  `gush` layer (the blood geyser sheet) drawn at the top offset, looping while
+  alive — and the `Creep` ability for the floor hazard.
+- To avoid duplicating the body art, the importer should let a layer reference a
+  **shared source** (e.g. both point `body` at the one `pacer`/shared walk set)
+  rather than requiring `pacer_body_*` and `gusher_body_*` copies.
 
 Single-layer enemies (Horf) keep the un-prefixed `<id>_<anim>*` form. Grid sheets
 are fine; declare them in `Animations` (e.g. `body.walk @ 8 loop grid 32x32`).
