@@ -307,7 +307,7 @@ func _build_player_view() -> void:
 
 	_player_status_row = HBoxContainer.new()
 	_player_status_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_player_status_row.custom_minimum_size = Vector2(0, 24)
+	_player_status_row.custom_minimum_size = Vector2(0, 32)
 	_player_status_row.add_theme_constant_override("separation", 4)
 	_player_status_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	area.add_child(_player_status_row)
@@ -356,9 +356,11 @@ func _refresh_player_view() -> void:
 # coloured letter when a status has no icon art.
 func _make_status_badge(status_name, stacks: int) -> Control:
 	var holder := Control.new()
-	holder.custom_minimum_size = Vector2(22, 22)
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.tooltip_text = "%s %d" % [String(status_name).capitalize(), stacks]
+	holder.custom_minimum_size = Vector2(30, 30)
+	# PASS (not IGNORE) so the badge receives hover and shows its tooltip — works
+	# even though the row is IGNORE, since mouse filtering is per-control.
+	holder.mouse_filter = Control.MOUSE_FILTER_PASS
+	holder.tooltip_text = Stats.status_tooltip(status_name, stacks)
 	var tex: Texture2D = Stats.status_icon(status_name)
 	if tex != null:
 		var icon := TextureRect.new()
@@ -374,7 +376,7 @@ func _make_status_badge(status_name, stacks: int) -> Control:
 		letter.set_anchors_preset(Control.PRESET_FULL_RECT)
 		letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		letter.add_theme_font_size_override("font_size", 12)
+		letter.add_theme_font_size_override("font_size", 15)
 		letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(letter)
 	var count := Label.new()
@@ -382,7 +384,7 @@ func _make_status_badge(status_name, stacks: int) -> Control:
 	count.set_anchors_preset(Control.PRESET_FULL_RECT)
 	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	count.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	count.add_theme_font_size_override("font_size", 11)
+	count.add_theme_font_size_override("font_size", 13)
 	# Negative stacks (drained below zero) read in red.
 	count.add_theme_color_override("font_color",
 		Color(1.0, 0.35, 0.3) if stacks < 0 else Color.WHITE)

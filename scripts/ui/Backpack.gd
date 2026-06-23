@@ -501,7 +501,10 @@ func _value_chip(text: String, derived: bool) -> Control:
 # "total" or "total  (base +bonus)" when item/temp bonuses are present.
 func _stat_value_text(stat_id: StringName, suffix: String = "") -> String:
 	var field := String(stat_id)
-	var base: int = int(GameState.get(field))
+	# Some stats (Range) have no GameState base property — they're item/definition
+	# derived — so get() returns null. Guard like Stats.get_value does.
+	var raw = GameState.get(field)
+	var base: int = int(raw) if raw != null else 0
 	# Route the total through Stats so derived contributions show too — most
 	# notably Paper Bag, which mirrors Charisma onto the highest core stat
 	# without ever landing in item_stat_bonus. For every other stat this equals

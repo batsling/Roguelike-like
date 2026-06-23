@@ -238,6 +238,19 @@ func status_icon(status_name) -> Texture2D:
 	_status_icon_cache[key] = tex
 	return tex
 
+# Hover-tooltip text for a status badge: "Display (N)\n<description>", with the
+# description pulled from ReferenceCatalog (the statusesnew sheet) when known, else
+# just "Display N". Shared so the player row and EnemyView read identically.
+func status_tooltip(status_name, stacks: int) -> String:
+	var display: String = String(status_name).capitalize()
+	for s in ReferenceCatalog.STATUSES:
+		if String(s.get("name", "")) == display:
+			var desc: String = String(s.get("description", ""))
+			if desc != "":
+				return "%s (%d)\n%s" % [display, stacks, desc]
+			break
+	return "%s %d" % [display, stacks]
+
 func event_roll_bonus(stat_id: StringName) -> int:
 	var def: StatDefinition = _stat_defs.get(stat_id)
 	if def == null or not def.grants_event_roll_bonus:
