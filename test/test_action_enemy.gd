@@ -51,3 +51,37 @@ func test_horf_in_action_pool() -> void:
 	for e in Data.all_action_enemies():
 		ids.append(e.id)
 	assert_has(ids, &"horf", "Horf should be discoverable for action spawns")
+
+# --- Gaper family -----------------------------------------------------------
+
+func test_gaper_on_death_table() -> void:
+	var gaper: ActionEnemyData = load("res://data/action_enemies/gaper.tres")
+	assert_not_null(gaper)
+	assert_eq(gaper.behavior, ActionEnemyData.BehaviorKind.WALKER)
+	assert_eq(Array(gaper.on_death_ids), [&"pacer", &"gusher"])
+	assert_eq(Array(gaper.on_death_weights), [80, 20])
+	# A roll always returns one of the table entries.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	for _i in 20:
+		assert_has([&"pacer", &"gusher"], gaper.roll_on_death(rng))
+
+func test_pacer_and_gusher_wander() -> void:
+	var pacer: ActionEnemyData = load("res://data/action_enemies/pacer.tres")
+	var gusher: ActionEnemyData = load("res://data/action_enemies/gusher.tres")
+	assert_eq(pacer.behavior, ActionEnemyData.BehaviorKind.PACER)
+	assert_eq(gusher.behavior, ActionEnemyData.BehaviorKind.PACER)
+	# Transform-only: not in the random spawn pool.
+	assert_eq(pacer.weight, 0)
+	assert_eq(gusher.weight, 0)
+
+func test_gusher_random_shots() -> void:
+	var gusher: ActionEnemyData = load("res://data/action_enemies/gusher.tres")
+	assert_gt(gusher.random_shots, 0, "Gusher fires random shots")
+	assert_gt(gusher.projectile_speed, 0.0)
+	assert_true(gusher.on_death_ids.is_empty(), "Gusher doesn't transform")
+
+func test_roll_on_death_empty_when_no_table() -> void:
+	var horf: ActionEnemyData = load(HORF_PATH)
+	var rng := RandomNumberGenerator.new()
+	assert_eq(horf.roll_on_death(rng), &"", "no on-death table -> empty")

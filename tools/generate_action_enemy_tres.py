@@ -45,7 +45,66 @@ PRESERVE = {"walker", "shooter"}
 PLAYER_RADIUS = 18.0
 
 DIFFICULTY = {"low": 0, "medium": 1, "med": 1, "high": 2, "boss": 3}
-BEHAVIOR = {"walker": 0, "shooter": 1, "stationary": 2}
+BEHAVIOR = {"walker": 0, "shooter": 1, "stationary": 2, "pacer": 3}
+
+
+def parse_ability(cell):
+    """Parse the packed `Ability` column. Returns a dict with any of:
+      split_into (str), split_count (int),
+      on_death (list of (id, weight)), random_shots (int).
+    Abilities are `/`-separated; each is Keyword(args) or a bare Keyword.
+    """
+    out = {"split_into": "", "split_count": 0, "on_death": [], "random_shots": 0}
+    if not cell:
+        return out
+    for part in str(cell).split("/"):
+        part = part.strip()
+        if not part or part.upper() == "N/A":
+            continue
+        m = re.match(r"^(\w+)\s*(?:\((.*)\))?\s*$", part)
+        if not m:
+            print(f"  WARNING: unparseable ability {part!r}")
+            continue
+        kw, args = m.group(1).lower(), (m.group(2) or "").strip()
+        if kw == "ondeath":
+            for entry in args.split(","):
+                entry = entry.strip()
+                if not entry:
+                    continue
+                eid, _, w = entry.partition(":")
+                out["on_death"].append((eid.strip(), int(w) if w.strip() else 1))
+        elif kw == "split":
+            bits = [b.strip() for b in args.split(",")]
+            if len(bits) >= 2:
+                out["split_count"] = int(bits[0])
+                out["split_into"] = bits[1]
+        elif kw == "randomshots":
+            n = re.search(r"count\s*=\s*(\d+)", args)
+            out["random_shots"] = int(n.group(1)) if n else 1
+        else:
+            print(f"  note: ability '{kw}' not handled by importer yet (parked)")
+    return out
+
+
+def parse_layers(cell):
+    """Parse the `Layers` column: 'body @ 0,0 ; head @ 0,-10' ->
+    ([names], [(x,y), ...]). Empty = single implicit layer ([], [])."""
+    names, offsets = [], []
+    if not cell:
+        return names, offsets
+    for part in str(cell).split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        name, _, off = part.partition("@")
+        names.append(name.strip())
+        x, y = 0.0, 0.0
+        if off.strip():
+            xy = off.split(",")
+            x = float(xy[0])
+            y = float(xy[1]) if len(xy) > 1 else 0.0
+        offsets.append((x, y))
+    return names, offsets
 
 ANIM_RE = re.compile(
     r"^\s*(\w+)\s*@\s*([\d.]+)\s*(loop|once)\s*(?:grid\s+(\d+)\s*x\s*(\d+))?\s*$",
@@ -201,8 +260,14 @@ def write_tres(rec, eid, name, anim_meta, frame_assets):
     anim_counts = ", ".join(str(a[3]) for a in anim_meta)
     frames_arr = ", ".join(f'ExtResource("{rid}")' for rid in frame_ids)
 
-    split_into = str(rec.get("Split Into") or "").strip()
-    split_count = int(rec.get("Split Count") or 0)
+    ab = parse_ability(rec.get("Ability"))
+    split_into = ab["split_into"]
+    split_count = ab["split_count"]
+    od_ids = ", ".join(f'"{i}"' for (i, _w) in ab["on_death"])
+    od_weights = ", ".join(str(w) for (_i, w) in ab["on_death"])
+    layer_names, layer_offsets = parse_layers(rec.get("Layers"))
+    lnames = ", ".join(f'"{n}"' for n in layer_names)
+    loffsets = ", ".join(f"Vector2({_num(x)}, {_num(y)})" for (x, y) in layer_offsets)
     tag = str(rec.get("Tag") or "").strip()
     tags = f'PackedStringArray("{tag}")' if tag else "PackedStringArray()"
 
@@ -235,6 +300,11 @@ def write_tres(rec, eid, name, anim_meta, frame_assets):
         f"tags = {tags}",
         f"split_into = &\"{split_into}\"",
         f"split_count = {split_count}",
+        f"random_shots = {ab['random_shots']}",
+        f"on_death_ids = PackedStringArray({od_ids})",
+        f"on_death_weights = PackedInt32Array({od_weights})",
+        f"layer_names = PackedStringArray({lnames})",
+        f"layer_offsets = PackedVector2Array({loffsets})",
         f"directional = {'true' if directional else 'false'}",
         f"anim_names = PackedStringArray({anim_names})",
         f"anim_fps = PackedFloat32Array({anim_fps})",

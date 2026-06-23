@@ -979,12 +979,14 @@ func _process_enemies(delta: float) -> void:
 	# Split: a slime that has dropped to half HP spawns its copies at its
 	# position and is consumed. Collected here and appended after the loop so we
 	# never mutate `enemies` mid-iteration.
-	var split_spawns: Array = []
+	var extra_spawns: Array = []
 	for inst in enemies:
 		if not inst.actor.is_alive():
+			# On-death transform (Gaper -> Pacer/Gusher): spawn once at the corpse.
+			extra_spawns.append_array(_enemy_on_death_spawns(inst))
 			continue
 		if Stats.should_split(inst.actor):
-			split_spawns.append_array(_perform_action_split(inst))
+			extra_spawns.append_array(_perform_action_split(inst))
 			continue
 		# Fear: a frightened enemy abandons its normal behavior and flees the
 		# player, never attacking, until its Fear ticks off (stack == flee-time).
@@ -996,8 +998,14 @@ func _process_enemies(delta: float) -> void:
 					_process_shooter(inst, delta)
 				ActionEnemyData.BehaviorKind.STATIONARY:
 					_process_stationary(inst, delta)
+				ActionEnemyData.BehaviorKind.PACER:
+					_process_pacer(inst, delta)
 				_:
 					_process_walker(inst, delta)
+		# Random-direction shots (the Gusher's blood spew), layered on top of any
+		# behavior, on its own cooldown.
+		if inst.data.random_shots > 0:
+			_enemy_update_random_shots(inst, delta)
 		# Knockback (hit nudge / fire recoil) layered on top of the AI move, then
 		# bled off. Applies whether the enemy is feared or fighting.
 		var kb: Vector2 = inst.get("knockback", Vector2.ZERO)
@@ -1008,8 +1016,22 @@ func _process_enemies(delta: float) -> void:
 		# Keep everyone inside the arena bounds.
 		inst.pos.x = clampf(inst.pos.x, inst.data.size, ARENA_W - inst.data.size)
 		inst.pos.y = clampf(inst.pos.y, inst.data.size, ARENA_H - inst.data.size)
-	if not split_spawns.is_empty():
-		enemies.append_array(split_spawns)
+	if not extra_spawns.is_empty():
+		enemies.append_array(extra_spawns)
+
+# Weighted on-death transform: when an enemy with an on-death table dies, spawn
+# the rolled enemy at its position (once). Returns the new enemy dict(s).
+func _enemy_on_death_spawns(inst: Dictionary) -> Array:
+	if inst.get("transformed", false) or inst.data.on_death_ids.is_empty():
+		return []
+	inst["transformed"] = true
+	var tid: StringName = inst.data.roll_on_death(_rng)
+	if tid == &"":
+		return []
+	var td: ActionEnemyData = Data.get_action_enemy(tid)
+	if td == null:
+		return []
+	return [_make_enemy_inst(td, inst.pos)]
 
 # Spawn an action splitter's copies in a ring around it, each at its current HP,
 # and consume the parent. Returns the new enemy dicts (caller appends them).
@@ -1065,6 +1087,33 @@ func _process_walker(inst: Dictionary, delta: float) -> void:
 		_enemy_hit_player(inst)
 		inst.cooldown = data.attack_cooldown
 
+# PACER: wander aimlessly, ignoring the player — pick a heading, walk it, and
+# re-roll it on a timer or when bouncing off a wall. Deals contact damage on
+# touch (the Pacer / Gusher).
+func _process_pacer(inst: Dictionary, delta: float) -> void:
+	var data: ActionEnemyData = inst.data
+	var h: Vector2 = inst.get("heading", Vector2.ZERO)
+	if h == Vector2.ZERO:
+		h = Vector2.RIGHT.rotated(_rng.randf() * TAU)
+	var wt: float = float(inst.get("wander_t", 0.0)) - delta
+	if wt <= 0.0:
+		h = Vector2.RIGHT.rotated(_rng.randf() * TAU)
+		wt = _rng.randf_range(0.8, 2.0)
+	# Bounce off the arena bounds so it stays in the room.
+	var nxt: Vector2 = inst.pos + h * data.move_speed * delta
+	if nxt.x < data.size or nxt.x > ARENA_W - data.size:
+		h.x = -h.x
+	if nxt.y < data.size or nxt.y > ARENA_H - data.size:
+		h.y = -h.y
+	inst.pos += h * data.move_speed * delta
+	inst["heading"] = h
+	inst["wander_t"] = wt
+	# Contact damage on touch.
+	inst.cooldown = maxf(0.0, inst.cooldown - delta)
+	if player_pos.distance_to(inst.pos) <= data.size + PLAYER_RADIUS and inst.cooldown <= 0.0:
+		_enemy_hit_player(inst)
+		inst.cooldown = data.attack_cooldown
+
 func _process_shooter(inst: Dictionary, delta: float) -> void:
 	var data: ActionEnemyData = inst.data
 	var to_player: Vector2 = player_pos - inst.pos
@@ -1116,15 +1165,24 @@ func _anim_duration(data: ActionEnemyData, anim: StringName) -> float:
 	return float((a["frames"] as Array).size()) / maxf(0.001, float(a["fps"]))
 
 # Releases the actual projectile at the end of the wind-up (with a small recoil).
+# Aimed shot at the player (end of a ranged enemy's wind-up).
 func _enemy_release_projectile(inst: Dictionary) -> void:
-	var data: ActionEnemyData = inst.data
 	var dir: Vector2 = (player_pos - inst.pos).normalized()
 	if dir.length() == 0.0:
 		dir = Vector2.RIGHT
+	_spawn_enemy_projectile(inst, dir, true)
+
+# A single shot in a random direction (the Gusher's spew).
+func _enemy_fire_random(inst: Dictionary) -> void:
+	_spawn_enemy_projectile(inst, Vector2.RIGHT.rotated(_rng.randf() * TAU), false)
+
+func _spawn_enemy_projectile(inst: Dictionary, dir: Vector2, recoil: bool) -> void:
+	var data: ActionEnemyData = inst.data
 	var speed: float = data.projectile_speed if data.projectile_speed > 0.0 else ENEMY_PROJECTILE_DEFAULT_SPEED
 	var life: float = data.projectile_lifetime if data.projectile_lifetime > 0.0 else ENEMY_PROJECTILE_LIFETIME
-	inst["knockback"] = inst.get("knockback", Vector2.ZERO) - dir * ENEMY_FIRE_RECOIL_SPEED
-	var proj: Dictionary = {
+	if recoil:
+		inst["knockback"] = inst.get("knockback", Vector2.ZERO) - dir * ENEMY_FIRE_RECOIL_SPEED
+	projectiles.append({
 		"pos": inst.pos + dir * (data.size + 4.0),
 		"velocity": dir * speed,
 		"owner": "enemy",
@@ -1134,8 +1192,18 @@ func _enemy_release_projectile(inst: Dictionary) -> void:
 		"damage": data.contact_damage,
 		"source_name": data.display_name,
 		"attacker": inst.actor,
-	}
-	projectiles.append(proj)
+	})
+
+# Random-shot attack (Gusher): fire `random_shots` projectiles in random
+# directions every attack_cooldown.
+func _enemy_update_random_shots(inst: Dictionary, delta: float) -> void:
+	var cd: float = float(inst.get("shot_cd", inst.data.attack_cooldown)) - delta
+	if cd <= 0.0:
+		for _i in maxi(1, inst.data.random_shots):
+			_enemy_fire_random(inst)
+		_play_enemy_anim(inst, &"attack")
+		cd = inst.data.attack_cooldown
+	inst["shot_cd"] = cd
 
 # --- Enemy frame animation -------------------------------------------------
 

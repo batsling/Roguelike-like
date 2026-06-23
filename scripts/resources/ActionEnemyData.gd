@@ -6,7 +6,7 @@ extends Resource
 # enough that sharing one schema would be more confusing than helpful.
 # Strategy mode will likely get its own schema too when that lands.
 
-enum BehaviorKind { WALKER, SHOOTER, STATIONARY }
+enum BehaviorKind { WALKER, SHOOTER, STATIONARY, PACER }
 enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 
 @export var id: StringName
@@ -58,8 +58,8 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 # Animations are stored as parallel arrays (name / fps / loop / frame-count)
 # plus one flat frame list sliced by the cumulative counts. This keeps the
 # generated .tres trivial (no nested resource type) and is read back through
-# get_anim(). `directional` flags that the frames are facing-prefixed (unused
-# by the non-directional starter enemies; reserved for walkers/gapers).
+# get_anim(). Animation names may be layer- and facing-qualified, e.g.
+# "body.walk_down", "head.attack", "gush.spew" — see resolve_anim().
 @export var directional: bool = false
 @export var anim_names: PackedStringArray = PackedStringArray()
 @export var anim_fps: PackedFloat32Array = PackedFloat32Array()
@@ -67,8 +67,70 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 @export var anim_frame_counts: PackedInt32Array = PackedInt32Array()
 @export var anim_frames: Array[Texture2D] = []
 
+# --- Composite layers ---------------------------------------------------
+# Enemies may stack ordered sprite layers (back-to-front), e.g. the Gaper's
+# `body` (directional) + `head` (fixed). Each layer has a draw offset (px, in
+# source scale, scaled by ENEMY_SPRITE_SCALE at draw). Empty layer_names means a
+# single implicit layer whose anims are un-prefixed (e.g. the Horf).
+@export var layer_names: PackedStringArray = PackedStringArray()
+@export var layer_offsets: PackedVector2Array = PackedVector2Array()
+
+# --- On-death transform -------------------------------------------------
+# After the death animation, weighted-roll one entry and spawn it at the corpse
+# (the Gaper -> Pacer/Gusher head-pop). Parallel arrays; empty = no transform.
+@export var on_death_ids: PackedStringArray = PackedStringArray()
+@export var on_death_weights: PackedInt32Array = PackedInt32Array()
+
+# Random-shot attack: fire N projectiles per attack_cooldown in random
+# directions (the Gusher's blood spew). 0 = no random shots.
+@export var random_shots: int = 0
+
 func has_anims() -> bool:
 	return anim_frames.size() > 0
+
+# Layer draw list (name, offset) in back-to-front order. Single-layer enemies
+# return one unnamed layer at zero offset.
+func layers() -> Array:
+	if layer_names.is_empty():
+		return [{"name": &"", "offset": Vector2.ZERO}]
+	var out: Array = []
+	for i in layer_names.size():
+		var off: Vector2 = layer_offsets[i] if i < layer_offsets.size() else Vector2.ZERO
+		out.append({"name": StringName(layer_names[i]), "offset": off})
+	return out
+
+# Resolve an animation for a layer + base name + facing, with fallback:
+#   <layer>.<base>_<facing>  ->  <layer>.<base>  ->  <base>_<facing>  ->  <base>
+# Returns the get_anim() dict, or {} if none match. `layer`/`facing` may be &"".
+func resolve_anim(layer: StringName, base: StringName, facing: StringName) -> Dictionary:
+	var pfx := "" if layer == &"" else String(layer) + "."
+	var candidates: Array[StringName] = []
+	if facing != &"":
+		candidates.append(StringName(pfx + String(base) + "_" + String(facing)))
+	candidates.append(StringName(pfx + String(base)))
+	if pfx != "" and facing != &"":
+		candidates.append(StringName(String(base) + "_" + String(facing)))
+		candidates.append(base)
+	for c in candidates:
+		var a := get_anim(c)
+		if not a.is_empty():
+			return a
+	return {}
+
+# Weighted roll over the on-death table; returns &"" when empty.
+func roll_on_death(rng: RandomNumberGenerator) -> StringName:
+	var total := 0
+	for w in on_death_weights:
+		total += maxi(0, w)
+	if total <= 0 or on_death_ids.is_empty():
+		return &""
+	var roll := rng.randi_range(1, total)
+	var acc := 0
+	for i in on_death_ids.size():
+		acc += maxi(0, on_death_weights[i] if i < on_death_weights.size() else 0)
+		if roll <= acc:
+			return StringName(on_death_ids[i])
+	return StringName(on_death_ids[0])
 
 # Returns {frames: Array[Texture2D], fps: float, loop: bool} for `anim`, or an
 # empty Dictionary when this enemy has no animation by that name.

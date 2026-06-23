@@ -209,11 +209,14 @@ Frames are trimmed-to-content and normalised onto one shared square per enemy
 
 ## 5. Build order
 
-1. `Ability` column: migrate `Split Into`/`Split Count` into it, then add the
-   `OnDeath(...)` parser + weighted death-spawn (small; reuses weighted roll).
-2. Dying state + death animation (general win — Horf benefits too).
-3. Directional rendering + composite (body/head) layers (importer expansion +
-   facing/flip + layer draw). Heaviest piece.
-4. `PACER` behavior (wander) + `RandomShots` ability (Gusher's blood spew).
-5. Author Gaper/Pacer/Gusher rows + wire the art.
+1. ✅ `Ability` column (`OnDeath` / `Split` / `RandomShots` parsing) + `Layers`
+   column; schema fields on `ActionEnemyData`.
+2. ✅ `OnDeath` weighted transform (instant on death for now; gains a death
+   animation in step 4). `PACER` wander + `RandomShots` behaviors.
+3. ✅ Gaper/Pacer/Gusher rows authored — **render as colored circles** until art
+   is wired. Mechanics (chase → transform → wander + spew) work now.
+4. ⬜ Dying state + death animation (general win — Horf benefits too).
+5. ⬜ Directional rendering + composite (body/head/gush) layers (importer
+   expansion + facing/flip + layer draw) — needs the body sheet direction
+   mapping. Then slice the art and drop the circle fallback. Heaviest piece.
    (Creep system deferred until an enemy needs it.)

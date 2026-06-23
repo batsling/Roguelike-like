@@ -38,11 +38,13 @@ HEADERS = [
     "Min HP", "Max HP", "Contact Damage", "Attack Cooldown", "Attack Windup",
     "Attack Range", "Preferred Distance", "Projectile Speed", "Projectile Lifetime",
     "Move Speed", "Size", "Behavior",
-    "Color", "Directional", "Animations",
-    "Split Into", "Split Count",
+    "Color", "Directional", "Layers", "Animations", "Ability",
 ]
 
 # One dict per action enemy, keyed by HEADERS.
+# NOTE: Gaper/Pacer/Gusher ship with empty Layers/Animations for now, so they
+# render as colored circles until the body/head/gush art is sliced and wired
+# (pending the body sheet direction mapping). Their mechanics already work.
 ENEMIES = [
     {
         "Name": "Horf", "Id": "horf", "Difficulty": "Low", "Weight": 2,
@@ -53,8 +55,44 @@ ENEMIES = [
         "Projectile Lifetime": 5.0, "Move Speed": 0, "Size": 1,
         "Behavior": "Stationary",
         "Color": "0.8,0.1,0.1", "Directional": "No",
-        "Animations": "idle @ 4 loop ; attack @ 12 once grid 32x32",
-        "Split Into": "", "Split Count": 0,
+        "Layers": "", "Animations": "idle @ 4 loop ; attack @ 12 once grid 32x32",
+        "Ability": "",
+    },
+    {
+        "Name": "Gaper", "Id": "gaper", "Difficulty": "Low", "Weight": 3,
+        "Game": "The Binding of Isaac", "Tag": "",
+        "Min HP": 25, "Max HP": 25, "Contact Damage": 6,
+        "Attack Cooldown": 1.0, "Attack Windup": 0.0, "Attack Range": 40,
+        "Preferred Distance": 0, "Projectile Speed": 0,
+        "Projectile Lifetime": 0, "Move Speed": 90, "Size": 1,
+        "Behavior": "Walker",
+        "Color": "0.9,0.6,0.55", "Directional": "No",
+        "Layers": "", "Animations": "",
+        "Ability": "OnDeath(pacer:80, gusher:20)",
+    },
+    {
+        "Name": "Pacer", "Id": "pacer", "Difficulty": "Low", "Weight": 0,
+        "Game": "The Binding of Isaac", "Tag": "",
+        "Min HP": 25, "Max HP": 25, "Contact Damage": 6,
+        "Attack Cooldown": 1.0, "Attack Windup": 0.0, "Attack Range": 40,
+        "Preferred Distance": 0, "Projectile Speed": 0,
+        "Projectile Lifetime": 0, "Move Speed": 70, "Size": 1,
+        "Behavior": "Pacer",
+        "Color": "0.85,0.5,0.5", "Directional": "No",
+        "Layers": "", "Animations": "",
+        "Ability": "",
+    },
+    {
+        "Name": "Gusher", "Id": "gusher", "Difficulty": "Low", "Weight": 0,
+        "Game": "The Binding of Isaac", "Tag": "",
+        "Min HP": 25, "Max HP": 25, "Contact Damage": 6,
+        "Attack Cooldown": 1.2, "Attack Windup": 0.0, "Attack Range": 40,
+        "Preferred Distance": 0, "Projectile Speed": 180,
+        "Projectile Lifetime": 3.0, "Move Speed": 60, "Size": 1,
+        "Behavior": "Pacer",
+        "Color": "0.7,0.1,0.1", "Directional": "No",
+        "Layers": "", "Animations": "",
+        "Ability": "RandomShots(count=1)",
     },
 ]
 
@@ -77,11 +115,11 @@ def main() -> int:
     for ri, rec in enumerate(ENEMIES, start=2):
         for ci, name in enumerate(HEADERS, start=1):
             c = ws.cell(row=ri, column=ci, value=rec.get(name, ""))
-            if name == "Animations":
+            if name in ("Animations", "Ability", "Layers"):
                 c.alignment = wrap
 
     widths = {"Name": 14, "Id": 12, "Game": 20, "Animations": 42,
-              "Color": 14, "Behavior": 12, "Split Into": 12}
+              "Color": 14, "Behavior": 12, "Layers": 18, "Ability": 30}
     for ci, name in enumerate(HEADERS, start=1):
         ws.column_dimensions[ws.cell(row=1, column=ci).column_letter].width = widths.get(name, 11)
     ws.freeze_panes = "A2"

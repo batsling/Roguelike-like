@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="ActionEnemyData" load_steps=2 format=3 uid="uid://action_enemy_gusher"]
+
+[ext_resource type="Script" path="res://scripts/resources/ActionEnemyData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"gusher"
+display_name = "Gusher"
+difficulty = 0
+weight = 0
+hp_min = 25
+hp_max = 25
+contact_damage = 6
+attack_cooldown = 1.2
+attack_windup = 0
+attack_range = 40
+preferred_distance = 0
+projectile_speed = 180
+projectile_lifetime = 3
+move_speed = 60
+size = 18
+behavior = 3
+color = Color(0.7, 0.1, 0.1, 1)
+source_game = "The Binding of Isaac"
+tags = PackedStringArray()
+split_into = &""
+split_count = 0
+random_shots = 1
+on_death_ids = PackedStringArray()
+on_death_weights = PackedInt32Array()
+layer_names = PackedStringArray()
+layer_offsets = PackedVector2Array()
+directional = false
+anim_names = PackedStringArray()
+anim_fps = PackedFloat32Array()
+anim_loop = PackedByteArray()
+anim_frame_counts = PackedInt32Array()
+anim_frames = Array[Texture2D]([])
