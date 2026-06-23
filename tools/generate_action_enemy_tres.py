@@ -47,6 +47,49 @@ PLAYER_RADIUS = 18.0
 DIFFICULTY = {"low": 0, "medium": 1, "med": 1, "high": 2, "boss": 3}
 BEHAVIOR = {"walker": 0, "shooter": 1, "stationary": 2, "pacer": 3}
 
+# Composite / directional sheet enemies. Cell-based slicing is too irregular for
+# the Animations column, so it lives here. Each enemy is a list of layers (drawn
+# back-to-front); each layer has a draw offset (source px, scaled by Size at
+# draw) and a list of (anim_name, fps, loop, source) animations. `source` is
+# ("file", path) for a whole-image single frame, or ("sheet", path, cell,
+# [(row,col),...]) for cells out of a grid. Paths are relative to ART_SRC_ROOT.
+# Facing is baked into the anim name suffix: walk_vert (up & down), walk_side
+# (left = mirror of right). idle/idle_side resolve with a fallback to idle.
+_GAPER_VERT = [(0, 1), (0, 2), (0, 3), (1, 0), (1, 1), (1, 2), (1, 3), (2, 0), (2, 1)]
+_GAPER_SIDE = [(2, 2), (2, 3), (3, 0), (3, 1), (3, 2), (3, 3), (4, 0), (4, 1), (4, 2), (4, 3)]
+_PACER_SIDE = [(2, 3), (3, 0), (3, 1), (3, 2), (3, 3), (4, 0), (4, 1), (4, 2), (4, 3)]
+
+def _body_anims(sheet, vert, side, side_idle=None):
+    a = [
+        ("idle", 5.0, True, ("sheet", sheet, 32, [(0, 0)])),
+        ("walk_vert", 12.0, True, ("sheet", sheet, 32, vert)),
+        ("walk_side", 12.0, True, ("sheet", sheet, 32, side)),
+    ]
+    if side_idle is not None:
+        a.append(("idle_side", 5.0, True, ("sheet", sheet, 32, [side_idle])))
+    return a
+
+LAYER_SLICES = {
+    "gaper": [
+        {"layer": "body", "offset": (0.0, 0.0),
+         "anims": _body_anims("Gaper/gaper_body_sheet.png", _GAPER_VERT, _GAPER_SIDE)},
+        {"layer": "head", "offset": (0.0, -10.0), "anims": [
+            ("idle", 5.0, True, ("file", "Gaper/gaper_idle.png")),
+            ("attack", 12.0, False, ("sheet", "Gaper/gaper_head_sheet.png", 32,
+                                     [(0, 0), (0, 1), (1, 0), (1, 1)])),
+        ]},
+    ],
+    "pacer": [
+        {"layer": "body", "offset": (0.0, 0.0),
+         "anims": _body_anims("Pacer/pacer_body_sheet.png", _GAPER_VERT, _PACER_SIDE, side_idle=(2, 2))},
+    ],
+    "gusher": [
+        {"layer": "body", "offset": (0.0, 0.0),
+         "anims": _body_anims("Gusher/gusher_body_sheet.png", _GAPER_VERT, _PACER_SIDE, side_idle=(2, 2))},
+        # gush geyser layer deferred — frame layout of gusher_gush_sheet.png TBD.
+    ],
+}
+
 
 def parse_ability(cell):
     """Parse the packed `Ability` column. Returns a dict with any of:
@@ -204,6 +247,10 @@ def build_enemy(rec):
         shutil.rmtree(out_folder)
     os.makedirs(out_folder, exist_ok=True)
 
+    if eid in LAYER_SLICES:
+        build_layered_enemy(rec, eid, name, out_folder, LAYER_SLICES[eid])
+        return
+
     anims = parse_animations(rec.get("Animations"))
     # Gather every raw frame across all animations first, so they can be
     # normalised onto ONE shared square canvas (consistent scale/centering, no
@@ -239,11 +286,54 @@ def build_enemy(rec):
     print(f"[generate-action-enemy] {eid}: {len(anim_meta)} anims, {nframes} frames")
 
 
-def write_tres(rec, eid, name, anim_meta, frame_assets):
+def _extract_src(src):
+    """Return a list of PIL RGBA frames for a LAYER_SLICES source spec."""
+    if src[0] == "file":
+        return [Image.open(os.path.join(ART_SRC_ROOT, src[1])).convert("RGBA")]
+    _, path, cell, cells = src
+    im = Image.open(os.path.join(ART_SRC_ROOT, path)).convert("RGBA")
+    return [im.crop((c * cell, r * cell, c * cell + cell, r * cell + cell)) for (r, c) in cells]
+
+
+def build_layered_enemy(rec, eid, name, out_folder, layers_cfg):
+    """Composite/directional path: slice each layer's animations and centre every
+    frame on ONE shared canvas (no trim — preserves the artist's cell alignment
+    and the relative scale between layers so the head sits on the body)."""
+    extracted = []  # (layer, anim, fps, loop, [frames])
+    for layer in layers_cfg:
+        for (aname, fps, loop, src) in layer["anims"]:
+            extracted.append((layer["layer"], aname, fps, loop, _extract_src(src)))
+
+    allfr = [f for (_, _, _, _, frames) in extracted for f in frames]
+    cw = max((f.width for f in allfr), default=1)
+    ch = max((f.height for f in allfr), default=1)
+
+    anim_meta = []
+    frame_assets = []
+    for (layer, aname, fps, loop, frames) in extracted:
+        for i, f in enumerate(frames):
+            cv = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+            cv.paste(f, ((cw - f.width) // 2, (ch - f.height) // 2))
+            fn = f"{layer}_{aname}_{i}.png"
+            cv.save(os.path.join(out_folder, fn))
+            frame_assets.append(f"{eid}/{fn}")
+        anim_meta.append((f"{layer}.{aname}", fps, loop, len(frames)))
+
+    lnames = [l["layer"] for l in layers_cfg]
+    loffsets = [l["offset"] for l in layers_cfg]
+    write_tres(rec, eid, name, anim_meta, frame_assets, (lnames, loffsets))
+    print(f"[generate-action-enemy] {eid}: {len(lnames)} layers, "
+          f"{len(anim_meta)} anims, {len(frame_assets)} frames (canvas {cw}x{ch})")
+
+
+def write_tres(rec, eid, name, anim_meta, frame_assets, layers_override=None):
     size_px = float(rec["Size"]) * PLAYER_RADIUS
     difficulty = DIFFICULTY.get(str(rec["Difficulty"]).strip().lower(), 0)
     behavior = BEHAVIOR.get(str(rec["Behavior"]).strip().lower(), 0)
+    # Directional if the column says so OR any animation carries a facing suffix.
     directional = str(rec.get("Directional", "")).strip().lower() in ("yes", "true", "1")
+    if any(str(a[0]).endswith(("_vert", "_side")) for a in anim_meta):
+        directional = True
 
     # ext_resources: script (id 1) + one Texture2D per frame (ids 2..).
     ext = ['[ext_resource type="Script" path="res://scripts/resources/ActionEnemyData.gd" id="1"]']
@@ -265,7 +355,10 @@ def write_tres(rec, eid, name, anim_meta, frame_assets):
     split_count = ab["split_count"]
     od_ids = ", ".join(f'"{i}"' for (i, _w) in ab["on_death"])
     od_weights = ", ".join(str(w) for (_i, w) in ab["on_death"])
-    layer_names, layer_offsets = parse_layers(rec.get("Layers"))
+    if layers_override is not None:
+        layer_names, layer_offsets = layers_override
+    else:
+        layer_names, layer_offsets = parse_layers(rec.get("Layers"))
     lnames = ", ".join(f'"{n}"' for n in layer_names)
     loffsets = ", ".join(f"Vector2({_num(x)}, {_num(y)})" for (x, y) in layer_offsets)
     tag = str(rec.get("Tag") or "").strip()

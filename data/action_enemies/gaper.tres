@@ -1,6 +1,31 @@
-[gd_resource type="Resource" script_class="ActionEnemyData" load_steps=2 format=3 uid="uid://action_enemy_gaper"]
+[gd_resource type="Resource" script_class="ActionEnemyData" load_steps=27 format=3 uid="uid://action_enemy_gaper"]
 
 [ext_resource type="Script" path="res://scripts/resources/ActionEnemyData.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_idle_0.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_vert_0.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_vert_1.png" id="4"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_vert_2.png" id="5"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_vert_3.png" id="6"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_vert_4.png" id="7"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_vert_5.png" id="8"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_vert_6.png" id="9"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_vert_7.png" id="10"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_vert_8.png" id="11"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_side_0.png" id="12"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_side_1.png" id="13"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_side_2.png" id="14"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_side_3.png" id="15"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_side_4.png" id="16"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_side_5.png" id="17"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_side_6.png" id="18"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_side_7.png" id="19"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_side_8.png" id="20"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/body_walk_side_9.png" id="21"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/head_idle_0.png" id="22"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/head_attack_0.png" id="23"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/head_attack_1.png" id="24"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/head_attack_2.png" id="25"]
+[ext_resource type="Texture2D" path="res://assets/enemies/gaper/head_attack_3.png" id="26"]
 
 [resource]
 script = ExtResource("1")
@@ -28,11 +53,11 @@ split_count = 0
 random_shots = 0
 on_death_ids = PackedStringArray("pacer", "gusher")
 on_death_weights = PackedInt32Array(80, 20)
-layer_names = PackedStringArray()
-layer_offsets = PackedVector2Array()
-directional = false
-anim_names = PackedStringArray()
-anim_fps = PackedFloat32Array()
-anim_loop = PackedByteArray()
-anim_frame_counts = PackedInt32Array()
-anim_frames = Array[Texture2D]([])
+layer_names = PackedStringArray("body", "head")
+layer_offsets = PackedVector2Array(Vector2(0, 0), Vector2(0, -10))
+directional = true
+anim_names = PackedStringArray("body.idle", "body.walk_vert", "body.walk_side", "head.idle", "head.attack")
+anim_fps = PackedFloat32Array(5, 12, 12, 5, 12)
+anim_loop = PackedByteArray(1, 1, 1, 1, 0)
+anim_frame_counts = PackedInt32Array(1, 9, 10, 1, 4)
+anim_frames = Array[Texture2D]([ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7"), ExtResource("8"), ExtResource("9"), ExtResource("10"), ExtResource("11"), ExtResource("12"), ExtResource("13"), ExtResource("14"), ExtResource("15"), ExtResource("16"), ExtResource("17"), ExtResource("18"), ExtResource("19"), ExtResource("20"), ExtResource("21"), ExtResource("22"), ExtResource("23"), ExtResource("24"), ExtResource("25"), ExtResource("26")])
