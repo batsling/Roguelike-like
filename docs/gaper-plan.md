@@ -1,4 +1,4 @@
-# Gaper Plan — directional enemy, death-transform & creep
+# Gaper Plan — directional enemy, death-transform & random shots
 
 Status: **agreed design, not yet implemented.** The Gaper is the enemy that
 forces us to actually build directional rendering, a death-animation state, a
@@ -7,10 +7,11 @@ Most of these are general systems other enemies will reuse.
 
 Target behavior: the Gaper chases the player (Walker). On death it plays a death
 animation and **transforms** — usually into a **Pacer** (paces, ignores the
-player), occasionally into a **Gusher** (leaks damaging **creep**).
+player), occasionally into a **Gusher** (wanders, randomly spewing blood shots).
 
 Decisions locked: facing = **3-direction + mirror** (down / up / side, side
-mirrored for the opposite horizontal); Gusher = **full creep** now.
+mirrored for the opposite horizontal); Gusher = **wanders + random shots**, no
+creep (creep system deferred — no current user).
 
 ---
 
@@ -26,18 +27,19 @@ add mechanics. **It replaces the current `Split Into` / `Split Count` columns.**
 Abilities separated by `/` (as in `enemiesD`); each is `Keyword(args)` or a bare
 `Keyword`:
 ```
-Ability:  OnDeath(pacer:80, gusher:20) / Creep(dmg=4, radius=36, interval=0.6, life=2.5, mode=trail)
+Ability:  OnDeath(pacer:80, gusher:20) / RandomShots(count=1)
 ```
 Keywords for the Gaper family:
 - **`OnDeath(id:weight, id:weight, …)`** — after the death animation, weighted
   roll one entry and spawn it at the corpse's position (HP rolled normally).
 - **`Split(count, id)`** — N copies of `id` at ≤50% HP (the old `Split Into` /
   `Split Count`, now expressed here).
-- **`Creep(dmg=.., radius=.., interval=.., life=.., mode=trail|on_death)`** —
-  damaging floor hazard; `trail` drops it while moving, `on_death` leaves one
-  puddle on death.
+- **`RandomShots(count=N)`** — fire `N` projectile(s) in random directions on
+  `attack_cooldown` (the Gusher's blood spew); reuses the projectile fields.
 - Bare status keywords (`Shifting`, `Determined(lo,hi)`, `Ritual`, …) → starting
   statuses, same vocabulary as `enemiesD`.
+- *(deferred)* `Creep(dmg=.., radius=.., interval=.., life=.., mode=…)` — damaging
+  floor hazard; designed but unused (no current enemy leaves creep).
 
 Empty / `N/A` = no abilities.
 
@@ -47,7 +49,8 @@ The importer parses the `Ability` string into the existing/added fields, so the
 - `Split(...)` → `split_into` / `split_count` (already exist).
 - `OnDeath(...)` → `on_death_ids: PackedStringArray` / `on_death_weights:
   PackedInt32Array` (+ helper `roll_on_death(rng) -> StringName`).
-- `Creep(...)` → `creep_*` fields.
+- `RandomShots(...)` → a `random_shots` flag (+ count); reuses projectile fields.
+- `Creep(...)` → `creep_*` fields *(deferred — parser stub only)*.
 - statuses → `starting_statuses` / `starting_abilities`.
 
 ### Columns that already suffice (engine work, not schema)
@@ -67,7 +70,8 @@ The importer parses the `Ability` string into the existing/added fields, so the
 | **Death animation / dying state** | ❌ enemies vanish at HP 0 | play `death` anim, *then* remove + fire on-death effects |
 | **Weighted death-transform** | ❌ | parse `On Death`, weighted roll, spawn at death pos |
 | **Pacer behavior** | ❌ | `BehaviorKind.PACER`: **wander aimlessly** (random heading, redirect on a timer / wall hit), ignore the player, contact damage. Used by both Pacer and Gusher. |
-| **Creep hazard** | ❌ | persistent damaging floor zones (pos/radius/dmg/interval/life), trail or on-death, drawn with the provided blood-puddle sprites |
+| **Random-shot attack** | ❌ | fire a projectile in a **random** direction on a cooldown (not aimed) — the Gusher's blood spew. Small variant of the Horf's aimed fire. |
+| ~~Creep hazard~~ | deferred | **No current enemy uses creep** (Gusher fires random shots instead). System + the provided puddle art are parked for a future enemy. |
 
 ### 2a. Composite (layered) sprites — head + body
 Many Isaac enemies are a **body** with a **head** drawn on top as a separate
@@ -124,14 +128,19 @@ Details:
   `has_live_enemies` to also cover `dying` instances. The transform spawns a live
   enemy before the corpse clears, so the room stays active seamlessly.
 
-### 2d. Creep hazard
-- New `_creep: Array` of `{pos, radius, dmg, interval, life, t, tex}` zones,
-  ticked in `_process` (damage the player on overlap on the interval, respecting
-  iframes), decayed by `life`, drawn **under** the actors using the provided
-  blood-puddle sprites (a random puddle from the sheet per zone; faded out as
-  `life` runs down).
-- A `mode=trail` enemy drops a zone on a timer while moving; `mode=on_death`
-  drops one in the dying step.
+### 2d. Random-shot attack (Gusher)
+- The Gusher **wanders** (Pacer behavior) and on a cooldown fires a projectile in
+  a **random** direction (not aimed at the player) — its blood spew. Reuses the
+  enemy-projectile fields (`projectile_speed`, `projectile_lifetime`,
+  `contact_damage`, `attack_cooldown`); the only new bit is choosing a random
+  heading instead of `player_pos - inst.pos`.
+- Authored via an `Ability` keyword, e.g. `RandomShots(count=1)`; the looping
+  `gush` layer is the visual.
+
+### 2e. Creep hazard (deferred — no current user)
+The Gusher no longer leaves creep, so nothing on the roster needs it. The design
+(persistent `{pos,radius,dmg,interval,life}` floor zones drawn with the provided
+puddle sprites) and the art are **parked** for a future enemy; not built now.
 
 ---
 
@@ -143,10 +152,11 @@ Details:
 | Directional | body only (head fixed) | Yes | body only (gush fixed) |
 | HP (min/max) | 25 | 25 | 25 |
 | Weight | 3 | **0** | **0** |
-| Contact Damage | 6 | 6 | 6 |
+| Contact Damage | 6 | 6 | 6 (also per shot) |
 | Move Speed | ~90 | ~70 | ~60 |
+| Projectile | — | — | speed ~180, lifetime ~3, cooldown ~1.2 |
 | Size | 1 | 1 | 1 |
-| Ability | `OnDeath(pacer:80, gusher:20)` | — | `Creep(dmg=4, radius=36, interval=0.6, life=2.5, mode=trail)` |
+| Ability | `OnDeath(pacer:80, gusher:20)` | — | `RandomShots(count=1)` |
 | Layers | `body @ 0,0 ; head @ 0,-10` | single (`body`) | `body @ 0,0 ; gush @ 0,-14` |
 | Animations | `body.walk @ 8 loop ; body.death @ 10 once ; head.idle @ 4 loop ; head.attack @ 12 once` | `walk @ 8 loop ; death @ 10 once` | `body.walk @ 8 loop ; body.death @ 10 once ; gush.spew @ 10 loop` |
 
@@ -174,15 +184,13 @@ Pacer & Gusher — **share one headless-body walk cycle** (directional `walk` +
 `death` from the same sheet):
 - `pacer`: just that body. `gusher`: that body **plus** a non-directional
   `gush` layer (the blood geyser sheet) drawn at the top offset, looping while
-  alive — and the `Creep` ability for the floor hazard.
+  alive — and the `RandomShots` ability (random-direction blood projectiles).
 - To avoid duplicating the body art, the importer should let a layer reference a
   **shared source** (e.g. both point `body` at the one `pacer`/shared walk set)
   rather than requiring `pacer_body_*` and `gusher_body_*` copies.
 
-**Creep:** the damaging floor puddle uses a provided blood-puddle sprite sheet
-(several puddle shapes/sizes) — store it as a shared creep asset (e.g.
-`assets/enemies/creep/*` or `images/enemies/action_enemies/_shared/creep*`); the
-creep renderer picks a puddle per zone. Not procedural.
+**Creep (deferred):** no current enemy leaves creep, so the puddle sheet isn't
+wired up. It's kept in `_shared/` for a future creep-using enemy.
 
 Single-layer enemies (Horf) keep the un-prefixed `<id>_<anim>*` form. Grid sheets
 are fine; declare them in `Animations` (e.g. `body.walk @ 8 loop grid 32x32`).
@@ -192,7 +200,7 @@ Frames are trimmed-to-content and normalised onto one shared square per enemy
 
 ### Art status
 - ✅ in hand (posted): Gaper body + head, shared Pacer/Gusher body walk cycle,
-  Gusher blood-gush geyser, creep blood-puddle sheet.
+  Gusher blood-gush geyser. (Creep puddle sheet posted but parked — unused.)
 - ⬜ still needed: the above committed into the repo at the paths above (chat
   images aren't in the repo yet), so the importer can pick them up.
 
@@ -205,6 +213,6 @@ Frames are trimmed-to-content and normalised onto one shared square per enemy
 2. Dying state + death animation (general win — Horf benefits too).
 3. Directional rendering + composite (body/head) layers (importer expansion +
    facing/flip + layer draw). Heaviest piece.
-4. `PACER` behavior.
-5. Creep system (`Creep(...)` ability) for the Gusher.
-6. Author Gaper/Pacer/Gusher rows + wire the art.
+4. `PACER` behavior (wander) + `RandomShots` ability (Gusher's blood spew).
+5. Author Gaper/Pacer/Gusher rows + wire the art.
+   (Creep system deferred until an enemy needs it.)

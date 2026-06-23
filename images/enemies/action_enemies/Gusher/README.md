@@ -9,7 +9,8 @@ I'll slice → rename to:
 - `gusher_gush_spew_*.png`
 
 Body comes from the shared Pacer walk cycle (the importer references it).
-The damaging floor creep uses the puddle sheet in `../_shared/` (see that folder).
+Mechanic: the Gusher **wanders** and fires blood projectiles in **random
+directions** on a cooldown (`RandomShots` ability) — it does **not** leave creep.
 
 Suggested raw filename to drop:
 - `gusher_gush_sheet.png`
