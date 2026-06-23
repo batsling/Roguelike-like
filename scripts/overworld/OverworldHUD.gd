@@ -54,19 +54,24 @@ func _ready() -> void:
 	_log_label.add_theme_font_size_override("normal_font_size", FONT_SIZE)
 	add_child(_log_label)
 
-	# Items button — opens the backpack (the inventory view), where overworld
-	# actives like Winged Boots can be used while on the map. Sits just under the
-	# top bar at the right so it never overlaps the vitals readout.
-	var items_btn := Button.new()
-	items_btn.text = "🎒 Items (Tab)"
-	items_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	items_btn.offset_left = -148
-	items_btn.offset_right = -8
-	items_btn.offset_top = 34
-	items_btn.offset_bottom = 60
-	items_btn.add_theme_font_size_override("font_size", FONT_SIZE)
-	items_btn.pressed.connect(_open_backpack)
-	add_child(items_btn)
+	# Always-visible item rack, the same CombatInventory widget the combat modes
+	# use — every owned item shows as a tile, and activatable ones (Winged Boots,
+	# charged actives) get a Use button gated by GameState.can_fire_item. With no
+	# on_use_requested hook it fires straight through GameState.use_item. Centered
+	# under the top bar so it clears the vitals readout above and the portals below.
+	var inv_bar := HBoxContainer.new()
+	inv_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	inv_bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	inv_bar.offset_top = 34
+	# Full-width strip: ignore mouse on the empty areas so it never swallows a
+	# click; the item tiles inside keep their own hit-testing.
+	inv_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(inv_bar)
+	var inv := CombatInventory.new()
+	inv.columns = 12
+	inv.tile_px = 40
+	inv.show_title = false
+	inv_bar.add_child(inv)
 
 	# Hook signals so the HUD auto-refreshes.
 	GameState.hp_changed.connect(_on_state_changed)
@@ -82,15 +87,6 @@ func _ready() -> void:
 
 func _on_state_changed(_a = null, _b = null) -> void:
 	_refresh_top()
-
-# Open the persistent backpack overlay (mounted by Main, toggled with the
-# "backpack" action). Synthesizing the action keeps the HUD decoupled from the
-# backpack instance — whoever owns it just receives the toggle.
-func _open_backpack() -> void:
-	var ev := InputEventAction.new()
-	ev.action = "backpack"
-	ev.pressed = true
-	Input.parse_input_event(ev)
 
 func _on_message(_text: String, _color: Color) -> void:
 	_refresh_log()
