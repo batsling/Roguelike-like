@@ -286,6 +286,16 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
         return {"type": "roll_block", "sides": _int(kv.get("sides", 0)),
                 "target": target or "self"}
 
+    # overworld_jump <scope> [count=N] — an overworld active (Winged Boots). When
+    # used on the map it flies the player to one of `count` games matching `scope`
+    # (today: same_year). Marks the item overworld_usable so it can be fired from
+    # the backpack / overworld HUD; the move itself is run by the Overworld scene.
+    if verb == "overworld_jump":
+        rest, kv = _kv(toks[1:])
+        return {"type": "overworld_jump",
+                "scope": rest[0] if rest else "same_year",
+                "count": _int(kv.get("count", 3))}
+
     if verb == "roll_gold":
         m2 = re.search(r"\[([^\]]*)\]", text)
         amounts = [int(x) for x in re.findall(r"-?\d+", m2.group(1))] if m2 else []
@@ -573,6 +583,13 @@ def parse_item(row):
                 _apply_labels(effects, label)
                 last_trigger["effects"].extend(effects)
 
+    # An item that runs an overworld_jump (Winged Boots) is usable on the map, so
+    # mark it: the runtime enables its backpack / overworld-HUD use button there.
+    for trig in fields["triggers"]:
+        for eff in trig.get("effects", []):
+            if isinstance(eff, dict) and eff.get("type") == "overworld_jump":
+                fields["overworld_usable"] = True
+
     return fields
 
 
@@ -740,6 +757,7 @@ def item_tres(row):
         ("negate_lethal", lambda v: "true"),
         ("stat_gain_bonus", lambda v: gd_value(v)),
         ("reroll_low_rarity", lambda v: "true"),
+        ("overworld_usable", lambda v: "true"),
         ("charge_cost", lambda v: str(v)),
         ("weapon_card_id", lambda v: '&"%s"' % gd_str(v)),
         ("verification_question", lambda v: '"%s"' % gd_str(v)),

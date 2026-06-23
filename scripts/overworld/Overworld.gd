@@ -49,6 +49,10 @@ var _modal_layer: CanvasLayer = null
 var _win_overlay: Control = null
 var _verification_modal: Control = null
 var _dash_modal: Control = null
+# Winged Boots (overworld active): the same-year picker modal + the item being
+# spent, so we can consume a use only when the player commits to a destination.
+var _winged_modal: Control = null
+var _winged_item: ItemData = null
 var _map_view: RunMapView = null
 var _section_reward_layer: CanvasLayer = null
 var _chest_reward_layer: CanvasLayer = null
@@ -74,6 +78,9 @@ func _ready() -> void:
 	_apply_player_avatar()
 	_player.moved.connect(_on_player_moved)
 	GameState.phase = GameState.Phase.OVERWORLD
+	# Register so overworld_usable items (Winged Boots) fired from the backpack /
+	# HUD route their item_used effect here (see GameState.use_item).
+	GameState.set_overworld_context(self)
 	_spawn_portals_for_current_game()
 	_update_hint()
 	# Golden Beetle banks "chests" (item rewards) whenever a curse / curse card
@@ -379,6 +386,129 @@ func _close_dash_modal() -> void:
 	if _dash_modal != null:
 		_dash_modal.queue_free()
 		_dash_modal = null
+
+func _exit_tree() -> void:
+	# Hand off the overworld registration when this scene is freed (Main swaps to
+	# combat). Guarded so a newly-spawned Overworld that already registered wins.
+	GameState.clear_overworld_context(self)
+
+# ------------------------------------------------------------------
+# Winged Boots — overworld active. Fired from the backpack / HUD (routed here by
+# GameState.use_item -> EffectSystem.overworld_jump). Flies to one of up to
+# `count` games sharing the current game's year, then enters it like a Dash. The
+# item's use is spent only on a committed pick (consume_item_use), so cancelling
+# or finding no destination costs nothing.
+# ------------------------------------------------------------------
+
+func begin_overworld_jump(item: ItemData, scope: String, count: int) -> void:
+	if _winged_modal != null or _dash_modal != null:
+		return
+	var current: GameData = Data.get_game(GameState.current_game_id)
+	if current == null:
+		return
+	var ids: Array[StringName] = []
+	if scope == "same_year":
+		ids = RunGraph.same_year_games(current.id)
+	if ids.is_empty():
+		GameLog.add("Winged Boots: no other %d games to fly to." % current.year,
+			Color(0.9, 0.7, 0.4))
+		return
+	ids.shuffle()
+	if ids.size() > count:
+		ids = ids.slice(0, count)
+	_winged_item = item
+	_show_winged_modal(ids)
+
+func _show_winged_modal(ids: Array[StringName]) -> void:
+	_player.set_input_locked(true)
+
+	var modal := Control.new()
+	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.6)
+	modal.add_child(dim)
+
+	var panel_w: float = 560.0
+	var panel_h: float = mini(560, 160 + ids.size() * 56)
+	var panel := Panel.new()
+	panel.size = Vector2(panel_w, panel_h)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	modal.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 20)
+	title.size = Vector2(panel_w - 40, 32)
+	title.text = "Winged Boots — fly to a same-year game"
+	title.add_theme_font_size_override("font_size", 20)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(20, 64)
+	scroll.size = Vector2(panel_w - 40, panel_h - 132)
+	panel.add_child(scroll)
+
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 6)
+	scroll.add_child(list)
+
+	for gid in ids:
+		var gd: GameData = Data.get_game(gid)
+		if gd == null:
+			continue
+		var btn := Button.new()
+		btn.text = "%s (%d)" % [gd.display_name, gd.year]
+		btn.custom_minimum_size = Vector2(0, 44)
+		btn.pressed.connect(_on_winged_pick.bind(gid))
+		list.add_child(btn)
+
+	var cancel := Button.new()
+	cancel.position = Vector2(panel_w / 2.0 - 80, panel_h - 56)
+	cancel.size = Vector2(160, 40)
+	cancel.text = "Cancel"
+	cancel.pressed.connect(_on_winged_cancel)
+	panel.add_child(cancel)
+
+	_modal_layer.add_child(modal)
+	_winged_modal = modal
+
+func _on_winged_cancel() -> void:
+	# No commit -> no use spent.
+	_close_winged_modal()
+	_winged_item = null
+	_player.set_input_locked(false)
+
+func _on_winged_pick(game_id: StringName) -> void:
+	_close_winged_modal()
+	var gd: GameData = Data.get_game(game_id)
+	if gd == null:
+		_winged_item = null
+		_player.set_input_locked(false)
+		return
+	# Commit: spend one Winged Boots use (it may shatter on the last charge).
+	if _winged_item != null:
+		GameState.consume_item_use(_winged_item)
+		_winged_item = null
+	GameLog.add("Winged Boots: flew to %s." % gd.display_name, Color(0.7, 0.9, 1.0))
+	# Replace the portal set with just the chosen game and enter it, mirroring Dash.
+	for p in _portals:
+		p.queue_free()
+	_portals.clear()
+	_active_portal = null
+	var only: Array[StringName] = [game_id]
+	_place_portals(only)
+	if _portals.size() > 0:
+		_portals[0].set_highlight(true)
+	get_tree().create_timer(0.45).timeout.connect(_finish_dash.bind(game_id))
+
+func _close_winged_modal() -> void:
+	if _winged_modal != null:
+		_winged_modal.queue_free()
+		_winged_modal = null
 
 # ------------------------------------------------------------------
 # Portal entry — hands off to Main via signal, which builds the

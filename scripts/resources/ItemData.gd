@@ -251,6 +251,11 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # For Usable items: how many uses (-1 = infinite)
 @export var max_uses: int = -1
 
+# Usable on the overworld map (Winged Boots), not just in combat/events. Set by
+# the generator for items whose item_used effects are overworld actions
+# (overworld_jump). Lets GameState.can_fire_item enable the use button on the map.
+@export var overworld_usable: bool = false
+
 # === Charged active items (Binding-of-Isaac style) ===
 # A CHARGED item is an active you fire from the inventory; firing it spends the
 # whole charge, after which it recharges before the next use. The bar drawn on
