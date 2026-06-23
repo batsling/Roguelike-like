@@ -179,8 +179,8 @@ func _build() -> void:
 
 	# Status row (bottom)
 	_status_row = HBoxContainer.new()
-	_status_row.position = Vector2(6, 294)
-	_status_row.size = Vector2(VIEW_W - 12, 22)
+	_status_row.position = Vector2(6, 290)
+	_status_row.size = Vector2(VIEW_W - 12, 28)
 	_status_row.add_theme_constant_override("separation", 4)
 	_status_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_status_row)
@@ -290,7 +290,7 @@ func _update_poison_overlay() -> void:
 	_poison_overlay.offset_bottom = 0.0
 	_poison_overlay.visible = true
 
-const STATUS_ICON_SIZE := 22
+const STATUS_ICON_SIZE := 28
 # Stack-count colour for a status drained below zero (e.g. negative Power).
 const NEG_STATUS_COLOR := Color(1.0, 0.35, 0.3)
 
@@ -298,8 +298,10 @@ func _make_status_badge(status_name, stacks: int) -> Control:
 	# A small icon with the stack count overlaid in the bottom-right.
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(STATUS_ICON_SIZE, STATUS_ICON_SIZE)
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.tooltip_text = "%s %d" % [String(status_name).capitalize(), stacks]
+	# PASS so the badge shows its tooltip on hover but still lets the click fall
+	# through to the enemy's targeting area behind it.
+	holder.mouse_filter = Control.MOUSE_FILTER_PASS
+	holder.tooltip_text = Stats.status_tooltip(status_name, stacks)
 
 	var tex: Texture2D = Stats.status_icon(status_name)
 	if tex != null:
@@ -317,7 +319,7 @@ func _make_status_badge(status_name, stacks: int) -> Control:
 		letter.set_anchors_preset(Control.PRESET_FULL_RECT)
 		letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		letter.add_theme_font_size_override("font_size", 12)
+		letter.add_theme_font_size_override("font_size", 14)
 		letter.add_theme_color_override("font_color", _status_color(String(status_name)))
 		letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(letter)
@@ -327,7 +329,7 @@ func _make_status_badge(status_name, stacks: int) -> Control:
 	count.set_anchors_preset(Control.PRESET_FULL_RECT)
 	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	count.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	count.add_theme_font_size_override("font_size", 11)
+	count.add_theme_font_size_override("font_size", 12)
 	# A negative stack count (drained-below-zero status) reads in red.
 	count.add_theme_color_override("font_color", NEG_STATUS_COLOR if stacks < 0 else Color.WHITE)
 	count.add_theme_color_override("font_outline_color", Color.BLACK)

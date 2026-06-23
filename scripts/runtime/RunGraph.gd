@@ -99,6 +99,24 @@ static func neighbors(game_id: StringName) -> Array[StringName]:
 		out.append(n)
 	return out
 
+# Eligible games in this run that share `game_id`'s release year (Winged Boots
+# flies to one of these, ignoring connections). Excludes the game itself and any
+# already-beaten game so the jump only ever advances the run. The adjacency
+# cache's keys are exactly the run's filtered game set.
+static func same_year_games(game_id: StringName) -> Array[StringName]:
+	_build_adj()
+	var cur: GameData = Data.get_game(game_id)
+	if cur == null or cur.year <= 0:
+		return []
+	var out: Array[StringName] = []
+	for gid in _adj_cache.keys():
+		if gid == game_id or GameState.beaten_games.has(gid):
+			continue
+		var g: GameData = Data.get_game(gid)
+		if g != null and g.year == cur.year:
+			out.append(gid)
+	return out
+
 # Shortest-hop distance from start_id to every reachable game. Memoized
 # — picking start/amulet on the full catalog runs BFS hundreds of times
 # from a handful of distinct origins, so recomputing is wasteful. Call

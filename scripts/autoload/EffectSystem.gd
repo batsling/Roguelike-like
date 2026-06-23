@@ -119,6 +119,7 @@ func _register_defaults() -> void:
 	register("reduce_card_cost", _h_reduce_card_cost)
 	register("gain_chest", _h_gain_chest)
 	register("roll_gold", _h_roll_gold)
+	register("overworld_jump", _h_overworld_jump)
 
 # Determined (addon): an effect may carry `determined: [min, max]`, meaning its
 # value is a number rolled ONCE at first use and fixed for the rest of combat
@@ -226,6 +227,17 @@ func _h_block(effect: Dictionary, ctx: Dictionary) -> void:
 # goes through Luck the same way every other die does (Luck advantage =
 # re-roll, keep the higher), then hands off to _h_block. Sulfa Powder:
 #   {type: "roll_block", sides: 12}
+# Overworld active (Winged Boots): hand the jump off to the overworld scene, which
+# owns the map UI. ctx.scene is the Overworld when fired from the map (see
+# GameState.use_item); a no-op anywhere else (in combat it has no map to move on).
+func _h_overworld_jump(effect: Dictionary, ctx: Dictionary) -> void:
+	var scene: Variant = ctx.get("scene")
+	if scene != null and scene.has_method("begin_overworld_jump"):
+		scene.begin_overworld_jump(
+			ctx.get("item"),
+			String(effect.get("scope", "same_year")),
+			int(effect.get("count", 3)))
+
 func _h_roll_block(effect: Dictionary, ctx: Dictionary) -> void:
 	var sides: int = int(effect.get("sides", 12))
 	var amount: int = Stats.roll_die_with_luck(_rng, sides)

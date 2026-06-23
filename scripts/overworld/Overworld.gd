@@ -49,10 +49,18 @@ var _modal_layer: CanvasLayer = null
 var _win_overlay: Control = null
 var _verification_modal: Control = null
 var _dash_modal: Control = null
+# Winged Boots (overworld active): the same-year picker modal + the item being
+# spent, so we can consume a use only when the player commits to a destination.
+var _winged_modal: Control = null
+var _winged_item: ItemData = null
 var _map_view: RunMapView = null
 var _section_reward_layer: CanvasLayer = null
 var _chest_reward_layer: CanvasLayer = null
 var _rate_modal: RateGameModal = null
+# Door hover cue + click-to-open preview (game info + a mini run-map re-rooted at
+# the hovered game). Hover just highlights; clicking opens the fitted modal.
+var _hovered_portal: PortalNode = null
+var _door_preview: Control = null
 # Game whose section reward is pending — set when a victory is handed to us,
 # consumed when the item reward opens after the verification screen.
 var _pending_reward_game_id: StringName = &""
@@ -74,6 +82,9 @@ func _ready() -> void:
 	_apply_player_avatar()
 	_player.moved.connect(_on_player_moved)
 	GameState.phase = GameState.Phase.OVERWORLD
+	# Register so overworld_usable items (Winged Boots) fired from the backpack /
+	# HUD route their item_used effect here (see GameState.use_item).
+	GameState.set_overworld_context(self)
 	_spawn_portals_for_current_game()
 	_update_hint()
 	# Golden Beetle banks "chests" (item rewards) whenever a curse / curse card
@@ -119,6 +130,8 @@ func _apply_player_avatar() -> void:
 # ------------------------------------------------------------------
 
 func _spawn_portals_for_current_game() -> void:
+	_close_door_preview()
+	_hovered_portal = null
 	for p in _portals:
 		p.queue_free()
 	_portals.clear()
@@ -177,6 +190,139 @@ func _connected_game_ids(game_id: StringName) -> Array[StringName]:
 	return RunGraph.neighbors(game_id)
 
 # ------------------------------------------------------------------
+# Door hover preview — game info + a mini run-map re-centered on the hovered
+# game, so you can see what it is and where it leads before committing.
+# ------------------------------------------------------------------
+
+# Polled each frame: highlight whichever door the mouse is over so the player
+# knows it's clickable. Suppressed while a preview / modal is up or the walker is
+# locked.
+func _process(_delta: float) -> void:
+	var locked: bool = _door_preview != null or (_player != null and _player.is_input_locked())
+	var mouse: Vector2 = get_global_mouse_position()
+	var new_hover: PortalNode = null
+	if not locked:
+		for p in _portals:
+			if p.game_data != null and p.door_global_rect().has_point(mouse):
+				new_hover = p
+				break
+	if new_hover == _hovered_portal:
+		return
+	if _hovered_portal != null and is_instance_valid(_hovered_portal):
+		_hovered_portal.set_hovered(false)
+	_hovered_portal = new_hover
+	if _hovered_portal != null:
+		_hovered_portal.set_hovered(true)
+
+# Click-opened door preview: a centered, scrollable modal with the game's info
+# and a mini run-map re-rooted at it. Sized to fit the viewport so the map never
+# spills off-screen; the map scrolls if it's taller than the panel.
+func _open_door_preview(game_id: StringName) -> void:
+	_close_door_preview()
+	var gd: GameData = Data.get_game(game_id)
+	if gd == null:
+		return
+	if _player != null:
+		_player.set_input_locked(true)
+	if _hovered_portal != null and is_instance_valid(_hovered_portal):
+		_hovered_portal.set_hovered(false)
+		_hovered_portal = null
+
+	var modal := Control.new()
+	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.65)
+	modal.add_child(dim)
+
+	var vp: Vector2 = get_viewport_rect().size
+	var panel_w: float = minf(720.0, vp.x - 80.0)
+	var panel_h: float = minf(640.0, vp.y - 80.0)
+	var panel := PanelContainer.new()
+	# custom_minimum_size pins the size (a Container otherwise shrinks to content).
+	panel.custom_minimum_size = Vector2(panel_w, panel_h)
+	panel.size = Vector2(panel_w, panel_h)
+	panel.position = ((vp - panel.size) / 2.0).floor()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.07, 0.12, 0.99)
+	sb.border_color = Color(0.5, 0.4, 0.7, 0.95)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(10)
+	sb.set_content_margin_all(14)
+	panel.add_theme_stylebox_override("panel", sb)
+	modal.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	panel.add_child(vbox)
+
+	var header := HBoxContainer.new()
+	vbox.add_child(header)
+	var title := Label.new()
+	title.text = gd.display_name
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.45))
+	header.add_child(title)
+	var close := Button.new()
+	close.text = "Close (Esc)"
+	close.pressed.connect(_close_door_preview)
+	header.add_child(close)
+
+	var info := Label.new()
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.add_theme_font_size_override("font_size", 13)
+	info.text = _preview_info_text(gd, game_id)
+	vbox.add_child(info)
+
+	if GameState.start_game_id != &"" and GameState.amulet_game_id != &"":
+		var hdr := Label.new()
+		hdr.text = "Map if you enter:"
+		hdr.add_theme_font_size_override("font_size", 12)
+		hdr.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
+		vbox.add_child(hdr)
+		var scroll := ScrollContainer.new()
+		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vbox.add_child(scroll)
+		var mini := MapGraphView.new()
+		# Re-root the route at this game so the map shows where it leads onward.
+		mini.build(game_id, GameState.amulet_game_id, game_id, "IF YOU ENTER")
+		var bw: float = mini.get_base_size().x
+		if bw > 0.0:
+			mini.set_zoom(clampf((panel_w - 44.0) / bw, MapGraphView.ZOOM_MIN, 1.0))
+		scroll.add_child(mini)
+
+	_modal_layer.add_child(modal)
+	_door_preview = modal
+
+func _close_door_preview() -> void:
+	if _door_preview != null:
+		_door_preview.queue_free()
+		_door_preview = null
+		if _player != null:
+			_player.set_input_locked(false)
+
+func _preview_info_text(gd: GameData, game_id: StringName) -> String:
+	var lines: Array = []
+	if gd.year > 0:
+		lines.append("Year: %d" % gd.year)
+	lines.append("Type: %s" % RunGraph.type_label(gd.type))
+	var tags: Array = []
+	for t in gd.tags:
+		tags.append(String(t))
+	if not tags.is_empty():
+		lines.append("Tags: %s" % ", ".join(tags))
+	lines.append("Connections: %d" % RunGraph.neighbors(game_id).size())
+	if game_id == GameState.amulet_game_id:
+		lines.append("The Amulet — your goal")
+	else:
+		var hops: int = int(RunGraph.bfs_distances(game_id).get(GameState.amulet_game_id, -1))
+		lines.append("Hops to Amulet: %s" % (str(hops) if hops >= 0 else "—"))
+	return "\n".join(lines)
+
+# ------------------------------------------------------------------
 # Player interaction
 # ------------------------------------------------------------------
 
@@ -204,6 +350,21 @@ func _update_hint() -> void:
 	_hint.text = actions
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Click a door to open its info + map preview.
+	if event is InputEventMouseButton and event.pressed \
+			and event.button_index == MOUSE_BUTTON_LEFT:
+		if _door_preview == null and _can_act() \
+				and _hovered_portal != null and is_instance_valid(_hovered_portal) \
+				and _hovered_portal.game_data != null:
+			_open_door_preview(_hovered_portal.game_data.id)
+			get_viewport().set_input_as_handled()
+		return
+	# Esc closes an open door preview before anything else handles it.
+	if _door_preview != null and event is InputEventKey and event.pressed \
+			and event.keycode == KEY_ESCAPE:
+		_close_door_preview()
+		get_viewport().set_input_as_handled()
+		return
 	if not (event is InputEventKey and event.pressed):
 		return
 	if not _can_act():
@@ -228,7 +389,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _can_act() -> bool:
 	return _verification_modal == null and _win_overlay == null and _dash_modal == null \
 		and _map_view == null and _section_reward_layer == null \
-		and _chest_reward_layer == null
+		and _chest_reward_layer == null and _winged_modal == null \
+		and _door_preview == null
 
 # ------------------------------------------------------------------
 # Run map — view-only overview of the route to the Amulet. Pauses the
@@ -379,6 +541,129 @@ func _close_dash_modal() -> void:
 	if _dash_modal != null:
 		_dash_modal.queue_free()
 		_dash_modal = null
+
+func _exit_tree() -> void:
+	# Hand off the overworld registration when this scene is freed (Main swaps to
+	# combat). Guarded so a newly-spawned Overworld that already registered wins.
+	GameState.clear_overworld_context(self)
+
+# ------------------------------------------------------------------
+# Winged Boots — overworld active. Fired from the backpack / HUD (routed here by
+# GameState.use_item -> EffectSystem.overworld_jump). Flies to one of up to
+# `count` games sharing the current game's year, then enters it like a Dash. The
+# item's use is spent only on a committed pick (consume_item_use), so cancelling
+# or finding no destination costs nothing.
+# ------------------------------------------------------------------
+
+func begin_overworld_jump(item: ItemData, scope: String, count: int) -> void:
+	if _winged_modal != null or _dash_modal != null:
+		return
+	var current: GameData = Data.get_game(GameState.current_game_id)
+	if current == null:
+		return
+	var ids: Array[StringName] = []
+	if scope == "same_year":
+		ids = RunGraph.same_year_games(current.id)
+	if ids.is_empty():
+		GameLog.add("Winged Boots: no other %d games to fly to." % current.year,
+			Color(0.9, 0.7, 0.4))
+		return
+	ids.shuffle()
+	if ids.size() > count:
+		ids = ids.slice(0, count)
+	_winged_item = item
+	_show_winged_modal(ids)
+
+func _show_winged_modal(ids: Array[StringName]) -> void:
+	_player.set_input_locked(true)
+
+	var modal := Control.new()
+	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.6)
+	modal.add_child(dim)
+
+	var panel_w: float = 560.0
+	var panel_h: float = mini(560, 160 + ids.size() * 56)
+	var panel := Panel.new()
+	panel.size = Vector2(panel_w, panel_h)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	modal.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 20)
+	title.size = Vector2(panel_w - 40, 32)
+	title.text = "Winged Boots — fly to a same-year game"
+	title.add_theme_font_size_override("font_size", 20)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(20, 64)
+	scroll.size = Vector2(panel_w - 40, panel_h - 132)
+	panel.add_child(scroll)
+
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 6)
+	scroll.add_child(list)
+
+	for gid in ids:
+		var gd: GameData = Data.get_game(gid)
+		if gd == null:
+			continue
+		var btn := Button.new()
+		btn.text = "%s (%d)" % [gd.display_name, gd.year]
+		btn.custom_minimum_size = Vector2(0, 44)
+		btn.pressed.connect(_on_winged_pick.bind(gid))
+		list.add_child(btn)
+
+	var cancel := Button.new()
+	cancel.position = Vector2(panel_w / 2.0 - 80, panel_h - 56)
+	cancel.size = Vector2(160, 40)
+	cancel.text = "Cancel"
+	cancel.pressed.connect(_on_winged_cancel)
+	panel.add_child(cancel)
+
+	_modal_layer.add_child(modal)
+	_winged_modal = modal
+
+func _on_winged_cancel() -> void:
+	# No commit -> no use spent.
+	_close_winged_modal()
+	_winged_item = null
+	_player.set_input_locked(false)
+
+func _on_winged_pick(game_id: StringName) -> void:
+	_close_winged_modal()
+	var gd: GameData = Data.get_game(game_id)
+	if gd == null:
+		_winged_item = null
+		_player.set_input_locked(false)
+		return
+	# Commit: spend one Winged Boots use (it may shatter on the last charge).
+	if _winged_item != null:
+		GameState.consume_item_use(_winged_item)
+		_winged_item = null
+	GameLog.add("Winged Boots: flew to %s." % gd.display_name, Color(0.7, 0.9, 1.0))
+	# Replace the portal set with just the chosen game and enter it, mirroring Dash.
+	for p in _portals:
+		p.queue_free()
+	_portals.clear()
+	_active_portal = null
+	var only: Array[StringName] = [game_id]
+	_place_portals(only)
+	if _portals.size() > 0:
+		_portals[0].set_highlight(true)
+	get_tree().create_timer(0.45).timeout.connect(_finish_dash.bind(game_id))
+
+func _close_winged_modal() -> void:
+	if _winged_modal != null:
+		_winged_modal.queue_free()
+		_winged_modal = null
 
 # ------------------------------------------------------------------
 # Portal entry — hands off to Main via signal, which builds the

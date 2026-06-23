@@ -146,6 +146,18 @@ def _int(tok, default=0):
         return default
 
 
+def _usable_uses(type_str, kind):
+    # Uses-before-destroyed for a USABLE item, read from the Type cell's optional
+    # count ("Usable, 3" -> 3). Bare "Usable" defaults to 1; non-usable items are
+    # infinite (-1). Mirrors how "Charged, N" carries its charge cost.
+    if kind != KIND["usable"]:
+        return -1
+    parts = [p.strip() for p in str(type_str or "").split(",")]
+    if len(parts) > 1 and parts[1].isdigit():
+        return max(1, int(parts[1]))
+    return 1
+
+
 def _kv(tokens):
     """Split tokens into positional list and key=value dict."""
     pos, kv = [], {}
@@ -273,6 +285,16 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
         _, kv = _kv(toks[1:])
         return {"type": "roll_block", "sides": _int(kv.get("sides", 0)),
                 "target": target or "self"}
+
+    # overworld_jump <scope> [count=N] — an overworld active (Winged Boots). When
+    # used on the map it flies the player to one of `count` games matching `scope`
+    # (today: same_year). Marks the item overworld_usable so it can be fired from
+    # the backpack / overworld HUD; the move itself is run by the Overworld scene.
+    if verb == "overworld_jump":
+        rest, kv = _kv(toks[1:])
+        return {"type": "overworld_jump",
+                "scope": rest[0] if rest else "same_year",
+                "count": _int(kv.get("count", 3))}
 
     if verb == "roll_gold":
         m2 = re.search(r"\[([^\]]*)\]", text)
@@ -447,8 +469,10 @@ def parse_item(row):
         "stat_bonuses": {},
         "scaling": [],
     }
-    # USABLE pills are one-shot; everything else is infinite-use.
-    fields["max_uses"] = 1 if fields["kind"] == KIND["usable"] else -1
+    # USABLE pills are spent on use. The count comes from the Type cell:
+    # "Usable, 3" -> 3 uses before the item is destroyed; bare "Usable" -> 1.
+    # Everything else is infinite-use (-1).
+    fields["max_uses"] = _usable_uses(row.get("Type", ""), fields["kind"])
     raw = str(row.get("Effect") or "").strip()
     label = fields["display_name"]
 
@@ -558,6 +582,13 @@ def parse_item(row):
                 effects, _, _ = parse_payload(clause, default_target="self")
                 _apply_labels(effects, label)
                 last_trigger["effects"].extend(effects)
+
+    # An item that runs an overworld_jump (Winged Boots) is usable on the map, so
+    # mark it: the runtime enables its backpack / overworld-HUD use button there.
+    for trig in fields["triggers"]:
+        for eff in trig.get("effects", []):
+            if isinstance(eff, dict) and eff.get("type") == "overworld_jump":
+                fields["overworld_usable"] = True
 
     return fields
 
@@ -726,6 +757,7 @@ def item_tres(row):
         ("negate_lethal", lambda v: "true"),
         ("stat_gain_bonus", lambda v: gd_value(v)),
         ("reroll_low_rarity", lambda v: "true"),
+        ("overworld_usable", lambda v: "true"),
         ("charge_cost", lambda v: str(v)),
         ("weapon_card_id", lambda v: '&"%s"' % gd_str(v)),
         ("verification_question", lambda v: '"%s"' % gd_str(v)),

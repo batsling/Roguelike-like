@@ -501,7 +501,10 @@ func _value_chip(text: String, derived: bool) -> Control:
 # "total" or "total  (base +bonus)" when item/temp bonuses are present.
 func _stat_value_text(stat_id: StringName, suffix: String = "") -> String:
 	var field := String(stat_id)
-	var base: int = int(GameState.get(field))
+	# Some stats (Range) have no GameState base property — they're item/definition
+	# derived — so get() returns null. Guard like Stats.get_value does.
+	var raw = GameState.get(field)
+	var base: int = int(raw) if raw != null else 0
 	# Route the total through Stats so derived contributions show too — most
 	# notably Paper Bag, which mirrors Charisma onto the highest core stat
 	# without ever landing in item_stat_bonus. For every other stat this equals
@@ -663,7 +666,8 @@ func _build_item_row(item: ItemData) -> Control:
 		if item.max_uses > 1:
 			use_btn.text = "Use (%d)" % item.max_uses
 		use_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		use_btn.disabled = not GameState.can_use_items()
+		# Item-aware so overworld actives (Winged Boots) enable on the map too.
+		use_btn.disabled = not GameState.can_fire_item(item)
 		use_btn.pressed.connect(func(): _on_use_pressed(item))
 		hbox.add_child(use_btn)
 
@@ -689,8 +693,15 @@ func _incremental_badge(item: ItemData) -> String:
 	return ""
 
 func _on_use_pressed(item: ItemData) -> void:
+	# An overworld active opens a picker on the map underneath — close the backpack
+	# so it's visible (the use is only spent once the player commits there).
+	var overworld_active: bool = item != null and item.overworld_usable \
+		and GameState.combat_scene == null
 	if GameState.use_item(item):
 		GameLog.add("Used %s." % item.display_name, Color(0.8, 0.9, 1.0))
+		if overworld_active:
+			close()
+			return
 	_refresh()
 
 func _render_loot() -> void:

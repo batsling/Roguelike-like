@@ -24,6 +24,9 @@ func setup(start_pos: Vector2i, bounds: Rect2i) -> void:
 func set_input_locked(locked: bool) -> void:
 	_input_locked = locked
 
+func is_input_locked() -> bool:
+	return _input_locked
+
 func _process(delta: float) -> void:
 	if _input_locked:
 		return

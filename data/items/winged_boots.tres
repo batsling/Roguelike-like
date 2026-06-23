@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_winged_boots"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/WingedBoots.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"winged_boots"
+display_name = "Winged Boots"
+kind = 2
+rarity = 2
+description = "Move to a one of three games that share the year of the game you're currently on"
+triggers = [{"on": "item_used", "effects": [{"type": "overworld_jump", "scope": "same_year", "count": 3}]}]
+stat_bonuses = {}
+overworld_usable = true
+max_uses = 3
+source_game = "Slay the Spire"
+tags = PackedStringArray("wearable", "shoes")
+image = ExtResource("2_img")

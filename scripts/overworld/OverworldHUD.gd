@@ -54,6 +54,24 @@ func _ready() -> void:
 	_log_label.add_theme_font_size_override("normal_font_size", FONT_SIZE)
 	add_child(_log_label)
 
+	# Always-visible item rack, the same CombatInventory widget the combat modes
+	# use — every owned item shows as a tile, and activatable ones (Winged Boots,
+	# charged actives) get a Use button gated by GameState.can_fire_item. With no
+	# on_use_requested hook it fires straight through GameState.use_item. Parked on
+	# the right side (like action keeps its rack off the play area), growing down
+	# from the top-right so it clears the centered door row and the vitals bar.
+	var inv := CombatInventory.new()
+	inv.columns = 2
+	inv.tile_px = 44
+	inv.show_title = true
+	inv.title_text = "Items"
+	inv.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	inv.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	inv.grow_vertical = Control.GROW_DIRECTION_END
+	inv.offset_right = -8
+	inv.offset_top = 40
+	add_child(inv)
+
 	# Hook signals so the HUD auto-refreshes.
 	GameState.hp_changed.connect(_on_state_changed)
 	GameState.gold_changed.connect(_on_state_changed)
@@ -83,7 +101,11 @@ func _refresh_top() -> void:
 		var a: GameData = Data.get_game(GameState.amulet_game_id)
 		if a != null:
 			amulet_name = a.display_name
-	_top_label.text = "HP %d/%d  Gold %d  Deck %d  Inv %d   |   STR %d DEX %d INT %d CHA %d CON %d LCK %d SPD %d HRV %d CRIT %d%%   |   At: %s -> %s   |   Beaten: %d" % [
+	var diff_tier: int = RunDifficulty.current_tier()
+	var diff_text: String = "%s (%d/%d)" % [
+		RunDifficulty.tier_name(diff_tier), RunDifficulty.current_tier_value(),
+		RunDifficulty.tier_value(RunDifficulty.MAX_TIER)]
+	_top_label.text = "HP %d/%d  Gold %d  Deck %d  Inv %d   |   STR %d DEX %d INT %d CHA %d CON %d LCK %d SPD %d HRV %d CRIT %d%%   |   At: %s -> %s   |   Beaten: %d  Played: %d  Difficulty: %s" % [
 		GameState.hp, GameState.max_hp,
 		GameState.gold,
 		GameState.deck.size(),
@@ -92,7 +114,7 @@ func _refresh_top() -> void:
 		Stats.get_value(&"charisma"), Stats.get_value(&"constitution"), Stats.get_value(&"luck"),
 		Stats.get_value(&"speed"), Stats.get_value(&"harvesting"), Stats.crit_chance_percent(),
 		game_name, amulet_name,
-		GameState.total_games_beaten,
+		GameState.total_games_beaten, GameState.games_played, diff_text,
 	]
 
 func _refresh_log() -> void:

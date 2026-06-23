@@ -89,6 +89,7 @@ const STATUS_ICONS := {
 	&"ritual": "Ritual.png",
 	&"fading": "Fading.png",
 	&"confused": "Confused.png",
+	&"plated_armor": "PlatedArmor.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -236,6 +237,19 @@ func status_icon(status_name) -> Texture2D:
 	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
 	_status_icon_cache[key] = tex
 	return tex
+
+# Hover-tooltip text for a status badge: "Display (N)\n<description>", with the
+# description pulled from ReferenceCatalog (the statusesnew sheet) when known, else
+# just "Display N". Shared so the player row and EnemyView read identically.
+func status_tooltip(status_name, stacks: int) -> String:
+	var display: String = String(status_name).capitalize()
+	for s in ReferenceCatalog.STATUSES:
+		if String(s.get("name", "")) == display:
+			var desc: String = String(s.get("description", ""))
+			if desc != "":
+				return "%s (%d)\n%s" % [display, stacks, desc]
+			break
+	return "%s %d" % [display, stacks]
 
 func event_roll_bonus(stat_id: StringName) -> int:
 	var def: StatDefinition = _stat_defs.get(stat_id)
@@ -450,6 +464,11 @@ func resolve_damage(
 		out.lethal_negated = true
 		amount = 0
 	out.hp_loss = maxi(0, amount)
+	# Plated Armor sheds one stack on any unblocked hit (StS rule). Gated on real
+	# HP loss, so a fully-soaked, dodged, buffered, or lethal-negated hit leaves it
+	# intact. Shared resolver -> the rule holds in every combat mode.
+	if out.hp_loss > 0 and has_tgt and target.get_status(&"plated_armor") > 0:
+		target.add_status(&"plated_armor", -1)
 	return out
 
 # Resolve block gained. Frail cuts gained block 25% (floor) in every mode.
@@ -878,6 +897,20 @@ func tick_actor_statuses(actor, scene, tick_bleed: bool = true) -> void:
 	var regen: int = actor.get_status(&"regeneration")
 	if regen > 0 and actor.is_alive() and scene.has_method("heal"):
 		scene.heal(actor, regen)
+	# Plated Armor: gain Block (X = current stacks) at the turn boundary. It does
+	# NOT decay on the turn clock (deliberately kept out of DECAY_STATUSES) — it
+	# sheds 1 stack only when the owner takes unblocked damage (see resolve_damage).
+	# A player's grant is routed through the scene's gain_block so every mode applies
+	# its own block handling: the deckbuilder's persistent shield, and Action's
+	# decaying pool — there the block fades over time exactly like the block any item
+	# grants. Enemies add to block directly (Action's gain_block is player-only).
+	var plated: int = actor.get_status(&"plated_armor")
+	if plated > 0 and actor.is_alive():
+		var plated_owner_is_player: bool = ("is_player" in actor) and actor.is_player
+		if plated_owner_is_player and scene.has_method("gain_block"):
+			scene.gain_block(actor, plated)
+		elif "block" in actor:
+			actor.block += resolve_block(plated, actor, true)
 	# Leeches (Jar of Leeches): a leeched ENEMY loses HP equal to its stacks
 	# each turn and the player heals the same. Doesn't decay — the drain
 	# repeats every turn until the enemy dies. Player-owned only (no Godot

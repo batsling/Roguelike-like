@@ -145,7 +145,11 @@ var player_max_block: int = 0
 # {amt: float, rate: float}; `rate` is block-per-second (a card's energy cost, so
 # pricier cards' block lingers). Reset each room. See _gain_block / _decay_block.
 var _block_pool: Array = []
-const DEFAULT_BLOCK_DECAY := 1.0   # block/sec for sources with no card cost (items)
+const DEFAULT_BLOCK_DECAY := 1.0   # block/sec floor for any source with no card cost
+# Block from items / statuses (Plated Armor, combat_start grants, …) fades as if
+# it came from a 2-cost card: 2 block/sec (mirrors _block_decay_for(cost=2)). One
+# rate for every non-card block source so they all bleed away on the same clock.
+const ITEM_BLOCK_DECAY := 2.0
 # The integer block value we last wrote to player_actor.block. Lets _decay_block
 # tell a real combat soak (player_actor.block dropped) apart from the harmless
 # rounding gap between the float pool total and its floored integer display.
@@ -301,6 +305,13 @@ func _ready() -> void:
 		_atk = ActionAttackLibrary.new()  # defensive: never run without the library
 	_turn_tick_remaining = _tr.turn_tick_secs
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# In Action, GameState.hp is the source of truth and player_actor mirrors it
+	# (synced at every damage site). An item acquired mid-room (e.g. Mango's
+	# +14 Max HP / +14 HP via item_acquired) writes straight to GameState, so
+	# mirror that onto the live actor + HUD immediately instead of waiting for the
+	# next room to rebuild the actor from GameState. Auto-disconnects when freed.
+	if not GameState.hp_changed.is_connected(_on_gamestate_hp_changed):
+		GameState.hp_changed.connect(_on_gamestate_hp_changed)
 	if not embedded:
 		# Standalone bootstrap: if a parent didn't apply a character / pick
 		# enemies, set up a default test fight so the scene is runnable from
@@ -550,6 +561,17 @@ func _accumulate_block_cap(card: CardData) -> void:
 	for eff in card.effects:
 		if String(eff.get("type", "")) == "block":
 			player_max_block += int(eff.get("value", 0))
+
+# Mirror any GameState HP/Max-HP change (item pickups, events firing mid-room)
+# onto the live actor so the HUD updates at once. The damage sites already keep
+# the two in lockstep, so re-applying GameState.hp here is a harmless no-op for
+# them; the win is the item-acquired path that bypasses those sites.
+func _on_gamestate_hp_changed(new_hp: int, new_max: int) -> void:
+	if player_actor == null:
+		return
+	player_actor.hp = new_hp
+	player_actor.max_hp = new_max
+	_refresh_hud()
 
 func _init_player() -> void:
 	player_actor = CombatActor.from_player()
@@ -2532,7 +2554,10 @@ func _gain_block(base_amount: int, decay_rate: float = DEFAULT_BLOCK_DECAY) -> v
 # card-derived soft cap first so it isn't immediately clamped away.
 func gain_block(_target, amount: int) -> void:
 	player_max_block += amount
-	_gain_block(amount)
+	# Item- and status-granted block fades on the 2-cost-card clock, not the slow
+	# default — so Plated Armor's per-turn block (and every other item block) bleeds
+	# away over time instead of lingering all room.
+	_gain_block(amount, ITEM_BLOCK_DECAY)
 
 # Block earned in action combat decays over time: each chunk drains at its
 # source card's energy cost (1 block/sec per energy), so a pricier card's block
@@ -2800,34 +2825,34 @@ func _build_slot_bar() -> void:
 	_click_swatch.clear()
 	for i in range(2):
 		var panel := Panel.new()
-		panel.custom_minimum_size = Vector2(208, 58)
+		panel.custom_minimum_size = Vector2(216, 74)
 		bar.add_child(panel)
 		var swatch := ColorRect.new()
-		swatch.position = Vector2(5, 7)
-		swatch.size = Vector2(44, 44)
+		swatch.position = Vector2(6, 8)
+		swatch.size = Vector2(60, 60)
 		panel.add_child(swatch)
 		var tex := TextureRect.new()
-		tex.position = Vector2(5, 7)
-		tex.size = Vector2(44, 44)
+		tex.position = Vector2(6, 8)
+		tex.size = Vector2(60, 60)
 		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		panel.add_child(tex)
 		var name_lbl := Label.new()
-		name_lbl.position = Vector2(56, 6)
-		name_lbl.size = Vector2(146, 22)
+		name_lbl.position = Vector2(74, 12)
+		name_lbl.size = Vector2(136, 24)
 		name_lbl.add_theme_font_size_override("font_size", 12)
 		name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 1.0))
 		panel.add_child(name_lbl)
 		var cd_lbl := Label.new()
-		cd_lbl.position = Vector2(56, 30)
-		cd_lbl.size = Vector2(146, 22)
+		cd_lbl.position = Vector2(74, 42)
+		cd_lbl.size = Vector2(136, 24)
 		cd_lbl.add_theme_font_size_override("font_size", 12)
 		cd_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
 		panel.add_child(cd_lbl)
 		# Energy-cost badge over the card art (top-left), shown only while cooling
 		# down so the player can read the (possibly Confused-randomized) cost.
 		var cost_lbl := Label.new()
-		cost_lbl.position = Vector2(7, 5)
+		cost_lbl.position = Vector2(8, 9)
 		cost_lbl.size = Vector2(20, 18)
 		cost_lbl.add_theme_font_size_override("font_size", 15)
 		cost_lbl.add_theme_color_override("font_color", Color(1.0, 0.95, 0.4))
@@ -2845,27 +2870,27 @@ func _build_slot_bar() -> void:
 	# Charged-active slot: the item fired with Space (also E). Mirrors a click
 	# slot but shows the charge state so the player can see when it's ready.
 	_charged_panel = Panel.new()
-	_charged_panel.custom_minimum_size = Vector2(208, 58)
+	_charged_panel.custom_minimum_size = Vector2(216, 74)
 	bar.add_child(_charged_panel)
 	_charged_swatch = ColorRect.new()
-	_charged_swatch.position = Vector2(5, 7)
-	_charged_swatch.size = Vector2(44, 44)
+	_charged_swatch.position = Vector2(6, 8)
+	_charged_swatch.size = Vector2(60, 60)
 	_charged_panel.add_child(_charged_swatch)
 	_charged_tex = TextureRect.new()
-	_charged_tex.position = Vector2(5, 7)
-	_charged_tex.size = Vector2(44, 44)
+	_charged_tex.position = Vector2(6, 8)
+	_charged_tex.size = Vector2(60, 60)
 	_charged_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_charged_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_charged_panel.add_child(_charged_tex)
 	_charged_name_lbl = Label.new()
-	_charged_name_lbl.position = Vector2(56, 6)
-	_charged_name_lbl.size = Vector2(146, 22)
+	_charged_name_lbl.position = Vector2(74, 12)
+	_charged_name_lbl.size = Vector2(136, 24)
 	_charged_name_lbl.add_theme_font_size_override("font_size", 12)
 	_charged_name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 1.0))
 	_charged_panel.add_child(_charged_name_lbl)
 	_charged_cd_lbl = Label.new()
-	_charged_cd_lbl.position = Vector2(56, 30)
-	_charged_cd_lbl.size = Vector2(146, 22)
+	_charged_cd_lbl.position = Vector2(74, 42)
+	_charged_cd_lbl.size = Vector2(136, 24)
 	_charged_cd_lbl.add_theme_font_size_override("font_size", 12)
 	_charged_cd_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
 	_charged_panel.add_child(_charged_cd_lbl)
@@ -2874,28 +2899,28 @@ func _build_slot_bar() -> void:
 	_auto_thumbs.clear()
 	for i in range(AUTO_THUMB_MAX):
 		var ap := Panel.new()
-		ap.custom_minimum_size = Vector2(50, 58)
+		ap.custom_minimum_size = Vector2(58, 74)
 		bar.add_child(ap)
 		var asw := ColorRect.new()
-		asw.position = Vector2(3, 3)
-		asw.size = Vector2(44, 40)
+		asw.position = Vector2(4, 4)
+		asw.size = Vector2(50, 52)
 		ap.add_child(asw)
 		var atx := TextureRect.new()
-		atx.position = Vector2(3, 3)
-		atx.size = Vector2(44, 40)
+		atx.position = Vector2(4, 4)
+		atx.size = Vector2(50, 52)
 		atx.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		atx.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		ap.add_child(atx)
 		var anm := Label.new()
-		anm.position = Vector2(3, 2)
-		anm.size = Vector2(44, 12)
+		anm.position = Vector2(4, 3)
+		anm.size = Vector2(50, 12)
 		anm.clip_text = true
 		anm.add_theme_font_size_override("font_size", 8)
 		anm.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
 		ap.add_child(anm)
 		var acd := Label.new()
-		acd.position = Vector2(3, 42)
-		acd.size = Vector2(44, 14)
+		acd.position = Vector2(4, 58)
+		acd.size = Vector2(50, 14)
 		acd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		acd.add_theme_font_size_override("font_size", 10)
 		ap.add_child(acd)

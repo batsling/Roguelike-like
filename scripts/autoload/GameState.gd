@@ -241,6 +241,10 @@ var combat_player = null
 # True while an EventModal is open — the only non-combat place a pill may be
 # used (gates the backpack's Use button).
 var event_active: bool = false
+# Live overworld scene, registered while the player is on the map. Lets
+# overworld_usable items (Winged Boots) route their item_used effect to the map
+# so they can be fired from the backpack / overworld HUD. Null off the map.
+var overworld_scene = null
 
 # === Run-scope resources ===
 # Skip is removed from the stat set — the only "skip" is the
@@ -522,6 +526,7 @@ func reset_run() -> void:
 	event_block = 0
 	combat_scene = null
 	combat_player = null
+	overworld_scene = null
 	event_active = false
 	dash_charges = 0
 	reroll_charges = 0
@@ -959,6 +964,18 @@ func clear_combat_context() -> void:
 	combat_scene = null
 	combat_player = null
 
+# The overworld scene registers itself while the map is up so overworld_usable
+# items can route their item_used effect to it (Winged Boots' map jump).
+func set_overworld_context(scene) -> void:
+	overworld_scene = scene
+
+func clear_overworld_context(scene = null) -> void:
+	# Guarded clear: only wipe if the caller is the scene we hold (or no scene
+	# given), so a freshly-spawned Overworld registering before the old one's
+	# _exit_tree fires can't be clobbered.
+	if scene == null or overworld_scene == scene:
+		overworld_scene = null
+
 # Pills may only be used in combat or while an event roll is open.
 func can_use_items() -> bool:
 	return combat_scene != null or event_active
@@ -972,6 +989,11 @@ func can_fire_item(item: ItemData) -> bool:
 	if item.is_charged():
 		return item.is_fully_charged()
 	if item.kind == ItemData.ItemKind.USABLE:
+		# Overworld actives (Winged Boots) fire only on the map — never in combat,
+		# where their effect would no-op and waste a use. Ordinary pills are the
+		# inverse: combat/event only.
+		if item.overworld_usable:
+			return overworld_scene != null
 		return can_use_items()
 	return false
 
@@ -986,10 +1008,13 @@ func use_item(item: ItemData, target = null) -> bool:
 	# `target` is the enemy chosen via the targeting arrow for items that aim at
 	# an enemy (ItemData.wants_target). Self-aimed effects still route to the
 	# source, so a null target just keeps the old self-only behaviour.
+	# Off the map combat_scene is null; an overworld active routes its effect to
+	# the registered overworld scene instead so it can open its map UI.
+	var on_overworld: bool = combat_scene == null and item.overworld_usable and overworld_scene != null
 	var ctx := {
 		"source": combat_player,
 		"target": target if target != null else combat_player,
-		"scene": combat_scene,
+		"scene": overworld_scene if on_overworld else combat_scene,
 		"card": null,
 		"item": item,
 	}
@@ -1005,17 +1030,31 @@ func use_item(item: ItemData, target = null) -> bool:
 	if item.is_charged():
 		# Empty the bar; it refills via the charging hooks.
 		item.current_charge = 0
-	elif item.max_uses > 0:
-		# Spend a use; -1 is infinite. When the last use is spent, drop the item
-		# (and clear the action slot if it pointed at the final copy).
-		item.max_uses -= 1
-		if item.max_uses <= 0:
-			if action_active_item_id == item.id and _count_items(item.id) <= 1:
-				action_active_item_id = &""
-			inventory.erase(item)
+	elif on_overworld:
+		# Deferred: an overworld active opens an async, cancellable picker; the
+		# Overworld spends the use (consume_item_use) only once the player commits,
+		# so cancelling — or finding nowhere to go — wastes nothing.
+		pass
+	else:
+		consume_item_use(item)
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 	return true
+
+# Spends one USABLE charge and drops the item when depleted (clearing the action
+# slot if it pointed at the final copy). max_uses == -1 is infinite (no-op). Split
+# out of use_item so deferred overworld actives can spend on commit. Refreshes
+# bonuses + inventory listeners since the inventory may have changed.
+func consume_item_use(item: ItemData) -> void:
+	if item == null or item.max_uses <= 0:
+		return
+	item.max_uses -= 1
+	if item.max_uses <= 0:
+		if action_active_item_id == item.id and _count_items(item.id) <= 1:
+			action_active_item_id = &""
+		inventory.erase(item)
+	_recompute_item_bonuses()
+	emit_signal("inventory_changed")
 
 # ---------------------------------------------------------------------------
 # Charged-item charging. Items never declare cadence; these are called from the
