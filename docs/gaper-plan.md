@@ -207,6 +207,43 @@ Frames are trimmed-to-content and normalised onto one shared square per enemy
 
 ---
 
+## 6. Sprite slicing (decoded from the committed sheets)
+
+Cell coords are `(row, col)`. Bodies are 32px cells.
+
+**Gaper body** (`gaper_body_sheet.png`, 512×256, left 8 cols = Gaper; right = a
+different enemy, ignore): — *confirmed by preview*
+- `body.idle`: (0,0)
+- `body.walk_vert`: (0,1),(1,1),(2,1)   ← up & down (no separate up/down art)
+- `body.walk_side`: (2,2),(3,2),(4,2)   ← left = mirror of right
+
+**Gaper head** (separate, non-directional, drawn above the body):
+- `head.idle`: `gaper_idle.png` (single 28×33 frame)
+- `head.attack`: `gaper_head_sheet.png`, 2×2 of 32px → the gape (4 frames)
+
+**Pacer body** (`pacer_body_sheet.png`, 192×192, 6 cols of 32px) — *best guess,
+mirrors the Gaper layout; preview sent for confirmation* (the body is the
+headless torso with a neck-stump gash):
+- `body.idle`: (0,0); `body.walk_vert`: (0,1),(1,1),(2,1);
+  `body.walk_side`: (2,2),(3,2),(4,2)
+
+**Gusher body** = identical to the Pacer body sheet (reuse).
+**Gusher gush** (`gusher_gush_sheet.png`, 192×192) — **frame layout unknown**:
+the blood blobs don't align to a 32px grid, so the real frame size / count is
+TBD (need it from the art author).
+
+Facing categories from velocity: **vert** (|vy| ≥ |vx|) and **side** (else,
+`flip_h` when moving left). `walk_vert` serves both up and down.
+
+### Renderer note
+Composite layers must preserve **relative scale** (the head is smaller than the
+body) and sit at their offset — so the renderer draws all of an enemy's layers
+at one shared px-per-source-pixel scale, not each normalised to its own square
+like the single-layer Horf. Offsets/scale will need a little tuning against a
+running game.
+
+---
+
 ## 5. Build order
 
 1. ✅ `Ability` column (`OnDeath` / `Split` / `RandomShots` parsing) + `Layers`
