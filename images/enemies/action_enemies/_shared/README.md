@@ -1,8 +1,7 @@
 # Shared action-enemy art
 
-## Creep (blood puddle) — DEFERRED, currently unused
-No enemy leaves creep anymore (the Gusher fires random shots instead), so the
-creep system isn't being built yet. If you still want to park the blood-puddle
-sheet here for a future creep-using enemy, drop it as `creep_sheet.png` and I'll
-slice it to `creep_puddle_0.png`, … when that enemy exists. Otherwise this folder
-can stay empty.
+## Creep (blood puddle) — saved for later
+The Gusher fires random shots, not creep, so the creep system isn't built yet —
+but it's **kept for a future enemy** that will create creep. Drop the blood-puddle
+sheet here as `creep_sheet.png` to park the art; I'll slice it to
+`creep_puddle_0.png`, … and build the creep hazard when that enemy lands.

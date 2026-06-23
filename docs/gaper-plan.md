@@ -137,10 +137,11 @@ Details:
 - Authored via an `Ability` keyword, e.g. `RandomShots(count=1)`; the looping
   `gush` layer is the visual.
 
-### 2e. Creep hazard (deferred — no current user)
-The Gusher no longer leaves creep, so nothing on the roster needs it. The design
-(persistent `{pos,radius,dmg,interval,life}` floor zones drawn with the provided
-puddle sprites) and the art are **parked** for a future enemy; not built now.
+### 2e. Creep hazard (saved for later)
+The Gusher fires random shots instead of leaving creep, so nothing on the current
+roster needs it — but creep is **planned for a future enemy**. The design
+(persistent `{pos,radius,dmg,interval,life}` floor zones drawn with the puddle
+sprites) and art are parked; build it when that enemy is added.
 
 ---
 
