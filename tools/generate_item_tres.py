@@ -146,6 +146,18 @@ def _int(tok, default=0):
         return default
 
 
+def _usable_uses(type_str, kind):
+    # Uses-before-destroyed for a USABLE item, read from the Type cell's optional
+    # count ("Usable, 3" -> 3). Bare "Usable" defaults to 1; non-usable items are
+    # infinite (-1). Mirrors how "Charged, N" carries its charge cost.
+    if kind != KIND["usable"]:
+        return -1
+    parts = [p.strip() for p in str(type_str or "").split(",")]
+    if len(parts) > 1 and parts[1].isdigit():
+        return max(1, int(parts[1]))
+    return 1
+
+
 def _kv(tokens):
     """Split tokens into positional list and key=value dict."""
     pos, kv = [], {}
@@ -447,8 +459,10 @@ def parse_item(row):
         "stat_bonuses": {},
         "scaling": [],
     }
-    # USABLE pills are one-shot; everything else is infinite-use.
-    fields["max_uses"] = 1 if fields["kind"] == KIND["usable"] else -1
+    # USABLE pills are spent on use. The count comes from the Type cell:
+    # "Usable, 3" -> 3 uses before the item is destroyed; bare "Usable" -> 1.
+    # Everything else is infinite-use (-1).
+    fields["max_uses"] = _usable_uses(row.get("Type", ""), fields["kind"])
     raw = str(row.get("Effect") or "").strip()
     label = fields["display_name"]
 
