@@ -368,8 +368,10 @@ func _ready() -> void:
 				GameState.deck.append(CardInstance.from_data(iw))
 		if enemies_to_spawn.is_empty():
 			# Default test fight has one of each behavior so movement +
-			# projectiles can be observed without setup.
-			enemies_to_spawn = [&"walker", &"shooter"]
+			# projectiles + separation can be observed without setup. Uses real
+			# (art-backed) enemies rather than the weight-0 walker/shooter
+			# placeholders: gaper = chaser, spitter = kiter, horf = stationary.
+			enemies_to_spawn = [&"gaper", &"spitter", &"horf"]
 
 	# Common setup (both modes): player actor, loadout, slot bar, HUD.
 	_init_player()
@@ -1039,6 +1041,47 @@ func _process_enemies(delta: float) -> void:
 		inst.pos.y = clampf(inst.pos.y, inst.data.size, ARENA_H - inst.data.size)
 	if not extra_spawns.is_empty():
 		enemies.append_array(extra_spawns)
+	# Spread enemies apart so they never stack into a single point (Isaac-style
+	# crowd behaviour): a positional separation pass runs after everyone has moved.
+	_resolve_enemy_separation()
+
+# Push overlapping enemies apart so the crowd spreads around the player instead of
+# piling onto one spot. There are no interior walls to path around, so on an open
+# arena this flocking-style separation is what keeps them from bunching up. Every
+# enemy participates (including stationary ones, which are shoved out of overlaps
+# but otherwise never move); each overlapping pair gives equal ground. Run a few
+# relaxation iterations so chains of three-plus settle in one frame. O(n^2) over a
+# small (<= MAX_ENEMIES) cast, so the cost is negligible.
+func _resolve_enemy_separation() -> void:
+	var n: int = enemies.size()
+	if n < 2:
+		return
+	for _iter in 2:
+		for i in range(n):
+			var a: Dictionary = enemies[i]
+			if not a.actor.is_alive():
+				continue
+			for j in range(i + 1, n):
+				var b: Dictionary = enemies[j]
+				if not b.actor.is_alive():
+					continue
+				var min_dist: float = a.data.size + b.data.size
+				var d: Vector2 = b.pos - a.pos
+				var dist: float = d.length()
+				if dist >= min_dist:
+					continue
+				var push: Vector2
+				if dist > 0.001:
+					push = (d / dist) * ((min_dist - dist) * 0.5)
+				else:
+					# Perfectly coincident — shove apart along a random axis.
+					push = Vector2.RIGHT.rotated(_rng.randf() * TAU) * (min_dist * 0.5)
+				a.pos -= push
+				b.pos += push
+	# Re-clamp into the arena after the shoves so nobody is pushed through a wall.
+	for inst in enemies:
+		inst.pos.x = clampf(inst.pos.x, inst.data.size, ARENA_W - inst.data.size)
+		inst.pos.y = clampf(inst.pos.y, inst.data.size, ARENA_H - inst.data.size)
 
 # Weighted on-death transform: when an enemy with an on-death table dies, spawn
 # the rolled enemy at its position (once). Returns the new enemy dict(s).
@@ -1138,21 +1181,23 @@ func _process_shooter(inst: Dictionary, delta: float) -> void:
 	var data: ActionEnemyData = inst.data
 	var to_player: Vector2 = player_pos - inst.pos
 	var dist: float = to_player.length()
-	# Standoff (preferred_distance): the enemy flees when the player is nearer than
-	# this and otherwise holds still, so it stops moving as long as it has at least
-	# this much space. It only closes in when it's out of firing range entirely.
+	var dir: Vector2 = to_player.normalized() if dist > 0.0 else Vector2.RIGHT
+	# Standoff (preferred_distance): the distance the shooter actively tries to
+	# hold from the player. Rather than freezing to fire, it keeps repositioning to
+	# stay near this range — backing away (still shooting) when the player chases it
+	# in, and drifting back toward the player when it has too much room or is out of
+	# firing range. It only idles inside a small dead-band right at the ideal range,
+	# so it never plants itself to charge a shot.
 	var standoff: float = data.preferred_distance
 	if standoff <= 0.0:
 		standoff = data.size + PLAYER_RADIUS
-	var shoot_range: float = data.max_attack_range()
-	var approach_margin := 24.0
-	if dist < standoff:
-		# Too close — retreat away from the player.
-		inst.pos -= to_player.normalized() * data.move_speed * delta
-	elif dist > shoot_range - approach_margin:
-		# Out of firing range — close in until it can shoot.
-		inst.pos += to_player.normalized() * data.move_speed * delta
-	# Otherwise (standoff .. shoot range) it holds position and fires.
+	var deadband := 10.0
+	if dist < standoff - deadband:
+		# Crowded — flee away from the player (attacks still fire below).
+		inst.pos -= dir * data.move_speed * delta
+	elif dist > standoff + deadband:
+		# Too much space (or out of firing range) — drift back to ideal range.
+		inst.pos += dir * data.move_speed * delta
 	_enemy_update_attacks(inst, delta)
 
 func _process_stationary(inst: Dictionary, delta: float) -> void:
@@ -3578,8 +3623,13 @@ func _draw() -> void:
 		draw_circle(p["pos"], pr * prog, fill)                          # growing core
 		draw_arc(p["pos"], pr, 0.0, TAU, 28, SPAWN_TELEGRAPH_COLOR, 2.0)  # fixed outline
 
-	# Enemies
-	for inst in enemies:
+	# Enemies, painted back-to-front by Y so that when they bunch up the ones
+	# higher on screen (smaller y, "further" from the camera) are drawn first and
+	# sit behind the ones lower down — never layered on top of a closer enemy.
+	# A sorted snapshot keeps the live `enemies` order (and its indices) untouched.
+	var draw_order: Array = enemies.duplicate()
+	draw_order.sort_custom(func(a, b): return a.pos.y < b.pos.y)
+	for inst in draw_order:
 		if not inst.actor.is_alive():
 			continue
 		var data: ActionEnemyData = inst.data
