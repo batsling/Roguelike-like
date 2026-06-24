@@ -85,3 +85,22 @@ func test_roll_on_death_empty_when_no_table() -> void:
 	var horf: ActionEnemyData = load(HORF_PATH)
 	var rng := RandomNumberGenerator.new()
 	assert_eq(horf.roll_on_death(rng), &"", "no on-death table -> empty")
+
+func test_gaper_layers_and_directional_anims() -> void:
+	var g: ActionEnemyData = load("res://data/action_enemies/gaper.tres")
+	assert_eq(Array(g.layer_names), [&"body", &"head"], "body + head layers")
+	assert_true(g.directional, "Gaper is directional")
+	# Facing-resolved clips exist for the body, both vert and side.
+	assert_false(g.resolve_anim(&"body", &"walk", &"vert").is_empty())
+	assert_false(g.resolve_anim(&"body", &"walk", &"side").is_empty())
+	# Head is non-directional; attack/gape resolves regardless of facing.
+	assert_false(g.resolve_anim(&"head", &"attack", &"vert").is_empty())
+	assert_false(g.resolve_anim(&"head", &"idle", &"side").is_empty())
+	# body.idle has no _side variant -> falls back to body.idle.
+	assert_false(g.resolve_anim(&"body", &"idle", &"side").is_empty())
+
+func test_horf_single_layer_resolves() -> void:
+	# Single-layer enemy: empty layer name, un-prefixed anims still resolve.
+	var horf: ActionEnemyData = load(HORF_PATH)
+	assert_false(horf.resolve_anim(&"", &"idle", &"vert").is_empty())
+	assert_false(horf.resolve_anim(&"", &"attack", &"side").is_empty())

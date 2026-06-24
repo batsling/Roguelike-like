@@ -629,9 +629,15 @@ func _make_enemy_inst(data: ActionEnemyData, pos: Vector2) -> Dictionary:
 		"actor": _make_enemy_actor(data),
 		"pos": pos,
 		"cooldown": 0.0,
-		"anim": &"idle",
-		"anim_t": 0.0,
 		"knockback": Vector2.ZERO,
+		# Animation state (per-layer): facing, flip, movement, attack timer, and
+		# la = {layer: {base, t}}. Populated lazily by _advance_enemy_anim.
+		"facing": &"vert",
+		"flip": false,
+		"moving": false,
+		"_ppos": pos,
+		"attack_t": 0.0,
+		"la": {},
 	}
 
 # Tick telegraphed spawns; materialise each into a live enemy once its warning
@@ -1084,6 +1090,7 @@ func _process_walker(inst: Dictionary, delta: float) -> void:
 		inst.pos += to_player.normalized() * data.move_speed * delta
 	inst.cooldown = maxf(0.0, inst.cooldown - delta)
 	if dist <= data.attack_range and inst.cooldown <= 0.0:
+		_enemy_trigger_attack(inst)   # gape on contact (Gaper)
 		_enemy_hit_player(inst)
 		inst.cooldown = data.attack_cooldown
 
@@ -1155,7 +1162,7 @@ func _enemy_update_ranged_attack(inst: Dictionary, delta: float, dist: float) ->
 		# Begin the wind-up: show the attack animation as a warning.
 		inst["winding"] = true
 		inst["windup_t"] = 0.0
-		_play_enemy_anim(inst, &"attack")
+		_enemy_trigger_attack(inst)
 
 # Playback length of an animation in seconds, or 0 if the enemy lacks it.
 func _anim_duration(data: ActionEnemyData, anim: StringName) -> float:
@@ -1201,52 +1208,90 @@ func _enemy_update_random_shots(inst: Dictionary, delta: float) -> void:
 	if cd <= 0.0:
 		for _i in maxi(1, inst.data.random_shots):
 			_enemy_fire_random(inst)
-		_play_enemy_anim(inst, &"attack")
+		_enemy_trigger_attack(inst)
 		cd = inst.data.attack_cooldown
 	inst["shot_cd"] = cd
 
 # --- Enemy frame animation -------------------------------------------------
 
-# Switch an enemy to animation `anim` (no-op if it has no such anim or is
-# already playing it). Resets the playhead.
-func _play_enemy_anim(inst: Dictionary, anim: StringName) -> void:
-	if inst.get("anim", &"") == anim:
-		return
-	if inst.data.get_anim(anim).is_empty():
-		return
-	inst["anim"] = anim
-	inst["anim_t"] = 0.0
+# --- Per-layer, directional animation -------------------------------------
+# Each enemy plays a logical base anim per layer (walk/idle/attack), resolved to
+# a concrete clip by facing (vert / side) via ActionEnemyData.resolve_anim, with
+# `walk_side` mirrored when moving left. Composite enemies (body + head) stack
+# their layers at offsets. State lives on the inst dict:
+#   facing/flip, moving, _ppos, attack_t, and la = {layer: {base, t}}.
 
-# Advance the playhead; a finished `once` animation falls back to idle.
+# Which layer shows the attack/gape: the head if present, else the primary layer.
+func _attack_layer(inst: Dictionary) -> StringName:
+	for L in inst.data.layers():
+		if L.name == &"head":
+			return &"head"
+	return inst.data.layers()[0].name
+
+# Logical base animation for a layer this frame.
+func _layer_base(inst: Dictionary, layer: StringName) -> StringName:
+	if layer == &"gush":
+		return &"spew"
+	var attacking: bool = float(inst.get("attack_t", 0.0)) > 0.0 and layer == _attack_layer(inst)
+	if layer == &"head":
+		return &"attack" if attacking else &"idle"
+	# body / single layer
+	if attacking:
+		return &"attack"
+	return &"walk" if inst.get("moving", false) else &"idle"
+
+# Trigger an attack/gape on the relevant layer for the length of its clip.
+func _enemy_trigger_attack(inst: Dictionary) -> void:
+	var a: Dictionary = inst.data.resolve_anim(_attack_layer(inst), &"attack", inst.get("facing", &"vert"))
+	if a.is_empty():
+		return
+	inst["attack_t"] = float((a["frames"] as Array).size()) / maxf(0.001, float(a["fps"]))
+
+# Update facing (vert / side + flip) from this frame's movement; keep the last
+# facing while stationary.
+func _enemy_update_facing(inst: Dictionary) -> void:
+	var mv: Vector2 = inst.pos - inst.get("_ppos", inst.pos)
+	inst["_ppos"] = inst.pos
+	inst["moving"] = mv.length() > 0.5
+	if inst["moving"]:
+		if absf(mv.y) >= absf(mv.x):
+			inst["facing"] = &"vert"
+			inst["flip"] = false
+		else:
+			inst["facing"] = &"side"
+			inst["flip"] = mv.x < 0.0
+
+# Advance each layer's playhead; the attack base auto-reverts when attack_t ends.
 func _advance_enemy_anim(inst: Dictionary, delta: float) -> void:
-	var data: ActionEnemyData = inst.data
-	if not data.has_anims():
+	if not inst.data.has_anims():
 		return
-	var a: Dictionary = data.get_anim(inst.get("anim", &"idle"))
-	if a.is_empty():
-		_play_enemy_anim(inst, &"idle")
-		return
-	var t: float = float(inst.get("anim_t", 0.0)) + delta
-	var frames: Array = a["frames"]
-	var dur: float = float(frames.size()) / maxf(0.001, float(a["fps"]))
-	if not bool(a["loop"]) and t >= dur:
-		_play_enemy_anim(inst, &"idle")
-		return
-	inst["anim_t"] = t
+	_enemy_update_facing(inst)
+	if float(inst.get("attack_t", 0.0)) > 0.0:
+		inst["attack_t"] = float(inst["attack_t"]) - delta
+	var la: Dictionary = inst.get("la", {})
+	for L in inst.data.layers():
+		var base: StringName = _layer_base(inst, L.name)
+		var e = la.get(L.name)
+		if e == null:
+			la[L.name] = {"base": base, "t": 0.0}
+		elif e["base"] != base:
+			e["base"] = base
+			e["t"] = 0.0
+		else:
+			e["t"] = float(e["t"]) + delta
+	inst["la"] = la
 
-# The texture to draw this frame, or null when the enemy has no usable anim
-# (callers fall back to a colored circle).
-func _enemy_current_frame(inst: Dictionary) -> Texture2D:
-	var data: ActionEnemyData = inst.data
-	if not data.has_anims():
-		return null
-	var a: Dictionary = data.get_anim(inst.get("anim", &"idle"))
+# Current texture for a layer, or null. `out_flip` not used (read inst.flip).
+func _layer_current_tex(inst: Dictionary, layer: StringName) -> Texture2D:
+	var e = inst.get("la", {}).get(layer)
+	var base: StringName = e["base"] if e != null else _layer_base(inst, layer)
+	var a: Dictionary = inst.data.resolve_anim(layer, base, inst.get("facing", &"vert"))
 	if a.is_empty():
-		a = data.get_anim(&"idle")
-	if a.is_empty() or (a["frames"] as Array).is_empty():
 		return null
 	var frames: Array = a["frames"]
-	var idx: int = int(float(inst.get("anim_t", 0.0)) * float(a["fps"]))
+	if frames.is_empty():
+		return null
+	var idx: int = int(float(e["t"] if e != null else 0.0) * float(a["fps"]))
 	if bool(a["loop"]):
 		idx = idx % frames.size()
 	else:
@@ -3453,13 +3498,30 @@ func _draw() -> void:
 		if not inst.actor.is_alive():
 			continue
 		var data: ActionEnemyData = inst.data
-		var frame: Texture2D = _enemy_current_frame(inst)
 		var draw_r: float = data.size
-		if frame != null:
-			# Sprite drawn a touch larger than the hitbox, like the player token.
+		var drew_sprite := false
+		if data.has_anims():
+			# Composite layers back-to-front at a shared scale (so the head keeps
+			# its size relative to the body), each at its offset; mirror `side`.
+			var face_side: bool = inst.get("flip", false) and inst.get("facing", &"") == &"side"
+			for L in data.layers():
+				var tex: Texture2D = _layer_current_tex(inst, L.name)
+				if tex == null:
+					continue
+				var dim: float = maxf(1.0, float(maxi(tex.get_width(), tex.get_height())))
+				var s: float = (data.size * 2.0 * ENEMY_SPRITE_SCALE) / dim
+				var w: float = tex.get_width() * s
+				var h: float = tex.get_height() * s
+				var off: Vector2 = L.offset * s
+				var cx: float = inst.pos.x + off.x
+				var cy: float = inst.pos.y + off.y
+				if face_side:
+					draw_texture_rect(tex, Rect2(cx + w * 0.5, cy - h * 0.5, -w, h), false)
+				else:
+					draw_texture_rect(tex, Rect2(cx - w * 0.5, cy - h * 0.5, w, h), false)
+				drew_sprite = true
+		if drew_sprite:
 			draw_r = data.size * ENEMY_SPRITE_SCALE
-			var rect := Rect2(inst.pos - Vector2(draw_r, draw_r), Vector2(draw_r * 2.0, draw_r * 2.0))
-			draw_texture_rect(frame, rect, false)
 		else:
 			draw_circle(inst.pos, data.size, data.color)
 		# HP bar above

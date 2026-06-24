@@ -253,7 +253,9 @@ running game.
 3. ✅ Gaper/Pacer/Gusher rows authored — **render as colored circles** until art
    is wired. Mechanics (chase → transform → wander + spew) work now.
 4. ⬜ Dying state + death animation (general win — Horf benefits too).
-5. ⬜ Directional rendering + composite (body/head/gush) layers (importer
-   expansion + facing/flip + layer draw) — needs the body sheet direction
-   mapping. Then slice the art and drop the circle fallback. Heaviest piece.
-   (Creep system deferred until an enemy needs it.)
+5. ✅ Directional rendering + composite (body/head) layers: importer slices the
+   sheets (LAYER_SLICES), runtime stacks layers at offsets, picks vert/side
+   facing from movement, mirrors `side`. Gaper/Pacer/Gusher now sprite-rendered.
+   **Unverified in Godot** — offsets/scale & the side-flip (negative-width
+   Rect2) may need a small in-engine nudge. Gusher `gush` layer still pending
+   (frame layout unknown). (Creep deferred.)
