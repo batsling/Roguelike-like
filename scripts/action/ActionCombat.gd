@@ -3514,13 +3514,18 @@ func _draw() -> void:
 				var w: float = tex.get_width() * s
 				var h: float = tex.get_height() * s
 				var off: Vector2 = L.offset * s
-				var cx: float = inst.pos.x + off.x
-				var cy: float = inst.pos.y + off.y
 				if face_side:
-					draw_texture_rect(tex, Rect2(cx + w * 0.5, cy - h * 0.5, -w, h), false)
+					# Mirror in place about the enemy centre via a real transform
+					# (negative-size Rect2 flipping is unreliable). Keep ARENA_TOP.
+					draw_set_transform(Vector2(0, ARENA_TOP) + inst.pos + Vector2(-off.x, off.y),
+						0.0, Vector2(-1.0, 1.0))
+					draw_texture_rect(tex, Rect2(-w * 0.5, -h * 0.5, w, h), false)
 				else:
-					draw_texture_rect(tex, Rect2(cx - w * 0.5, cy - h * 0.5, w, h), false)
+					draw_texture_rect(tex,
+						Rect2(inst.pos.x + off.x - w * 0.5, inst.pos.y + off.y - h * 0.5, w, h), false)
 				drew_sprite = true
+			if face_side:
+				draw_set_transform(Vector2(0, ARENA_TOP), 0.0, Vector2.ONE)  # restore base after flips
 		if drew_sprite:
 			draw_r = data.size * ENEMY_SPRITE_SCALE
 		else:
