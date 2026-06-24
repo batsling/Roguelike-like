@@ -268,19 +268,23 @@ func _cell(border: Color, on_click: Callable) -> Dictionary:
 	panel.add_child(vb)
 	return {"panel": panel, "vbox": vb}
 
-func _tex_rect(tex: Texture2D, size: int) -> TextureRect:
+func _tex_rect(tex: Texture2D, size: int, crisp: bool = false) -> TextureRect:
 	var tr := TextureRect.new()
 	tr.texture = tex
 	tr.custom_minimum_size = Vector2(size, size)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# Nearest-neighbour keeps low-res pixel-art sprites (enemies, etc.) sharp
+	# instead of the blurry linear default when scaled to the grid size.
+	if crisp:
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	return tr
 
 # Subtle, slightly-lighter rounded backing panel sized for `size`px art. Many
 # item sprites are dark or transparent and wash out against the near-black cell;
 # the backdrop makes every icon pop. `border` tints it toward the item rarity.
 const IMAGE_BG := Color(0.16, 0.17, 0.22, 1.0)
-func _image_with_bg(tex: Texture2D, size: int, border: Color) -> Control:
+func _image_with_bg(tex: Texture2D, size: int, border: Color, crisp: bool = false) -> Control:
 	var pad := 8
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
@@ -291,7 +295,7 @@ func _image_with_bg(tex: Texture2D, size: int, border: Color) -> Control:
 	sb.border_color = Color(border.r, border.g, border.b, 0.45)
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var tr := _tex_rect(tex, size)
+	var tr := _tex_rect(tex, size, crisp)
 	panel.add_child(tr)
 	return panel
 
@@ -1449,9 +1453,17 @@ func _enemy_mode_label(mode: String) -> String:
 	return "Action" if mode == "action" else "Deckbuilder"
 
 # A representative still for an action enemy, which renders from frame anims and
-# carries no single `image`: prefer an idle body frame, else the first frame of
-# any animation. Returns null when the enemy is a placeholder with no art.
+# carries no single `image`. Composite enemies (e.g. the Gaper = body + head)
+# slice their layers into separate frames, so a lone animation frame shows only
+# part of the creature. Prefer the artist-dropped full-body still under
+# images/enemies/action_enemies/<Name>/<id>_full.png (then <id>_idle.png), and
+# only fall back to an idle animation frame when no still exists.
 func _action_enemy_icon(ae: ActionEnemyData) -> Texture2D:
+	var dir := "res://images/enemies/action_enemies/%s" % ae.display_name
+	for fname in ["%s_full.png" % ae.id, "%s_idle.png" % ae.id]:
+		var path := "%s/%s" % [dir, fname]
+		if ResourceLoader.exists(path):
+			return load(path)
 	if ae.image != null:
 		return ae.image
 	for nm in [&"body.idle", &"idle", &"body.idle_side"]:
@@ -1467,8 +1479,8 @@ func _enemy_icon(entry: Dictionary) -> Texture2D:
 		return _action_enemy_icon(entry["data"])
 	return entry["data"].image
 
-# Bordered "?" swatch for art-less enemies (the dev-only action walker/shooter),
-# matching the backdrop of _image_with_bg so the grid stays uniform.
+# Bordered "?" swatch for the occasional enemy still missing art, matching the
+# backdrop of _image_with_bg so the grid stays uniform.
 func _enemy_placeholder(size: int, border: Color) -> Control:
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
@@ -1493,7 +1505,7 @@ func _enemy_cell(entry: Dictionary) -> Control:
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	var tex := _enemy_icon(entry)
 	if tex != null:
-		vb.add_child(_image_with_bg(tex, 96, dc))
+		vb.add_child(_image_with_bg(tex, 96, dc, true))
 	else:
 		vb.add_child(_enemy_placeholder(96, dc))
 	var nm := _label(en.display_name, dc, 13, true, true)
@@ -1510,7 +1522,7 @@ func _show_enemy_detail(entry: Dictionary) -> void:
 	var dc := _enemy_difficulty_color(int(en.difficulty))
 	var tex := _enemy_icon(entry)
 	if tex != null:
-		var img := _image_with_bg(tex, 110, dc)
+		var img := _image_with_bg(tex, 110, dc, true)
 		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(img)
 	else:
