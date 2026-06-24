@@ -87,9 +87,9 @@ func test_spitter_shooter_with_charge() -> void:
 	assert_eq(sp.behavior, ActionEnemyData.BehaviorKind.SHOOTER,
 		"follows but kites away when crowded")
 	assert_eq(sp.move_speed, 70.0)
-	# Holds ~3 player sizes from the player, repositioning to keep that range
-	# while it fires (Stop Distance 3 on the sheet -> 3 * PLAYER_RADIUS px).
-	assert_almost_eq(sp.preferred_distance, 3.0 * 18.0, 0.01, "standoff = 3 player sizes")
+	# Holds ~6 player sizes from the player, repositioning to keep that range
+	# while it fires (Stop Distance 6 on the sheet -> 6 * PLAYER_RADIUS px).
+	assert_almost_eq(sp.preferred_distance, 6.0 * 18.0, 0.01, "standoff = 6 player sizes")
 	assert_eq(sp.weight, 2)
 	# One ranged attack: a 6-dmg bolt opening fire from ~half a screen, telegraphed.
 	var atks: Array = sp.attacks()
