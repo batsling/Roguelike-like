@@ -89,7 +89,7 @@ func test_gusher_blood_gush_layer() -> void:
 	var spew: Dictionary = gusher.resolve_anim(&"gush", &"spew", &"vert")
 	assert_false(spew.is_empty(), "gush.spew animation resolves")
 	assert_true(spew["loop"], "gush loops while alive")
-	assert_gt((spew["frames"] as Array).size(), 1, "gush has multiple frames")
+	assert_eq((spew["frames"] as Array).size(), 10, "gush has 10 animation frames")
 	# The composite scales by base_dim (the body), and the gush frames are larger,
 	# so the blood spills OUTSIDE the body/hitbox instead of being capped to it.
 	assert_gt(gusher.base_dim, 0.0, "gusher scales by a base frame size")

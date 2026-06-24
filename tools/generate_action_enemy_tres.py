@@ -58,9 +58,11 @@ BEHAVIOR = {"walker": 0, "shooter": 1, "stationary": 2, "pacer": 3}
 _GAPER_VERT = [(0, 1), (0, 2), (0, 3), (1, 0), (1, 1), (1, 2), (1, 3), (2, 0), (2, 1)]
 _GAPER_SIDE = [(2, 2), (2, 3), (3, 0), (3, 1), (3, 2), (3, 3), (4, 0), (4, 1), (4, 2), (4, 3)]
 _PACER_SIDE = [(2, 3), (3, 0), (3, 1), (3, 2), (3, 3), (4, 0), (4, 1), (4, 2), (4, 3)]
-# Gusher blood-geyser frames: 64px grid (3x3, last two cells empty), row-major,
-# dense -> sparse so the loop reads as a spurt that erupts then settles.
-_GUSH = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0)]
+# Gusher blood-geyser frames: 48px grid (4 wide), 10 frames in row-major order
+# (top-left -> bottom-right; cells 10-15 are empty). The gush erupts then settles.
+_GUSH = [(0, 0), (0, 1), (0, 2), (0, 3),
+         (1, 0), (1, 1), (1, 2), (1, 3),
+         (2, 0), (2, 1)]
 
 def _body_anims(sheet, vert, side, side_idle=None):
     a = [
@@ -92,10 +94,10 @@ LAYER_SLICES = {
         {"layer": "body", "offset": (0.0, 0.0),
          "anims": _body_anims("Gusher/gusher_body_sheet.png", _GAPER_VERT, _PACER_SIDE, side_idle=(2, 2))},
         # Non-directional blood geyser, drawn over the top of the body, looping
-        # while alive (see images/.../Gusher/README.md). 64px cells (2x the body's
+        # while alive (see images/.../Gusher/README.md). 48px cells (1.5x the body's
         # 32px) so the gush spills beyond the body — see base_dim in write_tres.
         {"layer": "gush", "offset": (0.0, -16.0), "anims": [
-            ("spew", 10.0, True, ("sheet", "Gusher/gusher_gush_sheet.png", 64, _GUSH)),
+            ("spew", 10.0, True, ("sheet", "Gusher/gusher_gush_sheet.png", 48, _GUSH)),
         ]},
     ],
 }
