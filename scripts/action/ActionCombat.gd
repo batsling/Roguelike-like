@@ -1326,15 +1326,30 @@ func _enemy_update_facing(inst: Dictionary) -> void:
 			inst["facing"] = &"side"
 			inst["flip"] = mv.x < 0.0
 
+# Next bob phase (>= current) at which the SQUASH bob is at its lowest point —
+# most squashed, i.e. sin(phase * SQUASH_FREQ) == -1, at phase*FREQ == 3*PI/2
+# (mod TAU). A stopped enemy eases here and holds.
+func _next_bob_rest_phase(phase: float) -> float:
+	var theta: float = phase * SQUASH_FREQ
+	var low := 1.5 * PI
+	var target: float = low + ceilf((theta - low) / TAU) * TAU
+	if target < theta:
+		target += TAU
+	return target / SQUASH_FREQ
+
 # Advance each layer's playhead; the attack base auto-reverts when attack_t ends.
 func _advance_enemy_anim(inst: Dictionary, delta: float) -> void:
 	if not inst.data.has_anims():
 		return
 	_enemy_update_facing(inst)
-	# Drive procedural motion styles (the SQUASH bob) only while actually moving,
-	# so a stationary enemy rests at neutral scale.
+	# Drive the SQUASH bob: advance it while moving, otherwise roll it forward to
+	# the lowest point of the cycle (most squashed) and rest there — so a stopped
+	# enemy settles into a crouch and resumes the walk from that beat.
+	var bob: float = float(inst.get("bob_phase", 0.0))
 	if inst.get("moving", false):
-		inst["bob_phase"] = float(inst.get("bob_phase", 0.0)) + delta
+		inst["bob_phase"] = bob + delta
+	else:
+		inst["bob_phase"] = minf(bob + delta, _next_bob_rest_phase(bob))
 	if float(inst.get("attack_t", 0.0)) > 0.0:
 		inst["attack_t"] = float(inst["attack_t"]) - delta
 	var la: Dictionary = inst.get("la", {})
@@ -3580,9 +3595,11 @@ func _draw() -> void:
 			var sx := 1.0
 			var sy := 1.0
 			var tint := Color.WHITE
-			if data.motion_style == ActionEnemyData.MotionStyle.SQUASH and inst.get("moving", false):
+			if data.motion_style == ActionEnemyData.MotionStyle.SQUASH:
 				# Stretch up / squash down on Y, anchored at the feet; slight inverse
-				# X keeps the volume reading constant (Brotato-style jelly walk).
+				# X keeps the volume reading constant (Brotato-style jelly walk). The
+				# bob is held at its lowest point while stopped (see _advance_enemy_anim),
+				# so a halted enemy rests in a crouch and charges up from there.
 				var wave: float = sin(float(inst.get("bob_phase", 0.0)) * SQUASH_FREQ)
 				sy = 1.0 + SQUASH_AMP * wave
 				sx = 1.0 - SQUASH_AMP * 0.5 * wave
