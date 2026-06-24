@@ -46,11 +46,19 @@ XLSX_PATH = os.path.join(SCRIPT_DIR, "Roguelikes.xlsx")
 
 HEADERS = [
     "Name", "Id", "Difficulty", "Weight", "Game", "Tag",
-    "Min HP", "Max HP", "Move Speed", "Size", "Behavior", "Preferred Distance",
+    "Min HP", "Max HP", "Move Speed", "Size", "Behavior", "Stop Distance",
     "Attacks",
     "Color", "Directional", "Motion", "Attack Style", "Layers", "Animations", "Ability",
 ]
 
+# `Size` and `Stop Distance` are both in PLAYER SIZES (1 = the player's size),
+# so they read at a glance: Size 1 = as big as the player; Stop Distance 4 = the
+# enemy keeps ~4 player-widths of space. The importer multiplies each by the
+# player radius to get pixels.
+#   - Stop Distance (Shooters): the enemy flees when the player is closer than
+#     this and otherwise holds still — it stops moving as long as it has at least
+#     this much room. It only closes in when fully out of firing range.
+#
 # `Motion` selects a reusable procedural animation style layered on the frame
 # art while the enemy moves (ActionEnemyData.MotionStyle / handled in
 # ActionCombat._draw). Blank/"none" = frames only; "squash" = a Y-axis
@@ -91,7 +99,7 @@ ENEMIES = [
         "Name": "Horf", "Id": "horf", "Difficulty": "Low", "Weight": 2,
         "Game": "The Binding of Isaac", "Tag": "",
         "Min HP": 25, "Max HP": 25, "Move Speed": 0, "Size": 1,
-        "Behavior": "Stationary", "Preferred Distance": 0,
+        "Behavior": "Stationary", "Stop Distance": 0,
         "Attacks": "ranged dmg 6 cd 2.2 windup 0.35 range 480 speed 200 life 5",
         "Color": "0.8,0.1,0.1", "Directional": "No",
         "Layers": "", "Animations": "idle @ 4 loop ; attack @ 12 once grid 32x32",
@@ -101,7 +109,7 @@ ENEMIES = [
         "Name": "Gaper", "Id": "gaper", "Difficulty": "Low", "Weight": 2,
         "Game": "The Binding of Isaac", "Tag": "",
         "Min HP": 25, "Max HP": 25, "Move Speed": 90, "Size": 1,
-        "Behavior": "Walker", "Preferred Distance": 0,
+        "Behavior": "Walker", "Stop Distance": 0,
         "Attacks": "melee dmg 6 cd 1.0 range 40",
         "Color": "0.9,0.6,0.55", "Directional": "No",
         "Layers": "body @ 0,0 sheet Gaper/gaper_body_sheet.png cell 32 ; "
@@ -117,7 +125,7 @@ ENEMIES = [
         "Name": "Pacer", "Id": "pacer", "Difficulty": "Low", "Weight": 0,
         "Game": "The Binding of Isaac", "Tag": "",
         "Min HP": 25, "Max HP": 25, "Move Speed": 70, "Size": 1,
-        "Behavior": "Pacer", "Preferred Distance": 0,
+        "Behavior": "Pacer", "Stop Distance": 0,
         "Attacks": "melee dmg 6 cd 1.0 range 40",
         "Color": "0.85,0.5,0.5", "Directional": "No",
         "Layers": "body @ 0,0 sheet Pacer/pacer_body_sheet.png cell 32",
@@ -131,7 +139,7 @@ ENEMIES = [
         "Name": "Gusher", "Id": "gusher", "Difficulty": "Low", "Weight": 0,
         "Game": "The Binding of Isaac", "Tag": "",
         "Min HP": 25, "Max HP": 25, "Move Speed": 60, "Size": 1,
-        "Behavior": "Pacer", "Preferred Distance": 0,
+        "Behavior": "Pacer", "Stop Distance": 0,
         "Attacks": "melee dmg 6 cd 1.2 range 40 ; "
                    "ranged dmg 6 cd 1.2 speed 180 life 3 count 1 random",
         "Color": "0.7,0.1,0.1", "Directional": "No",
@@ -153,22 +161,24 @@ ENEMIES = [
         "Name": "Baby Alien", "Id": "baby_alien", "Difficulty": "Low", "Weight": 1,
         "Game": "Brotato", "Tag": "",
         "Min HP": 10, "Max HP": 15, "Move Speed": 70, "Size": 1,
-        "Behavior": "Walker", "Preferred Distance": 0,
+        "Behavior": "Walker", "Stop Distance": 0,
         "Attacks": "melee dmg 5 cd 1.0 range 40",
         "Color": "0.45,0.4,0.55", "Directional": "No", "Motion": "squash",
         "Layers": "", "Animations": "idle @ 4 loop",
         "Ability": "",
     },
     {
-        # Ranged kiter: a Shooter follows the player but retreats when crowded
-        # (Preferred Distance). It reuses the Baby Alien's squash jelly-walk, and
-        # adds the CHARGE attack style — it squeezes/expands on Y and reddens while
-        # winding up the 0.6s telegraph before spitting a 6-dmg bolt.
+        # Ranged kiter: a Shooter that opens fire from ~half a screen away (range
+        # 490 ≈ Horf) and holds still as long as the player keeps its distance,
+        # only fleeing when crowded within ~4 player sizes (Stop Distance 4). It
+        # reuses the Baby Alien's squash jelly-walk, and adds the CHARGE attack
+        # style — it squeezes/expands on Y and reddens while winding up the 0.6s
+        # telegraph before spitting a 6-dmg bolt.
         "Name": "Spitter", "Id": "spitter", "Difficulty": "Low", "Weight": 2,
         "Game": "Brotato", "Tag": "",
         "Min HP": 12, "Max HP": 16, "Move Speed": 70, "Size": 1,
-        "Behavior": "Shooter", "Preferred Distance": 200,
-        "Attacks": "ranged dmg 6 cd 1.8 windup 0.6 range 320 speed 260 life 2.5",
+        "Behavior": "Shooter", "Stop Distance": 4,
+        "Attacks": "ranged dmg 6 cd 1.8 windup 0.6 range 490 speed 260 life 2.5",
         "Color": "0.42,0.38,0.52", "Directional": "No",
         "Motion": "squash", "Attack Style": "charge",
         "Layers": "", "Animations": "idle @ 4 loop",
@@ -200,7 +210,7 @@ def main() -> int:
 
     widths = {"Name": 14, "Id": 12, "Game": 20, "Animations": 42,
               "Color": 14, "Behavior": 12, "Layers": 18, "Ability": 30,
-              "Attacks": 40, "Preferred Distance": 12, "Motion": 9,
+              "Attacks": 40, "Stop Distance": 12, "Motion": 9,
               "Attack Style": 11}
     for ci, name in enumerate(HEADERS, start=1):
         ws.column_dimensions[ws.cell(row=1, column=ci).column_letter].width = widths.get(name, 11)

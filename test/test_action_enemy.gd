@@ -87,13 +87,16 @@ func test_spitter_shooter_with_charge() -> void:
 	assert_eq(sp.behavior, ActionEnemyData.BehaviorKind.SHOOTER,
 		"follows but kites away when crowded")
 	assert_eq(sp.move_speed, 70.0)
-	assert_gt(sp.preferred_distance, 0.0, "keeps its distance")
+	# Stops moving while it has room; flees only inside ~4 player sizes (Stop
+	# Distance 4 on the sheet -> 4 * PLAYER_RADIUS px).
+	assert_almost_eq(sp.preferred_distance, 4.0 * 18.0, 0.01, "standoff = 4 player sizes")
 	assert_eq(sp.weight, 2)
-	# One ranged attack: a 6-dmg bolt with a visible wind-up.
+	# One ranged attack: a 6-dmg bolt opening fire from ~half a screen, telegraphed.
 	var atks: Array = sp.attacks()
 	assert_eq(atks.size(), 1)
 	assert_eq(int(atks[0]["kind"]), ActionEnemyData.AttackKind.RANGED)
 	assert_eq(int(atks[0]["damage"]), 6)
+	assert_gt(float(atks[0]["range"]), 480.0, "fires from about half a screen, like the Horf")
 	assert_gt(float(atks[0]["windup"]), 0.0, "telegraphs the spit")
 	# Reuses the squash motion style and the new charge attack style — both saved
 	# on the resource so other enemies can opt in.

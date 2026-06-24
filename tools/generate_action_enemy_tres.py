@@ -396,6 +396,8 @@ def build_composite(rec, eid, name, out_folder, layers, anims):
 
 def write_tres(rec, eid, name, anim_meta, frame_assets, layers_override=None, base_dim=0.0):
     size_px = float(rec["Size"]) * PLAYER_RADIUS
+    # Stop Distance is authored in player sizes (like Size); store it in pixels.
+    stop_px = float(rec.get("Stop Distance") or 0) * PLAYER_RADIUS
     difficulty = DIFFICULTY.get(str(rec["Difficulty"]).strip().lower(), 0)
     behavior = BEHAVIOR.get(str(rec["Behavior"]).strip().lower(), 0)
     motion = MOTION.get(str(rec.get("Motion") or "").strip().lower(), 0)
@@ -473,7 +475,7 @@ def write_tres(rec, eid, name, anim_meta, frame_assets, layers_override=None, ba
         f"attack_proj_lifetimes = PackedFloat32Array({a_lifetimes})",
         f"attack_proj_counts = PackedInt32Array({a_counts})",
         f"attack_random = PackedByteArray({a_random})",
-        f"preferred_distance = {_num(rec.get('Preferred Distance') or 0)}",
+        f"preferred_distance = {_num(stop_px)}",
         f"move_speed = {_num(rec['Move Speed'])}",
         f"size = {_num(size_px)}",
         f"behavior = {behavior}",

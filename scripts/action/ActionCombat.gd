@@ -292,6 +292,9 @@ const SQUASH_FREQ := 11.0
 const CHARGE_STRETCH := 0.22
 const CHARGE_SQUEEZE := 0.12
 const CHARGE_REDNESS := 0.65
+# Seconds for the charge telegraph to ease back to neutral after firing — a fast
+# but smooth relax into the walk/idle state (not an instant snap).
+const CHARGE_RECOVER := 0.18
 # A small decaying nudge applied when an enemy is hit (and a tiny recoil when it
 # fires). Total knockback distance ~ SPEED^2 / (2 * DECEL) ≈ 12px — a flutter,
 # not a lunge.
@@ -1135,16 +1138,21 @@ func _process_shooter(inst: Dictionary, delta: float) -> void:
 	var data: ActionEnemyData = inst.data
 	var to_player: Vector2 = player_pos - inst.pos
 	var dist: float = to_player.length()
-	var preferred: float = data.preferred_distance
-	if preferred <= 0.0:
-		preferred = data.max_attack_range() * 0.7
-	var margin := 30.0
-	if dist < preferred - margin:
-		# Too close — retreat away from player.
+	# Standoff (preferred_distance): the enemy flees when the player is nearer than
+	# this and otherwise holds still, so it stops moving as long as it has at least
+	# this much space. It only closes in when it's out of firing range entirely.
+	var standoff: float = data.preferred_distance
+	if standoff <= 0.0:
+		standoff = data.size + PLAYER_RADIUS
+	var shoot_range: float = data.max_attack_range()
+	var approach_margin := 24.0
+	if dist < standoff:
+		# Too close — retreat away from the player.
 		inst.pos -= to_player.normalized() * data.move_speed * delta
-	elif dist > preferred + margin:
-		# Too far — close in until in firing range.
+	elif dist > shoot_range - approach_margin:
+		# Out of firing range — close in until it can shoot.
 		inst.pos += to_player.normalized() * data.move_speed * delta
+	# Otherwise (standoff .. shoot range) it holds position and fires.
 	_enemy_update_attacks(inst, delta)
 
 func _process_stationary(inst: Dictionary, delta: float) -> void:
@@ -1181,11 +1189,13 @@ func _enemy_update_attacks(inst: Dictionary, delta: float) -> void:
 		inst["charge"] = clampf(float(inst["windup_t"]) / maxf(0.001, wind), 0.0, 1.0)
 		if float(inst["windup_t"]) >= wind:
 			inst["winding"] = false
-			inst["charge"] = 0.0
+			# Leave `charge` at its peak; it eases back down below (not a hard snap).
 			_enemy_fire_attack(inst, watk)
 			cd_arr[wi] = float(watk["cooldown"])
 		return
-	inst["charge"] = 0.0
+	# Not winding: ease any leftover charge back to neutral so the telegraph
+	# relaxes into the walk/idle state quickly but smoothly (no instant snap).
+	inst["charge"] = move_toward(float(inst.get("charge", 0.0)), 0.0, delta / CHARGE_RECOVER)
 
 	for i in atks.size():
 		cd_arr[i] = maxf(0.0, float(cd_arr[i]) - delta)
