@@ -68,3 +68,39 @@ func test_characters_tab_renders() -> void:
 	if Data.all_characters().size() > 0:
 		col._show_character_detail(Data.all_characters()[0])
 		assert_gt(col._detail_box.get_child_count(), 1, "character detail populated")
+
+func test_enemies_tab_renders_both_modes_and_detail_fills() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.ENEMIES)
+	# The bestiary merges deckbuilder + action enemies into one grid.
+	var total := Data.all_enemies().size() + Data.all_action_enemies().size()
+	assert_eq(col._grid.get_child_count(), total, "every enemy (both modes) shows")
+	# Mode filter narrows to a single schema.
+	col._enemies_mode = "deck"
+	col._refresh()
+	assert_eq(col._grid.get_child_count(), Data.all_enemies().size(), "deck mode filter applied")
+	col._enemies_mode = "action"
+	col._refresh()
+	assert_eq(col._grid.get_child_count(), Data.all_action_enemies().size(), "action mode filter applied")
+	# Detail panel fills for a deckbuilder enemy (intent pattern).
+	if Data.all_enemies().size() > 0:
+		col._show_enemy_detail({"data": Data.all_enemies()[0], "mode": "deck"})
+		assert_gt(col._detail_box.get_child_count(), 1, "deck enemy detail populated")
+	# ...and for an action enemy (attacks / behaviour).
+	if Data.all_action_enemies().size() > 0:
+		col._show_enemy_detail({"data": Data.all_action_enemies()[0], "mode": "action"})
+		assert_gt(col._detail_box.get_child_count(), 1, "action enemy detail populated")
+
+func test_enemies_difficulty_filter() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.ENEMIES)
+	col._enemies_diff = EnemyData.Difficulty.LOW
+	col._refresh()
+	var expected := 0
+	for e in Data.all_enemies():
+		if int(e.difficulty) == EnemyData.Difficulty.LOW:
+			expected += 1
+	for e in Data.all_action_enemies():
+		if int(e.difficulty) == EnemyData.Difficulty.LOW:
+			expected += 1
+	assert_eq(col._grid.get_child_count(), expected, "difficulty filter spans both modes")

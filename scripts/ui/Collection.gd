@@ -20,7 +20,7 @@ extends Control
 # Each content tab mirrors the HTML's search box, sort/filter controls, a
 # responsive card grid, and a detail side-panel that fills in on click.
 
-enum Tab { REFERENCE, ITEMS, CHARACTERS, CARDS, EVENTS, GAMES }
+enum Tab { REFERENCE, ITEMS, CHARACTERS, CARDS, EVENTS, GAMES, ENEMIES }
 
 const GAME_TYPE_NAMES := ["Action", "Strategy", "Deckbuilder", "Traditional"]
 # Completion filter for the Games tab: [label, key]. Keys drive _populate_games.
@@ -32,6 +32,11 @@ const ITEM_RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 const ITEM_KIND_NAMES := ["Passive", "Triggered", "Usable", "Weapon", "Scaling", "Pickup", "Charged"]
 const CARD_TYPE_NAMES := ["Attack", "Skill", "Power", "Dice", "Status", "Curse", "Training"]
 const CARD_RARITY_NAMES := ["Starter", "Common", "Uncommon", "Rare", "Legendary"]
+# EnemyData / ActionEnemyData share a Difficulty enum: LOW, MEDIUM, HIGH, BOSS.
+const ENEMY_DIFFICULTY_NAMES := ["Low", "Medium", "High", "Boss"]
+# Combat-mode filter for the Enemies tab: [label, key]. Keys drive _populate_enemies.
+const ENEMY_MODE_OPTIONS := [["All Modes", "all"], ["Deckbuilder", "deck"], ["Action", "action"]]
+const ACTION_BEHAVIOR_NAMES := ["Walker", "Shooter", "Stationary", "Pacer"]
 
 # Rarity palette shared by items (Common..Legendary) and, with a shifted
 # index, cards (Starter..Legendary handled separately below).
@@ -48,7 +53,7 @@ var _tab: int = Tab.GAMES
 var _ref_subtab: String = "statuses"
 
 # Per-tab control state.
-var _search := {"reference": "", "items": "", "characters": "", "cards": "", "events": "", "games": ""}
+var _search := {"reference": "", "items": "", "characters": "", "cards": "", "events": "", "games": "", "enemies": ""}
 var _games_sort: String = "name"      # name | year | beaten
 var _games_type: int = -1             # -1 = all, else GameType index
 var _games_status: String = "all"     # all | completed | uncompleted | amulet
@@ -61,6 +66,9 @@ var _cards_rarity: int = -1           # -1 = all, else CardRarity index
 var _events_sort: String = "name"     # name | rarity | game
 var _events_type: String = "all"      # all | <event_type>
 var _events_rarity: String = "all"    # all | common | uncommon | rare | legendary
+var _enemies_sort: String = "name"    # name | difficulty | game
+var _enemies_mode: String = "all"     # all | deck | action
+var _enemies_diff: int = -1           # -1 = all, else Difficulty index
 
 # Nodes rebuilt per refresh.
 var _content: VBoxContainer
@@ -161,6 +169,7 @@ func _build_shell() -> void:
 	_add_tab_button(tabs, Tab.ITEMS, "Items (%d)" % Data.all_items().size())
 	_add_tab_button(tabs, Tab.CARDS, "Cards (%d)" % Data.all_cards().size())
 	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events().size())
+	_add_tab_button(tabs, Tab.ENEMIES, "Enemies (%d)" % (Data.all_enemies().size() + Data.all_action_enemies().size()))
 	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters().size())
 	_add_tab_button(tabs, Tab.REFERENCE, "Reference")
 
@@ -203,6 +212,8 @@ func _refresh() -> void:
 			_build_cards()
 		Tab.EVENTS:
 			_build_events()
+		Tab.ENEMIES:
+			_build_enemies()
 
 # ------------------------------------------------------------------
 # Shared building blocks
@@ -387,6 +398,8 @@ func _populate() -> void:
 			_populate_cards()
 		Tab.EVENTS:
 			_populate_events()
+		Tab.ENEMIES:
+			_populate_enemies()
 
 # ------------------------------------------------------------------
 # Games tab — the roguelike catalog (influence graph), with lifetime
@@ -1329,6 +1342,311 @@ func _sub_event_text(s: String) -> String:
 	if ch != null and String(ch.display_name) != "":
 		nm = String(ch.display_name)
 	return s.replace("{name}", nm).replace("{storedCard}", "Iron Wave")
+
+# ------------------------------------------------------------------
+# Enemies tab — the bestiary. Merges the two enemy schemas into one grid:
+# deckbuilder EnemyData (intent patterns, abilities, splits) and action-mode
+# ActionEnemyData (attacks, behaviour, frame art). Each cell carries a
+# difficulty-tinted border and a mode badge; the detail panel branches on the
+# resource type. Mirrors the HTML collection's Enemies view.
+# ------------------------------------------------------------------
+
+func _build_enemies() -> void:
+	var row := _controls_row()
+	row.add_child(_search_box("enemies"))
+	row.add_child(VSeparator.new())
+	row.add_child(_label("Sort:", Color(0.7, 0.7, 0.75), 12))
+	row.add_child(_sort_button("A-Z", _enemies_sort == "name", func(): _enemies_sort = "name"; _refresh()))
+	row.add_child(_sort_button("Difficulty", _enemies_sort == "difficulty", func(): _enemies_sort = "difficulty"; _refresh()))
+	row.add_child(_sort_button("Game", _enemies_sort == "game", func(): _enemies_sort = "game"; _refresh()))
+	row.add_child(VSeparator.new())
+	var mode_opt := OptionButton.new()
+	for i in ENEMY_MODE_OPTIONS.size():
+		mode_opt.add_item(ENEMY_MODE_OPTIONS[i][0], i)
+		if ENEMY_MODE_OPTIONS[i][1] == _enemies_mode:
+			mode_opt.select(i)
+	mode_opt.item_selected.connect(func(idx):
+		_enemies_mode = ENEMY_MODE_OPTIONS[mode_opt.get_item_id(idx)][1]
+		_refresh())
+	row.add_child(mode_opt)
+	var diff_opt := OptionButton.new()
+	diff_opt.add_item("All Difficulties", -1)
+	for i in ENEMY_DIFFICULTY_NAMES.size():
+		diff_opt.add_item(ENEMY_DIFFICULTY_NAMES[i], i)
+	_select_option(diff_opt, _enemies_diff)
+	diff_opt.item_selected.connect(func(idx):
+		_enemies_diff = diff_opt.get_item_id(idx)
+		_refresh())
+	row.add_child(diff_opt)
+	_add_count_label(row)
+	_grid_and_detail()
+	_populate_enemies()
+
+# Build the merged enemy list as [{data, mode}] entries so one grid spans both
+# schemas; the cell/detail branch on `mode` ("deck" | "action").
+func _all_enemy_entries() -> Array:
+	var out: Array = []
+	for e in Data.all_enemies():
+		if e != null:
+			out.append({"data": e, "mode": "deck"})
+	for e in Data.all_action_enemies():
+		if e != null:
+			out.append({"data": e, "mode": "action"})
+	return out
+
+func _populate_enemies() -> void:
+	_clear_children(_grid)
+	var term: String = _search["enemies"].to_lower()
+	var total: int = 0
+	var list: Array = []
+	for entry in _all_enemy_entries():
+		total += 1
+		var en = entry["data"]
+		if _enemies_mode != "all" and entry["mode"] != _enemies_mode:
+			continue
+		if _enemies_diff >= 0 and int(en.difficulty) != _enemies_diff:
+			continue
+		if term != "" and not (term in en.display_name.to_lower() \
+				or term in en.source_game.to_lower()):
+			continue
+		list.append(entry)
+	match _enemies_sort:
+		"difficulty":
+			list.sort_custom(func(a, b):
+				var ad: int = int(a["data"].difficulty)
+				var bd: int = int(b["data"].difficulty)
+				return ad < bd if ad != bd else a["data"].display_name.naturalnocasecmp_to(b["data"].display_name) < 0)
+		"game":
+			list.sort_custom(func(a, b):
+				var ag: String = a["data"].source_game
+				var bg: String = b["data"].source_game
+				return ag.naturalnocasecmp_to(bg) < 0 if ag != bg else a["data"].display_name.naturalnocasecmp_to(b["data"].display_name) < 0)
+		_:
+			list.sort_custom(func(a, b): return a["data"].display_name.naturalnocasecmp_to(b["data"].display_name) < 0)
+	for entry in list:
+		_grid.add_child(_enemy_cell(entry))
+	if list.is_empty():
+		_grid.add_child(_label("No enemies match.", Color(0.55, 0.55, 0.6), 13))
+	_set_count(list.size(), total)
+
+func _enemy_difficulty_color(d: int) -> Color:
+	match d:
+		0: return Color(0.3, 0.78, 0.35)   # low — green
+		1: return Color(1.0, 0.6, 0.0)     # medium — orange
+		2: return Color(0.92, 0.28, 0.24)  # high — red
+		3: return Color(0.7, 0.45, 1.0)    # boss — purple
+		_: return Color(0.55, 0.55, 0.6)
+
+func _enemy_difficulty_label(d: int) -> String:
+	return ENEMY_DIFFICULTY_NAMES[clampi(d, 0, ENEMY_DIFFICULTY_NAMES.size() - 1)]
+
+# Mode badge colour: deckbuilder reads purple, action reads reddish-orange,
+# reusing the Games tab's per-type palette for visual consistency.
+func _enemy_mode_color(mode: String) -> Color:
+	return _game_type_color(0) if mode == "action" else _game_type_color(2)
+
+func _enemy_mode_label(mode: String) -> String:
+	return "Action" if mode == "action" else "Deckbuilder"
+
+# A representative still for an action enemy, which renders from frame anims and
+# carries no single `image`: prefer an idle body frame, else the first frame of
+# any animation. Returns null when the enemy is a placeholder with no art.
+func _action_enemy_icon(ae: ActionEnemyData) -> Texture2D:
+	if ae.image != null:
+		return ae.image
+	for nm in [&"body.idle", &"idle", &"body.idle_side"]:
+		var a := ae.get_anim(nm)
+		if not a.is_empty() and not a["frames"].is_empty():
+			return a["frames"][0]
+	if ae.anim_frames.size() > 0:
+		return ae.anim_frames[0]
+	return null
+
+func _enemy_icon(entry: Dictionary) -> Texture2D:
+	if entry["mode"] == "action":
+		return _action_enemy_icon(entry["data"])
+	return entry["data"].image
+
+# Bordered "?" swatch for art-less enemies (the dev-only action walker/shooter),
+# matching the backdrop of _image_with_bg so the grid stays uniform.
+func _enemy_placeholder(size: int, border: Color) -> Control:
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = IMAGE_BG.lerp(border, 0.12)
+	sb.set_corner_radius_all(8)
+	sb.set_content_margin_all(8)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(border.r, border.g, border.b, 0.45)
+	panel.add_theme_stylebox_override("panel", sb)
+	var lbl := _label("?", Color(0.55, 0.55, 0.62), int(size * 0.45), true)
+	lbl.custom_minimum_size = Vector2(size, size)
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	panel.add_child(lbl)
+	return panel
+
+func _enemy_cell(entry: Dictionary) -> Control:
+	var en = entry["data"]
+	var dc := _enemy_difficulty_color(int(en.difficulty))
+	var cell := _cell(dc, func(): _show_enemy_detail(entry))
+	cell.panel.custom_minimum_size = Vector2(166, 0)
+	var vb: VBoxContainer = cell.vbox
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	var tex := _enemy_icon(entry)
+	if tex != null:
+		vb.add_child(_image_with_bg(tex, 96, dc))
+	else:
+		vb.add_child(_enemy_placeholder(96, dc))
+	var nm := _label(en.display_name, dc, 13, true, true)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_child(nm)
+	vb.add_child(_label(_enemy_difficulty_label(int(en.difficulty)).to_upper(), dc, 11, true))
+	var mc := _enemy_mode_color(entry["mode"])
+	vb.add_child(_label(_enemy_mode_label(entry["mode"]), mc, 10, true))
+	return cell.panel
+
+func _show_enemy_detail(entry: Dictionary) -> void:
+	_clear_children(_detail_box)
+	var en = entry["data"]
+	var dc := _enemy_difficulty_color(int(en.difficulty))
+	var tex := _enemy_icon(entry)
+	if tex != null:
+		var img := _image_with_bg(tex, 110, dc)
+		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_detail_box.add_child(img)
+	else:
+		var ph := _enemy_placeholder(110, dc)
+		ph.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_detail_box.add_child(ph)
+	_detail_box.add_child(_label(en.display_name, dc, 18, true))
+	_detail_box.add_child(_detail_meta("%s  •  %s" % [
+		_enemy_difficulty_label(int(en.difficulty)), _enemy_mode_label(entry["mode"])],
+		_enemy_mode_color(entry["mode"])))
+	if en.source_game != "":
+		_detail_box.add_child(_label("From: %s" % en.source_game, Color(0.65, 0.7, 0.8), 11, false, true))
+	if en.tags.size() > 0:
+		_detail_box.add_child(_label(", ".join(en.tags), Color(0.73, 0.55, 0.78), 11, false, true))
+	_detail_box.add_child(HSeparator.new())
+	if entry["mode"] == "action":
+		_fill_action_enemy_detail(en)
+	else:
+		_fill_deck_enemy_detail(en)
+
+# --- Deckbuilder enemy detail: HP, abilities, statuses, split, intent pattern.
+func _fill_deck_enemy_detail(en: EnemyData) -> void:
+	_detail_box.add_child(_detail_section("Stats"))
+	_detail_box.add_child(_kv("Health", _hp_range_text(en.hp_min, en.hp_max)))
+	_detail_box.add_child(_kv("Spawn Weight", str(en.weight)))
+	if en.starting_abilities.size() > 0:
+		_detail_box.add_child(_detail_section("⚡ Abilities"))
+		for ab in en.starting_abilities:
+			_detail_box.add_child(_label("• %s" % ab, Color(0.7, 0.55, 1.0), 11, false, true))
+	if not en.starting_statuses.is_empty():
+		_detail_box.add_child(_detail_section("Starting Statuses"))
+		for sid in en.starting_statuses.keys():
+			_detail_box.add_child(_kv(String(sid).capitalize(), _status_value_text(en.starting_statuses[sid])))
+	if en.split_count > 0 and en.split_into != &"":
+		_detail_box.add_child(_detail_section("Split"))
+		var into: EnemyData = Data.get_enemy(en.split_into)
+		var into_name: String = into.display_name if into != null else String(en.split_into).capitalize()
+		_detail_box.add_child(_label("At ≤50%% HP, splits into %d× %s" % [en.split_count, into_name], Color(0.85, 0.72, 0.4), 11, false, true))
+	if not en.pattern.is_empty():
+		var mode_label: String = String(en.pattern_mode).capitalize()
+		_detail_box.add_child(_detail_section("Intents (%s)" % mode_label))
+		for move in en.pattern:
+			_add_enemy_move_row(move)
+
+func _add_enemy_move_row(move: Dictionary) -> void:
+	var disp: String = String(move.get("display", "?"))
+	var tags: Array = []
+	if bool(move.get("first_turn_only", false)):
+		tags.append("first turn")
+	var w: int = int(move.get("weight", 0))
+	if w > 0:
+		tags.append("weight %d" % w)
+	var title: String = "• %s" % disp
+	if not tags.is_empty():
+		title += "   (%s)" % "  ".join(tags)
+	_detail_box.add_child(_label(title, Color(0.92, 0.92, 0.92), 12, false, true))
+	var fx: String = _enemy_effects_text(move.get("effects", []))
+	if fx != "":
+		_detail_box.add_child(_label("    " + fx, Color(0.75, 0.8, 0.85), 11, false, true))
+
+func _enemy_effects_text(effects: Array) -> String:
+	var parts: Array = []
+	for e in effects:
+		var s: String = _enemy_effect_text(e)
+		if s != "":
+			parts.append(s)
+	return ", ".join(parts)
+
+func _enemy_effect_text(e: Dictionary) -> String:
+	var t: String = String(e.get("type", ""))
+	var target: String = String(e.get("target", ""))
+	var to_self: bool = target == "self"
+	match t:
+		"dmg": return "%d damage" % int(e.get("value", 0))
+		"block": return "%d Block%s" % [int(e.get("value", 0)), " (self)" if to_self else ""]
+		"block_self": return "%d Block (self)" % int(e.get("value", 0))
+		"heal": return "Heal %d%s" % [int(e.get("value", 0)), " (self)" if to_self else ""]
+		"status":
+			var who: String = "self" if to_self else "you"
+			return "%d× %s → %s" % [int(e.get("stacks", 1)), String(e.get("status", "")).capitalize(), who]
+		_:
+			if int(e.get("value", 0)) != 0:
+				return "%s %d" % [t.capitalize(), int(e.get("value", 0))]
+			return t.capitalize()
+
+# --- Action enemy detail: HP, behaviour, movement, attacks, split, on-death.
+func _fill_action_enemy_detail(en: ActionEnemyData) -> void:
+	_detail_box.add_child(_detail_section("Stats"))
+	_detail_box.add_child(_kv("Health", _hp_range_text(en.hp_min, en.hp_max)))
+	_detail_box.add_child(_kv("Behaviour", ACTION_BEHAVIOR_NAMES[clampi(int(en.behavior), 0, ACTION_BEHAVIOR_NAMES.size() - 1)]))
+	_detail_box.add_child(_kv("Move Speed", "%d px/s" % int(en.move_speed)))
+	_detail_box.add_child(_kv("Size", "%d px" % int(en.size)))
+	_detail_box.add_child(_kv("Spawn Weight", str(en.weight)))
+	var attacks: Array = en.attacks()
+	if not attacks.is_empty():
+		_detail_box.add_child(_detail_section("Attacks"))
+		var n: int = 0
+		for atk in attacks:
+			n += 1
+			_add_action_attack_row(n, atk)
+	if en.split_count > 0 and en.split_into != &"":
+		_detail_box.add_child(_detail_section("Split"))
+		var into: ActionEnemyData = Data.get_action_enemy(en.split_into)
+		var into_name: String = into.display_name if into != null else String(en.split_into).capitalize()
+		_detail_box.add_child(_label("At ≤50%% HP, splits into %d× %s" % [en.split_count, into_name], Color(0.85, 0.72, 0.4), 11, false, true))
+	if en.on_death_ids.size() > 0:
+		_detail_box.add_child(_detail_section("On Death"))
+		var names: Array = []
+		for i in en.on_death_ids.size():
+			var did := StringName(en.on_death_ids[i])
+			var d: ActionEnemyData = Data.get_action_enemy(did)
+			names.append(d.display_name if d != null else String(did).capitalize())
+		_detail_box.add_child(_label("Transforms into: %s" % ", ".join(names), Color(0.7, 0.45, 1.0), 11, false, true))
+
+func _add_action_attack_row(n: int, atk: Dictionary) -> void:
+	var kind: String = "Ranged" if int(atk.get("kind", 0)) == ActionEnemyData.AttackKind.RANGED else "Melee"
+	var col := Color(0.85, 0.45, 0.15) if kind == "Ranged" else Color(0.9, 0.3, 0.25)
+	_detail_box.add_child(_label("• Attack %d — %s" % [n, kind], col, 12, false, true))
+	var parts: Array = ["%d dmg" % int(atk.get("damage", 0)), "%.1fs cd" % float(atk.get("cooldown", 0.0))]
+	if float(atk.get("range", 0.0)) > 0:
+		parts.append("range %d" % int(atk.get("range", 0.0)))
+	if int(atk.get("proj_count", 1)) > 1:
+		parts.append("%d projectiles" % int(atk.get("proj_count", 1)))
+	if bool(atk.get("random", false)):
+		parts.append("random fire")
+	_detail_box.add_child(_label("    " + "  •  ".join(parts), Color(0.75, 0.8, 0.85), 11, false, true))
+
+func _hp_range_text(lo: int, hi: int) -> String:
+	return str(lo) if lo == hi else "%d–%d" % [lo, hi]
+
+# An HP-range status value may be a plain int or a [min, max] pair (e.g.
+# curl_up: [3, 7]); render either shape.
+func _status_value_text(v) -> String:
+	if v is Array and v.size() == 2:
+		return _hp_range_text(int(v[0]), int(v[1]))
+	return str(int(v)) if (v is int or v is float) else str(v)
 
 func _detail_meta(text: String, color: Color) -> Label:
 	var l := _label(text, color, 12, true)
