@@ -282,7 +282,7 @@ const ENEMY_SPRITE_SCALE := 1.3
 # not a lunge.
 const ENEMY_KNOCKBACK_SPEED := 150.0     # initial px/s on a landed hit
 const ENEMY_KNOCKBACK_DECEL := 900.0     # px/s^2 the nudge bleeds off
-const ENEMY_KNOCKBACK_MAX := 220.0       # cap so stacked hits can't fling/teleport
+const ENEMY_KNOCKBACK_MAX := 150.0       # = SPEED: stacked hits never exceed one nudge (~12px)
 const ENEMY_FIRE_RECOIL_SPEED := 60.0    # backward kick when an enemy shoots
 
 # Enemies don't appear the instant a room loads — a red telegraph circle (sized
