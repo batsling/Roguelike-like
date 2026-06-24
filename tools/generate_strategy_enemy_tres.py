@@ -16,6 +16,7 @@ Re-run safe: wipes generated strategy-enemy .tres (except PRESERVE) and rewrites
 
 import os
 import re
+import shutil
 import sys
 
 import openpyxl
@@ -24,6 +25,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 XLSX_PATH = os.path.join(PROJECT_ROOT, "tools", "Roguelikes.xlsx")
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "strategy_enemies")
+IMAGES_SRC_DIR = os.path.join(PROJECT_ROOT, "images", "enemies", "strategy_enemies")
+ASSETS_OUT_DIR = os.path.join(PROJECT_ROOT, "assets", "enemies", "strategy_enemies")
 
 # Hand-maintained strategy enemies NOT sourced from enemiesS — never wiped.
 PRESERVE = set()
@@ -45,19 +48,10 @@ def _is_na(v) -> bool:
     return v is None or str(v).strip() in ("", "N/A", "None")
 
 
-def _pct(v) -> float:
-    """Parse '70%' / '0.7' / 70 into a 0..1 float."""
-    if _is_na(v):
-        return 0.0
-    s = str(v).strip().rstrip("%").strip()
-    try:
-        f = float(s)
-    except ValueError:
-        return 0.0
-    return f / 100.0 if f > 1.0 or "%" in str(v) else f
-
-
 # --- effect DSL (Strategy targets: damage -> enemy, heal/block/gain -> self) --
+
+_DICE = re.compile(r"^(\d+)d(\d+)$", re.IGNORECASE)
+
 
 def parse_effect(text: str):
     text = text.strip()
@@ -69,7 +63,15 @@ def parse_effect(text: str):
     if verb == "dmg":
         eff = {"type": "dmg", "value": 0, "target": "enemy"}
         for tok in rest:
-            if tok in ("ranged", "melee", "magic", "true"):
+            md = _DICE.match(tok)
+            if md:
+                # Per-hit dice CdS: store [count, sides] (rolled fresh each hit by
+                # EffectSystem) and set `value` to the MAX (count*sides) so the
+                # telegraph / AI damage-potential reads the worst case.
+                count, sides = int(md.group(1)), int(md.group(2))
+                eff["dice"] = [count, sides]
+                eff["value"] = count * sides
+            elif tok in ("ranged", "melee", "magic", "true"):
                 eff["damage_type"] = tok
             elif tok.lstrip("-").isdigit():
                 eff["value"] = int(tok)
@@ -228,12 +230,35 @@ def _gold(cell):
     return pct, int(m.group(2)), int(m.group(3))
 
 
+def resolve_image(file_col, eid: str):
+    """Copy images/enemies/strategy_enemies/<File>/<id>_idle.png into
+    assets/enemies/strategy_enemies/<id>/idle.png and return the asset path
+    (res://...), or None when there's no `File` / source PNG."""
+    if _is_na(file_col):
+        return None
+    src = os.path.join(IMAGES_SRC_DIR, str(file_col).strip(), f"{eid}_idle.png")
+    if not os.path.exists(src):
+        print(f"  WARNING: sprite not found for {eid}: {src}", file=sys.stderr)
+        return None
+    dst_dir = os.path.join(ASSETS_OUT_DIR, eid)
+    os.makedirs(dst_dir, exist_ok=True)
+    dst = os.path.join(dst_dir, "idle.png")
+    shutil.copy2(src, dst)
+    return f"res://assets/enemies/strategy_enemies/{eid}/idle.png"
+
+
 def enemy_tres(rec: dict) -> str:
     eid = rec["id"]
+    has_img = rec["image"] is not None
+    load_steps = 3 if has_img else 2
     lines = [
-        f'[gd_resource type="Resource" script_class="StrategyEnemyData" load_steps=2 format=3 uid="uid://strategy_enemy_{eid}"]',
+        f'[gd_resource type="Resource" script_class="StrategyEnemyData" load_steps={load_steps} format=3 uid="uid://strategy_enemy_{eid}"]',
         "",
         '[ext_resource type="Script" path="res://scripts/resources/StrategyEnemyData.gd" id="1_se"]',
+    ]
+    if has_img:
+        lines.append(f'[ext_resource type="Texture2D" path="{rec["image"]}" id="2_img"]')
+    lines += [
         "",
         "[resource]",
         'script = ExtResource("1_se")',
@@ -250,7 +275,6 @@ def enemy_tres(rec: dict) -> str:
         f'gold_chance = {rec["gold_chance"]}',
         f'gold_min = {rec["gold_min"]}',
         f'gold_max = {rec["gold_max"]}',
-        f'item_chance = {rec["item_chance"]}',
     ]
     if rec["split_count"] > 0 and rec["split_into"]:
         lines.append(f'split_into = &"{rec["split_into"]}"')
@@ -258,6 +282,10 @@ def enemy_tres(rec: dict) -> str:
     lines += [
         f'source_game = "{esc(rec["source_game"])}"',
         f'tags = {_packed_str_array(rec["tags"])}',
+    ]
+    if has_img:
+        lines.append('image = ExtResource("2_img")')
+    lines += [
         f'portrait_color = {rec["portrait_color"]}',
         f'glyph = "{esc(rec["glyph"])}"',
         "",
@@ -305,13 +333,13 @@ def main() -> int:
             "gold_chance": gold_chance,
             "gold_min": gold_min,
             "gold_max": gold_max,
-            "item_chance": _pct(row[col["Item %"]]),
             "split_into": split_into,
             "split_count": split_count,
             "source_game": "" if _is_na(row[col["Game"]]) else str(row[col["Game"]]).strip(),
             "tags": [] if _is_na(tag) else [str(tag).strip()],
             "portrait_color": packed_color(row[col["Color"]]),
             "glyph": "e" if _is_na(row[col["Glyph"]]) else str(row[col["Glyph"]]).strip(),
+            "image": resolve_image(row[col["File"]], eid),
         })
 
     generated_ids = {r["id"] for r in records}

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="StrategyEnemyData" load_steps=3 format=3 uid="uid://strategy_enemy_sewer_rat"]
+
+[ext_resource type="Script" path="res://scripts/resources/StrategyEnemyData.gd" id="1_se"]
+[ext_resource type="Texture2D" path="res://assets/enemies/strategy_enemies/sewer_rat/idle.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_se")
+id = &"sewer_rat"
+display_name = "Sewer Rat"
+difficulty = 0
+weight = 1
+hp_min = 5
+hp_max = 5
+speed = 8
+intents = [
+	{"id": "bite", "prio": 1, "cd": 0, "range": 1, "shape": "swing", "params": {}, "target": "enemy", "cond": "", "icon": "x", "name": "Bite", "effects": [{"type": "dmg", "value": 3, "target": "enemy", "dice": [1, 3]}]}
+]
+min_floor = 1
+spawn_weight = 4
+gold_chance = 0.4
+gold_min = 1
+gold_max = 4
+source_game = "NetHack"
+tags = PackedStringArray()
+image = ExtResource("2_img")
+portrait_color = Color(0.5, 0.45, 0.4, 1)
+glyph = "r"

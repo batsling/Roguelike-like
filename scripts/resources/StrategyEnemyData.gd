@@ -44,11 +44,11 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 @export var min_floor: int = 1
 @export var spawn_weight: int = 1
 
-# Loot table (BattleView ENEMY_LOOT_TABLE): rolled when the enemy dies.
+# Gold drop (BattleView ENEMY_LOOT_TABLE): rolled when the enemy dies. Enemies
+# never drop items, so there's no item-drop field.
 @export var gold_chance: float = 0.0
 @export var gold_min: int = 0
 @export var gold_max: int = 0
-@export var item_chance: float = 0.0
 
 # Split (status): at/below 50% HP the enemy spawns `split_count` copies of
 # `split_into` and is consumed. Empty / 0 = never splits. Mirrors EnemyData.
@@ -58,7 +58,10 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 @export var source_game: String = ""
 @export var tags: PackedStringArray = PackedStringArray()
 
-# Visuals (Strategy renders an ASCII glyph + tint; no sprite sheet yet).
+# Visuals. `image` is an optional grid token sprite (drawn as a circular token
+# like the player avatar); when null the enemy falls back to a `portrait_color`
+# circle. `glyph` is the ASCII-mode fallback character.
+@export var image: Texture2D
 @export var portrait_color: Color = Color(0.7, 0.3, 0.3)
 @export var glyph: String = "e"
 

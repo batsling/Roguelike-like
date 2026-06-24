@@ -18,7 +18,10 @@ Columns mirror StrategyEnemyData.gd:
   * `Weight` is the 1-5 weight CLASS (Vorpal matching); `Spawn Weight` is the
     separate weighted-spawn frequency (0 = never rolled).
   * `Gold` packs the gold drop as `<pct>% <min>-<max>` (e.g. "70% 6-14"); blank /
-    "0%" = no gold. `Item %` is the item-drop chance.
+    "0%" = no gold. Enemies never drop items, so there is no item column.
+  * `File` names a sprite under images/enemies/strategy_enemies/<File>/ — the
+    importer copies `<id>_idle.png` into assets/ and draws it as the grid token.
+    Blank = a plain colour circle.
   * `Ability` carries split / starting-status text, same meaning as enemiesA/D
     (e.g. "Split 2 rat").
 
@@ -40,6 +43,8 @@ The `Intents` column lists the move-set, ';;'-separated. Each intent is:
   - `icon`  : single glyph shown above the sprite in the threat telegraph.
   - effects : the shared EffectSystem DSL, ';'-separated —
               dmg:N [dmg:N:ranged]  enemy-target damage (default target)
+              dmg:<C>d<S>           per-hit dice: roll C d S each attack (1d3 ->
+                                    1-3 fresh every hit, NetHack-style)
               heal:N[:self]         self heal
               block:N[:self]        self block
               gain:<status>:N       self buff   (-> status effect, self)
@@ -58,8 +63,8 @@ XLSX_PATH = os.path.join(SCRIPT_DIR, "Roguelikes.xlsx")
 
 HEADERS = [
     "Name", "Id", "Difficulty", "Weight", "Game", "Tag",
-    "Min HP", "Max HP", "Speed", "Glyph", "Color",
-    "Min Floor", "Spawn Weight", "Gold", "Item %",
+    "Min HP", "Max HP", "Speed", "Glyph", "Color", "File",
+    "Min Floor", "Spawn Weight", "Gold",
     "Intents", "Ability",
 ]
 
@@ -72,8 +77,8 @@ ENEMIES = [
         "Name": "Rat", "Id": "rat", "Difficulty": "Low", "Weight": 1,
         "Game": "", "Tag": "",
         "Min HP": 8, "Max HP": 8, "Speed": 4, "Glyph": "r",
-        "Color": "0.55,0.5,0.45",
-        "Min Floor": 1, "Spawn Weight": 4, "Gold": "50% 2-6", "Item %": "5%",
+        "Color": "0.55,0.5,0.45", "File": "",
+        "Min Floor": 1, "Spawn Weight": 4, "Gold": "50% 2-6",
         "Intents": "bite @ 1 icon=x shape swing | Bite | dmg:3",
         "Ability": "",
     },
@@ -81,8 +86,8 @@ ENEMIES = [
         "Name": "Snake", "Id": "snake", "Difficulty": "Low", "Weight": 2,
         "Game": "", "Tag": "",
         "Min HP": 10, "Max HP": 10, "Speed": 4, "Glyph": "s",
-        "Color": "0.4,0.6,0.4",
-        "Min Floor": 1, "Spawn Weight": 3, "Gold": "50% 3-8", "Item %": "10%",
+        "Color": "0.4,0.6,0.4", "File": "",
+        "Min Floor": 1, "Spawn Weight": 3, "Gold": "50% 3-8",
         "Intents": "strike @ 1 icon=x shape swing | Strike | dmg:4 ;; "
                    "venom_bite @ 2 cd 3 icon=* shape swing | Venom | dmg:6",
         "Ability": "",
@@ -91,8 +96,8 @@ ENEMIES = [
         "Name": "Orc", "Id": "orc", "Difficulty": "Low", "Weight": 3,
         "Game": "", "Tag": "",
         "Min HP": 18, "Max HP": 18, "Speed": 4, "Glyph": "o",
-        "Color": "0.45,0.55,0.35",
-        "Min Floor": 2, "Spawn Weight": 2, "Gold": "70% 6-14", "Item %": "20%",
+        "Color": "0.45,0.55,0.35", "File": "",
+        "Min Floor": 2, "Spawn Weight": 2, "Gold": "70% 6-14",
         "Intents": "chop @ 1 icon=x shape swing | Chop | dmg:6 ;; "
                    "bash @ 2 cd 3 icon=! shape smash | Bash | dmg:9",
         "Ability": "",
@@ -101,11 +106,24 @@ ENEMIES = [
         "Name": "Troll", "Id": "troll", "Difficulty": "Medium", "Weight": 5,
         "Game": "", "Tag": "",
         "Min HP": 30, "Max HP": 30, "Speed": 4, "Glyph": "T",
-        "Color": "0.4,0.5,0.45",
-        "Min Floor": 4, "Spawn Weight": 1, "Gold": "90% 12-24", "Item %": "35%",
+        "Color": "0.4,0.5,0.45", "File": "",
+        "Min Floor": 4, "Spawn Weight": 1, "Gold": "90% 12-24",
         "Intents": "smash @ 1 icon=x shape swing | Smash | dmg:10 ;; "
                    "crush @ 2 cd 4 icon=! shape smash size=large | Crush | dmg:14 ;; "
                    "regen @ 3 cd 5 icon=+ target self cond self_low_hp | Regen | heal:5:self",
+        "Ability": "",
+    },
+    {
+        # First custom enemy: NetHack's sewer rat. A fast (Speed 8 = 6-tile
+        # budget), fragile weight-1 nuisance that bites for 1d3 — a fresh per-hit
+        # die roll (dmg:1d3), not a fixed value. Sprite drawn from
+        # images/enemies/strategy_enemies/Sewer Rat/sewer_rat_idle.png.
+        "Name": "Sewer Rat", "Id": "sewer_rat", "Difficulty": "Low", "Weight": 1,
+        "Game": "NetHack", "Tag": "",
+        "Min HP": 5, "Max HP": 5, "Speed": 8, "Glyph": "r",
+        "Color": "0.5,0.45,0.4", "File": "Sewer Rat",
+        "Min Floor": 1, "Spawn Weight": 4, "Gold": "40% 1-4",
+        "Intents": "bite @ 1 icon=x shape swing | Bite | dmg:1d3",
         "Ability": "",
     },
 ]
@@ -132,8 +150,8 @@ def main() -> int:
             if name in ("Intents", "Ability"):
                 c.alignment = wrap
 
-    widths = {"Name": 14, "Id": 12, "Game": 16, "Color": 14,
-              "Min Floor": 10, "Spawn Weight": 12, "Gold": 12, "Item %": 8,
+    widths = {"Name": 14, "Id": 12, "Game": 16, "Color": 14, "File": 14,
+              "Min Floor": 10, "Spawn Weight": 12, "Gold": 12,
               "Intents": 70, "Ability": 18}
     for ci, name in enumerate(HEADERS, start=1):
         ws.column_dimensions[ws.cell(row=1, column=ci).column_letter].width = widths.get(name, 11)

@@ -87,6 +87,10 @@ const BASE_MOVE := 4
 var ai = null
 var intent_telegraph: Dictionary = {}
 
+# Optional grid-token sprite (StrategyEnemyData.image). Drawn as a circular token
+# by BattleGridView; null = a plain colour circle.
+var icon: Texture2D = null
+
 func is_alive() -> bool:
 	return hp > 0
 
@@ -169,6 +173,7 @@ static func from_enemy_kind(kind: String) -> BattleUnit:
 		u.basic_attack_def = { "damage": data.basic_damage(), "range": 1, "shape": "melee" }
 		u.split_into = data.split_into
 		u.split_count = data.split_count
+		u.icon = data.image
 	else:
 		var preset = ENEMY_PRESETS.get(kind, { "max_hp": 10, "speed": 4, "attack": 3, "weight": 3 })
 		u.max_hp = preset.max_hp

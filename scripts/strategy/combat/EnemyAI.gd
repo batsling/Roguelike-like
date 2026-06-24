@@ -92,10 +92,25 @@ func execute_turn(scene, all_units: Array, battle_map) -> String:
 
 # --- Internals -----------------------------------------------------------
 
+# Pick the intent the enemy will telegraph + execute. Among the available
+# intents (off-cooldown, condition-satisfied, with a live target) we separate
+# ATTACKS (anything that deals damage) from SUPPORT (heals / buffs / debuffs):
+#
+#   * Attacks are ranked so the enemy "goes for the one it can actually do, that
+#     does the most damage": first prefer intents it can REACH this turn (so a
+#     melee-and-ranged enemy that can't close to melee picks the ranged hit
+#     instead of stalling), then higher damage potential, then priority.
+#   * Support intents are ranked by priority (their `cond` already gates them,
+#     e.g. the Troll only regenerates when bloodied).
+#   * Priority then arbitrates between the best attack and the best support, so a
+#     high-priority heal still overrides attacking when its condition holds.
 func _choose(all_units: Array) -> Dictionary:
-	var best_intent: EnemyIntent = null
-	var best_target: BattleUnit = null
-	var best_prio: int = -1
+	var best_attack: EnemyIntent = null
+	var best_attack_t: BattleUnit = null
+	var best_attack_key: Array = [-1, -1, -1]   # [executable, damage, priority]
+	var best_support: EnemyIntent = null
+	var best_support_t: BattleUnit = null
+	var best_support_prio: int = -1
 	for intent in intents:
 		if _on_cooldown(intent):
 			continue
@@ -104,21 +119,60 @@ func _choose(all_units: Array) -> Dictionary:
 		var t: BattleUnit = _resolve_target(intent, all_units)
 		if t == null:
 			continue
-		if intent.priority > best_prio:
-			best_intent = intent
-			best_target = t
-			best_prio = intent.priority
-	if best_intent != null:
-		return {"intent": best_intent, "target": best_target}
-	# Fallback: lowest-priority intent ignoring cooldown, just so the
-	# enemy doesn't silently stand still when everything's on CD. Doesn't
-	# bypass the actual cooldown set on the unit — execute_turn re-checks
-	# nothing, but the next plan_next call will re-prefer fresh intents.
+		var dmg: int = _intent_damage(intent)
+		if dmg > 0:
+			var key: Array = [
+				1 if _executable(intent, t) else 0,
+				dmg,
+				intent.priority,
+			]
+			if _key_greater(key, best_attack_key):
+				best_attack = intent
+				best_attack_t = t
+				best_attack_key = key
+		elif intent.priority > best_support_prio:
+			best_support = intent
+			best_support_t = t
+			best_support_prio = intent.priority
+	# Prefer a support intent only when it out-prioritises the best attack (the
+	# Troll's Regen, priority 3, beats its attacks); otherwise attack.
+	if best_support != null and (best_attack == null or best_support_prio > best_attack_key[2]):
+		return {"intent": best_support, "target": best_support_t}
+	if best_attack != null:
+		return {"intent": best_attack, "target": best_attack_t}
+	# Fallback: any intent with a target, ignoring cooldown, so the enemy doesn't
+	# silently stand still when everything's on CD. The next plan_next re-prefers
+	# fresh intents once cooldowns tick down.
 	for intent in intents:
 		var t2: BattleUnit = _resolve_target(intent, all_units)
 		if t2 != null:
 			return {"intent": intent, "target": t2}
 	return {"intent": null, "target": null}
+
+# Lexicographic "a strictly greater than b" over equal-length int arrays.
+static func _key_greater(a: Array, b: Array) -> bool:
+	for i in a.size():
+		if a[i] != b[i]:
+			return a[i] > b[i]
+	return false
+
+# Max potential damage of an intent's effects (dice store their max in `value`).
+static func _intent_damage(intent: EnemyIntent) -> int:
+	var total: int = 0
+	for e in intent.effects:
+		if str(e.get("type", "")) == "dmg":
+			total += int(e.get("value", 0))
+	return total
+
+# Can this unit actually land `intent` on `target` this turn? Self / range-0
+# intents always can. For the rest we approximate reach as
+# `range_max + move_range` in Manhattan tiles (no map here at plan time, and the
+# telegraph is a prediction anyway) — enough to prefer a reachable ranged attack
+# over an out-of-reach melee one.
+func _executable(intent: EnemyIntent, target: BattleUnit) -> bool:
+	if intent.target_kind == "self" or intent.range_max <= 0:
+		return true
+	return _distance(unit.position, target.position) <= intent.range_max + maxi(0, unit.move_range)
 
 func _on_cooldown(intent: EnemyIntent) -> bool:
 	return int(unit.cooldowns.get(intent.id, 0)) > 0

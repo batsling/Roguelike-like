@@ -48,10 +48,10 @@ startup and exposes `Data.get_strategy_enemy(id)` / `Data.all_strategy_enemies()
 | `Speed` | single initiative+movement stat (see below) |
 | `Glyph` | ASCII fallback char drawn on the grid |
 | `Color` | portrait tint, `r,g,b` (0–1) |
+| `File` | sprite folder under `images/enemies/strategy_enemies/<File>/`; the importer copies `<id>_idle.png` into `assets/` and draws it as the grid token. Blank = a plain colour circle |
 | `Min Floor` | floor gate before the enemy can spawn |
 | `Spawn Weight` | weighted spawn frequency (0 = never rolled) |
-| `Gold` | gold drop packed as `<pct>% <min>-<max>` (e.g. `70% 6-14`); blank = none |
-| `Item %` | item-drop chance (`20%` or `0.2`) |
+| `Gold` | gold drop packed as `<pct>% <min>-<max>` (e.g. `70% 6-14`); blank = none. Enemies never drop items, so there is no item column |
 | `Intents` | the move-set (grammar below) |
 | `Ability` | split / starting-status, same meaning as `enemiesA`/`enemiesD` (e.g. `Split 2 rat`) |
 
@@ -61,7 +61,9 @@ startup and exposes `Data.get_strategy_enemy(id)` / `Data.all_strategy_enemies()
 `BattleTurnManager` act-counter weight) *and* the per-turn tile budget, which
 `BattleUnit` derives as `BASE_MOVE + (Speed - 4) / 2`. So a faster enemy both
 acts more often and walks further, with no separate move column. `Speed 4` is
-the baseline (4 tiles); `Speed 6` → 5 tiles, `Speed 2` → 3 tiles.
+the baseline (4 tiles); `Speed 6` → 5 tiles, `Speed 8` → 6 tiles (the Sewer
+Rat), `Speed 2` → 3 tiles. Note that raising Speed also raises the enemy's
+initiative cadence, so it takes turns more often too.
 
 ## `Intents` grammar
 
@@ -92,6 +94,7 @@ as cards, spells and the deckbuilder patterns). Strategy default targets:
 | Token | Effect |
 |---|---|
 | `dmg:N` / `dmg:N:ranged` | damage the intent's target (default `enemy`) |
+| `dmg:<C>d<S>` | per-hit dice: roll `C` d`S` **fresh on every hit** (e.g. `dmg:1d3` → 1-3, NetHack-style). Unlike Determined, it is *not* fixed for the combat. The telegraph and AI read the max (`C×S`) as the threat |
 | `heal:N[:self]` | self heal |
 | `block:N[:self]` | self block |
 | `gain:<status>:N` | self buff (→ `status` effect, `self`) |
@@ -109,6 +112,38 @@ regen @ 3 cd 5 icon=+ target self cond self_low_hp   | Regen | heal:5:self
 that only fires when the Troll is below half HP. Each compiles into an
 `EnemyIntent` (via `EnemyCatalog._build`), and shaped intents take their grid
 reach from `StrategyAttackLibrary` so range and footprint stay in lock-step.
+
+### Worked example — the Sewer Rat (a custom enemy)
+
+```
+Name: Sewer Rat   Id: sewer_rat   Weight: 1   Speed: 8   File: Sewer Rat
+Gold: 40% 1-4     Min HP/Max HP: 5
+Intents: bite @ 1 icon=x shape swing | Bite | dmg:1d3
+```
+
+→ a fast (Speed 8 = 6-tile budget), fragile weight-1 biter that rolls 1d3 fresh
+each hit and shows its sprite from
+`images/enemies/strategy_enemies/Sewer Rat/sewer_rat_idle.png`.
+
+## How the AI picks an intent
+
+On each turn the enemy chooses among its **available** intents (off-cooldown,
+`cond` satisfied, with a live target):
+
+1. **Attacks** (any intent that deals damage) are ranked by, in order:
+   **can it reach the target this turn** → **higher damage potential** →
+   priority. So an enemy with both a melee and a ranged attack that *can't* close
+   to melee range will pick the **ranged** hit instead of stalling, and when it
+   can do either it picks the harder-hitting one.
+2. **Support** intents (heals / buffs / debuffs — no damage) are ranked by
+   priority; their `cond` already gates them.
+3. Priority then arbitrates between the best attack and the best support, so a
+   high-priority heal (the Troll's `Regen`, priority 3) still overrides
+   attacking when its condition holds.
+
+Reachability is approximated as `range + move` in tiles at telegraph time (the
+grid map isn't consulted until the unit actually moves), which is enough to
+prefer a reachable ranged attack over an out-of-reach melee one.
 
 ## Fallbacks
 

@@ -48,24 +48,24 @@ const PANEL_BG := Color(0.09, 0.07, 0.13, 0.96)
 const PANEL_BORDER := Color(0.42, 0.33, 0.55, 0.9)
 const BACKDROP := Color(0.04, 0.035, 0.07, 1.0)
 
-# Per-archetype drop weights. Rolled when an enemy dies; the spawned items go
-# onto the battlefield and persist back to the source room on combat end.
-# Source of truth is the enemiesS sheet (StrategyEnemyData's gold_/item_ fields);
-# this const is the fallback for kinds not on the sheet.
+# Per-archetype gold drop. Rolled when an enemy dies; the gold goes onto the
+# battlefield and persists back to the source room on combat end. Enemies never
+# drop items. Source of truth is the enemiesS sheet (StrategyEnemyData's gold_
+# fields); this const is the fallback for kinds not on the sheet.
 const ENEMY_LOOT_TABLE := {
-	"rat":   { "gold_chance": 0.50, "gold_min":  2, "gold_max":  6, "item_chance": 0.05 },
-	"snake": { "gold_chance": 0.50, "gold_min":  3, "gold_max":  8, "item_chance": 0.10 },
-	"orc":   { "gold_chance": 0.70, "gold_min":  6, "gold_max": 14, "item_chance": 0.20 },
-	"troll": { "gold_chance": 0.90, "gold_min": 12, "gold_max": 24, "item_chance": 0.35 },
+	"rat":   { "gold_chance": 0.50, "gold_min":  2, "gold_max":  6 },
+	"snake": { "gold_chance": 0.50, "gold_min":  3, "gold_max":  8 },
+	"orc":   { "gold_chance": 0.70, "gold_min":  6, "gold_max": 14 },
+	"troll": { "gold_chance": 0.90, "gold_min": 12, "gold_max": 24 },
 }
 
-# Loot table for `kind`, preferring the data-driven StrategyEnemyData fields and
+# Gold table for `kind`, preferring the data-driven StrategyEnemyData fields and
 # falling back to ENEMY_LOOT_TABLE. Empty dict = no drop.
 func _loot_table_for(kind: String) -> Dictionary:
 	var d: StrategyEnemyData = Data.get_strategy_enemy(StringName(kind)) if Data else null
-	if d != null and (d.gold_chance > 0.0 or d.item_chance > 0.0 or d.gold_max > 0):
+	if d != null and (d.gold_chance > 0.0 or d.gold_max > 0):
 		return { "gold_chance": d.gold_chance, "gold_min": d.gold_min,
-			"gold_max": d.gold_max, "item_chance": d.item_chance }
+			"gold_max": d.gold_max }
 	return ENEMY_LOOT_TABLE.get(kind, {})
 
 # What the player is currently selecting in the grid view.
@@ -1794,20 +1794,11 @@ func _drop_enemy_loot(unit) -> void:
 	var table = _loot_table_for(str(unit.unit_name))
 	if table.is_empty():
 		return
+	# Enemies drop gold only — never items.
 	var pos: Vector2i = unit.position
 	if _loot_rng.randf() < float(table.gold_chance):
 		var amt: int = _loot_rng.randi_range(int(table.gold_min), int(table.gold_max))
 		_battle_map.add_dropped_item(StrategyItem.make_gold(pos, amt), pos)
-	if _loot_rng.randf() < float(table.item_chance):
-		var roll: int = _loot_rng.randi() % 10
-		var it
-		if roll < 6:
-			it = StrategyItem.make_health_potion(pos)
-		elif roll < 9:
-			it = StrategyItem.make_strength_scroll(pos)
-		else:
-			it = StrategyItem.make_lightning_scroll(pos)
-		_battle_map.add_dropped_item(it, pos)
 	_grid_view.notify_units_changed()
 
 func _check_battle_end_after_effect() -> void:

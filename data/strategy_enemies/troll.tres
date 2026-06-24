@@ -21,7 +21,6 @@ spawn_weight = 1
 gold_chance = 0.9
 gold_min = 12
 gold_max = 24
-item_chance = 0.35
 source_game = ""
 tags = PackedStringArray()
 portrait_color = Color(0.4, 0.5, 0.45, 1)

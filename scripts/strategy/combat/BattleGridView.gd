@@ -506,6 +506,10 @@ func _draw() -> void:
 			# Character avatar token (a touch larger than the plain marker).
 			token_r = ts * 0.42
 			DrawUtil.draw_circular_texture(self, center, token_r, _player_icon)
+		elif not u.is_player and u.is_alive() and u.icon != null:
+			# Enemy sprite token (StrategyEnemyData.image), e.g. the Sewer Rat.
+			token_r = ts * 0.42
+			DrawUtil.draw_circular_texture(self, center, token_r, u.icon)
 		else:
 			draw_circle(center, token_r, col)
 		# Subtle outline so tokens read against the floor.
