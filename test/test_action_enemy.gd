@@ -79,6 +79,28 @@ func test_baby_alien_walker_with_squash() -> void:
 	assert_true(baby.has_anims(), "renders its idle sprite")
 	assert_false(baby.get_anim(&"idle").is_empty(), "has an idle animation")
 
+# --- Spitter (Brotato) ------------------------------------------------------
+
+func test_spitter_shooter_with_charge() -> void:
+	var sp: ActionEnemyData = load("res://data/action_enemies/spitter.tres")
+	assert_not_null(sp, "spitter.tres should load")
+	assert_eq(sp.behavior, ActionEnemyData.BehaviorKind.SHOOTER,
+		"follows but kites away when crowded")
+	assert_eq(sp.move_speed, 70.0)
+	assert_gt(sp.preferred_distance, 0.0, "keeps its distance")
+	assert_eq(sp.weight, 2)
+	# One ranged attack: a 6-dmg bolt with a visible wind-up.
+	var atks: Array = sp.attacks()
+	assert_eq(atks.size(), 1)
+	assert_eq(int(atks[0]["kind"]), ActionEnemyData.AttackKind.RANGED)
+	assert_eq(int(atks[0]["damage"]), 6)
+	assert_gt(float(atks[0]["windup"]), 0.0, "telegraphs the spit")
+	# Reuses the squash motion style and the new charge attack style — both saved
+	# on the resource so other enemies can opt in.
+	assert_eq(sp.motion_style, ActionEnemyData.MotionStyle.SQUASH)
+	assert_eq(sp.attack_style, ActionEnemyData.AttackStyle.CHARGE,
+		"Spitter charges (squeeze/redden) before firing")
+
 # --- Gaper family -----------------------------------------------------------
 
 func test_gaper_on_death_table() -> void:

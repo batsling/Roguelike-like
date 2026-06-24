@@ -285,6 +285,13 @@ const ENEMY_SPRITE_SCALE := 1.3
 # (rad/s) of bob_phase, which advances with real time while the enemy moves.
 const SQUASH_AMP := 0.12
 const SQUASH_FREQ := 11.0
+# CHARGE attack style (ActionEnemyData.AttackStyle.CHARGE): during a ranged
+# wind-up the sprite squeezes in X / expands on Y and reddens, ramping with the
+# enemy's `charge` (0..1). STRETCH/SQUEEZE are the Y/X scale deltas at full
+# charge; REDNESS is how far green+blue are cut (1 = fully red) at full charge.
+const CHARGE_STRETCH := 0.22
+const CHARGE_SQUEEZE := 0.12
+const CHARGE_REDNESS := 0.65
 # A small decaying nudge applied when an enemy is hit (and a tiny recoil when it
 # fires). Total knockback distance ~ SPEED^2 / (2 * DECEL) ≈ 12px — a flutter,
 # not a lunge.
@@ -1170,11 +1177,15 @@ func _enemy_update_attacks(inst: Dictionary, delta: float) -> void:
 		var wi: int = int(inst.get("wind_idx", 0))
 		var watk: Dictionary = atks[wi]
 		var wind: float = float(watk["windup"]) if float(watk["windup"]) > 0.0 else _anim_duration(data, &"attack")
+		# Charge progress (0..1) drives the telegraph attack styles (CHARGE).
+		inst["charge"] = clampf(float(inst["windup_t"]) / maxf(0.001, wind), 0.0, 1.0)
 		if float(inst["windup_t"]) >= wind:
 			inst["winding"] = false
+			inst["charge"] = 0.0
 			_enemy_fire_attack(inst, watk)
 			cd_arr[wi] = float(watk["cooldown"])
 		return
+	inst["charge"] = 0.0
 
 	for i in atks.size():
 		cd_arr[i] = maxf(0.0, float(cd_arr[i]) - delta)
@@ -3558,12 +3569,20 @@ func _draw() -> void:
 			var face_side: bool = inst.get("flip", false) and inst.get("facing", &"") == &"side"
 			var sx := 1.0
 			var sy := 1.0
+			var tint := Color.WHITE
 			if data.motion_style == ActionEnemyData.MotionStyle.SQUASH and inst.get("moving", false):
 				# Stretch up / squash down on Y, anchored at the feet; slight inverse
 				# X keeps the volume reading constant (Brotato-style jelly walk).
 				var wave: float = sin(float(inst.get("bob_phase", 0.0)) * SQUASH_FREQ)
 				sy = 1.0 + SQUASH_AMP * wave
 				sx = 1.0 - SQUASH_AMP * 0.5 * wave
+			# Charge telegraph: squeeze X / expand Y and redden as the shot winds up
+			# (combines multiplicatively with any motion style).
+			var charge: float = float(inst.get("charge", 0.0))
+			if data.attack_style == ActionEnemyData.AttackStyle.CHARGE and charge > 0.0:
+				sy *= 1.0 + CHARGE_STRETCH * charge
+				sx *= 1.0 - CHARGE_SQUEEZE * charge
+				tint = Color(1.0, 1.0 - CHARGE_REDNESS * charge, 1.0 - CHARGE_REDNESS * charge)
 			var flip_sign: float = -1.0 if face_side else 1.0
 			# Squash is anchored at the feet (≈ sprite bottom): mirror about the
 			# enemy's x, scale Y about anchor_y so the feet stay planted.
@@ -3587,7 +3606,8 @@ func _draw() -> void:
 				var h: float = tex.get_height() * s
 				var off: Vector2 = L.offset * s
 				draw_texture_rect(tex,
-					Rect2(inst.pos.x + off.x - w * 0.5, inst.pos.y + off.y - h * 0.5, w, h), false)
+					Rect2(inst.pos.x + off.x - w * 0.5, inst.pos.y + off.y - h * 0.5, w, h),
+					false, tint)
 				drew_sprite = true
 			if need_xform:
 				draw_set_transform(Vector2(0, ARENA_TOP), 0.0, Vector2.ONE)  # restore base

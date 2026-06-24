@@ -54,6 +54,7 @@ move_speed = 60
 size = 18
 behavior = 3
 motion_style = 0
+attack_style = 0
 color = Color(0.7, 0.1, 0.1, 1)
 source_game = "The Binding of Isaac"
 tags = PackedStringArray()

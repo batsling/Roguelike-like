@@ -14,6 +14,11 @@ enum AttackKind { MELEE, RANGED }
 # "jelly walk" while moving (Brotato baby alien). Add new styles here + handle
 # them in ActionCombat._draw so any enemy can opt in via the sheet's Motion column.
 enum MotionStyle { NONE, SQUASH }
+# Reusable telegraph played during a ranged attack's wind-up (charge). NONE =
+# none; CHARGE = squeeze in X / expand on Y while reddening as the shot charges
+# (the Spitter). Handled in ActionCombat._draw, driven by the per-enemy `charge`
+# (0..1). Add new styles here + there; opt in via the sheet's Attack Style column.
+enum AttackStyle { NONE, CHARGE }
 
 @export var id: StringName
 @export var display_name: String
@@ -74,6 +79,9 @@ enum MotionStyle { NONE, SQUASH }
 
 # Reusable procedural motion style applied while the enemy moves (see MotionStyle).
 @export var motion_style: MotionStyle = MotionStyle.NONE
+
+# Reusable telegraph played while a ranged attack charges (see AttackStyle).
+@export var attack_style: AttackStyle = AttackStyle.NONE
 
 # Visuals — enemies render as frame animations when `anim_frames` is
 # populated; otherwise ActionCombat falls back to a colored circle of radius
