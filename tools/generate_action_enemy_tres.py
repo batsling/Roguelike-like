@@ -42,8 +42,9 @@ ART_SRC_ROOT = os.path.join(PROJECT_ROOT, "images", "enemies", "action_enemies")
 ASSETS_OUT_ROOT = os.path.join(PROJECT_ROOT, "assets", "enemies")
 TRES_OUT_DIR = os.path.join(PROJECT_ROOT, "data", "action_enemies")
 
-# Hand-authored placeholder enemies that aren't on the sheet — never touch them.
-PRESERVE = {"walker", "shooter"}
+# Hand-authored enemies that aren't on the sheet — never touch them. The old
+# walker/shooter placeholders were removed; the bestiary now mirrors enemiesA.
+PRESERVE: set[str] = set()
 
 # Keep in sync with ActionCombat.PLAYER_RADIUS: `Size` is player-relative, so a
 # sheet value of 1 maps to this many pixels of collision radius.

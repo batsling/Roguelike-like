@@ -368,9 +368,8 @@ func _ready() -> void:
 				GameState.deck.append(CardInstance.from_data(iw))
 		if enemies_to_spawn.is_empty():
 			# Default test fight has one of each behavior so movement +
-			# projectiles + separation can be observed without setup. Uses real
-			# (art-backed) enemies rather than the weight-0 walker/shooter
-			# placeholders: gaper = chaser, spitter = kiter, horf = stationary.
+			# projectiles + separation can be observed without setup, using real
+			# art-backed enemies: gaper = chaser, spitter = kiter, horf = stationary.
 			enemies_to_spawn = [&"gaper", &"spitter", &"horf"]
 
 	# Common setup (both modes): player actor, loadout, slot bar, HUD.
