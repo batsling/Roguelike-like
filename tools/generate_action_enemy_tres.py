@@ -96,7 +96,8 @@ LAYER_SLICES = {
         # Non-directional blood geyser, drawn over the top of the body, looping
         # while alive (see images/.../Gusher/README.md). 48px cells (1.5x the body's
         # 32px) so the gush spills beyond the body — see base_dim in write_tres.
-        {"layer": "gush", "offset": (0.0, -16.0), "anims": [
+        # offset -1: in frame 0 the bottom of the top blood blob meets the body top.
+        {"layer": "gush", "offset": (0.0, -1.0), "anims": [
             ("spew", 10.0, True, ("sheet", "Gusher/gusher_gush_sheet.png", 48, _GUSH)),
         ]},
     ],
