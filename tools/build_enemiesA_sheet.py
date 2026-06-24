@@ -46,11 +46,41 @@ XLSX_PATH = os.path.join(SCRIPT_DIR, "Roguelikes.xlsx")
 
 HEADERS = [
     "Name", "Id", "Difficulty", "Weight", "Game", "Tag",
-    "Min HP", "Max HP", "Contact Damage", "Attack Cooldown", "Attack Windup",
-    "Attack Range", "Preferred Distance", "Projectile Speed", "Projectile Lifetime",
-    "Move Speed", "Size", "Behavior",
-    "Color", "Directional", "Layers", "Animations", "Ability",
+    "Min HP", "Max HP", "Move Speed", "Size", "Behavior", "Stop Distance",
+    "Attacks",
+    "Color", "Directional", "Motion", "Attack Style", "Layers", "Animations", "Ability",
 ]
+
+# `Size` and `Stop Distance` are both in PLAYER SIZES (1 = the player's size),
+# so they read at a glance: Size 1 = as big as the player; Stop Distance 4 = the
+# enemy keeps ~4 player-widths of space. The importer multiplies each by the
+# player radius to get pixels.
+#   - Stop Distance (Shooters): the enemy flees when the player is closer than
+#     this and otherwise holds still — it stops moving as long as it has at least
+#     this much room. It only closes in when fully out of firing range.
+#
+# `Motion` selects a reusable procedural animation style layered on the frame
+# art while the enemy moves (ActionEnemyData.MotionStyle / handled in
+# ActionCombat._draw). Blank/"none" = frames only; "squash" = a Y-axis
+# stretch/squash jelly walk (the Baby Alien). Add new styles in both places.
+#
+# `Attack Style` selects a reusable telegraph played while a ranged attack
+# charges (ActionEnemyData.AttackStyle). Blank/"none" = none; "charge" = squeeze
+# X / expand Y and redden as the shot winds up (the Spitter).
+
+# The `Attacks` column lists this enemy's attacks, ';'-separated. Each attack is:
+#
+#     <kind> dmg <n> [cd <s>] [windup <s>] [range <px>] [speed <px/s>] [life <s>]
+#             [count <n>] [random]
+#
+#   kind ∈ melee | ranged. EVERY attack owns its own damage + timing, so one
+#   enemy can mix a melee swipe and a ranged bolt that hit for different amounts.
+#   - melee : a contact hit when the player is within `range`.
+#   - ranged: telegraphs a `windup` (the attack anim if 0) then fires `count`
+#             projectiles of `speed`/`life`. `random` scatters them in random
+#             directions, ignoring aim/range (the Gusher's spew); otherwise they
+#             aim at the player (count > 1 fans into a small spread).
+#   Movement is still chosen by `Behavior`; attacks decide what damage is dealt.
 
 # Directional body walk cells, shared by the Isaac walkers (cells in the shared
 # body sheet, row,col). _VERT plays for up/down; _*_SIDE for left/right (mirrored
@@ -68,11 +98,9 @@ ENEMIES = [
     {
         "Name": "Horf", "Id": "horf", "Difficulty": "Low", "Weight": 2,
         "Game": "The Binding of Isaac", "Tag": "",
-        "Min HP": 25, "Max HP": 25, "Contact Damage": 6,
-        "Attack Cooldown": 2.2, "Attack Windup": 0.35, "Attack Range": 480,
-        "Preferred Distance": 0, "Projectile Speed": 200,
-        "Projectile Lifetime": 5.0, "Move Speed": 0, "Size": 1,
-        "Behavior": "Stationary",
+        "Min HP": 25, "Max HP": 25, "Move Speed": 0, "Size": 1,
+        "Behavior": "Stationary", "Stop Distance": 0,
+        "Attacks": "ranged dmg 6 cd 2.2 windup 0.35 range 480 speed 200 life 5",
         "Color": "0.8,0.1,0.1", "Directional": "No",
         "Layers": "", "Animations": "idle @ 4 loop ; attack @ 12 once grid 32x32",
         "Ability": "",
@@ -80,11 +108,9 @@ ENEMIES = [
     {
         "Name": "Gaper", "Id": "gaper", "Difficulty": "Low", "Weight": 2,
         "Game": "The Binding of Isaac", "Tag": "",
-        "Min HP": 25, "Max HP": 25, "Contact Damage": 6,
-        "Attack Cooldown": 1.0, "Attack Windup": 0.0, "Attack Range": 40,
-        "Preferred Distance": 0, "Projectile Speed": 0,
-        "Projectile Lifetime": 0, "Move Speed": 90, "Size": 1,
-        "Behavior": "Walker",
+        "Min HP": 25, "Max HP": 25, "Move Speed": 90, "Size": 1,
+        "Behavior": "Walker", "Stop Distance": 0,
+        "Attacks": "melee dmg 6 cd 1.0 range 40",
         "Color": "0.9,0.6,0.55", "Directional": "No",
         "Layers": "body @ 0,0 sheet Gaper/gaper_body_sheet.png cell 32 ; "
                   "head @ 0,-10 sheet Gaper/gaper_head_sheet.png cell 32",
@@ -98,11 +124,9 @@ ENEMIES = [
     {
         "Name": "Pacer", "Id": "pacer", "Difficulty": "Low", "Weight": 0,
         "Game": "The Binding of Isaac", "Tag": "",
-        "Min HP": 25, "Max HP": 25, "Contact Damage": 6,
-        "Attack Cooldown": 1.0, "Attack Windup": 0.0, "Attack Range": 40,
-        "Preferred Distance": 0, "Projectile Speed": 0,
-        "Projectile Lifetime": 0, "Move Speed": 70, "Size": 1,
-        "Behavior": "Pacer",
+        "Min HP": 25, "Max HP": 25, "Move Speed": 70, "Size": 1,
+        "Behavior": "Pacer", "Stop Distance": 0,
+        "Attacks": "melee dmg 6 cd 1.0 range 40",
         "Color": "0.85,0.5,0.5", "Directional": "No",
         "Layers": "body @ 0,0 sheet Pacer/pacer_body_sheet.png cell 32",
         "Animations": "body.idle @ 5 loop cells 0,0 ; "
@@ -114,11 +138,10 @@ ENEMIES = [
     {
         "Name": "Gusher", "Id": "gusher", "Difficulty": "Low", "Weight": 0,
         "Game": "The Binding of Isaac", "Tag": "",
-        "Min HP": 25, "Max HP": 25, "Contact Damage": 6,
-        "Attack Cooldown": 1.2, "Attack Windup": 0.0, "Attack Range": 40,
-        "Preferred Distance": 0, "Projectile Speed": 180,
-        "Projectile Lifetime": 3.0, "Move Speed": 60, "Size": 1,
-        "Behavior": "Pacer",
+        "Min HP": 25, "Max HP": 25, "Move Speed": 60, "Size": 1,
+        "Behavior": "Pacer", "Stop Distance": 0,
+        "Attacks": "melee dmg 6 cd 1.2 range 40 ; "
+                   "ranged dmg 6 cd 1.2 speed 180 life 3 count 1 random",
         "Color": "0.7,0.1,0.1", "Directional": "No",
         "Layers": "body @ 0,0 sheet Gusher/gusher_body_sheet.png cell 32 ; "
                   "gush @ 0,-1 sheet Gusher/gusher_gush_sheet.png cell 48",
@@ -127,7 +150,39 @@ ENEMIES = [
                       f"body.walk_side @ 12 loop cells {_PACER_SIDE} ; "
                       "body.idle_side @ 5 loop cells 2,2 ; "
                       f"gush.spew @ 10 loop cells {_GUSH}",
-        "Ability": "RandomShots(count=1)",
+        "Ability": "",
+    },
+    {
+        # Single-sprite follower from Brotato: one idle frame, drawn mirrored when
+        # it walks left (the engine flips `side`-facing sprites automatically, and
+        # the renderer falls back to idle when there's no walk clip). A plain
+        # Walker that chases the player and hits on contact — the simplest enemy
+        # shape on the sheet, handy as a worked example of the columns.
+        "Name": "Baby Alien", "Id": "baby_alien", "Difficulty": "Low", "Weight": 1,
+        "Game": "Brotato", "Tag": "",
+        "Min HP": 10, "Max HP": 15, "Move Speed": 70, "Size": 1,
+        "Behavior": "Walker", "Stop Distance": 0,
+        "Attacks": "melee dmg 5 cd 1.0 range 40",
+        "Color": "0.45,0.4,0.55", "Directional": "No", "Motion": "squash",
+        "Layers": "", "Animations": "idle @ 4 loop",
+        "Ability": "",
+    },
+    {
+        # Ranged kiter: a Shooter that opens fire from ~half a screen away (range
+        # 490 ≈ Horf) and holds still as long as the player keeps its distance,
+        # only fleeing when crowded within ~4 player sizes (Stop Distance 4). It
+        # reuses the Baby Alien's squash jelly-walk, and adds the CHARGE attack
+        # style — it squeezes/expands on Y and reddens while winding up the 0.6s
+        # telegraph before spitting a 6-dmg bolt.
+        "Name": "Spitter", "Id": "spitter", "Difficulty": "Low", "Weight": 2,
+        "Game": "Brotato", "Tag": "",
+        "Min HP": 12, "Max HP": 16, "Move Speed": 70, "Size": 1,
+        "Behavior": "Shooter", "Stop Distance": 4,
+        "Attacks": "ranged dmg 6 cd 1.8 windup 0.6 range 490 speed 260 life 2.5",
+        "Color": "0.42,0.38,0.52", "Directional": "No",
+        "Motion": "squash", "Attack Style": "charge",
+        "Layers": "", "Animations": "idle @ 4 loop",
+        "Ability": "",
     },
 ]
 
@@ -150,11 +205,13 @@ def main() -> int:
     for ri, rec in enumerate(ENEMIES, start=2):
         for ci, name in enumerate(HEADERS, start=1):
             c = ws.cell(row=ri, column=ci, value=rec.get(name, ""))
-            if name in ("Animations", "Ability", "Layers"):
+            if name in ("Animations", "Ability", "Layers", "Attacks"):
                 c.alignment = wrap
 
     widths = {"Name": 14, "Id": 12, "Game": 20, "Animations": 42,
-              "Color": 14, "Behavior": 12, "Layers": 18, "Ability": 30}
+              "Color": 14, "Behavior": 12, "Layers": 18, "Ability": 30,
+              "Attacks": 40, "Stop Distance": 12, "Motion": 9,
+              "Attack Style": 11}
     for ci, name in enumerate(HEADERS, start=1):
         ws.column_dimensions[ws.cell(row=1, column=ci).column_letter].width = widths.get(name, 11)
     ws.freeze_panes = "A2"

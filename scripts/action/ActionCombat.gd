@@ -149,10 +149,11 @@ var player_max_block: int = 0
 # pricier cards' block lingers). Reset each room. See _gain_block / _decay_block.
 var _block_pool: Array = []
 const DEFAULT_BLOCK_DECAY := 1.0   # block/sec floor for any source with no card cost
-# Block from items / statuses (Plated Armor, combat_start grants, …) fades as if
-# it came from a 2-cost card: 2 block/sec (mirrors _block_decay_for(cost=2)). One
-# rate for every non-card block source so they all bleed away on the same clock.
-const ITEM_BLOCK_DECAY := 2.0
+# Block from items / statuses (Plated Armor, combat_start grants like the Anchor's
+# +10, …) fades at the slow default rate (1 block/sec) so it lingers rather than
+# evaporating mid-fight. One rate for every non-card block source so they all
+# bleed away on the same clock.
+const ITEM_BLOCK_DECAY := 1.0
 # The integer block value we last wrote to player_actor.block. Lets _decay_block
 # tell a real combat soak (player_actor.block dropped) apart from the harmless
 # rounding gap between the float pool total and its floored integer display.
@@ -277,6 +278,23 @@ const ENEMY_PROJECTILE_COLOR := Color(1.0, 0.45, 0.2)
 # the player's PLAYER_SPRITE_RADIUS = PLAYER_RADIUS * 1.3 so a size-1 enemy
 # reads at the same scale as the player.
 const ENEMY_SPRITE_SCALE := 1.3
+# SQUASH motion style (ActionEnemyData.MotionStyle.SQUASH): while moving, the
+# sprite stretches/squashes on the Y axis (anchored at its feet) with a slight
+# inverse X so volume reads as preserved — a Brotato-style jelly walk. AMP is the
+# fraction of height added/removed at the extremes; FREQ is the wobble rate
+# (rad/s) of bob_phase, which advances with real time while the enemy moves.
+const SQUASH_AMP := 0.12
+const SQUASH_FREQ := 11.0
+# CHARGE attack style (ActionEnemyData.AttackStyle.CHARGE): during a ranged
+# wind-up the sprite squeezes in X / expands on Y and reddens, ramping with the
+# enemy's `charge` (0..1). STRETCH/SQUEEZE are the Y/X scale deltas at full
+# charge; REDNESS is how far green+blue are cut (1 = fully red) at full charge.
+const CHARGE_STRETCH := 0.22
+const CHARGE_SQUEEZE := 0.12
+const CHARGE_REDNESS := 0.65
+# Seconds for the charge telegraph to ease back to neutral after firing — a
+# quick snap back to the idle stance that's still eased, not instant.
+const CHARGE_RECOVER := 0.08
 # A small decaying nudge applied when an enemy is hit (and a tiny recoil when it
 # fires). Total knockback distance ~ SPEED^2 / (2 * DECEL) ≈ 12px — a flutter,
 # not a lunge.
@@ -1009,10 +1027,6 @@ func _process_enemies(delta: float) -> void:
 					_process_pacer(inst, delta)
 				_:
 					_process_walker(inst, delta)
-		# Random-direction shots (the Gusher's blood spew), layered on top of any
-		# behavior, on its own cooldown.
-		if inst.data.random_shots > 0:
-			_enemy_update_random_shots(inst, delta)
 		# Knockback (hit nudge / fire recoil) layered on top of the AI move, then
 		# bled off. Applies whether the enemy is feared or fighting.
 		var kb: Vector2 = inst.get("knockback", Vector2.ZERO)
@@ -1059,7 +1073,9 @@ func _perform_action_split(inst: Dictionary) -> Array:
 			"data": child_data,
 			"actor": child_actor,
 			"pos": inst.pos + offset,
-			"cooldown": child_data.attack_cooldown,
+			# Attack cooldowns are tracked per-attack and built lazily by the
+			# attack driver; this legacy key only feeds the (attack-free) fear path.
+			"cooldown": 0.0,
 		})
 	inst.actor.dead = true   # the parent is consumed by the split
 	return spawns
@@ -1087,17 +1103,17 @@ func _process_walker(inst: Dictionary, delta: float) -> void:
 	var data: ActionEnemyData = inst.data
 	var to_player: Vector2 = player_pos - inst.pos
 	var dist: float = to_player.length()
-	if dist > data.attack_range * 0.85:
+	# Close until within melee reach (or, for a ranged-only walker, firing range).
+	var reach: float = data.melee_range()
+	if reach <= 0.0:
+		reach = data.max_attack_range()
+	if dist > reach * 0.85:
 		inst.pos += to_player.normalized() * data.move_speed * delta
-	inst.cooldown = maxf(0.0, inst.cooldown - delta)
-	if dist <= data.attack_range and inst.cooldown <= 0.0:
-		_enemy_trigger_attack(inst)   # gape on contact (Gaper)
-		_enemy_hit_player(inst)
-		inst.cooldown = data.attack_cooldown
+	_enemy_update_attacks(inst, delta)
 
 # PACER: wander aimlessly, ignoring the player — pick a heading, walk it, and
-# re-roll it on a timer or when bouncing off a wall. Deals contact damage on
-# touch (the Pacer / Gusher).
+# re-roll it on a timer or when bouncing off a wall. Attacks (contact / spew)
+# still fire via the shared driver (the Pacer / Gusher).
 func _process_pacer(inst: Dictionary, delta: float) -> void:
 	var data: ActionEnemyData = inst.data
 	var h: Vector2 = inst.get("heading", Vector2.ZERO)
@@ -1116,54 +1132,98 @@ func _process_pacer(inst: Dictionary, delta: float) -> void:
 	inst.pos += h * data.move_speed * delta
 	inst["heading"] = h
 	inst["wander_t"] = wt
-	# Contact damage on touch.
-	inst.cooldown = maxf(0.0, inst.cooldown - delta)
-	if player_pos.distance_to(inst.pos) <= data.size + PLAYER_RADIUS and inst.cooldown <= 0.0:
-		_enemy_hit_player(inst)
-		inst.cooldown = data.attack_cooldown
+	_enemy_update_attacks(inst, delta)
 
 func _process_shooter(inst: Dictionary, delta: float) -> void:
 	var data: ActionEnemyData = inst.data
 	var to_player: Vector2 = player_pos - inst.pos
 	var dist: float = to_player.length()
-	var preferred: float = data.preferred_distance
-	if preferred <= 0.0:
-		preferred = data.attack_range * 0.7
-	var margin := 30.0
-	if dist < preferred - margin:
-		# Too close — retreat away from player.
+	# Standoff (preferred_distance): the enemy flees when the player is nearer than
+	# this and otherwise holds still, so it stops moving as long as it has at least
+	# this much space. It only closes in when it's out of firing range entirely.
+	var standoff: float = data.preferred_distance
+	if standoff <= 0.0:
+		standoff = data.size + PLAYER_RADIUS
+	var shoot_range: float = data.max_attack_range()
+	var approach_margin := 24.0
+	if dist < standoff:
+		# Too close — retreat away from the player.
 		inst.pos -= to_player.normalized() * data.move_speed * delta
-	elif dist > preferred + margin:
-		# Too far — close in until in firing range.
+	elif dist > shoot_range - approach_margin:
+		# Out of firing range — close in until it can shoot.
 		inst.pos += to_player.normalized() * data.move_speed * delta
-	_enemy_update_ranged_attack(inst, delta, dist)
+	# Otherwise (standoff .. shoot range) it holds position and fires.
+	_enemy_update_attacks(inst, delta)
 
 func _process_stationary(inst: Dictionary, delta: float) -> void:
-	# Hold position; fire on cooldown if player is in range.
-	var dist: float = player_pos.distance_to(inst.pos)
-	_enemy_update_ranged_attack(inst, delta, dist)
+	# Hold position; the shared driver fires when the player is in range.
+	_enemy_update_attacks(inst, delta)
 
-# Shared ranged-attack driver (SHOOTER / STATIONARY). When in range and off
-# cooldown the enemy enters a wind-up: it plays its attack animation as a
-# telegraph for `attack_windup` seconds (or the animation's own length when 0),
-# THEN releases the projectile. This is what lets the player read the tell and
-# dodge — the shot no longer leaves the instant the animation starts.
-func _enemy_update_ranged_attack(inst: Dictionary, delta: float, dist: float) -> void:
+# Shared attack driver for every behaviour. Each enemy runs its full attack list
+# (built once from data.attacks()), with an independent cooldown per attack so a
+# creature can mix, say, a fast melee swipe and a slow ranged bolt. Melee attacks
+# strike on contact when the player is within reach; ranged attacks telegraph a
+# wind-up (the attack animation) then fire. Only one attack winds up at a time.
+func _enemy_update_attacks(inst: Dictionary, delta: float) -> void:
 	var data: ActionEnemyData = inst.data
+	var atks: Array = inst.get("atks", [])
+	if atks.is_empty():
+		atks = data.attacks()
+		inst["atks"] = atks
+		var cds: Array = []
+		for _a in atks:
+			cds.append(0.0)
+		inst["atk_cd"] = cds
+	if atks.is_empty():
+		return
+	var cd_arr: Array = inst["atk_cd"]
+	var dist: float = player_pos.distance_to(inst.pos)
+
+	# Finish an in-progress ranged wind-up before considering any new attack.
 	if inst.get("winding", false):
 		inst["windup_t"] = float(inst.get("windup_t", 0.0)) + delta
-		var wind: float = data.attack_windup if data.attack_windup > 0.0 else _anim_duration(data, &"attack")
+		var wi: int = int(inst.get("wind_idx", 0))
+		var watk: Dictionary = atks[wi]
+		var wind: float = float(watk["windup"]) if float(watk["windup"]) > 0.0 else _anim_duration(data, &"attack")
+		# Charge progress (0..1) drives the telegraph attack styles (CHARGE).
+		inst["charge"] = clampf(float(inst["windup_t"]) / maxf(0.001, wind), 0.0, 1.0)
 		if float(inst["windup_t"]) >= wind:
 			inst["winding"] = false
-			_enemy_release_projectile(inst)
-			inst.cooldown = data.attack_cooldown
+			# Leave `charge` at its peak; it eases back down below (not a hard snap).
+			_enemy_fire_attack(inst, watk)
+			cd_arr[wi] = float(watk["cooldown"])
 		return
-	inst.cooldown = maxf(0.0, inst.cooldown - delta)
-	if dist <= data.attack_range and inst.cooldown <= 0.0:
-		# Begin the wind-up: show the attack animation as a warning.
-		inst["winding"] = true
-		inst["windup_t"] = 0.0
-		_enemy_trigger_attack(inst)
+	# Not winding: ease any leftover charge back to neutral so the telegraph
+	# relaxes into the walk/idle state quickly but smoothly (no instant snap).
+	inst["charge"] = move_toward(float(inst.get("charge", 0.0)), 0.0, delta / CHARGE_RECOVER)
+
+	for i in atks.size():
+		cd_arr[i] = maxf(0.0, float(cd_arr[i]) - delta)
+	for i in atks.size():
+		if float(cd_arr[i]) > 0.0:
+			continue
+		var atk: Dictionary = atks[i]
+		var rng: float = float(atk["range"])
+		if int(atk["kind"]) == ActionEnemyData.AttackKind.MELEE:
+			# Contact hit: in range (or simply touching, for tiny-range walkers).
+			if dist <= maxf(rng, data.size + PLAYER_RADIUS):
+				_enemy_trigger_attack(inst)
+				_apply_damage_to_player(int(atk["damage"]), data.display_name, inst.actor, true)
+				cd_arr[i] = float(atk["cooldown"])
+				return
+		elif bool(atk["random"]):
+			# Random spew ignores aim and range — fire immediately when ready.
+			_enemy_trigger_attack(inst)
+			_enemy_fire_attack(inst, atk)
+			cd_arr[i] = float(atk["cooldown"])
+			return
+		elif dist <= rng:
+			# Aimed shot: begin a telegraphed wind-up bound to this attack.
+			inst["winding"] = true
+			inst["windup_t"] = 0.0
+			inst["wind_idx"] = i
+			_enemy_trigger_attack(inst)
+			return
 
 # Playback length of an animation in seconds, or 0 if the enemy lacks it.
 func _anim_duration(data: ActionEnemyData, anim: StringName) -> float:
@@ -1172,22 +1232,33 @@ func _anim_duration(data: ActionEnemyData, anim: StringName) -> float:
 		return 0.0
 	return float((a["frames"] as Array).size()) / maxf(0.001, float(a["fps"]))
 
-# Releases the actual projectile at the end of the wind-up (with a small recoil).
-# Aimed shot at the player (end of a ranged enemy's wind-up).
-func _enemy_release_projectile(inst: Dictionary) -> void:
-	var dir: Vector2 = (player_pos - inst.pos).normalized()
-	if dir.length() == 0.0:
-		dir = Vector2.RIGHT
-	_spawn_enemy_projectile(inst, dir, true)
+# Fire a ranged attack: spawn its projectile(s). A `random` attack scatters
+# proj_count bolts in random directions (the Gusher's spew); an aimed attack
+# fires at the player, fanning proj_count > 1 into a small spread. Each bolt
+# carries the attack's own damage / speed / lifetime.
+func _enemy_fire_attack(inst: Dictionary, atk: Dictionary) -> void:
+	var count: int = maxi(1, int(atk["proj_count"]))
+	var to_player: Vector2 = player_pos - inst.pos
+	var aim: Vector2 = to_player.normalized() if to_player.length() > 0.0 else Vector2.RIGHT
+	for n in count:
+		var dir: Vector2
+		if bool(atk["random"]):
+			dir = Vector2.RIGHT.rotated(_rng.randf() * TAU)
+		elif count > 1:
+			# Fan the volley evenly around the aim line.
+			var spread := deg_to_rad(12.0)
+			dir = aim.rotated(lerpf(-spread, spread, float(n) / float(count - 1)))
+		else:
+			dir = aim
+		# Recoil only once per aimed volley (its first, on-target bolt).
+		_spawn_enemy_projectile(inst, dir, atk, n == 0 and not bool(atk["random"]))
 
-# A single shot in a random direction (the Gusher's spew).
-func _enemy_fire_random(inst: Dictionary) -> void:
-	_spawn_enemy_projectile(inst, Vector2.RIGHT.rotated(_rng.randf() * TAU), false)
-
-func _spawn_enemy_projectile(inst: Dictionary, dir: Vector2, recoil: bool) -> void:
+func _spawn_enemy_projectile(inst: Dictionary, dir: Vector2, atk: Dictionary, recoil: bool) -> void:
 	var data: ActionEnemyData = inst.data
-	var speed: float = data.projectile_speed if data.projectile_speed > 0.0 else ENEMY_PROJECTILE_DEFAULT_SPEED
-	var life: float = data.projectile_lifetime if data.projectile_lifetime > 0.0 else ENEMY_PROJECTILE_LIFETIME
+	var ps: float = float(atk["proj_speed"])
+	var pl: float = float(atk["proj_lifetime"])
+	var speed: float = ps if ps > 0.0 else ENEMY_PROJECTILE_DEFAULT_SPEED
+	var life: float = pl if pl > 0.0 else ENEMY_PROJECTILE_LIFETIME
 	if recoil:
 		inst["knockback"] = (inst.get("knockback", Vector2.ZERO) - dir * ENEMY_FIRE_RECOIL_SPEED).limit_length(ENEMY_KNOCKBACK_MAX)
 	projectiles.append({
@@ -1197,21 +1268,10 @@ func _spawn_enemy_projectile(inst: Dictionary, dir: Vector2, recoil: bool) -> vo
 		"radius": ENEMY_PROJECTILE_RADIUS,
 		"color": ENEMY_PROJECTILE_COLOR,
 		"lifetime": life,
-		"damage": data.contact_damage,
+		"damage": int(atk["damage"]),
 		"source_name": data.display_name,
 		"attacker": inst.actor,
 	})
-
-# Random-shot attack (Gusher): fire `random_shots` projectiles in random
-# directions every attack_cooldown.
-func _enemy_update_random_shots(inst: Dictionary, delta: float) -> void:
-	var cd: float = float(inst.get("shot_cd", inst.data.attack_cooldown)) - delta
-	if cd <= 0.0:
-		for _i in maxi(1, inst.data.random_shots):
-			_enemy_fire_random(inst)
-		_enemy_trigger_attack(inst)
-		cd = inst.data.attack_cooldown
-	inst["shot_cd"] = cd
 
 # --- Enemy frame animation -------------------------------------------------
 
@@ -1266,11 +1326,30 @@ func _enemy_update_facing(inst: Dictionary) -> void:
 			inst["facing"] = &"side"
 			inst["flip"] = mv.x < 0.0
 
+# Next bob phase (>= current) at which the SQUASH bob is at its lowest point —
+# most squashed, i.e. sin(phase * SQUASH_FREQ) == -1, at phase*FREQ == 3*PI/2
+# (mod TAU). A stopped enemy eases here and holds.
+func _next_bob_rest_phase(phase: float) -> float:
+	var theta: float = phase * SQUASH_FREQ
+	var low := 1.5 * PI
+	var target: float = low + ceilf((theta - low) / TAU) * TAU
+	if target < theta:
+		target += TAU
+	return target / SQUASH_FREQ
+
 # Advance each layer's playhead; the attack base auto-reverts when attack_t ends.
 func _advance_enemy_anim(inst: Dictionary, delta: float) -> void:
 	if not inst.data.has_anims():
 		return
 	_enemy_update_facing(inst)
+	# Drive the SQUASH bob: advance it while moving, otherwise roll it forward to
+	# the lowest point of the cycle (most squashed) and rest there — so a stopped
+	# enemy settles into a crouch and resumes the walk from that beat.
+	var bob: float = float(inst.get("bob_phase", 0.0))
+	if inst.get("moving", false):
+		inst["bob_phase"] = bob + delta
+	else:
+		inst["bob_phase"] = minf(bob + delta, _next_bob_rest_phase(bob))
 	if float(inst.get("attack_t", 0.0)) > 0.0:
 		inst["attack_t"] = float(inst["attack_t"]) - delta
 	var la: Dictionary = inst.get("la", {})
@@ -1291,6 +1370,11 @@ func _layer_current_tex(inst: Dictionary, layer: StringName) -> Texture2D:
 	var e = inst.get("la", {}).get(layer)
 	var base: StringName = e["base"] if e != null else _layer_base(inst, layer)
 	var a: Dictionary = inst.data.resolve_anim(layer, base, inst.get("facing", &"vert"))
+	# Single-sprite enemies (one idle clip, no walk/attack) fall back to idle so
+	# they still render while moving or attacking — e.g. the Baby Alien, which
+	# only ships an idle frame and is mirrored when it walks left.
+	if a.is_empty() and base != &"idle":
+		a = inst.data.resolve_anim(layer, &"idle", inst.get("facing", &"vert"))
 	if a.is_empty():
 		return null
 	var frames: Array = a["frames"]
@@ -3277,10 +3361,6 @@ func _refresh_charged_slot() -> void:
 
 # ---------------------------------------------------------------------------
 
-func _enemy_hit_player(inst: Dictionary) -> void:
-	# Body contact is melee, so the player's Thorns reflect back at the enemy.
-	_apply_damage_to_player(inst.data.contact_damage, inst.data.display_name, inst.actor, true)
-
 func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatActor = null, contact: bool = false) -> void:
 	if player_iframes > 0.0:
 		return
@@ -3506,9 +3586,39 @@ func _draw() -> void:
 		var draw_r: float = data.size
 		var drew_sprite := false
 		if data.has_anims():
-			# Composite layers back-to-front at a shared scale (so the head keeps
-			# its size relative to the body), each at its offset; mirror `side`.
+			# Composite layers back-to-front at a shared scale (so the head keeps its
+			# size relative to the body), each at its offset. A single canvas
+			# transform applies the horizontal mirror (when facing `side`) and the
+			# procedural motion style, so the per-layer rects stay in plain
+			# inst.pos-centred coords. With neither, this is the identity transform.
 			var face_side: bool = inst.get("flip", false) and inst.get("facing", &"") == &"side"
+			var sx := 1.0
+			var sy := 1.0
+			var tint := Color.WHITE
+			if data.motion_style == ActionEnemyData.MotionStyle.SQUASH:
+				# Stretch up / squash down on Y, anchored at the feet; slight inverse
+				# X keeps the volume reading constant (Brotato-style jelly walk). The
+				# bob is held at its lowest point while stopped (see _advance_enemy_anim),
+				# so a halted enemy rests in a crouch and charges up from there.
+				var wave: float = sin(float(inst.get("bob_phase", 0.0)) * SQUASH_FREQ)
+				sy = 1.0 + SQUASH_AMP * wave
+				sx = 1.0 - SQUASH_AMP * 0.5 * wave
+			# Charge telegraph: squeeze X / expand Y and redden as the shot winds up
+			# (combines multiplicatively with any motion style).
+			var charge: float = float(inst.get("charge", 0.0))
+			if data.attack_style == ActionEnemyData.AttackStyle.CHARGE and charge > 0.0:
+				sy *= 1.0 + CHARGE_STRETCH * charge
+				sx *= 1.0 - CHARGE_SQUEEZE * charge
+				tint = Color(1.0, 1.0 - CHARGE_REDNESS * charge, 1.0 - CHARGE_REDNESS * charge)
+			var flip_sign: float = -1.0 if face_side else 1.0
+			# Squash is anchored at the feet (≈ sprite bottom): mirror about the
+			# enemy's x, scale Y about anchor_y so the feet stay planted.
+			var anchor_y: float = inst.pos.y + data.size * ENEMY_SPRITE_SCALE
+			var need_xform: bool = face_side or sx != 1.0 or sy != 1.0
+			if need_xform:
+				draw_set_transform(
+					Vector2(inst.pos.x * (1.0 - flip_sign * sx), ARENA_TOP + anchor_y * (1.0 - sy)),
+					0.0, Vector2(flip_sign * sx, sy))
 			for L in data.layers():
 				var tex: Texture2D = _layer_current_tex(inst, L.name)
 				if tex == null:
@@ -3522,18 +3632,12 @@ func _draw() -> void:
 				var w: float = tex.get_width() * s
 				var h: float = tex.get_height() * s
 				var off: Vector2 = L.offset * s
-				if face_side:
-					# Mirror in place about the enemy centre via a real transform
-					# (negative-size Rect2 flipping is unreliable). Keep ARENA_TOP.
-					draw_set_transform(Vector2(0, ARENA_TOP) + inst.pos + Vector2(-off.x, off.y),
-						0.0, Vector2(-1.0, 1.0))
-					draw_texture_rect(tex, Rect2(-w * 0.5, -h * 0.5, w, h), false)
-				else:
-					draw_texture_rect(tex,
-						Rect2(inst.pos.x + off.x - w * 0.5, inst.pos.y + off.y - h * 0.5, w, h), false)
+				draw_texture_rect(tex,
+					Rect2(inst.pos.x + off.x - w * 0.5, inst.pos.y + off.y - h * 0.5, w, h),
+					false, tint)
 				drew_sprite = true
-			if face_side:
-				draw_set_transform(Vector2(0, ARENA_TOP), 0.0, Vector2.ONE)  # restore base after flips
+			if need_xform:
+				draw_set_transform(Vector2(0, ARENA_TOP), 0.0, Vector2.ONE)  # restore base
 		if drew_sprite:
 			draw_r = data.size * ENEMY_SPRITE_SCALE
 		else:

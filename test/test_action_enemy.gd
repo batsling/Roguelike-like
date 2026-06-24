@@ -19,10 +19,16 @@ func test_horf_is_a_stationary_shooter() -> void:
 	assert_eq(horf.move_speed, 0.0, "Horf never relocates")
 	assert_eq(horf.hp_min, 25)
 	assert_eq(horf.hp_max, 25)
-	assert_gt(horf.attack_windup, 0.0, "Horf telegraphs its shot with a wind-up")
+	# One ranged attack, carrying its own damage + projectile stats.
+	var atks: Array = horf.attacks()
+	assert_eq(atks.size(), 1, "Horf has a single attack")
+	var a: Dictionary = atks[0]
+	assert_eq(int(a["kind"]), ActionEnemyData.AttackKind.RANGED, "Horf's attack is ranged")
+	assert_eq(int(a["damage"]), 6)
+	assert_gt(float(a["windup"]), 0.0, "Horf telegraphs its shot with a wind-up")
 	# Slow shot, but a long enough life to cross the full arena (~980px).
-	assert_eq(horf.projectile_speed, 200.0)
-	assert_gt(horf.projectile_lifetime * horf.projectile_speed, 980.0,
+	assert_eq(float(a["proj_speed"]), 200.0)
+	assert_gt(float(a["proj_lifetime"]) * float(a["proj_speed"]), 980.0,
 		"projectile must out-travel the room width")
 
 func test_horf_size_is_player_relative() -> void:
@@ -52,6 +58,52 @@ func test_horf_in_action_pool() -> void:
 		ids.append(e.id)
 	assert_has(ids, &"horf", "Horf should be discoverable for action spawns")
 
+# --- Baby Alien (Brotato) ---------------------------------------------------
+
+func test_baby_alien_walker_with_squash() -> void:
+	var baby: ActionEnemyData = load("res://data/action_enemies/baby_alien.tres")
+	assert_not_null(baby, "baby_alien.tres should load")
+	assert_eq(baby.behavior, ActionEnemyData.BehaviorKind.WALKER, "chases the player")
+	assert_eq(baby.move_speed, 70.0)
+	assert_eq(baby.hp_min, 10)
+	assert_eq(baby.hp_max, 15)
+	# One melee contact attack carrying its own damage.
+	var atks: Array = baby.attacks()
+	assert_eq(atks.size(), 1)
+	assert_eq(int(atks[0]["kind"]), ActionEnemyData.AttackKind.MELEE)
+	assert_eq(int(atks[0]["damage"]), 5)
+	# The reusable Y-axis squash/stretch motion style is saved on the resource.
+	assert_eq(baby.motion_style, ActionEnemyData.MotionStyle.SQUASH,
+		"Baby Alien uses the squash jelly-walk style")
+	# Single idle frame (mirrored at draw time when walking left).
+	assert_true(baby.has_anims(), "renders its idle sprite")
+	assert_false(baby.get_anim(&"idle").is_empty(), "has an idle animation")
+
+# --- Spitter (Brotato) ------------------------------------------------------
+
+func test_spitter_shooter_with_charge() -> void:
+	var sp: ActionEnemyData = load("res://data/action_enemies/spitter.tres")
+	assert_not_null(sp, "spitter.tres should load")
+	assert_eq(sp.behavior, ActionEnemyData.BehaviorKind.SHOOTER,
+		"follows but kites away when crowded")
+	assert_eq(sp.move_speed, 70.0)
+	# Stops moving while it has room; flees only inside ~4 player sizes (Stop
+	# Distance 4 on the sheet -> 4 * PLAYER_RADIUS px).
+	assert_almost_eq(sp.preferred_distance, 4.0 * 18.0, 0.01, "standoff = 4 player sizes")
+	assert_eq(sp.weight, 2)
+	# One ranged attack: a 6-dmg bolt opening fire from ~half a screen, telegraphed.
+	var atks: Array = sp.attacks()
+	assert_eq(atks.size(), 1)
+	assert_eq(int(atks[0]["kind"]), ActionEnemyData.AttackKind.RANGED)
+	assert_eq(int(atks[0]["damage"]), 6)
+	assert_gt(float(atks[0]["range"]), 480.0, "fires from about half a screen, like the Horf")
+	assert_gt(float(atks[0]["windup"]), 0.0, "telegraphs the spit")
+	# Reuses the squash motion style and the new charge attack style — both saved
+	# on the resource so other enemies can opt in.
+	assert_eq(sp.motion_style, ActionEnemyData.MotionStyle.SQUASH)
+	assert_eq(sp.attack_style, ActionEnemyData.AttackStyle.CHARGE,
+		"Spitter charges (squeeze/redden) before firing")
+
 # --- Gaper family -----------------------------------------------------------
 
 func test_gaper_on_death_table() -> void:
@@ -78,8 +130,19 @@ func test_pacer_and_gusher_wander() -> void:
 
 func test_gusher_random_shots() -> void:
 	var gusher: ActionEnemyData = load("res://data/action_enemies/gusher.tres")
-	assert_gt(gusher.random_shots, 0, "Gusher fires random shots")
-	assert_gt(gusher.projectile_speed, 0.0)
+	# Gusher mixes a contact melee with a random-direction ranged spew — each
+	# with its own damage, proving an enemy can carry both attack kinds.
+	var kinds: Array = []
+	var ranged: Dictionary = {}
+	for a in gusher.attacks():
+		kinds.append(int(a["kind"]))
+		if int(a["kind"]) == ActionEnemyData.AttackKind.RANGED:
+			ranged = a
+	assert_has(kinds, ActionEnemyData.AttackKind.MELEE, "Gusher has a contact attack")
+	assert_has(kinds, ActionEnemyData.AttackKind.RANGED, "Gusher has a ranged attack")
+	assert_false(ranged.is_empty(), "found the ranged attack")
+	assert_true(bool(ranged["random"]), "Gusher's spew fires in random directions")
+	assert_gt(float(ranged["proj_speed"]), 0.0)
 	assert_true(gusher.on_death_ids.is_empty(), "Gusher doesn't transform")
 
 func test_gusher_blood_gush_layer() -> void:

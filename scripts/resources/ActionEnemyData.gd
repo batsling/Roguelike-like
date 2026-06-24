@@ -8,6 +8,17 @@ extends Resource
 
 enum BehaviorKind { WALKER, SHOOTER, STATIONARY, PACER }
 enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
+enum AttackKind { MELEE, RANGED }
+# Reusable procedural animation styles layered on top of frame anims by
+# ActionCombat's renderer. NONE = frames only; SQUASH = a Y-axis stretch/squash
+# "jelly walk" while moving (Brotato baby alien). Add new styles here + handle
+# them in ActionCombat._draw so any enemy can opt in via the sheet's Motion column.
+enum MotionStyle { NONE, SQUASH }
+# Reusable telegraph played during a ranged attack's wind-up (charge). NONE =
+# none; CHARGE = squeeze in X / expand on Y while reddening as the shot charges
+# (the Spitter). Handled in ActionCombat._draw, driven by the per-enemy `charge`
+# (0..1). Add new styles here + there; opt in via the sheet's Attack Style column.
+enum AttackStyle { NONE, CHARGE }
 
 @export var id: StringName
 @export var display_name: String
@@ -18,27 +29,46 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 @export var hp_min: int = 10
 @export var hp_max: int = 14
 
-# Damage applied per touch (WALKER) or per projectile (SHOOTER).
-@export var contact_damage: int = 5
-@export var attack_cooldown: float = 1.0  # seconds between hits
-# Telegraph lead-time: a ranged enemy plays its attack animation for this long
-# as a warning BEFORE the projectile is released. 0 falls back to the attack
-# animation's own duration, so the shot lands exactly as the wind-up finishes.
-@export var attack_windup: float = 0.0
-@export var attack_range: float = 50.0    # melee radius / max firing distance
+# --- Attacks ------------------------------------------------------------
+# An enemy carries one or more attacks; EVERY attack owns its own damage and
+# timing, so a single creature can mix a weak melee swipe with a heavier ranged
+# bolt (or fire two different bolts). Stored as parallel arrays — one entry per
+# attack — to keep the generated .tres trivial, mirroring the animation arrays
+# below. Read them back through attacks(), which zips these into per-attack
+# Dictionaries (and synthesises one attack from the legacy fields below when the
+# arrays are empty, so hand-authored enemies still work).
+#   kind:          AttackKind (0 = melee/contact, 1 = ranged/projectile)
+#   damage:        hit / per-projectile damage
+#   cooldown:      seconds between uses of THIS attack (each tracked separately)
+#   windup:        ranged telegraph lead-time (0 = use the attack anim's length)
+#   range:         trigger range (melee contact reach / max firing distance)
+#   proj_speed:    ranged projectile speed, px/s (0 = ActionCombat default)
+#   proj_lifetime: ranged projectile life, s (0 = ActionCombat default)
+#   proj_count:    projectiles per use (>1 = spread fan, or N random shots)
+#   random:        ranged only — fire in random directions, ignoring aim/range
+@export var attack_kinds: PackedInt32Array = PackedInt32Array()
+@export var attack_damages: PackedInt32Array = PackedInt32Array()
+@export var attack_cooldowns: PackedFloat32Array = PackedFloat32Array()
+@export var attack_windups: PackedFloat32Array = PackedFloat32Array()
+@export var attack_ranges: PackedFloat32Array = PackedFloat32Array()
+@export var attack_proj_speeds: PackedFloat32Array = PackedFloat32Array()
+@export var attack_proj_lifetimes: PackedFloat32Array = PackedFloat32Array()
+@export var attack_proj_counts: PackedInt32Array = PackedInt32Array()
+@export var attack_random: PackedByteArray = PackedByteArray()
 
 # SHOOTER-only: distance the enemy tries to maintain from the player.
-# 0 falls back to 0.7 * attack_range at runtime. Ignored by walkers.
+# 0 falls back to 0.7 * max ranged range at runtime. Ignored by walkers.
 @export var preferred_distance: float = 0.0
 
-# SHOOTER-only: projectile speed (px/s). 0 falls back to a sensible
-# default in ActionCombat.
+# --- Legacy attack fields (deprecated) ----------------------------------
+# Superseded by the attack_* arrays above. Kept so hand-authored enemies that
+# predate the attacks model (the walker/shooter placeholders) still load: when
+# attack_kinds is empty, attacks() synthesises a single attack from these.
+@export var contact_damage: int = 5
+@export var attack_cooldown: float = 1.0
+@export var attack_windup: float = 0.0
+@export var attack_range: float = 50.0
 @export var projectile_speed: float = 0.0
-
-# SHOOTER/STATIONARY: projectile lifetime in seconds. 0 falls back to
-# ActionCombat.ENEMY_PROJECTILE_LIFETIME. A deliberately slow shot that must
-# still cross the whole arena needs a longer life than the default (e.g. the
-# Horf fires slow blood tears that travel the full room).
 @export var projectile_lifetime: float = 0.0
 
 # Free-movement params
@@ -46,6 +76,12 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 @export var size: float = 24.0            # collision + display radius
 
 @export var behavior: BehaviorKind = BehaviorKind.WALKER
+
+# Reusable procedural motion style applied while the enemy moves (see MotionStyle).
+@export var motion_style: MotionStyle = MotionStyle.NONE
+
+# Reusable telegraph played while a ranged attack charges (see AttackStyle).
+@export var attack_style: AttackStyle = AttackStyle.NONE
 
 # Visuals — enemies render as frame animations when `anim_frames` is
 # populated; otherwise ActionCombat falls back to a colored circle of radius
@@ -86,9 +122,71 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 @export var on_death_ids: PackedStringArray = PackedStringArray()
 @export var on_death_weights: PackedInt32Array = PackedInt32Array()
 
-# Random-shot attack: fire N projectiles per attack_cooldown in random
-# directions (the Gusher's blood spew). 0 = no random shots.
+# Legacy: fire N projectiles per attack_cooldown in random directions. Superseded
+# by a ranged attack with `random` set + proj_count; kept for legacy fallback.
 @export var random_shots: int = 0
+
+# Resolved attack list — one Dictionary per attack (see the attack_* arrays for
+# the keys). Built from the parallel arrays; when those are empty a single attack
+# is synthesised from the legacy fields so pre-attacks-model enemies still work.
+func attacks() -> Array:
+	var out: Array = []
+	for i in attack_kinds.size():
+		out.append({
+			"kind": int(attack_kinds[i]),
+			"damage": int(attack_damages[i]) if i < attack_damages.size() else 0,
+			"cooldown": float(attack_cooldowns[i]) if i < attack_cooldowns.size() else 1.0,
+			"windup": float(attack_windups[i]) if i < attack_windups.size() else 0.0,
+			"range": float(attack_ranges[i]) if i < attack_ranges.size() else 0.0,
+			"proj_speed": float(attack_proj_speeds[i]) if i < attack_proj_speeds.size() else 0.0,
+			"proj_lifetime": float(attack_proj_lifetimes[i]) if i < attack_proj_lifetimes.size() else 0.0,
+			"proj_count": maxi(1, int(attack_proj_counts[i]) if i < attack_proj_counts.size() else 1),
+			"random": (i < attack_random.size() and attack_random[i] != 0),
+		})
+	if out.is_empty():
+		out = _legacy_attacks()
+	return out
+
+# Synthesise an attack list from the deprecated scalar fields. Shooters/stationary
+# get a ranged attack; everything else a melee one. A legacy random_shots adds a
+# second, random-direction ranged spew (the old Gusher behaviour).
+func _legacy_attacks() -> Array:
+	var ranged: bool = behavior == BehaviorKind.SHOOTER or behavior == BehaviorKind.STATIONARY
+	var out: Array = [{
+		"kind": AttackKind.RANGED if ranged else AttackKind.MELEE,
+		"damage": contact_damage,
+		"cooldown": attack_cooldown,
+		"windup": attack_windup if ranged else 0.0,
+		"range": attack_range,
+		"proj_speed": projectile_speed,
+		"proj_lifetime": projectile_lifetime,
+		"proj_count": 1,
+		"random": false,
+	}]
+	if random_shots > 0:
+		out.append({
+			"kind": AttackKind.RANGED, "damage": contact_damage,
+			"cooldown": attack_cooldown, "windup": 0.0, "range": 0.0,
+			"proj_speed": projectile_speed, "proj_lifetime": projectile_lifetime,
+			"proj_count": random_shots, "random": true,
+		})
+	return out
+
+# Largest trigger range across all attacks — drives ranged kiting/firing distance.
+func max_attack_range() -> float:
+	var r: float = 0.0
+	for a in attacks():
+		r = maxf(r, float(a["range"]))
+	return r
+
+# Largest range among MELEE attacks (0 if the enemy has none) — how close a
+# walker closes before it can land a contact hit.
+func melee_range() -> float:
+	var r: float = 0.0
+	for a in attacks():
+		if int(a["kind"]) == AttackKind.MELEE:
+			r = maxf(r, float(a["range"]))
+	return r
 
 func has_anims() -> bool:
 	return anim_frames.size() > 0
