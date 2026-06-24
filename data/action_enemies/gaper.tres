@@ -53,6 +53,7 @@ on_death_ids = PackedStringArray("pacer", "gusher")
 on_death_weights = PackedInt32Array(80, 20)
 layer_names = PackedStringArray("body", "head")
 layer_offsets = PackedVector2Array(0, 0, 0, -10)
+base_dim = 32
 directional = true
 anim_names = PackedStringArray("body.idle", "body.walk_vert", "body.walk_side", "head.idle", "head.attack")
 anim_fps = PackedFloat32Array(5, 12, 12, 5, 10)

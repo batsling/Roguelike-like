@@ -92,10 +92,10 @@ LAYER_SLICES = {
         {"layer": "body", "offset": (0.0, 0.0),
          "anims": _body_anims("Gusher/gusher_body_sheet.png", _GAPER_VERT, _PACER_SIDE, side_idle=(2, 2))},
         # Non-directional blood geyser, drawn over the top of the body, looping
-        # while alive (see images/.../Gusher/README.md). 64px cells downscaled to
-        # 32 so the gush sits at body scale rather than halving it.
-        {"layer": "gush", "offset": (0.0, -10.0), "anims": [
-            ("spew", 10.0, True, ("sheet", "Gusher/gusher_gush_sheet.png", 64, _GUSH, 32)),
+        # while alive (see images/.../Gusher/README.md). 64px cells (2x the body's
+        # 32px) so the gush spills beyond the body — see base_dim in write_tres.
+        {"layer": "gush", "offset": (0.0, -16.0), "anims": [
+            ("spew", 10.0, True, ("sheet", "Gusher/gusher_gush_sheet.png", 64, _GUSH)),
         ]},
     ],
 }
@@ -329,6 +329,14 @@ def build_layered_enemy(rec, eid, name, out_folder, layers_cfg):
     cw = max((f.width for f in allfr), default=1)
     ch = max((f.height for f in allfr), default=1)
 
+    # base_dim = the first (body) layer's native frame size; the engine scales the
+    # whole composite by it, so larger layers (the Gusher's 64px gush vs the 32px
+    # body) spill beyond the body instead of shrinking it.
+    base_layer = layers_cfg[0]["layer"]
+    base_dim = max((max(f.width, f.height)
+                    for (ly, _, _, _, frs) in extracted if ly == base_layer for f in frs),
+                   default=max(cw, ch))
+
     anim_meta = []
     frame_assets = []
     for (layer, aname, fps, loop, frames) in extracted:
@@ -342,12 +350,13 @@ def build_layered_enemy(rec, eid, name, out_folder, layers_cfg):
 
     lnames = [l["layer"] for l in layers_cfg]
     loffsets = [l["offset"] for l in layers_cfg]
-    write_tres(rec, eid, name, anim_meta, frame_assets, (lnames, loffsets))
+    write_tres(rec, eid, name, anim_meta, frame_assets, (lnames, loffsets), base_dim)
     print(f"[generate-action-enemy] {eid}: {len(lnames)} layers, "
-          f"{len(anim_meta)} anims, {len(frame_assets)} frames (canvas {cw}x{ch})")
+          f"{len(anim_meta)} anims, {len(frame_assets)} frames "
+          f"(canvas {cw}x{ch}, base_dim {base_dim})")
 
 
-def write_tres(rec, eid, name, anim_meta, frame_assets, layers_override=None):
+def write_tres(rec, eid, name, anim_meta, frame_assets, layers_override=None, base_dim=0.0):
     size_px = float(rec["Size"]) * PLAYER_RADIUS
     difficulty = DIFFICULTY.get(str(rec["Difficulty"]).strip().lower(), 0)
     behavior = BEHAVIOR.get(str(rec["Behavior"]).strip().lower(), 0)
@@ -421,6 +430,7 @@ def write_tres(rec, eid, name, anim_meta, frame_assets, layers_override=None):
         f"on_death_weights = PackedInt32Array({od_weights})",
         f"layer_names = PackedStringArray({lnames})",
         f"layer_offsets = PackedVector2Array({loffsets})",
+        f"base_dim = {_num(base_dim)}",
         f"directional = {'true' if directional else 'false'}",
         f"anim_names = PackedStringArray({anim_names})",
         f"anim_fps = PackedFloat32Array({anim_fps})",

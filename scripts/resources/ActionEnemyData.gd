@@ -75,6 +75,11 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 @export var layer_names: PackedStringArray = PackedStringArray()
 @export var layer_offsets: PackedVector2Array = PackedVector2Array()
 
+# Reference frame size (px) the whole composite is scaled by, so layers larger
+# than the body (e.g. the Gusher's blood gush) render bigger and spill OUTSIDE
+# the body instead of forcing it to shrink. 0 = scale each frame by its own size.
+@export var base_dim: float = 0.0
+
 # --- On-death transform -------------------------------------------------
 # After the death animation, weighted-roll one entry and spawn it at the corpse
 # (the Gaper -> Pacer/Gusher head-pop). Parallel arrays; empty = no transform.

@@ -90,6 +90,11 @@ func test_gusher_blood_gush_layer() -> void:
 	assert_false(spew.is_empty(), "gush.spew animation resolves")
 	assert_true(spew["loop"], "gush loops while alive")
 	assert_gt((spew["frames"] as Array).size(), 1, "gush has multiple frames")
+	# The composite scales by base_dim (the body), and the gush frames are larger,
+	# so the blood spills OUTSIDE the body/hitbox instead of being capped to it.
+	assert_gt(gusher.base_dim, 0.0, "gusher scales by a base frame size")
+	var gush_tex: Texture2D = (spew["frames"] as Array)[0]
+	assert_gt(float(gush_tex.get_width()), gusher.base_dim, "gush frame is bigger than the body scale")
 
 func test_roll_on_death_empty_when_no_table() -> void:
 	var horf: ActionEnemyData = load(HORF_PATH)

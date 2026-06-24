@@ -3513,8 +3513,12 @@ func _draw() -> void:
 				var tex: Texture2D = _layer_current_tex(inst, L.name)
 				if tex == null:
 					continue
+				# Scale the whole composite by the enemy's base frame size (the body),
+				# so layers with larger frames (the Gusher's gush) spill beyond the
+				# body rather than shrinking it. Falls back to per-frame size.
 				var dim: float = maxf(1.0, float(maxi(tex.get_width(), tex.get_height())))
-				var s: float = (data.size * 2.0 * ENEMY_SPRITE_SCALE) / dim
+				var ref_dim: float = data.base_dim if data.base_dim > 0.0 else dim
+				var s: float = (data.size * 2.0 * ENEMY_SPRITE_SCALE) / ref_dim
 				var w: float = tex.get_width() * s
 				var h: float = tex.get_height() * s
 				var off: Vector2 = L.offset * s
