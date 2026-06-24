@@ -10,17 +10,28 @@ authoring conveniences:
   * `Size` is player-relative: 1 = the player's starting size. The importer
     (tools/generate_action_enemy_tres.py) multiplies by the player radius to get
     pixels.
-  * `Animations` is a packed cell declaring which frame animations the enemy has
-    and how to play / slice them. Grammar (`;`-separated):
+  * `Layers` declares stacked sprite parts (back-to-front), `;`-separated:
 
-        <name> @ <fps> <loop|once> [grid WxH]
+        <name> @ <ox>,<oy> [sheet <path>] [cell <n>]
 
-    e.g.  idle @ 4 loop ; attack @ 8 once grid 32x32
-    - no `grid` clause  -> the whole source PNG is a single frame
-    - `grid WxH`        -> the source PNG is sliced into WxH cells, left-to-right
-                           then top-to-bottom
-    Source art lives in images/enemies/action_enemies/<Name>/, one PNG per
-    animation named <id>_<anim>*.png (e.g. horf_idle.png, horf_attack_1.png).
+    e.g.  body @ 0,0 sheet Gaper/gaper_body_sheet.png cell 32 ; head @ 0,-10 ...
+    `sheet`/`cell` give the source grid for that layer's cell-based animations.
+    Empty `Layers` = one implicit layer drawn at the origin (the Horf).
+
+  * `Animations` declares the frame animations, `;`-separated:
+
+        [<layer>.]<name> @ <fps> <loop|once> [cells <r,c> <r,c> ... | grid WxH]
+
+    e.g.  idle @ 4 loop ; attack @ 8 once grid 32x32              (single layer)
+          body.walk_vert @ 12 loop cells 0,1 0,2 1,0 ; head.attack @ 10 once cells 0,1 1,1
+    - `cells r,c ...`  -> slice the layer's `sheet` at those (row,col) cells.
+    - `grid WxH`       -> slice the convention PNG into a WxH grid (left-to-right,
+                          top-to-bottom).
+    - neither          -> the whole convention PNG is a single frame.
+    Facing is by name suffix: walk_vert (up/down), walk_side (left mirrors right);
+    idle/idle_side fall back to idle. Convention art lives in
+    images/enemies/action_enemies/<Name>/ as <id>_<anim>*.png (horf_idle.png …);
+    sheet art is any PNG under that root referenced by the `sheet` path.
 
 Re-run safe: drops and rebuilds `enemiesA` each time. Leaves every other sheet
 untouched.
@@ -41,11 +52,18 @@ HEADERS = [
     "Color", "Directional", "Layers", "Animations", "Ability",
 ]
 
-# One dict per action enemy, keyed by HEADERS.
-# NOTE: Gaper/Pacer/Gusher leave Layers/Animations empty here because their
-# composite/directional slicing is too irregular for the Animations column and
-# lives in LAYER_SLICES in generate_action_enemy_tres.py instead (body/head for
-# the Gaper, body for the Pacer, body + blood-gush geyser for the Gusher).
+# Directional body walk cells, shared by the Isaac walkers (cells in the shared
+# body sheet, row,col). _VERT plays for up/down; _*_SIDE for left/right (mirrored
+# left at draw). Defined here so the long cell lists stay readable in the cells.
+_VERT = "0,1 0,2 0,3 1,0 1,1 1,2 1,3 2,0 2,1"
+_GAPER_SIDE = "2,2 2,3 3,0 3,1 3,2 3,3 4,0 4,1 4,2 4,3"
+_PACER_SIDE = "2,3 3,0 3,1 3,2 3,3 4,0 4,1 4,2 4,3"
+_GUSH = "0,0 0,1 0,2 0,3 1,0 1,1 1,2 1,3 2,0 2,1"  # 48px geyser, 10 frames
+
+# One dict per action enemy, keyed by HEADERS. Layers/Animations fully define the
+# art now (see the grammar in the module docstring): the Horf is a single
+# implicit layer with convention art; Gaper/Pacer/Gusher are composite, slicing
+# shared sheets by explicit cell lists.
 ENEMIES = [
     {
         "Name": "Horf", "Id": "horf", "Difficulty": "Low", "Weight": 2,
@@ -68,7 +86,13 @@ ENEMIES = [
         "Projectile Lifetime": 0, "Move Speed": 90, "Size": 1,
         "Behavior": "Walker",
         "Color": "0.9,0.6,0.55", "Directional": "No",
-        "Layers": "", "Animations": "",
+        "Layers": "body @ 0,0 sheet Gaper/gaper_body_sheet.png cell 32 ; "
+                  "head @ 0,-10 sheet Gaper/gaper_head_sheet.png cell 32",
+        "Animations": "body.idle @ 5 loop cells 0,0 ; "
+                      f"body.walk_vert @ 12 loop cells {_VERT} ; "
+                      f"body.walk_side @ 12 loop cells {_GAPER_SIDE} ; "
+                      "head.idle @ 5 loop cells 0,1 ; "
+                      "head.attack @ 10 once cells 0,1 1,1",
         "Ability": "OnDeath(pacer:80, gusher:20)",
     },
     {
@@ -80,7 +104,11 @@ ENEMIES = [
         "Projectile Lifetime": 0, "Move Speed": 70, "Size": 1,
         "Behavior": "Pacer",
         "Color": "0.85,0.5,0.5", "Directional": "No",
-        "Layers": "", "Animations": "",
+        "Layers": "body @ 0,0 sheet Pacer/pacer_body_sheet.png cell 32",
+        "Animations": "body.idle @ 5 loop cells 0,0 ; "
+                      f"body.walk_vert @ 12 loop cells {_VERT} ; "
+                      f"body.walk_side @ 12 loop cells {_PACER_SIDE} ; "
+                      "body.idle_side @ 5 loop cells 2,2",
         "Ability": "",
     },
     {
@@ -92,7 +120,13 @@ ENEMIES = [
         "Projectile Lifetime": 3.0, "Move Speed": 60, "Size": 1,
         "Behavior": "Pacer",
         "Color": "0.7,0.1,0.1", "Directional": "No",
-        "Layers": "", "Animations": "",
+        "Layers": "body @ 0,0 sheet Gusher/gusher_body_sheet.png cell 32 ; "
+                  "gush @ 0,-1 sheet Gusher/gusher_gush_sheet.png cell 48",
+        "Animations": "body.idle @ 5 loop cells 0,0 ; "
+                      f"body.walk_vert @ 12 loop cells {_VERT} ; "
+                      f"body.walk_side @ 12 loop cells {_PACER_SIDE} ; "
+                      "body.idle_side @ 5 loop cells 2,2 ; "
+                      f"gush.spew @ 10 loop cells {_GUSH}",
         "Ability": "RandomShots(count=1)",
     },
 ]

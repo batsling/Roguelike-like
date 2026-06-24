@@ -8,12 +8,17 @@ enemies. For each row it:
 
   * parses the schema columns into ActionEnemyData fields;
   * converts the player-relative `Size` to pixels (1 == PLAYER_RADIUS);
-  * parses the packed `Animations` cell, locates each animation's source PNG in
-    images/enemies/action_enemies/<Name>/ (named <id>_<anim>*.png), slices it by
-    the declared grid (or treats the whole image as one frame), then NORMALISES
-    every frame of the enemy onto a common square canvas: each frame is trimmed
-    to its opaque bounds and re-centred on a square sized to the largest frame,
-    so idle/attack/… share one scale and the head never pops between anims;
+  * parses the packed `Layers` + `Animations` cells (grammar documented in
+    tools/build_enemiesA_sheet.py) and builds the frame art one of two ways:
+      - convention (single implicit layer, e.g. the Horf): one PNG per animation
+        named <id>_<anim>*.png, sliced by the declared grid, then NORMALISED —
+        each frame trimmed to its opaque bounds and re-centred on a square sized
+        to the largest frame, so idle/attack share one scale with no pop;
+      - composite (layers with `cells`, e.g. Gaper/Pacer/Gusher): each layer's
+        animations slice a shared sheet by explicit (row,col) cell lists and are
+        centred — no trim — on one canvas, preserving cell alignment and the
+        relative scale between layers (base_dim, so a larger gush spills past
+        the body rather than shrinking it);
   * writes the per-frame PNGs to assets/enemies/<id>/<anim>_<i>.png and the
     .tres to data/action_enemies/<id>.tres.
 
@@ -47,61 +52,10 @@ PLAYER_RADIUS = 18.0
 DIFFICULTY = {"low": 0, "medium": 1, "med": 1, "high": 2, "boss": 3}
 BEHAVIOR = {"walker": 0, "shooter": 1, "stationary": 2, "pacer": 3}
 
-# Composite / directional sheet enemies. Cell-based slicing is too irregular for
-# the Animations column, so it lives here. Each enemy is a list of layers (drawn
-# back-to-front); each layer has a draw offset (source px, scaled by Size at
-# draw) and a list of (anim_name, fps, loop, source) animations. `source` is
-# ("file", path) for a whole-image single frame, or ("sheet", path, cell,
-# [(row,col),...]) for cells out of a grid. Paths are relative to ART_SRC_ROOT.
 # Facing is baked into the anim name suffix: walk_vert (up & down), walk_side
-# (left = mirror of right). idle/idle_side resolve with a fallback to idle.
-_GAPER_VERT = [(0, 1), (0, 2), (0, 3), (1, 0), (1, 1), (1, 2), (1, 3), (2, 0), (2, 1)]
-_GAPER_SIDE = [(2, 2), (2, 3), (3, 0), (3, 1), (3, 2), (3, 3), (4, 0), (4, 1), (4, 2), (4, 3)]
-_PACER_SIDE = [(2, 3), (3, 0), (3, 1), (3, 2), (3, 3), (4, 0), (4, 1), (4, 2), (4, 3)]
-# Gusher blood-geyser frames: 48px grid (4 wide), 10 frames in row-major order
-# (top-left -> bottom-right; cells 10-15 are empty). The gush erupts then settles.
-_GUSH = [(0, 0), (0, 1), (0, 2), (0, 3),
-         (1, 0), (1, 1), (1, 2), (1, 3),
-         (2, 0), (2, 1)]
-
-def _body_anims(sheet, vert, side, side_idle=None):
-    a = [
-        ("idle", 5.0, True, ("sheet", sheet, 32, [(0, 0)])),
-        ("walk_vert", 12.0, True, ("sheet", sheet, 32, vert)),
-        ("walk_side", 12.0, True, ("sheet", sheet, 32, side)),
-    ]
-    if side_idle is not None:
-        a.append(("idle_side", 5.0, True, ("sheet", sheet, 32, [side_idle])))
-    return a
-
-LAYER_SLICES = {
-    "gaper": [
-        {"layer": "body", "offset": (0.0, 0.0),
-         "anims": _body_anims("Gaper/gaper_body_sheet.png", _GAPER_VERT, _GAPER_SIDE)},
-        {"layer": "head", "offset": (0.0, -10.0), "anims": [
-            # Idle = the open-eyed bloody resting head (head-only frame 0,1), NOT
-            # gaper_idle.png which is a full head+body sprite and would double the
-            # body. Attack opens to the wide gape (1,1).
-            ("idle", 5.0, True, ("sheet", "Gaper/gaper_head_sheet.png", 32, [(0, 1)])),
-            ("attack", 10.0, False, ("sheet", "Gaper/gaper_head_sheet.png", 32, [(0, 1), (1, 1)])),
-        ]},
-    ],
-    "pacer": [
-        {"layer": "body", "offset": (0.0, 0.0),
-         "anims": _body_anims("Pacer/pacer_body_sheet.png", _GAPER_VERT, _PACER_SIDE, side_idle=(2, 2))},
-    ],
-    "gusher": [
-        {"layer": "body", "offset": (0.0, 0.0),
-         "anims": _body_anims("Gusher/gusher_body_sheet.png", _GAPER_VERT, _PACER_SIDE, side_idle=(2, 2))},
-        # Non-directional blood geyser, drawn over the top of the body, looping
-        # while alive (see images/.../Gusher/README.md). 48px cells (1.5x the body's
-        # 32px) so the gush spills beyond the body — see base_dim in write_tres.
-        # offset -1: in frame 0 the bottom of the top blood blob meets the body top.
-        {"layer": "gush", "offset": (0.0, -1.0), "anims": [
-            ("spew", 10.0, True, ("sheet", "Gusher/gusher_gush_sheet.png", 48, _GUSH)),
-        ]},
-    ],
-}
+# (left = mirror of right at draw time). idle/idle_side resolve with a fallback
+# to idle. Composite enemies and their cell-based slicing are now defined fully
+# in the sheet's Layers/Animations columns (see parse_layers / parse_animations).
 
 
 def parse_ability(cell):
@@ -143,29 +97,34 @@ def parse_ability(cell):
 
 
 def parse_layers(cell):
-    """Parse the `Layers` column: 'body @ 0,0 ; head @ 0,-10' ->
-    ([names], [(x,y), ...]). Empty = single implicit layer ([], [])."""
-    names, offsets = [], []
+    """Parse the `Layers` column. Each ';'-separated entry is:
+        <name> @ <ox>,<oy> [sheet <path>] [cell <n>]
+    e.g.  body @ 0,0 sheet Gaper/gaper_body_sheet.png cell 32 ; head @ 0,-10 ...
+    `sheet`/`cell` (relative to ART_SRC_ROOT) supply the source grid for that
+    layer's cell-based animations. Empty cell -> [] = a single implicit layer
+    whose animations are un-prefixed and sourced by filename convention (Horf).
+    Returns a list of {layer, offset, sheet, cell}."""
+    out = []
     if not cell:
-        return names, offsets
+        return out
     for part in str(cell).split(";"):
         part = part.strip()
         if not part:
             continue
-        name, _, off = part.partition("@")
-        names.append(name.strip())
-        x, y = 0.0, 0.0
-        if off.strip():
-            xy = off.split(",")
-            x = float(xy[0])
-            y = float(xy[1]) if len(xy) > 1 else 0.0
-        offsets.append((x, y))
-    return names, offsets
-
-ANIM_RE = re.compile(
-    r"^\s*(\w+)\s*@\s*([\d.]+)\s*(loop|once)\s*(?:grid\s+(\d+)\s*x\s*(\d+))?\s*$",
-    re.IGNORECASE,
-)
+        m = re.match(
+            r"^(\w+)\s*@\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)"
+            r"(?:\s+sheet\s+(\S+))?(?:\s+cell\s+(\d+))?\s*$",
+            part, re.IGNORECASE)
+        if not m:
+            print(f"  WARNING: unparseable layer {part!r}")
+            continue
+        out.append({
+            "layer": m.group(1),
+            "offset": (float(m.group(2)), float(m.group(3))),
+            "sheet": m.group(4),
+            "cell": int(m.group(5)) if m.group(5) else None,
+        })
+    return out
 
 
 def parse_color(text) -> str:
@@ -187,8 +146,18 @@ def _num(v) -> str:
     return str(int(f)) if f == int(f) else repr(f)
 
 
+ANIM_RE = re.compile(
+    r"^(?:(\w+)\.)?(\w+)\s*@\s*([\d.]+)\s*(loop|once)\s*(.*)$", re.IGNORECASE)
+
+
 def parse_animations(cell):
-    """[(name, fps, loop_bool, grid_w_or_None, grid_h_or_None), ...]"""
+    """Parse the `Animations` column. Each ';'-separated entry is:
+        [<layer>.]<name> @ <fps> <loop|once> [cells <r,c> <r,c> ... | grid <w>x<h>]
+      - 'cells r,c ...' : slice the layer's sheet (Layers column) at those
+                          (row,col) cells — composite / directional enemies.
+      - 'grid WxH'      : slice the convention PNG <id>_<name>*.png into a WxH grid.
+      - neither         : the whole convention PNG is a single frame.
+    Returns a list of {layer, name, fps, loop, cells, grid}."""
     out = []
     if not cell:
         return out
@@ -199,11 +168,24 @@ def parse_animations(cell):
         m = ANIM_RE.match(chunk)
         if not m:
             raise ValueError(f"unparseable animation spec: {chunk!r}")
-        name, fps, mode, gw, gh = m.groups()
-        out.append((
-            name.lower(), float(fps), mode.lower() == "loop",
-            int(gw) if gw else None, int(gh) if gh else None,
-        ))
+        layer, name, fps, mode, rest = m.groups()
+        rest = (rest or "").strip()
+        cells, grid = None, None
+        if rest.lower().startswith("cells"):
+            cells = [tuple(int(v) for v in pair.split(","))
+                     for pair in rest[len("cells"):].split()]
+        elif rest.lower().startswith("grid"):
+            g = re.match(r"grid\s+(\d+)\s*x\s*(\d+)", rest, re.IGNORECASE)
+            if g:
+                grid = (int(g.group(1)), int(g.group(2)))
+        out.append({
+            "layer": (layer or "").lower(),
+            "name": name.lower(),
+            "fps": float(fps),
+            "loop": mode.lower() == "loop",
+            "cells": cells,
+            "grid": grid,
+        })
     return out
 
 
@@ -260,16 +242,23 @@ def build_enemy(rec):
         shutil.rmtree(out_folder)
     os.makedirs(out_folder, exist_ok=True)
 
-    if eid in LAYER_SLICES:
-        build_layered_enemy(rec, eid, name, out_folder, LAYER_SLICES[eid])
+    layers = parse_layers(rec.get("Layers"))
+    anims = parse_animations(rec.get("Animations"))
+
+    # Composite / directional enemies slice shared sheets by explicit cell lists
+    # (see Layers/Animations columns); single-PNG-per-anim enemies (Horf) fall
+    # through to the convention path below.
+    if any(a["cells"] is not None for a in anims):
+        build_composite(rec, eid, name, out_folder, layers, anims)
         return
 
-    anims = parse_animations(rec.get("Animations"))
     # Gather every raw frame across all animations first, so they can be
     # normalised onto ONE shared square canvas (consistent scale/centering, no
     # size pop when switching anims).
     pending = []   # (name, fps, loop, [raw frames])
-    for (aname, fps, loop, gw, gh) in anims:
+    for a in anims:
+        aname, fps, loop = a["name"], a["fps"], a["loop"]
+        gw, gh = a["grid"] if a["grid"] else (None, None)
         sources = find_anim_source(src_folder, eid, aname)
         if not sources:
             print(f"  WARNING [{eid}] no art for animation '{aname}' "
@@ -299,34 +288,25 @@ def build_enemy(rec):
     print(f"[generate-action-enemy] {eid}: {len(anim_meta)} anims, {nframes} frames")
 
 
-def _extract_src(src):
-    """Return a list of PIL RGBA frames for a LAYER_SLICES source spec.
-
-    "sheet" specs may carry an optional 5th element `down` — the px size to
-    downscale each cell to. The gush sheet is drawn on a 64px grid, but the
-    shared canvas (and thus the enemy's draw scale) is set by the largest frame,
-    so a raw 64px layer would halve the 32px body. Downscaling the gush cells to
-    32 keeps the whole composite at body scale.
-    """
-    if src[0] == "file":
-        return [Image.open(os.path.join(ART_SRC_ROOT, src[1])).convert("RGBA")]
-    path, cell, cells = src[1], src[2], src[3]
-    down = src[4] if len(src) > 4 else None
-    im = Image.open(os.path.join(ART_SRC_ROOT, path)).convert("RGBA")
-    frames = [im.crop((c * cell, r * cell, c * cell + cell, r * cell + cell)) for (r, c) in cells]
-    if down:
-        frames = [f.resize((int(down), int(down)), Image.LANCZOS) for f in frames]
-    return frames
-
-
-def build_layered_enemy(rec, eid, name, out_folder, layers_cfg):
-    """Composite/directional path: slice each layer's animations and centre every
-    frame on ONE shared canvas (no trim — preserves the artist's cell alignment
-    and the relative scale between layers so the head sits on the body)."""
+def build_composite(rec, eid, name, out_folder, layers, anims):
+    """Composite/directional path: slice each layer's sheet by the animation's
+    cell list and centre every frame on ONE shared canvas (no trim — preserves
+    the artist's cell alignment and the relative scale between layers so e.g. the
+    head sits on the body and a larger gush spills past it). Driven entirely by
+    the sheet's Layers/Animations columns."""
     extracted = []  # (layer, anim, fps, loop, [frames])
-    for layer in layers_cfg:
-        for (aname, fps, loop, src) in layer["anims"]:
-            extracted.append((layer["layer"], aname, fps, loop, _extract_src(src)))
+    for layer in layers:                                # layer (draw) order
+        sheet, cell = layer["sheet"], layer["cell"]
+        if not sheet or not cell:
+            print(f"  WARNING [{eid}] layer '{layer['layer']}' has no sheet/cell")
+            continue
+        im = Image.open(os.path.join(ART_SRC_ROOT, sheet)).convert("RGBA")
+        for a in anims:                                 # declared order within layer
+            if a["layer"] != layer["layer"] or a["cells"] is None:
+                continue
+            frames = [im.crop((c * cell, r * cell, c * cell + cell, r * cell + cell))
+                      for (r, c) in a["cells"]]
+            extracted.append((layer["layer"], a["name"], a["fps"], a["loop"], frames))
 
     allfr = [f for (_, _, _, _, frames) in extracted for f in frames]
     cw = max((f.width for f in allfr), default=1)
@@ -335,7 +315,7 @@ def build_layered_enemy(rec, eid, name, out_folder, layers_cfg):
     # base_dim = the first (body) layer's native frame size; the engine scales the
     # whole composite by it, so larger layers (the Gusher's 64px gush vs the 32px
     # body) spill beyond the body instead of shrinking it.
-    base_layer = layers_cfg[0]["layer"]
+    base_layer = layers[0]["layer"]
     base_dim = max((max(f.width, f.height)
                     for (ly, _, _, _, frs) in extracted if ly == base_layer for f in frs),
                    default=max(cw, ch))
@@ -351,8 +331,8 @@ def build_layered_enemy(rec, eid, name, out_folder, layers_cfg):
             frame_assets.append(f"{eid}/{fn}")
         anim_meta.append((f"{layer}.{aname}", fps, loop, len(frames)))
 
-    lnames = [l["layer"] for l in layers_cfg]
-    loffsets = [l["offset"] for l in layers_cfg]
+    lnames = [l["layer"] for l in layers]
+    loffsets = [l["offset"] for l in layers]
     write_tres(rec, eid, name, anim_meta, frame_assets, (lnames, loffsets), base_dim)
     print(f"[generate-action-enemy] {eid}: {len(lnames)} layers, "
           f"{len(anim_meta)} anims, {len(frame_assets)} frames "
@@ -391,7 +371,10 @@ def write_tres(rec, eid, name, anim_meta, frame_assets, layers_override=None, ba
     if layers_override is not None:
         layer_names, layer_offsets = layers_override
     else:
-        layer_names, layer_offsets = parse_layers(rec.get("Layers"))
+        # Convention path (single implicit layer) emits no layer metadata.
+        layers = parse_layers(rec.get("Layers"))
+        layer_names = [l["layer"] for l in layers]
+        layer_offsets = [l["offset"] for l in layers]
     lnames = ", ".join(f'"{n}"' for n in layer_names)
     # PackedVector2Array takes a FLAT list of floats (x0,y0,x1,y1,...), not
     # Vector2(...) wrappers — wrappers trip a "Expected float" parse error.
