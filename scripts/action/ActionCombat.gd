@@ -1251,6 +1251,10 @@ func _enemy_trigger_attack(inst: Dictionary) -> void:
 # Update facing (vert / side + flip) from this frame's movement; keep the last
 # facing while stationary.
 func _enemy_update_facing(inst: Dictionary) -> void:
+	# Immobile enemies (Horf) never re-face — otherwise a fire-recoil nudge would
+	# briefly flip them to a side-facing sprite.
+	if inst.data.move_speed <= 0.0:
+		return
 	var mv: Vector2 = inst.pos - inst.get("_ppos", inst.pos)
 	inst["_ppos"] = inst.pos
 	inst["moving"] = mv.length() > 0.5
