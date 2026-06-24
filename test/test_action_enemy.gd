@@ -82,6 +82,15 @@ func test_gusher_random_shots() -> void:
 	assert_gt(gusher.projectile_speed, 0.0)
 	assert_true(gusher.on_death_ids.is_empty(), "Gusher doesn't transform")
 
+func test_gusher_blood_gush_layer() -> void:
+	var gusher: ActionEnemyData = load("res://data/action_enemies/gusher.tres")
+	assert_eq(Array(gusher.layer_names), [&"body", &"gush"], "body + gush layers")
+	# The gush layer plays a looping, non-directional spew geyser.
+	var spew: Dictionary = gusher.resolve_anim(&"gush", &"spew", &"vert")
+	assert_false(spew.is_empty(), "gush.spew animation resolves")
+	assert_true(spew["loop"], "gush loops while alive")
+	assert_gt((spew["frames"] as Array).size(), 1, "gush has multiple frames")
+
 func test_roll_on_death_empty_when_no_table() -> void:
 	var horf: ActionEnemyData = load(HORF_PATH)
 	var rng := RandomNumberGenerator.new()

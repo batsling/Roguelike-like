@@ -42,9 +42,10 @@ HEADERS = [
 ]
 
 # One dict per action enemy, keyed by HEADERS.
-# NOTE: Gaper/Pacer/Gusher ship with empty Layers/Animations for now, so they
-# render as colored circles until the body/head/gush art is sliced and wired
-# (pending the body sheet direction mapping). Their mechanics already work.
+# NOTE: Gaper/Pacer/Gusher leave Layers/Animations empty here because their
+# composite/directional slicing is too irregular for the Animations column and
+# lives in LAYER_SLICES in generate_action_enemy_tres.py instead (body/head for
+# the Gaper, body for the Pacer, body + blood-gush geyser for the Gusher).
 ENEMIES = [
     {
         "Name": "Horf", "Id": "horf", "Difficulty": "Low", "Weight": 2,

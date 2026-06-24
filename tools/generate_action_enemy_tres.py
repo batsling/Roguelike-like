@@ -58,6 +58,9 @@ BEHAVIOR = {"walker": 0, "shooter": 1, "stationary": 2, "pacer": 3}
 _GAPER_VERT = [(0, 1), (0, 2), (0, 3), (1, 0), (1, 1), (1, 2), (1, 3), (2, 0), (2, 1)]
 _GAPER_SIDE = [(2, 2), (2, 3), (3, 0), (3, 1), (3, 2), (3, 3), (4, 0), (4, 1), (4, 2), (4, 3)]
 _PACER_SIDE = [(2, 3), (3, 0), (3, 1), (3, 2), (3, 3), (4, 0), (4, 1), (4, 2), (4, 3)]
+# Gusher blood-geyser frames: 64px grid (3x3, last two cells empty), row-major,
+# dense -> sparse so the loop reads as a spurt that erupts then settles.
+_GUSH = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0)]
 
 def _body_anims(sheet, vert, side, side_idle=None):
     a = [
@@ -88,7 +91,12 @@ LAYER_SLICES = {
     "gusher": [
         {"layer": "body", "offset": (0.0, 0.0),
          "anims": _body_anims("Gusher/gusher_body_sheet.png", _GAPER_VERT, _PACER_SIDE, side_idle=(2, 2))},
-        # gush geyser layer deferred — frame layout of gusher_gush_sheet.png TBD.
+        # Non-directional blood geyser, drawn over the top of the body, looping
+        # while alive (see images/.../Gusher/README.md). 64px cells downscaled to
+        # 32 so the gush sits at body scale rather than halving it.
+        {"layer": "gush", "offset": (0.0, -10.0), "anims": [
+            ("spew", 10.0, True, ("sheet", "Gusher/gusher_gush_sheet.png", 64, _GUSH, 32)),
+        ]},
     ],
 }
 
@@ -289,12 +297,23 @@ def build_enemy(rec):
 
 
 def _extract_src(src):
-    """Return a list of PIL RGBA frames for a LAYER_SLICES source spec."""
+    """Return a list of PIL RGBA frames for a LAYER_SLICES source spec.
+
+    "sheet" specs may carry an optional 5th element `down` — the px size to
+    downscale each cell to. The gush sheet is drawn on a 64px grid, but the
+    shared canvas (and thus the enemy's draw scale) is set by the largest frame,
+    so a raw 64px layer would halve the 32px body. Downscaling the gush cells to
+    32 keeps the whole composite at body scale.
+    """
     if src[0] == "file":
         return [Image.open(os.path.join(ART_SRC_ROOT, src[1])).convert("RGBA")]
-    _, path, cell, cells = src
+    path, cell, cells = src[1], src[2], src[3]
+    down = src[4] if len(src) > 4 else None
     im = Image.open(os.path.join(ART_SRC_ROOT, path)).convert("RGBA")
-    return [im.crop((c * cell, r * cell, c * cell + cell, r * cell + cell)) for (r, c) in cells]
+    frames = [im.crop((c * cell, r * cell, c * cell + cell, r * cell + cell)) for (r, c) in cells]
+    if down:
+        frames = [f.resize((int(down), int(down)), Image.LANCZOS) for f in frames]
+    return frames
 
 
 def build_layered_enemy(rec, eid, name, out_folder, layers_cfg):
