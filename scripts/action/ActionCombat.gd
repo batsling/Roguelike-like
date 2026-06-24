@@ -292,9 +292,9 @@ const SQUASH_FREQ := 11.0
 const CHARGE_STRETCH := 0.22
 const CHARGE_SQUEEZE := 0.12
 const CHARGE_REDNESS := 0.65
-# Seconds for the charge telegraph to ease back to neutral after firing — a fast
-# but smooth relax into the walk/idle state (not an instant snap).
-const CHARGE_RECOVER := 0.18
+# Seconds for the charge telegraph to ease back to neutral after firing — a
+# quick snap back to the idle stance that's still eased, not instant.
+const CHARGE_RECOVER := 0.08
 # A small decaying nudge applied when an enemy is hit (and a tiny recoil when it
 # fires). Total knockback distance ~ SPEED^2 / (2 * DECEL) ≈ 12px — a flutter,
 # not a lunge.
