@@ -3623,8 +3623,13 @@ func _draw() -> void:
 		draw_circle(p["pos"], pr * prog, fill)                          # growing core
 		draw_arc(p["pos"], pr, 0.0, TAU, 28, SPAWN_TELEGRAPH_COLOR, 2.0)  # fixed outline
 
-	# Enemies
-	for inst in enemies:
+	# Enemies, painted back-to-front by Y so that when they bunch up the ones
+	# higher on screen (smaller y, "further" from the camera) are drawn first and
+	# sit behind the ones lower down — never layered on top of a closer enemy.
+	# A sorted snapshot keeps the live `enemies` order (and its indices) untouched.
+	var draw_order: Array = enemies.duplicate()
+	draw_order.sort_custom(func(a, b): return a.pos.y < b.pos.y)
+	for inst in draw_order:
 		if not inst.actor.is_alive():
 			continue
 		var data: ActionEnemyData = inst.data
