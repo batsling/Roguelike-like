@@ -19,10 +19,16 @@ func test_horf_is_a_stationary_shooter() -> void:
 	assert_eq(horf.move_speed, 0.0, "Horf never relocates")
 	assert_eq(horf.hp_min, 25)
 	assert_eq(horf.hp_max, 25)
-	assert_gt(horf.attack_windup, 0.0, "Horf telegraphs its shot with a wind-up")
+	# One ranged attack, carrying its own damage + projectile stats.
+	var atks: Array = horf.attacks()
+	assert_eq(atks.size(), 1, "Horf has a single attack")
+	var a: Dictionary = atks[0]
+	assert_eq(int(a["kind"]), ActionEnemyData.AttackKind.RANGED, "Horf's attack is ranged")
+	assert_eq(int(a["damage"]), 6)
+	assert_gt(float(a["windup"]), 0.0, "Horf telegraphs its shot with a wind-up")
 	# Slow shot, but a long enough life to cross the full arena (~980px).
-	assert_eq(horf.projectile_speed, 200.0)
-	assert_gt(horf.projectile_lifetime * horf.projectile_speed, 980.0,
+	assert_eq(float(a["proj_speed"]), 200.0)
+	assert_gt(float(a["proj_lifetime"]) * float(a["proj_speed"]), 980.0,
 		"projectile must out-travel the room width")
 
 func test_horf_size_is_player_relative() -> void:
@@ -78,8 +84,19 @@ func test_pacer_and_gusher_wander() -> void:
 
 func test_gusher_random_shots() -> void:
 	var gusher: ActionEnemyData = load("res://data/action_enemies/gusher.tres")
-	assert_gt(gusher.random_shots, 0, "Gusher fires random shots")
-	assert_gt(gusher.projectile_speed, 0.0)
+	# Gusher mixes a contact melee with a random-direction ranged spew — each
+	# with its own damage, proving an enemy can carry both attack kinds.
+	var kinds: Array = []
+	var ranged: Dictionary = {}
+	for a in gusher.attacks():
+		kinds.append(int(a["kind"]))
+		if int(a["kind"]) == ActionEnemyData.AttackKind.RANGED:
+			ranged = a
+	assert_has(kinds, ActionEnemyData.AttackKind.MELEE, "Gusher has a contact attack")
+	assert_has(kinds, ActionEnemyData.AttackKind.RANGED, "Gusher has a ranged attack")
+	assert_false(ranged.is_empty(), "found the ranged attack")
+	assert_true(bool(ranged["random"]), "Gusher's spew fires in random directions")
+	assert_gt(float(ranged["proj_speed"]), 0.0)
 	assert_true(gusher.on_death_ids.is_empty(), "Gusher doesn't transform")
 
 func test_gusher_blood_gush_layer() -> void:

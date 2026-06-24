@@ -96,6 +96,57 @@ def parse_ability(cell):
     return out
 
 
+ATTACK_KIND = {"melee": 0, "ranged": 1}
+# Maps an Attacks-column keyword to (output dict key, value caster).
+_ATK_KEYS = {
+    "dmg": ("damage", int), "cd": ("cooldown", float), "windup": ("windup", float),
+    "range": ("range", float), "speed": ("proj_speed", float),
+    "life": ("proj_lifetime", float), "count": ("proj_count", int),
+}
+
+
+def parse_attacks(cell):
+    """Parse the packed `Attacks` column into a list of attack dicts. Grammar
+    (per ';'-separated attack):
+
+        <kind> dmg <n> [cd <s>] [windup <s>] [range <px>] [speed <px/s>]
+                [life <s>] [count <n>] [random]
+
+    kind is melee|ranged; `random` is a bare flag. See build_enemiesA_sheet.py
+    for the authoring docs. Returns [] for an empty cell."""
+    out = []
+    if not cell:
+        return out
+    for part in str(cell).split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        toks = part.split()
+        kind = toks[0].lower()
+        if kind not in ATTACK_KIND:
+            print(f"  WARNING: unknown attack kind {toks[0]!r} in {part!r}")
+            continue
+        atk = {"kind": ATTACK_KIND[kind], "damage": 0, "cooldown": 1.0,
+               "windup": 0.0, "range": 0.0, "proj_speed": 0.0,
+               "proj_lifetime": 0.0, "proj_count": 1, "random": 0}
+        i = 1
+        while i < len(toks):
+            key = toks[i].lower()
+            if key == "random":
+                atk["random"] = 1
+                i += 1
+                continue
+            if key not in _ATK_KEYS or i + 1 >= len(toks):
+                print(f"  WARNING: bad attack token {toks[i]!r} in {part!r}")
+                i += 1
+                continue
+            field, cast = _ATK_KEYS[key]
+            atk[field] = cast(toks[i + 1])
+            i += 2
+        out.append(atk)
+    return out
+
+
 def parse_layers(cell):
     """Parse the `Layers` column. Each ';'-separated entry is:
         <name> @ <ox>,<oy> [sheet <path>] [cell <n>]
@@ -363,6 +414,17 @@ def write_tres(rec, eid, name, anim_meta, frame_assets, layers_override=None, ba
     anim_counts = ", ".join(str(a[3]) for a in anim_meta)
     frames_arr = ", ".join(f'ExtResource("{rid}")' for rid in frame_ids)
 
+    atks = parse_attacks(rec.get("Attacks"))
+    a_kinds = ", ".join(str(a["kind"]) for a in atks)
+    a_damages = ", ".join(str(a["damage"]) for a in atks)
+    a_cooldowns = ", ".join(_num(a["cooldown"]) for a in atks)
+    a_windups = ", ".join(_num(a["windup"]) for a in atks)
+    a_ranges = ", ".join(_num(a["range"]) for a in atks)
+    a_speeds = ", ".join(_num(a["proj_speed"]) for a in atks)
+    a_lifetimes = ", ".join(_num(a["proj_lifetime"]) for a in atks)
+    a_counts = ", ".join(str(a["proj_count"]) for a in atks)
+    a_random = ", ".join(str(a["random"]) for a in atks)
+
     ab = parse_ability(rec.get("Ability"))
     split_into = ab["split_into"]
     split_count = ab["split_count"]
@@ -396,13 +458,16 @@ def write_tres(rec, eid, name, anim_meta, frame_assets, layers_override=None, ba
         f"weight = {int(rec['Weight'])}",
         f"hp_min = {int(rec['Min HP'])}",
         f"hp_max = {int(rec['Max HP'])}",
-        f"contact_damage = {int(rec['Contact Damage'])}",
-        f"attack_cooldown = {_num(rec['Attack Cooldown'])}",
-        f"attack_windup = {_num(rec.get('Attack Windup') or 0)}",
-        f"attack_range = {_num(rec['Attack Range'])}",
-        f"preferred_distance = {_num(rec['Preferred Distance'])}",
-        f"projectile_speed = {_num(rec['Projectile Speed'])}",
-        f"projectile_lifetime = {_num(rec['Projectile Lifetime'])}",
+        f"attack_kinds = PackedInt32Array({a_kinds})",
+        f"attack_damages = PackedInt32Array({a_damages})",
+        f"attack_cooldowns = PackedFloat32Array({a_cooldowns})",
+        f"attack_windups = PackedFloat32Array({a_windups})",
+        f"attack_ranges = PackedFloat32Array({a_ranges})",
+        f"attack_proj_speeds = PackedFloat32Array({a_speeds})",
+        f"attack_proj_lifetimes = PackedFloat32Array({a_lifetimes})",
+        f"attack_proj_counts = PackedInt32Array({a_counts})",
+        f"attack_random = PackedByteArray({a_random})",
+        f"preferred_distance = {_num(rec.get('Preferred Distance') or 0)}",
         f"move_speed = {_num(rec['Move Speed'])}",
         f"size = {_num(size_px)}",
         f"behavior = {behavior}",
@@ -411,7 +476,6 @@ def write_tres(rec, eid, name, anim_meta, frame_assets, layers_override=None, ba
         f"tags = {tags}",
         f"split_into = &\"{split_into}\"",
         f"split_count = {split_count}",
-        f"random_shots = {ab['random_shots']}",
         f"on_death_ids = PackedStringArray({od_ids})",
         f"on_death_weights = PackedInt32Array({od_weights})",
         f"layer_names = PackedStringArray({lnames})",
