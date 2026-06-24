@@ -278,6 +278,13 @@ const ENEMY_PROJECTILE_COLOR := Color(1.0, 0.45, 0.2)
 # the player's PLAYER_SPRITE_RADIUS = PLAYER_RADIUS * 1.3 so a size-1 enemy
 # reads at the same scale as the player.
 const ENEMY_SPRITE_SCALE := 1.3
+# SQUASH motion style (ActionEnemyData.MotionStyle.SQUASH): while moving, the
+# sprite stretches/squashes on the Y axis (anchored at its feet) with a slight
+# inverse X so volume reads as preserved — a Brotato-style jelly walk. AMP is the
+# fraction of height added/removed at the extremes; FREQ is the wobble rate
+# (rad/s) of bob_phase, which advances with real time while the enemy moves.
+const SQUASH_AMP := 0.12
+const SQUASH_FREQ := 11.0
 # A small decaying nudge applied when an enemy is hit (and a tiny recoil when it
 # fires). Total knockback distance ~ SPEED^2 / (2 * DECEL) ≈ 12px — a flutter,
 # not a lunge.
@@ -1303,6 +1310,10 @@ func _advance_enemy_anim(inst: Dictionary, delta: float) -> void:
 	if not inst.data.has_anims():
 		return
 	_enemy_update_facing(inst)
+	# Drive procedural motion styles (the SQUASH bob) only while actually moving,
+	# so a stationary enemy rests at neutral scale.
+	if inst.get("moving", false):
+		inst["bob_phase"] = float(inst.get("bob_phase", 0.0)) + delta
 	if float(inst.get("attack_t", 0.0)) > 0.0:
 		inst["attack_t"] = float(inst["attack_t"]) - delta
 	var la: Dictionary = inst.get("la", {})
@@ -3539,9 +3550,29 @@ func _draw() -> void:
 		var draw_r: float = data.size
 		var drew_sprite := false
 		if data.has_anims():
-			# Composite layers back-to-front at a shared scale (so the head keeps
-			# its size relative to the body), each at its offset; mirror `side`.
+			# Composite layers back-to-front at a shared scale (so the head keeps its
+			# size relative to the body), each at its offset. A single canvas
+			# transform applies the horizontal mirror (when facing `side`) and the
+			# procedural motion style, so the per-layer rects stay in plain
+			# inst.pos-centred coords. With neither, this is the identity transform.
 			var face_side: bool = inst.get("flip", false) and inst.get("facing", &"") == &"side"
+			var sx := 1.0
+			var sy := 1.0
+			if data.motion_style == ActionEnemyData.MotionStyle.SQUASH and inst.get("moving", false):
+				# Stretch up / squash down on Y, anchored at the feet; slight inverse
+				# X keeps the volume reading constant (Brotato-style jelly walk).
+				var wave: float = sin(float(inst.get("bob_phase", 0.0)) * SQUASH_FREQ)
+				sy = 1.0 + SQUASH_AMP * wave
+				sx = 1.0 - SQUASH_AMP * 0.5 * wave
+			var flip_sign: float = -1.0 if face_side else 1.0
+			# Squash is anchored at the feet (≈ sprite bottom): mirror about the
+			# enemy's x, scale Y about anchor_y so the feet stay planted.
+			var anchor_y: float = inst.pos.y + data.size * ENEMY_SPRITE_SCALE
+			var need_xform: bool = face_side or sx != 1.0 or sy != 1.0
+			if need_xform:
+				draw_set_transform(
+					Vector2(inst.pos.x * (1.0 - flip_sign * sx), ARENA_TOP + anchor_y * (1.0 - sy)),
+					0.0, Vector2(flip_sign * sx, sy))
 			for L in data.layers():
 				var tex: Texture2D = _layer_current_tex(inst, L.name)
 				if tex == null:
@@ -3555,18 +3586,11 @@ func _draw() -> void:
 				var w: float = tex.get_width() * s
 				var h: float = tex.get_height() * s
 				var off: Vector2 = L.offset * s
-				if face_side:
-					# Mirror in place about the enemy centre via a real transform
-					# (negative-size Rect2 flipping is unreliable). Keep ARENA_TOP.
-					draw_set_transform(Vector2(0, ARENA_TOP) + inst.pos + Vector2(-off.x, off.y),
-						0.0, Vector2(-1.0, 1.0))
-					draw_texture_rect(tex, Rect2(-w * 0.5, -h * 0.5, w, h), false)
-				else:
-					draw_texture_rect(tex,
-						Rect2(inst.pos.x + off.x - w * 0.5, inst.pos.y + off.y - h * 0.5, w, h), false)
+				draw_texture_rect(tex,
+					Rect2(inst.pos.x + off.x - w * 0.5, inst.pos.y + off.y - h * 0.5, w, h), false)
 				drew_sprite = true
-			if face_side:
-				draw_set_transform(Vector2(0, ARENA_TOP), 0.0, Vector2.ONE)  # restore base after flips
+			if need_xform:
+				draw_set_transform(Vector2(0, ARENA_TOP), 0.0, Vector2.ONE)  # restore base
 		if drew_sprite:
 			draw_r = data.size * ENEMY_SPRITE_SCALE
 		else:

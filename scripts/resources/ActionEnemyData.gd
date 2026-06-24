@@ -9,6 +9,11 @@ extends Resource
 enum BehaviorKind { WALKER, SHOOTER, STATIONARY, PACER }
 enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 enum AttackKind { MELEE, RANGED }
+# Reusable procedural animation styles layered on top of frame anims by
+# ActionCombat's renderer. NONE = frames only; SQUASH = a Y-axis stretch/squash
+# "jelly walk" while moving (Brotato baby alien). Add new styles here + handle
+# them in ActionCombat._draw so any enemy can opt in via the sheet's Motion column.
+enum MotionStyle { NONE, SQUASH }
 
 @export var id: StringName
 @export var display_name: String
@@ -66,6 +71,9 @@ enum AttackKind { MELEE, RANGED }
 @export var size: float = 24.0            # collision + display radius
 
 @export var behavior: BehaviorKind = BehaviorKind.WALKER
+
+# Reusable procedural motion style applied while the enemy moves (see MotionStyle).
+@export var motion_style: MotionStyle = MotionStyle.NONE
 
 # Visuals — enemies render as frame animations when `anim_frames` is
 # populated; otherwise ActionCombat falls back to a colored circle of radius

@@ -51,6 +51,8 @@ PLAYER_RADIUS = 18.0
 
 DIFFICULTY = {"low": 0, "medium": 1, "med": 1, "high": 2, "boss": 3}
 BEHAVIOR = {"walker": 0, "shooter": 1, "stationary": 2, "pacer": 3}
+# Reusable procedural animation styles (ActionEnemyData.MotionStyle).
+MOTION = {"": 0, "none": 0, "squash": 1}
 
 # Facing is baked into the anim name suffix: walk_vert (up & down), walk_side
 # (left = mirror of right at draw time). idle/idle_side resolve with a fallback
@@ -394,6 +396,7 @@ def write_tres(rec, eid, name, anim_meta, frame_assets, layers_override=None, ba
     size_px = float(rec["Size"]) * PLAYER_RADIUS
     difficulty = DIFFICULTY.get(str(rec["Difficulty"]).strip().lower(), 0)
     behavior = BEHAVIOR.get(str(rec["Behavior"]).strip().lower(), 0)
+    motion = MOTION.get(str(rec.get("Motion") or "").strip().lower(), 0)
     # Directional if the column says so OR any animation carries a facing suffix.
     directional = str(rec.get("Directional", "")).strip().lower() in ("yes", "true", "1")
     if any(str(a[0]).endswith(("_vert", "_side")) for a in anim_meta):
@@ -471,6 +474,7 @@ def write_tres(rec, eid, name, anim_meta, frame_assets, layers_override=None, ba
         f"move_speed = {_num(rec['Move Speed'])}",
         f"size = {_num(size_px)}",
         f"behavior = {behavior}",
+        f"motion_style = {motion}",
         f"color = {parse_color(rec.get('Color'))}",
         f'source_game = "{str(rec.get("Game") or "").strip()}"',
         f"tags = {tags}",

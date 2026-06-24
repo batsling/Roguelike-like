@@ -28,6 +28,7 @@ preferred_distance = 0
 move_speed = 0
 size = 18
 behavior = 2
+motion_style = 0
 color = Color(0.8, 0.1, 0.1, 1)
 source_game = "The Binding of Isaac"
 tags = PackedStringArray()

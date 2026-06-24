@@ -48,8 +48,13 @@ HEADERS = [
     "Name", "Id", "Difficulty", "Weight", "Game", "Tag",
     "Min HP", "Max HP", "Move Speed", "Size", "Behavior", "Preferred Distance",
     "Attacks",
-    "Color", "Directional", "Layers", "Animations", "Ability",
+    "Color", "Directional", "Motion", "Layers", "Animations", "Ability",
 ]
+
+# `Motion` selects a reusable procedural animation style layered on the frame
+# art while the enemy moves (ActionEnemyData.MotionStyle / handled in
+# ActionCombat._draw). Blank/"none" = frames only; "squash" = a Y-axis
+# stretch/squash jelly walk (the Baby Alien). Add new styles in both places.
 
 # The `Attacks` column lists this enemy's attacks, ';'-separated. Each attack is:
 #
@@ -146,7 +151,7 @@ ENEMIES = [
         "Min HP": 10, "Max HP": 15, "Move Speed": 70, "Size": 1,
         "Behavior": "Walker", "Preferred Distance": 0,
         "Attacks": "melee dmg 5 cd 1.0 range 40",
-        "Color": "0.45,0.4,0.55", "Directional": "No",
+        "Color": "0.45,0.4,0.55", "Directional": "No", "Motion": "squash",
         "Layers": "", "Animations": "idle @ 4 loop",
         "Ability": "",
     },
@@ -176,7 +181,7 @@ def main() -> int:
 
     widths = {"Name": 14, "Id": 12, "Game": 20, "Animations": 42,
               "Color": 14, "Behavior": 12, "Layers": 18, "Ability": 30,
-              "Attacks": 40, "Preferred Distance": 12}
+              "Attacks": 40, "Preferred Distance": 12, "Motion": 9}
     for ci, name in enumerate(HEADERS, start=1):
         ws.column_dimensions[ws.cell(row=1, column=ci).column_letter].width = widths.get(name, 11)
     ws.freeze_panes = "A2"

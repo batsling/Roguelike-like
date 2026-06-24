@@ -58,6 +58,27 @@ func test_horf_in_action_pool() -> void:
 		ids.append(e.id)
 	assert_has(ids, &"horf", "Horf should be discoverable for action spawns")
 
+# --- Baby Alien (Brotato) ---------------------------------------------------
+
+func test_baby_alien_walker_with_squash() -> void:
+	var baby: ActionEnemyData = load("res://data/action_enemies/baby_alien.tres")
+	assert_not_null(baby, "baby_alien.tres should load")
+	assert_eq(baby.behavior, ActionEnemyData.BehaviorKind.WALKER, "chases the player")
+	assert_eq(baby.move_speed, 70.0)
+	assert_eq(baby.hp_min, 10)
+	assert_eq(baby.hp_max, 15)
+	# One melee contact attack carrying its own damage.
+	var atks: Array = baby.attacks()
+	assert_eq(atks.size(), 1)
+	assert_eq(int(atks[0]["kind"]), ActionEnemyData.AttackKind.MELEE)
+	assert_eq(int(atks[0]["damage"]), 5)
+	# The reusable Y-axis squash/stretch motion style is saved on the resource.
+	assert_eq(baby.motion_style, ActionEnemyData.MotionStyle.SQUASH,
+		"Baby Alien uses the squash jelly-walk style")
+	# Single idle frame (mirrored at draw time when walking left).
+	assert_true(baby.has_anims(), "renders its idle sprite")
+	assert_false(baby.get_anim(&"idle").is_empty(), "has an idle animation")
+
 # --- Gaper family -----------------------------------------------------------
 
 func test_gaper_on_death_table() -> void:
