@@ -71,7 +71,7 @@ ENEMIES = [
         "Ability": "OnDeath(pacer:80, gusher:20)",
     },
     {
-        "Name": "Pacer", "Id": "pacer", "Difficulty": "Low", "Weight": 0,
+        "Name": "Pacer", "Id": "pacer", "Difficulty": "Low", "Weight": 2,
         "Game": "The Binding of Isaac", "Tag": "",
         "Min HP": 25, "Max HP": 25, "Contact Damage": 6,
         "Attack Cooldown": 1.0, "Attack Windup": 0.0, "Attack Range": 40,

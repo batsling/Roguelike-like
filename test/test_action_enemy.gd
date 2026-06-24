@@ -71,8 +71,8 @@ func test_pacer_and_gusher_wander() -> void:
 	var gusher: ActionEnemyData = load("res://data/action_enemies/gusher.tres")
 	assert_eq(pacer.behavior, ActionEnemyData.BehaviorKind.PACER)
 	assert_eq(gusher.behavior, ActionEnemyData.BehaviorKind.PACER)
-	# Transform-only: not in the random spawn pool.
-	assert_eq(pacer.weight, 0)
+	# Pacer spawns on its own (weight 2); Gusher is transform-only (weight 0).
+	assert_eq(pacer.weight, 2)
 	assert_eq(gusher.weight, 0)
 
 func test_gusher_random_shots() -> void:

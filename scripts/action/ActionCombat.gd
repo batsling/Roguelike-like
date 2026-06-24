@@ -282,6 +282,7 @@ const ENEMY_SPRITE_SCALE := 1.3
 # not a lunge.
 const ENEMY_KNOCKBACK_SPEED := 150.0     # initial px/s on a landed hit
 const ENEMY_KNOCKBACK_DECEL := 900.0     # px/s^2 the nudge bleeds off
+const ENEMY_KNOCKBACK_MAX := 220.0       # cap so stacked hits can't fling/teleport
 const ENEMY_FIRE_RECOIL_SPEED := 60.0    # backward kick when an enemy shoots
 
 # Enemies don't appear the instant a room loads — a red telegraph circle (sized
@@ -936,7 +937,7 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 		if inst.actor.hp > 0:
 			var away: Vector2 = inst.pos - player_pos
 			away = away.normalized() if away.length() > 0.0 else Vector2.RIGHT
-			inst["knockback"] = inst.get("knockback", Vector2.ZERO) + away * ENEMY_KNOCKBACK_SPEED
+			inst["knockback"] = (inst.get("knockback", Vector2.ZERO) + away * ENEMY_KNOCKBACK_SPEED).limit_length(ENEMY_KNOCKBACK_MAX)
 		# Lifesteal: the player heals for the unblocked damage dealt. Reflected
 		# contact reactions carry no_reaction, so they never lifesteal.
 		if bool(effect.get("lifesteal", false)) and not bool(effect.get("no_reaction", false)):
@@ -1188,7 +1189,7 @@ func _spawn_enemy_projectile(inst: Dictionary, dir: Vector2, recoil: bool) -> vo
 	var speed: float = data.projectile_speed if data.projectile_speed > 0.0 else ENEMY_PROJECTILE_DEFAULT_SPEED
 	var life: float = data.projectile_lifetime if data.projectile_lifetime > 0.0 else ENEMY_PROJECTILE_LIFETIME
 	if recoil:
-		inst["knockback"] = inst.get("knockback", Vector2.ZERO) - dir * ENEMY_FIRE_RECOIL_SPEED
+		inst["knockback"] = (inst.get("knockback", Vector2.ZERO) - dir * ENEMY_FIRE_RECOIL_SPEED).limit_length(ENEMY_KNOCKBACK_MAX)
 	projectiles.append({
 		"pos": inst.pos + dir * (data.size + 4.0),
 		"velocity": dir * speed,
