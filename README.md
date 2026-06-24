@@ -79,6 +79,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_item_tres.py
 │   ├── generate_enemy_tres.py     #   data/enemies from the enemiesD sheet
 │   ├── build_enemiesD_sheet.py    #   (re)builds the enemiesD sheet itself
+│   ├── generate_strategy_enemy_tres.py # data/strategy_enemies from enemiesS
+│   ├── build_enemiesS_sheet.py    #   (re)builds the enemiesS sheet itself
 │   ├── add_status_addon_rows.py   #   adds status/addon rows to the sheets
 │   ├── import-games-godot.py
 │   └── import-reference-godot.py
@@ -213,6 +215,8 @@ editing the sheet, then review the diff):
 | `generate_game_tres.py` | `data/games/*.tres` from the curated games subgraph |
 | `generate_enemy_tres.py` | `data/enemies/*.tres` from the `enemiesD` sheet (+ copies enemy art into `assets/enemies/`) |
 | `build_enemiesD_sheet.py` | (re)builds the deckbuilder-enemy `enemiesD` sheet from the legacy `enemies` rows |
+| `generate_strategy_enemy_tres.py` | `data/strategy_enemies/*.tres` from the `enemiesS` sheet (Strategy / tactical-grid enemies) |
+| `build_enemiesS_sheet.py` | (re)builds the Strategy-enemy `enemiesS` sheet from its `ENEMIES` list |
 | `add_status_addon_rows.py` | adds/updates status + addon rows in `statusesnew` / `addonsnew` |
 | `import-games-godot.py` | `data/games/*.tres` + copies covers into `assets/games/` |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
@@ -254,6 +258,17 @@ re-run them after pulling and review the diff.
   and a **5-enemy battlefield cap** (`DeckbuilderCombat.MAX_ENEMIES`) bounds spawns
   and Splits. Regenerate with `build_enemiesD_sheet.py` → `generate_enemy_tres.py`.
   See `docs/enemy-plan.md`.
+- **Strategy enemy system (data-driven)** — tactical-grid enemies are authored in a
+  dedicated **`enemiesS`** sheet by `tools/generate_strategy_enemy_tres.py` into
+  `data/strategy_enemies/*.tres` (`StrategyEnemyData`). One sheet is the single
+  source of truth for stats, the **Intents** move-set (each intent carries a
+  StrategyAttackLibrary `shape`, cooldown, priority, target and condition), the
+  spawn-pool gate (`Min Floor` / `Spawn Weight`) and the loot table (`Gold` /
+  `Item %`) — replacing the dictionaries that used to live in `Unit.gd`,
+  `EnemyCatalog.gd`, `BattleView.gd` and `Map.gd` (kept only as fallbacks). A single
+  **Speed** stat now drives both initiative cadence and tile budget. Regenerate with
+  `build_enemiesS_sheet.py` → `generate_strategy_enemy_tres.py`. See
+  `docs/strategy-enemy-authoring.md`.
 - **Enemy status mechanics across all combats** — eight enemy-facing mechanics now
   run in the shared `Stats.gd` status core, so deckbuilder, action, and strategy
   all get them: **Determined** (a value rolled once per combat), **Split** (slimes

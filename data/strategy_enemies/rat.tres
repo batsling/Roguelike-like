@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="StrategyEnemyData" load_steps=2 format=3 uid="uid://strategy_enemy_rat"]
+
+[ext_resource type="Script" path="res://scripts/resources/StrategyEnemyData.gd" id="1_se"]
+
+[resource]
+script = ExtResource("1_se")
+id = &"rat"
+display_name = "Rat"
+difficulty = 0
+weight = 1
+hp_min = 8
+hp_max = 8
+speed = 4
+intents = [
+	{"id": "bite", "prio": 1, "cd": 0, "range": 1, "shape": "swing", "params": {}, "target": "enemy", "cond": "", "icon": "x", "name": "Bite", "effects": [{"type": "dmg", "value": 3, "target": "enemy"}]}
+]
+min_floor = 1
+spawn_weight = 4
+gold_chance = 0.5
+gold_min = 2
+gold_max = 6
+item_chance = 0.05
+source_game = ""
+tags = PackedStringArray()
+portrait_color = Color(0.55, 0.5, 0.45, 1)
+glyph = "r"

@@ -15,12 +15,31 @@ const ROOM_ATTEMPTS = 80
 const LOOP_MAX_DIST = 28.0
 
 # Enemy archetype pool used by room encounters. Floor number gates rarer kinds.
+# Source of truth is the enemiesS sheet (StrategyEnemyData's min_floor /
+# spawn_weight); this const is the fallback when no strategy enemies are loaded.
 const ENEMY_POOL = [
 	{ "kind": "rat",    "min_floor": 1, "weight": 4 },
 	{ "kind": "snake",  "min_floor": 1, "weight": 3 },
 	{ "kind": "orc",    "min_floor": 2, "weight": 2 },
 	{ "kind": "troll",  "min_floor": 4, "weight": 1 },
 ]
+
+# Data-driven enemy pool, sorted by descending spawn weight then kind for a
+# stable roll order. Falls back to ENEMY_POOL when Data has no strategy enemies.
+func _enemy_pool() -> Array:
+	var out: Array = []
+	if Data and Data.has_method("all_strategy_enemies"):
+		for d in Data.all_strategy_enemies():
+			if int(d.spawn_weight) > 0:
+				out.append({ "kind": String(d.id), "min_floor": int(d.min_floor),
+					"weight": int(d.spawn_weight) })
+	if out.is_empty():
+		return ENEMY_POOL
+	out.sort_custom(func(a, b):
+		if a.weight != b.weight:
+			return a.weight > b.weight
+		return String(a.kind) < String(b.kind))
+	return out
 
 var tiles: Array = []  # flat Array of TileType indexed by y*WIDTH+x
 var rooms: Array = []  # Array of Rect2i (kept for back-compat / FOV consumers)
@@ -212,7 +231,7 @@ func _tag_rooms(rng: RandomNumberGenerator, stairs_index: int) -> void:
 
 func _roll_encounter(rng: RandomNumberGenerator, floor_num: int) -> Array:
 	var count = rng.randi_range(1, 2 + floor_num / 2)
-	var available = ENEMY_POOL.filter(func(e): return floor_num >= e.min_floor)
+	var available = _enemy_pool().filter(func(e): return floor_num >= e.min_floor)
 	var total_weight = 0
 	for e in available:
 		total_weight += e.weight

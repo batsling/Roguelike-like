@@ -133,30 +133,50 @@ static func from_player(entity: StrategyEntity) -> BattleUnit:
 	u.block = 0
 	return u
 
-# Initiative `speed` is flattened to 4 "for now" so turn order is uniform.
-# `move` is the tile budget modifier: base 4 + this value (0 = 4 tiles), so
-# a faster/slower archetype walks ±1 tile per point without touching turn
-# cadence. The per-archetype hp/attack spread is kept.
-# `weight` is the 1-5 weight class (Vorpal matching / future spawn scaling),
-# scaled here to the archetype's heft — tune freely.
+# Baseline initiative; an enemy's `speed` is centred here so the movement budget
+# stays at BASE_MOVE for a default enemy (see `_move_for_speed`).
+const DEFAULT_SPEED := 4
+
+# Fallback presets for kinds NOT defined on the enemiesS sheet (StrategyEnemyData
+# is the source of truth — see data/strategy_enemies/). `speed` now drives BOTH
+# the turn cadence and the tile budget (a faster enemy acts more often AND walks
+# further), so there's no separate `move` column. `weight` is the 1-5 class.
 const ENEMY_PRESETS := {
-	"rat":   { "max_hp":  8, "speed": 4, "move": 0, "attack": 3, "weight": 1 },
-	"snake": { "max_hp": 10, "speed": 4, "move": 0, "attack": 4, "weight": 2 },
-	"orc":   { "max_hp": 18, "speed": 4, "move": 0, "attack": 6, "weight": 3 },
-	"troll": { "max_hp": 30, "speed": 4, "move": 0, "attack": 10, "weight": 5 },
+	"rat":   { "max_hp":  8, "speed": 4, "attack": 3, "weight": 1 },
+	"snake": { "max_hp": 10, "speed": 4, "attack": 4, "weight": 2 },
+	"orc":   { "max_hp": 18, "speed": 4, "attack": 6, "weight": 3 },
+	"troll": { "max_hp": 30, "speed": 4, "attack": 10, "weight": 5 },
 }
+
+# Tile budget from the single speed stat: BASE_MOVE at the baseline, ±1 tile per
+# 2 points off it (mirrors the player's BASE_MOVE + speed/2). Clamped to ≥ 1.
+static func _move_for_speed(speed: int) -> int:
+	@warning_ignore("integer_division")
+	var bonus: int = (speed - DEFAULT_SPEED) / 2
+	return maxi(1, BASE_MOVE + bonus)
 
 static func from_enemy_kind(kind: String) -> BattleUnit:
 	var u := BattleUnit.new()
 	u.unit_name = kind
 	u.is_player = false
-	var preset = ENEMY_PRESETS.get(kind, { "max_hp": 10, "speed": 4, "move": 0, "attack": 3, "weight": 3 })
-	u.max_hp = preset.max_hp
-	u.hp = preset.max_hp
-	u.speed = preset.speed
-	u.weight = int(preset.get("weight", 3))
-	u.move_range = maxi(1, BASE_MOVE + int(preset.get("move", 0)))
-	u.basic_attack_def = { "damage": preset.attack, "range": 1, "shape": "melee" }
+	var data: StrategyEnemyData = Data.get_strategy_enemy(StringName(kind)) if Data else null
+	if data != null:
+		u.max_hp = randi_range(data.hp_min, data.hp_max) if data.hp_max > data.hp_min else data.hp_max
+		u.hp = u.max_hp
+		u.speed = data.speed
+		u.weight = data.weight
+		u.move_range = _move_for_speed(data.speed)
+		u.basic_attack_def = { "damage": data.basic_damage(), "range": 1, "shape": "melee" }
+		u.split_into = data.split_into
+		u.split_count = data.split_count
+	else:
+		var preset = ENEMY_PRESETS.get(kind, { "max_hp": 10, "speed": 4, "attack": 3, "weight": 3 })
+		u.max_hp = preset.max_hp
+		u.hp = preset.max_hp
+		u.speed = preset.speed
+		u.weight = int(preset.get("weight", 3))
+		u.move_range = _move_for_speed(int(preset.speed))
+		u.basic_attack_def = { "damage": preset.attack, "range": 1, "shape": "melee" }
 	# Enemies don't use mana yet; cooldown abilities arrive in Phase 7.
 	u.max_mana = 0
 	u.mana = 0

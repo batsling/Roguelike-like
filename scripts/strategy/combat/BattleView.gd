@@ -50,12 +50,23 @@ const BACKDROP := Color(0.04, 0.035, 0.07, 1.0)
 
 # Per-archetype drop weights. Rolled when an enemy dies; the spawned items go
 # onto the battlefield and persist back to the source room on combat end.
+# Source of truth is the enemiesS sheet (StrategyEnemyData's gold_/item_ fields);
+# this const is the fallback for kinds not on the sheet.
 const ENEMY_LOOT_TABLE := {
 	"rat":   { "gold_chance": 0.50, "gold_min":  2, "gold_max":  6, "item_chance": 0.05 },
 	"snake": { "gold_chance": 0.50, "gold_min":  3, "gold_max":  8, "item_chance": 0.10 },
 	"orc":   { "gold_chance": 0.70, "gold_min":  6, "gold_max": 14, "item_chance": 0.20 },
 	"troll": { "gold_chance": 0.90, "gold_min": 12, "gold_max": 24, "item_chance": 0.35 },
 }
+
+# Loot table for `kind`, preferring the data-driven StrategyEnemyData fields and
+# falling back to ENEMY_LOOT_TABLE. Empty dict = no drop.
+func _loot_table_for(kind: String) -> Dictionary:
+	var d: StrategyEnemyData = Data.get_strategy_enemy(StringName(kind)) if Data else null
+	if d != null and (d.gold_chance > 0.0 or d.item_chance > 0.0 or d.gold_max > 0):
+		return { "gold_chance": d.gold_chance, "gold_min": d.gold_min,
+			"gold_max": d.gold_max, "item_chance": d.item_chance }
+	return ENEMY_LOOT_TABLE.get(kind, {})
 
 # What the player is currently selecting in the grid view.
 enum Pending { NONE, AIM }
@@ -1780,8 +1791,8 @@ func leech_to_player(amount: int) -> void:
 func _drop_enemy_loot(unit) -> void:
 	if _battle_map == null:
 		return
-	var table = ENEMY_LOOT_TABLE.get(str(unit.unit_name))
-	if table == null:
+	var table = _loot_table_for(str(unit.unit_name))
+	if table.is_empty():
 		return
 	var pos: Vector2i = unit.position
 	if _loot_rng.randf() < float(table.gold_chance):

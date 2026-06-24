@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="StrategyEnemyData" load_steps=2 format=3 uid="uid://strategy_enemy_troll"]
+
+[ext_resource type="Script" path="res://scripts/resources/StrategyEnemyData.gd" id="1_se"]
+
+[resource]
+script = ExtResource("1_se")
+id = &"troll"
+display_name = "Troll"
+difficulty = 1
+weight = 5
+hp_min = 30
+hp_max = 30
+speed = 4
+intents = [
+	{"id": "smash", "prio": 1, "cd": 0, "range": 1, "shape": "swing", "params": {}, "target": "enemy", "cond": "", "icon": "x", "name": "Smash", "effects": [{"type": "dmg", "value": 10, "target": "enemy"}]},
+	{"id": "crush", "prio": 2, "cd": 4, "range": 1, "shape": "smash", "params": {"size": "large"}, "target": "enemy", "cond": "", "icon": "!", "name": "Crush", "effects": [{"type": "dmg", "value": 14, "target": "enemy"}]},
+	{"id": "regen", "prio": 3, "cd": 5, "range": 0, "shape": "", "params": {}, "target": "self", "cond": "self_low_hp", "icon": "+", "name": "Regen", "effects": [{"type": "heal", "value": 5, "target": "self"}]}
+]
+min_floor = 4
+spawn_weight = 1
+gold_chance = 0.9
+gold_min = 12
+gold_max = 24
+item_chance = 0.35
+source_game = ""
+tags = PackedStringArray()
+portrait_color = Color(0.4, 0.5, 0.45, 1)
+glyph = "T"
