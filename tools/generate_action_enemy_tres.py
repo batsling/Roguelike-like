@@ -362,7 +362,9 @@ def write_tres(rec, eid, name, anim_meta, frame_assets, layers_override=None):
     else:
         layer_names, layer_offsets = parse_layers(rec.get("Layers"))
     lnames = ", ".join(f'"{n}"' for n in layer_names)
-    loffsets = ", ".join(f"Vector2({_num(x)}, {_num(y)})" for (x, y) in layer_offsets)
+    # PackedVector2Array takes a FLAT list of floats (x0,y0,x1,y1,...), not
+    # Vector2(...) wrappers — wrappers trip a "Expected float" parse error.
+    loffsets = ", ".join(f"{_num(x)}, {_num(y)}" for (x, y) in layer_offsets)
     tag = str(rec.get("Tag") or "").strip()
     tags = f'PackedStringArray("{tag}")' if tag else "PackedStringArray()"
 
