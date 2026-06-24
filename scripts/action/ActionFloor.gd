@@ -18,11 +18,8 @@ signal closed(was_victory: bool, target_game_id: StringName)
 
 const COMBAT_SCENE := preload("res://scenes/action/ActionCombat.tscn")
 
-# Per-room enemy budget for normal rooms (count scales a little with tier).
-const NORMAL_MIN_ENEMIES := 1
-const NORMAL_MAX_ENEMIES := 3
-# Boss room: more enemies + an HP bump, mirroring the old elite handling.
-const BOSS_ENEMY_COUNT := 3
+# Boss room: an HP bump on top of the (larger) weighted enemy budget,
+# mirroring the old elite handling.
 const BOSS_HP_MULT := 1.6
 
 var target_game_id: StringName = &""
@@ -74,7 +71,10 @@ func _generate_floor() -> void:
 	var gen := IsaacFloorGenerator.new()
 	_floor = gen.generate(_rng.randi(), tier_value)
 
-	var pool: Array[StringName] = _enemy_pool()
+	# Weighted per-room encounters (ActionEnemySpawner): the run's difficulty tier
+	# sets a spend budget, each enemy's weight is its cost. Boss rooms spend more.
+	var boss_budget: int = int(round(
+		ActionEnemySpawner.budget_for(RunDifficulty.current_tier()) * ActionEnemySpawner.BOSS_BUDGET_MULT))
 	_runtime.clear()
 	for idx in _floor.rooms.keys():
 		var room: Dictionary = _floor.rooms[idx]
@@ -84,31 +84,14 @@ func _generate_floor() -> void:
 		}
 		match int(room.type):
 			IsaacFloorGenerator.RoomType.NORMAL:
-				var n: int = clampi(NORMAL_MIN_ENEMIES + tier_value - 1,
-					NORMAL_MIN_ENEMIES, NORMAL_MAX_ENEMIES)
-				rt.enemies = _pick_enemies(pool, _rng.randi_range(NORMAL_MIN_ENEMIES, n))
+				rt.enemies = ActionEnemySpawner.build_room(_rng)
 			IsaacFloorGenerator.RoomType.BOSS:
-				rt.enemies = _pick_enemies(pool, BOSS_ENEMY_COUNT)
+				rt.enemies = ActionEnemySpawner.build_room(_rng, boss_budget)
 				rt.hp_mult = BOSS_HP_MULT
 			_:
 				# START / SHOP / TREASURE are safe — no enemies, pre-cleared.
 				rt.cleared = true
 		_runtime[idx] = rt
-
-func _enemy_pool() -> Array[StringName]:
-	var pool: Array[StringName] = []
-	for e in Data.all_action_enemies():
-		if e is ActionEnemyData:
-			pool.append(e.id)
-	if pool.is_empty():
-		pool.append(&"walker")
-	return pool
-
-func _pick_enemies(pool: Array[StringName], count: int) -> Array:
-	var out: Array = []
-	for _i in range(maxi(1, count)):
-		out.append(pool[_rng.randi() % pool.size()])
-	return out
 
 # ---------------------------------------------------------------------------
 # Scene construction

@@ -102,6 +102,9 @@ var player_pos: Vector2 = Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
 var player_facing: Vector2 = Vector2.RIGHT
 var player_iframes: float = 0.0
 var enemies: Array = []          # Array of Dictionary: {data, actor, pos, cooldown}
+# Telegraphed spawns not yet materialised. Each: {data, pos, t} where t counts
+# up to SPAWN_TELEGRAPH_TIME before the enemy is added to `enemies`.
+var _pending_spawns: Array = []
 enum Phase { INIT, PLAYING, WON, LOST }
 var phase: Phase = Phase.INIT
 var _ability_swing_remaining: float = 0.0
@@ -270,6 +273,24 @@ const ENEMY_PROJECTILE_RADIUS := 7.0
 const ENEMY_PROJECTILE_LIFETIME := 3.0
 const ENEMY_PROJECTILE_COLOR := Color(1.0, 0.45, 0.2)
 
+# Enemy sprite radius relative to the collision radius (data.size), mirroring
+# the player's PLAYER_SPRITE_RADIUS = PLAYER_RADIUS * 1.3 so a size-1 enemy
+# reads at the same scale as the player.
+const ENEMY_SPRITE_SCALE := 1.3
+# A small decaying nudge applied when an enemy is hit (and a tiny recoil when it
+# fires). Total knockback distance ~ SPEED^2 / (2 * DECEL) ≈ 12px — a flutter,
+# not a lunge.
+const ENEMY_KNOCKBACK_SPEED := 150.0     # initial px/s on a landed hit
+const ENEMY_KNOCKBACK_DECEL := 900.0     # px/s^2 the nudge bleeds off
+const ENEMY_KNOCKBACK_MAX := 150.0       # = SPEED: stacked hits never exceed one nudge (~12px)
+const ENEMY_FIRE_RECOIL_SPEED := 60.0    # backward kick when an enemy shoots
+
+# Enemies don't appear the instant a room loads — a red telegraph circle (sized
+# to the enemy) marks each spawn for this long first, so the player can read the
+# room before the fight starts.
+const SPAWN_TELEGRAPH_TIME := 1.0
+const SPAWN_TELEGRAPH_COLOR := Color(0.95, 0.15, 0.15)
+
 # Live projectiles (player- and enemy-owned). Each entry is a
 # Dictionary: {pos, velocity, owner, radius, color, lifetime, ...}
 var projectiles: Array = []
@@ -367,6 +388,7 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	room_is_safe = is_safe
 	enemy_hp_mult = maxf(1.0, hp_mult)
 	enemies.clear()
+	_pending_spawns.clear()
 	projectiles.clear()
 	_pending_hits.clear()
 	_ability_swing_remaining = 0.0
@@ -429,8 +451,9 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 		# Innate -> auto_play: fire innate cards once now that enemies exist.
 		_auto_play_innate_addons()
 
-	if _living_enemy_count() == 0:
-		# Safe room or already empty — doors stay open.
+	if _living_enemy_count() == 0 and _pending_spawns.is_empty():
+		# Safe room or already empty — doors stay open. (A room mid-telegraph
+		# has pending spawns and must NOT count as resolved.)
 		_room_resolved = true
 
 	paused = false
@@ -442,7 +465,7 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 # Public: true while the current room still has at least one living enemy.
 # The global Backpack uses this to keep equipment swaps to between rooms.
 func has_live_enemies() -> bool:
-	return _living_enemy_count() > 0
+	return _living_enemy_count() > 0 or not _pending_spawns.is_empty()
 
 func _living_enemy_count() -> int:
 	var n := 0
@@ -579,28 +602,58 @@ func _init_player() -> void:
 	player_pos = Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
 
 func _spawn_enemies() -> void:
-	# Spread the spawn points around the perimeter so multiple enemies
-	# don't stack on top of each other on turn 1.
-	var spots := [
-		Vector2(200, 150),
-		Vector2(ARENA_W - 200, 150),
-		Vector2(200, ARENA_H - 150),
-		Vector2(ARENA_W - 200, ARENA_H - 150),
-		Vector2(ARENA_W * 0.5, 100),
-	]
+	# Spread spawns evenly around a ring centred on the arena so any number of
+	# enemies (up to ActionEnemySpawner.MAX_ENEMIES) fan out without stacking.
+	var center := Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
+	var rx: float = ARENA_W * 0.34
+	var ry: float = ARENA_H * 0.32
+	var n: int = maxi(1, enemies_to_spawn.size())
 	var idx := 0
 	for id in enemies_to_spawn:
 		var data: ActionEnemyData = Data.get_action_enemy(id)
 		if data == null:
 			continue
-		var inst := {
+		# Start at the top and go clockwise; a single enemy sits dead centre-top.
+		var ang: float = -PI * 0.5 + TAU * (float(idx) / float(n))
+		# Telegraph the spawn rather than dropping the enemy in immediately.
+		_pending_spawns.append({
 			"data": data,
-			"actor": _make_enemy_actor(data),
-			"pos": spots[idx % spots.size()],
-			"cooldown": 0.0,
-		}
-		enemies.append(inst)
+			"pos": center + Vector2(cos(ang) * rx, sin(ang) * ry),
+			"t": 0.0,
+		})
 		idx += 1
+
+# Builds a live enemy instance dict from its template at `pos`.
+func _make_enemy_inst(data: ActionEnemyData, pos: Vector2) -> Dictionary:
+	return {
+		"data": data,
+		"actor": _make_enemy_actor(data),
+		"pos": pos,
+		"cooldown": 0.0,
+		"knockback": Vector2.ZERO,
+		# Animation state (per-layer): facing, flip, movement, attack timer, and
+		# la = {layer: {base, t}}. Populated lazily by _advance_enemy_anim.
+		"facing": &"vert",
+		"flip": false,
+		"moving": false,
+		"_ppos": pos,
+		"attack_t": 0.0,
+		"la": {},
+	}
+
+# Tick telegraphed spawns; materialise each into a live enemy once its warning
+# window elapses.
+func _process_pending_spawns(delta: float) -> void:
+	if _pending_spawns.is_empty():
+		return
+	var still: Array = []
+	for p in _pending_spawns:
+		p["t"] = float(p["t"]) + delta
+		if float(p["t"]) >= SPAWN_TELEGRAPH_TIME:
+			enemies.append(_make_enemy_inst(p["data"], p["pos"]))
+		else:
+			still.append(p)
+	_pending_spawns = still
 
 func _make_enemy_actor(data: ActionEnemyData) -> CombatActor:
 	var hp: int = int(round(_rng.randi_range(data.hp_min, data.hp_max) * enemy_hp_mult))
@@ -648,6 +701,7 @@ func _process(delta: float) -> void:
 	if embedded:
 		_check_doors()
 		_check_stairs()
+	_process_pending_spawns(delta)
 	_process_enemies(delta)
 	_process_projectiles(delta)
 	_process_pending_hits(delta)
@@ -879,6 +933,11 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 	if amount > 0:
 		inst.actor.hp = maxi(0, inst.actor.hp - amount)
 		FloatingNumbers.spawn(_fx_root, inst.pos, amount)
+		# Knock the enemy back a little, away from the player, when a hit lands.
+		if inst.actor.hp > 0:
+			var away: Vector2 = inst.pos - player_pos
+			away = away.normalized() if away.length() > 0.0 else Vector2.RIGHT
+			inst["knockback"] = (inst.get("knockback", Vector2.ZERO) + away * ENEMY_KNOCKBACK_SPEED).limit_length(ENEMY_KNOCKBACK_MAX)
 		# Lifesteal: the player heals for the unblocked damage dealt. Reflected
 		# contact reactions carry no_reaction, so they never lifesteal.
 		if bool(effect.get("lifesteal", false)) and not bool(effect.get("no_reaction", false)):
@@ -927,12 +986,14 @@ func _process_enemies(delta: float) -> void:
 	# Split: a slime that has dropped to half HP spawns its copies at its
 	# position and is consumed. Collected here and appended after the loop so we
 	# never mutate `enemies` mid-iteration.
-	var split_spawns: Array = []
+	var extra_spawns: Array = []
 	for inst in enemies:
 		if not inst.actor.is_alive():
+			# On-death transform (Gaper -> Pacer/Gusher): spawn once at the corpse.
+			extra_spawns.append_array(_enemy_on_death_spawns(inst))
 			continue
 		if Stats.should_split(inst.actor):
-			split_spawns.append_array(_perform_action_split(inst))
+			extra_spawns.append_array(_perform_action_split(inst))
 			continue
 		# Fear: a frightened enemy abandons its normal behavior and flees the
 		# player, never attacking, until its Fear ticks off (stack == flee-time).
@@ -944,13 +1005,40 @@ func _process_enemies(delta: float) -> void:
 					_process_shooter(inst, delta)
 				ActionEnemyData.BehaviorKind.STATIONARY:
 					_process_stationary(inst, delta)
+				ActionEnemyData.BehaviorKind.PACER:
+					_process_pacer(inst, delta)
 				_:
 					_process_walker(inst, delta)
+		# Random-direction shots (the Gusher's blood spew), layered on top of any
+		# behavior, on its own cooldown.
+		if inst.data.random_shots > 0:
+			_enemy_update_random_shots(inst, delta)
+		# Knockback (hit nudge / fire recoil) layered on top of the AI move, then
+		# bled off. Applies whether the enemy is feared or fighting.
+		var kb: Vector2 = inst.get("knockback", Vector2.ZERO)
+		if kb != Vector2.ZERO:
+			inst.pos += kb * delta
+			inst["knockback"] = kb.move_toward(Vector2.ZERO, ENEMY_KNOCKBACK_DECEL * delta)
+		_advance_enemy_anim(inst, delta)
 		# Keep everyone inside the arena bounds.
 		inst.pos.x = clampf(inst.pos.x, inst.data.size, ARENA_W - inst.data.size)
 		inst.pos.y = clampf(inst.pos.y, inst.data.size, ARENA_H - inst.data.size)
-	if not split_spawns.is_empty():
-		enemies.append_array(split_spawns)
+	if not extra_spawns.is_empty():
+		enemies.append_array(extra_spawns)
+
+# Weighted on-death transform: when an enemy with an on-death table dies, spawn
+# the rolled enemy at its position (once). Returns the new enemy dict(s).
+func _enemy_on_death_spawns(inst: Dictionary) -> Array:
+	if inst.get("transformed", false) or inst.data.on_death_ids.is_empty():
+		return []
+	inst["transformed"] = true
+	var tid: StringName = inst.data.roll_on_death(_rng)
+	if tid == &"":
+		return []
+	var td: ActionEnemyData = Data.get_action_enemy(tid)
+	if td == null:
+		return []
+	return [_make_enemy_inst(td, inst.pos)]
 
 # Spawn an action splitter's copies in a ring around it, each at its current HP,
 # and consume the parent. Returns the new enemy dicts (caller appends them).
@@ -1003,6 +1091,34 @@ func _process_walker(inst: Dictionary, delta: float) -> void:
 		inst.pos += to_player.normalized() * data.move_speed * delta
 	inst.cooldown = maxf(0.0, inst.cooldown - delta)
 	if dist <= data.attack_range and inst.cooldown <= 0.0:
+		_enemy_trigger_attack(inst)   # gape on contact (Gaper)
+		_enemy_hit_player(inst)
+		inst.cooldown = data.attack_cooldown
+
+# PACER: wander aimlessly, ignoring the player — pick a heading, walk it, and
+# re-roll it on a timer or when bouncing off a wall. Deals contact damage on
+# touch (the Pacer / Gusher).
+func _process_pacer(inst: Dictionary, delta: float) -> void:
+	var data: ActionEnemyData = inst.data
+	var h: Vector2 = inst.get("heading", Vector2.ZERO)
+	if h == Vector2.ZERO:
+		h = Vector2.RIGHT.rotated(_rng.randf() * TAU)
+	var wt: float = float(inst.get("wander_t", 0.0)) - delta
+	if wt <= 0.0:
+		h = Vector2.RIGHT.rotated(_rng.randf() * TAU)
+		wt = _rng.randf_range(0.8, 2.0)
+	# Bounce off the arena bounds so it stays in the room.
+	var nxt: Vector2 = inst.pos + h * data.move_speed * delta
+	if nxt.x < data.size or nxt.x > ARENA_W - data.size:
+		h.x = -h.x
+	if nxt.y < data.size or nxt.y > ARENA_H - data.size:
+		h.y = -h.y
+	inst.pos += h * data.move_speed * delta
+	inst["heading"] = h
+	inst["wander_t"] = wt
+	# Contact damage on touch.
+	inst.cooldown = maxf(0.0, inst.cooldown - delta)
+	if player_pos.distance_to(inst.pos) <= data.size + PLAYER_RADIUS and inst.cooldown <= 0.0:
 		_enemy_hit_player(inst)
 		inst.cooldown = data.attack_cooldown
 
@@ -1020,39 +1136,172 @@ func _process_shooter(inst: Dictionary, delta: float) -> void:
 	elif dist > preferred + margin:
 		# Too far — close in until in firing range.
 		inst.pos += to_player.normalized() * data.move_speed * delta
-	# Fire when player is in range and cooldown ready.
-	inst.cooldown = maxf(0.0, inst.cooldown - delta)
-	if dist <= data.attack_range and inst.cooldown <= 0.0:
-		_enemy_fire_projectile(inst)
-		inst.cooldown = data.attack_cooldown
+	_enemy_update_ranged_attack(inst, delta, dist)
 
 func _process_stationary(inst: Dictionary, delta: float) -> void:
 	# Hold position; fire on cooldown if player is in range.
-	var data: ActionEnemyData = inst.data
 	var dist: float = player_pos.distance_to(inst.pos)
+	_enemy_update_ranged_attack(inst, delta, dist)
+
+# Shared ranged-attack driver (SHOOTER / STATIONARY). When in range and off
+# cooldown the enemy enters a wind-up: it plays its attack animation as a
+# telegraph for `attack_windup` seconds (or the animation's own length when 0),
+# THEN releases the projectile. This is what lets the player read the tell and
+# dodge — the shot no longer leaves the instant the animation starts.
+func _enemy_update_ranged_attack(inst: Dictionary, delta: float, dist: float) -> void:
+	var data: ActionEnemyData = inst.data
+	if inst.get("winding", false):
+		inst["windup_t"] = float(inst.get("windup_t", 0.0)) + delta
+		var wind: float = data.attack_windup if data.attack_windup > 0.0 else _anim_duration(data, &"attack")
+		if float(inst["windup_t"]) >= wind:
+			inst["winding"] = false
+			_enemy_release_projectile(inst)
+			inst.cooldown = data.attack_cooldown
+		return
 	inst.cooldown = maxf(0.0, inst.cooldown - delta)
 	if dist <= data.attack_range and inst.cooldown <= 0.0:
-		_enemy_fire_projectile(inst)
-		inst.cooldown = data.attack_cooldown
+		# Begin the wind-up: show the attack animation as a warning.
+		inst["winding"] = true
+		inst["windup_t"] = 0.0
+		_enemy_trigger_attack(inst)
 
-func _enemy_fire_projectile(inst: Dictionary) -> void:
-	var data: ActionEnemyData = inst.data
+# Playback length of an animation in seconds, or 0 if the enemy lacks it.
+func _anim_duration(data: ActionEnemyData, anim: StringName) -> float:
+	var a: Dictionary = data.get_anim(anim)
+	if a.is_empty():
+		return 0.0
+	return float((a["frames"] as Array).size()) / maxf(0.001, float(a["fps"]))
+
+# Releases the actual projectile at the end of the wind-up (with a small recoil).
+# Aimed shot at the player (end of a ranged enemy's wind-up).
+func _enemy_release_projectile(inst: Dictionary) -> void:
 	var dir: Vector2 = (player_pos - inst.pos).normalized()
 	if dir.length() == 0.0:
 		dir = Vector2.RIGHT
+	_spawn_enemy_projectile(inst, dir, true)
+
+# A single shot in a random direction (the Gusher's spew).
+func _enemy_fire_random(inst: Dictionary) -> void:
+	_spawn_enemy_projectile(inst, Vector2.RIGHT.rotated(_rng.randf() * TAU), false)
+
+func _spawn_enemy_projectile(inst: Dictionary, dir: Vector2, recoil: bool) -> void:
+	var data: ActionEnemyData = inst.data
 	var speed: float = data.projectile_speed if data.projectile_speed > 0.0 else ENEMY_PROJECTILE_DEFAULT_SPEED
-	var proj: Dictionary = {
+	var life: float = data.projectile_lifetime if data.projectile_lifetime > 0.0 else ENEMY_PROJECTILE_LIFETIME
+	if recoil:
+		inst["knockback"] = (inst.get("knockback", Vector2.ZERO) - dir * ENEMY_FIRE_RECOIL_SPEED).limit_length(ENEMY_KNOCKBACK_MAX)
+	projectiles.append({
 		"pos": inst.pos + dir * (data.size + 4.0),
 		"velocity": dir * speed,
 		"owner": "enemy",
 		"radius": ENEMY_PROJECTILE_RADIUS,
 		"color": ENEMY_PROJECTILE_COLOR,
-		"lifetime": ENEMY_PROJECTILE_LIFETIME,
+		"lifetime": life,
 		"damage": data.contact_damage,
 		"source_name": data.display_name,
 		"attacker": inst.actor,
-	}
-	projectiles.append(proj)
+	})
+
+# Random-shot attack (Gusher): fire `random_shots` projectiles in random
+# directions every attack_cooldown.
+func _enemy_update_random_shots(inst: Dictionary, delta: float) -> void:
+	var cd: float = float(inst.get("shot_cd", inst.data.attack_cooldown)) - delta
+	if cd <= 0.0:
+		for _i in maxi(1, inst.data.random_shots):
+			_enemy_fire_random(inst)
+		_enemy_trigger_attack(inst)
+		cd = inst.data.attack_cooldown
+	inst["shot_cd"] = cd
+
+# --- Enemy frame animation -------------------------------------------------
+
+# --- Per-layer, directional animation -------------------------------------
+# Each enemy plays a logical base anim per layer (walk/idle/attack), resolved to
+# a concrete clip by facing (vert / side) via ActionEnemyData.resolve_anim, with
+# `walk_side` mirrored when moving left. Composite enemies (body + head) stack
+# their layers at offsets. State lives on the inst dict:
+#   facing/flip, moving, _ppos, attack_t, and la = {layer: {base, t}}.
+
+# Which layer shows the attack/gape: the head if present, else the primary layer.
+func _attack_layer(inst: Dictionary) -> StringName:
+	for L in inst.data.layers():
+		if L.name == &"head":
+			return &"head"
+	return inst.data.layers()[0].name
+
+# Logical base animation for a layer this frame.
+func _layer_base(inst: Dictionary, layer: StringName) -> StringName:
+	if layer == &"gush":
+		return &"spew"
+	var attacking: bool = float(inst.get("attack_t", 0.0)) > 0.0 and layer == _attack_layer(inst)
+	if layer == &"head":
+		return &"attack" if attacking else &"idle"
+	# body / single layer
+	if attacking:
+		return &"attack"
+	return &"walk" if inst.get("moving", false) else &"idle"
+
+# Trigger an attack/gape on the relevant layer for the length of its clip.
+func _enemy_trigger_attack(inst: Dictionary) -> void:
+	var a: Dictionary = inst.data.resolve_anim(_attack_layer(inst), &"attack", inst.get("facing", &"vert"))
+	if a.is_empty():
+		return
+	inst["attack_t"] = float((a["frames"] as Array).size()) / maxf(0.001, float(a["fps"]))
+
+# Update facing (vert / side + flip) from this frame's movement; keep the last
+# facing while stationary.
+func _enemy_update_facing(inst: Dictionary) -> void:
+	# Immobile enemies (Horf) never re-face — otherwise a fire-recoil nudge would
+	# briefly flip them to a side-facing sprite.
+	if inst.data.move_speed <= 0.0:
+		return
+	var mv: Vector2 = inst.pos - inst.get("_ppos", inst.pos)
+	inst["_ppos"] = inst.pos
+	inst["moving"] = mv.length() > 0.5
+	if inst["moving"]:
+		if absf(mv.y) >= absf(mv.x):
+			inst["facing"] = &"vert"
+			inst["flip"] = false
+		else:
+			inst["facing"] = &"side"
+			inst["flip"] = mv.x < 0.0
+
+# Advance each layer's playhead; the attack base auto-reverts when attack_t ends.
+func _advance_enemy_anim(inst: Dictionary, delta: float) -> void:
+	if not inst.data.has_anims():
+		return
+	_enemy_update_facing(inst)
+	if float(inst.get("attack_t", 0.0)) > 0.0:
+		inst["attack_t"] = float(inst["attack_t"]) - delta
+	var la: Dictionary = inst.get("la", {})
+	for L in inst.data.layers():
+		var base: StringName = _layer_base(inst, L.name)
+		var e = la.get(L.name)
+		if e == null:
+			la[L.name] = {"base": base, "t": 0.0}
+		elif e["base"] != base:
+			e["base"] = base
+			e["t"] = 0.0
+		else:
+			e["t"] = float(e["t"]) + delta
+	inst["la"] = la
+
+# Current texture for a layer, or null. `out_flip` not used (read inst.flip).
+func _layer_current_tex(inst: Dictionary, layer: StringName) -> Texture2D:
+	var e = inst.get("la", {}).get(layer)
+	var base: StringName = e["base"] if e != null else _layer_base(inst, layer)
+	var a: Dictionary = inst.data.resolve_anim(layer, base, inst.get("facing", &"vert"))
+	if a.is_empty():
+		return null
+	var frames: Array = a["frames"]
+	if frames.is_empty():
+		return null
+	var idx: int = int(float(e["t"] if e != null else 0.0) * float(a["fps"]))
+	if bool(a["loop"]):
+		idx = idx % frames.size()
+	else:
+		idx = mini(idx, frames.size() - 1)
+	return frames[idx]
 
 # ---------------------------------------------------------------------------
 # Auto-play deck runner
@@ -3079,7 +3328,8 @@ func _check_combat_end() -> void:
 		queue_free()
 		return
 
-	if _living_enemy_count() > 0:
+	# Still spawning in (telegraph) or enemies alive — the room isn't done.
+	if _living_enemy_count() > 0 or not _pending_spawns.is_empty():
 		return
 
 	# All enemies down.
@@ -3236,15 +3486,61 @@ func _draw() -> void:
 	if _ability_swing_remaining > 0.0:
 		_draw_attack_smear()
 
+	# Spawn telegraphs: a red circle (sized to the enemy) that fills in and
+	# pulses while the spawn warning counts down.
+	for p in _pending_spawns:
+		var pdata: ActionEnemyData = p["data"]
+		var prog: float = clampf(float(p["t"]) / SPAWN_TELEGRAPH_TIME, 0.0, 1.0)
+		var pr: float = pdata.size * ENEMY_SPRITE_SCALE
+		var pulse: float = 0.5 + 0.5 * sin(float(p["t"]) * 18.0)
+		var fill := Color(SPAWN_TELEGRAPH_COLOR.r, SPAWN_TELEGRAPH_COLOR.g, SPAWN_TELEGRAPH_COLOR.b,
+			0.20 + 0.30 * pulse)
+		draw_circle(p["pos"], pr * prog, fill)                          # growing core
+		draw_arc(p["pos"], pr, 0.0, TAU, 28, SPAWN_TELEGRAPH_COLOR, 2.0)  # fixed outline
+
 	# Enemies
 	for inst in enemies:
 		if not inst.actor.is_alive():
 			continue
 		var data: ActionEnemyData = inst.data
-		draw_circle(inst.pos, data.size, data.color)
+		var draw_r: float = data.size
+		var drew_sprite := false
+		if data.has_anims():
+			# Composite layers back-to-front at a shared scale (so the head keeps
+			# its size relative to the body), each at its offset; mirror `side`.
+			var face_side: bool = inst.get("flip", false) and inst.get("facing", &"") == &"side"
+			for L in data.layers():
+				var tex: Texture2D = _layer_current_tex(inst, L.name)
+				if tex == null:
+					continue
+				# Scale the whole composite by the enemy's base frame size (the body),
+				# so layers with larger frames (the Gusher's gush) spill beyond the
+				# body rather than shrinking it. Falls back to per-frame size.
+				var dim: float = maxf(1.0, float(maxi(tex.get_width(), tex.get_height())))
+				var ref_dim: float = data.base_dim if data.base_dim > 0.0 else dim
+				var s: float = (data.size * 2.0 * ENEMY_SPRITE_SCALE) / ref_dim
+				var w: float = tex.get_width() * s
+				var h: float = tex.get_height() * s
+				var off: Vector2 = L.offset * s
+				if face_side:
+					# Mirror in place about the enemy centre via a real transform
+					# (negative-size Rect2 flipping is unreliable). Keep ARENA_TOP.
+					draw_set_transform(Vector2(0, ARENA_TOP) + inst.pos + Vector2(-off.x, off.y),
+						0.0, Vector2(-1.0, 1.0))
+					draw_texture_rect(tex, Rect2(-w * 0.5, -h * 0.5, w, h), false)
+				else:
+					draw_texture_rect(tex,
+						Rect2(inst.pos.x + off.x - w * 0.5, inst.pos.y + off.y - h * 0.5, w, h), false)
+				drew_sprite = true
+			if face_side:
+				draw_set_transform(Vector2(0, ARENA_TOP), 0.0, Vector2.ONE)  # restore base after flips
+		if drew_sprite:
+			draw_r = data.size * ENEMY_SPRITE_SCALE
+		else:
+			draw_circle(inst.pos, data.size, data.color)
 		# HP bar above
 		var bar_w: float = data.size * 2.0
-		var bar_y: float = inst.pos.y - data.size - 10
+		var bar_y: float = inst.pos.y - draw_r - 10
 		draw_rect(Rect2(inst.pos.x - bar_w * 0.5, bar_y, bar_w, 5), Color(0.05, 0.05, 0.05))
 		var frac: float = float(inst.actor.hp) / float(maxi(1, inst.actor.max_hp))
 		draw_rect(Rect2(inst.pos.x - bar_w * 0.5, bar_y, bar_w * frac, 5), Color(0.85, 0.30, 0.30))

@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="ActionEnemyData" load_steps=7 format=3 uid="uid://action_enemy_horf"]
+
+[ext_resource type="Script" path="res://scripts/resources/ActionEnemyData.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/enemies/horf/idle_0.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/enemies/horf/attack_0.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/enemies/horf/attack_1.png" id="4"]
+[ext_resource type="Texture2D" path="res://assets/enemies/horf/attack_2.png" id="5"]
+[ext_resource type="Texture2D" path="res://assets/enemies/horf/attack_3.png" id="6"]
+
+[resource]
+script = ExtResource("1")
+id = &"horf"
+display_name = "Horf"
+difficulty = 0
+weight = 2
+hp_min = 25
+hp_max = 25
+contact_damage = 6
+attack_cooldown = 2.2
+attack_windup = 0.35
+attack_range = 480
+preferred_distance = 0
+projectile_speed = 200
+projectile_lifetime = 5
+move_speed = 0
+size = 18
+behavior = 2
+color = Color(0.8, 0.1, 0.1, 1)
+source_game = "The Binding of Isaac"
+tags = PackedStringArray()
+split_into = &""
+split_count = 0
+random_shots = 0
+on_death_ids = PackedStringArray()
+on_death_weights = PackedInt32Array()
+layer_names = PackedStringArray()
+layer_offsets = PackedVector2Array()
+base_dim = 0
+directional = false
+anim_names = PackedStringArray("idle", "attack")
+anim_fps = PackedFloat32Array(4, 12)
+anim_loop = PackedByteArray(1, 0)
+anim_frame_counts = PackedInt32Array(1, 4)
+anim_frames = Array[Texture2D]([ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6")])
