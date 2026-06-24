@@ -149,10 +149,11 @@ var player_max_block: int = 0
 # pricier cards' block lingers). Reset each room. See _gain_block / _decay_block.
 var _block_pool: Array = []
 const DEFAULT_BLOCK_DECAY := 1.0   # block/sec floor for any source with no card cost
-# Block from items / statuses (Plated Armor, combat_start grants, …) fades as if
-# it came from a 2-cost card: 2 block/sec (mirrors _block_decay_for(cost=2)). One
-# rate for every non-card block source so they all bleed away on the same clock.
-const ITEM_BLOCK_DECAY := 2.0
+# Block from items / statuses (Plated Armor, combat_start grants like the Anchor's
+# +10, …) fades at the slow default rate (1 block/sec) so it lingers rather than
+# evaporating mid-fight. One rate for every non-card block source so they all
+# bleed away on the same clock.
+const ITEM_BLOCK_DECAY := 1.0
 # The integer block value we last wrote to player_actor.block. Lets _decay_block
 # tell a real combat soak (player_actor.block dropped) apart from the harmless
 # rounding gap between the float pool total and its floored integer display.
@@ -1197,7 +1198,9 @@ func _spawn_enemy_projectile(inst: Dictionary, dir: Vector2, recoil: bool) -> vo
 		"radius": ENEMY_PROJECTILE_RADIUS,
 		"color": ENEMY_PROJECTILE_COLOR,
 		"lifetime": life,
-		"damage": data.contact_damage,
+		# Projectile damage is its own stat; fall back to contact_damage when unset
+		# so enemies authored before the split keep their old bolt damage.
+		"damage": data.projectile_damage if data.projectile_damage > 0 else data.contact_damage,
 		"source_name": data.display_name,
 		"attacker": inst.actor,
 	})

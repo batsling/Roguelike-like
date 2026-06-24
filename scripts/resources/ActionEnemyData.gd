@@ -18,8 +18,14 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 @export var hp_min: int = 10
 @export var hp_max: int = 14
 
-# Damage applied per touch (WALKER) or per projectile (SHOOTER).
+# Damage applied per touch (body contact). Used by walkers that hit on contact
+# and by any enemy the player bumps into. Projectiles use projectile_damage.
 @export var contact_damage: int = 5
+
+# SHOOTER/STATIONARY: damage dealt by each projectile this enemy fires. 0 falls
+# back to contact_damage so existing enemies are unchanged; set it to decouple a
+# shooter's bolt damage from the damage it deals by bumping into the player.
+@export var projectile_damage: int = 0
 @export var attack_cooldown: float = 1.0  # seconds between hits
 # Telegraph lead-time: a ranged enemy plays its attack animation for this long
 # as a warning BEFORE the projectile is released. 0 falls back to the attack

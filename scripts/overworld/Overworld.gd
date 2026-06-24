@@ -27,6 +27,10 @@ const PORTAL_SPACING := 3
 @warning_ignore("integer_division")
 const SPAWN_POS := Vector2i(GRID_W / 2, GRID_H - 3)
 
+# How close (px) the freely-moving player must be to a door for it to become the
+# active portal — about 1.5 tiles, so walking up to a door selects it.
+const PORTAL_ACTIVATE_RADIUS := 48.0
+
 signal portal_entered(game_id: StringName)
 
 @onready var _floor_bg: ColorRect = $Floor
@@ -326,13 +330,18 @@ func _preview_info_text(gd: GameData, game_id: StringName) -> String:
 # Player interaction
 # ------------------------------------------------------------------
 
-func _on_player_moved(pos: Vector2i) -> void:
+func _on_player_moved(_pos: Vector2i) -> void:
+	# Free pixel movement: the active door is the nearest portal within reach of
+	# the player's actual position (not an exact tile match).
 	var prev := _active_portal
-	_active_portal = null
+	var nearest: PortalNode = null
+	var nearest_d := PORTAL_ACTIVATE_RADIUS
 	for p in _portals:
-		if p.grid_pos == pos:
-			_active_portal = p
-			break
+		var d: float = _player.position.distance_to(p.position)
+		if d <= nearest_d:
+			nearest_d = d
+			nearest = p
+	_active_portal = nearest
 	if prev != _active_portal:
 		if prev != null:
 			prev.set_highlight(false)
