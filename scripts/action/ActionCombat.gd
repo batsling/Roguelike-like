@@ -1323,6 +1323,11 @@ func _layer_current_tex(inst: Dictionary, layer: StringName) -> Texture2D:
 	var e = inst.get("la", {}).get(layer)
 	var base: StringName = e["base"] if e != null else _layer_base(inst, layer)
 	var a: Dictionary = inst.data.resolve_anim(layer, base, inst.get("facing", &"vert"))
+	# Single-sprite enemies (one idle clip, no walk/attack) fall back to idle so
+	# they still render while moving or attacking — e.g. the Baby Alien, which
+	# only ships an idle frame and is mirrored when it walks left.
+	if a.is_empty() and base != &"idle":
+		a = inst.data.resolve_anim(layer, &"idle", inst.get("facing", &"vert"))
 	if a.is_empty():
 		return null
 	var frames: Array = a["frames"]

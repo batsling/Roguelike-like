@@ -135,6 +135,21 @@ ENEMIES = [
                       f"gush.spew @ 10 loop cells {_GUSH}",
         "Ability": "",
     },
+    {
+        # Single-sprite follower from Brotato: one idle frame, drawn mirrored when
+        # it walks left (the engine flips `side`-facing sprites automatically, and
+        # the renderer falls back to idle when there's no walk clip). A plain
+        # Walker that chases the player and hits on contact — the simplest enemy
+        # shape on the sheet, handy as a worked example of the columns.
+        "Name": "Baby Alien", "Id": "baby_alien", "Difficulty": "Low", "Weight": 1,
+        "Game": "Brotato", "Tag": "",
+        "Min HP": 10, "Max HP": 15, "Move Speed": 70, "Size": 1,
+        "Behavior": "Walker", "Preferred Distance": 0,
+        "Attacks": "melee dmg 5 cd 1.0 range 40",
+        "Color": "0.45,0.4,0.55", "Directional": "No",
+        "Layers": "", "Animations": "idle @ 4 loop",
+        "Ability": "",
+    },
 ]
 
 
