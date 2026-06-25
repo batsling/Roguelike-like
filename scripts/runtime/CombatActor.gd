@@ -33,6 +33,12 @@ var statuses: Dictionary = {}
 # Stats.decay_actor_statuses via is_status_permanent().
 var permanent_statuses: Dictionary = {}
 
+# Statuses flagged Temporary (addonsnew `temporary` hook): they hold their full
+# value (no normal decay) for a fixed number of turns, then vanish entirely.
+# Keyed StringName -> turns remaining (int); ticked down by
+# Stats.decay_actor_statuses, which removes the status at 0.
+var temporary_statuses: Dictionary = {}
+
 # Enemies only: data-ref + planned move
 var data: EnemyData = null
 var planned_move: Dictionary = {}     # one entry of EnemyData.pattern
@@ -171,6 +177,9 @@ func add_status(status: StringName, stacks: int) -> void:
 	var new_val := cur + stacks
 	if new_val <= 0:
 		statuses.erase(status)
+		# A status that drops to 0 sheds its temporary timer too (the permanent
+		# flag is intentionally sticky — it's part of the enemy's kit).
+		temporary_statuses.erase(status)
 	else:
 		statuses[status] = new_val
 
@@ -189,3 +198,17 @@ func set_status_permanent(status: StringName, on: bool = true) -> void:
 
 func is_status_permanent(status: StringName) -> bool:
 	return permanent_statuses.has(status)
+
+# Temporary statuses (addonsnew `temporary`): hold full value for `turns`, then
+# Stats.decay_actor_statuses removes them. Setting turns <= 0 clears the timer.
+func set_status_temporary(status: StringName, turns: int) -> void:
+	if turns > 0:
+		temporary_statuses[status] = turns
+	else:
+		temporary_statuses.erase(status)
+
+func is_status_temporary(status: StringName) -> bool:
+	return temporary_statuses.has(status)
+
+func temporary_turns(status: StringName) -> int:
+	return int(temporary_statuses.get(status, 0))

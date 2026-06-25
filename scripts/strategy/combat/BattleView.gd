@@ -98,8 +98,6 @@ var _pending_card = null     # CardInstance being played
 var _pending_aim_spec: Dictionary = {}
 # Loot: index into GameState.loot_items for a potion being thrown (POTION_AIM).
 var _pending_potion_index: int = -1
-# Speed/Flex "for 1 turn" potion buffs, stripped at the player's next turn end.
-var _potion_temp_buffs: Array = []
 var _loot_dialog: Panel = null
 var _loot_list_container: VBoxContainer = null
 var _btn_loot: Button = null
@@ -822,8 +820,6 @@ func _on_unit_turn_ended(unit) -> void:
 		TriggerBus.emit_signal("turn_ended", {"turn": _player_turn_count, "scene": self})
 		_fire_item_triggers("turn_ended")
 		_fire_power_triggers("turn_ended")
-		# Speed/Flex potion "for 1 turn" buffs expire at the player's turn end.
-		_strip_potion_temp_buffs()
 	# Damage-over-time bite (Bleed, Leeches) BEFORE decay so it uses the current
 	# stack count, then decay grows/ticks it down.
 	if unit != null:
@@ -2091,20 +2087,6 @@ func potion_grant_energy(amount: int) -> bool:
 	energy += amount
 	_refresh_readout()
 	return true
-
-# Speed/Flex "for 1 turn" buffs: record so they can be stripped at the player's
-# next turn end.
-func potion_register_temp_status(target, status: StringName, stacks: int) -> void:
-	_potion_temp_buffs.append({"target": target, "status": status, "stacks": stacks})
-
-func _strip_potion_temp_buffs() -> void:
-	for b in _potion_temp_buffs:
-		var t = b.get("target")
-		if t != null and t.has_method("add_status"):
-			t.add_status(StringName(b.get("status", "")), -int(b.get("stacks", 0)))
-	_potion_temp_buffs.clear()
-	if _grid_view != null:
-		_grid_view.notify_units_changed()
 
 # Player HP changes hit the live unit (the combat truth, synced back to the
 # overworld entity at combat end). Self-damage from drinking a harmful potion

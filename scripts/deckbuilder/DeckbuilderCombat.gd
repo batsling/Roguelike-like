@@ -100,9 +100,6 @@ var _loot_button: Button = null
 var _loot_dropdown: Control = null
 var _loot_dropdown_list: VBoxContainer = null
 var _loot_open: bool = false
-# Speed/Flex "for 1 turn" buffs applied by a potion this turn, stripped at the
-# end of the player's turn. Each entry: {target, status, stacks}.
-var _potion_temp_buffs: Array = []
 
 # Drag-to-play state. _drag_card is the CardInstance being dragged; _drag_ghost
 # is a floating CardView clone that follows the cursor (mirrors the HTML build's
@@ -382,20 +379,10 @@ func potion_player_maxhp_delta(delta: int) -> void:
 		player.max_hp = GameState.max_hp
 		player.hp = GameState.hp
 
-func potion_register_temp_status(target, status: StringName, stacks: int) -> void:
-	_potion_temp_buffs.append({"target": target, "status": status, "stacks": stacks})
-
 func potion_after_apply() -> void:
 	_refresh_loot_button()
 	_refresh_ui()
 	_check_combat_end()
-
-func _strip_potion_temp_buffs() -> void:
-	for b in _potion_temp_buffs:
-		var t = b.get("target")
-		if t != null and t.has_method("add_status"):
-			t.add_status(StringName(b.get("status", "")), -int(b.get("stacks", 0)))
-	_potion_temp_buffs.clear()
 
 func start_combat(spawn_list: Array) -> void:
 	# Fold any event-queued extra enemies (e.g. a fruit-fly swarm) into the
@@ -591,11 +578,11 @@ func _refresh_player_view() -> void:
 		# Negative stacks (a status drained below 0) still show, in red.
 		if stacks == 0:
 			continue
-		_player_status_row.add_child(_make_status_badge(s, stacks))
+		_player_status_row.add_child(_make_status_badge(s, stacks, player))
 
 # Small status icon + stack-count badge, mirroring EnemyView's. Falls back to a
 # coloured letter when a status has no icon art.
-func _make_status_badge(status_name, stacks: int) -> Control:
+func _make_status_badge(status_name, stacks: int, actor = null) -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(30, 30)
 	# PASS (not IGNORE) so the badge receives hover and shows its tooltip — works
@@ -633,7 +620,26 @@ func _make_status_badge(status_name, stacks: int) -> Control:
 	count.add_theme_constant_override("outline_size", 3)
 	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(count)
+	# Top-right addon marker: a lock for Permanent, a clock + turns for Temporary.
+	_add_status_marker(holder, actor, status_name)
 	return holder
+
+# Adds the Permanent/Temporary marker overlay to a 30×30 status badge `holder`
+# for `status_name` on `actor`. No-op for actors without the addon API.
+func _add_status_marker(holder: Control, actor, status_name) -> void:
+	if actor == null:
+		return
+	var sn := StringName(status_name)
+	var marker: StatusMarker = null
+	if actor.has_method("is_status_permanent") and actor.is_status_permanent(sn):
+		marker = StatusMarker.new()
+		marker.setup("lock")
+	elif actor.has_method("is_status_temporary") and actor.is_status_temporary(sn):
+		marker = StatusMarker.new()
+		marker.setup("clock", actor.temporary_turns(sn))
+	if marker != null:
+		marker.position = Vector2(holder.custom_minimum_size.x - 13, -2)
+		holder.add_child(marker)
 
 func _build_enemy_views() -> void:
 	for child in _enemy_area.get_children():
@@ -764,8 +770,6 @@ func _on_end_turn() -> void:
 	if phase != Phase.PLAYER:
 		return
 	_cancel_targeting()
-	# Speed/Flex potion "for 1 turn" buffs expire at the end of the player's turn.
-	_strip_potion_temp_buffs()
 	# Snapshot the curse cards in hand (and the hand size, for Regret) BEFORE
 	# discard. Their eot effects are applied AFTER status decay below, so a
 	# status they grant (Doubt -> Weak) survives into the next turn instead of

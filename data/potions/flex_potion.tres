@@ -11,4 +11,4 @@ rarity = "Common"
 reference = "Slay the Spire"
 file = "FlexPotion"
 effect_text = "Gain +5 Power for 1 turn"
-effects = [{"op": "status", "status": "power", "stacks": 5, "temp": true}]
+effects = [{"op": "status", "status": "power", "stacks": 5, "temporary": 1}]

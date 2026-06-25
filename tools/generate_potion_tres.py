@@ -18,7 +18,7 @@ Effect grammar (one potion = one or more clauses separated by ';'):
   Gain +N Block                           -> {op:block, value:N}
   Gain +N Energy                          -> {op:energy, value:N}
   Gain +N Max Health[ and Health]         -> {op:maxhp, value:N}   (raises max AND heals)
-  Gain +N <Status> [for 1 turn]           -> {op:status, status, stacks:N, temp?}
+  Gain +N <Status> [for M turns]          -> {op:status, status, stacks:N, temporary:M?}
   Inflict N <Status>                       -> {op:status, status, stacks:N}
 
 <Status> is lower-cased to the engine's status id (Power->power, Defense->defense,
@@ -103,12 +103,14 @@ def _parse_clause(clause):
     if m:
         return {"op": "maxhp", "value": int(m.group(1))}
 
-    # Status gain: "Gain +N <Status> [for 1 turn]"
-    m = re.match(r"^gain\s+\+?(\d+)\s+([a-z_]+)(\s+for\s+1\s+turn)?\s*$", low)
+    # Status gain: "Gain +N <Status> [for M turns]" (M defaults to 1).
+    m = re.match(r"^gain\s+\+?(\d+)\s+([a-z_]+)(?:\s+for\s+(\d+)?\s*turns?)?\s*$", low)
     if m:
         eff = {"op": "status", "status": _status_id(m.group(2)), "stacks": int(m.group(1))}
-        if m.group(3):
-            eff["temp"] = True
+        if m.group(3) is not None:
+            eff["temporary"] = int(m.group(3))
+        elif "for" in low and "turn" in low:
+            eff["temporary"] = 1
         return eff
 
     # Status inflict: "Inflict N <Status>"

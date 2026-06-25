@@ -199,6 +199,45 @@ func test_fruit_juice_on_player_raises_shared_max_hp() -> void:
 	GameState.set_max_hp(mx0, false)
 	GameState.set_hp(hp0)
 
+# --- Temporary status addon -------------------------------------------------
+
+func test_temporary_status_holds_then_expires() -> void:
+	# Temporary N: holds full value (no decay) for N turn boundaries, then the
+	# status is removed entirely. Vulnerable normally decays 1/turn, so this also
+	# proves Temporary suppresses normal decay.
+	var a := CombatActor.new()
+	a.add_status(&"vulnerable", 3)
+	a.set_status_temporary(&"vulnerable", 2)
+	assert_true(a.is_status_temporary(&"vulnerable"))
+	assert_eq(a.temporary_turns(&"vulnerable"), 2)
+	# Turn 1 boundary: holds full value (no decay), timer 2 -> 1.
+	Stats.decay_actor_statuses(a)
+	assert_eq(a.get_status(&"vulnerable"), 3, "holds full value while temporary")
+	assert_eq(a.temporary_turns(&"vulnerable"), 1)
+	# Turn 2 boundary: timer 1 -> 0, status removed.
+	Stats.decay_actor_statuses(a)
+	assert_eq(a.get_status(&"vulnerable"), 0, "removed when the timer runs out")
+	assert_false(a.is_status_temporary(&"vulnerable"), "marker cleared on removal")
+
+func test_temporary_marker_cleared_if_status_drops_to_zero() -> void:
+	var a := CombatActor.new()
+	a.add_status(&"power", 2)
+	a.set_status_temporary(&"power", 3)
+	a.add_status(&"power", -2)  # status removed by other means
+	assert_eq(a.get_status(&"power"), 0)
+	assert_false(a.is_status_temporary(&"power"), "temporary timer sheds with the status")
+
+func test_speed_potion_applies_temporary_one_turn() -> void:
+	# Speed Potion is authored "Gain +5 Defense for 1 turn" -> Temporary 1.
+	var p: PotionData = Data.get_potion(&"speed_potion")
+	var t := _dummy_target()
+	PotionSystem.apply_to_target(p, t, {"mode": Stats.Mode.DECKBUILDER})
+	assert_eq(t.get_status(&"defense"), 5, "Speed Potion grants +5 Defense")
+	assert_true(t.is_status_temporary(&"defense"), "flagged Temporary")
+	assert_eq(t.temporary_turns(&"defense"), 1, "for 1 turn")
+	Stats.decay_actor_statuses(t)
+	assert_eq(t.get_status(&"defense"), 0, "expires after its turn")
+
 func test_explosive_ampoule_hits_all_targets() -> void:
 	var p: PotionData = Data.get_potion(&"explosive_ampoule")
 	var ctx := {"source": _source_with_arcane(0), "mode": Stats.Mode.DECKBUILDER}

@@ -197,8 +197,13 @@ func _apply_one(effect: Dictionary, potion: PotionData, target, ctx: Dictionary)
 			var stacks: int = int(effect.get("stacks", 0))
 			if sid != &"" and stacks != 0 and target.has_method("add_status"):
 				target.add_status(sid, stacks)
-				if bool(effect.get("temp", false)):
-					_register_temp_status(target, sid, stacks, ctx)
+				# "for N turns" -> flag the status Temporary so the shared status core
+				# expires it after N turn-boundaries in every mode (no per-scene hack).
+				var turns: int = int(effect.get("temporary", 0))
+				if turns <= 0 and bool(effect.get("temp", false)):
+					turns = 1
+				if turns > 0 and target.has_method("set_status_temporary"):
+					target.set_status_temporary(sid, turns)
 			return "%s: %d %s on %s" % [potion.display_name, stacks, _pretty_status(sid), tname]
 		"energy":
 			var e: int = int(effect.get("value", 0))
@@ -279,14 +284,6 @@ func _player_maxhp_delta(scene, actor, delta: int) -> void:
 			actor.max_hp = GameState.max_hp
 		if "hp" in actor:
 			actor.hp = GameState.hp
-
-# Speed / Flex "for 1 turn": let the scene strip the buff at the next turn
-# boundary if it supports it (turn-based modes); otherwise it lingers for the
-# room (action has no turns), matching the agreed per-mode adaptation.
-func _register_temp_status(target, sid: StringName, stacks: int, ctx: Dictionary) -> void:
-	var scene = ctx.get("scene")
-	if scene != null and scene.has_method("potion_register_temp_status"):
-		scene.potion_register_temp_status(target, sid, stacks)
 
 func _target_name(target) -> String:
 	if target == null:

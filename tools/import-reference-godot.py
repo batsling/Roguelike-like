@@ -71,6 +71,10 @@ HOOK_EXPR = {
     # marks the status on the actor (CombatActor / BattleUnit.set_status_permanent)
     # and Stats.decay_actor_statuses skips it; declarative, so no Expr.
     "permanent":        None,
+    # Temporary (Statuses): the flagged status holds its full value (no decay) for
+    # its value's worth of turns, then is removed. The runtime marks it on the actor
+    # (set_status_temporary) and Stats.decay_actor_statuses ticks it down; declarative.
+    "temporary":        None,
     "structural":       None,
 }
 

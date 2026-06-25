@@ -153,11 +153,6 @@ var _potion_splash_radius: float = 0.0
 var _potion_splash_color: Color = Color(1.0, 1.0, 1.0, 0.5)
 const POTION_SPLASH_FX_TIME := 0.35
 
-# Speed/Flex "for 1 turn" potion buffs. Action has no discrete turns, so each is
-# given one turn-tick of life: it's stripped on the first turn-tick boundary after
-# its grace tick, i.e. it lasts ~one turn. Each entry: {target, status, stacks, grace}.
-var _potion_temp_buffs: Array = []
-
 # Loot that dropped on the arena floor when the room cleared — the player walks
 # over it to pick it up. Each entry: {entry: Dictionary, pos: Vector2}. Cleared
 # when a new room starts. ~35% chance to drop after a (non-safe) room clear.
@@ -451,7 +446,6 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_room_resolved = false
 	# Uncollected floor drops don't carry between rooms.
 	_ground_loot.clear()
-	_potion_temp_buffs.clear()
 	_potion_q_held = false
 	_lob_aim_active = false
 	_transitioning = false
@@ -853,8 +847,6 @@ func _process_turn_tick(delta: float) -> void:
 	if player_actor != null and player_actor.is_alive():
 		_tick_actor_turn(player_actor, _player_was_hit)
 	_player_was_hit = false
-	# Speed/Flex potion buffs live one turn: a grace tick, then stripped.
-	_tick_potion_temp_buffs()
 	# Confused re-rolls every loadout card's cost (and so its cooldown) each turn.
 	_reroll_confused_costs()
 	for inst in enemies:
@@ -1157,25 +1149,6 @@ func potion_player_maxhp_delta(delta: int) -> void:
 	if player_actor != null:
 		player_actor.max_hp = GameState.max_hp
 		player_actor.hp = GameState.hp
-
-# Speed/Flex "for 1 turn": record with one grace tick so the buff survives the
-# turn it was drunk on, then is stripped on the following turn-tick boundary.
-func potion_register_temp_status(target, status: StringName, stacks: int) -> void:
-	_potion_temp_buffs.append({"target": target, "status": status, "stacks": stacks, "grace": true})
-
-func _tick_potion_temp_buffs() -> void:
-	if _potion_temp_buffs.is_empty():
-		return
-	var kept: Array = []
-	for b in _potion_temp_buffs:
-		if bool(b.get("grace", false)):
-			b["grace"] = false
-			kept.append(b)
-			continue
-		var t = b.get("target")
-		if t != null and t.has_method("add_status"):
-			t.add_status(StringName(b.get("status", "")), -int(b.get("stacks", 0)))
-	_potion_temp_buffs = kept
 
 # ---------------------------------------------------------------------------
 # Ground loot (action): a potion/scroll may drop on the floor when a room
@@ -4164,6 +4137,8 @@ func _draw_status_icons(actor: CombatActor, center_x: float, bottom_y: float) ->
 	if actor == null:
 		return
 	var icons: Array = []
+	var can_perm: bool = actor.has_method("is_status_permanent")
+	var can_temp: bool = actor.has_method("is_status_temporary")
 	for s in actor.statuses.keys():
 		# Negative stacks (e.g. Power drained below 0) still draw, with a red
 		# minus count; only an exactly-zero status is skipped.
@@ -4171,7 +4146,9 @@ func _draw_status_icons(actor: CombatActor, center_x: float, bottom_y: float) ->
 			continue
 		var tex: Texture2D = Stats.status_icon(s)
 		if tex != null:
-			icons.append({"tex": tex, "stacks": int(actor.statuses[s])})
+			icons.append({"tex": tex, "stacks": int(actor.statuses[s]),
+				"permanent": can_perm and actor.is_status_permanent(s),
+				"temp_turns": (actor.temporary_turns(s) if can_temp and actor.is_status_temporary(s) else 0)})
 	if icons.is_empty():
 		return
 	var gap := 2.0
@@ -4187,6 +4164,15 @@ func _draw_status_icons(actor: CombatActor, center_x: float, bottom_y: float) ->
 			var col: Color = Color(1.0, 0.35, 0.3) if stacks < 0 else Color.WHITE
 			draw_string(font, Vector2(x + size - 4, top_y + size),
 				str(stacks), HORIZONTAL_ALIGNMENT_RIGHT, -1, 9, col)
+		# Top-right addon marker: lock (Permanent) or clock + turns (Temporary).
+		var msz: float = size * 0.5
+		var mtl := Vector2(x + size - msz * 0.5, top_y - msz * 0.18)
+		if bool(entry.get("permanent", false)):
+			DrawUtil.draw_status_lock(self, mtl, msz)
+		elif int(entry.get("temp_turns", 0)) > 0:
+			DrawUtil.draw_status_clock(self, mtl, msz)
+			draw_string(font, Vector2(mtl.x + msz + 1, mtl.y + msz),
+				str(int(entry["temp_turns"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(0.7, 0.92, 1.0))
 		x += size + gap
 
 # Player buff/debuff readout above the head: the Block shield chip (a number,
