@@ -343,7 +343,15 @@ func _resolve_potion(loot_index: int, target: CombatActor) -> void:
 	if potion == null:
 		return
 	var ctx := {"source": player, "scene": self, "mode": Stats.Mode.DECKBUILDER, "rng": _rng}
-	var logs: Array = PotionSystem.apply_to_target(potion, target, ctx)
+	# Cleave potions (Explosive Ampoule) hit EVERY living enemy — the deckbuilder
+	# has no spatial throw, so cleave resolves as an all-enemy splash regardless of
+	# which target the arrow picked, matching the legacy build.
+	var logs: Array
+	if potion.cleave:
+		var living: Array = enemies.filter(func(e): return e != null and e.is_alive())
+		logs = PotionSystem.apply_to_targets(potion, living, ctx)
+	else:
+		logs = PotionSystem.apply_to_target(potion, target, ctx)
 	for line in logs:
 		GameLog.add(line, PotionSystem.POTION_COLOR)
 	PotionSystem.identify(potion.id)
