@@ -16,13 +16,29 @@ const LOOP_MAX_DIST = 28.0
 
 # Enemy archetype pool used by room encounters. Floor number gates rarer kinds.
 # Source of truth is the enemiesS sheet (StrategyEnemyData's min_floor /
-# spawn_weight); this const is the fallback when no strategy enemies are loaded.
+# spawn_weight / weight); this const is the fallback when no strategy enemies are
+# loaded. `weight` is the spawn-rarity weight (how often the kind is rolled);
+# `class_weight` is the 1-5 heft class spent against the combat weight budget.
 const ENEMY_POOL = [
-	{ "kind": "snake",       "min_floor": 1, "weight": 4 },
-	{ "kind": "hobgoblin",   "min_floor": 1, "weight": 3 },
-	{ "kind": "rattlesnake", "min_floor": 2, "weight": 3 },
-	{ "kind": "troll",       "min_floor": 4, "weight": 1 },
+	{ "kind": "snake",       "min_floor": 1, "weight": 4, "class_weight": 1 },
+	{ "kind": "hobgoblin",   "min_floor": 1, "weight": 3, "class_weight": 2 },
+	{ "kind": "rattlesnake", "min_floor": 2, "weight": 3, "class_weight": 2 },
+	{ "kind": "troll",       "min_floor": 4, "weight": 1, "class_weight": 5 },
 ]
+
+# Combat weight budget per RunDifficulty.Tier (LOW, MEDIUM, HIGH, INSANE). Each
+# combat spends this budget on enemies, where an enemy costs its 1-5 weight CLASS
+# (StrategyEnemyData.weight). Low = 6, Medium = 8, Hard (High) = 10, Insane = 12.
+const COMBAT_WEIGHT_BUDGET := [6, 8, 10, 12]
+
+# Hard cap on enemies per encounter, so a pool of cheap (weight-1) kinds can't
+# overflow the north spawn row. Bounds the budget fill below.
+const MAX_ENCOUNTER_ENEMIES := 6
+
+# The weight budget a combat gets at `tier` (RunDifficulty.Tier index), clamped
+# to the table so out-of-range tiers fall back to the nearest end.
+static func combat_weight_budget(tier: int) -> int:
+	return COMBAT_WEIGHT_BUDGET[clampi(tier, 0, COMBAT_WEIGHT_BUDGET.size() - 1)]
 
 # Data-driven enemy pool, sorted by descending spawn weight then kind for a
 # stable roll order. Falls back to ENEMY_POOL when Data has no strategy enemies.
@@ -32,7 +48,7 @@ func _enemy_pool() -> Array:
 		for d in Data.all_strategy_enemies():
 			if int(d.spawn_weight) > 0:
 				out.append({ "kind": String(d.id), "min_floor": int(d.min_floor),
-					"weight": int(d.spawn_weight) })
+					"weight": int(d.spawn_weight), "class_weight": maxi(1, int(d.weight)) })
 	if out.is_empty():
 		return ENEMY_POOL
 	out.sort_custom(func(a, b):
@@ -229,21 +245,44 @@ func _tag_rooms(rng: RandomNumberGenerator, stairs_index: int) -> void:
 				rd.cleared = false
 		room_data.append(rd)
 
+# Roll a room's enemies by spending the difficulty-based weight budget. The
+# budget (low 6 / medium 8 / hard 10 / insane 12) is filled by repeatedly rolling
+# a kind — weighted by spawn rarity (`weight`) among the kinds that still FIT the
+# remaining budget — and subtracting that kind's 1-5 weight CLASS. Stops when no
+# affordable kind remains or the enemy cap is hit.
 func _roll_encounter(rng: RandomNumberGenerator, floor_num: int) -> Array:
-	var count = rng.randi_range(1, 2 + floor_num / 2)
 	var available = _enemy_pool().filter(func(e): return floor_num >= e.min_floor)
-	var total_weight = 0
-	for e in available:
-		total_weight += e.weight
+	if available.is_empty():
+		return []
+	var budget: int = combat_weight_budget(RunDifficulty.current_tier())
 	var encounter: Array = []
-	for _i in range(count):
+	var remaining: int = budget
+	while encounter.size() < MAX_ENCOUNTER_ENEMIES:
+		# Only kinds whose weight class still fits the remaining budget are eligible.
+		var affordable = available.filter(func(e): return int(e.get("class_weight", 1)) <= remaining)
+		if affordable.is_empty():
+			break
+		var total_weight = 0
+		for e in affordable:
+			total_weight += int(e.weight)
+		if total_weight <= 0:
+			break
 		var roll = rng.randi() % total_weight
 		var acc = 0
-		for e in available:
-			acc += e.weight
+		for e in affordable:
+			acc += int(e.weight)
 			if roll < acc:
 				encounter.append(e.kind)
+				remaining -= int(e.get("class_weight", 1))
 				break
+	# Never field an empty combat room: if even the opening roll bought nothing
+	# (every kind costs more than the whole budget), drop in the cheapest kind.
+	if encounter.is_empty():
+		var cheapest = available[0]
+		for e in available:
+			if int(e.get("class_weight", 1)) < int(cheapest.get("class_weight", 1)):
+				cheapest = e
+		encounter.append(cheapest.kind)
 	return encounter
 
 func _place_traps(rng: RandomNumberGenerator) -> void:
