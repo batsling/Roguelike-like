@@ -93,8 +93,14 @@ var ai = null
 var intent_telegraph: Dictionary = {}
 
 # Optional grid-token sprite (StrategyEnemyData.image). Drawn as a circular token
-# by BattleGridView; null = a plain colour circle.
+# by BattleGridView; null = the unit's `glyph` letter is drawn instead.
 var icon: Texture2D = null
+
+# ASCII-mode fallback glyph + colour (StrategyEnemyData.glyph / portrait_color).
+# When `icon` is null, BattleGridView draws this letter in the proper font over a
+# `portrait_color` token instead of a featureless red circle.
+var glyph: String = ""
+var portrait_color: Color = Color(0.7, 0.3, 0.3)
 
 func is_alive() -> bool:
 	return hp > 0
@@ -201,6 +207,8 @@ static func from_enemy_kind(kind: String) -> BattleUnit:
 		u.split_into = data.split_into
 		u.split_count = data.split_count
 		u.icon = data.image
+		u.glyph = data.glyph
+		u.portrait_color = data.portrait_color
 		# Starting statuses (e.g. the Troll's Permanent Regeneration). Authored in
 		# the Ability column → StrategyEnemyData.starting_statuses; a `permanent`
 		# entry is flagged so Stats.decay_actor_statuses never steps it down.
@@ -220,6 +228,8 @@ static func from_enemy_kind(kind: String) -> BattleUnit:
 		u.weight = int(preset.get("weight", 3))
 		u.move_range = _move_for_speed(int(preset.speed))
 		u.basic_attack_def = { "damage": preset.attack, "range": 1, "shape": "melee" }
+		# No sheet entry: fall back to the kind's first letter as the grid glyph.
+		u.glyph = kind.substr(0, 1) if kind != "" else "e"
 	# Enemies don't use mana yet; cooldown abilities arrive in Phase 7.
 	u.max_mana = 0
 	u.mana = 0

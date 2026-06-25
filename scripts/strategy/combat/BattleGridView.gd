@@ -435,6 +435,26 @@ func _draw_enemy_threat(u) -> void:
 	for pos in atk.keys():
 		draw_rect(Rect2(pos.x * tile_size, pos.y * tile_size, tile_size, tile_size), COLOR_THREAT_ATK, true)
 
+# Token for an enemy with no sprite: a dim portrait-coloured disc with the
+# enemy's glyph letter drawn centred in the proper font on top. Replaces the old
+# plain red circle so each kind reads as its own glyph.
+func _draw_enemy_glyph(center: Vector2, token_r: float, u) -> void:
+	var disc: Color = u.portrait_color
+	disc.a = 0.85
+	draw_circle(center, token_r, disc)
+	var glyph: String = String(u.glyph)
+	if glyph == "":
+		return
+	# Contrast the letter against the disc: light glyph on dark tokens, dark on light.
+	var glyph_col: Color = Color(0.06, 0.05, 0.08) if u.portrait_color.get_luminance() > 0.55 else Color(0.97, 0.96, 0.92)
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = maxi(10, int(token_r * 1.5))
+	var gsize: Vector2 = font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	# get_string_size's height includes descent; nudge the baseline so the letter
+	# sits visually centred in the disc.
+	var pos := center - Vector2(gsize.x * 0.5, -gsize.y * 0.32)
+	draw_string(font, pos, glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, glyph_col)
+
 func _target_allowed(u) -> bool:
 	if u == null or not u.is_alive() or u == active_unit:
 		return false
@@ -540,6 +560,11 @@ func _draw() -> void:
 			# Enemy sprite token (StrategyEnemyData.image), e.g. the Sewer Rat.
 			token_r = ts * 0.42
 			DrawUtil.draw_circular_texture(self, center, token_r, u.icon)
+		elif not u.is_player and u.is_alive() and String(u.glyph) != "":
+			# No sprite: draw the enemy's glyph letter in the proper font over a
+			# portrait-coloured token, instead of a featureless red circle.
+			token_r = ts * 0.42
+			_draw_enemy_glyph(center, token_r, u)
 		else:
 			draw_circle(center, token_r, col)
 		# Subtle outline so tokens read against the floor.
