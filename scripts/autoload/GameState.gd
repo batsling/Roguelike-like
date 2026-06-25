@@ -127,16 +127,32 @@ var _applied_item_max_energy: int = 0
 # load can rehydrate the link without name collisions across slots.
 var _next_item_instance_id: int = 1
 
-# Run-scope loot counters. Potions/scrolls aren't fleshed out yet, so
-# for now each kind is just an int count — cards like Alchemize bump
-# `loot.potion`. When the real potion/scroll catalogs land, these
-# values will become arrays of concrete ids; the API (`add_loot`,
-# `get_loot_count`) stays the same so consumers don't break.
+# Run-scope loot counters for the NON-itemized kinds (keys for now). Potions
+# and scrolls are concrete entries in `loot_items` below; their counts are
+# derived from it by get_loot_count so cards like Alchemize (add_loot "potion")
+# and the Backpack keep working unchanged.
 var loot: Dictionary = {
-	"potion": 0,
-	"scroll": 0,
 	"key": 0,
 }
+
+# Concrete loot the player is carrying, in pickup order. Each entry is a
+# Dictionary:
+#   potion: {"type": "potion", "id": StringName, "rarity": String}
+#   scroll: {"type": "scroll", "rarity": String}   (inert stub — the scroll
+#           system isn't ported yet, so these list but can't be used)
+# Potions are usable only in combat (drink / throw). See PotionSystem.
+var loot_items: Array = []
+
+# Identification is GLOBAL per potion type (StringName ids). Drinking, throwing,
+# or paying to identify a potion reveals EVERY copy of that type for the rest of
+# the run. Persisted with the save.
+var identified_potion_types: Array[StringName] = []
+
+# Per-run bottle-colour assignment for UNIDENTIFIED potions: potion id (String)
+# -> an "Unidentified_<Color>" art base. Built lazily by PotionSystem so an
+# unknown potion always shows the same mystery bottle within a run (and a
+# different one next run). Persisted so a reloaded run keeps its colours.
+var potion_color_map: Dictionary = {}
 
 # === Incremental-item counters ===
 # Progress counters that drive "every Nth …" items (Happy Flower, Nunchaku,
@@ -515,7 +531,10 @@ func reset_run() -> void:
 	inventory.clear()
 	equipped_weapon = null
 	_reset_item_tracking()
-	loot = {"potion": 0, "scroll": 0, "key": 0}
+	loot = {"key": 0}
+	loot_items.clear()
+	identified_potion_types.clear()
+	potion_color_map.clear()
 	learned_spells.clear()
 	action_left_card_id = &""
 	action_right_card_id = &""
@@ -1544,14 +1563,91 @@ func _recompute_item_bonuses() -> void:
 func add_loot(kind: String, amount: int = 1) -> void:
 	if amount == 0:
 		return
-	if not loot.has(kind):
-		push_warning("GameState.add_loot: unknown kind '%s'" % kind)
-		return
-	loot[kind] = maxi(0, int(loot[kind]) + amount)
+	match kind:
+		"potion":
+			# Each unit becomes a concrete, rarity-rolled potion entry. Negative
+			# amounts drop the most-recently-gained potions (rare, but keep the
+			# old API total-safe).
+			if amount > 0:
+				for _i in range(amount):
+					_add_random_potion_loot()
+			else:
+				_drop_loot_of_type("potion", -amount)
+		"scroll":
+			if amount > 0:
+				for _i in range(amount):
+					loot_items.append({"type": "scroll", "rarity": "Common"})
+			else:
+				_drop_loot_of_type("scroll", -amount)
+		_:
+			if not loot.has(kind):
+				push_warning("GameState.add_loot: unknown kind '%s'" % kind)
+				return
+			loot[kind] = maxi(0, int(loot[kind]) + amount)
 	emit_signal("inventory_changed")
 
 func get_loot_count(kind: String) -> int:
-	return int(loot.get(kind, 0))
+	match kind:
+		"potion", "scroll":
+			var n: int = 0
+			for l in loot_items:
+				if l is Dictionary and String(l.get("type", "")) == kind:
+					n += 1
+			return n
+		_:
+			return int(loot.get(kind, 0))
+
+# Concrete potion loot entries the player is carrying, in pickup order. The loot
+# UIs list these.
+func loot_potions() -> Array:
+	return loot_items.filter(func(l): return l is Dictionary and String(l.get("type", "")) == "potion")
+
+func _add_random_potion_loot() -> void:
+	var p: PotionData = Data.roll_potion()
+	if p != null:
+		loot_items.append({"type": "potion", "id": p.id, "rarity": p.rarity})
+
+# Grant a SPECIFIC potion id as loot (DevTools grant, shop purchase). Emits so
+# any open loot UI refreshes.
+func add_potion_loot(id: StringName) -> void:
+	var p: PotionData = Data.get_potion(id)
+	if p == null:
+		return
+	loot_items.append({"type": "potion", "id": p.id, "rarity": p.rarity})
+	emit_signal("inventory_changed")
+
+# Removes the loot entry at `index` (called after a potion is drunk / thrown).
+func remove_loot_at(index: int) -> void:
+	if index >= 0 and index < loot_items.size():
+		loot_items.remove_at(index)
+		emit_signal("inventory_changed")
+
+func _drop_loot_of_type(type: String, count: int) -> void:
+	for _i in range(count):
+		for j in range(loot_items.size() - 1, -1, -1):
+			if loot_items[j] is Dictionary and String(loot_items[j].get("type", "")) == type:
+				loot_items.remove_at(j)
+				break
+
+# Post-combat consumable reward: 50/50 a concrete potion or an (inert) scroll
+# stub, mirroring the legacy selectRandomPotionOrScroll split. Returns the entry
+# added so the caller can toast it; {} if nothing could be granted.
+func grant_random_consumable_loot(rng: RandomNumberGenerator = null) -> Dictionary:
+	var r: RandomNumberGenerator = rng
+	if r == null:
+		r = RandomNumberGenerator.new()
+		r.randomize()
+	if r.randf() < 0.5:
+		var p: PotionData = Data.roll_potion(r)
+		if p != null:
+			var e := {"type": "potion", "id": p.id, "rarity": p.rarity}
+			loot_items.append(e)
+			emit_signal("inventory_changed")
+			return e
+	var e2 := {"type": "scroll", "rarity": "Common"}
+	loot_items.append(e2)
+	emit_signal("inventory_changed")
+	return e2
 
 # ---------------------------------------------------------------------------
 # Action-mode loadout

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=3 format=3 uid="uid://potion_speed_potion"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+[ext_resource type="Texture2D" path="res://images/potions/SpeedPotion.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"speed_potion"
+display_name = "Speed Potion"
+rarity = "Common"
+reference = "Slay the Spire"
+file = "SpeedPotion"
+effect_text = "Gain +5 Defense for 1 turn"
+effects = [{"op": "status", "status": "defense", "stacks": 5, "temp": true}]

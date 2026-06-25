@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=3 format=3 uid="uid://potion_strength_potion"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+[ext_resource type="Texture2D" path="res://images/potions/StrengthPotion.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"strength_potion"
+display_name = "Strength Potion"
+rarity = "Common"
+reference = "Slay the Spire"
+file = "StrengthPotion"
+effect_text = "Gain +2 Power"
+effects = [{"op": "status", "status": "power", "stacks": 2}]

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=3 format=3 uid="uid://potion_explosive_ampoule"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+[ext_resource type="Texture2D" path="res://images/potions/ExplosiveAmpoule.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"explosive_ampoule"
+display_name = "Explosive Ampoule"
+rarity = "Common"
+reference = "Slay the Spire"
+file = "ExplosiveAmpoule"
+effect_text = "Deal 10 Magic Dmg Fire Cleave"
+effects = [{"op": "damage", "value": 10, "damage_type": "magic", "element": "fire"}]
+cleave = true

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=3 format=3 uid="uid://potion_fire_potion"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+[ext_resource type="Texture2D" path="res://images/potions/FirePotion.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"fire_potion"
+display_name = "Fire Potion"
+rarity = "Common"
+reference = "Slay the Spire"
+file = "FirePotion"
+effect_text = "Deal 20 Magic Dmg Fire"
+effects = [{"op": "damage", "value": 20, "damage_type": "magic", "element": "fire"}]
