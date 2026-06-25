@@ -25,26 +25,26 @@ const _ARCHETYPES: Dictionary = {
 	"rat": [
 		{
 			"id": &"bite", "name": "Bite", "icon": "x",
-			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "swing",
+			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "poke",
 			"effects": [{"type": "dmg", "value": 3, "target": "enemy"}],
 		},
 	],
 	"snake": [
 		{
 			"id": &"strike", "name": "Strike", "icon": "x",
-			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "swing",
+			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "poke",
 			"effects": [{"type": "dmg", "value": 4, "target": "enemy"}],
 		},
 		{
 			"id": &"venom_bite", "name": "Venom", "icon": "*",
-			"range": 1, "cd": 3, "prio": 2, "target": "enemy", "shape": "swing",
+			"range": 1, "cd": 3, "prio": 2, "target": "enemy", "shape": "poke",
 			"effects": [{"type": "dmg", "value": 6, "target": "enemy"}],
 		},
 	],
 	"orc": [
 		{
 			"id": &"chop", "name": "Chop", "icon": "x",
-			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "swing",
+			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "poke",
 			"effects": [{"type": "dmg", "value": 6, "target": "enemy"}],
 		},
 		{
@@ -56,7 +56,7 @@ const _ARCHETYPES: Dictionary = {
 	"troll": [
 		{
 			"id": &"smash", "name": "Smash", "icon": "x",
-			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "swing",
+			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "poke",
 			"effects": [{"type": "dmg", "value": 10, "target": "enemy"}],
 		},
 		{

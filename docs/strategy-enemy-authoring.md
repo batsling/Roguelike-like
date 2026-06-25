@@ -105,22 +105,23 @@ as cards, spells and the deckbuilder patterns). Strategy default targets:
 ### Worked example — the Troll
 
 ```
-smash @ 1 icon=x shape swing                         | Smash | dmg:10 ;;
+smash @ 1 icon=x shape poke short                    | Smash | dmg:10 ;;
 crush @ 2 cd 4 icon=! shape smash large              | Crush | dmg:14 ;;
 regen @ 3 cd 5 icon=+ target self cond self_low_hp   | Regen | heal:5:self
 ```
 
-→ a turn-1 `Smash` swing, a `Crush` large blast every 4 turns, and a `Regen`
-that only fires when the Troll is below half HP. Each compiles into an
-`EnemyIntent` (via `EnemyCatalog._build`), and shaped intents take their grid
-reach from `StrategyAttackLibrary` so range and footprint stay in lock-step.
+→ a turn-1 `Smash` poke that hits only the tile in front (`short` = 1 reach), a
+`Crush` large blast every 4 turns, and a `Regen` that only fires when the Troll
+is below half HP. Each compiles into an `EnemyIntent` (via `EnemyCatalog._build`),
+and shaped intents take their grid reach from `StrategyAttackLibrary` so range
+and footprint stay in lock-step.
 
 ### Worked example — the Sewer Rat (a custom enemy)
 
 ```
 Name: Sewer Rat   Id: sewer_rat   Weight: 1   Speed: 8   File: Sewer Rat
 Gold: 40% 1-4     Min HP/Max HP: 5
-Intents: bite @ 1 icon=x shape swing | Bite | dmg:1d3
+Intents: bite @ 1 icon=x shape poke short | Bite | dmg:1d3
 ```
 
 → a fast (Speed 8 = 6-tile budget), fragile weight-1 biter that rolls 1d3 fresh

@@ -12,7 +12,7 @@ hp_min = 8
 hp_max = 8
 speed = 4
 intents = [
-	{"id": "bite", "prio": 1, "cd": 0, "range": 1, "shape": "swing", "params": {}, "target": "enemy", "cond": "", "icon": "x", "name": "Bite", "effects": [{"type": "dmg", "value": 3, "target": "enemy"}]}
+	{"id": "bite", "prio": 1, "cd": 0, "range": 1, "shape": "poke", "params": {"size": "short"}, "target": "enemy", "cond": "", "icon": "x", "name": "Bite", "effects": [{"type": "dmg", "value": 3, "target": "enemy"}]}
 ]
 min_floor = 1
 spawn_weight = 4

@@ -12,8 +12,8 @@ hp_min = 10
 hp_max = 10
 speed = 4
 intents = [
-	{"id": "strike", "prio": 1, "cd": 0, "range": 1, "shape": "swing", "params": {}, "target": "enemy", "cond": "", "icon": "x", "name": "Strike", "effects": [{"type": "dmg", "value": 4, "target": "enemy"}]},
-	{"id": "venom_bite", "prio": 2, "cd": 3, "range": 1, "shape": "swing", "params": {}, "target": "enemy", "cond": "", "icon": "*", "name": "Venom", "effects": [{"type": "dmg", "value": 6, "target": "enemy"}]}
+	{"id": "strike", "prio": 1, "cd": 0, "range": 1, "shape": "poke", "params": {"size": "short"}, "target": "enemy", "cond": "", "icon": "x", "name": "Strike", "effects": [{"type": "dmg", "value": 4, "target": "enemy"}]},
+	{"id": "venom_bite", "prio": 2, "cd": 3, "range": 1, "shape": "poke", "params": {"size": "short"}, "target": "enemy", "cond": "", "icon": "*", "name": "Venom", "effects": [{"type": "dmg", "value": 6, "target": "enemy"}]}
 ]
 min_floor = 1
 spawn_weight = 3

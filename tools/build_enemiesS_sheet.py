@@ -83,7 +83,7 @@ ENEMIES = [
         "Min HP": 8, "Max HP": 8, "Speed": 4, "Glyph": "r",
         "Color": "0.55,0.5,0.45", "File": "",
         "Min Floor": 1, "Spawn Weight": 4, "Gold": "50% 2-6",
-        "Intents": "bite @ 1 icon=x shape swing | Bite | dmg:3",
+        "Intents": "bite @ 1 icon=x shape poke short | Bite | dmg:3",
         "Ability": "",
     },
     {
@@ -92,8 +92,8 @@ ENEMIES = [
         "Min HP": 10, "Max HP": 10, "Speed": 4, "Glyph": "s",
         "Color": "0.4,0.6,0.4", "File": "",
         "Min Floor": 1, "Spawn Weight": 3, "Gold": "50% 3-8",
-        "Intents": "strike @ 1 icon=x shape swing | Strike | dmg:4 ;; "
-                   "venom_bite @ 2 cd 3 icon=* shape swing | Venom | dmg:6",
+        "Intents": "strike @ 1 icon=x shape poke short | Strike | dmg:4 ;; "
+                   "venom_bite @ 2 cd 3 icon=* shape poke short | Venom | dmg:6",
         "Ability": "",
     },
     {
@@ -102,7 +102,7 @@ ENEMIES = [
         "Min HP": 18, "Max HP": 18, "Speed": 4, "Glyph": "o",
         "Color": "0.45,0.55,0.35", "File": "",
         "Min Floor": 2, "Spawn Weight": 2, "Gold": "70% 6-14",
-        "Intents": "chop @ 1 icon=x shape swing | Chop | dmg:6 ;; "
+        "Intents": "chop @ 1 icon=x shape poke short | Chop | dmg:6 ;; "
                    "bash @ 2 cd 3 icon=! shape smash | Bash | dmg:9",
         "Ability": "",
     },
@@ -112,7 +112,7 @@ ENEMIES = [
         "Min HP": 30, "Max HP": 30, "Speed": 4, "Glyph": "T",
         "Color": "0.4,0.5,0.45", "File": "",
         "Min Floor": 4, "Spawn Weight": 1, "Gold": "90% 12-24",
-        "Intents": "smash @ 1 icon=x shape swing | Smash | dmg:10 ;; "
+        "Intents": "smash @ 1 icon=x shape poke short | Smash | dmg:10 ;; "
                    "crush @ 2 cd 4 icon=! shape smash large | Crush | dmg:14 ;; "
                    "regen @ 3 cd 5 icon=+ target self cond self_low_hp | Regen | heal:5:self",
         "Ability": "",
@@ -127,7 +127,7 @@ ENEMIES = [
         "Min HP": 5, "Max HP": 5, "Speed": 4, "Glyph": "r",
         "Color": "0.5,0.45,0.4", "File": "Sewer Rat",
         "Min Floor": 1, "Spawn Weight": 4, "Gold": "40% 1-4",
-        "Intents": "bite @ 1 icon=x shape swing | Bite | dmg:1d3",
+        "Intents": "bite @ 1 icon=x shape poke short | Bite | dmg:1d3",
         "Ability": "",
     },
 ]

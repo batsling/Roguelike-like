@@ -6,9 +6,9 @@
 script = ExtResource("1_sal")
 reach_tiles = {
 "full": 99,
-"large": 5,
-"medium": 3,
-"short": 2
+"large": 3,
+"medium": 2,
+"short": 1
 }
 radius_tiles = {
 "large": 3,

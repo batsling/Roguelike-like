@@ -34,7 +34,7 @@ extends Resource
 # Reach (poke straight-ahead / projectile-beam travel). Distances are Chebyshev
 # (king-move) tiles, so diagonal aiming reads naturally.
 @export var reach_tiles: Dictionary = {
-	"short": 2, "medium": 3, "large": 5, "full": 99,
+	"short": 1, "medium": 2, "large": 3, "full": 99,
 }
 # AOE radius in tiles for the area families (smash depth / nova-lob disc).
 @export var radius_tiles: Dictionary = {

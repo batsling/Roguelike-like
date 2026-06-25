@@ -19,19 +19,22 @@ func test_data_exposes_strategy_attacks() -> void:
 func test_tres_loads_with_expected_reach() -> void:
 	var lib := _lib()
 	assert_not_null(lib, "strategy_attacks.tres loads")
-	assert_eq(int(lib.reach_tiles["short"]), 2)
-	assert_eq(int(lib.reach_tiles["medium"]), 3)
+	assert_eq(int(lib.reach_tiles["short"]), 1)
+	assert_eq(int(lib.reach_tiles["medium"]), 2)
+	assert_eq(int(lib.reach_tiles["large"]), 3)
 	assert_eq(int(lib.radius_tiles["medium"]), 2)
 
 func test_resolve_ranges_per_archetype() -> void:
 	var lib := _lib()
-	# poke takes its reach from the size word; swing is always a melee arc.
-	assert_eq(int(lib.resolve(&"poke", {})["range_tiles"]), 2, "poke short = 2 tiles")
-	assert_eq(int(lib.resolve(&"poke", {"size": "large"})["range_tiles"]), 5, "poke large = 5")
+	# poke takes its reach from the size word (short 1 / medium 2 / large 3);
+	# swing is always a melee arc.
+	assert_eq(int(lib.resolve(&"poke", {})["range_tiles"]), 1, "poke short = 1 tile")
+	assert_eq(int(lib.resolve(&"poke", {"size": "medium"})["range_tiles"]), 2, "poke medium = 2")
+	assert_eq(int(lib.resolve(&"poke", {"size": "large"})["range_tiles"]), 3, "poke large = 3")
 	assert_eq(int(lib.resolve(&"swing", {})["range_tiles"]), 1, "swing is melee adjacency")
 	# projectile reaches its size word; beam reaches the full board.
-	assert_eq(int(lib.resolve(&"projectile", {})["range_tiles"]), 3)
-	assert_eq(int(lib.resolve(&"projectile", {"size": "large"})["range_tiles"]), 5)
+	assert_eq(int(lib.resolve(&"projectile", {})["range_tiles"]), 2)
+	assert_eq(int(lib.resolve(&"projectile", {"size": "large"})["range_tiles"]), 3)
 	assert_gt(int(lib.resolve(&"beam", {})["range_tiles"]), 50, "beam reaches across the board")
 	# smash depth scales with size and is the placement range too.
 	assert_eq(int(lib.resolve(&"smash", {"size": "large"})["radius"]), 3)
@@ -44,9 +47,9 @@ func test_unknown_shape_falls_back_safely() -> void:
 func test_poke_footprint_is_single_aimed_tile() -> void:
 	var lib := _lib()
 	var spec: Dictionary = lib.resolve(&"poke", {})
-	var fp: Array = lib.footprint(spec, Vector2i(5, 5), Vector2i(7, 5))
+	var fp: Array = lib.footprint(spec, Vector2i(5, 5), Vector2i(6, 5))
 	assert_eq(fp.size(), 1, "poke hits exactly the aimed tile")
-	assert_true(fp.has(Vector2i(7, 5)))
+	assert_true(fp.has(Vector2i(6, 5)))
 
 func test_swing_arc_rotates_to_face_aim() -> void:
 	var lib := _lib()
@@ -70,14 +73,14 @@ func test_arc360_swing_is_a_full_ring() -> void:
 
 func test_projectile_is_a_line_outward() -> void:
 	var lib := _lib()
-	var spec: Dictionary = lib.resolve(&"projectile", {})  # range 3
+	var spec: Dictionary = lib.resolve(&"projectile", {"size": "large"})  # range 3
 	var fp: Array = lib.footprint(spec, Vector2i(2, 5), Vector2i(5, 5))
 	assert_eq(fp.size(), 3, "3-tile line east")
 	assert_true(fp.has(Vector2i(3, 5)) and fp.has(Vector2i(4, 5)) and fp.has(Vector2i(5, 5)))
 
 func test_projectile_stops_on_first_body_without_pierce() -> void:
 	var lib := _lib()
-	var spec: Dictionary = lib.resolve(&"projectile", {})
+	var spec: Dictionary = lib.resolve(&"projectile", {"size": "large"})  # range 3
 	var stops := {Vector2i(4, 5): true}
 	var fp: Array = lib.footprint(spec, Vector2i(2, 5), Vector2i(6, 5), null, stops)
 	assert_true(fp.has(Vector2i(4, 5)), "the struck body is included")
@@ -85,7 +88,7 @@ func test_projectile_stops_on_first_body_without_pierce() -> void:
 
 func test_pierce_passes_through_bodies() -> void:
 	var lib := _lib()
-	var spec: Dictionary = lib.resolve(&"projectile", {"pierce": true})
+	var spec: Dictionary = lib.resolve(&"projectile", {"pierce": true, "size": "large"})  # range 3
 	var stops := {Vector2i(4, 5): true}
 	var fp: Array = lib.footprint(spec, Vector2i(2, 5), Vector2i(5, 5), null, stops)
 	assert_eq(fp.size(), 3, "a piercing shot ignores bodies and runs its full length")
@@ -101,7 +104,7 @@ func test_nova_is_a_disc_around_the_attacker() -> void:
 
 func test_aimable_tiles_respect_range() -> void:
 	var lib := _lib()
-	var spec: Dictionary = lib.resolve(&"poke", {})  # range 2
+	var spec: Dictionary = lib.resolve(&"poke", {"size": "medium"})  # range 2
 	var tiles: Dictionary = lib.aimable_tiles(spec, Vector2i(5, 5))
 	assert_false(tiles.has(Vector2i(5, 5)), "the attacker's own tile is never aimable")
 	assert_true(tiles.has(Vector2i(7, 5)), "a tile 2 away is in range")
