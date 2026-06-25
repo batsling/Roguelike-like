@@ -68,6 +68,7 @@ handler. `X` / `N` in an arg refer to the card-supplied magnitude.
 | `effect_dmg_bonus` | `add_value(gold/10\|fish)` | flat +value on the dmg effect (mode-agnostic) | ✅ built |
 | `effect_retarget` | `retarget(from,to)` | rewrite effect target when it equals `from`; each mode's resolver fans `to` its own way | ✅ built |
 | `effect_flag` | `set_flag(name)` | set `effect[name]=true` (e.g. indiscriminate) | ✅ built |
+| `permanent` | — (declarative) | a status flagged Permanent ticks but never decays: the actor records it (`set_status_permanent`) and `Stats.decay_actor_statuses` skips its step-down. Used by the Troll's starting Regeneration. | ✅ built (strategy) |
 | `on_kill` | `gain_max_hp(X)`, `chance(pct)` | DB/ST: always; Action: gate on `chance(10)` | ⚠️ hooks exist, not generic |
 | `card_replay` | `replay(N)` | re-resolve the card N extra times | ✅ built (per-scene loop) |
 | `lifecycle` | `to_pile(p)`, `to_hand`, `auto_play`, `free_play(n)`, `uses_per_combat(n)`, `cooldown_mult(x)`, `deactivate_if_idle`, `not_playable`, `requires_equipped(n)`, `removable(bool)` | see per-addon table below | ❌ deckbuilder-only today |

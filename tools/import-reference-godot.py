@@ -67,6 +67,10 @@ HOOK_EXPR = {
     # weight. Declarative — the runtime reads the `vorpal` addon slug off the
     # card and the once-per-card roll off CardInstance, so no Expr is needed.
     "effect_vorpal":    None,
+    # Permanent (Statuses): the flagged status ticks but never decays. The runtime
+    # marks the status on the actor (CombatActor / BattleUnit.set_status_permanent)
+    # and Stats.decay_actor_statuses skips it; declarative, so no Expr.
+    "permanent":        None,
     "structural":       None,
 }
 

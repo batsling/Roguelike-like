@@ -53,10 +53,10 @@ const BACKDROP := Color(0.04, 0.035, 0.07, 1.0)
 # drop items. Source of truth is the enemiesS sheet (StrategyEnemyData's gold_
 # fields); this const is the fallback for kinds not on the sheet.
 const ENEMY_LOOT_TABLE := {
-	"rat":   { "gold_chance": 0.50, "gold_min":  2, "gold_max":  6 },
-	"snake": { "gold_chance": 0.50, "gold_min":  3, "gold_max":  8 },
-	"orc":   { "gold_chance": 0.70, "gold_min":  6, "gold_max": 14 },
-	"troll": { "gold_chance": 0.90, "gold_min": 12, "gold_max": 24 },
+	"snake":       { "gold_chance": 0.50, "gold_min":  3, "gold_max":  8 },
+	"rattlesnake": { "gold_chance": 0.60, "gold_min":  5, "gold_max": 10 },
+	"hobgoblin":   { "gold_chance": 0.60, "gold_min":  4, "gold_max":  9 },
+	"troll":       { "gold_chance": 0.90, "gold_min": 12, "gold_max": 24 },
 }
 
 # Gold table for `kind`, preferring the data-driven StrategyEnemyData fields and

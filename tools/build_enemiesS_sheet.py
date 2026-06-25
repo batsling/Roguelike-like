@@ -27,8 +27,8 @@ Columns mirror StrategyEnemyData.gd:
 
 The `Intents` column lists the move-set, ';;'-separated. Each intent is:
 
-    <id> @ <prio> [cd N] [shape S] [k=v ...] [range N] [target T] [cond C]
-          [icon=G] | <name> | <effects>
+    <id> @ <prio> [cd N] [shape S] [<size>] [<flag>] [k=v ...] [range N]
+          [target T] [cond C] [icon=G] | <name> | <effects>
 
   - `prio`  : higher wins ties; off-cooldown intents always beat on-cooldown.
   - `cd`    : cooldown in turns (0 = always available).
@@ -36,7 +36,11 @@ The `Intents` column lists the move-set, ';;'-separated. Each intent is:
               (poke/swing/smash/projectile/beam/nova/lob/disc/line). When set it
               derives the grid reach + footprint (so an Orc's Bash is a forward
               blast); omit it and use `range N` for a plain single-tile hit.
-  - `k=v`   : attack_params for the shape (e.g. size=large, arc=360).
+  - size    : a bare size word (short/medium/large/full/small) sizes the shape's
+              reach/radius, mirroring the player's Attack column — `shape smash
+              large` reads like a card's `Smash, Large`. (`size=large` also works.)
+  - flags   : bare pierce/crescent/explosive/sweep, same as the Attack column.
+  - `k=v`   : other attack_params for the shape (e.g. arc=360, spread=3).
   - `target`: enemy (default) | self | all_enemies.
   - `cond`  : gating predicate; only `self_low_hp` is wired up today (blank =
               always valid).
@@ -74,44 +78,48 @@ HEADERS = [
 # HP keeps current behaviour; widen either to roll a range.
 ENEMIES = [
     {
-        "Name": "Rat", "Id": "rat", "Difficulty": "Low", "Weight": 1,
-        "Game": "", "Tag": "",
-        "Min HP": 8, "Max HP": 8, "Speed": 4, "Glyph": "r",
-        "Color": "0.55,0.5,0.45", "File": "",
-        "Min Floor": 1, "Spawn Weight": 4, "Gold": "50% 2-6",
-        "Intents": "bite @ 1 icon=x shape swing | Bite | dmg:3",
-        "Ability": "",
-    },
-    {
-        "Name": "Snake", "Id": "snake", "Difficulty": "Low", "Weight": 2,
-        "Game": "", "Tag": "",
-        "Min HP": 10, "Max HP": 10, "Speed": 4, "Glyph": "s",
+        # Rogue's snake: a fast, fragile weight-1 biter (poke small = 1 tile).
+        "Name": "Snake", "Id": "snake", "Difficulty": "Low", "Weight": 1,
+        "Game": "Rogue", "Tag": "",
+        "Min HP": 8, "Max HP": 11, "Speed": 4, "Glyph": "s",
         "Color": "0.4,0.6,0.4", "File": "",
-        "Min Floor": 1, "Spawn Weight": 3, "Gold": "50% 3-8",
-        "Intents": "strike @ 1 icon=x shape swing | Strike | dmg:4 ;; "
-                   "venom_bite @ 2 cd 3 icon=* shape swing | Venom | dmg:6",
+        "Min Floor": 1, "Spawn Weight": 4, "Gold": "50% 3-8",
+        "Intents": "bite @ 1 icon=x shape poke small | Bite | dmg:1d8",
         "Ability": "",
     },
     {
-        "Name": "Orc", "Id": "orc", "Difficulty": "Low", "Weight": 3,
-        "Game": "", "Tag": "",
-        "Min HP": 18, "Max HP": 18, "Speed": 4, "Glyph": "o",
-        "Color": "0.45,0.55,0.35", "File": "",
-        "Min Floor": 2, "Spawn Weight": 2, "Gold": "70% 6-14",
-        "Intents": "chop @ 1 icon=x shape swing | Chop | dmg:6 ;; "
-                   "bash @ 2 cd 3 icon=! shape smash | Bash | dmg:9",
+        # Rogue's rattlesnake: a tougher viper whose bite hits harder (2d8) and
+        # leaves the target Weak.
+        "Name": "Rattlesnake", "Id": "rattlesnake", "Difficulty": "Medium", "Weight": 2,
+        "Game": "Rogue", "Tag": "",
+        "Min HP": 12, "Max HP": 18, "Speed": 4, "Glyph": "r",
+        "Color": "0.6,0.5,0.35", "File": "",
+        "Min Floor": 2, "Spawn Weight": 3, "Gold": "60% 5-10",
+        "Intents": "bite @ 1 icon=x shape poke small | Bite | dmg:2d8 ; inflict:weak:1",
         "Ability": "",
     },
     {
+        # Rogue's hobgoblin: a slow (speed 0 = baseline-but-no-bonus) bruiser with
+        # a single club swing.
+        "Name": "Hobgoblin", "Id": "hobgoblin", "Difficulty": "Low", "Weight": 2,
+        "Game": "Rogue", "Tag": "",
+        "Min HP": 20, "Max HP": 24, "Speed": 0, "Glyph": "h",
+        "Color": "0.5,0.45,0.3", "File": "",
+        "Min Floor": 1, "Spawn Weight": 3, "Gold": "60% 4-9",
+        "Intents": "club @ 1 icon=x shape poke small | Club | dmg:1d8",
+        "Ability": "",
+    },
+    {
+        # Rogue's troll: a huge, slow (speed -4 = 3-tile movement) regenerator.
+        # It starts with 5 PERMANENT Regeneration (heals 5 every turn, never
+        # decays) and its turn is one three-hit maul: claw 1d8, claw 1d8, bite 2d6.
         "Name": "Troll", "Id": "troll", "Difficulty": "Medium", "Weight": 5,
-        "Game": "", "Tag": "",
-        "Min HP": 30, "Max HP": 30, "Speed": 4, "Glyph": "T",
+        "Game": "Rogue", "Tag": "",
+        "Min HP": 60, "Max HP": 66, "Speed": -4, "Glyph": "T",
         "Color": "0.4,0.5,0.45", "File": "",
         "Min Floor": 4, "Spawn Weight": 1, "Gold": "90% 12-24",
-        "Intents": "smash @ 1 icon=x shape swing | Smash | dmg:10 ;; "
-                   "crush @ 2 cd 4 icon=! shape smash size=large | Crush | dmg:14 ;; "
-                   "regen @ 3 cd 5 icon=+ target self cond self_low_hp | Regen | heal:5:self",
-        "Ability": "",
+        "Intents": "maul @ 1 icon=x shape poke small | Maul | dmg:1d8 ; dmg:1d8 ; dmg:2d6",
+        "Ability": "Regeneration 5 Permanent",
     },
     {
         # First custom enemy: NetHack's sewer rat. A fragile weight-1 nuisance
@@ -123,7 +131,7 @@ ENEMIES = [
         "Min HP": 5, "Max HP": 5, "Speed": 4, "Glyph": "r",
         "Color": "0.5,0.45,0.4", "File": "Sewer Rat",
         "Min Floor": 1, "Spawn Weight": 4, "Gold": "40% 1-4",
-        "Intents": "bite @ 1 icon=x shape swing | Bite | dmg:1d3",
+        "Intents": "bite @ 1 icon=x shape poke small | Bite | dmg:1d3",
         "Ability": "",
     },
 ]

@@ -9,8 +9,11 @@ extends Node
 # Cards (including curses — type CURSE) go to GameState.deck via
 # add_card_to_deck; items go to inventory via add_item. A card added mid-combat
 # lands in the run deck, not the live piles, so to see a curse fire you add it on
-# the overworld and then enter a combat. The Enemies tab starts a deckbuilder
-# combat against the picked enemy (mid-run only) via Main.dev_start_combat.
+# the overworld and then enter a combat. The Enemies tab starts a combat against
+# the ticked roster (mid-run only) via Main.dev_start_combat; a combat-type
+# selector picks which engine — deckbuilder, action, or strategy — and the roster
+# list switches to that engine's enemies (EnemyData / ActionEnemyData /
+# StrategyEnemyData) accordingly.
 
 const TOGGLE_KEY := KEY_QUOTELEFT     # the ` / ~ key
 const MAX_RESULTS := 150
@@ -26,6 +29,12 @@ var _tab: String = "cards"            # "cards" | "items" | "curses" | "enemies"
 var _selected_enemies: Dictionary = {}
 var _start_btn: Button = null
 var _hint: Label = null               # per-tab one-line instruction
+
+# Enemies tab: which combat engine Start Combat launches. Drives both the roster
+# shown (EnemyData / ActionEnemyData / StrategyEnemyData) and the type handed to
+# Main.dev_start_combat. The selector row is only visible on the Enemies tab.
+var _combat_type: String = "deckbuilder"   # "deckbuilder" | "action" | "strategy"
+var _ctype_row: HBoxContainer = null
 
 const _TYPE_NAMES := ["Attack", "Skill", "Power", "Dice", "Status", "Curse", "Training"]
 const _DIFF_NAMES := ["Low", "Medium", "High", "Boss"]
@@ -149,6 +158,30 @@ func _build() -> void:
 	_hint.add_theme_color_override("font_color", Color(0.7, 0.7, 0.78))
 	vbox.add_child(_hint)
 
+	# Combat-type selector (Enemies tab only): pick which engine Start Combat
+	# launches. Hidden on other tabs.
+	_ctype_row = HBoxContainer.new()
+	_ctype_row.add_theme_constant_override("separation", 8)
+	_ctype_row.visible = false
+	vbox.add_child(_ctype_row)
+	var ctype_label := Label.new()
+	ctype_label.text = "Combat:"
+	ctype_label.add_theme_font_size_override("font_size", 13)
+	_ctype_row.add_child(ctype_label)
+	var ctype_group := ButtonGroup.new()
+	for spec in [
+			{"label": "Deckbuilder", "type": "deckbuilder"},
+			{"label": "Action", "type": "action"},
+			{"label": "Strategy", "type": "strategy"}]:
+		var b := Button.new()
+		b.text = spec["label"]
+		b.toggle_mode = true
+		b.button_group = ctype_group
+		b.button_pressed = spec["type"] == _combat_type
+		var ct: String = spec["type"]
+		b.pressed.connect(func() -> void: _set_combat_type(ct))
+		_ctype_row.add_child(b)
+
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(560, 380)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -187,13 +220,27 @@ func _set_tab(tab: String) -> void:
 	_update_hint()
 	_rebuild_list()
 
+# Combat type changed on the Enemies tab: the three engines have separate
+# rosters, so clear the current selection and rebuild against the new one.
+func _set_combat_type(ct: String) -> void:
+	if ct == _combat_type:
+		return
+	_combat_type = ct
+	_selected_enemies.clear()
+	_update_start_btn()
+	_update_hint()
+	_rebuild_list()
+
 # One-line instruction for the active tab.
 func _update_hint() -> void:
 	if _hint == null:
 		return
+	if _ctype_row != null:
+		_ctype_row.visible = _tab == "enemies"
 	match _tab:
 		"enemies":
-			_hint.text = "Tick up to %d enemies, then Start Combat (mid-run only)." % DeckbuilderCombat.MAX_ENEMIES
+			_hint.text = "Tick up to %d %s enemies, then Start Combat (mid-run only)." % [
+				DeckbuilderCombat.MAX_ENEMIES, _combat_type]
 		"curses":
 			_hint.text = "Click a curse to apply it to the run."
 		"items":
@@ -263,8 +310,20 @@ func _collect(query: String) -> Array:
 			var curse: CurseData = cu
 			out.append({"label": label, "add": _add_curse.bind(curse)})
 	elif _tab == "enemies":
-		for en in Data.all_enemies():
-			if not (en is EnemyData):
+		# Roster depends on which engine the selector targets. The three data
+		# classes (EnemyData / ActionEnemyData / StrategyEnemyData) all expose
+		# id / display_name / difficulty / weight / hp_min / hp_max, so the row
+		# build is shared via duck typing.
+		var roster: Array
+		match _combat_type:
+			"action":
+				roster = Data.all_action_enemies()
+			"strategy":
+				roster = Data.all_strategy_enemies()
+			_:
+				roster = Data.all_enemies()
+		for en in roster:
+			if en == null:
 				continue
 			var diff: String = _DIFF_NAMES[en.difficulty] if en.difficulty < _DIFF_NAMES.size() else "?"
 			var label: String = "%s  [%s · w%d · %d-%d HP]" % [
@@ -338,9 +397,10 @@ func _start_selected_combat() -> void:
 		Notifications.notify("Start a run first to test combat.", Color(1.0, 0.8, 0.4))
 		return
 	var ids: Array = _selected_enemies.keys()
+	var ctype: String = _combat_type
 	_selected_enemies.clear()
 	_update_start_btn()
 	_close()
-	scene.dev_start_combat(ids)
-	Notifications.notify("Test combat: %d enemies." % ids.size(), Color(1.0, 0.7, 0.7))
-	GameLog.add("[dev] Started test combat vs %d enemies." % ids.size(), Color(1.0, 0.7, 0.7))
+	scene.dev_start_combat(ids, ctype)
+	Notifications.notify("Test %s combat: %d enemies." % [ctype, ids.size()], Color(1.0, 0.7, 0.7))
+	GameLog.add("[dev] Started %s test combat vs %d enemies." % [ctype, ids.size()], Color(1.0, 0.7, 0.7))

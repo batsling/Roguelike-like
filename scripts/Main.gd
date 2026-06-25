@@ -9,6 +9,7 @@ const OVERWORLD_SCENE := preload("res://scenes/overworld/Overworld.tscn")
 const COMBAT_SCENE := preload("res://scenes/deckbuilder/DeckbuilderCombat.tscn")
 const MAP_SCENE := preload("res://scenes/deckbuilder/GameMap.tscn")
 const ACTION_FLOOR_SCENE := preload("res://scenes/action/ActionFloor.tscn")
+const ACTION_COMBAT_SCENE := preload("res://scenes/action/ActionCombat.tscn")
 const STRATEGY_FLOOR_SCENE := preload("res://scenes/strategy_prototype/StrategyPrototype.tscn")
 
 var _current_scene: Node = null
@@ -163,19 +164,40 @@ func _on_combat_closed(was_victory: bool, target_game_id: StringName) -> void:
 	_pending_outcome = {"victory": was_victory, "game_id": target_game_id}
 	_show_overworld()
 
-# Dev/testing entry: drop straight into a deckbuilder combat against an explicit
-# enemy list (DevTools "Enemies" tab). Skips the reward/verification flow on
-# close — it just returns to the overworld — so it never touches run progress.
-func dev_start_combat(enemy_ids: Array) -> void:
+# Dev/testing entry: drop straight into a one-off combat against an explicit
+# enemy list (DevTools "Enemies" tab). `combat_type` picks which engine to
+# launch — "deckbuilder" (default), "action", or "strategy" — and the ids must
+# be drawn from that engine's roster (EnemyData / ActionEnemyData /
+# StrategyEnemyData respectively). Skips the reward/verification flow on close —
+# it just returns to the overworld — so it never touches run progress.
+func dev_start_combat(enemy_ids: Array, combat_type: String = "deckbuilder") -> void:
 	if enemy_ids.is_empty():
 		return
 	GameState.phase = GameState.Phase.COMBAT
-	var combat: DeckbuilderCombat = COMBAT_SCENE.instantiate()
-	combat.target_game_id = &""
-	combat.enemies_to_spawn = enemy_ids.duplicate()
-	combat.dev_combat = true
-	combat.closed.connect(_on_dev_combat_closed)
-	_swap_to(combat)
+	match combat_type:
+		"action":
+			var arena: ActionCombat = ACTION_COMBAT_SCENE.instantiate()
+			arena.target_game_id = &""
+			arena.enemies_to_spawn = enemy_ids.duplicate()
+			# Not embedded: the standalone one-off arena spawns the enemies in
+			# _ready and emits `closed` on win/loss, which we route home.
+			arena.closed.connect(_on_dev_combat_closed)
+			_swap_to(arena)
+		"strategy":
+			var floor_scene: Node = STRATEGY_FLOOR_SCENE.instantiate()
+			floor_scene.target_game_id = &""
+			# The strategy floor builds a dungeon + player as usual, then drops
+			# straight into a battle against this encounter (see dev_encounter).
+			floor_scene.dev_encounter = enemy_ids.duplicate()
+			floor_scene.closed.connect(_on_dev_combat_closed)
+			_swap_to(floor_scene)
+		_:
+			var combat: DeckbuilderCombat = COMBAT_SCENE.instantiate()
+			combat.target_game_id = &""
+			combat.enemies_to_spawn = enemy_ids.duplicate()
+			combat.dev_combat = true
+			combat.closed.connect(_on_dev_combat_closed)
+			_swap_to(combat)
 
 func _on_dev_combat_closed(_was_victory: bool, _target_game_id: StringName) -> void:
 	_pending_outcome = {}

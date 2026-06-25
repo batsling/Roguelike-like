@@ -29,6 +29,18 @@ enum AttackStyle { NONE, CHARGE }
 @export var hp_min: int = 10
 @export var hp_max: int = 14
 
+# Statuses the enemy spawns with (e.g. a permanent Regeneration). Keys are status
+# ids (String), values are stacks; a [lo, hi] value is a Determined roll resolved
+# once at spawn. Mirrors EnemyData.starting_statuses so the action arena opens a
+# fight with the same kit the deckbuilder does. Applied by
+# ActionCombat._make_enemy_actor.
+@export var starting_statuses: Dictionary = {}
+
+# Statuses from `starting_statuses` that are Permanent (addonsnew `permanent`):
+# they tick every turn-tick but never decay. Listed by status id; flagged via
+# CombatActor.set_status_permanent so Stats.decay_actor_statuses skips them.
+@export var permanent_statuses: PackedStringArray = PackedStringArray()
+
 # --- Attacks ------------------------------------------------------------
 # An enemy carries one or more attacks; EVERY attack owns its own damage and
 # timing, so a single creature can mix a weak melee swipe with a heavier ranged

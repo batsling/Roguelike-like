@@ -53,25 +53,52 @@ startup and exposes `Data.get_strategy_enemy(id)` / `Data.all_strategy_enemies()
 | `Spawn Weight` | weighted spawn frequency (0 = never rolled) |
 | `Gold` | gold drop packed as `<pct>% <min>-<max>` (e.g. `70% 6-14`); blank = none. Enemies never drop items, so there is no item column |
 | `Intents` | the move-set (grammar below) |
-| `Ability` | split / starting-status, same meaning as `enemiesA`/`enemiesD` (e.g. `Split 2 rat`) |
+| `Ability` | split + starting-statuses, `/`-separated (e.g. `Split 2 rat`, `Regeneration 5 Permanent`) — see below |
 
 ### Speed drives both cadence and movement
 
-`Speed` is a **single** stat. It sets the turn cadence directly (the
-`BattleTurnManager` act-counter weight) *and* the per-turn tile budget, which
-`BattleUnit` derives as `BASE_MOVE + (Speed - 4) / 2`. So a faster enemy both
-acts more often and walks further, with no separate move column. `Speed 4` is
-the baseline (4 tiles); `Speed 6` → 5 tiles, `Speed 8` → 6 tiles (the Sewer
-Rat), `Speed 2` → 3 tiles. Note that raising Speed also raises the enemy's
-initiative cadence, so it takes turns more often too.
+`Speed` is a **single signed** stat centred on **0** (the baseline). It sets the
+turn cadence directly (the `BattleTurnManager` act-counter weight) *and* the
+per-turn tile budget, which `BattleUnit` derives as `maxi(1, BASE_MOVE + Speed /
+4)` — so **4 tiles is the baseline (Speed 0)** and every ±4 Speed is ±1 tile:
+`Speed 4` → 5 tiles, `Speed -4` → 3 tiles (the Troll), `Speed 8` → 6 tiles. The
+initiative weight uses the same curve, so a `Speed 0` enemy keeps pace with the
+`Speed 4` player while negative Speed slows it — but it's **clamped to ≥ 1**, so
+`Speed ≤ -16` can't freeze a unit out of its turns entirely. A faster enemy both
+acts more often and walks further; a slower one does both less.
+
+### Starting statuses & `Permanent` (the `Ability` column)
+
+Besides `Split N kind`, the `Ability` column lists **starting statuses** the
+enemy opens combat with, `/`-separated. Each is `<Status> <N> [Permanent]`:
+
+| Ability cell | Effect |
+|---|---|
+| `Regeneration 5 Permanent` | starts with 5 Regeneration that heals 5/turn and **never decays** |
+| `Weak 2` | starts with 2 Weak (decays normally) |
+| `Split 2 snake / Regeneration 3 Permanent` | both — split *and* a permanent regen |
+
+`Permanent` is the `permanent` addon (authored on the `addonsnew` sheet, Uses =
+`Statuses`): the status still **ticks** every turn (Regeneration heals, Poison
+bites) but `Stats.decay_actor_statuses` skips its step-down, so the stack count
+holds for the whole fight. Permanent statuses draw a small **lock** at the
+top-right of their icon in the grid view.
+
+The Permanent mechanism is **shared across all three combat engines**. The
+strategy `BattleUnit` reads it from this `Ability` column; the deckbuilder and
+action engines build a `CombatActor` and read it from a `permanent_statuses`
+list on `EnemyData` / `ActionEnemyData` (the status ids in `starting_statuses`
+that never decay). `Stats.decay_actor_statuses` consults `is_status_permanent`
+on whichever actor type it's handed, so a flagged status behaves identically
+whether the enemy is fought in deckbuilder, action, or strategy mode.
 
 ## `Intents` grammar
 
 One cell, intents `;;`-separated (like `enemiesD`'s packed `Moves`). Each intent:
 
 ```
-<id> @ <prio> [cd N] [shape S] [k=v ...] [range N] [target T] [cond C]
-      [icon=G] | <name> | <effects>
+<id> @ <prio> [cd N] [shape S] [<size>] [<flag>] [k=v ...] [range N]
+      [target T] [cond C] [icon=G] | <name> | <effects>
 ```
 
 | Field | Meaning |
@@ -80,7 +107,9 @@ One cell, intents `;;`-separated (like `enemiesD`'s packed `Moves`). Each intent
 | `@ prio` | priority — higher wins ties; **off-cooldown always beats on-cooldown** |
 | `cd N` | cooldown in turns (0 = always available) |
 | `shape S` | archetype from the shared `StrategyAttackLibrary` (`poke/swing/smash/projectile/beam/nova/lob/disc/line`). Derives the grid **reach + footprint** — e.g. an Orc's `smash` Bash is a forward blast that can clip several targets. Omit it and use `range N` for a plain single-tile hit. |
-| `k=v` | `attack_params` for the shape (e.g. `size=large`, `arc=360`) |
+| `<size>` | a **bare size word** (`short`/`medium`/`large`/`full`/`small`) sizing the shape's reach/radius — the **same keyword the player writes in the `Attack` column**, so `shape smash large` reads exactly like a card's `Smash, Large`. (`size=large` still works.) |
+| `<flag>` | a bare shape flag (`pierce`/`crescent`/`explosive`/`sweep`), mirroring the player's Attack cell |
+| `k=v` | other `attack_params` for the shape (e.g. `arc=360`, `spread=3`) |
 | `range N` | explicit tile reach when there's no `shape` (a `shape` overrides it) |
 | `target T` | `enemy` (default) / `self` / `all_enemies` |
 | `cond C` | gating predicate; only `self_low_hp` is wired up today (blank = always) |
@@ -103,22 +132,25 @@ as cards, spells and the deckbuilder patterns). Strategy default targets:
 ### Worked example — the Troll
 
 ```
-smash @ 1 icon=x shape swing                         | Smash | dmg:10 ;;
-crush @ 2 cd 4 icon=! shape smash size=large         | Crush | dmg:14 ;;
-regen @ 3 cd 5 icon=+ target self cond self_low_hp   | Regen | heal:5:self
+Speed: -4   HP: 60-66   Weight: 5   Glyph: T   Ability: Regeneration 5 Permanent
+Intents: maul @ 1 icon=x shape poke small | Maul | dmg:1d8 ; dmg:1d8 ; dmg:2d6
 ```
 
-→ a turn-1 `Smash` swing, a `Crush` large blast every 4 turns, and a `Regen`
-that only fires when the Troll is below half HP. Each compiles into an
-`EnemyIntent` (via `EnemyCatalog._build`), and shaped intents take their grid
-reach from `StrategyAttackLibrary` so range and footprint stay in lock-step.
+→ a huge, slow (Speed -4 = 3-tile movement, low cadence) bruiser whose whole turn
+is one three-hit `Maul` — claw `1d8`, claw `1d8`, bite `2d6`, all landing on the
+one tile in front (`poke small` = 1 reach, single-tile footprint). It opens with
+**5 Permanent Regeneration**: it heals 5 every turn and the stack never decays
+(lock icon on the badge), so you have to out-damage 5 HP/turn to kill it. Each
+intent compiles into an `EnemyIntent` (via `EnemyCatalog._build`), and shaped
+intents take their grid reach from `StrategyAttackLibrary` so range and footprint
+stay in lock-step.
 
 ### Worked example — the Sewer Rat (a custom enemy)
 
 ```
 Name: Sewer Rat   Id: sewer_rat   Weight: 1   Speed: 8   File: Sewer Rat
 Gold: 40% 1-4     Min HP/Max HP: 5
-Intents: bite @ 1 icon=x shape swing | Bite | dmg:1d3
+Intents: bite @ 1 icon=x shape poke small | Bite | dmg:1d3
 ```
 
 → a fast (Speed 8 = 6-tile budget), fragile weight-1 biter that rolls 1d3 fresh
@@ -149,5 +181,6 @@ prefer a reachable ranged attack over an out-of-reach melee one.
 
 Every consumer prefers the sheet data but falls back to its old hardcoded table
 for any kind **not** on the sheet, so a missing/empty `data/strategy_enemies/`
-never crashes combat — the four legacy archetypes still play from
-`ENEMY_PRESETS` / `_ARCHETYPES` / `ENEMY_POOL` / `ENEMY_LOOT_TABLE`.
+never crashes combat — the roster archetypes still play from
+`ENEMY_PRESETS` / `_ARCHETYPES` / `ENEMY_POOL` / `ENEMY_LOOT_TABLE` (kept in sync
+with the sheet: Snake / Rattlesnake / Hobgoblin / Troll).

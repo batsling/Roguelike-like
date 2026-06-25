@@ -1082,7 +1082,12 @@ func decay_actor_statuses(actor, do_grow: bool = true) -> void:
 	# AFTER decay or you'll undercount Poison/Regen damage by one stack.
 	if actor == null:
 		return
+	# Permanent statuses (addonsnew `permanent` hook) tick like normal but never
+	# step down — the Troll's starting Regeneration heals 5 every turn forever.
+	var has_perm: bool = actor.has_method("is_status_permanent")
 	for s in DECAY_STATUSES:
+		if has_perm and actor.is_status_permanent(s):
+			continue
 		if actor.get_status(s) > 0:
 			actor.add_status(s, -1)
 	if do_grow:

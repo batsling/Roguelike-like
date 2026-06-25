@@ -28,6 +28,11 @@ var charisma: int = 0
 # combat scene's turn lifecycle, not here.
 var statuses: Dictionary = {}
 
+# Statuses flagged Permanent (addonsnew `permanent` hook): they tick like normal
+# but never decay. Keyed StringName -> true; consulted by
+# Stats.decay_actor_statuses via is_status_permanent().
+var permanent_statuses: Dictionary = {}
+
 # Enemies only: data-ref + planned move
 var data: EnemyData = null
 var planned_move: Dictionary = {}     # one entry of EnemyData.pattern
@@ -110,6 +115,14 @@ static func from_enemy(d: EnemyData, rng: RandomNumberGenerator) -> CombatActor:
 			sv = int(raw)
 		if st != &"" and sv != 0:
 			a.statuses[st] = sv
+	# Flag Permanent starting statuses (addonsnew `permanent`): they tick like
+	# any other status but Stats.decay_actor_statuses skips them, so the stacks
+	# never erode. Same hook the strategy Troll uses, applied here so a flagged
+	# status behaves identically in the deckbuilder engine.
+	for ps in d.permanent_statuses:
+		var pid := StringName(ps)
+		if pid != &"" and a.statuses.has(pid):
+			a.set_status_permanent(pid, true)
 	# Apply spawn-time item modifiers (Alien Baby's +3 HP, future
 	# "all enemies start with X" items). Runs against every consumer
 	# of from_enemy automatically, so action/strategy modes pick it
@@ -166,3 +179,13 @@ func get_status(status: StringName) -> int:
 
 func clear_status(status: StringName) -> void:
 	statuses.erase(status)
+
+# Permanent statuses (addonsnew `permanent`): flagged here, skipped by decay.
+func set_status_permanent(status: StringName, on: bool = true) -> void:
+	if on:
+		permanent_statuses[status] = true
+	else:
+		permanent_statuses.erase(status)
+
+func is_status_permanent(status: StringName) -> bool:
+	return permanent_statuses.has(status)
