@@ -166,7 +166,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Settings` | Run-independent preferences (e.g. game-filter) persisted to `user://settings.cfg`. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified). |
-| `DevTools` | Developer overlay (press `` ` ``) to grant any card/curse/item, or tick up to 5 enemies and start a test combat. Gated on `Settings.dev_mode`. |
+| `DevTools` | Developer overlay (press `` ` ``) to grant any card/curse/item, or tick up to 5 enemies and start a test combat in any engine (deckbuilder / action / strategy via the combat-type selector). Gated on `Settings.dev_mode`. |
 | `StrategyState` / `StrategyTurnManager` / `StrategyLog` / `StrategyCombatSession` | Singletons for the strategy-combat prototype. |
 
 ### Game modes & scene flow
@@ -280,9 +280,10 @@ re-run them after pulling and review the diff.
   (`dmg:N:per_turn=M`, Transient's +10/turn). Authored in `addonsnew` /
   `statusesnew` and folded into `ReferenceCatalog`.
 - **Dev test-combat menu** — the `` ` `` DevTools overlay gains an **Enemies** tab:
-  tick up to 5 enemies (organized with per-tab hints + an action bar) and
-  **Start Combat** to drop straight into a deckbuilder fight against that roster,
-  mid-run and with no run-progress side effects, for isolated mechanic testing.
+  pick a **combat type** (deckbuilder / action / strategy — the roster switches to
+  that engine's enemies), tick up to 5, and **Start Combat** to drop straight into
+  that engine's fight against the roster, mid-run and with no run-progress side
+  effects, for isolated mechanic testing.
 - **Games/connections refresh + new items** — regenerated the games graph from the
   spreadsheet (now **685** games, incl. 6 new traditional roguelikes) with
   refreshed influence edges and launch links; added the **Empty Tome**

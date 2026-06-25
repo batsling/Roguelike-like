@@ -31,6 +31,12 @@ const _DEMO_ABILITY_CARDS: Array[StringName] = [
 var target_game_id: StringName = &""
 var _embedded: bool = false   # set in _ready; true when launched from project Main
 
+# Dev hook (DevTools "Enemies" tab, strategy type): when non-empty, the floor
+# boots as normal but immediately stages a battle against this encounter in the
+# player's spawn room instead of waiting for them to walk into a combat tile.
+# Consumed once (cleared after firing). Each entry is a StrategyEnemyData id.
+var dev_encounter: Array = []
+
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _battle_overlay: CanvasLayer = null
 var _game_over_overlay: CanvasLayer = null
@@ -159,6 +165,36 @@ func _load_floor() -> void:
 	StrategyFOV.compute(StrategyState.map, StrategyState.player.grid_pos, 8)
 	_refresh()
 	StrategyTurnManager.start_player_turn()
+	# Dev: stage the requested fight once the floor is fully set up. Deferred so
+	# the player turn / FOV / render settle before combat takes over the scene.
+	if not dev_encounter.is_empty():
+		call_deferred("_start_dev_combat")
+
+# Dev hook: drop the player straight into a battle against `dev_encounter` using
+# their spawn room as the battlefield. One-shot — clears the encounter so a later
+# floor reload doesn't re-fire it.
+func _start_dev_combat() -> void:
+	if dev_encounter.is_empty() or StrategyState.player == null:
+		return
+	var enc: Array = dev_encounter
+	dev_encounter = []
+	var rd: StrategyRoomData = _room_at(StrategyState.player.grid_pos)
+	if rd == null:
+		StrategyLog.add("[dev] No room available to stage combat.", Color(1.0, 0.6, 0.4))
+		return
+	rd.encounter = enc.duplicate()
+	rd.cleared = false
+	_trigger_combat(rd)
+
+# The room whose rect contains `pos` (the player's spawn room), or the first room
+# as a fallback. Used to pick a real battlefield rect for a dev-staged combat.
+func _room_at(pos: Vector2i) -> StrategyRoomData:
+	if StrategyState.map == null:
+		return null
+	for rd in StrategyState.map.room_data:
+		if rd.contains(pos):
+			return rd
+	return StrategyState.map.room_data[0] if not StrategyState.map.room_data.is_empty() else null
 
 func _spawn_items() -> void:
 	StrategyState.map.items.clear()

@@ -686,6 +686,23 @@ func _make_enemy_actor(data: ActionEnemyData) -> CombatActor:
 	a.split_count = data.split_count
 	if data.split_count > 0 and data.split_into != &"":
 		a.statuses[&"split"] = 1
+	# Starting statuses (e.g. a permanent Regeneration). Set directly to skip
+	# add_status's player-amplify path — it's the enemy's own kit. A [lo, hi]
+	# value is a Determined roll resolved once at spawn; a plain int is a literal
+	# stack count. Mirrors CombatActor.from_enemy so action enemies open with the
+	# same kit deckbuilder ones do.
+	for sk in data.starting_statuses:
+		var st := StringName(sk)
+		var raw: Variant = data.starting_statuses[sk]
+		var sv: int = _rng.randi_range(int(raw[0]), int(raw[1])) if (raw is Array and raw.size() == 2) else int(raw)
+		if st != &"" and sv != 0:
+			a.statuses[st] = sv
+	# Flag Permanent statuses so the real-time decay tick (Stats.decay_actor_statuses
+	# at _tick_actor_turn) steps every other status down but never these.
+	for ps in data.permanent_statuses:
+		var pid := StringName(ps)
+		if pid != &"" and a.statuses.has(pid):
+			a.set_status_permanent(pid, true)
 	return a
 
 # ---------------------------------------------------------------------------

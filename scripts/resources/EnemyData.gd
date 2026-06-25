@@ -36,6 +36,14 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 # ability column.
 @export var starting_statuses: Dictionary = {}
 
+# Statuses from `starting_statuses` that are Permanent (addonsnew `permanent`
+# hook): they tick every turn but never decay. Listed by status id. Applied by
+# CombatActor.from_enemy, which flags each one via set_status_permanent so
+# Stats.decay_actor_statuses skips it — the same mechanism the strategy Troll's
+# Permanent Regeneration uses, shared so a flagged status behaves identically in
+# the deckbuilder, action, and strategy engines.
+@export var permanent_statuses: PackedStringArray = PackedStringArray()
+
 # Source game and tags
 @export var source_game: String = ""
 @export var tags: PackedStringArray = PackedStringArray()

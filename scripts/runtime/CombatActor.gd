@@ -115,6 +115,14 @@ static func from_enemy(d: EnemyData, rng: RandomNumberGenerator) -> CombatActor:
 			sv = int(raw)
 		if st != &"" and sv != 0:
 			a.statuses[st] = sv
+	# Flag Permanent starting statuses (addonsnew `permanent`): they tick like
+	# any other status but Stats.decay_actor_statuses skips them, so the stacks
+	# never erode. Same hook the strategy Troll uses, applied here so a flagged
+	# status behaves identically in the deckbuilder engine.
+	for ps in d.permanent_statuses:
+		var pid := StringName(ps)
+		if pid != &"" and a.statuses.has(pid):
+			a.set_status_permanent(pid, true)
 	# Apply spawn-time item modifiers (Alien Baby's +3 HP, future
 	# "all enemies start with X" items). Runs against every consumer
 	# of from_enemy automatically, so action/strategy modes pick it

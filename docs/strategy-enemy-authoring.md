@@ -84,6 +84,14 @@ bites) but `Stats.decay_actor_statuses` skips its step-down, so the stack count
 holds for the whole fight. Permanent statuses draw a small **lock** at the
 top-right of their icon in the grid view.
 
+The Permanent mechanism is **shared across all three combat engines**. The
+strategy `BattleUnit` reads it from this `Ability` column; the deckbuilder and
+action engines build a `CombatActor` and read it from a `permanent_statuses`
+list on `EnemyData` / `ActionEnemyData` (the status ids in `starting_statuses`
+that never decay). `Stats.decay_actor_statuses` consults `is_status_permanent`
+on whichever actor type it's handed, so a flagged status behaves identically
+whether the enemy is fought in deckbuilder, action, or strategy mode.
+
 ## `Intents` grammar
 
 One cell, intents `;;`-separated (like `enemiesD`'s packed `Moves`). Each intent:

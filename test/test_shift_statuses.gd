@@ -219,6 +219,26 @@ func test_from_enemy_rolls_determined_curl_up() -> void:
 	var a := CombatActor.from_enemy(d, rng)
 	assert_between(a.get_status(&"curl_up"), 3, 7, "Determined Curl Up rolled in range at spawn")
 
+func test_from_enemy_flags_permanent_starting_status() -> void:
+	# A starting status listed in permanent_statuses is flagged on the actor and
+	# survives decay — the same mechanism the strategy Troll's Regeneration uses,
+	# now wired through the deckbuilder/action CombatActor builder.
+	var d := EnemyData.new()
+	d.display_name = "Regen Beast"
+	d.hp_min = 30
+	d.hp_max = 30
+	d.starting_statuses = {"regeneration": 5, "weak": 2}
+	d.permanent_statuses = PackedStringArray(["regeneration"])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var a := CombatActor.from_enemy(d, rng)
+	assert_true(a.is_status_permanent(&"regeneration"), "Regeneration flagged permanent")
+	assert_false(a.is_status_permanent(&"weak"), "Unlisted status is not permanent")
+	# Decay steps non-permanent statuses down but leaves the permanent one intact.
+	Stats.decay_actor_statuses(a, false)
+	assert_eq(a.get_status(&"regeneration"), 5, "Permanent status never decays")
+	assert_eq(a.get_status(&"weak"), 1, "Non-permanent status still decays")
+
 # --- Per-turn damage scaling ---------------------------------------------
 
 func test_turns_taken_increments_each_turn() -> void:
