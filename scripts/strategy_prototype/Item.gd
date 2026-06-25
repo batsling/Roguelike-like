@@ -7,6 +7,7 @@ enum ItemType {
 	LIGHTNING_SCROLL,
 	KEY,
 	GOLD,
+	POTION_LOOT,   # a real PotionData loot drop (carries `potion_id`)
 }
 
 var grid_pos: Vector2i = Vector2i.ZERO
@@ -15,6 +16,8 @@ var color: Color = Color.YELLOW
 var item_name: String = "item"
 var item_type: ItemType = ItemType.HEALTH_POTION
 var amount: int = 1  # for GOLD piles
+# For POTION_LOOT: the PotionData id this floor drop grants when collected.
+var potion_id: StringName = &""
 
 # Walking onto an auto-pickup item collects it without needing an inventory slot.
 var auto_pickup: bool = false
@@ -65,6 +68,17 @@ static func make_gold(pos: Vector2i, amt: int) -> StrategyItem:
 	it.item_type = ItemType.GOLD
 	it.amount = amt
 	it.auto_pickup = true
+	return it
+
+static func make_potion_loot(pos: Vector2i, potion: PotionData) -> StrategyItem:
+	var it = StrategyItem.new()
+	it.grid_pos = pos
+	it.glyph = "!"
+	it.color = Color(0.7, 0.5, 0.95)
+	it.item_name = "potion"
+	it.item_type = ItemType.POTION_LOOT
+	it.potion_id = potion.id
+	it.auto_pickup = true   # walked-over potions go straight into the loot belt
 	return it
 
 func use(user: StrategyEntity) -> String:

@@ -222,7 +222,14 @@ func _spawn_special_item_in(room: Rect2i) -> void:
 	var pos = _random_floor_pos_in(room)
 	var roll = _rng.randi() % 10
 	var item: StrategyItem
-	if roll < 6:
+	if roll < 4:
+		# Real combat-potion loot drop (the ported potion system).
+		var potion: PotionData = Data.roll_potion(_rng)
+		if potion != null:
+			item = StrategyItem.make_potion_loot(pos, potion)
+		else:
+			item = StrategyItem.make_health_potion(pos)
+	elif roll < 6:
 		item = StrategyItem.make_health_potion(pos)
 	elif roll < 8:
 		item = StrategyItem.make_strength_scroll(pos)
@@ -516,6 +523,11 @@ func _auto_collect(it) -> String:
 			StrategyState.keys += 1
 			StrategyState.map.items.erase(it)
 			return "You pick up a key."
+		StrategyItem.ItemType.POTION_LOOT:
+			GameState.add_potion_loot(it.potion_id)
+			StrategyState.map.items.erase(it)
+			var p: PotionData = Data.get_potion(it.potion_id)
+			return "You pick up a potion: %s." % (PotionSystem.display_name(p) if p != null else "Potion")
 		_:
 			var player = StrategyState.player
 			if player == null:

@@ -69,7 +69,7 @@ func _loot_table_for(kind: String) -> Dictionary:
 	return ENEMY_LOOT_TABLE.get(kind, {})
 
 # What the player is currently selecting in the grid view.
-enum Pending { NONE, AIM }
+enum Pending { NONE, AIM, POTION_AIM }
 
 var _battle_map = null
 var _turn_manager = null
@@ -96,6 +96,11 @@ var card_boosts: Array = []
 var _pending_kind: int = Pending.NONE
 var _pending_card = null     # CardInstance being played
 var _pending_aim_spec: Dictionary = {}
+# Loot: index into GameState.loot_items for a potion being thrown (POTION_AIM).
+var _pending_potion_index: int = -1
+var _loot_dialog: Panel = null
+var _loot_list_container: VBoxContainer = null
+var _btn_loot: Button = null
 
 var _grid_view: BattleGridView
 var _initiative_label: Label
@@ -325,6 +330,7 @@ func _build_ui() -> void:
 	_build_hand_panel(panel)
 	_build_control_bar(panel)
 	_build_item_dialog()
+	_build_loot_dialog()
 	_build_inventory_panel(panel)
 	_build_enemy_tooltip()
 
@@ -404,6 +410,14 @@ func _build_control_bar(panel: Panel) -> void:
 		x += spec[1] + 4
 	_btn_move = btns[0]; _btn_dash = btns[1]; _btn_item = btns[2]; _btn_end = btns[3]
 	_style_primary(_btn_end)
+
+	# Loot button sits just above the action row. Opens the loot section where
+	# potions are drunk (self) or thrown (aimed) — neither costs an action.
+	_btn_loot = _make_button("Loot", CTRL_X, CTRL_Y - 44, 120, 36, _on_loot_button)
+	panel.add_child(_btn_loot)
+	_refresh_loot_button()
+	if not GameState.inventory_changed.is_connected(_refresh_loot_button):
+		GameState.inventory_changed.connect(_refresh_loot_button)
 
 	# Debug force win/lose — only mounted in dev mode.
 	if Settings.dev_mode:
@@ -1292,7 +1306,13 @@ func _resolve_card(card, target, shaped_targets: Array = []) -> void:
 # A tile was clicked inside an aimed attack's range. Resolve the pending card
 # against the footprint anchored at the attacker and oriented toward `pos`.
 func _on_aim_confirmed(pos: Vector2i) -> void:
-	if not _is_player_turn() or _pending_kind != Pending.AIM or _pending_card == null:
+	if not _is_player_turn():
+		return
+	# Thrown potion: splash its effects over the manhattan footprint at `pos`.
+	if _pending_kind == Pending.POTION_AIM:
+		_resolve_potion_throw(pos)
+		return
+	if _pending_kind != Pending.AIM or _pending_card == null:
 		return
 	var attacker = _turn_manager.current_unit
 	var card = _pending_card
@@ -1319,6 +1339,7 @@ func _clear_pending() -> void:
 	_pending_kind = Pending.NONE
 	_pending_card = null
 	_pending_aim_spec = {}
+	_pending_potion_index = -1
 
 # The living units standing in `spec`'s footprint when anchored at `source` and
 # aimed at `aim`. Friendly fire: every unit in the footprint is returned.
@@ -1879,6 +1900,190 @@ func _on_pick_item(item) -> void:
 
 func _close_item_dialog() -> void:
 	_item_dialog.visible = false
+
+# --- Loot (potions): drink / throw, no action cost ---------------------
+
+func _build_loot_dialog() -> void:
+	var p := Panel.new()
+	p.position = Vector2(922, 74)
+	p.size = Vector2(352, 560)
+	p.add_theme_stylebox_override("panel", _panel_stylebox(Color(0.1, 0.08, 0.15, 0.99), ACCENT, 2, 12))
+	var t := Label.new()
+	t.text = "Loot"
+	t.position = Vector2(16, 12)
+	t.size = Vector2(320, 30)
+	t.add_theme_font_size_override("font_size", 20)
+	t.add_theme_color_override("font_color", Color(0.7, 0.6, 0.95))
+	p.add_child(t)
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(14, 48)
+	scroll.size = Vector2(324, 460)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	p.add_child(scroll)
+	var vbox := VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 4)
+	scroll.add_child(vbox)
+	_loot_list_container = vbox
+	var close := _make_button("Close", 126, 516, 100, 36, _close_loot_dialog)
+	p.add_child(close)
+	add_child(p)
+	p.visible = false
+	_loot_dialog = p
+
+func _refresh_loot_button() -> void:
+	if _btn_loot != null:
+		_btn_loot.text = "Loot (%d)" % GameState.get_loot_count("potion")
+	if _loot_dialog != null and _loot_dialog.visible:
+		_populate_loot_picker()
+
+func _on_loot_button() -> void:
+	if not _is_player_turn():
+		return
+	_clear_pending()
+	_grid_view.enter_idle()
+	_populate_loot_picker()
+	_loot_dialog.visible = true
+
+func _close_loot_dialog() -> void:
+	if _loot_dialog != null:
+		_loot_dialog.visible = false
+
+# (loot_items index, entry) pairs for each carried potion.
+func _potion_loot_entries() -> Array:
+	var out: Array = []
+	for i in range(GameState.loot_items.size()):
+		var e = GameState.loot_items[i]
+		if e is Dictionary and String(e.get("type", "")) == "potion":
+			out.append({"index": i, "entry": e})
+	return out
+
+func _populate_loot_picker() -> void:
+	if _loot_list_container == null:
+		return
+	for child in _loot_list_container.get_children():
+		child.queue_free()
+	var entries: Array = _potion_loot_entries()
+	if entries.is_empty():
+		_loot_list_container.add_child(_picker_note(
+			"No potions. Potions you find on the floor or buy show up here."))
+		return
+	for item in entries:
+		_loot_list_container.add_child(_make_loot_row(int(item["index"]), item["entry"]))
+
+func _make_loot_row(loot_index: int, entry: Dictionary) -> Control:
+	var potion: PotionData = Data.get_potion(StringName(entry.get("id", "")))
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(28, 28)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	if potion != null:
+		icon.texture = PotionSystem.art_texture(potion)
+	row.add_child(icon)
+	var lbl := Label.new()
+	var detail: String = potion.effect_text if (potion != null and PotionSystem.is_identified(potion.id)) else "Unidentified"
+	lbl.text = "%s  —  %s" % [PotionSystem.display_name(potion) if potion != null else "Potion", detail]
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+	lbl.custom_minimum_size = Vector2(150, 0)
+	lbl.add_theme_font_size_override("font_size", 12)
+	row.add_child(lbl)
+	var drink := Button.new()
+	drink.text = "Drink"
+	drink.pressed.connect(_on_drink_potion.bind(loot_index))
+	row.add_child(drink)
+	var throw := Button.new()
+	throw.text = "Throw"
+	throw.pressed.connect(_on_throw_potion.bind(loot_index))
+	row.add_child(throw)
+	return row
+
+func _on_drink_potion(loot_index: int) -> void:
+	if not _is_player_turn():
+		return
+	var potion: PotionData = _potion_at(loot_index)
+	if potion == null:
+		return
+	var u = get_player_unit()
+	var ctx := {"source": u, "scene": self, "mode": Stats.Mode.STRATEGY, "rng": _rng}
+	var logs: Array = PotionSystem.apply_to_target(potion, u, ctx)
+	for line in logs:
+		GameLog.add(line, PotionSystem.POTION_COLOR)
+	PotionSystem.identify(potion.id)
+	GameState.remove_loot_at(loot_index)
+	_after_potion_used()
+	_populate_loot_picker()
+
+func _on_throw_potion(loot_index: int) -> void:
+	if not _is_player_turn():
+		return
+	var potion: PotionData = _potion_at(loot_index)
+	if potion == null:
+		return
+	_close_loot_dialog()
+	_clear_pending()
+	var u = get_player_unit()
+	if u == null:
+		return
+	# Reuse the grid's aim UI: a tile-aimed "disc" gated to throw range, with a
+	# manhattan footprint (plus for normal, radius-2 diamond for cleave).
+	var spec := {
+		"family": "disc",
+		"aim": "tile",
+		"range_tiles": PotionSystem.throw_range(),
+		"radius": (2 if potion.cleave else 1),
+		"manhattan": true,
+		"rotates": false,
+	}
+	_pending_kind = Pending.POTION_AIM
+	_pending_potion_index = loot_index
+	_pending_aim_spec = spec
+	_grid_view.set_active_unit(u, u.move_range)
+	_grid_view.enter_aim_mode(spec)
+	_status_label.text = "Throw %s — aim within range (right-click to cancel)." % PotionSystem.display_name(potion)
+
+# Resolve a thrown potion's splash at `pos` (called from _on_aim_confirmed).
+func _resolve_potion_throw(pos: Vector2i) -> void:
+	var potion: PotionData = _potion_at(_pending_potion_index)
+	var loot_index: int = _pending_potion_index
+	if potion == null:
+		_clear_pending()
+		_grid_view.enter_idle()
+		return
+	var targets: Array = _shaped_targets_for(_pending_aim_spec, get_player_unit(), pos)
+	var ctx := {"source": get_player_unit(), "scene": self, "mode": Stats.Mode.STRATEGY, "rng": _rng}
+	var logs: Array = PotionSystem.apply_to_targets(potion, targets, ctx)
+	for line in logs:
+		GameLog.add(line, PotionSystem.POTION_COLOR)
+	PotionSystem.identify(potion.id)
+	GameState.remove_loot_at(loot_index)
+	_clear_pending()
+	_grid_view.enter_idle()
+	_after_potion_used()
+	_check_battle_end_after_effect()
+
+func _potion_at(loot_index: int) -> PotionData:
+	if loot_index < 0 or loot_index >= GameState.loot_items.size():
+		return null
+	var e = GameState.loot_items[loot_index]
+	if not (e is Dictionary) or String(e.get("type", "")) != "potion":
+		return null
+	return Data.get_potion(StringName(e.get("id", "")))
+
+func _after_potion_used() -> void:
+	_grid_view.notify_units_changed()
+	_refresh_initiative()
+	_refresh_hand()
+	_refresh_button_states()
+	_refresh_loot_button()
+
+# Potion adapter hook (PotionSystem energy op). Strategy has energy, so grant it.
+func potion_grant_energy(amount: int) -> bool:
+	energy += amount
+	_refresh_readout()
+	return true
 
 func _has_usable_item() -> bool:
 	for item in GameState.inventory:
