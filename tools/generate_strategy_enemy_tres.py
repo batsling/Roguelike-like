@@ -95,9 +95,22 @@ def parse_effect(text: str):
 
 # --- intents column -------------------------------------------------------
 
+# The player Attack-column keyword vocabulary (docs/action-attack-translation.md,
+# generate_card_tres.py). Mirrored here so an enemy intent sizes its attack with
+# the SAME bare keyword the player's Attack cell uses — `shape smash large` reads
+# exactly like a card's `Smash, Large`, instead of a separate `size=large`. The
+# size word lands in `params["size"]`, which StrategyAttackLibrary.resolve() turns
+# into the grid reach/radius (so the enemy's range stays in lock-step with the
+# player's). `size=large` / `range N` still parse, for back-compat.
+SIZE_WORDS = {"short", "medium", "large", "full", "small"}
+ATTACK_FLAG_TOKENS = {"pierce", "crescent", "explosive", "sweep"}
+
+
 def _parse_header(header: str) -> dict:
-    """Parse `<id> @ <prio> [cd N] [shape S] [k=v] [range N] [target T]
-    [cond C] [icon=G]` into intent fields."""
+    """Parse `<id> @ <prio> [cd N] [shape S] [size-word] [flag] [k=v] [range N]
+    [target T] [cond C] [icon=G]` into intent fields. Bare size words
+    (short/medium/large/full/small) and flag tokens (pierce/crescent/explosive/
+    sweep) mirror the player's Attack column and fold into `params`."""
     toks = header.split()
     if not toks:
         return {}
@@ -128,6 +141,11 @@ def _parse_header(header: str) -> dict:
             else:
                 out["params"][k] = int(v) if v.lstrip("-").isdigit() else v
             i += 1; continue
+        low = t.lower()
+        if low in SIZE_WORDS:
+            out["params"]["size"] = low; i += 1; continue
+        if low in ATTACK_FLAG_TOKENS:
+            out["params"][low] = True; i += 1; continue
         i += 1
     # A self-targeted, shapeless intent (e.g. a heal/buff) has no reach: range 0,
     # unless the author set one explicitly.

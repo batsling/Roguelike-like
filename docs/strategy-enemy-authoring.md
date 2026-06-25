@@ -70,8 +70,8 @@ initiative cadence, so it takes turns more often too.
 One cell, intents `;;`-separated (like `enemiesD`'s packed `Moves`). Each intent:
 
 ```
-<id> @ <prio> [cd N] [shape S] [k=v ...] [range N] [target T] [cond C]
-      [icon=G] | <name> | <effects>
+<id> @ <prio> [cd N] [shape S] [<size>] [<flag>] [k=v ...] [range N]
+      [target T] [cond C] [icon=G] | <name> | <effects>
 ```
 
 | Field | Meaning |
@@ -80,7 +80,9 @@ One cell, intents `;;`-separated (like `enemiesD`'s packed `Moves`). Each intent
 | `@ prio` | priority — higher wins ties; **off-cooldown always beats on-cooldown** |
 | `cd N` | cooldown in turns (0 = always available) |
 | `shape S` | archetype from the shared `StrategyAttackLibrary` (`poke/swing/smash/projectile/beam/nova/lob/disc/line`). Derives the grid **reach + footprint** — e.g. an Orc's `smash` Bash is a forward blast that can clip several targets. Omit it and use `range N` for a plain single-tile hit. |
-| `k=v` | `attack_params` for the shape (e.g. `size=large`, `arc=360`) |
+| `<size>` | a **bare size word** (`short`/`medium`/`large`/`full`/`small`) sizing the shape's reach/radius — the **same keyword the player writes in the `Attack` column**, so `shape smash large` reads exactly like a card's `Smash, Large`. (`size=large` still works.) |
+| `<flag>` | a bare shape flag (`pierce`/`crescent`/`explosive`/`sweep`), mirroring the player's Attack cell |
+| `k=v` | other `attack_params` for the shape (e.g. `arc=360`, `spread=3`) |
 | `range N` | explicit tile reach when there's no `shape` (a `shape` overrides it) |
 | `target T` | `enemy` (default) / `self` / `all_enemies` |
 | `cond C` | gating predicate; only `self_low_hp` is wired up today (blank = always) |
@@ -104,7 +106,7 @@ as cards, spells and the deckbuilder patterns). Strategy default targets:
 
 ```
 smash @ 1 icon=x shape swing                         | Smash | dmg:10 ;;
-crush @ 2 cd 4 icon=! shape smash size=large         | Crush | dmg:14 ;;
+crush @ 2 cd 4 icon=! shape smash large              | Crush | dmg:14 ;;
 regen @ 3 cd 5 icon=+ target self cond self_low_hp   | Regen | heal:5:self
 ```
 

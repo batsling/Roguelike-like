@@ -27,8 +27,8 @@ Columns mirror StrategyEnemyData.gd:
 
 The `Intents` column lists the move-set, ';;'-separated. Each intent is:
 
-    <id> @ <prio> [cd N] [shape S] [k=v ...] [range N] [target T] [cond C]
-          [icon=G] | <name> | <effects>
+    <id> @ <prio> [cd N] [shape S] [<size>] [<flag>] [k=v ...] [range N]
+          [target T] [cond C] [icon=G] | <name> | <effects>
 
   - `prio`  : higher wins ties; off-cooldown intents always beat on-cooldown.
   - `cd`    : cooldown in turns (0 = always available).
@@ -36,7 +36,11 @@ The `Intents` column lists the move-set, ';;'-separated. Each intent is:
               (poke/swing/smash/projectile/beam/nova/lob/disc/line). When set it
               derives the grid reach + footprint (so an Orc's Bash is a forward
               blast); omit it and use `range N` for a plain single-tile hit.
-  - `k=v`   : attack_params for the shape (e.g. size=large, arc=360).
+  - size    : a bare size word (short/medium/large/full/small) sizes the shape's
+              reach/radius, mirroring the player's Attack column — `shape smash
+              large` reads like a card's `Smash, Large`. (`size=large` also works.)
+  - flags   : bare pierce/crescent/explosive/sweep, same as the Attack column.
+  - `k=v`   : other attack_params for the shape (e.g. arc=360, spread=3).
   - `target`: enemy (default) | self | all_enemies.
   - `cond`  : gating predicate; only `self_low_hp` is wired up today (blank =
               always valid).
@@ -109,7 +113,7 @@ ENEMIES = [
         "Color": "0.4,0.5,0.45", "File": "",
         "Min Floor": 4, "Spawn Weight": 1, "Gold": "90% 12-24",
         "Intents": "smash @ 1 icon=x shape swing | Smash | dmg:10 ;; "
-                   "crush @ 2 cd 4 icon=! shape smash size=large | Crush | dmg:14 ;; "
+                   "crush @ 2 cd 4 icon=! shape smash large | Crush | dmg:14 ;; "
                    "regen @ 3 cd 5 icon=+ target self cond self_low_hp | Regen | heal:5:self",
         "Ability": "",
     },
