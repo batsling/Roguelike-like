@@ -133,6 +133,33 @@ var _bounce_to: Vector2 = Vector2.ZERO
 var _atk: ActionAttackLibrary
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
+# --- Potion loot ----------------------------------------------------------
+# A bottom-bar belt lists the carried potions; one is "selected". Tapping Q
+# drinks the selected potion on yourself; holding Q raises a lobbing white aim
+# arrow and clicking LMB throws it to that point, splashing everyone (friend and
+# foe) in the blast. Number keys 1-9 (and clicking a slot) pick the selection.
+var _potion_belt_layer: CanvasLayer = null
+var _potion_belt_row: HBoxContainer = null
+var _selected_potion_belt: int = 0
+# Q-hold throw state machine.
+var _potion_q_held: bool = false
+var _potion_thrown_this_hold: bool = false
+var _lob_aim_active: bool = false
+var _lob_aim_target: Vector2 = Vector2.ZERO  # arena coords, clamped to range
+# Expanding splash burst FX after a throw lands.
+var _potion_splash_remaining: float = 0.0
+var _potion_splash_center: Vector2 = Vector2.ZERO
+var _potion_splash_radius: float = 0.0
+var _potion_splash_color: Color = Color(1.0, 1.0, 1.0, 0.5)
+const POTION_SPLASH_FX_TIME := 0.35
+
+# Loot that dropped on the arena floor when the room cleared — the player walks
+# over it to pick it up. Each entry: {entry: Dictionary, pos: Vector2}. Cleared
+# when a new room starts. ~35% chance to drop after a (non-safe) room clear.
+var _ground_loot: Array = []
+const GROUND_LOOT_DROP_CHANCE := 0.35
+const GROUND_LOOT_PICKUP_DIST := 26.0
+
 # --- Loadout ---------------------------------------------------------------
 # Two manual click slots — left (LMB) and right (RMB). Only Strikes or
 # weapon-granted cards live here; they aim at the cursor and fire on click,
@@ -378,6 +405,9 @@ func _ready() -> void:
 	_build_top_hud()
 	_build_slot_bar()
 	_build_fx_root()
+	_build_potion_belt()
+	if not GameState.inventory_changed.is_connected(_refresh_potion_belt):
+		GameState.inventory_changed.connect(_refresh_potion_belt)
 	Stats.apply_derived_statuses(player_actor, Stats.Mode.ACTION)
 	set_process_input(true)
 
@@ -414,6 +444,10 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_haste_remaining = 0.0
 	_slow_remaining = 0.0
 	_room_resolved = false
+	# Uncollected floor drops don't carry between rooms.
+	_ground_loot.clear()
+	_potion_q_held = false
+	_lob_aim_active = false
 	_transitioning = false
 	_stairs_active = false
 	_stairs_armed = false
@@ -726,6 +760,7 @@ func _process(delta: float) -> void:
 	var scaled_delta: float = delta * tempo
 	player_iframes = maxf(0.0, player_iframes - delta)
 	_ability_swing_remaining = maxf(0.0, _ability_swing_remaining - delta)
+	_potion_splash_remaining = maxf(0.0, _potion_splash_remaining - delta)
 	left_cd = maxf(0.0, left_cd - scaled_delta)
 	right_cd = maxf(0.0, right_cd - scaled_delta)
 	_process_auto_slots(scaled_delta, delta)
@@ -734,6 +769,7 @@ func _process(delta: float) -> void:
 	_process_curse_slots(delta)
 	_process_turn_tick(delta)
 	_process_player_input(delta)
+	_process_ground_loot()
 	if embedded:
 		_check_doors()
 		_check_stairs()
@@ -860,20 +896,26 @@ func _process_player_input(delta: float) -> void:
 	if to_mouse.length() > 5.0:
 		player_facing = to_mouse.normalized()
 
+	# Potion belt selection (number keys 1-9).
+	_poll_potion_belt_keys()
+
 	# Click slots: LMB fires the left card, RMB the right card, each aimed
 	# at the cursor and gated by its own per-card cooldown (held = continuous).
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and left_cd <= 0.0 and left_card != null:
-		_fire_click_card(left_card)
-		left_cd = left_max_cd
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and right_cd <= 0.0 and right_card != null:
-		_fire_click_card(right_card)
-		right_cd = right_max_cd
+	# While aiming a potion throw (Q held), LMB throws instead of attacking.
+	if not _potion_q_held:
+		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and left_cd <= 0.0 and left_card != null:
+			_fire_click_card(left_card)
+			left_cd = left_max_cd
+		if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and right_cd <= 0.0 and right_card != null:
+			_fire_click_card(right_card)
+			right_cd = right_max_cd
 
-	# Q pops the pre-assigned active consumable (pill); E fires the charged
-	# active. just_pressed so a held key fires once; use_item sees the live
-	# combat context set in start_room.
-	if Input.is_action_just_pressed("use_active_item"):
-		_use_active_item()
+	# Potions on Q: tap to drink the selected potion on yourself; hold Q to raise
+	# a lobbing aim arrow and LMB to throw it. Falls back to the equipped pill on
+	# Q when the player is carrying no potions, so the active-item slot still works.
+	_process_potion_input(mouse_pos)
+
+	# E fires the charged active.
 	if Input.is_action_just_pressed("use_charged_item"):
 		_use_charged_item()
 
@@ -892,6 +934,253 @@ func _use_active_item() -> void:
 		return
 	if GameState.use_item(item):
 		GameLog.add("Used %s." % item.display_name, Color(0.85, 1.0, 0.7))
+
+# ---------------------------------------------------------------------------
+# Potion belt + drink / throw
+# ---------------------------------------------------------------------------
+
+# Bottom-left belt of carried potions (its own CanvasLayer so it draws over the
+# arena). The selected slot is highlighted; Q acts on it.
+func _build_potion_belt() -> void:
+	_potion_belt_layer = CanvasLayer.new()
+	_potion_belt_layer.layer = 6
+	add_child(_potion_belt_layer)
+	var holder := VBoxContainer.new()
+	holder.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	holder.offset_left = 8
+	holder.offset_bottom = -8
+	holder.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_potion_belt_layer.add_child(holder)
+	var hint := Label.new()
+	hint.text = "Potions — Q drink / hold Q + click throw"
+	hint.add_theme_font_size_override("font_size", 11)
+	hint.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
+	holder.add_child(hint)
+	_potion_belt_row = HBoxContainer.new()
+	_potion_belt_row.add_theme_constant_override("separation", 4)
+	holder.add_child(_potion_belt_row)
+	_refresh_potion_belt()
+
+func _refresh_potion_belt() -> void:
+	if _potion_belt_row == null:
+		return
+	for c in _potion_belt_row.get_children():
+		c.queue_free()
+	var entries: Array = GameState.loot_potions()
+	if _selected_potion_belt >= entries.size():
+		_selected_potion_belt = maxi(0, entries.size() - 1)
+	var hint_parent := _potion_belt_row.get_parent()
+	if hint_parent != null and hint_parent.get_child_count() > 0:
+		var hint := hint_parent.get_child(0)
+		if hint is Label:
+			hint.visible = not entries.is_empty()
+	for i in range(entries.size()):
+		_potion_belt_row.add_child(_make_belt_slot(i, entries[i]))
+
+func _make_belt_slot(belt_index: int, entry: Dictionary) -> Control:
+	var potion: PotionData = Data.get_potion(StringName(entry.get("id", "")))
+	var slot := Button.new()
+	slot.custom_minimum_size = Vector2(46, 46)
+	slot.tooltip_text = "%s%s" % [
+		PotionSystem.display_name(potion) if potion != null else "Potion",
+		"\n" + potion.effect_text if potion != null and PotionSystem.is_identified(potion.id) else ""]
+	if belt_index == _selected_potion_belt:
+		slot.modulate = Color(1.0, 1.0, 0.6)
+	slot.pressed.connect(func(): _select_potion_belt(belt_index))
+	var art := TextureRect.new()
+	art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if potion != null:
+		art.texture = PotionSystem.art_texture(potion)
+	slot.add_child(art)
+	var num := Label.new()
+	num.text = str(belt_index + 1)
+	num.add_theme_font_size_override("font_size", 10)
+	num.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(num)
+	return slot
+
+func _select_potion_belt(index: int) -> void:
+	_selected_potion_belt = index
+	_refresh_potion_belt()
+
+func _poll_potion_belt_keys() -> void:
+	var n: int = GameState.loot_potions().size()
+	for k in range(mini(n, 9)):
+		if Input.is_key_pressed(KEY_1 + k) and _selected_potion_belt != k:
+			_select_potion_belt(k)
+
+# The potion the belt is pointed at, or null if the belt is empty.
+func _selected_potion() -> PotionData:
+	var entries: Array = GameState.loot_potions()
+	if _selected_potion_belt < 0 or _selected_potion_belt >= entries.size():
+		return null
+	return Data.get_potion(StringName(entries[_selected_potion_belt].get("id", "")))
+
+# The loot_items index for the currently selected belt potion (-1 if none).
+func _selected_potion_loot_index() -> int:
+	var seen: int = 0
+	for i in range(GameState.loot_items.size()):
+		var e = GameState.loot_items[i]
+		if e is Dictionary and String(e.get("type", "")) == "potion":
+			if seen == _selected_potion_belt:
+				return i
+			seen += 1
+	return -1
+
+func _process_potion_input(mouse_pos: Vector2) -> void:
+	var has_potion: bool = _selected_potion() != null
+	if Input.is_action_just_pressed("use_active_item"):
+		if has_potion:
+			_potion_q_held = true
+			_potion_thrown_this_hold = false
+			_lob_aim_active = true
+		else:
+			# No potions — Q keeps its old job (the equipped pill).
+			_use_active_item()
+	if _potion_q_held:
+		_lob_aim_target = _clamp_throw_point(mouse_pos)
+		# Throw on LMB while Q is held.
+		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and not _potion_thrown_this_hold:
+			_throw_selected_potion(_lob_aim_target)
+			_potion_thrown_this_hold = true
+			_lob_aim_active = false
+	if Input.is_action_just_released("use_active_item"):
+		# Released without throwing -> drink it yourself.
+		if _potion_q_held and not _potion_thrown_this_hold:
+			_drink_selected_potion()
+		_potion_q_held = false
+		_lob_aim_active = false
+
+# Clamp an arena point to within throw range (base 4 player-widths + Strength).
+func _clamp_throw_point(arena_point: Vector2) -> Vector2:
+	var max_dist: float = PotionSystem.throw_range() * (PLAYER_RADIUS * 2.0)
+	var to_pt: Vector2 = arena_point - player_pos
+	if to_pt.length() > max_dist:
+		to_pt = to_pt.normalized() * max_dist
+	return player_pos + to_pt
+
+func _drink_selected_potion() -> void:
+	var potion: PotionData = _selected_potion()
+	var idx: int = _selected_potion_loot_index()
+	if potion == null or idx < 0:
+		return
+	var ctx := {"source": player_actor, "scene": self, "mode": Stats.Mode.ACTION, "rng": _rng}
+	var logs: Array = PotionSystem.apply_to_target(potion, player_actor, ctx)
+	for line in logs:
+		GameLog.add(line, PotionSystem.POTION_COLOR)
+	player_actor.hp = GameState.hp  # Fruit Juice routes max/heal through GameState
+	PotionSystem.identify(potion.id)
+	GameState.remove_loot_at(idx)
+	_refresh_potion_belt()
+	queue_redraw()
+
+func _throw_selected_potion(target: Vector2) -> void:
+	var potion: PotionData = _selected_potion()
+	var idx: int = _selected_potion_loot_index()
+	if potion == null or idx < 0:
+		return
+	var radius: float = PotionSystem.action_splash_radius(PLAYER_RADIUS * 2.0, potion.cleave)
+	# Collect everyone in the blast: each living enemy, plus the player if caught.
+	var targets: Array = []
+	for inst in enemies:
+		if inst.actor != null and inst.actor.is_alive() and inst.pos.distance_to(target) <= radius + inst.data.size:
+			targets.append(inst.actor)
+	var player_hit: bool = player_pos.distance_to(target) <= radius + PLAYER_RADIUS
+	if player_hit:
+		targets.append(player_actor)
+	# Snapshot enemy HP so we can pop a floating damage number for the splash.
+	var hp_before := {}
+	for inst in enemies:
+		if inst.actor != null and targets.has(inst.actor):
+			hp_before[inst.actor] = inst.actor.hp
+	var ctx := {"source": player_actor, "scene": self, "mode": Stats.Mode.ACTION, "rng": _rng}
+	var logs: Array = PotionSystem.apply_to_targets(potion, targets, ctx)
+	for line in logs:
+		GameLog.add(line, PotionSystem.POTION_COLOR)
+	if player_hit:
+		player_actor.hp = GameState.hp
+	# Floating numbers + kill bookkeeping for enemies caught in the blast.
+	for inst in enemies:
+		if inst.actor != null and targets.has(inst.actor):
+			var lost: int = int(hp_before.get(inst.actor, inst.actor.hp)) - inst.actor.hp
+			if lost > 0:
+				FloatingNumbers.spawn(_fx_root, inst.pos, lost)
+			if not inst.actor.is_alive() and not bool(inst.get("_potion_killed", false)):
+				inst["_potion_killed"] = true
+				GameLog.add("%s defeated." % inst.actor.display_name, Color(0.6, 1.0, 0.6))
+				TriggerBus.emit_signal("enemy_killed", {"enemy": inst.actor, "scene": self})
+				_fire_item_triggers("enemy_killed")
+	PotionSystem.identify(potion.id)
+	GameState.remove_loot_at(idx)
+	_refresh_potion_belt()
+	# Splash burst FX.
+	_potion_splash_remaining = POTION_SPLASH_FX_TIME
+	_potion_splash_center = target
+	_potion_splash_radius = radius
+	_potion_splash_color = Color(1.0, 0.6, 0.25, 0.55) if potion.deals_damage() else Color(0.6, 0.85, 1.0, 0.5)
+	_check_combat_end()
+
+# Potion adapter hook (PotionSystem energy op). Action has no energy resource, so
+# this no-ops and the applier reports "no effect here".
+func potion_grant_energy(_amount: int) -> bool:
+	return false
+
+# ---------------------------------------------------------------------------
+# Ground loot (action): a potion/scroll may drop on the floor when a room
+# clears; the player walks over it to pick it up.
+# ---------------------------------------------------------------------------
+
+func _maybe_drop_ground_loot() -> void:
+	if _rng.randf() > GROUND_LOOT_DROP_CHANCE:
+		return
+	# Reuse the shared 50/50 potion-or-scroll roll, but DON'T bank it yet — pull
+	# the rolled entry back out so it sits on the floor until picked up.
+	var entry: Dictionary = GameState.grant_random_consumable_loot(_rng)
+	if entry.is_empty():
+		return
+	GameState.loot_items.erase(entry)
+	GameState.emit_signal("inventory_changed")
+	var pos := Vector2(
+		_rng.randf_range(ARENA_W * 0.25, ARENA_W * 0.75),
+		_rng.randf_range(ARENA_H * 0.3, ARENA_H * 0.7))
+	_ground_loot.append({"entry": entry, "pos": pos})
+	queue_redraw()
+
+func _process_ground_loot() -> void:
+	if _ground_loot.is_empty():
+		return
+	for i in range(_ground_loot.size() - 1, -1, -1):
+		var g: Dictionary = _ground_loot[i]
+		if player_pos.distance_to(g["pos"]) <= GROUND_LOOT_PICKUP_DIST:
+			var entry: Dictionary = g["entry"]
+			GameState.loot_items.append(entry)
+			GameState.emit_signal("inventory_changed")
+			_ground_loot.remove_at(i)
+			if String(entry.get("type", "")) == "potion":
+				var p: PotionData = Data.get_potion(StringName(entry.get("id", "")))
+				Notifications.notify("Picked up a potion: %s" % (PotionSystem.display_name(p) if p != null else "Potion"),
+					PotionSystem.POTION_COLOR)
+			else:
+				Notifications.notify("Picked up an Unidentified Scroll.", Color(0.6, 0.5, 0.8))
+			queue_redraw()
+
+func _draw_ground_loot() -> void:
+	for g in _ground_loot:
+		var pos: Vector2 = g["pos"]
+		var entry: Dictionary = g["entry"]
+		# Glow so the drop is easy to spot on the floor.
+		var pulse: float = 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.005)
+		draw_circle(pos, 16.0, Color(1.0, 0.95, 0.5, 0.12 + 0.12 * pulse))
+		var tex: Texture2D = null
+		if String(entry.get("type", "")) == "potion":
+			tex = PotionSystem.art_texture(Data.get_potion(StringName(entry.get("id", ""))))
+		if tex != null:
+			DrawUtil.draw_circular_texture(self, pos, 12.0, tex, Color.WHITE)
+		else:
+			draw_circle(pos, 9.0, Color(0.6, 0.5, 0.85))
 
 func _use_charged_item() -> void:
 	if GameState.action_charged_item_id == &"":
@@ -3480,6 +3769,7 @@ func _check_combat_end() -> void:
 			GameLog.add("Room cleared.", Color(0.4, 1.0, 0.6))
 			# Each cleared combat room is one finished fight (Burning Blood, …).
 			_fire_item_triggers("combat_ended")
+			_maybe_drop_ground_loot()
 			emit_signal("room_cleared")
 		# Stay in PLAYING so the player can walk out through a door.
 		return
@@ -3749,6 +4039,41 @@ func _draw() -> void:
 			draw_circle(p.pos, p.radius, pcol)
 			# Inner highlight
 			draw_circle(p.pos, p.radius * 0.5, pcol.lightened(0.5))
+
+	# Floor drops (potions/scrolls left after a room clears).
+	_draw_ground_loot()
+	# Potion throw: a lobbing white aim arrow while Q is held, and the expanding
+	# splash burst after a throw lands.
+	_draw_potion_throw()
+
+# Lobbing white aim arrow (a high parabola from the player to the clamped throw
+# point) plus the throw's fading splash ring. Both in arena coords.
+func _draw_potion_throw() -> void:
+	if _lob_aim_active:
+		var from: Vector2 = player_pos
+		var to: Vector2 = _lob_aim_target
+		# High arc: lift the control point well above the midpoint so it reads as
+		# a lob rather than a straight line.
+		var mid: Vector2 = (from + to) * 0.5 + Vector2(0, -90)
+		var prev: Vector2 = from
+		var steps := 22
+		for i in range(1, steps + 1):
+			var t: float = float(i) / float(steps)
+			var pt: Vector2 = from.lerp(mid, t).lerp(mid.lerp(to, t), t)
+			draw_line(prev, pt, Color(1, 1, 1, 0.9), 3.0, true)
+			prev = pt
+		# Landing reticle at the target + the splash radius preview.
+		var potion: PotionData = _selected_potion()
+		var radius: float = PotionSystem.action_splash_radius(PLAYER_RADIUS * 2.0,
+			potion.cleave if potion != null else false)
+		draw_arc(to, radius, 0.0, TAU, 32, Color(1, 1, 1, 0.5), 2.0)
+		draw_circle(to, 4.0, Color(1, 1, 1, 0.9))
+	if _potion_splash_remaining > 0.0:
+		var frac: float = _potion_splash_remaining / POTION_SPLASH_FX_TIME
+		var r: float = _potion_splash_radius * (1.0 - frac * 0.4)
+		var col := _potion_splash_color
+		col.a *= frac
+		draw_circle(_potion_splash_center, r, col)
 
 # Boss-exit stairs: a glowing descending staircase at the arena centre. Drawn
 # as a stack of receding steps with a pulsing golden halo so it clearly reads
