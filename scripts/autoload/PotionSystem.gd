@@ -48,6 +48,18 @@ func identify(id: StringName) -> bool:
 func unidentify(id: StringName) -> void:
 	GameState.identified_potion_types.erase(id)
 
+# Records a potion USE in the curated Notifications channel (toasts + Backpack
+# history), mirroring the legacy encounterHistory push. Call AFTER identify() so
+# the entry shows the now-known name. `detail` is a short suffix like
+# "(drank)" / "(thrown)" / "on Goblin".
+func notify_used(potion: PotionData, detail: String = "") -> void:
+	if potion == null:
+		return
+	var msg: String = "Used %s" % display_name(potion)
+	if detail != "":
+		msg += " %s" % detail
+	Notifications.notify(msg, POTION_COLOR)
+
 # ===========================================================================
 # Display: names, colours, art
 # ===========================================================================
@@ -196,7 +208,7 @@ func _apply_one(effect: Dictionary, potion: PotionData, target, ctx: Dictionary)
 			return "%s: no effect here (no Energy)" % potion.display_name
 		"maxhp":
 			var v: int = int(effect.get("value", 0))
-			_apply_maxhp(target, v)
+			_apply_maxhp(target, v, ctx)
 			return "%s: +%d Max HP and HP to %s" % [potion.display_name, v, tname]
 		_:
 			return ""
@@ -213,31 +225,60 @@ func _apply_damage(effect: Dictionary, target, ctx: Dictionary, tname: String) -
 	if bool(res.get("dodged", false)):
 		return "%s dodged!" % tname
 	var loss: int = int(res.get("hp_loss", 0))
-	if "hp" in target:
-		target.hp = maxi(0, int(target.hp) - loss)
-		if loss > 0 and ("dead" in target) and target.hp <= 0:
-			target.dead = true
+	if loss > 0:
+		# Player HP is the shared run pool — route it through the scene so the
+		# canonical store moves (and self-damage actually sticks, in every mode).
+		if _is_player(target):
+			_player_hp_delta(ctx.get("scene"), target, -loss)
+		elif "hp" in target:
+			target.hp = maxi(0, int(target.hp) - loss)
+			if ("dead" in target) and target.hp <= 0:
+				target.dead = true
 	var crit: String = " (CRIT)" if bool(res.get("crit", false)) else ""
 	return "Dealt %d damage to %s%s!" % [loss, tname, crit]
 
-# Fruit Juice: +max AND heal. On the player this routes through GameState (so
-# the run-persistent pool moves) and mirrors back onto the combat actor; on any
-# other target it just bumps the actor's own pool.
-func _apply_maxhp(target, v: int) -> void:
+# Fruit Juice: +max AND heal. On the player this routes through the scene so the
+# run-persistent, shared Max HP pool moves; on any other target it bumps the
+# actor's own pool.
+func _apply_maxhp(target, v: int, ctx: Dictionary) -> void:
 	if v == 0:
 		return
-	if ("is_player" in target) and target.is_player:
-		GameState.change_max_hp(v)
-		GameState.change_hp(v)
-		if "max_hp" in target:
-			target.max_hp = GameState.max_hp
-		if "hp" in target:
-			target.hp = GameState.hp
+	if _is_player(target):
+		_player_maxhp_delta(ctx.get("scene"), target, v)
 	else:
 		if "max_hp" in target:
 			target.max_hp = int(target.max_hp) + v
 		if "hp" in target:
 			target.hp = mini(int(target.hp) + v, int(target.max_hp))
+
+func _is_player(target) -> bool:
+	return target != null and ("is_player" in target) and target.is_player
+
+# Apply a heal(+)/damage(-) to the PLAYER's canonical HP. Each scene owns its HP
+# model (deckbuilder/action mirror GameState.hp; strategy uses the live unit), so
+# we delegate when it provides the hook and fall back to the shared GameState
+# pool otherwise.
+func _player_hp_delta(scene, actor, delta: int) -> void:
+	if scene != null and scene.has_method("potion_player_hp_delta"):
+		scene.potion_player_hp_delta(delta)
+		return
+	GameState.change_hp(delta)
+	if actor != null and ("hp" in actor):
+		actor.hp = GameState.hp
+
+# Raise the PLAYER's Max HP (and heal the same amount). Delegated to the scene so
+# the gain lands on the shared, run-persistent pool; falls back to GameState.
+func _player_maxhp_delta(scene, actor, delta: int) -> void:
+	if scene != null and scene.has_method("potion_player_maxhp_delta"):
+		scene.potion_player_maxhp_delta(delta)
+		return
+	GameState.change_max_hp(delta)
+	GameState.change_hp(delta)
+	if actor != null:
+		if "max_hp" in actor:
+			actor.max_hp = GameState.max_hp
+		if "hp" in actor:
+			actor.hp = GameState.hp
 
 # Speed / Flex "for 1 turn": let the scene strip the buff at the next turn
 # boundary if it supports it (turn-based modes); otherwise it lingers for the

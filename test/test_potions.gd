@@ -161,6 +161,44 @@ func test_fruit_juice_raises_target_pool() -> void:
 	assert_eq(t.max_hp, 25, "Fruit Juice raises max HP by 5")
 	assert_eq(t.hp, 17, "Fruit Juice heals 5")
 
+# --- Self-target + shared player HP ------------------------------------------
+
+func test_self_damage_routes_through_shared_hp_pool() -> void:
+	# Drinking a damage potion on yourself must reduce the shared GameState pool
+	# (with no scene, PotionSystem falls back to GameState directly).
+	var hp0: int = GameState.hp
+	var cc0: int = GameState.crit_chance
+	var lk0: int = GameState.luck
+	GameState.crit_chance = 0
+	GameState.luck = 0
+	GameState.set_hp(50)
+	var player := CombatActor.new()
+	player.is_player = true
+	player.max_hp = 100
+	player.hp = 50
+	var p: PotionData = Data.get_potion(&"fire_potion")
+	PotionSystem.apply_to_target(p, player, {"source": player, "mode": Stats.Mode.DECKBUILDER})
+	assert_eq(GameState.hp, 30, "Fire Potion on self removes 20 from the shared pool")
+	assert_eq(player.hp, 30, "the actor mirrors the shared pool")
+	GameState.crit_chance = cc0
+	GameState.luck = lk0
+	GameState.set_hp(hp0)
+
+func test_fruit_juice_on_player_raises_shared_max_hp() -> void:
+	var mx0: int = GameState.max_hp
+	var hp0: int = GameState.hp
+	GameState.set_max_hp(75, true)
+	var player := CombatActor.new()
+	player.is_player = true
+	player.max_hp = GameState.max_hp
+	player.hp = GameState.hp
+	var p: PotionData = Data.get_potion(&"fruit_juice")
+	PotionSystem.apply_to_target(p, player, {"source": player, "mode": Stats.Mode.DECKBUILDER})
+	assert_eq(GameState.max_hp, 80, "Fruit Juice raises the shared run Max HP by 5")
+	assert_eq(player.max_hp, 80, "the actor mirrors the shared Max HP")
+	GameState.set_max_hp(mx0, false)
+	GameState.set_hp(hp0)
+
 func test_explosive_ampoule_hits_all_targets() -> void:
 	var p: PotionData = Data.get_potion(&"explosive_ampoule")
 	var ctx := {"source": _source_with_arcane(0), "mode": Stats.Mode.DECKBUILDER}

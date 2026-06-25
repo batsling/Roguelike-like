@@ -153,6 +153,11 @@ var _potion_splash_radius: float = 0.0
 var _potion_splash_color: Color = Color(1.0, 1.0, 1.0, 0.5)
 const POTION_SPLASH_FX_TIME := 0.35
 
+# Speed/Flex "for 1 turn" potion buffs. Action has no discrete turns, so each is
+# given one turn-tick of life: it's stripped on the first turn-tick boundary after
+# its grace tick, i.e. it lasts ~one turn. Each entry: {target, status, stacks, grace}.
+var _potion_temp_buffs: Array = []
+
 # Loot that dropped on the arena floor when the room cleared — the player walks
 # over it to pick it up. Each entry: {entry: Dictionary, pos: Vector2}. Cleared
 # when a new room starts. ~35% chance to drop after a (non-safe) room clear.
@@ -446,6 +451,7 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_room_resolved = false
 	# Uncollected floor drops don't carry between rooms.
 	_ground_loot.clear()
+	_potion_temp_buffs.clear()
 	_potion_q_held = false
 	_lob_aim_active = false
 	_transitioning = false
@@ -847,6 +853,8 @@ func _process_turn_tick(delta: float) -> void:
 	if player_actor != null and player_actor.is_alive():
 		_tick_actor_turn(player_actor, _player_was_hit)
 	_player_was_hit = false
+	# Speed/Flex potion buffs live one turn: a grace tick, then stripped.
+	_tick_potion_temp_buffs()
 	# Confused re-rolls every loadout card's cost (and so its cooldown) each turn.
 	_reroll_confused_costs()
 	for inst in enemies:
@@ -1068,13 +1076,16 @@ func _drink_selected_potion() -> void:
 	if potion == null or idx < 0:
 		return
 	var ctx := {"source": player_actor, "scene": self, "mode": Stats.Mode.ACTION, "rng": _rng}
+	# Player HP/max-HP effects (self-damage, Fruit Juice) route through the
+	# potion_player_* hooks, so the shared GameState pool moves and the actor mirrors it.
 	var logs: Array = PotionSystem.apply_to_target(potion, player_actor, ctx)
 	for line in logs:
 		GameLog.add(line, PotionSystem.POTION_COLOR)
-	player_actor.hp = GameState.hp  # Fruit Juice routes max/heal through GameState
 	PotionSystem.identify(potion.id)
+	PotionSystem.notify_used(potion, "(drank)")
 	GameState.remove_loot_at(idx)
 	_refresh_potion_belt()
+	_check_combat_end()  # drinking a damage potion can drop you to 0
 	queue_redraw()
 
 func _throw_selected_potion(target: Vector2) -> void:
@@ -1091,17 +1102,21 @@ func _throw_selected_potion(target: Vector2) -> void:
 	var player_hit: bool = player_pos.distance_to(target) <= radius + PLAYER_RADIUS
 	if player_hit:
 		targets.append(player_actor)
-	# Snapshot enemy HP so we can pop a floating damage number for the splash.
+	# Snapshot HP so we can pop a floating damage number for the splash (enemies +
+	# the player if they caught their own throw).
 	var hp_before := {}
 	for inst in enemies:
 		if inst.actor != null and targets.has(inst.actor):
 			hp_before[inst.actor] = inst.actor.hp
+	var player_hp_before: int = player_actor.hp
 	var ctx := {"source": player_actor, "scene": self, "mode": Stats.Mode.ACTION, "rng": _rng}
 	var logs: Array = PotionSystem.apply_to_targets(potion, targets, ctx)
 	for line in logs:
 		GameLog.add(line, PotionSystem.POTION_COLOR)
 	if player_hit:
-		player_actor.hp = GameState.hp
+		var self_lost: int = player_hp_before - player_actor.hp
+		if self_lost > 0:
+			FloatingNumbers.spawn(_fx_root, player_pos, self_lost)
 	# Floating numbers + kill bookkeeping for enemies caught in the blast.
 	for inst in enemies:
 		if inst.actor != null and targets.has(inst.actor):
@@ -1114,6 +1129,7 @@ func _throw_selected_potion(target: Vector2) -> void:
 				TriggerBus.emit_signal("enemy_killed", {"enemy": inst.actor, "scene": self})
 				_fire_item_triggers("enemy_killed")
 	PotionSystem.identify(potion.id)
+	PotionSystem.notify_used(potion, "(thrown)")
 	GameState.remove_loot_at(idx)
 	_refresh_potion_belt()
 	# Splash burst FX.
@@ -1127,6 +1143,39 @@ func _throw_selected_potion(target: Vector2) -> void:
 # this no-ops and the applier reports "no effect here".
 func potion_grant_energy(_amount: int) -> bool:
 	return false
+
+# Player HP/Max-HP route through GameState (the shared run pool that is the truth
+# in action); the player actor mirrors it.
+func potion_player_hp_delta(delta: int) -> void:
+	GameState.change_hp(delta)
+	if player_actor != null:
+		player_actor.hp = GameState.hp
+
+func potion_player_maxhp_delta(delta: int) -> void:
+	GameState.change_max_hp(delta)
+	GameState.change_hp(delta)
+	if player_actor != null:
+		player_actor.max_hp = GameState.max_hp
+		player_actor.hp = GameState.hp
+
+# Speed/Flex "for 1 turn": record with one grace tick so the buff survives the
+# turn it was drunk on, then is stripped on the following turn-tick boundary.
+func potion_register_temp_status(target, status: StringName, stacks: int) -> void:
+	_potion_temp_buffs.append({"target": target, "status": status, "stacks": stacks, "grace": true})
+
+func _tick_potion_temp_buffs() -> void:
+	if _potion_temp_buffs.is_empty():
+		return
+	var kept: Array = []
+	for b in _potion_temp_buffs:
+		if bool(b.get("grace", false)):
+			b["grace"] = false
+			kept.append(b)
+			continue
+		var t = b.get("target")
+		if t != null and t.has_method("add_status"):
+			t.add_status(StringName(b.get("status", "")), -int(b.get("stacks", 0)))
+	_potion_temp_buffs = kept
 
 # ---------------------------------------------------------------------------
 # Ground loot (action): a potion/scroll may drop on the floor when a room

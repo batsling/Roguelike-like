@@ -355,6 +355,9 @@ func _resolve_potion(loot_index: int, target: CombatActor) -> void:
 	for line in logs:
 		GameLog.add(line, PotionSystem.POTION_COLOR)
 	PotionSystem.identify(potion.id)
+	var detail: String = "on all enemies" if potion.cleave else "on %s" % (
+		"you" if target == player else target.display_name)
+	PotionSystem.notify_used(potion, detail)
 	GameState.remove_loot_at(loot_index)
 	potion_after_apply()
 
@@ -364,6 +367,20 @@ func potion_grant_energy(amount: int) -> bool:
 	energy += amount
 	_refresh_ui()
 	return true
+
+# Player HP/Max-HP changes route through GameState (the run-shared pool); the
+# player CombatActor mirrors it, exactly like every other deckbuilder damage site.
+func potion_player_hp_delta(delta: int) -> void:
+	GameState.change_hp(delta)
+	if player != null:
+		player.hp = GameState.hp
+
+func potion_player_maxhp_delta(delta: int) -> void:
+	GameState.change_max_hp(delta)
+	GameState.change_hp(delta)
+	if player != null:
+		player.max_hp = GameState.max_hp
+		player.hp = GameState.hp
 
 func potion_register_temp_status(target, status: StringName, stacks: int) -> void:
 	_potion_temp_buffs.append({"target": target, "status": status, "stacks": stacks})
