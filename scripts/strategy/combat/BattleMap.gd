@@ -135,9 +135,13 @@ func _place_spawn_zones(rng: RandomNumberGenerator, enemy_count: int) -> void:
 	player_spawns.clear()
 	enemy_spawns.clear()
 
-	# Player spawn zone: south edge, last SPAWN_ZONE_DEPTH walkable rows.
-	var player_y = height - 1 - SPAWN_ZONE_DEPTH
-	var enemy_y = SPAWN_ZONE_DEPTH
+	# Player hugs the far south wall, enemies hug the far north wall — the two
+	# outermost walkable rows. Maximising this separation keeps the enemies from
+	# reaching the player on turn 1 (an unfair opener): with a baseline 4-tile
+	# move + 1 melee reach, the enemy needs ≥6 tiles to close, and the full-height
+	# gap is larger than that on every map size.
+	var player_y = height - 2
+	var enemy_y = 1
 
 	var center_x = width / 2
 	player_spawns.append(Vector2i(center_x, player_y))

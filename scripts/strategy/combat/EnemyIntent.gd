@@ -42,3 +42,17 @@ func headline_value() -> int:
 		if typeof(v) in [TYPE_INT, TYPE_FLOAT]:
 			return int(v)
 	return 0
+
+# Compact damage/heal label for the telegraph + HUD. A per-hit dice attack
+# reads as "1D3" (the die spec, not its max), a flat value reads as its number
+# ("5"), and a valueless intent reads as "". Keeps the dice nature visible to
+# the player instead of collapsing 1d3 to a single "3".
+func headline_label() -> String:
+	for e in effects:
+		var dice = e.get("dice", null)
+		if dice is Array and dice.size() == 2:
+			return "%dD%d" % [int(dice[0]), int(dice[1])]
+		var v = e.get("value", 0)
+		if typeof(v) in [TYPE_INT, TYPE_FLOAT] and int(v) != 0:
+			return str(int(v))
+	return ""

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="StrategyEnemyData" load_steps=2 format=3 uid="uid://strategy_enemy_snake"]
+
+[ext_resource type="Script" path="res://scripts/resources/StrategyEnemyData.gd" id="1_se"]
+
+[resource]
+script = ExtResource("1_se")
+id = &"snake"
+display_name = "Snake"
+difficulty = 0
+weight = 2
+hp_min = 10
+hp_max = 10
+speed = 4
+intents = [
+	{"id": "strike", "prio": 1, "cd": 0, "range": 1, "shape": "swing", "params": {}, "target": "enemy", "cond": "", "icon": "x", "name": "Strike", "effects": [{"type": "dmg", "value": 4, "target": "enemy"}]},
+	{"id": "venom_bite", "prio": 2, "cd": 3, "range": 1, "shape": "swing", "params": {}, "target": "enemy", "cond": "", "icon": "*", "name": "Venom", "effects": [{"type": "dmg", "value": 6, "target": "enemy"}]}
+]
+min_floor = 1
+spawn_weight = 3
+gold_chance = 0.5
+gold_min = 3
+gold_max = 8
+source_game = ""
+tags = PackedStringArray()
+portrait_color = Color(0.4, 0.6, 0.4, 1)
+glyph = "s"

@@ -182,13 +182,28 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 		var pt_src: Variant = ctx.get("source")
 		if pt_src != null and ("turns_taken" in pt_src):
 			dmg_value += per_turn * int(pt_src.turns_taken)
+	# Dice (NetHack-style per-hit roll): `dice: [count, sides]` rolls
+	# `count` d`sides` FRESH on every application (and every `hits` iteration),
+	# replacing the static value — so a sewer rat's 1d3 bite varies 1-3 each
+	# time, unlike Determined which fixes one roll for the whole combat.
+	var dice: Variant = effect.get("dice", null)
+	var dice_n: int = 0
+	var dice_sides: int = 0
+	if dice is Array and dice.size() == 2:
+		dice_n = int(dice[0])
+		dice_sides = int(dice[1])
 	for _i in hits:
 		var tgt: Variant = ctx.get("source") if self_target else ctx.get("target")
 		if indiscriminate:
 			tgt = _resolve_random_enemy(ctx)
 			if tgt == null:
 				return
-		scene.deal_damage(ctx.get("source"), tgt, dmg_value, effect)
+		var hit_value: int = dmg_value
+		if dice_n > 0 and dice_sides > 0:
+			hit_value = 0
+			for _d in dice_n:
+				hit_value += _rng.randi_range(1, dice_sides)
+		scene.deal_damage(ctx.get("source"), tgt, hit_value, effect)
 
 # Mode-agnostic random living enemy for indiscriminate effects. Prefers the
 # scene's own picker (strategy's units, action's enemy dicts) and falls back to

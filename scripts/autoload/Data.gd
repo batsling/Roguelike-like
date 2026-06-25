@@ -7,6 +7,7 @@ var _cards: Dictionary = {}             # StringName -> CardData
 var _items: Dictionary = {}             # StringName -> ItemData
 var _enemies: Dictionary = {}           # StringName -> EnemyData
 var _action_enemies: Dictionary = {}    # StringName -> ActionEnemyData
+var _strategy_enemies: Dictionary = {}  # StringName -> StrategyEnemyData
 var _events: Dictionary = {}            # StringName -> EventData
 var _games: Dictionary = {}             # StringName -> GameData
 var _characters: Dictionary = {}        # StringName -> CharacterData
@@ -35,6 +36,7 @@ func _ready() -> void:
 	_load_dir("res://data/items/", _items)
 	_load_dir("res://data/enemies/", _enemies)
 	_load_dir("res://data/action_enemies/", _action_enemies)
+	_load_dir("res://data/strategy_enemies/", _strategy_enemies)
 	_load_dir("res://data/events/", _events)
 	_load_dir("res://data/games/", _games)
 	_load_dir("res://data/characters/", _characters)
@@ -53,9 +55,9 @@ func _ready() -> void:
 	strategy_attacks = (_load_config("res://data/strategy_attacks.tres") as StrategyAttackLibrary)
 	if strategy_attacks == null:
 		strategy_attacks = StrategyAttackLibrary.new()
-	print("[Data] Loaded %d cards, %d items, %d enemies (+%d action), %d events, %d games, %d characters" % [
+	print("[Data] Loaded %d cards, %d items, %d enemies (+%d action, +%d strategy), %d events, %d games, %d characters" % [
 		_cards.size(), _items.size(), _enemies.size(), _action_enemies.size(),
-		_events.size(), _games.size(), _characters.size()
+		_strategy_enemies.size(), _events.size(), _games.size(), _characters.size()
 	])
 
 # Loads a single config .tres, returning null (with a warning) if missing or
@@ -118,6 +120,9 @@ func get_enemy(id: StringName) -> EnemyData:
 
 func get_action_enemy(id: StringName) -> ActionEnemyData:
 	return _action_enemies.get(id)
+
+func get_strategy_enemy(id: StringName) -> StrategyEnemyData:
+	return _strategy_enemies.get(id)
 
 func get_event(id: StringName) -> EventData:
 	return _events.get(id)
@@ -260,6 +265,9 @@ func all_enemies() -> Array:
 
 func all_action_enemies() -> Array:
 	return _action_enemies.values()
+
+func all_strategy_enemies() -> Array:
+	return _strategy_enemies.values()
 
 func all_events() -> Array:
 	return _events.values()

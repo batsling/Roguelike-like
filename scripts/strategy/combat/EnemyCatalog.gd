@@ -75,13 +75,22 @@ const _ARCHETYPES: Dictionary = {
 }
 
 static func intents_for(kind: String, unit: BattleUnit) -> Array:
-	var defs: Array = _ARCHETYPES.get(kind, [])
+	var defs: Array = _defs_for(kind)
 	if defs.is_empty():
 		return [_fallback_intent(unit)]
 	var out: Array = []
 	for d in defs:
 		out.append(_build(d))
 	return out
+
+# Prefer the data-driven move-set authored on the enemiesS sheet
+# (StrategyEnemyData.intents); fall back to the built-in archetypes for any kind
+# not on the sheet so prototype enemies keep playing.
+static func _defs_for(kind: String) -> Array:
+	var data: StrategyEnemyData = Data.get_strategy_enemy(StringName(kind)) if Data else null
+	if data != null and not data.intents.is_empty():
+		return data.intents
+	return _ARCHETYPES.get(kind, [])
 
 static func _build(def: Dictionary) -> EnemyIntent:
 	var i := EnemyIntentScript.new()

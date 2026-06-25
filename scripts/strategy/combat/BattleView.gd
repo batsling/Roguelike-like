@@ -48,14 +48,25 @@ const PANEL_BG := Color(0.09, 0.07, 0.13, 0.96)
 const PANEL_BORDER := Color(0.42, 0.33, 0.55, 0.9)
 const BACKDROP := Color(0.04, 0.035, 0.07, 1.0)
 
-# Per-archetype drop weights. Rolled when an enemy dies; the spawned items go
-# onto the battlefield and persist back to the source room on combat end.
+# Per-archetype gold drop. Rolled when an enemy dies; the gold goes onto the
+# battlefield and persists back to the source room on combat end. Enemies never
+# drop items. Source of truth is the enemiesS sheet (StrategyEnemyData's gold_
+# fields); this const is the fallback for kinds not on the sheet.
 const ENEMY_LOOT_TABLE := {
-	"rat":   { "gold_chance": 0.50, "gold_min":  2, "gold_max":  6, "item_chance": 0.05 },
-	"snake": { "gold_chance": 0.50, "gold_min":  3, "gold_max":  8, "item_chance": 0.10 },
-	"orc":   { "gold_chance": 0.70, "gold_min":  6, "gold_max": 14, "item_chance": 0.20 },
-	"troll": { "gold_chance": 0.90, "gold_min": 12, "gold_max": 24, "item_chance": 0.35 },
+	"rat":   { "gold_chance": 0.50, "gold_min":  2, "gold_max":  6 },
+	"snake": { "gold_chance": 0.50, "gold_min":  3, "gold_max":  8 },
+	"orc":   { "gold_chance": 0.70, "gold_min":  6, "gold_max": 14 },
+	"troll": { "gold_chance": 0.90, "gold_min": 12, "gold_max": 24 },
 }
+
+# Gold table for `kind`, preferring the data-driven StrategyEnemyData fields and
+# falling back to ENEMY_LOOT_TABLE. Empty dict = no drop.
+func _loot_table_for(kind: String) -> Dictionary:
+	var d: StrategyEnemyData = Data.get_strategy_enemy(StringName(kind)) if Data else null
+	if d != null and (d.gold_chance > 0.0 or d.gold_max > 0):
+		return { "gold_chance": d.gold_chance, "gold_min": d.gold_min,
+			"gold_max": d.gold_max }
+	return ENEMY_LOOT_TABLE.get(kind, {})
 
 # What the player is currently selecting in the grid view.
 enum Pending { NONE, AIM }
@@ -641,10 +652,10 @@ func _enemy_tooltip_text(u) -> String:
 			if it == null:
 				continue
 			var marker: String = "▶ " if String(it.id) == next_id else "   "
-			var val: int = it.headline_value()
+			var lbl: String = it.headline_label()
 			var parts: Array = []
-			if val > 0:
-				parts.append("%d dmg" % val if it.target_kind != "self" else "%d" % val)
+			if lbl != "":
+				parts.append("%s dmg" % lbl if it.target_kind != "self" else lbl)
 			parts.append("rng %d" % it.range_max)
 			if it.cooldown > 0:
 				parts.append("cd %d" % it.cooldown)
@@ -1074,13 +1085,16 @@ func _collect_item(entry: Dictionary) -> String:
 			StrategyItem.ItemType.GOLD:
 				GameState.change_gold(int(item.amount))
 				_battle_map.remove_item_entry(entry)
+				Notifications.notify("Picked up %d gold." % int(item.amount), Color(1.0, 0.84, 0.3))
 				return "+%d gold" % int(item.amount)
 			StrategyItem.ItemType.KEY:
 				StrategyState.keys += 1
 				_battle_map.remove_item_entry(entry)
+				Notifications.notify("Picked up a key.", Color(0.95, 0.85, 0.45))
 				return "+key"
 			_:
 				_battle_map.remove_item_entry(entry)
+				Notifications.notify("Picked up %s." % str(item.item_name), Color(0.7, 0.85, 1.0))
 				return "+%s" % str(item.item_name)
 	if player_entity == null:
 		return ""
@@ -1088,6 +1102,7 @@ func _collect_item(entry: Dictionary) -> String:
 		return "(pack full: %s)" % str(item.item_name)
 	player_entity.inventory.append(item)
 	_battle_map.remove_item_entry(entry)
+	Notifications.notify("Picked up %s." % str(item.item_name), Color(0.7, 0.85, 1.0))
 	return "picked up %s" % str(item.item_name)
 
 # ----------------------------------------------------------------------
@@ -1780,23 +1795,14 @@ func leech_to_player(amount: int) -> void:
 func _drop_enemy_loot(unit) -> void:
 	if _battle_map == null:
 		return
-	var table = ENEMY_LOOT_TABLE.get(str(unit.unit_name))
-	if table == null:
+	var table = _loot_table_for(str(unit.unit_name))
+	if table.is_empty():
 		return
+	# Enemies drop gold only — never items.
 	var pos: Vector2i = unit.position
 	if _loot_rng.randf() < float(table.gold_chance):
 		var amt: int = _loot_rng.randi_range(int(table.gold_min), int(table.gold_max))
 		_battle_map.add_dropped_item(StrategyItem.make_gold(pos, amt), pos)
-	if _loot_rng.randf() < float(table.item_chance):
-		var roll: int = _loot_rng.randi() % 10
-		var it
-		if roll < 6:
-			it = StrategyItem.make_health_potion(pos)
-		elif roll < 9:
-			it = StrategyItem.make_strength_scroll(pos)
-		else:
-			it = StrategyItem.make_lightning_scroll(pos)
-		_battle_map.add_dropped_item(it, pos)
 	_grid_view.notify_units_changed()
 
 func _check_battle_end_after_effect() -> void:
@@ -1934,8 +1940,10 @@ func _refresh_initiative() -> void:
 		])
 		if u.is_alive() and not u.is_player and not u.intent_telegraph.is_empty():
 			var tel: Dictionary = u.intent_telegraph
-			var val: int = int(tel.get("value", 0))
-			var tail: String = " (%d)" % val if val > 0 else ""
+			var lbl: String = str(tel.get("label", ""))
+			if lbl == "" and int(tel.get("value", 0)) > 0:
+				lbl = str(int(tel.get("value", 0)))
+			var tail: String = " (%s)" % lbl if lbl != "" else ""
 			lines.append("    next: %s %s%s" % [
 				str(tel.get("icon", "")), str(tel.get("name", "")), tail,
 			])

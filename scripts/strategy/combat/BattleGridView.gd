@@ -338,11 +338,15 @@ func _draw_intent_telegraph(u, x: int, baseline_y: int) -> void:
 	# other. The full intent name appears in the initiative panel.
 	var tel: Dictionary = u.intent_telegraph
 	var icon: String = str(tel.get("icon", "?"))
-	var value: int = int(tel.get("value", 0))
+	# Prefer the formatted label ("1D3" for dice, "5" for flat); fall back to the
+	# numeric value for older telegraphs without a label.
+	var label: String = str(tel.get("label", ""))
+	if label == "" and int(tel.get("value", 0)) > 0:
+		label = str(int(tel.get("value", 0)))
 	var color: Color = tel.get("color", Color(1, 0.7, 0.7))
 	var text: String = icon
-	if value > 0:
-		text = "%s%d" % [icon, value]
+	if label != "":
+		text = "%s%s" % [icon, label]
 	var font: Font = ThemeDB.fallback_font
 	var font_size: int = 10
 	var sz: Vector2 = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
@@ -506,6 +510,10 @@ func _draw() -> void:
 			# Character avatar token (a touch larger than the plain marker).
 			token_r = ts * 0.42
 			DrawUtil.draw_circular_texture(self, center, token_r, _player_icon)
+		elif not u.is_player and u.is_alive() and u.icon != null:
+			# Enemy sprite token (StrategyEnemyData.image), e.g. the Sewer Rat.
+			token_r = ts * 0.42
+			DrawUtil.draw_circular_texture(self, center, token_r, u.icon)
 		else:
 			draw_circle(center, token_r, col)
 		# Subtle outline so tokens read against the floor.
