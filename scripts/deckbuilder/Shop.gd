@@ -10,6 +10,10 @@ signal closed
 const ITEM_PRICES := {0: 8, 1: 15, 2: 25, 3: 35, 4: 40}
 const CARD_PRICES := {0: 0, 1: 15, 2: 30, 3: 50, 4: 80}
 const REMOVE_PRICE := 50
+# Potions sell unidentified, priced by rarity index (Common..Legendary).
+const POTION_PRICES := {0: 10, 1: 18, 2: 30, 3: 45}
+# Pay to reveal one carried potion type.
+const IDENTIFY_PRICE := 20
 
 # Panel + section geometry. Kept here so the layout reads in one place; the
 # shop is built entirely in code and shared by every combat (action floor +
@@ -25,6 +29,9 @@ const RARITY_COLORS := [
 
 var _items: Array = []           # [{item: ItemData, price, purchased, buy_btn, cell}]
 var _cards: Array = []           # [{card: CardData, price, purchased, buy_btn, view}]
+var _potions: Array = []         # [{potion: PotionData, price, purchased, buy_btn, cell}]
+var _potion_btns: Array[Button] = []
+var _identify_btn: Button = null
 var _remove_used: bool = false
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -67,6 +74,16 @@ func _roll_inventory() -> void:
 			"price": int(CARD_PRICES.get(picked.rarity, 20)),
 			"purchased": false,
 		})
+
+	_potions.clear()
+	for _i in range(2):
+		var p: PotionData = Data.roll_potion(_rng)
+		if p != null:
+			_potions.append({
+				"potion": p,
+				"price": int(POTION_PRICES.get(p.rarity_index(), 15)),
+				"purchased": false,
+			})
 
 # ---------------------------------------------------------------------------
 # UI build
@@ -137,6 +154,15 @@ func _build_ui() -> void:
 	for entry in _cards:
 		cards_row.add_child(_build_card_cell(entry))
 
+	if not _potions.is_empty():
+		root.add_child(_section_header("POTIONS"))
+		var potions_row := HBoxContainer.new()
+		potions_row.add_theme_constant_override("separation", 16)
+		potions_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		root.add_child(potions_row)
+		for entry in _potions:
+			potions_row.add_child(_build_potion_cell(entry))
+
 	root.add_child(_section_header("SERVICES"))
 
 	var svc_row := HBoxContainer.new()
@@ -148,6 +174,11 @@ func _build_ui() -> void:
 	_remove_btn.text = "✂  Remove a card  (%dg)" % REMOVE_PRICE
 	_remove_btn.pressed.connect(_open_remove_picker)
 	svc_row.add_child(_remove_btn)
+	_identify_btn = Button.new()
+	_identify_btn.custom_minimum_size = Vector2(360, 46)
+	_identify_btn.text = "🔍  Identify a potion  (%dg)" % IDENTIFY_PRICE
+	_identify_btn.pressed.connect(_open_identify_picker)
+	svc_row.add_child(_identify_btn)
 
 	var leave_row := HBoxContainer.new()
 	leave_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -253,6 +284,129 @@ func _build_card_cell(entry: Dictionary) -> Control:
 	_card_btns.append(buy)
 	return vb
 
+# A potion offer: sold UNIDENTIFIED, so it shows the mystery bottle + a generic
+# label. Buying drops it (still unidentified) into the loot belt.
+func _build_potion_cell(entry: Dictionary) -> Control:
+	var potion: PotionData = entry.potion
+	var known: bool = PotionSystem.is_identified(potion.id)
+	var rcol: Color = _rarity_color(potion.rarity_index())
+
+	var cell := PanelContainer.new()
+	cell.custom_minimum_size = Vector2(220, 180)
+	cell.add_theme_stylebox_override("panel",
+		_sb(Color(0.14, 0.13, 0.18, 0.96), rcol.darkened(0.2), 1, 10))
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 5)
+	cell.add_child(vb)
+
+	var icon := TextureRect.new()
+	icon.texture = PotionSystem.art_texture(potion)
+	icon.custom_minimum_size = Vector2(0, 58)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	vb.add_child(icon)
+
+	var name_l := Label.new()
+	name_l.text = PotionSystem.display_name(potion)
+	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_l.add_theme_font_size_override("font_size", 15)
+	name_l.add_theme_color_override("font_color", rcol)
+	vb.add_child(name_l)
+
+	var desc_l := Label.new()
+	desc_l.text = potion.effect_text if known else "A mystery potion."
+	desc_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_l.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	desc_l.add_theme_font_size_override("font_size", 11)
+	desc_l.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
+	vb.add_child(desc_l)
+
+	var buy := Button.new()
+	buy.pressed.connect(func(): _buy_potion(entry))
+	vb.add_child(buy)
+
+	entry["cell"] = cell
+	entry["buy_btn"] = buy
+	_potion_btns.append(buy)
+	return cell
+
+func _buy_potion(entry: Dictionary) -> void:
+	if entry.purchased or GameState.gold < entry.price:
+		return
+	GameState.spend_gold(entry.price)
+	GameState.add_potion_loot(entry.potion.id)
+	entry.purchased = true
+	GameLog.add("Bought a potion for %dg." % entry.price, Color(0.7, 1.0, 0.7))
+	_refresh_buttons()
+
+# Pay to reveal one carried, still-unidentified potion type.
+func _open_identify_picker() -> void:
+	if GameState.gold < IDENTIFY_PRICE:
+		return
+	# Unique unidentified potion ids the player is carrying.
+	var seen: Dictionary = {}
+	var ids: Array = []
+	for e in GameState.loot_potions():
+		var pid := StringName(e.get("id", ""))
+		if pid != &"" and not PotionSystem.is_identified(pid) and not seen.has(pid):
+			seen[pid] = true
+			ids.append(pid)
+	if ids.is_empty():
+		GameLog.add("No unidentified potions to identify.", Color(0.8, 0.8, 0.5))
+		return
+
+	var picker := Control.new()
+	picker.set_anchors_preset(Control.PRESET_FULL_RECT)
+	picker.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.65)
+	picker.add_child(dim)
+	var panel := Panel.new()
+	panel.size = Vector2(560, 460)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	picker.add_child(panel)
+	var title := Label.new()
+	title.position = Vector2(20, 16)
+	title.size = Vector2(520, 28)
+	title.text = "Identify a potion  (%dg)" % IDENTIFY_PRICE
+	title.add_theme_font_size_override("font_size", 18)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(20, 60)
+	scroll.size = Vector2(520, 340)
+	panel.add_child(scroll)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	scroll.add_child(vbox)
+	for pid in ids:
+		var potion: PotionData = Data.get_potion(pid)
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(500, 40)
+		# Show the mystery bottle colour so the player knows which they're paying for.
+		btn.text = "Unidentified Potion (%s)" % PotionSystem.unidentified_color(pid).replace("Unidentified_", "")
+		btn.pressed.connect(func(): _complete_identify(pid, picker))
+		vbox.add_child(btn)
+	var cancel := Button.new()
+	cancel.position = Vector2(220, 410)
+	cancel.size = Vector2(120, 40)
+	cancel.text = "Cancel"
+	cancel.pressed.connect(func(): picker.queue_free())
+	panel.add_child(cancel)
+	add_child(picker)
+
+func _complete_identify(pid: StringName, picker: Control) -> void:
+	if GameState.gold < IDENTIFY_PRICE:
+		picker.queue_free()
+		return
+	GameState.spend_gold(IDENTIFY_PRICE)
+	PotionSystem.identify(pid)
+	_refresh_buttons()
+	picker.queue_free()
+
 # ---------------------------------------------------------------------------
 # Refresh + buy
 # ---------------------------------------------------------------------------
@@ -262,10 +416,24 @@ func _refresh_buttons() -> void:
 		_format_item_btn(_item_btns[i], _items[i])
 	for i in range(_card_btns.size()):
 		_format_card_btn(_card_btns[i], _cards[i])
+	for i in range(_potion_btns.size()):
+		_format_potion_btn(_potion_btns[i], _potions[i])
 	if _gold_label != null:
 		_gold_label.text = "Gold: %d" % GameState.gold
 	if _remove_btn != null and not _remove_used:
 		_remove_btn.disabled = GameState.gold < REMOVE_PRICE
+	if _identify_btn != null:
+		_identify_btn.disabled = GameState.gold < IDENTIFY_PRICE
+
+func _format_potion_btn(btn: Button, entry: Dictionary) -> void:
+	if entry.purchased:
+		btn.text = "SOLD"
+		btn.disabled = true
+		if entry.has("cell") and entry.cell != null:
+			entry.cell.modulate = Color(0.55, 0.55, 0.55)
+		return
+	btn.text = "Buy  •  %dg" % entry.price
+	btn.disabled = GameState.gold < entry.price
 
 func _format_item_btn(btn: Button, entry: Dictionary) -> void:
 	if entry.purchased:
