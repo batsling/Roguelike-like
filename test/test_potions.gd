@@ -138,3 +138,55 @@ func test_explosive_ampoule_hits_all_targets() -> void:
 	PotionSystem.apply_to_targets(p, [a, b], ctx)
 	assert_eq(a.hp, 90, "Explosive Ampoule deals 10 to each target")
 	assert_eq(b.hp, 90)
+
+# --- Throw range + splash footprints ----------------------------------------
+
+func test_throw_range_scales_with_strength() -> void:
+	var saved: int = GameState.strength
+	GameState.strength = 0
+	assert_eq(PotionSystem.throw_range(), 4, "base throw range is 4")
+	GameState.strength = 6
+	assert_eq(PotionSystem.throw_range(), 7, "+1 per 2 Strength (6 -> +3)")
+	GameState.strength = saved
+
+func test_strategy_splash_offsets() -> void:
+	# Normal throw: a plus (centre + 4 orthogonal) = 5 tiles, manhattan <= 1.
+	var plus: Array = PotionSystem.strategy_splash_offsets(false)
+	assert_eq(plus.size(), 5, "plus footprint is 5 tiles")
+	assert_true(plus.has(Vector2i(0, 0)) and plus.has(Vector2i(1, 0)) and plus.has(Vector2i(0, -1)))
+	assert_false(plus.has(Vector2i(1, 1)), "no diagonals in the plus")
+	# Cleave: radius-2 diamond, manhattan <= 2 = 13 tiles.
+	var diamond: Array = PotionSystem.strategy_splash_offsets(true)
+	assert_eq(diamond.size(), 13, "radius-2 diamond is 13 tiles")
+	assert_true(diamond.has(Vector2i(2, 0)) and diamond.has(Vector2i(1, 1)))
+	assert_false(diamond.has(Vector2i(2, 1)), "manhattan>2 excluded")
+
+func test_manhattan_disc_footprint() -> void:
+	# The StrategyAttackLibrary manhattan disc backs the thrown-potion footprint.
+	var lib := StrategyAttackLibrary.new()
+	var spec := {"family": "disc", "aim": "tile", "radius": 1, "manhattan": true}
+	var tiles: Array = lib.footprint(spec, Vector2i(5, 5), Vector2i(5, 5))
+	assert_eq(tiles.size(), 5, "manhattan radius-1 disc is a plus (5 tiles)")
+	assert_false(tiles.has(Vector2i(6, 6)), "no diagonal in a manhattan disc")
+
+# --- Reward / scroll-stub loot ----------------------------------------------
+
+func test_grant_random_consumable_adds_an_entry() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	var before: int = GameState.loot_items.size()
+	var e: Dictionary = GameState.grant_random_consumable_loot(rng)
+	assert_false(e.is_empty(), "a consumable is always granted")
+	assert_eq(GameState.loot_items.size(), before + 1)
+	assert_true(["potion", "scroll"].has(String(e.get("type", ""))))
+
+func test_add_loot_scroll_is_inert_stub() -> void:
+	GameState.add_loot("scroll", 1)
+	assert_eq(GameState.get_loot_count("scroll"), 1, "scroll stub counts")
+	# Scroll stubs carry no usable potion id.
+	var found := false
+	for l in GameState.loot_items:
+		if l is Dictionary and String(l.get("type", "")) == "scroll":
+			found = true
+			assert_false(l.has("id"), "scroll stub has no potion id")
+	assert_true(found)
