@@ -18,10 +18,10 @@ const LOOP_MAX_DIST = 28.0
 # Source of truth is the enemiesS sheet (StrategyEnemyData's min_floor /
 # spawn_weight); this const is the fallback when no strategy enemies are loaded.
 const ENEMY_POOL = [
-	{ "kind": "rat",    "min_floor": 1, "weight": 4 },
-	{ "kind": "snake",  "min_floor": 1, "weight": 3 },
-	{ "kind": "orc",    "min_floor": 2, "weight": 2 },
-	{ "kind": "troll",  "min_floor": 4, "weight": 1 },
+	{ "kind": "snake",       "min_floor": 1, "weight": 4 },
+	{ "kind": "hobgoblin",   "min_floor": 1, "weight": 3 },
+	{ "kind": "rattlesnake", "min_floor": 2, "weight": 3 },
+	{ "kind": "troll",       "min_floor": 4, "weight": 1 },
 ]
 
 # Data-driven enemy pool, sorted by descending spawn weight then kind for a

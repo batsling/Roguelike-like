@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="StrategyEnemyData" load_steps=2 format=3 uid="uid://strategy_enemy_rattlesnake"]
+
+[ext_resource type="Script" path="res://scripts/resources/StrategyEnemyData.gd" id="1_se"]
+
+[resource]
+script = ExtResource("1_se")
+id = &"rattlesnake"
+display_name = "Rattlesnake"
+difficulty = 1
+weight = 2
+hp_min = 12
+hp_max = 18
+speed = 4
+intents = [
+	{"id": "bite", "prio": 1, "cd": 0, "range": 1, "shape": "poke", "params": {"size": "small"}, "target": "enemy", "cond": "", "icon": "x", "name": "Bite", "effects": [{"type": "dmg", "value": 16, "target": "enemy", "dice": [2, 8]}, {"type": "status", "status": "weak", "stacks": 1, "target": "enemy"}]}
+]
+min_floor = 2
+spawn_weight = 3
+gold_chance = 0.6
+gold_min = 5
+gold_max = 10
+source_game = "Rogue"
+tags = PackedStringArray()
+portrait_color = Color(0.6, 0.5, 0.35, 1)
+glyph = "r"

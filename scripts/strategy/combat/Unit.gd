@@ -47,6 +47,11 @@ extends Resource
 # with the deckbuilder + action CombatActor model. Runtime-only, rebuilt
 # each combat; rendered as icons when the unit is hovered (BattleGridView).
 var statuses: Dictionary = {}               # StringName -> int stacks
+# Statuses flagged Permanent (addonsnew `permanent` hook): they tick like normal
+# but never decay. Keyed StringName -> true; consulted by
+# Stats.decay_actor_statuses via is_status_permanent(). The Troll's starting
+# Regeneration uses this so its 5 stacks heal every turn forever.
+var permanent_statuses: Dictionary = {}     # StringName -> true
 
 # Damage taken since this unit's last turn boundary (Shifting status). Fed by
 # the TriggerBus.damage_taken signal and reset by Stats.tick_actor_statuses.
@@ -104,6 +109,16 @@ func add_status(status_id: StringName, stacks: int) -> void:
 func get_status(status_id: StringName) -> int:
 	return int(statuses.get(status_id, 0))
 
+# Permanent statuses (addonsnew `permanent`): flagged here, skipped by decay.
+func set_status_permanent(status_id: StringName, on: bool = true) -> void:
+	if on:
+		permanent_statuses[status_id] = true
+	else:
+		permanent_statuses.erase(status_id)
+
+func is_status_permanent(status_id: StringName) -> bool:
+	return permanent_statuses.has(status_id)
+
 func recompute_mana_caps() -> void:
 	# Hooks for stat changes mid-combat (relic procs etc); idempotent.
 	max_mana = 3 + 1 * cha_stat
@@ -137,27 +152,39 @@ static func from_player(entity: StrategyEntity) -> BattleUnit:
 	u.block = 0
 	return u
 
-# Baseline initiative; an enemy's `speed` is centred here so the movement budget
-# stays at BASE_MOVE for a default enemy (see `_move_for_speed`).
-const DEFAULT_SPEED := 4
+# Baseline initiative; an enemy's `speed` is the signed offset from this. A
+# speed of 0 is the baseline (4 tiles of movement, same turn cadence as the
+# player); positive speed adds tiles/cadence, negative subtracts. See
+# `_move_for_speed`.
+const DEFAULT_SPEED := 0
 
 # Fallback presets for kinds NOT defined on the enemiesS sheet (StrategyEnemyData
 # is the source of truth — see data/strategy_enemies/). `speed` now drives BOTH
 # the turn cadence and the tile budget (a faster enemy acts more often AND walks
 # further), so there's no separate `move` column. `weight` is the 1-5 class.
 const ENEMY_PRESETS := {
-	"rat":   { "max_hp":  8, "speed": 4, "attack": 3, "weight": 1 },
-	"snake": { "max_hp": 10, "speed": 4, "attack": 4, "weight": 2 },
-	"orc":   { "max_hp": 18, "speed": 4, "attack": 6, "weight": 3 },
-	"troll": { "max_hp": 30, "speed": 4, "attack": 10, "weight": 5 },
+	"snake":       { "max_hp": 10, "speed": 4, "attack": 4, "weight": 1 },
+	"rattlesnake": { "max_hp": 15, "speed": 4, "attack": 8, "weight": 2 },
+	"hobgoblin":   { "max_hp": 22, "speed": 0, "attack": 4, "weight": 2 },
+	"troll":       { "max_hp": 63, "speed": -4, "attack": 8, "weight": 5 },
 }
 
-# Tile budget from the single speed stat: BASE_MOVE at the baseline, ±1 tile per
-# 2 points off it (mirrors the player's BASE_MOVE + speed/2). Clamped to ≥ 1.
+# Tile budget from the single speed stat: BASE_MOVE (4) at the baseline speed 0,
+# ±1 tile per 4 points of speed (speed 4 → 5, speed -4 → 3). Clamped to ≥ 1 so a
+# heavy penalty can't pin a unit in place. The same curve sets the initiative
+# weight (see `_init_weight`), so speed drives cadence and movement in lock-step.
 static func _move_for_speed(speed: int) -> int:
 	@warning_ignore("integer_division")
-	var bonus: int = (speed - DEFAULT_SPEED) / 2
+	var bonus: int = speed / 4
 	return maxi(1, BASE_MOVE + bonus)
+
+# Initiative weight (act-counter gain per tick). Shares the movement curve so a
+# baseline speed-0 enemy keeps pace with the speed-4 player (both gain 4/tick),
+# while negative speed slows cadence without ever zeroing it (clamped ≥ 1) — the
+# turn engine adds this each tick and a unit acts at ACT_THRESHOLD, so a 0 here
+# would freeze it out forever.
+static func _init_weight(speed: int) -> int:
+	return _move_for_speed(speed)
 
 static func from_enemy_kind(kind: String) -> BattleUnit:
 	var u := BattleUnit.new()
@@ -167,18 +194,29 @@ static func from_enemy_kind(kind: String) -> BattleUnit:
 	if data != null:
 		u.max_hp = randi_range(data.hp_min, data.hp_max) if data.hp_max > data.hp_min else data.hp_max
 		u.hp = u.max_hp
-		u.speed = data.speed
+		u.speed = _init_weight(data.speed)
 		u.weight = data.weight
 		u.move_range = _move_for_speed(data.speed)
 		u.basic_attack_def = { "damage": data.basic_damage(), "range": 1, "shape": "melee" }
 		u.split_into = data.split_into
 		u.split_count = data.split_count
 		u.icon = data.image
+		# Starting statuses (e.g. the Troll's Permanent Regeneration). Authored in
+		# the Ability column → StrategyEnemyData.starting_statuses; a `permanent`
+		# entry is flagged so Stats.decay_actor_statuses never steps it down.
+		for ss in data.starting_statuses:
+			var sname := StringName(ss.get("status", ""))
+			var stacks := int(ss.get("stacks", 0))
+			if sname == &"" or stacks == 0:
+				continue
+			u.add_status(sname, stacks)
+			if bool(ss.get("permanent", false)):
+				u.set_status_permanent(sname, true)
 	else:
-		var preset = ENEMY_PRESETS.get(kind, { "max_hp": 10, "speed": 4, "attack": 3, "weight": 3 })
+		var preset = ENEMY_PRESETS.get(kind, { "max_hp": 10, "speed": 0, "attack": 3, "weight": 3 })
 		u.max_hp = preset.max_hp
 		u.hp = preset.max_hp
-		u.speed = preset.speed
+		u.speed = _init_weight(int(preset.speed))
 		u.weight = int(preset.get("weight", 3))
 		u.move_range = _move_for_speed(int(preset.speed))
 		u.basic_attack_def = { "damage": preset.attack, "range": 1, "shape": "melee" }

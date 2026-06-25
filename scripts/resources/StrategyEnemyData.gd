@@ -26,11 +26,12 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 @export var hp_min: int = 10
 @export var hp_max: int = 10
 
-# Single initiative/movement stat. Drives the turn cadence directly (the
-# BattleTurnManager act-counter weight) AND the per-turn tile budget, which
-# BattleUnit derives as BASE_MOVE + (speed - DEFAULT_SPEED) / 2 — so a faster
-# enemy both acts more often and walks further, with no separate move column.
-@export var speed: int = 4
+# Single, signed initiative/movement stat centred on 0 (the baseline). Drives the
+# turn cadence (the BattleTurnManager act-counter weight) AND the per-turn tile
+# budget, which BattleUnit derives as maxi(1, BASE_MOVE + speed / 4) — 4 tiles at
+# speed 0, ±1 per ±4 speed (speed 4 → 5, speed -4 → 3). So a faster enemy both
+# acts more often and walks further; both are clamped ≥ 1 so it never freezes.
+@export var speed: int = 0
 
 # Move-set: an Array of intent Dictionaries consumed verbatim by
 # EnemyCatalog._build. Each intent has the keys:
@@ -54,6 +55,13 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 # `split_into` and is consumed. Empty / 0 = never splits. Mirrors EnemyData.
 @export var split_into: StringName = &""
 @export var split_count: int = 0
+
+# Statuses the enemy starts combat with, authored in the `Ability` column. Each
+# entry is a Dictionary { "status": StringName, "stacks": int, "permanent": bool }.
+# Applied by BattleUnit.from_enemy_kind; a `permanent` entry (addonsnew
+# `permanent` hook) is flagged so it never decays — e.g. the Troll's 5
+# Regeneration.
+@export var starting_statuses: Array = []
 
 @export var source_game: String = ""
 @export var tags: PackedStringArray = PackedStringArray()

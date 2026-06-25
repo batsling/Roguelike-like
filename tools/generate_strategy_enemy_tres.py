@@ -185,19 +185,41 @@ def parse_intents(cell) -> list:
 # --- ability column (split / starting statuses, mirrors enemiesD) ---------
 
 _SPLIT = re.compile(r"^Split\s+(\d+)\s+(.+)$", re.IGNORECASE)
+# A starting status: "<Status> <N> [Permanent]" — e.g. "Regeneration 5 Permanent"
+# or "Weak 2". The trailing `Permanent` keyword (addonsnew `permanent` hook) flags
+# the stack so it never decays. Status name is slugged (regeneration, plated_armor).
+_START_STATUS = re.compile(r"^(.+?)\s+(\d+)(?:\s+(permanent))?$", re.IGNORECASE)
 
 
 def parse_abilities(cell):
+    """Return (split_into, split_count, starting_statuses).
+
+    starting_statuses is a list of {status, stacks, permanent} dicts.
+    `Ability` tokens are '/'-separated: "Split 2 rat", "Regeneration 5 Permanent".
+    """
     split_into, split_count = "", 0
+    starting = []
     if _is_na(cell):
-        return split_into, split_count
+        return split_into, split_count, starting
     for raw in str(cell).split("/"):
         tok = raw.strip()
+        if not tok or tok.upper() in ("N/A", "NONE"):
+            continue
         m = _SPLIT.match(tok)
         if m:
             split_count = int(m.group(1))
             split_into = slug(m.group(2))
-    return split_into, split_count
+            continue
+        ms = _START_STATUS.match(tok)
+        if ms:
+            status = re.sub(r"[^a-z0-9]+", "_", ms.group(1).strip().lower()).strip("_")
+            starting.append({
+                "status": status,
+                "stacks": int(ms.group(2)),
+                "permanent": ms.group(3) is not None,
+            })
+            continue
+    return split_into, split_count, starting
 
 
 # --- emit -----------------------------------------------------------------
@@ -297,6 +319,8 @@ def enemy_tres(rec: dict) -> str:
     if rec["split_count"] > 0 and rec["split_into"]:
         lines.append(f'split_into = &"{rec["split_into"]}"')
         lines.append(f'split_count = {rec["split_count"]}')
+    if rec["starting_statuses"]:
+        lines.append(f'starting_statuses = {_gd_value(rec["starting_statuses"])}')
     lines += [
         f'source_game = "{esc(rec["source_game"])}"',
         f'tags = {_packed_str_array(rec["tags"])}',
@@ -335,7 +359,7 @@ def main() -> int:
         name = str(row[col["Name"]]).strip()
         eid = slug(row[col["Id"]]) if not _is_na(row[col["Id"]]) else slug(name)
         gold_chance, gold_min, gold_max = _gold(row[col["Gold"]])
-        split_into, split_count = parse_abilities(row[col["Ability"]])
+        split_into, split_count, starting_statuses = parse_abilities(row[col["Ability"]])
         tag = row[col["Tag"]]
         records.append({
             "id": eid,
@@ -344,7 +368,7 @@ def main() -> int:
             "weight": int(row[col["Weight"]] or 0),
             "hp_min": int(row[col["Min HP"]] or 0),
             "hp_max": int(row[col["Max HP"]] or 0),
-            "speed": int(row[col["Speed"]] or 4),
+            "speed": int(row[col["Speed"]] or 0),
             "intents": parse_intents(row[col["Intents"]]),
             "min_floor": int(row[col["Min Floor"]] or 1),
             "spawn_weight": int(row[col["Spawn Weight"]] or 0),
@@ -353,6 +377,7 @@ def main() -> int:
             "gold_max": gold_max,
             "split_into": split_into,
             "split_count": split_count,
+            "starting_statuses": starting_statuses,
             "source_game": "" if _is_na(row[col["Game"]]) else str(row[col["Game"]]).strip(),
             "tags": [] if _is_na(tag) else [str(tag).strip()],
             "portrait_color": packed_color(row[col["Color"]]),

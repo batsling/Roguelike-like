@@ -7,20 +7,19 @@ script = ExtResource("1_se")
 id = &"snake"
 display_name = "Snake"
 difficulty = 0
-weight = 2
-hp_min = 10
-hp_max = 10
+weight = 1
+hp_min = 8
+hp_max = 11
 speed = 4
 intents = [
-	{"id": "strike", "prio": 1, "cd": 0, "range": 1, "shape": "poke", "params": {"size": "short"}, "target": "enemy", "cond": "", "icon": "x", "name": "Strike", "effects": [{"type": "dmg", "value": 4, "target": "enemy"}]},
-	{"id": "venom_bite", "prio": 2, "cd": 3, "range": 1, "shape": "poke", "params": {"size": "short"}, "target": "enemy", "cond": "", "icon": "*", "name": "Venom", "effects": [{"type": "dmg", "value": 6, "target": "enemy"}]}
+	{"id": "bite", "prio": 1, "cd": 0, "range": 1, "shape": "poke", "params": {"size": "small"}, "target": "enemy", "cond": "", "icon": "x", "name": "Bite", "effects": [{"type": "dmg", "value": 8, "target": "enemy", "dice": [1, 8]}]}
 ]
 min_floor = 1
-spawn_weight = 3
+spawn_weight = 4
 gold_chance = 0.5
 gold_min = 3
 gold_max = 8
-source_game = ""
+source_game = "Rogue"
 tags = PackedStringArray()
 portrait_color = Color(0.4, 0.6, 0.4, 1)
 glyph = "s"

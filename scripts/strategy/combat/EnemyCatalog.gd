@@ -22,54 +22,45 @@ const EnemyIntentScript := preload("res://scripts/strategy/combat/EnemyIntent.gd
 # grid footprint (so e.g. an Orc's Bash is a forward blast that can clip several
 # targets, friendly fire included). Melee defaults to a single-tile poke.
 const _ARCHETYPES: Dictionary = {
-	"rat": [
-		{
-			"id": &"bite", "name": "Bite", "icon": "x",
-			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "poke",
-			"effects": [{"type": "dmg", "value": 3, "target": "enemy"}],
-		},
-	],
 	"snake": [
 		{
-			"id": &"strike", "name": "Strike", "icon": "x",
-			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "poke",
-			"effects": [{"type": "dmg", "value": 4, "target": "enemy"}],
-		},
-		{
-			"id": &"venom_bite", "name": "Venom", "icon": "*",
-			"range": 1, "cd": 3, "prio": 2, "target": "enemy", "shape": "poke",
-			"effects": [{"type": "dmg", "value": 6, "target": "enemy"}],
+			"id": &"bite", "name": "Bite", "icon": "x",
+			"range": 1, "cd": 0, "prio": 1, "target": "enemy",
+			"shape": "poke", "params": {"size": "small"},
+			"effects": [{"type": "dmg", "value": 8, "dice": [1, 8], "target": "enemy"}],
 		},
 	],
-	"orc": [
+	"rattlesnake": [
 		{
-			"id": &"chop", "name": "Chop", "icon": "x",
-			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "poke",
-			"effects": [{"type": "dmg", "value": 6, "target": "enemy"}],
-		},
-		{
-			"id": &"bash", "name": "Bash", "icon": "!",
-			"range": 1, "cd": 3, "prio": 2, "target": "enemy", "shape": "smash",
-			"effects": [{"type": "dmg", "value": 9, "target": "enemy"}],
+			"id": &"bite", "name": "Bite", "icon": "x",
+			"range": 1, "cd": 0, "prio": 1, "target": "enemy",
+			"shape": "poke", "params": {"size": "small"},
+			"effects": [
+				{"type": "dmg", "value": 16, "dice": [2, 8], "target": "enemy"},
+				{"type": "status", "status": "weak", "stacks": 1, "target": "enemy"},
+			],
 		},
 	],
+	"hobgoblin": [
+		{
+			"id": &"club", "name": "Club", "icon": "x",
+			"range": 1, "cd": 0, "prio": 1, "target": "enemy",
+			"shape": "poke", "params": {"size": "small"},
+			"effects": [{"type": "dmg", "value": 8, "dice": [1, 8], "target": "enemy"}],
+		},
+	],
+	# The Troll's Permanent Regeneration is a starting status (Ability column),
+	# not an intent — its turn is one three-hit maul (claw 1d8, claw 1d8, bite 2d6).
 	"troll": [
 		{
-			"id": &"smash", "name": "Smash", "icon": "x",
-			"range": 1, "cd": 0, "prio": 1, "target": "enemy", "shape": "poke",
-			"effects": [{"type": "dmg", "value": 10, "target": "enemy"}],
-		},
-		{
-			"id": &"crush", "name": "Crush", "icon": "!",
-			"range": 1, "cd": 4, "prio": 2, "target": "enemy",
-			"shape": "smash", "params": {"size": "large"},
-			"effects": [{"type": "dmg", "value": 14, "target": "enemy"}],
-		},
-		{
-			"id": &"regenerate", "name": "Regen", "icon": "+",
-			"range": 0, "cd": 5, "prio": 3, "target": "self",
-			"effects": [{"type": "heal", "value": 5, "target": "self"}],
-			"cond": "self_low_hp",
+			"id": &"maul", "name": "Maul", "icon": "x",
+			"range": 1, "cd": 0, "prio": 1, "target": "enemy",
+			"shape": "poke", "params": {"size": "small"},
+			"effects": [
+				{"type": "dmg", "value": 8, "dice": [1, 8], "target": "enemy"},
+				{"type": "dmg", "value": 8, "dice": [1, 8], "target": "enemy"},
+				{"type": "dmg", "value": 12, "dice": [2, 6], "target": "enemy"},
+			],
 		},
 	],
 }

@@ -367,6 +367,7 @@ const STATUS_ICON_PX := 18
 func _draw_unit_status_icons(u) -> void:
 	# Centered row of icons floated above the unit, shown on hover.
 	var icons: Array = []
+	var can_perm: bool = u.has_method("is_status_permanent")
 	for s in u.statuses.keys():
 		# Negative stacks (e.g. Power drained below 0) still draw, with a red
 		# minus count; only an exactly-zero status is skipped.
@@ -374,7 +375,8 @@ func _draw_unit_status_icons(u) -> void:
 			continue
 		var tex: Texture2D = Stats.status_icon(s)
 		if tex != null:
-			icons.append({"tex": tex, "stacks": int(u.statuses[s])})
+			icons.append({"tex": tex, "stacks": int(u.statuses[s]),
+				"permanent": can_perm and u.is_status_permanent(s)})
 	if icons.is_empty():
 		return
 	var gap := 2.0
@@ -393,7 +395,31 @@ func _draw_unit_status_icons(u) -> void:
 			var col: Color = Color(1.0, 0.35, 0.3) if stacks < 0 else Color.WHITE
 			draw_string(font, Vector2(x + sz - 3, top_y + sz),
 				str(stacks), HORIZONTAL_ALIGNMENT_RIGHT, -1, 9, col)
+		# Permanent statuses (addonsnew `permanent`) get a small lock at the
+		# top-right so the player can tell "this won't wear off" at a glance.
+		if bool(entry.get("permanent", false)):
+			_draw_status_lock(Vector2(x + sz * 0.5, top_y - sz * 0.06), sz * 0.5)
 		x += sz + gap
+
+# A tiny padlock glyph drawn procedurally (no art asset): a shackle arc over a
+# rounded body, with a dark outline so it reads on any status icon. `tl` is the
+# lock's top-left; `s` its size in px. Used to mark Permanent statuses.
+func _draw_status_lock(tl: Vector2, s: float) -> void:
+	var body_top: float = tl.y + s * 0.42
+	var body := Rect2(tl.x, body_top, s, s - (body_top - tl.y))
+	var gold := Color(1.0, 0.84, 0.32)
+	var dark := Color(0.12, 0.10, 0.05)
+	var shackle_c := Vector2(tl.x + s * 0.5, body_top)
+	var r: float = s * 0.28
+	# Shackle (upper semicircle), drawn dark-then-gold for a thin outline.
+	draw_arc(shackle_c, r, PI, TAU, 10, dark, s * 0.20)
+	draw_arc(shackle_c, r, PI, TAU, 10, gold, s * 0.11)
+	# Body: dark backing rect, gold face inset by ~1px on each side.
+	draw_rect(body, dark, true)
+	draw_rect(body.grow(-maxf(1.0, s * 0.12)), gold, true)
+	# Keyhole notch.
+	draw_rect(Rect2(body.position.x + body.size.x * 0.42,
+		body.position.y + body.size.y * 0.3, maxf(1.0, s * 0.16), body.size.y * 0.45), dark, true)
 
 # Mewgenics-style threat preview for a hovered enemy: every tile it could move
 # to (blue), and the strike reach that extends BEYOND that movement (red) — so

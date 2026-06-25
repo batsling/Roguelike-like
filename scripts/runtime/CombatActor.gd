@@ -28,6 +28,11 @@ var charisma: int = 0
 # combat scene's turn lifecycle, not here.
 var statuses: Dictionary = {}
 
+# Statuses flagged Permanent (addonsnew `permanent` hook): they tick like normal
+# but never decay. Keyed StringName -> true; consulted by
+# Stats.decay_actor_statuses via is_status_permanent().
+var permanent_statuses: Dictionary = {}
+
 # Enemies only: data-ref + planned move
 var data: EnemyData = null
 var planned_move: Dictionary = {}     # one entry of EnemyData.pattern
@@ -166,3 +171,13 @@ func get_status(status: StringName) -> int:
 
 func clear_status(status: StringName) -> void:
 	statuses.erase(status)
+
+# Permanent statuses (addonsnew `permanent`): flagged here, skipped by decay.
+func set_status_permanent(status: StringName, on: bool = true) -> void:
+	if on:
+		permanent_statuses[status] = true
+	else:
+		permanent_statuses.erase(status)
+
+func is_status_permanent(status: StringName) -> bool:
+	return permanent_statuses.has(status)

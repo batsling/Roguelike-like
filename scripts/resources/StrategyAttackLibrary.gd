@@ -33,8 +33,10 @@ extends Resource
 # --- Size word -> tiles -------------------------------------------------------
 # Reach (poke straight-ahead / projectile-beam travel). Distances are Chebyshev
 # (king-move) tiles, so diagonal aiming reads naturally.
+# `small` is an alias of `short` (1 tile) so an enemy's "poke small" reads with
+# the same size word the AOE families use (radius_tiles `small`).
 @export var reach_tiles: Dictionary = {
-	"short": 1, "medium": 2, "large": 3, "full": 99,
+	"small": 1, "short": 1, "medium": 2, "large": 3, "full": 99,
 }
 # AOE radius in tiles for the area families (smash depth / nova-lob disc).
 @export var radius_tiles: Dictionary = {

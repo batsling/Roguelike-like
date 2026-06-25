@@ -8,7 +8,8 @@ reach_tiles = {
 "full": 99,
 "large": 3,
 "medium": 2,
-"short": 1
+"short": 1,
+"small": 1
 }
 radius_tiles = {
 "large": 3,

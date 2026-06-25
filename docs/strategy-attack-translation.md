@@ -46,7 +46,7 @@ pattern always faces the aimed tile (Mewgenics-style).
 
 | Shape | Family | Range (tiles) | Footprint |
 |---|---|---|---|
-| `poke` | single | size reach (short 1 / medium 2 / large 3) | the one aimed tile |
+| `poke` | single | size reach (small/short 1 / medium 2 / large 3) | the one aimed tile |
 | `swing` | front_arc | 1 (melee) | 3-tile arc in front; `arc=360` → all 8 neighbours |
 | `smash` | blast | = size depth (1–3) | forward cluster, `size` tiles deep, that rotates |
 | `projectile` | line | size reach (medium 2 / large 3) | line outward; `spread`→3-wide; `pierce`→through bodies |
