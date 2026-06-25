@@ -4,17 +4,28 @@ Generate Godot PotionData .tres files from the `potions` sheet of
 tools/Roguelikes.xlsx.
 
 Mirrors generate_item_tres.py: the spreadsheet is the source of truth and the
-.tres are produced by this tool. Each sheet row carries the prose Effect line;
-the structured `effects` array that the engine actually applies is authored
-here in EFFECT_SPECS, keyed by potion name (the legacy build did the same with
-a switch in scrolls-potions.js). Keeping the spec next to the generator means a
-new potion is: add the sheet row, add an EFFECT_SPECS entry, rerun.
+.tres are produced by this tool. The structured `effects` array that the engine
+applies is parsed directly from the sheet's prose **Effect** column, so adding a
+potion is a pure sheet edit (add a row, rerun) — no generator code change.
 
   python3 tools/generate_potion_tres.py            # regenerate every potion
   python3 tools/generate_potion_tres.py --list     # print the parse, write nothing
 
-Magic-damage potions use damage_type "magic" so they scale with the player's
-Arcane (Intelligence) exactly like a magic card — see Stats.resolve_damage.
+Effect grammar (one potion = one or more clauses separated by ';'):
+  Deal N [Magic|Melee|Ranged|True] Dmg [Element] [Cleave]
+                                          -> {op:damage, value:N, damage_type, element?}
+                                             "Cleave" sets the potion's cleave flag
+  Gain +N Block                           -> {op:block, value:N}
+  Gain +N Energy                          -> {op:energy, value:N}
+  Gain +N Max Health[ and Health]         -> {op:maxhp, value:N}   (raises max AND heals)
+  Gain +N <Status> [for 1 turn]           -> {op:status, status, stacks:N, temp?}
+  Inflict N <Status>                       -> {op:status, status, stacks:N}
+
+<Status> is lower-cased to the engine's status id (Power->power, Defense->defense,
+Weak->weak, Vulnerable->vulnerable, Thorns->thorns, …). damage_type defaults to
+"magic" so damage potions scale with Arcane (Intelligence) like a magic card —
+see Stats.resolve_damage. A clause the grammar can't parse aborts that potion
+with a loud warning (no .tres written), so a typo is caught rather than guessed.
 """
 
 import argparse
@@ -31,48 +42,89 @@ XLSX_PATH = os.environ.get(
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "potions")
 POTION_IMG_DIR = os.path.join(PROJECT_ROOT, "images", "potions")
 
-# Structured effects per potion, applied to every affected target by
-# PotionSystem.apply_effect. `cleave` widens the thrown AOE. Anything not listed
-# here is skipped with a warning so the generator never invents behaviour.
-EFFECT_SPECS = {
-    "Fire Potion": {
-        "effects": [{"op": "damage", "value": 20, "damage_type": "magic", "element": "fire"}],
-    },
-    "Block Potion": {
-        "effects": [{"op": "block", "value": 12}],
-    },
-    "Energy Potion": {
-        "effects": [{"op": "energy", "value": 2}],
-    },
-    "Weak Potion": {
-        "effects": [{"op": "status", "status": "weak", "stacks": 3}],
-    },
-    "Vulnerable Potion": {
-        "effects": [{"op": "status", "status": "vulnerable", "stacks": 3}],
-    },
-    "Speed Potion": {
-        "effects": [{"op": "status", "status": "defense", "stacks": 5, "temp": True}],
-    },
-    "Flex Potion": {
-        "effects": [{"op": "status", "status": "power", "stacks": 5, "temp": True}],
-    },
-    "Fruit Juice": {
-        "effects": [{"op": "maxhp", "value": 5}],
-    },
-    "Dexterity Potion": {
-        "effects": [{"op": "status", "status": "defense", "stacks": 2}],
-    },
-    "Strength Potion": {
-        "effects": [{"op": "status", "status": "power", "stacks": 2}],
-    },
-    "Explosive Ampoule": {
-        "effects": [{"op": "damage", "value": 10, "damage_type": "magic", "element": "fire"}],
-        "cleave": True,
-    },
-    "Liquid Bronze": {
-        "effects": [{"op": "status", "status": "thorns", "stacks": 3}],
-    },
+DAMAGE_TYPES = {"magic", "melee", "ranged", "true"}
+# Status words the engine understands today (lower-cased). Unknown words still
+# emit a status effect but print a review warning so typos surface.
+KNOWN_STATUSES = {
+    "weak", "vulnerable", "power", "defense", "thorns", "frail", "dodge",
+    "bruise", "brace", "poison", "burn", "regeneration", "fear", "stun",
+    "buffer", "plated_armor", "blind",
 }
+
+
+# --------------------------------------------------------------------------
+# Effect-string parser (the sheet's prose Effect column -> structured effects)
+# --------------------------------------------------------------------------
+
+def parse_effects(text):
+    """Parse a potion's Effect string into (effects_list, cleave_bool).
+
+    Returns (None, cleave) if any clause fails to parse, so the caller can skip
+    the potion and warn rather than emit half-built behaviour.
+    """
+    raw = (text or "").strip()
+    cleave = bool(re.search(r"\bcleave\b", raw, re.I))
+    effects = []
+    for clause in (c.strip() for c in raw.split(";")):
+        if not clause:
+            continue
+        eff = _parse_clause(clause)
+        if eff is None:
+            return None, cleave
+        effects.append(eff)
+    if not effects:
+        return None, cleave
+    return effects, cleave
+
+
+def _parse_clause(clause):
+    # Strip a trailing area keyword so it doesn't pollute the element capture;
+    # the cleave flag is read from the whole string in parse_effects.
+    c = re.sub(r"\b(cleave|aoe)\b", "", clause, flags=re.I).strip()
+    low = c.lower()
+
+    # Damage: "Deal N [Type] Dmg [Element]"
+    m = re.match(r"^deals?\s+(\d+)\s+(?:(\w+)\s+)?(?:dmg|damage)\s*(\w+)?\s*$", low)
+    if m and (m.group(2) is None or m.group(2) in DAMAGE_TYPES):
+        eff = {"op": "damage", "value": int(m.group(1)),
+               "damage_type": m.group(2) or "magic"}
+        if m.group(3):
+            eff["element"] = m.group(3)
+        return eff
+
+    # Specific 'Gain +N <noun>' resources before the generic status rule.
+    m = re.match(r"^gain\s+\+?(\d+)\s+block\b", low)
+    if m:
+        return {"op": "block", "value": int(m.group(1))}
+    m = re.match(r"^gain\s+\+?(\d+)\s+energy\b", low)
+    if m:
+        return {"op": "energy", "value": int(m.group(1))}
+    m = re.match(r"^gain\s+\+?(\d+)\s+max\s+health\b", low)
+    if m:
+        return {"op": "maxhp", "value": int(m.group(1))}
+
+    # Status gain: "Gain +N <Status> [for 1 turn]"
+    m = re.match(r"^gain\s+\+?(\d+)\s+([a-z_]+)(\s+for\s+1\s+turn)?\s*$", low)
+    if m:
+        eff = {"op": "status", "status": _status_id(m.group(2)), "stacks": int(m.group(1))}
+        if m.group(3):
+            eff["temp"] = True
+        return eff
+
+    # Status inflict: "Inflict N <Status>"
+    m = re.match(r"^inflict\s+(\d+)\s+([a-z_]+)\s*$", low)
+    if m:
+        return {"op": "status", "status": _status_id(m.group(2)), "stacks": int(m.group(1))}
+
+    return None
+
+
+def _status_id(word):
+    sid = word.strip().lower()
+    if sid not in KNOWN_STATUSES:
+        print("  ? status '%s' is not in KNOWN_STATUSES — verify the engine "
+              "handles it." % sid, file=sys.stderr)
+    return sid
 
 
 def slugify(name: str) -> str:
@@ -124,12 +176,11 @@ def potion_tres(row):
     effect_text = str(row.get("Effect") or "").strip()
     img_file = str(row.get("File") or "").strip() or name.replace(" ", "").replace("'", "")
 
-    spec = EFFECT_SPECS.get(name)
-    if spec is None:
-        print("  ! no EFFECT_SPECS for '%s' — skipping" % name, file=sys.stderr)
+    effects, cleave = parse_effects(effect_text)
+    if effects is None:
+        print("  ! could not parse Effect for '%s': %r — skipping (see grammar "
+              "in the file header)" % (name, effect_text), file=sys.stderr)
         return None
-    effects = spec["effects"]
-    cleave = bool(spec.get("cleave", False))
 
     img_res = None
     if os.path.exists(os.path.join(POTION_IMG_DIR, img_file + ".png")):
