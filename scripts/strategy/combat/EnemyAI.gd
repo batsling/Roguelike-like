@@ -49,6 +49,7 @@ func plan_next(all_units: Array) -> void:
 		"name": next_intent.display_name,
 		"icon": next_intent.icon,
 		"value": next_intent.headline_value(),
+		"label": next_intent.headline_label(),
 		"color": _color_for(next_intent),
 	}
 

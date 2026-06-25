@@ -652,10 +652,10 @@ func _enemy_tooltip_text(u) -> String:
 			if it == null:
 				continue
 			var marker: String = "▶ " if String(it.id) == next_id else "   "
-			var val: int = it.headline_value()
+			var lbl: String = it.headline_label()
 			var parts: Array = []
-			if val > 0:
-				parts.append("%d dmg" % val if it.target_kind != "self" else "%d" % val)
+			if lbl != "":
+				parts.append("%s dmg" % lbl if it.target_kind != "self" else lbl)
 			parts.append("rng %d" % it.range_max)
 			if it.cooldown > 0:
 				parts.append("cd %d" % it.cooldown)
@@ -1085,13 +1085,16 @@ func _collect_item(entry: Dictionary) -> String:
 			StrategyItem.ItemType.GOLD:
 				GameState.change_gold(int(item.amount))
 				_battle_map.remove_item_entry(entry)
+				Notifications.notify("Picked up %d gold." % int(item.amount), Color(1.0, 0.84, 0.3))
 				return "+%d gold" % int(item.amount)
 			StrategyItem.ItemType.KEY:
 				StrategyState.keys += 1
 				_battle_map.remove_item_entry(entry)
+				Notifications.notify("Picked up a key.", Color(0.95, 0.85, 0.45))
 				return "+key"
 			_:
 				_battle_map.remove_item_entry(entry)
+				Notifications.notify("Picked up %s." % str(item.item_name), Color(0.7, 0.85, 1.0))
 				return "+%s" % str(item.item_name)
 	if player_entity == null:
 		return ""
@@ -1099,6 +1102,7 @@ func _collect_item(entry: Dictionary) -> String:
 		return "(pack full: %s)" % str(item.item_name)
 	player_entity.inventory.append(item)
 	_battle_map.remove_item_entry(entry)
+	Notifications.notify("Picked up %s." % str(item.item_name), Color(0.7, 0.85, 1.0))
 	return "picked up %s" % str(item.item_name)
 
 # ----------------------------------------------------------------------
@@ -1936,8 +1940,10 @@ func _refresh_initiative() -> void:
 		])
 		if u.is_alive() and not u.is_player and not u.intent_telegraph.is_empty():
 			var tel: Dictionary = u.intent_telegraph
-			var val: int = int(tel.get("value", 0))
-			var tail: String = " (%d)" % val if val > 0 else ""
+			var lbl: String = str(tel.get("label", ""))
+			if lbl == "" and int(tel.get("value", 0)) > 0:
+				lbl = str(int(tel.get("value", 0)))
+			var tail: String = " (%s)" % lbl if lbl != "" else ""
 			lines.append("    next: %s %s%s" % [
 				str(tel.get("icon", "")), str(tel.get("name", "")), tail,
 			])

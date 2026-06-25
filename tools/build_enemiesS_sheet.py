@@ -114,13 +114,13 @@ ENEMIES = [
         "Ability": "",
     },
     {
-        # First custom enemy: NetHack's sewer rat. A fast (Speed 8 = 6-tile
-        # budget), fragile weight-1 nuisance that bites for 1d3 — a fresh per-hit
-        # die roll (dmg:1d3), not a fixed value. Sprite drawn from
+        # First custom enemy: NetHack's sewer rat. A fragile weight-1 nuisance
+        # that bites for 1d3 — a fresh per-hit die roll (dmg:1d3), not a fixed
+        # value. Speed 4 (the baseline 4-tile budget). Sprite drawn from
         # images/enemies/strategy_enemies/Sewer Rat/sewer_rat_idle.png.
         "Name": "Sewer Rat", "Id": "sewer_rat", "Difficulty": "Low", "Weight": 1,
         "Game": "NetHack", "Tag": "",
-        "Min HP": 5, "Max HP": 5, "Speed": 8, "Glyph": "r",
+        "Min HP": 5, "Max HP": 5, "Speed": 4, "Glyph": "r",
         "Color": "0.5,0.45,0.4", "File": "Sewer Rat",
         "Min Floor": 1, "Spawn Weight": 4, "Gold": "40% 1-4",
         "Intents": "bite @ 1 icon=x shape swing | Bite | dmg:1d3",

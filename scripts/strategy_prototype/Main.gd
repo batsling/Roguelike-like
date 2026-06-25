@@ -75,7 +75,20 @@ func _ready() -> void:
 	_auto_walk_timer.wait_time = AUTO_WALK_INTERVAL
 	_auto_walk_timer.timeout.connect(_auto_walk_step)
 	add_child(_auto_walk_timer)
+	# When embedded in the main game, the deckbuilder Main already hosts a global
+	# toast layer above us; only the standalone scene needs its own.
+	if not _embedded:
+		_mount_toasts()
 	_new_game()
+
+# Standalone strategy scene has no global toast layer, so mount our own on a high
+# CanvasLayer so Notifications.notify (pickups, etc.) pops a top-right toast.
+func _mount_toasts() -> void:
+	var toast_layer := CanvasLayer.new()
+	toast_layer.layer = 200
+	toast_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(toast_layer)
+	toast_layer.add_child(NotificationToasts.new())
 
 func _new_game() -> void:
 	_cancel_auto_walk()
@@ -297,6 +310,7 @@ func _after_player_step(pos: Vector2i) -> void:
 		var msg := _auto_collect(it)
 		if msg != "":
 			StrategyLog.add(msg, Color(1.0, 0.9, 0.5))
+			Notifications.notify(msg, _pickup_color(it))
 
 	# Trap reveal/trigger.
 	var tile = StrategyState.map.get_tile(pos.x, pos.y)
@@ -437,10 +451,22 @@ func _try_pickup() -> void:
 			var item = items[i]
 			player.inventory.append(item)
 			items.remove_at(i)
-			StrategyLog.add("You pick up the %s." % item.item_name, Color(0.8, 0.8, 1.0))
+			var msg := "You pick up the %s." % item.item_name
+			StrategyLog.add(msg, Color(0.8, 0.8, 1.0))
+			Notifications.notify(msg, _pickup_color(item))
 			_end_player_turn()
 			return
 	StrategyLog.add("There is nothing here to pick up.", Color.GRAY)
+
+# Toast tint per pickup kind: gold reads gold, keys amber, everything else blue.
+func _pickup_color(it) -> Color:
+	match it.item_type:
+		StrategyItem.ItemType.GOLD:
+			return Color(1.0, 0.84, 0.3)
+		StrategyItem.ItemType.KEY:
+			return Color(0.95, 0.85, 0.45)
+		_:
+			return Color(0.7, 0.85, 1.0)
 
 # Collect a single ground item on walk-over. Gold/keys go to run counters;
 # other items go to the pack while it has room. Returns a log line (or "").

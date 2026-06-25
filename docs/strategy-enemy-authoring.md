@@ -94,7 +94,7 @@ as cards, spells and the deckbuilder patterns). Strategy default targets:
 | Token | Effect |
 |---|---|
 | `dmg:N` / `dmg:N:ranged` | damage the intent's target (default `enemy`) |
-| `dmg:<C>d<S>` | per-hit dice: roll `C` d`S` **fresh on every hit** (e.g. `dmg:1d3` → 1-3, NetHack-style). Unlike Determined, it is *not* fixed for the combat. The telegraph and AI read the max (`C×S`) as the threat |
+| `dmg:<C>d<S>` | per-hit dice: roll `C` d`S` **fresh on every hit** (e.g. `dmg:1d3` → 1-3, NetHack-style). Unlike Determined, it is *not* fixed for the combat. The telegraph shows the die spec (`1D3`); the AI uses the max (`C×S`) when weighing damage |
 | `heal:N[:self]` | self heal |
 | `block:N[:self]` | self block |
 | `gain:<status>:N` | self buff (→ `status` effect, `self`) |

@@ -11,7 +11,7 @@ difficulty = 0
 weight = 1
 hp_min = 5
 hp_max = 5
-speed = 8
+speed = 4
 intents = [
 	{"id": "bite", "prio": 1, "cd": 0, "range": 1, "shape": "swing", "params": {}, "target": "enemy", "cond": "", "icon": "x", "name": "Bite", "effects": [{"type": "dmg", "value": 3, "target": "enemy", "dice": [1, 3]}]}
 ]
