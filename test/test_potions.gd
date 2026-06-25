@@ -63,6 +63,22 @@ func test_color_map_is_stable_within_run() -> void:
 	assert_eq(c1, c2, "same potion keeps its mystery colour")
 	assert_true(PotionSystem.UNIDENTIFIED_COLORS.has(c1), "colour is a valid bottle")
 
+func test_color_map_cycles_palette_when_more_potions_than_colors() -> void:
+	# Future-proofing: with more potions than the 12-colour palette, colours must
+	# REUSE in order (palette[i % size]), matching the legacy assignment — not run
+	# out or error. Tested on the pure helper with synthetic ids.
+	var palette := PotionSystem.UNIDENTIFIED_COLORS
+	var n: int = palette.size()
+	var ids: Array = []
+	for i in range(n + 5):  # 5 more potions than colours
+		ids.append("p%d" % i)
+	var map: Dictionary = PotionSystem.build_color_map(ids, palette)
+	assert_eq(map.size(), ids.size(), "every potion gets a colour, even past the palette")
+	for i in range(ids.size()):
+		assert_eq(map["p%d" % i], palette[i % n], "colour cycles with wraparound")
+	# The wrapped potions share their colour with the first ones.
+	assert_eq(map["p%d" % n], map["p0"], "13th potion reuses the 1st colour")
+
 func test_color_map_assigns_every_potion_up_front() -> void:
 	# Like the legacy build, the whole map is built on first access (shuffled),
 	# not lazily one potion at a time — every loaded potion gets a colour at once.

@@ -74,17 +74,30 @@ func unidentified_color(id: StringName) -> String:
 	return String(GameState.potion_color_map[key])
 
 # Builds the per-run potion -> mystery-colour map if it hasn't been yet: shuffle
-# the palette, then assign each loaded potion id a colour in turn (wrapping).
+# the palette, then assign every loaded potion id a colour via build_color_map.
 func _ensure_potion_color_map() -> void:
 	if not GameState.potion_color_map.is_empty():
 		return
-	var shuffled: Array = UNIDENTIFIED_COLORS.duplicate()
-	shuffled.shuffle()
-	var i: int = 0
+	var ids: Array = []
 	for p in Data.all_potions():
 		if p is PotionData:
-			GameState.potion_color_map[String(p.id)] = shuffled[i % shuffled.size()]
-			i += 1
+			ids.append(String(p.id))
+	var shuffled: Array = UNIDENTIFIED_COLORS.duplicate()
+	shuffled.shuffle()
+	GameState.potion_color_map = build_color_map(ids, shuffled)
+
+# Pure assignment used by _ensure_potion_color_map (exposed for testing): give
+# each id the colour at palette[i % palette.size()], so once there are MORE
+# potions than colours the palette CYCLES and colours repeat in order — exactly
+# the legacy `shuffled[i % shuffled.length]` behaviour. `palette` is expected to
+# already be shuffled by the caller.
+func build_color_map(ids: Array, palette: Array) -> Dictionary:
+	var out: Dictionary = {}
+	if palette.is_empty():
+		return out
+	for i in range(ids.size()):
+		out[String(ids[i])] = palette[i % palette.size()]
+	return out
 
 # Texture for a potion: its real art once identified, else the run's mystery
 # bottle. Returns null only if even the fallback art is missing.
