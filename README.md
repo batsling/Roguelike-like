@@ -211,6 +211,7 @@ editing the sheet, then review the diff):
 | `generate_evolution_tres.py` | the evolved card `.tres` + `scripts/data/EvolutionCatalog.gd` from the `Evolutions` sheet |
 | `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesnew` sheet |
 | `generate_item_tres.py` | `data/items/*.tres` from the items sheet |
+| `generate_potion_tres.py` | `data/potions/*.tres` from the `potions` sheet (12 combat potions) |
 | `generate_event_tres.py` | `data/events/*.tres` from authored Python dicts |
 | `generate_game_tres.py` | `data/games/*.tres` from the curated games subgraph |
 | `generate_enemy_tres.py` | `data/enemies/*.tres` from the `enemiesD` sheet (+ copies enemy art into `assets/enemies/`) |
@@ -239,6 +240,24 @@ for how stats resolve across modes.
 Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
+
+- **Potion loot system** — the first loot consumable, ported from the legacy
+  HTML build. The `potions` sheet generates `data/potions/*.tres` (`PotionData`)
+  via `generate_potion_tres.py`; a new **`PotionSystem`** autoload owns global
+  per-type **identification**, per-run **mystery-bottle colours**, and a single
+  cross-mode **effect applier** (magic-damage potions scale with **Arcane** via
+  `Stats.resolve_damage`). Potions are gained **unidentified** and learned by
+  use or by paying at the shop. UI per mode: **deckbuilder** — a right-side
+  **Loot** button opens a scrollable potion list and using one spawns the
+  targeting arrow (any target, including yourself); **action** — a potion belt
+  where **Q drinks** the selected potion and **hold-Q + LMB throws** it with a
+  lobbing arrow into a splash (Strength-scaled range, cleave = wider); **strategy**
+  — a **Loot** section to **Drink** (self) or **Throw** to a tile (plus-shape
+  splash, cleave = radius-2 diamond), no action cost. Potions drop after combat
+  (a guaranteed potion/scroll after deckbuilder fights, a chance on the floor in
+  action/strategy), sell at the shop (with a pay-to-identify service), and can be
+  granted from the DevTools **Potions** tab. Scrolls appear as inert stubs until
+  the scroll system lands. Covered by `test/test_potions.gd`.
 
 - **Weighted enemy encounters** — combats now field a **scaled group** instead of
   a single random enemy. `scripts/runtime/EnemySpawner.gd` ports the legacy
@@ -343,8 +362,9 @@ shop, escape phase, characters, saves, collection, and game verification). The
 work still ahead — much of it porting remaining systems from the legacy HTML
 build:
 
-- **Loot system** — add the consumable loot tables: **potions**, **scrolls**,
-  and **fish**, and introduce **bombs** and **keys**.
+- **Loot system** — *potions landed* (see Recent changes). Still ahead: the
+  **scrolls** and **fish** consumable tables (scrolls currently drop as inert
+  stubs), and **bombs** and **keys**.
 - **Fix the deckbuilder map screen** — polish/repair the in-combat map view.
 - **Finish the content catalogs** — port the remaining **cards**, **items**,
   and **addons** so the Godot catalog matches the spreadsheet.
