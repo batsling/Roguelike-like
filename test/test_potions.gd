@@ -63,6 +63,21 @@ func test_color_map_is_stable_within_run() -> void:
 	assert_eq(c1, c2, "same potion keeps its mystery colour")
 	assert_true(PotionSystem.UNIDENTIFIED_COLORS.has(c1), "colour is a valid bottle")
 
+func test_color_map_assigns_every_potion_up_front() -> void:
+	# Like the legacy build, the whole map is built on first access (shuffled),
+	# not lazily one potion at a time — every loaded potion gets a colour at once.
+	PotionSystem.unidentified_color(&"fire_potion")
+	var potions: Array = Data.all_potions()
+	assert_eq(GameState.potion_color_map.size(), potions.size(),
+		"all potions assigned a colour up front")
+	# With 12 potions and 12 colours, the assignment is a bijection (all distinct).
+	if potions.size() <= PotionSystem.UNIDENTIFIED_COLORS.size():
+		var seen := {}
+		for k in GameState.potion_color_map.keys():
+			seen[GameState.potion_color_map[k]] = true
+		assert_eq(seen.size(), GameState.potion_color_map.size(),
+			"distinct colour per potion when palette is large enough")
+
 # --- Loot bookkeeping --------------------------------------------------------
 
 func test_add_and_remove_potion_loot() -> void:

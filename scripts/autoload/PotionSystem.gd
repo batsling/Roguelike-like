@@ -57,24 +57,34 @@ func display_name(potion: PotionData) -> String:
 		return "Potion"
 	return potion.display_name if is_identified(potion.id) else "Unidentified Potion"
 
-# The per-run mystery-bottle colour art base for an unidentified potion, assigned
-# the first time it's needed and remembered for the run. Distinct colours are
-# handed out until the palette is exhausted, then they wrap.
+# The per-run mystery-bottle colour art base for an unidentified potion. Mirrors
+# the legacy getPotionColorMap: the whole map is built once per run by SHUFFLING
+# the palette and assigning every potion type a colour up front (wrapping when
+# there are more potions than colours), so a given potion wears a RANDOM bottle
+# each run — the player can't memorise "red = Fire Potion" across runs. The map
+# is persisted, so a reloaded run keeps its assignment.
 func unidentified_color(id: StringName) -> String:
+	_ensure_potion_color_map()
 	var key := String(id)
-	var existing: String = String(GameState.potion_color_map.get(key, ""))
-	if existing != "":
-		return existing
-	var used: Array = GameState.potion_color_map.values()
-	var color: String = ""
-	for c in UNIDENTIFIED_COLORS:
-		if not used.has(c):
-			color = c
-			break
-	if color == "":
-		color = UNIDENTIFIED_COLORS[GameState.potion_color_map.size() % UNIDENTIFIED_COLORS.size()]
-	GameState.potion_color_map[key] = color
-	return color
+	if not GameState.potion_color_map.has(key):
+		# Defensive: a potion added after the map was built (shouldn't happen for
+		# sheet content) gets a deterministic wrap slot.
+		GameState.potion_color_map[key] = UNIDENTIFIED_COLORS[
+			GameState.potion_color_map.size() % UNIDENTIFIED_COLORS.size()]
+	return String(GameState.potion_color_map[key])
+
+# Builds the per-run potion -> mystery-colour map if it hasn't been yet: shuffle
+# the palette, then assign each loaded potion id a colour in turn (wrapping).
+func _ensure_potion_color_map() -> void:
+	if not GameState.potion_color_map.is_empty():
+		return
+	var shuffled: Array = UNIDENTIFIED_COLORS.duplicate()
+	shuffled.shuffle()
+	var i: int = 0
+	for p in Data.all_potions():
+		if p is PotionData:
+			GameState.potion_color_map[String(p.id)] = shuffled[i % shuffled.size()]
+			i += 1
 
 # Texture for a potion: its real art once identified, else the run's mystery
 # bottle. Returns null only if even the fallback art is missing.
