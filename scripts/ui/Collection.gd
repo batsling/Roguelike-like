@@ -669,7 +669,7 @@ func _potion_card(p: PotionData) -> Control:
 	vb.add_child(_label(p.effect_text, Color(0.85, 0.85, 0.88), 12, false, true))
 	if p.reference != "":
 		vb.add_child(_label("from %s" % p.reference, Color(0.55, 0.6, 0.7), 10))
-	return cell
+	return cell.panel
 
 # A scroll catalog cell: art + name + rarity, then its four outcome tiers
 # (Critical Success / Success / Fail / Critical Fail) as a revealed reference.
@@ -704,7 +704,7 @@ func _scroll_card(s: ScrollData) -> Control:
 		vb.add_child(_label("%s: %s" % [TIER_NAMES[tier], text], Color(0.85, 0.85, 0.88), 11, false, true))
 	if s.reference != "":
 		vb.add_child(_label("from %s" % s.reference, Color(0.55, 0.6, 0.7), 10))
-	return cell
+	return cell.panel
 
 func _build_reference() -> void:
 	# Sub-tab bar.

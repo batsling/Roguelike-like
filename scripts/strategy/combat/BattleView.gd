@@ -831,7 +831,7 @@ func _on_unit_turn_started(unit) -> void:
 			_set_player_buttons_enabled(false)
 			GameLog.add("%s is Stunned and loses its turn." % str(unit.unit_name).capitalize(),
 				Color(0.9, 0.85, 0.5))
-			turn_manager.end_current_turn.call_deferred()
+			_turn_manager.end_current_turn.call_deferred()
 			return
 		_status_label.text = "%s acts..." % unit.unit_name
 		_set_player_buttons_enabled(false)
@@ -2055,7 +2055,7 @@ func _on_drink_potion(loot_index: int) -> void:
 	if potion == null:
 		return
 	var u = get_player_unit()
-	var ctx := {"source": u, "scene": self, "mode": Stats.Mode.STRATEGY, "rng": _rng}
+	var ctx := {"source": u, "scene": self, "mode": Stats.Mode.STRATEGY, "rng": _loot_rng}
 	var logs: Array = PotionSystem.apply_to_target(potion, u, ctx)
 	for line in logs:
 		GameLog.add(line, PotionSystem.POTION_COLOR)
@@ -2103,7 +2103,7 @@ func _resolve_potion_throw(pos: Vector2i) -> void:
 		_grid_view.enter_idle()
 		return
 	var targets: Array = _shaped_targets_for(_pending_aim_spec, get_player_unit(), pos)
-	var ctx := {"source": get_player_unit(), "scene": self, "mode": Stats.Mode.STRATEGY, "rng": _rng}
+	var ctx := {"source": get_player_unit(), "scene": self, "mode": Stats.Mode.STRATEGY, "rng": _loot_rng}
 	var logs: Array = PotionSystem.apply_to_targets(potion, targets, ctx)
 	for line in logs:
 		GameLog.add(line, PotionSystem.POTION_COLOR)

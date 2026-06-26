@@ -386,11 +386,12 @@ func _add_card(card: CardData) -> void:
 func _add_potion(potion: PotionData) -> void:
 	GameState.add_potion_loot(potion.id)
 	Notifications.notify("Added potion: %s" % potion.display_name, Color(0.7, 0.6, 0.95))
+	GameLog.add("[dev] Added potion %s to loot." % potion.display_name, Color(0.7, 0.6, 0.95))
 
 func _add_scroll(scroll: ScrollData) -> void:
 	GameState.add_scroll_loot(scroll.id)
 	Notifications.notify("Added scroll: %s" % scroll.display_name, Color(0.61, 0.35, 0.71))
-	GameLog.add("[dev] Added potion %s to loot." % potion.display_name, Color(0.7, 0.6, 0.95))
+	GameLog.add("[dev] Added scroll %s to loot." % scroll.display_name, Color(0.61, 0.35, 0.71))
 
 
 func _add_item(item: ItemData) -> void:
