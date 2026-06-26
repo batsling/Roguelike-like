@@ -43,6 +43,13 @@ var games_beaten_held: int = 0
 var vorpal_type: int = -2
 var vorpal_weight: int = 0
 
+# Retain granted by Scroll of Enchant Weapon (crit success). Per-instance so the
+# scroll's bonus rides with the physical card (and through evolutions). The
+# +Dmg half of Enchant is applied through effect_bonuses (already honored by
+# get_effects in every mode); this flag is the Retain half, consumed by the
+# deckbuilder end-of-turn discard. False = the card has no granted Retain.
+var granted_retain: bool = false
+
 # Shared RNG for the once-per-instance Vorpal roll when a caller doesn't hand
 # one in (e.g. acquisition outside combat). Roll is persisted, so determinism
 # across a save round-trip is irrelevant — it only fires once.

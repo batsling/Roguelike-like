@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ScrollData" load_steps=2 format=3 uid="uid://scroll_scroll_of_create_food"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollData.gd" id="1_scroll"]
+
+[resource]
+script = ExtResource("1_scroll")
+id = &"scroll_of_create_food"
+display_name = "Scroll of Create Food"
+rarity = "Uncommon"
+reference = "Moria"
+preference = "Positive"
+file = "ScrollofCreateFood"
+outcomes = {"crit_good": {"description": "Chose 1 of 2 Random Uncommon or higher Food Items.", "effects": [{"op": "create_food", "mode": "choose", "count": 2, "rarity": "uncommon+"}]}, "good": {"description": "Chose 1 of 2 Random Food Items.", "effects": [{"op": "create_food", "mode": "choose", "count": 2}]}, "bad": {"description": "Get 1 Random Food Item.", "effects": [{"op": "create_food", "mode": "random", "count": 1}]}, "crit_bad": {"description": "Get 1 Random Common Food Item.", "effects": [{"op": "create_food", "mode": "random", "count": 1, "rarity": "common"}]}}

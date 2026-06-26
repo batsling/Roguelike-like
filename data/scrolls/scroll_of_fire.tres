@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ScrollData" load_steps=2 format=3 uid="uid://scroll_scroll_of_fire"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollData.gd" id="1_scroll"]
+
+[resource]
+script = ExtResource("1_scroll")
+id = &"scroll_of_fire"
+display_name = "Scroll of Fire"
+rarity = "Uncommon"
+reference = "Hack"
+preference = "Negative"
+file = "ScrollofFire"
+outcomes = {"crit_good": {"description": "Take 10 Magic Dmg Fire. Health. All Enemies Take 10 Magic Dmg Fire in your next Combat.", "effects": [{"op": "self_damage", "value": 10, "element": "fire"}, {"op": "damage_enemies_next", "value": 10, "element": "fire"}]}, "good": {"description": "Take 10 Magic Dmg Fire. All Enemies Take 10 Magic Dmg Fire in your next Combat. Destroy 1 Random Item.", "effects": [{"op": "self_damage", "value": 10, "element": "fire"}, {"op": "damage_enemies_next", "value": 10, "element": "fire"}, {"op": "destroy", "kind": "item", "count": 1}]}, "bad": {"description": "Take 10 Magic Dmg Fire. All Enemies Take 10 Magic Dmg Fire in your next Combat. Destroy 1 Random Item and 1 Random Scroll.", "effects": [{"op": "self_damage", "value": 10, "element": "fire"}, {"op": "damage_enemies_next", "value": 10, "element": "fire"}, {"op": "destroy", "kind": "item", "count": 1}, {"op": "destroy", "kind": "scroll", "count": 1}]}, "crit_bad": {"description": "Take 10 Magic Dmg Fire. All Enemies Take 10 Magic Dmg Fire in your next Combat. Destroy 1 Random Item, 1 Random Scroll, and 1 Random Potion.", "effects": [{"op": "self_damage", "value": 10, "element": "fire"}, {"op": "damage_enemies_next", "value": 10, "element": "fire"}, {"op": "destroy", "kind": "item", "count": 1}, {"op": "destroy", "kind": "scroll", "count": 1}, {"op": "destroy", "kind": "potion", "count": 1}]}}

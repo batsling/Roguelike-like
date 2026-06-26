@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ScrollData" load_steps=3 format=3 uid="uid://scroll_scroll_of_enchant_weapon"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollData.gd" id="1_scroll"]
+[ext_resource type="Texture2D" path="res://images/scrolls/EnchantWeapon.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_scroll")
+id = &"scroll_of_enchant_weapon"
+display_name = "Scroll of Enchant Weapon"
+rarity = "Common"
+reference = "Rogue"
+preference = "Positive"
+file = "EnchantWeapon"
+outcomes = {"crit_good": {"description": "Choose 1 Weapon Attack Card you own. It Gains +5 Dmg and Retain.", "effects": [{"op": "enchant_weapon", "target": "choose", "dmg": 5, "retain": true}]}, "good": {"description": "Choose 1 Weapon Attack Card you own. It Gains +5 Dmg.", "effects": [{"op": "enchant_weapon", "target": "choose", "dmg": 5}]}, "bad": {"description": "A Random Weapon Attack Card you own Gains +5 Dmg.", "effects": [{"op": "enchant_weapon", "target": "random", "dmg": 5}]}, "crit_bad": {"description": "A Random Weapon Attack Card you own Gains +2 Dmg.", "effects": [{"op": "enchant_weapon", "target": "random", "dmg": 2}]}}

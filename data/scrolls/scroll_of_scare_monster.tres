@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ScrollData" load_steps=2 format=3 uid="uid://scroll_scroll_of_scare_monster"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollData.gd" id="1_scroll"]
+
+[resource]
+script = ExtResource("1_scroll")
+id = &"scroll_of_scare_monster"
+display_name = "Scroll of Scare Monster"
+rarity = "Uncommon"
+reference = "Rogue"
+preference = "Positive"
+file = "ScrollofScareMonster"
+outcomes = {"crit_good": {"description": "Stun all Enemies at the start of the next Combat.", "effects": [{"op": "stun_enemies", "mode": "all"}]}, "good": {"description": "Choose up to 3 Enemies to Stun at the start of the next Combat.", "effects": [{"op": "stun_enemies", "mode": "choose", "count": 3}]}, "bad": {"description": "Choose 1 Enemy to Stun at the start of the next Combat.", "effects": [{"op": "stun_enemies", "mode": "choose", "count": 1}]}, "crit_bad": {"description": "Stun 1 Random Enemy at the start of the next Combat.", "effects": [{"op": "stun_enemies", "mode": "random", "count": 1}]}}

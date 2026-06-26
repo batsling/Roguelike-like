@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ScrollData" load_steps=2 format=3 uid="uid://scroll_scroll_of_aggravate_monsters"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollData.gd" id="1_scroll"]
+
+[resource]
+script = ExtResource("1_scroll")
+id = &"scroll_of_aggravate_monsters"
+display_name = "Scroll of Aggravate Monsters"
+rarity = "Uncommon"
+reference = "Rogue"
+preference = "Negative"
+file = "ScrollofAggravateMonsters"
+outcomes = {"crit_good": {"description": "All Enemies Gain +1 Power in your next Combat.", "effects": [{"op": "buff_enemies", "power": 1}]}, "good": {"description": "All Enemies Gain +2 Power in your next Combat.", "effects": [{"op": "buff_enemies", "power": 2}]}, "bad": {"description": "All Enemies Gain +3 Power in your next Combat.", "effects": [{"op": "buff_enemies", "power": 3}]}, "crit_bad": {"description": "All Enemies Gain +3 Power  and +3 Defense in your next Combat.", "effects": [{"op": "buff_enemies", "power": 3, "defense": 3}]}}

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ScrollData" load_steps=2 format=3 uid="uid://scroll_scroll_of_create_monster"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollData.gd" id="1_scroll"]
+
+[resource]
+script = ExtResource("1_scroll")
+id = &"scroll_of_create_monster"
+display_name = "Scroll of Create Monster"
+rarity = "Common"
+reference = "Rogue"
+preference = "Negative"
+file = "ScrollofCreateMonster"
+outcomes = {"crit_good": {"description": "Add a Random Enemy with 2 or less Weight to the next Combat.", "effects": [{"op": "spawn_enemies", "count": 1, "max_weight": 2}]}, "good": {"description": "Add a Random Enemy with 3 or less Weight to the next Combat", "effects": [{"op": "spawn_enemies", "count": 1, "max_weight": 3}]}, "bad": {"description": "Add a Random Enemy with 5 or less Weight to the next Combat.", "effects": [{"op": "spawn_enemies", "count": 1, "max_weight": 5}]}, "crit_bad": {"description": "Add 2 Random Enemies with 5 or less Weight to the next Combat.", "effects": [{"op": "spawn_enemies", "count": 2, "max_weight": 5}]}}

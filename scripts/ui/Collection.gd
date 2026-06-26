@@ -587,7 +587,7 @@ func _build_loot() -> void:
 	sub.add_theme_constant_override("separation", 6)
 	_content.add_child(sub)
 	for entry in [["potions", "Potions (%d)" % Data.all_potions().size()],
-			["scrolls", "Scrolls (0)"]]:
+			["scrolls", "Scrolls (%d)" % Data.all_scrolls().size()]]:
 		var key: String = entry[0]
 		var b := Button.new()
 		b.text = entry[1]
@@ -619,10 +619,18 @@ func _build_loot() -> void:
 func _populate_loot() -> void:
 	_clear_children(_grid)
 	if _loot_subtab == "scrolls":
-		var note := _label("Scrolls aren't in the game yet — coming soon.",
-			Color(0.7, 0.7, 0.75), 14, false, true)
-		_grid.add_child(note)
-		_set_count(0, 0)
+		var sterm: String = _search["loot"].to_lower()
+		var scrolls: Array = Data.all_scrolls()
+		scrolls.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
+		var sshown: int = 0
+		for s in scrolls:
+			if not (s is ScrollData):
+				continue
+			if sterm != "" and not (sterm in s.display_name.to_lower()):
+				continue
+			_grid.add_child(_scroll_card(s))
+			sshown += 1
+		_set_count(sshown, Data.all_scrolls().size())
 		return
 	var term: String = _search["loot"].to_lower()
 	var potions: Array = Data.all_potions()
@@ -661,7 +669,42 @@ func _potion_card(p: PotionData) -> Control:
 	vb.add_child(_label(p.effect_text, Color(0.85, 0.85, 0.88), 12, false, true))
 	if p.reference != "":
 		vb.add_child(_label("from %s" % p.reference, Color(0.55, 0.6, 0.7), 10))
-	return cell
+	return cell.panel
+
+# A scroll catalog cell: art + name + rarity, then its four outcome tiers
+# (Critical Success / Success / Fail / Critical Fail) as a revealed reference.
+func _scroll_card(s: ScrollData) -> Control:
+	var rcol: Color = RARITY_COLORS[clampi(s.rarity_index(), 0, RARITY_COLORS.size() - 1)]
+	var cell := _cell(rcol, Callable())
+	cell.panel.custom_minimum_size = Vector2(320, 0)
+	var vb: VBoxContainer = cell.vbox
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	vb.add_child(top)
+	# Real (identified) art for the catalog regardless of run identification.
+	var path := "res://images/scrolls/%s.png" % s.art_file()
+	if not ResourceLoader.exists(path):
+		path = "res://images/scrolls/Unidentified.png"
+	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	if tex != null:
+		top.add_child(_tex_rect(tex, 48))
+	var head := VBoxContainer.new()
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(head)
+	head.add_child(_label(s.display_name, rcol, 14))
+	head.add_child(_label(s.rarity, Color(0.7, 0.7, 0.75), 11))
+	const TIER_NAMES := {
+		"crit_good": "Critical Success", "good": "Success",
+		"bad": "Fail", "crit_bad": "Critical Fail",
+	}
+	for tier in ScrollData.TIER_KEYS:
+		var text: String = s.outcome_text(tier)
+		if text == "":
+			continue
+		vb.add_child(_label("%s: %s" % [TIER_NAMES[tier], text], Color(0.85, 0.85, 0.88), 11, false, true))
+	if s.reference != "":
+		vb.add_child(_label("from %s" % s.reference, Color(0.55, 0.6, 0.7), 10))
+	return cell.panel
 
 func _build_reference() -> void:
 	# Sub-tab bar.

@@ -133,6 +133,50 @@ func _apply_player_avatar() -> void:
 # Portal placement
 # ------------------------------------------------------------------
 
+# Scroll of Teleportation: jump to another game chosen by BFS distance to the
+# amulet (called by ScrollUseModal when a teleport request resolves on the
+# overworld). `dir` is closer / same / farther / random; `max_steps` bounds how
+# far the closer/farther jump moves relative to the current distance (0 = no
+# bound). Mirrors the legacy _scrollTeleport pool selection.
+func scroll_teleport(dir: String, max_steps: int) -> void:
+	var amulet: StringName = GameState.amulet_game_id
+	var current: StringName = GameState.current_game_id
+	# Distance from the amulet to every reachable game == distance-to-amulet.
+	var dist: Dictionary = {} if amulet == &"" else RunGraph.bfs_distances(amulet)
+	var candidates: Array = []
+	for gid in dist.keys():
+		if gid != current and not GameState.beaten_games.has(gid):
+			candidates.append(gid)
+	if candidates.is_empty():
+		Notifications.notify("The Scroll of Teleportation finds nowhere to send you.", ScrollSystem.SCROLL_COLOR)
+		return
+	var cur_dist: int = int(dist.get(current, 0))
+	var pool: Array = []
+	match dir:
+		"closer":
+			pool = candidates.filter(func(g): return int(dist[g]) < cur_dist and (max_steps <= 0 or cur_dist - int(dist[g]) <= max_steps))
+			if pool.is_empty():
+				pool = candidates.filter(func(g): return int(dist[g]) < cur_dist)
+		"farther":
+			pool = candidates.filter(func(g): return int(dist[g]) > cur_dist and (max_steps <= 0 or int(dist[g]) - cur_dist <= max_steps))
+			if pool.is_empty():
+				pool = candidates.filter(func(g): return int(dist[g]) > cur_dist)
+		"same":
+			pool = candidates.filter(func(g): return int(dist[g]) == cur_dist)
+		_: # random
+			pool = candidates
+	if pool.is_empty():
+		pool = candidates
+	var target: StringName = pool[_rng.randi_range(0, pool.size() - 1)]
+	GameState.set_current_game(target)
+	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
+	_apply_player_avatar()
+	_spawn_portals_for_current_game()
+	_update_hint()
+	var gd: GameData = Data.get_game(target)
+	Notifications.notify("Teleported to %s!" % (gd.display_name if gd != null else String(target)),
+		ScrollSystem.SCROLL_COLOR)
+
 func _spawn_portals_for_current_game() -> void:
 	_close_door_preview()
 	_hovered_portal = null

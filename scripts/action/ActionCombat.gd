@@ -138,14 +138,26 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 # drinks the selected potion on yourself; holding Q raises a lobbing white aim
 # arrow and clicking LMB throws it to that point, splashing everyone (friend and
 # foe) in the blast. Number keys 1-9 (and clicking a slot) pick the selection.
-var _potion_belt_layer: CanvasLayer = null
+var _potion_belt_layer: CanvasLayer = null  # legacy (unused since potions moved into the bottom bar)
 var _potion_belt_row: HBoxContainer = null
-var _selected_potion_belt: int = 0
+var _potion_group: HBoxContainer = null     # the "Potions" group inside the bottom slot bar
+# Bottom-right transient toasts shown when ground loot is picked up.
+var _pickup_toast_layer: CanvasLayer = null
+var _usable_sel: int = 0   # unified selection index into _usable_entries() (pills + potions)
 # Q-hold throw state machine.
 var _potion_q_held: bool = false
 var _potion_thrown_this_hold: bool = false
 var _lob_aim_active: bool = false
 var _lob_aim_target: Vector2 = Vector2.ZERO  # arena coords, clamped to range
+# Throw charge: holding Q fills a ring (0..1). Releasing mid-charge cancels (no
+# use); only a FULL ring arms the throw, which still requires an LMB click on a
+# target to loose the potion. Drinking is separate — click on yourself.
+var _potion_charge: float = 0.0
+const POTION_CHARGE_TIME := 0.6   # seconds of holding Q to fully arm a throw
+# LMB edge tracking + one-shot attack suppression so the click that drinks/throws
+# a potion never also swings the left-click attack.
+var _lmb_prev: bool = false
+var _suppress_attack_until_release: bool = false
 # Expanding splash burst FX after a throw lands.
 var _potion_splash_remaining: float = 0.0
 var _potion_splash_center: Vector2 = Vector2.ZERO
@@ -444,10 +456,20 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_haste_remaining = 0.0
 	_slow_remaining = 0.0
 	_room_resolved = false
-	# Uncollected floor drops don't carry between rooms.
+	# Uncollected floor drops are NOT lost when the player leaves: bank each one
+	# back into the carried loot so it's kept (it left loot_items when it dropped).
+	for g in _ground_loot:
+		var e = g.get("entry")
+		if e is Dictionary:
+			GameState.loot_items.append(e)
+	if not _ground_loot.is_empty():
+		GameState.emit_signal("inventory_changed")
 	_ground_loot.clear()
 	_potion_q_held = false
 	_lob_aim_active = false
+	_potion_charge = 0.0
+	_lmb_prev = false
+	_suppress_attack_until_release = false
 	_transitioning = false
 	_stairs_active = false
 	_stairs_armed = false
@@ -510,6 +532,11 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 		_room_resolved = true
 
 	paused = false
+	# Scroll carryover (Scare Monster / Aggravate / Fire) — applied AFTER the
+	# room's own `paused = false` so the Scare Monster "choose" picker can pause
+	# the room and have it stick until the player has picked.
+	if not is_safe and not enemy_ids.is_empty():
+		_apply_pending_scroll_effects()
 	phase = Phase.PLAYING
 	_refresh_hud()
 	_refresh_slot_bar()
@@ -519,6 +546,52 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 # The global Backpack uses this to keep equipment swaps to between rooms.
 func has_live_enemies() -> bool:
 	return _living_enemy_count() > 0 or not _pending_spawns.is_empty()
+
+# Scrolls are readable on the action floor only while no enemies are present
+# (between fights). Read by GameState.can_use_scrolls() so the Backpack's Read
+# button unlocks the moment a room is clear.
+func scrolls_allowed() -> bool:
+	return not has_live_enemies()
+
+# Drains the scroll-scheduled carryover (Scare Monster / Aggravate / Fire) into
+# the room via ScrollSystem. Action is real-time, so "stun" reuses the global
+# enemy freeze the ambush system already uses (a brief room-wide pause) rather
+# than a per-enemy turn skip; buff and fire act on each enemy CombatActor.
+func _apply_pending_scroll_effects() -> void:
+	var stun_fn := func(mode: String, count: int) -> void:
+		var living: Array = []
+		for inst in enemies:
+			if inst.actor.is_alive():
+				living.append(inst.actor)
+		if mode == "all":
+			for a in living:
+				a.add_status(&"stun", 1)
+			GameLog.add("Scroll of Scare Monster: all enemies are Stunned!", Color(0.9, 0.85, 0.5))
+		elif mode == "choose":
+			# Pause the room, let the player pick, then resume. The picker auto-
+			# stuns all when there are no more enemies than the cap.
+			paused = true
+			StunPickerModal.new().start(self, living, count, func(): paused = false)
+		else: # random
+			living.shuffle()
+			for a in living.slice(0, count):
+				a.add_status(&"stun", 1)
+			GameLog.add("Scroll of Scare Monster: %d enemies Stunned!" % mini(count, living.size()),
+				Color(0.9, 0.85, 0.5))
+	var buff_fn := func(power: int, defense: int) -> void:
+		for inst in enemies:
+			if not inst.actor.is_alive():
+				continue
+			if power != 0:
+				inst.actor.add_status(&"power", power)
+			if defense != 0:
+				inst.actor.add_status(&"defense", defense)
+	var fire_fn := func(amount: int) -> void:
+		for inst in enemies:
+			if inst.actor.is_alive():
+				_deal_damage_to_enemy(inst, amount, "magic")
+		GameLog.add("Scroll of Fire scorches the room for %d!" % amount, Color(1.0, 0.5, 0.2))
+	ScrollSystem.apply_pending_combat_effects(stun_fn, buff_fn, fire_fn)
 
 func _living_enemy_count() -> int:
 	var n := 0
@@ -896,24 +969,41 @@ func _process_player_input(delta: float) -> void:
 	if to_mouse.length() > 5.0:
 		player_facing = to_mouse.normalized()
 
-	# Potion belt selection (number keys 1-9).
+	# Potion belt selection (number keys 1-9; scroll wheel via _unhandled_input).
 	_poll_potion_belt_keys()
+
+	# LMB press edge + suppression: drinking / throwing a potion consumes the
+	# click so it doesn't ALSO swing the left-click attack.
+	var lmb_now: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	var lmb_edge: bool = lmb_now and not _lmb_prev
+	_lmb_prev = lmb_now
+	if not lmb_now:
+		_suppress_attack_until_release = false
+
+	# Drink: click on yourself (while NOT aiming a throw) to drink the selected
+	# potion. The same click is suppressed from also attacking.
+	if lmb_edge and not _potion_q_held and _selected_potion() != null \
+			and mouse_pos.distance_to(player_pos) <= PLAYER_RADIUS + 6.0:
+		_drink_selected_potion()
+		_suppress_attack_until_release = true
 
 	# Click slots: LMB fires the left card, RMB the right card, each aimed
 	# at the cursor and gated by its own per-card cooldown (held = continuous).
-	# While aiming a potion throw (Q held), LMB throws instead of attacking.
+	# LMB is held off while aiming a throw (Q held) or for the click that just
+	# threw/drank a potion (so a throw never doubles as an attack).
 	if not _potion_q_held:
-		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and left_cd <= 0.0 and left_card != null:
+		if not _suppress_attack_until_release \
+				and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and left_cd <= 0.0 and left_card != null:
 			_fire_click_card(left_card)
 			left_cd = left_max_cd
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and right_cd <= 0.0 and right_card != null:
 			_fire_click_card(right_card)
 			right_cd = right_max_cd
 
-	# Potions on Q: tap to drink the selected potion on yourself; hold Q to raise
-	# a lobbing aim arrow and LMB to throw it. Falls back to the equipped pill on
-	# Q when the player is carrying no potions, so the active-item slot still works.
-	_process_potion_input(mouse_pos)
+	# Potions on Q: hold to charge a throw ring, then LMB-click a target to loose
+	# it (drinking is on click-yourself, not Q). Falls back to the equipped pill on
+	# Q when carrying no potions, so the active-item slot still works.
+	_process_potion_input(mouse_pos, delta)
 
 	# E fires the charged active.
 	if Input.is_action_just_pressed("use_charged_item"):
@@ -939,119 +1029,170 @@ func _use_active_item() -> void:
 # Potion belt + drink / throw
 # ---------------------------------------------------------------------------
 
-# Bottom-left belt of carried potions (its own CanvasLayer so it draws over the
-# arena). The selected slot is highlighted; Q acts on it.
+# The "Usable" group in the bottom slot bar holds BOTH the carried potions and
+# the equipped usable pills, merged into one cyclable slot (scroll wheel / 1-9 /
+# click select). The selected entry is highlighted; Q acts on it — a potion holds
+# to charge a throw (and click-yourself drinks), a pill is used immediately.
 func _build_potion_belt() -> void:
-	_potion_belt_layer = CanvasLayer.new()
-	_potion_belt_layer.layer = 6
-	add_child(_potion_belt_layer)
-	var holder := VBoxContainer.new()
-	holder.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	holder.offset_left = 8
-	holder.offset_bottom = -8
-	holder.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_potion_belt_layer.add_child(holder)
-	var hint := Label.new()
-	hint.text = "Potions — Q drink / hold Q + click throw"
-	hint.add_theme_font_size_override("font_size", 11)
-	hint.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
-	holder.add_child(hint)
+	if _bottom_bar == null:
+		return
+	_potion_group = HBoxContainer.new()
+	_potion_group.add_theme_constant_override("separation", 4)
+	_bottom_bar.add_child(_potion_group)
+	var lbl := Label.new()
+	lbl.text = "Usable"
+	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_color_override("font_color", Color(0.78, 0.72, 0.88))
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_potion_group.add_child(lbl)
 	_potion_belt_row = HBoxContainer.new()
 	_potion_belt_row.add_theme_constant_override("separation", 4)
-	holder.add_child(_potion_belt_row)
+	_potion_group.add_child(_potion_belt_row)
 	_refresh_potion_belt()
+
+# The unified list of usables (the active-usable cycle), in display order:
+# every USABLE inventory pill first, then each carried potion. Each entry is a
+# Dictionary: {"kind":"item", "item":ItemData} or
+# {"kind":"potion", "loot_index":int, "id":StringName}.
+func _usable_entries() -> Array:
+	var out: Array = []
+	for it in GameState.inventory:
+		if it is ItemData and it.kind == ItemData.ItemKind.USABLE:
+			out.append({"kind": "item", "item": it})
+	for i in range(GameState.loot_items.size()):
+		var e = GameState.loot_items[i]
+		if e is Dictionary and String(e.get("type", "")) == "potion":
+			out.append({"kind": "potion", "loot_index": i, "id": StringName(e.get("id", ""))})
+	return out
 
 func _refresh_potion_belt() -> void:
 	if _potion_belt_row == null:
 		return
 	for c in _potion_belt_row.get_children():
 		c.queue_free()
-	var entries: Array = GameState.loot_potions()
-	if _selected_potion_belt >= entries.size():
-		_selected_potion_belt = maxi(0, entries.size() - 1)
-	var hint_parent := _potion_belt_row.get_parent()
-	if hint_parent != null and hint_parent.get_child_count() > 0:
-		var hint := hint_parent.get_child(0)
-		if hint is Label:
-			hint.visible = not entries.is_empty()
+	var entries: Array = _usable_entries()
+	_usable_sel = clampi(_usable_sel, 0, maxi(0, entries.size() - 1))
+	# Hide the whole group (label included) when there's nothing usable.
+	if _potion_group != null:
+		_potion_group.visible = not entries.is_empty()
 	for i in range(entries.size()):
-		_potion_belt_row.add_child(_make_belt_slot(i, entries[i]))
+		_potion_belt_row.add_child(_make_usable_slot(i, entries[i]))
 
-func _make_belt_slot(belt_index: int, entry: Dictionary) -> Control:
-	var potion: PotionData = Data.get_potion(StringName(entry.get("id", "")))
+func _make_usable_slot(index: int, entry: Dictionary) -> Control:
 	var slot := Button.new()
 	slot.custom_minimum_size = Vector2(46, 46)
-	slot.tooltip_text = "%s%s" % [
-		PotionSystem.display_name(potion) if potion != null else "Potion",
-		"\n" + potion.effect_text if potion != null and PotionSystem.is_identified(potion.id) else ""]
-	if belt_index == _selected_potion_belt:
+	var art_tex: Texture2D = null
+	var tip := "Usable"
+	if String(entry.get("kind", "")) == "potion":
+		var potion: PotionData = Data.get_potion(StringName(entry.get("id", "")))
+		art_tex = PotionSystem.art_texture(potion) if potion != null else null
+		tip = "%s%s" % [
+			PotionSystem.display_name(potion) if potion != null else "Potion",
+			"\n" + potion.effect_text if potion != null and PotionSystem.is_identified(potion.id) else ""]
+	else:
+		var item: ItemData = entry.get("item")
+		art_tex = item.image if item != null else null
+		tip = item.display_name if item != null else "Usable"
+	slot.tooltip_text = tip
+	if index == _usable_sel:
 		slot.modulate = Color(1.0, 1.0, 0.6)
-	slot.pressed.connect(func(): _select_potion_belt(belt_index))
+	slot.pressed.connect(func(): _select_usable(index))
 	var art := TextureRect.new()
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if potion != null:
-		art.texture = PotionSystem.art_texture(potion)
+	art.texture = art_tex
 	slot.add_child(art)
 	var num := Label.new()
-	num.text = str(belt_index + 1)
+	num.text = str(index + 1)
 	num.add_theme_font_size_override("font_size", 10)
 	num.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	slot.add_child(num)
 	return slot
 
-func _select_potion_belt(index: int) -> void:
-	_selected_potion_belt = index
+func _select_usable(index: int) -> void:
+	_usable_sel = index
 	_refresh_potion_belt()
 
+# Scroll wheel cycles the selected usable (pill or potion), pairing with 1-9
+# number-key selection. Wheel up = previous, down = next.
+func _unhandled_input(event: InputEvent) -> void:
+	if paused or phase != Phase.PLAYING:
+		return
+	if not (event is InputEventMouseButton) or not event.pressed:
+		return
+	var n: int = _usable_entries().size()
+	if n <= 0:
+		return
+	if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+		_select_usable((_usable_sel - 1 + n) % n)
+	elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		_select_usable((_usable_sel + 1) % n)
+
 func _poll_potion_belt_keys() -> void:
-	var n: int = GameState.loot_potions().size()
+	var n: int = _usable_entries().size()
 	for k in range(mini(n, 9)):
-		if Input.is_key_pressed(KEY_1 + k) and _selected_potion_belt != k:
-			_select_potion_belt(k)
+		if Input.is_key_pressed(KEY_1 + k) and _usable_sel != k:
+			_select_usable(k)
 
-# The potion the belt is pointed at, or null if the belt is empty.
+# The currently-selected usable entry ({} if none).
+func _selected_usable() -> Dictionary:
+	var entries: Array = _usable_entries()
+	if _usable_sel < 0 or _usable_sel >= entries.size():
+		return {}
+	return entries[_usable_sel]
+
+# The selected potion (only when the active usable IS a potion), else null.
 func _selected_potion() -> PotionData:
-	var entries: Array = GameState.loot_potions()
-	if _selected_potion_belt < 0 or _selected_potion_belt >= entries.size():
+	var sel := _selected_usable()
+	if String(sel.get("kind", "")) != "potion":
 		return null
-	return Data.get_potion(StringName(entries[_selected_potion_belt].get("id", "")))
+	return Data.get_potion(StringName(sel.get("id", "")))
 
-# The loot_items index for the currently selected belt potion (-1 if none).
+# The loot_items index for the selected potion (-1 if the selection isn't one).
 func _selected_potion_loot_index() -> int:
-	var seen: int = 0
-	for i in range(GameState.loot_items.size()):
-		var e = GameState.loot_items[i]
-		if e is Dictionary and String(e.get("type", "")) == "potion":
-			if seen == _selected_potion_belt:
-				return i
-			seen += 1
-	return -1
+	var sel := _selected_usable()
+	if String(sel.get("kind", "")) != "potion":
+		return -1
+	return int(sel.get("loot_index", -1))
 
-func _process_potion_input(mouse_pos: Vector2) -> void:
-	var has_potion: bool = _selected_potion() != null
+func _process_potion_input(mouse_pos: Vector2, delta: float) -> void:
+	var sel := _selected_usable()
+	var sel_kind := String(sel.get("kind", ""))
 	if Input.is_action_just_pressed("use_active_item"):
-		if has_potion:
+		if sel_kind == "potion":
+			# Begin charging the throw on the selected potion.
 			_potion_q_held = true
 			_potion_thrown_this_hold = false
-			_lob_aim_active = true
-		else:
-			# No potions — Q keeps its old job (the equipped pill).
-			_use_active_item()
-	if _potion_q_held:
-		_lob_aim_target = _clamp_throw_point(mouse_pos)
-		# Throw on LMB while Q is held.
-		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and not _potion_thrown_this_hold:
-			_throw_selected_potion(_lob_aim_target)
-			_potion_thrown_this_hold = true
+			_potion_charge = 0.0
 			_lob_aim_active = false
+		elif sel_kind == "item":
+			# The selected usable is a pill — use it immediately.
+			var it: ItemData = sel.get("item")
+			if it != null and GameState.use_item(it):
+				GameLog.add("Used %s." % it.display_name, Color(0.85, 1.0, 0.7))
+	if _potion_q_held:
+		_potion_charge = minf(1.0, _potion_charge + delta / POTION_CHARGE_TIME)
+		var armed: bool = _potion_charge >= 1.0
+		# The lobbing aim/reticle only appears once the ring is full.
+		_lob_aim_active = armed
+		if armed:
+			_lob_aim_target = _clamp_throw_point(mouse_pos)
+			# A fully-charged throw still needs an LMB click on the target to fire,
+			# and that click is suppressed from also swinging the attack.
+			if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and not _potion_thrown_this_hold:
+				_throw_selected_potion(_lob_aim_target)
+				_potion_thrown_this_hold = true
+				_potion_q_held = false
+				_potion_charge = 0.0
+				_lob_aim_active = false
+				_suppress_attack_until_release = true
 	if Input.is_action_just_released("use_active_item"):
-		# Released without throwing -> drink it yourself.
-		if _potion_q_held and not _potion_thrown_this_hold:
-			_drink_selected_potion()
+		# Releasing before the ring fills CANCELS (nothing used). Drinking is no
+		# longer on Q — click yourself to drink.
 		_potion_q_held = false
+		_potion_charge = 0.0
 		_lob_aim_active = false
 
 # Clamp an arena point to within throw range (base 4 player-widths + Strength).
@@ -1165,11 +1306,24 @@ func _maybe_drop_ground_loot() -> void:
 		return
 	GameState.loot_items.erase(entry)
 	GameState.emit_signal("inventory_changed")
-	var pos := Vector2(
-		_rng.randf_range(ARENA_W * 0.25, ARENA_W * 0.75),
-		_rng.randf_range(ARENA_H * 0.3, ARENA_H * 0.7))
+	# Always drop in the middle of the room; if another drop is already sitting
+	# there, spiral outward a little so they don't perfectly overlap.
+	var center := Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
+	var pos := center
+	var tries := 0
+	while tries < 8 and _ground_loot_near(pos, 28.0):
+		var ang: float = _rng.randf() * TAU
+		pos = center + Vector2(cos(ang), sin(ang)) * (32.0 + 14.0 * tries)
+		tries += 1
 	_ground_loot.append({"entry": entry, "pos": pos})
 	queue_redraw()
+
+# True if any existing ground-loot drop sits within `dist` of `pos`.
+func _ground_loot_near(pos: Vector2, dist: float) -> bool:
+	for g in _ground_loot:
+		if g["pos"].distance_to(pos) < dist:
+			return true
+	return false
 
 func _process_ground_loot() -> void:
 	if _ground_loot.is_empty():
@@ -1181,13 +1335,66 @@ func _process_ground_loot() -> void:
 			GameState.loot_items.append(entry)
 			GameState.emit_signal("inventory_changed")
 			_ground_loot.remove_at(i)
-			if String(entry.get("type", "")) == "potion":
+			var kind := String(entry.get("type", ""))
+			if kind == "potion":
 				var p: PotionData = Data.get_potion(StringName(entry.get("id", "")))
-				Notifications.notify("Picked up a potion: %s" % (PotionSystem.display_name(p) if p != null else "Potion"),
+				_show_pickup_toast(PotionSystem.art_texture(p),
+					"Picked up: %s" % (PotionSystem.display_name(p) if p != null else "Potion"),
 					PotionSystem.POTION_COLOR)
 			else:
-				Notifications.notify("Picked up an Unidentified Scroll.", Color(0.6, 0.5, 0.8))
+				var s: ScrollData = Data.get_scroll(StringName(entry.get("id", "")))
+				_show_pickup_toast(ScrollSystem.art_texture(s),
+					"Picked up: %s" % (ScrollSystem.display_name(s) if s != null else "Unidentified Scroll"),
+					ScrollSystem.SCROLL_COLOR)
 			queue_redraw()
+
+# Bottom-right pop-up shown when the player walks over a ground-loot drop: the
+# item's art + its name, fading in and out on its own CanvasLayer so it floats
+# over the arena. Each pickup makes its own transient toast (they briefly stack
+# upward); the tween frees it.
+func _show_pickup_toast(tex: Texture2D, text: String, color: Color) -> void:
+	if _pickup_toast_layer == null:
+		_pickup_toast_layer = CanvasLayer.new()
+		_pickup_toast_layer.layer = 8
+		add_child(_pickup_toast_layer)
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	# Stack newer toasts above older ones still on screen.
+	var live: int = _pickup_toast_layer.get_child_count()
+	panel.offset_right = -16
+	panel.offset_bottom = -16 - live * 52
+	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.07, 0.10, 0.92)
+	sb.border_color = color
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.set_content_margin_all(8)
+	panel.add_theme_stylebox_override("panel", sb)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	panel.add_child(row)
+	if tex != null:
+		var art := TextureRect.new()
+		art.custom_minimum_size = Vector2(32, 32)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.texture = tex
+		row.add_child(art)
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 1.0))
+	row.add_child(lbl)
+	_pickup_toast_layer.add_child(panel)
+	# Fade in, hold, fade out, then free.
+	panel.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(panel, "modulate:a", 1.0, 0.18)
+	tw.tween_interval(1.9)
+	tw.tween_property(panel, "modulate:a", 0.0, 0.45)
+	tw.tween_callback(panel.queue_free)
 
 func _draw_ground_loot() -> void:
 	for g in _ground_loot:
@@ -1197,8 +1404,11 @@ func _draw_ground_loot() -> void:
 		var pulse: float = 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.005)
 		draw_circle(pos, 16.0, Color(1.0, 0.95, 0.5, 0.12 + 0.12 * pulse))
 		var tex: Texture2D = null
-		if String(entry.get("type", "")) == "potion":
+		var kind := String(entry.get("type", ""))
+		if kind == "potion":
 			tex = PotionSystem.art_texture(Data.get_potion(StringName(entry.get("id", ""))))
+		elif kind == "scroll":
+			tex = ScrollSystem.art_texture(Data.get_scroll(StringName(entry.get("id", ""))))
 		if tex != null:
 			DrawUtil.draw_circular_texture(self, pos, 12.0, tex, Color.WHITE)
 		else:
@@ -1342,9 +1552,14 @@ func _process_enemies(delta: float) -> void:
 		if Stats.should_split(inst.actor):
 			extra_spawns.append_array(_perform_action_split(inst))
 			continue
+		# Stunned (Scroll of Scare Monster): the enemy does nothing while Stun is
+		# up — no move, no attack. Stun decays on the action turn-tick like other
+		# statuses (it's in Stats.DECAY_STATUSES), so it wears off on its own.
+		if inst.actor.get_status(&"stun") > 0:
+			pass
 		# Fear: a frightened enemy abandons its normal behavior and flees the
 		# player, never attacking, until its Fear ticks off (stack == flee-time).
-		if inst.actor.get_status(&"fear") > 0:
+		elif inst.actor.get_status(&"fear") > 0:
 			_process_feared_enemy(inst, delta)
 		else:
 			match int(inst.data.behavior):
@@ -3494,6 +3709,10 @@ var _slot_cost_labels: Array[Label] = []
 var _click_tex: Array[TextureRect] = []
 var _click_swatch: Array[ColorRect] = []
 
+# The bottom slot-bar HBox (click slots, charged slot, auto thumbs, then the
+# carried-potions group). Held so _build_potion_belt can append into it.
+var _bottom_bar: HBoxContainer = null
+
 # Charged-active slot in the bottom bar: the item fired with Space (or E).
 var _charged_panel: Panel = null
 var _charged_tex: TextureRect = null
@@ -3520,6 +3739,8 @@ func _build_slot_bar() -> void:
 	bar.position = Vector2(20, HUD_BOTTOM_Y + 18)
 	bar.add_theme_constant_override("separation", 10)
 	add_child(bar)
+	# Carried potions are appended to this same bar by _build_potion_belt.
+	_bottom_bar = bar
 
 	# Two click slots (LMB / RMB): card art on the left, name + cooldown right.
 	_slot_panels.clear()
@@ -4071,6 +4292,12 @@ func _draw() -> void:
 # Lobbing white aim arrow (a high parabola from the player to the clamped throw
 # point) plus the throw's fading splash ring. Both in arena coords.
 func _draw_potion_throw() -> void:
+	# Charge ring around the player while holding Q before the throw is armed.
+	if _potion_q_held and _potion_charge < 1.0:
+		var ring_r: float = PLAYER_RADIUS + 9.0
+		draw_arc(player_pos, ring_r, 0.0, TAU, 40, Color(1, 1, 1, 0.15), 2.0)
+		draw_arc(player_pos, ring_r, -PI * 0.5, -PI * 0.5 + TAU * _potion_charge, 40,
+			Color(0.7, 0.85, 1.0, 0.95), 4.0)
 	if _lob_aim_active:
 		var from: Vector2 = player_pos
 		var to: Vector2 = _lob_aim_target

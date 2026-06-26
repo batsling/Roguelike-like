@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ScrollData" load_steps=2 format=3 uid="uid://scroll_blank_scroll"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollData.gd" id="1_scroll"]
+
+[resource]
+script = ExtResource("1_scroll")
+id = &"blank_scroll"
+display_name = "Blank Scroll"
+rarity = "Uncommon"
+reference = "Rogue"
+preference = "Neutral"
+file = "BlankScroll"
+outcomes = {"crit_good": {"description": "Does nothing.", "effects": []}, "good": {"description": "Does nothing.", "effects": []}, "bad": {"description": "Does nothing.", "effects": []}, "crit_bad": {"description": "Does nothing.", "effects": []}}

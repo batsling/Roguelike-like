@@ -34,6 +34,7 @@ const STATUSES: Array = [
 	{ "name": "Fading", "description": "Dies in X turns", "type": "Debuff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "All", "preference": "Negative", "rarity": "N/A", "icon": "Fading" },
 	{ "name": "Confused", "description": "Each card's energy cost is randomized between 0 and your max energy each turn", "type": "Debuff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "Player", "preference": "Negative", "rarity": "N/A", "icon": "Confused" },
 	{ "name": "Plated Armor", "description": "At the end of your turn, Gain X Block", "type": "Buff", "stackable": true, "decay": "Down by 1 when receiving unblocked Dmg", "who": "All", "preference": "Positive", "rarity": "Uncommon", "icon": "PlatedArmor" },
+	{ "name": "Stun", "description": "The enemy's intent will be changed to \"Stunned\" and will do nothing on this turn", "type": "Debuff", "stackable": false, "decay": "Down by 1 at end of turn", "who": "All", "preference": "Negative", "rarity": "N/A", "icon": "Stun" },
 ]
 
 const ADDONS: Array = [

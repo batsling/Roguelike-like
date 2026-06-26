@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ScrollData" load_steps=2 format=3 uid="uid://scroll_scroll_of_sleep"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollData.gd" id="1_scroll"]
+
+[resource]
+script = ExtResource("1_scroll")
+id = &"scroll_of_sleep"
+display_name = "Scroll of Sleep"
+rarity = "Uncommon"
+reference = "Rogue"
+preference = "Negative"
+file = "ScrollofSleep"
+outcomes = {"crit_good": {"description": "Fall asleep and Gain +10 Health. You are Ambushed in your next Combat.", "effects": [{"op": "heal", "value": 10}, {"op": "ambush"}]}, "good": {"description": "Fall asleep. You are Ambushed in your next Combat.", "effects": [{"op": "ambush"}]}, "bad": {"description": "Fall asleep and get a nightmare. You Gain +1 Fear and are Ambushed in your next Combat.", "effects": [{"op": "gain_status", "status": "fear", "stacks": 1}, {"op": "ambush"}]}, "crit_bad": {"description": "Fall asleep and get a nightmare. You Gain +3 Fear and are Ambushed in your next Combat.", "effects": [{"op": "gain_status", "status": "fear", "stacks": 3}, {"op": "ambush"}]}}

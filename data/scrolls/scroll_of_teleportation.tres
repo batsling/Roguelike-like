@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ScrollData" load_steps=3 format=3 uid="uid://scroll_scroll_of_teleportation"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollData.gd" id="1_scroll"]
+[ext_resource type="Texture2D" path="res://images/scrolls/Teleportation.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_scroll")
+id = &"scroll_of_teleportation"
+display_name = "Scroll of Teleportation"
+rarity = "Common"
+reference = "Rogue"
+preference = "Neutral"
+file = "Teleportation"
+outcomes = {"crit_good": {"description": "Teleport to a Random Space closer to the Amulet Game by up to 3 Spaces.", "effects": [{"op": "teleport", "dir": "closer", "max_steps": 3}]}, "good": {"description": "Teleport to a Random Space with the same distance from the Amulet Game.", "effects": [{"op": "teleport", "dir": "same"}]}, "bad": {"description": "Teleport to a Random Space farther away from the Amulet Game by up to 3 Spaces.", "effects": [{"op": "teleport", "dir": "farther", "max_steps": 3}]}, "crit_bad": {"description": "Teleport to a completely Random Space.", "effects": [{"op": "teleport", "dir": "random"}]}}

@@ -402,7 +402,48 @@ func start_combat(spawn_list: Array) -> void:
 	_fire_item_triggers("combat_started")
 	_fire_power_triggers("combat_started")
 	_apply_event_ambush()
+	_apply_pending_scroll_effects()
 	_start_player_turn()
+
+# Drains the scroll-scheduled carryover (Scroll of Scare Monster / Aggravate
+# Monsters / Fire) into this fight via ScrollSystem, with deckbuilder closures
+# that stun / buff / burn the live enemy CombatActors. Runs before the first
+# player turn so stunned intents and the enemy buffs are in place from turn 1.
+func _apply_pending_scroll_effects() -> void:
+	var stun_fn := func(mode: String, count: int) -> void:
+		var living: Array = enemies.filter(func(e): return e.is_alive())
+		if mode == "all":
+			for e in living:
+				e.add_status(&"stun", 1)
+		elif mode == "choose":
+			# Player picks up to N enemies to Stun (auto-stuns all if N >= living).
+			StunPickerModal.new().start(self, living, count)
+		else: # random
+			living.shuffle()
+			for e in living.slice(0, count):
+				e.add_status(&"stun", 1)
+	var buff_fn := func(power: int, defense: int) -> void:
+		for e in enemies:
+			if not e.is_alive():
+				continue
+			if power != 0:
+				e.add_status(&"power", power)
+			if defense != 0:
+				e.add_status(&"defense", defense)
+	var fire_fn := func(amount: int) -> void:
+		for e in enemies:
+			if not e.is_alive():
+				continue
+			var dmg: int = amount
+			if e.block > 0:
+				var blocked: int = mini(e.block, dmg)
+				e.block -= blocked
+				dmg -= blocked
+			e.hp = maxi(0, e.hp - dmg)
+			GameLog.add("Scroll of Fire burns %s for %d." % [e.display_name, amount], Color(1.0, 0.5, 0.2))
+	ScrollSystem.apply_pending_combat_effects(stun_fn, buff_fn, fire_fn)
+	_build_enemy_views()
+	_refresh_ui()
 
 # Consumes GameState.pending_ambush into a turn-1 draw modifier: "ambush" adds
 # two cards to the opening hand, "ambushed" removes two.
@@ -789,7 +830,9 @@ func _on_end_turn() -> void:
 		# Mummified Hand's "free this turn" discount expires now (clear it on
 		# every card leaving hand, retained ones included).
 		c.temp_cost_override = -999
-		if c.data != null and c.data.retain:
+		if c.data != null and (c.data.retain or c.granted_retain):
+			# c.granted_retain: Retain granted to this specific card by Scroll of
+			# Enchant Weapon (crit success), in addition to the card's own retain.
 			kept.append(c)
 		elif c.data != null and c.data.sly:
 			_resolve_sly_on_discard(c)
@@ -856,6 +899,11 @@ func _execute_enemy_turn() -> void:
 		# Block resets at the start of the enemy's own action phase
 		# (matches JS rules; Barricade-style persistence deferred).
 		enemy.block = 0
+		# Stunned (Scroll of Scare Monster): the enemy does nothing this turn. The
+		# stun stack steps down by 1 in the end-of-turn decay below.
+		if enemy.get_status(&"stun") > 0:
+			GameLog.add("%s is Stunned and does nothing." % enemy.display_name, Color(0.9, 0.85, 0.5))
+			continue
 		var move: Dictionary = enemy.planned_move
 		if move.is_empty():
 			continue
