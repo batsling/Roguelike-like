@@ -288,13 +288,14 @@ func test_grant_random_consumable_adds_an_entry() -> void:
 	assert_eq(GameState.loot_items.size(), before + 1)
 	assert_true(["potion", "scroll"].has(String(e.get("type", ""))))
 
-func test_add_loot_scroll_is_inert_stub() -> void:
+func test_add_loot_scroll_creates_concrete_entry() -> void:
+	# Scrolls are now concrete, rarity-rolled entries (like potions), carrying a
+	# real scroll id resolved on read by ScrollSystem.
 	GameState.add_loot("scroll", 1)
-	assert_eq(GameState.get_loot_count("scroll"), 1, "scroll stub counts")
-	# Scroll stubs carry no usable potion id.
+	assert_eq(GameState.get_loot_count("scroll"), 1, "scroll counts")
 	var found := false
 	for l in GameState.loot_items:
 		if l is Dictionary and String(l.get("type", "")) == "scroll":
 			found = true
-			assert_false(l.has("id"), "scroll stub has no potion id")
+			assert_true(l.has("id"), "scroll entry carries a scroll id")
 	assert_true(found)

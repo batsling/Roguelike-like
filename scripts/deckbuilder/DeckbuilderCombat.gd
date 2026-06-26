@@ -828,7 +828,9 @@ func _on_end_turn() -> void:
 		# Mummified Hand's "free this turn" discount expires now (clear it on
 		# every card leaving hand, retained ones included).
 		c.temp_cost_override = -999
-		if c.data != null and c.data.retain:
+		if c.data != null and (c.data.retain or c.granted_retain):
+			# c.granted_retain: Retain granted to this specific card by Scroll of
+			# Enchant Weapon (crit success), in addition to the card's own retain.
 			kept.append(c)
 		elif c.data != null and c.data.sly:
 			_resolve_sly_on_discard(c)

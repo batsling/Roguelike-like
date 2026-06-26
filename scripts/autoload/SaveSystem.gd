@@ -388,6 +388,8 @@ func _serialize_deck(deck: Array) -> Array:
 				# combat type/weight survives save/load.
 				"vorpal_type": c.vorpal_type,
 				"vorpal_weight": c.vorpal_weight,
+				# Retain granted by Scroll of Enchant Weapon (crit success).
+				"granted_retain": c.granted_retain,
 			})
 		elif c is CardData:
 			# Defensive: handle bare CardData if anything still appends it.
@@ -409,6 +411,7 @@ func _resolve_deck(entries: Array) -> Array:
 		# old save that predates the field but carries a Vorpal weapon).
 		ci.vorpal_type = int(e.get("vorpal_type", -2))
 		ci.vorpal_weight = int(e.get("vorpal_weight", 0))
+		ci.granted_retain = bool(e.get("granted_retain", false))
 		out.append(ci)
 	return out
 
