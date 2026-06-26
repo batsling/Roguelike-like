@@ -415,8 +415,10 @@ func _apply_pending_scroll_effects() -> void:
 		if mode == "all":
 			for e in living:
 				e.add_status(&"stun", 1)
-		else:
-			# "random" and (for now) "choose" both stun N random enemies.
+		elif mode == "choose":
+			# Player picks up to N enemies to Stun (auto-stuns all if N >= living).
+			StunPickerModal.new().start(self, living, count)
+		else: # random
 			living.shuffle()
 			for e in living.slice(0, count):
 				e.add_status(&"stun", 1)

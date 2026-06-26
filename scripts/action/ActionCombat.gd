@@ -499,7 +499,6 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 			_combat_room_index += 1
 		# Fresh room: restart the in-room turn_ended clock (Stone Calendar).
 		_room_turn_index = 0
-		_apply_pending_scroll_effects()
 		_fire_item_triggers("combat_started")
 		_fire_item_triggers("turn_started")
 		# Innate -> auto_play: fire innate cards once now that enemies exist.
@@ -511,6 +510,11 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 		_room_resolved = true
 
 	paused = false
+	# Scroll carryover (Scare Monster / Aggravate / Fire) — applied AFTER the
+	# room's own `paused = false` so the Scare Monster "choose" picker can pause
+	# the room and have it stick until the player has picked.
+	if not is_safe and not enemy_ids.is_empty():
+		_apply_pending_scroll_effects()
 	phase = Phase.PLAYING
 	_refresh_hud()
 	_refresh_slot_bar()
@@ -526,9 +530,26 @@ func has_live_enemies() -> bool:
 # enemy freeze the ambush system already uses (a brief room-wide pause) rather
 # than a per-enemy turn skip; buff and fire act on each enemy CombatActor.
 func _apply_pending_scroll_effects() -> void:
-	var stun_fn := func(_mode: String, _count: int) -> void:
-		_enemy_stun_remaining = maxf(_enemy_stun_remaining, AMBUSH_STUN_SECONDS)
-		GameLog.add("Scroll of Scare Monster: the enemies are frozen in fear!", Color(0.9, 0.85, 0.5))
+	var stun_fn := func(mode: String, count: int) -> void:
+		var living: Array = []
+		for inst in enemies:
+			if inst.actor.is_alive():
+				living.append(inst.actor)
+		if mode == "all":
+			for a in living:
+				a.add_status(&"stun", 1)
+			GameLog.add("Scroll of Scare Monster: all enemies are Stunned!", Color(0.9, 0.85, 0.5))
+		elif mode == "choose":
+			# Pause the room, let the player pick, then resume. The picker auto-
+			# stuns all when there are no more enemies than the cap.
+			paused = true
+			StunPickerModal.new().start(self, living, count, func(): paused = false)
+		else: # random
+			living.shuffle()
+			for a in living.slice(0, count):
+				a.add_status(&"stun", 1)
+			GameLog.add("Scroll of Scare Monster: %d enemies Stunned!" % mini(count, living.size()),
+				Color(0.9, 0.85, 0.5))
 	var buff_fn := func(power: int, defense: int) -> void:
 		for inst in enemies:
 			if not inst.actor.is_alive():
@@ -1366,9 +1387,14 @@ func _process_enemies(delta: float) -> void:
 		if Stats.should_split(inst.actor):
 			extra_spawns.append_array(_perform_action_split(inst))
 			continue
+		# Stunned (Scroll of Scare Monster): the enemy does nothing while Stun is
+		# up — no move, no attack. Stun decays on the action turn-tick like other
+		# statuses (it's in Stats.DECAY_STATUSES), so it wears off on its own.
+		if inst.actor.get_status(&"stun") > 0:
+			pass
 		# Fear: a frightened enemy abandons its normal behavior and flees the
 		# player, never attacking, until its Fear ticks off (stack == flee-time).
-		if inst.actor.get_status(&"fear") > 0:
+		elif inst.actor.get_status(&"fear") > 0:
 			_process_feared_enemy(inst, delta)
 		else:
 			match int(inst.data.behavior):

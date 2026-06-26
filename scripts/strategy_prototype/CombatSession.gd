@@ -65,41 +65,7 @@ func enter_combat(room_data: StrategyRoomData, encounter: Array) -> void:
 func begin_battle() -> void:
 	if active_turn_manager != null:
 		_apply_pending_ambush()
-		_apply_pending_scroll_effects()
 		active_turn_manager.start_battle()
-
-# Drains the scroll-scheduled carryover (Scare Monster / Aggravate / Fire) into
-# this battle via ScrollSystem, with strategy closures operating on the live
-# BattleUnits. Stun is applied as a status (BattleView skips a stunned enemy's
-# turn; the turn-end decay steps it down).
-func _apply_pending_scroll_effects() -> void:
-	var enemies: Array = active_turn_manager.living_units().filter(func(u): return not u.is_player)
-	var stun_fn := func(mode: String, count: int) -> void:
-		if mode == "all":
-			for u in enemies:
-				u.add_status(&"stun", 1)
-		else:
-			var pool: Array = enemies.duplicate()
-			pool.shuffle()
-			for u in pool.slice(0, count):
-				u.add_status(&"stun", 1)
-	var buff_fn := func(power: int, defense: int) -> void:
-		for u in enemies:
-			if power != 0:
-				u.add_status(&"power", power)
-			if defense != 0:
-				u.add_status(&"defense", defense)
-	var fire_fn := func(amount: int) -> void:
-		for u in enemies:
-			var dmg: int = amount
-			if u.block > 0:
-				var blocked: int = mini(u.block, dmg)
-				u.block -= blocked
-				dmg -= blocked
-			u.hp = maxi(0, u.hp - dmg)
-			GameLog.add("Scroll of Fire burns %s for %d." % [str(u.unit_name).capitalize(), amount],
-				Color(1.0, 0.5, 0.2))
-	ScrollSystem.apply_pending_combat_effects(stun_fn, buff_fn, fire_fn)
 
 # Honour a pre-combat event ambush before initiative starts. "ambush" gives the
 # player one free opening turn; "ambushed" gives every enemy a free opening turn.

@@ -211,7 +211,44 @@ func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager 
 	# No loadout — go straight to combat. The first player turn draws the
 	# opening hand and refreshes energy via _on_unit_turn_started.
 	_fire_item_triggers("combat_started")
+	_apply_pending_scroll_effects()
 	StrategyCombatSession.begin_battle()
+
+# Drains the scroll-scheduled carryover (Scare Monster / Aggravate / Fire) into
+# this battle via ScrollSystem. Lives here (not CombatSession) so the Scare
+# Monster "choose" tier can mount its enemy picker on this UI. Stun is applied as
+# a status; a stunned enemy forfeits its turn (see _on_unit_turn_started) and the
+# stack decays at its turn end.
+func _apply_pending_scroll_effects() -> void:
+	var enemies: Array = _units.filter(func(u): return u != null and u.is_alive() and not u.is_player)
+	var stun_fn := func(mode: String, count: int) -> void:
+		if mode == "all":
+			for u in enemies:
+				u.add_status(&"stun", 1)
+		elif mode == "choose":
+			StunPickerModal.new().start(self, enemies, count)
+		else: # random
+			var pool: Array = enemies.duplicate()
+			pool.shuffle()
+			for u in pool.slice(0, count):
+				u.add_status(&"stun", 1)
+	var buff_fn := func(power: int, defense: int) -> void:
+		for u in enemies:
+			if power != 0:
+				u.add_status(&"power", power)
+			if defense != 0:
+				u.add_status(&"defense", defense)
+	var fire_fn := func(amount: int) -> void:
+		for u in enemies:
+			var dmg: int = amount
+			if u.block > 0:
+				var blocked: int = mini(u.block, dmg)
+				u.block -= blocked
+				dmg -= blocked
+			u.hp = maxi(0, u.hp - dmg)
+			GameLog.add("Scroll of Fire burns %s for %d." % [str(u.unit_name).capitalize(), amount],
+				Color(1.0, 0.5, 0.2))
+	ScrollSystem.apply_pending_combat_effects(stun_fn, buff_fn, fire_fn)
 
 # Build the four piles from the run deck. Mirrors DeckbuilderCombat._init_deck.
 func _init_deck() -> void:
