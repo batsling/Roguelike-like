@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=3 format=3 uid="uid://potion_liquid_bronze"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+[ext_resource type="Texture2D" path="res://images/potions/LiquidBronze.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"liquid_bronze"
+display_name = "Liquid Bronze"
+rarity = "Uncommon"
+reference = "Slay the Spire"
+file = "LiquidBronze"
+effect_text = "Gain +3 Thorns"
+effects = [{"op": "status", "status": "thorns", "stacks": 3}]

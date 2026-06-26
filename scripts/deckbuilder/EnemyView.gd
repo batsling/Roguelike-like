@@ -336,6 +336,18 @@ func _make_status_badge(status_name, stacks: int) -> Control:
 	count.add_theme_constant_override("outline_size", 3)
 	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(count)
+	# Top-right addon marker: lock for Permanent, clock + turns for Temporary.
+	var sn := StringName(status_name)
+	var marker: StatusMarker = null
+	if actor != null and actor.has_method("is_status_permanent") and actor.is_status_permanent(sn):
+		marker = StatusMarker.new()
+		marker.setup("lock")
+	elif actor != null and actor.has_method("is_status_temporary") and actor.is_status_temporary(sn):
+		marker = StatusMarker.new()
+		marker.setup("clock", actor.temporary_turns(sn))
+	if marker != null:
+		marker.position = Vector2(STATUS_ICON_SIZE - 13, -2)
+		holder.add_child(marker)
 	return holder
 
 func set_targetable(can_target: bool) -> void:

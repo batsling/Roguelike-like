@@ -706,8 +706,34 @@ func _on_use_pressed(item: ItemData) -> void:
 
 func _render_loot() -> void:
 	var any := false
-	for kind in GameState.loot.keys():
-		var count: int = int(GameState.loot[kind])
+	# Concrete potion entries: show each with its art + (identified) name.
+	for entry in GameState.loot_potions():
+		any = true
+		var potion: PotionData = Data.get_potion(StringName(entry.get("id", "")))
+		var row := PanelContainer.new()
+		var hbox := HBoxContainer.new()
+		hbox.add_theme_constant_override("separation", 8)
+		row.add_child(hbox)
+		var icon := TextureRect.new()
+		icon.custom_minimum_size = Vector2(28, 28)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		if potion != null:
+			icon.texture = PotionSystem.art_texture(potion)
+		hbox.add_child(icon)
+		var label := Label.new()
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.text = PotionSystem.display_name(potion) if potion != null else "Potion"
+		hbox.add_child(label)
+		_list_vbox.add_child(row)
+	# Aggregate counts for the non-itemized kinds (scroll stubs + keys).
+	var counts := {
+		"scroll": GameState.get_loot_count("scroll"),
+		"key": GameState.get_loot_count("key"),
+	}
+	for kind in counts.keys():
+		var count: int = int(counts[kind])
 		if count <= 0:
 			continue
 		any = true
@@ -728,7 +754,7 @@ func _render_loot() -> void:
 		empty.text = "No loot collected yet."
 		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		_list_vbox.add_child(empty)
-	_hint_label.text = "Potions, scrolls, keys and other findings."
+	_hint_label.text = "Potions are used in combat. Scrolls, keys and other findings show here."
 
 # ------------------------------------------------------------------
 # Deck tab — every card the player currently owns, deduped by card id

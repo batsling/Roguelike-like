@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=3 format=3 uid="uid://potion_block_potion"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+[ext_resource type="Texture2D" path="res://images/potions/BlockPotion.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"block_potion"
+display_name = "Block Potion"
+rarity = "Common"
+reference = "Slay the Spire"
+file = "BlockPotion"
+effect_text = "Gain +12 Block"
+effects = [{"op": "block", "value": 12}]

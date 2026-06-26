@@ -20,7 +20,7 @@ extends Control
 # Each content tab mirrors the HTML's search box, sort/filter controls, a
 # responsive card grid, and a detail side-panel that fills in on click.
 
-enum Tab { REFERENCE, ITEMS, CHARACTERS, CARDS, EVENTS, GAMES, ENEMIES }
+enum Tab { REFERENCE, ITEMS, CHARACTERS, CARDS, EVENTS, GAMES, ENEMIES, LOOT }
 
 const GAME_TYPE_NAMES := ["Action", "Strategy", "Deckbuilder", "Traditional"]
 # Completion filter for the Games tab: [label, key]. Keys drive _populate_games.
@@ -51,9 +51,10 @@ const CELL_BG := Color(0.04, 0.04, 0.06, 0.85)
 
 var _tab: int = Tab.GAMES
 var _ref_subtab: String = "statuses"
+var _loot_subtab: String = "potions"
 
 # Per-tab control state.
-var _search := {"reference": "", "items": "", "characters": "", "cards": "", "events": "", "games": "", "enemies": ""}
+var _search := {"reference": "", "items": "", "characters": "", "cards": "", "events": "", "games": "", "enemies": "", "loot": ""}
 var _games_sort: String = "name"      # name | year | beaten
 var _games_type: int = -1             # -1 = all, else GameType index
 var _games_status: String = "all"     # all | completed | uncompleted | amulet
@@ -171,6 +172,7 @@ func _build_shell() -> void:
 	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events().size())
 	_add_tab_button(tabs, Tab.ENEMIES, "Enemies (%d)" % (Data.all_enemies().size() + Data.all_action_enemies().size()))
 	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters().size())
+	_add_tab_button(tabs, Tab.LOOT, "Loot (%d)" % Data.all_potions().size())
 	_add_tab_button(tabs, Tab.REFERENCE, "Reference")
 
 	root.add_child(HSeparator.new())
@@ -214,6 +216,8 @@ func _refresh() -> void:
 			_build_events()
 		Tab.ENEMIES:
 			_build_enemies()
+		Tab.LOOT:
+			_build_loot()
 
 # ------------------------------------------------------------------
 # Shared building blocks
@@ -571,6 +575,93 @@ func _influenced_by(id) -> Array:
 # ------------------------------------------------------------------
 # Reference tab (Statuses / Addons)
 # ------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+# Loot tab (Potions / Scrolls) — the consumable catalog. Potions are shown
+# REVEALED here (a reference encyclopedia), independent of the per-run
+# identification state. Scrolls are a placeholder until that system lands.
+# ----------------------------------------------------------------------
+
+func _build_loot() -> void:
+	var sub := HBoxContainer.new()
+	sub.add_theme_constant_override("separation", 6)
+	_content.add_child(sub)
+	for entry in [["potions", "Potions (%d)" % Data.all_potions().size()],
+			["scrolls", "Scrolls (0)"]]:
+		var key: String = entry[0]
+		var b := Button.new()
+		b.text = entry[1]
+		b.toggle_mode = true
+		b.button_pressed = _loot_subtab == key
+		b.modulate = ACCENT if _loot_subtab == key else Color(0.8, 0.8, 0.8)
+		b.pressed.connect(func():
+			_loot_subtab = key
+			_refresh())
+		sub.add_child(b)
+
+	var row := _controls_row()
+	row.add_child(_search_box("loot"))
+	_add_count_label(row)
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 10)
+	flow.add_theme_constant_override("v_separation", 10)
+	flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(flow)
+	_grid = flow
+	_content.add_child(scroll)
+	_populate_loot()
+
+func _populate_loot() -> void:
+	_clear_children(_grid)
+	if _loot_subtab == "scrolls":
+		var note := _label("Scrolls aren't in the game yet — coming soon.",
+			Color(0.7, 0.7, 0.75), 14, false, true)
+		_grid.add_child(note)
+		_set_count(0, 0)
+		return
+	var term: String = _search["loot"].to_lower()
+	var potions: Array = Data.all_potions()
+	potions.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
+	var shown: int = 0
+	for p in potions:
+		if not (p is PotionData):
+			continue
+		if term != "" and not (term in p.display_name.to_lower() \
+				or term in p.effect_text.to_lower()):
+			continue
+		_grid.add_child(_potion_card(p))
+		shown += 1
+	_set_count(shown, Data.all_potions().size())
+
+func _potion_card(p: PotionData) -> Control:
+	var rcol: Color = RARITY_COLORS[clampi(p.rarity_index(), 0, RARITY_COLORS.size() - 1)]
+	var cell := _cell(rcol, Callable())
+	cell.panel.custom_minimum_size = Vector2(300, 0)
+	var vb: VBoxContainer = cell.vbox
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	vb.add_child(top)
+	# Real (identified) art for the catalog regardless of run identification.
+	var path := "res://images/potions/%s.png" % p.art_file()
+	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	if tex != null:
+		top.add_child(_tex_rect(tex, 48))
+	var head := VBoxContainer.new()
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(head)
+	head.add_child(_label(p.display_name, rcol, 14))
+	head.add_child(_label(p.rarity, Color(0.7, 0.7, 0.75), 11))
+	if p.cleave:
+		head.add_child(_label("Cleave / AOE", Color(0.95, 0.6, 0.3), 11))
+	vb.add_child(_label(p.effect_text, Color(0.85, 0.85, 0.88), 12, false, true))
+	if p.reference != "":
+		vb.add_child(_label("from %s" % p.reference, Color(0.55, 0.6, 0.7), 10))
+	return cell
 
 func _build_reference() -> void:
 	# Sub-tab bar.

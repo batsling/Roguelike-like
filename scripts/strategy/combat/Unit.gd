@@ -52,6 +52,9 @@ var statuses: Dictionary = {}               # StringName -> int stacks
 # Stats.decay_actor_statuses via is_status_permanent(). The Troll's starting
 # Regeneration uses this so its 5 stacks heal every turn forever.
 var permanent_statuses: Dictionary = {}     # StringName -> true
+# Statuses flagged Temporary (addonsnew `temporary`): hold full value (no decay)
+# for N turns, then removed by Stats.decay_actor_statuses. StringName -> turns.
+var temporary_statuses: Dictionary = {}
 
 # Damage taken since this unit's last turn boundary (Shifting status). Fed by
 # the TriggerBus.damage_taken signal and reset by Stats.tick_actor_statuses.
@@ -111,6 +114,7 @@ func add_status(status_id: StringName, stacks: int) -> void:
 	statuses[status_id] = int(statuses.get(status_id, 0)) + stacks
 	if statuses[status_id] <= 0:
 		statuses.erase(status_id)
+		temporary_statuses.erase(status_id)
 
 func get_status(status_id: StringName) -> int:
 	return int(statuses.get(status_id, 0))
@@ -124,6 +128,20 @@ func set_status_permanent(status_id: StringName, on: bool = true) -> void:
 
 func is_status_permanent(status_id: StringName) -> bool:
 	return permanent_statuses.has(status_id)
+
+# Temporary statuses (addonsnew `temporary`): hold full value for `turns`, then
+# decay removes them. turns <= 0 clears the timer.
+func set_status_temporary(status_id: StringName, turns: int) -> void:
+	if turns > 0:
+		temporary_statuses[status_id] = turns
+	else:
+		temporary_statuses.erase(status_id)
+
+func is_status_temporary(status_id: StringName) -> bool:
+	return temporary_statuses.has(status_id)
+
+func temporary_turns(status_id: StringName) -> int:
+	return int(temporary_statuses.get(status_id, 0))
 
 func recompute_mana_caps() -> void:
 	# Hooks for stat changes mid-combat (relic procs etc); idempotent.

@@ -12,6 +12,7 @@ var _events: Dictionary = {}            # StringName -> EventData
 var _games: Dictionary = {}             # StringName -> GameData
 var _characters: Dictionary = {}        # StringName -> CharacterData
 var _curses: Dictionary = {}            # StringName -> CurseData
+var _potions: Dictionary = {}           # StringName -> PotionData
 
 # Single shared config resources mapping turn-based combat concepts to each
 # mode's equivalents — Action (turns->rooms, energy->Haste, draw->auto-slots)
@@ -41,6 +42,7 @@ func _ready() -> void:
 	_load_dir("res://data/games/", _games)
 	_load_dir("res://data/characters/", _characters)
 	_load_dir("res://data/curses/", _curses)
+	_load_dir("res://data/potions/", _potions)
 	# Per-mode concept translators. Fall back to script defaults if the .tres is
 	# missing so combat never crashes for a missing tunable file.
 	action_translation = (_load_config("res://data/action_translation.tres") as ActionTranslation)
@@ -55,9 +57,9 @@ func _ready() -> void:
 	strategy_attacks = (_load_config("res://data/strategy_attacks.tres") as StrategyAttackLibrary)
 	if strategy_attacks == null:
 		strategy_attacks = StrategyAttackLibrary.new()
-	print("[Data] Loaded %d cards, %d items, %d enemies (+%d action, +%d strategy), %d events, %d games, %d characters" % [
+	print("[Data] Loaded %d cards, %d items, %d enemies (+%d action, +%d strategy), %d events, %d games, %d characters, %d potions" % [
 		_cards.size(), _items.size(), _enemies.size(), _action_enemies.size(),
-		_strategy_enemies.size(), _events.size(), _games.size(), _characters.size()
+		_strategy_enemies.size(), _events.size(), _games.size(), _characters.size(), _potions.size()
 	])
 
 # Loads a single config .tres, returning null (with a warning) if missing or
@@ -111,6 +113,49 @@ func get_card_for_character(base_id: StringName, character_id: StringName) -> Ca
 
 func get_curse(id: StringName) -> CurseData:
 	return _curses.get(id)
+
+func get_potion(id: StringName) -> PotionData:
+	return _potions.get(id)
+
+func all_potions() -> Array:
+	return _potions.values()
+
+# Rarity weights for random potion draws (rewards / shop / floor pickups).
+# Mirrors the legacy selectRandomRarity distribution used for items, with a 10%
+# bump from Rare to Legendary. PotionData.rarity_index() maps the sheet's rarity
+# string onto the same 0-3 ordering items use.
+const POTION_RARITY_WEIGHTS := { 0: 75.0, 1: 20.0, 2: 5.0 }
+
+func _roll_potion_rarity(rng: RandomNumberGenerator) -> int:
+	var total: float = POTION_RARITY_WEIGHTS[0] + POTION_RARITY_WEIGHTS[1] + POTION_RARITY_WEIGHTS[2]
+	var roll: float = rng.randf() * total
+	var r: int
+	if roll < POTION_RARITY_WEIGHTS[0]:
+		r = 0
+	elif roll < POTION_RARITY_WEIGHTS[0] + POTION_RARITY_WEIGHTS[1]:
+		r = 1
+	else:
+		r = 2
+	if r == 2 and rng.randf() < 0.1:
+		r = 3
+	return r
+
+# One random potion template, rarity-weighted. Falls back to the full pool when
+# the rolled rarity bucket is empty so the result is always filled. Returns null
+# only when no potions are loaded at all.
+func roll_potion(rng: RandomNumberGenerator = null) -> PotionData:
+	var pool: Array = _potions.values()
+	if pool.is_empty():
+		return null
+	var r: RandomNumberGenerator = rng
+	if r == null:
+		r = RandomNumberGenerator.new()
+		r.randomize()
+	var target: int = _roll_potion_rarity(r)
+	var bucket: Array = pool.filter(func(p): return p is PotionData and p.rarity_index() == target)
+	if bucket.is_empty():
+		bucket = pool
+	return bucket[r.randi_range(0, bucket.size() - 1)]
 
 func get_item(id: StringName) -> ItemData:
 	return _items.get(id)

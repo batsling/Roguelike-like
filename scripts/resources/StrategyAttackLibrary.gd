@@ -250,11 +250,15 @@ func footprint(spec: Dictionary, origin: Vector2i, aim: Vector2i, map = null, st
 							continue
 						_add(out, seen, impact + Vector2i(dx, dy), map)
 		"disc":
-			# Aim is the disc centre (nova passes aim == origin).
+			# Aim is the disc centre (nova passes aim == origin). A `manhattan`
+			# disc is a diamond/plus (|dx|+|dy| <= r) instead of the default
+			# Chebyshev square — used by thrown potions (r=1 plus, r=2 diamond).
 			var r: int = maxi(0, int(spec.get("radius", 0)))
+			var manhattan: bool = bool(spec.get("manhattan", false))
 			for dy in range(-r, r + 1):
 				for dx in range(-r, r + 1):
-					if maxi(absi(dx), absi(dy)) > r:
+					var dist: int = (absi(dx) + absi(dy)) if manhattan else maxi(absi(dx), absi(dy))
+					if dist > r:
 						continue
 					_add(out, seen, aim + Vector2i(dx, dy), map)
 		_:

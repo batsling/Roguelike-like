@@ -112,6 +112,12 @@ func _build_payload() -> Dictionary:
 		"action_right_card_id": String(GameState.action_right_card_id),
 		"action_active_item_id": String(GameState.action_active_item_id),
 		"action_charged_item_id": String(GameState.action_charged_item_id),
+		# Loot (potions): concrete carried entries + global per-type identification
+		# + this run's mystery-bottle colour assignment.
+		"loot_items": GameState.loot_items.duplicate(true),
+		"identified_potion_types": _stringnames_to_strings(GameState.identified_potion_types),
+		"potion_color_map": GameState.potion_color_map.duplicate(),
+		"loot_keys": int(GameState.loot.get("key", 0)),
 	}
 
 func _write_save(path: String) -> bool:
@@ -209,6 +215,26 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.action_right_card_id = StringName(data.get("action_right_card_id", ""))
 	GameState.action_active_item_id = StringName(data.get("action_active_item_id", ""))
 	GameState.action_charged_item_id = StringName(data.get("action_charged_item_id", ""))
+	# Loot: rehydrate carried potion/scroll entries (coercing the JSON string
+	# ids back to StringName), the global identification set, and the run's
+	# mystery-bottle colour map.
+	GameState.loot_items.clear()
+	for entry in data.get("loot_items", []):
+		if not (entry is Dictionary):
+			continue
+		var e: Dictionary = entry.duplicate()
+		if e.has("id"):
+			e["id"] = StringName(e["id"])
+		GameState.loot_items.append(e)
+	var ident: Array[StringName] = []
+	for s in data.get("identified_potion_types", []):
+		ident.append(StringName(s))
+	GameState.identified_potion_types = ident
+	GameState.potion_color_map = {}
+	var cm: Dictionary = data.get("potion_color_map", {})
+	for k in cm.keys():
+		GameState.potion_color_map[String(k)] = String(cm[k])
+	GameState.loot["key"] = int(data.get("loot_keys", 0))
 	# Broadcast a full sweep so HUDs / overlays subscribed to GameState
 	# pick up the new state after a load.
 	GameState.emit_signal("hp_changed", GameState.hp, GameState.max_hp)

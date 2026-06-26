@@ -91,6 +91,16 @@ var _targeting: bool = false
 # Following arrow shown while choosing an enemy target for a card.
 var _targeting_arrow: TargetingArrow = null
 
+# Loot (potions): the right-side Loot button opens a scrollable dropdown of the
+# player's potions; using one starts the same targeting arrow as a card and the
+# player clicks any target (an enemy or their own portrait). -1 = no potion
+# currently being aimed.
+var _selected_potion_index: int = -1
+var _loot_button: Button = null
+var _loot_dropdown: Control = null
+var _loot_dropdown_list: VBoxContainer = null
+var _loot_open: bool = false
+
 # Drag-to-play state. _drag_card is the CardInstance being dragged; _drag_ghost
 # is a floating CardView clone that follows the cursor (mirrors the HTML build's
 # drag clone). Both null when no drag is in progress.
@@ -155,6 +165,11 @@ func _ready() -> void:
 	_discard_btn.pressed.connect(_on_pile_clicked.bind("discard"))
 	_exhaust_btn.pressed.connect(_on_pile_clicked.bind("exhaust"))
 	_build_inventory_panel()
+	_build_loot_panel()
+	# Keep the Loot button's count + dropdown in sync as potions are gained/used
+	# (loot mutations emit inventory_changed).
+	if not GameState.inventory_changed.is_connected(_refresh_loot_button):
+		GameState.inventory_changed.connect(_refresh_loot_button)
 	# Pre-combat event used to fire here; events now live as dedicated
 	# map nodes in the deckbuilder mini-map (Phase 2). Combat starts
 	# immediately as long as the caller pre-populated enemies_to_spawn.
@@ -178,6 +193,196 @@ func _build_inventory_panel() -> void:
 	inv.show_title = false
 	inv.on_use_requested = _on_item_use_requested
 	bar.add_child(inv)
+
+# Right-side Loot button + scrollable potion dropdown. Potions can only be used
+# in combat, so the panel lives on the combat scene (its own CanvasLayer so it
+# draws over the battlefield). Using a potion spawns the targeting arrow exactly
+# like a card and the player clicks any target.
+func _build_loot_panel() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 6
+	add_child(layer)
+	var holder := VBoxContainer.new()
+	holder.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	holder.offset_left = -210
+	holder.offset_right = -8
+	holder.offset_top = 52
+	holder.alignment = BoxContainer.ALIGNMENT_BEGIN
+	holder.add_theme_constant_override("separation", 4)
+	layer.add_child(holder)
+
+	_loot_button = Button.new()
+	_loot_button.text = "Loot"
+	_loot_button.custom_minimum_size = Vector2(202, 34)
+	_loot_button.pressed.connect(_toggle_loot_dropdown)
+	holder.add_child(_loot_button)
+
+	_loot_dropdown = PanelContainer.new()
+	_loot_dropdown.visible = false
+	_loot_dropdown.custom_minimum_size = Vector2(202, 0)
+	holder.add_child(_loot_dropdown)
+
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(202, 240)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_loot_dropdown.add_child(scroll)
+
+	_loot_dropdown_list = VBoxContainer.new()
+	_loot_dropdown_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_loot_dropdown_list.add_theme_constant_override("separation", 4)
+	scroll.add_child(_loot_dropdown_list)
+
+	_refresh_loot_button()
+
+func _toggle_loot_dropdown() -> void:
+	_loot_open = not _loot_open
+	if _loot_open:
+		_build_loot_rows()
+	if _loot_dropdown != null:
+		_loot_dropdown.visible = _loot_open
+
+func _refresh_loot_button() -> void:
+	if _loot_button == null:
+		return
+	var n: int = GameState.get_loot_count("potion")
+	_loot_button.text = "Loot (%d)" % n
+	if _loot_open:
+		_build_loot_rows()
+
+# (loot_items index, entry) pairs for every carried potion, in carry order.
+func _potion_loot_entries() -> Array:
+	var out: Array = []
+	for i in range(GameState.loot_items.size()):
+		var e = GameState.loot_items[i]
+		if e is Dictionary and String(e.get("type", "")) == "potion":
+			out.append({"index": i, "entry": e})
+	return out
+
+func _build_loot_rows() -> void:
+	if _loot_dropdown_list == null:
+		return
+	for c in _loot_dropdown_list.get_children():
+		c.queue_free()
+	var entries: Array = _potion_loot_entries()
+	if entries.is_empty():
+		var empty := Label.new()
+		empty.text = "No potions."
+		empty.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		_loot_dropdown_list.add_child(empty)
+		return
+	for item in entries:
+		_loot_dropdown_list.add_child(_make_loot_row(int(item["index"]), item["entry"]))
+
+func _make_loot_row(loot_index: int, entry: Dictionary) -> Control:
+	var potion: PotionData = Data.get_potion(StringName(entry.get("id", "")))
+	var row := Button.new()
+	row.custom_minimum_size = Vector2(0, 44)
+	row.tooltip_text = (potion.effect_text if potion != null and PotionSystem.is_identified(potion.id) else "Unidentified — use to learn what it does.")
+	row.pressed.connect(_begin_potion_targeting.bind(loot_index))
+	var hb := HBoxContainer.new()
+	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hb.add_theme_constant_override("separation", 6)
+	row.add_child(hb)
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(32, 32)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if potion != null:
+		art.texture = PotionSystem.art_texture(potion)
+	hb.add_child(art)
+	var label := Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.text = PotionSystem.display_name(potion) if potion != null else "Potion"
+	hb.add_child(label)
+	return row
+
+func _begin_potion_targeting(loot_index: int) -> void:
+	if phase != Phase.PLAYER:
+		GameLog.add("Potions can only be used on your turn.", Color(0.9, 0.7, 0.3))
+		return
+	if loot_index < 0 or loot_index >= GameState.loot_items.size():
+		return
+	var entry = GameState.loot_items[loot_index]
+	if not (entry is Dictionary) or String(entry.get("type", "")) != "potion":
+		return
+	var potion: PotionData = Data.get_potion(StringName(entry.get("id", "")))
+	if potion == null:
+		return
+	# Close the dropdown and start aiming from the Loot button.
+	_loot_open = false
+	if _loot_dropdown != null:
+		_loot_dropdown.visible = false
+	_cancel_targeting()
+	_selected_potion_index = loot_index
+	_targeting = true
+	if _targeting_arrow != null and _loot_button != null:
+		var r: Rect2 = _loot_button.get_global_rect()
+		_targeting_arrow.start(Vector2(r.position.x + r.size.x * 0.5, r.position.y + r.size.y))
+	GameLog.add("Choose a target for %s (or click yourself)." % PotionSystem.display_name(potion),
+		Color(0.7, 0.9, 1.0))
+	_refresh_ui()
+
+# Applies the aimed potion to `target` (an enemy or the player), identifies it,
+# and consumes it. Shared by the enemy-click and player-portrait-click paths.
+func _resolve_potion(loot_index: int, target: CombatActor) -> void:
+	if loot_index < 0 or loot_index >= GameState.loot_items.size() or target == null:
+		_cancel_targeting()
+		return
+	var entry = GameState.loot_items[loot_index]
+	if not (entry is Dictionary) or String(entry.get("type", "")) != "potion":
+		_cancel_targeting()
+		return
+	var potion: PotionData = Data.get_potion(StringName(entry.get("id", "")))
+	_cancel_targeting()
+	if potion == null:
+		return
+	var ctx := {"source": player, "scene": self, "mode": Stats.Mode.DECKBUILDER, "rng": _rng}
+	# Cleave potions (Explosive Ampoule) hit EVERY living enemy — the deckbuilder
+	# has no spatial throw, so cleave resolves as an all-enemy splash regardless of
+	# which target the arrow picked, matching the legacy build.
+	var logs: Array
+	if potion.cleave:
+		var living: Array = enemies.filter(func(e): return e != null and e.is_alive())
+		logs = PotionSystem.apply_to_targets(potion, living, ctx)
+	else:
+		logs = PotionSystem.apply_to_target(potion, target, ctx)
+	for line in logs:
+		GameLog.add(line, PotionSystem.POTION_COLOR)
+	PotionSystem.identify(potion.id)
+	var detail: String = "on all enemies" if potion.cleave else "on %s" % (
+		"you" if target == player else target.display_name)
+	PotionSystem.notify_used(potion, detail)
+	GameState.remove_loot_at(loot_index)
+	potion_after_apply()
+
+# --- Potion adapter hooks (called by PotionSystem) -------------------------
+
+func potion_grant_energy(amount: int) -> bool:
+	energy += amount
+	_refresh_ui()
+	return true
+
+# Player HP/Max-HP changes route through GameState (the run-shared pool); the
+# player CombatActor mirrors it, exactly like every other deckbuilder damage site.
+func potion_player_hp_delta(delta: int) -> void:
+	GameState.change_hp(delta)
+	if player != null:
+		player.hp = GameState.hp
+
+func potion_player_maxhp_delta(delta: int) -> void:
+	GameState.change_max_hp(delta)
+	GameState.change_hp(delta)
+	if player != null:
+		player.max_hp = GameState.max_hp
+		player.hp = GameState.hp
+
+func potion_after_apply() -> void:
+	_refresh_loot_button()
+	_refresh_ui()
+	_check_combat_end()
 
 func start_combat(spawn_list: Array) -> void:
 	# Fold any event-queued extra enemies (e.g. a fruit-fly swarm) into the
@@ -247,6 +452,12 @@ func _build_player_view() -> void:
 	var area: Node = _player_portrait.get_parent()
 	if area == null:
 		return
+	# Make the portrait clickable so a potion can be aimed at the player ("drink
+	# it yourself"). Only acts while a potion is being aimed; otherwise the click
+	# is a harmless no-op.
+	_player_portrait.mouse_filter = Control.MOUSE_FILTER_STOP
+	if not _player_portrait.gui_input.is_connected(_on_player_portrait_input):
+		_player_portrait.gui_input.connect(_on_player_portrait_input)
 
 	var hp_holder := Control.new()
 	hp_holder.custom_minimum_size = Vector2(0, 20)
@@ -367,11 +578,11 @@ func _refresh_player_view() -> void:
 		# Negative stacks (a status drained below 0) still show, in red.
 		if stacks == 0:
 			continue
-		_player_status_row.add_child(_make_status_badge(s, stacks))
+		_player_status_row.add_child(_make_status_badge(s, stacks, player))
 
 # Small status icon + stack-count badge, mirroring EnemyView's. Falls back to a
 # coloured letter when a status has no icon art.
-func _make_status_badge(status_name, stacks: int) -> Control:
+func _make_status_badge(status_name, stacks: int, actor = null) -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(30, 30)
 	# PASS (not IGNORE) so the badge receives hover and shows its tooltip — works
@@ -409,7 +620,26 @@ func _make_status_badge(status_name, stacks: int) -> Control:
 	count.add_theme_constant_override("outline_size", 3)
 	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(count)
+	# Top-right addon marker: a lock for Permanent, a clock + turns for Temporary.
+	_add_status_marker(holder, actor, status_name)
 	return holder
+
+# Adds the Permanent/Temporary marker overlay to a 30×30 status badge `holder`
+# for `status_name` on `actor`. No-op for actors without the addon API.
+func _add_status_marker(holder: Control, actor, status_name) -> void:
+	if actor == null:
+		return
+	var sn := StringName(status_name)
+	var marker: StatusMarker = null
+	if actor.has_method("is_status_permanent") and actor.is_status_permanent(sn):
+		marker = StatusMarker.new()
+		marker.setup("lock")
+	elif actor.has_method("is_status_temporary") and actor.is_status_temporary(sn):
+		marker = StatusMarker.new()
+		marker.setup("clock", actor.temporary_turns(sn))
+	if marker != null:
+		marker.position = Vector2(holder.custom_minimum_size.x - 13, -2)
+		holder.add_child(marker)
 
 func _build_enemy_views() -> void:
 	for child in _enemy_area.get_children():
@@ -718,6 +948,7 @@ func _check_combat_end() -> bool:
 		TriggerBus.emit_signal("combat_ended", {"victory": true, "scene": self, "dev": dev_combat})
 		emit_signal("combat_ended", true)
 		_award_combat_gold()
+		_award_combat_consumable()
 		# Consumable buffs last one combat — drop them and the live context.
 		GameState.clear_combat_context()
 		GameState.clear_temp_buffs()
@@ -746,6 +977,22 @@ func _award_combat_gold() -> void:
 	_last_gold_award = amt
 	GameState.change_gold(amt)
 	GameLog.add("You loot %d gold." % amt, Color(1.0, 0.9, 0.3))
+
+# Every deckbuilder combat also drops one consumable (50/50 a potion or an inert
+# scroll stub). Dev test-combats are exempt so testing doesn't hand out loot.
+func _award_combat_consumable() -> void:
+	if dev_combat:
+		return
+	var e: Dictionary = GameState.grant_random_consumable_loot(_rng)
+	if e.is_empty():
+		return
+	if String(e.get("type", "")) == "potion":
+		var p: PotionData = Data.get_potion(StringName(e.get("id", "")))
+		Notifications.notify("Found a potion: %s" % (PotionSystem.display_name(p) if p != null else "Potion"),
+			PotionSystem.POTION_COLOR)
+	else:
+		Notifications.notify("Found an Unidentified Scroll.", Color(0.6, 0.5, 0.8))
+	_refresh_loot_button()
 
 # ------------------------------------------------------------------
 # Item triggers — declarative ItemData.triggers fan-out
@@ -896,6 +1143,14 @@ func _try_play_card(card: CardInstance) -> void:
 	else:
 		_resolve_card(card, null)
 
+func _on_player_portrait_input(event: InputEvent) -> void:
+	# Drinking a potion yourself: click your own portrait while aiming one.
+	if _selected_potion_index < 0 or not _targeting:
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_resolve_potion(_selected_potion_index, player)
+		accept_event()
+
 func _on_enemy_clicked(idx: int) -> void:
 	if not _targeting:
 		return
@@ -903,6 +1158,9 @@ func _on_enemy_clicked(idx: int) -> void:
 		return
 	var tgt: CombatActor = enemies[idx]
 	if not tgt.is_alive():
+		return
+	if _selected_potion_index >= 0:
+		_resolve_potion(_selected_potion_index, tgt)
 		return
 	if _selected_item != null:
 		var item := _selected_item
@@ -930,6 +1188,7 @@ func _card_arrow_origin(card: CardInstance) -> Vector2:
 func _cancel_targeting() -> void:
 	_selected_card = null
 	_selected_item = null
+	_selected_potion_index = -1
 	_targeting = false
 	if _targeting_arrow != null:
 		_targeting_arrow.stop()

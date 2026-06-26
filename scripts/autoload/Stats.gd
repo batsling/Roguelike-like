@@ -1084,16 +1084,47 @@ func decay_actor_statuses(actor, do_grow: bool = true) -> void:
 		return
 	# Permanent statuses (addonsnew `permanent` hook) tick like normal but never
 	# step down — the Troll's starting Regeneration heals 5 every turn forever.
+	# Temporary statuses (addonsnew `temporary`) also skip normal decay/grow: they
+	# hold full value, then the timer pass below removes them when it runs out.
 	var has_perm: bool = actor.has_method("is_status_permanent")
+	var has_temp: bool = actor.has_method("is_status_temporary")
 	for s in DECAY_STATUSES:
 		if has_perm and actor.is_status_permanent(s):
+			continue
+		if has_temp and actor.is_status_temporary(s):
 			continue
 		if actor.get_status(s) > 0:
 			actor.add_status(s, -1)
 	if do_grow:
 		for s in GROW_STATUSES:
+			if has_temp and actor.is_status_temporary(s):
+				continue
 			if actor.get_status(s) > 0:
 				actor.add_status(s, 1)
+	# Temporary timer pass: a Temporary status holds its full value for N turns,
+	# then vanishes entirely. Tick each one down by 1 and drop the status (and its
+	# marker) at 0. Iterate a copy of the keys so removal can't invalidate it.
+	if has_temp:
+		_tick_temporary_statuses(actor)
+
+# Ticks every Temporary status on `actor` down by one turn and removes any whose
+# timer hits 0 (clearing both the stacks and the marker). Shared by all modes via
+# decay_actor_statuses, so a "Temporary 3" status lasts 3 turn-boundaries in the
+# deckbuilder, strategy, AND action (where the boundary is the turn-tick).
+func _tick_temporary_statuses(actor) -> void:
+	if not ("temporary_statuses" in actor):
+		return
+	for s in actor.temporary_statuses.keys():
+		var left: int = int(actor.temporary_statuses[s]) - 1
+		if left > 0:
+			actor.temporary_statuses[s] = left
+		else:
+			# Drop the whole status; clear_status leaves the marker, so erase it too.
+			if actor.has_method("clear_status"):
+				actor.clear_status(s)
+			else:
+				actor.statuses.erase(s)
+			actor.temporary_statuses.erase(s)
 
 # Action-only Bleed rule. In real-time play Bleed ramps while you keep the
 # pressure on and evaporates when you let up: each ACTION_TURN_TICK a
