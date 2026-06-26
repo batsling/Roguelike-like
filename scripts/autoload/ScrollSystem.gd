@@ -193,8 +193,15 @@ func _apply_one(effect: Dictionary, out: Dictionary, rng: RandomNumberGenerator)
 
 # --- spawn_enemies (Scroll of Create Monster) ------------------------------
 func _spawn_enemies(count: int, max_weight: int, rng: RandomNumberGenerator, out: Dictionary) -> void:
+	# Only spawn enemies at or below the run's current difficulty tier (and never
+	# bosses), so a scroll can't conjure something out of band. RunDifficulty's
+	# Tier (LOW/MEDIUM/HIGH/INSANE) shares 0-2 ints with EnemyData.Difficulty
+	# (LOW/MEDIUM/HIGH), so the comparison lines up; BOSS is excluded explicitly.
+	var tier_cap: int = RunDifficulty.current_tier()
 	var eligible: Array = Data.all_enemies().filter(func(e):
-		return e is EnemyData and e.weight <= max_weight)
+		return e is EnemyData and e.weight <= max_weight \
+			and int(e.difficulty) != EnemyData.Difficulty.BOSS \
+			and int(e.difficulty) <= tier_cap)
 	if eligible.is_empty():
 		return
 	for _i in range(count):

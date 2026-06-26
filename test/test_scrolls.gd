@@ -132,9 +132,14 @@ func test_sleep_schedules_ambush_and_fear() -> void:
 	assert_eq(fear, 3, "crit-fail Sleep inflicts 3 Fear next combat")
 
 func test_create_monster_queues_spawns() -> void:
+	# Raise the run tier so the difficulty filter admits weight<=5 enemies of any
+	# (non-boss) tier — keeps the count assertion independent of the saved tier.
+	var saved: int = GameState.games_played
+	GameState.games_played = 99
 	var s: ScrollData = Data.get_scroll(&"scroll_of_create_monster")
 	ScrollSystem.apply_outcome(s, "crit_bad", {"rng": _rng()})  # 2 enemies w<=5
 	assert_eq(GameState.pending_spawn_enemies.size(), 2, "two enemies queued")
+	GameState.games_played = saved
 
 func test_identify_all_reveals_carried_scrolls() -> void:
 	GameState.add_scroll_loot(&"scroll_of_fire")
