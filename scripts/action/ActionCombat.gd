@@ -149,13 +149,15 @@ var _potion_q_held: bool = false
 var _potion_thrown_this_hold: bool = false
 var _lob_aim_active: bool = false
 var _lob_aim_target: Vector2 = Vector2.ZERO  # arena coords, clamped to range
-# Throw charge: holding Q fills a ring (0..1). A quick tap (under TAP) drinks;
-# releasing mid-charge cancels (no use); only a FULL ring arms the throw, which
-# still requires an LMB click on a target to actually loose the potion.
+# Throw charge: holding Q fills a ring (0..1). Releasing mid-charge cancels (no
+# use); only a FULL ring arms the throw, which still requires an LMB click on a
+# target to loose the potion. Drinking is separate — click on yourself.
 var _potion_charge: float = 0.0
-var _potion_hold_time: float = 0.0
 const POTION_CHARGE_TIME := 0.6   # seconds of holding Q to fully arm a throw
-const POTION_TAP_TIME := 0.15     # a press shorter than this is a "drink" tap
+# LMB edge tracking + one-shot attack suppression so the click that drinks/throws
+# a potion never also swings the left-click attack.
+var _lmb_prev: bool = false
+var _suppress_attack_until_release: bool = false
 # Expanding splash burst FX after a throw lands.
 var _potion_splash_remaining: float = 0.0
 var _potion_splash_center: Vector2 = Vector2.ZERO
@@ -466,7 +468,8 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_potion_q_held = false
 	_lob_aim_active = false
 	_potion_charge = 0.0
-	_potion_hold_time = 0.0
+	_lmb_prev = false
+	_suppress_attack_until_release = false
 	_transitioning = false
 	_stairs_active = false
 	_stairs_armed = false
@@ -966,23 +969,40 @@ func _process_player_input(delta: float) -> void:
 	if to_mouse.length() > 5.0:
 		player_facing = to_mouse.normalized()
 
-	# Potion belt selection (number keys 1-9).
+	# Potion belt selection (number keys 1-9; scroll wheel via _unhandled_input).
 	_poll_potion_belt_keys()
+
+	# LMB press edge + suppression: drinking / throwing a potion consumes the
+	# click so it doesn't ALSO swing the left-click attack.
+	var lmb_now: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	var lmb_edge: bool = lmb_now and not _lmb_prev
+	_lmb_prev = lmb_now
+	if not lmb_now:
+		_suppress_attack_until_release = false
+
+	# Drink: click on yourself (while NOT aiming a throw) to drink the selected
+	# potion. The same click is suppressed from also attacking.
+	if lmb_edge and not _potion_q_held and _selected_potion() != null \
+			and mouse_pos.distance_to(player_pos) <= PLAYER_RADIUS + 6.0:
+		_drink_selected_potion()
+		_suppress_attack_until_release = true
 
 	# Click slots: LMB fires the left card, RMB the right card, each aimed
 	# at the cursor and gated by its own per-card cooldown (held = continuous).
-	# While aiming a potion throw (Q held), LMB throws instead of attacking.
+	# LMB is held off while aiming a throw (Q held) or for the click that just
+	# threw/drank a potion (so a throw never doubles as an attack).
 	if not _potion_q_held:
-		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and left_cd <= 0.0 and left_card != null:
+		if not _suppress_attack_until_release \
+				and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and left_cd <= 0.0 and left_card != null:
 			_fire_click_card(left_card)
 			left_cd = left_max_cd
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and right_cd <= 0.0 and right_card != null:
 			_fire_click_card(right_card)
 			right_cd = right_max_cd
 
-	# Potions on Q: quick tap drinks the selected potion; holding charges a throw
-	# ring, then an LMB click on a target looses it. Falls back to the equipped
-	# pill on Q when carrying no potions, so the active-item slot still works.
+	# Potions on Q: hold to charge a throw ring, then LMB-click a target to loose
+	# it (drinking is on click-yourself, not Q). Falls back to the equipped pill on
+	# Q when carrying no potions, so the active-item slot still works.
 	_process_potion_input(mouse_pos, delta)
 
 	# E fires the charged active.
@@ -1074,6 +1094,21 @@ func _select_potion_belt(index: int) -> void:
 	_selected_potion_belt = index
 	_refresh_potion_belt()
 
+# Scroll wheel cycles the selected carried potion (the active usable), pairing
+# with the 1-9 number-key selection. Wheel up = previous, down = next.
+func _unhandled_input(event: InputEvent) -> void:
+	if paused or phase != Phase.PLAYING:
+		return
+	if not (event is InputEventMouseButton) or not event.pressed:
+		return
+	var n: int = GameState.loot_potions().size()
+	if n <= 0:
+		return
+	if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+		_select_potion_belt((_selected_potion_belt - 1 + n) % n)
+	elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		_select_potion_belt((_selected_potion_belt + 1) % n)
+
 func _poll_potion_belt_keys() -> void:
 	var n: int = GameState.loot_potions().size()
 	for k in range(mini(n, 9)):
@@ -1105,31 +1140,29 @@ func _process_potion_input(mouse_pos: Vector2, delta: float) -> void:
 			_potion_q_held = true
 			_potion_thrown_this_hold = false
 			_potion_charge = 0.0
-			_potion_hold_time = 0.0
 			_lob_aim_active = false
 		else:
 			# No potions — Q keeps its old job (the equipped pill).
 			_use_active_item()
 	if _potion_q_held:
-		_potion_hold_time += delta
 		_potion_charge = minf(1.0, _potion_charge + delta / POTION_CHARGE_TIME)
 		var armed: bool = _potion_charge >= 1.0
 		# The lobbing aim/reticle only appears once the ring is full.
 		_lob_aim_active = armed
 		if armed:
 			_lob_aim_target = _clamp_throw_point(mouse_pos)
-			# A fully-charged throw still needs an LMB click on the target to fire.
+			# A fully-charged throw still needs an LMB click on the target to fire,
+			# and that click is suppressed from also swinging the attack.
 			if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and not _potion_thrown_this_hold:
 				_throw_selected_potion(_lob_aim_target)
 				_potion_thrown_this_hold = true
 				_potion_q_held = false
 				_potion_charge = 0.0
 				_lob_aim_active = false
+				_suppress_attack_until_release = true
 	if Input.is_action_just_released("use_active_item"):
-		# Release behaviour: a quick TAP drinks; releasing after that but before
-		# the ring fills CANCELS (nothing used); a full ring waits for the click.
-		if _potion_q_held and not _potion_thrown_this_hold and _potion_hold_time <= POTION_TAP_TIME:
-			_drink_selected_potion()
+		# Releasing before the ring fills CANCELS (nothing used). Drinking is no
+		# longer on Q — click yourself to drink.
 		_potion_q_held = false
 		_potion_charge = 0.0
 		_lob_aim_active = false
