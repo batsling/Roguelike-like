@@ -116,6 +116,7 @@ func _build_payload() -> Dictionary:
 		# + this run's mystery-bottle colour assignment.
 		"loot_items": GameState.loot_items.duplicate(true),
 		"identified_potion_types": _stringnames_to_strings(GameState.identified_potion_types),
+		"identified_scroll_types": _stringnames_to_strings(GameState.identified_scroll_types),
 		"potion_color_map": GameState.potion_color_map.duplicate(),
 		"loot_keys": int(GameState.loot.get("key", 0)),
 	}
@@ -230,6 +231,10 @@ func _apply_save_data(data: Dictionary) -> void:
 	for s in data.get("identified_potion_types", []):
 		ident.append(StringName(s))
 	GameState.identified_potion_types = ident
+	var sident: Array[StringName] = []
+	for s in data.get("identified_scroll_types", []):
+		sident.append(StringName(s))
+	GameState.identified_scroll_types = sident
 	GameState.potion_color_map = {}
 	var cm: Dictionary = data.get("potion_color_map", {})
 	for k in cm.keys():

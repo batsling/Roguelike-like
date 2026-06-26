@@ -13,6 +13,7 @@ var _games: Dictionary = {}             # StringName -> GameData
 var _characters: Dictionary = {}        # StringName -> CharacterData
 var _curses: Dictionary = {}            # StringName -> CurseData
 var _potions: Dictionary = {}           # StringName -> PotionData
+var _scrolls: Dictionary = {}           # StringName -> ScrollData
 
 # Single shared config resources mapping turn-based combat concepts to each
 # mode's equivalents — Action (turns->rooms, energy->Haste, draw->auto-slots)
@@ -43,6 +44,7 @@ func _ready() -> void:
 	_load_dir("res://data/characters/", _characters)
 	_load_dir("res://data/curses/", _curses)
 	_load_dir("res://data/potions/", _potions)
+	_load_dir("res://data/scrolls/", _scrolls)
 	# Per-mode concept translators. Fall back to script defaults if the .tres is
 	# missing so combat never crashes for a missing tunable file.
 	action_translation = (_load_config("res://data/action_translation.tres") as ActionTranslation)
@@ -61,6 +63,7 @@ func _ready() -> void:
 		_cards.size(), _items.size(), _enemies.size(), _action_enemies.size(),
 		_strategy_enemies.size(), _events.size(), _games.size(), _characters.size(), _potions.size()
 	])
+	print("[Data] Loaded %d scrolls" % _scrolls.size())
 
 # Loads a single config .tres, returning null (with a warning) if missing or
 # malformed; callers supply a typed default.
@@ -153,6 +156,30 @@ func roll_potion(rng: RandomNumberGenerator = null) -> PotionData:
 		r.randomize()
 	var target: int = _roll_potion_rarity(r)
 	var bucket: Array = pool.filter(func(p): return p is PotionData and p.rarity_index() == target)
+	if bucket.is_empty():
+		bucket = pool
+	return bucket[r.randi_range(0, bucket.size() - 1)]
+
+func get_scroll(id: StringName) -> ScrollData:
+	return _scrolls.get(id)
+
+func all_scrolls() -> Array:
+	return _scrolls.values()
+
+# One random scroll template, rarity-weighted with the same distribution as
+# potions (ScrollData.rarity_index() maps the sheet rarity onto the 0-3 order).
+# Falls back to the full pool when the rolled bucket is empty; null only if no
+# scrolls are loaded.
+func roll_scroll(rng: RandomNumberGenerator = null) -> ScrollData:
+	var pool: Array = _scrolls.values()
+	if pool.is_empty():
+		return null
+	var r: RandomNumberGenerator = rng
+	if r == null:
+		r = RandomNumberGenerator.new()
+		r.randomize()
+	var target: int = _roll_potion_rarity(r)
+	var bucket: Array = pool.filter(func(s): return s is ScrollData and s.rarity_index() == target)
 	if bucket.is_empty():
 		bucket = pool
 	return bucket[r.randi_range(0, bucket.size() - 1)]

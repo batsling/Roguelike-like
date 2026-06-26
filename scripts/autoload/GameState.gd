@@ -148,6 +148,13 @@ var loot_items: Array = []
 # the run. Persisted with the save.
 var identified_potion_types: Array[StringName] = []
 
+# Sibling of identified_potion_types for SCROLLS. Reading a scroll (or a Scroll
+# of Identify) reveals every copy of that type for the rest of the run; Scroll of
+# Amnesia can un-identify them. Unidentified scrolls all share one mystery art
+# (scrolls/Unidentified.png) — no per-run colour map like potions. See
+# ScrollSystem. Persisted with the save.
+var identified_scroll_types: Array[StringName] = []
+
 # Per-run bottle-colour assignment for UNIDENTIFIED potions: potion id (String)
 # -> an "Unidentified_<Color>" art base. Built lazily by PotionSystem so an
 # unknown potion always shows the same mystery bottle within a run (and a
@@ -283,6 +290,21 @@ var pending_combat_statuses: Array = []  # carryover from events
 #                    extra enemies added on top of the encounter (deckbuilder).
 var pending_ambush: String = ""
 var pending_spawn_enemies: Array = []
+
+# Carryover scroll effects that land at the START of the next combat, drained by
+# each combat mode's start hook (ScrollSystem.apply_pending_combat_effects).
+# Mirror how pending_ambush / pending_spawn_enemies already work cross-mode.
+#   pending_enemy_buff — { "power": int, "defense": int } added to every enemy
+#                        (Scroll of Aggravate Monsters).
+#   pending_enemy_start_stun — { "all": bool, "count": int, "choose": int }:
+#                        `all` stuns every enemy, `count` stuns that many random
+#                        enemies, `choose` lets the player pick up to N to stun
+#                        (Scroll of Scare Monster).
+#   pending_fire_damage_all — flat fire damage dealt to every enemy at combat
+#                        start (Scroll of Fire).
+var pending_enemy_buff: Dictionary = {}
+var pending_enemy_start_stun: Dictionary = {}
+var pending_fire_damage_all: int = 0
 
 # "A Note For Yourself" stores a card id here so the next encounter can hand it
 # back. Empty until the player stores one; the event seeds a default the first
@@ -534,6 +556,7 @@ func reset_run() -> void:
 	loot = {"key": 0}
 	loot_items.clear()
 	identified_potion_types.clear()
+	identified_scroll_types.clear()
 	potion_color_map.clear()
 	learned_spells.clear()
 	action_left_card_id = &""
@@ -561,6 +584,9 @@ func reset_run() -> void:
 	pending_combat_statuses.clear()
 	pending_ambush = ""
 	pending_spawn_enemies.clear()
+	pending_enemy_buff.clear()
+	pending_enemy_start_stun.clear()
+	pending_fire_damage_all = 0
 	note_for_yourself_card = &""
 	Notifications.clear()
 	phase = Phase.MENU
@@ -1574,9 +1600,11 @@ func add_loot(kind: String, amount: int = 1) -> void:
 			else:
 				_drop_loot_of_type("potion", -amount)
 		"scroll":
+			# Each unit becomes a concrete, rarity-rolled scroll entry (gained
+			# unidentified; ScrollSystem resolves identity on read).
 			if amount > 0:
 				for _i in range(amount):
-					loot_items.append({"type": "scroll", "rarity": "Common"})
+					_add_random_scroll_loot()
 			else:
 				_drop_loot_of_type("scroll", -amount)
 		_:
@@ -1602,10 +1630,22 @@ func get_loot_count(kind: String) -> int:
 func loot_potions() -> Array:
 	return loot_items.filter(func(l): return l is Dictionary and String(l.get("type", "")) == "potion")
 
+# Concrete scroll loot entries the player is carrying, in pickup order.
+func loot_scrolls() -> Array:
+	return loot_items.filter(func(l): return l is Dictionary and String(l.get("type", "")) == "scroll")
+
 func _add_random_potion_loot() -> void:
 	var p: PotionData = Data.roll_potion()
 	if p != null:
 		loot_items.append({"type": "potion", "id": p.id, "rarity": p.rarity})
+
+func _add_random_scroll_loot() -> void:
+	var s: ScrollData = Data.roll_scroll()
+	if s != null:
+		loot_items.append({"type": "scroll", "id": s.id, "rarity": s.rarity})
+	else:
+		# No scrolls loaded — keep the old inert stub so counts/UI don't break.
+		loot_items.append({"type": "scroll", "rarity": "Common"})
 
 # Grant a SPECIFIC potion id as loot (DevTools grant, shop purchase). Emits so
 # any open loot UI refreshes.
@@ -1614,6 +1654,14 @@ func add_potion_loot(id: StringName) -> void:
 	if p == null:
 		return
 	loot_items.append({"type": "potion", "id": p.id, "rarity": p.rarity})
+	emit_signal("inventory_changed")
+
+# Grant a SPECIFIC scroll id as loot (DevTools grant). Emits so loot UI refreshes.
+func add_scroll_loot(id: StringName) -> void:
+	var s: ScrollData = Data.get_scroll(id)
+	if s == null:
+		return
+	loot_items.append({"type": "scroll", "id": s.id, "rarity": s.rarity})
 	emit_signal("inventory_changed")
 
 # Removes the loot entry at `index` (called after a potion is drunk / thrown).
@@ -1644,7 +1692,12 @@ func grant_random_consumable_loot(rng: RandomNumberGenerator = null) -> Dictiona
 			loot_items.append(e)
 			emit_signal("inventory_changed")
 			return e
-	var e2 := {"type": "scroll", "rarity": "Common"}
+	var s: ScrollData = Data.roll_scroll(r)
+	var e2: Dictionary
+	if s != null:
+		e2 = {"type": "scroll", "id": s.id, "rarity": s.rarity}
+	else:
+		e2 = {"type": "scroll", "rarity": "Common"}
 	loot_items.append(e2)
 	emit_signal("inventory_changed")
 	return e2

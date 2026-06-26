@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ScrollData" load_steps=3 format=3 uid="uid://scroll_scroll_of_amnesia"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollData.gd" id="1_scroll"]
+[ext_resource type="Texture2D" path="res://images/scrolls/Amnesia.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_scroll")
+id = &"scroll_of_amnesia"
+display_name = "Scroll of Amnesia"
+rarity = "Uncommon"
+reference = "Hack"
+preference = "Negative"
+file = "Amnesia"
+outcomes = {"crit_good": {"description": "Forget 1 Identified Scroll and 1 Potion.", "effects": [{"op": "forget", "kind": "scroll", "count": 1}, {"op": "forget", "kind": "potion", "count": 1}]}, "good": {"description": "Forget up to 2 Identified Scrolls and 2 Potions.", "effects": [{"op": "forget", "kind": "scroll", "count": 2}, {"op": "forget", "kind": "potion", "count": 2}]}, "bad": {"description": "Forget up to 3 Identified Scrolls and 3 Potions. Forget 1 Random Spell.", "effects": [{"op": "forget", "kind": "scroll", "count": 3}, {"op": "forget", "kind": "potion", "count": 3}, {"op": "forget", "kind": "spell", "count": 1}]}, "crit_bad": {"description": "Forget all Identified Scrolls and Potions. Forget 2 Random Spells.", "effects": [{"op": "forget", "kind": "scroll", "count": -1}, {"op": "forget", "kind": "potion", "count": -1}, {"op": "forget", "kind": "spell", "count": 2}]}}

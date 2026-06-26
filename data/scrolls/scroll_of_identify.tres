@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ScrollData" load_steps=3 format=3 uid="uid://scroll_scroll_of_identify"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollData.gd" id="1_scroll"]
+[ext_resource type="Texture2D" path="res://images/scrolls/Identify.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_scroll")
+id = &"scroll_of_identify"
+display_name = "Scroll of Identify"
+rarity = "Common"
+reference = "Rogue"
+preference = "Positive"
+file = "Identify"
+outcomes = {"crit_good": {"description": "Identify all of your Scrolls.", "effects": [{"op": "identify_scrolls", "mode": "all"}]}, "good": {"description": "Choose up to 3 Scrolls to Identify.", "effects": [{"op": "identify_scrolls", "mode": "choose", "count": 3}]}, "bad": {"description": "Choose 1 Scroll to Identify.", "effects": [{"op": "identify_scrolls", "mode": "choose", "count": 1}]}, "crit_bad": {"description": "Identify 1 Random Scroll.", "effects": [{"op": "identify_scrolls", "mode": "random", "count": 1}]}}
