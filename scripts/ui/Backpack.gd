@@ -711,9 +711,8 @@ func _on_read_scroll_pressed(loot_index: int) -> void:
 	if not GameState.can_use_scrolls():
 		return
 	var modal := ScrollUseModal.new()
-	add_child(modal)
 	modal.finished.connect(_refresh)
-	modal.start(loot_index)
+	modal.start(self, loot_index)
 
 func _render_loot() -> void:
 	var any := false

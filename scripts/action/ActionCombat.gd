@@ -454,7 +454,14 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_haste_remaining = 0.0
 	_slow_remaining = 0.0
 	_room_resolved = false
-	# Uncollected floor drops don't carry between rooms.
+	# Uncollected floor drops are NOT lost when the player leaves: bank each one
+	# back into the carried loot so it's kept (it left loot_items when it dropped).
+	for g in _ground_loot:
+		var e = g.get("entry")
+		if e is Dictionary:
+			GameState.loot_items.append(e)
+	if not _ground_loot.is_empty():
+		GameState.emit_signal("inventory_changed")
 	_ground_loot.clear()
 	_potion_q_held = false
 	_lob_aim_active = false

@@ -23,6 +23,10 @@ var _requests: Array = []
 var _panel: PanelContainer = null
 var _body: VBoxContainer = null
 var _rng := RandomNumberGenerator.new()
+# Own top CanvasLayer so the modal is always centered on the full viewport,
+# regardless of the host's size/position (the Backpack panel isn't full-screen,
+# which pushed the modal off-screen when it was parented straight to it).
+var _layer: CanvasLayer = null
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -30,10 +34,16 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_rng.randomize()
 
-# Entry point. Resolves the scroll at loot_index, identifies + rolls it, removes
-# it from loot, and shows the result screen. Aborts (and finishes) if the entry
-# isn't a usable scroll or the player is in combat.
-func start(loot_index: int) -> void:
+# Entry point. Mounts on its own layer over `host`, then resolves the scroll at
+# loot_index, identifies + rolls it, removes it from loot, and shows the result
+# screen. Aborts (and finishes) if the entry isn't a usable scroll or enemies are
+# near.
+func start(host: Node, loot_index: int) -> void:
+	_layer = CanvasLayer.new()
+	_layer.layer = 100
+	_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	host.add_child(_layer)
+	_layer.add_child(self)
 	if not GameState.can_use_scrolls():
 		Notifications.notify("You can't read scrolls with enemies nearby.", ScrollSystem.SCROLL_COLOR)
 		_finish()
@@ -200,7 +210,10 @@ func _do_teleport(req: Dictionary) -> void:
 
 func _finish() -> void:
 	finished.emit()
-	queue_free()
+	if _layer != null:
+		_layer.queue_free()
+	else:
+		queue_free()
 
 # Clears and rebuilds the centered panel + a fresh scrolling body VBox.
 func _rebuild_panel(accent: Color) -> void:

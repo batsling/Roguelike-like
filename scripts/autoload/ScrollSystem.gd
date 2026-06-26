@@ -65,19 +65,20 @@ func display_name(scroll: ScrollData) -> String:
 		return "Scroll"
 	return scroll.display_name if is_identified(scroll.id) else "Unidentified Scroll"
 
+# The shared mystery-scroll art. preload (not a runtime load) so Godot always
+# imports it — it isn't referenced by any .tres, so a plain load could miss it
+# when the editor hasn't scanned the folder, which showed the ground drop as a
+# bare circle instead of the scroll icon.
+const UNIDENTIFIED_TEX: Texture2D = preload("res://images/scrolls/Unidentified.png")
+
 # Texture for a scroll: its real art once identified, else the shared mystery
-# scroll (scrolls/Unidentified.png). Unlike potions there's no per-run colour map.
+# scroll. Unlike potions there's no per-run colour map.
 func art_texture(scroll: ScrollData) -> Texture2D:
-	var base := "Unidentified"
 	if scroll != null and is_identified(scroll.id):
-		base = scroll.art_file()
-	var path := "res://images/scrolls/%s.png" % base
-	if ResourceLoader.exists(path):
-		return load(path)
-	var fallback := "res://images/scrolls/Unidentified.png"
-	if ResourceLoader.exists(fallback):
-		return load(fallback)
-	return null
+		var path := "res://images/scrolls/%s.png" % scroll.art_file()
+		if ResourceLoader.exists(path):
+			return load(path)
+	return UNIDENTIFIED_TEX
 
 # ===========================================================================
 # Outcome resolution — the two-roll Intelligence check
