@@ -28,6 +28,7 @@ const DECAY_STATUSES: Array[StringName] = [
 	&"dodge",   # dodge decays on use too; the 1/turn safety mirrors JS
 	&"blind",
 	&"confused",
+	&"stun",    # the stunned unit skips its turn, then stun steps down by 1
 ]
 
 # Statuses that GROW by 1 at end of turn (Bleed) in STRATEGY mode. Mirror of

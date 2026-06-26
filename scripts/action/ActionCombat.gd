@@ -499,6 +499,7 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 			_combat_room_index += 1
 		# Fresh room: restart the in-room turn_ended clock (Stone Calendar).
 		_room_turn_index = 0
+		_apply_pending_scroll_effects()
 		_fire_item_triggers("combat_started")
 		_fire_item_triggers("turn_started")
 		# Innate -> auto_play: fire innate cards once now that enemies exist.
@@ -519,6 +520,29 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 # The global Backpack uses this to keep equipment swaps to between rooms.
 func has_live_enemies() -> bool:
 	return _living_enemy_count() > 0 or not _pending_spawns.is_empty()
+
+# Drains the scroll-scheduled carryover (Scare Monster / Aggravate / Fire) into
+# the room via ScrollSystem. Action is real-time, so "stun" reuses the global
+# enemy freeze the ambush system already uses (a brief room-wide pause) rather
+# than a per-enemy turn skip; buff and fire act on each enemy CombatActor.
+func _apply_pending_scroll_effects() -> void:
+	var stun_fn := func(_mode: String, _count: int) -> void:
+		_enemy_stun_remaining = maxf(_enemy_stun_remaining, AMBUSH_STUN_SECONDS)
+		GameLog.add("Scroll of Scare Monster: the enemies are frozen in fear!", Color(0.9, 0.85, 0.5))
+	var buff_fn := func(power: int, defense: int) -> void:
+		for inst in enemies:
+			if not inst.actor.is_alive():
+				continue
+			if power != 0:
+				inst.actor.add_status(&"power", power)
+			if defense != 0:
+				inst.actor.add_status(&"defense", defense)
+	var fire_fn := func(amount: int) -> void:
+		for inst in enemies:
+			if inst.actor.is_alive():
+				_deal_damage_to_enemy(inst, amount, "magic")
+		GameLog.add("Scroll of Fire scorches the room for %d!" % amount, Color(1.0, 0.5, 0.2))
+	ScrollSystem.apply_pending_combat_effects(stun_fn, buff_fn, fire_fn)
 
 func _living_enemy_count() -> int:
 	var n := 0

@@ -785,6 +785,17 @@ func _on_unit_turn_started(unit) -> void:
 			energy, max_energy, unit.move_range,
 		]
 	else:
+		# Stunned (Scroll of Scare Monster): the enemy forfeits this turn. The
+		# stun stack steps down in the turn-end decay (_on_unit_turn_ended), so a
+		# 1-stack stun costs exactly one turn. End the turn deferred to avoid
+		# re-entering the initiative engine from inside its own signal.
+		if unit.get_status(&"stun") > 0:
+			_status_label.text = "%s is Stunned." % unit.unit_name
+			_set_player_buttons_enabled(false)
+			GameLog.add("%s is Stunned and loses its turn." % str(unit.unit_name).capitalize(),
+				Color(0.9, 0.85, 0.5))
+			turn_manager.end_current_turn.call_deferred()
+			return
 		_status_label.text = "%s acts..." % unit.unit_name
 		_set_player_buttons_enabled(false)
 		_enemy_turn_timer.start()
