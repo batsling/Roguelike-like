@@ -138,8 +138,9 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 # drinks the selected potion on yourself; holding Q raises a lobbing white aim
 # arrow and clicking LMB throws it to that point, splashing everyone (friend and
 # foe) in the blast. Number keys 1-9 (and clicking a slot) pick the selection.
-var _potion_belt_layer: CanvasLayer = null
+var _potion_belt_layer: CanvasLayer = null  # legacy (unused since potions moved into the bottom bar)
 var _potion_belt_row: HBoxContainer = null
+var _potion_group: HBoxContainer = null     # the "Potions" group inside the bottom slot bar
 # Bottom-right transient toasts shown when ground loot is picked up.
 var _pickup_toast_layer: CanvasLayer = null
 var _selected_potion_belt: int = 0
@@ -148,6 +149,13 @@ var _potion_q_held: bool = false
 var _potion_thrown_this_hold: bool = false
 var _lob_aim_active: bool = false
 var _lob_aim_target: Vector2 = Vector2.ZERO  # arena coords, clamped to range
+# Throw charge: holding Q fills a ring (0..1). A quick tap (under TAP) drinks;
+# releasing mid-charge cancels (no use); only a FULL ring arms the throw, which
+# still requires an LMB click on a target to actually loose the potion.
+var _potion_charge: float = 0.0
+var _potion_hold_time: float = 0.0
+const POTION_CHARGE_TIME := 0.6   # seconds of holding Q to fully arm a throw
+const POTION_TAP_TIME := 0.15     # a press shorter than this is a "drink" tap
 # Expanding splash burst FX after a throw lands.
 var _potion_splash_remaining: float = 0.0
 var _potion_splash_center: Vector2 = Vector2.ZERO
@@ -450,6 +458,8 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_ground_loot.clear()
 	_potion_q_held = false
 	_lob_aim_active = false
+	_potion_charge = 0.0
+	_potion_hold_time = 0.0
 	_transitioning = false
 	_stairs_active = false
 	_stairs_armed = false
@@ -963,10 +973,10 @@ func _process_player_input(delta: float) -> void:
 			_fire_click_card(right_card)
 			right_cd = right_max_cd
 
-	# Potions on Q: tap to drink the selected potion on yourself; hold Q to raise
-	# a lobbing aim arrow and LMB to throw it. Falls back to the equipped pill on
-	# Q when the player is carrying no potions, so the active-item slot still works.
-	_process_potion_input(mouse_pos)
+	# Potions on Q: quick tap drinks the selected potion; holding charges a throw
+	# ring, then an LMB click on a target looses it. Falls back to the equipped
+	# pill on Q when carrying no potions, so the active-item slot still works.
+	_process_potion_input(mouse_pos, delta)
 
 	# E fires the charged active.
 	if Input.is_action_just_pressed("use_charged_item"):
@@ -994,24 +1004,24 @@ func _use_active_item() -> void:
 
 # Bottom-left belt of carried potions (its own CanvasLayer so it draws over the
 # arena). The selected slot is highlighted; Q acts on it.
+# Carried potions live INSIDE the bottom slot bar (no separate floating belt):
+# a small "Potions" group appended after the auto-cast thumbnails. The selected
+# slot is highlighted; Q acts on it (tap = drink, hold = charge + click throw).
 func _build_potion_belt() -> void:
-	_potion_belt_layer = CanvasLayer.new()
-	_potion_belt_layer.layer = 6
-	add_child(_potion_belt_layer)
-	var holder := VBoxContainer.new()
-	holder.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	holder.offset_left = 8
-	holder.offset_bottom = -8
-	holder.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_potion_belt_layer.add_child(holder)
-	var hint := Label.new()
-	hint.text = "Potions — Q drink / hold Q + click throw"
-	hint.add_theme_font_size_override("font_size", 11)
-	hint.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
-	holder.add_child(hint)
+	if _bottom_bar == null:
+		return
+	_potion_group = HBoxContainer.new()
+	_potion_group.add_theme_constant_override("separation", 4)
+	_bottom_bar.add_child(_potion_group)
+	var lbl := Label.new()
+	lbl.text = "Potions"
+	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_color_override("font_color", Color(0.78, 0.72, 0.88))
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_potion_group.add_child(lbl)
 	_potion_belt_row = HBoxContainer.new()
 	_potion_belt_row.add_theme_constant_override("separation", 4)
-	holder.add_child(_potion_belt_row)
+	_potion_group.add_child(_potion_belt_row)
 	_refresh_potion_belt()
 
 func _refresh_potion_belt() -> void:
@@ -1022,11 +1032,9 @@ func _refresh_potion_belt() -> void:
 	var entries: Array = GameState.loot_potions()
 	if _selected_potion_belt >= entries.size():
 		_selected_potion_belt = maxi(0, entries.size() - 1)
-	var hint_parent := _potion_belt_row.get_parent()
-	if hint_parent != null and hint_parent.get_child_count() > 0:
-		var hint := hint_parent.get_child(0)
-		if hint is Label:
-			hint.visible = not entries.is_empty()
+	# Hide the whole group (label included) when carrying no potions.
+	if _potion_group != null:
+		_potion_group.visible = not entries.is_empty()
 	for i in range(entries.size()):
 		_potion_belt_row.add_child(_make_belt_slot(i, entries[i]))
 
@@ -1083,28 +1091,40 @@ func _selected_potion_loot_index() -> int:
 			seen += 1
 	return -1
 
-func _process_potion_input(mouse_pos: Vector2) -> void:
+func _process_potion_input(mouse_pos: Vector2, delta: float) -> void:
 	var has_potion: bool = _selected_potion() != null
 	if Input.is_action_just_pressed("use_active_item"):
 		if has_potion:
 			_potion_q_held = true
 			_potion_thrown_this_hold = false
-			_lob_aim_active = true
+			_potion_charge = 0.0
+			_potion_hold_time = 0.0
+			_lob_aim_active = false
 		else:
 			# No potions — Q keeps its old job (the equipped pill).
 			_use_active_item()
 	if _potion_q_held:
-		_lob_aim_target = _clamp_throw_point(mouse_pos)
-		# Throw on LMB while Q is held.
-		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and not _potion_thrown_this_hold:
-			_throw_selected_potion(_lob_aim_target)
-			_potion_thrown_this_hold = true
-			_lob_aim_active = false
+		_potion_hold_time += delta
+		_potion_charge = minf(1.0, _potion_charge + delta / POTION_CHARGE_TIME)
+		var armed: bool = _potion_charge >= 1.0
+		# The lobbing aim/reticle only appears once the ring is full.
+		_lob_aim_active = armed
+		if armed:
+			_lob_aim_target = _clamp_throw_point(mouse_pos)
+			# A fully-charged throw still needs an LMB click on the target to fire.
+			if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and not _potion_thrown_this_hold:
+				_throw_selected_potion(_lob_aim_target)
+				_potion_thrown_this_hold = true
+				_potion_q_held = false
+				_potion_charge = 0.0
+				_lob_aim_active = false
 	if Input.is_action_just_released("use_active_item"):
-		# Released without throwing -> drink it yourself.
-		if _potion_q_held and not _potion_thrown_this_hold:
+		# Release behaviour: a quick TAP drinks; releasing after that but before
+		# the ring fills CANCELS (nothing used); a full ring waits for the click.
+		if _potion_q_held and not _potion_thrown_this_hold and _potion_hold_time <= POTION_TAP_TIME:
 			_drink_selected_potion()
 		_potion_q_held = false
+		_potion_charge = 0.0
 		_lob_aim_active = false
 
 # Clamp an arena point to within throw range (base 4 player-widths + Strength).
@@ -3621,6 +3641,10 @@ var _slot_cost_labels: Array[Label] = []
 var _click_tex: Array[TextureRect] = []
 var _click_swatch: Array[ColorRect] = []
 
+# The bottom slot-bar HBox (click slots, charged slot, auto thumbs, then the
+# carried-potions group). Held so _build_potion_belt can append into it.
+var _bottom_bar: HBoxContainer = null
+
 # Charged-active slot in the bottom bar: the item fired with Space (or E).
 var _charged_panel: Panel = null
 var _charged_tex: TextureRect = null
@@ -3647,6 +3671,8 @@ func _build_slot_bar() -> void:
 	bar.position = Vector2(20, HUD_BOTTOM_Y + 18)
 	bar.add_theme_constant_override("separation", 10)
 	add_child(bar)
+	# Carried potions are appended to this same bar by _build_potion_belt.
+	_bottom_bar = bar
 
 	# Two click slots (LMB / RMB): card art on the left, name + cooldown right.
 	_slot_panels.clear()
@@ -4198,6 +4224,12 @@ func _draw() -> void:
 # Lobbing white aim arrow (a high parabola from the player to the clamped throw
 # point) plus the throw's fading splash ring. Both in arena coords.
 func _draw_potion_throw() -> void:
+	# Charge ring around the player while holding Q before the throw is armed.
+	if _potion_q_held and _potion_charge < 1.0:
+		var ring_r: float = PLAYER_RADIUS + 9.0
+		draw_arc(player_pos, ring_r, 0.0, TAU, 40, Color(1, 1, 1, 0.15), 2.0)
+		draw_arc(player_pos, ring_r, -PI * 0.5, -PI * 0.5 + TAU * _potion_charge, 40,
+			Color(0.7, 0.85, 1.0, 0.95), 4.0)
 	if _lob_aim_active:
 		var from: Vector2 = player_pos
 		var to: Vector2 = _lob_aim_target
