@@ -241,6 +241,23 @@ Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
 
+- **Permanent & Temporary status addons** — two new addon hooks (`permanent`
+  and `temporary`, authored in `addonsnew`) that bend how a status decays, run
+  through the shared `Stats` status core so the deckbuilder, action, and strategy
+  engines all honour them. **Permanent** holds a status at full value forever;
+  **Temporary** holds full value for a fixed turn count and then vanishes
+  entirely. Both surface a procedural top-right marker on the status badge — a
+  gold **padlock** for Permanent, a cyan **clock + remaining-turns** number for
+  Temporary — drawn immediate-mode via `DrawUtil` (new `draw_status_lock` /
+  `draw_status_clock`) plus a `StatusMarker` control, so the iconography is
+  identical across the badge overlay, the action arena, and the tactical grid.
+  `CombatActor` / strategy `Unit` / `BattleUnit` grow `permanent_statuses` /
+  `temporary_statuses` dictionaries with `set/is_status_permanent` and
+  `set/is_status_temporary` + `temporary_turns` helpers, and
+  `Stats.decay_actor_statuses` skips Permanent steps and ticks Temporary timers
+  to removal. Enemies author them in their starting statuses (the strategy Troll
+  opens with **5 Permanent Regeneration**); potions grant **Temporary** buffs
+  (`Gain +N <Status> for M turns`).
 - **Potion loot system** — the first loot consumable, ported from the legacy
   HTML build. The `potions` sheet generates `data/potions/*.tres` (`PotionData`)
   via `generate_potion_tres.py`; a new **`PotionSystem`** autoload owns global
@@ -259,6 +276,28 @@ re-run them after pulling and review the diff.
   granted from the DevTools **Potions** tab. Scrolls appear as inert stubs until
   the scroll system lands. Covered by `test/test_potions.gd`.
 
+- **Strategy difficulty weight budget + enemy glyph tokens** — tactical-grid
+  encounters now spend a **weight budget** set by the run's difficulty tier
+  (Low 6 / Medium 8 / Hard 10 / Insane 12). Each enemy costs its 1–5
+  `StrategyEnemyData.weight` class; kinds are rolled by spawn rarity among those
+  that still fit the remaining budget until it is spent (capped at **6 enemies**
+  so cheap swarms can't overflow the spawn row) — the strategy-mode counterpart
+  to the deckbuilder's weighted spawner. On the grid, an enemy with no sprite now
+  renders its **glyph letter** in the proper font over a portrait-coloured token
+  (instead of a plain red circle); `BattleUnit` carries `glyph` / `portrait_color`
+  from `StrategyEnemyData` (first-letter fallback for preset-only kinds). Covered
+  by `test/test_strategy_weight_budget.gd`.
+- **Rogue-style strategy roster + signed Speed + reach rescale** — the
+  tactical-grid roster is reworked toward a Rogue-like set (Snake, Rattlesnake,
+  Hobgoblin, Troll, plus Sewer Rat). **Speed** becomes a *signed* stat centred on
+  0 — ±1 tile of movement and a matching initiative-weight shift per ±4 speed
+  (clamped ≥ 1) — so a slow unit still takes its turns instead of being frozen
+  out. Enemy intents now size their attacks with the **same bare keywords player
+  cards use** (`smash large`, `poke small`), and the shared tile-reach vocabulary
+  rescales to **short 1 / medium 2 / large 3** tiles across player cards and enemy
+  intents alike. The Troll's whole turn is a three-hit **Maul** and it opens with
+  Permanent Regeneration (see the status-addon entry above). Covered by
+  `test/test_strategy_enemies.gd`.
 - **Weighted enemy encounters** — combats now field a **scaled group** instead of
   a single random enemy. `scripts/runtime/EnemySpawner.gd` ports the legacy
   budget/tier "weight" spawn: the run's **RunDifficulty** tier sets a spend budget
@@ -356,11 +395,13 @@ re-run them after pulling and review the diff.
 
 ## Roadmap / future plans
 
-The Godot port already covers the core loop (overworld map, deckbuilder &
-action combat, events, curses, items, status effects, curse-synergy items,
-shop, escape phase, characters, saves, collection, and game verification). The
-work still ahead — much of it porting remaining systems from the legacy HTML
-build:
+The Godot port already covers the core loop (overworld map, deckbuilder,
+action & tactical-grid combat, data-driven enemies per mode, weighted/
+difficulty-scaled encounters, events, curses, items, status effects — including
+the Permanent/Temporary status addons — curse-synergy items, loot **potions**,
+the shop, escape phase, characters, saves, collection, and game verification).
+The work still ahead — much of it porting remaining systems from the legacy
+HTML build:
 
 - **Loot system** — *potions landed* (see Recent changes). Still ahead: the
   **scrolls** and **fish** consumable tables (scrolls currently drop as inert
