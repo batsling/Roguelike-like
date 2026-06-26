@@ -708,7 +708,7 @@ func _on_use_pressed(item: ItemData) -> void:
 # (auto-roll result + any pickers), which removes the scroll from loot and
 # applies its effect, then refreshes the loot list when it finishes.
 func _on_read_scroll_pressed(loot_index: int) -> void:
-	if GameState.combat_scene != null:
+	if not GameState.can_use_scrolls():
 		return
 	var modal := ScrollUseModal.new()
 	add_child(modal)
@@ -739,9 +739,10 @@ func _render_loot() -> void:
 		hbox.add_child(label)
 		_list_vbox.add_child(row)
 	# Concrete scroll entries: each shows its art + (identified) name and a Read
-	# button, usable only OUTSIDE combat. Iterate loot_items directly so the Read
+	# button, usable while no combat is active (and, in action, between fights —
+	# see GameState.can_use_scrolls). Iterate loot_items directly so the Read
 	# button carries the real index for removal on use.
-	var can_read: bool = GameState.combat_scene == null
+	var can_read: bool = GameState.can_use_scrolls()
 	for i in range(GameState.loot_items.size()):
 		var entry = GameState.loot_items[i]
 		if not (entry is Dictionary) or String(entry.get("type", "")) != "scroll":

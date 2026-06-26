@@ -1042,6 +1042,19 @@ func can_fire_item(item: ItemData) -> bool:
 		return can_use_items()
 	return false
 
+# Whether a SCROLL can be read right now. Scrolls are out-of-combat consumables,
+# so the default is "not in a combat scene". The action floor is the exception:
+# it stays the combat_scene for the whole room, so it exposes scrolls_allowed()
+# (true only while no enemies are on screen) — letting the player read scrolls
+# between fights without leaving the floor. Deckbuilder/strategy lack the hook,
+# so scrolls stay blocked there mid-combat.
+func can_use_scrolls() -> bool:
+	if combat_scene == null:
+		return true
+	if combat_scene.has_method("scrolls_allowed"):
+		return combat_scene.scrolls_allowed()
+	return false
+
 # Activates a USABLE consumable OR a CHARGED active from inventory: fires its
 # item_used triggers through EffectSystem (routed into the live combat scene
 # when one is registered, else scene-less). A USABLE spends a use and is dropped

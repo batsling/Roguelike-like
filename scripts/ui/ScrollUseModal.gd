@@ -34,8 +34,8 @@ func _init() -> void:
 # it from loot, and shows the result screen. Aborts (and finishes) if the entry
 # isn't a usable scroll or the player is in combat.
 func start(loot_index: int) -> void:
-	if GameState.combat_scene != null:
-		Notifications.notify("Scrolls can only be read outside of combat.", ScrollSystem.SCROLL_COLOR)
+	if not GameState.can_use_scrolls():
+		Notifications.notify("You can't read scrolls with enemies nearby.", ScrollSystem.SCROLL_COLOR)
 		_finish()
 		return
 	if loot_index < 0 or loot_index >= GameState.loot_items.size():

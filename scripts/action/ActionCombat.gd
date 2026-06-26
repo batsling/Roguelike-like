@@ -140,6 +140,8 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 # foe) in the blast. Number keys 1-9 (and clicking a slot) pick the selection.
 var _potion_belt_layer: CanvasLayer = null
 var _potion_belt_row: HBoxContainer = null
+# Bottom-right transient toasts shown when ground loot is picked up.
+var _pickup_toast_layer: CanvasLayer = null
 var _selected_potion_belt: int = 0
 # Q-hold throw state machine.
 var _potion_q_held: bool = false
@@ -524,6 +526,12 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 # The global Backpack uses this to keep equipment swaps to between rooms.
 func has_live_enemies() -> bool:
 	return _living_enemy_count() > 0 or not _pending_spawns.is_empty()
+
+# Scrolls are readable on the action floor only while no enemies are present
+# (between fights). Read by GameState.can_use_scrolls() so the Backpack's Read
+# button unlocks the moment a room is clear.
+func scrolls_allowed() -> bool:
+	return not has_live_enemies()
 
 # Drains the scroll-scheduled carryover (Scare Monster / Aggravate / Fire) into
 # the room via ScrollSystem. Action is real-time, so "stun" reuses the global
@@ -1210,11 +1218,24 @@ func _maybe_drop_ground_loot() -> void:
 		return
 	GameState.loot_items.erase(entry)
 	GameState.emit_signal("inventory_changed")
-	var pos := Vector2(
-		_rng.randf_range(ARENA_W * 0.25, ARENA_W * 0.75),
-		_rng.randf_range(ARENA_H * 0.3, ARENA_H * 0.7))
+	# Always drop in the middle of the room; if another drop is already sitting
+	# there, spiral outward a little so they don't perfectly overlap.
+	var center := Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
+	var pos := center
+	var tries := 0
+	while tries < 8 and _ground_loot_near(pos, 28.0):
+		var ang: float = _rng.randf() * TAU
+		pos = center + Vector2(cos(ang), sin(ang)) * (32.0 + 14.0 * tries)
+		tries += 1
 	_ground_loot.append({"entry": entry, "pos": pos})
 	queue_redraw()
+
+# True if any existing ground-loot drop sits within `dist` of `pos`.
+func _ground_loot_near(pos: Vector2, dist: float) -> bool:
+	for g in _ground_loot:
+		if g["pos"].distance_to(pos) < dist:
+			return true
+	return false
 
 func _process_ground_loot() -> void:
 	if _ground_loot.is_empty():
@@ -1226,13 +1247,66 @@ func _process_ground_loot() -> void:
 			GameState.loot_items.append(entry)
 			GameState.emit_signal("inventory_changed")
 			_ground_loot.remove_at(i)
-			if String(entry.get("type", "")) == "potion":
+			var kind := String(entry.get("type", ""))
+			if kind == "potion":
 				var p: PotionData = Data.get_potion(StringName(entry.get("id", "")))
-				Notifications.notify("Picked up a potion: %s" % (PotionSystem.display_name(p) if p != null else "Potion"),
+				_show_pickup_toast(PotionSystem.art_texture(p),
+					"Picked up: %s" % (PotionSystem.display_name(p) if p != null else "Potion"),
 					PotionSystem.POTION_COLOR)
 			else:
-				Notifications.notify("Picked up an Unidentified Scroll.", Color(0.6, 0.5, 0.8))
+				var s: ScrollData = Data.get_scroll(StringName(entry.get("id", "")))
+				_show_pickup_toast(ScrollSystem.art_texture(s),
+					"Picked up: %s" % (ScrollSystem.display_name(s) if s != null else "Unidentified Scroll"),
+					ScrollSystem.SCROLL_COLOR)
 			queue_redraw()
+
+# Bottom-right pop-up shown when the player walks over a ground-loot drop: the
+# item's art + its name, fading in and out on its own CanvasLayer so it floats
+# over the arena. Each pickup makes its own transient toast (they briefly stack
+# upward); the tween frees it.
+func _show_pickup_toast(tex: Texture2D, text: String, color: Color) -> void:
+	if _pickup_toast_layer == null:
+		_pickup_toast_layer = CanvasLayer.new()
+		_pickup_toast_layer.layer = 8
+		add_child(_pickup_toast_layer)
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	# Stack newer toasts above older ones still on screen.
+	var live: int = _pickup_toast_layer.get_child_count()
+	panel.offset_right = -16
+	panel.offset_bottom = -16 - live * 52
+	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.07, 0.10, 0.92)
+	sb.border_color = color
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.set_content_margin_all(8)
+	panel.add_theme_stylebox_override("panel", sb)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	panel.add_child(row)
+	if tex != null:
+		var art := TextureRect.new()
+		art.custom_minimum_size = Vector2(32, 32)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.texture = tex
+		row.add_child(art)
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 1.0))
+	row.add_child(lbl)
+	_pickup_toast_layer.add_child(panel)
+	# Fade in, hold, fade out, then free.
+	panel.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(panel, "modulate:a", 1.0, 0.18)
+	tw.tween_interval(1.9)
+	tw.tween_property(panel, "modulate:a", 0.0, 0.45)
+	tw.tween_callback(panel.queue_free)
 
 func _draw_ground_loot() -> void:
 	for g in _ground_loot:
@@ -1242,8 +1316,11 @@ func _draw_ground_loot() -> void:
 		var pulse: float = 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.005)
 		draw_circle(pos, 16.0, Color(1.0, 0.95, 0.5, 0.12 + 0.12 * pulse))
 		var tex: Texture2D = null
-		if String(entry.get("type", "")) == "potion":
+		var kind := String(entry.get("type", ""))
+		if kind == "potion":
 			tex = PotionSystem.art_texture(Data.get_potion(StringName(entry.get("id", ""))))
+		elif kind == "scroll":
+			tex = ScrollSystem.art_texture(Data.get_scroll(StringName(entry.get("id", ""))))
 		if tex != null:
 			DrawUtil.draw_circular_texture(self, pos, 12.0, tex, Color.WHITE)
 		else:
