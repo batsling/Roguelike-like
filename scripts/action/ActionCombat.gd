@@ -143,7 +143,7 @@ var _potion_belt_row: HBoxContainer = null
 var _potion_group: HBoxContainer = null     # the "Potions" group inside the bottom slot bar
 # Bottom-right transient toasts shown when ground loot is picked up.
 var _pickup_toast_layer: CanvasLayer = null
-var _selected_potion_belt: int = 0
+var _usable_sel: int = 0   # unified selection index into _usable_entries() (pills + potions)
 # Q-hold throw state machine.
 var _potion_q_held: bool = false
 var _potion_thrown_this_hold: bool = false
@@ -1029,11 +1029,10 @@ func _use_active_item() -> void:
 # Potion belt + drink / throw
 # ---------------------------------------------------------------------------
 
-# Bottom-left belt of carried potions (its own CanvasLayer so it draws over the
-# arena). The selected slot is highlighted; Q acts on it.
-# Carried potions live INSIDE the bottom slot bar (no separate floating belt):
-# a small "Potions" group appended after the auto-cast thumbnails. The selected
-# slot is highlighted; Q acts on it (tap = drink, hold = charge + click throw).
+# The "Usable" group in the bottom slot bar holds BOTH the carried potions and
+# the equipped usable pills, merged into one cyclable slot (scroll wheel / 1-9 /
+# click select). The selected entry is highlighted; Q acts on it — a potion holds
+# to charge a throw (and click-yourself drinks), a pill is used immediately.
 func _build_potion_belt() -> void:
 	if _bottom_bar == null:
 		return
@@ -1041,7 +1040,7 @@ func _build_potion_belt() -> void:
 	_potion_group.add_theme_constant_override("separation", 4)
 	_bottom_bar.add_child(_potion_group)
 	var lbl := Label.new()
-	lbl.text = "Potions"
+	lbl.text = "Usable"
 	lbl.add_theme_font_size_override("font_size", 10)
 	lbl.add_theme_color_override("font_color", Color(0.78, 0.72, 0.88))
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -1051,99 +1050,128 @@ func _build_potion_belt() -> void:
 	_potion_group.add_child(_potion_belt_row)
 	_refresh_potion_belt()
 
+# The unified list of usables (the active-usable cycle), in display order:
+# every USABLE inventory pill first, then each carried potion. Each entry is a
+# Dictionary: {"kind":"item", "item":ItemData} or
+# {"kind":"potion", "loot_index":int, "id":StringName}.
+func _usable_entries() -> Array:
+	var out: Array = []
+	for it in GameState.inventory:
+		if it is ItemData and it.kind == ItemData.ItemKind.USABLE:
+			out.append({"kind": "item", "item": it})
+	for i in range(GameState.loot_items.size()):
+		var e = GameState.loot_items[i]
+		if e is Dictionary and String(e.get("type", "")) == "potion":
+			out.append({"kind": "potion", "loot_index": i, "id": StringName(e.get("id", ""))})
+	return out
+
 func _refresh_potion_belt() -> void:
 	if _potion_belt_row == null:
 		return
 	for c in _potion_belt_row.get_children():
 		c.queue_free()
-	var entries: Array = GameState.loot_potions()
-	if _selected_potion_belt >= entries.size():
-		_selected_potion_belt = maxi(0, entries.size() - 1)
-	# Hide the whole group (label included) when carrying no potions.
+	var entries: Array = _usable_entries()
+	_usable_sel = clampi(_usable_sel, 0, maxi(0, entries.size() - 1))
+	# Hide the whole group (label included) when there's nothing usable.
 	if _potion_group != null:
 		_potion_group.visible = not entries.is_empty()
 	for i in range(entries.size()):
-		_potion_belt_row.add_child(_make_belt_slot(i, entries[i]))
+		_potion_belt_row.add_child(_make_usable_slot(i, entries[i]))
 
-func _make_belt_slot(belt_index: int, entry: Dictionary) -> Control:
-	var potion: PotionData = Data.get_potion(StringName(entry.get("id", "")))
+func _make_usable_slot(index: int, entry: Dictionary) -> Control:
 	var slot := Button.new()
 	slot.custom_minimum_size = Vector2(46, 46)
-	slot.tooltip_text = "%s%s" % [
-		PotionSystem.display_name(potion) if potion != null else "Potion",
-		"\n" + potion.effect_text if potion != null and PotionSystem.is_identified(potion.id) else ""]
-	if belt_index == _selected_potion_belt:
+	var art_tex: Texture2D = null
+	var tip := "Usable"
+	if String(entry.get("kind", "")) == "potion":
+		var potion: PotionData = Data.get_potion(StringName(entry.get("id", "")))
+		art_tex = PotionSystem.art_texture(potion) if potion != null else null
+		tip = "%s%s" % [
+			PotionSystem.display_name(potion) if potion != null else "Potion",
+			"\n" + potion.effect_text if potion != null and PotionSystem.is_identified(potion.id) else ""]
+	else:
+		var item: ItemData = entry.get("item")
+		art_tex = item.image if item != null else null
+		tip = item.display_name if item != null else "Usable"
+	slot.tooltip_text = tip
+	if index == _usable_sel:
 		slot.modulate = Color(1.0, 1.0, 0.6)
-	slot.pressed.connect(func(): _select_potion_belt(belt_index))
+	slot.pressed.connect(func(): _select_usable(index))
 	var art := TextureRect.new()
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if potion != null:
-		art.texture = PotionSystem.art_texture(potion)
+	art.texture = art_tex
 	slot.add_child(art)
 	var num := Label.new()
-	num.text = str(belt_index + 1)
+	num.text = str(index + 1)
 	num.add_theme_font_size_override("font_size", 10)
 	num.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	slot.add_child(num)
 	return slot
 
-func _select_potion_belt(index: int) -> void:
-	_selected_potion_belt = index
+func _select_usable(index: int) -> void:
+	_usable_sel = index
 	_refresh_potion_belt()
 
-# Scroll wheel cycles the selected carried potion (the active usable), pairing
-# with the 1-9 number-key selection. Wheel up = previous, down = next.
+# Scroll wheel cycles the selected usable (pill or potion), pairing with 1-9
+# number-key selection. Wheel up = previous, down = next.
 func _unhandled_input(event: InputEvent) -> void:
 	if paused or phase != Phase.PLAYING:
 		return
 	if not (event is InputEventMouseButton) or not event.pressed:
 		return
-	var n: int = GameState.loot_potions().size()
+	var n: int = _usable_entries().size()
 	if n <= 0:
 		return
 	if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-		_select_potion_belt((_selected_potion_belt - 1 + n) % n)
+		_select_usable((_usable_sel - 1 + n) % n)
 	elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-		_select_potion_belt((_selected_potion_belt + 1) % n)
+		_select_usable((_usable_sel + 1) % n)
 
 func _poll_potion_belt_keys() -> void:
-	var n: int = GameState.loot_potions().size()
+	var n: int = _usable_entries().size()
 	for k in range(mini(n, 9)):
-		if Input.is_key_pressed(KEY_1 + k) and _selected_potion_belt != k:
-			_select_potion_belt(k)
+		if Input.is_key_pressed(KEY_1 + k) and _usable_sel != k:
+			_select_usable(k)
 
-# The potion the belt is pointed at, or null if the belt is empty.
+# The currently-selected usable entry ({} if none).
+func _selected_usable() -> Dictionary:
+	var entries: Array = _usable_entries()
+	if _usable_sel < 0 or _usable_sel >= entries.size():
+		return {}
+	return entries[_usable_sel]
+
+# The selected potion (only when the active usable IS a potion), else null.
 func _selected_potion() -> PotionData:
-	var entries: Array = GameState.loot_potions()
-	if _selected_potion_belt < 0 or _selected_potion_belt >= entries.size():
+	var sel := _selected_usable()
+	if String(sel.get("kind", "")) != "potion":
 		return null
-	return Data.get_potion(StringName(entries[_selected_potion_belt].get("id", "")))
+	return Data.get_potion(StringName(sel.get("id", "")))
 
-# The loot_items index for the currently selected belt potion (-1 if none).
+# The loot_items index for the selected potion (-1 if the selection isn't one).
 func _selected_potion_loot_index() -> int:
-	var seen: int = 0
-	for i in range(GameState.loot_items.size()):
-		var e = GameState.loot_items[i]
-		if e is Dictionary and String(e.get("type", "")) == "potion":
-			if seen == _selected_potion_belt:
-				return i
-			seen += 1
-	return -1
+	var sel := _selected_usable()
+	if String(sel.get("kind", "")) != "potion":
+		return -1
+	return int(sel.get("loot_index", -1))
 
 func _process_potion_input(mouse_pos: Vector2, delta: float) -> void:
-	var has_potion: bool = _selected_potion() != null
+	var sel := _selected_usable()
+	var sel_kind := String(sel.get("kind", ""))
 	if Input.is_action_just_pressed("use_active_item"):
-		if has_potion:
+		if sel_kind == "potion":
+			# Begin charging the throw on the selected potion.
 			_potion_q_held = true
 			_potion_thrown_this_hold = false
 			_potion_charge = 0.0
 			_lob_aim_active = false
-		else:
-			# No potions — Q keeps its old job (the equipped pill).
-			_use_active_item()
+		elif sel_kind == "item":
+			# The selected usable is a pill — use it immediately.
+			var it: ItemData = sel.get("item")
+			if it != null and GameState.use_item(it):
+				GameLog.add("Used %s." % it.display_name, Color(0.85, 1.0, 0.7))
 	if _potion_q_held:
 		_potion_charge = minf(1.0, _potion_charge + delta / POTION_CHARGE_TIME)
 		var armed: bool = _potion_charge >= 1.0
