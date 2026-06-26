@@ -704,6 +704,17 @@ func _on_use_pressed(item: ItemData) -> void:
 			return
 	_refresh()
 
+# Reads the scroll at loot_index: spins up the self-contained ScrollUseModal
+# (auto-roll result + any pickers), which removes the scroll from loot and
+# applies its effect, then refreshes the loot list when it finishes.
+func _on_read_scroll_pressed(loot_index: int) -> void:
+	if GameState.combat_scene != null:
+		return
+	var modal := ScrollUseModal.new()
+	add_child(modal)
+	modal.finished.connect(_refresh)
+	modal.start(loot_index)
+
 func _render_loot() -> void:
 	var any := false
 	# Concrete potion entries: show each with its art + (identified) name.
@@ -727,9 +738,43 @@ func _render_loot() -> void:
 		label.text = PotionSystem.display_name(potion) if potion != null else "Potion"
 		hbox.add_child(label)
 		_list_vbox.add_child(row)
-	# Aggregate counts for the non-itemized kinds (scroll stubs + keys).
+	# Concrete scroll entries: each shows its art + (identified) name and a Read
+	# button, usable only OUTSIDE combat. Iterate loot_items directly so the Read
+	# button carries the real index for removal on use.
+	var can_read: bool = GameState.combat_scene == null
+	for i in range(GameState.loot_items.size()):
+		var entry = GameState.loot_items[i]
+		if not (entry is Dictionary) or String(entry.get("type", "")) != "scroll":
+			continue
+		any = true
+		var scroll: ScrollData = Data.get_scroll(StringName(entry.get("id", "")))
+		var row := PanelContainer.new()
+		var hbox := HBoxContainer.new()
+		hbox.add_theme_constant_override("separation", 8)
+		row.add_child(hbox)
+		var icon := TextureRect.new()
+		icon.custom_minimum_size = Vector2(28, 28)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		if scroll != null:
+			icon.texture = ScrollSystem.art_texture(scroll)
+		hbox.add_child(icon)
+		var label := Label.new()
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.text = ScrollSystem.display_name(scroll) if scroll != null else "Unidentified Scroll"
+		hbox.add_child(label)
+		var read_btn := Button.new()
+		read_btn.text = "Read"
+		read_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		read_btn.disabled = (scroll == null) or (not can_read)
+		var idx := i
+		read_btn.pressed.connect(func(): _on_read_scroll_pressed(idx))
+		hbox.add_child(read_btn)
+		_list_vbox.add_child(row)
+	# Aggregate counts for the non-itemized kinds (keys, plus any legacy scroll
+	# stubs with no id that predate the scroll system).
 	var counts := {
-		"scroll": GameState.get_loot_count("scroll"),
 		"key": GameState.get_loot_count("key"),
 	}
 	for kind in counts.keys():
@@ -754,7 +799,7 @@ func _render_loot() -> void:
 		empty.text = "No loot collected yet."
 		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		_list_vbox.add_child(empty)
-	_hint_label.text = "Potions are used in combat. Scrolls, keys and other findings show here."
+	_hint_label.text = "Potions are used in combat; Scrolls are read outside combat. Keys and other findings show here."
 
 # ------------------------------------------------------------------
 # Deck tab — every card the player currently owns, deduped by card id

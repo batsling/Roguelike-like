@@ -134,6 +134,9 @@ func _build() -> void:
 	var potions_btn := Button.new()
 	potions_btn.text = "Potions"
 	potions_btn.toggle_mode = true
+	var scrolls_btn := Button.new()
+	scrolls_btn.text = "Scrolls"
+	scrolls_btn.toggle_mode = true
 	var enemies_btn := Button.new()
 	enemies_btn.text = "Enemies"
 	enemies_btn.toggle_mode = true
@@ -142,16 +145,19 @@ func _build() -> void:
 	items_btn.button_group = group
 	curses_btn.button_group = group
 	potions_btn.button_group = group
+	scrolls_btn.button_group = group
 	enemies_btn.button_group = group
 	cards_btn.pressed.connect(func() -> void: _set_tab("cards"))
 	items_btn.pressed.connect(func() -> void: _set_tab("items"))
 	curses_btn.pressed.connect(func() -> void: _set_tab("curses"))
 	potions_btn.pressed.connect(func() -> void: _set_tab("potions"))
+	scrolls_btn.pressed.connect(func() -> void: _set_tab("scrolls"))
 	enemies_btn.pressed.connect(func() -> void: _set_tab("enemies"))
 	tabs.add_child(cards_btn)
 	tabs.add_child(items_btn)
 	tabs.add_child(curses_btn)
 	tabs.add_child(potions_btn)
+	tabs.add_child(scrolls_btn)
 	tabs.add_child(enemies_btn)
 
 	_search = LineEdit.new()
@@ -253,6 +259,8 @@ func _update_hint() -> void:
 			_hint.text = "Click an item to add it to your inventory."
 		"potions":
 			_hint.text = "Click a potion to add it (unidentified) to your loot."
+		"scrolls":
+			_hint.text = "Click a scroll to add it (unidentified) to your loot."
 		_:
 			_hint.text = "Click a card to add it to your deck."
 
@@ -348,6 +356,15 @@ func _collect(query: String) -> Array:
 				continue
 			var potion: PotionData = p
 			out.append({"label": label, "add": _add_potion.bind(potion)})
+	elif _tab == "scrolls":
+		for s in Data.all_scrolls():
+			if not (s is ScrollData):
+				continue
+			var label: String = "%s  [%s]" % [s.display_name, s.rarity]
+			if query != "" and not label.to_lower().contains(query):
+				continue
+			var scroll: ScrollData = s
+			out.append({"label": label, "add": _add_scroll.bind(scroll)})
 	else:
 		for it in Data.all_items():
 			if not (it is ItemData):
@@ -369,6 +386,10 @@ func _add_card(card: CardData) -> void:
 func _add_potion(potion: PotionData) -> void:
 	GameState.add_potion_loot(potion.id)
 	Notifications.notify("Added potion: %s" % potion.display_name, Color(0.7, 0.6, 0.95))
+
+func _add_scroll(scroll: ScrollData) -> void:
+	GameState.add_scroll_loot(scroll.id)
+	Notifications.notify("Added scroll: %s" % scroll.display_name, Color(0.61, 0.35, 0.71))
 	GameLog.add("[dev] Added potion %s to loot." % potion.display_name, Color(0.7, 0.6, 0.95))
 
 
