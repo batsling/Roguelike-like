@@ -310,6 +310,8 @@ def encounter_tres(row):
     if tags:
         lines.append("tags = PackedStringArray(%s)" % ", ".join(gd_value(t) for t in tags))
     lines.append('img = "%s"' % gd_str(img_file))
+    if img_res:
+        lines.append('image = ExtResource("2_img")')
     lines.append("effects = %s" % gd_value(effects))
     lines.append('requirement = "%s"' % gd_str(requirement))
     lines.append("requirement_effect = %s" % gd_value(req_effect))

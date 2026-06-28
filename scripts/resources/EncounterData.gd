@@ -46,6 +46,10 @@ extends Resource
 # matching the sheet's Img column.
 @export var img: String = ""
 
+# The encounter's sprite, resolved by the generator from `img` (the PNG under
+# res://images/encounters/). Null when no matching art exists yet.
+@export var image: Texture2D = null
+
 # Structured ops the interaction applies, parsed by the generator from the sheet's
 # Effect column (semicolon-separated clauses, space-delimited tokens — the same
 # in-sheet DSL the scrolls sheet uses). Each entry is a Dictionary with an "op"

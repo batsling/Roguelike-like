@@ -13,6 +13,7 @@ description = "Pick any of 3 Random Evil Items, but lose health based on rarity 
 npc = "Satan"
 reference = "The Binding of Isaac"
 img = "deal-with-the-devil"
+image = ExtResource("2_img")
 effects = [{"op": "offer_items", "tag": "evil", "count": 3, "pick": "any"}, {"op": "per_item", "effect": {"op": "lose_hp_pct", "by_rarity": [10, 15, 20, 25, 30]}}, {"op": "per_item", "effect": {"op": "add_curse", "count": 1}}]
 requirement = "Trigger a Curse in the last Game Cleared"
 requirement_effect = [{"field": "last_game.curses_triggered", "cmp": ">=", "value": 1}]

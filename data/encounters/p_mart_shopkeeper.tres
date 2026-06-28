@@ -13,6 +13,7 @@ description = "A shop that sells Food and Pill Items"
 npc = "Tracy"
 reference = "Mewgenics"
 img = "p-mart-shopkeeper"
+image = ExtResource("2_img")
 effects = [{"op": "shop", "pools": ["food", "pill"], "discount": 0}]
 requirement = ""
 requirement_effect = []

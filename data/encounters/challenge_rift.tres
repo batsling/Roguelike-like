@@ -13,6 +13,7 @@ description = "Play a Random Action Game not connected on the map with 3 chances
 npc = "N/A"
 reference = "Dead Cells"
 img = "challenge-rift"
+image = ExtResource("2_img")
 effects = [{"op": "challenge", "engine": "action", "pool": "unconnected", "attempts": 3}, {"op": "win", "effect": {"op": "gain_gold", "value": 50}}, {"op": "win", "effect": {"op": "gain_chest"}}, {"op": "lose", "effect": {"op": "add_curse", "count": 1}}]
 requirement = ""
 requirement_effect = []

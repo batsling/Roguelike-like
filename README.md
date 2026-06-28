@@ -243,6 +243,21 @@ Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
 
+- **Overworld encounters (interactive)** — encounters now appear and play on the
+  overworld. Each area spawns one encounter (rarity-weighted from the eligible
+  pool) as a sprite on the left or right; walking near it pops a **press [E]**
+  prompt and opens a **type-aware interaction modal** (`EncounterModal`):
+  **Deal** offers tag-pooled items (the Devil lets you take any at a %HP +
+  random-curse cost; the Angel Room is a free single pick), **Shop** sells
+  tag-pooled items priced by rarity with an optional discount, **Movement**
+  fights an action **gate-elite** (launched via `Main`, returning to resolve the
+  queued teleport — `nearby`/`previous`, with a picker for the Divine
+  Teleporter), and **Challenge** runs the honour-system best-of-3 on a random
+  unconnected game (win → gold + item chest, loss → curse). `GameState` now
+  tracks **`last_game_curses_held` / `last_game_curses_triggered`** (set in the
+  post-game verification) so the Deal/Angel **requirement gates** work, evaluated
+  by `GameState.encounter_requirement_met`. New `EncounterNode` /
+  `EncounterModal`; `test/test_encounters.gd` covers the gate evaluator + art.
 - **Overworld encounters (data scaffold)** — the first slice of overworld
   interactables that aren't games: shops, deals, teleporters, and challenges,
   each a **direct reference to a real roguelike** (Isaac's Deal with the Devil /

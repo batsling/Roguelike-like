@@ -13,6 +13,7 @@ description = "A shop that sells Military Items with a 20% discount"
 npc = "Trorc"
 reference = "Enter the Gungeon"
 img = "trorc-shopkeeper"
+image = ExtResource("2_img")
 effects = [{"op": "shop", "pools": ["military"], "discount": 20}]
 requirement = ""
 requirement_effect = []

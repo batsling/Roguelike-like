@@ -109,3 +109,41 @@ func test_angel_room_requires_two_untriggered_curses() -> void:
 	assert_eq(int(conds[0]["value"]), 2)
 	assert_eq(String(conds[1]["cmp"]), "==")
 	assert_eq(int(conds[1]["value"]), 0, "with zero triggered")
+
+# --- Requirement evaluation against run-state -------------------------------
+
+func test_requirement_evaluator_gates_on_last_game_state() -> void:
+	var held: int = GameState.last_game_curses_held
+	var trig: int = GameState.last_game_curses_triggered
+	var devil: Array = Data.get_encounter(&"deal_with_the_devil").requirement_effect
+	var angel: Array = Data.get_encounter(&"angel_room").requirement_effect
+
+	# No curse triggered last game -> Devil locked, and (no curses held) Angel locked.
+	GameState.last_game_curses_held = 0
+	GameState.last_game_curses_triggered = 0
+	assert_false(GameState.encounter_requirement_met(devil), "Devil needs a triggered curse")
+	assert_false(GameState.encounter_requirement_met(angel), "Angel needs 2 held curses")
+
+	# A curse triggered last game -> Devil opens.
+	GameState.last_game_curses_triggered = 1
+	assert_true(GameState.encounter_requirement_met(devil), "triggered curse opens the Devil")
+
+	# 2 held, none triggered -> Angel opens; one triggered closes it again.
+	GameState.last_game_curses_held = 2
+	GameState.last_game_curses_triggered = 0
+	assert_true(GameState.encounter_requirement_met(angel), "2 held + 0 triggered opens Angel")
+	GameState.last_game_curses_triggered = 1
+	assert_false(GameState.encounter_requirement_met(angel), "a trigger closes Angel")
+
+	# Ungated encounters are always available.
+	assert_true(GameState.encounter_requirement_met(Data.get_encounter(&"teleporter").requirement_effect))
+
+	GameState.last_game_curses_held = held
+	GameState.last_game_curses_triggered = trig
+
+# --- Art ---------------------------------------------------------------------
+
+func test_every_encounter_has_sprite_art() -> void:
+	for id in EXPECTED_ENCOUNTERS:
+		var e: EncounterData = Data.get_encounter(StringName(id))
+		assert_not_null(e.image, "%s should resolve its encounter sprite" % id)

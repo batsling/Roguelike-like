@@ -101,6 +101,7 @@ func _show_overworld() -> void:
 	ow.pending_combat_outcome = _pending_outcome
 	_pending_outcome = {}
 	ow.portal_entered.connect(_on_portal_entered)
+	ow.encounter_elite_requested.connect(_on_encounter_elite_requested)
 	_swap_to(ow)
 
 func _on_portal_entered(game_id: StringName) -> void:
@@ -201,6 +202,35 @@ func dev_start_combat(enemy_ids: Array, combat_type: String = "deckbuilder") -> 
 
 func _on_dev_combat_closed(_was_victory: bool, _target_game_id: StringName) -> void:
 	_pending_outcome = {}
+	_show_overworld()
+
+# ---------------------------------------------------------------------------
+# Overworld encounter gate-elite — a Movement encounter ("fight an elite, then
+# teleport") launches a one-off combat here, then re-opens the overworld with an
+# `encounter_combat` outcome so the queued teleport resolves on victory.
+# ---------------------------------------------------------------------------
+
+func _on_encounter_elite_requested(engine: String) -> void:
+	GameState.phase = GameState.Phase.COMBAT
+	# Only the action arena is wired today (the data's Movement encounters are all
+	# `combat action elite`); other engines fall back to it. `engine` is accepted
+	# for forward-compat when strategy/deckbuilder gate-fights land.
+	var tier: int = RunDifficulty.current_tier()
+	var budget: int = int(ActionEnemySpawner.budget_for(tier) * ActionEnemySpawner.BOSS_BUDGET_MULT)
+	var enemies: Array = ActionEnemySpawner.build_room(_rng, budget)
+	if enemies.is_empty():
+		# Nothing to fight — treat as an immediate win so the teleport still fires.
+		_pending_outcome = {"encounter_combat": true, "victory": true}
+		_show_overworld()
+		return
+	var arena: ActionCombat = ACTION_COMBAT_SCENE.instantiate()
+	arena.target_game_id = &""
+	arena.enemies_to_spawn = enemies
+	arena.closed.connect(_on_encounter_combat_closed)
+	_swap_to(arena)
+
+func _on_encounter_combat_closed(was_victory: bool, _target_game_id: StringName) -> void:
+	_pending_outcome = {"encounter_combat": true, "victory": was_victory}
 	_show_overworld()
 
 func _swap_to(new_scene: Node) -> void:

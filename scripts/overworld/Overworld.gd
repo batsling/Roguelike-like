@@ -32,6 +32,10 @@ const SPAWN_POS := Vector2i(GRID_W / 2, GRID_H - 3)
 const PORTAL_ACTIVATE_RADIUS := 48.0
 
 signal portal_entered(game_id: StringName)
+# Movement encounter: the player chose to fight the gate elite. Main launches the
+# combat in `engine`, then re-opens the overworld with an encounter_combat outcome
+# so the queued teleport (GameState.pending_encounter) resolves on victory.
+signal encounter_elite_requested(engine: String)
 
 @onready var _floor_bg: ColorRect = $Floor
 @onready var _player: PlayerWalker = $Player
@@ -65,6 +69,16 @@ var _rate_modal: RateGameModal = null
 # the hovered game). Hover just highlights; clicking opens the fitted modal.
 var _hovered_portal: PortalNode = null
 var _door_preview: Control = null
+# Overworld encounter (shop / deal / teleporter / challenge) present in the
+# current area — at most one, on the left or right. Kept across rerolls (same
+# area) and re-rolled on a new area; see _ensure_encounter_for_area.
+var _encounter_node: EncounterNode = null
+var _active_encounter: EncounterNode = null
+var _encounter_modal: EncounterModal = null
+var _teleport_modal: Control = null
+# The area id the current encounter belongs to, so a reroll keeps it but moving
+# to a new game spawns a fresh one.
+var _encounter_area_id: StringName = &""
 # Game whose section reward is pending — set when a victory is handed to us,
 # consumed when the item reward opens after the verification screen.
 var _pending_reward_game_id: StringName = &""
@@ -207,6 +221,10 @@ func _spawn_portals_for_current_game() -> void:
 
 	GameLog.add("At %s. %d portals open." % [current.display_name, _portals.size()],
 		Color(0.8, 0.9, 1.0))
+
+	# Every area also hosts one encounter. Kept across rerolls (same area id),
+	# re-rolled when we've moved to a different game.
+	_ensure_encounter_for_area()
 
 func _place_portals(ids: Array[StringName]) -> void:
 	var count := ids.size()
@@ -391,11 +409,29 @@ func _on_player_moved(_pos: Vector2i) -> void:
 			prev.set_highlight(false)
 		if _active_portal != null:
 			_active_portal.set_highlight(true)
+	_update_encounter_proximity()
 	_update_hint()
+
+# Mirror of the portal proximity check for the (single) area encounter: light it
+# up + show its "press E" prompt when the player walks within reach.
+func _update_encounter_proximity() -> void:
+	var node := _encounter_node
+	var near: bool = node != null and is_instance_valid(node) and not node.consumed \
+		and _player.position.distance_to(node.position) <= node.activate_radius()
+	var new_active: EncounterNode = node if near else null
+	if new_active == _active_encounter:
+		return
+	if _active_encounter != null and is_instance_valid(_active_encounter):
+		_active_encounter.set_active(false)
+	_active_encounter = new_active
+	if _active_encounter != null:
+		_active_encounter.set_active(true)
 
 func _update_hint() -> void:
 	var actions := "WASD/arrows to walk"
-	if _active_portal != null:
+	if _active_encounter != null and is_instance_valid(_active_encounter):
+		actions = "[E] %s   |   " % _active_encounter.encounter.display_name + actions
+	elif _active_portal != null:
 		actions = "[E] Enter %s   |   " % _active_portal.game_data.display_name + actions
 	actions += "   |   [R] Reroll (%d)   |   [Q] Dash (%d)   |   [M] Map" % [
 		GameState.reroll_charges, GameState.dash_charges,
@@ -422,7 +458,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not _can_act():
 		return
-	if event.keycode == KEY_E and _active_portal != null:
+	if event.keycode == KEY_E and _active_encounter != null and is_instance_valid(_active_encounter):
+		_open_encounter_modal()
+	elif event.keycode == KEY_E and _active_portal != null:
 		_enter_portal(_active_portal)
 	elif event.keycode == KEY_R:
 		_try_reroll()
@@ -443,7 +481,8 @@ func _can_act() -> bool:
 	return _verification_modal == null and _win_overlay == null and _dash_modal == null \
 		and _map_view == null and _section_reward_layer == null \
 		and _chest_reward_layer == null and _winged_modal == null \
-		and _door_preview == null
+		and _door_preview == null and _encounter_modal == null \
+		and _teleport_modal == null
 
 # ------------------------------------------------------------------
 # Run map — view-only overview of the route to the Amulet. Pauses the
@@ -595,6 +634,218 @@ func _close_dash_modal() -> void:
 		_dash_modal.queue_free()
 		_dash_modal = null
 
+# ------------------------------------------------------------------
+# Overworld encounters — one per area (left/right), opened with E.
+# ------------------------------------------------------------------
+
+# Spawn weighting by rarity index (Common/Uncommon/Rare/Legendary). Higher =
+# appears more often; mirrors the loot rarity bias.
+const ENCOUNTER_RARITY_WEIGHT := [8, 4, 2, 1]
+
+# Ensures the current area has its encounter. Same area (a reroll) keeps the
+# existing node (so a consumed encounter stays consumed); arriving at a new game
+# clears it and rolls a fresh one. "Every area has one" — so we always spawn when
+# an eligible encounter exists.
+func _ensure_encounter_for_area() -> void:
+	if _encounter_node != null and is_instance_valid(_encounter_node) \
+			and _encounter_area_id == GameState.current_game_id:
+		return
+	if _encounter_node != null and is_instance_valid(_encounter_node):
+		_encounter_node.queue_free()
+	_encounter_node = null
+	_active_encounter = null
+	_encounter_area_id = GameState.current_game_id
+
+	var enc: EncounterData = _roll_encounter_for_area()
+	if enc == null:
+		return
+	# Random side; sit at mid-height so the walker can reach it from spawn.
+	var on_left: bool = _rng.randi() % 2 == 0
+	var x: int = 3 if on_left else GRID_W - 4
+	@warning_ignore("integer_division")
+	var y: int = GRID_H / 2
+	var node := EncounterNode.new()
+	node.setup(enc, Vector2i(x, y))
+	add_child(node)
+	_encounter_node = node
+
+# Rarity-weighted pick among encounters whose requirement gate is currently met.
+func _roll_encounter_for_area() -> EncounterData:
+	var eligible: Array = []
+	var weights: Array = []
+	for e in Data.all_encounters():
+		if not (e is EncounterData):
+			continue
+		if not GameState.encounter_requirement_met(e.requirement_effect):
+			continue
+		eligible.append(e)
+		var ri: int = clampi(e.rarity_index(), 0, ENCOUNTER_RARITY_WEIGHT.size() - 1)
+		weights.append(ENCOUNTER_RARITY_WEIGHT[ri])
+	if eligible.is_empty():
+		return null
+	var total: int = 0
+	for w in weights:
+		total += int(w)
+	var roll: int = _rng.randi_range(1, total)
+	for i in range(eligible.size()):
+		roll -= int(weights[i])
+		if roll <= 0:
+			return eligible[i]
+	return eligible.back()
+
+func _open_encounter_modal() -> void:
+	if _encounter_modal != null or _active_encounter == null:
+		return
+	_player.set_input_locked(true)
+	var modal := EncounterModal.new()
+	_encounter_modal = modal
+	modal.closed.connect(_on_encounter_modal_closed)
+	modal.elite_combat_requested.connect(_on_encounter_elite_requested)
+	modal.teleport_requested.connect(_on_encounter_teleport_requested)
+	_modal_layer.add_child(modal)
+	modal.setup(_active_encounter.encounter)
+
+func _on_encounter_modal_closed() -> void:
+	_encounter_modal = null
+	if _active_encounter != null and is_instance_valid(_active_encounter):
+		_active_encounter.mark_consumed()
+	_active_encounter = null
+	_player.set_input_locked(false)
+	_update_hint()
+	_save_run()
+	# An encounter (Deal/Challenge) may have banked an item chest; redeem now.
+	_redeem_pending_chests()
+
+# Movement encounter chose to engage: stash the teleport tail and ask Main to run
+# the gate-elite combat. The overworld is about to be freed by the scene-swap, so
+# we do no further cleanup here.
+func _on_encounter_elite_requested(engine: String, resume: Dictionary) -> void:
+	_encounter_modal = null
+	GameState.pending_encounter = resume
+	emit_signal("encounter_elite_requested", engine)
+
+# Pure-teleport encounter (no gate fight): apply immediately.
+func _on_encounter_teleport_requested(spec: Dictionary) -> void:
+	_apply_encounter_teleport(spec)
+
+# Returns from the gate-elite combat: win -> resolve the queued teleport; loss ->
+# end the run like any overworld defeat.
+func _resolve_encounter_combat(victory: bool) -> void:
+	var resume: Dictionary = GameState.pending_encounter
+	GameState.pending_encounter = {}
+	if not victory:
+		_handle_defeat()
+		return
+	GameState.phase = GameState.Phase.OVERWORLD
+	if resume.has("teleport"):
+		_apply_encounter_teleport(resume["teleport"])
+	else:
+		_spawn_portals_for_current_game()
+		_update_hint()
+
+# Applies a parsed teleport effect: a single {dir} jumps now; a {choose:[...]}
+# pops a small picker first.
+func _apply_encounter_teleport(spec: Dictionary) -> void:
+	if spec.has("choose"):
+		_show_teleport_choice(spec["choose"])
+		return
+	_do_encounter_teleport(String(spec.get("dir", "nearby")))
+
+func _do_encounter_teleport(dir: String) -> void:
+	# BFS-relative directions reuse the existing scroll teleport; encounter-only
+	# directions (nearby / previous) resolve against the run graph + history.
+	if dir in ["closer", "farther", "same", "random"]:
+		scroll_teleport(dir, 0)
+		return
+	var target: StringName = _encounter_teleport_target(dir)
+	if target == &"":
+		Notifications.notify("The portal finds nowhere to send you.", Color(0.7, 0.8, 1.0))
+		_spawn_portals_for_current_game()
+		_update_hint()
+		return
+	GameState.set_current_game(target)
+	_player.setup(SPAWN_POS, Rect2i(0, 0, GRID_W, GRID_H))
+	_apply_player_avatar()
+	_spawn_portals_for_current_game()
+	_update_hint()
+	var gd: GameData = Data.get_game(target)
+	Notifications.notify("Teleported to %s!" % (gd.display_name if gd != null else String(target)),
+		Color(0.6, 0.9, 1.0))
+
+func _encounter_teleport_target(dir: String) -> StringName:
+	var current: StringName = GameState.current_game_id
+	match dir:
+		"nearby":
+			var nbrs: Array = _connected_game_ids(current)
+			var pool: Array = nbrs.filter(func(g): return not GameState.beaten_games.has(g))
+			if pool.is_empty():
+				pool = nbrs
+			if pool.is_empty():
+				return &""
+			return pool[_rng.randi_range(0, pool.size() - 1)]
+		"previous":
+			# The game visited just before the current one.
+			var vg: Array = GameState.visited_games
+			var idx: int = vg.find(current)
+			if idx > 0:
+				return vg[idx - 1]
+			for i in range(vg.size() - 1, -1, -1):
+				if vg[i] != current:
+					return vg[i]
+			return &""
+		_:
+			return &""
+
+func _show_teleport_choice(options: Array) -> void:
+	if _teleport_modal != null:
+		return
+	_player.set_input_locked(true)
+	var modal := Control.new()
+	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.6)
+	modal.add_child(dim)
+	var panel := Panel.new()
+	panel.size = Vector2(420, 80 + options.size() * 52)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	modal.add_child(panel)
+	var vb := VBoxContainer.new()
+	vb.position = Vector2(20, 16)
+	vb.size = Vector2(380, panel.size.y - 32)
+	vb.add_theme_constant_override("separation", 8)
+	panel.add_child(vb)
+	var title := Label.new()
+	title.text = "Teleport where?"
+	title.add_theme_font_size_override("font_size", 18)
+	vb.add_child(title)
+	for opt in options:
+		var dir: String = String(opt)
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(0, 40)
+		btn.text = _teleport_dir_label(dir)
+		btn.pressed.connect(func() -> void:
+			_close_teleport_modal()
+			_do_encounter_teleport(dir)
+		)
+		vb.add_child(btn)
+	_modal_layer.add_child(modal)
+	_teleport_modal = modal
+
+func _teleport_dir_label(dir: String) -> String:
+	match dir:
+		"nearby": return "A nearby connected game"
+		"previous": return "Back to the previous game"
+		"random": return "A completely random game"
+		_: return dir.capitalize()
+
+func _close_teleport_modal() -> void:
+	if _teleport_modal != null:
+		_teleport_modal.queue_free()
+		_teleport_modal = null
+	_player.set_input_locked(false)
+
 func _exit_tree() -> void:
 	# Hand off the overworld registration when this scene is freed (Main swaps to
 	# combat). Guarded so a newly-spawned Overworld that already registered wins.
@@ -732,6 +983,12 @@ func _enter_portal(portal: PortalNode) -> void:
 # ------------------------------------------------------------------
 
 func _process_combat_outcome(outcome: Dictionary) -> void:
+	# A Movement encounter's gate-elite fight returns here, not a game floor: on a
+	# win resolve the queued teleport, on a loss end the run like any overworld
+	# combat. Skips the verification / section-reward flow (no game was beaten).
+	if outcome.get("encounter_combat", false):
+		_resolve_encounter_combat(bool(outcome.get("victory", false)))
+		return
 	var was_victory: bool = outcome.get("victory", false)
 	var game_id: StringName = StringName(String(outcome.get("game_id", "")))
 	if was_victory:
@@ -1090,6 +1347,15 @@ func _apply_weapon_verification_rewards() -> void:
 # penalty card into the deck. The curse stays active (semi-permanent), so it's
 # re-asked next game.
 func _resolve_curse_penalties() -> void:
+	# Record this game's curse outcome for encounter requirement gates: how many
+	# restriction curses were carried, and how many were broken ("triggered").
+	# Each answered row is one held restriction curse; a false answer is a break.
+	GameState.last_game_curses_held = _curse_verify_answers.size()
+	var triggered: int = 0
+	for cid in _curse_verify_answers.keys():
+		if not _curse_verify_answers[cid]:
+			triggered += 1
+	GameState.last_game_curses_triggered = triggered
 	for cid in _curse_verify_answers.keys():
 		if _curse_verify_answers[cid]:
 			continue   # fulfilled — no penalty

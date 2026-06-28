@@ -13,6 +13,7 @@ description = "Fight 1 Action Combat Elite, and then Teleport to a nearby Random
 npc = "N/A"
 reference = "Risk of Rain"
 img = "divine-teleporter"
+image = ExtResource("2_img")
 effects = [{"op": "combat", "engine": "action", "elite": true}, {"op": "teleport", "choose": ["nearby", "previous"]}]
 requirement = ""
 requirement_effect = []
