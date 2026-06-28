@@ -1,0 +1,111 @@
+extends GutTest
+
+# Covers the overworld encounter data scaffold: every encounter loads from
+# data/encounters/*.tres, the Effect column parses into structured ops, and the
+# Requirement Effect column parses into AND-combined comparison conditions. The
+# overworld encounter node + interaction modal that consume these land later, so
+# this suite is intentionally data-only.
+
+const EXPECTED_ENCOUNTERS := [
+	"deal_with_the_devil", "p_mart_shopkeeper", "trorc_shopkeeper",
+	"teleporter", "divine_teleporter", "challenge_rift", "angel_room",
+]
+
+# --- Data load ---------------------------------------------------------------
+
+func test_all_encounters_load() -> void:
+	for id in EXPECTED_ENCOUNTERS:
+		var e: EncounterData = Data.get_encounter(StringName(id))
+		assert_not_null(e, "encounter '%s' should load" % id)
+		if e != null:
+			assert_eq(String(e.id), id, "%s id round-trips" % id)
+			assert_false(e.display_name.is_empty(), "%s has a display name" % id)
+			assert_false(e.effects.is_empty(), "%s has at least one effect" % id)
+
+func test_all_encounters_enumerated() -> void:
+	assert_eq(Data.all_encounters().size(), EXPECTED_ENCOUNTERS.size(),
+		"all_encounters() returns every loaded encounter")
+
+func test_rarity_index_maps_sheet_string() -> void:
+	assert_eq(Data.get_encounter(&"p_mart_shopkeeper").rarity_index(), 0, "Common -> 0")
+	assert_eq(Data.get_encounter(&"deal_with_the_devil").rarity_index(), 1, "Uncommon -> 1")
+	assert_eq(Data.get_encounter(&"angel_room").rarity_index(), 2, "Rare -> 2")
+
+func test_npc_animate_flag() -> void:
+	assert_true(Data.get_encounter(&"deal_with_the_devil").is_animate(), "Satan is animate")
+	assert_false(Data.get_encounter(&"teleporter").is_animate(), "N/A teleporter is inanimate")
+
+# --- Effect DSL --------------------------------------------------------------
+
+func test_deal_with_the_devil_effects() -> void:
+	var e: EncounterData = Data.get_encounter(&"deal_with_the_devil")
+	# offer 3 evil items, take any; per taken item lose %HP by rarity + 1 curse.
+	var offer: Dictionary = e.effects[0]
+	assert_eq(String(offer["op"]), "offer_items")
+	assert_eq(String(offer["tag"]), "evil")
+	assert_eq(int(offer["count"]), 3)
+	assert_eq(String(offer["pick"]), "any")
+	var per_hp: Dictionary = e.effects[1]
+	assert_eq(String(per_hp["op"]), "per_item")
+	assert_eq(String(per_hp["effect"]["op"]), "lose_hp_pct")
+	assert_eq((per_hp["effect"]["by_rarity"] as Array).size(), 5, "one HP% per rarity tier")
+	var per_curse: Dictionary = e.effects[2]
+	assert_eq(String(per_curse["effect"]["op"]), "add_curse")
+	assert_eq(int(per_curse["effect"]["count"]), 1)
+
+func test_shop_pools_and_discount() -> void:
+	var pmart: Dictionary = Data.get_encounter(&"p_mart_shopkeeper").effects[0]
+	assert_eq(String(pmart["op"]), "shop")
+	assert_eq((pmart["pools"] as Array), ["food", "pill"])
+	assert_eq(int(pmart["discount"]), 0)
+	var trorc: Dictionary = Data.get_encounter(&"trorc_shopkeeper").effects[0]
+	assert_eq((trorc["pools"] as Array), ["military"])
+	assert_eq(int(trorc["discount"]), 20, "Trorc gives a 20% discount")
+
+func test_teleporter_combat_then_teleport() -> void:
+	var e: EncounterData = Data.get_encounter(&"teleporter")
+	assert_eq(String(e.effects[0]["op"]), "combat")
+	assert_eq(String(e.effects[0]["engine"]), "action")
+	assert_true(bool(e.effects[0]["elite"]))
+	assert_eq(String(e.effects[1]["op"]), "teleport")
+	assert_eq(String(e.effects[1]["dir"]), "nearby")
+
+func test_divine_teleporter_offers_a_choice() -> void:
+	var tp: Dictionary = Data.get_encounter(&"divine_teleporter").effects[1]
+	assert_eq(String(tp["op"]), "teleport")
+	assert_eq((tp["choose"] as Array), ["nearby", "previous"], "choose nearby or previous")
+
+func test_challenge_rift_win_lose_buckets() -> void:
+	var e: EncounterData = Data.get_encounter(&"challenge_rift")
+	var ch: Dictionary = e.effects[0]
+	assert_eq(String(ch["op"]), "challenge")
+	assert_eq(String(ch["engine"]), "action")
+	assert_eq(String(ch["pool"]), "unconnected")
+	assert_eq(int(ch["attempts"]), 3)
+	# win -> 50 gold + chest; lose -> 1 curse.
+	var wins: Array = e.effects.filter(func(x): return String(x.get("op", "")) == "win")
+	var loses: Array = e.effects.filter(func(x): return String(x.get("op", "")) == "lose")
+	assert_eq(wins.size(), 2, "two win rewards")
+	assert_eq(loses.size(), 1, "one loss penalty")
+	assert_eq(String(loses[0]["effect"]["op"]), "add_curse")
+
+# --- Requirement Effect ------------------------------------------------------
+
+func test_unconditional_encounters_have_no_requirement() -> void:
+	assert_false(Data.get_encounter(&"teleporter").has_requirement())
+	assert_true(Data.get_encounter(&"teleporter").requirement_effect.is_empty())
+
+func test_devil_requires_a_triggered_curse() -> void:
+	var conds: Array = Data.get_encounter(&"deal_with_the_devil").requirement_effect
+	assert_eq(conds.size(), 1)
+	assert_eq(String(conds[0]["field"]), "last_game.curses_triggered")
+	assert_eq(String(conds[0]["cmp"]), ">=")
+	assert_eq(int(conds[0]["value"]), 1)
+
+func test_angel_room_requires_two_untriggered_curses() -> void:
+	var conds: Array = Data.get_encounter(&"angel_room").requirement_effect
+	assert_eq(conds.size(), 2, "AND of two conditions")
+	assert_eq(String(conds[0]["field"]), "last_game.curses_held")
+	assert_eq(int(conds[0]["value"]), 2)
+	assert_eq(String(conds[1]["cmp"]), "==")
+	assert_eq(int(conds[1]["value"]), 0, "with zero triggered")

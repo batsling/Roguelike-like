@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EncounterData" load_steps=3 format=3 uid="uid://encounter_teleporter"]
+
+[ext_resource type="Script" path="res://scripts/resources/EncounterData.gd" id="1_enc"]
+[ext_resource type="Texture2D" path="res://images/encounters/teleporter.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enc")
+id = &"teleporter"
+display_name = "Teleporter"
+type = "Movement"
+rarity = "Common"
+description = "Fight 1 Action Combat Elite, and then Teleport to a nearby Random Game"
+npc = "N/A"
+reference = "Risk of Rain"
+img = "teleporter"
+effects = [{"op": "combat", "engine": "action", "elite": true}, {"op": "teleport", "dir": "nearby"}]
+requirement = ""
+requirement_effect = []

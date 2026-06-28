@@ -14,6 +14,7 @@ var _characters: Dictionary = {}        # StringName -> CharacterData
 var _curses: Dictionary = {}            # StringName -> CurseData
 var _potions: Dictionary = {}           # StringName -> PotionData
 var _scrolls: Dictionary = {}           # StringName -> ScrollData
+var _encounters: Dictionary = {}        # StringName -> EncounterData
 
 # Single shared config resources mapping turn-based combat concepts to each
 # mode's equivalents — Action (turns->rooms, energy->Haste, draw->auto-slots)
@@ -45,6 +46,7 @@ func _ready() -> void:
 	_load_dir("res://data/curses/", _curses)
 	_load_dir("res://data/potions/", _potions)
 	_load_dir("res://data/scrolls/", _scrolls)
+	_load_dir("res://data/encounters/", _encounters)
 	# Per-mode concept translators. Fall back to script defaults if the .tres is
 	# missing so combat never crashes for a missing tunable file.
 	action_translation = (_load_config("res://data/action_translation.tres") as ActionTranslation)
@@ -63,7 +65,7 @@ func _ready() -> void:
 		_cards.size(), _items.size(), _enemies.size(), _action_enemies.size(),
 		_strategy_enemies.size(), _events.size(), _games.size(), _characters.size(), _potions.size()
 	])
-	print("[Data] Loaded %d scrolls" % _scrolls.size())
+	print("[Data] Loaded %d scrolls, %d encounters" % [_scrolls.size(), _encounters.size()])
 
 # Loads a single config .tres, returning null (with a warning) if missing or
 # malformed; callers supply a typed default.
@@ -165,6 +167,12 @@ func get_scroll(id: StringName) -> ScrollData:
 
 func all_scrolls() -> Array:
 	return _scrolls.values()
+
+func get_encounter(id: StringName) -> EncounterData:
+	return _encounters.get(id)
+
+func all_encounters() -> Array:
+	return _encounters.values()
 
 # One random scroll template, rarity-weighted with the same distribution as
 # potions (ScrollData.rarity_index() maps the sheet rarity onto the 0-3 order).

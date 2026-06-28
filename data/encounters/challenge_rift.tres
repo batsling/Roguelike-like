@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EncounterData" load_steps=3 format=3 uid="uid://encounter_challenge_rift"]
+
+[ext_resource type="Script" path="res://scripts/resources/EncounterData.gd" id="1_enc"]
+[ext_resource type="Texture2D" path="res://images/encounters/challenge-rift.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enc")
+id = &"challenge_rift"
+display_name = "Challenge Rift"
+type = "Challenge"
+rarity = "Common"
+description = "Play a Random Action Game not connected on the map with 3 chances to win a run. Gain 50 Gold and a Chest on a success, or a Gain a Random Curse on failure"
+npc = "N/A"
+reference = "Dead Cells"
+img = "challenge-rift"
+effects = [{"op": "challenge", "engine": "action", "pool": "unconnected", "attempts": 3}, {"op": "win", "effect": {"op": "gain_gold", "value": 50}}, {"op": "win", "effect": {"op": "gain_chest"}}, {"op": "lose", "effect": {"op": "add_curse", "count": 1}}]
+requirement = ""
+requirement_effect = []

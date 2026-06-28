@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EncounterData" load_steps=3 format=3 uid="uid://encounter_p_mart_shopkeeper"]
+
+[ext_resource type="Script" path="res://scripts/resources/EncounterData.gd" id="1_enc"]
+[ext_resource type="Texture2D" path="res://images/encounters/p-mart-shopkeeper.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enc")
+id = &"p_mart_shopkeeper"
+display_name = "P Mart Shopkeeper"
+type = "Shop"
+rarity = "Common"
+description = "A shop that sells Food and Pill Items"
+npc = "Tracy"
+reference = "Mewgenics"
+img = "p-mart-shopkeeper"
+effects = [{"op": "shop", "pools": ["food", "pill"], "discount": 0}]
+requirement = ""
+requirement_effect = []

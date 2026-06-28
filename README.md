@@ -60,6 +60,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── characters/       #   CharacterData
 │   ├── stats/            #   StatDefinition (the stat dispatcher's vocabulary)
 │   ├── games/            #   GameData — the ~600 real games that form the map
+│   ├── encounters/       #   EncounterData — overworld shops/deals/teleporters/challenges
 │   ├── action_translation.tres
 │   └── strategy_translation.tres
 │
@@ -214,6 +215,7 @@ editing the sheet, then review the diff):
 | `generate_potion_tres.py` | `data/potions/*.tres` from the `potions` sheet (12 combat potions) |
 | `generate_event_tres.py` | `data/events/*.tres` from authored Python dicts |
 | `generate_game_tres.py` | `data/games/*.tres` from the curated games subgraph |
+| `generate_encounter_tres.py` | `data/encounters/*.tres` from the `encounters` sheet (overworld shops/deals/teleporters/challenges) |
 | `generate_enemy_tres.py` | `data/enemies/*.tres` from the `enemiesD` sheet (+ copies enemy art into `assets/enemies/`) |
 | `build_enemiesD_sheet.py` | (re)builds the deckbuilder-enemy `enemiesD` sheet from the legacy `enemies` rows |
 | `generate_strategy_enemy_tres.py` | `data/strategy_enemies/*.tres` from the `enemiesS` sheet (Strategy / tactical-grid enemies) |
@@ -241,6 +243,21 @@ Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
 
+- **Overworld encounters (data scaffold)** — the first slice of overworld
+  interactables that aren't games: shops, deals, teleporters, and challenges,
+  each a **direct reference to a real roguelike** (Isaac's Deal with the Devil /
+  Angel Room, Mewgenics & Gungeon shopkeepers, Risk of Rain teleporters, a Dead
+  Cells challenge rift). Authored in the new **`encounters`** sheet and generated
+  into `data/encounters/*.tres` (`EncounterData`) by
+  `tools/generate_encounter_tres.py`. The sheet's **Effect** / **Requirement
+  Effect** columns use the same in-sheet DSL the scrolls sheet uses
+  (semicolon-separated, space-delimited tokens) and parse into structured ops
+  (`offer_items` / `shop` / `combat` / `teleport` / `challenge` / `add_curse` /
+  `gain_chest` …) plus an AND-list of run-state gates. `Data` loads and serves
+  them (`get_encounter` / `all_encounters`); covered by `test/test_encounters.gd`.
+  Still ahead: the overworld encounter **node + interaction modal** that consume
+  the ops, the new effect handlers, and the `last_game.*` run-state the
+  requirement gates read.
 - **Permanent & Temporary status addons** — two new addon hooks (`permanent`
   and `temporary`, authored in `addonsnew`) that bend how a status decays, run
   through the shared `Stats` status core so the deckbuilder, action, and strategy
