@@ -300,7 +300,8 @@ func _build_movement() -> void:
 	_add_leave_button("Leave")
 
 # --------------------------------------------------------------------------
-# Challenge — honour-system: play a random unconnected game, self-report
+# Challenge — claim the reward up front by committing to play a random
+# unconnected game, then beat it within N attempts or eat the fail penalty.
 # --------------------------------------------------------------------------
 
 func _build_challenge() -> void:
@@ -313,7 +314,42 @@ func _build_challenge() -> void:
 		_add_leave_button("Leave")
 		return
 
-	_body.add_child(_label("Go play a run of %s (%s)." % [_challenge_game.display_name, engine], 16))
+	# Pre-commit screen: name the game + spell out the up-front reward and the
+	# failure penalty, then let the player commit or walk away cost-free.
+	_body.add_child(_label("Challenge: %s (%s)" % [_challenge_game.display_name, engine], 16))
+	_body.add_child(_label("Play it to claim your reward now — %s." % _reward_summary(),
+		13, Color(0.7, 1.0, 0.8)))
+	_body.add_child(_label("Then beat it within %d attempts, or %s." % [_attempts_left, _fail_summary()],
+		13, Color(1.0, 0.75, 0.6)))
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_body.add_child(row)
+
+	var play := Button.new()
+	play.text = "Play %s" % _challenge_game.display_name
+	play.custom_minimum_size = Vector2(0, 40)
+	play.pressed.connect(func() -> void: _challenge_commit())
+	row.add_child(play)
+
+	var decline := Button.new()
+	decline.text = "Walk away"
+	decline.custom_minimum_size = Vector2(0, 40)
+	decline.pressed.connect(func() -> void: _finish())
+	row.add_child(decline)
+
+# The player committed: grant the reward up front, then swap to the attempt
+# phase. From here they're on the hook for the fail penalty until they win.
+func _challenge_commit() -> void:
+	for eff in _outcome_effects("reward"):
+		_apply_leaf(eff)
+	Notifications.notify("Reward claimed — now beat %s!" % _challenge_game.display_name,
+		Color(0.8, 0.95, 1.0))
+
+	for c in _body.get_children():
+		c.queue_free()
+	_body.add_child(_label("Beat %s to keep your reward." % _challenge_game.display_name, 16))
 	var status := _label("", 14, Color(0.9, 0.85, 0.6))
 	_body.add_child(status)
 	_refresh_challenge_status(status)
@@ -322,12 +358,10 @@ func _build_challenge() -> void:
 	row.add_theme_constant_override("separation", 12)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_body.add_child(row)
-
 	var won := Button.new()
 	won.text = "I beat it"
 	won.pressed.connect(func() -> void: _challenge_win())
 	row.add_child(won)
-
 	var failed := Button.new()
 	failed.text = "Failed an attempt"
 	failed.pressed.connect(func() -> void: _challenge_fail(status, won, failed))
@@ -337,8 +371,6 @@ func _refresh_challenge_status(status: Label) -> void:
 	status.text = "Attempts remaining: %d" % _attempts_left
 
 func _challenge_win() -> void:
-	for eff in _outcome_effects("win"):
-		_apply_leaf(eff)
 	Notifications.notify("Challenge cleared!", Color(0.7, 1.0, 0.7))
 	_finish()
 
@@ -346,12 +378,29 @@ func _challenge_fail(status: Label, won: Button, failed: Button) -> void:
 	_attempts_left -= 1
 	_refresh_challenge_status(status)
 	if _attempts_left <= 0:
-		for eff in _outcome_effects("lose"):
+		for eff in _outcome_effects("fail"):
 			_apply_leaf(eff)
 		Notifications.notify("Challenge failed.", Color(1.0, 0.6, 0.6))
 		won.disabled = true
 		failed.disabled = true
 		_finish()
+
+func _reward_summary() -> String:
+	var parts: Array = []
+	for eff in _outcome_effects("reward"):
+		match String(eff.get("op", "")):
+			"gain_gold":
+				parts.append("%d gold" % int(eff.get("value", 0)))
+			"gain_chest":
+				parts.append("an item chest")
+	return ", ".join(PackedStringArray(parts)) if not parts.is_empty() else "a reward"
+
+func _fail_summary() -> String:
+	for eff in _outcome_effects("fail"):
+		if String(eff.get("op", "")) == "add_curse":
+			var c: int = int(eff.get("count", 1))
+			return "gain %d random curse%s" % [c, "" if c == 1 else "s"]
+	return "suffer a penalty"
 
 # --------------------------------------------------------------------------
 # Effect leaves + helpers

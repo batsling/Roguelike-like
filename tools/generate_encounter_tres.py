@@ -27,8 +27,11 @@ Encounter Effect DSL (one cell = zero or more clauses separated by ';'):
   teleport choose <dir> <dir> [...]    -> {op:teleport, choose:[dirs]}
   challenge <engine> unconnected attempts=N
                                        -> {op:challenge, engine, pool:"unconnected", attempts:N}
-  win <inner clause>                   -> {op:win, effect:<parsed inner>}
-  lose <inner clause>                  -> {op:lose, effect:<parsed inner>}
+  reward <inner clause>                -> {op:reward, effect:<parsed inner>}
+                                          (granted up front when the player
+                                           commits to the challenge)
+  fail <inner clause>                  -> {op:fail, effect:<parsed inner>}
+                                          (applied if the challenge is failed)
 
 Requirement Effect DSL (AND-joined comparisons; empty = no gate):
   <field> <cmp> <int> [and <field> <cmp> <int> ...]
@@ -101,8 +104,9 @@ def _parse_clause(clause):
             return None
         return {"op": "per_item", "effect": inner}
 
-    if op in ("win", "lose"):
-        # win|lose <inner clause> — challenge outcome bucket
+    if op in ("reward", "fail"):
+        # reward|fail <inner clause> — challenge buckets. `reward` is granted up
+        # front when the player commits to play; `fail` applies on a failed run.
         inner = _parse_clause(" ".join(rest))
         if inner is None:
             return None

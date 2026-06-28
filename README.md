@@ -252,8 +252,9 @@ re-run them after pulling and review the diff.
   tag-pooled items priced by rarity with an optional discount, **Movement**
   fights an action **gate-elite** (launched via `Main`, returning to resolve the
   queued teleport — `nearby`/`previous`, with a picker for the Divine
-  Teleporter), and **Challenge** runs the honour-system best-of-3 on a random
-  unconnected game (win → gold + item chest, loss → curse). `GameState` now
+  Teleporter), and **Challenge** grants its reward (gold + item chest) **up
+  front** when you commit to play a random unconnected game, then has you beat it
+  within N attempts — failing inflicts a random curse. `GameState` now
   tracks **`last_game_curses_held` / `last_game_curses_triggered`** (set in the
   post-game verification) so the Deal/Angel **requirement gates** work, evaluated
   by `GameState.encounter_requirement_met`. New `EncounterNode` /

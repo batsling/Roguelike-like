@@ -75,19 +75,19 @@ func test_divine_teleporter_offers_a_choice() -> void:
 	assert_eq(String(tp["op"]), "teleport")
 	assert_eq((tp["choose"] as Array), ["nearby", "previous"], "choose nearby or previous")
 
-func test_challenge_rift_win_lose_buckets() -> void:
+func test_challenge_rift_reward_fail_buckets() -> void:
 	var e: EncounterData = Data.get_encounter(&"challenge_rift")
 	var ch: Dictionary = e.effects[0]
 	assert_eq(String(ch["op"]), "challenge")
 	assert_eq(String(ch["engine"]), "action")
 	assert_eq(String(ch["pool"]), "unconnected")
 	assert_eq(int(ch["attempts"]), 3)
-	# win -> 50 gold + chest; lose -> 1 curse.
-	var wins: Array = e.effects.filter(func(x): return String(x.get("op", "")) == "win")
-	var loses: Array = e.effects.filter(func(x): return String(x.get("op", "")) == "lose")
-	assert_eq(wins.size(), 2, "two win rewards")
-	assert_eq(loses.size(), 1, "one loss penalty")
-	assert_eq(String(loses[0]["effect"]["op"]), "add_curse")
+	# reward (granted up front) -> 50 gold + chest; fail -> 1 curse.
+	var rewards: Array = e.effects.filter(func(x): return String(x.get("op", "")) == "reward")
+	var fails: Array = e.effects.filter(func(x): return String(x.get("op", "")) == "fail")
+	assert_eq(rewards.size(), 2, "two up-front rewards")
+	assert_eq(fails.size(), 1, "one fail penalty")
+	assert_eq(String(fails[0]["effect"]["op"]), "add_curse")
 
 # --- Requirement Effect ------------------------------------------------------
 
