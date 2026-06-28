@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EncounterData" load_steps=3 format=3 uid="uid://encounter_divine_teleporter"]
+
+[ext_resource type="Script" path="res://scripts/resources/EncounterData.gd" id="1_enc"]
+[ext_resource type="Texture2D" path="res://images/encounters/divine-teleporter.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enc")
+id = &"divine_teleporter"
+display_name = "Divine Teleporter"
+type = "Movement"
+rarity = "Rare"
+description = "Fight 1 Action Combat Elite, and then Teleport to a nearby Random Game or return to the Previous Game"
+npc = "N/A"
+reference = "Risk of Rain"
+img = "divine-teleporter"
+image = ExtResource("2_img")
+effects = [{"op": "combat", "engine": "action", "elite": true}, {"op": "teleport", "choose": ["nearby", "previous"]}]
+requirement = ""
+requirement_effect = []

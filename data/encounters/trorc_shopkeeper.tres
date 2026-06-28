@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EncounterData" load_steps=3 format=3 uid="uid://encounter_trorc_shopkeeper"]
+
+[ext_resource type="Script" path="res://scripts/resources/EncounterData.gd" id="1_enc"]
+[ext_resource type="Texture2D" path="res://images/encounters/trorc-shopkeeper.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enc")
+id = &"trorc_shopkeeper"
+display_name = "Trorc Shopkeeper"
+type = "Shop"
+rarity = "Common"
+description = "A shop that sells Military Items with a 20% discount"
+npc = "Trorc"
+reference = "Enter the Gungeon"
+img = "trorc-shopkeeper"
+image = ExtResource("2_img")
+effects = [{"op": "shop", "pools": ["military"], "discount": 20}]
+requirement = ""
+requirement_effect = []

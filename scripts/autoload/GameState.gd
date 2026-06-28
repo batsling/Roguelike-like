@@ -44,6 +44,21 @@ var player_level: int = 1
 # perfect-aware items / future systems. Transient — not saved.
 var last_game_perfected: bool = false
 
+# Curse bookkeeping for the most recently cleared game, set by the post-game
+# verification step (see Overworld._resolve_curse_penalties). Both count only
+# RESTRICTION curses (the kind that can be "triggered" by breaking their rule).
+# Read by overworld-encounter requirement gates (Deal with the Devil needs a
+# triggered curse last game; the Angel Room needs 2+ held and none triggered).
+# Transient — not saved.
+var last_game_curses_held: int = 0
+var last_game_curses_triggered: int = 0
+
+# Mid-encounter resume that has to survive a combat scene-swap: when an overworld
+# encounter launches a combat (the teleporter's "fight an elite first"), the
+# overworld is freed and rebuilt, so the unfinished tail (e.g. the pending
+# teleport) is stashed here and resumed when the fresh overworld re-opens.
+var pending_encounter: Dictionary = {}
+
 # === Player vitals ===
 var max_hp: int = 75
 var hp: int = 75
@@ -398,6 +413,41 @@ func fire_run_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -
 func curse_count() -> int:
 	return active_curses.size()
 
+# Evaluates an EncounterData.requirement_effect (an AND-list of comparison
+# Dictionaries {field, cmp, value}) against current run-state. Empty list = no
+# gate = always available. Unknown fields fail closed (the encounter won't spawn)
+# so a typo never silently passes. Field vocabulary mirrors the requirement DSL
+# the encounter generator parses.
+func encounter_requirement_met(conds: Array) -> bool:
+	for c in conds:
+		if not (c is Dictionary):
+			return false
+		var field: String = String(c.get("field", ""))
+		var want: int = int(c.get("value", 0))
+		var have: int
+		match field:
+			"last_game.curses_held":
+				have = last_game_curses_held
+			"last_game.curses_triggered":
+				have = last_game_curses_triggered
+			"curses_held":
+				have = curse_count()
+			_:
+				return false
+		if not _cmp_int(have, String(c.get("cmp", "==")), want):
+			return false
+	return true
+
+func _cmp_int(a: int, op: String, b: int) -> bool:
+	match op:
+		">=": return a >= b
+		"<=": return a <= b
+		">": return a > b
+		"<": return a < b
+		"==": return a == b
+		"!=": return a != b
+		_: return false
+
 # Number of CURSE-type cards currently in the deck (Greed, Regret, Guilty, …).
 func curse_card_count() -> int:
 	var n: int = 0
@@ -534,6 +584,9 @@ func reset_run() -> void:
 	total_combats_completed = 0
 	player_level = 1
 	last_game_perfected = false
+	last_game_curses_held = 0
+	last_game_curses_triggered = 0
+	pending_encounter = {}
 	max_hp = 75
 	hp = 75
 	max_energy = 3

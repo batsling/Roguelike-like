@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EncounterData" load_steps=3 format=3 uid="uid://encounter_angel_room"]
+
+[ext_resource type="Script" path="res://scripts/resources/EncounterData.gd" id="1_enc"]
+[ext_resource type="Texture2D" path="res://images/encounters/angel-statue.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enc")
+id = &"angel_room"
+display_name = "Angel Room"
+type = "Deal"
+rarity = "Rare"
+description = "Pick 1 of 3 Holy Items."
+npc = "N/A"
+reference = "The Binding of Isaac"
+img = "angel-statue"
+image = ExtResource("2_img")
+effects = [{"op": "offer_items", "tag": "holy", "count": 3, "pick": "one"}]
+requirement = "Last Game Cleared was with 2+ Curses without triggering them"
+requirement_effect = [{"field": "last_game.curses_held", "cmp": ">=", "value": 2}, {"field": "last_game.curses_triggered", "cmp": "==", "value": 0}]
