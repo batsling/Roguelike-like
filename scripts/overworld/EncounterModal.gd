@@ -33,6 +33,12 @@ var _enc: EncounterData = null
 var _rng := RandomNumberGenerator.new()
 var _body: VBoxContainer = null
 var _gold_label: Label = null
+# Shop reroll state: the grid is rebuilt in place when the player spends a
+# reroll charge, so these hold what _build_shop rolled from.
+var _shop_grid: HBoxContainer = null
+var _shop_pools: Array = []
+var _shop_discount: int = 0
+var _shop_reroll_btn: Button = null
 # Challenge state.
 var _attempts_left: int = 0
 var _challenge_game: GameData = null
@@ -208,9 +214,9 @@ func _apply_per_item(eff: Dictionary, rarity_idx: int) -> void:
 
 func _build_shop() -> void:
 	var shop := _find_op("shop")
-	var pools: Array = shop.get("pools", [])
-	var discount: int = int(shop.get("discount", 0))
-	var items: Array = _roll_pool_items_multi(pools, 4)
+	_shop_pools = shop.get("pools", [])
+	_shop_discount = int(shop.get("discount", 0))
+	var items: Array = _roll_pool_items_multi(_shop_pools, 4)
 	if items.is_empty():
 		_body.add_child(_label("The shelves are bare.", 16))
 		_add_leave_button("Leave")
@@ -219,13 +225,50 @@ func _build_shop() -> void:
 	_gold_label = _label("Gold: %d" % GameState.gold, 14, Color(1.0, 0.85, 0.4))
 	_body.add_child(_gold_label)
 
-	var grid := HBoxContainer.new()
-	grid.add_theme_constant_override("separation", 12)
-	grid.alignment = BoxContainer.ALIGNMENT_CENTER
-	_body.add_child(grid)
-	for it in items:
-		grid.add_child(_shop_tile(it, discount))
+	_shop_grid = HBoxContainer.new()
+	_shop_grid.add_theme_constant_override("separation", 12)
+	_shop_grid.alignment = BoxContainer.ALIGNMENT_CENTER
+	_body.add_child(_shop_grid)
+	_populate_shop_grid(items)
+
+	# Reroll the stock with an overworld reroll charge (same currency the portal
+	# screen spends), so a bad shop roll isn't a dead end.
+	var reroll_row := HBoxContainer.new()
+	reroll_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_body.add_child(reroll_row)
+	_shop_reroll_btn = Button.new()
+	reroll_row.add_child(_shop_reroll_btn)
+	_shop_reroll_btn.pressed.connect(_reroll_shop)
+	_refresh_shop_reroll_button()
+
 	_add_leave_button("Leave")
+
+# (Re)fill the shop grid with tiles for `items`, clearing whatever was there.
+func _populate_shop_grid(items: Array) -> void:
+	if _shop_grid == null:
+		return
+	for c in _shop_grid.get_children():
+		c.queue_free()
+	for it in items:
+		_shop_grid.add_child(_shop_tile(it, _shop_discount))
+
+# Spend one reroll charge to re-roll the shop's stock.
+func _reroll_shop() -> void:
+	if GameState.reroll_charges <= 0:
+		Notifications.notify("No rerolls available.", Color(0.9, 0.7, 0.4))
+		return
+	GameState.reroll_charges -= 1
+	var items: Array = _roll_pool_items_multi(_shop_pools, 4)
+	_populate_shop_grid(items)
+	_refresh_shop_reroll_button()
+	if _gold_label != null:
+		_gold_label.text = "Gold: %d" % GameState.gold
+
+func _refresh_shop_reroll_button() -> void:
+	if _shop_reroll_btn == null:
+		return
+	_shop_reroll_btn.text = "Reroll (%d)" % GameState.reroll_charges
+	_shop_reroll_btn.disabled = GameState.reroll_charges <= 0
 
 func _shop_tile(item: ItemData, discount: int) -> Control:
 	var ridx: int = clampi(int(item.rarity), 0, RARITY_NAMES.size() - 1)
