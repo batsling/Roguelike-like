@@ -719,7 +719,7 @@ func _load_loadout() -> void:
 	_addon_uses.clear()
 	card_boosts.clear()
 	_cost_discounts.clear()
-	var first: CardData = _auto_draw_one()
+	var first: CardData = _draw_first_card()
 	if first != null:
 		var base_slot: Dictionary = {"card": null, "cooldown": 0.0, "max_cooldown": 0.0, "ttl": INF}
 		auto_slots.append(base_slot)
@@ -1607,6 +1607,30 @@ func _process_enemies(delta: float) -> void:
 	# Spread enemies apart so they never stack into a single point (Isaac-style
 	# crowd behaviour): a positional separation pass runs after everyone has moved.
 	_resolve_enemy_separation()
+	# Enemies are solid: the player can't walk through them (Horf et al). Resolve
+	# any player/enemy overlap by shoving the player out, after both have moved.
+	_resolve_player_enemy_collision()
+
+# Treat living enemies as solid bodies the player collides with: push the player
+# out of any overlap so enemies act as obstacles instead of being walked through.
+# Only the player is displaced (enemies hold their ground and run their own
+# separation), so a stationary enemy like Horf is an immovable wall. Contact
+# damage still fires from the enemy AI at the same touch distance.
+func _resolve_player_enemy_collision() -> void:
+	for inst in enemies:
+		if not inst.actor.is_alive():
+			continue
+		var min_dist: float = PLAYER_RADIUS + inst.data.size
+		var d: Vector2 = player_pos - inst.pos
+		var dist: float = d.length()
+		if dist >= min_dist:
+			continue
+		if dist > 0.001:
+			player_pos += (d / dist) * (min_dist - dist)
+		else:
+			player_pos += Vector2.RIGHT.rotated(_rng.randf() * TAU) * min_dist
+	player_pos.x = clampf(player_pos.x, PLAYER_RADIUS, ARENA_W - PLAYER_RADIUS)
+	player_pos.y = clampf(player_pos.y, PLAYER_RADIUS, ARENA_H - PLAYER_RADIUS)
 
 # Push overlapping enemies apart so the crowd spreads around the player instead of
 # piling onto one spot. There are no interior walls to path around, so on an open
@@ -1645,6 +1669,17 @@ func _resolve_enemy_separation() -> void:
 	for inst in enemies:
 		inst.pos.x = clampf(inst.pos.x, inst.data.size, ARENA_W - inst.data.size)
 		inst.pos.y = clampf(inst.pos.y, inst.data.size, ARENA_H - inst.data.size)
+
+# Sweep dead enemies for unspawned on-death children and append them now. Safe
+# to call repeatedly — _enemy_on_death_spawns marks each corpse "transformed" so
+# its children spawn exactly once regardless of how many times this runs.
+func _resolve_pending_death_spawns() -> void:
+	var extra: Array = []
+	for inst in enemies:
+		if not inst.actor.is_alive():
+			extra.append_array(_enemy_on_death_spawns(inst))
+	if not extra.is_empty():
+		enemies.append_array(extra)
 
 # Weighted on-death transform: when an enemy with an on-death table dies, spawn
 # the rolled enemy at its position (once). Returns the new enemy dict(s).
@@ -2001,6 +2036,19 @@ func _layer_current_tex(inst: Dictionary, layer: StringName) -> Texture2D:
 
 # Draw the next card from the auto pile, reshuffling the discard back in
 # when the draw pile runs dry. Returns null only when the pool is empty.
+# The card the permanent base auto-slot arms first when a room loads. Innate
+# cards (the deckbuilder "always in opening hand" keyword) carry over to Action:
+# if the pool holds any, one of them — picked at random, since auto_draw is
+# already shuffled — is chosen as the first card each room. Otherwise it's a
+# normal draw.
+func _draw_first_card() -> CardData:
+	for i in range(auto_draw.size() - 1, -1, -1):
+		var c: CardData = auto_draw[i]
+		if c != null and c.innate:
+			auto_draw.remove_at(i)
+			return c
+	return _auto_draw_one()
+
 func _auto_draw_one() -> CardData:
 	if auto_draw.is_empty():
 		if auto_discard.is_empty():
@@ -2431,10 +2479,18 @@ func _auto_play_innate_addons() -> void:
 	cards.append_array(loadout.auto)
 	for c in cards:
 		var cd: CardData = c.data if c is CardInstance else (c as CardData)
-		if cd != null and AddonSystem.auto_plays_at_start(cd, Stats.Mode.ACTION):
-			_resolve_card_effects_auto(cd)
-			GameLog.add("%s (Innate) fires at the start." % cd.display_name,
-				Color(0.7, 1.0, 0.7))
+		if cd == null or not AddonSystem.auto_plays_at_start(cd, Stats.Mode.ACTION):
+			continue
+		# Innate is handled by the base auto-slot (one Innate card is the FIRST
+		# card chosen each room — see _draw_first_card), so it fires through the
+		# normal cooldown rotation rather than resolving instantly here. Skip it
+		# to avoid an extra at-start resolution; any other (future) auto_play
+		# addon still fires immediately.
+		if cd.innate:
+			continue
+		_resolve_card_effects_auto(cd)
+		GameLog.add("%s fires at the start." % cd.display_name,
+			Color(0.7, 1.0, 0.7))
 
 func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 	if _card_has_ranged_damage(card):
@@ -4012,6 +4068,13 @@ func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatA
 # ---------------------------------------------------------------------------
 
 func _check_combat_end() -> void:
+	# Materialize any on-death spawns BEFORE judging the room clear. Enemies
+	# killed by projectiles, queued multi-hits, or thrown potions die after
+	# _process_enemies has already run its spawn pass this frame, so without this
+	# the room would read as empty and clear one frame before a dying spawner's
+	# children appear. _enemy_on_death_spawns is idempotent (guarded by the
+	# per-enemy "transformed" flag), so re-running it here never double-spawns.
+	_resolve_pending_death_spawns()
 	if not player_actor.is_alive():
 		phase = Phase.LOST
 		GameLog.add("You died in the arena.", Color(1.0, 0.4, 0.4))
