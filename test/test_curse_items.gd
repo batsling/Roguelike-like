@@ -113,17 +113,17 @@ func test_vitality_orb_loads_with_curse_applied_trigger() -> void:
 	assert_false(trig.is_empty(), "Vitality Orb reacts to gaining a curse")
 	var eff: Dictionary = trig.get("effects", [{}])[0]
 	assert_eq(String(eff.get("type", "")), "gain_max_hp")
-	assert_eq(int(eff.get("value", 0)), 8)
+	assert_eq(int(eff.get("value", 0)), 10)
 
 func test_vitality_orb_grants_max_hp_when_a_curse_is_obtained() -> void:
 	GameState.reset_run()
 	GameState.add_item(Data.get_item(&"vitality_orb"))
 	var before: int = GameState.max_hp
 	GameState.add_active_curse(Data.get_curse(&"curse_of_guilt"))
-	assert_eq(GameState.max_hp, before + 8, "obtaining a curse grants +8 Max HP")
+	assert_eq(GameState.max_hp, before + 10, "obtaining a curse grants +10 Max HP")
 	# A second curse stacks again.
 	GameState.add_active_curse(Data.get_curse(&"curse_of_blindness"))
-	assert_eq(GameState.max_hp, before + 16, "each curse grants another +8")
+	assert_eq(GameState.max_hp, before + 20, "each curse grants another +10")
 
 func test_vitality_orb_does_nothing_without_a_curse() -> void:
 	GameState.reset_run()
