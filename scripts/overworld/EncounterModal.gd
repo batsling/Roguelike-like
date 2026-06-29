@@ -49,6 +49,10 @@ var _attempts_left: int = 0
 var _challenge_game: GameData = null
 # Whether anything banked a chest (redeemed by the overworld on close).
 var minted_chest: bool = false
+# Set when the encounter should NOT be consumed/greyed on close, so the player
+# can interact with it again. A shopkeeper with no wares uses this: an empty shop
+# stays a normal, openable vendor instead of locking out after a single look.
+var keep_available: bool = false
 
 func setup(enc: EncounterData) -> void:
 	_enc = enc
@@ -223,6 +227,10 @@ func _build_shop() -> void:
 	_shop_discount = int(shop.get("discount", 0))
 	var items: Array = _roll_pool_items_multi(_shop_pools, 4)
 	if items.is_empty():
+		# No wares to sell — don't burn the encounter. The shopkeeper stays an
+		# openable, un-greyed vendor so the player can come back (and so a shop
+		# still being authored isn't a dead, greyed-out node on the map).
+		keep_available = true
 		_body.add_child(_label("The shelves are bare.", 16))
 		_add_leave_button("Leave")
 		return
