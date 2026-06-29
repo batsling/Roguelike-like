@@ -192,6 +192,14 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # mode. Empty Syringe: { "bleed": 1, "poison": 1 }.
 @export var status_amplify: Dictionary = {}
 
+# Status ids the PLAYER can no longer gain while this item is owned (Ginger →
+# "weak", Turnip → "frail"). Any attempt to add positive stacks of a listed
+# status to a player actor is dropped at the source — checked in
+# CombatActor.add_status / Unit.add_status (the single per-actor choke point), so
+# it covers every source and every combat mode. Decay (stacks < 0) is never
+# blocked. Empty for almost every item. Read via GameState.is_status_immune.
+@export var status_immunity: PackedStringArray = PackedStringArray()
+
 # Card types that get auto-upgraded the moment a matching card is added to the
 # deck while this item is owned (the "egg" items). Entries are CardData type
 # names (attack / skill / power / dice / status / curse / training). Resolved

@@ -68,6 +68,7 @@ TRIGGER_SIGNALS = {
     "attack_missed": "attack_missed", "damage_taken": "damage_taken",
     "curse_removed": "curse_removed", "curse_card_removed": "curse_card_removed",
     "curse_applied": "curse_applied", "card_played": "card_played",
+    "potion_used": "potion_used",
 }
 # Hooks that fire frequently enough to suppress the generic trigger log line.
 ALWAYS_SILENT = {"attack_landed", "attack_missed", "turn_tick", "damage_taken"}
@@ -555,6 +556,12 @@ def parse_item(row):
         elif kl0 == "status_amplify":
             fields["status_amplify"] = _amp(payload)
             last_trigger = None
+        elif kl0 == "status_immunity":
+            # "status_immunity: weak, frail" -> PackedStringArray of status ids the
+            # player can no longer gain (Ginger, Turnip).
+            fields["status_immunity"] = [t.strip().lower()
+                                         for t in split_top(payload, ",") if t.strip()]
+            last_trigger = None
         elif kl0 == "attack_damage_bonus":
             fields["attack_damage_bonus"] = _brace_dict(payload)
             last_trigger = None
@@ -725,15 +732,34 @@ def gd_value(v) -> str:
     raise TypeError(type(v))
 
 
+def _item_image_map():
+    """Lowercased stem -> actual on-disk PNG stem in ITEM_IMG_DIR, built once.
+    Lets the image lookup match case-insensitively so a sheet File like
+    `CharmOfTheVampire` still resolves to the real `CharmoftheVampire.png` on a
+    case-sensitive filesystem (Linux CI), instead of silently dropping the art."""
+    cache = _item_image_map.__dict__.setdefault("cache", None)
+    if cache is None:
+        cache = {}
+        if os.path.isdir(ITEM_IMG_DIR):
+            for fn in os.listdir(ITEM_IMG_DIR):
+                if fn.lower().endswith(".png"):
+                    stem = fn[:-4]
+                    cache[stem.lower()] = stem
+        _item_image_map.cache = cache
+    return cache
+
+
 def item_tres(row):
     f = parse_item(row)
     iid = f["id"]
     img_name = display_of(str(row["Name"]).strip())
     img_file = str(row.get("File") or "").strip() or img_name
     img_res = None
+    img_map = _item_image_map()
     for cand in (img_file, img_name):
-        if os.path.exists(os.path.join(ITEM_IMG_DIR, cand + ".png")):
-            img_res = "res://images/items/%s.png" % cand
+        stem = img_map.get(cand.lower())
+        if stem is not None:
+            img_res = "res://images/items/%s.png" % stem
             break
 
     lines = []
@@ -766,6 +792,7 @@ def item_tres(row):
     # one-off fields, emitted only when present
     for key, gd in [
         ("status_amplify", lambda v: gd_value(v)),
+        ("status_immunity", lambda v: packed(v)),
         ("upgrade_card_types", lambda v: packed(v)),
         ("attack_damage_bonus", lambda v: gd_value(v)),
         ("carries_leftover_energy", lambda v: "true"),

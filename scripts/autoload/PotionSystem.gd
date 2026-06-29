@@ -59,6 +59,10 @@ func notify_used(potion: PotionData, detail: String = "") -> void:
 	if detail != "":
 		msg += " %s" % detail
 	Notifications.notify(msg, POTION_COLOR)
+	# Single per-use choke point across every combat mode (drunk or thrown, AOE or
+	# single target): fire the potion_used trigger exactly once so run-scope items
+	# like Toy Ornithopter ("gain HP when you use a potion") count one event.
+	TriggerBus.emit_signal("potion_used", {"potion": potion})
 
 # ===========================================================================
 # Display: names, colours, art

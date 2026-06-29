@@ -22,13 +22,14 @@ One item = `clause; clause; ...` (paren/bracket aware — a `;` inside `()`,
 | `passive` | `stat_bonuses` | `passive: +3 strength, -2 discovery` |
 | `combat_start[ed]` / `combat_end[ed]` | `triggers[{on}]` | `combat_start: +10 block (self)` |
 | `<signal>` | `triggers[{on}]` | `enemy_killed: 50% chance +2 hp` |
+| `potion_used` | `triggers[{on:potion_used}]` (run-scope, scene-less; fires once per potion use) | `potion_used: gain_hp 5` (Toy Ornithopter) |
 | `<signal> if_turn=N` / `if_type=X` | trigger + gate | `turn_started if_turn=3: +18 block (self)` |
 | `card_played if_type=X` | `triggers[{on:card_played, if_card_type}]` | `card_played if_type=attack: counter key=attacks_total every=10 -> gain_energy 1` |
 | `card_grant if_tag=X [if_type=Y]` | `card_grants` | `card_grant if_tag=strike: +1 bruise (enemy)` |
 | `scaling` | `scaling` | `scaling: +1 strength per 20 max_hp` |
 | `weapon` / `verify` | `weapon_card_id` + `verification_*` | `weapon: barrel; verify: <q> => 1/2 random fish` |
 | `perfect` | `perfect_effects` / `perfect_save_chance` | `perfect: gain_hp 5` |
-| `status_amplify`, `attack_damage_bonus`, `upgrade_card_types`, `stat_mirror`, `stat_floor`, `stat_gain_bonus`, `negate_lethal`, `reroll_low_rarity`, `carries_leftover_energy`, `lower_hp_damage_mult`, `gold_spend_stat_per=N`, `level_up`, `charged (charge_cost N)` | the matching one-off `ItemData` field | — |
+| `status_amplify`, `status_immunity`, `attack_damage_bonus`, `upgrade_card_types`, `stat_mirror`, `stat_floor`, `stat_gain_bonus`, `negate_lethal`, `reroll_low_rarity`, `carries_leftover_energy`, `lower_hp_damage_mult`, `gold_spend_stat_per=N`, `level_up`, `charged (charge_cost N)` | the matching one-off `ItemData` field | `status_immunity: weak` (Ginger — the player can no longer gain that status) |
 
 **Payload effects** (comma-separated within a clause):
 `+N <status>` / `-N <stat>` (target from a trailing `(self)`/`(enemy)`/

@@ -167,6 +167,11 @@ func is_alive() -> bool:
 func add_status(status: StringName, stacks: int) -> void:
 	if stacks == 0:
 		return
+	# Status-immunity items (Ginger → Weak, Turnip → Frail): the player can no
+	# longer GAIN the listed status. Drop positive stacks at the source; decay
+	# (stacks < 0) still passes so an existing stack can wear off.
+	if stacks > 0 and is_player and GameState.is_status_immune(status):
+		return
 	# Status-amplify items (Empty Syringe): inflicting positive stacks of a
 	# matching status on a non-player actor adds the item's bonus. Reads the
 	# player's inventory, so only the player's amplifiers count, and never

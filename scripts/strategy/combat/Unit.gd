@@ -111,6 +111,11 @@ func is_alive() -> bool:
 func add_status(status_id: StringName, stacks: int) -> void:
 	if status_id == &"" or stacks == 0:
 		return
+	# Status-immunity items (Ginger → Weak, Turnip → Frail): the player can no
+	# longer GAIN the listed status. Drop positive stacks at the source; decay
+	# (stacks < 0) still passes so an existing stack can wear off.
+	if stacks > 0 and is_player and GameState.is_status_immune(status_id):
+		return
 	statuses[status_id] = int(statuses.get(status_id, 0)) + stacks
 	if statuses[status_id] <= 0:
 		statuses.erase(status_id)

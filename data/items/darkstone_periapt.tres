@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_darkstone_periapt"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/DarkstonePeriapt.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"darkstone_periapt"
+display_name = "Darkstone Periapt"
+kind = 1
+rarity = 1
+description = "Gain +6 Max Health whenever you obtain a Curse"
+triggers = [{"on": "curse_applied", "effects": [{"type": "gain_max_hp", "value": 6}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray("stone", "necklace", "wearable")
+image = ExtResource("2_img")
