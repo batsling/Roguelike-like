@@ -363,6 +363,11 @@ func _connect_lifecycle_hooks() -> void:
 		TriggerBus.curse_removed.connect(_on_curse_removed)
 	if not TriggerBus.curse_card_removed.is_connected(_on_curse_card_removed):
 		TriggerBus.curse_card_removed.connect(_on_curse_card_removed)
+	# Potion use is a run-scope hook (fired from PotionSystem in any combat mode),
+	# so route it through the scene-less runner like the curse_* hooks (Toy
+	# Ornithopter heals on potion_used).
+	if not TriggerBus.potion_used.is_connected(_on_potion_used):
+		TriggerBus.potion_used.connect(_on_potion_used)
 	# Combats-won tally drives the enemy-spawn budget (first fight is gentler).
 	if not TriggerBus.combat_ended.is_connected(_on_combat_ended_tally):
 		TriggerBus.combat_ended.connect(_on_combat_ended_tally)
@@ -385,6 +390,9 @@ func _on_curse_removed(ctx: Dictionary) -> void:
 
 func _on_curse_card_removed(ctx: Dictionary) -> void:
 	fire_run_item_triggers("curse_card_removed", ctx)
+
+func _on_potion_used(ctx: Dictionary) -> void:
+	fire_run_item_triggers("potion_used", ctx)
 
 # Fires every owned item's triggers whose `on:` matches `trigger_name`, with a
 # scene-less context (source/target/scene/card = null). The run-scope sibling
@@ -1295,6 +1303,17 @@ func status_amplify_bonus(status_id: StringName) -> int:
 		if item is ItemData and not item.status_amplify.is_empty():
 			bonus += int(item.status_amplify.get(key, 0))
 	return bonus
+
+# True when an owned item makes the player immune to gaining `status_id` (Ginger
+# → "weak", Turnip → "frail"). Called from the player actor's add_status so the
+# block lands in every combat mode regardless of where the status came from.
+func is_status_immune(status_id: StringName) -> bool:
+	var key: String = String(status_id)
+	for item in inventory:
+		if item is ItemData and not item.status_immunity.is_empty():
+			if key in item.status_immunity:
+				return true
+	return false
 
 # Canonical "add a card to the player's deck" entry. Accepts a CardInstance
 # or a CardData (wrapped into a fresh instance). Applies egg auto-upgrades

@@ -63,6 +63,12 @@ signal floor_entered(ctx: Dictionary)       # ctx.game_id
 signal item_acquired(ctx: Dictionary)       # ctx.item
 signal item_lost(ctx: Dictionary)
 signal item_used(ctx: Dictionary)           # ctx.item — a USABLE consumable was activated
+signal potion_used(ctx: Dictionary)          # ctx.potion — a potion was drunk or thrown.
+                                            # Emitted once per use from
+                                            # PotionSystem.notify_used (the single
+                                            # choke point hit by every combat mode),
+                                            # NOT once per affected target. Run-scope
+                                            # and scene-less (Toy Ornithopter).
 signal curse_applied(ctx: Dictionary)        # ctx.curse — a curse was added to
                                             # active_curses (Vitality Orb).
 signal curse_removed(ctx: Dictionary)        # ctx.curse — a curse left
