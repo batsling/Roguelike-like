@@ -732,15 +732,34 @@ def gd_value(v) -> str:
     raise TypeError(type(v))
 
 
+def _item_image_map():
+    """Lowercased stem -> actual on-disk PNG stem in ITEM_IMG_DIR, built once.
+    Lets the image lookup match case-insensitively so a sheet File like
+    `CharmOfTheVampire` still resolves to the real `CharmoftheVampire.png` on a
+    case-sensitive filesystem (Linux CI), instead of silently dropping the art."""
+    cache = _item_image_map.__dict__.setdefault("cache", None)
+    if cache is None:
+        cache = {}
+        if os.path.isdir(ITEM_IMG_DIR):
+            for fn in os.listdir(ITEM_IMG_DIR):
+                if fn.lower().endswith(".png"):
+                    stem = fn[:-4]
+                    cache[stem.lower()] = stem
+        _item_image_map.cache = cache
+    return cache
+
+
 def item_tres(row):
     f = parse_item(row)
     iid = f["id"]
     img_name = display_of(str(row["Name"]).strip())
     img_file = str(row.get("File") or "").strip() or img_name
     img_res = None
+    img_map = _item_image_map()
     for cand in (img_file, img_name):
-        if os.path.exists(os.path.join(ITEM_IMG_DIR, cand + ".png")):
-            img_res = "res://images/items/%s.png" % cand
+        stem = img_map.get(cand.lower())
+        if stem is not None:
+            img_res = "res://images/items/%s.png" % stem
             break
 
     lines = []

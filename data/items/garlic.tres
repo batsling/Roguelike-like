@@ -14,5 +14,5 @@ triggers = [{"on": "combat_started", "effects": [{"type": "status", "status": "b
 stat_bonuses = {}
 max_uses = -1
 source_game = "Super Auto Pets"
-tags = PackedStringArray("food")
+tags = PackedStringArray("food", "vegetable")
 image = ExtResource("2_img")
