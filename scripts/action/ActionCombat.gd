@@ -221,6 +221,15 @@ var auto_slots: Array = []                           # Array of Dictionary {card
 # (Exhaust -> uses_per_combat(1) in Action). Reset each room in _load_loadout.
 var _addon_uses: Dictionary = {}
 
+# Total per-combat fire budget keyed by CardData. Every physical copy of a card
+# in the deck resolves to the SAME shared CardData object (see GameState's
+# action-loadout / upgrade cache), so a per-copy cap like Exhaust's
+# uses_per_combat(1) must be multiplied by the number of copies in the pool —
+# otherwise the first copy fires and every other copy is treated as already
+# spent (e.g. a deck of several Adrenalines would only ever fire one). Absent =
+# uncapped. Rebuilt each room in _load_loadout.
+var _addon_total_cap: Dictionary = {}
+
 # Persistent in-combat card boosts (Accuracy -> Shivs, Claw -> Claws). Registered
 # by boost_cards effects via add_card_boost and folded into matching dmg/block in
 # _resolve_addon_effect. Combat-scoped: cleared in _load_loadout.
@@ -691,6 +700,18 @@ func _load_loadout() -> void:
 
 	# Build the auto-runner: shuffle the pool into the draw pile, clear the
 	# discard, and start with one permanent slot already drawing a card.
+	# Total fire budget per card = its per-copy uses_per_combat cap times the
+	# number of copies in the pool. Built before the shuffle so every copy of an
+	# Exhaust card (which all share one CardData object) gets to fire once.
+	_addon_total_cap.clear()
+	var _pool_copies: Dictionary = {}
+	for c in auto_pool:
+		_pool_copies[c] = int(_pool_copies.get(c, 0)) + 1
+	for c in _pool_copies:
+		var per: int = AddonSystem.uses_per_combat(c, Stats.Mode.ACTION)
+		if per >= 0:
+			_addon_total_cap[c] = per * int(_pool_copies[c])
+
 	auto_draw = auto_pool.duplicate()
 	auto_draw.shuffle()
 	auto_discard.clear()
@@ -2019,7 +2040,9 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 			var one_shot: bool = bool(slot.get("one_shot", false))
 			# uses_per_combat (Exhaust): a card that has hit its per-combat cap
 			# retires from the rotation without firing — drawn next, not re-queued.
-			var cap: int = AddonSystem.uses_per_combat(slot.card, Stats.Mode.ACTION)
+			# The cap is the pool-wide total (per-copy cap x copies) so every
+			# physical copy of a shared-object card gets its own use.
+			var cap: int = int(_addon_total_cap.get(slot.card, -1))
 			var used: int = int(_addon_uses.get(slot.card, 0))
 			if not one_shot and cap >= 0 and used >= cap:
 				_arm_slot(slot, _auto_draw_one())
