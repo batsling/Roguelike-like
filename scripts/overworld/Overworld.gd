@@ -74,9 +74,6 @@ var _door_preview: Control = null
 # area) and re-rolled on a new area; see _ensure_encounter_for_area.
 var _encounter_node: EncounterNode = null
 var _active_encounter: EncounterNode = null
-# Mouse-hovered encounter (clickable from anywhere, like a portal door), distinct
-# from _active_encounter which is the proximity target the [E] prompt uses.
-var _hovered_encounter: EncounterNode = null
 var _encounter_modal: EncounterModal = null
 var _teleport_modal: Control = null
 # The area id the current encounter belongs to, so a reroll keeps it but moving
@@ -275,21 +272,6 @@ func _process(_delta: float) -> void:
 			if p.game_data != null and p.door_global_rect().has_point(mouse):
 				new_hover = p
 				break
-	# Encounter hover: the shopkeeper / deal / teleporter is clickable from
-	# anywhere (no proximity needed), so light a hover ring when the mouse is over
-	# its art. A consumed encounter is no longer interactive.
-	var new_enc_hover: EncounterNode = null
-	if not locked and _encounter_node != null and is_instance_valid(_encounter_node) \
-			and not _encounter_node.consumed \
-			and _encounter_node.art_global_rect().has_point(mouse):
-		new_enc_hover = _encounter_node
-	if new_enc_hover != _hovered_encounter:
-		if _hovered_encounter != null and is_instance_valid(_hovered_encounter):
-			_hovered_encounter.set_hovered(false)
-		_hovered_encounter = new_enc_hover
-		if _hovered_encounter != null:
-			_hovered_encounter.set_hovered(true)
-
 	if new_hover == _hovered_portal:
 		return
 	if _hovered_portal != null and is_instance_valid(_hovered_portal):
@@ -457,20 +439,13 @@ func _update_hint() -> void:
 	_hint.text = actions
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Left-click a door (info + map preview) or an encounter (open its modal). An
-	# encounter is clickable from anywhere — including a shopkeeper with no wares,
-	# which opens its empty shop — so this doesn't depend on walking up + [E].
+	# Click a door to open its info + map preview.
 	if event is InputEventMouseButton and event.pressed \
 			and event.button_index == MOUSE_BUTTON_LEFT:
 		if _door_preview == null and _can_act() \
 				and _hovered_portal != null and is_instance_valid(_hovered_portal) \
 				and _hovered_portal.game_data != null:
 			_open_door_preview(_hovered_portal.game_data.id)
-			get_viewport().set_input_as_handled()
-		elif _can_act() and _hovered_encounter != null \
-				and is_instance_valid(_hovered_encounter) and not _hovered_encounter.consumed:
-			_active_encounter = _hovered_encounter
-			_open_encounter_modal()
 			get_viewport().set_input_as_handled()
 		return
 	# Esc closes an open door preview before anything else handles it.
@@ -679,7 +654,6 @@ func _ensure_encounter_for_area() -> void:
 		_encounter_node.queue_free()
 	_encounter_node = null
 	_active_encounter = null
-	_hovered_encounter = null
 	_encounter_area_id = GameState.current_game_id
 
 	var enc: EncounterData = _roll_encounter_for_area()

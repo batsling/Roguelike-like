@@ -18,8 +18,7 @@ const FRAME := 6.0
 var encounter: EncounterData = null
 var grid_pos: Vector2i = Vector2i.ZERO
 var consumed: bool = false
-var _active: bool = false      # proximity (player walked near) — drives the [E] prompt
-var _hovered: bool = false     # mouse over the art — drives click-to-open feedback
+var _active: bool = false
 
 var _name_label: Label = null
 var _prompt: Label = null
@@ -92,20 +91,6 @@ func set_active(active: bool) -> void:
 		_prompt.visible = active and not consumed
 	queue_redraw()
 
-# Mouse hover (the encounter is clickable from anywhere, like a portal). Purely
-# cosmetic — lights a hover ring — and independent of proximity.
-func set_hovered(hovered: bool) -> void:
-	if _hovered == hovered:
-		return
-	_hovered = hovered
-	queue_redraw()
-
-# The art's bounding box in GLOBAL coords, for mouse hit-testing (a click on the
-# sprite opens the encounter even when the player is standing far away).
-func art_global_rect() -> Rect2:
-	var half := ART_W / 2.0
-	return Rect2(global_position + Vector2(-half, ART_TOP), Vector2(ART_W, ART_H))
-
 func mark_consumed() -> void:
 	consumed = true
 	if _prompt != null:
@@ -120,9 +105,6 @@ func _draw() -> void:
 	# for the interaction modal, and an NPC's name rides above on the nametag.
 	var half := ART_W / 2.0
 	var rect := Rect2(-half, ART_TOP, ART_W, ART_H)
-	# Hover ring: signals the sprite is clickable when the mouse is over it.
-	if _hovered and not consumed:
-		draw_rect(rect.grow(4.0), Color(1.0, 0.95, 0.6, 0.9), false, 2.0)
 
 	if encounter != null and encounter.image != null:
 		# Selection glow when walked near — a soft halo behind the sprite.
