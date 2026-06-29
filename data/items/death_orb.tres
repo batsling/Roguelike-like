@@ -14,5 +14,5 @@ triggers = [{"on": "card_played", "if_card_type": "power", "effects": [{"type": 
 stat_bonuses = {}
 max_uses = -1
 source_game = "Forward: Escape the Fold"
-tags = PackedStringArray("orb", "devilroom")
+tags = PackedStringArray("orb", "evil")
 image = ExtResource("2_img")

@@ -18,6 +18,15 @@ const FRAME := 6.0
 var encounter: EncounterData = null
 var grid_pos: Vector2i = Vector2i.ZERO
 var consumed: bool = false
+
+# Persistent shop stock, so a SHOP encounter is a permanent re-visitable vendor:
+# the wares are rolled once and cached here (with a parallel sold flag per slot),
+# and the modal reads/writes these instead of re-rolling on every open. That keeps
+# re-opening from being a free re-roll while letting the player come back. Rolled
+# lazily by EncounterModal on first open; reset when the shop is re-rolled.
+var shop_rolled: bool = false
+var shop_stock: Array = []     # Array[ItemData]
+var shop_sold: Array = []      # Array[bool], parallel to shop_stock
 var _active: bool = false
 
 var _name_label: Label = null
@@ -31,11 +40,26 @@ func setup(enc: EncounterData, pos: Vector2i) -> void:
 		_apply_visuals()
 
 func _ready() -> void:
+	# Nametag: shown only for an encounter with an NPC fronting it (Deal/Shop
+	# characters). Inanimate encounters (teleporters, rifts) carry no tag — the
+	# encounter's own name never appears on the map, only on the interaction modal.
 	_name_label = Label.new()
 	_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_name_label.size = Vector2(ART_W + 60.0, 20.0)
 	_name_label.position = Vector2(-(ART_W + 60.0) / 2.0, ART_TOP + ART_H + 4.0)
 	_name_label.add_theme_font_size_override("font_size", 13)
+	_name_label.add_theme_color_override("font_color", Color(1.0, 0.96, 0.85))
+	# A small dark pill behind the text so the tag reads over any terrain.
+	var tag_bg := StyleBoxFlat.new()
+	tag_bg.bg_color = Color(0.07, 0.06, 0.09, 0.82)
+	tag_bg.set_corner_radius_all(6)
+	tag_bg.content_margin_left = 8
+	tag_bg.content_margin_right = 8
+	tag_bg.content_margin_top = 2
+	tag_bg.content_margin_bottom = 2
+	tag_bg.set_border_width_all(1)
+	tag_bg.border_color = Color(1.0, 0.85, 0.45, 0.5)
+	_name_label.add_theme_stylebox_override("normal", tag_bg)
 	add_child(_name_label)
 
 	_prompt = Label.new()
@@ -52,8 +76,15 @@ func _ready() -> void:
 	queue_redraw()
 
 func _apply_visuals() -> void:
-	if _name_label != null and encounter != null:
-		_name_label.text = encounter.display_name
+	if _name_label != null:
+		# Only an NPC-fronted encounter gets a nametag; it shows the character's
+		# name, never the encounter title. Inanimate encounters hide the tag.
+		if encounter != null and encounter.is_animate():
+			_name_label.text = encounter.npc
+			_name_label.visible = true
+		else:
+			_name_label.text = ""
+			_name_label.visible = false
 	queue_redraw()
 
 # Centre of the art in global coords — Overworld measures the player's distance
@@ -77,26 +108,29 @@ func mark_consumed() -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	# Encounters render as a bare sprite on the overworld (no framed box, no
+	# name plate) — the art sits directly on the map like any other landmark.
+	# Proximity is shown with a soft glow behind the art; the title is reserved
+	# for the interaction modal, and an NPC's name rides above on the nametag.
 	var half := ART_W / 2.0
 	var rect := Rect2(-half, ART_TOP, ART_W, ART_H)
-	var border: Color = _color_for_type(encounter.type if encounter != null else "")
 
-	# Selection glow when walked near.
-	if _active and not consumed:
-		draw_rect(rect.grow(7.0), Color(1.0, 0.85, 0.2, 0.5), true)
-
-	# Type-tinted frame + recessed face.
-	draw_rect(rect, border, true)
-	var face := rect.grow(-FRAME)
-	draw_rect(face, Color(0.10, 0.09, 0.08, 1.0), true)
 	if encounter != null and encounter.image != null:
-		draw_texture_rect(encounter.image, face, false,
+		# Selection glow when walked near — a soft halo behind the sprite.
+		if _active and not consumed:
+			draw_rect(rect.grow(8.0), Color(1.0, 0.85, 0.2, 0.35), true)
+		draw_texture_rect(encounter.image, rect, false,
 			Color(0.55, 0.55, 0.6) if consumed else Color.WHITE)
 	else:
-		draw_rect(face, Color(0.18, 0.18, 0.22, 1.0), true)
-	draw_rect(rect, Color(0.04, 0.03, 0.02, 1.0), false, 3.0)
+		# No art yet: a small type-tinted marker so the spot is still visible.
+		var border: Color = _color_for_type(encounter.type if encounter != null else "")
+		if _active and not consumed:
+			draw_rect(rect.grow(7.0), Color(1.0, 0.85, 0.2, 0.5), true)
+		draw_rect(rect, border, true)
+		draw_rect(rect.grow(-FRAME), Color(0.18, 0.18, 0.22, 1.0), true)
+		draw_rect(rect, Color(0.04, 0.03, 0.02, 1.0), false, 3.0)
 
-# Frame tint by the sheet's Type column.
+# Type tint for the fallback marker drawn when an encounter has no art yet.
 func _color_for_type(t: String) -> Color:
 	match t.to_lower():
 		"deal": return Color(0.62, 0.20, 0.24, 1.0)       # deal — crimson

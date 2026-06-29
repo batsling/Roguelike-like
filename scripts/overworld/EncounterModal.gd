@@ -30,17 +30,41 @@ const PRICE_BY_RARITY := [50, 80, 120, 175, 250]
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 
 var _enc: EncounterData = null
+# The overworld node this modal is fronting, when there is one. A SHOP reads and
+# writes its persistent stock here so it stays the same vendor across re-opens.
+var _node: EncounterNode = null
 var _rng := RandomNumberGenerator.new()
 var _body: VBoxContainer = null
 var _gold_label: Label = null
+# Shop reroll state: the grid is rebuilt in place when the player spends a
+# reroll charge, so these hold what _build_shop rolled from.
+var _shop_grid: HBoxContainer = null
+var _shop_pools: Array = []
+var _shop_discount: int = 0
+var _shop_reroll_btn: Button = null
+# Fallback stock when the modal has no backing node (defensive; the overworld
+# always passes one). Mirrors the node's shop_stock / shop_sold / shop_rolled.
+var _nodeless_stock: Array = []
+var _nodeless_sold: Array = []
+var _nodeless_rolled: bool = false
+# One-shot guard: a rapid second click on a commit/leave button can re-enter
+# _finish before the deferred queue_free lands, which would emit `closed` twice
+# and double-run the overworld's redeem/consume/save cleanup (and let a
+# shopkeeper be interacted with again). Latched so the modal finishes once.
+var _finished: bool = false
 # Challenge state.
 var _attempts_left: int = 0
 var _challenge_game: GameData = null
 # Whether anything banked a chest (redeemed by the overworld on close).
 var minted_chest: bool = false
+# Set when the encounter should NOT be consumed/greyed on close, so the player
+# can interact with it again. A shopkeeper with no wares uses this: an empty shop
+# stays a normal, openable vendor instead of locking out after a single look.
+var keep_available: bool = false
 
-func setup(enc: EncounterData) -> void:
+func setup(enc: EncounterData, node: EncounterNode = null) -> void:
 	_enc = enc
+	_node = node
 	_rng.randomize()
 	_build()
 
@@ -208,10 +232,18 @@ func _apply_per_item(eff: Dictionary, rarity_idx: int) -> void:
 
 func _build_shop() -> void:
 	var shop := _find_op("shop")
-	var pools: Array = shop.get("pools", [])
-	var discount: int = int(shop.get("discount", 0))
-	var items: Array = _roll_pool_items_multi(pools, 4)
-	if items.is_empty():
+	_shop_pools = shop.get("pools", [])
+	_shop_discount = int(shop.get("discount", 0))
+	# A shopkeeper is a permanent, re-visitable vendor: never consume it on close,
+	# so it keeps its [E] prompt and doesn't grey out.
+	keep_available = true
+	# Stock is rolled once and then persists on the node, so re-opening shows the
+	# same wares (sold items stay sold) instead of being a free re-roll. With no
+	# backing node (shouldn't happen in the overworld) we fall back to a one-off roll.
+	_ensure_shop_stock()
+	var stock: Array = _shop_stock_items()
+
+	if stock.is_empty():
 		_body.add_child(_label("The shelves are bare.", 16))
 		_add_leave_button("Leave")
 		return
@@ -219,15 +251,89 @@ func _build_shop() -> void:
 	_gold_label = _label("Gold: %d" % GameState.gold, 14, Color(1.0, 0.85, 0.4))
 	_body.add_child(_gold_label)
 
-	var grid := HBoxContainer.new()
-	grid.add_theme_constant_override("separation", 12)
-	grid.alignment = BoxContainer.ALIGNMENT_CENTER
-	_body.add_child(grid)
-	for it in items:
-		grid.add_child(_shop_tile(it, discount))
+	_shop_grid = HBoxContainer.new()
+	_shop_grid.add_theme_constant_override("separation", 12)
+	_shop_grid.alignment = BoxContainer.ALIGNMENT_CENTER
+	_body.add_child(_shop_grid)
+	_populate_shop_grid()
+
+	# Reroll the stock with an overworld reroll charge (same currency the portal
+	# screen spends), so a bad shop roll isn't a dead end.
+	var reroll_row := HBoxContainer.new()
+	reroll_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_body.add_child(reroll_row)
+	_shop_reroll_btn = Button.new()
+	reroll_row.add_child(_shop_reroll_btn)
+	_shop_reroll_btn.pressed.connect(_reroll_shop)
+	_refresh_shop_reroll_button()
+
 	_add_leave_button("Leave")
 
-func _shop_tile(item: ItemData, discount: int) -> Control:
+# Roll the shop's stock once and cache it (on the node when present), so re-opens
+# reuse it. A no-op if it was already rolled.
+func _ensure_shop_stock() -> void:
+	if _node != null:
+		if not _node.shop_rolled:
+			_node.shop_stock = _roll_pool_items_multi(_shop_pools, 4)
+			_node.shop_sold = _fresh_sold_flags(_node.shop_stock.size())
+			_node.shop_rolled = true
+		return
+	# Nodeless fallback: keep the roll on the modal via _shop_pools-backed locals.
+	if not _nodeless_rolled:
+		_nodeless_stock = _roll_pool_items_multi(_shop_pools, 4)
+		_nodeless_sold = _fresh_sold_flags(_nodeless_stock.size())
+		_nodeless_rolled = true
+
+# An all-false sold-flag array of the given size.
+func _fresh_sold_flags(n: int) -> Array:
+	var flags: Array = []
+	flags.resize(n)
+	flags.fill(false)
+	return flags
+
+func _shop_stock_items() -> Array:
+	return _node.shop_stock if _node != null else _nodeless_stock
+
+func _shop_sold_flags() -> Array:
+	return _node.shop_sold if _node != null else _nodeless_sold
+
+# (Re)fill the shop grid from the persisted stock, clearing whatever was there.
+func _populate_shop_grid() -> void:
+	if _shop_grid == null:
+		return
+	for c in _shop_grid.get_children():
+		c.queue_free()
+	var stock: Array = _shop_stock_items()
+	for i in range(stock.size()):
+		_shop_grid.add_child(_shop_tile(i, stock[i], _shop_discount))
+
+# Spend one reroll charge to re-roll the shop's stock (fresh wares, all unsold).
+func _reroll_shop() -> void:
+	if GameState.reroll_charges <= 0:
+		Notifications.notify("No rerolls available.", Color(0.9, 0.7, 0.4))
+		return
+	GameState.reroll_charges -= 1
+	var fresh: Array = _roll_pool_items_multi(_shop_pools, 4)
+	var sold: Array = _fresh_sold_flags(fresh.size())
+	if _node != null:
+		_node.shop_stock = fresh
+		_node.shop_sold = sold
+		_node.shop_rolled = true
+	else:
+		_nodeless_stock = fresh
+		_nodeless_sold = sold
+	_populate_shop_grid()
+	_refresh_shop_reroll_button()
+	if _gold_label != null:
+		_gold_label.text = "Gold: %d" % GameState.gold
+
+func _refresh_shop_reroll_button() -> void:
+	if _shop_reroll_btn == null:
+		return
+	_shop_reroll_btn.text = "Reroll (%d)" % GameState.reroll_charges
+	_shop_reroll_btn.disabled = GameState.reroll_charges <= 0
+
+func _shop_tile(index: int, item: ItemData, discount: int) -> Control:
 	var ridx: int = clampi(int(item.rarity), 0, RARITY_NAMES.size() - 1)
 	var base: int = PRICE_BY_RARITY[ridx]
 	var price: int = int(round(base * (100 - discount) / 100.0))
@@ -250,8 +356,16 @@ func _shop_tile(item: ItemData, discount: int) -> Control:
 	col.add_child(art)
 	col.add_child(_label("%s\n[%s]" % [item.display_name, RARITY_NAMES[ridx]], 12))
 
+	# An item already bought in a previous visit stays sold across re-opens.
+	var sold_flags: Array = _shop_sold_flags()
+	var already_sold: bool = index < sold_flags.size() and sold_flags[index] == true
+
 	var buy := Button.new()
-	buy.text = "Buy (%dg)" % price
+	if already_sold:
+		buy.text = "Sold"
+		buy.disabled = true
+	else:
+		buy.text = "Buy (%dg)" % price
 	buy.pressed.connect(func() -> void:
 		if GameState.gold < price:
 			Notifications.notify("Not enough gold.", Color(1.0, 0.6, 0.5))
@@ -261,6 +375,9 @@ func _shop_tile(item: ItemData, discount: int) -> Control:
 		Notifications.notify("Bought %s" % item.display_name, Color(0.8, 0.95, 0.8))
 		buy.disabled = true
 		buy.text = "Sold"
+		var flags: Array = _shop_sold_flags()
+		if index < flags.size():
+			flags[index] = true
 		if _gold_label != null:
 			_gold_label.text = "Gold: %d" % GameState.gold
 	)
@@ -534,5 +651,12 @@ func _add_leave_button(text: String) -> void:
 	_body.add_child(wrap)
 
 func _finish() -> void:
+	if _finished:
+		return
+	_finished = true
+	# Block any further input on the way out so a queued second click can't fire
+	# another button before the node is actually freed at frame end.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_process_input(false)
 	emit_signal("closed")
 	queue_free()

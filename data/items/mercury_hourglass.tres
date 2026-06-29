@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_mercury_hourglass"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/MercuryHourglass.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"mercury_hourglass"
+display_name = "Mercury Hourglass"
+kind = 1
+rarity = 1
+description = "At the start of your turn, Deal 3 Dmg to all enemies"
+triggers = [{"on": "turn_started", "effects": [{"type": "dmg", "value": 3, "target": "all_enemies"}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray()
+image = ExtResource("2_img")

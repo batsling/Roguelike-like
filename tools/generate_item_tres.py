@@ -420,6 +420,19 @@ def parse_passive(payload):
     return bonuses
 
 
+def parse_multipliers(payload):
+    """Parse "strength 1.5, dexterity 2" -> {"strength": 1.5, "dexterity": 2.0}.
+    Cricket's Head: stat_multiply: strength 1.5. Each owned copy multiplies the
+    named stat's effective value; copies stack multiplicatively (see GameState)."""
+    out = {}
+    for part in split_top(payload, ","):
+        part, _, _ = strip_notes(part)
+        m = re.match(r"^([a-zA-Z_]+)\s+([0-9]*\.?[0-9]+)$", part.strip())
+        if m:
+            out[m.group(1).lower()] = float(m.group(2))
+    return out
+
+
 def parse_scaling(payload):
     # "+1 strength per 20 max_hp"
     m = re.match(r"^\+?(\d+)\s+([a-z_]+)\s+per\s+(\d+)\s+([a-z_]+)", payload.strip())
@@ -467,6 +480,7 @@ def parse_item(row):
         "triggers": [],
         "card_grants": [],
         "stat_bonuses": {},
+        "stat_multipliers": {},
         "scaling": [],
     }
     # USABLE pills are spent on use. The count comes from the Type cell:
@@ -488,6 +502,9 @@ def parse_item(row):
 
         if kl0 == "passive":
             fields["stat_bonuses"].update(parse_passive(payload))
+            last_trigger = None
+        elif kl0 == "stat_multiply":
+            fields["stat_multipliers"].update(parse_multipliers(payload))
             last_trigger = None
         elif kl0 in TRIGGER_SIGNALS:
             on = TRIGGER_SIGNALS[kl0]
@@ -742,6 +759,8 @@ def item_tres(row):
     if f["card_grants"]:
         lines.append("card_grants = %s" % gd_value(f["card_grants"]))
     lines.append("stat_bonuses = %s" % gd_value(f["stat_bonuses"]))
+    if f.get("stat_multipliers"):
+        lines.append("stat_multipliers = %s" % gd_value(f["stat_multipliers"]))
     if f["scaling"]:
         lines.append("scaling = %s" % gd_value(f["scaling"]))
     # one-off fields, emitted only when present

@@ -221,6 +221,15 @@ var auto_slots: Array = []                           # Array of Dictionary {card
 # (Exhaust -> uses_per_combat(1) in Action). Reset each room in _load_loadout.
 var _addon_uses: Dictionary = {}
 
+# Total per-combat fire budget keyed by CardData. Every physical copy of a card
+# in the deck resolves to the SAME shared CardData object (see GameState's
+# action-loadout / upgrade cache), so a per-copy cap like Exhaust's
+# uses_per_combat(1) must be multiplied by the number of copies in the pool —
+# otherwise the first copy fires and every other copy is treated as already
+# spent (e.g. a deck of several Adrenalines would only ever fire one). Absent =
+# uncapped. Rebuilt each room in _load_loadout.
+var _addon_total_cap: Dictionary = {}
+
 # Persistent in-combat card boosts (Accuracy -> Shivs, Claw -> Claws). Registered
 # by boost_cards effects via add_card_boost and folded into matching dmg/block in
 # _resolve_addon_effect. Combat-scoped: cleared in _load_loadout.
@@ -691,6 +700,18 @@ func _load_loadout() -> void:
 
 	# Build the auto-runner: shuffle the pool into the draw pile, clear the
 	# discard, and start with one permanent slot already drawing a card.
+	# Total fire budget per card = its per-copy uses_per_combat cap times the
+	# number of copies in the pool. Built before the shuffle so every copy of an
+	# Exhaust card (which all share one CardData object) gets to fire once.
+	_addon_total_cap.clear()
+	var _pool_copies: Dictionary = {}
+	for c in auto_pool:
+		_pool_copies[c] = int(_pool_copies.get(c, 0)) + 1
+	for c in _pool_copies:
+		var per: int = AddonSystem.uses_per_combat(c, Stats.Mode.ACTION)
+		if per >= 0:
+			_addon_total_cap[c] = per * int(_pool_copies[c])
+
 	auto_draw = auto_pool.duplicate()
 	auto_draw.shuffle()
 	auto_discard.clear()
@@ -698,7 +719,7 @@ func _load_loadout() -> void:
 	_addon_uses.clear()
 	card_boosts.clear()
 	_cost_discounts.clear()
-	var first: CardData = _auto_draw_one()
+	var first: CardData = _draw_first_card()
 	if first != null:
 		var base_slot: Dictionary = {"card": null, "cooldown": 0.0, "max_cooldown": 0.0, "ttl": INF}
 		auto_slots.append(base_slot)
@@ -1586,6 +1607,30 @@ func _process_enemies(delta: float) -> void:
 	# Spread enemies apart so they never stack into a single point (Isaac-style
 	# crowd behaviour): a positional separation pass runs after everyone has moved.
 	_resolve_enemy_separation()
+	# Enemies are solid: the player can't walk through them (Horf et al). Resolve
+	# any player/enemy overlap by shoving the player out, after both have moved.
+	_resolve_player_enemy_collision()
+
+# Treat living enemies as solid bodies the player collides with: push the player
+# out of any overlap so enemies act as obstacles instead of being walked through.
+# Only the player is displaced (enemies hold their ground and run their own
+# separation), so a stationary enemy like Horf is an immovable wall. Contact
+# damage still fires from the enemy AI at the same touch distance.
+func _resolve_player_enemy_collision() -> void:
+	for inst in enemies:
+		if not inst.actor.is_alive():
+			continue
+		var min_dist: float = PLAYER_RADIUS + inst.data.size
+		var d: Vector2 = player_pos - inst.pos
+		var dist: float = d.length()
+		if dist >= min_dist:
+			continue
+		if dist > 0.001:
+			player_pos += (d / dist) * (min_dist - dist)
+		else:
+			player_pos += Vector2.RIGHT.rotated(_rng.randf() * TAU) * min_dist
+	player_pos.x = clampf(player_pos.x, PLAYER_RADIUS, ARENA_W - PLAYER_RADIUS)
+	player_pos.y = clampf(player_pos.y, PLAYER_RADIUS, ARENA_H - PLAYER_RADIUS)
 
 # Push overlapping enemies apart so the crowd spreads around the player instead of
 # piling onto one spot. There are no interior walls to path around, so on an open
@@ -1624,6 +1669,17 @@ func _resolve_enemy_separation() -> void:
 	for inst in enemies:
 		inst.pos.x = clampf(inst.pos.x, inst.data.size, ARENA_W - inst.data.size)
 		inst.pos.y = clampf(inst.pos.y, inst.data.size, ARENA_H - inst.data.size)
+
+# Sweep dead enemies for unspawned on-death children and append them now. Safe
+# to call repeatedly — _enemy_on_death_spawns marks each corpse "transformed" so
+# its children spawn exactly once regardless of how many times this runs.
+func _resolve_pending_death_spawns() -> void:
+	var extra: Array = []
+	for inst in enemies:
+		if not inst.actor.is_alive():
+			extra.append_array(_enemy_on_death_spawns(inst))
+	if not extra.is_empty():
+		enemies.append_array(extra)
 
 # Weighted on-death transform: when an enemy with an on-death table dies, spawn
 # the rolled enemy at its position (once). Returns the new enemy dict(s).
@@ -1980,6 +2036,19 @@ func _layer_current_tex(inst: Dictionary, layer: StringName) -> Texture2D:
 
 # Draw the next card from the auto pile, reshuffling the discard back in
 # when the draw pile runs dry. Returns null only when the pool is empty.
+# The card the permanent base auto-slot arms first when a room loads. Innate
+# cards (the deckbuilder "always in opening hand" keyword) carry over to Action:
+# if the pool holds any, one of them — picked at random, since auto_draw is
+# already shuffled — is chosen as the first card each room. Otherwise it's a
+# normal draw.
+func _draw_first_card() -> CardData:
+	for i in range(auto_draw.size() - 1, -1, -1):
+		var c: CardData = auto_draw[i]
+		if c != null and c.innate:
+			auto_draw.remove_at(i)
+			return c
+	return _auto_draw_one()
+
 func _auto_draw_one() -> CardData:
 	if auto_draw.is_empty():
 		if auto_discard.is_empty():
@@ -2019,7 +2088,9 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 			var one_shot: bool = bool(slot.get("one_shot", false))
 			# uses_per_combat (Exhaust): a card that has hit its per-combat cap
 			# retires from the rotation without firing — drawn next, not re-queued.
-			var cap: int = AddonSystem.uses_per_combat(slot.card, Stats.Mode.ACTION)
+			# The cap is the pool-wide total (per-copy cap x copies) so every
+			# physical copy of a shared-object card gets its own use.
+			var cap: int = int(_addon_total_cap.get(slot.card, -1))
 			var used: int = int(_addon_uses.get(slot.card, 0))
 			if not one_shot and cap >= 0 and used >= cap:
 				_arm_slot(slot, _auto_draw_one())
@@ -2408,10 +2479,18 @@ func _auto_play_innate_addons() -> void:
 	cards.append_array(loadout.auto)
 	for c in cards:
 		var cd: CardData = c.data if c is CardInstance else (c as CardData)
-		if cd != null and AddonSystem.auto_plays_at_start(cd, Stats.Mode.ACTION):
-			_resolve_card_effects_auto(cd)
-			GameLog.add("%s (Innate) fires at the start." % cd.display_name,
-				Color(0.7, 1.0, 0.7))
+		if cd == null or not AddonSystem.auto_plays_at_start(cd, Stats.Mode.ACTION):
+			continue
+		# Innate is handled by the base auto-slot (one Innate card is the FIRST
+		# card chosen each room — see _draw_first_card), so it fires through the
+		# normal cooldown rotation rather than resolving instantly here. Skip it
+		# to avoid an extra at-start resolution; any other (future) auto_play
+		# addon still fires immediately.
+		if cd.innate:
+			continue
+		_resolve_card_effects_auto(cd)
+		GameLog.add("%s fires at the start." % cd.display_name,
+			Color(0.7, 1.0, 0.7))
 
 func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 	if _card_has_ranged_damage(card):
@@ -3989,6 +4068,13 @@ func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatA
 # ---------------------------------------------------------------------------
 
 func _check_combat_end() -> void:
+	# Materialize any on-death spawns BEFORE judging the room clear. Enemies
+	# killed by projectiles, queued multi-hits, or thrown potions die after
+	# _process_enemies has already run its spawn pass this frame, so without this
+	# the room would read as empty and clear one frame before a dying spawner's
+	# children appear. _enemy_on_death_spawns is idempotent (guarded by the
+	# per-enemy "transformed" flag), so re-running it here never double-spawns.
+	_resolve_pending_death_spawns()
 	if not player_actor.is_alive():
 		phase = Phase.LOST
 		GameLog.add("You died in the arena.", Color(1.0, 0.4, 0.4))

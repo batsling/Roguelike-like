@@ -703,11 +703,16 @@ func _open_encounter_modal() -> void:
 	modal.elite_combat_requested.connect(_on_encounter_elite_requested)
 	modal.teleport_requested.connect(_on_encounter_teleport_requested)
 	_modal_layer.add_child(modal)
-	modal.setup(_active_encounter.encounter)
+	modal.setup(_active_encounter.encounter, _active_encounter)
 
 func _on_encounter_modal_closed() -> void:
+	# A shopkeeper (or any encounter that asked to stay available) is NOT consumed,
+	# so it keeps its [E] prompt and isn't greyed out — the player can walk back up
+	# and open it again. Its stock persists on the node, so re-opening isn't a free
+	# re-roll. One-time encounters (Deals, Challenges) still consume as before.
+	var keep: bool = _encounter_modal != null and _encounter_modal.keep_available
 	_encounter_modal = null
-	if _active_encounter != null and is_instance_valid(_active_encounter):
+	if not keep and _active_encounter != null and is_instance_valid(_active_encounter):
 		_active_encounter.mark_consumed()
 	_active_encounter = null
 	_player.set_input_locked(false)

@@ -128,6 +128,14 @@ var stat_floor_active: bool = false
 var stat_floor_stats: Dictionary = {}
 var stat_high_water: Dictionary = {}
 
+# Cricket's Head: multiplicative stat scaling. While any owned item declares a
+# stat_multipliers map, the product of every matching multiplier is applied to
+# that stat's effective value (last, after flats/mirror/floor). stat_multiplier_active
+# is the cheap hot-path guard; stat_multiplier maps stat id (String) -> float
+# product. Rebuilt by _recompute_item_bonuses.
+var stat_multiplier_active: bool = false
+var stat_multiplier: Dictionary = {}
+
 # Health-bucket stats (max_hp, max_energy) are applied as direct
 # deltas to the GameState fields — never through item_stat_bonus — so
 # reads of GameState.max_hp / max_energy stay authoritative without
@@ -631,6 +639,8 @@ func reset_run() -> void:
 	stat_high_water.clear()
 	stat_floor_active = false
 	stat_floor_stats.clear()
+	stat_multiplier_active = false
+	stat_multiplier.clear()
 	temp_status_stacks.clear()
 	active_curses.clear()
 	pending_chests = 0
@@ -1646,6 +1656,17 @@ func _recompute_item_bonuses() -> void:
 			stat_floor_active = true
 			for s in it.stat_floor:
 				stat_floor_stats[String(s)] = true
+	# Cricket's Head: rebuild the product of stat multipliers across owned items
+	# (copies stack multiplicatively). Stats.get_value applies these last.
+	stat_multiplier_active = false
+	stat_multiplier = {}
+	for it in sources:
+		if not (it is ItemData) or it.stat_multipliers.is_empty():
+			continue
+		stat_multiplier_active = true
+		for s in it.stat_multipliers.keys():
+			var m: float = float(it.stat_multipliers[s])
+			stat_multiplier[String(s)] = float(stat_multiplier.get(String(s), 1.0)) * m
 	emit_signal("stats_changed")
 
 # ---------------------------------------------------------------------------

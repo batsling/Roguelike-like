@@ -177,6 +177,18 @@ func _load_stat_defs() -> void:
 # ---------------------------------------------------------------------------
 
 func get_value(stat_id: StringName) -> int:
+	# The fully-resolved stat: base + flats + mirror + floor, then any
+	# Cricket's-Head multiplier folded in last so it scales every other source.
+	var total: int = value_premultiplier(stat_id)
+	if GameState.stat_multiplier_active:
+		var mult: float = float(GameState.stat_multiplier.get(String(stat_id), 1.0))
+		if mult != 1.0:
+			total = int(floor(total * mult))
+	return total
+
+# Everything get_value resolves EXCEPT the final stat_multiplier step. Exposed so
+# the backpack can show the flat breakdown and the multiplier as separate parts.
+func value_premultiplier(stat_id: StringName) -> int:
 	# Reads the matching field on GameState by name and adds any item
 	# bonus stored in GameState.item_stat_bonus (set by
 	# GameState._recompute_item_bonuses on every inventory change). The
@@ -206,7 +218,7 @@ func get_value(stat_id: StringName) -> int:
 			if total > hw:
 				hw = total
 			GameState.stat_high_water[field] = hw
-			return hw
+			total = hw
 	return total
 
 # A stat's stored value: its GameState field + flat item bonus + temporary
