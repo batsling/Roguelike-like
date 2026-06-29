@@ -39,6 +39,11 @@ var _shop_grid: HBoxContainer = null
 var _shop_pools: Array = []
 var _shop_discount: int = 0
 var _shop_reroll_btn: Button = null
+# One-shot guard: a rapid second click on a commit/leave button can re-enter
+# _finish before the deferred queue_free lands, which would emit `closed` twice
+# and double-run the overworld's redeem/consume/save cleanup (and let a
+# shopkeeper be interacted with again). Latched so the modal finishes once.
+var _finished: bool = false
 # Challenge state.
 var _attempts_left: int = 0
 var _challenge_game: GameData = null
@@ -577,5 +582,12 @@ func _add_leave_button(text: String) -> void:
 	_body.add_child(wrap)
 
 func _finish() -> void:
+	if _finished:
+		return
+	_finished = true
+	# Block any further input on the way out so a queued second click can't fire
+	# another button before the node is actually freed at frame end.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_process_input(false)
 	emit_signal("closed")
 	queue_free()
