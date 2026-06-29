@@ -147,3 +147,37 @@ func test_every_encounter_has_sprite_art() -> void:
 	for id in EXPECTED_ENCOUNTERS:
 		var e: EncounterData = Data.get_encounter(StringName(id))
 		assert_not_null(e.image, "%s should resolve its encounter sprite" % id)
+
+# --- Shop encounters are permanent re-visitable vendors (persisted stock) ---
+
+func _stock_ids(node) -> Array:
+	var ids := []
+	for it in node.shop_stock:
+		ids.append(it.id)
+	return ids
+
+func test_shop_keeps_encounter_available_and_persists_stock() -> void:
+	GameState.reset_run()
+	var enc: EncounterData = Data.get_encounter(&"p_mart_shopkeeper")
+	assert_not_null(enc, "p_mart_shopkeeper loads")
+	assert_eq(enc.type.to_lower(), "shop", "is a shop")
+
+	var node := EncounterNode.new()
+	node.setup(enc, Vector2i.ZERO)
+	add_child_autofree(node)
+
+	# First open rolls and caches the stock; the shop asks to stay available.
+	var m1 := EncounterModal.new()
+	add_child_autofree(m1)
+	m1.setup(enc, node)
+	assert_true(m1.keep_available, "a shopkeeper is never consumed")
+	assert_true(node.shop_rolled, "stock is rolled and cached on the node")
+	var first_ids: Array = _stock_ids(node)
+	assert_gt(first_ids.size(), 0, "the shop has wares")
+	assert_eq(node.shop_sold.size(), first_ids.size(), "a sold flag per ware")
+
+	# Re-opening reuses the SAME stock instead of re-rolling (no free re-roll).
+	var m2 := EncounterModal.new()
+	add_child_autofree(m2)
+	m2.setup(enc, node)
+	assert_eq(_stock_ids(node), first_ids, "re-open shows the same wares")

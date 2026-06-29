@@ -18,6 +18,15 @@ const FRAME := 6.0
 var encounter: EncounterData = null
 var grid_pos: Vector2i = Vector2i.ZERO
 var consumed: bool = false
+
+# Persistent shop stock, so a SHOP encounter is a permanent re-visitable vendor:
+# the wares are rolled once and cached here (with a parallel sold flag per slot),
+# and the modal reads/writes these instead of re-rolling on every open. That keeps
+# re-opening from being a free re-roll while letting the player come back. Rolled
+# lazily by EncounterModal on first open; reset when the shop is re-rolled.
+var shop_rolled: bool = false
+var shop_stock: Array = []     # Array[ItemData]
+var shop_sold: Array = []      # Array[bool], parallel to shop_stock
 var _active: bool = false
 
 var _name_label: Label = null
