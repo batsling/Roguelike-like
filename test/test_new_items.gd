@@ -1209,3 +1209,36 @@ func test_card_matches_filters_weapon_attack() -> void:
 		"empty filter matches anything")
 	assert_false(ItemTriggers.card_matches(null, "weapon", "attack"),
 		"null card never matches")
+
+# --- Cricket's Head: multiplicative stat scaling (stat_multipliers) ---
+
+func test_crickets_head_loads_with_multiplier() -> void:
+	var it: ItemData = Data.get_item(&"crickets_head")
+	assert_not_null(it, "crickets_head.tres should load")
+	assert_eq(int(it.stat_bonuses.get("strength", 0)), 1,
+		"Cricket's Head grants +1 Strength flat")
+	assert_almost_eq(float(it.stat_multipliers.get("strength", 1.0)), 1.5, 0.001,
+		"Cricket's Head multiplies Strength by 1.5")
+
+func test_crickets_head_multiplies_effective_strength() -> void:
+	GameState.reset_run()
+	GameState.strength = 4
+	assert_eq(Stats.get_value(&"strength"), 4, "baseline strength reads through")
+	GameState.add_item(Data.get_item(&"crickets_head"))
+	# (4 base + 1 flat) * 1.5 = 7 (floor of 7.5)
+	assert_eq(Stats.value_premultiplier(&"strength"), 5,
+		"pre-multiplier value is base + flat bonus")
+	assert_eq(Stats.get_value(&"strength"), 7,
+		"Cricket's Head multiplies the whole effective Strength by 1.5")
+	assert_true(GameState.stat_multiplier_active, "multiplier guard flips on")
+
+func test_crickets_head_stacks_multiplicatively() -> void:
+	GameState.reset_run()
+	GameState.strength = 4
+	GameState.add_item(Data.get_item(&"crickets_head"))
+	GameState.add_item(Data.get_item(&"crickets_head"))
+	# (4 + 2 flat) * (1.5 * 1.5) = 6 * 2.25 = 13 (floor of 13.5)
+	assert_eq(Stats.value_premultiplier(&"strength"), 6,
+		"two copies add +2 flat Strength")
+	assert_eq(Stats.get_value(&"strength"), 13,
+		"two copies stack their 1.5 multipliers (x2.25)")

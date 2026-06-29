@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_bird_faced_urn"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/BirdFacedUrn.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"bird_faced_urn"
+display_name = "Bird-Faced Urn"
+kind = 1
+rarity = 2
+description = "When you play a power, gain +2 Health"
+triggers = [{"on": "card_played", "if_card_type": "power", "effects": [{"type": "heal", "value": 2, "target": "self"}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray("bird")
+image = ExtResource("2_img")

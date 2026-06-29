@@ -509,11 +509,29 @@ func _stat_value_text(stat_id: StringName, suffix: String = "") -> String:
 	# notably Paper Bag, which mirrors Charisma onto the highest core stat
 	# without ever landing in item_stat_bonus. For every other stat this equals
 	# base + item/temp bonus, so the breakdown below is unchanged.
+	# Show the flat breakdown against the PRE-multiplier value, then the
+	# Cricket's-Head multiplier as its own "xN" tag so the chip reads honestly
+	# (base +flat, then xN -> final) instead of folding the multiply into +bonus.
+	var pre: int = Stats.value_premultiplier(stat_id)
 	var total: int = Stats.get_value(stat_id)
-	var bonus: int = total - base
-	if bonus == 0:
+	var bonus: int = pre - base
+	var mult: float = 1.0
+	if GameState.stat_multiplier_active:
+		mult = float(GameState.stat_multiplier.get(field, 1.0))
+	if bonus == 0 and mult == 1.0:
 		return "%d%s" % [total, suffix]
+	if mult != 1.0:
+		# "9% (5 +1 x1.5)" — final, then how it's built.
+		if bonus == 0:
+			return "%d%s  (%d x%s)" % [total, suffix, pre, _fmt_mult(mult)]
+		return "%d%s  (%d %+d, x%s)" % [total, suffix, base, bonus, _fmt_mult(mult)]
 	return "%d%s  (%d %+d)" % [total, suffix, base, bonus]
+
+# Format a multiplier without a trailing ".0" (1.5 -> "1.5", 2.0 -> "2").
+func _fmt_mult(mult: float) -> String:
+	if is_equal_approx(mult, round(mult)):
+		return str(int(round(mult)))
+	return String.num(mult, 2).trim_suffix("0").trim_suffix(".")
 
 # ------------------------------------------------------------------
 # History tab — the Notifications channel log (item procs, pickups, run

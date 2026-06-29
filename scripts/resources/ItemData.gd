@@ -169,6 +169,15 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # Keys: strength, dexterity, intelligence, charisma, luck, max_hp, max_energy, etc.
 @export var stat_bonuses: Dictionary = {}
 
+# Multiplicative stat scaling (Cricket's Head: "Multiply all Strength by 1.5").
+# Maps a stat id -> multiplier applied to that stat's whole effective value
+# (base + flat item bonuses + temp buffs). Multiple owned copies/items stack
+# multiplicatively. Folded into GameState.stat_multiplier and applied last in
+# Stats.get_value, so it scales every other source. Health vitals (max_hp,
+# max_energy) are not multiplied — they back onto direct fields, not the
+# item_stat_bonus read path. Empty for almost every item.
+@export var stat_multipliers: Dictionary = {}
+
 # Declarative scaling rules for SCALING items. Each entry is a dict:
 #   {stat: <stat_id>, value: <int>, per: <int>, of: <source_stat>}
 # meaning "grant `value` `stat` per `per` points of `of`, rounded down."

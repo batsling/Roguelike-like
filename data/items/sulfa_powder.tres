@@ -14,5 +14,5 @@ triggers = [{"on": "turn_started", "effects": [{"type": "roll_block", "sides": 1
 stat_bonuses = {}
 max_uses = -1
 source_game = "Brutal Orchestra"
-tags = PackedStringArray()
+tags = PackedStringArray("military")
 image = ExtResource("2_img")
