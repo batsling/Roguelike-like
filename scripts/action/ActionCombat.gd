@@ -556,12 +556,6 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 func has_live_enemies() -> bool:
 	return _living_enemy_count() > 0 or not _pending_spawns.is_empty()
 
-# Scrolls are readable on the action floor only while no enemies are present
-# (between fights). Read by GameState.can_use_scrolls() so the Backpack's Read
-# button unlocks the moment a room is clear.
-func scrolls_allowed() -> bool:
-	return not has_live_enemies()
-
 # Drains the scroll-scheduled carryover (Scare Monster / Aggravate / Fire) into
 # the room via ScrollSystem. Action is real-time, so "stun" reuses the global
 # enemy freeze the ambush system already uses (a brief room-wide pause) rather

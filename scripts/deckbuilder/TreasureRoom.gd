@@ -87,13 +87,24 @@ func _make_offer_view(item: ItemData) -> Control:
 	vbox.add_theme_constant_override("separation", 6)
 	card.add_child(vbox)
 
+	# Fixed-size icon slot (a consistent chest "frame") so every item reads at
+	# the same visual size regardless of its source art's aspect ratio — a
+	# wide image (e.g. Sunglasses) would otherwise fill the full 200px width
+	# under FIT_WIDTH_PROPORTIONAL and look far larger than a square icon.
+	var icon_frame := PanelContainer.new()
+	icon_frame.custom_minimum_size = Vector2(200, 160)
+	var icon_sb := StyleBoxFlat.new()
+	icon_sb.bg_color = Color(0, 0, 0, 0.25)
+	icon_sb.set_corner_radius_all(8)
+	icon_frame.add_theme_stylebox_override("panel", icon_sb)
+	vbox.add_child(icon_frame)
+
 	var img := TextureRect.new()
-	img.custom_minimum_size = Vector2(200, 160)
 	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	img.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	if item.image != null:
 		img.texture = item.image
-	vbox.add_child(img)
+	icon_frame.add_child(img)
 
 	var name_lbl := Label.new()
 	name_lbl.text = item.display_name
