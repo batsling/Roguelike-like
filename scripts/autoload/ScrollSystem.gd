@@ -8,7 +8,8 @@ extends Node
 #   * the structured-effect applier for every scroll outcome
 #   * the pending-combat carryover applier each combat mode calls at fight start
 #
-# Scrolls are usable only OUTSIDE combat. Reading one runs a d20 + Intelligence
+# Scrolls are usable only on the OVERWORLD (see GameState.can_use_scrolls).
+# Reading one runs a d20 + Intelligence
 # check vs DC 10 (success/fail), then a second d20 for the crit, choosing one of
 # four outcome tiers (crit_good / good / bad / crit_bad). ScrollSystem applies
 # that tier's effects. Effects that need a player CHOICE (which scroll to

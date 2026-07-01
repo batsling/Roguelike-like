@@ -45,7 +45,7 @@ func start(host: Node, loot_index: int) -> void:
 	host.add_child(_layer)
 	_layer.add_child(self)
 	if not GameState.can_use_scrolls():
-		Notifications.notify("You can't read scrolls with enemies nearby.", ScrollSystem.SCROLL_COLOR)
+		Notifications.notify("Scrolls can only be read on the overworld.", ScrollSystem.SCROLL_COLOR)
 		_finish()
 		return
 	if loot_index < 0 or loot_index >= GameState.loot_items.size():

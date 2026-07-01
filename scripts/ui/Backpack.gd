@@ -756,9 +756,9 @@ func _render_loot() -> void:
 		hbox.add_child(label)
 		_list_vbox.add_child(row)
 	# Concrete scroll entries: each shows its art + (identified) name and a Read
-	# button, usable while no combat is active (and, in action, between fights —
-	# see GameState.can_use_scrolls). Iterate loot_items directly so the Read
-	# button carries the real index for removal on use.
+	# button, usable only while on the overworld (see GameState.can_use_scrolls).
+	# Iterate loot_items directly so the Read button carries the real index for
+	# removal on use.
 	var can_read: bool = GameState.can_use_scrolls()
 	for i in range(GameState.loot_items.size()):
 		var entry = GameState.loot_items[i]
@@ -817,7 +817,7 @@ func _render_loot() -> void:
 		empty.text = "No loot collected yet."
 		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		_list_vbox.add_child(empty)
-	_hint_label.text = "Potions are used in combat; Scrolls are read outside combat. Keys and other findings show here."
+	_hint_label.text = "Potions are used in combat; Scrolls are read only on the overworld. Keys and other findings show here."
 
 # ------------------------------------------------------------------
 # Deck tab — every card the player currently owns, deduped by card id

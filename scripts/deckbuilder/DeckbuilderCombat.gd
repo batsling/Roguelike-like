@@ -1669,6 +1669,7 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 			target.hp = GameState.hp
 		else:
 			target.hp = maxi(0, target.hp - amount)
+			_maybe_rewrite_split_intent(target)
 		_float_number(target, amount)
 		var who := "you" if target.is_player else target.display_name
 		GameLog.add("%s takes %d damage." % [who.capitalize(), amount], Color(1.0, 0.6, 0.6))
@@ -1753,6 +1754,7 @@ func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 		target.hp = GameState.hp
 	else:
 		target.hp = maxi(0, target.hp - amount)
+		_maybe_rewrite_split_intent(target)
 	_float_number(target, amount)
 	var who := "You" if target.is_player else target.display_name
 	GameLog.add("%s takes %d %s damage." % [who, amount, source_name],
@@ -1791,6 +1793,7 @@ func _propagate_soul_link(origin: CombatActor, amount: int) -> void:
 			v.hp = GameState.hp
 		else:
 			v.hp = maxi(0, v.hp - amount)
+			_maybe_rewrite_split_intent(v)
 		var who_v: String = "you" if v.is_player else v.display_name
 		GameLog.add("Soul Link bleeds %d into %s." % [amount, who_v], Color(0.8, 0.5, 1.0))
 		TriggerBus.emit_signal("damage_taken", {
@@ -2288,6 +2291,16 @@ func _shuffle(arr: Array) -> void:
 # ------------------------------------------------------------------
 # Enemy intent
 # ------------------------------------------------------------------
+
+# A hit that drops a splitter to/below half HP mid-turn must overwrite its
+# ALREADY-ROLLED intent for the turn that's about to resolve — not wait for
+# the next _roll_intent — or the enemy would still telegraph (and execute)
+# its old attack this turn and only show Splitting one turn late.
+func _maybe_rewrite_split_intent(enemy: CombatActor) -> void:
+	if enemy == null or enemy.is_player or enemy.planned_move.get("split", false):
+		return
+	if Stats.should_split(enemy):
+		enemy.planned_move = {"display": "Splitting", "split": true, "effects": [], "intent_type": "buff"}
 
 func _roll_intent(enemy: CombatActor) -> void:
 	# Split overrides the normal pattern: a slime at/below half HP telegraphs
