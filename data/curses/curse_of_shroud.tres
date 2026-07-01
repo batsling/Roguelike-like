@@ -8,3 +8,4 @@ id = &"curse_of_shroud"
 display_name = "Curse of Shroud"
 kind = 1
 challenge = "Space Choices contain one less option"
+effects = [{"type": "reduce_choices", "value": 1}]

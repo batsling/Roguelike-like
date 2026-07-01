@@ -502,9 +502,17 @@ func _tick_card_lifecycles() -> void:
 func add_active_curse(curse: CurseData) -> CurseData:
 	if curse == null:
 		return null
+	# Curse of Vulnerability: check BEFORE appending, so it duplicates every
+	# curse gained while it's active (including a second Vulnerability from a
+	# later grant) but doesn't retroactively duplicate itself on first pickup.
+	var duplicate: bool = not active_affliction_effect("duplicate_curse").is_empty()
 	active_curses.append({"id": curse.id, "name": curse.display_name})
+	if duplicate:
+		active_curses.append({"id": curse.id, "name": curse.display_name})
 	Notifications.notify("Cursed: %s" % curse.display_name, Color(0.85, 0.6, 0.85))
 	TriggerBus.emit_signal("curse_applied", {"curse": curse})
+	if duplicate:
+		TriggerBus.emit_signal("curse_applied", {"curse": curse})
 	return curse
 
 # Lifts an active curse (events / shrines / future "cleanse" effects). Removes
@@ -582,6 +590,22 @@ func random_curse() -> CurseData:
 	if all.is_empty():
 		return null
 	return all[randi() % all.size()]
+
+# The first effect dict of `effect_type` among all active AFFLICTION curses'
+# CurseData.effects, or an empty Dictionary if none is active. Affliction
+# effects are passive modifiers read directly by the systems they touch (item
+# rewards, event dice rolls, overworld portal choices) — see CurseData.gd.
+func active_affliction_effect(effect_type: String) -> Dictionary:
+	for entry in active_curses:
+		if not (entry is Dictionary):
+			continue
+		var cd: CurseData = Data.get_curse(StringName(entry.get("id", "")))
+		if cd == null:
+			continue
+		for eff in cd.effects:
+			if eff is Dictionary and String(eff.get("type", "")) == effect_type:
+				return eff
+	return {}
 
 # ---------------------------------------------------------------------------
 # Mutation API — UI and combat scenes go through these so signals fire.
@@ -1272,6 +1296,14 @@ func add_item(template: ItemData) -> ItemData:
 		inst.current_charge = inst.max_charge() if inst.starts_charged else 0
 	if _grant_weapon_card(inst):
 		emit_signal("deck_changed")
+	# Curse of Decay: a passive item obtained while it's active has a chance
+	# to arrive already downgraded.
+	if inst.kind == ItemData.ItemKind.PASSIVE:
+		var decay: Dictionary = active_affliction_effect("item_downgrade_chance")
+		if not decay.is_empty() and randi() % 100 < int(decay.get("percent", 50)):
+			inst.upgrade_level -= 1
+			Notifications.notify("%s arrived decayed." % inst.display_name,
+				Color(0.7, 0.55, 0.4))
 	_recompute_item_bonuses()
 	# Fire item_acquired triggers AFTER the inventory + stat recompute so
 	# the pickup hook sees the new max_hp (Lunch's +8 HP lands on top of
