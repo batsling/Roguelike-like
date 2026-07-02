@@ -4,15 +4,25 @@ Generate Godot CurseData .tres files from the `cursesnew` sheet of
 tools/Roguelikes.xlsx.
 
 Mirrors generate_card_tres.py: the spreadsheet is the source of truth, the
-.tres are generated. Columns: Name | Type | Challenge | Penalty Card.
+.tres are generated. Columns: Name | Type | Challenge | Penalty Card | Effect.
 
   python3 tools/generate_curse_tres.py
 
 Penalty Card "Random" / "N/A" / blank -> empty (random from the randomcurse pool,
 or no card for afflictions); a specific name slugifies to its CardData id
 (Greed -> greed, Punctured Eye -> punctured_eye).
+
+Effect is a small semicolon-separated DSL for AFFLICTION curses' automated
+mechanics (blank / N/A for restrictions and for afflictions with no automated
+mechanic yet). Verbs, one clause per curse effect:
+  item_downgrade_chance:<pct>  -> {"type": "item_downgrade_chance", "percent": pct}
+  dice_disadvantage            -> {"type": "dice_disadvantage"}
+  reduce_choices:<n>           -> {"type": "reduce_choices", "value": n}
+  duplicate_curse              -> {"type": "duplicate_curse"}
+See CurseData.gd's `effects` doc comment for where each is read at runtime.
 """
 
+import json
 import os
 import re
 import sys
@@ -46,6 +56,34 @@ def penalty_card_id(raw) -> str:
     return slugify(s)
 
 
+def parse_curse_effects(raw) -> list:
+    s = ("" if raw is None else str(raw)).strip()
+    if s == "" or s.upper() in ("N/A", "NONE"):
+        return []
+    out = []
+    for clause in s.split(";"):
+        tokens = [t.strip() for t in clause.strip().split(":") if t.strip()]
+        if not tokens:
+            continue
+        verb = tokens[0]
+        args = tokens[1:]
+        if verb == "item_downgrade_chance":
+            pct = int(args[0]) if args and args[0].isdigit() else 50
+            out.append({"type": "item_downgrade_chance", "percent": pct})
+        elif verb == "dice_disadvantage":
+            out.append({"type": "dice_disadvantage"})
+        elif verb == "reduce_choices":
+            n = int(args[0]) if args and args[0].isdigit() else 1
+            out.append({"type": "reduce_choices", "value": n})
+        elif verb == "duplicate_curse":
+            out.append({"type": "duplicate_curse"})
+        else:
+            # Unknown verb -> keep raw so it's visible in the .tres rather
+            # than silently dropped.
+            out.append({"type": verb, "raw": clause.strip()})
+    return out
+
+
 def rows(sheet):
     headers = [str(c.value).strip() if c.value is not None else "" for c in sheet[1]]
     for r in sheet.iter_rows(min_row=2, values_only=True):
@@ -60,6 +98,7 @@ def curse_tres(row) -> tuple:
     kind = KIND.get(str(row.get("Type", "")).strip().lower(), 0)
     challenge = str(row.get("Challenge") or "").strip()
     pcard = penalty_card_id(row.get("Penalty Card"))
+    curse_effects = parse_curse_effects(row.get("Effect"))
 
     lines = [
         '[gd_resource type="Resource" script_class="CurseData" load_steps=2 '
@@ -77,6 +116,8 @@ def curse_tres(row) -> tuple:
     ]
     if pcard:
         lines.append('penalty_card = &"%s"' % pcard)
+    if curse_effects:
+        lines.append("effects = %s" % json.dumps(curse_effects))
     return cid, "\n".join(lines) + "\n"
 
 

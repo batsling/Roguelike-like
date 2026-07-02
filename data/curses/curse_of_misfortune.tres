@@ -8,3 +8,4 @@ id = &"curse_of_misfortune"
 display_name = "Curse of Misfortune"
 kind = 1
 challenge = "When rolling a die, roll it with disadvantage"
+effects = [{"type": "dice_disadvantage"}]

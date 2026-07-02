@@ -212,6 +212,11 @@ func _spawn_portals_for_current_game() -> void:
 	# Shuffle then take 3 ± FoV. Mirrors the HTML's spawnChoices logic.
 	_shuffle_ids(ids)
 	var target_count: int = maxi(1, BASE_PORTAL_COUNT + Stats.get_value(&"fov_bonus"))
+	# Curse of Shroud: space choices contain one fewer option per copy held.
+	var shroud_reduction: int = 0
+	for shroud in GameState.active_affliction_effects("reduce_choices"):
+		shroud_reduction += int(shroud.get("value", 1))
+	target_count = maxi(1, target_count - shroud_reduction)
 	target_count = mini(target_count, ids.size())
 	var chosen: Array[StringName] = []
 	for i in range(target_count):
@@ -1071,9 +1076,18 @@ var _weapon_verify_answers: Dictionary = {}
 var _perfect_answer: bool = false
 var _levelup_answer: bool = false
 
-# Per-active-curse "did you fulfil it?" answers, curse id -> bool (true = fulfilled).
-# Default true so inaction isn't a penalty; a No on submit drops the penalty card.
-var _curse_verify_answers: Dictionary = {}
+# Per-active-curse "did you fulfil it?" answers, one bool per row (index-
+# matched to _curse_verify_curses below) rather than keyed by curse id —
+# active_restriction_curses() can return the same curse twice (two random
+# draws landing on the same restriction), and an id-keyed dict would alias
+# those rows onto a single answer. Default true so inaction isn't a penalty;
+# a No on submit drops that row's penalty card.
+var _curse_verify_answers: Array = []
+# The CurseData backing each _curse_verify_answers row, captured when the
+# modal opens so _resolve_curse_penalties can resolve each row independently
+# without re-querying active_restriction_curses() (whose order/contents must
+# stay aligned with the answers array for the whole modal's lifetime).
+var _curse_verify_curses: Array = []
 
 func _show_verification_modal(gd: GameData) -> void:
 	if _verification_modal != null:
@@ -1082,7 +1096,8 @@ func _show_verification_modal(gd: GameData) -> void:
 	_weapon_verify_answers = {}
 	_perfect_answer = false
 	_levelup_answer = false
-	_curse_verify_answers = {}
+	_curse_verify_answers = []
+	_curse_verify_curses = []
 
 	var modal := Control.new()
 	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1106,8 +1121,12 @@ func _show_verification_modal(gd: GameData) -> void:
 	# for two. Perfect and level-up rows add their own 80px slices.
 	var weapons: Array = _collect_inventory_weapons()
 	# Active restriction curses each get a "did you fulfil it?" row — a No drops
-	# the curse's penalty card.
+	# the curse's penalty card. A curse held twice yields two entries here (and
+	# two rows below), each answered and resolved independently.
 	var curses: Array = GameState.active_restriction_curses()
+	_curse_verify_curses = curses
+	_curse_verify_answers.resize(curses.size())
+	_curse_verify_answers.fill(true)
 	var extra_rows: int = weapons.size() + int(show_perfect) + int(show_levelup) + curses.size()
 	var panel_h: int = 400 + extra_rows * 80
 
@@ -1186,11 +1205,14 @@ func _show_verification_modal(gd: GameData) -> void:
 
 	# Active curses: "did you honour this restriction?" Default Yes; a No on
 	# submit inflicts the curse's penalty card. The curse itself stays active.
-	for cu in curses:
-		var cid: StringName = cu.id
+	# Indexed (not id-keyed) so two rows for the same duplicated curse each
+	# keep their own answer instead of aliasing onto one.
+	for i in range(curses.size()):
+		var cu: CurseData = curses[i]
+		var row_idx: int = i  # fresh binding per iteration for the closure below
 		_add_question_row(panel,
 			"%s — %s  (Fulfilled?)" % [cu.display_name, cu.challenge],
-			y, func(value: bool): _curse_verify_answers[cid] = value, true)
+			y, func(value: bool): _curse_verify_answers[row_idx] = value, true)
 		y += 80
 
 	var yes_btn := Button.new()
@@ -1354,17 +1376,18 @@ func _apply_weapon_verification_rewards() -> void:
 func _resolve_curse_penalties() -> void:
 	# Record this game's curse outcome for encounter requirement gates: how many
 	# restriction curses were carried, and how many were broken ("triggered").
-	# Each answered row is one held restriction curse; a false answer is a break.
-	GameState.last_game_curses_held = _curse_verify_answers.size()
+	# Row-indexed (not id-keyed) so a curse held twice counts — and can be
+	# broken — as two, independent of any other row sharing its curse id.
+	GameState.last_game_curses_held = _curse_verify_curses.size()
 	var triggered: int = 0
-	for cid in _curse_verify_answers.keys():
-		if not _curse_verify_answers[cid]:
+	for i in range(_curse_verify_curses.size()):
+		if not _curse_verify_answers[i]:
 			triggered += 1
 	GameState.last_game_curses_triggered = triggered
-	for cid in _curse_verify_answers.keys():
-		if _curse_verify_answers[cid]:
+	for i in range(_curse_verify_curses.size()):
+		if _curse_verify_answers[i]:
 			continue   # fulfilled — no penalty
-		var curse: CurseData = Data.get_curse(StringName(cid))
+		var curse: CurseData = _curse_verify_curses[i]
 		if curse == null:
 			continue
 		var card: CardData = GameState.penalty_card_for(curse)

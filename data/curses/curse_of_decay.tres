@@ -8,3 +8,4 @@ id = &"curse_of_decay"
 display_name = "Curse of Decay"
 kind = 1
 challenge = "When obtaining a passive item, there is a 50% chance that it gets downgraded"
+effects = [{"type": "item_downgrade_chance", "percent": 50}]

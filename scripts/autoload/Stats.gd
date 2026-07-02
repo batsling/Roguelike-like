@@ -1211,6 +1211,10 @@ func roll_chance_with_luck(rng: RandomNumberGenerator, percent: int) -> bool:
 # Decide whether this roll earns Luck advantage / disadvantage. Mirrors the JS
 # _getLuckMode: a 10%-per-point chance, the sign of Luck setting the direction.
 func event_luck_mode(rng: RandomNumberGenerator) -> String:
+	# Curse of Misfortune: dice rolls are forced to disadvantage regardless
+	# of Luck. Boolean — holding it more than once doesn't compound.
+	if not GameState.active_affliction_effects("dice_disadvantage").is_empty():
+		return "disadvantage"
 	var lv: int = get_value(&"luck")
 	if lv > 0 and rng.randi_range(0, 99) < clampi(lv * 10, 0, 100):
 		return "advantage"
