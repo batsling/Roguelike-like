@@ -29,9 +29,14 @@ enum Kind { RESTRICTION, AFFLICTION }
 # Structured passive modifiers an AFFLICTION applies automatically, parsed
 # from the sheet's Effect column (tools/generate_curse_tres.py). Empty for
 # restrictions and for afflictions with no automated mechanic yet. Each entry
-# is read directly by the system it modifies (GameState.active_affliction_effect)
+# is read directly by the system it modifies (GameState.active_affliction_effects)
 # rather than fired through EffectSystem, since these gate decisions (an item
 # roll, a dice roll, a portal count) instead of applying to a combat target.
+# Holding the SAME curse more than once (bad luck on two random draws, or a
+# Vulnerability-caused duplicate) stacks: active_affliction_effects returns one
+# entry per active_curses row, so callers that stack sum/count over it (Decay
+# rolls once per copy, Shroud sums `value`, Vulnerability counts copies);
+# boolean gates (Misfortune) just check emptiness, so extra copies are inert.
 # Current vocabulary:
 #   {"type": "item_downgrade_chance", "percent": N} — obtaining a passive item
 #     has an N% chance of arriving with upgrade_level -1 (Curse of Decay).

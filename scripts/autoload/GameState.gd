@@ -502,17 +502,18 @@ func _tick_card_lifecycles() -> void:
 func add_active_curse(curse: CurseData) -> CurseData:
 	if curse == null:
 		return null
-	# Curse of Vulnerability: check BEFORE appending, so it duplicates every
-	# curse gained while it's active (including a second Vulnerability from a
-	# later grant) but doesn't retroactively duplicate itself on first pickup.
-	var duplicate: bool = not active_affliction_effect("duplicate_curse").is_empty()
-	active_curses.append({"id": curse.id, "name": curse.display_name})
-	if duplicate:
+	# Curse of Vulnerability: each active COPY grants one extra duplicate of
+	# whatever curse is being gained (including another Vulnerability, so
+	# stacking Vulnerability compounds on the next grant). Counted from the
+	# copies active BEFORE this grant, so a single call is bounded and never
+	# recurses — it never re-checks its own freshly-appended entries.
+	var copies: int = 1 + active_affliction_effects("duplicate_curse").size()
+	for _i in range(copies):
 		active_curses.append({"id": curse.id, "name": curse.display_name})
-	Notifications.notify("Cursed: %s" % curse.display_name, Color(0.85, 0.6, 0.85))
-	TriggerBus.emit_signal("curse_applied", {"curse": curse})
-	if duplicate:
 		TriggerBus.emit_signal("curse_applied", {"curse": curse})
+	Notifications.notify(
+		"Cursed: %s%s" % [curse.display_name, (" x%d" % copies) if copies > 1 else ""],
+		Color(0.85, 0.6, 0.85))
 	return curse
 
 # Lifts an active curse (events / shrines / future "cleanse" effects). Removes
@@ -591,11 +592,18 @@ func random_curse() -> CurseData:
 		return null
 	return all[randi() % all.size()]
 
-# The first effect dict of `effect_type` among all active AFFLICTION curses'
-# CurseData.effects, or an empty Dictionary if none is active. Affliction
-# effects are passive modifiers read directly by the systems they touch (item
-# rewards, event dice rolls, overworld portal choices) — see CurseData.gd.
-func active_affliction_effect(effect_type: String) -> Dictionary:
+# Every effect dict of `effect_type` among active curses' CurseData.effects —
+# one entry per active_curses ROW, not per distinct curse, so a curse held
+# twice (two identical entries, however that happened — bad luck on two random
+# draws, or Vulnerability duplicating a grant) contributes its effect dict
+# twice. Callers that stack (Decay's downgrade roll, Shroud's choice
+# reduction, Vulnerability's duplicate count) use .size() or sum over this;
+# callers that are just a boolean gate (Misfortune's disadvantage) only check
+# is_empty(). Affliction effects are passive modifiers read directly by the
+# systems they touch (item rewards, event dice rolls, overworld portal
+# choices) rather than fired through EffectSystem — see CurseData.gd.
+func active_affliction_effects(effect_type: String) -> Array:
+	var out: Array = []
 	for entry in active_curses:
 		if not (entry is Dictionary):
 			continue
@@ -604,8 +612,8 @@ func active_affliction_effect(effect_type: String) -> Dictionary:
 			continue
 		for eff in cd.effects:
 			if eff is Dictionary and String(eff.get("type", "")) == effect_type:
-				return eff
-	return {}
+				out.append(eff)
+	return out
 
 # ---------------------------------------------------------------------------
 # Mutation API — UI and combat scenes go through these so signals fire.
@@ -1297,12 +1305,16 @@ func add_item(template: ItemData) -> ItemData:
 	if _grant_weapon_card(inst):
 		emit_signal("deck_changed")
 	# Curse of Decay: a passive item obtained while it's active has a chance
-	# to arrive already downgraded.
+	# to arrive already downgraded. Holding it twice rolls twice, independently.
 	if inst.kind == ItemData.ItemKind.PASSIVE:
-		var decay: Dictionary = active_affliction_effect("item_downgrade_chance")
-		if not decay.is_empty() and randi() % 100 < int(decay.get("percent", 50)):
-			inst.upgrade_level -= 1
-			Notifications.notify("%s arrived decayed." % inst.display_name,
+		var hits: int = 0
+		for decay in active_affliction_effects("item_downgrade_chance"):
+			if randi() % 100 < int(decay.get("percent", 50)):
+				hits += 1
+		if hits > 0:
+			inst.upgrade_level -= hits
+			Notifications.notify(
+				"%s arrived decayed%s." % [inst.display_name, (" x%d" % hits) if hits > 1 else ""],
 				Color(0.7, 0.55, 0.4))
 	_recompute_item_bonuses()
 	# Fire item_acquired triggers AFTER the inventory + stat recompute so
