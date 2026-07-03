@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_leap"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Leap.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"leap"
+display_name = "Leap"
+type = 1
+rarity = 1
+cost = 1
+description = "Gain +9 Block."
+effects = [{"type": "block", "value": 9, "target": "self"}]
+tags = PackedStringArray("defect", "defense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain +12 Block."
+upgraded_cost = -999
+upgraded_effects = [{"type": "block", "value": 12, "target": "self"}]
+image = ExtResource("2_img")

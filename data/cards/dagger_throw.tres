@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_dagger_throw"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/DaggerThrow.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"dagger_throw"
+display_name = "Dagger Throw"
+type = 0
+rarity = 1
+cost = 1
+description = "Deal 9 Dmg Ranged. Draw 1 Card. Discard 1 Card."
+effects = [{"type": "dmg", "value": 9, "target": "enemy", "damage_type": "ranged"}, {"type": "draw", "value": 1}, {"type": "discard", "value": 1}]
+tags = PackedStringArray("silent", "offense", "discard", "draw")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 12 Dmg Ranged. Draw 1 Card. Discard 1 Card."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 12, "target": "enemy", "damage_type": "ranged"}, {"type": "draw", "value": 1}, {"type": "discard", "value": 1}]
+image = ExtResource("2_img")
+attack_shape = &"projectile"
+attack_params = {"size": "medium"}

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_jelly"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/Jelly.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"jelly"
+display_name = "Jelly"
+kind = 4
+rarity = 0
+description = "Gain +2 Max Health per Weapon Card in your Deck"
+triggers = []
+stat_bonuses = {}
+scaling = [{"stat": "max_hp", "value": 2, "per": 1, "of": "deck_tag:weapon"}]
+max_uses = -1
+source_game = "Brotato"
+tags = PackedStringArray("food")
+image = ExtResource("2_img")
