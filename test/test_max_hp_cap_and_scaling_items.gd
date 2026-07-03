@@ -114,6 +114,18 @@ func test_boiling_water_grants_intelligence_and_loses_max_health() -> void:
 	assert_eq(it.kind, ItemData.ItemKind.PICKUP)
 
 	GameState.add_item(it)
-	assert_eq(GameState.intelligence, 2)
-	assert_eq(GameState.max_hp, 72, "loses 3 max health")
+	assert_eq(GameState.intelligence, 0, "the Intelligence bonus is passive, not a base-stat grant")
+	assert_eq(Stats.get_value(&"intelligence"), 2, "passive +2 Intelligence applies while owned")
+	assert_eq(GameState.max_hp, 72, "loses 3 max health permanently, like a pickup")
 	assert_eq(GameState.hp, 72, "current hp is clamped down with the max")
+
+	var idx: int = -1
+	for i in GameState.inventory.size():
+		if GameState.inventory[i].id == &"boiling_water":
+			idx = i
+			break
+	assert_true(idx >= 0, "Boiling Water should be in inventory")
+	GameState.remove_item_at(idx)
+
+	assert_eq(Stats.get_value(&"intelligence"), 0, "passive Intelligence bonus is gone once the item leaves")
+	assert_eq(GameState.max_hp, 72, "the Max Health loss remains, since it was a one-time pickup effect")
