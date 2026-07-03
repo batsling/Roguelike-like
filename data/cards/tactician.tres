@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_tactician"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Tactician.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"tactician"
+display_name = "Tactician"
+type = 1
+rarity = 2
+cost = 0
+description = "Sly. Gain +1 Energy."
+effects = [{"type": "gain_energy", "value": 1}]
+tags = PackedStringArray("silent", "energy", "discard")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Sly. Gain +2 Energy."
+upgraded_cost = -999
+upgraded_effects = [{"type": "gain_energy", "value": 2}]
+image = ExtResource("2_img")
+sly = true
+unplayable = true

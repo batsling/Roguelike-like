@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_reflex"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Reflex.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"reflex"
+display_name = "Reflex"
+type = 1
+rarity = 2
+cost = 0
+description = "Sly. Draw 2 Cards."
+effects = [{"type": "draw", "value": 2}]
+tags = PackedStringArray("silent", "discard", "draw")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Sly. Draw 3 Cards."
+upgraded_cost = -999
+upgraded_effects = [{"type": "draw", "value": 3}]
+image = ExtResource("2_img")
+sly = true
+unplayable = true

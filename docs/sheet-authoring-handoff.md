@@ -21,6 +21,15 @@ The card catalog is fully sheet-authored. Study these before starting:
   parser, the upgrade-column handling, `parse_keywords`, and the `--all` /
   `--attacks` / default(curses) mode switch.
 - `tools/generate_curse_tres.py` — the minimal generator pattern.
+- `tools/generate_character_tres.py` — the `characters` sheet is sheet-authored
+  too (Ironclad + Silent are generated; see the `PORTED` roster in the script).
+  Column mapping mirrors the legacy HTML importer
+  (`legacy-web/scripts/convert-excel.js`): Str/Dex/…/Luck are **level-up**
+  gains, the starting deck is Strikes/Defends counts plus the two Unique
+  cards, and the Reward cell is parsed into level_up_reward_type/card tag.
+  Generic &"strike"/&"defend" deck entries resolve per character via
+  `Data.variant_card_id` (`strike_silent`, `defend_ironclad`, …), so each
+  ported character needs its `Strike (X)` / `Defend (X)` rows in `cardsnew`.
 - `docs/action-attack-translation.md` — the attack-archetype design.
 - Commits on branch `claude/nice-goldberg-0zbo4f`: the card flip
   (`Make all cards sheet-authored`, `Generate attack cards from the spreadsheet`,

@@ -435,11 +435,20 @@ def parse_multipliers(payload):
 
 
 def parse_scaling(payload):
-    # "+1 strength per 20 max_hp"
-    m = re.match(r"^\+?(\d+)\s+([a-z_]+)\s+per\s+(\d+)\s+([a-z_]+)", payload.strip())
+    # "+1 strength per 20 max_hp" (Beefy Ring), or the prose form
+    # "+2 max_hp per weapon card in deck (of: deck_tag:weapon)" (Jelly) where the
+    # parenthetical names the machine counter and a bare "per" means per-1.
+    of_note = None
+    m_note = re.search(r"\(\s*of:\s*([^)\s]+)\s*\)", payload)
+    if m_note:
+        of_note = m_note.group(1)
+        payload = payload[:m_note.start()] + payload[m_note.end():]
+    m = re.match(r"^\+?(\d+)\s+([a-z_]+)\s+per\s+(?:(\d+)\s+)?([a-z_:]+)",
+                 payload.strip())
     if m:
         return [{"stat": m.group(2), "value": int(m.group(1)),
-                 "per": int(m.group(3)), "of": m.group(4)}]
+                 "per": int(m.group(3)) if m.group(3) else 1,
+                 "of": of_note if of_note else m.group(4)}]
     return []
 
 
@@ -576,6 +585,11 @@ def parse_item(row):
             last_trigger = None
         elif kl0 == "stat_gain_bonus":
             fields["stat_gain_bonus"] = _brace_dict(payload)
+            last_trigger = None
+        elif kl0 == "caps_max_hp":
+            # Handcuffs: the payload is prose ("locks max_hp at its current
+            # value while owned"); the runtime lives in GameState.max_hp_cap.
+            fields["caps_max_hp"] = True
             last_trigger = None
         elif kl0 == "negate_lethal":
             fields["negate_lethal"] = True
@@ -802,6 +816,7 @@ def item_tres(row):
         ("stat_floor", lambda v: packed(v)),
         ("negate_lethal", lambda v: "true"),
         ("stat_gain_bonus", lambda v: gd_value(v)),
+        ("caps_max_hp", lambda v: "true"),
         ("reroll_low_rarity", lambda v: "true"),
         ("overworld_usable", lambda v: "true"),
         ("charge_cost", lambda v: str(v)),

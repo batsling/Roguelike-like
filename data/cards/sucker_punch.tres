@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_sucker_punch"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/SuckerPunch.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"sucker_punch"
+display_name = "Sucker Punch"
+type = 0
+rarity = 1
+cost = 1
+description = "Deal 8 Dmg Melee. Inflict 1 Weak."
+effects = [{"type": "dmg", "value": 8, "target": "enemy", "damage_type": "melee"}, {"type": "status", "status": "weak", "stacks": 1, "target": "enemy"}]
+tags = PackedStringArray("silent", "offense", "debuff")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 10 Dmg Melee. Inflict 2 Weak."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 10, "target": "enemy", "damage_type": "melee"}, {"type": "status", "status": "weak", "stacks": 2, "target": "enemy"}]
+image = ExtResource("2_img")
+attack_shape = &"poke"
+attack_params = {"size": "medium"}

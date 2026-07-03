@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_neutralize"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Neutralize.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"neutralize"
+display_name = "Neutralize"
+type = 0
+rarity = 0
+cost = 0
+description = "Deal 3 Dmg Melee. Inflict 1 Weak."
+effects = [{"type": "dmg", "value": 3, "target": "enemy", "damage_type": "melee"}, {"type": "status", "status": "weak", "stacks": 1, "target": "enemy"}]
+tags = PackedStringArray("silent", "offense", "debuff")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 4 Dmg Melee. Inflict 2 Weak."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 4, "target": "enemy", "damage_type": "melee"}, {"type": "status", "status": "weak", "stacks": 2, "target": "enemy"}]
+image = ExtResource("2_img")
+attack_shape = &"poke"
+attack_params = {"size": "small"}
