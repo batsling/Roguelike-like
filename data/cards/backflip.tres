@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_backflip"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Backflip.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"backflip"
+display_name = "Backflip"
+type = 1
+rarity = 1
+cost = 1
+description = "Gain +5 Block. Draw 2 Cards."
+effects = [{"type": "block", "value": 5, "target": "self"}, {"type": "draw", "value": 2}]
+tags = PackedStringArray("silent", "defense", "draw")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain 8 Block. Draw 2 Cards."
+upgraded_cost = -999
+upgraded_effects = [{"type": "block", "value": 8, "target": "self"}, {"type": "draw", "value": 2}]
+image = ExtResource("2_img")

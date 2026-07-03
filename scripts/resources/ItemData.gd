@@ -248,6 +248,15 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #                 "fov", "discovery", "luck"]
 @export var stat_floor: PackedStringArray = PackedStringArray()
 
+# Handcuffs: while owned, the player's max_hp is locked at whatever value it
+# held when the cap first took effect (the item's own stat_bonuses are exempt
+# — Handcuffs' own +3/+3/+3 land normally). Any later source that would raise
+# max_hp above that ceiling is suppressed until every capping item is gone.
+# GameState.max_hp_cap holds the live ceiling; enforced in GameState.set_max_hp
+# and the vitals pass of _recompute_item_bonuses, so it covers level-ups,
+# cards, potions, and item scaling (Jelly) alike.
+@export var caps_max_hp: bool = false
+
 # Reactive Trauma Plate: when the player would take a lethal hit, the hit is
 # negated outright and this item is destroyed (consumed for the run). Checked
 # in Stats.resolve_damage after Block and Buffer, so it backs up every combat

@@ -144,6 +144,20 @@ var stat_multiplier: Dictionary = {}
 var _applied_item_max_hp: int = 0
 var _applied_item_max_energy: int = 0
 
+# Jelly (and any future SCALING rule that outputs max_hp): tracked exactly
+# like _applied_item_max_hp above, but separately, since it's recomputed by a
+# different pass (see _recompute_item_bonuses). Kept apart so a save's base
+# max_hp can subtract both contributions independently.
+var _applied_scaling_max_hp: int = 0
+
+# Handcuffs: live max_hp ceiling while any owned item has caps_max_hp = true.
+# -1 = no cap. Rebuilt every _recompute_item_bonuses call: set to the current
+# max_hp the moment a capping item is (or becomes, e.g. on load) owned, held
+# fixed while the item stays, cleared the moment none remain. Enforced in
+# set_max_hp and the vitals pass below, so it covers every source of max_hp
+# growth (level-ups, cards, potions, item scaling) uniformly.
+var max_hp_cap: int = -1
+
 # Monotonic id source for ItemData.instance_id. Each call to add_item
 # bumps this so duplicated weapon Resources can be paired with their
 # granted CardInstance (CardInstance.source_weapon_id) — and so save /
@@ -371,6 +385,12 @@ func _connect_lifecycle_hooks() -> void:
 	# Combats-won tally drives the enemy-spawn budget (first fight is gentler).
 	if not TriggerBus.combat_ended.is_connected(_on_combat_ended_tally):
 		TriggerBus.combat_ended.connect(_on_combat_ended_tally)
+	# Jelly (deck_tag scaling) keys its max_hp bonus off deck weapon-card
+	# count, which isn't covered by the inventory-mutation call sites that
+	# already call _recompute_item_bonuses directly. deck_changed fires on
+	# every deck mutation (add/remove/weapon pairing), so hook it here once.
+	if not deck_changed.is_connected(_recompute_item_bonuses):
+		deck_changed.connect(_recompute_item_bonuses)
 
 func _on_combat_ended_tally(ctx: Dictionary) -> void:
 	# Dev test combats are exempt so testing never skews the run's spawn budget.
@@ -782,6 +802,8 @@ func _reset_item_tracking() -> void:
 	item_stat_bonus = {}
 	_applied_item_max_hp = 0
 	_applied_item_max_energy = 0
+	_applied_scaling_max_hp = 0
+	max_hp_cap = -1
 	_next_item_instance_id = 1
 	_gold_spent_accum = 0
 	incremental_attacks_total = 0
@@ -902,7 +924,10 @@ func set_max_hp(new_max: int, heal_to_full: bool = false) -> void:
 	# delta. Pass heal_to_full=true to restore HP to the new max
 	# (e.g., on level-up). Otherwise current HP is just clamped.
 	var old_max: int = max_hp
-	max_hp = max(1, new_max)
+	var capped_max: int = new_max
+	if max_hp_cap >= 0:
+		capped_max = mini(capped_max, max_hp_cap)
+	max_hp = max(1, capped_max)
 	if heal_to_full:
 		hp = max_hp
 	else:
@@ -1629,6 +1654,35 @@ func upgrade_random_passive(delta: int) -> Dictionary:
 	emit_signal("inventory_changed")
 	return {"item": picked, "delta": delta, "new_level": picked.upgrade_level}
 
+# Counts CardInstances in `deck` whose CardData carries `tag` (Jelly counts
+# the "weapon" tag). Backs the `of: "deck_tag:<tag>"` scaling source.
+func _count_deck_cards_with_tag(tag: String) -> int:
+	var n: int = 0
+	for ci in deck:
+		if ci is CardInstance and ci.data != null and ci.data.tags.has(tag):
+			n += 1
+	return n
+
+# Applies a delta-tracked, Handcuffs-aware contribution to live max_hp.
+# `total` is the nominal (uncapped) running total a source wants to
+# contribute this recompute; `applied` is how much of it actually landed on
+# live max_hp last time. Returns the new `applied` value. When max_hp_cap
+# suppresses part of an increase, the returned value under-reports `total` on
+# purpose — that gap is what lets a later cap removal (Handcuffs sold) replay
+# the missing delta instead of losing it permanently.
+func _apply_capped_max_hp_delta(total: int, applied: int) -> int:
+	var delta: int = total - applied
+	if delta == 0:
+		return applied
+	var new_max: int = max_hp + delta
+	if max_hp_cap >= 0:
+		new_max = mini(new_max, max_hp_cap)
+	var actual_delta: int = new_max - max_hp
+	max_hp = maxi(1, new_max)
+	hp = mini(hp, max_hp)
+	emit_signal("hp_changed", hp, max_hp)
+	return applied + actual_delta
+
 # Walks inventory + equipped_weapon and rebuilds item_stat_bonus from
 # every effective_stat_bonuses() pass. Vitals (max_hp, max_energy) are
 # applied as direct deltas — the _applied_item_* fields track our
@@ -1641,6 +1695,23 @@ func _recompute_item_bonuses() -> void:
 	sources.append_array(inventory)
 	if equipped_weapon != null:
 		sources.append(equipped_weapon)
+
+	# Handcuffs: (re)establish the max_hp ceiling. Snapshotting here (rather
+	# than only on acquisition) means a fresh pickup locks in the value it
+	# owned at the moment it's added, AND a save load — which restores
+	# inventory before this runs — locks in the restored base value the same
+	# way. Clearing the moment no capping item remains lets max_hp grow again.
+	var has_cap_item: bool = false
+	for it in sources:
+		if it is ItemData and it.caps_max_hp:
+			has_cap_item = true
+			break
+	if has_cap_item:
+		if max_hp_cap < 0:
+			max_hp_cap = max_hp
+	else:
+		max_hp_cap = -1
+
 	for it in sources:
 		if not (it is ItemData):
 			continue
@@ -1659,12 +1730,7 @@ func _recompute_item_bonuses() -> void:
 	# Vitals are applied as direct deltas (NOT through set_max_hp) so we
 	# don't trigger Constitution auto-gain on every inventory mutation
 	# or save load. Auto-gain stays reserved for level-up-style events.
-	var hp_delta: int = max_hp_total - _applied_item_max_hp
-	if hp_delta != 0:
-		max_hp = maxi(1, max_hp + hp_delta)
-		hp = mini(hp, max_hp)
-		_applied_item_max_hp = max_hp_total
-		emit_signal("hp_changed", hp, max_hp)
+	_applied_item_max_hp = _apply_capped_max_hp_delta(max_hp_total, _applied_item_max_hp)
 
 	var en_delta: int = max_energy_total - _applied_item_max_energy
 	if en_delta != 0:
@@ -1672,10 +1738,11 @@ func _recompute_item_bonuses() -> void:
 		_applied_item_max_energy = max_energy_total
 
 	# Second pass: SCALING items. Resolved against the post-vitals state so
-	# a Beefy Ring + Alien Baby combo sees the bumped max_hp. Output goes
-	# into item_stat_bonus alongside flat bonuses; reads through Stats see
-	# both transparently. Scaling never writes vitals — that would re-enter
-	# this function via set_max_hp and loop forever.
+	# a Beefy Ring + Alien Baby combo sees the bumped max_hp. Non-vital output
+	# goes into item_stat_bonus alongside flat bonuses; reads through Stats see
+	# both transparently. max_hp output (Jelly) is tracked separately below,
+	# through the same capped-delta path as the flat pass above.
+	var scaling_max_hp_total: int = 0
 	for it in sources:
 		if not (it is ItemData) or it.scaling.is_empty():
 			continue
@@ -1686,15 +1753,24 @@ func _recompute_item_bonuses() -> void:
 			var src_stat: String = String(rule.get("of", ""))
 			if out_stat == "" or per <= 0 or per_val == 0 or src_stat == "":
 				continue
-			if out_stat == "max_hp" or out_stat == "max_energy":
-				push_warning("ItemData.scaling: '%s' cannot output vitals" % it.id)
+			if out_stat == "max_energy":
+				push_warning("ItemData.scaling: '%s' cannot output max_energy" % it.id)
 				continue
-			var src_amount: int = int(get(src_stat))
+			var src_amount: int
+			if src_stat.begins_with("deck_tag:"):
+				src_amount = _count_deck_cards_with_tag(src_stat.substr(9))
+			else:
+				src_amount = int(get(src_stat))
 			@warning_ignore("integer_division")
 			var stacks: int = src_amount / per
 			if stacks == 0:
 				continue
-			totals[out_stat] = int(totals.get(out_stat, 0)) + per_val * stacks
+			var contribution: int = per_val * stacks
+			if out_stat == "max_hp":
+				scaling_max_hp_total += contribution
+			else:
+				totals[out_stat] = int(totals.get(out_stat, 0)) + contribution
+	_applied_scaling_max_hp = _apply_capped_max_hp_delta(scaling_max_hp_total, _applied_scaling_max_hp)
 
 	item_stat_bonus = totals
 	# Cache whether any owned item mirrors a stat onto a pool (Paper Bag), so

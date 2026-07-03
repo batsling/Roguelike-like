@@ -67,8 +67,9 @@ func _build_payload() -> Dictionary:
 		# Save the BASE vitals (without item contribution). The item
 		# bonuses are re-applied on load through _recompute_item_bonuses,
 		# which would otherwise double-count whatever max_hp/max_energy
-		# items grant.
-		"max_hp": GameState.max_hp - GameState._applied_item_max_hp,
+		# items grant. Jelly's scaling contribution is tracked separately
+		# (_applied_scaling_max_hp) and must be subtracted too.
+		"max_hp": GameState.max_hp - GameState._applied_item_max_hp - GameState._applied_scaling_max_hp,
 		"hp": GameState.hp,
 		"max_energy": GameState.max_energy - GameState._applied_item_max_energy,
 		"hand_size": GameState.hand_size,
@@ -199,6 +200,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	# when the save was written, but we save the base — see below).
 	GameState._applied_item_max_hp = 0
 	GameState._applied_item_max_energy = 0
+	GameState._applied_scaling_max_hp = 0
 	GameState.item_stat_bonus = {}
 	GameState._recompute_item_bonuses()
 	GameState.dash_charges = data.get("dash", 0)

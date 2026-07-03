@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_boiling_water"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/BoilingWater.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"boiling_water"
+display_name = "Boiling Water"
+kind = 5
+rarity = 0
+description = "Gain +2 Intelligence and -3 Max Health"
+triggers = [{"on": "item_acquired", "effects": [{"type": "gain_stat", "stat": "intelligence", "value": 2}, {"type": "gain_max_hp", "value": -3}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Brotato"
+tags = PackedStringArray("drink", "water")
+image = ExtResource("2_img")
