@@ -27,13 +27,16 @@ extends Resource
 # reach-based families (poke/swing/projectile/beam/homing) and to an AOE
 # radius for the area families (smash/nova/lob/auto_aoe).
 
-# Size word -> melee reach in px (poke/swing cone length).
+# Size word -> melee reach in px (poke/swing cone length). The sheet uses
+# "Small" and "Short" interchangeably for melee (Anger/Neutralize/Claw are
+# "Poke/Swing, Small"), so both words resolve to the short reach — without the
+# alias they'd silently fall back to medium.
 @export var melee_reach_px: Dictionary = {
-	"short": 95.0, "medium": 135.0, "large": 185.0,
+	"short": 95.0, "small": 95.0, "medium": 135.0, "large": 185.0,
 }
 # Size word -> projectile / beam travel distance in px.
 @export var travel_px: Dictionary = {
-	"short": 320.0, "medium": 620.0, "large": 950.0, "full": 2200.0,
+	"short": 320.0, "small": 320.0, "medium": 620.0, "large": 950.0, "full": 2200.0,
 }
 # Size word -> AOE disc radius in px (smash/nova/lob/auto_aoe).
 @export var radius_px: Dictionary = {

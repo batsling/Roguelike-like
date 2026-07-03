@@ -150,7 +150,10 @@ def _effect_from_tokens(tokens):
     ('destroy_after', n) / ('merge', field, value) for cross-clause fields."""
     if not tokens:
         return None
-    verb = tokens[0]
+    # Verbs are matched case-insensitively so a sheet cell like "Dmg:12:ranged"
+    # still parses (args keep their case — status names etc. are lowered where
+    # the individual verb handlers need it).
+    verb = tokens[0].lower()
     args = tokens[1:]
 
     # Tolerate a glued damage token like "dmg2x3" (== "dmg:2x3").
@@ -479,6 +482,12 @@ def card_tres(row) -> tuple:
 
     on_play, triggers, destroy_after = parse_effects(row.get("Effects"))
     flags, addons = parse_keywords(row.get("Keywords"))
+    # A literal "No" in the Cost cell means the card can't be cast from hand at
+    # all (Sly cards like Reflex/Tactician resolve only via their discard
+    # trigger). Curses spell it out with the Unplayable keyword; this covers
+    # rows that rely on the cost cell alone.
+    if str(row.get("Cost") or "").strip().lower() == "no":
+        flags["unplayable"] = True
     # Attack delivery (action mode). The "Attack" header supersedes the legacy
     # "Range" header when present; either holds the same DSL.
     attack_raw = row.get("Attack", row.get("Range"))

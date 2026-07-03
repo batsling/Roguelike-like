@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="CharacterData" load_steps=4 format=3 uid="uid://char_ironclad"]
 
 [ext_resource type="Script" path="res://scripts/resources/CharacterData.gd" id="1_char"]
-[ext_resource type="Texture2D" path="res://assets/characters/Ironclad.png" id="2_portrait"]
+[ext_resource type="Texture2D" path="res://images/characters/Full/Ironclad.png" id="2_portrait"]
 [ext_resource type="Texture2D" path="res://images/characters/Icon/Ironclad.png" id="3_icon"]
 
 [resource]
@@ -23,8 +23,7 @@ starting_weapon = &""
 level_up_condition = "Unlock a new difficulty"
 level_up_reward = "1 Ironclad Card Reward"
 level_up_stats = {
-"dexterity": 1,
-"strength": 1
+"strength": 2
 }
 level_up_reward_type = &"card"
 level_up_reward_amount = 0

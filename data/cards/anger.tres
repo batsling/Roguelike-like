@@ -20,4 +20,4 @@ upgraded_cost = -999
 upgraded_effects = [{"type": "dmg", "value": 8, "target": "enemy", "damage_type": "melee"}, {"type": "conjure", "card_id": "self", "destination": "discard", "count": 1}]
 image = ExtResource("2_img")
 attack_shape = &"poke"
-attack_params = {"size": "short"}
+attack_params = {"size": "small"}

@@ -94,8 +94,9 @@ func test_reward_card_pool_ironclad_tag_filters_to_class() -> void:
 func test_ironclad_character_levelup_data() -> void:
 	var ic: CharacterData = Data.get_character(&"ironclad")
 	assert_not_null(ic)
-	assert_eq(int(ic.level_up_stats.get("strength", 0)), 1)
-	assert_eq(int(ic.level_up_stats.get("dexterity", 0)), 1)
+	# Sheet-authored (characters sheet): Ironclad levels up with +2 Strength.
+	assert_eq(int(ic.level_up_stats.get("strength", 0)), 2)
+	assert_eq(int(ic.level_up_stats.get("dexterity", 0)), 0)
 	assert_eq(String(ic.level_up_reward_type), "card")
 	assert_eq(String(ic.level_up_card_tag), "ironclad")
 

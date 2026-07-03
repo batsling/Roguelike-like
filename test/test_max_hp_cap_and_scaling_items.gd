@@ -113,7 +113,9 @@ func test_boiling_water_grants_intelligence_and_loses_max_health() -> void:
 	assert_not_null(it, "boiling_water.tres should load")
 	assert_eq(it.kind, ItemData.ItemKind.PICKUP)
 
+	# +4 Intelligence rides as a passive stat bonus (held while owned), the
+	# -3 Max Health is a one-shot item_acquired trigger.
 	GameState.add_item(it)
-	assert_eq(GameState.intelligence, 2)
+	assert_eq(Stats.get_value(&"intelligence"), 4)
 	assert_eq(GameState.max_hp, 72, "loses 3 max health")
 	assert_eq(GameState.hp, 72, "current hp is clamped down with the max")

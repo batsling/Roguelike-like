@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=4 format=3 uid="uid://char_silent"]
+
+[ext_resource type="Script" path="res://scripts/resources/CharacterData.gd" id="1_char"]
+[ext_resource type="Texture2D" path="res://images/characters/Full/Silent.png" id="2_portrait"]
+[ext_resource type="Texture2D" path="res://images/characters/Icon/Silent.png" id="3_icon"]
+
+[resource]
+script = ExtResource("1_char")
+id = &"silent"
+display_name = "Silent"
+description = "A deadly huntress from the foglands. Eradicates foes with daggers and poisons."
+base_max_hp = 70
+base_strength = 0
+base_dexterity = 0
+base_intelligence = 0
+base_charisma = 0
+base_luck = 0
+base_max_energy = 3
+base_hand_size = 5
+starting_deck = Array[StringName]([&"strike", &"strike", &"strike", &"strike", &"strike", &"defend", &"defend", &"defend", &"defend", &"defend", &"survivor", &"neutralize"])
+starting_items = Array[StringName]([&"ring_of_the_snake"])
+starting_weapon = &""
+level_up_condition = "Unlock a new difficulty"
+level_up_reward = "1 Silent Card Reward"
+level_up_stats = {
+"dexterity": 2
+}
+level_up_reward_type = &"card"
+level_up_reward_amount = 0
+level_up_card_tag = &"silent"
+portrait = ExtResource("2_portrait")
+icon = ExtResource("3_icon")
+portrait_color = Color(0.25, 0.55, 0.3, 1)
