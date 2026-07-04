@@ -137,11 +137,16 @@ custom_minimum_size = Vector2(0, 28)
 bbcode_enabled = true
 fit_content = true
 
-[node name="Details" type="RichTextLabel" parent="Center/Panel/Margin/V/Body/RightCol"]
-unique_name_in_owner = true
+[node name="DetailsScroll" type="ScrollContainer" parent="Center/Panel/Margin/V/Body/RightCol"]
 layout_mode = 2
 size_flags_vertical = 3
-bbcode_enabled = true
+horizontal_scroll_mode = 0
+
+[node name="DetailsBox" type="VBoxContainer" parent="Center/Panel/Margin/V/Body/RightCol/DetailsScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
 
 [node name="NameRow" type="HBoxContainer" parent="Center/Panel/Margin/V"]
 layout_mode = 2

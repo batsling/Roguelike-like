@@ -151,6 +151,43 @@ func _build() -> void:
 
 # ---------------------------------------------------------------------------
 
+# A non-interactive deck-grid cell: this card's real CardView rendered at
+# `cell_scale`, with an "xN" copies badge when the deck holds duplicates
+# (badge styling matches the Backpack deck tab). Used by the character
+# select and Collection starting-deck grids, where the cards are display
+# only — the whole cell ignores mouse input.
+static func build_deck_cell(data: CardData, count: int, cell_scale: float = 1.0) -> Control:
+	var wrapper := Control.new()
+	wrapper.custom_minimum_size = Vector2(CARD_W, CARD_H) * cell_scale
+	wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var view := CardView.new()
+	view.setup(CardInstance.from_data(data))
+	view.scale = Vector2(cell_scale, cell_scale)
+	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrapper.add_child(view)
+
+	if count > 1:
+		var bg := StyleBoxFlat.new()
+		bg.bg_color = Color(0.1, 0.1, 0.14, 0.92)
+		bg.set_corner_radius_all(10)
+		bg.set_border_width_all(1)
+		bg.border_color = Color(1.0, 0.85, 0.4, 0.9)
+		bg.set_content_margin_all(4)
+		var lbl := Label.new()
+		lbl.text = "x%d" % count
+		lbl.add_theme_font_size_override("font_size", 15)
+		lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.7))
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var panel := PanelContainer.new()
+		panel.add_theme_stylebox_override("panel", bg)
+		panel.add_child(lbl)
+		panel.position = Vector2(CARD_W * cell_scale - 44, 6)
+		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wrapper.add_child(panel)
+
+	return wrapper
+
 func refresh() -> void:
 	if card == null:
 		return

@@ -1080,11 +1080,26 @@ func _show_character_detail(ch: CharacterData) -> void:
 	_detail_box.add_child(_kv("Speed", str(ch.base_speed)))
 	if ch.starting_deck.size() > 0:
 		_detail_box.add_child(_detail_section("Starting Deck"))
-		var names: Array = []
+		# The real card visuals, with copies bundled under an xN badge (all
+		# five Strikes collapse into one cell) in first-seen deck order.
+		var counts: Dictionary = {}   # resolved CardData -> copies
+		var order: Array = []
 		for cid in ch.starting_deck:
 			var cd: CardData = Data.get_card_for_character(cid, ch.id)
-			names.append(cd.display_name if cd != null else String(cid))
-		_detail_box.add_child(_label(", ".join(names), Color(0.8, 0.85, 0.95), 11, false, true))
+			if cd == null:
+				continue
+			if counts.has(cd):
+				counts[cd] += 1
+			else:
+				counts[cd] = 1
+				order.append(cd)
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 8)
+		flow.add_theme_constant_override("v_separation", 8)
+		flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for cd in order:
+			flow.add_child(CardView.build_deck_cell(cd, int(counts[cd]), 0.62))
+		_detail_box.add_child(flow)
 	if ch.starting_items.size() > 0:
 		_detail_box.add_child(_detail_section("Starting Items"))
 		var inames: Array = []

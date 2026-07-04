@@ -15,13 +15,6 @@ signal cancelled
 const GOLD := Color(1.0, 0.85, 0.4)
 const DIM_BORDER := Color(0.3, 0.3, 0.34)
 const WIN_GREEN := Color(0.3, 0.78, 0.32)
-# Card-name colours per CardData.Rarity (STARTER..LEGENDARY), matching
-# CardView's rarity stripe palette.
-const CARD_RARITY_COLORS := [
-	Color(0.7, 0.7, 0.7), Color(0.92, 0.92, 0.92), Color(0.4, 0.75, 1.0),
-	Color(1.0, 0.85, 0.3), Color(1.0, 0.5, 1.0),
-]
-const CARD_TYPE_NAMES := ["Attack", "Skill", "Power", "Dice", "Status", "Curse", "Training"]
 
 @onready var _deck_list: VBoxContainer = %DeckList
 @onready var _roster: VBoxContainer = %Roster
@@ -30,7 +23,7 @@ const CARD_TYPE_NAMES := ["Attack", "Skill", "Power", "Dice", "Status", "Curse",
 @onready var _from_game: Label = %FromGame
 @onready var _description: Label = %Description
 @onready var _stats_label: RichTextLabel = %Stats
-@onready var _details: RichTextLabel = %Details
+@onready var _details_box: VBoxContainer = %DetailsBox
 @onready var _name_input: LineEdit = %SaveNameInput
 @onready var _name_warning: Label = %NameWarning
 @onready var _begin_btn: Button = %BeginBtn
@@ -186,7 +179,7 @@ func _select(id: StringName) -> void:
 	_from_game.visible = ch.source_game != ""
 	_description.text = ch.description
 	_stats_label.text = _format_stats(ch)
-	_details.text = _format_details(ch)
+	_render_details(ch)
 
 func _format_stats(ch: CharacterData) -> String:
 	var bits: Array = []
@@ -209,15 +202,16 @@ func _format_stats(ch: CharacterData) -> String:
 		bits.append(" ".join(stat_strs))
 	return "  •  ".join(bits)
 
-# The scrolling details body: level-up, starting deck (rarity-coloured),
-# starting items, and the per-deck win checklist — the same sections the HTML
-# details panel showed.
-func _format_details(ch: CharacterData) -> String:
-	var lines: Array = []
+# The scrolling details body: level-up, the starting deck as real card
+# visuals (duplicates bundled under an xN badge), starting items, and the
+# per-deck win checklist — the same sections the HTML details panel showed.
+func _render_details(ch: CharacterData) -> void:
+	for c in _details_box.get_children():
+		_details_box.remove_child(c)
+		c.free()
 
 	if ch.level_up_condition != "":
-		lines.append("[b][color=#ff9800]⬆ Level Up[/color][/b]")
-		lines.append(ch.level_up_condition)
+		var lines: Array = ["[b][color=#ff9800]⬆ Level Up[/color][/b]", ch.level_up_condition]
 		var bonuses: Array = []
 		for stat in ch.level_up_stats:
 			bonuses.append("[color=#4caf50]+%d %s[/color]" % [int(ch.level_up_stats[stat]), String(stat).capitalize()])
@@ -225,46 +219,61 @@ func _format_details(ch: CharacterData) -> String:
 			lines.append("Bonuses: %s" % ", ".join(bonuses))
 		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
 			lines.append("Reward: %s" % ch.level_up_reward)
-		lines.append("")
+		_details_box.add_child(_rich_text("\n".join(lines)))
 
-	lines.append("[b]Starting Deck[/b]")
+	_details_box.add_child(_rich_text("[b]Starting Deck[/b]"))
 	if ch.starting_deck.is_empty():
-		lines.append("  (empty deck)")
+		_details_box.add_child(_rich_text("  (empty deck)"))
 	else:
-		var counts: Dictionary = {}
+		# Bundle copies by resolved card (all five Strikes collapse into one
+		# cell with an x5 badge), preserving the deck list's first-seen order.
+		var counts: Dictionary = {}   # resolved CardData -> copies
+		var order: Array = []
 		for cid in ch.starting_deck:
-			counts[cid] = int(counts.get(cid, 0)) + 1
-		for cid in counts:
 			var card: CardData = Data.get_card_for_character(cid, ch.id)
 			if card == null:
-				lines.append("  %dx %s" % [counts[cid], String(cid)])
 				continue
-			var col: Color = CARD_RARITY_COLORS[clampi(int(card.rarity), 0, CARD_RARITY_COLORS.size() - 1)]
-			var meta: String = CARD_TYPE_NAMES[clampi(int(card.type), 0, CARD_TYPE_NAMES.size() - 1)]
-			var cost_str := "X" if card.cost < 0 else str(card.cost)
-			lines.append("  [color=#%s]%dx %s[/color]  [color=#8a8a90]%s · Cost %s[/color]" % [
-				col.to_html(false), counts[cid], card.display_name, meta, cost_str])
+			if counts.has(card):
+				counts[card] += 1
+			else:
+				counts[card] = 1
+				order.append(card)
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 10)
+		flow.add_theme_constant_override("v_separation", 10)
+		flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for card in order:
+			flow.add_child(CardView.build_deck_cell(card, int(counts[card]), 0.75))
+		_details_box.add_child(flow)
 
 	if not ch.starting_items.is_empty():
-		lines.append("")
-		lines.append("[b]Starting Item%s[/b]" % ("s" if ch.starting_items.size() > 1 else ""))
+		var item_lines: Array = ["[b]Starting Item%s[/b]" % ("s" if ch.starting_items.size() > 1 else "")]
 		for iid in ch.starting_items:
 			var it: ItemData = Data.get_item(iid)
 			if it == null:
-				lines.append("  • %s" % String(iid))
+				item_lines.append("  • %s" % String(iid))
 				continue
 			var icol := Color(0.4, 0.85, 0.95) if it.starter else RarityStyle.color(int(it.rarity))
-			lines.append("  • [color=#%s]%s[/color]" % [icol.to_html(false), it.display_name])
+			item_lines.append("  • [color=#%s]%s[/color]" % [icol.to_html(false), it.display_name])
+		_details_box.add_child(_rich_text("\n".join(item_lines)))
 
-	lines.append("")
-	lines.append("[b]🏆 Beaten With Deck[/b]")
+	var deck_lines: Array = ["[b]🏆 Beaten With Deck[/b]"]
 	for deck in DeckCatalog.all():
 		var won: bool = GameStats.has_deck_win(ch.id, deck["id"])
 		var mark := "✅" if won else "⬜"
 		var col: Color = WIN_GREEN if won else Color(0.53, 0.53, 0.58)
-		lines.append("  %s [color=#%s]%s Deck[/color]" % [mark, col.to_html(false), String(deck["name"])])
+		deck_lines.append("  %s [color=#%s]%s Deck[/color]" % [mark, col.to_html(false), String(deck["name"])])
+	_details_box.add_child(_rich_text("\n".join(deck_lines)))
 
-	return "\n".join(lines)
+# A fitted, non-scrolling bbcode block for one details section.
+func _rich_text(bbcode: String) -> RichTextLabel:
+	var rtl := RichTextLabel.new()
+	rtl.bbcode_enabled = true
+	rtl.fit_content = true
+	rtl.scroll_active = false
+	rtl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rtl.text = bbcode
+	return rtl
 
 # ---------------------------------------------------------------------------
 # Commit / cancel
