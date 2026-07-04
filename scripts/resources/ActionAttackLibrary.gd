@@ -80,6 +80,11 @@ extends Resource
 # tinted by the card's element (Elements.color) so the bounce reads in-theme.
 @export var bounce_interval: float = 0.18
 @export var bounce_orb_radius: float = 12.0
+# boomerang: the thrown blade's travel speed (px/s) and its live hit radius —
+# the blade carries this hitbox for its WHOLE flight, so any enemy it passes
+# through gets clipped, not just the enemies it was aimed at.
+@export var boomerang_speed: float = 560.0
+@export var boomerang_hit_radius: float = 30.0
 @export var beam_color: Color = Color(0.85, 0.95, 1.0, 0.9)
 @export var crescent_color: Color = Color(0.95, 0.97, 1.0, 1.0)
 
@@ -103,9 +108,12 @@ const ARCHETYPES: Dictionary = {
 	# effects on each landing. Bounce count comes from the effect repeat (`times`
 	# / dmg `xN`); the visual is a travelling orb tinted by the card's element.
 	"bounce":     {"family": "bounce",     "size": "", "target": "random"},
-	# boomerang (Sword Boomerang): a thrown spinning blade that visits N random
-	# enemies (N = the dmg effect's xN repeat, like bounce) and then flies back
-	# to the player. Same hop resolution as bounce; the return leg is visual.
+	# boomerang (Sword Boomerang): a thrown spinning blade that flies to N
+	# random enemies in sequence (N = the dmg effect's xN repeat; the next
+	# target is picked only on arrival at the current one) and then returns to
+	# the player. The blade is a live body with an always-on hitbox
+	# (boomerang_hit_radius), so enemies it merely passes through get clipped
+	# too — it can land more than N hits. See ActionCombat._process_boomerangs.
 	"boomerang":  {"family": "boomerang",  "size": "", "target": "random"},
 }
 

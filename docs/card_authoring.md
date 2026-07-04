@@ -511,9 +511,12 @@ Keywords:     Indiscriminate
 Tags:         ironclad, offense
 ```
 
-The `boomerang` archetype: in action a spinning sword flies to each hit's
-random enemy and then returns to the player; in strategy/deckbuilder the
-Indiscriminate keyword re-rolls a random enemy per hit (3 hits, 4 upgraded).
+The `boomerang` archetype: in action a spinning sword flies to 3 (4 upgraded)
+random enemies in sequence — the next target is picked on arrival at the
+current one — then returns to the player. The blade's hitbox is live for the
+whole flight, so enemies it merely passes through get clipped too and it can
+land more than its listed hits. In strategy/deckbuilder the Indiscriminate
+keyword re-rolls a random enemy per hit instead.
 
 ### Reaper — `Rare Attack` cost 2
 ```

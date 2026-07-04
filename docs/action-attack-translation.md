@@ -138,7 +138,7 @@ hitbox, so no per-card art is needed.
 | `smite` | instant **direct** hit on a target set (no travel, no disc) | white zap/flash on each struck enemy | target=nearest |
 | `auto_aoe` | auto-pick a target, disc AOE at **their** location | impact marker at location | target=random, radius=small |
 | `bounce` | a thrown orb that hops between **random** enemies, applying the card's effects on each landing | travelling orb + burst, element-tinted | target=random |
-| `boomerang` | a thrown blade that visits N **random** enemies (N = the dmg `xN` repeat) then flies back to the player | spinning sword gliding along each leg, element-tinted | target=random |
+| `boomerang` | a live thrown blade that flies to N **random** enemies in sequence (N = the dmg `xN` repeat; the next target is picked on arrival at the current one) then returns to the player. Its hitbox is active the WHOLE flight — enemies it passes through get clipped too, so it can land more than N hits | spinning sword gliding along each leg, element-tinted | target=random, speed/hit radius on `ActionAttackLibrary.boomerang_*` |
 
 Notes:
 - `bounce` is **Bouncing Flask**: the hop count is the effect repeat
@@ -186,7 +186,7 @@ Notes:
 | Uppercut | `Poke, Medium` | `dmg:13; inflict:weak:1; inflict:vulnerable:1` |
 | Whirlwind | `Swing, Large` | `dmg:5xX` (X-cost: one ring per energy/Haste point) |
 | Skewer | `Poke, Large` | `dmg:7xX` (X-cost) |
-| Sword Boomerang | `Boomerang` | `dmg:3x3` (3 random enemies, then returns) |
+| Sword Boomerang | `Boomerang` | `dmg:3x3` (3 sequential random targets + pass-through clips, then returns) |
 | Reaper | `Swing, Large` | `dmg:4` + Lifesteal keyword |
 
 ---

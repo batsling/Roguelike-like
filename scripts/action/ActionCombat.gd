@@ -215,6 +215,10 @@ var auto_discard: Array = []                         # Array of CardData (discar
 # Cards the last `discard:all` (Storm of Steel) collapsed this play; read back
 # by conjure `count_from: "discarded"` via the effect ctx scene.
 var last_discard_count: int = 0
+# Live boomerang blades in flight (Sword Boomerang). Each is a Dictionary —
+# see _deliver_boomerang for the shape. The blade keeps its hitbox for the
+# whole flight, so it can clip enemies it merely passes through.
+var _boomerangs: Array = []
 var auto_slots: Array = []                           # Array of Dictionary {card, cooldown, max_cooldown, ttl}
 # draw -> temporary auto-slot lifetime, and the discard fallback cooldown
 # penalty, both live in ActionTranslation (_tr.draw_temp_slot_secs /
@@ -463,6 +467,7 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	enemies.clear()
 	_pending_spawns.clear()
 	projectiles.clear()
+	_boomerangs.clear()
 	_pending_hits.clear()
 	_ability_swing_remaining = 0.0
 	_haste_remaining = 0.0
@@ -867,6 +872,7 @@ func _process(delta: float) -> void:
 	_process_pending_spawns(delta)
 	_process_enemies(delta)
 	_process_projectiles(delta)
+	_process_boomerangs(delta)
 	_process_pending_hits(delta)
 	_decay_block(delta)
 	_check_combat_end()
@@ -2884,39 +2890,119 @@ func _deliver_bounce(card: CardData, effects: Array, _spec: Dictionary) -> void:
 		})
 		prev = target.pos
 
-# boomerang (Sword Boomerang): a thrown spinning blade that visits N random
-# enemies — N = the dmg repeat, like bounce — then flies back to the player.
-# Each visit applies the card's effects to that enemy; the return leg is a
-# visual-only hop so the blade reads as coming home.
+# boomerang (Sword Boomerang): a thrown spinning blade that flies to N random
+# enemies IN SEQUENCE — N = the dmg repeat, like bounce — then flies back to
+# the player. Unlike bounce it's a live travelling body: the blade's hitbox is
+# active for the whole flight, so any enemy it merely passes through on a leg
+# gets clipped too — it can land MORE than N hits in a crowd. The next random
+# target is chosen only when the blade arrives at the current one, so mid-
+# flight deaths and spawns are picked up naturally.
 func _deliver_boomerang(card: CardData, effects: Array, _spec: Dictionary) -> void:
-	var count: int = _max_effect_hits(effects)
-	var prev: Vector2 = player_pos
-	var tint: Color = _attack_color_for(card, _atk.smear_color)
-	var hops := 0
-	for b in range(count):
-		var target: Dictionary = _pick_target("random")
-		if target.is_empty():
-			break
-		_pending_hits.append({
-			"time": maxf(0.001, _atk.bounce_interval * float(b)),
-			"mode": "boomerang_hop",
-			"card": card,
-			"effects": effects,
-			"inst": target,
-			"from": prev,
-			"color": tint,
-		})
-		prev = target.pos
-		hops += 1
-	if hops > 0:
-		# The return leg: fly back from the last enemy to the player. No hit —
-		# the pending processor re-reads the live player_pos at fire time.
-		_pending_hits.append({
-			"time": maxf(0.001, _atk.bounce_interval * float(hops)),
-			"mode": "boomerang_return",
-			"from": prev,
-			"color": tint,
-		})
+	var first: Dictionary = _pick_target("random")
+	if first.is_empty():
+		return
+	_boomerangs.append({
+		"card": card,
+		"effects": effects,
+		"pos": player_pos,
+		"leg_from": player_pos,          # where the current leg started (trail)
+		"target": first,                  # enemy inst being flown to
+		"hops_left": _max_effect_hits(effects),
+		"returning": false,
+		"color": _attack_color_for(card, _atk.smear_color),
+		"spin": 0.0,
+		# Actor instance-ids already struck on the CURRENT leg — reset per leg,
+		# so the blade can clip the same enemy again on a later pass but never
+		# machine-guns it while overlapping.
+		"hit_leg": {},
+	})
+
+# Tick every live boomerang: fly toward the current target, clip everything the
+# blade overlaps, and on arrival either pick the next random enemy (one at a
+# time) or turn for home. The return leg keeps the hitbox live too.
+func _process_boomerangs(delta: float) -> void:
+	if _boomerangs.is_empty():
+		return
+	var speed: float = _atk.boomerang_speed if _atk != null else 560.0
+	var radius: float = _atk.boomerang_hit_radius if _atk != null else 30.0
+	var i := 0
+	while i < _boomerangs.size():
+		var b: Dictionary = _boomerangs[i]
+		b["spin"] = float(b["spin"]) + delta
+		# A dead / vanished target mid-leg: re-pick without consuming the hop
+		# (the hop is only spent on an actual arrival-hit). No one left → home.
+		if not bool(b["returning"]):
+			var tgt: Dictionary = b["target"]
+			if tgt.is_empty() or tgt.actor == null or not tgt.actor.is_alive():
+				var next: Dictionary = _pick_target("random")
+				if next.is_empty():
+					b["returning"] = true
+				else:
+					b["target"] = next
+		var dest: Vector2 = player_pos if bool(b["returning"]) else (b["target"] as Dictionary).pos
+		var prev: Vector2 = b["pos"]
+		var pos: Vector2 = prev.move_toward(dest, speed * delta)
+		b["pos"] = pos
+		# Continuous hitbox: strike every living enemy the blade overlaps that
+		# hasn't been struck on this leg yet — pass-throughs included. Swept
+		# against the whole segment travelled this tick so a long frame delta
+		# can't tunnel the blade through someone standing on the path.
+		for inst in enemies:
+			if not inst.actor.is_alive():
+				continue
+			var aid: int = inst.actor.get_instance_id()
+			if b["hit_leg"].has(aid):
+				continue
+			var closest: Vector2 = Geometry2D.get_closest_point_to_segment(inst.pos, prev, pos)
+			if closest.distance_to(inst.pos) <= radius + inst.data.size:
+				b["hit_leg"][aid] = true
+				_apply_enemy_effects(b["card"], b["effects"], [inst])
+		# Arrival at the leg's destination.
+		if pos.distance_to(dest) <= 4.0:
+			if bool(b["returning"]):
+				_boomerangs.remove_at(i)
+				continue
+			b["hops_left"] = int(b["hops_left"]) - 1
+			var visited: Dictionary = b["target"]
+			b["leg_from"] = pos
+			b["hit_leg"] = {}
+			if int(b["hops_left"]) <= 0:
+				b["returning"] = true
+				# Departing home from this enemy — don't re-clip it as we peel
+				# away (others on the way back are still fair game).
+				if visited.actor != null:
+					b["hit_leg"][visited.actor.get_instance_id()] = true
+			else:
+				# Pick the NEXT random enemy now (one at a time). Prefer someone
+				# other than the enemy just visited so the blade keeps moving;
+				# with a lone survivor it may hit the same one again.
+				var next2: Dictionary = _pick_boomerang_next(visited)
+				if next2.is_empty():
+					b["returning"] = true
+				else:
+					b["target"] = next2
+					# Don't instantly re-clip the enemy we're departing from —
+					# unless it IS the next target (lone-survivor case).
+					if next2 != visited and visited.actor != null:
+						b["hit_leg"][visited.actor.get_instance_id()] = true
+		i += 1
+
+# Random living enemy for the boomerang's next leg, preferring one that isn't
+# `exclude` (the enemy just visited). Falls back to `exclude` when it's the
+# only one left; {} when nothing lives.
+func _pick_boomerang_next(exclude: Dictionary) -> Dictionary:
+	var others: Array = []
+	var fallback: Dictionary = {}
+	for inst in enemies:
+		if not inst.actor.is_alive():
+			continue
+		if inst == exclude:
+			fallback = inst
+		else:
+			others.append(inst)
+	if others.is_empty():
+		return fallback
+	return others[_rng.randi_range(0, others.size() - 1)]
 
 # Highest repeat across a card's enemy effects — dmg `hits` (xN volleys) or a
 # status `hits` (`times=N`). Drives the bounce hop count.
@@ -3017,15 +3103,6 @@ func _show_disc(center: Vector2, radius: float) -> void:
 
 func _show_bounce(from: Vector2, to: Vector2, col: Color) -> void:
 	_swing_kind = "bounce"
-	_bounce_from = from
-	_bounce_to = to
-	_swing_color = col
-	_ability_swing_remaining = _smear_dur()
-
-# Boomerang flight leg: same from/to state as bounce, drawn as a spinning
-# sword instead of an orb (see _draw_attack_smear's "boomerang" arm).
-func _show_boomerang(from: Vector2, to: Vector2, col: Color) -> void:
-	_swing_kind = "boomerang"
 	_bounce_from = from
 	_bounce_to = to
 	_swing_color = col
@@ -3182,16 +3259,6 @@ func _process_pending_hits(delta: float) -> void:
 					if binst != null and binst.actor != null and binst.actor.is_alive():
 						_show_bounce(p.get("from", player_pos), binst.pos, p.get("color", Color.WHITE))
 						_apply_enemy_effects(p.card, p.effects, [binst])
-				"boomerang_hop":
-					# The spinning blade reached this enemy — strike it and show the
-					# flight leg (sword visual instead of the bounce orb).
-					var oinst = p.get("inst")
-					if oinst != null and oinst.actor != null and oinst.actor.is_alive():
-						_show_boomerang(p.get("from", player_pos), oinst.pos, p.get("color", Color.WHITE))
-						_apply_enemy_effects(p.card, p.effects, [oinst])
-				"boomerang_return":
-					# Visual-only: the blade flies home to wherever the player is now.
-					_show_boomerang(p.get("from", player_pos), player_pos, p.get("color", Color.WHITE))
 			_pending_hits.remove_at(i)
 		else:
 			i += 1
@@ -4526,6 +4593,9 @@ func _draw() -> void:
 			# Inner highlight
 			draw_circle(p.pos, p.radius * 0.5, pcol.lightened(0.5))
 
+	# Boomerang blades in flight (live entities, drawn with the projectiles).
+	_draw_boomerangs()
+
 	# Floor drops (potions/scrolls left after a room clears).
 	_draw_ground_loot()
 	# Potion throw: a lobbing white aim arrow while Q is held, and the expanding
@@ -4727,30 +4797,26 @@ func _draw_attack_smear() -> void:
 			draw_line(_bounce_from, _bounce_to, Color(col.r, col.g, col.b, col.a * 0.5), 3.0)
 			draw_circle(_bounce_to, r, Color(col.r, col.g, col.b, col.a * 0.85))
 			draw_circle(_bounce_to, r * 1.6, Color(col.r, col.g, col.b, col.a * 0.3))
-		"boomerang":
-			_draw_boomerang(col)
 
-# The boomerang: a sword gliding along the current flight leg, spinning as it
-# travels, with a faint path line behind it. Progress runs over the smear
-# duration so each hop reads as one quick throw.
-func _draw_boomerang(col: Color) -> void:
-	var total: float = maxf(0.01, _smear_dur())
-	var progress: float = clampf(1.0 - _ability_swing_remaining / total, 0.0, 1.0)
-	var pos: Vector2 = _bounce_from.lerp(_bounce_to, progress)
-	# Flight path (faint) up to the blade's current position.
-	draw_line(_bounce_from, pos, Color(col.r, col.g, col.b, col.a * 0.35), 3.0)
-	# The spinning blade: a bright sword line rotating around its grip, plus a
-	# short cross-guard so it reads as a sword rather than a stick.
-	var spin: float = progress * TAU * 2.0
-	var blade_len: float = 26.0
-	var dir: Vector2 = Vector2.RIGHT.rotated(spin)
-	var tip: Vector2 = pos + dir * blade_len
-	var hilt: Vector2 = pos - dir * blade_len * 0.35
-	draw_line(hilt, tip, Color(1, 1, 1, col.a), 4.0)
-	draw_line(hilt, tip, Color(col.r, col.g, col.b, col.a * 0.8), 2.0)
-	var guard: Vector2 = Vector2(-dir.y, dir.x) * 8.0
-	var guard_base: Vector2 = pos + dir * blade_len * 0.1
-	draw_line(guard_base - guard, guard_base + guard, Color(1, 1, 1, col.a * 0.9), 3.0)
+# The live boomerangs: each blade glides along its current leg, spinning as it
+# travels, with a faint path line back to where the leg started. The blade is a
+# bright sword line rotating around its grip plus a short cross-guard so it
+# reads as a sword rather than a stick.
+func _draw_boomerangs() -> void:
+	for b in _boomerangs:
+		var col: Color = b.get("color", Color.WHITE)
+		var pos: Vector2 = b["pos"]
+		draw_line(b["leg_from"], pos, Color(col.r, col.g, col.b, col.a * 0.35), 3.0)
+		var spin: float = float(b["spin"]) * TAU * 2.5
+		var blade_len: float = 26.0
+		var dir: Vector2 = Vector2.RIGHT.rotated(spin)
+		var tip: Vector2 = pos + dir * blade_len
+		var hilt: Vector2 = pos - dir * blade_len * 0.35
+		draw_line(hilt, tip, Color(1, 1, 1, col.a), 4.0)
+		draw_line(hilt, tip, Color(col.r, col.g, col.b, col.a * 0.8), 2.0)
+		var guard: Vector2 = Vector2(-dir.y, dir.x) * 8.0
+		var guard_base: Vector2 = pos + dir * blade_len * 0.1
+		draw_line(guard_base - guard, guard_base + guard, Color(1, 1, 1, col.a * 0.9), 3.0)
 
 # The sweep_beam: a full-length beam line panning across its arc over the swing
 # duration, leaving a faint wedge showing the swept area plus a short motion-blur
