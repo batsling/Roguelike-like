@@ -16,6 +16,9 @@ signal current_game_changed(game_id: StringName)
 
 # === Identity / progression ===
 var character_id: StringName = &""
+# The run's chosen deck (DeckCatalog id). Independent of the character: it only
+# scopes combat/shop card rewards via deck_reward_tag(). Defaults to Random.
+var selected_deck: StringName = DeckCatalog.DEFAULT_DECK_ID
 var save_name: String = ""
 var current_game_id: StringName = &""
 var start_game_id: StringName = &""
@@ -641,6 +644,7 @@ func active_affliction_effects(effect_type: String) -> Array:
 
 func reset_run() -> void:
 	character_id = &""
+	selected_deck = DeckCatalog.DEFAULT_DECK_ID
 	save_name = ""
 	current_game_id = &""
 	start_game_id = &""
@@ -714,13 +718,20 @@ func reset_run() -> void:
 	Notifications.clear()
 	phase = Phase.MENU
 
-# The current character's class card tag (e.g. &"ironclad"), used to scope card
-# rewards to that class. Sourced from the character's level_up_card_tag — the
-# canonical "cards are drawn from this class" tag — so both level-up and general
-# combat rewards draw from the same class pool. Empty = the full reward pool.
+# The current character's class card tag (e.g. &"ironclad"). Sourced from the
+# character's level_up_card_tag; scopes LEVEL-UP card rewards only (the HTML
+# build's level-up reward always offered the character's own class even when a
+# different deck was chosen). Empty = the full reward pool.
 func card_reward_tag() -> StringName:
 	var cd: CharacterData = Data.get_character(character_id)
 	return cd.level_up_card_tag if cd != null else &""
+
+# The run's DECK tag (e.g. &"ironclad"), from the deck picked on the New Run
+# screen. Scopes general combat card rewards and shop card stock — the deck is
+# purely this reward filter, mirroring the HTML AVAILABLE_DECKS behaviour.
+# Empty (Random deck) = the full reward pool.
+func deck_reward_tag() -> StringName:
+	return DeckCatalog.tag_filter(selected_deck)
 
 # Texture for the player marker in action / tactical combat. Prefers the
 # character's small `icon`, falling back to the full `portrait`. Null when no

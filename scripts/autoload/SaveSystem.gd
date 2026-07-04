@@ -56,6 +56,7 @@ func _build_payload() -> Dictionary:
 		"save_name": GameState.save_name,
 		"saved_at": Time.get_unix_time_from_system(),
 		"character_id": String(GameState.character_id),
+		"selected_deck": String(GameState.selected_deck),
 		"current_game_id": String(GameState.current_game_id),
 		"start_game_id": String(GameState.start_game_id),
 		"amulet_game_id": String(GameState.amulet_game_id),
@@ -141,6 +142,9 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.reset_run()
 	GameState.save_name = String(data.get("save_name", ""))
 	GameState.character_id = StringName(data.get("character_id", ""))
+	# Pre-deck saves default to Random (an unfiltered reward pool), which
+	# matches how those runs behaved when they were created.
+	GameState.selected_deck = StringName(data.get("selected_deck", String(DeckCatalog.DEFAULT_DECK_ID)))
 	GameState.current_game_id = StringName(data.get("current_game_id", ""))
 	GameState.start_game_id = StringName(data.get("start_game_id", ""))
 	GameState.amulet_game_id = StringName(data.get("amulet_game_id", ""))

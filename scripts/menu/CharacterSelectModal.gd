@@ -1,29 +1,38 @@
 extends Control
 
-# New-run modal: pick a character, type a save name, hit Begin.
-# Single panel for now (Ironclad is the only authored character) but
-# the layout is built around a left-side roster + right-side details so
-# a second character is just another row to add.
+# New-run modal: pick a deck (left), pick a character (centre), review the
+# details panel (right), type a save name, hit Begin. Mirrors the HTML build's
+# three-panel character select (legacy-web/js/character-select.js): the deck
+# choice is independent of the character and only scopes card rewards for the
+# run (see DeckCatalog / GameState.deck_reward_tag).
 #
-# Emits `confirmed(character_id, save_name)` when the player commits and
-# `cancelled` if they back out.
+# Emits `confirmed(character_id, deck_id, save_name)` when the player commits
+# and `cancelled` if they back out.
 
-signal confirmed(character_id: StringName, save_name: String)
+signal confirmed(character_id: StringName, deck_id: StringName, save_name: String)
 signal cancelled
 
+const GOLD := Color(1.0, 0.85, 0.4)
+const DIM_BORDER := Color(0.3, 0.3, 0.34)
+const WIN_GREEN := Color(0.3, 0.78, 0.32)
+
+@onready var _deck_list: VBoxContainer = %DeckList
 @onready var _roster: VBoxContainer = %Roster
 @onready var _portrait: TextureRect = %Portrait
 @onready var _name_label: Label = %CharacterName
+@onready var _from_game: Label = %FromGame
 @onready var _description: Label = %Description
 @onready var _stats_label: RichTextLabel = %Stats
-@onready var _deck_label: RichTextLabel = %Deck
+@onready var _details_box: VBoxContainer = %DetailsBox
 @onready var _name_input: LineEdit = %SaveNameInput
 @onready var _name_warning: Label = %NameWarning
 @onready var _begin_btn: Button = %BeginBtn
 @onready var _cancel_btn: Button = %CancelBtn
 
 var _selected_id: StringName = &""
+var _selected_deck: StringName = DeckCatalog.DEFAULT_DECK_ID
 var _row_for: Dictionary = {}     # StringName -> Button
+var _deck_tile_for: Dictionary = {}  # StringName -> PanelContainer
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -31,9 +40,99 @@ func _ready() -> void:
 	_begin_btn.pressed.connect(_on_begin)
 	_cancel_btn.pressed.connect(_on_cancel)
 	_name_input.text_changed.connect(_on_name_changed)
+	_populate_decks()
 	_populate_roster()
 	_name_warning.visible = false
 	_name_input.grab_focus()
+
+# ---------------------------------------------------------------------------
+# Deck panel
+# ---------------------------------------------------------------------------
+
+func _populate_decks() -> void:
+	for c in _deck_list.get_children():
+		c.queue_free()
+	_deck_tile_for.clear()
+	for deck in DeckCatalog.all():
+		var tile := _build_deck_tile(deck)
+		_deck_list.add_child(tile)
+		_deck_tile_for[deck["id"]] = tile
+	_restyle_deck_tiles()
+
+func _build_deck_tile(deck: Dictionary) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 4)
+	panel.add_child(vb)
+
+	var art: Texture2D = DeckCatalog.image(deck["id"])
+	if art != null:
+		var tr := TextureRect.new()
+		tr.texture = art
+		tr.custom_minimum_size = Vector2(150, 56)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(tr)
+	else:
+		# Random deck has no art — a big "?" placeholder like the HTML tile.
+		var q := Label.new()
+		q.text = "?"
+		q.custom_minimum_size = Vector2(150, 56)
+		q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		q.add_theme_font_size_override("font_size", 30)
+		q.add_theme_color_override("font_color", Color(0.5, 0.5, 0.55))
+		q.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(q)
+
+	var name_lbl := Label.new()
+	name_lbl.name = "DeckName"
+	name_lbl.text = String(deck["name"])
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(name_lbl)
+
+	var desc := Label.new()
+	desc.text = String(deck["description"])
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.custom_minimum_size = Vector2(150, 0)
+	desc.add_theme_font_size_override("font_size", 11)
+	desc.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
+	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(desc)
+
+	var id_copy: StringName = deck["id"]
+	panel.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed \
+				and ev.button_index == MOUSE_BUTTON_LEFT:
+			_select_deck(id_copy))
+	return panel
+
+func _select_deck(id: StringName) -> void:
+	_selected_deck = id
+	_restyle_deck_tiles()
+
+func _restyle_deck_tiles() -> void:
+	for id in _deck_tile_for:
+		var panel: PanelContainer = _deck_tile_for[id]
+		var selected: bool = id == _selected_deck
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(1.0, 0.85, 0.4, 0.06) if selected else Color(0, 0, 0, 0.3)
+		sb.set_corner_radius_all(8)
+		sb.set_border_width_all(2)
+		sb.border_color = GOLD if selected else DIM_BORDER
+		sb.set_content_margin_all(8)
+		panel.add_theme_stylebox_override("panel", sb)
+		var name_lbl: Label = panel.get_child(0).get_node("DeckName")
+		name_lbl.add_theme_color_override("font_color", GOLD if selected else Color(0.87, 0.87, 0.9))
+
+# ---------------------------------------------------------------------------
+# Character roster + details
+# ---------------------------------------------------------------------------
 
 func _populate_roster() -> void:
 	for c in _roster.get_children():
@@ -55,6 +154,9 @@ func _populate_roster() -> void:
 		btn.toggle_mode = true
 		btn.custom_minimum_size = Vector2(220, 56)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if ch.icon != null:
+			btn.icon = ch.icon
+			btn.expand_icon = true
 		var id_copy: StringName = ch.id
 		btn.pressed.connect(func(): _select(id_copy))
 		_roster.add_child(btn)
@@ -73,9 +175,11 @@ func _select(id: StringName) -> void:
 		return
 	_portrait.texture = ch.portrait
 	_name_label.text = ch.display_name
+	_from_game.text = ("From: %s" % ch.source_game) if ch.source_game != "" else ""
+	_from_game.visible = ch.source_game != ""
 	_description.text = ch.description
 	_stats_label.text = _format_stats(ch)
-	_deck_label.text = _format_deck(ch)
+	_render_details(ch)
 
 func _format_stats(ch: CharacterData) -> String:
 	var bits: Array = []
@@ -98,23 +202,82 @@ func _format_stats(ch: CharacterData) -> String:
 		bits.append(" ".join(stat_strs))
 	return "  •  ".join(bits)
 
-func _format_deck(ch: CharacterData) -> String:
+# The scrolling details body: level-up, the starting deck as real card
+# visuals (duplicates bundled under an xN badge), starting items, and the
+# per-deck win checklist — the same sections the HTML details panel showed.
+func _render_details(ch: CharacterData) -> void:
+	for c in _details_box.get_children():
+		_details_box.remove_child(c)
+		c.free()
+
+	if ch.level_up_condition != "":
+		var lines: Array = ["[b][color=#ff9800]⬆ Level Up[/color][/b]", ch.level_up_condition]
+		var bonuses: Array = []
+		for stat in ch.level_up_stats:
+			bonuses.append("[color=#4caf50]+%d %s[/color]" % [int(ch.level_up_stats[stat]), String(stat).capitalize()])
+		if not bonuses.is_empty():
+			lines.append("Bonuses: %s" % ", ".join(bonuses))
+		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
+			lines.append("Reward: %s" % ch.level_up_reward)
+		_details_box.add_child(_rich_text("\n".join(lines)))
+
+	_details_box.add_child(_rich_text("[b]Starting Deck[/b]"))
 	if ch.starting_deck.is_empty():
-		return "(empty deck)"
-	var counts: Dictionary = {}
-	for cid in ch.starting_deck:
-		counts[cid] = int(counts.get(cid, 0)) + 1
-	var lines: Array = ["[b]Starting Deck[/b]"]
-	for cid in counts:
-		var card: CardData = Data.get_card_for_character(cid, ch.id)
-		var label := String(cid) if card == null else card.display_name
-		lines.append("  %dx %s" % [counts[cid], label])
+		_details_box.add_child(_rich_text("  (empty deck)"))
+	else:
+		# Bundle copies by resolved card (all five Strikes collapse into one
+		# cell with an x5 badge), preserving the deck list's first-seen order.
+		var counts: Dictionary = {}   # resolved CardData -> copies
+		var order: Array = []
+		for cid in ch.starting_deck:
+			var card: CardData = Data.get_card_for_character(cid, ch.id)
+			if card == null:
+				continue
+			if counts.has(card):
+				counts[card] += 1
+			else:
+				counts[card] = 1
+				order.append(card)
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 10)
+		flow.add_theme_constant_override("v_separation", 10)
+		flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for card in order:
+			flow.add_child(CardView.build_deck_cell(card, int(counts[card]), 0.75))
+		_details_box.add_child(flow)
+
 	if not ch.starting_items.is_empty():
-		lines.append("\n[b]Starting Items[/b]")
+		var item_lines: Array = ["[b]Starting Item%s[/b]" % ("s" if ch.starting_items.size() > 1 else "")]
 		for iid in ch.starting_items:
 			var it: ItemData = Data.get_item(iid)
-			lines.append("  • %s" % (String(iid) if it == null else it.display_name))
-	return "\n".join(lines)
+			if it == null:
+				item_lines.append("  • %s" % String(iid))
+				continue
+			var icol := Color(0.4, 0.85, 0.95) if it.starter else RarityStyle.color(int(it.rarity))
+			item_lines.append("  • [color=#%s]%s[/color]" % [icol.to_html(false), it.display_name])
+		_details_box.add_child(_rich_text("\n".join(item_lines)))
+
+	var deck_lines: Array = ["[b]🏆 Beaten With Deck[/b]"]
+	for deck in DeckCatalog.all():
+		var won: bool = GameStats.has_deck_win(ch.id, deck["id"])
+		var mark := "✅" if won else "⬜"
+		var col: Color = WIN_GREEN if won else Color(0.53, 0.53, 0.58)
+		deck_lines.append("  %s [color=#%s]%s Deck[/color]" % [mark, col.to_html(false), String(deck["name"])])
+	_details_box.add_child(_rich_text("\n".join(deck_lines)))
+
+# A fitted, non-scrolling bbcode block for one details section.
+func _rich_text(bbcode: String) -> RichTextLabel:
+	var rtl := RichTextLabel.new()
+	rtl.bbcode_enabled = true
+	rtl.fit_content = true
+	rtl.scroll_active = false
+	rtl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rtl.text = bbcode
+	return rtl
+
+# ---------------------------------------------------------------------------
+# Commit / cancel
+# ---------------------------------------------------------------------------
 
 func _on_name_changed(_text: String) -> void:
 	_name_warning.visible = false
@@ -135,13 +298,13 @@ func _on_begin() -> void:
 		confirm.dialog_text = "A save called \"%s\" already exists. Overwrite it?" % save_name
 		confirm.confirmed.connect(func():
 			confirm.queue_free()
-			emit_signal("confirmed", _selected_id, save_name)
+			emit_signal("confirmed", _selected_id, _selected_deck, save_name)
 		)
 		confirm.canceled.connect(func(): confirm.queue_free())
 		add_child(confirm)
 		confirm.popup_centered(Vector2i(440, 160))
 		return
-	emit_signal("confirmed", _selected_id, save_name)
+	emit_signal("confirmed", _selected_id, _selected_deck, save_name)
 
 func _on_cancel() -> void:
 	emit_signal("cancelled")

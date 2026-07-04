@@ -169,6 +169,7 @@ def character_tres(row) -> tuple:
     lines.append('id = &"%s"' % cid)
     lines.append('display_name = "%s"' % gd_str(name))
     lines.append('description = "%s"' % gd_str(row.get("Description")))
+    lines.append('source_game = "%s"' % gd_str(row.get("Game")))
     lines.append("base_max_hp = %d" % _int(row.get("Health"), 75))
     lines.append("base_strength = 0")
     lines.append("base_dexterity = 0")

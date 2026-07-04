@@ -102,12 +102,12 @@ func _ready() -> void:
 	_refresh()
 
 # Force the overlay to exactly cover the viewport. Anchors are relative to the
-# viewport because we're top_level, so a full-rect preset plus a zeroed
-# position/size keeps us pinned even as the window resizes.
+# viewport because we're top_level, so a full-rect preset with zeroed offsets
+# keeps us pinned even as the window resizes. Offsets (not a manual position/
+# size write) so the engine doesn't warn about sizing an anchored control
+# during _ready — the anchors would override it anyway.
 func _fit_to_viewport() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
-	position = Vector2.ZERO
-	size = get_viewport_rect().size
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 func _input(event: InputEvent) -> void:
 	# Esc closes; also swallow the backpack toggle so Tab doesn't reach the
@@ -1063,6 +1063,8 @@ func _show_character_detail(ch: CharacterData) -> void:
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(tr)
 	_detail_box.add_child(_label(ch.display_name, green, 18, true))
+	if ch.source_game != "":
+		_detail_box.add_child(_label("From: %s" % ch.source_game, Color(0.6, 0.6, 0.66), 11, false))
 	if ch.description != "":
 		_detail_box.add_child(_label(ch.description, Color(0.82, 0.82, 0.85), 12, false, true))
 	_detail_box.add_child(_detail_section("Base Stats"))
@@ -1078,11 +1080,26 @@ func _show_character_detail(ch: CharacterData) -> void:
 	_detail_box.add_child(_kv("Speed", str(ch.base_speed)))
 	if ch.starting_deck.size() > 0:
 		_detail_box.add_child(_detail_section("Starting Deck"))
-		var names: Array = []
+		# The real card visuals, with copies bundled under an xN badge (all
+		# five Strikes collapse into one cell) in first-seen deck order.
+		var counts: Dictionary = {}   # resolved CardData -> copies
+		var order: Array = []
 		for cid in ch.starting_deck:
 			var cd: CardData = Data.get_card_for_character(cid, ch.id)
-			names.append(cd.display_name if cd != null else String(cid))
-		_detail_box.add_child(_label(", ".join(names), Color(0.8, 0.85, 0.95), 11, false, true))
+			if cd == null:
+				continue
+			if counts.has(cd):
+				counts[cd] += 1
+			else:
+				counts[cd] = 1
+				order.append(cd)
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 8)
+		flow.add_theme_constant_override("v_separation", 8)
+		flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for cd in order:
+			flow.add_child(CardView.build_deck_cell(cd, int(counts[cd]), 0.62))
+		_detail_box.add_child(flow)
 	if ch.starting_items.size() > 0:
 		_detail_box.add_child(_detail_section("Starting Items"))
 		var inames: Array = []
@@ -1090,6 +1107,19 @@ func _show_character_detail(ch: CharacterData) -> void:
 			var idd: ItemData = Data.get_item(iid)
 			inames.append(idd.display_name if idd != null else String(iid))
 		_detail_box.add_child(_label(", ".join(inames), Color(0.8, 0.85, 0.95), 11, false, true))
+	if ch.level_up_condition != "":
+		_detail_box.add_child(_detail_section("Level Up"))
+		_detail_box.add_child(_label(ch.level_up_condition, Color(0.8, 0.85, 0.95), 11, false, true))
+		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
+			_detail_box.add_child(_kv("Reward", ch.level_up_reward))
+	# Which decks this character has won a run with (GameStats.record_deck_win),
+	# mirroring the HTML collection's "Beaten With Deck" checklist.
+	_detail_box.add_child(_detail_section("Beaten With Deck"))
+	for deck in DeckCatalog.all():
+		var won: bool = GameStats.has_deck_win(ch.id, deck["id"])
+		_detail_box.add_child(_label(
+			"%s %s Deck" % ["✅" if won else "⬜", String(deck["name"])],
+			Color(0.45, 0.82, 0.45) if won else Color(0.53, 0.53, 0.58), 11, false))
 
 # ------------------------------------------------------------------
 # Cards tab

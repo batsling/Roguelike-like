@@ -9,6 +9,7 @@ script = ExtResource("1_char")
 id = &"ironclad"
 display_name = "Ironclad"
 description = "The remaining soldier of the Ironclads. Sold his soul to harness demonic energies."
+source_game = "Slay the Spire"
 base_max_hp = 80
 base_strength = 0
 base_dexterity = 0

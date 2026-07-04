@@ -31,7 +31,7 @@ grow_vertical = 2
 
 [node name="Panel" type="PanelContainer" parent="Center"]
 layout_mode = 2
-custom_minimum_size = Vector2(960, 600)
+custom_minimum_size = Vector2(1180, 680)
 
 [node name="Margin" type="MarginContainer" parent="Center/Panel"]
 layout_mode = 2
@@ -55,6 +55,26 @@ theme_override_colors/font_color = Color(1, 0.85, 0.4, 1)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 18
+
+[node name="DeckCol" type="VBoxContainer" parent="Center/Panel/Margin/V/Body"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DeckLabel" type="Label" parent="Center/Panel/Margin/V/Body/DeckCol"]
+layout_mode = 2
+text = "Deck"
+
+[node name="DeckScroll" type="ScrollContainer" parent="Center/Panel/Margin/V/Body/DeckCol"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(190, 0)
+horizontal_scroll_mode = 0
+
+[node name="DeckList" type="VBoxContainer" parent="Center/Panel/Margin/V/Body/DeckCol/DeckScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
 
 [node name="LeftCol" type="VBoxContainer" parent="Center/Panel/Margin/V/Body"]
 layout_mode = 2
@@ -96,6 +116,13 @@ layout_mode = 2
 text = "Character Name"
 theme_override_font_sizes/font_size = 22
 
+[node name="FromGame" type="Label" parent="Center/Panel/Margin/V/Body/RightCol/HeaderRow/NameDescV"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.65, 0.65, 0.7, 1)
+
 [node name="Description" type="Label" parent="Center/Panel/Margin/V/Body/RightCol/HeaderRow/NameDescV"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -110,12 +137,16 @@ custom_minimum_size = Vector2(0, 28)
 bbcode_enabled = true
 fit_content = true
 
-[node name="Deck" type="RichTextLabel" parent="Center/Panel/Margin/V/Body/RightCol"]
-unique_name_in_owner = true
+[node name="DetailsScroll" type="ScrollContainer" parent="Center/Panel/Margin/V/Body/RightCol"]
 layout_mode = 2
 size_flags_vertical = 3
-bbcode_enabled = true
-fit_content = true
+horizontal_scroll_mode = 0
+
+[node name="DetailsBox" type="VBoxContainer" parent="Center/Panel/Margin/V/Body/RightCol/DetailsScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
 
 [node name="NameRow" type="HBoxContainer" parent="Center/Panel/Margin/V"]
 layout_mode = 2

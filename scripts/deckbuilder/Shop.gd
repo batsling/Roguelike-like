@@ -64,7 +64,9 @@ func _roll_inventory() -> void:
 			"purchased": false,
 		})
 
-	var card_pool: Array = Data.reward_card_pool()
+	# Card stock follows the run's chosen deck, like the HTML shop did
+	# (Random deck = unfiltered pool).
+	var card_pool: Array = Data.reward_card_pool(GameState.deck_reward_tag())
 	for _i in range(mini(2, card_pool.size())):
 		var idx: int = _rng.randi() % card_pool.size()
 		var picked: CardData = card_pool[idx]

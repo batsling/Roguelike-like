@@ -110,7 +110,9 @@ func test_gaper_on_death_table() -> void:
 	var gaper: ActionEnemyData = load("res://data/action_enemies/gaper.tres")
 	assert_not_null(gaper)
 	assert_eq(gaper.behavior, ActionEnemyData.BehaviorKind.WALKER)
-	assert_eq(Array(gaper.on_death_ids), [&"pacer", &"gusher"])
+	# on_death_ids is a PackedStringArray, so compare as Strings — GUT's deep
+	# compare is type-strict and treats &"pacer" != "pacer".
+	assert_eq(Array(gaper.on_death_ids), ["pacer", "gusher"])
 	assert_eq(Array(gaper.on_death_weights), [80, 20])
 	# A roll always returns one of the table entries.
 	var rng := RandomNumberGenerator.new()
@@ -147,7 +149,8 @@ func test_gusher_random_shots() -> void:
 
 func test_gusher_blood_gush_layer() -> void:
 	var gusher: ActionEnemyData = load("res://data/action_enemies/gusher.tres")
-	assert_eq(Array(gusher.layer_names), [&"body", &"gush"], "body + gush layers")
+	# layer_names is a PackedStringArray — String literals for GUT's type-strict compare.
+	assert_eq(Array(gusher.layer_names), ["body", "gush"], "body + gush layers")
 	# The gush layer plays a looping, non-directional spew geyser.
 	var spew: Dictionary = gusher.resolve_anim(&"gush", &"spew", &"vert")
 	assert_false(spew.is_empty(), "gush.spew animation resolves")
@@ -166,7 +169,8 @@ func test_roll_on_death_empty_when_no_table() -> void:
 
 func test_gaper_layers_and_directional_anims() -> void:
 	var g: ActionEnemyData = load("res://data/action_enemies/gaper.tres")
-	assert_eq(Array(g.layer_names), [&"body", &"head"], "body + head layers")
+	# layer_names is a PackedStringArray — String literals for GUT's type-strict compare.
+	assert_eq(Array(g.layer_names), ["body", "head"], "body + head layers")
 	assert_true(g.directional, "Gaper is directional")
 	# Facing-resolved clips exist for the body, both vert and side.
 	assert_false(g.resolve_anim(&"body", &"walk", &"vert").is_empty())

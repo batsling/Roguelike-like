@@ -4,6 +4,10 @@ extends Resource
 @export var id: StringName
 @export var display_name: String
 @export_multiline var description: String
+# The real roguelike this character comes from (the sheet's Game column,
+# e.g. "Slay the Spire"). Shown as a "From: <game>" line on character
+# select / Collection, like the HTML details panel. Purely informational.
+@export var source_game: String = ""
 
 # Starting stats
 @export var base_max_hp: int = 75

@@ -11,7 +11,7 @@ extends Control
 const MAP_PREVIEW_SCENE := preload("res://scenes/menu/MapPreviewModal.tscn")
 
 signal chose_start(start_id: StringName, amulet_id: StringName, start_type: int,
-		save_name: String, character_id: StringName)
+		save_name: String, character_id: StringName, deck_id: StringName)
 signal cancelled
 
 @onready var _amulet_label: Label = %AmuletLabel
@@ -23,13 +23,15 @@ var _amulet_id: StringName = &""
 var _options: Array = []          # Array of {start_id, type, score, path_len}
 var _save_name: String = ""
 var _character_id: StringName = &""
+var _deck_id: StringName = DeckCatalog.DEFAULT_DECK_ID
 
 func setup(amulet_id: StringName, options: Array, save_name: String,
-		character_id: StringName) -> void:
+		character_id: StringName, deck_id: StringName = DeckCatalog.DEFAULT_DECK_ID) -> void:
 	_amulet_id = amulet_id
 	_options = options
 	_save_name = save_name
 	_character_id = character_id
+	_deck_id = deck_id
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -245,7 +247,7 @@ func _open_preview(start_id: StringName) -> void:
 	_preview_layer.add_child(modal)
 
 func _on_choose(start_id: StringName, type_val: int) -> void:
-	emit_signal("chose_start", start_id, _amulet_id, type_val, _save_name, _character_id)
+	emit_signal("chose_start", start_id, _amulet_id, type_val, _save_name, _character_id, _deck_id)
 
 func _on_cancel() -> void:
 	emit_signal("cancelled")
