@@ -1134,10 +1134,10 @@ func _show_reward_modal() -> void:
 			_reward_modal.queue_free()
 			_reward_modal = null
 		_close(true))
-	# Scope the offered cards to the player's class (e.g. Ironclad sees
-	# ironclad-tagged cards) via the character's class tag. Empty tag (no class
-	# pool) falls back to the full reward pool inside reward_card_pool().
-	reward.setup(GameState.card_reward_tag())
+	# Scope the offered cards to the run's chosen DECK (e.g. the Ironclad deck
+	# offers ironclad-tagged cards regardless of character). The Random deck's
+	# empty tag falls back to the full reward pool inside reward_card_pool().
+	reward.setup(GameState.deck_reward_tag())
 
 func _decay_statuses(actor: CombatActor) -> void:
 	# do_grow = false: deckbuilder Bleed is attack-triggered and wiped each

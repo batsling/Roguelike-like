@@ -54,7 +54,7 @@ func _on_start_run() -> void:
 	modal.cancelled.connect(func(): modal.queue_free())
 	_modal_layer.add_child(modal)
 
-func _on_character_confirmed(character_id: StringName, save_name: String) -> void:
+func _on_character_confirmed(character_id: StringName, deck_id: StringName, save_name: String) -> void:
 	# Free the character-select modal first; we replace it with the
 	# choose-your-start panel.
 	for c in _modal_layer.get_children():
@@ -68,7 +68,7 @@ func _on_character_confirmed(character_id: StringName, save_name: String) -> voi
 		return
 
 	var modal: Node = CHOOSE_START_SCENE.instantiate()
-	modal.setup(pick.amulet_id, pick.options, save_name, character_id)
+	modal.setup(pick.amulet_id, pick.options, save_name, character_id, deck_id)
 	modal.chose_start.connect(_on_start_chosen)
 	modal.cancelled.connect(_on_start_cancelled)
 	_modal_layer.add_child(modal)
@@ -78,13 +78,13 @@ func _on_start_cancelled() -> void:
 		c.queue_free()
 
 func _on_start_chosen(start_id: StringName, amulet_id: StringName, start_type: int,
-		save_name: String, character_id: StringName) -> void:
+		save_name: String, character_id: StringName, deck_id: StringName) -> void:
 	for c in _modal_layer.get_children():
 		c.queue_free()
-	_begin_run(start_id, amulet_id, start_type, save_name, character_id)
+	_begin_run(start_id, amulet_id, start_type, save_name, character_id, deck_id)
 
 func _begin_run(start_id: StringName, amulet_id: StringName, start_type: int,
-		save_name: String, character_id: StringName) -> void:
+		save_name: String, character_id: StringName, deck_id: StringName) -> void:
 	var char_data: CharacterData = Data.get_character(character_id)
 	if char_data == null:
 		push_error("[MainMenu] character missing: %s" % character_id)
@@ -92,6 +92,7 @@ func _begin_run(start_id: StringName, amulet_id: StringName, start_type: int,
 
 	GameState.reset_run()
 	GameState.apply_character(char_data)
+	GameState.selected_deck = deck_id
 	GameState.save_name = save_name
 	GameState.start_game_id = start_id
 	GameState.amulet_game_id = amulet_id
@@ -100,7 +101,8 @@ func _begin_run(start_id: StringName, amulet_id: StringName, start_type: int,
 	# the per-type starting bonus on its first frame.
 	GameState.set_meta("pending_start_bonus", int(start_type))
 
-	GameLog.add("---- New run: %s ----" % char_data.display_name, Color(0.7, 0.9, 1.0))
+	GameLog.add("---- New run: %s (%s deck) ----" % [char_data.display_name,
+		DeckCatalog.display_name(deck_id)], Color(0.7, 0.9, 1.0))
 	var start_g := Data.get_game(start_id)
 	var amulet_g := Data.get_game(amulet_id)
 	if start_g != null and amulet_g != null:

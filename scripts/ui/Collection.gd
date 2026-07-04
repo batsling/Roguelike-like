@@ -1063,6 +1063,8 @@ func _show_character_detail(ch: CharacterData) -> void:
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(tr)
 	_detail_box.add_child(_label(ch.display_name, green, 18, true))
+	if ch.source_game != "":
+		_detail_box.add_child(_label("From: %s" % ch.source_game, Color(0.6, 0.6, 0.66), 11, false))
 	if ch.description != "":
 		_detail_box.add_child(_label(ch.description, Color(0.82, 0.82, 0.85), 12, false, true))
 	_detail_box.add_child(_detail_section("Base Stats"))
@@ -1090,6 +1092,19 @@ func _show_character_detail(ch: CharacterData) -> void:
 			var idd: ItemData = Data.get_item(iid)
 			inames.append(idd.display_name if idd != null else String(iid))
 		_detail_box.add_child(_label(", ".join(inames), Color(0.8, 0.85, 0.95), 11, false, true))
+	if ch.level_up_condition != "":
+		_detail_box.add_child(_detail_section("Level Up"))
+		_detail_box.add_child(_label(ch.level_up_condition, Color(0.8, 0.85, 0.95), 11, false, true))
+		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
+			_detail_box.add_child(_kv("Reward", ch.level_up_reward))
+	# Which decks this character has won a run with (GameStats.record_deck_win),
+	# mirroring the HTML collection's "Beaten With Deck" checklist.
+	_detail_box.add_child(_detail_section("Beaten With Deck"))
+	for deck in DeckCatalog.all():
+		var won: bool = GameStats.has_deck_win(ch.id, deck["id"])
+		_detail_box.add_child(_label(
+			"%s %s Deck" % ["✅" if won else "⬜", String(deck["name"])],
+			Color(0.45, 0.82, 0.45) if won else Color(0.53, 0.53, 0.58), 11, false))
 
 # ------------------------------------------------------------------
 # Cards tab

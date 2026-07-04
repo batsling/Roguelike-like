@@ -1028,6 +1028,9 @@ func _handle_victory_for(game_id: StringName) -> void:
 	if game_id == GameState.amulet_game_id:
 		GameState.phase = GameState.Phase.WIN
 		GameStats.record_amulet_win(game_id)
+		# A won run also checks off the (character, deck) pair for the
+		# "Beaten With Deck" checklist on character select / Collection.
+		GameStats.record_deck_win(GameState.character_id, GameState.selected_deck)
 		_show_rate_modal(game_id, _show_win_overlay)
 		return
 

@@ -9,6 +9,7 @@ script = ExtResource("1_char")
 id = &"silent"
 display_name = "Silent"
 description = "A deadly huntress from the foglands. Eradicates foes with daggers and poisons."
+source_game = "Slay the Spire"
 base_max_hp = 70
 base_strength = 0
 base_dexterity = 0
