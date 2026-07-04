@@ -16,7 +16,10 @@ extends Resource
 #
 # === The vocabulary (mirrors the Action archetypes, measured in tiles) ===
 #   poke      single tile straight ahead, in range          -> family "single"
-#   swing     3-tile arc in front (arc=360 = ring)           -> family "front_arc"
+#   swing     melee arc; size sets the wrap: small = the 3   -> family "front_arc"
+#             tiles in front, medium = those 3 + the 2 side
+#             tiles, large = the full 8-tile ring (the old
+#             "arc=360" spelling maps to large)
 #   smash     directional forward blast, size = depth         -> family "blast"
 #   projectile line outward (spread = 3-wide, pierce = thru)  -> family "line"
 #   beam      full-length line to the board edge, walls block  -> family "line"
@@ -72,6 +75,10 @@ const ARCHETYPES: Dictionary = {
 		"target": "random"},
 	"bounce":     {"family": "auto",      "size": "",       "aim": "auto",
 		"target": "random"},
+	# boomerang (Sword Boomerang): auto-resolves like bounce — the thrown blade
+	# picks its own random target per hit (dmg xN + Indiscriminate), any range.
+	"boomerang":  {"family": "auto",      "size": "",       "aim": "auto",
+		"target": "random"},
 }
 
 # The 8 king-move neighbour offsets (used for arc=360 rings and disc fills).
@@ -121,8 +128,18 @@ func resolve(shape_name: StringName, params: Dictionary = {}) -> Dictionary:
 		"single":
 			spec["range_tiles"] = _lookup(reach_tiles, size_word, reach_tiles["short"])
 		"front_arc":
-			# Swing is always a melee arc on the adjacent ring; size is cosmetic.
+			# Swing is always a melee arc on the adjacent ring; the size word
+			# picks how far it wraps: small = the 3 front tiles, medium = those
+			# 3 + the 2 side tiles, large = the full 8-tile ring. The legacy
+			# arc=360 param is an alias for large.
 			spec["range_tiles"] = 1
+			var swing_size: String = "small" if size_word == "short" else size_word
+			if not radius_tiles.has(swing_size):
+				swing_size = "medium"
+			if spec["arc360"]:
+				swing_size = "large"
+			spec["swing_size"] = swing_size
+			spec["arc360"] = swing_size == "large"
 			spec["rotates"] = not spec["arc360"]
 		"blast":
 			# Size sets the forward depth of the cluster; aim sets direction.
@@ -200,6 +217,7 @@ func footprint(spec: Dictionary, origin: Vector2i, aim: Vector2i, map = null, st
 			_add(out, seen, aim, map)
 		"front_arc":
 			if bool(spec.get("arc360", false)):
+				# Large swing: the full all-around ring.
 				for off in RING8:
 					_add(out, seen, origin + off, map)
 			else:
@@ -209,6 +227,10 @@ func footprint(spec: Dictionary, origin: Vector2i, aim: Vector2i, map = null, st
 				_add(out, seen, origin + f, map)
 				_add(out, seen, origin + f + l, map)
 				_add(out, seen, origin + f - l, map)
+				# Medium swing wraps past the front onto the two side tiles.
+				if String(spec.get("swing_size", "medium")) == "medium":
+					_add(out, seen, origin + l, map)
+					_add(out, seen, origin - l, map)
 		"blast":
 			var d2: Vector2i = _dir8(origin, aim)
 			var f2: Vector2i = d2

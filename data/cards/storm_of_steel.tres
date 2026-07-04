@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_storm_of_steel"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/StormOfShield.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"storm_of_steel"
+display_name = "Storm of Steel"
+type = 1
+rarity = 3
+cost = 1
+description = "Discard your Hand, then Conjure X Shivs where X was the amount of cards that were Discarded."
+effects = [{"type": "discard", "all": true}, {"type": "conjure", "card_id": "shiv", "destination": "hand", "count": 1, "count_from": "discarded"}]
+tags = PackedStringArray("silent", "discard", "offense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Discard your Hand, then Conjure X Upgraded Shivs where X was the amount of cards that were Discarded."
+upgraded_cost = -999
+upgraded_effects = [{"type": "discard", "all": true}, {"type": "conjure", "card_id": "shiv+", "destination": "hand", "count": 1, "count_from": "discarded"}]
+image = ExtResource("2_img")

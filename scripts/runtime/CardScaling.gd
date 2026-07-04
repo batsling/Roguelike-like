@@ -76,6 +76,14 @@ static func scale_text(text: String, player, rich: bool = true, card: CardData =
 		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), power, weak)
 		v = CardScaling._incoming(v, tgt_vulnerable, tgt_bruise, tgt_brace, true)
 		return "Deal %sx%s Dmg" % [CardScaling._num(v, base, COL_DMG_UP, rich), m.get_string(2)])
+	# X-cost repeat — "Deal NxX Dmg" (Whirlwind/Skewer). The per-hit N scales
+	# like any other attack number; the X stays a literal (it's the energy
+	# spent at play time, unknowable in a preview).
+	out = _sub(out, "Deal (\\d+)[xX]X Dmg", func(m):
+		var base := int(m.get_string(1))
+		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), power, weak)
+		v = CardScaling._incoming(v, tgt_vulnerable, tgt_bruise, tgt_brace, true)
+		return "Deal %sxX Dmg" % CardScaling._num(v, base, COL_DMG_UP, rich))
 	out = _sub(out, "Deal (\\d+) Dmg", func(m):
 		var base := int(m.get_string(1))
 		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), power, weak)

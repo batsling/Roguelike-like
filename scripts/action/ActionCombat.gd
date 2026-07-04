@@ -212,6 +212,9 @@ var _tr: ActionTranslation
 # slot always runs; `draw` effects spawn temporary extra slots for a burst.
 var auto_draw: Array = []                            # Array of CardData (draw pile)
 var auto_discard: Array = []                         # Array of CardData (discard pile)
+# Cards the last `discard:all` (Storm of Steel) collapsed this play; read back
+# by conjure `count_from: "discarded"` via the effect ctx scene.
+var last_discard_count: int = 0
 var auto_slots: Array = []                           # Array of Dictionary {card, cooldown, max_cooldown, ttl}
 # draw -> temporary auto-slot lifetime, and the discard fallback cooldown
 # penalty, both live in ActionTranslation (_tr.draw_temp_slot_secs /
@@ -2366,10 +2369,17 @@ func _apply_utility_effects(card: CardData) -> void:
 					"value": int(raw.get("value", 0)),
 				})
 			"conjure":
+				# count_from: "discarded" (Storm of Steel) — one per card the
+				# preceding discard:all collapsed. Zero collapsed = no conjures.
+				var count: int = maxi(1, int(raw.get("count", 1)))
+				if String(raw.get("count_from", "")) == "discarded":
+					count = last_discard_count
+					if count <= 0:
+						continue
 				conjure_card(
 					StringName(String(raw.get("card_id", "self"))),
 					String(raw.get("destination", "discard")),
-					maxi(1, int(raw.get("count", 1))),
+					count,
 					card,
 					bool(raw.get("upgraded", false)),
 				)
@@ -2437,7 +2447,14 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 				draw_cards(int(effect.get("value", 1)))
 			"discard":
 				# Mirror of draw: collapses a temporary auto-slot.
-				discard_cards(int(effect.get("value", 1)))
+				# `all` (Storm of Steel) collapses every temp slot.
+				if bool(effect.get("all", false)):
+					discard_hand()
+				else:
+					discard_cards(int(effect.get("value", 1)))
+			"topdeck":
+				# Warcry: auto-pick a card back onto the top of the deck.
+				topdeck_cards(int(effect.get("value", 1)))
 			"gain_energy":
 				gain_energy(int(effect.get("value", 1)))
 			"lose_energy":
@@ -2550,7 +2567,12 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 			"draw":
 				draw_cards(int(effect.get("value", 1)))
 			"discard":
-				discard_cards(int(effect.get("value", 1)))
+				if bool(effect.get("all", false)):
+					discard_hand()
+				else:
+					discard_cards(int(effect.get("value", 1)))
+			"topdeck":
+				topdeck_cards(int(effect.get("value", 1)))
 			"gain_energy":
 				gain_energy(int(effect.get("value", 1)))
 			"lose_energy":
@@ -2599,6 +2621,23 @@ func _attack_volleys(effects: Array) -> int:
 			best = maxi(best, int(e.get("hits", 1)))
 	return best
 
+# True when any dmg effect repeats per energy spent (X-cost: Whirlwind/Skewer).
+func _effects_use_x(effects: Array) -> bool:
+	for e in effects:
+		if String(e.get("type", "")) == "dmg" and String(e.get("hits_from", "")) == "energy":
+			return true
+	return false
+
+# The action-mode X for an X-cost cast: 1 + the remaining Haste seconds, and
+# the cast CONSUMES the Haste window (energy -> Haste is the action translation
+# of the energy pool, so an X card drains it just like it drains energy).
+func _action_x_value() -> int:
+	var x: int = 1 + int(floor(maxf(0.0, _haste_remaining)))
+	if _haste_remaining > 0.0:
+		_haste_remaining = 0.0
+		GameLog.add("X = %d (Haste spent)." % x, Color(0.7, 1.0, 0.85))
+	return x
+
 # Apply each enemy effect ONCE to every actor in hit_list (volleys handle
 # repetition). Reuses the shared damage/status math so Power/Weak/Vulnerable,
 # blocks, Bleed windows and Persistence all behave like the other modes.
@@ -2632,6 +2671,16 @@ func _deliver_attack(card: CardData, aim_dir: Vector2, is_auto: bool) -> void:
 	_apply_self_effects(card)
 	var effects: Array = _enemy_effects(card)
 	var volleys: int = _attack_volleys(effects)
+	# X-cost cards (Whirlwind / Skewer, hits_from: "energy"): energy is Haste
+	# time in action, so X = 1 + the remaining Haste seconds, and casting
+	# consumes the window — the action mirror of "spend all your energy".
+	# Without Haste up the card still swings once.
+	if _effects_use_x(effects):
+		volleys = _action_x_value()
+	# Hop-delivered families consume the dmg repeat as their hop count
+	# (_deliver_bounce / _deliver_boomerang), so they never volley on top of it.
+	if String(spec.get("family", "")) in ["bounce", "boomerang"]:
+		volleys = 1
 	_deliver_attack_once(card, effects, spec, aim_dir, is_auto)
 	# Queue the remaining volleys, paced like the legacy multi-hit. Random-target
 	# families (smite/auto_aoe) re-pick at fire time, so a stored aim is harmless.
@@ -2671,6 +2720,8 @@ func _deliver_attack_once(card: CardData, effects: Array, spec: Dictionary, aim_
 			_spawn_attack_bolts(card, spec, aim_dir, false)
 		"bounce":
 			_deliver_bounce(card, effects, spec)
+		"boomerang":
+			_deliver_boomerang(card, effects, spec)
 		_:
 			_deliver_cone(card, effects, spec, aim_dir)
 
@@ -2833,6 +2884,40 @@ func _deliver_bounce(card: CardData, effects: Array, _spec: Dictionary) -> void:
 		})
 		prev = target.pos
 
+# boomerang (Sword Boomerang): a thrown spinning blade that visits N random
+# enemies — N = the dmg repeat, like bounce — then flies back to the player.
+# Each visit applies the card's effects to that enemy; the return leg is a
+# visual-only hop so the blade reads as coming home.
+func _deliver_boomerang(card: CardData, effects: Array, _spec: Dictionary) -> void:
+	var count: int = _max_effect_hits(effects)
+	var prev: Vector2 = player_pos
+	var tint: Color = _attack_color_for(card, _atk.smear_color)
+	var hops := 0
+	for b in range(count):
+		var target: Dictionary = _pick_target("random")
+		if target.is_empty():
+			break
+		_pending_hits.append({
+			"time": maxf(0.001, _atk.bounce_interval * float(b)),
+			"mode": "boomerang_hop",
+			"card": card,
+			"effects": effects,
+			"inst": target,
+			"from": prev,
+			"color": tint,
+		})
+		prev = target.pos
+		hops += 1
+	if hops > 0:
+		# The return leg: fly back from the last enemy to the player. No hit —
+		# the pending processor re-reads the live player_pos at fire time.
+		_pending_hits.append({
+			"time": maxf(0.001, _atk.bounce_interval * float(hops)),
+			"mode": "boomerang_return",
+			"from": prev,
+			"color": tint,
+		})
+
 # Highest repeat across a card's enemy effects — dmg `hits` (xN volleys) or a
 # status `hits` (`times=N`). Drives the bounce hop count.
 func _max_effect_hits(effects: Array) -> int:
@@ -2932,6 +3017,15 @@ func _show_disc(center: Vector2, radius: float) -> void:
 
 func _show_bounce(from: Vector2, to: Vector2, col: Color) -> void:
 	_swing_kind = "bounce"
+	_bounce_from = from
+	_bounce_to = to
+	_swing_color = col
+	_ability_swing_remaining = _smear_dur()
+
+# Boomerang flight leg: same from/to state as bounce, drawn as a spinning
+# sword instead of an orb (see _draw_attack_smear's "boomerang" arm).
+func _show_boomerang(from: Vector2, to: Vector2, col: Color) -> void:
+	_swing_kind = "boomerang"
 	_bounce_from = from
 	_bounce_to = to
 	_swing_color = col
@@ -3088,6 +3182,16 @@ func _process_pending_hits(delta: float) -> void:
 					if binst != null and binst.actor != null and binst.actor.is_alive():
 						_show_bounce(p.get("from", player_pos), binst.pos, p.get("color", Color.WHITE))
 						_apply_enemy_effects(p.card, p.effects, [binst])
+				"boomerang_hop":
+					# The spinning blade reached this enemy — strike it and show the
+					# flight leg (sword visual instead of the bounce orb).
+					var oinst = p.get("inst")
+					if oinst != null and oinst.actor != null and oinst.actor.is_alive():
+						_show_boomerang(p.get("from", player_pos), oinst.pos, p.get("color", Color.WHITE))
+						_apply_enemy_effects(p.card, p.effects, [oinst])
+				"boomerang_return":
+					# Visual-only: the blade flies home to wherever the player is now.
+					_show_boomerang(p.get("from", player_pos), player_pos, p.get("color", Color.WHITE))
 			_pending_hits.remove_at(i)
 		else:
 			i += 1
@@ -3170,6 +3274,59 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 		GameLog.add("Discard: +%.1fs base cooldown." % (_tr.discard_base_penalty * penalized),
 			Color(1.0, 0.7, 0.5))
 
+# Warcry's action translation: "put a card from your hand on top of the draw
+# pile" auto-picks — collapse a temporary auto-slot and put its card on TOP of
+# the auto draw pile (it fires again soon), or, with no temp slots up, pull a
+# random discard back on top. The player never browses piles mid-fight, so
+# there's no picker here (deckbuilder/strategy open the CardPickerModal).
+func topdeck_cards(n: int, _source_card = null, _random: bool = false) -> void:
+	if n <= 0:
+		return
+	var moved := 0
+	for _i in range(n):
+		var idx := -1
+		for j in range(auto_slots.size()):
+			if auto_slots[j].ttl != INF:
+				idx = j
+				break
+		if idx >= 0:
+			var slot: Dictionary = auto_slots[idx]
+			if slot.card != null:
+				auto_draw.append(slot.card)   # _auto_draw_one pops the back = top
+				moved += 1
+			auto_slots.remove_at(idx)
+			continue
+		if not auto_discard.is_empty():
+			var pick_idx: int = _rng.randi_range(0, auto_discard.size() - 1)
+			var card: CardData = auto_discard[pick_idx]
+			auto_discard.remove_at(pick_idx)
+			auto_draw.append(card)
+			moved += 1
+	if moved > 0:
+		GameLog.add("Topdeck: %d card%s back on top of the deck." % [
+			moved, "s" if moved > 1 else ""], Color(0.6, 1.0, 0.7))
+
+# Storm of Steel's action translation: "discard your hand" collapses every
+# temporary auto-slot into the discard pile and records how many, so a
+# following conjure `count_from: "discarded"` mints that many Shivs.
+func discard_hand(_source_card = null) -> int:
+	var removed := 0
+	var i := 0
+	while i < auto_slots.size():
+		var slot: Dictionary = auto_slots[i]
+		if slot.ttl == INF:
+			i += 1
+			continue
+		if slot.card != null:
+			auto_discard.append(slot.card)
+		auto_slots.remove_at(i)
+		removed += 1
+	last_discard_count = removed
+	if removed > 0:
+		GameLog.add("Discarded %d auto-cast card%s." % [
+			removed, "s" if removed > 1 else ""], Color(1.0, 0.7, 0.5))
+	return removed
+
 # Extend the permanent (ttl == INF) auto-slot's cooldown. Used as the
 # discard fallback when there are no temporary slots to collapse.
 func _penalize_base_slot() -> void:
@@ -3212,7 +3369,13 @@ func _apply_self_effects(card: CardData) -> void:
 			draw_cards(int(effect.get("value", 1)))
 			continue
 		if t == "discard":
-			discard_cards(int(effect.get("value", 1)))
+			if bool(effect.get("all", false)):
+				discard_hand()          # Storm of Steel: collapse every temp slot
+			else:
+				discard_cards(int(effect.get("value", 1)))
+			continue
+		if t == "topdeck":
+			topdeck_cards(int(effect.get("value", 1)))
 			continue
 		if t == "gain_energy":
 			gain_energy(int(effect.get("value", 1)))
@@ -4564,6 +4727,30 @@ func _draw_attack_smear() -> void:
 			draw_line(_bounce_from, _bounce_to, Color(col.r, col.g, col.b, col.a * 0.5), 3.0)
 			draw_circle(_bounce_to, r, Color(col.r, col.g, col.b, col.a * 0.85))
 			draw_circle(_bounce_to, r * 1.6, Color(col.r, col.g, col.b, col.a * 0.3))
+		"boomerang":
+			_draw_boomerang(col)
+
+# The boomerang: a sword gliding along the current flight leg, spinning as it
+# travels, with a faint path line behind it. Progress runs over the smear
+# duration so each hop reads as one quick throw.
+func _draw_boomerang(col: Color) -> void:
+	var total: float = maxf(0.01, _smear_dur())
+	var progress: float = clampf(1.0 - _ability_swing_remaining / total, 0.0, 1.0)
+	var pos: Vector2 = _bounce_from.lerp(_bounce_to, progress)
+	# Flight path (faint) up to the blade's current position.
+	draw_line(_bounce_from, pos, Color(col.r, col.g, col.b, col.a * 0.35), 3.0)
+	# The spinning blade: a bright sword line rotating around its grip, plus a
+	# short cross-guard so it reads as a sword rather than a stick.
+	var spin: float = progress * TAU * 2.0
+	var blade_len: float = 26.0
+	var dir: Vector2 = Vector2.RIGHT.rotated(spin)
+	var tip: Vector2 = pos + dir * blade_len
+	var hilt: Vector2 = pos - dir * blade_len * 0.35
+	draw_line(hilt, tip, Color(1, 1, 1, col.a), 4.0)
+	draw_line(hilt, tip, Color(col.r, col.g, col.b, col.a * 0.8), 2.0)
+	var guard: Vector2 = Vector2(-dir.y, dir.x) * 8.0
+	var guard_base: Vector2 = pos + dir * blade_len * 0.1
+	draw_line(guard_base - guard, guard_base + guard, Color(1, 1, 1, col.a * 0.9), 3.0)
 
 # The sweep_beam: a full-length beam line panning across its arc over the swing
 # duration, leaving a faint wedge showing the swept area plus a short motion-blur

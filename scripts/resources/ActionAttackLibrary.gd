@@ -13,7 +13,9 @@ extends Resource
 #
 # === The vocabulary ===
 #   poke      narrow short thrust (slim cone)            -> family "cone"
-#   swing     arc swipe at melee reach (arc=360 = ring)  -> family "cone"
+#   swing     arc swipe at melee reach; the size word    -> family "cone"
+#             sets the wrap (small = front, medium =
+#             front + flanks, large = full 360 ring)
 #   smash     filled AOE disc at a point in front        -> family "disc"
 #   nova      filled AOE disc centred on the player      -> family "disc_self"
 #   projectile travelling body; pierce/spread/crescent   -> family "projectile"
@@ -43,7 +45,15 @@ extends Resource
 	"small": 80.0, "medium": 140.0, "large": 215.0,
 }
 
-# Default swing arc (degrees) and the narrower poke arc.
+# Swing arcs by size word. A swing's size sets its wrap as well as its reach:
+#   small  — just the space in front (the strategy grid's 3 front tiles)
+#   medium — front plus the two flanks (the grid's 3 front + 2 side tiles)
+#   large  — a full all-around ring (replaces the old "Swing, arc=360" spelling)
+# An explicit arc=N param still overrides. "short" aliases small like reach does.
+@export var swing_arc_by_size: Dictionary = {
+	"short": 110.0, "small": 110.0, "medium": 200.0, "large": 360.0,
+}
+# Default swing arc (fallback for unknown size words) and the narrower poke arc.
 @export var swing_arc_deg: float = 110.0
 @export var poke_arc_deg: float = 34.0
 # Arc the sweep_beam travels across as it pans left to right.
@@ -93,6 +103,10 @@ const ARCHETYPES: Dictionary = {
 	# effects on each landing. Bounce count comes from the effect repeat (`times`
 	# / dmg `xN`); the visual is a travelling orb tinted by the card's element.
 	"bounce":     {"family": "bounce",     "size": "", "target": "random"},
+	# boomerang (Sword Boomerang): a thrown spinning blade that visits N random
+	# enemies (N = the dmg effect's xN repeat, like bounce) and then flies back
+	# to the player. Same hop resolution as bounce; the return leg is visual.
+	"boomerang":  {"family": "boomerang",  "size": "", "target": "random"},
 }
 
 func _size_word(card_params: Dictionary, default_size: String) -> String:
@@ -140,7 +154,11 @@ func resolve(card: CardData) -> Dictionary:
 	match family:
 		"cone":
 			spec["reach_px"] = _lookup_px(melee_reach_px, size_word, melee_reach_px["medium"])
-			var default_arc: float = poke_arc_deg if shape == "poke" else swing_arc_deg
+			# Swings wrap wider as they grow: the size word picks the arc
+			# (small = front, medium = front + flanks, large = full ring).
+			# Pokes stay a narrow thrust; an explicit arc= always wins.
+			var default_arc: float = poke_arc_deg if shape == "poke" \
+				else _lookup_px(swing_arc_by_size, size_word, swing_arc_deg)
 			spec["arc_deg"] = float(p.get("arc", default_arc))
 		"disc", "disc_self", "lob", "auto_aoe":
 			spec["radius_px"] = _lookup_px(radius_px, size_word, radius_px["medium"])

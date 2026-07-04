@@ -197,7 +197,9 @@ func refresh() -> void:
 	# reads as the plain cost in shop / rest / collection. Tint it red while the
 	# surcharge is active so the penalty is visible.
 	var fear_extra: int = Stats.fear_card_surcharge(GameState.combat_player, card)
-	_cost_label.text = str(card.get_cost() + fear_extra)
+	# X-cost cards (cost -1, Whirlwind/Skewer) read "X" — they spend everything,
+	# so the Fear surcharge has nothing extra to add.
+	_cost_label.text = "X" if card.get_cost() < 0 else str(card.get_cost() + fear_extra)
 	_cost_label.add_theme_color_override(
 		"font_color", Color(1.0, 0.55, 0.5) if fear_extra > 0 else Color.WHITE)
 	# In combat, fold the player's live Power / Arcane / Defense / Persistence

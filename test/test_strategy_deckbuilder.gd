@@ -236,3 +236,57 @@ func test_retain_card_stays_in_hand_at_end_of_turn() -> void:
 	bv._on_unit_turn_ended(p)
 	assert_true(bv.hand.has(inst), "a Retain card is kept in hand across the turn boundary")
 	assert_false(bv.discard_pile.has(inst), "a Retain card is not discarded")
+
+# --- Picker-backed hand effects (Warcry / Acrobatics / Storm of Steel) ------
+# Strategy now mirrors the deckbuilder's contract: player-choice picks open
+# the shared CardPickerModal; `random` keeps the silent engine pick.
+
+func test_topdeck_random_puts_a_hand_card_on_top_of_the_draw_pile() -> void:
+	var p := _player(); var e := _enemy(); _wire(p, e)
+	var strike := _mk(&"strike_ironclad")
+	bv.hand = [strike]
+	bv.draw_pile = [_mk(&"defend_ironclad")]
+	bv.topdeck_cards(1, null, true)
+	assert_eq(bv.hand.size(), 0, "the card left hand")
+	assert_eq(bv.draw_pile.back(), strike, "…and sits on TOP of the draw pile")
+	bv.draw_cards(1)
+	assert_eq(bv.hand[0], strike, "so it is the very next draw (Warcry)")
+
+func test_topdeck_player_choice_opens_the_picker() -> void:
+	var p := _player(); var e := _enemy(); _wire(p, e)
+	bv.hand = [_mk(&"strike_ironclad"), _mk(&"defend_ironclad")]
+	bv.topdeck_cards(1, null, false)
+	assert_not_null(bv.get_node_or_null("CardPickerModal"),
+		"player-choice topdeck opens the CardPickerModal")
+
+func test_discard_player_choice_opens_the_picker() -> void:
+	var p := _player(); var e := _enemy(); _wire(p, e)
+	bv.hand = [_mk(&"strike_ironclad"), _mk(&"defend_ironclad")]
+	bv.discard_cards(1, null, false)
+	assert_not_null(bv.get_node_or_null("CardPickerModal"),
+		"player-choice discard opens the CardPickerModal (Acrobatics)")
+	assert_eq(bv.hand.size(), 2, "nothing moves until the player confirms")
+
+func test_discard_random_still_picks_silently() -> void:
+	var p := _player(); var e := _enemy(); _wire(p, e)
+	bv.hand = [_mk(&"strike_ironclad"), _mk(&"defend_ironclad")]
+	bv.discard_cards(1, null, true)
+	assert_null(bv.get_node_or_null("CardPickerModal"), "random discard needs no picker")
+	assert_eq(bv.hand.size(), 1)
+	assert_eq(bv.discard_pile.size(), 1)
+
+func test_discard_hand_records_count_for_storm_of_steel() -> void:
+	var p := _player(); var e := _enemy(); _wire(p, e)
+	var storm := _mk(&"storm_of_steel")
+	bv.hand = [storm, _mk(&"strike_ironclad"), _mk(&"defend_ironclad")]
+	var n: int = bv.discard_hand(storm)
+	assert_eq(n, 2, "discards everything but the played card")
+	assert_eq(bv.last_discard_count, 2, "tally recorded for conjure count_from")
+	assert_true(bv.hand.has(storm), "the played card itself stays out of the pile")
+	assert_eq(bv.discard_pile.size(), 2)
+
+func test_x_cost_card_spends_all_energy_in_strategy() -> void:
+	var p := _player(); var e := _enemy(); _wire(p, e)
+	bv.energy = 3
+	var whirlwind := _mk(&"whirlwind")
+	assert_eq(bv._card_cost(whirlwind), 3, "X-cost reads the whole pool")

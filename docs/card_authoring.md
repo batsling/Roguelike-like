@@ -81,6 +81,8 @@ in `Stats.gd`'s addon block — one switch arm per addon name.
 | Addon | Behavior |
 |---|---|
 | `Fishing Weight` | `+1` dmg per `3 Common`, `2 Uncommon`, or `1 Rare` fish in the loot inventory. Stub returns 0 until fish loot lands (see `Stats._fishing_weight_bonus`); the rest of the pipeline is wired. |
+| `Lifesteal` | Stamps `lifesteal: true` on the card's dmg effects (effect_flag hook); every mode's `deal_damage` heals the attacker for the unblocked damage dealt. Reaper. |
+| `Indiscriminate` | Re-rolls a random enemy per hit/application and skips the target picker. Pairs with dmg `xN` (Sword Boomerang) or `inflict ... times=N` (Bouncing Flask). |
 
 To ship a new addon: add a row to `addonsnew`, add a switch arm to
 `Stats.addon_damage_bonus` (or a sibling function for non-damage
@@ -127,8 +129,9 @@ Semicolon-delimited list of effect lines. Each line is
 | `gain` | `STAT:VALUE` | Player gains the stat (block, power, defense, dodge, …). | `{type: "block"/"status", value, stacks, status, target: "self"}` |
 | `inflict` | `STATUS:STACKS[:cleave]` | Apply a debuff to the targeted enemy (or all enemies with `cleave`). | `{type: "status", status, stacks, target: "enemy"/"all_enemies"}` |
 | `draw` | `N` | Draw N cards. In Action mode this instead chips a random ability cooldown by 25% per N. In Strategy, reduces a random ability CD by N. | `{type: "draw", value: N}` |
-| `discard` | `N[:random]` | Mirror of `draw`. Deckbuilder: pick N from hand via the CardPickerModal (default — player chooses, like Acrobatics). Append `:random` for the engine-picked random variant (All-Out Attack). Always excludes the played card. Action: +25% of max CD on the lowest-cooldown ability, per N. Strategy: +N on the lowest current CD. | `{type: "discard", value: N, random?: bool}` |
-| `exhaust` | `N[:random]` | Deckbuilder mirror of `discard` but routes picks to the exhaust pile. Same player-choice default and `:random` flag. No-op in action/strategy. | `{type: "exhaust", value: N, random?: bool}` |
+| `discard` | `N[:random]` \| `all` | Mirror of `draw`. Deckbuilder/Strategy: pick N from hand via the CardPickerModal (default — player chooses, like Acrobatics). Append `:random` for the engine-picked random variant (All-Out Attack). Always excludes the played card. `discard:all` (Storm of Steel) discards the whole hand with no picker and records the count for `count=discarded`. Action: collapses temporary auto-slots (`all` collapses every one). | `{type: "discard", value: N, random?: bool}` / `{type: "discard", all: true}` |
+| `exhaust` | `N[:random]` | Deckbuilder/Strategy mirror of `discard` but routes picks to the exhaust pile. Same player-choice default and `:random` flag. No-op in action. | `{type: "exhaust", value: N, random?: bool}` |
+| `topdeck` | `N[:random]` | Put N cards from hand on TOP of the draw pile (Warcry). Deckbuilder/Strategy open the CardPickerModal by default; `:random` skips it. Action auto-picks: a temporary auto-slot's card goes back on top of the auto draw pile (or a random discard when no temp slots are up). | `{type: "topdeck", value: N, random?: bool}` |
 | `recall` | `<FILTER>[:from=PILE][:to=PILE]` | Deckbuilder: move (not copy) every card in the source pile matching `FILTER` into the destination pile. `FILTER` today is `cost=N`; defaults are `from=discard`, `to=hand` (All for One). No-op in action/strategy. | `{type: "recall", from: PILE, to: PILE, filter: {…}}` |
 | `upgrade_hand` | `N\|all[:random]` | Deckbuilder: upgrade in-place. `upgrade_hand:1` opens the picker so the player chooses (Armaments); `upgrade_hand:all` upgrades every eligible card in hand silently (Armaments+). Append `:random` to skip the picker for the N form. Skips cards that are already upgraded or have `can_upgrade = false`. No-op in action/strategy. | `{type: "upgrade_hand", value: N\|"all", random?: bool}` |
 | `boost_cards` | `<MATCH>:<STAT>:<VALUE>` | Persistent in-combat modifier. Every later card matching `MATCH` resolves with `STAT + VALUE`. `MATCH` is exactly one of `tag=X` / `type=X` / `id=X`. `STAT` is `dmg` or `block`. Deckbuilder only today. | `{type: "boost_cards", match_tag/match_type/match_id, stat, value}` |
@@ -140,7 +143,7 @@ Semicolon-delimited list of effect lines. Each line is
 | `gain_gold` | `N` | Award N gold (rare on cards). | `{type: "gain_gold", value: N}` |
 | `lose_hp` | `VALUE` | Pay HP as a cost. | `{type: "lose_hp", value}` |
 | `exhaust_self` | (none) | Exhaust the played card. Redundant if Keywords has `Exhaust`. | `{type: "exhaust_self"}` |
-| `conjure` | `CARD_ID:DESTINATION[:COUNT]` | Create COUNT copies of CARD_ID into the named pile. `CARD_ID` of `self` means "this card" and inherits its upgrade state; append `+` (e.g. `shiv+`) to force the upgraded form of a fixed card. `DESTINATION` is `hand` / `draw` / `discard`. COUNT defaults to 1. | `{type: "conjure", card_id, destination, count, upgraded?}` |
+| `conjure` | `CARD_ID:DESTINATION[:COUNT\|count=discarded]` | Create COUNT copies of CARD_ID into the named pile. `CARD_ID` of `self` means "this card" and inherits its upgrade state; append `+` (e.g. `shiv+`) to force the upgraded form of a fixed card. `DESTINATION` is `hand` / `draw` / `discard`. COUNT defaults to 1. `count=discarded` (Storm of Steel) conjures one per card the preceding `discard:all` sent away. | `{type: "conjure", card_id, destination, count, upgraded?, count_from?}` |
 | `power_multiplier` | `N` | Multiplies the Power stat's contribution to this card's damage by N. Applies to the preceding `dmg:` lines on the same row. | Added as `power_multiplier: N` on each `dmg` effect. |
 | `chance` | `PCT:<INNER_VERB>:<INNER_ARGS>` | Roll PCT% on the shared luck-modified RNG (Stats.roll_chance_with_luck — every point of Luck adds a 10% advantage roll, mirroring how events roll). On success, dispatch the inner effect through the same EffectSystem with the same ctx. Inner can be any verb. Bag o' Glitter: `chance:10:exhaust_self`. | `{type: "chance", percent: N, effect: {…inner…}}` |
 
@@ -150,6 +153,8 @@ Semicolon-delimited list of effect lines. Each line is
 
 - `dmg:6:melee` — Strike
 - `dmg:5x2:melee` — Twin Strike (resolves twice)
+- `dmg:5xX:melee:cleave` — Whirlwind (X-cost repeat: resolves once per energy
+  spent on the play; stored as `hits_from: "energy"`. See X-cost below.)
 - `dmg:4:ranged:cleave` — Thunderclap (ranged + `target: all_enemies`)
 - `dmg:14:melee; power_multiplier:3` — Heavy Blade (Power counts triple)
 - `dmg:8:melee:cleave` — Cleave (melee + all_enemies)
@@ -157,6 +162,23 @@ Semicolon-delimited list of effect lines. Each line is
   source; `block` = deal damage equal to the attacker's current Block. Stored
   as `value_from: "block"`, resolved at hit time in every mode so Power/Weak/
   Vulnerable still layer on top.)
+
+### X-cost cards (Whirlwind / Skewer)
+
+Put a literal `X` in the Cost column (`cost = -1` in the `.tres`) and write the
+repeat as `dmg:NxX`. Playing the card spends **all remaining energy**, and each
+`hits_from: "energy"` dmg line resolves once per point spent:
+
+- **Deckbuilder** — X = the energy pool at play time; the pool drops to 0.
+  Playing at 0 energy is legal and swings zero times.
+- **Strategy** — same rule against the tactical energy pool.
+- **Action** — energy is Haste time there, so X = 1 + the remaining Haste
+  seconds, and the cast consumes the Haste window. Without Haste up the card
+  still swings once; chain it after a `gain_energy` card for the big X.
+
+The upgrade form just bumps the per-hit value (`dmg:8xX`). Cooldown-wise the
+action/strategy formula already treats X-cost as cost 1
+(see `AbilityCooldownConfig`).
 
 ### Repeating an inflict (`times=N`) + random targeting
 
@@ -236,14 +258,16 @@ without any extra work.
 Outside the deckbuilder (action / strategy) the effect no-ops because
 there are no piles to add to.
 
-## Picker modal (Discard / Exhaust / Upgrade / Recall)
+## Picker modal (Discard / Exhaust / Upgrade / Topdeck / Recall)
 
 `CardPickerModal` is the shared mid-cast modal that opens whenever a
 card asks the player to choose from a pile. One reusable widget
 backs every "choose N from a set" effect: Acrobatics' discard,
-Armaments' upgrade, future Exhume / Headbutt / Wraith Form picks,
-etc. Deckbuilder-only — action and strategy silently no-op because
-there are no piles to pick from.
+Armaments' upgrade, Warcry's topdeck, future Exhume / Headbutt /
+Wraith Form picks, etc. Deckbuilder **and Strategy** — the tactical
+grid runs the same pile model and opens the same modal. Action
+auto-picks instead (its "hand" is the live auto-slot bar, so there's
+nothing for the player to browse mid-fight).
 
 **Default is player-choice.** Any verb that picks cards opens the
 picker by default. Append `:random` to the DSL line to skip the
@@ -254,7 +278,9 @@ sheet doesn't say random, the player picks":
 |---|---|
 | `discard:1` | Player picks 1 from hand to discard (Acrobatics). |
 | `discard:1:random` | Engine picks 1 from hand to discard (All-Out Attack). |
+| `discard:all` | Whole hand discards silently (Storm of Steel). No picker. |
 | `exhaust:2` | Player picks 2 from hand to exhaust. |
+| `topdeck:1` | Player picks 1 from hand to put on top of the draw pile (Warcry). |
 | `upgrade_hand:1` | Player picks 1 from hand to upgrade (Armaments). |
 | `upgrade_hand:all` | Whole hand upgrades silently (Armaments+). No picker. |
 
@@ -434,6 +460,73 @@ Tags:         ironclad, offense
 `Ethereal` lives in the Keywords column, not in the Effects DSL. If
 Carnage is still in hand at end of turn it exhausts; if played, it
 goes to discard like any normal card.
+
+### Warcry — `Common Skill` cost 0
+```
+Description:  Draw 1 Card. Put a Card from your Hand on the top of the Draw Pile. Exhaust.
+Effects:      draw:1; topdeck:1
+Upgraded Eff: draw:2; topdeck:1
+Range/Attack: N/A
+Keywords:     Exhaust
+Tags:         ironclad, draw
+```
+
+`topdeck:1` opens the picker in deckbuilder/strategy; action auto-picks a
+temp auto-slot's card back onto the top of the auto deck. The draw resolves
+first, so the just-drawn card is a legal pick.
+
+### Whirlwind — `Uncommon Attack` cost X
+```
+Description:  Deal 5xX Dmg Melee Cleave.
+Effects:      dmg:5xX:melee:cleave
+Upgraded Eff: dmg:8xX:melee:cleave
+Attack:       Swing, Large
+Tags:         ironclad, offense, aoe
+```
+
+`Swing, Large` is the full all-around ring (the spelling that replaced
+`Swing, arc=360`). `5xX` + Cost `X` is the X-cost pattern — see the X-cost
+section above. Skewer is the single-target sibling (`dmg:7xX:melee`,
+`Poke, Large`).
+
+### Storm of Steel — `Rare Skill` cost 1
+```
+Description:  Discard your Hand, then Conjure X Shivs where X was the amount of cards that were Discarded.
+Effects:      discard:all; conjure:shiv:hand:count=discarded
+Upgraded Eff: discard:all; conjure:shiv+:hand:count=discarded
+Tags:         silent, discard, offense
+```
+
+Order matters: `discard:all` records `last_discard_count` on the scene, then
+the conjure's `count=discarded` reads it back. The upgrade mints upgraded
+Shivs via the `+` suffix.
+
+### Sword Boomerang — `Common Attack` cost 1
+```
+Description:  Deal 3 Dmg Ranged to a Random target. Repeat 2 times.
+Effects:      dmg:3x3:ranged
+Upgraded Eff: dmg:3x4:ranged
+Attack:       Boomerang
+Keywords:     Indiscriminate
+Tags:         ironclad, offense
+```
+
+The `boomerang` archetype: in action a spinning sword flies to each hit's
+random enemy and then returns to the player; in strategy/deckbuilder the
+Indiscriminate keyword re-rolls a random enemy per hit (3 hits, 4 upgraded).
+
+### Reaper — `Rare Attack` cost 2
+```
+Description:  Deal 4 Dmg Melee Cleave Lifesteal. Exhaust.
+Effects:      dmg:4:melee:cleave
+Attack:       Swing, Large
+Keywords:     Exhaust, Lifesteal
+Tags:         ironclad, offense, health, exhaust
+```
+
+Lifesteal lives in the Keywords column, not the DSL — the addon pipeline
+stamps `lifesteal: true` onto the dmg effect and every mode's damage path
+heals the attacker for the unblocked damage dealt.
 
 ## Card boosts (Accuracy and friends)
 

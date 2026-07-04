@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_uppercut"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Uppercut.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"uppercut"
+display_name = "Uppercut"
+type = 0
+rarity = 2
+cost = 2
+description = "Deal 13 Dmg Melee. Inflict 1 Weak. Inflict 1 Vulnerable."
+effects = [{"type": "dmg", "value": 13, "target": "enemy", "damage_type": "melee"}, {"type": "status", "status": "weak", "stacks": 1, "target": "enemy"}, {"type": "status", "status": "vulnerable", "stacks": 1, "target": "enemy"}]
+tags = PackedStringArray("ironclad", "offense", "debuff")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 13 Dmg Melee. Inflict 2 Weak. Inflict 2 Vulnerable."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 13, "target": "enemy", "damage_type": "melee"}, {"type": "status", "status": "weak", "stacks": 2, "target": "enemy"}, {"type": "status", "status": "vulnerable", "stacks": 2, "target": "enemy"}]
+image = ExtResource("2_img")
+attack_shape = &"poke"
+attack_params = {"size": "medium"}

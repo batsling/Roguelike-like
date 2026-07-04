@@ -51,13 +51,13 @@ func test_poke_footprint_is_single_aimed_tile() -> void:
 	assert_eq(fp.size(), 1, "poke hits exactly the aimed tile")
 	assert_true(fp.has(Vector2i(6, 5)))
 
-func test_swing_arc_rotates_to_face_aim() -> void:
+func test_small_swing_is_the_three_front_tiles() -> void:
 	var lib := _lib()
-	var spec: Dictionary = lib.resolve(&"swing", {})
+	var spec: Dictionary = lib.resolve(&"swing", {"size": "small"})
 	var origin := Vector2i(5, 5)
 	# Aiming east: front tile + the two flanking tiles east.
 	var east: Array = lib.footprint(spec, origin, Vector2i(6, 5))
-	assert_eq(east.size(), 3, "swing is a 3-tile arc")
+	assert_eq(east.size(), 3, "small swing is the 3-tile front arc")
 	assert_true(east.has(Vector2i(6, 5)) and east.has(Vector2i(6, 4)) and east.has(Vector2i(6, 6)),
 		"east arc covers the eastern column")
 	# Aiming north: the same arc, rotated to the northern row.
@@ -65,7 +65,25 @@ func test_swing_arc_rotates_to_face_aim() -> void:
 	assert_true(north.has(Vector2i(5, 4)) and north.has(Vector2i(4, 4)) and north.has(Vector2i(6, 4)),
 		"north arc rotates to the northern row")
 
-func test_arc360_swing_is_a_full_ring() -> void:
+func test_medium_swing_wraps_onto_the_side_tiles() -> void:
+	var lib := _lib()
+	# Medium is also the default swing size.
+	var spec: Dictionary = lib.resolve(&"swing", {})
+	var origin := Vector2i(5, 5)
+	var east: Array = lib.footprint(spec, origin, Vector2i(6, 5))
+	assert_eq(east.size(), 5, "medium swing = 3 front + the 2 side tiles")
+	for t in [Vector2i(6, 5), Vector2i(6, 4), Vector2i(6, 6), Vector2i(5, 4), Vector2i(5, 6)]:
+		assert_true(east.has(t), "east medium swing covers %s" % str(t))
+
+func test_large_swing_is_a_full_ring() -> void:
+	var lib := _lib()
+	var spec: Dictionary = lib.resolve(&"swing", {"size": "large"})
+	var fp: Array = lib.footprint(spec, Vector2i(5, 5), Vector2i(6, 5))
+	assert_eq(fp.size(), 8, "large swing rings all 8 neighbours")
+	assert_false(bool(spec.get("rotates", true)), "a full ring has no facing")
+
+func test_arc360_swing_still_maps_to_the_full_ring() -> void:
+	# Back-compat: the old "Swing, arc=360" spelling behaves exactly like Large.
 	var lib := _lib()
 	var spec: Dictionary = lib.resolve(&"swing", {"arc": 360})
 	var fp: Array = lib.footprint(spec, Vector2i(5, 5), Vector2i(6, 5))

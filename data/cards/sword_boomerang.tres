@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_sword_boomerang"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/SwordBoomerang.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"sword_boomerang"
+display_name = "Sword Boomerang"
+type = 0
+rarity = 1
+cost = 1
+description = "Deal 3 Dmg Ranged to a Random target. Repeat 2 times."
+effects = [{"type": "dmg", "value": 3, "target": "enemy", "damage_type": "ranged", "hits": 3}]
+tags = PackedStringArray("ironclad", "offense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 3 Dmg Ranged to a Random target. Repeat 3 times."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 3, "target": "enemy", "damage_type": "ranged", "hits": 4}]
+image = ExtResource("2_img")
+addons = PackedStringArray("indiscriminate")
+attack_shape = &"boomerang"

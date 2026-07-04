@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_whirlwind"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Whirlwind.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"whirlwind"
+display_name = "Whirlwind"
+type = 0
+rarity = 2
+cost = -1
+description = "Deal 5xX Dmg Melee Cleave."
+effects = [{"type": "dmg", "value": 5, "target": "all_enemies", "damage_type": "melee", "hits_from": "energy"}]
+tags = PackedStringArray("ironclad", "offense", "aoe")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 8xX Dmg Melee Cleave."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 8, "target": "all_enemies", "damage_type": "melee", "hits_from": "energy"}]
+image = ExtResource("2_img")
+attack_shape = &"swing"
+attack_params = {"size": "large"}

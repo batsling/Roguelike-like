@@ -86,6 +86,13 @@ var energy: int = 0
 var max_energy: int = 3
 # Ice Cream: leftover energy banked at end of turn, poured on next turn start.
 var _energy_carryover: int = 0
+# Energy spent by the X-cost card currently resolving (Whirlwind / Skewer);
+# threaded into effect ctx as x_value so hits_from: "energy" dmg repeats once
+# per point. Replay re-uses the same X (paid once).
+var _last_x_value: int = 0
+# Cards the last `discard:all` (Storm of Steel) sent away this play; read back
+# by conjure `count_from: "discarded"` via the effect ctx scene.
+var last_discard_count: int = 0
 
 # Persistent in-combat power triggers (After Image -> on card played gain Block)
 # and card boosts (Accuracy -> Shivs). Combat-scoped; cleared in _init_deck.
@@ -1309,6 +1316,10 @@ func _resolve_card(card, target, shaped_targets: Array = []) -> void:
 		return
 	var u = _turn_manager.current_unit
 	var data: CardData = card.data
+	# X-cost cards (cost -1) spend ALL remaining energy; the amount becomes X
+	# for their hits_from: "energy" effects (_card_cost already returns the
+	# whole pool for them, so the deduction empties it either way).
+	_last_x_value = maxi(0, energy) if card.get_cost() < 0 else 0
 	energy -= _card_cost(card)
 	# Power-card triggers fire BEFORE the card's own effects (so a Power being
 	# played doesn't self-trigger), then item card_played hooks.
@@ -1414,6 +1425,8 @@ func _shaped_targets_for(spec: Dictionary, source, aim: Vector2i) -> Array:
 
 # Public entry point used by EnemyAI.execute_turn (and any caller).
 func apply_effects(effects: Array, source, target, card = null, shaped_targets: Array = []) -> void:
+	# Not a paid card play — no X was spent, so don't leak the last one.
+	_last_x_value = 0
 	_apply_card_or_spell_effects(effects, source, target, card, {}, shaped_targets)
 
 # Public wrapper so EnemyAI can ask which units an attack spec would hit.
@@ -1451,6 +1464,7 @@ func _apply_card_or_spell_effects(effects: Array, source, target, card = null, v
 					"target": t,
 					"scene": self,
 					"card": card,
+					"x_value": _last_x_value,
 				})
 
 func _resolve_effect_targets(effect: Dictionary, source, picked, shaped_targets: Array = []) -> Array:
@@ -1625,6 +1639,8 @@ func _resolve_sly_on_discard(card) -> void:
 	var tgt = pick_random_enemy(get_player_unit())
 	GameLog.add("%s is Sly — it plays as it's discarded!" % card.get_display_name(),
 		Color(0.8, 1.0, 0.8))
+	# A Sly resolve isn't a paid play — no energy was spent, so X is 0 here.
+	_last_x_value = 0
 	_apply_card_or_spell_effects(_effective_card_effects(card.data, card.upgraded), get_player_unit(), tgt, card)
 	_check_battle_end_after_effect()
 
@@ -1635,30 +1651,138 @@ func exhaust_card(card) -> void:
 	_fire_power_triggers("card_exhausted", {"card": card})
 	_refresh_hand()
 
-# Discard N cards from hand (random pick; excludes the playing card). All-Out
-# Attack / Acrobatics.
-func discard_cards(n: int, source_card = null, _random: bool = false) -> void:
-	for _i in range(n):
-		var pool: Array = []
-		for c in hand:
-			if c != source_card:
-				pool.append(c)
-		if pool.is_empty():
-			break
-		discard_card(pool[randi() % pool.size()])
+# Everything a pick-from-hand effect may choose from: the hand minus the card
+# being played (it's mid-resolve and can't route itself through the pick).
+func _hand_pool(source_card) -> Array:
+	var pool: Array = []
+	for c in hand:
+		if c != source_card:
+			pool.append(c)
+	return pool
+
+# Discard N cards from hand (excludes the playing card). Player-choice opens
+# the shared CardPickerModal (Acrobatics); `random` keeps the engine pick
+# (All-Out Attack) — same contract as the deckbuilder.
+func discard_cards(n: int, source_card = null, random: bool = false) -> void:
+	if n <= 0:
+		return
+	var pool: Array = _hand_pool(source_card)
+	if pool.is_empty():
+		return
+	if random:
+		for _i in range(mini(n, pool.size())):
+			var pick = pool[randi() % pool.size()]
+			pool.erase(pick)
+			discard_card(pick)
+		_refresh_hand()
+	else:
+		var count: int = mini(n, pool.size())
+		_open_picker({
+			"title": "Discard %d card%s" % [count, "s" if count > 1 else ""],
+			"candidates": pool,
+			"count": count,
+			"accent": Color(0.95, 0.70, 0.30),
+			"confirm_label": "Discard",
+			"on_picked": Callable(self, "_apply_discard_picks"),
+		})
+
+func _apply_discard_picks(picks: Array) -> void:
+	for pick in picks:
+		discard_card(pick)
+		GameLog.add("Discarded %s." % pick.get_display_name(), Color(0.9, 0.7, 0.4))
 	_refresh_hand()
 
-# Exhaust N cards from hand (random; excludes the playing card). Burning Pact.
-func exhaust_cards(n: int, source_card = null, _random: bool = false) -> void:
-	for _i in range(n):
-		var pool: Array = []
-		for c in hand:
-			if c != source_card:
-				pool.append(c)
-		if pool.is_empty():
-			break
-		exhaust_card(pool[randi() % pool.size()])
+# Exhaust N cards from hand (excludes the playing card). Burning Pact. Same
+# picker-by-default / random-flag contract as discard_cards.
+func exhaust_cards(n: int, source_card = null, random: bool = false) -> void:
+	if n <= 0:
+		return
+	var pool: Array = _hand_pool(source_card)
+	if pool.is_empty():
+		return
+	if random:
+		for _i in range(mini(n, pool.size())):
+			var pick = pool[randi() % pool.size()]
+			pool.erase(pick)
+			exhaust_card(pick)
+		_refresh_hand()
+	else:
+		var count: int = mini(n, pool.size())
+		_open_picker({
+			"title": "Exhaust %d card%s" % [count, "s" if count > 1 else ""],
+			"candidates": pool,
+			"count": count,
+			"accent": Color(0.65, 0.65, 0.72),
+			"confirm_label": "Exhaust",
+			"on_picked": Callable(self, "_apply_exhaust_picks"),
+		})
+
+func _apply_exhaust_picks(picks: Array) -> void:
+	for pick in picks:
+		exhaust_card(pick)
+		GameLog.add("Exhausted %s." % pick.get_display_name(), Color(0.7, 0.7, 0.8))
 	_refresh_hand()
+
+# Warcry: put N cards from hand on TOP of the draw pile. Player-choice by
+# default; `random` skips the picker.
+func topdeck_cards(n: int, source_card = null, random: bool = false) -> void:
+	if n <= 0:
+		return
+	var pool: Array = _hand_pool(source_card)
+	if pool.is_empty():
+		return
+	if random:
+		var picks: Array = []
+		for _i in range(mini(n, pool.size())):
+			var pick = pool[randi() % pool.size()]
+			pool.erase(pick)
+			picks.append(pick)
+		_apply_topdeck_picks(picks)
+	else:
+		var count: int = mini(n, pool.size())
+		_open_picker({
+			"title": "Put %d card%s on top of your draw pile" % [count, "s" if count > 1 else ""],
+			"candidates": pool,
+			"count": count,
+			"accent": Color(0.40, 0.85, 0.45),
+			"confirm_label": "Place on top",
+			"on_picked": Callable(self, "_apply_topdeck_picks"),
+		})
+
+func _apply_topdeck_picks(picks: Array) -> void:
+	# draw_cards pops from the BACK of draw_pile, so appending puts the pick on
+	# top (the last appended is drawn first).
+	for pick in picks:
+		hand.erase(pick)
+		draw_pile.append(pick)
+		GameLog.add("Put %s on top of the draw pile." % pick.get_display_name(),
+			Color(0.6, 1.0, 0.7))
+	_refresh_hand()
+
+# Storm of Steel: discard the entire hand (minus the played card) and record
+# the count for a following conjure `count_from: "discarded"`.
+func discard_hand(source_card = null) -> int:
+	var doomed: Array = _hand_pool(source_card)
+	for c in doomed:
+		discard_card(c)
+	last_discard_count = doomed.size()
+	if last_discard_count > 0:
+		GameLog.add("Discarded your hand (%d card%s)." % [
+			last_discard_count, "s" if last_discard_count > 1 else ""],
+			Color(0.9, 0.7, 0.4))
+	_refresh_hand()
+	return last_discard_count
+
+# One shared picker at a time (same contract as DeckbuilderCombat._open_picker):
+# tear down any live modal so chained picks can't stack.
+func _open_picker(opts: Dictionary) -> void:
+	var prev := get_node_or_null("CardPickerModal")
+	if prev != null:
+		prev.queue_free()
+	var modal := CardPickerModal.new()
+	modal.name = "CardPickerModal"
+	add_child(modal)
+	modal.show_picker(opts)
 
 # Move cards between piles, no copies. All for One: recall 0-cost cards from the
 # discard pile to hand.
@@ -1682,21 +1806,43 @@ func _pile_for(name: String) -> Array:
 		"exhaust": return exhaust_pile
 		_: return hand
 
-# Upgrade cards in hand (Armaments). `value` is an int count or "all".
-func upgrade_hand_cards(value, source_card = null, _random: bool = false) -> void:
+# Upgrade cards in hand (Armaments). `value` is an int count or "all". The int
+# form opens the picker (player chooses) unless `random`; "all" is silent.
+func upgrade_hand_cards(value, source_card = null, random: bool = false) -> void:
 	var eligible: Array = []
 	for c in hand:
 		if c != source_card and c.data != null and c.data.can_upgrade and not c.upgraded:
 			eligible.append(c)
+	if eligible.is_empty():
+		return
 	if str(value) == "all":
-		for c in eligible:
-			c.upgraded = true
-			GameLog.add("Upgraded %s." % c.get_display_name(), Color(0.6, 0.9, 1.0))
+		_apply_upgrade_picks(eligible)
+		return
+	var n: int = int(value)
+	if n <= 0:
+		return
+	if random:
+		var picks: Array = []
+		for _i in range(mini(n, eligible.size())):
+			var pick = eligible[randi() % eligible.size()]
+			eligible.erase(pick)
+			picks.append(pick)
+		_apply_upgrade_picks(picks)
 	else:
-		var n: int = int(value)
-		for i in range(mini(n, eligible.size())):
-			eligible[i].upgraded = true
-			GameLog.add("Upgraded %s." % eligible[i].get_display_name(), Color(0.6, 0.9, 1.0))
+		var count: int = mini(n, eligible.size())
+		_open_picker({
+			"title": "Upgrade %d card%s" % [count, "s" if count > 1 else ""],
+			"candidates": eligible,
+			"count": count,
+			"accent": Color(0.6, 0.9, 1.0),
+			"confirm_label": "Upgrade",
+			"on_picked": Callable(self, "_apply_upgrade_picks"),
+		})
+
+func _apply_upgrade_picks(picks: Array) -> void:
+	for pick in picks:
+		pick.upgraded = true
+		GameLog.add("Upgraded %s." % pick.get_display_name(), Color(0.6, 0.9, 1.0))
 	_refresh_hand()
 
 # Conjure (Blade Dance, Cloak and Dagger, Anger, Pride) — drop `count` copies of

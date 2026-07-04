@@ -44,7 +44,11 @@ func show_picker(opts: Dictionary) -> void:
 	_build(title, accent, confirm_label)
 
 func _build(title: String, accent: Color, confirm_label: String) -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# _build runs after the caller has already add_child()ed this modal, and
+	# set_anchors_preset on an in-tree Control KEEPS its current (zero) rect —
+	# the offsets variant actually stretches it, so the backdrop dims the whole
+	# screen and the panel centers instead of clipping at the origin.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 	# No dismiss callback: clicking outside must NOT close this modal because
