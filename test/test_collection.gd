@@ -11,8 +11,8 @@ func _new_collection() -> Collection:
 
 func test_reference_tab_renders_statuses_and_addons() -> void:
 	var col := _new_collection()
-	# Tab order is Items, Cards, Characters, Reference — Items is the default.
-	assert_eq(col._tab, Collection.Tab.ITEMS)
+	# Games is the landing tab (the roguelike catalog is the compendium's face).
+	assert_eq(col._tab, Collection.Tab.GAMES)
 	col._set_tab(Collection.Tab.REFERENCE)
 	# Counts track the sheet-generated ReferenceCatalog (statusesnew / addonsnew).
 	assert_eq(col._grid.get_child_count(), ReferenceCatalog.STATUSES.size(), "all status cards render")

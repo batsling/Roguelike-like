@@ -102,12 +102,12 @@ func _ready() -> void:
 	_refresh()
 
 # Force the overlay to exactly cover the viewport. Anchors are relative to the
-# viewport because we're top_level, so a full-rect preset plus a zeroed
-# position/size keeps us pinned even as the window resizes.
+# viewport because we're top_level, so a full-rect preset with zeroed offsets
+# keeps us pinned even as the window resizes. Offsets (not a manual position/
+# size write) so the engine doesn't warn about sizing an anchored control
+# during _ready — the anchors would override it anyway.
 func _fit_to_viewport() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
-	position = Vector2.ZERO
-	size = get_viewport_rect().size
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 func _input(event: InputEvent) -> void:
 	# Esc closes; also swallow the backpack toggle so Tab doesn't reach the
