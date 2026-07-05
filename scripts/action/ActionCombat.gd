@@ -943,6 +943,9 @@ func _process_turn_tick(delta: float) -> void:
 		_fire_item_triggers("turn_ended", {}, _room_turn_index)
 	if player_actor != null and player_actor.is_alive():
 		_tick_actor_turn(player_actor, _player_was_hit)
+		# Well-Laid Plans rides the same "one turn of time" boundary.
+		if _living_enemy_count() > 0:
+			_fire_well_laid_plans()
 	_player_was_hit = false
 	# Confused re-rolls every loadout card's cost (and so its cooldown) each turn.
 	_reroll_confused_costs()
@@ -950,6 +953,24 @@ func _process_turn_tick(delta: float) -> void:
 		if inst.actor.is_alive():
 			_tick_actor_turn(inst.actor, bool(inst.get("was_hit", false)))
 		inst["was_hit"] = false
+
+# Well-Laid Plans, translated to real time: each "turn" (turn tick) the power
+# retains up to N cards. Here "give Retain to a card in cooldown" means the
+# card is kept available — a random auto-slot card still counting down has
+# its cooldown finished, one per stack, so it's ready again right away.
+func _fire_well_laid_plans() -> void:
+	var stacks: int = player_actor.get_status(&"well_laid_plans")
+	for _i in range(stacks):
+		var cooling: Array = []
+		for slot in auto_slots:
+			if slot.card != null and slot.cooldown > 0.0:
+				cooling.append(slot)
+		if cooling.is_empty():
+			return
+		var slot: Dictionary = cooling[_rng.randi() % cooling.size()]
+		slot.cooldown = 0.0
+		GameLog.add("Well-Laid Plans: %s is Retained — ready now." % slot.card.display_name,
+			Color(0.6, 0.9, 1.0))
 
 # One turn-boundary pass for a single actor, in the canonical order:
 #   1. DoT bite (Stats.tick_actor_statuses → apply_dot) using current stacks

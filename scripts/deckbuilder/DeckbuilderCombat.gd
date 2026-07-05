@@ -1507,9 +1507,14 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 		TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 		_fire_power_triggers("card_exhausted", {"card": card})
 		Stats.feel_no_pain_on_exhaust(player, self)
-	# Powers exhaust on play; cards with the exhaust flag exhaust; else discard.
-	elif card.data.exhaust or card.is_power():
+	# Cards with the exhaust flag exhaust. Powers are simply used — their
+	# effect lives on the player for the combat — so they leave hand without
+	# entering any pile and do NOT count as an exhaust (Feel No Pain and
+	# card_exhausted triggers stay quiet).
+	elif card.data.exhaust:
 		exhaust_card(card)
+	elif card.is_power():
+		hand.erase(card)
 	else:
 		# from_play: a Sly card that was just played normally must NOT re-trigger
 		# its play-on-discard as it heads to the pile (that would double-resolve).

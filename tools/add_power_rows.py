@@ -7,14 +7,17 @@ Well-Laid Plans Power cards to `cardsnew` and their backing statuses to
 The card descriptions are reworded from the legacy `cards` sheet's
 "Gain Barricade." style to say what the power actually does — the wording
 comes from the legacy `statuses` sheet, which kept the mechanical text.
-Each power is a stackable status on the player, so it shows on the same
-badge strip as every other status; its icon lives at
-images/powericons/<Img>Power.png (same Img as the card art).
+Powers are NOT statuses in the sheet: the mechanical text lives in the
+card's Description and the engine hooks own the behavior (plus the X-form
+badge tooltips, Stats.POWER_TOOLTIPS). In combat they still show on the
+status badge strip with icons from images/powericons/<Img>Power.png
+(same Img as the card art) — that's presentation, not a statusesnew row,
+so this script also REMOVES any legacy power rows from statusesnew.
 
-Idempotent: any existing row with a matching Name is replaced in place, so
-re-running keeps the sheet stable. Extends each sheet's Excel Table range to
-cover appended rows. Re-run tools/generate_card_tres.py and
-tools/import-reference-godot.py afterwards.
+Idempotent: any existing cardsnew row with a matching Name is replaced in
+place, and the statusesnew removals are skipped when already gone. Extends
+each sheet's Excel Table range to cover appended rows. Re-run
+tools/generate_card_tres.py and tools/import-reference-godot.py afterwards.
 """
 
 import os
@@ -83,63 +86,12 @@ CARD_ROWS = {
     ],
 }
 
-# statusesnew columns: Name, Description, Effect, Type, Stackable, Max Stack,
-# Decay, Who, Preference, Icon, Rarity, Translates, Per-Mode
-STATUS_ROWS = {
-    "Barricade": [
-        "Barricade",
-        "Block is not removed at the start of each turn",
-        "structural: block persists across turn boundaries",
-        "Ability", "No", "N/A", "None", "All", "Positive",
-        "BarricadePower", "Rare", "No",
-        "db.both / strategy.both: block no longer resets at the turn "
-        "boundary | action.both: block chunks stop fading over time "
-        "(incoming hits still soak them)",
-    ],
-    "Envenom": [
-        "Envenom",
-        "Whenever you deal unblocked Attack damage, Inflict X Poison",
-        "on_unblocked_attack_dmg: inflict N poison",
-        "Ability", "Yes", "N/A", "None", "Player", "Positive",
-        "EnvenomPower", "N/A", "Yes", "N/A",
-    ],
-    "Evolve": [
-        "Evolve",
-        "Whenever you Draw a Status Card, Draw X Cards",
-        "on_status_card_drawn: draw N",
-        "Ability", "Yes", "N/A", "None", "Player", "Positive",
-        "EvolvePower", "N/A", "No",
-        "db.both / strategy.both: fires on drawing a Status card | "
-        "action.both: inert (no card draws)",
-    ],
-    "Feel No Pain": [
-        "Feel No Pain",
-        "Whenever a Card is Exhausted, Gain X Block",
-        "on_card_exhausted: gain N block",
-        "Ability", "Yes", "N/A", "None", "Player", "Positive",
-        "FeelNoPainPower", "N/A", "No",
-        "db.both / strategy.both: fires on every exhaust (play-time and "
-        "Ethereal) | action.both: inert (nothing exhausts)",
-    ],
-    "Fire Breathing": [
-        "Fire Breathing",
-        "Whenever you Draw a Status or Curse Card, Deal X Magic Dmg to ALL Enemies",
-        "on_status_or_curse_drawn: dmg N magic all_enemies",
-        "Ability", "Yes", "N/A", "None", "Player", "Positive",
-        "FireBreathingPower", "N/A", "No",
-        "db.both / strategy.both: fires on drawing a Status or Curse card | "
-        "action.both: inert (no card draws)",
-    ],
-    "Well-Laid Plans": [
-        "Well-Laid Plans",
-        "At the end of your turn, add Retain to up to X Cards",
-        "on_turn_end: retain up to N cards (picker)",
-        "Ability", "Yes", "N/A", "None", "Player", "Positive",
-        "Well-LaidPlansPower", "N/A", "No",
-        "db.both / strategy.both: end-turn picker retains up to N hand "
-        "cards | action.both: inert (no hand)",
-    ],
-}
+# Powers must NOT sit in statusesnew — they're cards, not statuses. An earlier
+# pass of this script added rows for them; strip any that are present.
+STATUS_ROWS_TO_REMOVE = [
+    "Barricade", "Envenom", "Evolve",
+    "Feel No Pain", "Fire Breathing", "Well-Laid Plans",
+]
 
 
 def _name_to_row(ws):
@@ -172,10 +124,22 @@ def upsert(ws, rows: dict, wrap_cols: set):
     _bump_table_ref(ws, ws.max_row)
 
 
+def remove_rows(ws, names: list) -> None:
+    existing = _name_to_row(ws)
+    doomed = sorted([existing[n] for n in names if n in existing], reverse=True)
+    for r in doomed:
+        ws.delete_rows(r)
+    for n in names:
+        if n in existing:
+            print(f"  removed: {ws.title}!{n}")
+    if doomed:
+        _bump_table_ref(ws, ws.max_row)
+
+
 def main() -> int:
     wb = openpyxl.load_workbook(XLSX_PATH)  # keep formulas/tables
     upsert(wb["cardsnew"], CARD_ROWS, wrap_cols={5, 7})
-    upsert(wb["statusesnew"], STATUS_ROWS, wrap_cols={2, 3, 13})
+    remove_rows(wb["statusesnew"], STATUS_ROWS_TO_REMOVE)
     wb.save(XLSX_PATH)
     print("[add_power_rows] saved; re-run generate_card_tres.py --all and "
           "import-reference-godot.py next")

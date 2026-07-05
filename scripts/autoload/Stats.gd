@@ -104,6 +104,20 @@ const STATUS_ICONS := {
 	&"well_laid_plans": "Well-LaidPlansPower.png",
 }
 
+# Badge tooltip text for the power statuses. Powers are cards, not statuses —
+# they have no statusesnew row / ReferenceCatalog entry — but their badge on
+# the combat strip still needs hover text. X-form wording (X = the stack
+# count shown on the badge) so one string covers base and upgraded grants;
+# lives here beside the hooks that implement each power.
+const POWER_TOOLTIPS := {
+	&"barricade": "Block is not removed at the start of each turn.",
+	&"envenom": "Whenever you deal unblocked Attack Dmg, Inflict X Poison.",
+	&"evolve": "Whenever you Draw a Status Card, Draw X Cards.",
+	&"feel_no_pain": "Whenever a Card is Exhausted, Gain X Block.",
+	&"fire_breathing": "Whenever you Draw a Status or Curse Card, Deal X Magic Dmg to ALL Enemies.",
+	&"well_laid_plans": "At the end of your turn, add Retain to up to X Cards.",
+}
+
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
 
 var _stat_defs: Dictionary = {}     # StringName -> StatDefinition
@@ -269,7 +283,12 @@ func status_icon(status_name) -> Texture2D:
 # description pulled from ReferenceCatalog (the statusesnew sheet) when known, else
 # just "Display N". Shared so the player row and EnemyView read identically.
 func status_tooltip(status_name, stacks: int) -> String:
+	var key := StringName(status_name)
 	var display: String = String(status_name).capitalize()
+	# Power badges: powers are cards, not statuses, so their description
+	# lives here (POWER_TOOLTIPS) rather than in the statusesnew catalog.
+	if POWER_TOOLTIPS.has(key):
+		return "%s (%d)\n%s" % [display, stacks, POWER_TOOLTIPS[key]]
 	for s in ReferenceCatalog.STATUSES:
 		# Hyphenated sheet names ("Well-Laid Plans") still match the
 		# capitalize()d snake_case key ("Well Laid Plans").

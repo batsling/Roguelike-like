@@ -89,9 +89,17 @@ func test_power_status_icons_resolve_from_powericons_dir() -> void:
 		assert_string_contains(tex.resource_path, "powericons",
 			"%s art lives in images/powericons/" % id)
 
-func test_status_tooltip_matches_hyphenated_sheet_name() -> void:
-	var tip: String = Stats.status_tooltip(&"well_laid_plans", 2)
-	assert_string_contains(tip, "Retain", "tooltip should carry the sheet description")
+func test_power_badge_tooltips_come_from_stats_not_the_status_catalog() -> void:
+	# Powers are cards, not statuses: no statusesnew row / ReferenceCatalog
+	# entry. Their badge hover text lives in Stats.POWER_TOOLTIPS instead.
+	for id in POWER_IDS:
+		var display: String = String(id).capitalize()
+		for s in ReferenceCatalog.STATUSES:
+			assert_ne(String(s.get("name", "")).replace("-", " "), display,
+				"%s must not be listed as a status" % id)
+		var tip: String = Stats.status_tooltip(id, 2)
+		assert_true(tip.contains("\n"), "%s badge still has a description line" % id)
+	assert_string_contains(Stats.status_tooltip(&"well_laid_plans", 2), "Retain")
 
 # --- Barricade --------------------------------------------------------------
 
@@ -181,3 +189,58 @@ func test_fire_breathing_ignores_normal_draws() -> void:
 func test_retain_this_turn_defaults_off() -> void:
 	var inst := _card_of_type(CardData.CardType.SKILL)
 	assert_false(inst.retain_this_turn)
+
+# --- Playing a Power is not an exhaust (strategy scene, mirrors deckbuilder) --
+
+const _BattleViewScript = preload("res://scripts/strategy/combat/BattleView.gd")
+const _TurnManagerScript = preload("res://scripts/strategy/combat/BattleTurnManager.gd")
+
+func _battle_with_player():
+	GameState.reset_run()
+	var bv = _BattleViewScript.new()
+	add_child_autofree(bv)
+	var p := BattleUnit.new()
+	p.is_player = true
+	p.max_hp = 50
+	p.hp = 50
+	p.position = Vector2i(0, 0)
+	var e := BattleUnit.new()
+	e.is_player = false
+	e.max_hp = 30
+	e.hp = 30
+	e.position = Vector2i(1, 0)
+	bv._units = [p, e]
+	var tm = _TurnManagerScript.new()
+	tm.setup([p, e])
+	tm.current_unit = p
+	bv._turn_manager = tm
+	bv._grid_view.set_battle(null, bv._units)
+	return bv
+
+func test_playing_a_power_does_not_exhaust() -> void:
+	var bv = _battle_with_player()
+	var p = bv.get_player_unit()
+	# Feel No Pain is already up — if the next Power play counted as an
+	# exhaust, it would bank Block.
+	p.add_status(&"feel_no_pain", 3)
+	var power := CardInstance.from_data(Data.get_card(&"barricade"))
+	bv.hand = [power]
+	bv.energy = 10
+	bv._resolve_card(power, null, [])
+	assert_eq(bv.exhaust_pile.size(), 0, "the Power entered no pile")
+	assert_eq(bv.discard_pile.size(), 0, "not the discard pile either")
+	assert_false(bv.hand.has(power), "it left the hand — used up")
+	assert_eq(p.get_status(&"barricade"), 1, "its effect is on the player")
+	assert_eq(p.block, 0, "Feel No Pain did NOT fire on the Power play")
+
+func test_exhaust_keyword_still_exhausts_and_feeds_feel_no_pain() -> void:
+	var bv = _battle_with_player()
+	var p = bv.get_player_unit()
+	p.add_status(&"feel_no_pain", 3)
+	# Adrenaline carries the explicit Exhaust keyword.
+	var card := CardInstance.from_data(Data.get_card(&"adrenaline"))
+	bv.hand = [card]
+	bv.energy = 10
+	bv._resolve_card(card, null, [])
+	assert_eq(bv.exhaust_pile.size(), 1, "Exhaust-keyword cards still exhaust")
+	assert_eq(p.block, 3, "and Feel No Pain banks Block off them")

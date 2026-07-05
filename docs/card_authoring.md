@@ -745,41 +745,41 @@ stack count (matches the sheet's "30% Miss Chance" language; stacks
 extend duration, not magnitude). Bag o' Glitter applies 2 stacks
 (2 turns / 30s of action play before it wears off).
 
-### Power statuses (Barricade / Envenom / Evolve / Feel No Pain / Fire Breathing / Well-Laid Plans)
+### Powers (Barricade / Envenom / Evolve / Feel No Pain / Fire Breathing / Well-Laid Plans)
 
-A Power card whose whole effect is `gain:<status>:N` puts a **power
-status** on the player. It rides the same badge strip as every other
-status in all three modes (stack count included), and its behavior
-lives in cross-mode hooks on `Stats` that each combat scene calls
-from its existing sites:
+A Power card whose whole effect is `gain:<status>:N` puts a
+combat-long stack counter on the player. **Powers are cards, not
+statuses**: they have no `statusesnew` row and no ReferenceCatalog
+entry — the mechanical text lives in the card's Description column,
+the behavior in cross-mode hooks on `Stats`, and the badge hover text
+in `Stats.POWER_TOOLTIPS` (X-form wording, right next to the hooks).
+In combat the counter still *renders* on the same badge strip as the
+statuses in all three modes, with a stack count.
 
-| Status | Hook | Fires from |
+**Playing a Power is not an exhaust.** The card is simply used — it
+leaves hand into no pile and fires no `card_exhausted` (so Feel No
+Pain stays quiet). Cards with an explicit `Exhaust` keyword still
+exhaust normally.
+
+| Power | Hook | Fires from |
 |---|---|---|
 | `barricade` | `Stats.keeps_block(actor)` | every turn-boundary `block = 0` site (deckbuilder player + enemy, strategy `BattleTurnManager` / `BattleView`); action instead stops the block pool's real-time fade (`_decay_block`) — hits still soak. |
 | `envenom` | `Stats.fire_envenom(src, tgt, hp_loss, dmg_type, scene)` | each mode's damage path, post-block. Unblocked melee/ranged only; reactions (`no_reaction`) never re-trigger it. |
 | `feel_no_pain` | `Stats.feel_no_pain_on_exhaust(actor, scene)` | every `card_exhausted` site (deckbuilder + strategy). Action never exhausts → inert. |
 | `evolve` / `fire_breathing` | `Stats.fire_card_drawn_powers(actor, card, scene)` | both modes' `draw_cards`, right after the card lands. Evolve draws on Status cards; Fire Breathing deals magic Fire damage to `scene.living_enemies()` on Status **or** Curse draws. Action has no card draws → inert. |
-| `well_laid_plans` | end-turn intercept in each scene | `_on_end_turn` (deckbuilder) / `_on_end_turn_button` (strategy) open the `CardPickerModal` in its `up_to` mode; picks get `CardInstance.retain_this_turn`, consumed by the end-of-turn keep loop. Action has no hand → inert. |
+| `well_laid_plans` | end-turn intercept per mode | Deckbuilder `_on_end_turn` / strategy `_on_end_turn_button` open the `CardPickerModal` in its `up_to` mode; picks get `CardInstance.retain_this_turn`, consumed by the end-of-turn keep loop. Action: each turn tick (`_fire_well_laid_plans`), a random auto-slot card still in cooldown has its cooldown finished — "Retained", ready now — once per stack. |
 
 Two authoring rules fall out of this:
 
-- **Card text says what the power does**, not "Gain Barricade." — take
-  the wording from the status row (the legacy `statuses` sheet kept
-  it; `statusesnew` carries it forward), so the card and the badge
-  tooltip read the same.
+- **Card text says what the power does**, not "Gain Barricade." — the
+  wording came from the legacy `statuses` sheet and now lives in the
+  `cardsnew` Description, so the card and the badge tooltip read the
+  same.
 - **Badge art lives at `images/powericons/<Img>Power.png`** (same
   `Img` as the card art — `BarricadePower.png`). `Stats.STATUS_ICONS`
-  maps the snake_case status to that filename and `Stats.status_icon`
+  maps the snake_case power to that filename and `Stats.status_icon`
   falls back from `images/statuses/` to `images/powericons/`
-  automatically; the Collection screen and
-  `tools/import-reference-godot.py`'s missing-icon lint use the same
-  fallback, so the `statusesnew` Icon column can name a powericon
-  file directly.
-
-Note one deliberate deviation from Slay the Spire: in this game
-Powers exhaust on play (and that fires `card_exhausted`), so playing
-any Power while Feel No Pain is up banks Block. Consistent with the
-game's own exhaust semantics, so it stays.
+  automatically.
 
 ## Quick gotchas
 

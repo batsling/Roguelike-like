@@ -1380,8 +1380,12 @@ func _resolve_card(card, target, shaped_targets: Array = []) -> void:
 		TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 		_fire_power_triggers("card_exhausted", {"card": card})
 		Stats.feel_no_pain_on_exhaust(u, self)
-	elif data.exhaust or card.is_power():
+	elif data.exhaust:
 		exhaust_card(card)
+	elif card.is_power():
+		# Powers are simply used — the effect lives on the player for the
+		# combat. No pile, no card_exhausted (Feel No Pain stays quiet).
+		hand.erase(card)
 	else:
 		discard_card(card, true)
 	_clear_pending()
