@@ -98,6 +98,7 @@ func _register_defaults() -> void:
 	register("conjure", _h_conjure)
 	register("discard", _h_discard)
 	register("exhaust", _h_exhaust)
+	register("topdeck", _h_topdeck)
 	register("recall", _h_recall)
 	register("upgrade_hand", _h_upgrade_hand)
 	register("upgrade_random_cards", _h_upgrade_random_cards)
@@ -158,6 +159,11 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	# iteration so a 3-hit attack lands on 3 random enemies instead of
 	# dumping all three into the same actor.
 	var hits: int = maxi(1, int(effect.get("hits", 1)))
+	# X-cost repeat (Whirlwind / Skewer, hits_from: "energy"): the hit count is
+	# the energy spent on the play, threaded through ctx by the combat scene.
+	# X = 0 (played on an empty pool) legitimately swings zero times.
+	if String(effect.get("hits_from", "")) == "energy":
+		hits = maxi(0, int(ctx.get("x_value", 0)))
 	var indiscriminate: bool = bool(effect.get("indiscriminate", false))
 	# `target: "self"` routes the hit back onto the source (curse cards: Decay
 	# deals to the player), mirroring how status/block/heal resolve "self".
@@ -479,6 +485,12 @@ func _h_conjure(effect: Dictionary, ctx: Dictionary) -> void:
 	var card_id: StringName = StringName(String(effect.get("card_id", "self")))
 	var destination: String = String(effect.get("destination", "discard"))
 	var count: int = maxi(1, int(effect.get("count", 1)))
+	# count_from: "discarded" (Storm of Steel) — conjure one per card the
+	# preceding discard:all sent away this play. Zero discarded = no conjures.
+	if String(effect.get("count_from", "")) == "discarded":
+		count = int(scene.last_discard_count) if ("last_discard_count" in scene) else 0
+		if count <= 0:
+			return
 	var force_upgraded: bool = bool(effect.get("upgraded", false))
 	scene.conjure_card(card_id, destination, count, ctx.get("card"), force_upgraded)
 
@@ -489,12 +501,31 @@ func _h_discard(effect: Dictionary, ctx: Dictionary) -> void:
 	# own `discard_cards(n, source_card, random)` method.
 	#
 	# `random` field flips between player-choice (the default — opens
-	# the CardPickerModal in deckbuilder) and engine-picked random
-	# (All-Out Attack et al). Action / Strategy ignore the flag.
+	# the CardPickerModal in deckbuilder/strategy) and engine-picked
+	# random (All-Out Attack et al). Action ignores the flag.
 	var scene: Variant = ctx.get("scene")
-	if scene == null or not scene.has_method("discard_cards"):
+	if scene == null:
+		return
+	# `all: true` (Storm of Steel) discards the whole hand — nothing to pick, so
+	# it never opens the picker. The scene records how many left as
+	# `last_discard_count` for a following conjure count_from: "discarded".
+	if bool(effect.get("all", false)):
+		if scene.has_method("discard_hand"):
+			scene.discard_hand(ctx.get("card"))
+		return
+	if not scene.has_method("discard_cards"):
 		return
 	scene.discard_cards(int(effect.get("value", 1)), ctx.get("card"), bool(effect.get("random", false)))
+
+func _h_topdeck(effect: Dictionary, ctx: Dictionary) -> void:
+	# Warcry: put N cards from hand on TOP of the draw pile. Deckbuilder and
+	# strategy open the CardPickerModal (append `random` in the DSL for the
+	# engine-picked variant); action auto-picks its analog (a temp auto-slot's
+	# card goes back on top of the auto draw pile).
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("topdeck_cards"):
+		return
+	scene.topdeck_cards(int(effect.get("value", 1)), ctx.get("card"), bool(effect.get("random", false)))
 
 func _h_exhaust(effect: Dictionary, ctx: Dictionary) -> void:
 	# Deckbuilder-only: pick N cards from hand to send to exhaust.

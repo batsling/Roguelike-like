@@ -68,11 +68,13 @@ FLAG_KEYWORDS = {"exhaust", "ethereal", "innate", "retain", "unplayable", "etern
 
 # Action-combat attack archetypes + the tokens the Attack column understands.
 # See docs/action-attack-translation.md. The Attack cell is the repurposed Range
-# column: "<shape>[, <token>]*", e.g. "Swing, arc=360" or
+# column: "<shape>[, <token>]*", e.g. "Swing, Large" or
 # "Projectile, Medium, crescent, pierce". Bare size words map to reach/radius
 # (per archetype); arc=/spread=/target= are key=value; pierce/crescent are flags.
+# `boomerang` (Sword Boomerang) is a thrown blade that visits N random enemies
+# and returns to the player; N comes from the dmg effect's xN repeat.
 ATTACK_SHAPES = {"poke", "swing", "smash", "nova", "projectile", "lob",
-                 "beam", "homing", "smite", "auto_aoe", "bounce"}
+                 "beam", "homing", "smite", "auto_aoe", "bounce", "boomerang"}
 ATTACK_SIZE_WORDS = {"short", "medium", "large", "full", "small"}
 # Bare flag tokens on the Attack cell. `explosive` makes a projectile burst into
 # an AOE on impact (Lil' Bomber): the direct hit deals no damage, the blast deals
@@ -91,11 +93,17 @@ TRIGGERS = {"eot", "on_action", "lifecycle"}
 
 
 def _value_hits(s):
-    """'5x2' -> (5, 2); '6' -> (6, None); non-numeric -> (0, None)."""
-    m = re.match(r"^(-?\d+)(?:x(\d+))?$", str(s).strip())
+    """'5x2' -> (5, 2); '6' -> (6, None); '5xX' -> (5, 'X') for X-cost cards
+    (Whirlwind/Skewer: repeat once per energy spent); non-numeric -> (0, None)."""
+    m = re.match(r"^(-?\d+)(?:x(\d+|X))?$", str(s).strip(), re.IGNORECASE)
     if not m:
         return 0, None
-    return int(m.group(1)), (int(m.group(2)) if m.group(2) else None)
+    hits = m.group(2)
+    if hits is None:
+        return int(m.group(1)), None
+    if hits.upper() == "X":
+        return int(m.group(1)), "X"
+    return int(m.group(1)), int(hits)
 
 
 def _split_pos_kv(args):
@@ -185,7 +193,11 @@ def _effect_from_tokens(tokens):
                 eff["target"] = "all_enemies"
             elif al == "self":
                 eff["target"] = "self"
-        if hits:
+        if hits == "X":
+            # X-cost repeat (dmg:5xX): the hit count is the energy spent on the
+            # play, resolved at play time from the ctx (hits_from: "energy").
+            eff["hits_from"] = "energy"
+        elif hits:
             eff["hits"] = hits
         # key=value modifiers on a dmg clause.
         if "if_status" in kv:
@@ -241,9 +253,15 @@ def _effect_from_tokens(tokens):
         count = 1
         if len(pos) > 2 and pos[2].isdigit():
             count = int(pos[2])
+        eff = {"type": "conjure", "card_id": card_id, "destination": dest, "count": count}
         if "count" in kv:
-            count = int(float(kv["count"]))
-        return {"type": "conjure", "card_id": card_id, "destination": dest, "count": count}
+            # count=discarded (Storm of Steel): the conjure count is the number of
+            # cards the preceding discard:all sent away, read at play time.
+            if kv["count"].strip().lower() == "discarded":
+                eff["count_from"] = "discarded"
+            else:
+                eff["count"] = int(float(kv["count"]))
+        return eff
 
     if verb == "recall":
         # recall:cost=0 -> pull matching cards from discard to hand.
@@ -253,8 +271,22 @@ def _effect_from_tokens(tokens):
         return eff
 
     if verb == "discard":
+        # discard:all (Storm of Steel) discards the whole hand — no picker, no
+        # random flag — and records the count for a following count=discarded.
+        if pos and pos[0].lower() == "all":
+            return {"type": "discard", "all": True}
         value = int(pos[0]) if pos and pos[0].isdigit() else 1
         eff = {"type": "discard", "value": value}
+        if "random" in [p.lower() for p in pos[1:]]:
+            eff["random"] = True
+        return eff
+
+    if verb == "topdeck":
+        # topdeck:N[:random] (Warcry): put N cards from hand on TOP of the draw
+        # pile. Deckbuilder/strategy open the picker unless `random`; action
+        # auto-picks (no piles the player can browse mid-fight).
+        value = int(pos[0]) if pos and pos[0].isdigit() else 1
+        eff = {"type": "topdeck", "value": value}
         if "random" in [p.lower() for p in pos[1:]]:
             eff["random"] = True
         return eff

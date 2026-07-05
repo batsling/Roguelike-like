@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_warcry"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Warcry.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"warcry"
+display_name = "Warcry"
+type = 1
+rarity = 1
+cost = 0
+description = "Draw 1 Card. Put a Card from your Hand on the top of the Draw Pile. Exhaust."
+effects = [{"type": "draw", "value": 1}, {"type": "topdeck", "value": 1}]
+tags = PackedStringArray("ironclad", "draw")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Draw 2 Cards. Put a Card from your Hand on the top of the Draw Pile. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{"type": "draw", "value": 2}, {"type": "topdeck", "value": 1}]
+image = ExtResource("2_img")
+exhaust = true

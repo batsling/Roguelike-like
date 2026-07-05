@@ -75,6 +75,14 @@ var max_energy: int = 3
 # Ice Cream: energy left unspent at end of turn, re-added at the start of the
 # next turn (can push energy above max_energy). Cleared at combat start.
 var _energy_carryover: int = 0
+# Energy spent by the X-cost card currently resolving (Whirlwind / Skewer).
+# Set per play in _resolve_card and threaded into effect ctx as x_value so
+# `hits_from: "energy"` dmg effects repeat once per point. Replay re-uses the
+# same X (the card was paid for once).
+var _last_x_value: int = 0
+# Cards the last `discard:all` (Storm of Steel) sent away this play. Read back
+# by conjure `count_from: "discarded"` via the effect ctx scene.
+var last_discard_count: int = 0
 var turn: int = 0
 enum Phase { INIT, PLAYER, ENEMY, WON, LOST }
 var phase: Phase = Phase.INIT
@@ -1395,7 +1403,14 @@ func _enemy_view_at(pos: Vector2) -> EnemyView:
 	return null
 
 func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
-	energy -= _card_cost(card)
+	# X-cost cards (cost -1) spend ALL remaining energy; the amount becomes X
+	# for their hits_from: "energy" effects. Fixed-cost cards pay normally.
+	if card.get_cost() < 0:
+		_last_x_value = maxi(0, energy)
+		energy = 0
+	else:
+		_last_x_value = 0
+		energy -= _card_cost(card)
 	TriggerBus.emit_signal("card_played", {
 		"card": card, "target": target_enemy, "scene": self,
 	})
@@ -1471,9 +1486,9 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 # default to the enemy.
 const _SCENE_EFFECT_TYPES := [
 	"draw", "gain_energy", "lose_energy", "discard", "exhaust", "exhaust_self",
-	"conjure", "recall", "gain_gold", "gain_loot", "gain_chest", "roll_gold",
-	"upgrade_hand", "upgrade_random_cards", "boost_cards", "free_random_hand_card",
-	"reduce_card_cost",
+	"topdeck", "conjure", "recall", "gain_gold", "gain_loot", "gain_chest",
+	"roll_gold", "upgrade_hand", "upgrade_random_cards", "boost_cards",
+	"free_random_hand_card", "reduce_card_cost",
 ]
 
 func _is_scene_effect(effect_type: String) -> bool:
@@ -1533,6 +1548,7 @@ func _apply_card_effects(card: CardInstance, target_enemy: CombatActor) -> void:
 				"target": tgt,
 				"scene": self,
 				"card": card,
+				"x_value": _last_x_value,
 			}
 			EffectSystem.apply(effect, ctx)
 
@@ -1928,6 +1944,8 @@ func _resolve_sly_on_discard(card: CardInstance) -> void:
 		tgt = live[_rng.randi() % live.size()]
 	GameLog.add("%s is Sly — it plays as it's discarded!" % card.get_display_name(),
 		Color(0.8, 1.0, 0.8))
+	# A Sly resolve isn't a paid play — no energy was spent, so X is 0 here.
+	_last_x_value = 0
 	_apply_card_effects(card, tgt)
 	_check_combat_end()
 
@@ -2120,6 +2138,66 @@ func _apply_exhaust_picks(picks: Array) -> void:
 	for pick in picks:
 		exhaust_card(pick)
 		GameLog.add("Exhausted %s." % pick.get_display_name(), Color(0.7, 0.7, 0.8))
+
+func topdeck_cards(n: int, source_card = null, random: bool = false) -> void:
+	# Warcry: put N cards from hand on TOP of the draw pile. Player-choice by
+	# default (CardPickerModal); `random` skips the picker. Excludes the played
+	# card — it's mid-resolve and heads to discard/exhaust, not the deck.
+	if n <= 0:
+		return
+	var pool: Array = []
+	for c in hand:
+		if c == source_card:
+			continue
+		pool.append(c)
+	if pool.is_empty():
+		return
+	if random:
+		var picks: Array = []
+		for _i in range(n):
+			if pool.is_empty():
+				break
+			var pick: CardInstance = pool[_rng.randi() % pool.size()]
+			pool.erase(pick)
+			picks.append(pick)
+		_apply_topdeck_picks(picks)
+	else:
+		var count: int = mini(n, pool.size())
+		_open_picker({
+			"title": "Put %d card%s on top of your draw pile" % [count, "s" if count > 1 else ""],
+			"candidates": pool,
+			"count": count,
+			"accent": _PILE_COLORS["draw"],
+			"confirm_label": "Place on top",
+			"on_picked": Callable(self, "_apply_topdeck_picks"),
+		})
+
+func _apply_topdeck_picks(picks: Array) -> void:
+	# draw_cards pops from the BACK of draw_pile, so appending puts the pick on
+	# top. Multiple picks land in click order: the last appended is drawn first.
+	for pick in picks:
+		hand.erase(pick)
+		draw_pile.append(pick)
+		GameLog.add("Put %s on top of the draw pile." % pick.get_display_name(),
+			Color(0.6, 1.0, 0.7))
+	_refresh_ui()
+
+func discard_hand(source_card = null) -> int:
+	# Storm of Steel: discard the entire hand (minus the card being played) and
+	# record the count so a following conjure `count_from: "discarded"` can
+	# mint one Shiv per card. Returns the number discarded.
+	var doomed: Array = []
+	for c in hand:
+		if c != source_card:
+			doomed.append(c)
+	for c in doomed:
+		discard_card(c)
+	last_discard_count = doomed.size()
+	if last_discard_count > 0:
+		GameLog.add("Discarded your hand (%d card%s)." % [
+			last_discard_count, "s" if last_discard_count > 1 else ""],
+			Color(0.9, 0.7, 0.4))
+	return last_discard_count
 
 func recall_cards(from_pile: String, to_pile: String, filter: Dictionary) -> void:
 	# Move (not copy) cards matching `filter` from `from_pile` to

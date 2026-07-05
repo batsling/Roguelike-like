@@ -47,13 +47,13 @@ pattern always faces the aimed tile (Mewgenics-style).
 | Shape | Family | Range (tiles) | Footprint |
 |---|---|---|---|
 | `poke` | single | size reach (small/short 1 / medium 2 / large 3) | the one aimed tile |
-| `swing` | front_arc | 1 (melee) | 3-tile arc in front; `arc=360` → all 8 neighbours |
+| `swing` | front_arc | 1 (melee) | size sets the wrap: **small** = the 3 tiles in front, **medium** = those 3 + the 2 side tiles, **large** = all 8 neighbours (the old `arc=360` spelling maps to large) |
 | `smash` | blast | = size depth (1–3) | forward cluster, `size` tiles deep, that rotates |
 | `projectile` | line | size reach (medium 2 / large 3) | line outward; `spread`→3-wide; `pierce`→through bodies |
 | `beam` | line | full board | line to the edge; **walls block line-of-sight** |
 | `nova` | disc | self | Chebyshev disc of `radius` around the attacker |
 | `lob` | disc | throw range (4) | disc of `radius` dropped on the aimed tile |
-| `smite` / `homing` / `auto_aoe` / `bounce` | auto | any | engine auto-targets (resolved immediately, no aiming) |
+| `smite` / `homing` / `auto_aoe` / `bounce` / `boomerang` | auto | any | engine auto-targets (resolved immediately, no aiming). `boomerang` (Sword Boomerang) rides its dmg `xN` + Indiscriminate: N hits, each on a fresh random enemy |
 
 Tunables (the size→tiles tables, lob throw range) live in
 `data/strategy_attacks.tres` — edit there to retune without touching code.

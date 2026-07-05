@@ -20,4 +20,4 @@ upgraded_cost = -999
 upgraded_effects = [{"type": "dmg", "value": 11, "target": "all_enemies", "damage_type": "melee"}]
 image = ExtResource("2_img")
 attack_shape = &"swing"
-attack_params = {"arc": 360}
+attack_params = {"size": "large"}
