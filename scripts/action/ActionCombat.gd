@@ -2136,6 +2136,11 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 					GameLog.add("%s replays!" % slot.card.display_name, Color(0.7, 1.0, 0.7))
 				# Pain (on_play_other -> on_action): a slot activation bites the player.
 				_fire_pain_curses()
+				# Retain (Action): when a Retain card's cooldown completes and it
+				# fires, it opens another slot — one extra temporary auto-cast.
+				# Time-gated by the full cooldown, so retain chains can't cascade.
+				if slot.card.retain:
+					_open_retain_slot()
 				# A one-shot conjured card fires once and is gone — don't recycle it
 				# into the discard or count it against the shared use cap.
 				if one_shot:
@@ -2186,17 +2191,14 @@ func _auto_cd(card: CardData) -> float:
 		return 0.0
 	return maxf(_tr.min_click_cooldown, _cooldown_for(card))
 
-# Assign `card` as a slot's active card, starting its cooldown. Retain (Action):
-# the moment a Retain card's cooldown starts it "opens another slot" — one extra
-# temporary auto-cast slot, so a Retain ability gives you a parallel cast while
-# it cools. `allow_retain` is false for the retain-spawned slot itself so a chain
-# of Retain draws can't cascade into infinite slots on a single frame.
-func _arm_slot(slot: Dictionary, card: CardData, allow_retain: bool = true) -> void:
+# Assign `card` as a slot's active card, starting its cooldown. Retain's
+# extra slot does NOT open here — it opens when the cooldown COMPLETES and
+# the card fires (see _process_auto_slots), so the bonus arrives as the
+# ability pays off, not the moment it's queued.
+func _arm_slot(slot: Dictionary, card: CardData) -> void:
 	slot.card = card
 	slot.cooldown = _auto_cd(card)
 	slot.max_cooldown = slot.cooldown
-	if allow_retain and card != null and card.retain:
-		_open_retain_slot()
 
 func _open_retain_slot() -> void:
 	var card: CardData = _auto_draw_one()
