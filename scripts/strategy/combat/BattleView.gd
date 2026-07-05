@@ -874,7 +874,6 @@ func _on_unit_turn_ended(unit) -> void:
 				GameLog.add("%s is Ethereal — exhausted." % c.data.display_name, Color(0.75, 0.85, 1.0))
 				TriggerBus.emit_signal("card_exhausted", {"card": c, "scene": self})
 				_fire_power_triggers("card_exhausted", {"card": c})
-				Stats.feel_no_pain_on_exhaust(unit, self)
 			else:
 				discard_pile.append(c)
 		hand = kept
@@ -1197,11 +1196,11 @@ func _on_end_turn_button() -> void:
 		return
 	_clear_pending()
 	_grid_view.enter_idle()
-	# Well-Laid Plans: before the hand discards, pick up to N cards to keep
-	# this turn. The picker is async — the turn actually ends from the
-	# confirm callback (same contract as the deckbuilder).
-	var p = get_player_unit()
-	var wlp: int = p.get_status(&"well_laid_plans") if p != null else 0
+	# Well-Laid Plans (retain-typed turn_ended triggers): before the hand
+	# discards, pick up to N cards to keep this turn. The picker is async —
+	# the turn actually ends from the confirm callback (same contract as
+	# the deckbuilder).
+	var wlp: int = Stats.retain_total(power_triggers)
 	if wlp > 0 and not hand.is_empty():
 		_open_picker({
 			"title": "Well-Laid Plans — Retain up to %d" % mini(wlp, hand.size()),
@@ -1379,13 +1378,13 @@ func _resolve_card(card, target, shaped_targets: Array = []) -> void:
 			Color(0.9, 0.55, 0.55))
 		TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 		_fire_power_triggers("card_exhausted", {"card": card})
-		Stats.feel_no_pain_on_exhaust(u, self)
 	elif data.exhaust:
 		exhaust_card(card)
 	elif card.is_power():
 		# Powers are simply used — the effect lives on the player for the
 		# combat. No pile, no card_exhausted (Feel No Pain stays quiet).
 		hand.erase(card)
+		Stats.register_power(u, data)
 	else:
 		discard_card(card, true)
 	_clear_pending()
@@ -1623,6 +1622,9 @@ func register_trigger(on: String, inner_effect: Dictionary) -> void:
 	GameLog.add("Trigger armed on %s." % on, Color(0.7, 1.0, 0.7))
 
 func _fire_power_triggers(event_name: String, ctx_extras: Dictionary = {}) -> void:
+	# Inner-effect targets resolve like a played card's would: `all_enemies`
+	# fans out over the living field (Fire Breathing), `enemy` lands on the
+	# event's target (Envenom's poison on the struck foe), else the player.
 	if power_triggers.is_empty():
 		return
 	var p = get_player_unit()
@@ -1632,9 +1634,20 @@ func _fire_power_triggers(event_name: String, ctx_extras: Dictionary = {}) -> vo
 		var inner: Dictionary = trig.get("effect", {})
 		if inner.is_empty():
 			continue
-		EffectSystem.apply(inner, {
-			"source": p, "target": p, "scene": self, "card": ctx_extras.get("card"),
-		})
+		var targets: Array = []
+		match String(inner.get("target", "self")):
+			"all_enemies":
+				targets = living_enemies()
+			"enemy":
+				var t: Variant = ctx_extras.get("target")
+				if t != null:
+					targets = [t]
+			_:
+				targets = [p]
+		for tgt in targets:
+			EffectSystem.apply(inner, {
+				"source": p, "target": tgt, "scene": self, "card": ctx_extras.get("card"),
+			})
 
 # --- Card piles (real draw / discard / exhaust now) -------------------
 
@@ -1653,8 +1666,12 @@ func draw_cards(n: int) -> void:
 			c.temp_cost_override = randi() % (maxi(0, max_energy) + 1)
 		TriggerBus.emit_signal("card_drawn", {"card": c, "scene": self})
 		_fire_power_triggers("card_drawn", {"card": c})
-		# Evolve / Fire Breathing react to Status / Curse draws.
-		Stats.fire_card_drawn_powers(get_player_unit(), c, self)
+		# Evolve / Fire Breathing listen on the draw's card type.
+		if c != null and c.data != null and c.data.type == CardData.CardType.STATUS:
+			_fire_power_triggers("status_drawn", {"card": c})
+		if c != null and c.data != null and (c.data.type == CardData.CardType.STATUS
+				or c.data.type == CardData.CardType.CURSE):
+			_fire_power_triggers("status_or_curse_drawn", {"card": c})
 	_check_battle_end_after_effect()
 	_refresh_hand()
 
@@ -1699,7 +1716,6 @@ func exhaust_card(card) -> void:
 	exhaust_pile.append(card)
 	TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 	_fire_power_triggers("card_exhausted", {"card": card})
-	Stats.feel_no_pain_on_exhaust(get_player_unit(), self)
 	_refresh_hand()
 
 # Everything a pick-from-hand effect may choose from: the hand minus the card
@@ -2033,10 +2049,11 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		var oh: Dictionary = Elements.on_hit_status(effect.get("element", ""), target, null)
 		if not oh.is_empty():
 			apply_status(target, StringName(oh["status"]), int(oh["stacks"]), source)
-	# Envenom: unblocked Attack damage poisons the victim. Reactions never
-	# re-trigger it.
-	if not bool(effect.get("no_reaction", false)):
-		Stats.fire_envenom(source, target, int(res.hp_loss), dmg_type, self)
+	# Envenom-style powers: the player's unblocked Attack damage. The victim
+	# rides in as the trigger target. Reactions never re-trigger it.
+	if int(res.hp_loss) > 0 and is_player_attack \
+			and not bool(effect.get("no_reaction", false)):
+		_fire_power_triggers("unblocked_attack", {"target": target})
 	if was_alive and not target.is_alive() and not target.is_player:
 		var infuse_stacks: int = int(effect.get("infuse", 0))
 		if infuse_stacks > 0 and source != null and "is_player" in source and source.is_player:

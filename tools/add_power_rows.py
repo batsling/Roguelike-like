@@ -8,10 +8,13 @@ The card descriptions are reworded from the legacy `cards` sheet's
 "Gain Barricade." style to say what the power actually does — the wording
 comes from the legacy `statuses` sheet, which kept the mechanical text.
 Powers are NOT statuses in the sheet: the mechanical text lives in the
-card's Description and the engine hooks own the behavior (plus the X-form
-badge tooltips, Stats.POWER_TOOLTIPS). In combat they still show on the
-status badge strip with icons from images/powericons/<Img>Power.png
-(same Img as the card art) — that's presentation, not a statusesnew row,
+card's Description and the Effects column is ordinary parsable DSL —
+`on_<event>:<inner>` triggers (Envenom, Evolve, Feel No Pain, Fire
+Breathing, Well-Laid Plans) or the bare `keep_block` verb (Barricade),
+consumed generically by the scenes' power_triggers. In combat a played
+power still badges on the status strip with icons from
+images/powericons/<Img>Power.png (same Img as the card art) and the card
+description as its tooltip — that's presentation, not a statusesnew row,
 so this script also REMOVES any legacy power rows from statusesnew.
 
 Idempotent: any existing cardsnew row with a matching Name is replaced in
@@ -33,54 +36,54 @@ CARD_ROWS = {
     "Barricade": [
         "Barricade", "Rare", "Power", 3,
         "Block is not removed at the start of your turn.",
-        "gain:barricade:1",
+        "keep_block",
         "Block is not removed at the start of your turn.",
-        "gain:barricade:1",
+        "keep_block",
         2, "N/A", "Barricade", "Slay the Spire", "N/A", "N/A",
         "ironclad, defense, block",
     ],
     "Envenom": [
         "Envenom", "Rare", "Power", 2,
         "Whenever you deal unblocked Attack Dmg, Inflict 1 Poison.",
-        "gain:envenom:1",
+        "on_unblocked_attack:inflict:poison:1",
         "Whenever you deal unblocked Attack Dmg, Inflict 1 Poison.",
-        "gain:envenom:1",
+        "on_unblocked_attack:inflict:poison:1",
         1, "N/A", "Envenom", "Slay the Spire", "N/A", "N/A",
         "silent, poison, offense",
     ],
     "Evolve": [
         "Evolve", "Uncommon", "Power", 1,
         "Whenever you Draw a Status Card, Draw 1 Card.",
-        "gain:evolve:1",
+        "on_status_drawn:draw:1",
         "Whenever you Draw a Status Card, Draw 2 Cards.",
-        "gain:evolve:2",
+        "on_status_drawn:draw:2",
         1, "N/A", "Evolve", "Slay the Spire", "N/A", "N/A",
         "ironclad, draw, status",
     ],
     "Feel No Pain": [
         "Feel No Pain", "Uncommon", "Power", 1,
         "Whenever a Card is Exhausted, Gain 3 Block.",
-        "gain:feel_no_pain:3",
+        "on_card_exhausted:gain:block:3",
         "Whenever a Card is Exhausted, Gain 4 Block.",
-        "gain:feel_no_pain:4",
+        "on_card_exhausted:gain:block:4",
         1, "N/A", "FeelNoPain", "Slay the Spire", "N/A", "N/A",
         "ironclad, defense, exhaust",
     ],
     "Fire Breathing": [
         "Fire Breathing", "Uncommon", "Power", 1,
         "Whenever you Draw a Status or Curse Card, Deal 6 Magic Dmg to ALL Enemies.",
-        "gain:fire_breathing:6",
+        "on_status_or_curse_drawn:dmg:6:magic:cleave",
         "Whenever you Draw a Status or Curse Card, Deal 10 Magic Dmg to ALL Enemies.",
-        "gain:fire_breathing:10",
+        "on_status_or_curse_drawn:dmg:10:magic:cleave",
         1, "N/A", "FireBreathing", "Slay the Spire", "N/A", "N/A",
         "ironclad, offense, aoe, status",
     ],
     "Well-Laid Plans": [
         "Well-Laid Plans", "Uncommon", "Power", 1,
         "At the end of your turn, choose up to 1 Card in your hand to Retain.",
-        "gain:well_laid_plans:1",
+        "on_turn_ended:retain:1",
         "At the end of your turn, choose up to 2 Cards in your hand to Retain.",
-        "gain:well_laid_plans:2",
+        "on_turn_ended:retain:2",
         1, "N/A", "Well-LaidPlans", "Slay the Spire", "N/A", "N/A",
         "silent, draw, retain",
     ],

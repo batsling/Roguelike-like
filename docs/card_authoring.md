@@ -135,7 +135,9 @@ Semicolon-delimited list of effect lines. Each line is
 | `recall` | `<FILTER>[:from=PILE][:to=PILE]` | Deckbuilder: move (not copy) every card in the source pile matching `FILTER` into the destination pile. `FILTER` today is `cost=N`; defaults are `from=discard`, `to=hand` (All for One). No-op in action/strategy. | `{type: "recall", from: PILE, to: PILE, filter: {…}}` |
 | `upgrade_hand` | `N\|all[:random]` | Deckbuilder: upgrade in-place. `upgrade_hand:1` opens the picker so the player chooses (Armaments); `upgrade_hand:all` upgrades every eligible card in hand silently (Armaments+). Append `:random` to skip the picker for the N form. Skips cards that are already upgraded or have `can_upgrade = false`. No-op in action/strategy. | `{type: "upgrade_hand", value: N\|"all", random?: bool}` |
 | `boost_cards` | `<MATCH>:<STAT>:<VALUE>` | Persistent in-combat modifier. Every later card matching `MATCH` resolves with `STAT + VALUE`. `MATCH` is exactly one of `tag=X` / `type=X` / `id=X`. `STAT` is `dmg` or `block`. Deckbuilder only today. | `{type: "boost_cards", match_tag/match_type/match_id, stat, value}` |
-| `on_<EVENT>` | `<INNER_VERB>:<INNER_ARGS>` | Register a persistent in-combat listener. When the named event fires, the inner effect runs (source = player, target = player unless overridden). `<EVENT>` is a TriggerBus signal name (see Triggers section). After Image: `on_card_played:gain:block:1`. Deckbuilder only today. | `{type: "trigger", on: "<event>", effect: {…inner…}}` |
+| `on_<EVENT>` | `<INNER_VERB>:<INNER_ARGS>` | Register a persistent in-combat listener. When the named event fires, the inner effect runs; its target resolves like a played card's (`all_enemies` fans out, `enemy` = the event's target, else the player). `<EVENT>` is a scene trigger event (see Triggers section). After Image: `on_card_played:gain:block:1`; Envenom: `on_unblocked_attack:inflict:poison:1`. All three modes register; events with no analog in a mode simply never fire there. | `{type: "trigger", on: "<event>", effect: {…inner…}}` |
+| `keep_block` | (none) | Barricade: the player's Block is not removed at the turn boundary (action: no longer fades over time). Sticky for the combat. | `{type: "keep_block"}` |
+| `retain` | `N` | Inner verb for `on_turn_ended` (Well-Laid Plans): at end of turn keep up to N hand cards. Resolved by the scenes' end-turn intercept BEFORE the discard; inert in the generic trigger pass. | `{type: "retain", value: N}` |
 | `gain_loot` | `<KIND>:<COUNT>` | Add COUNT loot of `KIND` (`potion` / `scroll` / `key`) to the run-scope counter on GameState. Concrete potion/scroll catalogs land later; the counter is the placeholder. Alchemize: `gain_loot:potion:1`. | `{type: "gain_loot", kind: "potion", value: 1}` |
 | `heal` | `VALUE[:self]` | Recover HP (defaults to self). | `{type: "heal", value, target: "self"}` |
 | `gain_energy` | `N` | Deckbuilder: refund N energy. Action: ~N-second Haste window (1.3× movement, basic attack rate, ability cooldown ticking). Strategy: opens a per-turn budget of N for extra ability casts beyond the one-per-turn cap, paid out at the card's cost. | `{type: "gain_energy", value: N}` |
@@ -597,6 +599,9 @@ Available events (mirror of `TriggerBus` signals):
 | `damage_taken` | Any actor takes damage that lands. |
 | `enemy_killed` | An enemy's HP hits 0. |
 | `status_applied` | A status finishes applying (`actual_stacks` includes Persistence). |
+| `unblocked_attack` | The player's melee/ranged hit deals post-block HP loss. The victim is the trigger's target, so an inner `inflict` lands on it (Envenom). Fires in all three modes; reactions (`no_reaction`) never re-fire it. |
+| `status_drawn` | A Status-type card lands in hand (Evolve). Deckbuilder + strategy. |
+| `status_or_curse_drawn` | A Status- or Curse-type card lands in hand (Fire Breathing). Deckbuilder + strategy. |
 
 Inner effect can be any verb the EffectSystem already understands —
 `gain`, `inflict`, `dmg`, `draw`, `discard`, `conjure`, `gain_loot`,
@@ -627,10 +632,12 @@ Description:  At the start of your turn, gain 2 Power.
 Effects:      on_turn_started:gain:power:2
 ```
 
-**Mode coverage:** today only the deckbuilder fires power triggers.
-Action and Strategy don't register triggers (their handler no-ops via
-`has_method`), so a Power card with `on_card_played:...` in an action
-loadout is silently inert. See Future Work.
+**Mode coverage:** all three modes register triggers (deckbuilder and
+strategy through EffectSystem's `trigger` handler, action through
+`_apply_utility_effects`). Each mode fires the events it has an analog
+for — action has no card draws or exhausts, so `status_drawn` /
+`card_exhausted` triggers sit dormant there while `unblocked_attack`
+and `turn_ended`-retain still work.
 
 ## Loot (Alchemize and friends)
 
@@ -747,39 +754,39 @@ extend duration, not magnitude). Bag o' Glitter applies 2 stacks
 
 ### Powers (Barricade / Envenom / Evolve / Feel No Pain / Fire Breathing / Well-Laid Plans)
 
-A Power card whose whole effect is `gain:<status>:N` puts a
-combat-long stack counter on the player. **Powers are cards, not
-statuses**: they have no `statusesnew` row and no ReferenceCatalog
-entry — the mechanical text lives in the card's Description column,
-the behavior in cross-mode hooks on `Stats`, and the badge hover text
-in `Stats.POWER_TOOLTIPS` (X-form wording, right next to the hooks).
-In combat the counter still *renders* on the same badge strip as the
-statuses in all three modes, with a stack count.
+Powers are authored as ordinary parsable Effects DSL — no opaque
+`gain:<power_name>` indirection. Each one is either an
+`on_<EVENT>:<inner>` trigger (see the Triggers section) or a bare
+structural verb:
+
+| Power | Effects DSL | Meaning |
+|---|---|---|
+| Barricade | `keep_block` | Sets `actor.keep_block`; every turn-boundary `block = 0` site checks `Stats.keeps_block(actor)` (action instead stops the block pool's real-time fade — hits still soak). |
+| Envenom | `on_unblocked_attack:inflict:poison:1` | Fired from each mode's damage path when the player's melee/ranged hit deals post-block HP loss; the victim is the trigger's target. Reactions (`no_reaction`) never re-fire it. |
+| Evolve | `on_status_drawn:draw:1` | Fired from `draw_cards` when the drawn card is a Status card. |
+| Feel No Pain | `on_card_exhausted:gain:block:3` | The pre-existing exhaust event — no bespoke code at all. |
+| Fire Breathing | `on_status_or_curse_drawn:dmg:6:magic:cleave` | The inner cleave fans out over `living_enemies()` at fire time. |
+| Well-Laid Plans | `on_turn_ended:retain:1` | `retain` is resolved by the scenes' end-turn intercept BEFORE the hand discards (`Stats.retain_total(power_triggers)` → the `CardPickerModal` in `up_to` mode; picks get `CardInstance.retain_this_turn`). Action: each turn tick, a random auto-slot card still in cooldown finishes its cooldown, once per retain point. The generic `turn_ended` pass deliberately no-ops retain (`EffectSystem._h_retain`). |
 
 **Playing a Power is not an exhaust.** The card is simply used — it
 leaves hand into no pile and fires no `card_exhausted` (so Feel No
 Pain stays quiet). Cards with an explicit `Exhaust` keyword still
 exhaust normally.
 
-| Power | Hook | Fires from |
-|---|---|---|
-| `barricade` | `Stats.keeps_block(actor)` | every turn-boundary `block = 0` site (deckbuilder player + enemy, strategy `BattleTurnManager` / `BattleView`); action instead stops the block pool's real-time fade (`_decay_block`) — hits still soak. |
-| `envenom` | `Stats.fire_envenom(src, tgt, hp_loss, dmg_type, scene)` | each mode's damage path, post-block. Unblocked melee/ranged only; reactions (`no_reaction`) never re-trigger it. |
-| `feel_no_pain` | `Stats.feel_no_pain_on_exhaust(actor, scene)` | every `card_exhausted` site (deckbuilder + strategy). Action never exhausts → inert. |
-| `evolve` / `fire_breathing` | `Stats.fire_card_drawn_powers(actor, card, scene)` | both modes' `draw_cards`, right after the card lands. Evolve draws on Status cards; Fire Breathing deals magic Fire damage to `scene.living_enemies()` on Status **or** Curse draws. Action has no card draws → inert. |
-| `well_laid_plans` | end-turn intercept per mode | Deckbuilder `_on_end_turn` / strategy `_on_end_turn_button` open the `CardPickerModal` in its `up_to` mode; picks get `CardInstance.retain_this_turn`, consumed by the end-of-turn keep loop. Action: each turn tick (`_fire_well_laid_plans`), a random auto-slot card still in cooldown has its cooldown finished — "Retained", ready now — once per stack. |
+**Badges.** A resolving Power records itself on the actor
+(`Stats.register_power` → `actor.powers`, count rises when the same
+power is played again), and every mode's badge strip renders those
+entries next to the statuses: icon from
+`images/powericons/<Img>Power.png` (same `Img` as the card art,
+resolved by `Stats.power_badge_icon`), hover text = the card's own
+description (`Stats.power_tooltip`). Powers have no `statusesnew`
+row and no ReferenceCatalog entry — the card is the single source
+of truth.
 
-Two authoring rules fall out of this:
-
-- **Card text says what the power does**, not "Gain Barricade." — the
-  wording came from the legacy `statuses` sheet and now lives in the
-  `cardsnew` Description, so the card and the badge tooltip read the
-  same.
-- **Badge art lives at `images/powericons/<Img>Power.png`** (same
-  `Img` as the card art — `BarricadePower.png`). `Stats.STATUS_ICONS`
-  maps the snake_case power to that filename and `Stats.status_icon`
-  falls back from `images/statuses/` to `images/powericons/`
-  automatically.
+**Card text says what the power does**, not "Gain Barricade." — the
+wording came from the legacy `statuses` sheet and lives in the
+`cardsnew` Description, so the card and the badge tooltip read the
+same.
 
 ## Quick gotchas
 

@@ -379,6 +379,12 @@ func _draw_unit_status_icons(u) -> void:
 			icons.append({"tex": tex, "stacks": int(u.statuses[s]),
 				"permanent": can_perm and u.is_status_permanent(s),
 				"temp_turns": (u.temporary_turns(s) if can_temp and u.is_status_temporary(s) else 0)})
+	# Played Powers ride the same row, after the statuses (count = copies).
+	if "powers" in u:
+		for pid in u.powers.keys():
+			var entry: Dictionary = u.powers[pid]
+			icons.append({"tex": Stats.power_badge_icon(entry.get("card")),
+				"stacks": int(entry.get("count", 1))})
 	if icons.is_empty():
 		return
 	var gap := 2.0

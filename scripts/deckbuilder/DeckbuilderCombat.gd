@@ -628,6 +628,9 @@ func _refresh_player_view() -> void:
 		if stacks == 0:
 			continue
 		_player_status_row.add_child(_make_status_badge(s, stacks, player))
+	# Played Powers badge on the same strip, after the statuses.
+	for pid in player.powers.keys():
+		_player_status_row.add_child(_make_power_badge(player.powers[pid]))
 
 # Small status icon + stack-count badge, mirroring EnemyView's. Falls back to a
 # coloured letter when a status has no icon art.
@@ -671,6 +674,37 @@ func _make_status_badge(status_name, stacks: int, actor = null) -> Control:
 	holder.add_child(count)
 	# Top-right addon marker: a lock for Permanent, a clock + turns for Temporary.
 	_add_status_marker(holder, actor, status_name)
+	return holder
+
+# Power badge: the same 30×30 chip as a status badge, sourced from the played
+# Power card itself — icon from images/powericons/<Img>Power.png, hover text
+# from the card's (mechanical) description, count = copies played this combat.
+func _make_power_badge(entry: Dictionary) -> Control:
+	var card: CardData = entry.get("card")
+	var count_val: int = int(entry.get("count", 1))
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(30, 30)
+	holder.mouse_filter = Control.MOUSE_FILTER_PASS
+	holder.tooltip_text = Stats.power_tooltip(card, count_val)
+	var icon := TextureRect.new()
+	icon.texture = Stats.power_badge_icon(card)
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(icon)
+	if count_val > 1:
+		var count := Label.new()
+		count.text = str(count_val)
+		count.set_anchors_preset(Control.PRESET_FULL_RECT)
+		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		count.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		count.add_theme_font_size_override("font_size", 13)
+		count.add_theme_color_override("font_color", Color.WHITE)
+		count.add_theme_color_override("font_outline_color", Color.BLACK)
+		count.add_theme_constant_override("outline_size", 3)
+		count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(count)
 	return holder
 
 # Adds the Permanent/Temporary marker overlay to a 30×30 status badge `holder`
@@ -821,11 +855,11 @@ func _on_end_turn() -> void:
 	if phase != Phase.PLAYER:
 		return
 	_cancel_targeting()
-	# Well-Laid Plans: before the hand discards, pick up to N cards to keep
-	# this turn. The picker is async — the actual turn end resumes from the
-	# confirm callback; without the power (or an empty hand) fall straight
-	# through.
-	var wlp: int = player.get_status(&"well_laid_plans")
+	# Well-Laid Plans (retain-typed turn_ended triggers): before the hand
+	# discards, pick up to N cards to keep this turn. The picker is async —
+	# the actual turn end resumes from the confirm callback; without the
+	# power (or an empty hand) fall straight through.
+	var wlp: int = Stats.retain_total(power_triggers)
 	if wlp > 0 and not hand.is_empty():
 		_open_picker({
 			"title": "Well-Laid Plans — Retain up to %d" % mini(wlp, hand.size()),
@@ -885,7 +919,6 @@ func _finish_end_turn() -> void:
 			GameLog.add("%s is Ethereal — exhausted." % c.data.display_name, Color(0.75, 0.85, 1.0))
 			TriggerBus.emit_signal("card_exhausted", {"card": c, "scene": self})
 			_fire_power_triggers("card_exhausted", {"card": c})
-			Stats.feel_no_pain_on_exhaust(player, self)
 		else:
 			discard_pile.append(c)
 	hand = kept
@@ -1506,7 +1539,6 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 			Color(0.9, 0.55, 0.55))
 		TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 		_fire_power_triggers("card_exhausted", {"card": card})
-		Stats.feel_no_pain_on_exhaust(player, self)
 	# Cards with the exhaust flag exhaust. Powers are simply used — their
 	# effect lives on the player for the combat — so they leave hand without
 	# entering any pile and do NOT count as an exhaust (Feel No Pain and
@@ -1515,6 +1547,7 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 		exhaust_card(card)
 	elif card.is_power():
 		hand.erase(card)
+		Stats.register_power(player, card.data)
 	else:
 		# from_play: a Sly card that was just played normally must NOT re-trigger
 		# its play-on-discard as it heads to the pile (that would double-resolve).
@@ -1532,6 +1565,9 @@ const _SCENE_EFFECT_TYPES := [
 	"topdeck", "conjure", "recall", "gain_gold", "gain_loot", "gain_chest",
 	"roll_gold", "upgrade_hand", "upgrade_random_cards", "boost_cards",
 	"free_random_hand_card", "reduce_card_cost",
+	# Power installs (After Image / Envenom / Barricade / Well-Laid Plans):
+	# they arm the scene/player, so a targetless play must still resolve them.
+	"trigger", "keep_block", "retain",
 ]
 
 func _is_scene_effect(effect_type: String) -> bool:
@@ -1787,10 +1823,11 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 	if landed_melee:
 		Stats.fire_contact_reactions(target, source, self)
 
-	# Envenom: unblocked Attack damage poisons the victim. Reactions
-	# (thorns reflects, soul link) never re-trigger it.
-	if not effect.get("no_reaction", false):
-		Stats.fire_envenom(source, target, amount, damage_type, self)
+	# Envenom-style powers: the player's unblocked Attack damage. The victim
+	# rides in as the trigger target so an inner `inflict` lands on it.
+	# Reactions (thorns reflects, soul link) never re-trigger it.
+	if amount > 0 and is_player_attack and not effect.get("no_reaction", false):
+		_fire_power_triggers("unblocked_attack", {"target": target})
 
 	TriggerBus.emit_signal("damage_dealt", {
 		"source": source, "target": target, "amount": amount, "scene": self,
@@ -1970,9 +2007,13 @@ func draw_cards(n: int) -> void:
 			c.temp_cost_override = _rng.randi_range(0, max_energy)
 		TriggerBus.emit_signal("card_drawn", {"card": c, "scene": self})
 		_fire_power_triggers("card_drawn", {"card": c})
-		# Evolve / Fire Breathing react to Status / Curse draws. May draw
+		# Evolve / Fire Breathing listen on the draw's card type. May draw
 		# further cards (safe: this loop pops its own count) or kill enemies.
-		Stats.fire_card_drawn_powers(player, c, self)
+		if c.data != null and c.data.type == CardData.CardType.STATUS:
+			_fire_power_triggers("status_drawn", {"card": c})
+		if c.data != null and (c.data.type == CardData.CardType.STATUS
+				or c.data.type == CardData.CardType.CURSE):
+			_fire_power_triggers("status_or_curse_drawn", {"card": c})
 	_check_combat_end()
 	_refresh_ui()
 
@@ -2015,7 +2056,6 @@ func exhaust_card(card: CardInstance) -> void:
 	exhaust_pile.append(card)
 	TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 	_fire_power_triggers("card_exhausted", {"card": card})
-	Stats.feel_no_pain_on_exhaust(player, self)
 	_refresh_ui()
 
 func conjure_card(card_id: StringName, destination: String, count: int, source_card, force_upgraded: bool = false) -> void:
@@ -2383,8 +2423,12 @@ func register_trigger(on: String, inner_effect: Dictionary) -> void:
 func _fire_power_triggers(event_name: String, ctx_extras: Dictionary = {}) -> void:
 	# Walks the power_triggers list and dispatches every entry whose
 	# `on` matches `event_name`. ctx_extras lets the caller pass
-	# event-specific bits (e.g. the card that was just played) into
-	# the inner effect's context.
+	# event-specific bits (the card that was just played, or the victim
+	# of the hit for `target`-carrying events like unblocked_attack) into
+	# the inner effect's context. The inner effect's target resolves the
+	# same way a played card's would: `all_enemies` fans out over the
+	# living field (Fire Breathing), `enemy` lands on the event's target
+	# (Envenom's poison on the struck foe), anything else is the player.
 	if power_triggers.is_empty():
 		return
 	for trig in power_triggers:
@@ -2393,13 +2437,23 @@ func _fire_power_triggers(event_name: String, ctx_extras: Dictionary = {}) -> vo
 		var inner: Dictionary = trig.get("effect", {})
 		if inner.is_empty():
 			continue
-		var ctx: Dictionary = {
-			"source": player,
-			"target": player,
-			"scene": self,
-			"card": ctx_extras.get("card"),
-		}
-		EffectSystem.apply(inner, ctx)
+		var targets: Array = []
+		match String(inner.get("target", "self")):
+			"all_enemies":
+				targets = living_enemies()
+			"enemy":
+				var t: Variant = ctx_extras.get("target")
+				if t != null:
+					targets = [t]
+			_:
+				targets = [player]
+		for tgt in targets:
+			EffectSystem.apply(inner, {
+				"source": player,
+				"target": tgt,
+				"scene": self,
+				"card": ctx_extras.get("card"),
+			})
 
 func _boost_label(boost: Dictionary) -> String:
 	var who := ""

@@ -1,45 +1,19 @@
 extends GutTest
 
 # Covers the Barricade / Envenom / Evolve / Feel No Pain / Fire Breathing /
-# Well-Laid Plans Power batch:
-#   - sheet -> generator round-trip (.tres shape: Power type, gain:<status>)
-#   - power icon lookup (images/powericons/<Img>Power.png via the
-#     Stats.status_icon fallback) + hyphen-tolerant status tooltips
-#   - the Stats cross-mode hooks the powers ride on (keeps_block,
-#     fire_envenom, feel_no_pain_on_exhaust, fire_card_drawn_powers)
-#   - Well-Laid Plans' one-turn retain flag on CardInstance
+# Well-Laid Plans Power batch, authored as parsable DSL:
+#   - sheet -> generator round-trip: on_<event>:<inner> trigger effects,
+#     the keep_block structural verb, the retain inner verb
+#   - the generic power runtime: scene power_triggers with target fan-out,
+#     Stats.keeps_block / retain_total, the played-powers badge registry
+#   - playing a Power is not an exhaust (and Exhaust-keyword cards still are)
+# Integration runs on the strategy BattleView, which mirrors the
+# deckbuilder's pile/trigger contract exactly.
 
 const POWER_IDS := [
 	&"barricade", &"envenom", &"evolve",
 	&"feel_no_pain", &"fire_breathing", &"well_laid_plans",
 ]
-
-# Records the scene calls the power hooks route through, mode-agnostically.
-class _PowerScene:
-	extends RefCounted
-	var enemies: Array = []
-	var applied: Array = []      # [{target, status, stacks}]
-	var blocks: Array = []       # [{target, amount}]
-	var draws: int = 0
-	var hits: Array = []         # [{target, amount, effect}]
-	func apply_status(target, status: StringName, stacks: int, _source = null) -> void:
-		applied.append({"target": target, "status": status, "stacks": stacks})
-	func gain_block(target, amount: int) -> void:
-		blocks.append({"target": target, "amount": amount})
-	func draw_cards(n: int) -> void:
-		draws += n
-	func living_enemies() -> Array:
-		return enemies
-	func deal_damage(_src, tgt, amount: int, effect) -> void:
-		hits.append({"target": tgt, "amount": amount, "effect": effect})
-
-func _actor(status: StringName = &"", stacks: int = 0) -> CombatActor:
-	var a := CombatActor.new()
-	a.max_hp = 20
-	a.hp = 20
-	if status != &"" and stacks != 0:
-		a.add_status(status, stacks)
-	return a
 
 # --- .tres round-trip -------------------------------------------------------
 
@@ -48,30 +22,56 @@ func test_all_six_powers_load_as_power_cards() -> void:
 		var card: CardData = Data.get_card(id)
 		assert_not_null(card, "%s.tres should load" % id)
 		assert_eq(card.type, CardData.CardType.POWER, "%s is a Power" % id)
-		var eff: Dictionary = card.effects[0]
-		assert_eq(String(eff.get("type", "")), "status", "%s gains a status" % id)
-		assert_eq(String(eff.get("status", "")), String(id),
-			"%s's status matches its id" % id)
-		assert_eq(String(eff.get("target", "")), "self")
 
-func test_barricade_upgrade_drops_cost() -> void:
+func test_barricade_is_keep_block_and_upgrade_drops_cost() -> void:
 	var card: CardData = Data.get_card(&"barricade")
+	assert_eq(card.effects, [{"type": "keep_block"}])
 	assert_eq(card.cost, 3)
 	assert_eq(card.upgraded_cost, 2)
 
-func test_stack_grants_match_sts_numbers() -> void:
-	var expect := {
-		&"feel_no_pain": [3, 4],
-		&"fire_breathing": [6, 10],
-		&"evolve": [1, 2],
-		&"well_laid_plans": [1, 2],
-	}
-	for id in expect:
-		var card: CardData = Data.get_card(id)
-		assert_eq(int(card.effects[0].get("stacks", 0)), expect[id][0],
-			"%s base stacks" % id)
-		assert_eq(int(card.upgraded_effects[0].get("stacks", 0)), expect[id][1],
-			"%s upgraded stacks" % id)
+func test_envenom_is_an_unblocked_attack_trigger() -> void:
+	var eff: Dictionary = Data.get_card(&"envenom").effects[0]
+	assert_eq(String(eff.get("type", "")), "trigger")
+	assert_eq(String(eff.get("on", "")), "unblocked_attack")
+	var inner: Dictionary = eff.get("effect", {})
+	assert_eq(String(inner.get("status", "")), "poison")
+	assert_eq(int(inner.get("stacks", 0)), 1)
+	assert_eq(String(inner.get("target", "")), "enemy")
+
+func test_evolve_is_a_status_drawn_draw_trigger() -> void:
+	var card: CardData = Data.get_card(&"evolve")
+	var eff: Dictionary = card.effects[0]
+	assert_eq(String(eff.get("on", "")), "status_drawn")
+	assert_eq(int(eff.get("effect", {}).get("value", 0)), 1)
+	assert_eq(int(card.upgraded_effects[0].get("effect", {}).get("value", 0)), 2)
+
+func test_feel_no_pain_is_a_card_exhausted_block_trigger() -> void:
+	var card: CardData = Data.get_card(&"feel_no_pain")
+	var eff: Dictionary = card.effects[0]
+	assert_eq(String(eff.get("on", "")), "card_exhausted")
+	var inner: Dictionary = eff.get("effect", {})
+	assert_eq(String(inner.get("type", "")), "block")
+	assert_eq(int(inner.get("value", 0)), 3)
+	assert_eq(int(card.upgraded_effects[0].get("effect", {}).get("value", 0)), 4)
+
+func test_fire_breathing_is_a_status_or_curse_drawn_aoe_trigger() -> void:
+	var card: CardData = Data.get_card(&"fire_breathing")
+	var eff: Dictionary = card.effects[0]
+	assert_eq(String(eff.get("on", "")), "status_or_curse_drawn")
+	var inner: Dictionary = eff.get("effect", {})
+	assert_eq(String(inner.get("type", "")), "dmg")
+	assert_eq(int(inner.get("value", 0)), 6)
+	assert_eq(String(inner.get("damage_type", "")), "magic")
+	assert_eq(String(inner.get("target", "")), "all_enemies")
+	assert_eq(int(card.upgraded_effects[0].get("effect", {}).get("value", 0)), 10)
+
+func test_well_laid_plans_is_a_turn_ended_retain_trigger() -> void:
+	var card: CardData = Data.get_card(&"well_laid_plans")
+	var eff: Dictionary = card.effects[0]
+	assert_eq(String(eff.get("on", "")), "turn_ended")
+	assert_eq(String(eff.get("effect", {}).get("type", "")), "retain")
+	assert_eq(int(eff.get("effect", {}).get("value", 0)), 1)
+	assert_eq(int(card.upgraded_effects[0].get("effect", {}).get("value", 0)), 2)
 
 func test_descriptions_are_mechanical_not_gain_wording() -> void:
 	# The whole point of the rewrite: no more "Gain Barricade." card text.
@@ -80,124 +80,49 @@ func test_descriptions_are_mechanical_not_gain_wording() -> void:
 		assert_false(card.description.begins_with("Gain %s" % card.display_name),
 			"%s description should say what it does" % id)
 
-# --- Icons + tooltips -------------------------------------------------------
+# --- Shared helpers ---------------------------------------------------------
 
-func test_power_status_icons_resolve_from_powericons_dir() -> void:
-	for id in POWER_IDS:
-		var tex: Texture2D = Stats.status_icon(id)
-		assert_not_null(tex, "%s should have badge art" % id)
-		assert_string_contains(tex.resource_path, "powericons",
-			"%s art lives in images/powericons/" % id)
+func test_retain_total_sums_retain_triggers_only() -> void:
+	assert_eq(Stats.retain_total([]), 0)
+	var triggers: Array = [
+		{"on": "turn_ended", "effect": {"type": "retain", "value": 1}},
+		{"on": "turn_ended", "effect": {"type": "retain", "value": 2}},
+		{"on": "turn_ended", "effect": {"type": "block", "value": 5}},
+		{"on": "card_played", "effect": {"type": "retain", "value": 9}},
+	]
+	assert_eq(Stats.retain_total(triggers), 3, "two WLP copies stack; non-retain ignored")
 
-func test_power_badge_tooltips_come_from_stats_not_the_status_catalog() -> void:
-	# Powers are cards, not statuses: no statusesnew row / ReferenceCatalog
-	# entry. Their badge hover text lives in Stats.POWER_TOOLTIPS instead.
-	for id in POWER_IDS:
-		var display: String = String(id).capitalize()
-		for s in ReferenceCatalog.STATUSES:
-			assert_ne(String(s.get("name", "")).replace("-", " "), display,
-				"%s must not be listed as a status" % id)
-		var tip: String = Stats.status_tooltip(id, 2)
-		assert_true(tip.contains("\n"), "%s badge still has a description line" % id)
-	assert_string_contains(Stats.status_tooltip(&"well_laid_plans", 2), "Retain")
-
-# --- Barricade --------------------------------------------------------------
-
-func test_keeps_block_only_with_barricade() -> void:
+func test_keeps_block_reads_the_flag() -> void:
+	var a := CombatActor.new()
 	assert_false(Stats.keeps_block(null))
-	assert_false(Stats.keeps_block(_actor()))
-	assert_true(Stats.keeps_block(_actor(&"barricade", 1)))
+	assert_false(Stats.keeps_block(a))
+	a.keep_block = true
+	assert_true(Stats.keeps_block(a))
 
-# --- Envenom ----------------------------------------------------------------
+func test_power_registry_badge_icon_and_tooltip() -> void:
+	var a := CombatActor.new()
+	var card: CardData = Data.get_card(&"barricade")
+	Stats.register_power(a, card)
+	Stats.register_power(a, card)
+	assert_eq(int(a.powers[&"barricade"].count), 2, "same power counts up")
+	var tex: Texture2D = Stats.power_badge_icon(card)
+	assert_not_null(tex)
+	assert_string_contains(tex.resource_path, "powericons",
+		"badge art lives in images/powericons/")
+	var tip: String = Stats.power_tooltip(card, 2)
+	assert_string_contains(tip, "Block is not removed",
+		"tooltip is the card's own description")
 
-func test_envenom_poisons_on_unblocked_attack_damage() -> void:
-	var scene := _PowerScene.new()
-	var src := _actor(&"envenom", 2)
-	var tgt := _actor()
-	Stats.fire_envenom(src, tgt, 5, "melee", scene)
-	assert_eq(scene.applied.size(), 1)
-	assert_eq(scene.applied[0].status, &"poison")
-	assert_eq(int(scene.applied[0].stacks), 2)
-
-func test_envenom_skips_blocked_and_non_attack_damage() -> void:
-	var scene := _PowerScene.new()
-	var src := _actor(&"envenom", 2)
-	var tgt := _actor()
-	Stats.fire_envenom(src, tgt, 0, "melee", scene)   # fully blocked
-	Stats.fire_envenom(src, tgt, 5, "magic", scene)   # not an Attack
-	assert_eq(scene.applied.size(), 0)
-
-func test_envenom_without_scene_apply_status_still_lands() -> void:
-	var src := _actor(&"envenom", 1)
-	var tgt := _actor()
-	Stats.fire_envenom(src, tgt, 3, "ranged", null)
-	assert_eq(tgt.get_status(&"poison"), 1)
-
-# --- Feel No Pain -----------------------------------------------------------
-
-func test_feel_no_pain_gains_block_per_exhaust() -> void:
-	var scene := _PowerScene.new()
-	var actor := _actor(&"feel_no_pain", 3)
-	Stats.feel_no_pain_on_exhaust(actor, scene)
-	assert_eq(scene.blocks.size(), 1)
-	assert_eq(int(scene.blocks[0].amount), 3)
-
-func test_feel_no_pain_without_stacks_is_inert() -> void:
-	var scene := _PowerScene.new()
-	Stats.feel_no_pain_on_exhaust(_actor(), scene)
-	assert_eq(scene.blocks.size(), 0)
-
-# --- Evolve + Fire Breathing ------------------------------------------------
-
-func _card_of_type(t: int) -> CardInstance:
-	var data := CardData.new()
-	data.id = &"stub"
-	data.display_name = "Stub"
-	data.type = t
-	return CardInstance.from_data(data)
-
-func test_evolve_draws_on_status_card_only() -> void:
-	var scene := _PowerScene.new()
-	var actor := _actor(&"evolve", 2)
-	Stats.fire_card_drawn_powers(actor, _card_of_type(CardData.CardType.STATUS), scene)
-	assert_eq(scene.draws, 2, "Status draw fires Evolve")
-	Stats.fire_card_drawn_powers(actor, _card_of_type(CardData.CardType.CURSE), scene)
-	assert_eq(scene.draws, 2, "Curse draw does NOT fire Evolve")
-	Stats.fire_card_drawn_powers(actor, _card_of_type(CardData.CardType.ATTACK), scene)
-	assert_eq(scene.draws, 2, "normal draws are inert")
-
-func test_fire_breathing_hits_all_enemies_on_status_or_curse() -> void:
-	var scene := _PowerScene.new()
-	scene.enemies = [_actor(), _actor()]
-	var actor := _actor(&"fire_breathing", 6)
-	Stats.fire_card_drawn_powers(actor, _card_of_type(CardData.CardType.STATUS), scene)
-	assert_eq(scene.hits.size(), 2, "one hit per living enemy")
-	assert_eq(int(scene.hits[0].amount), 6)
-	assert_eq(String(scene.hits[0].effect.get("damage_type", "")), "magic")
-	Stats.fire_card_drawn_powers(actor, _card_of_type(CardData.CardType.CURSE), scene)
-	assert_eq(scene.hits.size(), 4, "Curse draws breathe fire too")
-
-func test_fire_breathing_ignores_normal_draws() -> void:
-	var scene := _PowerScene.new()
-	scene.enemies = [_actor()]
-	var actor := _actor(&"fire_breathing", 6)
-	Stats.fire_card_drawn_powers(actor, _card_of_type(CardData.CardType.SKILL), scene)
-	assert_eq(scene.hits.size(), 0)
-
-# --- Well-Laid Plans --------------------------------------------------------
-
-func test_retain_this_turn_defaults_off() -> void:
-	var inst := _card_of_type(CardData.CardType.SKILL)
-	assert_false(inst.retain_this_turn)
-
-# --- Playing a Power is not an exhaust (strategy scene, mirrors deckbuilder) --
+# --- Integration on the strategy scene (mirrors the deckbuilder contract) ---
 
 const _BattleViewScript = preload("res://scripts/strategy/combat/BattleView.gd")
 const _TurnManagerScript = preload("res://scripts/strategy/combat/BattleTurnManager.gd")
 
+var bv
+
 func _battle_with_player():
 	GameState.reset_run()
-	var bv = _BattleViewScript.new()
+	bv = _BattleViewScript.new()
 	add_child_autofree(bv)
 	var p := BattleUnit.new()
 	p.is_player = true
@@ -217,30 +142,76 @@ func _battle_with_player():
 	bv._grid_view.set_battle(null, bv._units)
 	return bv
 
-func test_playing_a_power_does_not_exhaust() -> void:
-	var bv = _battle_with_player()
-	var p = bv.get_player_unit()
-	# Feel No Pain is already up — if the next Power play counted as an
-	# exhaust, it would bank Block.
-	p.add_status(&"feel_no_pain", 3)
-	var power := CardInstance.from_data(Data.get_card(&"barricade"))
-	bv.hand = [power]
+func _play(id: StringName) -> CardInstance:
+	var card := CardInstance.from_data(Data.get_card(id))
+	bv.hand.append(card)
 	bv.energy = 10
-	bv._resolve_card(power, null, [])
+	bv._resolve_card(card, null, [])
+	return card
+
+func test_playing_a_power_registers_and_does_not_exhaust() -> void:
+	_battle_with_player()
+	var p = bv.get_player_unit()
+	# A Feel No Pain trigger is armed — if the Power play counted as an
+	# exhaust it would bank Block.
+	bv.register_trigger("card_exhausted", {"type": "block", "value": 3, "target": "self"})
+	var power := _play(&"barricade")
 	assert_eq(bv.exhaust_pile.size(), 0, "the Power entered no pile")
 	assert_eq(bv.discard_pile.size(), 0, "not the discard pile either")
 	assert_false(bv.hand.has(power), "it left the hand — used up")
-	assert_eq(p.get_status(&"barricade"), 1, "its effect is on the player")
+	assert_true(p.keep_block, "keep_block landed on the player")
+	assert_true(Stats.keeps_block(p))
+	assert_eq(int(p.powers[&"barricade"].count), 1, "badge registry recorded the play")
 	assert_eq(p.block, 0, "Feel No Pain did NOT fire on the Power play")
 
 func test_exhaust_keyword_still_exhausts_and_feeds_feel_no_pain() -> void:
-	var bv = _battle_with_player()
+	_battle_with_player()
 	var p = bv.get_player_unit()
-	p.add_status(&"feel_no_pain", 3)
-	# Adrenaline carries the explicit Exhaust keyword.
-	var card := CardInstance.from_data(Data.get_card(&"adrenaline"))
-	bv.hand = [card]
-	bv.energy = 10
-	bv._resolve_card(card, null, [])
+	_play(&"feel_no_pain")
+	_play(&"adrenaline")   # explicit Exhaust keyword
 	assert_eq(bv.exhaust_pile.size(), 1, "Exhaust-keyword cards still exhaust")
-	assert_eq(p.block, 3, "and Feel No Pain banks Block off them")
+	assert_eq(p.block, 3, "Feel No Pain banked Block off the exhaust")
+
+func test_envenom_poisons_on_unblocked_attack_damage() -> void:
+	_battle_with_player()
+	var p = bv.get_player_unit()
+	var e = bv._units[1]
+	_play(&"envenom")
+	assert_eq(bv.power_triggers.size(), 1, "trigger armed")
+	bv._apply_damage(p, e, 10, {"damage_type": "melee"})
+	assert_eq(e.get_status(&"poison"), 1, "unblocked hit poisoned the victim")
+	# Fully blocked: no poison.
+	e.block = 99
+	bv._apply_damage(p, e, 5, {"damage_type": "melee"})
+	assert_eq(e.get_status(&"poison"), 1, "blocked hit applies nothing")
+
+func test_evolve_draws_on_status_card_draw() -> void:
+	_battle_with_player()
+	_play(&"evolve")
+	# draw_cards pops from the BACK: Slimed (a Status card) first, then the
+	# Evolve bonus draw pulls the Strike.
+	bv.draw_pile = [CardInstance.from_data(Data.get_card(&"strike_ironclad")),
+		CardInstance.from_data(Data.get_card(&"slimed"))]
+	bv.hand = []
+	bv.draw_cards(1)
+	assert_eq(bv.hand.size(), 2, "Status draw chained one bonus draw")
+
+func test_fire_breathing_burns_all_enemies_on_status_draw() -> void:
+	_battle_with_player()
+	var e = bv._units[1]
+	_play(&"fire_breathing")
+	var hp_before: int = e.hp
+	bv.draw_pile = [CardInstance.from_data(Data.get_card(&"slimed"))]
+	bv.hand = []
+	bv.draw_cards(1)
+	assert_eq(e.hp, hp_before - 6, "6 magic damage to the enemy on the Status draw")
+
+func test_well_laid_plans_arms_a_retain_trigger() -> void:
+	_battle_with_player()
+	_play(&"well_laid_plans")
+	assert_eq(Stats.retain_total(bv.power_triggers), 1,
+		"end-turn intercept sees 1 card to retain")
+
+func test_retain_this_turn_defaults_off() -> void:
+	var inst := CardInstance.from_data(Data.get_card(&"cleave"))
+	assert_false(inst.retain_this_turn)

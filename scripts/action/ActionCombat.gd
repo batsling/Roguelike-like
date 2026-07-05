@@ -242,6 +242,14 @@ var _addon_total_cap: Dictionary = {}
 # _resolve_addon_effect. Combat-scoped: cleared in _load_loadout.
 var card_boosts: Array = []
 
+# Persistent in-combat power triggers (`on_<event>` effects on Power cards —
+# Envenom's unblocked_attack, Well-Laid Plans' turn_ended retain, …).
+# Registered via register_trigger when the power resolves; fired by
+# _fire_power_triggers at the matching sites. Events with no action analog
+# (card_exhausted, status_drawn) simply never fire here. Combat-scoped:
+# cleared in _load_loadout.
+var power_triggers: Array = []
+
 # Per-combat cost discounts (Empty Tome). CardData -> int cost reduction. Action
 # mode holds raw CardData (no CardInstance), so the discount lives here and
 # _cooldown_for folds it in — cooldown is derived from cost (2*cost + rarity),
@@ -720,6 +728,10 @@ func _load_loadout() -> void:
 	auto_slots.clear()
 	_addon_uses.clear()
 	card_boosts.clear()
+	power_triggers.clear()
+	if player_actor != null:
+		player_actor.powers.clear()
+		player_actor.keep_block = false
 	_cost_discounts.clear()
 	var first: CardData = _draw_first_card()
 	if first != null:
@@ -954,12 +966,13 @@ func _process_turn_tick(delta: float) -> void:
 			_tick_actor_turn(inst.actor, bool(inst.get("was_hit", false)))
 		inst["was_hit"] = false
 
-# Well-Laid Plans, translated to real time: each "turn" (turn tick) the power
-# retains up to N cards. Here "give Retain to a card in cooldown" means the
-# card is kept available — a random auto-slot card still counting down has
-# its cooldown finished, one per stack, so it's ready again right away.
+# Well-Laid Plans (retain-typed turn_ended triggers), translated to real
+# time: each "turn" (turn tick) the power retains up to N cards. Here "give
+# Retain to a card in cooldown" means the card is kept available — a random
+# auto-slot card still counting down has its cooldown finished, one per
+# retain point, so it's ready again right away.
 func _fire_well_laid_plans() -> void:
-	var stacks: int = player_actor.get_status(&"well_laid_plans")
+	var stacks: int = Stats.retain_total(power_triggers)
 	for _i in range(stacks):
 		var cooling: Array = []
 		for slot in auto_slots:
@@ -1571,10 +1584,10 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 		var oh: Dictionary = Elements.on_hit_status(effect.get("element", ""), inst.actor, null)
 		if not oh.is_empty():
 			Stats.apply_status_to(inst.actor, StringName(oh["status"]), int(oh["stacks"]), player_actor)
-	# Envenom: unblocked Attack damage poisons the victim. Reactions never
-	# re-trigger it.
-	if not bool(effect.get("no_reaction", false)):
-		Stats.fire_envenom(player_actor, inst.actor, amount, dmg_type, self)
+	# Envenom-style powers: the player's unblocked Attack damage. The victim
+	# rides in as the trigger target. Reactions never re-trigger it.
+	if amount > 0 and is_player_attack and not bool(effect.get("no_reaction", false)):
+		_fire_power_triggers("unblocked_attack", {"target": inst.actor})
 	# Thorns / Bleed-thorns: a melee swing is contact, so the struck enemy
 	# reflects back at the player. Ranged bolts don't make contact and skip it.
 	if dmg_type == "melee" and not bool(effect.get("no_reaction", false)):
@@ -2222,6 +2235,53 @@ func _open_retain_slot() -> void:
 func add_card_boost(boost: Dictionary) -> void:
 	card_boosts.append(boost)
 
+# EffectSystem callback for the `trigger` effect (same contract as the
+# deckbuilder / strategy scenes). Registers a persistent in-combat listener.
+func register_trigger(on: String, inner_effect: Dictionary) -> void:
+	if on == "" or inner_effect.is_empty():
+		return
+	power_triggers.append({"on": on, "effect": inner_effect})
+	GameLog.add("Trigger armed on %s." % on, Color(0.7, 1.0, 0.7))
+
+# Every living enemy ACTOR — shared shape with the other modes so trigger
+# fan-out (`all_enemies` inner effects) works the same everywhere.
+func living_enemies() -> Array:
+	var out: Array = []
+	for inst in enemies:
+		if inst.actor != null and inst.actor.is_alive():
+			out.append(inst.actor)
+	return out
+
+func _fire_power_triggers(event_name: String, ctx_extras: Dictionary = {}) -> void:
+	# Inner-effect targets resolve like a played card's would: `all_enemies`
+	# fans out over the living field, `enemy` lands on the event's target
+	# (Envenom's poison on the struck foe), anything else is the player.
+	if power_triggers.is_empty():
+		return
+	for trig in power_triggers:
+		if String(trig.get("on", "")) != event_name:
+			continue
+		var inner: Dictionary = trig.get("effect", {})
+		if inner.is_empty():
+			continue
+		var targets: Array = []
+		match String(inner.get("target", "self")):
+			"all_enemies":
+				targets = living_enemies()
+			"enemy":
+				var t: Variant = ctx_extras.get("target")
+				if t != null:
+					targets = [t]
+			_:
+				targets = [player_actor]
+		for tgt in targets:
+			EffectSystem.apply(inner, {
+				"source": player_actor,
+				"target": tgt,
+				"scene": self,
+				"card": ctx_extras.get("card"),
+			})
+
 # Conjure into the action deck. Action runs a real draw(auto_draw) / hand
 # (auto_slots = active cooldowns) / discard(auto_discard) cycle, so each
 # destination maps onto a pile:
@@ -2391,8 +2451,18 @@ func _resolve_card_effects(card: CardData) -> void:
 # Both verbs are untargeted utility effects with no per-hit delivery, so running
 # them in a trailing pass is equivalent to listing them last in the deckbuilder.
 func _apply_utility_effects(card: CardData) -> void:
+	# A resolving Power goes on the player's badge registry (its triggers /
+	# flags below carry the mechanics; this is the visible record).
+	if card.type == CardData.CardType.POWER:
+		Stats.register_power(player_actor, card)
 	for raw in card.effects:
 		match String(raw.get("type", "")):
+			"trigger":
+				register_trigger(String(raw.get("on", "")), raw.get("effect", {}))
+			"keep_block":
+				if player_actor != null:
+					player_actor.keep_block = true
+					GameLog.add("Barricade: your Block no longer fades.", Color(0.7, 1.0, 0.7))
 			"boost_cards":
 				add_card_boost({
 					"match_tag": String(raw.get("match_tag", "")),
@@ -4719,6 +4789,11 @@ func _draw_status_icons(actor: CombatActor, center_x: float, bottom_y: float) ->
 			icons.append({"tex": tex, "stacks": int(actor.statuses[s]),
 				"permanent": can_perm and actor.is_status_permanent(s),
 				"temp_turns": (actor.temporary_turns(s) if can_temp and actor.is_status_temporary(s) else 0)})
+	# Played Powers ride the same row, after the statuses (count = copies).
+	for pid in actor.powers.keys():
+		var entry: Dictionary = actor.powers[pid]
+		icons.append({"tex": Stats.power_badge_icon(entry.get("card")),
+			"stacks": int(entry.get("count", 1))})
 	if icons.is_empty():
 		return
 	var gap := 2.0

@@ -56,11 +56,10 @@ const BURN_DMG := 3
 # Status icon art lives in res://images/statuses/ as PascalCase PNGs.
 # Combat StringName keys are snake_case, so this table bridges the two.
 # Shared by all three combat modes (deckbuilder / action / strategy) so
-# the same status shows the same icon everywhere. Power statuses granted
-# by Power cards (Barricade, Envenom, …) keep their art in
-# res://images/powericons/ as <Img>Power.png — status_icon falls back
-# there when the file isn't under statuses/. Unmapped statuses fall
-# back to Unknown.png.
+# the same status shows the same icon everywhere. Unmapped statuses fall
+# back to Unknown.png. Played POWERS badge next to these but are not
+# statuses — their art is images/powericons/<Img>Power.png, resolved by
+# power_badge_icon from the card itself.
 const STATUS_ICON_DIR := "res://images/statuses/"
 const POWER_ICON_DIR := "res://images/powericons/"
 const STATUS_ICONS := {
@@ -95,30 +94,10 @@ const STATUS_ICONS := {
 	&"fading": "Fading.png",
 	&"confused": "Confused.png",
 	&"plated_armor": "PlatedArmor.png",
-	# Player powers — art lives in POWER_ICON_DIR (see status_icon fallback).
-	&"barricade": "BarricadePower.png",
-	&"envenom": "EnvenomPower.png",
-	&"evolve": "EvolvePower.png",
-	&"feel_no_pain": "FeelNoPainPower.png",
-	&"fire_breathing": "FireBreathingPower.png",
-	&"well_laid_plans": "Well-LaidPlansPower.png",
-}
-
-# Badge tooltip text for the power statuses. Powers are cards, not statuses —
-# they have no statusesnew row / ReferenceCatalog entry — but their badge on
-# the combat strip still needs hover text. X-form wording (X = the stack
-# count shown on the badge) so one string covers base and upgraded grants;
-# lives here beside the hooks that implement each power.
-const POWER_TOOLTIPS := {
-	&"barricade": "Block is not removed at the start of each turn.",
-	&"envenom": "Whenever you deal unblocked Attack Dmg, Inflict X Poison.",
-	&"evolve": "Whenever you Draw a Status Card, Draw X Cards.",
-	&"feel_no_pain": "Whenever a Card is Exhausted, Gain X Block.",
-	&"fire_breathing": "Whenever you Draw a Status or Curse Card, Deal X Magic Dmg to ALL Enemies.",
-	&"well_laid_plans": "At the end of your turn, add Retain to up to X Cards.",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
+var _power_icon_cache: Dictionary = {}      # card id (StringName) -> Texture2D
 
 var _stat_defs: Dictionary = {}     # StringName -> StatDefinition
 
@@ -272,9 +251,6 @@ func status_icon(status_name) -> Texture2D:
 		return _status_icon_cache[key]
 	var fname: String = STATUS_ICONS.get(key, "Unknown.png")
 	var path: String = STATUS_ICON_DIR + fname
-	if not ResourceLoader.exists(path):
-		# Power statuses keep their badge art with the power icons.
-		path = POWER_ICON_DIR + fname
 	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
 	_status_icon_cache[key] = tex
 	return tex
@@ -283,12 +259,7 @@ func status_icon(status_name) -> Texture2D:
 # description pulled from ReferenceCatalog (the statusesnew sheet) when known, else
 # just "Display N". Shared so the player row and EnemyView read identically.
 func status_tooltip(status_name, stacks: int) -> String:
-	var key := StringName(status_name)
 	var display: String = String(status_name).capitalize()
-	# Power badges: powers are cards, not statuses, so their description
-	# lives here (POWER_TOOLTIPS) rather than in the statusesnew catalog.
-	if POWER_TOOLTIPS.has(key):
-		return "%s (%d)\n%s" % [display, stacks, POWER_TOOLTIPS[key]]
 	for s in ReferenceCatalog.STATUSES:
 		# Hyphenated sheet names ("Well-Laid Plans") still match the
 		# capitalize()d snake_case key ("Well Laid Plans").
@@ -1095,87 +1066,71 @@ func fire_contact_reactions(target, attacker, scene) -> void:
 		scene.apply_status(attacker, &"bleed", bleed_thorns, target)
 
 # ---------------------------------------------------------------------------
-# Power statuses (Barricade / Envenom / Evolve / Feel No Pain / Fire
-# Breathing / Well-Laid Plans). A Power card's whole effect is
-# `gain:<status>:N` — the status sits on the player's badge strip like any
-# other status, and these cross-mode hooks give it its behavior. Each combat
-# scene calls them from its existing sites; a mode where the concept doesn't
-# exist (exhaust/draw in Action) simply never calls the hook. See the
-# statusesnew sheet's Per-Mode column for the per-mode contract.
+# Powers (Barricade / Envenom / Evolve / Feel No Pain / Fire Breathing /
+# Well-Laid Plans / After Image, …). A Power card's effects are ordinary
+# parsed DSL — trigger registrations (`on_<event>:<inner>`) or structural
+# verbs (`keep_block`) — consumed generically by the scenes' power_triggers
+# and the EffectSystem. The helpers here are the shared bits: the
+# keeps_block gate, the retain-trigger tally, and the badge registry that
+# keeps played powers visible on the status strip in every mode.
 # ---------------------------------------------------------------------------
 
-# Barricade: block is not removed at the start of each turn. Callers wrap
-# their `actor.block = 0` turn-boundary reset with this gate.
+# Barricade (keep_block effect): block is not removed at the start of each
+# turn. Callers wrap their `actor.block = 0` turn-boundary reset with this.
 func keeps_block(actor) -> bool:
-	return actor != null and actor.has_method("get_status") \
-		and actor.get_status(&"barricade") > 0
+	return actor != null and ("keep_block" in actor) and actor.keep_block
 
-# Envenom: whenever the attacker deals unblocked Attack (melee/ranged)
-# damage, the victim gains Poison equal to the Envenom stacks. Called from
-# each mode's damage path AFTER block soak, with the post-block HP loss.
-# Routed through the scene's apply_status when it exists so mode reactions
-# (UI refresh, status_applied triggers) fire like any other application.
-func fire_envenom(source, target, hp_loss: int, damage_type: String, scene) -> void:
-	if hp_loss <= 0 or source == null or target == null or source == target:
-		return
-	if damage_type != "melee" and damage_type != "ranged":
-		return
-	if not source.has_method("get_status"):
-		return
-	var stacks: int = source.get_status(&"envenom")
-	if stacks <= 0 or not target.has_method("is_alive") or not target.is_alive():
-		return
-	if scene != null and scene.has_method("apply_status"):
-		scene.apply_status(target, &"poison", stacks, source)
-	else:
-		apply_status_to(target, &"poison", stacks, source)
-	GameLog.add("Envenom: %d Poison." % stacks, Color(0.7, 1.0, 0.7))
+# Total cards the retain-typed turn_ended triggers keep this turn
+# (Well-Laid Plans; two copies played = the sum of their values). The scenes
+# read this in their end-turn intercept, BEFORE the hand discards — the
+# generic turn_ended trigger pass deliberately no-ops retain (see
+# EffectSystem._h_retain).
+func retain_total(power_triggers: Array) -> int:
+	var total: int = 0
+	for trig in power_triggers:
+		if String(trig.get("on", "")) != "turn_ended":
+			continue
+		var inner: Dictionary = trig.get("effect", {})
+		if String(inner.get("type", "")) == "retain":
+			total += int(inner.get("value", 0))
+	return total
 
-# Feel No Pain: whenever one of the actor's cards is exhausted, gain Block
-# equal to the stacks. Called from every card_exhausted site (deckbuilder +
-# strategy; action never exhausts).
-func feel_no_pain_on_exhaust(actor, scene) -> void:
-	if actor == null or not actor.has_method("get_status"):
+# Record a played Power on the actor so the badge strip can show it (count
+# rises when the same power is played again). Purely presentational — the
+# mechanics registered separately through the card's effects.
+func register_power(actor, card: CardData) -> void:
+	if actor == null or card == null or not ("powers" in actor):
 		return
-	var stacks: int = actor.get_status(&"feel_no_pain")
-	if stacks <= 0 or scene == null or not scene.has_method("gain_block"):
-		return
-	scene.gain_block(actor, stacks)
-	GameLog.add("Feel No Pain: +%d Block." % stacks, Color(0.7, 1.0, 0.7))
+	var key := StringName(card.id)
+	var entry: Dictionary = actor.powers.get(key, {"card": card, "count": 0})
+	entry["count"] = int(entry["count"]) + 1
+	actor.powers[key] = entry
 
-# Evolve + Fire Breathing: react to the actor drawing a Status (Evolve) or
-# Status/Curse (Fire Breathing) card. Called from each mode's draw_cards
-# right after the card lands in hand. Evolve's bonus draw happens first so
-# Fire Breathing damage from a chained status draw resolves on the deeper
-# recursion, matching "each draw triggers each power once".
-func fire_card_drawn_powers(actor, card, scene) -> void:
-	if actor == null or card == null or scene == null:
-		return
-	var data = card.data if ("data" in card) else card
-	if data == null or not ("type" in data):
-		return
-	var is_status: bool = int(data.type) == CardData.CardType.STATUS
-	var is_curse: bool = int(data.type) == CardData.CardType.CURSE
-	if not (is_status or is_curse):
-		return
-	if not actor.has_method("get_status"):
-		return
-	if is_status:
-		var draws: int = actor.get_status(&"evolve")
-		if draws > 0 and scene.has_method("draw_cards"):
-			GameLog.add("Evolve: draw %d." % draws, Color(0.7, 1.0, 0.7))
-			scene.draw_cards(draws)
-	var breath: int = actor.get_status(&"fire_breathing")
-	if breath > 0 and scene.has_method("deal_damage") \
-			and scene.has_method("living_enemies"):
-		GameLog.add("Fire Breathing: %d Magic Dmg to ALL enemies." % breath,
-			Color(1.0, 0.7, 0.4))
-		for e in scene.living_enemies():
-			# Magic damage: no Blind whiff, Arcane scales it; no_reaction so a
-			# thorny enemy doesn't reflect a draw. Fire element matches the
-			# sheet's wording and applies its on-hit Burn per the registry.
-			scene.deal_damage(actor, e, breath,
-				{"damage_type": "magic", "element": "fire", "no_reaction": true})
+# Badge art for a played power: images/powericons/<Img>Power.png, where
+# <Img> is the card art's basename (Barricade.png -> BarricadePower.png).
+func power_badge_icon(card: CardData) -> Texture2D:
+	if card == null:
+		return null
+	var key := StringName(card.id)
+	if _power_icon_cache.has(key):
+		return _power_icon_cache[key]
+	var tex: Texture2D = null
+	if card.image != null:
+		var base: String = card.image.resource_path.get_file().get_basename()
+		var path: String = POWER_ICON_DIR + base + "Power.png"
+		if ResourceLoader.exists(path):
+			tex = load(path)
+	if tex == null:
+		tex = load(STATUS_ICON_DIR + "Unknown.png")
+	_power_icon_cache[key] = tex
+	return tex
+
+# Badge hover text for a played power: the card is the source of truth, so
+# the tooltip is its (reworded, mechanical) description.
+func power_tooltip(card: CardData, count: int) -> String:
+	if card == null:
+		return ""
+	return "%s (%d)\n%s" % [card.display_name, count, card.description]
 
 func decay_actor_statuses(actor, do_grow: bool = true) -> void:
 	# Step down every decaying status on this actor by 1. Called per
