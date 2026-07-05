@@ -805,8 +805,10 @@ func _on_unit_turn_started(unit) -> void:
 			energy += _energy_carryover
 			GameLog.add("Ice Cream: +%d bonus energy!" % _energy_carryover, Color(0.7, 1.0, 0.7))
 		_energy_carryover = 0
-		# Block resets at the start of the player's own turn (deckbuilder rule).
-		unit.block = 0
+		# Block resets at the start of the player's own turn (deckbuilder
+		# rule); Barricade keeps it.
+		if not Stats.keeps_block(unit):
+			unit.block = 0
 		_clear_pending()
 		_fire_item_turn_triggers(unit, _player_turn_count)
 		_fire_item_triggers("turn_tick")
@@ -859,7 +861,10 @@ func _on_unit_turn_ended(unit) -> void:
 			var c = hand.pop_back()
 			# Any "free this turn" discount (Mummified Hand) expires now.
 			c.temp_cost_override = -999
-			if c.data != null and c.data.retain:
+			if c.data != null and (c.data.retain or c.granted_retain or c.retain_this_turn):
+				# granted_retain: Scroll of Enchant Weapon. retain_this_turn:
+				# Well-Laid Plans' end-of-turn pick — one turn only, consumed here.
+				c.retain_this_turn = false
 				kept.append(c)
 			elif c.data != null and c.data.sly:
 				_resolve_sly_on_discard(c)
@@ -869,6 +874,7 @@ func _on_unit_turn_ended(unit) -> void:
 				GameLog.add("%s is Ethereal — exhausted." % c.data.display_name, Color(0.75, 0.85, 1.0))
 				TriggerBus.emit_signal("card_exhausted", {"card": c, "scene": self})
 				_fire_power_triggers("card_exhausted", {"card": c})
+				Stats.feel_no_pain_on_exhaust(unit, self)
 			else:
 				discard_pile.append(c)
 		hand = kept
@@ -1191,6 +1197,33 @@ func _on_end_turn_button() -> void:
 		return
 	_clear_pending()
 	_grid_view.enter_idle()
+	# Well-Laid Plans: before the hand discards, pick up to N cards to keep
+	# this turn. The picker is async — the turn actually ends from the
+	# confirm callback (same contract as the deckbuilder).
+	var p = get_player_unit()
+	var wlp: int = p.get_status(&"well_laid_plans") if p != null else 0
+	if wlp > 0 and not hand.is_empty():
+		_open_picker({
+			"title": "Well-Laid Plans — Retain up to %d" % mini(wlp, hand.size()),
+			"candidates": hand.duplicate(),
+			"count": mini(wlp, hand.size()),
+			"up_to": true,
+			"accent": Color(0.6, 0.9, 1.0),
+			"confirm_label": "Retain",
+			"on_picked": Callable(self, "_apply_wlp_picks"),
+		})
+		return
+	_set_player_buttons_enabled(false)
+	_turn_manager.end_current_turn()
+
+# Well-Laid Plans confirm: stamp the picks with a one-turn Retain, then run
+# the turn end that was deferred while the picker was open.
+func _apply_wlp_picks(picks: Array) -> void:
+	for pick in picks:
+		if pick is CardInstance:
+			pick.retain_this_turn = true
+			GameLog.add("Well-Laid Plans: %s is Retained." % pick.get_display_name(),
+				Color(0.6, 0.9, 1.0))
 	_set_player_buttons_enabled(false)
 	_turn_manager.end_current_turn()
 
@@ -1346,6 +1379,7 @@ func _resolve_card(card, target, shaped_targets: Array = []) -> void:
 			Color(0.9, 0.55, 0.55))
 		TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 		_fire_power_triggers("card_exhausted", {"card": card})
+		Stats.feel_no_pain_on_exhaust(u, self)
 	elif data.exhaust or card.is_power():
 		exhaust_card(card)
 	else:
@@ -1509,6 +1543,15 @@ func pick_random_enemy(source):
 		return null
 	return foes[randi() % foes.size()]
 
+# Every enemy-side unit still standing — shared shape with DeckbuilderCombat
+# so cross-mode helpers (Fire Breathing) can sweep the field.
+func living_enemies() -> Array:
+	var out: Array = []
+	for u in _units:
+		if u.is_alive() and not u.is_player:
+			out.append(u)
+	return out
+
 func deal_damage(source, target, value: int, effect: Dictionary = {}) -> void:
 	if target == null:
 		return
@@ -1606,6 +1649,9 @@ func draw_cards(n: int) -> void:
 			c.temp_cost_override = randi() % (maxi(0, max_energy) + 1)
 		TriggerBus.emit_signal("card_drawn", {"card": c, "scene": self})
 		_fire_power_triggers("card_drawn", {"card": c})
+		# Evolve / Fire Breathing react to Status / Curse draws.
+		Stats.fire_card_drawn_powers(get_player_unit(), c, self)
+	_check_battle_end_after_effect()
 	_refresh_hand()
 
 # Confused (Snecko): true while the player unit carries the status.
@@ -1649,6 +1695,7 @@ func exhaust_card(card) -> void:
 	exhaust_pile.append(card)
 	TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 	_fire_power_triggers("card_exhausted", {"card": card})
+	Stats.feel_no_pain_on_exhaust(get_player_unit(), self)
 	_refresh_hand()
 
 # Everything a pick-from-hand effect may choose from: the hand minus the card
@@ -1982,6 +2029,10 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		var oh: Dictionary = Elements.on_hit_status(effect.get("element", ""), target, null)
 		if not oh.is_empty():
 			apply_status(target, StringName(oh["status"]), int(oh["stacks"]), source)
+	# Envenom: unblocked Attack damage poisons the victim. Reactions never
+	# re-trigger it.
+	if not bool(effect.get("no_reaction", false)):
+		Stats.fire_envenom(source, target, int(res.hp_loss), dmg_type, self)
 	if was_alive and not target.is_alive() and not target.is_player:
 		var infuse_stacks: int = int(effect.get("infuse", 0))
 		if infuse_stacks > 0 and source != null and "is_player" in source and source.is_player:

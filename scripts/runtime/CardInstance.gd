@@ -50,6 +50,10 @@ var vorpal_weight: int = 0
 # deckbuilder end-of-turn discard. False = the card has no granted Retain.
 var granted_retain: bool = false
 
+# Retain for THIS turn only (Well-Laid Plans' end-of-turn pick). Consumed —
+# cleared — by the end-of-turn keep loop, unlike the permanent granted_retain.
+var retain_this_turn: bool = false
+
 # Shared RNG for the once-per-instance Vorpal roll when a caller doesn't hand
 # one in (e.g. acquisition outside combat). Roll is persisted, so determinism
 # across a save round-trip is irrelevant — it only fires once.

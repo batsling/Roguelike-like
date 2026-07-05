@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_envenom"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Envenom.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"envenom"
+display_name = "Envenom"
+type = 2
+rarity = 3
+cost = 2
+description = "Whenever you deal unblocked Attack Dmg, Inflict 1 Poison."
+effects = [{"type": "status", "status": "envenom", "stacks": 1, "target": "self"}]
+tags = PackedStringArray("silent", "poison", "offense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Whenever you deal unblocked Attack Dmg, Inflict 1 Poison."
+upgraded_cost = 1
+upgraded_effects = [{"type": "status", "status": "envenom", "stacks": 1, "target": "self"}]
+image = ExtResource("2_img")

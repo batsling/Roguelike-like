@@ -787,7 +787,9 @@ func _start_player_turn() -> void:
 		energy += _energy_carryover
 		GameLog.add("Ice Cream: +%d bonus energy!" % _energy_carryover, Color(0.7, 1.0, 0.7))
 		_energy_carryover = 0
-	player.block = 0
+	# Barricade: block is not removed at the start of the turn.
+	if not Stats.keeps_block(player):
+		player.block = 0
 	_cancel_targeting()
 	# Pre-roll enemy intents for this turn
 	for e in enemies:
@@ -819,6 +821,37 @@ func _on_end_turn() -> void:
 	if phase != Phase.PLAYER:
 		return
 	_cancel_targeting()
+	# Well-Laid Plans: before the hand discards, pick up to N cards to keep
+	# this turn. The picker is async — the actual turn end resumes from the
+	# confirm callback; without the power (or an empty hand) fall straight
+	# through.
+	var wlp: int = player.get_status(&"well_laid_plans")
+	if wlp > 0 and not hand.is_empty():
+		_open_picker({
+			"title": "Well-Laid Plans — Retain up to %d" % mini(wlp, hand.size()),
+			"candidates": hand.duplicate(),
+			"count": mini(wlp, hand.size()),
+			"up_to": true,
+			"accent": Color(0.6, 0.9, 1.0),
+			"confirm_label": "Retain",
+			"on_picked": Callable(self, "_apply_wlp_picks"),
+		})
+		return
+	_finish_end_turn()
+
+# Well-Laid Plans confirm: stamp the picks with a one-turn Retain, then run
+# the turn end that was deferred while the picker was open.
+func _apply_wlp_picks(picks: Array) -> void:
+	for pick in picks:
+		if pick is CardInstance:
+			pick.retain_this_turn = true
+			GameLog.add("Well-Laid Plans: %s is Retained." % pick.get_display_name(),
+				Color(0.6, 0.9, 1.0))
+	_finish_end_turn()
+
+func _finish_end_turn() -> void:
+	if phase != Phase.PLAYER:
+		return
 	# Snapshot the curse cards in hand (and the hand size, for Regret) BEFORE
 	# discard. Their eot effects are applied AFTER status decay below, so a
 	# status they grant (Doubt -> Weak) survives into the next turn instead of
@@ -838,9 +871,11 @@ func _on_end_turn() -> void:
 		# Mummified Hand's "free this turn" discount expires now (clear it on
 		# every card leaving hand, retained ones included).
 		c.temp_cost_override = -999
-		if c.data != null and (c.data.retain or c.granted_retain):
+		if c.data != null and (c.data.retain or c.granted_retain or c.retain_this_turn):
 			# c.granted_retain: Retain granted to this specific card by Scroll of
 			# Enchant Weapon (crit success), in addition to the card's own retain.
+			# c.retain_this_turn: Well-Laid Plans' end-of-turn pick — one turn only.
+			c.retain_this_turn = false
 			kept.append(c)
 		elif c.data != null and c.data.sly:
 			_resolve_sly_on_discard(c)
@@ -850,6 +885,7 @@ func _on_end_turn() -> void:
 			GameLog.add("%s is Ethereal — exhausted." % c.data.display_name, Color(0.75, 0.85, 1.0))
 			TriggerBus.emit_signal("card_exhausted", {"card": c, "scene": self})
 			_fire_power_triggers("card_exhausted", {"card": c})
+			Stats.feel_no_pain_on_exhaust(player, self)
 		else:
 			discard_pile.append(c)
 	hand = kept
@@ -905,8 +941,9 @@ func _execute_enemy_turn() -> void:
 		if not enemy.is_alive() or not player.is_alive():
 			continue
 		# Block resets at the start of the enemy's own action phase
-		# (matches JS rules; Barricade-style persistence deferred).
-		enemy.block = 0
+		# (matches JS rules); Barricade keeps it.
+		if not Stats.keeps_block(enemy):
+			enemy.block = 0
 		# Stunned (Scroll of Scare Monster): the enemy does nothing this turn. The
 		# stun stack steps down by 1 in the end-of-turn decay below.
 		if enemy.get_status(&"stun") > 0:
@@ -1469,6 +1506,7 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 			Color(0.9, 0.55, 0.55))
 		TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 		_fire_power_triggers("card_exhausted", {"card": card})
+		Stats.feel_no_pain_on_exhaust(player, self)
 	# Powers exhaust on play; cards with the exhaust flag exhaust; else discard.
 	elif card.data.exhaust or card.is_power():
 		exhaust_card(card)
@@ -1744,6 +1782,11 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 	if landed_melee:
 		Stats.fire_contact_reactions(target, source, self)
 
+	# Envenom: unblocked Attack damage poisons the victim. Reactions
+	# (thorns reflects, soul link) never re-trigger it.
+	if not effect.get("no_reaction", false):
+		Stats.fire_envenom(source, target, amount, damage_type, self)
+
 	TriggerBus.emit_signal("damage_dealt", {
 		"source": source, "target": target, "amount": amount, "scene": self,
 	})
@@ -1829,6 +1872,15 @@ func gain_block(target: CombatActor, base_amount: int) -> void:
 	# Shared block math: Defense status adds, Frail cuts 25% (see Stats).
 	target.block += Stats.resolve_block(base_amount, target, true)
 
+# Every enemy still standing — shared shape with BattleView so cross-mode
+# helpers (Fire Breathing) can sweep the field without knowing the mode.
+func living_enemies() -> Array:
+	var out: Array = []
+	for e in enemies:
+		if e.is_alive():
+			out.append(e)
+	return out
+
 # Pops a floating number over an actor: red for HP lost, green for HP healed.
 # Enemies float over their EnemyView; the player (no avatar) floats over the HP
 # readout.
@@ -1913,6 +1965,10 @@ func draw_cards(n: int) -> void:
 			c.temp_cost_override = _rng.randi_range(0, max_energy)
 		TriggerBus.emit_signal("card_drawn", {"card": c, "scene": self})
 		_fire_power_triggers("card_drawn", {"card": c})
+		# Evolve / Fire Breathing react to Status / Curse draws. May draw
+		# further cards (safe: this loop pops its own count) or kill enemies.
+		Stats.fire_card_drawn_powers(player, c, self)
+	_check_combat_end()
 	_refresh_ui()
 
 func discard_card(card: CardInstance, from_play: bool = false) -> void:
@@ -1954,6 +2010,7 @@ func exhaust_card(card: CardInstance) -> void:
 	exhaust_pile.append(card)
 	TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 	_fire_power_triggers("card_exhausted", {"card": card})
+	Stats.feel_no_pain_on_exhaust(player, self)
 	_refresh_ui()
 
 func conjure_card(card_id: StringName, destination: String, count: int, source_card, force_upgraded: bool = false) -> void:

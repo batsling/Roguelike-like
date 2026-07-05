@@ -56,9 +56,13 @@ const BURN_DMG := 3
 # Status icon art lives in res://images/statuses/ as PascalCase PNGs.
 # Combat StringName keys are snake_case, so this table bridges the two.
 # Shared by all three combat modes (deckbuilder / action / strategy) so
-# the same status shows the same icon everywhere. Unmapped statuses fall
+# the same status shows the same icon everywhere. Power statuses granted
+# by Power cards (Barricade, Envenom, …) keep their art in
+# res://images/powericons/ as <Img>Power.png — status_icon falls back
+# there when the file isn't under statuses/. Unmapped statuses fall
 # back to Unknown.png.
 const STATUS_ICON_DIR := "res://images/statuses/"
+const POWER_ICON_DIR := "res://images/powericons/"
 const STATUS_ICONS := {
 	&"power": "Power.png",
 	&"strength": "Strength.png",
@@ -91,6 +95,13 @@ const STATUS_ICONS := {
 	&"fading": "Fading.png",
 	&"confused": "Confused.png",
 	&"plated_armor": "PlatedArmor.png",
+	# Player powers — art lives in POWER_ICON_DIR (see status_icon fallback).
+	&"barricade": "BarricadePower.png",
+	&"envenom": "EnvenomPower.png",
+	&"evolve": "EvolvePower.png",
+	&"feel_no_pain": "FeelNoPainPower.png",
+	&"fire_breathing": "FireBreathingPower.png",
+	&"well_laid_plans": "Well-LaidPlansPower.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -247,6 +258,9 @@ func status_icon(status_name) -> Texture2D:
 		return _status_icon_cache[key]
 	var fname: String = STATUS_ICONS.get(key, "Unknown.png")
 	var path: String = STATUS_ICON_DIR + fname
+	if not ResourceLoader.exists(path):
+		# Power statuses keep their badge art with the power icons.
+		path = POWER_ICON_DIR + fname
 	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
 	_status_icon_cache[key] = tex
 	return tex
@@ -257,7 +271,9 @@ func status_icon(status_name) -> Texture2D:
 func status_tooltip(status_name, stacks: int) -> String:
 	var display: String = String(status_name).capitalize()
 	for s in ReferenceCatalog.STATUSES:
-		if String(s.get("name", "")) == display:
+		# Hyphenated sheet names ("Well-Laid Plans") still match the
+		# capitalize()d snake_case key ("Well Laid Plans").
+		if String(s.get("name", "")).replace("-", " ") == display:
 			var desc: String = String(s.get("description", ""))
 			if desc != "":
 				return "%s (%d)\n%s" % [display, stacks, desc]
@@ -1058,6 +1074,89 @@ func fire_contact_reactions(target, attacker, scene) -> void:
 		# source — a player's Persistence then scales this Bleed like any other
 		# debuff it applies.
 		scene.apply_status(attacker, &"bleed", bleed_thorns, target)
+
+# ---------------------------------------------------------------------------
+# Power statuses (Barricade / Envenom / Evolve / Feel No Pain / Fire
+# Breathing / Well-Laid Plans). A Power card's whole effect is
+# `gain:<status>:N` — the status sits on the player's badge strip like any
+# other status, and these cross-mode hooks give it its behavior. Each combat
+# scene calls them from its existing sites; a mode where the concept doesn't
+# exist (exhaust/draw in Action) simply never calls the hook. See the
+# statusesnew sheet's Per-Mode column for the per-mode contract.
+# ---------------------------------------------------------------------------
+
+# Barricade: block is not removed at the start of each turn. Callers wrap
+# their `actor.block = 0` turn-boundary reset with this gate.
+func keeps_block(actor) -> bool:
+	return actor != null and actor.has_method("get_status") \
+		and actor.get_status(&"barricade") > 0
+
+# Envenom: whenever the attacker deals unblocked Attack (melee/ranged)
+# damage, the victim gains Poison equal to the Envenom stacks. Called from
+# each mode's damage path AFTER block soak, with the post-block HP loss.
+# Routed through the scene's apply_status when it exists so mode reactions
+# (UI refresh, status_applied triggers) fire like any other application.
+func fire_envenom(source, target, hp_loss: int, damage_type: String, scene) -> void:
+	if hp_loss <= 0 or source == null or target == null or source == target:
+		return
+	if damage_type != "melee" and damage_type != "ranged":
+		return
+	if not source.has_method("get_status"):
+		return
+	var stacks: int = source.get_status(&"envenom")
+	if stacks <= 0 or not target.has_method("is_alive") or not target.is_alive():
+		return
+	if scene != null and scene.has_method("apply_status"):
+		scene.apply_status(target, &"poison", stacks, source)
+	else:
+		apply_status_to(target, &"poison", stacks, source)
+	GameLog.add("Envenom: %d Poison." % stacks, Color(0.7, 1.0, 0.7))
+
+# Feel No Pain: whenever one of the actor's cards is exhausted, gain Block
+# equal to the stacks. Called from every card_exhausted site (deckbuilder +
+# strategy; action never exhausts).
+func feel_no_pain_on_exhaust(actor, scene) -> void:
+	if actor == null or not actor.has_method("get_status"):
+		return
+	var stacks: int = actor.get_status(&"feel_no_pain")
+	if stacks <= 0 or scene == null or not scene.has_method("gain_block"):
+		return
+	scene.gain_block(actor, stacks)
+	GameLog.add("Feel No Pain: +%d Block." % stacks, Color(0.7, 1.0, 0.7))
+
+# Evolve + Fire Breathing: react to the actor drawing a Status (Evolve) or
+# Status/Curse (Fire Breathing) card. Called from each mode's draw_cards
+# right after the card lands in hand. Evolve's bonus draw happens first so
+# Fire Breathing damage from a chained status draw resolves on the deeper
+# recursion, matching "each draw triggers each power once".
+func fire_card_drawn_powers(actor, card, scene) -> void:
+	if actor == null or card == null or scene == null:
+		return
+	var data = card.data if ("data" in card) else card
+	if data == null or not ("type" in data):
+		return
+	var is_status: bool = int(data.type) == CardData.CardType.STATUS
+	var is_curse: bool = int(data.type) == CardData.CardType.CURSE
+	if not (is_status or is_curse):
+		return
+	if not actor.has_method("get_status"):
+		return
+	if is_status:
+		var draws: int = actor.get_status(&"evolve")
+		if draws > 0 and scene.has_method("draw_cards"):
+			GameLog.add("Evolve: draw %d." % draws, Color(0.7, 1.0, 0.7))
+			scene.draw_cards(draws)
+	var breath: int = actor.get_status(&"fire_breathing")
+	if breath > 0 and scene.has_method("deal_damage") \
+			and scene.has_method("living_enemies"):
+		GameLog.add("Fire Breathing: %d Magic Dmg to ALL enemies." % breath,
+			Color(1.0, 0.7, 0.4))
+		for e in scene.living_enemies():
+			# Magic damage: no Blind whiff, Arcane scales it; no_reaction so a
+			# thorny enemy doesn't reflect a draw. Fire element matches the
+			# sheet's wording and applies its on-hit Burn per the registry.
+			scene.deal_damage(actor, e, breath,
+				{"damage_type": "magic", "element": "fire", "no_reaction": true})
 
 func decay_actor_statuses(actor, do_grow: bool = true) -> void:
 	# Step down every decaying status on this actor by 1. Called per

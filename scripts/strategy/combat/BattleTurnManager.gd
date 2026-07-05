@@ -63,7 +63,7 @@ func end_current_turn() -> void:
 	# The PLAYER's block must survive the enemy turn (deckbuilder semantics) and
 	# instead resets at the start of the player's next turn (BattleView clears it
 	# in _on_unit_turn_started), so a played Defend actually soaks the next hit.
-	if not current_unit.is_player:
+	if not current_unit.is_player and not Stats.keeps_block(current_unit):
 		current_unit.block = 0
 	var done := current_unit
 	current_unit = null

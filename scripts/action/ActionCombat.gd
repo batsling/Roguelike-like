@@ -1550,6 +1550,10 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 		var oh: Dictionary = Elements.on_hit_status(effect.get("element", ""), inst.actor, null)
 		if not oh.is_empty():
 			Stats.apply_status_to(inst.actor, StringName(oh["status"]), int(oh["stacks"]), player_actor)
+	# Envenom: unblocked Attack damage poisons the victim. Reactions never
+	# re-trigger it.
+	if not bool(effect.get("no_reaction", false)):
+		Stats.fire_envenom(player_actor, inst.actor, amount, dmg_type, self)
 	# Thorns / Bleed-thorns: a melee swing is contact, so the struck enemy
 	# reflects back at the player. Ranged bolts don't make contact and skip it.
 	if dmg_type == "melee" and not bool(effect.get("no_reaction", false)):
@@ -3803,8 +3807,11 @@ func _decay_block(delta: float) -> void:
 			player_actor.block = 0
 			_block_synced_int = 0
 		return
-	for chunk in _block_pool:
-		chunk.amt -= chunk.rate * delta
+	# Barricade, translated to real time: block stops fading on its own.
+	# Incoming hits still soak chunks via the reconcile above.
+	if not Stats.keeps_block(player_actor):
+		for chunk in _block_pool:
+			chunk.amt -= chunk.rate * delta
 	for i in range(_block_pool.size() - 1, -1, -1):
 		if _block_pool[i].amt <= 0.0:
 			_block_pool.remove_at(i)

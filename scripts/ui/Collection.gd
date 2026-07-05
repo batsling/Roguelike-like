@@ -789,6 +789,10 @@ func _status_card(s: Dictionary) -> Control:
 	vb.add_child(top)
 	var icon: String = String(s.get("icon", ""))
 	var path := "res://images/statuses/%s.png" % icon
+	if icon != "" and not ResourceLoader.exists(path):
+		# Power statuses (Barricade, Envenom, …) keep their art with the
+		# power icons — same fallback Stats.status_icon uses.
+		path = "res://images/powericons/%s.png" % icon
 	var tex: Texture2D = load(path) if (icon != "" and ResourceLoader.exists(path)) else null
 	if tex != null:
 		top.add_child(_tex_rect(tex, 48))

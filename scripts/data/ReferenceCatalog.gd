@@ -35,6 +35,12 @@ const STATUSES: Array = [
 	{ "name": "Vulnerable", "description": "All damage deals 50% more to target", "type": "Debuff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "All", "preference": "Negative", "rarity": "Common", "icon": "Vulnerable" },
 	{ "name": "Weak", "description": "Target deals 25% less damage.", "type": "Debuff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "All", "preference": "Negative", "rarity": "Common", "icon": "Weak" },
 	{ "name": "Stun", "description": "The enemy's intent will be changed to \"Stunned\" and will do nothing on this turn", "type": "Debuff", "stackable": false, "decay": "Down by 1 at end of turn", "who": "All", "preference": "Negative", "rarity": "N/A", "icon": "Stun" },
+	{ "name": "Barricade", "description": "Block is not removed at the start of each turn", "type": "Ability", "stackable": false, "decay": "None", "who": "All", "preference": "Positive", "rarity": "Rare", "icon": "BarricadePower" },
+	{ "name": "Envenom", "description": "Whenever you deal unblocked Attack damage, Inflict X Poison", "type": "Ability", "stackable": true, "decay": "None", "who": "Player", "preference": "Positive", "rarity": "N/A", "icon": "EnvenomPower" },
+	{ "name": "Evolve", "description": "Whenever you Draw a Status Card, Draw X Cards", "type": "Ability", "stackable": true, "decay": "None", "who": "Player", "preference": "Positive", "rarity": "N/A", "icon": "EvolvePower" },
+	{ "name": "Feel No Pain", "description": "Whenever a Card is Exhausted, Gain X Block", "type": "Ability", "stackable": true, "decay": "None", "who": "Player", "preference": "Positive", "rarity": "N/A", "icon": "FeelNoPainPower" },
+	{ "name": "Fire Breathing", "description": "Whenever you Draw a Status or Curse Card, Deal X Magic Dmg to ALL Enemies", "type": "Ability", "stackable": true, "decay": "None", "who": "Player", "preference": "Positive", "rarity": "N/A", "icon": "FireBreathingPower" },
+	{ "name": "Well-Laid Plans", "description": "At the end of your turn, add Retain to up to X Cards", "type": "Ability", "stackable": true, "decay": "None", "who": "Player", "preference": "Positive", "rarity": "N/A", "icon": "Well-LaidPlansPower" },
 ]
 
 const ADDONS: Array = [

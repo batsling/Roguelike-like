@@ -745,6 +745,42 @@ stack count (matches the sheet's "30% Miss Chance" language; stacks
 extend duration, not magnitude). Bag o' Glitter applies 2 stacks
 (2 turns / 30s of action play before it wears off).
 
+### Power statuses (Barricade / Envenom / Evolve / Feel No Pain / Fire Breathing / Well-Laid Plans)
+
+A Power card whose whole effect is `gain:<status>:N` puts a **power
+status** on the player. It rides the same badge strip as every other
+status in all three modes (stack count included), and its behavior
+lives in cross-mode hooks on `Stats` that each combat scene calls
+from its existing sites:
+
+| Status | Hook | Fires from |
+|---|---|---|
+| `barricade` | `Stats.keeps_block(actor)` | every turn-boundary `block = 0` site (deckbuilder player + enemy, strategy `BattleTurnManager` / `BattleView`); action instead stops the block pool's real-time fade (`_decay_block`) — hits still soak. |
+| `envenom` | `Stats.fire_envenom(src, tgt, hp_loss, dmg_type, scene)` | each mode's damage path, post-block. Unblocked melee/ranged only; reactions (`no_reaction`) never re-trigger it. |
+| `feel_no_pain` | `Stats.feel_no_pain_on_exhaust(actor, scene)` | every `card_exhausted` site (deckbuilder + strategy). Action never exhausts → inert. |
+| `evolve` / `fire_breathing` | `Stats.fire_card_drawn_powers(actor, card, scene)` | both modes' `draw_cards`, right after the card lands. Evolve draws on Status cards; Fire Breathing deals magic Fire damage to `scene.living_enemies()` on Status **or** Curse draws. Action has no card draws → inert. |
+| `well_laid_plans` | end-turn intercept in each scene | `_on_end_turn` (deckbuilder) / `_on_end_turn_button` (strategy) open the `CardPickerModal` in its `up_to` mode; picks get `CardInstance.retain_this_turn`, consumed by the end-of-turn keep loop. Action has no hand → inert. |
+
+Two authoring rules fall out of this:
+
+- **Card text says what the power does**, not "Gain Barricade." — take
+  the wording from the status row (the legacy `statuses` sheet kept
+  it; `statusesnew` carries it forward), so the card and the badge
+  tooltip read the same.
+- **Badge art lives at `images/powericons/<Img>Power.png`** (same
+  `Img` as the card art — `BarricadePower.png`). `Stats.STATUS_ICONS`
+  maps the snake_case status to that filename and `Stats.status_icon`
+  falls back from `images/statuses/` to `images/powericons/`
+  automatically; the Collection screen and
+  `tools/import-reference-godot.py`'s missing-icon lint use the same
+  fallback, so the `statusesnew` Icon column can name a powericon
+  file directly.
+
+Note one deliberate deviation from Slay the Spire: in this game
+Powers exhaust on play (and that fires `card_exhausted`), so playing
+any Power while Feel No Pain is up banks Block. Consistent with the
+game's own exhaust semantics, so it stays.
+
 ## Quick gotchas
 
 - **Don't double-encode damage type.** If the Range column says
@@ -766,33 +802,16 @@ Tracked here so the design intent doesn't get lost between commits.
 
 ### Power icons in combat HUDs
 
-Some Power cards need an icon that persists in the combat HUD so the
-player can see which non-status passives are active and hover them
-for a description. Cards whose entire effect is `gain:<status>:<n>`
-(Inflame, Demon Form, …) do **not** need a power icon because the
-status badge already represents them — icons are only for Powers
-with bespoke trigger logic.
-
-Authoring path (proposed when this lands):
-
-- Drop the icon at `images/powericons/<ImgName>Power.png` matching the
-  same `Img` column used for the card art (so Anger uses `AngerPower.png`).
-- Add a `power_icon: Texture2D` field on `CardData`. Either auto-link by
-  convention (image name + `Power` suffix) or set the field explicitly
-  in the `.tres`.
-- Combat scenes each grow a small "Active Powers" strip that shows
-  every Power with `power_icon != null` resolved this combat. Hover
-  uses Godot's built-in `tooltip_text` to show `display_name` + a
-  short description.
-
-Open questions to settle when implementing:
-
-- Strip placement (top-left near HP, beside the hand, above the
-  ability bar in action?).
-- Whether stacked copies of the same power show one icon with a count
-  badge or one icon per stack.
-- Whether action/strategy duplicate the deckbuilder's strip layout or
-  each gets a mode-specific placement.
+**Landed** — see "Power statuses" above. The open questions resolved
+the simple way: a Power's whole effect is `gain:<status>:N`, so the
+existing status badge strip *is* the power strip in all three modes
+(one icon + stack count, hover tooltip from the `statusesnew`
+description). Icon art goes to `images/powericons/<ImgName>Power.png`
+and `Stats.status_icon` finds it by fallback; no `power_icon` field
+on `CardData` was needed. Powers with bespoke trigger logic that
+DON'T sit on a status (After Image's `on_card_played`, Accuracy's
+`boost_cards`) still have no badge — converting them to power
+statuses is the remaining follow-up.
 
 ### Action / Strategy trigger coverage
 

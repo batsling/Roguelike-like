@@ -20,6 +20,9 @@ PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 XLSX_PATH = os.path.join(PROJECT_ROOT, "tools", "Roguelikes.xlsx")
 OUT_PATH = os.path.join(PROJECT_ROOT, "scripts", "data", "ReferenceCatalog.gd")
 STATUS_ICON_DIR = os.path.join(PROJECT_ROOT, "images", "statuses")
+# Power statuses (Barricade, Envenom, …) keep their badge art with the power
+# icons — same fallback order Stats.status_icon and Collection.gd use.
+POWER_ICON_DIR = os.path.join(PROJECT_ROOT, "images", "powericons")
 
 
 def esc(s) -> str:
@@ -187,7 +190,8 @@ def main() -> int:
     missing_icons = []
     for r in rows(wb["statusesnew"]):
         icon = esc(r.get("Icon"))
-        if icon and not os.path.exists(os.path.join(STATUS_ICON_DIR, icon + ".png")):
+        if icon and not os.path.exists(os.path.join(STATUS_ICON_DIR, icon + ".png")) \
+                and not os.path.exists(os.path.join(POWER_ICON_DIR, icon + ".png")):
             missing_icons.append(icon)
         status_lines.append(
             "\t{{ \"name\": \"{name}\", \"description\": \"{desc}\", \"type\": \"{type}\", "
