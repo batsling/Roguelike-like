@@ -56,6 +56,16 @@ var permanent_statuses: Dictionary = {}     # StringName -> true
 # for N turns, then removed by Stats.decay_actor_statuses. StringName -> turns.
 var temporary_statuses: Dictionary = {}
 
+# Powers played this combat (mirror of CombatActor.powers): card id ->
+# {"card": CardData, "count": int}, filled by Stats.register_power and drawn
+# on the badge strip next to statuses. The mechanics live in the scene's
+# power_triggers / the keep_block flag; this is the visible record.
+var powers: Dictionary = {}
+
+# Barricade (the keep_block effect): Block is not removed at the turn
+# boundary. Read via Stats.keeps_block.
+var keep_block: bool = false
+
 # Damage taken since this unit's last turn boundary (Shifting status). Fed by
 # the TriggerBus.damage_taken signal and reset by Stats.tick_actor_statuses.
 var damage_taken_this_turn: int = 0

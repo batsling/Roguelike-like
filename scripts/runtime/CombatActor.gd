@@ -39,6 +39,18 @@ var permanent_statuses: Dictionary = {}
 # Stats.decay_actor_statuses, which removes the status at 0.
 var temporary_statuses: Dictionary = {}
 
+# Powers played this combat (Barricade, Envenom, After Image, …). Keyed by
+# card id -> {"card": CardData, "count": int}; filled by Stats.register_power
+# when a Power card resolves. Rendered on the badge strip next to statuses
+# (icon = images/powericons/<Img>Power.png, tooltip = the card description).
+# The mechanics live elsewhere — trigger effects register into the scene's
+# power_triggers; keep_block sets the flag below — this is the visible record.
+var powers: Dictionary = {}
+
+# Barricade (the keep_block effect): Block is not removed at the turn
+# boundary (action: no longer fades). Read via Stats.keeps_block.
+var keep_block: bool = false
+
 # Enemies only: data-ref + planned move
 var data: EnemyData = null
 var planned_move: Dictionary = {}     # one entry of EnemyData.pattern

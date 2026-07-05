@@ -105,6 +105,8 @@ func _register_defaults() -> void:
 	register("boost_cards", _h_boost_cards)
 	register("gain_loot", _h_gain_loot)
 	register("trigger", _h_trigger)
+	register("keep_block", _h_keep_block)
+	register("retain", _h_retain)
 	register("chance", _h_chance)
 	register("add_max_hp", _h_add_max_hp)
 	register("gain_hp", _h_gain_hp)
@@ -293,6 +295,23 @@ func _h_lose_energy(effect: Dictionary, ctx: Dictionary) -> void:
 	if scene == null or not scene.has_method("lose_energy"):
 		return
 	scene.lose_energy(effect.get("value", 1))
+
+func _h_keep_block(_effect: Dictionary, ctx: Dictionary) -> void:
+	# Barricade: the source's Block is no longer removed at the turn boundary
+	# (action: no longer fades over time). Sticky for the combat — the flag is
+	# read by Stats.keeps_block at every block-reset site and cleared with the
+	# actor at combat setup.
+	var src: Variant = ctx.get("source")
+	if src != null and ("keep_block" in src):
+		src.keep_block = true
+
+func _h_retain(_effect: Dictionary, _ctx: Dictionary) -> void:
+	# Well-Laid Plans' inner verb. Deliberately inert here: retain must run
+	# BEFORE the hand discards, so the combat scenes resolve retain-typed
+	# turn_ended triggers in their end-turn intercept (picker / action's
+	# cooldown finish). By the time the generic turn_ended trigger pass runs,
+	# the hand is already gone — firing again would be wrong.
+	pass
 
 func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
 	var status_id := StringName(effect.get("status", ""))

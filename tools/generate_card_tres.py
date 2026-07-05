@@ -88,7 +88,7 @@ RANGE_CLASS_WORDS = {"short", "medium", "large"}
 # Tokens that name a damage type in a dmg clause. NOTE: `cleave` is NOT a damage
 # type — it's a target modifier meaning "hit all enemies" (target: all_enemies),
 # matching how the hand-authored .tres encode Cleave/Thunderclap/Dagger Spray.
-DAMAGE_TYPES = {"melee", "ranged"}
+DAMAGE_TYPES = {"melee", "ranged", "magic"}
 TRIGGERS = {"eot", "on_action", "lifecycle"}
 
 
@@ -340,11 +340,22 @@ def _effect_from_tokens(tokens):
             eff["effect"] = inner
         return eff
 
-    if verb == "on_card_played":
-        # An installed power trigger stored as an on-play effect (After Image).
+    m = re.match(r"^on_([a-z_]+)$", verb)
+    if m and verb not in ("on_action", "on_play_other"):
+        # An installed power trigger stored as an on-play effect. The event
+        # name after on_ is what the combat scene fires (card_played for
+        # After Image, card_exhausted for Feel No Pain, status_drawn /
+        # status_or_curse_drawn for Evolve / Fire Breathing, unblocked_attack
+        # for Envenom, turn_ended for Well-Laid Plans); the rest of the
+        # clause is the inner effect, parsed with the same grammar.
         inner = _effect_from_tokens(args) if args else None
-        return {"type": "trigger", "on": "card_played",
+        return {"type": "trigger", "on": m.group(1),
                 "effect": inner if isinstance(inner, dict) else {}}
+
+    if verb == "keep_block":
+        # Barricade: the player's Block is not removed at the start of the
+        # turn (bare structural verb, like exhaust_self).
+        return {"type": "keep_block"}
 
     if verb == "exhaust_self":
         return {"type": "exhaust_self"}
@@ -362,7 +373,10 @@ def _effect_from_tokens(tokens):
         if what == "block":
             return {"type": "block", "value": val, "target": "self"}
         return {"type": "status", "status": what, "stacks": val, "target": "self"}
-    if verb in ("draw", "block", "heal", "gain_energy", "lose_energy", "upgrade_hand") and pos:
+    # `retain:N` (Well-Laid Plans' inner verb): at the end of the turn, keep up
+    # to N hand cards. Only meaningful inside an on_turn_ended trigger — the
+    # scenes resolve it BEFORE the hand discards.
+    if verb in ("draw", "block", "heal", "gain_energy", "lose_energy", "upgrade_hand", "retain") and pos:
         # upgrade_hand:all upgrades every card in hand (Armaments+).
         if verb == "upgrade_hand" and pos[0].lower() == "all":
             return {"type": "upgrade_hand", "value": "all"}

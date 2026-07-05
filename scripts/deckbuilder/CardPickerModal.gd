@@ -2,11 +2,13 @@ class_name CardPickerModal
 extends Control
 
 # Reusable mid-cast picker. The caller hands in a list of candidate
-# CardInstances, an exact required count (min == max for now since no
-# shipped card needs "up to N"), an accent colour for the panel, and a
+# CardInstances, a required count, an accent colour for the panel, and a
 # callback. The modal lets the player click cards to toggle selection,
 # enables Confirm only when the count requirement is met, and fires
-# the callback with the selected instances on confirm.
+# the callback with the selected instances on confirm. Pass
+# `up_to: true` to make the count a ceiling instead of an exact
+# requirement — Confirm is then enabled at any selection size from 0
+# to count (Well-Laid Plans' "Retain up to X").
 #
 # Display-only — selection state lives inside this node and is handed
 # back to the caller exactly once. Card mutations (discard / exhaust /
@@ -29,6 +31,7 @@ const CardViewScript := preload("res://scripts/deckbuilder/CardView.gd")
 var _candidates: Array = []
 var _selected: Array = []       # Array[CardInstance] in click order
 var _required: int = 1
+var _up_to: bool = false        # count is a ceiling, not an exact requirement
 var _on_picked: Callable
 var _confirm_btn: Button
 var _counter_label: Label
@@ -37,6 +40,7 @@ var _views: Array = []          # Array[CardView] parallel to _candidates
 func show_picker(opts: Dictionary) -> void:
 	_candidates = opts.get("candidates", []).duplicate()
 	_required = int(opts.get("count", 1))
+	_up_to = bool(opts.get("up_to", false))
 	_on_picked = opts.get("on_picked", Callable())
 	var title: String = String(opts.get("title", "Choose a card"))
 	var accent: Color = opts.get("accent", Color(0.9, 0.9, 0.95))
@@ -132,8 +136,12 @@ func _on_card_clicked(card: CardInstance, view: Control) -> void:
 	_refresh()
 
 func _refresh() -> void:
-	_counter_label.text = "%d / %d selected" % [_selected.size(), _required]
-	_confirm_btn.disabled = _selected.size() != _required or _required == 0
+	if _up_to:
+		_counter_label.text = "%d / up to %d selected" % [_selected.size(), _required]
+		_confirm_btn.disabled = _selected.size() > _required
+	else:
+		_counter_label.text = "%d / %d selected" % [_selected.size(), _required]
+		_confirm_btn.disabled = _selected.size() != _required or _required == 0
 
 func _on_confirm() -> void:
 	var picks: Array = _selected.duplicate()

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_well_laid_plans"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Well-LaidPlans.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"well_laid_plans"
+display_name = "Well-Laid Plans"
+type = 2
+rarity = 2
+cost = 1
+description = "At the end of your turn, choose up to 1 Card in your hand to Retain."
+effects = [{"type": "trigger", "on": "turn_ended", "effect": {"type": "retain", "value": 1}}]
+tags = PackedStringArray("silent", "draw", "retain")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "At the end of your turn, choose up to 2 Cards in your hand to Retain."
+upgraded_cost = -999
+upgraded_effects = [{"type": "trigger", "on": "turn_ended", "effect": {"type": "retain", "value": 2}}]
+image = ExtResource("2_img")
