@@ -205,8 +205,11 @@ Counters available today (maintained by `GameState.incremental_*`, bumped by
 | `turns` | Turn-tick pulses this combat. |
 
 `attacks_this_turn` is bumped on each attack's `card_played`, which fires
-**before** the played card's own effects — so Finisher counts **itself** (a
-solo Finisher deals `VALUE × 1`).
+**before** the played card's own effects. A scaling attack does **not** count
+its own play: the resolver strips one attack's worth back off when the card
+carrying the dmg is itself an Attack (only Attacks bump the counter). So
+Finisher scales off the attacks played *before* it — a solo Finisher with no
+prior attacks this turn deals **0**.
 
 Worked example — Finisher — `Uncommon Attack` cost 1:
 ```

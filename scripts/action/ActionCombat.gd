@@ -2535,7 +2535,7 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 		var tgt: String = String(effect.get("target", "enemy"))
 		match t:
 			"dmg":
-				_apply_damage_effect(effect, tgt, cone_targets, aoe_targets)
+				_apply_damage_effect(effect, tgt, cone_targets, aoe_targets, card)
 			"block":
 				if tgt == "self" or tgt == "player":
 					_gain_block(int(effect.get("value", 0)), _block_decay_for(card))
@@ -2753,7 +2753,7 @@ func _apply_enemy_effects(card: CardData, effects: Array, hit_list: Array) -> vo
 		var effect: Dictionary = _resolve_addon_effect(raw, card)
 		match String(effect.get("type", "")):
 			"dmg":
-				var value: int = _resolve_dmg_value(effect)
+				var value: int = _resolve_dmg_value(effect, card)
 				var dmg_type: String = String(effect.get("damage_type", "melee"))
 				var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
 				var gate: StringName = StringName(String(effect.get("if_target_status", "")))
@@ -3572,7 +3572,7 @@ func _apply_self_effects(card: CardData) -> void:
 # "block" deals damage equal to the player's current Block (Body Slam); a plain
 # effect just returns its `value`. Power/Weak/Vulnerable still apply afterwards
 # in _deal_damage_to_enemy, matching the other modes.
-func _resolve_dmg_value(effect: Dictionary) -> int:
+func _resolve_dmg_value(effect: Dictionary, card: CardData = null) -> int:
 	var value_from: String = String(effect.get("value_from", ""))
 	if value_from == "block":
 		var blk: int = player_actor.block if player_actor != null else 0
@@ -3581,11 +3581,17 @@ func _resolve_dmg_value(effect: Dictionary) -> int:
 	# deckbuilder/strategy _h_dmg path so the same dmg effect scales identically;
 	# in Action the counter is the per-turn-tick attack window.
 	if value_from != "":
-		return GameState.incremental_value(value_from) * int(effect.get("value_mult", 1))
+		var count: int = GameState.incremental_value(value_from)
+		# A scaling attack doesn't count its own play — attacks_this_turn is
+		# bumped on card_played before the card resolves, so drop this card's
+		# contribution when it's an Attack (Finisher with no prior attacks = 0).
+		if value_from == "attacks_this_turn" and card != null and card.is_attack():
+			count = maxi(0, count - 1)
+		return count * int(effect.get("value_mult", 1))
 	return int(effect.get("value", 0))
 
-func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array) -> void:
-	var value: int = _resolve_dmg_value(effect)
+func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array, card: CardData = null) -> void:
+	var value: int = _resolve_dmg_value(effect, card)
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
 	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
 	var gate: StringName = StringName(String(effect.get("if_target_status", "")))
