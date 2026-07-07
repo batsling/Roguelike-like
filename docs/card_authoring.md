@@ -212,8 +212,35 @@ write the verb that matches *what the card actually does*:
 |---|---|---|
 | Gain 5 Block | `gain:block:5` | `block`, `target: self` |
 | Gain 2 Power | `gain:power:2` | `status`, `status: power`, `target: self` |
+| Gain 2 Power (temporary) | `gain:power:2:temp` | `status_temp`, `status: power`, `target: self` |
 | Inflict 2 Vulnerable | `inflict:vulnerable:2` | `status`, `status: vulnerable`, `target: enemy` |
 | Inflict 1 Weak (Cleave) | `inflict:weak:1:cleave` | `status`, `status: weak`, `target: all_enemies` |
+
+### Temporary buffs (`gain:...:temp`) — Flex
+
+Append `temp` (or `temporary`) to a self `gain:` and the buff becomes
+**temporary**: applied now, then shed at the next turn boundary. It's stored
+as the `status_temp` effect type, whose handler
+(`EffectSystem._h_status_temp`) applies the stacks like a normal status *and*
+records the exact amount in `GameState.temp_status_stacks`. `ItemTriggers`
+strips precisely that many stacks at `turn_started` (deckbuilder) / `turn_tick`
+(action, strategy) — so any *permanent* stacks of the same status the player
+already had are left untouched (the same machinery Prayer Beads' "+Brace until
+end of turn" rides). All three modes: deckbuilder and strategy route the effect
+through `EffectSystem.apply` for free; action's card-resolution loops handle
+`status_temp` alongside `status` and call `_record_temp_status`.
+
+Worked example — Flex — `Common Skill` cost 0:
+```
+Description:  Gain 2 Power. At the end of your turn, lose 2 Power.
+Effects:      gain:power:2:temp
+Upgraded Eff: gain:power:4:temp
+Range/Attack: N/A
+Tags:         ironclad, offense, scaling
+```
+
+Only self-targeted `gain:` produces `status_temp`; `temp` on an enemy inflict is
+ignored (an enemy debuff decays on its own timer already).
 
 ## Conjure
 
@@ -259,6 +286,23 @@ without any extra work.
 
 Outside the deckbuilder (action / strategy) the effect no-ops because
 there are no piles to add to.
+
+### Status cards (Wound / Dazed / Slimed)
+
+The cards a conjure *targets* are ordinary `Type: Status` rows in
+`cardsnew` — junk shuffled into the deck, not `statusesnew` entries.
+Author them like any other card:
+
+| Card | Cost | Keywords | Effects | Notes |
+|---|---|---|---|---|
+| Wound | `No` | — | `none` | `Cost: No` sets `unplayable`. Pure dead weight. |
+| Dazed | `No` | `Ethereal` | `none` | Unplayable **and** Ethereal (exhausts if still in hand at end of turn). |
+| Slimed | `1` | `Exhaust` | `draw:1` | The playable one — pay 1 to cycle it out. |
+
+`Cost: No` is the shorthand that flags a card `unplayable` without an
+explicit keyword (curses use it too). Status cards are `can_upgrade =
+false` automatically (no `↑` columns), so a conjured `+` suffix on them is
+silently dropped.
 
 ## Picker modal (Discard / Exhaust / Upgrade / Topdeck / Recall)
 

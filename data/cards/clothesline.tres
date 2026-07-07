@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_clothesline"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Clothesline.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"clothesline"
+display_name = "Clothesline"
+type = 0
+rarity = 1
+cost = 2
+description = "Deal 12 Dmg Melee. Apply 2 Weak."
+effects = [{"type": "dmg", "value": 12, "target": "enemy", "damage_type": "melee"}, {"type": "status", "status": "weak", "stacks": 2, "target": "enemy"}]
+tags = PackedStringArray("ironclad", "offense", "debuff")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 14 Dmg Melee. Apply 3 Weak."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 14, "target": "enemy", "damage_type": "melee"}, {"type": "status", "status": "weak", "stacks": 3, "target": "enemy"}]
+image = ExtResource("2_img")
+attack_shape = &"swing"
+attack_params = {"size": "medium"}

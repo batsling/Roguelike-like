@@ -2539,8 +2539,10 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 			"block":
 				if tgt == "self" or tgt == "player":
 					_gain_block(int(effect.get("value", 0)), _block_decay_for(card))
-			"status":
+			"status", "status_temp":
 				_apply_status_effect(effect, tgt, cone_targets, aoe_targets)
+				if t == "status_temp":
+					_record_temp_status(effect)
 			"heal":
 				if tgt == "self" or tgt == "player":
 					_resolve_heal_self(int(effect.get("value", 0)))
@@ -2659,11 +2661,13 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 			"block":
 				if tgt == "self" or tgt == "player":
 					_gain_block(int(effect.get("value", 0)), _block_decay_for(card))
-			"status":
+			"status", "status_temp":
 				# Reuse the shared status path: nearest as the "enemy" list,
 				# all living as the "all_enemies" list.
 				var single: Array = _auto_targets_for("enemy")
 				_apply_status_effect(effect, tgt, single, all_alive)
+				if t == "status_temp":
+					_record_temp_status(effect)
 			"heal":
 				if tgt == "self" or tgt == "player":
 					_resolve_heal_self(int(effect.get("value", 0)))
@@ -3558,9 +3562,11 @@ func _apply_self_effects(card: CardData) -> void:
 				_gain_block(int(be.get("value", 0)), _block_decay_for(card))
 			"heal":
 				_resolve_heal_self(int(effect.get("value", 0)))
-			"status":
+			"status", "status_temp":
 				var status: StringName = StringName(String(effect.get("status", "")))
 				Stats.apply_status_to(player_actor, status, int(effect.get("stacks", 0)), player_actor)
+				if t == "status_temp":
+					_record_temp_status(effect)
 
 # Resolve a dmg effect's flat value, honouring dynamic sources. `value_from`
 # "block" deals damage equal to the player's current Block (Body Slam); a plain
@@ -3631,6 +3637,20 @@ func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 		return
 	for inst in hit_list:
 		Stats.apply_status_to(inst.actor, status, stacks, player_actor)
+
+# status_temp (Flex): the buff was applied normally by _apply_status_effect;
+# record the exact stacks so ItemTriggers strips them at the next turn_tick,
+# leaving any permanent stacks of the same status intact. Self-targeted only —
+# the tally is the player's — so a non-self status_temp just decays like normal.
+func _record_temp_status(effect: Dictionary) -> void:
+	if String(effect.get("target", "self")) != "self":
+		return
+	var sid: String = String(effect.get("status", ""))
+	var stacks: int = int(effect.get("stacks", 0))
+	if sid == "" or stacks <= 0:
+		return
+	GameState.temp_status_stacks[sid] = int(
+		GameState.temp_status_stacks.get(sid, 0)) + stacks
 
 func _resolve_heal_self(value: int) -> void:
 	if value <= 0:

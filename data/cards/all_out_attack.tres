@@ -20,3 +20,4 @@ upgraded_cost = -999
 upgraded_effects = [{"type": "dmg", "value": 14, "target": "all_enemies", "damage_type": "melee"}, {"type": "discard", "value": 1, "random": true}]
 image = ExtResource("2_img")
 attack_shape = &"nova"
+attack_params = {"size": "small"}

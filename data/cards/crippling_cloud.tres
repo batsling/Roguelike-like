@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_crippling_cloud"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/CripplingCloud.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"crippling_cloud"
+display_name = "Crippling Cloud"
+type = 1
+rarity = 2
+cost = 0
+description = "Apply 4 Poison and 2 Weak to ALL Enemies. Exhaust."
+effects = [{"type": "status", "status": "poison", "stacks": 4, "target": "all_enemies"}, {"type": "status", "status": "weak", "stacks": 2, "target": "all_enemies"}]
+tags = PackedStringArray("silent", "poison", "debuff", "aoe")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Apply 7 Poison and 3 Weak to ALL Enemies. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status", "status": "poison", "stacks": 7, "target": "all_enemies"}, {"type": "status", "status": "weak", "stacks": 3, "target": "all_enemies"}]
+image = ExtResource("2_img")
+exhaust = true
+attack_shape = &"nova"
+attack_params = {"size": "medium"}
