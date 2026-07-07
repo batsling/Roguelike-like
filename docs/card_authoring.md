@@ -164,6 +164,10 @@ Semicolon-delimited list of effect lines. Each line is
   source; `block` = deal damage equal to the attacker's current Block. Stored
   as `value_from: "block"`, resolved at hit time in every mode so Power/Weak/
   Vulnerable still layer on top.)
+- `dmg:6:melee:per=attacks_this_turn` — Finisher (`per=COUNTER` scales the hit
+  by a live counter: the flat value becomes the per-unit amount and the counter
+  is the multiplier, so this deals `6 × attacks played this turn`. Stored as
+  `value_from: "attacks_this_turn"`, `value_mult: 6`. See Scaling counters.)
 
 ### X-cost cards (Whirlwind / Skewer)
 
@@ -181,6 +185,41 @@ repeat as `dmg:NxX`. Playing the card spends **all remaining energy**, and each
 The upgrade form just bumps the per-hit value (`dmg:8xX`). Cooldown-wise the
 action/strategy formula already treats X-cost as cost 1
 (see `AbilityCooldownConfig`).
+
+### Scaling counters (`per=COUNTER`) — Finisher
+
+`dmg:VALUE:TYPE:per=COUNTER` deals `VALUE ×` a live combat counter. The flat
+value becomes the per-unit amount (`value_mult`) and the counter names the
+dynamic source (`value_from`); `EffectSystem._dynamic_count` resolves it in
+deckbuilder/strategy and `ActionCombat._resolve_dmg_value` in action. It's one
+hit whose *size* scales — Power / Weak / Vulnerable still layer on the total,
+same as any dmg.
+
+Counters available today (maintained by `GameState.incremental_*`, bumped by
+`ItemTriggers.fire` and reset on the turn boundary in every mode):
+
+| Counter | Meaning |
+|---|---|
+| `attacks_this_turn` | Attack cards played in the current turn (deckbuilder/strategy) or turn-tick window (action). |
+| `attacks_total` | Attacks played this run. |
+| `turns` | Turn-tick pulses this combat. |
+
+`attacks_this_turn` is bumped on each attack's `card_played`, which fires
+**before** the played card's own effects — so Finisher counts **itself** (a
+solo Finisher deals `VALUE × 1`).
+
+Worked example — Finisher — `Uncommon Attack` cost 1:
+```
+Description:  Deal 6 Dmg Melee for each Attack played this turn.
+Effects:      dmg:6:melee:per=attacks_this_turn
+Upgraded Eff: dmg:8:melee:per=attacks_this_turn
+Attack:       Poke, Medium
+Tags:         silent, offense, scaling
+```
+
+In action the counter is the per-turn-tick attack window (default 10s, see
+`ActionTranslation.turn_tick_secs`), so Finisher rewards a fast flurry of casts
+inside one window rather than a discrete turn.
 
 ### Repeating an inflict (`times=N`) + random targeting
 

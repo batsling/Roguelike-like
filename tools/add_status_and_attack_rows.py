@@ -72,12 +72,12 @@ CARD_ROWS = {
     ],
     "Finisher": [
         "Finisher", "Uncommon", "Attack", 1,
-        "Deal 10 Dmg Melee.",
-        "dmg:10:melee",
-        "Deal 14 Dmg Melee.",
-        "dmg:14:melee",
+        "Deal 6 Dmg Melee for each Attack played this turn.",
+        "dmg:6:melee:per=attacks_this_turn",
+        "Deal 8 Dmg Melee for each Attack played this turn.",
+        "dmg:8:melee:per=attacks_this_turn",
         "N/A", "Poke, Medium", "Finisher", "Slay the Spire", "N/A", "N/A",
-        "silent, offense",
+        "silent, offense, scaling",
     ],
     "Feed": [
         "Feed", "Rare", "Attack", 1,

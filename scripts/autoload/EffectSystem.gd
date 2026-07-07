@@ -72,6 +72,12 @@ func _dynamic_count(source: String) -> int:
 			return GameState.curse_card_count()
 		"curses_and_cards":
 			return GameState.curse_count() + GameState.curse_card_count()
+		# Incremental combat counters (Finisher: attacks played this turn). These
+		# are bumped by ItemTriggers.fire and reset on the turn boundary in every
+		# mode, so a dmg effect scaling off `attacks_this_turn` resolves the same
+		# way in deckbuilder, strategy, and action's turn-tick window.
+		"attacks_this_turn", "attacks_total", "turns":
+			return GameState.incremental_value(source)
 	push_warning("EffectSystem: unknown dynamic count source '%s'" % source)
 	return 0
 

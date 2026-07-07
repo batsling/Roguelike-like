@@ -3573,9 +3573,15 @@ func _apply_self_effects(card: CardData) -> void:
 # effect just returns its `value`. Power/Weak/Vulnerable still apply afterwards
 # in _deal_damage_to_enemy, matching the other modes.
 func _resolve_dmg_value(effect: Dictionary) -> int:
-	if String(effect.get("value_from", "")) == "block":
+	var value_from: String = String(effect.get("value_from", ""))
+	if value_from == "block":
 		var blk: int = player_actor.block if player_actor != null else 0
 		return blk * int(effect.get("value_mult", 1))
+	# Dynamic counter sources (Finisher: attacks_this_turn). Mirrors the
+	# deckbuilder/strategy _h_dmg path so the same dmg effect scales identically;
+	# in Action the counter is the per-turn-tick attack window.
+	if value_from != "":
+		return GameState.incremental_value(value_from) * int(effect.get("value_mult", 1))
 	return int(effect.get("value", 0))
 
 func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array) -> void:

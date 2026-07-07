@@ -200,6 +200,14 @@ def _effect_from_tokens(tokens):
         elif hits:
             eff["hits"] = hits
         # key=value modifiers on a dmg clause.
+        # `per=COUNTER` (Finisher) scales the hit by a live counter: the flat
+        # value becomes the per-unit amount (value_mult) and the counter names
+        # the source (value_from). `dmg:6:melee:per=attacks_this_turn` ->
+        # 6 x attacks-played-this-turn. Resolved by EffectSystem._dynamic_count
+        # (deckbuilder/strategy) and ActionCombat._resolve_dmg_value (action).
+        if "per" in kv:
+            eff["value_from"] = kv["per"]
+            eff["value_mult"] = value
         if "if_status" in kv:
             eff["if_target_status"] = kv["if_status"]
         if "infuse" in kv:

@@ -77,6 +77,13 @@ def main():
     plain = one("gain:power:2")
     assert plain["type"] == "status", plain
 
+    # dmg:N:melee:per=COUNTER (Finisher) — the flat value becomes the per-unit
+    # amount (value_mult) and the counter names the dynamic source (value_from).
+    fin = one("dmg:6:melee:per=attacks_this_turn")
+    assert fin == {"type": "dmg", "value": 6, "target": "enemy",
+                   "damage_type": "melee", "value_from": "attacks_this_turn",
+                   "value_mult": 6}, fin
+
     # The boomerang archetype parses via the Attack column.
     shape, params, _rc = gen.parse_attack("Boomerang")
     assert shape == "boomerang" and params == {}, (shape, params)
