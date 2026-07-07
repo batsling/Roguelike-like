@@ -72,8 +72,20 @@ func _dynamic_count(source: String) -> int:
 			return GameState.curse_card_count()
 		"curses_and_cards":
 			return GameState.curse_count() + GameState.curse_card_count()
+		# Incremental combat counters (Finisher: attacks played this turn). These
+		# are bumped by ItemTriggers.fire and reset on the turn boundary in every
+		# mode, so a dmg effect scaling off `attacks_this_turn` resolves the same
+		# way in deckbuilder, strategy, and action's turn-tick window.
+		"attacks_this_turn", "attacks_total", "turns":
+			return GameState.incremental_value(source)
 	push_warning("EffectSystem: unknown dynamic count source '%s'" % source)
 	return 0
+
+# True when the played card (CardInstance in deckbuilder/strategy, CardData in
+# action) is an Attack. Used to strip a scaling attack's own contribution from
+# attacks_this_turn so it counts only the attacks that came before it.
+func _card_is_attack(card: Variant) -> bool:
+	return card != null and card.has_method("is_attack") and card.is_attack()
 
 # ---------------------------------------------------------------------------
 # Default handlers — registered at load. The combat scene exposes the
@@ -180,6 +192,12 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 		dmg_value = blk * int(effect.get("value_mult", 1))
 	else:
 		dmg_value = _dyn_amount(effect, "value", "value_from", "value_mult")
+	# A scaling attack does NOT count its own play (Finisher: 0 prior attacks ->
+	# 0 damage). attacks_this_turn is bumped on card_played, which fires before
+	# the card's own effects, so subtract this card's contribution when the card
+	# itself is an Attack — the only card kind that bumps the counter.
+	if String(effect.get("value_from", "")) == "attacks_this_turn" and _card_is_attack(ctx.get("card")):
+		dmg_value = maxi(0, dmg_value - int(effect.get("value_mult", 1)))
 	# Determined (addon): a fixed-per-combat rolled value overrides the static one.
 	dmg_value = _resolve_determined(effect, ctx, dmg_value, "dmg")
 	# Per-turn scaling (Transient): +M damage for each turn the source has taken.

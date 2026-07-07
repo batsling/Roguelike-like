@@ -164,6 +164,10 @@ Semicolon-delimited list of effect lines. Each line is
   source; `block` = deal damage equal to the attacker's current Block. Stored
   as `value_from: "block"`, resolved at hit time in every mode so Power/Weak/
   Vulnerable still layer on top.)
+- `dmg:6:melee:per=attacks_this_turn` — Finisher (`per=COUNTER` scales the hit
+  by a live counter: the flat value becomes the per-unit amount and the counter
+  is the multiplier, so this deals `6 × attacks played this turn`. Stored as
+  `value_from: "attacks_this_turn"`, `value_mult: 6`. See Scaling counters.)
 
 ### X-cost cards (Whirlwind / Skewer)
 
@@ -181,6 +185,44 @@ repeat as `dmg:NxX`. Playing the card spends **all remaining energy**, and each
 The upgrade form just bumps the per-hit value (`dmg:8xX`). Cooldown-wise the
 action/strategy formula already treats X-cost as cost 1
 (see `AbilityCooldownConfig`).
+
+### Scaling counters (`per=COUNTER`) — Finisher
+
+`dmg:VALUE:TYPE:per=COUNTER` deals `VALUE ×` a live combat counter. The flat
+value becomes the per-unit amount (`value_mult`) and the counter names the
+dynamic source (`value_from`); `EffectSystem._dynamic_count` resolves it in
+deckbuilder/strategy and `ActionCombat._resolve_dmg_value` in action. It's one
+hit whose *size* scales — Power / Weak / Vulnerable still layer on the total,
+same as any dmg.
+
+Counters available today (maintained by `GameState.incremental_*`, bumped by
+`ItemTriggers.fire` and reset on the turn boundary in every mode):
+
+| Counter | Meaning |
+|---|---|
+| `attacks_this_turn` | Attack cards played in the current turn (deckbuilder/strategy) or turn-tick window (action). |
+| `attacks_total` | Attacks played this run. |
+| `turns` | Turn-tick pulses this combat. |
+
+`attacks_this_turn` is bumped on each attack's `card_played`, which fires
+**before** the played card's own effects. A scaling attack does **not** count
+its own play: the resolver strips one attack's worth back off when the card
+carrying the dmg is itself an Attack (only Attacks bump the counter). So
+Finisher scales off the attacks played *before* it — a solo Finisher with no
+prior attacks this turn deals **0**.
+
+Worked example — Finisher — `Uncommon Attack` cost 1:
+```
+Description:  Deal 6 Dmg Melee for each Attack played this turn.
+Effects:      dmg:6:melee:per=attacks_this_turn
+Upgraded Eff: dmg:8:melee:per=attacks_this_turn
+Attack:       Poke, Medium
+Tags:         silent, offense, scaling
+```
+
+In action the counter is the per-turn-tick attack window (default 10s, see
+`ActionTranslation.turn_tick_secs`), so Finisher rewards a fast flurry of casts
+inside one window rather than a discrete turn.
 
 ### Repeating an inflict (`times=N`) + random targeting
 
@@ -212,8 +254,35 @@ write the verb that matches *what the card actually does*:
 |---|---|---|
 | Gain 5 Block | `gain:block:5` | `block`, `target: self` |
 | Gain 2 Power | `gain:power:2` | `status`, `status: power`, `target: self` |
+| Gain 2 Power (temporary) | `gain:power:2:temp` | `status_temp`, `status: power`, `target: self` |
 | Inflict 2 Vulnerable | `inflict:vulnerable:2` | `status`, `status: vulnerable`, `target: enemy` |
 | Inflict 1 Weak (Cleave) | `inflict:weak:1:cleave` | `status`, `status: weak`, `target: all_enemies` |
+
+### Temporary buffs (`gain:...:temp`) — Flex
+
+Append `temp` (or `temporary`) to a self `gain:` and the buff becomes
+**temporary**: applied now, then shed at the next turn boundary. It's stored
+as the `status_temp` effect type, whose handler
+(`EffectSystem._h_status_temp`) applies the stacks like a normal status *and*
+records the exact amount in `GameState.temp_status_stacks`. `ItemTriggers`
+strips precisely that many stacks at `turn_started` (deckbuilder) / `turn_tick`
+(action, strategy) — so any *permanent* stacks of the same status the player
+already had are left untouched (the same machinery Prayer Beads' "+Brace until
+end of turn" rides). All three modes: deckbuilder and strategy route the effect
+through `EffectSystem.apply` for free; action's card-resolution loops handle
+`status_temp` alongside `status` and call `_record_temp_status`.
+
+Worked example — Flex — `Common Skill` cost 0:
+```
+Description:  Gain 2 Power. At the end of your turn, lose 2 Power.
+Effects:      gain:power:2:temp
+Upgraded Eff: gain:power:4:temp
+Range/Attack: N/A
+Tags:         ironclad, offense, scaling
+```
+
+Only self-targeted `gain:` produces `status_temp`; `temp` on an enemy inflict is
+ignored (an enemy debuff decays on its own timer already).
 
 ## Conjure
 
@@ -259,6 +328,23 @@ without any extra work.
 
 Outside the deckbuilder (action / strategy) the effect no-ops because
 there are no piles to add to.
+
+### Status cards (Wound / Dazed / Slimed)
+
+The cards a conjure *targets* are ordinary `Type: Status` rows in
+`cardsnew` — junk shuffled into the deck, not `statusesnew` entries.
+Author them like any other card:
+
+| Card | Cost | Keywords | Effects | Notes |
+|---|---|---|---|---|
+| Wound | `No` | — | `none` | `Cost: No` sets `unplayable`. Pure dead weight. |
+| Dazed | `No` | `Ethereal` | `none` | Unplayable **and** Ethereal (exhausts if still in hand at end of turn). |
+| Slimed | `1` | `Exhaust` | `draw:1` | The playable one — pay 1 to cycle it out. |
+
+`Cost: No` is the shorthand that flags a card `unplayable` without an
+explicit keyword (curses use it too). Status cards are `can_upgrade =
+false` automatically (no `↑` columns), so a conjured `+` suffix on them is
+silently dropped.
 
 ## Picker modal (Discard / Exhaust / Upgrade / Topdeck / Recall)
 

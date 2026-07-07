@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_finisher"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Finisher.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"finisher"
+display_name = "Finisher"
+type = 0
+rarity = 2
+cost = 1
+description = "Deal 6 Dmg Melee for each Attack played this turn."
+effects = [{"type": "dmg", "value": 6, "target": "enemy", "damage_type": "melee", "value_from": "attacks_this_turn", "value_mult": 6}]
+tags = PackedStringArray("silent", "offense", "scaling")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 8 Dmg Melee for each Attack played this turn."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 8, "target": "enemy", "damage_type": "melee", "value_from": "attacks_this_turn", "value_mult": 8}]
+image = ExtResource("2_img")
+attack_shape = &"poke"
+attack_params = {"size": "medium"}

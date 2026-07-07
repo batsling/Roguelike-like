@@ -2535,12 +2535,14 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 		var tgt: String = String(effect.get("target", "enemy"))
 		match t:
 			"dmg":
-				_apply_damage_effect(effect, tgt, cone_targets, aoe_targets)
+				_apply_damage_effect(effect, tgt, cone_targets, aoe_targets, card)
 			"block":
 				if tgt == "self" or tgt == "player":
 					_gain_block(int(effect.get("value", 0)), _block_decay_for(card))
-			"status":
+			"status", "status_temp":
 				_apply_status_effect(effect, tgt, cone_targets, aoe_targets)
+				if t == "status_temp":
+					_record_temp_status(effect)
 			"heal":
 				if tgt == "self" or tgt == "player":
 					_resolve_heal_self(int(effect.get("value", 0)))
@@ -2659,11 +2661,13 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 			"block":
 				if tgt == "self" or tgt == "player":
 					_gain_block(int(effect.get("value", 0)), _block_decay_for(card))
-			"status":
+			"status", "status_temp":
 				# Reuse the shared status path: nearest as the "enemy" list,
 				# all living as the "all_enemies" list.
 				var single: Array = _auto_targets_for("enemy")
 				_apply_status_effect(effect, tgt, single, all_alive)
+				if t == "status_temp":
+					_record_temp_status(effect)
 			"heal":
 				if tgt == "self" or tgt == "player":
 					_resolve_heal_self(int(effect.get("value", 0)))
@@ -2749,7 +2753,7 @@ func _apply_enemy_effects(card: CardData, effects: Array, hit_list: Array) -> vo
 		var effect: Dictionary = _resolve_addon_effect(raw, card)
 		match String(effect.get("type", "")):
 			"dmg":
-				var value: int = _resolve_dmg_value(effect)
+				var value: int = _resolve_dmg_value(effect, card)
 				var dmg_type: String = String(effect.get("damage_type", "melee"))
 				var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
 				var gate: StringName = StringName(String(effect.get("if_target_status", "")))
@@ -3558,22 +3562,36 @@ func _apply_self_effects(card: CardData) -> void:
 				_gain_block(int(be.get("value", 0)), _block_decay_for(card))
 			"heal":
 				_resolve_heal_self(int(effect.get("value", 0)))
-			"status":
+			"status", "status_temp":
 				var status: StringName = StringName(String(effect.get("status", "")))
 				Stats.apply_status_to(player_actor, status, int(effect.get("stacks", 0)), player_actor)
+				if t == "status_temp":
+					_record_temp_status(effect)
 
 # Resolve a dmg effect's flat value, honouring dynamic sources. `value_from`
 # "block" deals damage equal to the player's current Block (Body Slam); a plain
 # effect just returns its `value`. Power/Weak/Vulnerable still apply afterwards
 # in _deal_damage_to_enemy, matching the other modes.
-func _resolve_dmg_value(effect: Dictionary) -> int:
-	if String(effect.get("value_from", "")) == "block":
+func _resolve_dmg_value(effect: Dictionary, card: CardData = null) -> int:
+	var value_from: String = String(effect.get("value_from", ""))
+	if value_from == "block":
 		var blk: int = player_actor.block if player_actor != null else 0
 		return blk * int(effect.get("value_mult", 1))
+	# Dynamic counter sources (Finisher: attacks_this_turn). Mirrors the
+	# deckbuilder/strategy _h_dmg path so the same dmg effect scales identically;
+	# in Action the counter is the per-turn-tick attack window.
+	if value_from != "":
+		var count: int = GameState.incremental_value(value_from)
+		# A scaling attack doesn't count its own play — attacks_this_turn is
+		# bumped on card_played before the card resolves, so drop this card's
+		# contribution when it's an Attack (Finisher with no prior attacks = 0).
+		if value_from == "attacks_this_turn" and card != null and card.is_attack():
+			count = maxi(0, count - 1)
+		return count * int(effect.get("value_mult", 1))
 	return int(effect.get("value", 0))
 
-func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array) -> void:
-	var value: int = _resolve_dmg_value(effect)
+func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array, card: CardData = null) -> void:
+	var value: int = _resolve_dmg_value(effect, card)
 	var dmg_type: String = String(effect.get("damage_type", "melee"))
 	var power_mult: int = maxi(1, int(effect.get("power_multiplier", 1)))
 	var gate: StringName = StringName(String(effect.get("if_target_status", "")))
@@ -3631,6 +3649,20 @@ func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 		return
 	for inst in hit_list:
 		Stats.apply_status_to(inst.actor, status, stacks, player_actor)
+
+# status_temp (Flex): the buff was applied normally by _apply_status_effect;
+# record the exact stacks so ItemTriggers strips them at the next turn_tick,
+# leaving any permanent stacks of the same status intact. Self-targeted only —
+# the tally is the player's — so a non-self status_temp just decays like normal.
+func _record_temp_status(effect: Dictionary) -> void:
+	if String(effect.get("target", "self")) != "self":
+		return
+	var sid: String = String(effect.get("status", ""))
+	var stacks: int = int(effect.get("stacks", 0))
+	if sid == "" or stacks <= 0:
+		return
+	GameState.temp_status_stacks[sid] = int(
+		GameState.temp_status_stacks.get(sid, 0)) + stacks
 
 func _resolve_heal_self(value: int) -> void:
 	if value <= 0:

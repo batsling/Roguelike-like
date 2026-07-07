@@ -67,6 +67,23 @@ def main():
     both, _t, _d = gen.parse_effects("discard:all; conjure:shiv:hand:count=discarded")
     assert [e["type"] for e in both] == ["discard", "conjure"], both
 
+    # gain:power:2:temp (Flex) — a Temporary buff routes through status_temp so
+    # the stacks are shed at the next turn boundary. Plain gain stays "status".
+    fx = one("gain:power:2:temp")
+    assert fx == {"type": "status_temp", "status": "power", "stacks": 2,
+                  "target": "self"}, fx
+    fxu = one("gain:power:4:temporary")
+    assert fxu["type"] == "status_temp" and fxu["stacks"] == 4, fxu
+    plain = one("gain:power:2")
+    assert plain["type"] == "status", plain
+
+    # dmg:N:melee:per=COUNTER (Finisher) — the flat value becomes the per-unit
+    # amount (value_mult) and the counter names the dynamic source (value_from).
+    fin = one("dmg:6:melee:per=attacks_this_turn")
+    assert fin == {"type": "dmg", "value": 6, "target": "enemy",
+                   "damage_type": "melee", "value_from": "attacks_this_turn",
+                   "value_mult": 6}, fin
+
     # The boomerang archetype parses via the Attack column.
     shape, params, _rc = gen.parse_attack("Boomerang")
     assert shape == "boomerang" and params == {}, (shape, params)

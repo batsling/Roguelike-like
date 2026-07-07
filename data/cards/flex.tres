@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_flex"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Flex.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"flex"
+display_name = "Flex"
+type = 1
+rarity = 1
+cost = 0
+description = "Gain 2 Power. At the end of your turn, lose 2 Power."
+effects = [{"type": "status_temp", "status": "power", "stacks": 2, "target": "self"}]
+tags = PackedStringArray("ironclad", "offense", "scaling")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain 4 Power. At the end of your turn, lose 4 Power."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status_temp", "status": "power", "stacks": 4, "target": "self"}]
+image = ExtResource("2_img")

@@ -200,6 +200,14 @@ def _effect_from_tokens(tokens):
         elif hits:
             eff["hits"] = hits
         # key=value modifiers on a dmg clause.
+        # `per=COUNTER` (Finisher) scales the hit by a live counter: the flat
+        # value becomes the per-unit amount (value_mult) and the counter names
+        # the source (value_from). `dmg:6:melee:per=attacks_this_turn` ->
+        # 6 x attacks-played-this-turn. Resolved by EffectSystem._dynamic_count
+        # (deckbuilder/strategy) and ActionCombat._resolve_dmg_value (action).
+        if "per" in kv:
+            eff["value_from"] = kv["per"]
+            eff["value_mult"] = value
         if "if_status" in kv:
             eff["if_target_status"] = kv["if_status"]
         if "infuse" in kv:
@@ -372,7 +380,14 @@ def _effect_from_tokens(tokens):
         # are buff statuses applied to the player.
         if what == "block":
             return {"type": "block", "value": val, "target": "self"}
-        return {"type": "status", "status": what, "stacks": val, "target": "self"}
+        # `gain:power:2:temp` (Flex) — a Temporary buff: apply the stacks now,
+        # then shed exactly them at the next turn boundary. Routes through the
+        # `status_temp` effect type (EffectSystem._h_status_temp records the
+        # amount in GameState.temp_status_stacks; ItemTriggers strips it at
+        # turn_started / turn_tick, so pre-existing permanent stacks survive).
+        rest = [p.lower() for p in pos[2:]]
+        etype = "status_temp" if ("temp" in rest or "temporary" in rest) else "status"
+        return {"type": etype, "status": what, "stacks": val, "target": "self"}
     # `retain:N` (Well-Laid Plans' inner verb): at the end of the turn, keep up
     # to N hand cards. Only meaningful inside an on_turn_ended trigger — the
     # scenes resolve it BEFORE the hand discards.
