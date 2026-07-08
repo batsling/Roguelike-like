@@ -805,6 +805,12 @@ func _on_unit_turn_started(unit) -> void:
 			energy += _energy_carryover
 			GameLog.add("Ice Cream: +%d bonus energy!" % _energy_carryover, Color(0.7, 1.0, 0.7))
 		_energy_carryover = 0
+		# Next Turn Energy (Flying Knee / Doppelganger): banked stacks pour onto
+		# the refreshed pool now, then the status clears ("Lose all when triggered").
+		var nt_energy: int = Stats.consume_status(unit, &"next_turn_energy")
+		if nt_energy > 0:
+			energy += nt_energy
+			GameLog.add("Next Turn Energy: +%d energy." % nt_energy, Color(0.7, 1.0, 0.85))
 		# Block resets at the start of the player's own turn (deckbuilder
 		# rule); Barricade keeps it.
 		if not Stats.keeps_block(unit):
@@ -816,6 +822,13 @@ func _on_unit_turn_started(unit) -> void:
 		var draw_count: int = GameState.hand_size
 		if _player_turn_count == 1:
 			draw_count += Stats.deckbuilder_bonus_draws_turn_1()
+		# Next Turn Draw (Predator / Doppelganger): banked stacks join the
+		# turn-start hand, then the status clears.
+		var nt_draw: int = Stats.consume_status(unit, &"next_turn_draw")
+		if nt_draw > 0:
+			draw_count += nt_draw
+			GameLog.add("Next Turn Draw: +%d card%s." % [nt_draw, "s" if nt_draw > 1 else ""],
+				Color(0.7, 0.95, 1.0))
 		draw_cards(maxi(0, draw_count))
 		# Confused: re-randomize the whole hand each turn (retained cards included).
 		_apply_confused_to_hand()
@@ -1652,6 +1665,13 @@ func _fire_power_triggers(event_name: String, ctx_extras: Dictionary = {}) -> vo
 # --- Card piles (real draw / discard / exhaust now) -------------------
 
 func draw_cards(n: int) -> void:
+	# No Draw (Battle Trance): every further draw this turn is suppressed. The
+	# status decays at the unit's turn end, so the next turn-start hand is
+	# unaffected.
+	var nd_player = get_player_unit()
+	if n > 0 and nd_player != null and nd_player.get_status(&"no_draw") > 0:
+		GameLog.add("No Draw — no cards drawn.", Color(1.0, 0.7, 0.5))
+		return
 	for _i in range(n):
 		if draw_pile.is_empty():
 			if discard_pile.is_empty():

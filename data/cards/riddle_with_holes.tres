@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_riddle_with_holes"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/RiddleWithHoles.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"riddle_with_holes"
+display_name = "Riddle with Holes"
+type = 0
+rarity = 2
+cost = 2
+description = "Deal 3x5 Dmg Melee."
+effects = [{"type": "dmg", "value": 3, "target": "enemy", "damage_type": "melee", "hits": 5}]
+tags = PackedStringArray("silent", "offense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 4x5 Dmg Melee."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 4, "target": "enemy", "damage_type": "melee", "hits": 5}]
+image = ExtResource("2_img")
+attack_shape = &"poke"
+attack_params = {"size": "small"}

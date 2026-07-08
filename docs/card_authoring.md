@@ -255,8 +255,22 @@ write the verb that matches *what the card actually does*:
 | Gain 5 Block | `gain:block:5` | `block`, `target: self` |
 | Gain 2 Power | `gain:power:2` | `status`, `status: power`, `target: self` |
 | Gain 2 Power (temporary) | `gain:power:2:temp` | `status_temp`, `status: power`, `target: self` |
+| Gain X Next Turn Draw | `gain:next_turn_draw:X` | `status`, `stacks_from: "energy"`, `target: self` |
 | Inflict 2 Vulnerable | `inflict:vulnerable:2` | `status`, `status: vulnerable`, `target: enemy` |
 | Inflict 1 Weak (Cleave) | `inflict:weak:1:cleave` | `status`, `status: weak`, `target: all_enemies` |
+
+### X-value gains (`gain:<status>:X[+N]`) — Doppelganger
+
+A literal `X` in a self `gain:`'s value slot makes the stack count the energy
+spent on the play — the status mirror of dmg's `NxX`. Pair it with Cost `X`
+(`cost = -1`): playing the card spends all remaining energy and banks that
+many stacks. `X+1` (Doppelganger's upgrade) adds a flat bonus on top, stored
+as `stacks_bonus`, so Doppelganger+ on an empty pool still banks 1.
+
+Resolution mirrors the X-cost dmg path: deckbuilder/strategy thread the spent
+energy through ctx as `x_value` (EffectSystem `_h_status`); action resolves
+X = 1 + the remaining Haste seconds ONCE per cast (consuming the window), so
+two X gains on the same card read the same X.
 
 ### Temporary buffs (`gain:...:temp`) — Flex
 
@@ -766,7 +780,8 @@ The decay set — statuses that step down by 1 each turn — is owned
 once on `Stats.DECAY_STATUSES`:
 
 ```
-vulnerable, weak, frail, burn, poison, regeneration, dodge, blind
+vulnerable, weak, frail, burn, poison, regeneration, dodge, blind,
+confused, stun, no_draw
 ```
 
 Add a status to that list and every combat mode picks up the
@@ -837,6 +852,38 @@ Miss chance is currently `Stats.BLIND_MISS_PCT = 30` regardless of
 stack count (matches the sheet's "30% Miss Chance" language; stacks
 extend duration, not magnitude). Bag o' Glitter applies 2 stacks
 (2 turns / 30s of action play before it wears off).
+
+### Banked-turn statuses (Next Turn Energy / Next Turn Draw) + No Draw
+
+The "next turn" family banks value now and pays it out at the start of your
+next turn, consuming every stack ("Lose all when triggered" — deliberately
+NOT in `DECAY_STATUSES`). The payout primitive is `Stats.consume_status`
+(read + clear in one step), called once per turn boundary by each mode:
+
+- **Deckbuilder** — `_start_player_turn` pours `next_turn_energy` onto the
+  refreshed pool (after Ice Cream's carry-over) and adds `next_turn_draw` to
+  the turn-start hand count.
+- **Strategy** — same two payouts at the player unit's turn start
+  (`_on_unit_turn_started`).
+- **Action** — the stacks pay out at the next turn tick while enemies are up
+  (`_pay_next_turn_statuses`), translated like the instant verbs: energy
+  becomes a Haste window, draws open temporary auto-cast slots. Banked stacks
+  hold in an empty room.
+
+`no_draw` (Battle Trance) suppresses EVERY further `draw_cards` call this
+turn — card-effect draws, Evolve triggers, all of it — and steps down at the
+turn boundary like any decay status, so the next turn-start hand is
+unaffected. Effect order on the card matters: `draw:3; gain:no_draw:1` draws
+first, then locks the door.
+
+Worked examples:
+
+| Card | Effects DSL | Notes |
+|---|---|---|
+| Battle Trance | `draw:3; gain:no_draw:1` | `Uncommon Skill` cost 0. Upgrade: `draw:4; gain:no_draw:1`. |
+| Flying Knee | `dmg:8:melee; gain:next_turn_energy:1` | `Common Attack` cost 1, `Poke, Medium`. |
+| Predator | `dmg:15:melee; gain:next_turn_draw:2` | `Common Attack` cost 2, `Poke, Medium`. |
+| Doppelganger | `gain:next_turn_draw:X; gain:next_turn_energy:X` | `Rare Skill` cost X, Exhaust. Upgrade: `X+1` forms. |
 
 ### Powers (Barricade / Envenom / Evolve / Feel No Pain / Fire Breathing / Well-Laid Plans)
 

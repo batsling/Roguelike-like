@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_predator"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Predator.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"predator"
+display_name = "Predator"
+type = 0
+rarity = 1
+cost = 2
+description = "Deal 15 Dmg Melee. Gain 2 Next Turn Draw."
+effects = [{"type": "dmg", "value": 15, "target": "enemy", "damage_type": "melee"}, {"type": "status", "status": "next_turn_draw", "stacks": 2, "target": "self"}]
+tags = PackedStringArray("silent", "offense", "draw")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 20 Dmg Melee. Gain 2 Next Turn Draw."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 20, "target": "enemy", "damage_type": "melee"}, {"type": "status", "status": "next_turn_draw", "stacks": 2, "target": "self"}]
+image = ExtResource("2_img")
+attack_shape = &"poke"
+attack_params = {"size": "medium"}

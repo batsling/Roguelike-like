@@ -375,6 +375,17 @@ def _effect_from_tokens(tokens):
     # Generic passthrough for simple on-play verbs (block/draw/gain etc.).
     if verb == "gain" and len(pos) >= 2:
         what = pos[0]
+        # X-value gains (Doppelganger: `gain:next_turn_draw:X`, upgraded
+        # `gain:next_turn_draw:X+1`): the stack count is the energy spent on
+        # the play (plus an optional flat bonus), resolved at play time from
+        # the ctx — the status mirror of dmg's NxX (stacks_from: "energy").
+        m_x = re.match(r"^x(?:\+(\d+))?$", pos[1].strip(), re.IGNORECASE)
+        if m_x and what != "block":
+            eff = {"type": "status", "status": what, "stacks": 0,
+                   "stacks_from": "energy", "target": "self"}
+            if m_x.group(1):
+                eff["stacks_bonus"] = int(m_x.group(1))
+            return eff
         val = int(pos[1]) if pos[1].lstrip("-").isdigit() else 0
         # Block is a first-class effect type; other gains (power/dexterity/…)
         # are buff statuses applied to the player.

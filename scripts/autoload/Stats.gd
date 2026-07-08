@@ -29,6 +29,7 @@ const DECAY_STATUSES: Array[StringName] = [
 	&"blind",
 	&"confused",
 	&"stun",    # the stunned unit skips its turn, then stun steps down by 1
+	&"no_draw", # Battle Trance: blocks draws for the turn it was gained, then lifts
 ]
 
 # Statuses that GROW by 1 at end of turn (Bleed) in STRATEGY mode. Mirror of
@@ -94,6 +95,9 @@ const STATUS_ICONS := {
 	&"fading": "Fading.png",
 	&"confused": "Confused.png",
 	&"plated_armor": "PlatedArmor.png",
+	&"next_turn_energy": "NextTurnEnergy.png",
+	&"next_turn_draw": "NextTurnDraw.png",
+	&"no_draw": "NoDraw.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -538,6 +542,23 @@ func apply_status_to(target, status: StringName, stacks: int, source = null) -> 
 		return 0
 	target.add_status(status, actual)
 	return actual
+
+# Banked "next turn" statuses (Next Turn Energy / Next Turn Draw): read the
+# stack count and remove the status in one step — the sheet's "Lose all when
+# triggered" decay. Each mode's turn-start (deckbuilder / strategy) or
+# turn-tick (action) payout site calls this exactly once per boundary.
+# Untyped so it works for CombatActor and BattleUnit; returns 0 when absent.
+func consume_status(actor, status: StringName) -> int:
+	if actor == null or not actor.has_method("get_status"):
+		return 0
+	var stacks: int = actor.get_status(status)
+	if stacks <= 0:
+		return 0
+	if "statuses" in actor:
+		actor.statuses.erase(status)
+	if "temporary_statuses" in actor:
+		actor.temporary_statuses.erase(status)
+	return stacks
 
 # ---------------------------------------------------------------------------
 # Fear — the one status whose behavior diverges per mode/side rather than

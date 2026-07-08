@@ -35,6 +35,9 @@ const STATUSES: Array = [
 	{ "name": "Vulnerable", "description": "All damage deals 50% more to target", "type": "Debuff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "All", "preference": "Negative", "rarity": "Common", "icon": "Vulnerable" },
 	{ "name": "Weak", "description": "Target deals 25% less damage.", "type": "Debuff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "All", "preference": "Negative", "rarity": "Common", "icon": "Weak" },
 	{ "name": "Stun", "description": "The enemy's intent will be changed to \"Stunned\" and will do nothing on this turn", "type": "Debuff", "stackable": false, "decay": "Down by 1 at end of turn", "who": "All", "preference": "Negative", "rarity": "N/A", "icon": "Stun" },
+	{ "name": "Next Turn Energy", "description": "Gain X Energy at the start of your next turn, where X is the stack", "type": "Buff", "stackable": true, "decay": "Lose all when triggered", "who": "Player", "preference": "Positive", "rarity": "Uncommon", "icon": "NextTurnEnergy" },
+	{ "name": "Next Turn Draw", "description": "Draw X additional Cards at the start of your next turn, where X is the stack", "type": "Buff", "stackable": true, "decay": "Lose all when triggered", "who": "Player", "preference": "Positive", "rarity": "Uncommon", "icon": "NextTurnDraw" },
+	{ "name": "No Draw", "description": "You cannot Draw Cards this turn", "type": "Debuff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "Player", "preference": "Negative", "rarity": "N/A", "icon": "NoDraw" },
 ]
 
 const ADDONS: Array = [

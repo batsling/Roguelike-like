@@ -334,7 +334,14 @@ func _h_retain(_effect: Dictionary, _ctx: Dictionary) -> void:
 func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
 	var status_id := StringName(effect.get("status", ""))
 	# Stacks may be curse-scaled (Du-Vu Doll: gain X Power where X = curse count).
-	var stacks: int = _dyn_amount(effect, "stacks", "stacks_from", "stacks_mult")
+	var stacks: int
+	if String(effect.get("stacks_from", "")) == "energy":
+		# X-value gain (Doppelganger: gain X Next Turn Draw): the stack count is
+		# the energy spent on the play, threaded through ctx as x_value exactly
+		# like dmg's hits_from — plus the upgrade's flat bonus (X+1).
+		stacks = maxi(0, int(ctx.get("x_value", 0))) + int(effect.get("stacks_bonus", 0))
+	else:
+		stacks = _dyn_amount(effect, "stacks", "stacks_from", "stacks_mult")
 	if not effect.has("stacks") and not effect.has("stacks_from"):
 		stacks = 1
 	if status_id == &"" or stacks == 0:
