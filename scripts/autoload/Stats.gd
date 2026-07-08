@@ -567,6 +567,27 @@ func consume_status(actor, status: StringName) -> int:
 		actor.temporary_statuses.erase(status)
 	return stacks
 
+# Side-effect-free preview of one hit for the intent telegraphs: the same
+# flat/multiplier order resolve_damage applies — Power (damage_bonus) and Weak
+# on the attacker, Vulnerable and Bruise on the target, then the Intangible
+# clamp — minus the random bits (Blind, Dodge, crit) and block. Shared by the
+# deckbuilder's intent panel and the strategy telegraphs so both preview the
+# number the hit will actually open with. Untyped source/target: CombatActor
+# and BattleUnit both flow through (only get_status is read); a null target
+# skips the incoming-side modifiers.
+func predict_hit(source, target, base: int, effect: Dictionary, mode: Mode) -> int:
+	var damage_type: String = String(effect.get("damage_type", "melee"))
+	var amount: int = base + damage_bonus(source, damage_type, mode)
+	if source != null and source.has_method("get_status") \
+			and source.get_status(&"weak") > 0:
+		amount = int(floor(amount * 0.75))
+	if target != null and target.has_method("get_status"):
+		if target.get_status(&"vulnerable") > 0:
+			amount = int(ceil(amount * 1.5))
+		if damage_type == "melee" or damage_type == "ranged":
+			amount += target.get_status(&"bruise")
+	return intangible_clamp(target, maxi(0, amount))
+
 # Intangible (Wraith Form): the carrier reduces EACH instance of damage / HP
 # loss to 1. resolve_damage runs this on every attack (post-modifier,
 # pre-block); the scenes' apply_dot run it on every DoT / curse tick so the

@@ -343,6 +343,14 @@ func _draw_intent_telegraph(u, x: int, baseline_y: int) -> void:
 	var label: String = str(tel.get("label", ""))
 	if label == "" and int(tel.get("value", 0)) > 0:
 		label = str(int(tel.get("value", 0)))
+	# Live re-prediction (StS-style): the badge shows what the hit would deal
+	# against the CURRENT combat state — Power/Weak/Vulnerable/Intangible — not
+	# the label frozen at plan time. The grid redraws on every units-changed
+	# notify, so the number tracks status changes as they land.
+	if u.ai != null and u.ai.has_method("telegraph_label"):
+		var live: String = u.ai.telegraph_label()
+		if live != "":
+			label = live
 	var color: Color = tel.get("color", Color(1, 0.7, 0.7))
 	var text: String = icon
 	if label != "":

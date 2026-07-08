@@ -2654,14 +2654,13 @@ func _classify_intent(effects: Array) -> String:
 	return "unknown"
 
 # Side-effect-free damage preview for the intent number: resolves the move's
-# determined roll (cached on the enemy, so it matches the real hit) then folds in
-# Power/Weak on the attacker and Vulnerable/Bruise on the player — the same flat /
-# multiplier order Stats.resolve_damage uses, minus the random bits (Blind/crit).
-# Intangible clamps the prediction to 1 last, exactly like the real hit (StS
-# shows a 1 or 1xN intent while Wraith Form is up); _refresh_ui re-predicts, so
-# the number drops the moment the power is played and recovers as it decays.
+# determined roll (cached on the enemy, so it matches the real hit) and the
+# per-turn ramp, then hands the fold to the shared Stats.predict_hit —
+# Power/Weak on the attacker, Vulnerable/Bruise on the player, and the
+# Intangible clamp to 1, exactly like the real hit (StS shows a 1 or 1xN
+# intent while Wraith Form is up). _refresh_ui re-predicts, so the number
+# drops the moment the power is played and recovers as it decays.
 func _predict_intent_damage(enemy: CombatActor, effect: Dictionary) -> int:
-	var damage_type: String = String(effect.get("damage_type", "melee"))
 	var base: int = int(effect.get("value", 0))
 	var det: Variant = effect.get("determined", null)
 	if det is Array and (det as Array).size() >= 2:
@@ -2675,14 +2674,7 @@ func _predict_intent_damage(enemy: CombatActor, effect: Dictionary) -> int:
 	var per_turn: int = int(effect.get("per_turn", 0))
 	if per_turn != 0 and "turns_taken" in enemy:
 		base += per_turn * int(enemy.turns_taken)
-	var amount: int = base + Stats.damage_bonus(enemy, damage_type, Stats.Mode.DECKBUILDER)
-	if enemy.get_status(&"weak") > 0:
-		amount = int(floor(amount * 0.75))
-	if player != null and player.get_status(&"vulnerable") > 0:
-		amount = int(ceil(amount * 1.5))
-	if player != null and (damage_type == "melee" or damage_type == "ranged"):
-		amount += player.get_status(&"bruise")
-	return Stats.intangible_clamp(player, maxi(0, amount))
+	return Stats.predict_hit(enemy, player, base, effect, Stats.Mode.DECKBUILDER)
 
 # ------------------------------------------------------------------
 # UI

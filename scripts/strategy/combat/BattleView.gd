@@ -2504,6 +2504,11 @@ func _refresh_initiative() -> void:
 			var lbl: String = str(tel.get("label", ""))
 			if lbl == "" and int(tel.get("value", 0)) > 0:
 				lbl = str(int(tel.get("value", 0)))
+			# Live re-prediction, same as the grid badge (see EnemyAI.telegraph_label).
+			if u.ai != null and u.ai.has_method("telegraph_label"):
+				var live: String = u.ai.telegraph_label()
+				if live != "":
+					lbl = live
 			var tail: String = " (%s)" % lbl if lbl != "" else ""
 			lines.append("    next: %s %s%s" % [
 				str(tel.get("icon", "")), str(tel.get("name", "")), tail,
