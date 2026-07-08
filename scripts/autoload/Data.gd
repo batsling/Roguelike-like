@@ -264,6 +264,29 @@ func reward_card_pool(tag_filter: StringName = &"") -> Array:
 			combined.append(h)
 	return combined if not combined.is_empty() else out
 
+# Cards a random conjure may mint (White Noise → Power, Infernal Blade →
+# Attack, Distraction → Skill): the reward pool scoped to the DECK the player
+# picked on the New Run screen (GameState.deck_reward_tag), narrowed to the
+# requested card type. reward_card_pool already excludes starters, weapons,
+# and Status/Curse/Training junk, so every conjurable card is a real,
+# playable reward-grade card from the chosen deck's pool (the Random deck's
+# empty filter = the full catalog).
+func conjure_card_pool(card_type: String) -> Array:
+	const TYPE_IDS := {
+		"attack": CardData.CardType.ATTACK,
+		"skill": CardData.CardType.SKILL,
+		"power": CardData.CardType.POWER,
+	}
+	if not TYPE_IDS.has(card_type.to_lower()):
+		push_warning("conjure_card_pool: unknown card type '%s'" % card_type)
+		return []
+	var want: int = TYPE_IDS[card_type.to_lower()]
+	var out: Array = []
+	for c in reward_card_pool(GameState.deck_reward_tag()):
+		if c.type == want:
+			out.append(c)
+	return out
+
 func all_items() -> Array:
 	return _items.values()
 

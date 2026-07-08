@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_infernal_blade"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/InfernalBlade.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"infernal_blade"
+display_name = "Infernal Blade"
+type = 1
+rarity = 2
+cost = 1
+description = "Conjure 1 Random Attack in Hand. You can play it for free this turn. Exhaust."
+effects = [{"type": "conjure_random", "card_type": "attack", "destination": "hand", "count": 1, "free": true}]
+tags = PackedStringArray("ironclad", "draw", "random")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Conjure 1 Random Attack in Hand. You can play it for free this turn. Exhaust."
+upgraded_cost = 0
+upgraded_effects = [{"type": "conjure_random", "card_type": "attack", "destination": "hand", "count": 1, "free": true}]
+image = ExtResource("2_img")
+exhaust = true

@@ -1575,7 +1575,7 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 # default to the enemy.
 const _SCENE_EFFECT_TYPES := [
 	"draw", "gain_energy", "lose_energy", "discard", "exhaust", "exhaust_self",
-	"topdeck", "conjure", "recall", "gain_gold", "gain_loot", "gain_chest",
+	"topdeck", "conjure", "conjure_random", "recall", "gain_gold", "gain_loot", "gain_chest",
 	"roll_gold", "upgrade_hand", "upgrade_random_cards", "boost_cards",
 	"free_random_hand_card", "reduce_card_cost",
 	# Power installs (After Image / Envenom / Barricade / Well-Laid Plans):
@@ -1863,6 +1863,8 @@ func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 	# and never re-triggers thorns — DoTs are NOT contact events.
 	if target == null or not target.is_alive() or amount <= 0:
 		return
+	# Intangible (Wraith Form): each instance of HP loss clamps to 1.
+	amount = Stats.intangible_clamp(target, amount)
 	if target.is_player:
 		GameState.change_hp(-amount)
 		target.hp = GameState.hp
@@ -2038,6 +2040,11 @@ func draw_cards(n: int) -> void:
 
 func discard_card(card: CardInstance, from_play: bool = false) -> void:
 	hand.erase(card)
+	# "Free this turn" (Mummified Hand / conjure_random's free mint) ends the
+	# moment the card leaves hand — without this a played free card would
+	# reshuffle back in still costing 0.
+	if card != null:
+		card.temp_cost_override = -999
 	# Sly: a card resolves its effects the moment it would be discarded, then
 	# still heads to the discard pile. Skipped when the card is being discarded
 	# AS PART OF a normal play (from_play) — it already resolved, so re-firing
@@ -2072,6 +2079,9 @@ func _resolve_sly_on_discard(card: CardInstance) -> void:
 
 func exhaust_card(card: CardInstance) -> void:
 	hand.erase(card)
+	# Free-this-turn override ends as the card leaves hand (see discard_card).
+	if card != null:
+		card.temp_cost_override = -999
 	exhaust_pile.append(card)
 	TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 	_fire_power_triggers("card_exhausted", {"card": card})
@@ -2128,6 +2138,36 @@ func conjure_card(card_id: StringName, destination: String, count: int, source_c
 			_:
 				push_warning("conjure_card: unknown destination '%s'" % destination)
 				discard_pile.append(copy)
+	if destination == "draw":
+		_shuffle(draw_pile)
+	_refresh_ui()
+
+# Random-mint conjure (White Noise / Infernal Blade / Distraction): mint
+# `count` random `card_type` cards from the run's conjure pool — the reward
+# pool scoped to the deck picked on the New Run screen (Data.conjure_card_pool)
+# — into the named pile. `free` makes a hand conjure cost 0 for THIS turn via
+# temp_cost_override, the same slot Mummified Hand uses; it's cleared when the
+# card leaves hand (end of turn, play, discard).
+func conjure_random_card(card_type: String, destination: String, count: int, free: bool, _source_card) -> void:
+	var pool: Array = Data.conjure_card_pool(card_type)
+	if pool.is_empty():
+		push_warning("conjure_random_card: no %s cards in the conjure pool" % card_type)
+		return
+	for _i in range(maxi(1, count)):
+		var data: CardData = pool[_rng.randi() % pool.size()]
+		var copy: CardInstance = CardInstance.from_data(data)
+		var made_free: bool = free and destination == "hand"
+		if made_free:
+			copy.temp_cost_override = 0
+		match destination:
+			"hand":
+				hand.append(copy)
+			"draw":
+				draw_pile.append(copy)
+			_:
+				discard_pile.append(copy)
+		GameLog.add("Conjured %s%s." % [data.display_name,
+			" — it costs 0 this turn" if made_free else ""], Color(0.7, 1.0, 0.7))
 	if destination == "draw":
 		_shuffle(draw_pile)
 	_refresh_ui()
@@ -2614,11 +2654,13 @@ func _classify_intent(effects: Array) -> String:
 	return "unknown"
 
 # Side-effect-free damage preview for the intent number: resolves the move's
-# determined roll (cached on the enemy, so it matches the real hit) then folds in
-# Power/Weak on the attacker and Vulnerable/Bruise on the player — the same flat /
-# multiplier order Stats.resolve_damage uses, minus the random bits (Blind/crit).
+# determined roll (cached on the enemy, so it matches the real hit) and the
+# per-turn ramp, then hands the fold to the shared Stats.predict_hit —
+# Power/Weak on the attacker, Vulnerable/Bruise on the player, and the
+# Intangible clamp to 1, exactly like the real hit (StS shows a 1 or 1xN
+# intent while Wraith Form is up). _refresh_ui re-predicts, so the number
+# drops the moment the power is played and recovers as it decays.
 func _predict_intent_damage(enemy: CombatActor, effect: Dictionary) -> int:
-	var damage_type: String = String(effect.get("damage_type", "melee"))
 	var base: int = int(effect.get("value", 0))
 	var det: Variant = effect.get("determined", null)
 	if det is Array and (det as Array).size() >= 2:
@@ -2632,14 +2674,7 @@ func _predict_intent_damage(enemy: CombatActor, effect: Dictionary) -> int:
 	var per_turn: int = int(effect.get("per_turn", 0))
 	if per_turn != 0 and "turns_taken" in enemy:
 		base += per_turn * int(enemy.turns_taken)
-	var amount: int = base + Stats.damage_bonus(enemy, damage_type, Stats.Mode.DECKBUILDER)
-	if enemy.get_status(&"weak") > 0:
-		amount = int(floor(amount * 0.75))
-	if player != null and player.get_status(&"vulnerable") > 0:
-		amount = int(ceil(amount * 1.5))
-	if player != null and (damage_type == "melee" or damage_type == "ranged"):
-		amount += player.get_status(&"bruise")
-	return maxi(0, amount)
+	return Stats.predict_hit(enemy, player, base, effect, Stats.Mode.DECKBUILDER)
 
 # ------------------------------------------------------------------
 # UI

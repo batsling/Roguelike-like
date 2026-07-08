@@ -182,9 +182,10 @@ func _effective_card_effects(card: CardData, upgraded: bool = false) -> Array:
 	return CardMods.resolved_effects(card.get_effective_effects(upgraded), card)
 
 # Card text with live stat scaling AND item boosts folded into the numbers, plus
-# the granted-effect line appended, for display.
+# the granted-effect line appended, for display. In-combat card boosts
+# (Accuracy / Glass Knife's self-decay) fold in too.
 func _card_desc(card: CardData, upgraded: bool = false) -> String:
-	var out: String = CardScaling.scale_text(card.get_effective_description(upgraded), get_player_unit(), false, card)
+	var out: String = CardScaling.scale_text(card.get_effective_description(upgraded), get_player_unit(), false, card, null, card_boosts)
 	var extra: String = CardMods.describe(card)
 	if extra != "":
 		out = "%s %s" % [out, extra]
@@ -1711,6 +1712,11 @@ func _apply_confused_to_hand() -> void:
 
 func discard_card(card, from_play: bool = false) -> void:
 	hand.erase(card)
+	# "Free this turn" (Mummified Hand / conjure_random's free mint) ends the
+	# moment the card leaves hand — without this a played free card would
+	# reshuffle back in still costing 0.
+	if card != null:
+		card.temp_cost_override = -999
 	# Sly: resolve effects the moment it would be discarded (unless it just
 	# resolved AS a normal play — from_play skips the double-fire).
 	if not from_play and card != null and card.data != null and card.data.sly:
@@ -1733,6 +1739,9 @@ func _resolve_sly_on_discard(card) -> void:
 
 func exhaust_card(card) -> void:
 	hand.erase(card)
+	# Free-this-turn override ends as the card leaves hand (see discard_card).
+	if card != null:
+		card.temp_cost_override = -999
 	exhaust_pile.append(card)
 	TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 	_fire_power_triggers("card_exhausted", {"card": card})
@@ -1975,6 +1984,36 @@ func conjure_card(card_id: StringName, destination: String, count: int, source_c
 	GameLog.add("Conjured %d %s." % [maxi(1, count), data.display_name], Color(0.7, 1.0, 0.7))
 	_refresh_hand()
 
+# Random-mint conjure (White Noise / Infernal Blade / Distraction): mint
+# `count` random `card_type` cards from the run's conjure pool — the reward
+# pool scoped to the deck picked on the New Run screen (Data.conjure_card_pool)
+# — into the named pile. `free` makes a hand conjure cost 0 for THIS turn via
+# temp_cost_override (the Mummified Hand slot), cleared when the card leaves
+# hand. Same contract as the deckbuilder scene.
+func conjure_random_card(card_type: String, destination: String, count: int, free: bool, _source_card) -> void:
+	var pool: Array = Data.conjure_card_pool(card_type)
+	if pool.is_empty():
+		push_warning("conjure_random_card (strategy): no %s cards in the conjure pool" % card_type)
+		return
+	for _i in range(maxi(1, count)):
+		var data: CardData = pool[randi() % pool.size()]
+		var copy: CardInstance = CardInstance.from_data(data)
+		var made_free: bool = free and destination == "hand"
+		if made_free:
+			copy.temp_cost_override = 0
+		match destination:
+			"hand":
+				hand.append(copy)
+			"draw":
+				draw_pile.append(copy)
+			_:
+				discard_pile.append(copy)
+		GameLog.add("Conjured %s%s." % [data.display_name,
+			" — it costs 0 this turn" if made_free else ""], Color(0.7, 1.0, 0.7))
+	if destination == "draw":
+		_shuffle(draw_pile)
+	_refresh_hand()
+
 func gain_energy(n: int) -> void:
 	if n == 0:
 		return
@@ -2086,6 +2125,8 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 func apply_dot(target, amount: int, _source_name: String) -> void:
 	if target == null or not target.is_alive() or amount <= 0:
 		return
+	# Intangible (Wraith Form): each instance of HP loss clamps to 1.
+	amount = Stats.intangible_clamp(target, amount)
 	target.hp = maxi(0, target.hp - amount)
 	_float_number(target, amount)
 	if not target.is_alive() and not target.is_player:
@@ -2463,6 +2504,11 @@ func _refresh_initiative() -> void:
 			var lbl: String = str(tel.get("label", ""))
 			if lbl == "" and int(tel.get("value", 0)) > 0:
 				lbl = str(int(tel.get("value", 0)))
+			# Live re-prediction, same as the grid badge (see EnemyAI.telegraph_label).
+			if u.ai != null and u.ai.has_method("telegraph_label"):
+				var live: String = u.ai.telegraph_label()
+				if live != "":
+					lbl = live
 			var tail: String = " (%s)" % lbl if lbl != "" else ""
 			lines.append("    next: %s %s%s" % [
 				str(tel.get("icon", "")), str(tel.get("name", "")), tail,

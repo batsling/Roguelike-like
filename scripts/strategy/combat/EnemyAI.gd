@@ -53,6 +53,38 @@ func plan_next(all_units: Array) -> void:
 		"color": _color_for(next_intent),
 	}
 
+# Live StS-style prediction for the telegraph badge + initiative panel,
+# re-computed at RENDER time so the number tracks the current combat state
+# (this unit's Power/Weak, the target's Vulnerable/Bruise, Wraith Form's
+# Intangible) instead of the label frozen at plan time. Same shared fold the
+# deckbuilder's intent panel uses (Stats.predict_hit).
+#
+# Flat hits show the predicted number. Dice hits keep their die spec ("1D8")
+# while nothing modifies the roll, and switch to the predicted "lo-hi" range
+# once something does — collapsing to a single number when the bounds meet
+# (Intangible's clamp reads "1"). Non-damage intents keep headline_label.
+func telegraph_label() -> String:
+	if next_intent == null:
+		return ""
+	var target: BattleUnit = _planned_target \
+		if (_planned_target != null and _planned_target.is_alive()) else null
+	for e in next_intent.effects:
+		if not (e is Dictionary) or String(e.get("type", "")) != "dmg":
+			continue
+		var dice: Variant = e.get("dice", null)
+		if dice is Array and (dice as Array).size() == 2:
+			var n: int = int(dice[0])
+			var sides: int = int(dice[1])
+			var lo: int = Stats.predict_hit(unit, target, n, e, Stats.Mode.STRATEGY)
+			var hi: int = Stats.predict_hit(unit, target, n * sides, e, Stats.Mode.STRATEGY)
+			if lo == n and hi == n * sides:
+				return "%dD%d" % [n, sides]
+			if lo == hi:
+				return str(lo)
+			return "%d-%d" % [lo, hi]
+		return str(Stats.predict_hit(unit, target, int(e.get("value", 0)), e, Stats.Mode.STRATEGY))
+	return next_intent.headline_label()
+
 # Execute the previously telegraphed intent. Returns a short status
 # string for the message log / status label.
 func execute_turn(scene, all_units: Array, battle_map) -> String:

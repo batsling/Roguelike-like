@@ -26,6 +26,7 @@ Target token `self` (vs default enemy) works on dmg/inflict; `cleave` is a
 target modifier (-> all_enemies), not a damage type. Verbs covered include
 dmg (V or VxN, +if_status/infuse/power_multiplier), inflict, gain:block,
 gain:<status>, draw/discard/gain_energy/upgrade_hand(:all), conjure (+count),
+conjure_random (deck-pool random mint, `free` = costs 0 this turn),
 recall, boost_cards, gain_loot, chance:<pct>:<effect>, on_card_played:<effect>,
 exhaust_self, lose_hp. The "↑ Description/Effects/Cost" columns drive the
 upgrade form (N/A = no upgrade).
@@ -269,6 +270,31 @@ def _effect_from_tokens(tokens):
                 eff["count_from"] = "discarded"
             else:
                 eff["count"] = int(float(kv["count"]))
+        return eff
+
+    if verb == "conjure_random":
+        # conjure_random:TYPE:DESTINATION[:COUNT][:free] (White Noise / Infernal
+        # Blade / Distraction): mint COUNT random cards of TYPE (power / attack /
+        # skill) into the named pile, drawn from the run's conjure pool — the
+        # reward pool scoped to the deck picked on the New Run screen. The bare
+        # `free` token marks a hand conjure cost-0 for the turn it arrives
+        # (action mode arms the one-shot slot at the 0-cost cooldown).
+        card_type = pos[0].lower() if len(pos) > 0 else ""
+        dest = "hand"
+        count = 1
+        free = False
+        for a in pos[1:]:
+            al = a.lower()
+            if al == "free":
+                free = True
+            elif al.isdigit():
+                count = int(al)
+            else:
+                dest = al
+        eff = {"type": "conjure_random", "card_type": card_type,
+               "destination": dest, "count": count}
+        if free:
+            eff["free"] = True
         return eff
 
     if verb == "recall":

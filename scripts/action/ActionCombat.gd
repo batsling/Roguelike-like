@@ -957,6 +957,12 @@ func _process_turn_tick(delta: float) -> void:
 		_tick_actor_turn(player_actor, _player_was_hit)
 		# Well-Laid Plans rides the same "one turn of time" boundary.
 		if _living_enemy_count() > 0:
+			# turn_started power triggers (Wraith Form's "lose 1 Defense at the
+			# start of your turn", future Demon Form): each in-combat turn tick
+			# IS the action analog of a turn start, same translation the banked
+			# next-turn statuses below use. Gated to live combat so an installed
+			# power doesn't tick while walking a cleared room.
+			_fire_power_triggers("turn_started")
 			_fire_well_laid_plans()
 			# Next Turn Energy / Next Turn Draw pay out at the tick — the
 			# action analog of "at the start of your next turn". Runs AFTER
@@ -2335,14 +2341,44 @@ func conjure_card(card_id: StringName, destination: String, count: int, source_c
 				auto_discard.append(data)
 	GameLog.add("Conjured %d %s." % [maxi(1, count), data.display_name], Color(0.7, 1.0, 0.7))
 
+# Random-mint conjure (White Noise / Infernal Blade / Distraction): mint
+# `count` random `card_type` cards from the run's conjure pool — the reward
+# pool scoped to the deck picked on the New Run screen (Data.conjure_card_pool)
+# — into the action piles. A "hand" mint opens a NEW one-shot auto-slot for the
+# card; `free` (cost 0 this turn) translates to arming that slot at the 0-cost
+# cooldown, since cost IS cooldown in action.
+func conjure_random_card(card_type: String, destination: String, count: int, free: bool, _source_card) -> void:
+	var pool: Array = Data.conjure_card_pool(card_type)
+	if pool.is_empty():
+		push_warning("conjure_random_card (action): no %s cards in the conjure pool" % card_type)
+		return
+	for _i in range(maxi(1, count)):
+		var data: CardData = pool[_rng.randi() % pool.size()]
+		var made_free: bool = free and destination == "hand"
+		match destination:
+			"hand":
+				_conjure_into_hand(data, made_free)
+			"draw":
+				auto_draw.append(data)
+			_:
+				auto_discard.append(data)
+		GameLog.add("Conjured %s%s." % [data.display_name,
+			" — free, slotted now" if made_free else ""], Color(0.7, 1.0, 0.7))
+
 # A conjured "to hand" card becomes a one-shot auto-slot: it starts its cooldown
 # immediately and, when it fires, is removed instead of cycling back to the deck
 # (matching the deckbuilder, where conjured Shivs are spent on their single play).
-func _conjure_into_hand(card: CardData) -> void:
+# `free` ("costs 0 this turn", conjure_random): cost is cooldown in action, so
+# the slot arms at the 0-cost cooldown — the rarity modifier is all that's left.
+func _conjure_into_hand(card: CardData, free: bool = false) -> void:
+	var cd: float = _auto_cd(card)
+	if free:
+		cd = maxf(_tr.min_click_cooldown,
+			float(card.rarity) * AddonSystem.cooldown_mult(card, Stats.Mode.ACTION))
 	auto_slots.append({
 		"card": card,
-		"cooldown": _auto_cd(card),
-		"max_cooldown": _auto_cd(card),
+		"cooldown": cd,
+		"max_cooldown": cd,
 		"ttl": INF,
 		"one_shot": true,
 	})
@@ -2506,6 +2542,14 @@ func _apply_utility_effects(card: CardData) -> void:
 					count,
 					card,
 					bool(raw.get("upgraded", false)),
+				)
+			"conjure_random":
+				conjure_random_card(
+					String(raw.get("card_type", "")),
+					String(raw.get("destination", "hand")),
+					maxi(1, int(raw.get("count", 1))),
+					bool(raw.get("free", false)),
+					card,
 				)
 
 func _resolve_card_effects_legacy(card: CardData) -> void:
@@ -3741,6 +3785,8 @@ func _actor_arena_pos(actor) -> Vector2:
 func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 	if target == null or not target.is_alive() or amount <= 0:
 		return
+	# Intangible (Wraith Form): each instance of HP loss clamps to 1.
+	amount = Stats.intangible_clamp(target, amount)
 	if target.is_player:
 		GameState.change_hp(-amount)
 		target.hp = GameState.hp

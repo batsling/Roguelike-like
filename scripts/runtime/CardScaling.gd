@@ -30,9 +30,20 @@ const COL_DOWN := "ff7d7d"
 
 static var _re_cache: Dictionary = {}
 
-static func scale_text(text: String, player, rich: bool = true, card: CardData = null, target = null) -> String:
+static func scale_text(text: String, player, rich: bool = true, card: CardData = null, target = null, combat_boosts: Array = []) -> String:
 	if text == "":
 		return text
+	# In-combat card boosts (Accuracy's +Shiv dmg, Glass Knife's -2 self-decay):
+	# fold the active boosts matching this card into every Dmg / Block number,
+	# mirroring Stats.apply_card_boosts (which applies per effect, so every
+	# matching clause shifts). Callers pass the live scene's card_boosts; empty
+	# outside combat. A negative total renders red via _num, so Glass Knife's
+	# number visibly steps down each play.
+	var boost_dmg: int = 0
+	var boost_block: int = 0
+	if card != null and not combat_boosts.is_empty():
+		boost_dmg = Stats.card_boost_total(card, combat_boosts, "dmg")
+		boost_block = Stats.card_boost_total(card, combat_boosts, "block")
 	var has_player: bool = player != null and player.has_method("get_status")
 	var power: int = player.get_status(&"power") if has_player else 0
 	var arcane: int = player.get_status(&"arcane") if has_player else 0
@@ -65,7 +76,8 @@ static func scale_text(text: String, player, rich: bool = true, card: CardData =
 			match String(b.get("type", "")):
 				"dmg": dmg_cell[0] += int(b.get("amount", 0))
 				"block": block_cell[0] += int(b.get("amount", 0))
-	if not has_player and dmg_cell[0] == 0 and block_cell[0] == 0:
+	if not has_player and dmg_cell[0] == 0 and block_cell[0] == 0 \
+			and boost_dmg == 0 and boost_block == 0:
 		return text
 	var out := text
 
@@ -73,7 +85,7 @@ static func scale_text(text: String, player, rich: bool = true, card: CardData =
 	# spelled "... Magic Dmg", so the physical patterns never touch them.
 	out = _sub(out, "Deal (\\d+)[xX](\\d+) Dmg", func(m):
 		var base := int(m.get_string(1))
-		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), power, weak)
+		var v := CardScaling._atk(base + CardScaling._take(dmg_cell) + boost_dmg, power, weak)
 		v = CardScaling._incoming(v, tgt_vulnerable, tgt_bruise, tgt_brace, true)
 		return "Deal %sx%s Dmg" % [CardScaling._num(v, base, COL_DMG_UP, rich), m.get_string(2)])
 	# X-cost repeat — "Deal NxX Dmg" (Whirlwind/Skewer). The per-hit N scales
@@ -81,12 +93,12 @@ static func scale_text(text: String, player, rich: bool = true, card: CardData =
 	# spent at play time, unknowable in a preview).
 	out = _sub(out, "Deal (\\d+)[xX]X Dmg", func(m):
 		var base := int(m.get_string(1))
-		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), power, weak)
+		var v := CardScaling._atk(base + CardScaling._take(dmg_cell) + boost_dmg, power, weak)
 		v = CardScaling._incoming(v, tgt_vulnerable, tgt_bruise, tgt_brace, true)
 		return "Deal %sxX Dmg" % CardScaling._num(v, base, COL_DMG_UP, rich))
 	out = _sub(out, "Deal (\\d+) Dmg", func(m):
 		var base := int(m.get_string(1))
-		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), power, weak)
+		var v := CardScaling._atk(base + CardScaling._take(dmg_cell) + boost_dmg, power, weak)
 		v = CardScaling._incoming(v, tgt_vulnerable, tgt_bruise, tgt_brace, true)
 		return "Deal %s Dmg" % CardScaling._num(v, base, COL_DMG_UP, rich))
 
@@ -94,19 +106,19 @@ static func scale_text(text: String, player, rich: bool = true, card: CardData =
 	# of any kind, so the same cell feeds these too).
 	out = _sub(out, "Deal (\\d+)[xX](\\d+) Magic Dmg", func(m):
 		var base := int(m.get_string(1))
-		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), arcane, weak)
+		var v := CardScaling._atk(base + CardScaling._take(dmg_cell) + boost_dmg, arcane, weak)
 		v = CardScaling._incoming(v, tgt_vulnerable, 0, tgt_brace, false)
 		return "Deal %sx%s Magic Dmg" % [CardScaling._num(v, base, COL_DMG_UP, rich), m.get_string(2)])
 	out = _sub(out, "Deal (\\d+) Magic Dmg", func(m):
 		var base := int(m.get_string(1))
-		var v := CardScaling._atk(base + CardScaling._take(dmg_cell), arcane, weak)
+		var v := CardScaling._atk(base + CardScaling._take(dmg_cell) + boost_dmg, arcane, weak)
 		v = CardScaling._incoming(v, tgt_vulnerable, 0, tgt_brace, false)
 		return "Deal %s Magic Dmg" % CardScaling._num(v, base, COL_DMG_UP, rich))
 
 	# Block — "Gain N Block" / "Gain +N Block".
 	out = _sub(out, "Gain \\+?(\\d+) Block", func(m):
 		var base := int(m.get_string(1))
-		var v := CardScaling._blk(base + CardScaling._take(block_cell), defense, frail)
+		var v := CardScaling._blk(base + CardScaling._take(block_cell) + boost_block, defense, frail)
 		return "Gain %s Block" % CardScaling._num(v, base, COL_BLOCK_UP, rich))
 
 	# Persistence — "Inflict N <Status>" / "Apply N <Status>" for the debuffs

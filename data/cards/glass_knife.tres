@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_glass_knife"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/GlassKnife.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"glass_knife"
+display_name = "Glass Knife"
+type = 0
+rarity = 3
+cost = 1
+description = "Deal 8x2 Dmg Ranged. Decrease the Dmg of this Card by 2 this combat."
+effects = [{"type": "dmg", "value": 8, "target": "enemy", "damage_type": "ranged", "hits": 2}, {"type": "boost_cards", "match_id": "glass_knife", "stat": "dmg", "value": -2}]
+tags = PackedStringArray("silent", "offense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 12x2 Dmg Ranged. Decrease the Dmg of this Card by 2 this combat."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 12, "target": "enemy", "damage_type": "ranged", "hits": 2}, {"type": "boost_cards", "match_id": "glass_knife", "stat": "dmg", "value": -2}]
+image = ExtResource("2_img")
+attack_shape = &"projectile"
+attack_params = {"size": "medium"}

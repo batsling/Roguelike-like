@@ -30,6 +30,7 @@ const DECAY_STATUSES: Array[StringName] = [
 	&"confused",
 	&"stun",    # the stunned unit skips its turn, then stun steps down by 1
 	&"no_draw", # Battle Trance: blocks draws for the turn it was gained, then lifts
+	&"intangible", # Wraith Form: each stack is one turn of "all damage becomes 1"
 ]
 
 # Statuses that GROW by 1 at end of turn (Bleed) in STRATEGY mode. Mirror of
@@ -98,6 +99,7 @@ const STATUS_ICONS := {
 	&"next_turn_energy": "NextTurnEnergy.png",
 	&"next_turn_draw": "NextTurnDraw.png",
 	&"no_draw": "NoDraw.png",
+	&"intangible": "Intangible.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -462,6 +464,11 @@ func resolve_damage(
 		if cc > 0 and r.randi_range(0, 99) < cc:
 			out.crit = true
 			amount = int(floor(amount * crit_multiplier(source)))
+	# Intangible (Wraith Form): each instance of damage is clamped to 1 AFTER
+	# every outgoing/incoming modifier and BEFORE block soaks it (the legacy
+	# rule), so a 1-Block target still takes 0 HP from a clamped hit. DoT ticks
+	# bypass this resolver and clamp through intangible_clamp at apply_dot.
+	amount = intangible_clamp(target, amount)
 	# Block absorption (skipped for no_block DoTs / piercing).
 	if not bool(effect.get("no_block", false)):
 		var absorbed: int = mini(maxi(0, target.block), amount)
@@ -559,6 +566,38 @@ func consume_status(actor, status: StringName) -> int:
 	if "temporary_statuses" in actor:
 		actor.temporary_statuses.erase(status)
 	return stacks
+
+# Side-effect-free preview of one hit for the intent telegraphs: the same
+# flat/multiplier order resolve_damage applies — Power (damage_bonus) and Weak
+# on the attacker, Vulnerable and Bruise on the target, then the Intangible
+# clamp — minus the random bits (Blind, Dodge, crit) and block. Shared by the
+# deckbuilder's intent panel and the strategy telegraphs so both preview the
+# number the hit will actually open with. Untyped source/target: CombatActor
+# and BattleUnit both flow through (only get_status is read); a null target
+# skips the incoming-side modifiers.
+func predict_hit(source, target, base: int, effect: Dictionary, mode: Mode) -> int:
+	var damage_type: String = String(effect.get("damage_type", "melee"))
+	var amount: int = base + damage_bonus(source, damage_type, mode)
+	if source != null and source.has_method("get_status") \
+			and source.get_status(&"weak") > 0:
+		amount = int(floor(amount * 0.75))
+	if target != null and target.has_method("get_status"):
+		if target.get_status(&"vulnerable") > 0:
+			amount = int(ceil(amount * 1.5))
+		if damage_type == "melee" or damage_type == "ranged":
+			amount += target.get_status(&"bruise")
+	return intangible_clamp(target, maxi(0, amount))
+
+# Intangible (Wraith Form): the carrier reduces EACH instance of damage / HP
+# loss to 1. resolve_damage runs this on every attack (post-modifier,
+# pre-block); the scenes' apply_dot run it on every DoT / curse tick so the
+# sheet's "each instance of Dmg and Health loss" holds in all three modes.
+# Amounts of 0/1 pass through untouched — Intangible never RAISES a hit to 1.
+func intangible_clamp(target, amount: int) -> int:
+	if amount > 1 and target != null and target.has_method("get_status") \
+			and target.get_status(&"intangible") > 0:
+		return 1
+	return amount
 
 # ---------------------------------------------------------------------------
 # Fear — the one status whose behavior diverges per mode/side rather than
@@ -797,26 +836,36 @@ func card_matches_boost(card, boost: Dictionary) -> bool:
 		return "id" in card and String(card.id) == match_id
 	return false
 
+# The summed value of every boost matching `card` for one stat ("dmg" /
+# "block"). May be negative — Glass Knife registers a -2 dmg boost against its
+# own id each play. Shared by apply_card_boosts and the CardScaling display
+# pass so the number shown in hand is the number that resolves.
+func card_boost_total(card, boosts: Array, stat: String) -> int:
+	var bonus: int = 0
+	for boost in boosts:
+		if String(boost.get("stat", "")) != stat:
+			continue
+		if not card_matches_boost(card, boost):
+			continue
+		bonus += int(boost.get("value", 0))
+	return bonus
+
 # Fold every matching boost into a `dmg` or `block` effect's value, returning a
 # (possibly new) effect dict. Other effect types and the empty-boost case pass
-# through untouched so this is cheap to call on every effect.
+# through untouched so this is cheap to call on every effect. The boosted value
+# floors at 0 so a stacked negative boost (Glass Knife played out) zeroes the
+# hit instead of eating into the Power bonus resolve_damage adds on top.
 func apply_card_boosts(effect: Dictionary, card, boosts: Array) -> Dictionary:
 	if boosts.is_empty():
 		return effect
 	var effect_type: String = String(effect.get("type", ""))
 	if effect_type != "dmg" and effect_type != "block":
 		return effect
-	var bonus: int = 0
-	for boost in boosts:
-		if String(boost.get("stat", "")) != effect_type:
-			continue
-		if not card_matches_boost(card, boost):
-			continue
-		bonus += int(boost.get("value", 0))
+	var bonus: int = card_boost_total(card, boosts, effect_type)
 	if bonus == 0:
 		return effect
 	var out: Dictionary = effect.duplicate(true)
-	out["value"] = int(out.get("value", 0)) + bonus
+	out["value"] = maxi(0, int(out.get("value", 0)) + bonus)
 	return out
 
 func addon_damage_bonus(card, _damage_type: String) -> int:

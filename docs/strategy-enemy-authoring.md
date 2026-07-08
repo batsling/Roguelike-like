@@ -123,7 +123,7 @@ as cards, spells and the deckbuilder patterns). Strategy default targets:
 | Token | Effect |
 |---|---|
 | `dmg:N` / `dmg:N:ranged` | damage the intent's target (default `enemy`) |
-| `dmg:<C>d<S>` | per-hit dice: roll `C` d`S` **fresh on every hit** (e.g. `dmg:1d3` → 1-3, NetHack-style). Unlike Determined, it is *not* fixed for the combat. The telegraph shows the die spec (`1D3`); the AI uses the max (`C×S`) when weighing damage |
+| `dmg:<C>d<S>` | per-hit dice: roll `C` d`S` **fresh on every hit** (e.g. `dmg:1d3` → 1-3, NetHack-style). Unlike Determined, it is *not* fixed for the combat. The telegraph shows the die spec (`1D3`) while nothing modifies the roll, and switches to the predicted `lo-hi` range once something does; the AI uses the max (`C×S`) when weighing damage |
 | `heal:N[:self]` | self heal |
 | `block:N[:self]` | self block |
 | `gain:<status>:N` | self buff (→ `status` effect, `self`) |
@@ -176,6 +176,23 @@ On each turn the enemy chooses among its **available** intents (off-cooldown,
 Reachability is approximated as `range + move` in tiles at telegraph time (the
 grid map isn't consulted until the unit actually moves), which is enough to
 prefer a reachable ranged attack over an out-of-reach melee one.
+
+### Telegraphs are true predictions
+
+The number on the telegraph badge (and the initiative panel's `next:` line)
+is re-computed at RENDER time by `EnemyAI.telegraph_label` through the same
+shared fold the deckbuilder's intent panel uses (`Stats.predict_hit`): the
+attacker's Power/Weak, the planned target's Vulnerable/Bruise, then the
+Intangible clamp to 1 — so the shown value is what the hit will actually
+open with, and it tracks status changes the moment they land (play Wraith
+Form and every attack telegraph drops to 1).
+
+- Flat hits show the predicted number (a base-3 hit reads `6` once the
+  enemy carries 3 Power, `9` if the target is also Vulnerable).
+- Dice hits keep the die spec (`1D8`) while nothing modifies the roll and
+  switch to the predicted `lo-hi` range once something does (`3-10` under
+  +2 Power), collapsing to one number when the bounds meet (`1` under
+  Intangible).
 
 ## Fallbacks
 
