@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_rusty_razor"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images/items/RustyRazor.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"rusty_razor"
+display_name = "Rusty Razor"
+kind = 3
+rarity = 1
+description = "Add the Card \"Rusty Razor\" into your Deck. If you kill an enemy with a status affliction at least one time, \"Rusty Razor\" Gains (+1/+2) Bleed and Poison"
+triggers = []
+stat_bonuses = {}
+weapon_card_id = &"rusty_razor"
+verification_question = "Did you kill an enemy with a status affliction?"
+verification_effects = [{"type": "bump_card_effect", "effect_index": 0, "field": "stacks", "increments": [1, 2]}, {"type": "bump_card_effect", "effect_index": 1, "field": "stacks", "increments": [1, 2]}]
+max_uses = -1
+source_game = "Mewgenics"
+tags = PackedStringArray()
+image = ExtResource("2_img")

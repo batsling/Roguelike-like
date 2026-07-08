@@ -455,11 +455,23 @@ def parse_scaling(payload):
 def parse_verify_effects(rhs):
     """Parse the '=> ...' side of a verify clause into verification_effects."""
     rhs = rhs.strip()
-    # "+1/+2 Blind"  -> bump_card_effect stacks increments [1,2]
+    # "+1/+2 Bleed and Poison" (Rusty Razor) -> bump the STACKS of the card's
+    # first TWO effects. The status names are documentation — the bumps are
+    # positional (effect#0 and effect#1), like every other verify form.
+    m = re.match(r"^([+-]?\d+)\s*/\s*([+-]?\d+)\s+(\w+)\s+and\s+(\w+)$", rhs)
+    if m:
+        inc = [int(m.group(1)), int(m.group(2))]
+        return [{"type": "bump_card_effect", "effect_index": i,
+                 "field": "stacks", "increments": inc} for i in (0, 1)]
+    # "+1/+2 Blind" -> bump_card_effect stacks increments [1,2].
+    # A damage word ("1/2 dmg" — Dexecutioner, Lil' Bomber, Lower Case r)
+    # bumps `value` instead: dmg effects carry no stacks, so the old
+    # stacks-always parse made those verifications silent no-ops.
     m = re.match(r"^([+-]?\d+)\s*/\s*([+-]?\d+)\s+(\w+)$", rhs)
     if m:
+        field = "value" if m.group(3).lower() in ("dmg", "damage") else "stacks"
         return [{"type": "bump_card_effect", "effect_index": 0,
-                 "field": "stacks", "increments": [int(m.group(1)), int(m.group(2))]}]
+                 "field": field, "increments": [int(m.group(1)), int(m.group(2))]}]
     # "1/2 random fish" -> bump value
     m = re.match(r"^(\d+)\s*/\s*(\d+)\s+", rhs)
     if m:

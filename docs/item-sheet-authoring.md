@@ -45,6 +45,21 @@ N off the cost of `count` random cards matching the tag/type filter for the rest
 of the fight — and since action cooldown is `2*cost + rarity`, the same discount
 shortens that card's cooldown there too).
 
+**Verify reward forms** (the `=> ...` side of a `verify:` clause; every
+`/`-separated pair is the level-1 / level-2 verification increment):
+
+| Form | Meaning |
+| --- | --- |
+| `+1/+2 Blind` | Bump effect#0's `stacks` (Bag o' Glitter). A damage word — `1/2 dmg` — bumps `value` instead, since dmg effects carry no stacks (Dexecutioner, Lil' Bomber, Lower Case r; on a multi-hit card the bump lands on every hit). |
+| `+1/+2 Bleed and Poison` | Bump the `stacks` of effect#0 AND effect#1 (Rusty Razor). Positional — the status names are documentation. |
+| `1/2 random fish` | Bump effect#0's `value` (Barrel). |
+| `gain_gold 10/20` | Straight gold payout (Blasma Pistol). |
+| `bump effect#0.infuse +1/+2` | Explicit index + field for anything else (Blood Magic). |
+
+Don't put quote marks inside the verify question — the parity harness's
+`.tres` re-parser can't round-trip escaped quotes in
+`verification_question`.
+
 ### Conventions the generator applies (so the sheet stays terse)
 - High-frequency hooks (`attack_landed`, `attack_missed`, `turn_tick`,
   `damage_taken`, and any counter/streak) get `silent: true`.
