@@ -958,6 +958,12 @@ func _process_turn_tick(delta: float) -> void:
 		# Well-Laid Plans rides the same "one turn of time" boundary.
 		if _living_enemy_count() > 0:
 			_fire_well_laid_plans()
+			# Next Turn Energy / Next Turn Draw pay out at the tick — the
+			# action analog of "at the start of your next turn". Runs AFTER
+			# the player's decay pass so a No Draw that just wore off doesn't
+			# swallow the banked draws. Banked stacks hold while no enemies
+			# are up (no point hasting an empty room).
+			_pay_next_turn_statuses()
 	_player_was_hit = false
 	# Confused re-rolls every loadout card's cost (and so its cooldown) each turn.
 	_reroll_confused_costs()
@@ -984,6 +990,21 @@ func _fire_well_laid_plans() -> void:
 		slot.cooldown = 0.0
 		GameLog.add("Well-Laid Plans: %s is Retained — ready now." % slot.card.display_name,
 			Color(0.6, 0.9, 1.0))
+
+# Next Turn Energy / Next Turn Draw (Flying Knee / Predator / Doppelganger):
+# the banked stacks pay out at the turn tick, translated the same way the
+# instant verbs are — energy becomes a Haste window (gain_energy), draws open
+# temporary auto-cast slots (draw_cards). Consumed on payout ("Lose all when
+# triggered"), so re-banking mid-window stacks up for the NEXT tick.
+func _pay_next_turn_statuses() -> void:
+	var nt_energy: int = Stats.consume_status(player_actor, &"next_turn_energy")
+	if nt_energy > 0:
+		GameLog.add("Next Turn Energy pays out.", Color(0.7, 1.0, 0.85))
+		gain_energy(nt_energy)
+	var nt_draw: int = Stats.consume_status(player_actor, &"next_turn_draw")
+	if nt_draw > 0:
+		GameLog.add("Next Turn Draw pays out.", Color(0.7, 0.95, 1.0))
+		draw_cards(nt_draw)
 
 # One turn-boundary pass for a single actor, in the canonical order:
 #   1. DoT bite (Stats.tick_actor_statuses → apply_dot) using current stacks
@@ -2529,6 +2550,10 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 	if needs_aoe:
 		aoe_targets = _enemies_in_radius(ABILITY_AOE_RADIUS)
 
+	# X-value gains (Doppelganger) resolve X once for the whole cast — the
+	# _action_x_value call consumes the Haste window, so it must not repeat
+	# per effect.
+	var status_x: int = _action_x_value() if _status_effects_use_x(effs) else 0
 	for raw_effect in effs:
 		var effect: Dictionary = _resolve_addon_effect(raw_effect, card)
 		var t: String = String(effect.get("type", ""))
@@ -2540,7 +2565,7 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 				if tgt == "self" or tgt == "player":
 					_gain_block(int(effect.get("value", 0)), _block_decay_for(card))
 			"status", "status_temp":
-				_apply_status_effect(effect, tgt, cone_targets, aoe_targets)
+				_apply_status_effect(effect, tgt, cone_targets, aoe_targets, status_x)
 				if t == "status_temp":
 					_record_temp_status(effect)
 			"heal":
@@ -2642,7 +2667,10 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 	if not nearest.is_empty() and _card_has_melee_damage(card):
 		_legacy_swing_visual((nearest.pos - player_pos).normalized())
 
-	for raw_effect in _effective_effects(card):
+	# X-value gains resolve X once per cast (see _resolve_card_effects_legacy).
+	var effs_auto: Array = _effective_effects(card)
+	var status_x: int = _action_x_value() if _status_effects_use_x(effs_auto) else 0
+	for raw_effect in effs_auto:
 		var effect: Dictionary = _resolve_addon_effect(raw_effect, card)
 		var t: String = String(effect.get("type", ""))
 		var tgt: String = String(effect.get("target", "enemy"))
@@ -2665,7 +2693,7 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 				# Reuse the shared status path: nearest as the "enemy" list,
 				# all living as the "all_enemies" list.
 				var single: Array = _auto_targets_for("enemy")
-				_apply_status_effect(effect, tgt, single, all_alive)
+				_apply_status_effect(effect, tgt, single, all_alive, status_x)
 				if t == "status_temp":
 					_record_temp_status(effect)
 			"heal":
@@ -2732,6 +2760,16 @@ func _attack_volleys(effects: Array) -> int:
 func _effects_use_x(effects: Array) -> bool:
 	for e in effects:
 		if String(e.get("type", "")) == "dmg" and String(e.get("hits_from", "")) == "energy":
+			return true
+	return false
+
+# True when any status effect's stack count is the energy spent (X-value gain:
+# Doppelganger's `gain:next_turn_draw:X`). Kept separate from _effects_use_x so
+# an X-value gain never volleys an attack delivery.
+func _status_effects_use_x(effects: Array) -> bool:
+	for e in effects:
+		if String(e.get("type", "")) in ["status", "status_temp"] \
+				and String(e.get("stacks_from", "")) == "energy":
 			return true
 	return false
 
@@ -3395,6 +3433,12 @@ func draw_cards(n: int) -> void:
 	# burst (_tr.draw_temp_slot_secs). A Draw 2 adds two parallel slots.
 	if n <= 0:
 		return
+	# No Draw (Battle Trance): draw effects open no extra auto-slots until the
+	# next turn tick decays the status — the action mirror of "you cannot draw
+	# any more cards this turn".
+	if player_actor != null and player_actor.get_status(&"no_draw") > 0:
+		GameLog.add("No Draw — no extra auto-casts.", Color(1.0, 0.7, 0.5))
+		return
 	var added := 0
 	for _i in range(n):
 		var card: CardData = _auto_draw_one()
@@ -3528,6 +3572,8 @@ func lose_energy(n: int) -> void:
 func _apply_self_effects(card: CardData) -> void:
 	# Used by the ranged path so block / heal / self statuses still
 	# fire even though the damage is in flight.
+	# X-value gains resolve X once per cast (see _resolve_card_effects_legacy).
+	var status_x: int = _action_x_value() if _status_effects_use_x(card.effects) else 0
 	for effect in card.effects:
 		var t: String = String(effect.get("type", ""))
 		# Draw/discard are untargeted in deckbuilder; in action they
@@ -3564,7 +3610,10 @@ func _apply_self_effects(card: CardData) -> void:
 				_resolve_heal_self(int(effect.get("value", 0)))
 			"status", "status_temp":
 				var status: StringName = StringName(String(effect.get("status", "")))
-				Stats.apply_status_to(player_actor, status, int(effect.get("stacks", 0)), player_actor)
+				var stacks: int = int(effect.get("stacks", 0))
+				if String(effect.get("stacks_from", "")) == "energy":
+					stacks = status_x + int(effect.get("stacks_bonus", 0))
+				Stats.apply_status_to(player_actor, status, stacks, player_actor)
 				if t == "status_temp":
 					_record_temp_status(effect)
 
@@ -3619,9 +3668,14 @@ func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 			"mode": "cone" if tgt == "enemy" else "aoe",
 		})
 
-func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array) -> void:
+func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array, x_value: int = 0) -> void:
 	var status: StringName = StringName(String(effect.get("status", "")))
 	var stacks: int = int(effect.get("stacks", 0))
+	# X-value gain (Doppelganger): the stack count is the play's X — resolved
+	# ONCE per cast by the caller (consuming the Haste window) so two X gains
+	# on the same card read the same X, mirroring the deckbuilder's ctx.
+	if String(effect.get("stacks_from", "")) == "energy":
+		stacks = maxi(0, x_value) + int(effect.get("stacks_bonus", 0))
 	if stacks == 0 or status == &"":
 		return
 	# Route through the shared core (Stats.apply_status_to) so action's card

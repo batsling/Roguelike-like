@@ -821,6 +821,12 @@ func _start_player_turn() -> void:
 		energy += _energy_carryover
 		GameLog.add("Ice Cream: +%d bonus energy!" % _energy_carryover, Color(0.7, 1.0, 0.7))
 		_energy_carryover = 0
+	# Next Turn Energy (Flying Knee / Doppelganger): banked stacks pour onto the
+	# refreshed pool now, then the status clears ("Lose all when triggered").
+	var nt_energy: int = Stats.consume_status(player, &"next_turn_energy")
+	if nt_energy > 0:
+		energy += nt_energy
+		GameLog.add("Next Turn Energy: +%d energy." % nt_energy, Color(0.7, 1.0, 0.85))
 	# Barricade: block is not removed at the start of the turn.
 	if not Stats.keeps_block(player):
 		player.block = 0
@@ -835,6 +841,13 @@ func _start_player_turn() -> void:
 		draw_count += Stats.deckbuilder_bonus_draws_turn_1()
 		# Ambush carryover adjusts the opening hand (+2 ambush / -2 ambushed).
 		draw_count += _ambush_draw_delta
+	# Next Turn Draw (Predator / Doppelganger): banked stacks join the
+	# turn-start hand, then the status clears.
+	var nt_draw: int = Stats.consume_status(player, &"next_turn_draw")
+	if nt_draw > 0:
+		draw_count += nt_draw
+		GameLog.add("Next Turn Draw: +%d card%s." % [nt_draw, "s" if nt_draw > 1 else ""],
+			Color(0.7, 0.95, 1.0))
 	draw_cards(maxi(0, draw_count))
 	# Confused (Snecko): re-randomize every hand card's cost each turn. Runs after
 	# the draw so retained cards get a fresh roll too. The hand cost display reads
@@ -1992,6 +2005,12 @@ func apply_status(target, status: StringName, stacks: int, source = null) -> voi
 # ------------------------------------------------------------------
 
 func draw_cards(n: int) -> void:
+	# No Draw (Battle Trance): every further draw this turn is suppressed. The
+	# status decays at end of turn (DECAY_STATUSES), so the next turn-start
+	# hand is unaffected — the card draws its 3 first, then locks the door.
+	if n > 0 and player != null and player.get_status(&"no_draw") > 0:
+		GameLog.add("No Draw — no cards drawn.", Color(1.0, 0.7, 0.5))
+		return
 	for _i in range(n):
 		if draw_pile.is_empty():
 			if discard_pile.is_empty():

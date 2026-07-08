@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_prepared"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Prepared.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"prepared"
+display_name = "Prepared"
+type = 1
+rarity = 1
+cost = 0
+description = "Draw 1 Card. Discard 1 Card."
+effects = [{"type": "draw", "value": 1}, {"type": "discard", "value": 1}]
+tags = PackedStringArray("silent", "draw", "discard")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Draw 2 Cards. Discard 2 Cards."
+upgraded_cost = -999
+upgraded_effects = [{"type": "draw", "value": 2}, {"type": "discard", "value": 2}]
+image = ExtResource("2_img")

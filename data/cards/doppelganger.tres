@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_doppelganger"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Doppelganger.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"doppelganger"
+display_name = "Doppelganger"
+type = 1
+rarity = 3
+cost = -1
+description = "Gain X Next Turn Draw and X Next Turn Energy. Exhaust."
+effects = [{"type": "status", "status": "next_turn_draw", "stacks": 0, "stacks_from": "energy", "target": "self"}, {"type": "status", "status": "next_turn_energy", "stacks": 0, "stacks_from": "energy", "target": "self"}]
+tags = PackedStringArray("silent", "draw", "energy")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain X+1 Next Turn Draw and X+1 Next Turn Energy. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status", "status": "next_turn_draw", "stacks": 0, "stacks_from": "energy", "target": "self", "stacks_bonus": 1}, {"type": "status", "status": "next_turn_energy", "stacks": 0, "stacks_from": "energy", "target": "self", "stacks_bonus": 1}]
+image = ExtResource("2_img")
+exhaust = true

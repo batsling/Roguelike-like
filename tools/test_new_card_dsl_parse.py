@@ -84,6 +84,23 @@ def main():
                    "damage_type": "melee", "value_from": "attacks_this_turn",
                    "value_mult": 6}, fin
 
+    # gain:<status>:X (Doppelganger) — the stack count is the energy spent on
+    # the play (stacks_from: "energy"), the status mirror of dmg:NxX. The
+    # upgraded X+1 form adds a flat stacks_bonus on top.
+    dg = one("gain:next_turn_draw:X")
+    assert dg == {"type": "status", "status": "next_turn_draw", "stacks": 0,
+                  "stacks_from": "energy", "target": "self"}, dg
+    dgu = one("gain:next_turn_energy:X+1")
+    assert dgu == {"type": "status", "status": "next_turn_energy", "stacks": 0,
+                   "stacks_from": "energy", "target": "self",
+                   "stacks_bonus": 1}, dgu
+    # Case-insensitive x, and plain numeric gains are untouched.
+    dgl = one("gain:next_turn_draw:x")
+    assert dgl["stacks_from"] == "energy" and "stacks_bonus" not in dgl, dgl
+    nd = one("gain:no_draw:1")
+    assert nd == {"type": "status", "status": "no_draw", "stacks": 1,
+                  "target": "self"}, nd
+
     # The boomerang archetype parses via the Attack column.
     shape, params, _rc = gen.parse_attack("Boomerang")
     assert shape == "boomerang" and params == {}, (shape, params)

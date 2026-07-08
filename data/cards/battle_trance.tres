@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_battle_trance"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/BattleTrance.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"battle_trance"
+display_name = "Battle Trance"
+type = 1
+rarity = 2
+cost = 0
+description = "Draw 3 Cards. Gain 1 No Draw."
+effects = [{"type": "draw", "value": 3}, {"type": "status", "status": "no_draw", "stacks": 1, "target": "self"}]
+tags = PackedStringArray("ironclad", "draw")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Draw 4 Cards. Gain 1 No Draw."
+upgraded_cost = -999
+upgraded_effects = [{"type": "draw", "value": 4}, {"type": "status", "status": "no_draw", "stacks": 1, "target": "self"}]
+image = ExtResource("2_img")

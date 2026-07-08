@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_rusty_razor"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/items/RustyRazor.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"rusty_razor"
+display_name = "Rusty Razor"
+type = 1
+rarity = 2
+cost = 1
+description = "Inflict 1 Bleed and 1 Poison."
+effects = [{"type": "status", "status": "bleed", "stacks": 1, "target": "enemy"}, {"type": "status", "status": "poison", "stacks": 1, "target": "enemy"}]
+tags = PackedStringArray("weapon", "debuff", "bleed", "poison")
+source_game = "Mewgenics"
+can_upgrade = false
+image = ExtResource("2_img")
+attack_shape = &"swing"
+attack_params = {"size": "small"}
