@@ -70,6 +70,38 @@ func test_intangible_decays_and_has_icon() -> void:
 		"Intangible steps down 1 per turn in every mode")
 	assert_true(Stats.STATUS_ICONS.has(&"intangible"), "intangible needs a badge icon")
 
+# --- Intangible: the StS-style intent preview --------------------------------
+
+# While the player is Intangible, an enemy's attack intent must telegraph the
+# CLAMPED number — "1" (or 1xN for multi-hit), matching what the hit will deal.
+func test_intent_prediction_clamps_to_1_under_intangible() -> void:
+	var scene = load("res://scenes/deckbuilder/DeckbuilderCombat.tscn").instantiate()
+	scene.dev_combat = true
+	scene.enemies_to_spawn = [&"jaw_worm"]
+	add_child_autofree(scene)
+	var enemy: CombatActor = scene.enemies[0]
+	enemy.statuses[&"power"] = 3
+	var move := {"effects": [
+		{"type": "dmg", "value": 11, "damage_type": "melee"},
+		{"type": "dmg", "value": 11, "damage_type": "melee"},
+	]}
+	var before: Dictionary = scene._annotate_intent(enemy, move)
+	assert_eq(int(before.get("intent_dmg", 0)), 14, "no Intangible: 11 + 3 Power per hit")
+	assert_eq(int(before.get("intent_hits", 0)), 2, "two dmg effects = a 2-hit intent")
+	scene.player.statuses[&"intangible"] = 2
+	var after: Dictionary = scene._annotate_intent(enemy, move)
+	assert_eq(int(after.get("intent_dmg", 0)), 1, "Intangible up: the intent reads 1 per hit")
+	assert_eq(int(after.get("intent_hits", 0)), 2, "…so the panel shows 1x2")
+	# Vulnerable can't push the clamped number back up.
+	scene.player.statuses[&"vulnerable"] = 1
+	assert_eq(int(scene._predict_intent_damage(enemy, move.effects[0])), 1,
+		"Vulnerable folds in before the clamp, so it stays 1")
+	# And the prediction recovers once the stacks decay away.
+	scene.player.statuses.erase(&"intangible")
+	scene.player.statuses.erase(&"vulnerable")
+	assert_eq(int(scene._predict_intent_damage(enemy, move.effects[0])), 14,
+		"clamp lifts with the status")
+
 # --- Wraith Form .tres round-trip -------------------------------------------
 
 func test_wraith_form_tres_gains_intangible_and_erodes_defense() -> void:

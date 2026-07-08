@@ -2657,6 +2657,9 @@ func _classify_intent(effects: Array) -> String:
 # determined roll (cached on the enemy, so it matches the real hit) then folds in
 # Power/Weak on the attacker and Vulnerable/Bruise on the player — the same flat /
 # multiplier order Stats.resolve_damage uses, minus the random bits (Blind/crit).
+# Intangible clamps the prediction to 1 last, exactly like the real hit (StS
+# shows a 1 or 1xN intent while Wraith Form is up); _refresh_ui re-predicts, so
+# the number drops the moment the power is played and recovers as it decays.
 func _predict_intent_damage(enemy: CombatActor, effect: Dictionary) -> int:
 	var damage_type: String = String(effect.get("damage_type", "melee"))
 	var base: int = int(effect.get("value", 0))
@@ -2679,7 +2682,7 @@ func _predict_intent_damage(enemy: CombatActor, effect: Dictionary) -> int:
 		amount = int(ceil(amount * 1.5))
 	if player != null and (damage_type == "melee" or damage_type == "ranged"):
 		amount += player.get_status(&"bruise")
-	return maxi(0, amount)
+	return Stats.intangible_clamp(player, maxi(0, amount))
 
 # ------------------------------------------------------------------
 # UI

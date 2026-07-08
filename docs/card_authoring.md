@@ -926,6 +926,12 @@ hits, Burn/Poison ticks, and curse HP drains all land as 1 in all three
 modes. Amounts of 0 stay 0 — Intangible never raises a miss to 1. Decays
 1 per turn (turn tick in action) like the other timed statuses.
 
+The deckbuilder's enemy **intent preview** clamps too
+(`_predict_intent_damage`): while the player is Intangible an attack
+intent telegraphs `1` (or `1xN` for multi-hit) — the StS behaviour —
+and since `_refresh_ui` re-predicts, the number drops the moment Wraith
+Form is played and recovers as the stacks decay.
+
 Worked example — Wraith Form — `Rare Power` cost 3:
 ```
 Description:  Gain 2 Intangible. At the start of your turn, lose 1 Defense.
