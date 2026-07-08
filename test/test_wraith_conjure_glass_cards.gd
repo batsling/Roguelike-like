@@ -89,6 +89,16 @@ func test_wraith_form_tres_gains_intangible_and_erodes_defense() -> void:
 	assert_eq(int(inner.get("stacks", 0)), -1, "erodes 1 Defense per turn")
 	assert_eq(int(card.upgraded_effects[0].get("stacks", 0)), 3, "upgrade banks 3 Intangible")
 
+func test_wraith_form_power_badge_icon_resolves() -> void:
+	# Powers badge on the status strip with images/powericons/<Img>Power.png.
+	# WraithFormPower.png ships in the repo, so the lookup must land on it —
+	# falling back to Unknown.png means the art/name pairing broke.
+	var card: CardData = Data.get_card(&"wraith_form")
+	var tex: Texture2D = Stats.power_badge_icon(card)
+	assert_not_null(tex, "badge icon must load")
+	assert_string_contains(tex.resource_path, "WraithFormPower.png",
+		"badge is the uploaded art, not the Unknown fallback")
+
 func test_negative_gain_erodes_but_never_goes_below_zero() -> void:
 	var player := _actor(50, true)
 	player.statuses[&"defense"] = 2
