@@ -108,6 +108,7 @@ func _register_defaults() -> void:
 	register("gain_stat", _h_gain_stat)
 	register("lose_hp", _h_lose_hp)
 	register("conjure", _h_conjure)
+	register("conjure_random", _h_conjure_random)
 	register("discard", _h_discard)
 	register("exhaust", _h_exhaust)
 	register("topdeck", _h_topdeck)
@@ -537,6 +538,28 @@ func _h_conjure(effect: Dictionary, ctx: Dictionary) -> void:
 			return
 	var force_upgraded: bool = bool(effect.get("upgraded", false))
 	scene.conjure_card(card_id, destination, count, ctx.get("card"), force_upgraded)
+
+func _h_conjure_random(effect: Dictionary, ctx: Dictionary) -> void:
+	# Random-mint conjure (White Noise / Infernal Blade / Distraction). Args:
+	#   card_type:   "power" / "attack" / "skill" — filters the conjure pool
+	#                (Data.conjure_card_pool: the reward pool scoped to the
+	#                deck picked on the New Run screen).
+	#   destination: "hand" / "draw" / "discard" (default hand)
+	#   count:       int (default 1)
+	#   free:        bool — a hand conjure costs 0 for THIS turn (deckbuilder /
+	#                strategy: temp_cost_override; action: the one-shot slot
+	#                arms at the 0-cost cooldown).
+	# Each scene owns the pick (its own RNG) + mode-specific delivery via
+	# conjure_random_card; a scene without the method (events) no-ops.
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("conjure_random_card"):
+		return
+	scene.conjure_random_card(
+		String(effect.get("card_type", "")),
+		String(effect.get("destination", "hand")),
+		maxi(1, int(effect.get("count", 1))),
+		bool(effect.get("free", false)),
+		ctx.get("card"))
 
 func _h_discard(effect: Dictionary, ctx: Dictionary) -> void:
 	# Mirror of `draw`. Deckbuilder discards N cards from hand;

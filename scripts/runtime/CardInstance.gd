@@ -153,10 +153,16 @@ func get_description() -> String:
 # numbers rewritten to reflect `player`'s live combat scaling (Power / Arcane /
 # Defense / Persistence) on top of any item boosts — see CardScaling. Used by the
 # in-combat hand view so the displayed numbers match what actually resolves.
-# `rich` toggles BBCode colouring.
+# `rich` toggles BBCode colouring. The registered combat scene's card_boosts
+# (Accuracy, Glass Knife's self-decay) fold into the numbers too, so a boosted
+# card reads in hand exactly as it will resolve.
 func combat_description(player, rich: bool = true, target = null) -> String:
+	var boosts: Array = []
+	var scene: Variant = GameState.combat_scene
+	if scene != null and ("card_boosts" in scene):
+		boosts = scene.card_boosts
 	return _decorate(CardScaling.scale_text(
-		data.get_effective_description(upgraded), player, rich, data, target))
+		data.get_effective_description(upgraded), player, rich, data, target, boosts))
 
 # Appends the item-driven addenda (card_played trigger preview, granted effects,
 # granted boosts, weapon effect_bonuses) onto a base description string. Shared

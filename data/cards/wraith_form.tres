@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_wraith_form"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/WraithForm.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"wraith_form"
+display_name = "Wraith Form"
+type = 2
+rarity = 3
+cost = 3
+description = "Gain 2 Intangible. At the start of your turn, lose 1 Defense."
+effects = [{"type": "status", "status": "intangible", "stacks": 2, "target": "self"}, {"type": "trigger", "on": "turn_started", "effect": {"type": "status", "status": "defense", "stacks": -1, "target": "self"}}]
+tags = PackedStringArray("silent", "defense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain 3 Intangible. At the start of your turn, lose 1 Defense."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status", "status": "intangible", "stacks": 3, "target": "self"}, {"type": "trigger", "on": "turn_started", "effect": {"type": "status", "status": "defense", "stacks": -1, "target": "self"}}]
+image = ExtResource("2_img")

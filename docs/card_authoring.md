@@ -146,6 +146,7 @@ Semicolon-delimited list of effect lines. Each line is
 | `lose_hp` | `VALUE` | Pay HP as a cost. | `{type: "lose_hp", value}` |
 | `exhaust_self` | (none) | Exhaust the played card. Redundant if Keywords has `Exhaust`. | `{type: "exhaust_self"}` |
 | `conjure` | `CARD_ID:DESTINATION[:COUNT\|count=discarded]` | Create COUNT copies of CARD_ID into the named pile. `CARD_ID` of `self` means "this card" and inherits its upgrade state; append `+` (e.g. `shiv+`) to force the upgraded form of a fixed card. `DESTINATION` is `hand` / `draw` / `discard`. COUNT defaults to 1. `count=discarded` (Storm of Steel) conjures one per card the preceding `discard:all` sent away. | `{type: "conjure", card_id, destination, count, upgraded?, count_from?}` |
+| `conjure_random` | `TYPE:DESTINATION[:COUNT][:free]` | Mint COUNT random cards of TYPE (`power` / `attack` / `skill`) into the named pile, rolled from the run's **conjure pool** — the reward pool scoped to the deck picked on the New Run screen (`Data.conjure_card_pool`). `free` makes a hand mint cost 0 for THIS turn. White Noise: `conjure_random:power:hand:free`. See the Random conjures section. | `{type: "conjure_random", card_type, destination, count, free?}` |
 | `power_multiplier` | `N` | Multiplies the Power stat's contribution to this card's damage by N. Applies to the preceding `dmg:` lines on the same row. | Added as `power_multiplier: N` on each `dmg` effect. |
 | `chance` | `PCT:<INNER_VERB>:<INNER_ARGS>` | Roll PCT% on the shared luck-modified RNG (Stats.roll_chance_with_luck — every point of Luck adds a 10% advantage roll, mirroring how events roll). On success, dispatch the inner effect through the same EffectSystem with the same ctx. Inner can be any verb. Bag o' Glitter: `chance:10:exhaust_self`. | `{type: "chance", percent: N, effect: {…inner…}}` |
 
@@ -342,6 +343,43 @@ without any extra work.
 
 Outside the deckbuilder (action / strategy) the effect no-ops because
 there are no piles to add to.
+
+### Random conjures (White Noise / Infernal Blade / Distraction)
+
+`conjure_random:TYPE:DESTINATION[:COUNT][:free]` mints cards the deck
+doesn't contain — a random Power / Attack / Skill rolled at play time.
+
+- **The pool is the chosen deck's pool.** Picks come from
+  `Data.conjure_card_pool(TYPE)`: the reward pool scoped by
+  `GameState.deck_reward_tag()` (the deck picked on the New Run screen),
+  narrowed to TYPE. Ironclad deck → Ironclad + hero cards only; the
+  Random deck → the whole catalog. Starters, weapons, and
+  Status/Curse/Training junk are never minted.
+- **`free` = costs 0 this turn.** Deckbuilder/strategy set
+  `temp_cost_override = 0` on the minted CardInstance (the Mummified
+  Hand slot); the override clears when the card leaves hand (played,
+  discarded, exhausted, or end of turn), so an unplayed free card is
+  full price if it ever comes back.
+- **Action opens a new slot.** A `hand` mint appends a NEW one-shot
+  auto-slot armed with the rolled card (`_conjure_into_hand`); `free`
+  arms that slot at the 0-cost cooldown (rarity modifier only), the
+  action translation of "play it for free this turn". The slot fires
+  once and disappears.
+- Each scene rolls on its own RNG via `conjure_random_card(...)`;
+  the EffectSystem handler only routes.
+
+Worked example — White Noise — `Uncommon Skill` cost 1 (0 upgraded):
+```
+Description:  Conjure 1 Random Power in Hand. You can play it for free this turn. Exhaust.
+Effects:      conjure_random:power:hand:free
+↑ Cost:       0
+Keywords:     Exhaust
+Tags:         defect, draw, random
+```
+
+Infernal Blade (`conjure_random:attack:hand:free`, ironclad) and
+Distraction (`conjure_random:skill:hand:free`, silent) are the same
+card aimed at the other two types.
 
 ### Status cards (Wound / Dazed / Slimed)
 
@@ -669,9 +707,32 @@ Type:         Power
 In `.tres` exactly one of `match_tag` / `match_type` / `match_id` must
 be set; the other two stay empty strings. Boosts clear at combat end.
 
-**Mode coverage:** today only the deckbuilder consumes boosts. Action
-and Strategy ignore `boost_cards` effects (the scene method doesn't
-exist there yet); see the Future Work section below.
+**Negative boosts (Glass Knife).** `VALUE` may be negative — a card that
+boosts its own id downward decays itself for the combat. The boosted
+value floors at 0 (`Stats.apply_card_boosts`), so a decayed-out card
+hits for 0 base rather than eating into the Power bonus. The in-hand
+display folds live combat boosts into the shown Dmg/Block number
+(`CardScaling` reads the scene's `card_boosts`), so the number visibly
+steps down (in red) each play.
+
+Worked example — Glass Knife — `Rare Attack` cost 1:
+```
+Description:  Deal 8x2 Dmg Ranged. Decrease the Dmg of this Card by 2 this combat.
+Effects:      dmg:8x2:ranged; boost_cards:id=glass_knife:dmg:-2
+Upgraded Eff: dmg:12x2:ranged; boost_cards:id=glass_knife:dmg:-2
+Attack:       Projectile, Medium
+Tags:         silent, offense
+```
+
+Order matters: the dmg resolves BEFORE the self-boost registers, so the
+first play lands at full value and each later play is 2 lower (per hit).
+The boost matches by id, so every copy of Glass Knife shares the decay,
+and it resets when combat ends.
+
+**Mode coverage:** all three modes consume boosts now — the deckbuilder
+folds them per effect in `_apply_card_boosts`, action in
+`_resolve_addon_effect`, strategy in `_apply_card_or_spell_effects`
+(all through `Stats.apply_card_boosts`).
 
 ## Triggers (After Image and friends)
 
@@ -736,8 +797,9 @@ Effects:      on_turn_started:gain:power:2
 strategy through EffectSystem's `trigger` handler, action through
 `_apply_utility_effects`). Each mode fires the events it has an analog
 for — action has no card draws or exhausts, so `status_drawn` /
-`card_exhausted` triggers sit dormant there while `unblocked_attack`
-and `turn_ended`-retain still work.
+`card_exhausted` triggers sit dormant there while `unblocked_attack`,
+`turn_started` (fired at each in-combat turn tick — Wraith Form's
+Defense erosion), and `turn_ended`-retain still work.
 
 ## Loot (Alchemize and friends)
 
@@ -781,7 +843,7 @@ once on `Stats.DECAY_STATUSES`:
 
 ```
 vulnerable, weak, frail, burn, poison, regeneration, dodge, blind,
-confused, stun, no_draw
+confused, stun, no_draw, intangible
 ```
 
 Add a status to that list and every combat mode picks up the
@@ -852,6 +914,37 @@ Miss chance is currently `Stats.BLIND_MISS_PCT = 30` regardless of
 stack count (matches the sheet's "30% Miss Chance" language; stacks
 extend duration, not magnitude). Bag o' Glitter applies 2 stacks
 (2 turns / 30s of action play before it wears off).
+
+### Intangible (Wraith Form)
+
+`Intangible` clamps **each instance** of damage / HP loss on the carrier
+to 1. The clamp lives in `Stats.resolve_damage` — after every outgoing
+and incoming modifier (Power / Weak / Vulnerable / crit), BEFORE block
+soaks it (the legacy rule: a blocked clamped hit still costs 1 Block) —
+and in each scene's `apply_dot` via `Stats.intangible_clamp`, so attack
+hits, Burn/Poison ticks, and curse HP drains all land as 1 in all three
+modes. Amounts of 0 stay 0 — Intangible never raises a miss to 1. Decays
+1 per turn (turn tick in action) like the other timed statuses.
+
+Worked example — Wraith Form — `Rare Power` cost 3:
+```
+Description:  Gain 2 Intangible. At the start of your turn, lose 1 Defense.
+Effects:      gain:intangible:2; on_turn_started:gain:defense:-1
+Upgraded Eff: gain:intangible:3; on_turn_started:gain:defense:-1
+Range/Attack: N/A
+Tags:         silent, defense
+```
+
+Two pieces of note:
+
+- **Negative `gain:`** — `gain:defense:-1` parses to a `status` effect
+  with `stacks: -1`; `add_status` clamps at 0 and erases, so the erosion
+  eats an existing Defense buff and then no-ops (matching the legacy
+  build — Defense never goes negative).
+- **`on_turn_started` in action** — the action turn tick now fires
+  `turn_started` power triggers while enemies are up, so the erosion
+  paces one per tick there (the same translation the banked next-turn
+  statuses use).
 
 ### Banked-turn statuses (Next Turn Energy / Next Turn Draw) + No Draw
 
@@ -972,18 +1065,11 @@ points.
 
 ### Action / Strategy `boost_cards` coverage
 
-`boost_cards` is deckbuilder-only today. Equivalent semantics for the
-other modes need:
-
-- Action: a boost should bump the listed stat on matching ability
-  cards when they fire. Match logic is identical (tag/type/id on the
-  ability's `CardData`).
-- Strategy: same idea on the AbilityPool. Boosts wouldn't apply to
-  the basic Attack/Defend buttons unless they have matching tags.
-
-Both modes should reuse `card_boosts: Array` and the matcher helpers
-already in `DeckbuilderCombat` — pull them onto a small shared script
-or autoload when the second consumer lands.
+Shipped. All three modes register boosts (`add_card_boost`) and fold
+them through the shared `Stats.apply_card_boosts` — deckbuilder in
+`_apply_card_boosts`, action in `_resolve_addon_effect`, strategy in
+`_apply_card_or_spell_effects`. Negative self-boosts (Glass Knife)
+ride the same path; see the Card boosts section.
 
 ### Real potion / scroll / key catalogs
 
