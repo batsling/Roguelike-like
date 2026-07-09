@@ -2336,14 +2336,17 @@ func _apply_exhaust_picks(picks: Array) -> void:
 		exhaust_card(pick)
 		GameLog.add("Exhausted %s." % pick.get_display_name(), Color(0.7, 0.7, 0.8))
 
-func topdeck_cards(n: int, source_card = null, random: bool = false) -> void:
+func topdeck_cards(n: int, source_card = null, random: bool = false, from_pile: String = "hand") -> void:
 	# Warcry: put N cards from hand on TOP of the draw pile. Player-choice by
 	# default (CardPickerModal); `random` skips the picker. Excludes the played
 	# card — it's mid-resolve and heads to discard/exhaust, not the deck.
+	# `from_pile: "discard"` (Headbutt) pools the pick from the discard pile
+	# instead; the played card can't be picked there either (it's still
+	# mid-resolve, not yet in discard).
 	if n <= 0:
 		return
 	var pool: Array = []
-	for c in hand:
+	for c in (discard_pile if from_pile == "discard" else hand):
 		if c == source_card:
 			continue
 		pool.append(c)
@@ -2372,8 +2375,11 @@ func topdeck_cards(n: int, source_card = null, random: bool = false) -> void:
 func _apply_topdeck_picks(picks: Array) -> void:
 	# draw_cards pops from the BACK of draw_pile, so appending puts the pick on
 	# top. Multiple picks land in click order: the last appended is drawn first.
+	# Picks may come from hand (Warcry) or the discard pile (Headbutt); erase
+	# from both — erase on the pile that doesn't hold the card is a no-op.
 	for pick in picks:
 		hand.erase(pick)
+		discard_pile.erase(pick)
 		draw_pile.append(pick)
 		GameLog.add("Put %s on top of the draw pile." % pick.get_display_name(),
 			Color(0.6, 1.0, 0.7))

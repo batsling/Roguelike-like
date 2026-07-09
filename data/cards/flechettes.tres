@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_flechettes"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Flechettes.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"flechettes"
+display_name = "Flechettes"
+type = 0
+rarity = 2
+cost = 1
+description = "Deal 4 Dmg Ranged for each Skill in your Hand."
+effects = [{"type": "dmg", "value": 4, "target": "enemy", "damage_type": "ranged", "hits_from": "skills_in_hand"}]
+tags = PackedStringArray("silent", "offense", "scaling")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 6 Dmg Ranged for each Skill in your Hand."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 6, "target": "enemy", "damage_type": "ranged", "hits_from": "skills_in_hand"}]
+image = ExtResource("2_img")
+attack_shape = &"projectile"
+attack_params = {"size": "medium"}

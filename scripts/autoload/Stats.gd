@@ -1352,6 +1352,29 @@ func if_target_gate_live(effects: Array, enemies: Array) -> bool:
 				return true
 	return false
 
+# True when the target is telegraphing an attack — the if_target_intent gate
+# (Go for the Eyes: "If the target intends to Attack, Inflict 1 Weak").
+# Mode-agnostic on the target's shape:
+#   - Deckbuilder CombatActor: the pre-rolled planned_move's intent_type
+#     (see DeckbuilderCombat._annotate_intent) is "attack".
+#   - Strategy BattleUnit: the EnemyAI's telegraphed next_intent carries a
+#     dmg-typed effect (the same classification the intent badge colour uses).
+#   - Anything else (the player, statusless stubs): false.
+# Action mode never routes through here — its enemies act in real time, so
+# ActionCombat._enemy_intends_attack answers per-inst (winding up a shot or
+# mid-attack-animation) instead.
+func actor_intends_attack(target) -> bool:
+	if target == null:
+		return false
+	if "planned_move" in target:
+		return String(target.planned_move.get("intent_type", "")) == "attack"
+	if "ai" in target and target.ai != null and ("next_intent" in target.ai) \
+			and target.ai.next_intent != null:
+		for e in target.ai.next_intent.effects:
+			if e is Dictionary and String(e.get("type", "")) == "dmg":
+				return true
+	return false
+
 # Choked (the Choke card's status): whenever the player PLAYS a card, each
 # afflicted actor loses raw HP equal to its stacks — same bite mechanics as
 # Bleed (apply_dot: bypasses block/Weak/Vulnerable, no contact reactions).

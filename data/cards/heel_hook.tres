@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_heel_hook"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/HeelHook.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"heel_hook"
+display_name = "Heel Hook"
+type = 0
+rarity = 2
+cost = 1
+description = "Deal 5 Dmg Melee. If the target has Weak, Gain +1 Energy and Draw 1 Card."
+effects = [{"type": "dmg", "value": 5, "target": "enemy", "damage_type": "melee"}, {"type": "if_target_status", "status": "weak", "target": "enemy", "effect": {"type": "gain_energy", "value": 1}}, {"type": "if_target_status", "status": "weak", "target": "enemy", "effect": {"type": "draw", "value": 1}}]
+tags = PackedStringArray("silent", "offense", "draw", "energy")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 8 Dmg Melee. If the target has Weak, Gain +1 Energy and Draw 1 Card."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 8, "target": "enemy", "damage_type": "melee"}, {"type": "if_target_status", "status": "weak", "target": "enemy", "effect": {"type": "gain_energy", "value": 1}}, {"type": "if_target_status", "status": "weak", "target": "enemy", "effect": {"type": "draw", "value": 1}}]
+image = ExtResource("2_img")
+attack_shape = &"poke"
+attack_params = {"size": "small"}

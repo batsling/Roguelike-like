@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_hemokinesis"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Hemokinesis.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"hemokinesis"
+display_name = "Hemokinesis"
+type = 0
+rarity = 2
+cost = 1
+description = "Lose 2 Health. Deal 15 Dmg Ranged."
+effects = [{"type": "lose_hp", "value": 2}, {"type": "dmg", "value": 15, "target": "enemy", "damage_type": "ranged", "element": "blood"}]
+tags = PackedStringArray("ironclad", "offense", "health")
+source_game = "Slay the Spire"
+element = &"blood"
+can_upgrade = true
+upgraded_description = "Lose 2 Health. Deal 20 Dmg Ranged."
+upgraded_cost = -999
+upgraded_effects = [{"type": "lose_hp", "value": 2}, {"type": "dmg", "value": 20, "target": "enemy", "damage_type": "ranged", "element": "blood"}]
+image = ExtResource("2_img")
+attack_shape = &"projectile"
+attack_params = {"size": "medium"}

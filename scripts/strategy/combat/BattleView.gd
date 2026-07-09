@@ -1863,10 +1863,18 @@ func _apply_exhaust_picks(picks: Array) -> void:
 
 # Warcry: put N cards from hand on TOP of the draw pile. Player-choice by
 # default; `random` skips the picker.
-func topdeck_cards(n: int, source_card = null, random: bool = false) -> void:
+func topdeck_cards(n: int, source_card = null, random: bool = false, from_pile: String = "hand") -> void:
+	# `from_pile: "discard"` (Headbutt) pools the pick from the discard pile
+	# instead of hand; the played card is mid-resolve and not yet in discard,
+	# so it can't pick itself either way.
 	if n <= 0:
 		return
-	var pool: Array = _hand_pool(source_card)
+	var pool: Array
+	if from_pile == "discard":
+		pool = discard_pile.duplicate()
+		pool.erase(source_card)
+	else:
+		pool = _hand_pool(source_card)
 	if pool.is_empty():
 		return
 	if random:
@@ -1889,9 +1897,11 @@ func topdeck_cards(n: int, source_card = null, random: bool = false) -> void:
 
 func _apply_topdeck_picks(picks: Array) -> void:
 	# draw_cards pops from the BACK of draw_pile, so appending puts the pick on
-	# top (the last appended is drawn first).
+	# top (the last appended is drawn first). Picks may come from hand (Warcry)
+	# or the discard pile (Headbutt); erase from both — a no-op on the other.
 	for pick in picks:
 		hand.erase(pick)
+		discard_pile.erase(pick)
 		draw_pile.append(pick)
 		GameLog.add("Put %s on top of the draw pile." % pick.get_display_name(),
 			Color(0.6, 1.0, 0.7))

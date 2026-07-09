@@ -137,6 +137,34 @@ def main():
     cr = one("cost_reduce:per=hp_losses")
     assert cr == {"type": "cost_reduce", "from": "hp_losses"}, cr
 
+    # --- The Flechettes / Go for the Eyes / … port batch ----------------------
+
+    # dmg ... hits=skills_in_hand (Flechettes): one hit per Skill in hand,
+    # resolved at play time — the hand-count sibling of hits=exhausted.
+    fl = one("dmg:4:ranged:hits=skills_in_hand")
+    assert fl == {"type": "dmg", "value": 4, "target": "enemy",
+                  "damage_type": "ranged", "hits_from": "skills_in_hand"}, fl
+
+    # dmg ... cleave:if_draw=empty (Grand Finale): the kv gate coexists with
+    # the positional cleave modifier on the same clause.
+    gf = one("dmg:50:ranged:cleave:if_draw=empty")
+    assert gf == {"type": "dmg", "value": 50, "target": "all_enemies",
+                  "damage_type": "ranged", "if_draw": "empty"}, gf
+
+    # inflict ... if_intent=attack (Go for the Eyes): the inflict is gated on
+    # the target telegraphing an attack.
+    ge = one("inflict:weak:1:if_intent=attack")
+    assert ge == {"type": "status", "status": "weak", "stacks": 1,
+                  "target": "enemy", "if_target_intent": "attack"}, ge
+
+    # topdeck:N:from=discard (Headbutt): the pick pool is the discard pile.
+    hb = one("topdeck:1:from=discard")
+    assert hb == {"type": "topdeck", "value": 1, "from": "discard"}, hb
+
+    # lose_hp:N (Hemokinesis / Bloodletting) is the plain HP-cost verb.
+    hk = one("lose_hp:2")
+    assert hk == {"type": "lose_hp", "value": 2}, hk
+
     # The boomerang archetype parses via the Attack column.
     shape, params, _rc = gen.parse_attack("Boomerang")
     assert shape == "boomerang" and params == {}, (shape, params)

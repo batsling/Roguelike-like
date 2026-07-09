@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_grand_finale"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/GrandFinale.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"grand_finale"
+display_name = "Grand Finale"
+type = 0
+rarity = 3
+cost = 0
+description = "Deal 50 Dmg Ranged Cleave. Does nothing if there are any Cards in your Draw Pile."
+effects = [{"type": "dmg", "value": 50, "target": "all_enemies", "damage_type": "ranged", "if_draw": "empty"}]
+tags = PackedStringArray("silent", "offense", "aoe")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 60 Dmg Ranged Cleave. Does nothing if there are any Cards in your Draw Pile."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 60, "target": "all_enemies", "damage_type": "ranged", "if_draw": "empty"}]
+image = ExtResource("2_img")
+attack_shape = &"nova"
+attack_params = {"size": "large"}
