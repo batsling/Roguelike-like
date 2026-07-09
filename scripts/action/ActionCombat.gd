@@ -3682,14 +3682,15 @@ func discard_hand(_source_card = null) -> int:
 	return removed
 
 # Fiend Fire's action translation: "exhaust all other cards in your hand"
-# empties every OTHER cooldown slot. Exhausted cards leave the combat rotation
-# entirely (NOT re-queued to the discard): temporary auto-slots collapse, the
-# permanent base slot survives but its card is gone (it re-arms with a fresh
-# draw), the dedicated curse slots are cleared (Fiend Fire eats curses, same
-# as the deckbuilder), and the click cards are disarmed for the room. Each
-# exhausted card counts toward last_exhaust_count, which the following dmg
-# `hits=exhausted` reads as its volley count. The slot Fiend Fire itself is
-# firing from is skipped.
+# empties every OTHER cooldown slot in the rotation. Exhausted cards leave the
+# combat entirely (NOT re-queued to the discard): temporary auto-slots
+# collapse, the permanent base slot survives but its card is gone (it re-arms
+# with a fresh draw), and the dedicated curse slots are cleared (Fiend Fire
+# eats curses, same as the deckbuilder). The two click weapons are the
+# player's manual kit and are deliberately spared — they neither disarm nor
+# count. Each exhausted card counts toward last_exhaust_count, which the
+# following dmg `hits=exhausted` reads as its volley count. The slot Fiend
+# Fire itself is firing from is skipped.
 func exhaust_hand(source_card = null) -> int:
 	var removed := 0
 	var skipped_self := false
@@ -3712,16 +3713,6 @@ func exhaust_hand(source_card = null) -> int:
 			auto_slots.remove_at(i)
 	removed += _curse_slots.size()
 	_curse_slots.clear()
-	if left_card != null and left_card != source_card:
-		left_card = null
-		left_cd = 0.0
-		left_max_cd = 0.0
-		removed += 1
-	if right_card != null and right_card != source_card:
-		right_card = null
-		right_cd = 0.0
-		right_max_cd = 0.0
-		removed += 1
 	last_exhaust_count = removed
 	if removed > 0:
 		GameLog.add("Exhausted %d cooldown card%s." % [

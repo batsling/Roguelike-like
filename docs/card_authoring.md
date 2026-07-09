@@ -174,10 +174,10 @@ Semicolon-delimited list of effect lines. Each line is
 - `dmg:7:ranged:hits=exhausted` — Fiend Fire (one hit per card the preceding
   `exhaust:all` sent away this play; stored as `hits_from: "exhausted"`, read
   off the scene's `last_exhaust_count`. Zero exhausted = zero hits. Action:
-  `exhaust:all` empties every OTHER cooldown slot — temp auto-slots collapse,
-  the base slot's card is dropped and re-arms, curse slots clear, the click
-  cards disarm for the room — and the dmg fires one volley per card removed;
-  nothing to exhaust = the cast fizzles.)
+  `exhaust:all` empties the auto rotation — temp auto-slots collapse, the base
+  slot's card is dropped and re-arms, curse slots clear; the two click weapons
+  are spared — and the dmg fires one volley per card removed; nothing to
+  exhaust = the cast fizzles.)
 - `dmg:14:melee:if_hand=all_attacks` — Clash (the hit whiffs unless every
   OTHER card in hand is an Attack — statuses and curses spoil it too. Action's
   "hand" is every card riding a cooldown slot: a non-Attack in the auto

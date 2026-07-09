@@ -105,11 +105,12 @@ func test_fiend_fire_exhausts_every_other_slot_and_volleys_per_card() -> void:
 	arena.player_facing = Vector2.RIGHT
 	_add_enemy(Vector2(200, 0))
 	arena._resolve_card_effects(Data.get_card(&"fiend_fire"))
-	assert_eq(arena.last_exhaust_count, 3, "base card + temp slot + click card")
+	assert_eq(arena.last_exhaust_count, 2, "base card + temp slot; click weapons are spared")
 	assert_eq(arena.auto_slots.size(), 1, "the permanent slot survives, re-armed")
 	assert_null(arena.auto_slots[0].card, "no draw pile left -> it re-armed empty")
-	assert_null(arena.left_card, "the click card is disarmed for the room")
-	assert_eq(_pending_volleys(), 2, "3 exhausted = 3 bolts: 1 fired + 2 queued")
+	assert_eq(arena.left_card, Data.get_card(&"choke"),
+		"the click weapon stays armed — the player's manual kit is never exhausted")
+	assert_eq(_pending_volleys(), 1, "2 exhausted = 2 bolts: 1 fired + 1 queued")
 
 func test_fiend_fire_exhausted_cards_leave_the_rotation() -> void:
 	_arm_auto(&"acrobatics", 30.0)
