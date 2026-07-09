@@ -130,7 +130,7 @@ Semicolon-delimited list of effect lines. Each line is
 | `inflict` | `STATUS:STACKS[:cleave]` | Apply a debuff to the targeted enemy (or all enemies with `cleave`). | `{type: "status", status, stacks, target: "enemy"/"all_enemies"}` |
 | `draw` | `N` | Draw N cards. In Action mode this instead chips a random ability cooldown by 25% per N. In Strategy, reduces a random ability CD by N. | `{type: "draw", value: N}` |
 | `discard` | `N[:random]` \| `all` | Mirror of `draw`. Deckbuilder/Strategy: pick N from hand via the CardPickerModal (default — player chooses, like Acrobatics). Append `:random` for the engine-picked random variant (All-Out Attack). Always excludes the played card. `discard:all` (Storm of Steel) discards the whole hand with no picker and records the count for `count=discarded`. Action: collapses temporary auto-slots (`all` collapses every one). | `{type: "discard", value: N, random?: bool}` / `{type: "discard", all: true}` |
-| `exhaust` | `N[:random]` | Deckbuilder/Strategy mirror of `discard` but routes picks to the exhaust pile. Same player-choice default and `:random` flag. No-op in action. | `{type: "exhaust", value: N, random?: bool}` |
+| `exhaust` | `N[:random]` \| `all` | Deckbuilder/Strategy mirror of `discard` but routes picks to the exhaust pile. Same player-choice default and `:random` flag. `exhaust:all` (Fiend Fire) exhausts the whole hand minus the played card, no picker, and records the count for a following `dmg …:hits=exhausted`. No-op in action. | `{type: "exhaust", value: N, random?: bool}` / `{type: "exhaust", all: true}` |
 | `topdeck` | `N[:random]` | Put N cards from hand on TOP of the draw pile (Warcry). Deckbuilder/Strategy open the CardPickerModal by default; `:random` skips it. Action auto-picks: a temporary auto-slot's card goes back on top of the auto draw pile (or a random discard when no temp slots are up). | `{type: "topdeck", value: N, random?: bool}` |
 | `recall` | `<FILTER>[:from=PILE][:to=PILE]` | Deckbuilder: move (not copy) every card in the source pile matching `FILTER` into the destination pile. `FILTER` today is `cost=N`; defaults are `from=discard`, `to=hand` (All for One). No-op in action/strategy. | `{type: "recall", from: PILE, to: PILE, filter: {…}}` |
 | `upgrade_hand` | `N\|all[:random]` | Deckbuilder: upgrade in-place. `upgrade_hand:1` opens the picker so the player chooses (Armaments); `upgrade_hand:all` upgrades every eligible card in hand silently (Armaments+). Append `:random` to skip the picker for the N form. Skips cards that are already upgraded or have `can_upgrade = false`. No-op in action/strategy. | `{type: "upgrade_hand", value: N\|"all", random?: bool}` |
@@ -149,6 +149,8 @@ Semicolon-delimited list of effect lines. Each line is
 | `conjure_random` | `TYPE:DESTINATION[:COUNT][:free]` | Mint COUNT random cards of TYPE (`power` / `attack` / `skill`) into the named pile, rolled from the run's **conjure pool** — the reward pool scoped to the deck picked on the New Run screen (`Data.conjure_card_pool`). `free` makes a hand mint cost 0 for THIS turn. White Noise: `conjure_random:power:hand:free`. See the Random conjures section. | `{type: "conjure_random", card_type, destination, count, free?}` |
 | `power_multiplier` | `N` | Multiplies the Power stat's contribution to this card's damage by N. Applies to the preceding `dmg:` lines on the same row. | Added as `power_multiplier: N` on each `dmg` effect. |
 | `chance` | `PCT:<INNER_VERB>:<INNER_ARGS>` | Roll PCT% on the shared luck-modified RNG (Stats.roll_chance_with_luck — every point of Luck adds a 10% advantage roll, mirroring how events roll). On success, dispatch the inner effect through the same EffectSystem with the same ctx. Inner can be any verb. Bag o' Glitter: `chance:10:exhaust_self`. | `{type: "chance", percent: N, effect: {…inner…}}` |
+| `if_target` | `STATUS:<INNER_VERB>:<INNER_ARGS>` | Resolve the inner effect only when the PICKED enemy target carries STATUS (Dropkick: `if_target:vulnerable:gain_energy:1`). A wrapper — not a kv on the inner verb — because the inner verbs are scene effects (gain_energy / draw) that would otherwise resolve against the player and lose the enemy from ctx. In action the payoff fires once when any hit enemy carries the status. | `{type: "if_target_status", status, target: "enemy", effect: {…inner…}}` |
+| `cost_reduce` | `per=COUNTER` | Card-level dynamic discount: the card costs 1 less per point of the named live counter (see Scaling counters), floored at 0 and re-read every time the cost is shown or paid. Blood for Blood: `cost_reduce:per=hp_losses`; Eviscerate: `cost_reduce:per=discards_this_turn`. Cost IS cooldown in action, so a re-armed slot picks up the current discount. NOT an on-play effect — the generator pops it into `CardData.cost_reduce_from`. | `cost_reduce_from = &"COUNTER"` (field, not an effect) |
 
 ### Argument shorthand for `dmg`
 
@@ -169,6 +171,21 @@ Semicolon-delimited list of effect lines. Each line is
   by a live counter: the flat value becomes the per-unit amount and the counter
   is the multiplier, so this deals `6 × attacks played this turn`. Stored as
   `value_from: "attacks_this_turn"`, `value_mult: 6`. See Scaling counters.)
+- `dmg:7:ranged:hits=exhausted` — Fiend Fire (one hit per card the preceding
+  `exhaust:all` sent away this play; stored as `hits_from: "exhausted"`, read
+  off the scene's `last_exhaust_count`. Zero exhausted = zero hits. Action has
+  no hand, so it lands a single hit there.)
+- `dmg:14:melee:if_hand=all_attacks` — Clash (the hit whiffs unless every
+  OTHER card in hand is an Attack — statuses and curses spoil it too. Modes
+  without a hand (action) always pass the gate.)
+
+### The `drawn:` trigger prefix — Endless Agony
+
+Like the curse trigger prefixes (`eot:` / `on_play_other:`), `drawn:` stores a
+card-level trigger that fires when THIS card is drawn — Endless Agony's
+`dmg:4:ranged; drawn: conjure:self:hand` conjures a copy of itself to hand on
+every draw. Conjured copies arrive without being drawn, so the trigger never
+cascades. Action has no draws for its rotation, so the trigger is inert there.
 
 ### X-cost cards (Whirlwind / Skewer)
 
@@ -204,6 +221,8 @@ Counters available today (maintained by `GameState.incremental_*`, bumped by
 | `attacks_this_turn` | Attack cards played in the current turn (deckbuilder/strategy) or turn-tick window (action). |
 | `attacks_total` | Attacks played this run. |
 | `turns` | Turn-tick pulses this combat. |
+| `hp_losses` | Times the player lost HP this combat — each HP-loss instance (enemy hit, DoT tick, self-damage card), whatever the size. Blood for Blood's `cost_reduce` counter. |
+| `discards_this_turn` | Cards discarded by effects in the current turn window (the end-of-turn hand sweep doesn't count). Eviscerate's `cost_reduce` counter. |
 
 `attacks_this_turn` is bumped on each attack's `card_played`, which fires
 **before** the played card's own effects. A scaling attack does **not** count

@@ -121,6 +121,7 @@ func _register_defaults() -> void:
 	register("keep_block", _h_keep_block)
 	register("retain", _h_retain)
 	register("chance", _h_chance)
+	register("if_target_status", _h_if_target_status)
 	register("add_max_hp", _h_add_max_hp)
 	register("gain_hp", _h_gain_hp)
 	register("gain_max_hp", _h_gain_max_hp)
@@ -166,6 +167,20 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 		var tgt = ctx.get("target")
 		if tgt == null or not tgt.has_method("get_status") or tgt.get_status(StringName(gate)) <= 0:
 			return
+	# Hand gate (Clash: if_hand "all_attacks"): the hit whiffs unless every
+	# OTHER card in hand is an Attack — statuses and curses spoil it too. The
+	# played card is still mid-resolve and in hand, so exclude it. Scenes
+	# without a hand (action) never route dmg through here and always pass.
+	if String(effect.get("if_hand", "")) == "all_attacks":
+		var sc: Variant = ctx.get("scene")
+		if sc != null and ("hand" in sc):
+			for hc in sc.hand:
+				if hc == ctx.get("card"):
+					continue
+				if hc == null or not hc.has_method("is_attack") or not hc.is_attack():
+					GameLog.add("Non-Attack cards in hand — it does nothing!",
+						Color(0.85, 0.85, 0.55))
+					return
 	# `hits` lets a single dmg effect resolve N times (Twin Strike 5x2).
 	# Action mode handles its own pacing via _resolve_card_effects and
 	# never reaches this path for multi-hit, so the loop here is purely
@@ -179,6 +194,13 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	# X = 0 (played on an empty pool) legitimately swings zero times.
 	if String(effect.get("hits_from", "")) == "energy":
 		hits = maxi(0, int(ctx.get("x_value", 0)))
+	# Fiend Fire (hits_from: "exhausted"): one hit per card the preceding
+	# exhaust:all sent away this play — the exhaust mirror of conjure's
+	# count_from: "discarded". Zero exhausted legitimately swings zero times.
+	if String(effect.get("hits_from", "")) == "exhausted":
+		var ex_scene: Variant = ctx.get("scene")
+		hits = int(ex_scene.last_exhaust_count) \
+			if ex_scene != null and ("last_exhaust_count" in ex_scene) else 0
 	var indiscriminate: bool = bool(effect.get("indiscriminate", false))
 	# `target: "self"` routes the hit back onto the source (curse cards: Decay
 	# deals to the player), mirroring how status/block/heal resolve "self".
@@ -598,7 +620,16 @@ func _h_exhaust(effect: Dictionary, ctx: Dictionary) -> void:
 	# Deckbuilder-only: pick N cards from hand to send to exhaust.
 	# `random: true` skips the picker. Other modes silently no-op.
 	var scene: Variant = ctx.get("scene")
-	if scene == null or not scene.has_method("exhaust_cards"):
+	if scene == null:
+		return
+	# `all: true` (Fiend Fire) exhausts the whole hand minus the played card —
+	# nothing to pick, so no picker. The scene records how many left as
+	# `last_exhaust_count` for a following dmg hits_from: "exhausted".
+	if bool(effect.get("all", false)):
+		if scene.has_method("exhaust_hand"):
+			scene.exhaust_hand(ctx.get("card"))
+		return
+	if not scene.has_method("exhaust_cards"):
 		return
 	scene.exhaust_cards(int(effect.get("value", 1)), ctx.get("card"), bool(effect.get("random", false)))
 
@@ -775,6 +806,25 @@ func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 	if inner.is_empty():
 		return
 	if not Stats.roll_chance_with_luck(_rng, percent):
+		return
+	apply(inner, ctx)
+
+# Conditional wrapper gated on the PICKED enemy target's status (Dropkick:
+# "If the target has Vulnerable, Gain 1 Energy and Draw 1 Card"). A wrapper —
+# not an if_target_status kv on the inner verb — because the inner verbs are
+# scene effects (gain_energy / draw) that the card-effect loop would otherwise
+# route to the player, losing the enemy from ctx. The wrapper itself defaults
+# to target "enemy", so ctx.target is the picked enemy here; the inner effect
+# inherits the ctx and its handler acts on the scene/player as usual.
+#   {type: "if_target_status", status: "vulnerable",
+#    effect: {type: "gain_energy", value: 1}}
+func _h_if_target_status(effect: Dictionary, ctx: Dictionary) -> void:
+	var status := StringName(String(effect.get("status", "")))
+	var inner: Dictionary = effect.get("effect", {})
+	if status == &"" or inner.is_empty():
+		return
+	var tgt = ctx.get("target")
+	if tgt == null or not tgt.has_method("get_status") or tgt.get_status(status) <= 0:
 		return
 	apply(inner, ctx)
 

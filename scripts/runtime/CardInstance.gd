@@ -73,6 +73,11 @@ func get_cost() -> int:
 	var base: int = data.get_effective_cost(upgraded)
 	if base < 0:
 		return base
+	# Dynamic discount (Blood for Blood / Eviscerate): 1 less per point of the
+	# named live counter. Read here — not banked into combat_cost_delta — so the
+	# shown and paid cost both track the fight moment to moment.
+	if data.cost_reduce_from != &"":
+		base = maxi(0, base - GameState.incremental_value(String(data.cost_reduce_from)))
 	return maxi(0, base + combat_cost_delta)
 
 # --- Vorpal -----------------------------------------------------------------

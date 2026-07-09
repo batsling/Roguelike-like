@@ -101,6 +101,42 @@ def main():
     assert nd == {"type": "status", "status": "no_draw", "stacks": 1,
                   "target": "self"}, nd
 
+    # --- The Burn / Blood for Blood / … port batch ---------------------------
+
+    # dmg ... if_hand=all_attacks (Clash) gates the hit on an all-Attack hand.
+    cl = one("dmg:14:melee:if_hand=all_attacks")
+    assert cl == {"type": "dmg", "value": 14, "target": "enemy",
+                  "damage_type": "melee", "if_hand": "all_attacks"}, cl
+
+    # if_target:STATUS:<verb> (Dropkick) wraps a scene effect behind a gate on
+    # the picked enemy's status — target "enemy" is explicit so strategy
+    # doesn't default the wrapper to self.
+    dk = one("if_target:vulnerable:gain_energy:1")
+    assert dk == {"type": "if_target_status", "status": "vulnerable",
+                  "target": "enemy",
+                  "effect": {"type": "gain_energy", "value": 1}}, dk
+
+    # exhaust:all + dmg hits=exhausted (Fiend Fire) mirror discard:all +
+    # count=discarded.
+    ea = one("exhaust:all")
+    assert ea == {"type": "exhaust", "all": True}, ea
+    ff = one("dmg:7:ranged:hits=exhausted")
+    assert ff == {"type": "dmg", "value": 7, "target": "enemy",
+                  "damage_type": "ranged", "hits_from": "exhausted"}, ff
+
+    # drawn: <clause> (Endless Agony) is a card-level trigger like eot:.
+    on_play_d, trig_d, _dd = gen.parse_effects(
+        "dmg:4:ranged; drawn: conjure:self:hand")
+    assert len(on_play_d) == 1 and on_play_d[0]["type"] == "dmg", on_play_d
+    assert trig_d == [{"on": "drawn", "effects": [
+        {"type": "conjure", "card_id": "self", "destination": "hand",
+         "count": 1}]}], trig_d
+
+    # cost_reduce:per=COUNTER (Blood for Blood / Eviscerate) stays in the
+    # effect list at parse time; card_tres pops it into cost_reduce_from.
+    cr = one("cost_reduce:per=hp_losses")
+    assert cr == {"type": "cost_reduce", "from": "hp_losses"}, cr
+
     # The boomerang archetype parses via the Attack column.
     shape, params, _rc = gen.parse_attack("Boomerang")
     assert shape == "boomerang" and params == {}, (shape, params)

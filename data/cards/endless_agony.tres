@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_endless_agony"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/EndlessAgony.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"endless_agony"
+display_name = "Endless Agony"
+type = 0
+rarity = 2
+cost = 0
+description = "Whenever you draw this card, Conjure 1 copy of this card to Hand. Deal 4 Dmg Ranged. Exhaust."
+effects = [{"type": "dmg", "value": 4, "target": "enemy", "damage_type": "ranged"}]
+triggers = [{"on": "drawn", "effects": [{"type": "conjure", "card_id": "self", "destination": "hand", "count": 1}]}]
+tags = PackedStringArray("silent", "offense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Whenever you draw this card, Conjure 1 copy of this card to Hand. Deal 6 Dmg Ranged. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 6, "target": "enemy", "damage_type": "ranged"}]
+image = ExtResource("2_img")
+exhaust = true
+attack_shape = &"smash"
+attack_params = {"size": "small"}

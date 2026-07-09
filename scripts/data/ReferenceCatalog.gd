@@ -39,6 +39,7 @@ const STATUSES: Array = [
 	{ "name": "Next Turn Draw", "description": "Draw X additional Cards at the start of your next turn, where X is the stack", "type": "Buff", "stackable": true, "decay": "Lose all when triggered", "who": "Player", "preference": "Positive", "rarity": "Uncommon", "icon": "NextTurnDraw" },
 	{ "name": "No Draw", "description": "You cannot Draw Cards this turn", "type": "Debuff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "Player", "preference": "Negative", "rarity": "N/A", "icon": "NoDraw" },
 	{ "name": "Intangible", "description": "Reduce each instance of Dmg and Health loss to 1", "type": "Buff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "All", "preference": "Positive", "rarity": "Rare", "icon": "Intangible" },
+	{ "name": "Choked", "description": "Whenever you play a Card, this target loses X Health where X is the stack. All Choked is lost at the end of your turn.", "type": "Debuff", "stackable": true, "decay": "All lost at end of your turn", "who": "Enemy", "preference": "Negative", "rarity": "N/A", "icon": "Choked" },
 ]
 
 const ADDONS: Array = [

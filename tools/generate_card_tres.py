@@ -28,8 +28,11 @@ dmg (V or VxN, +if_status/infuse/power_multiplier), inflict, gain:block,
 gain:<status>, draw/discard/gain_energy/upgrade_hand(:all), conjure (+count),
 conjure_random (deck-pool random mint, `free` = costs 0 this turn),
 recall, boost_cards, gain_loot, chance:<pct>:<effect>, on_card_played:<effect>,
-exhaust_self, lose_hp. The "↑ Description/Effects/Cost" columns drive the
-upgrade form (N/A = no upgrade).
+exhaust_self, lose_hp, if_target:<status>:<effect> (Dropkick), exhaust:all +
+dmg hits=exhausted (Fiend Fire), cost_reduce:per=<counter> (Blood for Blood /
+Eviscerate — card-level, lands in CardData.cost_reduce_from), and the `drawn:`
+trigger prefix (Endless Agony). The "↑ Description/Effects/Cost" columns drive
+the upgrade form (N/A = no upgrade).
 """
 
 import argparse
@@ -200,6 +203,16 @@ def _effect_from_tokens(tokens):
             eff["hits_from"] = "energy"
         elif hits:
             eff["hits"] = hits
+        # hits=exhausted (Fiend Fire): the hit count is how many cards the
+        # preceding exhaust:all sent away, read off the scene at play time
+        # (last_exhaust_count) — the exhaust mirror of conjure count=discarded.
+        if kv.get("hits", "").strip().lower() == "exhausted":
+            eff["hits_from"] = "exhausted"
+        # if_hand=all_attacks (Clash): the dmg clause whiffs unless every card
+        # left in hand (the played card excluded) is an Attack. Modes without a
+        # hand (action) always pass the gate.
+        if "if_hand" in kv:
+            eff["if_hand"] = kv["if_hand"].strip().lower()
         # key=value modifiers on a dmg clause.
         # `per=COUNTER` (Finisher) scales the hit by a live counter: the flat
         # value becomes the per-unit amount (value_mult) and the counter names
@@ -330,6 +343,11 @@ def _effect_from_tokens(tokens):
         # Mirrors `discard`; deckbuilder opens the picker unless `random` is set,
         # action/strategy no-op (no piles). Distinct from the Exhaust keyword,
         # which exhausts the played card itself.
+        # exhaust:all (Fiend Fire) exhausts the whole hand minus the played
+        # card — no picker — and records the count for a following dmg
+        # hits=exhausted, mirroring discard:all + count=discarded.
+        if pos and pos[0].lower() == "all":
+            return {"type": "exhaust", "all": True}
         value = int(pos[0]) if pos and pos[0].isdigit() else 1
         eff = {"type": "exhaust", "value": value}
         if "random" in [p.lower() for p in pos[1:]]:
@@ -373,6 +391,30 @@ def _effect_from_tokens(tokens):
         if isinstance(inner, dict):
             eff["effect"] = inner
         return eff
+
+    if verb == "if_target":
+        # if_target:<status>:<clause> (Dropkick): resolve the wrapped effect
+        # only when the PICKED enemy target carries the status. A wrapper (not
+        # a kv on the inner verb) because the inner verbs are scene effects
+        # (gain_energy / draw) that resolve against the player — the wrapper
+        # keeps the enemy target in ctx for the gate check.
+        status = pos[0].lower() if pos else ""
+        inner = _effect_from_tokens(args[1:]) if len(args) > 1 else None
+        # target "enemy" is explicit: deckbuilder would default a non-scene
+        # effect to the enemy anyway, but strategy defaults unknown types to
+        # self — the stamp keeps the gate on the picked enemy in both.
+        eff = {"type": "if_target_status", "status": status, "target": "enemy"}
+        if isinstance(inner, dict):
+            eff["effect"] = inner
+        return eff
+
+    if verb == "cost_reduce":
+        # cost_reduce:per=<counter> (Blood for Blood / Eviscerate): the card
+        # costs 1 less per point of the named GameState incremental counter
+        # (hp_losses / discards_this_turn), floored at 0 and re-read live so
+        # the shown cost tracks the fight. Card-level, not an on-play effect —
+        # card_tres pops it out of the effect list into cost_reduce_from.
+        return {"type": "cost_reduce", "from": kv.get("per", "")}
 
     m = re.match(r"^on_([a-z_]+)$", verb)
     if m and verb not in ("on_action", "on_play_other"):
@@ -451,10 +493,11 @@ def parse_effects(raw):
         if not clause:
             continue
         trig = None
-        # Triggers are authored in DECKBUILDER vocabulary (eot / on_play_other).
-        # The action/strategy translators remap them at runtime — the .tres keeps
-        # the deckbuilder token so the sheet stays the single source of truth.
-        m = re.match(r"^(eot|on_play_other|lifecycle)\s*:\s*(.+)$", clause)
+        # Triggers are authored in DECKBUILDER vocabulary (eot / on_play_other /
+        # drawn). The action/strategy translators remap them at runtime — the
+        # .tres keeps the deckbuilder token so the sheet stays the single source
+        # of truth. `drawn` (Endless Agony) fires when THIS card is drawn.
+        m = re.match(r"^(eot|on_play_other|lifecycle|drawn)\s*:\s*(.+)$", clause)
         if m:
             trig, clause = m.group(1), m.group(2).strip()
         eff = _effect_from_tokens([t.strip() for t in clause.split(":") if t.strip()])
@@ -472,7 +515,7 @@ def parse_effects(raw):
                         e[eff[1]] = eff[2]
                         break
             continue
-        if trig in ("eot", "on_play_other"):
+        if trig in ("eot", "on_play_other", "drawn"):
             triggers.append({"on": trig, "effects": [eff]})
         else:
             on_play.append(eff)
@@ -622,6 +665,17 @@ def card_tres(row) -> tuple:
                 if isinstance(e, dict) and e.get("type") == "dmg":
                     e["element"] = element
 
+    # cost_reduce:per=<counter> is card-level, not an on-play effect: pop it out
+    # of whichever effect list carried it into CardData.cost_reduce_from (the
+    # runtime cost paths read the counter live). Base and upgrade forms share
+    # the one field — authoring different counters per form isn't supported.
+    cost_reduce_from = ""
+    for bucket in (on_play, up_on_play):
+        for e in list(bucket):
+            if isinstance(e, dict) and e.get("type") == "cost_reduce":
+                cost_reduce_from = cost_reduce_from or str(e.get("from", ""))
+                bucket.remove(e)
+
     lines = []
     load_steps = 3 if img_res else 2
     lines.append(
@@ -646,6 +700,8 @@ def card_tres(row) -> tuple:
         lines.append("triggers = %s" % json.dumps(triggers))
     if destroy_after >= 0:
         lines.append("destroy_after_games = %d" % destroy_after)
+    if cost_reduce_from:
+        lines.append('cost_reduce_from = &"%s"' % gd_str(cost_reduce_from))
     lines.append("tags = %s" % packed_string_array(tags))
     if source:
         lines.append('source_game = "%s"' % gd_str(source))

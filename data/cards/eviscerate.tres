@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_eviscerate"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Eviscerate.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"eviscerate"
+display_name = "Eviscerate"
+type = 0
+rarity = 2
+cost = 3
+description = "Costs 1 less Energy for each Card you Discarded this turn. Deal 7x3 Dmg Melee."
+effects = [{"type": "dmg", "value": 7, "target": "enemy", "damage_type": "melee", "hits": 3}]
+cost_reduce_from = &"discards_this_turn"
+tags = PackedStringArray("silent", "offense", "discard")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Costs 1 less Energy for each Card you Discarded this turn. Deal 9x3 Dmg Melee."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 9, "target": "enemy", "damage_type": "melee", "hits": 3}]
+image = ExtResource("2_img")
+attack_shape = &"poke"
+attack_params = {"size": "small"}

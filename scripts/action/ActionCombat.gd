@@ -1022,6 +1022,10 @@ func _tick_actor_turn(actor: CombatActor, was_hit: bool) -> void:
 	if not actor.is_alive():
 		return
 	Stats.action_bleed_step(actor, was_hit)
+	# Choked lasts one turn window in action: it bites per card use in
+	# between, then wipes here (the action mirror of "all Choked is lost at
+	# the end of your turn").
+	Stats.clear_status_stacks(actor, &"choked")
 	Stats.decay_actor_statuses(actor, false)
 
 func _process_player_input(delta: float) -> void:
@@ -2211,7 +2215,13 @@ func _action_card_cost(card: CardData) -> int:
 		return 0
 	if _confused_costs.has(card):
 		return maxi(0, int(_confused_costs[card]))
-	return maxi(0, card.cost - int(_cost_discounts.get(card, 0)))
+	var cost: int = card.cost - int(_cost_discounts.get(card, 0))
+	# Dynamic discount (Blood for Blood / Eviscerate): 1 less per point of the
+	# named live counter. Cost IS cooldown here, so a slot re-armed after the
+	# player has bled shortens its next cycle.
+	if card.cost_reduce_from != &"":
+		cost -= GameState.incremental_value(String(card.cost_reduce_from))
+	return maxi(0, cost)
 
 func _cooldown_for(card: CardData) -> float:
 	if card == null:
@@ -2782,7 +2792,9 @@ func _enemy_effects(card: CardData) -> Array:
 	var out: Array = []
 	for raw in _effective_effects(card):
 		var t: String = String(raw.get("type", ""))
-		if t != "dmg" and t != "status":
+		# if_target_status (Dropkick) rides along so the delivery can gate its
+		# payoff on the actually-hit enemies' statuses.
+		if t != "dmg" and t != "status" and t != "if_target_status":
 			continue
 		var tgt: String = String(raw.get("target", "enemy"))
 		if tgt == "self" or tgt == "player":
@@ -2850,6 +2862,26 @@ func _apply_enemy_effects(card: CardData, effects: Array, hit_list: Array) -> vo
 					continue
 				for inst in hit_list:
 					Stats.apply_status_to(inst.actor, status, stacks, player_actor)
+			"if_target_status":
+				# Dropkick: the payoff fires ONCE when any hit enemy carries the
+				# status. The inner verbs are the scene translations — energy is
+				# a Haste window, draw opens a temp auto-slot.
+				var gate_status: StringName = StringName(String(effect.get("status", "")))
+				var inner: Dictionary = effect.get("effect", {})
+				if gate_status == &"" or inner.is_empty():
+					continue
+				var gate_hit := false
+				for inst in hit_list:
+					if inst.actor.get_status(gate_status) > 0:
+						gate_hit = true
+						break
+				if not gate_hit:
+					continue
+				match String(inner.get("type", "")):
+					"gain_energy":
+						gain_energy(int(inner.get("value", 1)))
+					"draw":
+						draw_cards(int(inner.get("value", 1)))
 
 func _deliver_attack(card: CardData, aim_dir: Vector2, is_auto: bool) -> void:
 	if aim_dir == Vector2.ZERO:
@@ -4066,6 +4098,11 @@ func _drain_block_pool(amount: float) -> void:
 # for if_turn gating (Horn Cleat: +Block on the 2nd combat room).
 func _fire_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}, turn_override: int = -1) -> void:
 	var turn: int = turn_override if turn_override >= 0 else _combat_room_index
+	# Choked bites on every card USE (click or auto) — action's translation of
+	# "whenever you play a card" — before the card's own effects land, so the
+	# use that inflicts Choked never procs itself. Wiped at each turn tick.
+	if trigger_name == "card_played":
+		Stats.choked_on_card_played(_living_enemy_actors(), self)
 	ItemTriggers.fire(trigger_name, self, player_actor, _living_enemy_actors(),
 		ctx_extras, turn)
 	_refresh_hud()
