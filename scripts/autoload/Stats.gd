@@ -1361,8 +1361,8 @@ func if_target_gate_live(effects: Array, enemies: Array) -> bool:
 #     dmg-typed effect (the same classification the intent badge colour uses).
 #   - Anything else (the player, statusless stubs): false.
 # Action mode never routes through here — its enemies act in real time, so
-# ActionCombat._enemy_intends_attack answers per-inst (winding up, or an
-# attack off cooldown) instead.
+# ActionCombat._enemy_intends_attack answers per-inst (winding up a shot or
+# mid-attack-animation) instead.
 func actor_intends_attack(target) -> bool:
 	if target == null:
 		return false

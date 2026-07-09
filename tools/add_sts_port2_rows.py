@@ -39,7 +39,7 @@ CARD_ROWS = {
         "dmg:4:ranged:hits=skills_in_hand",
         "Deal 6 Dmg Ranged for each Skill in your Hand.",
         "dmg:6:ranged:hits=skills_in_hand",
-        1, "Poke, Large", "Flechettes", "Slay the Spire", "N/A", "N/A",
+        1, "Projectile, Medium", "Flechettes", "Slay the Spire", "N/A", "N/A",
         "silent, offense, scaling",
     ],
     "Go for the Eyes": [

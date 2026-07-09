@@ -268,7 +268,7 @@ def _effect_from_tokens(tokens):
             eff["hits"] = int(float(kv["times"]))
         # if_intent=attack (Go for the Eyes): the inflict lands only when the
         # target is telegraphing an attack (deckbuilder planned_move, strategy
-        # EnemyAI next_intent; action: winding up / an attack off cooldown).
+        # EnemyAI next_intent; action: winding up a shot / mid-attack).
         if "if_intent" in kv:
             eff["if_target_intent"] = kv["if_intent"].strip().lower()
         return eff

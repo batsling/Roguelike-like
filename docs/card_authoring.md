@@ -206,11 +206,12 @@ status effect and answered per mode:
   `Stats.actor_intends_attack`.
 - **Strategy** — the unit's telegraphed `EnemyAI.next_intent` carries a
   dmg-typed effect (the classification behind the telegraph badge colour).
-- **Action** — no telegraphed turn plan exists in real time, so an enemy
-  "intends" when it's visibly winding up a shot OR one of its attacks is off
-  cooldown (it will strike the moment it's in position) —
-  `ActionCombat._enemy_intends_attack`. Contact melee enemies chase with a
-  ready attack most of the time, so the gate is generous there by design.
+- **Action** — the standard is the telegraphing shooters (the Isaac /
+  Brotato ranged enemies): an enemy "intends" while it is PREPARING an
+  attack — the pre-fire wind-up telegraph (`winding`) — or while it is IN an
+  attack — the attack animation window every strike opens (contact hit,
+  random spew, wind-up start) — `ActionCombat._enemy_intends_attack`. An
+  enemy that is merely chasing with an attack ready does NOT count.
 
 Only `attack` is recognised today; a future `if_intent=buff` etc. just needs
 the parser kv and a match arm in the same predicate.
@@ -236,7 +237,7 @@ cascades. Action has no draws for its rotation, so the trigger is inert there.
 
 | Card | Effects DSL | Notes |
 |---|---|---|
-| Flechettes | `dmg:4:ranged:hits=skills_in_hand` | `Uncommon Attack` cost 1, `Poke, Large`. Upgrade: 6 per hit. |
+| Flechettes | `dmg:4:ranged:hits=skills_in_hand` | `Uncommon Attack` cost 1, `Projectile, Medium`. Upgrade: 6 per hit. |
 | Go for the Eyes | `dmg:3:melee; inflict:weak:1:if_intent=attack` | `Common Attack` cost 0, `Swing, Small`. Upgrade: 4 Dmg / 2 Weak. |
 | Grand Finale | `dmg:50:ranged:cleave:if_draw=empty` | `Rare Attack` cost 0, `Nova, Large`. Upgrade: 60. |
 | Headbutt | `dmg:9:melee; topdeck:1:from=discard` | `Common Attack` cost 1, `Poke, Small`. Upgrade: 12. |

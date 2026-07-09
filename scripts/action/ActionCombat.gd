@@ -2895,18 +2895,16 @@ func _action_x_value() -> int:
 	return x
 
 # Action's reading of "the target intends to Attack" (Go for the Eyes'
-# if_target_intent gate). There's no telegraphed turn plan in real time, so an
-# enemy "intends" when it's visibly winding up a shot, or when one of its
-# attacks is off cooldown (it will strike the moment it's in position).
+# if_target_intent gate). The standard is the telegraphing shooters (the
+# Isaac / Brotato ranged enemies): an enemy "intends" while it is PREPARING
+# an attack — the pre-fire wind-up telegraph (`winding`) — or while it is IN
+# an attack — the attack animation window `_enemy_trigger_attack` opens on
+# every strike (contact hit, random spew, or wind-up start). An enemy that is
+# merely chasing with an attack ready does NOT count.
 func _enemy_intends_attack(inst: Dictionary) -> bool:
 	if bool(inst.get("winding", false)):
 		return true
-	for cd in inst.get("atk_cd", []):
-		if float(cd) <= 0.0:
-			return true
-	# Attack cooldowns are lazily seeded (at 0 = ready) on the first
-	# _enemy_update_attacks tick, so an un-ticked enemy counts as ready.
-	return not inst.has("atk_cd")
+	return float(inst.get("attack_t", 0.0)) > 0.0
 
 # Apply each enemy effect ONCE to every actor in hit_list (volleys handle
 # repetition). Reuses the shared damage/status math so Power/Weak/Vulnerable,

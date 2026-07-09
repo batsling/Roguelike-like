@@ -84,8 +84,8 @@ func test_flechettes_tres_round_trips() -> void:
 	assert_eq(int(dmg.get("value", 0)), 4)
 	assert_eq(String(dmg.get("damage_type", "")), "ranged")
 	assert_eq(int(card.upgraded_effects[0].get("value", 0)), 6)
-	assert_eq(String(card.attack_shape), "poke")
-	assert_eq(String(card.attack_params.get("size", "")), "large")
+	assert_eq(String(card.attack_shape), "projectile")
+	assert_eq(String(card.attack_params.get("size", "")), "medium")
 
 # --- Go for the Eyes (if_target_intent) ---------------------------------------
 

@@ -76,19 +76,22 @@ func test_flechettes_volleys_once_per_armed_skill() -> void:
 	_arm_auto(&"acrobatics", 30.0)
 	arena.left_card = Data.get_card(&"backflip")
 	arena.player_facing = Vector2.RIGHT
-	var foe: Dictionary = _add_enemy(Vector2(60, 0))
+	var foe: Dictionary = _add_enemy(Vector2(200, 0))
 	arena._resolve_card_effects(Data.get_card(&"flechettes"))
 	assert_eq(_pending_volleys(), 1, "2 armed Skills = 2 volleys: 1 fired + 1 queued")
+	assert_eq(arena.projectiles.size(), 1, "the first dagger is in flight")
 	_tick_pending()
+	# Let the bolts travel (Projectile, Medium ≈ 620 px at 620 px/s).
+	for _i in range(120):
+		arena._process_projectiles(1.0 / 60.0)
 	assert_lt(foe.actor.hp, 100, "the daggers connect")
 
 func test_flechettes_fizzles_with_no_armed_skills() -> void:
 	_arm_auto(&"choke")
 	arena.player_facing = Vector2.RIGHT
-	var foe: Dictionary = _add_enemy(Vector2(60, 0))
+	_add_enemy(Vector2(200, 0))
 	arena._resolve_card_effects(Data.get_card(&"flechettes"))
-	_tick_pending()
-	assert_eq(foe.actor.hp, 100, "no Skills on slots -> the cast fizzles")
+	assert_eq(arena.projectiles.size(), 0, "no Skills on slots -> no dagger flies")
 	assert_eq(arena._pending_hits.size(), 0)
 
 # --- Grand Finale (auto draw pile gate) -----------------------------------------
@@ -109,32 +112,46 @@ func test_grand_finale_bursts_on_an_empty_auto_draw_pile() -> void:
 # --- Go for the Eyes (enemy intent gate) ----------------------------------------
 
 func test_enemy_intends_attack_predicate() -> void:
-	var inst := {"winding": true, "atk_cd": [5.0]}
-	assert_true(arena._enemy_intends_attack(inst), "winding up -> intends")
-	inst = {"winding": false, "atk_cd": [5.0, 3.0]}
-	assert_false(arena._enemy_intends_attack(inst), "everything cooling -> no intent")
-	inst = {"winding": false, "atk_cd": [5.0, 0.0]}
-	assert_true(arena._enemy_intends_attack(inst), "an attack off cooldown -> intends")
-	inst = {}
+	var inst := {"winding": true}
 	assert_true(arena._enemy_intends_attack(inst),
-		"un-ticked enemies count as ready (cooldowns seed at 0)")
+		"winding up a shot (the Isaac/Brotato telegraph) -> preparing an attack")
+	inst = {"winding": false, "attack_t": 0.3}
+	assert_true(arena._enemy_intends_attack(inst),
+		"attack animation still playing -> IN an attack")
+	inst = {"winding": false, "attack_t": 0.0, "atk_cd": [0.0]}
+	assert_false(arena._enemy_intends_attack(inst),
+		"an attack merely off cooldown is not a telegraph -> no intent")
+	inst = {}
+	assert_false(arena._enemy_intends_attack(inst),
+		"an idle enemy with no wind-up and no attack anim -> no intent")
 
-func test_go_for_the_eyes_weakens_an_attack_ready_enemy() -> void:
+func test_go_for_the_eyes_weakens_a_telegraphing_enemy() -> void:
 	arena.player_facing = Vector2.RIGHT
 	var foe: Dictionary = _add_enemy(Vector2(60, 0))
 	foe["winding"] = true
 	arena._resolve_card_effects(Data.get_card(&"go_for_the_eyes"))
 	_tick_pending()
-	assert_eq(foe.actor.get_status(&"weak"), 1, "winding enemy -> Weak lands")
+	assert_eq(foe.actor.get_status(&"weak"), 1,
+		"enemy preparing a shot (wind-up telegraph) -> Weak lands")
 
-func test_go_for_the_eyes_spares_a_cooling_enemy() -> void:
+func test_go_for_the_eyes_weakens_a_mid_attack_enemy() -> void:
+	arena.player_facing = Vector2.RIGHT
+	var foe: Dictionary = _add_enemy(Vector2(60, 0))
+	foe["attack_t"] = 0.4
+	arena._resolve_card_effects(Data.get_card(&"go_for_the_eyes"))
+	_tick_pending()
+	assert_eq(foe.actor.get_status(&"weak"), 1,
+		"enemy IN an attack (anim window) -> Weak lands")
+
+func test_go_for_the_eyes_spares_a_chasing_enemy() -> void:
 	arena.player_facing = Vector2.RIGHT
 	var foe: Dictionary = _add_enemy(Vector2(60, 0))
 	foe["winding"] = false
-	foe["atk_cd"] = [5.0]
+	foe["atk_cd"] = [0.0]
 	arena._resolve_card_effects(Data.get_card(&"go_for_the_eyes"))
 	_tick_pending()
-	assert_eq(foe.actor.get_status(&"weak"), 0, "no attack ready -> no Weak")
+	assert_eq(foe.actor.get_status(&"weak"), 0,
+		"merely chasing with an attack ready -> no Weak")
 	assert_lt(foe.actor.hp, 100, "the swing itself still connects")
 
 # --- Headbutt (topdeck from=discard) --------------------------------------------

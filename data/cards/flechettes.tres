@@ -19,5 +19,5 @@ upgraded_description = "Deal 6 Dmg Ranged for each Skill in your Hand."
 upgraded_cost = -999
 upgraded_effects = [{"type": "dmg", "value": 6, "target": "enemy", "damage_type": "ranged", "hits_from": "skills_in_hand"}]
 image = ExtResource("2_img")
-attack_shape = &"poke"
-attack_params = {"size": "large"}
+attack_shape = &"projectile"
+attack_params = {"size": "medium"}
