@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_blood_for_blood"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/BloodForBlood.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"blood_for_blood"
+display_name = "Blood for Blood"
+type = 0
+rarity = 2
+cost = 4
+description = "Costs 1 less Energy for each time you lost Health this combat. Deal 18 Dmg Melee."
+effects = [{"type": "dmg", "value": 18, "target": "enemy", "damage_type": "melee"}]
+cost_reduce_from = &"hp_losses"
+tags = PackedStringArray("ironclad", "draw")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Costs 1 less Energy for each time you lost Health this combat. Deal 22 Dmg Melee."
+upgraded_cost = 3
+upgraded_effects = [{"type": "dmg", "value": 22, "target": "enemy", "damage_type": "melee"}]
+image = ExtResource("2_img")
+attack_shape = &"poke"
+attack_params = {"size": "small"}

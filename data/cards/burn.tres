@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_burn"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Burn.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"burn"
+display_name = "Burn"
+type = 4
+rarity = 0
+cost = 0
+description = "Unplayable. At the end of your turn, take 2 Dmg."
+effects = []
+triggers = [{"on": "eot", "effects": [{"type": "dmg", "value": 2, "target": "self"}]}]
+tags = PackedStringArray("status")
+source_game = "Slay the Spire"
+can_upgrade = false
+image = ExtResource("2_img")
+unplayable = true

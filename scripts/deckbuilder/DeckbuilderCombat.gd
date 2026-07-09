@@ -83,6 +83,9 @@ var _last_x_value: int = 0
 # Cards the last `discard:all` (Storm of Steel) sent away this play. Read back
 # by conjure `count_from: "discarded"` via the effect ctx scene.
 var last_discard_count: int = 0
+# Cards the last `exhaust:all` (Fiend Fire) sent away this play. Read back by
+# dmg `hits_from: "exhausted"` via the effect ctx scene.
+var last_exhaust_count: int = 0
 var turn: int = 0
 enum Phase { INIT, PLAYER, ENEMY, WON, LOST }
 var phase: Phase = Phase.INIT
@@ -772,6 +775,8 @@ func _init_deck() -> void:
 	power_triggers.clear()
 	GameState.streak_clear()
 	_energy_carryover = 0
+	last_discard_count = 0
+	last_exhaust_count = 0
 	for c in GameState.deck:
 		if c is CardData:
 			draw_pile.append(CardInstance.from_data(c))
@@ -948,9 +953,12 @@ func _finish_end_turn() -> void:
 	_decay_statuses(player)
 	# All ranks of Bleed are lost at end of the player's turn — on the player
 	# and on every enemy (Bleed is a within-your-turn, attack-synergy status).
+	# Choked (Choke) shares the wipe: it only punishes cards played this turn.
 	Stats.clear_bleed(player)
+	Stats.clear_status_stacks(player, &"choked")
 	for _e in enemies:
 		Stats.clear_bleed(_e)
+		Stats.clear_status_stacks(_e, &"choked")
 	# Curse cards' end-of-turn effects land here — AFTER decay — so a status they
 	# grant the player (Doubt -> Weak, Punctured Eye -> Blind) persists to the next
 	# turn. HP-loss curses (Decay/Regret) resolve here too; a lethal one is caught
@@ -1504,6 +1512,11 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	_fire_power_triggers("card_played", {"card": card})
 	_fire_item_triggers("card_played", {"card": card, "target": target_enemy})
 
+	# Choked bites on the card PLAY, before its effects — so the play that
+	# inflicts Choked never procs itself, and every later play (any card
+	# type) costs the choked enemy its stacks.
+	Stats.choked_on_card_played(enemies, self)
+
 	_apply_card_effects(card, target_enemy)
 
 	# The card has fully resolved its primary play. card_resolved is a
@@ -2035,8 +2048,27 @@ func draw_cards(n: int) -> void:
 		if c.data != null and (c.data.type == CardData.CardType.STATUS
 				or c.data.type == CardData.CardType.CURSE):
 			_fire_power_triggers("status_or_curse_drawn", {"card": c})
+		# Card-level `drawn` triggers (Endless Agony: conjure a copy of itself
+		# to hand). The conjured copy arrives without being drawn, so it can't
+		# cascade — only real draws re-fire this.
+		_fire_drawn_triggers(c)
 	_check_combat_end()
 	_refresh_ui()
+
+# Fires a card's own `drawn` triggers the moment it is drawn (Endless Agony).
+# Card-level, like the curse eot/on_play_other triggers — the effects resolve
+# with the drawn card as ctx.card so conjure:self copies IT.
+func _fire_drawn_triggers(c: CardInstance) -> void:
+	if c == null or c.data == null or c.data.triggers.is_empty():
+		return
+	for trig in c.data.triggers:
+		if String(trig.get("on", "")) != "drawn":
+			continue
+		for eff in trig.get("effects", []):
+			if eff is Dictionary:
+				EffectSystem.apply(eff, {
+					"source": player, "target": player, "scene": self, "card": c,
+				})
 
 func discard_card(card: CardInstance, from_play: bool = false) -> void:
 	hand.erase(card)
@@ -2051,6 +2083,10 @@ func discard_card(card: CardInstance, from_play: bool = false) -> void:
 	# here would double it.
 	if not from_play and card != null and card.data != null and card.data.sly:
 		_resolve_sly_on_discard(card)
+	# An effect-driven discard (not the played card routing to the pile) is a
+	# "Card Discarded this turn" for Eviscerate's discount.
+	if not from_play:
+		GameState.incremental_on_discard()
 	discard_pile.append(card)
 	TriggerBus.emit_signal("card_discarded", {"card": card, "scene": self})
 	_fire_power_triggers("card_discarded", {"card": card})
@@ -2359,6 +2395,25 @@ func discard_hand(source_card = null) -> int:
 			last_discard_count, "s" if last_discard_count > 1 else ""],
 			Color(0.9, 0.7, 0.4))
 	return last_discard_count
+
+func exhaust_hand(source_card = null) -> int:
+	# Fiend Fire: exhaust the entire hand (minus the card being played) and
+	# record the count so a following dmg `hits_from: "exhausted"` can land one
+	# hit per card. Returns the number exhausted. exhaust_card fires the
+	# card_exhausted triggers per card, so Feel No Pain / Dark Embrace react to
+	# each one.
+	var doomed: Array = []
+	for c in hand:
+		if c != source_card:
+			doomed.append(c)
+	for c in doomed:
+		exhaust_card(c)
+	last_exhaust_count = doomed.size()
+	if last_exhaust_count > 0:
+		GameLog.add("Exhausted your hand (%d card%s)." % [
+			last_exhaust_count, "s" if last_exhaust_count > 1 else ""],
+			Color(0.7, 0.7, 0.8))
+	return last_exhaust_count
 
 func recall_cards(from_pile: String, to_pile: String, filter: Dictionary) -> void:
 	# Move (not copy) cards matching `filter` from `from_pile` to
@@ -2737,12 +2792,17 @@ func _refresh_ui() -> void:
 		var extra: CardView = _hand_views.pop_back()
 		_hand_area.remove_child(extra)
 		extra.queue_free()
+	var live_enemies: Array = living_enemies()
 	for i in range(hand.size()):
 		var card_inst: CardInstance = hand[i]
 		var view: CardView = _hand_views[i]
 		view.setup(card_inst)
 		view.set_enabled((phase == Phase.PLAYER) and (_card_cost(card_inst) <= energy))
 		view.set_selected(_targeting and _selected_card == card_inst)
+		# Conditional-payoff glow (Dropkick): light the card while some living
+		# enemy satisfies its if_target gate.
+		view.set_condition_active(
+			Stats.if_target_gate_live(card_inst.get_effects(), live_enemies))
 
 
 func _input(event: InputEvent) -> void:

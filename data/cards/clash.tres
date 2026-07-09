@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_clash"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Clash.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"clash"
+display_name = "Clash"
+type = 0
+rarity = 1
+cost = 0
+description = "Deal 14 Dmg Melee. Does nothing if you have any non-Attack Cards in Hand."
+effects = [{"type": "dmg", "value": 14, "target": "enemy", "damage_type": "melee", "if_hand": "all_attacks"}]
+tags = PackedStringArray("ironclad", "offense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 18 Dmg Melee. Does nothing if you have any non-Attack Cards in Hand."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 18, "target": "enemy", "damage_type": "melee", "if_hand": "all_attacks"}]
+image = ExtResource("2_img")
+attack_shape = &"swing"
+attack_params = {"size": "small"}

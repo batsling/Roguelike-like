@@ -100,6 +100,7 @@ const STATUS_ICONS := {
 	&"next_turn_draw": "NextTurnDraw.png",
 	&"no_draw": "NoDraw.png",
 	&"intangible": "Intangible.png",
+	&"choked": "Choked.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -118,7 +119,7 @@ var _resolve_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 # Shared so deckbuilder / action / strategy agree on which statuses scale.
 const PERSISTENCE_DEBUFFS: Array[StringName] = [
 	&"vulnerable", &"weak", &"frail", &"poison", &"burn", &"bleed", &"bruise",
-	&"leeches",
+	&"leeches", &"choked",
 ]
 
 func _ready() -> void:
@@ -1322,11 +1323,52 @@ func deckbuilder_bleed_on_attack(actors: Array, scene) -> void:
 # Strip all Bleed stacks from an actor (deckbuilder end-of-turn: "all ranks of
 # Bleed are lost at end of turn"). No-op when the actor isn't bleeding.
 func clear_bleed(actor) -> void:
+	clear_status_stacks(actor, &"bleed")
+
+# Strip every stack of a named status from an actor (Bleed / Choked wipe at
+# the turn boundary). No-op when the actor doesn't carry it.
+func clear_status_stacks(actor, status: StringName) -> void:
 	if actor == null or not actor.has_method("get_status"):
 		return
-	var bleed: int = actor.get_status(&"bleed")
-	if bleed > 0:
-		actor.add_status(&"bleed", -bleed)
+	var stacks: int = actor.get_status(status)
+	if stacks > 0:
+		actor.add_status(status, -stacks)
+
+# True when one of the card's if_target_status gates (Dropkick: "If the
+# target has Vulnerable…") is currently satisfied by a living enemy. Drives
+# the "the bonus is live" highlight on hand cards / action slots in every
+# mode. `effects` are the card's effective effects; `enemies` the mode's
+# living enemy actors.
+func if_target_gate_live(effects: Array, enemies: Array) -> bool:
+	for e in effects:
+		if not (e is Dictionary) or String(e.get("type", "")) != "if_target_status":
+			continue
+		var status := StringName(String(e.get("status", "")))
+		if status == &"":
+			continue
+		for en in enemies:
+			if en != null and en.has_method("get_status") and en.has_method("is_alive") \
+					and en.is_alive() and en.get_status(status) > 0:
+				return true
+	return false
+
+# Choked (the Choke card's status): whenever the player PLAYS a card, each
+# afflicted actor loses raw HP equal to its stacks — same bite mechanics as
+# Bleed (apply_dot: bypasses block/Weak/Vulnerable, no contact reactions).
+# Called by each scene at its card-play moment, BEFORE the card's own effects
+# resolve, so the play that inflicts Choked never procs itself. All Choked is
+# wiped at the player's turn boundary via clear_status_stacks.
+func choked_on_card_played(actors: Array, scene) -> void:
+	if scene == null or not scene.has_method("apply_dot"):
+		return
+	for a in actors:
+		if a == null or not a.has_method("get_status") or not a.has_method("is_alive"):
+			continue
+		if not a.is_alive():
+			continue
+		var choked: int = a.get_status(&"choked")
+		if choked > 0:
+			scene.apply_dot(a, choked, "choked")
 
 func roll_blind_miss(rng: RandomNumberGenerator, source_is_player: bool) -> bool:
 	# Returns true if the attack misses. Player's luck always biases

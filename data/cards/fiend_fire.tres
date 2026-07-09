@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_fiend_fire"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/FiendFire.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"fiend_fire"
+display_name = "Fiend Fire"
+type = 0
+rarity = 3
+cost = 2
+description = "Exhaust all other Cards in your Hand. Deal 7 Dmg Ranged for each Card Exhausted. Exhaust."
+effects = [{"type": "exhaust", "all": true}, {"type": "dmg", "value": 7, "target": "enemy", "damage_type": "ranged", "hits_from": "exhausted", "element": "fire"}]
+tags = PackedStringArray("ironclad", "offense", "exhaust")
+source_game = "Slay the Spire"
+element = &"fire"
+can_upgrade = true
+upgraded_description = "Exhaust all other Cards in your Hand. Deal 10 Dmg Ranged for each Card Exhausted. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{"type": "exhaust", "all": true}, {"type": "dmg", "value": 10, "target": "enemy", "damage_type": "ranged", "hits_from": "exhausted", "element": "fire"}]
+image = ExtResource("2_img")
+exhaust = true
+attack_shape = &"projectile"
+attack_params = {"size": "medium"}

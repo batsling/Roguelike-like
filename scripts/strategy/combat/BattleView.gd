@@ -93,6 +93,9 @@ var _last_x_value: int = 0
 # Cards the last `discard:all` (Storm of Steel) sent away this play; read back
 # by conjure `count_from: "discarded"` via the effect ctx scene.
 var last_discard_count: int = 0
+# Cards the last `exhaust:all` (Fiend Fire) sent away this play; read back by
+# dmg `hits_from: "exhausted"` via the effect ctx scene.
+var last_exhaust_count: int = 0
 
 # Persistent in-combat power triggers (After Image -> on card played gain Block)
 # and card boosts (Accuracy -> Shivs). Combat-scoped; cleared in _init_deck.
@@ -269,6 +272,8 @@ func _init_deck() -> void:
 	GameState.streak_clear()
 	_energy_carryover = 0
 	energy = 0
+	last_discard_count = 0
+	last_exhaust_count = 0
 	for c in GameState.deck:
 		if c is CardData:
 			draw_pile.append(CardInstance.from_data(c))
@@ -532,6 +537,12 @@ func _make_hand_card_button(card) -> Button:
 	var base: Color = Color(0.16, 0.13, 0.2)
 	if data.type == CardData.CardType.CURSE:
 		base = Color(0.2, 0.12, 0.14)
+	# Conditional-payoff glow (Dropkick): green tile while a living enemy
+	# satisfies the card's if_target gate, so the player sees the bonus is live.
+	elif card != _pending_card \
+			and Stats.if_target_gate_live(card.get_effects(), living_enemies()):
+		base = Color(0.13, 0.24, 0.16)
+		border = Color(0.45, 0.85, 0.55)
 	tile.add_theme_stylebox_override("normal", _panel_stylebox(base, border, 1, 8))
 	tile.add_theme_stylebox_override("hover", _panel_stylebox(base.lightened(0.14), ACCENT, 2, 8))
 	tile.add_theme_stylebox_override("pressed", _panel_stylebox(base.darkened(0.12), ACCENT, 2, 8))
@@ -894,6 +905,11 @@ func _on_unit_turn_ended(unit) -> void:
 		TriggerBus.emit_signal("turn_ended", {"turn": _player_turn_count, "scene": self})
 		_fire_item_triggers("turn_ended")
 		_fire_power_triggers("turn_ended")
+		# All Choked is lost at the end of the PLAYER's turn — it only punishes
+		# cards played within the turn it was inflicted (mirrors the
+		# deckbuilder's wipe alongside Bleed).
+		for cu in _units:
+			Stats.clear_status_stacks(cu, &"choked")
 	# Damage-over-time bite (Bleed, Leeches) BEFORE decay so it uses the current
 	# stack count, then decay grows/ticks it down.
 	if unit != null:
@@ -1371,6 +1387,9 @@ func _resolve_card(card, target, shaped_targets: Array = []) -> void:
 	# played doesn't self-trigger), then item card_played hooks.
 	_fire_power_triggers("card_played", {"card": card})
 	_fire_item_triggers("card_played", {"card": card, "target": target})
+	# Choked bites on the card PLAY, before its effects — the play that
+	# inflicts Choked never procs itself.
+	Stats.choked_on_card_played(living_enemies(), self)
 	# Vorpal rides the physical card instance; recover its roll and pass it down.
 	card.roll_vorpal_if_needed()
 	var vorpal: Dictionary = {}
@@ -1693,8 +1712,27 @@ func draw_cards(n: int) -> void:
 		if c != null and c.data != null and (c.data.type == CardData.CardType.STATUS
 				or c.data.type == CardData.CardType.CURSE):
 			_fire_power_triggers("status_or_curse_drawn", {"card": c})
+		# Card-level `drawn` triggers (Endless Agony: conjure a copy of itself
+		# to hand). Conjured copies arrive without being drawn — no cascade.
+		_fire_drawn_triggers(c)
 	_check_battle_end_after_effect()
 	_refresh_hand()
+
+# Fires a card's own `drawn` triggers the moment it is drawn (Endless Agony).
+# Card-level, like the curse eot/on_play_other triggers — the effects resolve
+# with the drawn card as ctx.card so conjure:self copies IT.
+func _fire_drawn_triggers(c) -> void:
+	if c == null or c.data == null or c.data.triggers.is_empty():
+		return
+	var p = get_player_unit()
+	for trig in c.data.triggers:
+		if String(trig.get("on", "")) != "drawn":
+			continue
+		for eff in trig.get("effects", []):
+			if eff is Dictionary:
+				EffectSystem.apply(eff, {
+					"source": p, "target": p, "scene": self, "card": c,
+				})
 
 # Confused (Snecko): true while the player unit carries the status.
 func _is_confused() -> bool:
@@ -1721,6 +1759,10 @@ func discard_card(card, from_play: bool = false) -> void:
 	# resolved AS a normal play — from_play skips the double-fire).
 	if not from_play and card != null and card.data != null and card.data.sly:
 		_resolve_sly_on_discard(card)
+	# An effect-driven discard (not the played card routing to the pile) is a
+	# "Card Discarded this turn" for Eviscerate's discount.
+	if not from_play:
+		GameState.incremental_on_discard()
 	discard_pile.append(card)
 	TriggerBus.emit_signal("card_discarded", {"card": card, "scene": self})
 	_fire_power_triggers("card_discarded", {"card": card})
@@ -1868,6 +1910,20 @@ func discard_hand(source_card = null) -> int:
 			Color(0.9, 0.7, 0.4))
 	_refresh_hand()
 	return last_discard_count
+
+# Fiend Fire: exhaust the entire hand (minus the played card) and record the
+# count for a following dmg `hits_from: "exhausted"` — one hit per card.
+func exhaust_hand(source_card = null) -> int:
+	var doomed: Array = _hand_pool(source_card)
+	for c in doomed:
+		exhaust_card(c)
+	last_exhaust_count = doomed.size()
+	if last_exhaust_count > 0:
+		GameLog.add("Exhausted your hand (%d card%s)." % [
+			last_exhaust_count, "s" if last_exhaust_count > 1 else ""],
+			Color(0.7, 0.7, 0.8))
+	_refresh_hand()
+	return last_exhaust_count
 
 # One shared picker at a time (same contract as DeckbuilderCombat._open_picker):
 # tear down any live modal so chained picks can't stack.
@@ -2091,6 +2147,10 @@ func _apply_damage(source, target, raw_dmg: int, effect: Dictionary = {}) -> voi
 		return
 	target.hp = maxi(0, target.hp - int(res.hp_loss))
 	_float_number(target, int(res.hp_loss))
+	# Blood for Blood's counter: strategy hits the player UNIT directly (no
+	# change_hp until the battle-end sync), so report each HP loss here.
+	if target.is_player and int(res.hp_loss) > 0:
+		GameState.incremental_on_player_hp_loss()
 	# Gold on hit (King Bomber evolution): a connecting player hit on an enemy
 	# grants random gold.
 	if is_player_attack:
@@ -2129,6 +2189,9 @@ func apply_dot(target, amount: int, _source_name: String) -> void:
 	amount = Stats.intangible_clamp(target, amount)
 	target.hp = maxi(0, target.hp - amount)
 	_float_number(target, amount)
+	# DoT ticks on the player unit count for Blood for Blood too.
+	if target.is_player:
+		GameState.incremental_on_player_hp_loss()
 	if not target.is_alive() and not target.is_player:
 		_fire_item_triggers("enemy_killed")
 		_drop_enemy_loot(target)

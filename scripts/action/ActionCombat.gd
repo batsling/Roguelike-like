@@ -215,6 +215,9 @@ var auto_discard: Array = []                         # Array of CardData (discar
 # Cards the last `discard:all` (Storm of Steel) collapsed this play; read back
 # by conjure `count_from: "discarded"` via the effect ctx scene.
 var last_discard_count: int = 0
+# Cards the last `exhaust:all` (Fiend Fire) removed from the rotation; read
+# back as the volley count by dmg `hits=exhausted`.
+var last_exhaust_count: int = 0
 # Live boomerang blades in flight (Sword Boomerang). Each is a Dictionary —
 # see _deliver_boomerang for the shape. The blade keeps its hitbox for the
 # whole flight, so it can clip enemies it merely passes through.
@@ -1022,6 +1025,10 @@ func _tick_actor_turn(actor: CombatActor, was_hit: bool) -> void:
 	if not actor.is_alive():
 		return
 	Stats.action_bleed_step(actor, was_hit)
+	# Choked lasts one turn window in action: it bites per card use in
+	# between, then wipes here (the action mirror of "all Choked is lost at
+	# the end of your turn").
+	Stats.clear_status_stacks(actor, &"choked")
 	Stats.decay_actor_statuses(actor, false)
 
 func _process_player_input(delta: float) -> void:
@@ -2183,8 +2190,11 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 					_open_retain_slot()
 				# A one-shot conjured card fires once and is gone — don't recycle it
 				# into the discard or count it against the shared use cap.
+				# Erase by reference, not index: the card's own resolution may
+				# have collapsed earlier slots (Storm of Steel's discard_hand,
+				# Fiend Fire's exhaust_hand), shifting this slot's index.
 				if one_shot:
-					auto_slots.remove_at(i)
+					auto_slots.erase(slot)
 					continue
 				_addon_uses[slot.card] = used + 1
 				# Destroy: a card removed permanently from the run deck on use. It
@@ -2211,7 +2221,13 @@ func _action_card_cost(card: CardData) -> int:
 		return 0
 	if _confused_costs.has(card):
 		return maxi(0, int(_confused_costs[card]))
-	return maxi(0, card.cost - int(_cost_discounts.get(card, 0)))
+	var cost: int = card.cost - int(_cost_discounts.get(card, 0))
+	# Dynamic discount (Blood for Blood / Eviscerate): 1 less per point of the
+	# named live counter. Cost IS cooldown here, so a slot re-armed after the
+	# player has bled shortens its next cycle.
+	if card.cost_reduce_from != &"":
+		cost -= GameState.incremental_value(String(card.cost_reduce_from))
+	return maxi(0, cost)
 
 func _cooldown_for(card: CardData) -> float:
 	if card == null:
@@ -2782,7 +2798,9 @@ func _enemy_effects(card: CardData) -> Array:
 	var out: Array = []
 	for raw in _effective_effects(card):
 		var t: String = String(raw.get("type", ""))
-		if t != "dmg" and t != "status":
+		# if_target_status (Dropkick) rides along so the delivery can gate its
+		# payoff on the actually-hit enemies' statuses.
+		if t != "dmg" and t != "status" and t != "if_target_status":
 			continue
 		var tgt: String = String(raw.get("target", "enemy"))
 		if tgt == "self" or tgt == "player":
@@ -2804,6 +2822,29 @@ func _attack_volleys(effects: Array) -> int:
 func _effects_use_x(effects: Array) -> bool:
 	for e in effects:
 		if String(e.get("type", "")) == "dmg" and String(e.get("hits_from", "")) == "energy":
+			return true
+	return false
+
+# True when any dmg effect repeats per exhausted card (Fiend Fire).
+func _effects_use_exhausted(effects: Array) -> bool:
+	for e in effects:
+		if String(e.get("type", "")) == "dmg" and String(e.get("hits_from", "")) == "exhausted":
+			return true
+	return false
+
+# Clash's action-mode "hand": every card currently riding a cooldown slot —
+# the auto slots, the dedicated curse slots, and the two click cards. A
+# non-Attack anywhere in that set spoils the if_hand=all_attacks gate. The
+# firing Clash never trips itself: it's an Attack wherever it sits.
+func _armed_non_attack_present() -> bool:
+	for slot in auto_slots:
+		if slot.card != null and not slot.card.is_attack():
+			return true
+	# Curse slots only ever hold curses — never Attacks.
+	if not _curse_slots.is_empty():
+		return true
+	for c in [left_card, right_card]:
+		if c != null and not c.is_attack():
 			return true
 	return false
 
@@ -2850,6 +2891,26 @@ func _apply_enemy_effects(card: CardData, effects: Array, hit_list: Array) -> vo
 					continue
 				for inst in hit_list:
 					Stats.apply_status_to(inst.actor, status, stacks, player_actor)
+			"if_target_status":
+				# Dropkick: the payoff fires ONCE when any hit enemy carries the
+				# status. The inner verbs are the scene translations — energy is
+				# a Haste window, draw opens a temp auto-slot.
+				var gate_status: StringName = StringName(String(effect.get("status", "")))
+				var inner: Dictionary = effect.get("effect", {})
+				if gate_status == &"" or inner.is_empty():
+					continue
+				var gate_hit := false
+				for inst in hit_list:
+					if inst.actor.get_status(gate_status) > 0:
+						gate_hit = true
+						break
+				if not gate_hit:
+					continue
+				match String(inner.get("type", "")):
+					"gain_energy":
+						gain_energy(int(inner.get("value", 1)))
+					"draw":
+						draw_cards(int(inner.get("value", 1)))
 
 func _deliver_attack(card: CardData, aim_dir: Vector2, is_auto: bool) -> void:
 	if aim_dir == Vector2.ZERO:
@@ -2858,7 +2919,29 @@ func _deliver_attack(card: CardData, aim_dir: Vector2, is_auto: bool) -> void:
 	# Range stat stretches every player attack's reach a little per point.
 	_atk.apply_range_to_spec(spec, Stats.action_range_multiplier())
 	_apply_self_effects(card)
+	# Fiend Fire (exhaust:all): every OTHER cooldown slot's card is exhausted
+	# out of the combat BEFORE the volleys are counted, so hits=exhausted
+	# below reads the fresh tally.
+	for raw in _effective_effects(card):
+		if String(raw.get("type", "")) == "exhaust" and bool(raw.get("all", false)):
+			exhaust_hand(card)
+			break
 	var effects: Array = _enemy_effects(card)
+	# Clash's hand gate, translated to action: the "hand" is every card riding
+	# a cooldown slot, so a non-Attack anywhere in the rotation makes the gated
+	# dmg whiff — the swing still plays, it just deals nothing.
+	if _armed_non_attack_present():
+		var kept: Array = []
+		var whiffed := false
+		for e in effects:
+			if String(e.get("if_hand", "")) == "all_attacks":
+				whiffed = true
+				continue
+			kept.append(e)
+		effects = kept
+		if whiffed:
+			GameLog.add("%s whiffs — a non-Attack card is on cooldown!" % card.display_name,
+				Color(0.85, 0.85, 0.55))
 	var volleys: int = _attack_volleys(effects)
 	# X-cost cards (Whirlwind / Skewer, hits_from: "energy"): energy is Haste
 	# time in action, so X = 1 + the remaining Haste seconds, and casting
@@ -2866,6 +2949,14 @@ func _deliver_attack(card: CardData, aim_dir: Vector2, is_auto: bool) -> void:
 	# Without Haste up the card still swings once.
 	if _effects_use_x(effects):
 		volleys = _action_x_value()
+	# Fiend Fire (hits=exhausted): one volley per card the exhaust:all above
+	# cleared. Nothing exhausted = the cast fizzles (self effects still apply).
+	if _effects_use_exhausted(effects):
+		volleys = last_exhaust_count
+		if volleys <= 0:
+			GameLog.add("%s fizzles — no other cards to exhaust." % card.display_name,
+				Color(0.85, 0.85, 0.55))
+			return
 	# Hop-delivered families consume the dmg repeat as their hop count
 	# (_deliver_bounce / _deliver_boomerang), so they never volley on top of it.
 	if String(spec.get("family", "")) in ["bounce", "boomerang"]:
@@ -3524,6 +3615,10 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 			auto_discard.append(slot.card)
 		auto_slots.remove_at(idx)
 		removed += 1
+	# Every translated discard — a collapsed slot or the base-cooldown penalty —
+	# counts as "a Card Discarded this turn" for Eviscerate's discount.
+	for _d in range(removed + penalized):
+		GameState.incremental_on_discard()
 	if removed > 0:
 		GameLog.add("Discard: -%d auto-cast." % removed, Color(1.0, 0.7, 0.5))
 	if penalized > 0:
@@ -3578,9 +3673,50 @@ func discard_hand(_source_card = null) -> int:
 		auto_slots.remove_at(i)
 		removed += 1
 	last_discard_count = removed
+	# Each collapsed slot is a discard for Eviscerate's per-turn discount.
+	for _d in range(removed):
+		GameState.incremental_on_discard()
 	if removed > 0:
 		GameLog.add("Discarded %d auto-cast card%s." % [
 			removed, "s" if removed > 1 else ""], Color(1.0, 0.7, 0.5))
+	return removed
+
+# Fiend Fire's action translation: "exhaust all other cards in your hand"
+# empties every OTHER cooldown slot in the rotation. Exhausted cards leave the
+# combat entirely (NOT re-queued to the discard): temporary auto-slots
+# collapse, the permanent base slot survives but its card is gone (it re-arms
+# with a fresh draw), and the dedicated curse slots are cleared (Fiend Fire
+# eats curses, same as the deckbuilder). The two click weapons are the
+# player's manual kit and are deliberately spared — they neither disarm nor
+# count. Each exhausted card counts toward last_exhaust_count, which the
+# following dmg `hits=exhausted` reads as its volley count. The slot Fiend
+# Fire itself is firing from is skipped.
+func exhaust_hand(source_card = null) -> int:
+	var removed := 0
+	var skipped_self := false
+	var i := 0
+	while i < auto_slots.size():
+		var slot: Dictionary = auto_slots[i]
+		if slot.card == null:
+			i += 1
+			continue
+		if not skipped_self and slot.card == source_card:
+			skipped_self = true
+			i += 1
+			continue
+		removed += 1
+		if slot.ttl == INF:
+			# The permanent slot must keep running — exhaust just its card.
+			_arm_slot(slot, _auto_draw_one())
+			i += 1
+		else:
+			auto_slots.remove_at(i)
+	removed += _curse_slots.size()
+	_curse_slots.clear()
+	last_exhaust_count = removed
+	if removed > 0:
+		GameLog.add("Exhausted %d cooldown card%s." % [
+			removed, "s" if removed > 1 else ""], Color(0.7, 0.7, 0.8))
 	return removed
 
 # Extend the permanent (ttl == INF) auto-slot's cooldown. Used as the
@@ -4066,6 +4202,11 @@ func _drain_block_pool(amount: float) -> void:
 # for if_turn gating (Horn Cleat: +Block on the 2nd combat room).
 func _fire_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}, turn_override: int = -1) -> void:
 	var turn: int = turn_override if turn_override >= 0 else _combat_room_index
+	# Choked bites on every card USE (click or auto) — action's translation of
+	# "whenever you play a card" — before the card's own effects land, so the
+	# use that inflicts Choked never procs itself. Wiped at each turn tick.
+	if trigger_name == "card_played":
+		Stats.choked_on_card_played(_living_enemy_actors(), self)
 	ItemTriggers.fire(trigger_name, self, player_actor, _living_enemy_actors(),
 		ctx_extras, turn)
 	_refresh_hud()
@@ -4406,6 +4547,11 @@ func _refresh_slot_bar() -> void:
 	_refresh_click_slot(0, "[LMB] ", left_card, left_cd, left_max_cd)
 	_refresh_click_slot(1, "[RMB] ", right_card, right_cd, right_max_cd)
 	_refresh_charged_slot()
+	# Conditional-payoff glow (Dropkick's if_target gate): green-border any
+	# slot whose card's condition a living enemy satisfies right now.
+	var gate_enemies: Array = _living_enemy_actors()
+	_set_gate_highlight(_slot_panels[0], _card_gate_live(left_card, gate_enemies))
+	_set_gate_highlight(_slot_panels[1], _card_gate_live(right_card, gate_enemies))
 	if _auto_label != null:
 		# Only the three deck sizes drive this label; skip the rebuild otherwise.
 		var counts := Vector3i(auto_slots.size(), auto_draw.size(), auto_discard.size())
@@ -4418,11 +4564,13 @@ func _refresh_slot_bar() -> void:
 		var t: Dictionary = _auto_thumbs[i]
 		if i >= auto_slots.size():
 			t.panel.visible = false
+			_set_gate_highlight(t.panel, false)
 			continue
 		t.panel.visible = true
 		var slot: Dictionary = auto_slots[i]
 		var card: CardData = slot.card
 		_apply_card_visual(t.tex, t.swatch, card)
+		_set_gate_highlight(t.panel, _card_gate_live(card, gate_enemies))
 		t.name.text = card.display_name if card != null else ""
 		if card != null:
 			t.cd.text = "%.1f" % slot.cooldown
@@ -4430,6 +4578,33 @@ func _refresh_slot_bar() -> void:
 				Color(0.7, 1.0, 0.7) if slot.ttl == INF else Color(1.0, 0.85, 0.4))
 		else:
 			t.cd.text = "--"
+
+# True while some living enemy satisfies one of the card's if_target_status
+# gates (Dropkick) — the slot glows to say the payoff would fire right now.
+func _card_gate_live(card: CardData, enemy_actors: Array) -> bool:
+	if card == null:
+		return false
+	return Stats.if_target_gate_live(_effective_effects(card), enemy_actors)
+
+# One shared green-border stylebox for the gate glow; overrides are toggled
+# only on state changes so the per-frame HUD refresh stays cheap.
+var _gate_hl_box: StyleBoxFlat = null
+
+func _set_gate_highlight(panel: Panel, active: bool) -> void:
+	var was: bool = panel.has_meta("gate_hl") and bool(panel.get_meta("gate_hl"))
+	if was == active:
+		return
+	panel.set_meta("gate_hl", active)
+	if active:
+		if _gate_hl_box == null:
+			_gate_hl_box = StyleBoxFlat.new()
+			_gate_hl_box.bg_color = Color(0.14, 0.24, 0.17, 1.0)
+			_gate_hl_box.set_border_width_all(2)
+			_gate_hl_box.border_color = Color(0.45, 0.9, 0.55)
+			_gate_hl_box.set_corner_radius_all(4)
+		panel.add_theme_stylebox_override("panel", _gate_hl_box)
+	else:
+		panel.remove_theme_stylebox_override("panel")
 
 func _refresh_click_slot(panel_idx: int, prefix: String, card: CardData, cd: float, max_cd: float) -> void:
 	_apply_card_visual(_click_tex[panel_idx], _click_swatch[panel_idx], card)

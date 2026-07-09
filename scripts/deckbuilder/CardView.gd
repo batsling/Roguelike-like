@@ -33,6 +33,10 @@ var _element_label: Label
 
 var _selected: bool = false
 var _enabled: bool = true
+# Conditional-payoff highlight (Dropkick's if_target gate): true while a
+# living enemy satisfies the card's condition, so the frame glows to say
+# "the bonus is live right now". Set by the combat scene's hand refresh.
+var _condition_active: bool = false
 
 # Optional combat target the card's numbers are previewed against. When a drag
 # ghost hovers an enemy, the scene sets this to that enemy so the card's own
@@ -251,6 +255,12 @@ func set_selected(sel: bool) -> void:
 	_selected = sel
 	_update_frame()
 
+func set_condition_active(active: bool) -> void:
+	if _condition_active == active:
+		return
+	_condition_active = active
+	_update_frame()
+
 func set_enabled(can_play: bool) -> void:
 	_enabled = can_play
 	if not can_play:
@@ -261,6 +271,9 @@ func set_enabled(can_play: bool) -> void:
 func _update_frame() -> void:
 	if _selected:
 		_frame.color = Color(0.28, 0.32, 0.5, 1.0)
+	elif _condition_active:
+		# Green glow: the card's conditional payoff would fire right now.
+		_frame.color = Color(0.16, 0.34, 0.22, 1.0)
 	else:
 		_frame.color = Color(0.13, 0.13, 0.17, 1.0)
 

@@ -233,6 +233,18 @@ var incremental_attacks_turn: int = 0
 var incremental_turn_pulses: int = 0
 var incremental_turn: int = 0
 
+#   incremental_hp_losses      — Times the PLAYER lost HP this combat (each
+#                                change_hp(-n) while a combat scene is live is
+#                                one instance, whatever the source: enemy hits,
+#                                DoT ticks, self-damage cards). Blood for
+#                                Blood's cost_reduce_from counter.
+#   incremental_discards_turn  — Cards discarded by effects within the current
+#                                turn window (reset every turn_tick; the
+#                                end-of-turn hand sweep doesn't count).
+#                                Eviscerate's cost_reduce_from counter.
+var incremental_hp_losses: int = 0
+var incremental_discards_turn: int = 0
+
 # Pen Nib: set true while the player's current (10th) Attack resolves so
 # Stats.resolve_damage doubles its hits. Cleared at the start of the next
 # card play and on combat/turn boundaries.
@@ -821,6 +833,8 @@ func _reset_item_tracking() -> void:
 	incremental_attacks_turn = 0
 	incremental_turn_pulses = 0
 	incremental_turn = 0
+	incremental_hp_losses = 0
+	incremental_discards_turn = 0
 	pen_nib_double_active = false
 	_streaks.clear()
 	dead_eye_streak = 0
@@ -847,6 +861,7 @@ func incremental_on_turn_started(turn_no: int) -> void:
 func incremental_on_turn_tick() -> void:
 	incremental_turn_pulses += 1
 	incremental_attacks_turn = 0
+	incremental_discards_turn = 0
 
 # A fresh combat began: per-combat counters restart; the run-wide attack
 # total carries over.
@@ -854,8 +869,24 @@ func incremental_on_combat_started() -> void:
 	incremental_turn = 0
 	incremental_turn_pulses = 0
 	incremental_attacks_turn = 0
+	incremental_hp_losses = 0
+	incremental_discards_turn = 0
 	pen_nib_double_active = false
 	streak_clear()
+
+# A card was discarded by an EFFECT this turn (Acrobatics' pick, All-Out
+# Attack's random toss, Storm of Steel's hand dump). Called from the scenes'
+# discard paths — never from the end-of-turn hand sweep, which isn't "you
+# Discarded a Card this turn". Feeds Eviscerate's cost_reduce_from.
+func incremental_on_discard() -> void:
+	incremental_discards_turn += 1
+
+# One "time you lost Health this combat" (Blood for Blood's discount).
+# Deckbuilder/action player HP funnels through change_hp, which reports here;
+# strategy battles damage the player UNIT directly (GameState.hp syncs at
+# battle end), so BattleView reports its player HP losses explicitly.
+func incremental_on_player_hp_loss() -> void:
+	incremental_hp_losses += 1
 
 # Current value of a named counter, used by the `counter` effect handler and
 # the Backpack progress badge.
@@ -867,6 +898,10 @@ func incremental_value(key: String) -> int:
 			return incremental_attacks_turn
 		"turns":
 			return incremental_turn_pulses
+		"hp_losses":
+			return incremental_hp_losses
+		"discards_this_turn":
+			return incremental_discards_turn
 	return 0
 
 # === Streak API (Dead Eye) ===
@@ -959,6 +994,12 @@ func set_hp(new_hp: int) -> void:
 	emit_signal("hp_changed", hp, max_hp)
 
 func change_hp(delta: int) -> void:
+	# Each in-combat HP loss is one "time you lost Health this combat" for
+	# Blood for Blood's discount — deckbuilder/action player HP loss (enemy
+	# hits, DoT ticks, self-damage cards) funnels through here. Gated on a
+	# live combat scene so event/overworld drains never count.
+	if delta < 0 and combat_scene != null:
+		incremental_on_player_hp_loss()
 	set_hp(hp + delta)
 
 func set_gold(new_gold: int) -> void:

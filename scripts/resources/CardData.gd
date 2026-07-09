@@ -73,6 +73,14 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, LEGENDARY }
 # it counts identically in all three combat modes.
 @export var destroy_after_games: int = -1
 
+# Dynamic discount: the card costs 1 less per point of this GameState
+# incremental counter ("hp_losses" — Blood for Blood; "discards_this_turn" —
+# Eviscerate), floored at 0 and read live so the cost tracks the fight.
+# Deckbuilder/strategy read it in CardInstance.get_cost; action folds it into
+# _action_card_cost (cost IS cooldown there, so re-arming a slot picks up the
+# current discount). &"" = fixed cost.
+@export var cost_reduce_from: StringName = &""
+
 # Free-form addon names (Fishing Weight, future weapon traits, …). These
 # are the "compute" addons — addons with active behavior at play time
 # rather than the bool flags above. The card knows the names; the
