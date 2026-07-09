@@ -29,7 +29,9 @@ gain:<status>, draw/discard/gain_energy/upgrade_hand(:all), conjure (+count),
 conjure_random (deck-pool random mint, `free` = costs 0 this turn),
 recall, boost_cards, gain_loot, chance:<pct>:<effect>, on_card_played:<effect>,
 exhaust_self, lose_hp, if_target:<status>:<effect> (Dropkick), exhaust:all +
-dmg hits=exhausted (Fiend Fire), cost_reduce:per=<counter> (Blood for Blood /
+dmg hits=exhausted (Fiend Fire), dmg hits=skills_in_hand (Flechettes),
+dmg if_draw=empty (Grand Finale), inflict if_intent=attack (Go for the Eyes),
+topdeck from=discard (Headbutt), cost_reduce:per=<counter> (Blood for Blood /
 Eviscerate — card-level, lands in CardData.cost_reduce_from), and the `drawn:`
 trigger prefix (Endless Agony). The "↑ Description/Effects/Cost" columns drive
 the upgrade form (N/A = no upgrade).
@@ -206,13 +208,20 @@ def _effect_from_tokens(tokens):
         # hits=exhausted (Fiend Fire): the hit count is how many cards the
         # preceding exhaust:all sent away, read off the scene at play time
         # (last_exhaust_count) — the exhaust mirror of conjure count=discarded.
-        if kv.get("hits", "").strip().lower() == "exhausted":
-            eff["hits_from"] = "exhausted"
+        # hits=skills_in_hand (Flechettes): one hit per Skill card in hand at
+        # play time (action counts Skill cards riding cooldown slots).
+        hits_kv = kv.get("hits", "").strip().lower()
+        if hits_kv in ("exhausted", "skills_in_hand"):
+            eff["hits_from"] = hits_kv
         # if_hand=all_attacks (Clash): the dmg clause whiffs unless every card
         # left in hand (the played card excluded) is an Attack. Modes without a
         # hand (action) always pass the gate.
         if "if_hand" in kv:
             eff["if_hand"] = kv["if_hand"].strip().lower()
+        # if_draw=empty (Grand Finale): the dmg clause whiffs unless the draw
+        # pile is empty when the card is played (action: the auto draw pile).
+        if "if_draw" in kv:
+            eff["if_draw"] = kv["if_draw"].strip().lower()
         # key=value modifiers on a dmg clause.
         # `per=COUNTER` (Finisher) scales the hit by a live counter: the flat
         # value becomes the per-unit amount (value_mult) and the counter names
@@ -257,6 +266,11 @@ def _effect_from_tokens(tokens):
             eff["indiscriminate"] = True
         if "times" in kv:
             eff["hits"] = int(float(kv["times"]))
+        # if_intent=attack (Go for the Eyes): the inflict lands only when the
+        # target is telegraphing an attack (deckbuilder planned_move, strategy
+        # EnemyAI next_intent; action: winding up / an attack off cooldown).
+        if "if_intent" in kv:
+            eff["if_target_intent"] = kv["if_intent"].strip().lower()
         return eff
 
     if verb == "lose_hp":
@@ -332,10 +346,13 @@ def _effect_from_tokens(tokens):
         # topdeck:N[:random] (Warcry): put N cards from hand on TOP of the draw
         # pile. Deckbuilder/strategy open the picker unless `random`; action
         # auto-picks (no piles the player can browse mid-fight).
+        # from=discard (Headbutt): the pick pool is the DISCARD pile instead.
         value = int(pos[0]) if pos and pos[0].isdigit() else 1
         eff = {"type": "topdeck", "value": value}
         if "random" in [p.lower() for p in pos[1:]]:
             eff["random"] = True
+        if kv.get("from", "").strip().lower() == "discard":
+            eff["from"] = "discard"
         return eff
 
     if verb == "exhaust":

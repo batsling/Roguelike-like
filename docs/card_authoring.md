@@ -127,11 +127,11 @@ Semicolon-delimited list of effect lines. Each line is
 |---|---|---|---|
 | `dmg` | `VALUE[xN]:DAMAGE_TYPE[:cleave\|if_status=STATUS]` | Deal damage. `xN` = multi-hit (Twin Strike). `cleave` = `target: all_enemies`. `if_status=X` skips the hit per target when that target lacks status X (Bane's second hit). | `{type: "dmg", value, target, damage_type, hits?, if_target_status?}` |
 | `gain` | `STAT:VALUE` | Player gains the stat (block, power, defense, dodge, …). | `{type: "block"/"status", value, stacks, status, target: "self"}` |
-| `inflict` | `STATUS:STACKS[:cleave]` | Apply a debuff to the targeted enemy (or all enemies with `cleave`). | `{type: "status", status, stacks, target: "enemy"/"all_enemies"}` |
+| `inflict` | `STATUS:STACKS[:cleave][:if_intent=attack]` | Apply a debuff to the targeted enemy (or all enemies with `cleave`). `if_intent=attack` (Go for the Eyes) gates the inflict on the target telegraphing an attack — see the intent gate section. | `{type: "status", status, stacks, target: "enemy"/"all_enemies", if_target_intent?}` |
 | `draw` | `N` | Draw N cards. In Action mode this instead chips a random ability cooldown by 25% per N. In Strategy, reduces a random ability CD by N. | `{type: "draw", value: N}` |
 | `discard` | `N[:random]` \| `all` | Mirror of `draw`. Deckbuilder/Strategy: pick N from hand via the CardPickerModal (default — player chooses, like Acrobatics). Append `:random` for the engine-picked random variant (All-Out Attack). Always excludes the played card. `discard:all` (Storm of Steel) discards the whole hand with no picker and records the count for `count=discarded`. Action: collapses temporary auto-slots (`all` collapses every one). | `{type: "discard", value: N, random?: bool}` / `{type: "discard", all: true}` |
 | `exhaust` | `N[:random]` \| `all` | Deckbuilder/Strategy mirror of `discard` but routes picks to the exhaust pile. Same player-choice default and `:random` flag. `exhaust:all` (Fiend Fire) exhausts the whole hand minus the played card, no picker, and records the count for a following `dmg …:hits=exhausted`. Action: `exhaust:N` no-ops; `exhaust:all` empties every other cooldown slot (see the dmg shorthand notes). | `{type: "exhaust", value: N, random?: bool}` / `{type: "exhaust", all: true}` |
-| `topdeck` | `N[:random]` | Put N cards from hand on TOP of the draw pile (Warcry). Deckbuilder/Strategy open the CardPickerModal by default; `:random` skips it. Action auto-picks: a temporary auto-slot's card goes back on top of the auto draw pile (or a random discard when no temp slots are up). | `{type: "topdeck", value: N, random?: bool}` |
+| `topdeck` | `N[:random][:from=discard]` | Put N cards from hand on TOP of the draw pile (Warcry). Deckbuilder/Strategy open the CardPickerModal by default; `:random` skips it. Action auto-picks: a temporary auto-slot's card goes back on top of the auto draw pile (or a random discard when no temp slots are up). `from=discard` (Headbutt) pools the pick from the DISCARD pile instead — the picker browses the discard; action always pulls a random discard back on top, never collapsing a slot. | `{type: "topdeck", value: N, random?: bool, from?: "discard"}` |
 | `recall` | `<FILTER>[:from=PILE][:to=PILE]` | Deckbuilder: move (not copy) every card in the source pile matching `FILTER` into the destination pile. `FILTER` today is `cost=N`; defaults are `from=discard`, `to=hand` (All for One). No-op in action/strategy. | `{type: "recall", from: PILE, to: PILE, filter: {…}}` |
 | `upgrade_hand` | `N\|all[:random]` | Deckbuilder: upgrade in-place. `upgrade_hand:1` opens the picker so the player chooses (Armaments); `upgrade_hand:all` upgrades every eligible card in hand silently (Armaments+). Append `:random` to skip the picker for the N form. Skips cards that are already upgraded or have `can_upgrade = false`. No-op in action/strategy. | `{type: "upgrade_hand", value: N\|"all", random?: bool}` |
 | `boost_cards` | `<MATCH>:<STAT>:<VALUE>` | Persistent in-combat modifier. Every later card matching `MATCH` resolves with `STAT + VALUE`. `MATCH` is exactly one of `tag=X` / `type=X` / `id=X`. `STAT` is `dmg` or `block`. Deckbuilder only today. | `{type: "boost_cards", match_tag/match_type/match_id, stat, value}` |
@@ -183,6 +183,46 @@ Semicolon-delimited list of effect lines. Each line is
   "hand" is every card riding a cooldown slot: a non-Attack in the auto
   rotation, a curse slot, or a non-Attack click card makes it whiff when its
   cooldown completes.)
+- `dmg:4:ranged:hits=skills_in_hand` — Flechettes (one hit per Skill card in
+  hand at play time, the played card excluded — the hand-count sibling of
+  `hits=exhausted`; stored as `hits_from: "skills_in_hand"`. Zero Skills =
+  zero hits. Action counts Skill cards riding cooldown slots — the auto
+  rotation plus the two click cards — and fizzles with none armed.)
+- `dmg:50:ranged:cleave:if_draw=empty` — Grand Finale (the hit whiffs unless
+  the DRAW pile is empty when the card is played; the kv gate coexists with
+  the positional `cleave` on the same line. Action's draw pile is the auto
+  draw pile, so the burst only lands once the rotation has chewed through its
+  queue — note `_auto_draw_one` reshuffles the discard back in on the next
+  draw, so the window is real but brief.)
+
+### The intent gate (`if_intent=attack`) — Go for the Eyes
+
+`inflict:STATUS:STACKS:if_intent=attack` lands the debuff only when the
+target "intends to Attack". Stored as `if_target_intent: "attack"` on the
+status effect and answered per mode:
+
+- **Deckbuilder** — the enemy's pre-rolled `planned_move.intent_type` is
+  `"attack"` (the same classification the intent icon uses), checked by
+  `Stats.actor_intends_attack`.
+- **Strategy** — the unit's telegraphed `EnemyAI.next_intent` carries a
+  dmg-typed effect (the classification behind the telegraph badge colour).
+- **Action** — no telegraphed turn plan exists in real time, so an enemy
+  "intends" when it's visibly winding up a shot OR one of its attacks is off
+  cooldown (it will strike the moment it's in position) —
+  `ActionCombat._enemy_intends_attack`. Contact melee enemies chase with a
+  ready attack most of the time, so the gate is generous there by design.
+
+Only `attack` is recognised today; a future `if_intent=buff` etc. just needs
+the parser kv and a match arm in the same predicate.
+
+Worked example — Go for the Eyes — `Common Attack` cost 0:
+```
+Description:  Deal 3 Dmg Melee. If the target intends to Attack, Inflict 1 Weak.
+Effects:      dmg:3:melee; inflict:weak:1:if_intent=attack
+Upgraded Eff: dmg:4:melee; inflict:weak:2:if_intent=attack
+Attack:       Swing, Small
+Tags:         defect, offense, debuff
+```
 
 ### The `drawn:` trigger prefix — Endless Agony
 
@@ -191,6 +231,17 @@ card-level trigger that fires when THIS card is drawn — Endless Agony's
 `dmg:4:ranged; drawn: conjure:self:hand` conjures a copy of itself to hand on
 every draw. Conjured copies arrive without being drawn, so the trigger never
 cascades. Action has no draws for its rotation, so the trigger is inert there.
+
+### The Flechettes / Go for the Eyes / … port batch — quick reference
+
+| Card | Effects DSL | Notes |
+|---|---|---|
+| Flechettes | `dmg:4:ranged:hits=skills_in_hand` | `Uncommon Attack` cost 1, `Poke, Large`. Upgrade: 6 per hit. |
+| Go for the Eyes | `dmg:3:melee; inflict:weak:1:if_intent=attack` | `Common Attack` cost 0, `Swing, Small`. Upgrade: 4 Dmg / 2 Weak. |
+| Grand Finale | `dmg:50:ranged:cleave:if_draw=empty` | `Rare Attack` cost 0, `Nova, Large`. Upgrade: 60. |
+| Headbutt | `dmg:9:melee; topdeck:1:from=discard` | `Common Attack` cost 1, `Poke, Small`. Upgrade: 12. |
+| Heel Hook | `dmg:5:melee; if_target:weak:gain_energy:1; if_target:weak:draw:1` | `Uncommon Attack` cost 1, `Poke, Small` — Dropkick's wrapper keyed on Weak. Upgrade: 8. |
+| Hemokinesis | `lose_hp:2; dmg:15:ranged` | `Uncommon Attack` cost 1, `Projectile, Medium`, Element `Blood`. Upgrade: 20. The lose_hp cost lands in every mode (action routes it through apply_dot) and counts one `hp_losses` instance, so it feeds Blood for Blood's discount. |
 
 ### X-cost cards (Whirlwind / Skewer)
 

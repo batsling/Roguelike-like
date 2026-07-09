@@ -259,6 +259,27 @@ func test_topdeck_player_choice_opens_the_picker() -> void:
 	assert_not_null(bv.get_node_or_null("CardPickerModal"),
 		"player-choice topdeck opens the CardPickerModal")
 
+func test_topdeck_from_discard_pulls_a_discard_back_on_top() -> void:
+	# Headbutt: the pick pool is the DISCARD pile, not hand.
+	var p := _player(); var e := _enemy(); _wire(p, e)
+	var strike := _mk(&"strike_ironclad")
+	bv.hand = [_mk(&"defend_ironclad")]
+	bv.discard_pile = [strike]
+	bv.draw_pile = []
+	bv.topdeck_cards(1, null, true, "discard")
+	assert_eq(bv.discard_pile.size(), 0, "the card left the discard pile")
+	assert_eq(bv.hand.size(), 1, "hand untouched")
+	assert_eq(bv.draw_pile.back(), strike, "…and sits on TOP of the draw pile")
+
+func test_topdeck_from_discard_opens_the_picker_over_the_discard() -> void:
+	var p := _player(); var e := _enemy(); _wire(p, e)
+	bv.hand = []
+	bv.discard_pile = [_mk(&"strike_ironclad"), _mk(&"defend_ironclad")]
+	bv.topdeck_cards(1, null, false, "discard")
+	assert_not_null(bv.get_node_or_null("CardPickerModal"),
+		"player-choice pick over the discard pile (Headbutt)")
+	assert_eq(bv.discard_pile.size(), 2, "nothing moves until the player confirms")
+
 func test_discard_player_choice_opens_the_picker() -> void:
 	var p := _player(); var e := _enemy(); _wire(p, e)
 	bv.hand = [_mk(&"strike_ironclad"), _mk(&"defend_ironclad")]

@@ -181,6 +181,16 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 					GameLog.add("Non-Attack cards in hand — it does nothing!",
 						Color(0.85, 0.85, 0.55))
 					return
+	# Draw-pile gate (Grand Finale: if_draw "empty"): the hit whiffs unless the
+	# draw pile is empty at play time. Scenes without a draw pile pass; action
+	# resolves dmg outside this handler and gates its auto draw pile in
+	# _deliver_attack.
+	if String(effect.get("if_draw", "")) == "empty":
+		var dsc: Variant = ctx.get("scene")
+		if dsc != null and ("draw_pile" in dsc) and not dsc.draw_pile.is_empty():
+			GameLog.add("Cards remain in the draw pile — it does nothing!",
+				Color(0.85, 0.85, 0.55))
+			return
 	# `hits` lets a single dmg effect resolve N times (Twin Strike 5x2).
 	# Action mode handles its own pacing via _resolve_card_effects and
 	# never reaches this path for multi-hit, so the loop here is purely
@@ -201,6 +211,10 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 		var ex_scene: Variant = ctx.get("scene")
 		hits = int(ex_scene.last_exhaust_count) \
 			if ex_scene != null and ("last_exhaust_count" in ex_scene) else 0
+	# Flechettes (hits_from: "skills_in_hand"): one hit per Skill card in hand
+	# at play time, the played card excluded. Zero skills = zero hits.
+	if String(effect.get("hits_from", "")) == "skills_in_hand":
+		hits = _skills_in_hand(ctx)
 	var indiscriminate: bool = bool(effect.get("indiscriminate", false))
 	# `target: "self"` routes the hit back onto the source (curse cards: Decay
 	# deals to the player), mirroring how status/block/heal resolve "self".
@@ -253,6 +267,22 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 			for _d in dice_n:
 				hit_value += _rng.randi_range(1, dice_sides)
 		scene.deal_damage(ctx.get("source"), tgt, hit_value, effect)
+
+# Skill cards in the scene's hand, the played card excluded (Flechettes'
+# hits_from: "skills_in_hand"). Scenes without a hand (events) count zero —
+# action resolves its own analog (Skill cards riding cooldown slots) in
+# _deliver_attack and never reaches this path.
+func _skills_in_hand(ctx: Dictionary) -> int:
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not ("hand" in scene):
+		return 0
+	var n: int = 0
+	for hc in scene.hand:
+		if hc == ctx.get("card"):
+			continue
+		if hc != null and hc.has_method("is_skill") and hc.is_skill():
+			n += 1
+	return n
 
 # Mode-agnostic random living enemy for indiscriminate effects. Prefers the
 # scene's own picker (strategy's units, action's enemy dicts) and falls back to
@@ -375,11 +405,17 @@ func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
 	var self_target: bool = String(effect.get("target", "enemy")) == "self"
 	var indiscriminate: bool = bool(effect.get("indiscriminate", false))
 	var hits: int = maxi(1, int(effect.get("hits", 1)))
+	# Intent gate (Go for the Eyes: if_target_intent "attack"): the inflict
+	# lands only when the target is telegraphing an attack. Per-target so a
+	# future cleave variant would debuff only the attackers in the room.
+	var intent_gate: String = String(effect.get("if_target_intent", ""))
 	for _i in hits:
 		var target: Variant = ctx.get("source") if self_target else ctx.get("target")
 		if indiscriminate and not self_target:
 			target = _resolve_random_enemy(ctx)
 		if target == null:
+			continue
+		if intent_gate != "" and not Stats.actor_intends_attack(target):
 			continue
 		_apply_one_status(effect, ctx, target, status_id, stacks)
 
@@ -610,11 +646,13 @@ func _h_topdeck(effect: Dictionary, ctx: Dictionary) -> void:
 	# Warcry: put N cards from hand on TOP of the draw pile. Deckbuilder and
 	# strategy open the CardPickerModal (append `random` in the DSL for the
 	# engine-picked variant); action auto-picks its analog (a temp auto-slot's
-	# card goes back on top of the auto draw pile).
+	# card goes back on top of the auto draw pile). `from: "discard"` (Headbutt)
+	# pools the pick from the discard pile instead of hand.
 	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("topdeck_cards"):
 		return
-	scene.topdeck_cards(int(effect.get("value", 1)), ctx.get("card"), bool(effect.get("random", false)))
+	scene.topdeck_cards(int(effect.get("value", 1)), ctx.get("card"),
+		bool(effect.get("random", false)), String(effect.get("from", "hand")))
 
 func _h_exhaust(effect: Dictionary, ctx: Dictionary) -> void:
 	# Deckbuilder-only: pick N cards from hand to send to exhaust.

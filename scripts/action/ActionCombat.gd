@@ -2644,11 +2644,14 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 					discard_cards(int(effect.get("value", 1)))
 			"topdeck":
 				# Warcry: auto-pick a card back onto the top of the deck.
-				topdeck_cards(int(effect.get("value", 1)))
+				topdeck_cards(int(effect.get("value", 1)), null, false,
+					String(effect.get("from", "hand")))
 			"gain_energy":
 				gain_energy(int(effect.get("value", 1)))
 			"lose_energy":
 				lose_energy(int(effect.get("value", 1)))
+			"lose_hp":
+				_lose_hp_self(int(effect.get("value", 0)), card)
 			_:
 				pass
 
@@ -2767,11 +2770,14 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 				else:
 					discard_cards(int(effect.get("value", 1)))
 			"topdeck":
-				topdeck_cards(int(effect.get("value", 1)))
+				topdeck_cards(int(effect.get("value", 1)), null, false,
+					String(effect.get("from", "hand")))
 			"gain_energy":
 				gain_energy(int(effect.get("value", 1)))
 			"lose_energy":
 				lose_energy(int(effect.get("value", 1)))
+			"lose_hp":
+				_lose_hp_self(int(effect.get("value", 0)), card)
 			_:
 				pass
 
@@ -2832,6 +2838,26 @@ func _effects_use_exhausted(effects: Array) -> bool:
 			return true
 	return false
 
+# True when any dmg effect repeats per Skill in hand (Flechettes).
+func _effects_use_skills_in_hand(effects: Array) -> bool:
+	for e in effects:
+		if String(e.get("type", "")) == "dmg" and String(e.get("hits_from", "")) == "skills_in_hand":
+			return true
+	return false
+
+# Flechettes' action-mode "Skills in hand": Skill cards riding a cooldown
+# slot — the auto rotation plus the two click cards (curse slots hold curses,
+# never Skills). The mirror of Clash's _armed_non_attack_present set.
+func _armed_skill_count() -> int:
+	var n := 0
+	for slot in auto_slots:
+		if slot.card != null and slot.card.is_skill():
+			n += 1
+	for c in [left_card, right_card]:
+		if c != null and c.is_skill():
+			n += 1
+	return n
+
 # Clash's action-mode "hand": every card currently riding a cooldown slot —
 # the auto slots, the dedicated curse slots, and the two click cards. A
 # non-Attack anywhere in that set spoils the if_hand=all_attacks gate. The
@@ -2868,6 +2894,20 @@ func _action_x_value() -> int:
 		GameLog.add("X = %d (Haste spent)." % x, Color(0.7, 1.0, 0.85))
 	return x
 
+# Action's reading of "the target intends to Attack" (Go for the Eyes'
+# if_target_intent gate). There's no telegraphed turn plan in real time, so an
+# enemy "intends" when it's visibly winding up a shot, or when one of its
+# attacks is off cooldown (it will strike the moment it's in position).
+func _enemy_intends_attack(inst: Dictionary) -> bool:
+	if bool(inst.get("winding", false)):
+		return true
+	for cd in inst.get("atk_cd", []):
+		if float(cd) <= 0.0:
+			return true
+	# Attack cooldowns are lazily seeded (at 0 = ready) on the first
+	# _enemy_update_attacks tick, so an un-ticked enemy counts as ready.
+	return not inst.has("atk_cd")
+
 # Apply each enemy effect ONCE to every actor in hit_list (volleys handle
 # repetition). Reuses the shared damage/status math so Power/Weak/Vulnerable,
 # blocks, Bleed windows and Persistence all behave like the other modes.
@@ -2889,7 +2929,11 @@ func _apply_enemy_effects(card: CardData, effects: Array, hit_list: Array) -> vo
 				var stacks: int = int(effect.get("stacks", 0))
 				if status == &"" or stacks == 0:
 					continue
+				# Intent gate (Go for the Eyes): per hit enemy.
+				var intent_gate: String = String(effect.get("if_target_intent", ""))
 				for inst in hit_list:
+					if intent_gate != "" and not _enemy_intends_attack(inst):
+						continue
 					Stats.apply_status_to(inst.actor, status, stacks, player_actor)
 			"if_target_status":
 				# Dropkick: the payoff fires ONCE when any hit enemy carries the
@@ -2942,6 +2986,21 @@ func _deliver_attack(card: CardData, aim_dir: Vector2, is_auto: bool) -> void:
 		if whiffed:
 			GameLog.add("%s whiffs — a non-Attack card is on cooldown!" % card.display_name,
 				Color(0.85, 0.85, 0.55))
+	# Grand Finale's draw-pile gate, translated to action: the "draw pile" is
+	# the auto draw pile, so any card still queued there makes the gated dmg
+	# whiff — the burst still plays, it just deals nothing.
+	if not auto_draw.is_empty():
+		var kept_d: Array = []
+		var whiffed_d := false
+		for e in effects:
+			if String(e.get("if_draw", "")) == "empty":
+				whiffed_d = true
+				continue
+			kept_d.append(e)
+		effects = kept_d
+		if whiffed_d:
+			GameLog.add("%s whiffs — cards remain in the draw pile!" % card.display_name,
+				Color(0.85, 0.85, 0.55))
 	var volleys: int = _attack_volleys(effects)
 	# X-cost cards (Whirlwind / Skewer, hits_from: "energy"): energy is Haste
 	# time in action, so X = 1 + the remaining Haste seconds, and casting
@@ -2955,6 +3014,14 @@ func _deliver_attack(card: CardData, aim_dir: Vector2, is_auto: bool) -> void:
 		volleys = last_exhaust_count
 		if volleys <= 0:
 			GameLog.add("%s fizzles — no other cards to exhaust." % card.display_name,
+				Color(0.85, 0.85, 0.55))
+			return
+	# Flechettes (hits=skills_in_hand): one volley per Skill riding a cooldown
+	# slot right now. No armed Skills = the cast fizzles.
+	if _effects_use_skills_in_hand(effects):
+		volleys = _armed_skill_count()
+		if volleys <= 0:
+			GameLog.add("%s fizzles — no Skills on cooldown slots." % card.display_name,
 				Color(0.85, 0.85, 0.55))
 			return
 	# Hop-delivered families consume the dmg repeat as their hop count
@@ -3630,16 +3697,20 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 # the auto draw pile (it fires again soon), or, with no temp slots up, pull a
 # random discard back on top. The player never browses piles mid-fight, so
 # there's no picker here (deckbuilder/strategy open the CardPickerModal).
-func topdeck_cards(n: int, _source_card = null, _random: bool = false) -> void:
+# `from_pile: "discard"` (Headbutt) skips the slot collapse and always pulls a
+# random discard back on top — the action reading of "put a Card from your
+# Discard on the top of the Draw Pile".
+func topdeck_cards(n: int, _source_card = null, _random: bool = false, from_pile: String = "hand") -> void:
 	if n <= 0:
 		return
 	var moved := 0
 	for _i in range(n):
 		var idx := -1
-		for j in range(auto_slots.size()):
-			if auto_slots[j].ttl != INF:
-				idx = j
-				break
+		if from_pile != "discard":
+			for j in range(auto_slots.size()):
+				if auto_slots[j].ttl != INF:
+					idx = j
+					break
 		if idx >= 0:
 			var slot: Dictionary = auto_slots[idx]
 			if slot.card != null:
@@ -3769,13 +3840,20 @@ func _apply_self_effects(card: CardData) -> void:
 				discard_cards(int(effect.get("value", 1)))
 			continue
 		if t == "topdeck":
-			topdeck_cards(int(effect.get("value", 1)))
+			topdeck_cards(int(effect.get("value", 1)), null, false,
+				String(effect.get("from", "hand")))
 			continue
 		if t == "gain_energy":
 			gain_energy(int(effect.get("value", 1)))
 			continue
 		if t == "lose_energy":
 			lose_energy(int(effect.get("value", 1)))
+			continue
+		if t == "lose_hp":
+			# Hemokinesis' HP cost. Raw loss via apply_dot (like the curse
+			# translation): bypasses block, syncs the HUD, counts one
+			# hp_losses instance for Blood for Blood's discount.
+			_lose_hp_self(int(effect.get("value", 0)), card)
 			continue
 		var tgt: String = String(effect.get("target", ""))
 		if tgt != "self" and tgt != "player":
@@ -3864,6 +3942,9 @@ func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 	if tgt == "self":
 		Stats.apply_status_to(player_actor, status, stacks, player_actor)
 		return
+	# Intent gate (Go for the Eyes: if_target_intent "attack"): the inflict
+	# only lands on enemies that "intend" to attack — see _enemy_intends_attack.
+	var intent_gate: String = String(effect.get("if_target_intent", ""))
 	# Indiscriminate inflicts (Bouncing Flask) ignore the cone and re-roll a
 	# random living enemy for each of `hits` applications.
 	if bool(effect.get("indiscriminate", false)):
@@ -3872,6 +3953,8 @@ func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 			var pick: Dictionary = _pick_target("random")
 			if pick.is_empty():
 				return
+			if intent_gate != "" and not _enemy_intends_attack(pick):
+				continue
 			Stats.apply_status_to(pick.actor, status, stacks, player_actor)
 		return
 	var hit_list: Array
@@ -3882,6 +3965,8 @@ func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 	else:
 		return
 	for inst in hit_list:
+		if intent_gate != "" and not _enemy_intends_attack(inst):
+			continue
 		Stats.apply_status_to(inst.actor, status, stacks, player_actor)
 
 # status_temp (Flex): the buff was applied normally by _apply_status_effect;
@@ -3938,6 +4023,15 @@ func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 		if not target.is_player:
 			TriggerBus.emit_signal("enemy_killed", {"enemy": target, "scene": self})
 			_fire_item_triggers("enemy_killed")
+
+# A card's on-play HP cost (Hemokinesis' "Lose 2 Health", Bloodletting).
+# Routes through apply_dot like the curse translation: raw loss (no block),
+# HUD sync, death check, and one hp_losses instance via GameState.change_hp.
+func _lose_hp_self(amount: int, card: CardData = null) -> void:
+	if amount <= 0:
+		return
+	apply_dot(player_actor, amount,
+		card.display_name if card != null else "card")
 
 # EffectSystem-compatible heal (mirrors deckbuilder/strategy heal). Lets
 # item/effect triggers that emit a `heal` effect resolve in action mode.
@@ -4368,6 +4462,11 @@ func _on_player_projectile_hit(p: Dictionary, inst: Dictionary) -> void:
 				_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
 			"status":
 				# Shared core handles the player-Persistence scaling on enemy debuffs.
+				# Intent gate (Go for the Eyes): only when the struck enemy
+				# "intends" to attack — see _enemy_intends_attack.
+				if String(effect.get("if_target_intent", "")) != "" \
+						and not _enemy_intends_attack(inst):
+					continue
 				var status: StringName = StringName(String(effect.get("status", "")))
 				Stats.apply_status_to(inst.actor, status, int(effect.get("stacks", 0)), player_actor)
 
