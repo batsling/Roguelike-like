@@ -2792,12 +2792,17 @@ func _refresh_ui() -> void:
 		var extra: CardView = _hand_views.pop_back()
 		_hand_area.remove_child(extra)
 		extra.queue_free()
+	var live_enemies: Array = living_enemies()
 	for i in range(hand.size()):
 		var card_inst: CardInstance = hand[i]
 		var view: CardView = _hand_views[i]
 		view.setup(card_inst)
 		view.set_enabled((phase == Phase.PLAYER) and (_card_cost(card_inst) <= energy))
 		view.set_selected(_targeting and _selected_card == card_inst)
+		# Conditional-payoff glow (Dropkick): light the card while some living
+		# enemy satisfies its if_target gate.
+		view.set_condition_active(
+			Stats.if_target_gate_live(card_inst.get_effects(), live_enemies))
 
 
 func _input(event: InputEvent) -> void:

@@ -537,6 +537,12 @@ func _make_hand_card_button(card) -> Button:
 	var base: Color = Color(0.16, 0.13, 0.2)
 	if data.type == CardData.CardType.CURSE:
 		base = Color(0.2, 0.12, 0.14)
+	# Conditional-payoff glow (Dropkick): green tile while a living enemy
+	# satisfies the card's if_target gate, so the player sees the bonus is live.
+	elif card != _pending_card \
+			and Stats.if_target_gate_live(card.get_effects(), living_enemies()):
+		base = Color(0.13, 0.24, 0.16)
+		border = Color(0.45, 0.85, 0.55)
 	tile.add_theme_stylebox_override("normal", _panel_stylebox(base, border, 1, 8))
 	tile.add_theme_stylebox_override("hover", _panel_stylebox(base.lightened(0.14), ACCENT, 2, 8))
 	tile.add_theme_stylebox_override("pressed", _panel_stylebox(base.darkened(0.12), ACCENT, 2, 8))

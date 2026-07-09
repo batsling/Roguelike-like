@@ -130,7 +130,7 @@ Semicolon-delimited list of effect lines. Each line is
 | `inflict` | `STATUS:STACKS[:cleave]` | Apply a debuff to the targeted enemy (or all enemies with `cleave`). | `{type: "status", status, stacks, target: "enemy"/"all_enemies"}` |
 | `draw` | `N` | Draw N cards. In Action mode this instead chips a random ability cooldown by 25% per N. In Strategy, reduces a random ability CD by N. | `{type: "draw", value: N}` |
 | `discard` | `N[:random]` \| `all` | Mirror of `draw`. Deckbuilder/Strategy: pick N from hand via the CardPickerModal (default — player chooses, like Acrobatics). Append `:random` for the engine-picked random variant (All-Out Attack). Always excludes the played card. `discard:all` (Storm of Steel) discards the whole hand with no picker and records the count for `count=discarded`. Action: collapses temporary auto-slots (`all` collapses every one). | `{type: "discard", value: N, random?: bool}` / `{type: "discard", all: true}` |
-| `exhaust` | `N[:random]` \| `all` | Deckbuilder/Strategy mirror of `discard` but routes picks to the exhaust pile. Same player-choice default and `:random` flag. `exhaust:all` (Fiend Fire) exhausts the whole hand minus the played card, no picker, and records the count for a following `dmg …:hits=exhausted`. No-op in action. | `{type: "exhaust", value: N, random?: bool}` / `{type: "exhaust", all: true}` |
+| `exhaust` | `N[:random]` \| `all` | Deckbuilder/Strategy mirror of `discard` but routes picks to the exhaust pile. Same player-choice default and `:random` flag. `exhaust:all` (Fiend Fire) exhausts the whole hand minus the played card, no picker, and records the count for a following `dmg …:hits=exhausted`. Action: `exhaust:N` no-ops; `exhaust:all` empties every other cooldown slot (see the dmg shorthand notes). | `{type: "exhaust", value: N, random?: bool}` / `{type: "exhaust", all: true}` |
 | `topdeck` | `N[:random]` | Put N cards from hand on TOP of the draw pile (Warcry). Deckbuilder/Strategy open the CardPickerModal by default; `:random` skips it. Action auto-picks: a temporary auto-slot's card goes back on top of the auto draw pile (or a random discard when no temp slots are up). | `{type: "topdeck", value: N, random?: bool}` |
 | `recall` | `<FILTER>[:from=PILE][:to=PILE]` | Deckbuilder: move (not copy) every card in the source pile matching `FILTER` into the destination pile. `FILTER` today is `cost=N`; defaults are `from=discard`, `to=hand` (All for One). No-op in action/strategy. | `{type: "recall", from: PILE, to: PILE, filter: {…}}` |
 | `upgrade_hand` | `N\|all[:random]` | Deckbuilder: upgrade in-place. `upgrade_hand:1` opens the picker so the player chooses (Armaments); `upgrade_hand:all` upgrades every eligible card in hand silently (Armaments+). Append `:random` to skip the picker for the N form. Skips cards that are already upgraded or have `can_upgrade = false`. No-op in action/strategy. | `{type: "upgrade_hand", value: N\|"all", random?: bool}` |
@@ -173,11 +173,16 @@ Semicolon-delimited list of effect lines. Each line is
   `value_from: "attacks_this_turn"`, `value_mult: 6`. See Scaling counters.)
 - `dmg:7:ranged:hits=exhausted` — Fiend Fire (one hit per card the preceding
   `exhaust:all` sent away this play; stored as `hits_from: "exhausted"`, read
-  off the scene's `last_exhaust_count`. Zero exhausted = zero hits. Action has
-  no hand, so it lands a single hit there.)
+  off the scene's `last_exhaust_count`. Zero exhausted = zero hits. Action:
+  `exhaust:all` empties every OTHER cooldown slot — temp auto-slots collapse,
+  the base slot's card is dropped and re-arms, curse slots clear, the click
+  cards disarm for the room — and the dmg fires one volley per card removed;
+  nothing to exhaust = the cast fizzles.)
 - `dmg:14:melee:if_hand=all_attacks` — Clash (the hit whiffs unless every
-  OTHER card in hand is an Attack — statuses and curses spoil it too. Modes
-  without a hand (action) always pass the gate.)
+  OTHER card in hand is an Attack — statuses and curses spoil it too. Action's
+  "hand" is every card riding a cooldown slot: a non-Attack in the auto
+  rotation, a curse slot, or a non-Attack click card makes it whiff when its
+  cooldown completes.)
 
 ### The `drawn:` trigger prefix — Endless Agony
 
@@ -222,7 +227,7 @@ Counters available today (maintained by `GameState.incremental_*`, bumped by
 | `attacks_total` | Attacks played this run. |
 | `turns` | Turn-tick pulses this combat. |
 | `hp_losses` | Times the player lost HP this combat — each HP-loss instance (enemy hit, DoT tick, self-damage card), whatever the size. Blood for Blood's `cost_reduce` counter. |
-| `discards_this_turn` | Cards discarded by effects in the current turn window (the end-of-turn hand sweep doesn't count). Eviscerate's `cost_reduce` counter. |
+| `discards_this_turn` | Cards discarded by effects in the current turn window (the end-of-turn hand sweep doesn't count). In action each translated discard counts — a collapsed temp slot, a base-cooldown penalty, or a discard_hand sweep. Eviscerate's `cost_reduce` counter. |
 
 `attacks_this_turn` is bumped on each attack's `card_played`, which fires
 **before** the played card's own effects. A scaling attack does **not** count

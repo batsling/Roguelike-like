@@ -1334,6 +1334,24 @@ func clear_status_stacks(actor, status: StringName) -> void:
 	if stacks > 0:
 		actor.add_status(status, -stacks)
 
+# True when one of the card's if_target_status gates (Dropkick: "If the
+# target has Vulnerable…") is currently satisfied by a living enemy. Drives
+# the "the bonus is live" highlight on hand cards / action slots in every
+# mode. `effects` are the card's effective effects; `enemies` the mode's
+# living enemy actors.
+func if_target_gate_live(effects: Array, enemies: Array) -> bool:
+	for e in effects:
+		if not (e is Dictionary) or String(e.get("type", "")) != "if_target_status":
+			continue
+		var status := StringName(String(e.get("status", "")))
+		if status == &"":
+			continue
+		for en in enemies:
+			if en != null and en.has_method("get_status") and en.has_method("is_alive") \
+					and en.is_alive() and en.get_status(status) > 0:
+				return true
+	return false
+
 # Choked (the Choke card's status): whenever the player PLAYS a card, each
 # afflicted actor loses raw HP equal to its stacks — same bite mechanics as
 # Bleed (apply_dot: bypasses block/Weak/Vulnerable, no contact reactions).
