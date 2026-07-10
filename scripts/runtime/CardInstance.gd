@@ -78,6 +78,10 @@ func get_cost() -> int:
 	# shown and paid cost both track the fight moment to moment.
 	if data.cost_reduce_from != &"":
 		base = maxi(0, base - GameState.incremental_value(String(data.cost_reduce_from)))
+	# Dynamic surcharge (Masterful Stab): 1 more per point of the named counter,
+	# the mirror of the discount above and read just as live.
+	if data.cost_increase_from != &"":
+		base += GameState.incremental_value(String(data.cost_increase_from))
 	return maxi(0, base + combat_cost_delta)
 
 # --- Vorpal -----------------------------------------------------------------

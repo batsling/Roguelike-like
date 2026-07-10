@@ -165,6 +165,39 @@ def main():
     hk = one("lose_hp:2")
     assert hk == {"type": "lose_hp", "value": 2}, hk
 
+    # --- The Immolate / Masterful Stab / Perfected Strike / ... port batch ----
+
+    # cost_increase:per=COUNTER (Masterful Stab): the surcharge mirror of
+    # cost_reduce -- stays in the effect list at parse time; card_tres pops it
+    # into cost_increase_from.
+    ci = one("cost_increase:per=hp_losses")
+    assert ci == {"type": "cost_increase", "from": "hp_losses"}, ci
+
+    # dmg ... bonus=N:per_name=STR (Perfected Strike): +N damage per card in
+    # the combat deck whose name contains STR (lower-cased at parse time).
+    ps = one("dmg:6:melee:bonus=2:per_name=Strike")
+    assert ps == {"type": "dmg", "value": 6, "target": "enemy",
+                  "damage_type": "melee", "bonus_per_card_name": "strike",
+                  "bonus_per_card": 2}, ps
+
+    # Immolate's magic cleave + Burn conjure round-trips as two clauses.
+    imm, _ti, _di = gen.parse_effects(
+        "dmg:21:magic:cleave; conjure:burn:discard")
+    assert imm[0] == {"type": "dmg", "value": 21, "target": "all_enemies",
+                      "damage_type": "magic"}, imm
+    assert imm[1] == {"type": "conjure", "card_id": "burn",
+                      "destination": "discard", "count": 1}, imm
+
+    # Rampage's positive self-boost (Glass Knife's twin, positive value).
+    rp = one("boost_cards:id=rampage:dmg:5")
+    assert rp == {"type": "boost_cards", "match_id": "rampage",
+                  "stat": "dmg", "value": 5}, rp
+
+    # The auto_aoe archetype takes an explicit target + a size word (Immolate).
+    shape_i, params_i, _rci = gen.parse_attack("Auto_aoe, target=nearest, Large")
+    assert shape_i == "auto_aoe" and params_i == {"target": "nearest",
+                                                  "size": "large"}, (shape_i, params_i)
+
     # The boomerang archetype parses via the Attack column.
     shape, params, _rc = gen.parse_attack("Boomerang")
     assert shape == "boomerang" and params == {}, (shape, params)

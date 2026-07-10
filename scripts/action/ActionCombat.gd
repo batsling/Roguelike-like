@@ -2227,6 +2227,10 @@ func _action_card_cost(card: CardData) -> int:
 	# player has bled shortens its next cycle.
 	if card.cost_reduce_from != &"":
 		cost -= GameState.incremental_value(String(card.cost_reduce_from))
+	# Dynamic surcharge (Masterful Stab): 1 more per point of the counter —
+	# every HP loss lengthens the slot's next cycle, mirroring the discount.
+	if card.cost_increase_from != &"":
+		cost += GameState.incremental_value(String(card.cost_increase_from))
 	return maxi(0, cost)
 
 func _cooldown_for(card: CardData) -> float:
@@ -2856,6 +2860,30 @@ func _armed_skill_count() -> int:
 	for c in [left_card, right_card]:
 		if c != null and c.is_skill():
 			n += 1
+	return n
+
+# Perfected Strike's action-mode "deck": every card in the combat rotation —
+# the auto slots, the two click cards, and the auto draw/discard piles. The
+# firing card counts once wherever it sits (normally still armed on its slot),
+# mirroring how the other modes count the played card in hand.
+func _cards_named_count(sub: String, played: CardData) -> int:
+	var needle: String = sub.to_lower()
+	var n := 0
+	var played_seen := false
+	var pool: Array = []
+	for slot in auto_slots:
+		pool.append(slot.card)
+	pool.append(left_card)
+	pool.append(right_card)
+	pool.append_array(auto_draw)
+	pool.append_array(auto_discard)
+	for c in pool:
+		if c == played:
+			played_seen = true
+		if c != null and c.display_name.to_lower().contains(needle):
+			n += 1
+	if played != null and not played_seen and played.display_name.to_lower().contains(needle):
+		n += 1
 	return n
 
 # Clash's action-mode "hand": every card currently riding a cooldown slot —
@@ -3893,7 +3921,14 @@ func _resolve_dmg_value(effect: Dictionary, card: CardData = null) -> int:
 		if value_from == "attacks_this_turn" and card != null and card.is_attack():
 			count = maxi(0, count - 1)
 		return count * int(effect.get("value_mult", 1))
-	return int(effect.get("value", 0))
+	var value: int = int(effect.get("value", 0))
+	# Perfected Strike (bonus_per_card_name "strike"): +bonus_per_card per card
+	# in the combat rotation whose name contains the substring — the action
+	# analog of the other modes' hand + draw + discard count.
+	var name_sub: String = String(effect.get("bonus_per_card_name", ""))
+	if name_sub != "":
+		value += int(effect.get("bonus_per_card", 0)) * _cards_named_count(name_sub, card)
+	return value
 
 func _apply_damage_effect(effect: Dictionary, tgt: String, cone_targets: Array, aoe_targets: Array, card: CardData = null) -> void:
 	var value: int = _resolve_dmg_value(effect, card)

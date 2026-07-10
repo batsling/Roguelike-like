@@ -151,6 +151,7 @@ Semicolon-delimited list of effect lines. Each line is
 | `chance` | `PCT:<INNER_VERB>:<INNER_ARGS>` | Roll PCT% on the shared luck-modified RNG (Stats.roll_chance_with_luck — every point of Luck adds a 10% advantage roll, mirroring how events roll). On success, dispatch the inner effect through the same EffectSystem with the same ctx. Inner can be any verb. Bag o' Glitter: `chance:10:exhaust_self`. | `{type: "chance", percent: N, effect: {…inner…}}` |
 | `if_target` | `STATUS:<INNER_VERB>:<INNER_ARGS>` | Resolve the inner effect only when the PICKED enemy target carries STATUS (Dropkick: `if_target:vulnerable:gain_energy:1`). A wrapper — not a kv on the inner verb — because the inner verbs are scene effects (gain_energy / draw) that would otherwise resolve against the player and lose the enemy from ctx. In action the payoff fires once when any hit enemy carries the status. | `{type: "if_target_status", status, target: "enemy", effect: {…inner…}}` |
 | `cost_reduce` | `per=COUNTER` | Card-level dynamic discount: the card costs 1 less per point of the named live counter (see Scaling counters), floored at 0 and re-read every time the cost is shown or paid. Blood for Blood: `cost_reduce:per=hp_losses`; Eviscerate: `cost_reduce:per=discards_this_turn`. Cost IS cooldown in action, so a re-armed slot picks up the current discount. NOT an on-play effect — the generator pops it into `CardData.cost_reduce_from`. | `cost_reduce_from = &"COUNTER"` (field, not an effect) |
+| `cost_increase` | `per=COUNTER` | The surcharge mirror of `cost_reduce`: the card costs 1 MORE per point of the counter, read just as live. Masterful Stab: `cost_increase:per=hp_losses` — every HP-loss instance raises the shown/paid cost (and lengthens the cooldown in action). Both fields may coexist on one card; the discount and surcharge net against each other before the 0 floor. | `cost_increase_from = &"COUNTER"` (field, not an effect) |
 
 ### Argument shorthand for `dmg`
 
@@ -194,6 +195,15 @@ Semicolon-delimited list of effect lines. Each line is
   draw pile, so the burst only lands once the rotation has chewed through its
   queue — note `_auto_draw_one` reshuffles the discard back in on the next
   draw, so the window is real but brief.)
+- `dmg:6:melee:bonus=2:per_name=strike` — Perfected Strike (`bonus=N` +
+  `per_name=STR`: the hit deals N additional damage per card in the player's
+  combat deck whose name contains STR, case-insensitive — hand + draw +
+  discard, the played card included, so a base deck's Strikes plus Perfected
+  Strike itself count. Stored as `bonus_per_card: N`,
+  `bonus_per_card_name: "str"`; resolved at play time in every mode. Action's
+  "deck" is the combat rotation: auto slots + the two click cards + the auto
+  draw/discard piles. Upgraded Strikes still match — `Strike+` contains
+  `Strike`.)
 
 ### The intent gate (`if_intent=attack`) — Go for the Eyes
 
@@ -243,6 +253,18 @@ cascades. Action has no draws for its rotation, so the trigger is inert there.
 | Headbutt | `dmg:9:melee; topdeck:1:from=discard` | `Common Attack` cost 1, `Poke, Small`. Upgrade: 12. |
 | Heel Hook | `dmg:5:melee; if_target:weak:gain_energy:1; if_target:weak:draw:1` | `Uncommon Attack` cost 1, `Poke, Small` — Dropkick's wrapper keyed on Weak. Upgrade: 8. |
 | Hemokinesis | `lose_hp:2; dmg:15:ranged` | `Uncommon Attack` cost 1, `Projectile, Medium`, Element `Blood`. Upgrade: 20. The lose_hp cost lands in every mode (action routes it through apply_dot) and counts one `hp_losses` instance, so it feeds Blood for Blood's discount. |
+
+### The Immolate / Masterful Stab / … port batch — quick reference
+
+| Card | Effects DSL | Notes |
+|---|---|---|
+| Immolate | `dmg:21:magic:cleave; conjure:burn:discard` | `Rare Attack` cost 2, `Auto_aoe, target=nearest, Large`, Element `Fire`. Upgrade: 28. A big fire disc dropped on the nearest enemy in action; plain "hit everyone" elsewhere. The conjured Burn is the Status card from the Burn batch. |
+| Masterful Stab | `dmg:12:melee; cost_increase:per=hp_losses` | `Uncommon Attack` cost 0, `Poke, Medium`. Upgrade: 16. Costs 1 more per time you've lost Health this combat — the surcharge mirror of Blood for Blood, riding the same `hp_losses` counter. |
+| Perfected Strike | `dmg:6:melee:bonus=2:per_name=strike` | `Common Attack` cost 2, `Swing, Medium`. Upgrade: bonus 3. +2 damage per card in the combat deck whose name contains "Strike" (itself included). |
+| Poisoned Stab | `dmg:6:melee; inflict:poison:3` | `Common Attack` cost 1, `Poke, Small`, Element `Poison`. Upgrade: 8 Dmg / 4 Poison. The element rule skips its on-hit Poison because the attack already poisons. |
+| Pummel | `dmg:2x4:melee` + `Keywords: Exhaust` | `Uncommon Attack` cost 1, `Poke, Small`. Upgrade adds a hit (`2x5`), not damage. |
+| Quick Slash | `dmg:8:melee; draw:1` | `Common Attack` cost 1, `Swing, Small`. Upgrade: 12. |
+| Rampage | `dmg:8:melee; boost_cards:id=rampage:dmg:5` | `Uncommon Attack` cost 1, `Swing, Small`. Glass Knife's self-boost with the sign flipped: each play registers +5 (upgraded +8) Dmg on every copy of Rampage for the combat. The base 8 never changes on upgrade — only the ramp. |
 
 ### X-cost cards (Whirlwind / Skewer)
 

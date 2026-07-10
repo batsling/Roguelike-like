@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_pummel"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Pummel.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"pummel"
+display_name = "Pummel"
+type = 0
+rarity = 2
+cost = 1
+description = "Deal 2x4 Dmg Melee. Exhaust."
+effects = [{"type": "dmg", "value": 2, "target": "enemy", "damage_type": "melee", "hits": 4}]
+tags = PackedStringArray("ironclad", "offense", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 2x5 Dmg Melee. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 2, "target": "enemy", "damage_type": "melee", "hits": 5}]
+image = ExtResource("2_img")
+exhaust = true
+attack_shape = &"poke"
+attack_params = {"size": "small"}

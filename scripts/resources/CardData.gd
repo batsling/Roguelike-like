@@ -81,6 +81,12 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, LEGENDARY }
 # current discount). &"" = fixed cost.
 @export var cost_reduce_from: StringName = &""
 
+# Dynamic surcharge: the mirror of cost_reduce_from — the card costs 1 MORE
+# per point of the named counter ("hp_losses" — Masterful Stab), read live in
+# the same three cost paths so every hit the player takes raises the shown and
+# paid cost (and, in action, lengthens the cooldown). &"" = no surcharge.
+@export var cost_increase_from: StringName = &""
+
 # Free-form addon names (Fishing Weight, future weapon traits, …). These
 # are the "compute" addons — addons with active behavior at play time
 # rather than the bool flags above. The card knows the names; the

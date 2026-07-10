@@ -235,6 +235,14 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	# itself is an Attack — the only card kind that bumps the counter.
 	if String(effect.get("value_from", "")) == "attacks_this_turn" and _card_is_attack(ctx.get("card")):
 		dmg_value = maxi(0, dmg_value - int(effect.get("value_mult", 1)))
+	# Perfected Strike (bonus_per_card_name "strike"): the hit deals
+	# bonus_per_card additional damage for every card in the player's combat
+	# deck — hand + draw + discard, the played card included — whose display
+	# name contains the substring. Counted at play time, so conjured Strikes
+	# raise it and exhausted ones drop off.
+	var name_sub: String = String(effect.get("bonus_per_card_name", ""))
+	if name_sub != "":
+		dmg_value += int(effect.get("bonus_per_card", 0)) * _cards_named(ctx, name_sub)
 	# Determined (addon): a fixed-per-combat rolled value overrides the static one.
 	dmg_value = _resolve_determined(effect, ctx, dmg_value, "dmg")
 	# Per-turn scaling (Transient): +M damage for each turn the source has taken.
@@ -282,6 +290,33 @@ func _skills_in_hand(ctx: Dictionary) -> int:
 			continue
 		if hc != null and hc.has_method("is_skill") and hc.is_skill():
 			n += 1
+	return n
+
+# Cards whose display name contains `sub` (case-insensitive) across the
+# scene's combat piles — hand + draw + discard — for Perfected Strike's
+# bonus_per_card_name. The played card counts once wherever it sits: it's
+# normally still in hand mid-resolve, but if a scene removes it before
+# resolving (or it was conjured straight into play) it's counted explicitly.
+func _cards_named(ctx: Dictionary, sub: String) -> int:
+	var scene: Variant = ctx.get("scene")
+	if scene == null:
+		return 0
+	var needle: String = sub.to_lower()
+	var n: int = 0
+	var played: Variant = ctx.get("card")
+	var played_seen: bool = false
+	for pile_name in ["hand", "draw_pile", "discard_pile"]:
+		if not (pile_name in scene):
+			continue
+		for c in scene.get(pile_name):
+			if c == played:
+				played_seen = true
+			if c != null and c.has_method("get_display_name") \
+					and c.get_display_name().to_lower().contains(needle):
+				n += 1
+	if played != null and not played_seen and played.has_method("get_display_name") \
+			and played.get_display_name().to_lower().contains(needle):
+		n += 1
 	return n
 
 # Mode-agnostic random living enemy for indiscriminate effects. Prefers the

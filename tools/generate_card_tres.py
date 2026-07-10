@@ -32,9 +32,12 @@ exhaust_self, lose_hp, if_target:<status>:<effect> (Dropkick), exhaust:all +
 dmg hits=exhausted (Fiend Fire), dmg hits=skills_in_hand (Flechettes),
 dmg if_draw=empty (Grand Finale), inflict if_intent=attack (Go for the Eyes),
 topdeck from=discard (Headbutt), cost_reduce:per=<counter> (Blood for Blood /
-Eviscerate — card-level, lands in CardData.cost_reduce_from), and the `drawn:`
-trigger prefix (Endless Agony). The "↑ Description/Effects/Cost" columns drive
-the upgrade form (N/A = no upgrade).
+Eviscerate — card-level, lands in CardData.cost_reduce_from),
+cost_increase:per=<counter> (Masterful Stab — the surcharge mirror, lands in
+CardData.cost_increase_from), dmg bonus=N:per_name=STR (Perfected Strike —
++N damage per deck card whose name contains STR), and the `drawn:` trigger
+prefix (Endless Agony). The "↑ Description/Effects/Cost" columns drive the
+upgrade form (N/A = no upgrade).
 """
 
 import argparse
@@ -233,6 +236,13 @@ def _effect_from_tokens(tokens):
             eff["value_mult"] = value
         if "if_status" in kv:
             eff["if_target_status"] = kv["if_status"]
+        # bonus=N:per_name=STR (Perfected Strike): the hit deals N additional
+        # damage per card in the player's combat deck (hand + draw + discard,
+        # the played card included) whose display name contains STR
+        # (case-insensitive). Action counts the cooldown slots + auto piles.
+        if "per_name" in kv:
+            eff["bonus_per_card_name"] = kv["per_name"].strip().lower()
+            eff["bonus_per_card"] = int(float(kv.get("bonus", 1)))
         if "infuse" in kv:
             eff["infuse"] = int(float(kv["infuse"]))
         if "power_multiplier" in kv:
@@ -432,6 +442,13 @@ def _effect_from_tokens(tokens):
         # the shown cost tracks the fight. Card-level, not an on-play effect —
         # card_tres pops it out of the effect list into cost_reduce_from.
         return {"type": "cost_reduce", "from": kv.get("per", "")}
+
+    if verb == "cost_increase":
+        # cost_increase:per=<counter> (Masterful Stab): the surcharge mirror
+        # of cost_reduce — the card costs 1 MORE per point of the counter
+        # (hp_losses), re-read live. Card-level, lands in
+        # CardData.cost_increase_from.
+        return {"type": "cost_increase", "from": kv.get("per", "")}
 
     m = re.match(r"^on_([a-z_]+)$", verb)
     if m and verb not in ("on_action", "on_play_other"):
@@ -687,10 +704,14 @@ def card_tres(row) -> tuple:
     # runtime cost paths read the counter live). Base and upgrade forms share
     # the one field — authoring different counters per form isn't supported.
     cost_reduce_from = ""
+    cost_increase_from = ""
     for bucket in (on_play, up_on_play):
         for e in list(bucket):
             if isinstance(e, dict) and e.get("type") == "cost_reduce":
                 cost_reduce_from = cost_reduce_from or str(e.get("from", ""))
+                bucket.remove(e)
+            elif isinstance(e, dict) and e.get("type") == "cost_increase":
+                cost_increase_from = cost_increase_from or str(e.get("from", ""))
                 bucket.remove(e)
 
     lines = []
@@ -719,6 +740,8 @@ def card_tres(row) -> tuple:
         lines.append("destroy_after_games = %d" % destroy_after)
     if cost_reduce_from:
         lines.append('cost_reduce_from = &"%s"' % gd_str(cost_reduce_from))
+    if cost_increase_from:
+        lines.append('cost_increase_from = &"%s"' % gd_str(cost_increase_from))
     lines.append("tags = %s" % packed_string_array(tags))
     if source:
         lines.append('source_game = "%s"' % gd_str(source))

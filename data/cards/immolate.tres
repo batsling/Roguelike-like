@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_immolate"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Immolate.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"immolate"
+display_name = "Immolate"
+type = 0
+rarity = 3
+cost = 2
+description = "Deal 21 Magic Dmg Fire Cleave. Conjure 1 Burn to Discard."
+effects = [{"type": "dmg", "value": 21, "target": "all_enemies", "damage_type": "magic", "element": "fire"}, {"type": "conjure", "card_id": "burn", "destination": "discard", "count": 1}]
+tags = PackedStringArray("ironclad", "offense", "aoe")
+source_game = "Slay the Spire"
+element = &"fire"
+can_upgrade = true
+upgraded_description = "Deal 28 Magic Dmg Fire Cleave. Conjure 1 Burn to Discard."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 28, "target": "all_enemies", "damage_type": "magic", "element": "fire"}, {"type": "conjure", "card_id": "burn", "destination": "discard", "count": 1}]
+image = ExtResource("2_img")
+attack_shape = &"auto_aoe"
+attack_params = {"target": "nearest", "size": "large"}
