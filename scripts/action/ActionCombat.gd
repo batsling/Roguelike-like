@@ -2641,9 +2641,10 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 				draw_cards(int(effect.get("value", 1)))
 			"discard":
 				# Mirror of draw: collapses a temporary auto-slot.
-				# `all` (Storm of Steel) collapses every temp slot.
+				# `all` (Storm of Steel) collapses every temp slot;
+				# `only` (Unload) narrows the sweep to non-Attacks.
 				if bool(effect.get("all", false)):
-					discard_hand()
+					discard_hand(null, String(effect.get("only", "")))
 				else:
 					discard_cards(int(effect.get("value", 1)))
 			"topdeck":
@@ -2656,6 +2657,8 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 				lose_energy(int(effect.get("value", 1)))
 			"lose_hp":
 				_lose_hp_self(int(effect.get("value", 0)), card)
+			"if_counter":
+				_apply_if_counter_effect(effect)
 			_:
 				pass
 
@@ -2770,7 +2773,7 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 				draw_cards(int(effect.get("value", 1)))
 			"discard":
 				if bool(effect.get("all", false)):
-					discard_hand()
+					discard_hand(null, String(effect.get("only", "")))
 				else:
 					discard_cards(int(effect.get("value", 1)))
 			"topdeck":
@@ -2782,6 +2785,8 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 				lose_energy(int(effect.get("value", 1)))
 			"lose_hp":
 				_lose_hp_self(int(effect.get("value", 0)), card)
+			"if_counter":
+				_apply_if_counter_effect(effect)
 			_:
 				pass
 
@@ -2994,7 +2999,7 @@ func _deliver_attack(card: CardData, aim_dir: Vector2, is_auto: bool) -> void:
 	# below reads the fresh tally.
 	for raw in _effective_effects(card):
 		if String(raw.get("type", "")) == "exhaust" and bool(raw.get("all", false)):
-			exhaust_hand(card)
+			exhaust_hand(card, String(raw.get("only", "")))
 			break
 	var effects: Array = _enemy_effects(card)
 	# Clash's hand gate, translated to action: the "hand" is every card riding
@@ -3757,12 +3762,16 @@ func topdeck_cards(n: int, _source_card = null, _random: bool = false, from_pile
 # Storm of Steel's action translation: "discard your hand" collapses every
 # temporary auto-slot into the discard pile and records how many, so a
 # following conjure `count_from: "discarded"` mints that many Shivs.
-func discard_hand(_source_card = null) -> int:
+func discard_hand(_source_card = null, only: String = "") -> int:
 	var removed := 0
 	var i := 0
 	while i < auto_slots.size():
 		var slot: Dictionary = auto_slots[i]
 		if slot.ttl == INF:
+			i += 1
+			continue
+		# only="non_attack" (Unload): the sweep spares Attack cards.
+		if only == "non_attack" and slot.card != null and slot.card.is_attack():
 			i += 1
 			continue
 		if slot.card != null:
@@ -3788,7 +3797,7 @@ func discard_hand(_source_card = null) -> int:
 # count. Each exhausted card counts toward last_exhaust_count, which the
 # following dmg `hits=exhausted` reads as its volley count. The slot Fiend
 # Fire itself is firing from is skipped.
-func exhaust_hand(source_card = null) -> int:
+func exhaust_hand(source_card = null, only: String = "") -> int:
 	var removed := 0
 	var skipped_self := false
 	var i := 0
@@ -3799,6 +3808,11 @@ func exhaust_hand(source_card = null) -> int:
 			continue
 		if not skipped_self and slot.card == source_card:
 			skipped_self = true
+			i += 1
+			continue
+		# only="non_attack" (Sever Soul): the sweep spares Attack cards. The
+		# curse slots below still clear — curses are never Attacks.
+		if only == "non_attack" and slot.card.is_attack():
 			i += 1
 			continue
 		removed += 1
@@ -3846,6 +3860,27 @@ func lose_energy(n: int) -> void:
 	_slow_remaining += _tr.energy_to_seconds(n)
 	GameLog.add("Slowed! -%ds." % n, Color(1.0, 0.7, 0.7))
 
+# Sneaky Strike's counter gate: resolve the wrapped self effect only when the
+# named GameState incremental counter is > 0 (discards_this_turn). The inner
+# verbs are the action translations — energy is a Haste window, draw opens a
+# temp auto-slot. The counter sibling of Dropkick's if_target_status payoff.
+func _apply_if_counter_effect(effect: Dictionary) -> void:
+	var counter: String = String(effect.get("counter", ""))
+	var inner: Dictionary = effect.get("effect", {})
+	if counter == "" or inner.is_empty():
+		return
+	if GameState.incremental_value(counter) <= 0:
+		return
+	match String(inner.get("type", "")):
+		"gain_energy":
+			gain_energy(int(inner.get("value", 1)))
+		"lose_energy":
+			lose_energy(int(inner.get("value", 1)))
+		"draw":
+			draw_cards(int(inner.get("value", 1)))
+		"heal":
+			_resolve_heal_self(int(inner.get("value", 0)))
+
 func _apply_self_effects(card: CardData) -> void:
 	# Used by the ranged path so block / heal / self statuses still
 	# fire even though the damage is in flight.
@@ -3861,7 +3896,8 @@ func _apply_self_effects(card: CardData) -> void:
 			continue
 		if t == "discard":
 			if bool(effect.get("all", false)):
-				discard_hand()          # Storm of Steel: collapse every temp slot
+				# Storm of Steel: collapse every temp slot (Unload: non-Attacks).
+				discard_hand(null, String(effect.get("only", "")))
 			else:
 				discard_cards(int(effect.get("value", 1)))
 			continue
@@ -3880,6 +3916,10 @@ func _apply_self_effects(card: CardData) -> void:
 			# translation): bypasses block, syncs the HUD, counts one
 			# hp_losses instance for Blood for Blood's discount.
 			_lose_hp_self(int(effect.get("value", 0)), card)
+			continue
+		if t == "if_counter":
+			# Sneaky Strike: the gated payoff is a self effect, untargeted.
+			_apply_if_counter_effect(effect)
 			continue
 		var tgt: String = String(effect.get("target", ""))
 		if tgt != "self" and tgt != "player":

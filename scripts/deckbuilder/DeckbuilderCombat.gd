@@ -2385,14 +2385,18 @@ func _apply_topdeck_picks(picks: Array) -> void:
 			Color(0.6, 1.0, 0.7))
 	_refresh_ui()
 
-func discard_hand(source_card = null) -> int:
+func discard_hand(source_card = null, only: String = "") -> int:
 	# Storm of Steel: discard the entire hand (minus the card being played) and
 	# record the count so a following conjure `count_from: "discarded"` can
-	# mint one Shiv per card. Returns the number discarded.
+	# mint one Shiv per card. `only: "non_attack"` (Unload) spares the Attacks.
+	# Returns the number discarded.
 	var doomed: Array = []
 	for c in hand:
-		if c != source_card:
-			doomed.append(c)
+		if c == source_card:
+			continue
+		if only == "non_attack" and c.is_attack():
+			continue
+		doomed.append(c)
 	for c in doomed:
 		discard_card(c)
 	last_discard_count = doomed.size()
@@ -2402,16 +2406,19 @@ func discard_hand(source_card = null) -> int:
 			Color(0.9, 0.7, 0.4))
 	return last_discard_count
 
-func exhaust_hand(source_card = null) -> int:
+func exhaust_hand(source_card = null, only: String = "") -> int:
 	# Fiend Fire: exhaust the entire hand (minus the card being played) and
 	# record the count so a following dmg `hits_from: "exhausted"` can land one
-	# hit per card. Returns the number exhausted. exhaust_card fires the
-	# card_exhausted triggers per card, so Feel No Pain / Dark Embrace react to
-	# each one.
+	# hit per card. `only: "non_attack"` (Sever Soul) spares the Attacks.
+	# Returns the number exhausted. exhaust_card fires the card_exhausted
+	# triggers per card, so Feel No Pain / Dark Embrace react to each one.
 	var doomed: Array = []
 	for c in hand:
-		if c != source_card:
-			doomed.append(c)
+		if c == source_card:
+			continue
+		if only == "non_attack" and c.is_attack():
+			continue
+		doomed.append(c)
 	for c in doomed:
 		exhaust_card(c)
 	last_exhaust_count = doomed.size()
@@ -2477,9 +2484,9 @@ func upgrade_hand_cards(count_or_all, source_card = null, random: bool = false) 
 	for c in hand:
 		if c == source_card:
 			continue
-		if c.data == null or not c.data.can_upgrade:
-			continue
-		if c.upgraded:
+		# can_take_upgrade folds the can_upgrade / already-upgraded checks and
+		# keeps sequential cards (Searing Blow) eligible forever.
+		if not (c is CardInstance and c.can_take_upgrade()):
 			continue
 		pool.append(c)
 	if pool.is_empty():
@@ -2513,7 +2520,7 @@ func upgrade_hand_cards(count_or_all, source_card = null, random: bool = false) 
 
 func _apply_upgrade_picks(picks: Array) -> void:
 	for pick in picks:
-		pick.upgraded = true
+		pick.apply_upgrade()
 		GameLog.add("Upgraded %s." % pick.get_display_name(), Color(0.6, 0.9, 1.0))
 	_refresh_ui()
 

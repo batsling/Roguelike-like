@@ -129,8 +129,8 @@ Semicolon-delimited list of effect lines. Each line is
 | `gain` | `STAT:VALUE` | Player gains the stat (block, power, defense, dodge, …). | `{type: "block"/"status", value, stacks, status, target: "self"}` |
 | `inflict` | `STATUS:STACKS[:cleave][:if_intent=attack]` | Apply a debuff to the targeted enemy (or all enemies with `cleave`). `if_intent=attack` (Go for the Eyes) gates the inflict on the target telegraphing an attack — see the intent gate section. | `{type: "status", status, stacks, target: "enemy"/"all_enemies", if_target_intent?}` |
 | `draw` | `N` | Draw N cards. In Action mode this instead chips a random ability cooldown by 25% per N. In Strategy, reduces a random ability CD by N. | `{type: "draw", value: N}` |
-| `discard` | `N[:random]` \| `all` | Mirror of `draw`. Deckbuilder/Strategy: pick N from hand via the CardPickerModal (default — player chooses, like Acrobatics). Append `:random` for the engine-picked random variant (All-Out Attack). Always excludes the played card. `discard:all` (Storm of Steel) discards the whole hand with no picker and records the count for `count=discarded`. Action: collapses temporary auto-slots (`all` collapses every one). | `{type: "discard", value: N, random?: bool}` / `{type: "discard", all: true}` |
-| `exhaust` | `N[:random]` \| `all` | Deckbuilder/Strategy mirror of `discard` but routes picks to the exhaust pile. Same player-choice default and `:random` flag. `exhaust:all` (Fiend Fire) exhausts the whole hand minus the played card, no picker, and records the count for a following `dmg …:hits=exhausted`. Action: `exhaust:N` no-ops; `exhaust:all` empties every other cooldown slot (see the dmg shorthand notes). | `{type: "exhaust", value: N, random?: bool}` / `{type: "exhaust", all: true}` |
+| `discard` | `N[:random]` \| `all` | Mirror of `draw`. Deckbuilder/Strategy: pick N from hand via the CardPickerModal (default — player chooses, like Acrobatics). Append `:random` for the engine-picked random variant (All-Out Attack). Always excludes the played card. `discard:all` (Storm of Steel) discards the whole hand with no picker and records the count for `count=discarded`. `discard:all:non_attack` (Unload) narrows the sweep to non-Attack cards (action: only non-Attack temp slots collapse). Action: collapses temporary auto-slots (`all` collapses every one). | `{type: "discard", value: N, random?: bool}` / `{type: "discard", all: true}` |
+| `exhaust` | `N[:random]` \| `all` | Deckbuilder/Strategy mirror of `discard` but routes picks to the exhaust pile. Same player-choice default and `:random` flag. `exhaust:all` (Fiend Fire) exhausts the whole hand minus the played card, no picker, and records the count for a following `dmg …:hits=exhausted`. `exhaust:all:non_attack` (Sever Soul) narrows the sweep to non-Attack cards (action: armed Attacks are spared; curse slots still clear). Action: `exhaust:N` no-ops; `exhaust:all` empties every other cooldown slot (see the dmg shorthand notes). | `{type: "exhaust", value: N, random?: bool}` / `{type: "exhaust", all: true}` |
 | `topdeck` | `N[:random][:from=discard]` | Put N cards from hand on TOP of the draw pile (Warcry). Deckbuilder/Strategy open the CardPickerModal by default; `:random` skips it. Action auto-picks: a temporary auto-slot's card goes back on top of the auto draw pile (or a random discard when no temp slots are up). `from=discard` (Headbutt) pools the pick from the DISCARD pile instead — the picker browses the discard; action always pulls a random discard back on top, never collapsing a slot. | `{type: "topdeck", value: N, random?: bool, from?: "discard"}` |
 | `recall` | `<FILTER>[:from=PILE][:to=PILE]` | Deckbuilder: move (not copy) every card in the source pile matching `FILTER` into the destination pile. `FILTER` today is `cost=N`; defaults are `from=discard`, `to=hand` (All for One). No-op in action/strategy. | `{type: "recall", from: PILE, to: PILE, filter: {…}}` |
 | `upgrade_hand` | `N\|all[:random]` | Deckbuilder: upgrade in-place. `upgrade_hand:1` opens the picker so the player chooses (Armaments); `upgrade_hand:all` upgrades every eligible card in hand silently (Armaments+). Append `:random` to skip the picker for the N form. Skips cards that are already upgraded or have `can_upgrade = false`. No-op in action/strategy. | `{type: "upgrade_hand", value: N\|"all", random?: bool}` |
@@ -152,6 +152,8 @@ Semicolon-delimited list of effect lines. Each line is
 | `if_target` | `STATUS:<INNER_VERB>:<INNER_ARGS>` | Resolve the inner effect only when the PICKED enemy target carries STATUS (Dropkick: `if_target:vulnerable:gain_energy:1`). A wrapper — not a kv on the inner verb — because the inner verbs are scene effects (gain_energy / draw) that would otherwise resolve against the player and lose the enemy from ctx. In action the payoff fires once when any hit enemy carries the status. | `{type: "if_target_status", status, target: "enemy", effect: {…inner…}}` |
 | `cost_reduce` | `per=COUNTER` | Card-level dynamic discount: the card costs 1 less per point of the named live counter (see Scaling counters), floored at 0 and re-read every time the cost is shown or paid. Blood for Blood: `cost_reduce:per=hp_losses`; Eviscerate: `cost_reduce:per=discards_this_turn`. Cost IS cooldown in action, so a re-armed slot picks up the current discount. NOT an on-play effect — the generator pops it into `CardData.cost_reduce_from`. | `cost_reduce_from = &"COUNTER"` (field, not an effect) |
 | `cost_increase` | `per=COUNTER` | The surcharge mirror of `cost_reduce`: the card costs 1 MORE per point of the counter, read just as live. Masterful Stab: `cost_increase:per=hp_losses` — every HP-loss instance raises the shown/paid cost (and lengthens the cooldown in action). Both fields may coexist on one card; the discount and surcharge net against each other before the 0 floor. | `cost_increase_from = &"COUNTER"` (field, not an effect) |
+| `if_counter` | `COUNTER:<INNER_VERB>:<INNER_ARGS>` | Resolve the inner effect only when the named live counter (see Scaling counters) is > 0 — the counter sibling of `if_target`. Sneaky Strike: `if_counter:discards_this_turn:gain_energy:2`. All three modes; action translates the inner verb as usual (energy = Haste window). | `{type: "if_counter", counter, effect: {…inner…}}` |
+| `sequential_upgrade` | `N` | The card can be upgraded ANY number of times; each upgrade adds +N to every dmg value instead of flipping to a one-shot upgraded form (leave the ↑ columns N/A — the upgrade IS the step). Searing Blow: `sequential_upgrade:3`. Card-level: lands in `CardData.sequential_upgrade_step` and forces `can_upgrade`; the count lives per physical card on `CardInstance.upgrade_count` (persisted, shown as `+`, `+2`, `+3`, …). See the Sequential upgrades section. | `sequential_upgrade_step = N` (field, not an effect) |
 
 ### Argument shorthand for `dmg`
 
@@ -265,6 +267,52 @@ cascades. Action has no draws for its rotation, so the trigger is inert there.
 | Pummel | `dmg:2x4:melee` + `Keywords: Exhaust` | `Uncommon Attack` cost 1, `Poke, Small`. Upgrade adds a hit (`2x5`), not damage. |
 | Quick Slash | `dmg:8:melee; draw:1` | `Common Attack` cost 1, `Swing, Small`. Upgrade: 12. |
 | Rampage | `dmg:8:melee; boost_cards:id=rampage:dmg:5` | `Uncommon Attack` cost 1, `Swing, Small`. Glass Knife's self-boost with the sign flipped: each play registers +5 (upgraded +8) Dmg on every copy of Rampage for the combat. The base 8 never changes on upgrade — only the ramp. |
+
+### Sequential upgrades (Searing Blow)
+
+`sequential_upgrade:N` marks a card **infinitely upgradable**: instead of the
+binary base/`+` flip, every upgrade banks another +N onto each of the card's
+dmg values. The ↑ columns stay `N/A` — the step IS the upgrade.
+
+- **Per physical card.** The count lives on `CardInstance.upgrade_count`
+  (persisted with the deck save) and folds into `get_effects()` exactly like a
+  per-instance bonus, so deckbuilder and strategy read it for free. The name
+  wears the count: `Searing Blow+`, `+2`, `+3`, …; the description trails the
+  banked total (`[+6 Dmg]`).
+- **Every upgrade path stacks it.** All upgrade sites route through
+  `CardInstance.apply_upgrade()` / filter on `can_take_upgrade()`: the rest
+  site smith, Armaments' `upgrade_hand` (deckbuilder AND strategy), Whetstone /
+  War Paint's `upgrade_random_deck_cards`, the Egg auto-upgrade on acquire,
+  and an upgraded card reward (`from_data(d, true)` = one banked upgrade). A
+  sequential card never saturates — it stays a legal pick forever; binary
+  cards keep the old one-and-done rule.
+- **Action mode.** The rotation resolves cards through
+  `GameState._effective_action_card`, which returns a per-`(id, count)` cached
+  CardData with the bonus folded in (the sequential sibling of the binary
+  upgrade cache), so two `Searing Blow+3` copies share one resource and the
+  cooldown formula sees the unchanged cost.
+
+Worked example — Searing Blow — `Uncommon Attack` cost 2:
+```
+Description:  Deal 12 Dmg Fire Melee. Sequential Upgrade Dmg +3.
+Effects:      dmg:12:melee; sequential_upgrade:3
+↑ columns:    N/A
+Attack:       Swing, Medium
+Element:      Fire
+Tags:         ironclad, offense, scaling
+```
+
+### The Slice / Sneaky Strike / Unload / Searing Blow … port batch — quick reference
+
+| Card | Effects DSL | Notes |
+|---|---|---|
+| Slice | `dmg:6:melee` | `Common Attack` cost 0, `Swing, Small`. Upgrade: 9. |
+| Reckless Charge | `dmg:7:melee; conjure:dazed:draw` | `Uncommon Attack` cost 0, `Smash, Small`. Upgrade: 10. Shuffles a Dazed into the draw pile. |
+| Wild Strike | `dmg:12:melee; conjure:wound:draw` | `Common Attack` cost 1, `Smash, Small`. Upgrade: 17. Its name feeds Perfected Strike's count. |
+| Sneaky Strike | `dmg:12:melee; if_counter:discards_this_turn:gain_energy:2` | `Common Attack` cost 2, `Poke, Small`. Upgrade: 16. The +2 Energy lands only when you've discarded this turn. |
+| Unload | `dmg:14:ranged; discard:all:non_attack` | `Rare Attack` cost 1, `Projectile, Medium, spread=4` — a 4-bolt fan in action. Upgrade: 18. |
+| Sever Soul | `exhaust:all:non_attack; dmg:16:melee` | `Uncommon Attack` cost 2, `Swing, Small`. Upgrade: 22. The sweep resolves BEFORE the hit. |
+| Searing Blow | `dmg:12:melee; sequential_upgrade:3` | `Uncommon Attack` cost 2, `Swing, Medium`, Element `Fire`. Infinitely upgradable — see the Sequential upgrades section. |
 
 ### X-cost cards (Whirlwind / Skewer)
 

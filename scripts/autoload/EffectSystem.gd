@@ -122,6 +122,7 @@ func _register_defaults() -> void:
 	register("retain", _h_retain)
 	register("chance", _h_chance)
 	register("if_target_status", _h_if_target_status)
+	register("if_counter", _h_if_counter)
 	register("add_max_hp", _h_add_max_hp)
 	register("gain_hp", _h_gain_hp)
 	register("gain_max_hp", _h_gain_max_hp)
@@ -671,7 +672,8 @@ func _h_discard(effect: Dictionary, ctx: Dictionary) -> void:
 	# `last_discard_count` for a following conjure count_from: "discarded".
 	if bool(effect.get("all", false)):
 		if scene.has_method("discard_hand"):
-			scene.discard_hand(ctx.get("card"))
+			# `only: "non_attack"` (Unload) narrows the sweep to non-Attacks.
+			scene.discard_hand(ctx.get("card"), String(effect.get("only", "")))
 		return
 	if not scene.has_method("discard_cards"):
 		return
@@ -700,7 +702,8 @@ func _h_exhaust(effect: Dictionary, ctx: Dictionary) -> void:
 	# `last_exhaust_count` for a following dmg hits_from: "exhausted".
 	if bool(effect.get("all", false)):
 		if scene.has_method("exhaust_hand"):
-			scene.exhaust_hand(ctx.get("card"))
+			# `only: "non_attack"` (Sever Soul) narrows the sweep to non-Attacks.
+			scene.exhaust_hand(ctx.get("card"), String(effect.get("only", "")))
 		return
 	if not scene.has_method("exhaust_cards"):
 		return
@@ -891,6 +894,19 @@ func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 # inherits the ctx and its handler acts on the scene/player as usual.
 #   {type: "if_target_status", status: "vulnerable",
 #    effect: {type: "gain_energy", value: 1}}
+# Sneaky Strike (if_counter): resolve the wrapped effect only when the named
+# GameState incremental counter is > 0 (discards_this_turn) — the counter
+# sibling of the if_target wrapper below. The inner effect resolves through
+# the same dispatch with the same ctx, so gain_energy lands on the scene.
+func _h_if_counter(effect: Dictionary, ctx: Dictionary) -> void:
+	var counter: String = String(effect.get("counter", ""))
+	var inner: Dictionary = effect.get("effect", {})
+	if counter == "" or inner.is_empty():
+		return
+	if GameState.incremental_value(counter) <= 0:
+		return
+	apply(inner, ctx)
+
 func _h_if_target_status(effect: Dictionary, ctx: Dictionary) -> void:
 	var status := StringName(String(effect.get("status", "")))
 	var inner: Dictionary = effect.get("effect", {})

@@ -198,6 +198,36 @@ def main():
     assert shape_i == "auto_aoe" and params_i == {"target": "nearest",
                                                   "size": "large"}, (shape_i, params_i)
 
+    # --- The Slice / Sneaky Strike / Unload / Searing Blow ... port batch -----
+
+    # if_counter:COUNTER:<clause> (Sneaky Strike): resolve the wrapped effect
+    # only when the named incremental counter is > 0 -- the counter sibling of
+    # the if_target wrapper.
+    sn = one("if_counter:discards_this_turn:gain_energy:2")
+    assert sn == {"type": "if_counter", "counter": "discards_this_turn",
+                  "effect": {"type": "gain_energy", "value": 2}}, sn
+
+    # discard:all:non_attack (Unload) / exhaust:all:non_attack (Sever Soul):
+    # the hand sweeps spare Attack cards.
+    ul = one("discard:all:non_attack")
+    assert ul == {"type": "discard", "all": True, "only": "non_attack"}, ul
+    sv = one("exhaust:all:non_attack")
+    assert sv == {"type": "exhaust", "all": True, "only": "non_attack"}, sv
+    # The unfiltered sweeps are untouched.
+    assert one("discard:all") == {"type": "discard", "all": True}
+    assert one("exhaust:all") == {"type": "exhaust", "all": True}
+
+    # sequential_upgrade:N (Searing Blow) stays in the effect list at parse
+    # time; card_tres pops it into CardData.sequential_upgrade_step and forces
+    # can_upgrade.
+    sb = one("sequential_upgrade:3")
+    assert sb == {"type": "sequential_upgrade", "step": 3}, sb
+
+    # Unload's 4-projectile fan rides the projectile archetype's spread param.
+    shape_u, params_u, _rcu = gen.parse_attack("Projectile, Medium, spread=4")
+    assert shape_u == "projectile" and params_u == {"size": "medium",
+                                                    "spread": 4}, (shape_u, params_u)
+
     # The boomerang archetype parses via the Attack column.
     shape, params, _rc = gen.parse_attack("Boomerang")
     assert shape == "boomerang" and params == {}, (shape, params)

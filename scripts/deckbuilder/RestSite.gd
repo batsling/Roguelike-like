@@ -132,7 +132,7 @@ func _show_smith_picker() -> void:
 		if not (c is CardInstance):
 			continue
 		var inst: CardInstance = c
-		if not inst.data.can_upgrade or inst.upgraded:
+		if not inst.can_take_upgrade():
 			continue
 		picked_any = true
 		var btn := Button.new()
@@ -161,8 +161,8 @@ func _show_smith_picker() -> void:
 	add_child(picker)
 
 func _commit_smith(inst: CardInstance, picker: Control) -> void:
-	inst.upgraded = true
-	GameLog.add("Smith: %s upgraded." % inst.data.display_name, Color(1.0, 0.85, 0.4))
+	inst.apply_upgrade()
+	GameLog.add("Smith: %s upgraded." % inst.get_display_name(), Color(1.0, 0.85, 0.4))
 	GameState.emit_signal("deck_changed")
 	picker.queue_free()
 	emit_signal("closed")

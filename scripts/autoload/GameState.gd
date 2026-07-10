@@ -1450,7 +1450,7 @@ func add_card_to_deck(card) -> CardInstance:
 	# as the card supports upgrading and isn't already upgraded.
 	if not ci.upgraded and ci.data != null and ci.data.can_upgrade \
 			and _deck_add_should_upgrade(ci.data):
-		ci.upgraded = true
+		ci.apply_upgrade()
 		Notifications.notify("%s was upgraded by an Egg!" % ci.data.display_name,
 			Color(1.0, 0.72, 0.3))
 	# Vorpal weapons roll their bound combat type + weight once, at acquisition,
@@ -1477,14 +1477,13 @@ func _deck_add_should_upgrade(card_data: CardData) -> bool:
 func upgrade_random_deck_cards(card_type: String, count: int) -> Array:
 	var pool: Array = []
 	for ci in deck:
-		if ci is CardInstance and not ci.upgraded and ci.data != null \
-				and ci.data.can_upgrade \
+		if ci is CardInstance and ci.can_take_upgrade() \
 				and (card_type == "" or ItemTriggers._card_type_is(ci.data, card_type)):
 			pool.append(ci)
 	pool.shuffle()
 	var names: Array = []
 	for i in range(mini(maxi(0, count), pool.size())):
-		pool[i].upgraded = true
+		pool[i].apply_upgrade()
 		names.append(pool[i].data.display_name)
 	if not names.is_empty():
 		emit_signal("deck_changed")
@@ -2043,7 +2042,29 @@ func get_action_loadout() -> Dictionary:
 func _effective_action_card(inst: CardInstance) -> CardData:
 	if inst == null or inst.data == null:
 		return null
+	# Sequential upgrades (Searing Blow) fold per banked count, cached per
+	# (id, count) so two Searing Blow+3 copies share one resource, exactly
+	# like binary upgrades share the per-id cache below.
+	if inst.is_sequential_upgrade() and inst.upgrade_count > 0:
+		return _sequential_action_card_data(inst.data, inst.upgrade_count)
 	return effective_action_card_data(inst.data, inst.upgraded)
+
+func _sequential_action_card_data(base: CardData, count: int) -> CardData:
+	var key: StringName = StringName("%s#%d" % [base.id, count])
+	if not _action_upgraded_cache.has(key):
+		var dup: CardData = base.duplicate() as CardData
+		var bonus: int = count * base.sequential_upgrade_step
+		var effs: Array = base.effects.duplicate(true)
+		for e in effs:
+			if e is Dictionary and String(e.get("type", "")) == "dmg":
+				e["value"] = int(e.get("value", 0)) + bonus
+		dup.effects = effs
+		dup.display_name = base.display_name + ("+" if count == 1 else "+%d" % count)
+		# The dup is a resolved runtime form: no further folding on it.
+		dup.sequential_upgrade_step = 0
+		dup.can_upgrade = false
+		_action_upgraded_cache[key] = dup
+	return _action_upgraded_cache[key]
 
 # Public form for callers that hold a base CardData + a known upgrade flag (the
 # action conjure path resolving `shiv+`). Returns the base resource untouched

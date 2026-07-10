@@ -344,8 +344,12 @@ def _effect_from_tokens(tokens):
     if verb == "discard":
         # discard:all (Storm of Steel) discards the whole hand — no picker, no
         # random flag — and records the count for a following count=discarded.
+        # discard:all:non_attack (Unload) sweeps only the non-Attack cards.
         if pos and pos[0].lower() == "all":
-            return {"type": "discard", "all": True}
+            eff = {"type": "discard", "all": True}
+            if len(pos) > 1 and pos[1].lower() == "non_attack":
+                eff["only"] = "non_attack"
+            return eff
         value = int(pos[0]) if pos and pos[0].isdigit() else 1
         eff = {"type": "discard", "value": value}
         if "random" in [p.lower() for p in pos[1:]]:
@@ -373,8 +377,12 @@ def _effect_from_tokens(tokens):
         # exhaust:all (Fiend Fire) exhausts the whole hand minus the played
         # card — no picker — and records the count for a following dmg
         # hits=exhausted, mirroring discard:all + count=discarded.
+        # exhaust:all:non_attack (Sever Soul) sweeps only non-Attack cards.
         if pos and pos[0].lower() == "all":
-            return {"type": "exhaust", "all": True}
+            eff = {"type": "exhaust", "all": True}
+            if len(pos) > 1 and pos[1].lower() == "non_attack":
+                eff["only"] = "non_attack"
+            return eff
         value = int(pos[0]) if pos and pos[0].isdigit() else 1
         eff = {"type": "exhaust", "value": value}
         if "random" in [p.lower() for p in pos[1:]]:
@@ -449,6 +457,26 @@ def _effect_from_tokens(tokens):
         # (hp_losses), re-read live. Card-level, lands in
         # CardData.cost_increase_from.
         return {"type": "cost_increase", "from": kv.get("per", "")}
+
+    if verb == "sequential_upgrade":
+        # sequential_upgrade:N (Searing Blow): the card can be upgraded ANY
+        # number of times; each upgrade adds +N to its dmg. Card-level —
+        # card_tres pops it into CardData.sequential_upgrade_step and forces
+        # can_upgrade = true (the ↑ columns stay N/A; the upgrade IS the step).
+        return {"type": "sequential_upgrade",
+                "step": int(pos[0]) if pos and pos[0].isdigit() else 0}
+
+    if verb == "if_counter":
+        # if_counter:COUNTER:<clause> (Sneaky Strike): resolve the wrapped
+        # effect only when the named GameState incremental counter is > 0 —
+        # the counter sibling of the if_target wrapper. Sneaky Strike:
+        # if_counter:discards_this_turn:gain_energy:2.
+        counter = pos[0].lower() if pos else ""
+        inner = _effect_from_tokens(args[1:]) if len(args) > 1 else None
+        eff = {"type": "if_counter", "counter": counter}
+        if isinstance(inner, dict):
+            eff["effect"] = inner
+        return eff
 
     m = re.match(r"^on_([a-z_]+)$", verb)
     if m and verb not in ("on_action", "on_play_other"):
@@ -705,6 +733,7 @@ def card_tres(row) -> tuple:
     # the one field — authoring different counters per form isn't supported.
     cost_reduce_from = ""
     cost_increase_from = ""
+    seq_step = 0
     for bucket in (on_play, up_on_play):
         for e in list(bucket):
             if isinstance(e, dict) and e.get("type") == "cost_reduce":
@@ -712,6 +741,13 @@ def card_tres(row) -> tuple:
                 bucket.remove(e)
             elif isinstance(e, dict) and e.get("type") == "cost_increase":
                 cost_increase_from = cost_increase_from or str(e.get("from", ""))
+                bucket.remove(e)
+            elif isinstance(e, dict) and e.get("type") == "sequential_upgrade":
+                # sequential_upgrade:N (Searing Blow) is card-level: the step
+                # lands in CardData.sequential_upgrade_step and the card is
+                # upgradable even though its ↑ columns are N/A — the upgrade
+                # IS the step, applied per CardInstance.upgrade_count.
+                seq_step = seq_step or int(e.get("step", 0))
                 bucket.remove(e)
 
     lines = []
@@ -742,12 +778,14 @@ def card_tres(row) -> tuple:
         lines.append('cost_reduce_from = &"%s"' % gd_str(cost_reduce_from))
     if cost_increase_from:
         lines.append('cost_increase_from = &"%s"' % gd_str(cost_increase_from))
+    if seq_step > 0:
+        lines.append("sequential_upgrade_step = %d" % seq_step)
     lines.append("tags = %s" % packed_string_array(tags))
     if source:
         lines.append('source_game = "%s"' % gd_str(source))
     if element:
         lines.append('element = &"%s"' % gd_str(element))
-    lines.append("can_upgrade = %s" % ("true" if can_up else "false"))
+    lines.append("can_upgrade = %s" % ("true" if (can_up or seq_step > 0) else "false"))
     if can_up:
         if up_desc:
             lines.append('upgraded_description = "%s"' % gd_str(up_desc))

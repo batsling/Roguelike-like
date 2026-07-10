@@ -388,6 +388,8 @@ func _serialize_deck(deck: Array) -> Array:
 			out.append({
 				"id": String(c.data.id),
 				"upgraded": c.upgraded,
+				# Sequential upgrades (Searing Blow): the banked upgrade count.
+				"upgrade_count": c.upgrade_count,
 				"source_weapon_id": c.source_weapon_id,
 				"effect_bonuses": _stringify_effect_bonus_keys(c.effect_bonuses),
 				# Vorpal's once-per-card roll persists with the deck so the bound
@@ -411,6 +413,9 @@ func _resolve_deck(entries: Array) -> Array:
 		if c == null:
 			continue
 		var ci: CardInstance = CardInstance.from_data(c, bool(e.get("upgraded", false)))
+		# from_data seeds count 1 for an upgraded sequential card, so an old
+		# save that predates the field still loads as one applied upgrade.
+		ci.upgrade_count = int(e.get("upgrade_count", ci.upgrade_count))
 		ci.source_weapon_id = int(e.get("source_weapon_id", 0))
 		ci.effect_bonuses = _intify_effect_bonus_keys(e.get("effect_bonuses", {}))
 		# Restore the persisted Vorpal roll (-2 default = re-roll lazily for an

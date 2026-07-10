@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_slice"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Slice.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"slice"
+display_name = "Slice"
+type = 0
+rarity = 1
+cost = 0
+description = "Deal 6 Dmg Melee."
+effects = [{"type": "dmg", "value": 6, "target": "enemy", "damage_type": "melee"}]
+tags = PackedStringArray("silent", "offense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 9 Dmg Melee."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 9, "target": "enemy", "damage_type": "melee"}]
+image = ExtResource("2_img")
+attack_shape = &"swing"
+attack_params = {"size": "small"}

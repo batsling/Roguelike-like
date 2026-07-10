@@ -1909,8 +1909,15 @@ func _apply_topdeck_picks(picks: Array) -> void:
 
 # Storm of Steel: discard the entire hand (minus the played card) and record
 # the count for a following conjure `count_from: "discarded"`.
-func discard_hand(source_card = null) -> int:
+func discard_hand(source_card = null, only: String = "") -> int:
 	var doomed: Array = _hand_pool(source_card)
+	# `only: "non_attack"` (Unload) spares the Attacks.
+	if only == "non_attack":
+		var kept: Array = []
+		for c in doomed:
+			if not (c.has_method("is_attack") and c.is_attack()):
+				kept.append(c)
+		doomed = kept
 	for c in doomed:
 		discard_card(c)
 	last_discard_count = doomed.size()
@@ -1923,8 +1930,15 @@ func discard_hand(source_card = null) -> int:
 
 # Fiend Fire: exhaust the entire hand (minus the played card) and record the
 # count for a following dmg `hits_from: "exhausted"` — one hit per card.
-func exhaust_hand(source_card = null) -> int:
+func exhaust_hand(source_card = null, only: String = "") -> int:
 	var doomed: Array = _hand_pool(source_card)
+	# `only: "non_attack"` (Sever Soul) spares the Attacks.
+	if only == "non_attack":
+		var kept: Array = []
+		for c in doomed:
+			if not (c.has_method("is_attack") and c.is_attack()):
+				kept.append(c)
+		doomed = kept
 	for c in doomed:
 		exhaust_card(c)
 	last_exhaust_count = doomed.size()
@@ -1973,7 +1987,8 @@ func _pile_for(name: String) -> Array:
 func upgrade_hand_cards(value, source_card = null, random: bool = false) -> void:
 	var eligible: Array = []
 	for c in hand:
-		if c != source_card and c.data != null and c.data.can_upgrade and not c.upgraded:
+		# can_take_upgrade keeps sequential cards (Searing Blow) eligible forever.
+		if c != source_card and c is CardInstance and c.can_take_upgrade():
 			eligible.append(c)
 	if eligible.is_empty():
 		return
@@ -2003,7 +2018,7 @@ func upgrade_hand_cards(value, source_card = null, random: bool = false) -> void
 
 func _apply_upgrade_picks(picks: Array) -> void:
 	for pick in picks:
-		pick.upgraded = true
+		pick.apply_upgrade()
 		GameLog.add("Upgraded %s." % pick.get_display_name(), Color(0.6, 0.9, 1.0))
 	_refresh_hand()
 

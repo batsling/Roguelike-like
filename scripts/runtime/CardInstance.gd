@@ -7,6 +7,12 @@ extends RefCounted
 
 var data: CardData = null
 var upgraded: bool = false
+
+# Sequential upgrades (Searing Blow): how many times THIS physical card has
+# been upgraded. Only meaningful when data.sequential_upgrade_step > 0 — each
+# count adds step to the card's dmg values (folded in get_effects) and
+# suffixes the display name (+, +2, +3, …). Persisted with the deck.
+var upgrade_count: int = 0
 var temp_cost_override: int = -999      # -999 sentinel = no override
 
 # Per-combat additive cost change (negative = discount). Empty Tome grants a
@@ -63,7 +69,30 @@ static func from_data(d: CardData, is_upgraded: bool = false) -> CardInstance:
 	var c := CardInstance.new()
 	c.data = d
 	c.upgraded = is_upgraded
+	# A sequential card built "upgraded" (upgraded card reward) starts at one
+	# applied upgrade; further ones stack via apply_upgrade.
+	if is_upgraded and d != null and d.sequential_upgrade_step > 0:
+		c.upgrade_count = 1
 	return c
+
+# --- Upgrades ----------------------------------------------------------------
+
+func is_sequential_upgrade() -> bool:
+	return data != null and data.sequential_upgrade_step > 0
+
+# Whether an upgrade effect (smith / Armaments / Whetstone / Egg) may take this
+# card. Sequential cards never saturate; binary cards saturate once upgraded.
+func can_take_upgrade() -> bool:
+	if data == null or not data.can_upgrade:
+		return false
+	return is_sequential_upgrade() or not upgraded
+
+# The single upgrade entry point every upgrade path routes through. Binary
+# cards flip the flag; sequential cards (Searing Blow) also bank another step.
+func apply_upgrade() -> void:
+	upgraded = true
+	if is_sequential_upgrade():
+		upgrade_count += 1
 
 func get_cost() -> int:
 	if temp_cost_override != -999:
@@ -135,9 +164,12 @@ func get_effects() -> Array:
 	# effects (Brass Knuckles etc.). Empty bonuses + no grants returns the
 	# base array directly so the hot path stays allocation-free.
 	var base: Array = data.get_effective_effects(upgraded)
+	# Sequential upgrades (Searing Blow): +step per banked upgrade on every dmg
+	# value, folded exactly like a per-instance bonus.
+	var seq_bonus: int = upgrade_count * data.sequential_upgrade_step
 	# No per-instance bumps: CardMods folds in item boosts + appended grants
 	# (and short-circuits to `base` untouched when neither applies).
-	if effect_bonuses.is_empty():
+	if effect_bonuses.is_empty() and seq_bonus == 0:
 		return CardMods.resolved_effects(base, data)
 	# Layer this instance's persistent effect_bonuses onto a duplicated base
 	# first (weapon verifications), then hand off to CardMods for the shared
@@ -145,6 +177,8 @@ func get_effects() -> Array:
 	var bumped: Array = []
 	for i in range(base.size()):
 		var e: Dictionary = (base[i] as Dictionary).duplicate()
+		if seq_bonus != 0 and String(e.get("type", "")) == "dmg":
+			e["value"] = int(e.get("value", 0)) + seq_bonus
 		if effect_bonuses.has(i):
 			for field in effect_bonuses[i].keys():
 				e[field] = int(e.get(field, 0)) + int(effect_bonuses[i][field])
@@ -194,6 +228,10 @@ func _decorate(base: String) -> String:
 	var vorpal_extra: String = vorpal_badge()
 	if vorpal_extra != "":
 		base = "%s  %s" % [base, vorpal_extra]
+	# Sequential upgrades: trail the banked total so the flat description
+	# number reads true ("Searing Blow+2 ... [+6 Dmg]").
+	if is_sequential_upgrade() and upgrade_count > 0:
+		base = "%s  [+%d Dmg]" % [base, upgrade_count * data.sequential_upgrade_step]
 	# NOTE: item boosts (Strike Dummy) are NOT annotated here — CardScaling folds
 	# them straight into the card's Dmg/Block number, so "Deal 9 Dmg" already
 	# reflects the +3 instead of trailing a separate "[+3 Dmg]".
@@ -257,6 +295,9 @@ func bump_effect(effect_index: int, field: String, amount: int) -> void:
 	f[field] = int(f.get(field, 0)) + amount
 
 func get_display_name() -> String:
+	# Sequential cards wear their count: "Searing Blow+", "+2", "+3", ...
+	if is_sequential_upgrade() and upgrade_count > 0:
+		return data.display_name + ("+" if upgrade_count == 1 else "+%d" % upgrade_count)
 	if upgraded:
 		return data.display_name + "+"
 	return data.display_name
