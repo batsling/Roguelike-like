@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_intimidate"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Intimidate.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"intimidate"
+display_name = "Intimidate"
+type = 1
+rarity = 2
+cost = 0
+description = "Inflict 1 Weak Cleave. Exhaust."
+effects = [{"type": "status", "status": "weak", "stacks": 1, "target": "all_enemies"}]
+tags = PackedStringArray("ironclad", "debuff", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Inflict 2 Weak Cleave. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status", "status": "weak", "stacks": 2, "target": "all_enemies"}]
+image = ExtResource("2_img")
+exhaust = true

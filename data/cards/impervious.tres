@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_impervious"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Impervious.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"impervious"
+display_name = "Impervious"
+type = 1
+rarity = 3
+cost = 2
+description = "Gain +30 Block. Exhaust."
+effects = [{"type": "block", "value": 30, "target": "self"}]
+tags = PackedStringArray("ironclad", "defense", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain +40 Block. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{"type": "block", "value": 40, "target": "self"}]
+image = ExtResource("2_img")
+exhaust = true

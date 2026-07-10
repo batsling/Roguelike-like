@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_limit_break"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/LimitBreak.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"limit_break"
+display_name = "Limit Break"
+type = 1
+rarity = 3
+cost = 1
+description = "Gain Double Power. Exhaust."
+effects = [{"type": "double_stat", "stat": "power"}, {"type": "exhaust_self"}]
+tags = PackedStringArray("ironclad", "scaling")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain Double Power."
+upgraded_cost = -999
+upgraded_effects = [{"type": "double_stat", "stat": "power"}]
+image = ExtResource("2_img")

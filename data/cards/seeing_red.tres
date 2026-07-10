@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_seeing_red"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/SeeingRed.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"seeing_red"
+display_name = "Seeing Red"
+type = 1
+rarity = 2
+cost = 1
+description = "Gain 2 Energy. Exhaust."
+effects = [{"type": "gain_energy", "value": 2}]
+tags = PackedStringArray("ironclad", "energy", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain 2 Energy. Exhaust."
+upgraded_cost = 0
+upgraded_effects = [{"type": "gain_energy", "value": 2}]
+image = ExtResource("2_img")
+exhaust = true

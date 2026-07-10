@@ -101,6 +101,12 @@ const STATUS_ICONS := {
 	&"no_draw": "NoDraw.png",
 	&"intangible": "Intangible.png",
 	&"choked": "Choked.png",
+	# Skill-type markers (statusesnew Type "Skill"): display-only stacks set by
+	# a Skill card's own Effects DSL, wiped at the start of the player's next
+	# turn (clear_skill_markers). The behavior lives on the card, not here.
+	&"flame_barrier": "FlameBarrier.png",
+	&"rage": "Rage.png",
+	&"double_tap": "DoubleTap.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -1165,6 +1171,65 @@ func retain_total(power_triggers: Array) -> int:
 		if String(inner.get("type", "")) == "retain":
 			total += int(inner.get("value", 0))
 	return total
+
+# ---------------------------------------------------------------------------
+# Skill-type marker statuses + turn-scoped triggers (Flame Barrier / Rage /
+# Double Tap). A Skill card's Effects DSL sets a marker status purely so the
+# status strip shows an icon while the effect is armed; the mechanics ride the
+# card (a turn-scoped trigger registration, or an engine consume like Double
+# Tap's attack doubling). Both the markers and the `until: "turn_end"`
+# triggers expire at the START of the player's next turn — after the enemy
+# turn, so Flame Barrier retaliates all the way through it.
+# ---------------------------------------------------------------------------
+
+var _skill_marker_cache: Array = []   # Array[StringName], built lazily
+
+# Every statusesnew row whose Type is "Skill", as snake_case status keys
+# ("Flame Barrier" -> &"flame_barrier"). Data-driven off ReferenceCatalog so a
+# future Skill-type row (Blur, Burst, …) joins the wipe without a code change.
+func skill_marker_statuses() -> Array:
+	if _skill_marker_cache.is_empty():
+		for s in ReferenceCatalog.STATUSES:
+			if String(s.get("type", "")) != "Skill":
+				continue
+			var key: String = String(s.get("name", "")).to_lower()
+			key = key.replace("-", " ").strip_edges()
+			_skill_marker_cache.append(StringName(key.replace(" ", "_")))
+	return _skill_marker_cache
+
+# Wipe every Skill-type marker off the actor (the player, at the start of
+# their turn in each mode). No-op for stacks the actor doesn't carry.
+func clear_skill_markers(actor) -> void:
+	if actor == null or not actor.has_method("get_status"):
+		return
+	for s in skill_marker_statuses():
+		clear_status_stacks(actor, s)
+
+# Drop every registered trigger carrying `until: "turn_end"` (Rage / Flame
+# Barrier) from a scene's power_triggers list. Returns the surviving entries;
+# call at the same boundary as clear_skill_markers.
+func expire_turn_triggers(triggers: Array) -> Array:
+	var kept: Array = []
+	for trig in triggers:
+		if String(trig.get("until", "")) == "turn_end":
+			continue
+		kept.append(trig)
+	return kept
+
+# Direct signed status write (Disarm's `inflict:power:-2`, Shifting's Power
+# drain): unlike add_status this may take the stored value NEGATIVE, so a
+# drain cuts into an actor's base Power rather than flooring at 0. A value
+# arriving exactly at 0 clears the entry.
+func drain_status(target, status: StringName, stacks: int) -> void:
+	if target == null or status == &"" or stacks == 0:
+		return
+	if not ("statuses" in target):
+		return
+	var new_val: int = int(target.statuses.get(status, 0)) + stacks
+	if new_val == 0:
+		target.statuses.erase(status)
+	else:
+		target.statuses[status] = new_val
 
 # Record a played Power on the actor so the badge strip can show it (count
 # rises when the same power is played again). Purely presentational — the

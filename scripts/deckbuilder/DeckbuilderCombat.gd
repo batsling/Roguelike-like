@@ -820,6 +820,13 @@ func _apply_derived_statuses() -> void:
 func _start_player_turn() -> void:
 	turn += 1
 	phase = Phase.PLAYER
+	# Turn-scoped skills expire NOW — after the enemy turn, so Flame Barrier's
+	# registered retaliation covered every enemy hit — not at the player's own
+	# end of turn. Drops `until: "turn_end"` triggers (Rage / Flame Barrier)
+	# and wipes the matching Skill-type marker icons (rage / flame_barrier /
+	# double_tap) off the status strip.
+	power_triggers = Stats.expire_turn_triggers(power_triggers)
+	Stats.clear_skill_markers(player)
 	energy = max_energy
 	# Ice Cream: pour last turn's leftover energy on top (may exceed max).
 	if _energy_carryover > 0:
@@ -1510,6 +1517,10 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	# because the Power being played hasn't registered its trigger
 	# yet, so it doesn't self-trigger.
 	_fire_power_triggers("card_played", {"card": card})
+	# Rage listens on the attack-only sibling event. Fired before the card's
+	# effects like card_played, so an Attack that grants Rage can't self-proc.
+	if card.is_attack():
+		_fire_power_triggers("attack_played", {"card": card})
 	_fire_item_triggers("card_played", {"card": card, "target": target_enemy})
 
 	# Choked bites on the card PLAY, before its effects — so the play that
@@ -1533,6 +1544,15 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	# count folds native + granted in one place.
 	var replays: int = CardMods.replay_count(card.data)
 	for _i in replays:
+		replay_card_effects(card, target_enemy)
+
+	# Double Tap: the next Attack played this turn resolves its effects twice.
+	# One stack per doubled Attack (the upgraded card banks 2). Consumed after
+	# the Replay pass so the doubling is one clean extra resolution.
+	if card.is_attack() and player.get_status(&"double_tap") > 0:
+		player.add_status(&"double_tap", -1)
+		GameLog.add("Double Tap: %s is played twice!" % card.get_display_name(),
+			Color(0.85, 0.7, 1.0))
 		replay_card_effects(card, target_enemy)
 
 	# Bleed (deckbuilder rule): once an ATTACK card has fully resolved (incl.
@@ -1591,6 +1611,9 @@ const _SCENE_EFFECT_TYPES := [
 	"topdeck", "conjure", "conjure_random", "recall", "gain_gold", "gain_loot", "gain_chest",
 	"roll_gold", "upgrade_hand", "upgrade_random_cards", "boost_cards",
 	"free_random_hand_card", "reduce_card_cost",
+	# Ironclad skills batch: Entrench/Limit Break act on the player, Havoc /
+	# Dual Wield / Exhume act on the piles — all must fire on a targetless play.
+	"double_stat", "autoplay_top", "copy_from_hand", "exhume",
 	# Power installs (After Image / Envenom / Barricade / Well-Laid Plans):
 	# they arm the scene/player, so a targetless play must still resolve them.
 	"trigger", "keep_block", "retain",
@@ -1854,6 +1877,19 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 	# Reactions (thorns reflects, soul link) never re-trigger it.
 	if amount > 0 and is_player_attack and not effect.get("no_reaction", false):
 		_fire_power_triggers("unblocked_attack", {"target": target})
+
+	# Flame Barrier-style triggers: an ENEMY attack that lands on the player
+	# (block counts — it's a contact, like thorns). The attacker rides in as
+	# the trigger target so the inner retaliation dmg lands on it; its element
+	# rider (Fire -> 1 Burn) applies per contact via deal_damage. no_reaction
+	# guards the retaliation itself from re-triggering anything.
+	var landed_on_player: bool = (amount > 0 or absorbed > 0) \
+		and target.is_player \
+		and source != null and not source.is_player \
+		and (damage_type == "melee" or damage_type == "ranged") \
+		and not effect.get("no_reaction", false)
+	if landed_on_player:
+		_fire_power_triggers("hit_by_attack", {"target": source})
 
 	TriggerBus.emit_signal("damage_dealt", {
 		"source": source, "target": target, "amount": amount, "scene": self,
@@ -2121,7 +2157,24 @@ func exhaust_card(card: CardInstance) -> void:
 	exhaust_pile.append(card)
 	TriggerBus.emit_signal("card_exhausted", {"card": card, "scene": self})
 	_fire_power_triggers("card_exhausted", {"card": card})
+	_fire_card_exhausted_triggers(card)
 	_refresh_ui()
+
+# Fires a card's own `exhausted` triggers the moment IT is exhausted
+# (Sentinel: "If this Card is Exhausted, Gain 2 Energy") — the exhaust
+# sibling of _fire_drawn_triggers. Reads the upgrade-effective triggers so
+# Sentinel+ pays its bigger refund.
+func _fire_card_exhausted_triggers(c: CardInstance) -> void:
+	if c == null or c.data == null:
+		return
+	for trig in c.data.get_effective_triggers(c.upgraded):
+		if String(trig.get("on", "")) != "exhausted":
+			continue
+		for eff in trig.get("effects", []):
+			if eff is Dictionary:
+				EffectSystem.apply(eff, {
+					"source": player, "target": player, "scene": self, "card": c,
+				})
 
 func conjure_card(card_id: StringName, destination: String, count: int, source_card, force_upgraded: bool = false) -> void:
 	# Generic conjure: drop `count` copies of `card_id` into the named
@@ -2428,6 +2481,118 @@ func exhaust_hand(source_card = null, only: String = "") -> int:
 			Color(0.7, 0.7, 0.8))
 	return last_exhaust_count
 
+# Havoc: play the top card of the draw pile at no cost, then exhaust it.
+# The autoplayed card counts as a played card (card_played / attack_played
+# powers react) but pays no energy; attacks land on a random living enemy.
+# An X-cost card autoplays with X = 0. A Power registers and is consumed
+# (powers are never exhausted); everything else heads to the exhaust pile
+# when `exhaust_it` (or its own Exhaust flag) says so.
+func autoplay_top_card(exhaust_it: bool, _source_card = null) -> void:
+	if draw_pile.is_empty():
+		if discard_pile.is_empty():
+			GameLog.add("Havoc: no cards left to play.", Color(0.85, 0.85, 0.55))
+			return
+		while not discard_pile.is_empty():
+			draw_pile.append(discard_pile.pop_back())
+		_shuffle(draw_pile)
+	var c: CardInstance = draw_pile.pop_back()
+	GameLog.add("Havoc plays %s!" % c.get_display_name(), Color(0.85, 0.7, 1.0))
+	TriggerBus.emit_signal("card_played", {"card": c, "target": null, "scene": self})
+	_fire_power_triggers("card_played", {"card": c})
+	if c.is_attack():
+		_fire_power_triggers("attack_played", {"card": c})
+	var tgt: CombatActor = null
+	if c.wants_target():
+		var live: Array = living_enemies()
+		if not live.is_empty():
+			tgt = live[_rng.randi() % live.size()]
+	var prev_x: int = _last_x_value
+	_last_x_value = 0
+	_apply_card_effects(c, tgt)
+	_last_x_value = prev_x
+	if c.is_power():
+		# Powers are simply used — never exhausted (matches the played route).
+		Stats.register_power(player, c.data)
+	elif exhaust_it or (c.data != null and c.data.exhaust):
+		exhaust_pile.append(c)
+		TriggerBus.emit_signal("card_exhausted", {"card": c, "scene": self})
+		_fire_power_triggers("card_exhausted", {"card": c})
+		_fire_card_exhausted_triggers(c)
+	else:
+		discard_pile.append(c)
+	_refresh_ui()
+	_check_combat_end()
+
+# Dual Wield: pick an Attack or Power card in hand, conjure `count` copies of
+# it to hand (upgrade state preserved). Player-choice via the picker; the
+# count rides on the pending dict so the async confirm knows how many.
+var _pending_copy_count: int = 1
+
+func copy_from_hand_cards(count: int, filter: String, source_card = null) -> void:
+	var pool: Array = []
+	for c in hand:
+		if c == source_card:
+			continue
+		if filter == "attack_or_power" and not (c.is_attack() or c.is_power()):
+			continue
+		pool.append(c)
+	if pool.is_empty():
+		GameLog.add("No Attack or Power cards in hand to copy.", Color(0.85, 0.85, 0.55))
+		return
+	_pending_copy_count = maxi(1, count)
+	_open_picker({
+		"title": "Choose a card to copy (%d cop%s to hand)" % [
+			_pending_copy_count, "ies" if _pending_copy_count > 1 else "y"],
+		"candidates": pool,
+		"count": 1,
+		"accent": Color(0.85, 0.7, 1.0),
+		"confirm_label": "Copy",
+		"on_picked": Callable(self, "_apply_copy_pick"),
+	})
+
+func _apply_copy_pick(picks: Array) -> void:
+	for pick in picks:
+		if not (pick is CardInstance):
+			continue
+		for _i in range(_pending_copy_count):
+			hand.append(CardInstance.from_data(pick.data, pick.upgraded))
+		GameLog.add("Conjured %d cop%s of %s to hand." % [
+			_pending_copy_count, "ies" if _pending_copy_count > 1 else "y",
+			pick.get_display_name()], Color(0.7, 1.0, 0.7))
+	_refresh_ui()
+
+# Exhume: pick a card from the exhaust pile back to hand. Another Exhume
+# can't be retrieved (the StS rule — no infinite loop).
+func exhume_cards(n: int, source_card = null) -> void:
+	var pool: Array = []
+	for c in exhaust_pile:
+		if c == source_card:
+			continue
+		if c.data != null and c.data.id == &"exhume":
+			continue
+		pool.append(c)
+	if pool.is_empty():
+		GameLog.add("Exhume: nothing to retrieve from the exhaust pile.",
+			Color(0.85, 0.85, 0.55))
+		return
+	var count: int = mini(n, pool.size())
+	_open_picker({
+		"title": "Exhume %d card%s to your hand" % [count, "s" if count > 1 else ""],
+		"candidates": pool,
+		"count": count,
+		"accent": _PILE_COLORS["exhaust"],
+		"confirm_label": "Exhume",
+		"on_picked": Callable(self, "_apply_exhume_picks"),
+	})
+
+func _apply_exhume_picks(picks: Array) -> void:
+	for pick in picks:
+		exhaust_pile.erase(pick)
+		hand.append(pick)
+		GameLog.add("Exhumed %s to hand." % pick.get_display_name(),
+			Color(0.7, 1.0, 0.7))
+	_refresh_ui()
+
 func recall_cards(from_pile: String, to_pile: String, filter: Dictionary) -> void:
 	# Move (not copy) cards matching `filter` from `from_pile` to
 	# `to_pile`. The only shipped filter today is `{"cost": N}`
@@ -2541,11 +2706,18 @@ func add_card_boost(boost: Dictionary) -> void:
 	var label: String = _boost_label(boost)
 	GameLog.add("Active boost: %s." % label, Color(0.7, 1.0, 0.7))
 
-func register_trigger(on: String, inner_effect: Dictionary) -> void:
+func register_trigger(on: String, inner_effect: Dictionary, until: String = "") -> void:
 	if on == "" or inner_effect.is_empty():
 		return
-	power_triggers.append({"on": on, "effect": inner_effect})
-	GameLog.add("Trigger armed on %s." % on, Color(0.7, 1.0, 0.7))
+	var entry: Dictionary = {"on": on, "effect": inner_effect}
+	# `until: "turn_end"` (Rage / Flame Barrier): the listener expires at the
+	# start of the player's NEXT turn (after the enemy turn) — see
+	# Stats.expire_turn_triggers in _start_player_turn.
+	if until != "":
+		entry["until"] = until
+	power_triggers.append(entry)
+	GameLog.add("Trigger armed on %s%s." % [on,
+		" (this turn)" if until == "turn_end" else ""], Color(0.7, 1.0, 0.7))
 
 func _fire_power_triggers(event_name: String, ctx_extras: Dictionary = {}) -> void:
 	# Walks the power_triggers list and dispatches every entry whose

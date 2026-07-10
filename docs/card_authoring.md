@@ -131,8 +131,8 @@ Semicolon-delimited list of effect lines. Each line is
 | Verb | Arguments | Meaning | `.tres` form |
 |---|---|---|---|
 | `dmg` | `VALUE[xN]:DAMAGE_TYPE[:cleave\|if_status=STATUS]` | Deal damage. `xN` = multi-hit (Twin Strike). `cleave` = `target: all_enemies`. `if_status=X` skips the hit per target when that target lacks status X (Bane's second hit). | `{type: "dmg", value, target, damage_type, hits?, if_target_status?}` |
-| `gain` | `STAT:VALUE` | Player gains the stat (block, power, defense, dodge, …). | `{type: "block"/"status", value, stacks, status, target: "self"}` |
-| `inflict` | `STATUS:STACKS[:cleave][:if_intent=attack]` | Apply a debuff to the targeted enemy (or all enemies with `cleave`). `if_intent=attack` (Go for the Eyes) gates the inflict on the target telegraphing an attack — see the intent gate section. | `{type: "status", status, stacks, target: "enemy"/"all_enemies", if_target_intent?}` |
+| `gain` | `STAT:VALUE` | Player gains the stat (block, power, defense, dodge, …). `gain:block:5:per=exhausted` (Second Wind) makes the value per-card: total Block = value × how many cards the preceding `exhaust:all` swept away (`value_from: "exhausted"`, the block mirror of dmg's `hits=exhausted`). | `{type: "block"/"status", value, stacks, status, target: "self"}` |
+| `inflict` | `STATUS:STACKS[:cleave][:if_intent=attack]` | Apply a debuff to the targeted enemy (or all enemies with `cleave`). `if_intent=attack` (Go for the Eyes) gates the inflict on the target telegraphing an attack — see the intent gate section. NEGATIVE stacks (Disarm: `inflict:power:-2`) DRAIN the status instead: the engine writes the status dict directly (Stats.drain_status) so the stored value can go below zero — the badge shows the negative count in red. No Persistence scaling, no status_applied reaction. | `{type: "status", status, stacks, target: "enemy"/"all_enemies", if_target_intent?}` |
 | `draw` | `N` | Draw N cards. In Action mode this instead chips a random ability cooldown by 25% per N. In Strategy, reduces a random ability CD by N. | `{type: "draw", value: N}` |
 | `discard` | `N[:random]` \| `all` | Mirror of `draw`. Deckbuilder/Strategy: pick N from hand via the CardPickerModal (default — player chooses, like Acrobatics). Append `:random` for the engine-picked random variant (All-Out Attack). Always excludes the played card. `discard:all` (Storm of Steel) discards the whole hand with no picker and records the count for `count=discarded`. `discard:all:non_attack` (Unload) narrows the sweep to non-Attack cards (action: only non-Attack temp slots collapse). Action: collapses temporary auto-slots (`all` collapses every one). | `{type: "discard", value: N, random?: bool}` / `{type: "discard", all: true}` |
 | `exhaust` | `N[:random]` \| `all` | Deckbuilder/Strategy mirror of `discard` but routes picks to the exhaust pile. Same player-choice default and `:random` flag. `exhaust:all` (Fiend Fire) exhausts the whole hand minus the played card, no picker, and records the count for a following `dmg …:hits=exhausted`. `exhaust:all:non_attack` (Sever Soul) narrows the sweep to non-Attack cards (action: armed Attacks are spared; curse slots still clear). Action: `exhaust:N` no-ops; `exhaust:all` empties every other cooldown slot (see the dmg shorthand notes). | `{type: "exhaust", value: N, random?: bool}` / `{type: "exhaust", all: true}` |
@@ -140,7 +140,7 @@ Semicolon-delimited list of effect lines. Each line is
 | `recall` | `<FILTER>[:from=PILE][:to=PILE]` | Deckbuilder: move (not copy) every card in the source pile matching `FILTER` into the destination pile. `FILTER` today is `cost=N`; defaults are `from=discard`, `to=hand` (All for One). No-op in action/strategy. | `{type: "recall", from: PILE, to: PILE, filter: {…}}` |
 | `upgrade_hand` | `N\|all[:random]` | Deckbuilder: upgrade in-place. `upgrade_hand:1` opens the picker so the player chooses (Armaments); `upgrade_hand:all` upgrades every eligible card in hand silently (Armaments+). Append `:random` to skip the picker for the N form. Skips cards that are already upgraded or have `can_upgrade = false`. No-op in action/strategy. | `{type: "upgrade_hand", value: N\|"all", random?: bool}` |
 | `boost_cards` | `<MATCH>:<STAT>:<VALUE>` | Persistent in-combat modifier. Every later card matching `MATCH` resolves with `STAT + VALUE`. `MATCH` is exactly one of `tag=X` / `type=X` / `id=X`. `STAT` is `dmg` or `block`. Deckbuilder only today. | `{type: "boost_cards", match_tag/match_type/match_id, stat, value}` |
-| `on_<EVENT>` | `<INNER_VERB>:<INNER_ARGS>` | Register a persistent in-combat listener. When the named event fires, the inner effect runs; its target resolves like a played card's (`all_enemies` fans out, `enemy` = the event's target, else the player). `<EVENT>` is a scene trigger event (see Triggers section). After Image: `on_card_played:gain:block:1`; Envenom: `on_unblocked_attack:inflict:poison:1`. All three modes register; events with no analog in a mode simply never fire there. | `{type: "trigger", on: "<event>", effect: {…inner…}}` |
+| `on_<EVENT>` | `<INNER_VERB>:<INNER_ARGS>[:until=turn_end]` | Register a persistent in-combat listener. When the named event fires, the inner effect runs; its target resolves like a played card's (`all_enemies` fans out, `enemy` = the event's target, else the player). `<EVENT>` is a scene trigger event (see Triggers section). After Image: `on_card_played:gain:block:1`; Envenom: `on_unblocked_attack:inflict:poison:1`. New events: `attack_played` (Rage — fired alongside card_played when the played card is an Attack) and `hit_by_attack` (Flame Barrier — an enemy melee/ranged hit LANDS on the player, block included; the attacker is the event target). `until=turn_end` makes the listener turn-scoped: it expires at the start of the player's NEXT turn — after the enemy turn, so Flame Barrier retaliates all the way through it (action: one turn tick). See the Skill-type marker section. All three modes register; events with no analog in a mode simply never fire there. | `{type: "trigger", on: "<event>", effect: {…inner…}, until?}` |
 | `keep_block` | (none) | Barricade: the player's Block is not removed at the turn boundary (action: no longer fades over time). Sticky for the combat. | `{type: "keep_block"}` |
 | `retain` | `N` | Inner verb for `on_turn_ended` (Well-Laid Plans): at end of turn keep up to N hand cards. Resolved by the scenes' end-turn intercept BEFORE the discard; inert in the generic trigger pass. | `{type: "retain", value: N}` |
 | `gain_loot` | `<KIND>:<COUNT>` | Add COUNT loot of `KIND` (`potion` / `scroll` / `key`) to the run-scope counter on GameState. Concrete potion/scroll catalogs land later; the counter is the placeholder. Alchemize: `gain_loot:potion:1`. | `{type: "gain_loot", kind: "potion", value: 1}` |
@@ -158,6 +158,11 @@ Semicolon-delimited list of effect lines. Each line is
 | `cost_reduce` | `per=COUNTER` | Card-level dynamic discount: the card costs 1 less per point of the named live counter (see Scaling counters), floored at 0 and re-read every time the cost is shown or paid. Blood for Blood: `cost_reduce:per=hp_losses`; Eviscerate: `cost_reduce:per=discards_this_turn`. Cost IS cooldown in action, so a re-armed slot picks up the current discount. NOT an on-play effect — the generator pops it into `CardData.cost_reduce_from`. | `cost_reduce_from = &"COUNTER"` (field, not an effect) |
 | `cost_increase` | `per=COUNTER` | The surcharge mirror of `cost_reduce`: the card costs 1 MORE per point of the counter, read just as live. Masterful Stab: `cost_increase:per=hp_losses` — every HP-loss instance raises the shown/paid cost (and lengthens the cooldown in action). Both fields may coexist on one card; the discount and surcharge net against each other before the 0 floor. | `cost_increase_from = &"COUNTER"` (field, not an effect) |
 | `if_counter` | `COUNTER:<INNER_VERB>:<INNER_ARGS>` | Resolve the inner effect only when the named live counter (see Scaling counters) is > 0 — the counter sibling of `if_target`. Sneaky Strike: `if_counter:discards_this_turn:gain_energy:2`. All three modes; action translates the inner verb as usual (energy = Haste window). | `{type: "if_counter", counter, effect: {…inner…}}` |
+| `double` | `block` \| `<STAT>` | Entrench (`double:block`) / Limit Break (`double:power`): double the player's current Block / the named status's stacks. Block doubles OUTRIGHT (no Frail cut — it isn't "gained" block; action doubles the decay pool and raises the soft cap via `double_block`). Statuses double SIGNED, so a Power drained negative (Disarm) doubles further down. | `{type: "double_stat", stat}` |
+| `autoplay_top` | `[exhaust]` | Havoc: play the top card of the draw pile at no cost, then exhaust it. The autoplay counts as a played card (card_played / attack_played powers react, Sentinel's exhausted trigger fires); attacks land on a random living enemy; an X-cost card plays with X = 0; a Power registers and is consumed (never exhausted). Action plays the top of the AUTO draw pile — the card leaves the rotation for the combat (Exhume can re-arm it). | `{type: "autoplay_top", exhaust: bool}` |
+| `copy_from_hand` | `N[:FILTER]` | Dual Wield: choose a hand card matching FILTER (`attack_or_power` today) and conjure N copies of it to hand, upgrade state preserved. Deckbuilder/strategy open the CardPickerModal; action auto-picks a random ARMED Attack/Power (auto slots + the two click cards) and opens N one-shot temp slots with it. | `{type: "copy_from_hand", count, filter}` |
+| `exhume` | `N` | Exhume: move N cards from the exhaust pile back to hand (picker; never another Exhume). Action has no browsable exhaust pile — a random card removed by exhaust effects this combat (`action_exhausted`) re-arms as a one-shot temp slot. | `{type: "exhume", value: N}` |
+| `if_intent` | `attack:<INNER_VERB>:<INNER_ARGS>` | Spot Weakness: resolve the inner effect only when the PICKED enemy target is telegraphing an attack — the intent sibling of the `if_target` wrapper, sharing the same per-mode predicate as `inflict … if_intent=attack` (see the intent gate section). Action reads the NEAREST enemy (winding up / mid-attack). | `{type: "if_target_intent", intent, target: "enemy", effect: {…inner…}}` |
 | `sequential_upgrade` | `N` | The card can be upgraded ANY number of times; each upgrade adds +N to every dmg value instead of flipping to a one-shot upgraded form (leave the ↑ columns N/A — the upgrade IS the step). Searing Blow: `sequential_upgrade:3`. Card-level: lands in `CardData.sequential_upgrade_step` and forces `can_upgrade`; the count lives per physical card on `CardInstance.upgrade_count` (persisted, shown as `+`, `+2`, `+3`, …). See the Sequential upgrades section. | `sequential_upgrade_step = N` (field, not an effect) |
 
 ### Argument shorthand for `dmg`
@@ -249,6 +254,76 @@ card-level trigger that fires when THIS card is drawn — Endless Agony's
 `dmg:4:ranged; drawn: conjure:self:hand` conjures a copy of itself to hand on
 every draw. Conjured copies arrive without being drawn, so the trigger never
 cascades. Action has no draws for its rotation, so the trigger is inert there.
+
+### The `exhausted:` trigger prefix — Sentinel
+
+The exhaust sibling of `drawn:`: a card-level trigger that fires when THIS
+card is exhausted — by an exhaust effect (True Grit, Second Wind, Fiend
+Fire), its own Exhaust keyword, or Havoc's autoplay-exhaust. Sentinel:
+`gain:block:5; exhausted: gain_energy:2`. The upgraded Effects cell may
+author different trigger values (Sentinel+ refunds 3) — the generator emits
+them as `CardData.upgraded_triggers`, read through `get_effective_triggers`.
+Action fires it when an exhaust sweep removes the card from the rotation
+(the energy refund arrives as its Haste-window translation).
+
+### Skill-type marker statuses + turn-scoped triggers — Flame Barrier / Rage / Double Tap
+
+Turn-scoped Skills keep their BEHAVIOR on the card row and use the status
+sheet only for the icon:
+
+1. The card's Effects DSL does the work — a turn-scoped trigger registration
+   (`on_hit_by_attack:dmg:4:magic:until=turn_end`, `on_attack_played:gain:block:3:until=turn_end`)
+   or an engine-consumed counter (`gain:double_tap:1` — the scenes replay the
+   next Attack and burn a stack).
+2. The same Effects cell also gains a marker status (`gain:flame_barrier:4`)
+   whose ONLY job is showing an icon + stack count on the status strip.
+3. The marker gets a `statusesnew` row with the Type **Skill** (vs
+   Buff/Debuff/Ability): its Effect column is prose, never dispatched, and
+   its icon/description feed the badge tooltip via ReferenceCatalog.
+
+Skill-type stacks and `until=turn_end` triggers are wiped together at the
+START of the player's next turn (`Stats.clear_skill_markers` +
+`Stats.expire_turn_triggers`) — after the enemy turn, so Flame Barrier
+retaliates against every enemy hit before it fades. Action wipes on the turn
+tick. The wipe list is data-driven off the sheet's Type column, so a future
+Skill-type row (Blur, Burst, …) joins it without a code change.
+
+Worked example — Flame Barrier — `Uncommon Skill` cost 2, Element `Fire`:
+```
+Description:  Gain +12 Block. Until your next turn, enemies that hit you
+              take 4 Magic Dmg Fire and gain 1 Burn per contact.
+Effects:      gain:block:12; gain:flame_barrier:4;
+              on_hit_by_attack:dmg:4:magic:until=turn_end
+Upgraded Eff: gain:block:16; gain:flame_barrier:6;
+              on_hit_by_attack:dmg:6:magic:until=turn_end
+```
+The card's Fire element is stamped onto the trigger's inner dmg, so each
+retaliation contact applies the element's 1-Burn rider through the normal
+on-hit path — the "1 Burn per contact" needs no extra authoring.
+
+### The Ironclad Skills port batch — quick reference
+
+| Card | Effects DSL | Notes |
+|---|---|---|
+| Disarm | `inflict:power:-2` | `Uncommon Skill` cost 1, Exhaust. Upgrade: -3. Negative inflict = signed drain. |
+| Double Tap | `gain:double_tap:1` | `Rare Skill` cost 1. The scenes consume one stack per Attack played and resolve its effects twice. Upgrade: 2 stacks. |
+| Dual Weild | `copy_from_hand:1:attack_or_power` | `Uncommon Skill` cost 1. Upgrade: 2 copies. (Sheet keeps the legacy spelling.) |
+| Entrench | `double:block` | `Uncommon Skill` cost 2. Upgrade: cost 1. |
+| Exhume | `exhume:1` | `Rare Skill` cost 1, Exhaust. Upgrade: cost 0. Never retrieves another Exhume. |
+| Flame Barrier | see worked example above | `Uncommon Skill` cost 2, Element Fire. |
+| Havoc | `autoplay_top:exhaust` | `Common Skill` cost 1. Upgrade: cost 0. |
+| Impervious | `gain:block:30` | `Rare Skill` cost 2, Exhaust. Upgrade: 40. |
+| Intimidate | `inflict:weak:1:cleave` | `Uncommon Skill` cost 0, Exhaust. Upgrade: 2. |
+| Limit Break | `double:power; exhaust_self` | `Rare Skill` cost 1. Upgrade drops the `exhaust_self` — the Exhaust is authored as an effect, NOT the Keywords flag, precisely so the upgrade can shed it. |
+| Offering | `lose_hp:6; gain_energy:2; draw:3` | `Rare Skill` cost 0, Exhaust. Upgrade: draw 5. |
+| Power Through | `conjure:wound:hand:2; gain:block:15` | `Uncommon Skill` cost 1. Upgrade: 20. |
+| Rage | `gain:rage:3; on_attack_played:gain:block:3:until=turn_end` | `Uncommon Skill` cost 0. Upgrade: 5. |
+| Second Wind | `exhaust:all:non_attack; gain:block:5:per=exhausted` | `Uncommon Skill` cost 1. Upgrade: 7 per card. |
+| Seeing Red | `gain_energy:2` | `Uncommon Skill` cost 1, Exhaust. Upgrade: cost 0. |
+| Sentinel | `gain:block:5; exhausted: gain_energy:2` | `Uncommon Skill` cost 1. Upgrade: 8 Block / 3 Energy (via upgraded_triggers). |
+| Shockwave | `inflict:weak:3:cleave; inflict:vulnerable:3:cleave` | `Uncommon Skill` cost 2, Exhaust. Upgrade: 5/5. |
+| Spot Weakness | `if_intent:attack:gain:power:3` | `Uncommon Skill` cost 1. Upgrade: 4. |
+| True Grit | `gain:block:7; exhaust:1:random` | `Common Skill` cost 1. Upgrade drops `:random` — the player picks. |
 
 ### The Flechettes / Go for the Eyes / … port batch — quick reference
 

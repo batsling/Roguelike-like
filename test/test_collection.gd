@@ -28,7 +28,16 @@ func test_reference_search_filters() -> void:
 	var col := _new_collection()
 	col._search["reference"] = "burn"
 	col._populate_reference()
-	assert_eq(col._grid.get_child_count(), 1, "only Burn matches 'burn'")
+	# Burn itself, plus Flame Barrier (its description names the Burn it
+	# inflicts per contact). Count the catalog matches so the expectation
+	# tracks future rows that legitimately mention Burn.
+	var expected := 0
+	for s in ReferenceCatalog.STATUSES:
+		if String(s.get("name", "")).to_lower().contains("burn") \
+				or String(s.get("description", "")).to_lower().contains("burn"):
+			expected += 1
+	assert_gt(expected, 0, "search corpus sanity")
+	assert_eq(col._grid.get_child_count(), expected, "every status mentioning 'burn' matches")
 
 func test_items_tab_renders_and_detail_fills() -> void:
 	var col := _new_collection()

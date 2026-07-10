@@ -261,7 +261,10 @@ def _effect_from_tokens(tokens):
 
     if verb == "inflict":
         status = pos[0] if len(pos) > 0 else ""
-        stacks = int(pos[1]) if len(pos) > 1 and pos[1].isdigit() else 1
+        # Negative stacks are legal (Disarm: `inflict:power:-2` drains the
+        # target's Power below zero — the engine writes the status dict
+        # directly so add_status's zero-floor doesn't swallow the drain).
+        stacks = int(pos[1]) if len(pos) > 1 and pos[1].lstrip("-").isdigit() else 1
         rest = [p.lower() for p in pos[2:]]
         target = "enemy"
         if "self" in rest:
@@ -484,11 +487,70 @@ def _effect_from_tokens(tokens):
         # name after on_ is what the combat scene fires (card_played for
         # After Image, card_exhausted for Feel No Pain, status_drawn /
         # status_or_curse_drawn for Evolve / Fire Breathing, unblocked_attack
-        # for Envenom, turn_ended for Well-Laid Plans); the rest of the
-        # clause is the inner effect, parsed with the same grammar.
-        inner = _effect_from_tokens(args) if args else None
-        return {"type": "trigger", "on": m.group(1),
-                "effect": inner if isinstance(inner, dict) else {}}
+        # for Envenom, turn_ended for Well-Laid Plans, attack_played for
+        # Rage, hit_by_attack for Flame Barrier); the rest of the clause is
+        # the inner effect, parsed with the same grammar.
+        #
+        # `until=turn_end` (Rage / Flame Barrier) is a WRAPPER kv, not part
+        # of the inner effect: the registered listener expires at the start
+        # of the player's next turn (after the enemy turn, so Flame Barrier
+        # retaliates all the way through it). Strip it before the inner parse.
+        until = ""
+        inner_args = []
+        for a in args:
+            if a.lower().startswith("until="):
+                until = a.split("=", 1)[1].strip().lower()
+            else:
+                inner_args.append(a)
+        inner = _effect_from_tokens(inner_args) if inner_args else None
+        eff = {"type": "trigger", "on": m.group(1),
+               "effect": inner if isinstance(inner, dict) else {}}
+        if until != "":
+            eff["until"] = until
+        return eff
+
+    if verb == "double":
+        # double:block (Entrench) / double:power (Limit Break): double the
+        # player's current Block / stacks of the named status. Statuses
+        # double signed (a drained-negative Power doubles further down).
+        return {"type": "double_stat", "stat": pos[0].lower() if pos else ""}
+
+    if verb == "autoplay_top":
+        # autoplay_top[:exhaust] (Havoc): play the top card of the draw pile
+        # (deckbuilder/strategy: the draw pile; action: the auto draw pile)
+        # at no cost, then exhaust it. Attacks auto-target a random enemy.
+        return {"type": "autoplay_top",
+                "exhaust": "exhaust" in [p.lower() for p in pos]}
+
+    if verb == "copy_from_hand":
+        # copy_from_hand:N[:FILTER] (Dual Wield): choose a hand card matching
+        # FILTER (`attack_or_power` today) and conjure N copies of it to hand.
+        # Deckbuilder/strategy open the CardPickerModal; action auto-picks a
+        # random armed Attack/Power and opens N one-shot temp slots with it.
+        count = int(pos[0]) if pos and pos[0].isdigit() else 1
+        filt = pos[1].lower() if len(pos) > 1 else "attack_or_power"
+        return {"type": "copy_from_hand", "count": count, "filter": filt}
+
+    if verb == "exhume":
+        # exhume:N (Exhume): move N cards from the exhaust pile back to hand.
+        # Deckbuilder/strategy open the picker over the exhaust pile; action
+        # re-arms a random card removed by exhaust effects this combat.
+        return {"type": "exhume",
+                "value": int(pos[0]) if pos and pos[0].isdigit() else 1}
+
+    if verb == "if_intent":
+        # if_intent:attack:<clause> (Spot Weakness): resolve the wrapped
+        # effect only when the PICKED enemy target is telegraphing an attack —
+        # the wrapper sibling of if_target/if_counter, gated on the same
+        # intent predicate as inflict's if_intent=attack (Go for the Eyes).
+        # target "enemy" keeps the picked enemy in ctx for the gate; the
+        # inner effect (gain:power) still resolves against the player.
+        intent = pos[0].lower() if pos else "attack"
+        inner = _effect_from_tokens(args[1:]) if len(args) > 1 else None
+        eff = {"type": "if_target_intent", "intent": intent, "target": "enemy"}
+        if isinstance(inner, dict):
+            eff["effect"] = inner
+        return eff
 
     if verb == "keep_block":
         # Barricade: the player's Block is not removed at the start of the
@@ -520,7 +582,13 @@ def _effect_from_tokens(tokens):
         # Block is a first-class effect type; other gains (power/dexterity/…)
         # are buff statuses applied to the player.
         if what == "block":
-            return {"type": "block", "value": val, "target": "self"}
+            eff_b = {"type": "block", "value": val, "target": "self"}
+            # per=exhausted (Second Wind): the value is per-card — total block
+            # is value x how many cards the preceding exhaust:all sent away,
+            # read off the scene's last_exhaust_count at play time.
+            if "per" in kv:
+                eff_b["value_from"] = kv["per"].strip().lower()
+            return eff_b
         # `gain:power:2:temp` (Flex) — a Temporary buff: apply the stacks now,
         # then shed exactly them at the next turn boundary. Routes through the
         # `status_temp` effect type (EffectSystem._h_status_temp records the
@@ -559,7 +627,7 @@ def parse_effects(raw):
         # drawn). The action/strategy translators remap them at runtime — the
         # .tres keeps the deckbuilder token so the sheet stays the single source
         # of truth. `drawn` (Endless Agony) fires when THIS card is drawn.
-        m = re.match(r"^(eot|on_play_other|lifecycle|drawn)\s*:\s*(.+)$", clause)
+        m = re.match(r"^(eot|on_play_other|lifecycle|drawn|exhausted)\s*:\s*(.+)$", clause)
         if m:
             trig, clause = m.group(1), m.group(2).strip()
         eff = _effect_from_tokens([t.strip() for t in clause.split(":") if t.strip()])
@@ -577,7 +645,9 @@ def parse_effects(raw):
                         e[eff[1]] = eff[2]
                         break
             continue
-        if trig in ("eot", "on_play_other", "drawn"):
+        if trig in ("eot", "on_play_other", "drawn", "exhausted"):
+            # `exhausted` (Sentinel) fires when THIS card is exhausted —
+            # the exhaust sibling of `drawn` (Endless Agony).
             triggers.append({"on": trig, "effects": [eff]})
         else:
             on_play.append(eff)
@@ -733,8 +803,9 @@ def card_tres(row) -> tuple:
         or (up_cost_present and up_cost_val != cost)
     )
     up_on_play: list = []
+    up_triggers: list = []
     if can_up:
-        up_on_play, _, _ = parse_effects(up_eff_s if up_eff_s else base_eff_s)
+        up_on_play, up_triggers, _ = parse_effects(up_eff_s if up_eff_s else base_eff_s)
 
     # Stamp the card's element onto each dmg effect so the per-mode deal_damage
     # paths can apply the element's on-hit side effect (Elements registry) without
@@ -744,6 +815,13 @@ def card_tres(row) -> tuple:
             for e in bucket:
                 if isinstance(e, dict) and e.get("type") == "dmg":
                     e["element"] = element
+                # A trigger-registration's inner dmg carries the element too
+                # (Flame Barrier: the on_hit_by_attack retaliation is Fire, so
+                # each contact also inflicts the element's 1 Burn rider).
+                elif isinstance(e, dict) and e.get("type") == "trigger" \
+                        and isinstance(e.get("effect"), dict) \
+                        and e["effect"].get("type") == "dmg":
+                    e["effect"]["element"] = element
 
     # Blood/Dark/Fire rider: the always-on element inflict reads on the card.
     desc = element_rider(desc, element, on_play)
@@ -795,6 +873,10 @@ def card_tres(row) -> tuple:
     lines.append("effects = %s" % json.dumps(on_play))
     if triggers:
         lines.append("triggers = %s" % json.dumps(triggers))
+        # Upgraded card-level triggers (Sentinel+: exhausted -> 3 Energy) are
+        # emitted only when they differ from the base form; empty means "same".
+        if can_up and up_triggers and up_triggers != triggers:
+            lines.append("upgraded_triggers = %s" % json.dumps(up_triggers))
     if destroy_after >= 0:
         lines.append("destroy_after_games = %d" % destroy_after)
     if cost_reduce_from:

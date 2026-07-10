@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_exhume"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Exhume.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"exhume"
+display_name = "Exhume"
+type = 1
+rarity = 3
+cost = 1
+description = "Put 1 Card from your Exhaust to your Hand. Exhaust."
+effects = [{"type": "exhume", "value": 1}]
+tags = PackedStringArray("ironclad", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Put 1 Card from your Exhaust to your Hand. Exhaust."
+upgraded_cost = 0
+upgraded_effects = [{"type": "exhume", "value": 1}]
+image = ExtResource("2_img")
+exhaust = true

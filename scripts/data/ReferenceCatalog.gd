@@ -40,6 +40,9 @@ const STATUSES: Array = [
 	{ "name": "No Draw", "description": "You cannot Draw Cards this turn", "type": "Debuff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "Player", "preference": "Negative", "rarity": "N/A", "icon": "NoDraw" },
 	{ "name": "Intangible", "description": "Reduce each instance of Dmg and Health loss to 1", "type": "Buff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "All", "preference": "Positive", "rarity": "Rare", "icon": "Intangible" },
 	{ "name": "Choked", "description": "Whenever you play a Card, this target loses X Health where X is the stack. All Choked is lost at the end of your turn.", "type": "Debuff", "stackable": true, "decay": "All lost at end of your turn", "who": "Enemy", "preference": "Negative", "rarity": "N/A", "icon": "Choked" },
+	{ "name": "Flame Barrier", "description": "Until your next turn, enemies that hit you take X Magic Dmg Fire and gain 1 Burn per contact.", "type": "Skill", "stackable": true, "decay": "All stacks lost at the start of your next turn", "who": "Player", "preference": "Positive", "rarity": "Uncommon", "icon": "FlameBarrier" },
+	{ "name": "Rage", "description": "Until the end of your turn, whenever you play an Attack, Gain +X Block.", "type": "Skill", "stackable": true, "decay": "All stacks lost at the start of your next turn", "who": "Player", "preference": "Positive", "rarity": "Uncommon", "icon": "Rage" },
+	{ "name": "Double Tap", "description": "This turn, your next X Attacks are played twice.", "type": "Skill", "stackable": true, "decay": "All stacks lost at the start of your next turn", "who": "Player", "preference": "Positive", "rarity": "Rare", "icon": "DoubleTap" },
 ]
 
 const ADDONS: Array = [
