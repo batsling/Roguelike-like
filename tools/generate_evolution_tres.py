@@ -184,8 +184,11 @@ def emit_catalog(evos: list) -> str:
 
 def main() -> int:
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
-    if "Evolutions" not in wb.sheetnames or "cardsnew" not in wb.sheetnames:
-        print("ERROR: 'Evolutions' and 'cardsnew' sheets are required", file=sys.stderr)
+    # The sheet has worn both spellings ("Evolutions" originally, "evolutions"
+    # in the uploaded workbook) — accept either.
+    evo_sheet = next((n for n in wb.sheetnames if n.lower() == "evolutions"), "")
+    if evo_sheet == "" or "cardsnew" not in wb.sheetnames:
+        print("ERROR: 'evolutions' and 'cardsnew' sheets are required", file=sys.stderr)
         return 1
 
     cards_by_name = {}
@@ -193,7 +196,7 @@ def main() -> int:
         cards_by_name[str(row.get("Name")).strip()] = row
 
     evos = []
-    for evo in _rows(wb["Evolutions"]):
+    for evo in _rows(wb[evo_sheet]):
         evos.append(build_evolution(evo, cards_by_name))
 
     os.makedirs(OUT_CARD_DIR, exist_ok=True)

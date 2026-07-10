@@ -27,7 +27,7 @@ class _PileScene:
 	var last_discard_count: int = 0
 	func topdeck_cards(n: int, _source_card = null, random: bool = false, from_pile: String = "hand") -> void:
 		topdecks.append({"n": n, "random": random, "from": from_pile})
-	func discard_hand(_source_card = null) -> int:
+	func discard_hand(_source_card = null, _only: String = "") -> int:
 		discard_hand_calls += 1
 		return last_discard_count
 	func conjure_card(card_id: StringName, destination: String, count: int, _source, upgraded: bool = false) -> void:

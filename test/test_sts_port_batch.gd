@@ -30,7 +30,7 @@ class _PileScene:
 	var cards_drawn: int = 0
 	var conjures: Array = []
 	var dots: Array = []            # [{target, amount, source}]
-	func exhaust_hand(_source_card = null) -> int:
+	func exhaust_hand(_source_card = null, _only: String = "") -> int:
 		exhaust_hand_calls += 1
 		return 0
 	func gain_energy(n: int) -> void:

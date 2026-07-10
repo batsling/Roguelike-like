@@ -21,10 +21,10 @@ static func entries_for(card: CardData) -> Array:
 	_add_statuses(out, card, null)
 	return out
 
-# Like entries_for, but resolves the element's CONDITIONAL on-hit status against
-# a live `target` (a CombatActor / BattleUnit exposing get_status). The Fire ->
-# "Inflict 1 Burn" line only appears when the target actually lacks Burn, so the
-# hover card reflects what would really happen to THAT enemy.
+# Like entries_for, but resolves the element's on-hit status against a live
+# `target` (a CombatActor / BattleUnit exposing get_status). Blood/Dark/Fire
+# always land their stack now, so their line always shows; Poison is still
+# conditional, and its line drops off when the condition fails for THAT enemy.
 static func entries_for_target(card: CardData, target) -> Array:
 	var out: Array = []
 	if card == null:
@@ -40,7 +40,8 @@ static func _add_element(out: Array, card: CardData, target = null) -> void:
 		return
 	var desc: String = Elements.description(card.element)
 	# When a target is supplied, show the live on-hit result instead of the
-	# generic rule (so a Fire card on a burning enemy reads "no extra Burn").
+	# generic rule (Poison is the conditional one — its line reads "no extra
+	# effect" against a target it can't poison; Blood/Dark/Fire always land).
 	if target != null:
 		var oh: Dictionary = Elements.on_hit_status(card.element, target, card)
 		if oh.is_empty():

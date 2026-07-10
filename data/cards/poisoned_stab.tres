@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_poisoned_stab"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/PoisonedStab.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"poisoned_stab"
+display_name = "Poisoned Stab"
+type = 0
+rarity = 1
+cost = 1
+description = "Deal 6 Dmg Melee. Inflict 3 Poison."
+effects = [{"type": "dmg", "value": 6, "target": "enemy", "damage_type": "melee", "element": "poison"}, {"type": "status", "status": "poison", "stacks": 3, "target": "enemy"}]
+tags = PackedStringArray("silent", "offense", "debuff")
+source_game = "Slay the Spire"
+element = &"poison"
+can_upgrade = true
+upgraded_description = "Deal 8 Dmg Melee. Inflict 4 Poison."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 8, "target": "enemy", "damage_type": "melee", "element": "poison"}, {"type": "status", "status": "poison", "stacks": 4, "target": "enemy"}]
+image = ExtResource("2_img")
+attack_shape = &"poke"
+attack_params = {"size": "small"}

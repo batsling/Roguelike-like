@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_unload"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Unload.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"unload"
+display_name = "Unload"
+type = 0
+rarity = 3
+cost = 1
+description = "Deal 14 Dmg Ranged. Discard All non-Attack Cards in your hand."
+effects = [{"type": "dmg", "value": 14, "target": "enemy", "damage_type": "ranged"}, {"type": "discard", "all": true, "only": "non_attack"}]
+tags = PackedStringArray("silent", "offense", "discard")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 18 Dmg Ranged. Discard All non-Attack Cards in your hand."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 18, "target": "enemy", "damage_type": "ranged"}, {"type": "discard", "all": true, "only": "non_attack"}]
+image = ExtResource("2_img")
+attack_shape = &"projectile"
+attack_params = {"size": "medium", "spread": 4}

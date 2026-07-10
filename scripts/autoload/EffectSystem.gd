@@ -122,6 +122,7 @@ func _register_defaults() -> void:
 	register("retain", _h_retain)
 	register("chance", _h_chance)
 	register("if_target_status", _h_if_target_status)
+	register("if_counter", _h_if_counter)
 	register("add_max_hp", _h_add_max_hp)
 	register("gain_hp", _h_gain_hp)
 	register("gain_max_hp", _h_gain_max_hp)
@@ -235,6 +236,14 @@ func _h_dmg(effect: Dictionary, ctx: Dictionary) -> void:
 	# itself is an Attack — the only card kind that bumps the counter.
 	if String(effect.get("value_from", "")) == "attacks_this_turn" and _card_is_attack(ctx.get("card")):
 		dmg_value = maxi(0, dmg_value - int(effect.get("value_mult", 1)))
+	# Perfected Strike (bonus_per_card_name "strike"): the hit deals
+	# bonus_per_card additional damage for every card in the player's combat
+	# deck — hand + draw + discard, the played card included — whose display
+	# name contains the substring. Counted at play time, so conjured Strikes
+	# raise it and exhausted ones drop off.
+	var name_sub: String = String(effect.get("bonus_per_card_name", ""))
+	if name_sub != "":
+		dmg_value += int(effect.get("bonus_per_card", 0)) * _cards_named(ctx, name_sub)
 	# Determined (addon): a fixed-per-combat rolled value overrides the static one.
 	dmg_value = _resolve_determined(effect, ctx, dmg_value, "dmg")
 	# Per-turn scaling (Transient): +M damage for each turn the source has taken.
@@ -282,6 +291,33 @@ func _skills_in_hand(ctx: Dictionary) -> int:
 			continue
 		if hc != null and hc.has_method("is_skill") and hc.is_skill():
 			n += 1
+	return n
+
+# Cards whose display name contains `sub` (case-insensitive) across the
+# scene's combat piles — hand + draw + discard — for Perfected Strike's
+# bonus_per_card_name. The played card counts once wherever it sits: it's
+# normally still in hand mid-resolve, but if a scene removes it before
+# resolving (or it was conjured straight into play) it's counted explicitly.
+func _cards_named(ctx: Dictionary, sub: String) -> int:
+	var scene: Variant = ctx.get("scene")
+	if scene == null:
+		return 0
+	var needle: String = sub.to_lower()
+	var n: int = 0
+	var played: Variant = ctx.get("card")
+	var played_seen: bool = false
+	for pile_name in ["hand", "draw_pile", "discard_pile"]:
+		if not (pile_name in scene):
+			continue
+		for c in scene.get(pile_name):
+			if c == played:
+				played_seen = true
+			if c != null and c.has_method("get_display_name") \
+					and c.get_display_name().to_lower().contains(needle):
+				n += 1
+	if played != null and not played_seen and played.has_method("get_display_name") \
+			and played.get_display_name().to_lower().contains(needle):
+		n += 1
 	return n
 
 # Mode-agnostic random living enemy for indiscriminate effects. Prefers the
@@ -636,7 +672,8 @@ func _h_discard(effect: Dictionary, ctx: Dictionary) -> void:
 	# `last_discard_count` for a following conjure count_from: "discarded".
 	if bool(effect.get("all", false)):
 		if scene.has_method("discard_hand"):
-			scene.discard_hand(ctx.get("card"))
+			# `only: "non_attack"` (Unload) narrows the sweep to non-Attacks.
+			scene.discard_hand(ctx.get("card"), String(effect.get("only", "")))
 		return
 	if not scene.has_method("discard_cards"):
 		return
@@ -665,7 +702,8 @@ func _h_exhaust(effect: Dictionary, ctx: Dictionary) -> void:
 	# `last_exhaust_count` for a following dmg hits_from: "exhausted".
 	if bool(effect.get("all", false)):
 		if scene.has_method("exhaust_hand"):
-			scene.exhaust_hand(ctx.get("card"))
+			# `only: "non_attack"` (Sever Soul) narrows the sweep to non-Attacks.
+			scene.exhaust_hand(ctx.get("card"), String(effect.get("only", "")))
 		return
 	if not scene.has_method("exhaust_cards"):
 		return
@@ -856,6 +894,19 @@ func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 # inherits the ctx and its handler acts on the scene/player as usual.
 #   {type: "if_target_status", status: "vulnerable",
 #    effect: {type: "gain_energy", value: 1}}
+# Sneaky Strike (if_counter): resolve the wrapped effect only when the named
+# GameState incremental counter is > 0 (discards_this_turn) — the counter
+# sibling of the if_target wrapper below. The inner effect resolves through
+# the same dispatch with the same ctx, so gain_energy lands on the scene.
+func _h_if_counter(effect: Dictionary, ctx: Dictionary) -> void:
+	var counter: String = String(effect.get("counter", ""))
+	var inner: Dictionary = effect.get("effect", {})
+	if counter == "" or inner.is_empty():
+		return
+	if GameState.incremental_value(counter) <= 0:
+		return
+	apply(inner, ctx)
+
 func _h_if_target_status(effect: Dictionary, ctx: Dictionary) -> void:
 	var status := StringName(String(effect.get("status", "")))
 	var inner: Dictionary = effect.get("effect", {})

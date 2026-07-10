@@ -117,14 +117,37 @@ func test_element_colors_match_the_sheet() -> void:
 	assert_true(Elements.color("poison").g > Elements.color("poison").r,
 		"poison is greenish")
 
-func test_fire_element_inflicts_one_burn_only_when_target_has_none() -> void:
+func test_fire_element_always_inflicts_one_burn() -> void:
 	var enemy := CombatActor.new()
 	var oh: Dictionary = Elements.on_hit_status("fire", enemy, null)
 	assert_eq(StringName(oh.get("status", &"")), &"burn")
 	assert_eq(int(oh.get("stacks", 0)), 1)
-	# Already burning -> the element adds nothing (per the sheet's condition).
+	# Already burning -> another point still lands (the "has no Burn" gate is
+	# gone; Blood/Dark/Fire are unconditional per the elements sheet).
 	enemy.add_status(&"burn", 2)
-	assert_true(Elements.on_hit_status("fire", enemy, null).is_empty())
+	oh = Elements.on_hit_status("fire", enemy, null)
+	assert_eq(StringName(oh.get("status", &"")), &"burn",
+		"a burning target keeps stacking Burn")
+	assert_eq(int(oh.get("stacks", 0)), 1)
+
+func test_blood_and_dark_always_inflict_too() -> void:
+	var enemy := CombatActor.new()
+	enemy.add_status(&"bleed", 1)
+	enemy.add_status(&"blind", 1)
+	assert_eq(StringName(Elements.on_hit_status("blood", enemy, null).get("status", &"")),
+		&"bleed", "Blood stacks Bleed on a bleeding target")
+	assert_eq(StringName(Elements.on_hit_status("dark", enemy, null).get("status", &"")),
+		&"blind", "Dark stacks Blind on a blinded target")
+
+func test_damaging_elemental_cards_wear_the_inflict_rider() -> void:
+	# The always-on element inflict reads on the card text (generator rider).
+	assert_true(Data.get_card(&"searing_blow").description.ends_with("Inflict 1 Burn."),
+		"Searing Blow says what its Fire element does")
+	assert_true(Data.get_card(&"hemokinesis").description.ends_with("Inflict 1 Bleed."))
+	assert_true(Data.get_card(&"immolate").upgraded_description.ends_with("Inflict 1 Burn."),
+		"the upgraded text carries the rider too")
+	assert_false(Data.get_card(&"poisoned_stab").description.ends_with("Inflict 1 Poison."),
+		"Poison keeps its condition -> no rider")
 
 func test_poison_element_skips_a_card_that_already_poisons() -> void:
 	var enemy := CombatActor.new()

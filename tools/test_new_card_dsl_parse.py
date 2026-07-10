@@ -165,6 +165,84 @@ def main():
     hk = one("lose_hp:2")
     assert hk == {"type": "lose_hp", "value": 2}, hk
 
+    # --- The Immolate / Masterful Stab / Perfected Strike / ... port batch ----
+
+    # cost_increase:per=COUNTER (Masterful Stab): the surcharge mirror of
+    # cost_reduce -- stays in the effect list at parse time; card_tres pops it
+    # into cost_increase_from.
+    ci = one("cost_increase:per=hp_losses")
+    assert ci == {"type": "cost_increase", "from": "hp_losses"}, ci
+
+    # dmg ... bonus=N:per_name=STR (Perfected Strike): +N damage per card in
+    # the combat deck whose name contains STR (lower-cased at parse time).
+    ps = one("dmg:6:melee:bonus=2:per_name=Strike")
+    assert ps == {"type": "dmg", "value": 6, "target": "enemy",
+                  "damage_type": "melee", "bonus_per_card_name": "strike",
+                  "bonus_per_card": 2}, ps
+
+    # Immolate's magic cleave + Burn conjure round-trips as two clauses.
+    imm, _ti, _di = gen.parse_effects(
+        "dmg:21:magic:cleave; conjure:burn:discard")
+    assert imm[0] == {"type": "dmg", "value": 21, "target": "all_enemies",
+                      "damage_type": "magic"}, imm
+    assert imm[1] == {"type": "conjure", "card_id": "burn",
+                      "destination": "discard", "count": 1}, imm
+
+    # Rampage's positive self-boost (Glass Knife's twin, positive value).
+    rp = one("boost_cards:id=rampage:dmg:5")
+    assert rp == {"type": "boost_cards", "match_id": "rampage",
+                  "stat": "dmg", "value": 5}, rp
+
+    # The auto_aoe archetype takes an explicit target + a size word (Immolate).
+    shape_i, params_i, _rci = gen.parse_attack("Auto_aoe, target=nearest, Large")
+    assert shape_i == "auto_aoe" and params_i == {"target": "nearest",
+                                                  "size": "large"}, (shape_i, params_i)
+
+    # --- The Slice / Sneaky Strike / Unload / Searing Blow ... port batch -----
+
+    # if_counter:COUNTER:<clause> (Sneaky Strike): resolve the wrapped effect
+    # only when the named incremental counter is > 0 -- the counter sibling of
+    # the if_target wrapper.
+    sn = one("if_counter:discards_this_turn:gain_energy:2")
+    assert sn == {"type": "if_counter", "counter": "discards_this_turn",
+                  "effect": {"type": "gain_energy", "value": 2}}, sn
+
+    # discard:all:non_attack (Unload) / exhaust:all:non_attack (Sever Soul):
+    # the hand sweeps spare Attack cards.
+    ul = one("discard:all:non_attack")
+    assert ul == {"type": "discard", "all": True, "only": "non_attack"}, ul
+    sv = one("exhaust:all:non_attack")
+    assert sv == {"type": "exhaust", "all": True, "only": "non_attack"}, sv
+    # The unfiltered sweeps are untouched.
+    assert one("discard:all") == {"type": "discard", "all": True}
+    assert one("exhaust:all") == {"type": "exhaust", "all": True}
+
+    # sequential_upgrade:N (Searing Blow) stays in the effect list at parse
+    # time; card_tres pops it into CardData.sequential_upgrade_step and forces
+    # can_upgrade.
+    sb = one("sequential_upgrade:3")
+    assert sb == {"type": "sequential_upgrade", "step": 3}, sb
+
+    # Unload's 4-projectile fan rides the projectile archetype's spread param.
+    shape_u, params_u, _rcu = gen.parse_attack("Projectile, Medium, spread=4")
+    assert shape_u == "projectile" and params_u == {"size": "medium",
+                                                    "spread": 4}, (shape_u, params_u)
+
+    # Blood/Dark/Fire rider: damaging elemental cards surface the always-on
+    # element inflict at the end of their card text.
+    dmg_eff = [{"type": "dmg", "value": 12}]
+    assert gen.element_rider("Deal 12 Dmg Fire Melee.", "fire", dmg_eff) == \
+        "Deal 12 Dmg Fire Melee. Inflict 1 Burn."
+    assert gen.element_rider("Lose 2 Health. Deal 15 Dmg.", "blood", dmg_eff) == \
+        "Lose 2 Health. Deal 15 Dmg. Inflict 1 Bleed."
+    # No double-append when the rider is already there.
+    assert gen.element_rider("Deal 12 Dmg. Inflict 1 Burn.", "fire", dmg_eff) == \
+        "Deal 12 Dmg. Inflict 1 Burn."
+    # No dmg effect -> no rider; Poison keeps its condition -> no rider.
+    assert gen.element_rider("Gain 5 Block.", "fire",
+                             [{"type": "block", "value": 5}]) == "Gain 5 Block."
+    assert gen.element_rider("Deal 6 Dmg.", "poison", dmg_eff) == "Deal 6 Dmg."
+
     # The boomerang archetype parses via the Attack column.
     shape, params, _rc = gen.parse_attack("Boomerang")
     assert shape == "boomerang" and params == {}, (shape, params)

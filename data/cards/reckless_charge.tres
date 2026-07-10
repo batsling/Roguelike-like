@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_reckless_charge"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/RecklessCharge.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"reckless_charge"
+display_name = "Reckless Charge"
+type = 0
+rarity = 2
+cost = 0
+description = "Deal 7 Dmg Melee. Conjure 1 Dazed to Deck."
+effects = [{"type": "dmg", "value": 7, "target": "enemy", "damage_type": "melee"}, {"type": "conjure", "card_id": "dazed", "destination": "draw", "count": 1}]
+tags = PackedStringArray("ironclad", "offense", "status")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 10 Dmg Melee. Conjure 1 Dazed to Deck."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 10, "target": "enemy", "damage_type": "melee"}, {"type": "conjure", "card_id": "dazed", "destination": "draw", "count": 1}]
+image = ExtResource("2_img")
+attack_shape = &"smash"
+attack_params = {"size": "small"}

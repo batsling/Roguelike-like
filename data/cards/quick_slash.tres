@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_quick_slash"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/QuickSlash.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"quick_slash"
+display_name = "Quick Slash"
+type = 0
+rarity = 1
+cost = 1
+description = "Deal 8 Dmg Melee. Draw 1 Card."
+effects = [{"type": "dmg", "value": 8, "target": "enemy", "damage_type": "melee"}, {"type": "draw", "value": 1}]
+tags = PackedStringArray("silent", "offense", "draw")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 12 Dmg Melee. Draw 1 Card."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 12, "target": "enemy", "damage_type": "melee"}, {"type": "draw", "value": 1}]
+image = ExtResource("2_img")
+attack_shape = &"swing"
+attack_params = {"size": "small"}

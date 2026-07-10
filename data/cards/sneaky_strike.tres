@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_sneaky_strike"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/SneakyStrike.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"sneaky_strike"
+display_name = "Sneaky Strike"
+type = 0
+rarity = 1
+cost = 2
+description = "Deal 12 Dmg Melee. If you have Discarded a Card this turn, Gain +2 Energy."
+effects = [{"type": "dmg", "value": 12, "target": "enemy", "damage_type": "melee"}, {"type": "if_counter", "counter": "discards_this_turn", "effect": {"type": "gain_energy", "value": 2}}]
+tags = PackedStringArray("silent", "offense", "energy")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Deal 16 Dmg Melee. If you have Discarded a Card this turn, Gain +2 Energy."
+upgraded_cost = -999
+upgraded_effects = [{"type": "dmg", "value": 16, "target": "enemy", "damage_type": "melee"}, {"type": "if_counter", "counter": "discards_this_turn", "effect": {"type": "gain_energy", "value": 2}}]
+image = ExtResource("2_img")
+attack_shape = &"poke"
+attack_params = {"size": "small"}

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_searing_blow"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/SearingBlow.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"searing_blow"
+display_name = "Searing Blow"
+type = 0
+rarity = 2
+cost = 2
+description = "Deal 12 Dmg Fire Melee. Sequential Upgrade Dmg +3. Inflict 1 Burn."
+effects = [{"type": "dmg", "value": 12, "target": "enemy", "damage_type": "melee", "element": "fire"}]
+sequential_upgrade_step = 3
+tags = PackedStringArray("ironclad", "offense", "scaling")
+source_game = "Slay the Spire"
+element = &"fire"
+can_upgrade = true
+image = ExtResource("2_img")
+attack_shape = &"swing"
+attack_params = {"size": "medium"}
