@@ -625,6 +625,24 @@ def parse_attack(raw):
     return shape, params, range_class
 
 
+# Blood / Dark / Fire always inflict their 1-stack status on a damaging hit
+# (elements sheet + Elements.on_hit_status). Surface the rider on the card
+# text so the player sees it — "Deal 12 Dmg Fire Melee. ... Inflict 1 Burn."
+ELEMENT_RIDER_STATUS = {"blood": "Bleed", "dark": "Blind", "fire": "Burn"}
+
+
+def element_rider(desc: str, element: str, effects: list) -> str:
+    status = ELEMENT_RIDER_STATUS.get(element)
+    if not status or not desc:
+        return desc
+    if not any(isinstance(e, dict) and e.get("type") == "dmg" for e in effects):
+        return desc
+    rider = "Inflict 1 %s." % status
+    if rider.lower() in desc.lower():
+        return desc
+    return "%s %s" % (desc.rstrip(), rider)
+
+
 def gd_dict(d) -> str:
     parts = []
     for k, v in d.items():
@@ -726,6 +744,11 @@ def card_tres(row) -> tuple:
             for e in bucket:
                 if isinstance(e, dict) and e.get("type") == "dmg":
                     e["element"] = element
+
+    # Blood/Dark/Fire rider: the always-on element inflict reads on the card.
+    desc = element_rider(desc, element, on_play)
+    if up_desc:
+        up_desc = element_rider(up_desc, element, up_on_play)
 
     # cost_reduce:per=<counter> is card-level, not an on-play effect: pop it out
     # of whichever effect list carried it into CardData.cost_reduce_from (the

@@ -8,8 +8,11 @@ class_name Elements
 #
 #   2. EFFECT ON ATTACK — when a damaging attack carrying an element lands, the
 #      element applies a small on-hit side effect (the sheet's "Effect on Attack"
-#      column). Implemented as a conditional 1-stack inflict so it never
-#      double-dips with a card that already applies the same status.
+#      column). Blood / Dark / Fire ALWAYS inflict their 1-stack status on a
+#      connecting hit; only Poison keeps a condition (no double-dip with a card
+#      that already poisons / a target already poisoned). Damaging Blood/Dark/
+#      Fire cards surface the rider on their card text — generate_card_tres
+#      appends "Inflict 1 Burn." etc. to the description.
 #
 # Authoring: a card's Element column -> CardData.element (lower-case). Nothing
 # else to wire — damage paths in all three modes call on_hit_status() after a
@@ -39,11 +42,11 @@ const NAMES: Dictionary = {
 # Element -> its "Effect on Attack" blurb (the elements sheet). Shown in card
 # tooltips so the player knows what an element does on a connecting hit.
 const DESCRIPTIONS: Dictionary = {
-	"blood": "If the target has no Bleed, inflict 1 Bleed.",
-	"dark": "If the target has no Blind, inflict 1 Blind.",
+	"blood": "Inflicts 1 Bleed on hit.",
+	"dark": "Inflicts 1 Blind on hit.",
 	"earth": "No on-hit effect.",
 	"electric": "Electric damage to a Wet target also hits adjacent Wet targets.",
-	"fire": "If the target has no Burn, inflict 1 Burn.",
+	"fire": "Inflicts 1 Burn on hit.",
 	"poison": "Inflict 1 Poison unless the attack already applies Poison.",
 	"water": "Inflict 1 Wet and remove all Burn from the target.",
 }
@@ -74,21 +77,19 @@ static func color(element) -> Color:
 #
 #   { "status": StringName, "stacks": 1 }
 #
-# `target` gates the "if the target doesn't already have any X" rule
-# (Blood/Dark/Fire). `card` gates Poison's "if the target isn't gaining Poison
-# already" — read as "unless this attack already inflicts Poison" — so a card
-# like Bouncing Flask that already poisons doesn't get a bonus stack stapled on.
+# Blood / Dark / Fire are unconditional — every connecting hit stacks another
+# point of Bleed / Blind / Burn (the card text carries the "Inflict 1 X."
+# rider). Only Poison keeps its gates: `card` covers "unless this attack
+# already inflicts Poison" (Bouncing Flask doesn't get a bonus stack stapled
+# on) and `target` the "isn't gaining Poison already" half.
 static func on_hit_status(element, target, card) -> Dictionary:
 	match _key(element):
 		"blood":
-			if _target_lacks(target, &"bleed"):
-				return {"status": &"bleed", "stacks": 1}
+			return {"status": &"bleed", "stacks": 1}
 		"dark":
-			if _target_lacks(target, &"blind"):
-				return {"status": &"blind", "stacks": 1}
+			return {"status": &"blind", "stacks": 1}
 		"fire":
-			if _target_lacks(target, &"burn"):
-				return {"status": &"burn", "stacks": 1}
+			return {"status": &"burn", "stacks": 1}
 		"poison":
 			if not _card_inflicts(card, &"poison") and _target_lacks(target, &"poison"):
 				return {"status": &"poison", "stacks": 1}

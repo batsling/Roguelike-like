@@ -95,17 +95,22 @@ means none). Wired through the `Elements` registry (`scripts/runtime/Elements.gd
 the code side of the `elements` sheet) for two things:
 
 1. **Effect on Attack** — when a *damaging* elemental hit lands, the element
-   applies a 1-stack on-hit status, gated by the sheet's condition. Fires in all
-   three combat modes.
+   applies a 1-stack on-hit status. Blood / Dark / Fire are UNCONDITIONAL —
+   every connecting hit stacks another point; only Poison keeps its sheet
+   condition. Fires in all three combat modes. The generator surfaces the
+   always-on rider on the card text: a damaging Blood/Dark/Fire card's
+   description (and upgraded description) ends with "Inflict 1 Bleed." /
+   "Inflict 1 Blind." / "Inflict 1 Burn." automatically — don't write it into
+   the sheet's Description cell yourself.
 2. **Colour** — in action combat, the card's outward attack visual (smear /
    swing / projectile / beam / disc / smite / bounce) is tinted the element's
    colour.
 
 | Element | On-hit effect | Colour |
 |---|---|---|
-| `Blood` | If target has no Bleed, inflict 1 Bleed | Red |
-| `Dark` | If target has no Blind, inflict 1 Blind | Purple |
-| `Fire` | If target has no Burn, inflict 1 Burn | Orange |
+| `Blood` | Inflict 1 Bleed (always) | Red |
+| `Dark` | Inflict 1 Blind (always) | Purple |
+| `Fire` | Inflict 1 Burn (always) | Orange |
 | `Poison` | Inflict 1 Poison unless the attack already poisons / target already poisoned | Light Green |
 | `Earth` | None (sheet: N/A) | Brown |
 | `Electric` | Colour-only for now (rule needs the Wet status) | Yellow |

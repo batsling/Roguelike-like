@@ -228,6 +228,21 @@ def main():
     assert shape_u == "projectile" and params_u == {"size": "medium",
                                                     "spread": 4}, (shape_u, params_u)
 
+    # Blood/Dark/Fire rider: damaging elemental cards surface the always-on
+    # element inflict at the end of their card text.
+    dmg_eff = [{"type": "dmg", "value": 12}]
+    assert gen.element_rider("Deal 12 Dmg Fire Melee.", "fire", dmg_eff) == \
+        "Deal 12 Dmg Fire Melee. Inflict 1 Burn."
+    assert gen.element_rider("Lose 2 Health. Deal 15 Dmg.", "blood", dmg_eff) == \
+        "Lose 2 Health. Deal 15 Dmg. Inflict 1 Bleed."
+    # No double-append when the rider is already there.
+    assert gen.element_rider("Deal 12 Dmg. Inflict 1 Burn.", "fire", dmg_eff) == \
+        "Deal 12 Dmg. Inflict 1 Burn."
+    # No dmg effect -> no rider; Poison keeps its condition -> no rider.
+    assert gen.element_rider("Gain 5 Block.", "fire",
+                             [{"type": "block", "value": 5}]) == "Gain 5 Block."
+    assert gen.element_rider("Deal 6 Dmg.", "poison", dmg_eff) == "Deal 6 Dmg."
+
     # The boomerang archetype parses via the Attack column.
     shape, params, _rc = gen.parse_attack("Boomerang")
     assert shape == "boomerang" and params == {}, (shape, params)
