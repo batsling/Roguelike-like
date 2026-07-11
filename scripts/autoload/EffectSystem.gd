@@ -124,6 +124,10 @@ func _register_defaults() -> void:
 	register("autoplay_top", _h_autoplay_top)
 	register("copy_from_hand", _h_copy_from_hand)
 	register("exhume", _h_exhume)
+	register("multiply_status", _h_multiply_status)
+	register("free_hand", _h_free_hand)
+	register("nightmare", _h_nightmare)
+	register("retrieve", _h_retrieve)
 	register("if_target_intent", _h_if_target_intent)
 	register("chance", _h_chance)
 	register("if_target_status", _h_if_target_status)
@@ -399,7 +403,34 @@ func _h_draw(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
 	if scene == null or not scene.has_method("draw_cards"):
 		return
-	scene.draw_cards(effect.get("value", 1))
+	var n: int = int(effect.get("value", 1))
+	# draw count=discarded (Calculated Gamble): one draw per card the preceding
+	# discard:all sent away this play — the draw sibling of conjure's
+	# count_from: "discarded". Zero discarded legitimately draws zero.
+	if String(effect.get("value_from", "")) == "discarded":
+		n = int(scene.last_discard_count) if ("last_discard_count" in scene) else 0
+	# draw to=N (Expertise): top the hand up to N cards. Scenes without a hand
+	# (action translates draws its own way and resolves this in its card loop)
+	# fall back to a plain single draw.
+	if effect.has("to_hand"):
+		var hand_n: int = scene.hand.size() if ("hand" in scene) else 0
+		n = maxi(0, int(effect.get("to_hand", 0)) - hand_n)
+	if n <= 0:
+		return
+	var drawn: Variant = scene.draw_cards(n)
+	# skill_block=N (Escape Plan): after the draw, gain N Block per drawn card
+	# that is a Skill. draw_cards returns the drawn cards in deckbuilder /
+	# strategy; a scene still returning void simply skips the rider.
+	var per_skill: int = int(effect.get("skill_block", 0))
+	if per_skill > 0 and drawn is Array and scene.has_method("gain_block"):
+		var skills: int = 0
+		for c in drawn:
+			if c != null and c.has_method("is_skill") and c.is_skill():
+				skills += 1
+		if skills > 0:
+			scene.gain_block(ctx.get("source"), per_skill * skills)
+			GameLog.add("Escape Plan: drew a Skill — +%d Block." % (per_skill * skills),
+				Color(0.7, 0.85, 1.0))
 
 func _h_gain_energy(effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
@@ -442,7 +473,10 @@ func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
 		# X-value gain (Doppelganger: gain X Next Turn Draw): the stack count is
 		# the energy spent on the play, threaded through ctx as x_value exactly
 		# like dmg's hits_from — plus the upgrade's flat bonus (X+1).
-		stacks = maxi(0, int(ctx.get("x_value", 0))) + int(effect.get("stacks_bonus", 0))
+		# stacks_mult -1 (Malaise: inflict -X Power) flips the whole amount into
+		# a drain; the bonus is authored pre-flipped (-X-1 -> mult -1, bonus -1).
+		stacks = maxi(0, int(ctx.get("x_value", 0))) * int(effect.get("stacks_mult", 1)) \
+			+ int(effect.get("stacks_bonus", 0))
 	else:
 		stacks = _dyn_amount(effect, "stacks", "stacks_from", "stacks_mult")
 	if not effect.has("stacks") and not effect.has("stacks_from"):
@@ -710,7 +744,8 @@ func _h_topdeck(effect: Dictionary, ctx: Dictionary) -> void:
 	if scene == null or not scene.has_method("topdeck_cards"):
 		return
 	scene.topdeck_cards(int(effect.get("value", 1)), ctx.get("card"),
-		bool(effect.get("random", false)), String(effect.get("from", "hand")))
+		bool(effect.get("random", false)), String(effect.get("from", "hand")),
+		bool(effect.get("free_until_played", false)))
 
 func _h_exhaust(effect: Dictionary, ctx: Dictionary) -> void:
 	# Deckbuilder-only: pick N cards from hand to send to exhaust.
@@ -986,6 +1021,58 @@ func _h_exhume(effect: Dictionary, ctx: Dictionary) -> void:
 	if scene == null or not scene.has_method("exhume_cards"):
 		return
 	scene.exhume_cards(maxi(1, int(effect.get("value", 1))), ctx.get("card"))
+
+# Catalyst (multiply:poison:2): multiply the PICKED enemy target's stacks of
+# the named status by `factor`. A direct signed write like double_stat's
+# status arm — no Persistence, no status_applied reaction — so doubling a
+# drained-negative stack doubles it further down, and zero stays zero.
+func _h_multiply_status(effect: Dictionary, ctx: Dictionary) -> void:
+	var status := StringName(String(effect.get("status", "")))
+	var factor: int = int(effect.get("factor", 2))
+	if status == &"" or factor == 1:
+		return
+	var tgt = ctx.get("target")
+	if tgt == null or not ("statuses" in tgt):
+		return
+	var cur: int = int(tgt.statuses.get(status, 0))
+	if cur == 0:
+		GameLog.add("No %s to multiply — it does nothing." % String(status).capitalize(),
+			Color(0.85, 0.85, 0.55))
+		return
+	tgt.statuses[status] = cur * factor
+	GameLog.add("%s multiplied to %d!" % [String(status).capitalize(), cur * factor],
+		Color(0.6, 1.0, 0.6))
+
+# Bullet Time (free_hand): every card currently in hand costs 0 for THIS turn.
+# Each scene owns its translation via make_hand_free (deckbuilder/strategy:
+# temp_cost_override on the whole hand; action: every armed cooldown finishes).
+func _h_free_hand(_effect: Dictionary, ctx: Dictionary) -> void:
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("make_hand_free"):
+		return
+	scene.make_hand_free(ctx.get("card"))
+
+# Nightmare: choose a card in hand; at the start of the player's NEXT turn,
+# conjure `count` copies of it to hand. Deckbuilder/strategy open the picker
+# and bank the pick scene-side; action auto-picks a random armed card and
+# opens the copies as one-shot temp slots at the next turn tick.
+func _h_nightmare(effect: Dictionary, ctx: Dictionary) -> void:
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("nightmare_cards"):
+		return
+	scene.nightmare_cards(maxi(1, int(effect.get("count", 3))), ctx.get("card"))
+
+# Hologram / Seek (retrieve): move N cards from the named pile ("discard" /
+# "draw") to hand. Deckbuilder/strategy open the picker over that pile;
+# action re-arms a random card from its auto analog as a one-shot temp slot.
+func _h_retrieve(effect: Dictionary, ctx: Dictionary) -> void:
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("retrieve_cards"):
+		return
+	scene.retrieve_cards(
+		maxi(1, int(effect.get("value", 1))),
+		String(effect.get("from", "discard")),
+		ctx.get("card"))
 
 # Spot Weakness (if_target_intent as a WRAPPER): resolve the inner effect only
 # when the PICKED enemy target is telegraphing an attack — the intent sibling

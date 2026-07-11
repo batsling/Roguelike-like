@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_burst"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Burst.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"burst"
+display_name = "Burst"
+type = 1
+rarity = 3
+cost = 1
+description = "This turn, your next Skill is played twice."
+effects = [{"type": "status", "status": "burst", "stacks": 1, "target": "self"}]
+tags = PackedStringArray("silent", "energy")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "This turn, your next 2 Skills are played twice."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status", "status": "burst", "stacks": 2, "target": "self"}]
+image = ExtResource("2_img")

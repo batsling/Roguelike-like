@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_malaise"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Malaise.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"malaise"
+display_name = "Malaise"
+type = 1
+rarity = 3
+cost = -1
+description = "Inflict -X Power and X Weak. Exhaust."
+effects = [{"type": "status", "status": "power", "stacks": 0, "target": "enemy", "stacks_from": "energy", "stacks_mult": -1}, {"type": "status", "status": "weak", "stacks": 0, "target": "enemy", "stacks_from": "energy"}]
+tags = PackedStringArray("silent", "debuff", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Inflict -X-1 Power and X+1 Weak. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status", "status": "power", "stacks": 0, "target": "enemy", "stacks_from": "energy", "stacks_mult": -1, "stacks_bonus": -1}, {"type": "status", "status": "weak", "stacks": 0, "target": "enemy", "stacks_from": "energy", "stacks_bonus": 1}]
+image = ExtResource("2_img")
+exhaust = true

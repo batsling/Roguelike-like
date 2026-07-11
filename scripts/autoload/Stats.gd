@@ -31,6 +31,7 @@ const DECAY_STATUSES: Array[StringName] = [
 	&"stun",    # the stunned unit skips its turn, then stun steps down by 1
 	&"no_draw", # Battle Trance: blocks draws for the turn it was gained, then lifts
 	&"intangible", # Wraith Form: each stack is one turn of "all damage becomes 1"
+	&"double_damage", # Phantasmal Killer: each stack is one turn of doubled Attacks
 ]
 
 # Statuses that GROW by 1 at end of turn (Bleed) in STRATEGY mode. Mirror of
@@ -98,15 +99,20 @@ const STATUS_ICONS := {
 	&"plated_armor": "PlatedArmor.png",
 	&"next_turn_energy": "NextTurnEnergy.png",
 	&"next_turn_draw": "NextTurnDraw.png",
+	&"next_turn_block": "NextTurnBlock.png",
 	&"no_draw": "NoDraw.png",
 	&"intangible": "Intangible.png",
 	&"choked": "Choked.png",
+	&"blur": "Blur.png",
+	&"double_damage": "DoubleDamage.png",
+	&"corpse_explosion": "CorpseExplosion.png",
 	# Skill-type markers (statusesnew Type "Skill"): display-only stacks set by
 	# a Skill card's own Effects DSL, wiped at the start of the player's next
 	# turn (clear_skill_markers). The behavior lives on the card, not here.
 	&"flame_barrier": "FlameBarrier.png",
 	&"rage": "Rage.png",
 	&"double_tap": "DoubleTap.png",
+	&"burst": "Burst.png",
 }
 
 var _status_icon_cache: Dictionary = {}     # StringName -> Texture2D
@@ -458,6 +464,13 @@ func resolve_damage(
 	if has_src and ("is_player" in source) and source.is_player \
 			and damage_type != "true" \
 			and (GameState.pen_nib_double_active or bool(effect.get("pen_nib_double", false))):
+		amount *= 2
+	# Double Damage (Phantasmal Killer): while the ATTACKER carries the status,
+	# each of its melee/ranged hits deals double. Read live off the source in
+	# every mode's resolver; magic and DoT ("true") damage are excluded — the
+	# sheet scopes it to Attacks, matching Weak's type=attack classification.
+	if has_src and (damage_type == "melee" or damage_type == "ranged") \
+			and source.get_status(&"double_damage") > 0:
 		amount *= 2
 	# Critical hit — applied PRE-block so block soaks the boosted hit. Any
 	# attacker can crit: the player from Luck + crit_chance, an enemy only if
@@ -1103,6 +1116,41 @@ func should_split(actor) -> bool:
 	# At or below 50% HP (integer-safe: hp*2 <= max_hp).
 	return int(actor.hp) * 2 <= int(actor.max_hp)
 
+# Corpse Explosion: an ENEMY that dies while carrying the status detonates for
+# its Max HP against every OTHER living enemy. Called by each mode at its death
+# sites (the same places enemy_killed bookkeeping runs) so all three modes share
+# one rule. The marker is erased BEFORE the blast so re-entrant death handling
+# can't double-fire; the blast routes through scene.apply_dot (raw HP, no
+# block / Weak / Vulnerable, Intangible still clamps), and a chained victim
+# carrying its own Corpse Explosion detonates in turn through its death site.
+func process_corpse_explosion(dead, scene) -> void:
+	if dead == null or scene == null:
+		return
+	if not dead.has_method("get_status") or dead.get_status(&"corpse_explosion") <= 0:
+		return
+	if ("is_player" in dead) and dead.is_player:
+		return
+	if not ("statuses" in dead) or not ("max_hp" in dead):
+		return
+	var dmg: int = int(dead.max_hp)
+	dead.statuses.erase(&"corpse_explosion")
+	if dmg <= 0:
+		return
+	var dname: String = String(dead.display_name) if ("display_name" in dead) else "The enemy"
+	GameLog.add("%s explodes for %d damage!" % [dname, dmg], Color(0.6, 1.0, 0.6))
+	# A scene may own a spatial reading of the blast (action: a Lil' Bomber
+	# style Medium disc around the corpse — only enemies inside it are hit).
+	# Modes without positions (deckbuilder/strategy) fall through to the
+	# room-wide sweep below.
+	if scene.has_method("corpse_explosion_blast"):
+		scene.corpse_explosion_blast(dead, dmg)
+		return
+	if not scene.has_method("living_enemies") or not scene.has_method("apply_dot"):
+		return
+	for other in scene.living_enemies():
+		if other != dead:
+			scene.apply_dot(other, dmg, "corpse explosion")
+
 func fire_contact_reactions(target, attacker, scene) -> void:
 	# Cross-mode "actor A made physical contact with actor B" hook.
 	# Deckbuilder calls this after melee damage resolves; strategy
@@ -1156,6 +1204,21 @@ func fire_contact_reactions(target, attacker, scene) -> void:
 # turn. Callers wrap their `actor.block = 0` turn-boundary reset with this.
 func keeps_block(actor) -> bool:
 	return actor != null and ("keep_block" in actor) and actor.keep_block
+
+# Blur folded into the Barricade gate: true when the actor's Block should
+# survive this turn boundary. Barricade (keep_block) is sticky and consumes
+# nothing; otherwise a Blur stack is CONSUMED to buy the turn (the sheet's
+# "Down by 1 when it preserves your Block at turn start"). Call this exactly
+# once per boundary in place of keeps_block wherever block would reset —
+# deckbuilder/strategy turn start, action's per-tick fade gate.
+func block_persists(actor) -> bool:
+	if keeps_block(actor):
+		return true
+	if actor != null and actor.has_method("get_status") \
+			and actor.get_status(&"blur") > 0:
+		actor.add_status(&"blur", -1)
+		return true
+	return false
 
 # Total cards the retain-typed turn_ended triggers keep this turn
 # (Well-Laid Plans; two copies played = the sum of their values). The scenes

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_escape_plan"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/EscapePlan.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"escape_plan"
+display_name = "Escape Plan"
+type = 1
+rarity = 2
+cost = 0
+description = "Draw 1 Card. If it was a Skill, Gain +3 Block."
+effects = [{"type": "draw", "value": 1, "skill_block": 3}]
+tags = PackedStringArray("silent", "draw", "defense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Draw 1 Card. If it was a Skill, Gain +5 Block."
+upgraded_cost = -999
+upgraded_effects = [{"type": "draw", "value": 1, "skill_block": 5}]
+image = ExtResource("2_img")

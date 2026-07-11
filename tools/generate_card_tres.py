@@ -265,6 +265,24 @@ def _effect_from_tokens(tokens):
         # target's Power below zero — the engine writes the status dict
         # directly so add_status's zero-floor doesn't swallow the drain).
         stacks = int(pos[1]) if len(pos) > 1 and pos[1].lstrip("-").isdigit() else 1
+        # X-value inflicts (Malaise: `inflict:power:-X` / `inflict:weak:X+1`):
+        # the stack count is the energy spent on the play — the enemy-side
+        # mirror of Doppelganger's `gain:<status>:X`. A leading "-" flips the
+        # sign (stacks_mult: -1, the drain direction) and a trailing ±N rides
+        # stacks_bonus (Malaise+ inflicts -X-1 Power / X+1 Weak).
+        x_kv = {}
+        if len(pos) > 1:
+            m_ix = re.match(r"^(-)?X(?:([+-])(\d+))?$", pos[1].strip(), re.IGNORECASE)
+            if m_ix:
+                x_kv = {"stacks_from": "energy"}
+                if m_ix.group(1):
+                    x_kv["stacks_mult"] = -1
+                if m_ix.group(3):
+                    bonus = int(m_ix.group(3))
+                    if m_ix.group(2) == "-":
+                        bonus = -bonus
+                    x_kv["stacks_bonus"] = bonus
+                stacks = 0
         rest = [p.lower() for p in pos[2:]]
         target = "enemy"
         if "self" in rest:
@@ -272,6 +290,7 @@ def _effect_from_tokens(tokens):
         elif "cleave" in rest:
             target = "all_enemies"
         eff = {"type": "status", "status": status, "stacks": stacks, "target": target}
+        eff.update(x_kv)
         # `indiscriminate` -> re-roll a random enemy for each application; `times=N`
         # -> apply the whole inflict N times (Bouncing Flask: 3 Poison to a random
         # target, N times). Stored as `hits` so it mirrors dmg's NxM multi-hit.
@@ -370,6 +389,12 @@ def _effect_from_tokens(tokens):
             eff["random"] = True
         if kv.get("from", "").strip().lower() == "discard":
             eff["from"] = "discard"
+        # free=until_played (Setup): the placed card costs 0 until it is
+        # PLAYED — the override survives pile moves and turn boundaries
+        # (CardInstance.free_until_played), unlike the per-turn
+        # temp_cost_override the free conjures use.
+        if kv.get("free", "").strip().lower() == "until_played":
+            eff["free_until_played"] = True
         return eff
 
     if verb == "exhaust":
@@ -552,6 +577,39 @@ def _effect_from_tokens(tokens):
             eff["effect"] = inner
         return eff
 
+    if verb == "multiply":
+        # multiply:poison:2 (Catalyst) / multiply:poison:3 (Catalyst+):
+        # multiply the PICKED enemy target's stacks of the named status by N.
+        # A direct signed write (like double:power), not an inflict — no
+        # Persistence scaling, no status_applied reaction.
+        status = pos[0].lower() if pos else ""
+        factor = int(pos[1]) if len(pos) > 1 and pos[1].isdigit() else 2
+        return {"type": "multiply_status", "status": status, "factor": factor,
+                "target": "enemy"}
+
+    if verb == "retrieve":
+        # retrieve:N:from=discard (Hologram) / retrieve:N:from=draw (Seek):
+        # move N cards from the named pile to hand. Deckbuilder/strategy open
+        # the CardPickerModal over that pile; action re-arms a random card
+        # from its auto analog of the pile as a one-shot temp slot.
+        return {"type": "retrieve",
+                "value": int(pos[0]) if pos and pos[0].isdigit() else 1,
+                "from": kv.get("from", "discard").strip().lower()}
+
+    if verb == "free_hand":
+        # Bullet Time: every card currently in hand costs 0 for THIS turn
+        # (temp_cost_override, the Mummified Hand slot). Action translation:
+        # every armed cooldown finishes now.
+        return {"type": "free_hand"}
+
+    if verb == "nightmare":
+        # nightmare:N: choose a card in hand; at the start of the player's
+        # NEXT turn, conjure N copies of it to hand. Deckbuilder/strategy
+        # open the picker; action auto-picks a random armed card and opens N
+        # one-shot temp slots at the next turn tick.
+        return {"type": "nightmare",
+                "count": int(pos[0]) if pos and pos[0].isdigit() else 3}
+
     if verb == "keep_block":
         # Barricade: the player's Block is not removed at the start of the
         # turn (bare structural verb, like exhaust_self).
@@ -597,10 +655,30 @@ def _effect_from_tokens(tokens):
         rest = [p.lower() for p in pos[2:]]
         etype = "status_temp" if ("temp" in rest or "temporary" in rest) else "status"
         return {"type": etype, "status": what, "stacks": val, "target": "self"}
+    if verb == "draw":
+        # draw:N — the plain form. Extended kv forms:
+        #   draw:count=discarded (Calculated Gamble): draw one per card the
+        #     preceding discard:all sent away (value_from: "discarded", the
+        #     draw sibling of conjure's count_from).
+        #   draw:to=6 (Expertise): draw until the hand holds N cards
+        #     (to_hand; action counts its armed cooldown slots as the hand).
+        #   draw:1:skill_block=3 (Escape Plan): after the draw, gain N Block
+        #     per drawn card that is a Skill.
+        eff = {"type": "draw", "value": int(pos[0]) if pos and pos[0].isdigit() else 1}
+        if kv.get("count", "").strip().lower() == "discarded":
+            eff["value_from"] = "discarded"
+            eff["value"] = 0
+        if "to" in kv:
+            eff["to_hand"] = int(float(kv["to"]))
+            eff.pop("value")
+        if "skill_block" in kv:
+            eff["skill_block"] = int(float(kv["skill_block"]))
+        return eff
+
     # `retain:N` (Well-Laid Plans' inner verb): at the end of the turn, keep up
     # to N hand cards. Only meaningful inside an on_turn_ended trigger — the
     # scenes resolve it BEFORE the hand discards.
-    if verb in ("draw", "block", "heal", "gain_energy", "lose_energy", "upgrade_hand", "retain") and pos:
+    if verb in ("block", "heal", "gain_energy", "lose_energy", "upgrade_hand", "retain") and pos:
         # upgrade_hand:all upgrades every card in hand (Armaments+).
         if verb == "upgrade_hand" and pos[0].lower() == "all":
             return {"type": "upgrade_hand", "value": "all"}

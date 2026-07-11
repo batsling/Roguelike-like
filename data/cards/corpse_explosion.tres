@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_corpse_explosion"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/CorpseExplosion.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"corpse_explosion"
+display_name = "Corpse Explosion"
+type = 1
+rarity = 3
+cost = 2
+description = "Inflict 6 Poison. Inflict 1 Corpse Explosion."
+effects = [{"type": "status", "status": "poison", "stacks": 6, "target": "enemy"}, {"type": "status", "status": "corpse_explosion", "stacks": 1, "target": "enemy"}]
+tags = PackedStringArray("silent", "debuff", "poison", "aoe")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Inflict 9 Poison. Inflict 1 Corpse Explosion."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status", "status": "poison", "stacks": 9, "target": "enemy"}, {"type": "status", "status": "corpse_explosion", "stacks": 1, "target": "enemy"}]
+image = ExtResource("2_img")
+attack_shape = &"homing"
+attack_params = {"size": "medium", "explosive": true}

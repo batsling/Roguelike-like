@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_expertise"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Expertise.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"expertise"
+display_name = "Expertise"
+type = 1
+rarity = 2
+cost = 1
+description = "Draw Cards until you have 6 Cards in your Hand."
+effects = [{"type": "draw", "to_hand": 6}]
+tags = PackedStringArray("silent", "draw")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Draw Cards until you have 7 Cards in your Hand."
+upgraded_cost = -999
+upgraded_effects = [{"type": "draw", "to_hand": 7}]
+image = ExtResource("2_img")

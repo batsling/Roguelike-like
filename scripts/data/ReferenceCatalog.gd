@@ -43,6 +43,11 @@ const STATUSES: Array = [
 	{ "name": "Flame Barrier", "description": "Until your next turn, enemies that hit you take X Magic Dmg Fire and gain 1 Burn per contact.", "type": "Skill", "stackable": true, "decay": "All stacks lost at the start of your next turn", "who": "Player", "preference": "Positive", "rarity": "Uncommon", "icon": "FlameBarrier" },
 	{ "name": "Rage", "description": "Until the end of your turn, whenever you play an Attack, Gain +X Block.", "type": "Skill", "stackable": true, "decay": "All stacks lost at the start of your next turn", "who": "Player", "preference": "Positive", "rarity": "Uncommon", "icon": "Rage" },
 	{ "name": "Double Tap", "description": "This turn, your next X Attacks are played twice.", "type": "Skill", "stackable": true, "decay": "All stacks lost at the start of your next turn", "who": "Player", "preference": "Positive", "rarity": "Rare", "icon": "DoubleTap" },
+	{ "name": "Blur", "description": "Your Block is not removed at the start of your next turn. Down by 1 each turn it preserves your Block.", "type": "Buff", "stackable": true, "decay": "Down by 1 when it preserves your Block at turn start", "who": "Player", "preference": "Positive", "rarity": "Uncommon", "icon": "Blur" },
+	{ "name": "Burst", "description": "This turn, your next X Skills are played twice.", "type": "Skill", "stackable": true, "decay": "All stacks lost at the start of your next turn", "who": "Player", "preference": "Positive", "rarity": "Rare", "icon": "Burst" },
+	{ "name": "Next Turn Block", "description": "Gain X Block at the start of your next turn, where X is the stack", "type": "Buff", "stackable": true, "decay": "Lose all when triggered", "who": "Player", "preference": "Positive", "rarity": "Uncommon", "icon": "NextTurnBlock" },
+	{ "name": "Double Damage", "description": "Your Attacks deal double damage. X is the number of turns it lasts.", "type": "Buff", "stackable": true, "decay": "Down by 1 at end of turn", "who": "All", "preference": "Positive", "rarity": "Rare", "icon": "DoubleDamage" },
+	{ "name": "Corpse Explosion", "description": "When this target dies, it deals damage equal to its Max Health to all other enemies.", "type": "Debuff", "stackable": false, "decay": "None", "who": "Enemy", "preference": "Negative", "rarity": "Rare", "icon": "CorpseExplosion" },
 ]
 
 const ADDONS: Array = [

@@ -33,7 +33,7 @@ class _PileScene:
 		energy_gained += n
 	func draw_cards(n: int) -> void:
 		cards_drawn += n
-	func topdeck_cards(n: int, _source_card = null, random: bool = false, from_pile: String = "hand") -> void:
+	func topdeck_cards(n: int, _source_card = null, random: bool = false, from_pile: String = "hand", _free_until_played: bool = false) -> void:
 		topdecks.append({"n": n, "random": random, "from": from_pile})
 
 func _actor(hp: int = 10) -> CombatActor:

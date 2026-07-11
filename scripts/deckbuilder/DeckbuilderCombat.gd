@@ -86,6 +86,9 @@ var last_discard_count: int = 0
 # Cards the last `exhaust:all` (Fiend Fire) sent away this play. Read back by
 # dmg `hits_from: "exhausted"` via the effect ctx scene.
 var last_exhaust_count: int = 0
+# Nightmare's banked picks: [{data: CardData, upgraded: bool, count: int}].
+# Filled by the picker on play, delivered to hand at the next turn start.
+var _nightmare_pending: Array = []
 var turn: int = 0
 enum Phase { INIT, PLAYER, ENEMY, WON, LOST }
 var phase: Phase = Phase.INIT
@@ -777,13 +780,16 @@ func _init_deck() -> void:
 	_energy_carryover = 0
 	last_discard_count = 0
 	last_exhaust_count = 0
+	_nightmare_pending.clear()
 	for c in GameState.deck:
 		if c is CardData:
 			draw_pile.append(CardInstance.from_data(c))
 		elif c is CardInstance:
 			# Clear any leftover per-combat cost discount (Empty Tome) so a new
-			# fight starts from the card's real cost.
+			# fight starts from the card's real cost — and any unspent Setup
+			# "free until played" override from a previous combat.
 			c.combat_cost_delta = 0
+			c.free_until_played = false
 			draw_pile.append(c)
 	_shuffle(draw_pile)
 	_promote_innate()
@@ -839,9 +845,17 @@ func _start_player_turn() -> void:
 	if nt_energy > 0:
 		energy += nt_energy
 		GameLog.add("Next Turn Energy: +%d energy." % nt_energy, Color(0.7, 1.0, 0.85))
-	# Barricade: block is not removed at the start of the turn.
-	if not Stats.keeps_block(player):
+	# Barricade: block is not removed at the start of the turn. Blur buys the
+	# same reprieve one turn at a time (consuming a stack — see block_persists).
+	if not Stats.block_persists(player):
 		player.block = 0
+	# Next Turn Block (Dodge and Roll): banked stacks pour through gain_block
+	# now — after the reset above, so the payout isn't wiped — then the status
+	# clears ("Lose all when triggered"). Frail/Defense apply at payout time.
+	var nt_block: int = Stats.consume_status(player, &"next_turn_block")
+	if nt_block > 0:
+		gain_block(player, nt_block)
+		GameLog.add("Next Turn Block: +%d Block." % nt_block, Color(0.7, 0.85, 1.0))
 	_cancel_targeting()
 	# Pre-roll enemy intents for this turn
 	for e in enemies:
@@ -861,6 +875,8 @@ func _start_player_turn() -> void:
 		GameLog.add("Next Turn Draw: +%d card%s." % [nt_draw, "s" if nt_draw > 1 else ""],
 			Color(0.7, 0.95, 1.0))
 	draw_cards(maxi(0, draw_count))
+	# Nightmare: the copies picked LAST turn arrive with the turn-start hand.
+	_deliver_nightmare_copies()
 	# Confused (Snecko): re-randomize every hand card's cost each turn. Runs after
 	# the draw so retained cards get a fresh roll too. The hand cost display reads
 	# get_cost(), so the randomized number shows and is what play charges.
@@ -1509,6 +1525,12 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	else:
 		_last_x_value = 0
 		energy -= _card_cost(card)
+	# Setup's "free until played" ends here — the card has now been played.
+	card.free_until_played = false
+	# Burst doubles the next SKILL played this turn. Snapshot the stacks BEFORE
+	# the card's own effects resolve so the Burst that grants the stack never
+	# doubles itself (mirrors how Rage/Double Tap can't self-proc).
+	var burst_armed: bool = card.is_skill() and player.get_status(&"burst") > 0
 	TriggerBus.emit_signal("card_played", {
 		"card": card, "target": target_enemy, "scene": self,
 	})
@@ -1552,6 +1574,15 @@ func _resolve_card(card: CardInstance, target_enemy: CombatActor) -> void:
 	if card.is_attack() and player.get_status(&"double_tap") > 0:
 		player.add_status(&"double_tap", -1)
 		GameLog.add("Double Tap: %s is played twice!" % card.get_display_name(),
+			Color(0.85, 0.7, 1.0))
+		replay_card_effects(card, target_enemy)
+
+	# Burst: the next Skill played this turn resolves its effects twice — the
+	# Skill sibling of Double Tap. Gated on the pre-effects snapshot so a
+	# freshly-played Burst never doubles itself.
+	if burst_armed and player.get_status(&"burst") > 0:
+		player.add_status(&"burst", -1)
+		GameLog.add("Burst: %s is played twice!" % card.get_display_name(),
 			Color(0.85, 0.7, 1.0))
 		replay_card_effects(card, target_enemy)
 
@@ -1614,6 +1645,9 @@ const _SCENE_EFFECT_TYPES := [
 	# Ironclad skills batch: Entrench/Limit Break act on the player, Havoc /
 	# Dual Wield / Exhume act on the piles — all must fire on a targetless play.
 	"double_stat", "autoplay_top", "copy_from_hand", "exhume",
+	# Silent/Defect skills batch: Hologram/Seek browse the piles, Bullet Time
+	# frees the hand, Nightmare banks a pick — all targetless plays.
+	"retrieve", "free_hand", "nightmare",
 	# Power installs (After Image / Envenom / Barricade / Well-Laid Plans):
 	# they arm the scene/player, so a targetless play must still resolve them.
 	"trigger", "keep_block", "retain",
@@ -1856,6 +1890,7 @@ func deal_damage(source: CombatActor, target: CombatActor, base_amount: int, eff
 				TriggerBus.emit_signal("enemy_killed", {"enemy": target, "scene": self})
 				_fire_item_triggers("enemy_killed")
 				_fire_power_triggers("enemy_killed")
+				Stats.process_corpse_explosion(target, self)
 	elif absorbed > 0:
 		var who := "your" if target.is_player else (target.display_name + "'s")
 		GameLog.add("%s block absorbs %d." % [who, absorbed], Color(0.7, 0.8, 1.0))
@@ -1933,6 +1968,7 @@ func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 			TriggerBus.emit_signal("enemy_killed", {"enemy": target, "scene": self})
 			_fire_item_triggers("enemy_killed")
 			_fire_power_triggers("enemy_killed")
+			Stats.process_corpse_explosion(target, self)
 
 func _propagate_soul_link(origin: CombatActor, amount: int) -> void:
 	# Bird Head / Soul Link: every other actor carrying soul_link takes
@@ -1971,6 +2007,7 @@ func _propagate_soul_link(origin: CombatActor, amount: int) -> void:
 				TriggerBus.emit_signal("enemy_killed", {"enemy": v, "scene": self})
 				_fire_item_triggers("enemy_killed")
 				_fire_power_triggers("enemy_killed")
+				Stats.process_corpse_explosion(v, self)
 
 func gain_block(target: CombatActor, base_amount: int) -> void:
 	if target == null:
@@ -2055,13 +2092,16 @@ func apply_status(target, status: StringName, stacks: int, source = null) -> voi
 # Pile helpers — also called from EffectSystem default handlers
 # ------------------------------------------------------------------
 
-func draw_cards(n: int) -> void:
-	# No Draw (Battle Trance): every further draw this turn is suppressed. The
-	# status decays at end of turn (DECAY_STATUSES), so the next turn-start
-	# hand is unaffected — the card draws its 3 first, then locks the door.
+func draw_cards(n: int) -> Array:
+	# Returns the cards actually drawn (Escape Plan's skill_block rider reads
+	# them back). No Draw (Battle Trance): every further draw this turn is
+	# suppressed. The status decays at end of turn (DECAY_STATUSES), so the
+	# next turn-start hand is unaffected — the card draws its 3 first, then
+	# locks the door.
+	var drawn: Array = []
 	if n > 0 and player != null and player.get_status(&"no_draw") > 0:
 		GameLog.add("No Draw — no cards drawn.", Color(1.0, 0.7, 0.5))
-		return
+		return drawn
 	for _i in range(n):
 		if draw_pile.is_empty():
 			if discard_pile.is_empty():
@@ -2071,6 +2111,7 @@ func draw_cards(n: int) -> void:
 			_shuffle(draw_pile)
 		var c: CardInstance = draw_pile.pop_back()
 		hand.append(c)
+		drawn.append(c)
 		# Confused: a card's cost is rolled the moment it's drawn (covers mid-turn
 		# draws from card effects, not just the turn-start hand).
 		if _is_confused():
@@ -2090,6 +2131,7 @@ func draw_cards(n: int) -> void:
 		_fire_drawn_triggers(c)
 	_check_combat_end()
 	_refresh_ui()
+	return drawn
 
 # Fires a card's own `drawn` triggers the moment it is drawn (Endless Agony).
 # Card-level, like the curse eot/on_play_other triggers — the effects resolve
@@ -2389,13 +2431,15 @@ func _apply_exhaust_picks(picks: Array) -> void:
 		exhaust_card(pick)
 		GameLog.add("Exhausted %s." % pick.get_display_name(), Color(0.7, 0.7, 0.8))
 
-func topdeck_cards(n: int, source_card = null, random: bool = false, from_pile: String = "hand") -> void:
+func topdeck_cards(n: int, source_card = null, random: bool = false, from_pile: String = "hand", free_until_played: bool = false) -> void:
 	# Warcry: put N cards from hand on TOP of the draw pile. Player-choice by
 	# default (CardPickerModal); `random` skips the picker. Excludes the played
 	# card — it's mid-resolve and heads to discard/exhaust, not the deck.
 	# `from_pile: "discard"` (Headbutt) pools the pick from the discard pile
 	# instead; the played card can't be picked there either (it's still
 	# mid-resolve, not yet in discard).
+	# `free_until_played` (Setup): the placed card costs 0 until it is played —
+	# the override rides the CardInstance across pile moves and turn ends.
 	if n <= 0:
 		return
 	var pool: Array = []
@@ -2413,7 +2457,7 @@ func topdeck_cards(n: int, source_card = null, random: bool = false, from_pile: 
 			var pick: CardInstance = pool[_rng.randi() % pool.size()]
 			pool.erase(pick)
 			picks.append(pick)
-		_apply_topdeck_picks(picks)
+		_apply_topdeck_picks(picks, free_until_played)
 	else:
 		var count: int = mini(n, pool.size())
 		_open_picker({
@@ -2422,10 +2466,10 @@ func topdeck_cards(n: int, source_card = null, random: bool = false, from_pile: 
 			"count": count,
 			"accent": _PILE_COLORS["draw"],
 			"confirm_label": "Place on top",
-			"on_picked": Callable(self, "_apply_topdeck_picks"),
+			"on_picked": _apply_topdeck_picks.bind(free_until_played),
 		})
 
-func _apply_topdeck_picks(picks: Array) -> void:
+func _apply_topdeck_picks(picks: Array, free_until_played: bool = false) -> void:
 	# draw_cards pops from the BACK of draw_pile, so appending puts the pick on
 	# top. Multiple picks land in click order: the last appended is drawn first.
 	# Picks may come from hand (Warcry) or the discard pile (Headbutt); erase
@@ -2434,7 +2478,10 @@ func _apply_topdeck_picks(picks: Array) -> void:
 		hand.erase(pick)
 		discard_pile.erase(pick)
 		draw_pile.append(pick)
-		GameLog.add("Put %s on top of the draw pile." % pick.get_display_name(),
+		if free_until_played:
+			pick.free_until_played = true
+		GameLog.add("Put %s on top of the draw pile%s." % [pick.get_display_name(),
+			" — it is free until played" if free_until_played else ""],
 			Color(0.6, 1.0, 0.7))
 	_refresh_ui()
 
@@ -2591,6 +2638,103 @@ func _apply_exhume_picks(picks: Array) -> void:
 		hand.append(pick)
 		GameLog.add("Exhumed %s to hand." % pick.get_display_name(),
 			Color(0.7, 1.0, 0.7))
+	_refresh_ui()
+
+# Hologram / Seek (retrieve via EffectSystem): move N cards from the named
+# pile ("discard" / "draw") to hand, player's choice via the picker — the
+# pile-browsing sibling of exhume_cards.
+func retrieve_cards(n: int, from_pile: String, source_card = null) -> void:
+	var src: Array = discard_pile if from_pile == "discard" else draw_pile
+	var pool: Array = []
+	for c in src:
+		if c == source_card:
+			continue
+		pool.append(c)
+	if pool.is_empty():
+		GameLog.add("Nothing to retrieve from the %s pile." % from_pile,
+			Color(0.85, 0.85, 0.55))
+		return
+	var count: int = mini(n, pool.size())
+	_open_picker({
+		"title": "Put %d card%s from your %s pile into your hand" % [
+			count, "s" if count > 1 else "", from_pile],
+		"candidates": pool,
+		"count": count,
+		"accent": _PILE_COLORS["discard" if from_pile == "discard" else "draw"],
+		"confirm_label": "Take",
+		"on_picked": Callable(self, "_apply_retrieve_picks"),
+	})
+
+func _apply_retrieve_picks(picks: Array) -> void:
+	for pick in picks:
+		discard_pile.erase(pick)
+		draw_pile.erase(pick)
+		hand.append(pick)
+		GameLog.add("Put %s into your hand." % pick.get_display_name(),
+			Color(0.7, 1.0, 0.7))
+	_refresh_ui()
+
+# Bullet Time (free_hand via EffectSystem): every card currently in hand costs
+# 0 for the rest of THIS turn — the whole-hand form of Mummified Hand's free
+# pick, riding the same temp_cost_override slot (cleared when a card leaves
+# hand, so nothing stays free past the turn).
+func make_hand_free(exclude = null) -> void:
+	var freed: int = 0
+	for c in hand:
+		if c == exclude:
+			continue
+		c.temp_cost_override = 0
+		freed += 1
+	if freed > 0:
+		GameLog.add("Bullet Time: your hand is free to play this turn!",
+			Color(0.7, 1.0, 0.7))
+	_refresh_ui()
+
+# Nightmare (via EffectSystem): choose a card in hand; at the start of the
+# player's NEXT turn, `count` copies of it (upgrade state preserved) arrive in
+# hand. The pick is banked scene-side in _nightmare_pending and delivered by
+# _deliver_nightmare_copies right after the turn-start draw.
+func nightmare_cards(count: int, source_card = null) -> void:
+	var pool: Array = []
+	for c in hand:
+		if c == source_card:
+			continue
+		pool.append(c)
+	if pool.is_empty():
+		GameLog.add("Nightmare: no card in hand to copy.", Color(0.85, 0.85, 0.55))
+		return
+	_open_picker({
+		"title": "Nightmare — Conjure %d copies next turn" % count,
+		"candidates": pool,
+		"count": 1,
+		"accent": Color(0.75, 0.6, 1.0),
+		"confirm_label": "Choose",
+		"on_picked": _apply_nightmare_pick.bind(count),
+	})
+
+func _apply_nightmare_pick(picks: Array, count: int) -> void:
+	for pick in picks:
+		if not (pick is CardInstance) or pick.data == null:
+			continue
+		_nightmare_pending.append({
+			"data": pick.data, "upgraded": pick.upgraded, "count": count,
+		})
+		GameLog.add("Nightmare: %d copies of %s will arrive next turn." % [
+			count, pick.get_display_name()], Color(0.75, 0.6, 1.0))
+
+func _deliver_nightmare_copies() -> void:
+	if _nightmare_pending.is_empty():
+		return
+	var pending: Array = _nightmare_pending.duplicate()
+	_nightmare_pending.clear()
+	for entry in pending:
+		var data: CardData = entry.get("data")
+		if data == null:
+			continue
+		for _i in range(maxi(1, int(entry.get("count", 1)))):
+			hand.append(CardInstance.from_data(data, bool(entry.get("upgraded", false))))
+		GameLog.add("Nightmare delivers %d copies of %s!" % [
+			int(entry.get("count", 1)), data.display_name], Color(0.75, 0.6, 1.0))
 	_refresh_ui()
 
 func recall_cards(from_pile: String, to_pile: String, filter: Dictionary) -> void:

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_piercing_wail"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/PiercingWail.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"piercing_wail"
+display_name = "Piercing Wail"
+type = 1
+rarity = 1
+cost = 1
+description = "Inflict -6 Power Cleave and 6 Shackled Cleave. Exhaust."
+effects = [{"type": "status", "status": "power", "stacks": -6, "target": "all_enemies"}, {"type": "status", "status": "shackled", "stacks": 6, "target": "all_enemies"}]
+tags = PackedStringArray("silent", "debuff", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Inflict -8 Power Cleave and 8 Shackled Cleave. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status", "status": "power", "stacks": -8, "target": "all_enemies"}, {"type": "status", "status": "shackled", "stacks": 8, "target": "all_enemies"}]
+image = ExtResource("2_img")
+exhaust = true

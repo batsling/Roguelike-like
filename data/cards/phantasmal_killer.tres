@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_phantasmal_killer"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/PhantasmalKiller.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"phantasmal_killer"
+display_name = "Phantasmal Killer"
+type = 1
+rarity = 3
+cost = 1
+description = "Gain +1 Double Damage."
+effects = [{"type": "status", "status": "double_damage", "stacks": 1, "target": "self"}]
+tags = PackedStringArray("silent", "offense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain +1 Double Damage."
+upgraded_cost = 0
+upgraded_effects = [{"type": "status", "status": "double_damage", "stacks": 1, "target": "self"}]
+image = ExtResource("2_img")

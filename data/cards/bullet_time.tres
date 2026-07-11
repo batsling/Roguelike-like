@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_bullet_time"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/BulletTime.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"bullet_time"
+display_name = "Bullet Time"
+type = 1
+rarity = 3
+cost = 3
+description = "Gain +1 No Draw. All Cards in your Hand are free to play this turn."
+effects = [{"type": "status", "status": "no_draw", "stacks": 1, "target": "self"}, {"type": "free_hand"}]
+tags = PackedStringArray("silent", "energy")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain +1 No Draw. All Cards in your Hand are free to play this turn."
+upgraded_cost = 2
+upgraded_effects = [{"type": "status", "status": "no_draw", "stacks": 1, "target": "self"}, {"type": "free_hand"}]
+image = ExtResource("2_img")

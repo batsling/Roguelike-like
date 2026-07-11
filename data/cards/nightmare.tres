@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_nightmare"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Nightmare.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"nightmare"
+display_name = "Nightmare"
+type = 1
+rarity = 3
+cost = 3
+description = "Choose a Card in your Hand. Next turn, Conjure 3 copies of that Card to your Hand."
+effects = [{"type": "nightmare", "count": 3}]
+tags = PackedStringArray("silent", "draw")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Choose a Card in your Hand. Next turn, Conjure 3 copies of that Card to your Hand."
+upgraded_cost = 2
+upgraded_effects = [{"type": "nightmare", "count": 3}]
+image = ExtResource("2_img")

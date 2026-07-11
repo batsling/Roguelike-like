@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_deadly_poison"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/DeadlyPoison.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"deadly_poison"
+display_name = "Deadly Poison"
+type = 1
+rarity = 1
+cost = 1
+description = "Inflict 5 Poison."
+effects = [{"type": "status", "status": "poison", "stacks": 5, "target": "enemy"}]
+tags = PackedStringArray("silent", "debuff", "poison")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Inflict 7 Poison."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status", "status": "poison", "stacks": 7, "target": "enemy"}]
+image = ExtResource("2_img")

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_hologram"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Hologram.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"hologram"
+display_name = "Hologram"
+type = 1
+rarity = 1
+cost = 1
+description = "Gain +3 Block. Put a Card from your Discard Pile to your Hand. Exhaust."
+effects = [{"type": "block", "value": 3, "target": "self"}, {"type": "retrieve", "value": 1, "from": "discard"}, {"type": "exhaust_self"}]
+tags = PackedStringArray("defect", "defense", "draw", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain +5 Block. Put a Card from your Discard Pile to your Hand."
+upgraded_cost = -999
+upgraded_effects = [{"type": "block", "value": 5, "target": "self"}, {"type": "retrieve", "value": 1, "from": "discard"}]
+image = ExtResource("2_img")

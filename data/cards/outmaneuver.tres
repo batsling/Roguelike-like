@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_outmaneuver"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Outmaneuver.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"outmaneuver"
+display_name = "Outmaneuver"
+type = 1
+rarity = 1
+cost = 1
+description = "Gain +2 Next Turn Energy."
+effects = [{"type": "status", "status": "next_turn_energy", "stacks": 2, "target": "self"}]
+tags = PackedStringArray("silent", "energy")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain +3 Next Turn Energy."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status", "status": "next_turn_energy", "stacks": 3, "target": "self"}]
+image = ExtResource("2_img")
