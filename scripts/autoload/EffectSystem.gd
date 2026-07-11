@@ -120,6 +120,11 @@ func _register_defaults() -> void:
 	register("trigger", _h_trigger)
 	register("keep_block", _h_keep_block)
 	register("retain", _h_retain)
+	register("double_stat", _h_double_stat)
+	register("autoplay_top", _h_autoplay_top)
+	register("copy_from_hand", _h_copy_from_hand)
+	register("exhume", _h_exhume)
+	register("if_target_intent", _h_if_target_intent)
 	register("chance", _h_chance)
 	register("if_target_status", _h_if_target_status)
 	register("if_counter", _h_if_counter)
@@ -347,6 +352,15 @@ func _h_block(effect: Dictionary, ctx: Dictionary) -> void:
 			# Block defaults to gaining on self
 			var target: Variant = ctx.get("target") if effect.get("target", "self") != "self" else ctx.get("source")
 			var blk_value: int = _resolve_determined(effect, ctx, int(effect.get("value", 0)), "block")
+			# Second Wind (value_from: "exhausted"): the value is PER CARD the
+			# preceding exhaust:all sent away this play — the block mirror of
+			# dmg's hits_from: "exhausted". Zero exhausted = zero block.
+			if String(effect.get("value_from", "")) == "exhausted":
+				var ex_n: int = int(scene.last_exhaust_count) \
+					if ("last_exhaust_count" in scene) else 0
+				blk_value = int(effect.get("value", 0)) * ex_n
+				if blk_value <= 0:
+					return
 			scene.gain_block(target, blk_value)
 		return
 	# Scene-less (event use): bank the block so the next chunk of event
@@ -452,6 +466,13 @@ func _h_status(effect: Dictionary, ctx: Dictionary) -> void:
 		if target == null:
 			continue
 		if intent_gate != "" and not Stats.actor_intends_attack(target):
+			continue
+		# Negative stacks (Disarm: Inflict -2 Power) DRAIN the status, and the
+		# stored value may go below zero — add_status floors at 0, so route
+		# through the direct signed write instead. No Persistence, no
+		# status_applied reaction: a drain isn't an inflict.
+		if stacks < 0:
+			Stats.drain_status(target, status_id, stacks)
 			continue
 		_apply_one_status(effect, ctx, target, status_id, stacks)
 
@@ -785,7 +806,8 @@ func _h_trigger(effect: Dictionary, ctx: Dictionary) -> void:
 		return
 	scene.register_trigger(
 		String(effect.get("on", "")),
-		effect.get("effect", {})
+		effect.get("effect", {}),
+		String(effect.get("until", ""))
 	)
 
 func _h_add_max_hp(effect: Dictionary, ctx: Dictionary) -> void:
@@ -904,6 +926,80 @@ func _h_if_counter(effect: Dictionary, ctx: Dictionary) -> void:
 	if counter == "" or inner.is_empty():
 		return
 	if GameState.incremental_value(counter) <= 0:
+		return
+	apply(inner, ctx)
+
+# Entrench / Limit Break: double the source's current Block or a named
+# status's stacks. Block doubles OUTRIGHT — no Frail cut, matching the StS
+# rule (it isn't "gained" block). Statuses double signed, so a Power drained
+# below zero (Disarm) doubles further down. Action mode owns its own block
+# pool, so a scene exposing double_block gets the call instead.
+func _h_double_stat(effect: Dictionary, ctx: Dictionary) -> void:
+	var stat: String = String(effect.get("stat", ""))
+	if stat == "":
+		return
+	var src: Variant = ctx.get("source")
+	var scene: Variant = ctx.get("scene")
+	if stat == "block":
+		if scene != null and scene.has_method("double_block"):
+			scene.double_block()
+			return
+		if src != null and ("block" in src) and int(src.block) > 0:
+			src.block = int(src.block) * 2
+			GameLog.add("Block doubled to %d." % int(src.block), Color(0.7, 0.85, 1.0))
+		return
+	if src == null or not ("statuses" in src):
+		return
+	var key := StringName(stat)
+	var cur: int = int(src.statuses.get(key, 0))
+	if cur == 0:
+		return
+	src.statuses[key] = cur * 2
+	GameLog.add("%s doubled to %d." % [stat.capitalize(), cur * 2], Color(0.85, 0.7, 1.0))
+
+# Havoc: play the top card of the draw pile at no cost, then exhaust it.
+# Each scene owns the mode-appropriate reading via autoplay_top_card
+# (deckbuilder/strategy: the real draw pile; action: the auto draw pile,
+# with the played card leaving the rotation for the combat).
+func _h_autoplay_top(effect: Dictionary, ctx: Dictionary) -> void:
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("autoplay_top_card"):
+		return
+	scene.autoplay_top_card(bool(effect.get("exhaust", false)), ctx.get("card"))
+
+# Dual Wield: choose a hand card matching the filter (attack_or_power) and
+# conjure `count` copies of it to hand. Deckbuilder/strategy open the picker;
+# action auto-picks a random armed Attack/Power.
+func _h_copy_from_hand(effect: Dictionary, ctx: Dictionary) -> void:
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("copy_from_hand_cards"):
+		return
+	scene.copy_from_hand_cards(
+		maxi(1, int(effect.get("count", 1))),
+		String(effect.get("filter", "attack_or_power")),
+		ctx.get("card"))
+
+# Exhume: move N cards from the exhaust pile back to hand (picker in
+# deckbuilder/strategy; action re-arms a random exhausted card).
+func _h_exhume(effect: Dictionary, ctx: Dictionary) -> void:
+	var scene: Variant = ctx.get("scene")
+	if scene == null or not scene.has_method("exhume_cards"):
+		return
+	scene.exhume_cards(maxi(1, int(effect.get("value", 1))), ctx.get("card"))
+
+# Spot Weakness (if_target_intent as a WRAPPER): resolve the inner effect only
+# when the PICKED enemy target is telegraphing an attack — the intent sibling
+# of _h_if_target_status, sharing Stats.actor_intends_attack with inflict's
+# if_intent=attack gate. Action never routes here (its per-inst predicate
+# lives in ActionCombat._enemy_intends_attack).
+func _h_if_target_intent(effect: Dictionary, ctx: Dictionary) -> void:
+	var inner: Dictionary = effect.get("effect", {})
+	if inner.is_empty():
+		return
+	var tgt = ctx.get("target")
+	if tgt == null or not Stats.actor_intends_attack(tgt):
+		GameLog.add("Target isn't preparing an attack — no effect.",
+			Color(0.85, 0.85, 0.55))
 		return
 	apply(inner, ctx)
 

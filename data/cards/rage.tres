@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_rage"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Rage.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"rage"
+display_name = "Rage"
+type = 1
+rarity = 2
+cost = 0
+description = "Until the end of your turn, whenever you play an Attack, Gain +3 Block."
+effects = [{"type": "status", "status": "rage", "stacks": 3, "target": "self"}, {"type": "trigger", "on": "attack_played", "effect": {"type": "block", "value": 3, "target": "self"}, "until": "turn_end"}]
+tags = PackedStringArray("ironclad", "defense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Until the end of your turn, whenever you play an Attack, Gain +5 Block."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status", "status": "rage", "stacks": 5, "target": "self"}, {"type": "trigger", "on": "attack_played", "effect": {"type": "block", "value": 5, "target": "self"}, "until": "turn_end"}]
+image = ExtResource("2_img")

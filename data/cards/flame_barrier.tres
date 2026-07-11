@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_flame_barrier"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/FlameBarrier.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"flame_barrier"
+display_name = "Flame Barrier"
+type = 1
+rarity = 2
+cost = 2
+description = "Gain +12 Block. Until your next turn, enemies that hit you take 4 Magic Dmg Fire and gain 1 Burn per contact."
+effects = [{"type": "block", "value": 12, "target": "self"}, {"type": "status", "status": "flame_barrier", "stacks": 4, "target": "self"}, {"type": "trigger", "on": "hit_by_attack", "effect": {"type": "dmg", "value": 4, "target": "enemy", "damage_type": "magic", "element": "fire"}, "until": "turn_end"}]
+tags = PackedStringArray("ironclad", "defense")
+source_game = "Slay the Spire"
+element = &"fire"
+can_upgrade = true
+upgraded_description = "Gain +16 Block. Until your next turn, enemies that hit you take 6 Magic Dmg Fire and gain 1 Burn per contact."
+upgraded_cost = -999
+upgraded_effects = [{"type": "block", "value": 16, "target": "self"}, {"type": "status", "status": "flame_barrier", "stacks": 6, "target": "self"}, {"type": "trigger", "on": "hit_by_attack", "effect": {"type": "dmg", "value": 6, "target": "enemy", "damage_type": "magic", "element": "fire"}, "until": "turn_end"}]
+image = ExtResource("2_img")

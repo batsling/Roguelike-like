@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_second_wind"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/SecondWind.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"second_wind"
+display_name = "Second Wind"
+type = 1
+rarity = 2
+cost = 1
+description = "Exhaust all non-Attack Cards in Hand. Gain +5 Block for each Card Exhausted."
+effects = [{"type": "exhaust", "all": true, "only": "non_attack"}, {"type": "block", "value": 5, "target": "self", "value_from": "exhausted"}]
+tags = PackedStringArray("ironclad", "defense", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Exhaust all non-Attack Cards in Hand. Gain +7 Block for each Card Exhausted."
+upgraded_cost = -999
+upgraded_effects = [{"type": "exhaust", "all": true, "only": "non_attack"}, {"type": "block", "value": 7, "target": "self", "value_from": "exhausted"}]
+image = ExtResource("2_img")

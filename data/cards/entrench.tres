@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_entrench"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Entrench.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"entrench"
+display_name = "Entrench"
+type = 1
+rarity = 2
+cost = 2
+description = "Gain Double Block."
+effects = [{"type": "double_stat", "stat": "block"}]
+tags = PackedStringArray("ironclad", "defense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain Double Block."
+upgraded_cost = 1
+upgraded_effects = [{"type": "double_stat", "stat": "block"}]
+image = ExtResource("2_img")

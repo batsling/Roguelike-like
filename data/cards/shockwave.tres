@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_shockwave"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Shockwave.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"shockwave"
+display_name = "Shockwave"
+type = 1
+rarity = 2
+cost = 2
+description = "Apply 3 Weak Cleave and 3 Vulnerable Cleave. Exhaust."
+effects = [{"type": "status", "status": "weak", "stacks": 3, "target": "all_enemies"}, {"type": "status", "status": "vulnerable", "stacks": 3, "target": "all_enemies"}]
+tags = PackedStringArray("ironclad", "debuff", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Apply 5 Weak Cleave and 5 Vulnerable Cleave. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{"type": "status", "status": "weak", "stacks": 5, "target": "all_enemies"}, {"type": "status", "status": "vulnerable", "stacks": 5, "target": "all_enemies"}]
+image = ExtResource("2_img")
+exhaust = true

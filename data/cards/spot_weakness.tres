@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_spot_weakness"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/SpotWeakness.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"spot_weakness"
+display_name = "Spot Weakness"
+type = 1
+rarity = 2
+cost = 1
+description = "If target enemy intends to attack, Gain +3 Power."
+effects = [{"type": "if_target_intent", "intent": "attack", "target": "enemy", "effect": {"type": "status", "status": "power", "stacks": 3, "target": "self"}}]
+tags = PackedStringArray("ironclad", "scaling")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "If target enemy intends to attack, Gain +4 Power."
+upgraded_cost = -999
+upgraded_effects = [{"type": "if_target_intent", "intent": "attack", "target": "enemy", "effect": {"type": "status", "status": "power", "stacks": 4, "target": "self"}}]
+image = ExtResource("2_img")

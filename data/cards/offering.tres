@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_offering"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Offering.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"offering"
+display_name = "Offering"
+type = 1
+rarity = 3
+cost = 0
+description = "Lose 6 Health. Gain +2 Energy. Draw 3 Cards. Exhaust."
+effects = [{"type": "lose_hp", "value": 6}, {"type": "gain_energy", "value": 2}, {"type": "draw", "value": 3}]
+tags = PackedStringArray("ironclad", "energy", "draw", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Lose 6 Health. Gain +2 Energy. Draw 5 Cards. Exhaust."
+upgraded_cost = -999
+upgraded_effects = [{"type": "lose_hp", "value": 6}, {"type": "gain_energy", "value": 2}, {"type": "draw", "value": 5}]
+image = ExtResource("2_img")
+exhaust = true

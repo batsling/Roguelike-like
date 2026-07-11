@@ -68,6 +68,11 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, LEGENDARY }
 # long auto-cooldown (action) / end of turn (strategy).
 @export var triggers: Array = []
 
+# Upgrade form of `triggers` — only emitted when the upgraded Effects cell
+# authors different triggered values (Sentinel+: exhausted -> Gain 3 Energy).
+# Empty means "same as base"; read through get_effective_triggers.
+@export var upgraded_triggers: Array = []
+
 # Lifecycle: destroy this card after the player has beaten this many games this
 # run (Guilty -> 3). -1 means "never auto-destroy". Run-level (game_beaten), so
 # it counts identically in all three combat modes.
@@ -159,6 +164,11 @@ func get_effective_effects(upgraded: bool) -> Array:
 	if upgraded and not upgraded_effects.is_empty():
 		return upgraded_effects
 	return effects
+
+func get_effective_triggers(upgraded: bool) -> Array:
+	if upgraded and not upgraded_triggers.is_empty():
+		return upgraded_triggers
+	return triggers
 
 func get_effective_description(upgraded: bool) -> String:
 	if upgraded and upgraded_description != "":

@@ -253,6 +253,12 @@ var card_boosts: Array = []
 # cleared in _load_loadout.
 var power_triggers: Array = []
 
+# Cards removed from the combat by exhaust effects (exhaust_hand's sweep,
+# Havoc's autoplay-exhaust). Action has no browsable exhaust pile, so this
+# record is what Exhume draws from — a random entry re-arms as a one-shot
+# temp slot. Cleared with the loadout at room start.
+var action_exhausted: Array = []
+
 # Per-combat cost discounts (Empty Tome). CardData -> int cost reduction. Action
 # mode holds raw CardData (no CardInstance), so the discount lives here and
 # _cooldown_for folds it in — cooldown is derived from cost (2*cost + rarity),
@@ -732,6 +738,7 @@ func _load_loadout() -> void:
 	_addon_uses.clear()
 	card_boosts.clear()
 	power_triggers.clear()
+	action_exhausted.clear()
 	if player_actor != null:
 		player_actor.powers.clear()
 		player_actor.keep_block = false
@@ -960,6 +967,11 @@ func _process_turn_tick(delta: float) -> void:
 		_tick_actor_turn(player_actor, _player_was_hit)
 		# Well-Laid Plans rides the same "one turn of time" boundary.
 		if _living_enemy_count() > 0:
+			# Turn-scoped skills expire on the tick — the action reading of
+			# "until your next turn". Drops `until: "turn_end"` triggers
+			# (Rage / Flame Barrier) and wipes the Skill-type marker icons.
+			power_triggers = Stats.expire_turn_triggers(power_triggers)
+			Stats.clear_skill_markers(player_actor)
 			# turn_started power triggers (Wraith Form's "lose 1 Defense at the
 			# start of your turn", future Demon Form): each in-combat turn tick
 			# IS the action analog of a turn start, same translation the banked
@@ -1530,6 +1542,9 @@ func _use_charged_item() -> void:
 # behave the same as before — only the trigger (LMB/RMB) changed.
 func _fire_click_card(card: CardData) -> void:
 	_fire_item_triggers("card_played", {"card": card})
+	# Rage listens on the attack-only sibling of card_played.
+	if card.is_attack():
+		_fire_power_triggers("attack_played", {"card": card})
 	_resolve_card_effects(card)
 	GameLog.add("%s." % card.display_name, Color(0.85, 1.0, 0.7))
 	# Replay addon (Duplicator grants it to weapon attacks): fire the card's
@@ -1537,6 +1552,14 @@ func _fire_click_card(card: CardData) -> void:
 	for _i in CardMods.replay_count(card):
 		_resolve_card_effects(card)
 		GameLog.add("%s replays!" % card.display_name, Color(0.7, 1.0, 0.7))
+	# Double Tap: the next Attack fired this turn window resolves twice —
+	# one banked stack per doubled Attack.
+	if card.is_attack() and player_actor != null \
+			and player_actor.get_status(&"double_tap") > 0:
+		player_actor.add_status(&"double_tap", -1)
+		GameLog.add("Double Tap: %s fires twice!" % card.display_name,
+			Color(0.85, 0.7, 1.0))
+		_resolve_card_effects(card)
 	# Destroy: a click-fired card removed permanently from the run deck on use.
 	if card.destroy:
 		GameLog.add("%s is Destroyed — removed from your deck." % card.display_name,
@@ -2176,11 +2199,22 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 			# ready (don't waste it on empty air).
 			if _living_enemy_count() > 0:
 				_fire_item_triggers("card_played", {"card": slot.card})
+				# Rage listens on the attack-only sibling of card_played.
+				if slot.card.is_attack():
+					_fire_power_triggers("attack_played", {"card": slot.card})
 				_resolve_card_effects_auto(slot.card)
 				# Replay addon: auto-fired cards replay too.
 				for _r in CardMods.replay_count(slot.card):
 					_resolve_card_effects_auto(slot.card)
 					GameLog.add("%s replays!" % slot.card.display_name, Color(0.7, 1.0, 0.7))
+				# Double Tap: the next Attack fired this turn window resolves
+				# twice — auto-slot activations count like click casts.
+				if slot.card.is_attack() and player_actor != null \
+						and player_actor.get_status(&"double_tap") > 0:
+					player_actor.add_status(&"double_tap", -1)
+					GameLog.add("Double Tap: %s fires twice!" % slot.card.display_name,
+						Color(0.85, 0.7, 1.0))
+					_resolve_card_effects_auto(slot.card)
 				# Pain (on_play_other -> on_action): a slot activation bites the player.
 				_fire_pain_curses()
 				# Retain (Action): when a Retain card's cooldown completes and it
@@ -2284,11 +2318,18 @@ func add_card_boost(boost: Dictionary) -> void:
 
 # EffectSystem callback for the `trigger` effect (same contract as the
 # deckbuilder / strategy scenes). Registers a persistent in-combat listener.
-func register_trigger(on: String, inner_effect: Dictionary) -> void:
+func register_trigger(on: String, inner_effect: Dictionary, until: String = "") -> void:
 	if on == "" or inner_effect.is_empty():
 		return
-	power_triggers.append({"on": on, "effect": inner_effect})
-	GameLog.add("Trigger armed on %s." % on, Color(0.7, 1.0, 0.7))
+	var entry: Dictionary = {"on": on, "effect": inner_effect}
+	# `until: "turn_end"` (Rage / Flame Barrier): the listener lasts one turn
+	# tick — the action reading of "until your next turn" — and is dropped by
+	# Stats.expire_turn_triggers in _process_turn_tick.
+	if until != "":
+		entry["until"] = until
+	power_triggers.append(entry)
+	GameLog.add("Trigger armed on %s%s." % [on,
+		" (this turn)" if until == "turn_end" else ""], Color(0.7, 1.0, 0.7))
 
 # Every living enemy ACTOR — shared shape with the other modes so trigger
 # fan-out (`all_enemies` inner effects) works the same everywhere.
@@ -2535,7 +2576,33 @@ func _apply_utility_effects(card: CardData) -> void:
 	for raw in card.effects:
 		match String(raw.get("type", "")):
 			"trigger":
-				register_trigger(String(raw.get("on", "")), raw.get("effect", {}))
+				register_trigger(String(raw.get("on", "")), raw.get("effect", {}),
+					String(raw.get("until", "")))
+			# Ironclad skills batch — untargeted utility verbs, resolved here so
+			# both the click and auto paths get them. double_stat / autoplay_top /
+			# copy_from_hand / exhume dispatch through EffectSystem, whose handlers
+			# call back into this scene's mode-specific methods below.
+			"double_stat", "autoplay_top", "copy_from_hand", "exhume":
+				EffectSystem.apply(raw, {
+					"source": player_actor, "target": player_actor,
+					"scene": self, "card": card,
+				})
+			"if_target_intent":
+				# Spot Weakness: the action reading of "target enemy" is the
+				# nearest living enemy; it "intends" while winding up or mid
+				# attack animation (_enemy_intends_attack — same standard as
+				# Go for the Eyes' inflict gate).
+				var sw_inner: Dictionary = raw.get("effect", {})
+				var sw_near: Dictionary = _nearest_enemy()
+				if sw_inner.is_empty() or sw_near.is_empty() \
+						or not _enemy_intends_attack(sw_near):
+					GameLog.add("No enemy preparing an attack — no effect.",
+						Color(0.85, 0.85, 0.55))
+				else:
+					EffectSystem.apply(sw_inner, {
+						"source": player_actor, "target": player_actor,
+						"scene": self, "card": card,
+					})
 			"keep_block":
 				if player_actor != null:
 					player_actor.keep_block = true
@@ -2627,7 +2694,9 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 				_apply_damage_effect(effect, tgt, cone_targets, aoe_targets, card)
 			"block":
 				if tgt == "self" or tgt == "player":
-					_gain_block(int(effect.get("value", 0)), _block_decay_for(card))
+					var bval: int = _block_effect_value(effect)
+					if bval > 0:
+						_gain_block(bval, _block_decay_for(card))
 			"status", "status_temp":
 				_apply_status_effect(effect, tgt, cone_targets, aoe_targets, status_x)
 				if t == "status_temp":
@@ -2647,6 +2716,13 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 					discard_hand(null, String(effect.get("only", "")))
 				else:
 					discard_cards(int(effect.get("value", 1)))
+			"exhaust":
+				# Second Wind's sweep (exhaust:all[:non_attack]) empties the
+				# rotation like Fiend Fire's archetype path does; a following
+				# block per=exhausted reads last_exhaust_count. exhaust:N
+				# stays a no-op in action (no piles the player can browse).
+				if bool(effect.get("all", false)):
+					exhaust_hand(card, String(effect.get("only", "")))
 			"topdeck":
 				# Warcry: auto-pick a card back onto the top of the deck.
 				topdeck_cards(int(effect.get("value", 1)), null, false,
@@ -2758,7 +2834,9 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 						_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
 			"block":
 				if tgt == "self" or tgt == "player":
-					_gain_block(int(effect.get("value", 0)), _block_decay_for(card))
+					var bval: int = _block_effect_value(effect)
+					if bval > 0:
+						_gain_block(bval, _block_decay_for(card))
 			"status", "status_temp":
 				# Reuse the shared status path: nearest as the "enemy" list,
 				# all living as the "all_enemies" list.
@@ -2776,6 +2854,10 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 					discard_hand(null, String(effect.get("only", "")))
 				else:
 					discard_cards(int(effect.get("value", 1)))
+			"exhaust":
+				# Second Wind's sweep — see the click-path arm.
+				if bool(effect.get("all", false)):
+					exhaust_hand(card, String(effect.get("only", "")))
 			"topdeck":
 				topdeck_cards(int(effect.get("value", 1)), null, false,
 					String(effect.get("from", "hand")))
@@ -3799,6 +3881,7 @@ func discard_hand(_source_card = null, only: String = "") -> int:
 # Fire itself is firing from is skipped.
 func exhaust_hand(source_card = null, only: String = "") -> int:
 	var removed := 0
+	var removed_cards: Array = []
 	var skipped_self := false
 	var i := 0
 	while i < auto_slots.size():
@@ -3816,6 +3899,7 @@ func exhaust_hand(source_card = null, only: String = "") -> int:
 			i += 1
 			continue
 		removed += 1
+		removed_cards.append(slot.card)
 		if slot.ttl == INF:
 			# The permanent slot must keep running — exhaust just its card.
 			_arm_slot(slot, _auto_draw_one())
@@ -3823,12 +3907,37 @@ func exhaust_hand(source_card = null, only: String = "") -> int:
 		else:
 			auto_slots.remove_at(i)
 	removed += _curse_slots.size()
+	for cs in _curse_slots:
+		if cs.card != null:
+			removed_cards.append(cs.card)
 	_curse_slots.clear()
 	last_exhaust_count = removed
+	# Record the sweep for Exhume (a random exhausted card can re-arm later)
+	# and fire each card's own `exhausted` triggers (Sentinel's energy refund
+	# arrives as its Haste-window translation).
+	for cd in removed_cards:
+		action_exhausted.append(cd)
+		_fire_card_exhausted_triggers(cd)
 	if removed > 0:
 		GameLog.add("Exhausted %d cooldown card%s." % [
 			removed, "s" if removed > 1 else ""], Color(0.7, 0.7, 0.8))
 	return removed
+
+# Fires a CardData's own `exhausted` triggers (Sentinel) when an exhaust
+# effect removes it from the rotation — the action sibling of the
+# deckbuilder's _fire_card_exhausted_triggers.
+func _fire_card_exhausted_triggers(cd: CardData) -> void:
+	if cd == null or cd.triggers.is_empty():
+		return
+	for trig in cd.triggers:
+		if String(trig.get("on", "")) != "exhausted":
+			continue
+		for eff in trig.get("effects", []):
+			if eff is Dictionary:
+				EffectSystem.apply(eff, {
+					"source": player_actor, "target": player_actor,
+					"scene": self, "card": cd,
+				})
 
 # Extend the permanent (ttl == INF) auto-slot's cooldown. Used as the
 # discard fallback when there are no temporary slots to collapse.
@@ -4225,7 +4334,7 @@ func apply_status(target, status: StringName, stacks: int, source = null) -> voi
 # reactions (Stats.fire_contact_reactions → Thorns). The amount is already
 # resolved (a flat reflect), so it lands directly without re-running the
 # attack pipeline or honouring i-frames — a reaction to contact, not a swing.
-func deal_damage(_source, target, amount: int, _effect: Dictionary = {}) -> void:
+func deal_damage(_source, target, amount: int, effect: Dictionary = {}) -> void:
 	if amount <= 0 or target == null:
 		return
 	if target == player_actor:
@@ -4242,6 +4351,13 @@ func deal_damage(_source, target, amount: int, _effect: Dictionary = {}) -> void
 			FloatingNumbers.spawn(_fx_root, inst.pos, amount)
 			GameLog.add("Thorns hit %s for %d." % [inst.actor.display_name, amount],
 				Color(0.8, 1.0, 0.7))
+			# Element rider (Flame Barrier's Fire retaliation): a connecting
+			# elemental reflect applies its on-hit status — 1 Burn per contact.
+			if inst.actor.is_alive():
+				var oh: Dictionary = Elements.on_hit_status(effect.get("element", ""), inst.actor, null)
+				if not oh.is_empty():
+					Stats.apply_status_to(inst.actor, StringName(oh["status"]),
+						int(oh["stacks"]), player_actor)
 			if inst.actor.hp <= 0:
 				inst.actor.dead = true
 				GameLog.add("%s defeated." % inst.actor.display_name, Color(0.6, 1.0, 0.6))
@@ -4282,6 +4398,92 @@ func _enemies_in_radius(radius: float) -> Array:
 # Block-decay rate for block a card grants: 1 block/sec per point of energy the
 # card costs, so a 2-energy card's block drains at 2/sec. Floored at the default
 # so 0/X-cost cards still fade rather than lingering forever.
+# A block effect's live value. value_from "exhausted" (Second Wind) scales the
+# per-card value by how many cards the preceding exhaust:all swept away.
+func _block_effect_value(effect: Dictionary) -> int:
+	var v: int = int(effect.get("value", 0))
+	if String(effect.get("value_from", "")) == "exhausted":
+		v *= maxi(0, last_exhaust_count)
+	return v
+
+# Entrench (double_stat:block via EffectSystem): double the player's current
+# block. The doubled half joins the pool as a fresh default-decay chunk, and
+# the soft cap is raised so the doubling isn't immediately clamped away.
+func double_block() -> void:
+	var cur: int = player_actor.block if player_actor != null else 0
+	if cur <= 0:
+		return
+	player_max_block += cur
+	player_actor.block = mini(player_max_block, cur * 2)
+	var added: int = player_actor.block - cur
+	if added > 0:
+		_block_pool.append({"amt": float(added), "rate": DEFAULT_BLOCK_DECAY})
+	_block_synced_int = player_actor.block
+	GameLog.add("Block doubled to %d." % player_actor.block, Color(0.7, 0.85, 1.0))
+
+# Havoc (autoplay_top via EffectSystem): instantly cast the top card of the
+# auto draw pile at the nearest enemy, then remove it from the combat (the
+# action reading of "and Exhaust it"). Nothing queued = the cast fizzles.
+func autoplay_top_card(exhaust_it: bool, _source_card = null) -> void:
+	var card: CardData = _auto_draw_one()
+	if card == null:
+		GameLog.add("Havoc: the auto deck is empty.", Color(0.85, 0.85, 0.55))
+		return
+	GameLog.add("Havoc plays %s!" % card.display_name, Color(0.85, 0.7, 1.0))
+	_fire_item_triggers("card_played", {"card": card})
+	if card.is_attack():
+		_fire_power_triggers("attack_played", {"card": card})
+	_resolve_card_effects_auto(card)
+	if exhaust_it or card.exhaust:
+		# Exhausted: leaves the combat rotation entirely; Exhume can re-arm it.
+		action_exhausted.append(card)
+		_fire_card_exhausted_triggers(card)
+	else:
+		auto_discard.append(card)
+
+# Dual Wield (copy_from_hand via EffectSystem): action has no picker, so a
+# random armed Attack/Power — an auto slot's card or a click card — is copied
+# into `count` one-shot temp slots (the same delivery a conjure-to-hand uses).
+func copy_from_hand_cards(count: int, filter: String, source_card = null) -> void:
+	var pool: Array = []
+	for slot in auto_slots:
+		var c = slot.get("card")
+		if c != null and c != source_card and not pool.has(c):
+			pool.append(c)
+	for c in [left_card, right_card]:
+		if c != null and c != source_card and not pool.has(c):
+			pool.append(c)
+	if filter == "attack_or_power":
+		var filtered: Array = []
+		for c in pool:
+			if c.is_attack() or c.is_power():
+				filtered.append(c)
+		pool = filtered
+	if pool.is_empty():
+		GameLog.add("No armed Attack or Power card to copy.", Color(0.85, 0.85, 0.55))
+		return
+	var pick: CardData = pool[_rng.randi() % pool.size()]
+	GameLog.add("Dual Wield copies %s!" % pick.display_name, Color(0.85, 0.7, 1.0))
+	for _i in range(maxi(1, count)):
+		_conjure_into_hand(pick)
+
+# Exhume (via EffectSystem): re-arm a random card removed by exhaust effects
+# this combat as a one-shot temp slot. Another Exhume never comes back.
+func exhume_cards(n: int, _source_card = null) -> void:
+	for _i in range(maxi(1, n)):
+		var pool: Array = []
+		for cd in action_exhausted:
+			if cd != null and cd.id != &"exhume":
+				pool.append(cd)
+		if pool.is_empty():
+			GameLog.add("Exhume: nothing has been exhausted.", Color(0.85, 0.85, 0.55))
+			return
+		var pick: CardData = pool[_rng.randi() % pool.size()]
+		action_exhausted.erase(pick)
+		GameLog.add("Exhumed %s — it re-arms now." % pick.display_name,
+			Color(0.7, 1.0, 0.7))
+		_conjure_into_hand(pick)
+
 func _block_decay_for(card: CardData) -> float:
 	if card == null:
 		return DEFAULT_BLOCK_DECAY
@@ -4853,6 +5055,11 @@ func _apply_damage_to_player(amount: int, source_name: String, attacker: CombatA
 		return
 	# Landed hit (even fully blocked) refreshes the player's Bleed window.
 	_player_was_hit = true
+	# Flame Barrier-style triggers: an enemy hit that lands on the player
+	# (block counts — it's a contact). The attacker rides in as the trigger
+	# target so the retaliation dmg (and its Fire -> Burn rider) lands on it.
+	if attacker != null:
+		_fire_power_triggers("hit_by_attack", {"target": attacker})
 	var dmg: int = int(res.hp_loss)
 	if dmg > 0:
 		GameState.change_hp(-dmg)

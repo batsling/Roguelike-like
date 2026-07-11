@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_dual_weild"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/DualWield.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"dual_weild"
+display_name = "Dual Weild"
+type = 1
+rarity = 2
+cost = 1
+description = "Choose an Attack or Power Card. Conjure 1 Copy of that Card to Hand."
+effects = [{"type": "copy_from_hand", "count": 1, "filter": "attack_or_power"}]
+tags = PackedStringArray("ironclad", "draw")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Choose an Attack or Power Card. Conjure 2 Copies of that Card to Hand."
+upgraded_cost = -999
+upgraded_effects = [{"type": "copy_from_hand", "count": 2, "filter": "attack_or_power"}]
+image = ExtResource("2_img")

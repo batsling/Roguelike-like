@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_havoc"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Havoc.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"havoc"
+display_name = "Havoc"
+type = 1
+rarity = 1
+cost = 1
+description = "Play the top card of your Draw Pile and Exhaust it."
+effects = [{"type": "autoplay_top", "exhaust": true}]
+tags = PackedStringArray("ironclad", "offense", "exhaust")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Play the top card of your Draw Pile and Exhaust it."
+upgraded_cost = 0
+upgraded_effects = [{"type": "autoplay_top", "exhaust": true}]
+image = ExtResource("2_img")

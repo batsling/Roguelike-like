@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_power_through"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/PowerThrough.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"power_through"
+display_name = "Power Through"
+type = 1
+rarity = 2
+cost = 1
+description = "Conjure 2 Wounds to Hand. Gain +15 Block."
+effects = [{"type": "conjure", "card_id": "wound", "destination": "hand", "count": 2}, {"type": "block", "value": 15, "target": "self"}]
+tags = PackedStringArray("ironclad", "defense", "status")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Conjure 2 Wounds to Hand. Gain +20 Block."
+upgraded_cost = -999
+upgraded_effects = [{"type": "conjure", "card_id": "wound", "destination": "hand", "count": 2}, {"type": "block", "value": 20, "target": "self"}]
+image = ExtResource("2_img")
