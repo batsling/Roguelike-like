@@ -259,6 +259,16 @@ var power_triggers: Array = []
 # temp slot. Cleared with the loadout at room start.
 var action_exhausted: Array = []
 
+# Setup's "free until played" markers: cards topdecked by Setup arm ONCE at
+# the 0-cost cooldown when next drawn (_armed_cd spends the marker). Cleared
+# with the loadout at room start.
+var _setup_free_cards: Array = []
+
+# Nightmare's banked picks: [{card: CardData, count: int}]. Filled at cast
+# time (a random armed card — action has no picker), delivered as one-shot
+# temp slots at the next turn tick. Cleared with the loadout at room start.
+var _nightmare_pending: Array = []
+
 # Per-combat cost discounts (Empty Tome). CardData -> int cost reduction. Action
 # mode holds raw CardData (no CardInstance), so the discount lives here and
 # _cooldown_for folds it in — cooldown is derived from cost (2*cost + rarity),
@@ -739,6 +749,8 @@ func _load_loadout() -> void:
 	card_boosts.clear()
 	power_triggers.clear()
 	action_exhausted.clear()
+	_setup_free_cards.clear()
+	_nightmare_pending.clear()
 	if player_actor != null:
 		player_actor.powers.clear()
 		player_actor.keep_block = false
@@ -1026,6 +1038,18 @@ func _pay_next_turn_statuses() -> void:
 	if nt_draw > 0:
 		GameLog.add("Next Turn Draw pays out.", Color(0.7, 0.95, 1.0))
 		draw_cards(nt_draw)
+	# Next Turn Block (Dodge and Roll): the banked stacks pour into the decaying
+	# block pool at the tick — the action analog of "at the start of your turn".
+	var nt_block: int = Stats.consume_status(player_actor, &"next_turn_block")
+	if nt_block > 0:
+		GameLog.add("Next Turn Block pays out.", Color(0.7, 0.85, 1.0))
+		gain_block(player_actor, nt_block)
+	# Blur, translated to real time: while a stack is up the block pool doesn't
+	# fade (see _decay_block); each tick spends one stack — one "turn" bought.
+	if player_actor.get_status(&"blur") > 0:
+		player_actor.add_status(&"blur", -1)
+	# Nightmare: the copies picked last tick arrive as one-shot temp slots now.
+	_deliver_nightmare_copies()
 
 # One turn-boundary pass for a single actor, in the canonical order:
 #   1. DoT bite (Stats.tick_actor_statuses → apply_dot) using current stacks
@@ -1365,6 +1389,7 @@ func _throw_selected_potion(target: Vector2) -> void:
 				GameLog.add("%s defeated." % inst.actor.display_name, Color(0.6, 1.0, 0.6))
 				TriggerBus.emit_signal("enemy_killed", {"enemy": inst.actor, "scene": self})
 				_fire_item_triggers("enemy_killed")
+				Stats.process_corpse_explosion(inst.actor, self)
 	PotionSystem.identify(potion.id)
 	PotionSystem.notify_used(potion, "(thrown)")
 	GameState.remove_loot_at(idx)
@@ -1545,6 +1570,11 @@ func _fire_click_card(card: CardData) -> void:
 	# Rage listens on the attack-only sibling of card_played.
 	if card.is_attack():
 		_fire_power_triggers("attack_played", {"card": card})
+	# Burst doubles the next SKILL fired this turn window. Snapshot the stacks
+	# BEFORE the card resolves so the Burst that grants the stack never
+	# doubles itself.
+	var burst_armed: bool = card.is_skill() and player_actor != null \
+		and player_actor.get_status(&"burst") > 0
 	_resolve_card_effects(card)
 	GameLog.add("%s." % card.display_name, Color(0.85, 1.0, 0.7))
 	# Replay addon (Duplicator grants it to weapon attacks): fire the card's
@@ -1558,6 +1588,13 @@ func _fire_click_card(card: CardData) -> void:
 			and player_actor.get_status(&"double_tap") > 0:
 		player_actor.add_status(&"double_tap", -1)
 		GameLog.add("Double Tap: %s fires twice!" % card.display_name,
+			Color(0.85, 0.7, 1.0))
+		_resolve_card_effects(card)
+	# Burst: the next Skill fired this turn window resolves twice — the Skill
+	# sibling of Double Tap, gated on the pre-resolve snapshot.
+	if burst_armed and player_actor.get_status(&"burst") > 0:
+		player_actor.add_status(&"burst", -1)
+		GameLog.add("Burst: %s fires twice!" % card.display_name,
 			Color(0.85, 0.7, 1.0))
 		_resolve_card_effects(card)
 	# Destroy: a click-fired card removed permanently from the run deck on use.
@@ -1628,6 +1665,7 @@ func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, po
 					Color(0.85, 0.65, 1.0))
 			TriggerBus.emit_signal("enemy_killed", {"enemy": inst.actor, "scene": self})
 			_fire_item_triggers("enemy_killed")
+			Stats.process_corpse_explosion(inst.actor, self)
 	# The attack connected (block counts; miss/dodge returned above). Dead Eye's
 	# streak grows here — skipped on a killing blow, since the streak against a
 	# corpse is never read (the next hit is a new target, which resets).
@@ -2202,6 +2240,10 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 				# Rage listens on the attack-only sibling of card_played.
 				if slot.card.is_attack():
 					_fire_power_triggers("attack_played", {"card": slot.card})
+				# Burst snapshot — taken BEFORE the card resolves so a Burst
+				# fired from an auto slot never doubles itself.
+				var burst_armed: bool = slot.card.is_skill() and player_actor != null \
+					and player_actor.get_status(&"burst") > 0
 				_resolve_card_effects_auto(slot.card)
 				# Replay addon: auto-fired cards replay too.
 				for _r in CardMods.replay_count(slot.card):
@@ -2213,6 +2255,13 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 						and player_actor.get_status(&"double_tap") > 0:
 					player_actor.add_status(&"double_tap", -1)
 					GameLog.add("Double Tap: %s fires twice!" % slot.card.display_name,
+						Color(0.85, 0.7, 1.0))
+					_resolve_card_effects_auto(slot.card)
+				# Burst: the next Skill fired this turn window resolves twice —
+				# the Skill sibling of Double Tap.
+				if burst_armed and player_actor.get_status(&"burst") > 0:
+					player_actor.add_status(&"burst", -1)
+					GameLog.add("Burst: %s fires twice!" % slot.card.display_name,
 						Color(0.85, 0.7, 1.0))
 					_resolve_card_effects_auto(slot.card)
 				# Pain (on_play_other -> on_action): a slot activation bites the player.
@@ -2291,17 +2340,30 @@ func _auto_cd(card: CardData) -> float:
 # ability pays off, not the moment it's queued.
 func _arm_slot(slot: Dictionary, card: CardData) -> void:
 	slot.card = card
-	slot.cooldown = _auto_cd(card)
+	slot.cooldown = _armed_cd(card)
 	slot.max_cooldown = slot.cooldown
+
+# The cooldown a freshly-armed card starts at. Setup's action translation: the
+# card it topdecked arms ONCE at the 0-cost cooldown (cost is cooldown here),
+# then the marker is spent — "free to play until played".
+func _armed_cd(card: CardData) -> float:
+	if card != null and _setup_free_cards.has(card):
+		_setup_free_cards.erase(card)
+		GameLog.add("Setup: %s arms at the free cooldown." % card.display_name,
+			Color(0.6, 1.0, 0.7))
+		return maxf(_tr.min_click_cooldown,
+			float(card.rarity) * AddonSystem.cooldown_mult(card, Stats.Mode.ACTION))
+	return _auto_cd(card)
 
 func _open_retain_slot() -> void:
 	var card: CardData = _auto_draw_one()
 	if card == null:
 		return  # auto pool exhausted — nothing to add
+	var retain_cd: float = _armed_cd(card)
 	auto_slots.append({
 		"card": card,
-		"cooldown": _auto_cd(card),
-		"max_cooldown": _auto_cd(card),
+		"cooldown": retain_cd,
+		"max_cooldown": retain_cd,
 		"ttl": _tr.draw_temp_slot_secs,
 	})
 	GameLog.add("Retain: +1 auto-cast for %.0fs." % _tr.draw_temp_slot_secs,
@@ -2581,12 +2643,26 @@ func _apply_utility_effects(card: CardData) -> void:
 			# Ironclad skills batch — untargeted utility verbs, resolved here so
 			# both the click and auto paths get them. double_stat / autoplay_top /
 			# copy_from_hand / exhume dispatch through EffectSystem, whose handlers
-			# call back into this scene's mode-specific methods below.
-			"double_stat", "autoplay_top", "copy_from_hand", "exhume":
+			# call back into this scene's mode-specific methods below. The
+			# Silent/Defect batch adds retrieve (Hologram/Seek), free_hand
+			# (Bullet Time) and nightmare — same shape.
+			"double_stat", "autoplay_top", "copy_from_hand", "exhume", "retrieve", "free_hand", "nightmare":
 				EffectSystem.apply(raw, {
 					"source": player_actor, "target": player_actor,
 					"scene": self, "card": card,
 				})
+			"multiply_status":
+				# Catalyst: the action reading of "the target" is the nearest
+				# living enemy — multiply ITS stacks of the named status.
+				var ms_near: Dictionary = _nearest_enemy()
+				if ms_near.is_empty():
+					GameLog.add("No enemy in reach — nothing to multiply.",
+						Color(0.85, 0.85, 0.55))
+				else:
+					EffectSystem.apply(raw, {
+						"source": player_actor, "target": ms_near.actor,
+						"scene": self, "card": card,
+					})
 			"if_target_intent":
 				# Spot Weakness: the action reading of "target enemy" is the
 				# nearest living enemy; it "intends" while winding up or mid
@@ -2707,7 +2783,7 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 			"draw":
 				# In action, "draw cards" spawns temporary extra
 				# slots (see draw_cards).
-				draw_cards(int(effect.get("value", 1)))
+				_action_draw_effect(effect)
 			"discard":
 				# Mirror of draw: collapses a temporary auto-slot.
 				# `all` (Storm of Steel) collapses every temp slot;
@@ -2726,7 +2802,8 @@ func _resolve_card_effects_legacy(card: CardData) -> void:
 			"topdeck":
 				# Warcry: auto-pick a card back onto the top of the deck.
 				topdeck_cards(int(effect.get("value", 1)), null, false,
-					String(effect.get("from", "hand")))
+					String(effect.get("from", "hand")),
+					bool(effect.get("free_until_played", false)))
 			"gain_energy":
 				gain_energy(int(effect.get("value", 1)))
 			"lose_energy":
@@ -2848,7 +2925,7 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 				if tgt == "self" or tgt == "player":
 					_resolve_heal_self(int(effect.get("value", 0)))
 			"draw":
-				draw_cards(int(effect.get("value", 1)))
+				_action_draw_effect(effect)
 			"discard":
 				if bool(effect.get("all", false)):
 					discard_hand(null, String(effect.get("only", "")))
@@ -2860,7 +2937,8 @@ func _resolve_card_effects_auto_legacy(card: CardData) -> void:
 					exhaust_hand(card, String(effect.get("only", "")))
 			"topdeck":
 				topdeck_cards(int(effect.get("value", 1)), null, false,
-					String(effect.get("from", "hand")))
+					String(effect.get("from", "hand")),
+					bool(effect.get("free_until_played", false)))
 			"gain_energy":
 				gain_energy(int(effect.get("value", 1)))
 			"lose_energy":
@@ -3742,33 +3820,70 @@ func _resolve_delayed_aoe_hit(effect: Dictionary) -> void:
 			continue
 		_deal_damage_to_enemy(inst, value, dmg_type, power_mult, effect)
 
-func draw_cards(n: int) -> void:
+func draw_cards(n: int) -> Array:
 	# Action design: each `draw` spawns a temporary extra auto-slot, so more
 	# cards from the auto deck cool down and fire in parallel for a short
 	# burst (_tr.draw_temp_slot_secs). A Draw 2 adds two parallel slots.
+	# Returns the drawn (slotted) CardDatas so riders like Escape Plan's
+	# skill_block can inspect what came off the pile.
+	var drawn: Array = []
 	if n <= 0:
-		return
+		return drawn
 	# No Draw (Battle Trance): draw effects open no extra auto-slots until the
 	# next turn tick decays the status — the action mirror of "you cannot draw
 	# any more cards this turn".
 	if player_actor != null and player_actor.get_status(&"no_draw") > 0:
 		GameLog.add("No Draw — no extra auto-casts.", Color(1.0, 0.7, 0.5))
-		return
-	var added := 0
+		return drawn
 	for _i in range(n):
 		var card: CardData = _auto_draw_one()
 		if card == null:
 			break  # auto pool exhausted (all in-flight) — nothing to add
+		var draw_cd: float = _armed_cd(card)
 		auto_slots.append({
 			"card": card,
-			"cooldown": _auto_cd(card),
-			"max_cooldown": _auto_cd(card),
+			"cooldown": draw_cd,
+			"max_cooldown": draw_cd,
 			"ttl": _tr.draw_temp_slot_secs,
 		})
-		added += 1
-	if added > 0:
-		GameLog.add("Draw: +%d auto-cast for %.0fs." % [added, _tr.draw_temp_slot_secs],
+		drawn.append(card)
+	if not drawn.is_empty():
+		GameLog.add("Draw: +%d auto-cast for %.0fs." % [drawn.size(), _tr.draw_temp_slot_secs],
 			Color(0.7, 0.95, 1.0))
+	return drawn
+
+# The action reading of the extended draw forms (shared by the click / auto /
+# self-effect paths):
+#   value_from "discarded" (Calculated Gamble) — one draw per slot the
+#     preceding discard:all collapsed (last_discard_count).
+#   to_hand (Expertise) — top the "hand" up to N, where the hand is every
+#     armed cooldown slot: the auto slots plus the two click cards
+#     (Flechettes' convention).
+#   skill_block (Escape Plan) — after the draw, gain N Block per drawn Skill.
+func _action_draw_effect(effect: Dictionary) -> void:
+	var n: int = int(effect.get("value", 1))
+	if String(effect.get("value_from", "")) == "discarded":
+		n = last_discard_count
+	if effect.has("to_hand"):
+		var hand_n: int = auto_slots.size()
+		if left_card != null:
+			hand_n += 1
+		if right_card != null:
+			hand_n += 1
+		n = maxi(0, int(effect.get("to_hand", 0)) - hand_n)
+	if n <= 0:
+		return
+	var drawn: Array = draw_cards(n)
+	var per_skill: int = int(effect.get("skill_block", 0))
+	if per_skill > 0:
+		var skills: int = 0
+		for c in drawn:
+			if c != null and c.is_skill():
+				skills += 1
+		if skills > 0:
+			GameLog.add("Escape Plan: drew a Skill — +%d Block." % (per_skill * skills),
+				Color(0.7, 0.85, 1.0))
+			gain_block(player_actor, per_skill * skills)
 
 func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 	# Mirror of `draw_cards`: collapse temporary auto-slots back into the
@@ -3813,7 +3928,10 @@ func discard_cards(n: int, _source_card = null, _random: bool = false) -> void:
 # `from_pile: "discard"` (Headbutt) skips the slot collapse and always pulls a
 # random discard back on top — the action reading of "put a Card from your
 # Discard on the top of the Draw Pile".
-func topdeck_cards(n: int, _source_card = null, _random: bool = false, from_pile: String = "hand") -> void:
+func topdeck_cards(n: int, _source_card = null, _random: bool = false, from_pile: String = "hand", free_until_played: bool = false) -> void:
+	# `free_until_played` (Setup): the card placed on top arms ONCE at the
+	# 0-cost cooldown when it's next drawn (see _armed_cd) — cost is cooldown
+	# in action, so this is the reading of "free to play until played".
 	if n <= 0:
 		return
 	var moved := 0
@@ -3828,6 +3946,8 @@ func topdeck_cards(n: int, _source_card = null, _random: bool = false, from_pile
 			var slot: Dictionary = auto_slots[idx]
 			if slot.card != null:
 				auto_draw.append(slot.card)   # _auto_draw_one pops the back = top
+				if free_until_played and not _setup_free_cards.has(slot.card):
+					_setup_free_cards.append(slot.card)
 				moved += 1
 			auto_slots.remove_at(idx)
 			continue
@@ -3836,10 +3956,14 @@ func topdeck_cards(n: int, _source_card = null, _random: bool = false, from_pile
 			var card: CardData = auto_discard[pick_idx]
 			auto_discard.remove_at(pick_idx)
 			auto_draw.append(card)
+			if free_until_played and not _setup_free_cards.has(card):
+				_setup_free_cards.append(card)
 			moved += 1
 	if moved > 0:
-		GameLog.add("Topdeck: %d card%s back on top of the deck." % [
-			moved, "s" if moved > 1 else ""], Color(0.6, 1.0, 0.7))
+		GameLog.add("Topdeck: %d card%s back on top of the deck%s." % [
+			moved, "s" if moved > 1 else "",
+			" — free when it next arms" if free_until_played else ""],
+			Color(0.6, 1.0, 0.7))
 
 # Storm of Steel's action translation: "discard your hand" collapses every
 # temporary auto-slot into the discard pile and records how many, so a
@@ -4001,7 +4125,7 @@ func _apply_self_effects(card: CardData) -> void:
 		# resolve as cooldown changes regardless of `target`, so fire
 		# them here before the target gate.
 		if t == "draw":
-			draw_cards(int(effect.get("value", 1)))
+			_action_draw_effect(effect)
 			continue
 		if t == "discard":
 			if bool(effect.get("all", false)):
@@ -4012,7 +4136,8 @@ func _apply_self_effects(card: CardData) -> void:
 			continue
 		if t == "topdeck":
 			topdeck_cards(int(effect.get("value", 1)), null, false,
-				String(effect.get("from", "hand")))
+				String(effect.get("from", "hand")),
+				bool(effect.get("free_until_played", false)))
 			continue
 		if t == "gain_energy":
 			gain_energy(int(effect.get("value", 1)))
@@ -4114,8 +4239,11 @@ func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 	# X-value gain (Doppelganger): the stack count is the play's X — resolved
 	# ONCE per cast by the caller (consuming the Haste window) so two X gains
 	# on the same card read the same X, mirroring the deckbuilder's ctx.
+	# stacks_mult -1 (Malaise: inflict -X Power) flips the amount into a drain;
+	# the upgrade's ±1 rides stacks_bonus (authored pre-flipped: -X-1).
 	if String(effect.get("stacks_from", "")) == "energy":
-		stacks = maxi(0, x_value) + int(effect.get("stacks_bonus", 0))
+		stacks = maxi(0, x_value) * int(effect.get("stacks_mult", 1)) \
+			+ int(effect.get("stacks_bonus", 0))
 	if stacks == 0 or status == &"":
 		return
 	# Route through the shared core (Stats.apply_status_to) so action's card
@@ -4137,7 +4265,7 @@ func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 				return
 			if intent_gate != "" and not _enemy_intends_attack(pick):
 				continue
-			Stats.apply_status_to(pick.actor, status, stacks, player_actor)
+			_apply_status_stacks(pick.actor, status, stacks)
 		return
 	var hit_list: Array
 	if tgt == "enemy":
@@ -4149,7 +4277,17 @@ func _apply_status_effect(effect: Dictionary, tgt: String, cone_targets: Array, 
 	for inst in hit_list:
 		if intent_gate != "" and not _enemy_intends_attack(inst):
 			continue
-		Stats.apply_status_to(inst.actor, status, stacks, player_actor)
+		_apply_status_stacks(inst.actor, status, stacks)
+
+# Positive stacks route through the shared Persistence-aware core; NEGATIVE
+# stacks (Disarm / Piercing Wail / Malaise power drains) are a signed DRAIN
+# that may take the stored value below zero — add_status floors at 0, so they
+# route through Stats.drain_status, matching the deckbuilder's inflict rule.
+func _apply_status_stacks(actor, status: StringName, stacks: int) -> void:
+	if stacks < 0:
+		Stats.drain_status(actor, status, stacks)
+		return
+	Stats.apply_status_to(actor, status, stacks, player_actor)
 
 # status_temp (Flex): the buff was applied normally by _apply_status_effect;
 # record the exact stacks so ItemTriggers strips them at the next turn_tick,
@@ -4205,6 +4343,7 @@ func apply_dot(target: CombatActor, amount: int, source_name: String) -> void:
 		if not target.is_player:
 			TriggerBus.emit_signal("enemy_killed", {"enemy": target, "scene": self})
 			_fire_item_triggers("enemy_killed")
+			Stats.process_corpse_explosion(target, self)
 
 # A card's on-play HP cost (Hemokinesis' "Lose 2 Health", Bloodletting).
 # Routes through apply_dot like the curse translation: raw loss (no block),
@@ -4363,6 +4502,7 @@ func deal_damage(_source, target, amount: int, effect: Dictionary = {}) -> void:
 				GameLog.add("%s defeated." % inst.actor.display_name, Color(0.6, 1.0, 0.6))
 				TriggerBus.emit_signal("enemy_killed", {"enemy": inst.actor, "scene": self})
 				_fire_item_triggers("enemy_killed")
+				Stats.process_corpse_explosion(inst.actor, self)
 			return
 
 # ---------------------------------------------------------------------------
@@ -4484,6 +4624,76 @@ func exhume_cards(n: int, _source_card = null) -> void:
 			Color(0.7, 1.0, 0.7))
 		_conjure_into_hand(pick)
 
+# Hologram / Seek (retrieve via EffectSystem): action has no picker, so a
+# random card from the auto analog of the named pile — the auto discard
+# (Hologram) or the auto draw pile (Seek) — re-arms as a one-shot temp slot,
+# the same delivery Exhume uses.
+func retrieve_cards(n: int, from_pile: String, _source_card = null) -> void:
+	var src: Array = auto_discard if from_pile == "discard" else auto_draw
+	for _i in range(maxi(1, n)):
+		if src.is_empty():
+			GameLog.add("Nothing to retrieve from the %s pile." % from_pile,
+				Color(0.85, 0.85, 0.55))
+			return
+		var pick_idx: int = _rng.randi_range(0, src.size() - 1)
+		var pick: CardData = src[pick_idx]
+		src.remove_at(pick_idx)
+		GameLog.add("Retrieved %s — it arms now." % pick.display_name,
+			Color(0.7, 1.0, 0.7))
+		_conjure_into_hand(pick)
+
+# Bullet Time (free_hand via EffectSystem): "all cards in your hand are free
+# this turn" — the action hand is every armed cooldown, so every running
+# cooldown (auto slots + the two click cards) finishes NOW, one free use each.
+func make_hand_free(_exclude = null) -> void:
+	var freed := 0
+	for slot in auto_slots:
+		if slot.card != null and float(slot.cooldown) > 0.0:
+			slot.cooldown = 0.0
+			freed += 1
+	if left_cd > 0.0:
+		left_cd = 0.0
+		freed += 1
+	if right_cd > 0.0:
+		right_cd = 0.0
+		freed += 1
+	if freed > 0:
+		GameLog.add("Bullet Time: every cooldown finishes now!", Color(0.7, 1.0, 0.7))
+
+# Nightmare (via EffectSystem): action has no picker, so a random armed card
+# (an auto slot's card or a click card) is chosen at cast time; at the next
+# turn tick `count` one-shot temp slots open with copies of it.
+func nightmare_cards(count: int, source_card = null) -> void:
+	var pool: Array = []
+	for slot in auto_slots:
+		var c = slot.get("card")
+		if c != null and c != source_card and not pool.has(c):
+			pool.append(c)
+	for c in [left_card, right_card]:
+		if c != null and c != source_card and not pool.has(c):
+			pool.append(c)
+	if pool.is_empty():
+		GameLog.add("Nightmare: no armed card to copy.", Color(0.85, 0.85, 0.55))
+		return
+	var pick: CardData = pool[_rng.randi() % pool.size()]
+	_nightmare_pending.append({"card": pick, "count": maxi(1, count)})
+	GameLog.add("Nightmare: %d copies of %s arrive at the next turn tick." % [
+		maxi(1, count), pick.display_name], Color(0.75, 0.6, 1.0))
+
+func _deliver_nightmare_copies() -> void:
+	if _nightmare_pending.is_empty():
+		return
+	var pending: Array = _nightmare_pending.duplicate()
+	_nightmare_pending.clear()
+	for entry in pending:
+		var card: CardData = entry.get("card")
+		if card == null:
+			continue
+		for _i in range(maxi(1, int(entry.get("count", 1)))):
+			_conjure_into_hand(card)
+		GameLog.add("Nightmare delivers %d copies of %s!" % [
+			int(entry.get("count", 1)), card.display_name], Color(0.75, 0.6, 1.0))
+
 func _block_decay_for(card: CardData) -> float:
 	if card == null:
 		return DEFAULT_BLOCK_DECAY
@@ -4538,8 +4748,11 @@ func _decay_block(delta: float) -> void:
 			_block_synced_int = 0
 		return
 	# Barricade, translated to real time: block stops fading on its own.
-	# Incoming hits still soak chunks via the reconcile above.
-	if not Stats.keeps_block(player_actor):
+	# Incoming hits still soak chunks via the reconcile above. Blur buys the
+	# same freeze one turn tick at a time (the stack is spent per tick in
+	# _pay_next_turn_statuses, not here — this gate runs every frame).
+	if not Stats.keeps_block(player_actor) \
+			and player_actor.get_status(&"blur") <= 0:
 		for chunk in _block_pool:
 			chunk.amt -= chunk.rate * delta
 	for i in range(_block_pool.size() - 1, -1, -1):

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_setup"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Setup.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"setup"
+display_name = "Setup"
+type = 1
+rarity = 2
+cost = 1
+description = "Put a Card from your Hand on top of the Draw Pile. It is free to play until played."
+effects = [{"type": "topdeck", "value": 1, "free_until_played": true}]
+tags = PackedStringArray("silent", "energy")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Put a Card from your Hand on top of the Draw Pile. It is free to play until played."
+upgraded_cost = 0
+upgraded_effects = [{"type": "topdeck", "value": 1, "free_until_played": true}]
+image = ExtResource("2_img")

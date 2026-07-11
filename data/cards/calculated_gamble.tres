@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_calculated_gamble"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/CalculatedGamble.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"calculated_gamble"
+display_name = "Calculated Gamble"
+type = 1
+rarity = 2
+cost = 0
+description = "Discard your Hand, then Draw X Cards where X was the amount of cards that were Discarded. Exhaust."
+effects = [{"type": "discard", "all": true}, {"type": "draw", "value": 0, "value_from": "discarded"}, {"type": "exhaust_self"}]
+tags = PackedStringArray("silent", "discard", "draw")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Discard your Hand, then Draw X Cards where X was the amount of cards that were Discarded."
+upgraded_cost = -999
+upgraded_effects = [{"type": "discard", "all": true}, {"type": "draw", "value": 0, "value_from": "discarded"}]
+image = ExtResource("2_img")

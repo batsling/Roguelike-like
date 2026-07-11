@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_dodge_and_roll"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/DodgeAndRoll.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"dodge_and_roll"
+display_name = "Dodge and Roll"
+type = 1
+rarity = 1
+cost = 1
+description = "Gain +4 Block. Gain +4 Next Turn Block."
+effects = [{"type": "block", "value": 4, "target": "self"}, {"type": "status", "status": "next_turn_block", "stacks": 4, "target": "self"}]
+tags = PackedStringArray("silent", "defense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain +6 Block. Gain +6 Next Turn Block."
+upgraded_cost = -999
+upgraded_effects = [{"type": "block", "value": 6, "target": "self"}, {"type": "status", "status": "next_turn_block", "stacks": 6, "target": "self"}]
+image = ExtResource("2_img")

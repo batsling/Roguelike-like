@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://card_blur"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://images/cards/Blur.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"blur"
+display_name = "Blur"
+type = 1
+rarity = 2
+cost = 1
+description = "Gain +5 Block. Gain 1 Blur."
+effects = [{"type": "block", "value": 5, "target": "self"}, {"type": "status", "status": "blur", "stacks": 1, "target": "self"}]
+tags = PackedStringArray("silent", "defense")
+source_game = "Slay the Spire"
+can_upgrade = true
+upgraded_description = "Gain +8 Block. Gain 1 Blur."
+upgraded_cost = -999
+upgraded_effects = [{"type": "block", "value": 8, "target": "self"}, {"type": "status", "status": "blur", "stacks": 1, "target": "self"}]
+image = ExtResource("2_img")

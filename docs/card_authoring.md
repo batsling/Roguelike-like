@@ -132,11 +132,11 @@ Semicolon-delimited list of effect lines. Each line is
 |---|---|---|---|
 | `dmg` | `VALUE[xN]:DAMAGE_TYPE[:cleave\|if_status=STATUS]` | Deal damage. `xN` = multi-hit (Twin Strike). `cleave` = `target: all_enemies`. `if_status=X` skips the hit per target when that target lacks status X (Bane's second hit). | `{type: "dmg", value, target, damage_type, hits?, if_target_status?}` |
 | `gain` | `STAT:VALUE` | Player gains the stat (block, power, defense, dodge, …). `gain:block:5:per=exhausted` (Second Wind) makes the value per-card: total Block = value × how many cards the preceding `exhaust:all` swept away (`value_from: "exhausted"`, the block mirror of dmg's `hits=exhausted`). | `{type: "block"/"status", value, stacks, status, target: "self"}` |
-| `inflict` | `STATUS:STACKS[:cleave][:if_intent=attack]` | Apply a debuff to the targeted enemy (or all enemies with `cleave`). `if_intent=attack` (Go for the Eyes) gates the inflict on the target telegraphing an attack — see the intent gate section. NEGATIVE stacks (Disarm: `inflict:power:-2`) DRAIN the status instead: the engine writes the status dict directly (Stats.drain_status) so the stored value can go below zero — the badge shows the negative count in red. No Persistence scaling, no status_applied reaction. | `{type: "status", status, stacks, target: "enemy"/"all_enemies", if_target_intent?}` |
-| `draw` | `N` | Draw N cards. In Action mode this instead chips a random ability cooldown by 25% per N. In Strategy, reduces a random ability CD by N. | `{type: "draw", value: N}` |
+| `inflict` | `STATUS:STACKS[:cleave][:if_intent=attack]` | Apply a debuff to the targeted enemy (or all enemies with `cleave`). `if_intent=attack` (Go for the Eyes) gates the inflict on the target telegraphing an attack — see the intent gate section. NEGATIVE stacks (Disarm: `inflict:power:-2`) DRAIN the status instead: the engine writes the status dict directly (Stats.drain_status) so the stored value can go below zero — the badge shows the negative count in red. No Persistence scaling, no status_applied reaction. STACKS may be an X form (Malaise: `inflict:power:-X`, `inflict:weak:X+1`) — the enemy-side mirror of `gain:<status>:X`: the count is the energy spent on the play, a leading `-` flips it into a drain (`stacks_mult: -1`) and a trailing ±N rides `stacks_bonus`. | `{type: "status", status, stacks, target: "enemy"/"all_enemies", if_target_intent?, stacks_from?, stacks_mult?, stacks_bonus?}` |
+| `draw` | `N[:skill_block=B]` \| `to=N` \| `count=discarded` | Draw N cards (action: each draw opens a temporary auto-cast slot). `draw:count=discarded` (Calculated Gamble) draws one per card the preceding `discard:all` sent away. `draw:to=6` (Expertise) draws until the hand holds N cards — action's "hand" is every armed cooldown slot (auto slots + the two click cards). `skill_block=B` (Escape Plan) grants B Block per drawn card that is a Skill — `draw_cards` returns the drawn cards in every mode so the rider can inspect them. | `{type: "draw", value: N, skill_block?, to_hand?, value_from?: "discarded"}` |
 | `discard` | `N[:random]` \| `all` | Mirror of `draw`. Deckbuilder/Strategy: pick N from hand via the CardPickerModal (default — player chooses, like Acrobatics). Append `:random` for the engine-picked random variant (All-Out Attack). Always excludes the played card. `discard:all` (Storm of Steel) discards the whole hand with no picker and records the count for `count=discarded`. `discard:all:non_attack` (Unload) narrows the sweep to non-Attack cards (action: only non-Attack temp slots collapse). Action: collapses temporary auto-slots (`all` collapses every one). | `{type: "discard", value: N, random?: bool}` / `{type: "discard", all: true}` |
 | `exhaust` | `N[:random]` \| `all` | Deckbuilder/Strategy mirror of `discard` but routes picks to the exhaust pile. Same player-choice default and `:random` flag. `exhaust:all` (Fiend Fire) exhausts the whole hand minus the played card, no picker, and records the count for a following `dmg …:hits=exhausted`. `exhaust:all:non_attack` (Sever Soul) narrows the sweep to non-Attack cards (action: armed Attacks are spared; curse slots still clear). Action: `exhaust:N` no-ops; `exhaust:all` empties every other cooldown slot (see the dmg shorthand notes). | `{type: "exhaust", value: N, random?: bool}` / `{type: "exhaust", all: true}` |
-| `topdeck` | `N[:random][:from=discard]` | Put N cards from hand on TOP of the draw pile (Warcry). Deckbuilder/Strategy open the CardPickerModal by default; `:random` skips it. Action auto-picks: a temporary auto-slot's card goes back on top of the auto draw pile (or a random discard when no temp slots are up). `from=discard` (Headbutt) pools the pick from the DISCARD pile instead — the picker browses the discard; action always pulls a random discard back on top, never collapsing a slot. | `{type: "topdeck", value: N, random?: bool, from?: "discard"}` |
+| `topdeck` | `N[:random][:from=discard][:free=until_played]` | Put N cards from hand on TOP of the draw pile (Warcry). Deckbuilder/Strategy open the CardPickerModal by default; `:random` skips it. Action auto-picks: a temporary auto-slot's card goes back on top of the auto draw pile (or a random discard when no temp slots are up). `from=discard` (Headbutt) pools the pick from the DISCARD pile instead — the picker browses the discard; action always pulls a random discard back on top, never collapsing a slot. `free=until_played` (Setup): the placed card costs 0 until it is PLAYED — the override rides `CardInstance.free_until_played` across pile moves and turn ends, cleared the moment the play pays; action arms the card ONCE at the 0-cost cooldown when it's next drawn. | `{type: "topdeck", value: N, random?: bool, from?: "discard", free_until_played?: bool}` |
 | `recall` | `<FILTER>[:from=PILE][:to=PILE]` | Deckbuilder: move (not copy) every card in the source pile matching `FILTER` into the destination pile. `FILTER` today is `cost=N`; defaults are `from=discard`, `to=hand` (All for One). No-op in action/strategy. | `{type: "recall", from: PILE, to: PILE, filter: {…}}` |
 | `upgrade_hand` | `N\|all[:random]` | Deckbuilder: upgrade in-place. `upgrade_hand:1` opens the picker so the player chooses (Armaments); `upgrade_hand:all` upgrades every eligible card in hand silently (Armaments+). Append `:random` to skip the picker for the N form. Skips cards that are already upgraded or have `can_upgrade = false`. No-op in action/strategy. | `{type: "upgrade_hand", value: N\|"all", random?: bool}` |
 | `boost_cards` | `<MATCH>:<STAT>:<VALUE>` | Persistent in-combat modifier. Every later card matching `MATCH` resolves with `STAT + VALUE`. `MATCH` is exactly one of `tag=X` / `type=X` / `id=X`. `STAT` is `dmg` or `block`. Deckbuilder only today. | `{type: "boost_cards", match_tag/match_type/match_id, stat, value}` |
@@ -162,6 +162,10 @@ Semicolon-delimited list of effect lines. Each line is
 | `autoplay_top` | `[exhaust]` | Havoc: play the top card of the draw pile at no cost, then exhaust it. The autoplay counts as a played card (card_played / attack_played powers react, Sentinel's exhausted trigger fires); attacks land on a random living enemy; an X-cost card plays with X = 0; a Power registers and is consumed (never exhausted). Action plays the top of the AUTO draw pile — the card leaves the rotation for the combat (Exhume can re-arm it). | `{type: "autoplay_top", exhaust: bool}` |
 | `copy_from_hand` | `N[:FILTER]` | Dual Wield: choose a hand card matching FILTER (`attack_or_power` today) and conjure N copies of it to hand, upgrade state preserved. Deckbuilder/strategy open the CardPickerModal; action auto-picks a random ARMED Attack/Power (auto slots + the two click cards) and opens N one-shot temp slots with it. | `{type: "copy_from_hand", count, filter}` |
 | `exhume` | `N` | Exhume: move N cards from the exhaust pile back to hand (picker; never another Exhume). Action has no browsable exhaust pile — a random card removed by exhaust effects this combat (`action_exhausted`) re-arms as a one-shot temp slot. | `{type: "exhume", value: N}` |
+| `retrieve` | `N:from=discard\|draw` | Hologram / Seek: move N cards from the named pile to hand. Deckbuilder/strategy open the picker over that pile (the pile-browsing sibling of `exhume`); action re-arms a random card from its auto analog of the pile as a one-shot temp slot. | `{type: "retrieve", value: N, from: PILE}` |
+| `multiply` | `STATUS:N` | Catalyst (`multiply:poison:2`, upgraded `:3`): multiply the PICKED enemy target's stacks of the status by N. A direct signed write like `double` — no Persistence scaling, no status_applied reaction; zero stacks stay zero (logged as a fizzle). Action reads "the target" as the nearest living enemy. | `{type: "multiply_status", status, factor: N, target: "enemy"}` |
+| `free_hand` | (none) | Bullet Time: every card currently in hand costs 0 for THIS turn (`temp_cost_override`, the Mummified Hand slot — cleared when a card leaves hand). Action: every running cooldown (auto slots + the two click cards) finishes NOW, one free use each. | `{type: "free_hand"}` |
+| `nightmare` | `N` | Nightmare: choose a card in hand; at the start of the player's NEXT turn, N copies of it (upgrade state preserved) arrive in hand. Deckbuilder/strategy open the picker and bank the pick scene-side (`_nightmare_pending`); action auto-picks a random armed card and opens the copies as one-shot temp slots at the next turn tick. | `{type: "nightmare", count: N}` |
 | `if_intent` | `attack:<INNER_VERB>:<INNER_ARGS>` | Spot Weakness: resolve the inner effect only when the PICKED enemy target is telegraphing an attack — the intent sibling of the `if_target` wrapper, sharing the same per-mode predicate as `inflict … if_intent=attack` (see the intent gate section). Action reads the NEAREST enemy (winding up / mid-attack). | `{type: "if_target_intent", intent, target: "enemy", effect: {…inner…}}` |
 | `sequential_upgrade` | `N` | The card can be upgraded ANY number of times; each upgrade adds +N to every dmg value instead of flipping to a one-shot upgraded form (leave the ↑ columns N/A — the upgrade IS the step). Searing Blow: `sequential_upgrade:3`. Card-level: lands in `CardData.sequential_upgrade_step` and forces `can_upgrade`; the count lives per physical card on `CardInstance.upgrade_count` (persisted, shown as `+`, `+2`, `+3`, …). See the Sequential upgrades section. | `sequential_upgrade_step = N` (field, not an effect) |
 
@@ -285,8 +289,11 @@ Skill-type stacks and `until=turn_end` triggers are wiped together at the
 START of the player's next turn (`Stats.clear_skill_markers` +
 `Stats.expire_turn_triggers`) — after the enemy turn, so Flame Barrier
 retaliates against every enemy hit before it fades. Action wipes on the turn
-tick. The wipe list is data-driven off the sheet's Type column, so a future
-Skill-type row (Blur, Burst, …) joins it without a code change.
+tick. The wipe list is data-driven off the sheet's Type column, so a new
+Skill-type row (Burst joined this way) needs no code change. NOTE: a status
+that must SURVIVE into the next turn (Blur saves block AT the next turn
+start; Next Turn Block pays there) is a Buff, not a Skill-type marker — the
+marker wipe would eat it exactly when it should fire.
 
 Worked example — Flame Barrier — `Uncommon Skill` cost 2, Element `Fire`:
 ```
@@ -324,6 +331,42 @@ on-hit path — the "1 Burn per contact" needs no extra authoring.
 | Shockwave | `inflict:weak:3:cleave; inflict:vulnerable:3:cleave` | `Uncommon Skill` cost 2, Exhaust. Upgrade: 5/5. |
 | Spot Weakness | `if_intent:attack:gain:power:3` | `Uncommon Skill` cost 1. Upgrade: 4. |
 | True Grit | `gain:block:7; exhaust:1:random` | `Common Skill` cost 1. Upgrade drops `:random` — the player picks. |
+
+### The Silent + Defect Skills port batch — quick reference
+
+The 20 remaining Silent/Defect Skill rows (Hologram and Seek are the Defect
+pair). Five new `statusesnew` rows ride with them: **Burst** is the batch's
+Skill-type marker (wiped at the start of your next turn, like Double Tap);
+**Blur / Next Turn Block / Double Damage** are Buffs with engine behavior
+(block persistence at the turn boundary via `Stats.block_persists`, a banked
+turn-start `gain_block` payout beside Next Turn Energy/Draw, and a melee/
+ranged ×2 in `Stats.resolve_damage`); **Corpse Explosion** is a Debuff — an
+enemy that dies carrying it detonates for its Max HP against every other
+enemy (`Stats.process_corpse_explosion`, called from each mode's death
+sites; chains recurse naturally).
+
+| Card | Effects DSL | Notes |
+|---|---|---|
+| Blur | `gain:block:5; gain:blur:1` | `Uncommon Skill` cost 1. Upgrade: 8 Block. Each Blur stack saves your Block through one turn boundary, then is spent. Action: the block pool stops fading while a stack is up; one stack per turn tick. |
+| Bullet Time | `gain:no_draw:1; free_hand` | `Rare Skill` cost 3. Upgrade: cost 2. The whole hand costs 0 this turn; No Draw locks further draws. Action: every running cooldown finishes now. |
+| Burst | `gain:burst:1` | `Rare Skill` cost 1. The scenes replay the next SKILL played this turn (snapshot taken pre-effects, so Burst never doubles itself — but a second Burst can double the first). Upgrade: 2 stacks. |
+| Calculated Gamble | `discard:all; draw:count=discarded; exhaust_self` | `Uncommon Skill` cost 0. Upgrade drops the `exhaust_self` (Limit Break's rule — Keywords is card-level). |
+| Catalyst | `multiply:poison:2` | `Uncommon Skill` cost 1, Exhaust. Upgrade: ×3. Fizzles on a poison-free target. |
+| Corpse Explosion | `inflict:poison:6; inflict:corpse_explosion:1` | `Rare Skill` cost 2. Upgrade: 9 Poison. The marker detonates on death — see above. |
+| Deadly Poison | `inflict:poison:5` | `Common Skill` cost 1. Upgrade: 7. |
+| Deflect | `gain:block:4` | `Common Skill` cost 0. Upgrade: 7. |
+| Dodge and Roll | `gain:block:4; gain:next_turn_block:4` | `Common Skill` cost 1. Upgrade: 6/6. The bank pays through `gain_block` at the next turn start (after the reset), so Frail/Defense apply at payout. |
+| Escape Plan | `draw:1:skill_block=3` | `Uncommon Skill` cost 0. Upgrade: +5. Action pays the rider when the opened temp slot's card is a Skill. |
+| Expertise | `draw:to=6` | `Uncommon Skill` cost 1. Upgrade: to 7. Action's "hand" is the armed cooldown slots. |
+| Hologram | `gain:block:3; retrieve:1:from=discard; exhaust_self` | `Common Skill` cost 1, defect. Upgrade: 5 Block, no Exhaust (authored as `exhaust_self` so the upgrade can shed it). |
+| Leg Sweep | `inflict:weak:2; gain:block:11` | `Uncommon Skill` cost 2. Upgrade: 3/14. |
+| Malaise | `inflict:power:-X; inflict:weak:X` | `Rare Skill` cost X, Exhaust. Upgrade: `-X-1` / `X+1` via `stacks_bonus`. The first X-value inflict — see the inflict row. |
+| Nightmare | `nightmare:3` | `Rare Skill` cost 3. Upgrade: cost 2. Pick a hand card; 3 copies arrive with the next turn-start hand. |
+| Outmaneuver | `gain:next_turn_energy:2` | `Common Skill` cost 1. Upgrade: 3. Rides the existing Next Turn Energy machinery. |
+| Phantasmal Killer | `gain:double_damage:1` | `Rare Skill` cost 1. Upgrade: cost 0. Your melee/ranged attacks deal double while a stack is up; decays at end of turn. |
+| Piercing Wail | `inflict:power:-6:cleave; inflict:shackled:6:cleave` | `Common Skill` cost 1, Exhaust. Upgrade: -8/8. The Shackled return (already engine-side for Shifting) hands the Power back at each enemy's turn end — a one-turn room-wide weaken. |
+| Seek | `retrieve:1:from=draw` | `Rare Skill` cost 0, Exhaust, defect. Upgrade: 2 cards. |
+| Setup | `topdeck:1:free=until_played` | `Uncommon Skill` cost 1. Upgrade: cost 0. See the topdeck row for the "free until played" override. |
 
 ### The Flechettes / Go for the Eyes / … port batch — quick reference
 
@@ -1069,7 +1112,7 @@ once on `Stats.DECAY_STATUSES`:
 
 ```
 vulnerable, weak, frail, burn, poison, regeneration, dodge, blind,
-confused, stun, no_draw, intangible
+confused, stun, no_draw, intangible, double_damage
 ```
 
 Add a status to that list and every combat mode picks up the

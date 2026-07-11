@@ -15,6 +15,13 @@ var upgraded: bool = false
 var upgrade_count: int = 0
 var temp_cost_override: int = -999      # -999 sentinel = no override
 
+# Setup's "free to play until played": the card costs 0 no matter which pile
+# it sits in, surviving turn boundaries and reshuffles, until it is PLAYED
+# (cleared by the scene's play path the moment the cost is paid). Distinct
+# from temp_cost_override, which clears whenever the card leaves hand. Reset
+# at combat init so an unplayed Setup pick never leaks into the next fight.
+var free_until_played: bool = false
+
 # Per-combat additive cost change (negative = discount). Empty Tome grants a
 # random Weapon Attack card -1 cost for the fight; because action-mode cooldown
 # is derived from cost, the same discount shortens its cooldown there too. Reset
@@ -95,6 +102,10 @@ func apply_upgrade() -> void:
 		upgrade_count += 1
 
 func get_cost() -> int:
+	# Setup: free until played — the strongest override, checked first so a
+	# later Confused/Mummified Hand roll can't reprice the placed card.
+	if free_until_played:
+		return 0
 	if temp_cost_override != -999:
 		return temp_cost_override
 	# X-cost cards (effective cost -1) ignore the combat delta — they spend all
