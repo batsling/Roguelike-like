@@ -3345,6 +3345,21 @@ func _explode_bolt(card: CardData, center: Vector2, radius: float) -> void:
 	_swing_color = _attack_color_for(card, _swing_color)
 	_apply_enemy_effects(card, _enemy_effects(card), _enemies_in_disc(center, radius))
 
+# Corpse Explosion's on-death blast, the action reading (called by
+# Stats.process_corpse_explosion instead of its room-wide sweep): the corpse
+# bursts like Lil' Bomber's bomb — a Medium blast disc centred on the body —
+# and only enemies caught inside take the Max HP hit (raw, via apply_dot, so
+# Intangible still clamps). A chained victim carrying its own marker detonates
+# from its death site in turn.
+func corpse_explosion_blast(dead, dmg: int) -> void:
+	var center: Vector2 = _actor_arena_pos(dead)
+	var radius: float = float(_atk.radius_px.get("medium", 140.0)) if _atk != null else 140.0
+	_show_disc(center, radius)
+	_swing_color = Color(0.55, 1.0, 0.45, 0.55)
+	for inst in _enemies_in_disc(center, radius):
+		if inst.actor != dead:
+			apply_dot(inst.actor, dmg, "corpse explosion")
+
 func _deliver_beam(card: CardData, effects: Array, spec: Dictionary, dir: Vector2) -> void:
 	var length: float = float(spec.reach_px)
 	_show_beam(dir, length)

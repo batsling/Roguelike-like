@@ -1382,10 +1382,50 @@ func _play_card(card) -> void:
 		var shaped: Array = []
 		if String(spec.get("aim", "tile")) == "self":
 			shaped = _shaped_targets_for(spec, _turn_manager.current_unit, _turn_manager.current_unit.position)
+		elif String(spec.get("aim", "tile")) == "auto" and bool(spec.get("explosive", false)):
+			# Explosive auto attack (Corpse Explosion's `Homing, explosive`
+			# toss): the bomb seeks its target (nearest by default) and
+			# bursts, so the shaped set is every ENEMY within the blast
+			# radius of the picked one — the grid reading of the action
+			# arena's seeking bomb. Other auto shapes keep their own
+			# resolution (smite/bounce pick per hit).
+			shaped = _explosive_auto_targets(spec)
 		_resolve_card(card, null, shaped)
 	else:
 		# Self / skill card — resolves immediately, no targeting.
 		_resolve_card(card, null, [])
+
+# Target set for an explosive auto-aimed attack: pick the spec's target
+# (nearest living enemy by default, random otherwise), then include every
+# living ENEMY within the blast's Chebyshev radius of it. Enemies only — the
+# toss is the player's own bomb; unlike Lil' Bomber's aimed line there is no
+# friendly-fire footprint to stand in.
+func _explosive_auto_targets(spec: Dictionary) -> Array:
+	var p = get_player_unit()
+	if p == null:
+		return []
+	var foes: Array = _living_enemy_units()
+	if foes.is_empty():
+		return []
+	var picked = null
+	if String(spec.get("target_mode", "nearest")) == "random":
+		picked = foes[randi() % foes.size()]
+	else:
+		var best: int = 1 << 30
+		for u in foes:
+			var d: int = maxi(absi(u.position.x - p.position.x), absi(u.position.y - p.position.y))
+			if d < best:
+				best = d
+				picked = u
+	var blast: int = maxi(0, int(spec.get("blast", 0)))
+	var out: Array = [picked]
+	for u in foes:
+		if u == picked:
+			continue
+		var cheb: int = maxi(absi(u.position.x - picked.position.x), absi(u.position.y - picked.position.y))
+		if cheb <= blast:
+			out.append(u)
+	return out
 
 func _card_cost(card) -> int:
 	var c: int = card.get_cost()

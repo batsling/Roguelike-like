@@ -341,9 +341,11 @@ Skill-type marker (wiped at the start of your next turn, like Double Tap);
 (block persistence at the turn boundary via `Stats.block_persists`, a banked
 turn-start `gain_block` payout beside Next Turn Energy/Draw, and a melee/
 ranged ×2 in `Stats.resolve_damage`); **Corpse Explosion** is a Debuff — an
-enemy that dies carrying it detonates for its Max HP against every other
-enemy (`Stats.process_corpse_explosion`, called from each mode's death
-sites; chains recurse naturally).
+enemy that dies carrying it detonates for its Max HP
+(`Stats.process_corpse_explosion`, called from each mode's death sites;
+chains recurse naturally): room-wide in deckbuilder/strategy, while action
+hands off to the scene's `corpse_explosion_blast` — a Lil' Bomber style
+Medium disc around the corpse that only hits enemies inside it.
 
 | Card | Effects DSL | Notes |
 |---|---|---|
@@ -352,7 +354,7 @@ sites; chains recurse naturally).
 | Burst | `gain:burst:1` | `Rare Skill` cost 1. The scenes replay the next SKILL played this turn (snapshot taken pre-effects, so Burst never doubles itself — but a second Burst can double the first). Upgrade: 2 stacks. |
 | Calculated Gamble | `discard:all; draw:count=discarded; exhaust_self` | `Uncommon Skill` cost 0. Upgrade drops the `exhaust_self` (Limit Break's rule — Keywords is card-level). |
 | Catalyst | `multiply:poison:2` | `Uncommon Skill` cost 1, Exhaust. Upgrade: ×3. Fizzles on a poison-free target. |
-| Corpse Explosion | `inflict:poison:6; inflict:corpse_explosion:1` | `Rare Skill` cost 2. Upgrade: 9 Poison. The marker detonates on death — see above. |
+| Corpse Explosion | `inflict:poison:6; inflict:corpse_explosion:1` | `Rare Skill` cost 2, `Attack: Homing, Medium, explosive`. Upgrade: 9 Poison. The cast is a Lil' Bomber style toss seeking the NEAREST enemy — action fires a homing bolt that bursts into a Medium blast applying the inflicts to everyone caught; strategy resolves the auto-aim as the blast tiles around the nearest enemy (`_explosive_auto_targets`); the deckbuilder stays a plain targeted inflict. The marker detonates on death — room-wide in deckbuilder/strategy, but action's corpse bursts like Lil' Bomber too (`corpse_explosion_blast`: a Medium disc at the body; only enemies in radius take the Max HP hit). |
 | Deadly Poison | `inflict:poison:5` | `Common Skill` cost 1. Upgrade: 7. |
 | Deflect | `gain:block:4` | `Common Skill` cost 0. Upgrade: 7. |
 | Dodge and Roll | `gain:block:4; gain:next_turn_block:4` | `Common Skill` cost 1. Upgrade: 6/6. The bank pays through `gain_block` at the next turn start (after the reset), so Frail/Defense apply at payout. |

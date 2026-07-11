@@ -76,10 +76,15 @@ func test_catalyst_multiplies_poison_double_then_triple() -> void:
 	assert_true(card.exhaust)
 
 func test_corpse_explosion_inflicts_poison_and_the_marker() -> void:
-	assert_eq(Data.get_card(&"corpse_explosion").effects, [
+	var card: CardData = Data.get_card(&"corpse_explosion")
+	assert_eq(card.effects, [
 		{"type": "status", "status": "poison", "stacks": 6, "target": "enemy"},
 		{"type": "status", "status": "corpse_explosion", "stacks": 1, "target": "enemy"},
 	])
+	# The cast is a Lil' Bomber style toss seeking the nearest enemy: a homing
+	# bolt that bursts into a Medium blast applying the inflicts to everyone in it.
+	assert_eq(card.attack_shape, &"homing")
+	assert_eq(card.attack_params, {"size": "medium", "explosive": true})
 
 func test_escape_plan_and_expertise_draw_forms() -> void:
 	assert_eq(Data.get_card(&"escape_plan").effects,
@@ -534,16 +539,64 @@ func test_action_malaise_style_x_inflict_drains_signed() -> void:
 		"enemy", [inst], [], 3)
 	assert_eq(int(inst.actor.statuses.get(&"power", 0)), -3, "X=3 drained signed")
 
-func test_action_corpse_explosion_blasts_the_room() -> void:
+func test_action_corpse_explosion_blasts_a_disc_around_the_corpse() -> void:
 	_action_arena()
 	var bomb: Dictionary = _action_enemy(arena.player_pos + Vector2(40, 0))
 	var bystander: Dictionary = _action_enemy(arena.player_pos + Vector2(80, 0))
+	var far_away: Dictionary = _action_enemy(arena.player_pos + Vector2(2000, 0))
 	bomb.actor.max_hp = 20
 	bomb.actor.hp = 5
 	bomb.actor.add_status(&"corpse_explosion", 1)
 	arena.apply_dot(bomb.actor, 99, "test")
 	assert_false(bomb.actor.is_alive())
-	assert_eq(bystander.actor.hp, 500 - 20, "the blast dealt the bomb's Max HP")
+	assert_eq(bystander.actor.hp, 500 - 20,
+		"an enemy inside the blast disc takes the bomb's Max HP")
+	assert_eq(far_away.actor.hp, 500,
+		"the blast is a Lil' Bomber disc, not room-wide — out of radius is safe")
+
+func test_action_corpse_explosion_card_is_a_seeking_explosive_toss() -> void:
+	_action_arena()
+	var near: Dictionary = _action_enemy(arena.player_pos + Vector2(60, 0))
+	var packed: Dictionary = _action_enemy(arena.player_pos + Vector2(100, 0))
+	var far_away: Dictionary = _action_enemy(arena.player_pos + Vector2(2000, 0))
+	arena._resolve_card_effects(Data.get_card(&"corpse_explosion"))
+	assert_eq(arena.projectiles.size(), 1, "the cast tossed one bomb")
+	var bolt: Dictionary = arena.projectiles[0]
+	assert_true(bool(bolt.get("homing", false)), "…that seeks the nearest enemy")
+	assert_true(bool(bolt.get("explosive", false)), "…and bursts on impact")
+	# Detonate it on the near enemy: the blast applies the inflicts to
+	# everything in the disc, not just the struck target.
+	bolt.pos = near.pos
+	arena._on_player_projectile_hit(bolt, near)
+	assert_eq(near.actor.get_status(&"poison"), 6)
+	assert_eq(near.actor.get_status(&"corpse_explosion"), 1)
+	assert_eq(packed.actor.get_status(&"poison"), 6, "blast-adjacent enemy caught")
+	assert_eq(packed.actor.get_status(&"corpse_explosion"), 1)
+	assert_eq(far_away.actor.get_status(&"poison"), 0, "out of the blast — untouched")
+
+func test_strategy_corpse_explosion_toss_blasts_around_the_nearest_enemy() -> void:
+	_battle_with_player()
+	var e = bv._units[1]           # nearest, at (1, 0)
+	var packed := BattleUnit.new()
+	packed.is_player = false
+	packed.max_hp = 30
+	packed.hp = 30
+	packed.position = Vector2i(2, 0)   # Chebyshev 1 from the pick — in the blast
+	var far_away := BattleUnit.new()
+	far_away.is_player = false
+	far_away.max_hp = 30
+	far_away.hp = 30
+	far_away.position = Vector2i(9, 0)  # Chebyshev 8 — outside the Medium blast
+	bv._units.append(packed)
+	bv._units.append(far_away)
+	var card := CardInstance.from_data(Data.get_card(&"corpse_explosion"))
+	bv.hand.append(card)
+	bv.energy = 10
+	bv._play_card(card)
+	assert_eq(e.get_status(&"poison"), 6, "the pick takes the inflicts")
+	assert_eq(e.get_status(&"corpse_explosion"), 1)
+	assert_eq(packed.get_status(&"poison"), 6, "an enemy in the blast is caught too")
+	assert_eq(far_away.get_status(&"poison"), 0, "outside the blast — untouched")
 
 func test_action_expertise_tops_the_armed_hand_up() -> void:
 	_action_arena()

@@ -83,13 +83,18 @@ CARD_ROWS = {
         1, "N/A", "Catalyst", "Slay the Spire", "Exhaust", "N/A",
         "silent, debuff, poison, exhaust",
     ],
+    # The Attack cell gives the cast Lil' Bomber's explosive delivery, homing
+    # at the nearest enemy: action tosses a seeking bomb that bursts into a
+    # Medium blast applying the inflicts to everyone caught; strategy resolves
+    # the auto-aim + blast around the nearest enemy (see BattleView's
+    # explosive-auto path). The deckbuilder stays a plain targeted inflict.
     "Corpse Explosion": [
         "Corpse Explosion", "Rare", "Skill", 2,
         "Inflict 6 Poison. Inflict 1 Corpse Explosion.",
         "inflict:poison:6; inflict:corpse_explosion:1",
         "Inflict 9 Poison. Inflict 1 Corpse Explosion.",
         "inflict:poison:9; inflict:corpse_explosion:1",
-        2, "N/A", "CorpseExplosion", "Slay the Spire", "N/A", "N/A",
+        2, "Homing, Medium, explosive", "CorpseExplosion", "Slay the Spire", "N/A", "N/A",
         "silent, debuff, poison, aoe",
     ],
     "Deadly Poison": [
@@ -280,7 +285,11 @@ STATUS_ROWS = {
         "on_death: dmg max_hp to all other enemies",
         "Debuff", "No", "N/A",
         "None",
-        "Enemy", "Negative", "CorpseExplosion", "Rare", "Yes", "N/A",
+        "Enemy", "Negative", "CorpseExplosion", "Rare", "No",
+        "db.enemy: the corpse detonates for its Max HP against every other "
+        "living enemy | strategy.enemy: same room-wide blast | action.enemy: "
+        "the corpse bursts like Lil' Bomber — a Medium blast disc at the "
+        "body; only enemies caught in the radius take the Max HP hit",
     ],
 }
 

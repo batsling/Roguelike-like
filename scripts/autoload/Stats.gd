@@ -1136,10 +1136,17 @@ func process_corpse_explosion(dead, scene) -> void:
 	dead.statuses.erase(&"corpse_explosion")
 	if dmg <= 0:
 		return
-	if not scene.has_method("living_enemies") or not scene.has_method("apply_dot"):
-		return
 	var dname: String = String(dead.display_name) if ("display_name" in dead) else "The enemy"
 	GameLog.add("%s explodes for %d damage!" % [dname, dmg], Color(0.6, 1.0, 0.6))
+	# A scene may own a spatial reading of the blast (action: a Lil' Bomber
+	# style Medium disc around the corpse — only enemies inside it are hit).
+	# Modes without positions (deckbuilder/strategy) fall through to the
+	# room-wide sweep below.
+	if scene.has_method("corpse_explosion_blast"):
+		scene.corpse_explosion_blast(dead, dmg)
+		return
+	if not scene.has_method("living_enemies") or not scene.has_method("apply_dot"):
+		return
 	for other in scene.living_enemies():
 		if other != dead:
 			scene.apply_dot(other, dmg, "corpse explosion")
