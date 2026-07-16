@@ -116,10 +116,17 @@ func _draw() -> void:
 	var rect := Rect2(-half, ART_TOP, ART_W, ART_H)
 
 	if encounter != null and encounter.image != null:
+		# Aspect-fit the art inside the ART_W x ART_H box (bottom-anchored so the
+		# sprite stands on the map point) — filling the square outright squishes
+		# non-square art.
+		var tex: Texture2D = encounter.image
+		var s: float = minf(ART_W / float(tex.get_width()), ART_H / float(tex.get_height()))
+		var size := Vector2(tex.get_width() * s, tex.get_height() * s)
+		var fit := Rect2(Vector2(-size.x / 2.0, ART_TOP + ART_H - size.y), size)
 		# Selection glow when walked near — a soft halo behind the sprite.
 		if _active and not consumed:
-			draw_rect(rect.grow(8.0), Color(1.0, 0.85, 0.2, 0.35), true)
-		draw_texture_rect(encounter.image, rect, false,
+			draw_rect(fit.grow(8.0), Color(1.0, 0.85, 0.2, 0.35), true)
+		draw_texture_rect(tex, fit, false,
 			Color(0.55, 0.55, 0.6) if consumed else Color.WHITE)
 	else:
 		# No art yet: a small type-tinted marker so the spot is still visible.
