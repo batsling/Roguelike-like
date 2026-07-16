@@ -20,3 +20,5 @@ upgraded_cost = -999
 upgraded_effects = [{"type": "status", "status": "power", "stacks": -3, "target": "enemy"}]
 image = ExtResource("2_img")
 exhaust = true
+attack_shape = &"auto_aoe"
+attack_params = {"size": "small"}
