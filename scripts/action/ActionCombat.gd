@@ -322,6 +322,11 @@ var _player_was_hit: bool = false
 #   {time: secs_until_fire, effect: Dictionary, facing: Vector2, mode: "cone"|"projectile"|"aoe"}
 # Built when a card with `hits > 1` resolves; ticked every frame.
 const MULTIHIT_INTERVAL := 0.10
+# Replay addon pacing: each extra play fires as its own delayed, fully visible
+# attack (second projectile, second swing) instead of resolving in the same
+# frame where it overlaps the first and reads as nothing. A touch longer than
+# MULTIHIT_INTERVAL so the repeat reads as "played again", not a multi-hit.
+const REPLAY_INTERVAL := 0.22
 var _pending_hits: Array = []
 
 # Range tuning for ability resolution.
@@ -930,6 +935,10 @@ func _check_doors() -> void:
 func spawn_stairs() -> void:
 	_stairs_active = true
 	_stairs_armed = false
+	# The boss room's loot drop lands at the arena centre before the stairs rise
+	# there — shove anything under the footprint clear so grabbing it never also
+	# triggers the exit.
+	_relocate_loot_off_stairs()
 	queue_redraw()
 
 func _stairs_point() -> Vector2:
@@ -1436,16 +1445,46 @@ func _maybe_drop_ground_loot() -> void:
 	GameState.loot_items.erase(entry)
 	GameState.emit_signal("inventory_changed")
 	# Always drop in the middle of the room; if another drop is already sitting
-	# there, spiral outward a little so they don't perfectly overlap.
+	# there (or the boss-exit stairs occupy the centre), spiral outward a little
+	# so they don't overlap.
 	var center := Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
 	var pos := center
 	var tries := 0
-	while tries < 8 and _ground_loot_near(pos, 28.0):
+	while tries < 8 and (_ground_loot_near(pos, 28.0) or _pos_on_stairs(pos)):
 		var ang: float = _rng.randf() * TAU
-		pos = center + Vector2(cos(ang), sin(ang)) * (32.0 + 14.0 * tries)
+		pos = center + Vector2(cos(ang), sin(ang)) * (STAIRS_CLEARANCE if _stairs_active else 32.0 + 14.0 * tries)
 		tries += 1
 	_ground_loot.append({"entry": entry, "pos": pos})
 	queue_redraw()
+
+# Keep ground loot at least this far from the stairs point, so picking it up
+# never also walks the player onto the exit trigger.
+const STAIRS_CLEARANCE := STAIRS_SIZE + STAIRS_TRIGGER_DIST + 10.0
+
+# True when the boss-exit stairs are up and `pos` sits inside their clearance.
+func _pos_on_stairs(pos: Vector2) -> bool:
+	return _stairs_active and pos.distance_to(_stairs_point()) < STAIRS_CLEARANCE
+
+# Push any already-dropped loot out of the stairs footprint (the boss room drops
+# its loot at the arena centre before the stairs rise there).
+func _relocate_loot_off_stairs() -> void:
+	var moved := false
+	for g in _ground_loot:
+		var pos: Vector2 = g["pos"]
+		if not _pos_on_stairs(pos):
+			continue
+		var dir: Vector2 = pos - _stairs_point()
+		if dir.length_squared() < 1.0:
+			dir = Vector2.from_angle(_rng.randf() * TAU)
+		var out: Vector2 = _stairs_point() + dir.normalized() * STAIRS_CLEARANCE
+		var tries := 0
+		while tries < 8 and _ground_loot_near(out, 28.0):
+			out = _stairs_point() + Vector2.from_angle(_rng.randf() * TAU) * (STAIRS_CLEARANCE + 14.0 * tries)
+			tries += 1
+		g["pos"] = out.clamp(Vector2(24, 24), Vector2(ARENA_W - 24, ARENA_H - 24))
+		moved = true
+	if moved:
+		queue_redraw()
 
 # True if any existing ground-loot drop sits within `dist` of `pos`.
 func _ground_loot_near(pos: Vector2, dist: float) -> bool:
@@ -1539,7 +1578,13 @@ func _draw_ground_loot() -> void:
 		elif kind == "scroll":
 			tex = ScrollSystem.art_texture(Data.get_scroll(StringName(entry.get("id", ""))))
 		if tex != null:
-			DrawUtil.draw_circular_texture(self, pos, 12.0, tex, Color.WHITE)
+			# Draw the item's actual sprite (aspect-fit into a small box) — a
+			# circular center-crop of the mostly-transparent bottle art reads as
+			# just the glow circle.
+			var box := 28.0
+			var scale_f: float = box / maxf(float(tex.get_width()), float(tex.get_height()))
+			var size := Vector2(tex.get_width() * scale_f, tex.get_height() * scale_f)
+			draw_texture_rect(tex, Rect2(pos - size * 0.5, size), false)
 		else:
 			draw_circle(pos, 9.0, Color(0.6, 0.5, 0.85))
 
@@ -1579,9 +1624,15 @@ func _fire_click_card(card: CardData) -> void:
 	GameLog.add("%s." % card.display_name, Color(0.85, 1.0, 0.7))
 	# Replay addon (Duplicator grants it to weapon attacks): fire the card's
 	# effects again N times. replay_count folds native + item-granted Replay.
-	for _i in CardMods.replay_count(card):
-		_resolve_card_effects(card)
-		GameLog.add("%s replays!" % card.display_name, Color(0.7, 1.0, 0.7))
+	# Each replay is queued as a delayed full re-cast so the extra attack is
+	# real and visible (its own projectile / swing), not a same-frame overlap.
+	for i in CardMods.replay_count(card):
+		_pending_hits.append({
+			"time": REPLAY_INTERVAL * float(i + 1),
+			"mode": "replay_cast",
+			"card": card,
+			"is_auto": false,
+		})
 	# Double Tap: the next Attack fired this turn window resolves twice —
 	# one banked stack per doubled Attack.
 	if card.is_attack() and player_actor != null \
@@ -2245,10 +2296,15 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 				var burst_armed: bool = slot.card.is_skill() and player_actor != null \
 					and player_actor.get_status(&"burst") > 0
 				_resolve_card_effects_auto(slot.card)
-				# Replay addon: auto-fired cards replay too.
-				for _r in CardMods.replay_count(slot.card):
-					_resolve_card_effects_auto(slot.card)
-					GameLog.add("%s replays!" % slot.card.display_name, Color(0.7, 1.0, 0.7))
+				# Replay addon: auto-fired cards replay too — queued as delayed
+				# re-casts so the extra attack visibly fires (see REPLAY_INTERVAL).
+				for r in CardMods.replay_count(slot.card):
+					_pending_hits.append({
+						"time": REPLAY_INTERVAL * float(r + 1),
+						"mode": "replay_cast",
+						"card": slot.card,
+						"is_auto": true,
+					})
 				# Double Tap: the next Attack fired this turn window resolves
 				# twice — auto-slot activations count like click casts.
 				if slot.card.is_attack() and player_actor != null \
@@ -3340,10 +3396,17 @@ func _deliver_disc(card: CardData, effects: Array, spec: Dictionary, center: Vec
 # inside it, exactly once. Reuses the disc visual + the shared enemy-effect path.
 func _explode_bolt(card: CardData, center: Vector2, radius: float) -> void:
 	if radius <= 0.0:
-		radius = float(_atk.radius_px.get("medium", 140.0)) if _atk != null else 140.0
+		radius = _default_blast_radius()
 	_show_disc(center, radius)
 	_swing_color = _attack_color_for(card, _swing_color)
 	_apply_enemy_effects(card, _enemy_effects(card), _enemies_in_disc(center, radius))
+
+# Fallback explosion radius: the Medium disc scaled by the library's blast
+# scale, matching what resolve() gives sheet-specced explosive bolts.
+func _default_blast_radius() -> float:
+	if _atk != null:
+		return float(_atk.radius_px.get("medium", 140.0)) * _atk.blast_scale
+	return 70.0
 
 # Corpse Explosion's on-death blast, the action reading (called by
 # Stats.process_corpse_explosion instead of its room-wide sweep): the corpse
@@ -3353,7 +3416,7 @@ func _explode_bolt(card: CardData, center: Vector2, radius: float) -> void:
 # from its death site in turn.
 func corpse_explosion_blast(dead, dmg: int) -> void:
 	var center: Vector2 = _actor_arena_pos(dead)
-	var radius: float = float(_atk.radius_px.get("medium", 140.0)) if _atk != null else 140.0
+	var radius: float = _default_blast_radius()
 	_show_disc(center, radius)
 	_swing_color = Color(0.55, 1.0, 0.45, 0.55)
 	for inst in _enemies_in_disc(center, radius):
@@ -3793,6 +3856,14 @@ func _process_pending_hits(delta: float) -> void:
 					# swing, Dagger Spray's 2nd spread, Blood Magic's later blasts).
 					_deliver_attack_once(p.card, p.effects, p.spec,
 						p.get("facing", player_facing), bool(p.get("is_auto", false)))
+				"replay_cast":
+					# Replay addon: the card plays again in full — a real extra
+					# attack (its own projectile / swing), aimed fresh at fire time.
+					GameLog.add("%s replays!" % p.card.display_name, Color(0.7, 1.0, 0.7))
+					if bool(p.get("is_auto", false)):
+						_resolve_card_effects_auto(p.card)
+					else:
+						_resolve_card_effects(p.card)
 				"swing_hit":
 					# The sweeping blade reached this enemy — strike it now if it's
 					# still alive (it may have died or been knocked out mid-swing).
@@ -4916,6 +4987,13 @@ func _process_projectiles(delta: float) -> void:
 					consumed = true
 		# Out of bounds or expired
 		if not consumed:
+			# Explosive player bolts detonate against the arena walls instead of
+			# fizzling past them — the blast lands clamped onto the wall line.
+			if String(p.owner) == "player" and bool(p.get("explosive", false)) \
+					and (p.pos.x < 0.0 or p.pos.x > ARENA_W or p.pos.y < 0.0 or p.pos.y > ARENA_H):
+				p.pos = p.pos.clamp(Vector2.ZERO, Vector2(ARENA_W, ARENA_H))
+				_explode_bolt(p.get("card"), p.pos, float(p.get("blast_px", 0.0)))
+				consumed = true
 			if p.pos.x < -32 or p.pos.x > ARENA_W + 32 or p.pos.y < -32 or p.pos.y > ARENA_H + 32:
 				consumed = true
 			if p.lifetime <= 0.0:

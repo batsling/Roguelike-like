@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_pok_mon_auto_chess"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/pokemon-auto-chess.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"pok_mon_auto_chess"
+display_name = "Pokémon Auto Chess"
+year = 2021
+type = 1
+games_influenced = Array[StringName]([&"pok_mon_auto_spire"])
+tags = PackedStringArray("pokémon")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Pokemon- Auto Chess.url"
+steam_page = ""

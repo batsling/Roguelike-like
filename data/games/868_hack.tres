@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_868_hack"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/868-hack.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"868_hack"
+display_name = "868-Hack"
+year = 2015
+type = 1
+games_influenced = Array[StringName]([&"868_back"])
+tags = PackedStringArray("traditional")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\868-HACK.url"
+steam_page = "https://store.steampowered.com/app/274700/868HACK/"

@@ -16,5 +16,5 @@ item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
 cover_image = ExtResource("2_cover")
 owned = true
-file_location = ""
-steam_page = ""
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Shiren the Wanderer The Mystery Dungeon of Serpentcoil Island.url"
+steam_page = "https://store.steampowered.com/app/2178480/Shiren_the_Wanderer_The_Mystery_Dungeon_of_Serpentcoil_Island/"

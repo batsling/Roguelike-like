@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_tower_tactics_liberation"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/tower-tactics-liberation.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"tower_tactics_liberation"
+display_name = "Tower Tactics: Liberation"
+year = 2021
+type = 2
+games_influenced = Array[StringName]([&"brawl_tactics_origins"])
+tags = PackedStringArray("tower defense")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Tower Tactics Liberation.url"
+steam_page = "https://store.steampowered.com/app/1709900/Tower_Tactics_Liberation/"
