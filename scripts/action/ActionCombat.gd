@@ -3380,10 +3380,17 @@ func _deliver_disc(card: CardData, effects: Array, spec: Dictionary, center: Vec
 # inside it, exactly once. Reuses the disc visual + the shared enemy-effect path.
 func _explode_bolt(card: CardData, center: Vector2, radius: float) -> void:
 	if radius <= 0.0:
-		radius = float(_atk.radius_px.get("medium", 140.0)) if _atk != null else 140.0
+		radius = _default_blast_radius()
 	_show_disc(center, radius)
 	_swing_color = _attack_color_for(card, _swing_color)
 	_apply_enemy_effects(card, _enemy_effects(card), _enemies_in_disc(center, radius))
+
+# Fallback explosion radius: the Medium disc scaled by the library's blast
+# scale, matching what resolve() gives sheet-specced explosive bolts.
+func _default_blast_radius() -> float:
+	if _atk != null:
+		return float(_atk.radius_px.get("medium", 140.0)) * _atk.blast_scale
+	return 70.0
 
 # Corpse Explosion's on-death blast, the action reading (called by
 # Stats.process_corpse_explosion instead of its room-wide sweep): the corpse
@@ -3393,7 +3400,7 @@ func _explode_bolt(card: CardData, center: Vector2, radius: float) -> void:
 # from its death site in turn.
 func corpse_explosion_blast(dead, dmg: int) -> void:
 	var center: Vector2 = _actor_arena_pos(dead)
-	var radius: float = float(_atk.radius_px.get("medium", 140.0)) if _atk != null else 140.0
+	var radius: float = _default_blast_radius()
 	_show_disc(center, radius)
 	_swing_color = Color(0.55, 1.0, 0.45, 0.55)
 	for inst in _enemies_in_disc(center, radius):
@@ -4956,6 +4963,13 @@ func _process_projectiles(delta: float) -> void:
 					consumed = true
 		# Out of bounds or expired
 		if not consumed:
+			# Explosive player bolts detonate against the arena walls instead of
+			# fizzling past them — the blast lands clamped onto the wall line.
+			if String(p.owner) == "player" and bool(p.get("explosive", false)) \
+					and (p.pos.x < 0.0 or p.pos.x > ARENA_W or p.pos.y < 0.0 or p.pos.y > ARENA_H):
+				p.pos = p.pos.clamp(Vector2.ZERO, Vector2(ARENA_W, ARENA_H))
+				_explode_bolt(p.get("card"), p.pos, float(p.get("blast_px", 0.0)))
+				consumed = true
 			if p.pos.x < -32 or p.pos.x > ARENA_W + 32 or p.pos.y < -32 or p.pos.y > ARENA_H + 32:
 				consumed = true
 			if p.lifetime <= 0.0:

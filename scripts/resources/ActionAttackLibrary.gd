@@ -44,6 +44,9 @@ extends Resource
 @export var radius_px: Dictionary = {
 	"small": 80.0, "medium": 140.0, "large": 215.0,
 }
+# Explosions (explosive-bolt bursts, corpse detonations) use the disc radius of
+# their size word scaled down by this — a full-size disc read as far too big.
+@export var blast_scale: float = 0.5
 
 # Swing arcs by size word. A swing's size sets its wrap as well as its reach:
 #   small  — just the space in front (the strategy grid's 3 front tiles)
@@ -157,7 +160,7 @@ func resolve(card: CardData) -> Dictionary:
 		"sweep": bool(p.get("sweep", false)),
 	}
 	if spec["explosive"]:
-		spec["blast_px"] = _lookup_px(radius_px, size_word, radius_px["medium"])
+		spec["blast_px"] = _lookup_px(radius_px, size_word, radius_px["medium"]) * blast_scale
 
 	match family:
 		"cone":
