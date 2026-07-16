@@ -930,6 +930,10 @@ func _check_doors() -> void:
 func spawn_stairs() -> void:
 	_stairs_active = true
 	_stairs_armed = false
+	# The boss room's loot drop lands at the arena centre before the stairs rise
+	# there — shove anything under the footprint clear so grabbing it never also
+	# triggers the exit.
+	_relocate_loot_off_stairs()
 	queue_redraw()
 
 func _stairs_point() -> Vector2:
@@ -1436,16 +1440,46 @@ func _maybe_drop_ground_loot() -> void:
 	GameState.loot_items.erase(entry)
 	GameState.emit_signal("inventory_changed")
 	# Always drop in the middle of the room; if another drop is already sitting
-	# there, spiral outward a little so they don't perfectly overlap.
+	# there (or the boss-exit stairs occupy the centre), spiral outward a little
+	# so they don't overlap.
 	var center := Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
 	var pos := center
 	var tries := 0
-	while tries < 8 and _ground_loot_near(pos, 28.0):
+	while tries < 8 and (_ground_loot_near(pos, 28.0) or _pos_on_stairs(pos)):
 		var ang: float = _rng.randf() * TAU
-		pos = center + Vector2(cos(ang), sin(ang)) * (32.0 + 14.0 * tries)
+		pos = center + Vector2(cos(ang), sin(ang)) * (STAIRS_CLEARANCE if _stairs_active else 32.0 + 14.0 * tries)
 		tries += 1
 	_ground_loot.append({"entry": entry, "pos": pos})
 	queue_redraw()
+
+# Keep ground loot at least this far from the stairs point, so picking it up
+# never also walks the player onto the exit trigger.
+const STAIRS_CLEARANCE := STAIRS_SIZE + STAIRS_TRIGGER_DIST + 10.0
+
+# True when the boss-exit stairs are up and `pos` sits inside their clearance.
+func _pos_on_stairs(pos: Vector2) -> bool:
+	return _stairs_active and pos.distance_to(_stairs_point()) < STAIRS_CLEARANCE
+
+# Push any already-dropped loot out of the stairs footprint (the boss room drops
+# its loot at the arena centre before the stairs rise there).
+func _relocate_loot_off_stairs() -> void:
+	var moved := false
+	for g in _ground_loot:
+		var pos: Vector2 = g["pos"]
+		if not _pos_on_stairs(pos):
+			continue
+		var dir: Vector2 = pos - _stairs_point()
+		if dir.length_squared() < 1.0:
+			dir = Vector2.from_angle(_rng.randf() * TAU)
+		var out: Vector2 = _stairs_point() + dir.normalized() * STAIRS_CLEARANCE
+		var tries := 0
+		while tries < 8 and _ground_loot_near(out, 28.0):
+			out = _stairs_point() + Vector2.from_angle(_rng.randf() * TAU) * (STAIRS_CLEARANCE + 14.0 * tries)
+			tries += 1
+		g["pos"] = out.clamp(Vector2(24, 24), Vector2(ARENA_W - 24, ARENA_H - 24))
+		moved = true
+	if moved:
+		queue_redraw()
 
 # True if any existing ground-loot drop sits within `dist` of `pos`.
 func _ground_loot_near(pos: Vector2, dist: float) -> bool:
@@ -1539,7 +1573,13 @@ func _draw_ground_loot() -> void:
 		elif kind == "scroll":
 			tex = ScrollSystem.art_texture(Data.get_scroll(StringName(entry.get("id", ""))))
 		if tex != null:
-			DrawUtil.draw_circular_texture(self, pos, 12.0, tex, Color.WHITE)
+			# Draw the item's actual sprite (aspect-fit into a small box) — a
+			# circular center-crop of the mostly-transparent bottle art reads as
+			# just the glow circle.
+			var box := 28.0
+			var scale_f: float = box / maxf(float(tex.get_width()), float(tex.get_height()))
+			var size := Vector2(tex.get_width() * scale_f, tex.get_height() * scale_f)
+			draw_texture_rect(tex, Rect2(pos - size * 0.5, size), false)
 		else:
 			draw_circle(pos, 9.0, Color(0.6, 0.5, 0.85))
 
