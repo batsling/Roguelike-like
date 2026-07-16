@@ -322,6 +322,11 @@ var _player_was_hit: bool = false
 #   {time: secs_until_fire, effect: Dictionary, facing: Vector2, mode: "cone"|"projectile"|"aoe"}
 # Built when a card with `hits > 1` resolves; ticked every frame.
 const MULTIHIT_INTERVAL := 0.10
+# Replay addon pacing: each extra play fires as its own delayed, fully visible
+# attack (second projectile, second swing) instead of resolving in the same
+# frame where it overlaps the first and reads as nothing. A touch longer than
+# MULTIHIT_INTERVAL so the repeat reads as "played again", not a multi-hit.
+const REPLAY_INTERVAL := 0.22
 var _pending_hits: Array = []
 
 # Range tuning for ability resolution.
@@ -1619,9 +1624,15 @@ func _fire_click_card(card: CardData) -> void:
 	GameLog.add("%s." % card.display_name, Color(0.85, 1.0, 0.7))
 	# Replay addon (Duplicator grants it to weapon attacks): fire the card's
 	# effects again N times. replay_count folds native + item-granted Replay.
-	for _i in CardMods.replay_count(card):
-		_resolve_card_effects(card)
-		GameLog.add("%s replays!" % card.display_name, Color(0.7, 1.0, 0.7))
+	# Each replay is queued as a delayed full re-cast so the extra attack is
+	# real and visible (its own projectile / swing), not a same-frame overlap.
+	for i in CardMods.replay_count(card):
+		_pending_hits.append({
+			"time": REPLAY_INTERVAL * float(i + 1),
+			"mode": "replay_cast",
+			"card": card,
+			"is_auto": false,
+		})
 	# Double Tap: the next Attack fired this turn window resolves twice —
 	# one banked stack per doubled Attack.
 	if card.is_attack() and player_actor != null \
@@ -2285,10 +2296,15 @@ func _process_auto_slots(scaled_delta: float, real_delta: float) -> void:
 				var burst_armed: bool = slot.card.is_skill() and player_actor != null \
 					and player_actor.get_status(&"burst") > 0
 				_resolve_card_effects_auto(slot.card)
-				# Replay addon: auto-fired cards replay too.
-				for _r in CardMods.replay_count(slot.card):
-					_resolve_card_effects_auto(slot.card)
-					GameLog.add("%s replays!" % slot.card.display_name, Color(0.7, 1.0, 0.7))
+				# Replay addon: auto-fired cards replay too — queued as delayed
+				# re-casts so the extra attack visibly fires (see REPLAY_INTERVAL).
+				for r in CardMods.replay_count(slot.card):
+					_pending_hits.append({
+						"time": REPLAY_INTERVAL * float(r + 1),
+						"mode": "replay_cast",
+						"card": slot.card,
+						"is_auto": true,
+					})
 				# Double Tap: the next Attack fired this turn window resolves
 				# twice — auto-slot activations count like click casts.
 				if slot.card.is_attack() and player_actor != null \
@@ -3840,6 +3856,14 @@ func _process_pending_hits(delta: float) -> void:
 					# swing, Dagger Spray's 2nd spread, Blood Magic's later blasts).
 					_deliver_attack_once(p.card, p.effects, p.spec,
 						p.get("facing", player_facing), bool(p.get("is_auto", false)))
+				"replay_cast":
+					# Replay addon: the card plays again in full — a real extra
+					# attack (its own projectile / swing), aimed fresh at fire time.
+					GameLog.add("%s replays!" % p.card.display_name, Color(0.7, 1.0, 0.7))
+					if bool(p.get("is_auto", false)):
+						_resolve_card_effects_auto(p.card)
+					else:
+						_resolve_card_effects(p.card)
 				"swing_hit":
 					# The sweeping blade reached this enemy — strike it now if it's
 					# still alive (it may have died or been knocked out mid-swing).
