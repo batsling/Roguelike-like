@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_space_gladiators"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/space-gladiators.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"space_gladiators"
+display_name = "Space Gladiators"
+year = 2019
+type = 0
+games_influenced = Array[StringName]([&"brotato"])
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = false
+file_location = ""
+steam_page = "https://store.steampowered.com/app/1144910/Space_Gladiators"

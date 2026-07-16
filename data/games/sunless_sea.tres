@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_sunless_sea"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://assets/games/sunless-sea.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"sunless_sea"
+display_name = "Sunless Sea"
+year = 2015
+type = 1
+games_influenced = Array[StringName]([&"cultist_simulator"])
+tags = PackedStringArray("maritime")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = false
+file_location = ""
+steam_page = "https://store.steampowered.com/app/304650/SUNLESS_SEA/"

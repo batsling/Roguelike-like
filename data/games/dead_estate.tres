@@ -7,7 +7,7 @@
 script = ExtResource("1_game")
 id = &"dead_estate"
 display_name = "Dead Estate"
-year = 2021
+year = 2020
 type = 0
 games_influenced = Array[StringName]([])
 tags = PackedStringArray("undead")
