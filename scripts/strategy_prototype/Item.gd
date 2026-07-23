@@ -8,6 +8,7 @@ enum ItemType {
 	KEY,
 	GOLD,
 	POTION_LOOT,   # a real PotionData loot drop (carries `potion_id`)
+	SCROLL_LOOT,   # a real ScrollData loot drop (carries `scroll_id`)
 }
 
 var grid_pos: Vector2i = Vector2i.ZERO
@@ -18,6 +19,8 @@ var item_type: ItemType = ItemType.HEALTH_POTION
 var amount: int = 1  # for GOLD piles
 # For POTION_LOOT: the PotionData id this floor drop grants when collected.
 var potion_id: StringName = &""
+# For SCROLL_LOOT: the ScrollData id this floor drop grants when collected.
+var scroll_id: StringName = &""
 
 # Walking onto an auto-pickup item collects it without needing an inventory slot.
 var auto_pickup: bool = false
@@ -80,6 +83,39 @@ static func make_potion_loot(pos: Vector2i, potion: PotionData) -> StrategyItem:
 	it.potion_id = potion.id
 	it.auto_pickup = true   # walked-over potions go straight into the loot belt
 	return it
+
+static func make_scroll_loot(pos: Vector2i, scroll: ScrollData) -> StrategyItem:
+	var it = StrategyItem.new()
+	it.grid_pos = pos
+	it.glyph = "?"
+	it.color = Color(0.6, 0.5, 0.85)
+	it.item_name = "scroll"
+	it.item_type = ItemType.SCROLL_LOOT
+	it.scroll_id = scroll.id
+	it.auto_pickup = true   # walked-over scrolls go straight into the loot belt
+	return it
+
+# A random real consumable ground drop — 50/50 a potion or a scroll from the
+# ported loot tables, mirroring GameState.grant_random_consumable_loot. Falls
+# back to the other type (or a prototype health potion) if a roll comes up empty,
+# so this never returns null. Shared by the dungeon floor spawner and the
+# tactical-combat enemy-loot drop so both drop the same real consumables.
+static func make_random_consumable_loot(pos: Vector2i, rng: RandomNumberGenerator) -> StrategyItem:
+	if rng.randf() < 0.5:
+		var p: PotionData = Data.roll_potion(rng)
+		if p != null:
+			return make_potion_loot(pos, p)
+		var s2: ScrollData = Data.roll_scroll(rng)
+		if s2 != null:
+			return make_scroll_loot(pos, s2)
+		return make_health_potion(pos)
+	var s: ScrollData = Data.roll_scroll(rng)
+	if s != null:
+		return make_scroll_loot(pos, s)
+	var p2: PotionData = Data.roll_potion(rng)
+	if p2 != null:
+		return make_potion_loot(pos, p2)
+	return make_health_potion(pos)
 
 func use(user: StrategyEntity) -> String:
 	match item_type:
