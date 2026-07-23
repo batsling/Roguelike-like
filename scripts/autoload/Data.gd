@@ -7,7 +7,6 @@ var _cards: Dictionary = {}             # StringName -> CardData
 var _items: Dictionary = {}             # StringName -> ItemData
 var _enemies: Dictionary = {}           # StringName -> EnemyData
 var _action_enemies: Dictionary = {}    # StringName -> ActionEnemyData
-var _strategy_enemies: Dictionary = {}  # StringName -> StrategyEnemyData
 var _events: Dictionary = {}            # StringName -> EventData
 var _games: Dictionary = {}             # StringName -> GameData
 var _characters: Dictionary = {}        # StringName -> CharacterData
@@ -16,30 +15,22 @@ var _potions: Dictionary = {}           # StringName -> PotionData
 var _scrolls: Dictionary = {}           # StringName -> ScrollData
 var _encounters: Dictionary = {}        # StringName -> EncounterData
 
-# Single shared config resources mapping turn-based combat concepts to each
-# mode's equivalents — Action (turns->rooms, energy->Haste, draw->auto-slots)
-# and Strategy (energy->empower charge, draw->card-use recharge). Edit the
-# matching data/*_translation.tres to retune; reference via
-# Data.action_translation / Data.strategy_translation from anywhere.
+# Single shared config resource mapping turn-based combat concepts to the
+# Action mode's equivalents (turns->rooms, energy->Haste, draw->auto-slots).
+# Edit data/action_translation.tres to retune; reference via
+# Data.action_translation from anywhere.
 var action_translation: ActionTranslation = null
-var strategy_translation: StrategyTranslation = null
 
 # Per-archetype action-attack tunables (reach/radius/arc/speed/smear look) for
 # the attack-delivery overhaul. Edit data/action_attacks.tres to retune the
 # feel; reference via Data.action_attacks. See ActionAttackLibrary.
 var action_attacks: ActionAttackLibrary = null
 
-# Strategy sibling of action_attacks: per-archetype grid range (tiles) + area
-# footprint for tactical combat. Edit data/strategy_attacks.tres to retune;
-# reference via Data.strategy_attacks. See StrategyAttackLibrary.
-var strategy_attacks: StrategyAttackLibrary = null
-
 func _ready() -> void:
 	_load_dir("res://data/cards/", _cards)
 	_load_dir("res://data/items/", _items)
 	_load_dir("res://data/enemies/", _enemies)
 	_load_dir("res://data/action_enemies/", _action_enemies)
-	_load_dir("res://data/strategy_enemies/", _strategy_enemies)
 	_load_dir("res://data/events/", _events)
 	_load_dir("res://data/games/", _games)
 	_load_dir("res://data/characters/", _characters)
@@ -52,18 +43,12 @@ func _ready() -> void:
 	action_translation = (_load_config("res://data/action_translation.tres") as ActionTranslation)
 	if action_translation == null:
 		action_translation = ActionTranslation.new()
-	strategy_translation = (_load_config("res://data/strategy_translation.tres") as StrategyTranslation)
-	if strategy_translation == null:
-		strategy_translation = StrategyTranslation.new()
 	action_attacks = (_load_config("res://data/action_attacks.tres") as ActionAttackLibrary)
 	if action_attacks == null:
 		action_attacks = ActionAttackLibrary.new()
-	strategy_attacks = (_load_config("res://data/strategy_attacks.tres") as StrategyAttackLibrary)
-	if strategy_attacks == null:
-		strategy_attacks = StrategyAttackLibrary.new()
-	print("[Data] Loaded %d cards, %d items, %d enemies (+%d action, +%d strategy), %d events, %d games, %d characters, %d potions" % [
+	print("[Data] Loaded %d cards, %d items, %d enemies (+%d action), %d events, %d games, %d characters, %d potions" % [
 		_cards.size(), _items.size(), _enemies.size(), _action_enemies.size(),
-		_strategy_enemies.size(), _events.size(), _games.size(), _characters.size(), _potions.size()
+		_events.size(), _games.size(), _characters.size(), _potions.size()
 	])
 	print("[Data] Loaded %d scrolls, %d encounters" % [_scrolls.size(), _encounters.size()])
 
@@ -200,9 +185,6 @@ func get_enemy(id: StringName) -> EnemyData:
 
 func get_action_enemy(id: StringName) -> ActionEnemyData:
 	return _action_enemies.get(id)
-
-func get_strategy_enemy(id: StringName) -> StrategyEnemyData:
-	return _strategy_enemies.get(id)
 
 func get_event(id: StringName) -> EventData:
 	return _events.get(id)
@@ -368,9 +350,6 @@ func all_enemies() -> Array:
 
 func all_action_enemies() -> Array:
 	return _action_enemies.values()
-
-func all_strategy_enemies() -> Array:
-	return _strategy_enemies.values()
 
 func all_events() -> Array:
 	return _events.values()

@@ -31,8 +31,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── menu/              #   main menu, character select, collection, settings
 │   ├── overworld/        #   the influence-graph map you navigate between fights
 │   ├── deckbuilder/      #   Slay-the-Spire-style card combat
-│   ├── action/           #   real-time action-combat mode
-│   └── strategy_prototype/#  grid/strategy combat prototype
+│   └── action/           #   real-time action-combat mode
 │
 ├── scripts/               # All GDScript, mirroring the scenes + shared systems
 │   ├── Main.gd           #   top-level orchestrator: boots a run, swaps scenes
@@ -41,8 +40,6 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── data/             #   generated catalogs (e.g. ReferenceCatalog.gd)
 │   ├── deckbuilder/      #   card-combat logic & UI
 │   ├── action/           #   action-combat logic & UI
-│   ├── strategy/         #   shared strategy systems
-│   ├── strategy_prototype/#  prototype strategy singletons & logic
 │   ├── overworld/        #   map generation and navigation
 │   ├── events/           #   pre-combat D20 event system
 │   ├── menu/             #   menu / collection / settings screens
@@ -61,8 +58,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── stats/            #   StatDefinition (the stat dispatcher's vocabulary)
 │   ├── games/            #   GameData — the ~600 real games that form the map
 │   ├── encounters/       #   EncounterData — overworld shops/deals/teleporters/challenges
-│   ├── action_translation.tres
-│   └── strategy_translation.tres
+│   └── action_translation.tres
 │
 ├── images/                # ★ All sprite/art PNGs — the single drop folder (below)
 ├── assets/                # Imported game-cover art used by the overworld map
@@ -80,8 +76,6 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_item_tres.py
 │   ├── generate_enemy_tres.py     #   data/enemies from the enemiesD sheet
 │   ├── build_enemiesD_sheet.py    #   (re)builds the enemiesD sheet itself
-│   ├── generate_strategy_enemy_tres.py # data/strategy_enemies from enemiesS
-│   ├── build_enemiesS_sheet.py    #   (re)builds the enemiesS sheet itself
 │   ├── add_status_addon_rows.py   #   adds status/addon rows to the sheets
 │   ├── import-games-godot.py
 │   └── import-reference-godot.py
@@ -151,8 +145,7 @@ To add or replace art:
 ### Autoload singletons
 
 Globals are registered in `project.godot` under `[autoload]` and live in
-`scripts/autoload/` (plus the strategy-prototype singletons under
-`scripts/strategy_prototype/`). They are always loaded and survive scene changes.
+`scripts/autoload/`. They are always loaded and survive scene changes.
 
 | Autoload | Responsibility |
 |---|---|
@@ -167,8 +160,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Settings` | Run-independent preferences (e.g. game-filter) persisted to `user://settings.cfg`. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified). |
-| `DevTools` | Developer overlay (press `` ` ``) to grant any card/curse/item, or tick up to 5 enemies and start a test combat in any engine (deckbuilder / action / strategy via the combat-type selector). Gated on `Settings.dev_mode`. |
-| `StrategyState` / `StrategyTurnManager` / `StrategyLog` / `StrategyCombatSession` | Singletons for the strategy-combat prototype. |
+| `DevTools` | Developer overlay (press `` ` ``) to grant any card/curse/item, or tick up to 5 enemies and start a test combat in either engine (deckbuilder / action via the combat-type selector). Gated on `Settings.dev_mode`. |
 
 ### Game modes & scene flow
 
@@ -183,8 +175,12 @@ full scenes (no overlaying one mode on another).
   card combat (hand, energy, draw/discard/exhaust).
 - **Action combat** (`scenes/action/`) — a real-time variant where "turns" run on a
   timer rather than discrete turn structure.
-- **Strategy prototype** (`scenes/strategy_prototype/`) — an in-progress grid /
-  strategy combat experiment with its own autoload singletons.
+
+There are **two genres** on the map: **Action** games play the action floor, and
+**Strategy** games play the deckbuilder combat. Strategy absorbed the former
+**Deckbuilder** genre — those games are now Strategy-typed and carry a
+`deckbuilder` **tag** (the same pattern the `traditional` tag uses), so the map's
+non-Action games all resolve to the card combat.
 
 ### Data as Godot Resources
 
@@ -193,7 +189,7 @@ with their schemas defined in `scripts/resources/`:
 
 `CardData`, `ItemData`, `CurseData`, `EnemyData`, `ActionEnemyData`,
 `EventData`, `CharacterData`, `GameData`, `SpellData`, `StatDefinition`,
-`AbilityCooldownConfig`, `ActionTranslation`, `StrategyTranslation`.
+`AbilityCooldownConfig`, `ActionTranslation`.
 
 `Data.gd` loads them all on startup and serves them by id, so gameplay code never
 hardcodes content — it asks `Data` for it.
@@ -218,8 +214,6 @@ editing the sheet, then review the diff):
 | `generate_encounter_tres.py` | `data/encounters/*.tres` from the `encounters` sheet (overworld shops/deals/teleporters/challenges) |
 | `generate_enemy_tres.py` | `data/enemies/*.tres` from the `enemiesD` sheet (+ copies enemy art into `assets/enemies/`) |
 | `build_enemiesD_sheet.py` | (re)builds the deckbuilder-enemy `enemiesD` sheet from the legacy `enemies` rows |
-| `generate_strategy_enemy_tres.py` | `data/strategy_enemies/*.tres` from the `enemiesS` sheet (Strategy / tactical-grid enemies) |
-| `build_enemiesS_sheet.py` | (re)builds the Strategy-enemy `enemiesS` sheet from its `ENEMIES` list |
 | `add_status_addon_rows.py` | adds/updates status + addon rows in `statusesnew` / `addonsnew` |
 | `import-games-godot.py` | `data/games/*.tres` + copies covers into `assets/games/` |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
@@ -243,6 +237,19 @@ Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
 
+- **Deckbuilder + Strategy merged into one "Strategy" genre** — the grid/tactical
+  ("mewgenics") strategy combat was cut wholesale (its scenes, singletons,
+  `scripts/strategy*`, `StrategyEnemyData`/`StrategyTranslation`/
+  `StrategyAttackLibrary`, the `enemiesS` generators, `data/strategy_*`, and the
+  strategy test suites), leaving **two genres: Action and Strategy**. The former
+  **Deckbuilder** games are now **Strategy-typed with a `deckbuilder` tag** — the
+  same pattern the `traditional` tag uses — so every non-Action game routes to the
+  card combat (`Main._on_portal_entered` dropped its Strategy branch). The
+  choose-your-start panel and map legend drop to two genres
+  (`RunGraph.NUM_START_OPTIONS = 2`); the DevTools combat-type selector and the
+  economy sim lose their strategy paths. The 151 re-typed games regenerate from
+  `tools/Roguelikes.xlsx` via `import-games-godot.py`. The pre-cut grid combat is
+  preserved on the `strategy-grid-combat-archive` git tag.
 - **Overworld encounters (interactive)** — encounters now appear and play on the
   overworld. Each area spawns one encounter (rarity-weighted from the eligible
   pool) as a sprite on the left or right; walking near it pops a **press [E]**
@@ -428,8 +435,8 @@ re-run them after pulling and review the diff.
 
 ## Roadmap / future plans
 
-The Godot port already covers the core loop (overworld map, deckbuilder,
-action & tactical-grid combat, data-driven enemies per mode, weighted/
+The Godot port already covers the core loop (overworld map, deckbuilder and
+action combat, data-driven enemies per mode, weighted/
 difficulty-scaled encounters, events, curses, items, status effects — including
 the Permanent/Temporary status addons — curse-synergy items, loot **potions**,
 the shop, escape phase, characters, saves, collection, and game verification).

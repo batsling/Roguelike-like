@@ -6,12 +6,13 @@ extends Node
 # prices can be balanced against real income.
 #
 # It reuses the game's real systems rather than re-deriving them:
-#   * floor structure   — the real DeckbuilderMap / IsaacFloorGenerator /
-#                          strategy Map generators,
-#   * enemy composition  — the real EnemySpawner / ActionEnemySpawner and the
-#                          strategy weight-budget roller,
+#   * floor structure   — the real DeckbuilderMap / IsaacFloorGenerator,
+#   * enemy composition  — the real EnemySpawner / ActionEnemySpawner,
 #   * gold formulas      — CombatEconomy (the single source of truth the live
 #                          combat scenes also use).
+#
+# There are two combat styles now: the deckbuilder mini-map (which every genre
+# except Action plays, Strategy included) and the Action floor.
 #
 # It does NOT simulate turn-by-turn combat (winning/HP) — economy balancing only
 # needs income, and income is a function of floor structure + spawns + the gold
@@ -27,7 +28,6 @@ extends Node
 
 const DeckMap := preload("res://scripts/deckbuilder/DeckbuilderMap.gd")
 const IsaacGen := preload("res://scripts/action/IsaacFloorGenerator.gd")
-const StratMap := preload("res://scripts/strategy_prototype/Map.gd")
 
 var _rng := RandomNumberGenerator.new()
 
@@ -52,8 +52,8 @@ func _ready() -> void:
 	var mean_run_gold: float = _report_whole_run_economy(runs)
 	_report_shop_affordability(mean_run_gold)
 
-	print("\n(Modelling notes: gold is income only — no HP/loss modelled. Deckbuilder")
-	print(" & strategy floors walk the shortest start->boss/stairs path and pay the")
+	print("\n(Modelling notes: gold is income only — no HP/loss modelled. The")
+	print(" deckbuilder floor walks the shortest start->boss path and pays the")
 	print(" combats on it; action rooms roll a chance-based coin drop per clear.")
 	print(" Section reward is granted once per game beaten. Item/event/King-Bomber")
 	print(" gold is excluded.)")
@@ -73,7 +73,7 @@ func _report_per_floor_economy(samples: int) -> void:
 	print("------------------------------------------------------------")
 	print(" Tier  Style        Combats  Elites   CombatGold   +Section   FloorTotal")
 	for tier in range(4):
-		for style in ["deckbuilder", "action", "strategy"]:
+		for style in ["deckbuilder", "action"]:
 			var acc_combats := 0.0
 			var acc_elites := 0.0
 			var acc_gold := 0.0
@@ -100,8 +100,6 @@ func _sim_floor(style: String, tier: int) -> Dictionary:
 			return _sim_deckbuilder_floor(tier)
 		"action":
 			return _sim_action_floor(tier)
-		"strategy":
-			return _sim_strategy_floor(tier)
 	return {"combats": 0, "elites": 0, "combat_gold": 0}
 
 # --- Deckbuilder: generate the real mini-map, walk a random path to the elite,
@@ -154,33 +152,6 @@ func _sim_action_floor(tier: int) -> Dictionary:
 			gold += CombatEconomy.roll_action_combat_gold(tier, _rng)
 	return {"combats": combats, "elites": elites, "combat_gold": gold}
 
-# --- Strategy: generate the real dungeon, count combat rooms on the shortest
-# start->stairs path, roll each room's encounter gold via CombatEconomy.
-func _sim_strategy_floor(tier: int) -> Dictionary:
-	GameState.games_played = tier * RunDifficulty.GAMES_PER_TIER
-	StrategyState.dungeon_floor = tier + 1
-	var m := StratMap.new()
-	m.generate(_rng)
-	var combats := 0
-	var gold := 0
-	# The strategy floor is free-roam; the player fights the combat rooms they
-	# enter walking to the stairs. Model that as the combat rooms whose rect the
-	# shortest room-graph path start->stairs passes through. Room adjacency isn't
-	# exposed, so approximate the "committed" set as the combat rooms nearest the
-	# start->stairs line (all combat rooms is an upper bound). We use all combat
-	# rooms weighted by an engagement factor to stay between "just the path" and
-	# "clear everything".
-	var engagement := 0.6   # fraction of combat rooms a typical run actually fights
-	for rd in m.room_data:
-		if str(rd.tag) != "combat":
-			continue
-		if _rng.randf() > engagement:
-			continue
-		combats += 1
-		for kind in rd.encounter:
-			gold += CombatEconomy.roll_strategy_enemy_gold(str(kind), _rng)
-	return {"combats": combats, "elites": 0, "combat_gold": gold}
-
 # BFS over the room-neighbour graph, returning the index path from `start` to
 # `goal` inclusive (empty if unreachable). Rooms carry `neighbors: {Dir: index}`.
 func _bfs_room_path(rooms: Dictionary, start: int, goal: int) -> Array:
@@ -222,8 +193,8 @@ func _report_whole_run_economy(runs: int) -> float:
 	print(" Catalog game-type mix: " + str(type_weights))
 
 	var totals := {"combat": 0.0, "section": 0.0, "total": 0.0, "games": 0.0}
-	var by_style := {"deckbuilder": 0.0, "action": 0.0, "strategy": 0.0}
-	var style_games := {"deckbuilder": 0.0, "action": 0.0, "strategy": 0.0}
+	var by_style := {"deckbuilder": 0.0, "action": 0.0}
+	var style_games := {"deckbuilder": 0.0, "action": 0.0}
 	var min_total := 1e12
 	var max_total := -1.0
 	for _r in range(runs):
@@ -253,7 +224,7 @@ func _report_whole_run_economy(runs: int) -> float:
 		totals.total / runs, min_total, max_total])
 	print("")
 	print(" Combat gold contribution by style (per run, and per floor of that style):")
-	for style in ["deckbuilder", "action", "strategy"]:
+	for style in ["deckbuilder", "action"]:
 		var per_run: float = float(by_style[style]) / runs
 		var per_floor: float = (float(by_style[style]) / float(style_games[style])) if float(style_games[style]) > 0 else 0.0
 		print("   %-12s %7.1f / run     %6.1f / floor" % [style, per_run, per_floor])
@@ -261,15 +232,13 @@ func _report_whole_run_economy(runs: int) -> float:
 
 # Type weights for the real game catalog, as { style_string: count }.
 func _catalog_type_weights() -> Dictionary:
-	var out := {"deckbuilder": 0, "action": 0, "strategy": 0}
+	var out := {"deckbuilder": 0, "action": 0}
 	for g in Data.all_games():
 		match int(g.type):
 			GameData.GameType.ACTION:
 				out.action += 1
-			GameData.GameType.STRATEGY:
-				out.strategy += 1
 			_:
-				# Deckbuilder / traditional / everything else routes to the
+				# Every non-Action genre — Strategy included — routes to the
 				# deckbuilder mini-map (see Main._on_portal_entered).
 				out.deckbuilder += 1
 	return out

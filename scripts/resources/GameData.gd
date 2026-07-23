@@ -3,19 +3,24 @@ extends Resource
 
 # A node on the influence graph — represents a real video game.
 
+# Two genres are live: ACTION (its own arena) and STRATEGY (which plays the
+# deckbuilder combat and absorbs the former Deckbuilder games via a "deckbuilder"
+# tag). DECKBUILDER and TRADITIONAL remain as dormant enum values so existing
+# resource ints never renumber — no game is authored as either any more.
 enum GameType { ACTION, STRATEGY, DECKBUILDER, TRADITIONAL }
 
 @export var id: StringName                # canonical key (lowercase slug)
 @export var display_name: String
 @export var year: int = 0
-@export var type: GameType = GameType.DECKBUILDER
+@export var type: GameType = GameType.STRATEGY
 
 # Outgoing influence edges — names (StringName ids) of games this one influenced.
 # The graph is directed; build the inverse at load time if needed.
 @export var games_influenced: Array[StringName] = []
 
-# Tags layered on top of type (e.g. "traditional", "horror", "platformer").
-# Drives flavor without owning the combat mode.
+# Tags layered on top of type (e.g. "deckbuilder", "traditional", "horror").
+# Drives flavor without owning the combat mode — Strategy-typed games tagged
+# "deckbuilder" are the former Deckbuilder genre, folded in here.
 @export var tags: PackedStringArray = PackedStringArray()
 
 # Optional pool overrides — restrict which enemies/items spawn at this floor.

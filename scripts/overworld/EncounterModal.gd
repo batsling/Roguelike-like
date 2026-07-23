@@ -623,8 +623,9 @@ func _pick_unconnected_game(engine: String) -> GameData:
 func _engine_to_type(engine: String) -> int:
 	match engine:
 		"action": return GameData.GameType.ACTION
-		"strategy": return GameData.GameType.STRATEGY
-		"deckbuilder": return GameData.GameType.DECKBUILDER
+		# Strategy and the former Deckbuilder genre are one genre now; both
+		# resolve to Strategy (which plays the deckbuilder combat).
+		"strategy", "deckbuilder": return GameData.GameType.STRATEGY
 		_: return GameData.GameType.ACTION
 
 # --------------------------------------------------------------------------
