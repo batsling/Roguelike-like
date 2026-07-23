@@ -1219,7 +1219,9 @@ func _show_end_overlay(victory: bool) -> void:
 	var btn := Button.new()
 	btn.position = Vector2(120, 180)
 	btn.size = Vector2(240, 56)
-	btn.text = "Next combat" if victory else "Main Menu"
+	# On defeat the button leads to the run-level Game Over screen (shown by
+	# the overworld once this combat closes), not straight to the menu.
+	btn.text = "Next combat" if victory else "Continue"
 	btn.pressed.connect(func(): _close(victory))
 	panel.add_child(btn)
 

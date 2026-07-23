@@ -851,9 +851,9 @@ func _show_game_over_overlay() -> void:
 	# Main can run the standard defeat flow (run restart, etc).
 	# Standalone: in-place restart matching the prototype loop.
 	if _embedded:
-		# Losing the run drops straight back to the main menu (the project Main
-		# routes a closed-as-defeat floor through Overworld._handle_defeat).
-		btn.text = "Main Menu"
+		# Losing the run routes a closed-as-defeat floor through the project
+		# Main to Overworld._handle_defeat, which shows the Game Over screen.
+		btn.text = "Continue"
 		btn.pressed.connect(_close_defeat)
 	else:
 		btn.text = "Restart run"

@@ -55,6 +55,7 @@ var _active_portal: PortalNode = null
 # CanvasLayer (layer 1) would render its log in front of their buttons.
 var _modal_layer: CanvasLayer = null
 var _win_overlay: Control = null
+var _game_over_overlay: Control = null
 var _verification_modal: Control = null
 var _dash_modal: Control = null
 # Winged Boots (overworld active): the same-year picker modal + the item being
@@ -483,7 +484,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	# straight to the main menu.
 
 func _can_act() -> bool:
-	return _verification_modal == null and _win_overlay == null and _dash_modal == null \
+	return _verification_modal == null and _win_overlay == null \
+		and _game_over_overlay == null and _dash_modal == null \
 		and _map_view == null and _section_reward_layer == null \
 		and _chest_reward_layer == null and _winged_modal == null \
 		and _door_preview == null and _encounter_modal == null \
@@ -1040,14 +1042,16 @@ func _handle_victory_for(game_id: StringName) -> void:
 	_show_verification_modal(gd)
 
 func _handle_defeat() -> void:
+	GameState.phase = GameState.Phase.DEAD
 	GameLog.add("---- Run ended ----", Color(0.9, 0.7, 0.7))
 	# Delete the named save so a dead run can't be reloaded.
 	if GameState.save_name != "":
 		SaveSystem.delete_named(GameState.save_name)
 	SaveSystem.delete_slot(0)
-	# Defeat sends the player back to the main menu — picking another
+	# Losing all HP ends the run with a Game Over screen. The screen's
+	# button then sends the player back to the main menu — picking another
 	# start/amulet pair is a menu action, not an overworld one.
-	get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
+	_show_game_over_overlay()
 
 func _save_run() -> bool:
 	# Prefer the run's named save (set on New Game). Fall back to slot 0
@@ -1677,7 +1681,7 @@ func _show_win_overlay() -> void:
 	var title := Label.new()
 	title.position = Vector2(20, 32)
 	title.size = Vector2(600, 64)
-	title.text = "RUN COMPLETE"
+	title.text = "YOU WIN!"
 	title.add_theme_font_size_override("font_size", 44)
 	title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1686,7 +1690,7 @@ func _show_win_overlay() -> void:
 	var subtitle := Label.new()
 	subtitle.position = Vector2(20, 108)
 	subtitle.size = Vector2(600, 32)
-	subtitle.text = "You reached the Amulet."
+	subtitle.text = "You claimed the Amulet and completed the run."
 	subtitle.add_theme_font_size_override("font_size", 18)
 	subtitle.add_theme_color_override("font_color", Color(0.9, 0.9, 1.0))
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1720,4 +1724,80 @@ func _on_new_run_pressed() -> void:
 		_win_overlay = null
 	# New run flow is the menu's job — start/amulet/character selection
 	# happen there, not here.
+	get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
+
+# ------------------------------------------------------------------
+# Game Over overlay — shown when the player loses all HP in any combat.
+# Mirrors the win overlay so a lost run gets the same run-level send-off
+# (stats recap + a button back to the menu) instead of an abrupt cut to
+# the main menu. Every combat mode funnels its defeat through
+# _handle_defeat, so this single overlay covers deckbuilder, action, and
+# strategy fights alike.
+# ------------------------------------------------------------------
+
+func _show_game_over_overlay() -> void:
+	if _game_over_overlay != null:
+		return
+	_player.set_input_locked(true)
+
+	var overlay := Control.new()
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.05, 0.02, 0.02, 0.88)
+	overlay.add_child(dim)
+
+	var panel := Panel.new()
+	panel.size = Vector2(640, 360)
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	overlay.add_child(panel)
+
+	var title := Label.new()
+	title.position = Vector2(20, 32)
+	title.size = Vector2(600, 64)
+	title.text = "GAME OVER"
+	title.add_theme_font_size_override("font_size", 44)
+	title.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.position = Vector2(20, 108)
+	subtitle.size = Vector2(600, 32)
+	subtitle.text = "You fell in combat."
+	subtitle.add_theme_font_size_override("font_size", 18)
+	subtitle.add_theme_color_override("font_color", Color(0.95, 0.9, 0.9))
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(subtitle)
+
+	var stats := Label.new()
+	stats.position = Vector2(20, 160)
+	stats.size = Vector2(600, 64)
+	stats.text = "Games beaten: %d   Gold: %d" % [
+		GameState.total_games_beaten,
+		GameState.gold,
+	]
+	stats.add_theme_font_size_override("font_size", 16)
+	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stats.autowrap_mode = TextServer.AUTOWRAP_WORD
+	panel.add_child(stats)
+
+	var btn := Button.new()
+	btn.position = Vector2(220, 270)
+	btn.size = Vector2(200, 56)
+	btn.text = "Main Menu"
+	btn.pressed.connect(_on_game_over_pressed)
+	panel.add_child(btn)
+
+	_modal_layer.add_child(overlay)
+	_game_over_overlay = overlay
+
+func _on_game_over_pressed() -> void:
+	if _game_over_overlay != null:
+		_game_over_overlay.queue_free()
+		_game_over_overlay = null
+	# The run is already over (save deleted in _handle_defeat) — a new run
+	# is picked from the menu, same as the win overlay's flow.
 	get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
