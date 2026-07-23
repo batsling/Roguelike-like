@@ -54,8 +54,9 @@ func _ready() -> void:
 
 	print("\n(Modelling notes: gold is income only — no HP/loss modelled. Deckbuilder")
 	print(" & strategy floors walk the shortest start->boss/stairs path and pay the")
-	print(" combats on it; action combats pay 0 gold by design. Section reward is")
-	print(" granted once per game beaten. Item/event/King-Bomber gold is excluded.)")
+	print(" combats on it; action rooms roll a chance-based coin drop per clear.")
+	print(" Section reward is granted once per game beaten. Item/event/King-Bomber")
+	print(" gold is excluded.)")
 	get_tree().quit(0)
 
 func _env(key: String, def: String) -> String:
@@ -135,7 +136,7 @@ func _sim_deckbuilder_floor(tier: int) -> Dictionary:
 	return {"combats": combats, "elites": elites, "combat_gold": gold}
 
 # --- Action: generate the real floor, count combat rooms on the shortest
-# start->boss path. Action combats pay NO gold, so combat_gold is always 0.
+# start->boss path. Each cleared room has a CombatEconomy chance to drop gold.
 func _sim_action_floor(tier: int) -> Dictionary:
 	var tv: int = RunDifficulty.tier_value(tier)
 	var floor_data: Dictionary = IsaacGen.new().generate(_rng.randi(), tv)
@@ -145,13 +146,16 @@ func _sim_action_floor(tier: int) -> Dictionary:
 		int(floor_data.get("boss_index", -1)))
 	var combats := 0
 	var elites := 0
+	var gold := 0
 	for idx in path:
 		var rt: int = int(floor_data.rooms[idx].type)
 		if rt == IsaacGen.RoomType.NORMAL:
 			combats += 1
+			gold += CombatEconomy.roll_action_combat_gold(tier, _rng)
 		elif rt == IsaacGen.RoomType.BOSS:
 			elites += 1
-	return {"combats": combats, "elites": elites, "combat_gold": 0}
+			gold += CombatEconomy.roll_action_combat_gold(tier, _rng)
+	return {"combats": combats, "elites": elites, "combat_gold": gold}
 
 # --- Strategy: generate the real dungeon, count combat rooms on the shortest
 # start->stairs path, roll each room's encounter gold via CombatEconomy.

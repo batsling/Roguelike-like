@@ -506,12 +506,18 @@ func start_room(enemy_ids: Array, room_doors: Array, is_safe: bool, hp_mult: flo
 	_slow_remaining = 0.0
 	_room_resolved = false
 	# Uncollected floor drops are NOT lost when the player leaves: bank each one
-	# back into the carried loot so it's kept (it left loot_items when it dropped).
+	# back (consumables into carried loot, gold straight into the purse) so it's
+	# kept — it left loot_items / never entered the purse when it dropped.
+	var banked_loot := false
 	for g in _ground_loot:
 		var e = g.get("entry")
 		if e is Dictionary:
-			GameState.loot_items.append(e)
-	if not _ground_loot.is_empty():
+			if String(e.get("type", "")) == "gold":
+				GameState.change_gold(int(e.get("amount", 0)))
+			else:
+				GameState.loot_items.append(e)
+				banked_loot = true
+	if banked_loot:
 		GameState.emit_signal("inventory_changed")
 	_ground_loot.clear()
 	_potion_q_held = false
@@ -1457,6 +1463,26 @@ func _maybe_drop_ground_loot() -> void:
 	_ground_loot.append({"entry": entry, "pos": pos})
 	queue_redraw()
 
+# Chance-based gold drop after a cleared room, mirroring the consumable drop
+# above: a coin lands on the floor (as a `{type:"gold", amount}` ground-loot
+# entry) for the player to walk over. Amount + chance live in CombatEconomy.
+func _maybe_drop_gold() -> void:
+	var amount: int = CombatEconomy.roll_action_combat_gold(RunDifficulty.current_tier(), _rng)
+	if amount <= 0:
+		return
+	# Place it like a consumable drop: near the arena centre, nudged off any
+	# existing drop or the boss-exit stairs so pickups don't overlap or trip the
+	# exit trigger.
+	var center := Vector2(ARENA_W * 0.5, ARENA_H * 0.5)
+	var pos := center
+	var tries := 0
+	while tries < 8 and (_ground_loot_near(pos, 28.0) or _pos_on_stairs(pos)):
+		var ang: float = _rng.randf() * TAU
+		pos = center + Vector2(cos(ang), sin(ang)) * (STAIRS_CLEARANCE if _stairs_active else 32.0 + 14.0 * tries)
+		tries += 1
+	_ground_loot.append({"entry": {"type": "gold", "amount": amount}, "pos": pos})
+	queue_redraw()
+
 # Keep ground loot at least this far from the stairs point, so picking it up
 # never also walks the player onto the exit trigger.
 const STAIRS_CLEARANCE := STAIRS_SIZE + STAIRS_TRIGGER_DIST + 10.0
@@ -1500,10 +1526,18 @@ func _process_ground_loot() -> void:
 		var g: Dictionary = _ground_loot[i]
 		if player_pos.distance_to(g["pos"]) <= GROUND_LOOT_PICKUP_DIST:
 			var entry: Dictionary = g["entry"]
+			var kind := String(entry.get("type", ""))
+			# Gold pickups go straight to the purse — they aren't carried loot.
+			if kind == "gold":
+				var amt: int = int(entry.get("amount", 0))
+				GameState.change_gold(amt)
+				_ground_loot.remove_at(i)
+				_show_pickup_toast(null, "Picked up: %d gold" % amt, Color(1.0, 0.85, 0.35))
+				queue_redraw()
+				continue
 			GameState.loot_items.append(entry)
 			GameState.emit_signal("inventory_changed")
 			_ground_loot.remove_at(i)
-			var kind := String(entry.get("type", ""))
 			if kind == "potion":
 				var p: PotionData = Data.get_potion(StringName(entry.get("id", "")))
 				_show_pickup_toast(PotionSystem.art_texture(p),
@@ -1570,9 +1604,15 @@ func _draw_ground_loot() -> void:
 		var entry: Dictionary = g["entry"]
 		# Glow so the drop is easy to spot on the floor.
 		var pulse: float = 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.005)
+		var kind := String(entry.get("type", ""))
+		if kind == "gold":
+			# A gold coin: pulsing halo + a filled disc with a lighter rim.
+			draw_circle(pos, 15.0, Color(1.0, 0.85, 0.3, 0.14 + 0.16 * pulse))
+			draw_circle(pos, 8.0, Color(0.95, 0.78, 0.25))
+			draw_arc(pos, 8.0, 0.0, TAU, 20, Color(1.0, 0.95, 0.55), 2.0)
+			continue
 		draw_circle(pos, 16.0, Color(1.0, 0.95, 0.5, 0.12 + 0.12 * pulse))
 		var tex: Texture2D = null
-		var kind := String(entry.get("type", ""))
 		if kind == "potion":
 			tex = PotionSystem.art_texture(Data.get_potion(StringName(entry.get("id", ""))))
 		elif kind == "scroll":
@@ -5415,6 +5455,7 @@ func _check_combat_end() -> void:
 			# Each cleared combat room is one finished fight (Burning Blood, …).
 			_fire_item_triggers("combat_ended")
 			_maybe_drop_ground_loot()
+			_maybe_drop_gold()
 			emit_signal("room_cleared")
 		# Stay in PLAYING so the player can walk out through a door.
 		return

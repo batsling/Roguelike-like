@@ -14,9 +14,9 @@ extends RefCounted
 # The three combat styles pay very differently on purpose:
 #   * Deckbuilder — a FLAT per-combat purse that steps up with run progress,
 #     multiplied for elite/boss fights.
-#   * Action      — NO per-combat gold; action floors earn only the post-game
-#     section reward (plus incidental item/King-Bomber gold). Kept explicit here
-#     so the asymmetry is visible and tunable in one place.
+#   * Action      — a CHANCE-BASED gold drop after each cleared room (a coin
+#     that lands on the arena floor for the player to walk over, like the
+#     consumable ground loot), amount scaled by run tier.
 #   * Strategy    — per-enemy-kill drops rolled from each archetype's table
 #     (data-driven via StrategyEnemyData, falling back to STRATEGY_ENEMY_GOLD).
 
@@ -32,6 +32,16 @@ const ELITE_GOLD_MULT := 1.5
 # --- Section reward: granted once per game beaten, by run difficulty tier --
 # Indexed by RunDifficulty.Tier (LOW, MEDIUM, HIGH, INSANE).
 const SECTION_GOLD_BY_TIER := [10, 15, 25, 35]
+
+# --- Action: chance-based per-room gold drop ------------------------------
+# After each cleared action room a coin may drop on the floor (roll_action_
+# combat_gold). Chance is a flat probability; the amount is a tier-scaled range
+# so later floors pay more. Modest by design — action combats also drop
+# consumables and still collect the post-game section reward.
+const ACTION_GOLD_DROP_CHANCE := 0.5
+# Indexed by RunDifficulty.Tier (LOW, MEDIUM, HIGH, INSANE).
+const ACTION_GOLD_MIN_BY_TIER := [6, 10, 16, 22]
+const ACTION_GOLD_MAX_BY_TIER := [14, 20, 30, 40]
 
 # --- Shop item prices: ONE coherent scale for every shop -------------------
 # Indexed by item rarity (Common, Uncommon, Rare, Epic, Legendary). Both the
@@ -66,6 +76,15 @@ static func deckbuilder_combat_gold(total_games_beaten: int, is_elite: bool) -> 
 # Section-clear reward for the given run tier (clamped into range).
 static func section_reward_gold(tier: int) -> int:
 	return SECTION_GOLD_BY_TIER[clampi(tier, 0, SECTION_GOLD_BY_TIER.size() - 1)]
+
+# Rolls the gold dropped by one cleared action room: 0 when the chance roll
+# fails, otherwise a tier-scaled amount. Callers drop the returned amount on the
+# floor as a pickup.
+static func roll_action_combat_gold(tier: int, rng: RandomNumberGenerator) -> int:
+	if rng.randf() >= ACTION_GOLD_DROP_CHANCE:
+		return 0
+	var t: int = clampi(tier, 0, ACTION_GOLD_MIN_BY_TIER.size() - 1)
+	return rng.randi_range(int(ACTION_GOLD_MIN_BY_TIER[t]), int(ACTION_GOLD_MAX_BY_TIER[t]))
 
 # Shop price for an item of `rarity` (0..4), the same in every shop. Clamped so
 # an out-of-range rarity falls back to the nearest end of the scale.

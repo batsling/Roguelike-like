@@ -32,6 +32,42 @@ func test_section_reward_clamps_out_of_range() -> void:
 	assert_eq(CombatEconomy.section_reward_gold(-5), 10)
 	assert_eq(CombatEconomy.section_reward_gold(99), 35)
 
+# --- Action per-room gold drop --------------------------------------------
+
+func test_action_gold_zero_or_within_tier_range() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	for tier in range(4):
+		var lo: int = int(CombatEconomy.ACTION_GOLD_MIN_BY_TIER[tier])
+		var hi: int = int(CombatEconomy.ACTION_GOLD_MAX_BY_TIER[tier])
+		for _i in range(300):
+			var g: int = CombatEconomy.roll_action_combat_gold(tier, rng)
+			assert_true(g == 0 or (g >= lo and g <= hi),
+				"tier %d roll %d must be 0 or within [%d,%d]" % [tier, g, lo, hi])
+
+func test_action_gold_can_drop_and_can_miss() -> void:
+	# Over many rolls at a 50% chance we see both a zero and a non-zero.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var saw_zero := false
+	var saw_gold := false
+	for _i in range(200):
+		if CombatEconomy.roll_action_combat_gold(1, rng) == 0:
+			saw_zero = true
+		else:
+			saw_gold = true
+	assert_true(saw_zero, "some rolls should miss")
+	assert_true(saw_gold, "some rolls should drop gold")
+
+func test_action_gold_tier_clamps() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	# Out-of-range tiers clamp to the nearest end instead of erroring.
+	for _i in range(50):
+		var g: int = CombatEconomy.roll_action_combat_gold(99, rng)
+		assert_true(g == 0 or (g >= int(CombatEconomy.ACTION_GOLD_MIN_BY_TIER[-1])
+			and g <= int(CombatEconomy.ACTION_GOLD_MAX_BY_TIER[-1])))
+
 # --- Unified shop prices --------------------------------------------------
 
 func test_shop_price_by_rarity() -> void:
