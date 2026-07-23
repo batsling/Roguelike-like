@@ -12,18 +12,18 @@ extends RefCounted
 const MIN_PATH_LENGTH := 5
 const MAX_PATH_LENGTH := 8
 const EARLY_LAYERS_FOR_SCORE := 3
-const NUM_START_OPTIONS := 3
+const NUM_START_OPTIONS := 2
 # Minimum outgoing connections a game needs to qualify as a "start".
 # Falls back to any-game on sparse graphs (see pick_amulet_and_starts).
 const MIN_START_CONNECTIONS := 3
 
 # Game-type ordering used to pick "one start per type" for the
-# choose-your-start panel. Matches the JS GAME_TYPES list.
+# choose-your-start panel. The game ships two live genres: Action and
+# Strategy (the latter now houses the former Deckbuilder games as a
+# "deckbuilder" tag, and all Strategy games play the deckbuilder combat).
 const TYPE_ORDER: Array = [
 	GameData.GameType.ACTION,
-	GameData.GameType.TRADITIONAL,
 	GameData.GameType.STRATEGY,
-	GameData.GameType.DECKBUILDER,
 ]
 
 # ---------------------------------------------------------------------------
@@ -325,11 +325,11 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 		if not best.is_empty():
 			best_per_type[type_val] = best
 
-	# Guarantee three *distinct genres* on the panel. The strict pass above
-	# only keeps a type when it has a start inside the MIN..MAX path window;
-	# sparse graphs can leave us with fewer than three. For every type still
-	# missing, relax the path-length window and take the best-scoring reachable
-	# start of that genre so the player always gets three different-genre picks.
+	# Guarantee one start per *distinct genre* on the panel. The strict pass
+	# above only keeps a type when it has a start inside the MIN..MAX path
+	# window; sparse graphs can leave us short. For every type still missing,
+	# relax the path-length window and take the best-scoring reachable start of
+	# that genre so the player always gets a pick from each live genre.
 	if best_per_type.size() < NUM_START_OPTIONS:
 		for type_val in TYPE_ORDER:
 			if best_per_type.has(type_val):

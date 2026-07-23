@@ -122,15 +122,10 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, LEGENDARY }
 @export var range_class: StringName = &""
 
 # Attack delivery (the archetype overhaul). When set, this is the SINGLE source
-# of truth for how the card lands, in BOTH combat modes:
-#   - Action: drives real-time hit-detection and the on-screen smear (see
-#     ActionAttackLibrary), superseding the old damage_type/range inference.
-#   - Strategy: drives the tile RANGE the attack can be aimed within and the
-#     grid FOOTPRINT it covers — directional shapes rotate to face the aimed
-#     tile, and damaging effects hit whoever stands in the footprint (friendly
-#     fire included). See StrategyAttackLibrary + docs/strategy-attack-translation.md.
-# The same archetype + params power both, so a card authored once reads the same
-# way in either mode. Authored in the spreadsheet's Attack column (the
+# of truth for how the card lands in action combat: it drives real-time
+# hit-detection and the on-screen smear (see ActionAttackLibrary), superseding
+# the old damage_type/range inference.
+# Authored in the spreadsheet's Attack column (the
 # repurposed Range column), parsed by tools/generate_card_tres.py.
 #   attack_shape  — one of: poke, swing, smash, nova, projectile, lob, beam,
 #                   homing, smite, auto_aoe, bounce. Empty -> legacy inference.
@@ -139,9 +134,8 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, LEGENDARY }
 #                   "pierce": true, "crescent": true}. The bare size word maps
 #                   to reach for poke/swing/projectile/beam/homing and to AOE
 #                   radius for smash/nova/lob/auto_aoe. See
-#                   docs/action-attack-translation.md (Action),
-#                   docs/strategy-attack-translation.md (Strategy), and the two
-#                   *AttackLibrary scripts.
+#                   docs/action-attack-translation.md and the
+#                   ActionAttackLibrary script.
 @export var attack_shape: StringName = &""
 @export var attack_params: Dictionary = {}
 

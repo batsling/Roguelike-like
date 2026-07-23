@@ -280,8 +280,6 @@ func _build_legend(root: Control, vp: Vector2) -> void:
 	var items := [
 		["Action", RunGraph.type_color(GameData.GameType.ACTION)],
 		["Strategy", RunGraph.type_color(GameData.GameType.STRATEGY)],
-		["Deckbuilder", RunGraph.type_color(GameData.GameType.DECKBUILDER)],
-		["Traditional", RunGraph.type_color(GameData.GameType.TRADITIONAL)],
 		["You", ACCENT],
 		["Amulet", AMULET_COL],
 		["Next step", NEXT_COL],

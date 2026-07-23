@@ -10,7 +10,6 @@ const COMBAT_SCENE := preload("res://scenes/deckbuilder/DeckbuilderCombat.tscn")
 const MAP_SCENE := preload("res://scenes/deckbuilder/GameMap.tscn")
 const ACTION_FLOOR_SCENE := preload("res://scenes/action/ActionFloor.tscn")
 const ACTION_COMBAT_SCENE := preload("res://scenes/action/ActionCombat.tscn")
-const STRATEGY_FLOOR_SCENE := preload("res://scenes/strategy_prototype/StrategyPrototype.tscn")
 
 var _current_scene: Node = null
 # Carried across an Overworld free + reinstantiate so the new
@@ -82,13 +81,6 @@ func _apply_pending_start_bonus() -> void:
 		GameData.GameType.STRATEGY:
 			GameState.change_gold(40)
 			GameLog.add("Starting bonus: +40 gold.", Color(0.7, 1.0, 0.7))
-		GameData.GameType.DECKBUILDER:
-			# Card reward modal lands when the run scene gets a generic
-			# reward-overlay system. For now grant a starter card so the
-			# bonus is observable in the deck count.
-			GameLog.add("Starting bonus: card reward (placeholder).", Color(0.85, 0.9, 1.0))
-		GameData.GameType.TRADITIONAL:
-			GameLog.add("Starting bonus: item reward (placeholder).", Color(0.85, 0.9, 1.0))
 		GameData.GameType.ACTION:
 			GameLog.add("Starting bonus: weapon reward (placeholder).", Color(0.85, 0.9, 1.0))
 
@@ -105,14 +97,11 @@ func _show_overworld() -> void:
 	_swap_to(ow)
 
 func _on_portal_entered(game_id: StringName) -> void:
-	# Route by the target game's type. Strategy games get a one-floor
-	# roguelike via the strategy prototype; action games get the action
-	# floor; everything else falls back to the deckbuilder mini-map.
+	# Route by the target game's type. Action games get the action floor;
+	# every other genre (Strategy included) plays the deckbuilder mini-map.
 	var g: GameData = Data.get_game(game_id)
 	if g != null and g.type == GameData.GameType.ACTION:
 		_show_action_floor(game_id)
-	elif g != null and g.type == GameData.GameType.STRATEGY:
-		_show_strategy_floor(game_id)
 	else:
 		_show_deckbuilder_map(game_id)
 
@@ -126,13 +115,6 @@ func _show_deckbuilder_map(game_id: StringName) -> void:
 func _show_action_floor(game_id: StringName) -> void:
 	GameState.phase = GameState.Phase.COMBAT
 	var floor_scene: ActionFloor = ACTION_FLOOR_SCENE.instantiate()
-	floor_scene.target_game_id = game_id
-	floor_scene.closed.connect(_on_floor_closed)
-	_swap_to(floor_scene)
-
-func _show_strategy_floor(game_id: StringName) -> void:
-	GameState.phase = GameState.Phase.COMBAT
-	var floor_scene: Node = STRATEGY_FLOOR_SCENE.instantiate()
 	floor_scene.target_game_id = game_id
 	floor_scene.closed.connect(_on_floor_closed)
 	_swap_to(floor_scene)
@@ -167,10 +149,10 @@ func _on_combat_closed(was_victory: bool, target_game_id: StringName) -> void:
 
 # Dev/testing entry: drop straight into a one-off combat against an explicit
 # enemy list (DevTools "Enemies" tab). `combat_type` picks which engine to
-# launch — "deckbuilder" (default), "action", or "strategy" — and the ids must
-# be drawn from that engine's roster (EnemyData / ActionEnemyData /
-# StrategyEnemyData respectively). Skips the reward/verification flow on close —
-# it just returns to the overworld — so it never touches run progress.
+# launch — "deckbuilder" (default) or "action" — and the ids must be drawn from
+# that engine's roster (EnemyData / ActionEnemyData respectively). Skips the
+# reward/verification flow on close — it just returns to the overworld — so it
+# never touches run progress.
 func dev_start_combat(enemy_ids: Array, combat_type: String = "deckbuilder") -> void:
 	if enemy_ids.is_empty():
 		return
@@ -184,14 +166,6 @@ func dev_start_combat(enemy_ids: Array, combat_type: String = "deckbuilder") -> 
 			# _ready and emits `closed` on win/loss, which we route home.
 			arena.closed.connect(_on_dev_combat_closed)
 			_swap_to(arena)
-		"strategy":
-			var floor_scene: Node = STRATEGY_FLOOR_SCENE.instantiate()
-			floor_scene.target_game_id = &""
-			# The strategy floor builds a dungeon + player as usual, then drops
-			# straight into a battle against this encounter (see dev_encounter).
-			floor_scene.dev_encounter = enemy_ids.duplicate()
-			floor_scene.closed.connect(_on_dev_combat_closed)
-			_swap_to(floor_scene)
 		_:
 			var combat: DeckbuilderCombat = COMBAT_SCENE.instantiate()
 			combat.target_game_id = &""

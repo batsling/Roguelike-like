@@ -11,9 +11,9 @@ extends Node
 # lands in the run deck, not the live piles, so to see a curse fire you add it on
 # the overworld and then enter a combat. The Enemies tab starts a combat against
 # the ticked roster (mid-run only) via Main.dev_start_combat; a combat-type
-# selector picks which engine — deckbuilder, action, or strategy — and the roster
-# list switches to that engine's enemies (EnemyData / ActionEnemyData /
-# StrategyEnemyData) accordingly.
+# selector picks which engine — deckbuilder or action — and the roster
+# list switches to that engine's enemies (EnemyData / ActionEnemyData)
+# accordingly.
 
 const TOGGLE_KEY := KEY_QUOTELEFT     # the ` / ~ key
 const MAX_RESULTS := 150
@@ -33,7 +33,7 @@ var _hint: Label = null               # per-tab one-line instruction
 # Enemies tab: which combat engine Start Combat launches. Drives both the roster
 # shown (EnemyData / ActionEnemyData / StrategyEnemyData) and the type handed to
 # Main.dev_start_combat. The selector row is only visible on the Enemies tab.
-var _combat_type: String = "deckbuilder"   # "deckbuilder" | "action" | "strategy"
+var _combat_type: String = "deckbuilder"   # "deckbuilder" | "action"
 var _ctype_row: HBoxContainer = null
 
 const _TYPE_NAMES := ["Attack", "Skill", "Power", "Dice", "Status", "Curse", "Training"]
@@ -183,8 +183,7 @@ func _build() -> void:
 	var ctype_group := ButtonGroup.new()
 	for spec in [
 			{"label": "Deckbuilder", "type": "deckbuilder"},
-			{"label": "Action", "type": "action"},
-			{"label": "Strategy", "type": "strategy"}]:
+			{"label": "Action", "type": "action"}]:
 		var b := Button.new()
 		b.text = spec["label"]
 		b.toggle_mode = true
@@ -326,16 +325,14 @@ func _collect(query: String) -> Array:
 			var curse: CurseData = cu
 			out.append({"label": label, "add": _add_curse.bind(curse)})
 	elif _tab == "enemies":
-		# Roster depends on which engine the selector targets. The three data
-		# classes (EnemyData / ActionEnemyData / StrategyEnemyData) all expose
-		# id / display_name / difficulty / weight / hp_min / hp_max, so the row
-		# build is shared via duck typing.
+		# Roster depends on which engine the selector targets. Both data
+		# classes (EnemyData / ActionEnemyData) expose id / display_name /
+		# difficulty / weight / hp_min / hp_max, so the row build is shared
+		# via duck typing.
 		var roster: Array
 		match _combat_type:
 			"action":
 				roster = Data.all_action_enemies()
-			"strategy":
-				roster = Data.all_strategy_enemies()
 			_:
 				roster = Data.all_enemies()
 		for en in roster:
