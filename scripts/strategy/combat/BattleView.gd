@@ -51,22 +51,13 @@ const BACKDROP := Color(0.04, 0.035, 0.07, 1.0)
 # Per-archetype gold drop. Rolled when an enemy dies; the gold goes onto the
 # battlefield and persists back to the source room on combat end. Enemies never
 # drop items. Source of truth is the enemiesS sheet (StrategyEnemyData's gold_
-# fields); this const is the fallback for kinds not on the sheet.
-const ENEMY_LOOT_TABLE := {
-	"snake":       { "gold_chance": 0.50, "gold_min":  3, "gold_max":  8 },
-	"rattlesnake": { "gold_chance": 0.60, "gold_min":  5, "gold_max": 10 },
-	"hobgoblin":   { "gold_chance": 0.60, "gold_min":  4, "gold_max":  9 },
-	"troll":       { "gold_chance": 0.90, "gold_min": 12, "gold_max": 24 },
-}
+# fields), with CombatEconomy.STRATEGY_ENEMY_GOLD as the fallback for kinds not
+# on the sheet — the same table the economy simulator reads.
 
 # Gold table for `kind`, preferring the data-driven StrategyEnemyData fields and
-# falling back to ENEMY_LOOT_TABLE. Empty dict = no drop.
+# falling back to CombatEconomy.STRATEGY_ENEMY_GOLD. Empty dict = no drop.
 func _loot_table_for(kind: String) -> Dictionary:
-	var d: StrategyEnemyData = Data.get_strategy_enemy(StringName(kind)) if Data else null
-	if d != null and (d.gold_chance > 0.0 or d.gold_max > 0):
-		return { "gold_chance": d.gold_chance, "gold_min": d.gold_min,
-			"gold_max": d.gold_max }
-	return ENEMY_LOOT_TABLE.get(kind, {})
+	return CombatEconomy.strategy_enemy_gold_table(kind)
 
 # What the player is currently selecting in the grid view.
 enum Pending { NONE, AIM, POTION_AIM }

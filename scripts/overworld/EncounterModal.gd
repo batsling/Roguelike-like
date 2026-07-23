@@ -26,7 +26,9 @@ signal elite_combat_requested(engine: String, resume: Dictionary)
 # Movement (no preceding combat, unused today) / generic teleport request.
 signal teleport_requested(spec: Dictionary)
 
-const PRICE_BY_RARITY := [50, 80, 120, 175, 250]
+# Item prices come from CombatEconomy.SHOP_ITEM_PRICE_BY_RARITY (the single
+# economy scale shared with the deckbuilder merchant), so identical rarities
+# cost the same in both shops.
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 
 var _enc: EncounterData = null
@@ -335,7 +337,7 @@ func _refresh_shop_reroll_button() -> void:
 
 func _shop_tile(index: int, item: ItemData, discount: int) -> Control:
 	var ridx: int = clampi(int(item.rarity), 0, RARITY_NAMES.size() - 1)
-	var base: int = PRICE_BY_RARITY[ridx]
+	var base: int = CombatEconomy.shop_item_price(ridx)
 	var price: int = int(round(base * (100 - discount) / 100.0))
 	var tile := Panel.new()
 	tile.custom_minimum_size = Vector2(150, 210)

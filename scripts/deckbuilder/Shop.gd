@@ -7,7 +7,8 @@ extends Control
 
 signal closed
 
-const ITEM_PRICES := {0: 8, 1: 15, 2: 25, 3: 35, 4: 40}
+# Item prices come from CombatEconomy.SHOP_ITEM_PRICE_BY_RARITY (the single
+# economy scale shared with the overworld encounter shop) — see shop_item_price.
 const CARD_PRICES := {0: 0, 1: 15, 2: 30, 3: 50, 4: 80}
 const REMOVE_PRICE := 50
 # Potions sell unidentified, priced by rarity index (Common..Legendary).
@@ -60,7 +61,7 @@ func _roll_inventory() -> void:
 	for picked in Data.roll_weighted_items(3, _rng):
 		_items.append({
 			"item": picked,
-			"price": int(ITEM_PRICES.get(picked.rarity, 10)),
+			"price": CombatEconomy.shop_item_price(picked.rarity),
 			"purchased": false,
 		})
 

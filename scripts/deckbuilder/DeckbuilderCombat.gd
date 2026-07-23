@@ -34,7 +34,7 @@ var dev_combat: bool = false
 # Tuning constants for the elite multiplier — easy to dial in one place.
 const ELITE_HP_MULT := 1.5
 const ELITE_POWER_BONUS := 3
-const ELITE_GOLD_MULT := 1.5
+# Elite gold multiplier now lives in CombatEconomy (the economy source of truth).
 
 # ------------------------------------------------------------------
 # Combat state — referenced by EffectSystem handlers via ctx.scene
@@ -1131,19 +1131,13 @@ func _check_combat_end() -> bool:
 		return true
 	return false
 
-# Gold reward tiers match the JS combat-flow (20 / 35 / 55g) keyed on
-# total_games_beaten so harder runs pay better. Elite multiplier lands
-# alongside the elite floor in Phase 2 commit 10.
+# Gold reward tiers keyed on total_games_beaten so harder runs pay better, with
+# an elite multiplier. The formula lives in CombatEconomy (the single source of
+# truth the economy simulator shares) — see scripts/runtime/CombatEconomy.gd.
 var _last_gold_award: int = 0
 
 func _award_combat_gold() -> void:
-	var amt: int = 20
-	if GameState.total_games_beaten >= 10:
-		amt = 55
-	elif GameState.total_games_beaten >= 5:
-		amt = 35
-	if is_elite:
-		amt = int(amt * ELITE_GOLD_MULT)
+	var amt: int = CombatEconomy.deckbuilder_combat_gold(GameState.total_games_beaten, is_elite)
 	_last_gold_award = amt
 	GameState.change_gold(amt)
 	GameLog.add("You loot %d gold." % amt, Color(1.0, 0.9, 0.3))

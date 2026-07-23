@@ -85,10 +85,9 @@ var _encounter_area_id: StringName = &""
 var _pending_reward_game_id: StringName = &""
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
-# Gold by run difficulty tier — matches the HTML prototype's per-victory table
-# (Low 10 / Medium 15 / High 25 / Insane 35), keyed off the run tier. Awarded
-# by the item-reward screen that follows the "Play the real game" verification.
-const SECTION_GOLD_BY_TIER := [10, 15, 25, 35]
+# Section-clear gold by run difficulty tier lives in CombatEconomy (the economy
+# source of truth); awarded by the item-reward screen that follows the "Play the
+# real game" verification.
 
 func _ready() -> void:
 	_rng.randomize()
@@ -1587,7 +1586,7 @@ func _after_verification() -> void:
 
 func _show_section_reward(_game_id: StringName) -> void:
 	var tier: int = RunDifficulty.current_tier()
-	var gold: int = SECTION_GOLD_BY_TIER[clampi(tier, 0, SECTION_GOLD_BY_TIER.size() - 1)]
+	var gold: int = CombatEconomy.section_reward_gold(tier)
 	var layer := CanvasLayer.new()
 	layer.layer = 100
 	add_child(layer)
