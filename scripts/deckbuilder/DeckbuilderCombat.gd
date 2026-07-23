@@ -34,7 +34,7 @@ var dev_combat: bool = false
 # Tuning constants for the elite multiplier — easy to dial in one place.
 const ELITE_HP_MULT := 1.5
 const ELITE_POWER_BONUS := 3
-const ELITE_GOLD_MULT := 1.5
+# Elite gold multiplier now lives in CombatEconomy (the economy source of truth).
 
 # ------------------------------------------------------------------
 # Combat state — referenced by EffectSystem handlers via ctx.scene
@@ -1131,19 +1131,14 @@ func _check_combat_end() -> bool:
 		return true
 	return false
 
-# Gold reward tiers match the JS combat-flow (20 / 35 / 55g) keyed on
-# total_games_beaten so harder runs pay better. Elite multiplier lands
-# alongside the elite floor in Phase 2 commit 10.
+# Gold reward scales with the run's difficulty tier so harder runs pay better,
+# with an elite multiplier. The formula lives in CombatEconomy (the single
+# source of truth the economy simulator shares, tuned so every combat style
+# earns the same per floor) — see scripts/runtime/CombatEconomy.gd.
 var _last_gold_award: int = 0
 
 func _award_combat_gold() -> void:
-	var amt: int = 20
-	if GameState.total_games_beaten >= 10:
-		amt = 55
-	elif GameState.total_games_beaten >= 5:
-		amt = 35
-	if is_elite:
-		amt = int(amt * ELITE_GOLD_MULT)
+	var amt: int = CombatEconomy.deckbuilder_combat_gold(RunDifficulty.current_tier(), is_elite)
 	_last_gold_award = amt
 	GameState.change_gold(amt)
 	GameLog.add("You loot %d gold." % amt, Color(1.0, 0.9, 0.3))
@@ -1219,7 +1214,9 @@ func _show_end_overlay(victory: bool) -> void:
 	var btn := Button.new()
 	btn.position = Vector2(120, 180)
 	btn.size = Vector2(240, 56)
-	btn.text = "Next combat" if victory else "Main Menu"
+	# On defeat the button leads to the run-level Game Over screen (shown by
+	# the overworld once this combat closes), not straight to the menu.
+	btn.text = "Next combat" if victory else "Continue"
 	btn.pressed.connect(func(): _close(victory))
 	panel.add_child(btn)
 

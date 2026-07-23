@@ -51,22 +51,13 @@ const BACKDROP := Color(0.04, 0.035, 0.07, 1.0)
 # Per-archetype gold drop. Rolled when an enemy dies; the gold goes onto the
 # battlefield and persists back to the source room on combat end. Enemies never
 # drop items. Source of truth is the enemiesS sheet (StrategyEnemyData's gold_
-# fields); this const is the fallback for kinds not on the sheet.
-const ENEMY_LOOT_TABLE := {
-	"snake":       { "gold_chance": 0.50, "gold_min":  3, "gold_max":  8 },
-	"rattlesnake": { "gold_chance": 0.60, "gold_min":  5, "gold_max": 10 },
-	"hobgoblin":   { "gold_chance": 0.60, "gold_min":  4, "gold_max":  9 },
-	"troll":       { "gold_chance": 0.90, "gold_min": 12, "gold_max": 24 },
-}
+# fields), with CombatEconomy.STRATEGY_ENEMY_GOLD as the fallback for kinds not
+# on the sheet — the same table the economy simulator reads.
 
 # Gold table for `kind`, preferring the data-driven StrategyEnemyData fields and
-# falling back to ENEMY_LOOT_TABLE. Empty dict = no drop.
+# falling back to CombatEconomy.STRATEGY_ENEMY_GOLD. Empty dict = no drop.
 func _loot_table_for(kind: String) -> Dictionary:
-	var d: StrategyEnemyData = Data.get_strategy_enemy(StringName(kind)) if Data else null
-	if d != null and (d.gold_chance > 0.0 or d.gold_max > 0):
-		return { "gold_chance": d.gold_chance, "gold_min": d.gold_min,
-			"gold_max": d.gold_max }
-	return ENEMY_LOOT_TABLE.get(kind, {})
+	return CombatEconomy.strategy_enemy_gold_table(kind)
 
 # What the player is currently selecting in the grid view.
 enum Pending { NONE, AIM, POTION_AIM }
@@ -154,6 +145,13 @@ var _eot_hand_size: int = 0
 
 var _loot_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
+# A slain enemy has this chance to drop a real consumable (potion/scroll) on its
+# tile, mirroring the action arena's ground-loot drop. Capped at one consumable
+# per combat via `_dropped_consumable` so a big fight isn't a loot piñata; the
+# drop is pickable during the fight and, if left, syncs back to the dungeon floor.
+const CONSUMABLE_DROP_CHANCE := 0.4
+var _dropped_consumable: bool = false
+
 func _ready() -> void:
 	layer = 10
 	_loot_rng.randomize()
@@ -208,6 +206,7 @@ func set_encounter(room_data, encounter: Array, battle_map = null, turn_manager 
 
 	max_energy = GameState.max_energy
 	_player_turn_count = 0
+	_dropped_consumable = false
 	_init_deck()
 
 	_info_label.text = _format_info(room_data, encounter)
@@ -1219,6 +1218,20 @@ func _collect_item(entry: Dictionary) -> String:
 				_battle_map.remove_item_entry(entry)
 				Notifications.notify("Picked up a key.", Color(0.95, 0.85, 0.45))
 				return "+key"
+			StrategyItem.ItemType.POTION_LOOT:
+				GameState.add_potion_loot(item.potion_id)
+				_battle_map.remove_item_entry(entry)
+				var p: PotionData = Data.get_potion(item.potion_id)
+				var pname: String = PotionSystem.display_name(p) if p != null else "Potion"
+				Notifications.notify("Picked up a potion: %s." % pname, PotionSystem.POTION_COLOR)
+				return "+%s" % pname
+			StrategyItem.ItemType.SCROLL_LOOT:
+				GameState.add_scroll_loot(item.scroll_id)
+				_battle_map.remove_item_entry(entry)
+				var s: ScrollData = Data.get_scroll(item.scroll_id)
+				var sname: String = ScrollSystem.display_name(s) if s != null else "Scroll"
+				Notifications.notify("Picked up a scroll: %s." % sname, ScrollSystem.SCROLL_COLOR)
+				return "+%s" % sname
 			_:
 				_battle_map.remove_item_entry(entry)
 				Notifications.notify("Picked up %s." % str(item.item_name), Color(0.7, 0.85, 1.0))
@@ -2552,14 +2565,19 @@ func leech_to_player(amount: int) -> void:
 func _drop_enemy_loot(unit) -> void:
 	if _battle_map == null:
 		return
-	var table = _loot_table_for(str(unit.unit_name))
-	if table.is_empty():
-		return
-	# Enemies drop gold only — never items.
 	var pos: Vector2i = unit.position
-	if _loot_rng.randf() < float(table.gold_chance):
+	# Gold drop (per the enemy's archetype table).
+	var table = _loot_table_for(str(unit.unit_name))
+	if not table.is_empty() and _loot_rng.randf() < float(table.gold_chance):
 		var amt: int = _loot_rng.randi_range(int(table.gold_min), int(table.gold_max))
 		_battle_map.add_dropped_item(StrategyItem.make_gold(pos, amt), pos)
+	# Consumable drop: a chance-based real potion/scroll on the slain enemy's
+	# tile, capped at one per combat. Pickable during the fight; if the player
+	# never reaches it, _sync_loot_back carries it to the dungeon floor.
+	if not _dropped_consumable and _loot_rng.randf() < CONSUMABLE_DROP_CHANCE:
+		_dropped_consumable = true
+		var drop: StrategyItem = StrategyItem.make_random_consumable_loot(pos, _loot_rng)
+		_battle_map.add_dropped_item(drop, pos)
 	_grid_view.notify_units_changed()
 
 func _check_battle_end_after_effect() -> void:
