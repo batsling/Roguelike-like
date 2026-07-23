@@ -18,9 +18,9 @@ func test_deckbuilder_gold_scales_with_tier() -> void:
 
 func test_deckbuilder_elite_multiplier() -> void:
 	# Elite pays 1.5x the tier purse (int-truncated).
-	assert_eq(CombatEconomy.deckbuilder_combat_gold(0, true), 22)   # 15 * 1.5 = 22.5 -> 22
-	assert_eq(CombatEconomy.deckbuilder_combat_gold(1, true), 30)   # 20 * 1.5
-	assert_eq(CombatEconomy.deckbuilder_combat_gold(3, true), 42)   # 28 * 1.5
+	assert_eq(CombatEconomy.deckbuilder_combat_gold(0, true), 19)   # 13 * 1.5 = 19.5 -> 19
+	assert_eq(CombatEconomy.deckbuilder_combat_gold(1, true), 27)   # 18 * 1.5
+	assert_eq(CombatEconomy.deckbuilder_combat_gold(3, true), 37)   # 25 * 1.5 = 37.5 -> 37
 
 # --- Section reward -------------------------------------------------------
 
@@ -109,13 +109,15 @@ func test_roll_strategy_gold_within_range_or_zero() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var t: Dictionary = CombatEconomy.strategy_enemy_gold_table("troll")
-	var lo: int = int(t.get("gold_min", 0))
-	var hi: int = int(t.get("gold_max", 0))
+	# The roll is scaled (and rounded) by the global STRATEGY_GOLD_MULT, so the
+	# payout range shrinks accordingly.
+	var lo: int = int(round(int(t.get("gold_min", 0)) * CombatEconomy.STRATEGY_GOLD_MULT))
+	var hi: int = int(round(int(t.get("gold_max", 0)) * CombatEconomy.STRATEGY_GOLD_MULT))
 	for _i in range(200):
 		var g: int = CombatEconomy.roll_strategy_enemy_gold("troll", rng)
-		# Either the drop failed (0) or it lands within the table's range.
+		# Either the drop failed (0) or it lands within the scaled table range.
 		assert_true(g == 0 or (g >= lo and g <= hi),
-			"roll %d must be 0 or within [%d,%d]" % [g, lo, hi])
+			"roll %d must be 0 or within scaled [%d,%d]" % [g, lo, hi])
 
 func test_roll_unknown_kind_is_zero() -> void:
 	var rng := RandomNumberGenerator.new()

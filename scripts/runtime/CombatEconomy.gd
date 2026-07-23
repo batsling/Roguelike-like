@@ -26,13 +26,15 @@ extends RefCounted
 # Indexed by RunDifficulty.Tier (LOW, MEDIUM, HIGH, INSANE). This is the
 # balanced amount every combat style aims to pay per game floor (excluding the
 # section reward). The per-style tables below are tuned to hit it; verify with
-# tools/economy_sim after changing anything here.
-const COMBAT_GOLD_BY_TIER := [72, 95, 110, 135]
+# tools/economy_sim after changing anything here. Trimmed ~12% below the earlier
+# 72/95/110/135 curve to bring whole-run income down ~10% (the fixed section
+# reward is unchanged, so combat carries the full cut).
+const COMBAT_GOLD_BY_TIER := [63, 84, 97, 119]
 
 # --- Deckbuilder: flat per-combat purse by tier ---------------------------
 # Per non-elite combat; the elite/boss pays ELITE_GOLD_MULT×. A floor's ~3.3
 # combats + 1 elite (= ~4.8 purses) land on COMBAT_GOLD_BY_TIER.
-const DECKBUILDER_COMBAT_GOLD_BY_TIER := [15, 20, 23, 28]
+const DECKBUILDER_COMBAT_GOLD_BY_TIER := [13, 18, 20, 25]
 const ELITE_GOLD_MULT := 1.5
 
 # --- Section reward: granted once per game beaten, by run difficulty tier --
@@ -44,25 +46,28 @@ const SECTION_GOLD_BY_TIER := [10, 15, 25, 35]
 # action floor's ROOM COUNT grows with tier at almost exactly the rate
 # COMBAT_GOLD_BY_TIER does, so a FLAT coin makes each floor's total track the
 # target across all tiers on its own — no per-tier scaling needed. Chance-based
-# on purpose (action rooms also drop consumables). Mean coin ~40 over ~3.5-6.4
+# on purpose (action rooms also drop consumables). Mean coin ~35 over ~3.5-6.4
 # fights/floor at 50% each lands on the target.
 const ACTION_GOLD_DROP_CHANCE := 0.5
-const ACTION_GOLD_MIN := 26
-const ACTION_GOLD_MAX := 54
+const ACTION_GOLD_MIN := 23
+const ACTION_GOLD_MAX := 47
 
 # --- Shop item prices: ONE coherent scale for every shop -------------------
 # Indexed by item rarity (Common, Uncommon, Rare, Epic, Legendary). Every shop —
 # the deckbuilder merchant, the action-floor merchant, and the overworld
 # encounter shop — prices items from this one table, so identical rarities cost
 # the same wherever the player buys them. Sized against measured run income (see
-# tools/economy_sim): a mean run (~640g with balanced combat gold) affords ~4
-# Legendaries- or ~8 Rares-worth of shopping — meaningful but limited across all
-# its shops (items compete with potions / card removal).
-const SHOP_ITEM_PRICE_BY_RARITY := [25, 45, 75, 115, 160]
+# tools/economy_sim): with run income trimmed ~10%, the low/mid tiers
+# (Common/Uncommon/Rare) are nudged up so a run affords a meaningful-but-limited
+# handful of items across all its shops (items compete with potions / removal).
+const SHOP_ITEM_PRICE_BY_RARITY := [30, 55, 85, 115, 160]
 
 # --- Strategy: per-archetype enemy-kill gold drop -------------------------
 # Fallback for kinds not on the enemiesS sheet; StrategyEnemyData's gold_ fields
-# win when present (see strategy_enemy_gold_table).
+# win when present (see strategy_enemy_gold_table). A global multiplier trims
+# every strategy drop (data-driven .tres included) so the style stays on the
+# ~12%-lower COMBAT_GOLD_BY_TIER target without editing the enemy data.
+const STRATEGY_GOLD_MULT := 0.88
 const STRATEGY_ENEMY_GOLD := {
 	"snake":       { "gold_chance": 0.50, "gold_min":  3, "gold_max":  8 },
 	"rattlesnake": { "gold_chance": 0.60, "gold_min":  5, "gold_max": 10 },
@@ -117,4 +122,7 @@ static func roll_strategy_enemy_gold(kind: String, rng: RandomNumberGenerator) -
 		return 0
 	if rng.randf() >= float(table.get("gold_chance", 0.0)):
 		return 0
-	return rng.randi_range(int(table.get("gold_min", 0)), int(table.get("gold_max", 0)))
+	var raw: int = rng.randi_range(int(table.get("gold_min", 0)), int(table.get("gold_max", 0)))
+	# Round (not truncate) so small drops aren't over-cut — the style's many
+	# low-value drops would otherwise fall well past the intended ~12%.
+	return int(round(raw * STRATEGY_GOLD_MULT))
