@@ -1044,7 +1044,7 @@ func _h_multiply_status(effect: Dictionary, ctx: Dictionary) -> void:
 		Color(0.6, 1.0, 0.6))
 
 # Bullet Time (free_hand): every card currently in hand costs 0 for THIS turn.
-# Each scene owns its translation via make_hand_free (deckbuilder/strategy:
+# Each scene owns its translation via make_hand_free (deckbuilder:
 # temp_cost_override on the whole hand; action: every armed cooldown finishes).
 func _h_free_hand(_effect: Dictionary, ctx: Dictionary) -> void:
 	var scene: Variant = ctx.get("scene")
