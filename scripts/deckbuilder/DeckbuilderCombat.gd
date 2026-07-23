@@ -1131,13 +1131,14 @@ func _check_combat_end() -> bool:
 		return true
 	return false
 
-# Gold reward tiers keyed on total_games_beaten so harder runs pay better, with
-# an elite multiplier. The formula lives in CombatEconomy (the single source of
-# truth the economy simulator shares) — see scripts/runtime/CombatEconomy.gd.
+# Gold reward scales with the run's difficulty tier so harder runs pay better,
+# with an elite multiplier. The formula lives in CombatEconomy (the single
+# source of truth the economy simulator shares, tuned so every combat style
+# earns the same per floor) — see scripts/runtime/CombatEconomy.gd.
 var _last_gold_award: int = 0
 
 func _award_combat_gold() -> void:
-	var amt: int = CombatEconomy.deckbuilder_combat_gold(GameState.total_games_beaten, is_elite)
+	var amt: int = CombatEconomy.deckbuilder_combat_gold(RunDifficulty.current_tier(), is_elite)
 	_last_gold_award = amt
 	GameState.change_gold(amt)
 	GameLog.add("You loot %d gold." % amt, Color(1.0, 0.9, 0.3))

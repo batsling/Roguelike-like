@@ -11,22 +11,28 @@ extends RefCounted
 # unit-testable and safe to call from the simulator. Callers apply the returned
 # amounts via GameState.change_gold themselves.
 #
-# The three combat styles pay very differently on purpose:
-#   * Deckbuilder — a FLAT per-combat purse that steps up with run progress,
-#     multiplied for elite/boss fights.
-#   * Action      — a CHANCE-BASED gold drop after each cleared room (a coin
-#     that lands on the arena floor for the player to walk over, like the
-#     consumable ground loot), amount scaled by run tier.
-#   * Strategy    — per-enemy-kill drops rolled from each archetype's table
-#     (data-driven via StrategyEnemyData, falling back to STRATEGY_ENEMY_GOLD).
+# The three combat styles reach the SAME per-floor gold by different delivery,
+# all tuned to COMBAT_GOLD_BY_TIER below so no style out-earns another:
+#   * Deckbuilder — a flat per-combat purse (elite ×1.5), sized so a floor's
+#     ~3.3 combats + 1 elite hit the tier target.
+#   * Action      — a chance-based coin dropped after each cleared room (walked
+#     over like the consumable ground loot); the floor's room count grows with
+#     tier, so a near-flat coin makes each floor's total track the tier target.
+#   * Strategy    — per-enemy-kill drops (data-driven via StrategyEnemyData,
+#     falling back to STRATEGY_ENEMY_GOLD); its ~6 fights already land on the
+#     target, so it is the organic reference the other two are matched to.
 
-# --- Deckbuilder: flat per-combat purse by games beaten -------------------
-# amount = base, stepped up at the two thresholds, then the elite multiplier.
-const DECKBUILDER_GOLD_BASE := 20
-const DECKBUILDER_GOLD_MID := 35     # once total_games_beaten >= *_MID_AT
-const DECKBUILDER_GOLD_HIGH := 55    # once total_games_beaten >= *_HIGH_AT
-const DECKBUILDER_GOLD_MID_AT := 5
-const DECKBUILDER_GOLD_HIGH_AT := 10
+# --- Shared target: combat gold per FLOOR, by run tier --------------------
+# Indexed by RunDifficulty.Tier (LOW, MEDIUM, HIGH, INSANE). This is the
+# balanced amount every combat style aims to pay per game floor (excluding the
+# section reward). The per-style tables below are tuned to hit it; verify with
+# tools/economy_sim after changing anything here.
+const COMBAT_GOLD_BY_TIER := [72, 95, 110, 135]
+
+# --- Deckbuilder: flat per-combat purse by tier ---------------------------
+# Per non-elite combat; the elite/boss pays ELITE_GOLD_MULT×. A floor's ~3.3
+# combats + 1 elite (= ~4.8 purses) land on COMBAT_GOLD_BY_TIER.
+const DECKBUILDER_COMBAT_GOLD_BY_TIER := [15, 20, 23, 28]
 const ELITE_GOLD_MULT := 1.5
 
 # --- Section reward: granted once per game beaten, by run difficulty tier --
@@ -34,22 +40,24 @@ const ELITE_GOLD_MULT := 1.5
 const SECTION_GOLD_BY_TIER := [10, 15, 25, 35]
 
 # --- Action: chance-based per-room gold drop ------------------------------
-# After each cleared action room a coin may drop on the floor (roll_action_
-# combat_gold). Chance is a flat probability; the amount is a tier-scaled range
-# so later floors pay more. Modest by design — action combats also drop
-# consumables and still collect the post-game section reward.
+# A coin may drop after each cleared room / boss (roll_action_combat_gold). The
+# action floor's ROOM COUNT grows with tier at almost exactly the rate
+# COMBAT_GOLD_BY_TIER does, so a FLAT coin makes each floor's total track the
+# target across all tiers on its own — no per-tier scaling needed. Chance-based
+# on purpose (action rooms also drop consumables). Mean coin ~40 over ~3.5-6.4
+# fights/floor at 50% each lands on the target.
 const ACTION_GOLD_DROP_CHANCE := 0.5
-# Indexed by RunDifficulty.Tier (LOW, MEDIUM, HIGH, INSANE).
-const ACTION_GOLD_MIN_BY_TIER := [6, 10, 16, 22]
-const ACTION_GOLD_MAX_BY_TIER := [14, 20, 30, 40]
+const ACTION_GOLD_MIN := 26
+const ACTION_GOLD_MAX := 54
 
 # --- Shop item prices: ONE coherent scale for every shop -------------------
-# Indexed by item rarity (Common, Uncommon, Rare, Epic, Legendary). Both the
-# deckbuilder merchant and the overworld encounter shop price items from this
-# table, so identical rarities cost the same wherever the player buys them.
-# Sized against measured run income (see tools/economy_sim): a mean run earns
-# roughly this table's Rare price × ~6 in total gold, so a run affords a
-# meaningful-but-limited handful of items across all its shopping.
+# Indexed by item rarity (Common, Uncommon, Rare, Epic, Legendary). Every shop —
+# the deckbuilder merchant, the action-floor merchant, and the overworld
+# encounter shop — prices items from this one table, so identical rarities cost
+# the same wherever the player buys them. Sized against measured run income (see
+# tools/economy_sim): a mean run (~640g with balanced combat gold) affords ~4
+# Legendaries- or ~8 Rares-worth of shopping — meaningful but limited across all
+# its shops (items compete with potions / card removal).
 const SHOP_ITEM_PRICE_BY_RARITY := [25, 45, 75, 115, 160]
 
 # --- Strategy: per-archetype enemy-kill gold drop -------------------------
@@ -62,13 +70,10 @@ const STRATEGY_ENEMY_GOLD := {
 	"troll":       { "gold_chance": 0.90, "gold_min": 12, "gold_max": 24 },
 }
 
-# Flat purse for one deckbuilder combat, before the elite multiplier.
-static func deckbuilder_combat_gold(total_games_beaten: int, is_elite: bool) -> int:
-	var amt: int = DECKBUILDER_GOLD_BASE
-	if total_games_beaten >= DECKBUILDER_GOLD_HIGH_AT:
-		amt = DECKBUILDER_GOLD_HIGH
-	elif total_games_beaten >= DECKBUILDER_GOLD_MID_AT:
-		amt = DECKBUILDER_GOLD_MID
+# Purse for one deckbuilder combat at `tier`, before the elite multiplier.
+static func deckbuilder_combat_gold(tier: int, is_elite: bool) -> int:
+	var t: int = clampi(tier, 0, DECKBUILDER_COMBAT_GOLD_BY_TIER.size() - 1)
+	var amt: int = int(DECKBUILDER_COMBAT_GOLD_BY_TIER[t])
 	if is_elite:
 		amt = int(amt * ELITE_GOLD_MULT)
 	return amt
@@ -78,13 +83,13 @@ static func section_reward_gold(tier: int) -> int:
 	return SECTION_GOLD_BY_TIER[clampi(tier, 0, SECTION_GOLD_BY_TIER.size() - 1)]
 
 # Rolls the gold dropped by one cleared action room: 0 when the chance roll
-# fails, otherwise a tier-scaled amount. Callers drop the returned amount on the
-# floor as a pickup.
-static func roll_action_combat_gold(tier: int, rng: RandomNumberGenerator) -> int:
+# fails, otherwise a flat coin amount. Callers drop the returned amount on the
+# floor as a pickup. `tier` is unused (per-floor gold scales via room count, not
+# coin size) but kept so callers can pass it uniformly with the other styles.
+static func roll_action_combat_gold(_tier: int, rng: RandomNumberGenerator) -> int:
 	if rng.randf() >= ACTION_GOLD_DROP_CHANCE:
 		return 0
-	var t: int = clampi(tier, 0, ACTION_GOLD_MIN_BY_TIER.size() - 1)
-	return rng.randi_range(int(ACTION_GOLD_MIN_BY_TIER[t]), int(ACTION_GOLD_MAX_BY_TIER[t]))
+	return rng.randi_range(ACTION_GOLD_MIN, ACTION_GOLD_MAX)
 
 # Shop price for an item of `rarity` (0..4), the same in every shop. Clamped so
 # an out-of-range rarity falls back to the nearest end of the scale.

@@ -105,13 +105,11 @@ func _sim_floor(style: String, tier: int) -> Dictionary:
 	return {"combats": 0, "elites": 0, "combat_gold": 0}
 
 # --- Deckbuilder: generate the real mini-map, walk a random path to the elite,
-# pay each COMBAT/ELITE node on it via CombatEconomy. games_beaten drives the
-# purse tier; approximate it from the run tier (tier*3 games played ~ beaten).
+# pay each COMBAT/ELITE node on it via CombatEconomy (gold scales with run tier).
 func _sim_deckbuilder_floor(tier: int) -> Dictionary:
-	var games_beaten: int = tier * RunDifficulty.GAMES_PER_TIER
 	# DeckbuilderMap reads RunDifficulty via GameState.games_played for node
 	# rolls; set it so the generated map matches this tier.
-	GameState.games_played = games_beaten
+	GameState.games_played = tier * RunDifficulty.GAMES_PER_TIER
 	var m: DeckMap = DeckMap.new()
 	m.generate(_rng)
 	# Walk a random path from a floor-0 node to the elite.
@@ -119,15 +117,14 @@ func _sim_deckbuilder_floor(tier: int) -> Dictionary:
 	var elites := 0
 	var gold := 0
 	var node: Dictionary = m.get_reachable_next().pick_random() if not m.get_reachable_next().is_empty() else {}
-	var beaten_so_far := games_beaten
 	while not node.is_empty():
 		var t: int = int(node.type)
 		if t == DeckMap.NodeType.COMBAT:
 			combats += 1
-			gold += CombatEconomy.deckbuilder_combat_gold(beaten_so_far, false)
+			gold += CombatEconomy.deckbuilder_combat_gold(tier, false)
 		elif t == DeckMap.NodeType.ELITE:
 			elites += 1
-			gold += CombatEconomy.deckbuilder_combat_gold(beaten_so_far, true)
+			gold += CombatEconomy.deckbuilder_combat_gold(tier, true)
 		m.enter(node)
 		var nexts: Array = m.get_reachable_next()
 		if nexts.is_empty():

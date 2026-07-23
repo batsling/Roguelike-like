@@ -6,19 +6,21 @@ extends GutTest
 
 # --- Deckbuilder combat gold ----------------------------------------------
 
-func test_deckbuilder_gold_steps_up_with_progress() -> void:
-	assert_eq(CombatEconomy.deckbuilder_combat_gold(0, false), 20)
-	assert_eq(CombatEconomy.deckbuilder_combat_gold(4, false), 20)
-	assert_eq(CombatEconomy.deckbuilder_combat_gold(5, false), 35)
-	assert_eq(CombatEconomy.deckbuilder_combat_gold(9, false), 35)
-	assert_eq(CombatEconomy.deckbuilder_combat_gold(10, false), 55)
-	assert_eq(CombatEconomy.deckbuilder_combat_gold(50, false), 55)
+func test_deckbuilder_gold_scales_with_tier() -> void:
+	for tier in range(4):
+		assert_eq(CombatEconomy.deckbuilder_combat_gold(tier, false),
+			int(CombatEconomy.DECKBUILDER_COMBAT_GOLD_BY_TIER[tier]))
+	# Out-of-range tiers clamp to the nearest end.
+	assert_eq(CombatEconomy.deckbuilder_combat_gold(-2, false),
+		int(CombatEconomy.DECKBUILDER_COMBAT_GOLD_BY_TIER[0]))
+	assert_eq(CombatEconomy.deckbuilder_combat_gold(99, false),
+		int(CombatEconomy.DECKBUILDER_COMBAT_GOLD_BY_TIER[-1]))
 
 func test_deckbuilder_elite_multiplier() -> void:
 	# Elite pays 1.5x the tier purse (int-truncated).
-	assert_eq(CombatEconomy.deckbuilder_combat_gold(0, true), 30)   # 20 * 1.5
-	assert_eq(CombatEconomy.deckbuilder_combat_gold(5, true), 52)   # 35 * 1.5 = 52.5 -> 52
-	assert_eq(CombatEconomy.deckbuilder_combat_gold(10, true), 82)  # 55 * 1.5 = 82.5 -> 82
+	assert_eq(CombatEconomy.deckbuilder_combat_gold(0, true), 22)   # 15 * 1.5 = 22.5 -> 22
+	assert_eq(CombatEconomy.deckbuilder_combat_gold(1, true), 30)   # 20 * 1.5
+	assert_eq(CombatEconomy.deckbuilder_combat_gold(3, true), 42)   # 28 * 1.5
 
 # --- Section reward -------------------------------------------------------
 
@@ -34,12 +36,13 @@ func test_section_reward_clamps_out_of_range() -> void:
 
 # --- Action per-room gold drop --------------------------------------------
 
-func test_action_gold_zero_or_within_tier_range() -> void:
+func test_action_gold_zero_or_within_flat_range() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 3
+	var lo: int = CombatEconomy.ACTION_GOLD_MIN
+	var hi: int = CombatEconomy.ACTION_GOLD_MAX
+	# The coin is flat (tier-independent), so any tier rolls the same range.
 	for tier in range(4):
-		var lo: int = int(CombatEconomy.ACTION_GOLD_MIN_BY_TIER[tier])
-		var hi: int = int(CombatEconomy.ACTION_GOLD_MAX_BY_TIER[tier])
 		for _i in range(300):
 			var g: int = CombatEconomy.roll_action_combat_gold(tier, rng)
 			assert_true(g == 0 or (g >= lo and g <= hi),
@@ -59,14 +62,15 @@ func test_action_gold_can_drop_and_can_miss() -> void:
 	assert_true(saw_zero, "some rolls should miss")
 	assert_true(saw_gold, "some rolls should drop gold")
 
-func test_action_gold_tier_clamps() -> void:
+func test_action_gold_ignores_tier() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
-	# Out-of-range tiers clamp to the nearest end instead of erroring.
+	# The flat coin is tier-independent: any tier (even out of range) rolls the
+	# same range instead of erroring.
 	for _i in range(50):
 		var g: int = CombatEconomy.roll_action_combat_gold(99, rng)
-		assert_true(g == 0 or (g >= int(CombatEconomy.ACTION_GOLD_MIN_BY_TIER[-1])
-			and g <= int(CombatEconomy.ACTION_GOLD_MAX_BY_TIER[-1])))
+		assert_true(g == 0 or (g >= CombatEconomy.ACTION_GOLD_MIN
+			and g <= CombatEconomy.ACTION_GOLD_MAX))
 
 # --- Unified shop prices --------------------------------------------------
 
