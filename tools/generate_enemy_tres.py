@@ -203,6 +203,40 @@ def parse_abilities(cell):
     return split_into, split_count, statuses, leftover
 
 
+# --- behavior column ------------------------------------------------------
+
+# "Cannot use <the same move|Bite> <N> times in a row." — N words or digits.
+_NUM_WORDS = {"two": 2, "three": 3, "four": 4, "five": 5}
+_NO_REPEAT = re.compile(
+    r"cannot\s+use\s+(?P<move>.+?)\s+"
+    r"(?P<count>\d+|two|three|four|five)\s+times?\s+in\s+a\s+row",
+    re.IGNORECASE,
+)
+
+
+def parse_behavior(cell):
+    """Return (no_repeat_limit, no_repeat_move).
+
+    "Cannot use the same move three times in a row." -> (2, "")
+    "Cannot use Bite three times in a row."          -> (2, "Bite")
+    A cap of N-in-a-row stores limit N-1 (the number of consecutive uses
+    allowed before the move is locked out on the next roll).
+    """
+    if _is_na(cell):
+        return 0, ""
+    m = _NO_REPEAT.search(str(cell))
+    if not m:
+        print(f"  WARNING: unrecognised behavior {cell!r}", file=sys.stderr)
+        return 0, ""
+    raw = m.group("count").lower()
+    times = int(raw) if raw.isdigit() else _NUM_WORDS.get(raw, 0)
+    limit = max(0, times - 1)
+    move = m.group("move").strip()
+    # "the same move" / "any move" means the cap is global (no scoped move).
+    scope = "" if re.fullmatch(r"(the\s+)?(same|any)\s+move", move, re.IGNORECASE) else move
+    return limit, scope
+
+
 # --- cosmetics ------------------------------------------------------------
 
 def portrait_color(eid: str):
@@ -252,6 +286,11 @@ def enemy_tres(rec: dict) -> str:
         'pattern_mode = "random"',
         f'starting_abilities = {packed_str_array(rec["starting_abilities"])}',
     ]
+    # Behavior modifiers only when set, so unaffected enemies keep a clean file.
+    if rec.get("no_repeat_limit", 0) > 0:
+        lines.append(f'no_repeat_limit = {rec["no_repeat_limit"]}')
+        if rec.get("no_repeat_move", ""):
+            lines.append(f'no_repeat_move = "{esc(rec["no_repeat_move"])}"')
     if rec["starting_statuses"]:
         kv_parts = []
         for k, v in rec["starting_statuses"].items():
@@ -307,6 +346,8 @@ def main() -> int:
         name = str(row[col["Name"]]).strip()
         eid = slug(name)
         split_into, split_count, statuses, leftover = parse_abilities(row[col["Ability"]])
+        no_repeat_limit, no_repeat_move = parse_behavior(
+            row[col["Behavior"]] if "Behavior" in col else None)
         tag = row[col["Tag"]]
         records.append({
             "id": eid,
@@ -320,6 +361,8 @@ def main() -> int:
             "starting_statuses": statuses,
             "split_into": split_into,
             "split_count": split_count,
+            "no_repeat_limit": no_repeat_limit,
+            "no_repeat_move": no_repeat_move,
             "source_game": "" if _is_na(row[col["Game"]]) else str(row[col["Game"]]).strip(),
             "tags": [] if _is_na(tag) else [str(tag).strip()],
             "asset": resolve_image(row[col["File"]]),

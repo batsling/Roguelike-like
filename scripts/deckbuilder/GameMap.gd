@@ -137,7 +137,7 @@ func _dispatch_node(node: Dictionary) -> void:
 	# in commits 7-9. Combat + Elite share the same path today;
 	# elite-specific scaling lands in commit 10.
 	match int(node.type):
-		DeckbuilderMap.NodeType.COMBAT, DeckbuilderMap.NodeType.ELITE:
+		DeckbuilderMap.NodeType.COMBAT, DeckbuilderMap.NodeType.ELITE, DeckbuilderMap.NodeType.BOSS:
 			_start_combat_for_node(node)
 		DeckbuilderMap.NodeType.EVENT:
 			_start_event_for_node(node)
@@ -164,6 +164,7 @@ func _start_combat_for_node(node: Dictionary) -> void:
 	_active_combat.target_game_id = target_game_id
 	_active_combat.enemies_to_spawn = _build_encounter()
 	_active_combat.is_elite = (int(node.type) == DeckbuilderMap.NodeType.ELITE)
+	_active_combat.is_boss = (int(node.type) == DeckbuilderMap.NodeType.BOSS)
 	_active_combat.closed.connect(_on_combat_closed)
 	# Added as a child of the map; combat's opaque background covers
 	# our visuals so the map stays in the tree but out of sight.

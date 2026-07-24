@@ -33,18 +33,18 @@ size_flags_horizontal = 3
 text = "Turn 0"
 
 [node name="Battlefield" type="HBoxContainer" parent="Layout"]
-custom_minimum_size = Vector2(0, 340)
+custom_minimum_size = Vector2(0, 270)
 layout_mode = 2
 theme_override_constants/separation = 16
 
 [node name="PlayerArea" type="VBoxContainer" parent="Layout/Battlefield"]
-custom_minimum_size = Vector2(240, 0)
+custom_minimum_size = Vector2(180, 0)
 layout_mode = 2
 theme_override_constants/separation = 6
 alignment = 1
 
 [node name="PlayerPortrait" type="TextureRect" parent="Layout/Battlefield/PlayerArea"]
-custom_minimum_size = Vector2(230, 290)
+custom_minimum_size = Vector2(170, 210)
 layout_mode = 2
 size_flags_vertical = 3
 expand_mode = 1
@@ -56,7 +56,7 @@ horizontal_alignment = 1
 theme_override_font_sizes/font_size = 16
 
 [node name="EnemyArea" type="HBoxContainer" parent="Layout/Battlefield"]
-custom_minimum_size = Vector2(0, 340)
+custom_minimum_size = Vector2(0, 270)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 18

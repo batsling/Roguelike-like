@@ -22,8 +22,9 @@ const W_COMMON := 75.0
 const W_UNCOMMON := 20.0
 const W_RARE := 5.0
 const BASE_CARD_CHOICES := 3
-# Reward tiles render ~25% larger than the in-combat hand cards.
-const REWARD_CARD_SCALE := 1.25
+# Reward tiles render much larger than the in-combat hand cards (art and all) so
+# the card — especially its image — reads clearly during the choice.
+const REWARD_CARD_SCALE := 1.7
 # Pre-upgrade chance keyed by RunDifficulty tier (LOW, MEDIUM, HIGH, INSANE).
 const UPGRADE_CHANCE_BY_TIER := [0.0, 0.25, 0.5, 0.5]
 
@@ -71,53 +72,66 @@ func _build_ui() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var dim := ColorRect.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0, 0, 0, 0.7)
+	dim.color = Color(0, 0, 0, 0.72)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
+	# A CenterContainer auto-centers the panel at whatever size its content ends up
+	# — so the panel always hugs however many cards were rolled instead of a fixed
+	# rectangle with dead space (cleaner + handles Discovery's extra choices).
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(center)
+
 	var panel := PanelContainer.new()
-	var panel_size := Vector2(960, 540)
-	panel.custom_minimum_size = panel_size
-	panel.position = (get_viewport_rect().size - panel_size) / 2.0
-	add_child(panel)
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.10, 0.11, 0.15, 0.98)
+	panel_style.set_corner_radius_all(16)
+	panel_style.set_border_width_all(2)
+	panel_style.border_color = Color(0.35, 0.45, 0.65, 0.9)
+	panel_style.set_content_margin_all(28)
+	panel_style.shadow_color = Color(0, 0, 0, 0.5)
+	panel_style.shadow_size = 18
+	panel.add_theme_stylebox_override("panel", panel_style)
+	center.add_child(panel)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 14)
+	root.add_theme_constant_override("separation", 20)
 	panel.add_child(root)
 
 	var title := Label.new()
-	title.text = "Choose a card:"
-	title.add_theme_font_size_override("font_size", 26)
-	title.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0))
+	title.text = "Choose a card"
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", Color(0.78, 0.88, 1.0))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(title)
 
 	_choices_box = HBoxContainer.new()
-	_choices_box.add_theme_constant_override("separation", 16)
+	_choices_box.add_theme_constant_override("separation", 24)
 	_choices_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	_choices_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(_choices_box)
 
 	var btn_row := HBoxContainer.new()
-	btn_row.add_theme_constant_override("separation", 12)
+	btn_row.add_theme_constant_override("separation", 14)
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	root.add_child(btn_row)
 
 	_confirm_btn = Button.new()
 	_confirm_btn.text = "Add to Deck"
-	_confirm_btn.custom_minimum_size = Vector2(160, 40)
+	_confirm_btn.custom_minimum_size = Vector2(170, 42)
 	_confirm_btn.disabled = true
 	_confirm_btn.pressed.connect(_on_confirm)
 	btn_row.add_child(_confirm_btn)
 
 	_reroll_btn = Button.new()
 	_reroll_btn.pressed.connect(_on_reroll)
-	_reroll_btn.custom_minimum_size = Vector2(140, 40)
+	_reroll_btn.custom_minimum_size = Vector2(150, 42)
 	btn_row.add_child(_reroll_btn)
 
 	var skip_btn := Button.new()
 	skip_btn.text = "Skip"
-	skip_btn.custom_minimum_size = Vector2(140, 40)
+	skip_btn.custom_minimum_size = Vector2(150, 42)
 	skip_btn.pressed.connect(_on_skip)
 	btn_row.add_child(skip_btn)
 
@@ -128,13 +142,20 @@ func _refresh() -> void:
 		c.queue_free()
 	_tiles.clear()
 	for ci in _choices:
+		# Reward tiles read much bigger than in-combat hand cards. A scaled
+		# CardView can't be an HBox child directly — the container fights the
+		# scale and leaves dead space — so wrap it in a fixed-size Control (the
+		# same pattern CardView.build_deck_cell uses) that reserves the scaled
+		# footprint while the card scales cleanly inside it.
+		var wrapper := Control.new()
+		wrapper.custom_minimum_size = Vector2(CardView.CARD_W, CardView.CARD_H) * REWARD_CARD_SCALE
+		wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var view := CardView.new()
-		_choices_box.add_child(view)
 		view.setup(ci)
-		# Reward tiles read a touch bigger than in-combat hand cards (~25%).
 		view.scale = Vector2(REWARD_CARD_SCALE, REWARD_CARD_SCALE)
-		view.custom_minimum_size = Vector2(CardView.CARD_W, CardView.CARD_H) * REWARD_CARD_SCALE
 		view.play_requested.connect(_on_select)
+		wrapper.add_child(view)
+		_choices_box.add_child(wrapper)
 		_tiles.append(view)
 	if _confirm_btn != null:
 		_confirm_btn.disabled = _selected == null

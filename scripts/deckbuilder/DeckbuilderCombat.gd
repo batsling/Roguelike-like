@@ -26,6 +26,9 @@ var target_game_id: StringName = &""
 # Elite combats bump enemy HP, give the enemy a starting Power, and pay
 # out a larger gold reward. Set by GameMap before add_child.
 var is_elite: bool = false
+# Boss combats (the map's final node) scale harder than an elite. Placeholder
+# tuning until bespoke boss enemy data lands. Set by GameMap before add_child.
+var is_boss: bool = false
 
 # Dev test combat (DevTools): exempt from run-scope tallies like the
 # combats-completed counter, so testing never skews the real run's spawn budget.
@@ -34,6 +37,9 @@ var dev_combat: bool = false
 # Tuning constants for the elite multiplier — easy to dial in one place.
 const ELITE_HP_MULT := 1.5
 const ELITE_POWER_BONUS := 3
+# Boss combats scale above elites (placeholder until authored boss enemies land).
+const BOSS_HP_MULT := 2.5
+const BOSS_POWER_BONUS := 5
 # Elite gold multiplier now lives in CombatEconomy (the economy source of truth).
 
 # ------------------------------------------------------------------
@@ -760,9 +766,14 @@ func _init_actors(spawn_list: Array) -> void:
 			d = Data.get_enemy(StringName(entry))
 		if d != null:
 			var actor: CombatActor = CombatActor.from_enemy(d, _rng)
-			if is_elite:
-				# Bump HP and grant a starting Power. Elite-specific
-				# enemy data with bespoke patterns lands later.
+			# Boss scaling wins over elite when both somehow set. Bump HP and grant
+			# a starting Power; bespoke elite/boss enemy data lands later.
+			if is_boss:
+				var boss_hp: int = int(actor.max_hp * BOSS_HP_MULT)
+				actor.max_hp = boss_hp
+				actor.hp = boss_hp
+				actor.add_status(&"power", BOSS_POWER_BONUS)
+			elif is_elite:
 				var bumped: int = int(actor.max_hp * ELITE_HP_MULT)
 				actor.max_hp = bumped
 				actor.hp = bumped
@@ -1138,7 +1149,8 @@ func _check_combat_end() -> bool:
 var _last_gold_award: int = 0
 
 func _award_combat_gold() -> void:
-	var amt: int = CombatEconomy.deckbuilder_combat_gold(RunDifficulty.current_tier(), is_elite)
+	# Boss fights pay at least the elite rate (dedicated boss economy lands later).
+	var amt: int = CombatEconomy.deckbuilder_combat_gold(RunDifficulty.current_tier(), is_elite or is_boss)
 	_last_gold_award = amt
 	GameState.change_gold(amt)
 	GameLog.add("You loot %d gold." % amt, Color(1.0, 0.9, 0.3))
@@ -2952,28 +2964,81 @@ func _roll_intent(enemy: CombatActor) -> void:
 		for m in pattern:
 			if m.get("first_turn_only", false):
 				enemy.planned_move = _annotate_intent(enemy, m)
+				_record_move(enemy, m)
 				return
 
-	# Weighted random selection ignoring first_turn_only moves.
-	var pool: Array = []
+	# Weighted random selection ignoring first_turn_only moves. Moves that would
+	# break the enemy's no-repeat cap (e.g. a Louse's same move a third time in a
+	# row) are dropped from the pool first; if that empties it, the cap is ignored
+	# so the enemy always has something to do.
+	var pool := _weighted_pool(enemy, pattern, true)
+	if pool.is_empty():
+		pool = _weighted_pool(enemy, pattern, false)
+	if pool.is_empty():
+		enemy.planned_move = {}
+		return
 	var total_weight := 0
-	for m in pattern:
-		if m.get("first_turn_only", false):
-			continue
-		var w: int = m.get("weight", 1)
-		pool.append({"move": m, "weight": w})
-		total_weight += w
-	if total_weight <= 0 or pool.is_empty():
+	for entry in pool:
+		total_weight += int(entry.weight)
+	if total_weight <= 0:
 		enemy.planned_move = {}
 		return
 	var roll := _rng.randi_range(1, total_weight)
 	var acc := 0
+	var chosen: Dictionary = pool[-1].move
 	for entry in pool:
 		acc += entry.weight
 		if roll <= acc:
-			enemy.planned_move = _annotate_intent(enemy, entry.move)
-			return
-	enemy.planned_move = _annotate_intent(enemy, pool[-1].move)
+			chosen = entry.move
+			break
+	enemy.planned_move = _annotate_intent(enemy, chosen)
+	_record_move(enemy, chosen)
+
+# Builds the weighted candidate list for _roll_intent. first_turn_only moves are
+# always skipped here (handled separately). When `respect_no_repeat` is true a
+# move at its no-repeat cap is excluded so it can't run one more turn.
+func _weighted_pool(enemy: CombatActor, pattern: Array, respect_no_repeat: bool) -> Array:
+	var pool: Array = []
+	for m in pattern:
+		if m.get("first_turn_only", false):
+			continue
+		if respect_no_repeat and _violates_no_repeat(enemy, m):
+			continue
+		pool.append({"move": m, "weight": int(m.get("weight", 1))})
+	return pool
+
+# True when picking `move` this turn would exceed the enemy's no-repeat cap: the
+# same move (or, when no_repeat_move is set, only matching moves) has already run
+# no_repeat_limit turns in a row. Display name feeds the streak so scoped caps
+# match by prefix ("Bite" matches "Bite (15)").
+func _violates_no_repeat(enemy: CombatActor, move: Dictionary) -> bool:
+	if enemy.data == null:
+		return false
+	var limit: int = enemy.data.no_repeat_limit
+	if limit <= 0:
+		return false
+	var name: String = String(move.get("display", ""))
+	var scope: String = enemy.data.no_repeat_move
+	if scope != "" and not name.begins_with(scope):
+		return false
+	var history: Array = enemy.move_history
+	var streak := 0
+	for i in range(history.size() - 1, -1, -1):
+		if String(history[i]) == name:
+			streak += 1
+		else:
+			break
+	return streak >= limit
+
+# Records a committed move's display name for no-repeat tracking. Skipped for
+# enemies without a cap so the array stays empty in the common case.
+func _record_move(enemy: CombatActor, move: Dictionary) -> void:
+	if enemy.data == null or enemy.data.no_repeat_limit <= 0:
+		return
+	enemy.move_history.append(String(move.get("display", "")))
+	# Only the trailing run matters; keep the tail bounded.
+	if enemy.move_history.size() > 8:
+		enemy.move_history = enemy.move_history.slice(enemy.move_history.size() - 8)
 
 # Returns a copy of a chosen pattern move tagged with the data EnemyView needs to
 # draw an StS-style intent: `intent_type` (attack/defend/debuff/buff/heal) for the

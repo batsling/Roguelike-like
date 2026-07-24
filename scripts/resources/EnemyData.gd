@@ -26,6 +26,16 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 # weighted at runtime; "forgetful" cycles all once before repeating.
 @export var pattern_mode: String = "random"
 
+# Behavior modifier: a cap on how many turns in a row the same move may be
+# chosen. 0 = no cap. A value of 2 means "cannot use the same move three times
+# in a row" — once a move has been picked `no_repeat_limit` times consecutively
+# it is excluded from the next roll. Enforced by DeckbuilderCombat._roll_intent.
+@export var no_repeat_limit: int = 0
+# When set, the no-repeat cap applies ONLY to moves whose display begins with
+# this word (e.g. "Bite" → Snecko can't Bite three times running, but its other
+# moves are unrestricted). Empty = the cap applies to every move.
+@export var no_repeat_move: String = ""
+
 # Starting abilities/keywords like "Fading 3", "Multi Attack 2", "Immune to Poison".
 # Parsed into structured data by EffectSystem at load.
 @export var starting_abilities: PackedStringArray = PackedStringArray()
