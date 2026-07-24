@@ -8,7 +8,13 @@ extends Resource
 
 enum BehaviorKind { WALKER, SHOOTER, STATIONARY, PACER }
 enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
-enum AttackKind { MELEE, RANGED }
+# MELEE = contact hit; RANGED = telegraphed projectile; LEAP = a jump that goes
+# airborne/untargetable, lands on the player's position and (optionally) bursts
+# projectiles outward on impact (Monstro's big jump; any slam boss). The leap's
+# arc/air-time/landing tuning lives in the resource-level `leap_*` fields below —
+# an enemy has one leap profile — while the attack entry supplies the LEAP's
+# damage / cooldown / trigger range like any other attack.
+enum AttackKind { MELEE, RANGED, LEAP }
 # Reusable procedural animation styles layered on top of frame anims by
 # ActionCombat's renderer. NONE = frames only; SQUASH = a Y-axis stretch/squash
 # "jelly walk" while moving (Brotato baby alien). Add new styles here + handle
@@ -71,6 +77,21 @@ enum AttackStyle { NONE, CHARGE }
 # SHOOTER-only: distance the enemy tries to maintain from the player.
 # 0 falls back to 0.7 * max ranged range at runtime. Ignored by walkers.
 @export var preferred_distance: float = 0.0
+
+# --- Leap tuning (LEAP attacks) -----------------------------------------
+# Shared by every LEAP attack this enemy owns. All 0 = use ActionCombat's
+# LEAP_DEFAULT_* placeholders, so a leap can be authored with just the attack
+# entry and tuned later without touching code. A leap runs in three beats:
+# crouch (telegraph, still grounded/targetable) -> airborne (untargetable,
+# non-solid, arcing to the player's position at take-off) -> land (contact
+# damage inside leap_land_radius + an outward burst of leap_burst_count tears).
+@export var leap_telegraph: float = 0.0   # crouch/wind-up seconds before take-off
+@export var leap_air_time: float = 0.0    # seconds spent airborne (untargetable)
+@export var leap_height: float = 0.0      # visual arc peak, px
+@export var leap_land_radius: float = 0.0 # contact-damage radius on landing
+@export var leap_burst_count: int = 0     # tears sprayed radially on landing (0 = none)
+@export var leap_burst_speed: float = 0.0    # landing-burst projectile speed (0 = default)
+@export var leap_burst_lifetime: float = 0.0 # landing-burst projectile life (0 = default)
 
 # --- Legacy attack fields (deprecated) ----------------------------------
 # Superseded by the attack_* arrays above. Kept so hand-authored enemies that
