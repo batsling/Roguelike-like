@@ -237,25 +237,6 @@ func test_event_pending_fear_drains_into_combat_and_surcharges() -> void:
 		Stats.FEAR_CARD_SURCHARGE,
 		"the drained Fear then surcharges non-Skill cards")
 
-# Derived statuses (Strength->Power, Dexterity->Defense, …) must reach every
-# mode's player. apply_derived_statuses now accepts a strategy BattleUnit too,
-# so it should derive the same buffs from the same run stats as a deckbuilder /
-# action CombatActor.
-func test_derived_statuses_apply_to_battleunit_like_combatactor() -> void:
-	var saved_str: int = GameState.strength
-	GameState.strength = 6
-	GameState.pending_combat_statuses.clear()
-	var ca := CombatActor.new()
-	ca.is_player = true
-	Stats.apply_derived_statuses(ca, Stats.Mode.STRATEGY)
-	var bu := BattleUnit.new()
-	bu.is_player = true
-	Stats.apply_derived_statuses(bu, Stats.Mode.STRATEGY)
-	assert_gt(ca.get_status(&"power"), 0, "sanity: 6 Strength derives some Power")
-	assert_eq(bu.get_status(&"power"), ca.get_status(&"power"),
-		"a strategy BattleUnit derives the same Power as a CombatActor from the same stats")
-	GameState.strength = saved_str
-
 # --- Shared status application (Stats.apply_status_to) --------------------
 # The one core all three modes' apply_status() route through, so they agree on
 # the Persistence rule and on what counts as a no-op.
@@ -279,15 +260,6 @@ func test_apply_status_to_ignores_persistence_for_buffs_self_and_no_source() -> 
 		"non-Persistence debuffs are unscaled even from a Persistent player")
 	assert_eq(Stats.apply_status_to(CombatActor.new(), &"vulnerable", 3, null), 3,
 		"no source (event / reaction) means no Persistence scaling")
-
-func test_apply_status_to_works_on_a_battleunit() -> void:
-	var player := CombatActor.new()
-	player.is_player = true
-	player.add_status(&"persistence", 1)
-	var bu := BattleUnit.new()  # enemy unit (is_player defaults false)
-	assert_eq(Stats.apply_status_to(bu, &"poison", 2, player), 3,
-		"strategy BattleUnit debuffs scale with Persistence through the shared core")
-	assert_eq(bu.get_status(&"poison"), 3)
 
 func test_apply_status_to_noops_on_empty_or_zero() -> void:
 	var enemy := CombatActor.new()

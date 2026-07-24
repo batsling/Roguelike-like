@@ -156,13 +156,10 @@ func test_sword_boomerang_never_asks_for_a_target() -> void:
 	var inst := CardInstance.from_data(Data.get_card(&"sword_boomerang"))
 	assert_false(inst.wants_target(), "Indiscriminate skips the target picker")
 
-func test_boomerang_archetypes_resolve_in_both_libraries() -> void:
+func test_boomerang_archetype_resolves_in_the_action_library() -> void:
 	var action_spec: Dictionary = Data.action_attacks.resolve(Data.get_card(&"sword_boomerang"))
 	assert_eq(String(action_spec.get("family", "")), "boomerang")
 	assert_eq(String(action_spec.get("target_mode", "")), "random")
-	var strat_spec: Dictionary = Data.strategy_attacks.resolve(&"boomerang", {})
-	assert_eq(String(strat_spec.get("family", "")), "auto", "strategy auto-resolves")
-	assert_eq(String(strat_spec.get("target_mode", "")), "random")
 
 # --- Reaper ------------------------------------------------------------------
 

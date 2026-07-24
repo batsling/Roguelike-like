@@ -246,8 +246,8 @@ func test_slimed_draws_one_and_exhausts() -> void:
 	assert_eq(int(card.effects[0].get("value", 0)), 1, "Slimed draws 1 (StS2)")
 	assert_true(card.exhaust, "Slimed still Exhausts when played")
 
-func test_sweep_subtype_resolves_in_both_attack_libraries() -> void:
-	# Action: the beam family, but the sweep subtype gives it a pan arc.
+func test_sweep_subtype_resolves_in_the_action_attack_library() -> void:
+	# The beam family, but the sweep subtype gives it a pan arc.
 	var a: Dictionary = Data.action_attacks.resolve(Data.get_card(&"sweeping_beam"))
 	assert_eq(String(a.get("family", "")), "beam")
 	assert_true(bool(a.get("sweep", false)), "carries the sweep flag")
@@ -257,11 +257,3 @@ func test_sweep_subtype_resolves_in_both_attack_libraries() -> void:
 	var plain: Dictionary = Data.action_attacks.resolve(Data.get_card(&"beam_cell"))
 	assert_false(bool(plain.get("sweep", false)), "plain beam doesn't sweep")
 	assert_eq(float(plain.get("arc_deg", 0.0)), 0.0, "plain beam has no arc")
-	# Strategy: the sweep subtype fans the full-range line wide -> a large sweep.
-	var s: Dictionary = Data.strategy_attacks.resolve(&"beam", {"sweep": true})
-	assert_eq(String(s.get("family", "")), "line")
-	assert_true(bool(s.get("spread", false)), "strategy sweep beam fans wide")
-	assert_gt(int(s.get("range_tiles", 0)), 5, "covers beam-level range")
-	# A plain beam stays a thin line.
-	var sp: Dictionary = Data.strategy_attacks.resolve(&"beam", {})
-	assert_false(bool(sp.get("spread", false)), "plain beam stays thin")

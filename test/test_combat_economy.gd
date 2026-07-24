@@ -92,34 +92,3 @@ func test_shop_price_clamps_out_of_range() -> void:
 		int(CombatEconomy.SHOP_ITEM_PRICE_BY_RARITY[0]))
 	assert_eq(CombatEconomy.shop_item_price(99),
 		int(CombatEconomy.SHOP_ITEM_PRICE_BY_RARITY[-1]))
-
-# --- Strategy enemy gold drops --------------------------------------------
-
-func test_strategy_gold_table_known_kind() -> void:
-	# A known fallback kind returns a chance+range (data may override, but the
-	# table is never empty for these).
-	var t: Dictionary = CombatEconomy.strategy_enemy_gold_table("snake")
-	assert_true(t.has("gold_chance"), "snake has a gold table")
-	assert_gt(int(t.get("gold_max", 0)), 0, "snake can drop gold")
-
-func test_strategy_gold_table_unknown_kind_is_empty() -> void:
-	assert_true(CombatEconomy.strategy_enemy_gold_table("not_a_real_kind").is_empty())
-
-func test_roll_strategy_gold_within_range_or_zero() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
-	var t: Dictionary = CombatEconomy.strategy_enemy_gold_table("troll")
-	# The roll is scaled (and rounded) by the global STRATEGY_GOLD_MULT, so the
-	# payout range shrinks accordingly.
-	var lo: int = int(round(int(t.get("gold_min", 0)) * CombatEconomy.STRATEGY_GOLD_MULT))
-	var hi: int = int(round(int(t.get("gold_max", 0)) * CombatEconomy.STRATEGY_GOLD_MULT))
-	for _i in range(200):
-		var g: int = CombatEconomy.roll_strategy_enemy_gold("troll", rng)
-		# Either the drop failed (0) or it lands within the scaled table range.
-		assert_true(g == 0 or (g >= lo and g <= hi),
-			"roll %d must be 0 or within scaled [%d,%d]" % [g, lo, hi])
-
-func test_roll_unknown_kind_is_zero() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 1
-	assert_eq(CombatEconomy.roll_strategy_enemy_gold("not_a_real_kind", rng), 0)

@@ -124,19 +124,6 @@ func test_actor_intends_attack_reads_the_deckbuilder_plan() -> void:
 	assert_false(Stats.actor_intends_attack(a))
 	assert_false(Stats.actor_intends_attack(null))
 
-func test_actor_intends_attack_reads_the_strategy_telegraph() -> void:
-	var u := BattleUnit.new()
-	u.max_hp = 10
-	u.hp = 10
-	assert_false(Stats.actor_intends_attack(u), "no AI -> no intent")
-	var intent := EnemyIntent.new()
-	intent.effects = [{"type": "dmg", "value": 3, "target": "enemy"}]
-	u.ai = EnemyAI.new()
-	u.ai.next_intent = intent
-	assert_true(Stats.actor_intends_attack(u), "telegraphed dmg intent -> attack")
-	intent.effects = [{"type": "block", "value": 5, "target": "self"}]
-	assert_false(Stats.actor_intends_attack(u), "a defend telegraph is not an attack")
-
 func test_go_for_the_eyes_tres_round_trips() -> void:
 	var card: CardData = Data.get_card(&"go_for_the_eyes")
 	assert_not_null(card, "go_for_the_eyes.tres should load")

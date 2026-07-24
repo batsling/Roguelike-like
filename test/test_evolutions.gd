@@ -66,16 +66,6 @@ func test_explosive_projectile_resolves_a_blast_radius() -> void:
 	assert_true(bool(spec.get("explosive", false)), "spec carries the explosive flag")
 	assert_gt(float(spec.get("blast_px", 0.0)), 0.0, "explosive sizes a blast radius")
 
-func test_explosive_strategy_footprint_includes_a_disc() -> void:
-	var card: CardData = Data.get_card(&"lil_bomber")
-	var spec: Dictionary = Data.strategy_attacks.resolve(card.attack_shape, card.attack_params)
-	assert_true(bool(spec.get("explosive", false)))
-	# A straight (non-explosive) projectile line of range 3 covers ~3 tiles; the
-	# blast disc fans the footprint much wider around the impact tile.
-	var fp: Array = Data.strategy_attacks.footprint(
-		spec, Vector2i(0, 0), Vector2i(3, 0), null, {})
-	assert_gt(fp.size(), 3, "the explosive footprint adds a blast disc beyond the line")
-
 # --- King Bomber evolution -------------------------------------------------
 
 func test_king_bomber_tres_has_gold_on_hit_rider() -> void:
