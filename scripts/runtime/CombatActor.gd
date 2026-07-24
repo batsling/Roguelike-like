@@ -54,6 +54,10 @@ var keep_block: bool = false
 # Enemies only: data-ref + planned move
 var data: EnemyData = null
 var planned_move: Dictionary = {}     # one entry of EnemyData.pattern
+# Display names of the moves this enemy has committed to, most recent last.
+# Feeds EnemyData.no_repeat_limit so _roll_intent can lock out a move that
+# has run too many turns in a row. Split/stun turns aren't recorded.
+var move_history: Array = []
 
 # Enemy weight class (1-5). Drives spawn frequency (future) and Vorpal matching.
 # Copied off the source EnemyData/ActionEnemyData at spawn so every mode reads it

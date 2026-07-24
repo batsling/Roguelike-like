@@ -28,7 +28,7 @@ func test_has_eight_floors_with_single_entry_and_boss() -> void:
 		assert_eq(int(m.floors[0][0].type), DeckbuilderMap.NodeType.COMBAT)
 		var last: Array = m.floors[DeckbuilderMap.FLOOR_COUNT - 1]
 		assert_eq(last.size(), 1, "single boss")
-		assert_eq(int(last[0].type), DeckbuilderMap.NodeType.ELITE)
+		assert_eq(int(last[0].type), DeckbuilderMap.NodeType.BOSS)
 
 func test_treasure_and_rest_rows_are_typed() -> void:
 	for s in range(20):
@@ -39,6 +39,51 @@ func test_treasure_and_rest_rows_are_typed() -> void:
 			assert_eq(int(n.type), DeckbuilderMap.NodeType.REST, "rest row")
 		# Multi-node rows so distinct routes keep their own chest/campfire.
 		assert_gt(m.floors[DeckbuilderMap.TREASURE_FLOOR].size(), 1, "treasure is a row")
+
+# --- Elites & boss ---------------------------------------------------------
+
+func test_boss_is_its_own_type_not_elite() -> void:
+	for s in range(20):
+		var m := _gen(s)
+		var last: Array = m.floors[DeckbuilderMap.FLOOR_COUNT - 1]
+		assert_eq(int(last[0].type), DeckbuilderMap.NodeType.BOSS, "final node is a boss")
+		# No mid-map node should be typed BOSS — the boss is unique.
+		for f in range(DeckbuilderMap.FLOOR_COUNT - 1):
+			for n in m.floors[f]:
+				assert_ne(int(n.type), DeckbuilderMap.NodeType.BOSS,
+					"only the last floor holds a boss (seed %d)" % s)
+
+func test_elites_only_appear_from_min_elite_floor() -> void:
+	for s in range(60):
+		var m := _gen(s)
+		for f in range(DeckbuilderMap.FLOOR_COUNT):
+			for n in m.floors[f]:
+				if int(n.type) == DeckbuilderMap.NodeType.ELITE:
+					assert_gte(f, DeckbuilderMap.MIN_ELITE_FLOOR,
+						"elite on floor %d below MIN_ELITE_FLOOR (seed %d)" % [f, s])
+
+func test_elites_do_show_up_somewhere() -> void:
+	# Across many seeds at least one elite should roll, proving they're in the pool.
+	var saw_elite := false
+	for s in range(80):
+		var m := _gen(s)
+		for f in range(DeckbuilderMap.FLOOR_COUNT):
+			for n in m.floors[f]:
+				if int(n.type) == DeckbuilderMap.NodeType.ELITE:
+					saw_elite = true
+	assert_true(saw_elite, "elites should appear on the map over many seeds")
+
+func test_no_two_shops_in_a_row() -> void:
+	for s in range(80):
+		var m := _gen(s)
+		for f in range(DeckbuilderMap.FLOOR_COUNT - 1):
+			for n in m.floors[f]:
+				if int(n.type) != DeckbuilderMap.NodeType.MERCHANT:
+					continue
+				for c in n.connections:
+					var nxt: Dictionary = m.nodes_by_id.get(int(c), {})
+					assert_ne(int(nxt.get("type", -1)), DeckbuilderMap.NodeType.MERCHANT,
+						"merchant %d links to another merchant (seed %d)" % [int(n.id), s])
 
 # --- Connectivity ----------------------------------------------------------
 

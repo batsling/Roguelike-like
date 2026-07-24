@@ -42,6 +42,7 @@ pattern = [
 ]
 pattern_mode = "random"
 starting_abilities = PackedStringArray()
+no_repeat_limit = 2
 starting_statuses = {"curl_up": [3, 7]}
 source_game = "Slay the Spire"
 tags = PackedStringArray("bug")

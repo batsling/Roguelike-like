@@ -10,9 +10,20 @@ extends Control
 # of the rest; when set_targetable(true) the button enables and
 # emits `clicked`.
 
-const VIEW_W := 220
-const VIEW_H := 320
-const PORTRAIT_BOX := Vector2(VIEW_W - 20, 196)
+# Compact StS-style enemy panel. Kept a touch smaller than the old 220×320 so
+# several enemies plus the (now smaller) player leave breathing room on screen.
+# The internal rows are laid out from these constants rather than magic numbers
+# so future size tweaks only touch this block.
+const VIEW_W := 180
+const VIEW_H := 262
+const INTENT_Y := 6
+const INTENT_H := 26
+const PORTRAIT_Y := 38
+const PORTRAIT_BOX := Vector2(VIEW_W - 20, 148)
+const NAME_Y := 188
+const HP_Y := 210
+const HP_H := 16
+const STATUS_Y := 230
 
 signal clicked
 
@@ -72,8 +83,8 @@ func _build() -> void:
 
 	# Intent bar (top)
 	_intent_bg = ColorRect.new()
-	_intent_bg.position = Vector2(6, 6)
-	_intent_bg.size = Vector2(VIEW_W - 12, 28)
+	_intent_bg.position = Vector2(6, INTENT_Y)
+	_intent_bg.size = Vector2(VIEW_W - 12, INTENT_H)
 	_intent_bg.color = Color(0.3, 0.15, 0.1, 1.0)
 	_intent_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_intent_bg)
@@ -81,16 +92,16 @@ func _build() -> void:
 	# Intent icon (move type art) sits at the left of the bar; the label (damage
 	# number / move name) fills the rest.
 	_intent_icon = TextureRect.new()
-	_intent_icon.position = Vector2(10, 9)
-	_intent_icon.size = Vector2(22, 22)
+	_intent_icon.position = Vector2(10, INTENT_Y + 3)
+	_intent_icon.size = Vector2(20, 20)
 	_intent_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_intent_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_intent_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_intent_icon)
 
 	_intent_label = Label.new()
-	_intent_label.position = Vector2(34, 6)
-	_intent_label.size = Vector2(VIEW_W - 44, 28)
+	_intent_label.position = Vector2(32, INTENT_Y)
+	_intent_label.size = Vector2(VIEW_W - 42, INTENT_H)
 	_intent_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_intent_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_intent_label.add_theme_font_size_override("font_size", 13)
@@ -100,7 +111,7 @@ func _build() -> void:
 
 	# Portrait
 	_portrait = TextureRect.new()
-	_portrait.position = Vector2(10, 42)
+	_portrait.position = Vector2(10, PORTRAIT_Y)
 	_portrait.size = PORTRAIT_BOX
 	_portrait.custom_minimum_size = PORTRAIT_BOX
 	# IGNORE_SIZE keeps the rect locked to PORTRAIT_BOX and scales the art to fit
@@ -114,17 +125,17 @@ func _build() -> void:
 
 	# Name strip
 	_name_label = Label.new()
-	_name_label.position = Vector2(6, 244)
-	_name_label.size = Vector2(VIEW_W - 12, 22)
+	_name_label.position = Vector2(6, NAME_Y)
+	_name_label.size = Vector2(VIEW_W - 12, 20)
 	_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_name_label.add_theme_font_size_override("font_size", 15)
+	_name_label.add_theme_font_size_override("font_size", 14)
 	_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_name_label)
 
 	# HP bar + overlay
 	_hp_bar = ProgressBar.new()
-	_hp_bar.position = Vector2(10, 270)
-	_hp_bar.size = Vector2(VIEW_W - 20, 18)
+	_hp_bar.position = Vector2(10, HP_Y)
+	_hp_bar.size = Vector2(VIEW_W - 20, HP_H)
 	_hp_bar.show_percentage = false
 	_hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var bar_fill := StyleBoxFlat.new()
@@ -144,8 +155,8 @@ func _build() -> void:
 	_hp_bar.add_child(_poison_overlay)
 
 	_hp_label = Label.new()
-	_hp_label.position = Vector2(10, 270)
-	_hp_label.size = Vector2(VIEW_W - 20, 18)
+	_hp_label.position = Vector2(10, HP_Y)
+	_hp_label.size = Vector2(VIEW_W - 20, HP_H)
 	_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_hp_label.add_theme_font_size_override("font_size", 11)
@@ -159,8 +170,8 @@ func _build() -> void:
 	_block_badge.texture = _intent_icon_for("defend")
 	_block_badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_block_badge.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_block_badge.position = Vector2(2, 263)
-	_block_badge.size = Vector2(28, 28)
+	_block_badge.position = Vector2(2, HP_Y - 6)
+	_block_badge.size = Vector2(26, 26)
 	_block_badge.modulate = Color(0.7, 0.85, 1.0)  # cool tint so it reads as Block
 	_block_badge.visible = false
 	_block_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -179,8 +190,8 @@ func _build() -> void:
 
 	# Status row (bottom)
 	_status_row = HBoxContainer.new()
-	_status_row.position = Vector2(6, 290)
-	_status_row.size = Vector2(VIEW_W - 12, 28)
+	_status_row.position = Vector2(6, STATUS_Y)
+	_status_row.size = Vector2(VIEW_W - 12, 26)
 	_status_row.add_theme_constant_override("separation", 4)
 	_status_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_status_row)

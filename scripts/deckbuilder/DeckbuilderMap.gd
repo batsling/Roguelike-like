@@ -7,9 +7,12 @@ extends RefCounted
 #   Floor 4 (5) = Treasure (the middle — a *row* of chests, one roughly per
 #                 branch, so paths don't all funnel through one node)
 #   Floor 6 (7) = Rest     (heal 33% / smith 1 / skip, just before the boss)
-#   Floor 7 (8) = Elite    (the boss — beat to clear the game)
+#   Floor 7 (8) = Boss     (single node all paths funnel into — beat to clear
+#                 the game; scaled harder than an elite)
 # Variable floors (1, 2, 3, 5 in 0-indexed): 2-4 nodes each, chosen from
-# Combat / Event / Merchant / Rest by the weights below.
+# Combat / Event / Merchant / Rest / Elite by the weights below. Elites are held
+# out of the opening floors (see MIN_ELITE_FLOOR) so the first stretch stays
+# gentle, mirroring Slay the Spire's act pacing.
 #
 # Connections are branching rather than a full cross: each node links to a
 # node roughly above it in the next floor, sometimes forking to a neighbour.
@@ -17,7 +20,9 @@ extends RefCounted
 # is always traversable, while the partial wiring creates real route choices
 # (which the old "everything connects to everything" layout lacked).
 
-enum NodeType { COMBAT, EVENT, REST, MERCHANT, TREASURE, ELITE }
+# BOSS is appended last so the existing integer values of the earlier types
+# (stored in node dicts and referenced by tests) stay put.
+enum NodeType { COMBAT, EVENT, REST, MERCHANT, TREASURE, ELITE, BOSS }
 
 const FLOOR_COUNT := 8
 # Column grid the path-web lives on (Slay the Spire uses 7; this 8-floor mini-map
@@ -35,12 +40,19 @@ const TREASURE_FLOOR := 4
 # multi-node so each branch reaches its own campfire rather than funnelling early.
 const REST_FLOOR := 6
 
-# Non-fixed floor type weights (sum = 100). A little Rest sprinkled into the
-# mix on top of the old Combat / Event / Merchant spread.
-const VARIABLE_WEIGHT_COMBAT := 55
+# Non-fixed floor type weights (sum = 100), derived from Slay the Spire's map
+# room percentages: Elite 8 / Merchant(Shop) 5 / Rest 12 / Event 22, with plain
+# Combat taking the remainder. Placeholder tuning — swap the numbers freely.
+const VARIABLE_WEIGHT_COMBAT := 53
 const VARIABLE_WEIGHT_EVENT := 22
-const VARIABLE_WEIGHT_MERCHANT := 13
-const VARIABLE_WEIGHT_REST := 10
+const VARIABLE_WEIGHT_REST := 12
+const VARIABLE_WEIGHT_MERCHANT := 5
+const VARIABLE_WEIGHT_ELITE := 8
+
+# Elites are forbidden before this floor (0-indexed), so the opening stretch of
+# the map never throws an elite at a still-weak deck — StS reserves elites for
+# later in an act the same way.
+const MIN_ELITE_FLOOR := 3
 
 # Each map node is a Dictionary:
 # {
@@ -105,6 +117,24 @@ func generate(rng: RandomNumberGenerator) -> void:
 				row.append(n)
 		floors.append(row)
 
+	# Types are rolled per node without knowing the path wiring, so two Merchants
+	# can end up directly connected. Break those up so a route never hits a shop
+	# on two floors back-to-back.
+	_prevent_consecutive_merchants()
+
+# Demotes the later node of any Merchant->Merchant edge to Combat, so no path
+# reaches a shop twice in a row. Iterates floors bottom-up: because only the
+# next-floor node is ever demoted, a chain of shops collapses in one pass.
+func _prevent_consecutive_merchants() -> void:
+	for f in range(FLOOR_COUNT - 1):
+		for node in floors[f]:
+			if int(node.type) != NodeType.MERCHANT:
+				continue
+			for cid in node.connections:
+				var nxt: Dictionary = nodes_by_id.get(int(cid), {})
+				if not nxt.is_empty() and int(nxt.type) == NodeType.MERCHANT:
+					nxt.type = NodeType.COMBAT
+
 # Picks the next column for a path stepping into floor `f` from `col`, choosing
 # among {col-1, col, col+1} (clamped) but rejecting a diagonal that would cross
 # the opposite diagonal edge already drawn by another path — the StS no-crossing
@@ -162,19 +192,27 @@ func _type_for_floor(f: int, rng: RandomNumberGenerator) -> int:
 	if f == REST_FLOOR:
 		return NodeType.REST
 	if f == FLOOR_COUNT - 1:
-		return NodeType.ELITE
+		return NodeType.BOSS
 	return _pick_variable_type(f, rng)
 
 func _pick_variable_type(f: int, rng: RandomNumberGenerator) -> int:
 	var roll: int = rng.randi() % 100
-	if roll < VARIABLE_WEIGHT_COMBAT:
+	var acc: int = VARIABLE_WEIGHT_COMBAT
+	if roll < acc:
 		return NodeType.COMBAT
-	elif roll < VARIABLE_WEIGHT_COMBAT + VARIABLE_WEIGHT_EVENT:
+	acc += VARIABLE_WEIGHT_EVENT
+	if roll < acc:
 		return NodeType.EVENT
-	elif roll < VARIABLE_WEIGHT_COMBAT + VARIABLE_WEIGHT_EVENT + VARIABLE_WEIGHT_MERCHANT:
+	acc += VARIABLE_WEIGHT_MERCHANT
+	if roll < acc:
 		return NodeType.MERCHANT
-	# Avoid a Rest immediately before the pre-boss rest row — no back-to-back
-	# campfires (StS keeps rests spaced out).
+	acc += VARIABLE_WEIGHT_ELITE
+	if roll < acc:
+		# Elites only from MIN_ELITE_FLOOR onward; before that the roll decays into
+		# a plain combat so early floors stay elite-free.
+		return NodeType.ELITE if f >= MIN_ELITE_FLOOR else NodeType.COMBAT
+	# Remaining weight is Rest. Avoid a Rest immediately before the pre-boss rest
+	# row — no back-to-back campfires (StS keeps rests spaced out).
 	if f == REST_FLOOR - 1:
 		return NodeType.COMBAT
 	return NodeType.REST
@@ -207,7 +245,7 @@ func current_node() -> Dictionary:
 	return nodes_by_id.get(current_node_id, {})
 
 func is_finished() -> bool:
-	# Elite is the only node on the last floor; visiting it finishes
+	# The boss is the only node on the last floor; visiting it finishes
 	# the mini-map.
 	if floors.size() < FLOOR_COUNT:
 		return false
@@ -228,6 +266,7 @@ static func type_name(t: int) -> String:
 		NodeType.MERCHANT: return "Merchant"
 		NodeType.TREASURE: return "Treasure"
 		NodeType.ELITE: return "Elite"
+		NodeType.BOSS: return "Boss"
 		_: return "?"
 
 static func type_glyph(t: int) -> String:
@@ -238,6 +277,7 @@ static func type_glyph(t: int) -> String:
 		NodeType.MERCHANT: return "$"
 		NodeType.TREASURE: return "T"
 		NodeType.ELITE: return "!"
+		NodeType.BOSS: return "B"
 		_: return "."
 
 # Debug ASCII print for the generated map; useful from print() statements.

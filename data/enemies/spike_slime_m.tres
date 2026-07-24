@@ -44,6 +44,7 @@ pattern = [
 ]
 pattern_mode = "random"
 starting_abilities = PackedStringArray()
+no_repeat_limit = 2
 source_game = "Slay the Spire"
 tags = PackedStringArray("slime")
 image = ExtResource("2_img")

@@ -56,6 +56,8 @@ pattern = [
 ]
 pattern_mode = "random"
 starting_abilities = PackedStringArray()
+no_repeat_limit = 2
+no_repeat_move = "Bite"
 source_game = "Slay the Spire"
 tags = PackedStringArray()
 image = ExtResource("2_img")
