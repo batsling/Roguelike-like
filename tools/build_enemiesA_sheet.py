@@ -46,7 +46,7 @@ XLSX_PATH = os.path.join(SCRIPT_DIR, "Roguelikes.xlsx")
 
 HEADERS = [
     "Name", "Id", "Difficulty", "Weight", "Game", "Tag",
-    "Min HP", "Max HP", "Move Speed", "Size", "Behavior", "Stop Distance",
+    "Min HP", "Max HP", "Speed", "Size", "Behavior", "Stop Distance",
     "Attacks",
     "Color", "Directional", "Motion", "Attack Style", "Layers", "Animations", "Ability",
 ]
@@ -98,7 +98,7 @@ ENEMIES = [
     {
         "Name": "Horf", "Id": "horf", "Difficulty": "Low", "Weight": 2,
         "Game": "The Binding of Isaac", "Tag": "",
-        "Min HP": 25, "Max HP": 25, "Move Speed": 0, "Size": 1,
+        "Min HP": 16, "Max HP": 20, "Speed": 0, "Size": 1,
         "Behavior": "Stationary", "Stop Distance": 0,
         "Attacks": "ranged dmg 6 cd 2.2 windup 0.35 range 480 speed 200 life 5",
         "Color": "0.8,0.1,0.1", "Directional": "No",
@@ -108,7 +108,7 @@ ENEMIES = [
     {
         "Name": "Gaper", "Id": "gaper", "Difficulty": "Low", "Weight": 2,
         "Game": "The Binding of Isaac", "Tag": "",
-        "Min HP": 25, "Max HP": 25, "Move Speed": 90, "Size": 1,
+        "Min HP": 16, "Max HP": 20, "Speed": 90, "Size": 1,
         "Behavior": "Walker", "Stop Distance": 0,
         "Attacks": "melee dmg 6 cd 1.0 range 40",
         "Color": "0.9,0.6,0.55", "Directional": "No",
@@ -124,7 +124,7 @@ ENEMIES = [
     {
         "Name": "Pacer", "Id": "pacer", "Difficulty": "Low", "Weight": 0,
         "Game": "The Binding of Isaac", "Tag": "",
-        "Min HP": 25, "Max HP": 25, "Move Speed": 70, "Size": 1,
+        "Min HP": 16, "Max HP": 20, "Speed": 70, "Size": 1,
         "Behavior": "Pacer", "Stop Distance": 0,
         "Attacks": "melee dmg 6 cd 1.0 range 40",
         "Color": "0.85,0.5,0.5", "Directional": "No",
@@ -138,7 +138,7 @@ ENEMIES = [
     {
         "Name": "Gusher", "Id": "gusher", "Difficulty": "Low", "Weight": 0,
         "Game": "The Binding of Isaac", "Tag": "",
-        "Min HP": 25, "Max HP": 25, "Move Speed": 60, "Size": 1,
+        "Min HP": 16, "Max HP": 20, "Speed": 60, "Size": 1,
         "Behavior": "Pacer", "Stop Distance": 0,
         "Attacks": "melee dmg 6 cd 1.2 range 40 ; "
                    "ranged dmg 6 cd 1.2 speed 180 life 3 count 1 random",
@@ -160,7 +160,7 @@ ENEMIES = [
         # shape on the sheet, handy as a worked example of the columns.
         "Name": "Baby Alien", "Id": "baby_alien", "Difficulty": "Low", "Weight": 1,
         "Game": "Brotato", "Tag": "",
-        "Min HP": 10, "Max HP": 15, "Move Speed": 70, "Size": 1,
+        "Min HP": 10, "Max HP": 15, "Speed": 80, "Size": 1,
         "Behavior": "Walker", "Stop Distance": 0,
         "Attacks": "melee dmg 5 cd 1.0 range 40",
         "Color": "0.45,0.4,0.55", "Directional": "No", "Motion": "squash",
@@ -170,14 +170,14 @@ ENEMIES = [
     {
         # Ranged kiter: a Shooter that opens fire from ~half a screen away (range
         # 490 ≈ Horf) and holds still as long as the player keeps its distance,
-        # only fleeing when crowded within ~4 player sizes (Stop Distance 4). It
+        # only fleeing when crowded within ~6 player sizes (Stop Distance 6). It
         # reuses the Baby Alien's squash jelly-walk, and adds the CHARGE attack
         # style — it squeezes/expands on Y and reddens while winding up the 0.6s
         # telegraph before spitting a 6-dmg bolt.
         "Name": "Spitter", "Id": "spitter", "Difficulty": "Low", "Weight": 2,
         "Game": "Brotato", "Tag": "",
-        "Min HP": 12, "Max HP": 16, "Move Speed": 70, "Size": 1,
-        "Behavior": "Shooter", "Stop Distance": 4,
+        "Min HP": 12, "Max HP": 16, "Speed": 70, "Size": 1,
+        "Behavior": "Shooter", "Stop Distance": 6,
         "Attacks": "ranged dmg 6 cd 1.8 windup 0.6 range 490 speed 260 life 2.5",
         "Color": "0.42,0.38,0.52", "Directional": "No",
         "Motion": "squash", "Attack Style": "charge",

@@ -40,7 +40,10 @@ func _init() -> void:
 # near.
 func start(host: Node, loot_index: int) -> void:
 	_layer = CanvasLayer.new()
-	_layer.layer = 100
+	# Sit just above the host's CanvasLayer so the modal draws over whatever
+	# opened it. The Backpack lives on a high layer (128); a fixed 100 rendered
+	# the scroll result *behind* the bag, so derive the layer from the host.
+	_layer.layer = _layer_above(host)
 	_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(_layer)
 	_layer.add_child(self)
@@ -207,6 +210,17 @@ func _do_teleport(req: Dictionary) -> void:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+# Walk up from the host to its nearest CanvasLayer ancestor and return a layer
+# index one above it, so a menu opened from a layered overlay (the Backpack) is
+# always drawn on top of it. Falls back to 100 for hosts not under a layer.
+func _layer_above(host: Node) -> int:
+	var n: Node = host
+	while n != null:
+		if n is CanvasLayer:
+			return (n as CanvasLayer).layer + 1
+		n = n.get_parent()
+	return 100
 
 func _finish() -> void:
 	finished.emit()

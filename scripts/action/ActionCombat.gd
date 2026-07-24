@@ -361,6 +361,16 @@ const ENEMY_PROJECTILE_RADIUS := 7.0
 const ENEMY_PROJECTILE_LIFETIME := 3.0
 const ENEMY_PROJECTILE_COLOR := Color(1.0, 0.45, 0.2)
 
+# Global action-combat pace multipliers. Applied on top of every per-entity /
+# per-attack speed so the whole mode can be sped up without re-tuning each
+# enemy and card resource. ENTITY_SPEED_MULT scales walking speed for the
+# player and every enemy; PROJECTILE_SPEED_MULT scales how fast every bolt
+# (player, enemy, boomerang) flies. Projectile reach is preserved — the
+# multiplier is folded into the lifetime math too — so bolts arrive sooner
+# without changing how far they carry.
+const ENTITY_SPEED_MULT := 1.30
+const PROJECTILE_SPEED_MULT := 1.15
+
 # Enemy sprite radius relative to the collision radius (data.size), mirroring
 # the player's PLAYER_SPRITE_RADIUS = PLAYER_RADIUS * 1.3 so a size-1 enemy
 # reads at the same scale as the player.
@@ -1100,7 +1110,7 @@ func _process_player_input(delta: float) -> void:
 		dir.x += 1
 	if dir != Vector2.ZERO:
 		dir = dir.normalized()
-		var move_speed: float = Stats.action_movement_speed() * _tempo_multiplier()
+		var move_speed: float = Stats.action_movement_speed() * _tempo_multiplier() * ENTITY_SPEED_MULT
 		player_pos += dir * move_speed * delta
 		player_pos.x = clampf(player_pos.x, PLAYER_RADIUS, ARENA_W - PLAYER_RADIUS)
 		player_pos.y = clampf(player_pos.y, PLAYER_RADIUS, ARENA_H - PLAYER_RADIUS)
@@ -1948,6 +1958,12 @@ func _perform_action_split(inst: Dictionary) -> Array:
 	inst.actor.dead = true   # the parent is consumed by the split
 	return spawns
 
+# Enemy walking speed with the global action-combat pace multiplier folded in.
+# Every movement path routes through here so ENTITY_SPEED_MULT scales enemies
+# uniformly (predictive wall-bounce checks included).
+func _enemy_move_speed(data: ActionEnemyData) -> float:
+	return data.move_speed * ENTITY_SPEED_MULT
+
 # Fear (action enemy): run directly away from the player at a small speed boost
 # and never attack. Fear is spent over real time — each Fear stack lasts
 # FEAR_FLEE_SECONDS_PER_STACK seconds of fleeing, so the flee duration scales
@@ -1959,7 +1975,7 @@ func _process_feared_enemy(inst: Dictionary, delta: float) -> void:
 	var away: Vector2 = inst.pos - player_pos
 	if away.length() == 0.0:
 		away = Vector2.RIGHT
-	inst.pos += away.normalized() * data.move_speed * Stats.FEAR_FLEE_SPEED_MULT * delta
+	inst.pos += away.normalized() * _enemy_move_speed(data) * Stats.FEAR_FLEE_SPEED_MULT * delta
 	inst.cooldown = maxf(0.0, inst.cooldown - delta)
 	var timer: float = float(inst.get("fear_timer", 0.0)) + delta
 	while timer >= Stats.FEAR_FLEE_SECONDS_PER_STACK and inst.actor.get_status(&"fear") > 0:
@@ -1976,7 +1992,7 @@ func _process_walker(inst: Dictionary, delta: float) -> void:
 	if reach <= 0.0:
 		reach = data.max_attack_range()
 	if dist > reach * 0.85:
-		inst.pos += to_player.normalized() * data.move_speed * delta
+		inst.pos += to_player.normalized() * _enemy_move_speed(data) * delta
 	_enemy_update_attacks(inst, delta)
 
 # PACER: wander aimlessly, ignoring the player — pick a heading, walk it, and
@@ -1992,12 +2008,12 @@ func _process_pacer(inst: Dictionary, delta: float) -> void:
 		h = Vector2.RIGHT.rotated(_rng.randf() * TAU)
 		wt = _rng.randf_range(0.8, 2.0)
 	# Bounce off the arena bounds so it stays in the room.
-	var nxt: Vector2 = inst.pos + h * data.move_speed * delta
+	var nxt: Vector2 = inst.pos + h * _enemy_move_speed(data) * delta
 	if nxt.x < data.size or nxt.x > ARENA_W - data.size:
 		h.x = -h.x
 	if nxt.y < data.size or nxt.y > ARENA_H - data.size:
 		h.y = -h.y
-	inst.pos += h * data.move_speed * delta
+	inst.pos += h * _enemy_move_speed(data) * delta
 	inst["heading"] = h
 	inst["wander_t"] = wt
 	_enemy_update_attacks(inst, delta)
@@ -2019,10 +2035,10 @@ func _process_shooter(inst: Dictionary, delta: float) -> void:
 	var deadband := 10.0
 	if dist < standoff - deadband:
 		# Crowded — flee away from the player (attacks still fire below).
-		inst.pos -= dir * data.move_speed * delta
+		inst.pos -= dir * _enemy_move_speed(data) * delta
 	elif dist > standoff + deadband:
 		# Too much space (or out of firing range) — drift back to ideal range.
-		inst.pos += dir * data.move_speed * delta
+		inst.pos += dir * _enemy_move_speed(data) * delta
 	_enemy_update_attacks(inst, delta)
 
 func _process_stationary(inst: Dictionary, delta: float) -> void:
@@ -2129,6 +2145,10 @@ func _spawn_enemy_projectile(inst: Dictionary, dir: Vector2, atk: Dictionary, re
 	var pl: float = float(atk["proj_lifetime"])
 	var speed: float = ps if ps > 0.0 else ENEMY_PROJECTILE_DEFAULT_SPEED
 	var life: float = pl if pl > 0.0 else ENEMY_PROJECTILE_LIFETIME
+	# Bolt flies faster but covers the same ground: shorten its lifetime by the
+	# same factor so the global pace bump doesn't extend enemy threat range.
+	speed *= PROJECTILE_SPEED_MULT
+	life /= PROJECTILE_SPEED_MULT
 	if recoil:
 		inst["knockback"] = (inst.get("knockback", Vector2.ZERO) - dir * ENEMY_FIRE_RECOIL_SPEED).limit_length(ENEMY_KNOCKBACK_MAX)
 	projectiles.append({
@@ -3573,7 +3593,7 @@ func _deliver_boomerang(card: CardData, effects: Array, _spec: Dictionary) -> vo
 func _process_boomerangs(delta: float) -> void:
 	if _boomerangs.is_empty():
 		return
-	var speed: float = _atk.boomerang_speed if _atk != null else 560.0
+	var speed: float = (_atk.boomerang_speed if _atk != null else 560.0) * PROJECTILE_SPEED_MULT
 	var radius: float = _atk.boomerang_hit_radius if _atk != null else 30.0
 	var i := 0
 	while i < _boomerangs.size():
@@ -3789,7 +3809,7 @@ func _spawn_attack_bolts(card: CardData, spec: Dictionary, aim_dir: Vector2, hom
 	var dir: Vector2 = aim_dir.normalized() if aim_dir.length() > 0.01 else player_facing
 	var count: int = maxi(1, int(spec.spread))
 	var range_px: float = float(spec.reach_px)
-	var speed: float = _atk.projectile_speed
+	var speed: float = _atk.projectile_speed * PROJECTILE_SPEED_MULT
 	var lifetime: float = range_px / speed if speed > 0.0 else 1.0
 	# A spread shares one hit_set so a fan converging on one enemy applies the
 	# card's effects once, not once per bolt.
@@ -3807,7 +3827,7 @@ func _spawn_attack_bolt(card: CardData, dir: Vector2, range_px: float, lifetime:
 	var crescent: bool = bool(spec.crescent)
 	var proj: Dictionary = {
 		"pos": player_pos + dir * (PLAYER_RADIUS + 4.0),
-		"velocity": dir * _atk.projectile_speed,
+		"velocity": dir * _atk.projectile_speed * PROJECTILE_SPEED_MULT,
 		"owner": "player",
 		"radius": 11.0 if crescent else PLAYER_PROJECTILE_RADIUS,
 		"color": _attack_color_for(card, _atk.crescent_color if crescent else PLAYER_PROJECTILE_COLOR),
@@ -4938,7 +4958,7 @@ func _spawn_player_projectile(card: CardData, aim_dir: Vector2 = Vector2.ZERO) -
 	# Pull the travel distance off the card. Empty/unknown range_class
 	# falls back to "medium" so legacy cards still feel right.
 	var range_px: float = float(PROJECTILE_RANGE_PX.get(card.range_class, PROJECTILE_RANGE_DEFAULT_PX))
-	var lifetime: float = range_px / PLAYER_PROJECTILE_SPEED
+	var lifetime: float = range_px / (PLAYER_PROJECTILE_SPEED * PROJECTILE_SPEED_MULT)
 	# A ranged AOE card (Thunderclap: ranged + all_enemies) fans
 	# multiple bolts instead of one bolt that explodes. All bolts from
 	# the same cast share a `hit_set` so a clustered target doesn't
@@ -4959,7 +4979,7 @@ func _spawn_player_projectile(card: CardData, aim_dir: Vector2 = Vector2.ZERO) -
 func _spawn_single_projectile(card: CardData, dir: Vector2, range_px: float, lifetime: float, hit_set: Dictionary) -> void:
 	var proj: Dictionary = {
 		"pos": player_pos + dir * (PLAYER_RADIUS + 4.0),
-		"velocity": dir * PLAYER_PROJECTILE_SPEED,
+		"velocity": dir * PLAYER_PROJECTILE_SPEED * PROJECTILE_SPEED_MULT,
 		"owner": "player",
 		"radius": PLAYER_PROJECTILE_RADIUS,
 		"color": _attack_color_for(card, PLAYER_PROJECTILE_COLOR),
