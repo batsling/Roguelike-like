@@ -117,6 +117,24 @@ func generate(rng: RandomNumberGenerator) -> void:
 				row.append(n)
 		floors.append(row)
 
+	# Types are rolled per node without knowing the path wiring, so two Merchants
+	# can end up directly connected. Break those up so a route never hits a shop
+	# on two floors back-to-back.
+	_prevent_consecutive_merchants()
+
+# Demotes the later node of any Merchant->Merchant edge to Combat, so no path
+# reaches a shop twice in a row. Iterates floors bottom-up: because only the
+# next-floor node is ever demoted, a chain of shops collapses in one pass.
+func _prevent_consecutive_merchants() -> void:
+	for f in range(FLOOR_COUNT - 1):
+		for node in floors[f]:
+			if int(node.type) != NodeType.MERCHANT:
+				continue
+			for cid in node.connections:
+				var nxt: Dictionary = nodes_by_id.get(int(cid), {})
+				if not nxt.is_empty() and int(nxt.type) == NodeType.MERCHANT:
+					nxt.type = NodeType.COMBAT
+
 # Picks the next column for a path stepping into floor `f` from `col`, choosing
 # among {col-1, col, col+1} (clamped) but rejecting a diagonal that would cross
 # the opposite diagonal edge already drawn by another path — the StS no-crossing

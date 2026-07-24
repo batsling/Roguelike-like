@@ -73,6 +73,18 @@ func test_elites_do_show_up_somewhere() -> void:
 					saw_elite = true
 	assert_true(saw_elite, "elites should appear on the map over many seeds")
 
+func test_no_two_shops_in_a_row() -> void:
+	for s in range(80):
+		var m := _gen(s)
+		for f in range(DeckbuilderMap.FLOOR_COUNT - 1):
+			for n in m.floors[f]:
+				if int(n.type) != DeckbuilderMap.NodeType.MERCHANT:
+					continue
+				for c in n.connections:
+					var nxt: Dictionary = m.nodes_by_id.get(int(c), {})
+					assert_ne(int(nxt.get("type", -1)), DeckbuilderMap.NodeType.MERCHANT,
+						"merchant %d links to another merchant (seed %d)" % [int(n.id), s])
+
 # --- Connectivity ----------------------------------------------------------
 
 func test_every_node_reaches_the_boss() -> void:
