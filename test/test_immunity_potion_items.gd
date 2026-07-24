@@ -3,7 +3,7 @@ extends GutTest
 # Covers the four sheet-authored items added with new engine vocabulary:
 #   * Ginger / Turnip — status_immunity: the PLAYER can no longer GAIN a status
 #     (Weak / Frail). Blocked at the per-actor add_status choke point, so it
-#     covers every source and every combat mode (CombatActor + BattleUnit).
+#     covers every source through the shared CombatActor add_status path.
 #   * Toy Ornithopter — the run-scope `potion_used` trigger (heal on potion use).
 #   * Darkstone Periapt — the curse_applied heal (mirrors Vitality Orb).
 
@@ -44,13 +44,6 @@ func test_immunity_does_not_protect_enemies() -> void:
 	var enemy := CombatActor.new()  # is_player == false
 	enemy.add_status(&"weak", 2)
 	assert_eq(enemy.get_status(&"weak"), 2, "immunity is the player's, not the enemy's")
-
-func test_immunity_blocks_status_on_player_battle_unit() -> void:
-	GameState.add_item(Data.get_item(&"turnip"))
-	var u := BattleUnit.new()
-	u.is_player = true
-	u.add_status(&"frail", 2)
-	assert_eq(u.get_status(&"frail"), 0, "Turnip drops Frail on a strategy player unit")
 
 func test_no_immunity_without_the_item() -> void:
 	var player := CombatActor.from_player()

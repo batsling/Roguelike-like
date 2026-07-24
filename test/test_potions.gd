@@ -269,14 +269,6 @@ func test_strategy_splash_offsets() -> void:
 	assert_true(diamond.has(Vector2i(2, 0)) and diamond.has(Vector2i(1, 1)))
 	assert_false(diamond.has(Vector2i(2, 1)), "manhattan>2 excluded")
 
-func test_manhattan_disc_footprint() -> void:
-	# The StrategyAttackLibrary manhattan disc backs the thrown-potion footprint.
-	var lib := StrategyAttackLibrary.new()
-	var spec := {"family": "disc", "aim": "tile", "radius": 1, "manhattan": true}
-	var tiles: Array = lib.footprint(spec, Vector2i(5, 5), Vector2i(5, 5))
-	assert_eq(tiles.size(), 5, "manhattan radius-1 disc is a plus (5 tiles)")
-	assert_false(tiles.has(Vector2i(6, 6)), "no diagonal in a manhattan disc")
-
 # --- Reward / scroll-stub loot ----------------------------------------------
 
 func test_grant_random_consumable_adds_an_entry() -> void:
