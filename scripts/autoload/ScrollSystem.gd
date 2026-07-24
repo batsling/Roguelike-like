@@ -73,12 +73,17 @@ func display_name(scroll: ScrollData) -> String:
 const UNIDENTIFIED_TEX: Texture2D = preload("res://images/scrolls/Unidentified.png")
 
 # Texture for a scroll: its real art once identified, else the shared mystery
-# scroll. Unlike potions there's no per-run colour map.
+# scroll. Unlike potions there's no per-run colour map. Never returns null — if
+# the identified scroll has no art file (many scroll types ship without one) or
+# the load fails, it falls back to the mystery-scroll icon rather than handing
+# callers a null/broken texture that renders as a blank white box on the ground.
 func art_texture(scroll: ScrollData) -> Texture2D:
 	if scroll != null and is_identified(scroll.id):
 		var path := "res://images/scrolls/%s.png" % scroll.art_file()
 		if ResourceLoader.exists(path):
-			return load(path)
+			var tex: Texture2D = load(path)
+			if tex != null:
+				return tex
 	return UNIDENTIFIED_TEX
 
 # ===========================================================================

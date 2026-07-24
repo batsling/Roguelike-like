@@ -56,6 +56,9 @@ var _list_vbox: VBoxContainer
 var _hint_label: Label
 var _stats_vbox: VBoxContainer
 var _card_preview: CanvasLayer = null
+# The run map opened from the backpack header (RunMapView). While it's up the
+# bag's Tab/Esc handling defers to the map so those keys close the map first.
+var _map_view: RunMapView = null
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -71,6 +74,11 @@ func _ready() -> void:
 # in Main) because the backpack runs PROCESS_MODE_ALWAYS, so it keeps working
 # while the tree is paused (i.e. so Tab also closes it once it's open).
 func _input(event: InputEvent) -> void:
+	# While the run map is open over the bag, let it own Tab/Esc (it closes on M
+	# and Esc via its own handler) so those keys don't also toggle/close the bag
+	# underneath it.
+	if _map_view != null:
+		return
 	if event.is_action_pressed("backpack"):
 		toggle()
 		get_viewport().set_input_as_handled()
@@ -153,6 +161,10 @@ func _build_ui() -> void:
 	title.add_theme_color_override("font_color", Color(1, 0.9, 0.7))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
+	var map_btn := Button.new()
+	map_btn.text = "🗺 Map"
+	map_btn.pressed.connect(_open_map)
+	header.add_child(map_btn)
 	var collection_btn := Button.new()
 	collection_btn.text = "📚 Collection"
 	collection_btn.pressed.connect(_open_collection)
@@ -256,6 +268,23 @@ func _build_ui() -> void:
 # closing the collection returns here without un-pausing the run.
 func _open_collection() -> void:
 	Collection.open(self)
+
+# Opens the view-only run map on top of the backpack. RunMapView is a
+# self-contained CanvasLayer; it defaults to layer 20 (below the bag), so bump
+# it above the backpack and run it PROCESS_MODE_ALWAYS since the bag pauses the
+# tree. It closes on its own M / Esc / Close button, returning here.
+func _open_map() -> void:
+	if _map_view != null:
+		return
+	var mv := RunMapView.new()
+	mv.layer = _overlay_layer()
+	mv.process_mode = Node.PROCESS_MODE_ALWAYS
+	mv.closed.connect(_on_map_closed)
+	add_child(mv)
+	_map_view = mv
+
+func _on_map_closed() -> void:
+	_map_view = null
 
 func _add_sort_button(text: String, mode: SortMode) -> void:
 	var b := Button.new()
@@ -938,6 +967,16 @@ func _build_card_cell(inst: CardInstance, count: int) -> Control:
 
 	return wrapper
 
+# Layer index one above the backpack's own CanvasLayer, so menus/previews the
+# bag spawns render on top of it rather than behind it.
+func _overlay_layer() -> int:
+	var n: Node = self
+	while n != null:
+		if n is CanvasLayer:
+			return (n as CanvasLayer).layer + 1
+		n = n.get_parent()
+	return 130
+
 # Full-screen close-up of a deck card with a toggle to preview its upgraded
 # form. Rebuilds itself when the toggle flips so the card art, cost and text
 # all reflect the chosen state.
@@ -947,7 +986,9 @@ func _show_card_preview(card_data: CardData, upgraded: bool) -> void:
 	_close_card_preview()
 
 	var layer := CanvasLayer.new()
-	layer.layer = 60
+	# Draw above the backpack's own CanvasLayer (the bag is mounted high, ~128),
+	# so the preview pops over the bag instead of hiding behind it.
+	layer.layer = _overlay_layer()
 	add_child(layer)
 	_card_preview = layer
 

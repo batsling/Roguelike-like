@@ -17,8 +17,8 @@ func test_horf_is_a_stationary_shooter() -> void:
 	assert_eq(horf.id, &"horf")
 	assert_eq(horf.behavior, ActionEnemyData.BehaviorKind.STATIONARY)
 	assert_eq(horf.move_speed, 0.0, "Horf never relocates")
-	assert_eq(horf.hp_min, 25)
-	assert_eq(horf.hp_max, 25)
+	assert_eq(horf.hp_min, 16)
+	assert_eq(horf.hp_max, 20)
 	# One ranged attack, carrying its own damage + projectile stats.
 	var atks: Array = horf.attacks()
 	assert_eq(atks.size(), 1, "Horf has a single attack")
@@ -64,7 +64,7 @@ func test_baby_alien_walker_with_squash() -> void:
 	var baby: ActionEnemyData = load("res://data/action_enemies/baby_alien.tres")
 	assert_not_null(baby, "baby_alien.tres should load")
 	assert_eq(baby.behavior, ActionEnemyData.BehaviorKind.WALKER, "chases the player")
-	assert_eq(baby.move_speed, 70.0)
+	assert_eq(baby.move_speed, 80.0)
 	assert_eq(baby.hp_min, 10)
 	assert_eq(baby.hp_max, 15)
 	# One melee contact attack carrying its own damage.

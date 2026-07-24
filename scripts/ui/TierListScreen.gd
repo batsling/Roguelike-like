@@ -291,6 +291,10 @@ class Tile extends PanelContainer:
 		var gd: GameData = Data.get_game(_game_id)
 		if gd != null and gd.cover_image != null:
 			preview.texture = gd.cover_image
+		# Without EXPAND_IGNORE_SIZE a TextureRect draws at the texture's native
+		# resolution, so a large cover renders huge and ignores the size below.
+		preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		preview.custom_minimum_size = Vector2(64, 64)
 		preview.size = Vector2(64, 64)
 		preview.modulate = Color(1, 1, 1, 0.85)
