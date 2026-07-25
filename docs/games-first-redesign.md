@@ -27,15 +27,18 @@ so every number must stay small and glanceable.
 1. **Choose a game** on the graph. Routing is the core decision (see §6).
 2. The game presents **one enemy** = one goal, plus its attack value and its
    guaranteed item drop.
-3. Optionally take a **curse** (opt-in gambit, §5) for a better drop.
-4. **Go play the real game.**
-5. Resolve:
-   - **Goal met → enemy defeated → item drops.** (+ curse honored, if taken.)
-   - **Game beaten but goal not met → enemy attacks:** `block` absorbs, remainder
-     comes off `health`. **[OPEN]** does a no-goal clear still drop anything, or
-     nothing? (Leaning: nothing, or a downgraded drop.)
-   - **Curse broken → curse's damage** applies (this is what makes curses bite).
-6. Repeat until the **Amulet** game is cleared (win) or **health = 0** (loss).
+3. **Go play the real game. You must beat the game to advance to the next area.**
+4. Resolve:
+   - **Goal met → enemy defeated → item drops.**
+   - **Game beaten but goal not met → the enemy is not defeated: it *stacks*.**
+     No item drops. The undefeated enemy carries forward and deals its `attack`;
+     `block` (temp health) absorbs, remainder comes off `health`. Each new area
+     you clear without its goal adds another enemy to the stack, so unbeaten
+     threats accumulate and pressure ramps until you die or clear them.
+     **[OPEN]** cadence of stacked-enemy damage (once when it stacks, or each
+     subsequent area) and whether/how a stacked enemy's goal can still be
+     retired later.
+5. Repeat until the **Amulet** game is cleared (win) or **health = 0** (loss).
 
 ---
 
@@ -46,8 +49,8 @@ Kept deliberately tiny for HUD readability.
 | Stat | Range (starting → cap) | Notes |
 |---|---|---|
 | Health | ~10 (tune) | Lose at 0. |
-| Block  | 0, small | Resets? persists? **[OPEN]** — leaning **persists** between games, since there are no turns. |
-| Enemy attack | 1–3 | The hit taken when you clear a game without its goal. |
+| Block  | 0, small | **Carries over between games — it is temporary health**, absorbed before `health` on any hit. |
+| Enemy attack | 1–3 | The hit dealt by an enemy that stacks (game cleared without its goal). |
 
 Block sources: completing a goal, certain tag routes, spending a scroll, or item
 drops of the `block` category. The central tension is *earn block by beating
@@ -71,8 +74,8 @@ integer counts on the HUD.
 | Item | Effect |
 |---|---|
 | **Key** | Unlock a new game path (blocked edge / unconnected "wild" game). |
-| **Bomb** | Directly defeat a goal-enemy *without* doing its goal (escape hatch for undoable goals). **[OPEN]** does a bombed enemy still drop? Leaning **no**. |
-| **Scroll: Fog** | Kept from legacy. **[OPEN]** exact effect (obscure vs. reveal graph info). |
+| **Bomb** | Directly defeat a goal-enemy *without* doing its goal (escape hatch for undoable goals). **No item drops** when an enemy is bombed. |
+| **Scroll: Fog** | Kept from legacy — **obscures certain choices** on the graph, as it does today. |
 | **Scroll: Teleportation** | Kept from legacy. Jump across the graph. |
 
 Verbs and consumables are **earned from enemy drops** and spent to route around
@@ -80,18 +83,13 @@ goals you can't or won't complete.
 
 ---
 
-## 5. Curses — opt-in gambit (not load-bearing)
+## 5. Curses — shelved for now
 
-Curses become **optional harder self-imposed goals** you take *on a specific game*
-for a better drop. They reuse the existing `CurseData` RESTRICTION content.
-
-- Taking a curse improves the game's drop (rarer/upgraded item). **[OPEN]** exact
-  reward bump.
-- **Breaking a curse is what deals damage** (honour system + existing
-  `last_game_curses_held` / `last_game_curses_triggered` verification hooks).
-- Curses are never forced by the core loop — they're the "press your luck" layer.
-- AFFLICTION-kind curses (auto-effects on the app economy) can stay as a rarer
-  imposed variant if desired, but are secondary.
+**Curses are not part of the current design.** The enemy-with-a-goal *is* the
+challenge mechanic, so curses are deliberately set aside to avoid duplicating that
+role. The existing `CurseData` content and hooks stay in the repo (not deleted),
+and curses may return later as an opt-in gambit layer, but nothing in the core
+loop depends on them.
 
 ---
 
@@ -102,10 +100,12 @@ Routing replaces combat as the decision space. Two axes carry it:
 ### 6.1 Game type (the enemy-pool axis)
 The **type** determines which enemy/goal pool a game draws from (§7). Today the
 map has two types (Action, Strategy) with `deckbuilder` / `traditional` as *tags*.
-**Likely change: promote `traditional` and `deckbuilder` back to first-class
-types**, so the type set becomes ~Action / Deckbuilder / Traditional (± Strategy).
-Each type has its own goal pool ("beat a boss without healing" suits Action;
-"win in one deck cycle" suits Deckbuilder; "descend N floors" suits Traditional).
+**Decided: `deckbuilder` and `traditional` are promoted back to first-class
+types** (each was previously a tag). The type set becomes **Action / Deckbuilder /
+Traditional**. Each type has its own goal pool ("beat a boss without healing"
+suits Action; "win in one deck cycle" suits Deckbuilder; "descend N floors" suits
+Traditional). **[OPEN, minor]** whether a separate **Strategy** type survives for
+non-deckbuilder strategy games, or those fold into the three above.
 
 ### 6.2 Tags (the routing / synergy axis)
 - **Widen the tag vocabulary** on `GameData` and make tags first-class.
@@ -154,7 +154,6 @@ resource vocabulary above:
 | `verb` | A bash / dash / scramble charge. |
 | `key` | A path key. |
 | `bomb` | A bomb. |
-| `curse_removal` | Shed a held curse. **[OPEN]** keep as its own category? |
 
 This directly informs the **items sheet redo** (§10).
 
@@ -164,8 +163,12 @@ This directly informs the **items sheet redo** (§10).
 
 - The player-facing HUD is a **separate slim companion window** captured in OBS,
   **not** the main app window you drive from.
-- Renders: health, block, current enemy + its goal, verb counts (bash/dash/
-  scramble), consumable counts (keys/bombs/scrolls), current curse (if any).
+- **Designed to help the viewer follow the run** — at a glance the audience should
+  see the current game, the enemy and **what its goal is** (so they know what
+  they're rooting for), health, block, the stack of undefeated enemies, and the
+  verb/consumable counts.
+- Renders: health, block, current enemy + its goal, the **stacked-enemy count**,
+  verb counts (bash/dash/scramble), consumable counts (keys/bombs/scrolls).
 - Architecture: a dedicated HUD scene reading the same `GameState`/autoloads the
   main window mutates. **[OPEN]** second Godot `Window` vs. a separate always-on-top
   borderless scene the user positions over OBS.
@@ -188,8 +191,7 @@ existing `tools/generate_*` pattern.
   **type** (§6.1). Regenerate via `import-games-godot.py`.
 - **scrolls** — trim to the kept set (fog, teleportation) and fill in real
   effects (currently inert stubs).
-- **curses** — reuse existing RESTRICTION content; add a `drop_bonus` notion
-  (§5). **[OPEN]**.
+- **curses** — **shelved** (§5). Existing content stays but no sheet work now.
 - **bingo** — **retired.** The one-enemy-per-game model fully replaces it; the
   legacy `bingo-data.js` / `bingo.js` are not ported.
 
@@ -217,16 +219,22 @@ cards/statuses, potions-as-combat-items (repurpose or cut).
 
 ## 12. Open decisions (rolled up)
 
-1. No-goal clear: drop nothing, or a downgraded drop?
-2. Block: persist between games (leaning yes) or reset?
-3. Bombed enemy: still drops? (leaning no)
-4. Fog scroll: obscure vs. reveal?
-5. Curse reward bump: exact mechanism.
-6. `curse_removal`: own drop category or a status?
-7. OBS HUD: second Godot `Window` vs. separate always-on-top scene.
-8. Starting values: health, block cap, verb/consumable starting counts.
-9. Type set: does Strategy stay, or collapse into Action/Deckbuilder/Traditional
-   once `deckbuilder`/`traditional` are promoted back to types? (§6.1)
+1. **Stacked-enemy damage cadence** — does a stacked enemy hit once when it
+   stacks, or again each subsequent area? Can its goal still be retired later to
+   remove it? (§2)
+2. **OBS HUD architecture** — second Godot `Window` vs. separate always-on-top
+   scene positioned over OBS. (§9)
+3. **Starting values** — health, block cap, verb/consumable starting counts. (§3)
+4. **Strategy type** *(minor)* — does a Strategy type survive for non-deckbuilder
+   strategy games, or do they fold into Action/Deckbuilder/Traditional? (§6.1)
 
-**Resolved:** Bingo is retired (§10). Enemies roll by type + difficulty tier, not
-fixed per game (§7).
+**Resolved:**
+- Bingo is retired (§10).
+- Enemies roll by type + difficulty tier, not fixed per game (§7).
+- You must beat the real game to advance; undefeated enemies **stack** (§2).
+- Block **carries over** as temporary health (§3).
+- Bombed enemies **drop nothing** (§4).
+- Fog **obscures** certain choices (§4).
+- **Curses shelved** — enemies-with-goals are the challenge mechanic (§5).
+- `deckbuilder` + `traditional` **promoted to first-class types** (§6.1).
+- No-goal clear **drops nothing** (the enemy stacks instead) (§2).
