@@ -74,6 +74,10 @@ enum AttackStyle { NONE, CHARGE }
 @export var attack_proj_lifetimes: PackedFloat32Array = PackedFloat32Array()
 @export var attack_proj_counts: PackedInt32Array = PackedInt32Array()
 @export var attack_random: PackedByteArray = PackedByteArray()
+# Lob (1) = the attack's projectiles arc up and land at scattered points with a
+# ground shadow (Monstro's vomit), instead of flying flat. On a LEAP attack the
+# flag also makes the landing tear-burst lob. Empty / 0 = flat bolts.
+@export var attack_lob: PackedByteArray = PackedByteArray()
 # Boss-brain selection weight per attack (see boss_brain). Empty / missing = 1.
 @export var attack_weights: PackedInt32Array = PackedInt32Array()
 
@@ -202,6 +206,7 @@ func attacks() -> Array:
 			"proj_lifetime": float(attack_proj_lifetimes[i]) if i < attack_proj_lifetimes.size() else 0.0,
 			"proj_count": maxi(1, int(attack_proj_counts[i]) if i < attack_proj_counts.size() else 1),
 			"random": (i < attack_random.size() and attack_random[i] != 0),
+			"lob": (i < attack_lob.size() and attack_lob[i] != 0),
 			"weight": maxi(1, int(attack_weights[i]) if i < attack_weights.size() else 1),
 			# Per-attack leap overrides, resolved against the enemy-level defaults.
 			"leap_telegraph": _leap_f(attack_leap_telegraph, i, leap_telegraph),

@@ -68,12 +68,31 @@ func test_monstro_leap_lands_with_a_tear_burst() -> void:
 	assert_gt(boss.leap_burst_count, 0, "the jump rains tears on landing")
 	assert_gt(boss.leap_height, 0.0, "and actually arcs into the air")
 
-func test_vomit_is_a_multi_projectile_aimed_fan() -> void:
+func test_vomit_is_a_multi_projectile_lobbed_burst() -> void:
 	var atks: Array = (load(MONSTRO_PATH) as ActionEnemyData).attacks()
+	var found := false
 	for a in atks:
 		if int(a["kind"]) == ActionEnemyData.AttackKind.RANGED:
-			assert_gt(int(a["proj_count"]), 1, "the volley sprays several tears")
-			assert_false(bool(a["random"]), "aimed at the player, not random")
+			found = true
+			assert_gt(int(a["proj_count"]), 1, "the vomit sprays several tears")
+			assert_true(bool(a["lob"]), "the tears lob (arc with verticality), not flat bolts")
+	assert_true(found, "Monstro has a ranged vomit")
+
+func test_big_jump_barrage_lobs_but_hop_does_not() -> void:
+	var atks: Array = (load(MONSTRO_PATH) as ActionEnemyData).attacks()
+	var leaps: Array = []
+	for a in atks:
+		if int(a["kind"]) == ActionEnemyData.AttackKind.LEAP:
+			leaps.append(a)
+	leaps.sort_custom(func(x, y): return float(x["leap_height"]) < float(y["leap_height"]))
+	assert_false(bool(leaps[0]["lob"]), "the little hop has no lobbed barrage")
+	assert_true(bool(leaps[1]["lob"]), "the big jump rains lobbed tears on landing")
+
+func test_lob_flag_defaults_off() -> void:
+	var d := ActionEnemyData.new()
+	d.attack_kinds = PackedInt32Array([ActionEnemyData.AttackKind.RANGED])
+	d.attack_damages = PackedInt32Array([2])
+	assert_false(bool(d.attacks()[0]["lob"]), "ordinary ranged attacks stay flat bolts")
 
 func test_weight_defaults_to_one_when_unspecified() -> void:
 	# An attack with no explicit weight still selects (weight 1), never 0.

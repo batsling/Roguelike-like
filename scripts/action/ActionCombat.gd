@@ -434,6 +434,16 @@ const LEAP_LAND_SQUASH := 0.42     # impact flattens toward sy 0.58, then bounce
 const LEAP_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.28)
 const LEAP_LANDING_RING_COLOR := Color(0.95, 0.25, 0.2, 0.9)
 
+# Lobbed tears (Monstro's vomit + landing barrage): arcing projectiles that fly
+# up and come down at a scattered target, rendered with a ground shadow. They're
+# only dangerous when low to the ground (near launch / landing) — you dodge where
+# they'll fall, not while they're overhead.
+const ARC_HIT_HEIGHT := 12.0            # a lob only hits the player when z <= this
+const LOB_MIN_DIST := 55.0              # nearest a scattered lob lands from the mouth
+const LOB_MAX_DIST := 300.0            # farthest a scattered lob lands
+const LOB_ARC_DUR := Vector2(0.5, 0.8)  # random flight time range, s
+const LOB_ARC_HEIGHT := Vector2(55.0, 95.0)  # random arc apex range, px
+
 # Live projectiles (player- and enemy-owned). Each entry is a
 # Dictionary: {pos, velocity, owner, radius, color, lifetime, ...}
 var projectiles: Array = []
@@ -2331,19 +2341,25 @@ func _land_leap(inst: Dictionary) -> void:
 	var land_r: float = _leap_atk_f(inst, "leap_land_radius", LEAP_DEFAULT_LAND_RADIUS)
 	if player_pos.distance_to(inst.pos) <= land_r + PLAYER_RADIUS:
 		_apply_damage_to_player(int(atk.get("damage", 0)), data.display_name, inst.actor, true)
-	# Outward tear burst: proj_count bolts fanned evenly around the full circle,
-	# reusing the shared enemy-projectile spawner (damage/speed/life from the attack).
+	# Outward tear burst on landing. A lob leap (Monstro) rains the tears as
+	# scattered arcs; otherwise they fan out flat, evenly around the full circle.
 	var burst: int = maxi(0, int(atk.get("leap_burst_count", 0)))
 	if burst > 0:
-		var batk: Dictionary = {
-			"proj_speed": float(atk.get("leap_burst_speed", 0.0)),
-			"proj_lifetime": float(atk.get("leap_burst_lifetime", 0.0)),
-			"damage": int(atk.get("damage", 0)),
-			"random": false,
-		}
-		for n in burst:
-			var dir: Vector2 = Vector2.RIGHT.rotated(TAU * float(n) / float(burst))
-			_spawn_enemy_projectile(inst, dir, batk, false)
+		if bool(atk.get("lob", false)):
+			for n in burst:
+				var ang: float = TAU * float(n) / float(burst) + _rng.randf_range(-0.25, 0.25)
+				var dist: float = _rng.randf_range(LOB_MIN_DIST, LOB_MAX_DIST)
+				_spawn_lob_tear(inst, atk, inst.pos + Vector2.RIGHT.rotated(ang) * dist)
+		else:
+			var batk: Dictionary = {
+				"proj_speed": float(atk.get("leap_burst_speed", 0.0)),
+				"proj_lifetime": float(atk.get("leap_burst_lifetime", 0.0)),
+				"damage": int(atk.get("damage", 0)),
+				"random": false,
+			}
+			for n in burst:
+				var dir: Vector2 = Vector2.RIGHT.rotated(TAU * float(n) / float(burst))
+				_spawn_enemy_projectile(inst, dir, batk, false)
 
 # Live visual lift of a leaping enemy's sprite (px, upward), 0 when grounded.
 func _leap_lift(inst: Dictionary) -> float:
@@ -2402,6 +2418,10 @@ func _anim_duration(data: ActionEnemyData, anim: StringName) -> float:
 # fires at the player, fanning proj_count > 1 into a small spread. Each bolt
 # carries the attack's own damage / speed / lifetime.
 func _enemy_fire_attack(inst: Dictionary, atk: Dictionary) -> void:
+	# Lobbed attacks (Monstro's vomit) arc a scattered burst instead of flat bolts.
+	if bool(atk.get("lob", false)):
+		_fire_lob_volley(inst, atk)
+		return
 	var count: int = maxi(1, int(atk["proj_count"]))
 	var to_player: Vector2 = player_pos - inst.pos
 	var aim: Vector2 = to_player.normalized() if to_player.length() > 0.0 else Vector2.RIGHT
@@ -5307,6 +5327,14 @@ func _process_projectiles(delta: float) -> void:
 	var i := 0
 	while i < projectiles.size():
 		var p: Dictionary = projectiles[i]
+		# Lobbed tears arc to a landing spot on their own timeline (no velocity),
+		# only dangerous when low to the ground — handled entirely here.
+		if p.get("arc", false):
+			if _update_arc_projectile(p, delta):
+				projectiles.remove_at(i)
+			else:
+				i += 1
+			continue
 		# Homing bolts steer toward the nearest living enemy each frame, keeping
 		# their speed. Straight bolts just keep their velocity.
 		if p.get("homing", false):
@@ -5362,6 +5390,53 @@ func _process_projectiles(delta: float) -> void:
 			projectiles.remove_at(i)
 		else:
 			i += 1
+
+# Advance a lobbed tear along its arc. Returns true when it should be removed
+# (it hit the player low to the ground, or it has landed). While airborne (z above
+# ARC_HIT_HEIGHT) it sails harmlessly over the player — the threat is where it lands.
+func _update_arc_projectile(p: Dictionary, delta: float) -> bool:
+	p["arc_t"] = float(p.get("arc_t", 0.0)) + delta
+	var dur: float = maxf(0.05, float(p.get("arc_dur", 0.7)))
+	var u: float = clampf(float(p["arc_t"]) / dur, 0.0, 1.0)
+	p.pos = (p.get("from", p.pos) as Vector2).lerp(p.get("to", p.pos), u)
+	p["z"] = float(p.get("arc_h", 60.0)) * 4.0 * u * (1.0 - u)
+	if String(p.owner) == "enemy" and float(p["z"]) <= ARC_HIT_HEIGHT:
+		if p.pos.distance_to(player_pos) <= float(p.get("radius", ENEMY_PROJECTILE_RADIUS)) + PLAYER_RADIUS:
+			_on_enemy_projectile_hit(p)
+			return true
+	return u >= 1.0
+
+# Fire a scattered volley of lobbed tears (Monstro's vomit): proj_count arcs to
+# random points around the mouth, each with its own flight time and apex height.
+func _fire_lob_volley(inst: Dictionary, atk: Dictionary) -> void:
+	var count: int = maxi(1, int(atk["proj_count"]))
+	for n in count:
+		var ang: float = _rng.randf() * TAU
+		var dist: float = _rng.randf_range(LOB_MIN_DIST, LOB_MAX_DIST)
+		var target: Vector2 = inst.pos + Vector2.RIGHT.rotated(ang) * dist
+		_spawn_lob_tear(inst, atk, target)
+
+# Spawn one lobbed tear arcing from the enemy to `target`.
+func _spawn_lob_tear(inst: Dictionary, atk: Dictionary, target: Vector2) -> void:
+	var data: ActionEnemyData = inst.data
+	target.x = clampf(target.x, 4.0, ARENA_W - 4.0)
+	target.y = clampf(target.y, 4.0, ARENA_H - 4.0)
+	projectiles.append({
+		"arc": true,
+		"from": inst.pos,
+		"to": target,
+		"pos": inst.pos,
+		"z": 0.0,
+		"arc_t": 0.0,
+		"arc_dur": _rng.randf_range(LOB_ARC_DUR.x, LOB_ARC_DUR.y),
+		"arc_h": _rng.randf_range(LOB_ARC_HEIGHT.x, LOB_ARC_HEIGHT.y),
+		"owner": "enemy",
+		"radius": ENEMY_PROJECTILE_RADIUS,
+		"color": ENEMY_PROJECTILE_COLOR,
+		"damage": int(atk.get("damage", 0)),
+		"source_name": data.display_name,
+		"attacker": inst.actor,
+	})
 
 func _on_enemy_projectile_hit(p: Dictionary) -> void:
 	var dmg: int = int(p.get("damage", 0))
@@ -6049,7 +6124,16 @@ func _draw() -> void:
 	# Projectiles (rendered last so they're on top)
 	for p in projectiles:
 		var pcol: Color = p.get("color", Color.WHITE)
-		if String(p.get("shape", "bolt")) == "crescent":
+		if p.get("arc", false):
+			# Lobbed tear: a ground shadow at the landing track + the tear lifted by
+			# its arc height, so it reads as flying up and coming down.
+			var z: float = float(p.get("z", 0.0))
+			var sr: float = p.radius * (1.0 - 0.35 * clampf(z / 90.0, 0.0, 1.0))
+			draw_circle(p.pos, sr, Color(0.0, 0.0, 0.0, 0.22))
+			var tp: Vector2 = p.pos - Vector2(0.0, z)
+			draw_circle(tp, p.radius, pcol)
+			draw_circle(tp, p.radius * 0.5, pcol.lightened(0.5))
+		elif String(p.get("shape", "bolt")) == "crescent":
 			# A crescent bolt (Iron Wave's "wave"): an arc swept perpendicular to
 			# its travel so it reads as a curved blade slicing forward.
 			var facing: Vector2 = p.get("facing", Vector2.RIGHT)

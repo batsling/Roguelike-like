@@ -95,6 +95,15 @@ fields (`leap_telegraph`, `leap_air_time`, `leap_height`, `leap_land_radius`,
 use `ActionCombat`'s `LEAP_DEFAULT_*` placeholders, so a leap can be authored
 with just the attack entry and tuned later without touching code.
 
+**Lobbed attacks (`attack_lob`).** A ranged attack flagged `lob` fires a
+scattered burst of **arcing tears** instead of flat bolts — each lobs to a random
+point around the enemy (`LOB_*` constants in `ActionCombat`), rising and falling
+with a ground shadow, and only threatens the player when it's low to the ground
+(you dodge where they land, not while they're overhead). On a `LEAP` attack the
+same flag makes the landing tear-burst lob too. Monstro's vomit and big-jump
+barrage both use it; ordinary shooters (Horf/Spitter) leave it off and keep their
+flat aimed bolts.
+
 **Multiple leaps per enemy.** The `attack_leap_*` arrays (parallel to the other
 `attack_*` arrays) override the enemy-level defaults per attack, so one enemy can
 own several different leaps. Monstro uses this for a tall slam **and** a short
