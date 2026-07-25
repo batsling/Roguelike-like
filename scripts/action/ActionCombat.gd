@@ -2111,6 +2111,8 @@ func _enemy_update_attacks(inst: Dictionary, delta: float) -> void:
 			# Leave `charge` at its peak; it eases back down below (not a hard snap).
 			_enemy_fire_attack(inst, watk)
 			cd_arr[wi] = float(watk["cooldown"])
+			if data.boss_brain:
+				inst["recov_t"] = data.attack_recovery   # start the between-actions pause
 		return
 	# Not winding: ease any leftover charge back to neutral so the telegraph
 	# relaxes into the walk/idle state quickly but smoothly (no instant snap).
@@ -2118,6 +2120,17 @@ func _enemy_update_attacks(inst: Dictionary, delta: float) -> void:
 
 	for i in atks.size():
 		cd_arr[i] = maxf(0.0, float(cd_arr[i]) - delta)
+
+	# Boss brain: choose ONE ready, in-range attack (weighted) at a time, then hold
+	# for attack_recovery before choosing again — a readable, one-move-at-a-time
+	# fight instead of every attack firing the instant it's off cooldown.
+	if data.boss_brain:
+		var rt: float = maxf(0.0, float(inst.get("recov_t", 0.0)) - delta)
+		inst["recov_t"] = rt
+		if rt <= 0.0:
+			_boss_pick_and_attack(inst, atks, cd_arr, dist)
+		return
+
 	for i in atks.size():
 		if float(cd_arr[i]) > 0.0:
 			continue
@@ -2150,6 +2163,73 @@ func _enemy_update_attacks(inst: Dictionary, delta: float) -> void:
 			inst["wind_idx"] = i
 			_enemy_trigger_attack(inst)
 			return
+
+# --- Boss brain ------------------------------------------------------------
+# Weighted one-at-a-time attack selection for boss_brain enemies. Gathers every
+# attack that's both off cooldown and in range for its kind, weighted-picks one,
+# and executes it. Recovery (the pause before the next choice) is stamped by
+# _boss_execute_attack for instant/wind-up attacks and by _land_leap for leaps.
+func _boss_pick_and_attack(inst: Dictionary, atks: Array, cd_arr: Array, dist: float) -> void:
+	var data: ActionEnemyData = inst.data
+	var cands: Array = []
+	var total: int = 0
+	for i in atks.size():
+		if float(cd_arr[i]) > 0.0:
+			continue
+		if not _boss_attack_in_range(atks[i], dist, data):
+			continue
+		var w: int = maxi(1, int(atks[i].get("weight", 1)))
+		cands.append({"i": i, "w": w})
+		total += w
+	if cands.is_empty():
+		return
+	var roll: int = _rng.randi_range(1, total)
+	var acc: int = 0
+	var pick: Dictionary = cands[0]
+	for c in cands:
+		acc += int(c["w"])
+		if roll <= acc:
+			pick = c
+			break
+	_boss_execute_attack(inst, atks[int(pick["i"])], int(pick["i"]), cd_arr)
+
+# Whether a boss attack can trigger at the current player distance. Random spews
+# ignore range (fire anywhere); melee uses its reach or a bare contact radius;
+# leap and aimed ranged use the attack's own trigger range.
+func _boss_attack_in_range(atk: Dictionary, dist: float, data: ActionEnemyData) -> bool:
+	var rng: float = float(atk["range"])
+	match int(atk["kind"]):
+		ActionEnemyData.AttackKind.MELEE:
+			return dist <= maxf(rng, data.size + PLAYER_RADIUS)
+		ActionEnemyData.AttackKind.LEAP:
+			return dist <= rng
+		_:  # RANGED
+			return bool(atk["random"]) or dist <= rng
+
+# Run one chosen boss attack, mirroring the standard driver's per-kind handling
+# but stamping the global recovery pause on completion (leaps stamp it on land).
+func _boss_execute_attack(inst: Dictionary, atk: Dictionary, idx: int, cd_arr: Array) -> void:
+	var data: ActionEnemyData = inst.data
+	match int(atk["kind"]):
+		ActionEnemyData.AttackKind.MELEE:
+			_enemy_trigger_attack(inst)
+			_apply_damage_to_player(int(atk["damage"]), data.display_name, inst.actor, true)
+			cd_arr[idx] = float(atk["cooldown"])
+			inst["recov_t"] = data.attack_recovery
+		ActionEnemyData.AttackKind.LEAP:
+			_start_leap(inst, atk, idx)   # cooldown + recovery stamped in _land_leap
+		_:  # RANGED
+			if bool(atk["random"]):
+				_enemy_trigger_attack(inst)
+				_enemy_fire_attack(inst, atk)
+				cd_arr[idx] = float(atk["cooldown"])
+				inst["recov_t"] = data.attack_recovery
+			else:
+				# Telegraphed wind-up; fires (and stamps recovery) on completion.
+				inst["winding"] = true
+				inst["windup_t"] = 0.0
+				inst["wind_idx"] = idx
+				_enemy_trigger_attack(inst)
 
 # --- Leap (jump) attack ----------------------------------------------------
 # Reusable "go airborne and slam down on the player" move for any enemy carrying
@@ -2221,6 +2301,9 @@ func _land_leap(inst: Dictionary) -> void:
 	var cds: Array = inst.get("atk_cd", [])
 	if idx >= 0 and idx < cds.size():
 		cds[idx] = float(atk.get("cooldown", 1.0))
+	# Boss brain: the leap counts as one action — hold before choosing the next.
+	if data.boss_brain:
+		inst["recov_t"] = data.attack_recovery
 	# Landing contact damage inside the impact radius.
 	var land_r: float = data.leap_land_radius if data.leap_land_radius > 0.0 else LEAP_DEFAULT_LAND_RADIUS
 	if player_pos.distance_to(inst.pos) <= land_r + PLAYER_RADIUS:

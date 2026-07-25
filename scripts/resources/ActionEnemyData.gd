@@ -64,6 +64,7 @@ enum AttackStyle { NONE, CHARGE }
 #   proj_lifetime: ranged projectile life, s (0 = ActionCombat default)
 #   proj_count:    projectiles per use (>1 = spread fan, or N random shots)
 #   random:        ranged only — fire in random directions, ignoring aim/range
+#   weight:        boss-brain selection weight (see boss_brain); ignored otherwise
 @export var attack_kinds: PackedInt32Array = PackedInt32Array()
 @export var attack_damages: PackedInt32Array = PackedInt32Array()
 @export var attack_cooldowns: PackedFloat32Array = PackedFloat32Array()
@@ -73,6 +74,8 @@ enum AttackStyle { NONE, CHARGE }
 @export var attack_proj_lifetimes: PackedFloat32Array = PackedFloat32Array()
 @export var attack_proj_counts: PackedInt32Array = PackedInt32Array()
 @export var attack_random: PackedByteArray = PackedByteArray()
+# Boss-brain selection weight per attack (see boss_brain). Empty / missing = 1.
+@export var attack_weights: PackedInt32Array = PackedInt32Array()
 
 # SHOOTER-only: distance the enemy tries to maintain from the player.
 # 0 falls back to 0.7 * max ranged range at runtime. Ignored by walkers.
@@ -92,6 +95,16 @@ enum AttackStyle { NONE, CHARGE }
 @export var leap_burst_count: int = 0     # tears sprayed radially on landing (0 = none)
 @export var leap_burst_speed: float = 0.0    # landing-burst projectile speed (0 = default)
 @export var leap_burst_lifetime: float = 0.0 # landing-burst projectile life (0 = default)
+
+# --- Boss brain ---------------------------------------------------------
+# Bosses run a different attack driver: instead of every attack firing the
+# moment it's off cooldown (the swarm model), a boss-brained enemy picks ONE
+# ready, in-range attack at a time — weighted by each attack's `weight` — then
+# holds for `attack_recovery` seconds before choosing again. This is what turns a
+# kit of hop / vomit / big-jump into a readable one-move-at-a-time fight. Off by
+# default so ordinary enemies keep their independent-cooldown behaviour.
+@export var boss_brain: bool = false
+@export var attack_recovery: float = 0.6   # global pause between boss actions, s
 
 # --- Legacy attack fields (deprecated) ----------------------------------
 # Superseded by the attack_* arrays above. Kept so hand-authored enemies that
@@ -175,6 +188,7 @@ func attacks() -> Array:
 			"proj_lifetime": float(attack_proj_lifetimes[i]) if i < attack_proj_lifetimes.size() else 0.0,
 			"proj_count": maxi(1, int(attack_proj_counts[i]) if i < attack_proj_counts.size() else 1),
 			"random": (i < attack_random.size() and attack_random[i] != 0),
+			"weight": maxi(1, int(attack_weights[i]) if i < attack_weights.size() else 1),
 		})
 	if out.is_empty():
 		out = _legacy_attacks()

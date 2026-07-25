@@ -86,7 +86,9 @@ func _generate_floor() -> void:
 			IsaacFloorGenerator.RoomType.NORMAL:
 				rt.enemies = ActionEnemySpawner.build_room(_rng)
 			IsaacFloorGenerator.RoomType.BOSS:
-				rt.enemies = ActionEnemySpawner.build_room(_rng, boss_budget)
+				# A single registered boss when one exists, else the old weighted
+				# budget of ordinary enemies (build_boss_room handles the fallback).
+				rt.enemies = ActionEnemySpawner.build_boss_room(_rng, boss_budget)
 				rt.hp_mult = BOSS_HP_MULT
 			_:
 				# START / SHOP / TREASURE are safe — no enemies, pre-cleared.

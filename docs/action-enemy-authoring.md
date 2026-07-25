@@ -58,10 +58,46 @@ reuses the deckbuilder weighted pick loop, `EnemySpawner.pick_group`):
   to four Horfs.
 - The candidate pool is gated to `difficulty ≤ tier` (Low tier → Low enemies
   only); `Boss` difficulty is reserved and never rolls into a random room.
-- **Boss rooms** spend `BOSS_BUDGET_MULT` (1.5×) the tier budget, plus an HP bump
-  (`ActionFloor.BOSS_HP_MULT`).
+- **Boss rooms** field a single registered `Boss`-difficulty enemy (see below);
+  when none are authored they fall back to a `BOSS_BUDGET_MULT` (1.5×) budget of
+  ordinary enemies. Either way boss rooms get an HP bump (`ActionFloor.BOSS_HP_MULT`).
 
 Tune the budgets in `scripts/runtime/ActionEnemySpawner.gd` (`TIER_BUDGET`).
+
+## Bosses
+
+Mark an enemy `Difficulty` **Boss** and it's kept out of normal rooms and drawn
+into **boss rooms** instead — `ActionEnemySpawner.build_boss_room` weighted-picks
+one boss (by `Weight`) and places it solo. Register as many as you like; each
+boss room fields one.
+
+A boss usually wants the **boss brain** (`boss_brain = true`): instead of every
+attack firing the instant it's off cooldown, the boss picks ONE ready, in-range
+attack at a time — weighted by that attack's `weight` — then holds for
+`attack_recovery` seconds before choosing again. That's what makes a kit of
+hop / vomit / big-jump read as a one-move-at-a-time fight. Give each attack a
+`weight` to bias the mix (a heavier vomit `weight` = vomits more than it jumps).
+
+### Leap (jump) attacks — `AttackKind.LEAP`
+
+A `LEAP` attack is a jump that goes airborne and slams down on the player
+(Monstro's big jump; any slam boss). It runs in three beats — **crouch**
+(telegraphed, still grounded and hittable) → **airborne** (untargetable,
+non-solid, arcing to the player's position at take-off) → **land** (contact
+damage inside `leap_land_radius` + an outward burst of `leap_burst_count`
+tears). A ground shadow tracks the leaper to its landing spot and a red ring
+telegraphs the impact zone while it's in the air.
+
+The `LEAP` attack entry supplies the landing **damage / cooldown / trigger
+range** like any attack; the arc/timing/burst live in resource-level `leap_*`
+fields (`leap_telegraph`, `leap_air_time`, `leap_height`, `leap_land_radius`,
+`leap_burst_count`, `leap_burst_speed`, `leap_burst_lifetime`). Any left `0`
+use `ActionCombat`'s `LEAP_DEFAULT_*` placeholders, so a leap can be authored
+with just the attack entry and tuned later without touching code.
+
+`data/action_enemies/proto_boss.tres` is a placeholder circle-fallback boss
+(boss brain + a leap and a vomit volley) that exercises the whole path — replace
+or delete it once a real boss (e.g. Monstro) is authored.
 
 Enemies don't appear instantly: each spawn is **telegraphed** by a red circle
 (sized to the enemy) for `ActionCombat.SPAWN_TELEGRAPH_TIME` (1s) before the

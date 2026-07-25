@@ -351,6 +351,16 @@ func all_enemies() -> Array:
 func all_action_enemies() -> Array:
 	return _action_enemies.values()
 
+# Action enemies flagged Difficulty.BOSS — the pool boss rooms draw their
+# headline enemy from (ActionEnemySpawner.build_boss_room). Kept out of the
+# normal weighted room pool by ActionEnemySpawner.max_difficulty_for.
+func all_action_bosses() -> Array:
+	var out: Array = []
+	for e in _action_enemies.values():
+		if e is ActionEnemyData and e.difficulty == ActionEnemyData.Difficulty.BOSS:
+			out.append(e)
+	return out
+
 func all_events() -> Array:
 	return _events.values()
 
