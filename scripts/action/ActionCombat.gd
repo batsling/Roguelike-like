@@ -420,7 +420,13 @@ const LEAP_DEFAULT_HEIGHT := 70.0
 const LEAP_DEFAULT_LAND_RADIUS := 46.0
 # How long the grounded "splat" beat holds after impact when the enemy has no
 # `land` animation to time it to — long enough to read the landing frame.
-const LEAP_DEFAULT_LAND_TIME := 0.18
+const LEAP_DEFAULT_LAND_TIME := 0.26
+# Squash-and-stretch amounts layered on the leap sprite (fractions of height),
+# tuned from the Rebirth fight: a modest anticipation dip on the crouch, a
+# stretch through the air, and a big flatten on impact that springs back.
+const LEAP_CROUCH_SQUASH := 0.16   # crouch dips toward sy 0.84
+const LEAP_AIR_STRETCH := 0.12     # airborne stretches toward sy 1.12 (eased)
+const LEAP_LAND_SQUASH := 0.42     # impact flattens toward sy 0.58, then bounces
 # Ground-shadow + landing-zone telegraph colours (the shadow tracks the leaper to
 # its landing spot; the ring marks the impact radius while it's in the air).
 const LEAP_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.28)
@@ -2305,8 +2311,10 @@ func _land_leap(inst: Dictionary) -> void:
 	inst["airborne"] = false
 	inst["leap_z"] = 0.0
 	inst["leap_phase"] = 2
-	var land_anim: float = _anim_duration(data, &"land")
-	inst["land_t"] = land_anim if land_anim > 0.0 else LEAP_DEFAULT_LAND_TIME
+	# The splat holds at least LEAP_DEFAULT_LAND_TIME so the flatten-and-spring
+	# reads even when the `land` clip itself is a single quick frame.
+	inst["land_t"] = maxf(_anim_duration(data, &"land"), LEAP_DEFAULT_LAND_TIME)
+	inst["land_t0"] = inst["land_t"]   # original span, for the squash spring / frame split
 	# Stamp this leap's cooldown on the attack that launched it.
 	var idx: int = int(inst.get("leap_cd_idx", -1))
 	var cds: Array = inst.get("atk_cd", [])
@@ -2336,6 +2344,41 @@ func _land_leap(inst: Dictionary) -> void:
 # Live visual lift of a leaping enemy's sprite (px, upward), 0 when grounded.
 func _leap_lift(inst: Dictionary) -> float:
 	return float(inst.get("leap_z", 0.0))
+
+# Squash-and-stretch scale (sx, sy) for a leaping sprite this frame — folded into
+# the draw transform alongside the bob/charge scales, anchored at the feet.
+# crouch: ease into an anticipation dip; air: stretch tall, strongest at take-off
+# and just before landing (fast vertical motion), relaxed at the apex; land: hard
+# flatten on impact springing back with a small overshoot bounce.
+func _leap_squash(inst: Dictionary) -> Vector2:
+	var data: ActionEnemyData = inst.data
+	var sy: float = 1.0
+	match int(inst.get("leap_phase", 0)):
+		0:
+			var teleg: float = data.leap_telegraph if data.leap_telegraph > 0.0 else LEAP_DEFAULT_TELEGRAPH
+			var p: float = clampf(float(inst.get("leap_t", 0.0)) / maxf(0.001, teleg), 0.0, 1.0)
+			sy = 1.0 - LEAP_CROUCH_SQUASH * _ease_out(p)
+		1:
+			var air: float = data.leap_air_time if data.leap_air_time > 0.0 else LEAP_DEFAULT_AIR_TIME
+			var p2: float = clampf(float(inst.get("leap_t", 0.0)) / maxf(0.001, air), 0.0, 1.0)
+			sy = 1.0 + LEAP_AIR_STRETCH * absf(cos(p2 * PI))
+		_:
+			var t0: float = maxf(0.001, float(inst.get("land_t0", LEAP_DEFAULT_LAND_TIME)))
+			var q: float = clampf(1.0 - float(inst.get("land_t", 0.0)) / t0, 0.0, 1.0)
+			sy = 1.0 - LEAP_LAND_SQUASH * (1.0 - _ease_out_back(q))
+	# Preserve apparent volume: widen when squashed, narrow when stretched.
+	var sx: float = 1.0 + (1.0 - sy) * 0.6
+	return Vector2(sx, sy)
+
+func _ease_out(p: float) -> float:
+	return 1.0 - (1.0 - p) * (1.0 - p)
+
+# Ease-out with a slight overshoot past 1.0 near the end (the landing bounce).
+func _ease_out_back(p: float) -> float:
+	var c1: float = 1.70158
+	var c3: float = c1 + 1.0
+	var m: float = p - 1.0
+	return 1.0 + c3 * m * m * m + c1 * m * m
 
 # Playback length of an animation in seconds, or 0 if the enemy lacks it.
 func _anim_duration(data: ActionEnemyData, anim: StringName) -> float:
@@ -2414,7 +2457,19 @@ func _layer_base(inst: Dictionary, layer: StringName) -> StringName:
 	# for any phase the enemy hasn't authored a clip for, so a leaper with only an
 	# `attack` clip still animates.
 	if inst.get("leaping", false) and layer == _attack_layer(inst):
-		var want: StringName = [&"jump", &"airborne", &"land"][clampi(int(inst.get("leap_phase", 0)), 0, 2)]
+		var lp: int = int(inst.get("leap_phase", 0))
+		var want: StringName
+		if lp == 0:
+			want = &"jump"
+		elif lp == 1:
+			want = &"airborne"
+		else:
+			# Land: hold the flat `land` frame for the first half of the splat, then
+			# switch to the round `idle` frame so the procedural spring bounces a
+			# round shape back up instead of stretching the pancake's pixels tall.
+			var t0: float = maxf(0.001, float(inst.get("land_t0", 1.0)))
+			var q: float = 1.0 - float(inst.get("land_t", 0.0)) / t0
+			want = &"land" if q < 0.5 else &"idle"
 		if not inst.data.get_anim(want).is_empty():
 			return want
 	var attacking: bool = float(inst.get("attack_t", 0.0)) > 0.0 and layer == _attack_layer(inst)
@@ -5915,6 +5970,13 @@ func _draw() -> void:
 				sy *= 1.0 + CHARGE_STRETCH * charge
 				sx *= 1.0 - CHARGE_SQUEEZE * charge
 				tint = Color(1.0, 1.0 - CHARGE_REDNESS * charge, 1.0 - CHARGE_REDNESS * charge)
+			# Leap squash-and-stretch, anchored at the feet like the bob: an
+			# anticipation dip on the crouch, a stretch through the air, and a hard
+			# flatten on impact that springs back with a bounce (Monstro).
+			if bool(inst.get("leaping", false)):
+				var lsq: Vector2 = _leap_squash(inst)
+				sx *= lsq.x
+				sy *= lsq.y
 			var flip_sign: float = -1.0 if face_side else 1.0
 			# Squash is anchored at the feet (≈ sprite bottom): mirror about the
 			# enemy's x, scale Y about anchor_y so the feet stay planted.

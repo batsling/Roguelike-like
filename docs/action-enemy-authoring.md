@@ -101,8 +101,16 @@ falling back to the `attack`/`idle` clips for any it lacks, so a leaper animates
 even with only an `attack` clip. The engine also lifts the sprite by the arc
 height and draws a ground shadow + a red landing-zone ring automatically, so
 those don't need art. Author the leap clips alongside `idle`/`attack` in the
-`Animations` column (the `land` clip's length also sets how long the splat frame
-holds).
+`Animations` column.
+
+On top of the frames the engine adds **procedural squash-and-stretch** (anchored
+at the feet, like the walk bob): an anticipation dip during the crouch, a stretch
+through the air (strongest at take-off and just before landing), and a hard
+flatten on impact that springs back with a small overshoot bounce — tuned by the
+`LEAP_*_SQUASH`/`STRETCH` constants in `ActionCombat`. The land beat holds for
+`max(land clip length, LEAP_DEFAULT_LAND_TIME)` so the flatten-and-spring reads,
+showing the `land` frame for the first half of the beat and the round `idle`
+frame for the spring (so the bounce deforms a round shape, not the flat pancake).
 
 `data/action_enemies/monstro.tres` is the first boss — Basement's Monstro (boss
 brain + a big jump and a vomit volley), authored from Rebirth's behaviour. It
