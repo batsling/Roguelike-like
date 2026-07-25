@@ -1,14 +1,13 @@
-[gd_resource type="Resource" script_class="ActionEnemyData" load_steps=2 format=3 uid="uid://action_enemy_monstro"]
+[gd_resource type="Resource" script_class="ActionEnemyData" load_steps=9 format=3 uid="uid://action_enemy_monstro"]
 
 [ext_resource type="Script" path="res://scripts/resources/ActionEnemyData.gd" id="1"]
-
-; Monstro — the Basement boss. Authored from The Binding of Isaac: Rebirth's
-; behaviour: he idles, then picks one action at a time (boss_brain) — a big
-; airborne jump that slams onto the player and rains tears (LEAP), or a standing
-; vomit volley (RANGED fan). Numbers are our-scale placeholders tuned from the
-; game's state timing; refine freely. Renders as a fleshy circle until the sprite
-; frames are dropped in (idle/jump/airborne/land/attack) — see
-; docs/action-enemy-authoring.md.
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/idle_0.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/idle_1.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/jump_0.png" id="4"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/airborne_0.png" id="5"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/land_0.png" id="6"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/attack_0.png" id="7"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/attack_1.png" id="8"]
 
 [resource]
 script = ExtResource("1")
@@ -54,8 +53,8 @@ layer_names = PackedStringArray()
 layer_offsets = PackedVector2Array()
 base_dim = 0
 directional = false
-anim_names = PackedStringArray()
-anim_fps = PackedFloat32Array()
-anim_loop = PackedByteArray()
-anim_frame_counts = PackedInt32Array()
-anim_frames = Array[Texture2D]([])
+anim_names = PackedStringArray("idle", "jump", "airborne", "land", "attack")
+anim_fps = PackedFloat32Array(2, 8, 6, 10, 12)
+anim_loop = PackedByteArray(1, 0, 1, 0, 0)
+anim_frame_counts = PackedInt32Array(2, 1, 1, 1, 2)
+anim_frames = Array[Texture2D]([ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7"), ExtResource("8")])
