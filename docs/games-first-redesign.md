@@ -95,25 +95,34 @@ for a better drop. They reuse the existing `CurseData` RESTRICTION content.
 
 ---
 
-## 6. Tags — the connective tissue
+## 6. Types & tags — the connective tissue
 
-Routing replaces combat as the decision space, and **tags** are what make routing
-a puzzle instead of a walk. This is the biggest content lift.
+Routing replaces combat as the decision space. Two axes carry it:
 
-- **Widen the tag vocabulary** on `GameData` (today it's basically genre + a few
-  tags like `deckbuilder` / `traditional`). Make tags first-class.
-- Enemy **goals key off tags** ("beat a boss in any *Metroidvania*-tagged game").
-- **Path/edge requirements** can demand tags ("this edge needs a *deckbuilder*
-  clear").
-- **Items & scrolls** can trigger on tags.
-- Routing becomes a tag-collection puzzle → replayability for a no-combat map.
+### 6.1 Game type (the enemy-pool axis)
+The **type** determines which enemy/goal pool a game draws from (§7). Today the
+map has two types (Action, Strategy) with `deckbuilder` / `traditional` as *tags*.
+**Likely change: promote `traditional` and `deckbuilder` back to first-class
+types**, so the type set becomes ~Action / Deckbuilder / Traditional (± Strategy).
+Each type has its own goal pool ("beat a boss without healing" suits Action;
+"win in one deck cycle" suits Deckbuilder; "descend N floors" suits Traditional).
+
+### 6.2 Tags (the routing / synergy axis)
+- **Widen the tag vocabulary** on `GameData` and make tags first-class.
+- **Path/edge requirements** can demand tags/types ("this edge needs a
+  *Deckbuilder* clear").
+- **Items & scrolls** can trigger on tags/types.
+- Routing becomes a type/tag-collection puzzle → replayability for a no-combat map.
 
 ---
 
 ## 7. Enemies = goals (schema)
 
-One enemy per game. The enemy is authored content; the *binding* of enemy→game
-may be fixed or rolled at runtime by tag. **[OPEN]** fixed vs. rolled.
+One enemy per game. The enemy is **rolled at runtime from a pool filtered by the
+run's difficulty tier and the game's type** (not authored per-game) — this reuses
+the existing `EnemySpawner` weight/tier budget logic: difficulty sets which pool
+is eligible, game type narrows it. Harder tier / later game → nastier goal, bigger
+attack, better drop.
 
 Proposed `EnemyData` (repurposed / new `GoalData`) fields:
 
@@ -122,7 +131,8 @@ Proposed `EnemyData` (repurposed / new `GoalData`) fields:
 | `id` | slug |
 | `display_name` | enemy name shown on HUD |
 | `goal` | the challenge text ("Beat a boss without healing") |
-| `goal_tags` | which game tags this goal is eligible for (§6) |
+| `type` | which game **type(s)** this enemy is eligible for (§6.1) |
+| `min_tier` / `weight` | difficulty gate + spawn weight (mirrors `EnemySpawner`) |
 | `attack` | 1–3 damage dealt if you clear the game without the goal |
 | `drop` | the guaranteed item id (or drop-pool ref) — see §8 |
 | art | enemy sprite for the HUD |
@@ -179,9 +189,11 @@ existing `tools/generate_*` pattern.
   effects (currently inert stubs).
 - **curses** — reuse existing RESTRICTION content; add a `drop_bonus` notion
   (§5). **[OPEN]**.
-- **bingo** — **[OPEN]** whether bingo survives as a parallel goal layer or is
-  fully replaced by the one-enemy-per-game model. (Leaning: enemies replace it;
-  bingo could return later as a run-long meta.)
+- **bingo** — **retired.** The one-enemy-per-game model fully replaces it; the
+  legacy `bingo-data.js` / `bingo.js` are not ported.
+- **enemies (goals)** — pooled by **type + difficulty tier** (§7), authored in an
+  enemies sheet with `type`, `min_tier`, `weight` columns for the `EnemySpawner`
+  roll.
 
 ---
 
@@ -210,8 +222,11 @@ resource layer; the OBS companion HUD scene; the play-session resolver
 3. Bombed enemy: still drops? (leaning no)
 4. Fog scroll: obscure vs. reveal?
 5. Curse reward bump: exact mechanism.
-6. Enemy→game binding: fixed authored vs. rolled by tag at runtime.
-7. `curse_removal`: own drop category or a status?
-8. OBS HUD: second Godot `Window` vs. separate always-on-top scene.
-9. Bingo: retired, or kept as a run-long meta layer above the per-game enemies?
-10. Starting values: health, block cap, verb/consumable starting counts.
+6. `curse_removal`: own drop category or a status?
+7. OBS HUD: second Godot `Window` vs. separate always-on-top scene.
+8. Starting values: health, block cap, verb/consumable starting counts.
+9. Type set: does Strategy stay, or collapse into Action/Deckbuilder/Traditional
+   once `deckbuilder`/`traditional` are promoted back to types? (§6.1)
+
+**Resolved:** Bingo is retired (§10). Enemies roll by type + difficulty tier, not
+fixed per game (§7).
