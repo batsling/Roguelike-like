@@ -14,14 +14,13 @@
 ; 6-9 bottom). Clips:
 ;   idle    = #3        (rest, all attacks return here)
 ;   attack  = #2 -> #4  (vomit: windup on #2, spew on #4, then back to idle)
-;   jump    = #6 -> #7  (shared crouch: flatten then launch up)
+;   jump    = #6 -> #7  (shared crouch: flatten then launch up; #7 rockets off-screen)
 ;   descend = #5        (big jump: falling back into view)
-;   splat   = #6        (big jump: land)
 ;   hopair  = #8        (hop: airborne, looking up)
-;   hopland = #6 -> #9  (hop: land then recover)
-; Attacks: [0] big jump (off-screen, lands + tear barrage), [1] vomit (aimed
-; lobbed spray), [2] short hop (on-screen body-slam). Boss brain, deliberately
-; slow-paced.
+;   landrec = #6 -> #9  (land then recover; shared by hop and big jump)
+; Attacks: [0] big jump (rockets off-screen on #7, lands + tear barrage), [1]
+; vomit (aimed lobbed spray, recoils him back), [2] short hop (on-screen
+; body-slam). Boss brain, deliberately slow-paced, with squash-and-stretch.
 
 [resource]
 script = ExtResource("1")
@@ -59,12 +58,12 @@ attack_leap_burst_speeds = PackedFloat32Array(0, 0, 0)
 attack_leap_burst_lifetimes = PackedFloat32Array(0, 0, 0)
 attack_leap_crouch_anim = PackedStringArray("jump", "", "jump")
 attack_leap_air_anim = PackedStringArray("descend", "", "hopair")
-attack_leap_land_anim = PackedStringArray("splat", "", "hopland")
+attack_leap_land_anim = PackedStringArray("landrec", "", "landrec")
 attack_offscreen = PackedByteArray(1, 0, 0)
 boss_brain = true
 attack_recovery = 0.9
 move_speed = 0
-size = 46
+size = 56
 behavior = 2
 motion_style = 0
 attack_style = 0
@@ -79,8 +78,8 @@ layer_names = PackedStringArray()
 layer_offsets = PackedVector2Array()
 base_dim = 0
 directional = false
-anim_names = PackedStringArray("idle", "attack", "jump", "descend", "splat", "hopair", "hopland")
-anim_fps = PackedFloat32Array(4, 1.0, 8, 8, 10, 8, 10)
-anim_loop = PackedByteArray(1, 0, 0, 0, 0, 1, 0)
-anim_frame_counts = PackedInt32Array(1, 2, 2, 1, 1, 1, 2)
-anim_frames = Array[Texture2D]([ExtResource("3"), ExtResource("2"), ExtResource("4"), ExtResource("6"), ExtResource("7"), ExtResource("5"), ExtResource("6"), ExtResource("8"), ExtResource("6"), ExtResource("9")])
+anim_names = PackedStringArray("idle", "attack", "jump", "descend", "hopair", "landrec")
+anim_fps = PackedFloat32Array(4, 1.0, 8, 8, 8, 10)
+anim_loop = PackedByteArray(1, 0, 0, 0, 1, 0)
+anim_frame_counts = PackedInt32Array(1, 2, 2, 1, 1, 2)
+anim_frames = Array[Texture2D]([ExtResource("3"), ExtResource("2"), ExtResource("4"), ExtResource("6"), ExtResource("7"), ExtResource("5"), ExtResource("8"), ExtResource("6"), ExtResource("9")])
