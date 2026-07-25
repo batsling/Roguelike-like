@@ -95,9 +95,20 @@ fields (`leap_telegraph`, `leap_air_time`, `leap_height`, `leap_land_radius`,
 use `ActionCombat`'s `LEAP_DEFAULT_*` placeholders, so a leap can be authored
 with just the attack entry and tuned later without touching code.
 
-`data/action_enemies/proto_boss.tres` is a placeholder circle-fallback boss
-(boss brain + a leap and a vomit volley) that exercises the whole path — replace
-or delete it once a real boss (e.g. Monstro) is authored.
+**Leap animations.** A leaper plays dedicated clips per beat when they exist:
+`jump` (crouch/anticipation) → `airborne` (in the air) → `land` (the splat) —
+falling back to the `attack`/`idle` clips for any it lacks, so a leaper animates
+even with only an `attack` clip. The engine also lifts the sprite by the arc
+height and draws a ground shadow + a red landing-zone ring automatically, so
+those don't need art. Author the leap clips alongside `idle`/`attack` in the
+`Animations` column (the `land` clip's length also sets how long the splat frame
+holds).
+
+`data/action_enemies/monstro.tres` is the first boss — Basement's Monstro (boss
+brain + a big jump and a vomit volley), authored from Rebirth's behaviour. It
+renders as a fleshy circle until its sprite frames (`monstro_idle`,
+`monstro_jump`, `monstro_airborne`, `monstro_land`, `monstro_attack`) are dropped
+into `images/enemies/action_enemies/Monstro/` and compiled.
 
 Enemies don't appear instantly: each spawn is **telegraphed** by a red circle
 (sized to the enemy) for `ActionCombat.SPAWN_TELEGRAPH_TIME` (1s) before the

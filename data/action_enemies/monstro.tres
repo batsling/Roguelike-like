@@ -1,0 +1,61 @@
+[gd_resource type="Resource" script_class="ActionEnemyData" load_steps=2 format=3 uid="uid://action_enemy_monstro"]
+
+[ext_resource type="Script" path="res://scripts/resources/ActionEnemyData.gd" id="1"]
+
+; Monstro — the Basement boss. Authored from The Binding of Isaac: Rebirth's
+; behaviour: he idles, then picks one action at a time (boss_brain) — a big
+; airborne jump that slams onto the player and rains tears (LEAP), or a standing
+; vomit volley (RANGED fan). Numbers are our-scale placeholders tuned from the
+; game's state timing; refine freely. Renders as a fleshy circle until the sprite
+; frames are dropped in (idle/jump/airborne/land/attack) — see
+; docs/action-enemy-authoring.md.
+
+[resource]
+script = ExtResource("1")
+id = &"monstro"
+display_name = "Monstro"
+difficulty = 3
+weight = 10
+hp_min = 110
+hp_max = 130
+attack_kinds = PackedInt32Array(2, 1)
+attack_damages = PackedInt32Array(12, 6)
+attack_cooldowns = PackedFloat32Array(3.0, 1.8)
+attack_windups = PackedFloat32Array(0, 0.4)
+attack_ranges = PackedFloat32Array(800, 520)
+attack_proj_speeds = PackedFloat32Array(0, 180)
+attack_proj_lifetimes = PackedFloat32Array(0, 0)
+attack_proj_counts = PackedInt32Array(1, 10)
+attack_random = PackedByteArray(0, 0)
+attack_weights = PackedInt32Array(2, 3)
+preferred_distance = 0
+leap_telegraph = 0.4
+leap_air_time = 0.8
+leap_height = 92
+leap_land_radius = 62
+leap_burst_count = 12
+leap_burst_speed = 200
+leap_burst_lifetime = 0
+boss_brain = true
+attack_recovery = 0.7
+move_speed = 0
+size = 46
+behavior = 2
+motion_style = 0
+attack_style = 1
+color = Color(0.66, 0.56, 0.53, 1)
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray("boss")
+split_into = &""
+split_count = 0
+on_death_ids = PackedStringArray()
+on_death_weights = PackedInt32Array()
+layer_names = PackedStringArray()
+layer_offsets = PackedVector2Array()
+base_dim = 0
+directional = false
+anim_names = PackedStringArray()
+anim_fps = PackedFloat32Array()
+anim_loop = PackedByteArray()
+anim_frame_counts = PackedInt32Array()
+anim_frames = Array[Texture2D]([])

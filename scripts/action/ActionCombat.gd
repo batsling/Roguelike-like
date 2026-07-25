@@ -418,6 +418,9 @@ const LEAP_DEFAULT_TELEGRAPH := 0.5
 const LEAP_DEFAULT_AIR_TIME := 0.8
 const LEAP_DEFAULT_HEIGHT := 70.0
 const LEAP_DEFAULT_LAND_RADIUS := 46.0
+# How long the grounded "splat" beat holds after impact when the enemy has no
+# `land` animation to time it to — long enough to read the landing frame.
+const LEAP_DEFAULT_LAND_TIME := 0.18
 # Ground-shadow + landing-zone telegraph colours (the shadow tracks the leaper to
 # its landing spot; the ring marks the impact radius while it's in the air).
 const LEAP_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.28)
@@ -2286,16 +2289,24 @@ func _process_leaping(inst: Dictionary, delta: float) -> void:
 			inst["leap_z"] = height * 4.0 * u * (1.0 - u)
 			if u >= 1.0:
 				_land_leap(inst)
+		2:  # grounded splat — hold the `land` frame briefly, then the leap is over
+			var lt: float = float(inst.get("land_t", 0.0)) - delta
+			inst["land_t"] = lt
+			if lt <= 0.0:
+				inst["leaping"] = false
 
 # Resolve a landing: stamp the leap attack's cooldown, deal contact damage inside
 # the landing radius, and spray the outward tear burst. Ends the leap state.
 func _land_leap(inst: Dictionary) -> void:
 	var data: ActionEnemyData = inst.data
 	var atk: Dictionary = inst.get("leap_atk", {})
-	inst["leaping"] = false
+	# Stay `leaping` through a short grounded splat (phase 2) so the `land`
+	# animation reads; _process_leaping clears `leaping` when land_t runs out.
 	inst["airborne"] = false
 	inst["leap_z"] = 0.0
 	inst["leap_phase"] = 2
+	var land_anim: float = _anim_duration(data, &"land")
+	inst["land_t"] = land_anim if land_anim > 0.0 else LEAP_DEFAULT_LAND_TIME
 	# Stamp this leap's cooldown on the attack that launched it.
 	var idx: int = int(inst.get("leap_cd_idx", -1))
 	var cds: Array = inst.get("atk_cd", [])
@@ -2398,6 +2409,14 @@ func _attack_layer(inst: Dictionary) -> StringName:
 func _layer_base(inst: Dictionary, layer: StringName) -> StringName:
 	if layer == &"gush":
 		return &"spew"
+	# Leap: drive the dedicated jump / airborne / land clips by phase, on the
+	# enemy's primary layer. Falls through to the normal attack/idle logic below
+	# for any phase the enemy hasn't authored a clip for, so a leaper with only an
+	# `attack` clip still animates.
+	if inst.get("leaping", false) and layer == _attack_layer(inst):
+		var want: StringName = [&"jump", &"airborne", &"land"][clampi(int(inst.get("leap_phase", 0)), 0, 2)]
+		if not inst.data.get_anim(want).is_empty():
+			return want
 	var attacking: bool = float(inst.get("attack_t", 0.0)) > 0.0 and layer == _attack_layer(inst)
 	if layer == &"head":
 		return &"attack" if attacking else &"idle"

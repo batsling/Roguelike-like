@@ -2,10 +2,9 @@ extends GutTest
 
 # Covers the boss systems: the boss-brain attack schema (weighted one-at-a-time
 # selection + recovery gap) and the boss-placement path that fields a registered
-# Difficulty.BOSS enemy in boss rooms. The proto_boss fixture is the stand-in a
-# real boss (Monstro) replaces; these guard the contract both rely on.
+# Difficulty.BOSS enemy in boss rooms. Monstro is the first such boss.
 
-const PROTO_PATH := "res://data/action_enemies/proto_boss.tres"
+const MONSTRO_PATH := "res://data/action_enemies/monstro.tres"
 
 func _rng() -> RandomNumberGenerator:
 	var r := RandomNumberGenerator.new()
@@ -14,26 +13,30 @@ func _rng() -> RandomNumberGenerator:
 
 # --- Boss brain (#3) -------------------------------------------------------
 
-func test_proto_boss_uses_the_boss_brain() -> void:
-	var boss: ActionEnemyData = load(PROTO_PATH)
-	assert_not_null(boss, "proto_boss.tres should load")
+func test_monstro_uses_the_boss_brain() -> void:
+	var boss: ActionEnemyData = load(MONSTRO_PATH)
+	assert_not_null(boss, "monstro.tres should load")
 	assert_true(boss.boss_brain, "a boss picks one attack at a time")
 	assert_gt(boss.attack_recovery, 0.0, "and holds between actions")
 	assert_eq(boss.difficulty, ActionEnemyData.Difficulty.BOSS)
 
-func test_boss_attacks_carry_kinds_and_weights() -> void:
-	var atks: Array = (load(PROTO_PATH) as ActionEnemyData).attacks()
-	assert_eq(atks.size(), 2, "proto boss mixes a leap and a vomit volley")
-	# A LEAP and a multi-projectile RANGED volley, each with a selection weight.
+func test_monstro_mixes_a_leap_and_a_vomit_volley() -> void:
+	var atks: Array = (load(MONSTRO_PATH) as ActionEnemyData).attacks()
+	assert_eq(atks.size(), 2, "Monstro's core kit is a big jump and a vomit volley")
 	var kinds: Array = []
 	for a in atks:
 		kinds.append(int(a["kind"]))
 		assert_gte(int(a["weight"]), 1, "every attack has a positive selection weight")
-	assert_has(kinds, ActionEnemyData.AttackKind.LEAP, "has a big-jump leap")
-	assert_has(kinds, ActionEnemyData.AttackKind.RANGED, "has a ranged volley")
+	assert_has(kinds, ActionEnemyData.AttackKind.LEAP, "has the big-jump leap")
+	assert_has(kinds, ActionEnemyData.AttackKind.RANGED, "has the vomit volley")
 
-func test_ranged_volley_is_a_multi_projectile_fan() -> void:
-	var atks: Array = (load(PROTO_PATH) as ActionEnemyData).attacks()
+func test_monstro_leap_lands_with_a_tear_burst() -> void:
+	var boss: ActionEnemyData = load(MONSTRO_PATH)
+	assert_gt(boss.leap_burst_count, 0, "the jump rains tears on landing")
+	assert_gt(boss.leap_height, 0.0, "and actually arcs into the air")
+
+func test_vomit_is_a_multi_projectile_aimed_fan() -> void:
+	var atks: Array = (load(MONSTRO_PATH) as ActionEnemyData).attacks()
 	for a in atks:
 		if int(a["kind"]) == ActionEnemyData.AttackKind.RANGED:
 			assert_gt(int(a["proj_count"]), 1, "the volley sprays several tears")
@@ -49,16 +52,16 @@ func test_weight_defaults_to_one_when_unspecified() -> void:
 
 # --- Boss placement (#4) ---------------------------------------------------
 
-func test_proto_boss_is_registered_as_a_boss() -> void:
+func test_monstro_is_registered_as_a_boss() -> void:
 	var ids: Array = []
 	for b in Data.all_action_bosses():
 		ids.append(b.id)
-	assert_has(ids, &"proto_boss", "proto_boss should be discoverable as a boss")
+	assert_has(ids, &"monstro", "Monstro should be discoverable as a boss")
 
 func test_bosses_are_excluded_from_normal_rooms() -> void:
 	# Boss-difficulty enemies must never roll into an ordinary weighted room.
-	var boss_room := ActionEnemySpawner.build_room(_rng())  # normal budget
-	assert_does_not_have(boss_room, &"proto_boss",
+	var normal_room := ActionEnemySpawner.build_room(_rng())  # normal budget
+	assert_does_not_have(normal_room, &"monstro",
 		"a Difficulty.BOSS enemy never appears in a normal room")
 
 func test_build_boss_room_fields_a_single_registered_boss() -> void:
