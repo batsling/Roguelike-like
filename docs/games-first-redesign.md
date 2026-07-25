@@ -24,7 +24,7 @@ so every number must stay small and glanceable.
 
 ## 2. Core loop
 
-1. **Choose a game** on the graph. Routing is the core decision (see §6 Tags).
+1. **Choose a game** on the graph. Routing is the core decision (see §6).
 2. The game presents **one enemy** = one goal, plus its attack value and its
    guaranteed item drop.
 3. Optionally take a **curse** (opt-in gambit, §5) for a better drop.
@@ -181,28 +181,27 @@ existing `tools/generate_*` pattern.
 - **items** — rebuild around the §8 categories. Columns (proposed):
   `id | display_name | category | value | tags | rarity | art | description`
   where `category` is one of the §8 set and `value`/`tags` parameterize it.
-- **enemies (goals)** — the §7 schema: `id | name | goal | goal_tags | attack |
-  drop | art`.
-- **games** — extend with a **richer tag column** (§6). Regenerate via
-  `import-games-godot.py`.
+- **enemies (goals)** — the §7 schema, pooled by **type + difficulty tier**:
+  `id | name | goal | type | min_tier | weight | attack | drop | art`. The
+  `type` / `min_tier` / `weight` columns feed the `EnemySpawner` roll.
+- **games** — extend with a **richer tag column** and (likely) the promoted
+  **type** (§6.1). Regenerate via `import-games-godot.py`.
 - **scrolls** — trim to the kept set (fog, teleportation) and fill in real
   effects (currently inert stubs).
 - **curses** — reuse existing RESTRICTION content; add a `drop_bonus` notion
   (§5). **[OPEN]**.
 - **bingo** — **retired.** The one-enemy-per-game model fully replaces it; the
   legacy `bingo-data.js` / `bingo.js` are not ported.
-- **enemies (goals)** — pooled by **type + difficulty tier** (§7), authored in an
-  enemies sheet with `type`, `min_tier`, `weight` columns for the `EnemySpawner`
-  roll.
 
 ---
 
 ## 11. Codebase impact
 
-**Keep & repoint:** overworld graph, `GameData` (+ richer tags), `CurseData`,
-encounters (shops/deals/teleporters), `EffectSystem` + `TriggerBus` (repoint
-triggers: `on_goal_met`, `on_game_beaten`, `on_curse_broken`, `on_enemy_defeated`),
-scrolls, `GameStats`/verification, Collection.
+**Keep & repoint:** overworld graph, `GameData` (+ richer tags/types),
+`CurseData`, encounters (shops/deals/teleporters), `EffectSystem` + `TriggerBus`
+(repoint triggers: `on_goal_met`, `on_game_beaten`, `on_curse_broken`,
+`on_enemy_defeated`), `EnemySpawner` (repoint to roll goal-enemies by type +
+tier, §7), scrolls, `GameStats`/verification, Collection.
 
 **Add:** the tiny health/block model; the bash/dash/scramble + keys/bombs
 resource layer; the OBS companion HUD scene; the play-session resolver
@@ -210,8 +209,9 @@ resource layer; the OBS companion HUD scene; the play-session resolver
 
 **Cut (behind an archive git tag, like `strategy-grid-combat-archive`):**
 `scenes/deckbuilder/`, `scenes/action/`, `scripts/deckbuilder/`, `scripts/action/`,
-`scripts/strategy*`, enemies-as-combatants (`data/enemies`, `data/action_enemies`),
-`EnemySpawner`, combat cards/statuses, potions-as-combat-items (repurpose or cut).
+`scripts/strategy*`, enemies-as-combatants (`data/enemies`, `data/action_enemies`
+— the combat stat blocks; the *goal* enemies are new content), combat
+cards/statuses, potions-as-combat-items (repurpose or cut).
 
 ---
 
