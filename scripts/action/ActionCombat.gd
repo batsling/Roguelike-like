@@ -2150,6 +2150,10 @@ func _enemy_update_attacks(inst: Dictionary, delta: float) -> void:
 			cd_arr[wi] = float(watk["cooldown"])
 			if data.boss_brain:
 				inst["recov_t"] = data.attack_recovery   # start the between-actions pause
+			# With a separate wind-up clip, (re)play the spew clip now so it shows
+			# only for its own short length after firing, then reverts to idle.
+			if not data.get_anim(&"windup").is_empty():
+				_enemy_trigger_attack(inst)
 		return
 	# Not winding: ease any leftover charge back to neutral so the telegraph
 	# relaxes into the walk/idle state quickly but smoothly (no instant snap).
@@ -2553,6 +2557,12 @@ func _layer_base(inst: Dictionary, layer: StringName) -> StringName:
 			want = latk.get("leap_land_anim", &"land")
 		if not inst.data.get_anim(want).is_empty():
 			return want
+	# Ranged wind-up pose: while charging a shot, show the `windup` clip (Monstro's
+	# mouth-agape #2) if the enemy has one, so the spew frame (#4, the `attack`
+	# clip) only shows once it actually fires — never lingering into the next move.
+	if bool(inst.get("winding", false)) and layer == _attack_layer(inst) \
+			and not inst.data.get_anim(&"windup").is_empty():
+		return &"windup"
 	var attacking: bool = float(inst.get("attack_t", 0.0)) > 0.0 and layer == _attack_layer(inst)
 	if layer == &"head":
 		return &"attack" if attacking else &"idle"

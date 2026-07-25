@@ -124,10 +124,17 @@ splat then recover). Monstro's wiring: shared crouch `jump` (`#6 → #7`), hop a
 `hopair` (`#8`) + land `hopland` (`#6 → #9`); big-jump air `descend` (`#5`) +
 land `splat` (`#6`).
 
-**Off-screen leaps (`attack_offscreen`).** A leap flagged off-screen vanishes for
-the airborne beat and only drops back into view for the final descent
-(`LEAP_DESCEND_*` in `ActionCombat`) — its shadow + landing ring still telegraph
-where it will slam. Monstro's big jump uses this; the hop stays on screen. The engine also lifts the sprite by the arc
+**Off-screen leaps (`attack_offscreen`).** A leap flagged off-screen rockets up
+off the top of the arena on the launch beat, vanishes, then drops back into view
+for the final descent (`LEAP_LAUNCH_*` / `LEAP_DESCEND_*` in `ActionCombat`) — its
+shadow + landing ring still telegraph where it will slam. Monstro's big jump uses
+this; the hop stays on screen.
+
+**Split wind-up / spew clip.** If a ranged attacker has a `windup` clip, it plays
+that while charging a shot and only shows its `attack` clip once the shot fires —
+so a spew pose (Monstro's #4) never lingers into the next move. Enemies without a
+`windup` clip keep the old behaviour (the `attack` clip plays through the wind-up
+as the telegraph, e.g. Horf/Spitter). The engine also lifts the sprite by the arc
 height and draws a ground shadow + a red landing-zone ring automatically, so
 those don't need art. Author the leap clips alongside `idle`/`attack` in the
 `Animations` column.

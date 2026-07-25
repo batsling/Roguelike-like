@@ -126,10 +126,12 @@ func test_leaps_name_their_animation_clips() -> void:
 func test_monstro_defines_the_expected_clips() -> void:
 	# The frame-sequence clips the animation wiring plays must exist.
 	var boss: ActionEnemyData = load(MONSTRO_PATH)
-	for clip in [&"idle", &"attack", &"jump", &"descend", &"hopair", &"landrec"]:
+	for clip in [&"idle", &"windup", &"attack", &"jump", &"descend", &"hopair", &"landrec"]:
 		assert_false(boss.get_anim(clip).is_empty(), "Monstro has a '%s' clip" % clip)
-	# The vomit clip is the 2-frame windup->spew; land-recover is splat + recover.
-	assert_eq((boss.get_anim(&"attack")["frames"] as Array).size(), 2, "vomit is windup + spew")
+	# Vomit is split: windup (#2) held during the wind-up, attack (#4) the brief
+	# spew — so #4 never lingers into the next move. Land-recover is splat + recover.
+	assert_eq((boss.get_anim(&"windup")["frames"] as Array).size(), 1, "windup is a single held pose")
+	assert_eq((boss.get_anim(&"attack")["frames"] as Array).size(), 1, "spew is a single brief frame")
 	assert_eq((boss.get_anim(&"landrec")["frames"] as Array).size(), 2, "land is splat + recover")
 
 func test_leap_clip_names_default_when_unset() -> void:
