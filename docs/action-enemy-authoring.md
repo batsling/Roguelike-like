@@ -114,10 +114,20 @@ override of `0` inherits the enemy default; for `attack_leap_burst_counts`, `-1`
 inherits and `0` is an explicit "no burst". The grounded splat scales with the
 leap's air time (`LEAP_LAND_TIME_FRAC`), so hops splat briefly and slams linger.
 
-**Leap animations.** A leaper plays dedicated clips per beat when they exist:
-`jump` (crouch/anticipation) → `airborne` (in the air) → `land` (the splat) —
-falling back to the `attack`/`idle` clips for any it lacks, so a leaper animates
-even with only an `attack` clip. The engine also lifts the sprite by the arc
+**Leap animations.** A leaper plays a clip per beat: crouch → airborne → land.
+The clip names default to `jump` / `airborne` / `land` but each attack can name
+its own via `attack_leap_crouch_anim` / `attack_leap_air_anim` /
+`attack_leap_land_anim`, so one enemy's hop and big jump can use different frames.
+Missing clips fall back to `attack`/`idle`, so a leaper animates even with only an
+`attack` clip. A clip may be multi-frame (e.g. Monstro's hop land is `#6 → #9`,
+splat then recover). Monstro's wiring: shared crouch `jump` (`#6 → #7`), hop air
+`hopair` (`#8`) + land `hopland` (`#6 → #9`); big-jump air `descend` (`#5`) +
+land `splat` (`#6`).
+
+**Off-screen leaps (`attack_offscreen`).** A leap flagged off-screen vanishes for
+the airborne beat and only drops back into view for the final descent
+(`LEAP_DESCEND_*` in `ActionCombat`) — its shadow + landing ring still telegraph
+where it will slam. Monstro's big jump uses this; the hop stays on screen. The engine also lifts the sprite by the arc
 height and draws a ground shadow + a red landing-zone ring automatically, so
 those don't need art. Author the leap clips alongside `idle`/`attack` in the
 `Animations` column.

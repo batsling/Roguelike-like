@@ -94,6 +94,54 @@ func test_lob_flag_defaults_off() -> void:
 	d.attack_damages = PackedInt32Array([2])
 	assert_false(bool(d.attacks()[0]["lob"]), "ordinary ranged attacks stay flat bolts")
 
+# --- Animation wiring: frame sequences + off-screen big jump -----------------
+
+func test_big_jump_is_offscreen_hop_is_not() -> void:
+	var atks: Array = (load(MONSTRO_PATH) as ActionEnemyData).attacks()
+	var leaps: Array = []
+	for a in atks:
+		if int(a["kind"]) == ActionEnemyData.AttackKind.LEAP:
+			leaps.append(a)
+	leaps.sort_custom(func(x, y): return float(x["leap_height"]) < float(y["leap_height"]))
+	assert_false(bool(leaps[0]["offscreen"]), "the hop stays on screen")
+	assert_true(bool(leaps[1]["offscreen"]), "the big jump vanishes off-screen")
+
+func test_leaps_name_their_animation_clips() -> void:
+	var atks: Array = (load(MONSTRO_PATH) as ActionEnemyData).attacks()
+	var leaps: Array = []
+	for a in atks:
+		if int(a["kind"]) == ActionEnemyData.AttackKind.LEAP:
+			leaps.append(a)
+	leaps.sort_custom(func(x, y): return float(x["leap_height"]) < float(y["leap_height"]))
+	var hop: Dictionary = leaps[0]
+	var slam: Dictionary = leaps[1]
+	# Both crouch with the shared "jump" clip; air/land clips differ per leap.
+	assert_eq(StringName(hop["leap_crouch_anim"]), &"jump")
+	assert_eq(StringName(slam["leap_crouch_anim"]), &"jump")
+	assert_eq(StringName(hop["leap_air_anim"]), &"hopair")
+	assert_eq(StringName(hop["leap_land_anim"]), &"hopland")
+	assert_eq(StringName(slam["leap_air_anim"]), &"descend")
+	assert_eq(StringName(slam["leap_land_anim"]), &"splat")
+
+func test_monstro_defines_the_expected_clips() -> void:
+	# The frame-sequence clips the animation wiring plays must exist.
+	var boss: ActionEnemyData = load(MONSTRO_PATH)
+	for clip in [&"idle", &"attack", &"jump", &"descend", &"splat", &"hopair", &"hopland"]:
+		assert_false(boss.get_anim(clip).is_empty(), "Monstro has a '%s' clip" % clip)
+	# The vomit clip is the 2-frame windup->spew; idle is a single rest frame.
+	assert_eq((boss.get_anim(&"attack")["frames"] as Array).size(), 2, "vomit is windup + spew")
+	assert_eq((boss.get_anim(&"hopland")["frames"] as Array).size(), 2, "hop land is splat + recover")
+
+func test_leap_clip_names_default_when_unset() -> void:
+	var d := ActionEnemyData.new()
+	d.attack_kinds = PackedInt32Array([ActionEnemyData.AttackKind.LEAP])
+	d.attack_damages = PackedInt32Array([1])
+	var a: Dictionary = d.attacks()[0]
+	assert_eq(StringName(a["leap_crouch_anim"]), &"jump")
+	assert_eq(StringName(a["leap_air_anim"]), &"airborne")
+	assert_eq(StringName(a["leap_land_anim"]), &"land")
+	assert_false(bool(a["offscreen"]))
+
 func test_weight_defaults_to_one_when_unspecified() -> void:
 	# An attack with no explicit weight still selects (weight 1), never 0.
 	var d := ActionEnemyData.new()

@@ -114,6 +114,16 @@ enum AttackStyle { NONE, CHARGE }
 @export var attack_leap_burst_speeds: PackedFloat32Array = PackedFloat32Array()
 @export var attack_leap_burst_lifetimes: PackedFloat32Array = PackedFloat32Array()
 
+# Per-attack LEAP animation clips (one animation name each for the crouch,
+# airborne and land beats) and an off-screen flag. Empty entries fall back to the
+# default "jump" / "airborne" / "land" clip names. When a leap is `offscreen`
+# (Monstro's big jump) the enemy vanishes for the airborne beat and only
+# reappears descending onto the landing spot — its shadow/ring still telegraph it.
+@export var attack_leap_crouch_anim: PackedStringArray = PackedStringArray()
+@export var attack_leap_air_anim: PackedStringArray = PackedStringArray()
+@export var attack_leap_land_anim: PackedStringArray = PackedStringArray()
+@export var attack_offscreen: PackedByteArray = PackedByteArray()
+
 # --- Boss brain ---------------------------------------------------------
 # Bosses run a different attack driver: instead of every attack firing the
 # moment it's off cooldown (the swarm model), a boss-brained enemy picks ONE
@@ -216,6 +226,10 @@ func attacks() -> Array:
 			"leap_burst_count": (int(attack_leap_burst_counts[i]) if i < attack_leap_burst_counts.size() and attack_leap_burst_counts[i] >= 0 else leap_burst_count),
 			"leap_burst_speed": _leap_f(attack_leap_burst_speeds, i, leap_burst_speed),
 			"leap_burst_lifetime": _leap_f(attack_leap_burst_lifetimes, i, leap_burst_lifetime),
+			"leap_crouch_anim": _leap_anim(attack_leap_crouch_anim, i, &"jump"),
+			"leap_air_anim": _leap_anim(attack_leap_air_anim, i, &"airborne"),
+			"leap_land_anim": _leap_anim(attack_leap_land_anim, i, &"land"),
+			"offscreen": (i < attack_offscreen.size() and attack_offscreen[i] != 0),
 		})
 	if out.is_empty():
 		out = _legacy_attacks()
@@ -225,6 +239,11 @@ func attacks() -> Array:
 # present and > 0, else fall back to the enemy-level default.
 func _leap_f(arr: PackedFloat32Array, i: int, fallback: float) -> float:
 	return float(arr[i]) if (i < arr.size() and arr[i] > 0.0) else fallback
+
+# Resolve a per-attack leap clip name: use the override at index `i` when it's a
+# non-empty string, else the default clip name.
+func _leap_anim(arr: PackedStringArray, i: int, fallback: StringName) -> StringName:
+	return StringName(arr[i]) if (i < arr.size() and String(arr[i]) != "") else fallback
 
 # Synthesise an attack list from the deprecated scalar fields. Shooters/stationary
 # get a ranged attack; everything else a melee one. A legacy random_shots adds a

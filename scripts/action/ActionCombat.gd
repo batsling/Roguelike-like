@@ -423,12 +423,23 @@ const LEAP_DEFAULT_LAND_TIME := 0.26
 # The grounded splat lasts this fraction of the leap's air time, so a small hop
 # splats briefly while a tall slam lingers (never shorter than the `land` clip).
 const LEAP_LAND_TIME_FRAC := 0.33
-# Squash-and-stretch amounts layered on the leap sprite (fractions of height),
-# tuned from the Rebirth fight: a modest anticipation dip on the crouch, a
-# stretch through the air, and a big flatten on impact that springs back.
-const LEAP_CROUCH_SQUASH := 0.16   # crouch dips toward sy 0.84
-const LEAP_AIR_STRETCH := 0.12     # airborne stretches toward sy 1.12 (eased)
-const LEAP_LAND_SQUASH := 0.42     # impact flattens toward sy 0.58, then bounces
+# Procedural squash-and-stretch layered on the leap sprite. Monstro's frames now
+# carry the deformation themselves (flat #6 crouch/land, tall #7 launch), so this
+# is kept subtle — a small landing bounce only — to avoid fighting the art. Bump
+# these for enemies whose leap frames are static.
+const LEAP_CROUCH_SQUASH := 0.0
+const LEAP_AIR_STRETCH := 0.0
+const LEAP_LAND_SQUASH := 0.12     # a gentle impact bounce
+
+# Off-screen leap (Monstro's big jump): the enemy vanishes for the first part of
+# the airborne beat and only reappears for the final descent, dropping from this
+# height onto the locked landing spot. Its shadow/ring still telegraph the fall.
+const LEAP_DESCEND_START := 0.72   # fraction of air time before it reappears
+const LEAP_DESCEND_HEIGHT := 300.0 # px above the target it re-enters view from
+
+# Lobbed vomit spread: an aimed attack sprays its tears in a cone this wide (rad)
+# toward the player — a spew into a specific area, not a full-circle scatter.
+const LOB_AIM_SPREAD := 0.55
 # Ground-shadow + landing-zone telegraph colours (the shadow tracks the leaper to
 # its landing spot; the ring marks the impact radius while it's in the air).
 const LEAP_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.28)
@@ -2268,6 +2279,7 @@ func _boss_execute_attack(inst: Dictionary, atk: Dictionary, idx: int, cd_arr: A
 func _start_leap(inst: Dictionary, atk: Dictionary, idx: int) -> void:
 	inst["leaping"] = true
 	inst["airborne"] = false
+	inst["leap_hidden"] = false
 	inst["leap_phase"] = 0
 	inst["leap_t"] = 0.0
 	inst["leap_z"] = 0.0
@@ -2298,13 +2310,33 @@ func _process_leaping(inst: Dictionary, delta: float) -> void:
 				inst["leap_phase"] = 1
 				inst["leap_t"] = 0.0
 				inst["airborne"] = true
+				# An off-screen leap vanishes the instant it takes off (no 1-frame
+				# flash of the descend pose before it hides) and its shadow/ring jump
+				# straight to the landing spot rather than lingering at take-off.
+				var off0: bool = bool((inst.get("leap_atk", {}) as Dictionary).get("offscreen", false))
+				inst["leap_hidden"] = off0
+				if off0:
+					inst.pos = tgt
 		1:  # airborne
 			var air: float = _leap_atk_f(inst, "leap_air_time", LEAP_DEFAULT_AIR_TIME)
-			var height: float = _leap_atk_f(inst, "leap_height", LEAP_DEFAULT_HEIGHT)
 			var u: float = clampf(t / maxf(0.001, air), 0.0, 1.0)
-			inst.pos = (inst.get("leap_from", inst.pos) as Vector2).lerp(inst.get("leap_target", inst.pos), u)
-			# Parabolic hop: 0 at take-off/landing, `height` at the apex.
-			inst["leap_z"] = height * 4.0 * u * (1.0 - u)
+			if bool((inst.get("leap_atk", {}) as Dictionary).get("offscreen", false)):
+				# Big jump: vanish to the landing spot, then drop back into view for
+				# the final descent (the sprite is hidden until then).
+				inst.pos = inst.get("leap_target", inst.pos)
+				if u < LEAP_DESCEND_START:
+					inst["leap_hidden"] = true
+					inst["leap_z"] = 0.0
+				else:
+					inst["leap_hidden"] = false
+					var dp: float = (u - LEAP_DESCEND_START) / maxf(0.001, 1.0 - LEAP_DESCEND_START)
+					inst["leap_z"] = LEAP_DESCEND_HEIGHT * (1.0 - dp)
+			else:
+				# Hop: stays on screen, arcing from take-off to the landing spot.
+				inst["leap_hidden"] = false
+				var height: float = _leap_atk_f(inst, "leap_height", LEAP_DEFAULT_HEIGHT)
+				inst.pos = (inst.get("leap_from", inst.pos) as Vector2).lerp(inst.get("leap_target", inst.pos), u)
+				inst["leap_z"] = height * 4.0 * u * (1.0 - u)
 			if u >= 1.0:
 				_land_leap(inst)
 		2:  # grounded splat — hold the `land` frame briefly, then the leap is over
@@ -2321,13 +2353,15 @@ func _land_leap(inst: Dictionary) -> void:
 	# Stay `leaping` through a short grounded splat (phase 2) so the `land`
 	# animation reads; _process_leaping clears `leaping` when land_t runs out.
 	inst["airborne"] = false
+	inst["leap_hidden"] = false
 	inst["leap_z"] = 0.0
 	inst["leap_phase"] = 2
-	# The splat holds long enough for the flatten-and-spring to read, scaled to
-	# this leap's air time (a small hop splats briefly; a big slam lingers), and
-	# never shorter than the `land` clip itself.
+	# The splat holds long enough for the land clip + flatten-and-spring to read,
+	# scaled to this leap's air time (a small hop splats briefly; a big slam
+	# lingers), and never shorter than the land clip itself.
 	var air: float = _leap_atk_f(inst, "leap_air_time", LEAP_DEFAULT_AIR_TIME)
-	inst["land_t"] = maxf(_anim_duration(data, &"land"), air * LEAP_LAND_TIME_FRAC)
+	var land_clip: StringName = atk.get("leap_land_anim", &"land")
+	inst["land_t"] = maxf(_anim_duration(data, land_clip), air * LEAP_LAND_TIME_FRAC)
 	inst["land_t0"] = inst["land_t"]   # original span, for the squash spring / frame split
 	# Stamp this leap's cooldown on the attack that launched it.
 	var idx: int = int(inst.get("leap_cd_idx", -1))
@@ -2487,19 +2521,15 @@ func _layer_base(inst: Dictionary, layer: StringName) -> StringName:
 	# for any phase the enemy hasn't authored a clip for, so a leaper with only an
 	# `attack` clip still animates.
 	if inst.get("leaping", false) and layer == _attack_layer(inst):
+		# Each leap beat plays the clip its attack names (crouch/air/land), so one
+		# enemy can give its hop and its big jump different frames (Monstro).
+		var latk: Dictionary = inst.get("leap_atk", {})
 		var lp: int = int(inst.get("leap_phase", 0))
-		var want: StringName
-		if lp == 0:
-			want = &"jump"
-		elif lp == 1:
-			want = &"airborne"
-		else:
-			# Land: hold the flat `land` frame for the first half of the splat, then
-			# switch to the round `idle` frame so the procedural spring bounces a
-			# round shape back up instead of stretching the pancake's pixels tall.
-			var t0: float = maxf(0.001, float(inst.get("land_t0", 1.0)))
-			var q: float = 1.0 - float(inst.get("land_t", 0.0)) / t0
-			want = &"land" if q < 0.5 else &"idle"
+		var want: StringName = latk.get("leap_crouch_anim", &"jump")
+		if lp == 1:
+			want = latk.get("leap_air_anim", &"airborne")
+		elif lp == 2:
+			want = latk.get("leap_land_anim", &"land")
 		if not inst.data.get_anim(want).is_empty():
 			return want
 	var attacking: bool = float(inst.get("attack_t", 0.0)) > 0.0 and layer == _attack_layer(inst)
@@ -5410,11 +5440,18 @@ func _update_arc_projectile(p: Dictionary, delta: float) -> bool:
 # random points around the mouth, each with its own flight time and apex height.
 func _fire_lob_volley(inst: Dictionary, atk: Dictionary) -> void:
 	var count: int = maxi(1, int(atk["proj_count"]))
+	# Aimed spew: tears spray in a cone toward the player (a specific area). A
+	# `random` lob scatters full-circle instead (e.g. a landing barrage).
+	var to_player: Vector2 = player_pos - inst.pos
+	var base_ang: float = to_player.angle() if to_player.length() > 1.0 else _rng.randf() * TAU
 	for n in count:
-		var ang: float = _rng.randf() * TAU
+		var ang: float
+		if bool(atk.get("random", false)):
+			ang = _rng.randf() * TAU
+		else:
+			ang = base_ang + _rng.randf_range(-LOB_AIM_SPREAD, LOB_AIM_SPREAD)
 		var dist: float = _rng.randf_range(LOB_MIN_DIST, LOB_MAX_DIST)
-		var target: Vector2 = inst.pos + Vector2.RIGHT.rotated(ang) * dist
-		_spawn_lob_tear(inst, atk, target)
+		_spawn_lob_tear(inst, atk, inst.pos + Vector2.RIGHT.rotated(ang) * dist)
 
 # Spawn one lobbed tear arcing from the enemy to `target`.
 func _spawn_lob_tear(inst: Dictionary, atk: Dictionary, target: Vector2) -> void:
@@ -6027,6 +6064,9 @@ func _draw() -> void:
 		var lift: float = _leap_lift(inst)
 		if bool(inst.get("leaping", false)):
 			_draw_leap_telegraph(inst)
+		# Off-screen mid-jump: the boss is gone — only its landing telegraph shows.
+		if bool(inst.get("leap_hidden", false)):
+			continue
 		# All sprite/HP-bar drawing happens at the lifted position; lift is 0 for a
 		# grounded enemy, so this is a no-op for everyone not mid-leap.
 		var render_pos: Vector2 = inst.pos - Vector2(0.0, lift)
