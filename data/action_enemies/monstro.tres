@@ -1,0 +1,89 @@
+[gd_resource type="Resource" script_class="ActionEnemyData" load_steps=9 format=3 uid="uid://action_enemy_monstro"]
+
+[ext_resource type="Script" path="res://scripts/resources/ActionEnemyData.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/f2.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/f3.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/f4.png" id="4"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/f5.png" id="5"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/f6.png" id="6"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/f7.png" id="7"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/f8.png" id="8"]
+[ext_resource type="Texture2D" path="res://assets/enemies/monstro/f9.png" id="9"]
+
+; Monstro — animated from the Rebirth fight (sprite sheet numbered 1-5 top,
+; 6-9 bottom). Clips:
+;   idle    = #3        (rest, all attacks return here)
+;   windup  = #2        (vomit wind-up, held; #4 only shows once it fires)
+;   attack  = #4        (vomit spew, brief)
+;   jump    = #6 -> #7  (hop crouch: flatten then launch up)
+;   prep    = #6        (big jump crouch: anticipation squash, held)
+;   stretch = #7        (big jump launch: brief tall flash as it rockets up)
+;   descend = #5        (big jump: falling back into view)
+;   hopair  = #8        (hop: airborne, looking up)
+;   landrec = #6 -> #9  (land then recover; shared by hop and big jump)
+; Attacks: [0] big jump (rockets off-screen on #7, lands + tear barrage), [1]
+; vomit (aimed lobbed spray, recoils him back), [2] short hop (on-screen
+; body-slam). Boss brain, deliberately slow-paced, with squash-and-stretch.
+
+[resource]
+script = ExtResource("1")
+id = &"monstro"
+display_name = "Monstro"
+difficulty = 3
+weight = 10
+hp_min = 110
+hp_max = 130
+attack_kinds = PackedInt32Array(2, 1, 2)
+attack_damages = PackedInt32Array(12, 6, 7)
+attack_cooldowns = PackedFloat32Array(3.5, 2.5, 0.4)
+attack_windups = PackedFloat32Array(0, 0.7, 0)
+attack_ranges = PackedFloat32Array(800, 520, 360)
+attack_proj_speeds = PackedFloat32Array(0, 0, 0)
+attack_proj_lifetimes = PackedFloat32Array(0, 0, 0)
+attack_proj_counts = PackedInt32Array(1, 10, 1)
+attack_random = PackedByteArray(0, 0, 0)
+attack_lob = PackedByteArray(1, 1, 0)
+attack_weights = PackedInt32Array(2, 3, 5)
+preferred_distance = 0
+leap_telegraph = 0.5
+leap_air_time = 1.1
+leap_height = 92
+leap_land_radius = 62
+leap_burst_count = 12
+leap_burst_speed = 200
+leap_burst_lifetime = 0
+attack_leap_telegraph = PackedFloat32Array(0.2, 0, 0.22)
+attack_leap_air_time = PackedFloat32Array(1.1, 0, 0.45)
+attack_leap_height = PackedFloat32Array(0, 0, 42)
+attack_leap_land_radius = PackedFloat32Array(0, 0, 34)
+attack_leap_burst_counts = PackedInt32Array(-1, -1, 0)
+attack_leap_burst_speeds = PackedFloat32Array(0, 0, 0)
+attack_leap_burst_lifetimes = PackedFloat32Array(0, 0, 0)
+attack_leap_crouch_anim = PackedStringArray("prep", "", "jump")
+attack_leap_air_anim = PackedStringArray("descend", "", "hopair")
+attack_leap_land_anim = PackedStringArray("landrec", "", "landrec")
+attack_leap_launch_anim = PackedStringArray("stretch", "", "")
+attack_offscreen = PackedByteArray(1, 0, 0)
+boss_brain = true
+attack_recovery = 0.35
+move_speed = 0
+size = 66
+behavior = 2
+motion_style = 0
+attack_style = 0
+color = Color(0.66, 0.56, 0.53, 1)
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray("boss")
+split_into = &""
+split_count = 0
+on_death_ids = PackedStringArray()
+on_death_weights = PackedInt32Array()
+layer_names = PackedStringArray()
+layer_offsets = PackedVector2Array()
+base_dim = 0
+directional = false
+anim_names = PackedStringArray("idle", "windup", "attack", "jump", "prep", "stretch", "descend", "hopair", "landrec")
+anim_fps = PackedFloat32Array(4, 4, 4, 10, 4, 4, 8, 8, 10)
+anim_loop = PackedByteArray(1, 1, 0, 0, 0, 0, 0, 1, 0)
+anim_frame_counts = PackedInt32Array(1, 1, 1, 2, 1, 1, 1, 1, 2)
+anim_frames = Array[Texture2D]([ExtResource("3"), ExtResource("2"), ExtResource("4"), ExtResource("6"), ExtResource("7"), ExtResource("6"), ExtResource("7"), ExtResource("5"), ExtResource("8"), ExtResource("6"), ExtResource("9")])

@@ -8,7 +8,13 @@ extends Resource
 
 enum BehaviorKind { WALKER, SHOOTER, STATIONARY, PACER }
 enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
-enum AttackKind { MELEE, RANGED }
+# MELEE = contact hit; RANGED = telegraphed projectile; LEAP = a jump that goes
+# airborne/untargetable, lands on the player's position and (optionally) bursts
+# projectiles outward on impact (Monstro's big jump; any slam boss). The leap's
+# arc/air-time/landing tuning lives in the resource-level `leap_*` fields below —
+# an enemy has one leap profile — while the attack entry supplies the LEAP's
+# damage / cooldown / trigger range like any other attack.
+enum AttackKind { MELEE, RANGED, LEAP }
 # Reusable procedural animation styles layered on top of frame anims by
 # ActionCombat's renderer. NONE = frames only; SQUASH = a Y-axis stretch/squash
 # "jelly walk" while moving (Brotato baby alien). Add new styles here + handle
@@ -58,6 +64,7 @@ enum AttackStyle { NONE, CHARGE }
 #   proj_lifetime: ranged projectile life, s (0 = ActionCombat default)
 #   proj_count:    projectiles per use (>1 = spread fan, or N random shots)
 #   random:        ranged only — fire in random directions, ignoring aim/range
+#   weight:        boss-brain selection weight (see boss_brain); ignored otherwise
 @export var attack_kinds: PackedInt32Array = PackedInt32Array()
 @export var attack_damages: PackedInt32Array = PackedInt32Array()
 @export var attack_cooldowns: PackedFloat32Array = PackedFloat32Array()
@@ -67,10 +74,68 @@ enum AttackStyle { NONE, CHARGE }
 @export var attack_proj_lifetimes: PackedFloat32Array = PackedFloat32Array()
 @export var attack_proj_counts: PackedInt32Array = PackedInt32Array()
 @export var attack_random: PackedByteArray = PackedByteArray()
+# Lob (1) = the attack's projectiles arc up and land at scattered points with a
+# ground shadow (Monstro's vomit), instead of flying flat. On a LEAP attack the
+# flag also makes the landing tear-burst lob. Empty / 0 = flat bolts.
+@export var attack_lob: PackedByteArray = PackedByteArray()
+# Boss-brain selection weight per attack (see boss_brain). Empty / missing = 1.
+@export var attack_weights: PackedInt32Array = PackedInt32Array()
 
 # SHOOTER-only: distance the enemy tries to maintain from the player.
 # 0 falls back to 0.7 * max ranged range at runtime. Ignored by walkers.
 @export var preferred_distance: float = 0.0
+
+# --- Leap tuning (LEAP attacks) -----------------------------------------
+# Default leap profile for this enemy's LEAP attacks. All 0 = use ActionCombat's
+# LEAP_DEFAULT_* placeholders, so a leap can be authored with just the attack
+# entry and tuned later without touching code. A leap runs in three beats:
+# crouch (telegraph, still grounded/targetable) -> airborne (untargetable,
+# non-solid, arcing to the player's position at take-off) -> land (contact
+# damage inside leap_land_radius + an outward burst of leap_burst_count tears).
+# Individual attacks override any of these via the attack_leap_* arrays below —
+# so one enemy can mix, say, a low fast hop and a tall slow slam (Monstro).
+@export var leap_telegraph: float = 0.0   # crouch/wind-up seconds before take-off
+@export var leap_air_time: float = 0.0    # seconds spent airborne (untargetable)
+@export var leap_height: float = 0.0      # visual arc peak, px
+@export var leap_land_radius: float = 0.0 # contact-damage radius on landing
+@export var leap_burst_count: int = 0     # tears sprayed radially on landing (0 = none)
+@export var leap_burst_speed: float = 0.0    # landing-burst projectile speed (0 = default)
+@export var leap_burst_lifetime: float = 0.0 # landing-burst projectile life (0 = default)
+
+# Per-attack leap overrides (parallel to the attack_* arrays). A float entry > 0
+# overrides the enemy-level leap_* default for that attack; 0 (or a short/missing
+# array) inherits it. leap_burst_count is special: -1 inherits, >= 0 is explicit
+# (so a hop can force 0 tears even when the enemy-level default is non-zero).
+@export var attack_leap_telegraph: PackedFloat32Array = PackedFloat32Array()
+@export var attack_leap_air_time: PackedFloat32Array = PackedFloat32Array()
+@export var attack_leap_height: PackedFloat32Array = PackedFloat32Array()
+@export var attack_leap_land_radius: PackedFloat32Array = PackedFloat32Array()
+@export var attack_leap_burst_counts: PackedInt32Array = PackedInt32Array()
+@export var attack_leap_burst_speeds: PackedFloat32Array = PackedFloat32Array()
+@export var attack_leap_burst_lifetimes: PackedFloat32Array = PackedFloat32Array()
+
+# Per-attack LEAP animation clips (one animation name each for the crouch,
+# airborne and land beats) and an off-screen flag. Empty entries fall back to the
+# default "jump" / "airborne" / "land" clip names. When a leap is `offscreen`
+# (Monstro's big jump) the enemy vanishes for the airborne beat and only
+# reappears descending onto the landing spot — its shadow/ring still telegraph it.
+@export var attack_leap_crouch_anim: PackedStringArray = PackedStringArray()
+@export var attack_leap_air_anim: PackedStringArray = PackedStringArray()
+@export var attack_leap_land_anim: PackedStringArray = PackedStringArray()
+# Off-screen leaps only: the clip shown during the brief launch beat as it
+# rockets up off the top (Monstro's #7 stretch). Empty = reuse the crouch clip.
+@export var attack_leap_launch_anim: PackedStringArray = PackedStringArray()
+@export var attack_offscreen: PackedByteArray = PackedByteArray()
+
+# --- Boss brain ---------------------------------------------------------
+# Bosses run a different attack driver: instead of every attack firing the
+# moment it's off cooldown (the swarm model), a boss-brained enemy picks ONE
+# ready, in-range attack at a time — weighted by each attack's `weight` — then
+# holds for `attack_recovery` seconds before choosing again. This is what turns a
+# kit of hop / vomit / big-jump into a readable one-move-at-a-time fight. Off by
+# default so ordinary enemies keep their independent-cooldown behaviour.
+@export var boss_brain: bool = false
+@export var attack_recovery: float = 0.6   # global pause between boss actions, s
 
 # --- Legacy attack fields (deprecated) ----------------------------------
 # Superseded by the attack_* arrays above. Kept so hand-authored enemies that
@@ -154,10 +219,36 @@ func attacks() -> Array:
 			"proj_lifetime": float(attack_proj_lifetimes[i]) if i < attack_proj_lifetimes.size() else 0.0,
 			"proj_count": maxi(1, int(attack_proj_counts[i]) if i < attack_proj_counts.size() else 1),
 			"random": (i < attack_random.size() and attack_random[i] != 0),
+			"lob": (i < attack_lob.size() and attack_lob[i] != 0),
+			"weight": maxi(1, int(attack_weights[i]) if i < attack_weights.size() else 1),
+			# Per-attack leap overrides, resolved against the enemy-level defaults.
+			"leap_telegraph": _leap_f(attack_leap_telegraph, i, leap_telegraph),
+			"leap_air_time": _leap_f(attack_leap_air_time, i, leap_air_time),
+			"leap_height": _leap_f(attack_leap_height, i, leap_height),
+			"leap_land_radius": _leap_f(attack_leap_land_radius, i, leap_land_radius),
+			"leap_burst_count": (int(attack_leap_burst_counts[i]) if i < attack_leap_burst_counts.size() and attack_leap_burst_counts[i] >= 0 else leap_burst_count),
+			"leap_burst_speed": _leap_f(attack_leap_burst_speeds, i, leap_burst_speed),
+			"leap_burst_lifetime": _leap_f(attack_leap_burst_lifetimes, i, leap_burst_lifetime),
+			"leap_crouch_anim": _leap_anim(attack_leap_crouch_anim, i, &"jump"),
+			"leap_air_anim": _leap_anim(attack_leap_air_anim, i, &"airborne"),
+			"leap_land_anim": _leap_anim(attack_leap_land_anim, i, &"land"),
+			# Launch clip defaults to the crouch clip when unset (old behaviour).
+			"leap_launch_anim": _leap_anim(attack_leap_launch_anim, i, _leap_anim(attack_leap_crouch_anim, i, &"jump")),
+			"offscreen": (i < attack_offscreen.size() and attack_offscreen[i] != 0),
 		})
 	if out.is_empty():
 		out = _legacy_attacks()
 	return out
+
+# Resolve a per-attack leap float: use the override at index `i` when it's
+# present and > 0, else fall back to the enemy-level default.
+func _leap_f(arr: PackedFloat32Array, i: int, fallback: float) -> float:
+	return float(arr[i]) if (i < arr.size() and arr[i] > 0.0) else fallback
+
+# Resolve a per-attack leap clip name: use the override at index `i` when it's a
+# non-empty string, else the default clip name.
+func _leap_anim(arr: PackedStringArray, i: int, fallback: StringName) -> StringName:
+	return StringName(arr[i]) if (i < arr.size() and String(arr[i]) != "") else fallback
 
 # Synthesise an attack list from the deprecated scalar fields. Shooters/stationary
 # get a ranged attack; everything else a melee one. A legacy random_shots adds a
@@ -247,9 +338,20 @@ func roll_on_death(rng: RandomNumberGenerator) -> StringName:
 			return StringName(on_death_ids[i])
 	return StringName(on_death_ids[0])
 
+# Per-anim result cache. get_anim is called for every enemy every frame (in the
+# renderer + anim tick); rebuilding the frames slice each time churned the heap
+# and caused periodic GC hitches. Results are read-only, and the resource is
+# shared across all instances of an enemy, so one cache serves them all. Not
+# @export — purely a runtime memo, rebuilt on load.
+var _anim_cache: Dictionary = {}
+
 # Returns {frames: Array[Texture2D], fps: float, loop: bool} for `anim`, or an
-# empty Dictionary when this enemy has no animation by that name.
+# empty Dictionary when this enemy has no animation by that name. Cached — treat
+# the returned Dictionary/array as read-only.
 func get_anim(anim: StringName) -> Dictionary:
+	if _anim_cache.has(anim):
+		return _anim_cache[anim]
+	var result: Dictionary = {}
 	var start := 0
 	for i in anim_names.size():
 		var count: int = anim_frame_counts[i] if i < anim_frame_counts.size() else 0
@@ -257,13 +359,15 @@ func get_anim(anim: StringName) -> Dictionary:
 			var frames: Array[Texture2D] = []
 			for f in range(start, mini(start + count, anim_frames.size())):
 				frames.append(anim_frames[f])
-			return {
+			result = {
 				"frames": frames,
 				"fps": (anim_fps[i] if i < anim_fps.size() else 8.0),
 				"loop": (i < anim_loop.size() and anim_loop[i] != 0),
 			}
+			break
 		start += count
-	return {}
+	_anim_cache[anim] = result
+	return result
 
 @export var source_game: String = ""
 @export var tags: PackedStringArray = PackedStringArray()

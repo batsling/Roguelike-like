@@ -58,10 +58,101 @@ reuses the deckbuilder weighted pick loop, `EnemySpawner.pick_group`):
   to four Horfs.
 - The candidate pool is gated to `difficulty ≤ tier` (Low tier → Low enemies
   only); `Boss` difficulty is reserved and never rolls into a random room.
-- **Boss rooms** spend `BOSS_BUDGET_MULT` (1.5×) the tier budget, plus an HP bump
-  (`ActionFloor.BOSS_HP_MULT`).
+- **Boss rooms** field a single registered `Boss`-difficulty enemy (see below);
+  when none are authored they fall back to a `BOSS_BUDGET_MULT` (1.5×) budget of
+  ordinary enemies. Either way boss rooms get an HP bump (`ActionFloor.BOSS_HP_MULT`).
 
 Tune the budgets in `scripts/runtime/ActionEnemySpawner.gd` (`TIER_BUDGET`).
+
+## Bosses
+
+Mark an enemy `Difficulty` **Boss** and it's kept out of normal rooms and drawn
+into **boss rooms** instead — `ActionEnemySpawner.build_boss_room` weighted-picks
+one boss (by `Weight`) and places it solo. Register as many as you like; each
+boss room fields one.
+
+A boss usually wants the **boss brain** (`boss_brain = true`): instead of every
+attack firing the instant it's off cooldown, the boss picks ONE ready, in-range
+attack at a time — weighted by that attack's `weight` — then holds for
+`attack_recovery` seconds before choosing again. That's what makes a kit of
+hop / vomit / big-jump read as a one-move-at-a-time fight. Give each attack a
+`weight` to bias the mix (a heavier vomit `weight` = vomits more than it jumps).
+
+### Leap (jump) attacks — `AttackKind.LEAP`
+
+A `LEAP` attack is a jump that goes airborne and slams down on the player
+(Monstro's big jump; any slam boss). It runs in three beats — **crouch**
+(telegraphed, still grounded and hittable) → **airborne** (untargetable,
+non-solid, arcing to the player's position at take-off) → **land** (contact
+damage inside `leap_land_radius` + an outward burst of `leap_burst_count`
+tears). A ground shadow tracks the leaper to its landing spot and a red ring
+telegraphs the impact zone while it's in the air.
+
+The `LEAP` attack entry supplies the landing **damage / cooldown / trigger
+range** like any attack; the arc/timing/burst live in enemy-level `leap_*`
+fields (`leap_telegraph`, `leap_air_time`, `leap_height`, `leap_land_radius`,
+`leap_burst_count`, `leap_burst_speed`, `leap_burst_lifetime`). Any left `0`
+use `ActionCombat`'s `LEAP_DEFAULT_*` placeholders, so a leap can be authored
+with just the attack entry and tuned later without touching code.
+
+**Lobbed attacks (`attack_lob`).** A ranged attack flagged `lob` fires a
+scattered burst of **arcing tears** instead of flat bolts — each lobs to a random
+point around the enemy (`LOB_*` constants in `ActionCombat`), rising and falling
+with a ground shadow, and only threatens the player when it's low to the ground
+(you dodge where they land, not while they're overhead). On a `LEAP` attack the
+same flag makes the landing tear-burst lob too. Monstro's vomit and big-jump
+barrage both use it; ordinary shooters (Horf/Spitter) leave it off and keep their
+flat aimed bolts.
+
+**Multiple leaps per enemy.** The `attack_leap_*` arrays (parallel to the other
+`attack_*` arrays) override the enemy-level defaults per attack, so one enemy can
+own several different leaps. Monstro uses this for a tall slam **and** a short
+hop: the slam inherits the enemy-level profile (tall, 12-tear burst), while the
+hop entry sets a low `attack_leap_height`, short `attack_leap_telegraph`/
+`attack_leap_air_time`, and `attack_leap_burst_counts = 0` (no tears). A float
+override of `0` inherits the enemy default; for `attack_leap_burst_counts`, `-1`
+inherits and `0` is an explicit "no burst". The grounded splat scales with the
+leap's air time (`LEAP_LAND_TIME_FRAC`), so hops splat briefly and slams linger.
+
+**Leap animations.** A leaper plays a clip per beat: crouch → airborne → land.
+The clip names default to `jump` / `airborne` / `land` but each attack can name
+its own via `attack_leap_crouch_anim` / `attack_leap_air_anim` /
+`attack_leap_land_anim`, so one enemy's hop and big jump can use different frames.
+Missing clips fall back to `attack`/`idle`, so a leaper animates even with only an
+`attack` clip. A clip may be multi-frame (e.g. Monstro's hop land is `#6 → #9`,
+splat then recover). Monstro's wiring: shared crouch `jump` (`#6 → #7`), hop air
+`hopair` (`#8`) + land `hopland` (`#6 → #9`); big-jump air `descend` (`#5`) +
+land `splat` (`#6`).
+
+**Off-screen leaps (`attack_offscreen`).** A leap flagged off-screen rockets up
+off the top of the arena on the launch beat, vanishes, then drops back into view
+for the final descent (`LEAP_LAUNCH_*` / `LEAP_DESCEND_*` in `ActionCombat`) — its
+shadow + landing ring still telegraph where it will slam. Monstro's big jump uses
+this; the hop stays on screen.
+
+**Split wind-up / spew clip.** If a ranged attacker has a `windup` clip, it plays
+that while charging a shot and only shows its `attack` clip once the shot fires —
+so a spew pose (Monstro's #4) never lingers into the next move. Enemies without a
+`windup` clip keep the old behaviour (the `attack` clip plays through the wind-up
+as the telegraph, e.g. Horf/Spitter). The engine also lifts the sprite by the arc
+height and draws a ground shadow + a red landing-zone ring automatically, so
+those don't need art. Author the leap clips alongside `idle`/`attack` in the
+`Animations` column.
+
+On top of the frames the engine adds **procedural squash-and-stretch** (anchored
+at the feet, like the walk bob): an anticipation dip during the crouch, a stretch
+through the air (strongest at take-off and just before landing), and a hard
+flatten on impact that springs back with a small overshoot bounce — tuned by the
+`LEAP_*_SQUASH`/`STRETCH` constants in `ActionCombat`. The land beat holds for
+`max(land clip length, LEAP_DEFAULT_LAND_TIME)` so the flatten-and-spring reads,
+showing the `land` frame for the first half of the beat and the round `idle`
+frame for the spring (so the bounce deforms a round shape, not the flat pancake).
+
+`data/action_enemies/monstro.tres` is the first boss — Basement's Monstro (boss
+brain + a big jump and a vomit volley), authored from Rebirth's behaviour. It
+renders as a fleshy circle until its sprite frames (`monstro_idle`,
+`monstro_jump`, `monstro_airborne`, `monstro_land`, `monstro_attack`) are dropped
+into `images/enemies/action_enemies/Monstro/` and compiled.
 
 Enemies don't appear instantly: each spawn is **telegraphed** by a red circle
 (sized to the enemy) for `ActionCombat.SPAWN_TELEGRAPH_TIME` (1s) before the

@@ -406,6 +406,64 @@ const ENEMY_FIRE_RECOIL_SPEED := 60.0    # backward kick when an enemy shoots
 const SPAWN_TELEGRAPH_TIME := 1.0
 const SPAWN_TELEGRAPH_COLOR := Color(0.95, 0.15, 0.15)
 
+# LEAP attack placeholders (used when an enemy's leap_* data fields are 0). These
+# are deliberately conservative starting values — real per-boss tuning (e.g.
+# Monstro's exact air-time and tear counts) belongs in the .tres, so filling
+# those in never touches this file. A leap runs crouch -> airborne -> land:
+#   TELEGRAPH   seconds crouching in place (grounded, still targetable),
+#   AIR_TIME    seconds airborne (untargetable, non-solid) arcing to the target,
+#   HEIGHT      the visual arc peak in px,
+#   LAND_RADIUS the contact-damage radius stamped where it lands.
+const LEAP_DEFAULT_TELEGRAPH := 0.5
+const LEAP_DEFAULT_AIR_TIME := 0.8
+const LEAP_DEFAULT_HEIGHT := 70.0
+const LEAP_DEFAULT_LAND_RADIUS := 46.0
+# Fallback splat span when a leap has no `land` clip and (somehow) no air time.
+const LEAP_DEFAULT_LAND_TIME := 0.26
+# The grounded splat lasts this fraction of the leap's air time, so a small hop
+# splats briefly while a tall slam lingers (never shorter than the `land` clip).
+const LEAP_LAND_TIME_FRAC := 0.33
+# Procedural squash-and-stretch layered on the leap sprite (on top of the pose
+# frames): an anticipation dip on the crouch, a stretch through the air, and a
+# flatten on impact that springs back with a small overshoot bounce (the little
+# squash as it recovers from the land frame into idle).
+const LEAP_CROUCH_SQUASH := 0.10
+const LEAP_AIR_STRETCH := 0.10
+const LEAP_LAND_SQUASH := 0.28
+
+# Off-screen leap (Monstro's big jump): the enemy rockets straight up off the top
+# of the arena (launch beat, visible), vanishes, then drops back onto the locked
+# landing spot for the descent. Its shadow/ring telegraph the fall throughout.
+const LEAP_LAUNCH_FRAC := 0.12     # fraction of air spent in the launch sub-beat
+const LEAP_LAUNCH_RISE := 320.0    # how fast the launch drives it upward
+const LEAP_LAUNCH_HIDE := 140.0    # once risen this far it's "gone" (a brief #7 flash)
+const LEAP_DESCEND_START := 0.74   # fraction of air time before it reappears falling
+const LEAP_DESCEND_HEIGHT := 320.0 # px above the target it re-enters view from
+
+# Lobbed vomit spread: an aimed attack sprays its tears in a cone this wide (rad)
+# toward the player — a spew into a specific area, not a full-circle scatter.
+const LOB_AIM_SPREAD := 0.55
+# Backward recoil a boss takes when it spews a lobbed volley (a little kick).
+const VOMIT_RECOIL_SPEED := 90.0
+# Ground-shadow + landing-zone telegraph colours (the shadow tracks the leaper to
+# its landing spot; the ring marks the impact radius while it's in the air).
+const LEAP_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.28)
+const LEAP_LANDING_RING_COLOR := Color(0.95, 0.25, 0.2, 0.9)
+
+# Lobbed tears (Monstro's vomit + landing barrage): arcing projectiles that fly
+# up and come down at a scattered target, rendered with a ground shadow. They're
+# only dangerous when low to the ground (near launch / landing) — you dodge where
+# they'll fall, not while they're overhead.
+# Shared read-only empty dict, so hot paths can fall back without allocating a
+# fresh {} each call (a per-frame GC source in the leap code).
+const EMPTY_DICT := {}
+
+const ARC_HIT_HEIGHT := 12.0            # a lob only hits the player when z <= this
+const LOB_MIN_DIST := 55.0              # nearest a scattered lob lands from the mouth
+const LOB_MAX_DIST := 300.0            # farthest a scattered lob lands
+const LOB_ARC_DUR := Vector2(0.5, 0.8)  # random flight time range, s
+const LOB_ARC_HEIGHT := Vector2(55.0, 95.0)  # random arc apex range, px
+
 # Live projectiles (player- and enemy-owned). Each entry is a
 # Dictionary: {pos, velocity, owner, radius, color, lifetime, ...}
 var projectiles: Array = []
@@ -701,7 +759,7 @@ func _nearest_enemy() -> Dictionary:
 	var best: Dictionary = {}
 	var best_d: float = INF
 	for inst in enemies:
-		if not inst.actor.is_alive():
+		if not _is_targetable(inst):
 			continue
 		var d: float = inst.pos.distance_to(player_pos)
 		if d < best_d:
@@ -1704,7 +1762,17 @@ func _fire_click_card(card: CardData) -> void:
 			Color(0.9, 0.55, 0.55))
 		GameState.destroy_first_card_with_id(card)
 
+# An enemy is a valid target when it's alive and not mid-leap-airborne. Leaping
+# enemies are only untargetable during the airborne beat (leap_phase 1); they can
+# still be hit during the grounded crouch wind-up. Every player-attack target
+# scan and the damage entry point route through this.
+func _is_targetable(inst: Dictionary) -> bool:
+	return inst.actor.is_alive() and not bool(inst.get("airborne", false))
+
 func _deal_damage_to_enemy(inst: Dictionary, base_dmg: int, dmg_type: String, power_multiplier: int = 1, effect: Dictionary = {}) -> void:
+	# Airborne (mid-leap) enemies can't be hit — shots and swings pass through.
+	if bool(inst.get("airborne", false)):
+		return
 	# Shared damage math (Stats.resolve_damage): player Blind whiff,
 	# Power/Weak, enemy Vulnerable/Dodge and block soak all match the other
 	# two modes now. Only the action-specific tail (Bleed hit-window, kill
@@ -1810,10 +1878,15 @@ func _process_enemies(delta: float) -> void:
 		if Stats.should_split(inst.actor):
 			extra_spawns.append_array(_perform_action_split(inst))
 			continue
+		# Mid-leap: the jump state machine owns the enemy outright (movement,
+		# targetability, contact) until it lands, superseding every normal
+		# behaviour, stun and fear branch below.
+		if inst.get("leaping", false):
+			_process_leaping(inst, delta)
 		# Stunned (Scroll of Scare Monster): the enemy does nothing while Stun is
 		# up — no move, no attack. Stun decays on the action turn-tick like other
 		# statuses (it's in Stats.DECAY_STATUSES), so it wears off on its own.
-		if inst.actor.get_status(&"stun") > 0:
+		elif inst.actor.get_status(&"stun") > 0:
 			pass
 		# Fear: a frightened enemy abandons its normal behavior and flees the
 		# player, never attacking, until its Fear ticks off (stack == flee-time).
@@ -1855,7 +1928,8 @@ func _process_enemies(delta: float) -> void:
 # damage still fires from the enemy AI at the same touch distance.
 func _resolve_player_enemy_collision() -> void:
 	for inst in enemies:
-		if not inst.actor.is_alive():
+		# Airborne leapers pass over the player (contact resolves on landing).
+		if not inst.actor.is_alive() or bool(inst.get("airborne", false)):
 			continue
 		var min_dist: float = PLAYER_RADIUS + inst.data.size
 		var d: Vector2 = player_pos - inst.pos
@@ -1883,11 +1957,11 @@ func _resolve_enemy_separation() -> void:
 	for _iter in 2:
 		for i in range(n):
 			var a: Dictionary = enemies[i]
-			if not a.actor.is_alive():
+			if not a.actor.is_alive() or bool(a.get("airborne", false)):
 				continue
 			for j in range(i + 1, n):
 				var b: Dictionary = enemies[j]
-				if not b.actor.is_alive():
+				if not b.actor.is_alive() or bool(b.get("airborne", false)):
 					continue
 				var min_dist: float = a.data.size + b.data.size
 				var d: Vector2 = b.pos - a.pos
@@ -2078,6 +2152,12 @@ func _enemy_update_attacks(inst: Dictionary, delta: float) -> void:
 			# Leave `charge` at its peak; it eases back down below (not a hard snap).
 			_enemy_fire_attack(inst, watk)
 			cd_arr[wi] = float(watk["cooldown"])
+			if data.boss_brain:
+				inst["recov_t"] = data.attack_recovery   # start the between-actions pause
+			# With a separate wind-up clip, (re)play the spew clip now so it shows
+			# only for its own short length after firing, then reverts to idle.
+			if not data.get_anim(&"windup").is_empty():
+				_enemy_trigger_attack(inst)
 		return
 	# Not winding: ease any leftover charge back to neutral so the telegraph
 	# relaxes into the walk/idle state quickly but smoothly (no instant snap).
@@ -2085,6 +2165,17 @@ func _enemy_update_attacks(inst: Dictionary, delta: float) -> void:
 
 	for i in atks.size():
 		cd_arr[i] = maxf(0.0, float(cd_arr[i]) - delta)
+
+	# Boss brain: choose ONE ready, in-range attack (weighted) at a time, then hold
+	# for attack_recovery before choosing again — a readable, one-move-at-a-time
+	# fight instead of every attack firing the instant it's off cooldown.
+	if data.boss_brain:
+		var rt: float = maxf(0.0, float(inst.get("recov_t", 0.0)) - delta)
+		inst["recov_t"] = rt
+		if rt <= 0.0:
+			_boss_pick_and_attack(inst, atks, cd_arr, dist)
+		return
+
 	for i in atks.size():
 		if float(cd_arr[i]) > 0.0:
 			continue
@@ -2096,6 +2187,13 @@ func _enemy_update_attacks(inst: Dictionary, delta: float) -> void:
 				_enemy_trigger_attack(inst)
 				_apply_damage_to_player(int(atk["damage"]), data.display_name, inst.actor, true)
 				cd_arr[i] = float(atk["cooldown"])
+				return
+		elif int(atk["kind"]) == ActionEnemyData.AttackKind.LEAP:
+			# Big jump: begin the crouch -> airborne -> land state machine. The
+			# cooldown is stamped when it lands (in _land_leap), not here, so the
+			# whole leap counts as one attack beat.
+			if dist <= rng:
+				_start_leap(inst, atk, i)
 				return
 		elif bool(atk["random"]):
 			# Random spew ignores aim and range — fire immediately when ready.
@@ -2111,6 +2209,269 @@ func _enemy_update_attacks(inst: Dictionary, delta: float) -> void:
 			_enemy_trigger_attack(inst)
 			return
 
+# --- Boss brain ------------------------------------------------------------
+# Weighted one-at-a-time attack selection for boss_brain enemies. Gathers every
+# attack that's both off cooldown and in range for its kind, weighted-picks one,
+# and executes it. Recovery (the pause before the next choice) is stamped by
+# _boss_execute_attack for instant/wind-up attacks and by _land_leap for leaps.
+func _boss_pick_and_attack(inst: Dictionary, atks: Array, cd_arr: Array, dist: float) -> void:
+	var data: ActionEnemyData = inst.data
+	var cands: Array = []
+	var total: int = 0
+	for i in atks.size():
+		if float(cd_arr[i]) > 0.0:
+			continue
+		if not _boss_attack_in_range(atks[i], dist, data):
+			continue
+		var w: int = maxi(1, int(atks[i].get("weight", 1)))
+		cands.append({"i": i, "w": w})
+		total += w
+	if cands.is_empty():
+		return
+	var roll: int = _rng.randi_range(1, total)
+	var acc: int = 0
+	var pick: Dictionary = cands[0]
+	for c in cands:
+		acc += int(c["w"])
+		if roll <= acc:
+			pick = c
+			break
+	_boss_execute_attack(inst, atks[int(pick["i"])], int(pick["i"]), cd_arr)
+
+# Whether a boss attack can trigger at the current player distance. Random spews
+# ignore range (fire anywhere); melee uses its reach or a bare contact radius;
+# leap and aimed ranged use the attack's own trigger range.
+func _boss_attack_in_range(atk: Dictionary, dist: float, data: ActionEnemyData) -> bool:
+	var rng: float = float(atk["range"])
+	match int(atk["kind"]):
+		ActionEnemyData.AttackKind.MELEE:
+			return dist <= maxf(rng, data.size + PLAYER_RADIUS)
+		ActionEnemyData.AttackKind.LEAP:
+			return dist <= rng
+		_:  # RANGED
+			return bool(atk["random"]) or dist <= rng
+
+# Run one chosen boss attack, mirroring the standard driver's per-kind handling
+# but stamping the global recovery pause on completion (leaps stamp it on land).
+func _boss_execute_attack(inst: Dictionary, atk: Dictionary, idx: int, cd_arr: Array) -> void:
+	var data: ActionEnemyData = inst.data
+	match int(atk["kind"]):
+		ActionEnemyData.AttackKind.MELEE:
+			_enemy_trigger_attack(inst)
+			_apply_damage_to_player(int(atk["damage"]), data.display_name, inst.actor, true)
+			cd_arr[idx] = float(atk["cooldown"])
+			inst["recov_t"] = data.attack_recovery
+		ActionEnemyData.AttackKind.LEAP:
+			_start_leap(inst, atk, idx)   # cooldown + recovery stamped in _land_leap
+		_:  # RANGED
+			if bool(atk["random"]):
+				_enemy_trigger_attack(inst)
+				_enemy_fire_attack(inst, atk)
+				cd_arr[idx] = float(atk["cooldown"])
+				inst["recov_t"] = data.attack_recovery
+			else:
+				# Telegraphed wind-up; fires (and stamps recovery) on completion.
+				inst["winding"] = true
+				inst["windup_t"] = 0.0
+				inst["wind_idx"] = idx
+				_enemy_trigger_attack(inst)
+
+# --- Leap (jump) attack ----------------------------------------------------
+# Reusable "go airborne and slam down on the player" move for any enemy carrying
+# a LEAP attack (Monstro's big jump; slam bosses generally). Runs as a small
+# per-inst state machine on the inst dict, driven each frame by _process_leaping
+# and superseding the enemy's normal behaviour/attacks while it lasts:
+#   leap_phase 0 = crouch (telegraph, grounded + targetable),
+#              1 = airborne (untargetable, non-solid, arcing to leap_target),
+#              2 = landed (transient — cleared the same frame it lands).
+# `airborne` is the untargetable/non-solid flag other systems read; `leap_z` is
+# the current visual height (px) the sprite is lifted by, 0 on the ground.
+
+# Kick off a leap: enter the crouch and remember which attack (index `idx`)
+# spawned it, so the cooldown can be stamped on that attack when it lands.
+func _start_leap(inst: Dictionary, atk: Dictionary, idx: int) -> void:
+	inst["leaping"] = true
+	inst["airborne"] = false
+	inst["leap_hidden"] = false
+	inst["leap_phase"] = 0
+	inst["leap_t"] = 0.0
+	inst["leap_z"] = 0.0
+	inst["leap_atk"] = atk
+	inst["leap_cd_idx"] = idx
+	inst["leap_from"] = inst.pos
+	inst["knockback"] = Vector2.ZERO
+	_enemy_trigger_attack(inst)   # play the attack/crouch clip during the wind-up
+
+# Advance an in-progress leap. Called from _process_enemies in place of the
+# enemy's normal behaviour while inst.leaping is set.
+func _process_leaping(inst: Dictionary, delta: float) -> void:
+	var data: ActionEnemyData = inst.data
+	inst["knockback"] = Vector2.ZERO   # no hit-nudge mid-leap
+	var t: float = float(inst.get("leap_t", 0.0)) + delta
+	inst["leap_t"] = t
+	match int(inst.get("leap_phase", 0)):
+		0:  # crouch / telegraph
+			var teleg: float = _leap_atk_f(inst, "leap_telegraph", LEAP_DEFAULT_TELEGRAPH)
+			if t >= teleg:
+				# Take off: lock the landing spot to the player's position now
+				# (clamped into the arena), so the jump is readable and fair.
+				var tgt: Vector2 = player_pos
+				tgt.x = clampf(tgt.x, data.size, ARENA_W - data.size)
+				tgt.y = clampf(tgt.y, data.size, ARENA_H - data.size)
+				inst["leap_target"] = tgt
+				inst["leap_from"] = inst.pos
+				inst["leap_phase"] = 1
+				inst["leap_t"] = 0.0
+				inst["airborne"] = true
+				# Stay visible into the airborne beat: an off-screen leap rockets up
+				# off the top (the launch sub-beat) before it actually hides. Set the
+				# sub-beat now so the launch/air clip doesn't flicker for one frame.
+				inst["leap_hidden"] = false
+				inst["leap_sub"] = "launch" if bool((inst.get("leap_atk", {}) as Dictionary).get("offscreen", false)) else "air"
+		1:  # airborne
+			var air: float = _leap_atk_f(inst, "leap_air_time", LEAP_DEFAULT_AIR_TIME)
+			var u: float = clampf(t / maxf(0.001, air), 0.0, 1.0)
+			var from2: Vector2 = inst.get("leap_from", inst.pos)
+			var tgt2: Vector2 = inst.get("leap_target", inst.pos)
+			var la1: Variant = inst.get("leap_atk")
+			if la1 is Dictionary and bool((la1 as Dictionary).get("offscreen", false)):
+				if u < LEAP_LAUNCH_FRAC:
+					# Launch: rocket straight up from the take-off spot until the
+					# sprite clears the top of the arena, then it's off-screen.
+					inst.pos = from2
+					var lz: float = (u / LEAP_LAUNCH_FRAC) * LEAP_LAUNCH_RISE
+					inst["leap_z"] = lz
+					inst["leap_sub"] = "launch"
+					# A brief #7 flash: hide once it's risen far enough (fixed, so the
+					# flash reads the same regardless of where it took off from).
+					inst["leap_hidden"] = lz > LEAP_LAUNCH_HIDE
+				elif u < LEAP_DESCEND_START:
+					# Gone — moved to the landing spot while out of view.
+					inst.pos = tgt2
+					inst["leap_z"] = 0.0
+					inst["leap_sub"] = "hidden"
+					inst["leap_hidden"] = true
+				else:
+					# Descent: drop back into view onto the landing spot.
+					inst.pos = tgt2
+					inst["leap_sub"] = "descend"
+					inst["leap_hidden"] = false
+					var dp: float = (u - LEAP_DESCEND_START) / maxf(0.001, 1.0 - LEAP_DESCEND_START)
+					inst["leap_z"] = LEAP_DESCEND_HEIGHT * (1.0 - dp)
+			else:
+				# Hop: stays on screen, arcing from take-off to the landing spot.
+				inst["leap_hidden"] = false
+				inst["leap_sub"] = "air"
+				var height: float = _leap_atk_f(inst, "leap_height", LEAP_DEFAULT_HEIGHT)
+				inst.pos = from2.lerp(tgt2, u)
+				inst["leap_z"] = height * 4.0 * u * (1.0 - u)
+			if u >= 1.0:
+				_land_leap(inst)
+		2:  # grounded splat — hold the `land` frame briefly, then the leap is over
+			var lt: float = float(inst.get("land_t", 0.0)) - delta
+			inst["land_t"] = lt
+			if lt <= 0.0:
+				inst["leaping"] = false
+
+# Resolve a landing: stamp the leap attack's cooldown, deal contact damage inside
+# the landing radius, and spray the outward tear burst. Ends the leap state.
+func _land_leap(inst: Dictionary) -> void:
+	var data: ActionEnemyData = inst.data
+	var atk: Dictionary = inst.get("leap_atk", {})
+	# Stay `leaping` through a short grounded splat (phase 2) so the `land`
+	# animation reads; _process_leaping clears `leaping` when land_t runs out.
+	inst["airborne"] = false
+	inst["leap_hidden"] = false
+	inst["leap_z"] = 0.0
+	inst["leap_phase"] = 2
+	# The splat holds long enough for the land clip + flatten-and-spring to read,
+	# scaled to this leap's air time (a small hop splats briefly; a big slam
+	# lingers), and never shorter than the land clip itself.
+	var air: float = _leap_atk_f(inst, "leap_air_time", LEAP_DEFAULT_AIR_TIME)
+	var land_clip: StringName = atk.get("leap_land_anim", &"land")
+	inst["land_t"] = maxf(_anim_duration(data, land_clip), air * LEAP_LAND_TIME_FRAC)
+	inst["land_t0"] = inst["land_t"]   # original span, for the squash spring / frame split
+	# Stamp this leap's cooldown on the attack that launched it.
+	var idx: int = int(inst.get("leap_cd_idx", -1))
+	var cds: Array = inst.get("atk_cd", [])
+	if idx >= 0 and idx < cds.size():
+		cds[idx] = float(atk.get("cooldown", 1.0))
+	# Boss brain: the leap counts as one action — hold before choosing the next.
+	if data.boss_brain:
+		inst["recov_t"] = data.attack_recovery
+	# Landing contact damage inside the impact radius.
+	var land_r: float = _leap_atk_f(inst, "leap_land_radius", LEAP_DEFAULT_LAND_RADIUS)
+	if player_pos.distance_to(inst.pos) <= land_r + PLAYER_RADIUS:
+		_apply_damage_to_player(int(atk.get("damage", 0)), data.display_name, inst.actor, true)
+	# Outward tear burst on landing. A lob leap (Monstro) rains the tears as
+	# scattered arcs; otherwise they fan out flat, evenly around the full circle.
+	var burst: int = maxi(0, int(atk.get("leap_burst_count", 0)))
+	if burst > 0:
+		if bool(atk.get("lob", false)):
+			for n in burst:
+				var ang: float = TAU * float(n) / float(burst) + _rng.randf_range(-0.25, 0.25)
+				var dist: float = _rng.randf_range(LOB_MIN_DIST, LOB_MAX_DIST)
+				_spawn_lob_tear(inst, atk, inst.pos + Vector2.RIGHT.rotated(ang) * dist)
+		else:
+			var batk: Dictionary = {
+				"proj_speed": float(atk.get("leap_burst_speed", 0.0)),
+				"proj_lifetime": float(atk.get("leap_burst_lifetime", 0.0)),
+				"damage": int(atk.get("damage", 0)),
+				"random": false,
+			}
+			for n in burst:
+				var dir: Vector2 = Vector2.RIGHT.rotated(TAU * float(n) / float(burst))
+				_spawn_enemy_projectile(inst, dir, batk, false)
+
+# Live visual lift of a leaping enemy's sprite (px, upward), 0 when grounded.
+func _leap_lift(inst: Dictionary) -> float:
+	return float(inst.get("leap_z", 0.0))
+
+# A leap param from the in-progress leap's resolved attack dict (per-attack
+# override -> enemy default, already merged by ActionEnemyData.attacks()), falling
+# back to the engine LEAP_DEFAULT_* when both were left 0.
+func _leap_atk_f(inst: Dictionary, key: String, engine_default: float) -> float:
+	var la: Variant = inst.get("leap_atk")   # no {} default — avoids a per-call alloc
+	if la is Dictionary:
+		var v: float = float((la as Dictionary).get(key, 0.0))
+		if v > 0.0:
+			return v
+	return engine_default
+
+# Squash-and-stretch scale (sx, sy) for a leaping sprite this frame — folded into
+# the draw transform alongside the bob/charge scales, anchored at the feet.
+# crouch: ease into an anticipation dip; air: stretch tall, strongest at take-off
+# and just before landing (fast vertical motion), relaxed at the apex; land: hard
+# flatten on impact springing back with a small overshoot bounce.
+func _leap_squash(inst: Dictionary) -> Vector2:
+	var sy: float = 1.0
+	match int(inst.get("leap_phase", 0)):
+		0:
+			var teleg: float = _leap_atk_f(inst, "leap_telegraph", LEAP_DEFAULT_TELEGRAPH)
+			var p: float = clampf(float(inst.get("leap_t", 0.0)) / maxf(0.001, teleg), 0.0, 1.0)
+			sy = 1.0 - LEAP_CROUCH_SQUASH * _ease_out(p)
+		1:
+			var air: float = _leap_atk_f(inst, "leap_air_time", LEAP_DEFAULT_AIR_TIME)
+			var p2: float = clampf(float(inst.get("leap_t", 0.0)) / maxf(0.001, air), 0.0, 1.0)
+			sy = 1.0 + LEAP_AIR_STRETCH * absf(cos(p2 * PI))
+		_:
+			var t0: float = maxf(0.001, float(inst.get("land_t0", LEAP_DEFAULT_LAND_TIME)))
+			var q: float = clampf(1.0 - float(inst.get("land_t", 0.0)) / t0, 0.0, 1.0)
+			sy = 1.0 - LEAP_LAND_SQUASH * (1.0 - _ease_out_back(q))
+	# Preserve apparent volume: widen when squashed, narrow when stretched.
+	var sx: float = 1.0 + (1.0 - sy) * 0.6
+	return Vector2(sx, sy)
+
+func _ease_out(p: float) -> float:
+	return 1.0 - (1.0 - p) * (1.0 - p)
+
+# Ease-out with a slight overshoot past 1.0 near the end (the landing bounce).
+func _ease_out_back(p: float) -> float:
+	var c1: float = 1.70158
+	var c3: float = c1 + 1.0
+	var m: float = p - 1.0
+	return 1.0 + c3 * m * m * m + c1 * m * m
+
 # Playback length of an animation in seconds, or 0 if the enemy lacks it.
 func _anim_duration(data: ActionEnemyData, anim: StringName) -> float:
 	var a: Dictionary = data.get_anim(anim)
@@ -2123,6 +2484,10 @@ func _anim_duration(data: ActionEnemyData, anim: StringName) -> float:
 # fires at the player, fanning proj_count > 1 into a small spread. Each bolt
 # carries the attack's own damage / speed / lifetime.
 func _enemy_fire_attack(inst: Dictionary, atk: Dictionary) -> void:
+	# Lobbed attacks (Monstro's vomit) arc a scattered burst instead of flat bolts.
+	if bool(atk.get("lob", false)):
+		_fire_lob_volley(inst, atk)
+		return
 	var count: int = maxi(1, int(atk["proj_count"]))
 	var to_player: Vector2 = player_pos - inst.pos
 	var aim: Vector2 = to_player.normalized() if to_player.length() > 0.0 else Vector2.RIGHT
@@ -2183,6 +2548,33 @@ func _attack_layer(inst: Dictionary) -> StringName:
 func _layer_base(inst: Dictionary, layer: StringName) -> StringName:
 	if layer == &"gush":
 		return &"spew"
+	# Leap: drive the dedicated jump / airborne / land clips by phase, on the
+	# enemy's primary layer. Falls through to the normal attack/idle logic below
+	# for any phase the enemy hasn't authored a clip for, so a leaper with only an
+	# `attack` clip still animates.
+	if inst.get("leaping", false) and layer == _attack_layer(inst):
+		# Each leap beat plays the clip its attack names (crouch/air/land), so one
+		# enemy can give its hop and its big jump different frames (Monstro).
+		var latk_v: Variant = inst.get("leap_atk")
+		var latk: Dictionary = latk_v if latk_v is Dictionary else EMPTY_DICT
+		var lp: int = int(inst.get("leap_phase", 0))
+		var want: StringName = latk.get("leap_crouch_anim", &"jump")
+		if lp == 1:
+			# The off-screen launch shows its own launch clip (#7 stretch) as it
+			# rockets up; the air clip is the airborne/descent pose.
+			want = latk.get("leap_air_anim", &"airborne")
+			if String(inst.get("leap_sub", "")) == "launch":
+				want = latk.get("leap_launch_anim", latk.get("leap_crouch_anim", &"jump"))
+		elif lp == 2:
+			want = latk.get("leap_land_anim", &"land")
+		if not inst.data.get_anim(want).is_empty():
+			return want
+	# Ranged wind-up pose: while charging a shot, show the `windup` clip (Monstro's
+	# mouth-agape #2) if the enemy has one, so the spew frame (#4, the `attack`
+	# clip) only shows once it actually fires — never lingering into the next move.
+	if bool(inst.get("winding", false)) and layer == _attack_layer(inst) \
+			and not inst.data.get_anim(&"windup").is_empty():
+		return &"windup"
 	var attacking: bool = float(inst.get("attack_t", 0.0)) > 0.0 and layer == _attack_layer(inst)
 	if layer == &"head":
 		return &"attack" if attacking else &"idle"
@@ -3664,7 +4056,7 @@ func _pick_boomerang_next(exclude: Dictionary) -> Dictionary:
 	var others: Array = []
 	var fallback: Dictionary = {}
 	for inst in enemies:
-		if not inst.actor.is_alive():
+		if not _is_targetable(inst):
 			continue
 		if inst == exclude:
 			fallback = inst
@@ -3693,7 +4085,7 @@ func _enemies_in_cone_dir(dir: Vector2, range_px: float, angle_deg: float) -> Ar
 	var half: float = deg_to_rad(angle_deg * 0.5)
 	var facing: Vector2 = dir.normalized() if dir.length() > 0.01 else player_facing
 	for inst in enemies:
-		if not inst.actor.is_alive():
+		if not _is_targetable(inst):
 			continue
 		var to: Vector2 = inst.pos - player_pos
 		if to.length() > range_px + inst.data.size:
@@ -3706,7 +4098,7 @@ func _enemies_in_cone_dir(dir: Vector2, range_px: float, angle_deg: float) -> Ar
 func _enemies_in_disc(center: Vector2, radius: float) -> Array:
 	var result: Array = []
 	for inst in enemies:
-		if not inst.actor.is_alive():
+		if not _is_targetable(inst):
 			continue
 		if inst.pos.distance_to(center) <= radius + inst.data.size:
 			result.append(inst)
@@ -3718,7 +4110,7 @@ func _enemies_on_beam(dir: Vector2, length: float, half_width: float) -> Array:
 	var result: Array = []
 	var d: Vector2 = dir.normalized() if dir.length() > 0.01 else player_facing
 	for inst in enemies:
-		if not inst.actor.is_alive():
+		if not _is_targetable(inst):
 			continue
 		var rel: Vector2 = inst.pos - player_pos
 		var along: float = rel.dot(d)
@@ -3733,7 +4125,7 @@ func _enemies_on_beam(dir: Vector2, length: float, half_width: float) -> Array:
 func _pick_target(mode: String) -> Dictionary:
 	var alive: Array = []
 	for inst in enemies:
-		if inst.actor.is_alive():
+		if _is_targetable(inst):
 			alive.append(inst)
 	if alive.is_empty():
 		return {}
@@ -4659,7 +5051,7 @@ func _enemies_in_cone(range_px: float, angle_deg: float) -> Array:
 	var result: Array = []
 	var half: float = deg_to_rad(angle_deg * 0.5)
 	for inst in enemies:
-		if not inst.actor.is_alive():
+		if not _is_targetable(inst):
 			continue
 		var to: Vector2 = inst.pos - player_pos
 		var d: float = to.length()
@@ -4674,7 +5066,7 @@ func _enemies_in_cone(range_px: float, angle_deg: float) -> Array:
 func _enemies_in_radius(radius: float) -> Array:
 	var result: Array = []
 	for inst in enemies:
-		if not inst.actor.is_alive():
+		if not _is_targetable(inst):
 			continue
 		if inst.pos.distance_to(player_pos) > radius + inst.data.size:
 			continue
@@ -5008,6 +5400,14 @@ func _process_projectiles(delta: float) -> void:
 	var i := 0
 	while i < projectiles.size():
 		var p: Dictionary = projectiles[i]
+		# Lobbed tears arc to a landing spot on their own timeline (no velocity),
+		# only dangerous when low to the ground — handled entirely here.
+		if p.get("arc", false):
+			if _update_arc_projectile(p, delta):
+				projectiles.remove_at(i)
+			else:
+				i += 1
+			continue
 		# Homing bolts steer toward the nearest living enemy each frame, keeping
 		# their speed. Straight bolts just keep their velocity.
 		if p.get("homing", false):
@@ -5063,6 +5463,64 @@ func _process_projectiles(delta: float) -> void:
 			projectiles.remove_at(i)
 		else:
 			i += 1
+
+# Advance a lobbed tear along its arc. Returns true when it should be removed
+# (it hit the player low to the ground, or it has landed). While airborne (z above
+# ARC_HIT_HEIGHT) it sails harmlessly over the player — the threat is where it lands.
+func _update_arc_projectile(p: Dictionary, delta: float) -> bool:
+	p["arc_t"] = float(p.get("arc_t", 0.0)) + delta
+	var dur: float = maxf(0.05, float(p.get("arc_dur", 0.7)))
+	var u: float = clampf(float(p["arc_t"]) / dur, 0.0, 1.0)
+	p.pos = (p.get("from", p.pos) as Vector2).lerp(p.get("to", p.pos), u)
+	p["z"] = float(p.get("arc_h", 60.0)) * 4.0 * u * (1.0 - u)
+	if String(p.owner) == "enemy" and float(p["z"]) <= ARC_HIT_HEIGHT:
+		if p.pos.distance_to(player_pos) <= float(p.get("radius", ENEMY_PROJECTILE_RADIUS)) + PLAYER_RADIUS:
+			_on_enemy_projectile_hit(p)
+			return true
+	return u >= 1.0
+
+# Fire a scattered volley of lobbed tears (Monstro's vomit): proj_count arcs to
+# random points around the mouth, each with its own flight time and apex height.
+func _fire_lob_volley(inst: Dictionary, atk: Dictionary) -> void:
+	var count: int = maxi(1, int(atk["proj_count"]))
+	# Aimed spew: tears spray in a cone toward the player (a specific area). A
+	# `random` lob scatters full-circle instead (e.g. a landing barrage).
+	var to_player: Vector2 = player_pos - inst.pos
+	var base_ang: float = to_player.angle() if to_player.length() > 1.0 else _rng.randf() * TAU
+	for n in count:
+		var ang: float
+		if bool(atk.get("random", false)):
+			ang = _rng.randf() * TAU
+		else:
+			ang = base_ang + _rng.randf_range(-LOB_AIM_SPREAD, LOB_AIM_SPREAD)
+		var dist: float = _rng.randf_range(LOB_MIN_DIST, LOB_MAX_DIST)
+		_spawn_lob_tear(inst, atk, inst.pos + Vector2.RIGHT.rotated(ang) * dist)
+	# Recoil: the spew kicks the boss back, away from the spray direction.
+	if not bool(atk.get("random", false)):
+		var kick: Vector2 = -Vector2.RIGHT.rotated(base_ang) * VOMIT_RECOIL_SPEED
+		inst["knockback"] = (inst.get("knockback", Vector2.ZERO) + kick).limit_length(ENEMY_KNOCKBACK_MAX)
+
+# Spawn one lobbed tear arcing from the enemy to `target`.
+func _spawn_lob_tear(inst: Dictionary, atk: Dictionary, target: Vector2) -> void:
+	var data: ActionEnemyData = inst.data
+	target.x = clampf(target.x, 4.0, ARENA_W - 4.0)
+	target.y = clampf(target.y, 4.0, ARENA_H - 4.0)
+	projectiles.append({
+		"arc": true,
+		"from": inst.pos,
+		"to": target,
+		"pos": inst.pos,
+		"z": 0.0,
+		"arc_t": 0.0,
+		"arc_dur": _rng.randf_range(LOB_ARC_DUR.x, LOB_ARC_DUR.y),
+		"arc_h": _rng.randf_range(LOB_ARC_HEIGHT.x, LOB_ARC_HEIGHT.y),
+		"owner": "enemy",
+		"radius": ENEMY_PROJECTILE_RADIUS,
+		"color": ENEMY_PROJECTILE_COLOR,
+		"damage": int(atk.get("damage", 0)),
+		"source_name": data.display_name,
+		"attacker": inst.actor,
+	})
 
 func _on_enemy_projectile_hit(p: Dictionary) -> void:
 	var dmg: int = int(p.get("damage", 0))
@@ -5647,6 +6105,18 @@ func _draw() -> void:
 		var data: ActionEnemyData = inst.data
 		var draw_r: float = data.size
 		var drew_sprite := false
+		# Leap: a ground shadow tracks the leaper to its landing spot and the
+		# sprite is lifted by its arc height, so the jump reads as up-and-over.
+		# While airborne, a red ring on the ground telegraphs the impact zone.
+		var lift: float = _leap_lift(inst)
+		if bool(inst.get("leaping", false)):
+			_draw_leap_telegraph(inst)
+		# Off-screen mid-jump: the boss is gone — only its landing telegraph shows.
+		if bool(inst.get("leap_hidden", false)):
+			continue
+		# All sprite/HP-bar drawing happens at the lifted position; lift is 0 for a
+		# grounded enemy, so this is a no-op for everyone not mid-leap.
+		var render_pos: Vector2 = inst.pos - Vector2(0.0, lift)
 		if data.has_anims():
 			# Composite layers back-to-front at a shared scale (so the head keeps its
 			# size relative to the body), each at its offset. A single canvas
@@ -5672,14 +6142,21 @@ func _draw() -> void:
 				sy *= 1.0 + CHARGE_STRETCH * charge
 				sx *= 1.0 - CHARGE_SQUEEZE * charge
 				tint = Color(1.0, 1.0 - CHARGE_REDNESS * charge, 1.0 - CHARGE_REDNESS * charge)
+			# Leap squash-and-stretch, anchored at the feet like the bob: an
+			# anticipation dip on the crouch, a stretch through the air, and a hard
+			# flatten on impact that springs back with a bounce (Monstro).
+			if bool(inst.get("leaping", false)):
+				var lsq: Vector2 = _leap_squash(inst)
+				sx *= lsq.x
+				sy *= lsq.y
 			var flip_sign: float = -1.0 if face_side else 1.0
 			# Squash is anchored at the feet (≈ sprite bottom): mirror about the
 			# enemy's x, scale Y about anchor_y so the feet stay planted.
-			var anchor_y: float = inst.pos.y + data.size * ENEMY_SPRITE_SCALE
+			var anchor_y: float = render_pos.y + data.size * ENEMY_SPRITE_SCALE
 			var need_xform: bool = face_side or sx != 1.0 or sy != 1.0
 			if need_xform:
 				draw_set_transform(
-					Vector2(inst.pos.x * (1.0 - flip_sign * sx), ARENA_TOP + anchor_y * (1.0 - sy)),
+					Vector2(render_pos.x * (1.0 - flip_sign * sx), ARENA_TOP + anchor_y * (1.0 - sy)),
 					0.0, Vector2(flip_sign * sx, sy))
 			for L in data.layers():
 				var tex: Texture2D = _layer_current_tex(inst, L.name)
@@ -5695,7 +6172,7 @@ func _draw() -> void:
 				var h: float = tex.get_height() * s
 				var off: Vector2 = L.offset * s
 				draw_texture_rect(tex,
-					Rect2(inst.pos.x + off.x - w * 0.5, inst.pos.y + off.y - h * 0.5, w, h),
+					Rect2(render_pos.x + off.x - w * 0.5, render_pos.y + off.y - h * 0.5, w, h),
 					false, tint)
 				drew_sprite = true
 			if need_xform:
@@ -5703,15 +6180,15 @@ func _draw() -> void:
 		if drew_sprite:
 			draw_r = data.size * ENEMY_SPRITE_SCALE
 		else:
-			draw_circle(inst.pos, data.size, data.color)
+			draw_circle(render_pos, data.size, data.color)
 		# HP bar above
 		var bar_w: float = data.size * 2.0
-		var bar_y: float = inst.pos.y - draw_r - 10
-		draw_rect(Rect2(inst.pos.x - bar_w * 0.5, bar_y, bar_w, 5), Color(0.05, 0.05, 0.05))
+		var bar_y: float = render_pos.y - draw_r - 10
+		draw_rect(Rect2(render_pos.x - bar_w * 0.5, bar_y, bar_w, 5), Color(0.05, 0.05, 0.05))
 		var frac: float = float(inst.actor.hp) / float(maxi(1, inst.actor.max_hp))
-		draw_rect(Rect2(inst.pos.x - bar_w * 0.5, bar_y, bar_w * frac, 5), Color(0.85, 0.30, 0.30))
+		draw_rect(Rect2(render_pos.x - bar_w * 0.5, bar_y, bar_w * frac, 5), Color(0.85, 0.30, 0.30))
 		# Status icons sit just above the HP bar, always visible.
-		_draw_status_icons(inst.actor, inst.pos.x, bar_y - 3)
+		_draw_status_icons(inst.actor, render_pos.x, bar_y - 3)
 
 	# Player
 	var col := Color(0.95, 0.95, 0.95)
@@ -5734,7 +6211,16 @@ func _draw() -> void:
 	# Projectiles (rendered last so they're on top)
 	for p in projectiles:
 		var pcol: Color = p.get("color", Color.WHITE)
-		if String(p.get("shape", "bolt")) == "crescent":
+		if p.get("arc", false):
+			# Lobbed tear: a ground shadow at the landing track + the tear lifted by
+			# its arc height, so it reads as flying up and coming down.
+			var z: float = float(p.get("z", 0.0))
+			var sr: float = p.radius * (1.0 - 0.35 * clampf(z / 90.0, 0.0, 1.0))
+			draw_circle(p.pos, sr, Color(0.0, 0.0, 0.0, 0.22))
+			var tp: Vector2 = p.pos - Vector2(0.0, z)
+			draw_circle(tp, p.radius, pcol)
+			draw_circle(tp, p.radius * 0.5, pcol.lightened(0.5))
+		elif String(p.get("shape", "bolt")) == "crescent":
 			# A crescent bolt (Iron Wave's "wave"): an arc swept perpendicular to
 			# its travel so it reads as a curved blade slicing forward.
 			var facing: Vector2 = p.get("facing", Vector2.RIGHT)
@@ -5754,6 +6240,27 @@ func _draw() -> void:
 	# Potion throw: a lobbing white aim arrow while Q is held, and the expanding
 	# splash burst after a throw lands.
 	_draw_potion_throw()
+
+# Ground telegraph for a leaping enemy: a shadow that tracks it to its landing
+# spot (shrinking with height for depth) and, while airborne, a pulsing red ring
+# on the locked landing zone so the player can read the impact radius and dodge.
+# Arena-local coords, matching the rest of _draw (base transform already applied).
+func _draw_leap_telegraph(inst: Dictionary) -> void:
+	var data: ActionEnemyData = inst.data
+	var lift: float = _leap_lift(inst)
+	var height_ref: float = data.leap_height if data.leap_height > 0.0 else LEAP_DEFAULT_HEIGHT
+	var shrink: float = 1.0 - 0.4 * clampf(lift / maxf(1.0, height_ref), 0.0, 1.0)
+	var sc: Color = LEAP_SHADOW_COLOR
+	sc.a *= shrink
+	draw_circle(inst.pos, data.size * 0.9 * shrink, sc)   # shadow travels with the leaper
+	if bool(inst.get("airborne", false)):
+		var tgt: Vector2 = inst.get("leap_target", inst.pos)
+		var land_r: float = data.leap_land_radius if data.leap_land_radius > 0.0 else LEAP_DEFAULT_LAND_RADIUS
+		var pulse: float = 0.6 + 0.4 * sin(Time.get_ticks_msec() * 0.02)
+		var rc := Color(LEAP_LANDING_RING_COLOR.r, LEAP_LANDING_RING_COLOR.g,
+			LEAP_LANDING_RING_COLOR.b, LEAP_LANDING_RING_COLOR.a * pulse)
+		draw_circle(tgt, land_r, Color(rc.r, rc.g, rc.b, 0.10))
+		draw_arc(tgt, land_r, 0.0, TAU, 36, rc, 3.0)
 
 # Lobbing white aim arrow (a high parabola from the player to the clamped throw
 # point) plus the throw's fading splash ring. Both in arena coords.

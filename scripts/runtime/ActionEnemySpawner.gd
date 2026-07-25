@@ -59,3 +59,24 @@ static func build_room(rng: RandomNumberGenerator, budget_override: int = -1) ->
 				cheapest = c
 		group = [StringName(cheapest.id)]
 	return group
+
+
+# Build a boss room's enemy id list. When any Difficulty.BOSS action enemies are
+# registered, one is picked (weighted by its `weight`) and placed on its own — a
+# real single-boss encounter. With no bosses authored yet, this falls back to the
+# old behaviour (a larger weighted budget of ordinary enemies) so boss rooms are
+# never empty. `budget` is the fallback spend used only on that path.
+static func build_boss_room(rng: RandomNumberGenerator, budget: int) -> Array:
+	var bosses: Array = Data.all_action_bosses()
+	if bosses.is_empty():
+		return build_room(rng, budget)
+	var total: int = 0
+	for b in bosses:
+		total += maxi(1, b.weight)
+	var roll: int = rng.randi_range(1, total)
+	var acc: int = 0
+	for b in bosses:
+		acc += maxi(1, b.weight)
+		if roll <= acc:
+			return [b.id]
+	return [bosses[0].id]
