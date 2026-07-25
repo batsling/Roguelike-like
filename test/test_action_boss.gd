@@ -20,15 +20,48 @@ func test_monstro_uses_the_boss_brain() -> void:
 	assert_gt(boss.attack_recovery, 0.0, "and holds between actions")
 	assert_eq(boss.difficulty, ActionEnemyData.Difficulty.BOSS)
 
-func test_monstro_mixes_a_leap_and_a_vomit_volley() -> void:
+func test_monstro_mixes_hop_vomit_and_big_jump() -> void:
 	var atks: Array = (load(MONSTRO_PATH) as ActionEnemyData).attacks()
-	assert_eq(atks.size(), 2, "Monstro's core kit is a big jump and a vomit volley")
-	var kinds: Array = []
+	assert_eq(atks.size(), 3, "Monstro's kit is a big jump, a vomit volley, and a hop")
+	var leaps: int = 0
+	var ranged: int = 0
 	for a in atks:
-		kinds.append(int(a["kind"]))
 		assert_gte(int(a["weight"]), 1, "every attack has a positive selection weight")
-	assert_has(kinds, ActionEnemyData.AttackKind.LEAP, "has the big-jump leap")
-	assert_has(kinds, ActionEnemyData.AttackKind.RANGED, "has the vomit volley")
+		if int(a["kind"]) == ActionEnemyData.AttackKind.LEAP:
+			leaps += 1
+		elif int(a["kind"]) == ActionEnemyData.AttackKind.RANGED:
+			ranged += 1
+	assert_eq(leaps, 2, "two leaps: the big jump and the small hop")
+	assert_eq(ranged, 1, "one ranged vomit volley")
+
+func test_per_attack_leap_overrides_distinguish_hop_from_slam() -> void:
+	# The two leaps must resolve to different profiles: a tall slam that bursts
+	# tears, and a short hop that doesn't — proving the per-attack overrides
+	# layer over the enemy-level leap_* defaults.
+	var atks: Array = (load(MONSTRO_PATH) as ActionEnemyData).attacks()
+	var leaps: Array = []
+	for a in atks:
+		if int(a["kind"]) == ActionEnemyData.AttackKind.LEAP:
+			leaps.append(a)
+	assert_eq(leaps.size(), 2)
+	leaps.sort_custom(func(x, y): return float(x["leap_height"]) < float(y["leap_height"]))
+	var hop: Dictionary = leaps[0]
+	var slam: Dictionary = leaps[1]
+	assert_lt(float(hop["leap_height"]), float(slam["leap_height"]), "the hop is lower than the slam")
+	assert_gt(float(slam["leap_height"]), 0.0, "the slam inherits the enemy-level height")
+	assert_eq(int(hop["leap_burst_count"]), 0, "the hop rains no tears (explicit 0 override)")
+	assert_gt(int(slam["leap_burst_count"]), 0, "the slam inherits the tear burst")
+
+func test_leap_burst_count_minus_one_inherits_enemy_default() -> void:
+	# -1 in the per-attack burst array means "inherit"; 0 means "explicitly none".
+	var d := ActionEnemyData.new()
+	d.attack_kinds = PackedInt32Array([ActionEnemyData.AttackKind.LEAP, ActionEnemyData.AttackKind.LEAP])
+	d.attack_damages = PackedInt32Array([5, 5])
+	d.leap_burst_count = 9
+	d.attack_leap_burst_counts = PackedInt32Array([-1, 0])
+	var atks: Array = d.attacks()
+	assert_eq(int(atks[0]["leap_burst_count"]), 9, "-1 inherits the enemy default")
+	assert_eq(int(atks[1]["leap_burst_count"]), 0, "0 is an explicit no-burst override")
 
 func test_monstro_leap_lands_with_a_tear_burst() -> void:
 	var boss: ActionEnemyData = load(MONSTRO_PATH)

@@ -89,11 +89,21 @@ tears). A ground shadow tracks the leaper to its landing spot and a red ring
 telegraphs the impact zone while it's in the air.
 
 The `LEAP` attack entry supplies the landing **damage / cooldown / trigger
-range** like any attack; the arc/timing/burst live in resource-level `leap_*`
+range** like any attack; the arc/timing/burst live in enemy-level `leap_*`
 fields (`leap_telegraph`, `leap_air_time`, `leap_height`, `leap_land_radius`,
 `leap_burst_count`, `leap_burst_speed`, `leap_burst_lifetime`). Any left `0`
 use `ActionCombat`'s `LEAP_DEFAULT_*` placeholders, so a leap can be authored
 with just the attack entry and tuned later without touching code.
+
+**Multiple leaps per enemy.** The `attack_leap_*` arrays (parallel to the other
+`attack_*` arrays) override the enemy-level defaults per attack, so one enemy can
+own several different leaps. Monstro uses this for a tall slam **and** a short
+hop: the slam inherits the enemy-level profile (tall, 12-tear burst), while the
+hop entry sets a low `attack_leap_height`, short `attack_leap_telegraph`/
+`attack_leap_air_time`, and `attack_leap_burst_counts = 0` (no tears). A float
+override of `0` inherits the enemy default; for `attack_leap_burst_counts`, `-1`
+inherits and `0` is an explicit "no burst". The grounded splat scales with the
+leap's air time (`LEAP_LAND_TIME_FRAC`), so hops splat briefly and slams linger.
 
 **Leap animations.** A leaper plays dedicated clips per beat when they exist:
 `jump` (crouch/anticipation) → `airborne` (in the air) → `land` (the splat) —

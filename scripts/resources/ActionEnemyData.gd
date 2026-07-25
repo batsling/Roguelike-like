@@ -82,12 +82,14 @@ enum AttackStyle { NONE, CHARGE }
 @export var preferred_distance: float = 0.0
 
 # --- Leap tuning (LEAP attacks) -----------------------------------------
-# Shared by every LEAP attack this enemy owns. All 0 = use ActionCombat's
+# Default leap profile for this enemy's LEAP attacks. All 0 = use ActionCombat's
 # LEAP_DEFAULT_* placeholders, so a leap can be authored with just the attack
 # entry and tuned later without touching code. A leap runs in three beats:
 # crouch (telegraph, still grounded/targetable) -> airborne (untargetable,
 # non-solid, arcing to the player's position at take-off) -> land (contact
 # damage inside leap_land_radius + an outward burst of leap_burst_count tears).
+# Individual attacks override any of these via the attack_leap_* arrays below —
+# so one enemy can mix, say, a low fast hop and a tall slow slam (Monstro).
 @export var leap_telegraph: float = 0.0   # crouch/wind-up seconds before take-off
 @export var leap_air_time: float = 0.0    # seconds spent airborne (untargetable)
 @export var leap_height: float = 0.0      # visual arc peak, px
@@ -95,6 +97,18 @@ enum AttackStyle { NONE, CHARGE }
 @export var leap_burst_count: int = 0     # tears sprayed radially on landing (0 = none)
 @export var leap_burst_speed: float = 0.0    # landing-burst projectile speed (0 = default)
 @export var leap_burst_lifetime: float = 0.0 # landing-burst projectile life (0 = default)
+
+# Per-attack leap overrides (parallel to the attack_* arrays). A float entry > 0
+# overrides the enemy-level leap_* default for that attack; 0 (or a short/missing
+# array) inherits it. leap_burst_count is special: -1 inherits, >= 0 is explicit
+# (so a hop can force 0 tears even when the enemy-level default is non-zero).
+@export var attack_leap_telegraph: PackedFloat32Array = PackedFloat32Array()
+@export var attack_leap_air_time: PackedFloat32Array = PackedFloat32Array()
+@export var attack_leap_height: PackedFloat32Array = PackedFloat32Array()
+@export var attack_leap_land_radius: PackedFloat32Array = PackedFloat32Array()
+@export var attack_leap_burst_counts: PackedInt32Array = PackedInt32Array()
+@export var attack_leap_burst_speeds: PackedFloat32Array = PackedFloat32Array()
+@export var attack_leap_burst_lifetimes: PackedFloat32Array = PackedFloat32Array()
 
 # --- Boss brain ---------------------------------------------------------
 # Bosses run a different attack driver: instead of every attack firing the
@@ -189,10 +203,23 @@ func attacks() -> Array:
 			"proj_count": maxi(1, int(attack_proj_counts[i]) if i < attack_proj_counts.size() else 1),
 			"random": (i < attack_random.size() and attack_random[i] != 0),
 			"weight": maxi(1, int(attack_weights[i]) if i < attack_weights.size() else 1),
+			# Per-attack leap overrides, resolved against the enemy-level defaults.
+			"leap_telegraph": _leap_f(attack_leap_telegraph, i, leap_telegraph),
+			"leap_air_time": _leap_f(attack_leap_air_time, i, leap_air_time),
+			"leap_height": _leap_f(attack_leap_height, i, leap_height),
+			"leap_land_radius": _leap_f(attack_leap_land_radius, i, leap_land_radius),
+			"leap_burst_count": (int(attack_leap_burst_counts[i]) if i < attack_leap_burst_counts.size() and attack_leap_burst_counts[i] >= 0 else leap_burst_count),
+			"leap_burst_speed": _leap_f(attack_leap_burst_speeds, i, leap_burst_speed),
+			"leap_burst_lifetime": _leap_f(attack_leap_burst_lifetimes, i, leap_burst_lifetime),
 		})
 	if out.is_empty():
 		out = _legacy_attacks()
 	return out
+
+# Resolve a per-attack leap float: use the override at index `i` when it's
+# present and > 0, else fall back to the enemy-level default.
+func _leap_f(arr: PackedFloat32Array, i: int, fallback: float) -> float:
+	return float(arr[i]) if (i < arr.size() and arr[i] > 0.0) else fallback
 
 # Synthesise an attack list from the deprecated scalar fields. Shooters/stationary
 # get a ranged attack; everything else a melee one. A legacy random_shots adds a

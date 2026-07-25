@@ -418,9 +418,11 @@ const LEAP_DEFAULT_TELEGRAPH := 0.5
 const LEAP_DEFAULT_AIR_TIME := 0.8
 const LEAP_DEFAULT_HEIGHT := 70.0
 const LEAP_DEFAULT_LAND_RADIUS := 46.0
-# How long the grounded "splat" beat holds after impact when the enemy has no
-# `land` animation to time it to — long enough to read the landing frame.
+# Fallback splat span when a leap has no `land` clip and (somehow) no air time.
 const LEAP_DEFAULT_LAND_TIME := 0.26
+# The grounded splat lasts this fraction of the leap's air time, so a small hop
+# splats briefly while a tall slam lingers (never shorter than the `land` clip).
+const LEAP_LAND_TIME_FRAC := 0.33
 # Squash-and-stretch amounts layered on the leap sprite (fractions of height),
 # tuned from the Rebirth fight: a modest anticipation dip on the crouch, a
 # stretch through the air, and a big flatten on impact that springs back.
@@ -2274,7 +2276,7 @@ func _process_leaping(inst: Dictionary, delta: float) -> void:
 	inst["leap_t"] = t
 	match int(inst.get("leap_phase", 0)):
 		0:  # crouch / telegraph
-			var teleg: float = data.leap_telegraph if data.leap_telegraph > 0.0 else LEAP_DEFAULT_TELEGRAPH
+			var teleg: float = _leap_atk_f(inst, "leap_telegraph", LEAP_DEFAULT_TELEGRAPH)
 			if t >= teleg:
 				# Take off: lock the landing spot to the player's position now
 				# (clamped into the arena), so the jump is readable and fair.
@@ -2287,8 +2289,8 @@ func _process_leaping(inst: Dictionary, delta: float) -> void:
 				inst["leap_t"] = 0.0
 				inst["airborne"] = true
 		1:  # airborne
-			var air: float = data.leap_air_time if data.leap_air_time > 0.0 else LEAP_DEFAULT_AIR_TIME
-			var height: float = data.leap_height if data.leap_height > 0.0 else LEAP_DEFAULT_HEIGHT
+			var air: float = _leap_atk_f(inst, "leap_air_time", LEAP_DEFAULT_AIR_TIME)
+			var height: float = _leap_atk_f(inst, "leap_height", LEAP_DEFAULT_HEIGHT)
 			var u: float = clampf(t / maxf(0.001, air), 0.0, 1.0)
 			inst.pos = (inst.get("leap_from", inst.pos) as Vector2).lerp(inst.get("leap_target", inst.pos), u)
 			# Parabolic hop: 0 at take-off/landing, `height` at the apex.
@@ -2311,9 +2313,11 @@ func _land_leap(inst: Dictionary) -> void:
 	inst["airborne"] = false
 	inst["leap_z"] = 0.0
 	inst["leap_phase"] = 2
-	# The splat holds at least LEAP_DEFAULT_LAND_TIME so the flatten-and-spring
-	# reads even when the `land` clip itself is a single quick frame.
-	inst["land_t"] = maxf(_anim_duration(data, &"land"), LEAP_DEFAULT_LAND_TIME)
+	# The splat holds long enough for the flatten-and-spring to read, scaled to
+	# this leap's air time (a small hop splats briefly; a big slam lingers), and
+	# never shorter than the `land` clip itself.
+	var air: float = _leap_atk_f(inst, "leap_air_time", LEAP_DEFAULT_AIR_TIME)
+	inst["land_t"] = maxf(_anim_duration(data, &"land"), air * LEAP_LAND_TIME_FRAC)
 	inst["land_t0"] = inst["land_t"]   # original span, for the squash spring / frame split
 	# Stamp this leap's cooldown on the attack that launched it.
 	var idx: int = int(inst.get("leap_cd_idx", -1))
@@ -2324,16 +2328,16 @@ func _land_leap(inst: Dictionary) -> void:
 	if data.boss_brain:
 		inst["recov_t"] = data.attack_recovery
 	# Landing contact damage inside the impact radius.
-	var land_r: float = data.leap_land_radius if data.leap_land_radius > 0.0 else LEAP_DEFAULT_LAND_RADIUS
+	var land_r: float = _leap_atk_f(inst, "leap_land_radius", LEAP_DEFAULT_LAND_RADIUS)
 	if player_pos.distance_to(inst.pos) <= land_r + PLAYER_RADIUS:
 		_apply_damage_to_player(int(atk.get("damage", 0)), data.display_name, inst.actor, true)
 	# Outward tear burst: proj_count bolts fanned evenly around the full circle,
-	# reusing the shared enemy-projectile spawner (damage/speed/life from data).
-	var burst: int = maxi(0, data.leap_burst_count)
+	# reusing the shared enemy-projectile spawner (damage/speed/life from the attack).
+	var burst: int = maxi(0, int(atk.get("leap_burst_count", 0)))
 	if burst > 0:
 		var batk: Dictionary = {
-			"proj_speed": data.leap_burst_speed,
-			"proj_lifetime": data.leap_burst_lifetime,
+			"proj_speed": float(atk.get("leap_burst_speed", 0.0)),
+			"proj_lifetime": float(atk.get("leap_burst_lifetime", 0.0)),
 			"damage": int(atk.get("damage", 0)),
 			"random": false,
 		}
@@ -2345,21 +2349,27 @@ func _land_leap(inst: Dictionary) -> void:
 func _leap_lift(inst: Dictionary) -> float:
 	return float(inst.get("leap_z", 0.0))
 
+# A leap param from the in-progress leap's resolved attack dict (per-attack
+# override -> enemy default, already merged by ActionEnemyData.attacks()), falling
+# back to the engine LEAP_DEFAULT_* when both were left 0.
+func _leap_atk_f(inst: Dictionary, key: String, engine_default: float) -> float:
+	var v: float = float((inst.get("leap_atk", {}) as Dictionary).get(key, 0.0))
+	return v if v > 0.0 else engine_default
+
 # Squash-and-stretch scale (sx, sy) for a leaping sprite this frame — folded into
 # the draw transform alongside the bob/charge scales, anchored at the feet.
 # crouch: ease into an anticipation dip; air: stretch tall, strongest at take-off
 # and just before landing (fast vertical motion), relaxed at the apex; land: hard
 # flatten on impact springing back with a small overshoot bounce.
 func _leap_squash(inst: Dictionary) -> Vector2:
-	var data: ActionEnemyData = inst.data
 	var sy: float = 1.0
 	match int(inst.get("leap_phase", 0)):
 		0:
-			var teleg: float = data.leap_telegraph if data.leap_telegraph > 0.0 else LEAP_DEFAULT_TELEGRAPH
+			var teleg: float = _leap_atk_f(inst, "leap_telegraph", LEAP_DEFAULT_TELEGRAPH)
 			var p: float = clampf(float(inst.get("leap_t", 0.0)) / maxf(0.001, teleg), 0.0, 1.0)
 			sy = 1.0 - LEAP_CROUCH_SQUASH * _ease_out(p)
 		1:
-			var air: float = data.leap_air_time if data.leap_air_time > 0.0 else LEAP_DEFAULT_AIR_TIME
+			var air: float = _leap_atk_f(inst, "leap_air_time", LEAP_DEFAULT_AIR_TIME)
 			var p2: float = clampf(float(inst.get("leap_t", 0.0)) / maxf(0.001, air), 0.0, 1.0)
 			sy = 1.0 + LEAP_AIR_STRETCH * absf(cos(p2 * PI))
 		_:
