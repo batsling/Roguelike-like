@@ -122,6 +122,9 @@ enum AttackStyle { NONE, CHARGE }
 @export var attack_leap_crouch_anim: PackedStringArray = PackedStringArray()
 @export var attack_leap_air_anim: PackedStringArray = PackedStringArray()
 @export var attack_leap_land_anim: PackedStringArray = PackedStringArray()
+# Off-screen leaps only: the clip shown during the brief launch beat as it
+# rockets up off the top (Monstro's #7 stretch). Empty = reuse the crouch clip.
+@export var attack_leap_launch_anim: PackedStringArray = PackedStringArray()
 @export var attack_offscreen: PackedByteArray = PackedByteArray()
 
 # --- Boss brain ---------------------------------------------------------
@@ -229,6 +232,8 @@ func attacks() -> Array:
 			"leap_crouch_anim": _leap_anim(attack_leap_crouch_anim, i, &"jump"),
 			"leap_air_anim": _leap_anim(attack_leap_air_anim, i, &"airborne"),
 			"leap_land_anim": _leap_anim(attack_leap_land_anim, i, &"land"),
+			# Launch clip defaults to the crouch clip when unset (old behaviour).
+			"leap_launch_anim": _leap_anim(attack_leap_launch_anim, i, _leap_anim(attack_leap_crouch_anim, i, &"jump")),
 			"offscreen": (i < attack_offscreen.size() and attack_offscreen[i] != 0),
 		})
 	if out.is_empty():
@@ -333,9 +338,20 @@ func roll_on_death(rng: RandomNumberGenerator) -> StringName:
 			return StringName(on_death_ids[i])
 	return StringName(on_death_ids[0])
 
+# Per-anim result cache. get_anim is called for every enemy every frame (in the
+# renderer + anim tick); rebuilding the frames slice each time churned the heap
+# and caused periodic GC hitches. Results are read-only, and the resource is
+# shared across all instances of an enemy, so one cache serves them all. Not
+# @export — purely a runtime memo, rebuilt on load.
+var _anim_cache: Dictionary = {}
+
 # Returns {frames: Array[Texture2D], fps: float, loop: bool} for `anim`, or an
-# empty Dictionary when this enemy has no animation by that name.
+# empty Dictionary when this enemy has no animation by that name. Cached — treat
+# the returned Dictionary/array as read-only.
 func get_anim(anim: StringName) -> Dictionary:
+	if _anim_cache.has(anim):
+		return _anim_cache[anim]
+	var result: Dictionary = {}
 	var start := 0
 	for i in anim_names.size():
 		var count: int = anim_frame_counts[i] if i < anim_frame_counts.size() else 0
@@ -343,13 +359,15 @@ func get_anim(anim: StringName) -> Dictionary:
 			var frames: Array[Texture2D] = []
 			for f in range(start, mini(start + count, anim_frames.size())):
 				frames.append(anim_frames[f])
-			return {
+			result = {
 				"frames": frames,
 				"fps": (anim_fps[i] if i < anim_fps.size() else 8.0),
 				"loop": (i < anim_loop.size() and anim_loop[i] != 0),
 			}
+			break
 		start += count
-	return {}
+	_anim_cache[anim] = result
+	return result
 
 @export var source_game: String = ""
 @export var tags: PackedStringArray = PackedStringArray()

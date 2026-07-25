@@ -115,9 +115,11 @@ func test_leaps_name_their_animation_clips() -> void:
 	leaps.sort_custom(func(x, y): return float(x["leap_height"]) < float(y["leap_height"]))
 	var hop: Dictionary = leaps[0]
 	var slam: Dictionary = leaps[1]
-	# Both crouch with the shared "jump" clip; air/land clips differ per leap.
+	# The hop crouches with the two-frame "jump" clip; the big jump uses a #6-only
+	# "prep" crouch and a brief "stretch" (#7) launch. Air/land clips differ too.
 	assert_eq(StringName(hop["leap_crouch_anim"]), &"jump")
-	assert_eq(StringName(slam["leap_crouch_anim"]), &"jump")
+	assert_eq(StringName(slam["leap_crouch_anim"]), &"prep")
+	assert_eq(StringName(slam["leap_launch_anim"]), &"stretch")
 	assert_eq(StringName(hop["leap_air_anim"]), &"hopair")
 	assert_eq(StringName(hop["leap_land_anim"]), &"landrec")
 	assert_eq(StringName(slam["leap_air_anim"]), &"descend")
@@ -126,7 +128,7 @@ func test_leaps_name_their_animation_clips() -> void:
 func test_monstro_defines_the_expected_clips() -> void:
 	# The frame-sequence clips the animation wiring plays must exist.
 	var boss: ActionEnemyData = load(MONSTRO_PATH)
-	for clip in [&"idle", &"windup", &"attack", &"jump", &"descend", &"hopair", &"landrec"]:
+	for clip in [&"idle", &"windup", &"attack", &"jump", &"prep", &"stretch", &"descend", &"hopair", &"landrec"]:
 		assert_false(boss.get_anim(clip).is_empty(), "Monstro has a '%s' clip" % clip)
 	# Vomit is split: windup (#2) held during the wind-up, attack (#4) the brief
 	# spew — so #4 never lingers into the next move. Land-recover is splat + recover.

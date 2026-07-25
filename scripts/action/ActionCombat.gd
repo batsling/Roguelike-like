@@ -434,9 +434,9 @@ const LEAP_LAND_SQUASH := 0.28
 # Off-screen leap (Monstro's big jump): the enemy rockets straight up off the top
 # of the arena (launch beat, visible), vanishes, then drops back onto the locked
 # landing spot for the descent. Its shadow/ring telegraph the fall throughout.
-const LEAP_LAUNCH_FRAC := 0.18     # fraction of air spent visibly rocketing up
-const LEAP_LAUNCH_RISE := 320.0    # how far up the launch drives it (clears the top)
-const LEAP_TOP_MARGIN := 8.0       # once its top passes this it's off-screen/hidden
+const LEAP_LAUNCH_FRAC := 0.12     # fraction of air spent in the launch sub-beat
+const LEAP_LAUNCH_RISE := 320.0    # how fast the launch drives it upward
+const LEAP_LAUNCH_HIDE := 140.0    # once risen this far it's "gone" (a brief #7 flash)
 const LEAP_DESCEND_START := 0.74   # fraction of air time before it reappears falling
 const LEAP_DESCEND_HEIGHT := 320.0 # px above the target it re-enters view from
 
@@ -454,6 +454,10 @@ const LEAP_LANDING_RING_COLOR := Color(0.95, 0.25, 0.2, 0.9)
 # up and come down at a scattered target, rendered with a ground shadow. They're
 # only dangerous when low to the ground (near launch / landing) — you dodge where
 # they'll fall, not while they're overhead.
+# Shared read-only empty dict, so hot paths can fall back without allocating a
+# fresh {} each call (a per-frame GC source in the leap code).
+const EMPTY_DICT := {}
+
 const ARC_HIT_HEIGHT := 12.0            # a lob only hits the player when z <= this
 const LOB_MIN_DIST := 55.0              # nearest a scattered lob lands from the mouth
 const LOB_MAX_DIST := 300.0            # farthest a scattered lob lands
@@ -2329,7 +2333,8 @@ func _process_leaping(inst: Dictionary, delta: float) -> void:
 			var u: float = clampf(t / maxf(0.001, air), 0.0, 1.0)
 			var from2: Vector2 = inst.get("leap_from", inst.pos)
 			var tgt2: Vector2 = inst.get("leap_target", inst.pos)
-			if bool((inst.get("leap_atk", {}) as Dictionary).get("offscreen", false)):
+			var la1: Variant = inst.get("leap_atk")
+			if la1 is Dictionary and bool((la1 as Dictionary).get("offscreen", false)):
 				if u < LEAP_LAUNCH_FRAC:
 					# Launch: rocket straight up from the take-off spot until the
 					# sprite clears the top of the arena, then it's off-screen.
@@ -2337,7 +2342,9 @@ func _process_leaping(inst: Dictionary, delta: float) -> void:
 					var lz: float = (u / LEAP_LAUNCH_FRAC) * LEAP_LAUNCH_RISE
 					inst["leap_z"] = lz
 					inst["leap_sub"] = "launch"
-					inst["leap_hidden"] = (from2.y - lz) < LEAP_TOP_MARGIN
+					# A brief #7 flash: hide once it's risen far enough (fixed, so the
+					# flash reads the same regardless of where it took off from).
+					inst["leap_hidden"] = lz > LEAP_LAUNCH_HIDE
 				elif u < LEAP_DESCEND_START:
 					# Gone — moved to the landing spot while out of view.
 					inst.pos = tgt2
@@ -2424,8 +2431,12 @@ func _leap_lift(inst: Dictionary) -> float:
 # override -> enemy default, already merged by ActionEnemyData.attacks()), falling
 # back to the engine LEAP_DEFAULT_* when both were left 0.
 func _leap_atk_f(inst: Dictionary, key: String, engine_default: float) -> float:
-	var v: float = float((inst.get("leap_atk", {}) as Dictionary).get(key, 0.0))
-	return v if v > 0.0 else engine_default
+	var la: Variant = inst.get("leap_atk")   # no {} default — avoids a per-call alloc
+	if la is Dictionary:
+		var v: float = float((la as Dictionary).get(key, 0.0))
+		if v > 0.0:
+			return v
+	return engine_default
 
 # Squash-and-stretch scale (sx, sy) for a leaping sprite this frame — folded into
 # the draw transform alongside the bob/charge scales, anchored at the feet.
@@ -2544,15 +2555,16 @@ func _layer_base(inst: Dictionary, layer: StringName) -> StringName:
 	if inst.get("leaping", false) and layer == _attack_layer(inst):
 		# Each leap beat plays the clip its attack names (crouch/air/land), so one
 		# enemy can give its hop and its big jump different frames (Monstro).
-		var latk: Dictionary = inst.get("leap_atk", {})
+		var latk_v: Variant = inst.get("leap_atk")
+		var latk: Dictionary = latk_v if latk_v is Dictionary else EMPTY_DICT
 		var lp: int = int(inst.get("leap_phase", 0))
 		var want: StringName = latk.get("leap_crouch_anim", &"jump")
 		if lp == 1:
-			# The off-screen launch still shows the crouch clip (frame #7) as it
+			# The off-screen launch shows its own launch clip (#7 stretch) as it
 			# rockets up; the air clip is the airborne/descent pose.
 			want = latk.get("leap_air_anim", &"airborne")
 			if String(inst.get("leap_sub", "")) == "launch":
-				want = latk.get("leap_crouch_anim", &"jump")
+				want = latk.get("leap_launch_anim", latk.get("leap_crouch_anim", &"jump"))
 		elif lp == 2:
 			want = latk.get("leap_land_anim", &"land")
 		if not inst.data.get_anim(want).is_empty():
