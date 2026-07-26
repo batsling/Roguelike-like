@@ -153,6 +153,17 @@ func _is_boss_round() -> bool:
 	var gp: int = GameState.games_played
 	return gp > 0 and gp % RunDifficulty.GAMES_PER_TIER == 0
 
+# The difficulty tier of the CURRENT offering. A boss round is the CAPSTONE of the
+# tier the player just cleared (§7.1): the game-4 boss is Low and beating it is
+# what advances the run to Medium, so a boss rolls at tier_for(games_played - 1),
+# one below the normal-game formula. Once the run reaches Insane the cap holds, so
+# Insane bosses keep appearing every GAMES_PER_TIER games.
+func _current_tier() -> int:
+	var gp: int = GameState.games_played
+	if _is_boss_round():
+		return RunDifficulty.tier_for(gp - 1)
+	return RunDifficulty.tier_for(gp)
+
 # The limited offering for the current position: reachable, non-bashed games in a
 # stable position-seeded order, capped at OFFER_COUNT, with the amulet always kept
 # when it's reachable. Stable so bashing/transmuting one card doesn't reshuffle
@@ -173,7 +184,7 @@ func _offered_ids() -> Array:
 func _build_choices() -> void:
 	_choices.clear()
 	_boss_round = _is_boss_round()
-	var tier: int = RunDifficulty.tier_for(GameState.games_played)
+	var tier: int = _current_tier()
 	var amulet: StringName = GameState.amulet_game_id
 	for gid in _offered_ids():
 		var game: GameData = _transmuted.get(gid, Data.get_game(gid))
@@ -285,7 +296,7 @@ func _now_playing_text() -> String:
 func _hud_text() -> String:
 	return "[b]Health[/b] %d/%d   [b]Block[/b] %d      [b]Tier[/b] %s      [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d   [b]Chests[/b] %d" % [
 		GameState.hp, GameState.max_hp, GameState.block,
-		RunDifficulty.tier_name(RunDifficulty.tier_for(GameState.games_played)),
+		RunDifficulty.tier_name(_current_tier()),
 		GameState.bash, GameState.dash_charges, GameState.transmute,
 		GameState.scramble, GameState.bombs, GameState.keys, GameState.pending_chests,
 	]

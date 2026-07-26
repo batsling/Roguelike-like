@@ -54,6 +54,30 @@ func test_boss_round_on_difficulty_gate() -> void:
 	for c in _ui._choices:
 		assert_true(bool(c["boss"]), "every boss-round choice spawns a boss")
 
+func test_boss_is_the_capstone_of_the_tier_just_played() -> void:
+	# Boss rounds are every GAMES_PER_TIER games; each boss rolls at the tier the
+	# player just cleared (game-4 boss is Low), then the run advances. Once on
+	# Insane, bosses stay Insane.
+	var T := RunDifficulty.Tier
+	# Normal games use the plain tier.
+	GameState.games_played = 2
+	assert_eq(_ui._current_tier(), T.LOW, "games 1-3 are Low")
+	GameState.games_played = 4
+	assert_eq(_ui._current_tier(), T.MEDIUM, "games after the first boss are Medium")
+	# Boss rounds cap the tier just played.
+	GameState.games_played = 3   # game 4 boss
+	assert_true(_ui._is_boss_round())
+	assert_eq(_ui._current_tier(), T.LOW, "the game-4 boss is a Low boss")
+	GameState.games_played = 6   # game 7 boss
+	assert_eq(_ui._current_tier(), T.MEDIUM, "the next boss is Medium")
+	GameState.games_played = 9   # game 10 boss
+	assert_eq(_ui._current_tier(), T.HIGH, "then High")
+	GameState.games_played = 12  # game 13 boss
+	assert_eq(_ui._current_tier(), T.INSANE, "then Insane")
+	GameState.games_played = 15  # every 3 games on Insane
+	assert_true(_ui._is_boss_round())
+	assert_eq(_ui._current_tier(), T.INSANE, "Insane bosses keep coming every 3 games")
+
 func test_bash_removes_a_choice_from_the_pool() -> void:
 	GameState.bash = 1
 	_ui._build_choices()

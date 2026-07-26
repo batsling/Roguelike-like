@@ -268,10 +268,16 @@ What it does, matching the owner's UX direction:
   text), enemy type/tier/damage. The enemy is **rolled up-front** per card so the
   hover and the enemy that actually spawns on click are the *same* roll
   (`roll_enemy` → stored → `choose_game`).
-- **Difficulty gate = boss round (§7.1).** When the games-played count crosses a
-  `RunDifficulty.GAMES_PER_TIER` boundary, a **"⚠ BOSS INCOMING ⚠"** banner shows
-  above the choices and every card spawns a **boss** (`roll_boss` at the new
-  tier). The boss is tied to the **gate, not the game**: `_is_boss_round()` reads
+- **Difficulty gate = boss round (§7.1).** Every `RunDifficulty.GAMES_PER_TIER`
+  (3) games a **"⚠ BOSS INCOMING ⚠"** banner shows above the choices and every
+  card spawns a **boss** (`roll_boss`). The boss is the **capstone of the tier
+  just played**, not the opener of the next one: the game-4 boss is **Low** and
+  beating it is what advances the run to Medium, so a boss rolls at
+  `tier_for(games_played - 1)` (`_current_tier()`), one below the normal-game
+  formula, and the HUD shows that tier during the round. Normal games in between
+  use the plain `tier_for(games_played)`, so they land on the *new* tier right
+  after each boss. Once the run reaches **Insane** the cap holds, so Insane bosses
+  keep appearing every 3 games. The boss is tied to the **gate, not the game**: `_is_boss_round()` reads
   only `games_played`, so bash/transmute (and a future teleport) can change *which*
   game you play at the gate but you still face a boss — a bashed slot backfills
   with another boss card, and a transmuted game rolls a boss too. (Owner call:
