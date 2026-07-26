@@ -162,9 +162,12 @@ existing `images/scrolls/Unidentified.png`. Scrolls get the identical treatment:
   Identify**; from then on that type shows its real name and art. **Amnesia** can
   re-hide (`unidentify`) a known scroll.
 - **The `File` column is the identified art** — it resolves to
-  `images2.0/scrolls/<File>.png` (§10.1). Unidentified always falls back to the
+  `images2.0/scrolls/<File>.png` (§10.1). Unidentified scrolls always show the
   shared Unidentified art, so a scroll only reveals its `File` art once learned.
-  *(Scrolls with a blank `File` still need art authored.)*
+- **Fallback:** an *identified* scroll with **no image** (blank `File`, or a file
+  that doesn't resolve) **also defaults to the Unidentified scroll art** — never a
+  missing/broken texture. So Unidentified art is both the pre-identify mask and
+  the safety fallback for authored-but-artless scrolls.
 
 *(The old **Fog** scroll and **Keys** are both **deferred — author later**; they
 stay in the design but no `2.0` content exists for them yet.)*
@@ -403,8 +406,9 @@ images2.0/
   convention). `items2.0`, `enemies2.0`, and `scrolls2.0` all carry a `File`
   column; **`characters2.0` has none**, so character art resolves by **`Name`**
   (as characters do today).
-- **Scrolls:** `File` is the *identified* art; unidentified scrolls fall back to a
-  shared `Unidentified.png` under `images2.0/scrolls/` (§4.1).
+- **Scrolls:** `File` is the *identified* art; unidentified scrolls — **and
+  identified scrolls whose `File` art is missing** — fall back to the shared
+  `Unidentified.png` under `images2.0/scrolls/` (§4.1).
 - The generators point their art lookups at `images2.0/<category>/` instead of the
   old `images/<category>/`.
 
