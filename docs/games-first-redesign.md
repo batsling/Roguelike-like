@@ -38,6 +38,11 @@ so every number must stay small and glanceable.
    - **Old goals can still be fulfilled later.** Fulfilling a stacked enemy's goal
      during any later game **defeats it** (removing it from the stack and stopping
      its per-game hits) and drops its item, exactly as if you'd beaten it on time.
+   - **Enemies follow the player until beaten** — the *only* way to remove one is to
+     fulfill its goal. It **cannot be dashed/moved past** (moving to another game
+     never drops a following enemy) and it **cannot be bombed** (enemies take no
+     damage from bombs). The escape valve is *before* you commit: **scramble** the
+     goal or **bash** the whole game, rather than removing the enemy afterward.
 5. Repeat until the **Amulet** game is cleared (win) or **health = 0** (loss).
 
 ---
@@ -79,7 +84,7 @@ integer counts on the HUD.
 | Item | Effect |
 |---|---|
 | **Key** | Unlock a new game path (blocked edge / unconnected "wild" game). |
-| **Bomb** | Directly defeat a goal-enemy *without* doing its goal (escape hatch for undoable goals). **No item drops** when an enemy is bombed. |
+| **Bomb** | **Purpose undefined — [OPEN].** Bombs originally "directly defeated an enemy," but enemies now take no bomb damage (§2), so bombs need a new job (e.g. destroy a map obstacle / force a path / clear an area effect) or should be cut. |
 | **Scroll: Fog** | Kept from legacy — **obscures certain choices** on the graph, as it does today. |
 | **Scroll: Teleportation** | Kept from legacy. Jump across the graph. |
 
@@ -153,8 +158,10 @@ Proposed `EnemyData` (repurposed / new `GoalData`) fields:
 - and (naturally) drops a better item.
 
 Otherwise a boss follows the same rules: fulfill its goal to defeat it, or it
-stacks and hits you after every game until you do. **[OPEN]** exact boss attack
-value and whether a boss can be bashed/bombed/dashed past like a normal enemy.
+stacks and hits you after every game until you do. Like all enemies, a boss
+**cannot be dashed past or bombed** (§2). **[OPEN]** exact boss attack value, and
+whether the pre-commit escapes (**scramble** the goal / **bash** the game) are
+allowed on a boss node or whether difficulty-gate bosses are fully unskippable.
 
 **Every enemy drops exactly one item.** The drop table *is* the reward economy.
 Each item belongs to one **category**, and the categories are exactly the
@@ -234,18 +241,23 @@ cards/statuses, potions-as-combat-items (repurpose or cut).
 
 ## 12. Open decisions (rolled up)
 
-1. **Per-character starting values** — the actual health + verb/consumable counts
+1. **Bomb purpose** — enemies are now immune to bombs, so bombs need a new role
+   (destroy a map obstacle / force a path / area effect) or should be cut. (§4)
+2. **Per-character starting values** — the actual health + verb/consumable counts
    for each `CharacterData` (structural decision made; numbers TBD). (§3)
-2. **Boss specifics** — boss attack value and whether a boss can be
-   bashed/bombed/dashed past. (§7.1)
-3. **OBS HUD** — *deferred by decision*: architecture (Godot `Window` vs.
+3. **Boss escapes** — are **scramble**/**bash** allowed on a boss node, or are
+   difficulty-gate bosses fully unskippable? Plus boss attack value. (§7.1)
+4. **OBS HUD** — *deferred by decision*: architecture (Godot `Window` vs.
    always-on-top scene) and layout revisited once mechanics are locked. (§9)
-4. **Enemy attack tuning** — per-enemy `attack` values within the 1–3 band by
+5. **Enemy attack tuning** — per-enemy `attack` values within the 1–3 band by
    type/tier (tuning, not structural). (§7)
 
 **Resolved:**
 - Bingo is retired (§10).
 - **Dash is a total select** (pick any connected game), not a skip (§4).
+- **Enemies follow the player until beaten** — can't be dashed past, can't be
+  bombed; only fulfilling the goal removes one. Pre-commit escapes are scramble
+  (reroll goal) or bash (destroy the game) (§2).
 - **Bosses appear on difficulty change** — tighter goals, more damage (§7.1).
 - **Starting loadout is character-dependent** (baseline 10 health) (§3).
 - Enemies roll by type + difficulty tier, not fixed per game (§7).
