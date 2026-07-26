@@ -44,9 +44,11 @@ var _hud: RichTextLabel
 var _banner: Label
 var _boss_banner: Label
 var _preview: RichTextLabel
+var _preview_img: TextureRect
 var _choices_row: HFlowContainer
 var _play_panel: VBoxContainer
 var _now_playing: RichTextLabel
+var _now_playing_img: TextureRect
 var _stack: RichTextLabel
 var _log: RichTextLabel
 
@@ -213,6 +215,7 @@ func _refresh(_a = null) -> void:
 		_render_choices()
 	elif _phase == Phase.PLAYING:
 		_now_playing.text = _now_playing_text()
+		_now_playing_img.texture = null if _chosen.is_empty() else _enemy_texture(_chosen)
 
 func _render_choices() -> void:
 	for c in _choices_row.get_children():
@@ -225,6 +228,7 @@ func _render_choices() -> void:
 	for i in range(_choices.size()):
 		_choices_row.add_child(_make_choice_card(i, _choices[i]))
 	_preview.text = "[i]Hover a game to see the enemy it would spawn.[/i]"
+	_preview_img.texture = null
 
 # One choice = the game's cover art with its name below, plus (off a boss round)
 # small Bash/Transmute verbs when the player has charges. Hover updates the
@@ -275,6 +279,12 @@ func _show_preview(index: int) -> void:
 	if index < 0 or index >= _choices.size():
 		return
 	_preview.text = _enemy_preview_text(_choices[index])
+	_preview_img.texture = _enemy_texture(_choices[index])
+
+# The enemy's art (§10.1) for a choice, or null when there's no enemy.
+func _enemy_texture(choice: Dictionary) -> Texture2D:
+	var e: GoalEnemyData = choice.get("enemy")
+	return e.image if e != null else null
 
 func _enemy_preview_text(choice: Dictionary) -> String:
 	var e: GoalEnemyData = choice.get("enemy")
@@ -396,15 +406,30 @@ func _build_ui() -> void:
 	_choices_row.add_theme_constant_override("v_separation", 10)
 	root.add_child(_choices_row)
 
+	# Hover preview: the enemy's art beside its name + goal.
+	var preview_box := HBoxContainer.new()
+	preview_box.add_theme_constant_override("separation", 12)
+	_preview_img = _enemy_image_rect()
+	preview_box.add_child(_preview_img)
 	_preview = _panel_label()
 	_preview.custom_minimum_size = Vector2(0, 40)
-	root.add_child(_preview)
+	_preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_preview.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	preview_box.add_child(_preview)
+	root.add_child(preview_box)
 
 	# Play panel — shown once a game is chosen (the honour-system self-report).
 	_play_panel = VBoxContainer.new()
 	_play_panel.add_theme_constant_override("separation", 8)
+	var np_box := HBoxContainer.new()
+	np_box.add_theme_constant_override("separation", 12)
+	_now_playing_img = _enemy_image_rect()
+	np_box.add_child(_now_playing_img)
 	_now_playing = _panel_label()
-	_play_panel.add_child(_now_playing)
+	_now_playing.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_now_playing.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	np_box.add_child(_now_playing)
+	_play_panel.add_child(np_box)
 	var report_row := HBoxContainer.new()
 	report_row.add_theme_constant_override("separation", 8)
 	var met := Button.new()
@@ -424,6 +449,13 @@ func _build_ui() -> void:
 	root.add_child(_stack)
 	_log = _panel_label()
 	root.add_child(_log)
+
+func _enemy_image_rect() -> TextureRect:
+	var t := TextureRect.new()
+	t.custom_minimum_size = Vector2(96, 96)
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	return t
 
 func _section(text: String) -> Label:
 	var l := Label.new()

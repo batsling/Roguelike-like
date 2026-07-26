@@ -264,9 +264,12 @@ What it does, matching the owner's UX direction:
 - **No walker, no doors.** The reachable games are shown as **cards: the game's
   cover art with its name below** (falling back to the name when a cover is
   missing). Clicking a card travels there.
-- **Hover previews the goal-enemy** that game would spawn — name, goal (type +
-  text), enemy type/tier/damage. The enemy is **rolled up-front** per card so the
-  hover and the enemy that actually spawns on click are the *same* roll
+- **Hover previews the goal-enemy** that game would spawn — its **art**
+  (`GoalEnemyData.image`) beside its name, goal (type + text), and
+  type/tier/damage; the same art shows on the now-playing panel once chosen.
+  (Bosses have art today; normal-enemy PNGs are a pending owner drop, §5 Q5, and
+  fall back to a blank slot until then.) The enemy is **rolled up-front** per card
+  so the hover and the enemy that actually spawns on click are the *same* roll
   (`roll_enemy` → stored → `choose_game`).
 - **Difficulty gate = boss round (§7.1).** Every `RunDifficulty.GAMES_PER_TIER`
   (3) games a **"⚠ BOSS INCOMING ⚠"** banner shows above the choices and every
