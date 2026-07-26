@@ -64,6 +64,14 @@ func reset() -> void:
 	_next_instance = 1
 	loop_changed.emit()
 
+# Full run start for the games-first loop: wipes run state, applies the chosen
+# character's 2.0 loadout (Health + verbs + starting items), and clears the enemy
+# stack. The single entry point a menu / new-run flow calls to begin a 2.0 run.
+func start_run(character: CharacterData) -> void:
+	GameState.reset_run()
+	GameState.apply_character2(character)
+	reset()
+
 # --- Spawning -------------------------------------------------------------
 
 # Rolls a goal-enemy for a game of `game_type` at `tier` (0 Low / 1 Med / 2 High;
@@ -100,6 +108,15 @@ func roll_enemy(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 	if bucket.is_empty():
 		bucket = pool
 	return bucket[randi() % bucket.size()]
+
+# Rolls an enemy for a game of `game_type` at `tier` and chooses it in one step
+# (the common overworld path: pick a game -> its enemy spawns). Returns the
+# rolled GoalEnemyData, or null when the pool is empty.
+func choose_game_of_type(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
+	var enemy: GoalEnemyData = roll_enemy(game_type, tier)
+	if enemy != null:
+		choose_game(enemy)
+	return enemy
 
 # Marks `enemy` as the enemy on the game the player just chose (it SPAWNS on
 # choose, §7.2). Returns its unique instance handle. A previously-current enemy
@@ -212,6 +229,22 @@ func stun(instance: int) -> bool:
 	stack[idx]["stun"] = int(stack[idx].get("stun", 0)) + 1
 	loop_changed.emit()
 	return true
+
+# Scramble (§4, granted by the D6 item): reroll the CURRENT game's enemy/goal.
+# Spends one scramble charge and replaces `current` with a freshly-rolled enemy
+# of the same type + tier (a new instance). Returns the new enemy, or null if
+# there's no current game or no scramble charge. Enemies already on the stack are
+# untouched — scramble is a pre-commit escape on the game you're about to play.
+func scramble() -> GoalEnemyData:
+	if current.is_empty() or GameState.scramble <= 0:
+		return null
+	var old: GoalEnemyData = current["enemy"]
+	var fresh: GoalEnemyData = roll_enemy(old.game_type, old.tier_index())
+	if fresh == null:
+		return null
+	GameState.scramble -= 1
+	choose_game(fresh)  # supersedes the current enemy with a new instance
+	return fresh
 
 # The player reached & cleared the Amulet game — win the run (§2). Called by the
 # overworld when the amulet game's goal is met.

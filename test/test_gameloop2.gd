@@ -167,6 +167,54 @@ func test_stacked_damage_per_game_sums_active_enemies() -> void:
 	GameLoop2.choose_game(_enemy(3)) ; GameLoop2.beat_game(false)
 	assert_eq(GameLoop2.stacked_damage_per_game(), 5)
 
+# --- run start (loadout) --------------------------------------------------
+
+func test_start_run_applies_isaac_loadout() -> void:
+	GameLoop2.start_run(Data.get_character2(&"isaac"))
+	assert_eq(GameState.max_hp, 6, "Isaac Health 6")
+	assert_eq(GameState.hp, 6)
+	assert_eq(GameState.bombs, 1, "Isaac starts with 1 Bomb")
+	assert_eq(GameState.block, 0)
+	assert_false(GameLoop2.run_over)
+	assert_eq(GameLoop2.stack_size(), 0)
+	var has_d6: bool = false
+	for it in GameState.inventory:
+		if it is ItemData and String(it.id) == "d6":
+			has_d6 = true
+	assert_true(has_d6, "Isaac starts holding the D6")
+
+func test_start_run_applies_mina_verbs() -> void:
+	GameLoop2.start_run(Data.get_character2(&"min"))
+	assert_eq(GameState.max_hp, 8, "Noita Health 8")
+	assert_eq(GameState.transmute, 1, "Minä starts with 1 Transmute")
+
+# --- scramble (§4) --------------------------------------------------------
+
+func test_scramble_rerolls_current_and_spends_charge() -> void:
+	GameState.scramble = 1
+	var slime: GoalEnemyData = Data.get_goal_enemy(&"spike_slime_l")  # deckbuilder/low
+	GameLoop2.choose_game(slime)
+	var fresh: GoalEnemyData = GameLoop2.scramble()
+	assert_not_null(fresh, "scramble returns a new enemy")
+	assert_eq(String(fresh.game_type), "deckbuilder", "rerolled within the same type")
+	assert_eq(fresh.tier_index(), slime.tier_index(), "and the same tier")
+	assert_eq(GameState.scramble, 0, "a scramble charge is spent")
+	assert_true(GameLoop2.has_current())
+
+func test_scramble_requires_current_and_charge() -> void:
+	GameState.scramble = 0
+	GameLoop2.choose_game(_enemy(2))
+	assert_null(GameLoop2.scramble(), "no charge -> no reroll")
+	GameState.scramble = 1
+	GameLoop2.current = {}
+	assert_null(GameLoop2.scramble(), "no current game -> no reroll")
+	assert_eq(GameState.scramble, 1, "a failed scramble is not spent")
+
+func test_choose_game_of_type_rolls_and_sets_current() -> void:
+	var e: GoalEnemyData = GameLoop2.choose_game_of_type(&"action", GoalEnemyData.Difficulty.LOW)
+	assert_eq(String(e.id), "baby_alien")
+	assert_true(GameLoop2.has_current())
+
 # --- enemy roll by type + tier (§7) --------------------------------------
 
 func test_roll_enemy_matches_type_and_tier() -> void:

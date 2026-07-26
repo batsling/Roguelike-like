@@ -182,8 +182,18 @@ state machine** on top of GameState's tiny resources:
   (`stacked_damage_per_game`, `stack_size`). Signals: `loop_changed`,
   `enemy_defeated`, `player_hit`, `run_lost`, `run_won`.
 
-Drops bank a chest via the existing `grant_chest`; the tier → chest-size mapping
-(§8.2) is left to the RewardScreen wiring in the overworld-integration pass.
+- `start_run(character)` — the single run-start entry point: wipes run state,
+  applies the character's 2.0 loadout via `GameState.apply_character2` (tiny
+  Health + verb counts + starting items through the normal `add_item` acquire
+  path, so pickups fire), and clears the stack.
+- `scramble()` — the D6 verb (§4): rerolls the current game's enemy within the
+  same type+tier, spending a scramble charge.
+
+A full run can be driven end-to-end through `GameLoop2` + `GameState` with **no
+UI** — the loop is playable at the logic level and fully unit-tested (827 total
+GUT tests). Drops bank a chest via the existing `grant_chest`; the tier →
+chest-size mapping (§8.2) is left to the RewardScreen wiring in the
+overworld-integration pass.
 
 **Not yet built (the overworld-integration sub-phase, and it needs the open
 decisions below):** wiring GameLoop2 to the actual overworld graph + the Bash/

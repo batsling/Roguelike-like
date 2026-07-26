@@ -847,6 +847,38 @@ func apply_character(char_data: CharacterData) -> void:
 	emit_signal("deck_changed")
 	emit_signal("inventory_changed")
 
+# Games-first redesign (2.0) run-start loadout applier. The no-combat rework has
+# no deck / energy / combat stats — a character brings only a tiny Health and the
+# verb/consumable counts (docs/games-first-redesign.md §3), plus its starting
+# items. Health / Max Health reuse hp / max_hp; the verbs map onto their same-
+# named fields (Dash -> dash_charges). Starting items are acquired through the
+# normal add_item path so pickups (Hollow Heart, Lunch, …) fire their
+# item_acquired effects. Callers should reset_run() first (GameLoop2.start_run
+# does), so this only sets the loadout, not the whole run.
+func apply_character2(char_data: CharacterData) -> void:
+	if char_data == null:
+		return
+	character_id = char_data.id
+	max_hp = maxi(1, char_data.base_max_hp)
+	hp = max_hp
+	block = 0
+	bash = char_data.start_bash
+	dash_charges = char_data.start_dash
+	transmute = char_data.start_transmute
+	scramble = char_data.start_scramble
+	bombs = char_data.start_bombs
+	keys = char_data.start_keys
+
+	inventory.clear()
+	_reset_item_tracking()
+	for item_id in char_data.starting_items:
+		add_item(Data.get_item2(item_id))
+	# Pickups may have raised Max Health; open the run at the new full pool.
+	hp = max_hp
+	emit_signal("stats_changed")
+	emit_signal("hp_changed", hp, max_hp)
+	emit_signal("inventory_changed")
+
 # Clears the bookkeeping that tracks item-granted bonuses and instance ids.
 # Shared by reset_run() and apply_character() so the two can't drift apart.
 func _reset_item_tracking() -> void:
