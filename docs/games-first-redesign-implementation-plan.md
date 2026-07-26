@@ -250,6 +250,49 @@ Pipeline: `generate_goal_enemy_tres.py` was made reusable and a thin
 `roll_enemy` is guaranteed boss-free. PlaySession2 shows a ☠ BOSS marker and a
 boss-spawn button. Total suite: 846 GUT tests green.
 
+## 4e. Overworld2 — the click-to-choose overworld (shipped)
+
+The first slice of the **overworld-integration** milestone. `scenes/redesign2/
+Overworld2.tscn` (+ `scripts/redesign2/Overworld2.gd`) replaces the old
+walk-around-and-open-a-door overworld with a **click-to-choose board**, and takes
+over the main-menu "Games-First" button from `PlaySession2` (which stays in the
+repo as the headless harness). It is still a thin, additive view over
+`GameLoop2` + `GameState` — combat and the live `Overworld.gd` are untouched
+(decision #2).
+
+What it does, matching the owner's UX direction:
+- **No walker, no doors.** The reachable games are shown as **cards: the game's
+  cover art with its name below** (falling back to the name when a cover is
+  missing). Clicking a card travels there.
+- **Hover previews the goal-enemy** that game would spawn — name, goal (type +
+  text), enemy type/tier/damage. The enemy is **rolled up-front** per card so the
+  hover and the enemy that actually spawns on click are the *same* roll
+  (`roll_enemy` → stored → `choose_game`).
+- **Difficulty gate = boss round (§7.1).** When the games-played count crosses a
+  `RunDifficulty.GAMES_PER_TIER` boundary, a **"⚠ BOSS INCOMING ⚠"** banner shows
+  above the choices and every card spawns a **boss** (`roll_boss` at the new
+  tier). Bosses are **unskippable** — bash/transmute are disabled on a boss round
+  (locked default for §5 Q1: difficulty-gate bosses can't be escaped).
+- **Limited offering + board verbs.** The offering is capped (`OFFER_COUNT = 5`,
+  the amulet always kept when reachable) in a stable position-seeded order — Dash
+  (§4) is the verb meant to bypass it (its UI is a later slice). **Bash** destroys
+  a card's game out of the pool; **Transmute** swaps a card for an off-graph
+  same-type game via a per-position override map (keeping the graph slot).
+- **Self-report + resolve.** Choosing a game shows the honour-system report (Beat
+  → Goal MET / NOT met) that drives `GameLoop2.beat_game`, advances
+  `GameState.games_played`, banks drops as chests, and rebuilds the next offering.
+  The amulet card + goal-met wins the run; a lethal stack hit loses it.
+
+Run bootstrap reuses `RunGraph.pick_amulet_and_starts` for the start/amulet graph
+and `GameLoop2.start_run` for the 2.0 character loadout. Covered by
+`test/test_overworld2.gd` (boots a graph, picks/reports, boss round, bash,
+boss-round bash lockout). Total suite: 853 GUT tests green.
+
+**Next slices (unchanged):** the richer verification-modal self-report UX (this
+slice uses plain buttons), the Dash "pick any connected game" UI, the OBS
+companion HUD (§9), and the still-deferred ScrollSystem rewrite bundled with the
+combat cut.
+
 ## 5. Design questions still open (needed before the mechanics milestone)
 
 Not blocking Phase 1, but must be answered before the loop is built:
