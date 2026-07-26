@@ -31,13 +31,13 @@ so every number must stay small and glanceable.
 4. Resolve:
    - **Goal met → enemy defeated → item drops.**
    - **Game beaten but goal not met → the enemy is not defeated: it *stacks*.**
-     No item drops. The undefeated enemy carries forward and deals its `attack`;
-     `block` (temp health) absorbs, remainder comes off `health`. Each new area
-     you clear without its goal adds another enemy to the stack, so unbeaten
-     threats accumulate and pressure ramps until you die or clear them.
-     **[OPEN]** cadence of stacked-enemy damage (once when it stacks, or each
-     subsequent area) and whether/how a stacked enemy's goal can still be
-     retired later.
+     No item drops. Every stacked enemy **attacks after each game you play**,
+     for its `attack`, until its goal is fulfilled — `block` (temp health) absorbs,
+     remainder comes off `health`. So the more unbeaten enemies on the stack, the
+     more damage you take per game, and pressure ramps until you die or clear them.
+   - **Old goals can still be fulfilled later.** Fulfilling a stacked enemy's goal
+     during any later game **defeats it** (removing it from the stack and stopping
+     its per-game hits) and drops its item, exactly as if you'd beaten it on time.
 5. Repeat until the **Amulet** game is cleared (win) or **health = 0** (loss).
 
 ---
@@ -48,9 +48,9 @@ Kept deliberately tiny for HUD readability.
 
 | Stat | Range (starting → cap) | Notes |
 |---|---|---|
-| Health | ~10 (tune) | Lose at 0. |
-| Block  | 0, small | **Carries over between games — it is temporary health**, absorbed before `health` on any hit. |
-| Enemy attack | 1–3 | The hit dealt by an enemy that stacks (game cleared without its goal). |
+| Health | **10** | Lose at 0. |
+| Block  | 0, **no cap** | **Carries over between games — it is temporary health**, absorbed before `health` on any hit. |
+| Enemy attack | 1–3 | Dealt by each stacked enemy after **every** game played, until its goal is fulfilled. |
 
 Block sources: completing a goal, certain tag routes, spending a scroll, or item
 drops of the `block` category. The central tension is *earn block by beating
@@ -102,10 +102,10 @@ The **type** determines which enemy/goal pool a game draws from (§7). Today the
 map has two types (Action, Strategy) with `deckbuilder` / `traditional` as *tags*.
 **Decided: `deckbuilder` and `traditional` are promoted back to first-class
 types** (each was previously a tag). The type set becomes **Action / Deckbuilder /
-Traditional**. Each type has its own goal pool ("beat a boss without healing"
-suits Action; "win in one deck cycle" suits Deckbuilder; "descend N floors" suits
-Traditional). **[OPEN, minor]** whether a separate **Strategy** type survives for
-non-deckbuilder strategy games, or those fold into the three above.
+Traditional / Strategy**, where **Strategy is the residual** — a strategy game
+that carries *neither* the `traditional` nor the `deckbuilder` tag. Each type has
+its own goal pool ("beat a boss without healing" suits Action; "win in one deck
+cycle" suits Deckbuilder; "descend N floors" suits Traditional).
 
 ### 6.2 Tags (the routing / synergy axis)
 - **Widen the tag vocabulary** on `GameData` and make tags first-class.
@@ -170,8 +170,8 @@ This directly informs the **items sheet redo** (§10).
 - Renders: health, block, current enemy + its goal, the **stacked-enemy count**,
   verb counts (bash/dash/scramble), consumable counts (keys/bombs/scrolls).
 - Architecture: a dedicated HUD scene reading the same `GameState`/autoloads the
-  main window mutates. **[OPEN]** second Godot `Window` vs. a separate always-on-top
-  borderless scene the user positions over OBS.
+  main window mutates. Godot `Window` vs. always-on-top scene, and the exact
+  layout, are **deferred** — revisit once the rest of the mechanics are locked.
 - Everything must read at a glance → keep all numbers single-digit where possible.
 
 ---
@@ -219,22 +219,23 @@ cards/statuses, potions-as-combat-items (repurpose or cut).
 
 ## 12. Open decisions (rolled up)
 
-1. **Stacked-enemy damage cadence** — does a stacked enemy hit once when it
-   stacks, or again each subsequent area? Can its goal still be retired later to
-   remove it? (§2)
-2. **OBS HUD architecture** — second Godot `Window` vs. separate always-on-top
-   scene positioned over OBS. (§9)
-3. **Starting values** — health, block cap, verb/consumable starting counts. (§3)
-4. **Strategy type** *(minor)* — does a Strategy type survive for non-deckbuilder
-   strategy games, or do they fold into Action/Deckbuilder/Traditional? (§6.1)
+1. **Starting verb/consumable counts** — how many bash/dash/scramble charges,
+   keys, bombs, and scrolls the player begins a run with. (§3/§4)
+2. **OBS HUD** — *deferred by decision*: architecture (Godot `Window` vs.
+   always-on-top scene) and layout revisited once mechanics are locked. (§9)
+3. **Enemy attack tuning** — per-enemy `attack` values within the 1–3 band by
+   type/tier (tuning, not structural). (§7)
 
 **Resolved:**
 - Bingo is retired (§10).
 - Enemies roll by type + difficulty tier, not fixed per game (§7).
 - You must beat the real game to advance; undefeated enemies **stack** (§2).
+- **Each stacked enemy attacks after every game played** until its goal is met;
+  old goals can be fulfilled later to defeat the enemy (drops its item) (§2).
+- Starting **health = 10**, block has **no cap** (§3).
 - Block **carries over** as temporary health (§3).
-- Bombed enemies **drop nothing** (§4).
+- Bombed enemies **drop nothing**; no-goal clears **drop nothing** (§2/§4).
 - Fog **obscures** certain choices (§4).
 - **Curses shelved** — enemies-with-goals are the challenge mechanic (§5).
-- `deckbuilder` + `traditional` **promoted to first-class types** (§6.1).
-- No-goal clear **drops nothing** (the enemy stacks instead) (§2).
+- Types = **Action / Deckbuilder / Traditional / Strategy**, where Strategy is the
+  residual (neither `traditional` nor `deckbuilder` tag) (§6.1).
