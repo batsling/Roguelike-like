@@ -195,12 +195,24 @@ GUT tests). Drops bank a chest via the existing `grant_chest`; the tier →
 chest-size mapping (§8.2) is left to the RewardScreen wiring in the
 overworld-integration pass.
 
-**Not yet built (the overworld-integration sub-phase, and it needs the open
-decisions below):** wiring GameLoop2 to the actual overworld graph + the Bash/
-Transmute/Dash/Scramble board verbs, the post-game verification modal as the
-self-report UI, the boss layer (spawn-on-difficulty-change + content), the OBS
-companion HUD, and the still-deferred ScrollSystem rewrite (bundled with the
-combat cut so it doesn't break the build).
+**Board verbs (pool logic) also landed** as headless, combat-safe operations on
+`GameLoop2`: `bash_game` (destroy a game out of the pool for the run),
+`transmute_game` (swap for a random same-type off-graph game), and a
+`game_type_key` adapter that promotes today's `deckbuilder`/`traditional` tags to
+the §6.1 four-type model **without re-authoring the 737 games** (so the live
+combat type routing is untouched). Dash already exists on the overworld;
+Scramble is on GameLoop2. So all four verbs' logic is done and tested.
+
+**Not yet built — the overworld-integration sub-phase (UI-coupled, needs the
+decisions below):** wiring GameLoop2 into the actual map scene (drawing games
+that skip `is_bashed`, applying transmute/bash to nodes, choosing a game →
+`choose_game_of_type(game_type_key(game), tier)`), the post-game verification
+modal as the self-report UI, the boss layer (spawn-on-difficulty-change +
+content), the OBS companion HUD, and the still-deferred ScrollSystem rewrite
+(bundled with the combat cut so it doesn't break the build).
+
+The headless core is now complete: **a full run is playable through
+`GameLoop2` + `GameState` with zero UI**, covered by 833 GUT tests.
 
 ## 5. Design questions still open (needed before the mechanics milestone)
 

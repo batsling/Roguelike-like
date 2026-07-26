@@ -40,6 +40,10 @@ var current: Dictionary = {}
 # type stay distinct; bomb / stun / fulfil target by instance.
 var stack: Array = []
 
+# Games removed from the pool by Bash (§4) — destroyed outright, never offered
+# again this run. The overworld consults is_bashed() when drawing games.
+var bashed: Array[StringName] = []
+
 var run_over: bool = false
 var won: bool = false
 var defeated_count: int = 0
@@ -56,6 +60,7 @@ var _next_instance: int = 1
 func reset() -> void:
 	current = {}
 	stack.clear()
+	bashed.clear()
 	run_over = false
 	won = false
 	defeated_count = 0
@@ -258,6 +263,78 @@ func clear_amulet() -> void:
 	run_over = true
 	loop_changed.emit()
 	run_won.emit()
+
+# --- Board verbs on the game pool (Bash / Transmute, §4) ------------------
+
+# Effective 2.0 game type (§6.1). Deckbuilder and Traditional are first-class
+# types in the redesign but are carried as TAGS on today's GameData (only
+# ACTION/STRATEGY are authored as the enum), so this adapter promotes them: a
+# deckbuilder/traditional tag wins, else the enum name, with Strategy as the
+# residual. It is the single bridge the overworld + enemy-roll use so the
+# four-type model works without re-authoring 737 games; a later type-promotion
+# pass (§6.1) can retire it.
+func game_type_key(game: GameData) -> StringName:
+	if game == null:
+		return &""
+	if game.tags.has("deckbuilder"):
+		return &"deckbuilder"
+	if game.tags.has("traditional"):
+		return &"traditional"
+	match game.type:
+		GameData.GameType.ACTION:
+			return &"action"
+		GameData.GameType.DECKBUILDER:
+			return &"deckbuilder"
+		GameData.GameType.TRADITIONAL:
+			return &"traditional"
+		_:
+			return &"strategy"
+
+func is_bashed(game_id: StringName) -> bool:
+	return bashed.has(game_id)
+
+# Bash (§4): destroy a game outright — removed from the pool for the rest of the
+# run, never offered again (no replacement, unlike the old bash). Spends a bash
+# charge. Returns true on success. The overworld removes the node; this records
+# the exclusion so future draws skip it.
+func bash_game(game_id: StringName) -> bool:
+	if GameState.bash <= 0 or is_bashed(game_id):
+		return false
+	if Data.get_game(game_id) == null:
+		return false
+	GameState.bash -= 1
+	bashed.append(game_id)
+	loop_changed.emit()
+	return true
+
+# Transmute (§4): turn a game into a random game of the SAME effective type that
+# is NOT currently on the map (`connected`) and not bashed. Spends a transmute
+# charge. Returns the replacement GameData, or null if there's no charge, the
+# source is unknown, or no off-graph same-type game is available. The overworld
+# passes the ids currently on the map and swaps the node to the returned game.
+func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
+	if GameState.transmute <= 0:
+		return null
+	var src: GameData = Data.get_game(game_id)
+	if src == null:
+		return null
+	var key: StringName = game_type_key(src)
+	var on_map := {}
+	for c in connected:
+		on_map[StringName(c)] = true
+	var pool: Array = []
+	for g in Data.all_games():
+		if not (g is GameData):
+			continue
+		if g.id == game_id or on_map.has(g.id) or is_bashed(g.id):
+			continue
+		if game_type_key(g) != key:
+			continue
+		pool.append(g)
+	if pool.is_empty():
+		return null
+	GameState.transmute -= 1
+	return pool[randi() % pool.size()]
 
 # --- HUD / query helpers --------------------------------------------------
 

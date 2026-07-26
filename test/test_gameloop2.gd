@@ -167,6 +167,60 @@ func test_stacked_damage_per_game_sums_active_enemies() -> void:
 	GameLoop2.choose_game(_enemy(3)) ; GameLoop2.beat_game(false)
 	assert_eq(GameLoop2.stacked_damage_per_game(), 5)
 
+# --- board verbs: Bash / Transmute (§4) ----------------------------------
+
+func _find_game_with_tag(tag: String) -> GameData:
+	for g in Data.all_games():
+		if g is GameData and g.tags.has(tag):
+			return g
+	return null
+
+func test_game_type_key_promotes_tags() -> void:
+	var db: GameData = _find_game_with_tag("deckbuilder")
+	assert_not_null(db)
+	assert_eq(String(GameLoop2.game_type_key(db)), "deckbuilder")
+	var trad: GameData = _find_game_with_tag("traditional")
+	assert_eq(String(GameLoop2.game_type_key(trad)), "traditional")
+
+func test_bash_removes_game_and_spends_charge() -> void:
+	GameState.bash = 1
+	var g: GameData = Data.all_games()[0]
+	assert_true(GameLoop2.bash_game(g.id))
+	assert_true(GameLoop2.is_bashed(g.id))
+	assert_eq(GameState.bash, 0)
+	assert_false(GameLoop2.bash_game(g.id), "already bashed / no charge")
+
+func test_bash_requires_charge() -> void:
+	GameState.bash = 0
+	var g: GameData = Data.all_games()[0]
+	assert_false(GameLoop2.bash_game(g.id))
+	assert_false(GameLoop2.is_bashed(g.id))
+
+func test_transmute_returns_same_type_offgraph_game() -> void:
+	GameState.transmute = 1
+	var db: GameData = _find_game_with_tag("deckbuilder")
+	var repl: GameData = GameLoop2.transmute_game(db.id, [db.id])
+	assert_not_null(repl, "a same-type off-graph game exists")
+	assert_ne(String(repl.id), String(db.id), "not the source game")
+	assert_eq(String(GameLoop2.game_type_key(repl)), "deckbuilder", "same effective type")
+	assert_eq(GameState.transmute, 0, "a transmute charge is spent")
+
+func test_transmute_excludes_connected_and_bashed() -> void:
+	GameState.transmute = 5
+	var db: GameData = _find_game_with_tag("deckbuilder")
+	var repl: GameData = GameLoop2.transmute_game(db.id, [db.id])
+	# Feed the first result back as connected + bash it; a second transmute must
+	# avoid both.
+	GameLoop2.bashed.append(repl.id)
+	var repl2: GameData = GameLoop2.transmute_game(db.id, [db.id, repl.id])
+	assert_not_null(repl2)
+	assert_ne(String(repl2.id), String(repl.id), "excludes the connected/bashed game")
+
+func test_transmute_requires_charge() -> void:
+	GameState.transmute = 0
+	var g: GameData = Data.all_games()[0]
+	assert_null(GameLoop2.transmute_game(g.id, []))
+
 # --- run start (loadout) --------------------------------------------------
 
 func test_start_run_applies_isaac_loadout() -> void:
