@@ -119,18 +119,20 @@ func report(goal_met: bool) -> void:
 	_refresh()
 
 # Bash the offered game at `index` (§4): destroy it out of the pool for the run.
-# Disabled on a boss round (bosses are unskippable).
+# Allowed on a boss round — but the boss is tied to the difficulty gate, not the
+# game, so whatever game backfills the slot still spawns a boss.
 func bash_choice(index: int) -> void:
-	if _phase != Phase.SELECT or _boss_round or index < 0 or index >= _choices.size():
+	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
 		return
 	if GameLoop2.bash_game(_choices[index]["slot"]):
 		_build_choices()
 		_refresh()
 
 # Transmute the offered game at `index` (§4): swap it for a random off-graph game
-# of the same type. Disabled on a boss round.
+# of the same type. Allowed on a boss round — the replacement game still spawns a
+# boss, because boss-ness follows the difficulty gate rather than the game.
 func transmute_choice(index: int) -> void:
-	if _phase != Phase.SELECT or _boss_round or index < 0 or index >= _choices.size():
+	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
 		return
 	var slot: StringName = _choices[index]["slot"]
 	var on_map: Array = []
@@ -246,15 +248,16 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	name_lbl.custom_minimum_size = Vector2(140, 0)
 	card.add_child(name_lbl)
 
-	if not _boss_round:
-		var verbs := HBoxContainer.new()
-		verbs.alignment = BoxContainer.ALIGNMENT_CENTER
-		if GameState.bash > 0:
-			verbs.add_child(_mini_button("Bash", func(): bash_choice(index)))
-		if GameState.transmute > 0:
-			verbs.add_child(_mini_button("Transmute", func(): transmute_choice(index)))
-		if verbs.get_child_count() > 0:
-			card.add_child(verbs)
+	# Bash/Transmute are available even on a boss round — the boss follows the
+	# gate, so escaping a specific game still lands you on a boss.
+	var verbs := HBoxContainer.new()
+	verbs.alignment = BoxContainer.ALIGNMENT_CENTER
+	if GameState.bash > 0:
+		verbs.add_child(_mini_button("Bash", func(): bash_choice(index)))
+	if GameState.transmute > 0:
+		verbs.add_child(_mini_button("Transmute", func(): transmute_choice(index)))
+	if verbs.get_child_count() > 0:
+		card.add_child(verbs)
 	return card
 
 func _show_preview(index: int) -> void:

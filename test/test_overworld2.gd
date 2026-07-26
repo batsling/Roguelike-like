@@ -66,9 +66,30 @@ func test_bash_removes_a_choice_from_the_pool() -> void:
 	for c in _ui._choices:
 		assert_ne(c["slot"], bashed_id, "bashed game not re-offered")
 
-func test_bash_disabled_on_boss_round() -> void:
+func test_bash_allowed_on_boss_round_still_faces_a_boss() -> void:
+	# The boss is tied to the difficulty gate, not the game: you may bash the
+	# offered game, but whatever backfills the slot still spawns a boss.
 	GameState.games_played = RunDifficulty.GAMES_PER_TIER
 	GameState.bash = 1
 	_ui._build_choices()
+	var bashed_id: StringName = _ui._choices[0]["slot"]
 	_ui.bash_choice(0)
-	assert_eq(GameState.bash, 1, "bosses are unskippable — bash does nothing")
+	assert_eq(GameState.bash, 0, "bash is allowed on a boss round")
+	assert_true(GameLoop2.is_bashed(bashed_id), "the game was destroyed")
+	assert_true(_ui._boss_round, "still a boss round after bashing")
+	for c in _ui._choices:
+		assert_true(bool(c["boss"]), "every remaining choice still spawns a boss")
+
+func test_transmute_on_boss_round_still_faces_a_boss() -> void:
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER
+	GameState.transmute = 1
+	_ui._build_choices()
+	if _ui._choices.size() < 2:
+		pass_test("graph too sparse for an off-map transmute target")
+		return
+	var slot: StringName = _ui._choices[0]["slot"]
+	_ui.transmute_choice(0)
+	# The slot's game may have been swapped for an off-graph game...
+	for c in _ui._choices:
+		if c["slot"] == slot:
+			assert_true(bool(c["boss"]), "the transmuted game still spawns a boss")

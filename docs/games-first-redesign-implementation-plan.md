@@ -271,13 +271,18 @@ What it does, matching the owner's UX direction:
 - **Difficulty gate = boss round (§7.1).** When the games-played count crosses a
   `RunDifficulty.GAMES_PER_TIER` boundary, a **"⚠ BOSS INCOMING ⚠"** banner shows
   above the choices and every card spawns a **boss** (`roll_boss` at the new
-  tier). Bosses are **unskippable** — bash/transmute are disabled on a boss round
-  (locked default for §5 Q1: difficulty-gate bosses can't be escaped).
+  tier). The boss is tied to the **gate, not the game**: `_is_boss_round()` reads
+  only `games_played`, so bash/transmute (and a future teleport) can change *which*
+  game you play at the gate but you still face a boss — a bashed slot backfills
+  with another boss card, and a transmuted game rolls a boss too. (Owner call:
+  boss rounds are escapable-but-still-a-boss, superseding the earlier
+  "unskippable" default; resolves §5 Q1.)
 - **Limited offering + board verbs.** The offering is capped (`OFFER_COUNT = 5`,
   the amulet always kept when reachable) in a stable position-seeded order — Dash
   (§4) is the verb meant to bypass it (its UI is a later slice). **Bash** destroys
   a card's game out of the pool; **Transmute** swaps a card for an off-graph
-  same-type game via a per-position override map (keeping the graph slot).
+  same-type game via a per-position override map (keeping the graph slot). Both
+  are available on boss rounds too (see above).
 - **Self-report + resolve.** Choosing a game shows the honour-system report (Beat
   → Goal MET / NOT met) that drives `GameLoop2.beat_game`, advances
   `GameState.games_played`, banks drops as chests, and rebuilds the next offering.
