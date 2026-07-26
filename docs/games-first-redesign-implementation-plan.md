@@ -161,6 +161,37 @@ Files: `GoalEnemyData.gd` (new); `CharacterData.gd`/`ScrollData.gd`/`GameState.g
 the shared `Unidentified.png`; `test/test_redesign2.gd`. Item `Effect` and scroll
 `Effect` columns authored into `tools/Roguelikes.xlsx`.
 
+## 4b. Phase 2a — the loop resolution engine (shipped)
+
+The **headless core of the mechanics milestone** is implemented and landed (822
+GUT tests green, incl. 18 in `test/test_gameloop2.gd`). This is the no-combat
+replacement for the combat scenes, built scene-free/UI-free so it's unit-testable
+and can later be driven by both the overworld window and the OBS HUD.
+
+**`GameLoop2` autoload** (`scripts/autoload/GameLoop2.gd`) owns the **enemy stack
+state machine** on top of GameState's tiny resources:
+- `choose_game(enemy)` — the enemy spawns on choose (§7.2), returns an instance
+  handle so duplicate enemy types stay distinct.
+- `beat_game(goal_met, fulfilled)` — the core resolve: (1) old-goal fulfilments
+  defeat + drop, (2) already-stacked enemies attack (Block then Health), (3) the
+  current enemy defeats+drops or joins the stack. Step ordering **is** the
+  one-game grace — a freshly-stacked enemy can't hit the game it stacked.
+- `bomb(instance)` (normal-only, boss-immune, spends a bomb), `stun(instance)`
+  (skips the next attack), `fulfill(instance)`, `clear_amulet()` (win),
+  `roll_enemy(type, tier)` (type+tier filter with widening), and HUD helpers
+  (`stacked_damage_per_game`, `stack_size`). Signals: `loop_changed`,
+  `enemy_defeated`, `player_hit`, `run_lost`, `run_won`.
+
+Drops bank a chest via the existing `grant_chest`; the tier → chest-size mapping
+(§8.2) is left to the RewardScreen wiring in the overworld-integration pass.
+
+**Not yet built (the overworld-integration sub-phase, and it needs the open
+decisions below):** wiring GameLoop2 to the actual overworld graph + the Bash/
+Transmute/Dash/Scramble board verbs, the post-game verification modal as the
+self-report UI, the boss layer (spawn-on-difficulty-change + content), the OBS
+companion HUD, and the still-deferred ScrollSystem rewrite (bundled with the
+combat cut so it doesn't break the build).
+
 ## 5. Design questions still open (needed before the mechanics milestone)
 
 Not blocking Phase 1, but must be answered before the loop is built:

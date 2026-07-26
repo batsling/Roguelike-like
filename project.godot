@@ -29,6 +29,7 @@ DevTools="*res://scripts/autoload/DevTools.gd"
 EvolutionSystem="*res://scripts/autoload/EvolutionSystem.gd"
 PotionSystem="*res://scripts/autoload/PotionSystem.gd"
 ScrollSystem="*res://scripts/autoload/ScrollSystem.gd"
+GameLoop2="*res://scripts/autoload/GameLoop2.gd"
 
 [display]
 
