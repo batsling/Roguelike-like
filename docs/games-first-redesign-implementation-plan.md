@@ -231,6 +231,25 @@ methods the buttons call). Total suite: 838 GUT tests green.
 To run it, open `scenes/redesign2/PlaySession2.tscn` as the main scene in the
 editor (or set it as the run target). It is not yet wired into the main menu.
 
+## 4d. Bosses (shipped)
+
+The owner authored a `bosses2.0` sheet (12 bosses) and dropped art into
+`images2.0/bosses/`. Bosses use the **same `GoalEnemyData` resource** with a new
+`boss = true` flag, so the loop treats them uniformly (they stack, follow, drop,
+and are bomb-immune via `is_boss()`), while carrying the §7.1 boss traits: higher
+damage (3/5/7/9, above the 1–3 band), a tier gate that now reaches **Insane**
+(The Creator), and a new **Fetch** goal type (flows through as a free
+`goal_type`). Key refactor: `GoalEnemyData.Difficulty` became
+`LOW/MEDIUM/HIGH/INSANE` (matching `RunDifficulty.Tier`) and boss-ness moved to
+its own `boss` flag — tier and boss are now orthogonal.
+
+Pipeline: `generate_goal_enemy_tres.py` was made reusable and a thin
+`generate_boss_tres.py` emits `data/bosses2.0/*.tres` (art → `images2.0/bosses/`).
+`Data` loads them into a separate `_bosses` pool with `get_boss`/`all_bosses`;
+`GameLoop2.roll_boss`/`choose_boss` roll from it (reaching Insane), and
+`roll_enemy` is guaranteed boss-free. PlaySession2 shows a ☠ BOSS marker and a
+boss-spawn button. Total suite: 846 GUT tests green.
+
 ## 5. Design questions still open (needed before the mechanics milestone)
 
 Not blocking Phase 1, but must be answered before the loop is built:

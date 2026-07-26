@@ -53,6 +53,13 @@ func test_bomb_button_removes_first_follower() -> void:
 	assert_eq(GameLoop2.stack_size(), 0)
 	assert_eq(GameState.bombs, 0)
 
+func test_boss_button_spawns_a_boss() -> void:
+	_ui.pick_boss()
+	assert_true(GameLoop2.has_current())
+	assert_true(GameLoop2.current["enemy"].is_boss(), "the boss button spawns a boss")
+	_ui._refresh()
+	assert_string_contains(_ui._enemy.text, "BOSS")
+
 func test_hud_label_renders_current_state() -> void:
 	_ui.pick(&"deckbuilder")
 	_ui._refresh()

@@ -20,7 +20,8 @@ func _enemy(dmg: int, boss := false) -> GoalEnemyData:
 	e.display_name = "Synthetic"
 	e.damage = dmg
 	e.health = 1
-	e.difficulty = GoalEnemyData.Difficulty.BOSS if boss else GoalEnemyData.Difficulty.LOW
+	e.difficulty = GoalEnemyData.Difficulty.LOW
+	e.boss = boss
 	return e
 
 # --- choose / spawn -------------------------------------------------------
@@ -287,3 +288,51 @@ func test_roll_enemy_widens_when_type_absent() -> void:
 	var e: GoalEnemyData = GameLoop2.roll_enemy(&"traditional", GoalEnemyData.Difficulty.LOW)
 	assert_not_null(e)
 	assert_eq(e.tier_index(), 0)
+
+func test_roll_enemy_never_returns_a_boss() -> void:
+	# The normal-enemy pool must exclude bosses (they roll from a separate pool).
+	for i in range(20):
+		var e: GoalEnemyData = GameLoop2.roll_enemy(&"", i % 3)
+		assert_false(e.is_boss(), "%s is a boss and should not roll as a normal enemy" % e.id)
+
+# --- bosses (§7.1) --------------------------------------------------------
+
+func test_bosses_load_and_flag() -> void:
+	assert_eq(Data.all_bosses().size(), 12, "12 bosses2.0 rows -> 12 .tres")
+	for b in Data.all_bosses():
+		assert_true(b.is_boss(), "%s should be flagged boss" % b.id)
+
+func test_time_eater_boss_fields() -> void:
+	var b: GoalEnemyData = Data.get_boss(&"time_eater")
+	assert_not_null(b)
+	assert_true(b.is_boss())
+	assert_eq(String(b.game_type), "deckbuilder")
+	assert_eq(int(b.difficulty), int(GoalEnemyData.Difficulty.HIGH))
+	assert_eq(b.damage, 7, "bosses hit above the 1-3 band")
+	assert_eq(String(b.goal_type), "restriction")
+
+func test_the_creator_is_insane_tier() -> void:
+	var b: GoalEnemyData = Data.get_boss(&"the_creator")
+	assert_eq(int(b.difficulty), int(GoalEnemyData.Difficulty.INSANE))
+	assert_eq(b.tier_index(), 3)
+	assert_eq(b.damage, 9)
+
+func test_roll_boss_returns_a_boss() -> void:
+	var b: GoalEnemyData = GameLoop2.roll_boss(&"", GoalEnemyData.Difficulty.HIGH)
+	assert_not_null(b)
+	assert_true(b.is_boss())
+	assert_eq(b.tier_index(), 2)
+
+func test_roll_boss_reaches_insane_tier() -> void:
+	var b: GoalEnemyData = GameLoop2.roll_boss(&"strategy", GoalEnemyData.Difficulty.INSANE)
+	assert_not_null(b)
+	assert_eq(b.tier_index(), 3, "The Creator is the Insane-tier Strategy boss")
+
+func test_real_boss_is_bomb_immune() -> void:
+	GameState.bombs = 3
+	var b: GoalEnemyData = GameLoop2.roll_boss(&"", GoalEnemyData.Difficulty.HIGH)
+	var inst: int = GameLoop2.choose_game(b)
+	GameLoop2.beat_game(false)   # boss stacks
+	assert_false(GameLoop2.bomb(inst), "a real boss cannot be bombed")
+	assert_eq(GameState.bombs, 3, "the bomb is not spent on a boss")
+	assert_eq(GameLoop2.stack_size(), 1, "the boss stays on the stack")

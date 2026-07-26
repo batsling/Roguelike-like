@@ -99,8 +99,9 @@ func _enemy_text() -> String:
 	if not GameLoop2.has_current():
 		return "[i]No game chosen — pick a game type below to spawn its enemy.[/i]"
 	var e: GoalEnemyData = GameLoop2.current["enemy"]
-	return "[b]Now playing:[/b] %s  ([i]%s / %s / dmg %d[/i])\n[b]GOAL (%s):[/b] %s" % [
-		e.display_name, String(e.game_type).capitalize(),
+	var boss_tag: String = "  [color=#e0b020][b]☠ BOSS[/b][/color]" if e.is_boss() else ""
+	return "[b]Now playing:[/b] %s%s  ([i]%s / %s / dmg %d[/i])\n[b]GOAL (%s):[/b] %s" % [
+		e.display_name, boss_tag, String(e.game_type).capitalize(),
 		_tier_name(e), e.damage, String(e.goal_type).capitalize(), e.goal,
 	]
 
@@ -130,7 +131,14 @@ func _result_text(res: Dictionary) -> String:
 	return "[i]Last game: %s.[/i]" % ", ".join(parts)
 
 func _tier_name(e: GoalEnemyData) -> String:
-	return ["Low", "Medium", "High", "Boss"][clampi(int(e.difficulty), 0, 3)]
+	return ["Low", "Medium", "High", "Insane"][clampi(int(e.difficulty), 0, 3)]
+
+# Spawn a boss at the run's current tier (§7.1 bosses appear on a tier change).
+func pick_boss() -> void:
+	if GameLoop2.run_over or GameLoop2.has_current():
+		return
+	GameLoop2.choose_boss(&"", -1)
+	_refresh()
 
 func _on_run_lost() -> void:
 	_show_banner("💀  Run lost — Health reached 0.", Color(0.9, 0.3, 0.25))
@@ -196,6 +204,11 @@ func _build_ui() -> void:
 		b.pressed.connect(func(): pick(t))
 		pick_row.add_child(b)
 		_pick_buttons.append(b)
+	var boss_btn := Button.new()
+	boss_btn.text = "☠ Boss (tier change)"
+	boss_btn.pressed.connect(pick_boss)
+	pick_row.add_child(boss_btn)
+	_pick_buttons.append(boss_btn)
 	root.add_child(pick_row)
 
 	# Beat / result row.

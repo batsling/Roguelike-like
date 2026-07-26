@@ -27,11 +27,18 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 XLSX_PATH = os.environ.get(
     "CARDS_XLSX", os.path.join(PROJECT_ROOT, "tools", "Roguelikes.xlsx"))
+# Source sheet / output / art are module-level so the boss variant
+# (tools/generate_boss_tres.py) can reuse this whole generator by repointing them
+# and flipping IS_BOSS before calling main().
+SHEET_NAME = "enemies2.0"
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "enemies2.0")
 ENEMY_IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "enemies")
+IMG_RES_PREFIX = "res://images2.0/enemies/"
+UID_PREFIX = "goalenemy"
+IS_BOSS = False
 
-# GoalEnemyData.Difficulty enum order (LOW, MEDIUM, HIGH, BOSS).
-DIFFICULTY = {"low": 0, "medium": 1, "high": 2, "boss": 3}
+# GoalEnemyData.Difficulty enum order (LOW, MEDIUM, HIGH, INSANE).
+DIFFICULTY = {"low": 0, "medium": 1, "high": 2, "insane": 3}
 
 
 def slugify(name: str) -> str:
@@ -78,7 +85,7 @@ def enemy_tres(row) -> tuple:
     img_res = None
     stem = _enemy_image_map().get(file.lower())
     if stem is not None:
-        img_res = "res://images2.0/enemies/%s.png" % stem
+        img_res = "%s%s.png" % (IMG_RES_PREFIX, stem)
 
     ext = ['[ext_resource type="Script" '
            'path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]']
@@ -88,7 +95,7 @@ def enemy_tres(row) -> tuple:
     lines = []
     lines.append(
         '[gd_resource type="Resource" script_class="GoalEnemyData" '
-        'load_steps=%d format=3 uid="uid://goalenemy_%s"]' % (len(ext) + 1, eid))
+        'load_steps=%d format=3 uid="uid://%s_%s"]' % (len(ext) + 1, UID_PREFIX, eid))
     lines.append("")
     lines.extend(ext)
     lines.append("")
@@ -98,6 +105,8 @@ def enemy_tres(row) -> tuple:
     lines.append('display_name = "%s"' % gd_str(name))
     lines.append('game_type = &"%s"' % _clean(row.get("Type")).lower())
     lines.append("difficulty = %d" % DIFFICULTY.get(_clean(row.get("Difficulty")).lower(), 0))
+    if IS_BOSS:
+        lines.append("boss = true")
     lines.append('source_game = "%s"' % gd_str(_clean(row.get("Game"))))
     lines.append("health = %d" % _int(row.get("Health"), 1))
     lines.append("damage = %d" % _int(row.get("Damage"), 1))
@@ -131,7 +140,7 @@ def main():
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
-    for row in rows(wb["enemies2.0"]):
+    for row in rows(wb[SHEET_NAME]):
         eid, text = enemy_tres(row)
         if args.list:
             print("=== %s ===\n%s" % (eid, text))
@@ -140,7 +149,8 @@ def main():
             f.write(text)
         written.append(eid)
     if not args.list:
-        print("Wrote %d goal-enemy .tres to %s" % (len(written), OUT_DIR))
+        print("Wrote %d %s .tres to %s" % (
+            len(written), "boss" if IS_BOSS else "goal-enemy", OUT_DIR))
         for e in written:
             print("  -", e)
 

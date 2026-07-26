@@ -22,7 +22,8 @@ var _encounters: Dictionary = {}        # StringName -> EncounterData
 # 2.0 scrolls live in their own dict rather than repointing get_scroll.
 var _characters2: Dictionary = {}       # StringName -> CharacterData (2.0 roster)
 var _items2: Dictionary = {}            # StringName -> ItemData (2.0)
-var _goal_enemies: Dictionary = {}      # StringName -> GoalEnemyData
+var _goal_enemies: Dictionary = {}      # StringName -> GoalEnemyData (normal)
+var _bosses: Dictionary = {}            # StringName -> GoalEnemyData (boss=true)
 var _scrolls2: Dictionary = {}          # StringName -> ScrollData (2.0)
 
 # Single shared config resource mapping turn-based combat concepts to the
@@ -52,6 +53,7 @@ func _ready() -> void:
 	_load_dir("res://data/characters2.0/", _characters2)
 	_load_dir("res://data/items2.0/", _items2)
 	_load_dir("res://data/enemies2.0/", _goal_enemies)
+	_load_dir("res://data/bosses2.0/", _bosses)
 	_load_dir("res://data/scrolls2.0/", _scrolls2)
 	# Per-mode concept translators. Fall back to script defaults if the .tres is
 	# missing so combat never crashes for a missing tunable file.
@@ -66,8 +68,8 @@ func _ready() -> void:
 		_events.size(), _games.size(), _characters.size(), _potions.size()
 	])
 	print("[Data] Loaded %d scrolls, %d encounters" % [_scrolls.size(), _encounters.size()])
-	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d scrolls" % [
-		_characters2.size(), _items2.size(), _goal_enemies.size(), _scrolls2.size()
+	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls" % [
+		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(), _scrolls2.size()
 	])
 
 # Loads a single config .tres, returning null (with a warning) if missing or
@@ -223,6 +225,9 @@ func get_item2(id: StringName) -> ItemData:
 func get_goal_enemy(id: StringName) -> GoalEnemyData:
 	return _goal_enemies.get(id)
 
+func get_boss(id: StringName) -> GoalEnemyData:
+	return _bosses.get(id)
+
 func get_scroll2(id: StringName) -> ScrollData:
 	return _scrolls2.get(id)
 
@@ -234,6 +239,9 @@ func all_items2() -> Array:
 
 func all_goal_enemies() -> Array:
 	return _goal_enemies.values()
+
+func all_bosses() -> Array:
+	return _bosses.values()
 
 func all_scrolls2() -> Array:
 	return _scrolls2.values()

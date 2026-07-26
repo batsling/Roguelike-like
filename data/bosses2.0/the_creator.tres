@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://boss_the_creator"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/bosses/TheCreator.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"the_creator"
+display_name = "The Creator"
+game_type = &"strategy"
+difficulty = 3
+boss = true
+source_game = "Mewgenics"
+health = 1
+damage = 9
+goal_type = &"bounty"
+goal = "Kill God"
+tag = &"god"
+file = "TheCreator"
+image = ExtResource("2_img")

@@ -89,8 +89,12 @@ func roll_enemy(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 		return null
 	if tier < 0:
 		tier = mini(RunDifficulty.current_tier(), GoalEnemyData.Difficulty.HIGH)
-	var typ := StringName(String(game_type).to_lower())
+	return _pick_by_type_tier(pool, StringName(String(game_type).to_lower()), tier)
 
+# Picks one enemy from `pool` preferring an exact type+tier match, widening to
+# type-only, then tier-only, then anything — so a roll always returns something
+# while content is thin. Shared by roll_enemy + roll_boss.
+func _pick_by_type_tier(pool: Array, typ: StringName, tier: int) -> GoalEnemyData:
 	var by_type_tier: Array = []
 	var by_type: Array = []
 	var by_tier: Array = []
@@ -112,7 +116,7 @@ func roll_enemy(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 		bucket = by_tier
 	if bucket.is_empty():
 		bucket = pool
-	return bucket[randi() % bucket.size()]
+	return bucket[randi() % bucket.size()] if not bucket.is_empty() else null
 
 # Rolls an enemy for a game of `game_type` at `tier` and chooses it in one step
 # (the common overworld path: pick a game -> its enemy spawns). Returns the
@@ -122,6 +126,26 @@ func choose_game_of_type(game_type: StringName = &"", tier: int = -1) -> GoalEne
 	if enemy != null:
 		choose_game(enemy)
 	return enemy
+
+# Rolls a BOSS for a difficulty-tier change (§7.1). Bosses are a heavier, bomb-
+# immune pool that appears when the tier changes; unlike normal enemies they may
+# reach the Insane tier. Filters Data's boss pool by type + tier with the same
+# widening as roll_enemy. `tier` -1 = the run's current tier (up to Insane).
+# Returns null only when no bosses exist.
+func roll_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
+	var pool: Array = Data.all_bosses()
+	if pool.is_empty():
+		return null
+	if tier < 0:
+		tier = mini(RunDifficulty.current_tier(), GoalEnemyData.Difficulty.INSANE)
+	return _pick_by_type_tier(pool, StringName(String(game_type).to_lower()), tier)
+
+# Roll + choose a boss in one step (the overworld's tier-change entry point).
+func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
+	var boss: GoalEnemyData = roll_boss(game_type, tier)
+	if boss != null:
+		choose_game(boss)
+	return boss
 
 # Marks `enemy` as the enemy on the game the player just chose (it SPAWNS on
 # choose, §7.2). Returns its unique instance handle. A previously-current enemy

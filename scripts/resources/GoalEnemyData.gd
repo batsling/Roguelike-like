@@ -24,11 +24,16 @@ extends Resource
 # lowercased for stable matching against GameData's type.
 @export var game_type: StringName = &""
 
-# Tier gate — Low / Medium / High (mapped to the shared Difficulty enum so it
-# reuses the EnemySpawner tier logic). BOSS is reserved for the later boss layer
-# (§7.1); no boss content exists in enemies2.0 yet.
-enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
+# Tier gate — Low / Medium / High / Insane (mapped to the shared RunDifficulty
+# tiers so it reuses the tier logic). This is WHEN the enemy appears, separate
+# from whether it's a boss (see `boss` below) — bosses carry their own tier too.
+enum Difficulty { LOW, MEDIUM, HIGH, INSANE }
 @export var difficulty: Difficulty = Difficulty.LOW
+
+# True for bosses2.0 content — a heavier enemy that appears on a difficulty-tier
+# change (§7.1): more damage (above the 1-3 band), a tighter goal, and immune to
+# bombs (only its goal removes it). Normal goal-enemies leave this false.
+@export var boss: bool = false
 
 # The real roguelike this enemy references (the sheet's Game column, e.g.
 # "Slay the Spire", "Brotato"). Informational / flavour on the HUD.
@@ -61,19 +66,21 @@ enum Difficulty { LOW, MEDIUM, HIGH, BOSS }
 @export var file: String = ""
 @export var image: Texture2D
 
-# Shared 0-2 tier ordering (Low/Medium/High), for reward/spawn rolling parity
-# with the combat EnemyData.Difficulty ordering.
+# Shared 0-3 tier ordering (Low/Medium/High/Insane), matching RunDifficulty.Tier
+# so a game's tier and an enemy's tier compare directly.
 func tier_index() -> int:
 	match difficulty:
 		Difficulty.MEDIUM:
 			return 1
-		Difficulty.HIGH, Difficulty.BOSS:
+		Difficulty.HIGH:
 			return 2
+		Difficulty.INSANE:
+			return 3
 		_:
 			return 0
 
 func is_boss() -> bool:
-	return difficulty == Difficulty.BOSS
+	return boss
 
 # Art base name, falling back to the de-spaced display name when `file` is unset.
 func art_file() -> String:
