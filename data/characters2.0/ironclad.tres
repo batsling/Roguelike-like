@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3 uid="uid://char2_ironclad"]
+
+[ext_resource type="Script" path="res://scripts/resources/CharacterData.gd" id="1_char"]
+
+[resource]
+script = ExtResource("1_char")
+id = &"ironclad"
+display_name = "Ironclad"
+description = "The remaining soldier of the Ironclads. Sold his soul to harness demonic energies."
+source_game = "Slay the Spire"
+base_max_hp = 10
+start_bash = 0
+start_dash = 0
+start_transmute = 0
+start_scramble = 0
+start_bombs = 0
+start_keys = 0
+starting_items = Array[StringName]([&"burning_blood"])
+starting_weapon = &""
+level_up_condition = "Unlock a new difficulty"
+level_up_reward = "Gain +1 Small Chest"
+level_up_stats = {}
+level_up_reward_type = &"item"
+level_up_reward_amount = 1

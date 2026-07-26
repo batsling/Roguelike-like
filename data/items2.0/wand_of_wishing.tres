@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://item_wand_of_wishing"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"wand_of_wishing"
+display_name = "Wand of Wishing"
+kind = 6
+rarity = 4
+description = "Obtain any one item in the game"
+triggers = [{"on": "item_used", "effects": [{"type": "obtain_item", "pool": "any"}]}]
+stat_bonuses = {}
+charge_cost = 6
+starts_charged = true
+source_game = "NetHack"
+tags = PackedStringArray("wand")

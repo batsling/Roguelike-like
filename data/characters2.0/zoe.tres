@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3 uid="uid://char2_zoe"]
+
+[ext_resource type="Script" path="res://scripts/resources/CharacterData.gd" id="1_char"]
+
+[resource]
+script = ExtResource("1_char")
+id = &"zoe"
+display_name = "Zoe"
+description = "Express Delivery: Arrives with haste, before the world ends."
+source_game = "Haste"
+base_max_hp = 8
+start_bash = 0
+start_dash = 0
+start_transmute = 0
+start_scramble = 0
+start_bombs = 0
+start_keys = 0
+starting_items = Array[StringName]([])
+starting_weapon = &""
+level_up_condition = "Perfect a Game"
+level_up_reward = "Gain +1 Dash"
+level_up_stats = {
+"dash": 1
+}
+level_up_reward_type = &"none"
+level_up_reward_amount = 0

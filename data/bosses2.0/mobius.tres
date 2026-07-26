@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://boss_mobius"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/bosses/Mobius.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"mobius"
+display_name = "Mobius"
+game_type = &"strategy"
+difficulty = 0
+boss = true
+source_game = "Brutal Orchestra"
+health = 1
+damage = 3
+goal_type = &"fetch"
+goal = "Obtain a large fish"
+tag = &"fish"
+file = "Mobius"
+image = ExtResource("2_img")

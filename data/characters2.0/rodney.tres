@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3 uid="uid://char2_rodney"]
+
+[ext_resource type="Script" path="res://scripts/resources/CharacterData.gd" id="1_char"]
+
+[resource]
+script = ExtResource("1_char")
+id = &"rodney"
+display_name = "Rodney"
+description = "Now I abide here, searching endlessly for the precious Amulet... and finding a thousand horrors."
+source_game = "Rogue"
+base_max_hp = 5
+start_bash = 0
+start_dash = 0
+start_transmute = 0
+start_scramble = 0
+start_bombs = 0
+start_keys = 0
+starting_items = Array[StringName]([])
+starting_weapon = &""
+level_up_condition = "Beat a game without meta progression"
+level_up_reward = "Gain +1 Max Health, +1 Health, and +1 Scroll"
+level_up_stats = {
+"max_hp": 1
+}
+level_up_reward_type = &"scroll"
+level_up_reward_amount = 1

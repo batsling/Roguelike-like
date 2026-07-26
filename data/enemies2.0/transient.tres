@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://goalenemy_transient"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"transient"
+display_name = "Transient"
+game_type = &"deckbuilder"
+difficulty = 2
+source_game = "Slay the Spire"
+health = 1
+damage = 3
+goal_type = &"discovery"
+goal = "Witness an enemy kill itself"
+file = "Transient"

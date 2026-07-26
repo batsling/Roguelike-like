@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3 uid="uid://char2_isaac"]
+
+[ext_resource type="Script" path="res://scripts/resources/CharacterData.gd" id="1_char"]
+
+[resource]
+script = ExtResource("1_char")
+id = &"isaac"
+display_name = "Isaac"
+description = "Who am I?"
+source_game = "The Binding of Isaac"
+base_max_hp = 6
+start_bash = 0
+start_dash = 0
+start_transmute = 0
+start_scramble = 0
+start_bombs = 1
+start_keys = 0
+starting_items = Array[StringName]([&"d6"])
+starting_weapon = &""
+level_up_condition = "Unlock a new Item"
+level_up_reward = "Gain +1 Small Chest"
+level_up_stats = {}
+level_up_reward_type = &"item"
+level_up_reward_amount = 1

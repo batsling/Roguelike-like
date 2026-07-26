@@ -33,6 +33,19 @@ func _ready() -> void:
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
 	%ClearDataBtn.pressed.connect(_on_clear_data)
 
+	# Games-first (2.0) prototype entry point — a standalone playable harness for
+	# the no-combat redesign (docs/games-first-redesign.md), separate from the
+	# real combat run flow. Added in code so the menu scene stays untouched; it
+	# sits just under Start Run.
+	var proto_btn := Button.new()
+	proto_btn.text = "▶ Games-First Prototype"
+	proto_btn.pressed.connect(func():
+		get_tree().change_scene_to_file("res://scenes/redesign2/PlaySession2.tscn"))
+	var start_btn: Button = %StartRunBtn
+	if start_btn.get_parent() != null:
+		start_btn.get_parent().add_child(proto_btn)
+		start_btn.get_parent().move_child(proto_btn, start_btn.get_index() + 1)
+
 	_refresh_continue_button()
 	_save_list_container.visible = false
 

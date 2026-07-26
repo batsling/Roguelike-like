@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://item_unstable_genome"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"unstable_genome"
+display_name = "Unstable Genome"
+kind = 1
+rarity = 1
+description = "When you beat a game, there's a 33% chance for this item to be destroyed and you may gain 1 of 3 random items"
+triggers = [{"on": "game_beaten", "effects": [{"type": "chance", "percent": 33, "effect": {"type": "random_item_choice", "count": 3, "destroy_self": true}}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Caves of Qud"
+tags = PackedStringArray("mutation")

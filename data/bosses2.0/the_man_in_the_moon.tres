@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://boss_the_man_in_the_moon"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/bosses/TheManInTheMoon.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"the_man_in_the_moon"
+display_name = "The Man in the Moon"
+game_type = &"strategy"
+difficulty = 2
+boss = true
+source_game = "Mewgenics"
+health = 1
+damage = 7
+goal_type = &"discovery"
+goal = "Go to a Moon"
+file = "TheManInTheMoon"
+image = ExtResource("2_img")

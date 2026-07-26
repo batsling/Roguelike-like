@@ -34,6 +34,21 @@ extends Resource
 # Starting weapon id (or &"" for none)
 @export var starting_weapon: StringName = &""
 
+# === Games-first redesign (2.0) starting loadout ===
+# The no-combat rework (docs/games-first-redesign.md §3) gives each character a
+# tiny starting Health and a small pool of verb/consumable charges instead of a
+# combat stat block. Health/Max Health reuse GameState.hp / GameState.max_hp
+# (set from `base_max_hp` at run start), so no separate 2.0 health field is
+# needed — only the verbs are new. `dash` maps onto GameState.dash_charges;
+# the rest map onto same-named GameState fields (see GameState grant_run_stat).
+# All default 0, matching the current combat roster which never sets them.
+@export var start_bash: int = 0
+@export var start_dash: int = 0
+@export var start_transmute: int = 0
+@export var start_scramble: int = 0
+@export var start_bombs: int = 0
+@export var start_keys: int = 0
+
 # === Level-up mechanic ===
 # Each character levels up by meeting `level_up_condition` — an honour-system
 # Yes/No question shown on the post-game verification modal. On a level-up the

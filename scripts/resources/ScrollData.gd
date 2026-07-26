@@ -41,6 +41,28 @@ extends Resource
 #                   {"op": "forget", "kind": "scroll", "count": 2}   (count -1 = all)
 @export var outcomes: Dictionary = {}
 
+# === Games-first redesign (2.0) scroll model ===
+# The no-combat rework (docs/games-first-redesign.md §4.1) replaces the four-tier
+# INT-check model above with a single effect + a Preference (Positive / Negative
+# / Neutral) that colours whether reading a mystery scroll is a gamble. The
+# identification minigame (unidentified art + Preference gamble, learn-by-use,
+# Scroll of Identify, Amnesia re-hides) is unchanged and still lives on
+# ScrollSystem + GameState.identified_scroll_types.
+#
+# `effect` is a list of structured ops (each a Dictionary with an "op" plus
+# op-specific keys) applied by the 2.0 ScrollSystem — e.g.
+#   {"op": "buff_enemies", "damage": 1, "games": 1}   (Aggravate Monsters)
+#   {"op": "forget", "kind": "scroll", "count": 1}     (Amnesia)
+#   {"op": "spawn_enemy", "difficulty": "current"}     (Create Monster)
+#   {"op": "identify_scrolls", "mode": "choose", "count": 1}  (Identify)
+#   {"op": "stun_enemies", "mode": "choose", "count": 1}     (Scare Monster)
+#   {"op": "teleport", "dir": "same", "spread": 1}     (Teleportation)
+# These are populated by tools/generate_scroll_tres.py from the scrolls2.0 sheet
+# into data/scrolls2.0/*.tres. The four-tier `outcomes` above stays populated by
+# the legacy generator/data so the still-present combat scroll code keeps
+# working until the ScrollSystem rewrite + combat cut land together.
+@export var effect: Array = []
+
 const TIER_KEYS := ["crit_good", "good", "bad", "crit_bad"]
 
 # Shared 0-3 rarity ordering (Common/Uncommon/Rare/Legendary), matching PotionData.

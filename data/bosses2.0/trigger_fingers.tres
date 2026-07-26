@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://boss_trigger_fingers"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/bosses/TriggerFingers.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"trigger_fingers"
+display_name = "Trigger Fingers"
+game_type = &"strategy"
+difficulty = 0
+boss = true
+source_game = "Brutal Orchestra"
+health = 1
+damage = 3
+goal_type = &"bounty"
+goal = "Defeat a fascist"
+file = "TriggerFingers"
+image = ExtResource("2_img")
