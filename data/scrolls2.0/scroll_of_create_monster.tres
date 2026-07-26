@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ScrollData" load_steps=2 format=3 uid="uid://scroll2_scroll_of_create_monster"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollData.gd" id="1_scroll"]
+
+[resource]
+script = ExtResource("1_scroll")
+id = &"scroll_of_create_monster"
+display_name = "Scroll of Create Monster"
+reference = "Rogue"
+preference = "Negative"
+file = ""
+effect = [{"op": "spawn_enemy", "difficulty": "current"}]

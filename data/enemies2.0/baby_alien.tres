@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://goalenemy_baby_alien"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"baby_alien"
+display_name = "Baby Alien"
+game_type = &"action"
+difficulty = 0
+source_game = "Brotato"
+health = 1
+damage = 1
+goal_type = &"bounty"
+goal = "Defeat an enemy that is an alien"
+tag = &"alien"
+file = "BabyAlien"

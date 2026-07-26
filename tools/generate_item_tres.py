@@ -47,8 +47,14 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 XLSX_PATH = os.environ.get(
     "ITEMS_XLSX", os.path.join(PROJECT_ROOT, "tools", "Roguelikes.xlsx"))
+# Output / art paths and the source sheet are module-level so a variant importer
+# (tools/generate_item2_tres.py, the games-first 2.0 items) can reuse this whole
+# DSL by repointing these before calling the emit functions. The base run keeps
+# the legacy items sheet + data/items + images/items.
+SHEET_NAME = "items"
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "items")
 ITEM_IMG_DIR = os.path.join(PROJECT_ROOT, "images", "items")
+IMG_RES_PREFIX = "res://images/items/"
 
 # ItemData.ItemKind enum order.
 KIND = {"passive": 0, "triggered": 1, "incremental": 1, "usable": 2,
@@ -69,7 +75,16 @@ TRIGGER_SIGNALS = {
     "curse_removed": "curse_removed", "curse_card_removed": "curse_card_removed",
     "curse_applied": "curse_applied", "card_played": "card_played",
     "potion_used": "potion_used",
+    # Games-first redesign (2.0): "after beating a game" — the dominant 2.0 item
+    # trigger. The signal already exists on TriggerBus and is emitted by the
+    # Overworld; harmless for legacy items (none use it).
+    "game_beaten": "game_beaten",
 }
+# Triggers whose effects default to the player (self) rather than an enemy —
+# every out-of-combat / on-self hook. game_beaten is scene-less run-scope, so
+# its grants (gain_hp / gain_stat / …) target the player.
+SELF_DEFAULT_TRIGGERS = ("combat_started", "turn_started", "turn_ended",
+                         "item_acquired", "game_beaten")
 # Hooks that fire frequently enough to suppress the generic trigger log line.
 ALWAYS_SILENT = {"attack_landed", "attack_missed", "turn_tick", "damage_taken"}
 
@@ -302,6 +317,24 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
         amounts = [int(x) for x in re.findall(r"-?\d+", m2.group(1))] if m2 else []
         return {"type": "roll_gold", "amounts": amounts}
 
+    # Games-first redesign (2.0) inert-but-structured effects. Authored now so
+    # the items2.0 Effect column is complete, but they depend on systems not yet
+    # built (type-teleport / obtain-item / the item pool), so with no matching
+    # EffectSystem handler they safely no-op (push_warning) until those land
+    # (docs/games-first-redesign.md §8.1). Args are preserved for that day.
+    if verb == "teleport_type":
+        rest, _ = _kv(toks[1:])
+        return {"type": "teleport_type", "game_type": rest[0].lower() if rest else ""}
+    if verb == "obtain_item":
+        rest, _ = _kv(toks[1:])
+        return {"type": "obtain_item", "pool": rest[0].lower() if rest else "any"}
+    if verb == "random_item_choice":
+        rest, _ = _kv(toks[1:])
+        nums = [int(x) for x in rest if re.match(r"^\d+$", x)]
+        low = [t.lower() for t in rest]
+        return {"type": "random_item_choice", "count": nums[0] if nums else 3,
+                "destroy_self": "destroy_self" in low}
+
     if verb == "upgrade_random_cards":
         _, kv = _kv(toks[1:])
         return {"type": "upgrade_random_cards",
@@ -531,9 +564,9 @@ def parse_item(row):
         elif kl0 in TRIGGER_SIGNALS:
             on = TRIGGER_SIGNALS[kl0]
             gates = _gates(kl)
-            effects, boosts, addons = parse_payload(payload, default_target="self"
-                                                    if on in ("combat_started", "turn_started", "turn_ended", "item_acquired")
-                                                    else "enemy")
+            effects, boosts, addons = parse_payload(
+                payload,
+                default_target="self" if on in SELF_DEFAULT_TRIGGERS else "enemy")
             _apply_labels(effects, label)
             trig = {"on": on}
             trig.update(gates)
@@ -785,7 +818,7 @@ def item_tres(row):
     for cand in (img_file, img_name):
         stem = img_map.get(cand.lower())
         if stem is not None:
-            img_res = "res://images/items/%s.png" % stem
+            img_res = "%s%s.png" % (IMG_RES_PREFIX, stem)
             break
 
     lines = []
@@ -874,7 +907,8 @@ def main():
     args = ap.parse_args()
 
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
-    sheet = wb["items"]
+    sheet = wb[SHEET_NAME]
+    os.makedirs(OUT_DIR, exist_ok=True)
     existing = {f[:-5] for f in os.listdir(OUT_DIR) if f.endswith(".tres")}
 
     written = []

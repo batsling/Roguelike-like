@@ -330,6 +330,20 @@ var reroll_charges: int = 0
 var fov_bonus: int = 0
 var discovery: int = 0
 
+# === Games-first redesign (2.0) run-scope resources ===
+# The no-combat rework's board-manipulation verbs + consumables (§4) and the
+# carry-over Block (§3), all rendered as small ints on the OBS HUD (§9). In a
+# 2.0 run, Health / Max Health reuse hp / max_hp (set from the character's
+# base_max_hp at run start) and Dash reuses dash_charges above; only these are
+# new. Granted via CharacterData start_* loadout, item effects (gain_stat),
+# and level-up rewards. All default 0, so combat runs are unaffected.
+var block: int = 0        # temporary health; absorbed before hp, carries between games, no cap
+var bash: int = 0
+var transmute: int = 0
+var scramble: int = 0
+var bombs: int = 0
+var keys: int = 0
+
 # === Curses / status ===
 var active_curses: Array = []            # Array[Dictionary] for now
 var pending_combat_statuses: Array = []  # carryover from events
@@ -416,6 +430,13 @@ func _on_combat_ended_tally(ctx: Dictionary) -> void:
 
 func _on_game_beaten(_ctx: Dictionary) -> void:
 	_tick_card_lifecycles()
+	# Games-first redesign (2.0): "after beating a game" is the dominant item
+	# trigger (Anchor +1 Block, Burning Blood +1 Health, Meat on the Bone,
+	# docs/games-first-redesign.md §8). game_beaten fires outside any combat
+	# scene, so route owned items' game_beaten triggers through the scene-less
+	# runner — only scene-free effects (gain_hp / gain_max_hp / gain_chest /
+	# gain_stat) are valid here, which is exactly what the 2.0 items use.
+	fire_run_item_triggers("game_beaten", _ctx)
 
 func _on_curse_applied(ctx: Dictionary) -> void:
 	fire_run_item_triggers("curse_applied", ctx)
@@ -711,6 +732,13 @@ func reset_run() -> void:
 	reroll_charges = 0
 	fov_bonus = 0
 	discovery = 0
+	# Games-first (2.0) resources.
+	block = 0
+	bash = 0
+	transmute = 0
+	scramble = 0
+	bombs = 0
+	keys = 0
 	regeneration = 0
 	stat_high_water.clear()
 	stat_floor_active = false
@@ -1098,6 +1126,14 @@ const _LEVEL_UP_ABILITY_FIELDS := {
 	"reroll": "reroll_charges",
 	"fov": "fov_bonus",
 	"discovery": "discovery",
+	# Games-first (2.0) verbs — map onto same-named GameState fields so both the
+	# level-up reward path (apply_level_up_stats) and item grants (grant_run_stat)
+	# route "+1 Transmute" etc. correctly (docs/games-first-redesign.md §3.1/§4).
+	"bash": "bash",
+	"transmute": "transmute",
+	"scramble": "scramble",
+	"bombs": "bombs",
+	"keys": "keys",
 }
 # Stats eligible for the "random" allocation bucket.
 const _LEVEL_UP_RANDOM_POOL := ["strength", "dexterity", "intelligence", "charisma"]

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://goalenemy_spike_slime_l"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"spike_slime_l"
+display_name = "Spike Slime (L)"
+game_type = &"deckbuilder"
+difficulty = 0
+source_game = "Slay the Spire"
+health = 1
+damage = 1
+goal_type = &"bounty"
+goal = "Defeat an enemy that splits into another enemy"
+tag = &"slime"
+file = "SpikeSlime(L)"

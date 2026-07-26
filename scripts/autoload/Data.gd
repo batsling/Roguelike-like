@@ -15,6 +15,16 @@ var _potions: Dictionary = {}           # StringName -> PotionData
 var _scrolls: Dictionary = {}           # StringName -> ScrollData
 var _encounters: Dictionary = {}        # StringName -> EncounterData
 
+# === Games-first redesign (2.0) content ===
+# Loaded from the parallel data/*2.0/ folders (docs/games-first-redesign.md §10)
+# into separate dictionaries so the still-present combat content is untouched
+# until the archive cut. Scrolls reuse ScrollData (extended, not forked), so the
+# 2.0 scrolls live in their own dict rather than repointing get_scroll.
+var _characters2: Dictionary = {}       # StringName -> CharacterData (2.0 roster)
+var _items2: Dictionary = {}            # StringName -> ItemData (2.0)
+var _goal_enemies: Dictionary = {}      # StringName -> GoalEnemyData
+var _scrolls2: Dictionary = {}          # StringName -> ScrollData (2.0)
+
 # Single shared config resource mapping turn-based combat concepts to the
 # Action mode's equivalents (turns->rooms, energy->Haste, draw->auto-slots).
 # Edit data/action_translation.tres to retune; reference via
@@ -38,6 +48,11 @@ func _ready() -> void:
 	_load_dir("res://data/potions/", _potions)
 	_load_dir("res://data/scrolls/", _scrolls)
 	_load_dir("res://data/encounters/", _encounters)
+	# Games-first redesign (2.0) content — parallel folders, separate dicts.
+	_load_dir("res://data/characters2.0/", _characters2)
+	_load_dir("res://data/items2.0/", _items2)
+	_load_dir("res://data/enemies2.0/", _goal_enemies)
+	_load_dir("res://data/scrolls2.0/", _scrolls2)
 	# Per-mode concept translators. Fall back to script defaults if the .tres is
 	# missing so combat never crashes for a missing tunable file.
 	action_translation = (_load_config("res://data/action_translation.tres") as ActionTranslation)
@@ -51,6 +66,9 @@ func _ready() -> void:
 		_events.size(), _games.size(), _characters.size(), _potions.size()
 	])
 	print("[Data] Loaded %d scrolls, %d encounters" % [_scrolls.size(), _encounters.size()])
+	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d scrolls" % [
+		_characters2.size(), _items2.size(), _goal_enemies.size(), _scrolls2.size()
+	])
 
 # Loads a single config .tres, returning null (with a warning) if missing or
 # malformed; callers supply a typed default.
@@ -194,6 +212,31 @@ func get_game(id: StringName) -> GameData:
 
 func get_character(id: StringName) -> CharacterData:
 	return _characters.get(id)
+
+# === Games-first redesign (2.0) lookups ===
+func get_character2(id: StringName) -> CharacterData:
+	return _characters2.get(id)
+
+func get_item2(id: StringName) -> ItemData:
+	return _items2.get(id)
+
+func get_goal_enemy(id: StringName) -> GoalEnemyData:
+	return _goal_enemies.get(id)
+
+func get_scroll2(id: StringName) -> ScrollData:
+	return _scrolls2.get(id)
+
+func all_characters2() -> Array:
+	return _characters2.values()
+
+func all_items2() -> Array:
+	return _items2.values()
+
+func all_goal_enemies() -> Array:
+	return _goal_enemies.values()
+
+func all_scrolls2() -> Array:
+	return _scrolls2.values()
 
 # Bulk access (e.g. for pools / shop offers)
 func all_cards() -> Array:

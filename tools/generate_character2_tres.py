@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+"""
+Generate Godot CharacterData .tres for the games-first redesign (2.0) roster,
+from the `characters2.0` sheet of tools/Roguelikes.xlsx into data/characters2.0/.
+
+The 2.0 roster reuses the existing CharacterData resource (extended in place with
+the small start_* verb fields) and the project's level-up mechanic
+(docs/games-first-redesign.md §3.1). The columns left of `Level Up` are the
+character's STARTING loadout; `Level Up` is the per-game honour-system challenge
+and `Reward` is what meeting it grants (parsed into level_up_stats +
+level_up_reward_type here).
+
+  characters2.0: Name | Game | Health | Bash | Dash | Transmute | Scramble |
+                 Bombs | Keys | Level Up | Reward | Description | Starting items
+
+Health -> base_max_hp (a 2.0 run's tiny Health/Max Health reuse hp/max_hp).
+Bash/Dash/Transmute/Scramble/Bombs/Keys -> start_* fields.
+Reward -> level_up_stats (verb / max_hp gains) + level_up_reward_type
+          (Small Chest -> item; Scroll -> scroll).
+Starting items -> slugged item ids (resolved against data/items2.0/).
+
+Art resolves by Name from images2.0/characters/ (the sheet has no File column,
+§10.1); missing art just leaves the portrait unset (placeholder later).
+
+  python3 tools/generate_character2_tres.py            # regenerate the 2.0 roster
+  python3 tools/generate_character2_tres.py --list      # print, write nothing
+"""
+
+import argparse
+import os
+import re
+
+import openpyxl
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+XLSX_PATH = os.environ.get(
+    "CARDS_XLSX", os.path.join(PROJECT_ROOT, "tools", "Roguelikes.xlsx"))
+OUT_DIR = os.path.join(PROJECT_ROOT, "data", "characters2.0")
+CHAR_IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "characters")
+
+# start_* verb columns on the sheet -> CharacterData field suffix.
+START_VERBS = ["Bash", "Dash", "Transmute", "Scramble", "Bombs", "Keys"]
+# Verbs the level-up Reward may grant, mapped to their GameState/level-up stat key.
+REWARD_VERBS = {
+    "dash": "dash", "bash": "bash", "transmute": "transmute",
+    "scramble": "scramble", "bombs": "bombs", "keys": "keys",
+}
+
+
+def slugify(name: str) -> str:
+    s = str(name).strip().lower().replace("'", "")
+    s = re.sub(r"[^a-z0-9]+", "_", s)
+    return s.strip("_")
+
+
+def gd_str(s) -> str:
+    s = "" if s is None else str(s)
+    return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ").replace("\r", " ")
+
+
+def _int(v, default=0):
+    try:
+        return int(float(v))
+    except (TypeError, ValueError):
+        return default
+
+
+def _find_amt(s, label):
+    """First '+N <label>' amount in the reward string (0 if absent)."""
+    m = re.search(r"\+\s*(\d+)\s+" + label, s, re.I)
+    return int(m.group(1)) if m else 0
+
+
+def parse_reward(raw):
+    """characters2.0 Reward -> (level_up_stats, reward_type, reward_amount).
+
+    Max Health / verb gains go into level_up_stats (applied by
+    GameState.apply_level_up_stats — max_hp both raises the cap and heals). A
+    Small Chest -> the &"item" reward flow; a Scroll -> a &"scroll" reward. A
+    character whose whole reward is a stat gain has reward_type &"none".
+    """
+    s = ("" if raw is None else str(raw)).strip()
+    stats = {}
+    max_hp = _find_amt(s, r"Max Health")
+    if max_hp:
+        stats["max_hp"] = max_hp
+    for verb, key in REWARD_VERBS.items():
+        n = _find_amt(s, verb + r"\b")
+        if n:
+            stats[key] = n
+    chest = _find_amt(s, r"Small Chest") or _find_amt(s, r"Chest")
+    scroll = _find_amt(s, r"Scroll")
+    if chest:
+        return stats, "item", chest
+    if scroll:
+        return stats, "scroll", scroll
+    return stats, "none", 0
+
+
+def string_name_array(ids) -> str:
+    inner = ", ".join('&"%s"' % gd_str(i) for i in ids)
+    return "Array[StringName]([%s])" % inner
+
+
+def character_tres(row) -> tuple:
+    name = str(row["Name"]).strip()
+    cid = slugify(name)
+
+    items_raw = ("" if row.get("Starting items") is None
+                 else str(row.get("Starting items"))).strip()
+    items = ([] if not items_raw or items_raw.upper() == "N/A"
+             else [slugify(t) for t in items_raw.split(",") if t.strip()])
+
+    level_up_stats, reward_type, reward_amount = parse_reward(row.get("Reward"))
+
+    portrait = None
+    if os.path.exists(os.path.join(CHAR_IMG_DIR, name + ".png")):
+        portrait = "res://images2.0/characters/%s.png" % name
+
+    ext = ['[ext_resource type="Script" '
+           'path="res://scripts/resources/CharacterData.gd" id="1_char"]']
+    if portrait:
+        ext.append('[ext_resource type="Texture2D" path="%s" id="2_portrait"]' % portrait)
+
+    lines = []
+    lines.append(
+        '[gd_resource type="Resource" script_class="CharacterData" '
+        'load_steps=%d format=3 uid="uid://char2_%s"]' % (len(ext) + 1, cid))
+    lines.append("")
+    lines.extend(ext)
+    lines.append("")
+    lines.append("[resource]")
+    lines.append('script = ExtResource("1_char")')
+    lines.append('id = &"%s"' % cid)
+    lines.append('display_name = "%s"' % gd_str(name))
+    lines.append('description = "%s"' % gd_str(row.get("Description")))
+    lines.append('source_game = "%s"' % gd_str(row.get("Game")))
+    # Health / Max Health reuse hp / max_hp; the 2.0 Health column is both.
+    lines.append("base_max_hp = %d" % _int(row.get("Health"), 5))
+    # Games-first starting verb loadout.
+    lines.append("start_bash = %d" % _int(row.get("Bash")))
+    lines.append("start_dash = %d" % _int(row.get("Dash")))
+    lines.append("start_transmute = %d" % _int(row.get("Transmute")))
+    lines.append("start_scramble = %d" % _int(row.get("Scramble")))
+    lines.append("start_bombs = %d" % _int(row.get("Bombs")))
+    lines.append("start_keys = %d" % _int(row.get("Keys")))
+    lines.append("starting_items = %s" % string_name_array(items))
+    lines.append('starting_weapon = &""')
+    lines.append('level_up_condition = "%s"' % gd_str(row.get("Level Up")))
+    lines.append('level_up_reward = "%s"' % gd_str(row.get("Reward")))
+    stat_lines = ",\n".join('"%s": %d' % (k, level_up_stats[k])
+                            for k in sorted(level_up_stats))
+    if stat_lines:
+        lines.append("level_up_stats = {\n%s\n}" % stat_lines)
+    else:
+        lines.append("level_up_stats = {}")
+    lines.append('level_up_reward_type = &"%s"' % reward_type)
+    lines.append("level_up_reward_amount = %d" % reward_amount)
+    if portrait:
+        lines.append('portrait = ExtResource("2_portrait")')
+    return cid, "\n".join(lines) + "\n"
+
+
+def rows(sheet):
+    headers = [str(c.value).strip() if c.value is not None else "" for c in sheet[1]]
+    for r in sheet.iter_rows(min_row=2, values_only=True):
+        if not r or r[0] is None:
+            continue
+        yield dict(zip(headers, r))
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--list", action="store_true", help="print, do not write")
+    args = ap.parse_args()
+
+    wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
+    os.makedirs(OUT_DIR, exist_ok=True)
+    written = []
+    for row in rows(wb["characters2.0"]):
+        cid, text = character_tres(row)
+        if args.list:
+            print("=== %s ===\n%s" % (cid, text))
+            continue
+        with open(os.path.join(OUT_DIR, cid + ".tres"), "w", encoding="utf-8") as f:
+            f.write(text)
+        written.append(cid)
+    if not args.list:
+        print("Wrote %d character2.0 .tres to %s" % (len(written), OUT_DIR))
+        for c in written:
+            print("  -", c)
+
+
+if __name__ == "__main__":
+    main()

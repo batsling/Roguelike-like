@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3 uid="uid://char2_min"]
+
+[ext_resource type="Script" path="res://scripts/resources/CharacterData.gd" id="1_char"]
+
+[resource]
+script = ExtResource("1_char")
+id = &"min"
+display_name = "Minä"
+description = "Why must you go destroying everything? Why? For glory? For your precious god of gods. Is it really worth all this? Is it? Is it really?"
+source_game = "Noita"
+base_max_hp = 8
+start_bash = 0
+start_dash = 0
+start_transmute = 1
+start_scramble = 0
+start_bombs = 0
+start_keys = 0
+starting_items = Array[StringName]([])
+starting_weapon = &""
+level_up_condition = "Craft or combine a spell or weapon"
+level_up_reward = "Gain +1 Transmute"
+level_up_stats = {
+"transmute": 1
+}
+level_up_reward_type = &"none"
+level_up_reward_amount = 0

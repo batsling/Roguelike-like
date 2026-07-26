@@ -126,6 +126,41 @@ board mechanics, Bomb/Key application, the boss layer, and the **OBS companion H
 
 ---
 
+## 4a. Phase 1 — what actually shipped (and deviations)
+
+Phase 1 is **implemented and landed** (all 804 GUT tests green, including 25 new
+data-foundation tests in `test/test_redesign2.gd`). Three scope refinements were
+forced by what the codebase actually looked like:
+
+1. **ScrollSystem rewrite deferred; ScrollData extended additively.** The
+   existing `ScrollSystem`/`ScrollData` API is consumed all over the *deferred*
+   combat code (`ActionCombat`, `DeckbuilderCombat`, `ScrollUseModal`, `Backpack`,
+   `Overworld`, and `Data`'s reward roller via `rarity_index()`). Rewriting them
+   in place *now* would break the build, violating decision #2 (nothing breaks).
+   So `ScrollData` gained the 2.0 fields (`effect` list + the existing
+   `preference`) **additively** (old 4-tier API intact), a **new**
+   `generate_scroll2_tres.py` emits `data/scrolls2.0/`, and the actual
+   ScrollSystem rewrite (+ removing the old fields) moves to the mechanics
+   milestone, done together with updating/cutting its combat consumers.
+2. **`game_beaten` needed no new signal or trigger.** It already exists on
+   `TriggerBus` **and is emitted** (`Overworld.gd:1021`). The only wiring needed
+   was one line in `GameState._on_game_beaten` routing owned items through the
+   pre-existing scene-less `fire_run_item_triggers()` — Anchor/Burning Blood/
+   Meat-on-the-Bone now fire out of combat with no new machinery.
+3. **2.0 Health/Max Health reuse `hp`/`max_hp`** (set from the character's
+   `base_max_hp`), so `gain_hp`/`gain_max_hp`/Meat-on-the-Bone's if_hp/the
+   level-up `max_hp` path all work unchanged. Only **Block** and the five verbs
+   (bash/transmute/scramble/bombs/keys) are genuinely new GameState fields; Dash
+   reuses `dash_charges`. Item verb/block grants route through the existing
+   `gain_stat` → `grant_run_stat` path (its stat vocabulary was extended).
+
+Files: `GoalEnemyData.gd` (new); `CharacterData.gd`/`ScrollData.gd`/`GameState.gd`/
+`Data.gd` (extended); `generate_item_tres.py` (refactored to be reusable + add
+`game_beaten`); `generate_{character2,goal_enemy,item2,scroll2}_tres.py` (new);
+`data/{characters,items,enemies,scrolls}2.0/` (generated); `images2.0/` tree with
+the shared `Unidentified.png`; `test/test_redesign2.gd`. Item `Effect` and scroll
+`Effect` columns authored into `tools/Roguelikes.xlsx`.
+
 ## 5. Design questions still open (needed before the mechanics milestone)
 
 Not blocking Phase 1, but must be answered before the loop is built:
