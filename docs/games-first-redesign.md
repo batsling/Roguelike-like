@@ -151,6 +151,21 @@ This introduces two new enemy-state mechanics: **Stun** (Scare Monster) and
 attack** — it pushes the enemy's attack one game later in the timing model (§7.2),
 buying the player another game to solve it.
 
+**Identification (reuse `PotionSystem`'s pattern via a new `ScrollSystem`).** The
+project already ships full consumable identification — `PotionSystem.is_identified
+/ identify / display_name / art_texture` with a mystery-art fallback, plus an
+existing `images/scrolls/Unidentified.png`. Scrolls get the identical treatment:
+
+- A scroll type starts **unidentified**: it shows the generic **Unidentified**
+  art and a masked name, and reading it is the Preference gamble.
+- It becomes **identified** by reading one (learn-by-use) or via **Scroll of
+  Identify**; from then on that type shows its real name and art. **Amnesia** can
+  re-hide (`unidentify`) a known scroll.
+- **The `File` column is the identified art** — it resolves to
+  `images2.0/scrolls/<File>.png` (§10.1). Unidentified always falls back to the
+  shared Unidentified art, so a scroll only reveals its `File` art once learned.
+  *(Scrolls with a blank `File` still need art authored.)*
+
 *(The old **Fog** scroll and **Keys** are both **deferred — author later**; they
 stay in the design but no `2.0` content exists for them yet.)*
 
@@ -369,6 +384,30 @@ Resource schema in `scripts/resources/`.
   via `import-games-godot.py`.
 - **curses** — **shelved** (§5). **bingo** — **retired**; legacy not ported.
 
+### 10.1 Art / image folders (`images2.0/`)
+
+Reshaping the project creates a **new `images2.0/` drop folder** (parallel to the
+existing `images/`, which stays for legacy/combat art), with one subfolder per
+2.0 content type:
+
+```
+images2.0/
+├── characters/
+├── items/
+├── enemies/
+└── scrolls/
+```
+
+- Art resolves from each sheet's **`File` column** →
+  `res://images2.0/<category>/<File>.png` (PascalCase, matching the current
+  convention). `items2.0`, `enemies2.0`, and `scrolls2.0` all carry a `File`
+  column; **`characters2.0` has none**, so character art resolves by **`Name`**
+  (as characters do today).
+- **Scrolls:** `File` is the *identified* art; unidentified scrolls fall back to a
+  shared `Unidentified.png` under `images2.0/scrolls/` (§4.1).
+- The generators point their art lookups at `images2.0/<category>/` instead of the
+  old `images/<category>/`.
+
 ---
 
 ## 11. Codebase impact
@@ -391,10 +430,12 @@ hook.
 
 **Add:** the tiny health/**max-health**/block model; the **bash / dash /
 transmute / scramble** + keys/bombs resource layer; the **Level Up** loop (§3.1);
-scroll **identification** + **Stun** (§4.1); item **behavior-class** dispatch
-(Pickup / Triggered / Charged / Usable / Passive, §8); generators + Resource
-schemas for the four `*2.0` sheets; the OBS companion HUD scene; the play-session
-resolver (accept game → report result → resolve drop/damage/level-up).
+a **`ScrollSystem`** mirroring `PotionSystem` for identification + **Stun** (§4.1);
+item **behavior-class** dispatch (Pickup / Triggered / Charged / Usable / Passive,
+§8); the **`images2.0/`** folder tree + generator art-path repoint (§10.1);
+generators + Resource schemas for the four `*2.0` sheets; the OBS companion HUD
+scene; the play-session resolver (accept game → report result → resolve
+drop/damage/level-up).
 
 **Cut (behind an archive git tag, like `strategy-grid-combat-archive`):**
 `scenes/deckbuilder/`, `scenes/action/`, `scripts/deckbuilder/`, `scripts/action/`,
@@ -410,9 +451,7 @@ Still open:
 1. **Boss escapes** — are scramble/bash allowed on a boss node, or fully
    unskippable? Plus boss damage value. (§7.1)
 2. **OBS HUD** — deferred: architecture + layout once mechanics lock. (§9)
-3. **Scroll identification stakes** — do unidentified scrolls read blind (Preference
-   is the gamble)? What does Amnesia forgetting an *identified* scroll cost? (§4.1)
-4. **Enemy `Ability`** — column exists but all `N/A`; reserved for later specials? (§7)
+3. **Enemy `Ability`** — column exists but all `N/A`; reserved for later specials? (§7)
 
 Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
 
@@ -428,6 +467,11 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   *next* game is beaten, giving an "extra step" to solve it (§7.2).
 - **Item Effect DSL = the existing `ItemData.triggers`/`EffectSystem` grammar**;
   add a `game_beaten` trigger (§8.1).
+- **Scroll identification reuses `PotionSystem`** (new `ScrollSystem`): scrolls
+  read blind (Preference is the gamble), learn-by-use or via Scroll of Identify,
+  Amnesia re-hides. The **`File` column is the identified art** (§4.1).
+- **New `images2.0/{characters,items,enemies,scrolls}/` folder**; art resolves via
+  each sheet's `File` column (characters by `Name`) (§10.1).
 - **Bash** destroys a game out of the pool; **Transmute** turns a game into an
   unconnected same-type game (§4).
 - **Normal enemies have Health 1** → one bomb removes one; bosses bomb-immune
