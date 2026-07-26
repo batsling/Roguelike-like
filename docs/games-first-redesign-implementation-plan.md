@@ -214,6 +214,23 @@ content), the OBS companion HUD, and the still-deferred ScrollSystem rewrite
 The headless core is now complete: **a full run is playable through
 `GameLoop2` + `GameState` with zero UI**, covered by 833 GUT tests.
 
+## 4c. PlaySession2 — a playable harness (shipped)
+
+`scenes/redesign2/PlaySession2.tscn` (+ `scripts/redesign2/PlaySession2.gd`) is a
+minimal, **combat-safe, additive** play harness that drives `GameLoop2` from
+buttons: pick a game type (spawns its goal-enemy at the run's tier), report the
+result (Goal MET / NOT met), and use the verbs (Scramble / Bomb / Stun) — with a
+live readout of Health/Block, the verb counts, the current enemy + its goal, and
+the following-enemy stack. It does not touch the overworld graph or combat
+scenes. It is both a way to play/validate the loop today **and the seed of the
+real overworld panel + the OBS companion HUD** (§9): the whole UI just reads
+`GameLoop2` + `GameState` and refreshes on `loop_changed`. Built in code and
+covered by `test/test_playsession2.gd` (drives a run through the same public
+methods the buttons call). Total suite: 838 GUT tests green.
+
+To run it, open `scenes/redesign2/PlaySession2.tscn` as the main scene in the
+editor (or set it as the run target). It is not yet wired into the main menu.
+
 ## 5. Design questions still open (needed before the mechanics milestone)
 
 Not blocking Phase 1, but must be answered before the loop is built:
