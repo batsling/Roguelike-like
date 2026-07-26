@@ -48,9 +48,14 @@ Kept deliberately tiny for HUD readability.
 
 | Stat | Range (starting → cap) | Notes |
 |---|---|---|
-| Health | **10** | Lose at 0. |
+| Health | **10** (baseline) | Lose at 0. |
 | Block  | 0, **no cap** | **Carries over between games — it is temporary health**, absorbed before `health` on any hit. |
 | Enemy attack | 1–3 | Dealt by each stacked enemy after **every** game played, until its goal is fulfilled. |
+
+**Starting loadout depends on the chosen character.** 10 health is the baseline,
+but each `CharacterData` sets its own starting health and starting
+verb/consumable counts (bash/dash/scramble, keys, bombs, scrolls) — the character
+select is where the run's starting values come from.
 
 Block sources: completing a goal, certain tag routes, spending a scroll, or item
 drops of the `block` category. The central tension is *earn block by beating
@@ -67,7 +72,7 @@ integer counts on the HUD.
 | Verb | Effect |
 |---|---|
 | **Bash** | Destroy a game node and replace it with a random new one. |
-| **Dash** | Skip a game entirely (move past, no play, no drop). |
+| **Dash** | **As in the current project: a total select, not a skip** — pick *any* connected game and move to it (bypassing the normal limited offering). Costs 1 dash charge. See `Overworld._try_dash`. |
 | **Scramble** | Reroll the current game's enemy/goal (and/or the offering). |
 
 ### Consumables
@@ -137,9 +142,19 @@ Proposed `EnemyData` (repurposed / new `GoalData`) fields:
 | `drop` | the guaranteed item id (or drop-pool ref) — see §8 |
 | art | enemy sprite for the HUD |
 
----
+### 7.1 Bosses
 
-## 8. Item drops — the whole reward economy
+**Bosses appear when the run's difficulty tier changes** (the existing
+`RunDifficulty` transitions). A boss is a heavier enemy that:
+
+- carries a **more specific goal** (tighter than a normal enemy's — e.g. "beat the
+  *true* ending," "clear it deathless" rather than just "beat a boss"),
+- **deals more damage** than a normal stacked enemy (above the 1–3 band),
+- and (naturally) drops a better item.
+
+Otherwise a boss follows the same rules: fulfill its goal to defeat it, or it
+stacks and hits you after every game until you do. **[OPEN]** exact boss attack
+value and whether a boss can be bashed/bombed/dashed past like a normal enemy.
 
 **Every enemy drops exactly one item.** The drop table *is* the reward economy.
 Each item belongs to one **category**, and the categories are exactly the
@@ -219,15 +234,20 @@ cards/statuses, potions-as-combat-items (repurpose or cut).
 
 ## 12. Open decisions (rolled up)
 
-1. **Starting verb/consumable counts** — how many bash/dash/scramble charges,
-   keys, bombs, and scrolls the player begins a run with. (§3/§4)
-2. **OBS HUD** — *deferred by decision*: architecture (Godot `Window` vs.
+1. **Per-character starting values** — the actual health + verb/consumable counts
+   for each `CharacterData` (structural decision made; numbers TBD). (§3)
+2. **Boss specifics** — boss attack value and whether a boss can be
+   bashed/bombed/dashed past. (§7.1)
+3. **OBS HUD** — *deferred by decision*: architecture (Godot `Window` vs.
    always-on-top scene) and layout revisited once mechanics are locked. (§9)
-3. **Enemy attack tuning** — per-enemy `attack` values within the 1–3 band by
+4. **Enemy attack tuning** — per-enemy `attack` values within the 1–3 band by
    type/tier (tuning, not structural). (§7)
 
 **Resolved:**
 - Bingo is retired (§10).
+- **Dash is a total select** (pick any connected game), not a skip (§4).
+- **Bosses appear on difficulty change** — tighter goals, more damage (§7.1).
+- **Starting loadout is character-dependent** (baseline 10 health) (§3).
 - Enemies roll by type + difficulty tier, not fixed per game (§7).
 - You must beat the real game to advance; undefeated enemies **stack** (§2).
 - **Each stacked enemy attacks after every game played** until its goal is met;
