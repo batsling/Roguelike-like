@@ -292,20 +292,27 @@ What it does, matching the owner's UX direction:
   a card's game out of the pool; **Transmute** swaps a card for an off-graph
   same-type game via a per-position override map (keeping the graph slot). Both
   are available on boss rounds too (see above).
-- **Self-report + resolve.** Choosing a game shows the honour-system report (Beat
-  → Goal MET / NOT met) that drives `GameLoop2.beat_game`, advances
+- **Self-report + resolve (§2, honour system).** Choosing a game opens a report
+  panel: the enemy + goal, a **"▶ Play <game>"** launch button (games with a
+  launch target), a per-follower **"also fulfilled its old goal this game?"**
+  checklist (§2 — ticking one defeats that following enemy and drops before it can
+  hit), and **Beat → Goal MET / NOT met**. Resolving drives
+  `GameLoop2.beat_game(goal_met, fulfilled_instances)`, advances
   `GameState.games_played`, banks drops as chests, and rebuilds the next offering.
-  The amulet card + goal-met wins the run; a lethal stack hit loses it.
+  The amulet card + goal-met wins the run; a lethal stack hit loses it. (The
+  combat overworld's verification modal is left untouched — it's entangled with
+  weapons/curses/combat character state; this is a lean 2.0 report. Still to fold
+  in: the level-up / perfect-a-game questions, §3.1.)
 
 Run bootstrap reuses `RunGraph.pick_amulet_and_starts` for the start/amulet graph
 and `GameLoop2.start_run` for the 2.0 character loadout. Covered by
 `test/test_overworld2.gd` (boots a graph, picks/reports, boss round, bash,
 boss-round bash lockout). Total suite: 853 GUT tests green.
 
-**Next slices (unchanged):** the richer verification-modal self-report UX (this
-slice uses plain buttons), the Dash "pick any connected game" UI, the OBS
-companion HUD (§9), and the still-deferred ScrollSystem rewrite bundled with the
-combat cut.
+**Next slices:** the **level-up / perfect-a-game** questions folded into the
+self-report (§3.1), the **Dash** "pick any connected game" UI, the OBS companion
+HUD (§9), and the still-deferred ScrollSystem rewrite bundled with the combat
+cut.
 
 ## 5. Design questions still open (needed before the mechanics milestone)
 

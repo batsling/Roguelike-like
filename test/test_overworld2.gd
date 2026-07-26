@@ -46,6 +46,32 @@ func test_report_goal_met_defeats_and_drops() -> void:
 	assert_eq(GameLoop2.stack_size(), 0, "a met goal leaves nothing following")
 	assert_eq(GameState.pending_chests, chests_before + 1, "the drop banked a chest")
 
+func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
+	# Miss a goal so an enemy follows, then on the next game tick its fulfilment
+	# checkbox: it should be defeated (and drop) before it can hit (§2).
+	_ui.pick(0)
+	_ui.report(false)
+	assert_eq(GameLoop2.stack_size(), 1, "a missed goal leaves a follower")
+	var hp_before: int = GameState.hp
+	var chests_before: int = GameState.pending_chests
+	_ui.pick(0)                                  # play another game
+	assert_eq(_ui._fulfil_checks.size(), 1, "the follower is offered for fulfilment")
+	_ui._fulfil_checks[0]["check"].button_pressed = true
+	_ui.report(false)                            # miss current, but fulfil the follower
+	assert_eq(GameState.pending_chests, chests_before + 1, "the fulfilled follower dropped")
+	assert_eq(GameState.hp, hp_before, "fulfilling it before it hit means no damage")
+	# The only follower now is this game's freshly-stacked enemy, not the old one.
+	assert_eq(GameLoop2.stack_size(), 1, "old follower gone; current game's enemy stacked")
+
+func test_report_accepts_an_explicit_fulfilment_list() -> void:
+	_ui.pick(0)
+	_ui.report(false)
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	_ui.pick(0)
+	_ui.report(false, [inst])                    # explicit list bypasses the checkboxes
+	for entry in GameLoop2.stack:
+		assert_ne(int(entry["instance"]), inst, "the explicitly-fulfilled follower is gone")
+
 func test_boss_round_on_difficulty_gate() -> void:
 	# The tier steps every GAMES_PER_TIER games; that crossing is a boss round.
 	GameState.games_played = RunDifficulty.GAMES_PER_TIER

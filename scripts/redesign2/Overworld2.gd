@@ -49,6 +49,9 @@ var _choices_row: HFlowContainer
 var _play_panel: VBoxContainer
 var _now_playing: RichTextLabel
 var _now_playing_img: TextureRect
+var _launch_row: HBoxContainer
+var _fulfil_box: VBoxContainer
+var _fulfil_checks: Array = []      # [{check: CheckBox, instance: int}]
 var _stack: RichTextLabel
 var _log: RichTextLabel
 
@@ -96,16 +99,21 @@ func pick(index: int) -> void:
 	# its position on the route toward the amulet).
 	GameState.set_current_game(_chosen["slot"])
 	_phase = Phase.PLAYING
+	_populate_play_panel()
 	_refresh()
 
 # Report the outcome of actually playing the chosen game (the honour-system
-# self-report; the richer verification-modal UX is the next slice). Resolves the
-# loop, advances the difficulty clock, then rebuilds the next offering.
-func report(goal_met: bool) -> void:
+# self-report). `goal_met` resolves the current enemy; `fulfilled` is the list of
+# FOLLOWING-enemy instances whose old goals you also fulfilled this game (§2) —
+# each is defeated and drops. When null the ticked fulfilment checkboxes are read
+# from the play panel. Resolves the loop, advances the difficulty clock, then
+# rebuilds the next offering.
+func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	if _phase != Phase.PLAYING or _chosen.is_empty():
 		return
+	var fulfilled_instances: Array = fulfilled if fulfilled is Array else _ticked_fulfilments()
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
-	GameLoop2.beat_game(goal_met)
+	GameLoop2.beat_game(goal_met, fulfilled_instances)
 	GameState.games_played += 1
 	_chosen = {}
 	_transmuted.clear()   # transmutes apply only to the offering you moved from
@@ -275,6 +283,45 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 		card.add_child(verbs)
 	return card
 
+# Build the self-report panel for the chosen game: a launch button (when the
+# game can be launched) and a fulfilment checkbox per following enemy so old
+# goals can be cleared this game (§2).
+func _populate_play_panel() -> void:
+	for c in _launch_row.get_children():
+		c.queue_free()
+	for c in _fulfil_box.get_children():
+		c.queue_free()
+	_fulfil_checks.clear()
+	if _chosen.is_empty():
+		return
+	var game: GameData = _chosen["game"]
+	if game.has_launch_target():
+		var play_btn := Button.new()
+		play_btn.text = "▶ Play %s" % game.display_name
+		play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
+		play_btn.pressed.connect(func(): game.launch())
+		_launch_row.add_child(play_btn)
+	if not GameLoop2.stack.is_empty():
+		var hdr := Label.new()
+		hdr.text = "Also fulfilled a follower's goal this game? Tick it:"
+		hdr.add_theme_font_size_override("font_size", 13)
+		hdr.add_theme_color_override("font_color", Color(0.65, 0.7, 0.8))
+		_fulfil_box.add_child(hdr)
+		for entry in GameLoop2.stack:
+			var e: GoalEnemyData = entry["enemy"]
+			var cb := CheckBox.new()
+			cb.text = "%s — %s" % [e.display_name, e.goal]
+			_fulfil_box.add_child(cb)
+			_fulfil_checks.append({"check": cb, "instance": int(entry["instance"])})
+
+# The instances the player ticked as fulfilled this game.
+func _ticked_fulfilments() -> Array:
+	var out: Array = []
+	for f in _fulfil_checks:
+		if is_instance_valid(f["check"]) and f["check"].button_pressed:
+			out.append(f["instance"])
+	return out
+
 func _show_preview(index: int) -> void:
 	if index < 0 or index >= _choices.size():
 		return
@@ -430,6 +477,19 @@ func _build_ui() -> void:
 	_now_playing.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	np_box.add_child(_now_playing)
 	_play_panel.add_child(np_box)
+
+	# Launch-the-real-game row (populated per game — only games with a launch
+	# target get a button).
+	_launch_row = HBoxContainer.new()
+	_launch_row.add_theme_constant_override("separation", 8)
+	_play_panel.add_child(_launch_row)
+
+	# Old-goal fulfilment checklist (populated per game from the follower stack):
+	# tick any following enemy whose goal you also fulfilled while playing (§2).
+	_fulfil_box = VBoxContainer.new()
+	_fulfil_box.add_theme_constant_override("separation", 2)
+	_play_panel.add_child(_fulfil_box)
+
 	var report_row := HBoxContainer.new()
 	report_row.add_theme_constant_override("separation", 8)
 	var met := Button.new()
