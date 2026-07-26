@@ -31,10 +31,11 @@ so every number must stay small and glanceable.
 4. Resolve:
    - **Goal met → enemy defeated → item drops.**
    - **Game beaten but goal not met → the enemy is not defeated: it *stacks*.**
-     No item drops. Every stacked enemy **attacks after each game you play**,
-     for its `attack`, until its goal is fulfilled — `block` (temp health) absorbs,
-     remainder comes off `health`. So the more unbeaten enemies on the stack, the
-     more damage you take per game, and pressure ramps until you die or clear them.
+     No item drops. A stacked enemy has a **one-game grace** (§7.2) — its first
+     hit lands only after the *next* game is beaten — then it **attacks after each
+     game you play**, for its `Damage`, until its goal is fulfilled. `block` (temp
+     health) absorbs, remainder comes off `health`. The more unbeaten enemies on
+     the stack, the more damage per game, ramping until you die or clear them.
    - **Old goals can still be fulfilled later.** Fulfilling a stacked enemy's goal
      during any later game **defeats it** (removing it from the stack and stopping
      its per-game hits) and drops its item, exactly as if you'd beaten it on time.
@@ -77,10 +78,13 @@ block by beating goals → spend it surviving the goals you skip or fail.*
 
 ### 3.1 Characters, Level Up & the reward loop
 
-Each character (`characters2.0`) carries a personal **Level Up** objective and a
-**Reward** granted when it's met — a meta-progression hook layered on the run:
+**This reuses the current project's level-up mechanic directly** (`CharacterData`
++ `Overworld._resolve_level_up`). In `characters2.0`, **the columns left of `Level
+Up` (Health, Bash, Dash, Transmute, Scramble, Bombs, Keys) are the character's
+starting stats**; `Level Up` is a per-game challenge and `Reward` is what meeting
+it grants.
 
-| Character | Level Up objective | Reward |
+| Character | Level Up objective (per game) | Reward |
 |---|---|---|
 | Rodney | Beat a game without meta progression | +1 Max Health, +1 Health, +1 Scroll |
 | Isaac | Unlock a new Item | +1 Small Chest |
@@ -88,16 +92,18 @@ Each character (`characters2.0`) carries a personal **Level Up** objective and a
 | Minä | Craft or combine a spell or weapon | +1 Transmute |
 | Ironclad | Unlock a new difficulty | +1 Small Chest |
 
-- Level Up objectives are **real-game accomplishments** you report (honour /
-  verification), themed to that character's origin game.
-- **Level Up is repeatable** — the **Crown** item gives "when Levelling Up, 50%
-  chance to Level Up an additional time," which only makes sense if levelling
-  recurs. **[OPEN]** does the same objective re-trigger each time, or does it
-  escalate/rotate?
-- **Small Chest** is a reward container (grants item[s]). **[OPEN]** contents &
-  count.
+How it already works in the project (to be kept):
+- After each game, the **post-game verification modal** asks the character's
+  `level_up_condition` as an honour-system **Yes/No**. Yes → apply `level_up_stats`
+  and grant the reward (`_level_up_once`). So **each game is a fresh chance** to
+  hit the challenge and level again — exactly as requested.
+- **Crown** already exists as `bonus_level_up_chance` (roll an extra level-up);
+  **Snowball** as `stat_gain_bonus` (+1 on a keyed stat gain). Both need only the
+  new stat ids (transmute, bash, …) added.
+- **"Perfect a Game"** (Zoe) already exists as the `perfect_aware` /
+  `perfect_effects` verification path — reuse it.
 - Rewards draw from the same resource vocabulary as drops (Max Health, Dash,
-  Transmute, Scroll, Small Chest).
+  Transmute, Scroll, Small Chest — see §8.1 Chests).
 
 ---
 
@@ -141,8 +147,12 @@ current set is enemy/movement-facing instead:
 | Teleportation | Neutral | Teleport to a random space ~the same distance from the Amulet game (±1). |
 
 This introduces two new enemy-state mechanics: **Stun** (Scare Monster) and
-**spawning** enemies (Create Monster). **[OPEN]** what Stun does to a following
-enemy (skip its next per-game attack? can't hit for one game?).
+**spawning** enemies (Create Monster). **Stun makes the enemy skip its next
+attack** — it pushes the enemy's attack one game later in the timing model (§7.2),
+buying the player another game to solve it.
+
+*(The old **Fog** scroll and **Keys** are both **deferred — author later**; they
+stay in the design but no `2.0` content exists for them yet.)*
 
 ---
 
@@ -223,11 +233,30 @@ Deckbuilder/Slay the Spire), Baby Alien (Action/Brotato).
 - and (naturally) drops a better item.
 
 Otherwise a boss follows the same rules: fulfill its goal to defeat it, or it
-stacks and hits you after every game until you do. A boss **cannot be dashed
+stacks and hits you (per §7.2) until you do. A boss **cannot be dashed
 past**, and unlike a normal enemy **takes no damage from bombs** — a boss can
 *only* be removed by fulfilling its goal. **[OPEN]** exact boss attack value, and
 whether the pre-commit escapes (**scramble** the goal / **bash** the game) are
 allowed on a boss node or whether difficulty-gate bosses are fully unskippable.
+
+### 7.2 Enemy timing — the one-game grace
+
+Enemies don't hit immediately; there's always **one extra game** to find a
+solution:
+
+1. **Spawn** — an enemy appears when you **choose** its game.
+2. You play & **beat that game**. If its goal wasn't met, the enemy persists (it
+   does *not* attack yet).
+3. Its **first attack lands after the *next* game is chosen and beaten** — i.e.
+   one game later. That intervening game is the "extra step" where you can still
+   fulfill the old goal (§2), bomb a normal enemy, or Stun it.
+4. Thereafter it keeps attacking on each game beaten, per §2, until its goal is
+   met or it's removed.
+
+**Stun** (Scroll of Scare Monster, §4.1) pushes the next attack **one more game
+later**, adding another step of breathing room. This grace window is why bombs,
+old-goal fulfilment, and Stun are all viable answers rather than needing to solve
+an enemy the instant it appears.
 
 ---
 
@@ -264,6 +293,42 @@ Sample synergies already in the sheet: **Crown** doubles Level Ups; **Snowball**
 doubles Transmute gains; **Alien Baby** (+6 Max Health but all enemies +1 Health)
 plays against the `alien` bounty; **Unstable Genome** self-destructs for a
 3-item choice.
+
+### 8.1 Effect DSL — reuse the existing item grammar
+
+The `items2.0.Effect` column is authored in the **same grammar the project already
+uses**, so no new engine is needed:
+
+- **Triggered / Usable / Charged** items → `ItemData.triggers = [{on: <TriggerBus
+  signal>, if_*: <gates>, effects: [{type: <EffectSystem handler>, …}]}]`.
+- **Passive** items → `stat_bonuses` (Vajra → `{bash: 1}`).
+- **Pickup** items → a one-shot `item_acquired` trigger with scene-free effects
+  (`gain_hp` / `gain_max_hp` / …).
+- The main new trigger to add is **`game_beaten`** ("after beating a game"),
+  alongside the existing `combat_ended` / `item_acquired` / verification hooks.
+- Effect handlers reused as-is: `gain_hp`, `gain_max_hp`, `block`, `gain_chest`,
+  `chance`, `if_hp`, `counter`, plus new small ones for the verbs (`gain_stat`
+  already grants ability points; extend its vocabulary to bash/transmute/
+  scramble/bombs/keys).
+
+Scrolls/encounters keep their **semicolon-separated, space-delimited token** DSL
+(`generate_scroll_tres.py` / `generate_encounter_tres.py`); the item generator
+(`generate_item_tres.py`) compiles the `Effect` column into `triggers`.
+
+### 8.2 Chests (reuse `grant_chest` + `RewardScreen`)
+
+A **chest** is the project's existing item-reward container
+(`GameState.grant_chest` → `RewardScreen`, `BASE_ITEM_CHOICES = 2`). Sizes map to
+the number of choices offered:
+
+| Chest | Choices |
+|---|---|
+| **Small** | 1 item (no choice) |
+| **Regular** | pick 1 of 2 |
+| **Large** | pick 1 of 3 |
+
+Level-up rewards (`+1 Small Chest`) and drops both mint chests through this same
+flow.
 
 ---
 
@@ -308,11 +373,21 @@ Resource schema in `scripts/resources/`.
 
 ## 11. Codebase impact
 
-**Keep & repoint:** overworld graph, `GameData` (+ richer tags/types),
-`CurseData`, encounters (shops/deals/teleporters), `EffectSystem` + `TriggerBus`
-(repoint triggers: `on_goal_met`, `on_game_beaten`, `on_curse_broken`,
-`on_enemy_defeated`), `EnemySpawner` (repoint to roll goal-enemies by type +
-tier, §7), scrolls, `GameStats`/verification, Collection.
+**Reuse heavily (already built — the redesign leans on these):**
+- **Level-up** — `CharacterData.level_up_*` + `Overworld._resolve_level_up` /
+  `_level_up_once` / `_roll_bonus_level_up`, the verification-modal Yes/No, Crown
+  (`bonus_level_up_chance`), Snowball (`stat_gain_bonus`), and the "Perfect a
+  Game" path (`perfect_aware`/`perfect_effects`). (§3.1)
+- **Items** — `ItemData` (ItemKind = Passive/Triggered/Usable/Charged/Pickup maps
+  1:1 to `items2.0.Type`), `triggers`/`stat_bonuses`, `EffectSystem` handlers,
+  `TriggerBus`. (§8/§8.1)
+- **Chests** — `GameState.grant_chest` + `RewardScreen`. (§8.2)
+- **Verification** — the post-game modal, `GameStats`, `last_game_*` state.
+
+**Keep & repoint:** overworld graph, `GameData` (+ richer tags/types), encounters
+(shops/deals/teleporters), `EnemySpawner` (roll goal-enemies by type + tier, §7),
+scrolls, Collection. Add trigger `game_beaten` for the "after beating a game" item
+hook.
 
 **Add:** the tiny health/**max-health**/block model; the **bash / dash /
 transmute / scramble** + keys/bombs resource layer; the **Level Up** loop (§3.1);
@@ -331,42 +406,38 @@ cards/statuses, potions-as-combat-items (repurpose or cut).
 
 ## 12. Open decisions (rolled up)
 
-New, raised by the `*2.0` sheets:
-1. **Level Up** — is it repeatable with the *same* objective (Crown implies
-   recurrence), or does it escalate/rotate? What does levelling do besides the
-   Reward — scale difficulty, unlock, both? (§3.1)
-2. **Small Chest** — contents and item count. (§3.1)
-3. **Stun** (Scare Monster) — effect on a following enemy (skip one per-game
-   attack? can't hit for one game?). (§4.1)
-4. **Fog dropped** — confirm Fog is gone for good (not in `scrolls2.0`), or should
-   it be re-added? (§4.1)
-5. **Keys unused** — no `*2.0` character or item grants keys and no path-locks
-   exist yet. Author key sources + locked edges, or cut keys? (§4)
-6. **Item `Effect` DSL** — `items2.0.Effect` is blank; the structured effects need
-   authoring from each `Description`. What's the token grammar? (§8)
-7. **Scroll identification stakes** — do unidentified scrolls read blind (Preference
-   is the gamble), and what does Amnesia forgetting an *identified* scroll cost? (§4.1)
-8. **Enemy `Ability`** — the column exists but is all `N/A`; reserved for later
-   enemy specials? (§7)
-
-Still open from before:
-9. **Boss escapes** — are scramble/bash allowed on a boss node, or fully
+Still open:
+1. **Boss escapes** — are scramble/bash allowed on a boss node, or fully
    unskippable? Plus boss damage value. (§7.1)
-10. **OBS HUD** — deferred: architecture + layout once mechanics lock. (§9)
+2. **OBS HUD** — deferred: architecture + layout once mechanics lock. (§9)
+3. **Scroll identification stakes** — do unidentified scrolls read blind (Preference
+   is the gamble)? What does Amnesia forgetting an *identified* scroll cost? (§4.1)
+4. **Enemy `Ability`** — column exists but all `N/A`; reserved for later specials? (§7)
 
-**Resolved (incl. by the 2.0 sheets):**
-- **Bash** now **destroys a game out of the pool** (no replacement); **Transmute**
-  is the new verb that turns a game into an unconnected same-type game (§4).
-- **Normal enemies have Health 1** → one bomb removes one; bosses are bomb-immune
-  (§4/§7.1). *(closes the old bomb-HP question.)*
-- **Starting values are authored per character** in `characters2.0` (Health 5–10)
-  (§3). **Max Health** is now a stat items can raise (§3).
-- **Goal Types = Bounty / Restriction / Discovery** (§7).
-- **Item Types = Pickup / Triggered / Charged / Usable / Passive**; main trigger is
-  "after beating a game" (§8).
-- **Scrolls carry a Preference and are identified**; Fog is not in the new set (§4.1).
-- Dash is a total select (§4). Enemies follow until beaten; can't be dashed past
-  (§2). Bosses appear on difficulty change (§7.1). Enemies roll by type + tier (§7).
-  Must beat the game to advance; unbeaten enemies stack and hit each game (§2).
-  Block carries over, no cap (§3). Curses shelved (§5). Bingo retired (§10).
-  Types = Action / Deckbuilder / Traditional / Strategy (§6.1).
+Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
+
+**Resolved:**
+- **Level Up = the current project's mechanic** (per-game `level_up_condition`
+  Yes/No → stats + reward, repeats each game). The stats left of the `Level Up`
+  column are the character's **starting stats** (§3.1).
+- **Chests: Small = 1 item, Regular = 1 of 2, Large = 1 of 3**, via the existing
+  `grant_chest`/`RewardScreen` flow (§8.2).
+- **Stun skips the enemy's next attack** — pushes it one game later in the timing
+  model (§7.2).
+- **Enemy timing: one-game grace** — spawns on game choice, first hits after the
+  *next* game is beaten, giving an "extra step" to solve it (§7.2).
+- **Item Effect DSL = the existing `ItemData.triggers`/`EffectSystem` grammar**;
+  add a `game_beaten` trigger (§8.1).
+- **Bash** destroys a game out of the pool; **Transmute** turns a game into an
+  unconnected same-type game (§4).
+- **Normal enemies have Health 1** → one bomb removes one; bosses bomb-immune
+  (§4/§7.1).
+- **Starting values authored per character** (`characters2.0`, Health 5–10);
+  **Max Health** is a raisable stat (§3).
+- Goal Types = Bounty/Restriction/Discovery (§7). Item Types =
+  Pickup/Triggered/Charged/Usable/Passive (§8). Scrolls carry a Preference and are
+  identified; Fog not in the new set (§4.1). Dash is a total select (§4). Enemies
+  follow until beaten, can't be dashed past (§2). Bosses appear on difficulty
+  change (§7.1). Enemies roll by type + tier (§7). Must beat the game to advance;
+  unbeaten enemies stack (§2). Block carries over, no cap (§3). Curses shelved
+  (§5). Bingo retired (§10). Types = Action/Deckbuilder/Traditional/Strategy (§6.1).
