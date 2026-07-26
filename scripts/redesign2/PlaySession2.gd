@@ -163,7 +163,15 @@ func _build_ui() -> void:
 	root.offset_bottom = -16
 	add_child(root)
 
-	root.add_child(_title("Games-First — play harness"))
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 12)
+	header.add_child(_title("Games-First — play harness"))
+	var menu_btn := Button.new()
+	menu_btn.text = "← Menu"
+	menu_btn.pressed.connect(func():
+		get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn"))
+	header.add_child(menu_btn)
+	root.add_child(header)
 	_hud = _panel_label()
 	root.add_child(_hud)
 	_enemy = _panel_label()
