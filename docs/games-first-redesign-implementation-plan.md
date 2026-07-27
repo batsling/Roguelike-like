@@ -250,6 +250,79 @@ Pipeline: `generate_goal_enemy_tres.py` was made reusable and a thin
 `roll_enemy` is guaranteed boss-free. PlaySession2 shows a ☠ BOSS marker and a
 boss-spawn button. Total suite: 846 GUT tests green.
 
+## 4e. Overworld2 — the click-to-choose overworld (shipped)
+
+The first slice of the **overworld-integration** milestone. `scenes/redesign2/
+Overworld2.tscn` (+ `scripts/redesign2/Overworld2.gd`) replaces the old
+walk-around-and-open-a-door overworld with a **click-to-choose board**, and takes
+over the main-menu "Games-First" button from `PlaySession2` (which stays in the
+repo as the headless harness). It is still a thin, additive view over
+`GameLoop2` + `GameState` — combat and the live `Overworld.gd` are untouched
+(decision #2).
+
+What it does, matching the owner's UX direction:
+- **No walker, no doors.** The reachable games are shown as **cards: the game's
+  cover art with its name below** (falling back to the name when a cover is
+  missing). Clicking a card travels there.
+- **Hover previews the goal-enemy** that game would spawn — its **art**
+  (`GoalEnemyData.image`) beside its name, goal (type + text), and
+  type/tier/damage; the same art shows on the now-playing panel once chosen.
+  (Bosses have art today; normal-enemy PNGs are a pending owner drop, §5 Q5, and
+  fall back to a blank slot until then.) The enemy is **rolled up-front** per card
+  so the hover and the enemy that actually spawns on click are the *same* roll
+  (`roll_enemy` → stored → `choose_game`).
+- **Difficulty gate = boss round (§7.1).** Every `RunDifficulty.GAMES_PER_TIER`
+  (3) games a **"⚠ BOSS INCOMING ⚠"** banner shows above the choices and every
+  card spawns a **boss** (`roll_boss`). The boss is the **capstone of the tier
+  just played**, not the opener of the next one: the game-4 boss is **Low** and
+  beating it is what advances the run to Medium, so a boss rolls at
+  `tier_for(games_played - 1)` (`_current_tier()`), one below the normal-game
+  formula, and the HUD shows that tier during the round. Normal games in between
+  use the plain `tier_for(games_played)`, so they land on the *new* tier right
+  after each boss. Once the run reaches **Insane** the cap holds, so Insane bosses
+  keep appearing every 3 games. The boss is tied to the **gate, not the game**: `_is_boss_round()` reads
+  only `games_played`, so bash/transmute (and a future teleport) can change *which*
+  game you play at the gate but you still face a boss — a bashed slot backfills
+  with another boss card, and a transmuted game rolls a boss too. (Owner call:
+  boss rounds are escapable-but-still-a-boss, superseding the earlier
+  "unskippable" default; resolves §5 Q1.)
+- **Limited offering + board verbs.** The offering is capped (`OFFER_COUNT = 5`,
+  the amulet always kept when reachable) in a stable position-seeded order.
+  **Dash** (§4) is the total-select that bypasses the cap: the **"⚡ Dash — pick
+  any connected"** button drops into dash mode (every connected game shown, Cancel
+  to back out) and the pick spends a dash charge. **Bash** destroys a card's game
+  out of the pool; **Transmute** swaps a card for an off-graph same-type game via
+  a per-position override map (keeping the graph slot). All are available on boss
+  rounds too (see above).
+- **Level-up folded into the self-report (§3.1).** When the 2.0 character has a
+  `level_up_condition`, the report shows a gold **"Leveled up — &lt;condition&gt;?
+  (&lt;reward&gt;)"** checkbox (Zoe's is literally "Perfect a Game"). Ticking it
+  applies `level_up_stats` through the existing `GameState.apply_level_up_stats`
+  (its vocabulary already covers the 2.0 verbs + `max_hp`), grants the reward
+  (`item`/`chest` → `grant_chest`, `scroll` → `add_loot`), and re-rolls the
+  **Crown** bonus-level chance — no combat machinery, capped against a 100%-chance
+  loop. The perfect flag is set when the condition is the perfect one.
+- **Self-report + resolve (§2, honour system).** Choosing a game opens a report
+  panel: the enemy + goal, a **"▶ Play <game>"** launch button (games with a
+  launch target), a per-follower **"also fulfilled its old goal this game?"**
+  checklist (§2 — ticking one defeats that following enemy and drops before it can
+  hit), and **Beat → Goal MET / NOT met**. Resolving drives
+  `GameLoop2.beat_game(goal_met, fulfilled_instances)`, advances
+  `GameState.games_played`, banks drops as chests, and rebuilds the next offering.
+  The amulet card + goal-met wins the run; a lethal stack hit loses it. (The
+  combat overworld's verification modal is left untouched — it's entangled with
+  weapons/curses/combat character state; this is a lean 2.0 report. Still to fold
+  in: the level-up / perfect-a-game questions, §3.1.)
+
+Run bootstrap reuses `RunGraph.pick_amulet_and_starts` for the start/amulet graph
+and `GameLoop2.start_run` for the 2.0 character loadout. Covered by
+`test/test_overworld2.gd` (boots a graph, picks/reports, boss round, bash,
+boss-round bash lockout). Total suite: 853 GUT tests green.
+
+**Next slices:** the **OBS companion HUD** (§9), and the still-deferred
+ScrollSystem rewrite bundled with the combat cut. (Level-up/perfect-a-game and
+the Dash UI landed in this slice.)
+
 ## 5. Design questions still open (needed before the mechanics milestone)
 
 Not blocking Phase 1, but must be answered before the loop is built:

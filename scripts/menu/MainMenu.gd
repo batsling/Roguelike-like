@@ -40,7 +40,7 @@ func _ready() -> void:
 	var proto_btn := Button.new()
 	proto_btn.text = "▶ Games-First Prototype"
 	proto_btn.pressed.connect(func():
-		get_tree().change_scene_to_file("res://scenes/redesign2/PlaySession2.tscn"))
+		get_tree().change_scene_to_file("res://scenes/redesign2/Overworld2.tscn"))
 	var start_btn: Button = %StartRunBtn
 	if start_btn.get_parent() != null:
 		start_btn.get_parent().add_child(proto_btn)
