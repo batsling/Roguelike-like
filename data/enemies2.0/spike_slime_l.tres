@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://goalenemy_spike_slime_l"]
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_spike_slime_l"]
 
 [ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/enemies/SpikeSlime(L).png" id="2_img"]
 
 [resource]
 script = ExtResource("1_enemy")
@@ -15,3 +16,4 @@ goal_type = &"bounty"
 goal = "Defeat an enemy that splits into another enemy"
 tag = &"slime"
 file = "SpikeSlime(L)"
+image = ExtResource("2_img")
