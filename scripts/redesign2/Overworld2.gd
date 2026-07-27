@@ -295,10 +295,10 @@ func _refresh(_a = null) -> void:
 	_stack.text = _stack_text()
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
-	_boss_banner.visible = _boss_round and _phase == Phase.SELECT
+	_boss_banner.get_parent().visible = _boss_round and _phase == Phase.SELECT
 	_controls_row.visible = _phase == Phase.SELECT
 	_choices_row.visible = _phase == Phase.SELECT
-	_play_panel.visible = _phase == Phase.PLAYING
+	_play_panel.get_parent().visible = _phase == Phase.PLAYING
 	if _phase == Phase.SELECT:
 		_render_controls()
 		_render_choices()
@@ -343,9 +343,15 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	card.add_theme_constant_override("separation", 4)
 	card.custom_minimum_size = Vector2(150, 0)
 
+	var accent: Color = UITheme.DANGER if choice["boss"] else (UITheme.GOLD if choice["amulet"] else UITheme.type_color(int(game.type)))
 	var btn := Button.new()
-	btn.flat = true
 	btn.custom_minimum_size = Vector2(140, 105)
+	var frame_n := UITheme.flat(UITheme.BG, 8, 4, 1, UITheme.BORDER)
+	var frame_h := UITheme.flat(UITheme.PANEL_HI, 8, 4, 2, accent)
+	btn.add_theme_stylebox_override("normal", frame_n)
+	btn.add_theme_stylebox_override("hover", frame_h)
+	btn.add_theme_stylebox_override("pressed", frame_h)
+	btn.add_theme_stylebox_override("focus", frame_h)
 	btn.pressed.connect(func(): pick(index))
 	btn.mouse_entered.connect(func(): _show_preview(index))
 	if game.cover_image != null:
@@ -358,6 +364,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 		btn.add_child(art)
 	else:
 		btn.text = game.display_name
+		btn.add_theme_color_override("font_color", accent)
 	card.add_child(btn)
 
 	var name_lbl := Label.new()
@@ -365,6 +372,8 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.custom_minimum_size = Vector2(140, 0)
+	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_color_override("font_color", accent if (choice["boss"] or choice["amulet"]) else UITheme.TEXT)
 	card.add_child(name_lbl)
 
 	# Bash/Transmute are available even on a boss round — the boss follows the
@@ -393,30 +402,46 @@ func _populate_play_panel() -> void:
 	_levelup_check = null
 	if _chosen.is_empty():
 		return
-	# Level-up challenge (§3.1): a per-game Yes/No for the character's condition.
-	var ch: CharacterData = Data.get_character2(GameState.character_id)
-	if ch != null and ch.level_up_condition != "":
-		_levelup_check = CheckBox.new()
-		_levelup_check.text = "Leveled up — %s? (%s)" % [ch.level_up_condition, ch.level_up_reward]
-		_levelup_check.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
-		_levelup_box.add_child(_levelup_check)
 	var game: GameData = _chosen["game"]
 	if game.has_launch_target():
 		var play_btn := Button.new()
-		play_btn.text = "▶ Play %s" % game.display_name
+		play_btn.text = "▶  Play %s" % game.display_name
+		play_btn.custom_minimum_size = Vector2(0, 38)
 		play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
 		play_btn.pressed.connect(func(): game.launch())
 		_launch_row.add_child(play_btn)
+	# Level-up challenge (§3.1): a per-game Yes/No for the character's condition,
+	# highlighted in a gold-bordered row so the reward reads at a glance.
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch != null and ch.level_up_condition != "":
+		var lu_wrap := PanelContainer.new()
+		lu_wrap.add_theme_stylebox_override("panel", UITheme.flat(Color(0.20, 0.16, 0.06, 0.85), 8, 8, 1, UITheme.GOLD.lerp(UITheme.BORDER, 0.3)))
+		var lu_row := HBoxContainer.new()
+		lu_row.add_theme_constant_override("separation", 8)
+		lu_wrap.add_child(lu_row)
+		_levelup_check = CheckBox.new()
+		_levelup_check.text = "Leveled up:  %s" % ch.level_up_condition
+		_levelup_check.add_theme_color_override("font_color", UITheme.GOLD)
+		_levelup_check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lu_row.add_child(_levelup_check)
+		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
+			var reward := Label.new()
+			reward.text = "→ %s" % ch.level_up_reward
+			reward.add_theme_font_size_override("font_size", 12)
+			reward.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
+			lu_row.add_child(reward)
+		_levelup_box.add_child(lu_wrap)
 	if not GameLoop2.stack.is_empty():
 		var hdr := Label.new()
-		hdr.text = "Also fulfilled a follower's goal this game? Tick it:"
+		hdr.text = "Also cleared a follower's goal this game? Tick it:"
 		hdr.add_theme_font_size_override("font_size", 13)
-		hdr.add_theme_color_override("font_color", Color(0.65, 0.7, 0.8))
+		hdr.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		_fulfil_box.add_child(hdr)
 		for entry in GameLoop2.stack:
 			var e: GoalEnemyData = entry["enemy"]
 			var cb := CheckBox.new()
 			cb.text = "%s — %s" % [e.display_name, e.goal]
+			cb.add_theme_color_override("font_color", UITheme.TEXT)
 			_fulfil_box.add_child(cb)
 			_fulfil_checks.append({"check": cb, "instance": int(entry["instance"])})
 
@@ -582,13 +607,18 @@ func _show_banner(text: String, color: Color) -> void:
 	_banner.add_theme_color_override("font_color", color)
 	_banner.show()
 	_choices_row.visible = false
-	_play_panel.visible = false
-	_boss_banner.visible = false
+	_play_panel.get_parent().visible = false
+	_boss_banner.get_parent().visible = false
 
 # --- UI construction ------------------------------------------------------
 
 func _build_ui() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	theme = UITheme.shared()
+	var bg := ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = UITheme.BG_DEEP
+	add_child(bg)
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.add_theme_constant_override("separation", 10)
@@ -601,8 +631,10 @@ func _build_ui() -> void:
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	var title := Label.new()
-	title.text = "Games-First — Overworld"
+	title.text = "The Search for the Amulet"
 	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", UITheme.GOLD)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 	var restart_btn := Button.new()
 	restart_btn.text = "⟳ New run"
@@ -615,20 +647,28 @@ func _build_ui() -> void:
 	root.add_child(header)
 
 	_hud = _panel_label()
-	root.add_child(_hud)
+	var hud_panel := PanelContainer.new()
+	hud_panel.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 10, 1))
+	hud_panel.add_child(_hud)
+	root.add_child(hud_panel)
 
 	_banner = Label.new()
 	_banner.add_theme_font_size_override("font_size", 22)
+	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_banner.hide()
 	root.add_child(_banner)
 
 	_boss_banner = Label.new()
-	_boss_banner.text = "⚠  BOSS INCOMING  ⚠"
+	_boss_banner.text = "⚠   BOSS INCOMING   ⚠"
 	_boss_banner.add_theme_font_size_override("font_size", 20)
-	_boss_banner.add_theme_color_override("font_color", Color(0.95, 0.55, 0.2))
+	_boss_banner.add_theme_color_override("font_color", Color(1.0, 0.62, 0.24))
 	_boss_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_boss_banner.hide()
-	root.add_child(_boss_banner)
+	var boss_wrap := PanelContainer.new()
+	boss_wrap.add_theme_stylebox_override("panel", UITheme.flat(Color(0.20, 0.08, 0.05, 0.9), 10, 8, 2, UITheme.DANGER.lerp(UITheme.ACCENT, 0.4)))
+	boss_wrap.add_child(_boss_banner)
+	_boss_banner.set_meta("wrap", boss_wrap)
+	boss_wrap.hide()
+	root.add_child(boss_wrap)
 
 	root.add_child(_section("Choose a game to travel to:"))
 	# Controls row (Dash) — populated per refresh.
@@ -641,8 +681,11 @@ func _build_ui() -> void:
 	root.add_child(_choices_row)
 
 	# Hover preview: the enemy's art beside its name + goal.
+	var preview_wrap := PanelContainer.new()
+	preview_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 10, 1))
 	var preview_box := HBoxContainer.new()
 	preview_box.add_theme_constant_override("separation", 12)
+	preview_wrap.add_child(preview_box)
 	_preview_img = _enemy_image_rect()
 	preview_box.add_child(_preview_img)
 	_preview = _panel_label()
@@ -650,15 +693,33 @@ func _build_ui() -> void:
 	_preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_preview.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	preview_box.add_child(_preview)
-	root.add_child(preview_box)
+	root.add_child(preview_wrap)
 
-	# Play panel — shown once a game is chosen (the honour-system self-report).
+	# Verification card — shown once a game is chosen (the honour-system self-
+	# report). Wrapped in a bordered panel so it reads as a distinct "report your
+	# result" step. The wrapper carries the visibility toggle (see _refresh).
+	var play_wrap := PanelContainer.new()
+	play_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.5), 12, 16, 1))
 	_play_panel = VBoxContainer.new()
-	_play_panel.add_theme_constant_override("separation", 8)
+	_play_panel.add_theme_constant_override("separation", 10)
+	play_wrap.add_child(_play_panel)
+	_play_panel.set_meta("wrap", play_wrap)
+
+	var verify_hdr := Label.new()
+	verify_hdr.text = "◆  Report your result"
+	verify_hdr.add_theme_font_size_override("font_size", 15)
+	verify_hdr.add_theme_color_override("font_color", UITheme.GOLD)
+	_play_panel.add_child(verify_hdr)
+
 	var np_box := HBoxContainer.new()
-	np_box.add_theme_constant_override("separation", 12)
+	np_box.add_theme_constant_override("separation", 14)
 	_now_playing_img = _enemy_image_rect()
-	np_box.add_child(_now_playing_img)
+	_now_playing_img.custom_minimum_size = Vector2(112, 112)
+	var img_frame := PanelContainer.new()
+	img_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 8, 6, 1, UITheme.BORDER))
+	img_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	img_frame.add_child(_now_playing_img)
+	np_box.add_child(img_frame)
 	_now_playing = _panel_label()
 	_now_playing.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_now_playing.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -671,30 +732,41 @@ func _build_ui() -> void:
 	_launch_row.add_theme_constant_override("separation", 8)
 	_play_panel.add_child(_launch_row)
 
+	# Level-up challenge checkbox (populated per game from the 2.0 character).
+	_levelup_box = VBoxContainer.new()
+	_levelup_box.add_theme_constant_override("separation", 2)
+	_play_panel.add_child(_levelup_box)
+
 	# Old-goal fulfilment checklist (populated per game from the follower stack):
 	# tick any following enemy whose goal you also fulfilled while playing (§2).
 	_fulfil_box = VBoxContainer.new()
 	_fulfil_box.add_theme_constant_override("separation", 2)
 	_play_panel.add_child(_fulfil_box)
 
-	# Level-up challenge checkbox (populated per game from the 2.0 character).
-	_levelup_box = VBoxContainer.new()
-	_levelup_box.add_theme_constant_override("separation", 2)
-	_play_panel.add_child(_levelup_box)
-
+	_play_panel.add_child(HSeparator.new())
 	var report_row := HBoxContainer.new()
-	report_row.add_theme_constant_override("separation", 8)
+	report_row.add_theme_constant_override("separation", 10)
 	var met := Button.new()
-	met.text = "Beat it — Goal MET ✓"
+	met.text = "Goal MET  ✓"
+	met.custom_minimum_size = Vector2(0, 44)
+	met.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	met.add_theme_stylebox_override("normal", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.55), 8, 8, 1, UITheme.SUCCESS))
+	met.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.4))
+	met.add_theme_font_size_override("font_size", 16)
 	met.pressed.connect(func(): report(true))
 	report_row.add_child(met)
 	var miss := Button.new()
-	miss.text = "Beat it — Goal NOT met ✗"
+	miss.text = "Goal NOT met  ✗"
+	miss.custom_minimum_size = Vector2(0, 44)
+	miss.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	miss.add_theme_stylebox_override("normal", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.6), 8, 8, 1, UITheme.DANGER))
+	miss.add_theme_color_override("font_color", UITheme.DANGER.lerp(Color.WHITE, 0.4))
+	miss.add_theme_font_size_override("font_size", 16)
 	miss.pressed.connect(func(): report(false))
 	report_row.add_child(miss)
 	_play_panel.add_child(report_row)
-	_play_panel.hide()
-	root.add_child(_play_panel)
+	play_wrap.hide()
+	root.add_child(play_wrap)
 
 	root.add_child(_section("Scrolls (read on the overworld):"))
 	_scrolls_box = VBoxContainer.new()
@@ -718,7 +790,7 @@ func _section(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 15)
-	l.add_theme_color_override("font_color", Color(0.65, 0.7, 0.8))
+	l.add_theme_color_override("font_color", UITheme.ACCENT.lerp(UITheme.TEXT, 0.25))
 	return l
 
 func _panel_label() -> RichTextLabel:
