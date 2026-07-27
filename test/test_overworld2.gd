@@ -72,6 +72,62 @@ func test_report_accepts_an_explicit_fulfilment_list() -> void:
 	for entry in GameLoop2.stack:
 		assert_ne(int(entry["instance"]), inst, "the explicitly-fulfilled follower is gone")
 
+func test_level_up_checkbox_grants_the_reward() -> void:
+	# Zoe's level-up is "Perfect a Game" -> +1 Dash. Ticking the level-up box on
+	# report should apply the character's level_up_stats.
+	_ui.start_run(&"zoe")
+	var dash_before: int = GameState.dash_charges
+	var lvl_before: int = GameState.player_level
+	_ui.pick(0)
+	assert_not_null(_ui._levelup_check, "Zoe has a level-up condition -> a checkbox")
+	_ui._levelup_check.button_pressed = true
+	_ui.report(true)
+	assert_eq(GameState.dash_charges, dash_before + 1, "level-up granted +1 Dash")
+	assert_eq(GameState.player_level, lvl_before + 1, "player level advanced")
+
+func test_level_up_not_applied_when_unchecked() -> void:
+	_ui.start_run(&"zoe")
+	var dash_before: int = GameState.dash_charges
+	_ui.pick(0)
+	_ui.report(true)                              # box left unticked
+	assert_eq(GameState.dash_charges, dash_before, "no level-up without the tick")
+
+func test_isaac_level_up_grants_a_chest() -> void:
+	_ui.start_run(&"isaac")                       # reward_type item -> Small Chest
+	var chests_before: int = GameState.pending_chests
+	_ui.pick(0)
+	if _ui._levelup_check != null:
+		_ui._levelup_check.button_pressed = true
+	_ui.report(false)
+	assert_eq(GameState.pending_chests, chests_before + 1, "Isaac's level-up banks a chest")
+
+func test_dash_offers_every_connected_game_and_spends_a_charge() -> void:
+	GameState.dash_charges = 1
+	_ui._build_choices()
+	var capped: int = _ui._choices.size()
+	var all_nbrs: int = 0
+	for gid in RunGraph.neighbors(GameState.current_game_id):
+		if not GameLoop2.is_bashed(gid):
+			all_nbrs += 1
+	_ui.dash()
+	assert_true(_ui._dash_mode, "dash mode is on")
+	assert_eq(_ui._choices.size(), all_nbrs, "dash offers every connected game")
+	if all_nbrs > _ui.OFFER_COUNT:
+		assert_gt(_ui._choices.size(), capped, "dash exceeds the normal cap")
+	_ui.pick(0)
+	assert_eq(GameState.dash_charges, 0, "the dash pick spent the charge")
+	assert_false(_ui._dash_mode, "dash mode cleared after the pick")
+
+func test_cancel_dash_restores_the_limited_offering() -> void:
+	GameState.dash_charges = 1
+	_ui._build_choices()
+	var capped: int = _ui._choices.size()
+	_ui.dash()
+	_ui.cancel_dash()
+	assert_false(_ui._dash_mode)
+	assert_eq(GameState.dash_charges, 1, "cancel didn't spend a charge")
+	assert_eq(_ui._choices.size(), capped, "offering back to the capped set")
+
 func test_boss_round_on_difficulty_gate() -> void:
 	# The tier steps every GAMES_PER_TIER games; that crossing is a boss round.
 	GameState.games_played = RunDifficulty.GAMES_PER_TIER

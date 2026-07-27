@@ -287,11 +287,21 @@ What it does, matching the owner's UX direction:
   boss rounds are escapable-but-still-a-boss, superseding the earlier
   "unskippable" default; resolves §5 Q1.)
 - **Limited offering + board verbs.** The offering is capped (`OFFER_COUNT = 5`,
-  the amulet always kept when reachable) in a stable position-seeded order — Dash
-  (§4) is the verb meant to bypass it (its UI is a later slice). **Bash** destroys
-  a card's game out of the pool; **Transmute** swaps a card for an off-graph
-  same-type game via a per-position override map (keeping the graph slot). Both
-  are available on boss rounds too (see above).
+  the amulet always kept when reachable) in a stable position-seeded order.
+  **Dash** (§4) is the total-select that bypasses the cap: the **"⚡ Dash — pick
+  any connected"** button drops into dash mode (every connected game shown, Cancel
+  to back out) and the pick spends a dash charge. **Bash** destroys a card's game
+  out of the pool; **Transmute** swaps a card for an off-graph same-type game via
+  a per-position override map (keeping the graph slot). All are available on boss
+  rounds too (see above).
+- **Level-up folded into the self-report (§3.1).** When the 2.0 character has a
+  `level_up_condition`, the report shows a gold **"Leveled up — &lt;condition&gt;?
+  (&lt;reward&gt;)"** checkbox (Zoe's is literally "Perfect a Game"). Ticking it
+  applies `level_up_stats` through the existing `GameState.apply_level_up_stats`
+  (its vocabulary already covers the 2.0 verbs + `max_hp`), grants the reward
+  (`item`/`chest` → `grant_chest`, `scroll` → `add_loot`), and re-rolls the
+  **Crown** bonus-level chance — no combat machinery, capped against a 100%-chance
+  loop. The perfect flag is set when the condition is the perfect one.
 - **Self-report + resolve (§2, honour system).** Choosing a game opens a report
   panel: the enemy + goal, a **"▶ Play <game>"** launch button (games with a
   launch target), a per-follower **"also fulfilled its old goal this game?"**
@@ -309,10 +319,9 @@ and `GameLoop2.start_run` for the 2.0 character loadout. Covered by
 `test/test_overworld2.gd` (boots a graph, picks/reports, boss round, bash,
 boss-round bash lockout). Total suite: 853 GUT tests green.
 
-**Next slices:** the **level-up / perfect-a-game** questions folded into the
-self-report (§3.1), the **Dash** "pick any connected game" UI, the OBS companion
-HUD (§9), and the still-deferred ScrollSystem rewrite bundled with the combat
-cut.
+**Next slices:** the **OBS companion HUD** (§9), and the still-deferred
+ScrollSystem rewrite bundled with the combat cut. (Level-up/perfect-a-game and
+the Dash UI landed in this slice.)
 
 ## 5. Design questions still open (needed before the mechanics milestone)
 

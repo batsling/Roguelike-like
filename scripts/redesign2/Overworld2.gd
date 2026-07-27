@@ -52,6 +52,10 @@ var _now_playing_img: TextureRect
 var _launch_row: HBoxContainer
 var _fulfil_box: VBoxContainer
 var _fulfil_checks: Array = []      # [{check: CheckBox, instance: int}]
+var _levelup_box: VBoxContainer
+var _levelup_check: CheckBox        # null when the character has no level-up
+var _dash_mode: bool = false        # Dash (§4): offer ANY connected game
+var _controls_row: HBoxContainer
 var _stack: RichTextLabel
 var _log: RichTextLabel
 
@@ -85,6 +89,7 @@ func start_run(character_id: StringName = &"") -> void:
 		GameState.amulet_game_id = StringName(pick.get("amulet_id", ""))
 		GameState.set_current_game(start_id)
 	_phase = Phase.SELECT
+	_dash_mode = false
 	_banner.hide()
 	_build_choices()
 	_refresh()
@@ -94,12 +99,32 @@ func pick(index: int) -> void:
 	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
 		return
 	_chosen = _choices[index]
+	# A Dash pick spends a charge (§4) — it's the "select any connected game" verb.
+	if _dash_mode:
+		GameState.dash_charges = maxi(0, GameState.dash_charges - 1)
+		_dash_mode = false
 	GameLoop2.choose_game(_chosen["enemy"])
 	# Move to the graph SLOT (a transmuted card plays an off-graph game but keeps
 	# its position on the route toward the amulet).
 	GameState.set_current_game(_chosen["slot"])
 	_phase = Phase.PLAYING
 	_populate_play_panel()
+	_refresh()
+
+# Dash (§4): a TOTAL select — bypass the limited offering and show every connected
+# game so the player can move to any of them. Spends one dash charge on the pick.
+func dash() -> void:
+	if _phase != Phase.SELECT or GameState.dash_charges <= 0 or _dash_mode:
+		return
+	_dash_mode = true
+	_build_choices()
+	_refresh()
+
+func cancel_dash() -> void:
+	if not _dash_mode:
+		return
+	_dash_mode = false
+	_build_choices()
 	_refresh()
 
 # Report the outcome of actually playing the chosen game (the honour-system
@@ -113,7 +138,12 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 		return
 	var fulfilled_instances: Array = fulfilled if fulfilled is Array else _ticked_fulfilments()
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
+	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed
 	GameLoop2.beat_game(goal_met, fulfilled_instances)
+	# Level up (§3.1) — a fresh chance each game; skipped if the game just killed
+	# the player.
+	if leveled and not GameLoop2.run_over:
+		_apply_level_up()
 	GameState.games_played += 1
 	_chosen = {}
 	_transmuted.clear()   # transmutes apply only to the offering you moved from
@@ -186,6 +216,9 @@ func _offered_ids() -> Array:
 			nbrs.append(gid)
 	var cur := String(GameState.current_game_id)
 	nbrs.sort_custom(func(a, b): return hash(cur + "|" + String(a)) < hash(cur + "|" + String(b)))
+	# Dash (§4) bypasses the cap — every connected game is a valid target.
+	if _dash_mode:
+		return nbrs
 	if amulet in nbrs and nbrs.size() > OFFER_COUNT:
 		nbrs.erase(amulet)
 		nbrs.push_front(amulet)
@@ -217,13 +250,30 @@ func _refresh(_a = null) -> void:
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
 	_boss_banner.visible = _boss_round and _phase == Phase.SELECT
+	_controls_row.visible = _phase == Phase.SELECT
 	_choices_row.visible = _phase == Phase.SELECT
 	_play_panel.visible = _phase == Phase.PLAYING
 	if _phase == Phase.SELECT:
+		_render_controls()
 		_render_choices()
 	elif _phase == Phase.PLAYING:
 		_now_playing.text = _now_playing_text()
 		_now_playing_img.texture = null if _chosen.is_empty() else _enemy_texture(_chosen)
+
+func _render_controls() -> void:
+	for c in _controls_row.get_children():
+		c.queue_free()
+	if _dash_mode:
+		var hint := Label.new()
+		hint.text = "⚡ Dash — pick ANY connected game:"
+		hint.add_theme_color_override("font_color", Color(0.5, 0.85, 1.0))
+		_controls_row.add_child(hint)
+		_controls_row.add_child(_mini_button("Cancel", cancel_dash))
+	elif GameState.dash_charges > 0:
+		var b := Button.new()
+		b.text = "⚡ Dash — pick any connected (%d)" % GameState.dash_charges
+		b.pressed.connect(dash)
+		_controls_row.add_child(b)
 
 func _render_choices() -> void:
 	for c in _choices_row.get_children():
@@ -291,9 +341,19 @@ func _populate_play_panel() -> void:
 		c.queue_free()
 	for c in _fulfil_box.get_children():
 		c.queue_free()
+	for c in _levelup_box.get_children():
+		c.queue_free()
 	_fulfil_checks.clear()
+	_levelup_check = null
 	if _chosen.is_empty():
 		return
+	# Level-up challenge (§3.1): a per-game Yes/No for the character's condition.
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch != null and ch.level_up_condition != "":
+		_levelup_check = CheckBox.new()
+		_levelup_check.text = "Leveled up — %s? (%s)" % [ch.level_up_condition, ch.level_up_reward]
+		_levelup_check.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+		_levelup_box.add_child(_levelup_check)
 	var game: GameData = _chosen["game"]
 	if game.has_launch_target():
 		var play_btn := Button.new()
@@ -321,6 +381,41 @@ func _ticked_fulfilments() -> Array:
 		if is_instance_valid(f["check"]) and f["check"].button_pressed:
 			out.append(f["instance"])
 	return out
+
+# Apply one level-up for the 2.0 character (§3.1): its level_up_stats plus the
+# reward, then re-roll for a Crown-style bonus level. Reuses GameState's existing
+# apply_level_up_stats (its stat vocabulary already covers the 2.0 verbs) and the
+# grant_chest/add_loot reward paths — no combat machinery. Capped so a 100%
+# bonus-chance item can't loop forever.
+func _apply_level_up() -> void:
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch == null or ch.level_up_condition == "":
+		return
+	var bonus_levels: int = 0
+	while true:
+		GameState.player_level += 1
+		GameState.apply_level_up_stats(ch.level_up_stats)
+		match String(ch.level_up_reward_type):
+			"item", "chest":
+				GameState.grant_chest(maxi(1, ch.level_up_reward_amount))
+			"scroll":
+				GameState.add_loot("scroll", maxi(1, ch.level_up_reward_amount))
+			_:
+				pass
+		if bonus_levels >= 10 or not _roll_bonus_level_up():
+			break
+		bonus_levels += 1
+	# Zoe's condition is literally "Perfect a Game" — mark the perfect flag so
+	# perfect-aware items can fire on it.
+	if ch.level_up_condition.to_lower().contains("perfect"):
+		GameState.last_game_perfected = true
+
+# Crown (§8): true if any owned item's bonus_level_up_chance rolls a hit.
+func _roll_bonus_level_up() -> bool:
+	for it in GameState.inventory:
+		if it is ItemData and it.bonus_level_up_chance > 0.0 and randf() < it.bonus_level_up_chance:
+			return true
+	return false
 
 func _show_preview(index: int) -> void:
 	if index < 0 or index >= _choices.size():
@@ -448,6 +543,10 @@ func _build_ui() -> void:
 	root.add_child(_boss_banner)
 
 	root.add_child(_section("Choose a game to travel to:"))
+	# Controls row (Dash) — populated per refresh.
+	_controls_row = HBoxContainer.new()
+	_controls_row.add_theme_constant_override("separation", 8)
+	root.add_child(_controls_row)
 	_choices_row = HFlowContainer.new()
 	_choices_row.add_theme_constant_override("h_separation", 12)
 	_choices_row.add_theme_constant_override("v_separation", 10)
@@ -489,6 +588,11 @@ func _build_ui() -> void:
 	_fulfil_box = VBoxContainer.new()
 	_fulfil_box.add_theme_constant_override("separation", 2)
 	_play_panel.add_child(_fulfil_box)
+
+	# Level-up challenge checkbox (populated per game from the 2.0 character).
+	_levelup_box = VBoxContainer.new()
+	_levelup_box.add_theme_constant_override("separation", 2)
+	_play_panel.add_child(_levelup_box)
 
 	var report_row := HBoxContainer.new()
 	report_row.add_theme_constant_override("separation", 8)
