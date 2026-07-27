@@ -19,8 +19,10 @@ Reward -> level_up_stats (verb / max_hp gains) + level_up_reward_type
           (Small Chest -> item; Scroll -> scroll).
 Starting items -> slugged item ids (resolved against data/items2.0/).
 
-Art resolves by Name from images2.0/characters/ (the sheet has no File column,
-§10.1); missing art just leaves the portrait unset (placeholder later).
+Art resolves by Name (the sheet has no File column, §10.1): the full portrait
+from images2.0/characters/Full/<Name>.png and the round in-world icon from
+images2.0/characters/Icon/<Name>.png (case-insensitive). Missing art just leaves
+that field unset (placeholder later).
 
   python3 tools/generate_character2_tres.py            # regenerate the 2.0 roster
   python3 tools/generate_character2_tres.py --list      # print, write nothing
@@ -37,7 +39,21 @@ PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 XLSX_PATH = os.environ.get(
     "CARDS_XLSX", os.path.join(PROJECT_ROOT, "tools", "Roguelikes.xlsx"))
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "characters2.0")
-CHAR_IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "characters")
+# Portrait art lives in images2.0/characters/Full/, the round in-world token in
+# images2.0/characters/Icon/ (both keyed by the character Name).
+CHAR_FULL_DIR = os.path.join(PROJECT_ROOT, "images2.0", "characters", "Full")
+CHAR_ICON_DIR = os.path.join(PROJECT_ROOT, "images2.0", "characters", "Icon")
+
+
+def _png_map(dir_path):
+    """Lowercased stem -> actual on-disk PNG stem, so a Name resolves to its art
+    case-insensitively (matching the item/enemy generators)."""
+    out = {}
+    if os.path.isdir(dir_path):
+        for fn in os.listdir(dir_path):
+            if fn.lower().endswith(".png"):
+                out[fn[:-4].lower()] = fn[:-4]
+    return out
 
 # start_* verb columns on the sheet -> CharacterData field suffix.
 START_VERBS = ["Bash", "Dash", "Transmute", "Scramble", "Bombs", "Keys"]
@@ -114,14 +130,17 @@ def character_tres(row) -> tuple:
 
     level_up_stats, reward_type, reward_amount = parse_reward(row.get("Reward"))
 
-    portrait = None
-    if os.path.exists(os.path.join(CHAR_IMG_DIR, name + ".png")):
-        portrait = "res://images2.0/characters/%s.png" % name
+    full_stem = _png_map(CHAR_FULL_DIR).get(name.lower())
+    icon_stem = _png_map(CHAR_ICON_DIR).get(name.lower())
+    portrait = ("res://images2.0/characters/Full/%s.png" % full_stem) if full_stem else None
+    icon = ("res://images2.0/characters/Icon/%s.png" % icon_stem) if icon_stem else None
 
     ext = ['[ext_resource type="Script" '
            'path="res://scripts/resources/CharacterData.gd" id="1_char"]']
     if portrait:
         ext.append('[ext_resource type="Texture2D" path="%s" id="2_portrait"]' % portrait)
+    if icon:
+        ext.append('[ext_resource type="Texture2D" path="%s" id="3_icon"]' % icon)
 
     lines = []
     lines.append(
@@ -159,6 +178,8 @@ def character_tres(row) -> tuple:
     lines.append("level_up_reward_amount = %d" % reward_amount)
     if portrait:
         lines.append('portrait = ExtResource("2_portrait")')
+    if icon:
+        lines.append('icon = ExtResource("3_icon")')
     return cid, "\n".join(lines) + "\n"
 
 

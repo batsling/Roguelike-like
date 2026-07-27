@@ -174,6 +174,18 @@ def _usable_uses(type_str, kind):
     return 1
 
 
+def _charge_cost(type_str, kind):
+    # Charge cost for a CHARGED item, read from the Type cell's optional count
+    # ("Charged, 2" -> 2), mirroring _usable_uses. Bare "Charged" -> 0. An
+    # explicit `charged: charge_cost N` Effect clause overrides this later.
+    if kind != KIND["charged"]:
+        return 0
+    parts = [p.strip() for p in str(type_str or "").split(",")]
+    if len(parts) > 1 and parts[1].isdigit():
+        return max(0, int(parts[1]))
+    return 0
+
+
 def _kv(tokens):
     """Split tokens into positional list and key=value dict."""
     pos, kv = [], {}
@@ -542,6 +554,11 @@ def parse_item(row):
     # "Usable, 3" -> 3 uses before the item is destroyed; bare "Usable" -> 1.
     # Everything else is infinite-use (-1).
     fields["max_uses"] = _usable_uses(row.get("Type", ""), fields["kind"])
+    # CHARGED items carry their charge cost in the Type cell ("Charged, 2"); an
+    # explicit `charged:` Effect clause below overrides it.
+    _cc = _charge_cost(row.get("Type", ""), fields["kind"])
+    if _cc:
+        fields["charge_cost"] = _cc
     raw = str(row.get("Effect") or "").strip()
     label = fields["display_name"]
 
