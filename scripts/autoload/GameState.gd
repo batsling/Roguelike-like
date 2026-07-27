@@ -18,7 +18,7 @@ signal current_game_changed(game_id: StringName)
 var character_id: StringName = &""
 # The run's chosen deck (DeckCatalog id). Independent of the character: it only
 # scopes combat/shop card rewards via deck_reward_tag(). Defaults to Random.
-var selected_deck: StringName = DeckCatalog.DEFAULT_DECK_ID
+var selected_deck: StringName = &""
 var save_name: String = ""
 var current_game_id: StringName = &""
 var start_game_id: StringName = &""
@@ -429,7 +429,6 @@ func _on_combat_ended_tally(ctx: Dictionary) -> void:
 		total_combats_completed += 1
 
 func _on_game_beaten(_ctx: Dictionary) -> void:
-	_tick_card_lifecycles()
 	# Games-first redesign (2.0): "after beating a game" is the dominant item
 	# trigger (Anchor +1 Block, Burning Blood +1 Health, Meat on the Bone,
 	# docs/games-first-redesign.md §8). game_beaten fires outside any combat
@@ -520,37 +519,6 @@ func _cmp_int(a: int, op: String, b: int) -> bool:
 		"!=": return a != b
 		_: return false
 
-# Number of CURSE-type cards currently in the deck (Greed, Regret, Guilty, …).
-func curse_card_count() -> int:
-	var n: int = 0
-	for ci in deck:
-		if ci is CardInstance and ci.data != null and ci.data.type == CardData.CardType.CURSE:
-			n += 1
-	return n
-
-# Bumps each held curse card's games-beaten counter and drops any that have
-# reached their destroy_after_games threshold (Guilty -> 3). Iterates back-to-
-# front so removals don't invalidate the index.
-func _tick_card_lifecycles() -> void:
-	var removed: bool = false
-	for i in range(deck.size() - 1, -1, -1):
-		var ci = deck[i]
-		if not (ci is CardInstance) or ci.data == null or ci.data.destroy_after_games < 0:
-			continue
-		ci.games_beaten_held += 1
-		if ci.games_beaten_held >= ci.data.destroy_after_games:
-			var was_curse_card: bool = ci.data.type == CardData.CardType.CURSE
-			deck.remove_at(i)
-			removed = true
-			Notifications.notify("%s crumbled away." % ci.data.display_name,
-				Color(0.7, 0.9, 0.7))
-			# A curse card aging out of the deck is still "getting rid of a
-			# curse card" (Golden Beetle).
-			if was_curse_card:
-				TriggerBus.emit_signal("curse_card_removed", {"card": ci.data})
-	if removed:
-		emit_signal("deck_changed")
-
 # Saddles the player with a curse (skipping a game today; events / enemies
 # later). Records it in active_curses. The penalty card is NOT granted here — a
 # restriction curse drops its card only when the player admits on the
@@ -614,21 +582,6 @@ func take_pending_chest() -> bool:
 	pending_chests -= 1
 	return true
 
-# The card a curse inflicts when its challenge is failed: its named penalty_card,
-# else a random card from the `randomcurse` pool. Null when neither resolves.
-func penalty_card_for(curse: CurseData) -> CardData:
-	if curse == null:
-		return null
-	if curse.penalty_card != &"":
-		return Data.get_card(curse.penalty_card)
-	var pool: Array = []
-	for c in Data.all_cards():
-		if c is CardData and c.type == CardData.CardType.CURSE and c.tags.has("randomcurse"):
-			pool.append(c)
-	if pool.is_empty():
-		return null
-	return pool[randi() % pool.size()]
-
 # All active RESTRICTION curses resolved to CurseData, for the verification
 # screen's "did you fulfil it?" rows. Afflictions are automatic and excluded.
 func active_restriction_curses() -> Array:
@@ -677,7 +630,7 @@ func active_affliction_effects(effect_type: String) -> Array:
 
 func reset_run() -> void:
 	character_id = &""
-	selected_deck = DeckCatalog.DEFAULT_DECK_ID
+	selected_deck = &""
 	save_name = ""
 	current_game_id = &""
 	start_game_id = &""
@@ -758,21 +711,6 @@ func reset_run() -> void:
 	Notifications.clear()
 	phase = Phase.MENU
 
-# The current character's class card tag (e.g. &"ironclad"). Sourced from the
-# character's level_up_card_tag; scopes LEVEL-UP card rewards only (the HTML
-# build's level-up reward always offered the character's own class even when a
-# different deck was chosen). Empty = the full reward pool.
-func card_reward_tag() -> StringName:
-	var cd: CharacterData = Data.get_character(character_id)
-	return cd.level_up_card_tag if cd != null else &""
-
-# The run's DECK tag (e.g. &"ironclad"), from the deck picked on the New Run
-# screen. Scopes general combat card rewards and shop card stock — the deck is
-# purely this reward filter, mirroring the HTML AVAILABLE_DECKS behaviour.
-# Empty (Random deck) = the full reward pool.
-func deck_reward_tag() -> StringName:
-	return DeckCatalog.tag_filter(selected_deck)
-
 # Texture for the player marker in action / tactical combat. Prefers the
 # character's small `icon`, falling back to the full `portrait`. Null when no
 # character is selected (callers draw their default token instead).
@@ -789,63 +727,6 @@ func player_initial() -> String:
 	if cd != null and String(cd.display_name) != "":
 		return String(cd.display_name).substr(0, 1).to_upper()
 	return "@"
-
-func apply_character(char_data: CharacterData) -> void:
-	character_id = char_data.id
-	max_hp = char_data.base_max_hp
-	hp = max_hp
-	max_energy = char_data.base_max_energy
-	hand_size = char_data.base_hand_size
-	strength = char_data.base_strength
-	dexterity = char_data.base_dexterity
-	intelligence = char_data.base_intelligence
-	charisma = char_data.base_charisma
-	constitution = char_data.base_constitution
-	luck = char_data.base_luck
-	speed = char_data.base_speed
-
-	deck.clear()
-	for card_id in char_data.starting_deck:
-		# Generic basics (strike/defend) resolve to this character's variant
-		# (strike_ironclad/…) when one exists. See Data.variant_card_id.
-		var c: CardData = Data.get_card_for_character(card_id, char_data.id)
-		if c != null:
-			deck.append(CardInstance.from_data(c))
-
-	# A run always opens with the character's basic Strike bound to left click,
-	# so the player can attack from the very first action-combat room without
-	# first visiting the Gear screen. They can still swap it there.
-	var strike_card: CardData = Data.get_card_for_character(&"strike", char_data.id)
-	if strike_card != null:
-		action_left_card_id = strike_card.id
-
-	inventory.clear()
-	_reset_item_tracking()
-	for item_id in char_data.starting_items:
-		var it: ItemData = Data.get_item(item_id)
-		if it != null:
-			var inst: ItemData = _append_item_internal(it, 0)
-			# Starting weapon items grant their card too — apply_character
-			# already emits deck_changed at the end so we don't here.
-			_grant_weapon_card(inst)
-
-	equipped_weapon = null
-	if char_data.starting_weapon != &"":
-		var w: ItemData = Data.get_item(char_data.starting_weapon)
-		if w != null:
-			equipped_weapon = w.duplicate(true)
-			equipped_weapon.instance_id = _next_item_instance_id
-			_next_item_instance_id += 1
-
-	_recompute_item_bonuses()
-	# Starting items may have raised max_hp; heal to that new full pool
-	# so the player begins the run at full health regardless of bonuses.
-	hp = max_hp
-
-	emit_signal("stats_changed")
-	emit_signal("hp_changed", hp, max_hp)
-	emit_signal("deck_changed")
-	emit_signal("inventory_changed")
 
 # Games-first redesign (2.0) run-start loadout applier. The no-combat rework has
 # no deck / energy / combat stats — a character brings only a tiny Health and the
@@ -1447,8 +1328,6 @@ func add_item(template: ItemData) -> ItemData:
 	# Charged actives start full (Isaac-style) unless the item opts out.
 	if inst.is_charged():
 		inst.current_charge = inst.max_charge() if inst.starts_charged else 0
-	if _grant_weapon_card(inst):
-		emit_signal("deck_changed")
 	# Curse of Decay: a passive item obtained while it's active has a chance
 	# to arrive already downgraded. Holding it twice rolls twice, independently.
 	if inst.kind == ItemData.ItemKind.PASSIVE:
@@ -1500,63 +1379,6 @@ func is_status_immune(status_id: StringName) -> bool:
 				return true
 	return false
 
-# Canonical "add a card to the player's deck" entry. Accepts a CardInstance
-# or a CardData (wrapped into a fresh instance). Applies egg auto-upgrades
-# (upgrade_card_types) before the card lands, appends, and fires deck_changed.
-# Card rewards and shop purchases route through here; the starting deck and
-# weapon-granted cards stay direct (no eggs at character start, and weapon
-# cards are a managed pair).
-func add_card_to_deck(card) -> CardInstance:
-	var ci: CardInstance = null
-	if card is CardInstance:
-		ci = card
-	elif card is CardData:
-		ci = CardInstance.from_data(card)
-	if ci == null:
-		return null
-	# Egg items auto-upgrade a freshly added card whose type matches, as long
-	# as the card supports upgrading and isn't already upgraded.
-	if not ci.upgraded and ci.data != null and ci.data.can_upgrade \
-			and _deck_add_should_upgrade(ci.data):
-		ci.apply_upgrade()
-		Notifications.notify("%s was upgraded by an Egg!" % ci.data.display_name,
-			Color(1.0, 0.72, 0.3))
-	# Vorpal weapons roll their bound combat type + weight once, at acquisition,
-	# so the badge is visible immediately and the roll persists with the save.
-	ci.roll_vorpal_if_needed()
-	deck.append(ci)
-	emit_signal("deck_changed")
-	return ci
-
-func _deck_add_should_upgrade(card_data: CardData) -> bool:
-	for item in inventory:
-		if not (item is ItemData) or item.upgrade_card_types.is_empty():
-			continue
-		for t in item.upgrade_card_types:
-			if ItemTriggers._card_type_is(card_data, String(t)):
-				return true
-	return false
-
-# Upgrades up to `count` random, not-yet-upgraded, upgradeable deck cards of the
-# given type (Whetstone -> "attack", War Paint -> "skill"; "" = any type). A
-# permanent deck change, so the upgrade is read in every combat mode via
-# CardInstance.get_effective_effects. Returns the display names upgraded (for
-# logging). card_type matches CardData.type via the shared ItemTriggers mapper.
-func upgrade_random_deck_cards(card_type: String, count: int) -> Array:
-	var pool: Array = []
-	for ci in deck:
-		if ci is CardInstance and ci.can_take_upgrade() \
-				and (card_type == "" or ItemTriggers._card_type_is(ci.data, card_type)):
-			pool.append(ci)
-	pool.shuffle()
-	var names: Array = []
-	for i in range(mini(maxi(0, count), pool.size())):
-		pool[i].apply_upgrade()
-		names.append(pool[i].data.display_name)
-	if not names.is_empty():
-		emit_signal("deck_changed")
-	return names
-
 # Flat per-hit damage every owned item grants to the player's attacks of the
 # given damage_type (Focus Crystal -> +1 melee). Read by Stats.damage_bonus.
 func attack_damage_bonus(damage_type: String) -> int:
@@ -1593,31 +1415,10 @@ func stat_mirror_pool(stat_id: StringName) -> Array:
 				pool.append(sn)
 	return pool
 
-func _grant_weapon_card(inst: ItemData) -> bool:
-	# Internal: if `inst` is a weapon with a linked card_id, append a
-	# CardInstance tagged with the item's instance_id. Caller decides
-	# whether to fire deck_changed (apply_character batches the emit).
-	if inst == null:
-		return false
-	if inst.kind != ItemData.ItemKind.WEAPON or inst.weapon_card_id == &"":
-		return false
-	var card_def: CardData = Data.get_card(inst.weapon_card_id)
-	if card_def == null:
-		return false
-	var ci: CardInstance = CardInstance.from_data(card_def)
-	ci.source_weapon_id = inst.instance_id
-	deck.append(ci)
-	return true
-
 func remove_item_at(index: int) -> void:
 	if index < 0 or index >= inventory.size():
 		return
-	var removed: ItemData = inventory[index]
 	inventory.remove_at(index)
-	# Pair removal: a weapon item carries the source_weapon_id its card
-	# was tagged with. Strip every deck card pointing back at this slot.
-	if removed is ItemData and removed.kind == ItemData.ItemKind.WEAPON and removed.instance_id != 0:
-		_remove_deck_cards_for_weapon(removed.instance_id)
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 
@@ -1633,100 +1434,6 @@ func consume_lethal_guard() -> bool:
 			remove_item_at(i)
 			return true
 	return false
-
-func remove_card_at(deck_index: int) -> void:
-	# Inverse of the weapon-removes-card path. If the card was weapon-
-	# granted (source_weapon_id != 0), find and drop the paired item too
-	# so the pair never desyncs. Combat-only mutations (exhaust, discard)
-	# don't route through here — those operate on the per-combat piles.
-	if deck_index < 0 or deck_index >= deck.size():
-		return
-	var card = deck[deck_index]
-	# Eternal cards (Greed) can never be removed from the deck.
-	if card is CardInstance and card.data != null and card.data.eternal:
-		Notifications.notify("%s is Eternal — it can't be removed." % card.data.display_name,
-			Color(0.85, 0.6, 0.9))
-		return
-	deck.remove_at(deck_index)
-	# Removing a CURSE-type card is a "got rid of a curse card" event
-	# (Golden Beetle reacts to it). Distinct from curse_removed, which is an
-	# active_curses entry leaving.
-	if card is CardInstance and card.data != null and card.data.type == CardData.CardType.CURSE:
-		TriggerBus.emit_signal("curse_card_removed", {"card": card.data})
-	var weapon_id: int = 0
-	if card is CardInstance:
-		weapon_id = card.source_weapon_id
-	if weapon_id != 0:
-		for i in range(inventory.size() - 1, -1, -1):
-			var it = inventory[i]
-			if it is ItemData and it.instance_id == weapon_id:
-				inventory.remove_at(i)
-				_recompute_item_bonuses()
-				emit_signal("inventory_changed")
-				break
-	emit_signal("deck_changed")
-
-# Destroy addon: permanently remove a specific physical card (by reference)
-# from the run deck when it's played/used. Self-initiated, so it bypasses the
-# Eternal guard in remove_card_at (a card removing ITSELF is its whole point).
-# No-op if the card isn't in the deck (already gone, or a combat-only copy).
-func destroy_card_instance(card: CardInstance) -> bool:
-	if card == null:
-		return false
-	var idx: int = deck.find(card)
-	if idx < 0:
-		return false
-	deck.remove_at(idx)
-	if card.data != null and card.data.type == CardData.CardType.CURSE:
-		TriggerBus.emit_signal("curse_card_removed", {"card": card.data})
-	if card.source_weapon_id != 0:
-		for i in range(inventory.size() - 1, -1, -1):
-			var it = inventory[i]
-			if it is ItemData and it.instance_id == card.source_weapon_id:
-				inventory.remove_at(i)
-				_recompute_item_bonuses()
-				emit_signal("inventory_changed")
-				break
-	emit_signal("deck_changed")
-	return true
-
-# Destroy in Action mode: the loadout is flattened to CardData, so destroy the
-# FIRST deck CardInstance sharing this CardData's id (one physical copy per
-# destroy event). Returns true if a copy was removed.
-func destroy_first_card_with_id(card_data) -> bool:
-	if card_data == null:
-		return false
-	for c in deck:
-		if c is CardInstance and c.data != null and c.data.id == card_data.id:
-			return destroy_card_instance(c)
-	return false
-
-# Action mode flattens the deck to CardData for its auto-slots, so per-instance
-# Vorpal state isn't on the played card. Recover it by looking up the first deck
-# CardInstance sharing this CardData's id. Returns { type, weight } or {} when
-# the card carries no live Vorpal roll.
-func vorpal_for_card_data(card_data) -> Dictionary:
-	if card_data == null:
-		return {}
-	for c in deck:
-		if c is CardInstance and c.data != null and c.data.id == card_data.id:
-			c.roll_vorpal_if_needed()
-			if c.vorpal_type >= 0 and c.vorpal_weight > 0:
-				return {"type": c.vorpal_type, "weight": c.vorpal_weight}
-			return {}
-	return {}
-
-func _remove_deck_cards_for_weapon(weapon_instance_id: int) -> void:
-	# Internal: drop every CardInstance whose source_weapon_id matches.
-	# Iterates back-to-front so removals don't invalidate the index.
-	var changed: bool = false
-	for i in range(deck.size() - 1, -1, -1):
-		var c = deck[i]
-		if c is CardInstance and c.source_weapon_id == weapon_instance_id:
-			deck.remove_at(i)
-			changed = true
-	if changed:
-		emit_signal("deck_changed")
 
 func set_equipped_weapon(template: ItemData) -> void:
 	# Same duplication contract as add_item — the equipped weapon also
@@ -1773,14 +1480,11 @@ func upgrade_random_passive(delta: int) -> Dictionary:
 	emit_signal("inventory_changed")
 	return {"item": picked, "delta": delta, "new_level": picked.upgrade_level}
 
-# Counts CardInstances in `deck` whose CardData carries `tag` (Jelly counts
-# the "weapon" tag). Backs the `of: "deck_tag:<tag>"` scaling source.
-func _count_deck_cards_with_tag(tag: String) -> int:
-	var n: int = 0
-	for ci in deck:
-		if ci is CardInstance and ci.data != null and ci.data.tags.has(tag):
-			n += 1
-	return n
+# Deck-tag card counting backed the combat `of: "deck_tag:<tag>"` item scaling.
+# The deck is gone with the combat cut (§11), so this is always 0 now; kept as a
+# stub so the item-scaling recompute below stays valid for any legacy 1.0 item.
+func _count_deck_cards_with_tag(_tag: String) -> int:
+	return 0
 
 # Applies a delta-tracked, Handcuffs-aware contribution to live max_hp.
 # `total` is the nominal (uncapped) running total a source wants to
@@ -1931,15 +1635,6 @@ func add_loot(kind: String, amount: int = 1) -> void:
 	if amount == 0:
 		return
 	match kind:
-		"potion":
-			# Each unit becomes a concrete, rarity-rolled potion entry. Negative
-			# amounts drop the most-recently-gained potions (rare, but keep the
-			# old API total-safe).
-			if amount > 0:
-				for _i in range(amount):
-					_add_random_potion_loot()
-			else:
-				_drop_loot_of_type("potion", -amount)
 		"scroll":
 			# Each unit becomes a concrete, rarity-rolled scroll entry (gained
 			# unidentified; ScrollSystem resolves identity on read).
@@ -1957,7 +1652,7 @@ func add_loot(kind: String, amount: int = 1) -> void:
 
 func get_loot_count(kind: String) -> int:
 	match kind:
-		"potion", "scroll":
+		"scroll":
 			var n: int = 0
 			for l in loot_items:
 				if l is Dictionary and String(l.get("type", "")) == kind:
@@ -1966,19 +1661,9 @@ func get_loot_count(kind: String) -> int:
 		_:
 			return int(loot.get(kind, 0))
 
-# Concrete potion loot entries the player is carrying, in pickup order. The loot
-# UIs list these.
-func loot_potions() -> Array:
-	return loot_items.filter(func(l): return l is Dictionary and String(l.get("type", "")) == "potion")
-
 # Concrete scroll loot entries the player is carrying, in pickup order.
 func loot_scrolls() -> Array:
 	return loot_items.filter(func(l): return l is Dictionary and String(l.get("type", "")) == "scroll")
-
-func _add_random_potion_loot() -> void:
-	var p: PotionData = Data.roll_potion()
-	if p != null:
-		loot_items.append({"type": "potion", "id": p.id, "rarity": p.rarity})
 
 func _add_random_scroll_loot() -> void:
 	var s: ScrollData = Data.roll_scroll()
@@ -1987,15 +1672,6 @@ func _add_random_scroll_loot() -> void:
 	else:
 		# No scrolls loaded — keep the old inert stub so counts/UI don't break.
 		loot_items.append({"type": "scroll", "rarity": "Common"})
-
-# Grant a SPECIFIC potion id as loot (DevTools grant, shop purchase). Emits so
-# any open loot UI refreshes.
-func add_potion_loot(id: StringName) -> void:
-	var p: PotionData = Data.get_potion(id)
-	if p == null:
-		return
-	loot_items.append({"type": "potion", "id": p.id, "rarity": p.rarity})
-	emit_signal("inventory_changed")
 
 # Grant a SPECIFIC scroll id as loot (DevTools grant). Emits so loot UI refreshes.
 func add_scroll_loot(id: StringName) -> void:
@@ -2018,189 +1694,3 @@ func _drop_loot_of_type(type: String, count: int) -> void:
 				loot_items.remove_at(j)
 				break
 
-# Post-combat consumable reward: 50/50 a concrete potion or an (inert) scroll
-# stub, mirroring the legacy selectRandomPotionOrScroll split. Returns the entry
-# added so the caller can toast it; {} if nothing could be granted.
-func grant_random_consumable_loot(rng: RandomNumberGenerator = null) -> Dictionary:
-	var r: RandomNumberGenerator = rng
-	if r == null:
-		r = RandomNumberGenerator.new()
-		r.randomize()
-	if r.randf() < 0.5:
-		var p: PotionData = Data.roll_potion(r)
-		if p != null:
-			var e := {"type": "potion", "id": p.id, "rarity": p.rarity}
-			loot_items.append(e)
-			emit_signal("inventory_changed")
-			return e
-	var s: ScrollData = Data.roll_scroll(r)
-	var e2: Dictionary
-	if s != null:
-		e2 = {"type": "scroll", "id": s.id, "rarity": s.rarity}
-	else:
-		e2 = {"type": "scroll", "rarity": "Common"}
-	loot_items.append(e2)
-	emit_signal("inventory_changed")
-	return e2
-
-# ---------------------------------------------------------------------------
-# Action-mode loadout
-# ---------------------------------------------------------------------------
-
-# Returns { "left": CardData|null, "right": CardData|null, "auto": Array[CardData] }.
-#
-# `left`/`right` are the two manual click slots (LMB/RMB). Only Strikes or
-# weapon-granted cards are eligible; if unset, the first eligible deck card
-# is auto-picked so the arena is always playable. `auto` is the auto-play
-# pool: every other deck card except non-playable types (Curse/Status/
-# unplayable). Powers are included — they cycle and resolve on a cooldown
-# like everything else. Duplicates are preserved (three Strikes in the deck
-# means three entries in the pool).
-func get_action_loadout() -> Dictionary:
-	# Resolve each click slot to a concrete deck instance when its chosen id is
-	# present in the deck, so an UPGRADED copy fires its upgraded numbers (action
-	# otherwise flattens to base CardData). Falls back to a base CardData (id with
-	# no live instance) and then to an auto-picked instance.
-	var left_inst: CardInstance = _find_deck_instance(action_left_card_id, [])
-	var right_inst: CardInstance = _find_deck_instance(action_right_card_id, [left_inst])
-
-	var left: CardData = _effective_action_card(left_inst)
-	if left == null and action_left_card_id != &"":
-		left = Data.get_card(action_left_card_id)
-	if left == null:
-		left_inst = _auto_pick_click(&"", false, [])
-		left = _effective_action_card(left_inst)
-
-	var right: CardData = _effective_action_card(right_inst)
-	if right == null and action_right_card_id != &"":
-		right = Data.get_card(action_right_card_id)
-	if right == null:
-		var left_is_strike: bool = left != null and left.tags.has("strike")
-		right_inst = _auto_pick_click(left.id if left != null else &"", left_is_strike, [left_inst])
-		right = _effective_action_card(right_inst)
-
-	# Build the auto pool from the deck, holding back the two click instances (by
-	# identity, so mixed base/upgraded copies of the same id are distinguished).
-	var held: Array = []
-	if left_inst != null:
-		held.append(left_inst)
-	if right_inst != null:
-		held.append(right_inst)
-	var auto: Array = []
-	for c in deck:
-		if not (c is CardInstance) or c.data == null:
-			continue
-		var hi: int = held.find(c)
-		if hi != -1:
-			held.remove_at(hi)  # consumed one copy for a click slot
-			continue
-		var data: CardData = c.data
-		if data.unplayable:
-			continue
-		if data.type == CardData.CardType.CURSE or data.type == CardData.CardType.STATUS:
-			continue
-		auto.append(_effective_action_card(c))
-	return {"left": left, "right": right, "auto": auto}
-
-# The CardData action should fire for a deck instance: the shared base resource,
-# or — for an upgraded instance — a cached duplicate carrying the upgraded
-# effects/cost/description. Action keys per-card state (cooldowns, use caps) by
-# CardData identity, so every upgraded copy of an id resolves to ONE cached
-# resource, exactly like base copies share Data.get_card's resource.
-func _effective_action_card(inst: CardInstance) -> CardData:
-	if inst == null or inst.data == null:
-		return null
-	# Sequential upgrades (Searing Blow) fold per banked count, cached per
-	# (id, count) so two Searing Blow+3 copies share one resource, exactly
-	# like binary upgrades share the per-id cache below.
-	if inst.is_sequential_upgrade() and inst.upgrade_count > 0:
-		return _sequential_action_card_data(inst.data, inst.upgrade_count)
-	return effective_action_card_data(inst.data, inst.upgraded)
-
-func _sequential_action_card_data(base: CardData, count: int) -> CardData:
-	var key: StringName = StringName("%s#%d" % [base.id, count])
-	if not _action_upgraded_cache.has(key):
-		var dup: CardData = base.duplicate() as CardData
-		var bonus: int = count * base.sequential_upgrade_step
-		var effs: Array = base.effects.duplicate(true)
-		for e in effs:
-			if e is Dictionary and String(e.get("type", "")) == "dmg":
-				e["value"] = int(e.get("value", 0)) + bonus
-		dup.effects = effs
-		dup.display_name = base.display_name + ("+" if count == 1 else "+%d" % count)
-		# The dup is a resolved runtime form: no further folding on it.
-		dup.sequential_upgrade_step = 0
-		dup.can_upgrade = false
-		_action_upgraded_cache[key] = dup
-	return _action_upgraded_cache[key]
-
-# Public form for callers that hold a base CardData + a known upgrade flag (the
-# action conjure path resolving `shiv+`). Returns the base resource untouched
-# when not upgraded (or the card can't upgrade).
-func effective_action_card_data(base: CardData, upgraded: bool) -> CardData:
-	if base == null:
-		return null
-	if not upgraded or not base.can_upgrade:
-		return base
-	var key: StringName = base.id
-	if not _action_upgraded_cache.has(key):
-		_action_upgraded_cache[key] = _make_upgraded_card_data(base)
-	return _action_upgraded_cache[key]
-
-func _make_upgraded_card_data(base: CardData) -> CardData:
-	# Shallow-duplicate the resource (image/script/flags carried over) and fold in
-	# the upgrade-only fields. Upgrade in this project changes exactly effects /
-	# cost / description (keywords are shared), so nothing else needs touching.
-	var dup: CardData = base.duplicate() as CardData
-	dup.effects = base.get_effective_effects(true).duplicate(true)
-	dup.cost = base.get_effective_cost(true)
-	dup.description = base.get_effective_description(true)
-	dup.display_name = base.display_name + "+"
-	dup.can_upgrade = false
-	return dup
-
-# First deck instance with `card_id`, skipping any already-claimed instances
-# (so two slotted Strikes resolve to two different physical cards).
-func _find_deck_instance(card_id: StringName, exclude: Array) -> CardInstance:
-	if card_id == &"":
-		return null
-	for c in deck:
-		if c is CardInstance and c.data != null and c.data.id == card_id and not (c in exclude):
-			return c
-	return null
-
-# True if the card id may be slotted into a click slot: it's a Strike
-# (tagged) or a weapon-granted card (some deck instance links to a weapon).
-func is_click_eligible(card_id: StringName) -> bool:
-	if card_id == &"":
-		return false
-	var card: CardData = Data.get_card(card_id)
-	if card != null and card.tags.has("strike"):
-		return true
-	for c in deck:
-		if c is CardInstance and c.data != null and c.data.id == card_id and c.source_weapon_id != 0:
-			return true
-	return false
-
-func _auto_pick_click(exclude_id: StringName, forbid_strike: bool = false, exclude: Array = []) -> CardInstance:
-	# Prefer a Strike; otherwise the first weapon-granted card. Skips
-	# `exclude_id` (so left and right don't auto-pick the same id), any instance
-	# in `exclude` (the other slot's physical card), and enforces
-	# one-Strike-at-a-time across the two slots via `forbid_strike`. Returns the
-	# deck INSTANCE so the caller can keep its upgrade state + hold it back.
-	if not forbid_strike:
-		for c in deck:
-			if not (c is CardInstance) or c.data == null:
-				continue
-			if c.data.id == exclude_id or c in exclude:
-				continue
-			if c.data.tags.has("strike"):
-				return c
-	for c in deck:
-		if not (c is CardInstance) or c.data == null:
-			continue
-		if c.data.id == exclude_id or c in exclude:
-			continue
-		if c.source_weapon_id != 0:
-			return c
-	return null

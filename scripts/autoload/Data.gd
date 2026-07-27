@@ -1,88 +1,47 @@
 extends Node
 
 # Loads all .tres data files at startup and exposes lookups by id.
-# Resources live under res://data/{cards,items,enemies,events,games,characters}/.
+# Post games-first cut (docs/games-first-redesign.md §11), the simulated-combat
+# content (cards, combat enemies, potions, action tunables) is gone; what remains
+# is the run-graph content (games, characters, items, events, encounters, curses)
+# plus the 2.0 games-first content (characters2.0, items2.0, enemies2.0, bosses2.0,
+# scrolls2.0). Scrolls are 2.0-only now, so get_scroll/all_scrolls resolve the
+# scrolls2.0 set directly.
 
-var _cards: Dictionary = {}             # StringName -> CardData
 var _items: Dictionary = {}             # StringName -> ItemData
-var _enemies: Dictionary = {}           # StringName -> EnemyData
-var _action_enemies: Dictionary = {}    # StringName -> ActionEnemyData
 var _events: Dictionary = {}            # StringName -> EventData
 var _games: Dictionary = {}             # StringName -> GameData
 var _characters: Dictionary = {}        # StringName -> CharacterData
-var _curses: Dictionary = {}            # StringName -> CurseData
-var _potions: Dictionary = {}           # StringName -> PotionData
-var _scrolls: Dictionary = {}           # StringName -> ScrollData
+var _curses: Dictionary = {}            # StringName -> CurseData (shelved, kept — §5)
+var _scrolls: Dictionary = {}           # StringName -> ScrollData (2.0)
 var _encounters: Dictionary = {}        # StringName -> EncounterData
 
 # === Games-first redesign (2.0) content ===
-# Loaded from the parallel data/*2.0/ folders (docs/games-first-redesign.md §10)
-# into separate dictionaries so the still-present combat content is untouched
-# until the archive cut. Scrolls reuse ScrollData (extended, not forked), so the
-# 2.0 scrolls live in their own dict rather than repointing get_scroll.
 var _characters2: Dictionary = {}       # StringName -> CharacterData (2.0 roster)
 var _items2: Dictionary = {}            # StringName -> ItemData (2.0)
 var _goal_enemies: Dictionary = {}      # StringName -> GoalEnemyData (normal)
 var _bosses: Dictionary = {}            # StringName -> GoalEnemyData (boss=true)
-var _scrolls2: Dictionary = {}          # StringName -> ScrollData (2.0)
-
-# Single shared config resource mapping turn-based combat concepts to the
-# Action mode's equivalents (turns->rooms, energy->Haste, draw->auto-slots).
-# Edit data/action_translation.tres to retune; reference via
-# Data.action_translation from anywhere.
-var action_translation: ActionTranslation = null
-
-# Per-archetype action-attack tunables (reach/radius/arc/speed/smear look) for
-# the attack-delivery overhaul. Edit data/action_attacks.tres to retune the
-# feel; reference via Data.action_attacks. See ActionAttackLibrary.
-var action_attacks: ActionAttackLibrary = null
 
 func _ready() -> void:
-	_load_dir("res://data/cards/", _cards)
 	_load_dir("res://data/items/", _items)
-	_load_dir("res://data/enemies/", _enemies)
-	_load_dir("res://data/action_enemies/", _action_enemies)
 	_load_dir("res://data/events/", _events)
 	_load_dir("res://data/games/", _games)
 	_load_dir("res://data/characters/", _characters)
 	_load_dir("res://data/curses/", _curses)
-	_load_dir("res://data/potions/", _potions)
-	_load_dir("res://data/scrolls/", _scrolls)
 	_load_dir("res://data/encounters/", _encounters)
-	# Games-first redesign (2.0) content — parallel folders, separate dicts.
+	# Games-first redesign (2.0) content.
 	_load_dir("res://data/characters2.0/", _characters2)
 	_load_dir("res://data/items2.0/", _items2)
 	_load_dir("res://data/enemies2.0/", _goal_enemies)
 	_load_dir("res://data/bosses2.0/", _bosses)
-	_load_dir("res://data/scrolls2.0/", _scrolls2)
-	# Per-mode concept translators. Fall back to script defaults if the .tres is
-	# missing so combat never crashes for a missing tunable file.
-	action_translation = (_load_config("res://data/action_translation.tres") as ActionTranslation)
-	if action_translation == null:
-		action_translation = ActionTranslation.new()
-	action_attacks = (_load_config("res://data/action_attacks.tres") as ActionAttackLibrary)
-	if action_attacks == null:
-		action_attacks = ActionAttackLibrary.new()
-	print("[Data] Loaded %d cards, %d items, %d enemies (+%d action), %d events, %d games, %d characters, %d potions" % [
-		_cards.size(), _items.size(), _enemies.size(), _action_enemies.size(),
-		_events.size(), _games.size(), _characters.size(), _potions.size()
+	_load_dir("res://data/scrolls2.0/", _scrolls)
+	print("[Data] Loaded %d items, %d events, %d games, %d characters, %d curses, %d encounters" % [
+		_items.size(), _events.size(), _games.size(), _characters.size(),
+		_curses.size(), _encounters.size()
 	])
-	print("[Data] Loaded %d scrolls, %d encounters" % [_scrolls.size(), _encounters.size()])
 	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls" % [
-		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(), _scrolls2.size()
+		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(), _scrolls.size()
 	])
-
-# Loads a single config .tres, returning null (with a warning) if missing or
-# malformed; callers supply a typed default.
-func _load_config(path: String) -> Resource:
-	if ResourceLoader.exists(path):
-		var res = load(path)
-		if res != null:
-			return res
-		push_warning("[Data] failed to load %s; using defaults." % path)
-	else:
-		push_warning("[Data] %s missing; using defaults." % path)
-	return null
 
 func _load_dir(path: String, target: Dictionary) -> void:
 	var dir := DirAccess.open(path)
@@ -100,49 +59,38 @@ func _load_dir(path: String, target: Dictionary) -> void:
 		fname = dir.get_next()
 
 # Lookup APIs
-func get_card(id: StringName) -> CardData:
-	return _cards.get(id)
-
-# Resolve a (possibly generic) card id to a character-specific variant when one
-# exists. Convention: a card named "<base>_<character_id>" (e.g. strike_ironclad)
-# is that character's version of a generic basic (strike/defend). Characters keep
-# the generic id (&"strike") in their starting_deck and this swaps in their
-# variant, falling back to the generic id when no variant exists. Lets each
-# character carry its own Strike/Defend (different art, Attack archetype, etc.)
-# without bespoke deck lists.
-func variant_card_id(base_id: StringName, character_id: StringName) -> StringName:
-	if character_id == &"":
-		return base_id
-	var variant := StringName("%s_%s" % [base_id, character_id])
-	if _cards.has(variant):
-		return variant
-	return base_id
-
-func get_card_for_character(base_id: StringName, character_id: StringName) -> CardData:
-	return _cards.get(variant_card_id(base_id, character_id))
-
 func get_curse(id: StringName) -> CurseData:
 	return _curses.get(id)
 
-func get_potion(id: StringName) -> PotionData:
-	return _potions.get(id)
+func all_curses() -> Array:
+	return _curses.values()
 
-func all_potions() -> Array:
-	return _potions.values()
+# --- Scrolls (2.0) ---------------------------------------------------------
+func get_scroll(id: StringName) -> ScrollData:
+	return _scrolls.get(id)
 
-# Rarity weights for random potion draws (rewards / shop / floor pickups).
-# Mirrors the legacy selectRandomRarity distribution used for items, with a 10%
-# bump from Rare to Legendary. PotionData.rarity_index() maps the sheet's rarity
-# string onto the same 0-3 ordering items use.
-const POTION_RARITY_WEIGHTS := { 0: 75.0, 1: 20.0, 2: 5.0 }
+func all_scrolls() -> Array:
+	return _scrolls.values()
 
-func _roll_potion_rarity(rng: RandomNumberGenerator) -> int:
-	var total: float = POTION_RARITY_WEIGHTS[0] + POTION_RARITY_WEIGHTS[1] + POTION_RARITY_WEIGHTS[2]
+# Aliases kept for the 2.0-named call sites (tests, generators).
+func get_scroll2(id: StringName) -> ScrollData:
+	return _scrolls.get(id)
+
+func all_scrolls2() -> Array:
+	return _scrolls.values()
+
+# Rarity weights for random scroll draws. Mirrors the legacy selectRandomRarity
+# distribution (75 / 20 / 5) with a 10% bump from Rare to Legendary.
+# ScrollData.rarity_index() maps the sheet's rarity string onto the 0-3 ordering.
+const SCROLL_RARITY_WEIGHTS := { 0: 75.0, 1: 20.0, 2: 5.0 }
+
+func _roll_scroll_rarity(rng: RandomNumberGenerator) -> int:
+	var total: float = SCROLL_RARITY_WEIGHTS[0] + SCROLL_RARITY_WEIGHTS[1] + SCROLL_RARITY_WEIGHTS[2]
 	var roll: float = rng.randf() * total
 	var r: int
-	if roll < POTION_RARITY_WEIGHTS[0]:
+	if roll < SCROLL_RARITY_WEIGHTS[0]:
 		r = 0
-	elif roll < POTION_RARITY_WEIGHTS[0] + POTION_RARITY_WEIGHTS[1]:
+	elif roll < SCROLL_RARITY_WEIGHTS[0] + SCROLL_RARITY_WEIGHTS[1]:
 		r = 1
 	else:
 		r = 2
@@ -150,39 +98,8 @@ func _roll_potion_rarity(rng: RandomNumberGenerator) -> int:
 		r = 3
 	return r
 
-# One random potion template, rarity-weighted. Falls back to the full pool when
-# the rolled rarity bucket is empty so the result is always filled. Returns null
-# only when no potions are loaded at all.
-func roll_potion(rng: RandomNumberGenerator = null) -> PotionData:
-	var pool: Array = _potions.values()
-	if pool.is_empty():
-		return null
-	var r: RandomNumberGenerator = rng
-	if r == null:
-		r = RandomNumberGenerator.new()
-		r.randomize()
-	var target: int = _roll_potion_rarity(r)
-	var bucket: Array = pool.filter(func(p): return p is PotionData and p.rarity_index() == target)
-	if bucket.is_empty():
-		bucket = pool
-	return bucket[r.randi_range(0, bucket.size() - 1)]
-
-func get_scroll(id: StringName) -> ScrollData:
-	return _scrolls.get(id)
-
-func all_scrolls() -> Array:
-	return _scrolls.values()
-
-func get_encounter(id: StringName) -> EncounterData:
-	return _encounters.get(id)
-
-func all_encounters() -> Array:
-	return _encounters.values()
-
-# One random scroll template, rarity-weighted with the same distribution as
-# potions (ScrollData.rarity_index() maps the sheet rarity onto the 0-3 order).
-# Falls back to the full pool when the rolled bucket is empty; null only if no
-# scrolls are loaded.
+# One random scroll template, rarity-weighted. Falls back to the full pool when
+# the rolled bucket is empty; null only if no scrolls are loaded.
 func roll_scroll(rng: RandomNumberGenerator = null) -> ScrollData:
 	var pool: Array = _scrolls.values()
 	if pool.is_empty():
@@ -191,20 +108,20 @@ func roll_scroll(rng: RandomNumberGenerator = null) -> ScrollData:
 	if r == null:
 		r = RandomNumberGenerator.new()
 		r.randomize()
-	var target: int = _roll_potion_rarity(r)
+	var target: int = _roll_scroll_rarity(r)
 	var bucket: Array = pool.filter(func(s): return s is ScrollData and s.rarity_index() == target)
 	if bucket.is_empty():
 		bucket = pool
 	return bucket[r.randi_range(0, bucket.size() - 1)]
 
+func get_encounter(id: StringName) -> EncounterData:
+	return _encounters.get(id)
+
+func all_encounters() -> Array:
+	return _encounters.values()
+
 func get_item(id: StringName) -> ItemData:
 	return _items.get(id)
-
-func get_enemy(id: StringName) -> EnemyData:
-	return _enemies.get(id)
-
-func get_action_enemy(id: StringName) -> ActionEnemyData:
-	return _action_enemies.get(id)
 
 func get_event(id: StringName) -> EventData:
 	return _events.get(id)
@@ -228,9 +145,6 @@ func get_goal_enemy(id: StringName) -> GoalEnemyData:
 func get_boss(id: StringName) -> GoalEnemyData:
 	return _bosses.get(id)
 
-func get_scroll2(id: StringName) -> ScrollData:
-	return _scrolls2.get(id)
-
 func all_characters2() -> Array:
 	return _characters2.values()
 
@@ -243,89 +157,11 @@ func all_goal_enemies() -> Array:
 func all_bosses() -> Array:
 	return _bosses.values()
 
-func all_scrolls2() -> Array:
-	return _scrolls2.values()
-
-# Bulk access (e.g. for pools / shop offers)
-func all_cards() -> Array:
-	return _cards.values()
-
-func all_curses() -> Array:
-	return _curses.values()
-
-# Cards eligible for random shop / reward / treasure draws. Excludes
-# starters (always in the character's opening deck) and weapon cards
-# (granted exclusively by their paired weapon item — see
-# ItemData.weapon_card_id and GameState._grant_weapon_card). Curse / Status /
-# Training cards are never rewards either.
-#
-# When `tag_filter` is set (e.g. &"ironclad"), the pool narrows to that
-# class's cards plus universal "hero" cards (Dice excluded), mirroring the
-# HTML showCardRewardModal pool. If that combination is empty the unfiltered
-# pool is returned so a reward is always offerable.
-func reward_card_pool(tag_filter: StringName = &"") -> Array:
-	var out: Array = []
-	for c in _cards.values():
-		if not (c is CardData):
-			continue
-		if c.rarity == CardData.Rarity.STARTER:
-			continue
-		if c.tags.has("weapon"):
-			continue
-		if c.type == CardData.CardType.CURSE \
-				or c.type == CardData.CardType.STATUS \
-				or c.type == CardData.CardType.TRAINING:
-			continue
-		out.append(c)
-	if tag_filter == &"":
-		return out
-	var tagged: Array = []
-	var heroes: Array = []
-	for c in out:
-		if c.tags.has(tag_filter):
-			tagged.append(c)
-		elif c.tags.has("hero") and c.type != CardData.CardType.DICE:
-			heroes.append(c)
-	var combined: Array = tagged.duplicate()
-	for h in heroes:
-		var dup: bool = false
-		for t in tagged:
-			if t.id == h.id:
-				dup = true
-				break
-		if not dup:
-			combined.append(h)
-	return combined if not combined.is_empty() else out
-
-# Cards a random conjure may mint (White Noise → Power, Infernal Blade →
-# Attack, Distraction → Skill): the reward pool scoped to the DECK the player
-# picked on the New Run screen (GameState.deck_reward_tag), narrowed to the
-# requested card type. reward_card_pool already excludes starters, weapons,
-# and Status/Curse/Training junk, so every conjurable card is a real,
-# playable reward-grade card from the chosen deck's pool (the Random deck's
-# empty filter = the full catalog).
-func conjure_card_pool(card_type: String) -> Array:
-	const TYPE_IDS := {
-		"attack": CardData.CardType.ATTACK,
-		"skill": CardData.CardType.SKILL,
-		"power": CardData.CardType.POWER,
-	}
-	if not TYPE_IDS.has(card_type.to_lower()):
-		push_warning("conjure_card_pool: unknown card type '%s'" % card_type)
-		return []
-	var want: int = TYPE_IDS[card_type.to_lower()]
-	var out: Array = []
-	for c in reward_card_pool(GameState.deck_reward_tag()):
-		if c.type == want:
-			out.append(c)
-	return out
-
 func all_items() -> Array:
 	return _items.values()
 
 # Items eligible for random shop / reward / treasure draws. Excludes "starter"
-# items (Burning Blood, Ring of the Snake, …) which belong to a character's
-# opening loadout, mirroring reward_card_pool's STARTER exclusion.
+# items which belong to a character's opening loadout.
 func reward_item_pool() -> Array:
 	var out: Array = []
 	for it in _items.values():
@@ -336,10 +172,9 @@ func reward_item_pool() -> Array:
 		out.append(it)
 	return out
 
-# Rarity weights for random item draws (shops, treasure). Mirrors the HTML
-# selectRandomRarity distribution and RewardScreen (75 / 20 / 5), with a 10%
-# bump from Rare to Legendary. Without this, uniform picks over the roughly
-# even Common/Uncommon/Rare pool surface Rares far too often.
+# Rarity weights for random item draws (rewards). Mirrors the legacy
+# selectRandomRarity distribution (75 / 20 / 5), with a 10% bump from Rare to
+# Legendary.
 const ITEM_RARITY_WEIGHTS := {
 	ItemData.Rarity.COMMON: 75.0,
 	ItemData.Rarity.UNCOMMON: 20.0,
@@ -388,29 +223,12 @@ func items_with_tag(tag: StringName) -> Array:
 	return out
 
 # One random item template carrying `tag`, or null if nothing matches.
-# Used by the "item_tagged" event effect to hand out a themed reward.
 func random_item_by_tag(tag: StringName, rng: RandomNumberGenerator = null) -> ItemData:
 	var pool: Array = items_with_tag(tag)
 	if pool.is_empty():
 		return null
 	var idx: int = (rng.randi() if rng != null else randi()) % pool.size()
 	return pool[idx]
-
-func all_enemies() -> Array:
-	return _enemies.values()
-
-func all_action_enemies() -> Array:
-	return _action_enemies.values()
-
-# Action enemies flagged Difficulty.BOSS — the pool boss rooms draw their
-# headline enemy from (ActionEnemySpawner.build_boss_room). Kept out of the
-# normal weighted room pool by ActionEnemySpawner.max_difficulty_for.
-func all_action_bosses() -> Array:
-	var out: Array = []
-	for e in _action_enemies.values():
-		if e is ActionEnemyData and e.difficulty == ActionEnemyData.Difficulty.BOSS:
-			out.append(e)
-	return out
 
 func all_events() -> Array:
 	return _events.values()

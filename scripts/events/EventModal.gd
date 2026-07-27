@@ -623,8 +623,8 @@ func _describe_one_effect(e: Dictionary) -> String:
 		"item_tagged":
 			return "Random %s item" % String(e.get("tag", ""))
 		"curse_card":
-			var card: CardData = Data.get_card(StringName(String(e.get("card", ""))))
-			return "Curse card: %s" % (card.display_name if card != null else String(e.get("card", "")))
+			# Curse cards are combat content (cut, §11) — show the raw id if authored.
+			return "Curse card: %s" % String(e.get("card", ""))
 		"active_curse":
 			var curse: CurseData = Data.get_curse(StringName(String(e.get("curse", ""))))
 			return "Curse: %s" % (curse.display_name if curse != null else String(e.get("curse", "")))
@@ -641,7 +641,7 @@ func _describe_one_effect(e: Dictionary) -> String:
 			var rng_txt: String = str(lo) if lo == hi else "%d-%d" % [lo, hi]
 			return "+%s %s next fight" % [rng_txt, String(e.get("enemy", "")).capitalize()]
 		"note_for_yourself":
-			return "Retrieve %s | store a card" % _stored_card_name()
+			return "A note to yourself"
 		_:
 			return ""
 
@@ -700,15 +700,8 @@ func _apply_event_effect(effect: Dictionary) -> void:
 		"item_tagged":
 			_grant_tagged_item(StringName(String(effect.get("tag", ""))))
 		"curse_card":
-			# Add a CURSE-type card (e.g. Greed) to the run deck.
-			var card: CardData = Data.get_card(StringName(String(effect.get("card", ""))))
-			if card != null:
-				GameState.add_card_to_deck(card)
-				GameLog.add("A curse worms into your deck: %s." % card.display_name,
-					Color(0.85, 0.6, 0.85))
-			else:
-				GameLog.add("(missing curse card: %s)" % effect.get("card", ""),
-					Color(0.6, 0.6, 0.6))
+			# Curse cards were a combat-deck mechanic (cut, §11) — no-op now.
+			pass
 		"active_curse":
 			# Attach a persistent run curse (e.g. Curse of Ocular Trauma).
 			var curse: CurseData = Data.get_curse(StringName(String(effect.get("curse", ""))))
@@ -739,7 +732,8 @@ func _apply_event_effect(effect: Dictionary) -> void:
 				count, String(effect.get("enemy", "")).capitalize(),
 			], Color(1.0, 0.6, 0.6))
 		"note_for_yourself":
-			_resolve_note_for_yourself(StringName(String(effect.get("default_card", "iron_wave"))))
+			# Deck-card storage was combat content (cut, §11) — no-op now.
+			pass
 		_:
 			GameLog.add("(unhandled event effect: %s)" % t, Color(0.6, 0.6, 0.6))
 
@@ -755,64 +749,18 @@ func _grant_tagged_item(tag: StringName) -> void:
 	GameState.add_item(template)
 	GameLog.add("You find %s." % template.display_name, Color(0.8, 1.0, 0.8))
 
-# "A Note For Yourself": hand back the previously stored card (or a default the
-# first time), add it to the run deck, then let the player pick a card from
-# their current deck to store for next time.
-func _resolve_note_for_yourself(default_card: StringName) -> void:
-	var stored_id: StringName = GameState.note_for_yourself_card
-	if stored_id == &"":
-		stored_id = default_card
-	var stored: CardData = Data.get_card(stored_id)
-	if stored != null:
-		GameState.add_card_to_deck(stored)
-		GameLog.add("You retrieve %s." % stored.display_name, Color(0.8, 0.9, 1.0))
-	# Now choose which card to leave for the next visit.
-	var candidates: Array = GameState.deck.duplicate()
-	if candidates.is_empty():
-		return
-	var picker := CardPickerModal.new()
-	add_child(picker)
-	picker.show_picker({
-		"title": "Store a card for next time",
-		"candidates": candidates,
-		"count": 1,
-		"accent": Color(0.70, 0.80, 0.95),
-		"confirm_label": "Store",
-		"on_picked": Callable(self, "_on_note_card_picked"),
-	})
-
-func _on_note_card_picked(picks: Array) -> void:
-	if picks.is_empty():
-		return
-	var inst = picks[0]
-	if inst != null and inst.data != null:
-		GameState.note_for_yourself_card = inst.data.id
-		GameLog.add("You stash a note about %s." % inst.data.display_name,
-			Color(0.8, 0.9, 1.0))
-
-# Replaces {name} / {storedCard} placeholders in event flavour text.
+# Replaces {name} placeholders in event flavour text. ({storedCard} was the
+# combat card-note substitution, cut with the deck, §11.)
 func _sub(text: String) -> String:
 	if text.find("{") == -1:
 		return text
-	var out: String = text
-	out = out.replace("{name}", _player_name())
-	out = out.replace("{storedCard}", _stored_card_name())
-	return out
+	return text.replace("{name}", _player_name())
 
 func _player_name() -> String:
 	var ch: CharacterData = Data.get_character(GameState.character_id)
 	if ch != null and String(ch.display_name) != "":
 		return String(ch.display_name)
 	return "You"
-
-func _stored_card_name() -> String:
-	# The note shows the card the player will RECEIVE next — i.e. the one
-	# currently stored, or the default if nothing has been stored yet.
-	var id: StringName = GameState.note_for_yourself_card
-	if id == &"":
-		id = &"iron_wave"
-	var card: CardData = Data.get_card(id)
-	return String(card.display_name) if card != null else "Iron Wave"
 
 func _on_continue() -> void:
 	# Event is over: pill buffs end here (also handled in _exit_tree as a

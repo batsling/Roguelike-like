@@ -1,27 +1,21 @@
 extends Control
 
-# Main menu — the project's startup scene. Owns the new-run flow
-# (CharacterSelectModal -> ChooseYourStartModal -> change_scene into the
-# Run scene) plus the Continue list backed by SaveSystem.list_named().
+# Main menu — the project's startup scene. Post games-first cut
+# (docs/games-first-redesign.md §11) "Start Run" opens a 2.0 character picker and
+# launches the games-first overworld (Overworld2). The old combat run flow
+# (CharacterSelect -> ChooseYourStart -> Main.tscn) is gone.
 #
-# Collection opens the real compendium (Collection.gd). The remaining
-# system-less buttons (Run History, Settings, How to Play) raise a simple
-# "Coming Soon" stub modal so the layout is feature-complete vs. the HTML
-# build without committing to half-built systems.
+# Collection opens the compendium; Tier List / Settings open their screens. The
+# remaining system-less buttons raise a "Coming Soon" stub. The Continue list is
+# gated off until the 2.0 save shape is finalized.
 
-const CHARACTER_SELECT_SCENE := preload("res://scenes/menu/CharacterSelectModal.tscn")
-const CHOOSE_START_SCENE := preload("res://scenes/menu/ChooseYourStartModal.tscn")
-const RUN_SCENE_PATH := "res://scenes/Main.tscn"
+const OVERWORLD2_SCENE := "res://scenes/redesign2/Overworld2.tscn"
 
 @onready var _continue_btn: Button = %ContinueBtn
 @onready var _save_list_container: VBoxContainer = %SaveList
 @onready var _modal_layer: Control = %ModalLayer
 
-var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
-var _save_list_visible: bool = false
-
 func _ready() -> void:
-	_rng.randomize()
 	GameState.phase = GameState.Phase.MENU
 
 	%StartRunBtn.pressed.connect(_on_start_run)
@@ -33,159 +27,102 @@ func _ready() -> void:
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
 	%ClearDataBtn.pressed.connect(_on_clear_data)
 
-	# Games-first (2.0) prototype entry point — a standalone playable harness for
-	# the no-combat redesign (docs/games-first-redesign.md), separate from the
-	# real combat run flow. Added in code so the menu scene stays untouched; it
-	# sits just under Start Run.
-	var proto_btn := Button.new()
-	proto_btn.text = "▶ Games-First Prototype"
-	proto_btn.pressed.connect(func():
-		get_tree().change_scene_to_file("res://scenes/redesign2/Overworld2.tscn"))
-	var start_btn: Button = %StartRunBtn
-	if start_btn.get_parent() != null:
-		start_btn.get_parent().add_child(proto_btn)
-		start_btn.get_parent().move_child(proto_btn, start_btn.get_index() + 1)
-
-	_refresh_continue_button()
+	# Continue is disabled until the 2.0 save shape lands.
+	_continue_btn.disabled = true
+	_continue_btn.text = "Continue (unavailable)"
 	_save_list_container.visible = false
 
-func _refresh_continue_button() -> void:
-	var saves: Array = SaveSystem.list_named()
-	_continue_btn.disabled = saves.is_empty()
-	if saves.is_empty():
-		_continue_btn.text = "Continue (no saves)"
-	else:
-		_continue_btn.text = "Continue (%d)" % saves.size()
-
 # ---------------------------------------------------------------------------
-# Start Run flow
+# Start Run flow — pick a 2.0 character, then enter Overworld2
 # ---------------------------------------------------------------------------
 
 func _on_start_run() -> void:
-	var modal: Node = CHARACTER_SELECT_SCENE.instantiate()
-	modal.confirmed.connect(_on_character_confirmed)
-	modal.cancelled.connect(func(): modal.queue_free())
-	_modal_layer.add_child(modal)
-
-func _on_character_confirmed(character_id: StringName, deck_id: StringName, save_name: String) -> void:
-	# Free the character-select modal first; we replace it with the
-	# choose-your-start panel.
 	for c in _modal_layer.get_children():
 		c.queue_free()
+	var picker := _build_character_picker()
+	_modal_layer.add_child(picker)
 
-	# Overwrite confirmation handled inside the character modal already,
-	# so by the time we land here the player has committed.
-	var pick: Dictionary = RunGraph.pick_amulet_and_starts(_rng)
-	if pick.is_empty():
-		_show_coming_soon("Run setup failed", "Could not find a valid start/amulet pair in the current game graph.")
-		return
+# A code-built character-select overlay over the roster in data/characters2.0.
+func _build_character_picker() -> Control:
+	var root := Control.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	var modal: Node = CHOOSE_START_SCENE.instantiate()
-	modal.setup(pick.amulet_id, pick.options, save_name, character_id, deck_id)
-	modal.chose_start.connect(_on_start_chosen)
-	modal.cancelled.connect(_on_start_cancelled)
-	_modal_layer.add_child(modal)
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.72)
+	root.add_child(dim)
 
-func _on_start_cancelled() -> void:
-	for c in _modal_layer.get_children():
-		c.queue_free()
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.custom_minimum_size = Vector2(560, 520)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.08, 0.12, 0.98)
+	sb.set_corner_radius_all(10)
+	sb.set_content_margin_all(20)
+	panel.add_theme_stylebox_override("panel", sb)
+	root.add_child(panel)
 
-func _on_start_chosen(start_id: StringName, amulet_id: StringName, start_type: int,
-		save_name: String, character_id: StringName, deck_id: StringName) -> void:
-	for c in _modal_layer.get_children():
-		c.queue_free()
-	_begin_run(start_id, amulet_id, start_type, save_name, character_id, deck_id)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	panel.add_child(vbox)
 
-func _begin_run(start_id: StringName, amulet_id: StringName, start_type: int,
-		save_name: String, character_id: StringName, deck_id: StringName) -> void:
-	var char_data: CharacterData = Data.get_character(character_id)
-	if char_data == null:
-		push_error("[MainMenu] character missing: %s" % character_id)
-		return
+	var title := Label.new()
+	title.text = "Choose your character"
+	title.add_theme_font_size_override("font_size", 24)
+	vbox.add_child(title)
 
-	GameState.reset_run()
-	GameState.apply_character(char_data)
-	GameState.selected_deck = deck_id
-	GameState.save_name = save_name
-	GameState.start_game_id = start_id
-	GameState.amulet_game_id = amulet_id
-	GameState.set_current_game(start_id)
-	# Cache the start type on the global state so the run scene can apply
-	# the per-type starting bonus on its first frame.
-	GameState.set_meta("pending_start_bonus", int(start_type))
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(520, 400)
+	vbox.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 8)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
 
-	GameLog.add("---- New run: %s (%s deck) ----" % [char_data.display_name,
-		DeckCatalog.display_name(deck_id)], Color(0.7, 0.9, 1.0))
-	var start_g := Data.get_game(start_id)
-	var amulet_g := Data.get_game(amulet_id)
-	if start_g != null and amulet_g != null:
-		GameLog.add("Journey: %s -> %s" % [start_g.display_name, amulet_g.display_name],
-			Color(0.8, 0.9, 1.0))
+	for ch in Data.all_characters2():
+		if ch is CharacterData:
+			list.add_child(_character_row(ch, root))
 
-	# First save lives on disk so a quit-immediately doesn't lose the run.
-	SaveSystem.save_named(save_name)
-	get_tree().change_scene_to_file(RUN_SCENE_PATH)
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.pressed.connect(func(): root.queue_free())
+	vbox.add_child(cancel)
+	return root
+
+func _character_row(ch: CharacterData, root: Control) -> Control:
+	var btn := Button.new()
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.custom_minimum_size = Vector2(0, 56)
+	var desc: String = ch.description if ch.description != "" else ""
+	btn.text = "%s   —   Health %d   Bash %d  Dash %d  Transmute %d  Scramble %d  Bombs %d  Keys %d\n%s" % [
+		ch.display_name, ch.base_max_hp, ch.start_bash, ch.start_dash,
+		ch.start_transmute, ch.start_scramble, ch.start_bombs, ch.start_keys, desc]
+	btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var cid: StringName = ch.id
+	btn.pressed.connect(func(): _begin_run(cid))
+	return btn
+
+func _begin_run(character_id: StringName) -> void:
+	# Overworld2 boots the run itself (rolls the graph, applies the 2.0 loadout);
+	# it reads the chosen character from this pending meta on _ready.
+	GameState.set_meta("pending_character2", character_id)
+	get_tree().change_scene_to_file(OVERWORLD2_SCENE)
 
 # ---------------------------------------------------------------------------
-# Continue list
+# Continue list (gated off — see _ready)
 # ---------------------------------------------------------------------------
 
 func _on_continue_toggle() -> void:
-	_save_list_visible = not _save_list_visible
-	_save_list_container.visible = _save_list_visible
-	if _save_list_visible:
-		_populate_save_list()
-
-func _populate_save_list() -> void:
-	for c in _save_list_container.get_children():
-		c.queue_free()
-	var saves: Array = SaveSystem.list_named()
-	if saves.is_empty():
-		var lbl := Label.new()
-		lbl.text = "  (no saves yet)"
-		lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
-		_save_list_container.add_child(lbl)
-		return
-	for s in saves:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		var load_btn := Button.new()
-		var game_id: String = s.get("current_game", "")
-		var game_name := game_id
-		var gd: GameData = Data.get_game(StringName(game_id))
-		if gd != null:
-			game_name = gd.display_name
-		load_btn.text = "  %s  —  %s  •  HP %d/%d  •  Gold %d  •  %d games" % [
-			s["name"], game_name, s["hp"], s["max_hp"], s["gold"], s["games_beaten"]
-		]
-		load_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		load_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		var name_copy: String = s["name"]
-		load_btn.pressed.connect(func(): _on_load_save(name_copy))
-		row.add_child(load_btn)
-		var del_btn := Button.new()
-		del_btn.text = "🗑"
-		del_btn.pressed.connect(func(): _on_delete_save(name_copy))
-		row.add_child(del_btn)
-		_save_list_container.add_child(row)
-
-func _on_load_save(save_name: String) -> void:
-	if not SaveSystem.load_named(save_name):
-		_show_coming_soon("Load failed", "Could not load save: %s" % save_name)
-		return
-	get_tree().change_scene_to_file(RUN_SCENE_PATH)
-
-func _on_delete_save(save_name: String) -> void:
-	SaveSystem.delete_named(save_name)
-	_refresh_continue_button()
-	_populate_save_list()
+	pass
 
 # ---------------------------------------------------------------------------
 # Stub buttons — backing systems land later.
 # ---------------------------------------------------------------------------
 
 func _on_run_history() -> void:
-	_show_coming_soon("Run History", "Run history will live here once we track finished runs in Godot.")
+	_show_coming_soon("Run History", "Run history will live here once we track finished runs.")
 
 func _on_collection() -> void:
 	Collection.open(_modal_layer)
@@ -197,16 +134,13 @@ func _on_settings() -> void:
 	SettingsModal.open(_modal_layer)
 
 func _on_how_to_play() -> void:
-	_show_coming_soon("How to Play", "The interactive tutorial walks through movement, portals, combat, and verification. Coming soon.")
+	_show_coming_soon("How to Play", "Choose a character, then route the game-graph toward the Amulet — beat each game's goal to defeat its enemy. Full tutorial coming soon.")
 
 func _on_clear_data() -> void:
 	var confirm := ConfirmationDialog.new()
 	confirm.dialog_text = "Delete ALL saves? This cannot be undone."
 	confirm.confirmed.connect(func():
 		SaveSystem.clear_all_saves()
-		_refresh_continue_button()
-		_save_list_container.visible = false
-		_save_list_visible = false
 	)
 	_modal_layer.add_child(confirm)
 	confirm.popup_centered(Vector2i(420, 160))

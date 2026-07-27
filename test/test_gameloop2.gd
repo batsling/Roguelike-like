@@ -161,6 +161,29 @@ func test_clear_amulet_wins() -> void:
 	assert_eq(GameState.pending_chests, chests_before + 1, "the amulet enemy drops too")
 	assert_signal_emitted(GameLoop2, "run_won")
 
+# --- spawn_to_stack (Scroll of Create Monster, §4.1) ----------------------
+
+func test_spawn_to_stack_adds_a_following_enemy() -> void:
+	var inst: int = GameLoop2.spawn_to_stack(_enemy(2))
+	assert_gt(inst, 0)
+	assert_eq(GameLoop2.stack_size(), 1)
+	# A conjured enemy attacks on the next game beaten, like any stacked enemy.
+	GameLoop2.choose_game(_enemy(0)) ; GameLoop2.beat_game(false)
+	assert_eq(GameState.hp, 8, "the conjured enemy hits for 2 next game")
+
+# --- aggravate (Scroll of Aggravate Monsters, §4.1) -----------------------
+
+func test_aggravate_adds_damage_for_n_games_then_expires() -> void:
+	GameLoop2.choose_game(_enemy(1)) ; GameLoop2.beat_game(false)   # A(1) stacks
+	GameLoop2.aggravate(2, 1)                                       # +2 for 1 game
+	assert_eq(GameLoop2.stacked_damage_per_game(), 3, "1 base + 2 aggravate")
+	GameLoop2.choose_game(_enemy(0)) ; GameLoop2.beat_game(false)   # A hits 1+2=3
+	assert_eq(GameState.hp, 7)
+	# The buff lasted one game; the next hit is the base damage again.
+	assert_eq(GameLoop2.enemy_damage_bonus_games, 0, "aggravate expired")
+	GameLoop2.choose_game(_enemy(0)) ; GameLoop2.beat_game(false)   # A hits 1
+	assert_eq(GameState.hp, 6)
+
 # --- stacked-damage preview (HUD) -----------------------------------------
 
 func test_stacked_damage_per_game_sums_active_enemies() -> void:

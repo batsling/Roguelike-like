@@ -26,8 +26,6 @@ Settings="*res://scripts/autoload/Settings.gd"
 TierList="*res://scripts/autoload/TierList.gd"
 GameStats="*res://scripts/autoload/GameStats.gd"
 DevTools="*res://scripts/autoload/DevTools.gd"
-EvolutionSystem="*res://scripts/autoload/EvolutionSystem.gd"
-PotionSystem="*res://scripts/autoload/PotionSystem.gd"
 ScrollSystem="*res://scripts/autoload/ScrollSystem.gd"
 GameLoop2="*res://scripts/autoload/GameLoop2.gd"
 

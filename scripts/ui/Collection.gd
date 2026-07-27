@@ -1,45 +1,29 @@
 class_name Collection
 extends Control
 
-# Compendium / collection viewer, ported from the HTML build's collection.js.
-# A self-contained full-screen modal (dim + centered panel) opened from the
-# main menu and from the in-run backpack. Built entirely in code so it has no
-# scene-file dependencies, and runs PROCESS_MODE_ALWAYS so it works while the
-# tree is paused behind the backpack.
+# Compendium / collection viewer. A self-contained full-screen modal (dim +
+# centered panel) opened from the main menu. Built entirely in code so it has no
+# scene-file dependencies, and runs PROCESS_MODE_ALWAYS so it works while paused.
 #
-# Tabs (the subset of content the Godot build currently has):
-#   Reference  — Statuses + Addons, driven by ReferenceCatalog (generated from
-#                the statusesnew / addonsnew Excel sheets — the set actually
-#                wired into the game). Info cards, no detail panel.
-#   Items      — every ItemData (Data.all_items()), grid + detail panel.
+# Post games-first cut (docs/games-first-redesign.md §11) the combat tabs (Cards,
+# Enemies bestiary, Potions loot, card Evolutions) are gone. Tabs now:
+#   Games      — the roguelike catalog (influence graph) + lifetime stats.
+#   Items      — every ItemData, grid + detail panel.
 #   Characters — every CharacterData, grid + detail panel.
-#   Cards      — every CardData, grid + detail panel.
-#   Events     — every EventData, with its image + Excel metadata + the full
-#                decision/outcome tree, grid + detail panel.
-#
-# Each content tab mirrors the HTML's search box, sort/filter controls, a
-# responsive card grid, and a detail side-panel that fills in on click.
+#   Scrolls    — the 2.0 scroll catalog (revealed reference), grid.
+#   Events     — every EventData with its full decision/outcome tree.
+#   Reference  — Statuses + Addons from ReferenceCatalog (kept sheets).
 
-enum Tab { REFERENCE, ITEMS, CHARACTERS, CARDS, EVENTS, GAMES, ENEMIES, LOOT }
+enum Tab { GAMES, ITEMS, CHARACTERS, SCROLLS, EVENTS, REFERENCE }
 
 const GAME_TYPE_NAMES := ["Action", "Strategy", "Deckbuilder", "Traditional"]
-# Completion filter for the Games tab: [label, key]. Keys drive _populate_games.
 const GAME_STATUS_OPTIONS := [
 	["All", "all"], ["Completed", "completed"],
 	["Not Completed", "uncompleted"], ["Amulet Won", "amulet"],
 ]
 const ITEM_RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 const ITEM_KIND_NAMES := ["Passive", "Triggered", "Usable", "Weapon", "Scaling", "Pickup", "Charged"]
-const CARD_TYPE_NAMES := ["Attack", "Skill", "Power", "Dice", "Status", "Curse", "Training"]
-const CARD_RARITY_NAMES := ["Starter", "Common", "Uncommon", "Rare", "Legendary"]
-# EnemyData / ActionEnemyData share a Difficulty enum: LOW, MEDIUM, HIGH, BOSS.
-const ENEMY_DIFFICULTY_NAMES := ["Low", "Medium", "High", "Boss"]
-# Combat-mode filter for the Enemies tab: [label, key]. Keys drive _populate_enemies.
-const ENEMY_MODE_OPTIONS := [["All Modes", "all"], ["Deckbuilder", "deck"], ["Action", "action"]]
-const ACTION_BEHAVIOR_NAMES := ["Walker", "Shooter", "Stationary", "Pacer"]
 
-# Rarity palette shared by items (Common..Legendary) and, with a shifted
-# index, cards (Starter..Legendary handled separately below).
 const RARITY_COLORS := [
 	Color(0.72, 0.72, 0.72), Color(0.45, 0.85, 0.5),
 	Color(0.4, 0.6, 1.0), Color(0.7, 0.45, 1.0), Color(1.0, 0.7, 0.25),
@@ -51,27 +35,18 @@ const CELL_BG := Color(0.04, 0.04, 0.06, 0.85)
 
 var _tab: int = Tab.GAMES
 var _ref_subtab: String = "statuses"
-var _loot_subtab: String = "potions"
 
-# Per-tab control state.
-var _search := {"reference": "", "items": "", "characters": "", "cards": "", "events": "", "games": "", "enemies": "", "loot": ""}
-var _games_sort: String = "name"      # name | year | beaten
-var _games_type: int = -1             # -1 = all, else GameType index
-var _games_status: String = "all"     # all | completed | uncompleted | amulet
-var _items_sort: String = "name"      # name | rarity | kind
-var _items_type: int = -1             # -1 = all, else ItemKind index
-var _char_sort: String = "name"       # name | game
-var _cards_sort: String = "rarity"    # rarity | type | cost | name
-var _cards_type: int = -1             # -1 = all, else CardType index
-var _cards_rarity: int = -1           # -1 = all, else CardRarity index
-var _events_sort: String = "name"     # name | rarity | game
-var _events_type: String = "all"      # all | <event_type>
-var _events_rarity: String = "all"    # all | common | uncommon | rare | legendary
-var _enemies_sort: String = "name"    # name | difficulty | game
-var _enemies_mode: String = "all"     # all | deck | action
-var _enemies_diff: int = -1           # -1 = all, else Difficulty index
+var _search := {"reference": "", "items": "", "characters": "", "scrolls": "", "events": "", "games": ""}
+var _games_sort: String = "name"
+var _games_type: int = -1
+var _games_status: String = "all"
+var _items_sort: String = "name"
+var _items_type: int = -1
+var _char_sort: String = "name"
+var _events_sort: String = "name"
+var _events_type: String = "all"
+var _events_rarity: String = "all"
 
-# Nodes rebuilt per refresh.
 var _content: VBoxContainer
 var _grid: Container = null
 var _detail_box: VBoxContainer = null
@@ -89,11 +64,6 @@ static func open(parent: Node) -> Collection:
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	# Float as a true full-screen overlay regardless of where we're parented.
-	# Opened over the backpack the parent Control's rect isn't guaranteed to
-	# cover the viewport, which left the panel rendering tiny — top_level +
-	# an explicit viewport fit (re-applied on resize) anchors us to the screen
-	# instead of inheriting the parent's size.
 	top_level = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_fit_to_viewport()
@@ -101,17 +71,10 @@ func _ready() -> void:
 	_build_shell()
 	_refresh()
 
-# Force the overlay to exactly cover the viewport. Anchors are relative to the
-# viewport because we're top_level, so a full-rect preset with zeroed offsets
-# keeps us pinned even as the window resizes. Offsets (not a manual position/
-# size write) so the engine doesn't warn about sizing an anchored control
-# during _ready — the anchors would override it anyway.
 func _fit_to_viewport() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 func _input(event: InputEvent) -> void:
-	# Esc closes; also swallow the backpack toggle so Tab doesn't reach the
-	# backpack underneath while the collection is up.
 	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("backpack"):
 		get_viewport().set_input_as_handled()
 		close()
@@ -120,7 +83,7 @@ func close() -> void:
 	queue_free()
 
 # ------------------------------------------------------------------
-# Shell: dim, panel, header, tab bar, content host.
+# Shell
 # ------------------------------------------------------------------
 
 func _build_shell() -> void:
@@ -147,7 +110,6 @@ func _build_shell() -> void:
 	margin.add_child(root)
 	panel.add_child(margin)
 
-	# Header.
 	var header := HBoxContainer.new()
 	root.add_child(header)
 	var title := Label.new()
@@ -161,18 +123,14 @@ func _build_shell() -> void:
 	close_btn.pressed.connect(close)
 	header.add_child(close_btn)
 
-	# Tab bar.
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
 	root.add_child(tabs)
-	# Tab order: Games, Items, Cards, Characters, Reference.
 	_add_tab_button(tabs, Tab.GAMES, "Games (%d)" % Data.all_games().size())
 	_add_tab_button(tabs, Tab.ITEMS, "Items (%d)" % Data.all_items().size())
-	_add_tab_button(tabs, Tab.CARDS, "Cards (%d)" % Data.all_cards().size())
-	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events().size())
-	_add_tab_button(tabs, Tab.ENEMIES, "Enemies (%d)" % (Data.all_enemies().size() + Data.all_action_enemies().size()))
 	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters().size())
-	_add_tab_button(tabs, Tab.LOOT, "Loot (%d)" % Data.all_potions().size())
+	_add_tab_button(tabs, Tab.SCROLLS, "Scrolls (%d)" % Data.all_scrolls().size())
+	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events().size())
 	_add_tab_button(tabs, Tab.REFERENCE, "Reference")
 
 	root.add_child(HSeparator.new())
@@ -204,20 +162,16 @@ func _refresh() -> void:
 	match _tab:
 		Tab.GAMES:
 			_build_games()
-		Tab.REFERENCE:
-			_build_reference()
 		Tab.ITEMS:
 			_build_items()
 		Tab.CHARACTERS:
 			_build_characters()
-		Tab.CARDS:
-			_build_cards()
+		Tab.SCROLLS:
+			_build_scrolls()
 		Tab.EVENTS:
 			_build_events()
-		Tab.ENEMIES:
-			_build_enemies()
-		Tab.LOOT:
-			_build_loot()
+		Tab.REFERENCE:
+			_build_reference()
 
 # ------------------------------------------------------------------
 # Shared building blocks
@@ -239,7 +193,6 @@ func _search_box(key: String) -> LineEdit:
 	le.text = _search[key]
 	le.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	le.custom_minimum_size = Vector2(180, 0)
-	# Only repopulate the grid on each keystroke so the field keeps focus.
 	le.text_changed.connect(func(t):
 		_search[key] = t
 		_populate())
@@ -253,8 +206,6 @@ func _sort_button(label: String, active: bool, on_press: Callable) -> Button:
 	b.pressed.connect(on_press)
 	return b
 
-# A clickable grid cell: a bordered panel that highlights on hover and runs
-# `on_click` when pressed. Children are added to the returned content VBox.
 func _cell(border: Color, on_click: Callable) -> Dictionary:
 	var panel := PanelContainer.new()
 	var normal := _flat(CELL_BG, border, 2)
@@ -278,15 +229,10 @@ func _tex_rect(tex: Texture2D, size: int, crisp: bool = false) -> TextureRect:
 	tr.custom_minimum_size = Vector2(size, size)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	# Nearest-neighbour keeps low-res pixel-art sprites (enemies, etc.) sharp
-	# instead of the blurry linear default when scaled to the grid size.
 	if crisp:
 		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	return tr
 
-# Subtle, slightly-lighter rounded backing panel sized for `size`px art. Many
-# item sprites are dark or transparent and wash out against the near-black cell;
-# the backdrop makes every icon pop. `border` tints it toward the item rarity.
 const IMAGE_BG := Color(0.16, 0.17, 0.22, 1.0)
 func _image_with_bg(tex: Texture2D, size: int, border: Color, crisp: bool = false) -> Control:
 	var pad := 8
@@ -310,12 +256,9 @@ func _label(text: String, color: Color, size: int = 12, bold_center: bool = fals
 	l.add_theme_font_size_override("font_size", size)
 	if bold_center:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	# Off by default so short inline badges in HBoxes don't stack one glyph per
-	# line when squeezed; callers opt in for cell names and descriptions.
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
 	return l
 
-# Scroll-wrapped responsive grid (HFlowContainer) used by every content tab.
 func _new_grid() -> ScrollContainer:
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -329,7 +272,6 @@ func _new_grid() -> ScrollContainer:
 	_grid = flow
 	return scroll
 
-# Detail side-panel host with a placeholder message.
 func _new_detail_panel() -> PanelContainer:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", _flat(Color(0.06, 0.06, 0.09, 0.95)))
@@ -351,7 +293,6 @@ func _detail_placeholder(text: String) -> void:
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_detail_box.add_child(l)
 
-# Controls row container with a consistent background.
 func _controls_row() -> HBoxContainer:
 	var bg := PanelContainer.new()
 	bg.add_theme_stylebox_override("panel", _flat(Color(0, 0, 0, 0.35)))
@@ -362,7 +303,6 @@ func _controls_row() -> HBoxContainer:
 	_content.add_child(bg)
 	return row
 
-# A body row: grid scroll on the left, detail panel on the right.
 func _grid_and_detail() -> void:
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", 12)
@@ -372,8 +312,6 @@ func _grid_and_detail() -> void:
 	body.add_child(_new_grid())
 	body.add_child(_new_detail_panel())
 
-# Right-aligned "shown / total" badge, created once per tab and stored so the
-# populate pass can update it in place without stacking duplicates.
 func _add_count_label(row: HBoxContainer) -> void:
 	_count_lbl = _label("", Color(0.6, 0.6, 0.65), 11)
 	_count_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -384,9 +322,6 @@ func _set_count(shown: int, total: int) -> void:
 	if _count_lbl != null:
 		_count_lbl.text = "%d / %d" % [shown, total]
 
-# Frees children immediately (not queue_free) so a re-populate on the same
-# container doesn't leave the outgoing cells lingering for a frame — avoids a
-# visible overlap while typing in the search box.
 func _clear_children(node: Node) -> void:
 	for c in node.get_children():
 		node.remove_child(c)
@@ -396,22 +331,19 @@ func _populate() -> void:
 	match _tab:
 		Tab.GAMES:
 			_populate_games()
-		Tab.REFERENCE:
-			_populate_reference()
 		Tab.ITEMS:
 			_populate_items()
 		Tab.CHARACTERS:
 			_populate_characters()
-		Tab.CARDS:
-			_populate_cards()
+		Tab.SCROLLS:
+			_populate_scrolls()
 		Tab.EVENTS:
 			_populate_events()
-		Tab.ENEMIES:
-			_populate_enemies()
+		Tab.REFERENCE:
+			_populate_reference()
 
 # ------------------------------------------------------------------
-# Games tab — the roguelike catalog (influence graph), with lifetime
-# beaten / amulet-win stats from GameStats and your tier-list standing.
+# Games tab
 # ------------------------------------------------------------------
 
 func _build_games() -> void:
@@ -485,10 +417,10 @@ func _populate_games() -> void:
 
 func _game_type_color(t: int) -> Color:
 	match t:
-		0: return Color(0.9, 0.4, 0.3)    # action
-		1: return Color(0.45, 0.7, 0.95)  # strategy
-		2: return Color(0.7, 0.45, 1.0)   # deckbuilder
-		3: return Color(0.55, 0.8, 0.5)   # traditional
+		0: return Color(0.9, 0.4, 0.3)
+		1: return Color(0.45, 0.7, 0.95)
+		2: return Color(0.7, 0.45, 1.0)
+		3: return Color(0.55, 0.8, 0.5)
 		_: return Color(0.6, 0.6, 0.65)
 
 func _game_cell(g: GameData) -> Control:
@@ -531,12 +463,10 @@ func _show_game_detail(g: GameData) -> void:
 		_detail_box.add_child(_label(", ".join(g.tags), Color(0.73, 0.55, 0.78), 11, false, true))
 	_detail_box.add_child(HSeparator.new())
 
-	# Lifetime stats (cross-run, from GameStats).
 	_detail_box.add_child(_detail_section("📊 Tracked Stats"))
 	_detail_box.add_child(_kv("Beaten", str(GameStats.beaten_count(g.id))))
 	_detail_box.add_child(_kv("Amulet wins", str(GameStats.amulet_wins(g.id))))
 
-	# Your tier-list standing, if rated.
 	if TierList.has_rating(g.id):
 		var r := TierList.get_rating(g.id)
 		_detail_box.add_child(_detail_section("Your Ranking"))
@@ -548,7 +478,6 @@ func _show_game_detail(g: GameData) -> void:
 		if notes != "":
 			_detail_box.add_child(_label(notes, Color(0.82, 0.82, 0.85), 11, false, true))
 
-	# Influence graph (both directions).
 	if g.games_influenced.size() > 0:
 		_detail_box.add_child(_detail_section("Influenced"))
 		_detail_box.add_child(_label(_game_names(g.games_influenced), Color(0.7, 0.85, 0.95), 11, false, true))
@@ -571,340 +500,6 @@ func _influenced_by(id) -> Array:
 		if g is GameData and g.games_influenced.has(StringName(id)):
 			out.append(g.id)
 	return out
-
-# ------------------------------------------------------------------
-# Reference tab (Statuses / Addons)
-# ------------------------------------------------------------------
-
-# ----------------------------------------------------------------------
-# Loot tab (Potions / Scrolls) — the consumable catalog. Potions are shown
-# REVEALED here (a reference encyclopedia), independent of the per-run
-# identification state. Scrolls are a placeholder until that system lands.
-# ----------------------------------------------------------------------
-
-func _build_loot() -> void:
-	var sub := HBoxContainer.new()
-	sub.add_theme_constant_override("separation", 6)
-	_content.add_child(sub)
-	for entry in [["potions", "Potions (%d)" % Data.all_potions().size()],
-			["scrolls", "Scrolls (%d)" % Data.all_scrolls().size()]]:
-		var key: String = entry[0]
-		var b := Button.new()
-		b.text = entry[1]
-		b.toggle_mode = true
-		b.button_pressed = _loot_subtab == key
-		b.modulate = ACCENT if _loot_subtab == key else Color(0.8, 0.8, 0.8)
-		b.pressed.connect(func():
-			_loot_subtab = key
-			_refresh())
-		sub.add_child(b)
-
-	var row := _controls_row()
-	row.add_child(_search_box("loot"))
-	_add_count_label(row)
-
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 10)
-	flow.add_theme_constant_override("v_separation", 10)
-	flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(flow)
-	_grid = flow
-	_content.add_child(scroll)
-	_populate_loot()
-
-func _populate_loot() -> void:
-	_clear_children(_grid)
-	if _loot_subtab == "scrolls":
-		var sterm: String = _search["loot"].to_lower()
-		var scrolls: Array = Data.all_scrolls()
-		scrolls.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
-		var sshown: int = 0
-		for s in scrolls:
-			if not (s is ScrollData):
-				continue
-			if sterm != "" and not (sterm in s.display_name.to_lower()):
-				continue
-			_grid.add_child(_scroll_card(s))
-			sshown += 1
-		_set_count(sshown, Data.all_scrolls().size())
-		return
-	var term: String = _search["loot"].to_lower()
-	var potions: Array = Data.all_potions()
-	potions.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
-	var shown: int = 0
-	for p in potions:
-		if not (p is PotionData):
-			continue
-		if term != "" and not (term in p.display_name.to_lower() \
-				or term in p.effect_text.to_lower()):
-			continue
-		_grid.add_child(_potion_card(p))
-		shown += 1
-	_set_count(shown, Data.all_potions().size())
-
-func _potion_card(p: PotionData) -> Control:
-	var rcol: Color = RARITY_COLORS[clampi(p.rarity_index(), 0, RARITY_COLORS.size() - 1)]
-	var cell := _cell(rcol, Callable())
-	cell.panel.custom_minimum_size = Vector2(300, 0)
-	var vb: VBoxContainer = cell.vbox
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
-	vb.add_child(top)
-	# Real (identified) art for the catalog regardless of run identification.
-	var path := "res://images/potions/%s.png" % p.art_file()
-	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
-	if tex != null:
-		top.add_child(_tex_rect(tex, 48))
-	var head := VBoxContainer.new()
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(head)
-	head.add_child(_label(p.display_name, rcol, 14))
-	head.add_child(_label(p.rarity, Color(0.7, 0.7, 0.75), 11))
-	if p.cleave:
-		head.add_child(_label("Cleave / AOE", Color(0.95, 0.6, 0.3), 11))
-	vb.add_child(_label(p.effect_text, Color(0.85, 0.85, 0.88), 12, false, true))
-	if p.reference != "":
-		vb.add_child(_label("from %s" % p.reference, Color(0.55, 0.6, 0.7), 10))
-	return cell.panel
-
-# A scroll catalog cell: art + name + rarity, then its four outcome tiers
-# (Critical Success / Success / Fail / Critical Fail) as a revealed reference.
-func _scroll_card(s: ScrollData) -> Control:
-	var rcol: Color = RARITY_COLORS[clampi(s.rarity_index(), 0, RARITY_COLORS.size() - 1)]
-	var cell := _cell(rcol, Callable())
-	cell.panel.custom_minimum_size = Vector2(320, 0)
-	var vb: VBoxContainer = cell.vbox
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
-	vb.add_child(top)
-	# Real (identified) art for the catalog regardless of run identification.
-	var path := "res://images/scrolls/%s.png" % s.art_file()
-	if not ResourceLoader.exists(path):
-		path = "res://images/scrolls/Unidentified.png"
-	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
-	if tex != null:
-		top.add_child(_tex_rect(tex, 48))
-	var head := VBoxContainer.new()
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(head)
-	head.add_child(_label(s.display_name, rcol, 14))
-	head.add_child(_label(s.rarity, Color(0.7, 0.7, 0.75), 11))
-	const TIER_NAMES := {
-		"crit_good": "Critical Success", "good": "Success",
-		"bad": "Fail", "crit_bad": "Critical Fail",
-	}
-	for tier in ScrollData.TIER_KEYS:
-		var text: String = s.outcome_text(tier)
-		if text == "":
-			continue
-		vb.add_child(_label("%s: %s" % [TIER_NAMES[tier], text], Color(0.85, 0.85, 0.88), 11, false, true))
-	if s.reference != "":
-		vb.add_child(_label("from %s" % s.reference, Color(0.55, 0.6, 0.7), 10))
-	return cell.panel
-
-func _build_reference() -> void:
-	# Sub-tab bar.
-	var sub := HBoxContainer.new()
-	sub.add_theme_constant_override("separation", 6)
-	_content.add_child(sub)
-	for entry in [["statuses", "Statuses (%d)" % ReferenceCatalog.STATUSES.size()],
-			["addons", "Addons (%d)" % ReferenceCatalog.ADDONS.size()],
-			["evolutions", "Evolutions (%d)" % EvolutionCatalog.EVOLUTIONS.size()]]:
-		var key: String = entry[0]
-		var b := Button.new()
-		b.text = entry[1]
-		b.toggle_mode = true
-		b.button_pressed = _ref_subtab == key
-		b.modulate = ACCENT if _ref_subtab == key else Color(0.8, 0.8, 0.8)
-		b.pressed.connect(func():
-			_ref_subtab = key
-			_refresh())
-		sub.add_child(b)
-
-	var row := _controls_row()
-	row.add_child(_search_box("reference"))
-	_add_count_label(row)
-
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 10)
-	flow.add_theme_constant_override("v_separation", 10)
-	flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(flow)
-	_grid = flow
-	_content.add_child(scroll)
-	_populate_reference()
-
-func _populate_reference() -> void:
-	_clear_children(_grid)
-	var term: String = _search["reference"].to_lower()
-	var shown: int = 0
-	if _ref_subtab == "statuses":
-		for s in ReferenceCatalog.STATUSES:
-			if term != "" and not (term in String(s.get("name", "")).to_lower() \
-					or term in String(s.get("description", "")).to_lower()):
-				continue
-			_grid.add_child(_status_card(s))
-			shown += 1
-		_set_count(shown, ReferenceCatalog.STATUSES.size())
-	elif _ref_subtab == "evolutions":
-		for e in EvolutionCatalog.EVOLUTIONS:
-			if term != "" and not (term in String(e.get("name", "")).to_lower() \
-					or term in String(e.get("description", "")).to_lower() \
-					or term in String(e.get("req1_label", "")).to_lower()):
-				continue
-			_grid.add_child(_evolution_card(e))
-			shown += 1
-		_set_count(shown, EvolutionCatalog.EVOLUTIONS.size())
-	else:
-		for a in ReferenceCatalog.ADDONS:
-			if term != "" and not (term in String(a.get("name", "")).to_lower() \
-					or term in String(a.get("deckbuilder", "")).to_lower()):
-				continue
-			_grid.add_child(_addon_card(a))
-			shown += 1
-		_set_count(shown, ReferenceCatalog.ADDONS.size())
-
-func _status_type_color(t: String) -> Color:
-	match t.to_lower():
-		"buff": return Color(0.3, 0.78, 0.35)
-		"debuff": return Color(0.92, 0.28, 0.24)
-		"ability": return Color(0.6, 0.45, 1.0)
-		_: return Color(0.5, 0.66, 0.75)
-
-func _status_card(s: Dictionary) -> Control:
-	var tc := _status_type_color(String(s.get("type", "")))
-	var cell := _cell(tc, Callable())
-	cell.panel.custom_minimum_size = Vector2(380, 0)
-	var vb: VBoxContainer = cell.vbox
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
-	vb.add_child(top)
-	var icon: String = String(s.get("icon", ""))
-	var path := "res://images/statuses/%s.png" % icon
-	var tex: Texture2D = load(path) if (icon != "" and ResourceLoader.exists(path)) else null
-	if tex != null:
-		top.add_child(_tex_rect(tex, 48))
-	var head := VBoxContainer.new()
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(head)
-	var name_row := HBoxContainer.new()
-	name_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(name_row)
-	var nm := _label(String(s.get("name", "")), tc, 14)
-	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_row.add_child(nm)
-	name_row.add_child(_label(String(s.get("type", "")).to_upper(), tc, 10))
-	head.add_child(_label(String(s.get("description", "")), Color(0.82, 0.82, 0.84), 11, false, true))
-	# Meta line.
-	var meta_parts: Array = ["Affects: %s" % s.get("who", "All")]
-	if bool(s.get("stackable", false)):
-		meta_parts.append("Stackable")
-	var decay: String = String(s.get("decay", ""))
-	if decay != "" and decay != "None":
-		meta_parts.append("Decays")
-	var rar: String = String(s.get("rarity", ""))
-	if rar != "":
-		meta_parts.append(rar)
-	vb.add_child(_label("   ".join(meta_parts), Color(0.55, 0.6, 0.68), 10))
-	return cell.panel
-
-func _addon_card(a: Dictionary) -> Control:
-	var gold := Color(0.85, 0.66, 0.22)
-	var cell := _cell(gold, Callable())
-	cell.panel.custom_minimum_size = Vector2(380, 0)
-	var vb: VBoxContainer = cell.vbox
-	var head := HBoxContainer.new()
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vb.add_child(head)
-	var nm := _label(String(a.get("name", "")), Color(0.95, 0.78, 0.28), 14)
-	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(nm)
-	var attach: String = String(a.get("attaches_to", ""))
-	if attach != "":
-		head.add_child(_label("Attaches: %s" % attach, Color(0.7, 0.6, 0.4), 10))
-	if bool(a.get("has_value", false)):
-		vb.add_child(_label("Takes a value (X)", Color(0.8, 0.7, 0.45), 10))
-	# Per-mode descriptions, since they differ across combat modes.
-	vb.add_child(_mode_line("Deck", String(a.get("deckbuilder", ""))))
-	vb.add_child(_mode_line("Action", String(a.get("action", ""))))
-	vb.add_child(_mode_line("Strategy", String(a.get("strategy", ""))))
-	var forms: String = String(a.get("forms", ""))
-	if forms != "":
-		vb.add_child(_label("Forms: %s" % forms, Color(0.78, 0.63, 0.25), 10))
-	return cell.panel
-
-# An evolution reference card: the evolved art + name, its two requirements, the
-# gains line, and an "ACHIEVED" marker when the player currently owns the evolved
-# card (deck-driven, since the swap is irreversible).
-func _evolution_card(e: Dictionary) -> Control:
-	var accent := Color(0.95, 0.78, 0.28)
-	var cell := _cell(accent, Callable())
-	cell.panel.custom_minimum_size = Vector2(380, 0)
-	var vb: VBoxContainer = cell.vbox
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 10)
-	vb.add_child(top)
-	var img: String = String(e.get("img", ""))
-	var path := "res://images/Evolutions/%s.png" % img
-	var tex: Texture2D = load(path) if (img != "" and ResourceLoader.exists(path)) else null
-	if tex == null:
-		# Fall back to the evolved card's own art if the Evolutions image is absent.
-		var cd: CardData = Data.get_card(StringName(String(e.get("to_card", ""))))
-		if cd != null:
-			tex = cd.image
-	if tex != null:
-		top.add_child(_image_with_bg(tex, 64, accent))
-	var head := VBoxContainer.new()
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(head)
-	var name_row := HBoxContainer.new()
-	name_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(name_row)
-	var nm := _label(String(e.get("name", "")), accent, 15)
-	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_row.add_child(nm)
-	if _owns_evolution(e):
-		name_row.add_child(_label("★ ACHIEVED", Color(0.5, 0.95, 0.55), 10))
-	var arrow := "%s  →  %s" % [String(e.get("req1_label", "")), String(e.get("name", ""))]
-	head.add_child(_label(arrow, Color(0.75, 0.78, 0.85), 11, false, true))
-	# Requirements + gains.
-	vb.add_child(_label("Requires: %s  +  %s" % [
-		String(e.get("req1_label", "")), String(e.get("req2_label", ""))],
-		Color(0.7, 0.8, 0.95), 11, false, true))
-	var gains: String = String(e.get("description", ""))
-	if gains != "":
-		vb.add_child(_label("Gains: %s" % gains, Color(0.85, 0.85, 0.87), 11, false, true))
-	return cell.panel
-
-# True when the player's current deck holds the evolved card (the irreversible
-# swap already happened this run).
-func _owns_evolution(e: Dictionary) -> bool:
-	var to_id := StringName(String(e.get("to_card", "")))
-	for ci in GameState.deck:
-		if ci is CardInstance and ci.data != null and ci.data.id == to_id:
-			return true
-	return false
-
-func _mode_line(tag: String, desc: String) -> Control:
-	if desc == "":
-		return Control.new()
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	var t := _label(tag, Color(0.6, 0.7, 0.85), 10)
-	t.custom_minimum_size = Vector2(58, 0)
-	row.add_child(t)
-	var d := _label(desc, Color(0.8, 0.8, 0.82), 11, false, true)
-	d.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(d)
-	return row
 
 # ------------------------------------------------------------------
 # Items tab
@@ -957,8 +552,6 @@ func _populate_items() -> void:
 		_grid.add_child(_item_cell(it))
 	_set_count(list.size(), Data.all_items().size())
 
-# Starter items aren't a rolled rarity — they ship with a character's opening
-# loadout — so they read as "Starter" in a distinct cyan.
 const STARTER_NAME := "Starter"
 const STARTER_COLOR := Color(0.4, 0.85, 0.95)
 
@@ -1052,7 +645,7 @@ func _character_cell(ch: CharacterData) -> Control:
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vb.add_child(tr)
 	vb.add_child(_label(ch.display_name, green, 14, true, true))
-	vb.add_child(_label("❤ %d   ⚡ %d" % [ch.base_max_hp, ch.base_max_energy], Color(0.7, 0.7, 0.75), 12, true))
+	vb.add_child(_label("❤ %d" % ch.base_max_hp, Color(0.7, 0.7, 0.75), 12, true))
 	return cell.panel
 
 func _show_character_detail(ch: CharacterData) -> void:
@@ -1069,42 +662,13 @@ func _show_character_detail(ch: CharacterData) -> void:
 		_detail_box.add_child(_label(ch.description, Color(0.82, 0.82, 0.85), 12, false, true))
 	_detail_box.add_child(_detail_section("Base Stats"))
 	_detail_box.add_child(_kv("Health", str(ch.base_max_hp)))
-	_detail_box.add_child(_kv("Energy", str(ch.base_max_energy)))
-	_detail_box.add_child(_kv("Hand Size", str(ch.base_hand_size)))
-	_detail_box.add_child(_kv("Strength", str(ch.base_strength)))
-	_detail_box.add_child(_kv("Dexterity", str(ch.base_dexterity)))
-	_detail_box.add_child(_kv("Intelligence", str(ch.base_intelligence)))
-	_detail_box.add_child(_kv("Charisma", str(ch.base_charisma)))
-	_detail_box.add_child(_kv("Constitution", str(ch.base_constitution)))
-	_detail_box.add_child(_kv("Luck", str(ch.base_luck)))
-	_detail_box.add_child(_kv("Speed", str(ch.base_speed)))
-	if ch.starting_deck.size() > 0:
-		_detail_box.add_child(_detail_section("Starting Deck"))
-		# The real card visuals, with copies bundled under an xN badge (all
-		# five Strikes collapse into one cell) in first-seen deck order.
-		var counts: Dictionary = {}   # resolved CardData -> copies
-		var order: Array = []
-		for cid in ch.starting_deck:
-			var cd: CardData = Data.get_card_for_character(cid, ch.id)
-			if cd == null:
-				continue
-			if counts.has(cd):
-				counts[cd] += 1
-			else:
-				counts[cd] = 1
-				order.append(cd)
-		var flow := HFlowContainer.new()
-		flow.add_theme_constant_override("h_separation", 8)
-		flow.add_theme_constant_override("v_separation", 8)
-		flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		for cd in order:
-			flow.add_child(CardView.build_deck_cell(cd, int(counts[cd]), 0.62))
-		_detail_box.add_child(flow)
 	if ch.starting_items.size() > 0:
 		_detail_box.add_child(_detail_section("Starting Items"))
 		var inames: Array = []
 		for iid in ch.starting_items:
-			var idd: ItemData = Data.get_item(iid)
+			var idd: ItemData = Data.get_item2(iid)
+			if idd == null:
+				idd = Data.get_item(iid)
 			inames.append(idd.display_name if idd != null else String(iid))
 		_detail_box.add_child(_label(", ".join(inames), Color(0.8, 0.85, 0.95), 11, false, true))
 	if ch.level_up_condition != "":
@@ -1112,155 +676,100 @@ func _show_character_detail(ch: CharacterData) -> void:
 		_detail_box.add_child(_label(ch.level_up_condition, Color(0.8, 0.85, 0.95), 11, false, true))
 		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
 			_detail_box.add_child(_kv("Reward", ch.level_up_reward))
-	# Which decks this character has won a run with (GameStats.record_deck_win),
-	# mirroring the HTML collection's "Beaten With Deck" checklist.
-	_detail_box.add_child(_detail_section("Beaten With Deck"))
-	for deck in DeckCatalog.all():
-		var won: bool = GameStats.has_deck_win(ch.id, deck["id"])
-		_detail_box.add_child(_label(
-			"%s %s Deck" % ["✅" if won else "⬜", String(deck["name"])],
-			Color(0.45, 0.82, 0.45) if won else Color(0.53, 0.53, 0.58), 11, false))
 
 # ------------------------------------------------------------------
-# Cards tab
+# Scrolls tab (2.0 catalog — revealed reference)
 # ------------------------------------------------------------------
 
-func _build_cards() -> void:
+func _build_scrolls() -> void:
 	var row := _controls_row()
-	row.add_child(_search_box("cards"))
-	row.add_child(VSeparator.new())
-	var type_opt := OptionButton.new()
-	type_opt.add_item("All Types", -1)
-	for i in CARD_TYPE_NAMES.size():
-		type_opt.add_item(CARD_TYPE_NAMES[i], i)
-	_select_option(type_opt, _cards_type)
-	type_opt.item_selected.connect(func(idx):
-		_cards_type = type_opt.get_item_id(idx)
-		_refresh())
-	row.add_child(type_opt)
-	var rar_opt := OptionButton.new()
-	rar_opt.add_item("All Rarities", -1)
-	for i in CARD_RARITY_NAMES.size():
-		rar_opt.add_item(CARD_RARITY_NAMES[i], i)
-	_select_option(rar_opt, _cards_rarity)
-	rar_opt.item_selected.connect(func(idx):
-		_cards_rarity = rar_opt.get_item_id(idx)
-		_refresh())
-	row.add_child(rar_opt)
-	row.add_child(VSeparator.new())
-	row.add_child(_sort_button("Rarity", _cards_sort == "rarity", func(): _cards_sort = "rarity"; _refresh()))
-	row.add_child(_sort_button("Type", _cards_sort == "type", func(): _cards_sort = "type"; _refresh()))
-	row.add_child(_sort_button("Cost", _cards_sort == "cost", func(): _cards_sort = "cost"; _refresh()))
-	row.add_child(_sort_button("A-Z", _cards_sort == "name", func(): _cards_sort = "name"; _refresh()))
+	row.add_child(_search_box("scrolls"))
 	_add_count_label(row)
-	_grid_and_detail()
-	_populate_cards()
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 10)
+	flow.add_theme_constant_override("v_separation", 10)
+	flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(flow)
+	_grid = flow
+	_content.add_child(scroll)
+	_populate_scrolls()
 
-func _populate_cards() -> void:
+func _populate_scrolls() -> void:
 	_clear_children(_grid)
-	var term: String = _search["cards"].to_lower()
-	var list: Array = []
-	for cd in Data.all_cards():
-		if cd == null:
+	var term: String = _search["scrolls"].to_lower()
+	var scrolls: Array = Data.all_scrolls()
+	scrolls.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
+	var shown: int = 0
+	for s in scrolls:
+		if not (s is ScrollData):
 			continue
-		if _cards_type >= 0 and int(cd.type) != _cards_type:
+		if term != "" and not (term in s.display_name.to_lower()):
 			continue
-		if _cards_rarity >= 0 and int(cd.rarity) != _cards_rarity:
-			continue
-		if term != "" and not (term in cd.display_name.to_lower() \
-				or term in cd.description.to_lower()):
-			continue
-		list.append(cd)
-	match _cards_sort:
-		"type":
-			list.sort_custom(func(a, b): return int(a.type) < int(b.type) if int(a.type) != int(b.type) else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
-		"cost":
-			list.sort_custom(func(a, b): return a.cost < b.cost if a.cost != b.cost else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
-		"name":
-			list.sort_custom(func(a, b): return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
-		_:
-			list.sort_custom(func(a, b): return int(a.rarity) > int(b.rarity) if int(a.rarity) != int(b.rarity) else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
-	for cd in list:
-		_grid.add_child(_card_cell(cd))
-	_set_count(list.size(), Data.all_cards().size())
+		_grid.add_child(_scroll_card(s))
+		shown += 1
+	_set_count(shown, Data.all_scrolls().size())
 
-func _card_rarity_color(r: int) -> Color:
-	# CardData.Rarity: STARTER, COMMON, UNCOMMON, RARE, LEGENDARY
-	match r:
-		0: return Color(0.25, 0.6, 1.0)   # starter
-		1: return Color(0.72, 0.72, 0.72) # common
-		2: return Color(0.45, 0.85, 0.5)  # uncommon
-		3: return Color(0.7, 0.45, 1.0)   # rare
-		4: return Color(1.0, 0.7, 0.25)   # legendary
-		_: return Color(0.5, 0.5, 0.5)
-
-func _card_type_color(t: int) -> Color:
-	match t:
-		0: return Color(0.9, 0.3, 0.25)   # attack
-		1: return Color(0.2, 0.55, 0.85)  # skill
-		2: return Color(0.6, 0.35, 0.75)  # power
-		3: return Color(0.85, 0.45, 0.15) # dice
-		_: return Color(0.55, 0.6, 0.6)
-
-func _card_cell(cd: CardData) -> Control:
-	var rc := _card_rarity_color(int(cd.rarity))
-	var tc := _card_type_color(int(cd.type))
-	var cell := _cell(rc, func(): _show_card_detail(cd))
-	cell.panel.custom_minimum_size = Vector2(164, 0)
+# 2.0 scroll cell: art + name + Preference, then a plain-language effect summary.
+func _scroll_card(s: ScrollData) -> Control:
+	var pcol := _preference_color(s.preference)
+	var cell := _cell(pcol, Callable())
+	cell.panel.custom_minimum_size = Vector2(300, 0)
 	var vb: VBoxContainer = cell.vbox
 	var top := HBoxContainer.new()
-	top.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_theme_constant_override("separation", 8)
 	vb.add_child(top)
-	var cost := _label("X" if cd.cost < 0 else str(cd.cost), Color(0.95, 0.95, 0.95), 15)
-	cost.add_theme_color_override("font_color", Color.WHITE)
-	var cost_panel := PanelContainer.new()
-	cost_panel.add_theme_stylebox_override("panel", _flat(tc))
-	cost_panel.add_child(cost)
-	top.add_child(cost_panel)
-	top.add_child(_label("", Color.WHITE, 1))  # spacer
-	if cd.image != null:
-		var tr := _tex_rect(cd.image, 108)
-		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		vb.add_child(tr)
-	vb.add_child(_label(cd.display_name, Color(0.92, 0.92, 0.92), 13, false, true))
-	vb.add_child(_label(CARD_TYPE_NAMES[clampi(int(cd.type), 0, 6)].to_upper(), tc, 11))
-	vb.add_child(_label(CARD_RARITY_NAMES[clampi(int(cd.rarity), 0, 4)].to_upper(), rc, 11))
+	# Revealed art for the catalog (falls back to Unidentified when artless).
+	var path := "res://images2.0/scrolls/%s.png" % s.art_file()
+	if s.art_file() == "" or not ResourceLoader.exists(path):
+		path = "res://images2.0/scrolls/Unidentified.png"
+	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	if tex != null:
+		top.add_child(_tex_rect(tex, 48))
+	var head := VBoxContainer.new()
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(head)
+	head.add_child(_label(s.display_name, pcol, 14))
+	head.add_child(_label("%s Preference" % s.preference, Color(0.7, 0.7, 0.75), 11))
+	var eff := _scroll_effect_text(s)
+	if eff != "":
+		vb.add_child(_label(eff, Color(0.85, 0.85, 0.88), 12, false, true))
+	if s.reference != "":
+		vb.add_child(_label("from %s" % s.reference, Color(0.55, 0.6, 0.7), 10))
 	return cell.panel
 
-func _show_card_detail(cd: CardData) -> void:
-	_clear_children(_detail_box)
-	var rc := _card_rarity_color(int(cd.rarity))
-	var tc := _card_type_color(int(cd.type))
-	if cd.image != null:
-		var tr := _tex_rect(cd.image, 96)
-		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		_detail_box.add_child(tr)
-	_detail_box.add_child(_label(cd.display_name, rc, 18, true))
-	var cost_text: String = "X cost" if cd.cost < 0 else "%d cost" % cd.cost
-	_detail_box.add_child(_detail_meta("%s  •  %s  •  %s" % [
-		CARD_RARITY_NAMES[clampi(int(cd.rarity), 0, 4)],
-		CARD_TYPE_NAMES[clampi(int(cd.type), 0, 6)], cost_text], tc))
-	if cd.source_game != "":
-		_detail_box.add_child(_label("From: %s" % cd.source_game, Color(0.65, 0.7, 0.8), 11, false, true))
-	_detail_box.add_child(HSeparator.new())
-	_detail_box.add_child(_label(cd.description, Color(0.85, 0.85, 0.87), 13, false, true))
-	if cd.upgraded_description != "" and cd.upgraded_description != cd.description:
-		_detail_box.add_child(_detail_section("Upgraded"))
-		_detail_box.add_child(_label(cd.upgraded_description, Color(0.7, 0.9, 0.75), 12, false, true))
-	if cd.addons.size() > 0:
-		_detail_box.add_child(_detail_section("Keywords"))
-		_detail_box.add_child(_label(", ".join(cd.addons), Color(0.85, 0.72, 0.4), 11, false, true))
-	if cd.tags.size() > 0:
-		_detail_box.add_child(_detail_section("Tags"))
-		_detail_box.add_child(_label(", ".join(cd.tags), Color(0.73, 0.55, 0.78), 11, false, true))
+func _preference_color(pref: String) -> Color:
+	match pref.to_lower():
+		"positive": return Color(0.3, 0.8, 0.44)
+		"negative": return Color(0.9, 0.35, 0.3)
+		_: return Color(0.55, 0.66, 0.85)
+
+# Plain-language summary of a 2.0 scroll's authored effect ops.
+func _scroll_effect_text(s: ScrollData) -> String:
+	var parts: Array = []
+	for e in s.effect:
+		if not (e is Dictionary):
+			continue
+		match String(e.get("op", "")):
+			"buff_enemies":
+				parts.append("Enemies deal +%d damage for %d game(s)." % [int(e.get("damage", 1)), int(e.get("games", 1))])
+			"forget":
+				parts.append("Forget %d random scroll(s)." % int(e.get("count", 1)))
+			"spawn_enemy":
+				parts.append("Spawn a random enemy at the current difficulty.")
+			"identify_scrolls":
+				parts.append("Choose %d scroll(s) to identify." % int(e.get("count", 1)))
+			"stun_enemies":
+				parts.append("Choose %d following enemy to Stun." % int(e.get("count", 1)))
+			"teleport":
+				parts.append("Teleport ~the same distance from the Amulet.")
+	return " ".join(parts)
 
 # ------------------------------------------------------------------
-# Detail helpers
-# ------------------------------------------------------------------
-
-# ------------------------------------------------------------------
-# Events tab — the pre-combat event catalogue (image + Excel metadata +
-# the full decision/outcome tree). Mirrors the HTML collection's events view.
+# Events tab
 # ------------------------------------------------------------------
 
 const EVENT_RARITIES := ["Common", "Uncommon", "Rare", "Legendary"]
@@ -1469,7 +978,6 @@ func _event_effects_text(effects: Array) -> String:
 			parts.append(s)
 	return ", ".join(parts) if not parts.is_empty() else "Nothing"
 
-# Mirrors the HTML _describeEventEffect over this project's effect vocabulary.
 func _event_effect_text(e: Dictionary) -> String:
 	var t: String = String(e.get("type", ""))
 	match t:
@@ -1480,28 +988,12 @@ func _event_effect_text(e: Dictionary) -> String:
 		"gain_gold": return "+%d Gold" % int(e.get("value", 0))
 		"gold_range": return "+%d-%d Gold" % [int(e.get("min", 0)), int(e.get("max", 0))]
 		"lose_gold": return "-%d Gold" % int(e.get("value", 0))
-		"combat_status": return "%d× %s (next combat)" % [int(e.get("stacks", 1)), String(e.get("status", "")).capitalize()]
 		"item_tagged": return "Random %s item" % String(e.get("tag", ""))
-		"curse_card":
-			var card: CardData = Data.get_card(StringName(String(e.get("card", ""))))
-			return "Curse card: %s" % (card.display_name if card != null else String(e.get("card", "")))
 		"active_curse":
 			var curse: CurseData = Data.get_curse(StringName(String(e.get("curse", ""))))
 			return "Curse: %s" % (curse.display_name if curse != null else String(e.get("curse", "")))
-		"combat_flag":
-			var f: String = String(e.get("flag", ""))
-			if f == "ambush": return "Ambush — draw +2 cards turn 1"
-			if f == "ambushed": return "Ambushed — draw -2 cards turn 1"
-			return f
-		"spawn_enemies":
-			var lo: int = int(e.get("min", 1))
-			var hi: int = int(e.get("max", lo))
-			var rtxt: String = str(lo) if lo == hi else "%d-%d" % [lo, hi]
-			return "Spawn %s× %s next combat" % [rtxt, String(e.get("enemy", "")).capitalize()]
-		"note_for_yourself": return "Retrieve stored card • pick a new one to store"
 		_: return ""
 
-# Light placeholder substitution for catalogue display (no live run context).
 func _sub_event_text(s: String) -> String:
 	if s.find("{") == -1:
 		return s
@@ -1509,328 +1001,156 @@ func _sub_event_text(s: String) -> String:
 	var ch: CharacterData = Data.get_character(GameState.character_id)
 	if ch != null and String(ch.display_name) != "":
 		nm = String(ch.display_name)
-	return s.replace("{name}", nm).replace("{storedCard}", "Iron Wave")
+	return s.replace("{name}", nm)
 
 # ------------------------------------------------------------------
-# Enemies tab — the bestiary. Merges the two enemy schemas into one grid:
-# deckbuilder EnemyData (intent patterns, abilities, splits) and action-mode
-# ActionEnemyData (attacks, behaviour, frame art). Each cell carries a
-# difficulty-tinted border and a mode badge; the detail panel branches on the
-# resource type. Mirrors the HTML collection's Enemies view.
+# Reference tab (Statuses / Addons)
 # ------------------------------------------------------------------
 
-func _build_enemies() -> void:
+func _build_reference() -> void:
+	var sub := HBoxContainer.new()
+	sub.add_theme_constant_override("separation", 6)
+	_content.add_child(sub)
+	for entry in [["statuses", "Statuses (%d)" % ReferenceCatalog.STATUSES.size()],
+			["addons", "Addons (%d)" % ReferenceCatalog.ADDONS.size()]]:
+		var key: String = entry[0]
+		var b := Button.new()
+		b.text = entry[1]
+		b.toggle_mode = true
+		b.button_pressed = _ref_subtab == key
+		b.modulate = ACCENT if _ref_subtab == key else Color(0.8, 0.8, 0.8)
+		b.pressed.connect(func():
+			_ref_subtab = key
+			_refresh())
+		sub.add_child(b)
+
 	var row := _controls_row()
-	row.add_child(_search_box("enemies"))
-	row.add_child(VSeparator.new())
-	row.add_child(_label("Sort:", Color(0.7, 0.7, 0.75), 12))
-	row.add_child(_sort_button("A-Z", _enemies_sort == "name", func(): _enemies_sort = "name"; _refresh()))
-	row.add_child(_sort_button("Difficulty", _enemies_sort == "difficulty", func(): _enemies_sort = "difficulty"; _refresh()))
-	row.add_child(_sort_button("Game", _enemies_sort == "game", func(): _enemies_sort = "game"; _refresh()))
-	row.add_child(VSeparator.new())
-	var mode_opt := OptionButton.new()
-	for i in ENEMY_MODE_OPTIONS.size():
-		mode_opt.add_item(ENEMY_MODE_OPTIONS[i][0], i)
-		if ENEMY_MODE_OPTIONS[i][1] == _enemies_mode:
-			mode_opt.select(i)
-	mode_opt.item_selected.connect(func(idx):
-		_enemies_mode = ENEMY_MODE_OPTIONS[mode_opt.get_item_id(idx)][1]
-		_refresh())
-	row.add_child(mode_opt)
-	var diff_opt := OptionButton.new()
-	diff_opt.add_item("All Difficulties", -1)
-	for i in ENEMY_DIFFICULTY_NAMES.size():
-		diff_opt.add_item(ENEMY_DIFFICULTY_NAMES[i], i)
-	_select_option(diff_opt, _enemies_diff)
-	diff_opt.item_selected.connect(func(idx):
-		_enemies_diff = diff_opt.get_item_id(idx)
-		_refresh())
-	row.add_child(diff_opt)
+	row.add_child(_search_box("reference"))
 	_add_count_label(row)
-	_grid_and_detail()
-	_populate_enemies()
 
-# Build the merged enemy list as [{data, mode}] entries so one grid spans both
-# schemas; the cell/detail branch on `mode` ("deck" | "action").
-func _all_enemy_entries() -> Array:
-	var out: Array = []
-	for e in Data.all_enemies():
-		if e != null:
-			out.append({"data": e, "mode": "deck"})
-	for e in Data.all_action_enemies():
-		if e != null:
-			out.append({"data": e, "mode": "action"})
-	return out
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 10)
+	flow.add_theme_constant_override("v_separation", 10)
+	flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(flow)
+	_grid = flow
+	_content.add_child(scroll)
+	_populate_reference()
 
-func _populate_enemies() -> void:
+func _populate_reference() -> void:
 	_clear_children(_grid)
-	var term: String = _search["enemies"].to_lower()
-	var total: int = 0
-	var list: Array = []
-	for entry in _all_enemy_entries():
-		total += 1
-		var en = entry["data"]
-		if _enemies_mode != "all" and entry["mode"] != _enemies_mode:
-			continue
-		if _enemies_diff >= 0 and int(en.difficulty) != _enemies_diff:
-			continue
-		if term != "" and not (term in en.display_name.to_lower() \
-				or term in en.source_game.to_lower()):
-			continue
-		list.append(entry)
-	match _enemies_sort:
-		"difficulty":
-			list.sort_custom(func(a, b):
-				var ad: int = int(a["data"].difficulty)
-				var bd: int = int(b["data"].difficulty)
-				return ad < bd if ad != bd else a["data"].display_name.naturalnocasecmp_to(b["data"].display_name) < 0)
-		"game":
-			list.sort_custom(func(a, b):
-				var ag: String = a["data"].source_game
-				var bg: String = b["data"].source_game
-				return ag.naturalnocasecmp_to(bg) < 0 if ag != bg else a["data"].display_name.naturalnocasecmp_to(b["data"].display_name) < 0)
-		_:
-			list.sort_custom(func(a, b): return a["data"].display_name.naturalnocasecmp_to(b["data"].display_name) < 0)
-	for entry in list:
-		_grid.add_child(_enemy_cell(entry))
-	if list.is_empty():
-		_grid.add_child(_label("No enemies match.", Color(0.55, 0.55, 0.6), 13))
-	_set_count(list.size(), total)
-
-func _enemy_difficulty_color(d: int) -> Color:
-	match d:
-		0: return Color(0.3, 0.78, 0.35)   # low — green
-		1: return Color(1.0, 0.6, 0.0)     # medium — orange
-		2: return Color(0.92, 0.28, 0.24)  # high — red
-		3: return Color(0.7, 0.45, 1.0)    # boss — purple
-		_: return Color(0.55, 0.55, 0.6)
-
-func _enemy_difficulty_label(d: int) -> String:
-	return ENEMY_DIFFICULTY_NAMES[clampi(d, 0, ENEMY_DIFFICULTY_NAMES.size() - 1)]
-
-# Mode badge colour: deckbuilder reads purple, action reads reddish-orange,
-# reusing the Games tab's per-type palette for visual consistency.
-func _enemy_mode_color(mode: String) -> Color:
-	return _game_type_color(0) if mode == "action" else _game_type_color(2)
-
-func _enemy_mode_label(mode: String) -> String:
-	return "Action" if mode == "action" else "Deckbuilder"
-
-# A representative still for an action enemy, which renders from frame anims and
-# carries no single `image`. Composite enemies (e.g. the Gaper = body + head)
-# slice their layers into separate frames, so a lone animation frame shows only
-# part of the creature. Prefer the artist-dropped full-body still under
-# images/enemies/action_enemies/<Name>/<id>_full.png (then <id>_idle.png), and
-# only fall back to an idle animation frame when no still exists.
-func _action_enemy_icon(ae: ActionEnemyData) -> Texture2D:
-	var dir := "res://images/enemies/action_enemies/%s" % ae.display_name
-	for fname in ["%s_full.png" % ae.id, "%s_idle.png" % ae.id]:
-		var path := "%s/%s" % [dir, fname]
-		if ResourceLoader.exists(path):
-			return load(path)
-	if ae.image != null:
-		return ae.image
-	for nm in [&"body.idle", &"idle", &"body.idle_side"]:
-		var a := ae.get_anim(nm)
-		if not a.is_empty() and not a["frames"].is_empty():
-			return a["frames"][0]
-	if ae.anim_frames.size() > 0:
-		return ae.anim_frames[0]
-	return null
-
-func _enemy_icon(entry: Dictionary) -> Texture2D:
-	if entry["mode"] == "action":
-		return _action_enemy_icon(entry["data"])
-	return entry["data"].image
-
-# Bordered "?" swatch for the occasional enemy still missing art, matching the
-# backdrop of _image_with_bg so the grid stays uniform.
-func _enemy_placeholder(size: int, border: Color) -> Control:
-	var panel := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = IMAGE_BG.lerp(border, 0.12)
-	sb.set_corner_radius_all(8)
-	sb.set_content_margin_all(8)
-	sb.set_border_width_all(1)
-	sb.border_color = Color(border.r, border.g, border.b, 0.45)
-	panel.add_theme_stylebox_override("panel", sb)
-	var lbl := _label("?", Color(0.55, 0.55, 0.62), int(size * 0.45), true)
-	lbl.custom_minimum_size = Vector2(size, size)
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	panel.add_child(lbl)
-	return panel
-
-func _enemy_cell(entry: Dictionary) -> Control:
-	var en = entry["data"]
-	var dc := _enemy_difficulty_color(int(en.difficulty))
-	var cell := _cell(dc, func(): _show_enemy_detail(entry))
-	cell.panel.custom_minimum_size = Vector2(166, 0)
-	var vb: VBoxContainer = cell.vbox
-	vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	var tex := _enemy_icon(entry)
-	if tex != null:
-		vb.add_child(_image_with_bg(tex, 96, dc, true))
+	var term: String = _search["reference"].to_lower()
+	var shown: int = 0
+	if _ref_subtab == "addons":
+		for a in ReferenceCatalog.ADDONS:
+			if term != "" and not (term in String(a.get("name", "")).to_lower() \
+					or term in String(a.get("deckbuilder", "")).to_lower()):
+				continue
+			_grid.add_child(_addon_card(a))
+			shown += 1
+		_set_count(shown, ReferenceCatalog.ADDONS.size())
 	else:
-		vb.add_child(_enemy_placeholder(96, dc))
-	var nm := _label(en.display_name, dc, 13, true, true)
+		for s in ReferenceCatalog.STATUSES:
+			if term != "" and not (term in String(s.get("name", "")).to_lower() \
+					or term in String(s.get("description", "")).to_lower()):
+				continue
+			_grid.add_child(_status_card(s))
+			shown += 1
+		_set_count(shown, ReferenceCatalog.STATUSES.size())
+
+func _status_type_color(t: String) -> Color:
+	match t.to_lower():
+		"buff": return Color(0.3, 0.78, 0.35)
+		"debuff": return Color(0.92, 0.28, 0.24)
+		"ability": return Color(0.6, 0.45, 1.0)
+		_: return Color(0.5, 0.66, 0.75)
+
+func _status_card(s: Dictionary) -> Control:
+	var tc := _status_type_color(String(s.get("type", "")))
+	var cell := _cell(tc, Callable())
+	cell.panel.custom_minimum_size = Vector2(380, 0)
+	var vb: VBoxContainer = cell.vbox
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	vb.add_child(top)
+	var icon: String = String(s.get("icon", ""))
+	var path := "res://images/statuses/%s.png" % icon
+	var tex: Texture2D = load(path) if (icon != "" and ResourceLoader.exists(path)) else null
+	if tex != null:
+		top.add_child(_tex_rect(tex, 48))
+	var head := VBoxContainer.new()
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(head)
+	var name_row := HBoxContainer.new()
+	name_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(name_row)
+	var nm := _label(String(s.get("name", "")), tc, 14)
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vb.add_child(nm)
-	vb.add_child(_label(_enemy_difficulty_label(int(en.difficulty)).to_upper(), dc, 11, true))
-	var mc := _enemy_mode_color(entry["mode"])
-	vb.add_child(_label(_enemy_mode_label(entry["mode"]), mc, 10, true))
+	name_row.add_child(nm)
+	name_row.add_child(_label(String(s.get("type", "")).to_upper(), tc, 10))
+	head.add_child(_label(String(s.get("description", "")), Color(0.82, 0.82, 0.84), 11, false, true))
+	var meta_parts: Array = ["Affects: %s" % s.get("who", "All")]
+	if bool(s.get("stackable", false)):
+		meta_parts.append("Stackable")
+	var decay: String = String(s.get("decay", ""))
+	if decay != "" and decay != "None":
+		meta_parts.append("Decays")
+	var rar: String = String(s.get("rarity", ""))
+	if rar != "":
+		meta_parts.append(rar)
+	vb.add_child(_label("   ".join(meta_parts), Color(0.55, 0.6, 0.68), 10))
 	return cell.panel
 
-func _show_enemy_detail(entry: Dictionary) -> void:
-	_clear_children(_detail_box)
-	var en = entry["data"]
-	var dc := _enemy_difficulty_color(int(en.difficulty))
-	var tex := _enemy_icon(entry)
-	if tex != null:
-		var img := _image_with_bg(tex, 110, dc, true)
-		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		_detail_box.add_child(img)
-	else:
-		var ph := _enemy_placeholder(110, dc)
-		ph.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		_detail_box.add_child(ph)
-	_detail_box.add_child(_label(en.display_name, dc, 18, true))
-	_detail_box.add_child(_detail_meta("%s  •  %s" % [
-		_enemy_difficulty_label(int(en.difficulty)), _enemy_mode_label(entry["mode"])],
-		_enemy_mode_color(entry["mode"])))
-	if en.source_game != "":
-		_detail_box.add_child(_label("From: %s" % en.source_game, Color(0.65, 0.7, 0.8), 11, false, true))
-	if en.tags.size() > 0:
-		_detail_box.add_child(_label(", ".join(en.tags), Color(0.73, 0.55, 0.78), 11, false, true))
-	_detail_box.add_child(HSeparator.new())
-	if entry["mode"] == "action":
-		_fill_action_enemy_detail(en)
-	else:
-		_fill_deck_enemy_detail(en)
+func _addon_card(a: Dictionary) -> Control:
+	var gold := Color(0.85, 0.66, 0.22)
+	var cell := _cell(gold, Callable())
+	cell.panel.custom_minimum_size = Vector2(380, 0)
+	var vb: VBoxContainer = cell.vbox
+	var head := HBoxContainer.new()
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_child(head)
+	var nm := _label(String(a.get("name", "")), Color(0.95, 0.78, 0.28), 14)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(nm)
+	var attach: String = String(a.get("attaches_to", ""))
+	if attach != "":
+		head.add_child(_label("Attaches: %s" % attach, Color(0.7, 0.6, 0.4), 10))
+	if bool(a.get("has_value", false)):
+		vb.add_child(_label("Takes a value (X)", Color(0.8, 0.7, 0.45), 10))
+	vb.add_child(_mode_line("Deck", String(a.get("deckbuilder", ""))))
+	vb.add_child(_mode_line("Action", String(a.get("action", ""))))
+	vb.add_child(_mode_line("Strategy", String(a.get("strategy", ""))))
+	var forms: String = String(a.get("forms", ""))
+	if forms != "":
+		vb.add_child(_label("Forms: %s" % forms, Color(0.78, 0.63, 0.25), 10))
+	return cell.panel
 
-# --- Deckbuilder enemy detail: HP, abilities, statuses, split, intent pattern.
-func _fill_deck_enemy_detail(en: EnemyData) -> void:
-	_detail_box.add_child(_detail_section("Stats"))
-	_detail_box.add_child(_kv("Health", _hp_range_text(en.hp_min, en.hp_max)))
-	_detail_box.add_child(_kv("Spawn Weight", str(en.weight)))
-	if en.starting_abilities.size() > 0:
-		_detail_box.add_child(_detail_section("⚡ Abilities"))
-		for ab in en.starting_abilities:
-			_detail_box.add_child(_label("• %s" % ab, Color(0.7, 0.55, 1.0), 11, false, true))
-	if not en.starting_statuses.is_empty():
-		_detail_box.add_child(_detail_section("Starting Statuses"))
-		for sid in en.starting_statuses.keys():
-			_detail_box.add_child(_kv(String(sid).capitalize(), _status_value_text(en.starting_statuses[sid])))
-	if en.split_count > 0 and en.split_into != &"":
-		_detail_box.add_child(_detail_section("Split"))
-		var into: EnemyData = Data.get_enemy(en.split_into)
-		var into_name: String = into.display_name if into != null else String(en.split_into).capitalize()
-		_detail_box.add_child(_label("At ≤50%% HP, splits into %d× %s" % [en.split_count, into_name], Color(0.85, 0.72, 0.4), 11, false, true))
-	if not en.pattern.is_empty():
-		var mode_label: String = String(en.pattern_mode).capitalize()
-		_detail_box.add_child(_detail_section("Intents (%s)" % mode_label))
-		for move in en.pattern:
-			_add_enemy_move_row(move)
+func _mode_line(tag: String, desc: String) -> Control:
+	if desc == "":
+		return Control.new()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var t := _label(tag, Color(0.6, 0.7, 0.85), 10)
+	t.custom_minimum_size = Vector2(58, 0)
+	row.add_child(t)
+	var d := _label(desc, Color(0.8, 0.8, 0.82), 11, false, true)
+	d.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(d)
+	return row
 
-func _add_enemy_move_row(move: Dictionary) -> void:
-	var disp: String = String(move.get("display", "?"))
-	var tags: Array = []
-	if bool(move.get("first_turn_only", false)):
-		tags.append("first turn")
-	var w: int = int(move.get("weight", 0))
-	if w > 0:
-		tags.append("weight %d" % w)
-	var title: String = "• %s" % disp
-	if not tags.is_empty():
-		title += "   (%s)" % "  ".join(tags)
-	_detail_box.add_child(_label(title, Color(0.92, 0.92, 0.92), 12, false, true))
-	var fx: String = _enemy_effects_text(move.get("effects", []))
-	if fx != "":
-		_detail_box.add_child(_label("    " + fx, Color(0.75, 0.8, 0.85), 11, false, true))
-
-func _enemy_effects_text(effects: Array) -> String:
-	var parts: Array = []
-	for e in effects:
-		var s: String = _enemy_effect_text(e)
-		if s != "":
-			parts.append(s)
-	return ", ".join(parts)
-
-func _enemy_effect_text(e: Dictionary) -> String:
-	var t: String = String(e.get("type", ""))
-	var target: String = String(e.get("target", ""))
-	var to_self: bool = target == "self"
-	match t:
-		"dmg": return "%d damage" % int(e.get("value", 0))
-		"block": return "%d Block%s" % [int(e.get("value", 0)), " (self)" if to_self else ""]
-		"block_self": return "%d Block (self)" % int(e.get("value", 0))
-		"heal": return "Heal %d%s" % [int(e.get("value", 0)), " (self)" if to_self else ""]
-		"status":
-			var who: String = "self" if to_self else "you"
-			return "%d× %s → %s" % [int(e.get("stacks", 1)), String(e.get("status", "")).capitalize(), who]
-		_:
-			if int(e.get("value", 0)) != 0:
-				return "%s %d" % [t.capitalize(), int(e.get("value", 0))]
-			return t.capitalize()
-
-# --- Action enemy detail: HP, behaviour, movement, attacks, split, on-death.
-func _fill_action_enemy_detail(en: ActionEnemyData) -> void:
-	_detail_box.add_child(_detail_section("Stats"))
-	_detail_box.add_child(_kv("Health", _hp_range_text(en.hp_min, en.hp_max)))
-	_detail_box.add_child(_kv("Behaviour", ACTION_BEHAVIOR_NAMES[clampi(int(en.behavior), 0, ACTION_BEHAVIOR_NAMES.size() - 1)]))
-	_detail_box.add_child(_kv("Move Speed", "%d px/s" % int(en.move_speed)))
-	_detail_box.add_child(_kv("Size", "%d px" % int(en.size)))
-	_detail_box.add_child(_kv("Spawn Weight", str(en.weight)))
-	var attacks: Array = en.attacks()
-	if not attacks.is_empty():
-		_detail_box.add_child(_detail_section("Attacks"))
-		var n: int = 0
-		for atk in attacks:
-			n += 1
-			_add_action_attack_row(n, atk)
-	if en.split_count > 0 and en.split_into != &"":
-		_detail_box.add_child(_detail_section("Split"))
-		var into: ActionEnemyData = Data.get_action_enemy(en.split_into)
-		var into_name: String = into.display_name if into != null else String(en.split_into).capitalize()
-		_detail_box.add_child(_label("At ≤50%% HP, splits into %d× %s" % [en.split_count, into_name], Color(0.85, 0.72, 0.4), 11, false, true))
-	if en.on_death_ids.size() > 0:
-		_detail_box.add_child(_detail_section("On Death"))
-		var names: Array = []
-		for i in en.on_death_ids.size():
-			var did := StringName(en.on_death_ids[i])
-			var d: ActionEnemyData = Data.get_action_enemy(did)
-			names.append(d.display_name if d != null else String(did).capitalize())
-		_detail_box.add_child(_label("Transforms into: %s" % ", ".join(names), Color(0.7, 0.45, 1.0), 11, false, true))
-
-func _add_action_attack_row(n: int, atk: Dictionary) -> void:
-	var kind: String = "Ranged" if int(atk.get("kind", 0)) == ActionEnemyData.AttackKind.RANGED else "Melee"
-	var col := Color(0.85, 0.45, 0.15) if kind == "Ranged" else Color(0.9, 0.3, 0.25)
-	_detail_box.add_child(_label("• Attack %d — %s" % [n, kind], col, 12, false, true))
-	var parts: Array = ["%d dmg" % int(atk.get("damage", 0)), "%.1fs cd" % float(atk.get("cooldown", 0.0))]
-	if float(atk.get("range", 0.0)) > 0:
-		parts.append("range %d" % int(atk.get("range", 0.0)))
-	if int(atk.get("proj_count", 1)) > 1:
-		parts.append("%d projectiles" % int(atk.get("proj_count", 1)))
-	if bool(atk.get("random", false)):
-		parts.append("random fire")
-	_detail_box.add_child(_label("    " + "  •  ".join(parts), Color(0.75, 0.8, 0.85), 11, false, true))
-
-func _hp_range_text(lo: int, hi: int) -> String:
-	return str(lo) if lo == hi else "%d–%d" % [lo, hi]
-
-# An HP-range status value may be a plain int or a [min, max] pair (e.g.
-# curl_up: [3, 7]); render either shape.
-func _status_value_text(v) -> String:
-	if v is Array and v.size() == 2:
-		return _hp_range_text(int(v[0]), int(v[1]))
-	return str(int(v)) if (v is int or v is float) else str(v)
+# ------------------------------------------------------------------
+# Detail helpers
+# ------------------------------------------------------------------
 
 func _detail_meta(text: String, color: Color) -> Label:
-	var l := _label(text, color, 12, true)
-	return l
+	return _label(text, color, 12, true)
 
 func _detail_section(title: String) -> Control:
-	var l := _label(title, Color(1.0, 0.85, 0.5), 13)
-	return l
+	return _label(title, Color(1.0, 0.85, 0.5), 13)
 
 func _kv(key: String, value: String) -> Control:
 	var row := HBoxContainer.new()
