@@ -49,6 +49,14 @@ var won: bool = false
 var defeated_count: int = 0
 var games_beaten: int = 0
 
+# Aggravate Monsters (Scroll, §4.1): a temporary run-wide bonus added to EVERY
+# stacked enemy's per-game hit for the next `enemy_damage_bonus_games` games, then
+# it expires. `beat_game` folds the bonus into each attack and ticks the counter
+# down once per resolve; `stacked_damage_per_game()` includes it so the HUD stays
+# honest.
+var enemy_damage_bonus: int = 0
+var enemy_damage_bonus_games: int = 0
+
 # Summary of the most recent beat_game(), for the log / HUD / tests. Rebuilt each
 # resolve; see beat_game for its shape.
 var last_result: Dictionary = {}
@@ -65,6 +73,8 @@ func reset() -> void:
 	won = false
 	defeated_count = 0
 	games_beaten = 0
+	enemy_damage_bonus = 0
+	enemy_damage_bonus_games = 0
 	last_result = {}
 	_next_instance = 1
 	loop_changed.emit()
@@ -195,11 +205,20 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 			entry["stun"] = int(entry["stun"]) - 1
 			res["attacks"].append({"instance": entry["instance"], "stunned": true})
 			continue
-		var dmg: int = int(entry["enemy"].damage)
+		# Aggravate Monsters adds a flat bonus to each hit while it's active (§4.1).
+		var bonus: int = enemy_damage_bonus if enemy_damage_bonus_games > 0 else 0
+		var dmg: int = int(entry["enemy"].damage) + bonus
 		var blocked: int = _take_hit(dmg, res)
 		res["attacks"].append({"instance": entry["instance"], "damage": dmg,
 			"blocked": blocked})
 		player_hit.emit(dmg, blocked)
+
+	# Aggravate Monsters lasts a fixed number of games (§4.1) — one game elapses
+	# per resolve, so tick it down after the stack has taken its buffed hits.
+	if enemy_damage_bonus_games > 0:
+		enemy_damage_bonus_games -= 1
+		if enemy_damage_bonus_games <= 0:
+			enemy_damage_bonus = 0
 
 	# 3. Resolve the current game's enemy: met -> defeated + drop; else it joins
 	#    the stack (and, being added after the attack step, gets its one-game
@@ -258,6 +277,27 @@ func stun(instance: int) -> bool:
 	stack[idx]["stun"] = int(stack[idx].get("stun", 0)) + 1
 	loop_changed.emit()
 	return true
+
+# Add a fresh enemy directly to the following stack (Scroll of Create Monster,
+# §4.1). Unlike choose_game it does not become `current`: the conjured enemy
+# starts following immediately and attacks on the next game beaten, like any
+# other stacked enemy. Returns its unique instance handle, or 0 if enemy is null.
+func spawn_to_stack(enemy: GoalEnemyData) -> int:
+	if enemy == null:
+		return 0
+	var inst: int = _next_instance
+	_next_instance += 1
+	stack.append({"instance": inst, "enemy": enemy, "stun": 0})
+	loop_changed.emit()
+	return inst
+
+# Aggravate Monsters (Scroll, §4.1): every stacked enemy deals +`damage` on its
+# per-game hit for the next `games` games. Additive with an existing buff (the
+# larger bonus / longer window win so re-reading never weakens it).
+func aggravate(damage: int, games: int) -> void:
+	enemy_damage_bonus = maxi(enemy_damage_bonus, damage)
+	enemy_damage_bonus_games = maxi(enemy_damage_bonus_games, games)
+	loop_changed.emit()
 
 # Scramble (§4, granted by the D6 item): reroll the CURRENT game's enemy/goal.
 # Spends one scramble charge and replaces `current` with a freshly-rolled enemy
@@ -366,9 +406,10 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 # excluded) — the "how bad is my backlog" number for the HUD (§9).
 func stacked_damage_per_game() -> int:
 	var total: int = 0
+	var bonus: int = enemy_damage_bonus if enemy_damage_bonus_games > 0 else 0
 	for entry in stack:
 		if int(entry.get("stun", 0)) <= 0:
-			total += int(entry["enemy"].damage)
+			total += int(entry["enemy"].damage) + bonus
 	return total
 
 func stack_size() -> int:

@@ -75,17 +75,12 @@ func test_every_effect_type_is_handled() -> void:
 
 # --- Cross-referenced content exists -------------------------------------
 
-func test_fly_swarm_enemy_exists_but_is_unweighted() -> void:
-	var fly: EnemyData = Data.get_enemy(&"fly")
-	assert_not_null(fly, "Fruit Basket summons the Fly enemy")
-	assert_eq(fly.weight, 0, "Fly never appears in the random roster")
+# (The Fly swarm enemy and Greed / Iron Wave cards were combat content, cut in
+# §11; the events that referenced them now no-op those effects — see EventModal.)
 
-func test_ssssserpent_and_eyeballs_curses_exist() -> void:
-	assert_not_null(Data.get_card(&"greed"), "The Ssssserpent grants the Greed curse card")
+func test_eyeballs_curse_exists() -> void:
 	assert_not_null(Data.get_curse(&"curse_of_ocular_trauma"),
 		"Watching Eyeballs inflicts Curse of Ocular Trauma")
-	assert_not_null(Data.get_card(&"iron_wave"),
-		"A Note For Yourself defaults to Iron Wave")
 
 func test_item_tags_resolve_to_real_items() -> void:
 	for tag in ["coin", "eye", "seed"]:

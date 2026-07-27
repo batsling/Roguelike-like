@@ -58,6 +58,7 @@ var _dash_mode: bool = false        # Dash (§4): offer ANY connected game
 var _controls_row: HBoxContainer
 var _stack: RichTextLabel
 var _log: RichTextLabel
+var _scrolls_box: VBoxContainer
 
 func _ready() -> void:
 	_rng.randomize()
@@ -68,7 +69,11 @@ func _ready() -> void:
 		GameLoop2.run_lost.connect(_on_run_lost)
 	if not GameLoop2.run_won.is_connected(_on_run_won):
 		GameLoop2.run_won.connect(_on_run_won)
-	start_run()
+	# The menu stashes the chosen 2.0 character here before entering the scene.
+	var pending: StringName = GameState.get_meta("pending_character2", &"")
+	if pending != &"":
+		GameState.remove_meta("pending_character2")
+	start_run(pending)
 
 # --- public actions (buttons + tests call these) --------------------------
 
@@ -123,6 +128,46 @@ func dash() -> void:
 func cancel_dash() -> void:
 	if not _dash_mode:
 		return
+	_dash_mode = false
+	_build_choices()
+	_refresh()
+
+# Read the carried scroll at loot index `idx` (Scrolls panel). Opens the 2.0
+# read modal, which consumes the scroll and applies its effect (§4.1).
+func read_scroll(idx: int) -> void:
+	var modal := preload("res://scripts/redesign2/ScrollReadModal.gd").new()
+	modal.finished.connect(_refresh)
+	modal.start(self, idx, self)
+
+# Scroll of Teleportation (§4.1): move to a random game ~the same graph distance
+# from the Amulet as the current position (±`spread`), excluding the current game
+# and the amulet. Falls back to any reachable-distance node if the band is empty.
+func scroll_teleport(_dir: String, spread: int) -> void:
+	var amulet: StringName = GameState.amulet_game_id
+	if amulet == &"":
+		return
+	var dist: Dictionary = RunGraph.bfs_distances(amulet)
+	var cur: StringName = GameState.current_game_id
+	if not dist.has(cur):
+		return
+	var cur_d: int = int(dist[cur])
+	var band: Array = []
+	var any: Array = []
+	for gid in dist.keys():
+		if gid == cur or gid == amulet or GameLoop2.is_bashed(gid):
+			continue
+		any.append(gid)
+		if absi(int(dist[gid]) - cur_d) <= spread:
+			band.append(gid)
+	var pool: Array = band if not band.is_empty() else any
+	if pool.is_empty():
+		GameLog.add("The teleport fizzles — nowhere to go.", Color(0.61, 0.35, 0.71))
+		return
+	var dest: StringName = pool[_rng.randi() % pool.size()]
+	GameState.set_current_game(dest)
+	var g: GameData = Data.get_game(dest)
+	GameLog.add("Teleported to %s." % (g.display_name if g != null else String(dest)),
+		Color(0.61, 0.35, 0.71))
 	_dash_mode = false
 	_build_choices()
 	_refresh()
@@ -246,6 +291,7 @@ func _refresh(_a = null) -> void:
 	if _hud == null:
 		return
 	_hud.text = _hud_text()
+	_refresh_scrolls()
 	_stack.text = _stack_text()
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
@@ -446,12 +492,54 @@ func _now_playing_text() -> String:
 	return "[b]Now playing:[/b] %s\n%s" % [_chosen["game"].display_name, _enemy_preview_text(_chosen)]
 
 func _hud_text() -> String:
-	return "[b]Health[/b] %d/%d   [b]Block[/b] %d      [b]Tier[/b] %s      [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d   [b]Chests[/b] %d" % [
+	return "[b]Health[/b] %d/%d   [b]Block[/b] %d      [b]Tier[/b] %s      [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d  [b]Scrolls[/b] %d   [b]Chests[/b] %d" % [
 		GameState.hp, GameState.max_hp, GameState.block,
 		RunDifficulty.tier_name(_current_tier()),
 		GameState.bash, GameState.dash_charges, GameState.transmute,
-		GameState.scramble, GameState.bombs, GameState.keys, GameState.pending_chests,
+		GameState.scramble, GameState.bombs, GameState.keys,
+		GameState.get_loot_count("scroll"), GameState.pending_chests,
 	]
+
+# Rebuild the Scrolls panel: one Read button per carried scroll, showing its
+# identified name/art or the Unidentified mask (§4.1). Reading is always allowed
+# from the overworld. Only shown in the SELECT phase so it can't be opened while
+# a game is mid-report.
+func _refresh_scrolls() -> void:
+	if _scrolls_box == null:
+		return
+	for c in _scrolls_box.get_children():
+		c.queue_free()
+	var scrolls: Array = GameState.loot_scrolls()
+	_scrolls_box.visible = _phase == Phase.SELECT
+	if scrolls.is_empty():
+		var none := Label.new()
+		none.text = "  (none)"
+		none.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
+		_scrolls_box.add_child(none)
+		return
+	# loot_scrolls() preserves pickup order; map each back to its loot_items index
+	# so read_scroll consumes the right entry.
+	for entry in scrolls:
+		var idx: int = GameState.loot_items.find(entry)
+		var s: ScrollData = Data.get_scroll(StringName(entry.get("id", "")))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var icon := TextureRect.new()
+		icon.custom_minimum_size = Vector2(28, 28)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		if s != null:
+			icon.texture = ScrollSystem.art_texture(s)
+		row.add_child(icon)
+		var name_lbl := Label.new()
+		name_lbl.text = ScrollSystem.display_name(s) if s != null else "Scroll"
+		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(name_lbl)
+		var read_btn := Button.new()
+		read_btn.text = "Read"
+		read_btn.pressed.connect(func(): read_scroll(idx))
+		row.add_child(read_btn)
+		_scrolls_box.add_child(row)
 
 func _stack_text() -> String:
 	if GameLoop2.stack.is_empty():
@@ -607,6 +695,11 @@ func _build_ui() -> void:
 	_play_panel.add_child(report_row)
 	_play_panel.hide()
 	root.add_child(_play_panel)
+
+	root.add_child(_section("Scrolls (read on the overworld):"))
+	_scrolls_box = VBoxContainer.new()
+	_scrolls_box.add_theme_constant_override("separation", 4)
+	root.add_child(_scrolls_box)
 
 	root.add_child(_section("Following you:"))
 	_stack = _panel_label()

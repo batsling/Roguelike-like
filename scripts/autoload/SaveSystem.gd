@@ -86,8 +86,6 @@ func _build_payload() -> Dictionary:
 		"crit_damage": GameState.crit_damage,
 		"regeneration": GameState.regeneration,
 		"gold": GameState.gold,
-		# Deck stores per-card upgrade state; inventory stores ids.
-		"deck": _serialize_deck(GameState.deck),
 		# Per-slot entries preserve upgrade_level so two copies of the
 		# same item keep their independent state across save/load.
 		# inventory_ids kept for legacy reads.
@@ -142,9 +140,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.reset_run()
 	GameState.save_name = String(data.get("save_name", ""))
 	GameState.character_id = StringName(data.get("character_id", ""))
-	# Pre-deck saves default to Random (an unfiltered reward pool), which
-	# matches how those runs behaved when they were created.
-	GameState.selected_deck = StringName(data.get("selected_deck", String(DeckCatalog.DEFAULT_DECK_ID)))
+	GameState.selected_deck = StringName(data.get("selected_deck", ""))
 	GameState.current_game_id = StringName(data.get("current_game_id", ""))
 	GameState.start_game_id = StringName(data.get("start_game_id", ""))
 	GameState.amulet_game_id = StringName(data.get("amulet_game_id", ""))
@@ -170,11 +166,6 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.regeneration = data.get("regeneration", 0)
 	GameState.gold = data.get("gold", 0)
 	GameState.incremental_attacks_total = int(data.get("incremental_attacks_total", 0))
-	# Prefer the new "deck" key; fall back to legacy "deck_ids" for old saves.
-	if data.has("deck"):
-		GameState.deck = _resolve_deck(data.get("deck", []))
-	else:
-		GameState.deck = _resolve_deck_legacy(data.get("deck_ids", []))
 	# Prefer the new per-slot inventory; fall back to legacy id list.
 	if data.has("inventory"):
 		GameState.inventory = _resolve_inventory(data.get("inventory", []))
@@ -182,7 +173,7 @@ func _apply_save_data(data: Dictionary) -> void:
 		GameState.inventory = _resolve_items(data.get("inventory_ids", []))
 	var weapon_id := String(data.get("equipped_weapon_id", ""))
 	if weapon_id != "":
-		var w_tpl: ItemData = Data.get_item(StringName(weapon_id))
+		var w_tpl: ItemData = _lookup_item(StringName(weapon_id))
 		if w_tpl != null:
 			GameState.equipped_weapon = w_tpl.duplicate(true)
 			GameState.equipped_weapon.upgrade_level = int(data.get("equipped_weapon_level", 0))
@@ -192,13 +183,8 @@ func _apply_save_data(data: Dictionary) -> void:
 			GameState.equipped_weapon = null
 	else:
 		GameState.equipped_weapon = null
-	# Restore the counter ABOVE the highest loaded id so future
-	# add_item calls don't recycle a value still referenced by a
-	# CardInstance.source_weapon_id.
-	GameState._next_item_instance_id = maxi(
-		int(data.get("next_item_instance_id", 1)),
-		_max_instance_id_in_state() + 1
-	)
+	# Restore the item instance-id counter.
+	GameState._next_item_instance_id = maxi(1, int(data.get("next_item_instance_id", 1)))
 	# Reset the running item contribution so _recompute starts fresh
 	# against the saved base stats (which already had bonuses applied
 	# when the save was written, but we save the base — see below).
@@ -378,95 +364,11 @@ func _item_ids(inv: Array) -> Array:
 			out.append(String(it.id))
 	return out
 
-func _serialize_deck(deck: Array) -> Array:
-	# Per-card payload: id, upgraded flag, weapon-link (source_weapon_id),
-	# persistent effect bonuses from verification. effect_bonuses keys are
-	# coerced to strings for JSON; resolver flips them back to ints.
-	var out: Array = []
-	for c in deck:
-		if c is CardInstance:
-			out.append({
-				"id": String(c.data.id),
-				"upgraded": c.upgraded,
-				# Sequential upgrades (Searing Blow): the banked upgrade count.
-				"upgrade_count": c.upgrade_count,
-				"source_weapon_id": c.source_weapon_id,
-				"effect_bonuses": _stringify_effect_bonus_keys(c.effect_bonuses),
-				# Vorpal's once-per-card roll persists with the deck so the bound
-				# combat type/weight survives save/load.
-				"vorpal_type": c.vorpal_type,
-				"vorpal_weight": c.vorpal_weight,
-				# Retain granted by Scroll of Enchant Weapon (crit success).
-				"granted_retain": c.granted_retain,
-			})
-		elif c is CardData:
-			# Defensive: handle bare CardData if anything still appends it.
-			out.append({"id": String(c.id), "upgraded": false})
-	return out
-
-func _resolve_deck(entries: Array) -> Array:
-	var out: Array = []
-	for e in entries:
-		if not (e is Dictionary):
-			continue
-		var c: CardData = Data.get_card(StringName(e.get("id", "")))
-		if c == null:
-			continue
-		var ci: CardInstance = CardInstance.from_data(c, bool(e.get("upgraded", false)))
-		# from_data seeds count 1 for an upgraded sequential card, so an old
-		# save that predates the field still loads as one applied upgrade.
-		ci.upgrade_count = int(e.get("upgrade_count", ci.upgrade_count))
-		ci.source_weapon_id = int(e.get("source_weapon_id", 0))
-		ci.effect_bonuses = _intify_effect_bonus_keys(e.get("effect_bonuses", {}))
-		# Restore the persisted Vorpal roll (-2 default = re-roll lazily for an
-		# old save that predates the field but carries a Vorpal weapon).
-		ci.vorpal_type = int(e.get("vorpal_type", -2))
-		ci.vorpal_weight = int(e.get("vorpal_weight", 0))
-		ci.granted_retain = bool(e.get("granted_retain", false))
-		out.append(ci)
-	return out
-
-func _max_instance_id_in_state() -> int:
-	# Belt-and-suspenders: even if the saved counter is wrong, derive a
-	# safe minimum from whatever's actually in inventory / equipped /
-	# deck so newly-added items can't alias a live card's link.
-	var m: int = 0
-	for it in GameState.inventory:
-		if it is ItemData and it.instance_id > m:
-			m = it.instance_id
-	if GameState.equipped_weapon != null and GameState.equipped_weapon.instance_id > m:
-		m = GameState.equipped_weapon.instance_id
-	for c in GameState.deck:
-		if c is CardInstance and c.source_weapon_id > m:
-			m = c.source_weapon_id
-	return m
-
-func _stringify_effect_bonus_keys(d: Dictionary) -> Dictionary:
-	# JSON only allows string object keys, so int effect indices have to
-	# round-trip as strings ("0" -> { stacks: 1 }).
-	var out: Dictionary = {}
-	for k in d.keys():
-		out[str(k)] = d[k]
-	return out
-
-func _intify_effect_bonus_keys(d: Dictionary) -> Dictionary:
-	var out: Dictionary = {}
-	for k in d.keys():
-		var key: int = int(String(k))
-		var fields: Dictionary = {}
-		var src: Dictionary = d[k]
-		for fk in src.keys():
-			fields[String(fk)] = int(src[fk])
-		out[key] = fields
-	return out
-
-func _resolve_deck_legacy(ids: Array) -> Array:
-	var out: Array = []
-	for s in ids:
-		var c: CardData = Data.get_card(StringName(s))
-		if c != null:
-			out.append(CardInstance.from_data(c))
-	return out
+# Resolve a saved item id against the 2.0 pool first (the run's item economy),
+# then the legacy 1.0 pool, so either round-trips.
+func _lookup_item(id: StringName) -> ItemData:
+	var it: ItemData = Data.get_item2(id)
+	return it if it != null else Data.get_item(id)
 
 func _resolve_items(ids: Array) -> Array:
 	# Legacy id-list path. Each entry becomes a fresh duplicate at
@@ -474,7 +376,7 @@ func _resolve_items(ids: Array) -> Array:
 	# pre-upgrade saves.
 	var out: Array = []
 	for s in ids:
-		var it: ItemData = Data.get_item(StringName(s))
+		var it: ItemData = _lookup_item(StringName(s))
 		if it != null:
 			out.append(it.duplicate(true))
 	return out
@@ -500,7 +402,7 @@ func _resolve_inventory(entries: Array) -> Array:
 	for e in entries:
 		if not (e is Dictionary):
 			continue
-		var tpl: ItemData = Data.get_item(StringName(e.get("id", "")))
+		var tpl: ItemData = _lookup_item(StringName(e.get("id", "")))
 		if tpl == null:
 			continue
 		var inst: ItemData = tpl.duplicate(true)
