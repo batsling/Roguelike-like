@@ -903,6 +903,11 @@ func _sync_dead_eye_streak() -> void:
 	dead_eye_streak = int(s.get("count", 0))
 
 func set_current_game(id: StringName) -> void:
+	# Record the game we're leaving so the map's journey trail can show where the
+	# player has been (mirrors the old web build's gameState.visitedGames). The
+	# first placement (current_game_id == "") and no-op re-sets add nothing.
+	if current_game_id != &"" and current_game_id != id and not visited_games.has(current_game_id):
+		visited_games.append(current_game_id)
 	current_game_id = id
 	emit_signal("current_game_changed", id)
 

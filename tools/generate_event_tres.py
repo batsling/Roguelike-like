@@ -66,6 +66,11 @@ def read_sheet(xlsx_path: str, sheet_name: str) -> list[dict]:
             break
     if target is None:
         raise KeyError(f"sheet {sheet_name!r} not found")
+    # Relationship targets may be package-absolute ("/xl/worksheets/sheet9.xml")
+    # or relative to xl/ ("worksheets/sheet9.xml"); normalize both to the
+    # ZIP member path. Strip a leading slash first, otherwise the "xl/" prefix
+    # check below would double up to "xl//xl/..." and miss the archive member.
+    target = target.lstrip("/")
     if not target.startswith("xl/"):
         target = "xl/" + target
 
