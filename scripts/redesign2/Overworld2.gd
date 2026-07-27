@@ -132,6 +132,16 @@ func cancel_dash() -> void:
 	_build_choices()
 	_refresh()
 
+# Open the bird's-eye "Map to the Amulet" — the layered shortest-path graph from
+# the current game down to the amulet (ported from the old web build). The current
+# offering's reachable games are passed so the map can flag them as choices.
+func open_map() -> void:
+	var modal := preload("res://scripts/redesign2/RunMapModal.gd").new()
+	var choice_ids: Array = []
+	for c in _choices:
+		choice_ids.append(c["slot"])
+	modal.start(self, GameState.current_game_id, GameState.amulet_game_id, choice_ids)
+
 # Read the carried scroll at loot index `idx` (Scrolls panel). Opens the 2.0
 # read modal, which consumes the scroll and applies its effect (§4.1).
 func read_scroll(idx: int) -> void:
@@ -636,6 +646,10 @@ func _build_ui() -> void:
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
+	var map_btn := Button.new()
+	map_btn.text = "🗺 Map"
+	map_btn.pressed.connect(open_map)
+	header.add_child(map_btn)
 	var restart_btn := Button.new()
 	restart_btn.text = "⟳ New run"
 	restart_btn.pressed.connect(func(): start_run())
