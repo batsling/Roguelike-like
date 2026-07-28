@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_the_obscura"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/enemies/TheObscura.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"the_obscura"
+display_name = "The Obscura"
+game_type = &"deckbuilder"
+difficulty = 1
+source_game = "Slay the Spire 2"
+health = 1
+damage = 2
+goal_type = &"discovery"
+goal = "Create an illusion"
+file = "TheObscura"
+image = ExtResource("2_img")

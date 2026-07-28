@@ -41,6 +41,18 @@ IS_BOSS = False
 DIFFICULTY = {"low": 0, "medium": 1, "high": 2, "insane": 3}
 
 
+def _difficulty(raw) -> int:
+    """Map a Difficulty cell to the enum int.
+
+    Accepts both the bare label ("High") and the tiered form the sheet now
+    uses ("3-High") — the numeric prefix is stripped before lookup.
+    """
+    s = _clean(raw).lower()
+    if "-" in s:
+        s = s.split("-", 1)[1].strip()
+    return DIFFICULTY.get(s, 0)
+
+
 def slugify(name: str) -> str:
     s = str(name).strip().lower().replace("'", "")
     s = re.sub(r"[^a-z0-9]+", "_", s)
@@ -104,7 +116,7 @@ def enemy_tres(row) -> tuple:
     lines.append('id = &"%s"' % eid)
     lines.append('display_name = "%s"' % gd_str(name))
     lines.append('game_type = &"%s"' % _clean(row.get("Type")).lower())
-    lines.append("difficulty = %d" % DIFFICULTY.get(_clean(row.get("Difficulty")).lower(), 0))
+    lines.append("difficulty = %d" % _difficulty(row.get("Difficulty")))
     if IS_BOSS:
         lines.append("boss = true")
     lines.append('source_game = "%s"' % gd_str(_clean(row.get("Game"))))

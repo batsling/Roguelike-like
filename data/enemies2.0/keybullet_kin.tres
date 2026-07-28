@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_keybullet_kin"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/enemies/KeybulletKin.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"keybullet_kin"
+display_name = "Keybullet Kin"
+game_type = &"action"
+difficulty = 0
+source_game = "Enter the Gungeon"
+health = 1
+damage = 1
+goal_type = &"fetch"
+goal = "Obtain 1 key"
+file = "KeybulletKin"
+image = ExtResource("2_img")
