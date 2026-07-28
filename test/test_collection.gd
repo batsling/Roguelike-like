@@ -45,30 +45,30 @@ func test_characters_tab_shows_the_2_0_roster() -> void:
 		col._show_character_detail(Data.all_characters2()[0])
 		assert_gt(col._detail_box.get_child_count(), 1, "character detail populated")
 
-func test_enemies_tab_shows_goal_enemies_and_bosses() -> void:
+func test_enemies_tab_shows_only_goal_enemies() -> void:
 	var col := _new_collection()
 	col._set_tab(Collection.Tab.ENEMIES)
-	var total := Data.all_goal_enemies().size() + Data.all_bosses().size()
-	assert_eq(col._grid.get_child_count(), total, "every goal-enemy and boss shows")
-	assert_gt(total, 0, "there is an enemy roster")
-	col._show_enemy_detail(col._all_enemies()[0])
+	assert_eq(col._grid.get_child_count(), Data.all_goal_enemies().size(), "the Enemies tab shows the normal goal-enemies only")
+	assert_gt(Data.all_goal_enemies().size(), 0, "there is a goal-enemy roster")
+	col._show_enemy_detail(Data.all_goal_enemies()[0])
 	assert_gt(col._detail_box.get_child_count(), 1, "enemy detail populated")
 
-func test_enemies_boss_filter_narrows_to_bosses() -> void:
+func test_bosses_tab_shows_only_bosses() -> void:
 	var col := _new_collection()
-	col._set_tab(Collection.Tab.ENEMIES)
-	col._enemies_kind = "boss"
-	col._refresh()
-	assert_eq(col._grid.get_child_count(), Data.all_bosses().size(), "boss filter shows only bosses")
+	col._set_tab(Collection.Tab.BOSSES)
+	assert_eq(col._grid.get_child_count(), Data.all_bosses().size(), "the Bosses tab shows the boss roster only")
+	if Data.all_bosses().size() > 0:
+		col._show_enemy_detail(Data.all_bosses()[0])
+		assert_gt(col._detail_box.get_child_count(), 1, "boss detail populated")
 
 func test_enemies_search_filters_on_goal_text() -> void:
 	var col := _new_collection()
 	col._set_tab(Collection.Tab.ENEMIES)
-	var target: String = col._all_enemies()[0].display_name.substr(0, 3).to_lower()
+	var target: String = Data.all_goal_enemies()[0].display_name.substr(0, 3).to_lower()
 	col._search["enemies"] = target
 	col._populate_enemies()
 	var expected := 0
-	for e in col._all_enemies():
+	for e in Data.all_goal_enemies():
 		if target in e.display_name.to_lower() or target in e.goal.to_lower() or target in e.source_game.to_lower():
 			expected += 1
 	assert_eq(col._grid.get_child_count(), maxi(expected, 1), "search corpus matches")
