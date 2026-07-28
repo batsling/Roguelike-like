@@ -10,6 +10,16 @@ extends GutTest
 func before_each() -> void:
 	GameState.reset_run()
 
+# Number of .tres resource files in a data directory — the count Data._load_dir
+# is expected to load, so the roster tests stay correct as content grows and
+# still catch a file that fails to load (e.g. a broken image reference).
+func _tres_count(path: String) -> int:
+	var n := 0
+	for f in DirAccess.get_files_at(path):
+		if f.ends_with(".tres") or f.ends_with(".res"):
+			n += 1
+	return n
+
 # --- Characters2.0 --------------------------------------------------------
 
 func test_character2_roster_loads() -> void:
@@ -44,7 +54,7 @@ func test_rodney_reward_parses_maxhp_and_scroll() -> void:
 # --- Items2.0 (Effect DSL) ------------------------------------------------
 
 func test_items2_roster_loads() -> void:
-	assert_eq(Data.all_items2().size(), 14, "14 items2.0 rows -> 14 .tres")
+	assert_eq(Data.all_items2().size(), _tres_count("res://data/items2.0/"), "every items2.0 .tres loads")
 
 func test_anchor_game_beaten_grants_block() -> void:
 	var anchor: ItemData = Data.get_item2(&"anchor")
@@ -92,7 +102,7 @@ func test_meat_on_the_bone_conditional_heal() -> void:
 # --- GoalEnemyData --------------------------------------------------------
 
 func test_goal_enemies_load() -> void:
-	assert_eq(Data.all_goal_enemies().size(), 4, "4 enemies2.0 rows -> 4 .tres")
+	assert_eq(Data.all_goal_enemies().size(), _tres_count("res://data/enemies2.0/"), "every enemies2.0 .tres loads")
 
 func test_spike_slime_goal_enemy_fields() -> void:
 	var slime: GoalEnemyData = Data.get_goal_enemy(&"spike_slime_l")

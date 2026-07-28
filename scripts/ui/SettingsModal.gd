@@ -14,9 +14,15 @@ static func open(parent: Node) -> SettingsModal:
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	top_level = true
-	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_fit_to_viewport()
+	get_viewport().size_changed.connect(_fit_to_viewport)
 	_build_ui()
+
+# Always cover the whole viewport so the centered panel can never fall off-screen
+# on a smaller window; the panel itself is capped and scrolls its own content.
+func _fit_to_viewport() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 func _build_ui() -> void:
 	var dim := ColorRect.new()
@@ -25,25 +31,43 @@ func _build_ui() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
+	# Cover the viewport with a small inset, cap the panel width and center it
+	# horizontally while it fills the available height, and scroll its content when
+	# the window is short. The old fixed-size (640x600) panel ran its lower controls
+	# off the bottom of the screen; this can't fall off-screen.
+	var outer := MarginContainer.new()
+	outer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		outer.add_theme_constant_override("margin_" + side, 24)
+	add_child(outer)
+
+	var row := HBoxContainer.new()
+	outer.add_child(row)
+	var spacer_l := Control.new()
+	spacer_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spacer_l)
+
 	var panel := PanelContainer.new()
-	panel.anchor_left = 0.5
-	panel.anchor_top = 0.5
-	panel.anchor_right = 0.5
-	panel.anchor_bottom = 0.5
-	panel.offset_left = -320
-	panel.offset_top = -300
-	panel.offset_right = 320
-	panel.offset_bottom = 300
-	add_child(panel)
+	panel.custom_minimum_size = Vector2(560, 0)
+	row.add_child(panel)
+
+	var spacer_r := Control.new()
+	spacer_r.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spacer_r)
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 24)
 	panel.add_child(margin)
 
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	margin.add_child(scroll)
+
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 12)
-	margin.add_child(vbox)
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(vbox)
 
 	var title := Label.new()
 	title.text = "Settings"

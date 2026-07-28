@@ -50,13 +50,14 @@ var _play_panel: VBoxContainer
 var _now_playing: RichTextLabel
 var _now_playing_img: TextureRect
 var _launch_row: HBoxContainer
-var _fulfil_box: VBoxContainer
+var _verify_box: VBoxContainer      # clean checklist: goal + level-up + follower goals
 var _fulfil_checks: Array = []      # [{check: CheckBox, instance: int}]
-var _levelup_box: VBoxContainer
+var _goal_check: CheckBox           # the chosen game's main goal; null on a free game
 var _levelup_check: CheckBox        # null when the character has no level-up
 var _dash_mode: bool = false        # Dash (§4): offer ANY connected game
 var _controls_row: HBoxContainer
-var _stack: RichTextLabel
+var _stack: RichTextLabel           # "Following you" summary line
+var _stack_box: HFlowContainer      # "Following you" enemy cards
 var _log: RichTextLabel
 var _scrolls_box: VBoxContainer
 
@@ -191,6 +192,7 @@ func scroll_teleport(_dir: String, spread: int) -> void:
 func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	if _phase != Phase.PLAYING or _chosen.is_empty():
 		return
+	var played_game: GameData = _chosen.get("game")
 	var fulfilled_instances: Array = fulfilled if fulfilled is Array else _ticked_fulfilments()
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
 	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed
@@ -202,6 +204,11 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	GameState.games_played += 1
 	_chosen = {}
 	_transmuted.clear()   # transmutes apply only to the offering you moved from
+	# Just like the older version: after playing a game, prompt to score it onto
+	# the tier list (opt-in — the modal has a "Maybe later"). Fires on every path,
+	# including the run-ending game.
+	if played_game != null:
+		_prompt_rating(played_game)
 	if GameLoop2.run_over:
 		_phase = Phase.OVER
 		_refresh()
@@ -302,7 +309,8 @@ func _refresh(_a = null) -> void:
 		return
 	_hud.text = _hud_text()
 	_refresh_scrolls()
-	_stack.text = _stack_text()
+	_stack.text = _stack_summary()
+	_refresh_followers()
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
 	_boss_banner.get_parent().visible = _boss_round and _phase == Phase.SELECT
@@ -314,7 +322,9 @@ func _refresh(_a = null) -> void:
 		_render_choices()
 	elif _phase == Phase.PLAYING:
 		_now_playing.text = _now_playing_text()
-		_now_playing_img.texture = null if _chosen.is_empty() else _enemy_texture(_chosen)
+		var np_tex: Texture2D = null if _chosen.is_empty() else _enemy_texture(_chosen)
+		_now_playing_img.texture = np_tex
+		_apply_crisp(_now_playing_img, np_tex)
 
 func _render_controls() -> void:
 	for c in _controls_row.get_children():
@@ -404,56 +414,107 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 func _populate_play_panel() -> void:
 	for c in _launch_row.get_children():
 		c.queue_free()
-	for c in _fulfil_box.get_children():
-		c.queue_free()
-	for c in _levelup_box.get_children():
+	for c in _verify_box.get_children():
 		c.queue_free()
 	_fulfil_checks.clear()
 	_levelup_check = null
+	_goal_check = null
 	if _chosen.is_empty():
 		return
 	var game: GameData = _chosen["game"]
+	# "Open the real game" — launches the executable/shortcut in the game's
+	# file_location column (falling back to its store page). Only games with a
+	# launch target get the button.
 	if game.has_launch_target():
 		var play_btn := Button.new()
 		play_btn.text = "▶  Play %s" % game.display_name
 		play_btn.custom_minimum_size = Vector2(0, 38)
+		play_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		play_btn.add_theme_stylebox_override("normal", UITheme.flat(Color(0.10, 0.22, 0.16, 0.9), 8, 8, 1, Color(0.4, 0.9, 0.6)))
 		play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
 		play_btn.pressed.connect(func(): game.launch())
 		_launch_row.add_child(play_btn)
+	# Manual "rate this game" entry point (the report step also auto-prompts after
+	# you press Completed Game).
+	var rate_btn := Button.new()
+	rate_btn.text = "★  Rate this game"
+	rate_btn.custom_minimum_size = Vector2(0, 38)
+	rate_btn.add_theme_color_override("font_color", UITheme.GOLD)
+	rate_btn.pressed.connect(func(): _prompt_rating(game))
+	_launch_row.add_child(rate_btn)
+
+	# One clean checklist of everything to verify this game. Tick what you actually
+	# did, then press "Completed Game" once (§2 / §3.1):
+	#   • the current game's GOAL (top) — ticked defeats its enemy, unticked leaves
+	#     it following you;
+	#   • the character LEVEL-UP challenge;
+	#   • each FOLLOWING enemy whose old goal you also cleared this game.
+	_verify_box.add_child(_verify_head("Check off what you did this game:"))
+
+	var enemy: GoalEnemyData = _chosen.get("enemy")
+	if enemy != null and enemy.goal != "":
+		var is_amulet: bool = bool(_chosen.get("amulet", false))
+		var goal_text: String = "%s %s" % ["🏆 Amulet goal —" if is_amulet else "Goal —", enemy.goal]
+		var goal_row := _verify_row(goal_text, UITheme.SUCCESS, true)
+		_goal_check = goal_row["check"]
+		_verify_box.add_child(goal_row["row"])
+
 	# Level-up challenge (§3.1): a per-game Yes/No for the character's condition,
-	# highlighted in a gold-bordered row so the reward reads at a glance.
+	# with its reward shown inline so the payoff reads at a glance.
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	if ch != null and ch.level_up_condition != "":
-		var lu_wrap := PanelContainer.new()
-		lu_wrap.add_theme_stylebox_override("panel", UITheme.flat(Color(0.20, 0.16, 0.06, 0.85), 8, 8, 1, UITheme.GOLD.lerp(UITheme.BORDER, 0.3)))
-		var lu_row := HBoxContainer.new()
-		lu_row.add_theme_constant_override("separation", 8)
-		lu_wrap.add_child(lu_row)
-		_levelup_check = CheckBox.new()
-		_levelup_check.text = "Leveled up:  %s" % ch.level_up_condition
-		_levelup_check.add_theme_color_override("font_color", UITheme.GOLD)
-		_levelup_check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lu_row.add_child(_levelup_check)
+		var lu_text: String = "Leveled up — %s" % ch.level_up_condition
 		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
-			var reward := Label.new()
-			reward.text = "→ %s" % ch.level_up_reward
-			reward.add_theme_font_size_override("font_size", 12)
-			reward.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
-			lu_row.add_child(reward)
-		_levelup_box.add_child(lu_wrap)
-	if not GameLoop2.stack.is_empty():
-		var hdr := Label.new()
-		hdr.text = "Also cleared a follower's goal this game? Tick it:"
-		hdr.add_theme_font_size_override("font_size", 13)
-		hdr.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-		_fulfil_box.add_child(hdr)
-		for entry in GameLoop2.stack:
-			var e: GoalEnemyData = entry["enemy"]
-			var cb := CheckBox.new()
-			cb.text = "%s — %s" % [e.display_name, e.goal]
-			cb.add_theme_color_override("font_color", UITheme.TEXT)
-			_fulfil_box.add_child(cb)
-			_fulfil_checks.append({"check": cb, "instance": int(entry["instance"])})
+			lu_text += "   → %s" % ch.level_up_reward
+		var lu_row := _verify_row(lu_text, UITheme.GOLD, false)
+		_levelup_check = lu_row["check"]
+		_verify_box.add_child(lu_row["row"])
+
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry["enemy"]
+		var row := _verify_row("Also cleared: %s — %s" % [e.display_name, e.goal], UITheme.TEXT, false)
+		_verify_box.add_child(row["row"])
+		_fulfil_checks.append({"check": row["check"], "instance": int(entry["instance"])})
+
+# Whether the chosen game's MAIN goal was met — true when its checkbox is ticked,
+# or when the game had no enemy/goal to meet (a free game auto-clears).
+func _goal_met() -> bool:
+	return _goal_check == null or _goal_check.button_pressed
+
+# One checklist row: a bordered CheckBox tinted `color`; `emphasise` gives the
+# main-goal row a heavier border so it reads as the primary question.
+func _verify_row(text: String, color: Color, emphasise: bool) -> Dictionary:
+	var wrap := PanelContainer.new()
+	var border: Color = color.lerp(UITheme.BORDER, 0.35)
+	wrap.add_theme_stylebox_override("panel", UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 6, 8, 2 if emphasise else 1, border))
+	var cb := CheckBox.new()
+	cb.text = text
+	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cb.add_theme_color_override("font_color", color)
+	wrap.add_child(cb)
+	return {"row": wrap, "check": cb}
+
+func _verify_head(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	return l
+
+# Open the tier-list rating prompt for `game` (1-10 + optional notes). Submitting
+# records the score via TierList (dropping the game into the Unranked tray the
+# first time); "Maybe later" just closes it. Pre-fills when already rated so the
+# player updates rather than starts over.
+func _prompt_rating(game: GameData) -> void:
+	if game == null:
+		return
+	var modal = preload("res://scripts/ui/RateGameModal.gd").new()
+	modal.setup(game.id, game)
+	modal.submitted.connect(func(score: int, notes: String):
+		TierList.set_rating(game.id, score, notes)
+		modal.queue_free())
+	modal.dismissed.connect(func(): modal.queue_free())
+	add_child(modal)
 
 # The instances the player ticked as fulfilled this game.
 func _ticked_fulfilments() -> Array:
@@ -502,7 +563,9 @@ func _show_preview(index: int) -> void:
 	if index < 0 or index >= _choices.size():
 		return
 	_preview.text = _enemy_preview_text(_choices[index])
-	_preview_img.texture = _enemy_texture(_choices[index])
+	var tex: Texture2D = _enemy_texture(_choices[index])
+	_preview_img.texture = tex
+	_apply_crisp(_preview_img, tex)
 
 # The enemy's art (§10.1) for a choice, or null when there's no enemy.
 func _enemy_texture(choice: Dictionary) -> Texture2D:
@@ -576,18 +639,124 @@ func _refresh_scrolls() -> void:
 		row.add_child(read_btn)
 		_scrolls_box.add_child(row)
 
-func _stack_text() -> String:
-	if GameLoop2.stack.is_empty():
-		return "[b]Following enemies:[/b] none"
-	var lines: Array = ["[b]Following enemies[/b] (%d dmg/game):" % GameLoop2.stacked_damage_per_game()]
+# One-line header above the follower cards: how many are on your tail and the
+# damage the stack lands on the next game beaten.
+func _stack_summary() -> String:
+	var following: int = GameLoop2.stack.size()
+	if _phase == Phase.PLAYING and not _chosen.is_empty() and _chosen.get("enemy") != null:
+		following += 1
+	if following == 0:
+		return "[b]Following you:[/b] none"
+	return "[b]Following you[/b] — %d on your tail, %d damage next game" % [
+		following, GameLoop2.stacked_damage_per_game()]
+
+# Rebuild the "Following you" cards. Each shows the enemy's art, name, a countdown
+# to when it will hit ("X Games away"), and its Health / Damage; the rest of its
+# info surfaces on hover (tooltip). The just-picked enemy (PLAYING phase) is shown
+# too — it can't hit this game (the one-game grace, §7.2), so it first strikes 2
+# games out unless you clear its goal.
+func _refresh_followers() -> void:
+	if _stack_box == null:
+		return
+	for c in _stack_box.get_children():
+		c.queue_free()
+	if _phase == Phase.PLAYING and not _chosen.is_empty():
+		var cur: GoalEnemyData = _chosen.get("enemy")
+		if cur != null:
+			_stack_box.add_child(_follower_card(cur, 2, 0, true))
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
 		var stun: int = int(entry.get("stun", 0))
-		lines.append("  • %s — dmg %d%s — goal: %s" % [
-			e.display_name, e.damage,
-			("  [stunned x%d]" % stun) if stun > 0 else "", e.goal,
-		])
+		# A stacked enemy hits on the very next game beaten; each Stun pushes that
+		# one game later.
+		_stack_box.add_child(_follower_card(e, 1 + stun, stun, false))
+
+func _follower_card(e: GoalEnemyData, games_away: int, stun: int, is_current: bool) -> Control:
+	var accent: Color
+	if e.is_boss():
+		accent = Color(0.95, 0.55, 0.2)
+	elif games_away <= 1:
+		accent = UITheme.DANGER
+	elif games_away == 2:
+		accent = Color(1.0, 0.62, 0.24)
+	else:
+		accent = UITheme.GOLD
+
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL, 8, 8, 2 if is_current else 1, accent))
+	card.custom_minimum_size = Vector2(150, 0)
+	card.tooltip_text = _follower_tooltip(e, games_away, stun, is_current)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 3)
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	card.add_child(vb)
+
+	if e.image != null:
+		var art := _crisp_tex(e.image, 64)
+		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		vb.add_child(art)
+
+	var nm := Label.new()
+	nm.text = ("☠ " if e.is_boss() else "") + e.display_name
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nm.custom_minimum_size = Vector2(138, 0)
+	nm.add_theme_font_size_override("font_size", 12)
+	nm.add_theme_color_override("font_color", accent)
+	vb.add_child(nm)
+
+	var when := Label.new()
+	when.text = ("Hits next game!" if games_away <= 1 else "%d games away" % games_away) + ("  (stunned)" if stun > 0 else "")
+	when.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	when.add_theme_font_size_override("font_size", 12)
+	when.add_theme_color_override("font_color", accent)
+	vb.add_child(when)
+
+	var stats := Label.new()
+	stats.text = "❤ %d    ⚔ %d dmg" % [e.health, e.damage]
+	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stats.add_theme_font_size_override("font_size", 11)
+	stats.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	vb.add_child(stats)
+	return card
+
+func _follower_tooltip(e: GoalEnemyData, games_away: int, stun: int, is_current: bool) -> String:
+	var lines: Array = [e.display_name + ("  (BOSS)" if e.is_boss() else "")]
+	if e.goal != "":
+		lines.append("Goal (%s): %s" % [String(e.goal_type).capitalize(), e.goal])
+	lines.append("Type: %s  •  Tier %s" % [String(e.game_type).capitalize(), _tier_name(e)])
+	if e.source_game != "":
+		lines.append("From: %s" % e.source_game)
+	lines.append("Health %d  •  Damage %d / game" % [e.health, e.damage])
+	if is_current:
+		lines.append("Just started following — first hits in %d games unless you clear its goal." % games_away)
+	elif stun > 0:
+		lines.append("Stunned — skips its next %d attack(s)." % stun)
+	if String(e.tag) != "":
+		lines.append("Tag: %s" % String(e.tag))
 	return "\n".join(lines)
+
+# A TextureRect that renders `tex` crisply (nearest-neighbour) when it's small
+# pixel art scaled up, keeping smooth filtering for already-large art.
+func _crisp_tex(tex: Texture2D, size: int) -> TextureRect:
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.custom_minimum_size = Vector2(size, size)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if tex != null and (tex.get_width() < size or tex.get_height() < size):
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	return tr
+
+# Toggle nearest-neighbour on an already-built TextureRect after its texture is
+# assigned, so dynamically-set enemy art stays crisp when it's small pixel art.
+func _apply_crisp(tr: TextureRect, tex: Texture2D) -> void:
+	if tex != null and (tex.get_width() < int(tr.custom_minimum_size.x) or tex.get_height() < int(tr.custom_minimum_size.y)):
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	else:
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_PARENT_NODE
 
 func _result_text(res: Dictionary) -> String:
 	var parts: Array = []
@@ -746,39 +915,24 @@ func _build_ui() -> void:
 	_launch_row.add_theme_constant_override("separation", 8)
 	_play_panel.add_child(_launch_row)
 
-	# Level-up challenge checkbox (populated per game from the 2.0 character).
-	_levelup_box = VBoxContainer.new()
-	_levelup_box.add_theme_constant_override("separation", 2)
-	_play_panel.add_child(_levelup_box)
-
-	# Old-goal fulfilment checklist (populated per game from the follower stack):
-	# tick any following enemy whose goal you also fulfilled while playing (§2).
-	_fulfil_box = VBoxContainer.new()
-	_fulfil_box.add_theme_constant_override("separation", 2)
-	_play_panel.add_child(_fulfil_box)
+	# Verification checklist (populated per game): the main goal, the character's
+	# level-up challenge, and any following enemy whose goal you also cleared. Tick
+	# what you did, then press the single Completed Game button below.
+	_verify_box = VBoxContainer.new()
+	_verify_box.add_theme_constant_override("separation", 4)
+	_play_panel.add_child(_verify_box)
 
 	_play_panel.add_child(HSeparator.new())
-	var report_row := HBoxContainer.new()
-	report_row.add_theme_constant_override("separation", 10)
-	var met := Button.new()
-	met.text = "Goal MET  ✓"
-	met.custom_minimum_size = Vector2(0, 44)
-	met.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	met.add_theme_stylebox_override("normal", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.55), 8, 8, 1, UITheme.SUCCESS))
-	met.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.4))
-	met.add_theme_font_size_override("font_size", 16)
-	met.pressed.connect(func(): report(true))
-	report_row.add_child(met)
-	var miss := Button.new()
-	miss.text = "Goal NOT met  ✗"
-	miss.custom_minimum_size = Vector2(0, 44)
-	miss.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	miss.add_theme_stylebox_override("normal", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.6), 8, 8, 1, UITheme.DANGER))
-	miss.add_theme_color_override("font_color", UITheme.DANGER.lerp(Color.WHITE, 0.4))
-	miss.add_theme_font_size_override("font_size", 16)
-	miss.pressed.connect(func(): report(false))
-	report_row.add_child(miss)
-	_play_panel.add_child(report_row)
+	var done := Button.new()
+	done.text = "✓  Completed Game"
+	done.custom_minimum_size = Vector2(0, 46)
+	done.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	done.add_theme_stylebox_override("normal", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.5), 8, 10, 2, UITheme.SUCCESS))
+	done.add_theme_stylebox_override("hover", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.35), 8, 10, 2, UITheme.SUCCESS))
+	done.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.45))
+	done.add_theme_font_size_override("font_size", 17)
+	done.pressed.connect(func(): report(_goal_met()))
+	_play_panel.add_child(done)
 	play_wrap.hide()
 	root.add_child(play_wrap)
 
@@ -790,6 +944,10 @@ func _build_ui() -> void:
 	root.add_child(_section("Following you:"))
 	_stack = _panel_label()
 	root.add_child(_stack)
+	_stack_box = HFlowContainer.new()
+	_stack_box.add_theme_constant_override("h_separation", 10)
+	_stack_box.add_theme_constant_override("v_separation", 10)
+	root.add_child(_stack_box)
 	_log = _panel_label()
 	root.add_child(_log)
 

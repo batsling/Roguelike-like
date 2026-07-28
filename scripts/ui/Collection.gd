@@ -11,10 +11,11 @@ extends Control
 #   Games      — the roguelike catalog (influence graph) + lifetime stats.
 #   Items      — every 2.0 ItemData (data/items2.0), grid + detail panel.
 #   Characters — every 2.0 CharacterData (data/characters2.0), grid + detail.
-#   Enemies    — the goal-enemies + bosses (data/enemies2.0 + bosses2.0).
+#   Enemies    — the normal goal-enemies (data/enemies2.0), grid + detail.
+#   Bosses     — the boss roster (data/bosses2.0), grid + detail.
 #   Scrolls    — the 2.0 scroll catalog (revealed reference), grid.
 
-enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, SCROLLS }
+enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, SCROLLS }
 
 const GAME_TYPE_NAMES := ["Action", "Strategy", "Deckbuilder", "Traditional"]
 const GAME_STATUS_OPTIONS := [
@@ -46,7 +47,6 @@ var _items_type: int = -1
 var _char_sort: String = "name"
 var _enemies_sort: String = "name"
 var _enemies_type: String = "all"
-var _enemies_kind: String = "all"   # all / normal / boss
 
 var _content: VBoxContainer
 var _grid: Container = null
@@ -131,7 +131,8 @@ func _build_shell() -> void:
 	_add_tab_button(tabs, Tab.GAMES, "Games (%d)" % Data.all_games().size())
 	_add_tab_button(tabs, Tab.ITEMS, "Items (%d)" % Data.all_items2().size())
 	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters2().size())
-	_add_tab_button(tabs, Tab.ENEMIES, "Enemies (%d)" % (Data.all_goal_enemies().size() + Data.all_bosses().size()))
+	_add_tab_button(tabs, Tab.ENEMIES, "Enemies (%d)" % Data.all_goal_enemies().size())
+	_add_tab_button(tabs, Tab.BOSSES, "Bosses (%d)" % Data.all_bosses().size())
 	_add_tab_button(tabs, Tab.SCROLLS, "Scrolls (%d)" % Data.all_scrolls().size())
 
 	root.add_child(HSeparator.new())
@@ -167,7 +168,7 @@ func _refresh() -> void:
 			_build_items()
 		Tab.CHARACTERS:
 			_build_characters()
-		Tab.ENEMIES:
+		Tab.ENEMIES, Tab.BOSSES:
 			_build_enemies()
 		Tab.SCROLLS:
 			_build_scrolls()
@@ -228,9 +229,21 @@ func _tex_rect(tex: Texture2D, size: int, crisp: bool = false) -> TextureRect:
 	tr.custom_minimum_size = Vector2(size, size)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	if crisp:
+	# Pixel art (small source art scaled UP) must stay crisp — nearest-neighbour
+	# so a 16/32px sprite doesn't blur when the cell blows it up. Auto-detected
+	# from the source size so real cover art (already large) keeps smooth filtering.
+	if crisp or _is_pixel_art(tex, size):
 		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	return tr
+
+# True when `tex` is smaller than the box it'll be drawn in, so scaling it up
+# would soften it — the cue that it's pixel art we should render nearest-neighbour.
+func _is_pixel_art(tex: Texture2D, size: int) -> bool:
+	if tex == null:
+		return false
+	var w: int = tex.get_width()
+	var h: int = tex.get_height()
+	return w > 0 and h > 0 and (w < size or h < size)
 
 const IMAGE_BG := Color(0.16, 0.17, 0.22, 1.0)
 func _image_with_bg(tex: Texture2D, size: int, border: Color, crisp: bool = false) -> Control:
@@ -244,6 +257,9 @@ func _image_with_bg(tex: Texture2D, size: int, border: Color, crisp: bool = fals
 	sb.border_color = Color(border.r, border.g, border.b, 0.45)
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# Let clicks fall through to the enclosing cell so clicking the artwork opens
+	# the detail panel (games/characters already work; this wrapper was eating it).
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var tr := _tex_rect(tex, size, crisp)
 	panel.add_child(tr)
 	return panel
@@ -334,7 +350,7 @@ func _populate() -> void:
 			_populate_items()
 		Tab.CHARACTERS:
 			_populate_characters()
-		Tab.ENEMIES:
+		Tab.ENEMIES, Tab.BOSSES:
 			_populate_enemies()
 		Tab.SCROLLS:
 			_populate_scrolls()
@@ -459,6 +475,17 @@ func _show_game_detail(g: GameData) -> void:
 	if g.tags.size() > 0:
 		_detail_box.add_child(_label(", ".join(g.tags), Color(0.73, 0.55, 0.78), 11, false, true))
 	_detail_box.add_child(HSeparator.new())
+
+	# "Open the real game" — launches the executable/shortcut in the game's
+	# file_location column (falling back to its store page).
+	if g.has_launch_target():
+		var play_btn := Button.new()
+		play_btn.text = "▶  Play %s" % g.display_name
+		play_btn.custom_minimum_size = Vector2(0, 36)
+		play_btn.add_theme_stylebox_override("normal", _flat(Color(0.10, 0.22, 0.16, 0.9), Color(0.4, 0.9, 0.6), 1))
+		play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
+		play_btn.pressed.connect(func(): g.launch())
+		_detail_box.add_child(play_btn)
 
 	_detail_box.add_child(_detail_section("📊 Tracked Stats"))
 	_detail_box.add_child(_kv("Beaten", str(GameStats.beaten_count(g.id))))
@@ -694,6 +721,11 @@ func _all_enemies() -> Array:
 	out.append_array(Data.all_bosses())
 	return out
 
+# The roster the Enemies/Bosses tab draws from — normal goal-enemies on the
+# Enemies tab, the boss roster on the Bosses tab (they are separate tabs now).
+func _enemy_source() -> Array:
+	return Data.all_bosses() if _tab == Tab.BOSSES else Data.all_goal_enemies()
+
 func _enemy_game_type_index(e: GoalEnemyData) -> int:
 	# Map the enemy's lowercased game_type onto the GAME_TYPE_NAMES ordering
 	# (Action, Strategy, Deckbuilder, Traditional).
@@ -725,17 +757,6 @@ func _build_enemies() -> void:
 		_enemies_type = "all" if idx == 0 else type_opt.get_item_text(idx).to_lower()
 		_refresh())
 	row.add_child(type_opt)
-	var kind_opt := OptionButton.new()
-	for entry in [["All", "all"], ["Enemies", "normal"], ["Bosses", "boss"]]:
-		kind_opt.add_item(entry[0])
-	for i in kind_opt.item_count:
-		if [["All", "all"], ["Enemies", "normal"], ["Bosses", "boss"]][i][1] == _enemies_kind:
-			kind_opt.select(i)
-			break
-	kind_opt.item_selected.connect(func(idx):
-		_enemies_kind = [["All", "all"], ["Enemies", "normal"], ["Bosses", "boss"]][idx][1]
-		_refresh())
-	row.add_child(kind_opt)
 	_add_count_label(row)
 	_grid_and_detail()
 	_populate_enemies()
@@ -743,14 +764,11 @@ func _build_enemies() -> void:
 func _populate_enemies() -> void:
 	_clear_children(_grid)
 	var term: String = _search["enemies"].to_lower()
-	var total: int = _all_enemies().size()
+	var source: Array = _enemy_source()
+	var total: int = source.size()
 	var list: Array = []
-	for e in _all_enemies():
+	for e in source:
 		if e == null:
-			continue
-		if _enemies_kind == "boss" and not e.is_boss():
-			continue
-		if _enemies_kind == "normal" and e.is_boss():
 			continue
 		if _enemies_type != "all" and String(e.game_type).to_lower() != _enemies_type:
 			continue
@@ -769,7 +787,8 @@ func _populate_enemies() -> void:
 	for e in list:
 		_grid.add_child(_enemy_cell(e))
 	if list.is_empty():
-		_grid.add_child(_label("No enemies match.", Color(0.55, 0.55, 0.6), 13))
+		var noun: String = "bosses" if _tab == Tab.BOSSES else "enemies"
+		_grid.add_child(_label("No %s match." % noun, Color(0.55, 0.55, 0.6), 13))
 	_set_count(list.size(), total)
 
 func _enemy_accent(e: GoalEnemyData) -> Color:

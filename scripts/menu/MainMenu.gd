@@ -75,7 +75,9 @@ func _on_start_run() -> void:
 	_modal_layer.add_child(picker)
 
 # A code-built character-select overlay over the roster in data/characters2.0.
-# The roster shows as a grid of portrait cards; click a card to begin the run.
+# Layout (per UI pass): a GRID of small icon tiles on the left, the selected
+# hero's FULL portrait + full information on the right, and a Confirm button along
+# the bottom. Selecting a tile only previews it; Confirm starts the run.
 func _build_character_picker() -> Control:
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -92,7 +94,7 @@ func _build_character_picker() -> Control:
 	root.add_child(center)
 
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(780, 600)
+	panel.custom_minimum_size = Vector2(880, 600)
 	panel.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.BG, UITheme.ACCENT.lerp(UITheme.BORDER, 0.4), 12, 22, 2))
 	center.add_child(panel)
 
@@ -116,99 +118,222 @@ func _build_character_picker() -> Control:
 	hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	header.add_child(hint)
 
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(736, 470)
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.add_child(scroll)
+	# Body: icon grid (left) | full portrait + info (right).
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 16)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(body)
+
+	var grid_scroll := ScrollContainer.new()
+	grid_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	grid_scroll.custom_minimum_size = Vector2(420, 460)
+	grid_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(grid_scroll)
 	var grid := HFlowContainer.new()
-	grid.add_theme_constant_override("h_separation", 14)
-	grid.add_theme_constant_override("v_separation", 14)
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(grid)
+	grid_scroll.add_child(grid)
 
-	for ch in Data.all_characters2():
-		if ch is CharacterData:
-			grid.add_child(_character_card(ch))
+	var detail_wrap := PanelContainer.new()
+	detail_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 12, 14, 1))
+	detail_wrap.custom_minimum_size = Vector2(400, 0)
+	detail_wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(detail_wrap)
+	var detail_scroll := ScrollContainer.new()
+	detail_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail_wrap.add_child(detail_scroll)
+	var detail_box := VBoxContainer.new()
+	detail_box.add_theme_constant_override("separation", 8)
+	detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_box.custom_minimum_size = Vector2(372, 0)
+	detail_scroll.add_child(detail_box)
 
+	# Footer: Cancel (left) and the Confirm button (right), enabled once a hero is
+	# selected.
+	var footer := HBoxContainer.new()
+	footer.add_theme_constant_override("separation", 10)
+	vbox.add_child(footer)
 	var cancel := Button.new()
 	cancel.text = "Cancel"
-	cancel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	cancel.custom_minimum_size = Vector2(160, 0)
+	cancel.custom_minimum_size = Vector2(150, 44)
 	cancel.pressed.connect(func(): root.queue_free())
-	vbox.add_child(cancel)
+	footer.add_child(cancel)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.add_child(spacer)
+	var confirm := Button.new()
+	confirm.text = "Confirm"
+	confirm.disabled = true
+	confirm.custom_minimum_size = Vector2(220, 44)
+	confirm.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
+	confirm.add_theme_color_override("font_color", UITheme.GOLD)
+	confirm.add_theme_font_size_override("font_size", 18)
+	footer.add_child(confirm)
+
+	# Selection state shared between the tiles, the detail panel, and Confirm.
+	var state := {"id": &"", "tiles": {}}
+	var select := func(ch: CharacterData) -> void:
+		state["id"] = ch.id
+		for tid in state["tiles"]:
+			state["tiles"][tid].call(tid == ch.id)
+		_fill_char_detail(detail_box, ch)
+		confirm.disabled = false
+		confirm.text = "Confirm: %s" % ch.display_name
+
+	var roster: Array = Data.all_characters2()
+	for ch in roster:
+		if ch is CharacterData:
+			grid.add_child(_character_tile(ch, state, select))
+	confirm.pressed.connect(func():
+		if String(state["id"]) != "":
+			_begin_run(StringName(state["id"])))
+
+	# Preselect the first hero so the panel is never empty and Confirm is live.
+	if not roster.is_empty() and roster[0] is CharacterData:
+		select.call(roster[0])
 	return root
 
-# One character = a clickable portrait card (portrait, name, source, Health, the
-# non-zero starting verbs, and a description blurb).
-func _character_card(ch: CharacterData) -> Control:
-	var accent := UITheme.GOLD
-	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(228, 0)
-	var normal := UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 12, 12, 1)
-	var hover := UITheme.accent_box(accent, UITheme.PANEL_HI, 12)
-	card.add_theme_stylebox_override("panel", normal)
-	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	card.mouse_entered.connect(func():
-		card.add_theme_stylebox_override("panel", hover)
-		card.modulate = Color(1.06, 1.06, 1.06))
-	card.mouse_exited.connect(func():
-		card.add_theme_stylebox_override("panel", normal)
-		card.modulate = Color.WHITE)
-	var cid: StringName = ch.id
-	card.gui_input.connect(func(e):
+# One roster tile = the character's ICON (small token, falling back to the full
+# portrait) with the name below. Clicking previews the hero via `select`; the
+# stored callback re-styles the tile for the selected / unselected state.
+func _character_tile(ch: CharacterData, state: Dictionary, select: Callable) -> Control:
+	var tile := PanelContainer.new()
+	tile.custom_minimum_size = Vector2(122, 132)
+	tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var normal := UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 8, 1)
+	var selected := UITheme.accent_box(UITheme.GOLD, UITheme.PANEL_HI, 10)
+	tile.add_theme_stylebox_override("panel", normal)
+	var set_selected := func(is_sel: bool) -> void:
+		tile.add_theme_stylebox_override("panel", selected if is_sel else normal)
+		tile.modulate = Color(1.08, 1.08, 1.08) if is_sel else Color.WHITE
+	state["tiles"][ch.id] = set_selected
+
+	tile.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
-			_begin_run(cid))
+			select.call(ch))
+	tile.mouse_entered.connect(func():
+		if String(state["id"]) != String(ch.id):
+			tile.modulate = Color(1.06, 1.06, 1.06))
+	tile.mouse_exited.connect(func():
+		if String(state["id"]) != String(ch.id):
+			tile.modulate = Color.WHITE)
 
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 6)
-	card.add_child(vb)
+	vb.add_theme_constant_override("separation", 4)
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	tile.add_child(vb)
+	var tex: Texture2D = ch.icon if ch.icon != null else ch.portrait
+	if tex != null:
+		vb.add_child(_char_tex(tex, 84))
+	var name_lbl := Label.new()
+	name_lbl.text = ch.display_name
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_lbl.custom_minimum_size = Vector2(106, 0)
+	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_color_override("font_color", UITheme.TEXT)
+	vb.add_child(name_lbl)
+	return tile
 
+# Fill the right-hand detail panel with the selected hero's FULL portrait and all
+# of its information (source, Health, verbs, description, starting items, level-up).
+func _fill_char_detail(box: VBoxContainer, ch: CharacterData) -> void:
+	for c in box.get_children():
+		c.queue_free()
 	if ch.portrait != null:
-		var portrait := TextureRect.new()
-		portrait.texture = ch.portrait
-		portrait.custom_minimum_size = Vector2(0, 150)
-		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		vb.add_child(portrait)
+		var portrait := _char_tex(ch.portrait, 220)
+		portrait.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		box.add_child(portrait)
 
 	var name_lbl := Label.new()
 	name_lbl.text = ch.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_font_size_override("font_size", 18)
-	name_lbl.add_theme_color_override("font_color", accent)
-	vb.add_child(name_lbl)
+	name_lbl.add_theme_font_size_override("font_size", 24)
+	name_lbl.add_theme_color_override("font_color", UITheme.GOLD)
+	box.add_child(name_lbl)
 
 	if ch.source_game != "":
 		var src := Label.new()
-		src.text = ch.source_game
+		src.text = "From: %s" % ch.source_game
 		src.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		src.add_theme_font_size_override("font_size", 11)
+		src.add_theme_font_size_override("font_size", 12)
 		src.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-		vb.add_child(src)
+		box.add_child(src)
 
 	var hp := Label.new()
 	hp.text = "❤ %d Health" % ch.base_max_hp
 	hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp.add_theme_font_size_override("font_size", 13)
+	hp.add_theme_font_size_override("font_size", 15)
 	hp.add_theme_color_override("font_color", UITheme.DANGER.lerp(UITheme.TEXT, 0.35))
-	vb.add_child(hp)
+	box.add_child(hp)
 
 	var chips := _verb_chips(ch)
 	if chips != null:
-		vb.add_child(chips)
+		box.add_child(chips)
 
 	if ch.description != "":
-		vb.add_child(HSeparator.new())
+		box.add_child(HSeparator.new())
 		var desc := Label.new()
 		desc.text = ch.description
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		desc.custom_minimum_size = Vector2(204, 0)
-		desc.add_theme_font_size_override("font_size", 12)
-		desc.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-		vb.add_child(desc)
+		desc.add_theme_font_size_override("font_size", 13)
+		desc.add_theme_color_override("font_color", UITheme.TEXT.lerp(UITheme.TEXT_DIM, 0.3))
+		box.add_child(desc)
 
-	return card
+	if ch.starting_items.size() > 0:
+		box.add_child(HSeparator.new())
+		box.add_child(_detail_head("Starting Items"))
+		var inames: Array = []
+		for iid in ch.starting_items:
+			var idd: ItemData = Data.get_item2(iid)
+			if idd == null:
+				idd = Data.get_item(iid)
+			inames.append(idd.display_name if idd != null else String(iid))
+		var items_lbl := Label.new()
+		items_lbl.text = ", ".join(inames)
+		items_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		items_lbl.add_theme_font_size_override("font_size", 12)
+		items_lbl.add_theme_color_override("font_color", UITheme.TEXT.lerp(Color(0.7, 0.85, 0.95), 0.5))
+		box.add_child(items_lbl)
+
+	if ch.level_up_condition != "":
+		box.add_child(HSeparator.new())
+		box.add_child(_detail_head("Level Up"))
+		var lu := Label.new()
+		lu.text = ch.level_up_condition
+		lu.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lu.add_theme_font_size_override("font_size", 12)
+		lu.add_theme_color_override("font_color", UITheme.TEXT.lerp(Color(0.7, 0.85, 0.95), 0.5))
+		box.add_child(lu)
+		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
+			var reward := Label.new()
+			reward.text = "→ %s" % ch.level_up_reward
+			reward.add_theme_font_size_override("font_size", 12)
+			reward.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
+			box.add_child(reward)
+
+func _detail_head(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_color_override("font_color", UITheme.ACCENT.lerp(UITheme.TEXT, 0.2))
+	return l
+
+# A TextureRect that renders `tex` crisply when it's small pixel art scaled up
+# (nearest-neighbour, no blur) and smoothly otherwise.
+func _char_tex(tex: Texture2D, size: int) -> TextureRect:
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.custom_minimum_size = Vector2(size, size)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var w: int = tex.get_width() if tex != null else 0
+	var h: int = tex.get_height() if tex != null else 0
+	if w > 0 and h > 0 and (w < size or h < size):
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	return tr
 
 # A centered wrap of the character's non-zero starting verbs as small pills, or
 # null when the loadout is all-zero.
