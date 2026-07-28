@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_bony"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/enemies/Bony.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"bony"
+display_name = "Bony"
+game_type = &"action"
+difficulty = 1
+source_game = "The Binding of Isaac: Rebirth"
+health = 1
+damage = 2
+goal_type = &"bounty"
+goal = "Defeat 10+ skeletons"
+tag = &"undead, skeleton"
+file = "Bony"
+image = ExtResource("2_img")

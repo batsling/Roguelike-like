@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://boss_lich"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/bosses/Lich.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"lich"
+display_name = "Lich"
+game_type = &"action"
+difficulty = 3
+boss = true
+source_game = "Enter the Gungeon"
+health = 1
+damage = 9
+goal_type = &"bounty"
+goal = "Defeat a magic enemy with a gun"
+tag = &"undead, skeleton"
+file = "Lich"
+image = ExtResource("2_img")

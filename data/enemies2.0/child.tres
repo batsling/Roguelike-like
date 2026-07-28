@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_child"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/enemies/Child.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"child"
+display_name = "Child"
+game_type = &"action"
+difficulty = 1
+source_game = "Risk of Rain"
+health = 1
+damage = 2
+goal_type = &"bounty"
+goal = "Defeat a child"
+tag = &"alien"
+file = "Child"
+image = ExtResource("2_img")

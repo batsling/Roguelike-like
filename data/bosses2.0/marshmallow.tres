@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://boss_marshmallow"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/bosses/Marshmallow.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"marshmallow"
+display_name = "Marshmallow"
+game_type = &"strategy"
+difficulty = 0
+boss = true
+source_game = "Mewgenics"
+health = 1
+damage = 3
+goal_type = &"discovery"
+goal = "Have an enemy defeat another enemy"
+tag = &"cat"
+file = "Marshmallow"
+image = ExtResource("2_img")

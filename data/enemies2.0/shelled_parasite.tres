@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_shelled_parasite"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/enemies/ShelledParasite.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"shelled_parasite"
+display_name = "Shelled Parasite"
+game_type = &"deckbuilder"
+difficulty = 1
+source_game = "Slay the Spire"
+health = 1
+damage = 2
+goal_type = &"bounty"
+goal = "Defeat an enemy that looks edible"
+file = "ShelledParasite"
+image = ExtResource("2_img")

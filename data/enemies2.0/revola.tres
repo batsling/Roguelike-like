@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_revola"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/enemies/Revola.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"revola"
+display_name = "Revola"
+game_type = &"strategy"
+difficulty = 1
+source_game = "Brutal Orchestra"
+health = 1
+damage = 2
+goal_type = &"discovery"
+goal = "Body slam an enemy"
+file = "Revola"
+image = ExtResource("2_img")
