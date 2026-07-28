@@ -192,6 +192,7 @@ func scroll_teleport(_dir: String, spread: int) -> void:
 func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	if _phase != Phase.PLAYING or _chosen.is_empty():
 		return
+	var played_game: GameData = _chosen.get("game")
 	var fulfilled_instances: Array = fulfilled if fulfilled is Array else _ticked_fulfilments()
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
 	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed
@@ -203,6 +204,11 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	GameState.games_played += 1
 	_chosen = {}
 	_transmuted.clear()   # transmutes apply only to the offering you moved from
+	# Just like the older version: after playing a game, prompt to score it onto
+	# the tier list (opt-in — the modal has a "Maybe later"). Fires on every path,
+	# including the run-ending game.
+	if played_game != null:
+		_prompt_rating(played_game)
 	if GameLoop2.run_over:
 		_phase = Phase.OVER
 		_refresh()
@@ -416,13 +422,26 @@ func _populate_play_panel() -> void:
 	if _chosen.is_empty():
 		return
 	var game: GameData = _chosen["game"]
+	# "Open the real game" — launches the executable/shortcut in the game's
+	# file_location column (falling back to its store page). Only games with a
+	# launch target get the button.
 	if game.has_launch_target():
 		var play_btn := Button.new()
 		play_btn.text = "▶  Play %s" % game.display_name
 		play_btn.custom_minimum_size = Vector2(0, 38)
+		play_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		play_btn.add_theme_stylebox_override("normal", UITheme.flat(Color(0.10, 0.22, 0.16, 0.9), 8, 8, 1, Color(0.4, 0.9, 0.6)))
 		play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
 		play_btn.pressed.connect(func(): game.launch())
 		_launch_row.add_child(play_btn)
+	# Manual "rate this game" entry point (the report step also auto-prompts after
+	# you press Completed Game).
+	var rate_btn := Button.new()
+	rate_btn.text = "★  Rate this game"
+	rate_btn.custom_minimum_size = Vector2(0, 38)
+	rate_btn.add_theme_color_override("font_color", UITheme.GOLD)
+	rate_btn.pressed.connect(func(): _prompt_rating(game))
+	_launch_row.add_child(rate_btn)
 
 	# One clean checklist of everything to verify this game. Tick what you actually
 	# did, then press "Completed Game" once (§2 / §3.1):
@@ -481,6 +500,21 @@ func _verify_head(text: String) -> Label:
 	l.add_theme_font_size_override("font_size", 13)
 	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	return l
+
+# Open the tier-list rating prompt for `game` (1-10 + optional notes). Submitting
+# records the score via TierList (dropping the game into the Unranked tray the
+# first time); "Maybe later" just closes it. Pre-fills when already rated so the
+# player updates rather than starts over.
+func _prompt_rating(game: GameData) -> void:
+	if game == null:
+		return
+	var modal = preload("res://scripts/ui/RateGameModal.gd").new()
+	modal.setup(game.id, game)
+	modal.submitted.connect(func(score: int, notes: String):
+		TierList.set_rating(game.id, score, notes)
+		modal.queue_free())
+	modal.dismissed.connect(func(): modal.queue_free())
+	add_child(modal)
 
 # The instances the player ticked as fulfilled this game.
 func _ticked_fulfilments() -> Array:

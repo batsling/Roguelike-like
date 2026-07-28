@@ -476,6 +476,17 @@ func _show_game_detail(g: GameData) -> void:
 		_detail_box.add_child(_label(", ".join(g.tags), Color(0.73, 0.55, 0.78), 11, false, true))
 	_detail_box.add_child(HSeparator.new())
 
+	# "Open the real game" — launches the executable/shortcut in the game's
+	# file_location column (falling back to its store page).
+	if g.has_launch_target():
+		var play_btn := Button.new()
+		play_btn.text = "▶  Play %s" % g.display_name
+		play_btn.custom_minimum_size = Vector2(0, 36)
+		play_btn.add_theme_stylebox_override("normal", _flat(Color(0.10, 0.22, 0.16, 0.9), Color(0.4, 0.9, 0.6), 1))
+		play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
+		play_btn.pressed.connect(func(): g.launch())
+		_detail_box.add_child(play_btn)
+
 	_detail_box.add_child(_detail_section("📊 Tracked Stats"))
 	_detail_box.add_child(_kv("Beaten", str(GameStats.beaten_count(g.id))))
 	_detail_box.add_child(_kv("Amulet wins", str(GameStats.amulet_wins(g.id))))
