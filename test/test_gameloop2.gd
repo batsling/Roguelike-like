@@ -10,6 +10,16 @@ func before_each() -> void:
 	GameLoop2.reset()
 	GameState.max_hp = 10
 	GameState.hp = 10
+
+# Number of .tres resource files in a data directory — the count Data._load_dir
+# is expected to load, so the roster tests stay correct as content grows and
+# still catch a file that fails to load (e.g. a broken image reference).
+func _tres_count(path: String) -> int:
+	var n := 0
+	for f in DirAccess.get_files_at(path):
+		if f.ends_with(".tres") or f.ends_with(".res"):
+			n += 1
+	return n
 	GameState.block = 0
 
 # A synthetic goal-enemy with a known damage, so timing/damage assertions don't
@@ -290,7 +300,10 @@ func test_scramble_requires_current_and_charge() -> void:
 
 func test_choose_game_of_type_rolls_and_sets_current() -> void:
 	var e: GoalEnemyData = GameLoop2.choose_game_of_type(&"action", GoalEnemyData.Difficulty.LOW)
-	assert_eq(String(e.id), "baby_alien")
+	assert_not_null(e, "a roll returns an enemy")
+	assert_eq(String(e.game_type), "action", "rolled an action-type enemy")
+	assert_eq(e.tier_index(), 0, "rolled at the Low tier")
+	assert_false(e.is_boss(), "a normal roll is not a boss")
 	assert_true(GameLoop2.has_current())
 
 # --- enemy roll by type + tier (§7) --------------------------------------
@@ -301,9 +314,11 @@ func test_roll_enemy_matches_type_and_tier() -> void:
 	assert_eq(String(e.game_type), "deckbuilder")
 	assert_eq(e.tier_index(), 0)
 
-func test_roll_enemy_action_low_is_baby_alien() -> void:
+func test_roll_enemy_action_low_matches_type_and_tier() -> void:
 	var e: GoalEnemyData = GameLoop2.roll_enemy(&"action", GoalEnemyData.Difficulty.LOW)
-	assert_eq(String(e.id), "baby_alien")
+	assert_not_null(e)
+	assert_eq(String(e.game_type), "action")
+	assert_eq(e.tier_index(), 0)
 
 func test_roll_enemy_widens_when_type_absent() -> void:
 	# No Traditional enemies authored yet — the roll must still return a tier-0
@@ -321,7 +336,7 @@ func test_roll_enemy_never_returns_a_boss() -> void:
 # --- bosses (§7.1) --------------------------------------------------------
 
 func test_bosses_load_and_flag() -> void:
-	assert_eq(Data.all_bosses().size(), 12, "12 bosses2.0 rows -> 12 .tres")
+	assert_eq(Data.all_bosses().size(), _tres_count("res://data/bosses2.0/"), "every bosses2.0 .tres loads")
 	for b in Data.all_bosses():
 		assert_true(b.is_boss(), "%s should be flagged boss" % b.id)
 

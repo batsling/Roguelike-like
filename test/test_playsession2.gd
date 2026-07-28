@@ -27,15 +27,18 @@ func test_harness_builds_and_opens_a_run() -> void:
 func test_pick_spawns_enemy_and_beat_resolves() -> void:
 	_ui.restart(&"ironclad")           # Health 10, no bombs
 	assert_eq(GameState.max_hp, 10)
-	_ui.pick(&"action")                # rolls Baby Alien (action / low)
+	_ui.pick(&"action")                # rolls an action / low enemy
 	assert_true(GameLoop2.has_current())
-	assert_eq(String(GameLoop2.current["enemy"].id), "baby_alien")
+	var enemy: GoalEnemyData = GameLoop2.current["enemy"]
+	assert_eq(String(enemy.game_type), "action", "picked an action enemy")
+	assert_false(enemy.is_boss(), "a normal pick is not a boss")
+	var dmg: int = enemy.damage
 	_ui.beat(false)                    # fails goal -> stacks, one-game grace
 	assert_eq(GameLoop2.stack_size(), 1)
 	assert_eq(GameState.hp, 10, "grace: no hit the game it stacked")
-	_ui.pick(&"deckbuilder")           # Spike Slime
-	_ui.beat(false)                    # Baby Alien (dmg 1) now hits
-	assert_eq(GameState.hp, 9)
+	_ui.pick(&"deckbuilder")           # a second game; its enemy gets the grace
+	_ui.beat(false)                    # the stacked action enemy now hits for dmg
+	assert_eq(GameState.hp, 10 - dmg, "the stacked enemy hits for its damage")
 	assert_eq(GameLoop2.stack_size(), 2)
 
 func test_pick_gated_until_current_resolved() -> void:
