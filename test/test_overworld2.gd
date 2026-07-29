@@ -46,6 +46,22 @@ func test_report_goal_met_defeats_and_drops() -> void:
 	assert_eq(GameLoop2.stack_size(), 0, "a met goal leaves nothing following")
 	assert_eq(GameState.pending_chests, chests_before + 1, "the drop banked a chest")
 
+# The banked chest redeems into a RewardScreen once the board goes idle (§8).
+func test_defeat_drop_opens_a_reward_screen() -> void:
+	GameState.pending_chests = 0
+	_ui.pick(0)
+	_ui.report(true)
+	# Redemption is deferred to the next idle frame; let it run.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var found: RewardScreen = null
+	for c in _ui.get_children():
+		if c is RewardScreen:
+			found = c
+			break
+	assert_not_null(found, "a RewardScreen opened for the defeated enemy's drop")
+	assert_eq(GameState.pending_chests, 0, "the chest was taken as the screen opened")
+
 func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# Miss a goal so an enemy follows, then on the next game tick its fulfilment
 	# checkbox: it should be defeated (and drop) before it can hit (§2).

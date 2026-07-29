@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://boss_the_club"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/bosses/TheClub.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"the_club"
+display_name = "The Club"
+game_type = &"deckbuilder"
+difficulty = 1
+boss = true
+source_game = "Balatro"
+health = 1
+damage = 5
+goal_type = &"restriction"
+goal = "Do not backtrack"
+file = "TheClub"
+image = ExtResource("2_img")

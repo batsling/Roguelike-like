@@ -60,6 +60,8 @@ var _stack: RichTextLabel           # "Following you" summary line
 var _stack_box: HFlowContainer      # "Following you" enemy cards
 var _log: RichTextLabel
 var _scrolls_box: VBoxContainer
+var _items_box: VBoxContainer       # owned items with Use buttons (§4/§8)
+var _reward_open: bool = false      # a RewardScreen is currently showing
 
 func _ready() -> void:
 	_rng.randomize()
@@ -70,6 +72,17 @@ func _ready() -> void:
 		GameLoop2.run_lost.connect(_on_run_lost)
 	if not GameLoop2.run_won.is_connected(_on_run_won):
 		GameLoop2.run_won.connect(_on_run_won)
+	# Register as the mounted overworld so overworld-active items (Ride the Bus,
+	# Wand of Wishing) can route their effect here, and so item pickups refresh
+	# the inventory panel.
+	GameState.set_overworld_context(self)
+	if not GameState.inventory_changed.is_connected(_refresh_items):
+		GameState.inventory_changed.connect(_refresh_items)
+	# Every defeated enemy banks a chest (§8); redeem them into RewardScreens when
+	# the board is idle — one screen per chest, so several defeats in one game pop
+	# several rewards in a row.
+	if not TriggerBus.chest_granted.is_connected(_on_chest_granted):
+		TriggerBus.chest_granted.connect(_on_chest_granted)
 	# The menu stashes the chosen 2.0 character here before entering the scene.
 	var pending: StringName = GameState.get_meta("pending_character2", &"")
 	if pending != &"":
@@ -197,6 +210,12 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
 	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed
 	GameLoop2.beat_game(goal_met, fulfilled_instances)
+	# "After beating a game" is the dominant 2.0 item trigger (§8): fire it now so
+	# owned items react (Anchor +1 Block, Burning Blood +1 Health, Meat on the
+	# Bone), the Harvesting stat pays out, charged actives tick, and the toast
+	# shows. Defeated-enemy drops were already banked by beat_game above.
+	if played_game != null:
+		TriggerBus.game_beaten.emit({"game_id": played_game.id})
 	# Level up (§3.1) — a fresh chance each game; skipped if the game just killed
 	# the player.
 	if leveled and not GameLoop2.run_over:
@@ -219,6 +238,88 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	_phase = Phase.SELECT
 	_build_choices()
 	_refresh()
+
+func _exit_tree() -> void:
+	GameState.clear_overworld_context(self)
+	if TriggerBus.chest_granted.is_connected(_on_chest_granted):
+		TriggerBus.chest_granted.disconnect(_on_chest_granted)
+	if GameState.inventory_changed.is_connected(_refresh_items):
+		GameState.inventory_changed.disconnect(_refresh_items)
+
+# --- reward chests (§8) ---------------------------------------------------
+
+# A chest was banked (an enemy drop, a level-up reward, Unstable Genome, …).
+# Redeem on the next idle frame so it runs after the current resolve finishes.
+func _on_chest_granted(_ctx: Dictionary) -> void:
+	call_deferred("_redeem_pending_chests")
+
+# Opens one RewardScreen for the next pending chest; chains to the following
+# chest when it closes, so a multi-defeat game shows its rewards back-to-back.
+func _redeem_pending_chests() -> void:
+	if _reward_open or not is_inside_tree():
+		return
+	if GameState.pending_chests <= 0:
+		return
+	var choices: int = GameState.take_pending_chest()   # -1 none / 0 default / N fixed
+	_reward_open = true
+	var screen := preload("res://scripts/ui/RewardScreen.gd").new()
+	screen.closed.connect(func():
+		_reward_open = false
+		_redeem_pending_chests())
+	add_child(screen)
+	screen.setup_chest(maxi(0, choices))
+
+# --- overworld item actions (routed here by EffectSystem, §8) --------------
+
+# Ride the Bus: teleport to a random game of `type_key` currently reachable on
+# the map (falls back to any game of that type in the pool). Rebuilds the
+# offering from the new position.
+func teleport_to_type(type_key: StringName) -> void:
+	var cur: StringName = GameState.current_game_id
+	var same_type: Array = []
+	for g in Data.all_games():
+		if not (g is GameData) or g.id == cur or GameLoop2.is_bashed(g.id):
+			continue
+		if GameLoop2.game_type_key(g) == type_key:
+			same_type.append(g.id)
+	if same_type.is_empty():
+		GameLog.add("Ride the Bus finds no %s game to reach." % String(type_key),
+			Color(0.8, 0.6, 0.4))
+		return
+	var dest: StringName = same_type[_rng.randi() % same_type.size()]
+	GameState.set_current_game(dest)
+	var g: GameData = Data.get_game(dest)
+	GameLog.add("Rode the bus to %s." % (g.display_name if g != null else String(dest)),
+		Color(0.5, 0.85, 1.0))
+	_phase = Phase.SELECT
+	_dash_mode = false
+	_build_choices()
+	_refresh()
+
+# Wand of Wishing: obtain any one item — opens a RewardScreen listing the full
+# items2.0 catalog (non-starter) to pick from.
+func obtain_any_item() -> void:
+	if _reward_open:
+		return
+	_reward_open = true
+	var screen := preload("res://scripts/ui/RewardScreen.gd").new()
+	screen.closed.connect(func():
+		_reward_open = false
+		_redeem_pending_chests())
+	add_child(screen)
+	screen.setup_obtain(Data.reward_item2_pool())
+
+# Fire an owned USABLE / CHARGED item from the overworld inventory panel.
+func use_item(item: ItemData) -> void:
+	if item == null or not GameState.can_fire_item(item):
+		return
+	# A non-charged overworld active (Ride the Bus) commits immediately, so spend
+	# its use here (use_item defers the spend for cancellable pickers).
+	var spend_after: bool = not item.is_charged() and item.overworld_usable
+	GameState.use_item(item)
+	if spend_after and GameState.inventory.has(item):
+		GameState.consume_item_use(item)
+	_refresh_items()
 
 # Bash the offered game at `index` (§4): destroy it out of the pool for the run.
 # Allowed on a boss round — but the boss is tied to the difficulty gate, not the
@@ -309,6 +410,7 @@ func _refresh(_a = null) -> void:
 		return
 	_hud.text = _hud_text()
 	_refresh_scrolls()
+	_refresh_items()
 	_stack.text = _stack_summary()
 	_refresh_followers()
 	if not GameLoop2.last_result.is_empty():
@@ -639,6 +741,56 @@ func _refresh_scrolls() -> void:
 		row.add_child(read_btn)
 		_scrolls_box.add_child(row)
 
+# Owned items, each with its rarity-tinted name and — for USABLE / CHARGED
+# actives — a Use button that's enabled only when the item can fire right now
+# (a charged item needs a full bar; charged bars show their fill). Passive /
+# triggered items list without a button. Mirrors the scrolls panel.
+func _refresh_items() -> void:
+	if _items_box == null:
+		return
+	for c in _items_box.get_children():
+		c.queue_free()
+	_items_box.visible = _phase != Phase.PLAYING
+	if GameState.inventory.is_empty():
+		var none := Label.new()
+		none.text = "  (none)"
+		none.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
+		_items_box.add_child(none)
+		return
+	for item in GameState.inventory:
+		if not (item is ItemData):
+			continue
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var icon := TextureRect.new()
+		icon.custom_minimum_size = Vector2(28, 28)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		if item.image != null:
+			icon.texture = item.image
+		row.add_child(icon)
+		var name_lbl := Label.new()
+		var label_text: String = item.display_name
+		if item.is_charged():
+			label_text += "  [%d/%d]" % [item.current_charge, item.max_charge()]
+		name_lbl.text = label_text
+		name_lbl.tooltip_text = item.description
+		var rar: int = clampi(int(item.rarity), 0, RewardScreen.RARITY_COLORS.size() - 1)
+		name_lbl.add_theme_color_override("font_color", RewardScreen.RARITY_COLORS[rar])
+		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(name_lbl)
+		# Only actives get a Use button; a charged item shows a disabled "Charging"
+		# until its bar fills.
+		if item.kind == ItemData.ItemKind.USABLE or item.is_charged():
+			var use_btn := Button.new()
+			var ready: bool = GameState.can_fire_item(item)
+			use_btn.text = "Use" if ready else ("Charging" if item.is_charged() else "Use")
+			use_btn.disabled = not ready
+			var target_item: ItemData = item
+			use_btn.pressed.connect(func(): use_item(target_item))
+			row.add_child(use_btn)
+		_items_box.add_child(row)
+
 # One-line header above the follower cards: how many are on your tail and the
 # damage the stack lands on the next game beaten.
 func _stack_summary() -> String:
@@ -940,6 +1092,11 @@ func _build_ui() -> void:
 	_scrolls_box = VBoxContainer.new()
 	_scrolls_box.add_theme_constant_override("separation", 4)
 	root.add_child(_scrolls_box)
+
+	root.add_child(_section("Items:"))
+	_items_box = VBoxContainer.new()
+	_items_box.add_theme_constant_override("separation", 4)
+	root.add_child(_items_box)
 
 	root.add_child(_section("Following you:"))
 	_stack = _panel_label()

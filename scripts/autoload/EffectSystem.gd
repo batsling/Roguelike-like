@@ -74,6 +74,9 @@ func _register_defaults() -> void:
 	register("lose_hp", _h_lose_hp)
 	register("if_hp", _h_if_hp)
 	register("chance", _h_chance)
+	register("teleport_type", _h_teleport_type)
+	register("obtain_item", _h_obtain_item)
+	register("random_item_choice", _h_random_item_choice)
 
 # Scene-less heal straight to the run HP pool. Caps at max_hp via change_hp.
 func _h_gain_hp(effect: Dictionary, _ctx: Dictionary) -> void:
@@ -142,3 +145,35 @@ func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 	if not Stats.roll_chance_with_luck(_rng, percent):
 		return
 	apply(inner, ctx)
+
+# ---------------------------------------------------------------------------
+# Games-first (2.0) active-item effects (docs/games-first-redesign.md §8).
+# These are overworld actions, so they route through the mounted Overworld2 via
+# GameState.overworld_scene; off the map they no-op rather than crash.
+# ---------------------------------------------------------------------------
+
+# Ride the Bus: teleport to a random game of a given type on the map.
+func _h_teleport_type(effect: Dictionary, _ctx: Dictionary) -> void:
+	var scene = GameState.overworld_scene
+	if scene == null or not scene.has_method("teleport_to_type"):
+		return
+	scene.teleport_to_type(StringName(String(effect.get("game_type", "")).to_lower()))
+
+# Wand of Wishing: obtain any one item — opens the overworld's full-catalog
+# item picker.
+func _h_obtain_item(_effect: Dictionary, _ctx: Dictionary) -> void:
+	var scene = GameState.overworld_scene
+	if scene == null or not scene.has_method("obtain_any_item"):
+		return
+	scene.obtain_any_item()
+
+# Unstable Genome: gain 1 of N random items — banked as one chest offering
+# `count` choices (§8.2 Large chest), redeemed by the overworld's RewardScreen.
+# `destroy_self` consumes the source item that fired the trigger.
+func _h_random_item_choice(effect: Dictionary, ctx: Dictionary) -> void:
+	var count: int = maxi(1, int(effect.get("count", 3)))
+	GameState.grant_chest(1, count)
+	if bool(effect.get("destroy_self", false)):
+		var item = ctx.get("item")
+		if item is ItemData:
+			GameState.remove_item(item)

@@ -146,6 +146,13 @@ var stat_multiplier: Dictionary = {}
 # contribution so a recompute moves only the delta.
 var _applied_item_max_hp: int = 0
 var _applied_item_max_energy: int = 0
+# Per-verb delta this inventory currently applies to the games-first board verbs
+# (Vajra's passive +1 Bash). The 2.0 verbs (bash/transmute/scramble/bombs/keys/
+# dash/block) are plain fields the loop spends directly — not read through
+# Stats.get_value — so a passive stat_bonus on one is folded straight into the
+# field and reversed when the item leaves, tracked here like _applied_item_max_hp.
+var _applied_item_verbs: Dictionary = {}
+const _ITEM_VERB_STATS := ["bash", "transmute", "scramble", "bombs", "keys", "dash", "block"]
 
 # Jelly (and any future SCALING rule that outputs max_hp): tracked exactly
 # like _applied_item_max_hp above, but separately, since it's recomputed by a
@@ -436,6 +443,9 @@ func _on_game_beaten(_ctx: Dictionary) -> void:
 	# runner — only scene-free effects (gain_hp / gain_max_hp / gain_chest /
 	# gain_stat) are valid here, which is exactly what the 2.0 items use.
 	fire_run_item_triggers("game_beaten", _ctx)
+	# Charged actives (D6, Wand of Wishing) "recharge over N beats" (§8) — with no
+	# combat scenes in the 2.0 loop, a beaten game is the recharge tick.
+	charge_all_items(1)
 
 func _on_curse_applied(ctx: Dictionary) -> void:
 	fire_run_item_triggers("curse_applied", ctx)
@@ -472,6 +482,9 @@ func fire_run_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -
 				EffectSystem.apply(effect, {
 					"source": null, "target": null, "scene": null,
 					"card": ctx_extras.get("card"),
+					# The owning item — lets a self-referential effect (Unstable
+					# Genome's destroy_self) find and remove itself.
+					"item": item,
 				})
 
 # --- Curse / curse-card tallies -------------------------------------------
@@ -558,29 +571,42 @@ func remove_active_curse(curse_id: StringName) -> CurseData:
 
 # === Chests (item rewards) =================================================
 # A "chest" is the project's parlance for an item-reward — the gold-less
-# item-choice screen the player opens to pick one item. Counters here bank
-# chests that were granted outside the normal post-section reward flow
-# (Golden Beetle grants one whenever a curse or curse card is removed); the
-# overworld redeems them into RewardScreens when it's idle.
+# item-choice screen the player opens to pick one item (docs/games-first-
+# redesign.md §8.2). Every defeated enemy banks one (GameLoop2._defeat), and
+# other sources (Golden Beetle on curse removal, level-up rewards, Unstable
+# Genome) grant them too; the overworld redeems them into RewardScreens when
+# it's idle, one screen per chest — so beating several enemies in one game pops
+# several reward screens in a row.
 var pending_chests: int = 0
 
-# Grants `count` chests (item rewards). Banks them and announces via
-# chest_granted so the overworld can open the item-choice screens.
-func grant_chest(count: int = 1) -> void:
+# Per-chest choice count, one entry per pending chest, in grant order (§8.2:
+# Small = 1 / Regular = 2 / Large = 3 items offered). Kept in lock-step with
+# pending_chests so the RewardScreen knows how many items to roll for the chest
+# it's opening. `pending_chests` stays the authoritative count (tests read it).
+var pending_chest_choices: Array[int] = []
+
+# Grants `count` chests (item rewards), each offering `choices` items to pick
+# from (0 = the RewardScreen's default of BASE_ITEM_CHOICES + Discovery). Banks
+# them and announces via chest_granted so the overworld can open the item-choice
+# screens.
+func grant_chest(count: int = 1, choices: int = 0) -> void:
 	if count <= 0:
 		return
 	pending_chests += count
+	for _i in range(count):
+		pending_chest_choices.append(choices)
 	Notifications.notify("Gained %d Chest%s!" % [count, "" if count == 1 else "s"],
 		Color(1.0, 0.85, 0.4))
 	TriggerBus.emit_signal("chest_granted", {"count": count})
 
-# Consumes one banked chest, returning true if one was available. The overworld
-# calls this as it opens each item-reward screen.
-func take_pending_chest() -> bool:
+# Consumes one banked chest, returning its choice count (0 = screen default),
+# or -1 if none were pending. The overworld calls this as it opens each
+# item-reward screen.
+func take_pending_chest() -> int:
 	if pending_chests <= 0:
-		return false
+		return -1
 	pending_chests -= 1
-	return true
+	return int(pending_chest_choices.pop_front()) if not pending_chest_choices.is_empty() else 0
 
 # All active RESTRICTION curses resolved to CurseData, for the verification
 # screen's "did you fulfil it?" rows. Afflictions are automatic and excluded.
@@ -701,6 +727,7 @@ func reset_run() -> void:
 	temp_status_stacks.clear()
 	active_curses.clear()
 	pending_chests = 0
+	pending_chest_choices.clear()
 	pending_combat_statuses.clear()
 	pending_ambush = ""
 	pending_spawn_enemies.clear()
@@ -766,6 +793,7 @@ func _reset_item_tracking() -> void:
 	item_stat_bonus = {}
 	_applied_item_max_hp = 0
 	_applied_item_max_energy = 0
+	_applied_item_verbs = {}
 	_applied_scaling_max_hp = 0
 	max_hp_cap = -1
 	_next_item_instance_id = 1
@@ -1427,6 +1455,13 @@ func remove_item_at(index: int) -> void:
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 
+# Removes a specific owned item instance by reference (Unstable Genome's
+# destroy_self). No-op if it isn't in the inventory.
+func remove_item(item: ItemData) -> void:
+	var idx: int = inventory.find(item)
+	if idx >= 0:
+		remove_item_at(idx)
+
 # Reactive Trauma Plate: if the player owns a lethal-negating item, destroy one
 # copy and report it. Called from Stats.resolve_damage the instant a hit would
 # drop the player to 0 HP, so the negation lands in every combat mode.
@@ -1601,6 +1636,17 @@ func _recompute_item_bonuses() -> void:
 	_applied_scaling_max_hp = _apply_capped_max_hp_delta(scaling_max_hp_total, _applied_scaling_max_hp)
 
 	item_stat_bonus = totals
+	# Passive board-verb bonuses (Vajra +1 Bash): fold the delta into the plain
+	# GameState verb field and drop the key from item_stat_bonus so it never also
+	# double-counts through Stats.get_value.
+	for verb in _ITEM_VERB_STATS:
+		var desired: int = int(item_stat_bonus.get(verb, 0))
+		var applied: int = int(_applied_item_verbs.get(verb, 0))
+		if desired != applied:
+			var field: String = _LEVEL_UP_ABILITY_FIELDS.get(verb, verb)
+			set(field, maxi(0, int(get(field)) + (desired - applied)))
+			_applied_item_verbs[verb] = desired
+		item_stat_bonus.erase(verb)
 	# Cache whether any owned item mirrors a stat onto a pool (Paper Bag), so
 	# Stats.get_value can skip the per-read inventory scan in the common case.
 	stat_mirror_active = false

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_goblin"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/enemies/Goblin.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"goblin"
+display_name = "Goblin"
+game_type = &"strategy"
+difficulty = 0
+source_game = "Gnomes"
+health = 1
+damage = 1
+goal_type = &"bounty"
+goal = "Defeat 10+ goblins"
+tag = &"goblin"
+file = "Goblin"
+image = ExtResource("2_img")
