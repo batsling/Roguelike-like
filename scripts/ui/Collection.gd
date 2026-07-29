@@ -689,7 +689,7 @@ func _show_character_detail(ch: CharacterData) -> void:
 	_detail_box.add_child(_detail_section("Base Stats"))
 	_detail_box.add_child(_kv("Health", str(ch.base_max_hp)))
 	var verbs := [
-		["Bash", ch.start_bash], ["Dash", ch.start_dash],
+		["Bash", ch.start_bash], ["Dash", ch.start_dash], ["Push", ch.start_push],
 		["Transmute", ch.start_transmute], ["Scramble", ch.start_scramble],
 		["Bombs", ch.start_bombs], ["Keys", ch.start_keys],
 	]

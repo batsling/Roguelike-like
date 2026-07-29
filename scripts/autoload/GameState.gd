@@ -152,7 +152,7 @@ var _applied_item_max_energy: int = 0
 # Stats.get_value — so a passive stat_bonus on one is folded straight into the
 # field and reversed when the item leaves, tracked here like _applied_item_max_hp.
 var _applied_item_verbs: Dictionary = {}
-const _ITEM_VERB_STATS := ["bash", "transmute", "scramble", "bombs", "keys", "dash", "block"]
+const _ITEM_VERB_STATS := ["bash", "transmute", "scramble", "bombs", "keys", "dash", "block", "push"]
 
 # Jelly (and any future SCALING rule that outputs max_hp): tracked exactly
 # like _applied_item_max_hp above, but separately, since it's recomputed by a
@@ -346,6 +346,10 @@ var discovery: int = 0
 # and level-up rewards. All default 0, so combat runs are unaffected.
 var block: int = 0        # temporary health; absorbed before hp, carries between games, no cap
 var bash: int = 0
+# Push (Manager's signature verb, from Raccoin): spend a charge to shove a
+# following enemy back one space, delaying its next attack by a game (§7.2) —
+# the same timing relief Stun gives, but player-triggered from a charge.
+var push: int = 0
 var transmute: int = 0
 var scramble: int = 0
 var bombs: int = 0
@@ -714,6 +718,7 @@ func reset_run() -> void:
 	# Games-first (2.0) resources.
 	block = 0
 	bash = 0
+	push = 0
 	transmute = 0
 	scramble = 0
 	bombs = 0
@@ -772,6 +777,7 @@ func apply_character2(char_data: CharacterData) -> void:
 	block = 0
 	bash = char_data.start_bash
 	dash_charges = char_data.start_dash
+	push = char_data.start_push
 	transmute = char_data.start_transmute
 	scramble = char_data.start_scramble
 	bombs = char_data.start_bombs
@@ -1076,6 +1082,7 @@ const _LEVEL_UP_ABILITY_FIELDS := {
 	# level-up reward path (apply_level_up_stats) and item grants (grant_run_stat)
 	# route "+1 Transmute" etc. correctly (docs/games-first-redesign.md §3.1/§4).
 	"bash": "bash",
+	"push": "push",
 	"transmute": "transmute",
 	"scramble": "scramble",
 	"bombs": "bombs",

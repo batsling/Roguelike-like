@@ -113,6 +113,25 @@ func test_stun_skips_the_next_attack_only() -> void:
 	GameLoop2.choose_game(_enemy(0)) ; GameLoop2.beat_game(false)  # A attacks now
 	assert_eq(GameState.hp, 8)
 
+# --- push (Manager's verb, §7.2) ------------------------------------------
+
+func test_push_delays_the_next_attack_and_spends_a_charge() -> void:
+	GameState.push = 1
+	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # A stacks
+	assert_true(GameLoop2.push(a), "push a stacked enemy while a charge is in hand")
+	assert_eq(GameState.push, 0, "push is spent")
+	GameLoop2.choose_game(_enemy(0)) ; GameLoop2.beat_game(false)  # A pushed, skips
+	assert_eq(GameState.hp, 10, "push buys a game before A's first hit")
+	GameLoop2.choose_game(_enemy(0)) ; GameLoop2.beat_game(false)  # A attacks now
+	assert_eq(GameState.hp, 8, "the delay is one game only")
+
+func test_push_requires_a_charge() -> void:
+	GameState.push = 0
+	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # A stacks
+	assert_false(GameLoop2.push(a), "no push without a charge")
+	GameLoop2.choose_game(_enemy(0)) ; GameLoop2.beat_game(false)  # A attacks unhindered
+	assert_eq(GameState.hp, 8, "an un-pushed enemy hits on schedule")
+
 # --- bomb (§4 / §7.1) -----------------------------------------------------
 
 func test_bomb_removes_normal_enemy_without_drop() -> void:

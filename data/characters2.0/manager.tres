@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=4 format=3 uid="uid://char2_manager"]
+
+[ext_resource type="Script" path="res://scripts/resources/CharacterData.gd" id="1_char"]
+[ext_resource type="Texture2D" path="res://images2.0/characters/Full/Manager.png" id="2_portrait"]
+[ext_resource type="Texture2D" path="res://images2.0/characters/Icon/Manager.png" id="3_icon"]
+
+[resource]
+script = ExtResource("1_char")
+id = &"manager"
+display_name = "Manager"
+description = "Master in using  Math coins and earning tickets."
+source_game = "Raccoin: Coin Pusher Roguelike"
+base_max_hp = 8
+start_bash = 0
+start_dash = 0
+start_push = 0
+start_transmute = 0
+start_scramble = 0
+start_bombs = 0
+start_keys = 0
+starting_items = Array[StringName]([])
+starting_weapon = &""
+level_up_condition = "Collect 3+ different types of currency"
+level_up_reward = "Gain +1 Push"
+level_up_stats = {
+"push": 1
+}
+level_up_reward_type = &"none"
+level_up_reward_amount = 0
+portrait = ExtResource("2_portrait")
+icon = ExtResource("3_icon")

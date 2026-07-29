@@ -10,11 +10,12 @@ character's STARTING loadout; `Level Up` is the per-game honour-system challenge
 and `Reward` is what meeting it grants (parsed into level_up_stats +
 level_up_reward_type here).
 
-  characters2.0: Name | Game | Health | Bash | Dash | Transmute | Scramble |
-                 Bombs | Keys | Level Up | Reward | Description | Starting items
+  characters2.0: Name | Game | Health | Bash | Dash | Push | Transmute |
+                 Scramble | Bombs | Keys | Level Up | Reward | Description |
+                 Starting items
 
 Health -> base_max_hp (a 2.0 run's tiny Health/Max Health reuse hp/max_hp).
-Bash/Dash/Transmute/Scramble/Bombs/Keys -> start_* fields.
+Bash/Dash/Push/Transmute/Scramble/Bombs/Keys -> start_* fields.
 Reward -> level_up_stats (verb / max_hp gains) + level_up_reward_type
           (Small Chest -> item; Scroll -> scroll).
 Starting items -> slugged item ids (resolved against data/items2.0/).
@@ -56,10 +57,10 @@ def _png_map(dir_path):
     return out
 
 # start_* verb columns on the sheet -> CharacterData field suffix.
-START_VERBS = ["Bash", "Dash", "Transmute", "Scramble", "Bombs", "Keys"]
+START_VERBS = ["Bash", "Dash", "Push", "Transmute", "Scramble", "Bombs", "Keys"]
 # Verbs the level-up Reward may grant, mapped to their GameState/level-up stat key.
 REWARD_VERBS = {
-    "dash": "dash", "bash": "bash", "transmute": "transmute",
+    "dash": "dash", "bash": "bash", "push": "push", "transmute": "transmute",
     "scramble": "scramble", "bombs": "bombs", "keys": "keys",
 }
 
@@ -160,6 +161,7 @@ def character_tres(row) -> tuple:
     # Games-first starting verb loadout.
     lines.append("start_bash = %d" % _int(row.get("Bash")))
     lines.append("start_dash = %d" % _int(row.get("Dash")))
+    lines.append("start_push = %d" % _int(row.get("Push")))
     lines.append("start_transmute = %d" % _int(row.get("Transmute")))
     lines.append("start_scramble = %d" % _int(row.get("Scramble")))
     lines.append("start_bombs = %d" % _int(row.get("Bombs")))

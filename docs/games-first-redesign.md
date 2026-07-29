@@ -64,13 +64,14 @@ Kept deliberately tiny for HUD readability.
 select is where the run's starting Health and verb/consumable counts come from.
 Current roster:
 
-| Character | Game | Health | Bash | Dash | Transmute | Scramble | Bombs | Keys | Starting item |
-|---|---|--:|--:|--:|--:|--:|--:|--:|---|
-| Rodney | Rogue | 5 | 0 | 0 | 0 | 0 | 0 | 0 | — |
-| Isaac | The Binding of Isaac | 6 | 0 | 0 | 0 | 0 | 1 | 0 | D6 |
-| Zoe | Haste | 8 | 0 | 0 | 0 | 0 | 0 | 0 | — |
-| Minä | Noita | 8 | 0 | 0 | 1 | 0 | 0 | 0 | — |
-| Ironclad | Slay the Spire | 10 | 0 | 0 | 0 | 0 | 0 | 0 | Burning Blood |
+| Character | Game | Health | Bash | Dash | Push | Transmute | Scramble | Bombs | Keys | Starting item |
+|---|---|--:|--:|--:|--:|--:|--:|--:|--:|---|
+| Rodney | Rogue | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — |
+| Isaac | The Binding of Isaac | 6 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | D6 |
+| Zoe | Haste | 8 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — |
+| Minä | Noita | 8 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | — |
+| Ironclad | Slay the Spire | 10 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Burning Blood |
+| Manager | Raccoin: Coin Pusher Roguelike | 8 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — |
 
 Block sources: completing a goal, certain tag routes, a scroll, or an item (e.g.
 **Anchor** — "after beating a game, gain +1 Block"). The central tension is *earn
@@ -80,7 +81,7 @@ block by beating goals → spend it surviving the goals you skip or fail.*
 
 **This reuses the current project's level-up mechanic directly** (`CharacterData`
 + `Overworld._resolve_level_up`). In `characters2.0`, **the columns left of `Level
-Up` (Health, Bash, Dash, Transmute, Scramble, Bombs, Keys) are the character's
+Up` (Health, Bash, Dash, Push, Transmute, Scramble, Bombs, Keys) are the character's
 starting stats**; `Level Up` is a per-game challenge and `Reward` is what meeting
 it grants.
 
@@ -91,6 +92,7 @@ it grants.
 | Zoe | Perfect a Game | +1 Dash |
 | Minä | Craft or combine a spell or weapon | +1 Transmute |
 | Ironclad | Unlock a new difficulty | +1 Small Chest |
+| Manager | Collect 3+ different types of currency | +1 Push |
 
 How it already works in the project (to be kept):
 - After each game, the **post-game verification modal** asks the character's
@@ -119,6 +121,7 @@ integer counts on the HUD.
 | **Transmute** | **Turn a game into a random game of the *same game type* that is *not connected to the map*.** (New verb — this is the "replace with a fresh game" role bash used to have, now type-constrained and pulling from off-graph games.) |
 | **Dash** | **As in the current project: a total select, not a skip** — pick *any* connected game and move to it (bypassing the normal limited offering). Costs 1 dash charge. See `Overworld._try_dash`. |
 | **Scramble** | Reroll the current game's enemy/goal (and/or the offering). Granted by the **D6** item. |
+| **Push** | **Shove a following enemy back one space — delay its next attack by one game (§7.2).** Spends 1 push charge; rides the same per-enemy delay counter as Stun, but is player-triggered. The **Manager**'s signature verb (gained on level-up: "Collect 3+ different types of currency" → +1 Push). |
 
 ### Consumables
 | Item | Effect |

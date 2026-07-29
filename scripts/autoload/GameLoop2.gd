@@ -313,6 +313,22 @@ func stun(instance: int) -> bool:
 	loop_changed.emit()
 	return true
 
+# Push a following enemy back one space (Manager's verb, from Raccoin): spends a
+# GameState.push charge to delay the target's next attack by one game — the same
+# one-game-later timing relief as Stun (§7.2), which is why it rides the shared
+# per-enemy delay counter. Returns true (and spends the charge) only when a
+# charge is available and the target is on the stack.
+func push(instance: int) -> bool:
+	if GameState.push <= 0:
+		return false
+	var idx: int = _index_of(instance)
+	if idx < 0:
+		return false
+	GameState.push -= 1
+	stack[idx]["stun"] = int(stack[idx].get("stun", 0)) + 1
+	loop_changed.emit()
+	return true
+
 # Add a fresh enemy directly to the following stack (Scroll of Create Monster,
 # §4.1). Unlike choose_game it does not become `current`: the conjured enemy
 # starts following immediately and attacks on the next game beaten, like any

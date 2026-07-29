@@ -23,7 +23,15 @@ func _tres_count(path: String) -> int:
 # --- Characters2.0 --------------------------------------------------------
 
 func test_character2_roster_loads() -> void:
-	assert_eq(Data.all_characters2().size(), 5, "5 characters2.0 rows -> 5 .tres")
+	assert_eq(Data.all_characters2().size(), 6, "6 characters2.0 rows -> 6 .tres")
+
+func test_manager_levels_push() -> void:
+	var manager: CharacterData = Data.get_character2(&"manager")
+	assert_not_null(manager, "manager.tres should load from data/characters2.0")
+	assert_eq(manager.source_game, "Raccoin: Coin Pusher Roguelike")
+	assert_eq(manager.start_push, 0, "Manager starts with no Push charges")
+	assert_eq(int(manager.level_up_stats.get("push", 0)), 1, "level-up reward is +1 Push")
+	assert_eq(manager.level_up_condition, "Collect 3+ different types of currency")
 
 func test_isaac_starting_loadout() -> void:
 	var isaac: CharacterData = Data.get_character2(&"isaac")
