@@ -12,6 +12,7 @@ rarity = 4
 description = "Obtain any one item in the game"
 triggers = [{"on": "item_used", "effects": [{"type": "obtain_item", "pool": "any"}]}]
 stat_bonuses = {}
+overworld_usable = true
 charge_cost = 6
 starts_charged = true
 source_game = "NetHack"

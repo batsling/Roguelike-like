@@ -172,6 +172,20 @@ func reward_item_pool() -> Array:
 		out.append(it)
 	return out
 
+# The games-first (2.0) reward pool — the items2.0 relics that drop from a
+# defeated enemy (docs/games-first-redesign.md §8 "the item table IS the reward
+# economy"). Excludes starter items (a character's opening loadout — Burning
+# Blood) so they never re-roll as a drop. The RewardScreen rolls this by rarity.
+func reward_item2_pool() -> Array:
+	var out: Array = []
+	for it in _items2.values():
+		if not (it is ItemData):
+			continue
+		if it.starter:
+			continue
+		out.append(it)
+	return out
+
 # Rarity weights for random item draws (rewards). Mirrors the legacy
 # selectRandomRarity distribution (75 / 20 / 5), with a 10% bump from Rare to
 # Legendary.

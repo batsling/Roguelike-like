@@ -31,10 +31,22 @@ var _choices: Array = []                 # Array[ItemData] templates
 var _rng := RandomNumberGenerator.new()
 var _resolved: bool = false
 var _started: bool = false
+var _config_done: bool = false           # a setup* method has run
+# Chest tuning (games-first §8.2). When >= 0, the number of items to offer is
+# fixed (Small 1 / Regular 2 / Large 3) instead of the BASE + Discovery default.
+var _choice_count_override: int = -1
+# Screen title; "Reward!" for an enemy-drop chest, "Victory!" for the (legacy)
+# section-completion reward.
+var _title: String = "Victory!"
+# When non-empty, the choices are this exact list of ItemData (no rarity roll) —
+# Wand of Wishing's "obtain any item" full-catalog pick.
+var _explicit_pool: Array = []
 
-var _choices_box: HBoxContainer
+var _choices_box: HFlowContainer
 var _reroll_btn: Button
 var _play_btn: Button
+var _title_line: Label
+var _gold_line: Label
 
 # gold: the amount to grant (Main computes it from the difficulty tier).
 # game: the real game this section represented; when it has a launch target a
@@ -44,6 +56,32 @@ var _play_btn: Button
 func setup(gold: int, game: GameData = null) -> void:
 	_gold = gold
 	_game = game
+	_config_done = true
+	if is_inside_tree() and not _started:
+		_started = true
+		_begin()
+
+# Enemy-drop chest (games-first §8): a gold-less item-choice screen offering
+# `choices` relics rolled by rarity from items2.0 (0 = the BASE + Discovery
+# default). Add the node to the tree, then call this.
+func setup_chest(choices: int = 0) -> void:
+	_gold = 0
+	_game = null
+	_title = "Choose a Reward"
+	_choice_count_override = choices if choices > 0 else -1
+	_config_done = true
+	if is_inside_tree() and not _started:
+		_started = true
+		_begin()
+
+# Wand of Wishing "obtain any item": the choices are the given explicit list
+# (the full items2.0 catalog), take one, no rarity roll and no reroll.
+func setup_obtain(items: Array) -> void:
+	_gold = 0
+	_game = null
+	_title = "Obtain Any Item"
+	_explicit_pool = items.duplicate()
+	_config_done = true
 	if is_inside_tree() and not _started:
 		_started = true
 		_begin()
@@ -53,12 +91,21 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_ui()
-	# If setup() ran before we entered the tree, kick off now.
-	if _gold > 0 and not _started:
+	# If a setup* ran before we entered the tree, kick off now.
+	if _config_done and not _started:
 		_started = true
 		_begin()
 
 func _begin() -> void:
+	# The title / gold line may have been configured after _build_ui ran (the
+	# overworld adds the node, then calls setup_chest), so sync them here.
+	if _title_line != null:
+		_title_line.text = _title
+	if _gold_line != null:
+		_gold_line.visible = _gold > 0
+	# Reroll only makes sense for a rarity-rolled chest, not an obtain-any pick.
+	if _reroll_btn != null:
+		_reroll_btn.visible = _explicit_pool.is_empty()
 	# Gold is granted immediately (HTML awards it on victory, not on click).
 	if _gold > 0:
 		GameState.change_gold(_gold)
@@ -91,20 +138,19 @@ func _build_ui() -> void:
 	root.add_theme_constant_override("separation", 14)
 	panel.add_child(root)
 
-	var title := Label.new()
-	title.text = "Victory!"
-	title.add_theme_font_size_override("font_size", 26)
-	title.add_theme_color_override("font_color", Color(0.5, 1.0, 0.7))
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	root.add_child(title)
+	_title_line = Label.new()
+	_title_line.text = _title
+	_title_line.add_theme_font_size_override("font_size", 26)
+	_title_line.add_theme_color_override("font_color", Color(0.5, 1.0, 0.7))
+	_title_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	root.add_child(_title_line)
 
-	var gold_line := Label.new()
-	gold_line.name = "GoldLine"
-	gold_line.text = "+%d gold" % _gold
-	gold_line.add_theme_font_size_override("font_size", 18)
-	gold_line.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
-	gold_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	root.add_child(gold_line)
+	_gold_line = Label.new()
+	_gold_line.text = "+%d gold" % _gold
+	_gold_line.add_theme_font_size_override("font_size", 18)
+	_gold_line.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
+	_gold_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	root.add_child(_gold_line)
 
 	# "Play the real game" — only meaningful when this section represented a
 	# real game with a launch target. Hidden by default; _begin() reveals it.
@@ -123,11 +169,18 @@ func _build_ui() -> void:
 	pick_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(pick_lbl)
 
-	_choices_box = HBoxContainer.new()
-	_choices_box.add_theme_constant_override("separation", 12)
-	_choices_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	_choices_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(_choices_box)
+	# A scroll-wrapped flow so a Large chest / the full obtain-any catalog wrap
+	# and scroll instead of overflowing the panel.
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.custom_minimum_size = Vector2(0, 270)
+	root.add_child(scroll)
+	_choices_box = HFlowContainer.new()
+	_choices_box.add_theme_constant_override("h_separation", 12)
+	_choices_box.add_theme_constant_override("v_separation", 12)
+	_choices_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_choices_box)
 
 	var btn_row := HBoxContainer.new()
 	btn_row.add_theme_constant_override("separation", 12)
@@ -147,9 +200,8 @@ func _build_ui() -> void:
 func _refresh() -> void:
 	if _choices_box == null:
 		return
-	var gold_line := _choices_box.get_parent().get_node_or_null("GoldLine")
-	if gold_line is Label:
-		gold_line.text = "+%d gold" % _gold
+	if _gold_line != null:
+		_gold_line.text = "+%d gold" % _gold
 	for c in _choices_box.get_children():
 		c.queue_free()
 	for item in _choices:
@@ -204,11 +256,17 @@ func _build_choice_tile(item: ItemData) -> Control:
 
 func _roll_choices() -> void:
 	_choices.clear()
-	var pool: Array = Data.reward_item_pool()
+	# Obtain-any (Wand of Wishing): offer the exact catalog list, no rarity roll.
+	if not _explicit_pool.is_empty():
+		_choices = _explicit_pool.duplicate()
+		return
+	# Enemy-drop relics come from the games-first items2.0 table (§8).
+	var pool: Array = Data.reward_item2_pool()
 	if pool.is_empty():
 		return
 	var discovery: int = Stats.get_value(&"discovery")
-	var n: int = BASE_ITEM_CHOICES + maxi(0, discovery)
+	var n: int = _choice_count_override if _choice_count_override >= 0 else BASE_ITEM_CHOICES + maxi(0, discovery)
+	n = maxi(1, mini(n, pool.size()))
 	var orb: bool = GameState.has_low_rarity_reroll()
 	var attempts: int = 0
 	while _choices.size() < n and attempts < 100:

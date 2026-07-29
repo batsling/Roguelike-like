@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://boss_giant_spider"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/bosses/GiantSpider.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"giant_spider"
+display_name = "Giant Spider"
+game_type = &"strategy"
+difficulty = 0
+boss = true
+source_game = "Forward: Escape the Fold"
+health = 1
+damage = 3
+goal_type = &"bounty"
+goal = "Defeat a bug larger than you"
+tag = &"bug, spider"
+file = "GiantSpider"
+image = ExtResource("2_img")

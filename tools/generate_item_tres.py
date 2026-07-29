@@ -683,11 +683,15 @@ def parse_item(row):
                 _apply_labels(effects, label)
                 last_trigger["effects"].extend(effects)
 
-    # An item that runs an overworld_jump (Winged Boots) is usable on the map, so
-    # mark it: the runtime enables its backpack / overworld-HUD use button there.
+    # An item whose active effect is an OVERWORLD action (Winged Boots' jump,
+    # Ride the Bus' type-teleport, Wand of Wishing's obtain-item) is usable on
+    # the map, so mark it: the runtime enables its overworld-HUD use button and
+    # routes the effect into the mounted Overworld scene (docs/games-first-
+    # redesign.md §8).
+    _OVERWORLD_EFFECTS = ("overworld_jump", "teleport_type", "obtain_item")
     for trig in fields["triggers"]:
         for eff in trig.get("effects", []):
-            if isinstance(eff, dict) and eff.get("type") == "overworld_jump":
+            if isinstance(eff, dict) and eff.get("type") in _OVERWORLD_EFFECTS:
                 fields["overworld_usable"] = True
 
     return fields

@@ -20,8 +20,10 @@ extends Node
 #        hp) — unless stunned (skips one attack). The current game's enemy is
 #        not on the stack yet, so it cannot attack this game: that ordering IS
 #        the one-game grace.
-#     3. The current enemy resolves: goal met -> defeated + item drop; else it
-#        joins the stack and starts attacking NEXT game.
+#     3. The current enemy resolves: completing its goal deals it one hit —
+#        defeated + item drop at 0 Health, else it joins the stack (a survivor,
+#        e.g. an Alien-Baby-buffed two-Health enemy, must be beaten again) and
+#        starts attacking NEXT game.
 # Reach & clear the Amulet game (clear_amulet) to win; hp <= 0 to lose.
 
 signal loop_changed()                 # stack / current / run-state mutated (HUD hook)
@@ -31,13 +33,14 @@ signal run_lost()
 signal run_won()
 
 # The enemy on the currently-chosen game, or {} when none is chosen. Shape:
-#   {"instance": int, "enemy": GoalEnemyData}
+#   {"instance": int, "enemy": GoalEnemyData, "health": int}
 var current: Dictionary = {}
 
 # Undefeated enemies following the player (§2). Each entry:
-#   {"instance": int, "enemy": GoalEnemyData, "stun": int}
+#   {"instance": int, "enemy": GoalEnemyData, "stun": int, "health": int}
 # `instance` is a unique per-spawn handle so two games rolling the same enemy
-# type stay distinct; bomb / stun / fulfil target by instance.
+# type stay distinct; bomb / stun / fulfil target by instance. `health` is the
+# remaining goal completions needed to defeat it (Alien Baby raises it, §8).
 var stack: Array = []
 
 # Games removed from the pool by Bash (§4) — destroyed outright, never offered
@@ -167,9 +170,17 @@ func choose_game(enemy: GoalEnemyData) -> int:
 		return 0
 	var inst: int = _next_instance
 	_next_instance += 1
-	current = {"instance": inst, "enemy": enemy}
+	current = {"instance": inst, "enemy": enemy, "health": effective_health(enemy)}
 	loop_changed.emit()
 	return inst
+
+# How many goal completions it takes to defeat `enemy`: its sheet Health (1 for
+# all current content) plus the player's enemy_health item bonus (Alien Baby +1,
+# so its enemies need TWO goal completions). At least 1.
+func effective_health(enemy: GoalEnemyData) -> int:
+	if enemy == null:
+		return 1
+	return maxi(1, int(enemy.health) + GameState.enemy_health_bonus())
 
 # --- Resolving a game -----------------------------------------------------
 
@@ -190,17 +201,32 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 		return res
 	games_beaten += 1
 
-	# 1. Old-goal fulfilment defeats those stacked enemies before they can hit.
+	# 1. Old-goal fulfilment: completing a follower's goal this game deals it one
+	#    hit. It's defeated (and drops) only when its Health reaches 0; a survivor
+	#    (an Alien-Baby-buffed enemy on its first of two hits) stays on the stack
+	#    but — its goal engaged this game — skips its attack in step 2.
+	var hit_this_game: Dictionary = {}
 	for inst in fulfilled_instances:
-		var e: GoalEnemyData = _pull_from_stack(int(inst))
-		if e != null:
+		var idx: int = _index_of(int(inst))
+		if idx < 0:
+			continue
+		stack[idx]["health"] = int(stack[idx].get("health", 1)) - 1
+		if int(stack[idx]["health"]) <= 0:
+			var e: GoalEnemyData = stack[idx]["enemy"]
+			stack.remove_at(idx)
 			_defeat(e, true, res)
+		else:
+			hit_this_game[int(inst)] = true
 
-	# 2. Every enemy already on the stack attacks (unless stunned). Iterate a
-	#    copy so a lethal hit ending the run mid-loop is safe.
+	# 2. Every enemy already on the stack attacks (unless stunned, or its goal was
+	#    completed this game). Iterate a copy so a lethal hit ending the run
+	#    mid-loop is safe.
 	for entry in stack.duplicate():
 		if run_over:
 			break
+		if hit_this_game.has(int(entry["instance"])):
+			res["attacks"].append({"instance": entry["instance"], "goal_hit": true})
+			continue
 		if int(entry.get("stun", 0)) > 0:
 			entry["stun"] = int(entry["stun"]) - 1
 			res["attacks"].append({"instance": entry["instance"], "stunned": true})
@@ -220,15 +246,19 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 		if enemy_damage_bonus_games <= 0:
 			enemy_damage_bonus = 0
 
-	# 3. Resolve the current game's enemy: met -> defeated + drop; else it joins
-	#    the stack (and, being added after the attack step, gets its one-game
-	#    grace before its first hit).
+	# 3. Resolve the current game's enemy: completing its goal deals one hit.
+	#    Health 0 -> defeated + drop; a survivor (Alien Baby's two-hit enemy) or a
+	#    missed goal joins the stack (added after the attack step, so it gets its
+	#    one-game grace before its first hit) and must be beaten again later.
 	if not current.is_empty():
+		var ch: int = int(current.get("health", 1))
 		if goal_met:
+			ch -= 1
+		if goal_met and ch <= 0:
 			_defeat(current["enemy"], true, res)
 		else:
 			stack.append({"instance": current["instance"],
-				"enemy": current["enemy"], "stun": 0})
+				"enemy": current["enemy"], "stun": 0, "health": maxi(1, ch)})
 		current = {}
 
 	res["hp"] = GameState.hp
@@ -240,14 +270,19 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 	loop_changed.emit()
 	return res
 
-# Fulfil a stacked enemy's goal outside a beat_game call (e.g. a scroll/UI path).
-# Defeats it and drops its item. Returns true if it was on the stack.
+# Fulfil a stacked enemy's goal outside a beat_game call (e.g. a scroll/UI path):
+# deals it one hit. Defeats it and drops its item only when its Health reaches 0
+# (an Alien-Baby-buffed enemy needs two). Returns true if it was on the stack.
 func fulfill(instance: int) -> bool:
-	var e: GoalEnemyData = _pull_from_stack(instance)
-	if e == null:
+	var idx: int = _index_of(instance)
+	if idx < 0:
 		return false
-	var res := {"defeats": [], "drops": 0}
-	_defeat(e, true, res)
+	stack[idx]["health"] = int(stack[idx].get("health", 1)) - 1
+	if int(stack[idx]["health"]) <= 0:
+		var e: GoalEnemyData = stack[idx]["enemy"]
+		stack.remove_at(idx)
+		var res := {"defeats": [], "drops": 0}
+		_defeat(e, true, res)
 	loop_changed.emit()
 	return true
 
@@ -287,7 +322,7 @@ func spawn_to_stack(enemy: GoalEnemyData) -> int:
 		return 0
 	var inst: int = _next_instance
 	_next_instance += 1
-	stack.append({"instance": inst, "enemy": enemy, "stun": 0})
+	stack.append({"instance": inst, "enemy": enemy, "stun": 0, "health": effective_health(enemy)})
 	loop_changed.emit()
 	return inst
 
