@@ -59,12 +59,20 @@ var _controls_row: HBoxContainer
 var _stack: RichTextLabel           # battlefield summary line
 # --- battlefield grid (§grid): the player on the left, a GRID_COLS x GRID_ROWS
 # grid on the right where enemies close in one column per game beaten (MMBN-style).
+# Enemies are not one-per-cell: each covers its GoalEnemyData footprint, so the
+# board is drawn as a fixed grid of backdrop panels with a free-positioned OVERLAY
+# on top holding one node per enemy, spanning that enemy's whole bounding box.
 var _battlefield: HBoxContainer
 var _hero_icon: TextureRect
 var _hero_hp: Label
-var _grid_cells: Array = []          # _grid_cells[row][col] -> PanelContainer holder
+var _field: Control                  # fixed-size board the two layers stack inside
+var _grid_cells: Array = []          # _grid_cells[row][col-1] -> backdrop PanelContainer
+var _enemy_layer: Control            # free-positioned enemy + loot nodes, drawn over the board
+# Health / damage / status badges live on their own layer ABOVE every body, so an
+# enemy overlapping another never hides what that other one is about to do to you.
+var _badge_layer: Control
+var _enemy_nodes: Dictionary = {}    # instance -> the node currently drawing it
 var _offgrid_box: VBoxContainer      # overflow queue just off the grid's right edge
-var _enemy_rows: Dictionary = {}     # instance -> row, so an enemy keeps its lane
 var _drop_queue: Array = []          # ItemData dropped by kills, shown as field loot
 var _selected_instance: int = 0      # clicked enemy the combat verbs target (0 = none)
 var _push_btn: Button
@@ -851,6 +859,41 @@ func _stack_summary() -> String:
 
 const _CELL: int = 84                # grid cell edge in px
 const _CELL_SEP: int = 6
+const _CELL_STEP: int = _CELL + _CELL_SEP
+# Everything on the board layers by TREE ORDER, never z_index: z_index is relative
+# to the parent and would punch the board out through anything drawn later in the
+# scene — the enemy info card and the reward screens sit above the battlefield
+# precisely because they're mounted after it.
+
+# A Control whose clickable area is only the cells its enemy actually FILLS, so
+# the empty notch inside an L-shaped body stays clickable for whatever stands
+# behind it — the bounding box is for drawing, the mask is for input.
+class FootprintControl extends Control:
+	var cells: Array = []            # Vector2i(col offset, row offset), solid only
+	var cell_size: float = 84.0
+	var step: float = 90.0
+
+	func _has_point(point: Vector2) -> bool:
+		for c in cells:
+			if Rect2(Vector2(c.x, c.y) * step, Vector2(cell_size, cell_size)).has_point(point):
+				return true
+		return false
+
+# Board size in px: GRID_COLS x GRID_ROWS cells with a gutter between them.
+func _field_size() -> Vector2:
+	return Vector2(
+		GameLoop2.GRID_COLS * _CELL + (GameLoop2.GRID_COLS - 1) * _CELL_SEP,
+		GameLoop2.GRID_ROWS * _CELL + (GameLoop2.GRID_ROWS - 1) * _CELL_SEP)
+
+# Top-left of grid cell (`row`, `col`) inside the board (0-based row, 1-based col).
+func _cell_pos(row: int, col: int) -> Vector2:
+	return Vector2((col - 1) * _CELL_STEP, row * _CELL_STEP)
+
+# Pixel size of a footprint `cols` wide and `rows` tall, gutters included — the
+# rect an enemy's art is drawn across.
+func _span_size(rows: int, cols: int) -> Vector2:
+	return Vector2(cols * _CELL + (cols - 1) * _CELL_SEP,
+		rows * _CELL + (rows - 1) * _CELL_SEP)
 
 # The combat verbs live with the combat: Push and Bomb sit on a toolbar attached to
 # the battlefield and act on the enemy you clicked. Each button explains why it's
@@ -894,7 +937,9 @@ func _refresh_battle_toolbar() -> void:
 		_target_label.text = "no target selected"
 		_target_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	else:
-		_target_label.text = "▸ %s  (column %d)" % [e.display_name, int(entry.get("col", GameLoop2.SPAWN_COL))]
+		_target_label.text = "▸ %s  (col %d, row %d)" % [
+			e.display_name, int(entry.get("col", GameLoop2.SPAWN_COL)),
+			int(entry.get("row", 0)) + 1]
 		_target_label.add_theme_color_override("font_color", UITheme.ACCENT)
 
 	_push_btn.text = "⇤  Push (%d)" % GameState.push
@@ -904,10 +949,10 @@ func _refresh_battle_toolbar() -> void:
 		_push_btn.tooltip_text = "Select an enemy to push."
 	elif GameState.push <= 0:
 		_push_btn.tooltip_text = "No Push charges left."
-	elif int(entry.get("col", 0)) >= GameLoop2.GRID_COLS:
-		_push_btn.tooltip_text = "%s is already at the back column — nowhere to push it." % e.display_name
+	elif int(entry.get("col", 0)) + e.footprint_cols() - 1 >= GameLoop2.GRID_COLS:
+		_push_btn.tooltip_text = "%s is already against the back edge — nowhere to push it." % e.display_name
 	elif not push_ok:
-		_push_btn.tooltip_text = "The column behind %s is full — no room to shove it back." % e.display_name
+		_push_btn.tooltip_text = "Something is parked behind %s — no room to shove it back." % e.display_name
 	else:
 		_push_btn.tooltip_text = "Shove %s back one column, buying the games it takes to close in again." % e.display_name
 
@@ -977,23 +1022,46 @@ func _build_battlefield() -> Control:
 	hero_box.add_child(_hero_hp)
 	_battlefield.add_child(hero_box)
 
-	# The grid: GRID_ROWS rows, each with GRID_COLS cells laid out col1..colN from
-	# the hero outward. Built row-major into a GridContainer.
-	var grid := GridContainer.new()
-	grid.columns = GameLoop2.GRID_COLS
-	grid.add_theme_constant_override("h_separation", _CELL_SEP)
-	grid.add_theme_constant_override("v_separation", _CELL_SEP)
+	# The board: a fixed-size Control holding two stacked layers. The lower one is
+	# the static backdrop — GRID_ROWS x GRID_COLS empty panels, column 1 nearest the
+	# hero — and the upper one is where enemies and loot are positioned by hand,
+	# because an enemy can span several cells and must be free to overlap its
+	# neighbours.
+	_field = Control.new()
+	_field.custom_minimum_size = _field_size()
+	_field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_battlefield.add_child(_field)
+
+	var cell_layer := Control.new()
+	cell_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cell_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.add_child(cell_layer)
 	_grid_cells = []
 	for row in range(GameLoop2.GRID_ROWS):
 		var row_cells: Array = []
-		# GridContainer fills left-to-right; column 1 (front) sits nearest the hero.
 		for col in range(1, GameLoop2.GRID_COLS + 1):
 			var cell := PanelContainer.new()
-			cell.custom_minimum_size = Vector2(_CELL, _CELL)
-			grid.add_child(cell)
+			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cell.position = _cell_pos(row, col)
+			cell.size = Vector2(_CELL, _CELL)
+			cell.add_theme_stylebox_override("panel", _empty_cell_style())
+			cell_layer.add_child(cell)
 			row_cells.append(cell)
 		_grid_cells.append(row_cells)
-	_battlefield.add_child(grid)
+
+	_enemy_layer = Control.new()
+	_enemy_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_enemy_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.add_child(_enemy_layer)
+
+	# Stats ride above every body and every drop — it's the last layer added to the
+	# board, so it draws last. Non-interactive, so it never steals a click from the
+	# enemy or the loot underneath it.
+	_badge_layer = Control.new()
+	_badge_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_badge_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.add_child(_badge_layer)
 
 	# Off-field lane: enemies with no cell to stand in — the overflow queue, and the
 	# game you're currently playing, whose enemy only steps onto the grid once you
@@ -1028,56 +1096,36 @@ func _refresh_battlefield() -> void:
 	_apply_crisp(_hero_icon, hero_tex)
 	_hero_hp.text = "♥ %d/%d" % [GameState.hp, GameState.max_hp]
 
-	# Clear every cell and the overflow lane.
-	for row_cells in _grid_cells:
-		for cell in row_cells:
-			for c in cell.get_children():
-				c.queue_free()
-			cell.add_theme_stylebox_override("panel", _empty_cell_style())
+	# Clear the overlays and the overflow lane; the backdrop panels are static.
+	for layer in [_enemy_layer, _badge_layer]:
+		for c in layer.get_children():
+			layer.remove_child(c)
+			c.queue_free()
+	_enemy_nodes.clear()
 	for c in _offgrid_box.get_children():
 		c.queue_free()
 
-	# occupancy[col] -> array of {enemy, entry, current}. Assemble the enemies to
-	# draw: the on-grid stack plus (in PLAYING) the current enemy at the spawn col.
-	var occ: Dictionary = {}
-	for col in range(1, GameLoop2.OFFGRID_COL + 1):
-		occ[col] = []
+	# Enemies standing on the board, drawn BACK-TO-FRONT: a body lower on the grid
+	# is nearer the viewer, so it paints over the ones above it where their
+	# bounding boxes overlap. Sorting by the bottom edge of the footprint (then the
+	# top edge, then the column) makes a tall enemy hang in front of what it
+	# reaches down past.
+	var placed: Array = []
 	for entry in GameLoop2.stack:
-		var col: int = int(entry.get("col", GameLoop2.SPAWN_COL))
-		occ[col].append({"entry": entry, "current": false})
+		if int(entry.get("col", GameLoop2.OFFGRID_COL)) <= GameLoop2.GRID_COLS:
+			placed.append(entry)
+	placed.sort_custom(func(a, b): return _draw_order_key(a) < _draw_order_key(b))
+	for entry in placed:
+		_add_enemy_node(entry, false)
+
+	# Off-field: the overflow queue, plus the game you're playing right now — it
+	# isn't on the stack yet and only walks onto the board when you report the
+	# result (that entrance is the one-game grace made visible, §7.2).
+	for entry in GameLoop2.stack:
+		if int(entry.get("col", GameLoop2.OFFGRID_COL)) > GameLoop2.GRID_COLS:
+			_offgrid_box.add_child(_offgrid_token(entry, false))
 	if _phase == Phase.PLAYING and GameLoop2.has_current():
-		# The game you're playing right now waits OFF the field — it isn't on the
-		# stack yet, and it only steps onto the spawn column when you report the
-		# result (that entrance is the one-game grace made visible, §7.2).
-		occ[GameLoop2.OFFGRID_COL].append({"entry": GameLoop2.current, "current": true})
-
-	# Which rows each on-grid column uses, keeping an enemy in its remembered lane.
-	var seen: Dictionary = {}
-	for col in range(1, GameLoop2.GRID_COLS + 1):
-		var used: Array = []
-		for item in occ[col]:
-			var inst: int = int(item["entry"].get("instance", 0))
-			seen[inst] = true
-			var row: int = int(_enemy_rows.get(inst, -1))
-			if row < 0 or row >= GameLoop2.GRID_ROWS or used.has(row):
-				row = 0
-				while row < GameLoop2.GRID_ROWS and used.has(row):
-					row += 1
-			if row >= GameLoop2.GRID_ROWS:
-				continue
-			used.append(row)
-			_enemy_rows[inst] = row
-			var cell: PanelContainer = _grid_cells[row][col - 1]
-			_paint_enemy_cell(cell, item["entry"], col, item["current"])
-
-	# Off-field enemies: the overflow queue plus the game currently being played.
-	for item in occ[GameLoop2.OFFGRID_COL]:
-		_offgrid_box.add_child(_offgrid_token(item["entry"], item["current"]))
-
-	# Forget lanes for enemies that are gone (defeated / bombed) so rows recycle.
-	for inst in _enemy_rows.keys():
-		if not seen.has(inst):
-			_enemy_rows.erase(inst)
+		_offgrid_box.add_child(_offgrid_token(GameLoop2.current, true))
 
 	# Drop a selection that died / was bombed, then relabel the combat verbs.
 	if _selected_instance > 0 and _stack_entry(_selected_instance).is_empty():
@@ -1090,10 +1138,11 @@ func _refresh_battlefield() -> void:
 func _empty_cell_style() -> StyleBox:
 	return UITheme.flat(UITheme.BG.lerp(UITheme.PANEL, 0.4), 6, 4, 1, UITheme.BORDER.lerp(UITheme.BG, 0.3))
 
-# Paint an enemy cell's frame for its current state. Hovering brightens the
+# Paint an enemy's footprint tiles for its current state. Hovering brightens the
 # outline and lifts the fill (the "you can click this" cue); the selected enemy —
-# the one the toolbar's Push / Bomb act on — keeps a thick accent ring.
-func _style_enemy_cell(cell: PanelContainer, accent: Color, is_current: bool, selected: bool, hovered: bool) -> void:
+# the one the toolbar's Push / Bomb act on — keeps a thick accent ring. `frames`
+# is one PanelContainer per cell the enemy fills, so an L reads as an L.
+func _style_enemy_cell(frames: Array, accent: Color, is_current: bool, selected: bool, hovered: bool) -> void:
 	var border: Color = accent
 	var width: int = 3 if is_current else 2
 	var fill: Color = UITheme.PANEL
@@ -1105,7 +1154,10 @@ func _style_enemy_cell(cell: PanelContainer, accent: Color, is_current: bool, se
 		border = border.lerp(Color.WHITE, 0.55)
 		width = maxi(width, 3)
 		fill = fill.lerp(Color.WHITE, 0.09)
-	cell.add_theme_stylebox_override("panel", UITheme.flat(fill, 6, 2, width, border))
+	var box: StyleBox = UITheme.flat(fill, 6, 2, width, border)
+	for f in frames:
+		if is_instance_valid(f):
+			f.add_theme_stylebox_override("panel", box)
 
 # Clicking an enemy targets it for the combat verbs and opens its info card.
 func _on_enemy_clicked(instance: int, entry: Dictionary, col: int, is_current: bool) -> void:
@@ -1200,7 +1252,9 @@ func _show_enemy_info(entry: Dictionary, col: int, is_current: bool) -> void:
 	var hp: int = int(entry.get("health", e.health))
 	stat_col.add_child(_info_stat("❤", "Health", "%d goal%s to defeat" % [hp, "" if hp == 1 else "s"], Color(1.0, 0.5, 0.5)))
 	stat_col.add_child(_info_stat("⚔", "Damage", "%d per game, from the front" % e.damage, Color(1.0, 0.8, 0.35)))
-	stat_col.add_child(_info_stat("◎", "Position", _position_text(col, is_current), accent))
+	stat_col.add_child(_info_stat("◎", "Position", _position_text(entry, col, is_current), accent))
+	if e.footprint_rows() > 1 or e.footprint_cols() > 1:
+		stat_col.add_child(_info_stat("▦", "Size", _size_text(e), UITheme.TEXT_DIM))
 	var stun: int = int(entry.get("stun", 0))
 	if stun > 0:
 		stat_col.add_child(_info_stat("❄", "Frozen", "skips its next %d game(s)" % stun, Color(0.6, 0.8, 1.0)))
@@ -1311,18 +1365,35 @@ func _info_chip(text: String, color: Color) -> Control:
 	wrap.add_child(l)
 	return wrap
 
-# Plain-language description of where an enemy stands and what that means.
-func _position_text(col: int, is_current: bool) -> String:
+# Plain-language description of where an enemy stands and what that means. `col`
+# is its FRONT column — the leading edge is what decides when it strikes, so a
+# wide body reads as closer than its left-hand corner alone would suggest.
+func _position_text(entry: Dictionary, col: int, is_current: bool) -> String:
 	if is_current:
 		return "off field — steps in when you report this game"
 	if col >= GameLoop2.OFFGRID_COL:
-		return "off field — waiting for a cell to free up"
+		return "off field — waiting for room on the board"
+	var lane: String = "row %d, " % (int(entry.get("row", 0)) + 1)
 	if col <= 1:
-		return "front column — strikes every game"
-	return "column %d — %d game(s) from striking" % [col, col - 1]
+		return lane + "front column — strikes every game"
+	return "%scolumn %d — %d game(s) from striking" % [lane, col, col - 1]
 
-# The accent colour for an enemy at grid column `col`: red at the front (about to
-# strike), amber a column back, gold farther out, orange for a boss.
+# How much board an enemy takes up, spelled out for the info card.
+func _size_text(e: GoalEnemyData) -> String:
+	var cells: int = e.footprint_cells().size()
+	var box: String = "%d x %d" % [e.footprint_rows(), e.footprint_cols()]
+	if cells == e.footprint_rows() * e.footprint_cols():
+		return "%s — %d cells of the board" % [box, cells]
+	# A shaped body (an L) fills fewer cells than its box; say so, since the gap
+	# is a real hole other enemies can stand in.
+	var raw: String = String(e.size)
+	var space: int = raw.find(" ")
+	var shape: String = raw.substr(space + 1) if space >= 0 else ""
+	return "%s %s — %d cells, the rest is a gap" % [box, shape, cells]
+
+# The accent colour for an enemy whose front edge is at grid column `col`: red at
+# the front (about to strike), amber a column back, gold farther out, orange for
+# a boss.
 func _col_accent(col: int, is_boss: bool) -> Color:
 	if is_boss:
 		return Color(0.95, 0.55, 0.2)
@@ -1332,38 +1403,90 @@ func _col_accent(col: int, is_boss: bool) -> Color:
 		return Color(1.0, 0.62, 0.24)
 	return UITheme.GOLD
 
-# Draw one enemy into a grid cell: its art fills the cell, with ❤ health bottom-
-# left and ⚔ damage bottom-right, a column-tinted border, and Push / Bomb
-# affordances when a charge is in hand. The current (now-playing) enemy pulses a
-# thicker border.
-func _paint_enemy_cell(cell: PanelContainer, entry: Dictionary, col: int, is_current: bool) -> void:
+# Sort key for painting order: bodies lower on the board draw over the ones above
+# them, so the bottom edge of the footprint leads, then its top edge, then column.
+func _draw_order_key(entry: Dictionary) -> int:
+	var e: GoalEnemyData = entry.get("enemy")
+	var row: int = int(entry.get("row", 0))
+	var rows: int = e.footprint_rows() if e != null else 1
+	return (row + rows - 1) * 10000 + row * 100 + int(entry.get("col", 1))
+
+# Add one enemy to the overlay, spanning its whole footprint. Each cell it fills
+# gets a tinted frame (so a 2x3 L visibly reads as an L), the art is drawn across
+# the FULL bounding box — never cropped to the solid cells, so the parts poking
+# out of the shape stay visible — and ❤ health / ⚔ damage / status badges sit in
+# the corners. The current (now-playing) enemy gets a thicker border.
+func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	var e: GoalEnemyData = entry.get("enemy")
 	if e == null:
-		return
+		return null
+	var row: int = int(entry.get("row", 0))
+	var col: int = int(entry.get("col", 1))
+	var rows: int = e.footprint_rows()
+	var cols: int = e.footprint_cols()
+	var cells: Array = e.footprint_cells()
+	var front: int = GameLoop2.GRID_COLS
+	for off in cells:
+		front = mini(front, col + int(off.x))
+
 	var stun: int = int(entry.get("stun", 0))
-	var accent: Color = _col_accent(col, e.is_boss())
+	var accent: Color = _col_accent(front, e.is_boss())
 	if stun > 0:
 		accent = accent.lerp(Color(0.5, 0.7, 1.0), 0.5)
 	var inst: int = int(entry.get("instance", 0))
 	var selected: bool = inst > 0 and inst == _selected_instance
-	_style_enemy_cell(cell, accent, is_current, selected, false)
-	# Enemies are click-to-inspect: hovering brightens the outline to advertise it,
-	# clicking selects the enemy and opens its info card.
-	cell.mouse_filter = Control.MOUSE_FILTER_STOP
-	cell.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	cell.set_meta("instance", inst)
-	cell.mouse_entered.connect(func(): _style_enemy_cell(cell, accent, is_current, inst == _selected_instance, true))
-	cell.mouse_exited.connect(func(): _style_enemy_cell(cell, accent, is_current, inst == _selected_instance, false))
-	cell.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			_on_enemy_clicked(inst, entry, col, is_current))
-	# One full-rect holder so corner-anchored overlays position correctly (a
-	# PanelContainer stretches every direct child, clobbering anchor presets).
-	# It's also what the resolve animation hides while a ghost slides into place.
-	var holder := _cell_holder(cell)
-	cell.set_meta("holder", holder)
 
-	# Art (or a tinted silhouette when the enemy has no image), stretched to fill.
+	# The node covers the bounding box, but only answers the mouse over the cells
+	# the enemy really fills — an L's notch belongs to whoever stands in it.
+	var node := FootprintControl.new()
+	node.cells = cells
+	node.cell_size = float(_CELL)
+	node.step = float(_CELL_STEP)
+	node.position = _cell_pos(row, col)
+	node.size = _span_size(rows, cols)
+	node.mouse_filter = Control.MOUSE_FILTER_STOP
+	node.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	node.set_meta("instance", inst)
+	_enemy_layer.add_child(node)
+	_enemy_nodes[inst] = node
+
+	# One frame per filled cell, positioned inside the node.
+	var frames: Array = []
+	for off in cells:
+		var frame := PanelContainer.new()
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.position = Vector2(off.x, off.y) * float(_CELL_STEP)
+		frame.size = Vector2(_CELL, _CELL)
+		node.add_child(frame)
+		frames.append(frame)
+	_style_enemy_cell(frames, accent, is_current, selected, false)
+
+	# Enemies are click-to-inspect: hovering brightens the outline to advertise it
+	# and lifts the whole body above its neighbours so an overlapped enemy can be
+	# seen in full; clicking selects it and opens its info card. The lift is a
+	# reorder within the enemy layer, not a z_index, so a hovered body still stays
+	# under the badges and under anything mounted above the battlefield.
+	var resting_index: int = node.get_index()
+	node.mouse_entered.connect(func():
+		_enemy_layer.move_child(node, -1)
+		_style_enemy_cell(frames, accent, is_current, inst == _selected_instance, true))
+	node.mouse_exited.connect(func():
+		_enemy_layer.move_child(node, mini(resting_index, _enemy_layer.get_child_count() - 1))
+		_style_enemy_cell(frames, accent, is_current, inst == _selected_instance, false))
+	node.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			_on_enemy_clicked(inst, entry, front, is_current))
+
+	# One full-rect holder so corner-anchored overlays position correctly. It's
+	# also what the resolve animation hides while a ghost slides into place.
+	var holder := Control.new()
+	holder.set_anchors_preset(Control.PRESET_FULL_RECT)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	node.add_child(holder)
+	node.set_meta("holder", holder)
+
+	# Art (or a tinted silhouette when the enemy has no image) across the whole
+	# bounding box, aspect preserved so nothing is squashed or cut off.
 	var art := TextureRect.new()
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -1377,8 +1500,25 @@ func _paint_enemy_cell(cell: PanelContainer, entry: Dictionary, col: int, is_cur
 		art.modulate = accent
 	holder.add_child(art)
 
-	# Overlay: boss skull top, health bottom-left, damage bottom-right, and the
-	# stun marker when frozen. All non-blocking so the cell tooltip still shows.
+	# Badges go on the layer above every body, but stay pinned to the cells this
+	# enemy holds (not to its nudged art), so they read as "this one's stats".
+	var badges := Control.new()
+	badges.position = node.position
+	badges.size = node.size
+	badges.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_badge_layer.add_child(badges)
+	node.set_meta("badges", badges)
+	_add_enemy_badges(badges, entry, e, accent, selected)
+	return node
+
+# Badges for one enemy, laid out in the corners of the box it holds: boss skull
+# top, health bottom-left, damage bottom-right, and the stun marker when frozen.
+# `holder` is the enemy's slot on the badge layer, so these always draw in front
+# of every body on the board. All non-blocking, so the enemy underneath still
+# takes the click and shows its tooltip.
+func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
+		accent: Color, selected: bool) -> void:
+	var stun: int = int(entry.get("stun", 0))
 	if e.is_boss():
 		var skull := _corner_badge("☠", accent)
 		skull.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 2)
@@ -1487,27 +1627,34 @@ func _battlefield_positions() -> Dictionary:
 	var out: Dictionary = {}
 	if _battlefield == null:
 		return out
-	for row_cells in _grid_cells:
-		for cell in row_cells:
-			if cell.has_meta("instance") and int(cell.get_meta("instance")) > 0:
-				out[int(cell.get_meta("instance"))] = cell.get_global_rect()
+	for inst in _enemy_nodes:
+		var node: Control = _enemy_nodes[inst]
+		if is_instance_valid(node):
+			out[int(inst)] = node.get_global_rect()
 	if _offgrid_box != null:
 		for tok in _offgrid_box.get_children():
 			if tok.has_meta("instance") and int(tok.get_meta("instance")) > 0:
 				out[int(tok.get_meta("instance"))] = tok.get_global_rect()
 	return out
 
-# The holder Control of whichever cell currently draws `instance`, so it can be
+# The holder Control of whichever node currently draws `instance`, so it can be
 # hidden while its ghost slides in.
 func _holder_for_instance(instance: int) -> Control:
-	for row_cells in _grid_cells:
-		for cell in row_cells:
-			if cell.has_meta("instance") and int(cell.get_meta("instance")) == instance:
-				return cell.get_meta("holder") if cell.has_meta("holder") else null
+	var node: Variant = _enemy_nodes.get(instance)
+	if node != null and is_instance_valid(node) and node.has_meta("holder"):
+		return node.get_meta("holder")
 	if _offgrid_box != null:
 		for tok in _offgrid_box.get_children():
 			if tok.has_meta("instance") and int(tok.get_meta("instance")) == instance:
 				return tok.get_meta("holder") if tok.has_meta("holder") else null
+	return null
+
+# The badge slot for `instance` on the badge layer (off-field tokens carry their
+# own badges inline, so they have none here).
+func _badges_for_instance(instance: int) -> Control:
+	var node: Variant = _enemy_nodes.get(instance)
+	if node != null and is_instance_valid(node) and node.has_meta("badges"):
+		return node.get_meta("badges")
 	return null
 
 func _clear_fx() -> void:
@@ -1618,9 +1765,13 @@ func _spawn_slide_ghost(instance: int, from_rect: Rect2, to_rect: Rect2) -> void
 	_fx_layer.add_child(ghost)
 	ghost.global_position = from_rect.position
 
-	var holder: Control = _holder_for_instance(instance)
-	if holder != null:
-		holder.modulate.a = 0.0
+	# Hide the settled body AND its badges while the ghost travels, so the enemy
+	# isn't drawn in two places at once.
+	var hidden: Array = []
+	for part in [_holder_for_instance(instance), _badges_for_instance(instance)]:
+		if part != null:
+			part.modulate.a = 0.0
+			hidden.append(part)
 
 	var t := ghost.create_tween()
 	t.tween_interval(_FX_ATTACK_TIME)
@@ -1628,8 +1779,9 @@ func _spawn_slide_ghost(instance: int, from_rect: Rect2, to_rect: Rect2) -> void
 	t.tween_property(ghost, "global_position", to_rect.position, _FX_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	t.tween_property(ghost, "size", to_rect.size, _FX_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	t.chain().tween_callback(func():
-		if is_instance_valid(holder):
-			holder.modulate.a = 1.0
+		for part in hidden:
+			if is_instance_valid(part):
+				part.modulate.a = 1.0
 		ghost.queue_free())
 
 # --- inline kill-drops (§8) ------------------------------------------------
@@ -1673,28 +1825,34 @@ func _roll_drop_rarity() -> int:
 
 # Place each queued drop as collectable loot in the nearest free cell (front
 # column and top rows first), overflowing into the side lane if the grid is
-# packed. Called at the end of every battlefield repaint.
+# packed. A cell is free when no enemy's FOOTPRINT covers it, so loot can land in
+# the notch of an L-shaped body. Called at the end of every battlefield repaint.
 func _place_drops() -> void:
 	if _phase == Phase.OVER or _drop_queue.is_empty():
 		return
+	var taken: Dictionary = GameLoop2.occupancy()
 	var qi: int = 0
 	for col in range(1, GameLoop2.GRID_COLS + 1):
 		for row in range(GameLoop2.GRID_ROWS):
 			if qi >= _drop_queue.size():
 				return
-			var cell: PanelContainer = _grid_cells[row][col - 1]
-			if cell.get_child_count() > 0:
+			if taken.has(Vector2i(col, row)):
 				continue
-			_paint_drop_cell(cell, _drop_queue[qi])
+			var node := _make_drop_node(_drop_queue[qi])
+			node.position = _cell_pos(row, col)
+			node.size = Vector2(_CELL, _CELL)
+			# Loot is added after every enemy, so it stays reachable on a busy board.
+			_enemy_layer.add_child(node)
 			qi += 1
 	# Grid is full — the remaining drops wait as tokens in the overflow lane.
 	while qi < _drop_queue.size():
 		_offgrid_box.add_child(_drop_token(_drop_queue[qi]))
 		qi += 1
 
-# Draw a drop into a grid cell: the item's art, a rarity-tinted border, and a
+# One cell of collectable loot: the item's art, a rarity-tinted border, and a
 # Collect / Skip pair of buttons.
-func _paint_drop_cell(cell: PanelContainer, drop: Dictionary) -> void:
+func _make_drop_node(drop: Dictionary) -> PanelContainer:
+	var cell := PanelContainer.new()
 	var item: ItemData = drop["item"]
 	var col: Color = UITheme.rarity_color(int(item.rarity))
 	cell.add_theme_stylebox_override("panel", UITheme.flat(col.lerp(UITheme.BG, 0.55), 6, 2, 2, col))
@@ -1728,6 +1886,7 @@ func _paint_drop_cell(cell: PanelContainer, drop: Dictionary) -> void:
 	btns.add_child(take)
 	btns.add_child(skip)
 	holder.add_child(btns)
+	return cell
 
 # A drop shown as a token in the overflow lane (used when the grid is packed).
 func _drop_token(drop: Dictionary) -> Control:

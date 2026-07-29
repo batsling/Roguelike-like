@@ -61,6 +61,30 @@ enum Difficulty { LOW, MEDIUM, HIGH, INSANE }
 # Baby Alien enemy to the Alien Baby item and an "defeat an alien" bounty, §7).
 @export var tag: StringName = &""
 
+# === Battlefield footprint (the sheet's Size column) ======================
+# How many grid cells this enemy takes up on the battlefield. Most enemies are a
+# single cell; bigger ones cover a rectangle, and a few cover a NON-rectangular
+# shape inside that rectangle (Skeletal Bastion's "2x3 L 90 CC" — an L rotated a
+# quarter turn counter-clockwise). A wider enemy spawns with its rightmost cell
+# on the back column, so its front edge starts closer to the player and it
+# strikes sooner; its whole footprint has to be clear to advance, so a big enemy
+# also plugs the lanes behind it (GameLoop2 §grid).
+#
+# `size` keeps the raw sheet text for display; `shape_rows` x `shape_cols` is the
+# BOUNDING BOX (rows first, matching the sheet's "HxW" reading) and `shape_mask`
+# says which cells inside it are actually solid: one int per row, bit `c` set
+# when column `c` of that row is occupied. A 2x3 L is [0b100, 0b111]:
+#
+#     . . #
+#     # # #
+#
+# The art is always drawn across the full bounding box so the parts that stick
+# out of the solid rows aren't cropped; only the mask blocks movement.
+@export var size: String = "1x1"
+@export var shape_rows: int = 1
+@export var shape_cols: int = 1
+@export var shape_mask: PackedInt32Array = PackedInt32Array([1])
+
 # Art base name under res://images2.0/enemies/ (the sheet's File column). Resolves
 # to images2.0/enemies/<file>.png; falls back to a placeholder when missing (§10.1).
 @export var file: String = ""
@@ -85,3 +109,35 @@ func is_boss() -> bool:
 # Art base name, falling back to the de-spaced display name when `file` is unset.
 func art_file() -> String:
 	return file if file != "" else display_name.replace(" ", "").replace("'", "")
+
+# --- footprint helpers ----------------------------------------------------
+
+# Bounding-box height in grid cells (at least 1, so unauthored content still
+# behaves like a plain 1x1).
+func footprint_rows() -> int:
+	return maxi(1, shape_rows)
+
+# Bounding-box width in grid cells (at least 1).
+func footprint_cols() -> int:
+	return maxi(1, shape_cols)
+
+# Whether the cell at (`r`, `c`) inside the bounding box is solid. Rows the mask
+# doesn't cover fall back to "the whole row is solid", so a rectangle needs no
+# mask at all.
+func occupies(r: int, c: int) -> bool:
+	if r < 0 or c < 0 or r >= footprint_rows() or c >= footprint_cols():
+		return false
+	if r >= shape_mask.size():
+		return true
+	return (int(shape_mask[r]) & (1 << c)) != 0
+
+# Every solid cell as a Vector2i(column offset, row offset) from the footprint's
+# top-left corner — what the grid model tests for collisions and the battlefield
+# draws frames under.
+func footprint_cells() -> Array:
+	var out: Array = []
+	for r in range(footprint_rows()):
+		for c in range(footprint_cols()):
+			if occupies(r, c):
+				out.append(Vector2i(c, r))
+	return out

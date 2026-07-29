@@ -23,7 +23,8 @@ func _tres_count(path: String) -> int:
 # --- Characters2.0 --------------------------------------------------------
 
 func test_character2_roster_loads() -> void:
-	assert_eq(Data.all_characters2().size(), 6, "6 characters2.0 rows -> 6 .tres")
+	assert_eq(Data.all_characters2().size(), _tres_count("res://data/characters2.0/"),
+		"every characters2.0 .tres loads")
 
 func test_manager_levels_push() -> void:
 	var manager: CharacterData = Data.get_character2(&"manager")

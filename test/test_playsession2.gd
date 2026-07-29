@@ -38,8 +38,8 @@ func test_pick_spawns_enemy_and_beat_resolves() -> void:
 	assert_eq(GameState.hp, 10, "grace: no hit the game it stacked")
 	# It closes one column per game and only strikes once it reaches the front
 	# (§grid). Marched directly here so no extra picked enemies muddy the hp math.
-	GameLoop2.beat_game(false)         # -> column 2
-	GameLoop2.beat_game(false)         # -> column 1 (front), no strike yet
+	while int(GameLoop2.stack[0].get("col", 1)) > 1:
+		GameLoop2.beat_game(false)     # closes one column per game
 	assert_eq(GameState.hp, 10, "no hit while closing in")
 	GameLoop2.beat_game(false)         # the front-line enemy now hits for dmg
 	assert_eq(GameState.hp, 10 - dmg, "the front-line enemy hits for its damage")

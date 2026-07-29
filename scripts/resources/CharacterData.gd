@@ -78,8 +78,18 @@ extends Resource
 @export var level_up_card_tag: StringName = &""
 
 # Visuals
+# Art base name (the sheet's File column) — resolves to
+# images2.0/characters/Full/<file>.png and images2.0/characters/Icon/<file>.png.
+# Needed because a display name and its art stem can differ (Erratic Deck ->
+# ErraticDeck); falls back to the de-spaced display name when unset.
+@export var file: String = ""
 @export var portrait: Texture2D
 # Small token image used for the player marker in action & tactical combat
 # (the round in-world avatar). Falls back to `portrait` when unset.
 @export var icon: Texture2D
 @export var portrait_color: Color = Color.WHITE
+
+# Art base name, falling back to the de-spaced display name when `file` is unset
+# (mirrors GoalEnemyData.art_file()).
+func art_file() -> String:
+	return file if file != "" else display_name.replace(" ", "").replace("'", "")
