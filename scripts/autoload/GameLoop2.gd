@@ -36,9 +36,9 @@ signal run_won()
 # left, and following enemies occupy a GRID_COLS x GRID_ROWS grid on the right.
 # An enemy SPAWNS ON the grid, positioned so its RIGHTMOST cell sits on the back
 # column (GRID_COLS) — so a wide enemy's front edge starts closer to the player
-# and reaches you in fewer games — in a RANDOM row among those it can actually
-# reach the player from (enemies never change lanes, so a row with a body parked
-# in it is a row it could never strike from). After each game beaten
+# and reaches you in fewer games — in a RANDOM row among those with the clearest
+# run at the player (enemies never change lanes, so a row with bodies parked in
+# it is a row it may never strike from). After each game beaten
 # every enemy closes one column toward the player. An enemy strikes once ANY of
 # its cells is in the front column (col 1). Enemies that can't fit anywhere wait
 # OFF-GRID (OFFGRID_COL) and slide in as space frees.
@@ -657,26 +657,48 @@ func _open_rows(enemy: GoalEnemyData, col: int, exclude: int = 0) -> Array:
 			rows.append(row)
 	return rows
 
-# Can `enemy`, standing at (`row`, `col`), march all the way to the front from
-# there — every column between here and column 1 clear for its whole footprint?
-# Enemies never change lanes, so a row with something parked in it is a row this
-# enemy could never strike from; this is what "a path to hit the player" means.
-func has_clear_path(enemy: GoalEnemyData, row: int, col: int, exclude: int = 0) -> bool:
+# Everything standing between `enemy` at (`row`, `col`) and the player: walk its
+# footprint forward column by column and collect the instances it would run into.
+# Enemies never change lanes, so this is the complete list of bodies it must
+# outlive to ever land a hit. Returns {"enemies": int, "cells": int} — how many
+# distinct enemies are in the way, and how many cell-crossings they cost.
+func path_blockers(enemy: GoalEnemyData, row: int, col: int, exclude: int = 0) -> Dictionary:
+	var taken: Dictionary = occupancy(exclude)
+	var who: Dictionary = {}
+	var cells: int = 0
 	for c in range(col, 0, -1):
-		if not fits_at(enemy, row, c, exclude):
-			return false
-	return true
+		for cell in footprint_at(enemy, row, c):
+			if taken.has(cell):
+				who[int(taken[cell])] = true
+				cells += 1
+	return {"enemies": who.size(), "cells": cells}
 
-# Rows `enemy` can both stand in at `col` AND reach the player from. Falls back to
-# merely standable rows when every lane is walled off, so a packed board still
-# places the enemy somewhere rather than stalling it off-grid forever.
+# Can `enemy`, standing at (`row`, `col`), march all the way to the front with
+# nothing in its way? "A path to hit the player" in one call.
+func has_clear_path(enemy: GoalEnemyData, row: int, col: int, exclude: int = 0) -> bool:
+	return int(path_blockers(enemy, row, col, exclude).get("enemies", 0)) == 0
+
+# The rows `enemy` should consider entering at `col`: the ones with the CLEAREST
+# run at the player. A row it can't stand in is out; of the rest, the fewest
+# bodies in the way wins, then the fewest cells those bodies block. Ties come back
+# together so the caller still picks randomly among equally good lanes.
+#
+# This matters most for a big enemy, which has several rows' worth of lane to get
+# through: an all-or-nothing "is this lane clear?" test would call every option
+# equally bad the moment one body sits on the board, and drop it into a lane
+# jammed behind two enemies when one row up it only had to outlive one.
 func _spawn_rows(enemy: GoalEnemyData, col: int, exclude: int = 0) -> Array:
-	var open_rows: Array = _open_rows(enemy, col, exclude)
-	var with_path: Array = []
-	for row in open_rows:
-		if has_clear_path(enemy, int(row), col, exclude):
-			with_path.append(row)
-	return with_path if not with_path.is_empty() else open_rows
+	var best: Array = []
+	var best_score := Vector2i(1 << 30, 1 << 30)
+	for row in _open_rows(enemy, col, exclude):
+		var blockers: Dictionary = path_blockers(enemy, int(row), col, exclude)
+		var score := Vector2i(int(blockers["enemies"]), int(blockers["cells"]))
+		if score.x < best_score.x or (score.x == best_score.x and score.y < best_score.y):
+			best_score = score
+			best = [row]
+		elif score == best_score:
+			best.append(row)
+	return best
 
 # The column an enemy ENTERS on: far enough back that its rightmost cell lands on
 # the board's back column, so a wide enemy starts with its front edge already
@@ -717,12 +739,11 @@ func _count_in_col(col: int) -> int:
 	return n
 
 # Place a (surviving) enemy on the board at its spawn column, in a RANDOM row
-# among those it can actually reach the player from (see _spawn_rows) — a lane
-# with a body already parked in it would leave the new arrival stuck behind a
-# wall it can never get past, so those rows are skipped while any clear one is
-# left. When nothing fits at all — the back of the board is walled off, or the
-# enemy is taller than the grid — it waits in the off-grid queue and slides on
-# later (see _admit_offgrid).
+# among the ones with the clearest run at the player (see _spawn_rows) — a lane
+# with bodies parked in it leaves the new arrival stuck behind a wall it can't
+# get past, so the emptiest lane wins and ties break randomly. When nothing fits
+# at all — the back of the board is walled off, or the enemy is taller than the
+# grid — it waits in the off-grid queue and slides on later (see _admit_offgrid).
 func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int) -> void:
 	var entry := {"instance": instance, "enemy": enemy, "stun": 0,
 		"health": health, "col": OFFGRID_COL, "row": 0}

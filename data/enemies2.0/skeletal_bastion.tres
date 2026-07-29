@@ -19,6 +19,5 @@ size = "2x3 L 90 CC"
 shape_rows = 2
 shape_cols = 3
 shape_mask = PackedInt32Array(4, 7)
-art_offset = Vector2(-0.5, 0.0)
 file = "SkeletalBastion"
 image = ExtResource("2_img")

@@ -860,12 +860,10 @@ func _stack_summary() -> String:
 const _CELL: int = 84                # grid cell edge in px
 const _CELL_SEP: int = 6
 const _CELL_STEP: int = _CELL + _CELL_SEP
-# A hovered enemy is lifted above every other body so an overlapped one can still
-# be read in full — the one case where the back-to-front order is overridden.
-const _Z_HOVER: int = 40
-# Stats sit above even a hovered body — z_index is relative to the parent layer,
-# so the badge layer has to out-rank the lift a hover gives an enemy.
-const _Z_BADGES: int = _Z_HOVER + 10
+# Everything on the board layers by TREE ORDER, never z_index: z_index is relative
+# to the parent and would punch the board out through anything drawn later in the
+# scene — the enemy info card and the reward screens sit above the battlefield
+# precisely because they're mounted after it.
 
 # A Control whose clickable area is only the cells its enemy actually FILLS, so
 # the empty notch inside an L-shaped body stays clickable for whatever stands
@@ -1057,12 +1055,12 @@ func _build_battlefield() -> Control:
 	_enemy_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_field.add_child(_enemy_layer)
 
-	# Stats ride above every body and every drop. Non-interactive, so it never
-	# steals a click from the enemy or the loot underneath it.
+	# Stats ride above every body and every drop — it's the last layer added to the
+	# board, so it draws last. Non-interactive, so it never steals a click from the
+	# enemy or the loot underneath it.
 	_badge_layer = Control.new()
 	_badge_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_badge_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_badge_layer.z_index = _Z_BADGES
 	_field.add_child(_badge_layer)
 
 	# Off-field lane: enemies with no cell to stand in — the overflow queue, and the
@@ -1465,12 +1463,15 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 
 	# Enemies are click-to-inspect: hovering brightens the outline to advertise it
 	# and lifts the whole body above its neighbours so an overlapped enemy can be
-	# seen in full; clicking selects it and opens its info card.
+	# seen in full; clicking selects it and opens its info card. The lift is a
+	# reorder within the enemy layer, not a z_index, so a hovered body still stays
+	# under the badges and under anything mounted above the battlefield.
+	var resting_index: int = node.get_index()
 	node.mouse_entered.connect(func():
-		node.z_index = _Z_HOVER
+		_enemy_layer.move_child(node, -1)
 		_style_enemy_cell(frames, accent, is_current, inst == _selected_instance, true))
 	node.mouse_exited.connect(func():
-		node.z_index = 0
+		_enemy_layer.move_child(node, mini(resting_index, _enemy_layer.get_child_count() - 1))
 		_style_enemy_cell(frames, accent, is_current, inst == _selected_instance, false))
 	node.gui_input.connect(func(ev: InputEvent):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
@@ -1485,16 +1486,9 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	node.set_meta("holder", holder)
 
 	# Art (or a tinted silhouette when the enemy has no image) across the whole
-	# bounding box, aspect preserved so nothing is squashed or cut off. `art_offset`
-	# shifts the drawing for art that doesn't sit centred in its own PNG; nothing
-	# clips the holder, so a nudged body simply leans out over the board's edge.
+	# bounding box, aspect preserved so nothing is squashed or cut off.
 	var art := TextureRect.new()
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var nudge: Vector2 = e.art_offset * float(_CELL_STEP)
-	art.offset_left = nudge.x
-	art.offset_right = nudge.x
-	art.offset_top = nudge.y
-	art.offset_bottom = nudge.y
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE

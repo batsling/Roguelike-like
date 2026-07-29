@@ -323,14 +323,10 @@ naturally. **Hovering** any enemy lifts it above everything else, so a body
 that's partly covered can still be read and clicked; hit-testing follows the
 **mask, not the bounding box**, so an L's notch belongs to whoever is standing
 in it. **Health and damage badges draw on a layer above every body** (and above
-a hovered one), so an overlapped enemy's stats are never hidden.
-
-**`art_offset`** nudges art that doesn't sit centred inside its own PNG,
-measured in cells (Skeletal Bastion leans half a cell forward). It moves only
-the drawing — footprint, badges and collisions stay on the cells the enemy
-holds — and the art is free to lean out over the board's edge rather than being
-cropped. Values live in `ART_NUDGE` in `generate_goal_enemy_tres.py` so they
-survive a regeneration.
+a hovered one), so an overlapped enemy's stats are never hidden. All of this
+layers by **tree order, never `z_index`** — `z_index` is relative to the parent
+and would punch the board out through the enemy info card and the reward
+screens, which sit above the battlefield only because they're mounted after it.
 
 ---
 

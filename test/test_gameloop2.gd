@@ -214,6 +214,37 @@ func test_a_blocked_lane_is_still_used_when_no_lane_is_clear() -> void:
 	assert_eq(GameLoop2.offgrid_count(), 0, "it still finds somewhere to stand")
 	assert_between(_row_of(inst), 0, GameLoop2.GRID_ROWS - 1, "on the board")
 
+# When NO lane is completely clear, take the emptiest one rather than treating
+# every option as equally hopeless. This is the board from the Beholster report: a
+# 2x2 whose only two standable rows are both obstructed, one by a single enemy and
+# one by two.
+func test_a_big_enemy_takes_the_lane_with_the_fewest_bodies_in_the_way() -> void:
+	GameLoop2.stack = [
+		# Row 0 column 3 — blocks a 2x2 from standing at row 0 at all.
+		{"instance": 951, "enemy": _enemy(0), "stun": 0, "health": 1, "col": 3, "row": 0},
+		# Row 2 column 2 — in the way of a 2x2 entering at row 1 OR row 2.
+		{"instance": 952, "enemy": _enemy(0), "stun": 0, "health": 1, "col": 2, "row": 2},
+		# Row 3 column 1 — only in the way of one entering at row 2.
+		{"instance": 953, "enemy": _enemy(0), "stun": 0, "health": 1, "col": 1, "row": 3},
+	]
+	var big: GoalEnemyData = _shaped(3, 2, 2)
+	assert_eq(int(GameLoop2.path_blockers(big, 1, GameLoop2.GRID_COLS - 1)["enemies"]), 1,
+		"entering a row up, it only has to outlive one body")
+	assert_eq(int(GameLoop2.path_blockers(big, 2, GameLoop2.GRID_COLS - 1)["enemies"]), 2,
+		"a row down, it is stuck behind two")
+	for i in range(12):
+		var inst: int = GameLoop2.spawn_to_stack(big)
+		assert_eq(_row_of(inst), 1, "so it spawns one row up, in the emptier lane")
+		GameLoop2.stack.remove_at(GameLoop2._index_of(inst))
+
+# Ties are still random — "emptiest lane" must not collapse into "always row 0".
+func test_equally_clear_lanes_are_still_chosen_at_random() -> void:
+	var seen: Dictionary = {}
+	for i in range(20):
+		GameLoop2.reset()
+		seen[_row_of(GameLoop2.spawn_to_stack(_shaped(0, 2, 2)))] = true
+	assert_gt(seen.size(), 1, "an empty board offers several equally good rows")
+
 # The path check is footprint-aware: a body only needs the lanes its own cells
 # will pass through.
 func test_path_check_uses_the_whole_footprint() -> void:
