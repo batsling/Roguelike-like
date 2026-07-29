@@ -272,12 +272,13 @@ func _image_with_bg(tex: Texture2D, size: int, border: Color, crisp: bool = fals
 	return panel
 
 # --- battlefield footprint diagram ---------------------------------------
-# "Grid size" is a shape, not a number, so the compendium draws it: the 2.0
+# "Grid size" is a shape, not a number, so the DETAIL PANEL draws it: the 2.0
 # battlefield (GameLoop2.GRID_COLS x GRID_ROWS) as empty cells with the enemy's
 # OWN ARTWORK laid over the cells its footprint fills — the same reading as the
 # board in a live run, where a wide body spawns with its rightmost cell on the
 # back column. A non-rectangular shape (Skeletal Bastion's 2x3 L) tints only its
-# solid cells, so the gap other enemies can stand in is visible.
+# solid cells, so the gap other enemies can stand in is visible. The grid cells
+# on the left stay artwork-only; they just note the size as text.
 
 const BOARD_GAP := 3
 const BOARD_CELL_EMPTY := Color(0.13, 0.13, 0.17, 0.9)
@@ -890,10 +891,9 @@ func _enemy_cell(e: GoalEnemyData) -> Control:
 	var kind: String = "BOSS" if e.is_boss() else String(e.game_type).capitalize()
 	vb.add_child(_label("%s  •  %s" % [kind, tier], Color(0.7, 0.7, 0.75), 10, true))
 	vb.add_child(_label("⚔ %d dmg" % e.damage, Color(0.9, 0.55, 0.5), 11, true))
-	# Anything bigger than a single cell gets its board footprint drawn right in the
-	# grid — the size of a body is the thing you plan around, so it reads at a glance.
+	# Anything bigger than a single cell says so here as plain text; the drawn board
+	# lives in the detail panel only, so the grid stays a clean wall of artwork.
 	if e.footprint_rows() > 1 or e.footprint_cols() > 1:
-		vb.add_child(_footprint_board(e, ac, 15))
 		vb.add_child(_label("▦ %d x %d" % [e.footprint_rows(), e.footprint_cols()],
 			Color(0.7, 0.7, 0.75), 10, true))
 	return cell.panel
