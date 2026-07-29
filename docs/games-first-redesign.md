@@ -286,10 +286,13 @@ The stack is drawn as a **Mega-Man-Battle-Network-style board**: the player on
 the left, a **4 x 4 grid** of columns (distance) x rows (lanes) on the right.
 Column 1 is melee, column 4 the back edge.
 
-- **Spawn** — an enemy walks onto the board in a **random row**, positioned so
-  its **rightmost cell lands on column 4**. A 1x1 therefore starts on column 4,
-  but a 3-wide body starts on column 2, with its leading edge already two
-  columns closer. Nothing waits outside the board unless it has nowhere to
+- **Spawn** — an enemy walks onto the board positioned so its **rightmost cell
+  lands on column 4**. A 1x1 therefore starts on column 4, but a 3-wide body
+  starts on column 2, with its leading edge already two columns closer. The row
+  is **random among the lanes it can actually reach the player from** — enemies
+  never change lanes, so a row with a body parked in it would leave the new
+  arrival stuck behind a wall forever, and those rows are skipped while any
+  clear lane is left. Nothing waits outside the board unless it has nowhere to
   stand; that overflow queue slides on as space frees.
 - **Advance** — every game beaten, each enemy closes one column, front-first.
 - **Strike** — an enemy attacks once **any** of its cells is in column 1. Wide
@@ -319,7 +322,15 @@ the solid rows are never cropped.
 naturally. **Hovering** any enemy lifts it above everything else, so a body
 that's partly covered can still be read and clicked; hit-testing follows the
 **mask, not the bounding box**, so an L's notch belongs to whoever is standing
-in it.
+in it. **Health and damage badges draw on a layer above every body** (and above
+a hovered one), so an overlapped enemy's stats are never hidden.
+
+**`art_offset`** nudges art that doesn't sit centred inside its own PNG,
+measured in cells (Skeletal Bastion leans half a cell forward). It moves only
+the drawing — footprint, badges and collisions stay on the cells the enemy
+holds — and the art is free to lean out over the board's edge rather than being
+cropped. Values live in `ART_NUDGE` in `generate_goal_enemy_tres.py` so they
+survive a regeneration.
 
 ---
 

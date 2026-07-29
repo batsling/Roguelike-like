@@ -68,6 +68,9 @@ var _hero_hp: Label
 var _field: Control                  # fixed-size board the two layers stack inside
 var _grid_cells: Array = []          # _grid_cells[row][col-1] -> backdrop PanelContainer
 var _enemy_layer: Control            # free-positioned enemy + loot nodes, drawn over the board
+# Health / damage / status badges live on their own layer ABOVE every body, so an
+# enemy overlapping another never hides what that other one is about to do to you.
+var _badge_layer: Control
 var _enemy_nodes: Dictionary = {}    # instance -> the node currently drawing it
 var _offgrid_box: VBoxContainer      # overflow queue just off the grid's right edge
 var _drop_queue: Array = []          # ItemData dropped by kills, shown as field loot
@@ -860,6 +863,9 @@ const _CELL_STEP: int = _CELL + _CELL_SEP
 # A hovered enemy is lifted above every other body so an overlapped one can still
 # be read in full — the one case where the back-to-front order is overridden.
 const _Z_HOVER: int = 40
+# Stats sit above even a hovered body — z_index is relative to the parent layer,
+# so the badge layer has to out-rank the lift a hover gives an enemy.
+const _Z_BADGES: int = _Z_HOVER + 10
 
 # A Control whose clickable area is only the cells its enemy actually FILLS, so
 # the empty notch inside an L-shaped body stays clickable for whatever stands
@@ -1051,6 +1057,14 @@ func _build_battlefield() -> Control:
 	_enemy_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_field.add_child(_enemy_layer)
 
+	# Stats ride above every body and every drop. Non-interactive, so it never
+	# steals a click from the enemy or the loot underneath it.
+	_badge_layer = Control.new()
+	_badge_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_badge_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_badge_layer.z_index = _Z_BADGES
+	_field.add_child(_badge_layer)
+
 	# Off-field lane: enemies with no cell to stand in — the overflow queue, and the
 	# game you're currently playing, whose enemy only steps onto the grid once you
 	# report the result.
@@ -1084,10 +1098,11 @@ func _refresh_battlefield() -> void:
 	_apply_crisp(_hero_icon, hero_tex)
 	_hero_hp.text = "♥ %d/%d" % [GameState.hp, GameState.max_hp]
 
-	# Clear the overlay and the overflow lane; the backdrop panels are static.
-	for c in _enemy_layer.get_children():
-		_enemy_layer.remove_child(c)
-		c.queue_free()
+	# Clear the overlays and the overflow lane; the backdrop panels are static.
+	for layer in [_enemy_layer, _badge_layer]:
+		for c in layer.get_children():
+			layer.remove_child(c)
+			c.queue_free()
 	_enemy_nodes.clear()
 	for c in _offgrid_box.get_children():
 		c.queue_free()
@@ -1470,9 +1485,16 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	node.set_meta("holder", holder)
 
 	# Art (or a tinted silhouette when the enemy has no image) across the whole
-	# bounding box, aspect preserved so nothing is squashed or cut off.
+	# bounding box, aspect preserved so nothing is squashed or cut off. `art_offset`
+	# shifts the drawing for art that doesn't sit centred in its own PNG; nothing
+	# clips the holder, so a nudged body simply leans out over the board's edge.
 	var art := TextureRect.new()
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var nudge: Vector2 = e.art_offset * float(_CELL_STEP)
+	art.offset_left = nudge.x
+	art.offset_right = nudge.x
+	art.offset_top = nudge.y
+	art.offset_bottom = nudge.y
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1483,12 +1505,23 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	else:
 		art.modulate = accent
 	holder.add_child(art)
-	_add_enemy_badges(holder, entry, e, accent, selected)
+
+	# Badges go on the layer above every body, but stay pinned to the cells this
+	# enemy holds (not to its nudged art), so they read as "this one's stats".
+	var badges := Control.new()
+	badges.position = node.position
+	badges.size = node.size
+	badges.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_badge_layer.add_child(badges)
+	node.set_meta("badges", badges)
+	_add_enemy_badges(badges, entry, e, accent, selected)
 	return node
 
-# Overlay badges on an enemy's holder: boss skull top, health bottom-left, damage
-# bottom-right, and the stun marker when frozen. All non-blocking so the cell
-# tooltip still shows.
+# Badges for one enemy, laid out in the corners of the box it holds: boss skull
+# top, health bottom-left, damage bottom-right, and the stun marker when frozen.
+# `holder` is the enemy's slot on the badge layer, so these always draw in front
+# of every body on the board. All non-blocking, so the enemy underneath still
+# takes the click and shows its tooltip.
 func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		accent: Color, selected: bool) -> void:
 	var stun: int = int(entry.get("stun", 0))
@@ -1622,6 +1655,14 @@ func _holder_for_instance(instance: int) -> Control:
 				return tok.get_meta("holder") if tok.has_meta("holder") else null
 	return null
 
+# The badge slot for `instance` on the badge layer (off-field tokens carry their
+# own badges inline, so they have none here).
+func _badges_for_instance(instance: int) -> Control:
+	var node: Variant = _enemy_nodes.get(instance)
+	if node != null and is_instance_valid(node) and node.has_meta("badges"):
+		return node.get_meta("badges")
+	return null
+
 func _clear_fx() -> void:
 	if _fx_layer == null:
 		return
@@ -1730,9 +1771,13 @@ func _spawn_slide_ghost(instance: int, from_rect: Rect2, to_rect: Rect2) -> void
 	_fx_layer.add_child(ghost)
 	ghost.global_position = from_rect.position
 
-	var holder: Control = _holder_for_instance(instance)
-	if holder != null:
-		holder.modulate.a = 0.0
+	# Hide the settled body AND its badges while the ghost travels, so the enemy
+	# isn't drawn in two places at once.
+	var hidden: Array = []
+	for part in [_holder_for_instance(instance), _badges_for_instance(instance)]:
+		if part != null:
+			part.modulate.a = 0.0
+			hidden.append(part)
 
 	var t := ghost.create_tween()
 	t.tween_interval(_FX_ATTACK_TIME)
@@ -1740,8 +1785,9 @@ func _spawn_slide_ghost(instance: int, from_rect: Rect2, to_rect: Rect2) -> void
 	t.tween_property(ghost, "global_position", to_rect.position, _FX_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	t.tween_property(ghost, "size", to_rect.size, _FX_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	t.chain().tween_callback(func():
-		if is_instance_valid(holder):
-			holder.modulate.a = 1.0
+		for part in hidden:
+			if is_instance_valid(part):
+				part.modulate.a = 1.0
 		ghost.queue_free())
 
 # --- inline kill-drops (§8) ------------------------------------------------

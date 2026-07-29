@@ -34,9 +34,11 @@ signal run_won()
 
 # The battlefield is a Mega-Man-Battle-Network-style grid: the player sits on the
 # left, and following enemies occupy a GRID_COLS x GRID_ROWS grid on the right.
-# An enemy SPAWNS ON the grid, in a RANDOM row, positioned so its RIGHTMOST cell
-# sits on the back column (GRID_COLS) — so a wide enemy's front edge starts
-# closer to the player and reaches you in fewer games. After each game beaten
+# An enemy SPAWNS ON the grid, positioned so its RIGHTMOST cell sits on the back
+# column (GRID_COLS) — so a wide enemy's front edge starts closer to the player
+# and reaches you in fewer games — in a RANDOM row among those it can actually
+# reach the player from (enemies never change lanes, so a row with a body parked
+# in it is a row it could never strike from). After each game beaten
 # every enemy closes one column toward the player. An enemy strikes once ANY of
 # its cells is in the front column (col 1). Enemies that can't fit anywhere wait
 # OFF-GRID (OFFGRID_COL) and slide in as space frees.
@@ -655,6 +657,27 @@ func _open_rows(enemy: GoalEnemyData, col: int, exclude: int = 0) -> Array:
 			rows.append(row)
 	return rows
 
+# Can `enemy`, standing at (`row`, `col`), march all the way to the front from
+# there — every column between here and column 1 clear for its whole footprint?
+# Enemies never change lanes, so a row with something parked in it is a row this
+# enemy could never strike from; this is what "a path to hit the player" means.
+func has_clear_path(enemy: GoalEnemyData, row: int, col: int, exclude: int = 0) -> bool:
+	for c in range(col, 0, -1):
+		if not fits_at(enemy, row, c, exclude):
+			return false
+	return true
+
+# Rows `enemy` can both stand in at `col` AND reach the player from. Falls back to
+# merely standable rows when every lane is walled off, so a packed board still
+# places the enemy somewhere rather than stalling it off-grid forever.
+func _spawn_rows(enemy: GoalEnemyData, col: int, exclude: int = 0) -> Array:
+	var open_rows: Array = _open_rows(enemy, col, exclude)
+	var with_path: Array = []
+	for row in open_rows:
+		if has_clear_path(enemy, int(row), col, exclude):
+			with_path.append(row)
+	return with_path if not with_path.is_empty() else open_rows
+
 # The column an enemy ENTERS on: far enough back that its rightmost cell lands on
 # the board's back column, so a wide enemy starts with its front edge already
 # closer to the player (and strikes sooner). Clamped to 1 for anything as wide as
@@ -694,9 +717,12 @@ func _count_in_col(col: int) -> int:
 	return n
 
 # Place a (surviving) enemy on the board at its spawn column, in a RANDOM row
-# among those its footprint fits in. When nothing fits — the back of the board is
-# walled off, or the enemy is taller than the grid — it waits in the off-grid
-# queue and slides on later (see _admit_offgrid).
+# among those it can actually reach the player from (see _spawn_rows) — a lane
+# with a body already parked in it would leave the new arrival stuck behind a
+# wall it can never get past, so those rows are skipped while any clear one is
+# left. When nothing fits at all — the back of the board is walled off, or the
+# enemy is taller than the grid — it waits in the off-grid queue and slides on
+# later (see _admit_offgrid).
 func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int) -> void:
 	var entry := {"instance": instance, "enemy": enemy, "stun": 0,
 		"health": health, "col": OFFGRID_COL, "row": 0}
@@ -708,7 +734,7 @@ func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int) -> void:
 func _place_on_spawn(entry: Dictionary) -> bool:
 	var enemy: GoalEnemyData = entry.get("enemy")
 	var col: int = spawn_col_for(enemy)
-	var rows: Array = _open_rows(enemy, col, int(entry.get("instance", 0)))
+	var rows: Array = _spawn_rows(enemy, col, int(entry.get("instance", 0)))
 	if rows.is_empty():
 		entry["col"] = OFFGRID_COL
 		return false

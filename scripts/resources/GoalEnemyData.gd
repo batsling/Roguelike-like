@@ -85,6 +85,15 @@ enum Difficulty { LOW, MEDIUM, HIGH, INSANE }
 @export var shape_cols: int = 1
 @export var shape_mask: PackedInt32Array = PackedInt32Array([1])
 
+# Hand-tuned nudge for art whose subject doesn't sit centred inside its own PNG,
+# measured in GRID CELLS (x = columns, negative is toward the player; y = rows,
+# negative is up). It moves only the drawing — the footprint, the badges, and
+# every collision test stay on the cells the enemy actually holds — and the art
+# is allowed to lean outside its bounding box rather than being cropped. Zero for
+# everything that already reads straight. Set in tools/generate_goal_enemy_tres.py
+# (ART_NUDGE) so it survives a regeneration from the sheet.
+@export var art_offset: Vector2 = Vector2.ZERO
+
 # Art base name under res://images2.0/enemies/ (the sheet's File column). Resolves
 # to images2.0/enemies/<file>.png; falls back to a placeholder when missing (§10.1).
 @export var file: String = ""

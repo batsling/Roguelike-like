@@ -106,6 +106,19 @@ def _l_cells(rows, cols):
 
 SHAPE_BUILDERS = {"L": _l_cells}
 
+# Hand-tuned art nudges, keyed by enemy id, in GRID CELLS (x = columns, negative
+# is toward the player; y = rows, negative is up). Some art doesn't sit centred
+# inside its own PNG, so drawing it flush to its footprint's bounding box reads
+# lopsided; this shifts the DRAWING only — the cells the enemy holds, its badges
+# and every collision test are untouched, and the art is free to lean outside the
+# box rather than being cropped. Tune a number here, re-run, and the .tres keeps
+# it. Anything absent gets no nudge.
+ART_NUDGE = {
+    # The Bastion's crowd sits right-of-centre in its PNG, which makes the L look
+    # like it's hanging off the back of the board; pull it half a cell forward.
+    "skeletal_bastion": (-0.5, 0.0),
+}
+
 
 def parse_size(raw, name=""):
     """'RxC [shape] [angle] [CW|CC]' -> (rows, cols, mask), rows-first.
@@ -221,6 +234,9 @@ def enemy_tres(row) -> tuple:
     lines.append("shape_rows = %d" % shape_rows)
     lines.append("shape_cols = %d" % shape_cols)
     lines.append("shape_mask = PackedInt32Array(%s)" % ", ".join(str(m) for m in mask))
+    nudge = ART_NUDGE.get(eid)
+    if nudge:
+        lines.append("art_offset = Vector2(%s, %s)" % nudge)
     lines.append('file = "%s"' % gd_str(file))
     if img_res:
         lines.append('image = ExtResource("2_img")')

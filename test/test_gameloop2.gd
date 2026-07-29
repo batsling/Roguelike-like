@@ -189,6 +189,43 @@ func test_enemies_spawn_on_a_random_row() -> void:
 	for row in seen:
 		assert_between(int(row), 0, GameLoop2.GRID_ROWS - 1, "and stay on the board")
 
+# A random row, but never a DEAD one: enemies never change lanes, so a row with a
+# body parked in it is a row the new arrival could never strike from. Those rows
+# are skipped while any clear lane is left.
+func test_spawns_pick_a_row_with_a_clear_path_to_the_player() -> void:
+	# Wall off every lane but one, at the front where nothing can get past.
+	var blocked: Array = [0, 1, 3]
+	for row in blocked:
+		GameLoop2.stack.append({"instance": 900 + row, "enemy": _enemy(0), "stun": 0,
+			"health": 1, "col": 1, "row": row})
+	for i in range(12):
+		var inst: int = GameLoop2.spawn_to_stack(_enemy(0))
+		assert_eq(_row_of(inst), 2, "spawns into the one lane that still reaches the player")
+		# Take it off again so the open lane doesn't fill up during the loop.
+		GameLoop2.stack.remove_at(GameLoop2._index_of(inst))
+
+func test_a_blocked_lane_is_still_used_when_no_lane_is_clear() -> void:
+	# Every row walled at the front: there is no good answer, so the enemy still
+	# takes the board rather than stalling off-grid forever.
+	for row in range(GameLoop2.GRID_ROWS):
+		GameLoop2.stack.append({"instance": 900 + row, "enemy": _enemy(0), "stun": 0,
+			"health": 1, "col": 1, "row": row})
+	var inst: int = GameLoop2.spawn_to_stack(_enemy(0))
+	assert_eq(GameLoop2.offgrid_count(), 0, "it still finds somewhere to stand")
+	assert_between(_row_of(inst), 0, GameLoop2.GRID_ROWS - 1, "on the board")
+
+# The path check is footprint-aware: a body only needs the lanes its own cells
+# will pass through.
+func test_path_check_uses_the_whole_footprint() -> void:
+	# A 1x1 sitting at the front of row 1.
+	GameLoop2.stack = [{"instance": 901, "enemy": _enemy(0), "stun": 0, "health": 1,
+		"col": 1, "row": 1}]
+	var tall: GoalEnemyData = _shaped(0, 2, 1)      # two rows tall, one column wide
+	assert_false(GameLoop2.has_clear_path(tall, 0, GameLoop2.GRID_COLS),
+		"a 2-tall body starting at row 0 would drag its lower half into the blocked lane")
+	assert_true(GameLoop2.has_clear_path(tall, 2, GameLoop2.GRID_COLS),
+		"but rows 2-3 are clear all the way in")
+
 func test_spawn_column_overflows_to_off_grid_when_full() -> void:
 	for i in range(GameLoop2.GRID_ROWS):
 		GameLoop2.spawn_to_stack(_enemy(0))
