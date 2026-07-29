@@ -12,7 +12,7 @@ level_up_reward_type here).
 
   characters2.0: Name | Game | Health | Bash | Dash | Push | Transmute |
                  Scramble | Bombs | Keys | Level Up | Reward | Description |
-                 Starting items
+                 Starting items | File
 
 Health -> base_max_hp (a 2.0 run's tiny Health/Max Health reuse hp/max_hp).
 Bash/Dash/Push/Transmute/Scramble/Bombs/Keys -> start_* fields.
@@ -20,9 +20,10 @@ Reward -> level_up_stats (verb / max_hp gains) + level_up_reward_type
           (Small Chest -> item; Scroll -> scroll).
 Starting items -> slugged item ids (resolved against data/items2.0/).
 
-Art resolves by Name (the sheet has no File column, §10.1): the full portrait
-from images2.0/characters/Full/<Name>.png and the round in-world icon from
-images2.0/characters/Icon/<Name>.png (case-insensitive). Missing art just leaves
+Art resolves from the File column (§10.1, matching the enemy/item sheets): the
+full portrait from images2.0/characters/Full/<File>.png and the round in-world
+icon from images2.0/characters/Icon/<File>.png (case-insensitive). File falls
+back to the de-spaced Name for rows that leave it blank. Missing art just leaves
 that field unset (placeholder later).
 
   python3 tools/generate_character2_tres.py            # regenerate the 2.0 roster
@@ -83,6 +84,12 @@ def _int(v, default=0):
         return default
 
 
+def _clean(v):
+    """Trim a cell; treat blank / N/A as empty."""
+    s = ("" if v is None else str(v)).strip()
+    return "" if s.upper() in ("", "N/A", "NONE") else s
+
+
 def _find_amt(s, label):
     """First '+N <label>' amount in the reward string (0 if absent)."""
     m = re.search(r"\+\s*(\d+)\s+" + label, s, re.I)
@@ -131,8 +138,11 @@ def character_tres(row) -> tuple:
 
     level_up_stats, reward_type, reward_amount = parse_reward(row.get("Reward"))
 
-    full_stem = _png_map(CHAR_FULL_DIR).get(name.lower())
-    icon_stem = _png_map(CHAR_ICON_DIR).get(name.lower())
+    # Art keys off the File column; a blank File falls back to the de-spaced Name
+    # (which is what every pre-File row resolved by anyway).
+    file = _clean(row.get("File")) or name.replace(" ", "").replace("'", "")
+    full_stem = _png_map(CHAR_FULL_DIR).get(file.lower())
+    icon_stem = _png_map(CHAR_ICON_DIR).get(file.lower())
     portrait = ("res://images2.0/characters/Full/%s.png" % full_stem) if full_stem else None
     icon = ("res://images2.0/characters/Icon/%s.png" % icon_stem) if icon_stem else None
 
@@ -178,6 +188,7 @@ def character_tres(row) -> tuple:
         lines.append("level_up_stats = {}")
     lines.append('level_up_reward_type = &"%s"' % reward_type)
     lines.append("level_up_reward_amount = %d" % reward_amount)
+    lines.append('file = "%s"' % gd_str(file))
     if portrait:
         lines.append('portrait = ExtResource("2_portrait")')
     if icon:

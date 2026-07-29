@@ -119,7 +119,9 @@ func test_alien_baby_survivor_still_attacks_when_goal_missed() -> void:
 	GameLoop2.choose_game(enemy)
 	GameLoop2.beat_game(true)                 # first hit -> survives, follows @ spawn col
 	assert_eq(GameLoop2.stack_size(), 1)
-	GameLoop2.beat_game(false) ; GameLoop2.beat_game(false)  # march it to the front
+	# March it to the front — it only strikes from column 1 (§grid).
+	while int(GameLoop2.stack[0].get("col", 1)) > 1:
+		GameLoop2.beat_game(false)
 	var hp_before: int = GameState.hp
 	GameLoop2.beat_game(false)                # front-line strike on a missed game
 	assert_lt(GameState.hp, hp_before, "the surviving enemy attacks from the front")

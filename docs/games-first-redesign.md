@@ -223,6 +223,7 @@ more damage and (naturally) a better drop.
 | `Name` | enemy name shown on HUD |
 | `Type` | game type this enemy spawns on — **Deckbuilder / Action / …** (§6.1) |
 | `Difficulty` | tier gate — **Low / Medium / High** |
+| `Size` | battlefield footprint, **rows first** — `1x1`, `1x2` (two wide), `2x1` (two tall), `2x2`, or a shaped one like `2x3 L 90 CC` (§7.3) |
 | `Game` | the real game the enemy references (Slay the Spire, Brotato) |
 | `Health` | enemy HP — **1** across the current roster (so one bomb kills a normal enemy, §4) |
 | `Damage` | per-game hit while stacked — **1 / 2 / 3** tracking the tier |
@@ -278,6 +279,47 @@ solution:
 later**, adding another step of breathing room. This grace window is why bombs,
 old-goal fulfilment, and Stun are all viable answers rather than needing to solve
 an enemy the instant it appears.
+
+### 7.3 The battlefield grid — footprints, rows, and blocking
+
+The stack is drawn as a **Mega-Man-Battle-Network-style board**: the player on
+the left, a **4 x 4 grid** of columns (distance) x rows (lanes) on the right.
+Column 1 is melee, column 4 the back edge.
+
+- **Spawn** — an enemy walks onto the board in a **random row**, positioned so
+  its **rightmost cell lands on column 4**. A 1x1 therefore starts on column 4,
+  but a 3-wide body starts on column 2, with its leading edge already two
+  columns closer. Nothing waits outside the board unless it has nowhere to
+  stand; that overflow queue slides on as space frees.
+- **Advance** — every game beaten, each enemy closes one column, front-first.
+- **Strike** — an enemy attacks once **any** of its cells is in column 1. Wide
+  bodies reach that line in fewer games; that's the point of `Size`.
+- **Blocking** — an enemy occupies every solid cell of its footprint, and moves
+  only when its **whole** footprint clears. A big body is a wall: it plugs the
+  lanes behind it, and the queue stalls until it moves or dies. **Push** needs
+  the entire footprint to fit one column back, so a jammed board can't be
+  untangled by shoving.
+
+**`Size` notation** — `RxC`, **rows first**: `1x2` is two cells wide, `2x1` two
+cells tall. A trailing shape + rotation carves a non-rectangle out of that box:
+`2x3 L 90 CC` is an L turned a quarter turn counter-clockwise, i.e.
+
+```
+. . #
+# # #
+```
+
+The **empty cells of the bounding box are real gaps** — another enemy (or a
+dropped item) can stand in the notch. Only the solid cells block. The **art is
+always drawn across the full bounding box**, so the parts that stick up out of
+the solid rows are never cropped.
+
+**Drawing order** — bodies lower on the grid paint over the ones above them
+(ordered by the bottom edge of the footprint), so overlapping art layers
+naturally. **Hovering** any enemy lifts it above everything else, so a body
+that's partly covered can still be read and clicked; hit-testing follows the
+**mask, not the bounding box**, so an L's notch belongs to whoever is standing
+in it.
 
 ---
 
@@ -407,8 +449,8 @@ images2.0/
 - Art resolves from each sheet's **`File` column** →
   `res://images2.0/<category>/<File>.png` (PascalCase, matching the current
   convention). `items2.0`, `enemies2.0`, and `scrolls2.0` all carry a `File`
-  column; **`characters2.0` has none**, so character art resolves by **`Name`**
-  (as characters do today).
+  column, and `characters2.0` now carries one too (its art lives under
+  `Full/` and `Icon/`); a blank `File` falls back to the de-spaced `Name`.
 - **Scrolls:** `File` is the *identified* art; unidentified scrolls — **and
   identified scrolls whose `File` art is missing** — fall back to the shared
   `Unidentified.png` under `images2.0/scrolls/` (§4.1).
@@ -478,7 +520,7 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   read blind (Preference is the gamble), learn-by-use or via Scroll of Identify,
   Amnesia re-hides. The **`File` column is the identified art** (§4.1).
 - **New `images2.0/{characters,items,enemies,scrolls}/` folder**; art resolves via
-  each sheet's `File` column (characters by `Name`) (§10.1).
+  each sheet's `File` column (§10.1).
 - **Bash** destroys a game out of the pool; **Transmute** turns a game into an
   unconnected same-type game (§4).
 - **Normal enemies have Health 1** → one bomb removes one; bosses bomb-immune

@@ -34,19 +34,67 @@ func _enemy(dmg: int, boss := false) -> GoalEnemyData:
 	e.boss = boss
 	return e
 
-# The grid column a stacked enemy currently occupies (1 = front/melee,
-# GRID_COLS = spawn, OFFGRID_COL = off-grid queue), or -1 if it's gone.
+# A synthetic enemy of an arbitrary footprint: `mask` is one int per row, bit `c`
+# set when column `c` of that row is solid (GoalEnemyData.shape_mask).
+func _shaped(dmg: int, rows: int, cols: int, mask: Array = []) -> GoalEnemyData:
+	var e := _enemy(dmg)
+	e.shape_rows = rows
+	e.shape_cols = cols
+	var rowsmask: Array = mask.duplicate()
+	if rowsmask.is_empty():
+		# No mask given -> a solid rectangle: every column of every row.
+		for r in range(rows):
+			rowsmask.append((1 << cols) - 1)
+	e.shape_mask = PackedInt32Array(rowsmask)
+	return e
+
+# The Skeletal Bastion's footprint — a 2x3 L turned a quarter turn
+# counter-clockwise, so the top row is a gap except at its back corner:
+#     . . #
+#     # # #
+func _bastion(dmg: int = 3) -> GoalEnemyData:
+	return _shaped(dmg, 2, 3, [0b100, 0b111])
+
+# The front (leftmost) grid column a stacked enemy occupies (1 = front/melee,
+# GRID_COLS = the back of the board, OFFGRID_COL = off-grid queue), or -1 if it's
+# gone.
 func _col_of(instance: int) -> int:
 	for e in GameLoop2.stack:
 		if int(e["instance"]) == instance:
 			return int(e.get("col", -1))
 	return -1
 
+# The grid row a stacked enemy's footprint starts on, or -1 if it's gone.
+func _row_of(instance: int) -> int:
+	for e in GameLoop2.stack:
+		if int(e["instance"]) == instance:
+			return int(e.get("row", -1))
+	return -1
+
+# How many stacked enemies start in grid column `col`.
+func _count_in_col(col: int) -> int:
+	var n: int = 0
+	for e in GameLoop2.stack:
+		if int(e.get("col", -1)) == col:
+			n += 1
+	return n
+
 # Beat a game with no chosen enemy: this just advances the grid one column and
 # lets the front line strike — the clean way to march a stacked enemy forward in
 # a test without spawning clutter enemies.
 func _tick() -> void:
 	GameLoop2.beat_game(false)
+
+# Beat games until `instance` is standing in the front column, stopping BEFORE it
+# gets to strike (attacks resolve ahead of the advance). Written as a loop rather
+# than a fixed number of ticks so these tests describe the timing rule — "it
+# strikes once it reaches the front" — instead of how wide the board happens to
+# be.
+func _march_to_front(instance: int) -> void:
+	for _i in range(GameLoop2.GRID_COLS + 2):
+		if _col_of(instance) <= 1:
+			return
+		_tick()
 
 # --- choose / spawn -------------------------------------------------------
 
@@ -84,10 +132,10 @@ func test_stacked_enemy_marches_forward_then_attacks() -> void:
 	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # A -> spawn col
 	assert_eq(_col_of(a), GameLoop2.SPAWN_COL, "spawns at the back")
 	assert_eq(GameState.hp, 10, "the back column can't strike")
-	_tick()                                          # A -> col 2
-	assert_eq(_col_of(a), 2)
+	_tick()                                          # A closes one column
+	assert_eq(_col_of(a), GameLoop2.SPAWN_COL - 1)
 	assert_eq(GameState.hp, 10)
-	_tick()                                          # A -> col 1 (front), no strike yet
+	_march_to_front(a)                               # A -> col 1 (front), no strike yet
 	assert_eq(_col_of(a), 1)
 	assert_eq(GameState.hp, 10, "reaches the front but strikes next game")
 	_tick()                                          # A strikes for 2
@@ -98,12 +146,48 @@ func test_stacked_enemy_marches_forward_then_attacks() -> void:
 func test_enemy_closes_one_column_per_game() -> void:
 	var a: int = GameLoop2.choose_game(_enemy(1)) ; GameLoop2.beat_game(false)
 	assert_eq(_col_of(a), GameLoop2.SPAWN_COL, "spawns at the back column")
-	_tick()
-	assert_eq(_col_of(a), 2, "closes one column per game")
-	_tick()
+	for step in range(1, GameLoop2.SPAWN_COL):
+		_tick()
+		assert_eq(_col_of(a), GameLoop2.SPAWN_COL - step, "closes one column per game")
 	assert_eq(_col_of(a), 1, "reaches the front")
 	_tick()
 	assert_eq(_col_of(a), 1, "cannot advance past the front")
+
+# A 1x1 enemy spawns with its only cell on the back column; a WIDER one spawns
+# far enough back that its RIGHTMOST cell lands there, which puts its leading
+# edge closer to the player and shortens its march (§grid).
+func test_wide_enemy_spawns_with_its_back_edge_on_the_last_column() -> void:
+	var small: int = GameLoop2.spawn_to_stack(_enemy(1))
+	assert_eq(_col_of(small), GameLoop2.GRID_COLS, "a 1x1 spawns on the back column")
+	GameLoop2.reset()
+	var wide: int = GameLoop2.spawn_to_stack(_shaped(1, 1, 3))
+	assert_eq(_col_of(wide), GameLoop2.GRID_COLS - 2,
+		"a 3-wide body starts two columns further in so its back edge touches the last column")
+
+# The consequence of that: a long enemy reaches you in fewer games.
+func test_a_longer_enemy_reaches_the_front_sooner() -> void:
+	var wide: int = GameLoop2.spawn_to_stack(_shaped(2, 1, 3))
+	var games: int = 0
+	while _col_of(wide) > 1 and games < 10:
+		_tick()
+		games += 1
+	assert_eq(games, GameLoop2.GRID_COLS - 3,
+		"a 3-wide body only has to cross the columns its front edge hasn't reached")
+	assert_eq(GameState.hp, 10, "and it still gets its one game of grace at the front")
+	_tick()
+	assert_eq(GameState.hp, 8, "then it strikes")
+
+func test_enemies_spawn_on_a_random_row() -> void:
+	# Spawning one enemy at a time onto an empty board should not always pick the
+	# same lane. (Flakes with probability GRID_ROWS^-19 — 1 in ~2.7e11 at 4 rows.)
+	var seen: Dictionary = {}
+	for i in range(20):
+		GameLoop2.reset()
+		var inst: int = GameLoop2.spawn_to_stack(_enemy(0))
+		seen[_row_of(inst)] = true
+	assert_gt(seen.size(), 1, "spawn rows vary instead of always filling row 0")
+	for row in seen:
+		assert_between(int(row), 0, GameLoop2.GRID_ROWS - 1, "and stay on the board")
 
 func test_spawn_column_overflows_to_off_grid_when_full() -> void:
 	for i in range(GameLoop2.GRID_ROWS):
@@ -118,7 +202,7 @@ func test_full_front_column_stalls_the_queue() -> void:
 		GameLoop2.spawn_to_stack(_enemy(0))
 	assert_eq(GameLoop2.offgrid_count(), 6 - GameLoop2.GRID_ROWS, "two overflow the spawn column")
 	# March forward; the front column caps attackers at GRID_ROWS and the rest jam.
-	for i in range(8):
+	for i in range(12):
 		_tick()
 	var front: int = 0
 	for e in GameLoop2.stack:
@@ -128,20 +212,77 @@ func test_full_front_column_stalls_the_queue() -> void:
 	assert_eq(GameLoop2.stack_size(), 6, "the jammed enemies are still on the field")
 	assert_eq(GameLoop2.offgrid_count(), 0, "the off-grid queue has slid onto the grid")
 
+# --- footprints: a big body is a wall (§grid) -----------------------------
+
+# A multi-cell enemy occupies every cell of its footprint, so a smaller one can't
+# walk through it — it stalls in the column behind and waits.
+func test_a_wide_enemy_blocks_a_smaller_one_behind_it() -> void:
+	# A 1x2 body parked at the front of row 0, and a 1x1 directly behind it.
+	var wall := {"instance": 91, "enemy": _shaped(0, 1, 2), "stun": 0, "health": 1,
+		"col": 1, "row": 0}
+	var runt := {"instance": 92, "enemy": _enemy(0), "stun": 0, "health": 1,
+		"col": 3, "row": 0}
+	GameLoop2.stack = [wall, runt]
+	_tick()
+	assert_eq(_col_of(92), 3, "column 2 is the wall's back half — the runt can't enter it")
+	assert_eq(_col_of(91), 1, "and the wall is already as far forward as it goes")
+
+# The L's notch is a real gap: a 1x1 fits into the empty corner of its bounding
+# box, but not into any cell the L actually fills.
+func test_the_l_shape_blocks_its_solid_cells_but_not_its_notch() -> void:
+	var bastion := {"instance": 81, "enemy": _bastion(3), "stun": 0, "health": 1,
+		"col": 1, "row": 0}
+	GameLoop2.stack = [bastion]
+	var runt: GoalEnemyData = _enemy(0)
+	# Row 0 columns 1-2 are the notch above the L's base; column 3 of row 0 is solid.
+	assert_true(GameLoop2.fits_at(runt, 0, 1), "the notch is standable")
+	assert_true(GameLoop2.fits_at(runt, 0, 2), "so is the rest of the notch")
+	assert_false(GameLoop2.fits_at(runt, 0, 3), "the L's raised back corner is solid")
+	assert_false(GameLoop2.fits_at(runt, 1, 1), "and its whole base row is solid")
+	assert_false(GameLoop2.fits_at(runt, 1, 2))
+	assert_false(GameLoop2.fits_at(runt, 1, 3))
+
+# An enemy only steps forward when its ENTIRE footprint clears, so the L cannot
+# slide over a body tucked into the lane its base needs.
+func test_a_shaped_enemy_needs_its_whole_footprint_clear_to_advance() -> void:
+	var bastion := {"instance": 81, "enemy": _bastion(0), "stun": 0, "health": 1,
+		"col": 2, "row": 0}
+	# A 1x1 sitting in row 1 column 1 — dead ahead of the L's base row.
+	var blocker := {"instance": 82, "enemy": _enemy(0), "stun": 0, "health": 1,
+		"col": 1, "row": 1}
+	GameLoop2.stack = [bastion, blocker]
+	_tick()
+	assert_eq(_col_of(81), 2, "the L is held up by the body in front of its base")
+	# Clear the blocker and it walks on.
+	GameLoop2.stack = [bastion]
+	_tick()
+	assert_eq(_col_of(81), 1, "with the lane clear it closes as normal")
+
+# An enemy strikes as soon as ANY of its cells is in the front column — the
+# reason a long body hurts sooner than a compact one.
+func test_any_cell_in_the_front_column_counts_as_the_front_line() -> void:
+	var wide := {"instance": 71, "enemy": _shaped(4, 1, 3), "stun": 0, "health": 1,
+		"col": 1, "row": 0}
+	GameLoop2.stack = [wide]
+	assert_eq(GameLoop2.front_count(), 1, "its leading cell is in column 1")
+	assert_eq(GameLoop2.stacked_damage_per_game(), 4)
+	_tick()
+	assert_eq(GameState.hp, 6, "so it strikes even though most of it is further back")
+
 # --- block absorbs before hp (§3) ----------------------------------------
 
 func test_block_absorbs_first() -> void:
 	GameState.block = 3
-	GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)   # spawn col
-	_tick() ; _tick()                                              # march to the front
+	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
+	_march_to_front(a)
 	_tick()                                                        # 2 dmg -> block
 	assert_eq(GameState.block, 1)
 	assert_eq(GameState.hp, 10)
 
 func test_block_overflow_hits_hp() -> void:
 	GameState.block = 1
-	GameLoop2.choose_game(_enemy(3)) ; GameLoop2.beat_game(false)   # spawn col
-	_tick() ; _tick()                                              # march to the front
+	var a: int = GameLoop2.choose_game(_enemy(3)) ; GameLoop2.beat_game(false)  # spawn col
+	_march_to_front(a)
 	_tick()                                                        # 3 dmg: 1 blk, 2 hp
 	assert_eq(GameState.block, 0)
 	assert_eq(GameState.hp, 8)
@@ -163,7 +304,7 @@ func test_fulfilling_old_goal_defeats_and_prevents_its_attack() -> void:
 
 func test_stun_skips_the_next_attack_only() -> void:
 	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
-	_tick() ; _tick()                                        # march A to the front
+	_march_to_front(a)
 	assert_eq(_col_of(a), 1)
 	GameLoop2.stun(a)                                         # freeze its first strike
 	_tick()                                                  # A stunned, holds fire
@@ -176,7 +317,7 @@ func test_stun_skips_the_next_attack_only() -> void:
 func test_push_shoves_the_enemy_back_a_column_and_spends_a_charge() -> void:
 	GameState.push = 1
 	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
-	_tick() ; _tick()                                        # march A to the front
+	_march_to_front(a)
 	assert_eq(_col_of(a), 1)
 	assert_true(GameLoop2.push(a), "push a front-line enemy back a column")
 	assert_eq(GameState.push, 0, "push is spent")
@@ -190,11 +331,13 @@ func test_push_needs_a_free_cell_behind_the_target() -> void:
 	GameState.push = 3
 	# Walk one enemy to the front, THEN pack the column behind it.
 	var a: int = GameLoop2.spawn_to_stack(_enemy(0))
-	_tick() ; _tick()                              # A: spawn col -> col 2 -> col 1
+	_march_to_front(a)
 	assert_eq(_col_of(a), 1, "A is at the front")
 	for i in range(GameLoop2.GRID_ROWS):
 		GameLoop2.spawn_to_stack(_enemy(0))
-	_tick()                                        # the four spawns fill column 2
+	# Walk the fresh spawns up until they fill the column right behind A.
+	while _count_in_col(2) < GameLoop2.GRID_ROWS:
+		_tick()
 	assert_false(GameLoop2.can_push(a), "column 2 is packed — nowhere to shove A")
 	assert_false(GameLoop2.push(a), "a blocked push fails")
 	assert_eq(GameState.push, 3, "a blocked push spends nothing")
@@ -211,7 +354,7 @@ func test_push_fails_at_the_back_column() -> void:
 func test_push_requires_a_charge() -> void:
 	GameState.push = 0
 	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
-	_tick() ; _tick()                                        # march A to the front
+	_march_to_front(a)
 	assert_false(GameLoop2.push(a), "no push without a charge")
 	assert_eq(_col_of(a), 1, "an un-pushed enemy holds its ground")
 	_tick()                                                  # A strikes on schedule
@@ -246,8 +389,8 @@ func test_bomb_requires_a_charge() -> void:
 func test_lethal_hit_ends_the_run() -> void:
 	watch_signals(GameLoop2)
 	GameState.hp = 2
-	GameLoop2.choose_game(_enemy(3)) ; GameLoop2.beat_game(false)  # spawn col
-	_tick() ; _tick()                                             # march to the front
+	var a: int = GameLoop2.choose_game(_enemy(3)) ; GameLoop2.beat_game(false)  # spawn col
+	_march_to_front(a)
 	_tick()                                                       # 3 dmg -> dead
 	assert_eq(GameState.hp, 0)
 	assert_true(GameLoop2.run_over)
@@ -256,8 +399,8 @@ func test_lethal_hit_ends_the_run() -> void:
 
 func test_no_resolution_after_run_over() -> void:
 	GameState.hp = 1
-	GameLoop2.choose_game(_enemy(5)) ; GameLoop2.beat_game(false)  # spawn col
-	_tick() ; _tick()                                             # march to the front
+	var a: int = GameLoop2.choose_game(_enemy(5)) ; GameLoop2.beat_game(false)  # spawn col
+	_march_to_front(a)
 	_tick()                                                       # lethal
 	assert_true(GameLoop2.run_over)
 	var beaten_before: int = GameLoop2.games_beaten
@@ -284,18 +427,17 @@ func test_spawn_to_stack_adds_a_following_enemy() -> void:
 	assert_eq(GameLoop2.stack_size(), 1)
 	assert_eq(_col_of(inst), GameLoop2.SPAWN_COL, "conjured at the back column")
 	# Like any spawn, it closes in and only strikes once it reaches the front.
-	_tick()                             # -> col 2
-	assert_eq(GameState.hp, 10)
-	_tick()                             # -> col 1
-	assert_eq(GameState.hp, 10)
+	_march_to_front(inst)
+	assert_eq(_col_of(inst), 1)
+	assert_eq(GameState.hp, 10, "closing in costs nothing")
 	_tick()                             # strikes for 2
 	assert_eq(GameState.hp, 8, "the conjured enemy hits for 2 once at the front")
 
 # --- aggravate (Scroll of Aggravate Monsters, §4.1) -----------------------
 
 func test_aggravate_adds_damage_for_n_games_then_expires() -> void:
-	GameLoop2.choose_game(_enemy(1)) ; GameLoop2.beat_game(false)   # A(1) spawn col
-	_tick() ; _tick()                                              # march A to the front
+	var a: int = GameLoop2.choose_game(_enemy(1)) ; GameLoop2.beat_game(false)  # A(1) spawn col
+	_march_to_front(a)
 	GameLoop2.aggravate(2, 1)                                       # +2 for 1 game
 	assert_eq(GameLoop2.stacked_damage_per_game(), 3, "1 base + 2 aggravate at the front")
 	_tick()                                                        # A hits 1+2=3
@@ -310,11 +452,11 @@ func test_aggravate_adds_damage_for_n_games_then_expires() -> void:
 # Only the front column threatens damage next game; enemies still closing in do
 # not count toward the "front line" preview.
 func test_stacked_damage_per_game_sums_the_front_column() -> void:
-	GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)   # A spawn col
-	GameLoop2.choose_game(_enemy(3)) ; GameLoop2.beat_game(false)   # A->col2, B spawn col
-	GameLoop2.choose_game(_enemy(0)) ; GameLoop2.beat_game(false)   # A->col1, B->col2
+	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # A spawn col
+	var b: int = GameLoop2.choose_game(_enemy(3)) ; GameLoop2.beat_game(false)  # A closes, B spawns
+	_march_to_front(a)                                             # A at the front, B a column back
 	assert_eq(GameLoop2.stacked_damage_per_game(), 2, "only A is at the front")
-	_tick()                                                        # A strikes; A & B now front
+	_march_to_front(b)                                             # B joins the front line
 	assert_eq(GameLoop2.stacked_damage_per_game(), 5, "A and B both at the front")
 
 # --- board verbs: Bash / Transmute (§4) ----------------------------------

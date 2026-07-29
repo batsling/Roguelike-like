@@ -62,7 +62,8 @@ func test_aggravate_arms_enemy_damage_bonus() -> void:
 	# an enemy needs several games to close from the spawn column (§grid), so the
 	# buff must be armed once the enemy is already in melee for it to land.
 	GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)   # spawn column
-	GameLoop2.beat_game(false) ; GameLoop2.beat_game(false)         # -> front column
+	while int(GameLoop2.stack[0].get("col", 1)) > 1:
+		GameLoop2.beat_game(false)                                  # -> front column
 	var s: ScrollData = Data.get_scroll(&"scroll_of_aggravate_monsters")
 	ScrollSystem.read_scroll(s, {"rng": _rng()})
 	assert_eq(GameLoop2.enemy_damage_bonus, 1, "Aggravate is +1 damage")

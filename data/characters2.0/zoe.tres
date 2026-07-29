@@ -27,5 +27,6 @@ level_up_stats = {
 }
 level_up_reward_type = &"none"
 level_up_reward_amount = 0
+file = "Zoe"
 portrait = ExtResource("2_portrait")
 icon = ExtResource("3_icon")

@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=4 format=3 uid="uid://char2_erratic_deck"]
+
+[ext_resource type="Script" path="res://scripts/resources/CharacterData.gd" id="1_char"]
+[ext_resource type="Texture2D" path="res://images2.0/characters/Full/ErraticDeck.png" id="2_portrait"]
+[ext_resource type="Texture2D" path="res://images2.0/characters/Icon/ErraticDeck.png" id="3_icon"]
+
+[resource]
+script = ExtResource("1_char")
+id = &"erratic_deck"
+display_name = "Erratic Deck"
+description = "All Ranks and Suits in deck are randomized"
+source_game = "Balatro"
+base_max_hp = 8
+start_bash = 0
+start_dash = 0
+start_push = 0
+start_transmute = 0
+start_scramble = 0
+start_bombs = 0
+start_keys = 0
+starting_items = Array[StringName]([])
+starting_weapon = &""
+level_up_condition = "Randomly select your starting build"
+level_up_reward = "Gain +1 Scramble"
+level_up_stats = {
+"scramble": 1
+}
+level_up_reward_type = &"none"
+level_up_reward_amount = 0
+file = "ErraticDeck"
+portrait = ExtResource("2_portrait")
+icon = ExtResource("3_icon")
