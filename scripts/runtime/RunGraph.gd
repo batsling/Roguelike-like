@@ -18,9 +18,10 @@ const NUM_START_OPTIONS := 2
 const MIN_START_CONNECTIONS := 3
 
 # Game-type ordering used to pick "one start per type" for the
-# choose-your-start panel. The game ships two live genres: Action and
-# Strategy (the latter now houses the former Deckbuilder games as a
-# "deckbuilder" tag, and all Strategy games play the deckbuilder combat).
+# choose-your-start panel. Only Action and Strategy are offered as starting
+# genres. Deckbuilder and Traditional are their own authored types now
+# (Deckbuilder games still play the same deckbuilder combat as Strategy), but,
+# like Traditional, they are not offered as run starts.
 const TYPE_ORDER: Array = [
 	GameData.GameType.ACTION,
 	GameData.GameType.STRATEGY,

@@ -203,17 +203,18 @@ func test_stacked_damage_per_game_sums_active_enemies() -> void:
 
 # --- board verbs: Bash / Transmute (§4) ----------------------------------
 
-func _find_game_with_tag(tag: String) -> GameData:
+func _find_game_with_type(type_val: GameData.GameType) -> GameData:
 	for g in Data.all_games():
-		if g is GameData and g.tags.has(tag):
+		if g is GameData and g.type == type_val:
 			return g
 	return null
 
-func test_game_type_key_promotes_tags() -> void:
-	var db: GameData = _find_game_with_tag("deckbuilder")
+func test_game_type_key_maps_type() -> void:
+	var db: GameData = _find_game_with_type(GameData.GameType.DECKBUILDER)
 	assert_not_null(db)
 	assert_eq(String(GameLoop2.game_type_key(db)), "deckbuilder")
-	var trad: GameData = _find_game_with_tag("traditional")
+	var trad: GameData = _find_game_with_type(GameData.GameType.TRADITIONAL)
+	assert_not_null(trad)
 	assert_eq(String(GameLoop2.game_type_key(trad)), "traditional")
 
 func test_bash_removes_game_and_spends_charge() -> void:
@@ -232,7 +233,7 @@ func test_bash_requires_charge() -> void:
 
 func test_transmute_returns_same_type_offgraph_game() -> void:
 	GameState.transmute = 1
-	var db: GameData = _find_game_with_tag("deckbuilder")
+	var db: GameData = _find_game_with_type(GameData.GameType.DECKBUILDER)
 	var repl: GameData = GameLoop2.transmute_game(db.id, [db.id])
 	assert_not_null(repl, "a same-type off-graph game exists")
 	assert_ne(String(repl.id), String(db.id), "not the source game")
@@ -241,7 +242,7 @@ func test_transmute_returns_same_type_offgraph_game() -> void:
 
 func test_transmute_excludes_connected_and_bashed() -> void:
 	GameState.transmute = 5
-	var db: GameData = _find_game_with_tag("deckbuilder")
+	var db: GameData = _find_game_with_type(GameData.GameType.DECKBUILDER)
 	var repl: GameData = GameLoop2.transmute_game(db.id, [db.id])
 	# Feed the first result back as connected + bash it; a second transmute must
 	# avoid both.

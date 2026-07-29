@@ -365,20 +365,15 @@ func clear_amulet() -> void:
 
 # --- Board verbs on the game pool (Bash / Transmute, §4) ------------------
 
-# Effective 2.0 game type (§6.1). Deckbuilder and Traditional are first-class
-# types in the redesign but are carried as TAGS on today's GameData (only
-# ACTION/STRATEGY are authored as the enum), so this adapter promotes them: a
-# deckbuilder/traditional tag wins, else the enum name, with Strategy as the
-# residual. It is the single bridge the overworld + enemy-roll use so the
-# four-type model works without re-authoring 737 games; a later type-promotion
-# pass (§6.1) can retire it.
+# Effective 2.0 game type key (§6.1). All four types — Action, Deckbuilder,
+# Traditional, Strategy — are now authored directly on GameData.type, so this
+# just maps the enum onto the lowercase key the overworld + enemy-roll use.
+# (Deckbuilder and Traditional were previously carried as tags on Strategy
+# games; the spreadsheet type-promotion pass moved them onto the enum and this
+# adapter's tag-promotion bridge was retired.)
 func game_type_key(game: GameData) -> StringName:
 	if game == null:
 		return &""
-	if game.tags.has("deckbuilder"):
-		return &"deckbuilder"
-	if game.tags.has("traditional"):
-		return &"traditional"
 	match game.type:
 		GameData.GameType.ACTION:
 			return &"action"
