@@ -91,6 +91,39 @@ func test_unstable_genome_destroys_self_and_banks_a_chest() -> void:
 	assert_eq(GameState.take_pending_chest(), 3, "offering 3 items")
 	assert_false(GameState.inventory.has(genome), "the source item is consumed")
 
+# --- Alien Baby: enemies take an extra goal completion to kill -------------
+
+func test_alien_baby_makes_enemies_take_two_goal_completions() -> void:
+	_give(&"alien_baby")
+	assert_eq(GameState.enemy_health_bonus(), 1, "Alien Baby: +1 enemy Health")
+	var enemy: GoalEnemyData = Data.all_goal_enemies()[0]
+	assert_eq(GameLoop2.effective_health(enemy), 2, "the enemy now needs two hits")
+	# Spawn it and beat its goal once: it survives with 1 Health, still following.
+	GameLoop2.choose_game(enemy)
+	var chests_before: int = GameState.pending_chests
+	GameLoop2.beat_game(true)
+	assert_eq(GameLoop2.stack_size(), 1, "one goal completion doesn't kill it yet")
+	assert_eq(GameState.pending_chests, chests_before, "no drop until it dies")
+	assert_eq(int(GameLoop2.stack[0]["health"]), 1, "it has one Health left")
+	# Fulfil its goal a second time on the next game: now it dies and drops.
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	GameLoop2.beat_game(false, [inst])
+	assert_eq(GameLoop2.stack_size(), 0, "the second goal completion defeats it")
+	assert_eq(GameState.pending_chests, chests_before + 1, "and it drops its relic")
+
+func test_alien_baby_survivor_still_attacks_when_goal_missed() -> void:
+	_give(&"alien_baby")
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.block = 0
+	var enemy: GoalEnemyData = Data.all_goal_enemies()[0]
+	GameLoop2.choose_game(enemy)
+	GameLoop2.beat_game(true)                 # first hit -> survives, follows
+	assert_eq(GameLoop2.stack_size(), 1)
+	var hp_before: int = GameState.hp
+	GameLoop2.beat_game(false)                # a game where its goal isn't met
+	assert_lt(GameState.hp, hp_before, "the surviving enemy attacks on a missed game")
+
 # --- charged actives recharge per game beaten ----------------------------
 
 func test_charged_item_recharges_on_game_beaten() -> void:

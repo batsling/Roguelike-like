@@ -1125,6 +1125,18 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 func _pretty_stat(stat: String) -> String:
 	return stat.capitalize()
 
+# Alien Baby: extra Health every goal-enemy spawns with — i.e. how many EXTRA
+# goal completions it takes to defeat one (docs/games-first-redesign.md §8).
+# Summed across owned items' stat_bonuses["enemy_health"] so copies stack.
+func enemy_health_bonus() -> int:
+	var bonus: int = 0
+	for it in inventory:
+		if it is ItemData and not it.stat_bonuses.is_empty():
+			bonus += int(it.stat_bonuses.get("enemy_health", 0))
+	if equipped_weapon is ItemData and not equipped_weapon.stat_bonuses.is_empty():
+		bonus += int(equipped_weapon.stat_bonuses.get("enemy_health", 0))
+	return bonus
+
 # Snowball: total flat bonus owned items add whenever the player gains a
 # permanent point of `stat`. Summed across the inventory so duplicate Snowballs
 # stack. 0 for the common no-amplifier case.

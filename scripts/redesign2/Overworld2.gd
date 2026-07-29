@@ -680,10 +680,13 @@ func _enemy_preview_text(choice: Dictionary) -> String:
 	if e == null:
 		return "[b]%s[/b]\n[i]No enemy — free game.[/i]" % game.display_name
 	var kind: String = "[color=#e0b020][b]☠ BOSS[/b][/color] " if choice["boss"] else ""
-	return "[b]%s[/b]  →  %s%s\n[b]GOAL (%s):[/b] %s   [i](%s / %s / dmg %d)[/i]" % [
+	# Effective Health = goal completions to defeat it (Alien Baby makes it 2).
+	var hp: int = GameLoop2.effective_health(e)
+	var hp_txt: String = "%d goal%s to beat" % [hp, "" if hp == 1 else "s"]
+	return "[b]%s[/b]  →  %s%s\n[b]GOAL (%s):[/b] %s   [i](%s / %s / %s / dmg %d)[/i]" % [
 		game.display_name, kind, e.display_name,
 		String(e.goal_type).capitalize(), e.goal,
-		String(e.game_type).capitalize(), _tier_name(e), e.damage,
+		String(e.game_type).capitalize(), _tier_name(e), hp_txt, e.damage,
 	]
 
 func _now_playing_text() -> String:
@@ -815,15 +818,16 @@ func _refresh_followers() -> void:
 	if _phase == Phase.PLAYING and not _chosen.is_empty():
 		var cur: GoalEnemyData = _chosen.get("enemy")
 		if cur != null:
-			_stack_box.add_child(_follower_card(cur, 2, 0, true))
+			var cur_hp: int = int(GameLoop2.current.get("health", cur.health)) if GameLoop2.has_current() else cur.health
+			_stack_box.add_child(_follower_card(cur, 2, 0, true, cur_hp))
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
 		var stun: int = int(entry.get("stun", 0))
 		# A stacked enemy hits on the very next game beaten; each Stun pushes that
 		# one game later.
-		_stack_box.add_child(_follower_card(e, 1 + stun, stun, false))
+		_stack_box.add_child(_follower_card(e, 1 + stun, stun, false, int(entry.get("health", e.health))))
 
-func _follower_card(e: GoalEnemyData, games_away: int, stun: int, is_current: bool) -> Control:
+func _follower_card(e: GoalEnemyData, games_away: int, stun: int, is_current: bool, remaining_health: int = -1) -> Control:
 	var accent: Color
 	if e.is_boss():
 		accent = Color(0.95, 0.55, 0.2)
@@ -866,7 +870,9 @@ func _follower_card(e: GoalEnemyData, games_away: int, stun: int, is_current: bo
 	vb.add_child(when)
 
 	var stats := Label.new()
-	stats.text = "❤ %d    ⚔ %d dmg" % [e.health, e.damage]
+	var hp: int = remaining_health if remaining_health >= 0 else e.health
+	# "❤ 2 (goals to kill)" reads the mechanic: each goal completion is one hit.
+	stats.text = ("❤ %d goal    ⚔ %d dmg" % [hp, e.damage]) if hp == 1 else ("❤ %d goals    ⚔ %d dmg" % [hp, e.damage])
 	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stats.add_theme_font_size_override("font_size", 11)
 	stats.add_theme_color_override("font_color", UITheme.TEXT_DIM)
