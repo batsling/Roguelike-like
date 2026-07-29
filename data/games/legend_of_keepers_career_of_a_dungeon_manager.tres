@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_legend_of_keepers_career_of_a_dungeon_manager"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://assets/games/legend-of-keepers-career-of-a-dungeon-manager.jpg" id="2_cover"]
+[ext_resource type="Texture2D" path="res://images2.0/games/legend-of-keepers-career-of-a-dungeon-manager.jpg" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")

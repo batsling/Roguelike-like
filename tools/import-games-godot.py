@@ -3,9 +3,11 @@
 Import games and connections from tools/Roguelikes.xlsx into Godot resources.
 
 Generates one GameData .tres per row in the `games` sheet under
-data/games/, and copies each game's cover image into
-assets/games/. Connections from the `connections` sheet are baked
-into each game's `games_influenced` array using the same id slug.
+data/games/, pointing each at its cover image in images2.0/games/ —
+the single home for cover art (there is no staging copy any more; drop
+new covers straight in there, named after the sheet's File column).
+Connections from the `connections` sheet are baked into each game's
+`games_influenced` array using the same id slug.
 
 Mirrors legacy-web/scripts/import-games.py (which targets the old web
 build) but writes Godot .tres files instead of a JS object.
@@ -14,17 +16,17 @@ build) but writes Godot .tres files instead of a JS object.
 import openpyxl
 import os
 import re
-import shutil
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 
 XLSX_PATH = os.path.join(PROJECT_ROOT, "tools", "Roguelikes.xlsx")
-COVERS_SRC_DIR = os.path.join(PROJECT_ROOT, "images", "covers")
+# Cover art lives in images2.0/games/ with the rest of the 2.0 art — it is both
+# the source and the imported location, so nothing is copied around.
+COVERS_DIR = os.path.join(PROJECT_ROOT, "images2.0", "games")
+COVERS_DIR_RES = "res://images2.0/games/"
 GAMES_OUT_DIR = os.path.join(PROJECT_ROOT, "data", "games")
-ASSETS_OUT_DIR = os.path.join(PROJECT_ROOT, "assets", "games")
-NO_COVER_NAME = "no-cover.svg"
 
 # GameData.GameType enum order — ACTION, STRATEGY, DECKBUILDER, TRADITIONAL.
 TYPE_MAP = {
@@ -51,13 +53,12 @@ def default_filename(name: str) -> str:
     return _slug(name, "-")
 
 
-def find_cover(file_col: str | None, name: str) -> tuple[str, str] | None:
-    """Return (asset_filename, src_path) for the cover, or None if missing."""
+def find_cover(file_col: str | None, name: str) -> str | None:
+    """Return the cover's filename inside images2.0/games/, or None if missing."""
     base = (file_col or "").strip() or default_filename(name)
     for ext in (".jpg", ".png"):
-        src = os.path.join(COVERS_SRC_DIR, base + ext)
-        if os.path.exists(src):
-            return base + ext, src
+        if os.path.exists(os.path.join(COVERS_DIR, base + ext)):
+            return base + ext
     return None
 
 
@@ -90,12 +91,18 @@ def _truthy(cell) -> bool:
 
 def write_game_tres(game: dict) -> None:
     out_path = os.path.join(GAMES_OUT_DIR, f"{game['id']}.tres")
-    cover_path = f"res://assets/games/{game['cover_asset']}"
+    # A game with no art in images2.0/games/ is written without a cover
+    # ext_resource; the UI already draws a name-only card when cover_image is null.
+    cover_asset = game.get("cover_asset")
     lines = [
-        f'[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_{game["id"]}"]',
+        '[gd_resource type="Resource" script_class="GameData" load_steps=%d format=3 uid="uid://game_%s"]'
+        % (3 if cover_asset else 2, game["id"]),
         "",
         '[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]',
-        f'[ext_resource type="Texture2D" path="{cover_path}" id="2_cover"]',
+    ]
+    if cover_asset:
+        lines.append(f'[ext_resource type="Texture2D" path="{COVERS_DIR_RES}{cover_asset}" id="2_cover"]')
+    lines += [
         "",
         "[resource]",
         'script = ExtResource("1_game")',
@@ -108,7 +115,10 @@ def write_game_tres(game: dict) -> None:
         "enemy_pool = Array[StringName]([])",
         "item_pool = Array[StringName]([])",
         "special_effects = PackedStringArray()",
-        'cover_image = ExtResource("2_cover")',
+    ]
+    if cover_asset:
+        lines.append('cover_image = ExtResource("2_cover")')
+    lines += [
         f'owned = {"true" if game["owned"] else "false"}',
         f'file_location = "{_escape(game["file_location"])}"',
         f'steam_page = "{_escape(game["steam_page"])}"',
@@ -195,28 +205,15 @@ def main() -> int:
         seen[a_id].add(b_id)
         games_by_id[a_id]["games_influenced"].append(b_id)
 
-    # Pass 3: resolve covers + copy assets.
-    os.makedirs(ASSETS_OUT_DIR, exist_ok=True)
+    # Pass 3: resolve covers in place (images2.0/games/ is the only cover home).
+    os.makedirs(COVERS_DIR, exist_ok=True)
     os.makedirs(GAMES_OUT_DIR, exist_ok=True)
-    fallback_src = os.path.join(COVERS_SRC_DIR, NO_COVER_NAME)
-    fallback_dst = os.path.join(ASSETS_OUT_DIR, NO_COVER_NAME)
-    if os.path.exists(fallback_src) and not os.path.exists(fallback_dst):
-        shutil.copy2(fallback_src, fallback_dst)
 
     missing_cover = 0
-    copied = 0
     for g in games:
-        found = find_cover(g["file_col"], g["display_name"])
-        if found is None:
-            g["cover_asset"] = NO_COVER_NAME
+        g["cover_asset"] = find_cover(g["file_col"], g["display_name"])
+        if g["cover_asset"] is None:
             missing_cover += 1
-            continue
-        asset_name, src = found
-        dst = os.path.join(ASSETS_OUT_DIR, asset_name)
-        if not os.path.exists(dst):
-            shutil.copy2(src, dst)
-            copied += 1
-        g["cover_asset"] = asset_name
 
     # Wipe stale .tres files (so removed games don't linger) — but keep the
     # README if there ever is one.
@@ -231,8 +228,8 @@ def main() -> int:
     total_connections = sum(len(g["games_influenced"]) for g in games)
     print(f"[import-games-godot] {len(games)} games written to {os.path.relpath(GAMES_OUT_DIR, PROJECT_ROOT)}")
     print(f"[import-games-godot] {total_connections} connections baked in")
-    print(f"[import-games-godot] {copied} new cover assets copied -> {os.path.relpath(ASSETS_OUT_DIR, PROJECT_ROOT)}")
-    print(f"[import-games-godot] {missing_cover} games using {NO_COVER_NAME} fallback")
+    print(f"[import-games-godot] covers resolved from {os.path.relpath(COVERS_DIR, PROJECT_ROOT)}")
+    print(f"[import-games-godot] {missing_cover} games have no cover art (written without one)")
     if unresolved:
         print(f"[import-games-godot] {skipped} connection rows skipped — unresolved names: {sorted(unresolved)}")
     return 0

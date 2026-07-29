@@ -24,7 +24,11 @@ enum Phase { SELECT, PLAYING, OVER }
 # the verb that bypasses it to reach any connected game. Kept small so the board
 # reads at a glance; the amulet is always included when it's reachable so a win is
 # never blocked by the cap.
-const OFFER_COUNT := 5
+#
+# The base offering is THREE cards. Items / level-ups / future effects widen it by
+# granting the "game_choices" stat (GameState.game_choice_bonus), so the visible
+# count is always read through offer_count() rather than the constant.
+const BASE_OFFER_COUNT := 3
 
 # The current offering. Each entry:
 #   {"game": GameData, "enemy": GoalEnemyData, "boss": bool, "amulet": bool}
@@ -37,6 +41,11 @@ var _chosen: Dictionary = {}          # the choice being played (Phase.PLAYING)
 # Transmute overrides for the current position: reachable game id -> the off-graph
 # game it was swapped to (§4). Cleared when the player moves on.
 var _transmuted: Dictionary = {}
+# Scramble (§4) reroll counter. The offering is drawn in a STABLE position-seeded
+# order so bashing one card doesn't reshuffle the rest; this salt is what a
+# scramble changes, re-drawing which games fill the slots (and, through
+# _build_choices, the enemies behind them).
+var _scramble_salt: int = 0
 var _rng := RandomNumberGenerator.new()
 
 # --- UI nodes (built in code) --------------------------------------------
@@ -136,6 +145,7 @@ func start_run(character_id: StringName = &"") -> void:
 		GameState.set_current_game(start_id)
 	_phase = Phase.SELECT
 	_dash_mode = false
+	_scramble_salt = 0
 	_banner.hide()
 	_build_choices()
 	_refresh()
@@ -172,6 +182,25 @@ func cancel_dash() -> void:
 	_dash_mode = false
 	_build_choices()
 	_refresh()
+
+# Scramble (§4, granted by the D6): spend a charge to REROLL THE OFFERING — the
+# games filling the three (or more, with a game_choices bonus) slots are drawn
+# again from the reachable neighbours, each with a freshly-rolled goal-enemy. At a
+# node with no more neighbours than the cap the slots can't change, so the reroll
+# lands entirely on the enemies behind them; either way a scramble always changes
+# what you're being offered. Returns true when a charge was spent.
+func scramble() -> bool:
+	if _phase != Phase.SELECT or GameState.scramble <= 0 or _choices.is_empty():
+		return false
+	GameState.scramble -= 1
+	_scramble_salt += 1
+	# A transmuted card is a swap made on the OLD offering — a reroll replaces it.
+	_transmuted.clear()
+	_build_choices()
+	GameLog.add("Scrambled the offering — %d new game(s) to choose from." % _choices.size(),
+		Color(0.6, 0.75, 1.0))
+	_refresh()
+	return true
 
 # Open the bird's-eye "Map to the Amulet" — the layered shortest-path graph from
 # the current game down to the amulet (ported from the old web build). The current
@@ -418,25 +447,32 @@ func _current_tier() -> int:
 		return RunDifficulty.tier_for(gp - 1)
 	return RunDifficulty.tier_for(gp)
 
+# How many game cards the offering shows: the base three plus whatever
+# "game_choices" bonus the run has been granted (never below one, or there'd be
+# nothing to pick). Items / effects widen the offering through this.
+func offer_count() -> int:
+	return maxi(1, BASE_OFFER_COUNT + GameState.game_choice_bonus)
+
 # The limited offering for the current position: reachable, non-bashed games in a
-# stable position-seeded order, capped at OFFER_COUNT, with the amulet always kept
-# when it's reachable. Stable so bashing/transmuting one card doesn't reshuffle
-# the rest.
+# stable position-seeded order, capped at offer_count(), with the amulet always
+# kept when it's reachable. Stable so bashing/transmuting one card doesn't
+# reshuffle the rest — only a Scramble (which bumps _scramble_salt) re-draws it.
 func _offered_ids() -> Array:
 	var amulet: StringName = GameState.amulet_game_id
 	var nbrs: Array = []
 	for gid in RunGraph.neighbors(GameState.current_game_id):
 		if not GameLoop2.is_bashed(gid):
 			nbrs.append(gid)
-	var cur := String(GameState.current_game_id)
-	nbrs.sort_custom(func(a, b): return hash(cur + "|" + String(a)) < hash(cur + "|" + String(b)))
+	var seed_key := "%s|%d|" % [String(GameState.current_game_id), _scramble_salt]
+	nbrs.sort_custom(func(a, b): return hash(seed_key + String(a)) < hash(seed_key + String(b)))
 	# Dash (§4) bypasses the cap — every connected game is a valid target.
 	if _dash_mode:
 		return nbrs
-	if amulet in nbrs and nbrs.size() > OFFER_COUNT:
+	var cap: int = offer_count()
+	if amulet in nbrs and nbrs.size() > cap:
 		nbrs.erase(amulet)
 		nbrs.push_front(amulet)
-	return nbrs.slice(0, OFFER_COUNT)
+	return nbrs.slice(0, cap)
 
 func _build_choices() -> void:
 	_choices.clear()
@@ -493,6 +529,12 @@ func _render_controls() -> void:
 		b.text = "⚡ Dash — pick any connected (%d)" % GameState.dash_charges
 		b.pressed.connect(dash)
 		_controls_row.add_child(b)
+	if not _dash_mode and GameState.scramble > 0:
+		var s := Button.new()
+		s.text = "🎲 Scramble — reroll the %d choices (%d)" % [_choices.size(), GameState.scramble]
+		s.tooltip_text = "Draws new games into the slots, each with a fresh goal-enemy."
+		s.pressed.connect(scramble)
+		_controls_row.add_child(s)
 
 func _render_choices() -> void:
 	for c in _choices_row.get_children():
