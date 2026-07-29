@@ -36,6 +36,13 @@ const CELL_BG := Color(0.071, 0.059, 0.043, 0.9)
 
 const ENEMY_TIER_NAMES := ["Low", "Medium", "High", "Insane"]
 
+# Artwork sizes in the right-hand DETAIL panel. Deliberately larger than the grid
+# cells' thumbnails — the detail pane is where you actually look at the art, and
+# the panel is wide enough (340px of content) to carry them.
+const DETAIL_ITEM_SIZE := 132
+const DETAIL_PORTRAIT_SIZE := 152
+const DETAIL_ENEMY_SIZE := 176
+
 var _tab: int = Tab.GAMES
 
 var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "games": ""}
@@ -264,6 +271,72 @@ func _image_with_bg(tex: Texture2D, size: int, border: Color, crisp: bool = fals
 	panel.add_child(tr)
 	return panel
 
+# --- battlefield footprint diagram ---------------------------------------
+# "Grid size" is a shape, not a number, so the compendium draws it: the 2.0
+# battlefield (GameLoop2.GRID_COLS x GRID_ROWS) as empty cells with the enemy's
+# OWN ARTWORK laid over the cells its footprint fills — the same reading as the
+# board in a live run, where a wide body spawns with its rightmost cell on the
+# back column. A non-rectangular shape (Skeletal Bastion's 2x3 L) tints only its
+# solid cells, so the gap other enemies can stand in is visible.
+
+const BOARD_GAP := 3
+const BOARD_CELL_EMPTY := Color(0.13, 0.13, 0.17, 0.9)
+
+func _footprint_board(e: GoalEnemyData, accent: Color, cell: int) -> Control:
+	var rows: int = GameLoop2.GRID_ROWS
+	var cols: int = GameLoop2.GRID_COLS
+	var step: int = cell + BOARD_GAP
+	var board := Control.new()
+	board.custom_minimum_size = Vector2(cols * step - BOARD_GAP, rows * step - BOARD_GAP)
+	board.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for r in range(rows):
+		for c in range(cols):
+			board.add_child(_board_tile(Vector2(c * step, r * step), cell,
+				BOARD_CELL_EMPTY, Color(1, 1, 1, 0.06)))
+	# Anchor the body the way it spawns: rightmost cell on the back column, top row.
+	var fr: int = mini(e.footprint_rows(), rows)
+	var fc: int = mini(e.footprint_cols(), cols)
+	var col0: int = cols - fc
+	for off in e.footprint_cells():
+		if int(off.x) >= fc or int(off.y) >= fr:
+			continue
+		board.add_child(_board_tile(Vector2((col0 + int(off.x)) * step, int(off.y) * step),
+			cell, accent.lerp(Color(0.05, 0.05, 0.07), 0.55), accent))
+	if e.image != null:
+		var art := TextureRect.new()
+		art.texture = e.image
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.position = Vector2(col0 * step, 0)
+		art.size = Vector2(fc * step - BOARD_GAP, fr * step - BOARD_GAP)
+		if _is_pixel_art(e.image, cell * mini(fr, fc)):
+			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		board.add_child(art)
+	return board
+
+func _board_tile(pos: Vector2, cell: int, bg: Color, border: Color) -> Control:
+	var p := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.set_corner_radius_all(3)
+	sb.set_border_width_all(1)
+	sb.border_color = border
+	p.add_theme_stylebox_override("panel", sb)
+	p.position = pos
+	p.size = Vector2(cell, cell)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return p
+
+# "2 x 3" plus, for a shaped body, how many cells it really fills.
+func _footprint_text(e: GoalEnemyData) -> String:
+	var box: String = "%d x %d" % [e.footprint_rows(), e.footprint_cols()]
+	var cells: int = e.footprint_cells().size()
+	if cells == e.footprint_rows() * e.footprint_cols():
+		return "%s  •  %d cell%s of the board" % [box, cells, "" if cells == 1 else "s"]
+	return "%s  •  %d cells, the rest is a gap" % [box, cells]
+
 func _label(text: String, color: Color, size: int = 12, bold_center: bool = false, wrap: bool = false) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -287,17 +360,21 @@ func _new_grid() -> ScrollContainer:
 	_grid = flow
 	return scroll
 
+const DETAIL_PANEL_W := 380
 func _new_detail_panel() -> PanelContainer:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", _flat(Color(0.06, 0.06, 0.09, 0.95)))
-	p.custom_minimum_size = Vector2(360, 0)
+	p.custom_minimum_size = Vector2(DETAIL_PANEL_W, 0)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	p.add_child(scroll)
 	_detail_box = VBoxContainer.new()
 	_detail_box.add_theme_constant_override("separation", 6)
 	_detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_detail_box.custom_minimum_size = Vector2(340, 0)
+	# Panel width minus the stylebox margins (10 a side) and the vertical
+	# scrollbar, so right-aligned values (Tier / Damage / Health) aren't clipped.
+	_detail_box.custom_minimum_size = Vector2(DETAIL_PANEL_W - 52, 0)
 	scroll.add_child(_detail_box)
 	_detail_placeholder("Select an entry to view details")
 	return p
@@ -610,7 +687,7 @@ func _show_item_detail(it: ItemData) -> void:
 	_clear_children(_detail_box)
 	var rc := _item_accent(it)
 	if it.image != null:
-		var img := _image_with_bg(it.image, 96, rc)
+		var img := _image_with_bg(it.image, DETAIL_ITEM_SIZE, rc)
 		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(img)
 	_detail_box.add_child(_label(it.display_name, rc, 18, true))
@@ -678,7 +755,7 @@ func _show_character_detail(ch: CharacterData) -> void:
 	_clear_children(_detail_box)
 	var green := Color(0.45, 0.82, 0.45)
 	if ch.portrait != null:
-		var tr := _tex_rect(ch.portrait, 110)
+		var tr := _tex_rect(ch.portrait, DETAIL_PORTRAIT_SIZE)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(tr)
 	_detail_box.add_child(_label(ch.display_name, green, 18, true))
@@ -813,13 +890,19 @@ func _enemy_cell(e: GoalEnemyData) -> Control:
 	var kind: String = "BOSS" if e.is_boss() else String(e.game_type).capitalize()
 	vb.add_child(_label("%s  •  %s" % [kind, tier], Color(0.7, 0.7, 0.75), 10, true))
 	vb.add_child(_label("⚔ %d dmg" % e.damage, Color(0.9, 0.55, 0.5), 11, true))
+	# Anything bigger than a single cell gets its board footprint drawn right in the
+	# grid — the size of a body is the thing you plan around, so it reads at a glance.
+	if e.footprint_rows() > 1 or e.footprint_cols() > 1:
+		vb.add_child(_footprint_board(e, ac, 15))
+		vb.add_child(_label("▦ %d x %d" % [e.footprint_rows(), e.footprint_cols()],
+			Color(0.7, 0.7, 0.75), 10, true))
 	return cell.panel
 
 func _show_enemy_detail(e: GoalEnemyData) -> void:
 	_clear_children(_detail_box)
 	var ac := _enemy_accent(e)
 	if e.image != null:
-		var img := _image_with_bg(e.image, 132, ac)
+		var img := _image_with_bg(e.image, DETAIL_ENEMY_SIZE, ac)
 		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(img)
 	_detail_box.add_child(_label(("☠ " if e.is_boss() else "") + e.display_name, ac, 18, true))
@@ -834,6 +917,11 @@ func _show_enemy_detail(e: GoalEnemyData) -> void:
 	_detail_box.add_child(_kv("Tier", ENEMY_TIER_NAMES[clampi(e.tier_index(), 0, 3)]))
 	_detail_box.add_child(_kv("Damage / game", str(e.damage)))
 	_detail_box.add_child(_kv("Health", str(e.health)))
+	# Grid size, drawn: the battlefield with this enemy's art on the cells it fills.
+	_detail_box.add_child(_detail_section("▦ Grid Size"))
+	_detail_box.add_child(_footprint_board(e, ac, 30))
+	var fp := _label(_footprint_text(e), Color(0.7, 0.72, 0.78), 11, true, true)
+	_detail_box.add_child(fp)
 	if e.is_boss():
 		_detail_box.add_child(_label("Bombs can't remove a boss — only its goal does.", Color(0.9, 0.6, 0.45), 11, false, true))
 	if String(e.tag) != "":

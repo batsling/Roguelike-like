@@ -286,13 +286,20 @@ What it does, matching the owner's UX direction:
   with another boss card, and a transmuted game rolls a boss too. (Owner call:
   boss rounds are escapable-but-still-a-boss, superseding the earlier
   "unskippable" default; resolves §5 Q1.)
-- **Limited offering + board verbs.** The offering is capped (`OFFER_COUNT = 5`,
-  the amulet always kept when reachable) in a stable position-seeded order.
+- **Limited offering + board verbs.** The offering is capped at **three** cards
+  (`BASE_OFFER_COUNT = 3` plus `GameState.game_choice_bonus`, read through
+  `offer_count()`; the amulet is always kept when reachable) in a stable
+  position-seeded order. The bonus is a normal granted stat (`"game_choices"`), so
+  items / level-ups / future effects can widen how many games you see.
   **Dash** (§4) is the total-select that bypasses the cap: the **"⚡ Dash — pick
   any connected"** button drops into dash mode (every connected game shown, Cancel
-  to back out) and the pick spends a dash charge. **Bash** destroys a card's game
-  out of the pool; **Transmute** swaps a card for an off-graph same-type game via
-  a per-position override map (keeping the graph slot). All are available on boss
+  to back out) and the pick spends a dash charge. **Scramble** (§4) rerolls the
+  whole offering — a charge re-draws which games fill the slots (bumping
+  `_scramble_salt`, which the position seed folds in) and rolls a fresh goal-enemy
+  behind each, so at a node with ≤3 neighbours the reroll still changes the
+  enemies. **Bash** destroys a card's game out of the pool; **Transmute** swaps a
+  card for an off-graph same-type game via a per-position override map (keeping
+  the graph slot; a scramble clears those overrides). All are available on boss
   rounds too (see above).
 - **Level-up folded into the self-report (§3.1).** When the 2.0 character has a
   `level_up_condition`, the report shows a gold **"Leveled up — &lt;condition&gt;?

@@ -60,8 +60,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── encounters/       #   EncounterData — overworld shops/deals/teleporters/challenges
 │   └── action_translation.tres
 │
-├── images/                # ★ All sprite/art PNGs — the single drop folder (below)
-├── assets/                # Imported game-cover art used by the overworld map
+├── images2.0/             # ★ Games-first art — covers, items, enemies, bosses, characters, scrolls
+├── images/                #   Surviving pre-2.0 art (legacy items / events / encounters)
 ├── addons/gut/            # GUT — the GDScript unit-test framework
 ├── test/                  # GUT test suites (test_*.gd)
 ├── docs/                  # Design docs (card authoring, stat dispatcher)
@@ -108,35 +108,41 @@ godot --headless -s addons/gut/gut_cmdln.gd
 
 ## Adding art / images
 
-**`images/` is the single drop folder for all sprite art**, organized by
-category. Because the repository root is the Godot project, Godot reads this
-folder directly as `res://images/…` — there is no second copy to keep in sync.
+**`images2.0/` is the drop folder for all art the games-first build uses**,
+organized by category. `images/` holds what's left of the pre-2.0 art (the item /
+event / encounter / character sets whose `data/` resources still load it). Because
+the repository root is the Godot project, Godot reads both directly as
+`res://images2.0/…` / `res://images/…` — there is no second copy to keep in sync.
 
 To add or replace art:
 
-1. Drop a **PNG** into the matching subfolder, named to match the content id in
-   **PascalCase**. The category folders are:
+1. Drop a **PNG** (covers may be **JPG**) into the matching subfolder, named to
+   match the content id in **PascalCase** — or, for covers, the sheet's `File`
+   column. The category folders are:
 
    | Folder | Used for |
    |---|---|
-   | `images/cards/` | Card art (`res://images/cards/<Name>.png`) |
-   | `images/items/` | Item art |
-   | `images/statuses/` | Status-effect icons |
-   | `images/Stats/` | Stat icons |
-   | `images/enemies/` | Enemy sprites |
-   | `images/characters/Full/`, `images/characters/Icon/` | Character portraits |
-   | `images/heroes/`, `images/potions/`, `images/scrolls/`, `images/Spells/`, `images/powericons/`, `images/moves/`, `images/decks/`, `images/mods/`, `images/fish/`, `images/events/` | Their respective content |
-   | `images/covers/` | Real-game cover art (source for `assets/games/`) |
+   | `images2.0/games/` | Real-game cover art — the overworld cards + Games compendium |
+   | `images2.0/items/` | 2.0 item art (`data/items2.0`) |
+   | `images2.0/enemies/`, `images2.0/bosses/` | Goal-enemy and boss art |
+   | `images2.0/characters/Full/`, `images2.0/characters/Icon/` | 2.0 character portrait + in-world token |
+   | `images2.0/scrolls/` | Scroll art (identified art + `Unidentified.png`) |
+   | `images/items/` | Legacy (1.0) item art for `data/items` |
+   | `images/events/`, `images/encounters/` | Event / encounter art |
+   | `images/characters/Full/`, `images/characters/Icon/` | Legacy character portraits |
 
 2. **Reopen / refocus the Godot editor** so it imports the new file (Godot
    auto-imports anything placed under the project root).
-3. Reference it from a `.tres` or script as `res://images/<category>/<Name>.png`.
-   Most content already resolves art by convention from its id (e.g. a card
-   named `IronWave` looks for `res://images/cards/IronWave.png`).
+3. Reference it from a `.tres` or script as `res://images2.0/<category>/<Name>.png`.
+   Most content already resolves art by convention from its id or its sheet `File`
+   column (e.g. a goal-enemy with `file = "Goblin"` looks for
+   `res://images2.0/enemies/Goblin.png`).
 
-> The `legacy-web/images` entry is a **symlink** back to this same `images/`
-> folder, so the old HTML build keeps resolving its art without a duplicate copy
-> in the repo. You only ever drop art in **one** place: `/images`.
+> Art with nothing referencing it is deleted rather than kept "just in case" — the
+> pruned folders (cards, statuses, covers, potions, spells, …) belonged to combat
+> content whose `data/` resources are already gone. `legacy-web/images` is a
+> **symlink** to `images/`, so the old HTML build resolves whatever art survives
+> there; its cover/card pages are dead now that those folders are pruned.
 
 ---
 
@@ -212,10 +218,10 @@ editing the sheet, then review the diff):
 | `generate_event_tres.py` | `data/events/*.tres` from authored Python dicts |
 | `generate_game_tres.py` | `data/games/*.tres` from the curated games subgraph |
 | `generate_encounter_tres.py` | `data/encounters/*.tres` from the `encounters` sheet (overworld shops/deals/teleporters/challenges) |
-| `generate_enemy_tres.py` | `data/enemies/*.tres` from the `enemiesD` sheet (+ copies enemy art into `assets/enemies/`) |
+| `generate_enemy_tres.py` | `data/enemies/*.tres` from the `enemiesD` sheet |
 | `build_enemiesD_sheet.py` | (re)builds the deckbuilder-enemy `enemiesD` sheet from the legacy `enemies` rows |
 | `add_status_addon_rows.py` | adds/updates status + addon rows in `statusesnew` / `addonsnew` |
-| `import-games-godot.py` | `data/games/*.tres` + copies covers into `assets/games/` |
+| `import-games-godot.py` | `data/games/*.tres`, resolving each cover in `images2.0/games/` |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 
 These require Python 3 with `openpyxl` (`pip install openpyxl`) and are run from

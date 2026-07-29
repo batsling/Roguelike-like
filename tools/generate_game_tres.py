@@ -3,7 +3,7 @@
 
 Reads legacy-web/data/games-data.js, filters to the curated subset below, and
 writes one .tres per game into data/games/. Each .tres references the
-matching cover image already copied to assets/games/.
+matching cover image in images2.0/games/.
 
 Re-run after changing the subset or adding new connections in the JS data.
 The output files overwrite existing ones; review the diff after running.
@@ -16,8 +16,8 @@ import sys
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
 JS_PATH = os.path.join(ROOT, "legacy-web", "data", "games-data.js")
 OUT_DIR = os.path.join(ROOT, "data", "games")
-COVER_DIR_REL = "res://assets/games/"
-COVER_DIR_FS = os.path.join(ROOT, "assets", "games")
+COVER_DIR_REL = "res://images2.0/games/"
+COVER_DIR_FS = os.path.join(ROOT, "images2.0", "games")
 
 # Curated Phase 1b subgraph: Slay the Spire (start) -> Hades (Amulet)
 # via a deckbuilder cluster, action cluster, and bridge games. Order

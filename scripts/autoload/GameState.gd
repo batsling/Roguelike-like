@@ -152,7 +152,8 @@ var _applied_item_max_energy: int = 0
 # Stats.get_value — so a passive stat_bonus on one is folded straight into the
 # field and reversed when the item leaves, tracked here like _applied_item_max_hp.
 var _applied_item_verbs: Dictionary = {}
-const _ITEM_VERB_STATS := ["bash", "transmute", "scramble", "bombs", "keys", "dash", "block", "push"]
+const _ITEM_VERB_STATS := ["bash", "transmute", "scramble", "bombs", "keys", "dash", "block", "push",
+	"game_choices"]
 
 # Jelly (and any future SCALING rule that outputs max_hp): tracked exactly
 # like _applied_item_max_hp above, but separately, since it's recomputed by a
@@ -354,6 +355,11 @@ var transmute: int = 0
 var scramble: int = 0
 var bombs: int = 0
 var keys: int = 0
+# Extra game cards the overworld offers on top of Overworld2.BASE_OFFER_COUNT (the
+# base 3 selections, §7). Items / level-ups / future effects raise this through the
+# normal stat plumbing ("game_choices"), so widening the offering is a granted
+# bonus rather than a rebuilt UI.
+var game_choice_bonus: int = 0
 
 # === Curses / status ===
 var active_curses: Array = []            # Array[Dictionary] for now
@@ -723,6 +729,7 @@ func reset_run() -> void:
 	scramble = 0
 	bombs = 0
 	keys = 0
+	game_choice_bonus = 0
 	regeneration = 0
 	stat_high_water.clear()
 	stat_floor_active = false
@@ -1087,6 +1094,8 @@ const _LEVEL_UP_ABILITY_FIELDS := {
 	"scramble": "scramble",
 	"bombs": "bombs",
 	"keys": "keys",
+	# "+1 Game Choices" widens the overworld offering past its base 3 cards (§7).
+	"game_choices": "game_choice_bonus",
 }
 # Stats eligible for the "random" allocation bucket.
 const _LEVEL_UP_RANDOM_POOL := ["strength", "dexterity", "intelligence", "charisma"]

@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_teenage_mutant_ninja_turtles_splintered_fate"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://assets/games/teenage-mutant-ninja-turtles-splintered-fate.jpg" id="2_cover"]
+[ext_resource type="Texture2D" path="res://images2.0/games/teenage-mutant-ninja-turtles-splintered-fate.jpg" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")

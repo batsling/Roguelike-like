@@ -120,7 +120,7 @@ integer counts on the HUD.
 | **Bash** | **Destroy a game outright — it is removed from the pool and can never show up again.** (Changed: no longer replaces with a new game.) |
 | **Transmute** | **Turn a game into a random game of the *same game type* that is *not connected to the map*.** (New verb — this is the "replace with a fresh game" role bash used to have, now type-constrained and pulling from off-graph games.) |
 | **Dash** | **As in the current project: a total select, not a skip** — pick *any* connected game and move to it (bypassing the normal limited offering). Costs 1 dash charge. See `Overworld._try_dash`. |
-| **Scramble** | Reroll the current game's enemy/goal (and/or the offering). Granted by the **D6** item. |
+| **Scramble** | **Reroll the offering** — re-draw the games filling the (base three) choice slots, each with a freshly-rolled enemy/goal. At a node with no spare neighbours the slots hold and only the enemies change. Granted by the **D6** item. |
 | **Push** | **Shove a following enemy back one space — delay its next attack by one game (§7.2).** Spends 1 push charge; rides the same per-enemy delay counter as Stun, but is player-triggered. The **Manager**'s signature verb (gained on level-up: "Collect 3+ different types of currency" → +1 Push). |
 
 ### Consumables

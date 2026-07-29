@@ -182,7 +182,7 @@ func test_dash_offers_every_connected_game_and_spends_a_charge() -> void:
 	_ui.dash()
 	assert_true(_ui._dash_mode, "dash mode is on")
 	assert_eq(_ui._choices.size(), all_nbrs, "dash offers every connected game")
-	if all_nbrs > _ui.OFFER_COUNT:
+	if all_nbrs > _ui.offer_count():
 		assert_gt(_ui._choices.size(), capped, "dash exceeds the normal cap")
 	_ui.pick(0)
 	assert_eq(GameState.dash_charges, 0, "the dash pick spent the charge")
@@ -197,6 +197,60 @@ func test_cancel_dash_restores_the_limited_offering() -> void:
 	assert_false(_ui._dash_mode)
 	assert_eq(GameState.dash_charges, 1, "cancel didn't spend a charge")
 	assert_eq(_ui._choices.size(), capped, "offering back to the capped set")
+
+# --- offering size + scramble (§4/§7) --------------------------------------
+
+# The offering is three cards (or every neighbour, when a node has fewer).
+func test_offering_is_capped_at_three() -> void:
+	assert_eq(_ui.BASE_OFFER_COUNT, 3, "the base offering is three games")
+	assert_eq(_ui.offer_count(), 3, "with no bonus, three cards are visible")
+	var nbrs: int = RunGraph.neighbors(GameState.current_game_id).size()
+	assert_eq(_ui._choices.size(), mini(3, nbrs), "at most three games are offered")
+
+# Items / level-ups widen the offering by granting the "game_choices" stat.
+func test_game_choices_bonus_widens_the_offering() -> void:
+	# Walk to a node with room to grow, so the cap is what's limiting the count.
+	var attempts: int = 0
+	while RunGraph.neighbors(GameState.current_game_id).size() <= 3 and attempts < 12:
+		_ui.pick(0)
+		_ui.report(false)
+		attempts += 1
+	if RunGraph.neighbors(GameState.current_game_id).size() <= 3:
+		return   # thin graph run — nothing to widen into
+	var before: int = _ui._choices.size()
+	GameState.grant_run_stat("game_choices", 2)
+	assert_gte(GameState.game_choice_bonus, 2, "the bonus lands on GameState")
+	assert_eq(_ui.offer_count(), 3 + GameState.game_choice_bonus, "the visible count grew with it")
+	_ui._build_choices()
+	assert_gt(_ui._choices.size(), before, "more games are offered")
+
+# Scramble spends a charge and re-rolls the offering: fresh enemies always, and
+# fresh games too wherever the node has more neighbours than the cap.
+func test_scramble_rerolls_the_offering_and_spends_a_charge() -> void:
+	GameState.scramble = 1
+	var before_slots: Array = []
+	var before_enemies: Array = []
+	for c in _ui._choices:
+		before_slots.append(c["slot"])
+		before_enemies.append(c["enemy"])
+	assert_true(_ui.scramble(), "a charge rerolls the offering")
+	assert_eq(GameState.scramble, 0, "the charge is spent")
+	assert_eq(_ui._choices.size(), before_slots.size(), "the same number of cards is offered")
+	var slots_after: Array = []
+	for c in _ui._choices:
+		slots_after.append(c["slot"])
+	if RunGraph.neighbors(GameState.current_game_id).size() > _ui.offer_count():
+		assert_ne(slots_after, before_slots, "a spare neighbour means new games are drawn")
+	for c in _ui._choices:
+		assert_true(c["enemy"] is GoalEnemyData, "every rerolled card has a fresh enemy")
+
+func test_scramble_needs_a_charge_and_the_select_phase() -> void:
+	GameState.scramble = 0
+	assert_false(_ui.scramble(), "no charge -> no reroll")
+	GameState.scramble = 1
+	_ui.pick(0)                                   # -> Phase.PLAYING
+	assert_false(_ui.scramble(), "you can't reroll a game you're already playing")
+	assert_eq(GameState.scramble, 1, "a refused scramble is not spent")
 
 func test_boss_round_on_difficulty_gate() -> void:
 	# The tier steps every GAMES_PER_TIER games; that crossing is a boss round.
