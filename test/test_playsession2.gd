@@ -33,13 +33,17 @@ func test_pick_spawns_enemy_and_beat_resolves() -> void:
 	assert_eq(String(enemy.game_type), "action", "picked an action enemy")
 	assert_false(enemy.is_boss(), "a normal pick is not a boss")
 	var dmg: int = enemy.damage
-	_ui.beat(false)                    # fails goal -> stacks, one-game grace
+	_ui.beat(false)                    # fails goal -> spawn column, one-game grace
 	assert_eq(GameLoop2.stack_size(), 1)
 	assert_eq(GameState.hp, 10, "grace: no hit the game it stacked")
-	_ui.pick(&"deckbuilder")           # a second game; its enemy gets the grace
-	_ui.beat(false)                    # the stacked action enemy now hits for dmg
-	assert_eq(GameState.hp, 10 - dmg, "the stacked enemy hits for its damage")
-	assert_eq(GameLoop2.stack_size(), 2)
+	# It closes one column per game and only strikes once it reaches the front
+	# (§grid). Marched directly here so no extra picked enemies muddy the hp math.
+	GameLoop2.beat_game(false)         # -> column 2
+	GameLoop2.beat_game(false)         # -> column 1 (front), no strike yet
+	assert_eq(GameState.hp, 10, "no hit while closing in")
+	GameLoop2.beat_game(false)         # the front-line enemy now hits for dmg
+	assert_eq(GameState.hp, 10 - dmg, "the front-line enemy hits for its damage")
+	assert_eq(GameLoop2.stack_size(), 1)
 
 func test_pick_gated_until_current_resolved() -> void:
 	_ui.pick(&"action")

@@ -56,8 +56,23 @@ var _goal_check: CheckBox           # the chosen game's main goal; null on a fre
 var _levelup_check: CheckBox        # null when the character has no level-up
 var _dash_mode: bool = false        # Dash (§4): offer ANY connected game
 var _controls_row: HBoxContainer
-var _stack: RichTextLabel           # "Following you" summary line
-var _stack_box: HFlowContainer      # "Following you" enemy cards
+var _stack: RichTextLabel           # battlefield summary line
+# --- battlefield grid (§grid): the player on the left, a GRID_COLS x GRID_ROWS
+# grid on the right where enemies close in one column per game beaten (MMBN-style).
+var _battlefield: HBoxContainer
+var _hero_icon: TextureRect
+var _hero_hp: Label
+var _grid_cells: Array = []          # _grid_cells[row][col] -> PanelContainer holder
+var _offgrid_box: VBoxContainer      # overflow queue just off the grid's right edge
+var _enemy_rows: Dictionary = {}     # instance -> row, so an enemy keeps its lane
+var _drop_queue: Array = []          # ItemData dropped by kills, shown as field loot
+var _selected_instance: int = 0      # clicked enemy the combat verbs target (0 = none)
+var _push_btn: Button
+var _bomb_btn: Button
+var _target_label: Label
+var _fx_layer: Control               # overlay for damage numbers + sliding ghosts
+var _info_popup: Control             # the click-to-inspect enemy card (null when closed)
+var _animating: bool = false         # a resolve animation is playing
 var _log: RichTextLabel
 var _scrolls_box: VBoxContainer
 var _items_box: VBoxContainer       # owned items with Use buttons (§4/§8)
@@ -83,6 +98,10 @@ func _ready() -> void:
 	# several rewards in a row.
 	if not TriggerBus.chest_granted.is_connected(_on_chest_granted):
 		TriggerBus.chest_granted.connect(_on_chest_granted)
+	# Every defeated enemy drops an item that appears inline on the battlefield as
+	# collectable field loot (§8), instead of banking a RewardScreen chest.
+	if not GameLoop2.enemy_defeated.is_connected(_on_enemy_defeated):
+		GameLoop2.enemy_defeated.connect(_on_enemy_defeated)
 	# The menu stashes the chosen 2.0 character here before entering the scene.
 	var pending: StringName = GameState.get_meta("pending_character2", &"")
 	if pending != &"":
@@ -209,7 +228,11 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	var fulfilled_instances: Array = fulfilled if fulfilled is Array else _ticked_fulfilments()
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
 	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed
-	GameLoop2.beat_game(goal_met, fulfilled_instances)
+	# Snapshot where everyone stands BEFORE the resolve, so the animation can play
+	# the strike and the advance back from the old positions to the new ones.
+	var before: Dictionary = _battlefield_positions()
+	_close_enemy_info()
+	var res: Dictionary = GameLoop2.beat_game(goal_met, fulfilled_instances)
 	# "After beating a game" is the dominant 2.0 item trigger (§8): fire it now so
 	# owned items react (Anchor +1 Block, Burning Blood +1 Health, Meat on the
 	# Bone), the Harvesting stat pays out, charged actives tick, and the toast
@@ -231,6 +254,7 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	if GameLoop2.run_over:
 		_phase = Phase.OVER
 		_refresh()
+		_animate_resolve(before, res)
 		return
 	if was_amulet and goal_met:
 		GameLoop2.clear_amulet()
@@ -238,9 +262,14 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	_phase = Phase.SELECT
 	_build_choices()
 	_refresh()
+	# Repaint first, then replay the strike + advance from the snapshot: the board
+	# is already in its final state, the animation just shows how it got there.
+	_animate_resolve(before, res)
 
 func _exit_tree() -> void:
 	GameState.clear_overworld_context(self)
+	_clear_fx()
+	_close_enemy_info()
 	if TriggerBus.chest_granted.is_connected(_on_chest_granted):
 		TriggerBus.chest_granted.disconnect(_on_chest_granted)
 	if GameState.inventory_changed.is_connected(_refresh_items):
@@ -355,6 +384,12 @@ func push_follower(instance: int) -> void:
 	if GameLoop2.push(instance):
 		_refresh()
 
+# Bomb a following enemy (§4): spend a Bomb charge to remove it outright (no drop).
+# Bosses are bomb-immune, so GameLoop2.bomb guards the target and the charge.
+func bomb_follower(instance: int) -> void:
+	if GameLoop2.bomb(instance):
+		_refresh()
+
 # --- offering construction ------------------------------------------------
 
 # Whether the upcoming selection crosses a difficulty gate (§7.1). The tier steps
@@ -420,7 +455,7 @@ func _refresh(_a = null) -> void:
 	_refresh_scrolls()
 	_refresh_items()
 	_stack.text = _stack_summary()
-	_refresh_followers()
+	_refresh_battlefield()
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
 	_boss_banner.get_parent().visible = _boss_round and _phase == Phase.SELECT
@@ -809,106 +844,924 @@ func _stack_summary() -> String:
 	if _phase == Phase.PLAYING and not _chosen.is_empty() and _chosen.get("enemy") != null:
 		following += 1
 	if following == 0:
-		return "[b]Following you:[/b] none"
-	return "[b]Following you[/b] — %d on your tail, %d damage next game" % [
-		following, GameLoop2.stacked_damage_per_game()]
+		return "[b]Battlefield:[/b] clear"
+	var dmg: int = GameLoop2.stacked_damage_per_game()
+	return "[b]Battlefield[/b] — %d closing in, %d at the front dealing %d damage next game" % [
+		following, GameLoop2.front_count(), dmg]
 
-# Rebuild the "Following you" cards. Each shows the enemy's art, name, a countdown
-# to when it will hit ("X Games away"), and its Health / Damage; the rest of its
-# info surfaces on hover (tooltip). The just-picked enemy (PLAYING phase) is shown
-# too — it can't hit this game (the one-game grace, §7.2), so it first strikes 2
-# games out unless you clear its goal.
-func _refresh_followers() -> void:
-	if _stack_box == null:
+const _CELL: int = 84                # grid cell edge in px
+const _CELL_SEP: int = 6
+
+# The combat verbs live with the combat: Push and Bomb sit on a toolbar attached to
+# the battlefield and act on the enemy you clicked. Each button explains why it's
+# unavailable (no target / no charge / no room behind / boss) rather than vanishing,
+# so the rules stay visible.
+func _build_battle_toolbar() -> Control:
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 8)
+
+	var hint := Label.new()
+	hint.text = "Click an enemy to inspect it:"
+	hint.add_theme_font_size_override("font_size", 12)
+	hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	bar.add_child(hint)
+
+	_target_label = Label.new()
+	_target_label.add_theme_font_size_override("font_size", 13)
+	# Deliberately not expanding: the verbs must stay packed beside the field they
+	# act on, not drift to the far edge of a full-width panel.
+	_target_label.custom_minimum_size = Vector2(230, 0)
+	bar.add_child(_target_label)
+
+	_push_btn = Button.new()
+	_push_btn.add_theme_font_size_override("font_size", 13)
+	_push_btn.pressed.connect(func(): push_follower(_selected_instance))
+	bar.add_child(_push_btn)
+
+	_bomb_btn = Button.new()
+	_bomb_btn.add_theme_font_size_override("font_size", 13)
+	_bomb_btn.pressed.connect(func(): bomb_follower(_selected_instance))
+	bar.add_child(_bomb_btn)
+	return bar
+
+# Re-label and enable/disable the combat verbs for the current selection.
+func _refresh_battle_toolbar() -> void:
+	if _push_btn == null:
 		return
-	for c in _stack_box.get_children():
-		c.queue_free()
-	if _phase == Phase.PLAYING and not _chosen.is_empty():
-		var cur: GoalEnemyData = _chosen.get("enemy")
-		if cur != null:
-			var cur_hp: int = int(GameLoop2.current.get("health", cur.health)) if GameLoop2.has_current() else cur.health
-			_stack_box.add_child(_follower_card(cur, 2, 0, true, cur_hp))
-	for entry in GameLoop2.stack:
-		var e: GoalEnemyData = entry["enemy"]
-		var stun: int = int(entry.get("stun", 0))
-		# A stacked enemy hits on the very next game beaten; each Stun/Push pushes
-		# that one game later.
-		_stack_box.add_child(_follower_card(e, 1 + stun, stun, false, int(entry.get("health", e.health)), int(entry.get("instance", 0))))
-
-func _follower_card(e: GoalEnemyData, games_away: int, stun: int, is_current: bool, remaining_health: int = -1, instance: int = 0) -> Control:
-	var accent: Color
-	if e.is_boss():
-		accent = Color(0.95, 0.55, 0.2)
-	elif games_away <= 1:
-		accent = UITheme.DANGER
-	elif games_away == 2:
-		accent = Color(1.0, 0.62, 0.24)
+	var entry: Dictionary = _stack_entry(_selected_instance)
+	var e: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
+	if e == null:
+		_target_label.text = "no target selected"
+		_target_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	else:
-		accent = UITheme.GOLD
+		_target_label.text = "▸ %s  (column %d)" % [e.display_name, int(entry.get("col", GameLoop2.SPAWN_COL))]
+		_target_label.add_theme_color_override("font_color", UITheme.ACCENT)
+
+	_push_btn.text = "⇤  Push (%d)" % GameState.push
+	var push_ok: bool = e != null and GameState.push > 0 and GameLoop2.can_push(_selected_instance)
+	_push_btn.disabled = not push_ok
+	if e == null:
+		_push_btn.tooltip_text = "Select an enemy to push."
+	elif GameState.push <= 0:
+		_push_btn.tooltip_text = "No Push charges left."
+	elif int(entry.get("col", 0)) >= GameLoop2.GRID_COLS:
+		_push_btn.tooltip_text = "%s is already at the back column — nowhere to push it." % e.display_name
+	elif not push_ok:
+		_push_btn.tooltip_text = "The column behind %s is full — no room to shove it back." % e.display_name
+	else:
+		_push_btn.tooltip_text = "Shove %s back one column, buying the games it takes to close in again." % e.display_name
+
+	_bomb_btn.text = "✸  Bomb (%d)" % GameState.bombs
+	var bomb_ok: bool = e != null and GameState.bombs > 0 and not e.is_boss()
+	_bomb_btn.disabled = not bomb_ok
+	if e == null:
+		_bomb_btn.tooltip_text = "Select an enemy to bomb."
+	elif GameState.bombs <= 0:
+		_bomb_btn.tooltip_text = "No Bombs left."
+	elif e.is_boss():
+		_bomb_btn.tooltip_text = "%s is a boss — bombs can't kill it." % e.display_name
+	else:
+		_bomb_btn.tooltip_text = "Destroy %s outright (it drops nothing)." % e.display_name
+
+# The stack entry for an instance, or {} when it's gone / nothing is selected.
+func _stack_entry(instance: int) -> Dictionary:
+	if instance <= 0:
+		return {}
+	for entry in GameLoop2.stack:
+		if int(entry.get("instance", 0)) == instance:
+			return entry
+	return {}
+
+# Build the battlefield once: the hero on the left, then a GRID_COLS x GRID_ROWS
+# grid of cells (col 1 = melee/front nearest the hero, col GRID_COLS = spawn), then
+# a slim off-grid overflow lane on the right. Cells are reused each refresh so the
+# layout stays put; only their contents change.
+func _build_battlefield() -> Control:
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.BG, UITheme.BORDER, 10, 12, 1))
+	# The frame stacks the combat toolbar over the field itself, and hosts the FX
+	# layer that floats damage numbers / sliding enemies above both.
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 10)
+	frame.add_child(outer)
+	outer.add_child(_build_battle_toolbar())
+	_battlefield = HBoxContainer.new()
+	_battlefield.add_theme_constant_override("separation", 14)
+	_battlefield.alignment = BoxContainer.ALIGNMENT_BEGIN
+	outer.add_child(_battlefield)
+
+	# Animation overlay: ghost sprites and damage numbers are parented here so they
+	# can travel across cells without being clipped by a cell's own rect.
+	_fx_layer = Control.new()
+	_fx_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fx_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(_fx_layer)
+
+	# Hero column.
+	var hero_box := VBoxContainer.new()
+	hero_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	hero_box.add_theme_constant_override("separation", 4)
+	hero_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var hero_frame := PanelContainer.new()
+	hero_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL, 8, 8, 2, UITheme.ACCENT))
+	_hero_icon = TextureRect.new()
+	_hero_icon.custom_minimum_size = Vector2(96, 96)
+	_hero_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_hero_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	hero_frame.add_child(_hero_icon)
+	hero_box.add_child(hero_frame)
+	_hero_hp = Label.new()
+	_hero_hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hero_hp.add_theme_font_size_override("font_size", 14)
+	_hero_hp.add_theme_color_override("font_color", UITheme.DANGER.lerp(UITheme.TEXT, 0.35))
+	hero_box.add_child(_hero_hp)
+	_battlefield.add_child(hero_box)
+
+	# The grid: GRID_ROWS rows, each with GRID_COLS cells laid out col1..colN from
+	# the hero outward. Built row-major into a GridContainer.
+	var grid := GridContainer.new()
+	grid.columns = GameLoop2.GRID_COLS
+	grid.add_theme_constant_override("h_separation", _CELL_SEP)
+	grid.add_theme_constant_override("v_separation", _CELL_SEP)
+	_grid_cells = []
+	for row in range(GameLoop2.GRID_ROWS):
+		var row_cells: Array = []
+		# GridContainer fills left-to-right; column 1 (front) sits nearest the hero.
+		for col in range(1, GameLoop2.GRID_COLS + 1):
+			var cell := PanelContainer.new()
+			cell.custom_minimum_size = Vector2(_CELL, _CELL)
+			grid.add_child(cell)
+			row_cells.append(cell)
+		_grid_cells.append(row_cells)
+	_battlefield.add_child(grid)
+
+	# Off-field lane: enemies with no cell to stand in — the overflow queue, and the
+	# game you're currently playing, whose enemy only steps onto the grid once you
+	# report the result.
+	var off_col := VBoxContainer.new()
+	off_col.add_theme_constant_override("separation", 4)
+	off_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var off_lbl := Label.new()
+	off_lbl.text = "off field"
+	off_lbl.add_theme_font_size_override("font_size", 10)
+	off_lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	off_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	off_col.add_child(off_lbl)
+	_offgrid_box = VBoxContainer.new()
+	_offgrid_box.add_theme_constant_override("separation", _CELL_SEP)
+	off_col.add_child(_offgrid_box)
+	_battlefield.add_child(off_col)
+	return frame
+
+# Repaint the battlefield from the current loop state: place each following enemy
+# in its grid cell (by column = distance), the just-picked enemy at the spawn
+# column while its game is being played, the off-grid queue in the side lane, and
+# any pending kill-drops as collectable field loot in free cells.
+func _refresh_battlefield() -> void:
+	if _battlefield == null:
+		return
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	var hero_tex: Texture2D = null
+	if ch != null:
+		hero_tex = ch.icon if ch.icon != null else ch.portrait
+	_hero_icon.texture = hero_tex
+	_apply_crisp(_hero_icon, hero_tex)
+	_hero_hp.text = "♥ %d/%d" % [GameState.hp, GameState.max_hp]
+
+	# Clear every cell and the overflow lane.
+	for row_cells in _grid_cells:
+		for cell in row_cells:
+			for c in cell.get_children():
+				c.queue_free()
+			cell.add_theme_stylebox_override("panel", _empty_cell_style())
+	for c in _offgrid_box.get_children():
+		c.queue_free()
+
+	# occupancy[col] -> array of {enemy, entry, current}. Assemble the enemies to
+	# draw: the on-grid stack plus (in PLAYING) the current enemy at the spawn col.
+	var occ: Dictionary = {}
+	for col in range(1, GameLoop2.OFFGRID_COL + 1):
+		occ[col] = []
+	for entry in GameLoop2.stack:
+		var col: int = int(entry.get("col", GameLoop2.SPAWN_COL))
+		occ[col].append({"entry": entry, "current": false})
+	if _phase == Phase.PLAYING and GameLoop2.has_current():
+		# The game you're playing right now waits OFF the field — it isn't on the
+		# stack yet, and it only steps onto the spawn column when you report the
+		# result (that entrance is the one-game grace made visible, §7.2).
+		occ[GameLoop2.OFFGRID_COL].append({"entry": GameLoop2.current, "current": true})
+
+	# Which rows each on-grid column uses, keeping an enemy in its remembered lane.
+	var seen: Dictionary = {}
+	for col in range(1, GameLoop2.GRID_COLS + 1):
+		var used: Array = []
+		for item in occ[col]:
+			var inst: int = int(item["entry"].get("instance", 0))
+			seen[inst] = true
+			var row: int = int(_enemy_rows.get(inst, -1))
+			if row < 0 or row >= GameLoop2.GRID_ROWS or used.has(row):
+				row = 0
+				while row < GameLoop2.GRID_ROWS and used.has(row):
+					row += 1
+			if row >= GameLoop2.GRID_ROWS:
+				continue
+			used.append(row)
+			_enemy_rows[inst] = row
+			var cell: PanelContainer = _grid_cells[row][col - 1]
+			_paint_enemy_cell(cell, item["entry"], col, item["current"])
+
+	# Off-field enemies: the overflow queue plus the game currently being played.
+	for item in occ[GameLoop2.OFFGRID_COL]:
+		_offgrid_box.add_child(_offgrid_token(item["entry"], item["current"]))
+
+	# Forget lanes for enemies that are gone (defeated / bombed) so rows recycle.
+	for inst in _enemy_rows.keys():
+		if not seen.has(inst):
+			_enemy_rows.erase(inst)
+
+	# Drop a selection that died / was bombed, then relabel the combat verbs.
+	if _selected_instance > 0 and _stack_entry(_selected_instance).is_empty():
+		_selected_instance = 0
+	_refresh_battle_toolbar()
+
+	# Pending kill-drops become collectable loot in the nearest free cells.
+	_place_drops()
+
+func _empty_cell_style() -> StyleBox:
+	return UITheme.flat(UITheme.BG.lerp(UITheme.PANEL, 0.4), 6, 4, 1, UITheme.BORDER.lerp(UITheme.BG, 0.3))
+
+# Paint an enemy cell's frame for its current state. Hovering brightens the
+# outline and lifts the fill (the "you can click this" cue); the selected enemy —
+# the one the toolbar's Push / Bomb act on — keeps a thick accent ring.
+func _style_enemy_cell(cell: PanelContainer, accent: Color, is_current: bool, selected: bool, hovered: bool) -> void:
+	var border: Color = accent
+	var width: int = 3 if is_current else 2
+	var fill: Color = UITheme.PANEL
+	if selected:
+		border = UITheme.ACCENT
+		width = 4
+		fill = UITheme.PANEL.lerp(UITheme.ACCENT, 0.14)
+	if hovered:
+		border = border.lerp(Color.WHITE, 0.55)
+		width = maxi(width, 3)
+		fill = fill.lerp(Color.WHITE, 0.09)
+	cell.add_theme_stylebox_override("panel", UITheme.flat(fill, 6, 2, width, border))
+
+# Clicking an enemy targets it for the combat verbs and opens its info card.
+func _on_enemy_clicked(instance: int, entry: Dictionary, col: int, is_current: bool) -> void:
+	# The game you're currently playing isn't on the stack, so it can't be targeted
+	# by Push / Bomb — but you can still read its card.
+	_selected_instance = 0 if is_current else instance
+	_show_enemy_info(entry, col, is_current)
+	_refresh_battlefield()
+
+# --- enemy info card ------------------------------------------------------
+
+# A proper info card for a clicked enemy: dimmed backdrop, large art, and its
+# goal / type / tier / stats laid out in readable blocks — plus the combat verbs
+# aimed at this enemy, so you can act straight from the card you're reading.
+func _show_enemy_info(entry: Dictionary, col: int, is_current: bool) -> void:
+	var e: GoalEnemyData = entry.get("enemy")
+	if e == null:
+		return
+	_close_enemy_info()
+	var accent: Color = _col_accent(col, e.is_boss())
+	var instance: int = int(entry.get("instance", 0))
+
+	# Full-screen dimmer; clicking outside the card closes it.
+	var overlay := Control.new()
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.62)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(dim)
+	overlay.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed:
+			_close_enemy_info())
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(center)
 
 	var card := PanelContainer.new()
-	card.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL, 8, 8, 2 if is_current else 1, accent))
-	card.custom_minimum_size = Vector2(150, 0)
-	card.tooltip_text = _follower_tooltip(e, games_away, stun, is_current)
+	card.custom_minimum_size = Vector2(520, 0)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL, 14, 0, 2, accent))
+	center.add_child(card)
 
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 3)
-	vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	card.add_child(vb)
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 0)
+	card.add_child(body)
 
-	if e.image != null:
-		var art := _crisp_tex(e.image, 64)
-		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		vb.add_child(art)
+	# Header band, tinted by threat (front column red, boss orange).
+	var header := PanelContainer.new()
+	header.add_theme_stylebox_override("panel", UITheme.flat(accent.lerp(UITheme.BG, 0.72), 12, 14, 0))
+	var head_row := HBoxContainer.new()
+	head_row.add_theme_constant_override("separation", 12)
+	header.add_child(head_row)
+	var title := Label.new()
+	title.text = ("☠  " if e.is_boss() else "") + e.display_name
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", accent.lerp(Color.WHITE, 0.5))
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head_row.add_child(title)
+	var close_btn := Button.new()
+	close_btn.text = "✕"
+	close_btn.add_theme_font_size_override("font_size", 15)
+	close_btn.pressed.connect(_close_enemy_info)
+	head_row.add_child(close_btn)
+	body.add_child(header)
 
-	var nm := Label.new()
-	nm.text = ("☠ " if e.is_boss() else "") + e.display_name
-	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	nm.custom_minimum_size = Vector2(138, 0)
-	nm.add_theme_font_size_override("font_size", 12)
-	nm.add_theme_color_override("font_color", accent)
-	vb.add_child(nm)
+	var inner := VBoxContainer.new()
+	inner.add_theme_constant_override("separation", 12)
+	var pad := MarginContainer.new()
+	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		pad.add_theme_constant_override(side, 16)
+	pad.add_child(inner)
+	body.add_child(pad)
 
-	var when := Label.new()
-	when.text = ("Hits next game!" if games_away <= 1 else "%d games away" % games_away) + ("  (delayed)" if stun > 0 else "")
-	when.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	when.add_theme_font_size_override("font_size", 12)
-	when.add_theme_color_override("font_color", accent)
-	vb.add_child(when)
+	# Art beside the headline stats.
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 16)
+	var art_frame := PanelContainer.new()
+	art_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 10, 8, 1, accent.lerp(UITheme.BG, 0.4)))
+	art_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var art := _crisp_tex(e.image, 132)
+	art_frame.add_child(art)
+	top.add_child(art_frame)
 
-	var stats := Label.new()
-	var hp: int = remaining_health if remaining_health >= 0 else e.health
-	# "❤ 2 (goals to kill)" reads the mechanic: each goal completion is one hit.
-	stats.text = ("❤ %d goal    ⚔ %d dmg" % [hp, e.damage]) if hp == 1 else ("❤ %d goals    ⚔ %d dmg" % [hp, e.damage])
-	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stats.add_theme_font_size_override("font_size", 11)
-	stats.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	vb.add_child(stats)
+	var stat_col := VBoxContainer.new()
+	stat_col.add_theme_constant_override("separation", 6)
+	stat_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stat_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var hp: int = int(entry.get("health", e.health))
+	stat_col.add_child(_info_stat("❤", "Health", "%d goal%s to defeat" % [hp, "" if hp == 1 else "s"], Color(1.0, 0.5, 0.5)))
+	stat_col.add_child(_info_stat("⚔", "Damage", "%d per game, from the front" % e.damage, Color(1.0, 0.8, 0.35)))
+	stat_col.add_child(_info_stat("◎", "Position", _position_text(col, is_current), accent))
+	var stun: int = int(entry.get("stun", 0))
+	if stun > 0:
+		stat_col.add_child(_info_stat("❄", "Frozen", "skips its next %d game(s)" % stun, Color(0.6, 0.8, 1.0)))
+	top.add_child(stat_col)
+	inner.add_child(top)
 
-	# Push affordance (Manager's verb): a following enemy can be shoved back a
-	# space while a Push charge is in hand, buying a game before it hits (§7.2).
-	if not is_current and instance > 0 and GameState.push > 0:
-		var push_btn := _mini_button("Push (%d)" % GameState.push, func(): push_follower(instance))
-		push_btn.tooltip_text = "Push this enemy back one space — delays its next attack by a game."
-		vb.add_child(push_btn)
-	return card
-
-func _follower_tooltip(e: GoalEnemyData, games_away: int, stun: int, is_current: bool) -> String:
-	var lines: Array = [e.display_name + ("  (BOSS)" if e.is_boss() else "")]
-	if e.goal != "":
-		lines.append("Goal (%s): %s" % [String(e.goal_type).capitalize(), e.goal])
-	lines.append("Type: %s  •  Tier %s" % [String(e.game_type).capitalize(), _tier_name(e)])
-	if e.source_game != "":
-		lines.append("From: %s" % e.source_game)
-	lines.append("Health %d  •  Damage %d / game" % [e.health, e.damage])
-	if is_current:
-		lines.append("Just started following — first hits in %d games unless you clear its goal." % games_away)
-	elif stun > 0:
-		lines.append("Delayed — skips its next %d attack(s) (Stun / Push)." % stun)
+	# Type / tier / source chips.
+	var chips := HBoxContainer.new()
+	chips.add_theme_constant_override("separation", 6)
+	chips.add_child(_info_chip(String(e.game_type).capitalize(), UITheme.ACCENT))
+	chips.add_child(_info_chip("Tier %s" % _tier_name(e), UITheme.GOLD))
+	if e.is_boss():
+		chips.add_child(_info_chip("BOSS", Color(0.95, 0.55, 0.2)))
 	if String(e.tag) != "":
-		lines.append("Tag: %s" % String(e.tag))
-	return "\n".join(lines)
+		chips.add_child(_info_chip(String(e.tag), UITheme.TEXT_DIM))
+	inner.add_child(chips)
+
+	# The goal — the thing you actually have to do — gets its own panel.
+	if e.goal != "":
+		var goal_wrap := PanelContainer.new()
+		goal_wrap.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 8, 12, 1, UITheme.GOLD.lerp(UITheme.BG, 0.55)))
+		var goal_box := VBoxContainer.new()
+		goal_box.add_theme_constant_override("separation", 3)
+		var goal_hdr := Label.new()
+		goal_hdr.text = "GOAL  (%s)" % String(e.goal_type).capitalize()
+		goal_hdr.add_theme_font_size_override("font_size", 11)
+		goal_hdr.add_theme_color_override("font_color", UITheme.GOLD)
+		goal_box.add_child(goal_hdr)
+		var goal_txt := Label.new()
+		goal_txt.text = e.goal
+		goal_txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		goal_txt.custom_minimum_size = Vector2(460, 0)
+		goal_txt.add_theme_font_size_override("font_size", 14)
+		goal_box.add_child(goal_txt)
+		goal_wrap.add_child(goal_box)
+		inner.add_child(goal_wrap)
+
+	if e.source_game != "":
+		var src := Label.new()
+		src.text = "From %s" % e.source_game
+		src.add_theme_font_size_override("font_size", 12)
+		src.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		inner.add_child(src)
+
+	# Combat verbs, aimed at this enemy (a currently-played game isn't targetable).
+	if not is_current and instance > 0:
+		inner.add_child(HSeparator.new())
+		var acts := HBoxContainer.new()
+		acts.add_theme_constant_override("separation", 8)
+		var can_push: bool = GameState.push > 0 and GameLoop2.can_push(instance)
+		var pb := Button.new()
+		pb.text = "⇤  Push back a column (%d)" % GameState.push
+		pb.disabled = not can_push
+		pb.tooltip_text = "The column behind is full — no room to shove it back." if (GameState.push > 0 and not can_push) else "Buys the games it takes to close back in."
+		pb.pressed.connect(func():
+			push_follower(instance)
+			_close_enemy_info())
+		acts.add_child(pb)
+		var can_bomb: bool = GameState.bombs > 0 and not e.is_boss()
+		var bb := Button.new()
+		bb.text = "✸  Bomb (%d)" % GameState.bombs
+		bb.disabled = not can_bomb
+		bb.tooltip_text = "Bosses are bomb-immune." if e.is_boss() else "Destroys it outright — no drop."
+		bb.pressed.connect(func():
+			bomb_follower(instance)
+			_close_enemy_info())
+		acts.add_child(bb)
+		inner.add_child(acts)
+
+	_info_popup = overlay
+	add_child(overlay)
+
+func _close_enemy_info() -> void:
+	if _info_popup != null and is_instance_valid(_info_popup):
+		_info_popup.queue_free()
+	_info_popup = null
+
+# One "icon — label — value" row in the info card's stat column.
+func _info_stat(icon: String, label: String, value: String, color: Color) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var ico := Label.new()
+	ico.text = icon
+	ico.add_theme_font_size_override("font_size", 16)
+	ico.add_theme_color_override("font_color", color)
+	ico.custom_minimum_size = Vector2(22, 0)
+	row.add_child(ico)
+	var name_lbl := Label.new()
+	name_lbl.text = label
+	name_lbl.add_theme_font_size_override("font_size", 13)
+	name_lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	name_lbl.custom_minimum_size = Vector2(76, 0)
+	row.add_child(name_lbl)
+	var val := Label.new()
+	val.text = value
+	val.add_theme_font_size_override("font_size", 14)
+	val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(val)
+	return row
+
+func _info_chip(text: String, color: Color) -> Control:
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel", UITheme.flat(color.lerp(UITheme.BG, 0.72), 6, 6, 1, color.lerp(UITheme.BG, 0.35)))
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_color_override("font_color", color.lerp(Color.WHITE, 0.35))
+	wrap.add_child(l)
+	return wrap
+
+# Plain-language description of where an enemy stands and what that means.
+func _position_text(col: int, is_current: bool) -> String:
+	if is_current:
+		return "off field — steps in when you report this game"
+	if col >= GameLoop2.OFFGRID_COL:
+		return "off field — waiting for a cell to free up"
+	if col <= 1:
+		return "front column — strikes every game"
+	return "column %d — %d game(s) from striking" % [col, col - 1]
+
+# The accent colour for an enemy at grid column `col`: red at the front (about to
+# strike), amber a column back, gold farther out, orange for a boss.
+func _col_accent(col: int, is_boss: bool) -> Color:
+	if is_boss:
+		return Color(0.95, 0.55, 0.2)
+	if col <= 1:
+		return UITheme.DANGER
+	if col == 2:
+		return Color(1.0, 0.62, 0.24)
+	return UITheme.GOLD
+
+# Draw one enemy into a grid cell: its art fills the cell, with ❤ health bottom-
+# left and ⚔ damage bottom-right, a column-tinted border, and Push / Bomb
+# affordances when a charge is in hand. The current (now-playing) enemy pulses a
+# thicker border.
+func _paint_enemy_cell(cell: PanelContainer, entry: Dictionary, col: int, is_current: bool) -> void:
+	var e: GoalEnemyData = entry.get("enemy")
+	if e == null:
+		return
+	var stun: int = int(entry.get("stun", 0))
+	var accent: Color = _col_accent(col, e.is_boss())
+	if stun > 0:
+		accent = accent.lerp(Color(0.5, 0.7, 1.0), 0.5)
+	var inst: int = int(entry.get("instance", 0))
+	var selected: bool = inst > 0 and inst == _selected_instance
+	_style_enemy_cell(cell, accent, is_current, selected, false)
+	# Enemies are click-to-inspect: hovering brightens the outline to advertise it,
+	# clicking selects the enemy and opens its info card.
+	cell.mouse_filter = Control.MOUSE_FILTER_STOP
+	cell.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	cell.set_meta("instance", inst)
+	cell.mouse_entered.connect(func(): _style_enemy_cell(cell, accent, is_current, inst == _selected_instance, true))
+	cell.mouse_exited.connect(func(): _style_enemy_cell(cell, accent, is_current, inst == _selected_instance, false))
+	cell.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			_on_enemy_clicked(inst, entry, col, is_current))
+	# One full-rect holder so corner-anchored overlays position correctly (a
+	# PanelContainer stretches every direct child, clobbering anchor presets).
+	# It's also what the resolve animation hides while a ghost slides into place.
+	var holder := _cell_holder(cell)
+	cell.set_meta("holder", holder)
+
+	# Art (or a tinted silhouette when the enemy has no image), stretched to fill.
+	var art := TextureRect.new()
+	art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if e.image != null:
+		art.texture = e.image
+		if e.image.get_width() < _CELL or e.image.get_height() < _CELL:
+			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	else:
+		art.modulate = accent
+	holder.add_child(art)
+
+	# Overlay: boss skull top, health bottom-left, damage bottom-right, and the
+	# stun marker when frozen. All non-blocking so the cell tooltip still shows.
+	if e.is_boss():
+		var skull := _corner_badge("☠", accent)
+		skull.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 2)
+		holder.add_child(skull)
+
+	var hp: int = int(entry.get("health", e.health))
+	var hp_lbl := _corner_badge("❤%d" % hp, Color(1.0, 0.5, 0.5))
+	hp_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 2)
+	holder.add_child(hp_lbl)
+
+	var dmg_lbl := _corner_badge("⚔%d" % e.damage, Color(1.0, 0.8, 0.35))
+	dmg_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
+	holder.add_child(dmg_lbl)
+
+	if stun > 0:
+		var frozen := _corner_badge("❄", Color(0.6, 0.8, 1.0))
+		frozen.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, 2)
+		holder.add_child(frozen)
+
+	# A selected enemy carries a marker so it's obvious which one the Push / Bomb
+	# buttons on the toolbar are aimed at.
+	if selected:
+		var pin := _corner_badge("▸", UITheme.ACCENT)
+		pin.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
+		holder.add_child(pin)
+
+# A single full-rect Control child of a cell PanelContainer, inside which art and
+# corner-anchored overlays lay out freely (the PanelContainer stretches this one
+# holder to fill; the holder itself imposes no layout on its children).
+func _cell_holder(cell: PanelContainer) -> Control:
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(holder)
+	return holder
+
+# A small pill label used for the health / damage / status badges on a cell.
+func _corner_badge(text: String, color: Color, font_size: int = 12) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", font_size)
+	l.add_theme_color_override("font_color", Color.WHITE)
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	l.add_theme_constant_override("outline_size", 4)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return l
+
+# A token for an enemy that has no cell on the field: either the overflow queue,
+# or the game you're playing right now (which enters the grid when you report it).
+# Clickable like a grid cell, with the same hover cue.
+func _offgrid_token(entry: Dictionary, is_current: bool = false) -> Control:
+	var e: GoalEnemyData = entry.get("enemy")
+	var accent: Color = UITheme.ACCENT if is_current else UITheme.GOLD
+	if e != null and e.is_boss():
+		accent = Color(0.95, 0.55, 0.2)
+	var cell := PanelContainer.new()
+	cell.custom_minimum_size = Vector2(_CELL if is_current else 44, _CELL if is_current else 44)
+	var paint := func(hovered: bool) -> void:
+		var border: Color = accent.lerp(Color.WHITE, 0.55) if hovered else accent.lerp(UITheme.BG, 0.25)
+		var fill: Color = UITheme.PANEL.lerp(UITheme.BG, 0.3)
+		if hovered:
+			fill = fill.lerp(Color.WHITE, 0.09)
+		cell.add_theme_stylebox_override("panel", UITheme.flat(fill, 5, 2, 2 if is_current else 1, border))
+	paint.call(false)
+	if e != null:
+		cell.mouse_filter = Control.MOUSE_FILTER_STOP
+		cell.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		cell.mouse_entered.connect(func(): paint.call(true))
+		cell.mouse_exited.connect(func(): paint.call(false))
+		cell.gui_input.connect(func(ev: InputEvent):
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				_on_enemy_clicked(int(entry.get("instance", 0)), entry, GameLoop2.OFFGRID_COL, is_current))
+		cell.set_meta("instance", int(entry.get("instance", 0)))
+		var holder := _cell_holder(cell)
+		cell.set_meta("holder", holder)
+		var art := TextureRect.new()
+		art.set_anchors_preset(Control.PRESET_FULL_RECT)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if e.image != null:
+			art.texture = e.image
+			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		else:
+			art.modulate = accent
+		holder.add_child(art)
+		# The game in play is labelled, so it reads as "waiting to enter" rather
+		# than as another queued enemy.
+		if is_current:
+			var tag := _corner_badge("NOW PLAYING", UITheme.ACCENT, 9)
+			tag.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 2)
+			holder.add_child(tag)
+			var dmg := _corner_badge("⚔%d" % e.damage, Color(1.0, 0.8, 0.35))
+			dmg.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
+			holder.add_child(dmg)
+	return cell
+
+# --- resolve animation ----------------------------------------------------
+
+const _FX_ATTACK_TIME: float = 0.55   # how long the front-line strike phase runs
+const _FX_SLIDE_TIME: float = 0.34    # how long the advance slide takes
+
+# Where every enemy is drawn right now: instance -> global Rect2 of its cell (or
+# off-field token). Captured before a resolve and again after, so the difference
+# is exactly the movement to animate.
+func _battlefield_positions() -> Dictionary:
+	var out: Dictionary = {}
+	if _battlefield == null:
+		return out
+	for row_cells in _grid_cells:
+		for cell in row_cells:
+			if cell.has_meta("instance") and int(cell.get_meta("instance")) > 0:
+				out[int(cell.get_meta("instance"))] = cell.get_global_rect()
+	if _offgrid_box != null:
+		for tok in _offgrid_box.get_children():
+			if tok.has_meta("instance") and int(tok.get_meta("instance")) > 0:
+				out[int(tok.get_meta("instance"))] = tok.get_global_rect()
+	return out
+
+# The holder Control of whichever cell currently draws `instance`, so it can be
+# hidden while its ghost slides in.
+func _holder_for_instance(instance: int) -> Control:
+	for row_cells in _grid_cells:
+		for cell in row_cells:
+			if cell.has_meta("instance") and int(cell.get_meta("instance")) == instance:
+				return cell.get_meta("holder") if cell.has_meta("holder") else null
+	if _offgrid_box != null:
+		for tok in _offgrid_box.get_children():
+			if tok.has_meta("instance") and int(tok.get_meta("instance")) == instance:
+				return tok.get_meta("holder") if tok.has_meta("holder") else null
+	return null
+
+func _clear_fx() -> void:
+	if _fx_layer == null:
+		return
+	for c in _fx_layer.get_children():
+		c.queue_free()
+
+# Play back the resolve the player just triggered: the front line strikes (each
+# attacker flashes and throws its damage number at the hero, who recoils), then
+# the whole field slides one column closer — including the game you just reported,
+# which walks in from off-field onto the spawn column.
+func _animate_resolve(before: Dictionary, res: Dictionary) -> void:
+	if _fx_layer == null or not is_inside_tree():
+		return
+	_clear_fx()
+	var after: Dictionary = _battlefield_positions()
+	_animating = true
+
+	# 1. The strike: flash each attacker where it stood and float its damage.
+	var hero_rect: Rect2 = _hero_icon.get_global_rect()
+	var struck: bool = false
+	for a in res.get("attacks", []):
+		if not (a is Dictionary) or not a.has("damage"):
+			continue
+		var inst: int = int(a.get("instance", 0))
+		if not before.has(inst):
+			continue
+		struck = true
+		var from: Rect2 = before[inst]
+		_spawn_strike_flash(from)
+		_spawn_damage_number(int(a["damage"]), from, hero_rect)
+	if struck:
+		_punch_hero()
+
+	# 2. The advance: ghost-slide every enemy whose cell changed, after the strike
+	#    has played. The real art stays hidden until its ghost lands.
+	for inst in after.keys():
+		if not before.has(inst):
+			continue
+		var from_rect: Rect2 = before[inst]
+		var to_rect: Rect2 = after[inst]
+		if from_rect.position.distance_to(to_rect.position) < 2.0:
+			continue
+		_spawn_slide_ghost(inst, from_rect, to_rect)
+
+	# Release the animating flag once the whole sequence has played out.
+	var done := create_tween()
+	done.tween_interval(_FX_ATTACK_TIME + _FX_SLIDE_TIME)
+	done.tween_callback(func(): _animating = false)
+
+# A white burst over an attacking enemy's cell.
+func _spawn_strike_flash(rect: Rect2) -> void:
+	var flash := ColorRect.new()
+	flash.color = Color(1, 1, 1, 0.75)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.size = rect.size
+	_fx_layer.add_child(flash)
+	flash.global_position = rect.position
+	var t := flash.create_tween()
+	t.tween_property(flash, "modulate:a", 0.0, 0.42).set_trans(Tween.TRANS_SINE)
+	t.tween_callback(flash.queue_free)
+
+# A damage number thrown from the attacker toward the hero.
+func _spawn_damage_number(amount: int, from: Rect2, hero: Rect2) -> void:
+	var lbl := Label.new()
+	lbl.text = "-%d" % amount
+	lbl.add_theme_font_size_override("font_size", 26)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.42, 0.38))
+	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	lbl.add_theme_constant_override("outline_size", 6)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fx_layer.add_child(lbl)
+	lbl.global_position = from.position + Vector2(from.size.x * 0.25, 0)
+	var target: Vector2 = hero.position + Vector2(hero.size.x * 0.25, -18)
+	var t := lbl.create_tween()
+	t.set_parallel(true)
+	t.tween_property(lbl, "global_position", target, _FX_ATTACK_TIME * 0.85).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t.tween_property(lbl, "modulate:a", 0.0, _FX_ATTACK_TIME * 0.85).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	t.set_parallel(false)
+	t.tween_callback(lbl.queue_free)
+
+# The hero recoils when the front line connects.
+func _punch_hero() -> void:
+	if _hero_icon == null:
+		return
+	_hero_icon.pivot_offset = _hero_icon.size * 0.5
+	var t := _hero_icon.create_tween()
+	t.tween_property(_hero_icon, "scale", Vector2(1.14, 0.9), 0.09).set_trans(Tween.TRANS_BACK)
+	t.tween_property(_hero_icon, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	var f := _hero_icon.create_tween()
+	f.tween_property(_hero_icon, "modulate", Color(1.0, 0.55, 0.55), 0.09)
+	f.tween_property(_hero_icon, "modulate", Color.WHITE, 0.34)
+
+# Slide a copy of an enemy from where it stood to where it now stands, hiding the
+# real one until it lands.
+func _spawn_slide_ghost(instance: int, from_rect: Rect2, to_rect: Rect2) -> void:
+	var entry: Dictionary = _stack_entry(instance)
+	var e: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
+	var ghost := TextureRect.new()
+	ghost.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ghost.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if e != null and e.image != null:
+		ghost.texture = e.image
+		ghost.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	ghost.size = from_rect.size
+	_fx_layer.add_child(ghost)
+	ghost.global_position = from_rect.position
+
+	var holder: Control = _holder_for_instance(instance)
+	if holder != null:
+		holder.modulate.a = 0.0
+
+	var t := ghost.create_tween()
+	t.tween_interval(_FX_ATTACK_TIME)
+	t.set_parallel(true)
+	t.tween_property(ghost, "global_position", to_rect.position, _FX_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	t.tween_property(ghost, "size", to_rect.size, _FX_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	t.chain().tween_callback(func():
+		if is_instance_valid(holder):
+			holder.modulate.a = 1.0
+		ghost.queue_free())
+
+# --- inline kill-drops (§8) ------------------------------------------------
+
+# A defeated enemy dropped loot: roll an item and queue it as collectable field
+# loot. Skipped once the run is over (win/lose screens take over the board).
+func _on_enemy_defeated(_enemy: GoalEnemyData) -> void:
+	if GameLoop2.run_over:
+		return
+	var item: ItemData = _roll_drop()
+	if item == null:
+		return
+	_drop_queue.append({"item": item})
+	# The resolve that produced this defeat also emits loop_changed -> _refresh,
+	# which repaints the battlefield and places the drop; repaint here too in case
+	# the defeat came from a direct action (bomb never drops, fulfil does).
+	if _battlefield != null:
+		_refresh_battlefield()
+
+# Roll one drop item from the games-first reward pool, weighted by rarity the same
+# way the RewardScreen chest roll is (§8).
+func _roll_drop() -> ItemData:
+	var pool: Array = Data.reward_item2_pool()
+	if pool.is_empty():
+		return null
+	var target: int = _roll_drop_rarity()
+	var bucket: Array = pool.filter(func(it): return int(it.rarity) == target)
+	if bucket.is_empty():
+		bucket = pool
+	return bucket[_rng.randi_range(0, bucket.size() - 1)]
+
+func _roll_drop_rarity() -> int:
+	var roll: float = _rng.randf() * 100.0
+	if roll < 75.0:
+		return ItemData.Rarity.COMMON
+	if roll < 95.0:
+		return ItemData.Rarity.UNCOMMON
+	if _rng.randf() < 0.1:
+		return ItemData.Rarity.LEGENDARY
+	return ItemData.Rarity.RARE
+
+# Place each queued drop as collectable loot in the nearest free cell (front
+# column and top rows first), overflowing into the side lane if the grid is
+# packed. Called at the end of every battlefield repaint.
+func _place_drops() -> void:
+	if _phase == Phase.OVER or _drop_queue.is_empty():
+		return
+	var qi: int = 0
+	for col in range(1, GameLoop2.GRID_COLS + 1):
+		for row in range(GameLoop2.GRID_ROWS):
+			if qi >= _drop_queue.size():
+				return
+			var cell: PanelContainer = _grid_cells[row][col - 1]
+			if cell.get_child_count() > 0:
+				continue
+			_paint_drop_cell(cell, _drop_queue[qi])
+			qi += 1
+	# Grid is full — the remaining drops wait as tokens in the overflow lane.
+	while qi < _drop_queue.size():
+		_offgrid_box.add_child(_drop_token(_drop_queue[qi]))
+		qi += 1
+
+# Draw a drop into a grid cell: the item's art, a rarity-tinted border, and a
+# Collect / Skip pair of buttons.
+func _paint_drop_cell(cell: PanelContainer, drop: Dictionary) -> void:
+	var item: ItemData = drop["item"]
+	var col: Color = UITheme.rarity_color(int(item.rarity))
+	cell.add_theme_stylebox_override("panel", UITheme.flat(col.lerp(UITheme.BG, 0.55), 6, 2, 2, col))
+	cell.tooltip_text = "%s\n%s" % [item.display_name, item.description if String(item.description) != "" else "A dropped relic."]
+	var holder := _cell_holder(cell)
+
+	if item.image != null:
+		var art := TextureRect.new()
+		art.set_anchors_preset(Control.PRESET_FULL_RECT)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		art.texture = item.image
+		if item.image.get_width() < _CELL or item.image.get_height() < _CELL:
+			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		holder.add_child(art)
+
+	var tag := _corner_badge("✦ LOOT", col.lerp(Color.WHITE, 0.4))
+	tag.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 2)
+	holder.add_child(tag)
+
+	var btns := HBoxContainer.new()
+	btns.add_theme_constant_override("separation", 2)
+	btns.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE, Control.PRESET_MODE_MINSIZE, 2)
+	btns.alignment = BoxContainer.ALIGNMENT_CENTER
+	var take := _mini_button("✓", func(): _collect_drop(drop))
+	take.tooltip_text = "Collect %s" % item.display_name
+	take.add_theme_color_override("font_color", UITheme.SUCCESS)
+	var skip := _mini_button("✗", func(): _skip_drop(drop))
+	skip.tooltip_text = "Skip this drop"
+	btns.add_child(take)
+	btns.add_child(skip)
+	holder.add_child(btns)
+
+# A drop shown as a token in the overflow lane (used when the grid is packed).
+func _drop_token(drop: Dictionary) -> Control:
+	var item: ItemData = drop["item"]
+	var col: Color = UITheme.rarity_color(int(item.rarity))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 3)
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(28, 28)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	if item.image != null:
+		icon.texture = item.image
+	row.add_child(icon)
+	row.add_child(_mini_button("✓", func(): _collect_drop(drop)))
+	row.add_child(_mini_button("✗", func(): _skip_drop(drop)))
+	row.tooltip_text = item.display_name
+	return row
+
+func _collect_drop(drop: Dictionary) -> void:
+	if not _drop_queue.has(drop):
+		return
+	_drop_queue.erase(drop)
+	var item: ItemData = drop["item"]
+	GameState.add_item(item)
+	GameLog.add("Collected %s." % item.display_name, Color(0.7, 1.0, 0.7))
+	_refresh_battlefield()
+
+func _skip_drop(drop: Dictionary) -> void:
+	if not _drop_queue.has(drop):
+		return
+	_drop_queue.erase(drop)
+	GameLog.add("Skipped %s." % String(drop["item"].display_name), Color(0.8, 0.8, 0.8))
+	_refresh_battlefield()
 
 # A TextureRect that renders `tex` crisply (nearest-neighbour) when it's small
 # pixel art scaled up, keeping smooth filtering for already-large art.
@@ -948,10 +1801,12 @@ func _tier_name(e: GoalEnemyData) -> String:
 
 func _on_run_lost() -> void:
 	_phase = Phase.OVER
+	_drop_queue.clear()
 	_show_banner("💀  Run lost — Health reached 0.", Color(0.9, 0.3, 0.25))
 
 func _on_run_won() -> void:
 	_phase = Phase.OVER
+	_drop_queue.clear()
 	_show_banner("🏆  You cleared the Amulet — you win!", Color(0.95, 0.8, 0.2))
 
 func _show_banner(text: String, color: Color) -> void:
@@ -971,14 +1826,21 @@ func _build_ui() -> void:
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.color = UITheme.BG_DEEP
 	add_child(bg)
+	# The page is taller than a screen (HUD, choices, play panel, battlefield, log),
+	# so host it in a ScrollContainer — everything stays reachable and the battlefield
+	# no longer falls off the bottom on short displays.
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.offset_left = 16
+	scroll.offset_top = 16
+	scroll.offset_right = -16
+	scroll.offset_bottom = -16
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
 	var root := VBoxContainer.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.add_theme_constant_override("separation", 10)
-	root.offset_left = 16
-	root.offset_top = 16
-	root.offset_right = -16
-	root.offset_bottom = -16
-	add_child(root)
+	scroll.add_child(root)
 
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
@@ -1119,13 +1981,10 @@ func _build_ui() -> void:
 	_items_box.add_theme_constant_override("separation", 4)
 	root.add_child(_items_box)
 
-	root.add_child(_section("Following you:"))
+	root.add_child(_section("Battlefield  —  enemies close in one column each game:"))
 	_stack = _panel_label()
 	root.add_child(_stack)
-	_stack_box = HFlowContainer.new()
-	_stack_box.add_theme_constant_override("h_separation", 10)
-	_stack_box.add_theme_constant_override("v_separation", 10)
-	root.add_child(_stack_box)
+	root.add_child(_build_battlefield())
 	_log = _panel_label()
 	root.add_child(_log)
 

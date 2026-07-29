@@ -32,15 +32,32 @@ signal player_hit(damage, blocked)    # a stacked enemy landed a hit this resolv
 signal run_lost()
 signal run_won()
 
+# The battlefield is a Mega-Man-Battle-Network-style grid: the player sits on the
+# left, and following enemies occupy a GRID_COLS x GRID_ROWS grid on the right.
+# An enemy SPAWNS in the farthest column (SPAWN_COL) and, after each game beaten,
+# closes one column toward the player. Only the front column (col 1) can strike,
+# so at most GRID_ROWS enemies attack at once; the rest queue behind them. Extra
+# enemies that don't fit wait OFF-GRID (OFFGRID_COL) and slide in as cells free.
+# `col` on each entry is that distance: 1 = melee/front, GRID_COLS = spawn, and
+# OFFGRID_COL = the off-grid holding queue (never attacks).
+const GRID_COLS: int = 3          # distance columns (spawn at 3, melee at 1)
+const GRID_ROWS: int = 4          # rows per column -> up to 4 attackers at once
+const SPAWN_COL: int = GRID_COLS  # enemies enter here (the third column)
+const OFFGRID_COL: int = GRID_COLS + 1  # overflow queue just off the grid's edge
+
 # The enemy on the currently-chosen game, or {} when none is chosen. Shape:
 #   {"instance": int, "enemy": GoalEnemyData, "health": int}
+# The current enemy is shown at SPAWN_COL while its game is being played, but it
+# is NOT on the stack yet (that ordering is the one-game grace, §7.2): it only
+# joins the grid once its game is resolved.
 var current: Dictionary = {}
 
 # Undefeated enemies following the player (§2). Each entry:
-#   {"instance": int, "enemy": GoalEnemyData, "stun": int, "health": int}
+#   {"instance": int, "enemy": GoalEnemyData, "stun": int, "health": int, "col": int}
 # `instance` is a unique per-spawn handle so two games rolling the same enemy
-# type stay distinct; bomb / stun / fulfil target by instance. `health` is the
-# remaining goal completions needed to defeat it (Alien Baby raises it, §8).
+# type stay distinct; bomb / stun / push / fulfil target by instance. `health` is
+# the remaining goal completions needed to defeat it (Alien Baby raises it, §8).
+# `col` is its grid column (1..GRID_COLS on-grid, OFFGRID_COL off-grid).
 var stack: Array = []
 
 # Games removed from the pool by Bash (§4) — destroyed outright, never offered
@@ -218,17 +235,18 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 		else:
 			hit_this_game[int(inst)] = true
 
-	# 2. Every enemy already on the stack attacks (unless stunned, or its goal was
-	#    completed this game). Iterate a copy so a lethal hit ending the run
-	#    mid-loop is safe.
+	# 2. FRONT COLUMN ATTACKS. Only enemies in the front column (col 1) can strike
+	#    (up to GRID_ROWS of them); a stunned or just-goal-hit enemy holds fire.
+	#    Iterate a copy so a lethal hit ending the run mid-loop is safe.
 	for entry in stack.duplicate():
 		if run_over:
 			break
+		if int(entry.get("col", SPAWN_COL)) != 1:
+			continue
 		if hit_this_game.has(int(entry["instance"])):
 			res["attacks"].append({"instance": entry["instance"], "goal_hit": true})
 			continue
 		if int(entry.get("stun", 0)) > 0:
-			entry["stun"] = int(entry["stun"]) - 1
 			res["attacks"].append({"instance": entry["instance"], "stunned": true})
 			continue
 		# Aggravate Monsters adds a flat bonus to each hit while it's active (§4.1).
@@ -239,6 +257,16 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 			"blocked": blocked})
 		player_hit.emit(dmg, blocked)
 
+	# After the front column strikes, the grid ADVANCES: every enemy closes one
+	# column toward the player, but only into a free row — the front column caps
+	# attackers at GRID_ROWS, so the queue stalls behind a full column and the
+	# off-grid queue slides in only as cells free. Stunned enemies stay put this
+	# game; then each stun ticks down once for the game that elapsed.
+	_advance_stack()
+	for entry in stack:
+		if int(entry.get("stun", 0)) > 0:
+			entry["stun"] = int(entry["stun"]) - 1
+
 	# Aggravate Monsters lasts a fixed number of games (§4.1) — one game elapses
 	# per resolve, so tick it down after the stack has taken its buffed hits.
 	if enemy_damage_bonus_games > 0:
@@ -248,8 +276,9 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 
 	# 3. Resolve the current game's enemy: completing its goal deals one hit.
 	#    Health 0 -> defeated + drop; a survivor (Alien Baby's two-hit enemy) or a
-	#    missed goal joins the stack (added after the attack step, so it gets its
-	#    one-game grace before its first hit) and must be beaten again later.
+	#    missed goal ENTERS THE GRID at the spawn column (added after the attack +
+	#    advance steps, so it gets its one-game grace before closing in) and must
+	#    be beaten again later. A full spawn column overflows to the off-grid queue.
 	if not current.is_empty():
 		var ch: int = int(current.get("health", 1))
 		if goal_met:
@@ -257,8 +286,7 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 		if goal_met and ch <= 0:
 			_defeat(current["enemy"], true, res)
 		else:
-			stack.append({"instance": current["instance"],
-				"enemy": current["enemy"], "stun": 0, "health": maxi(1, ch)})
+			_add_to_grid(int(current["instance"]), current["enemy"], maxi(1, ch))
 		current = {}
 
 	res["hp"] = GameState.hp
@@ -313,19 +341,34 @@ func stun(instance: int) -> bool:
 	loop_changed.emit()
 	return true
 
-# Push a following enemy back one space (Manager's verb, from Raccoin): spends a
-# GameState.push charge to delay the target's next attack by one game — the same
-# one-game-later timing relief as Stun (§7.2), which is why it rides the shared
-# per-enemy delay counter. Returns true (and spends the charge) only when a
-# charge is available and the target is on the stack.
-func push(instance: int) -> bool:
-	if GameState.push <= 0:
-		return false
+# Whether `instance` has somewhere to be pushed: a shove needs a real cell to land
+# in, so the target must be on the grid, not already at the back (spawn) column,
+# and the column behind it must have a free row. A packed column blocks the shove
+# rather than stacking two enemies into one cell (§grid).
+func can_push(instance: int) -> bool:
 	var idx: int = _index_of(instance)
 	if idx < 0:
 		return false
+	var col: int = int(stack[idx].get("col", SPAWN_COL))
+	if col >= GRID_COLS:
+		return false          # already at the back column (or off-grid)
+	return _count_in_col(col + 1) < GRID_ROWS
+
+# Push a following enemy back one column (Manager's verb, from Raccoin): spends a
+# GameState.push charge to shove the target one grid column farther from the
+# player (toward the spawn column), buying the games it takes to close back in —
+# and, when it was in the front column, freeing that attack row for the queue
+# (§grid). Requires room behind the target (see can_push), so a jammed board can't
+# be untangled by shoving into a full column. Returns true (and spends the charge)
+# only when a charge is available and the shove has somewhere to land.
+func push(instance: int) -> bool:
+	if GameState.push <= 0:
+		return false
+	if not can_push(instance):
+		return false
+	var idx: int = _index_of(instance)
 	GameState.push -= 1
-	stack[idx]["stun"] = int(stack[idx].get("stun", 0)) + 1
+	stack[idx]["col"] = int(stack[idx].get("col", SPAWN_COL)) + 1
 	loop_changed.emit()
 	return true
 
@@ -338,7 +381,7 @@ func spawn_to_stack(enemy: GoalEnemyData) -> int:
 		return 0
 	var inst: int = _next_instance
 	_next_instance += 1
-	stack.append({"instance": inst, "enemy": enemy, "stun": 0, "health": effective_health(enemy)})
+	_add_to_grid(inst, enemy, effective_health(enemy))
 	loop_changed.emit()
 	return inst
 
@@ -448,15 +491,25 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 
 # --- HUD / query helpers --------------------------------------------------
 
-# Total damage the stack would deal on the next game beaten (stunned enemies
-# excluded) — the "how bad is my backlog" number for the HUD (§9).
+# Total damage the stack would deal on the next game beaten — only the FRONT
+# column can strike, and stunned enemies hold fire — the "how bad is my front
+# line" number for the HUD (§9).
 func stacked_damage_per_game() -> int:
 	var total: int = 0
 	var bonus: int = enemy_damage_bonus if enemy_damage_bonus_games > 0 else 0
 	for entry in stack:
-		if int(entry.get("stun", 0)) <= 0:
+		if int(entry.get("col", SPAWN_COL)) == 1 and int(entry.get("stun", 0)) <= 0:
 			total += int(entry["enemy"].damage) + bonus
 	return total
+
+# Number of enemies waiting off the grid's edge (overflow queue) — never attacks,
+# slides in as cells free. Exposed for the battlefield UI / HUD.
+func offgrid_count() -> int:
+	return _count_in_col(OFFGRID_COL)
+
+# Number of enemies in the front column (col 1) — the ones that strike next game.
+func front_count() -> int:
+	return _count_in_col(1)
 
 func stack_size() -> int:
 	return stack.size()
@@ -471,11 +524,11 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
 	if res.has("defeats"):
 		res["defeats"].append(enemy)
 	if drop:
-		# Every defeated enemy drops an item (§8). The drop is banked as a chest
-		# redeemed by the RewardScreen; the tier -> chest-size mapping (§8.2) is
-		# a RewardScreen concern wired in a later pass, so we bank one chest and
-		# record the tier for it.
-		GameState.grant_chest(1)
+		# Every defeated enemy drops an item (§8). On the grid battlefield the drop
+		# is presented INLINE — the enemy vanishes and its item appears on the field
+		# with Collect / Skip — which the overworld drives off enemy_defeated, so we
+		# no longer bank a RewardScreen chest here. We only tally the drop so this
+		# headless core stays scene-free and unit-testable.
 		if res.has("drops"):
 			res["drops"] = int(res.get("drops", 0)) + 1
 	enemy_defeated.emit(enemy)
@@ -513,3 +566,42 @@ func _index_of(instance: int) -> int:
 		if int(stack[i]["instance"]) == instance:
 			return i
 	return -1
+
+# --- grid model (§grid) ---------------------------------------------------
+
+# How many enemies currently occupy grid column `col` (1..GRID_COLS, or the
+# OFFGRID_COL overflow queue).
+func _count_in_col(col: int) -> int:
+	var n: int = 0
+	for e in stack:
+		if int(e.get("col", SPAWN_COL)) == col:
+			n += 1
+	return n
+
+# Place a (surviving) enemy onto the grid at the spawn column, overflowing to the
+# off-grid queue when the spawn column's rows are already full.
+func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int) -> void:
+	var col: int = SPAWN_COL if _count_in_col(SPAWN_COL) < GRID_ROWS else OFFGRID_COL
+	stack.append({"instance": instance, "enemy": enemy, "stun": 0,
+		"health": health, "col": col})
+
+# Close the grid up by one column: front-first, so a freed front row pulls the
+# whole queue forward one step. Each enemy advances at most one column per resolve
+# (a target only pulls from the immediately-farther column, into its free rows);
+# stunned enemies stay put. col2->1, col3->2, off-grid->col3, each capped at
+# GRID_ROWS so a full column stalls the queue behind it.
+func _advance_stack() -> void:
+	for target in range(1, GRID_COLS + 1):
+		var source: int = target + 1
+		var room: int = GRID_ROWS - _count_in_col(target)
+		if room <= 0:
+			continue
+		for entry in stack:
+			if room <= 0:
+				break
+			if int(entry.get("col", SPAWN_COL)) != source:
+				continue
+			if int(entry.get("stun", 0)) > 0:
+				continue
+			entry["col"] = target
+			room -= 1

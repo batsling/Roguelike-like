@@ -40,27 +40,37 @@ func test_pick_then_report_advances_the_loop() -> void:
 	assert_gt(_ui._choices.size(), 0, "a fresh offering is drawn from the new position")
 
 func test_report_goal_met_defeats_and_drops() -> void:
-	var chests_before: int = GameState.pending_chests
 	_ui.pick(0)
-	_ui.report(true)              # met -> defeat + chest drop, nothing stacks
+	_ui.report(true)              # met -> defeat + inline field drop, nothing stacks
 	assert_eq(GameLoop2.stack_size(), 0, "a met goal leaves nothing following")
-	assert_eq(GameState.pending_chests, chests_before + 1, "the drop banked a chest")
+	assert_eq(_ui._drop_queue.size(), 1, "the kill queued an inline field drop")
 
-# The banked chest redeems into a RewardScreen once the board goes idle (§8).
-func test_defeat_drop_opens_a_reward_screen() -> void:
-	GameState.pending_chests = 0
+# An enemy kill drops loot inline on the battlefield (not a RewardScreen chest,
+# §8); collecting it adds the item to the inventory and clears the drop.
+func test_defeat_drop_is_collectable_inline() -> void:
 	_ui.pick(0)
 	_ui.report(true)
-	# Redemption is deferred to the next idle frame; let it run.
-	await get_tree().process_frame
-	await get_tree().process_frame
+	assert_eq(_ui._drop_queue.size(), 1, "a drop is waiting on the field")
+	# No RewardScreen is opened for an enemy drop anymore.
 	var found: RewardScreen = null
 	for c in _ui.get_children():
 		if c is RewardScreen:
 			found = c
 			break
-	assert_not_null(found, "a RewardScreen opened for the defeated enemy's drop")
-	assert_eq(GameState.pending_chests, 0, "the chest was taken as the screen opened")
+	assert_null(found, "enemy drops are inline, not a RewardScreen")
+	var inv_before: int = GameState.inventory.size()
+	_ui._collect_drop(_ui._drop_queue[0])        # click Collect
+	assert_eq(_ui._drop_queue.size(), 0, "the drop was consumed")
+	assert_eq(GameState.inventory.size(), inv_before + 1, "collecting adds the item")
+
+func test_skipped_drop_is_discarded() -> void:
+	_ui.pick(0)
+	_ui.report(true)
+	assert_eq(_ui._drop_queue.size(), 1)
+	var inv_before: int = GameState.inventory.size()
+	_ui._skip_drop(_ui._drop_queue[0])           # click Skip
+	assert_eq(_ui._drop_queue.size(), 0, "the drop was cleared")
+	assert_eq(GameState.inventory.size(), inv_before, "skipping keeps the inventory unchanged")
 
 func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# Miss a goal so an enemy follows, then on the next game tick its fulfilment
@@ -69,15 +79,59 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	_ui.report(false)
 	assert_eq(GameLoop2.stack_size(), 1, "a missed goal leaves a follower")
 	var hp_before: int = GameState.hp
-	var chests_before: int = GameState.pending_chests
+	var drops_before: int = _ui._drop_queue.size()
 	_ui.pick(0)                                  # play another game
 	assert_eq(_ui._fulfil_checks.size(), 1, "the follower is offered for fulfilment")
 	_ui._fulfil_checks[0]["check"].button_pressed = true
 	_ui.report(false)                            # miss current, but fulfil the follower
-	assert_eq(GameState.pending_chests, chests_before + 1, "the fulfilled follower dropped")
+	assert_eq(_ui._drop_queue.size(), drops_before + 1, "the fulfilled follower dropped inline")
 	assert_eq(GameState.hp, hp_before, "fulfilling it before it hit means no damage")
 	# The only follower now is this game's freshly-stacked enemy, not the old one.
 	assert_eq(GameLoop2.stack_size(), 1, "old follower gone; current game's enemy stacked")
+
+# --- battlefield interaction (click-to-inspect + combat verbs) -------------
+
+func test_clicking_an_enemy_selects_it_and_opens_its_card() -> void:
+	_ui.pick(0)
+	_ui.report(false)                              # an enemy now follows
+	var entry: Dictionary = GameLoop2.stack[0]
+	var inst: int = int(entry["instance"])
+	_ui._on_enemy_clicked(inst, entry, int(entry["col"]), false)
+	assert_eq(_ui._selected_instance, inst, "the clicked enemy is targeted")
+	assert_not_null(_ui._info_popup, "its info card opened")
+	_ui._close_enemy_info()
+	assert_null(_ui._info_popup, "the card closes")
+
+func test_the_game_being_played_is_not_targetable_by_the_verbs() -> void:
+	_ui.pick(0)                                    # its enemy waits off the field
+	var cur: Dictionary = GameLoop2.current
+	_ui._on_enemy_clicked(int(cur["instance"]), cur, GameLoop2.OFFGRID_COL, true)
+	assert_eq(_ui._selected_instance, 0, "the current game's enemy can't be pushed/bombed")
+	assert_not_null(_ui._info_popup, "but its card still opens")
+
+func test_toolbar_push_is_disabled_without_a_target_or_room() -> void:
+	GameState.push = 1
+	_ui.pick(0)
+	_ui.report(false)
+	_ui._selected_instance = 0
+	_ui._refresh_battle_toolbar()
+	assert_true(_ui._push_btn.disabled, "no target -> Push is unavailable")
+	# Target the follower: it sits at the back column, so there's nowhere to shove it.
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	_ui._selected_instance = inst
+	_ui._refresh_battle_toolbar()
+	assert_eq(int(GameLoop2.stack[0]["col"]), GameLoop2.SPAWN_COL)
+	assert_true(_ui._push_btn.disabled, "nothing behind the back column -> Push is unavailable")
+
+func test_selection_clears_when_the_enemy_dies() -> void:
+	GameState.bombs = 1
+	_ui.pick(0)
+	_ui.report(false)
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	_ui._selected_instance = inst
+	_ui.bomb_follower(inst)
+	assert_eq(GameLoop2.stack_size(), 0, "the bomb removed it")
+	assert_eq(_ui._selected_instance, 0, "the dead target is deselected")
 
 func test_report_accepts_an_explicit_fulfilment_list() -> void:
 	_ui.pick(0)
