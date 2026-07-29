@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://boss_royal_phalanx"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/bosses/RoyalPhalanx.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"royal_phalanx"
+display_name = "Royal Phalanx"
+game_type = &"action"
+difficulty = 1
+boss = true
+source_game = "Ember Knights"
+health = 1
+damage = 5
+goal_type = &"feat"
+goal = "Block an attack with an element"
+file = "RoyalPhalanx"
+image = ExtResource("2_img")
