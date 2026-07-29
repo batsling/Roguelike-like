@@ -341,24 +341,34 @@ func stun(instance: int) -> bool:
 	loop_changed.emit()
 	return true
 
-# Push a following enemy back one column (Manager's verb, from Raccoin): spends a
-# GameState.push charge to shove the target one grid column farther from the
-# player (toward the spawn column), buying the games it takes to close back in —
-# and, when it was in the front column, freeing that attack row for the queue
-# (§grid). Off-grid enemies are already at maximum distance and are left as-is.
-# Returns true (and spends the charge) only when a charge is available and the
-# target is on the grid.
-func push(instance: int) -> bool:
-	if GameState.push <= 0:
-		return false
+# Whether `instance` has somewhere to be pushed: a shove needs a real cell to land
+# in, so the target must be on the grid, not already at the back (spawn) column,
+# and the column behind it must have a free row. A packed column blocks the shove
+# rather than stacking two enemies into one cell (§grid).
+func can_push(instance: int) -> bool:
 	var idx: int = _index_of(instance)
 	if idx < 0:
 		return false
 	var col: int = int(stack[idx].get("col", SPAWN_COL))
-	if col >= OFFGRID_COL:
+	if col >= GRID_COLS:
+		return false          # already at the back column (or off-grid)
+	return _count_in_col(col + 1) < GRID_ROWS
+
+# Push a following enemy back one column (Manager's verb, from Raccoin): spends a
+# GameState.push charge to shove the target one grid column farther from the
+# player (toward the spawn column), buying the games it takes to close back in —
+# and, when it was in the front column, freeing that attack row for the queue
+# (§grid). Requires room behind the target (see can_push), so a jammed board can't
+# be untangled by shoving into a full column. Returns true (and spends the charge)
+# only when a charge is available and the shove has somewhere to land.
+func push(instance: int) -> bool:
+	if GameState.push <= 0:
 		return false
+	if not can_push(instance):
+		return false
+	var idx: int = _index_of(instance)
 	GameState.push -= 1
-	stack[idx]["col"] = mini(col + 1, GRID_COLS)
+	stack[idx]["col"] = int(stack[idx].get("col", SPAWN_COL)) + 1
 	loop_changed.emit()
 	return true
 

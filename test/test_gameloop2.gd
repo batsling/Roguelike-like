@@ -186,6 +186,28 @@ func test_push_shoves_the_enemy_back_a_column_and_spends_a_charge() -> void:
 	_tick()                                                  # A strikes now
 	assert_eq(GameState.hp, 8)
 
+func test_push_needs_a_free_cell_behind_the_target() -> void:
+	GameState.push = 3
+	# Walk one enemy to the front, THEN pack the column behind it.
+	var a: int = GameLoop2.spawn_to_stack(_enemy(0))
+	_tick() ; _tick()                              # A: spawn col -> col 2 -> col 1
+	assert_eq(_col_of(a), 1, "A is at the front")
+	for i in range(GameLoop2.GRID_ROWS):
+		GameLoop2.spawn_to_stack(_enemy(0))
+	_tick()                                        # the four spawns fill column 2
+	assert_false(GameLoop2.can_push(a), "column 2 is packed — nowhere to shove A")
+	assert_false(GameLoop2.push(a), "a blocked push fails")
+	assert_eq(GameState.push, 3, "a blocked push spends nothing")
+	assert_eq(_col_of(a), 1, "A hasn't moved")
+
+func test_push_fails_at_the_back_column() -> void:
+	GameState.push = 1
+	var a: int = GameLoop2.spawn_to_stack(_enemy(1))
+	assert_eq(_col_of(a), GameLoop2.SPAWN_COL)
+	assert_false(GameLoop2.can_push(a), "already as far back as the grid goes")
+	assert_false(GameLoop2.push(a))
+	assert_eq(GameState.push, 1, "the charge is kept")
+
 func test_push_requires_a_charge() -> void:
 	GameState.push = 0
 	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col

@@ -89,6 +89,50 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# The only follower now is this game's freshly-stacked enemy, not the old one.
 	assert_eq(GameLoop2.stack_size(), 1, "old follower gone; current game's enemy stacked")
 
+# --- battlefield interaction (click-to-inspect + combat verbs) -------------
+
+func test_clicking_an_enemy_selects_it_and_opens_its_card() -> void:
+	_ui.pick(0)
+	_ui.report(false)                              # an enemy now follows
+	var entry: Dictionary = GameLoop2.stack[0]
+	var inst: int = int(entry["instance"])
+	_ui._on_enemy_clicked(inst, entry, int(entry["col"]), false)
+	assert_eq(_ui._selected_instance, inst, "the clicked enemy is targeted")
+	assert_not_null(_ui._info_popup, "its info card opened")
+	_ui._close_enemy_info()
+	assert_null(_ui._info_popup, "the card closes")
+
+func test_the_game_being_played_is_not_targetable_by_the_verbs() -> void:
+	_ui.pick(0)                                    # its enemy waits off the field
+	var cur: Dictionary = GameLoop2.current
+	_ui._on_enemy_clicked(int(cur["instance"]), cur, GameLoop2.OFFGRID_COL, true)
+	assert_eq(_ui._selected_instance, 0, "the current game's enemy can't be pushed/bombed")
+	assert_not_null(_ui._info_popup, "but its card still opens")
+
+func test_toolbar_push_is_disabled_without_a_target_or_room() -> void:
+	GameState.push = 1
+	_ui.pick(0)
+	_ui.report(false)
+	_ui._selected_instance = 0
+	_ui._refresh_battle_toolbar()
+	assert_true(_ui._push_btn.disabled, "no target -> Push is unavailable")
+	# Target the follower: it sits at the back column, so there's nowhere to shove it.
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	_ui._selected_instance = inst
+	_ui._refresh_battle_toolbar()
+	assert_eq(int(GameLoop2.stack[0]["col"]), GameLoop2.SPAWN_COL)
+	assert_true(_ui._push_btn.disabled, "nothing behind the back column -> Push is unavailable")
+
+func test_selection_clears_when_the_enemy_dies() -> void:
+	GameState.bombs = 1
+	_ui.pick(0)
+	_ui.report(false)
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	_ui._selected_instance = inst
+	_ui.bomb_follower(inst)
+	assert_eq(GameLoop2.stack_size(), 0, "the bomb removed it")
+	assert_eq(_ui._selected_instance, 0, "the dead target is deselected")
+
 func test_report_accepts_an_explicit_fulfilment_list() -> void:
 	_ui.pick(0)
 	_ui.report(false)
