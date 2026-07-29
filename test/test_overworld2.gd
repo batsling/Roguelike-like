@@ -40,27 +40,37 @@ func test_pick_then_report_advances_the_loop() -> void:
 	assert_gt(_ui._choices.size(), 0, "a fresh offering is drawn from the new position")
 
 func test_report_goal_met_defeats_and_drops() -> void:
-	var chests_before: int = GameState.pending_chests
 	_ui.pick(0)
-	_ui.report(true)              # met -> defeat + chest drop, nothing stacks
+	_ui.report(true)              # met -> defeat + inline field drop, nothing stacks
 	assert_eq(GameLoop2.stack_size(), 0, "a met goal leaves nothing following")
-	assert_eq(GameState.pending_chests, chests_before + 1, "the drop banked a chest")
+	assert_eq(_ui._drop_queue.size(), 1, "the kill queued an inline field drop")
 
-# The banked chest redeems into a RewardScreen once the board goes idle (§8).
-func test_defeat_drop_opens_a_reward_screen() -> void:
-	GameState.pending_chests = 0
+# An enemy kill drops loot inline on the battlefield (not a RewardScreen chest,
+# §8); collecting it adds the item to the inventory and clears the drop.
+func test_defeat_drop_is_collectable_inline() -> void:
 	_ui.pick(0)
 	_ui.report(true)
-	# Redemption is deferred to the next idle frame; let it run.
-	await get_tree().process_frame
-	await get_tree().process_frame
+	assert_eq(_ui._drop_queue.size(), 1, "a drop is waiting on the field")
+	# No RewardScreen is opened for an enemy drop anymore.
 	var found: RewardScreen = null
 	for c in _ui.get_children():
 		if c is RewardScreen:
 			found = c
 			break
-	assert_not_null(found, "a RewardScreen opened for the defeated enemy's drop")
-	assert_eq(GameState.pending_chests, 0, "the chest was taken as the screen opened")
+	assert_null(found, "enemy drops are inline, not a RewardScreen")
+	var inv_before: int = GameState.inventory.size()
+	_ui._collect_drop(_ui._drop_queue[0])        # click Collect
+	assert_eq(_ui._drop_queue.size(), 0, "the drop was consumed")
+	assert_eq(GameState.inventory.size(), inv_before + 1, "collecting adds the item")
+
+func test_skipped_drop_is_discarded() -> void:
+	_ui.pick(0)
+	_ui.report(true)
+	assert_eq(_ui._drop_queue.size(), 1)
+	var inv_before: int = GameState.inventory.size()
+	_ui._skip_drop(_ui._drop_queue[0])           # click Skip
+	assert_eq(_ui._drop_queue.size(), 0, "the drop was cleared")
+	assert_eq(GameState.inventory.size(), inv_before, "skipping keeps the inventory unchanged")
 
 func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# Miss a goal so an enemy follows, then on the next game tick its fulfilment
@@ -69,12 +79,12 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	_ui.report(false)
 	assert_eq(GameLoop2.stack_size(), 1, "a missed goal leaves a follower")
 	var hp_before: int = GameState.hp
-	var chests_before: int = GameState.pending_chests
+	var drops_before: int = _ui._drop_queue.size()
 	_ui.pick(0)                                  # play another game
 	assert_eq(_ui._fulfil_checks.size(), 1, "the follower is offered for fulfilment")
 	_ui._fulfil_checks[0]["check"].button_pressed = true
 	_ui.report(false)                            # miss current, but fulfil the follower
-	assert_eq(GameState.pending_chests, chests_before + 1, "the fulfilled follower dropped")
+	assert_eq(_ui._drop_queue.size(), drops_before + 1, "the fulfilled follower dropped inline")
 	assert_eq(GameState.hp, hp_before, "fulfilling it before it hit means no damage")
 	# The only follower now is this game's freshly-stacked enemy, not the old one.
 	assert_eq(GameLoop2.stack_size(), 1, "old follower gone; current game's enemy stacked")

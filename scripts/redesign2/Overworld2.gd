@@ -56,8 +56,16 @@ var _goal_check: CheckBox           # the chosen game's main goal; null on a fre
 var _levelup_check: CheckBox        # null when the character has no level-up
 var _dash_mode: bool = false        # Dash (§4): offer ANY connected game
 var _controls_row: HBoxContainer
-var _stack: RichTextLabel           # "Following you" summary line
-var _stack_box: HFlowContainer      # "Following you" enemy cards
+var _stack: RichTextLabel           # battlefield summary line
+# --- battlefield grid (§grid): the player on the left, a GRID_COLS x GRID_ROWS
+# grid on the right where enemies close in one column per game beaten (MMBN-style).
+var _battlefield: HBoxContainer
+var _hero_icon: TextureRect
+var _hero_hp: Label
+var _grid_cells: Array = []          # _grid_cells[row][col] -> PanelContainer holder
+var _offgrid_box: VBoxContainer      # overflow queue just off the grid's right edge
+var _enemy_rows: Dictionary = {}     # instance -> row, so an enemy keeps its lane
+var _drop_queue: Array = []          # ItemData dropped by kills, shown as field loot
 var _log: RichTextLabel
 var _scrolls_box: VBoxContainer
 var _items_box: VBoxContainer       # owned items with Use buttons (§4/§8)
@@ -83,6 +91,10 @@ func _ready() -> void:
 	# several rewards in a row.
 	if not TriggerBus.chest_granted.is_connected(_on_chest_granted):
 		TriggerBus.chest_granted.connect(_on_chest_granted)
+	# Every defeated enemy drops an item that appears inline on the battlefield as
+	# collectable field loot (§8), instead of banking a RewardScreen chest.
+	if not GameLoop2.enemy_defeated.is_connected(_on_enemy_defeated):
+		GameLoop2.enemy_defeated.connect(_on_enemy_defeated)
 	# The menu stashes the chosen 2.0 character here before entering the scene.
 	var pending: StringName = GameState.get_meta("pending_character2", &"")
 	if pending != &"":
@@ -355,6 +367,12 @@ func push_follower(instance: int) -> void:
 	if GameLoop2.push(instance):
 		_refresh()
 
+# Bomb a following enemy (§4): spend a Bomb charge to remove it outright (no drop).
+# Bosses are bomb-immune, so GameLoop2.bomb guards the target and the charge.
+func bomb_follower(instance: int) -> void:
+	if GameLoop2.bomb(instance):
+		_refresh()
+
 # --- offering construction ------------------------------------------------
 
 # Whether the upcoming selection crosses a difficulty gate (§7.1). The tier steps
@@ -420,7 +438,7 @@ func _refresh(_a = null) -> void:
 	_refresh_scrolls()
 	_refresh_items()
 	_stack.text = _stack_summary()
-	_refresh_followers()
+	_refresh_battlefield()
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
 	_boss_banner.get_parent().visible = _boss_round and _phase == Phase.SELECT
@@ -809,92 +827,402 @@ func _stack_summary() -> String:
 	if _phase == Phase.PLAYING and not _chosen.is_empty() and _chosen.get("enemy") != null:
 		following += 1
 	if following == 0:
-		return "[b]Following you:[/b] none"
-	return "[b]Following you[/b] — %d on your tail, %d damage next game" % [
-		following, GameLoop2.stacked_damage_per_game()]
+		return "[b]Battlefield:[/b] clear"
+	var dmg: int = GameLoop2.stacked_damage_per_game()
+	return "[b]Battlefield[/b] — %d closing in, %d at the front dealing %d damage next game" % [
+		following, GameLoop2.front_count(), dmg]
 
-# Rebuild the "Following you" cards. Each shows the enemy's art, name, a countdown
-# to when it will hit ("X Games away"), and its Health / Damage; the rest of its
-# info surfaces on hover (tooltip). The just-picked enemy (PLAYING phase) is shown
-# too — it can't hit this game (the one-game grace, §7.2), so it first strikes 2
-# games out unless you clear its goal.
-func _refresh_followers() -> void:
-	if _stack_box == null:
+const _CELL: int = 84                # grid cell edge in px
+const _CELL_SEP: int = 6
+
+# Build the battlefield once: the hero on the left, then a GRID_COLS x GRID_ROWS
+# grid of cells (col 1 = melee/front nearest the hero, col GRID_COLS = spawn), then
+# a slim off-grid overflow lane on the right. Cells are reused each refresh so the
+# layout stays put; only their contents change.
+func _build_battlefield() -> Control:
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.BG, UITheme.BORDER, 10, 12, 1))
+	_battlefield = HBoxContainer.new()
+	_battlefield.add_theme_constant_override("separation", 14)
+	_battlefield.alignment = BoxContainer.ALIGNMENT_BEGIN
+	frame.add_child(_battlefield)
+
+	# Hero column.
+	var hero_box := VBoxContainer.new()
+	hero_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	hero_box.add_theme_constant_override("separation", 4)
+	hero_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var hero_frame := PanelContainer.new()
+	hero_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL, 8, 8, 2, UITheme.ACCENT))
+	_hero_icon = TextureRect.new()
+	_hero_icon.custom_minimum_size = Vector2(96, 96)
+	_hero_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_hero_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	hero_frame.add_child(_hero_icon)
+	hero_box.add_child(hero_frame)
+	_hero_hp = Label.new()
+	_hero_hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hero_hp.add_theme_font_size_override("font_size", 14)
+	_hero_hp.add_theme_color_override("font_color", UITheme.DANGER.lerp(UITheme.TEXT, 0.35))
+	hero_box.add_child(_hero_hp)
+	_battlefield.add_child(hero_box)
+
+	# The grid: GRID_ROWS rows, each with GRID_COLS cells laid out col1..colN from
+	# the hero outward. Built row-major into a GridContainer.
+	var grid := GridContainer.new()
+	grid.columns = GameLoop2.GRID_COLS
+	grid.add_theme_constant_override("h_separation", _CELL_SEP)
+	grid.add_theme_constant_override("v_separation", _CELL_SEP)
+	_grid_cells = []
+	for row in range(GameLoop2.GRID_ROWS):
+		var row_cells: Array = []
+		# GridContainer fills left-to-right; column 1 (front) sits nearest the hero.
+		for col in range(1, GameLoop2.GRID_COLS + 1):
+			var cell := PanelContainer.new()
+			cell.custom_minimum_size = Vector2(_CELL, _CELL)
+			grid.add_child(cell)
+			row_cells.append(cell)
+		_grid_cells.append(row_cells)
+	_battlefield.add_child(grid)
+
+	# Off-grid overflow lane.
+	_offgrid_box = VBoxContainer.new()
+	_offgrid_box.add_theme_constant_override("separation", _CELL_SEP)
+	_offgrid_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_battlefield.add_child(_offgrid_box)
+	return frame
+
+# Repaint the battlefield from the current loop state: place each following enemy
+# in its grid cell (by column = distance), the just-picked enemy at the spawn
+# column while its game is being played, the off-grid queue in the side lane, and
+# any pending kill-drops as collectable field loot in free cells.
+func _refresh_battlefield() -> void:
+	if _battlefield == null:
 		return
-	for c in _stack_box.get_children():
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	var hero_tex: Texture2D = null
+	if ch != null:
+		hero_tex = ch.icon if ch.icon != null else ch.portrait
+	_hero_icon.texture = hero_tex
+	_apply_crisp(_hero_icon, hero_tex)
+	_hero_hp.text = "♥ %d/%d" % [GameState.hp, GameState.max_hp]
+
+	# Clear every cell and the overflow lane.
+	for row_cells in _grid_cells:
+		for cell in row_cells:
+			for c in cell.get_children():
+				c.queue_free()
+			cell.add_theme_stylebox_override("panel", _empty_cell_style())
+	for c in _offgrid_box.get_children():
 		c.queue_free()
-	if _phase == Phase.PLAYING and not _chosen.is_empty():
-		var cur: GoalEnemyData = _chosen.get("enemy")
-		if cur != null:
-			var cur_hp: int = int(GameLoop2.current.get("health", cur.health)) if GameLoop2.has_current() else cur.health
-			_stack_box.add_child(_follower_card(cur, 2, 0, true, cur_hp))
+
+	# occupancy[col] -> array of {enemy, entry, current}. Assemble the enemies to
+	# draw: the on-grid stack plus (in PLAYING) the current enemy at the spawn col.
+	var occ: Dictionary = {}
+	for col in range(1, GameLoop2.OFFGRID_COL + 1):
+		occ[col] = []
 	for entry in GameLoop2.stack:
-		var e: GoalEnemyData = entry["enemy"]
-		var stun: int = int(entry.get("stun", 0))
-		# A stacked enemy hits on the very next game beaten; each Stun/Push pushes
-		# that one game later.
-		_stack_box.add_child(_follower_card(e, 1 + stun, stun, false, int(entry.get("health", e.health)), int(entry.get("instance", 0))))
+		var col: int = int(entry.get("col", GameLoop2.SPAWN_COL))
+		occ[col].append({"entry": entry, "current": false})
+	if _phase == Phase.PLAYING and GameLoop2.has_current():
+		# The chosen game's enemy holds at the spawn column (or the overflow lane if
+		# it's already packed) until its game resolves.
+		var scol: int = GameLoop2.SPAWN_COL if occ[GameLoop2.SPAWN_COL].size() < GameLoop2.GRID_ROWS else GameLoop2.OFFGRID_COL
+		occ[scol].append({"entry": GameLoop2.current, "current": true})
 
-func _follower_card(e: GoalEnemyData, games_away: int, stun: int, is_current: bool, remaining_health: int = -1, instance: int = 0) -> Control:
-	var accent: Color
-	if e.is_boss():
-		accent = Color(0.95, 0.55, 0.2)
-	elif games_away <= 1:
-		accent = UITheme.DANGER
-	elif games_away == 2:
-		accent = Color(1.0, 0.62, 0.24)
-	else:
-		accent = UITheme.GOLD
+	# Which rows each on-grid column uses, keeping an enemy in its remembered lane.
+	var seen: Dictionary = {}
+	for col in range(1, GameLoop2.GRID_COLS + 1):
+		var used: Array = []
+		for item in occ[col]:
+			var inst: int = int(item["entry"].get("instance", 0))
+			seen[inst] = true
+			var row: int = int(_enemy_rows.get(inst, -1))
+			if row < 0 or row >= GameLoop2.GRID_ROWS or used.has(row):
+				row = 0
+				while row < GameLoop2.GRID_ROWS and used.has(row):
+					row += 1
+			if row >= GameLoop2.GRID_ROWS:
+				continue
+			used.append(row)
+			_enemy_rows[inst] = row
+			var cell: PanelContainer = _grid_cells[row][col - 1]
+			_paint_enemy_cell(cell, item["entry"], col, item["current"])
 
-	var card := PanelContainer.new()
-	card.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL, 8, 8, 2 if is_current else 1, accent))
-	card.custom_minimum_size = Vector2(150, 0)
-	card.tooltip_text = _follower_tooltip(e, games_away, stun, is_current)
+	# Off-grid overflow enemies.
+	for item in occ[GameLoop2.OFFGRID_COL]:
+		_offgrid_box.add_child(_offgrid_token(item["entry"]))
 
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 3)
-	vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	card.add_child(vb)
+	# Forget lanes for enemies that are gone (defeated / bombed) so rows recycle.
+	for inst in _enemy_rows.keys():
+		if not seen.has(inst):
+			_enemy_rows.erase(inst)
 
+	# Pending kill-drops become collectable loot in the nearest free cells.
+	_place_drops()
+
+func _empty_cell_style() -> StyleBox:
+	return UITheme.flat(UITheme.BG.lerp(UITheme.PANEL, 0.4), 6, 4, 1, UITheme.BORDER.lerp(UITheme.BG, 0.3))
+
+# The accent colour for an enemy at grid column `col`: red at the front (about to
+# strike), amber a column back, gold farther out, orange for a boss.
+func _col_accent(col: int, is_boss: bool) -> Color:
+	if is_boss:
+		return Color(0.95, 0.55, 0.2)
+	if col <= 1:
+		return UITheme.DANGER
+	if col == 2:
+		return Color(1.0, 0.62, 0.24)
+	return UITheme.GOLD
+
+# Draw one enemy into a grid cell: its art fills the cell, with ❤ health bottom-
+# left and ⚔ damage bottom-right, a column-tinted border, and Push / Bomb
+# affordances when a charge is in hand. The current (now-playing) enemy pulses a
+# thicker border.
+func _paint_enemy_cell(cell: PanelContainer, entry: Dictionary, col: int, is_current: bool) -> void:
+	var e: GoalEnemyData = entry.get("enemy")
+	if e == null:
+		return
+	var stun: int = int(entry.get("stun", 0))
+	var accent: Color = _col_accent(col, e.is_boss())
+	if stun > 0:
+		accent = accent.lerp(Color(0.5, 0.7, 1.0), 0.5)
+	cell.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL, 6, 2, 3 if is_current else 2, accent))
+	cell.tooltip_text = _follower_tooltip(e, col, stun, is_current)
+	# One full-rect holder so corner-anchored overlays position correctly (a
+	# PanelContainer stretches every direct child, clobbering anchor presets).
+	var holder := _cell_holder(cell)
+
+	# Art (or a tinted silhouette when the enemy has no image), stretched to fill.
+	var art := TextureRect.new()
+	art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if e.image != null:
-		var art := _crisp_tex(e.image, 64)
-		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		vb.add_child(art)
+		art.texture = e.image
+		if e.image.get_width() < _CELL or e.image.get_height() < _CELL:
+			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	else:
+		art.modulate = accent
+	holder.add_child(art)
 
-	var nm := Label.new()
-	nm.text = ("☠ " if e.is_boss() else "") + e.display_name
-	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	nm.custom_minimum_size = Vector2(138, 0)
-	nm.add_theme_font_size_override("font_size", 12)
-	nm.add_theme_color_override("font_color", accent)
-	vb.add_child(nm)
+	# Overlay: boss skull top, health bottom-left, damage bottom-right, and the
+	# stun marker when frozen. All non-blocking so the cell tooltip still shows.
+	if e.is_boss():
+		var skull := _corner_badge("☠", accent)
+		skull.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 2)
+		holder.add_child(skull)
 
-	var when := Label.new()
-	when.text = ("Hits next game!" if games_away <= 1 else "%d games away" % games_away) + ("  (delayed)" if stun > 0 else "")
-	when.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	when.add_theme_font_size_override("font_size", 12)
-	when.add_theme_color_override("font_color", accent)
-	vb.add_child(when)
+	var hp: int = int(entry.get("health", e.health))
+	var hp_lbl := _corner_badge("❤%d" % hp, Color(1.0, 0.5, 0.5))
+	hp_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 2)
+	holder.add_child(hp_lbl)
 
-	var stats := Label.new()
-	var hp: int = remaining_health if remaining_health >= 0 else e.health
-	# "❤ 2 (goals to kill)" reads the mechanic: each goal completion is one hit.
-	stats.text = ("❤ %d goal    ⚔ %d dmg" % [hp, e.damage]) if hp == 1 else ("❤ %d goals    ⚔ %d dmg" % [hp, e.damage])
-	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stats.add_theme_font_size_override("font_size", 11)
-	stats.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	vb.add_child(stats)
+	var dmg_lbl := _corner_badge("⚔%d" % e.damage, Color(1.0, 0.8, 0.35))
+	dmg_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
+	holder.add_child(dmg_lbl)
 
-	# Push affordance (Manager's verb): a following enemy can be shoved back a
-	# space while a Push charge is in hand, buying a game before it hits (§7.2).
-	if not is_current and instance > 0 and GameState.push > 0:
-		var push_btn := _mini_button("Push (%d)" % GameState.push, func(): push_follower(instance))
-		push_btn.tooltip_text = "Push this enemy back one space — delays its next attack by a game."
-		vb.add_child(push_btn)
-	return card
+	if stun > 0:
+		var frozen := _corner_badge("❄", Color(0.6, 0.8, 1.0))
+		frozen.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, 2)
+		holder.add_child(frozen)
 
-func _follower_tooltip(e: GoalEnemyData, games_away: int, stun: int, is_current: bool) -> String:
+	# Push / Bomb affordances for a real follower (not the current enemy) when a
+	# charge is available — small buttons pinned to the top-right of the cell.
+	var inst: int = int(entry.get("instance", 0))
+	if not is_current and inst > 0:
+		var verbs := HBoxContainer.new()
+		verbs.add_theme_constant_override("separation", 2)
+		verbs.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
+		if GameState.push > 0 and col < GameLoop2.OFFGRID_COL:
+			var pb := _mini_button("⇤", func(): push_follower(inst))
+			pb.tooltip_text = "Push back a column (%d left) — buys a game before it strikes." % GameState.push
+			verbs.add_child(pb)
+		if GameState.bombs > 0 and not e.is_boss():
+			var bb := _mini_button("✸", func(): bomb_follower(inst))
+			bb.tooltip_text = "Bomb this enemy (%d left) — removes it (no drop)." % GameState.bombs
+			verbs.add_child(bb)
+		if verbs.get_child_count() > 0:
+			holder.add_child(verbs)
+
+# A single full-rect Control child of a cell PanelContainer, inside which art and
+# corner-anchored overlays lay out freely (the PanelContainer stretches this one
+# holder to fill; the holder itself imposes no layout on its children).
+func _cell_holder(cell: PanelContainer) -> Control:
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(holder)
+	return holder
+
+# A small pill label used for the health / damage / status badges on a cell.
+func _corner_badge(text: String, color: Color) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", Color.WHITE)
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	l.add_theme_constant_override("outline_size", 4)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return l
+
+# A compact token for an enemy waiting off the grid's edge (overflow queue).
+func _offgrid_token(entry: Dictionary) -> Control:
+	var e: GoalEnemyData = entry.get("enemy")
+	var cell := PanelContainer.new()
+	cell.custom_minimum_size = Vector2(40, 40)
+	cell.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL.lerp(UITheme.BG, 0.3), 5, 2, 1, UITheme.GOLD.lerp(UITheme.BG, 0.3)))
+	if e != null:
+		cell.tooltip_text = _follower_tooltip(e, GameLoop2.OFFGRID_COL, int(entry.get("stun", 0)), false)
+		var art := TextureRect.new()
+		art.set_anchors_preset(Control.PRESET_FULL_RECT)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if e.image != null:
+			art.texture = e.image
+			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		else:
+			art.modulate = UITheme.GOLD
+		cell.add_child(art)
+	return cell
+
+# --- inline kill-drops (§8) ------------------------------------------------
+
+# A defeated enemy dropped loot: roll an item and queue it as collectable field
+# loot. Skipped once the run is over (win/lose screens take over the board).
+func _on_enemy_defeated(_enemy: GoalEnemyData) -> void:
+	if GameLoop2.run_over:
+		return
+	var item: ItemData = _roll_drop()
+	if item == null:
+		return
+	_drop_queue.append({"item": item})
+	# The resolve that produced this defeat also emits loop_changed -> _refresh,
+	# which repaints the battlefield and places the drop; repaint here too in case
+	# the defeat came from a direct action (bomb never drops, fulfil does).
+	if _battlefield != null:
+		_refresh_battlefield()
+
+# Roll one drop item from the games-first reward pool, weighted by rarity the same
+# way the RewardScreen chest roll is (§8).
+func _roll_drop() -> ItemData:
+	var pool: Array = Data.reward_item2_pool()
+	if pool.is_empty():
+		return null
+	var target: int = _roll_drop_rarity()
+	var bucket: Array = pool.filter(func(it): return int(it.rarity) == target)
+	if bucket.is_empty():
+		bucket = pool
+	return bucket[_rng.randi_range(0, bucket.size() - 1)]
+
+func _roll_drop_rarity() -> int:
+	var roll: float = _rng.randf() * 100.0
+	if roll < 75.0:
+		return ItemData.Rarity.COMMON
+	if roll < 95.0:
+		return ItemData.Rarity.UNCOMMON
+	if _rng.randf() < 0.1:
+		return ItemData.Rarity.LEGENDARY
+	return ItemData.Rarity.RARE
+
+# Place each queued drop as collectable loot in the nearest free cell (front
+# column and top rows first), overflowing into the side lane if the grid is
+# packed. Called at the end of every battlefield repaint.
+func _place_drops() -> void:
+	if _phase == Phase.OVER or _drop_queue.is_empty():
+		return
+	var qi: int = 0
+	for col in range(1, GameLoop2.GRID_COLS + 1):
+		for row in range(GameLoop2.GRID_ROWS):
+			if qi >= _drop_queue.size():
+				return
+			var cell: PanelContainer = _grid_cells[row][col - 1]
+			if cell.get_child_count() > 0:
+				continue
+			_paint_drop_cell(cell, _drop_queue[qi])
+			qi += 1
+	# Grid is full — the remaining drops wait as tokens in the overflow lane.
+	while qi < _drop_queue.size():
+		_offgrid_box.add_child(_drop_token(_drop_queue[qi]))
+		qi += 1
+
+# Draw a drop into a grid cell: the item's art, a rarity-tinted border, and a
+# Collect / Skip pair of buttons.
+func _paint_drop_cell(cell: PanelContainer, drop: Dictionary) -> void:
+	var item: ItemData = drop["item"]
+	var col: Color = UITheme.rarity_color(int(item.rarity))
+	cell.add_theme_stylebox_override("panel", UITheme.flat(col.lerp(UITheme.BG, 0.55), 6, 2, 2, col))
+	cell.tooltip_text = "%s\n%s" % [item.display_name, item.description if String(item.description) != "" else "A dropped relic."]
+	var holder := _cell_holder(cell)
+
+	if item.image != null:
+		var art := TextureRect.new()
+		art.set_anchors_preset(Control.PRESET_FULL_RECT)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		art.texture = item.image
+		if item.image.get_width() < _CELL or item.image.get_height() < _CELL:
+			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		holder.add_child(art)
+
+	var tag := _corner_badge("✦ LOOT", col.lerp(Color.WHITE, 0.4))
+	tag.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 2)
+	holder.add_child(tag)
+
+	var btns := HBoxContainer.new()
+	btns.add_theme_constant_override("separation", 2)
+	btns.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE, Control.PRESET_MODE_MINSIZE, 2)
+	btns.alignment = BoxContainer.ALIGNMENT_CENTER
+	var take := _mini_button("✓", func(): _collect_drop(drop))
+	take.tooltip_text = "Collect %s" % item.display_name
+	take.add_theme_color_override("font_color", UITheme.SUCCESS)
+	var skip := _mini_button("✗", func(): _skip_drop(drop))
+	skip.tooltip_text = "Skip this drop"
+	btns.add_child(take)
+	btns.add_child(skip)
+	holder.add_child(btns)
+
+# A drop shown as a token in the overflow lane (used when the grid is packed).
+func _drop_token(drop: Dictionary) -> Control:
+	var item: ItemData = drop["item"]
+	var col: Color = UITheme.rarity_color(int(item.rarity))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 3)
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(28, 28)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	if item.image != null:
+		icon.texture = item.image
+	row.add_child(icon)
+	row.add_child(_mini_button("✓", func(): _collect_drop(drop)))
+	row.add_child(_mini_button("✗", func(): _skip_drop(drop)))
+	row.tooltip_text = item.display_name
+	return row
+
+func _collect_drop(drop: Dictionary) -> void:
+	if not _drop_queue.has(drop):
+		return
+	_drop_queue.erase(drop)
+	var item: ItemData = drop["item"]
+	GameState.add_item(item)
+	GameLog.add("Collected %s." % item.display_name, Color(0.7, 1.0, 0.7))
+	_refresh_battlefield()
+
+func _skip_drop(drop: Dictionary) -> void:
+	if not _drop_queue.has(drop):
+		return
+	_drop_queue.erase(drop)
+	GameLog.add("Skipped %s." % String(drop["item"].display_name), Color(0.8, 0.8, 0.8))
+	_refresh_battlefield()
+
+# Tooltip for a battlefield enemy. `col` is its grid column (1 = front/melee,
+# GRID_COLS = spawn, OFFGRID_COL = off-grid queue); front attacks resolve before
+# the advance, so an enemy strikes once it stands in column 1 at the start of a
+# game (one game after it first steps in).
+func _follower_tooltip(e: GoalEnemyData, col: int, stun: int, is_current: bool) -> String:
 	var lines: Array = [e.display_name + ("  (BOSS)" if e.is_boss() else "")]
 	if e.goal != "":
 		lines.append("Goal (%s): %s" % [String(e.goal_type).capitalize(), e.goal])
@@ -902,10 +1230,16 @@ func _follower_tooltip(e: GoalEnemyData, games_away: int, stun: int, is_current:
 	if e.source_game != "":
 		lines.append("From: %s" % e.source_game)
 	lines.append("Health %d  •  Damage %d / game" % [e.health, e.damage])
+	if col >= GameLoop2.OFFGRID_COL:
+		lines.append("Waiting off the grid — slides in as a cell frees.")
+	elif col <= 1:
+		lines.append("At the front — strikes each game until you defeat it.")
+	else:
+		lines.append("%d column(s) out — closes one column per game." % (col - 1))
 	if is_current:
-		lines.append("Just started following — first hits in %d games unless you clear its goal." % games_away)
-	elif stun > 0:
-		lines.append("Delayed — skips its next %d attack(s) (Stun / Push)." % stun)
+		lines.append("Now playing — joins the grid when its game resolves (grace).")
+	if stun > 0:
+		lines.append("Frozen — skips its next %d game(s) (Stun)." % stun)
 	if String(e.tag) != "":
 		lines.append("Tag: %s" % String(e.tag))
 	return "\n".join(lines)
@@ -948,10 +1282,12 @@ func _tier_name(e: GoalEnemyData) -> String:
 
 func _on_run_lost() -> void:
 	_phase = Phase.OVER
+	_drop_queue.clear()
 	_show_banner("💀  Run lost — Health reached 0.", Color(0.9, 0.3, 0.25))
 
 func _on_run_won() -> void:
 	_phase = Phase.OVER
+	_drop_queue.clear()
 	_show_banner("🏆  You cleared the Amulet — you win!", Color(0.95, 0.8, 0.2))
 
 func _show_banner(text: String, color: Color) -> void:
@@ -971,14 +1307,21 @@ func _build_ui() -> void:
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.color = UITheme.BG_DEEP
 	add_child(bg)
+	# The page is taller than a screen (HUD, choices, play panel, battlefield, log),
+	# so host it in a ScrollContainer — everything stays reachable and the battlefield
+	# no longer falls off the bottom on short displays.
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.offset_left = 16
+	scroll.offset_top = 16
+	scroll.offset_right = -16
+	scroll.offset_bottom = -16
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
 	var root := VBoxContainer.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.add_theme_constant_override("separation", 10)
-	root.offset_left = 16
-	root.offset_top = 16
-	root.offset_right = -16
-	root.offset_bottom = -16
-	add_child(root)
+	scroll.add_child(root)
 
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
@@ -1119,13 +1462,10 @@ func _build_ui() -> void:
 	_items_box.add_theme_constant_override("separation", 4)
 	root.add_child(_items_box)
 
-	root.add_child(_section("Following you:"))
+	root.add_child(_section("Battlefield  —  enemies close in one column each game:"))
 	_stack = _panel_label()
 	root.add_child(_stack)
-	_stack_box = HFlowContainer.new()
-	_stack_box.add_theme_constant_override("h_separation", 10)
-	_stack_box.add_theme_constant_override("v_separation", 10)
-	root.add_child(_stack_box)
+	root.add_child(_build_battlefield())
 	_log = _panel_label()
 	root.add_child(_log)
 

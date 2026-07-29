@@ -56,16 +56,20 @@ func test_reading_learns_by_use() -> void:
 # --- Effects ---------------------------------------------------------------
 
 func test_aggravate_arms_enemy_damage_bonus() -> void:
+	GameState.max_hp = 10
+	GameState.hp = 10
+	# Bring an enemy to the front line first — Aggravate lasts only one game, and
+	# an enemy needs several games to close from the spawn column (§grid), so the
+	# buff must be armed once the enemy is already in melee for it to land.
+	GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)   # spawn column
+	GameLoop2.beat_game(false) ; GameLoop2.beat_game(false)         # -> front column
 	var s: ScrollData = Data.get_scroll(&"scroll_of_aggravate_monsters")
 	ScrollSystem.read_scroll(s, {"rng": _rng()})
 	assert_eq(GameLoop2.enemy_damage_bonus, 1, "Aggravate is +1 damage")
 	assert_gt(GameLoop2.enemy_damage_bonus_games, 0, "for at least one game")
-	# The bonus actually lands: a stacked enemy hits for damage + bonus.
-	GameState.max_hp = 10
-	GameState.hp = 10
-	GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)   # A stacks
-	GameLoop2.choose_game(_enemy(0)) ; GameLoop2.beat_game(false)   # A hits 2 (+? bonus)
-	assert_lt(GameState.hp, 10, "the aggravated stack dealt damage")
+	# The bonus lands: the front-line enemy hits for damage + bonus = 3.
+	GameLoop2.beat_game(false)
+	assert_eq(GameState.hp, 7, "front-line enemy hit for 2 + 1 aggravate")
 
 func test_create_monster_grows_the_stack() -> void:
 	var s: ScrollData = Data.get_scroll(&"scroll_of_create_monster")
