@@ -339,7 +339,7 @@ func _char_tex(tex: Texture2D, size: int) -> TextureRect:
 # null when the loadout is all-zero.
 func _verb_chips(ch: CharacterData) -> Control:
 	var verbs := [
-		["Bash", ch.start_bash], ["Dash", ch.start_dash],
+		["Bash", ch.start_bash], ["Dash", ch.start_dash], ["Push", ch.start_push],
 		["Transmute", ch.start_transmute], ["Scramble", ch.start_scramble],
 		["Bombs", ch.start_bombs], ["Keys", ch.start_keys],
 	]

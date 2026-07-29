@@ -44,6 +44,10 @@ extends Resource
 # All default 0, matching the current combat roster which never sets them.
 @export var start_bash: int = 0
 @export var start_dash: int = 0
+# Push (Manager, from Raccoin) — a board-timing verb that shoves a following
+# enemy back one space, delaying its next attack by a game (§7.2). Maps onto
+# GameState.push, like the other start_* verbs map onto same-named fields.
+@export var start_push: int = 0
 @export var start_transmute: int = 0
 @export var start_scramble: int = 0
 @export var start_bombs: int = 0

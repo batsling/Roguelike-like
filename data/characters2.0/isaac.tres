@@ -13,6 +13,7 @@ source_game = "The Binding of Isaac"
 base_max_hp = 6
 start_bash = 0
 start_dash = 0
+start_push = 0
 start_transmute = 0
 start_scramble = 0
 start_bombs = 1

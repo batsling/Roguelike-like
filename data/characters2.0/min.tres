@@ -13,6 +13,7 @@ source_game = "Noita"
 base_max_hp = 8
 start_bash = 0
 start_dash = 0
+start_push = 0
 start_transmute = 1
 start_scramble = 0
 start_bombs = 0

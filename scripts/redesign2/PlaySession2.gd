@@ -73,6 +73,11 @@ func stun_first() -> void:
 		GameLoop2.stun(int(GameLoop2.stack[0]["instance"]))
 	_refresh()
 
+func push_first() -> void:
+	if not GameLoop2.stack.is_empty():
+		GameLoop2.push(int(GameLoop2.stack[0]["instance"]))
+	_refresh()
+
 # --- rendering ------------------------------------------------------------
 
 func _refresh(_a = null) -> void:
@@ -89,9 +94,9 @@ func _refresh(_a = null) -> void:
 	_set_pick_enabled(not GameLoop2.has_current() and not GameLoop2.run_over)
 
 func _hud_text() -> String:
-	return "[b]Health[/b] %d/%d    [b]Block[/b] %d        [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d    [b]Chests[/b] %d" % [
+	return "[b]Health[/b] %d/%d    [b]Block[/b] %d        [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Push[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d    [b]Chests[/b] %d" % [
 		GameState.hp, GameState.max_hp, GameState.block,
-		GameState.bash, GameState.dash_charges, GameState.transmute,
+		GameState.bash, GameState.dash_charges, GameState.push, GameState.transmute,
 		GameState.scramble, GameState.bombs, GameState.keys, GameState.pending_chests,
 	]
 
@@ -232,6 +237,7 @@ func _build_ui() -> void:
 	verb_row.add_child(_action_button("Scramble enemy", scramble))
 	verb_row.add_child(_action_button("Bomb 1st follower", bomb_first))
 	verb_row.add_child(_action_button("Stun 1st follower", stun_first))
+	verb_row.add_child(_action_button("Push 1st follower", push_first))
 	root.add_child(verb_row)
 
 	# Character restart row.

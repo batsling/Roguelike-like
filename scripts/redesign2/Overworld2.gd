@@ -347,6 +347,14 @@ func transmute_choice(index: int) -> void:
 		_build_choices()
 		_refresh()
 
+# Push a following enemy back one space (Manager's verb, §7.2): spend a Push
+# charge to delay its next attack by a game. Targets a stacked follower by
+# instance; GameLoop2.push guards the charge and membership, so a no-op just
+# leaves the board unchanged.
+func push_follower(instance: int) -> void:
+	if GameLoop2.push(instance):
+		_refresh()
+
 # --- offering construction ------------------------------------------------
 
 # Whether the upcoming selection crosses a difficulty gate (§7.1). The tier steps
@@ -695,10 +703,10 @@ func _now_playing_text() -> String:
 	return "[b]Now playing:[/b] %s\n%s" % [_chosen["game"].display_name, _enemy_preview_text(_chosen)]
 
 func _hud_text() -> String:
-	return "[b]Health[/b] %d/%d   [b]Block[/b] %d      [b]Tier[/b] %s      [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d  [b]Scrolls[/b] %d   [b]Chests[/b] %d" % [
+	return "[b]Health[/b] %d/%d   [b]Block[/b] %d      [b]Tier[/b] %s      [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Push[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d  [b]Scrolls[/b] %d   [b]Chests[/b] %d" % [
 		GameState.hp, GameState.max_hp, GameState.block,
 		RunDifficulty.tier_name(_current_tier()),
-		GameState.bash, GameState.dash_charges, GameState.transmute,
+		GameState.bash, GameState.dash_charges, GameState.push, GameState.transmute,
 		GameState.scramble, GameState.bombs, GameState.keys,
 		GameState.get_loot_count("scroll"), GameState.pending_chests,
 	]
@@ -823,11 +831,11 @@ func _refresh_followers() -> void:
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
 		var stun: int = int(entry.get("stun", 0))
-		# A stacked enemy hits on the very next game beaten; each Stun pushes that
-		# one game later.
-		_stack_box.add_child(_follower_card(e, 1 + stun, stun, false, int(entry.get("health", e.health))))
+		# A stacked enemy hits on the very next game beaten; each Stun/Push pushes
+		# that one game later.
+		_stack_box.add_child(_follower_card(e, 1 + stun, stun, false, int(entry.get("health", e.health)), int(entry.get("instance", 0))))
 
-func _follower_card(e: GoalEnemyData, games_away: int, stun: int, is_current: bool, remaining_health: int = -1) -> Control:
+func _follower_card(e: GoalEnemyData, games_away: int, stun: int, is_current: bool, remaining_health: int = -1, instance: int = 0) -> Control:
 	var accent: Color
 	if e.is_boss():
 		accent = Color(0.95, 0.55, 0.2)
@@ -863,7 +871,7 @@ func _follower_card(e: GoalEnemyData, games_away: int, stun: int, is_current: bo
 	vb.add_child(nm)
 
 	var when := Label.new()
-	when.text = ("Hits next game!" if games_away <= 1 else "%d games away" % games_away) + ("  (stunned)" if stun > 0 else "")
+	when.text = ("Hits next game!" if games_away <= 1 else "%d games away" % games_away) + ("  (delayed)" if stun > 0 else "")
 	when.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	when.add_theme_font_size_override("font_size", 12)
 	when.add_theme_color_override("font_color", accent)
@@ -877,6 +885,13 @@ func _follower_card(e: GoalEnemyData, games_away: int, stun: int, is_current: bo
 	stats.add_theme_font_size_override("font_size", 11)
 	stats.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	vb.add_child(stats)
+
+	# Push affordance (Manager's verb): a following enemy can be shoved back a
+	# space while a Push charge is in hand, buying a game before it hits (§7.2).
+	if not is_current and instance > 0 and GameState.push > 0:
+		var push_btn := _mini_button("Push (%d)" % GameState.push, func(): push_follower(instance))
+		push_btn.tooltip_text = "Push this enemy back one space — delays its next attack by a game."
+		vb.add_child(push_btn)
 	return card
 
 func _follower_tooltip(e: GoalEnemyData, games_away: int, stun: int, is_current: bool) -> String:
@@ -890,7 +905,7 @@ func _follower_tooltip(e: GoalEnemyData, games_away: int, stun: int, is_current:
 	if is_current:
 		lines.append("Just started following — first hits in %d games unless you clear its goal." % games_away)
 	elif stun > 0:
-		lines.append("Stunned — skips its next %d attack(s)." % stun)
+		lines.append("Delayed — skips its next %d attack(s) (Stun / Push)." % stun)
 	if String(e.tag) != "":
 		lines.append("Tag: %s" % String(e.tag))
 	return "\n".join(lines)
