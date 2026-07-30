@@ -1,7 +1,7 @@
 extends GutTest
 
 # Tests for the games-first loop resolver (GameLoop2) — the enemy-stack state
-# machine, the one-game grace timing (§7.2), block-then-hp damage (§3), drops on
+# machine, the one-game grace timing (§7.2), shields-then-hp damage (§3), drops on
 # defeat (§8), stun, bomb, old-goal fulfilment, enemy rolling, and win/lose.
 # Pure logic, no scene: this is the headless core the overworld + OBS HUD ride on.
 
@@ -20,7 +20,6 @@ func _tres_count(path: String) -> int:
 		if f.ends_with(".tres") or f.ends_with(".res"):
 			n += 1
 	return n
-	GameState.block = 0
 
 # A synthetic goal-enemy with a known damage, so timing/damage assertions don't
 # depend on authored content.
@@ -337,23 +336,118 @@ func test_any_cell_in_the_front_column_counts_as_the_front_line() -> void:
 	_tick()
 	assert_eq(GameState.hp, 6, "so it strikes even though most of it is further back")
 
-# --- block absorbs before hp (§3) ----------------------------------------
+# --- shields absorb before hp, then expire with the game (§3.2) -----------
+#
+# Shields belong to the game in play, so these set them just before the resolve
+# that takes the hit — exactly where a selection grant would have put them.
 
-func test_block_absorbs_first() -> void:
-	GameState.block = 3
+func test_shields_absorb_the_front_line_before_hp() -> void:
 	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
 	_march_to_front(a)
-	_tick()                                                        # 2 dmg -> block
-	assert_eq(GameState.block, 1)
-	assert_eq(GameState.hp, 10)
+	GameState.shields = 3
+	_tick()                                                        # 2 dmg -> shields
+	assert_eq(GameState.hp, 10, "the shields ate the hit")
+	assert_eq(int(GameLoop2.last_result["blocked"]), 2, "the resolve reports what they absorbed")
+	assert_eq(GameState.shields, 0, "and whatever survived expired with the game")
+	assert_eq(int(GameLoop2.last_result["shields_expired"]), 1, "the leftover is reported too")
 
-func test_block_overflow_hits_hp() -> void:
-	GameState.block = 1
+func test_shield_overflow_hits_hp() -> void:
 	var a: int = GameLoop2.choose_game(_enemy(3)) ; GameLoop2.beat_game(false)  # spawn col
 	_march_to_front(a)
-	_tick()                                                        # 3 dmg: 1 blk, 2 hp
-	assert_eq(GameState.block, 0)
+	GameState.shields = 1
+	_tick()                                                        # 3 dmg: 1 shield, 2 hp
+	assert_eq(GameState.shields, 0)
 	assert_eq(GameState.hp, 8)
+
+func test_unspent_shields_do_not_carry_into_the_next_game() -> void:
+	GameLoop2.choose_game(_enemy(1))
+	GameState.shields = 4
+	GameLoop2.beat_game(true)          # nothing on the stack yet -> nothing to absorb
+	assert_eq(GameState.shields, 0, "the game they belonged to is over")
+	assert_eq(int(GameLoop2.last_result["shields_expired"]), 4)
+
+# --- shields granted on selection (§3.2) ----------------------------------
+
+func _game_of_type(t: int) -> GameData:
+	var g := GameData.new()
+	g.id = &"synthetic_game"
+	g.display_name = "Synthetic Game"
+	g.type = t
+	return g
+
+func test_selection_grants_three_shields_and_five_for_traditional() -> void:
+	assert_eq(GameLoop2.shields_for_game(_game_of_type(GameData.GameType.ACTION)), 3)
+	assert_eq(GameLoop2.shields_for_game(_game_of_type(GameData.GameType.STRATEGY)), 3)
+	assert_eq(GameLoop2.shields_for_game(_game_of_type(GameData.GameType.DECKBUILDER)), 3)
+	assert_eq(GameLoop2.shields_for_game(_game_of_type(GameData.GameType.TRADITIONAL)), 5,
+		"a Traditional roguelike is the long haul")
+
+func test_grant_selection_shields_adds_and_announces() -> void:
+	watch_signals(TriggerBus)
+	assert_eq(GameState.shields, 0)
+	var n: int = GameLoop2.grant_selection_shields(_game_of_type(GameData.GameType.TRADITIONAL))
+	assert_eq(n, 5, "the grant is reported back")
+	assert_eq(GameState.shields, 5)
+	assert_signal_emitted(TriggerBus, "game_selected",
+		"items hooked on selection (Anchor) get their chance")
+
+# --- the attempt tracker (§3.2) -------------------------------------------
+
+func test_each_attempt_spends_a_shield_then_health() -> void:
+	GameLoop2.choose_game(_enemy(1))
+	GameState.shields = 2
+	assert_eq(GameLoop2.log_attempt(), "shield", "a lost run spends a shield first")
+	assert_eq(GameState.shields, 1)
+	assert_eq(GameLoop2.log_attempt(), "shield")
+	assert_eq(GameState.shields, 0)
+	assert_eq(GameState.hp, 10, "Health is untouched while shields last")
+	assert_eq(GameLoop2.log_attempt(), "health", "out of shields, a lost run costs Health")
+	assert_eq(GameState.hp, 10 - GameLoop2.ATTEMPT_HEALTH_COST)
+	assert_eq(GameLoop2.attempts(), 3, "every try is counted")
+	assert_eq(GameLoop2.attempts_on_shields(), 2, "two of them were paid with shields")
+
+func test_attempts_can_kill_the_run() -> void:
+	GameLoop2.choose_game(_enemy(1))
+	GameState.shields = 0
+	GameState.hp = 2
+	watch_signals(GameLoop2)
+	GameLoop2.log_attempt()
+	assert_false(GameLoop2.run_over, "one Health left is still a run")
+	GameLoop2.log_attempt()
+	assert_eq(GameState.hp, 0)
+	assert_true(GameLoop2.run_over, "losing the last Health to a retry ends the run")
+	assert_signal_emitted(GameLoop2, "run_lost")
+	assert_eq(GameLoop2.log_attempt(), "", "and no further tries are logged")
+
+func test_undo_attempt_refunds_exactly_what_it_spent() -> void:
+	GameLoop2.choose_game(_enemy(1))
+	GameState.shields = 1
+	GameLoop2.log_attempt()                       # spends the shield
+	GameLoop2.log_attempt()                       # spends Health
+	assert_eq(GameState.shields, 0)
+	assert_eq(GameState.hp, 10 - GameLoop2.ATTEMPT_HEALTH_COST)
+	assert_eq(GameLoop2.undo_attempt(), "health")
+	assert_eq(GameState.hp, 10, "the Health comes back")
+	assert_eq(GameLoop2.undo_attempt(), "shield")
+	assert_eq(GameState.shields, 1, "and so does the shield")
+	assert_eq(GameLoop2.attempts(), 0)
+	assert_eq(GameLoop2.undo_attempt(), "", "nothing left to take back")
+
+func test_attempts_are_per_game() -> void:
+	GameLoop2.choose_game(_enemy(1))
+	GameState.shields = 3
+	GameLoop2.log_attempt()
+	assert_eq(GameLoop2.attempts(), 1)
+	var res: Dictionary = GameLoop2.beat_game(true)
+	assert_eq(int(res["attempts"]), 1, "the resolve reports what the game took")
+	assert_eq(GameLoop2.attempts(), 0, "and the tracker closes with the game")
+	GameLoop2.choose_game(_enemy(1))
+	assert_eq(GameLoop2.attempts(), 0, "a new game starts on a clean tracker")
+
+func test_attempts_need_a_game_in_play() -> void:
+	GameState.shields = 3
+	assert_eq(GameLoop2.log_attempt(), "", "there is nothing to be losing runs of")
+	assert_eq(GameState.shields, 3)
 
 # --- old-goal fulfilment (§2) --------------------------------------------
 
@@ -589,7 +683,7 @@ func test_start_run_applies_isaac_loadout() -> void:
 	assert_eq(GameState.max_hp, 6, "Isaac Health 6")
 	assert_eq(GameState.hp, 6)
 	assert_eq(GameState.bombs, 1, "Isaac starts with 1 Bomb")
-	assert_eq(GameState.block, 0)
+	assert_eq(GameState.shields, 0)
 	assert_false(GameLoop2.run_over)
 	assert_eq(GameLoop2.stack_size(), 0)
 	var has_d6: bool = false

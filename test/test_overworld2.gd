@@ -307,6 +307,107 @@ func test_boss_is_the_capstone_of_the_tier_just_played() -> void:
 	assert_true(_ui._is_boss_round())
 	assert_eq(_ui._current_tier(), T.INSANE, "Insane bosses keep coming every 3 games")
 
+# --- shields = the tries at the game you selected (§3.2) -------------------
+
+func test_picking_a_game_grants_its_shields() -> void:
+	assert_eq(GameState.shields, 0, "no tries before a game is selected")
+	var game: GameData = _ui._choices[0]["game"]
+	var expected: int = GameLoop2.shields_for_game(game)
+	_ui.pick(0)
+	assert_eq(GameState.shields, expected,
+		"%s granted its %d tries" % [game.display_name, expected])
+	assert_eq(expected, 5 if game.type == GameData.GameType.TRADITIONAL else 3,
+		"5 for a Traditional roguelike, 3 for anything else")
+
+func test_anchor_adds_a_try_on_top_of_the_grant() -> void:
+	GameState.add_item(Data.get_item2(&"anchor"))
+	var game: GameData = _ui._choices[0]["game"]
+	_ui.pick(0)
+	assert_eq(GameState.shields, GameLoop2.shields_for_game(game) + 1,
+		"Anchor's shield lands on selection, before you go and play")
+
+func test_shields_expire_when_the_game_is_reported() -> void:
+	_ui.pick(0)
+	assert_gt(GameState.shields, 0)
+	_ui.report(true)
+	assert_eq(GameState.shields, 0, "the tries belonged to that game")
+
+# --- the attempt tracker ---------------------------------------------------
+
+func test_ticking_an_attempt_spends_a_shield_then_health() -> void:
+	_ui.pick(0)
+	var shields: int = GameState.shields
+	assert_eq(_ui.log_attempt(), "shield")
+	assert_eq(GameState.shields, shields - 1, "a lost run costs a shield")
+	assert_true(_ui._attempt_count.text.contains("1"), "the strip counts it: %s" % _ui._attempt_count.text)
+	assert_true(_ui._attempt_pips.text.contains("◇"), "and a pip goes hollow: %s" % _ui._attempt_pips.text)
+	# Burn the rest, then the next tick has to come off Health.
+	while GameState.shields > 0:
+		_ui.log_attempt()
+	var hp: int = GameState.hp
+	assert_eq(_ui.log_attempt(), "health")
+	assert_eq(GameState.hp, hp - GameLoop2.ATTEMPT_HEALTH_COST)
+	assert_true(_ui._attempt_hint.text.contains("Health"),
+		"and the strip warns what the next one costs: %s" % _ui._attempt_hint.text)
+
+func test_undoing_an_attempt_restores_the_shield() -> void:
+	_ui.pick(0)
+	var shields: int = GameState.shields
+	_ui.log_attempt()
+	assert_eq(_ui.undo_attempt(), "shield")
+	assert_eq(GameState.shields, shields, "the shield came back")
+	assert_eq(GameLoop2.attempts(), 0)
+	assert_true(_ui._attempt_undo.disabled, "nothing left to take back")
+
+func test_the_tracker_is_only_live_while_a_game_is_in_play() -> void:
+	assert_true(_ui._attempt_btn.disabled, "no game selected -> nothing to lose runs of")
+	_ui.pick(0)
+	assert_false(_ui._attempt_btn.disabled, "a game in play -> the tracker is live")
+	_ui.report(true)
+	assert_true(_ui._attempt_btn.disabled, "reported -> closed again")
+
+func test_the_offering_shows_the_tries_each_game_grants() -> void:
+	var labels: Array = []
+	for card in _ui._choices_row.get_children():
+		for child in card.get_children():
+			if child is Label:
+				labels.append(String((child as Label).text))
+	var joined: String = "\n".join(labels)
+	assert_true(joined.contains("tries"), "each card states its shield grant: %s" % joined)
+
+# --- the board / checklist stage -------------------------------------------
+
+func test_the_board_is_put_away_while_choosing_and_shown_in_play() -> void:
+	# Choosing a game: the offering is the screen, the board is behind the button.
+	assert_true(_ui._select_box.visible, "the offering is up")
+	assert_false(_ui._board.visible, "the board is put away")
+	assert_true(_ui._board_btn.visible, "with a button to bring it back")
+	assert_false(_ui._play_panel.visible, "and nothing to report yet")
+	# The button toggles it without touching the offering.
+	_ui.toggle_board()
+	assert_true(_ui._board.visible, "the button shows the board")
+	assert_true(_ui._select_box.visible, "the offering stays up alongside it")
+	_ui.toggle_board()
+	assert_false(_ui._board.visible, "and puts it away again")
+	# Playing a game: board on top, checklist under it, offering gone.
+	_ui.pick(0)
+	assert_true(_ui._board.visible, "the board is forced up while a game is in play")
+	assert_true(_ui._play_panel.visible, "with the report checklist under it")
+	assert_false(_ui._select_box.visible, "the offering is out of the way")
+	assert_false(_ui._board_btn.visible, "and the toggle is irrelevant here")
+	# Both live in the same panel, board first.
+	var board_i: int = _ui._board.get_index()
+	var report_i: int = _ui._play_panel.get_index()
+	assert_eq(_ui._board.get_parent(), _ui._play_panel.get_parent(), "one panel holds both")
+	assert_lt(board_i, report_i, "the board is drawn above the checklist")
+
+func test_the_board_button_counts_the_followers() -> void:
+	_ui.pick(0)
+	_ui.report(false)                    # a missed goal leaves one following
+	assert_eq(GameLoop2.stack.size(), 1)
+	assert_true(_ui._board_btn.text.contains("1"),
+		"a hidden board still says what's out there: %s" % _ui._board_btn.text)
+
 # --- rating is a button, never a pop-up -----------------------------------
 
 func _rating_modal():

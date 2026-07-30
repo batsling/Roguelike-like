@@ -58,6 +58,11 @@ signal status_applied(ctx: Dictionary)      # ctx.target, ctx.status, ctx.stacks
 signal status_removed(ctx: Dictionary)
 
 # --- Run lifecycle ---
+signal game_selected(ctx: Dictionary)       # ctx.game_id, ctx.shields — a game was
+                                            # picked off the offering and its shields
+                                            # (the tries at it, §3) were granted.
+                                            # Anchor hangs its +1 Shield here so the
+                                            # extra try arrives before you play.
 signal game_beaten(ctx: Dictionary)         # ctx.game_id
 signal floor_entered(ctx: Dictionary)       # ctx.game_id
 signal item_acquired(ctx: Dictionary)       # ctx.item

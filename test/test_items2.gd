@@ -33,13 +33,20 @@ func test_reward_pool_is_items2_without_starters() -> void:
 	assert_does_not_have(ids, &"burning_blood", "starters never drop")
 	assert_has(ids, &"anchor", "a normal relic is in the pool")
 
-# --- "after beating a game" trigger --------------------------------------
+# --- "when a game is selected" / "after beating a game" triggers ----------
 
-func test_anchor_grants_block_on_game_beaten() -> void:
+# Anchor pays its shield at SELECTION time (§3) — the point of the item is an
+# extra try at the game you're about to play, so it can't wait for the report.
+func test_anchor_grants_a_shield_on_game_selected() -> void:
+	var anchor: ItemData = Data.get_item2(&"anchor")
+	assert_eq(String(anchor.triggers[0].get("on", "")), "game_selected",
+		"Anchor hangs on the selection hook")
 	_give(&"anchor")
-	var before: int = GameState.block
+	var before: int = GameState.shields
 	TriggerBus.game_beaten.emit({"game_id": &"rogue"})
-	assert_eq(GameState.block, before + 1, "Anchor: +1 Block after beating a game")
+	assert_eq(GameState.shields, before, "beating a game is not when Anchor pays")
+	TriggerBus.game_selected.emit({"game_id": &"rogue", "shields": 3})
+	assert_eq(GameState.shields, before + 1, "Anchor: +1 Shield when a game is selected")
 
 func test_burning_blood_heals_on_game_beaten() -> void:
 	_give(&"burning_blood")
@@ -114,7 +121,7 @@ func test_alien_baby_survivor_still_attacks_when_goal_missed() -> void:
 	_give(&"alien_baby")
 	GameState.max_hp = 10
 	GameState.hp = 10
-	GameState.block = 0
+	GameState.shields = 0
 	var enemy: GoalEnemyData = Data.all_goal_enemies()[0]
 	GameLoop2.choose_game(enemy)
 	GameLoop2.beat_game(true)                 # first hit -> survives, follows @ spawn col

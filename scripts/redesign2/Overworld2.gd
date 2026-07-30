@@ -46,6 +46,10 @@ const REPEAT_BEAT_DASH := 1
 # repeat-beat announcement so all three read as the same mechanic.
 const DASH_BLUE := Color(0.5, 0.85, 1.0)
 
+# Shields — the tries at the game in play (§3). One steel-blue used by the HUD
+# count, the attempt strip, and the pips on the board.
+const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
+
 # The current offering. Each entry:
 #   {"game": GameData, "enemy": GoalEnemyData, "boss": bool, "amulet": bool,
 #    "repeat": bool}
@@ -90,6 +94,27 @@ var _levelup_check: CheckBox        # null when the character has no level-up
 var _dash_mode: bool = false        # Dash (§4): offer ANY connected game
 var _controls_row: HBoxContainer
 var _stack: RichTextLabel           # battlefield summary line
+# The offering half of the page (heading, verbs, cards, hover preview) — hidden
+# once a game is in play, which is what frees the room for the stage below.
+var _select_box: VBoxContainer
+# The STAGE: one panel holding the board and, under it, the report checklist.
+var _stage_panel: PanelContainer
+var _board_head: VBoxContainer       # the board's heading + summary line
+var _report_sep: HSeparator
+var _scrolls_wrap: VBoxContainer
+# The page's ScrollContainer. The stage is taller than a screen with the board on
+# top, so picking a game scrolls the report half into reach (the board is a scroll
+# up from there) and reporting scrolls back to the offering.
+var _scroll: ScrollContainer
+# Outside a game the board is put away; this button brings it back (§ the toggle).
+var _board_btn: Button
+var _show_board: bool = false
+# Attempt tracker (§3) — the tries at the game in play.
+var _attempt_count: Label
+var _attempt_pips: Label
+var _attempt_hint: Label
+var _attempt_btn: Button
+var _attempt_undo: Button
 # The board itself (§grid): the player on the left, a GRID_COLS x GRID_ROWS grid on
 # the right where enemies close in one column per game beaten (MMBN-style). It's a
 # BattlefieldView — a view over GameLoop2 that reports Push / Bomb / inspect back
@@ -118,6 +143,10 @@ func _ready() -> void:
 		GameLoop2.run_lost.connect(_on_run_lost)
 	if not GameLoop2.run_won.is_connected(_on_run_won):
 		GameLoop2.run_won.connect(_on_run_won)
+	# A ticked attempt animates on the board: a pip pops, or the hero takes the hit
+	# once the shields are gone (§3).
+	if not GameLoop2.attempt_logged.is_connected(_on_attempt_logged):
+		GameLoop2.attempt_logged.connect(_on_attempt_logged)
 	# Register as the mounted overworld so overworld-active items (Ride the Bus,
 	# Wand of Wishing) can route their effect here, and so item pickups refresh
 	# the inventory panel.
@@ -187,12 +216,51 @@ func pick(index: int) -> void:
 		GameState.dash_charges = maxi(0, GameState.dash_charges - 1)
 		_dash_mode = false
 	GameLoop2.choose_game(_chosen["enemy"])
+	# Selecting the game hands over your TRIES at it (§3): 3 shields, 5 for a
+	# Traditional roguelike, plus whatever "when a game is selected" items add.
+	var granted: int = GameLoop2.grant_selection_shields(_chosen["game"])
+	GameLog.add("%s — %d shields to spend on tries." % [_chosen["game"].display_name, granted],
+		SHIELD_BLUE)
 	# Move to the graph SLOT (a transmuted card plays an off-graph game but keeps
 	# its position on the route toward the amulet).
 	GameState.set_current_game(_chosen["slot"])
 	_phase = Phase.PLAYING
 	_populate_play_panel()
 	_refresh()
+	# The attempt tracker and the checklist are what you drive from here, so bring
+	# them into view rather than making the player scroll past the board first.
+	_scroll_to(_play_panel)
+
+# The attempt tracker (§3): the player ticks this every time they LOSE a run of
+# the game they're playing. Each try spends a shield; once the shields are gone a
+# try costs Health, and Health hitting 0 ends the run right there. The board pops
+# a pip / flashes the hero off GameLoop2's attempt_logged signal.
+func log_attempt() -> String:
+	var cost: String = GameLoop2.log_attempt()
+	if cost == "":
+		return ""
+	var game: GameData = _chosen.get("game")
+	var game_name: String = game.display_name if game != null else "this game"
+	if cost == "shield":
+		GameLog.add("Lost a run of %s — a shield goes (attempt %d)." % [game_name, GameLoop2.attempts()],
+			SHIELD_BLUE)
+	else:
+		var msg: String = "Out of shields on %s — a lost run costs %d Health." % [
+			game_name, GameLoop2.ATTEMPT_HEALTH_COST]
+		GameLog.add(msg, UITheme.DANGER)
+		Notifications.notify(msg, UITheme.DANGER)
+	_refresh()
+	return cost
+
+# Take back the last tick — the tracker is hand-driven, so a mis-click has to be
+# reversible. Refunds exactly what that try spent.
+func undo_attempt() -> String:
+	var cost: String = GameLoop2.undo_attempt()
+	if cost != "":
+		GameLog.add("Took back an attempt (refunded 1 %s)." % ("shield" if cost == "shield" else "Health"),
+			UITheme.TEXT_DIM)
+		_refresh()
+	return cost
 
 # Dash (§4): a TOTAL select — bypass the limited offering and show every connected
 # game so the player can move to any of them. Spends one dash charge on the pick.
@@ -301,8 +369,8 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	_close_enemy_info()
 	var res: Dictionary = GameLoop2.beat_game(goal_met, fulfilled_instances)
 	# "After beating a game" is the dominant 2.0 item trigger (§8): fire it now so
-	# owned items react (Anchor +1 Block, Burning Blood +1 Health, Meat on the
-	# Bone), the Harvesting stat pays out, charged actives tick, and the toast
+	# owned items react (Burning Blood +1 Health, Meat on the Bone's conditional
+	# heal), the Harvesting stat pays out, charged actives tick, and the toast
 	# shows. Defeated-enemy drops were already banked by beat_game above.
 	if played_game != null:
 		TriggerBus.game_beaten.emit({"game_id": played_game.id})
@@ -341,6 +409,9 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	_phase = Phase.SELECT
 	_build_choices()
 	_refresh()
+	# Back to the offering — that's the decision now, so put it back on screen.
+	if _scroll != null:
+		_scroll.set_deferred("scroll_vertical", 0)
 	# Repaint first, then replay the strike + advance from the snapshot: the board
 	# is already in its final state, the animation just shows how it got there.
 	_board.animate_resolve(before, res)
@@ -353,6 +424,12 @@ func _grant_repeat_dash(game: GameData) -> void:
 	var msg: String = "Beat %s again — +%d Dash." % [game.display_name, REPEAT_BEAT_DASH]
 	Notifications.notify(msg, DASH_BLUE)
 	GameLog.add(msg, DASH_BLUE)
+
+# A try was logged (or taken back): the board shows it. An undo just repaints —
+# there's nothing to celebrate about a correction.
+func _on_attempt_logged(cost: String, undone: bool) -> void:
+	if not undone:
+		_board.play_attempt_fx(cost)
 
 # Count an arrival so a later visit to the same game draws a different offering.
 func _on_arrived(game_id: StringName) -> void:
@@ -614,14 +691,13 @@ func _refresh(_a = null) -> void:
 	_refresh_scrolls()
 	_refresh_items()
 	_refresh_loot()
-	_stack.text = _stack_summary()
+	_stack.text = "[b]Battlefield[/b]  —  " + _stack_summary()
 	_board.refresh(_phase == Phase.PLAYING)
+	_refresh_attempts()
+	_refresh_stage()
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
 	_boss_banner.get_parent().visible = _boss_round and _phase == Phase.SELECT
-	_controls_row.visible = _phase == Phase.SELECT
-	_choices_row.visible = _phase == Phase.SELECT
-	_play_panel.get_parent().visible = _phase == Phase.PLAYING
 	if _phase == Phase.SELECT:
 		_render_controls()
 		_render_choices()
@@ -634,6 +710,44 @@ func _refresh(_a = null) -> void:
 		# thing you went to play next to the enemy you went to beat.
 		var game: GameData = _chosen.get("game")
 		_now_playing_cover.texture = game.cover_image if game != null else null
+
+# Scroll `target` into view once the layout has settled (a freshly-populated panel
+# has no rect until the next frame).
+func _scroll_to(target: Control) -> void:
+	if _scroll == null or target == null or not is_inside_tree():
+		return
+	_scroll.call_deferred("ensure_control_visible", target)
+
+# Show the battlefield outside a game, or put it away again. Forced on while a game
+# is in play (that's when the board matters most), so the button only acts on the
+# select / run-over screens.
+func toggle_board() -> void:
+	_show_board = not _show_board
+	_refresh_stage()
+
+# Who gets the stage right now. While a game is in play it's the board AND the
+# report checklist under it. While choosing, the offering is the screen and the
+# board is put away behind the header button — one click away, with the follower
+# count on the button so a hidden board can't hide bad news.
+func _refresh_stage() -> void:
+	if _stage_panel == null:
+		return
+	var playing: bool = _phase == Phase.PLAYING
+	var board_on: bool = playing or _show_board
+	_select_box.visible = _phase == Phase.SELECT
+	_scrolls_wrap.visible = _phase == Phase.SELECT
+	_board.visible = board_on
+	_board_head.visible = board_on
+	_play_panel.visible = playing
+	_report_sep.visible = playing
+	_stage_panel.visible = board_on or playing
+	_board_btn.visible = not playing
+	var following: int = GameLoop2.stack.size()
+	if _show_board:
+		_board_btn.text = "Hide board"
+	else:
+		_board_btn.text = ("Board (%d)" % following) if following > 0 else "Board"
+	_board_btn.tooltip_text = ("%d enemy(s) following you." % following) if following > 0 else "Nothing following you."
 
 func _render_controls() -> void:
 	_clear(_controls_row)
@@ -742,6 +856,19 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	name_lbl.add_theme_color_override("font_color", accent if (choice["boss"] or choice["amulet"]) else UITheme.TEXT)
 	card.add_child(name_lbl)
 
+	# The tries this game hands you (§3): a Traditional roguelike is the long haul
+	# and grants more, which is a real reason to route through one.
+	var tries: int = GameLoop2.shields_for_game(game)
+	var tries_lbl := Label.new()
+	tries_lbl.text = "%s  %d tries" % ["◆".repeat(tries), tries]
+	tries_lbl.tooltip_text = "Selecting %s grants %d shields — one per run of it you lose." % [
+		game.display_name, tries]
+	tries_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tries_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
+	tries_lbl.add_theme_font_size_override("font_size", 12)
+	tries_lbl.add_theme_color_override("font_color", SHIELD_BLUE)
+	card.add_child(tries_lbl)
+
 	# Bash/Transmute are available even on a boss round — the boss follows the
 	# gate, so escaping a specific game still lands you on a boss.
 	var verbs := HBoxContainer.new()
@@ -793,7 +920,7 @@ func _populate_play_panel() -> void:
 	#     it following you;
 	#   • the character LEVEL-UP challenge;
 	#   • each FOLLOWING enemy whose old goal you also cleared this game.
-	_verify_box.add_child(_verify_head("Check off what you did this game:"))
+	_verify_box.add_child(_verify_head("Tick what you did this game:"))
 
 	var enemy: GoalEnemyData = _chosen.get("enemy")
 	if enemy != null and enemy.goal != "":
@@ -826,14 +953,17 @@ func _goal_met() -> bool:
 	return _goal_check == null or _goal_check.button_pressed
 
 # One checklist row: a bordered CheckBox tinted `color`; `emphasise` gives the
-# main-goal row a heavier border so it reads as the primary question.
+# main-goal row a heavier border so it reads as the primary question. Kept to a
+# single tight line each — the stage above it is the board, and the checklist has
+# to stay a glanceable list rather than a stack of cards.
 func _verify_row(text: String, color: Color, emphasise: bool) -> Dictionary:
 	var wrap := PanelContainer.new()
 	var border: Color = color.lerp(UITheme.BORDER, 0.35)
-	wrap.add_theme_stylebox_override("panel", UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 6, 8, 2 if emphasise else 1, border))
+	wrap.add_theme_stylebox_override("panel", UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 2 if emphasise else 1, border))
 	var cb := CheckBox.new()
 	cb.text = text
 	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cb.add_theme_font_size_override("font_size", 13)
 	cb.add_theme_color_override("font_color", color)
 	wrap.add_child(cb)
 	return {"row": wrap, "check": cb}
@@ -841,7 +971,7 @@ func _verify_row(text: String, color: Color, emphasise: bool) -> Dictionary:
 func _verify_head(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_font_size_override("font_size", 12)
 	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	return l
 
@@ -948,8 +1078,8 @@ func _now_playing_text() -> String:
 	return "[b]Now playing:[/b] %s\n%s" % [_chosen["game"].display_name, _enemy_preview_text(_chosen)]
 
 func _hud_text() -> String:
-	return "[b]Health[/b] %d/%d   [b]Block[/b] %d      [b]Tier[/b] %s      [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Push[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d  [b]Scrolls[/b] %d   [b]Chests[/b] %d" % [
-		GameState.hp, GameState.max_hp, GameState.block,
+	return "[b]Health[/b] %d/%d   [b]Shields[/b] %d      [b]Tier[/b] %s      [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Push[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d  [b]Scrolls[/b] %d   [b]Chests[/b] %d" % [
+		GameState.hp, GameState.max_hp, GameState.shields,
 		RunDifficulty.tier_name(_current_tier()),
 		GameState.bash, GameState.dash_charges, GameState.push, GameState.transmute,
 		GameState.scramble, GameState.bombs, GameState.keys,
@@ -965,7 +1095,6 @@ func _refresh_scrolls() -> void:
 		return
 	_clear(_scrolls_box)
 	var scrolls: Array = GameState.loot_scrolls()
-	_scrolls_box.visible = _phase == Phase.SELECT
 	if scrolls.is_empty():
 		var none := Label.new()
 		none.text = "  (none)"
@@ -1102,9 +1231,9 @@ func _stack_summary() -> String:
 	if _phase == Phase.PLAYING and not _chosen.is_empty() and _chosen.get("enemy") != null:
 		following += 1
 	if following == 0:
-		return "[b]Battlefield:[/b] clear"
+		return "clear  —  nothing following you"
 	var dmg: int = GameLoop2.stacked_damage_per_game()
-	return "[b]Battlefield[/b] — %d closing in, %d at the front dealing %d damage next game" % [
+	return "%d closing in, %d at the front dealing %d damage next game" % [
 		following, GameLoop2.front_count(), dmg]
 
 
@@ -1158,7 +1287,12 @@ func _result_text(res: Dictionary) -> String:
 	if int(res.get("damage_taken", 0)) > 0:
 		parts.append("took %d damage" % int(res["damage_taken"]))
 	if int(res.get("blocked", 0)) > 0:
-		parts.append("blocked %d" % int(res["blocked"]))
+		parts.append("shields absorbed %d" % int(res["blocked"]))
+	if int(res.get("attempts", 0)) > 0:
+		parts.append("%d attempt(s)" % int(res["attempts"]))
+	# Shields belong to the game that granted them; say so when some went unused.
+	if int(res.get("shields_expired", 0)) > 0:
+		parts.append("%d shield(s) expired with the game" % int(res["shields_expired"]))
 	if parts.is_empty():
 		parts.append("no effect")
 	return "[i]Last game: %s.[/i]" % ", ".join(parts)
@@ -1177,9 +1311,12 @@ func _show_banner(text: String, color: Color) -> void:
 	_banner.text = text
 	_banner.add_theme_color_override("font_color", color)
 	_banner.show()
-	_choices_row.visible = false
-	_play_panel.get_parent().visible = false
 	_boss_banner.get_parent().visible = false
+	# The run is over: the offering and the report step are done with, but the board
+	# stays available so the field the run ended on can still be read.
+	_show_board = true
+	_refresh_stage()
+	_refresh_attempts()
 	# The run is over, so any loot still on the ground is gone with it.
 	_refresh_loot()
 
@@ -1203,6 +1340,7 @@ func _build_ui() -> void:
 	scroll.offset_bottom = -16
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	add_child(scroll)
+	_scroll = scroll
 	var root := VBoxContainer.new()
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.add_theme_constant_override("separation", 10)
@@ -1216,6 +1354,12 @@ func _build_ui() -> void:
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
+	# Outside a game the board is put away — the offering is the decision on screen —
+	# but the followers closing in are never more than one click from view, and the
+	# button's own label carries how many there are.
+	_board_btn = Button.new()
+	_board_btn.pressed.connect(toggle_board)
+	header.add_child(_board_btn)
 	var map_btn := Button.new()
 	map_btn.text = "🗺 Map"
 	map_btn.pressed.connect(open_map)
@@ -1254,15 +1398,22 @@ func _build_ui() -> void:
 	boss_wrap.hide()
 	root.add_child(boss_wrap)
 
-	root.add_child(_section("Choose a game to travel to:"))
+	# Everything that belongs to CHOOSING a game, in one box the phase toggles: the
+	# offering and its verbs are irrelevant once you've committed to a game, and the
+	# room they free is what lets the board and the checklist sit together below.
+	_select_box = VBoxContainer.new()
+	_select_box.add_theme_constant_override("separation", 8)
+	root.add_child(_select_box)
+
+	_select_box.add_child(_section("Choose a game to travel to:"))
 	# Controls row (Dash) — populated per refresh.
 	_controls_row = HBoxContainer.new()
 	_controls_row.add_theme_constant_override("separation", 8)
-	root.add_child(_controls_row)
+	_select_box.add_child(_controls_row)
 	_choices_row = HFlowContainer.new()
 	_choices_row.add_theme_constant_override("h_separation", 12)
 	_choices_row.add_theme_constant_override("v_separation", 10)
-	root.add_child(_choices_row)
+	_select_box.add_child(_choices_row)
 
 	# Hover preview: the enemy's art beside its name + goal.
 	var preview_wrap := PanelContainer.new()
@@ -1277,40 +1428,72 @@ func _build_ui() -> void:
 	_preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_preview.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	preview_box.add_child(_preview)
-	root.add_child(preview_wrap)
+	_select_box.add_child(preview_wrap)
 
-	# Verification card — shown once a game is chosen (the honour-system self-
-	# report). Wrapped in a bordered panel so it reads as a distinct "report your
-	# result" step. The wrapper carries the visibility toggle (see _refresh).
-	var play_wrap := PanelContainer.new()
-	play_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.5), 12, 16, 1))
+	# THE STAGE: the board and the report checklist in ONE panel, board on top. While
+	# a game is being played they're a single thing — the grid is where the tries you
+	# tick off land, and the checklist is how the game ends — so they're framed
+	# together rather than as two panels a page apart. The pack column stands beside
+	# the whole stage, since the inventory is reachable in every phase.
+	var main_row := HBoxContainer.new()
+	main_row.add_theme_constant_override("separation", 12)
+	root.add_child(main_row)
+
+	# Shrink, not expand: the pack column belongs right beside the board, and the
+	# report content under it inherits the board's width — which keeps the checklist
+	# narrow enough to stay a list.
+	var stage_col := VBoxContainer.new()
+	stage_col.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	main_row.add_child(stage_col)
+
+	_stage_panel = PanelContainer.new()
+	_stage_panel.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.5), 12, 12, 1))
+	_stage_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	stage_col.add_child(_stage_panel)
+	var stage_box := VBoxContainer.new()
+	stage_box.add_theme_constant_override("separation", 8)
+	_stage_panel.add_child(stage_box)
+
+	# Board header: what the field is doing, on one line.
+	# One line of heading, not two: the summary already names the battlefield, so the
+	# old section label above it was just height.
+	_board_head = VBoxContainer.new()
+	_stack = _panel_label()
+	_board_head.add_child(_stack)
+	stage_box.add_child(_board_head)
+
+	_board = BattlefieldView.new()
+	_board.push_requested.connect(push_follower)
+	_board.bomb_requested.connect(bomb_follower)
+	_board.enemy_inspected.connect(_show_enemy_info)
+	stage_box.add_child(_board)
+
+	# --- the report half of the stage (shown while a game is in play) ---------
 	_play_panel = VBoxContainer.new()
-	_play_panel.add_theme_constant_override("separation", 10)
-	play_wrap.add_child(_play_panel)
-	_play_panel.set_meta("wrap", play_wrap)
+	_play_panel.add_theme_constant_override("separation", 6)
+	stage_box.add_child(_play_panel)
 
-	var verify_hdr := Label.new()
-	verify_hdr.text = "◆  Report your result"
-	verify_hdr.add_theme_font_size_override("font_size", 15)
-	verify_hdr.add_theme_color_override("font_color", UITheme.GOLD)
-	_play_panel.add_child(verify_hdr)
+	_report_sep = HSeparator.new()
+	_play_panel.add_child(_report_sep)
 
+	# One tight row: the cover, the enemy, and the goal text — sized down from the
+	# old card, because the board above it is now the biggest thing in the panel.
 	var np_box := HBoxContainer.new()
-	np_box.add_theme_constant_override("separation", 14)
-	# The game's cover at box-art scale, then the enemy it spawned beside it.
+	np_box.add_theme_constant_override("separation", 10)
 	_now_playing_cover = TextureRect.new()
-	_now_playing_cover.custom_minimum_size = COVER_SIZE * 0.6
+	_now_playing_cover.custom_minimum_size = COVER_SIZE * 0.36
 	_now_playing_cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_now_playing_cover.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	var cover_frame := PanelContainer.new()
-	cover_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 8, 6, 1, UITheme.BORDER))
+	cover_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 6, 4, 1, UITheme.BORDER))
 	cover_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	cover_frame.add_child(_now_playing_cover)
 	np_box.add_child(cover_frame)
 	_now_playing_img = _enemy_image_rect()
-	_now_playing_img.custom_minimum_size = Vector2(112, 112)
+	_now_playing_img.custom_minimum_size = Vector2(72, 72)
 	var img_frame := PanelContainer.new()
-	img_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 8, 6, 1, UITheme.BORDER))
+	img_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 6, 4, 1, UITheme.BORDER))
 	img_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	img_frame.add_child(_now_playing_img)
 	np_box.add_child(img_frame)
@@ -1321,54 +1504,41 @@ func _build_ui() -> void:
 	_play_panel.add_child(np_box)
 
 	# Launch-the-real-game row (populated per game — only games with a launch
-	# target get a button).
+	# target gets a button) + the opt-in Rate button.
 	_launch_row = HBoxContainer.new()
-	_launch_row.add_theme_constant_override("separation", 8)
+	_launch_row.add_theme_constant_override("separation", 6)
 	_play_panel.add_child(_launch_row)
+
+	# The attempt tracker (§3) — the thing you press between runs of the real game.
+	_play_panel.add_child(_build_attempt_strip())
 
 	# Verification checklist (populated per game): the main goal, the character's
 	# level-up challenge, and any following enemy whose goal you also cleared. Tick
 	# what you did, then press the single Completed Game button below.
 	_verify_box = VBoxContainer.new()
-	_verify_box.add_theme_constant_override("separation", 4)
+	_verify_box.add_theme_constant_override("separation", 3)
 	_play_panel.add_child(_verify_box)
 
-	_play_panel.add_child(HSeparator.new())
 	var done := Button.new()
 	done.text = "✓  Completed Game"
-	done.custom_minimum_size = Vector2(0, 46)
+	done.custom_minimum_size = Vector2(0, 40)
 	done.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	done.add_theme_stylebox_override("normal", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.5), 8, 10, 2, UITheme.SUCCESS))
-	done.add_theme_stylebox_override("hover", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.35), 8, 10, 2, UITheme.SUCCESS))
+	done.add_theme_stylebox_override("normal", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.5), 8, 8, 2, UITheme.SUCCESS))
+	done.add_theme_stylebox_override("hover", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.35), 8, 8, 2, UITheme.SUCCESS))
 	done.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.45))
-	done.add_theme_font_size_override("font_size", 17)
+	done.add_theme_font_size_override("font_size", 15)
 	done.pressed.connect(func(): report(_goal_met()))
 	_play_panel.add_child(done)
-	play_wrap.hide()
-	root.add_child(play_wrap)
 
-	root.add_child(_section("Scrolls (read on the overworld):"))
+	main_row.add_child(_build_pack_column())
+
+	_scrolls_wrap = VBoxContainer.new()
+	_scrolls_wrap.add_theme_constant_override("separation", 4)
+	_scrolls_wrap.add_child(_section("Scrolls (read on the overworld):"))
 	_scrolls_box = VBoxContainer.new()
 	_scrolls_box.add_theme_constant_override("separation", 4)
-	root.add_child(_scrolls_box)
-
-	root.add_child(_section("Battlefield  —  enemies close in one column each game:"))
-	_stack = _panel_label()
-	root.add_child(_stack)
-
-	# Board on the left, the player's pack on the right: the inventory sits directly
-	# beside the grid, and loot dropped by a kill lands in the tray under it — so
-	# what you own and what you could own read as one column, out of the way of the
-	# enemies closing in.
-	var field_row := HBoxContainer.new()
-	field_row.add_theme_constant_override("separation", 12)
-	_board = BattlefieldView.new()
-	_board.push_requested.connect(push_follower)
-	_board.bomb_requested.connect(bomb_follower)
-	_board.enemy_inspected.connect(_show_enemy_info)
-	field_row.add_child(_board)
-	field_row.add_child(_build_pack_column())
-	root.add_child(field_row)
+	_scrolls_wrap.add_child(_scrolls_box)
+	root.add_child(_scrolls_wrap)
 
 	_log = _panel_label()
 	root.add_child(_log)
@@ -1380,6 +1550,74 @@ func _build_ui() -> void:
 	# stack anchors to its parent's top-right corner, and a Control hung straight off
 	# a CanvasLayer has no rect to anchor to, which parks the stack off-screen.
 	add_child(NotificationToasts.new())
+
+# The attempt tracker (§3): the strip the player drives between runs of the real
+# game. "Lost a run" is the only destructive button on the page, so it's tinted
+# like damage and paired with an undo; the pips and the hint spell out what the
+# next press will cost — a shield while any are left, Health after that.
+func _build_attempt_strip() -> Control:
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(SHIELD_BLUE.lerp(UITheme.BG, 0.88), 6, 8, 1, SHIELD_BLUE.lerp(UITheme.BG, 0.55)))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	wrap.add_child(row)
+
+	_attempt_btn = Button.new()
+	_attempt_btn.text = "Lost a run  −1"
+	_attempt_btn.tooltip_text = "Tick every run of this game you lose."
+	_attempt_btn.custom_minimum_size = Vector2(0, 30)
+	_attempt_btn.add_theme_font_size_override("font_size", 13)
+	_attempt_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.62), 6, 8, 1, UITheme.DANGER.lerp(UITheme.BG, 0.35)))
+	_attempt_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.45), 6, 8, 1, UITheme.DANGER))
+	_attempt_btn.pressed.connect(log_attempt)
+	row.add_child(_attempt_btn)
+
+	_attempt_undo = Button.new()
+	_attempt_undo.text = "Undo"
+	_attempt_undo.tooltip_text = "Take back the last attempt."
+	_attempt_undo.custom_minimum_size = Vector2(56, 30)
+	_attempt_undo.pressed.connect(undo_attempt)
+	row.add_child(_attempt_undo)
+
+	_attempt_count = Label.new()
+	_attempt_count.add_theme_font_size_override("font_size", 13)
+	row.add_child(_attempt_count)
+
+	_attempt_pips = Label.new()
+	_attempt_pips.add_theme_font_size_override("font_size", 16)
+	_attempt_pips.add_theme_color_override("font_color", SHIELD_BLUE)
+	row.add_child(_attempt_pips)
+
+	_attempt_hint = Label.new()
+	_attempt_hint.add_theme_font_size_override("font_size", 12)
+	_attempt_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_attempt_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(_attempt_hint)
+	return wrap
+
+# Repaint the attempt strip: the count, the pips (filled = shields still standing,
+# hollow = tries already spent on one), and what the next lost run will cost.
+func _refresh_attempts() -> void:
+	if _attempt_count == null:
+		return
+	var attempts: int = GameLoop2.attempts()
+	var spent: int = GameLoop2.attempts_on_shields()
+	var left: int = GameState.shields
+	_attempt_count.text = "Attempts  %d" % attempts
+	_attempt_count.add_theme_color_override("font_color",
+		UITheme.TEXT if attempts == 0 else UITheme.ACCENT)
+	_attempt_pips.text = "◆".repeat(left) + "◇".repeat(spent)
+	_attempt_pips.tooltip_text = "%d shield(s) left of the %d this game granted." % [left, left + spent]
+	if left > 0:
+		_attempt_hint.text = "Shields %d — the next lost run spends one." % left
+		_attempt_hint.add_theme_color_override("font_color", SHIELD_BLUE)
+	else:
+		_attempt_hint.text = "No shields left — the next lost run costs %d Health." % GameLoop2.ATTEMPT_HEALTH_COST
+		_attempt_hint.add_theme_color_override("font_color", UITheme.DANGER)
+	var live: bool = _phase == Phase.PLAYING and not GameLoop2.run_over
+	_attempt_btn.disabled = not live
+	_attempt_undo.disabled = not live or attempts == 0
 
 # The pack column that stands to the right of the grid: everything the player is
 # carrying, then the loot tray. Both panels are always mounted — only their

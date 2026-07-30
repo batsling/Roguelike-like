@@ -259,6 +259,22 @@ Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
 
+- **Shields are the tries: an attempt tracker, and the board and checklist in one
+  panel** — Block is gone and **Shields** take its place as the *runs you get at a
+  game*. Selecting a game grants **3** (or **5** for a Traditional roguelike);
+  every run of it you lose is one tick of the new **attempt tracker**, which spends
+  a shield, and once they're gone a lost run costs **1 Health** (0 Health ends the
+  run there). Whatever is left when you report the game absorbs the followers' hits
+  and then **expires with the game** — shields never bank forward. **Anchor** moved
+  to a new **`game_selected`** trigger so its +1 Shield is a genuine extra try
+  before you play, not a reward afterwards. The report step and the battlefield are
+  now **one panel**: the board on top, then the attempt strip, a tightened
+  one-line-per-row checklist, and Completed Game. Outside a game the board is put
+  away behind a **⚔ Board (N)** button in the header, so choosing a game is the
+  only thing on screen. The board draws the pool as **pips on the hero** and a tick
+  pops one with a floating `-1 ◆` — or flashes the hero red for `-1 ♥` once the
+  shields are gone — and each offered card shows the tries it grants.
+
 - **Rating on a button, a bonus for rematches, revisits that redraw, and pickups
   that show their effects** — the tier-list prompt no longer pops itself up after
   a game; it opens from a **★ Rate** button (on the report panel, and on the
@@ -338,7 +354,7 @@ re-run them after pulling and review the diff.
   live on in git history). What replaced them is `GameLoop2` — the goal-enemy stack,
   the games-beaten clock, the difficulty tiers and their boss rounds — plus
   `ScrollSystem` (identify-by-reading scrolls), the tiny Health / Max Health /
-  Block model, and the bash / dash / transmute / scramble / push verb layer.
+  Shield model, and the bash / dash / transmute / scramble / push verb layer.
   **The real video game you go and play is the combat.**
 
 ---
@@ -352,7 +368,7 @@ level-ups, difficulty tiers with boss rounds, scrolls, the Collection, and the
 cross-run tier list. What's still ahead:
 
 - **The OBS companion HUD (§9)** — the design is stream-first: a slim always-on-top
-  window showing health, block, the current game + its goal, the follower stack,
+  window showing health, shields, the current game + its goal, the follower stack,
   and the verb/consumable counts, reading the same autoloads the main window
   mutates. Deferred by decision until the mechanics lock; it is the largest
   unbuilt piece of the spec.

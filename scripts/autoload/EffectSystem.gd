@@ -90,7 +90,7 @@ func _h_gain_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	if v != 0:
 		GameState.set_max_hp(GameState.max_hp + v, false)
 
-# Permanent run-scope stat/verb grant (Vajra +1 Bash, Anchor +1 Block, …).
+# Permanent run-scope stat/verb grant (Vajra +1 Bash, Anchor +1 Shield, …).
 # Routes ability verbs (bash/transmute/scramble/block/…) to their backing field.
 func _h_gain_stat(effect: Dictionary, _ctx: Dictionary) -> void:
 	var stat: String = String(effect.get("stat", ""))

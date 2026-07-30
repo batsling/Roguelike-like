@@ -32,6 +32,10 @@ signal repainted
 var _battlefield: HBoxContainer
 var _hero_icon: TextureRect
 var _hero_hp: Label
+# Shields — the tries at the game in play (§3), drawn as pips over the hero:
+# filled for the ones still standing, hollow for the ones already spent on a lost
+# run. This is what the attempt tracker visibly drains.
+var _hero_shields: Label
 var _field: Control                  # fixed-size board the two layers stack inside
 var _enemy_layer: Control            # free-positioned enemy nodes, drawn over the board
 # Health / damage / status badges live on their own layer ABOVE every body, so an
@@ -72,6 +76,8 @@ func _hero_texture() -> Texture2D:
 const CELL: int = 84                # grid cell edge in px
 const CELL_SEP: int = 6
 const CELL_STEP: int = CELL + CELL_SEP
+# Shields (the tries, §3) share the overworld's steel blue.
+const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
 # Everything on the board layers by TREE ORDER, never z_index: z_index is relative
 # to the parent and would punch the board out through anything drawn later in the
 # scene — the enemy info card and the reward screens sit above the battlefield
@@ -218,6 +224,14 @@ func _build() -> void:
 	hero_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	hero_box.add_theme_constant_override("separation", 4)
 	hero_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# Pips ABOVE the portrait: the tries you have left at this game, in the same
+	# place the damage numbers land, so ticking a lost run reads as something being
+	# taken off the hero.
+	_hero_shields = Label.new()
+	_hero_shields.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hero_shields.add_theme_font_size_override("font_size", 18)
+	_hero_shields.add_theme_color_override("font_color", SHIELD_BLUE)
+	hero_box.add_child(_hero_shields)
 	var hero_frame := PanelContainer.new()
 	hero_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL, 8, 8, 2, UITheme.ACCENT))
 	_hero_icon = TextureRect.new()
@@ -301,6 +315,11 @@ func refresh(show_current: bool = false) -> void:
 	_hero_icon.texture = hero_tex
 	UITheme.apply_crisp(_hero_icon, hero_tex)
 	_hero_hp.text = "♥ %d/%d" % [GameState.hp, GameState.max_hp]
+	# Filled pips = shields still standing, hollow = tries already spent on one.
+	var left: int = GameState.shields
+	var spent: int = GameLoop2.attempts_on_shields()
+	_hero_shields.text = "◆".repeat(left) + "◇".repeat(spent)
+	_hero_shields.tooltip_text = "%d shield(s) left — one per lost run." % left
 
 	# Clear the overlays and the overflow lane; the backdrop panels are static.
 	for layer in [_enemy_layer, _badge_layer]:
@@ -676,6 +695,55 @@ func animate_resolve(before: Dictionary, res: Dictionary) -> void:
 		if from_rect.position.distance_to(to_rect.position) < 2.0:
 			continue
 		_spawn_slide_ghost(inst, from_rect, to_rect)
+
+# A logged attempt, played on the hero (§3): a lost run pops one shield pip off and
+# floats what it cost. `cost` is "shield" while any are left, "health" once they're
+# gone — and that second case is a real hit, so it recoils the hero like an enemy
+# strike would. Called by the host off GameLoop2.attempt_logged.
+func play_attempt_fx(cost: String) -> void:
+	if _fx_layer == null or not is_inside_tree():
+		return
+	if cost == "shield":
+		_float_over_hero("-1 ◆", SHIELD_BLUE)
+		_pop_shield_pips()
+	else:
+		_float_over_hero("-1 ♥", UITheme.DANGER)
+		_punch_hero()
+
+# A number rising off the hero — the attempt tracker's feedback, thrown from the
+# portrait rather than from an enemy since the player is the one spending here.
+func _float_over_hero(text: String, color: Color) -> void:
+	if _hero_icon == null:
+		return
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 24)
+	lbl.add_theme_color_override("font_color", color)
+	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	lbl.add_theme_constant_override("outline_size", 6)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fx_layer.add_child(lbl)
+	var from: Rect2 = _hero_icon.get_global_rect()
+	lbl.global_position = from.position + Vector2(from.size.x * 0.3, 0)
+	var t := lbl.create_tween()
+	t.set_parallel(true)
+	t.tween_property(lbl, "global_position", lbl.global_position - Vector2(0, 46), 0.7).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t.tween_property(lbl, "modulate:a", 0.0, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	t.set_parallel(false)
+	t.tween_callback(lbl.queue_free)
+
+# The pip row flinches as one goes out — the row is a single label, so it's the row
+# that flashes and settles rather than an individual glyph.
+func _pop_shield_pips() -> void:
+	if _hero_shields == null:
+		return
+	_hero_shields.pivot_offset = _hero_shields.size * 0.5
+	var t := _hero_shields.create_tween()
+	t.tween_property(_hero_shields, "scale", Vector2(1.25, 1.25), 0.08).set_trans(Tween.TRANS_BACK)
+	t.tween_property(_hero_shields, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	var f := _hero_shields.create_tween()
+	f.tween_property(_hero_shields, "modulate", Color(1, 1, 1, 0.35), 0.08)
+	f.tween_property(_hero_shields, "modulate", Color.WHITE, 0.3)
 
 # A white burst over an attacking enemy's cell.
 func _spawn_strike_flash(rect: Rect2) -> void:
