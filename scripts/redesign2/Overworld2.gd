@@ -35,10 +35,23 @@ enum Phase { SELECT, PLAYING, OVER }
 # count is always read through offer_count() rather than the constant.
 const BASE_OFFER_COUNT := 3
 
+# Beating a game you have ALREADY beaten this run pays a Dash charge (§4's "total
+# select" verb). Revisiting is a real routing option — a node's offering is drawn
+# from its neighbours, so a cleared game comes back around — and this is what
+# makes doubling back worth considering instead of strictly worse. The offering
+# labels those cards up-front so the bonus is a choice, not a surprise.
+const REPEAT_BEAT_DASH := 1
+
+# The Dash verb's colour, shared by its hint, its offering label, and the
+# repeat-beat announcement so all three read as the same mechanic.
+const DASH_BLUE := Color(0.5, 0.85, 1.0)
+
 # The current offering. Each entry:
-#   {"game": GameData, "enemy": GoalEnemyData, "boss": bool, "amulet": bool}
+#   {"game": GameData, "enemy": GoalEnemyData, "boss": bool, "amulet": bool,
+#    "repeat": bool}
 # The enemy is rolled up-front so the hover preview and the enemy that actually
-# spawns on click are the SAME roll.
+# spawns on click are the SAME roll. `repeat` marks a game already beaten this
+# run — beating it again grants a Dash (REPEAT_BEAT_DASH).
 var _choices: Array = []
 var _boss_round: bool = false
 var _phase: int = Phase.SELECT
@@ -51,6 +64,11 @@ var _transmuted: Dictionary = {}
 # scramble changes, re-drawing which games fill the slots (and, through
 # _build_choices, the enemies behind them).
 var _scramble_salt: int = 0
+# How many times the player has ARRIVED at each game this run (game id -> count),
+# counted off GameState.current_game_changed. It salts the offering draw, so
+# coming back to a game you've already stood on offers a DIFFERENT set of its
+# neighbours rather than replaying the same three cards (see _offer_seed).
+var _visits: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
 
 # --- UI nodes (built in code) --------------------------------------------
@@ -86,6 +104,10 @@ var _items_box: VBoxContainer       # owned items with Use buttons (§4/§8)
 var _loot_box: VBoxContainer
 var _drop_queue: Array = []         # [{item: ItemData}] waiting in the loot tray
 var _reward_open: bool = false      # a RewardScreen is currently showing
+# The game most recently reported on. Rating is OPT-IN and never pops itself up
+# (see _prompt_rating): this is what the "★ Rate <game>" button on the select
+# screen scores, so a game can still be rated after you've moved on.
+var _last_played_game: GameData = null
 
 func _ready() -> void:
 	_rng.randomize()
@@ -100,8 +122,19 @@ func _ready() -> void:
 	# Wand of Wishing) can route their effect here, and so item pickups refresh
 	# the inventory panel.
 	GameState.set_overworld_context(self)
-	if not GameState.inventory_changed.is_connected(_refresh_items):
-		GameState.inventory_changed.connect(_refresh_items)
+	# An item's effects have to show the moment it's picked up: a pickup fires its
+	# item_acquired effects (Lunch's +2 Max Health / +2 Health) outside any loop
+	# resolve, so the HUD is repainted off the state signals rather than waiting for
+	# the next loop_changed.
+	if not GameState.inventory_changed.is_connected(_on_inventory_changed):
+		GameState.inventory_changed.connect(_on_inventory_changed)
+	if not GameState.hp_changed.is_connected(_on_vitals_changed):
+		GameState.hp_changed.connect(_on_vitals_changed)
+	if not GameState.stats_changed.is_connected(_refresh_hud):
+		GameState.stats_changed.connect(_refresh_hud)
+	# Arrivals salt the offering draw so a revisit isn't a rerun (§_offer_seed).
+	if not GameState.current_game_changed.is_connected(_on_arrived):
+		GameState.current_game_changed.connect(_on_arrived)
 	# Every defeated enemy banks a chest (§8); redeem them into RewardScreens when
 	# the board is idle — one screen per chest, so several defeats in one game pop
 	# several rewards in a row.
@@ -123,6 +156,8 @@ func _ready() -> void:
 # and place the player on the start game so its neighbours become the first
 # offering. `character_id` empty -> the first authored 2.0 character.
 func start_run(character_id: StringName = &"") -> void:
+	_visits.clear()
+	_last_played_game = null
 	var pick: Dictionary = RunGraph.pick_amulet_and_starts(_rng)
 	var ch: CharacterData = Data.get_character2(character_id)
 	if ch == null:
@@ -256,6 +291,9 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	var played_game: GameData = _chosen.get("game")
 	var fulfilled_instances: Array = fulfilled if fulfilled is Array else _ticked_fulfilments()
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
+	# Was this game already cleared this run? Read BEFORE the beat is recorded, so
+	# the second clear of a game is what pays the Dash (REPEAT_BEAT_DASH).
+	var repeat_beat: bool = played_game != null and GameState.has_beaten_game(played_game.id)
 	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed
 	# Snapshot where everyone stands BEFORE the resolve, so the animation can play
 	# the strike and the advance back from the old positions to the new ones.
@@ -268,6 +306,19 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	# shows. Defeated-enemy drops were already banked by beat_game above.
 	if played_game != null:
 		TriggerBus.game_beaten.emit({"game_id": played_game.id})
+		# Bank the clear (and pay the repeat-beat Dash). Recorded after the item
+		# trigger so a game_beaten item can't see a half-updated tally.
+		GameState.note_game_beaten(played_game.id)
+		if repeat_beat:
+			_grant_repeat_dash(played_game)
+		# Lifetime tally the Collection and the tier list read ("beaten N times"):
+		# in the games-first loop this report step IS the verification, so a
+		# confirmed game counts here. An amulet clear records the win instead (it
+		# bumps `beaten` too).
+		if was_amulet and goal_met:
+			GameStats.record_amulet_win(played_game.id)
+		else:
+			GameStats.record_beaten(played_game.id)
 	# Level up (§3.1) — a fresh chance each game; skipped if the game just killed
 	# the player.
 	if leveled and not GameLoop2.run_over:
@@ -275,11 +326,10 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	GameState.games_played += 1
 	_chosen = {}
 	_transmuted.clear()   # transmutes apply only to the offering you moved from
-	# Just like the older version: after playing a game, prompt to score it onto
-	# the tier list (opt-in — the modal has a "Maybe later"). Fires on every path,
-	# including the run-ending game.
+	# Rating is a BUTTON, never a pop-up: remember the game so the "★ Rate <game>"
+	# button on the select screen can score it whenever the player feels like it.
 	if played_game != null:
-		_prompt_rating(played_game)
+		_last_played_game = played_game
 	if GameLoop2.run_over:
 		_phase = Phase.OVER
 		_refresh()
@@ -295,14 +345,35 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	# is already in its final state, the animation just shows how it got there.
 	_board.animate_resolve(before, res)
 
+# The reward for beating a game you'd already cleared this run: +1 Dash (§4).
+# Announced on both channels — the toast for the moment, the log for the record —
+# because the HUD's Dash counter moving on its own reads as a bug.
+func _grant_repeat_dash(game: GameData) -> void:
+	GameState.dash_charges += REPEAT_BEAT_DASH
+	var msg: String = "Beat %s again — +%d Dash." % [game.display_name, REPEAT_BEAT_DASH]
+	Notifications.notify(msg, DASH_BLUE)
+	GameLog.add(msg, DASH_BLUE)
+
+# Count an arrival so a later visit to the same game draws a different offering.
+func _on_arrived(game_id: StringName) -> void:
+	if game_id == &"":
+		return
+	_visits[game_id] = int(_visits.get(game_id, 0)) + 1
+
 func _exit_tree() -> void:
 	GameState.clear_overworld_context(self)
 	_board.clear_fx()
 	_close_enemy_info()
 	if TriggerBus.chest_granted.is_connected(_on_chest_granted):
 		TriggerBus.chest_granted.disconnect(_on_chest_granted)
-	if GameState.inventory_changed.is_connected(_refresh_items):
-		GameState.inventory_changed.disconnect(_refresh_items)
+	if GameState.inventory_changed.is_connected(_on_inventory_changed):
+		GameState.inventory_changed.disconnect(_on_inventory_changed)
+	if GameState.hp_changed.is_connected(_on_vitals_changed):
+		GameState.hp_changed.disconnect(_on_vitals_changed)
+	if GameState.stats_changed.is_connected(_refresh_hud):
+		GameState.stats_changed.disconnect(_refresh_hud)
+	if GameState.current_game_changed.is_connected(_on_arrived):
+		GameState.current_game_changed.disconnect(_on_arrived)
 
 # --- reward chests (§8) ---------------------------------------------------
 
@@ -474,7 +545,7 @@ func _offered_ids() -> Array:
 	for gid in RunGraph.neighbors(GameState.current_game_id):
 		if not GameLoop2.is_bashed(gid):
 			nbrs.append(gid)
-	var seed_key := "%s|%d|" % [String(GameState.current_game_id), _scramble_salt]
+	var seed_key := _offer_seed()
 	nbrs.sort_custom(func(a, b): return hash(seed_key + String(a)) < hash(seed_key + String(b)))
 	# Dash (§4) bypasses the cap — every connected game is a valid target.
 	if _dash_mode:
@@ -484,6 +555,18 @@ func _offered_ids() -> Array:
 		nbrs.erase(amulet)
 		nbrs.push_front(amulet)
 	return nbrs.slice(0, cap)
+
+# What the offering draw is keyed on. Stable for as long as the player stands
+# where they are — bashing or transmuting one card must not reshuffle the others —
+# and changed by exactly two things: a Scramble (_scramble_salt), and ARRIVING
+# here again (_visits). The visit count is what makes a REVISIT a fresh decision:
+# the same node hands you a different subset of its neighbours the second time
+# through. (At a node with no more neighbours than the cap the slots can't change,
+# so the reroll lands on the goal-enemies behind them, which are rolled fresh on
+# every _build_choices anyway.)
+func _offer_seed() -> String:
+	var cur: StringName = GameState.current_game_id
+	return "%s|%d|%d|" % [String(cur), _scramble_salt, int(_visits.get(cur, 0))]
 
 func _build_choices() -> void:
 	_choices.clear()
@@ -499,14 +582,35 @@ func _build_choices() -> void:
 		_choices.append({
 			"game": game, "enemy": enemy, "slot": gid,
 			"boss": _boss_round, "amulet": gid == amulet,
+			# Judged on the GAME, not the slot: a transmuted card plays the
+			# replacement game, so that's the clear the Dash bonus keys off.
+			"repeat": GameState.has_beaten_game(game.id),
 		})
 
 # --- rendering ------------------------------------------------------------
 
-func _refresh(_a = null) -> void:
+# Repaint just the HUD line. Its own function because the run resources move
+# outside a loop resolve too — an item picked up from the loot tray or a chest
+# changes Health / Max Health / a verb count the instant it lands, and the numbers
+# on screen have to agree immediately.
+func _refresh_hud(_a = null) -> void:
 	if _hud == null:
 		return
 	_hud.text = _hud_text()
+
+func _on_vitals_changed(_hp: int = 0, _max_hp: int = 0) -> void:
+	_refresh_hud()
+
+# A pickup changed the pack: relist the inventory AND repaint the HUD, since the
+# item's stat bonuses / item_acquired effects have already landed on the run.
+func _on_inventory_changed() -> void:
+	_refresh_items()
+	_refresh_hud()
+
+func _refresh(_a = null) -> void:
+	if _hud == null:
+		return
+	_refresh_hud()
 	_refresh_scrolls()
 	_refresh_items()
 	_refresh_loot()
@@ -536,7 +640,7 @@ func _render_controls() -> void:
 	if _dash_mode:
 		var hint := Label.new()
 		hint.text = "⚡ Dash — pick ANY connected game:"
-		hint.add_theme_color_override("font_color", Color(0.5, 0.85, 1.0))
+		hint.add_theme_color_override("font_color", DASH_BLUE)
 		_controls_row.add_child(hint)
 		_controls_row.add_child(_mini_button("Cancel", cancel_dash))
 	elif GameState.dash_charges > 0:
@@ -550,6 +654,16 @@ func _render_controls() -> void:
 		s.tooltip_text = "Draws new games into the slots, each with a fresh goal-enemy."
 		s.pressed.connect(scramble)
 		_controls_row.add_child(s)
+	# Rating is opt-in and lives on a button (it never pops itself up): the game you
+	# last reported on stays scorable from here until you report another.
+	if _last_played_game != null:
+		var game: GameData = _last_played_game
+		var rate := Button.new()
+		rate.text = "★ Rate %s" % game.display_name
+		rate.tooltip_text = "Score %s 1-10 on your tier list." % game.display_name
+		rate.add_theme_color_override("font_color", UITheme.GOLD)
+		rate.pressed.connect(func(): _prompt_rating(game))
+		_controls_row.add_child(rate)
 
 func _render_choices() -> void:
 	_clear(_choices_row)
@@ -580,6 +694,22 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	card.custom_minimum_size = Vector2(COVER_SIZE.x + 10, 0)
 
 	var accent: Color = UITheme.DANGER if choice["boss"] else (UITheme.GOLD if choice["amulet"] else UITheme.type_color(int(game.type)))
+
+	# A game already beaten this run pays a Dash for beating it again — called out
+	# ABOVE the cover so the bonus is visible while you're still choosing. The row is
+	# mounted on EVERY card (blank when there's no bonus) so one flagged card doesn't
+	# shove its cover down out of line with the rest of the offering.
+	var repeat: bool = bool(choice.get("repeat", false))
+	var bonus := Label.new()
+	bonus.text = ("⚡ Gain +%d Dash" % REPEAT_BEAT_DASH) if repeat else ""
+	if repeat:
+		bonus.tooltip_text = "You've already beaten %s this run — beat it again for a Dash charge." % game.display_name
+	bonus.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bonus.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
+	bonus.add_theme_font_size_override("font_size", 13)
+	bonus.add_theme_color_override("font_color", DASH_BLUE)
+	card.add_child(bonus)
+
 	var btn := Button.new()
 	btn.custom_minimum_size = COVER_SIZE
 	var frame_n := UITheme.flat(UITheme.BG, 8, 4, 1, UITheme.BORDER)
@@ -794,16 +924,22 @@ func _enemy_texture(choice: Dictionary) -> Texture2D:
 func _enemy_preview_text(choice: Dictionary) -> String:
 	var e: GoalEnemyData = choice.get("enemy")
 	var game: GameData = choice["game"]
+	# A rematch pays a Dash — stated on the preview as well as the card, so it also
+	# shows on the report panel for the game you're playing.
+	var repeat: String = ""
+	if bool(choice.get("repeat", false)):
+		repeat = "\n[color=#80d9ff]⚡ Already beaten this run — beating it again grants +%d Dash.[/color]" % REPEAT_BEAT_DASH
 	if e == null:
-		return "[b]%s[/b]\n[i]No enemy — free game.[/i]" % game.display_name
+		return "[b]%s[/b]\n[i]No enemy — free game.[/i]%s" % [game.display_name, repeat]
 	var kind: String = "[color=#e0b020][b]☠ BOSS[/b][/color] " if choice["boss"] else ""
 	# Effective Health = goal completions to defeat it (Alien Baby makes it 2).
 	var hp: int = GameLoop2.effective_health(e)
 	var hp_txt: String = "%d goal%s to beat" % [hp, "" if hp == 1 else "s"]
-	return "[b]%s[/b]  →  %s%s\n[b]GOAL (%s):[/b] %s   [i](%s / %s / %s / dmg %d)[/i]" % [
+	return "[b]%s[/b]  →  %s%s\n[b]GOAL (%s):[/b] %s   [i](%s / %s / %s / dmg %d)[/i]%s" % [
 		game.display_name, kind, e.display_name,
 		String(e.goal_type).capitalize(), e.goal,
 		String(e.game_type).capitalize(), RunDifficulty.tier_name(int(e.difficulty)), hp_txt, e.damage,
+		repeat,
 	]
 
 func _now_playing_text() -> String:
@@ -1236,6 +1372,14 @@ func _build_ui() -> void:
 
 	_log = _panel_label()
 	root.add_child(_log)
+
+	# The toast layer: pickups, item procs and the repeat-beat Dash all post to
+	# Notifications, and this is what makes them visible the instant they happen. It
+	# used to be mounted by the (now cut) combat host, so nothing showed them.
+	# Mounted on THIS screen (full-rect) rather than a bare CanvasLayer — the toast
+	# stack anchors to its parent's top-right corner, and a Control hung straight off
+	# a CanvasLayer has no rect to anchor to, which parks the stack off-screen.
+	add_child(NotificationToasts.new())
 
 # The pack column that stands to the right of the grid: everything the player is
 # carrying, then the loot tray. Both panels are always mounted — only their

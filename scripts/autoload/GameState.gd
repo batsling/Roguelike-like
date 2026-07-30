@@ -952,6 +952,24 @@ func set_current_game(id: StringName) -> void:
 	current_game_id = id
 	emit_signal("current_game_changed", id)
 
+# Records that the player BEAT `game_id` this run and reports whether that was a
+# REPEAT — a game already on `beaten_games`. Revisiting is legal (the offering is
+# drawn from the neighbours of wherever you stand, so a game can come back
+# around), and beating one again is worth a Dash (see Overworld2.report).
+func note_game_beaten(game_id: StringName) -> bool:
+	if game_id == &"":
+		return false
+	total_games_beaten += 1
+	if beaten_games.has(game_id):
+		return true
+	beaten_games.append(game_id)
+	return false
+
+# True once `game_id` has been beaten at least once this run — so the offering
+# can flag it as a repeat (and its Dash bonus) before the player commits.
+func has_beaten_game(game_id: StringName) -> bool:
+	return beaten_games.has(game_id)
+
 func set_max_hp(new_max: int, heal_to_full: bool = false) -> void:
 	# Routes through Stats so Constitution auto-gain fires off the
 	# delta. Pass heal_to_full=true to restore HP to the new max
@@ -1401,6 +1419,13 @@ func add_item(template: ItemData) -> ItemData:
 			Notifications.notify(
 				"%s arrived decayed%s." % [inst.display_name, (" x%d" % hits) if hits > 1 else ""],
 				Color(0.7, 0.55, 0.4))
+	# Snapshot the run resources BEFORE anything the pickup does lands, so the
+	# pickup can REPORT what it changed. An item's payload is its passive
+	# stat_bonuses (Vajra +1 Bash, folded in by the recompute below) plus its
+	# item_acquired effects (Lunch: +2 Max Health, +2 Health) — both used to land
+	# silently, so the numbers moved with nothing saying so, which reads as "the
+	# item did nothing".
+	var before: Dictionary = run_resource_snapshot()
 	_recompute_item_bonuses()
 	# Fire item_acquired triggers AFTER the inventory + stat recompute so
 	# the pickup hook sees the new max_hp (Lunch's +8 HP lands on top of
@@ -1414,9 +1439,38 @@ func add_item(template: ItemData) -> ItemData:
 			EffectSystem.apply(effect, {
 				"source": null, "target": null, "scene": null, "card": null,
 			})
+	# Everything the pickup moved — passive stat_bonuses and item_acquired effects
+	# alike — in one player-facing line.
+	var gained: String = describe_resource_gains(before)
+	if gained != "":
+		Notifications.notify("%s: %s" % [inst.display_name, gained], Color(0.7, 1.0, 0.7))
+		GameLog.add("%s: %s" % [inst.display_name, gained], Color(0.7, 1.0, 0.7))
 	TriggerBus.emit_signal("item_acquired", {"item": inst})
 	emit_signal("inventory_changed")
 	return inst
+
+# The run resources a pickup / effect can move, as one flat dictionary. Paired
+# with describe_resource_gains to turn "an item was acquired" into "+2 Max
+# Health, +2 Health" without every item having to author a `notify` string.
+# Keyed by the player-facing name, in HUD order.
+func run_resource_snapshot() -> Dictionary:
+	return {
+		"Health": hp, "Max Health": max_hp, "Block": block,
+		"Bash": bash, "Dash": dash_charges, "Push": push,
+		"Transmute": transmute, "Scramble": scramble, "Bombs": bombs,
+		"Keys": keys, "Chests": pending_chests, "Gold": gold,
+	}
+
+# Human-readable diff between `before` (from run_resource_snapshot) and now,
+# e.g. "+2 Max Health, +2 Health". Empty when nothing moved.
+func describe_resource_gains(before: Dictionary) -> String:
+	var parts: Array = []
+	var now: Dictionary = run_resource_snapshot()
+	for key in now.keys():
+		var delta: int = int(now[key]) - int(before.get(key, now[key]))
+		if delta != 0:
+			parts.append("%s%d %s" % ["+" if delta > 0 else "", delta, key])
+	return ", ".join(parts)
 
 # Total bonus stacks any owned status-amplify item adds when `status_id` is
 # inflicted on an enemy (Empty Syringe -> +1 Bleed / Poison). Called from

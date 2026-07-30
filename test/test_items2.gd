@@ -126,6 +126,44 @@ func test_alien_baby_survivor_still_attacks_when_goal_missed() -> void:
 	GameLoop2.beat_game(false)                # front-line strike on a missed game
 	assert_lt(GameState.hp, hp_before, "the surviving enemy attacks from the front")
 
+# --- a pickup reports what it changed, immediately -------------------------
+#
+# A Pickup's whole payload is its item_acquired effects, and they used to land
+# silently: the numbers moved with nothing saying so. add_item now diffs the run
+# resources across the pickup and posts the result.
+
+func test_pickup_effects_land_and_are_reported_on_acquire() -> void:
+	GameState.max_hp = 10
+	GameState.hp = 10
+	var before_history: int = Notifications.history.size()
+	_give(&"lunch")                               # +2 Max Health and +2 Health
+	assert_eq(GameState.max_hp, 12, "Lunch's Max Health lands on acquire")
+	assert_eq(GameState.hp, 12, "and so does the Health")
+	assert_gt(Notifications.history.size(), before_history, "the pickup posted a notification")
+	var texts: Array = []
+	for entry in Notifications.history.slice(before_history):
+		texts.append(String(entry.get("text", "")))
+	var joined: String = "\n".join(texts)
+	assert_true(joined.contains("+2 Max Health"), "the report names the Max Health gain: %s" % joined)
+	assert_true(joined.contains("+2 Health"), "and the Health gain: %s" % joined)
+
+func test_passive_pickup_reports_its_verb_bonus() -> void:
+	# Vajra's +1 Bash arrives through stat_bonuses rather than an item_acquired
+	# effect; the snapshot straddles the recompute, so it's reported the same way.
+	var before_history: int = Notifications.history.size()
+	_give(&"vajra")
+	var texts: Array = []
+	for entry in Notifications.history.slice(before_history):
+		texts.append(String(entry.get("text", "")))
+	var joined: String = "\n".join(texts)
+	assert_true(joined.contains("+1 Bash"), "Vajra's Bash gain is named: %s" % joined)
+
+func test_resource_gain_report_names_only_what_moved() -> void:
+	var before: Dictionary = GameState.run_resource_snapshot()
+	assert_eq(GameState.describe_resource_gains(before), "", "an unchanged run reports nothing")
+	GameState.dash_charges += 2
+	assert_eq(GameState.describe_resource_gains(before), "+2 Dash", "a verb gain is named")
+
 # --- charged actives recharge per game beaten ----------------------------
 
 func test_charged_item_recharges_on_game_beaten() -> void:

@@ -307,6 +307,140 @@ func test_boss_is_the_capstone_of_the_tier_just_played() -> void:
 	assert_true(_ui._is_boss_round())
 	assert_eq(_ui._current_tier(), T.INSANE, "Insane bosses keep coming every 3 games")
 
+# --- rating is a button, never a pop-up -----------------------------------
+
+func _rating_modal():
+	for c in _ui.get_children():
+		if c is RateGameModal:
+			return c
+	return null
+
+func test_reporting_a_game_never_pops_the_rating_modal() -> void:
+	_ui.pick(0)
+	_ui.report(true)
+	assert_null(_rating_modal(), "finishing a game doesn't force the rating prompt")
+
+func test_the_played_game_stays_rateable_from_a_button() -> void:
+	var played: GameData = _ui._choices[0]["game"]
+	_ui.pick(0)
+	_ui.report(true)
+	assert_eq(_ui._last_played_game, played, "the reported game is remembered for rating")
+	# The select-screen controls row offers it as a button.
+	var labels: Array = []
+	for c in _ui._controls_row.get_children():
+		if c is Button:
+			labels.append(String(c.text))
+	var joined: String = "\n".join(labels)
+	assert_true(joined.contains("Rate %s" % played.display_name),
+		"a '★ Rate <game>' button is offered: %s" % joined)
+	# Pressing it is what opens the modal.
+	_ui._prompt_rating(played)
+	var modal: Control = _rating_modal()
+	assert_not_null(modal, "the button opens the rating modal")
+	# And it covers the screen, so the dim reads and clicks can't fall through to
+	# the board behind it.
+	assert_gt(modal.size.x, 0.0, "the modal fills the viewport")
+	assert_gt(modal.size.y, 0.0, "the modal fills the viewport")
+
+# --- repeat beats pay a Dash (REPEAT_BEAT_DASH) ----------------------------
+
+func test_first_clear_records_the_game_and_grants_no_dash() -> void:
+	var played: GameData = _ui._choices[0]["game"]
+	var dash_before: int = GameState.dash_charges
+	var lifetime_before: int = GameStats.beaten_count(played.id)
+	_ui.pick(0)
+	_ui.report(true)
+	assert_true(GameState.has_beaten_game(played.id), "the clear is banked on the run")
+	assert_eq(GameState.dash_charges, dash_before, "a first clear pays nothing extra")
+	assert_eq(GameStats.beaten_count(played.id), lifetime_before + 1,
+		"and the lifetime tally the Collection shows moved too")
+
+func test_beating_a_game_again_grants_a_dash() -> void:
+	# Stand where a game you've already cleared is on offer (the run graph lets you
+	# double back, so an offered game can be one you beat earlier).
+	var target: GameData = _ui._choices[0]["game"]
+	GameState.note_game_beaten(target.id)
+	_ui._build_choices()
+	assert_eq(_ui._choices[0]["game"], target, "the offering is stable for the position")
+	assert_true(bool(_ui._choices[0]["repeat"]), "the card is flagged as a repeat")
+	var dash_before: int = GameState.dash_charges
+	_ui.pick(0)
+	_ui.report(true)
+	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
+		"beating it a second time granted a Dash")
+
+func test_repeat_card_shows_the_dash_bonus_above_it() -> void:
+	var target: GameData = _ui._choices[0]["game"]
+	GameState.note_game_beaten(target.id)
+	_ui._build_choices()
+	_ui._render_choices()
+	var first: Node = _ui._choices_row.get_child(0).get_child(0)
+	assert_true(first is Label, "the bonus sits ABOVE the cover art")
+	assert_eq((first as Label).text, "⚡ Gain +%d Dash" % _ui.REPEAT_BEAT_DASH,
+		"and it says what beating it again grants")
+	# A game not yet beaten keeps the row (so the covers stay in line) but says
+	# nothing in it.
+	GameState.beaten_games.clear()
+	_ui._build_choices()
+	_ui._render_choices()
+	var plain: Node = _ui._choices_row.get_child(0).get_child(0)
+	assert_true(plain is Label and (plain as Label).text == "",
+		"an unbeaten game's card has an empty bonus row")
+
+# --- revisiting a game offers a different draw -----------------------------
+
+# The offering is drawn in a stable position-seeded order, but ARRIVING at a game
+# again re-seeds it: doubling back is a fresh decision, not a rerun.
+func test_revisiting_a_game_redraws_the_offering() -> void:
+	# Find a hub with more neighbours than the offering can show — only there can
+	# the games in the slots change at all.
+	var hub: StringName = &""
+	for g in Data.all_games():
+		if RunGraph.neighbors(g.id).size() > _ui.offer_count() + 2:
+			hub = g.id
+			break
+	if hub == &"":
+		pass_test("no hub node in this run's graph")
+		return
+	GameState.set_current_game(hub)          # arrival #1
+	_ui._build_choices()
+	var first_draw: Array = _ui._choices.map(func(c): return c["slot"])
+	# Re-building without moving must NOT reshuffle (bash / transmute rely on it).
+	_ui._build_choices()
+	assert_eq(_ui._choices.map(func(c): return c["slot"]), first_draw,
+		"standing still keeps the same games in the slots")
+	# Walk away and come back a few times: the draw has to change.
+	var changed: bool = false
+	for _i in range(4):
+		GameState.set_current_game(&"__elsewhere__")
+		GameState.set_current_game(hub)      # arrival #2, #3, …
+		_ui._build_choices()
+		if _ui._choices.map(func(c): return c["slot"]) != first_draw:
+			changed = true
+			break
+	assert_true(changed, "revisiting %s drew a different set of games" % hub)
+
+# --- a pickup's effects show on the HUD immediately ------------------------
+
+func test_claimed_loot_updates_the_hud_immediately() -> void:
+	var heart: ItemData = Data.get_item2(&"hollow_heart")   # +4 Max Health on acquire
+	assert_not_null(heart)
+	var max_before: int = GameState.max_hp
+	var drop: Dictionary = {"item": heart}
+	_ui._drop_queue.append(drop)
+	_ui._refresh_loot()
+	_ui._collect_drop(drop)
+	assert_eq(GameState.max_hp, max_before + 4, "the pickup's effect landed")
+	assert_true(_ui._hud.text.contains("%d/%d" % [GameState.hp, GameState.max_hp]),
+		"and the HUD already shows it: %s" % _ui._hud.text)
+
+func test_hud_follows_a_verb_gain_without_a_loop_resolve() -> void:
+	var before: String = _ui._hud.text
+	GameState.grant_run_stat("dash", 2)      # emits stats_changed, no loop tick
+	assert_ne(_ui._hud.text, before, "the HUD repaints off the stat change")
+	assert_true(_ui._hud.text.contains("[b]Dash[/b] %d" % GameState.dash_charges),
+		"showing the new Dash count: %s" % _ui._hud.text)
+
 func test_bash_removes_a_choice_from_the_pool() -> void:
 	GameState.bash = 1
 	_ui._build_choices()

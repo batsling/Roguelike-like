@@ -18,7 +18,10 @@ func _ready() -> void:
 	# Animate even while the tree is paused (e.g. backpack open / action
 	# overlay) so a toast fired just before a pause still resolves.
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Offsets as well as anchors: set_anchors_preset keeps the current offsets by
+	# default, so a layer built in code (size 0 at that moment) would stay 0 wide and
+	# park its top-right-anchored stack off the left edge of the screen.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	_stack = VBoxContainer.new()
@@ -56,16 +59,19 @@ func _on_notified(text: String, color: Color) -> void:
 
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl.custom_minimum_size = Vector2(0, 0)
+	# Measured UNWRAPPED first: a Label that already wraps reports a minimum width of
+	# roughly one character, which would collapse every toast into a tall ribbon.
+	lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
 	lbl.add_theme_color_override("font_color", Color(0.97, 0.97, 0.97))
 	lbl.add_theme_font_size_override("font_size", 14)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	toast.add_child(lbl)
 
 	_stack.add_child(toast)
-	# Cap label width so long lines wrap instead of stretching off-screen.
+	# Cap label width so long lines wrap instead of stretching off-screen, then let
+	# it wrap inside the width it just claimed.
 	lbl.custom_minimum_size = Vector2(minf(MAX_WIDTH - 28.0, lbl.get_minimum_size().x), 0)
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	var tw := create_tween()
 	tw.tween_property(toast, "modulate:a", 1.0, FADE_IN)

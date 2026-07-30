@@ -1,8 +1,9 @@
 class_name RateGameModal
 extends Control
 
-# Opt-in game rating prompt. Opened from the "★ Rate this game" button on the
-# verification screen (never forced). The player picks a whole-number score
+# Opt-in game rating prompt. It NEVER opens itself: the only ways in are the
+# "★ Rate this game" button on the report panel and the "★ Rate <game>" button the
+# select screen keeps for the game you last reported. The player picks a score
 # (1-10); notes are optional. When the game was rated on a previous run the
 # fields come in pre-filled so the player updates rather than starts over. A
 # "Maybe later" button dismisses without rating.
@@ -49,7 +50,11 @@ func setup(game_id: StringName, gd: GameData) -> void:
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	top_level = true
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Offsets as well as anchors: set_anchors_preset keeps the existing offsets, so a
+	# modal built in code stayed 0x0 — which meant the dim never covered anything and
+	# MOUSE_FILTER_STOP had no rect to swallow clicks with, leaving the screen behind
+	# it live while the prompt was open.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	# Build now if setup() ran before we entered the tree.
 	if not _built:
@@ -58,7 +63,7 @@ func _ready() -> void:
 
 func _build_ui(gd: GameData, existing: Dictionary) -> void:
 	var dim := ColorRect.new()
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.color = Color(0, 0, 0, 0.75)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
