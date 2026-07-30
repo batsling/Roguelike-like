@@ -13,10 +13,6 @@ extends Control
 
 signal closed
 
-# HTML rarity weights (js/data.js calculateRarityWeights): 75/20/5.
-const W_COMMON := 75.0
-const W_UNCOMMON := 20.0
-const W_RARE := 5.0
 const BASE_ITEM_CHOICES := 2
 
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
@@ -271,10 +267,7 @@ func _roll_choices() -> void:
 	var attempts: int = 0
 	while _choices.size() < n and attempts < 100:
 		attempts += 1
-		var target: int = _roll_rarity()
-		var bucket: Array = pool.filter(func(it): return int(it.rarity) == target)
-		if bucket.is_empty():
-			bucket = pool
+		var bucket: Array = Data.reward_item2_pool_of(_roll_rarity())
 		var pick: ItemData = bucket[_rng.randi_range(0, bucket.size() - 1)]
 		# Sacred Orb: reroll low-rarity picks — Commons always, Uncommons 25%.
 		# Re-loops (re-rolling rarity) until the pick survives, biasing the
@@ -292,19 +285,10 @@ func _roll_choices() -> void:
 		if not dup:
 			_choices.append(pick)
 
+# The shared 75/20/5 ladder (Data.roll_item_rarity), rolled through this screen's
+# luck advantage instead of a flat random draw.
 func _roll_rarity() -> int:
-	var roll: float = _roll_with_luck_advantage() * (W_COMMON + W_UNCOMMON + W_RARE)
-	var r: int
-	if roll < W_COMMON:
-		r = ItemData.Rarity.COMMON
-	elif roll < W_COMMON + W_UNCOMMON:
-		r = ItemData.Rarity.UNCOMMON
-	else:
-		r = ItemData.Rarity.RARE
-	# Rare has a 10% bump to legendary (js/data.js selectRandomRarity).
-	if r == ItemData.Rarity.RARE and _rng.randf() < 0.1:
-		r = ItemData.Rarity.LEGENDARY
-	return r
+	return Data.roll_item_rarity(_rng, _roll_with_luck_advantage())
 
 # Port of rollWithLuckAdvantage (js/data.js): roll in [0,1); positive luck has
 # a luck*10% chance to take the better of two rolls, negative luck the worse.

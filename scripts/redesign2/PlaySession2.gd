@@ -107,7 +107,7 @@ func _enemy_text() -> String:
 	var boss_tag: String = "  [color=#e0b020][b]☠ BOSS[/b][/color]" if e.is_boss() else ""
 	return "[b]Now playing:[/b] %s%s  ([i]%s / %s / dmg %d[/i])\n[b]GOAL (%s):[/b] %s" % [
 		e.display_name, boss_tag, String(e.game_type).capitalize(),
-		_tier_name(e), e.damage, String(e.goal_type).capitalize(), e.goal,
+		RunDifficulty.tier_name(int(e.difficulty)), e.damage, String(e.goal_type).capitalize(), e.goal,
 	]
 
 func _stack_text() -> String:
@@ -135,8 +135,6 @@ func _result_text(res: Dictionary) -> String:
 		parts.append("no effect")
 	return "[i]Last game: %s.[/i]" % ", ".join(parts)
 
-func _tier_name(e: GoalEnemyData) -> String:
-	return ["Low", "Medium", "High", "Insane"][clampi(int(e.difficulty), 0, 3)]
 
 # Spawn a boss at the run's current tier (§7.1 bosses appear on a tier change).
 func pick_boss() -> void:

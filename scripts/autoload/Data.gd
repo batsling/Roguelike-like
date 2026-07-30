@@ -79,24 +79,37 @@ func get_scroll2(id: StringName) -> ScrollData:
 func all_scrolls2() -> Array:
 	return _scrolls.values()
 
-# Rarity weights for random scroll draws. Mirrors the legacy selectRandomRarity
-# distribution (75 / 20 / 5) with a 10% bump from Rare to Legendary.
-# ScrollData.rarity_index() maps the sheet's rarity string onto the 0-3 ordering.
-const SCROLL_RARITY_WEIGHTS := { 0: 75.0, 1: 20.0, 2: 5.0 }
+# --- the one rarity ladder -------------------------------------------------
 
-func _roll_scroll_rarity(rng: RandomNumberGenerator) -> int:
-	var total: float = SCROLL_RARITY_WEIGHTS[0] + SCROLL_RARITY_WEIGHTS[1] + SCROLL_RARITY_WEIGHTS[2]
-	var roll: float = rng.randf() * total
-	var r: int
-	if roll < SCROLL_RARITY_WEIGHTS[0]:
-		r = 0
-	elif roll < SCROLL_RARITY_WEIGHTS[0] + SCROLL_RARITY_WEIGHTS[1]:
-		r = 1
-	else:
-		r = 2
-	if r == 2 and rng.randf() < 0.1:
-		r = 3
-	return r
+# Every random draw in the game — item rewards, enemy drops, scrolls — rolls rarity
+# the same way: the legacy selectRandomRarity distribution (75% Common, 20%
+# Uncommon, 5% Rare) with a 10% chance that a Rare upgrades to Legendary. The
+# numbers live here once; the two callers differ only in how they NUMBER legendary,
+# so the roll is expressed in its own vocabulary and mapped at the edges.
+enum RarityStep { COMMON, UNCOMMON, RARE, LEGENDARY }
+const RARITY_WEIGHTS := { RarityStep.COMMON: 75.0, RarityStep.UNCOMMON: 20.0, RarityStep.RARE: 5.0 }
+
+# One rarity roll on the ladder above. `roll01` lets a caller supply its own [0,1)
+# roll — RewardScreen passes a luck-advantaged one — instead of drawing from `rng`;
+# the Rare-to-Legendary bump always comes from `rng`. ScrollData.rarity_index()
+# uses this 0-3 ordering directly.
+func roll_rarity_step(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
+	var total: float = RARITY_WEIGHTS[RarityStep.COMMON] + RARITY_WEIGHTS[RarityStep.UNCOMMON] + RARITY_WEIGHTS[RarityStep.RARE]
+	var roll: float = (rng.randf() if roll01 < 0.0 else roll01) * total
+	var step: int = RarityStep.RARE
+	if roll < RARITY_WEIGHTS[RarityStep.COMMON]:
+		step = RarityStep.COMMON
+	elif roll < RARITY_WEIGHTS[RarityStep.COMMON] + RARITY_WEIGHTS[RarityStep.UNCOMMON]:
+		step = RarityStep.UNCOMMON
+	if step == RarityStep.RARE and rng.randf() < 0.1:
+		step = RarityStep.LEGENDARY
+	return step
+
+# The same roll as an ItemData.Rarity value. ItemData numbers Legendary 4 (Epic, 3,
+# is authored-only and never rolled), so only that last step needs translating.
+func roll_item_rarity(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
+	var step: int = roll_rarity_step(rng, roll01)
+	return ItemData.Rarity.LEGENDARY if step == RarityStep.LEGENDARY else step
 
 # One random scroll template, rarity-weighted. Falls back to the full pool when
 # the rolled bucket is empty; null only if no scrolls are loaded.
@@ -108,7 +121,7 @@ func roll_scroll(rng: RandomNumberGenerator = null) -> ScrollData:
 	if r == null:
 		r = RandomNumberGenerator.new()
 		r.randomize()
-	var target: int = _roll_scroll_rarity(r)
+	var target: int = roll_rarity_step(r)
 	var bucket: Array = pool.filter(func(s): return s is ScrollData and s.rarity_index() == target)
 	if bucket.is_empty():
 		bucket = pool
@@ -160,56 +173,47 @@ func all_bosses() -> Array:
 func all_items() -> Array:
 	return _items.values()
 
+# --- reward pools ----------------------------------------------------------
+#
+# The catalogs never change after _ready, so the reward pools — and the by-rarity
+# buckets a weighted roll wants — are built once on first use instead of on every
+# draw (a chest roll asks for a bucket up to a hundred times).
+#
+# The returned arrays are the CACHED ones: treat them as read-only and duplicate
+# before mutating.
+var _reward_pool_cache: Dictionary = {}    # "items" | "items2" -> Array[ItemData]
+var _reward_bucket_cache: Dictionary = {}  # "items2:2" -> Array[ItemData]
+
 # Items eligible for random shop / reward / treasure draws. Excludes "starter"
 # items which belong to a character's opening loadout.
 func reward_item_pool() -> Array:
-	var out: Array = []
-	for it in _items.values():
-		if not (it is ItemData):
-			continue
-		if it.starter:
-			continue
-		out.append(it)
-	return out
+	return _reward_pool("items", _items)
 
 # The games-first (2.0) reward pool — the items2.0 relics that drop from a
 # defeated enemy (docs/games-first-redesign.md §8 "the item table IS the reward
 # economy"). Excludes starter items (a character's opening loadout — Burning
 # Blood) so they never re-roll as a drop. The RewardScreen rolls this by rarity.
 func reward_item2_pool() -> Array:
-	var out: Array = []
-	for it in _items2.values():
-		if not (it is ItemData):
-			continue
-		if it.starter:
-			continue
-		out.append(it)
-	return out
+	return _reward_pool("items2", _items2)
 
-# Rarity weights for random item draws (rewards). Mirrors the legacy
-# selectRandomRarity distribution (75 / 20 / 5), with a 10% bump from Rare to
-# Legendary.
-const ITEM_RARITY_WEIGHTS := {
-	ItemData.Rarity.COMMON: 75.0,
-	ItemData.Rarity.UNCOMMON: 20.0,
-	ItemData.Rarity.RARE: 5.0,
-}
+# The 2.0 pool narrowed to one ItemData.Rarity, or the whole pool when that rarity
+# has no items — the fallback every weighted draw wants.
+func reward_item2_pool_of(rarity: int) -> Array:
+	var key: String = "items2:%d" % rarity
+	if not _reward_bucket_cache.has(key):
+		var pool: Array = reward_item2_pool()
+		var bucket: Array = pool.filter(func(it): return int(it.rarity) == rarity)
+		_reward_bucket_cache[key] = pool if bucket.is_empty() else bucket
+	return _reward_bucket_cache[key]
 
-func _roll_item_rarity(rng: RandomNumberGenerator) -> int:
-	var roll: float = rng.randf() * (
-		ITEM_RARITY_WEIGHTS[ItemData.Rarity.COMMON]
-		+ ITEM_RARITY_WEIGHTS[ItemData.Rarity.UNCOMMON]
-		+ ITEM_RARITY_WEIGHTS[ItemData.Rarity.RARE])
-	var r: int
-	if roll < ITEM_RARITY_WEIGHTS[ItemData.Rarity.COMMON]:
-		r = ItemData.Rarity.COMMON
-	elif roll < ITEM_RARITY_WEIGHTS[ItemData.Rarity.COMMON] + ITEM_RARITY_WEIGHTS[ItemData.Rarity.UNCOMMON]:
-		r = ItemData.Rarity.UNCOMMON
-	else:
-		r = ItemData.Rarity.RARE
-	if r == ItemData.Rarity.RARE and rng.randf() < 0.1:
-		r = ItemData.Rarity.LEGENDARY
-	return r
+func _reward_pool(key: String, catalog: Dictionary) -> Array:
+	if not _reward_pool_cache.has(key):
+		var out: Array = []
+		for it in catalog.values():
+			if it is ItemData and not it.starter:
+				out.append(it)
+		_reward_pool_cache[key] = out
+	return _reward_pool_cache[key]
 
 # Draw `count` distinct items using rarity weighting, excluding starters.
 # Falls back across rarities so the result is always filled when possible.
@@ -219,7 +223,7 @@ func roll_weighted_items(count: int, rng: RandomNumberGenerator) -> Array:
 	var attempts: int = 0
 	while out.size() < count and attempts < 200 and not pool.is_empty():
 		attempts += 1
-		var target: int = _roll_item_rarity(rng)
+		var target: int = roll_item_rarity(rng)
 		var bucket: Array = pool.filter(func(it): return int(it.rarity) == target)
 		if bucket.is_empty():
 			bucket = pool

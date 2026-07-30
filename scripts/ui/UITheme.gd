@@ -73,6 +73,31 @@ static func accent_box(accent: Color, bg: Color = PANEL, margin: int = 12) -> St
 	sb.border_width_left = 4
 	return sb
 
+# --- Texture helpers -------------------------------------------------------
+
+# A TextureRect that draws `tex` inside a `size` x `size` box, aspect preserved,
+# and renders it CRISPLY (nearest-neighbour) when the source is smaller than the
+# box — small pixel art scaled up must not blur, while already-large art such as
+# game cover scans keeps smooth filtering.
+static func crisp_tex(tex: Texture2D, size: int) -> TextureRect:
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.custom_minimum_size = Vector2(size, size)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	apply_crisp(tr, tex)
+	return tr
+
+# The same rule applied to an existing TextureRect after its texture is assigned,
+# for art that is set dynamically rather than at build time.
+static func apply_crisp(tr: TextureRect, tex: Texture2D) -> void:
+	var box: Vector2 = tr.custom_minimum_size
+	if tex != null and (tex.get_width() < int(box.x) or tex.get_height() < int(box.y)):
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	else:
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_PARENT_NODE
+
 # --- Theme -----------------------------------------------------------------
 
 # One Theme shared by all 2.0 screens. Assign with `theme = UITheme.make_theme()`
