@@ -111,16 +111,25 @@ func roll_item_rarity(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
 	var step: int = roll_rarity_step(rng, roll01)
 	return ItemData.Rarity.LEGENDARY if step == RarityStep.LEGENDARY else step
 
-# Chest sizes (docs/games-first-redesign.md §8.2) rolled on the same rarity
-# ladder — this is what a "Random Rarity Chest" reward (Poe Ratcho) draws from,
-# so its odds match every other rarity roll in the game: Small = choose 1 of 1,
-# Medium = 1 of 2, Large = 1 of 3, Legendary = 1 of 5.
+# Chest SIZES (docs/games-first-redesign.md §8.2) — what a "Random Sized Chest"
+# reward (the Vampire Survivors characters) draws from. A bigger chest offers more
+# items to choose from, so the size ladder is one step wider at each rung: Small =
+# choose 1 of 1, Medium = 1 of 2, Large = 1 of 3, Huge = 1 of 5. The four sizes sit
+# one-to-one on the rarity ladder above (SMALL..HUGE share its 0-3 ordering), so a
+# size roll is that same 75/20/5-with-a-10%-bump roll — the wording is about the
+# chest's size, not the rarity of the items inside it.
+enum ChestSize { SMALL, MEDIUM, LARGE, HUGE }
 const CHEST_SIZE_CHOICES := {
-	RarityStep.COMMON: 1, RarityStep.UNCOMMON: 2, RarityStep.RARE: 3, RarityStep.LEGENDARY: 5,
+	ChestSize.SMALL: 1, ChestSize.MEDIUM: 2, ChestSize.LARGE: 3, ChestSize.HUGE: 5,
 }
 
+# One size roll, as a ChestSize.
+func roll_chest_size(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
+	return roll_rarity_step(rng, roll01)
+
+# That size as the number of items the chest offers.
 func roll_chest_size_choices(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
-	return CHEST_SIZE_CHOICES[roll_rarity_step(rng, roll01)]
+	return CHEST_SIZE_CHOICES[roll_chest_size(rng, roll01)]
 
 # One random scroll template, rarity-weighted. Falls back to the full pool when
 # the rolled bucket is empty; null only if no scrolls are loaded.

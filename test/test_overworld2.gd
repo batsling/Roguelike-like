@@ -178,8 +178,8 @@ func test_isaac_level_up_grants_a_chest() -> void:
 	_ui.report(false)
 	assert_eq(GameState.pending_chests, chests_before + 1, "Isaac's level-up banks a chest")
 
-func test_poe_level_up_grants_a_rarity_rolled_chest() -> void:
-	_ui.start_run(&"poe_ratcho")                  # reward_type random_rarity_chest
+func test_poe_level_up_grants_a_size_rolled_chest() -> void:
+	_ui.start_run(&"poe_ratcho")                  # reward_type random_sized_chest
 	var chests_before: int = GameState.pending_chests
 	_ui.pick(0)
 	if _ui._levelup_check != null:
@@ -188,7 +188,7 @@ func test_poe_level_up_grants_a_rarity_rolled_chest() -> void:
 	assert_eq(GameState.pending_chests, chests_before + 1, "Poe's level-up banks a chest")
 	var choices: int = GameState.pending_chest_choices.back()
 	assert_true([1, 2, 3, 5].has(choices),
-		"chest size is rarity-rolled: Small=1 / Medium=2 / Large=3 / Legendary=5, got %d" % choices)
+		"chest SIZE is rolled: Small=1 / Medium=2 / Large=3 / Huge=5, got %d" % choices)
 
 func test_dash_offers_every_connected_game_and_spends_a_charge() -> void:
 	GameState.dash_charges = 1

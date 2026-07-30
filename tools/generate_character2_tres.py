@@ -17,7 +17,7 @@ level_up_reward_type here).
 Health -> base_max_hp (a 2.0 run's tiny Health/Max Health reuse hp/max_hp).
 Bash/Dash/Push/Transmute/Scramble/Bombs/Keys -> start_* fields.
 Reward -> level_up_stats (verb / max_hp gains) + level_up_reward_type
-          (Small Chest -> item; Random Rarity Chest -> random_rarity_chest;
+          (Small Chest -> item; Random Sized Chest -> random_sized_chest;
           Scroll -> scroll).
 Starting items -> slugged item ids (resolved against data/items2.0/).
 
@@ -102,9 +102,10 @@ def parse_reward(raw):
 
     Max Health / verb gains go into level_up_stats (applied by
     GameState.apply_level_up_stats — max_hp both raises the cap and heals). A
-    Small Chest -> the &"item" reward flow; a Random Rarity Chest -> the
-    &"random_rarity_chest" flow (Poe Ratcho — chest SIZE is rarity-rolled at
-    runtime, see Data.roll_chest_size_choices); a Scroll -> a &"scroll" reward.
+    Small Chest -> the &"item" reward flow; a Random Sized Chest -> the
+    &"random_sized_chest" flow (the Vampire Survivors characters — the chest's
+    SIZE is rolled at runtime, see Data.roll_chest_size_choices); a Scroll -> a
+    &"scroll" reward.
     A character whose whole reward is a stat gain has reward_type &"none".
     """
     s = ("" if raw is None else str(raw)).strip()
@@ -116,11 +117,11 @@ def parse_reward(raw):
         n = _find_amt(s, verb + r"\b")
         if n:
             stats[key] = n
-    random_chest = _find_amt(s, r"Random Rarity Chest")
+    random_chest = _find_amt(s, r"Random Sized Chest")
     chest = _find_amt(s, r"Small Chest") or _find_amt(s, r"Chest")
     scroll = _find_amt(s, r"Scroll")
     if random_chest:
-        return stats, "random_rarity_chest", random_chest
+        return stats, "random_sized_chest", random_chest
     if chest:
         return stats, "item", chest
     if scroll:
