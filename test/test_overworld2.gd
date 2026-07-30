@@ -366,6 +366,23 @@ func test_the_tracker_is_only_live_while_a_game_is_in_play() -> void:
 	_ui.report(true)
 	assert_true(_ui._attempt_btn.disabled, "reported -> closed again")
 
+# Between games the pool is empty, so the HUD previews the grant of whatever card
+# you're pointing at — the number is part of the routing decision.
+func test_the_hud_previews_the_hovered_games_grant() -> void:
+	assert_true(_ui._hud.text.contains("[b]Shields[/b] 0"),
+		"nothing hovered -> the live (empty) pool: %s" % _ui._hud.text)
+	_ui._show_preview(0)                          # hovering the first card
+	var grant: int = GameLoop2.shields_for_game(_ui._choices[0]["game"])
+	assert_true(_ui._hud.text.contains("+%d" % grant),
+		"hovering previews what that game grants: %s" % _ui._hud.text)
+	_ui._clear_hover_grant()                      # mouse left the card
+	assert_true(_ui._hud.text.contains("[b]Shields[/b] 0"),
+		"and it can't advertise a game you're not pointing at: %s" % _ui._hud.text)
+	# Once a game is in play the slot is the live pool again, hover or not.
+	_ui.pick(0)
+	assert_true(_ui._hud.text.contains("[b]Shields[/b] %d" % GameState.shields),
+		"in play it's the real count: %s" % _ui._hud.text)
+
 func test_the_offering_shows_the_tries_each_game_grants() -> void:
 	var labels: Array = []
 	for card in _ui._choices_row.get_children():

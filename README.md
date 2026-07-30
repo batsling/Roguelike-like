@@ -270,10 +270,12 @@ re-run them after pulling and review the diff.
   before you play, not a reward afterwards. The report step and the battlefield are
   now **one panel**: the board on top, then the attempt strip, a tightened
   one-line-per-row checklist, and Completed Game. Outside a game the board is put
-  away behind a **⚔ Board (N)** button in the header, so choosing a game is the
-  only thing on screen. The board draws the pool as **pips on the hero** and a tick
-  pops one with a floating `-1 ◆` — or flashes the hero red for `-1 ♥` once the
-  shields are gone — and each offered card shows the tries it grants.
+  away behind a **Board (N)** button in the header (the count is what's following
+  you), so choosing a game is the only thing on screen. The board draws the pool as
+  **pips on the hero** and a tick pops one with a floating `-1 ◆` — or flashes the
+  hero red for `-1 ♥` once the shields are gone. Each offered card shows the tries
+  it grants, and since the pool is empty between games, hovering a card previews
+  that grant in the HUD's Shields slot (`Shields +5`) instead of a flat 0.
 
 - **Rating on a button, a bonus for rematches, revisits that redraw, and pickups
   that show their effects** — the tier-list prompt no longer pops itself up after

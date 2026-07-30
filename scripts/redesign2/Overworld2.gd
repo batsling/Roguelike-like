@@ -109,6 +109,11 @@ var _scroll: ScrollContainer
 # Outside a game the board is put away; this button brings it back (§ the toggle).
 var _board_btn: Button
 var _show_board: bool = false
+# The shield grant of the card the mouse is over, or -1 when nothing is. Between
+# games the pool is empty, so the HUD's Shields slot previews what the game you're
+# pointing at would hand you instead of reading a flat 0 — the grant is part of the
+# routing decision (a Traditional roguelike is worth 5).
+var _hover_grant: int = -1
 # Attempt tracker (§3) — the tries at the game in play.
 var _attempt_count: Label
 var _attempt_pips: Label
@@ -224,12 +229,13 @@ func pick(index: int) -> void:
 	# Move to the graph SLOT (a transmuted card plays an off-graph game but keeps
 	# its position on the route toward the amulet).
 	GameState.set_current_game(_chosen["slot"])
+	_hover_grant = -1
 	_phase = Phase.PLAYING
 	_populate_play_panel()
 	_refresh()
-	# The attempt tracker and the checklist are what you drive from here, so bring
-	# them into view rather than making the player scroll past the board first.
-	_scroll_to(_play_panel)
+	# The board is the hero of the playing screen, so land on it: the page stays at
+	# the top and the checklist under the grid is a scroll away.
+	_scroll_to_top()
 
 # The attempt tracker (§3): the player ticks this every time they LOSE a run of
 # the game they're playing. Each try spends a shield; once the shields are gone a
@@ -410,8 +416,7 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	_build_choices()
 	_refresh()
 	# Back to the offering — that's the decision now, so put it back on screen.
-	if _scroll != null:
-		_scroll.set_deferred("scroll_vertical", 0)
+	_scroll_to_top()
 	# Repaint first, then replay the strike + advance from the snapshot: the board
 	# is already in its final state, the animation just shows how it got there.
 	_board.animate_resolve(before, res)
@@ -711,12 +716,11 @@ func _refresh(_a = null) -> void:
 		var game: GameData = _chosen.get("game")
 		_now_playing_cover.texture = game.cover_image if game != null else null
 
-# Scroll `target` into view once the layout has settled (a freshly-populated panel
-# has no rect until the next frame).
-func _scroll_to(target: Control) -> void:
-	if _scroll == null or target == null or not is_inside_tree():
-		return
-	_scroll.call_deferred("ensure_control_visible", target)
+# Put the page back at the top. Both phase changes want it: picking a game lands
+# you on the board, reporting lands you back on the offering.
+func _scroll_to_top() -> void:
+	if _scroll != null:
+		_scroll.set_deferred("scroll_vertical", 0)
 
 # Show the battlefield outside a game, or put it away again. Forced on while a game
 # is in play (that's when the board matters most), so the button only acts on the
@@ -781,6 +785,8 @@ func _render_controls() -> void:
 
 func _render_choices() -> void:
 	_clear(_choices_row)
+	# The cards are rebuilt, so nothing is hovered any more.
+	_hover_grant = -1
 	if _choices.is_empty():
 		var l := Label.new()
 		l.text = "No reachable games — dead end."
@@ -834,6 +840,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	btn.add_theme_stylebox_override("focus", frame_h)
 	btn.pressed.connect(func(): pick(index))
 	btn.mouse_entered.connect(func(): _show_preview(index))
+	btn.mouse_exited.connect(_clear_hover_grant)
 	if game.cover_image != null:
 		var art := TextureRect.new()
 		art.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1045,6 +1052,17 @@ func _show_preview(index: int) -> void:
 	var tex: Texture2D = _enemy_texture(_choices[index])
 	_preview_img.texture = tex
 	UITheme.apply_crisp(_preview_img, tex)
+	# The HUD previews this game's shield grant while the mouse is on it.
+	_hover_grant = GameLoop2.shields_for_game(_choices[index]["game"])
+	_refresh_hud()
+
+# The mouse left a card: the enemy preview stays (it's a reference panel), but the
+# HUD's grant preview goes, so it can never advertise a game you're not pointing at.
+func _clear_hover_grant() -> void:
+	if _hover_grant < 0:
+		return
+	_hover_grant = -1
+	_refresh_hud()
 
 # The enemy's art (§10.1) for a choice, or null when there's no enemy.
 func _enemy_texture(choice: Dictionary) -> Texture2D:
@@ -1077,9 +1095,18 @@ func _now_playing_text() -> String:
 		return ""
 	return "[b]Now playing:[/b] %s\n%s" % [_chosen["game"].display_name, _enemy_preview_text(_chosen)]
 
+# The HUD's Shields slot. While a game is in play it's the live pool. While you're
+# choosing, the pool is empty (they expired with the last game), so hovering a card
+# previews what THAT game would grant — the number is part of the choice, not a
+# flat 0 that reads as "you're out".
+func _hud_shields() -> String:
+	if _phase == Phase.SELECT and _hover_grant >= 0:
+		return "[b]Shields[/b] [color=#%s]+%d[/color]" % [SHIELD_BLUE.to_html(false), _hover_grant]
+	return "[b]Shields[/b] %d" % GameState.shields
+
 func _hud_text() -> String:
-	return "[b]Health[/b] %d/%d   [b]Shields[/b] %d      [b]Tier[/b] %s      [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Push[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d  [b]Scrolls[/b] %d   [b]Chests[/b] %d" % [
-		GameState.hp, GameState.max_hp, GameState.shields,
+	return "[b]Health[/b] %d/%d   %s      [b]Tier[/b] %s      [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Push[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d  [b]Scrolls[/b] %d   [b]Chests[/b] %d" % [
+		GameState.hp, GameState.max_hp, _hud_shields(),
 		RunDifficulty.tier_name(_current_tier()),
 		GameState.bash, GameState.dash_charges, GameState.push, GameState.transmute,
 		GameState.scramble, GameState.bombs, GameState.keys,

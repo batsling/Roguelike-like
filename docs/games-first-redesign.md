@@ -111,13 +111,14 @@ How it already works in the project (to be kept):
 A roguelike is not beaten in one run, so **shields are how many runs you get**:
 
 - **Selecting a game grants them** — **3** for any game, **5** for a
-  **Traditional** roguelike (the long haul). Items hooked on *"when a game is
-  selected"* add to the grant, which is what **Anchor** now does (+1 Shield): the
-  extra try has to arrive *before* you go and play.
+  **Traditional** roguelike (the long haul); nothing else moves the number, so it
+  reads straight off the game's type. Items hooked on *"when a game is selected"*
+  add to the grant, which is what **Anchor** now does (+1 Shield): the extra try
+  has to arrive *before* you go and play. The grant is part of the routing
+  decision, so it's on every offered card and previews in the HUD on hover.
 - **Every run of that game you LOSE is one tick of the attempt tracker**, and each
-  tick **spends a shield**. The tracker lives on the report panel next to the
-  board, and the board draws the pool as pips on the hero, so ticking visibly
-  drains it.
+  tick **spends a shield**. The tracker lives under the board on the report panel,
+  and the board draws the pool as pips on the hero, so ticking visibly drains it.
 - **Out of shields, a lost run costs 1 Health** — and Health reaching 0 ends the
   run right there, exactly like an enemy hit.
 - **Whatever is left when you report the game absorbs the followers' hits** before
@@ -125,7 +126,11 @@ A roguelike is not beaten in one run, so **shields are how many runs you get**:
   cleared first try does not arm you for the next one.
 
 The tension is *spend your tries getting the goal done → what you didn't need is
-the armour that carries you through the enemies you left alive.*
+the armour that carries you through the enemies you left alive.* A game cleared
+first try leaves the whole pool standing, so the stack can't touch you; a game that
+fights back leaves you open to it. **Health is meant to be hard to reach while
+you're playing well** — the followers' 1–3 damage is a threat to a player who is
+burning tries, not to one who isn't.
 
 ---
 
