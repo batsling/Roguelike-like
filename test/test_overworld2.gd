@@ -394,24 +394,35 @@ func test_the_offering_shows_the_tries_each_game_grants() -> void:
 
 # --- the board / checklist stage -------------------------------------------
 
-func test_the_board_is_put_away_while_choosing_and_shown_in_play() -> void:
-	# Choosing a game: the offering is the screen, the board is behind the button.
+# The board is never hidden — it just moves. Choosing a game, it sits at the
+# bottom of the page under the offering; playing one, it stands in the right
+# column with the checklist beside it.
+func test_the_board_moves_to_the_page_bottom_between_games() -> void:
 	assert_true(_ui._select_box.visible, "the offering is up")
-	assert_false(_ui._board.visible, "the board is put away")
-	assert_true(_ui._board_btn.visible, "with a button to bring it back")
-	assert_false(_ui._play_panel.visible, "and nothing to report yet")
-	# The button toggles it without touching the offering.
-	_ui.toggle_board()
-	assert_true(_ui._board.visible, "the button shows the board")
-	assert_true(_ui._select_box.visible, "the offering stays up alongside it")
-	_ui.toggle_board()
-	assert_false(_ui._board.visible, "and puts it away again")
+	assert_true(_ui._board.visible, "and the board is on screen with it")
+	assert_eq(_ui._stage_panel.get_parent(), _ui._left_col,
+		"parked at the bottom of the page while you choose")
+	assert_false(_ui._play_panel.visible, "nothing to report yet")
 	# Playing a game: checklist left, board right, offering gone.
 	_ui.pick(0)
-	assert_true(_ui._board.visible, "the board is forced up while a game is in play")
+	assert_true(_ui._board.visible)
+	assert_eq(_ui._stage_panel.get_parent(), _ui._right_col,
+		"the board moves up beside the checklist for the game")
+	assert_eq(_ui._stage_panel.get_index(), 0, "above the pack in that column")
 	assert_true(_ui._play_panel.visible, "with the report checklist beside it")
 	assert_false(_ui._select_box.visible, "the offering is out of the way")
-	assert_false(_ui._board_btn.visible, "and the toggle is irrelevant here")
+	# Reporting sends it back down.
+	_ui.report(true)
+	assert_eq(_ui._stage_panel.get_parent(), _ui._left_col,
+		"and back to the bottom once the game is done")
+
+func test_the_parked_board_is_actually_below_the_offering() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_gt(_ui._board.global_position.y, _ui._choices_row.global_position.y,
+		"the board is drawn under the cards, not over them")
+	assert_lt(_ui._board.global_position.x, _ui._pack_col.global_position.x,
+		"and it takes the room the checklist isn't using, left of the pack")
 
 # The stage is two columns: what you tick on the left, what you look at on the
 # right — board first, the pack under it.
@@ -434,16 +445,19 @@ func test_the_checklist_sits_left_of_the_board_with_the_pack_below() -> void:
 	assert_gt(_ui._pack_col.global_position.y, _ui._board.global_position.y,
 		"the pack is drawn below the board")
 
-func test_the_pack_stays_reachable_while_choosing() -> void:
-	assert_false(_ui._board.visible, "the board is put away between games")
-	assert_true(_ui._pack_col.visible, "but the inventory never goes away")
+func test_the_pack_stays_in_the_right_column_in_both_phases() -> void:
+	assert_true(_ui._right_col.is_ancestor_of(_ui._pack_col), "choosing: the pack is on the right")
+	assert_true(_ui._pack_col.visible, "and the inventory never goes away")
+	_ui.pick(0)
+	assert_true(_ui._right_col.is_ancestor_of(_ui._pack_col), "playing: it stays there")
+	assert_true(_ui._pack_col.visible)
 
-func test_the_board_button_counts_the_followers() -> void:
+func test_the_summary_line_counts_the_followers() -> void:
 	_ui.pick(0)
 	_ui.report(false)                    # a missed goal leaves one following
 	assert_eq(GameLoop2.stack.size(), 1)
-	assert_true(_ui._board_btn.text.contains("1"),
-		"a hidden board still says what's out there: %s" % _ui._board_btn.text)
+	assert_true(_ui._stack.text.contains("1 closing in"),
+		"the board's own heading says what's out there: %s" % _ui._stack.text)
 
 # --- rating is a button, never a pop-up -----------------------------------
 

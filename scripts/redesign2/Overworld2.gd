@@ -110,9 +110,6 @@ var _scrolls_wrap: VBoxContainer
 # top, so picking a game scrolls the report half into reach (the board is a scroll
 # up from there) and reporting scrolls back to the offering.
 var _scroll: ScrollContainer
-# Outside a game the board is put away; this button brings it back (§ the toggle).
-var _board_btn: Button
-var _show_board: bool = false
 # The shield grant of the card the mouse is over, or -1 when nothing is. Between
 # games the pool is empty, so the HUD's Shields slot previews what the game you're
 # pointing at would hand you instead of reading a flat 0 — the grant is part of the
@@ -726,37 +723,35 @@ func _scroll_to_top() -> void:
 	if _scroll != null:
 		_scroll.set_deferred("scroll_vertical", 0)
 
-# Show the battlefield outside a game, or put it away again. Forced on while a game
-# is in play (that's when the board matters most), so the button only acts on the
-# select / run-over screens.
-func toggle_board() -> void:
-	_show_board = not _show_board
-	_refresh_stage()
-
-# Who gets the stage right now. While a game is in play it's the checklist on the
-# left and the board on the right. While choosing, the offering is the screen and
-# the board is put away behind the header button — one click away, with the
-# follower count on the button so a hidden board can't hide bad news. The pack
-# under the board never goes away: the inventory is reachable in every phase.
+# Who gets the stage right now. The board is ALWAYS on screen; what changes is
+# where. While a game is in play it stands in the right column with the checklist
+# beside it — the two things you're working between. While you're choosing, the
+# offering is the decision, so the board drops to the bottom of the page: still
+# there, still readable, just not competing with the cards. The pack rides the
+# right column in both, since the inventory is reachable in every phase.
 func _refresh_stage() -> void:
 	if _stage_panel == null:
 		return
 	var playing: bool = _phase == Phase.PLAYING
-	var board_on: bool = playing or _show_board
 	_select_box.visible = _phase == Phase.SELECT
 	_scrolls_wrap.visible = _phase == Phase.SELECT
-	_board.visible = board_on
-	_board_head.visible = board_on
 	_play_panel.visible = playing
 	_report_panel.visible = playing
-	_stage_panel.visible = board_on
-	_board_btn.visible = not playing
-	var following: int = GameLoop2.stack.size()
-	if _show_board:
-		_board_btn.text = "Hide board"
-	else:
-		_board_btn.text = ("Board (%d)" % following) if following > 0 else "Board"
-	_board_btn.tooltip_text = ("%d enemy(s) following you." % following) if following > 0 else "Nothing following you."
+	# Playing: the board stands in the right column, above the pack, with the
+	# checklist beside it. Choosing: the checklist is gone, so the board drops into
+	# the room it leaves — the bottom of the page, under the offering, with the pack
+	# still on its right.
+	_move_board(_right_col if playing else _left_col, playing)
+
+# Re-home the board panel when the phase changes. `first` keeps it above the pack
+# in the right column; in the left column it follows the (hidden) checklist panel.
+func _move_board(want: Node, first: bool) -> void:
+	if _stage_panel.get_parent() == want:
+		return
+	_stage_panel.get_parent().remove_child(_stage_panel)
+	want.add_child(_stage_panel)
+	if first:
+		want.move_child(_stage_panel, 0)
 
 func _render_controls() -> void:
 	_clear(_controls_row)
@@ -1344,9 +1339,8 @@ func _show_banner(text: String, color: Color) -> void:
 	_banner.add_theme_color_override("font_color", color)
 	_banner.show()
 	_boss_banner.get_parent().visible = false
-	# The run is over: the offering and the report step are done with, but the board
-	# stays available so the field the run ended on can still be read.
-	_show_board = true
+	# The run is over: the offering and the report step are done with, and the board
+	# drops to the page bottom showing the field the run ended on.
 	_refresh_stage()
 	_refresh_attempts()
 	# The run is over, so any loot still on the ground is gone with it.
@@ -1386,12 +1380,6 @@ func _build_ui() -> void:
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
-	# Outside a game the board is put away — the offering is the decision on screen —
-	# but the followers closing in are never more than one click from view, and the
-	# button's own label carries how many there are.
-	_board_btn = Button.new()
-	_board_btn.pressed.connect(toggle_board)
-	header.add_child(_board_btn)
 	var map_btn := Button.new()
 	map_btn.text = "🗺 Map"
 	map_btn.pressed.connect(open_map)

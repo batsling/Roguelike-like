@@ -272,10 +272,11 @@ re-run them after pulling and review the diff.
   **two columns**: on the left what you drive — the game, Play / Rate, the attempt
   strip, a tightened one-line-per-row checklist and Completed Game — and on the
   right what you read, the **battlefield with the pack (inventory + loot) under
-  it**. Both halves fit one screen, where stacking them didn't. Outside a game the
-  board is put away behind a **Board (N)** button in the header (the count is
-  what's following you), so choosing a game is the only thing on screen; the
-  inventory stays put. The board draws the pool as
+  it**. Both halves fit one screen, where stacking them didn't. Between games the
+  checklist half is empty, so the **board drops into the room it leaves** — the
+  bottom of the page under the offering, with the pack still on its right. It is
+  never hidden: the enemies closing in are always on screen, just never competing
+  with the cards. The board draws the pool as
   **pips on the hero** and a tick pops one with a floating `-1 ◆` — or flashes the
   hero red for `-1 ♥` once the shields are gone. Each offered card shows the tries
   it grants, and since the pool is empty between games, hovering a card previews
