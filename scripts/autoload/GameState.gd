@@ -590,7 +590,7 @@ func remove_active_curse(curse_id: StringName) -> CurseData:
 var pending_chests: int = 0
 
 # Per-chest choice count, one entry per pending chest, in grant order (§8.2:
-# Small = 1 / Regular = 2 / Large = 3 items offered). Kept in lock-step with
+# Small = 1 / Regular = 2 / Large = 3 / Legendary = 5 items offered). Kept in lock-step with
 # pending_chests so the RewardScreen knows how many items to roll for the chest
 # it's opening. `pending_chests` stays the authoritative count (tests read it).
 var pending_chest_choices: Array[int] = []

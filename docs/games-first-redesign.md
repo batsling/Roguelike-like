@@ -396,9 +396,14 @@ the number of choices offered:
 | **Small** | 1 item (no choice) |
 | **Regular** | pick 1 of 2 |
 | **Large** | pick 1 of 3 |
+| **Legendary** | pick 1 of 5 |
 
 Level-up rewards (`+1 Small Chest`) and drops both mint chests through this same
-flow.
+flow. A **`+1 Random Rarity Chest`** reward (Poe Ratcho) rolls the chest's SIZE
+on the same rarity ladder as every other rarity draw in the game
+(`Data.roll_rarity_step` — 75% Common / 20% Uncommon / 5% Rare, Rare has a 10%
+chance to bump to Legendary), mapped Common→Small, Uncommon→Regular,
+Rare→Large, Legendary→Legendary (`Data.CHEST_SIZE_CHOICES`).
 
 ---
 

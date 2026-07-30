@@ -111,6 +111,17 @@ func roll_item_rarity(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
 	var step: int = roll_rarity_step(rng, roll01)
 	return ItemData.Rarity.LEGENDARY if step == RarityStep.LEGENDARY else step
 
+# Chest sizes (docs/games-first-redesign.md §8.2) rolled on the same rarity
+# ladder — this is what a "Random Rarity Chest" reward (Poe Ratcho) draws from,
+# so its odds match every other rarity roll in the game: Small = choose 1 of 1,
+# Medium = 1 of 2, Large = 1 of 3, Legendary = 1 of 5.
+const CHEST_SIZE_CHOICES := {
+	RarityStep.COMMON: 1, RarityStep.UNCOMMON: 2, RarityStep.RARE: 3, RarityStep.LEGENDARY: 5,
+}
+
+func roll_chest_size_choices(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
+	return CHEST_SIZE_CHOICES[roll_rarity_step(rng, roll01)]
+
 # One random scroll template, rarity-weighted. Falls back to the full pool when
 # the rolled bucket is empty; null only if no scrolls are loaded.
 func roll_scroll(rng: RandomNumberGenerator = null) -> ScrollData:

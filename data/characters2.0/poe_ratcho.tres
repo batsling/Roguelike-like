@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=4 format=3 uid="uid://char2_poe_ratcho"]
+
+[ext_resource type="Script" path="res://scripts/resources/CharacterData.gd" id="1_char"]
+[ext_resource type="Texture2D" path="res://images2.0/characters/Full/PoeRatcho.png" id="2_portrait"]
+[ext_resource type="Texture2D" path="res://images2.0/characters/Icon/PoeRatcho.png" id="3_icon"]
+
+[resource]
+script = ExtResource("1_char")
+id = &"poe_ratcho"
+display_name = "Poe Ratcho"
+description = "A malodorous hero"
+source_game = "Vampire Survivors"
+base_max_hp = 10
+start_bash = 0
+start_dash = 0
+start_push = 0
+start_transmute = 0
+start_scramble = 0
+start_bombs = 0
+start_keys = 0
+starting_items = Array[StringName]([&"pummarola"])
+starting_weapon = &""
+level_up_condition = "Stink"
+level_up_reward = "Gain +1 Random Rarity Chest"
+level_up_stats = {}
+level_up_reward_type = &"random_rarity_chest"
+level_up_reward_amount = 1
+file = "PoeRatcho"
+portrait = ExtResource("2_portrait")
+icon = ExtResource("3_icon")
