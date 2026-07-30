@@ -394,35 +394,59 @@ func test_the_offering_shows_the_tries_each_game_grants() -> void:
 
 # --- the board / checklist stage -------------------------------------------
 
-# The board is never hidden — it just moves. Choosing a game, it sits at the
-# bottom of the page under the offering; playing one, it stands in the right
-# column with the checklist beside it.
-func test_the_board_moves_to_the_page_bottom_between_games() -> void:
-	assert_true(_ui._select_box.visible, "the offering is up")
-	assert_true(_ui._board.visible, "and the board is on screen with it")
-	assert_eq(_ui._stage_panel.get_parent(), _ui._left_col,
-		"parked at the bottom of the page while you choose")
-	assert_false(_ui._play_panel.visible, "nothing to report yet")
-	# Playing a game: checklist left, board right, offering gone.
+# The stage keeps its shape in both phases — checklist left, board right — so the
+# board is never hidden and the checklist never appears from nowhere. Only the
+# checklist's contents and the report-only controls change.
+func test_the_stage_keeps_its_shape_in_both_phases() -> void:
+	assert_true(_ui._select_box.visible, "the offering is up while choosing")
+	assert_true(_ui._board.visible, "the board is on screen with it")
+	assert_true(_ui._play_panel.visible, "and so is the checklist")
+	assert_eq(_ui._stage_panel.get_parent(), _ui._right_col, "board on the right")
+	assert_false(_ui._done_btn.visible, "but there's no game to complete yet")
+	assert_false(_ui._attempt_wrap.visible, "and no runs to be losing")
+	assert_false(_ui._np_box.visible, "and nothing being played")
 	_ui.pick(0)
-	assert_true(_ui._board.visible)
-	assert_eq(_ui._stage_panel.get_parent(), _ui._right_col,
-		"the board moves up beside the checklist for the game")
-	assert_eq(_ui._stage_panel.get_index(), 0, "above the pack in that column")
-	assert_true(_ui._play_panel.visible, "with the report checklist beside it")
+	assert_eq(_ui._stage_panel.get_parent(), _ui._right_col, "the board hasn't moved")
+	assert_eq(_ui._stage_panel.get_index(), 0, "still above the pack in that column")
+	assert_true(_ui._play_panel.visible, "the checklist is now the report step")
+	assert_true(_ui._done_btn.visible, "with something to complete")
+	assert_true(_ui._attempt_wrap.visible, "and runs to lose")
 	assert_false(_ui._select_box.visible, "the offering is out of the way")
-	# Reporting sends it back down.
-	_ui.report(true)
-	assert_eq(_ui._stage_panel.get_parent(), _ui._left_col,
-		"and back to the bottom once the game is done")
 
-func test_the_parked_board_is_actually_below_the_offering() -> void:
-	await get_tree().process_frame
-	await get_tree().process_frame
-	assert_gt(_ui._board.global_position.y, _ui._choices_row.global_position.y,
-		"the board is drawn under the cards, not over them")
-	assert_lt(_ui._board.global_position.x, _ui._pack_col.global_position.x,
-		"and it takes the room the checklist isn't using, left of the pack")
+# Choosing a game, the checklist lists the goals already on you: the character's
+# level-up challenge and every follower's outstanding goal.
+func test_the_standing_checklist_lists_what_you_owe() -> void:
+	_ui.start_run(&"isaac")                       # Isaac has a level-up condition
+	var texts := func() -> String:
+		var out: Array = []
+		for row in _ui._verify_box.get_children():
+			if row is Label:
+				out.append(String((row as Label).text))
+			for child in row.get_children():
+				if child is Label:
+					out.append(String((child as Label).text))
+		return "\n".join(out)
+	var listed: String = texts.call()
+	assert_true(listed.contains("What you need to do"), "the panel says what it is: %s" % listed)
+	assert_true(listed.contains("Unlock a new Item"), "the level-up challenge is listed: %s" % listed)
+	assert_true(listed.contains("Nothing is following you"), "and an empty stack says so: %s" % listed)
+	# Miss a goal so an enemy follows: its goal joins the list.
+	_ui.pick(0)
+	_ui.report(false)
+	var follower: GoalEnemyData = GameLoop2.stack[0]["enemy"]
+	listed = texts.call()
+	assert_true(listed.contains(follower.goal),
+		"the follower's outstanding goal is listed: %s" % listed)
+	assert_false(listed.contains("Nothing is following you"), "and the empty note is gone")
+
+func test_the_standing_checklist_has_no_tick_boxes() -> void:
+	# Nothing is reportable until a game is in play, so the standing list is rows.
+	for row in _ui._verify_box.get_children():
+		for child in row.get_children():
+			assert_false(child is CheckBox, "the standing list is read-only")
+	assert_eq(_ui._fulfil_checks.size(), 0, "and holds no fulfilment state")
+	assert_null(_ui._goal_check)
+	assert_null(_ui._levelup_check)
 
 # The stage is two columns: what you tick on the left, what you look at on the
 # right — board first, the pack under it.

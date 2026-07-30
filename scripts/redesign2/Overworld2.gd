@@ -121,6 +121,12 @@ var _attempt_pips: Label
 var _attempt_hint: Label
 var _attempt_btn: Button
 var _attempt_undo: Button
+# The parts of the checklist panel that need a game in hand: the now-playing row,
+# the attempt strip and the Completed Game button. Hidden while you're choosing,
+# where the panel is the standing-goals list instead.
+var _np_box: HBoxContainer
+var _attempt_wrap: Control
+var _done_btn: Button
 # The board itself (§grid): the player on the left, a GRID_COLS x GRID_ROWS grid on
 # the right where enemies close in one column per game beaten (MMBN-style). It's a
 # BattlefieldView — a view over GameLoop2 that reports Push / Bomb / inspect back
@@ -707,6 +713,11 @@ func _refresh(_a = null) -> void:
 	if _phase == Phase.SELECT:
 		_render_controls()
 		_render_choices()
+		# The standing goals change with the stack (a bomb, a fulfilment, a scroll),
+		# so they're rebuilt with the rest of the screen. Safe here because nothing
+		# in this list is a tick box holding player input — that only exists in the
+		# report step, which _refresh deliberately doesn't touch.
+		_populate_standing_checklist()
 	elif _phase == Phase.PLAYING:
 		_now_playing.text = _now_playing_text()
 		var np_tex: Texture2D = null if _chosen.is_empty() else _enemy_texture(_chosen)
@@ -723,35 +734,25 @@ func _scroll_to_top() -> void:
 	if _scroll != null:
 		_scroll.set_deferred("scroll_vertical", 0)
 
-# Who gets the stage right now. The board is ALWAYS on screen; what changes is
-# where. While a game is in play it stands in the right column with the checklist
-# beside it — the two things you're working between. While you're choosing, the
-# offering is the decision, so the board drops to the bottom of the page: still
-# there, still readable, just not competing with the cards. The pack rides the
-# right column in both, since the inventory is reachable in every phase.
+# The stage is the same shape in both phases — checklist left, board (and the pack
+# under it) right — because both halves matter whether or not a game is in play.
+# What changes is the checklist's CONTENT: while you're choosing it lists the goals
+# already on you (§ _populate_standing_checklist), and while you're playing it
+# becomes the report step for the game in hand. The offering sits above the pair
+# and disappears once you've committed.
 func _refresh_stage() -> void:
 	if _stage_panel == null:
 		return
-	var playing: bool = _phase == Phase.PLAYING
 	_select_box.visible = _phase == Phase.SELECT
 	_scrolls_wrap.visible = _phase == Phase.SELECT
-	_play_panel.visible = playing
-	_report_panel.visible = playing
-	# Playing: the board stands in the right column, above the pack, with the
-	# checklist beside it. Choosing: the checklist is gone, so the board drops into
-	# the room it leaves — the bottom of the page, under the offering, with the pack
-	# still on its right.
-	_move_board(_right_col if playing else _left_col, playing)
-
-# Re-home the board panel when the phase changes. `first` keeps it above the pack
-# in the right column; in the left column it follows the (hidden) checklist panel.
-func _move_board(want: Node, first: bool) -> void:
-	if _stage_panel.get_parent() == want:
-		return
-	_stage_panel.get_parent().remove_child(_stage_panel)
-	want.add_child(_stage_panel)
-	if first:
-		want.move_child(_stage_panel, 0)
+	_play_panel.visible = _phase != Phase.OVER
+	_report_panel.visible = _phase != Phase.OVER
+	# The report-only parts of the panel: without a game in hand there is nothing to
+	# launch, retry or complete.
+	var playing: bool = _phase == Phase.PLAYING
+	_np_box.visible = playing
+	_attempt_wrap.visible = playing
+	_done_btn.visible = playing
 
 func _render_controls() -> void:
 	_clear(_controls_row)
@@ -953,6 +954,60 @@ func _populate_play_panel() -> void:
 		var row := _verify_row("Also cleared: %s — %s" % [e.display_name, e.goal], UITheme.TEXT, false)
 		_verify_box.add_child(row["row"])
 		_fulfil_checks.append({"check": row["check"], "instance": int(entry["instance"])})
+
+# The checklist while you're CHOOSING: the goals already on you — the character's
+# level-up challenge, and every follower's outstanding goal (any of which you may
+# clear during whatever game you pick next, §2). Answering "what do I need to do?"
+# belongs BEFORE you commit to a game, not only after, so the panel keeps its place
+# beside the board instead of appearing out of nowhere on pick.
+#
+# Read-only by design: there is nothing to report until a game is in play, so these
+# are rows rather than tick boxes.
+func _populate_standing_checklist() -> void:
+	_clear(_launch_row)
+	_clear(_verify_box)
+	_fulfil_checks.clear()
+	_levelup_check = null
+	_goal_check = null
+	_verify_box.add_child(_verify_head("What you need to do:"))
+
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch != null and ch.level_up_condition != "":
+		var lu_text: String = "Level up — %s" % ch.level_up_condition
+		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
+			lu_text += "   → %s" % ch.level_up_reward
+		_verify_box.add_child(_objective_row(lu_text, UITheme.GOLD))
+
+	# Followers, tinted the way the board tints them: the ones in the front column
+	# are the goals worth clearing first, because they hit next game.
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry["enemy"]
+		var urgent: bool = GameLoop2.in_front(entry)
+		var tint: Color = UITheme.DANGER if urgent else UITheme.GOLD.lerp(UITheme.TEXT, 0.4)
+		# "dmg N" in words: the board's ⚔ badge is a fine-detail glyph that reads as
+		# an ✕ at list-row sizes.
+		_verify_box.add_child(_objective_row(
+			"%s — %s   (dmg %d)" % [e.display_name, e.goal, e.damage], tint))
+
+	if GameLoop2.stack.is_empty():
+		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")
+		_verify_box.add_child(none)
+
+# One read-only checklist row: the same frame the tick-box rows use, without the
+# box, so the standing list and the report step read as the same list in two
+# states.
+func _objective_row(text: String, color: Color) -> Control:
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 1, color.lerp(UITheme.BORDER, 0.35)))
+	var l := Label.new()
+	l.text = "•  " + text
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", color)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wrap.add_child(l)
+	return wrap
 
 # Whether the chosen game's MAIN goal was met — true when its checkbox is ticked,
 # or when the game had no enemy/goal to meet (a free game auto-clears).
@@ -1506,7 +1561,8 @@ func _build_ui() -> void:
 
 	# One tight row: the cover, the enemy, and the goal text — sized down from the
 	# old card, because the board beside it is the biggest thing on the page.
-	var np_box := HBoxContainer.new()
+	_np_box = HBoxContainer.new()
+	var np_box := _np_box
 	np_box.add_theme_constant_override("separation", 10)
 	_now_playing_cover = TextureRect.new()
 	_now_playing_cover.custom_minimum_size = COVER_SIZE * 0.36
@@ -1537,7 +1593,8 @@ func _build_ui() -> void:
 	_play_panel.add_child(_launch_row)
 
 	# The attempt tracker (§3) — the thing you press between runs of the real game.
-	_play_panel.add_child(_build_attempt_strip())
+	_attempt_wrap = _build_attempt_strip()
+	_play_panel.add_child(_attempt_wrap)
 
 	# Verification checklist (populated per game): the main goal, the character's
 	# level-up challenge, and any following enemy whose goal you also cleared. Tick
@@ -1547,6 +1604,7 @@ func _build_ui() -> void:
 	_play_panel.add_child(_verify_box)
 
 	var done := Button.new()
+	_done_btn = done
 	done.text = "✓  Completed Game"
 	done.custom_minimum_size = Vector2(0, 40)
 	done.size_flags_horizontal = Control.SIZE_EXPAND_FILL

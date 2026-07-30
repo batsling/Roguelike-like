@@ -187,10 +187,11 @@ node and its script.
 - **`MainMenu.gd`** — new run, character select, the Collection, the tier list,
   and Settings.
 - **`Overworld2.gd`** — the run itself: the offering of games (cover cards), and
-  then a two-column playing screen — the honour-system report step (attempt
-  tracker + checklist) on the left, the battlefield on the right with the player's
-  inventory and loot tray beneath it. Also owns the scrolls panel and hosts the
-  toast strip, so an item's effects announce themselves the moment it's picked up.
+  then a two-column stage — checklist on the left (the standing goals while you're
+  choosing, the honour-system report step + attempt tracker while you're playing),
+  the battlefield on the right with the player's inventory and loot tray beneath
+  it. Also owns the scrolls panel and hosts the toast strip, so an item's effects
+  announce themselves the moment it's picked up.
   - **`BattlefieldView.gd`** — the board: the hero on the left with the shield
     pips over them, the grid the goal-enemies close in across, the off-field lane,
     the Push / Bomb toolbar, and the strike / advance animation.
@@ -272,11 +273,12 @@ re-run them after pulling and review the diff.
   **two columns**: on the left what you drive — the game, Play / Rate, the attempt
   strip, a tightened one-line-per-row checklist and Completed Game — and on the
   right what you read, the **battlefield with the pack (inventory + loot) under
-  it**. Both halves fit one screen, where stacking them didn't. Between games the
-  checklist half is empty, so the **board drops into the room it leaves** — the
-  bottom of the page under the offering, with the pack still on its right. It is
-  never hidden: the enemies closing in are always on screen, just never competing
-  with the cards. The board draws the pool as
+  it**. Both halves fit one screen, where stacking them didn't. The stage keeps
+  that shape **between games too** — the board is never hidden, and the checklist
+  becomes a **standing-goals list** ("What you need to do": the character's
+  level-up challenge and every follower's outstanding goal, tinted red once it's
+  in the front column), so what you owe is answerable *before* you commit to a
+  game rather than only after. The board draws the pool as
   **pips on the hero** and a tick pops one with a floating `-1 ◆` — or flashes the
   hero red for `-1 ♥` once the shields are gone. Each offered card shows the tries
   it grants, and since the pool is empty between games, hovering a card previews

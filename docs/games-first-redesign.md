@@ -119,9 +119,11 @@ A roguelike is not beaten in one run, so **shields are how many runs you get**:
 - **Every run of that game you LOSE is one tick of the attempt tracker**, and each
   tick **spends a shield**. The tracker lives with the checklist in the left column
   of the playing screen; the board stands in the right column (with the pack under
-  it) and draws the pool as pips on the hero, so ticking visibly drains it. Between
-  games the checklist half is empty and the board drops into it — always on screen,
-  never over the offering.
+  it) and draws the pool as pips on the hero, so ticking visibly drains it. The
+  stage keeps that shape between games: the board stays put and the checklist
+  becomes the standing-goals list — the level-up challenge and every follower's
+  outstanding goal (§2) — so "what do I need to do?" is answerable before you
+  commit to a game, not only after.
 - **Out of shields, a lost run costs 1 Health** — and Health reaching 0 ends the
   run right there, exactly like an enemy hit.
 - **Whatever is left when you report the game absorbs the followers' hits** before
