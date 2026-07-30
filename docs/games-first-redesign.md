@@ -391,19 +391,20 @@ A **chest** is the project's existing item-reward container
 (`GameState.grant_chest` → `RewardScreen`, `BASE_ITEM_CHOICES = 2`). Sizes map to
 the number of choices offered:
 
-| Chest | Choices |
+| Chest size | Choices |
 |---|---|
 | **Small** | 1 item (no choice) |
-| **Regular** | pick 1 of 2 |
+| **Medium** | pick 1 of 2 |
 | **Large** | pick 1 of 3 |
-| **Legendary** | pick 1 of 5 |
+| **Huge** | pick 1 of 5 |
 
 Level-up rewards (`+1 Small Chest`) and drops both mint chests through this same
-flow. A **`+1 Random Rarity Chest`** reward (Poe Ratcho) rolls the chest's SIZE
-on the same rarity ladder as every other rarity draw in the game
-(`Data.roll_rarity_step` — 75% Common / 20% Uncommon / 5% Rare, Rare has a 10%
-chance to bump to Legendary), mapped Common→Small, Uncommon→Regular,
-Rare→Large, Legendary→Legendary (`Data.CHEST_SIZE_CHOICES`).
+flow. A **`+1 Random Sized Chest`** reward (the Vampire Survivors characters — Poe
+Ratcho, Antonio Belpaese) rolls the chest's SIZE (`Data.ChestSize`, wording that
+describes how big the chest is, not the rarity of the items inside it) on the same
+ladder as every other rarity draw in the game (`Data.roll_rarity_step` — 75% / 20%
+/ 5%, with the top step having a 10% chance to bump one further), so Small /
+Medium / Large / Huge come up at exactly those odds (`Data.CHEST_SIZE_CHOICES`).
 
 ---
 

@@ -69,8 +69,8 @@ extends Resource
 @export var level_up_stats: Dictionary = {}
 
 # Reward handed out on level-up. One of: &"none", &"gold", &"item", &"card",
-# &"scroll_and_potion", &"random_rarity_chest" (chest SIZE rarity-rolled at
-# grant time — Data.roll_chest_size_choices — instead of fixed; Poe Ratcho).
+# &"scroll_and_potion", &"random_sized_chest" (the chest's SIZE is rolled at grant
+# time — Data.roll_chest_size_choices — instead of fixed; Vampire Survivors).
 # `level_up_reward_amount` carries the gold amount for the &"gold" type.
 @export var level_up_reward_type: StringName = &"none"
 @export var level_up_reward_amount: int = 0
