@@ -230,6 +230,17 @@ func _cell(border: Color, on_click: Callable) -> Dictionary:
 	panel.add_child(vb)
 	return {"panel": panel, "vbox": vb}
 
+# Game covers are box art, not icons: drawing them in a square box wastes a third
+# of the space to letterboxing, so they get a 3:4 frame `w` wide instead — the
+# shape the art actually ships in (528x704 / 300x450).
+func _cover_rect(tex: Texture2D, w: int) -> TextureRect:
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.custom_minimum_size = Vector2(w, roundi(w * 4.0 / 3.0))
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	return tr
+
 func _tex_rect(tex: Texture2D, size: int, crisp: bool = false) -> TextureRect:
 	var tr := TextureRect.new()
 	tr.texture = tex
@@ -517,11 +528,11 @@ func _game_type_color(t: int) -> Color:
 func _game_cell(g: GameData) -> Control:
 	var tc := _game_type_color(int(g.type))
 	var cell := _cell(tc, func(): _show_game_detail(g))
-	cell.panel.custom_minimum_size = Vector2(172, 0)
+	cell.panel.custom_minimum_size = Vector2(212, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	if g.cover_image != null:
-		var tr := _tex_rect(g.cover_image, 128)
+		var tr := _cover_rect(g.cover_image, 190)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vb.add_child(tr)
 	vb.add_child(_label(g.display_name, tc, 13, true, true))
@@ -541,7 +552,7 @@ func _show_game_detail(g: GameData) -> void:
 	_clear_children(_detail_box)
 	var tc := _game_type_color(int(g.type))
 	if g.cover_image != null:
-		var tr := _tex_rect(g.cover_image, 150)
+		var tr := _cover_rect(g.cover_image, 240)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(tr)
 	_detail_box.add_child(_label(g.display_name, tc, 18, true))

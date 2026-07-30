@@ -1,9 +1,10 @@
 # Roguelike-like (Godot 4)
 
-A roguelike **deckbuilder played on a graph of real video games**. Every node on
-the map is an actual game connected to others it influenced; each run is a 5–8
-game journey from a randomly chosen **Start** game to a hidden **Amulet** game,
-fought through card combat, stat-check events, and a merchant shop.
+A roguelike **played on a graph of real video games**. Every node on the map is an
+actual game connected to others it influenced; each run is a journey from a
+randomly chosen **Start** game to a hidden **Amulet** game, and the "combat" is
+you going off and actually playing each game to clear its goal — reported back on
+the honour system, with defeated goal-enemies dropping relics.
 
 This repository's **main project is the Godot 4.6 game at the repository root**.
 The original browser/JavaScript version has been retired to
@@ -23,42 +24,43 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 
 ```
 .
-├── project.godot          # Godot project definition (autoloads, input map, display)
+├── project.godot          # Godot project definition (autoloads, display, one key binding)
 ├── icon.svg               # Application icon
 ├── .gutconfig.json        # GUT (test framework) configuration → runs res://test/
 │
-├── scenes/                # .tscn scenes, grouped by game mode
-│   ├── menu/              #   main menu, character select, collection, settings
-│   ├── overworld/        #   the influence-graph map you navigate between fights
-│   ├── deckbuilder/      #   Slay-the-Spire-style card combat
-│   └── action/           #   real-time action-combat mode
+├── scenes/                # .tscn scenes — two of them; the UI is built in code
+│   ├── menu/              #   MainMenu.tscn (the boot scene)
+│   └── redesign2/        #   Overworld2.tscn (the game) + PlaySession2.tscn (its
+│                          #   text-only precursor, kept as a harness)
 │
 ├── scripts/               # All GDScript, mirroring the scenes + shared systems
-│   ├── Main.gd           #   top-level orchestrator: boots a run, swaps scenes
 │   ├── autoload/         #   global singletons (see "Autoload singletons" below)
-│   ├── resources/        #   Resource schemas (CardData, ItemData, EnemyData, …)
+│   ├── resources/        #   Resource schemas (ItemData, GoalEnemyData, GameData, …)
 │   ├── data/             #   generated catalogs (e.g. ReferenceCatalog.gd)
-│   ├── deckbuilder/      #   card-combat logic & UI
-│   ├── action/           #   action-combat logic & UI
-│   ├── overworld/        #   map generation and navigation
-│   ├── events/           #   pre-combat D20 event system
-│   ├── menu/             #   menu / collection / settings screens
-│   ├── runtime/          #   misc runtime helpers
-│   └── ui/               #   shared UI widgets (toasts, log panel, HUD bits)
+│   ├── redesign2/        #   the games-first screens:
+│   │                      #     Overworld2      — run flow: offering, report, pack
+│   │                      #     BattlefieldView — the grid the enemies close in on
+│   │                      #     EnemyInfoCard   — click-to-inspect enemy card
+│   │                      #     RunMapModal / ScrollReadModal
+│   ├── events/           #   the D20 event system (EventModal, D20DieView)
+│   ├── menu/             #   the main menu
+│   ├── runtime/          #   RunGraph — the real-games influence graph
+│   └── ui/               #   shared UI (UITheme, RewardScreen, Collection, toasts)
 │
 ├── data/                  # Game content as Godot Resources (.tres) — the source
 │   │                      # of truth the game loads at startup (see Data.gd)
-│   ├── cards/            #   CardData
-│   ├── items/            #   ItemData
-│   ├── curses/           #   CurseData
-│   ├── enemies/          #   EnemyData
-│   ├── action_enemies/   #   ActionEnemyData
-│   ├── events/           #   EventData
-│   ├── characters/       #   CharacterData
-│   ├── stats/            #   StatDefinition (the stat dispatcher's vocabulary)
-│   ├── games/            #   GameData — the ~600 real games that form the map
-│   ├── encounters/       #   EncounterData — overworld shops/deals/teleporters/challenges
-│   └── action_translation.tres
+│   ├── games/            #   GameData — the ~750 real games that form the map
+│   ├── items2.0/         #   ItemData — the relics that drop from a defeated enemy
+│   ├── enemies2.0/       #   GoalEnemyData — goal-enemies, one per game beaten
+│   ├── bosses2.0/        #   GoalEnemyData — the difficulty-gate bosses
+│   ├── characters2.0/    #   CharacterData — the playable roster
+│   ├── scrolls2.0/       #   ScrollData — identify-by-reading scrolls
+│   ├── items/            #   ItemData (pre-2.0 set, still loaded)
+│   ├── characters/       #   CharacterData (pre-2.0)
+│   ├── events/           #   EventData — the D20 events
+│   ├── encounters/       #   EncounterData — shops / deals / teleporters
+│   ├── curses/           #   CurseData (shelved, kept — §5)
+│   └── stats/            #   StatDefinition (the stat dispatcher's vocabulary)
 │
 ├── images2.0/             # ★ Games-first art — covers, items, enemies, bosses, characters, scrolls
 ├── images/                #   Surviving pre-2.0 art (legacy items / events / encounters)
@@ -69,14 +71,15 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 ├── tools/                 # Shared Python tooling + design source of truth
 │   ├── Roguelikes.xlsx    #   spreadsheet that drives the importers/generators
 │   ├── Roguelikes.drawio6.svg
-│   ├── generate_card_tres.py
-│   ├── generate_curse_tres.py
-│   ├── generate_event_tres.py
-│   ├── generate_game_tres.py
-│   ├── generate_item_tres.py
-│   ├── generate_enemy_tres.py     #   data/enemies from the enemiesD sheet
-│   ├── build_enemiesD_sheet.py    #   (re)builds the enemiesD sheet itself
-│   ├── add_status_addon_rows.py   #   adds status/addon rows to the sheets
+│   ├── generate_game_tres.py       #   data/games from the games sheet
+│   ├── generate_item2_tres.py      #   data/items2.0
+│   ├── generate_goal_enemy_tres.py #   data/enemies2.0
+│   ├── generate_boss_tres.py       #   data/bosses2.0
+│   ├── generate_character2_tres.py #   data/characters2.0
+│   ├── generate_scroll2_tres.py    #   data/scrolls2.0
+│   ├── generate_item_tres.py, generate_character_tres.py,
+│   ├── generate_curse_tres.py, generate_event_tres.py,
+│   ├── generate_encounter_tres.py  #   the pre-2.0 sets
 │   ├── import-games-godot.py
 │   └── import-reference-godot.py
 │
@@ -155,50 +158,57 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 
 | Autoload | Responsibility |
 |---|---|
-| `GameState` | Canonical run-persistent state (deck, inventory, HP, position). Resets on new run. |
-| `Data` | Loads every `.tres` under `res://data/…` at startup and exposes lookups by id. |
+| `GameState` | Canonical run-persistent state (inventory, HP, charges, position). Resets on new run. |
+| `Data` | Loads every `.tres` under `res://data/…` at startup, exposes lookups by id, and owns the shared rarity ladder. |
 | `EffectSystem` | Central dispatch for structured effects (`{type, value, target}`) applied via `EffectSystem.apply()`. |
-| `TriggerBus` | Global signal hub wiring item/card/event triggers to game moments (`combat_start`, `on_action`, …). |
+| `TriggerBus` | Global signal hub wiring item/event triggers to game moments (`game_beaten`, `chest_granted`, …). |
 | `Stats` | Mode-aware stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
+| `GameLoop2` | The run loop: the games-beaten clock, the goal-enemy stack, and the grid the followers advance across. `Overworld2` is a view over it. |
+| `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
 | `GameLog` | Verbose run-scope message log the HUD log panel subscribes to. |
-| `Notifications` | Curated player-facing "important events" channel (toasts + Backpack history). |
+| `Notifications` | Curated player-facing "important events" channel (the toast strip). |
 | `SaveSystem` | Two-layer save/load: numbered autosave slots + named saves (`user://`). |
 | `Settings` | Run-independent preferences (e.g. game-filter) persisted to `user://settings.cfg`. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified). |
-| `DevTools` | Developer overlay (press `` ` ``) to grant any card/curse/item, or tick up to 5 enemies and start a test combat in either engine (deckbuilder / action via the combat-type selector). Gated on `Settings.dev_mode`. |
+| `DevTools` | Developer overlay (press `` ` ``) to grant 2.0 items, scrolls, or curses to the run. Gated on `Settings.dev_mode`. |
 
-### Game modes & scene flow
+### Screens & flow
 
-`scripts/Main.gd` is the top-level orchestrator: it boots a run and swaps between
-full scenes (no overlaying one mode on another).
+There are only two scenes. `MainMenu.tscn` boots the game and hands off to
+`Overworld2.tscn`, which **is** the game — the simulated combat modes were cut in
+the games-first redesign (§11), so the real video game you go and play is the
+combat. Every screen is built in code, so the scene files hold nothing but a root
+node and its script.
 
-- **Menu** (`scenes/menu/`) — main menu, character select, the Collection screen,
+- **`MainMenu.gd`** — new run, character select, the Collection, the tier list,
   and Settings.
-- **Overworld** (`scenes/overworld/`) — the influence-graph map of real games you
-  navigate between encounters.
-- **Deckbuilder combat** (`scenes/deckbuilder/`) — the primary Slay-the-Spire-style
-  card combat (hand, energy, draw/discard/exhaust).
-- **Action combat** (`scenes/action/`) — a real-time variant where "turns" run on a
-  timer rather than discrete turn structure.
+- **`Overworld2.gd`** — the run itself: the offering of games (cover cards), the
+  honour-system report step, the scrolls panel, and — right of the board — the
+  player's inventory with the loot tray under it.
+  - **`BattlefieldView.gd`** — the board: the hero on the left, the grid the
+    goal-enemies close in across, the off-field lane, the Push / Bomb toolbar, and
+    the strike / advance animation.
+  - **`EnemyInfoCard.gd`** — the click-to-inspect card for one enemy.
+- **`EventModal.gd`** — the D20 stat-check events.
+- **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). Ordinary
+  enemy drops don't open it: they land in the loot tray beside the board.
 
-There are **two genres** on the map: **Action** games play the action floor, and
-**Strategy** games play the deckbuilder combat. Strategy absorbed the former
-**Deckbuilder** genre — those games are now Strategy-typed and carry a
-`deckbuilder` **tag** (the same pattern the `traditional` tag uses), so the map's
-non-Action games all resolve to the card combat.
+`PlaySession2.gd` is the text-only precursor of the overworld, kept as a headless
+harness for the loop.
 
 ### Data as Godot Resources
 
 All game content is authored as typed Godot **Resources** (`.tres`) under `data/`,
 with their schemas defined in `scripts/resources/`:
 
-`CardData`, `ItemData`, `CurseData`, `EnemyData`, `ActionEnemyData`,
-`EventData`, `CharacterData`, `GameData`, `SpellData`, `StatDefinition`,
-`AbilityCooldownConfig`, `ActionTranslation`.
+`GameData`, `GoalEnemyData`, `ItemData`, `CharacterData`, `ScrollData`,
+`EventData`, `EncounterData`, `CurseData`, `StatDefinition`.
 
 `Data.gd` loads them all on startup and serves them by id, so gameplay code never
-hardcodes content — it asks `Data` for it.
+hardcodes content — it asks `Data` for it. Random draws all share one rarity
+ladder there too (`Data.roll_rarity_step` / `roll_item_rarity`): 75/20/5
+common/uncommon/rare, with a 10% bump from rare to legendary.
 
 ---
 
@@ -210,17 +220,17 @@ editing the sheet, then review the diff):
 
 | Script | Generates |
 |---|---|
-| `generate_card_tres.py` | `data/cards/*.tres` from the `cardsnew` sheet |
-| `generate_evolution_tres.py` | the evolved card `.tres` + `scripts/data/EvolutionCatalog.gd` from the `Evolutions` sheet |
-| `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesnew` sheet |
-| `generate_item_tres.py` | `data/items/*.tres` from the items sheet |
-| `generate_potion_tres.py` | `data/potions/*.tres` from the `potions` sheet (12 combat potions) |
-| `generate_event_tres.py` | `data/events/*.tres` from authored Python dicts |
 | `generate_game_tres.py` | `data/games/*.tres` from the curated games subgraph |
-| `generate_encounter_tres.py` | `data/encounters/*.tres` from the `encounters` sheet (overworld shops/deals/teleporters/challenges) |
-| `generate_enemy_tres.py` | `data/enemies/*.tres` from the `enemiesD` sheet |
-| `build_enemiesD_sheet.py` | (re)builds the deckbuilder-enemy `enemiesD` sheet from the legacy `enemies` rows |
-| `add_status_addon_rows.py` | adds/updates status + addon rows in `statusesnew` / `addonsnew` |
+| `generate_item2_tres.py` | `data/items2.0/*.tres` from the 2.0 items sheet |
+| `generate_goal_enemy_tres.py` | `data/enemies2.0/*.tres` from the goal-enemy sheet |
+| `generate_boss_tres.py` | `data/bosses2.0/*.tres` from the boss sheet |
+| `generate_character2_tres.py` | `data/characters2.0/*.tres` from the characters sheet |
+| `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet |
+| `generate_item_tres.py` | `data/items/*.tres` from the items sheet (pre-2.0 set) |
+| `generate_character_tres.py` | `data/characters/*.tres` (pre-2.0) |
+| `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesnew` sheet |
+| `generate_event_tres.py` | `data/events/*.tres` from authored Python dicts |
+| `generate_encounter_tres.py` | `data/encounters/*.tres` from the `encounters` sheet |
 | `import-games-godot.py` | `data/games/*.tres`, resolving each cover in `images2.0/games/` |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 
@@ -228,12 +238,10 @@ These require Python 3 with `openpyxl` (`pip install openpyxl`) and are run from
 the repository root, e.g.:
 
 ```bash
-python3 tools/generate_card_tres.py          # curses only
-python3 tools/generate_card_tres.py --all     # whole card sheet
+python3 tools/generate_item2_tres.py
 ```
 
-See `docs/card_authoring.md` for the full card Effects DSL and `docs/stat-dispatcher.md`
-for how stats resolve across modes.
+See `docs/stat-dispatcher.md` for how stats resolve.
 
 ---
 
@@ -242,6 +250,20 @@ for how stats resolve across modes.
 Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
+
+- **Inventory and loot moved beside the board; covers at box-art scale; the
+  overworld split into three files** — the player's pack (inventory + a loot tray)
+  now stands in a column to the RIGHT of the battlefield grid, so a drop waits
+  there to be claimed or skipped instead of standing on a cell; the melee columns
+  stay about enemies. Cover art is drawn at its real 3:4 shape and ~1.5x bigger on
+  the overworld choice cards (210x280), in the Collection grid/detail, in the
+  rate-game modal, and on the report panel, which now shows the game you went to
+  play next to the enemy you went to beat. `Overworld2.gd` shed ~1000 lines to
+  `BattlefieldView.gd` (the board, its animation, the Push/Bomb toolbar) and
+  `EnemyInfoCard.gd` (the inspect card); the four copies of the 75/20/5 rarity roll
+  collapsed into `Data.roll_rarity_step` / `roll_item_rarity`, the crisp-texture
+  helpers into `UITheme`, and `project.godot` dropped 15 input actions the
+  click-driven build never binds.
 
 - **Deckbuilder + Strategy merged into one "Strategy" genre** — the grid/tactical
   ("mewgenics") strategy combat was cut wholesale (its scenes, singletons,

@@ -68,7 +68,9 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 	# the tree here (build is deferred to _ready), so get_viewport_rect() is
 	# valid. Anchors against our own rect proved fragile when this modal was
 	# built before being sized, which dumped the panel in the top-left corner.
-	var panel_size := Vector2(600, 500)
+	# Tall enough for the box-art cover below without the panel outgrowing the
+	# position computed here (a 720p viewport still leaves a margin top and bottom).
+	var panel_size := Vector2(600, 640)
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = panel_size
 	panel.position = (get_viewport_rect().size - panel_size) / 2.0
@@ -99,11 +101,11 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 	subtitle.add_theme_color_override("font_color", Color(0.9, 0.92, 1.0))
 	vbox.add_child(subtitle)
 
-	# Optional cover so the player knows which game they're scoring.
+	# The cover at box-art scale, so the game being scored is unmistakable.
 	if gd != null and gd.cover_image != null:
 		var cover := TextureRect.new()
 		cover.texture = gd.cover_image
-		cover.custom_minimum_size = Vector2(0, 120)
+		cover.custom_minimum_size = Vector2(0, 200)
 		cover.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 		cover.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		vbox.add_child(cover)
