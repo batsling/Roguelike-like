@@ -54,11 +54,38 @@ func test_minä_starts_and_levels_transmute() -> void:
 	assert_eq(mina.start_transmute, 1, "Noita starts with 1 Transmute")
 	assert_eq(int(mina.level_up_stats.get("transmute", 0)), 1, "reward +1 Transmute")
 
+func test_poe_ratcho_starting_loadout_and_reward() -> void:
+	var poe: CharacterData = Data.get_character2(&"poe_ratcho")
+	assert_not_null(poe, "poe_ratcho.tres should load from data/characters2.0")
+	assert_eq(poe.source_game, "Vampire Survivors")
+	assert_eq(poe.base_max_hp, 10)
+	assert_true(poe.starting_items.has(&"pummarola"), "Poe starts with Pummarola")
+	assert_eq(String(poe.level_up_reward_type), "random_rarity_chest",
+		"Random Rarity Chest -> random_rarity_chest reward")
+	assert_eq(poe.level_up_reward_amount, 1)
+	assert_eq(poe.level_up_condition, "Stink")
+
 func test_rodney_reward_parses_maxhp_and_scroll() -> void:
 	var rodney: CharacterData = Data.get_character2(&"rodney")
 	assert_eq(int(rodney.level_up_stats.get("max_hp", 0)), 1, "+1 Max Health -> max_hp stat")
 	assert_eq(String(rodney.level_up_reward_type), "scroll", "+1 Scroll -> scroll reward")
 	assert_eq(rodney.base_max_hp, 5, "Rogue Health 5")
+
+# --- Chest sizing (Random Rarity Chest, §8.2) -------------------------------
+# The same 75/20/5-with-10%-legendary-bump ladder every other rarity roll uses
+# (Data.roll_rarity_step), just numbered in chest choice counts instead of an
+# ItemData.Rarity: Small=1, Medium=2, Large=3, Legendary=5.
+
+func test_chest_size_choices_map_every_rarity_step() -> void:
+	assert_eq(Data.CHEST_SIZE_CHOICES[Data.RarityStep.COMMON], 1, "Small chest = choose 1 of 1")
+	assert_eq(Data.CHEST_SIZE_CHOICES[Data.RarityStep.UNCOMMON], 2, "Medium chest = choose 1 of 2")
+	assert_eq(Data.CHEST_SIZE_CHOICES[Data.RarityStep.RARE], 3, "Large chest = choose 1 of 3")
+	assert_eq(Data.CHEST_SIZE_CHOICES[Data.RarityStep.LEGENDARY], 5, "Legendary chest = choose 1 of 5")
+
+func test_roll_chest_size_choices_follows_the_rarity_roll() -> void:
+	var rng := RandomNumberGenerator.new()
+	assert_eq(Data.roll_chest_size_choices(rng, 0.0), 1, "bottom of the ladder rolls Common -> 1")
+	assert_eq(Data.roll_chest_size_choices(rng, 0.80), 2, "75-95% rolls Uncommon -> 2")
 
 # --- Items2.0 (Effect DSL) ------------------------------------------------
 

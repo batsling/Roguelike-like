@@ -754,6 +754,10 @@ func _apply_level_up() -> void:
 		match String(ch.level_up_reward_type):
 			"item", "chest":
 				GameState.grant_chest(maxi(1, ch.level_up_reward_amount))
+			"random_rarity_chest":
+				# Poe Ratcho: chest SIZE is rarity-rolled (Data.CHEST_SIZE_CHOICES)
+				# instead of fixed, same odds as every other rarity draw.
+				GameState.grant_chest(maxi(1, ch.level_up_reward_amount), Data.roll_chest_size_choices(_rng))
 			"scroll":
 				GameState.add_loot("scroll", maxi(1, ch.level_up_reward_amount))
 			_:
