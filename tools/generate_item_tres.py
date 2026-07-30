@@ -79,12 +79,15 @@ TRIGGER_SIGNALS = {
     # trigger. The signal already exists on TriggerBus and is emitted by the
     # Overworld; harmless for legacy items (none use it).
     "game_beaten": "game_beaten",
+    # "when a game is selected" — the shield economy's hook (§3): selecting a game
+    # grants the tries at it, and Anchor's +1 Shield rides in on this.
+    "game_selected": "game_selected",
 }
 # Triggers whose effects default to the player (self) rather than an enemy —
 # every out-of-combat / on-self hook. game_beaten is scene-less run-scope, so
 # its grants (gain_hp / gain_stat / …) target the player.
 SELF_DEFAULT_TRIGGERS = ("combat_started", "turn_started", "turn_ended",
-                         "item_acquired", "game_beaten")
+                         "item_acquired", "game_beaten", "game_selected")
 # Hooks that fire frequently enough to suppress the generic trigger log line.
 ALWAYS_SILENT = {"attack_landed", "attack_missed", "turn_tick", "damage_taken"}
 

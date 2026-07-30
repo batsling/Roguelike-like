@@ -109,15 +109,16 @@ func test_roll_chest_size_choices_follows_the_size_roll() -> void:
 func test_items2_roster_loads() -> void:
 	assert_eq(Data.all_items2().size(), _tres_count("res://data/items2.0/"), "every items2.0 .tres loads")
 
-func test_anchor_game_beaten_grants_block() -> void:
+func test_anchor_game_selected_grants_a_shield() -> void:
 	var anchor: ItemData = Data.get_item2(&"anchor")
 	assert_not_null(anchor)
 	assert_eq(anchor.triggers.size(), 1)
 	var trig: Dictionary = anchor.triggers[0]
-	assert_eq(String(trig.get("on", "")), "game_beaten")
+	assert_eq(String(trig.get("on", "")), "game_selected",
+		"the shield arrives when the game is picked, not when it's reported")
 	var eff: Dictionary = trig["effects"][0]
 	assert_eq(String(eff.get("type", "")), "gain_stat")
-	assert_eq(String(eff.get("stat", "")), "block")
+	assert_eq(String(eff.get("stat", "")), "shields")
 	assert_eq(int(eff.get("value", 0)), 1)
 
 func test_burning_blood_is_starter_game_beaten_heal() -> void:
@@ -192,7 +193,7 @@ func test_aggravate_scroll_is_negative_buff() -> void:
 	assert_eq(String(s.effect[0].get("op", "")), "buff_enemies")
 	assert_eq(int(s.effect[0].get("damage", 0)), 1)
 
-# --- GameState verb / block resources -------------------------------------
+# --- GameState verb / shield resources ------------------------------------
 
 func test_grant_run_stat_routes_verbs() -> void:
 	GameState.grant_run_stat("transmute", 1)
@@ -208,7 +209,7 @@ func test_grant_run_stat_routes_verbs() -> void:
 
 func test_grant_run_stat_block_uses_gamestate_block() -> void:
 	GameState.grant_run_stat("block", 3)
-	assert_eq(GameState.block, 3, "block is a GameState field, not a combat actor")
+	assert_eq(GameState.shields, 3, "block is a GameState field, not a combat actor")
 
 func test_level_up_reward_grants_transmute() -> void:
 	# The level-up reward path (apply_level_up_stats) must route the new verbs via
@@ -218,10 +219,10 @@ func test_level_up_reward_grants_transmute() -> void:
 
 func test_reset_run_clears_verbs() -> void:
 	GameState.bash = 5
-	GameState.block = 9
+	GameState.shields = 9
 	GameState.reset_run()
 	assert_eq(GameState.bash, 0)
-	assert_eq(GameState.block, 0)
+	assert_eq(GameState.shields, 0)
 
 # --- game_beaten scene-less item hook -------------------------------------
 
@@ -232,8 +233,8 @@ func test_game_beaten_fires_burning_blood_heal() -> void:
 	TriggerBus.emit_signal("game_beaten", {"game_id": "test"})
 	assert_eq(GameState.hp, 6, "Burning Blood heals +1 after beating a game")
 
-func test_game_beaten_fires_anchor_block() -> void:
+func test_game_selected_fires_anchor_shield() -> void:
 	GameState.inventory.append(Data.get_item2(&"anchor"))
-	var before: int = GameState.block
-	TriggerBus.emit_signal("game_beaten", {"game_id": "test"})
-	assert_eq(GameState.block, before + 1, "Anchor grants +1 Block after a game")
+	var before: int = GameState.shields
+	TriggerBus.emit_signal("game_selected", {"game_id": "test", "shields": 3})
+	assert_eq(GameState.shields, before + 1, "Anchor grants +1 Shield on selection")

@@ -16,7 +16,7 @@ defeats the enemy and drops an item; beating the game *without* the goal lets th
 enemy hit your health. Reach and clear the **Amulet** game to win; hit 0 health
 to lose.
 
-Designed **stream-first**: the player-facing state (health, block, the enemy and
+Designed **stream-first**: the player-facing state (health, shields, the enemy and
 its goal, the verb/consumable counts) renders to a slim **OBS companion window**,
 so every number must stay small and glanceable.
 
@@ -33,8 +33,8 @@ so every number must stay small and glanceable.
    - **Game beaten but goal not met → the enemy is not defeated: it *stacks*.**
      No item drops. A stacked enemy has a **one-game grace** (§7.2) — its first
      hit lands only after the *next* game is beaten — then it **attacks after each
-     game you play**, for its `Damage`, until its goal is fulfilled. `block` (temp
-     health) absorbs, remainder comes off `health`. The more unbeaten enemies on
+     game you play**, for its `Damage`, until its goal is fulfilled. Unspent
+     `shields` (§3.2) absorb, remainder comes off `health`. The more unbeaten enemies on
      the stack, the more damage per game, ramping until you die or clear them.
    - **Old goals can still be fulfilled later.** Fulfilling a stacked enemy's goal
      during any later game **defeats it** (removing it from the stack and stopping
@@ -49,7 +49,7 @@ so every number must stay small and glanceable.
 
 ---
 
-## 3. Health & block model
+## 3. Health & shield model
 
 Kept deliberately tiny for HUD readability.
 
@@ -57,7 +57,7 @@ Kept deliberately tiny for HUD readability.
 |---|---|---|
 | Health | character-set (5–10) | Current HP. Lose at 0. |
 | Max Health | character-set | The cap Health heals up to; **items raise it** (`+N Max Health`). Distinct from Health — some items give one, some both, some only Max. |
-| Block  | 0, **no cap** | **Carries over between games — it is temporary health**, absorbed before `health` on any hit. |
+| Shields | granted per game, **no cap** | **The TRIES at the game you selected** (see §3.2). Absorbed before `health` on any hit, and **expire with the game that granted them**. |
 | Enemy damage | 1–3 (by tier) | Dealt by each stacked enemy after **every** game played, until its goal is fulfilled (Low 1 / Med 2 / High 3, per `enemies2.0`). |
 
 **Starting loadout depends on the chosen character** (`characters2.0`). Character
@@ -73,9 +73,8 @@ Current roster:
 | Ironclad | Slay the Spire | 10 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Burning Blood |
 | Manager | Raccoin: Coin Pusher Roguelike | 8 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — |
 
-Block sources: completing a goal, certain tag routes, a scroll, or an item (e.g.
-**Anchor** — "after beating a game, gain +1 Block"). The central tension is *earn
-block by beating goals → spend it surviving the goals you skip or fail.*
+Shield sources beyond the per-game grant: items (**Anchor** — "when a game is
+selected, gain +1 Shield"), and future tag routes / scrolls.
 
 ### 3.1 Characters, Level Up & the reward loop
 
@@ -106,6 +105,37 @@ How it already works in the project (to be kept):
   `perfect_effects` verification path — reuse it.
 - Rewards draw from the same resource vocabulary as drops (Max Health, Dash,
   Transmute, Scroll, Small Chest — see §8.1 Chests).
+
+### 3.2 Shields = the tries (the attempt tracker)
+
+A roguelike is not beaten in one run, so **shields are how many runs you get**:
+
+- **Selecting a game grants them** — **3** for any game, **5** for a
+  **Traditional** roguelike (the long haul); nothing else moves the number, so it
+  reads straight off the game's type. Items hooked on *"when a game is selected"*
+  add to the grant, which is what **Anchor** now does (+1 Shield): the extra try
+  has to arrive *before* you go and play. The grant is part of the routing
+  decision, so it's on every offered card and previews in the HUD on hover.
+- **Every run of that game you LOSE is one tick of the attempt tracker**, and each
+  tick **spends a shield**. The tracker lives with the checklist in the left column
+  of the playing screen; the board stands in the right column (with the pack under
+  it) and draws the pool as pips on the hero, so ticking visibly drains it. The
+  stage keeps that shape between games: the board stays put and the checklist
+  becomes the standing-goals list — the level-up challenge and every follower's
+  outstanding goal (§2) — so "what do I need to do?" is answerable before you
+  commit to a game, not only after.
+- **Out of shields, a lost run costs 1 Health** — and Health reaching 0 ends the
+  run right there, exactly like an enemy hit.
+- **Whatever is left when you report the game absorbs the followers' hits** before
+  Health, then **expires**. Shields never bank into the next game: an easy game
+  cleared first try does not arm you for the next one.
+
+The tension is *spend your tries getting the goal done → what you didn't need is
+the armour that carries you through the enemies you left alive.* A game cleared
+first try leaves the whole pool standing, so the stack can't touch you; a game that
+fights back leaves you open to it. **Health is meant to be hard to reach while
+you're playing well** — the followers' 1–3 damage is a threat to a player who is
+burning tries, not to one who isn't.
 
 ---
 
@@ -343,7 +373,7 @@ Description | Effect | Reference | tags | File | Sorting`.
 | Type | Behavior |
 |---|---|
 | `Pickup` | One-time instant effect on acquire (e.g. Hollow Heart: +4 Max Health). |
-| `Triggered` | Fires on a game event — almost always **"after beating a game"** (Anchor +1 Block, Burning Blood +1 Health, Meat on the Bone conditional heal). |
+| `Triggered` | Fires on a game event — usually **"after beating a game"** (Burning Blood +1 Health, Meat on the Bone conditional heal), or **"when a game is selected"** (Anchor +1 Shield, §3.2). |
 | `Charged, N` | Usable, recharges over N beats (D6 → +1 Scramble; Wand of Wishing → any item, 6). |
 | `Usable` | Active, player-triggered (Ride the Bus → teleport to a random Deckbuilder game). |
 | `Passive` | Always-on modifier (Vajra: +1 Bash). |
@@ -353,7 +383,7 @@ the item layer hangs on (§11). Others seen: "when Levelling Up" (Crown), "when
 your Health ≤ 50% Max after beating a game" (Meat on the Bone), "when you would
 gain +1 Transmute" (Snowball).
 
-**Effect vocabulary** items grant, all small: `+Health`, `+Max Health`, `+Block`,
+**Effect vocabulary** items grant, all small: `+Health`, `+Max Health`, `+Shield`,
 `+Bash / +Dash / +Transmute / +Scramble`, `+Scroll`, Small Chest, Level Up (extra),
 teleport (by type), obtain-item. **Sorting** buckets them for UI: Health / Defense
 / Economy / Stats / Movement. **tags** (alien, dice, food, sea…) drive synergy
@@ -374,9 +404,11 @@ uses**, so no new engine is needed:
 - **Passive** items → `stat_bonuses` (Vajra → `{bash: 1}`).
 - **Pickup** items → a one-shot `item_acquired` trigger with scene-free effects
   (`gain_hp` / `gain_max_hp` / …).
-- The main new trigger to add is **`game_beaten`** ("after beating a game"),
-  alongside the existing `combat_ended` / `item_acquired` / verification hooks.
-- Effect handlers reused as-is: `gain_hp`, `gain_max_hp`, `block`, `gain_chest`,
+- The two run-lifecycle triggers are **`game_beaten`** ("after beating a game")
+  and **`game_selected`** ("when a game is selected", the shield hook §3.2),
+  alongside the existing `item_acquired` hook.
+- Effect handlers reused as-is: `gain_hp`, `gain_max_hp`, `gain_stat` (shields and
+  the verbs), `gain_chest`,
   `chance`, `if_hp`, `counter`, plus new small ones for the verbs (`gain_stat`
   already grants ability points; extend its vocabulary to bash/transmute/
   scramble/bombs/keys).
@@ -414,9 +446,9 @@ Medium / Large / Huge come up at exactly those odds (`Data.CHEST_SIZE_CHOICES`).
   **not** the main app window you drive from.
 - **Designed to help the viewer follow the run** — at a glance the audience should
   see the current game, the enemy and **what its goal is** (so they know what
-  they're rooting for), health, block, the stack of undefeated enemies, and the
+  they're rooting for), health, shields, the stack of undefeated enemies, and the
   verb/consumable counts.
-- Renders: health, block, current enemy + its goal, the **stacked-enemy count**,
+- Renders: health, shields + attempts, current enemy + its goal, the **stacked-enemy count**,
   verb counts (bash/dash/transmute/scramble), consumable counts (keys/bombs/scrolls).
 - Architecture: a dedicated HUD scene reading the same `GameState`/autoloads the
   main window mutates. Godot `Window` vs. always-on-top scene, and the exact
@@ -490,7 +522,7 @@ images2.0/
 scrolls, Collection. Add trigger `game_beaten` for the "after beating a game" item
 hook.
 
-**Add:** the tiny health/**max-health**/block model; the **bash / dash /
+**Add:** the tiny health/**max-health**/shield model; the **bash / dash /
 transmute / scramble** + keys/bombs resource layer; the **Level Up** loop (§3.1);
 a **`ScrollSystem`** mirroring `PotionSystem` for identification + **Stun** (§4.1);
 item **behavior-class** dispatch (Pickup / Triggered / Charged / Usable / Passive,
@@ -518,6 +550,12 @@ Still open:
 Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
 
 **Resolved:**
+- **Shields are the TRIES at a game** (§3.2): granted on selection (3, or 5 for a
+  Traditional roguelike), one spent per lost run via the attempt tracker, 1 Health
+  per lost run once they're gone, leftovers absorb the followers' hits and then
+  expire with the game. This replaced the earlier "Block carries over between
+  games, no cap" rule. **Anchor** moved to the new **`game_selected`** trigger so
+  its +1 Shield is an extra try rather than a reward after the fact.
 - **Level Up = the current project's mechanic** (per-game `level_up_condition`
   Yes/No → stats + reward, repeats each game). The stats left of the `Level Up`
   column are the character's **starting stats** (§3.1).
@@ -528,7 +566,7 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
 - **Enemy timing: one-game grace** — spawns on game choice, first hits after the
   *next* game is beaten, giving an "extra step" to solve it (§7.2).
 - **Item Effect DSL = the existing `ItemData.triggers`/`EffectSystem` grammar**;
-  add a `game_beaten` trigger (§8.1).
+  add the `game_beaten` and `game_selected` triggers (§8.1).
 - **Scroll identification reuses `PotionSystem`** (new `ScrollSystem`): scrolls
   read blind (Preference is the gamble), learn-by-use or via Scroll of Identify,
   Amnesia re-hides. The **`File` column is the identified art** (§4.1).
@@ -545,5 +583,5 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   identified; Fog not in the new set (§4.1). Dash is a total select (§4). Enemies
   follow until beaten, can't be dashed past (§2). Bosses appear on difficulty
   change (§7.1). Enemies roll by type + tier (§7). Must beat the game to advance;
-  unbeaten enemies stack (§2). Block carries over, no cap (§3). Curses shelved
+  unbeaten enemies stack (§2). Curses shelved
   (§5). Bingo retired (§10). Types = Action/Deckbuilder/Traditional/Strategy (§6.1).

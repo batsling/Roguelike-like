@@ -33,13 +33,20 @@ func test_reward_pool_is_items2_without_starters() -> void:
 	assert_does_not_have(ids, &"burning_blood", "starters never drop")
 	assert_has(ids, &"anchor", "a normal relic is in the pool")
 
-# --- "after beating a game" trigger --------------------------------------
+# --- "when a game is selected" / "after beating a game" triggers ----------
 
-func test_anchor_grants_block_on_game_beaten() -> void:
+# Anchor pays its shield at SELECTION time (§3) — the point of the item is an
+# extra try at the game you're about to play, so it can't wait for the report.
+func test_anchor_grants_a_shield_on_game_selected() -> void:
+	var anchor: ItemData = Data.get_item2(&"anchor")
+	assert_eq(String(anchor.triggers[0].get("on", "")), "game_selected",
+		"Anchor hangs on the selection hook")
 	_give(&"anchor")
-	var before: int = GameState.block
+	var before: int = GameState.shields
 	TriggerBus.game_beaten.emit({"game_id": &"rogue"})
-	assert_eq(GameState.block, before + 1, "Anchor: +1 Block after beating a game")
+	assert_eq(GameState.shields, before, "beating a game is not when Anchor pays")
+	TriggerBus.game_selected.emit({"game_id": &"rogue", "shields": 3})
+	assert_eq(GameState.shields, before + 1, "Anchor: +1 Shield when a game is selected")
 
 func test_burning_blood_heals_on_game_beaten() -> void:
 	_give(&"burning_blood")
@@ -114,7 +121,7 @@ func test_alien_baby_survivor_still_attacks_when_goal_missed() -> void:
 	_give(&"alien_baby")
 	GameState.max_hp = 10
 	GameState.hp = 10
-	GameState.block = 0
+	GameState.shields = 0
 	var enemy: GoalEnemyData = Data.all_goal_enemies()[0]
 	GameLoop2.choose_game(enemy)
 	GameLoop2.beat_game(true)                 # first hit -> survives, follows @ spawn col
@@ -125,6 +132,44 @@ func test_alien_baby_survivor_still_attacks_when_goal_missed() -> void:
 	var hp_before: int = GameState.hp
 	GameLoop2.beat_game(false)                # front-line strike on a missed game
 	assert_lt(GameState.hp, hp_before, "the surviving enemy attacks from the front")
+
+# --- a pickup reports what it changed, immediately -------------------------
+#
+# A Pickup's whole payload is its item_acquired effects, and they used to land
+# silently: the numbers moved with nothing saying so. add_item now diffs the run
+# resources across the pickup and posts the result.
+
+func test_pickup_effects_land_and_are_reported_on_acquire() -> void:
+	GameState.max_hp = 10
+	GameState.hp = 10
+	var before_history: int = Notifications.history.size()
+	_give(&"lunch")                               # +2 Max Health and +2 Health
+	assert_eq(GameState.max_hp, 12, "Lunch's Max Health lands on acquire")
+	assert_eq(GameState.hp, 12, "and so does the Health")
+	assert_gt(Notifications.history.size(), before_history, "the pickup posted a notification")
+	var texts: Array = []
+	for entry in Notifications.history.slice(before_history):
+		texts.append(String(entry.get("text", "")))
+	var joined: String = "\n".join(texts)
+	assert_true(joined.contains("+2 Max Health"), "the report names the Max Health gain: %s" % joined)
+	assert_true(joined.contains("+2 Health"), "and the Health gain: %s" % joined)
+
+func test_passive_pickup_reports_its_verb_bonus() -> void:
+	# Vajra's +1 Bash arrives through stat_bonuses rather than an item_acquired
+	# effect; the snapshot straddles the recompute, so it's reported the same way.
+	var before_history: int = Notifications.history.size()
+	_give(&"vajra")
+	var texts: Array = []
+	for entry in Notifications.history.slice(before_history):
+		texts.append(String(entry.get("text", "")))
+	var joined: String = "\n".join(texts)
+	assert_true(joined.contains("+1 Bash"), "Vajra's Bash gain is named: %s" % joined)
+
+func test_resource_gain_report_names_only_what_moved() -> void:
+	var before: Dictionary = GameState.run_resource_snapshot()
+	assert_eq(GameState.describe_resource_gains(before), "", "an unchanged run reports nothing")
+	GameState.dash_charges += 2
+	assert_eq(GameState.describe_resource_gains(before), "+2 Dash", "a verb gain is named")
 
 # --- charged actives recharge per game beaten ----------------------------
 

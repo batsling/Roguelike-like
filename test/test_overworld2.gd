@@ -307,6 +307,316 @@ func test_boss_is_the_capstone_of_the_tier_just_played() -> void:
 	assert_true(_ui._is_boss_round())
 	assert_eq(_ui._current_tier(), T.INSANE, "Insane bosses keep coming every 3 games")
 
+# --- shields = the tries at the game you selected (§3.2) -------------------
+
+func test_picking_a_game_grants_its_shields() -> void:
+	assert_eq(GameState.shields, 0, "no tries before a game is selected")
+	var game: GameData = _ui._choices[0]["game"]
+	var expected: int = GameLoop2.shields_for_game(game)
+	_ui.pick(0)
+	assert_eq(GameState.shields, expected,
+		"%s granted its %d tries" % [game.display_name, expected])
+	assert_eq(expected, 5 if game.type == GameData.GameType.TRADITIONAL else 3,
+		"5 for a Traditional roguelike, 3 for anything else")
+
+func test_anchor_adds_a_try_on_top_of_the_grant() -> void:
+	GameState.add_item(Data.get_item2(&"anchor"))
+	var game: GameData = _ui._choices[0]["game"]
+	_ui.pick(0)
+	assert_eq(GameState.shields, GameLoop2.shields_for_game(game) + 1,
+		"Anchor's shield lands on selection, before you go and play")
+
+func test_shields_expire_when_the_game_is_reported() -> void:
+	_ui.pick(0)
+	assert_gt(GameState.shields, 0)
+	_ui.report(true)
+	assert_eq(GameState.shields, 0, "the tries belonged to that game")
+
+# --- the attempt tracker ---------------------------------------------------
+
+func test_ticking_an_attempt_spends_a_shield_then_health() -> void:
+	_ui.pick(0)
+	var shields: int = GameState.shields
+	assert_eq(_ui.log_attempt(), "shield")
+	assert_eq(GameState.shields, shields - 1, "a lost run costs a shield")
+	assert_true(_ui._attempt_count.text.contains("1"), "the strip counts it: %s" % _ui._attempt_count.text)
+	assert_true(_ui._attempt_pips.text.contains("◇"), "and a pip goes hollow: %s" % _ui._attempt_pips.text)
+	# Burn the rest, then the next tick has to come off Health.
+	while GameState.shields > 0:
+		_ui.log_attempt()
+	var hp: int = GameState.hp
+	assert_eq(_ui.log_attempt(), "health")
+	assert_eq(GameState.hp, hp - GameLoop2.ATTEMPT_HEALTH_COST)
+	assert_true(_ui._attempt_hint.text.contains("Health"),
+		"and the strip warns what the next one costs: %s" % _ui._attempt_hint.text)
+
+func test_undoing_an_attempt_restores_the_shield() -> void:
+	_ui.pick(0)
+	var shields: int = GameState.shields
+	_ui.log_attempt()
+	assert_eq(_ui.undo_attempt(), "shield")
+	assert_eq(GameState.shields, shields, "the shield came back")
+	assert_eq(GameLoop2.attempts(), 0)
+	assert_true(_ui._attempt_undo.disabled, "nothing left to take back")
+
+func test_the_tracker_is_only_live_while_a_game_is_in_play() -> void:
+	assert_true(_ui._attempt_btn.disabled, "no game selected -> nothing to lose runs of")
+	_ui.pick(0)
+	assert_false(_ui._attempt_btn.disabled, "a game in play -> the tracker is live")
+	_ui.report(true)
+	assert_true(_ui._attempt_btn.disabled, "reported -> closed again")
+
+# Between games the pool is empty, so the HUD previews the grant of whatever card
+# you're pointing at — the number is part of the routing decision.
+func test_the_hud_previews_the_hovered_games_grant() -> void:
+	assert_true(_ui._hud.text.contains("[b]Shields[/b] 0"),
+		"nothing hovered -> the live (empty) pool: %s" % _ui._hud.text)
+	_ui._show_preview(0)                          # hovering the first card
+	var grant: int = GameLoop2.shields_for_game(_ui._choices[0]["game"])
+	assert_true(_ui._hud.text.contains("+%d" % grant),
+		"hovering previews what that game grants: %s" % _ui._hud.text)
+	_ui._clear_hover_grant()                      # mouse left the card
+	assert_true(_ui._hud.text.contains("[b]Shields[/b] 0"),
+		"and it can't advertise a game you're not pointing at: %s" % _ui._hud.text)
+	# Once a game is in play the slot is the live pool again, hover or not.
+	_ui.pick(0)
+	assert_true(_ui._hud.text.contains("[b]Shields[/b] %d" % GameState.shields),
+		"in play it's the real count: %s" % _ui._hud.text)
+
+func test_the_offering_shows_the_tries_each_game_grants() -> void:
+	var labels: Array = []
+	for card in _ui._choices_row.get_children():
+		for child in card.get_children():
+			if child is Label:
+				labels.append(String((child as Label).text))
+	var joined: String = "\n".join(labels)
+	assert_true(joined.contains("tries"), "each card states its shield grant: %s" % joined)
+
+# --- the board / checklist stage -------------------------------------------
+
+# The stage keeps its shape in both phases — checklist left, board right — so the
+# board is never hidden and the checklist never appears from nowhere. Only the
+# checklist's contents and the report-only controls change.
+func test_the_stage_keeps_its_shape_in_both_phases() -> void:
+	assert_true(_ui._select_box.visible, "the offering is up while choosing")
+	assert_true(_ui._board.visible, "the board is on screen with it")
+	assert_true(_ui._play_panel.visible, "and so is the checklist")
+	assert_eq(_ui._stage_panel.get_parent(), _ui._right_col, "board on the right")
+	assert_false(_ui._done_btn.visible, "but there's no game to complete yet")
+	assert_false(_ui._attempt_wrap.visible, "and no runs to be losing")
+	assert_false(_ui._np_box.visible, "and nothing being played")
+	_ui.pick(0)
+	assert_eq(_ui._stage_panel.get_parent(), _ui._right_col, "the board hasn't moved")
+	assert_eq(_ui._stage_panel.get_index(), 0, "still above the pack in that column")
+	assert_true(_ui._play_panel.visible, "the checklist is now the report step")
+	assert_true(_ui._done_btn.visible, "with something to complete")
+	assert_true(_ui._attempt_wrap.visible, "and runs to lose")
+	assert_false(_ui._select_box.visible, "the offering is out of the way")
+
+# Choosing a game, the checklist lists the goals already on you: the character's
+# level-up challenge and every follower's outstanding goal.
+func test_the_standing_checklist_lists_what_you_owe() -> void:
+	_ui.start_run(&"isaac")                       # Isaac has a level-up condition
+	var texts := func() -> String:
+		var out: Array = []
+		for row in _ui._verify_box.get_children():
+			if row is Label:
+				out.append(String((row as Label).text))
+			for child in row.get_children():
+				if child is Label:
+					out.append(String((child as Label).text))
+		return "\n".join(out)
+	var listed: String = texts.call()
+	assert_true(listed.contains("What you need to do"), "the panel says what it is: %s" % listed)
+	assert_true(listed.contains("Unlock a new Item"), "the level-up challenge is listed: %s" % listed)
+	assert_true(listed.contains("Nothing is following you"), "and an empty stack says so: %s" % listed)
+	# Miss a goal so an enemy follows: its goal joins the list.
+	_ui.pick(0)
+	_ui.report(false)
+	var follower: GoalEnemyData = GameLoop2.stack[0]["enemy"]
+	listed = texts.call()
+	assert_true(listed.contains(follower.goal),
+		"the follower's outstanding goal is listed: %s" % listed)
+	assert_false(listed.contains("Nothing is following you"), "and the empty note is gone")
+
+func test_the_standing_checklist_has_no_tick_boxes() -> void:
+	# Nothing is reportable until a game is in play, so the standing list is rows.
+	for row in _ui._verify_box.get_children():
+		for child in row.get_children():
+			assert_false(child is CheckBox, "the standing list is read-only")
+	assert_eq(_ui._fulfil_checks.size(), 0, "and holds no fulfilment state")
+	assert_null(_ui._goal_check)
+	assert_null(_ui._levelup_check)
+
+# The stage is two columns: what you tick on the left, what you look at on the
+# right — board first, the pack under it.
+func test_the_checklist_sits_left_of_the_board_with_the_pack_below() -> void:
+	_ui.pick(0)
+	assert_eq(_ui._left_col.get_parent(), _ui._right_col.get_parent(), "one row holds both columns")
+	assert_lt(_ui._left_col.get_index(), _ui._right_col.get_index(),
+		"the checklist column comes first — it's on the left")
+	assert_true(_ui._left_col.is_ancestor_of(_ui._play_panel), "the checklist is in the left column")
+	assert_true(_ui._right_col.is_ancestor_of(_ui._board), "the board is in the right column")
+	assert_true(_ui._right_col.is_ancestor_of(_ui._pack_col), "and so is the pack")
+	assert_lt(_ui._stage_panel.get_index(), _ui._pack_col.get_index(),
+		"the pack sits under the board, not over it")
+	# On screen, that has to actually be left-of / below — tree order alone would
+	# still pass if the columns were stacked. Needs a frame for layout to run.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_lt(_ui._play_panel.global_position.x, _ui._board.global_position.x,
+		"the checklist is drawn to the left of the board")
+	assert_gt(_ui._pack_col.global_position.y, _ui._board.global_position.y,
+		"the pack is drawn below the board")
+
+func test_the_pack_stays_in_the_right_column_in_both_phases() -> void:
+	assert_true(_ui._right_col.is_ancestor_of(_ui._pack_col), "choosing: the pack is on the right")
+	assert_true(_ui._pack_col.visible, "and the inventory never goes away")
+	_ui.pick(0)
+	assert_true(_ui._right_col.is_ancestor_of(_ui._pack_col), "playing: it stays there")
+	assert_true(_ui._pack_col.visible)
+
+func test_the_summary_line_counts_the_followers() -> void:
+	_ui.pick(0)
+	_ui.report(false)                    # a missed goal leaves one following
+	assert_eq(GameLoop2.stack.size(), 1)
+	assert_true(_ui._stack.text.contains("1 closing in"),
+		"the board's own heading says what's out there: %s" % _ui._stack.text)
+
+# --- rating is a button, never a pop-up -----------------------------------
+
+func _rating_modal():
+	for c in _ui.get_children():
+		if c is RateGameModal:
+			return c
+	return null
+
+func test_reporting_a_game_never_pops_the_rating_modal() -> void:
+	_ui.pick(0)
+	_ui.report(true)
+	assert_null(_rating_modal(), "finishing a game doesn't force the rating prompt")
+
+func test_the_played_game_stays_rateable_from_a_button() -> void:
+	var played: GameData = _ui._choices[0]["game"]
+	_ui.pick(0)
+	_ui.report(true)
+	assert_eq(_ui._last_played_game, played, "the reported game is remembered for rating")
+	# The select-screen controls row offers it as a button.
+	var labels: Array = []
+	for c in _ui._controls_row.get_children():
+		if c is Button:
+			labels.append(String(c.text))
+	var joined: String = "\n".join(labels)
+	assert_true(joined.contains("Rate %s" % played.display_name),
+		"a '★ Rate <game>' button is offered: %s" % joined)
+	# Pressing it is what opens the modal.
+	_ui._prompt_rating(played)
+	var modal: Control = _rating_modal()
+	assert_not_null(modal, "the button opens the rating modal")
+	# And it covers the screen, so the dim reads and clicks can't fall through to
+	# the board behind it.
+	assert_gt(modal.size.x, 0.0, "the modal fills the viewport")
+	assert_gt(modal.size.y, 0.0, "the modal fills the viewport")
+
+# --- repeat beats pay a Dash (REPEAT_BEAT_DASH) ----------------------------
+
+func test_first_clear_records_the_game_and_grants_no_dash() -> void:
+	var played: GameData = _ui._choices[0]["game"]
+	var dash_before: int = GameState.dash_charges
+	var lifetime_before: int = GameStats.beaten_count(played.id)
+	_ui.pick(0)
+	_ui.report(true)
+	assert_true(GameState.has_beaten_game(played.id), "the clear is banked on the run")
+	assert_eq(GameState.dash_charges, dash_before, "a first clear pays nothing extra")
+	assert_eq(GameStats.beaten_count(played.id), lifetime_before + 1,
+		"and the lifetime tally the Collection shows moved too")
+
+func test_beating_a_game_again_grants_a_dash() -> void:
+	# Stand where a game you've already cleared is on offer (the run graph lets you
+	# double back, so an offered game can be one you beat earlier).
+	var target: GameData = _ui._choices[0]["game"]
+	GameState.note_game_beaten(target.id)
+	_ui._build_choices()
+	assert_eq(_ui._choices[0]["game"], target, "the offering is stable for the position")
+	assert_true(bool(_ui._choices[0]["repeat"]), "the card is flagged as a repeat")
+	var dash_before: int = GameState.dash_charges
+	_ui.pick(0)
+	_ui.report(true)
+	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
+		"beating it a second time granted a Dash")
+
+func test_repeat_card_shows_the_dash_bonus_above_it() -> void:
+	var target: GameData = _ui._choices[0]["game"]
+	GameState.note_game_beaten(target.id)
+	_ui._build_choices()
+	_ui._render_choices()
+	var first: Node = _ui._choices_row.get_child(0).get_child(0)
+	assert_true(first is Label, "the bonus sits ABOVE the cover art")
+	assert_eq((first as Label).text, "⚡ Gain +%d Dash" % _ui.REPEAT_BEAT_DASH,
+		"and it says what beating it again grants")
+	# A game not yet beaten keeps the row (so the covers stay in line) but says
+	# nothing in it.
+	GameState.beaten_games.clear()
+	_ui._build_choices()
+	_ui._render_choices()
+	var plain: Node = _ui._choices_row.get_child(0).get_child(0)
+	assert_true(plain is Label and (plain as Label).text == "",
+		"an unbeaten game's card has an empty bonus row")
+
+# --- revisiting a game offers a different draw -----------------------------
+
+# The offering is drawn in a stable position-seeded order, but ARRIVING at a game
+# again re-seeds it: doubling back is a fresh decision, not a rerun.
+func test_revisiting_a_game_redraws_the_offering() -> void:
+	# Find a hub with more neighbours than the offering can show — only there can
+	# the games in the slots change at all.
+	var hub: StringName = &""
+	for g in Data.all_games():
+		if RunGraph.neighbors(g.id).size() > _ui.offer_count() + 2:
+			hub = g.id
+			break
+	if hub == &"":
+		pass_test("no hub node in this run's graph")
+		return
+	GameState.set_current_game(hub)          # arrival #1
+	_ui._build_choices()
+	var first_draw: Array = _ui._choices.map(func(c): return c["slot"])
+	# Re-building without moving must NOT reshuffle (bash / transmute rely on it).
+	_ui._build_choices()
+	assert_eq(_ui._choices.map(func(c): return c["slot"]), first_draw,
+		"standing still keeps the same games in the slots")
+	# Walk away and come back a few times: the draw has to change.
+	var changed: bool = false
+	for _i in range(4):
+		GameState.set_current_game(&"__elsewhere__")
+		GameState.set_current_game(hub)      # arrival #2, #3, …
+		_ui._build_choices()
+		if _ui._choices.map(func(c): return c["slot"]) != first_draw:
+			changed = true
+			break
+	assert_true(changed, "revisiting %s drew a different set of games" % hub)
+
+# --- a pickup's effects show on the HUD immediately ------------------------
+
+func test_claimed_loot_updates_the_hud_immediately() -> void:
+	var heart: ItemData = Data.get_item2(&"hollow_heart")   # +4 Max Health on acquire
+	assert_not_null(heart)
+	var max_before: int = GameState.max_hp
+	var drop: Dictionary = {"item": heart}
+	_ui._drop_queue.append(drop)
+	_ui._refresh_loot()
+	_ui._collect_drop(drop)
+	assert_eq(GameState.max_hp, max_before + 4, "the pickup's effect landed")
+	assert_true(_ui._hud.text.contains("%d/%d" % [GameState.hp, GameState.max_hp]),
+		"and the HUD already shows it: %s" % _ui._hud.text)
+
+func test_hud_follows_a_verb_gain_without_a_loop_resolve() -> void:
+	var before: String = _ui._hud.text
+	GameState.grant_run_stat("dash", 2)      # emits stats_changed, no loop tick
+	assert_ne(_ui._hud.text, before, "the HUD repaints off the stat change")
+	assert_true(_ui._hud.text.contains("[b]Dash[/b] %d" % GameState.dash_charges),
+		"showing the new Dash count: %s" % _ui._hud.text)
+
 func test_bash_removes_a_choice_from_the_pool() -> void:
 	GameState.bash = 1
 	_ui._build_choices()

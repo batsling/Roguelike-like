@@ -20,7 +20,8 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # === Authoring catalog ===
 # `on:` matches a TriggerBus signal name. Currently consumed by item code:
 #   combat_started   — fires once per combat at init. Target = player.
-#                      Anchor:  effects = [{type: "block", value: 10}]
+#                      (Combat is gone in the games-first build; kept for the
+#                      legacy 1.0 item set.)
 #   combat_ended     — fires once at combat end (victory or defeat).
 #                      Burning Blood: [{type: "heal", value: 6}]
 #   enemy_killed     — fires per enemy defeated. Target = player.
@@ -41,6 +42,19 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #                      ever removed. Lunch: triggers = [{on:
 #                      "item_acquired", effects: [{type: "gain_max_hp",
 #                      value: 8}, {type: "gain_hp", value: 8}]}].
+#   game_selected    — the games-first hook for "when a game is selected"
+#                      (docs/games-first-redesign.md §3.2): fired by
+#                      GameLoop2.grant_selection_shields right after the
+#                      game's own shield grant, so an item's shield is an
+#                      extra TRY at the game about to be played. ctx carries
+#                      game_id + the base grant. Run-scope and scene-less.
+#                      Anchor: triggers = [{on: "game_selected", effects:
+#                      [{type: "gain_stat", stat: "shields", value: 1}]}]
+#   game_beaten      — the dominant games-first hook, "after beating a
+#                      game": fired once per reported game. Run-scope and
+#                      scene-less, and what charged actives recharge on.
+#                      Burning Blood: triggers = [{on: "game_beaten",
+#                      effects: [{type: "gain_hp", value: 1}]}]
 #   card_played      — fires per card BEFORE its effects resolve. ctx
 #                      carries the card and its target. Combine with
 #                      `if_card_tag:` / `if_card_id:` / `if_card_type:`

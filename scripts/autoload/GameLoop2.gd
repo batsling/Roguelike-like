@@ -9,14 +9,20 @@ extends Node
 # this autoload + GameState.
 #
 # The tiny run resources it moves live on GameState (hp / max_hp = Health /
-# Max Health, block = Block, and the verb/consumable counts); this node owns only
-# the enemy-stack state machine on top of them.
+# Max Health, shields = the per-game tries, and the verb/consumable counts); this
+# node owns only the enemy-stack state machine on top of them.
+#
+# SHIELDS ARE THE TRIES (§3). Selecting a game grants shields_for_game() of them;
+# every run of that game you lose is one tick of the ATTEMPT TRACKER
+# (log_attempt), which spends a shield — or 1 Health once they're gone. Whatever
+# survives absorbs the followers' hits when you report the game, and then expires:
+# shields never carry into the next game.
 #
 # Lifecycle of one game (§7.2, the one-game grace):
 #   choose_game(enemy)  — the enemy SPAWNS when you pick its game (current).
 #   beat_game(goal_met, fulfilled) — you played & beat the real game:
 #     1. Old goals you fulfilled this game defeat those stacked enemies (drop).
-#     2. Every enemy ALREADY on the stack attacks for its damage (block, then
+#     2. Every enemy ALREADY on the stack attacks for its damage (shields, then
 #        hp) — unless stunned (skips one attack). The current game's enemy is
 #        not on the stack yet, so it cannot attack this game: that ordering IS
 #        the one-game grace.
@@ -24,13 +30,25 @@ extends Node
 #        defeated + item drop at 0 Health, else it joins the stack (a survivor,
 #        e.g. an Alien-Baby-buffed two-Health enemy, must be beaten again) and
 #        starts attacking NEXT game.
+#     4. Any shields still standing expire — they belonged to that game.
 # Reach & clear the Amulet game (clear_amulet) to win; hp <= 0 to lose.
 
 signal loop_changed()                 # stack / current / run-state mutated (HUD hook)
 signal enemy_defeated(enemy)          # a GoalEnemyData was defeated (drop granted)
 signal player_hit(damage, blocked)    # a stacked enemy landed a hit this resolve
+# A try at the current game was logged or taken back. `cost` is "shield" or
+# "health" (what that try spent), `undone` true when it was reversed. The board
+# animates off this, so it fires once per tick.
+signal attempt_logged(cost: String, undone: bool)
 signal run_lost()
 signal run_won()
+
+# Shields granted when a game is SELECTED — the tries you get at it (§3). A
+# Traditional roguelike is the long haul, so it grants more.
+const SHIELDS_PER_GAME: int = 3
+const SHIELDS_TRADITIONAL: int = 5
+# What one lost run costs once the shields are gone.
+const ATTEMPT_HEALTH_COST: int = 1
 
 # The battlefield is a Mega-Man-Battle-Network-style grid: the player sits on the
 # left, and following enemies occupy a GRID_COLS x GRID_ROWS grid on the right.
@@ -89,6 +107,12 @@ var games_beaten: int = 0
 var enemy_damage_bonus: int = 0
 var enemy_damage_bonus_games: int = 0
 
+# The attempt tracker for the game currently being played (§3). One entry per try
+# the player has logged, in order, holding what that try spent: "shield" or
+# "health". The list is the undo record — a mistaken tick gives back exactly what
+# it took — and its size is the attempt count. Cleared when a new game is chosen.
+var attempt_costs: Array = []
+
 # Summary of the most recent beat_game(), for the log / HUD / tests. Rebuilt each
 # resolve; see beat_game for its shape.
 var last_result: Dictionary = {}
@@ -100,6 +124,7 @@ var _next_instance: int = 1
 func reset() -> void:
 	current = {}
 	stack.clear()
+	attempt_costs.clear()
 	bashed.clear()
 	run_over = false
 	won = false
@@ -193,6 +218,9 @@ func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 # choose, §7.2). Returns its unique instance handle. A previously-current enemy
 # that was never resolved is dropped (choosing a new game supersedes it).
 func choose_game(enemy: GoalEnemyData) -> int:
+	# A new game means a fresh set of tries — whatever was logged against the last
+	# one is closed out.
+	attempt_costs.clear()
 	if enemy == null:
 		current = {}
 		loop_changed.emit()
@@ -202,6 +230,74 @@ func choose_game(enemy: GoalEnemyData) -> int:
 	current = {"instance": inst, "enemy": enemy, "health": effective_health(enemy)}
 	loop_changed.emit()
 	return inst
+
+# --- shields = the tries at a game (§3) -----------------------------------
+
+# How many shields selecting `game` grants: the long haul of a Traditional
+# roguelike is worth more tries than anything else.
+func shields_for_game(game: GameData) -> int:
+	if game != null and game.type == GameData.GameType.TRADITIONAL:
+		return SHIELDS_TRADITIONAL
+	return SHIELDS_PER_GAME
+
+# Selecting a game hands the player their tries at it. Adds the grant on top of
+# whatever is carried (a shield from Anchor bought before this point still
+# counts), then announces the selection so items hooked on "when a game is
+# selected" — Anchor's +1 Shield — land on top of the grant. Returns the base
+# grant, before those items add to it.
+func grant_selection_shields(game: GameData) -> int:
+	var n: int = shields_for_game(game)
+	GameState.shields += n
+	TriggerBus.game_selected.emit({"game_id": game.id if game != null else &"",
+		"shields": n})
+	loop_changed.emit()
+	return n
+
+# The tries logged against the game in play.
+func attempts() -> int:
+	return attempt_costs.size()
+
+# How many of those tries were paid for with a shield — the hollow pips the board
+# draws next to the ones still standing.
+func attempts_on_shields() -> int:
+	return attempt_costs.count("shield")
+
+# ONE LOST RUN at the game being played (§3): it spends a shield, or
+# ATTEMPT_HEALTH_COST Health once the shields are gone — and Health reaching 0
+# ends the run right there, same as an enemy hit. Refused when no game is in play
+# or the run is already over. Returns the cost ("shield" / "health"), or "" when
+# nothing was logged.
+func log_attempt() -> String:
+	if run_over or current.is_empty():
+		return ""
+	var cost: String = "shield" if GameState.shields > 0 else "health"
+	if cost == "shield":
+		GameState.shields -= 1
+	else:
+		GameState.change_hp(-ATTEMPT_HEALTH_COST)
+		if GameState.hp <= 0:
+			run_over = true
+			won = false
+			run_lost.emit()
+	attempt_costs.append(cost)
+	attempt_logged.emit(cost, false)
+	loop_changed.emit()
+	return cost
+
+# Take back the last logged try, refunding exactly what it spent — the tracker is
+# a hand-driven counter, so a mis-click has to be reversible. Refused once the run
+# is over (a run ended by that tick stays ended). Returns the cost it undid.
+func undo_attempt() -> String:
+	if run_over or attempt_costs.is_empty():
+		return ""
+	var cost: String = String(attempt_costs.pop_back())
+	if cost == "shield":
+		GameState.shields += 1
+	else:
+		GameState.change_hp(ATTEMPT_HEALTH_COST)
+	attempt_logged.emit(cost, true)
+	loop_changed.emit()
+	return cost
 
 # How many goal completions it takes to defeat `enemy`: its sheet Health (1 for
 # all current content) plus the player's enemy_health item bonus (Alien Baby +1,
@@ -217,12 +313,16 @@ func effective_health(enemy: GoalEnemyData) -> int:
 # enemy's goal; `fulfilled_instances` are stacked enemies whose OLD goals you
 # also fulfilled while playing this game (§2). Returns last_result:
 #   {beaten, defeats:[enemy...], drops:int, attacks:[{instance,damage|stunned}],
-#    damage_taken, blocked, hp, block, stack_size, run_over, won}
+#    damage_taken, blocked, hp, shields, shields_expired, attempts, stack_size,
+#    run_over, won}
+# `blocked` is what the unspent shields absorbed; `shields_expired` is what was
+# left over afterwards and went away with the game (§3).
 func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 	var res := {
 		"beaten": true, "defeats": [], "drops": 0, "attacks": [],
 		"damage_taken": 0, "blocked": 0, "hp": GameState.hp,
-		"block": GameState.block, "stack_size": stack.size(),
+		"shields": GameState.shields, "shields_expired": 0,
+		"attempts": attempts(), "stack_size": stack.size(),
 		"run_over": run_over, "won": won,
 	}
 	if run_over:
@@ -280,6 +380,17 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 		if int(entry.get("stun", 0)) > 0:
 			entry["stun"] = int(entry["stun"]) - 1
 
+	# The enemies have struck and moved, so this game is over — and with it go the
+	# shields it granted (§3). Shields are the tries at ONE game: what you didn't
+	# spend retrying, and what the front line didn't get through, expires here
+	# rather than banking into the next game.
+	if GameState.shields > 0:
+		res["shields_expired"] = GameState.shields
+		GameState.shields = 0
+	# The tries went with it: `res` already carries the count for the log, and the
+	# board must not keep drawing a finished game's spent pips.
+	attempt_costs.clear()
+
 	# Aggravate Monsters lasts a fixed number of games (§4.1) — one game elapses
 	# per resolve, so tick it down after the stack has taken its buffed hits.
 	if enemy_damage_bonus_games > 0:
@@ -304,7 +415,7 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 		current = {}
 
 	res["hp"] = GameState.hp
-	res["block"] = GameState.block
+	res["shields"] = GameState.shields
 	res["stack_size"] = stack.size()
 	res["run_over"] = run_over
 	res["won"] = won
@@ -558,14 +669,14 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
 			res["drops"] = int(res.get("drops", 0)) + 1
 	enemy_defeated.emit(enemy)
 
-# Applies `damage` to the player: Block absorbs first (temporary health, §3),
-# the remainder comes off Health. Returns the amount absorbed by block. Ends the
+# Applies `damage` to the player: unspent Shields absorb first (§3), the
+# remainder comes off Health. Returns the amount the shields absorbed. Ends the
 # run on hp <= 0.
 func _take_hit(damage: int, res: Dictionary) -> int:
 	if damage <= 0:
 		return 0
-	var absorbed: int = mini(GameState.block, damage)
-	GameState.block -= absorbed
+	var absorbed: int = mini(GameState.shields, damage)
+	GameState.shields -= absorbed
 	var overflow: int = damage - absorbed
 	if overflow > 0:
 		GameState.change_hp(-overflow)

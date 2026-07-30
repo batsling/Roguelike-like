@@ -148,12 +148,12 @@ var _applied_item_max_hp: int = 0
 var _applied_item_max_energy: int = 0
 # Per-verb delta this inventory currently applies to the games-first board verbs
 # (Vajra's passive +1 Bash). The 2.0 verbs (bash/transmute/scramble/bombs/keys/
-# dash/block) are plain fields the loop spends directly — not read through
+# dash/shields) are plain fields the loop spends directly — not read through
 # Stats.get_value — so a passive stat_bonus on one is folded straight into the
 # field and reversed when the item leaves, tracked here like _applied_item_max_hp.
 var _applied_item_verbs: Dictionary = {}
-const _ITEM_VERB_STATS := ["bash", "transmute", "scramble", "bombs", "keys", "dash", "block", "push",
-	"game_choices"]
+const _ITEM_VERB_STATS := ["bash", "transmute", "scramble", "bombs", "keys", "dash", "shields",
+	"block", "push", "game_choices"]
 
 # Jelly (and any future SCALING rule that outputs max_hp): tracked exactly
 # like _applied_item_max_hp above, but separately, since it's recomputed by a
@@ -345,7 +345,15 @@ var discovery: int = 0
 # base_max_hp at run start) and Dash reuses dash_charges above; only these are
 # new. Granted via CharacterData start_* loadout, item effects (gain_stat),
 # and level-up rewards. All default 0, so combat runs are unaffected.
-var block: int = 0        # temporary health; absorbed before hp, carries between games, no cap
+# Shields — the TRIES you get at the game you're playing (§3). A game grants
+# GameLoop2.shields_for_game() of them the moment you select it (3, or 5 for a
+# Traditional game); each run of that game you LOSE spends one (the attempt
+# tracker, GameLoop2.log_attempt), and once they're gone a lost run costs Health
+# instead. Whatever is still standing when you report the game absorbs the
+# followers' hits before Health, then EXPIRES — shields are per-game and do not
+# carry into the next one (GameLoop2.beat_game clears them after the enemies have
+# struck and advanced). No cap.
+var shields: int = 0
 var bash: int = 0
 # Push (Manager's signature verb, from Raccoin): spend a charge to shove a
 # following enemy back one space, delaying its next attack by a game (§7.2) —
@@ -412,6 +420,10 @@ func _connect_lifecycle_hooks() -> void:
 	# fire on game_beaten — run-scope, so it counts in every combat mode.
 	if not TriggerBus.game_beaten.is_connected(_on_game_beaten):
 		TriggerBus.game_beaten.connect(_on_game_beaten)
+	# "When a game is selected" — the hook the shield economy hangs on (Anchor's
+	# +1 Shield, §3/§8). Run-scope and scene-less, like game_beaten below.
+	if not TriggerBus.game_selected.is_connected(_on_game_selected):
+		TriggerBus.game_selected.connect(_on_game_selected)
 	# Run-scope curse triggers. These fire OUTSIDE combat (a curse is gained on
 	# the verification screen, removed in the backpack/an event), so they can't
 	# ride the per-combat ItemTriggers path. Route them through the scene-less
@@ -445,9 +457,15 @@ func _on_combat_ended_tally(ctx: Dictionary) -> void:
 	if bool(ctx.get("victory", false)):
 		total_combats_completed += 1
 
+# A game was selected and its shields granted (§3). Owned items hooked on
+# "game_selected" fire here — Anchor's +1 Shield lands on top of the grant, so the
+# extra try is available for the runs you're about to play.
+func _on_game_selected(ctx: Dictionary) -> void:
+	fire_run_item_triggers("game_selected", ctx)
+
 func _on_game_beaten(_ctx: Dictionary) -> void:
 	# Games-first redesign (2.0): "after beating a game" is the dominant item
-	# trigger (Anchor +1 Block, Burning Blood +1 Health, Meat on the Bone,
+	# trigger (Burning Blood +1 Health, Meat on the Bone's conditional heal,
 	# docs/games-first-redesign.md §8). game_beaten fires outside any combat
 	# scene, so route owned items' game_beaten triggers through the scene-less
 	# runner — only scene-free effects (gain_hp / gain_max_hp / gain_chest /
@@ -722,7 +740,7 @@ func reset_run() -> void:
 	fov_bonus = 0
 	discovery = 0
 	# Games-first (2.0) resources.
-	block = 0
+	shields = 0
 	bash = 0
 	push = 0
 	transmute = 0
@@ -781,7 +799,7 @@ func apply_character2(char_data: CharacterData) -> void:
 	character_id = char_data.id
 	max_hp = maxi(1, char_data.base_max_hp)
 	hp = max_hp
-	block = 0
+	shields = 0
 	bash = char_data.start_bash
 	dash_charges = char_data.start_dash
 	push = char_data.start_push
@@ -952,6 +970,24 @@ func set_current_game(id: StringName) -> void:
 	current_game_id = id
 	emit_signal("current_game_changed", id)
 
+# Records that the player BEAT `game_id` this run and reports whether that was a
+# REPEAT — a game already on `beaten_games`. Revisiting is legal (the offering is
+# drawn from the neighbours of wherever you stand, so a game can come back
+# around), and beating one again is worth a Dash (see Overworld2.report).
+func note_game_beaten(game_id: StringName) -> bool:
+	if game_id == &"":
+		return false
+	total_games_beaten += 1
+	if beaten_games.has(game_id):
+		return true
+	beaten_games.append(game_id)
+	return false
+
+# True once `game_id` has been beaten at least once this run — so the offering
+# can flag it as a repeat (and its Dash bonus) before the player commits.
+func has_beaten_game(game_id: StringName) -> bool:
+	return beaten_games.has(game_id)
+
 func set_max_hp(new_max: int, heal_to_full: bool = false) -> void:
 	# Routes through Stats so Constitution auto-gain fires off the
 	# delta. Pass heal_to_full=true to restore HP to the new max
@@ -1094,6 +1130,10 @@ const _LEVEL_UP_ABILITY_FIELDS := {
 	"scramble": "scramble",
 	"bombs": "bombs",
 	"keys": "keys",
+	# Shields are the per-game tries (§3). "block" is kept as an alias so item
+	# Effect columns authored against the old name still land on the right field.
+	"shields": "shields",
+	"block": "shields",
 	# "+1 Game Choices" widens the overworld offering past its base 3 cards (§7).
 	"game_choices": "game_choice_bonus",
 }
@@ -1139,6 +1179,9 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 	return applied
 
 func _pretty_stat(stat: String) -> String:
+	# "block" is the legacy authoring name for the per-game tries; say Shields.
+	if stat == "block" or stat == "shields":
+		return "Shields"
 	return stat.capitalize()
 
 # Alien Baby: extra Health every goal-enemy spawns with — i.e. how many EXTRA
@@ -1401,6 +1444,13 @@ func add_item(template: ItemData) -> ItemData:
 			Notifications.notify(
 				"%s arrived decayed%s." % [inst.display_name, (" x%d" % hits) if hits > 1 else ""],
 				Color(0.7, 0.55, 0.4))
+	# Snapshot the run resources BEFORE anything the pickup does lands, so the
+	# pickup can REPORT what it changed. An item's payload is its passive
+	# stat_bonuses (Vajra +1 Bash, folded in by the recompute below) plus its
+	# item_acquired effects (Lunch: +2 Max Health, +2 Health) — both used to land
+	# silently, so the numbers moved with nothing saying so, which reads as "the
+	# item did nothing".
+	var before: Dictionary = run_resource_snapshot()
 	_recompute_item_bonuses()
 	# Fire item_acquired triggers AFTER the inventory + stat recompute so
 	# the pickup hook sees the new max_hp (Lunch's +8 HP lands on top of
@@ -1414,9 +1464,38 @@ func add_item(template: ItemData) -> ItemData:
 			EffectSystem.apply(effect, {
 				"source": null, "target": null, "scene": null, "card": null,
 			})
+	# Everything the pickup moved — passive stat_bonuses and item_acquired effects
+	# alike — in one player-facing line.
+	var gained: String = describe_resource_gains(before)
+	if gained != "":
+		Notifications.notify("%s: %s" % [inst.display_name, gained], Color(0.7, 1.0, 0.7))
+		GameLog.add("%s: %s" % [inst.display_name, gained], Color(0.7, 1.0, 0.7))
 	TriggerBus.emit_signal("item_acquired", {"item": inst})
 	emit_signal("inventory_changed")
 	return inst
+
+# The run resources a pickup / effect can move, as one flat dictionary. Paired
+# with describe_resource_gains to turn "an item was acquired" into "+2 Max
+# Health, +2 Health" without every item having to author a `notify` string.
+# Keyed by the player-facing name, in HUD order.
+func run_resource_snapshot() -> Dictionary:
+	return {
+		"Health": hp, "Max Health": max_hp, "Shields": shields,
+		"Bash": bash, "Dash": dash_charges, "Push": push,
+		"Transmute": transmute, "Scramble": scramble, "Bombs": bombs,
+		"Keys": keys, "Chests": pending_chests, "Gold": gold,
+	}
+
+# Human-readable diff between `before` (from run_resource_snapshot) and now,
+# e.g. "+2 Max Health, +2 Health". Empty when nothing moved.
+func describe_resource_gains(before: Dictionary) -> String:
+	var parts: Array = []
+	var now: Dictionary = run_resource_snapshot()
+	for key in now.keys():
+		var delta: int = int(now[key]) - int(before.get(key, now[key]))
+		if delta != 0:
+			parts.append("%s%d %s" % ["+" if delta > 0 else "", delta, key])
+	return ", ".join(parts)
 
 # Total bonus stacks any owned status-amplify item adds when `status_id` is
 # inflicted on an enemy (Empty Syringe -> +1 Bleed / Poison). Called from

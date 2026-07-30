@@ -66,7 +66,10 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 ├── images/                #   Surviving pre-2.0 art (legacy items / events / encounters)
 ├── addons/gut/            # GUT — the GDScript unit-test framework
 ├── test/                  # GUT test suites (test_*.gd)
-├── docs/                  # Design docs (card authoring, stat dispatcher)
+├── docs/                  # Design docs. `games-first-redesign.md` is the canonical
+│                          # spec for the current build; the combat-era docs
+│                          # (card authoring, action attacks, …) are kept for
+│                          # reference only.
 │
 ├── tools/                 # Shared Python tooling + design source of truth
 │   ├── Roguelikes.xlsx    #   spreadsheet that drives the importers/generators
@@ -162,12 +165,12 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Data` | Loads every `.tres` under `res://data/…` at startup, exposes lookups by id, and owns the shared rarity ladder. |
 | `EffectSystem` | Central dispatch for structured effects (`{type, value, target}`) applied via `EffectSystem.apply()`. |
 | `TriggerBus` | Global signal hub wiring item/event triggers to game moments (`game_beaten`, `chest_granted`, …). |
-| `Stats` | Mode-aware stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
+| `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
 | `GameLoop2` | The run loop: the games-beaten clock, the goal-enemy stack, and the grid the followers advance across. `Overworld2` is a view over it. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
-| `GameLog` | Verbose run-scope message log the HUD log panel subscribes to. |
-| `Notifications` | Curated player-facing "important events" channel (the toast strip). |
-| `SaveSystem` | Two-layer save/load: numbered autosave slots + named saves (`user://`). |
+| `GameLog` | Verbose run-scope message log (teleports, pickups, item procs) — the written record behind the toasts. |
+| `Notifications` | Curated player-facing "important events" channel; the overworld mounts `NotificationToasts` to show them. |
+| `SaveSystem` | Two-layer save/load: numbered autosave slots + named saves (`user://`). Not yet wired into a games-first run — see the roadmap. |
 | `Settings` | Run-independent preferences (e.g. game-filter) persisted to `user://settings.cfg`. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified). |
@@ -183,16 +186,23 @@ node and its script.
 
 - **`MainMenu.gd`** — new run, character select, the Collection, the tier list,
   and Settings.
-- **`Overworld2.gd`** — the run itself: the offering of games (cover cards), the
-  honour-system report step, the scrolls panel, and — right of the board — the
-  player's inventory with the loot tray under it.
-  - **`BattlefieldView.gd`** — the board: the hero on the left, the grid the
-    goal-enemies close in across, the off-field lane, the Push / Bomb toolbar, and
-    the strike / advance animation.
+- **`Overworld2.gd`** — the run itself: the offering of games (cover cards), and
+  then a two-column stage — checklist on the left (the standing goals while you're
+  choosing, the honour-system report step + attempt tracker while you're playing),
+  the battlefield on the right with the player's inventory and loot tray beneath
+  it. Also owns the scrolls panel and hosts the toast strip, so an item's effects
+  announce themselves the moment it's picked up.
+  - **`BattlefieldView.gd`** — the board: the hero on the left with the shield
+    pips over them, the grid the goal-enemies close in across, the off-field lane,
+    the Push / Bomb toolbar, and the strike / advance animation.
   - **`EnemyInfoCard.gd`** — the click-to-inspect card for one enemy.
-- **`EventModal.gd`** — the D20 stat-check events.
 - **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). Ordinary
   enemy drops don't open it: they land in the loot tray beside the board.
+- **`RateGameModal.gd`** — the 1-10 tier-list score for a game. Strictly opt-in:
+  it only ever opens from a **★ Rate** button (on the report panel while you're
+  playing a game, and on the select screen for the game you last reported).
+- **`EventModal.gd`** — the D20 stat-check events. Built and tested, but nothing
+  on the games-first board opens it yet (see the roadmap).
 
 `PlaySession2.gd` is the text-only precursor of the overworld, kept as a headless
 harness for the loop.
@@ -251,280 +261,166 @@ Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
 
-- **Inventory and loot moved beside the board; covers at box-art scale; the
-  overworld split into three files** — the player's pack (inventory + a loot tray)
-  now stands in a column to the RIGHT of the battlefield grid, so a drop waits
-  there to be claimed or skipped instead of standing on a cell; the melee columns
-  stay about enemies. Cover art is drawn at its real 3:4 shape and ~1.5x bigger on
-  the overworld choice cards (210x280), in the Collection grid/detail, in the
-  rate-game modal, and on the report panel, which now shows the game you went to
-  play next to the enemy you went to beat. `Overworld2.gd` shed ~1000 lines to
-  `BattlefieldView.gd` (the board, its animation, the Push/Bomb toolbar) and
-  `EnemyInfoCard.gd` (the inspect card); the four copies of the 75/20/5 rarity roll
-  collapsed into `Data.roll_rarity_step` / `roll_item_rarity`, the crisp-texture
-  helpers into `UITheme`, and `project.godot` dropped 15 input actions the
-  click-driven build never binds.
+- **Shields are the tries: an attempt tracker, and a two-column playing screen** —
+  Block is gone and **Shields** take its place as the *runs you get at a
+  game*. Selecting a game grants **3** (or **5** for a Traditional roguelike);
+  every run of it you lose is one tick of the new **attempt tracker**, which spends
+  a shield, and once they're gone a lost run costs **1 Health** (0 Health ends the
+  run there). Whatever is left when you report the game absorbs the followers' hits
+  and then **expires with the game** — shields never bank forward. **Anchor** moved
+  to a new **`game_selected`** trigger so its +1 Shield is a genuine extra try
+  before you play, not a reward afterwards. While a game is in play the screen is
+  **two columns**: on the left what you drive — the game, Play / Rate, the attempt
+  strip, a tightened one-line-per-row checklist and Completed Game — and on the
+  right what you read, the **battlefield with the pack (inventory + loot) under
+  it**. Both halves fit one screen, where stacking them didn't. The stage keeps
+  that shape **between games too** — the board is never hidden, and the checklist
+  becomes a **standing-goals list** ("What you need to do": the character's
+  level-up challenge and every follower's outstanding goal, tinted red once it's
+  in the front column), so what you owe is answerable *before* you commit to a
+  game rather than only after. The board draws the pool as
+  **pips on the hero** and a tick pops one with a floating `-1 ◆` — or flashes the
+  hero red for `-1 ♥` once the shields are gone. Each offered card shows the tries
+  it grants, and since the pool is empty between games, hovering a card previews
+  that grant in the HUD's Shields slot (`Shields +5`) instead of a flat 0.
 
-- **Deckbuilder + Strategy merged into one "Strategy" genre** — the grid/tactical
-  ("mewgenics") strategy combat was cut wholesale (its scenes, singletons,
-  `scripts/strategy*`, `StrategyEnemyData`/`StrategyTranslation`/
-  `StrategyAttackLibrary`, the `enemiesS` generators, `data/strategy_*`, and the
-  strategy test suites), leaving **two genres: Action and Strategy**. The former
-  **Deckbuilder** games are now **Strategy-typed with a `deckbuilder` tag** — the
-  same pattern the `traditional` tag uses — so every non-Action game routes to the
-  card combat (`Main._on_portal_entered` dropped its Strategy branch). The
-  choose-your-start panel and map legend drop to two genres
-  (`RunGraph.NUM_START_OPTIONS = 2`); the DevTools combat-type selector and the
-  economy sim lose their strategy paths. The 151 re-typed games regenerate from
-  `tools/Roguelikes.xlsx` via `import-games-godot.py`. The pre-cut grid combat is
-  preserved on the `strategy-grid-combat-archive` git tag.
-- **Overworld encounters (interactive)** — encounters now appear and play on the
-  overworld. Each area spawns one encounter (rarity-weighted from the eligible
-  pool) as a sprite on the left or right; walking near it pops a **press [E]**
-  prompt and opens a **type-aware interaction modal** (`EncounterModal`):
-  **Deal** offers tag-pooled items (the Devil lets you take any at a %HP +
-  random-curse cost; the Angel Room is a free single pick), **Shop** sells
-  tag-pooled items priced by rarity with an optional discount, **Movement**
-  fights an action **gate-elite** (launched via `Main`, returning to resolve the
-  queued teleport — `nearby`/`previous`, with a picker for the Divine
-  Teleporter), and **Challenge** grants its reward (gold + item chest) **up
-  front** when you commit to play a random unconnected game, then has you beat it
-  within N attempts — failing inflicts a random curse. `GameState` now
-  tracks **`last_game_curses_held` / `last_game_curses_triggered`** (set in the
-  post-game verification) so the Deal/Angel **requirement gates** work, evaluated
-  by `GameState.encounter_requirement_met`. New `EncounterNode` /
-  `EncounterModal`; `test/test_encounters.gd` covers the gate evaluator + art.
-- **Overworld encounters (data scaffold)** — the first slice of overworld
-  interactables that aren't games: shops, deals, teleporters, and challenges,
-  each a **direct reference to a real roguelike** (Isaac's Deal with the Devil /
-  Angel Room, Mewgenics & Gungeon shopkeepers, Risk of Rain teleporters, a Dead
-  Cells challenge rift). Authored in the new **`encounters`** sheet and generated
-  into `data/encounters/*.tres` (`EncounterData`) by
-  `tools/generate_encounter_tres.py`. The sheet's **Effect** / **Requirement
-  Effect** columns use the same in-sheet DSL the scrolls sheet uses
-  (semicolon-separated, space-delimited tokens) and parse into structured ops
-  (`offer_items` / `shop` / `combat` / `teleport` / `challenge` / `add_curse` /
-  `gain_chest` …) plus an AND-list of run-state gates. `Data` loads and serves
-  them (`get_encounter` / `all_encounters`); covered by `test/test_encounters.gd`.
-  Still ahead: the overworld encounter **node + interaction modal** that consume
-  the ops, the new effect handlers, and the `last_game.*` run-state the
-  requirement gates read.
-- **Permanent & Temporary status addons** — two new addon hooks (`permanent`
-  and `temporary`, authored in `addonsnew`) that bend how a status decays, run
-  through the shared `Stats` status core so the deckbuilder, action, and strategy
-  engines all honour them. **Permanent** holds a status at full value forever;
-  **Temporary** holds full value for a fixed turn count and then vanishes
-  entirely. Both surface a procedural top-right marker on the status badge — a
-  gold **padlock** for Permanent, a cyan **clock + remaining-turns** number for
-  Temporary — drawn immediate-mode via `DrawUtil` (new `draw_status_lock` /
-  `draw_status_clock`) plus a `StatusMarker` control, so the iconography is
-  identical across the badge overlay, the action arena, and the tactical grid.
-  `CombatActor` / strategy `Unit` / `BattleUnit` grow `permanent_statuses` /
-  `temporary_statuses` dictionaries with `set/is_status_permanent` and
-  `set/is_status_temporary` + `temporary_turns` helpers, and
-  `Stats.decay_actor_statuses` skips Permanent steps and ticks Temporary timers
-  to removal. Enemies author them in their starting statuses (the strategy Troll
-  opens with **5 Permanent Regeneration**); potions grant **Temporary** buffs
-  (`Gain +N <Status> for M turns`).
-- **Potion loot system** — the first loot consumable, ported from the legacy
-  HTML build. The `potions` sheet generates `data/potions/*.tres` (`PotionData`)
-  via `generate_potion_tres.py`; a new **`PotionSystem`** autoload owns global
-  per-type **identification**, per-run **mystery-bottle colours**, and a single
-  cross-mode **effect applier** (magic-damage potions scale with **Arcane** via
-  `Stats.resolve_damage`). Potions are gained **unidentified** and learned by
-  use or by paying at the shop. UI per mode: **deckbuilder** — a right-side
-  **Loot** button opens a scrollable potion list and using one spawns the
-  targeting arrow (any target, including yourself); **action** — a potion belt
-  where **Q drinks** the selected potion and **hold-Q + LMB throws** it with a
-  lobbing arrow into a splash (Strength-scaled range, cleave = wider); **strategy**
-  — a **Loot** section to **Drink** (self) or **Throw** to a tile (plus-shape
-  splash, cleave = radius-2 diamond), no action cost. Potions drop after combat
-  (a guaranteed potion/scroll after deckbuilder fights, a chance on the floor in
-  action/strategy), sell at the shop (with a pay-to-identify service), and can be
-  granted from the DevTools **Potions** tab. Scrolls appear as inert stubs until
-  the scroll system lands. Covered by `test/test_potions.gd`.
+- **Rating on a button, a bonus for rematches, revisits that redraw, and pickups
+  that show their effects** — the tier-list prompt no longer pops itself up after
+  a game; it opens from a **★ Rate** button (on the report panel, and on the
+  select screen for the game you last reported), and the modal now actually
+  covers the screen instead of leaving the board live behind it. Beating a game
+  you have **already beaten this run** grants **+1 Dash**, called out as
+  "⚡ Gain +1 Dash" above that game's cover in the offering (and on its hover
+  preview), so doubling back is a real routing option; the clear is recorded on
+  the run (`GameState.beaten_games`) and on the lifetime per-game tally the
+  Collection and tier list read (`GameStats`). **Arriving** at a game salts the
+  offering draw, so coming back to a node hands you a *different* subset of its
+  neighbours rather than replaying the same three cards. Picking anything up now
+  reports itself immediately: the HUD repaints off the state signals (Health /
+  Max Health / verb counts no longer wait for the next game to resolve) and
+  `GameState.add_item` diffs the run resources across the pickup to post a
+  "Lunch: +2 Max Health, +2 Health" line — the toast strip is mounted on the
+  overworld again, so those lines are visible at all.
 
-- **Strategy difficulty weight budget + enemy glyph tokens** — tactical-grid
-  encounters now spend a **weight budget** set by the run's difficulty tier
-  (Low 6 / Medium 8 / Hard 10 / Insane 12). Each enemy costs its 1–5
-  `StrategyEnemyData.weight` class; kinds are rolled by spawn rarity among those
-  that still fit the remaining budget until it is spent (capped at **6 enemies**
-  so cheap swarms can't overflow the spawn row) — the strategy-mode counterpart
-  to the deckbuilder's weighted spawner. On the grid, an enemy with no sprite now
-  renders its **glyph letter** in the proper font over a portrait-coloured token
-  (instead of a plain red circle); `BattleUnit` carries `glyph` / `portrait_color`
-  from `StrategyEnemyData` (first-letter fallback for preset-only kinds). Covered
-  by `test/test_strategy_weight_budget.gd`.
-- **Rogue-style strategy roster + signed Speed + reach rescale** — the
-  tactical-grid roster is reworked toward a Rogue-like set (Snake, Rattlesnake,
-  Hobgoblin, Troll, plus Sewer Rat). **Speed** becomes a *signed* stat centred on
-  0 — ±1 tile of movement and a matching initiative-weight shift per ±4 speed
-  (clamped ≥ 1) — so a slow unit still takes its turns instead of being frozen
-  out. Enemy intents now size their attacks with the **same bare keywords player
-  cards use** (`smash large`, `poke small`), and the shared tile-reach vocabulary
-  rescales to **short 1 / medium 2 / large 3** tiles across player cards and enemy
-  intents alike. The Troll's whole turn is a three-hit **Maul** and it opens with
-  Permanent Regeneration (see the status-addon entry above). Covered by
-  `test/test_strategy_enemies.gd`.
-- **Weighted enemy encounters** — combats now field a **scaled group** instead of
-  a single random enemy. `scripts/runtime/EnemySpawner.gd` ports the legacy
-  budget/tier "weight" spawn: the run's **RunDifficulty** tier sets a spend budget
-  (first combat 2, then Low=4 / Med=6 / High=9 / Insane=12), enemies are picked
-  weighted by their `weight` cost up to the 5-enemy cap, the pool is gated by tier
-  (Boss-difficulty reserved for boss fights), and a new
-  `GameState.total_combats_completed` counter eases the opening fight. Wired into
-  `GameMap` / `Main`; pure logic covered by `test/test_enemy_spawner.gd`.
-- **Deckbuilder enemy system (data-driven)** — deckbuilder enemies are now
-  generated from a dedicated **`enemiesD`** sheet by `tools/generate_enemy_tres.py`
-  into `data/enemies/*.tres` (12 Slay-the-Spire enemies). Each enemy's **Moves**
-  column compiles into a weighted **intent pattern** (`t1` forced opener +
-  `any @ weight` moves → per-turn probabilities), and the legacy ability column
-  becomes structured data (split target/count, starting statuses). A minimal
-  **Slimed** status card was added to `cardsnew` for the slimes' card pressure,
-  and a **5-enemy battlefield cap** (`DeckbuilderCombat.MAX_ENEMIES`) bounds spawns
-  and Splits. Regenerate with `build_enemiesD_sheet.py` → `generate_enemy_tres.py`.
-  See `docs/enemy-plan.md`.
-- **Strategy enemy system (data-driven)** — tactical-grid enemies are authored in a
-  dedicated **`enemiesS`** sheet by `tools/generate_strategy_enemy_tres.py` into
-  `data/strategy_enemies/*.tres` (`StrategyEnemyData`). One sheet is the single
-  source of truth for stats, the **Intents** move-set (each intent carries a
-  StrategyAttackLibrary `shape`, cooldown, priority, target and condition), the
-  spawn-pool gate (`Min Floor` / `Spawn Weight`) and the loot table (`Gold` /
-  `Item %`) — replacing the dictionaries that used to live in `Unit.gd`,
-  `EnemyCatalog.gd`, `BattleView.gd` and `Map.gd` (kept only as fallbacks). A single
-  **Speed** stat now drives both initiative cadence and tile budget. Regenerate with
-  `build_enemiesS_sheet.py` → `generate_strategy_enemy_tres.py`. See
-  `docs/strategy-enemy-authoring.md`.
-- **Enemy status mechanics across all combats** — eight enemy-facing mechanics now
-  run in the shared `Stats.gd` status core, so deckbuilder, action, and strategy
-  all get them: **Determined** (a value rolled once per combat), **Split** (slimes
-  spawn copies at ≤50% HP), **Shifting** / **Shackled** (Transient's power-shift
-  cycle, fed by a shared damage-taken tally), **Ritual** (gains Power each turn),
-  **Curl Up** (Block on the first hit each turn), **Fading** (turn countdown to
-  death), and **Confused** (randomizes card energy costs each turn — shown on the
-  Action card art during cooldown), plus **per-turn damage scaling**
-  (`dmg:N:per_turn=M`, Transient's +10/turn). Authored in `addonsnew` /
-  `statusesnew` and folded into `ReferenceCatalog`.
-- **Dev test-combat menu** — the `` ` `` DevTools overlay gains an **Enemies** tab:
-  pick a **combat type** (deckbuilder / action / strategy — the roster switches to
-  that engine's enemies), tick up to 5, and **Start Combat** to drop straight into
-  that engine's fight against the roster, mid-run and with no run-progress side
-  effects, for isolated mechanic testing.
-- **Games/connections refresh + new items** — regenerated the games graph from the
-  spreadsheet (now **685** games, incl. 6 new traditional roguelikes) with
-  refreshed influence edges and launch links; added the **Empty Tome**
-  (combat-start weapon cost discount via the new `reduce_card_cost` effect) and the
-  **Dexecutioner / Lil' Bomber / Glass Eye** weapon items.
-- **Weapon evolutions + Finesse / Explosive / element UX** — a new **Evolution**
-  mechanic (sheet-authored in the `Evolutions` tab) irreversibly transforms a
-  base weapon card the instant its two requirements are met: **Lil' Bomber** + any
-  Crown item → **King Bomber** (gains 5–9 Gold on an enemy hit, art swaps to the
-  `images/Evolutions/` form), with a notification and an **Evolutions** sub-tab in
-  the Collection. Lil' Bomber also gains the **Fire** element (1 Burn on hit) and
-  an **Explosive** projectile that bursts into an AOE on impact in both Action and
-  Strategy. **Dexecutioner** carries the new **Finesse** addon (bonus damage also
-  scales with Defense / Dexterity). Cards now show an **element badge**, the
-  backpack card-zoom explains a card's elements/addons/statuses in a tooltip
-  sidebar, and dragging a targeting card over an enemy shows a **dynamic hover
-  card** reflecting conditional effects against that specific target. Regenerate
-  with `generate_card_tres.py --attacks`, `generate_evolution_tres.py`, and
-  `import-reference-godot.py`.
-- **Strategy combat → grid deckbuilder** — the tactical mode now plays like the
-  deckbuilder on a grid. Combat starts immediately (no pre-combat loadout); your
-  whole run deck shuffles into a draw pile and you draw a fresh hand each turn
-  with **energy** (`GameState.max_energy`). **Movement costs energy** — each move
-  spends 1 energy to walk up to your Speed-stat tiles, repeatable. The basic
-  attack is just a **Strike card**; attacks are **in-range only** (footprint
-  aiming via `StrategyAttackLibrary`) so positioning matters, and AOE hits only
-  units inside the footprint. **Block** resets at the start of your turn, **Dash**
-  is a once-per-combat bonus turn, and **curse cards** clog the hand and fire
-  their eot / on_play_other triggers — all matching the deckbuilder. Drops the
-  old loadout, weapon-slot, per-run card-uses, empower-charge translation, and
-  the in-combat Spellbook/mana (shelved). See `scripts/strategy/combat/BattleView.gd`.
-- **Status-effect system + Fear** — a mode-aware status system wired across
-  deckbuilder, action, and strategy combat, with **Fear** as the first fully
-  designed status (`docs/fear-status-design.md`). `statusesnew`/`addonsnew`
-  now drive the Collection Reference tab, including the **Fear** status and
-  the **Unplayable** / **Eternal** card addons.
-- **Curse-synergy items** — Death Orb, Du-Vu Doll, Golden Beetle, and
-  Vitality Orb, plus the EffectSystem/TriggerBus hooks they ride on.
-- **Dice & combat inventory** — early dice items (D6, Wooden Nickel), a
-  charge-bar widget, and a combat inventory panel shared across modes.
-- **Event content port** — the first authored pre-combat events (Watching
-  Eyeballs, Fruit Basket, A Note For Yourself, The Ssssserpent) generated from
-  the `events` sheet, a reworked `EventModal`, and a Collection Reference tab.
-- **D20 die view & rewards polish** — overhauled D20 roll view, rarity styling,
-  the Backpack history panel, treasure-room/shop tweaks, and new items
-  (Burning Blood, Ring of the Snake).
-- **Combat feel & UX fixes** — run-map scrolling, dungeon combat feel, pause
-  menu, mouse controls, and a RateGameModal soft-lock fix.
+- **Random Sized Chest + roster/content refresh** — the Vampire Survivors
+  characters' level-up reward is a **Random Sized Chest**: the roll picks the
+  chest's SIZE (Small 1 / Medium 2 / Large 3 / Huge 5 items) on the same
+  75/20/5-with-a-10%-bump ladder as every other rarity draw
+  (`Data.CHEST_SIZE_CHOICES`), rather than the rarity of what's inside. Ported
+  **Poe Ratcho** and **Antonio Belpaese** plus new games, goal-enemies, and
+  bosses from the sheet.
+
+- **Inventory and loot beside the board; covers at box-art scale; the overworld
+  split into three files** — the player's pack (inventory + a loot tray) stands
+  in a column to the RIGHT of the battlefield grid, so a drop waits there to be
+  claimed or skipped instead of standing on a cell. Cover art is drawn at its
+  real 3:4 shape and ~1.5x bigger on the choice cards (210x280), in the
+  Collection, in the rate-game modal, and on the report panel, which shows the
+  game you went to play next to the enemy you went to beat. `Overworld2.gd` shed
+  ~1000 lines to `BattlefieldView.gd` (the board, its animation, the Push/Bomb
+  toolbar) and `EnemyInfoCard.gd` (the inspect card); the duplicated rarity rolls
+  collapsed into `Data.roll_rarity_step` / `roll_item_rarity` and the
+  crisp-texture helpers into `UITheme`.
+
+- **Art reorganised into `images2.0/`** — every asset the games-first build uses
+  moved to `images2.0/{games,items,enemies,bosses,characters,scrolls}/`, resolved
+  from each sheet's `File` column. `images/` keeps only the pre-2.0 art that
+  surviving `data/` resources still load.
+
+- **Enemy footprints and multi-cell positioning** — an enemy occupies its whole
+  `Size` footprint (`1x2`, `2x1`, `2x2`, or a shaped box like `2x3 L 90 CC`), and
+  a placement is legal only when every solid cell is free. That single rule gives
+  the board its behaviour: a wide body enters closer to the player and strikes
+  sooner, a big body is a wall that stalls the queue behind it, an L leaves
+  exactly the gap its notch describes, and **Push** needs the entire footprint to
+  fit one column back. Art draws across the full bounding box and hit-testing
+  follows the mask, not the box.
+
+- **The MMBN-style grid battlefield with inline drops** — followers are drawn on
+  a 4x4 grid (columns = distance, rows = lanes) with the player on the left.
+  Enemies enter at the back, close one column per game beaten, and strike once
+  any of their cells touch the front column; an overflow queue waits off-grid and
+  slides on as space frees. Every defeated enemy's drop appears as loot to claim
+  or skip instead of opening a reward screen.
+
+- **Push + the Manager, and Deckbuilder promoted to a first-class game type** —
+  **Push** (spend a charge to shove a follower one column back, delaying its next
+  attack) arrived with the **Manager** character from Raccoin. The game types are
+  now **Action / Deckbuilder / Traditional / Strategy** — `deckbuilder` and
+  `traditional` were tags on Strategy and are authored on `GameData.type`
+  directly, so each type draws its own goal-enemy pool.
+
+- **Games-first item rewards and active item effects (§8)** — `items2.0` behaviour
+  classes are wired end to end: `Pickup` (one-shot `item_acquired` effects),
+  `Triggered` (the dominant `game_beaten` hook — Anchor, Burning Blood, Meat on
+  the Bone), `Charged, N` (D6, Wand of Wishing), `Usable` (Ride the Bus), and
+  `Passive` (Vajra's +1 Bash). Chests bank through `GameState.grant_chest` and
+  redeem into `RewardScreen`s when the board is idle.
+
+- **The games-first cut (§11)** — the simulated combat modes are gone: the
+  deckbuilder / action / strategy scenes and scripts, combat cards and statuses,
+  potions, spells, dice, and the combat enemy stat blocks were all removed (they
+  live on in git history). What replaced them is `GameLoop2` — the goal-enemy stack,
+  the games-beaten clock, the difficulty tiers and their boss rounds — plus
+  `ScrollSystem` (identify-by-reading scrolls), the tiny Health / Max Health /
+  Shield model, and the bash / dash / transmute / scramble / push verb layer.
+  **The real video game you go and play is the combat.**
 
 ---
 
 ## Roadmap / future plans
 
-The Godot port already covers the core loop (overworld map, deckbuilder and
-action combat, data-driven enemies per mode, weighted/
-difficulty-scaled encounters, events, curses, items, status effects — including
-the Permanent/Temporary status addons — curse-synergy items, loot **potions**,
-the shop, escape phase, characters, saves, collection, and game verification).
-The work still ahead — much of it porting remaining systems from the legacy
-HTML build:
+The core loop is in and playable end to end: character select, a start/amulet
+graph over 751 real games, the limited offering with its verbs, the honour-system
+report step, goal-enemies that follow you across the grid, drops and chests,
+level-ups, difficulty tiers with boss rounds, scrolls, the Collection, and the
+cross-run tier list. What's still ahead:
 
-- **Loot system** — *potions landed* (see Recent changes). Still ahead: the
-  **scrolls** and **fish** consumable tables (scrolls currently drop as inert
-  stubs), and **bombs** and **keys**.
-- **Fix the deckbuilder map screen** — polish/repair the in-combat map view.
-- **Finish the content catalogs** — port the remaining **cards**, **items**,
-  and **addons** so the Godot catalog matches the spreadsheet.
-- **Spells** — port the spell system and add new spells (`SpellData` exists;
-  the deckbuilder-side spells panel still needs wiring).
-- **Events** — the event system and first authored events are in (see Recent
-  changes); port the remaining pre-combat events and author new ones.
-- **Attack / weapon card → action-combat translation** — *first pass done.* A
-  named, data-driven **attack-archetype** vocabulary (poke/swing/smash/nova/
-  projectile/lob/beam/homing/smite/auto_aoe) now drives delivery in the action
-  arena, authored in the sheet's Attack column and tuned in
-  `data/action_attacks.tres`. See `docs/action-attack-translation.md`. Still
-  ahead: per-archetype art/polish, the unused `lob`/`homing` shapes wired to
-  real cards, and tuning passes on reach/radius feel.
-- **Shop / gold scaling** — tune merchant pricing and gold rewards so they
-  scale across a run (the shop screen itself is in place).
-- **Difficulty-change boss** — a boss encounter triggered when the run's
-  difficulty tier changes, granting a reward on victory (possibly **curse
-  removal**).
-- **Start-of-run reward** — a free reward granted at the start of a run, chosen
-  to match the **game type** the player picks.
-- **Connection proof** — surface the evidence behind each game-to-game
-  influence edge. Most connections have proof: a screenshot stored in a
-  `proof/` folder or a website link showing the link between the two games.
-  Add this to the connection data and display it in-game when viewing a
-  connection.
-- **Unconnected games** — give a purpose to games that have no influence edge
-  into the current path (a mechanic, reward, or way to reach/use them).
-- **Game-space statuses** — port the HTML system where map spaces carry
-  statuses that trigger when landed on (e.g. Charmed, Devilish, Holy, Marked),
-  from `game-statuses-data.js`.
-- **More map movement** — give players more ways to move around the map:
-  additional movement items and loot, a new movement mechanic, and/or
-  movement-themed events.
+- **The OBS companion HUD (§9)** — the design is stream-first: a slim always-on-top
+  window showing health, shields, the current game + its goal, the follower stack,
+  and the verb/consumable counts, reading the same autoloads the main window
+  mutates. Deferred by decision until the mechanics lock; it is the largest
+  unbuilt piece of the spec.
+- **Overworld encounters** — shops, deals, teleporters, and challenge rifts are
+  authored (`data/encounters/*.tres`, `EncounterData`, its sheet + generator, and
+  `GameState.encounter_requirement_met`), but nothing on the games-first board
+  offers them yet. They need a place in the offering / between games.
+- **The D20 events** — `EventModal` + `data/events` are built and tested, and are
+  likewise not reachable from the current overworld. Same question: when does a
+  run stop for an event?
+- **Saving a run** — `SaveSystem` snapshots and restores run state, but the menu's
+  Continue list is gated off and Run History is a stub; a games-first run can't be
+  resumed yet.
+- **Keys and locked paths** (and the **Fog** scroll) — deferred by decision (§4):
+  no 2.0 content grants keys, and no edge is gated behind one.
+- **Tags and path requirements (§6.2)** — widen the tag vocabulary on `GameData`
+  and let an edge demand a type or tag ("this route needs a Deckbuilder clear"),
+  so routing becomes a collection puzzle rather than a shortest path.
+- **Content depth** — the catalogs are thin next to the 751 games: 29 goal-enemies,
+  32 bosses, 15 items, 6 scrolls, 9 characters. More of each (and more goals per
+  type) is the cheapest way to add run variety; all of it comes from the sheet.
+- **The open design decisions (§7.1 / §12)** — the boss damage band above the
+  normal 1–3, whether bash / transmute / scramble should stay legal on a boss
+  round (they currently are), and the goal-enemy `Ability` column, which exists
+  in the schema but is `N/A` across the roster.
+- **Connection proof** — surface the evidence behind each game-to-game influence
+  edge (a screenshot in a `proof/` folder or a link), stored on the connection
+  data and shown when inspecting a connection.
+- **Unconnected games** — give a purpose to games with no edge into the current
+  route. Transmute already pulls one off-graph; keys / "wild" games are the other
+  half of the idea.
+- **Game-space statuses** — port the HTML build's map-space statuses (Charmed,
+  Devilish, Holy, Marked) that trigger when you land on a space
+  (`game-statuses-data.js`).
+- **More map movement** — additional movement items, loot, and mechanics beyond
+  Dash / Ride the Bus / Scroll of Teleportation.
+- **Curses** — shelved on purpose (§5): the enemy-with-a-goal is the challenge
+  mechanic. The 16 curses and their hooks stay in the repo in case they come back
+  as an opt-in gambit layer.
 
-Larger systems from the HTML build still to be ported (surfaced from a scan of
-`legacy-web/`):
-
-- **Dice tray & combat dice** — named die cards with face outcomes (the
-  "slot items onto dice" feature), backed by the combat-**moves** vocabulary
-  (`dice` / `moves` sheets, `dice-data.js`, `moves-data.js`). First dice items
-  (D6, Wooden Nickel) have landed; the full dice tray + face authoring is still
-  ahead.
-- **Allies** — heroes that provide dice in combat (`allies-data.js`), tied to
-  the dice system above.
-- **Bingo** — the 3×3 bingo-goal grid with progressive item-choice rewards
-  (`bingo.js`).
-
-All of the above are driven by `tools/Roguelikes.xlsx`, so porting each is
-largely a matter of adding the matching Resource schema in `scripts/resources/`,
-a generator in `tools/`, and the UI.
+New content is driven by `tools/Roguelikes.xlsx`, so adding a system is largely a
+matter of a Resource schema in `scripts/resources/`, a generator in `tools/`, and
+the UI.
 
 ---
 
