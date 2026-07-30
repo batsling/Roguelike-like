@@ -117,8 +117,9 @@ A roguelike is not beaten in one run, so **shields are how many runs you get**:
   has to arrive *before* you go and play. The grant is part of the routing
   decision, so it's on every offered card and previews in the HUD on hover.
 - **Every run of that game you LOSE is one tick of the attempt tracker**, and each
-  tick **spends a shield**. The tracker lives under the board on the report panel,
-  and the board draws the pool as pips on the hero, so ticking visibly drains it.
+  tick **spends a shield**. The tracker lives with the checklist in the left column
+  of the playing screen; the board stands in the right column (with the pack under
+  it) and draws the pool as pips on the hero, so ticking visibly drains it.
 - **Out of shields, a lost run costs 1 Health** — and Health reaching 0 ends the
   run right there, exactly like an enemy hit.
 - **Whatever is left when you report the game absorbs the followers' hits** before

@@ -406,17 +406,37 @@ func test_the_board_is_put_away_while_choosing_and_shown_in_play() -> void:
 	assert_true(_ui._select_box.visible, "the offering stays up alongside it")
 	_ui.toggle_board()
 	assert_false(_ui._board.visible, "and puts it away again")
-	# Playing a game: board on top, checklist under it, offering gone.
+	# Playing a game: checklist left, board right, offering gone.
 	_ui.pick(0)
 	assert_true(_ui._board.visible, "the board is forced up while a game is in play")
-	assert_true(_ui._play_panel.visible, "with the report checklist under it")
+	assert_true(_ui._play_panel.visible, "with the report checklist beside it")
 	assert_false(_ui._select_box.visible, "the offering is out of the way")
 	assert_false(_ui._board_btn.visible, "and the toggle is irrelevant here")
-	# Both live in the same panel, board first.
-	var board_i: int = _ui._board.get_index()
-	var report_i: int = _ui._play_panel.get_index()
-	assert_eq(_ui._board.get_parent(), _ui._play_panel.get_parent(), "one panel holds both")
-	assert_lt(board_i, report_i, "the board is drawn above the checklist")
+
+# The stage is two columns: what you tick on the left, what you look at on the
+# right — board first, the pack under it.
+func test_the_checklist_sits_left_of_the_board_with_the_pack_below() -> void:
+	_ui.pick(0)
+	assert_eq(_ui._left_col.get_parent(), _ui._right_col.get_parent(), "one row holds both columns")
+	assert_lt(_ui._left_col.get_index(), _ui._right_col.get_index(),
+		"the checklist column comes first — it's on the left")
+	assert_true(_ui._left_col.is_ancestor_of(_ui._play_panel), "the checklist is in the left column")
+	assert_true(_ui._right_col.is_ancestor_of(_ui._board), "the board is in the right column")
+	assert_true(_ui._right_col.is_ancestor_of(_ui._pack_col), "and so is the pack")
+	assert_lt(_ui._stage_panel.get_index(), _ui._pack_col.get_index(),
+		"the pack sits under the board, not over it")
+	# On screen, that has to actually be left-of / below — tree order alone would
+	# still pass if the columns were stacked. Needs a frame for layout to run.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_lt(_ui._play_panel.global_position.x, _ui._board.global_position.x,
+		"the checklist is drawn to the left of the board")
+	assert_gt(_ui._pack_col.global_position.y, _ui._board.global_position.y,
+		"the pack is drawn below the board")
+
+func test_the_pack_stays_reachable_while_choosing() -> void:
+	assert_false(_ui._board.visible, "the board is put away between games")
+	assert_true(_ui._pack_col.visible, "but the inventory never goes away")
 
 func test_the_board_button_counts_the_followers() -> void:
 	_ui.pick(0)

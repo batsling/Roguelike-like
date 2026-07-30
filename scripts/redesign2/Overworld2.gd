@@ -97,10 +97,14 @@ var _stack: RichTextLabel           # battlefield summary line
 # The offering half of the page (heading, verbs, cards, hover preview) — hidden
 # once a game is in play, which is what frees the room for the stage below.
 var _select_box: VBoxContainer
-# The STAGE: one panel holding the board and, under it, the report checklist.
-var _stage_panel: PanelContainer
+# The STAGE, two columns wide: the report checklist on the left, and on the right
+# the board with the pack (inventory + loot tray) under it.
+var _left_col: VBoxContainer
+var _right_col: VBoxContainer
+var _report_panel: PanelContainer    # frames the checklist half (left)
+var _stage_panel: PanelContainer     # frames the board (right, above the pack)
 var _board_head: VBoxContainer       # the board's heading + summary line
-var _report_sep: HSeparator
+var _pack_col: Control               # inventory + loot tray, under the board
 var _scrolls_wrap: VBoxContainer
 # The page's ScrollContainer. The stage is taller than a screen with the board on
 # top, so picking a game scrolls the report half into reach (the board is a scroll
@@ -729,10 +733,11 @@ func toggle_board() -> void:
 	_show_board = not _show_board
 	_refresh_stage()
 
-# Who gets the stage right now. While a game is in play it's the board AND the
-# report checklist under it. While choosing, the offering is the screen and the
-# board is put away behind the header button — one click away, with the follower
-# count on the button so a hidden board can't hide bad news.
+# Who gets the stage right now. While a game is in play it's the checklist on the
+# left and the board on the right. While choosing, the offering is the screen and
+# the board is put away behind the header button — one click away, with the
+# follower count on the button so a hidden board can't hide bad news. The pack
+# under the board never goes away: the inventory is reachable in every phase.
 func _refresh_stage() -> void:
 	if _stage_panel == null:
 		return
@@ -743,8 +748,8 @@ func _refresh_stage() -> void:
 	_board.visible = board_on
 	_board_head.visible = board_on
 	_play_panel.visible = playing
-	_report_sep.visible = playing
-	_stage_panel.visible = board_on or playing
+	_report_panel.visible = playing
+	_stage_panel.visible = board_on
 	_board_btn.visible = not playing
 	var following: int = GameLoop2.stack.size()
 	if _show_board:
@@ -1457,34 +1462,47 @@ func _build_ui() -> void:
 	preview_box.add_child(_preview)
 	_select_box.add_child(preview_wrap)
 
-	# THE STAGE: the board and the report checklist in ONE panel, board on top. While
-	# a game is being played they're a single thing — the grid is where the tries you
-	# tick off land, and the checklist is how the game ends — so they're framed
-	# together rather than as two panels a page apart. The pack column stands beside
-	# the whole stage, since the inventory is reachable in every phase.
+	# THE STAGE, in two columns: the CHECKLIST on the left — what you're reading and
+	# ticking while the real game is open — and on the right the BOARD with the PACK
+	# under it, the two things you look at rather than drive. Side by side they both
+	# fit a screen, where stacked they didn't.
 	var main_row := HBoxContainer.new()
 	main_row.add_theme_constant_override("separation", 12)
 	root.add_child(main_row)
 
-	# Shrink, not expand: the pack column belongs right beside the board, and the
-	# report content under it inherits the board's width — which keeps the checklist
-	# narrow enough to stay a list.
-	var stage_col := VBoxContainer.new()
-	stage_col.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	main_row.add_child(stage_col)
+	# Left column: takes the room the board doesn't need.
+	_left_col = VBoxContainer.new()
+	_left_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_left_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	main_row.add_child(_left_col)
+
+	_report_panel = PanelContainer.new()
+	_report_panel.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.5), 12, 12, 1))
+	_left_col.add_child(_report_panel)
+	_play_panel = VBoxContainer.new()
+	_play_panel.add_theme_constant_override("separation", 6)
+	_report_panel.add_child(_play_panel)
+
+	# Right column: the board, then the pack beneath it. Shrink-wrapped to the
+	# board's real width so the checklist gets everything else.
+	_right_col = VBoxContainer.new()
+	_right_col.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_right_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_right_col.add_theme_constant_override("separation", 8)
+	main_row.add_child(_right_col)
 
 	_stage_panel = PanelContainer.new()
 	_stage_panel.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.5), 12, 12, 1))
 	_stage_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	stage_col.add_child(_stage_panel)
+	_right_col.add_child(_stage_panel)
 	var stage_box := VBoxContainer.new()
 	stage_box.add_theme_constant_override("separation", 8)
 	_stage_panel.add_child(stage_box)
 
-	# Board header: what the field is doing, on one line.
-	# One line of heading, not two: the summary already names the battlefield, so the
-	# old section label above it was just height.
+	# Board header: what the field is doing, on one line. The summary already names
+	# the battlefield, so there's no section label above it.
 	_board_head = VBoxContainer.new()
 	_stack = _panel_label()
 	_board_head.add_child(_stack)
@@ -1496,16 +1514,10 @@ func _build_ui() -> void:
 	_board.enemy_inspected.connect(_show_enemy_info)
 	stage_box.add_child(_board)
 
-	# --- the report half of the stage (shown while a game is in play) ---------
-	_play_panel = VBoxContainer.new()
-	_play_panel.add_theme_constant_override("separation", 6)
-	stage_box.add_child(_play_panel)
-
-	_report_sep = HSeparator.new()
-	_play_panel.add_child(_report_sep)
+	# --- the report checklist (left column, shown while a game is in play) ----
 
 	# One tight row: the cover, the enemy, and the goal text — sized down from the
-	# old card, because the board above it is now the biggest thing in the panel.
+	# old card, because the board beside it is the biggest thing on the page.
 	var np_box := HBoxContainer.new()
 	np_box.add_theme_constant_override("separation", 10)
 	_now_playing_cover = TextureRect.new()
@@ -1557,7 +1569,10 @@ func _build_ui() -> void:
 	done.pressed.connect(func(): report(_goal_met()))
 	_play_panel.add_child(done)
 
-	main_row.add_child(_build_pack_column())
+	# The pack lives under the board: what you're carrying and what's waiting on the
+	# ground belong with the field, not with the checklist you're ticking.
+	_pack_col = _build_pack_column()
+	_right_col.add_child(_pack_col)
 
 	_scrolls_wrap = VBoxContainer.new()
 	_scrolls_wrap.add_theme_constant_override("separation", 4)
@@ -1646,15 +1661,18 @@ func _refresh_attempts() -> void:
 	_attempt_btn.disabled = not live
 	_attempt_undo.disabled = not live or attempts == 0
 
-# The pack column that stands to the right of the grid: everything the player is
+# The pack that sits UNDER the grid in the right column: everything the player is
 # carrying, then the loot tray. Both panels are always mounted — only their
-# contents change — so the column doesn't jump around as items come and go.
+# contents change — so the column doesn't jump around as items come and go. It
+# fills the column, so it's as wide as the board above it (and falls back to
+# PACK_WIDTH when the board is put away).
 const PACK_WIDTH := 300
 
 func _build_pack_column() -> Control:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
 	col.custom_minimum_size = Vector2(PACK_WIDTH, 0)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 	var inv_wrap := PanelContainer.new()

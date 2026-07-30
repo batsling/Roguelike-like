@@ -186,13 +186,14 @@ node and its script.
 
 - **`MainMenu.gd`** — new run, character select, the Collection, the tier list,
   and Settings.
-- **`Overworld2.gd`** — the run itself: the offering of games (cover cards), the
-  honour-system report step, the scrolls panel, and — right of the board — the
-  player's inventory with the loot tray under it. Also hosts the toast strip, so
-  an item's effects announce themselves the moment it's picked up.
-  - **`BattlefieldView.gd`** — the board: the hero on the left, the grid the
-    goal-enemies close in across, the off-field lane, the Push / Bomb toolbar, and
-    the strike / advance animation.
+- **`Overworld2.gd`** — the run itself: the offering of games (cover cards), and
+  then a two-column playing screen — the honour-system report step (attempt
+  tracker + checklist) on the left, the battlefield on the right with the player's
+  inventory and loot tray beneath it. Also owns the scrolls panel and hosts the
+  toast strip, so an item's effects announce themselves the moment it's picked up.
+  - **`BattlefieldView.gd`** — the board: the hero on the left with the shield
+    pips over them, the grid the goal-enemies close in across, the off-field lane,
+    the Push / Bomb toolbar, and the strike / advance animation.
   - **`EnemyInfoCard.gd`** — the click-to-inspect card for one enemy.
 - **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). Ordinary
   enemy drops don't open it: they land in the loot tray beside the board.
@@ -259,19 +260,22 @@ Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
 
-- **Shields are the tries: an attempt tracker, and the board and checklist in one
-  panel** — Block is gone and **Shields** take its place as the *runs you get at a
+- **Shields are the tries: an attempt tracker, and a two-column playing screen** —
+  Block is gone and **Shields** take its place as the *runs you get at a
   game*. Selecting a game grants **3** (or **5** for a Traditional roguelike);
   every run of it you lose is one tick of the new **attempt tracker**, which spends
   a shield, and once they're gone a lost run costs **1 Health** (0 Health ends the
   run there). Whatever is left when you report the game absorbs the followers' hits
   and then **expires with the game** — shields never bank forward. **Anchor** moved
   to a new **`game_selected`** trigger so its +1 Shield is a genuine extra try
-  before you play, not a reward afterwards. The report step and the battlefield are
-  now **one panel**: the board on top, then the attempt strip, a tightened
-  one-line-per-row checklist, and Completed Game. Outside a game the board is put
-  away behind a **Board (N)** button in the header (the count is what's following
-  you), so choosing a game is the only thing on screen. The board draws the pool as
+  before you play, not a reward afterwards. While a game is in play the screen is
+  **two columns**: on the left what you drive — the game, Play / Rate, the attempt
+  strip, a tightened one-line-per-row checklist and Completed Game — and on the
+  right what you read, the **battlefield with the pack (inventory + loot) under
+  it**. Both halves fit one screen, where stacking them didn't. Outside a game the
+  board is put away behind a **Board (N)** button in the header (the count is
+  what's following you), so choosing a game is the only thing on screen; the
+  inventory stays put. The board draws the pool as
   **pips on the hero** and a tick pops one with a floating `-1 ◆` — or flashes the
   hero red for `-1 ♥` once the shields are gone. Each offered card shows the tries
   it grants, and since the pool is empty between games, hovering a card previews
