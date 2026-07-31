@@ -147,7 +147,7 @@ integer counts on the HUD.
 ### Verbs (map manipulation)
 | Verb | Effect |
 |---|---|
-| **Bash** | **Destroy a game outright — it is removed from the pool and can never show up again.** (Changed: no longer replaces with a new game.) |
+| **Bash** | **Destroy a game outright — it is removed from the pool and can never show up again.** The card it vacated is **refilled from the same pool the offering is drawn from**: another game *connected to where you are standing*, with its own freshly-rolled goal-enemy (the other cards keep the enemies they were already showing). When that node has no other connection left to give, the slot simply goes — bash is destruction, not a guaranteed reroll. Two bashes are refused outright, because both end the run rather than shape it: the **Amulet game** (destroying the goal makes the run unwinnable) and the **last card on the table** with nothing to replace it. |
 | **Transmute** | **Turn a game into a random game of the *same game type* that is *not connected to the map*.** (New verb — this is the "replace with a fresh game" role bash used to have, now type-constrained and pulling from off-graph games.) |
 | **Dash** | **As in the current project: a total select, not a skip** — pick *any* connected game and move to it (bypassing the normal limited offering). Costs 1 dash charge. See `Overworld._try_dash`. |
 | **Scramble** | **Reroll the offering** — re-draw the games filling the (base three) choice slots, each with a freshly-rolled enemy/goal. At a node with no spare neighbours the slots hold and only the enemies change. Granted by the **D6** item. |
@@ -577,8 +577,20 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   Amnesia re-hides. The **`File` column is the identified art** (§4.1).
 - **New `images2.0/{characters,items,enemies,scrolls}/` folder**; art resolves via
   each sheet's `File` column (§10.1).
-- **Bash** destroys a game out of the pool; **Transmute** turns a game into an
-  unconnected same-type game (§4).
+- **Bash** destroys a game out of the pool and refills its slot from the games
+  connected to where you stand; **Transmute** turns a game into an unconnected
+  same-type game (§4).
+- **The run opens on a choice of three starting games**, one per game type, each
+  5–7 games from the randomly-rolled amulet (`RunGraph.pick_amulet_and_starts`).
+  The start is where you BEGIN — it spawns no enemy and grants no shields; the
+  run's first game is whatever you travel to from it.
+- **A run can be saved and resumed.** The save carries GameState (vitals, verbs,
+  pack, visited/beaten games), GameLoop2 (the enemy stack and its positions, the
+  destroyed games, the attempt tracker) and the overworld's own view (the cards on
+  the table, the game in play, the loot tray). The overworld's **💾 Save** button
+  writes a named save; the run also keeps an **autosave** that is rewritten every
+  time it moves and cleared when it ends. Both are resumable from the menu's
+  **Continue** list.
 - **Normal enemies have Health 1** → one bomb removes one; bosses bomb-immune
   (§4/§7.1).
 - **Starting values authored per character** (`characters2.0`, Health 5–10);

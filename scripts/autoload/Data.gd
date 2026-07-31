@@ -178,6 +178,13 @@ func get_goal_enemy(id: StringName) -> GoalEnemyData:
 func get_boss(id: StringName) -> GoalEnemyData:
 	return _bosses.get(id)
 
+# Resolve a goal-enemy id against BOTH pools, normal first then bosses. An id on
+# its own doesn't say which catalog it came from, which is exactly the position a
+# save load is in when it rehydrates the enemy stack.
+func get_goal_enemy_any(id: StringName) -> GoalEnemyData:
+	var e: GoalEnemyData = _goal_enemies.get(id)
+	return e if e != null else _bosses.get(id)
+
 func all_characters2() -> Array:
 	return _characters2.values()
 

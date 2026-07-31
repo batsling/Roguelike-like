@@ -170,7 +170,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
 | `GameLog` | Verbose run-scope message log (teleports, pickups, item procs) — the written record behind the toasts. |
 | `Notifications` | Curated player-facing "important events" channel; the overworld mounts `NotificationToasts` to show them. |
-| `SaveSystem` | Two-layer save/load: numbered autosave slots + named saves (`user://`). Not yet wired into a games-first run — see the roadmap. |
+| `SaveSystem` | Save/load for a games-first run (`user://`): a named save per run plus the run's own autosave slot. Writes GameState, `GameLoop2`, and the overworld's on-screen state, and hands a loaded run back to the next `Overworld2` to boot. |
 | `Settings` | Run-independent preferences (e.g. game-filter) persisted to `user://settings.cfg`. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified). |
@@ -184,9 +184,11 @@ the games-first redesign (§11), so the real video game you go and play is the
 combat. Every screen is built in code, so the scene files hold nothing but a root
 node and its script.
 
-- **`MainMenu.gd`** — new run, character select, the Collection, the tier list,
-  and Settings.
-- **`Overworld2.gd`** — the run itself: the offering of games (cover cards), and
+- **`MainMenu.gd`** — new run, character select, the **Continue** list of saved
+  runs, the Collection, the tier list, and Settings.
+- **`Overworld2.gd`** — the run itself: the opening choose-your-start panel (three
+  games, three genres, all 5–7 games from the amulet), the offering of games
+  (cover cards), and
   then a two-column stage — checklist on the left (the standing goals while you're
   choosing, the honour-system report step + attempt tracker while you're playing),
   the battlefield on the right with the player's inventory and loot tray beneath
@@ -260,6 +262,29 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so
 re-run them after pulling and review the diff.
+
+- **Choose where you start, save the run, and bash that refills the slot** — a run
+  now opens on a **choose-your-start panel**: three games, each a **different game
+  type**, each **5–7 games from the randomly chosen amulet** (`RunGraph` retries
+  the amulet until three genres can all fill that band rather than quietly
+  offering a shorter route). The start is where you *begin* — no enemy spawns and
+  no shields are granted — and its neighbours become the first offering.
+  **Saving works end to end**: the overworld's **💾 Save** button names a run, the
+  run keeps an **autosave** that is rewritten every time it moves and cleared the
+  moment it ends, and the menu's **Continue** list resumes either. A save now
+  carries all three halves of a run — GameState, `GameLoop2`'s enemy stack and
+  destroyed games, and the overworld's own screen (the cards on the table, the
+  game in play, the loot tray) — so a resumed run picks up exactly where it
+  stopped. **Bash** still destroys a game for the rest of the run, and now
+  **refills the slot it vacated** with another game *connected to where you are
+  standing*, rolling a fresh goal-enemy for the replacement while every untouched
+  card keeps the enemy it was already showing (bashing or transmuting one card
+  used to silently re-roll the others). With nothing left to connect to, the slot
+  goes with the game; bashing the **amulet game** or the **last card on the table**
+  is refused, since both end the run rather than shape it. Also fixed: the
+  overworld's registration as the mounted map was wiped by the run reset that
+  immediately follows it, which had left scrolls unreadable and overworld actives
+  (Ride the Bus) unusable for the whole run.
 
 - **Shields are the tries: an attempt tracker, and a two-column playing screen** —
   Block is gone and **Shields** take its place as the *runs you get at a
@@ -388,9 +413,9 @@ cross-run tier list. What's still ahead:
 - **The D20 events** — `EventModal` + `data/events` are built and tested, and are
   likewise not reachable from the current overworld. Same question: when does a
   run stop for an event?
-- **Saving a run** — `SaveSystem` snapshots and restores run state, but the menu's
-  Continue list is gated off and Run History is a stub; a games-first run can't be
-  resumed yet.
+- **Run History** — saving and resuming a run is done (Save button, autosave,
+  Continue list), but the menu's Run History is still a stub: nothing records a
+  run once it's finished, so there's no post-mortem to read.
 - **Keys and locked paths** (and the **Fog** scroll) — deferred by decision (§4):
   no 2.0 content grants keys, and no edge is gated behind one.
 - **Tags and path requirements (§6.2)** — widen the tag vocabulary on `GameData`

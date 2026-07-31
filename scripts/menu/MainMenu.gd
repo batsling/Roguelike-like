@@ -29,10 +29,8 @@ func _ready() -> void:
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
 	%ClearDataBtn.pressed.connect(_on_clear_data)
 
-	# Continue is disabled until the 2.0 save shape lands.
-	_continue_btn.disabled = true
-	_continue_btn.text = "Continue (unavailable)"
 	_save_list_container.visible = false
+	_refresh_continue_button()
 
 # ---------------------------------------------------------------------------
 # Menu styling
@@ -364,16 +362,121 @@ func _verb_chips(ch: CharacterData) -> Control:
 
 func _begin_run(character_id: StringName) -> void:
 	# Overworld2 boots the run itself (rolls the graph, applies the 2.0 loadout);
-	# it reads the chosen character from this pending meta on _ready.
+	# it reads the chosen character from this pending meta on _ready. A save loaded
+	# and then backed out of must not hijack this boot.
+	SaveSystem.cancel_pending_resume()
 	GameState.set_meta("pending_character2", character_id)
 	get_tree().change_scene_to_file(OVERWORLD2_SCENE)
 
 # ---------------------------------------------------------------------------
-# Continue list (gated off — see _ready)
+# Continue list — the saved runs, resumable from here
 # ---------------------------------------------------------------------------
+#
+# A row per resumable save: the run's own autosave first (the overworld rewrites
+# it every time the run moves), then every named save, newest first. Resuming is
+# a two-step handshake: SaveSystem applies the run to GameState / GameLoop2 and
+# parks the overworld's view state, then we swap to Overworld2, whose _ready
+# claims that view instead of booting a fresh run.
+
+func _refresh_continue_button() -> void:
+	var count: int = SaveSystem.list_resumable().size()
+	_continue_btn.disabled = count == 0
+	_continue_btn.text = "Continue" if count > 0 else "Continue (no saved runs)"
 
 func _on_continue_toggle() -> void:
-	pass
+	_save_list_container.visible = not _save_list_container.visible
+	if _save_list_container.visible:
+		_populate_save_list()
+
+func _populate_save_list() -> void:
+	for c in _save_list_container.get_children():
+		_save_list_container.remove_child(c)
+		c.queue_free()
+	var saves: Array = SaveSystem.list_resumable()
+	if saves.is_empty():
+		var none := Label.new()
+		none.text = "No saved runs yet — the overworld's 💾 Save button makes one."
+		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		none.add_theme_font_size_override("font_size", 12)
+		none.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		_save_list_container.add_child(none)
+		_refresh_continue_button()
+		return
+	for entry in saves:
+		_save_list_container.add_child(_save_row(entry))
+
+func _save_row(entry: Dictionary) -> Control:
+	var is_auto: bool = bool(entry.get("autosave", false))
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.PANEL, UITheme.GOLD.lerp(UITheme.BORDER, 0.6 if is_auto else 0.85), 8, 8, 1))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	wrap.add_child(row)
+
+	var text := VBoxContainer.new()
+	text.add_theme_constant_override("separation", 0)
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.custom_minimum_size = Vector2(190, 0)
+	row.add_child(text)
+	var title := Label.new()
+	title.text = String(entry.get("name", "")) if String(entry.get("name", "")) != "" else "Unnamed run"
+	title.add_theme_font_size_override("font_size", 13)
+	title.add_theme_color_override("font_color", UITheme.GOLD if is_auto else UITheme.TEXT)
+	text.add_child(title)
+	var sub := Label.new()
+	sub.text = _save_subtitle(entry)
+	sub.add_theme_font_size_override("font_size", 11)
+	sub.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	text.add_child(sub)
+
+	var load_btn := Button.new()
+	load_btn.text = "Resume"
+	load_btn.custom_minimum_size = Vector2(84, 32)
+	load_btn.pressed.connect(func(): _resume_save(entry))
+	row.add_child(load_btn)
+
+	var del := Button.new()
+	del.text = "🗑"
+	del.tooltip_text = "Delete this save"
+	del.custom_minimum_size = Vector2(36, 32)
+	del.pressed.connect(func(): _delete_save(entry))
+	row.add_child(del)
+	return wrap
+
+# "Zagreus · Hades · 12/20 HP · 4 beaten · 3 minutes ago"
+func _save_subtitle(entry: Dictionary) -> String:
+	var parts: Array = []
+	var ch: CharacterData = Data.get_character2(StringName(entry.get("character_id", "")))
+	if ch != null:
+		parts.append(ch.display_name)
+	var g: GameData = Data.get_game(StringName(entry.get("current_game", "")))
+	if g != null:
+		parts.append(g.display_name)
+	if int(entry.get("max_hp", 0)) > 0:
+		parts.append("%d/%d HP" % [int(entry.get("hp", 0)), int(entry.get("max_hp", 0))])
+	parts.append("%d beaten" % int(entry.get("games_beaten", 0)))
+	var when: int = int(entry.get("saved_at", 0))
+	if when > 0:
+		parts.append(Time.get_datetime_string_from_unix_time(when, true))
+	return " · ".join(parts)
+
+func _resume_save(entry: Dictionary) -> void:
+	var loaded: bool = SaveSystem.load_autosave() if bool(entry.get("autosave", false)) \
+		else SaveSystem.load_named(String(entry.get("name", "")))
+	if not loaded:
+		_show_coming_soon("Couldn't load", "That save couldn't be read — it may have been deleted or corrupted.")
+		_populate_save_list()
+		return
+	get_tree().change_scene_to_file(OVERWORLD2_SCENE)
+
+func _delete_save(entry: Dictionary) -> void:
+	if bool(entry.get("autosave", false)):
+		SaveSystem.clear_autosave()
+	else:
+		SaveSystem.delete_named(String(entry.get("name", "")))
+	_populate_save_list()
+	_refresh_continue_button()
 
 # ---------------------------------------------------------------------------
 # Stub buttons — backing systems land later.
@@ -399,6 +502,8 @@ func _on_clear_data() -> void:
 	confirm.dialog_text = "Delete ALL saves? This cannot be undone."
 	confirm.confirmed.connect(func():
 		SaveSystem.clear_all_saves()
+		_populate_save_list()
+		_refresh_continue_button()
 	)
 	_modal_layer.add_child(confirm)
 	confirm.popup_centered(Vector2i(420, 160))

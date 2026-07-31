@@ -1,23 +1,77 @@
 extends Node
 
 # Save system. Two-layer storage:
-#   * Numbered slots (slot_<N>.json) — retained for the autosave path
-#     used by Overworld during a run and by quick F5/F9 save/load.
-#   * Named saves (named/<sanitized>.json) — the HTML-parity flow where
-#     the player names their run on New Game and picks it from the
-#     Continue list. Each named save also tracks its display name and
-#     a last-modified timestamp.
+#   * Numbered slots (slot_<N>.json) — slot AUTOSAVE_SLOT is the run's own
+#     recovery point, rewritten by the overworld every time the run's position
+#     changes and cleared when the run ends.
+#   * Named saves (named/<sanitized>.json) — the player names a run from the
+#     overworld's Save button and picks it back up from the menu's Continue list.
+#     Each named save also tracks its display name and a last-modified timestamp.
 #
-# Phase 1a: just enough to round-trip GameState. Will grow as more
-# state is added.
+# A save carries THREE things, and a resumable run needs all three:
+#   1. GameState — the run's identity, vitals, verbs, inventory, and the games it
+#      has visited / beaten.
+#   2. GameLoop2 — the enemy stack, the destroyed (bashed) games, the attempt
+#      tracker, and whether the run is already over.
+#   3. The overworld's VIEW — which cards are on the table, which game is in play,
+#      what's waiting in the loot tray. Collected from the mounted overworld
+#      (capture_view_state) rather than reached into from here.
+# Loading applies 1 and 2 immediately; 3 is handed to the overworld if one is
+# mounted, and otherwise parked in pending_view_state for the next one to boot
+# (which is how the menu's Continue works — load, change scene, restore).
 
 const SAVE_DIR := "user://saves/"
 const NAMED_SAVE_DIR := "user://saves/named/"
 const NUM_SLOTS := 5
+# The slot the run's own recovery point lives in.
+const AUTOSAVE_SLOT := 0
+# Bumped when the payload shape changes. 1 = the pre-2.0 combat-era shape (no
+# games-first loop state); 2 = the games-first run.
+const SAVE_VERSION := 2
+
+# The overworld view state of a just-loaded save, waiting for an overworld to boot
+# and claim it (see take_pending_view_state). Empty when nothing is pending.
+var pending_view_state: Dictionary = {}
+var _resume_pending: bool = false
 
 func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SAVE_DIR))
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(NAMED_SAVE_DIR))
+
+# --- resume handshake ------------------------------------------------------
+
+# True while a loaded save is waiting for an overworld to restore itself from.
+func has_pending_resume() -> bool:
+	return _resume_pending
+
+# Claim the pending view state, clearing the flag. Returns {} for a save written
+# outside the overworld (or a version-1 save), which the overworld treats as "just
+# rebuild the offering where the run stands".
+func take_pending_view_state() -> Dictionary:
+	var view: Dictionary = pending_view_state
+	pending_view_state = {}
+	_resume_pending = false
+	return view
+
+# Drop a parked resume without consuming it — what starting a FRESH run does, so
+# a load the player then backed out of can't hijack the new run's boot.
+func cancel_pending_resume() -> void:
+	pending_view_state = {}
+	_resume_pending = false
+
+# --- the autosave slot -----------------------------------------------------
+
+func autosave() -> bool:
+	return save(AUTOSAVE_SLOT)
+
+func has_autosave() -> bool:
+	return has_save(AUTOSAVE_SLOT)
+
+func clear_autosave() -> void:
+	delete_slot(AUTOSAVE_SLOT)
+
+func load_autosave() -> bool:
+	return load_slot(AUTOSAVE_SLOT)
 
 func slot_path(slot: int) -> String:
 	return SAVE_DIR + "slot_%d.json" % slot
@@ -39,13 +93,40 @@ func _peek(slot: int) -> Dictionary:
 	var data := _read(slot)
 	if data.is_empty():
 		return {}
+	return _summary(data, String(data.get("save_name", "")), slot)
+
+# One save's headline, shared by the slot list, the named list, and the Continue
+# list so all three describe a run the same way. `slot` is -1 for a named save.
+func _summary(data: Dictionary, display_name: String, slot: int = -1) -> Dictionary:
 	return {
-		"character_id": data.get("character_id", ""),
-		"current_game": data.get("current_game_id", ""),
-		"hp": data.get("hp", 0),
-		"gold": data.get("gold", 0),
-		"games_beaten": data.get("total_games_beaten", 0),
+		"name": display_name,
+		"slot": slot,
+		"autosave": slot == AUTOSAVE_SLOT,
+		"character_id": String(data.get("character_id", "")),
+		"current_game": String(data.get("current_game_id", "")),
+		"hp": int(data.get("hp", 0)),
+		"max_hp": int(data.get("max_hp", 0)),
+		"gold": int(data.get("gold", 0)),
+		"games_beaten": int(data.get("total_games_beaten", 0)),
+		"games_played": int(data.get("games_played", 0)),
+		"saved_at": int(data.get("saved_at", 0)),
+		"version": int(data.get("save_version", 1)),
 	}
+
+# The Continue list: the run's own recovery point first (it's the most recent
+# thing that happened by definition), then every named save, newest first. A
+# version-1 save (the pre-2.0 combat era) is skipped — it has no games-first run
+# in it to resume.
+func list_resumable() -> Array:
+	var out: Array = []
+	if has_autosave():
+		var auto_data := _read(AUTOSAVE_SLOT)
+		if not auto_data.is_empty() and int(auto_data.get("save_version", 1)) >= 2:
+			out.append(_summary(auto_data, "Autosave", AUTOSAVE_SLOT))
+	for entry in list_named():
+		if int(entry.get("version", 1)) >= 2:
+			out.append(entry)
+	return out
 
 func save(slot: int) -> bool:
 	var path := slot_path(slot)
@@ -53,6 +134,7 @@ func save(slot: int) -> bool:
 
 func _build_payload() -> Dictionary:
 	return {
+		"save_version": SAVE_VERSION,
 		"save_name": GameState.save_name,
 		"saved_at": Time.get_unix_time_from_system(),
 		"character_id": String(GameState.character_id),
@@ -119,7 +201,36 @@ func _build_payload() -> Dictionary:
 		"identified_scroll_types": _stringnames_to_strings(GameState.identified_scroll_types),
 		"potion_color_map": GameState.potion_color_map.duplicate(),
 		"loot_keys": int(GameState.loot.get("key", 0)),
+		# === games-first (2.0) run state ===
+		# The board verbs and the per-game shields are stored WITHOUT the bonus
+		# owned items contribute (base_verb_value), exactly like max_hp above: the
+		# load restores the base and _recompute_item_bonuses re-applies the item
+		# half, so a passive (+1 Bash) can't compound across save/load cycles.
+		"shields": GameState.base_verb_value("shields"),
+		"bash": GameState.base_verb_value("bash"),
+		"push": GameState.base_verb_value("push"),
+		"transmute": GameState.base_verb_value("transmute"),
+		"scramble": GameState.base_verb_value("scramble"),
+		"bombs": GameState.base_verb_value("bombs"),
+		"keys": GameState.base_verb_value("keys"),
+		"game_choice_bonus": GameState.base_verb_value("game_choices"),
+		"pending_chests": GameState.pending_chests,
+		"pending_chest_choices": Array(GameState.pending_chest_choices),
+		"total_combats_completed": GameState.total_combats_completed,
+		# The enemy stack, the destroyed games, the attempt tracker.
+		"loop": GameLoop2.serialize(),
+		# What the overworld has on screen, when one is mounted to ask.
+		"overworld": _capture_view_state(),
 	}
+
+# The mounted overworld's view of the run, or {} when the save is taken from
+# somewhere else (the menu, a test). Guarded on the method so any future screen
+# that registers as the overworld context isn't required to implement it.
+func _capture_view_state() -> Dictionary:
+	var ow = GameState.overworld_scene
+	if ow == null or not is_instance_valid(ow) or not ow.has_method("capture_view_state"):
+		return {}
+	return ow.capture_view_state()
 
 func _write_save(path: String) -> bool:
 	var f := FileAccess.open(path, FileAccess.WRITE)
@@ -127,6 +238,10 @@ func _write_save(path: String) -> bool:
 		push_error("[SaveSystem] could not open '%s' for write" % path)
 		return false
 	f.store_string(JSON.stringify(_build_payload(), "  "))
+	# Closed explicitly rather than on scope exit: the Continue list re-reads a
+	# save the same frame it was written (the autosave), and that read must see the
+	# whole file.
+	f.close()
 	return true
 
 func load_slot(slot: int) -> bool:
@@ -185,15 +300,27 @@ func _apply_save_data(data: Dictionary) -> void:
 		GameState.equipped_weapon = null
 	# Restore the item instance-id counter.
 	GameState._next_item_instance_id = maxi(1, int(data.get("next_item_instance_id", 1)))
+	# The BASE run verbs go in before the recompute below, which is what re-applies
+	# the item half on top of them (Vajra's +1 Bash). Setting them afterwards would
+	# either wipe the item contribution or bake it in twice, depending on the verb.
+	GameState.dash_charges = int(data.get("dash", 0))
+	GameState.shields = int(data.get("shields", 0))
+	GameState.bash = int(data.get("bash", 0))
+	GameState.push = int(data.get("push", 0))
+	GameState.transmute = int(data.get("transmute", 0))
+	GameState.scramble = int(data.get("scramble", 0))
+	GameState.bombs = int(data.get("bombs", 0))
+	GameState.keys = int(data.get("keys", 0))
+	GameState.game_choice_bonus = int(data.get("game_choice_bonus", 0))
 	# Reset the running item contribution so _recompute starts fresh
 	# against the saved base stats (which already had bonuses applied
 	# when the save was written, but we save the base — see below).
 	GameState._applied_item_max_hp = 0
 	GameState._applied_item_max_energy = 0
 	GameState._applied_scaling_max_hp = 0
+	GameState._applied_item_verbs = {}
 	GameState.item_stat_bonus = {}
 	GameState._recompute_item_bonuses()
-	GameState.dash_charges = data.get("dash", 0)
 	GameState.reroll_charges = data.get("reroll", 0)
 	GameState.fov_bonus = data.get("fov_bonus", 0)
 	GameState.discovery = data.get("discovery", 0)
@@ -232,14 +359,34 @@ func _apply_save_data(data: Dictionary) -> void:
 	for k in cm.keys():
 		GameState.potion_color_map[String(k)] = String(cm[k])
 	GameState.loot["key"] = int(data.get("loot_keys", 0))
-	# Broadcast a full sweep so HUDs / overlays subscribed to GameState
-	# pick up the new state after a load.
+	GameState.pending_chests = int(data.get("pending_chests", 0))
+	GameState.pending_chest_choices.clear()
+	for n in data.get("pending_chest_choices", []):
+		GameState.pending_chest_choices.append(int(n))
+	GameState.total_combats_completed = int(data.get("total_combats_completed", 0))
+	GameState.phase = GameState.Phase.OVERWORLD
+	# The games-first enemy stack, destroyed games and attempt tracker. Order-free
+	# against the GameState half above: the loop reads GameState.shields when it
+	# RESOLVES a game, never while restoring itself.
+	GameLoop2.restore(data.get("loop", {}))
 	GameState.emit_signal("hp_changed", GameState.hp, GameState.max_hp)
 	GameState.emit_signal("gold_changed", GameState.gold)
 	GameState.emit_signal("stats_changed")
 	GameState.emit_signal("deck_changed")
 	GameState.emit_signal("inventory_changed")
 	GameState.emit_signal("current_game_changed", GameState.current_game_id)
+	# The overworld's own view. A live overworld takes it now (an in-run reload);
+	# otherwise it waits for the next one to boot, which is how the menu's Continue
+	# hands a run to a freshly-loaded Overworld2 scene.
+	var view: Dictionary = data.get("overworld", {})
+	var ow = GameState.overworld_scene
+	if ow != null and is_instance_valid(ow) and ow.has_method("resume_run"):
+		pending_view_state = {}
+		_resume_pending = false
+		ow.resume_run(view)
+	else:
+		pending_view_state = view
+		_resume_pending = true
 
 func _read(slot: int) -> Dictionary:
 	return _read_path(slot_path(slot))
@@ -303,16 +450,7 @@ func list_named() -> Array:
 		if not dir.current_is_dir() and fname.ends_with(".json"):
 			var data := _read_path(NAMED_SAVE_DIR + fname)
 			if not data.is_empty():
-				out.append({
-					"name": String(data.get("save_name", fname.get_basename())),
-					"character_id": String(data.get("character_id", "")),
-					"current_game": String(data.get("current_game_id", "")),
-					"hp": int(data.get("hp", 0)),
-					"max_hp": int(data.get("max_hp", 0)),
-					"gold": int(data.get("gold", 0)),
-					"games_beaten": int(data.get("total_games_beaten", 0)),
-					"saved_at": int(data.get("saved_at", 0)),
-				})
+				out.append(_summary(data, String(data.get("save_name", fname.get_basename()))))
 		fname = dir.get_next()
 	out.sort_custom(func(a, b): return int(a["saved_at"]) > int(b["saved_at"]))
 	return out

@@ -13,7 +13,8 @@ var _ui
 
 func before_each() -> void:
 	_ui = OVERWORLD.instantiate()
-	add_child_autofree(_ui)   # _ready -> boots a real start/amulet graph
+	add_child_autofree(_ui)   # _ready -> rolls the amulet + the three start options
+	_ui.choose_start(0)       # take the first offered start; the run has a position now
 
 func after_each() -> void:
 	GameState.reset_run()
