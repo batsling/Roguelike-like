@@ -106,6 +106,82 @@ The Binding of Isaac on 48%, Spelunky Classic on 37%.
 
 ---
 
+## 2a. The hand-drawn map already solves this
+
+`tools/Roguelikes.drawio6.svg` is a 26,648 × 10,156 px draw.io canvas with 491
+labelled nodes and 663 edges. The draw.io XML model is embedded in the SVG's
+`content` attribute, so it is fully machine-readable — geometry, styles and all.
+Run `tools/check_map_sync.py` to parse it.
+
+**Its Y axis is release year.** A column of 47 year labels runs down the left
+edge at x = -10460, from 1978 to 2025, at a near-exact **196 px per year**. And
+the placement is disciplined: of the 481 nodes that match a game in the sheet,
+**467 (97%) sit within 0.75 years of their recorded release year.**
+
+That is section 2A of this document, built by hand, years before this research
+note. The recommendation to put year on an axis is not a new idea to import —
+it is the existing practice, and the thing to do is stop throwing it away when
+the data reaches Godot.
+
+Two further things the hand map knows that `GameData` does not:
+
+**It distinguishes three kinds of relationship**, per its own legend, encoded as
+stroke colour:
+
+| Legend | Stroke | Count |
+| --- | --- | ---: |
+| Inspired / Was Iterated Upon By | default | 527 |
+| Sequel / Same Devs & Inspired | `#0000FF` | 86 |
+| Neither creators knew about the other | `#C8C8C8` | 50 |
+
+`games_influenced` is a single flat `Array[StringName]`, so all of this
+collapses to one undifferentiated edge type. The distinction already exists in
+`Roguelikes.xlsx` too — the `connections` sheet has a **`Dev/Series Relation`**
+column with 109 rows marked, and `import-games-godot.py` drops it.
+
+The third category matters most: "neither creators knew about the other" is
+explicitly *not* an influence, and a run must not be able to travel along it.
+The good news is that it is clean today — **none of the 50 convergent links have
+leaked into the `connections` sheet.** That is an invariant worth keeping, and
+`check_map_sync.py` asserts it.
+
+**The `Source` column is 89% populated.** 875 of the 988 connections already
+carry a URL or note backing the claim. The README lists "Connection proof" as an
+unbuilt roadmap item; the data is largely gathered already and simply is not
+imported. `GameData` has nowhere to put it.
+
+### Drift between the map and the sheet
+
+The two are maintained separately and have drifted **in both directions**. As of
+the checked-in (stale) SVG:
+
+| | Count |
+| --- | ---: |
+| Games in the sheet, not drawn on the map | 270 |
+| Games drawn on the map, not in the sheet | 2 (Crafty Survival, The Spells Brigade) |
+| Connections in the sheet, not drawn on the map | 394 |
+| Connections drawn on the map, not in the sheet | 16 |
+| Nodes whose Y disagrees with the sheet's Year | 14 |
+
+The 16 map-only connections include genuine history the sheet is missing
+(`Rogue -> Beneath Apple Manor`) and four sequel links between titles the sheet
+doesn't pair up. There is also one self-loop on Fights in Tight Spaces, which is
+a drawing artifact.
+
+The 14 year disagreements look like an early-access / 1.0 distinction rather
+than errors — Knock on the Coffin Lid is drawn at 2024 and recorded as 2020,
+Fights in Tight Spaces at 2025 versus 2021. Worth deciding which date the
+catalog means, since the run graph's chronology depends on it.
+
+These figures are from the old export in the repo. Re-run the checker against
+the current map to get real numbers:
+
+```
+python3 tools/check_map_sync.py path/to/updated.svg --full
+```
+
+---
+
 ## 3. The reframe
 
 There are two different maps here with opposite problems:
@@ -148,6 +224,8 @@ as choices with a visible cost rather than dice rolls.
 
 A new view, not a change to the run map. Release year on X, the four `GameType`s
 as four horizontal lanes, one dot per game, edges as thin left-to-right lines.
+(The hand map uses year on **Y** — either orientation works; match whichever
+reads better in-engine, but keep the axis.)
 Pan and zoom; label on hover and above a zoom threshold.
 
 It is the only layout that shows all 751 games at once and stays readable,
@@ -206,7 +284,15 @@ precisely because it is unglamorous: it is the fallback that always works.
 
 ## 6. Interaction with the roadmap
 
-Two roadmap items in the README change shape in light of the above:
+Three roadmap items in the README change shape in light of the above:
+
+- **"Connection proof"** — listed as unbuilt, but the `connections` sheet's
+  `Source` column is already 89% populated. The work is not gathering evidence;
+  it is adding a field to `GameData`, carrying the column through
+  `import-games-godot.py`, and surfacing it when inspecting a connection. Adding
+  the `Dev/Series Relation` column at the same time would give edges a type,
+  which is a prerequisite for anything that wants to treat a sequel link
+  differently from an influence link.
 
 - **"Unconnected games"** — the 89 isolated games are 12% of the catalog and can
   never appear on a route. An atlas view makes their absence visible, which
