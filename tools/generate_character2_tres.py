@@ -17,8 +17,9 @@ level_up_reward_type here).
 Health -> base_max_hp (a 2.0 run's tiny Health/Max Health reuse hp/max_hp).
 Bash/Dash/Push/Transmute/Scramble/Bombs/Keys -> start_* fields.
 Reward -> level_up_stats (verb / max_hp gains) + level_up_reward_type
-          (Small Chest -> item; Random Sized Chest -> random_sized_chest;
-          Scroll -> scroll).
+          (a sized Chest -> item, with level_up_reward_chest_choices set from
+          the size — Small 1 / Medium 2 / Large 3 / Huge 5; Random Sized Chest
+          -> random_sized_chest; Scroll -> scroll).
 Starting items -> slugged item ids (resolved against data/items2.0/).
 
 Art resolves from the File column (§10.1, matching the enemy/item sheets): the
@@ -65,6 +66,10 @@ REWARD_VERBS = {
     "dash": "dash", "bash": "bash", "push": "push", "transmute": "transmute",
     "scramble": "scramble", "bombs": "bombs", "keys": "keys",
 }
+# A named chest SIZE -> how many items it offers to choose one from. Mirrors
+# Data.CHEST_SIZE_CHOICES; keep the two in step. Ordered biggest-word-first so
+# "Large Chest" can't be read as a bare "Chest".
+CHEST_SIZE_CHOICES = {"Small": 1, "Medium": 2, "Large": 3, "Huge": 5}
 
 
 def slugify(name: str) -> str:
@@ -98,11 +103,13 @@ def _find_amt(s, label):
 
 
 def parse_reward(raw):
-    """characters2.0 Reward -> (level_up_stats, reward_type, reward_amount).
+    """characters2.0 Reward -> (level_up_stats, reward_type, amount, chest_choices).
 
     Max Health / verb gains go into level_up_stats (applied by
     GameState.apply_level_up_stats — max_hp both raises the cap and heals). A
-    Small Chest -> the &"item" reward flow; a Random Sized Chest -> the
+    Chest -> the &"item" reward flow, carrying how many items it offers when the
+    cell names a SIZE (CHEST_SIZE_CHOICES below, mirroring Data.CHEST_SIZE_CHOICES
+    — Small = 1, Large = 3 for Zagreus); a Random Sized Chest -> the
     &"random_sized_chest" flow (the Vampire Survivors characters — the chest's
     SIZE is rolled at runtime, see Data.roll_chest_size_choices); a Scroll -> a
     &"scroll" reward.
@@ -118,15 +125,19 @@ def parse_reward(raw):
         if n:
             stats[key] = n
     random_chest = _find_amt(s, r"Random Sized Chest")
-    chest = _find_amt(s, r"Small Chest") or _find_amt(s, r"Chest")
-    scroll = _find_amt(s, r"Scroll")
     if random_chest:
-        return stats, "random_sized_chest", random_chest
+        return stats, "random_sized_chest", random_chest, 0
+    for size, choices in CHEST_SIZE_CHOICES.items():
+        n = _find_amt(s, size + r"\s+Chest")
+        if n:
+            return stats, "item", n, choices
+    chest = _find_amt(s, r"Chest")
     if chest:
-        return stats, "item", chest
+        return stats, "item", chest, 0
+    scroll = _find_amt(s, r"Scroll")
     if scroll:
-        return stats, "scroll", scroll
-    return stats, "none", 0
+        return stats, "scroll", scroll, 0
+    return stats, "none", 0, 0
 
 
 def string_name_array(ids) -> str:
@@ -143,7 +154,8 @@ def character_tres(row) -> tuple:
     items = ([] if not items_raw or items_raw.upper() == "N/A"
              else [slugify(t) for t in items_raw.split(",") if t.strip()])
 
-    level_up_stats, reward_type, reward_amount = parse_reward(row.get("Reward"))
+    level_up_stats, reward_type, reward_amount, chest_choices = parse_reward(
+        row.get("Reward"))
 
     # Art keys off the File column; a blank File falls back to the de-spaced Name
     # (which is what every pre-File row resolved by anyway).
@@ -195,6 +207,8 @@ def character_tres(row) -> tuple:
         lines.append("level_up_stats = {}")
     lines.append('level_up_reward_type = &"%s"' % reward_type)
     lines.append("level_up_reward_amount = %d" % reward_amount)
+    if chest_choices:
+        lines.append("level_up_reward_chest_choices = %d" % chest_choices)
     lines.append('file = "%s"' % gd_str(file))
     if portrait:
         lines.append('portrait = ExtResource("2_portrait")')

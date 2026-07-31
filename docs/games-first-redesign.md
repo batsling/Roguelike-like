@@ -157,7 +157,7 @@ integer counts on the HUD.
 | Item | Effect |
 |---|---|
 | **Key** | Unlock a new game path (blocked edge / unconnected "wild" game). *(No 2.0 content grants keys yet — see open questions.)* |
-| **Bomb** | Deal 1 damage to a **normal** enemy. Normal enemies have **Health 1** (`enemies2.0`), so one bomb removes one (no item drops). **Bosses are immune to bombs** (§7.1). |
+| **Bomb** | Deal 1 damage to an enemy. Normal enemies have **Health 1** (`enemies2.0`), so one bomb removes one (no item drops). A **boss is a legal target but takes no bomb damage** (§7.1) — the charge only buys what an item hangs off the throw. Three items change what a bomb does: **Brimstone Bombs** widen the blast to the target's whole row *and* column, **Sticky Bombs** stun whatever the blast fails to destroy (in practice, bosses), and **Blood Bombs** pay +1 Health per bomb via the `bomb_used` trigger. |
 | **Scroll** | Consumables with an identity that starts **unidentified** and a **Preference** (Positive / Negative / Neutral). See §4.1. |
 
 Verbs and consumables come from **enemy drops, item effects, and character
@@ -287,7 +287,9 @@ Deckbuilder/Slay the Spire), Baby Alien (Action/Brotato).
 Otherwise a boss follows the same rules: fulfill its goal to defeat it, or it
 stacks and hits you (per §7.2) until you do. A boss **cannot be dashed
 past**, and unlike a normal enemy **takes no damage from bombs** — a boss can
-*only* be removed by fulfilling its goal. **[OPEN]** exact boss attack value, and
+*only* be removed by fulfilling its goal. It can still be *bombed*, though: the
+throw is legal and spends the charge, it just does no damage, which is how
+**Sticky Bombs**' stun (§4) reaches a boss at all. **[OPEN]** exact boss attack value, and
 whether the pre-commit escapes (**scramble** the goal / **bash** the game) are
 allowed on a boss node or whether difficulty-gate bosses are fully unskippable.
 
@@ -430,8 +432,11 @@ the number of choices offered:
 | **Large** | pick 1 of 3 |
 | **Huge** | pick 1 of 5 |
 
-Level-up rewards (`+1 Small Chest`) and drops both mint chests through this same
-flow. A **`+1 Random Sized Chest`** reward (the Vampire Survivors characters — Poe
+Level-up rewards (`+1 Small Chest`, `+1 Large Chest`) and drops both mint chests
+through this same flow. A level-up Reward cell that NAMES a size carries the
+choice count on `CharacterData.level_up_reward_chest_choices` (Zagreus'
+`+1 Large Chest` → pick 1 of 3); an unsized `+1 Chest` leaves it 0 and takes the
+reward screen's own default. A **`+1 Random Sized Chest`** reward (the Vampire Survivors characters — Poe
 Ratcho, Antonio Belpaese) rolls the chest's SIZE (`Data.ChestSize`, wording that
 describes how big the chest is, not the rarity of the items inside it) on the same
 ladder as every other rarity draw in the game (`Data.roll_rarity_step` — 75% / 20%

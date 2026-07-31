@@ -67,14 +67,17 @@ func test_meat_on_the_bone_heals_only_when_low() -> void:
 	TriggerBus.game_beaten.emit({"game_id": &"rogue"})
 	assert_eq(GameState.hp, 7, "Meat on the Bone: +2 Health at/below 50%")
 
-# --- passive board-verb bonus (Vajra) ------------------------------------
+# --- pickup board-verb grant (Vajra) -------------------------------------
 
-func test_vajra_passive_grants_and_reverses_bash() -> void:
+# Vajra is a PICKUP (sheet Type), so its +1 Bash is a permanent grant made once
+# on acquisition — not a stat_bonus that unwinds if the item leaves. That's the
+# same shape the bomb pickups use for their +1 Bomb.
+func test_vajra_pickup_grants_bash_permanently() -> void:
 	var before: int = GameState.bash
 	var v: ItemData = _give(&"vajra")
-	assert_eq(GameState.bash, before + 1, "Vajra: +1 Bash while owned")
+	assert_eq(GameState.bash, before + 1, "Vajra: +1 Bash on pickup")
 	GameState.remove_item(v)
-	assert_eq(GameState.bash, before, "Vajra: the +1 Bash is reversed when dropped")
+	assert_eq(GameState.bash, before + 1, "a pickup's grant is kept, not rented")
 
 # --- chest choice-count queue (§8.2) -------------------------------------
 

@@ -383,8 +383,9 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 	# The enemies have struck and moved, so this game is over — and with it go the
 	# shields it granted (§3). Shields are the tries at ONE game: what you didn't
 	# spend retrying, and what the front line didn't get through, expires here
-	# rather than banking into the next game.
-	if GameState.shields > 0:
+	# rather than banking into the next game. Barricade (§8) suspends exactly that
+	# rule, so the survivors roll into the next game's tries instead.
+	if GameState.shields > 0 and not GameState.keeps_shields():
 		res["shields_expired"] = GameState.shields
 		GameState.shields = 0
 	# The tries went with it: `res` already carries the count for the log, and the
@@ -440,23 +441,95 @@ func fulfill(instance: int) -> bool:
 	loop_changed.emit()
 	return true
 
-# Bomb a NORMAL stacked enemy: removes it with no drop (§4). Bosses are immune
-# (§7.1). Spends a bomb if one is available. Returns true on success.
+# Bomb a stacked enemy (§4). One bomb deals 1 damage to every body in its blast:
+# a normal enemy that hits 0 Health is removed with NO drop, while a BOSS takes
+# no bomb damage at all (§7.1) — but a boss is still a legal target, and that is
+# what makes Sticky Bombs (which stun whatever the blast fails to destroy) worth
+# spending a charge on. Brimstone Bombs widen the blast from one body to the
+# target's whole row and column. Spends the bomb; returns true when it went off.
 func bomb(instance: int) -> bool:
 	if GameState.bombs <= 0:
 		return false
 	var idx: int = _index_of(instance)
 	if idx < 0:
 		return false
-	var enemy: GoalEnemyData = stack[idx]["enemy"]
-	if enemy.is_boss():
-		return false
+	var target: GoalEnemyData = stack[idx]["enemy"]
 	GameState.bombs -= 1
-	stack.remove_at(idx)
+	var stuns: bool = GameState.bombs_stun()
+	var destroyed: Array = []
+	var hits: int = 0
+	# Resolve to instances first: the blast is measured on the board as it stands,
+	# so a body removed mid-loop can't shift who else was in the cross.
+	for inst in _blast_instances(instance):
+		var i: int = _index_of(inst)
+		if i < 0:
+			continue
+		hits += 1
+		var enemy: GoalEnemyData = stack[i]["enemy"]
+		# A boss shrugs off the damage; everything else takes its one point.
+		if not enemy.is_boss():
+			stack[i]["health"] = int(stack[i].get("health", 1)) - 1
+			if int(stack[i]["health"]) <= 0:
+				destroyed.append(enemy)
+				stack.remove_at(i)
+				continue
+		# Survived the blast — Sticky Bombs makes that cost it its next attack.
+		if stuns:
+			stack[i]["stun"] = int(stack[i].get("stun", 0)) + 1
 	# Clearing a body can open the space a waiting enemy needs to walk on.
-	_admit_offgrid()
+	if not destroyed.is_empty():
+		_admit_offgrid()
+	# One bomb, one trigger — however many bodies the blast touched — so a
+	# per-bomb payout (Blood Bombs' +1 Health) can't be multiplied by Brimstone.
+	TriggerBus.bomb_used.emit({
+		"instance": instance, "enemy": target,
+		"hits": hits, "destroyed": destroyed.size()})
 	loop_changed.emit()
 	return true
+
+# What a bomb aimed at `enemy` would actually do, as one line for the board's
+# bomb button and the enemy card. Lives here rather than in the two UI scripts so
+# the promise and the rule above can't drift apart.
+func bomb_hint(enemy: GoalEnemyData) -> String:
+	if enemy == null:
+		return "Select an enemy to bomb."
+	if GameState.bombs <= 0:
+		return "No Bombs left."
+	var splash: String = (" The blast runs down its whole row and column."
+		if GameState.bombs_cardinal() else "")
+	if enemy.is_boss():
+		if GameState.bombs_stun():
+			return "%s is a boss — the blast can't hurt it, but Sticky Bombs will stun it.%s" % [
+				enemy.display_name, splash]
+		return "%s is a boss — bombs can't hurt it.%s" % [enemy.display_name, splash]
+	return "Deal 1 damage to %s (no drop if it dies).%s" % [enemy.display_name, splash]
+
+# Which stacked instances one bomb aimed at `instance` hits, in stack order. Just
+# the target normally; with Brimstone Bombs every enemy sharing a row or a column
+# with it as well — the blast runs down the board's four cardinal directions from
+# the target's own footprint, so a wide enemy sweeps correspondingly more. An
+# off-grid enemy fills no cells and so is only ever hit as the direct target.
+func _blast_instances(instance: int) -> Array:
+	var out: Array = [instance]
+	if not GameState.bombs_cardinal():
+		return out
+	var idx: int = _index_of(instance)
+	if idx < 0:
+		return out
+	var rows: Dictionary = {}
+	var cols: Dictionary = {}
+	for cell in entry_cells(stack[idx]):
+		cols[cell.x] = true
+		rows[cell.y] = true
+	for entry in stack:
+		var inst: int = int(entry.get("instance", 0))
+		if inst == instance:
+			continue
+		for cell in entry_cells(entry):
+			if rows.has(cell.y) or cols.has(cell.x):
+				out.append(inst)
+				break
+	return out
 
 # Stun a stacked enemy (Scroll of Scare Monster, §4.1): it skips its next attack,
 # pushing its timing one game later (§7.2). Stacks additively. Returns true if

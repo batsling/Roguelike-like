@@ -573,8 +573,9 @@ func push_follower(instance: int) -> void:
 	if GameLoop2.push(instance):
 		_refresh()
 
-# Bomb a following enemy (§4): spend a Bomb charge to remove it outright (no drop).
-# Bosses are bomb-immune, so GameLoop2.bomb guards the target and the charge.
+# Bomb a following enemy (§4): spend a Bomb charge to deal it 1 damage (no drop
+# when that kills it). A boss can be bombed but takes none of the damage, so the
+# charge only buys Sticky Bombs' stun there. GameLoop2.bomb guards the charge.
 func bomb_follower(instance: int) -> void:
 	if GameLoop2.bomb(instance):
 		_refresh()
@@ -1075,7 +1076,10 @@ func _apply_level_up() -> void:
 		GameState.apply_level_up_stats(ch.level_up_stats)
 		match String(ch.level_up_reward_type):
 			"item", "chest":
-				GameState.grant_chest(maxi(1, ch.level_up_reward_amount))
+				# A sized chest (Zagreus' Large -> 3) carries its own choice
+				# count; an unsized one passes 0 and takes the screen's default.
+				GameState.grant_chest(maxi(1, ch.level_up_reward_amount),
+					maxi(0, ch.level_up_reward_chest_choices))
 			"random_sized_chest":
 				# Vampire Survivors characters: the chest's SIZE is rolled
 				# (Data.CHEST_SIZE_CHOICES) instead of fixed — Small..Huge on the

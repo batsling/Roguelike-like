@@ -63,6 +63,13 @@ func _col_of(instance: int) -> int:
 			return int(e.get("col", -1))
 	return -1
 
+# A stacked enemy's whole entry (health / stun / col / row), or {} if it's gone.
+func _entry(instance: int) -> Dictionary:
+	for e in GameLoop2.stack:
+		if int(e["instance"]) == instance:
+			return e
+	return {}
+
 # The grid row a stacked enemy's footprint starts on, or -1 if it's gone.
 func _row_of(instance: int) -> int:
 	for e in GameLoop2.stack:
@@ -534,17 +541,93 @@ func test_bomb_removes_normal_enemy_without_drop() -> void:
 	assert_eq(GameState.pending_chests, chests_before, "bombing drops nothing")
 
 func test_bomb_cannot_kill_a_boss() -> void:
+	# A boss IS a legal target (that's how Sticky Bombs reaches one) — it just
+	# takes none of the damage, so the charge goes and the boss stays.
 	GameState.bombs = 1
 	var b: int = GameLoop2.choose_game(_enemy(3, true)) ; GameLoop2.beat_game(false)
-	assert_false(GameLoop2.bomb(b), "bosses are bomb-immune")
-	assert_eq(GameLoop2.stack_size(), 1)
-	assert_eq(GameState.bombs, 1, "a failed bomb is not spent")
+	assert_true(GameLoop2.bomb(b), "a boss can be bombed")
+	assert_eq(GameLoop2.stack_size(), 1, "the boss shrugs off the blast")
+	assert_eq(GameState.bombs, 0, "the charge is spent either way")
+
+func test_bomb_only_deals_one_damage() -> void:
+	# Normal enemies have Health 1, so one bomb clears one — but an Alien-Baby
+	# buffed two-Health enemy survives its first (docs §4: bombs deal 1 damage).
+	GameState.bombs = 2
+	var e: GoalEnemyData = _enemy(2)
+	e.health = 2
+	var a: int = GameLoop2.choose_game(e) ; GameLoop2.beat_game(false)
+	assert_true(GameLoop2.bomb(a))
+	assert_eq(GameLoop2.stack_size(), 1, "a two-Health enemy survives one bomb")
+	assert_true(GameLoop2.bomb(a))
+	assert_eq(GameLoop2.stack_size(), 0, "the second bomb finishes it")
 
 func test_bomb_requires_a_charge() -> void:
 	GameState.bombs = 0
 	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)
 	assert_false(GameLoop2.bomb(a))
 	assert_eq(GameLoop2.stack_size(), 1)
+
+func test_bomb_fires_the_bomb_used_trigger_once() -> void:
+	# Blood Bombs hangs +1 Health here, so the hook must fire once per BOMB, not
+	# once per body the blast touched.
+	watch_signals(TriggerBus)
+	GameState.bombs = 1
+	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)
+	assert_true(GameLoop2.bomb(a))
+	assert_signal_emit_count(TriggerBus, "bomb_used", 1)
+
+# --- bomb-modifying items (§8) --------------------------------------------
+
+func test_sticky_bombs_stun_what_the_blast_cannot_kill() -> void:
+	GameState.add_item(Data.get_item2(&"sticky_bombs"))
+	GameState.bombs = 1
+	var b: int = GameLoop2.choose_game(_enemy(3, true)) ; GameLoop2.beat_game(false)
+	assert_true(GameLoop2.bomb(b))
+	assert_eq(int(_entry(b).get("stun", 0)), 1,
+		"the boss survives the blast and is stunned by it")
+
+# Park a 1x1 enemy on an exact cell, so a blast-shape assertion doesn't depend on
+# where the random spawn rows happened to put things.
+func _park(row: int, col: int) -> int:
+	var inst: int = GameLoop2.spawn_to_stack(_enemy(1))
+	var entry: Dictionary = _entry(inst)
+	entry["row"] = row
+	entry["col"] = col
+	return inst
+
+func test_brimstone_bombs_blast_the_row_and_column() -> void:
+	GameState.add_item(Data.get_item2(&"brimstone_bombs"))
+	GameState.bombs = 1
+	var a: int = _park(0, 1)          # the target
+	var same_row: int = _park(0, 3)
+	var same_col: int = _park(2, 1)
+	var neither: int = _park(2, 3)
+	assert_true(GameLoop2.bomb(a))
+	assert_eq(_col_of(a), -1, "the target dies")
+	assert_eq(_col_of(same_row), -1, "so does everything down its row")
+	assert_eq(_col_of(same_col), -1, "and everything down its column")
+	assert_eq(_col_of(neither), 3, "a body off both lines is untouched")
+	assert_eq(GameState.bombs, 0, "still just the one charge")
+
+func test_a_plain_bomb_only_hits_its_target() -> void:
+	GameState.bombs = 1
+	var a: int = _park(0, 1)
+	var same_row: int = _park(0, 3)
+	assert_true(GameLoop2.bomb(a))
+	assert_eq(_col_of(a), -1)
+	assert_eq(_col_of(same_row), 3, "without Brimstone the blast is one body")
+
+func test_barricade_banks_unspent_shields() -> void:
+	GameState.shields = 4
+	var _a: int = GameLoop2.choose_game(_enemy(1))
+	GameLoop2.beat_game(true)
+	assert_eq(GameState.shields, 0, "shields normally expire with the game")
+	GameLoop2.reset()
+	GameState.add_item(Data.get_item2(&"barricade"))
+	GameState.shields = 4
+	var _b: int = GameLoop2.choose_game(_enemy(1))
+	GameLoop2.beat_game(true)
+	assert_eq(GameState.shields, 4, "Barricade rolls them into the next game")
 
 # --- loss / run-over ------------------------------------------------------
 
@@ -741,12 +824,20 @@ func test_roll_enemy_action_low_matches_type_and_tier() -> void:
 	assert_eq(String(e.game_type), "action")
 	assert_eq(e.tier_index(), 0)
 
-func test_roll_enemy_widens_when_type_absent() -> void:
-	# No Traditional enemies authored yet — the roll must still return a tier-0
-	# enemy rather than null (widened filter).
+func test_roll_enemy_traditional_matches_type_and_tier() -> void:
+	# Traditional is the fourth type (the NetHack/Rogue roster); it used to have
+	# no enemies at all and relied on the widened filter.
 	var e: GoalEnemyData = GameLoop2.roll_enemy(&"traditional", GoalEnemyData.Difficulty.LOW)
 	assert_not_null(e)
+	assert_eq(String(e.game_type), "traditional")
 	assert_eq(e.tier_index(), 0)
+
+func test_roll_enemy_widens_when_the_tier_is_empty() -> void:
+	# Nothing is authored at Traditional/Insane — the roll must still return an
+	# enemy rather than null (widened filter).
+	var e: GoalEnemyData = GameLoop2.roll_enemy(&"traditional", GoalEnemyData.Difficulty.INSANE)
+	assert_not_null(e)
+	assert_eq(String(e.game_type), "traditional", "widens on tier before type")
 
 func test_roll_enemy_never_returns_a_boss() -> void:
 	# The normal-enemy pool must exclude bosses (they roll from a separate pool).
@@ -787,11 +878,11 @@ func test_roll_boss_reaches_insane_tier() -> void:
 	assert_not_null(b)
 	assert_eq(b.tier_index(), 3, "The Creator is the Insane-tier Strategy boss")
 
-func test_real_boss_is_bomb_immune() -> void:
+func test_real_boss_takes_no_bomb_damage() -> void:
 	GameState.bombs = 3
 	var b: GoalEnemyData = GameLoop2.roll_boss(&"", GoalEnemyData.Difficulty.HIGH)
 	var inst: int = GameLoop2.choose_game(b)
 	GameLoop2.beat_game(false)   # boss stacks
-	assert_false(GameLoop2.bomb(inst), "a real boss cannot be bombed")
-	assert_eq(GameState.bombs, 3, "the bomb is not spent on a boss")
-	assert_eq(GameLoop2.stack_size(), 1, "the boss stays on the stack")
+	assert_true(GameLoop2.bomb(inst), "a real boss is a legal bomb target")
+	assert_eq(GameState.bombs, 2, "the charge is spent")
+	assert_eq(GameLoop2.stack_size(), 1, "but the boss takes no damage from it")

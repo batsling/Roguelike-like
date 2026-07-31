@@ -64,6 +64,15 @@ signal game_selected(ctx: Dictionary)       # ctx.game_id, ctx.shields — a gam
                                             # Anchor hangs its +1 Shield here so the
                                             # extra try arrives before you play.
 signal game_beaten(ctx: Dictionary)         # ctx.game_id
+signal bomb_used(ctx: Dictionary)           # ctx.instance, ctx.enemy, ctx.hits,
+                                            # ctx.destroyed — a Bomb was spent on
+                                            # the battlefield (§4). Fired ONCE per
+                                            # bomb by GameLoop2.bomb, however many
+                                            # bodies the blast touched, so a
+                                            # per-bomb payout can't be multiplied
+                                            # by Brimstone Bombs' wider blast.
+                                            # Run-scope and scene-less (Blood
+                                            # Bombs' +1 Health).
 signal floor_entered(ctx: Dictionary)       # ctx.game_id
 signal item_acquired(ctx: Dictionary)       # ctx.item
 signal item_lost(ctx: Dictionary)

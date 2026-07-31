@@ -30,6 +30,23 @@ One item = `clause; clause; ...` (paren/bracket aware — a `;` inside `()`,
 | `weapon` / `verify` | `weapon_card_id` + `verification_*` | `weapon: barrel; verify: <q> => 1/2 random fish` |
 | `perfect` | `perfect_effects` / `perfect_save_chance` | `perfect: gain_hp 5` |
 | `status_amplify`, `status_immunity`, `attack_damage_bonus`, `upgrade_card_types`, `stat_mirror`, `stat_floor`, `stat_gain_bonus`, `negate_lethal`, `reroll_low_rarity`, `carries_leftover_energy`, `lower_hp_damage_mult`, `gold_spend_stat_per=N`, `level_up`, `charged (charge_cost N)` | the matching one-off `ItemData` field | `status_immunity: weak` (Ginger — the player can no longer gain that status) |
+| `keep_shields`, `bomb_stun`, `bomb_cardinal` | the games-first (2.0) run-loop rule flags — bare words, no payload | `keep_shields` (Barricade: unspent shields bank into the next game instead of expiring) |
+
+### Games-first (2.0) run-loop flags
+
+These three change a RULE rather than move a number, so `GameLoop2` reads them
+straight off the inventory (via the `GameState.keeps_shields` / `bombs_stun` /
+`bombs_cardinal` helpers) instead of firing an effect:
+
+| Flag | Item | Rule |
+| --- | --- | --- |
+| `keep_shields` | Barricade | Shields left over when a game resolves stop expiring and roll into the next game (§3). |
+| `bomb_stun` | Sticky Bombs | Anything a bomb hits and fails to destroy is stunned instead — in practice bosses, the only thing that survives one (§4). |
+| `bomb_cardinal` | Brimstone Bombs | A bomb blasts down the target's whole row *and* column rather than hitting one body. |
+
+The matching per-bomb *effect* hook is the `bomb_used` trigger (Blood Bombs:
+`item_acquired: gain_stat bombs 1; bomb_used: gain_hp 1`), fired once per bomb by
+`GameLoop2.bomb` however many bodies the blast touched.
 
 **Payload effects** (comma-separated within a clause):
 `+N <status>` / `-N <stat>` (target from a trailing `(self)`/`(enemy)`/
@@ -89,6 +106,16 @@ them across re-uploads or the parser falls back to wrong/old behavior:
 - **Death Orb** → `dmg all_enemies value_from=curses x2 type=true (...)`
 - **Du-Vu Doll** → `+X power (self) stacks_from=curses` (space, not comma)
 - **Leech Brood** → `lose_hp 10 (non_lethal, self)`
+
+On the **`items2.0`** sheet (these four rows arrived with an empty `Effect`
+cell — without them the items generate inert):
+- **Barricade** → `keep_shields`
+- **Blood Bombs** → `item_acquired: gain_stat bombs 1; bomb_used: gain_hp 1`
+- **Brimstone Bombs** → `item_acquired: gain_stat bombs 1; bomb_cardinal`
+- **Sticky Bombs** → `item_acquired: gain_stat bombs 1; bomb_stun`
+- **Vajra** → `item_acquired: gain_stat bash 1` (its `Type` is now `Pickup`, so
+  the +1 Bash is granted once and kept, not a `passive:` bonus that unwinds if
+  the item is ever removed)
 
 ## Sheet-driven values to keep an eye on
 

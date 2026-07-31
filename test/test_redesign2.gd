@@ -46,7 +46,25 @@ func test_isaac_levelup_reward_is_chest() -> void:
 	var isaac: CharacterData = Data.get_character2(&"isaac")
 	assert_eq(String(isaac.level_up_reward_type), "item", "Small Chest -> item reward")
 	assert_eq(isaac.level_up_reward_amount, 1)
+	assert_eq(isaac.level_up_reward_chest_choices, 1, "Small -> 1 item, no choice")
 	assert_eq(isaac.level_up_condition, "Unlock a new Item")
+
+func test_zagreus_levelup_reward_is_a_large_chest() -> void:
+	var zag: CharacterData = Data.get_character2(&"zagreus")
+	assert_not_null(zag, "zagreus.tres should load from data/characters2.0")
+	assert_eq(zag.source_game, "Hades")
+	assert_eq(zag.base_max_hp, 8, "Zagreus Health 8 -> base_max_hp")
+	assert_eq(zag.level_up_condition, "Get help from a God")
+	assert_eq(String(zag.level_up_reward_type), "item", "a sized Chest -> item reward")
+	assert_eq(zag.level_up_reward_amount, 1)
+	assert_eq(zag.level_up_reward_chest_choices,
+		int(Data.CHEST_SIZE_CHOICES[Data.ChestSize.LARGE]),
+		"Large Chest -> pick 1 of 3")
+
+func test_zagreus_has_art() -> void:
+	var zag: CharacterData = Data.get_character2(&"zagreus")
+	assert_not_null(zag.portrait, "Zagreus' full portrait resolves")
+	assert_not_null(zag.icon, "Zagreus' in-world icon resolves")
 
 func test_minä_starts_and_levels_transmute() -> void:
 	var mina: CharacterData = Data.get_character2(&"min")
@@ -127,10 +145,56 @@ func test_burning_blood_is_starter_game_beaten_heal() -> void:
 	var eff: Dictionary = bb.triggers[0]["effects"][0]
 	assert_eq(String(eff.get("type", "")), "gain_hp")
 
-func test_vajra_passive_grants_bash() -> void:
+func test_vajra_pickup_grants_bash() -> void:
+	# Vajra is a PICKUP: the +1 Bash is granted once, permanently, on acquisition
+	# rather than being a stat_bonus that would vanish if the item ever left.
 	var vajra: ItemData = Data.get_item2(&"vajra")
-	assert_eq(int(vajra.kind), int(ItemData.ItemKind.PASSIVE))
-	assert_eq(int(vajra.stat_bonuses.get("bash", 0)), 1)
+	assert_eq(int(vajra.kind), int(ItemData.ItemKind.PICKUP))
+	var trig: Dictionary = vajra.triggers[0]
+	assert_eq(String(trig.get("on", "")), "item_acquired")
+	var eff: Dictionary = trig["effects"][0]
+	assert_eq(String(eff.get("type", "")), "gain_stat")
+	assert_eq(String(eff.get("stat", "")), "bash")
+	assert_eq(int(eff.get("value", 0)), 1)
+
+func test_vajra_pickup_actually_moves_bash() -> void:
+	var bash_before: int = GameState.bash
+	GameState.add_item(Data.get_item2(&"vajra"))
+	assert_eq(GameState.bash, bash_before + 1, "picking Vajra up grants the Bash")
+
+# --- Bomb items (§4 / §8) -------------------------------------------------
+# The three Binding-of-Isaac bomb items each hand over a Bomb on pickup and then
+# change what a bomb DOES; the rule flags are read off the inventory by
+# GameLoop2 (behaviour covered in test_gameloop2.gd).
+
+func test_bomb_items_each_grant_a_bomb_on_pickup() -> void:
+	for id in [&"blood_bombs", &"brimstone_bombs", &"sticky_bombs"]:
+		var it: ItemData = Data.get_item2(id)
+		assert_not_null(it, "%s loads" % id)
+		assert_eq(int(it.kind), int(ItemData.ItemKind.PICKUP))
+		var eff: Dictionary = it.triggers[0]["effects"][0]
+		assert_eq(String(eff.get("type", "")), "gain_stat", "%s: gain_stat" % id)
+		assert_eq(String(eff.get("stat", "")), "bombs", "%s: grants a Bomb" % id)
+
+func test_blood_bombs_heals_on_bomb_used() -> void:
+	var it: ItemData = Data.get_item2(&"blood_bombs")
+	var trig: Dictionary = it.triggers[1]
+	assert_eq(String(trig.get("on", "")), "bomb_used")
+	assert_eq(String(trig["effects"][0].get("type", "")), "gain_hp")
+	assert_eq(int(trig["effects"][0].get("value", 0)), 1)
+
+func test_bomb_rule_flags() -> void:
+	assert_true(Data.get_item2(&"sticky_bombs").bomb_stun, "Sticky Bombs stun")
+	assert_true(Data.get_item2(&"brimstone_bombs").bomb_cardinal,
+		"Brimstone Bombs blast the four cardinals")
+	assert_true(Data.get_item2(&"barricade").keep_shields, "Barricade banks shields")
+	assert_false(Data.get_item2(&"lunch").bomb_stun, "an ordinary item sets none of them")
+
+func test_bomb_rule_flags_read_off_the_inventory() -> void:
+	assert_false(GameState.bombs_stun(), "no Sticky Bombs owned")
+	GameState.add_item(Data.get_item2(&"sticky_bombs"))
+	assert_true(GameState.bombs_stun(), "owning it flips the rule")
+	assert_false(GameState.bombs_cardinal(), "and only that rule")
 
 func test_crown_bonus_level_up() -> void:
 	var crown: ItemData = Data.get_item2(&"crown")
@@ -167,6 +231,53 @@ func test_spike_slime_goal_enemy_fields() -> void:
 	assert_eq(slime.damage, 1, "Low tier deals 1")
 	assert_eq(String(slime.goal_type), "bounty")
 	assert_eq(String(slime.tag), "slime")
+
+func test_traditional_enemies_and_bosses_are_authored() -> void:
+	# The fourth game type (NetHack/Rogue/Necrodancer) — its pools used to be
+	# empty, so a Traditional game had to borrow another type's enemy.
+	var enemies: Array = Data.all_goal_enemies().filter(
+		func(e): return String(e.game_type) == "traditional")
+	var bosses: Array = Data.all_bosses().filter(
+		func(b): return String(b.game_type) == "traditional")
+	assert_gt(enemies.size(), 0, "Traditional has its own enemies")
+	assert_gt(bosses.size(), 0, "Traditional has its own bosses")
+
+func test_jabberwock_goal_enemy_fields() -> void:
+	var j: GoalEnemyData = Data.get_goal_enemy(&"jabberwock")
+	assert_not_null(j)
+	assert_eq(String(j.game_type), "traditional")
+	assert_eq(int(j.difficulty), int(GoalEnemyData.Difficulty.HIGH))
+	assert_eq(j.damage, 3, "High tier deals 3")
+	assert_eq(String(j.goal_type), "feat")
+	assert_not_null(j.image, "Jabberwock.png resolves")
+
+func test_banshee_bosses_load_with_art() -> void:
+	for id in [&"banshee", &"green_banshee"]:
+		var b: GoalEnemyData = Data.get_boss(id)
+		assert_not_null(b, "%s loads" % id)
+		assert_true(b.is_boss())
+		assert_eq(String(b.game_type), "traditional")
+		assert_eq(b.source_game, "Crypt of the NecroDancer",
+			"spelled as the games sheet spells it, so 'From: <game>' matches")
+		assert_not_null(b.image, "%s art resolves" % id)
+	assert_eq(Data.get_boss(&"banshee").damage, 3, "Low-tier boss hits for 3")
+	assert_eq(Data.get_boss(&"green_banshee").damage, 5, "Medium-tier boss hits for 5")
+
+# The "From: <game>" line on every character / enemy / boss / item panel is the
+# sheet's Game (or item Reference) cell verbatim, so a spelling that drifts from
+# the games sheet ("Nethack" for "NetHack") silently points at nothing.
+func test_every_source_game_names_a_real_game() -> void:
+	var known: Dictionary = {}
+	for g in Data.all_games():
+		known[g.display_name] = true
+	var rosters: Array = [Data.all_characters2(), Data.all_goal_enemies(),
+		Data.all_bosses(), Data.all_items2()]
+	for roster in rosters:
+		for entry in roster:
+			if entry.source_game == "":
+				continue
+			assert_true(known.has(entry.source_game),
+				"%s: source game %s is not in the games sheet" % [entry.id, entry.source_game])
 
 func test_transient_high_tier_damage() -> void:
 	var t: GoalEnemyData = Data.get_goal_enemy(&"transient")
