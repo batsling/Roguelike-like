@@ -741,7 +741,13 @@ func reset_run() -> void:
 	event_block = 0
 	combat_scene = null
 	combat_player = null
-	overworld_scene = null
+	# overworld_scene is NOT cleared here. It is a SCENE-LIFECYCLE registration
+	# (Overworld2 registers on mount and clears it in _exit_tree), not run state —
+	# and a run reset happens while that scene is still mounted, since booting a run
+	# is the first thing the overworld does. Clearing it here left the whole run
+	# with no registered overworld: scrolls unreadable (can_use_scrolls), overworld
+	# actives unusable (Ride the Bus), and a save unable to find the screen to
+	# capture. The guarded clear_overworld_context is what ends the registration.
 	event_active = false
 	dash_charges = 0
 	reroll_charges = 0
@@ -1185,6 +1191,20 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 	if touched:
 		emit_signal("stats_changed")
 	return applied
+
+# A run verb's value WITHOUT the contribution owned items currently make to it.
+# This is what a save stores, exactly like max_hp: the load restores the base and
+# then _recompute_item_bonuses re-applies the item bonuses, so a Vajra in the pack
+# can't add its +1 Bash again on every save/load round-trip. Aliased stat names
+# ("shields" / "block" both being the shields field) are summed once per FIELD, so
+# an item declaring either is accounted for exactly once.
+func base_verb_value(stat: String) -> int:
+	var field: String = _LEVEL_UP_ABILITY_FIELDS.get(stat, stat)
+	var applied: int = 0
+	for verb in _ITEM_VERB_STATS:
+		if String(_LEVEL_UP_ABILITY_FIELDS.get(verb, verb)) == field:
+			applied += int(_applied_item_verbs.get(verb, 0))
+	return int(get(field)) - applied
 
 func _pretty_stat(stat: String) -> String:
 	# "block" is the legacy authoring name for the per-game tries; say Shields.

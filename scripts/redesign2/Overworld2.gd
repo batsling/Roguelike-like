@@ -22,8 +22,10 @@ extends Control
 # above the choices and whichever game you pick spawns a boss (bosses are
 # unskippable: no bash/transmute on a boss round).
 
-# Phases of one selection.
-enum Phase { SELECT, PLAYING, OVER }
+# Phases of one selection. START_SELECT is the one-off opening phase: before the
+# run has a position, the player picks WHERE TO START from three games, each a
+# different genre and each the same distance band from the amulet (RunGraph).
+enum Phase { SELECT, PLAYING, OVER, START_SELECT }
 
 # The normal offering is LIMITED (a subset of the reachable games) — Dash (§4) is
 # the verb that bypasses it to reach any connected game. Kept small so the board
@@ -57,6 +59,19 @@ const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
 # spawns on click are the SAME roll. `repeat` marks a game already beaten this
 # run — beating it again grants a Dash (REPEAT_BEAT_DASH).
 var _choices: Array = []
+# The opening choose-your-start offering (Phase.START_SELECT). Each entry:
+#   {"game": GameData, "type": int, "path_len": int, "in_window": bool}
+# Rolled once by RunGraph at run start: three games of three different types, each
+# MIN_PATH_LENGTH..MAX_PATH_LENGTH games from the (hidden) amulet. Cleared the
+# moment a start is chosen.
+var _start_options: Array = []
+# The goal-enemy standing behind each offered SLOT, so bashing or transmuting one
+# card doesn't silently re-roll the enemies behind the others. Keyed
+# "<slot id>><game id>" (a transmuted slot plays a different game, so it earns a
+# fresh roll) and wiped whenever the offering itself is re-drawn — a move, a
+# scramble, or a difficulty-tier change (see _build_choices).
+var _slot_enemies: Dictionary = {}
+var _slot_enemy_key: String = ""
 var _boss_round: bool = false
 var _phase: int = Phase.SELECT
 var _chosen: Dictionary = {}          # the choice being played (Phase.PLAYING)
@@ -97,6 +112,9 @@ var _stack: RichTextLabel           # battlefield summary line
 # The offering half of the page (heading, verbs, cards, hover preview) — hidden
 # once a game is in play, which is what frees the room for the stage below.
 var _select_box: VBoxContainer
+# Its heading, which says which question the cards below are asking: where to
+# start the run (START_SELECT) or where to travel next (SELECT).
+var _select_head: Label
 # The STAGE, two columns wide: the report checklist on the left, and on the right
 # the board with the pack (inventory + loot tray) under it.
 var _left_col: VBoxContainer
@@ -185,6 +203,11 @@ func _ready() -> void:
 	# (§8), instead of banking a RewardScreen chest.
 	if not GameLoop2.enemy_defeated.is_connected(_on_enemy_defeated):
 		GameLoop2.enemy_defeated.connect(_on_enemy_defeated)
+	# A save being resumed takes precedence over booting a fresh run: the state is
+	# already on GameState / GameLoop2, and this restores the screen over it.
+	if SaveSystem.has_pending_resume():
+		resume_run(SaveSystem.take_pending_view_state())
+		return
 	# The menu stashes the chosen 2.0 character here before entering the scene.
 	var pending: StringName = GameState.get_meta("pending_character2", &"")
 	if pending != &"":
@@ -193,30 +216,300 @@ func _ready() -> void:
 
 # --- public actions (buttons + tests call these) --------------------------
 
-# Boot a fresh 2.0 run: roll a start/amulet graph, apply a 2.0 character loadout,
-# and place the player on the start game so its neighbours become the first
-# offering. `character_id` empty -> the first authored 2.0 character.
+# Boot a fresh 2.0 run: roll the amulet and the three candidate starts, apply the
+# 2.0 character loadout, and open on the CHOOSE-YOUR-START panel. The player has no
+# position on the graph until choose_start() puts them on one, so the first real
+# offering is drawn from whichever start they take. `character_id` empty -> the
+# first authored 2.0 character.
 func start_run(character_id: StringName = &"") -> void:
 	_visits.clear()
 	_last_played_game = null
+	_chosen = {}
+	_choices.clear()
+	_drop_queue.clear()
+	_transmuted.clear()
+	_slot_enemies.clear()
+	_slot_enemy_key = ""
 	var pick: Dictionary = RunGraph.pick_amulet_and_starts(_rng)
 	var ch: CharacterData = Data.get_character2(character_id)
 	if ch == null:
 		var roster: Array = Data.all_characters2()
 		ch = roster[0] if not roster.is_empty() else null
 	GameLoop2.start_run(ch)
-	if not pick.is_empty():
-		var opts: Array = pick.get("options", [])
-		var start_id: StringName = StringName(opts[_rng.randi() % opts.size()]["start_id"]) if not opts.is_empty() else &""
-		GameState.start_game_id = start_id
-		GameState.amulet_game_id = StringName(pick.get("amulet_id", ""))
-		GameState.set_current_game(start_id)
-	_phase = Phase.SELECT
+	# Belt and braces: whatever a run reset touches, this screen is still the
+	# mounted overworld, and scrolls / overworld actives / saving all look it up.
+	GameState.set_overworld_context(self)
 	_dash_mode = false
 	_scramble_salt = 0
 	_banner.hide()
+	_start_options = _build_start_options(pick)
+	if _start_options.is_empty():
+		# No graph to route (an empty / heavily filtered catalog): there is nothing
+		# to choose between, so fall straight through to the ordinary offering
+		# rather than parking the run on an empty panel.
+		_phase = Phase.SELECT
+		_build_choices()
+		_refresh()
+		return
+	_phase = Phase.START_SELECT
+	_refresh()
+	_scroll_to_top()
+
+# The choose-your-start cards from a RunGraph.pick_amulet_and_starts() result: the
+# amulet is recorded on the run (hidden from the player — only the DISTANCE to it
+# shows) and each option is resolved to its GameData. Options whose game is missing
+# from the catalog are dropped rather than rendered as a blank card.
+func _build_start_options(pick: Dictionary) -> Array:
+	var out: Array = []
+	if pick.is_empty():
+		return out
+	GameState.amulet_game_id = StringName(pick.get("amulet_id", ""))
+	for opt in pick.get("options", []):
+		var g: GameData = Data.get_game(StringName(opt.get("start_id", "")))
+		if g == null:
+			continue
+		out.append({
+			"game": g,
+			"type": int(opt.get("type", g.type)),
+			"path_len": int(opt.get("path_len", 0)),
+			"in_window": bool(opt.get("in_window", true)),
+		})
+	return out
+
+# Take the offered start at `index` (choose-your-start, Phase.START_SELECT): the
+# player lands on that game and its neighbours become the first offering. No enemy
+# spawns and no shields are granted — the start is where you BEGIN, not a game you
+# were sent to beat; the run's first pick is the first game you play.
+func choose_start(index: int) -> void:
+	if _phase != Phase.START_SELECT or index < 0 or index >= _start_options.size():
+		return
+	var opt: Dictionary = _start_options[index]
+	var game: GameData = opt["game"]
+	GameState.start_game_id = game.id
+	GameState.set_current_game(game.id)
+	GameLog.add("Starting the run at %s (%s) — %d games from the Amulet." % [
+		game.display_name, RunGraph.type_label(int(opt["type"])), int(opt["path_len"])],
+		UITheme.GOLD)
+	_start_options.clear()
+	_phase = Phase.SELECT
 	_build_choices()
 	_refresh()
+	_scroll_to_top()
+	# The run is now a real run — park a recovery point on it straight away.
+	autosave()
+
+# Resume a loaded save: the run state is already on GameState / GameLoop2 (see
+# SaveSystem), so this only rebuilds the SCREEN over it. `view` is whatever
+# capture_view_state() stored; an empty one (a save written outside the overworld,
+# or a pre-2.0 save) falls back to a fresh offering at the saved position.
+func resume_run(view: Dictionary) -> void:
+	if view.is_empty():
+		_phase = Phase.OVER if GameLoop2.run_over else Phase.SELECT
+		_start_options.clear()
+		_build_choices()
+		_refresh()
+		return
+	restore_view_state(view)
+
+# --- saving the run -------------------------------------------------------
+#
+# GameState + GameLoop2 hold the RUN (health, verbs, inventory, the enemy stack,
+# the destroyed games); this screen holds the bit of it you can see — which cards
+# are on the table, which game is in play, what's waiting in the loot tray. Neither
+# half restores a usable run on its own, so the save carries both: SaveSystem
+# writes the run and asks the mounted overworld for the view (capture_view_state),
+# and a load hands the view back here (restore_view_state).
+
+func capture_view_state() -> Dictionary:
+	var starts: Array = []
+	for opt in _start_options:
+		var sg: GameData = opt["game"]
+		starts.append({
+			"game": String(sg.id), "type": int(opt["type"]),
+			"path_len": int(opt["path_len"]), "in_window": bool(opt.get("in_window", true)),
+		})
+	var choices: Array = []
+	for c in _choices:
+		choices.append(_serialize_choice(c))
+	var transmuted: Dictionary = {}
+	for slot in _transmuted.keys():
+		transmuted[String(slot)] = String((_transmuted[slot] as GameData).id)
+	var visits: Dictionary = {}
+	for gid in _visits.keys():
+		visits[String(gid)] = int(_visits[gid])
+	var drops: Array = []
+	for d in _drop_queue:
+		drops.append(String((d["item"] as ItemData).id))
+	return {
+		"phase": _phase,
+		"start_options": starts,
+		"choices": choices,
+		"chosen": _serialize_choice(_chosen),
+		"boss_round": _boss_round,
+		"dash_mode": _dash_mode,
+		"scramble_salt": _scramble_salt,
+		"transmuted": transmuted,
+		"visits": visits,
+		"drops": drops,
+		"last_played_game": String(_last_played_game.id) if _last_played_game != null else "",
+	}
+
+func restore_view_state(view: Dictionary) -> void:
+	_start_options.clear()
+	for s in view.get("start_options", []):
+		var sg: GameData = Data.get_game(StringName(s.get("game", "")))
+		if sg != null:
+			_start_options.append({
+				"game": sg, "type": int(s.get("type", sg.type)),
+				"path_len": int(s.get("path_len", 0)),
+				"in_window": bool(s.get("in_window", true)),
+			})
+	_choices.clear()
+	for c in view.get("choices", []):
+		var restored: Dictionary = _deserialize_choice(c)
+		if not restored.is_empty():
+			_choices.append(restored)
+	_chosen = _deserialize_choice(view.get("chosen", {}))
+	_boss_round = bool(view.get("boss_round", false))
+	_dash_mode = bool(view.get("dash_mode", false))
+	_scramble_salt = int(view.get("scramble_salt", 0))
+	_transmuted.clear()
+	var tm: Dictionary = view.get("transmuted", {})
+	for slot in tm.keys():
+		var tg: GameData = Data.get_game(StringName(tm[slot]))
+		if tg != null:
+			_transmuted[StringName(slot)] = tg
+	_visits.clear()
+	var vs: Dictionary = view.get("visits", {})
+	for gid in vs.keys():
+		_visits[StringName(gid)] = int(vs[gid])
+	_drop_queue.clear()
+	for iid in view.get("drops", []):
+		var it: ItemData = Data.get_item2(StringName(iid))
+		if it == null:
+			it = Data.get_item(StringName(iid))
+		if it != null:
+			_drop_queue.append({"item": it})
+	_last_played_game = Data.get_game(StringName(view.get("last_played_game", "")))
+	# The enemies behind the restored cards are the saved ones, so seed the slot
+	# cache with them — otherwise the next repaint would roll new ones.
+	_slot_enemies.clear()
+	_slot_enemy_key = "%s|%d|%s" % [_offer_seed(), _current_tier(), str(_boss_round)]
+	for c in _choices:
+		var cg: GameData = c["game"]
+		_slot_enemies["%s>%s" % [String(c["slot"]), String(cg.id)]] = c["enemy"]
+	_phase = int(view.get("phase", Phase.SELECT))
+	# A game recorded as in play whose card no longer resolves (content removed from
+	# the catalog since the save) would leave the report step with nothing to report
+	# on; drop back to choosing rather than to a broken panel.
+	if _phase == Phase.PLAYING and _chosen.is_empty():
+		_phase = Phase.SELECT
+		_build_choices()
+	if GameLoop2.run_over:
+		_phase = Phase.OVER
+	_banner.hide()
+	if _phase == Phase.PLAYING:
+		_populate_play_panel()
+	_refresh()
+	if _phase == Phase.OVER:
+		if GameLoop2.won:
+			_show_banner("🏆  You cleared the Amulet — you win!", Color(0.95, 0.8, 0.2))
+		else:
+			_show_banner("💀  Run lost — Health reached 0.", Color(0.9, 0.3, 0.25))
+	_scroll_to_top()
+
+# One offered card as plain data. The enemy's pool is recorded alongside its id
+# because a goal-enemy and a boss can't be told apart by id alone on the way back.
+func _serialize_choice(choice: Dictionary) -> Dictionary:
+	if choice.is_empty():
+		return {}
+	var game: GameData = choice.get("game")
+	var enemy: GoalEnemyData = choice.get("enemy")
+	return {
+		"slot": String(choice.get("slot", "")),
+		"game": String(game.id) if game != null else "",
+		"enemy": String(enemy.id) if enemy != null else "",
+		"enemy_boss": enemy != null and enemy.is_boss(),
+		"boss": bool(choice.get("boss", false)),
+		"amulet": bool(choice.get("amulet", false)),
+		"repeat": bool(choice.get("repeat", false)),
+	}
+
+func _deserialize_choice(raw) -> Dictionary:
+	if not (raw is Dictionary) or (raw as Dictionary).is_empty():
+		return {}
+	var d: Dictionary = raw
+	var game: GameData = Data.get_game(StringName(d.get("game", "")))
+	if game == null:
+		return {}
+	var slot: String = String(d.get("slot", ""))
+	return {
+		"game": game,
+		"enemy": Data.get_goal_enemy_any(StringName(d.get("enemy", ""))),
+		"slot": StringName(slot if slot != "" else String(game.id)),
+		"boss": bool(d.get("boss", false)),
+		"amulet": bool(d.get("amulet", false)),
+		"repeat": bool(d.get("repeat", false)),
+	}
+
+# The name a save defaults to: whatever this run was last saved as, else the
+# character and where they are, which is what the Continue list shows anyway.
+func default_save_name() -> String:
+	if GameState.save_name.strip_edges() != "":
+		return GameState.save_name
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	var who: String = ch.display_name if ch != null else "Run"
+	var g: GameData = Data.get_game(GameState.current_game_id)
+	return "%s — %s" % [who, g.display_name] if g != null else who
+
+# Write the run to a named save. Returns false on a blank name or a failed write.
+func save_run(save_name: String) -> bool:
+	var nm: String = save_name.strip_edges()
+	if nm == "":
+		return false
+	if not SaveSystem.save_named(nm):
+		Notifications.notify("Couldn't write the save.", UITheme.DANGER)
+		return false
+	GameLog.add("Saved run as \"%s\"." % nm, UITheme.SUCCESS)
+	Notifications.notify("Saved \"%s\"." % nm, UITheme.SUCCESS)
+	return true
+
+# The recovery point the run keeps on its own: rewritten every time the run
+# actually moves — a start taken, a game picked, a game reported — so quitting or
+# crashing costs at most the attempts logged since. A finished run clears it
+# instead: Continue must never offer a run that's already over.
+func autosave() -> void:
+	if GameLoop2.run_over:
+		SaveSystem.clear_autosave()
+		return
+	SaveSystem.autosave()
+
+# The Save button: name the run, then write it. Re-saving under the same name
+# overwrites, which is what "save my run" means the second time.
+func prompt_save() -> void:
+	var dlg := AcceptDialog.new()
+	dlg.title = "Save run"
+	dlg.ok_button_text = "Save"
+	dlg.add_cancel_button("Cancel")
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	var lbl := Label.new()
+	lbl.text = "Name this save (an existing name is overwritten):"
+	box.add_child(lbl)
+	var edit := LineEdit.new()
+	edit.text = default_save_name()
+	edit.custom_minimum_size = Vector2(360, 0)
+	box.add_child(edit)
+	dlg.add_child(box)
+	dlg.register_text_enter(edit)
+	dlg.confirmed.connect(func():
+		save_run(edit.text)
+		dlg.queue_free())
+	dlg.canceled.connect(func(): dlg.queue_free())
+	add_child(dlg)
+	dlg.popup_centered(Vector2i(440, 190))
+	edit.grab_focus()
+	edit.select_all()
 
 # Travel to the offered game at `index`: its goal-enemy spawns and we move there.
 func pick(index: int) -> void:
@@ -243,6 +536,9 @@ func pick(index: int) -> void:
 	# The board is the hero of the playing screen, so land on it: the page stays at
 	# the top and the checklist under the grid is a scroll away.
 	_scroll_to_top()
+	# Committing to a game is a move worth recovering to — the shields it granted
+	# and the tries you're about to log all hang off it.
+	autosave()
 
 # The attempt tracker (§3): the player ticks this every time they LOSE a run of
 # the game they're playing. Each try spends a shield; once the shields are gone a
@@ -424,6 +720,8 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	_refresh()
 	# Back to the offering — that's the decision now, so put it back on screen.
 	_scroll_to_top()
+	# The run moved, so the recovery point moves with it.
+	autosave()
 	# Repaint first, then replay the strike + advance from the snapshot: the board
 	# is already in its final state, the animation just shows how it got there.
 	_board.animate_resolve(before, res)
@@ -539,15 +837,55 @@ func use_item(item: ItemData) -> void:
 		GameState.consume_item_use(item)
 	_refresh_items()
 
-# Bash the offered game at `index` (§4): destroy it out of the pool for the run.
-# Allowed on a boss round — but the boss is tied to the difficulty gate, not the
-# game, so whatever game backfills the slot still spawns a boss.
+# Bash the offered game at `index` (§4): destroy it out of the pool for the rest of
+# the run — it is never offered again — and REFILL its slot from the same pool the
+# offering is drawn from, i.e. another game connected to where the player is
+# standing (_backfill_id_for). The replacement gets its own freshly-rolled
+# goal-enemy while the untouched cards keep theirs. When this node has no other
+# connection left to give, the slot simply goes: bashing is destruction, not a
+# guaranteed reroll.
+#
+# Two bashes are refused outright, because both end the run rather than shape it:
+# the AMULET game (destroying the goal makes the run unwinnable) and the LAST card
+# on the board with nothing to replace it (destroying it leaves nowhere to travel).
+#
+# Allowed on a boss round — the boss is tied to the difficulty gate, not the game,
+# so whatever backfills the slot still spawns a boss.
 func bash_choice(index: int) -> void:
 	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
 		return
-	if GameLoop2.bash_game(_choices[index]["slot"]):
-		_build_choices()
-		_refresh()
+	var choice: Dictionary = _choices[index]
+	var slot: StringName = choice["slot"]
+	var game: GameData = choice["game"]
+	if bool(choice.get("amulet", false)):
+		var amulet_msg: String = "%s holds the Amulet — bashing it would end the run's goal." % game.display_name
+		GameLog.add(amulet_msg, UITheme.DANGER)
+		Notifications.notify(amulet_msg, UITheme.DANGER)
+		return
+	# Resolved BEFORE the bash, while the slot is still on the board.
+	var replacement: StringName = _backfill_id_for(slot)
+	if replacement == &"" and _choices.size() <= 1:
+		var stuck_msg: String = "Nothing else connects to here — bashing %s would leave nowhere to go." % game.display_name
+		GameLog.add(stuck_msg, UITheme.DANGER)
+		Notifications.notify(stuck_msg, UITheme.DANGER)
+		return
+	if not GameLoop2.bash_game(slot):
+		return
+	# A transmute on the destroyed slot dies with it, and so does its cached enemy.
+	_transmuted.erase(slot)
+	_slot_enemies.erase("%s>%s" % [String(slot), String(game.id)])
+	_build_choices()
+	_refresh()
+	if replacement != &"":
+		var repl: GameData = Data.get_game(replacement)
+		var repl_name: String = repl.display_name if repl != null else String(replacement)
+		GameLog.add("Bashed %s — %s takes its place." % [game.display_name, repl_name],
+			Color(1.0, 0.72, 0.4))
+		Notifications.notify("Bashed %s → %s" % [game.display_name, repl_name],
+			Color(1.0, 0.72, 0.4))
+	else:
+		GameLog.add("Bashed %s — nothing else connects here, so the slot goes with it." % game.display_name,
+			Color(1.0, 0.72, 0.4))
 
 # Transmute the offered game at `index` (§4): swap it for a random off-graph game
 # of the same type. Allowed on a boss round — the replacement game still spawns a
@@ -631,12 +969,7 @@ func offer_count() -> int:
 # reshuffle the rest — only a Scramble (which bumps _scramble_salt) re-draws it.
 func _offered_ids() -> Array:
 	var amulet: StringName = GameState.amulet_game_id
-	var nbrs: Array = []
-	for gid in RunGraph.neighbors(GameState.current_game_id):
-		if not GameLoop2.is_bashed(gid):
-			nbrs.append(gid)
-	var seed_key := _offer_seed()
-	nbrs.sort_custom(func(a, b): return hash(seed_key + String(a)) < hash(seed_key + String(b)))
+	var nbrs: Array = _sorted_neighbors()
 	# Dash (§4) bypasses the cap — every connected game is a valid target.
 	if _dash_mode:
 		return nbrs
@@ -645,6 +978,33 @@ func _offered_ids() -> Array:
 		nbrs.erase(amulet)
 		nbrs.push_front(amulet)
 	return nbrs.slice(0, cap)
+
+# Every game connected to where the player stands that is still in the pool, in
+# the offering's stable order. This IS the pool an offered slot is drawn from — so
+# it's also the pool a BASHED slot is refilled from (see _backfill_id_for): a
+# destroyed game is replaced by another game connected to the same node, not by
+# something off the route.
+func _sorted_neighbors() -> Array:
+	var nbrs: Array = []
+	for gid in RunGraph.neighbors(GameState.current_game_id):
+		if not GameLoop2.is_bashed(gid):
+			nbrs.append(gid)
+	var seed_key := _offer_seed()
+	nbrs.sort_custom(func(a, b): return hash(seed_key + String(a)) < hash(seed_key + String(b)))
+	return nbrs
+
+# The game that would slide into the offering if `bashed_slot` were destroyed: the
+# next connected, un-bashed game that isn't already on one of the other cards. &""
+# when this node's connections are exhausted — the offering just loses the card.
+func _backfill_id_for(bashed_slot: StringName) -> StringName:
+	var offered: Dictionary = {}
+	for c in _choices:
+		offered[StringName(c["slot"])] = true
+	for gid in _sorted_neighbors():
+		if gid == bashed_slot or offered.has(gid):
+			continue
+		return gid
+	return &""
 
 # What the offering draw is keyed on. Stable for as long as the player stands
 # where they are — bashing or transmuting one card must not reshuffle the others —
@@ -662,13 +1022,25 @@ func _build_choices() -> void:
 	_choices.clear()
 	_boss_round = _is_boss_round()
 	var tier: int = _current_tier()
+	# The enemy behind a slot is remembered for as long as the offering itself
+	# stands, so re-drawing the cards (a bash refilling a slot, a transmute swapping
+	# one) leaves the OTHER cards' enemies exactly as they were. Moving, scrambling
+	# or crossing a difficulty gate is what re-rolls them.
+	var enemy_key: String = "%s|%d|%s" % [_offer_seed(), tier, str(_boss_round)]
+	if enemy_key != _slot_enemy_key:
+		_slot_enemies.clear()
+		_slot_enemy_key = enemy_key
 	var amulet: StringName = GameState.amulet_game_id
 	for gid in _offered_ids():
 		var game: GameData = _transmuted.get(gid, Data.get_game(gid))
 		if game == null:
 			continue
 		var type_key: StringName = GameLoop2.game_type_key(game)
-		var enemy: GoalEnemyData = GameLoop2.roll_boss(type_key, tier) if _boss_round else GameLoop2.roll_enemy(type_key, tier)
+		var slot_key: String = "%s>%s" % [String(gid), String(game.id)]
+		var enemy: GoalEnemyData = _slot_enemies.get(slot_key)
+		if enemy == null:
+			enemy = GameLoop2.roll_boss(type_key, tier) if _boss_round else GameLoop2.roll_enemy(type_key, tier)
+			_slot_enemies[slot_key] = enemy
 		_choices.append({
 			"game": game, "enemy": enemy, "slot": gid,
 			"boss": _boss_round, "amulet": gid == amulet,
@@ -711,7 +1083,13 @@ func _refresh(_a = null) -> void:
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
 	_boss_banner.get_parent().visible = _boss_round and _phase == Phase.SELECT
-	if _phase == Phase.SELECT:
+	if _phase == Phase.START_SELECT:
+		_select_head.text = "Choose where to start — three genres, all the same distance from the Amulet:"
+		_clear(_controls_row)
+		_render_start_choices()
+		_populate_standing_checklist()
+	elif _phase == Phase.SELECT:
+		_select_head.text = "Choose a game to travel to:"
 		_render_controls()
 		_render_choices()
 		# The standing goals change with the stack (a bomb, a fulfilment, a scroll),
@@ -744,7 +1122,10 @@ func _scroll_to_top() -> void:
 func _refresh_stage() -> void:
 	if _stage_panel == null:
 		return
-	_select_box.visible = _phase == Phase.SELECT
+	# The offering box hosts the choose-your-start cards too, so it's up in both
+	# choosing phases; the scrolls panel isn't — there's nothing to read before the
+	# run has a position.
+	_select_box.visible = _phase == Phase.SELECT or _phase == Phase.START_SELECT
 	_scrolls_wrap.visible = _phase == Phase.SELECT
 	_play_panel.visible = _phase != Phase.OVER
 	_report_panel.visible = _phase != Phase.OVER
@@ -784,6 +1165,92 @@ func _render_controls() -> void:
 		rate.add_theme_color_override("font_color", UITheme.GOLD)
 		rate.pressed.connect(func(): _prompt_rating(game))
 		_controls_row.add_child(rate)
+
+# The choose-your-start panel (Phase.START_SELECT): one card per offered start,
+# each a different genre and each the same distance band from the amulet, so the
+# decision is "which genre do I want to open on and route from", never "which of
+# these is the short run".
+func _render_start_choices() -> void:
+	_clear(_choices_row)
+	_hover_grant = -1
+	if _start_options.is_empty():
+		var l := Label.new()
+		l.text = "No start could be rolled — check the game filter in Settings."
+		_choices_row.add_child(l)
+		return
+	for i in range(_start_options.size()):
+		_choices_row.add_child(_make_start_card(i, _start_options[i]))
+	_preview.text = "[i]Hover a start to see what it opens on.[/i]"
+	_preview_img.texture = null
+
+# One start card: the cover, the game's name, its genre, and how many games stand
+# between it and the amulet. The amulet itself stays hidden — the distance is the
+# only thing about it the panel gives away.
+func _make_start_card(index: int, opt: Dictionary) -> Control:
+	var game: GameData = opt["game"]
+	var accent: Color = RunGraph.type_color(int(opt["type"]))
+	var card := VBoxContainer.new()
+	card.add_theme_constant_override("separation", 4)
+	card.custom_minimum_size = Vector2(COVER_SIZE.x + 10, 0)
+
+	var type_lbl := Label.new()
+	type_lbl.text = RunGraph.type_label(int(opt["type"]))
+	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	type_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
+	type_lbl.add_theme_font_size_override("font_size", 13)
+	type_lbl.add_theme_color_override("font_color", accent.lerp(UITheme.TEXT, 0.35))
+	card.add_child(type_lbl)
+
+	var btn := Button.new()
+	btn.custom_minimum_size = COVER_SIZE
+	var frame_n := UITheme.flat(UITheme.BG, 8, 4, 1, UITheme.BORDER)
+	var frame_h := UITheme.flat(UITheme.PANEL_HI, 8, 4, 2, accent)
+	btn.add_theme_stylebox_override("normal", frame_n)
+	btn.add_theme_stylebox_override("hover", frame_h)
+	btn.add_theme_stylebox_override("pressed", frame_h)
+	btn.add_theme_stylebox_override("focus", frame_h)
+	btn.pressed.connect(func(): choose_start(index))
+	btn.mouse_entered.connect(func(): _show_start_preview(index))
+	if game.cover_image != null:
+		var art := TextureRect.new()
+		art.set_anchors_preset(Control.PRESET_FULL_RECT)
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.texture = game.cover_image
+		btn.add_child(art)
+	else:
+		btn.text = game.display_name
+		btn.add_theme_color_override("font_color", accent)
+	card.add_child(btn)
+
+	var name_lbl := Label.new()
+	name_lbl.text = game.display_name
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
+	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.add_theme_color_override("font_color", UITheme.TEXT)
+	card.add_child(name_lbl)
+
+	var dist := Label.new()
+	dist.text = "%d games from the Amulet" % int(opt["path_len"])
+	dist.tooltip_text = "The shortest route from %s to the hidden Amulet game." % game.display_name
+	dist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dist.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
+	dist.add_theme_font_size_override("font_size", 12)
+	dist.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
+	card.add_child(dist)
+	return card
+
+func _show_start_preview(index: int) -> void:
+	if index < 0 or index >= _start_options.size():
+		return
+	var opt: Dictionary = _start_options[index]
+	var game: GameData = opt["game"]
+	_preview.text = "[b]%s[/b]  —  %s\n%d games from the Amulet.  [i]You start here; the run's first game is whatever you travel to from it.[/i]" % [
+		game.display_name, RunGraph.type_label(int(opt["type"])), int(opt["path_len"])]
+	_preview_img.texture = null
 
 func _render_choices() -> void:
 	_clear(_choices_row)
@@ -1386,11 +1853,13 @@ func _result_text(res: Dictionary) -> String:
 func _on_run_lost() -> void:
 	_phase = Phase.OVER
 	_drop_queue.clear()
+	SaveSystem.clear_autosave()
 	_show_banner("💀  Run lost — Health reached 0.", Color(0.9, 0.3, 0.25))
 
 func _on_run_won() -> void:
 	_phase = Phase.OVER
 	_drop_queue.clear()
+	SaveSystem.clear_autosave()
 	_show_banner("🏆  You cleared the Amulet — you win!", Color(0.95, 0.8, 0.2))
 
 func _show_banner(text: String, color: Color) -> void:
@@ -1443,6 +1912,11 @@ func _build_ui() -> void:
 	map_btn.text = "🗺 Map"
 	map_btn.pressed.connect(open_map)
 	header.add_child(map_btn)
+	var save_btn := Button.new()
+	save_btn.text = "💾 Save"
+	save_btn.tooltip_text = "Save this run — pick it back up from Continue on the main menu."
+	save_btn.pressed.connect(prompt_save)
+	header.add_child(save_btn)
 	var restart_btn := Button.new()
 	restart_btn.text = "⟳ New run"
 	restart_btn.pressed.connect(func(): start_run())
@@ -1484,7 +1958,8 @@ func _build_ui() -> void:
 	_select_box.add_theme_constant_override("separation", 8)
 	root.add_child(_select_box)
 
-	_select_box.add_child(_section("Choose a game to travel to:"))
+	_select_head = _section("Choose a game to travel to:")
+	_select_box.add_child(_select_head)
 	# Controls row (Dash) — populated per refresh.
 	_controls_row = HBoxContainer.new()
 	_controls_row.add_theme_constant_override("separation", 8)

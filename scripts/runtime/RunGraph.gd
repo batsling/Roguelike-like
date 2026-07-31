@@ -6,25 +6,30 @@ extends RefCounted
 # `getGameConnections` helper from the HTML build into GDScript so the
 # Godot main menu can drive the same start-game progression.
 
-# Path length tuning — matches js/character-start.js. With the full
-# imported catalog (~660 games, ~840 connections) the graph diameter is
-# large enough to support 5..8-step runs.
+# Path length tuning. The run opens with a CHOICE OF THREE starting games, and
+# every one of them is the same distance band from the amulet — 5 to 7 games — so
+# picking a start is a choice of genre and route, never a choice of run length.
+# With the full imported catalog (~750 games, ~840 connections) the graph diameter
+# is large enough to support that band from several genres at once.
 const MIN_PATH_LENGTH := 5
-const MAX_PATH_LENGTH := 8
+const MAX_PATH_LENGTH := 7
 const EARLY_LAYERS_FOR_SCORE := 3
-const NUM_START_OPTIONS := 2
+# How many starts the choose-your-start panel offers. Each comes from a DIFFERENT
+# game type (see TYPE_ORDER), so the three cards are three genres.
+const NUM_START_OPTIONS := 3
 # Minimum outgoing connections a game needs to qualify as a "start".
 # Falls back to any-game on sparse graphs (see pick_amulet_and_starts).
 const MIN_START_CONNECTIONS := 3
 
 # Game-type ordering used to pick "one start per type" for the
-# choose-your-start panel. Only Action and Strategy are offered as starting
-# genres. Deckbuilder and Traditional are their own authored types now
-# (Deckbuilder games still play the same deckbuilder combat as Strategy), but,
-# like Traditional, they are not offered as run starts.
+# choose-your-start panel. All four authored types are eligible, and
+# pick_amulet_and_starts takes the best-scoring NUM_START_OPTIONS of them — so the
+# three offered starts are always three DIFFERENT genres.
 const TYPE_ORDER: Array = [
 	GameData.GameType.ACTION,
 	GameData.GameType.STRATEGY,
+	GameData.GameType.DECKBUILDER,
+	GameData.GameType.TRADITIONAL,
 ]
 
 # ---------------------------------------------------------------------------
@@ -219,14 +224,48 @@ static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Di
 # handler in js/character-start.js.
 # ---------------------------------------------------------------------------
 
+# How many amulets to try before settling for a panel that can't fill every slot
+# from inside the path-length window (see the attempt loop in
+# pick_amulet_and_starts).
+const AMULET_ATTEMPTS := 8
+
+# The best in-window start per game type for one amulet: for each type, the
+# eligible start whose route to `amulet` is 5..7 games long and whose early
+# branching is richest. Types with no start inside that band are simply absent —
+# the caller reads the SIZE of this to judge whether an amulet can fill the panel.
+static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
+		d_to_amulet: Dictionary) -> Dictionary:
+	var best_per_type: Dictionary = {}
+	for type_val in TYPE_ORDER:
+		var best: Dictionary = {}
+		for g in eligible_starts:
+			if g.type != type_val or g.id == amulet.id:
+				continue
+			var d_from := bfs_distances(g.id)
+			if not d_from.has(amulet.id):
+				continue
+			var path_len: int = d_from[amulet.id]
+			if path_len < MIN_PATH_LENGTH or path_len > MAX_PATH_LENGTH:
+				continue
+			var score := dag_branch_score_early(d_from, amulet.id, EARLY_LAYERS_FOR_SCORE, d_to_amulet)
+			if best.is_empty() or score > int(best.get("score", -1)):
+				best = {"start": g, "score": score, "path_len": path_len, "in_window": true}
+		if not best.is_empty():
+			best_per_type[type_val] = best
+	return best_per_type
+
 # Result format:
 #   {
 #     "amulet_id": StringName,
 #     "options": [
-#       {"start_id": StringName, "type": GameData.GameType, "score": int, "path_len": int},
+#       {"start_id": StringName, "type": GameData.GameType, "score": int,
+#        "path_len": int, "in_window": bool},
 #       ...
 #     ]
 #   }
+# One option per game type, NUM_START_OPTIONS of them, each `path_len` inside
+# MIN..MAX_PATH_LENGTH — `in_window` is false only on the sparse-graph fallbacks
+# that fill a slot no in-band start could.
 # Returns {} if no valid pair could be found (extremely unlikely with
 # the current data set but the JS guards it too).
 static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
@@ -303,34 +342,41 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 				amulet_finalists.append(entry["g"])
 	else:
 		amulet_finalists = amulet_candidates
-	var amulet: GameData = amulet_finalists[rng.randi() % amulet_finalists.size()]
-
-	# For each game type, find the eligible start with the best branching
-	# score *toward this amulet*. Then sort by score, take the top 3.
-	var d_to_amulet := bfs_distances(amulet.id)
+	# Pick the amulet, then check it can actually SUPPLY the panel: three genres
+	# each with a start inside the 5..7 band. Most amulets can; the odd one leaves a
+	# genre short, and rather than quietly offering a 4-hop start we try another
+	# amulet from the same finalist pool. bfs_distances is memoized, so an extra
+	# attempt is nearly free after the first. The best attempt seen is what we keep
+	# if none of them fills the panel outright.
+	var amulet: GameData = null
 	var best_per_type: Dictionary = {}     # GameType -> {start, score, path_len}
-	for type_val in TYPE_ORDER:
-		var best: Dictionary = {}
-		for g in eligible_starts:
-			if g.type != type_val:
-				continue
-			var d_from := bfs_distances(g.id)
-			if not d_from.has(amulet.id):
-				continue
-			var path_len: int = d_from[amulet.id]
-			if path_len < MIN_PATH_LENGTH or path_len > MAX_PATH_LENGTH:
-				continue
-			var score := dag_branch_score_early(d_from, amulet.id, EARLY_LAYERS_FOR_SCORE, d_to_amulet)
-			if best.is_empty() or score > int(best.get("score", -1)):
-				best = {"start": g, "score": score, "path_len": path_len}
-		if not best.is_empty():
-			best_per_type[type_val] = best
+	var d_to_amulet: Dictionary = {}
+	var untried: Array[GameData] = amulet_finalists.duplicate()
+	for _attempt in range(AMULET_ATTEMPTS):
+		if untried.is_empty():
+			break
+		var idx: int = rng.randi() % untried.size()
+		var candidate: GameData = untried[idx]
+		untried.remove_at(idx)
+		var d_to_cand := bfs_distances(candidate.id)
+		var per_type := _strict_starts_for(candidate, eligible_starts, d_to_cand)
+		if amulet == null or per_type.size() > best_per_type.size():
+			amulet = candidate
+			best_per_type = per_type
+			d_to_amulet = d_to_cand
+		if best_per_type.size() >= NUM_START_OPTIONS:
+			break
+	if amulet == null:
+		amulet = amulet_finalists[rng.randi() % amulet_finalists.size()]
+		d_to_amulet = bfs_distances(amulet.id)
 
 	# Guarantee one start per *distinct genre* on the panel. The strict pass
 	# above only keeps a type when it has a start inside the MIN..MAX path
 	# window; sparse graphs can leave us short. For every type still missing,
 	# relax the path-length window and take the best-scoring reachable start of
-	# that genre so the player always gets a pick from each live genre.
+	# that genre so the player always gets a pick from each live genre. These
+	# carry in_window = false, and the ranking below puts every in-window option
+	# ahead of them, so a relaxed start is only ever offered to FILL the panel.
 	if best_per_type.size() < NUM_START_OPTIONS:
 		for type_val in TYPE_ORDER:
 			if best_per_type.has(type_val):
@@ -345,7 +391,7 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 				var path_len: int = d_from[amulet.id]
 				var score := dag_branch_score_early(d_from, amulet.id, EARLY_LAYERS_FOR_SCORE, d_to_amulet)
 				if relaxed.is_empty() or score > int(relaxed.get("score", -1)):
-					relaxed = {"start": g, "score": score, "path_len": path_len}
+					relaxed = {"start": g, "score": score, "path_len": path_len, "in_window": false}
 			if not relaxed.is_empty():
 				best_per_type[type_val] = relaxed
 
@@ -358,8 +404,15 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 				"start_id": (rec["start"] as GameData).id,
 				"score": int(rec["score"]),
 				"path_len": int(rec["path_len"]),
+				"in_window": bool(rec.get("in_window", false)),
 			})
-	ranked.sort_custom(func(a, b): return int(a["score"]) > int(b["score"]))
+	# In-window starts first (the 5..7 band is the promise the panel makes), then
+	# by early-branching score. Slicing after this sort means a relaxed option only
+	# survives when there aren't NUM_START_OPTIONS genres inside the band.
+	ranked.sort_custom(func(a, b):
+		if bool(a["in_window"]) != bool(b["in_window"]):
+			return bool(a["in_window"])
+		return int(a["score"]) > int(b["score"]))
 	var options: Array = ranked.slice(0, mini(NUM_START_OPTIONS, ranked.size()))
 	if options.is_empty():
 		# Sparse-graph fallback: ignore the path-length window and just pick
@@ -373,11 +426,13 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 			if not d.has(amulet.id):
 				continue
 			if not by_type.has(g.type):
+				var plen: int = int(d[amulet.id])
 				by_type[g.type] = {
 					"type": g.type,
 					"start_id": g.id,
 					"score": 0,
-					"path_len": int(d[amulet.id]),
+					"path_len": plen,
+					"in_window": plen >= MIN_PATH_LENGTH and plen <= MAX_PATH_LENGTH,
 				}
 		for type_val in TYPE_ORDER:
 			if by_type.has(type_val):

@@ -6,16 +6,29 @@ extends GutTest
 # board verbs (bash/transmute) and the difficulty-gate boss round.
 
 const SCENE := preload("res://scenes/redesign2/Overworld2.tscn")
+const OVERWORLD := preload("res://scripts/redesign2/Overworld2.gd")
 
 var _ui
 
 func before_each() -> void:
 	_ui = SCENE.instantiate()
-	add_child_autofree(_ui)   # _ready -> builds UI + boots a run
+	add_child_autofree(_ui)   # _ready -> builds UI + rolls the choose-your-start panel
+	# A fresh run opens on the START-SELECT panel (three genres, all the same
+	# distance from the amulet); taking one is what gives the run a position, so
+	# every test below starts from there.
+	_ui.choose_start(0)
 
 func after_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
+	SaveSystem.clear_all_saves()
+	SaveSystem.cancel_pending_resume()
+
+# Re-boot the run on a specific character and take the first offered start, so a
+# test that needs a particular level-up / loadout lands where before_each does.
+func _reboot(character_id: StringName) -> void:
+	_ui.start_run(character_id)
+	_ui.choose_start(0)
 
 func test_boots_a_run_with_a_graph_and_choices() -> void:
 	assert_false(GameLoop2.run_over, "a fresh run is live")
@@ -172,7 +185,7 @@ func test_report_accepts_an_explicit_fulfilment_list() -> void:
 func test_level_up_checkbox_grants_the_reward() -> void:
 	# Zoe's level-up is "Perfect a Game" -> +1 Dash. Ticking the level-up box on
 	# report should apply the character's level_up_stats.
-	_ui.start_run(&"zoe")
+	_reboot(&"zoe")
 	var dash_before: int = GameState.dash_charges
 	var lvl_before: int = GameState.player_level
 	_ui.pick(0)
@@ -183,14 +196,14 @@ func test_level_up_checkbox_grants_the_reward() -> void:
 	assert_eq(GameState.player_level, lvl_before + 1, "player level advanced")
 
 func test_level_up_not_applied_when_unchecked() -> void:
-	_ui.start_run(&"zoe")
+	_reboot(&"zoe")
 	var dash_before: int = GameState.dash_charges
 	_ui.pick(0)
 	_ui.report(true)                              # box left unticked
 	assert_eq(GameState.dash_charges, dash_before, "no level-up without the tick")
 
 func test_isaac_level_up_grants_a_chest() -> void:
-	_ui.start_run(&"isaac")                       # reward_type item -> Small Chest
+	_reboot(&"isaac")                       # reward_type item -> Small Chest
 	var chests_before: int = GameState.pending_chests
 	_ui.pick(0)
 	if _ui._levelup_check != null:
@@ -199,7 +212,7 @@ func test_isaac_level_up_grants_a_chest() -> void:
 	assert_eq(GameState.pending_chests, chests_before + 1, "Isaac's level-up banks a chest")
 
 func test_poe_level_up_grants_a_size_rolled_chest() -> void:
-	_ui.start_run(&"poe_ratcho")                  # reward_type random_sized_chest
+	_reboot(&"poe_ratcho")                  # reward_type random_sized_chest
 	var chests_before: int = GameState.pending_chests
 	_ui.pick(0)
 	if _ui._levelup_check != null:
@@ -436,7 +449,7 @@ func test_the_stage_keeps_its_shape_in_both_phases() -> void:
 # Choosing a game, the checklist lists the goals already on you: the character's
 # level-up challenge and every follower's outstanding goal.
 func test_the_standing_checklist_lists_what_you_owe() -> void:
-	_ui.start_run(&"isaac")                       # Isaac has a level-up condition
+	_reboot(&"isaac")                       # Isaac has a level-up condition
 	var texts := func() -> String:
 		var out: Array = []
 		for row in _ui._verify_box.get_children():
@@ -640,8 +653,9 @@ func test_hud_follows_a_verb_gain_without_a_loop_resolve() -> void:
 func test_bash_removes_a_choice_from_the_pool() -> void:
 	GameState.bash = 1
 	_ui._build_choices()
-	var bashed_id: StringName = _ui._choices[0]["slot"]
-	_ui.bash_choice(0)
+	var idx: int = _first_bashable()
+	var bashed_id: StringName = _ui._choices[idx]["slot"]
+	_ui.bash_choice(idx)
 	assert_true(GameLoop2.is_bashed(bashed_id), "the game is destroyed out of the pool")
 	assert_eq(GameState.bash, 0, "bash spent a charge")
 	# The bashed game no longer appears in the offering (a limited offering may
@@ -655,8 +669,9 @@ func test_bash_allowed_on_boss_round_still_faces_a_boss() -> void:
 	GameState.games_played = RunDifficulty.GAMES_PER_TIER
 	GameState.bash = 1
 	_ui._build_choices()
-	var bashed_id: StringName = _ui._choices[0]["slot"]
-	_ui.bash_choice(0)
+	var idx: int = _first_bashable()
+	var bashed_id: StringName = _ui._choices[idx]["slot"]
+	_ui.bash_choice(idx)
 	assert_eq(GameState.bash, 0, "bash is allowed on a boss round")
 	assert_true(GameLoop2.is_bashed(bashed_id), "the game was destroyed")
 	assert_true(_ui._boss_round, "still a boss round after bashing")
@@ -676,3 +691,274 @@ func test_transmute_on_boss_round_still_faces_a_boss() -> void:
 	for c in _ui._choices:
 		if c["slot"] == slot:
 			assert_true(bool(c["boss"]), "the transmuted game still spawns a boss")
+
+# --- helpers for the sections below ---------------------------------------
+
+# The first offered card that bash is actually allowed to destroy — bashing the
+# amulet is refused (it's the run's goal), and picking index 0 blindly makes any
+# bash test flaky on the runs where the amulet lands in the offering.
+func _first_bashable() -> int:
+	for i in range(_ui._choices.size()):
+		if not bool(_ui._choices[i]["amulet"]):
+			return i
+	return 0
+
+# A game with more connections than the offering can show, so there is a spare
+# neighbour for a bashed slot to be refilled from. &"" when the graph has none.
+func _hub_with_spare_neighbours() -> StringName:
+	for g in Data.all_games():
+		if RunGraph.neighbors(g.id).size() > _ui.offer_count() + 1:
+			return g.id
+	return &""
+
+# --- choose your start (the run's opening screen) --------------------------
+
+func test_a_fresh_run_opens_on_the_start_picker() -> void:
+	_ui.start_run()
+	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT, "a fresh run opens on the start picker")
+	assert_eq(String(GameState.current_game_id), "", "no position on the graph until one is taken")
+	assert_ne(String(GameState.amulet_game_id), "", "but the amulet is already rolled")
+	assert_true(_ui._choices.is_empty(), "and there is no travel offering yet")
+
+func test_the_start_picker_offers_three_games_of_different_types() -> void:
+	_ui.start_run()
+	assert_eq(_ui._start_options.size(), RunGraph.NUM_START_OPTIONS,
+		"the panel offers %d starts" % RunGraph.NUM_START_OPTIONS)
+	var types: Dictionary = {}
+	for opt in _ui._start_options:
+		types[int(opt["type"])] = true
+	assert_eq(types.size(), _ui._start_options.size(), "each offered start is a different game type")
+
+func test_every_offered_start_sits_in_the_amulet_distance_band() -> void:
+	_ui.start_run()
+	for opt in _ui._start_options:
+		var game: GameData = opt["game"]
+		var dist: Dictionary = RunGraph.bfs_distances(game.id)
+		var hops: int = int(dist.get(GameState.amulet_game_id, -1))
+		assert_eq(hops, int(opt["path_len"]),
+			"%s's card shows its real graph distance" % game.display_name)
+		assert_true(hops >= RunGraph.MIN_PATH_LENGTH and hops <= RunGraph.MAX_PATH_LENGTH,
+			"%s is %d games from the amulet, inside the %d-%d band" % [
+				game.display_name, hops, RunGraph.MIN_PATH_LENGTH, RunGraph.MAX_PATH_LENGTH])
+
+func test_choosing_a_start_places_the_player_and_draws_the_first_offering() -> void:
+	_ui.start_run()
+	var chosen: GameData = _ui._start_options[1]["game"]
+	_ui.choose_start(1)
+	assert_eq(GameState.current_game_id, chosen.id, "the player stands on the chosen start")
+	assert_eq(GameState.start_game_id, chosen.id, "and the run records it as its start")
+	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "the run falls through to the normal offering")
+	assert_true(_ui._start_options.is_empty(), "the start panel is done with")
+	assert_gt(_ui._choices.size(), 0, "the start's neighbours are on the table")
+	# The start is where you BEGIN, not a game you were sent to beat.
+	assert_false(GameLoop2.has_current(), "no enemy spawns for the start game")
+	assert_eq(GameState.shields, 0, "and it grants no tries")
+
+func test_the_start_picker_ignores_a_travel_pick() -> void:
+	_ui.start_run()
+	_ui.pick(0)
+	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT, "travel is not a thing yet")
+	assert_false(GameLoop2.has_current(), "and nothing spawned")
+
+# --- bash: destroy the game, refill the slot from the same pool -------------
+
+func test_bash_refills_the_slot_from_a_connected_game() -> void:
+	var hub: StringName = _hub_with_spare_neighbours()
+	if hub == &"":
+		pass_test("no node with a spare connection in this run's graph")
+		return
+	GameState.set_current_game(hub)
+	_ui._build_choices()
+	GameState.bash = 1
+	var idx: int = _first_bashable()
+	var bashed_id: StringName = _ui._choices[idx]["slot"]
+	var before: Array = _ui._choices.map(func(c): return c["slot"])
+	_ui.bash_choice(idx)
+	var after: Array = _ui._choices.map(func(c): return c["slot"])
+	assert_true(GameLoop2.is_bashed(bashed_id), "the bashed game is destroyed for the run")
+	assert_eq(after.size(), before.size(), "the offering kept its size")
+	assert_false(after.has(bashed_id), "the destroyed game is off the table")
+	var fresh: Array = after.filter(func(s): return not before.has(s))
+	assert_eq(fresh.size(), 1, "exactly one new game took the freed slot")
+	assert_true(RunGraph.neighbors(hub).has(StringName(fresh[0])),
+		"and the replacement is connected to where the player is standing")
+
+func test_a_bashed_slot_never_offers_the_destroyed_game_again() -> void:
+	var hub: StringName = _hub_with_spare_neighbours()
+	if hub == &"":
+		pass_test("no node with a spare connection in this run's graph")
+		return
+	GameState.set_current_game(hub)
+	_ui._build_choices()
+	GameState.bash = 1
+	var bashed_id: StringName = _ui._choices[_first_bashable()]["slot"]
+	_ui.bash_choice(_first_bashable())
+	# Walk away and come back — a re-seeded draw must still skip the destroyed game.
+	for _i in range(4):
+		GameState.set_current_game(&"__elsewhere__")
+		GameState.set_current_game(hub)
+		_ui._build_choices()
+		for c in _ui._choices:
+			assert_ne(c["slot"], bashed_id, "the destroyed game stays out of the pool")
+
+func test_bashing_one_card_leaves_the_other_cards_enemies_alone() -> void:
+	var hub: StringName = _hub_with_spare_neighbours()
+	if hub == &"":
+		pass_test("no node with a spare connection in this run's graph")
+		return
+	GameState.set_current_game(hub)
+	_ui._build_choices()
+	GameState.bash = 1
+	var idx: int = _first_bashable()
+	var kept: Dictionary = {}
+	for i in range(_ui._choices.size()):
+		if i != idx:
+			kept[_ui._choices[i]["slot"]] = (_ui._choices[i]["enemy"] as GoalEnemyData).id
+	_ui.bash_choice(idx)
+	for c in _ui._choices:
+		if kept.has(c["slot"]):
+			assert_eq((c["enemy"] as GoalEnemyData).id, kept[c["slot"]],
+				"the untouched card kept the enemy it was showing")
+
+func test_the_amulet_game_cannot_be_bashed() -> void:
+	var amulet: StringName = GameState.amulet_game_id
+	var nbrs: Array = RunGraph.neighbors(amulet)
+	if nbrs.is_empty():
+		pass_test("the amulet has no neighbour to stand on")
+		return
+	GameState.set_current_game(nbrs[0])
+	_ui._build_choices()
+	var idx: int = -1
+	for i in range(_ui._choices.size()):
+		if bool(_ui._choices[i]["amulet"]):
+			idx = i
+	assert_gt(idx, -1, "standing next to the amulet puts it in the offering")
+	GameState.bash = 1
+	_ui.bash_choice(idx)
+	assert_eq(GameState.bash, 1, "the charge is not spent")
+	assert_false(GameLoop2.is_bashed(amulet), "the run's goal survives")
+
+func test_bash_is_refused_when_it_would_leave_nowhere_to_go() -> void:
+	# A node with exactly one connection: destroying that one card would strand
+	# the run, so the bash is refused rather than the slot left empty.
+	var leaf: StringName = &""
+	for g in Data.all_games():
+		if RunGraph.neighbors(g.id).size() == 1:
+			leaf = g.id
+			break
+	if leaf == &"":
+		pass_test("no single-connection node in this run's graph")
+		return
+	GameState.set_current_game(leaf)
+	_ui._build_choices()
+	assert_eq(_ui._choices.size(), 1, "a leaf node offers exactly one game")
+	GameState.bash = 1
+	_ui.bash_choice(0)
+	assert_eq(GameState.bash, 1, "the charge is kept")
+	assert_eq(_ui._choices.size(), 1, "and the last card stays on the table")
+
+# --- saving and resuming a run --------------------------------------------
+
+func test_a_saved_run_round_trips_through_a_live_overworld() -> void:
+	GameState.bash = 1
+	var idx: int = _first_bashable()
+	var destroyed: StringName = _ui._choices[idx]["slot"]
+	_ui.bash_choice(idx)
+	_ui.pick(0)
+	_ui.report(false)                       # a missed goal leaves an enemy following
+	_ui.pick(0)                             # and a game is now in play
+	GameState.bombs = 2
+	var expect_game: StringName = GameState.current_game_id
+	var expect_hp: int = GameState.hp
+	var expect_shields: int = GameState.shields
+	var expect_stack: int = GameLoop2.stack_size()
+	var expect_chosen: StringName = (_ui._chosen["game"] as GameData).id
+	var expect_choices: int = _ui._choices.size()
+	assert_true(SaveSystem.save_named("round trip"), "the run wrote to disk")
+
+	# Wipe the run to nothing, then load it back into the still-mounted overworld.
+	GameState.reset_run()
+	GameLoop2.reset()
+	GameState.set_overworld_context(_ui)    # reset_run clears the registration
+	assert_true(SaveSystem.load_named("round trip"), "the save read back")
+
+	assert_eq(GameState.current_game_id, expect_game, "the player is where they were")
+	assert_eq(GameState.hp, expect_hp, "Health came back")
+	assert_eq(GameState.shields, expect_shields, "the tries at the game in play came back")
+	assert_eq(GameState.bombs, 2, "the board verbs came back")
+	assert_eq(GameLoop2.stack_size(), expect_stack, "the followers came back")
+	assert_true(GameLoop2.is_bashed(destroyed), "the destroyed game is still destroyed")
+	assert_true(GameLoop2.has_current(), "the game in play is still in play")
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "and the screen is back on the report step")
+	assert_eq((_ui._chosen["game"] as GameData).id, expect_chosen, "reporting on the same game")
+	assert_eq(_ui._choices.size(), expect_choices, "the offering came back with it")
+
+func test_a_restored_follower_keeps_its_place_on_the_board() -> void:
+	_ui.pick(0)
+	_ui.report(false)
+	var entry: Dictionary = GameLoop2.stack[0]
+	var expect: Dictionary = {
+		"enemy": (entry["enemy"] as GoalEnemyData).id,
+		"col": int(entry["col"]), "row": int(entry["row"]),
+		"health": int(entry["health"]), "instance": int(entry["instance"]),
+	}
+	assert_true(SaveSystem.save_named("board"))
+	GameState.reset_run()
+	GameLoop2.reset()
+	GameState.set_overworld_context(_ui)
+	assert_true(SaveSystem.load_named("board"))
+	assert_eq(GameLoop2.stack_size(), 1, "the follower came back")
+	var back: Dictionary = GameLoop2.stack[0]
+	assert_eq((back["enemy"] as GoalEnemyData).id, expect["enemy"], "the same enemy")
+	assert_eq(int(back["col"]), int(expect["col"]), "standing in the same column")
+	assert_eq(int(back["row"]), int(expect["row"]), "and the same row")
+	assert_eq(int(back["health"]), int(expect["health"]), "with the same goals left on it")
+	assert_eq(int(back["instance"]), int(expect["instance"]), "under the same instance handle")
+
+func test_a_load_with_no_overworld_mounted_parks_the_view_for_the_next_one() -> void:
+	_ui.pick(0)
+	assert_true(SaveSystem.save_named("parked"))
+	GameState.clear_overworld_context(_ui)
+	assert_true(SaveSystem.load_named("parked"))
+	assert_true(SaveSystem.has_pending_resume(), "the view waits for an overworld to boot")
+	var view: Dictionary = SaveSystem.take_pending_view_state()
+	assert_false(SaveSystem.has_pending_resume(), "claiming it clears the handshake")
+	assert_eq(int(view.get("phase", -1)), OVERWORLD.Phase.PLAYING,
+		"and it carries the screen the run was on")
+	GameState.set_overworld_context(_ui)
+
+func test_carried_items_survive_a_save_load_without_compounding() -> void:
+	var vajra: ItemData = Data.get_item2(&"vajra")          # +1 Bash on pickup
+	var heart: ItemData = Data.get_item2(&"hollow_heart")   # +4 Max Health on pickup
+	assert_not_null(vajra)
+	assert_not_null(heart)
+	GameState.add_item(vajra)
+	GameState.add_item(heart)
+	var expect_bash: int = GameState.bash
+	var expect_max_hp: int = GameState.max_hp
+	var expect_items: int = GameState.inventory.size()
+	assert_true(SaveSystem.save_named("pack"))
+	GameState.reset_run()
+	GameLoop2.reset()
+	GameState.set_overworld_context(_ui)
+	assert_true(SaveSystem.load_named("pack"))
+	assert_eq(GameState.inventory.size(), expect_items, "the pack came back")
+	assert_eq(GameState.bash, expect_bash, "Bash is what it was — not doubled by the reload")
+	assert_eq(GameState.max_hp, expect_max_hp, "and neither is Max Health")
+
+func test_reporting_a_game_keeps_the_run_recoverable() -> void:
+	_ui.pick(0)
+	_ui.report(false)
+	assert_true(SaveSystem.has_autosave(), "the run keeps a recovery point")
+	var summaries: Array = SaveSystem.list_resumable()
+	assert_gt(summaries.size(), 0, "and the Continue list can see it")
+	assert_true(bool(summaries[0].get("autosave", false)), "the autosave leads the list")
+
+func test_a_lost_run_clears_its_recovery_point() -> void:
+	_ui.pick(0)
+	assert_true(SaveSystem.has_autosave(), "there is something to clear")
+	GameState.shields = 0
+	GameState.hp = 1
+	_ui.log_attempt()                       # a lost run with no shields costs the last Health
+	assert_true(GameLoop2.run_over, "the run ended")
+	assert_false(SaveSystem.has_autosave(), "Continue must not offer a finished run")

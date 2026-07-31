@@ -144,6 +144,97 @@ func start_run(character: CharacterData) -> void:
 	GameState.apply_character2(character)
 	reset()
 
+# --- save / load ----------------------------------------------------------
+#
+# The loop's whole state as plain JSON-safe data, and back again. Enemies are
+# stored by id plus which pool they came from (a goal-enemy and a boss can share
+# neither catalog nor lookup), and everything else is already ints/strings. Written
+# and read by SaveSystem — nothing else should be reaching in here.
+
+func serialize() -> Dictionary:
+	var stacked: Array = []
+	for entry in stack:
+		stacked.append(_serialize_entry(entry))
+	var bashed_ids: Array = []
+	for gid in bashed:
+		bashed_ids.append(String(gid))
+	return {
+		"current": _serialize_entry(current),
+		"stack": stacked,
+		"bashed": bashed_ids,
+		"run_over": run_over,
+		"won": won,
+		"defeated_count": defeated_count,
+		"games_beaten": games_beaten,
+		"enemy_damage_bonus": enemy_damage_bonus,
+		"enemy_damage_bonus_games": enemy_damage_bonus_games,
+		"attempt_costs": attempt_costs.duplicate(),
+		"next_instance": _next_instance,
+	}
+
+func restore(data: Dictionary) -> void:
+	reset()
+	if data.is_empty():
+		return
+	current = _deserialize_entry(data.get("current", {}))
+	for raw in data.get("stack", []):
+		var entry: Dictionary = _deserialize_entry(raw)
+		if not entry.is_empty():
+			stack.append(entry)
+	bashed.clear()
+	for gid in data.get("bashed", []):
+		bashed.append(StringName(gid))
+	run_over = bool(data.get("run_over", false))
+	won = bool(data.get("won", false))
+	defeated_count = int(data.get("defeated_count", 0))
+	games_beaten = int(data.get("games_beaten", 0))
+	enemy_damage_bonus = int(data.get("enemy_damage_bonus", 0))
+	enemy_damage_bonus_games = int(data.get("enemy_damage_bonus_games", 0))
+	attempt_costs.clear()
+	for cost in data.get("attempt_costs", []):
+		attempt_costs.append(String(cost))
+	# Never hand out an instance handle something on the board already holds.
+	_next_instance = maxi(1, int(data.get("next_instance", 1)))
+	for entry in stack:
+		_next_instance = maxi(_next_instance, int(entry.get("instance", 0)) + 1)
+	if not current.is_empty():
+		_next_instance = maxi(_next_instance, int(current.get("instance", 0)) + 1)
+	loop_changed.emit()
+
+func _serialize_entry(entry: Dictionary) -> Dictionary:
+	if entry.is_empty():
+		return {}
+	var enemy: GoalEnemyData = entry.get("enemy")
+	if enemy == null:
+		return {}
+	return {
+		"instance": int(entry.get("instance", 0)),
+		"enemy": String(enemy.id),
+		"boss": enemy.is_boss(),
+		"health": int(entry.get("health", 1)),
+		"stun": int(entry.get("stun", 0)),
+		"col": int(entry.get("col", OFFGRID_COL)),
+		"row": int(entry.get("row", 0)),
+	}
+
+# An entry whose enemy no longer exists in the catalog is DROPPED rather than
+# restored as a null-enemy body, which every board query would then trip over.
+func _deserialize_entry(raw) -> Dictionary:
+	if not (raw is Dictionary) or (raw as Dictionary).is_empty():
+		return {}
+	var d: Dictionary = raw
+	var enemy: GoalEnemyData = Data.get_goal_enemy_any(StringName(d.get("enemy", "")))
+	if enemy == null:
+		return {}
+	return {
+		"instance": int(d.get("instance", 0)),
+		"enemy": enemy,
+		"health": maxi(1, int(d.get("health", 1))),
+		"stun": int(d.get("stun", 0)),
+		"col": int(d.get("col", OFFGRID_COL)),
+		"row": int(d.get("row", 0)),
+	}
+
 # --- Spawning -------------------------------------------------------------
 
 # Rolls a goal-enemy for a game of `game_type` at `tier` (0 Low / 1 Med / 2 High;
@@ -652,9 +743,11 @@ func is_bashed(game_id: StringName) -> bool:
 	return bashed.has(game_id)
 
 # Bash (§4): destroy a game outright — removed from the pool for the rest of the
-# run, never offered again (no replacement, unlike the old bash). Spends a bash
-# charge. Returns true on success. The overworld removes the node; this records
-# the exclusion so future draws skip it.
+# run, never offered again. Spends a bash charge. Returns true on success. This
+# records the exclusion so every future draw skips the game; the SLOT it vacated
+# is a separate question the overworld answers (Overworld2.bash_choice refills it
+# from the games connected to where the player stands, and leaves it empty when
+# that node has nothing left to give).
 func bash_game(game_id: StringName) -> bool:
 	if GameState.bash <= 0 or is_bashed(game_id):
 		return false
