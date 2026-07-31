@@ -174,17 +174,12 @@ func refresh_toolbar() -> void:
 	else:
 		push_btn.tooltip_text = "Shove %s back one column, buying the games it takes to close in again." % e.display_name
 
+	# A boss is a legal bomb target even though the damage bounces off it — that
+	# is the only way to land Sticky Bombs' stun on one — so the button gates on
+	# having a target and a charge, and the tooltip carries the caveat.
 	bomb_btn.text = "✸  Bomb (%d)" % GameState.bombs
-	var bomb_ok: bool = e != null and GameState.bombs > 0 and not e.is_boss()
-	bomb_btn.disabled = not bomb_ok
-	if e == null:
-		bomb_btn.tooltip_text = "Select an enemy to bomb."
-	elif GameState.bombs <= 0:
-		bomb_btn.tooltip_text = "No Bombs left."
-	elif e.is_boss():
-		bomb_btn.tooltip_text = "%s is a boss — bombs can't kill it." % e.display_name
-	else:
-		bomb_btn.tooltip_text = "Destroy %s outright (it drops nothing)." % e.display_name
+	bomb_btn.disabled = e == null or GameState.bombs <= 0
+	bomb_btn.tooltip_text = GameLoop2.bomb_hint(e)
 
 # The stack entry for an instance, or {} when it's gone / nothing is selected.
 func _stack_entry(instance: int) -> Dictionary:

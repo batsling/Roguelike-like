@@ -55,6 +55,12 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 #                      scene-less, and what charged actives recharge on.
 #                      Burning Blood: triggers = [{on: "game_beaten",
 #                      effects: [{type: "gain_hp", value: 1}]}]
+#   bomb_used        — a Bomb was spent on the battlefield (§4), fired once
+#                      per bomb by GameLoop2.bomb no matter how many bodies
+#                      the blast touched. ctx carries instance / enemy /
+#                      hits / destroyed. Run-scope and scene-less.
+#                      Blood Bombs: triggers = [{on: "bomb_used",
+#                      effects: [{type: "gain_hp", value: 1}]}]
 #   card_played      — fires per card BEFORE its effects resolve. ctx
 #                      carries the card and its target. Combine with
 #                      `if_card_tag:` / `if_card_id:` / `if_card_type:`
@@ -368,6 +374,26 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # copy gets this probability to grant an additional level-up. 0 = never.
 # The bonus level-up itself re-rolls this, so copies can chain.
 @export var bonus_level_up_chance: float = 0.0
+
+# === Games-first (2.0) run-loop flags ===
+# These are read directly off the inventory by the loop resolver rather than
+# fired as effects, because they change a RULE rather than move a number. Each
+# has a GameState.has_* helper so the call sites stay a single bool.
+#
+# Barricade: unspent shields stop expiring when a game is resolved (§3) — they
+# bank into the next game instead of belonging to just the one. Read by
+# GameLoop2.beat_game via GameState.keeps_shields.
+@export var keep_shields: bool = false
+
+# Sticky Bombs: everything a bomb HITS and does not destroy is stunned instead
+# (skips its next attack, §4.1) — which in practice means bosses, the only
+# things that survive a bomb. Read by GameLoop2.bomb via GameState.bombs_stun.
+@export var bomb_stun: bool = false
+
+# Brimstone Bombs: a bomb blasts along the battlefield's four cardinal
+# directions instead of hitting a single body — every enemy sharing the target's
+# row or column is hit too. Read by GameLoop2.bomb via GameState.bombs_cardinal.
+@export var bomb_cardinal: bool = false
 
 # Runtime-minted unique id per inventory slot (set by GameState.add_item).
 # Two duplicated copies of the same template get different instance_ids,

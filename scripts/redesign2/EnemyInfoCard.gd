@@ -170,11 +170,12 @@ func setup(entry: Dictionary, col: int, is_current: bool) -> void:
 			push_requested.emit(instance)
 			close())
 		acts.add_child(pb)
-		var can_bomb: bool = GameState.bombs > 0 and not e.is_boss()
+		# Bosses can be bombed too — they just take no damage from it (the reason
+		# to spend one is Sticky Bombs' stun). GameLoop2.bomb_hint says which.
 		var bb := Button.new()
 		bb.text = "✸  Bomb (%d)" % GameState.bombs
-		bb.disabled = not can_bomb
-		bb.tooltip_text = "Bosses are bomb-immune." if e.is_boss() else "Destroys it outright — no drop."
+		bb.disabled = GameState.bombs <= 0
+		bb.tooltip_text = GameLoop2.bomb_hint(e)
 		bb.pressed.connect(func():
 			bomb_requested.emit(instance)
 			close())

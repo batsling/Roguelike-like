@@ -74,6 +74,12 @@ extends Resource
 # `level_up_reward_amount` carries the gold amount for the &"gold" type.
 @export var level_up_reward_type: StringName = &"none"
 @export var level_up_reward_amount: int = 0
+# For the &"item" (chest) reward: how many items the chest offers to pick one
+# from, when the sheet named a SIZE — Data.CHEST_SIZE_CHOICES, i.e. Small = 1,
+# Medium = 2, Large = 3 (Zagreus), Huge = 5. 0 = unsized, so the reward screen
+# uses its own default. Ignored by the other reward types; &"random_sized_chest"
+# rolls its size at grant time instead of reading this.
+@export var level_up_reward_chest_choices: int = 0
 # For the &"card" reward: the class tag the offered cards are drawn from
 # (e.g. &"ironclad"). Empty = the full reward pool. See Data.reward_card_pool.
 @export var level_up_card_tag: StringName = &""

@@ -28,7 +28,8 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   stat_mirror:, stat_floor:, stat_gain_bonus:, negate_lethal:,
                   reroll_low_rarity:, carries_leftover_energy:,
                   lower_hp_damage_mult:, gold_spend_stat_per=N, level_up:,
-                  charged (charge_cost N).
+                  charged (charge_cost N), keep_shields, bomb_stun,
+                  bomb_cardinal.
 
 Targets are written in parens after an effect value: (self) / (enemy) /
 (all_enemies) / (random_enemies count=2). Bare prose in parens (explanatory
@@ -82,12 +83,16 @@ TRIGGER_SIGNALS = {
     # "when a game is selected" — the shield economy's hook (§3): selecting a game
     # grants the tries at it, and Anchor's +1 Shield rides in on this.
     "game_selected": "game_selected",
+    # "when a Bomb is spent" (§4) — fired once per bomb by GameLoop2.bomb, run-
+    # scope and scene-less, whatever the blast touched (Blood Bombs' +1 Health).
+    "bomb_used": "bomb_used",
 }
 # Triggers whose effects default to the player (self) rather than an enemy —
 # every out-of-combat / on-self hook. game_beaten is scene-less run-scope, so
 # its grants (gain_hp / gain_stat / …) target the player.
 SELF_DEFAULT_TRIGGERS = ("combat_started", "turn_started", "turn_ended",
-                         "item_acquired", "game_beaten", "game_selected")
+                         "item_acquired", "game_beaten", "game_selected",
+                         "bomb_used")
 # Hooks that fire frequently enough to suppress the generic trigger log line.
 ALWAYS_SILENT = {"attack_landed", "attack_missed", "turn_tick", "damage_taken"}
 
@@ -665,6 +670,18 @@ def parse_item(row):
         elif kl0 == "carries_leftover_energy":
             fields["carries_leftover_energy"] = True
             last_trigger = None
+        elif kl0 == "keep_shields":
+            # Barricade: unspent shields stop expiring when a game resolves.
+            fields["keep_shields"] = True
+            last_trigger = None
+        elif kl0 == "bomb_stun":
+            # Sticky Bombs: a bomb stuns whatever it fails to destroy.
+            fields["bomb_stun"] = True
+            last_trigger = None
+        elif kl0 == "bomb_cardinal":
+            # Brimstone Bombs: the blast runs down the target's row and column.
+            fields["bomb_cardinal"] = True
+            last_trigger = None
         elif kl0 == "lower_hp_damage_mult":
             fields["lower_hp_damage_mult"] = float(re.search(r"[0-9.]+", payload).group(0))
             last_trigger = None
@@ -896,6 +913,9 @@ def item_tres(row):
         ("perfect_effects", lambda v: gd_value(v)),
         ("perfect_save_chance", lambda v: str(v)),
         ("bonus_level_up_chance", lambda v: str(v)),
+        ("keep_shields", lambda v: "true"),
+        ("bomb_stun", lambda v: "true"),
+        ("bomb_cardinal", lambda v: "true"),
     ]:
         if key in f and f[key] not in (None, [], {}, 0, False, ""):
             lines.append("%s = %s" % (key, gd(f[key])))

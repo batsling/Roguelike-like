@@ -440,6 +440,11 @@ func _connect_lifecycle_hooks() -> void:
 	# Ornithopter heals on potion_used).
 	if not TriggerBus.potion_used.is_connected(_on_potion_used):
 		TriggerBus.potion_used.connect(_on_potion_used)
+	# Spending a Bomb is a battlefield hook with no combat scene behind it
+	# (GameLoop2 is scene-free), so it rides the same run-scope runner as the
+	# hooks above — Blood Bombs' +1 Health lands on every bomb thrown.
+	if not TriggerBus.bomb_used.is_connected(_on_bomb_used):
+		TriggerBus.bomb_used.connect(_on_bomb_used)
 	# Combats-won tally drives the enemy-spawn budget (first fight is gentler).
 	if not TriggerBus.combat_ended.is_connected(_on_combat_ended_tally):
 		TriggerBus.combat_ended.connect(_on_combat_ended_tally)
@@ -486,6 +491,9 @@ func _on_curse_card_removed(ctx: Dictionary) -> void:
 
 func _on_potion_used(ctx: Dictionary) -> void:
 	fire_run_item_triggers("potion_used", ctx)
+
+func _on_bomb_used(ctx: Dictionary) -> void:
+	fire_run_item_triggers("bomb_used", ctx)
 
 # Fires every owned item's triggers whose `on:` matches `trigger_name`, with a
 # scene-less context (source/target/scene/card = null). The run-scope sibling
@@ -1226,6 +1234,27 @@ func has_low_rarity_reroll() -> bool:
 		if it is ItemData and it.reroll_low_rarity:
 			return true
 	return false
+
+# True while any owned item sets the named ItemData bool. The games-first run-loop
+# flags (keep_shields / bomb_stun / bomb_cardinal) change a RULE rather than move
+# a number, so GameLoop2 reads them off the inventory instead of firing effects.
+func _any_item_flag(field: String) -> bool:
+	for it in inventory:
+		if it is ItemData and bool(it.get(field)):
+			return true
+	return false
+
+# Barricade: unspent shields bank into the next game instead of expiring (§3).
+func keeps_shields() -> bool:
+	return _any_item_flag("keep_shields")
+
+# Sticky Bombs: whatever a bomb hits and fails to destroy is stunned (§4.1).
+func bombs_stun() -> bool:
+	return _any_item_flag("bomb_stun")
+
+# Brimstone Bombs: a bomb blasts down the target's whole row and column (§4).
+func bombs_cardinal() -> bool:
+	return _any_item_flag("bomb_cardinal")
 
 # ---------------------------------------------------------------------------
 # Usable consumables + temporary buffs

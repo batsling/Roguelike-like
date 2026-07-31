@@ -130,6 +130,26 @@ func test_toolbar_push_is_disabled_without_a_target_or_room() -> void:
 	assert_eq(int(GameLoop2.stack[0]["col"]), GameLoop2.SPAWN_COL)
 	assert_true(_ui._board.push_btn.disabled, "nothing behind the back column -> Push is unavailable")
 
+func test_toolbar_bomb_is_offered_against_a_boss() -> void:
+	# A boss takes no bomb damage, but it IS a legal target — that is the only way
+	# to land Sticky Bombs' stun — so the button stays live and the tooltip warns.
+	GameState.bombs = 1
+	var boss := GoalEnemyData.new()
+	boss.id = &"synthetic_boss"
+	boss.display_name = "Synthetic Boss"
+	boss.boss = true
+	boss.health = 1
+	boss.damage = 5
+	var inst: int = GameLoop2.spawn_to_stack(boss)
+	_ui._board.selected_instance = inst
+	_ui._board.refresh_toolbar()
+	assert_false(_ui._board.bomb_btn.disabled, "a boss can be bombed")
+	assert_true(_ui._board.bomb_btn.tooltip_text.contains("boss"),
+		"and the tooltip says the damage won't land")
+	GameState.bombs = 0
+	_ui._board.refresh_toolbar()
+	assert_true(_ui._board.bomb_btn.disabled, "no charge -> no bomb")
+
 func test_selection_clears_when_the_enemy_dies() -> void:
 	GameState.bombs = 1
 	_ui.pick(0)

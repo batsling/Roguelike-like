@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=4 format=3 uid="uid://char2_zagreus"]
+
+[ext_resource type="Script" path="res://scripts/resources/CharacterData.gd" id="1_char"]
+[ext_resource type="Texture2D" path="res://images2.0/characters/Full/Zagreus.png" id="2_portrait"]
+[ext_resource type="Texture2D" path="res://images2.0/characters/Icon/Zagreus.png" id="3_icon"]
+
+[resource]
+script = ExtResource("1_char")
+id = &"zagreus"
+display_name = "Zagreus"
+description = "... All right, let's give it another shot."
+source_game = "Hades"
+base_max_hp = 8
+start_bash = 0
+start_dash = 0
+start_push = 0
+start_transmute = 0
+start_scramble = 0
+start_bombs = 0
+start_keys = 0
+starting_items = Array[StringName]([])
+starting_weapon = &""
+level_up_condition = "Get help from a God"
+level_up_reward = "Gain +1 Large Chest"
+level_up_stats = {}
+level_up_reward_type = &"item"
+level_up_reward_amount = 1
+level_up_reward_chest_choices = 3
+file = "Zagreus"
+portrait = ExtResource("2_portrait")
+icon = ExtResource("3_icon")

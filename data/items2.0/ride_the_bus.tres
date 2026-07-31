@@ -15,5 +15,5 @@ stat_bonuses = {}
 overworld_usable = true
 max_uses = 1
 source_game = "Balatro"
-tags = PackedStringArray()
+tags = PackedStringArray("card")
 image = ExtResource("2_img")

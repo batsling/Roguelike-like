@@ -7,11 +7,11 @@
 script = ExtResource("1_item")
 id = &"vajra"
 display_name = "Vajra"
-kind = 0
+kind = 5
 rarity = 0
 description = "Gain +1 Bash"
-triggers = []
-stat_bonuses = {"bash": 1}
+triggers = [{"on": "item_acquired", "effects": [{"type": "gain_stat", "stat": "bash", "value": 1}]}]
+stat_bonuses = {}
 max_uses = -1
 source_game = "Slay the Spire"
 tags = PackedStringArray()
