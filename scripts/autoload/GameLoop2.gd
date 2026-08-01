@@ -380,9 +380,7 @@ func log_attempt() -> String:
 	else:
 		GameState.change_hp(-ATTEMPT_HEALTH_COST)
 		if GameState.hp <= 0:
-			run_over = true
-			won = false
-			run_lost.emit()
+			_finish_run(false)
 	attempt_costs.append(cost)
 	attempt_logged.emit(cost, false)
 	loop_changed.emit()
@@ -726,10 +724,8 @@ func clear_amulet() -> void:
 	if not current.is_empty():
 		_defeat(current["enemy"], true, {"defeats": [], "drops": 0})
 		current = {}
-	won = true
-	run_over = true
 	loop_changed.emit()
-	run_won.emit()
+	_finish_run(true)
 
 # --- Board verbs on the game pool (Bash / Transmute, §4) ------------------
 
@@ -757,6 +753,17 @@ func _transmuted_ids() -> Dictionary:
 	for node in transmuted.keys():
 		out[String(node)] = String(transmuted[node])
 	return out
+
+# The single exit from a run. Everything that ends one comes through here, so
+# the run can never finish without being written to history.
+func _finish_run(did_win: bool) -> void:
+	run_over = true
+	won = did_win
+	GameStats.record_run(did_win)
+	if did_win:
+		run_won.emit()
+	else:
+		run_lost.emit()
 
 func is_bashed(game_id: StringName) -> bool:
 	return bashed.has(game_id)
@@ -892,9 +899,7 @@ func _take_hit(damage: int, res: Dictionary) -> int:
 	res["blocked"] = int(res.get("blocked", 0)) + absorbed
 	res["damage_taken"] = int(res.get("damage_taken", 0)) + overflow
 	if GameState.hp <= 0 and not run_over:
-		run_over = true
-		won = false
-		run_lost.emit()
+		_finish_run(false)
 	return absorbed
 
 # Removes and returns the GoalEnemyData for `instance`, or null if not stacked.

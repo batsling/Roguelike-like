@@ -483,8 +483,18 @@ func _delete_save(entry: Dictionary) -> void:
 # Stub buttons — backing systems land later.
 # ---------------------------------------------------------------------------
 
+# Run History sits ON TOP of the Atlas: the strip lists each route in order and
+# the sky behind it is where that route went, so one screen answers both.
 func _on_run_history() -> void:
-	_show_coming_soon("Run History", "Run history will live here once we track finished runs.")
+	var atlas: AtlasView = null
+	if AtlasView.load_layout() != null:
+		atlas = AtlasView.open(_modal_layer)
+	var history := RunHistoryScreen.open(_modal_layer, atlas)
+	if atlas != null:
+		# Closing the history closes the map it was laid over.
+		history.finished.connect(func():
+			if is_instance_valid(atlas):
+				atlas._finish())
 
 func _on_collection() -> void:
 	Collection.open(_modal_layer)

@@ -287,6 +287,30 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
 ## Recent changes
 
+- **Run History, over the map** — the main menu's Run History is no longer a
+  stub. Every finished run is kept as **the route it actually walked**: covers
+  left to right in the order played, an arrow between each pair, the Amulet
+  closing the row marked won or lost. A run that died short of the Amulet shows
+  a **dashed** arrow across the stretch it never covered. The screen sits **on
+  top of the Atlas**, so the strip is the route in order and the sky behind it is
+  where that route went; **Show on map** throws a run onto it. Runs are written
+  by `GameLoop2._finish_run`, now the single exit from a run, so one can't end
+  without being recorded, and they persist in `game_stats.json` (capped at 40).
+
+- **Bash and Transmute on the map** — a **bashed** game's star is struck through
+  in red and every link into it turns red, because those routes no longer exist;
+  its card says so, and so does any connection touching it. **Transmute is now a
+  paste onto the spot**: it used to be a property of one offering, held locally
+  by `Overworld2` and cleared on every move and scramble, so it evaporated the
+  moment you walked on. It now lives in `GameLoop2` as node → replacement,
+  survives moving, scrambling and saving, and the node plays that game for the
+  rest of the run. `GameLoop2.game_at()` is the one place that answers "what game
+  is actually here". The node keeps its place on the graph, so the map draws the
+  pasted game's cover at the old spot with an ember ring and its card names both
+  **Now** and **Was**; a connection card keeps naming the *original* games —
+  the influence claim is between those — and adds a line saying what has been
+  pasted over an endpoint.
+
 - **Connection proof, and a card for the links themselves** — clicking a *line*
   on the Atlas now opens a card showing **both games side by side**, the
   influencer on the left with an arrow to the game it influenced, the claim in

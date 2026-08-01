@@ -288,6 +288,27 @@ func frame_trail() -> void:
 		r = r.expand(layout.position_of(seg[1]))
 	frame_rect(r.grow(28.0))
 
+# Frame an arbitrary list of games — used by Run History to throw a finished
+# run's route onto the sky behind it. Ids the sky doesn't hold are skipped.
+func frame_games(ids: Array) -> bool:
+	if not has_layout():
+		return false
+	var r := Rect2()
+	var any: bool = false
+	for id in ids:
+		var i: int = layout.index_of(StringName(String(id)))
+		if i < 0:
+			continue
+		if not any:
+			r = Rect2(layout.position_of(i), Vector2.ZERO)
+			any = true
+		else:
+			r = r.expand(layout.position_of(i))
+	if not any:
+		return false
+	frame_rect(r.grow(30.0))
+	return true
+
 func zoom_by(factor: float, pivot: Vector2) -> void:
 	var target: float = clampf(_scale * factor, _fit_scale * ZOOM_MIN, _fit_scale * ZOOM_MAX)
 	var k: float = target / _scale
