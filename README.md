@@ -45,11 +45,12 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── events/           #   the D20 event system (EventModal, D20DieView)
 │   ├── menu/             #   the main menu
 │   ├── runtime/          #   RunGraph — the real-games influence graph
-│   └── ui/               #   shared UI (UITheme, RewardScreen, Collection, toasts)
+│   └── ui/               #   shared UI (UITheme, RewardScreen, Collection, AtlasView, toasts)
 │
 ├── data/                  # Game content as Godot Resources (.tres) — the source
 │   │                      # of truth the game loads at startup (see Data.gd)
 │   ├── games/            #   GameData — the ~750 real games that form the map
+│   ├── atlas_layout.tres #   BAKED star positions for the Atlas (tools/bake_atlas.py)
 │   ├── items2.0/         #   ItemData — the relics that drop from a defeated enemy
 │   ├── enemies2.0/       #   GoalEnemyData — goal-enemies, one per game beaten
 │   ├── bosses2.0/        #   GoalEnemyData — the difficulty-gate bosses
@@ -243,7 +244,8 @@ editing the sheet, then review the diff):
 | `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesnew` sheet |
 | `generate_event_tres.py` | `data/events/*.tres` from authored Python dicts |
 | `generate_encounter_tres.py` | `data/encounters/*.tres` from the `encounters` sheet |
-| `import-games-godot.py` | `data/games/*.tres`, resolving each cover in `images2.0/games/` |
+| `import-games-godot.py` | `data/games/*.tres`, resolving each cover in `images2.0/games/` — then re-bakes the Atlas |
+| `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 
 These require Python 3 with `openpyxl` (`pip install openpyxl`) and are run from
@@ -253,11 +255,54 @@ the repository root, e.g.:
 python3 tools/generate_item2_tres.py
 ```
 
+`bake_atlas.py` runs automatically at the end of `import-games-godot.py`, so
+adding a game or a connection to the spreadsheet and re-importing moves the sky
+with it. Run it directly to re-tune the layout:
+
+```bash
+python3 tools/bake_atlas.py                # 8 capitals (shipped)
+python3 tools/bake_atlas.py --capitals 12  # re-cut the constellations
+python3 tools/bake_atlas.py --stats        # report without writing
+```
+
+It refuses to write a layout in which any two stars overlap, so a bad run fails
+loudly rather than shipping an unreadable map.
+
+`tools/` carries a `.gdignore`, which keeps Godot from importing the working
+files in there. Without it the editor rasterises `RoguelikeMap.svg` — a
+133,638 × 51,748 px canvas — into a clamped 16384² texture on every fresh import.
+
 See `docs/stat-dispatcher.md` for how stats resolve.
 
 ---
 
 ## Recent changes
+
+- **The Atlas — all 751 games as a star chart** — a new full-screen map
+  (`scripts/ui/AtlasView.gd`, opened from the main menu's **✦ Atlas** button, or
+  from the run map's **✦ Star chart** button). Every game is a star: size is its
+  connection count, the outline colour is its `GameType`. Games are grouped into
+  **eight constellations** around the highest-degree hubs — Slay the Spire,
+  The Binding of Isaac, Vampire Survivors, NetHack, FTL, Hades, Balatro,
+  Spelunky Classic — with each game joining whichever capital it reaches in
+  fewest hops. Detail follows zoom: dots and constellation names when zoomed out,
+  links in the middle, every star named up close. Clicking a star isolates it —
+  its links light up, the rest of the sky dims — and opens a card with the cover
+  art, release year, connection count, home constellation, distance from its
+  capital, and a **Play the real game** button where there's a launch target.
+  While a run is under way the shortest path to the Amulet is drawn over the sky
+  as an **ember trail** (green behind you, ember ahead), so the run map and the
+  atlas are the same picture at two altitudes.
+
+  Positions are **baked, not computed at runtime** — `tools/bake_atlas.py` writes
+  `data/atlas_layout.tres`, and `import-games-godot.py` re-runs it, so editing
+  the spreadsheet moves the sky. Inside a constellation each game orbits the game
+  that influenced it, with subtrees packed as discs around their parent; a
+  subtree's radius is *measured* from its realised layout rather than bounded
+  from its children's, because the nested bound doubles at every level and threw
+  deep chains thousands of units into the void. The bake verifies that no two
+  stars overlap at their drawn radii and fails rather than writing a bad map.
+  `Settings.game_filter` never moves a star — the atlas is the whole catalog.
 
 Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so

@@ -1,9 +1,23 @@
 # Map Organization — research note
 
-Status: **research / no code changes.** Answers the question "is there a clearer
-way to organize the map, and what can be done with a graph this connected?"
-Recommendations are ranked but none are decided — this is input to a decision,
-not a spec.
+Status: **partly built.** This began as research answering "is there a clearer
+way to organize the map, and what can be done with a graph this connected?" The
+ranked recommendations below are still the honest analysis, but the decision has
+since been made and one option shipped.
+
+**What shipped: the constellation atlas** (§4.5 here, "name the regions after
+their capitals"), taken further than this note proposed — regions are not just
+named, they are the layout. `tools/bake_atlas.py` writes
+`data/atlas_layout.tres` and `scripts/ui/AtlasView.gd` draws it. Eight capitals,
+chosen over six and twelve by comparing cross-region link counts: 6 gives 17.8%,
+8 gives 20.4%, 12 gives 23.9%, but 12 also produces regions of seven games,
+which read as arbitrary rather than as places.
+
+Chronology was deliberately **left off the atlas** — year is on the info card
+instead, and the star outline carries `GameType`, which is the more useful thing
+to see at a glance. That means recommendation §4.3 (year × genre swimlanes) was
+considered and passed over, not overlooked; §4.1 and §4.2, the run-map
+improvements, remain unbuilt and are still worth doing.
 
 An interactive companion renders all five layouts below against the real
 catalog: <https://claude.ai/code/artifact/a1955a75-bd47-44b9-a39b-47392693caeb>

@@ -24,6 +24,7 @@ func _ready() -> void:
 	%ContinueBtn.pressed.connect(_on_continue_toggle)
 	%RunHistoryBtn.pressed.connect(_on_run_history)
 	%CollectionBtn.pressed.connect(_on_collection)
+	%AtlasBtn.pressed.connect(_on_atlas)
 	%TierListBtn.pressed.connect(_on_tier_list)
 	%SettingsBtn.pressed.connect(_on_settings)
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
@@ -487,6 +488,16 @@ func _on_run_history() -> void:
 
 func _on_collection() -> void:
 	Collection.open(_modal_layer)
+
+# The Atlas — the whole influence graph as a star chart. Needs the baked layout
+# (tools/bake_atlas.py); without it we say so plainly rather than opening an
+# empty sky.
+func _on_atlas() -> void:
+	if AtlasView.load_layout() == null:
+		_show_coming_soon("Atlas",
+			"The star chart hasn't been generated yet. Run tools/bake_atlas.py to build it.")
+		return
+	AtlasView.open(_modal_layer)
 
 func _on_tier_list() -> void:
 	TierListScreen.open(_modal_layer)

@@ -16,6 +16,7 @@ build) but writes Godot .tres files instead of a JS object.
 import openpyxl
 import os
 import re
+import subprocess
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -232,6 +233,14 @@ def main() -> int:
     print(f"[import-games-godot] {missing_cover} games have no cover art (written without one)")
     if unresolved:
         print(f"[import-games-godot] {skipped} connection rows skipped — unresolved names: {sorted(unresolved)}")
+
+    # Re-bake the Atlas star chart. Its layout is a pure function of the games
+    # just written, so a new game or connection has to move the sky with it —
+    # otherwise the Atlas silently shows a stale catalog.
+    rc = subprocess.call([sys.executable, os.path.join(SCRIPT_DIR, "bake_atlas.py")])
+    if rc != 0:
+        print("[import-games-godot] atlas bake FAILED — run tools/bake_atlas.py to see why")
+        return rc
     return 0
 
 
