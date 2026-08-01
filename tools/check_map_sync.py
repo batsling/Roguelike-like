@@ -37,8 +37,19 @@ Edge types on the map (per its own legend):
     default stroke  -> "Inspired / Was Iterated Upon By"   (plain influence)
     #0000FF blue    -> "Sequel / Same Devs & Inspired"     (Dev/Series Relation)
     #C8C8C8 grey    -> "Neither creators knew about the other"
-The grey ones are explicitly NOT influence and must never reach the
-`connections` sheet — RunGraph would treat them as traversable edges.
+
+The grey category is defined by the legend but currently UNUSED: every one of
+the 51 grey edges is a horizontal year-ruler line, which happens to share that
+stroke colour. They are detected by anchoring to a year label (or running dead
+horizontal) and excluded. Should a real convergent link ever be drawn, it is
+explicitly not an influence and must never reach the `connections` sheet, since
+RunGraph would treat it as a traversable edge; that guard stays in place.
+
+Two more classes of edge are not relationships either and are likewise skipped:
+the legend's own sample arrows, which float above the earliest year row attached
+to nothing, and edges whose endpoint draw.io left unattached — those are real
+connections drawn to a bare coordinate, so they are resolved by position instead
+(see SNAP_CAP).
 """
 
 import argparse
@@ -61,6 +72,11 @@ GREY = "#C8C8C8"
 KIND_DEV = "dev/series"
 KIND_CONVERGENT = "convergent"
 KIND_INFLUENCE = "influence"
+# The year ruler is drawn in the same grey as the convergent style; it is not a
+# relationship and never participates in the comparison.
+KIND_GRIDLINE = "year gridline"
+# The legend's sample arrows, floating above the earliest year row.
+KIND_LEGEND = "legend sample"
 
 # A node whose Y implies a year this far from the sheet's Year is reported.
 YEAR_TOLERANCE = 0.75
@@ -114,11 +130,31 @@ def edge_kind(style: str) -> str:
     return KIND_INFLUENCE
 
 
+# A loose endpoint attaches to the nearest game box within SNAP_CAP, but only
+# when the runner-up is SNAP_MARGIN further off — so a line drawn a little short
+# of its node still resolves, while one in a crowded area stays unresolved
+# rather than guessing. Year rows are ~200 px apart, nodes ~40 px tall.
+SNAP_CAP = 60.0
+SNAP_MARGIN = 40.0
+
+
+def _point(geom, role):
+    if geom is None:
+        return None
+    for pt in geom.findall("mxPoint"):
+        if pt.get("as") == role:
+            try:
+                return float(pt.get("x") or 0), float(pt.get("y") or 0)
+            except ValueError:
+                return None
+    return None
+
+
 def parse_map(path: str) -> dict:
     root = load_model(path)
     cells = root.findall(".//mxCell")
 
-    labels, nodes, year_axis = {}, {}, []
+    labels, nodes, year_axis, boxes, year_ids = {}, {}, [], [], set()
     for cell in cells:
         if cell.get("vertex") != "1":
             continue
@@ -131,23 +167,91 @@ def parse_map(path: str) -> dict:
             continue
         try:
             x, y = float(geom.get("x") or 0), float(geom.get("y") or 0)
+            w = float(geom.get("width") or 0)
+            h = float(geom.get("height") or 0)
         except ValueError:
             continue
         if re.fullmatch(r"(19|20)\d{2}", label):
             year_axis.append((y, int(label)))
-        else:
-            nodes[cell.get("id")] = {"id": cell.get("id"), "label": label, "x": x, "y": y}
+            year_ids.add(cell.get("id"))
+            continue
+        # The year ruler, the era bands and the legend all use draw.io's plain
+        # `text;` style, and no game does — so this cleanly separates the 53
+        # annotations from the 751 game boxes.
+        if (cell.get("style") or "").startswith("text;"):
+            continue
+        nodes[cell.get("id")] = {"id": cell.get("id"), "label": label, "x": x, "y": y}
+        boxes.append((label, x, y, w, h))
+
+    def snap(point):
+        """Nearest game box to a loose endpoint, or None if it floats free.
+
+        draw.io leaves source/target unset when a line was drawn to a bare
+        coordinate that merely looks attached to a node. Those edges are real
+        and must not be silently dropped — three of them were, before this.
+        """
+        if point is None:
+            return None
+        px, py = point
+        ranked = []
+        for label, x, y, w, h in boxes:
+            dx = max(x - px, 0.0, px - (x + w))
+            dy = max(y - py, 0.0, py - (y + h))
+            ranked.append(((dx * dx + dy * dy) ** 0.5, label))
+        if not ranked:
+            return None
+        ranked.sort()
+        nearest, label = ranked[0]
+        if nearest > SNAP_CAP:
+            return None
+        runner_up = ranked[1][0] if len(ranked) > 1 else float("inf")
+        return label if runner_up - nearest >= SNAP_MARGIN else None
+
+    top_of_axis = min((y for y, _ in year_axis), default=None)
 
     edges = []
     for cell in cells:
         if cell.get("edge") != "1":
             continue
-        edges.append({
-            "kind": edge_kind(cell.get("style")),
-            "source": labels.get(cell.get("source")),
-            "target": labels.get(cell.get("target")),
-        })
+        geom = cell.find("mxGeometry")
+        source = labels.get(cell.get("source"))
+        target = labels.get(cell.get("target"))
+        snapped = False
+        if source is None and cell.get("source") is None:
+            source = snap(_point(geom, "sourcePoint"))
+            snapped = snapped or source is not None
+        if target is None and cell.get("target") is None:
+            target = snap(_point(geom, "targetPoint"))
+            snapped = snapped or target is not None
+
+        kind = edge_kind(cell.get("style"))
+        if kind == KIND_CONVERGENT and _is_gridline(cell, geom, year_ids):
+            kind = KIND_GRIDLINE
+        elif source is None and target is None and _above_axis(geom, top_of_axis):
+            # The legend draws one sample arrow per relationship type, floating
+            # above the earliest year row and attached to nothing.
+            kind = KIND_LEGEND
+        edges.append({"kind": kind, "source": source, "target": target, "snapped": snapped})
     return {"nodes": nodes, "edges": edges, "year_axis": year_axis}
+
+
+def _above_axis(geom, top_of_axis):
+    if top_of_axis is None:
+        return False
+    points = [p for p in (_point(geom, "sourcePoint"), _point(geom, "targetPoint")) if p]
+    return bool(points) and all(y < top_of_axis for _, y in points)
+
+
+def _is_gridline(cell, geom, year_ids):
+    """The year ruler reuses the grey convergent style, so tell them apart.
+
+    A ruler line is anchored to a year label or runs dead horizontal; a real
+    "neither creators knew about the other" link joins two games.
+    """
+    if cell.get("source") in year_ids or cell.get("target") in year_ids:
+        return True
+    a, b = _point(geom, "sourcePoint"), _point(geom, "targetPoint")
+    return a is not None and b is not None and abs(a[1] - b[1]) < 5.0
 
 
 def fit_year_axis(year_axis):
@@ -340,7 +444,7 @@ def main():
 
     head("GAMES")
     print("  matched by name          : %d" % len(matched))
-    print("  on the map, not in sheet : %d   (includes legend/annotation text boxes)" % len(on_map_only))
+    print("  on the map, not in sheet : %d" % len(on_map_only))
     listing(on_map_only, args.full)
     print("  in sheet, not on the map : %d" % len(in_sheet_only))
     listing(in_sheet_only, args.full)
@@ -420,13 +524,18 @@ def main():
     counts = collections.Counter(e["kind"] for e in dmap["edges"])
     print("  on the map by type: influence %d | dev/series %d | convergent %d"
           % (counts[KIND_INFLUENCE], counts[KIND_DEV], counts[KIND_CONVERGENT]))
+    print("  (ignored: %d year-ruler lines sharing the grey convergent style, %d legend samples)"
+          % (counts[KIND_GRIDLINE], counts[KIND_LEGEND]))
     print("  in the sheet      : %d total, %d flagged Dev/Series, %d with a Source (%.0f%%)"
           % (sheet["total"], sheet["dev_flags"], sheet["sourced"],
              100.0 * sheet["sourced"] / max(1, sheet["total"])))
 
     unresolved = collections.Counter()
     seen, map_only_pairs, self_loops, leaked = set(), [], [], []
+    snapped = sum(1 for e in dmap["edges"] if e.get("snapped"))
     for e in dmap["edges"]:
+        if e["kind"] in (KIND_GRIDLINE, KIND_LEGEND):
+            continue
         if not e["source"] or not e["target"]:
             unresolved[e["kind"]] += 1
             continue
@@ -443,9 +552,12 @@ def main():
         elif key not in sheet["connections"]:
             map_only_pairs.append((e["kind"], e["source"], e["target"]))
 
+    if snapped:
+        print("  %d edge(s) had a loose endpoint resolved by position (drawn to a"
+              " coordinate, not snapped to the node)" % snapped)
     if unresolved:
-        print("  edges drawn without attached endpoints (free connectors): %s"
-              % ", ".join("%s %d" % (k, v) for k, v in sorted(unresolved.items())))
+        print("  edges still unresolved — no game within %.0f px, or two equally close: %s"
+              % (SNAP_CAP, ", ".join("%s %d" % (k, v) for k, v in sorted(unresolved.items()))))
     sheet_only = [(v["a"], v["b"]) for k, v in sheet["connections"].items() if k not in seen]
 
     # A link the two sides agree happened but disagree about the ancestor of

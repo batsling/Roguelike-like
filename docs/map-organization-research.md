@@ -135,25 +135,25 @@ the data reaches Godot.
 
 Two further things the hand map knows that `GameData` does not:
 
-**It distinguishes three kinds of relationship**, per its own legend, encoded as
-stroke colour:
+**Its legend defines three kinds of relationship**, encoded as stroke colour:
 
-| Legend | Stroke | Count |
+| Legend | Stroke | Drawn |
 | --- | --- | ---: |
-| Inspired / Was Iterated Upon By | default | 868 |
-| Sequel / Same Devs & Inspired | `#0000FF` | 119 |
-| Neither creators knew about the other | `#C8C8C8` | 51 |
+| Inspired / Was Iterated Upon By | default | 873 |
+| Sequel / Same Devs & Inspired | `#0000FF` | 118 |
+| Neither creators knew about the other | `#C8C8C8` | 0 |
 
-`games_influenced` is a single flat `Array[StringName]`, so all of this
-collapses to one undifferentiated edge type. The distinction already exists in
-`Roguelikes.xlsx` too — the `connections` sheet has a **`Dev/Series Relation`**
-column with 109 rows marked, and `import-games-godot.py` drops it.
+The third is defined but **currently unused**. All 51 grey edges on the map are
+horizontal year-ruler lines that happen to share the same stroke colour — they
+anchor to a year label rather than joining two games. (An earlier revision of
+this note reported them as 50 convergent links; they are not.) The guard against
+a real convergent link reaching the `connections` sheet stays in place, since
+`RunGraph` would treat one as traversable, but it currently has nothing to catch.
 
-The third category matters most: "neither creators knew about the other" is
-explicitly *not* an influence, and a run must not be able to travel along it.
-The good news is that it is clean today — **none of the 50 convergent links have
-leaked into the `connections` sheet.** That is an invariant worth keeping, and
-`check_map_sync.py` asserts it.
+`games_influenced` is a single flat `Array[StringName]`, so the two live
+categories collapse to one undifferentiated edge type. The distinction already
+exists in `Roguelikes.xlsx` — the `connections` sheet has a **`Dev/Series
+Relation`** column with 110 rows marked, and `import-games-godot.py` drops it.
 
 **The `Source` column is 89% populated.** 875 of the 988 connections already
 carry a URL or note backing the claim. The README lists "Connection proof" as an
@@ -162,58 +162,39 @@ imported. `GameData` has nowhere to put it.
 
 ### Drift between the map and the sheet
 
-The two are maintained separately and have drifted **in both directions**,
-though the current map is close:
+The two are maintained separately and used to drift in both directions. After a
+reconciliation pass they now agree almost exactly:
 
 | | Count |
 | --- | ---: |
-| Games matched by name | 741 |
-| Games in the sheet, not drawn | 10 |
-| Games drawn, not in the sheet | 1 (plus 5 legend / era text boxes) |
-| Connections in the sheet, not drawn | 20 |
-| Connections drawn, not in the sheet | 14 |
-| Nodes whose Y disagrees with the sheet's Year | 13 |
-| Labels drawn more than once | 3 |
+| Games matched by name | 751 of 751 |
+| Games in the sheet, not drawn | 0 |
+| Games drawn, not in the sheet | 0 |
+| Nodes whose Y disagrees with the sheet's Year | 0 |
+| Labels drawn more than once | 0 |
+| Connections drawn, not in the sheet | 1 |
+| Connections in the sheet, not drawn | 1 |
 
-Most of the remainder is a handful of specific, fixable discrepancies rather
-than broad drift:
+The two survivors:
 
-- **`Gunlocked` is drawn twice**, at ~2022 and ~2025. The second one is almost
-  certainly *Gunlocked 2* left unrelabelled — which explains three separate
-  symptoms at once: the phantom self-loop `Gunlocked -> Gunlocked`, the year
-  conflict (drawn ~2025, sheet says 2022), and `Gunlocked 2` appearing as
-  missing from the map.
-- **`Disfigure` is drawn twice** eight pixels apart — an accidental duplicate.
-- **`Ragnarok` is drawn twice**, at ~1992 and ~1993. Possibly two real games of
-  that name, possibly a duplicate; worth a look.
-- **`Crafty Survival` (map) vs `Crafty Survivors` (sheet)** — a one-letter
-  difference that makes one game look absent from both sides at once.
-- Several pairs disagree on *which* title is the parent. The map draws
-  `Cataclysm -> Cataclysm: The Last Generation` while the sheet records
-  `Cataclysm: Dark Days Ahead -> Cataclysm: The Last Generation`, and the two
-  swap roles on the Bright Nights link. Same for
-  `FTL -> Fights in Tight Spaces` (map) against
-  `Into the Breach -> Fights in Tight Spaces` (sheet).
+- **`Rogue (1980) -> Beneath Apple Manor (1978)`** is drawn as a plain influence
+  but points at an *older* game, so it cannot be one as drawn. Beneath Apple
+  Manor predates Rogue and the two were developed independently — a candidate
+  for the grey "neither creators knew about the other" category, which would
+  make it the first edge of that type on the map.
+- **`Halls of Torment -> Be My Horde`** is recorded but not drawn.
 
-The 13 year disagreements are an early-access / 1.0 distinction. Under the
-earliest-availability rule (§2A) the checker splits them by direction:
-
-- **9 drawn later than the sheet** — a 1.0 date most likely crept onto the map.
-  Knock on the Coffin Lid is drawn at 2024 and recorded as 2020; We Need To Go
-  Deeper 2019 vs 2017; Terraformers 2023 vs 2022. The sheet is probably right in
-  each of these and the node should move up.
-- **4 drawn earlier than the sheet** — here the *sheet* may be carrying the 1.0
-  date. Buckshot Roulette is the clearest: drawn ~2023, recorded 2024, and its
-  itch.io release preceded the Steam one. Beat Blast, Elin and Quest of Dungeons
-  differ by a single year and could go either way.
-
-Only the second group can actually break anything, since moving a game later is
-what creates a backward edge. Neither group does today.
+Reaching that state depended on the checker not lying about what is drawn.
+Three real edges were being reported as missing because draw.io stores an edge's
+endpoint as a bare coordinate whenever the line was drawn *near* a node rather
+than snapped onto it — `source` is simply absent. Those are now resolved by
+position (nearest game box within 60 px, provided the runner-up is 40 px further
+off, so a crowded area stays unresolved rather than guessing wrong).
 
 Re-run the checker after either side changes:
 
 ```
-python3 tools/check_map_sync.py tools/RoguelikeMap.svg --full
+python3 tools/check_map_sync.py tools/Roguelikes.drawio --full
 ```
 
 ---
