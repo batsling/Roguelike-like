@@ -1098,3 +1098,69 @@ func test_a_run_reset_clears_both() -> void:
 func view_safe_neighbor(node: StringName) -> StringName:
 	var n: Array = RunGraph.neighbors(node)
 	return n[0] if not n.is_empty() else node
+
+# ---------------------------------------------------------------------------
+# Pure catalog mode — the sky with no run laid over it
+# ---------------------------------------------------------------------------
+
+func _open_pure() -> AtlasView:
+	var view: AtlasView = ATLAS.new()
+	view.pure_catalog = true
+	add_child_autofree(view)
+	return view
+
+func test_pure_catalog_draws_no_run() -> void:
+	_start_run()
+	var view := _open_pure()
+	assert_eq(view.trail_segment_count(), 0, "no route to the Amulet in a catalog view")
+	assert_eq(view.history_segment_count(), 0, "and no path taken")
+
+func test_pure_catalog_ignores_bashed_games() -> void:
+	_start_run()
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	var victim: StringName = view.layout.id_at(view.layout.capitals[0])
+	GameState.bash = 1
+	GameLoop2.bash_game(victim)
+	var i: int = view.layout.index_of(victim)
+	assert_false(view.is_bashed(i), "a catalog view doesn't know about this run's bashes")
+	# ...while a run view does.
+	var run_view := _open()
+	assert_true(run_view.is_bashed(i), "but the run's own map does")
+
+func test_pure_catalog_shows_the_real_game_not_a_paste() -> void:
+	_start_run()
+	GameState.transmute = 1
+	var node: StringName = GameState.current_game_id
+	var repl: GameData = GameLoop2.transmute_game(node, [])
+	if repl == null:
+		return
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	var i: int = view.layout.index_of(node)
+	assert_false(view.is_transmuted(i), "a catalog view has nothing pasted on it")
+	assert_eq(view.game_at(i).id, node, "the spot shows the game the catalog says lives there")
+
+func test_a_run_view_still_shows_the_paste() -> void:
+	_start_run()
+	GameState.transmute = 1
+	var node: StringName = GameState.current_game_id
+	var repl: GameData = GameLoop2.transmute_game(node, [])
+	if repl == null:
+		return
+	var view := _open()
+	if not view.has_layout():
+		return
+	assert_eq(view.game_at(view.layout.index_of(node)).id, repl.id,
+		"the run's map still shows what was pasted")
+
+# The catalog is the same sky either way — only what's drawn over it differs.
+func test_pure_catalog_holds_the_whole_catalog() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	assert_eq(view.layout.star_count(), Data.all_games().size(),
+		"every game is still on the chart")
+	assert_gt(view.layout.edge_count(), 0, "with its connections")

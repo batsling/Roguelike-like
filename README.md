@@ -287,6 +287,16 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
 ## Recent changes
 
+- **"Show constellation" in the Collection** — the Games tab gains a button that
+  opens the whole catalog as the star chart, in **pure-catalog mode**: no run is
+  laid over it. No route to the Amulet, no path taken, no you-are-here or Amulet
+  rings, no strike-throughs on games bashed this run, and a transmuted node shows
+  the game the catalog says lives there rather than what was pasted on it. It is
+  titled *Constellations* rather than *Atlas* to make the difference plain.
+  "Beaten" means the lifetime record here, where the in-run Atlas also counts what
+  you've beaten on the way. Same sky, same layout — only what's drawn over it
+  differs.
+
 - **Run History, over the map** — the main menu's Run History is no longer a
   stub. Every finished run is kept as **the route it actually walked**: covers
   left to right in the order played, an arrow between each pair, the Amulet

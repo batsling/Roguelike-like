@@ -87,6 +87,12 @@ const PICK_EDGE_RADIUS := 7.0    # how near a link you must click to open it
 # cover is an unreadable smudge and the dot carries more information.
 const MIN_COVER_PX := 26.0
 
+# Pure-catalog mode: the sky as the CATALOG, with no run laid over it. No routes,
+# no strike-throughs on bashed games, no transmute pastes, no you-are-here ring —
+# just the games and how they influenced each other. This is what the Collection
+# opens, because the Collection is about the catalog, not about a run in progress.
+var pure_catalog: bool = false
+
 var layout: AtlasLayout = null
 
 var _scale: float = 1.0
@@ -114,8 +120,9 @@ var _search: LineEdit = null
 # Lifecycle
 # ---------------------------------------------------------------------------
 
-static func open(parent: Node) -> AtlasView:
+static func open(parent: Node, pure: bool = false) -> AtlasView:
 	var v := AtlasView.new()
+	v.pure_catalog = pure
 	parent.add_child(v)
 	return v
 
@@ -181,7 +188,7 @@ func neighbors_of(i: int) -> Array:
 # are flagged so the trail can show progress.
 func _build_trail() -> void:
 	_trail.clear()
-	if not has_layout():
+	if not has_layout() or pure_catalog:
 		return
 	var current: StringName = GameState.current_game_id
 	var amulet: StringName = GameState.amulet_game_id
@@ -212,7 +219,7 @@ func trail_segment_count() -> int:
 # passed off as a road that exists.
 func _build_history() -> void:
 	_history.clear()
-	if not has_layout():
+	if not has_layout() or pure_catalog:
 		return
 	var walked: Array = []
 	for id in GameState.visited_games:
@@ -430,18 +437,20 @@ func sequel_link_count() -> int:
 # Destroyed by Bash this run: the game is gone from the pool and no route can
 # pass through it any more.
 func is_bashed(i: int) -> bool:
-	return has_layout() and GameLoop2.is_bashed(layout.id_at(i))
+	return not pure_catalog and has_layout() and GameLoop2.is_bashed(layout.id_at(i))
 
 # A node Transmute has pasted a different game onto. The node keeps its place on
 # the graph — its routes are unchanged — but it now plays the replacement.
 func is_transmuted(i: int) -> bool:
-	return has_layout() and GameLoop2.is_transmuted(layout.id_at(i))
+	return not pure_catalog and has_layout() and GameLoop2.is_transmuted(layout.id_at(i))
 
 # The game actually AT a star now: the pasted replacement where there is one,
 # otherwise the node's own game.
 func game_at(i: int) -> GameData:
 	if not has_layout():
 		return null
+	if pure_catalog:
+		return Data.get_game(layout.id_at(i))
 	return GameLoop2.game_at(layout.id_at(i))
 
 # How many stars are showing art right now — drives the zoom readout.
@@ -592,7 +601,7 @@ func _build_header() -> Control:
 	bar.add_child(row)
 
 	var title := Label.new()
-	title.text = "✦  Atlas"
+	title.text = "✦  Constellations" if pure_catalog else "✦  Atlas"
 	title.add_theme_font_size_override("font_size", 22)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	row.add_child(title)
@@ -609,7 +618,7 @@ func _build_header() -> Control:
 	_search.text_submitted.connect(_on_search)
 	row.add_child(_search)
 
-	if not _trail.is_empty() or not _history.is_empty():
+	if not pure_catalog and (not _trail.is_empty() or not _history.is_empty()):
 		row.add_child(_tool_button("My run", frame_trail))
 	row.add_child(_tool_button("−", func(): zoom_by(1.0 / 1.3, _canvas_size() * 0.5)))
 	row.add_child(_tool_button("+", func(): zoom_by(1.3, _canvas_size() * 0.5)))
@@ -726,8 +735,8 @@ func _refresh_card() -> void:
 	var id: StringName = layout.id_at(_selected)
 	# The node's own game, and whatever Transmute has pasted on top of it.
 	var original: GameData = Data.get_game(id)
-	var game: GameData = GameLoop2.game_at(id)
-	var pasted: bool = GameLoop2.is_transmuted(id)
+	var game: GameData = game_at(_selected)
+	var pasted: bool = is_transmuted(_selected)
 	var name_text: String = game.display_name if game != null else String(id)
 
 	var title := Label.new()
@@ -780,10 +789,13 @@ func _refresh_card() -> void:
 	if pasted and original != null:
 		facts.add_child(_fact("Now", game.display_name))
 		facts.add_child(_fact("Was", original.display_name))
-	if GameLoop2.is_bashed(id):
+	if is_bashed(_selected):
 		facts.add_child(_fact("Status", "destroyed — bashed this run"))
-	elif GameState.has_beaten_game(id):
-		facts.add_child(_fact("Status", "beaten"))
+	elif not pure_catalog and GameState.has_beaten_game(id):
+		facts.add_child(_fact("Status", "beaten this run"))
+	elif GameStats.beaten_count(id) > 0:
+		facts.add_child(_fact("Beaten", "%d time%s" % [GameStats.beaten_count(id),
+			"" if GameStats.beaten_count(id) == 1 else "s"]))
 	if game != null and game.owned:
 		facts.add_child(_fact("Owned", "yes"))
 
@@ -855,7 +867,7 @@ func _fill_connection_card() -> void:
 	# games the map records — so the card keeps naming those, and says separately
 	# what has been pasted over them this run.
 	for endpoint in [from_game, to_game]:
-		if not GameLoop2.is_transmuted(endpoint.id):
+		if pure_catalog or not GameLoop2.is_transmuted(endpoint.id):
 			continue
 		var now: GameData = GameLoop2.game_at(endpoint.id)
 		if now == null:
@@ -868,7 +880,7 @@ func _fill_connection_card() -> void:
 		note.add_theme_color_override("font_color", UITheme.ACCENT)
 		_card_box.add_child(note)
 	for endpoint in [from_game, to_game]:
-		if not GameLoop2.is_bashed(endpoint.id):
+		if pure_catalog or not GameLoop2.is_bashed(endpoint.id):
 			continue
 		var gone := Label.new()
 		gone.text = "%s was bashed — this route is gone" % endpoint.display_name
@@ -1269,8 +1281,11 @@ class StarCanvas extends Control:
 		draw_colored_polygon(PackedVector2Array([at + tip, at + left, at + right]), col)
 
 	func _draw_stars(lay: AtlasLayout, show_rims: bool, focused: bool, vis: Rect2) -> void:
-		var current: int = lay.index_of(GameState.current_game_id)
-		var amulet: int = lay.index_of(GameState.amulet_game_id)
+		var current: int = -1
+		var amulet: int = -1
+		if not view.pure_catalog:
+			current = lay.index_of(GameState.current_game_id)
+			amulet = lay.index_of(GameState.amulet_game_id)
 		for i in range(lay.star_count()):
 			var p: Vector2 = view.to_screen(lay.position_of(i))
 			if not vis.has_point(p):
@@ -1284,8 +1299,12 @@ class StarCanvas extends Control:
 			var faded: bool = focused and not view._near.has(i)
 			# A game you've beaten burns at full strength; one you haven't is dim.
 			# The sky fills in as the collection does, with no new systems behind it.
-			var beaten: bool = GameState.has_beaten_game(lay.id_at(i)) \
-				or GameStats.amulet_wins(lay.id_at(i)) > 0
+			# Lifetime record in a catalog view; in a run, also what you've beaten
+			# on the way here.
+			var gid: StringName = lay.id_at(i)
+			var beaten: bool = GameStats.beaten_count(gid) > 0 or GameStats.amulet_wins(gid) > 0
+			if not view.pure_catalog and GameState.has_beaten_game(gid):
+				beaten = true
 			if not beaten:
 				col = col.lerp(UITheme.BG_DEEP, 0.42)
 			if faded:
