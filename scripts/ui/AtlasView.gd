@@ -14,9 +14,10 @@ extends Control
 # catalog is re-imported and re-baked.
 #
 # Detail is tied to zoom, because 751 labels at once is not a map:
-#   far   — dots only, constellation names
-#   mid   — links inside a constellation, stars sized and outlined
-#   near  — every star labelled
+#   far    — dots only, constellation names
+#   mid    — links inside a constellation, stars sized and outlined
+#   near   — every star labelled
+#   closer — each star becomes its cover art
 # Clicking a star isolates it: its links light up and the rest of the sky dims.
 # When a run is in progress the shortest path to the Amulet is drawn over the
 # top as an ember trail, so the run and the atlas are the same picture.
@@ -30,8 +31,14 @@ const LAYOUT_PATH := "res://data/atlas_layout.tres"
 const ZOOM_LINKS := 0.85
 const ZOOM_RIMS := 1.35
 const ZOOM_LABELS := 3.6
+# Past this, stars become their cover art. Deliberately deep: a cover is drawn
+# inside the circle the packing reserved for that star, and a one-connection
+# game's circle is small, so any earlier and half the sky is unreadable stamps.
+const ZOOM_COVERS := 5.0
 const ZOOM_MIN := 0.55
-const ZOOM_MAX := 14.0
+# Headroom above ZOOM_COVERS, so zooming further keeps growing the art rather
+# than hitting the ceiling the moment covers appear.
+const ZOOM_MAX := 26.0
 
 # Colours. Star outlines come from RunGraph.type_color so the atlas, the
 # choose-your-start panel and the overworld all agree on what a Deckbuilder is.
@@ -232,6 +239,38 @@ func _clamp_view() -> void:
 
 func zoom_ratio() -> float:
 	return _scale / maxf(_fit_scale, 0.0001)
+
+# The size a cover is drawn at, inscribed in the circle the packing reserved for
+# that star. The bake guarantees those circles never overlap, so covers can't
+# either — which is the whole reason art can replace the dots without a second
+# layout pass. `aspect` is height / width.
+static func cover_size(reserved_radius: float, aspect: float) -> Vector2:
+	if reserved_radius <= 0.0 or aspect <= 0.0:
+		return Vector2.ZERO
+	var w: float = 2.0 * reserved_radius / sqrt(1.0 + aspect * aspect)
+	return Vector2(w, w * aspect)
+
+# Cover art for a star, or null when the game has none (the star stays a dot).
+func cover_texture(i: int) -> Texture2D:
+	if not has_layout():
+		return null
+	var game: GameData = Data.get_game(layout.id_at(i))
+	if game == null or game.cover_image == null:
+		return null
+	if game.cover_image.get_width() <= 0 or game.cover_image.get_height() <= 0:
+		return null
+	return game.cover_image
+
+# Half-height of whatever is actually drawn for a star, in screen pixels. Labels
+# hang off this so they clear the art instead of sitting on top of it.
+func drawn_half_height(i: int, showing_covers: bool) -> float:
+	var r: float = AtlasLayout.star_radius(layout.degree_of(i)) * _scale
+	if showing_covers:
+		var tex: Texture2D = cover_texture(i)
+		if tex != null:
+			var aspect: float = float(tex.get_height()) / float(tex.get_width())
+			return cover_size(r, aspect).y * 0.5
+	return r
 
 # ---------------------------------------------------------------------------
 # Picking
@@ -507,7 +546,9 @@ func _refresh_hud() -> void:
 		_hud.text = "No baked layout — run tools/bake_atlas.py"
 		return
 	var detail: String = "overview"
-	if zoom_ratio() >= ZOOM_LABELS:
+	if zoom_ratio() >= ZOOM_COVERS:
+		detail = "cover art"
+	elif zoom_ratio() >= ZOOM_LABELS:
 		detail = "labelled"
 	elif zoom_ratio() >= ZOOM_LINKS:
 		detail = "links shown"
@@ -589,18 +630,22 @@ class StarCanvas extends Control:
 		var show_links: bool = ratio >= AtlasView.ZOOM_LINKS
 		var show_rims: bool = ratio >= AtlasView.ZOOM_RIMS
 		var show_labels: bool = ratio >= AtlasView.ZOOM_LABELS
+		var show_covers: bool = ratio >= AtlasView.ZOOM_COVERS
 		var focused: bool = view._selected >= 0
-		var visible_rect := Rect2(Vector2(-60, -60), size + Vector2(120, 120))
+		# Covers are far bigger than dots, so a star whose centre is off-screen can
+		# still have art on screen — widen the cull margin once they're drawn.
+		var margin: float = 400.0 if show_covers else 60.0
+		var visible_rect := Rect2(Vector2(-margin, -margin), size + Vector2(margin, margin) * 2.0)
 
 		_draw_hulls(lay)
 		if show_links:
 			_draw_edges(lay, focused)
 		_draw_trail()
-		_draw_stars(lay, show_rims, focused, visible_rect)
+		_draw_stars(lay, show_rims, show_covers, focused, visible_rect)
 		_draw_capital_rings(lay)
 		_draw_region_names(lay)
 		if show_labels:
-			_draw_star_labels(lay, focused, visible_rect)
+			_draw_star_labels(lay, focused, show_covers, visible_rect)
 
 	# A faint disc behind each constellation, so a region reads as a place even
 	# before its name is legible.
@@ -640,7 +685,8 @@ class StarCanvas extends Control:
 				view.to_screen(lay.position_of(int(seg[1]))),
 				col, clampf(view._scale * 0.34, 1.4, 3.0), true)
 
-	func _draw_stars(lay: AtlasLayout, show_rims: bool, focused: bool, vis: Rect2) -> void:
+	func _draw_stars(lay: AtlasLayout, show_rims: bool, show_covers: bool,
+			focused: bool, vis: Rect2) -> void:
 		var current: int = lay.index_of(GameState.current_game_id)
 		var amulet: int = lay.index_of(GameState.amulet_game_id)
 		for i in range(lay.star_count()):
@@ -649,16 +695,31 @@ class StarCanvas extends Control:
 				continue
 			var game: GameData = Data.get_game(lay.id_at(i))
 			var col: Color = RunGraph.type_color(game.type) if game != null else UITheme.TEXT_DIM
-			var r: float = maxf(1.2, AtlasLayout.star_radius(lay.degree_of(i)) * view._scale * 0.9)
+			var reserved: float = AtlasLayout.star_radius(lay.degree_of(i)) * view._scale
+			var r: float = maxf(1.2, reserved * 0.9)
 			var faded: bool = focused and not view._near.has(i)
 			if faded:
 				col = col.lerp(UITheme.BG_DEEP, 0.78)
-			if show_rims and r > 3.4:
+
+			var art: Texture2D = view.cover_texture(i) if show_covers else null
+			if art != null:
+				# The star becomes its box art, inscribed in the circle the packing
+				# reserved for it — so covers can never overlap either. The type
+				# colour survives as the frame.
+				var aspect: float = float(art.get_height()) / float(art.get_width())
+				var box_size: Vector2 = AtlasView.cover_size(reserved, aspect)
+				var box := Rect2(p - box_size * 0.5, box_size)
+				draw_texture_rect(art, box, false,
+					Color(0.32, 0.30, 0.28) if faded else Color.WHITE)
+				draw_rect(box, col, false, maxf(1.0, reserved * 0.09))
+				r = maxf(box_size.x, box_size.y) * 0.5
+			elif show_rims and r > 3.4:
 				# Ringed stars: the dark core keeps the type colour readable at size.
 				draw_circle(p, r, UITheme.BG_DEEP)
 				draw_arc(p, r, 0.0, TAU, 24, col, maxf(1.0, r * 0.4), true)
 			else:
 				draw_circle(p, r, col)
+
 			if not faded and i == view._hovered:
 				draw_arc(p, r + 3.0, 0.0, TAU, 24, UITheme.TEXT, 1.5, true)
 			if i == current:
@@ -710,7 +771,7 @@ class StarCanvas extends Control:
 
 	# Star names, best-connected first. A label that would land on another label
 	# or across a star is dropped rather than overprinted.
-	func _draw_star_labels(lay: AtlasLayout, focused: bool, vis: Rect2) -> void:
+	func _draw_star_labels(lay: AtlasLayout, focused: bool, show_covers: bool, vis: Rect2) -> void:
 		var font: Font = get_theme_default_font()
 		var fs: int = 11
 		var visible: Array = []
@@ -725,13 +786,13 @@ class StarCanvas extends Control:
 		var taken: Array[Rect2] = []
 		for i in visible:
 			var p: Vector2 = view.to_screen(lay.position_of(i))
-			var r: float = AtlasLayout.star_radius(lay.degree_of(i)) * view._scale
+			var r: float = view.drawn_half_height(i, show_covers)
 			taken.append(Rect2(p.x - r, p.y - r, r * 2.0, r * 2.0))
 		for i in visible:
 			var game: GameData = Data.get_game(lay.id_at(i))
 			var label: String = game.display_name if game != null else String(lay.id_at(i))
 			var p: Vector2 = view.to_screen(lay.position_of(i))
-			var r: float = AtlasLayout.star_radius(lay.degree_of(i)) * view._scale
+			var r: float = view.drawn_half_height(i, show_covers)
 			var w: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 			var box := Rect2(p.x - w * 0.5 - 2.0, p.y + r + 1.0, w + 4.0, fs + 3.0)
 			if taken.any(func(t): return t.intersects(box)):

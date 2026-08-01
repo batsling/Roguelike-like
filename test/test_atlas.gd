@@ -214,6 +214,90 @@ func test_hulls_cover_every_region() -> void:
 		assert_gt(float(hull["radius"]), 0.0, "a hull has size")
 
 # ---------------------------------------------------------------------------
+# Cover art — stars become their box art when you zoom in far enough
+# ---------------------------------------------------------------------------
+
+# A cover is inscribed in the circle the packing reserved for its star, so its
+# half-diagonal is exactly that radius. This is what lets art replace the dots
+# with no second layout pass.
+func test_cover_is_inscribed_in_its_reserved_circle() -> void:
+	for aspect in [0.5, 1.0, 4.0 / 3.0, 1.5, 2.0]:
+		for radius in [2.45, 6.0, 12.1]:
+			var s: Vector2 = AtlasView.cover_size(radius, aspect)
+			assert_almost_eq(s.length() * 0.5, radius, 0.001,
+				"a %0.2f-aspect cover at r=%0.2f fills its circle exactly" % [aspect, radius])
+			assert_almost_eq(s.y / s.x, aspect, 0.001, "the cover keeps its aspect ratio")
+
+func test_cover_size_is_degenerate_when_it_should_be() -> void:
+	assert_eq(AtlasView.cover_size(0.0, 1.0), Vector2.ZERO, "no radius, no cover")
+	assert_eq(AtlasView.cover_size(5.0, 0.0), Vector2.ZERO, "no aspect, no cover")
+
+# The real proof: over the actual catalog, no two covers can overlap, because no
+# two reserved circles do.
+func test_no_two_covers_can_overlap() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	var lay: AtlasLayout = view.layout
+	var checked: int = 0
+	var overlaps: int = 0
+	var cell: float = 48.0
+	var grid: Dictionary = {}
+	for i in range(lay.star_count()):
+		var key := Vector2i(int(floor(lay.xs[i] / cell)), int(floor(lay.ys[i] / cell)))
+		if not grid.has(key):
+			grid[key] = []
+		(grid[key] as Array).append(i)
+	for i in range(lay.star_count()):
+		var tex_a: Texture2D = view.cover_texture(i)
+		if tex_a == null:
+			continue
+		var box_a := _world_cover_rect(view, lay, i, tex_a)
+		var base := Vector2i(int(floor(lay.xs[i] / cell)), int(floor(lay.ys[i] / cell)))
+		for ax in range(-1, 2):
+			for ay in range(-1, 2):
+				for j in grid.get(base + Vector2i(ax, ay), []):
+					if int(j) <= i:
+						continue
+					var tex_b: Texture2D = view.cover_texture(int(j))
+					if tex_b == null:
+						continue
+					checked += 1
+					if box_a.intersects(_world_cover_rect(view, lay, int(j), tex_b)):
+						overlaps += 1
+	assert_gt(checked, 0, "there are neighbouring covers to check")
+	assert_eq(overlaps, 0, "no two cover images overlap anywhere in the sky")
+
+func _world_cover_rect(view: AtlasView, lay: AtlasLayout, i: int, tex: Texture2D) -> Rect2:
+	var aspect: float = float(tex.get_height()) / float(tex.get_width())
+	var reserved: float = AtlasLayout.star_radius(lay.degree_of(i))
+	var s: Vector2 = AtlasView.cover_size(reserved, aspect)
+	return Rect2(lay.position_of(i) - s * 0.5, s)
+
+func test_most_games_have_cover_art() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	var with_art: int = 0
+	for i in range(view.layout.star_count()):
+		if view.cover_texture(i) != null:
+			with_art += 1
+	assert_gt(with_art, int(view.layout.star_count() * 0.9),
+		"the great majority of stars have box art to show")
+
+# A star with no art keeps its dot, and the label still clears whatever is drawn.
+func test_drawn_half_height_tracks_what_is_actually_drawn() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	var i: int = view.layout.capitals[0]
+	var dot_h: float = view.drawn_half_height(i, false)
+	var cover_h: float = view.drawn_half_height(i, true)
+	assert_gt(dot_h, 0.0, "a dot has height")
+	if view.cover_texture(i) != null:
+		assert_gt(cover_h, 0.0, "a cover has height")
+
+# ---------------------------------------------------------------------------
 # The run trail — the corridor drawn over the sky
 # ---------------------------------------------------------------------------
 
