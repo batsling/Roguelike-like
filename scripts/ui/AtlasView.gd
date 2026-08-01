@@ -71,6 +71,10 @@ const COL_SELECTED_EDGE := Color(0.98, 0.94, 0.86, 0.85) # a clicked game's link
 # blue and apart from plain influence; the game flattened the distinction until
 # the sheet's Dev/Series column was imported. ~112 links carry it.
 const COL_EDGE_SEQUEL := Color(0.42, 0.62, 1.0, 0.42)
+# Bashed: the game is destroyed for the rest of the run, so its star is struck
+# through and every link into it turns red — those routes no longer exist.
+const COL_BASHED := Color(0.90, 0.26, 0.22, 0.95)
+const COL_EDGE_BASHED := Color(0.90, 0.26, 0.22, 0.45)
 const COL_DIM := Color(1, 1, 1, 0.11)
 
 const PICK_RADIUS := 14.0        # screen-space click tolerance, so tiny dots stay clickable
@@ -327,7 +331,7 @@ static func cover_size(reserved_radius: float, aspect: float) -> Vector2:
 func cover_texture(i: int) -> Texture2D:
 	if not has_layout():
 		return null
-	var game: GameData = Data.get_game(layout.id_at(i))
+	var game: GameData = game_at(i)
 	if game == null or game.cover_image == null:
 		return null
 	if game.cover_image.get_width() <= 0 or game.cover_image.get_height() <= 0:
@@ -401,6 +405,23 @@ func sequel_link_count() -> int:
 		if bool(v):
 			n += 1
 	return n
+
+# Destroyed by Bash this run: the game is gone from the pool and no route can
+# pass through it any more.
+func is_bashed(i: int) -> bool:
+	return has_layout() and GameLoop2.is_bashed(layout.id_at(i))
+
+# A node Transmute has pasted a different game onto. The node keeps its place on
+# the graph — its routes are unchanged — but it now plays the replacement.
+func is_transmuted(i: int) -> bool:
+	return has_layout() and GameLoop2.is_transmuted(layout.id_at(i))
+
+# The game actually AT a star now: the pasted replacement where there is one,
+# otherwise the node's own game.
+func game_at(i: int) -> GameData:
+	if not has_layout():
+		return null
+	return GameLoop2.game_at(layout.id_at(i))
 
 # How many stars are showing art right now — drives the zoom readout.
 func cover_count() -> int:
@@ -682,7 +703,10 @@ func _refresh_card() -> void:
 	_set_card_width(272.0)
 
 	var id: StringName = layout.id_at(_selected)
-	var game: GameData = Data.get_game(id)
+	# The node's own game, and whatever Transmute has pasted on top of it.
+	var original: GameData = Data.get_game(id)
+	var game: GameData = GameLoop2.game_at(id)
+	var pasted: bool = GameLoop2.is_transmuted(id)
 	var name_text: String = game.display_name if game != null else String(id)
 
 	var title := Label.new()
@@ -691,6 +715,14 @@ func _refresh_card() -> void:
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_card_box.add_child(title)
+
+	if pasted and original != null:
+		var over := Label.new()
+		over.text = "transmuted onto %s" % original.display_name
+		over.add_theme_font_size_override("font_size", 11)
+		over.add_theme_color_override("font_color", UITheme.ACCENT)
+		over.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_card_box.add_child(over)
 
 	if game != null and game.cover_image != null:
 		var art := TextureRect.new()
@@ -722,7 +754,14 @@ func _refresh_card() -> void:
 		facts.add_child(_fact("Region", region_label))
 		facts.add_child(_fact("From capital", "%d hop%s" %
 			[layout.hops[_selected], "" if layout.hops[_selected] == 1 else "s"]))
-	if GameState.has_beaten_game(id):
+	# A pasted node reports both games: what you play here now, and what this spot
+	# was on the map before.
+	if pasted and original != null:
+		facts.add_child(_fact("Now", game.display_name))
+		facts.add_child(_fact("Was", original.display_name))
+	if GameLoop2.is_bashed(id):
+		facts.add_child(_fact("Status", "destroyed — bashed this run"))
+	elif GameState.has_beaten_game(id):
 		facts.add_child(_fact("Status", "beaten"))
 	if game != null and game.owned:
 		facts.add_child(_fact("Owned", "yes"))
@@ -790,6 +829,33 @@ func _fill_connection_card() -> void:
 		chip.add_theme_font_size_override("font_size", 10)
 		chip.add_theme_color_override("font_color", UITheme.GOLD)
 		_card_box.add_child(chip)
+
+	# A transmuted endpoint doesn't change the claim — the influence is between the
+	# games the map records — so the card keeps naming those, and says separately
+	# what has been pasted over them this run.
+	for endpoint in [from_game, to_game]:
+		if not GameLoop2.is_transmuted(endpoint.id):
+			continue
+		var now: GameData = GameLoop2.game_at(endpoint.id)
+		if now == null:
+			continue
+		var note := Label.new()
+		note.text = "%s is transmuted on top of %s" % [now.display_name, endpoint.display_name]
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.add_theme_font_size_override("font_size", 11)
+		note.add_theme_color_override("font_color", UITheme.ACCENT)
+		_card_box.add_child(note)
+	for endpoint in [from_game, to_game]:
+		if not GameLoop2.is_bashed(endpoint.id):
+			continue
+		var gone := Label.new()
+		gone.text = "%s was bashed — this route is gone" % endpoint.display_name
+		gone.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		gone.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		gone.add_theme_font_size_override("font_size", 11)
+		gone.add_theme_color_override("font_color", COL_BASHED)
+		_card_box.add_child(gone)
 
 	_card_box.add_child(_hairline())
 
@@ -1069,6 +1135,11 @@ class StarCanvas extends Control:
 				continue
 			var col: Color = AtlasView.COL_EDGE
 			var w: float = width
+			# A link into a destroyed game is a route that no longer exists.
+			if view.is_bashed(a) or view.is_bashed(b):
+				draw_line(view.to_screen(lay.position_of(a)), view.to_screen(lay.position_of(b)),
+					AtlasView.COL_EDGE_BASHED, width * 1.3, true)
+				continue
 			if incident:
 				col = AtlasView.COL_SELECTED_EDGE
 				w = sel_width
@@ -1183,7 +1254,9 @@ class StarCanvas extends Control:
 			var p: Vector2 = view.to_screen(lay.position_of(i))
 			if not vis.has_point(p):
 				continue
-			var game: GameData = Data.get_game(lay.id_at(i))
+			# What's drawn is what's actually there — a transmuted node wears the
+			# game pasted onto it, not the game it used to be.
+			var game: GameData = view.game_at(i)
 			var col: Color = RunGraph.type_color(game.type) if game != null else UITheme.TEXT_DIM
 			var reserved: float = AtlasLayout.star_radius(lay.degree_of(i)) * view._scale
 			var r: float = maxf(1.2, reserved * 0.9)
@@ -1220,6 +1293,15 @@ class StarCanvas extends Control:
 			# how many connections there are, the rings say which games they reach.
 			if focused and not faded and i != view._selected:
 				draw_arc(p, r + 2.5, 0.0, TAU, 24, AtlasView.COL_SELECTED_EDGE, 1.4, true)
+			# Destroyed: struck through, so it reads as gone rather than merely dim.
+			if view.is_bashed(i):
+				var d: float = r * 1.5 + 2.0
+				draw_line(p + Vector2(-d, -d), p + Vector2(d, d), AtlasView.COL_BASHED, maxf(1.6, r * 0.32), true)
+				draw_line(p + Vector2(-d, d), p + Vector2(d, -d), AtlasView.COL_BASHED, maxf(1.6, r * 0.32), true)
+			# Transmuted: a second ring, because the star is no longer the game the
+			# map says lives at that spot.
+			elif view.is_transmuted(i):
+				draw_arc(p, r + 3.5, 0.0, TAU, 26, UITheme.ACCENT, 1.6, true)
 			# A game the player owns wears a ring, so the sky doubles as a shelf.
 			if not faded and game != null and game.owned:
 				draw_arc(p, r + 2.0, 0.0, TAU, 20, Color(UITheme.TEXT_DIM, 0.5), 1.0, true)

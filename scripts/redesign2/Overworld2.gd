@@ -75,9 +75,6 @@ var _slot_enemy_key: String = ""
 var _boss_round: bool = false
 var _phase: int = Phase.SELECT
 var _chosen: Dictionary = {}          # the choice being played (Phase.PLAYING)
-# Transmute overrides for the current position: reachable game id -> the off-graph
-# game it was swapped to (§4). Cleared when the player moves on.
-var _transmuted: Dictionary = {}
 # Scramble (§4) reroll counter. The offering is drawn in a STABLE position-seeded
 # order so bashing one card doesn't reshuffle the rest; this salt is what a
 # scramble changes, re-drawing which games fill the slots (and, through
@@ -227,7 +224,6 @@ func start_run(character_id: StringName = &"") -> void:
 	_chosen = {}
 	_choices.clear()
 	_drop_queue.clear()
-	_transmuted.clear()
 	_slot_enemies.clear()
 	_slot_enemy_key = ""
 	var pick: Dictionary = RunGraph.pick_amulet_and_starts(_rng)
@@ -331,9 +327,6 @@ func capture_view_state() -> Dictionary:
 	var choices: Array = []
 	for c in _choices:
 		choices.append(_serialize_choice(c))
-	var transmuted: Dictionary = {}
-	for slot in _transmuted.keys():
-		transmuted[String(slot)] = String((_transmuted[slot] as GameData).id)
 	var visits: Dictionary = {}
 	for gid in _visits.keys():
 		visits[String(gid)] = int(_visits[gid])
@@ -348,7 +341,6 @@ func capture_view_state() -> Dictionary:
 		"boss_round": _boss_round,
 		"dash_mode": _dash_mode,
 		"scramble_salt": _scramble_salt,
-		"transmuted": transmuted,
 		"visits": visits,
 		"drops": drops,
 		"last_played_game": String(_last_played_game.id) if _last_played_game != null else "",
@@ -373,12 +365,6 @@ func restore_view_state(view: Dictionary) -> void:
 	_boss_round = bool(view.get("boss_round", false))
 	_dash_mode = bool(view.get("dash_mode", false))
 	_scramble_salt = int(view.get("scramble_salt", 0))
-	_transmuted.clear()
-	var tm: Dictionary = view.get("transmuted", {})
-	for slot in tm.keys():
-		var tg: GameData = Data.get_game(StringName(tm[slot]))
-		if tg != null:
-			_transmuted[StringName(slot)] = tg
 	_visits.clear()
 	var vs: Dictionary = view.get("visits", {})
 	for gid in vs.keys():
@@ -598,8 +584,8 @@ func scramble() -> bool:
 		return false
 	GameState.scramble -= 1
 	_scramble_salt += 1
-	# A transmuted card is a swap made on the OLD offering — a reroll replaces it.
-	_transmuted.clear()
+	# A transmute is pasted onto the NODE, not onto an offering, so re-drawing the
+	# cards leaves it in place — the spot still plays the game you pasted there.
 	_build_choices()
 	GameLog.add("Scrambled the offering — %d new game(s) to choose from." % _choices.size(),
 		Color(0.6, 0.75, 1.0))
@@ -702,7 +688,6 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 		_apply_level_up()
 	GameState.games_played += 1
 	_chosen = {}
-	_transmuted.clear()   # transmutes apply only to the offering you moved from
 	# Rating is a BUTTON, never a pop-up: remember the game so the "★ Rate <game>"
 	# button on the select screen can score it whenever the player feels like it.
 	if played_game != null:
@@ -872,7 +857,7 @@ func bash_choice(index: int) -> void:
 	if not GameLoop2.bash_game(slot):
 		return
 	# A transmute on the destroyed slot dies with it, and so does its cached enemy.
-	_transmuted.erase(slot)
+	GameLoop2.transmuted.erase(slot)
 	_slot_enemies.erase("%s>%s" % [String(slot), String(game.id)])
 	_build_choices()
 	_refresh()
@@ -899,7 +884,8 @@ func transmute_choice(index: int) -> void:
 		on_map.append(c["slot"])
 	var repl: GameData = GameLoop2.transmute_game(slot, on_map)
 	if repl != null:
-		_transmuted[slot] = repl
+		# GameLoop2 records the paste against the NODE, so it survives moving on,
+		# scrambling, and saving — the spot plays that game for the rest of the run.
 		_build_choices()
 		_refresh()
 
@@ -1032,7 +1018,7 @@ func _build_choices() -> void:
 		_slot_enemy_key = enemy_key
 	var amulet: StringName = GameState.amulet_game_id
 	for gid in _offered_ids():
-		var game: GameData = _transmuted.get(gid, Data.get_game(gid))
+		var game: GameData = GameLoop2.game_at(gid)
 		if game == null:
 			continue
 		var type_key: StringName = GameLoop2.game_type_key(game)

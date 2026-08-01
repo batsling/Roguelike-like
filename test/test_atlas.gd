@@ -1003,3 +1003,98 @@ func test_bad_edge_index_is_not_a_sequel() -> void:
 		return
 	assert_false(view.is_sequel_link(-1))
 	assert_false(view.is_sequel_link(view.layout.edge_count()))
+
+# ---------------------------------------------------------------------------
+# Bash and Transmute, as the map shows them
+# ---------------------------------------------------------------------------
+
+func _start_run() -> Node:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	return ui
+
+func test_a_bashed_game_is_marked_on_the_map() -> void:
+	_start_run()
+	var view := _open()
+	if not view.has_layout():
+		return
+	var victim: StringName = view.layout.id_at(view.layout.capitals[0])
+	assert_false(view.is_bashed(view.layout.index_of(victim)), "nothing is bashed yet")
+	GameState.bash = 1
+	assert_true(GameLoop2.bash_game(victim), "the game is bashed")
+	assert_true(view.is_bashed(view.layout.index_of(victim)),
+		"the map knows it was destroyed")
+
+func test_transmute_pastes_onto_the_spot_and_stays() -> void:
+	_start_run()
+	GameState.transmute = 1
+	var node: StringName = GameState.current_game_id
+	var repl: GameData = GameLoop2.transmute_game(node, [])
+	assert_not_null(repl, "a replacement was found")
+	if repl == null:
+		return
+	assert_true(GameLoop2.is_transmuted(node), "the node records the paste")
+	assert_eq(GameLoop2.game_at(node).id, repl.id, "and now plays the pasted game")
+	assert_eq(GameLoop2.original_at(node).id, node, "while remembering what it was")
+
+func test_the_map_draws_the_pasted_game_not_the_old_one() -> void:
+	_start_run()
+	GameState.transmute = 1
+	var node: StringName = GameState.current_game_id
+	var repl: GameData = GameLoop2.transmute_game(node, [])
+	if repl == null:
+		return
+	var view := _open()
+	if not view.has_layout():
+		return
+	var i: int = view.layout.index_of(node)
+	assert_true(view.is_transmuted(i), "the star is marked as pasted over")
+	assert_eq(view.game_at(i).id, repl.id, "and shows the game now at that spot")
+
+# The paste is on the SPOT, so it has to survive everything that redraws the
+# offering — that's the difference from the old per-offering behaviour.
+func test_a_paste_survives_a_save_and_reload() -> void:
+	_start_run()
+	GameState.transmute = 1
+	var node: StringName = GameState.current_game_id
+	var repl: GameData = GameLoop2.transmute_game(node, [])
+	if repl == null:
+		return
+	var saved: Dictionary = GameLoop2.serialize()
+	GameLoop2.reset()
+	assert_false(GameLoop2.is_transmuted(node), "reset clears it")
+	GameLoop2.restore(saved)
+	assert_true(GameLoop2.is_transmuted(node), "restoring brings the paste back")
+	assert_eq(GameLoop2.game_at(node).id, repl.id, "with the same game on it")
+
+func test_an_untouched_node_reports_its_own_game() -> void:
+	_start_run()
+	var node: StringName = GameState.current_game_id
+	assert_false(GameLoop2.is_transmuted(node), "nothing pasted here")
+	assert_eq(GameLoop2.game_at(node).id, node, "so the node plays its own game")
+	assert_null(GameLoop2.original_at(node), "and there's no previous game to name")
+
+func test_bashing_a_pasted_node_takes_the_paste_with_it() -> void:
+	_start_run()
+	GameState.transmute = 1
+	var node: StringName = GameState.current_game_id
+	if GameLoop2.transmute_game(node, []) == null:
+		return
+	GameLoop2.transmuted.erase(node)
+	assert_false(GameLoop2.is_transmuted(node), "the paste goes with the destroyed slot")
+
+func test_a_run_reset_clears_both() -> void:
+	_start_run()
+	GameState.bash = 1
+	GameState.transmute = 1
+	var node: StringName = GameState.current_game_id
+	GameLoop2.bash_game(view_safe_neighbor(node))
+	GameLoop2.transmute_game(node, [])
+	GameLoop2.reset()
+	assert_eq(GameLoop2.bashed.size(), 0, "a new run starts with nothing destroyed")
+	assert_eq(GameLoop2.transmuted.size(), 0, "and nothing pasted")
+
+func view_safe_neighbor(node: StringName) -> StringName:
+	var n: Array = RunGraph.neighbors(node)
+	return n[0] if not n.is_empty() else node
