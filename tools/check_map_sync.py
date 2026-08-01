@@ -136,7 +136,7 @@ def parse_map(path: str) -> dict:
         if re.fullmatch(r"(19|20)\d{2}", label):
             year_axis.append((y, int(label)))
         else:
-            nodes[cell.get("id")] = {"label": label, "x": x, "y": y}
+            nodes[cell.get("id")] = {"id": cell.get("id"), "label": label, "x": x, "y": y}
 
     edges = []
     for cell in cells:
@@ -206,6 +206,70 @@ def load_sheet(path: str) -> dict:
             "dev_flags": dev_flags, "sourced": sourced, "total": total}
 
 
+def fix_years(path, dmap, sheet, matched, axis):
+    """Move mis-placed nodes onto their correct year row, in place.
+
+    Edits are surgical text replacements on each cell's own mxGeometry y, not a
+    reserialisation of the tree — draw.io round-trips this file by hand and
+    rewriting 700 KB of XML to change six numbers invites gratuitous diffs.
+
+    A node's offset within its year row is hand-tuned (nodes sit 0-8 px below the
+    row's top edge), so the move is a delta between the two year labels rather
+    than a snap to an absolute y.
+    """
+    slope, intercept = axis
+    rows = {year: y for y, year in dmap["year_axis"]}
+    moves = []
+    for key, node in matched:
+        target = sheet["games"][key]["year"]
+        if not target:
+            continue
+        implied = slope * node["y"] + intercept
+        if abs(implied - target) <= YEAR_TOLERANCE:
+            continue
+        drawn_row = round(implied)
+        if drawn_row not in rows or target not in rows:
+            print("    skipped %s — no year label for %s or %s"
+                  % (node["label"], drawn_row, target))
+            continue
+        moves.append((node, node["y"] + rows[target] - rows[drawn_row], drawn_row, target))
+
+    if not moves:
+        print("  nothing to move — every node already sits on its sheet year")
+        return 0
+
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    changed = 0
+    for node, new_y, drawn_row, target in moves:
+        # Find this cell, then the first y= on its own mxGeometry.
+        anchor = text.find('id="%s"' % node["id"])
+        if anchor < 0:
+            print("    skipped %s — cell id not found" % node["label"])
+            continue
+        geom = text.find("<mxGeometry", anchor)
+        end = text.find(">", geom)
+        if geom < 0 or end < 0:
+            print("    skipped %s — no geometry" % node["label"])
+            continue
+        block = text[geom:end]
+        fixed, n = re.subn(r'y="[-0-9.]+"', 'y="%s"' % _fmt(new_y), block, count=1)
+        if not n:
+            print("    skipped %s — geometry has no y" % node["label"])
+            continue
+        text = text[:geom] + fixed + text[end:]
+        print("    %-42s %d -> %d" % (node["label"][:40], drawn_row, target))
+        changed += 1
+    if changed:
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+    return changed
+
+
+def _fmt(value):
+    return str(int(value)) if float(value).is_integer() else ("%g" % value)
+
+
 def temporal_violations(sheet):
     """Connections whose influencee predates its influencer.
 
@@ -250,6 +314,8 @@ def main():
                     help="draw.io .svg export or .drawio file (default: the checked-in map)")
     ap.add_argument("--xlsx", default=XLSX_PATH)
     ap.add_argument("--full", action="store_true", help="list every entry, not just a sample")
+    ap.add_argument("--fix-years", action="store_true",
+                    help="move mis-placed nodes onto their sheet year (.drawio only, edits in place)")
     args = ap.parse_args()
 
     if not os.path.exists(args.svg):
@@ -337,6 +403,17 @@ def main():
         listing(drawn_late, args.full)
         print("  drawn EARLIER than the sheet — likely a 1.0 date in the sheet: %d" % len(drawn_early))
         listing(drawn_early, args.full)
+
+        if args.fix_years:
+            print("\n  --fix-years:")
+            if args.svg.lower().endswith(".svg"):
+                print("    refused: a draw.io .svg holds the model AND an independently")
+                print("    rendered copy of the picture. Editing the model alone leaves the")
+                print("    visible image stale. Edit the .drawio, then re-export the .svg.")
+            else:
+                moved = fix_years(args.svg, dmap, sheet, matched, axis)
+                if moved:
+                    print("    moved %d node(s). Re-export the .svg from draw.io." % moved)
 
     # ---- edges ----
     head("CONNECTIONS")

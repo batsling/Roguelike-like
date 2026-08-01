@@ -1568,7 +1568,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="KX5O9Pw1W_b1j5ceDQSr-111" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="Castle of the Winds" vertex="1">
-          <mxGeometry height="35" width="180" x="6630" y="-797.5" as="geometry" />
+          <mxGeometry height="35" width="180" x="6630" y="-1797.5" as="geometry" />
         </mxCell>
         <mxCell id="KX5O9Pw1W_b1j5ceDQSr-112" edge="1" parent="1" source="AweIfFG6nZfIsoWg6aLu-1" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="KX5O9Pw1W_b1j5ceDQSr-111" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
@@ -2549,7 +2549,7 @@
           <mxGeometry height="40" width="120" x="14520" y="5200" as="geometry" />
         </mxCell>
         <mxCell id="T9F53bOMeDGg6sIQSAqH-55" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;strokeColor=#000000;" value="Muck" vertex="1">
-          <mxGeometry height="24" width="39" x="6613" y="4805" as="geometry" />
+          <mxGeometry height="24" width="39" x="6613" y="4605" as="geometry" />
         </mxCell>
         <mxCell id="T9F53bOMeDGg6sIQSAqH-57" edge="1" parent="1" source="JzbwEPaU_DDuTbYLNzp9-11" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="T9F53bOMeDGg6sIQSAqH-55" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
@@ -3449,7 +3449,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="HuN78W2_BEnrq1I5An4i-32" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="Roguebook" vertex="1">
-          <mxGeometry height="28" width="53" x="-1152" y="4803" as="geometry" />
+          <mxGeometry height="28" width="53" x="-1152" y="4603" as="geometry" />
         </mxCell>
         <mxCell id="HuN78W2_BEnrq1I5An4i-33" edge="1" parent="1" source="HuN78W2_BEnrq1I5An4i-32" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="HuN78W2_BEnrq1I5An4i-24" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
@@ -3716,7 +3716,7 @@
           <mxGeometry height="40" width="70" x="14390" y="5200" as="geometry" />
         </mxCell>
         <mxCell id="X3GC9loo6SX6OyWbVTeD-73" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="&lt;div&gt;Paper Planet&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="49" x="5720" y="5199.94" as="geometry" />
+          <mxGeometry height="40" width="49" x="5720" y="4994.94" as="geometry" />
         </mxCell>
         <mxCell id="X3GC9loo6SX6OyWbVTeD-75" edge="1" parent="1" source="AweIfFG6nZfIsoWg6aLu-4" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="X3GC9loo6SX6OyWbVTeD-73" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
@@ -4745,7 +4745,7 @@
           <mxGeometry height="40" width="194" x="-7377" y="2398" as="geometry" />
         </mxCell>
         <mxCell id="e7yX0fSibfPiCSJEvP66-15" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="The Guided Fate Paradox" vertex="1">
-          <mxGeometry height="40" width="194" x="-7852" y="3400" as="geometry" />
+          <mxGeometry height="40" width="194" x="-7852" y="3000" as="geometry" />
         </mxCell>
         <mxCell id="e7yX0fSibfPiCSJEvP66-16" edge="1" parent="1" source="y5wdreLHsI0aOC0Qk7-A-6" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="e7yX0fSibfPiCSJEvP66-14" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
@@ -6830,7 +6830,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="ClRiOw7svPfJfe5OVfU1-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="Captain Forever Remix" vertex="1">
-          <mxGeometry height="40" width="96" x="14290" y="3801.25" as="geometry" />
+          <mxGeometry height="40" width="96" x="14290" y="3601.25" as="geometry" />
         </mxCell>
         <mxCell id="X03jDOkzXtINXQMiO-nn-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="Hoplite" vertex="1">
           <mxGeometry height="28" width="51" x="1177" y="3003" as="geometry" />
