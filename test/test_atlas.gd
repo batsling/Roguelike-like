@@ -1181,7 +1181,7 @@ func _restore_stats() -> void:
 		GameStats.stats = _saved_stats
 		_saved_stats = {}
 
-func test_an_unplayed_game_has_a_hollow_middle() -> void:
+func test_an_unplayed_game_is_drawn_at_full_colour() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
 		return
@@ -1193,9 +1193,12 @@ func test_an_unplayed_game_has_a_hollow_middle() -> void:
 			break
 	if i < 0:
 		return
+	var game: GameData = Data.get_game(view.layout.id_at(i))
 	assert_false(view.has_record(i), "nothing earned on it yet")
 	assert_eq(view.star_record_color(i).a, 0.0,
-		"so nothing is drawn in its middle")
+		"so no metallic pip — the middle falls back to the genre colour")
+	assert_eq(RunGraph.type_color(game.type).a, 1.0,
+		"and that colour is drawn at full strength, not dimmed")
 
 func test_a_beaten_game_has_a_silver_middle() -> void:
 	var view := _open_pure()

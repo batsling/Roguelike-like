@@ -20,10 +20,10 @@ extends Control
 # Cover art arrives per star rather than all at once: a game turns into its box
 # art once that art would be at least MIN_COVER_PX wide, so hubs bloom first and
 # the fringe follows as you keep zooming.
-# A star's rim is its genre. In the Collection's catalog view its MIDDLE is your
-# lifetime record — silver once beaten, gold once you've won a run on it, hollow
-# if you never have; during a run the middle stays empty, because the sky is
-# about the run rather than the collection.
+# A star's rim is its genre and so is its middle, so an unplayed game reads at
+# full colour. In the Collection's catalog view the middle turns metallic once
+# you have a record with it — silver for beaten, gold for a run won on it. During
+# a run no record is drawn at all: that sky is about the run.
 # Clicking a star isolates it: every one of its connections lights up, the games
 # they reach get rings, and the rest of the sky dims.
 # A run draws two roads over the sky, both cased and arrowed so they can be
@@ -1351,16 +1351,9 @@ class StarCanvas extends Control:
 			var earned: bool = view.has_record(i)
 			if faded:
 				record = record.lerp(UITheme.BG_DEEP, 0.78)
-			# A game you've beaten burns at full strength; one you haven't is dim.
-			# The sky fills in as the collection does, with no new systems behind it.
-			# Lifetime record in a catalog view; in a run, also what you've beaten
-			# on the way here.
-			var gid: StringName = lay.id_at(i)
-			var beaten: bool = GameStats.beaten_count(gid) > 0 or GameStats.amulet_wins(gid) > 0
-			if not view.pure_catalog and GameState.has_beaten_game(gid):
-				beaten = true
-			if not beaten:
-				col = col.lerp(UITheme.BG_DEEP, 0.42)
+			# Every game is drawn at full strength. Dimming the ones you hadn't
+			# played made most of the sky washed out and fought the point of a
+			# catalog — what you HAVE played is said by the middle instead.
 			if faded:
 				col = col.lerp(UITheme.BG_DEEP, 0.78)
 
@@ -1378,13 +1371,12 @@ class StarCanvas extends Control:
 				r = maxf(box_size.x, box_size.y) * 0.5
 			elif show_rims and r > 3.4:
 				draw_circle(p, r, UITheme.BG_DEEP)
-				# Silver or gold in the middle; hollow for a game never played.
-				if earned:
-					draw_circle(p, r * 0.52, record)
+				# A game you've never played is solid in its own colour; one you
+				# have wears a silver or gold pip instead, so the record reads as
+				# something gained rather than as the absence of dimming.
+				draw_circle(p, r * 0.52, record if earned else col)
 				draw_arc(p, r, 0.0, TAU, 24, col, maxf(1.0, r * 0.4), true)
 			else:
-				# Too small for a middle — genre carries it, and the existing
-				# beaten/unbeaten brightness still shows progress at overview zoom.
 				draw_circle(p, r, col)
 
 			# Neighbours of the clicked star get a ring of their own — the lines say

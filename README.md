@@ -288,11 +288,14 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 ## Recent changes
 
 - **A star's rim is its genre; in the Collection, its middle is your record** —
-  **gold** once a run has been won on that game, **silver** once it has been
-  beaten at all, hollow if you never have. Gold outranks silver, since winning a
-  run implies beating it and the rarer fact is the one worth seeing. Putting the
-  record in the core rather than on the rim keeps the sky readable **as genre at
-  every zoom** while the centres light up as the collection fills.
+  a game you've never played is drawn **solid in its own genre colour**, and one
+  you have wears a **silver** pip once beaten or a **gold** one once you've won a
+  run on it. Gold outranks silver, since winning a run implies beating it and the
+  rarer fact is the one worth seeing. Putting the record in the core rather than
+  on the rim keeps the sky readable **as genre at every zoom**, and a record
+  reads as something *gained* rather than as the absence of dimming — the earlier
+  "unplayed games are dimmed" rule is gone, since it washed out most of a catalog
+  nobody has finished.
 
   The record is drawn **only in the Collection's Constellations**. During a run
   the sky is about the run — the route, where you stand, what you've bashed — and
