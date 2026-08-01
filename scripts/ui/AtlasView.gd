@@ -73,6 +73,12 @@ const COL_SELECTED_EDGE := Color(0.98, 0.94, 0.86, 0.85) # a clicked game's link
 const COL_EDGE_SEQUEL := Color(0.42, 0.62, 1.0, 0.42)
 # Bashed: the game is destroyed for the rest of the run, so its star is struck
 # through and every link into it turns red — those routes no longer exist.
+# Achievement outlines. A star's rim carries what the player has DONE with that
+# game, which beats genre for "what have I actually played" — and genre survives
+# as the star's core. Gold outranks silver: winning a run on a game implies
+# beating it, and the rarer fact is the one worth seeing.
+const COL_BEATEN := Color(0.78, 0.82, 0.88)        # silver — beaten at least once
+const COL_AMULET_WIN := Color(1.0, 0.80, 0.30)     # gold — won a run on it
 const COL_BASHED := Color(0.90, 0.26, 0.22, 0.95)
 const COL_EDGE_BASHED := Color(0.90, 0.26, 0.22, 0.45)
 const COL_DIM := Color(1, 1, 1, 0.11)
@@ -434,6 +440,28 @@ func sequel_link_count() -> int:
 			n += 1
 	return n
 
+# The colour a star is outlined in: gold once a run has been won on that game,
+# silver once it has been beaten at all, and otherwise its GameType colour. Same
+# in a run and in the pure catalog — what you've done with a game doesn't depend
+# on which screen you're looking at.
+func star_outline_color(i: int) -> Color:
+	if not has_layout():
+		return UITheme.TEXT_DIM
+	var gid: StringName = layout.id_at(i)
+	if GameStats.amulet_wins(gid) > 0:
+		return COL_AMULET_WIN
+	if GameStats.beaten_count(gid) > 0:
+		return COL_BEATEN
+	var game: GameData = game_at(i)
+	return RunGraph.type_color(game.type) if game != null else UITheme.TEXT_DIM
+
+# Whether the outline is carrying an achievement rather than the game's genre.
+func has_achievement_outline(i: int) -> bool:
+	if not has_layout():
+		return false
+	var gid: StringName = layout.id_at(i)
+	return GameStats.amulet_wins(gid) > 0 or GameStats.beaten_count(gid) > 0
+
 # Destroyed by Bash this run: the game is gone from the pool and no route can
 # pass through it any more.
 func is_bashed(i: int) -> bool:
@@ -645,6 +673,8 @@ func _build_legend() -> Control:
 	bar.add_child(row)
 	for t in RunGraph.TYPE_ORDER:
 		row.add_child(_legend_chip(RunGraph.type_label(t), RunGraph.type_color(t)))
+	row.add_child(_legend_chip("⚔ Beaten", COL_BEATEN))
+	row.add_child(_legend_chip("👑 Amulet won", COL_AMULET_WIN))
 	if sequel_link_count() > 0:
 		row.add_child(_legend_chip("Sequel / same devs", COL_EDGE_SEQUEL))
 	if not _history.is_empty():
@@ -789,13 +819,18 @@ func _refresh_card() -> void:
 	if pasted and original != null:
 		facts.add_child(_fact("Now", game.display_name))
 		facts.add_child(_fact("Was", original.display_name))
+	# The lifetime record, worded as the Collection words it so the two agree.
+	var beaten_times: int = GameStats.beaten_count(id)
+	var amulet_runs: int = GameStats.amulet_wins(id)
+	facts.add_child(_fact("⚔ Beaten", ("%d time%s" % [beaten_times,
+		"" if beaten_times == 1 else "s"]) if beaten_times > 0 else "never"))
+	if amulet_runs > 0:
+		facts.add_child(_fact("👑 Amulet won", "%d run%s" % [amulet_runs,
+			"" if amulet_runs == 1 else "s"]))
 	if is_bashed(_selected):
 		facts.add_child(_fact("Status", "destroyed — bashed this run"))
 	elif not pure_catalog and GameState.has_beaten_game(id):
 		facts.add_child(_fact("Status", "beaten this run"))
-	elif GameStats.beaten_count(id) > 0:
-		facts.add_child(_fact("Beaten", "%d time%s" % [GameStats.beaten_count(id),
-			"" if GameStats.beaten_count(id) == 1 else "s"]))
 	if game != null and game.owned:
 		facts.add_child(_fact("Owned", "yes"))
 
@@ -1297,6 +1332,12 @@ class StarCanvas extends Control:
 			var reserved: float = AtlasLayout.star_radius(lay.degree_of(i)) * view._scale
 			var r: float = maxf(1.2, reserved * 0.9)
 			var faded: bool = focused and not view._near.has(i)
+			# The rim says what you've DONE with this game — gold for a run won on
+			# it, silver for beaten — and falls back to genre when neither applies.
+			var rim: Color = view.star_outline_color(i)
+			var earned: bool = view.has_achievement_outline(i)
+			if faded:
+				rim = rim.lerp(UITheme.BG_DEEP, 0.78)
 			# A game you've beaten burns at full strength; one you haven't is dim.
 			# The sky fills in as the collection does, with no new systems behind it.
 			# Lifetime record in a catalog view; in a run, also what you've beaten
@@ -1323,11 +1364,14 @@ class StarCanvas extends Control:
 				draw_rect(box, col, false, maxf(1.0, reserved * 0.09))
 				r = maxf(box_size.x, box_size.y) * 0.5
 			elif show_rims and r > 3.4:
-				# Ringed stars: the dark core keeps the type colour readable at size.
 				draw_circle(p, r, UITheme.BG_DEEP)
-				draw_arc(p, r, 0.0, TAU, 24, col, maxf(1.0, r * 0.4), true)
+				# When the rim is carrying an achievement, genre moves to the core
+				# so neither fact is lost.
+				if earned:
+					draw_circle(p, r * 0.46, col)
+				draw_arc(p, r, 0.0, TAU, 24, rim, maxf(1.0, r * 0.4), true)
 			else:
-				draw_circle(p, r, col)
+				draw_circle(p, r, rim if earned else col)
 
 			# Neighbours of the clicked star get a ring of their own — the lines say
 			# how many connections there are, the rings say which games they reach.

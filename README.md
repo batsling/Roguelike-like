@@ -287,6 +287,16 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
 ## Recent changes
 
+- **A star's outline is what you've done with the game** — **gold** once a run
+  has been won on it, **silver** once it has been beaten at all, otherwise its
+  `GameType` colour. Gold outranks silver, since winning a run on a game implies
+  beating it and the rarer fact is the one worth seeing. When the rim is carrying
+  an achievement the genre colour moves to the star's **core**, so neither fact
+  is lost. This applies to the in-run Atlas and the Collection's Constellations
+  alike — what you've done with a game doesn't depend on which screen you're on.
+  The card carries the Collection's own numbers in the Collection's own
+  vocabulary: **⚔ Beaten** and **👑 Amulet won**.
+
 - **"Show constellation" in the Collection** — the Games tab gains a button that
   opens the whole catalog as the star chart, in **pure-catalog mode**: no run is
   laid over it. No route to the Amulet, no path taken, no you-are-here or Amulet

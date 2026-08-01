@@ -1164,3 +1164,82 @@ func test_pure_catalog_holds_the_whole_catalog() -> void:
 	assert_eq(view.layout.star_count(), Data.all_games().size(),
 		"every game is still on the chart")
 	assert_gt(view.layout.edge_count(), 0, "with its connections")
+
+# ---------------------------------------------------------------------------
+# Achievement outlines — what you've done with a game, on its rim
+# ---------------------------------------------------------------------------
+
+var _saved_stats: Dictionary = {}
+
+func _stub_stats(game_id: StringName, beaten: int, amulets: int) -> void:
+	if _saved_stats.is_empty():
+		_saved_stats = GameStats.stats.duplicate(true)
+	GameStats.stats[String(game_id)] = {"beaten": beaten, "amulets": amulets}
+
+func _restore_stats() -> void:
+	if not _saved_stats.is_empty():
+		GameStats.stats = _saved_stats
+		_saved_stats = {}
+
+func test_an_unplayed_game_is_outlined_by_genre() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	var i: int = -1
+	for k in range(view.layout.star_count()):
+		var gid: StringName = view.layout.id_at(k)
+		if GameStats.beaten_count(gid) == 0 and GameStats.amulet_wins(gid) == 0:
+			i = k
+			break
+	if i < 0:
+		return
+	var game: GameData = Data.get_game(view.layout.id_at(i))
+	assert_false(view.has_achievement_outline(i), "nothing earned on it yet")
+	assert_eq(view.star_outline_color(i), RunGraph.type_color(game.type),
+		"so its outline is its genre")
+
+func test_a_beaten_game_is_outlined_silver() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	var gid: StringName = view.layout.id_at(0)
+	_stub_stats(gid, 3, 0)
+	assert_true(view.has_achievement_outline(0), "beating it earns an outline")
+	assert_eq(view.star_outline_color(0), AtlasView.COL_BEATEN, "silver for beaten")
+	_restore_stats()
+
+func test_an_amulet_win_is_outlined_gold_and_outranks_silver() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	var gid: StringName = view.layout.id_at(0)
+	# A game won on is also a game beaten — gold has to win.
+	_stub_stats(gid, 5, 2)
+	assert_eq(view.star_outline_color(0), AtlasView.COL_AMULET_WIN,
+		"gold outranks silver when both apply")
+	_restore_stats()
+
+func test_the_outline_is_the_same_in_a_run_and_in_the_catalog() -> void:
+	_start_run()
+	var gid: StringName = &"rogue"
+	_stub_stats(gid, 1, 0)
+	var run_view := _open()
+	var pure_view := _open_pure()
+	if not run_view.has_layout():
+		_restore_stats()
+		return
+	var i: int = run_view.layout.index_of(gid)
+	if i < 0:
+		_restore_stats()
+		return
+	assert_eq(run_view.star_outline_color(i), pure_view.star_outline_color(i),
+		"what you've done with a game doesn't depend on which screen you're on")
+	assert_eq(run_view.star_outline_color(i), AtlasView.COL_BEATEN, "and it's silver")
+	_restore_stats()
+
+func test_silver_and_gold_are_tellable_apart() -> void:
+	assert_gt(_separation(AtlasView.COL_BEATEN, AtlasView.COL_AMULET_WIN), 0.25,
+		"silver and gold don't look alike")
+	for t in RunGraph.TYPE_ORDER:
+		assert_gt(_separation(AtlasView.COL_BEATEN, RunGraph.type_color(t)), 0.2,
+			"nor does silver look like a genre colour")
