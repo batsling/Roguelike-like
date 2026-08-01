@@ -425,34 +425,82 @@ def main():
              100.0 * sheet["sourced"] / max(1, sheet["total"])))
 
     unresolved = collections.Counter()
-    seen, map_only, leaked = set(), [], []
+    seen, map_only_pairs, self_loops, leaked = set(), [], [], []
     for e in dmap["edges"]:
         if not e["source"] or not e["target"]:
             unresolved[e["kind"]] += 1
             continue
         key = frozenset((norm(e["source"]), norm(e["target"])))
         if e["source"] == e["target"]:
-            map_only.append("[self-loop] %s" % e["source"])
+            self_loops.append("[self-loop] %s" % e["source"])
             continue
         seen.add(key)
         if e["kind"] == KIND_CONVERGENT:
+            # Convergent links are deliberately absent from the sheet, but they
+            # still count as "drawn" so they don't show up as undrawn below.
             if key in sheet["connections"]:
                 leaked.append("%s  ~  %s" % (e["source"], e["target"]))
         elif key not in sheet["connections"]:
-            map_only.append("[%s] %s -> %s" % (e["kind"], e["source"], e["target"]))
+            map_only_pairs.append((e["kind"], e["source"], e["target"]))
 
     if unresolved:
         print("  edges drawn without attached endpoints (free connectors): %s"
               % ", ".join("%s %d" % (k, v) for k, v in sorted(unresolved.items())))
-    print("\n  drawn on the map, missing from the sheet: %d" % len(map_only))
-    listing(map_only, args.full)
+    sheet_only = [(v["a"], v["b"]) for k, v in sheet["connections"].items() if k not in seen]
 
-    sheet_only = [
-        "%s -> %s" % (v["a"], v["b"])
-        for k, v in sheet["connections"].items() if k not in seen
-    ]
-    print("  in the sheet, not drawn on the map: %d" % len(sheet_only))
-    listing(sheet_only, args.full)
+    # A link the two sides agree happened but disagree about the ancestor of
+    # shows up as one absence on each side. Pair those by target instead.
+    map_by_target = collections.defaultdict(list)
+    for kind, a, b in map_only_pairs:
+        map_by_target[norm(b)].append((a, b, kind))
+    sheet_by_target = collections.defaultdict(list)
+    for a, b in sheet_only:
+        sheet_by_target[norm(b)].append((a, b))
+    disputed = sorted(set(map_by_target) & set(sheet_by_target))
+
+    def year_of(name):
+        return sheet["games"].get(norm(name), {}).get("year")
+
+    def stamp(name):
+        year = year_of(name)
+        return "%s (%s)" % (name, year if year else "?")
+
+    if disputed:
+        print("\n  same target, different ancestor — %d (one absence on each side):"
+              % len(disputed))
+        for target in disputed:
+            src_map, label, _ = map_by_target[target][0]
+            src_sheet, _ = sheet_by_target[target][0]
+            print("    %s" % stamp(label))
+            print("        map   : %s" % stamp(src_map))
+            print("        sheet : %s" % stamp(src_sheet))
+
+    rest_map = [(k, a, b) for k, a, b in map_only_pairs if norm(b) not in disputed]
+    print("\n  drawn on the map, missing from the sheet: %d" % len(rest_map))
+    entries = []
+    for kind, a, b in rest_map:
+        ya, yb = year_of(a), year_of(b)
+        flag = ""
+        if ya and yb and yb < ya:
+            flag = "   << BACKWARD IN TIME — cannot be an influence as drawn"
+        entries.append("[%s] %s -> %s%s" % (kind, stamp(a), stamp(b), flag))
+    listing(entries, args.full)
+    if self_loops:
+        listing(self_loops, True)
+
+    rest_sheet = [(a, b) for a, b in sheet_only if norm(b) not in disputed]
+    blocked = [(a, b) for a, b in rest_sheet
+               if norm(a) not in map_games or norm(b) not in map_games]
+    drawable = [(a, b) for a, b in rest_sheet if (a, b) not in blocked]
+    print("  in the sheet, not drawn on the map: %d" % len(rest_sheet))
+    if blocked:
+        print("    blocked — one endpoint isn't drawn yet: %d" % len(blocked))
+        listing(["%s -> %s   (%s not on map)"
+                 % (a, b, b if norm(b) not in map_games else a)
+                 for a, b in blocked], args.full)
+    if drawable:
+        print("    both games already drawn, just an unrecorded line: %d" % len(drawable))
+        listing(["%s -> %s" % (a, b) for a, b in drawable], args.full)
 
     head("INTEGRITY")
     backward, same_year = temporal_violations(sheet)
