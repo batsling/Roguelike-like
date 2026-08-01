@@ -533,7 +533,7 @@ func _separation(a: Color, b: Color) -> float:
 	return absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b)
 
 func test_walked_and_remaining_route_are_told_apart() -> void:
-	assert_gt(_separation(AtlasView.COL_TRAIL, AtlasView.COL_TRAIL_DONE), 0.4,
+	assert_gt(_separation(AtlasView.COL_TRAIL, AtlasView.COL_HISTORY), 0.4,
 		"the road behind you doesn't look like the road ahead")
 
 # The route drawn on the atlas is exactly the DAG the run minimap draws.
@@ -626,3 +626,127 @@ func test_route_segments_run_toward_the_amulet() -> void:
 			"both ends of a route segment can reach the Amulet")
 		assert_eq(int(to_amulet[to_id]), int(to_amulet[from_id]) - 1,
 			"every arrow points one step closer to the Amulet")
+
+# ---------------------------------------------------------------------------
+# The path taken — where the player has actually been this run
+# ---------------------------------------------------------------------------
+
+# This is a genuinely different road from the route ahead: shortest_path_dag is
+# recomputed from where the player stands TO the Amulet, so it never contains a
+# game already behind them.
+func test_no_path_taken_before_the_run_moves() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var view := _open()
+	assert_eq(view.history_segment_count(), 0,
+		"standing on the starting game, nothing has been walked yet")
+
+func test_path_taken_grows_as_the_player_moves() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var start_id: StringName = GameState.current_game_id
+	var next: Array = RunGraph.neighbors(start_id)
+	if next.is_empty():
+		return
+	GameState.set_current_game(next[0])
+	var view := _open()
+	if not view.has_layout():
+		return
+	assert_eq(view.history_segment_count(), 1, "one hop walked, one segment drawn")
+	var seg: Array = view._history[0]
+	assert_eq(view.layout.id_at(int(seg[0])), start_id, "it starts where the run started")
+	assert_eq(view.layout.id_at(int(seg[1])), StringName(next[0]), "and ends where the player is")
+	assert_false(bool(seg[2]), "a normal move follows a real connection")
+
+func test_path_taken_follows_the_order_the_games_were_visited() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	# Walk three real connections.
+	for _hop in range(3):
+		var options: Array = RunGraph.neighbors(GameState.current_game_id)
+		var moved: bool = false
+		for candidate in options:
+			if not GameState.visited_games.has(candidate) and candidate != GameState.current_game_id:
+				GameState.set_current_game(candidate)
+				moved = true
+				break
+		if not moved:
+			break
+	var view := _open()
+	if not view.has_layout() or view.history_segment_count() < 2:
+		return
+	var walked: Array = GameState.visited_games.duplicate()
+	walked.append(GameState.current_game_id)
+	assert_eq(view.history_segment_count(), walked.size() - 1,
+		"one segment per hop actually taken")
+	for i in range(view.history_segment_count()):
+		var seg: Array = view._history[i]
+		assert_eq(view.layout.id_at(int(seg[0])), StringName(walked[i]),
+			"segment %d leaves the right game" % i)
+		assert_eq(view.layout.id_at(int(seg[1])), StringName(walked[i + 1]),
+			"segment %d arrives at the next one" % i)
+
+# Teleport and Winged Boots move the player without traversing a link, so that
+# hop is flagged and drawn dashed rather than passed off as a road.
+func test_a_hop_with_no_connection_is_flagged_as_a_jump() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var start_id: StringName = GameState.current_game_id
+	# Find a game that is definitely NOT connected to the start.
+	var stranger: StringName = &""
+	var linked: Array = RunGraph.neighbors(start_id)
+	for g in Data.all_games():
+		if g.id != start_id and not linked.has(g.id):
+			stranger = g.id
+			break
+	if stranger == &"":
+		return
+	GameState.set_current_game(stranger)
+	var view := _open()
+	if not view.has_layout() or view.history_segment_count() == 0:
+		return
+	assert_true(bool(view._history[0][2]),
+		"a move with no link between the two games reads as a jump")
+
+func test_path_taken_and_route_ahead_are_separate_roads() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var next: Array = RunGraph.neighbors(GameState.current_game_id)
+	if next.is_empty():
+		return
+	GameState.set_current_game(next[0])
+	var view := _open()
+	if not view.has_layout():
+		return
+	assert_gt(view.history_segment_count(), 0, "there is a road behind")
+	# No segment appears on both roads: the DAG starts where the player stands.
+	var behind: Dictionary = {}
+	for seg in view._history:
+		behind["%d>%d" % [int(seg[0]), int(seg[1])]] = true
+	for seg in view._trail:
+		assert_false(behind.has("%d>%d" % [int(seg[0]), int(seg[1])]),
+			"the road ahead never repeats a stretch already walked")
+
+func test_my_run_framing_covers_both_roads() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var next: Array = RunGraph.neighbors(GameState.current_game_id)
+	if next.is_empty():
+		return
+	var start_id: StringName = GameState.current_game_id
+	GameState.set_current_game(next[0])
+	var view := _open()
+	if not view.has_layout() or view.history_segment_count() == 0:
+		return
+	view.frame_trail()
+	var canvas := Rect2(Vector2.ZERO, view._canvas_size()).grow(4.0)
+	var origin: int = view.layout.index_of(start_id)
+	if origin >= 0:
+		assert_true(canvas.has_point(view.to_screen(view.layout.position_of(origin))),
+			"framing the run includes where it began, not just the road ahead")

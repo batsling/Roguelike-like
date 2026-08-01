@@ -22,10 +22,11 @@ extends Control
 # the fringe follows as you keep zooming.
 # Clicking a star isolates it: every one of its connections lights up, the games
 # they reach get rings, and the rest of the sky dims.
-# When a run is in progress the shortest path to the Amulet — the same DAG the
-# run minimap draws — is laid over the sky as a cased road, green behind you and
-# ember ahead, with arrowheads along it pointing toward the goal, so the run map
-# and the atlas are one picture at two altitudes.
+# A run draws two roads over the sky, both cased and arrowed so they can be
+# followed at a glance: the PATH TAKEN in green (where the player has actually
+# been, dashed across any Teleport/Winged Boots hop, since no such link exists)
+# and the ROUTE AHEAD in ember — the same DAG the run minimap draws, so the run
+# map and the atlas are one picture at two altitudes.
 
 signal finished
 
@@ -63,7 +64,7 @@ const COL_EDGE := Color(0.902, 0.835, 0.722, 0.20)
 const COL_EDGE_CROSS := Color(1.0, 0.541, 0.235, 0.13)
 const COL_HULL := Color(0.902, 0.835, 0.722, 0.028)
 const COL_TRAIL := Color(1.0, 0.60, 0.24, 0.95)          # road ahead — ember
-const COL_TRAIL_DONE := Color(0.36, 0.85, 0.48, 0.92)    # already walked — green
+const COL_HISTORY := Color(0.36, 0.85, 0.48, 0.92)       # the path actually walked — green
 const COL_TRAIL_CASING := Color(0.055, 0.04, 0.028, 0.92)
 const COL_SELECTED_EDGE := Color(0.98, 0.94, 0.86, 0.85) # a clicked game's links
 const COL_DIM := Color(1, 1, 1, 0.11)
@@ -88,7 +89,8 @@ var _dragging: bool = false
 var _drag_moved: float = 0.0
 var _neighbors: Dictionary = {}      # star index -> Array[int], built lazily
 var _near: Dictionary = {}           # selection halo: index -> true
-var _trail: Array = []               # [[from_idx, to_idx, done: bool], ...]
+var _trail: Array = []               # road ahead:  [[from_idx, to_idx], ...]
+var _history: Array = []             # walked:      [[from_idx, to_idx, jumped: bool], ...]
 var _hulls: Array = []               # [{ci, centre: Vector2, radius: float}], built lazily
 
 var _canvas: Control = null
@@ -118,6 +120,7 @@ func _ready() -> void:
 	# Before _build(): the header's "My run" button and the route legend both ask
 	# whether there IS a route, so the trail has to exist first.
 	_build_trail()
+	_build_history()
 	_build()
 	frame_all()
 
@@ -179,12 +182,42 @@ func _build_trail() -> void:
 		var b: int = layout.index_of(StringName(edge.get("to", "")))
 		if a < 0 or b < 0:
 			continue
-		var done: bool = GameState.visited_games.has(layout.id_at(a)) \
-			and GameState.visited_games.has(layout.id_at(b))
-		_trail.append([a, b, done])
+		_trail.append([a, b])
 
 func trail_segment_count() -> int:
 	return _trail.size()
+
+# The route the player has ACTUALLY walked this run, oldest hop first.
+#
+# This is a different thing from the road ahead and has to be drawn separately:
+# `shortest_path_dag` is recomputed from where the player stands *to* the Amulet,
+# so it never contains a game already behind them. `GameState.visited_games` is
+# the ordered list of games left behind, and the player is standing on the game
+# that follows the last of them.
+#
+# Consecutive entries are not always adjacent on the graph — Scroll of
+# Teleportation and Winged Boots move the player without traversing a link — so
+# a hop that isn't a real connection is flagged and drawn dashed rather than
+# passed off as a road that exists.
+func _build_history() -> void:
+	_history.clear()
+	if not has_layout():
+		return
+	var walked: Array = []
+	for id in GameState.visited_games:
+		walked.append(StringName(id))
+	var current: StringName = GameState.current_game_id
+	if current != &"" and (walked.is_empty() or walked[walked.size() - 1] != current):
+		walked.append(current)
+	for i in range(walked.size() - 1):
+		var a: int = layout.index_of(walked[i])
+		var b: int = layout.index_of(walked[i + 1])
+		if a < 0 or b < 0 or a == b:
+			continue
+		_history.append([a, b, not neighbors_of(a).has(b)])
+
+func history_segment_count() -> int:
+	return _history.size()
 
 # Centre and radius of each constellation, read straight off the bake. Sorted
 # biggest-first so the largest region claims its name's spot before the rest.
@@ -233,11 +266,13 @@ func frame_all() -> void:
 # Pull the camera onto the run's route, so "show me my run on the big map" lands
 # somewhere legible instead of at whole-sky zoom.
 func frame_trail() -> void:
-	if _trail.is_empty() or not has_layout():
+	var all: Array = _history + _trail
+	if all.is_empty() or not has_layout():
 		frame_all()
 		return
-	var r := Rect2(layout.position_of(_trail[0][0]), Vector2.ZERO)
-	for seg in _trail:
+	# The whole run: everywhere walked and everywhere still to go.
+	var r := Rect2(layout.position_of(all[0][0]), Vector2.ZERO)
+	for seg in all:
 		r = r.expand(layout.position_of(seg[0]))
 		r = r.expand(layout.position_of(seg[1]))
 	frame_rect(r.grow(28.0))
@@ -449,7 +484,7 @@ func _build_header() -> Control:
 	_search.text_submitted.connect(_on_search)
 	row.add_child(_search)
 
-	if not _trail.is_empty():
+	if not _trail.is_empty() or not _history.is_empty():
 		row.add_child(_tool_button("My run", frame_trail))
 	row.add_child(_tool_button("−", func(): zoom_by(1.0 / 1.3, _canvas_size() * 0.5)))
 	row.add_child(_tool_button("+", func(): zoom_by(1.3, _canvas_size() * 0.5)))
@@ -476,9 +511,10 @@ func _build_legend() -> Control:
 	bar.add_child(row)
 	for t in RunGraph.TYPE_ORDER:
 		row.add_child(_legend_chip(RunGraph.type_label(t), RunGraph.type_color(t)))
+	if not _history.is_empty():
+		row.add_child(_route_key("Path taken", COL_HISTORY))
 	if not _trail.is_empty():
 		row.add_child(_route_key("Route ahead", COL_TRAIL))
-		row.add_child(_route_key("Walked", COL_TRAIL_DONE))
 	var note := Label.new()
 	note.text = "Star size = connections"
 	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -754,7 +790,7 @@ class StarCanvas extends Control:
 		# click asked, and the answer shouldn't depend on the camera.
 		if show_links or focused:
 			_draw_edges(lay, focused)
-		_draw_trail()
+		_draw_roads()
 		_draw_stars(lay, show_rims, focused, visible_rect)
 		_draw_capital_rings(lay)
 		_draw_region_names(lay)
@@ -787,42 +823,61 @@ class StarCanvas extends Control:
 			draw_line(view.to_screen(lay.position_of(a)), view.to_screen(lay.position_of(b)),
 				col, sel_width if incident else width, true)
 
-	# The run's route to the Amulet, laid over the sky. Walked segments read
-	# green, the road ahead ember.
-	func _draw_trail() -> void:
-		if view._trail.is_empty():
+	# The two roads of a run, drawn as cased lines with arrowheads along them:
+	# where the player has been (green) and where they are going (ember). The
+	# walked road goes down first so the road ahead reads on top of it — that's
+	# the one carrying a decision.
+	func _draw_roads() -> void:
+		_draw_road(view._history, AtlasView.COL_HISTORY)
+		_draw_road(view._trail, AtlasView.COL_TRAIL)
+
+	# One road. Every casing is laid down before any core, so one segment's core
+	# never sits on another's outline and read as a break in the road; arrowheads
+	# go last, on top of everything.
+	func _draw_road(segments: Array, col: Color) -> void:
+		if segments.is_empty():
 			return
 		var lay: AtlasLayout = view.layout
 		var core: float = clampf(view._scale * 0.42, 2.0, 5.0)
 		var casing: float = core + maxf(2.0, core * 0.75)
-		# Casing first, whole route, so one segment's core never sits on another's
-		# outline — that would read as a break in the road.
-		for seg in view._trail:
-			draw_line(view.to_screen(lay.position_of(int(seg[0]))),
-				view.to_screen(lay.position_of(int(seg[1]))),
-				AtlasView.COL_TRAIL_CASING, casing, true)
-		for seg in view._trail:
-			var col: Color = AtlasView.COL_TRAIL_DONE if bool(seg[2]) else AtlasView.COL_TRAIL
-			draw_line(view.to_screen(lay.position_of(int(seg[0]))),
-				view.to_screen(lay.position_of(int(seg[1]))), col, core, true)
-		# Arrowheads last, on top of every core, pointing the way the run travels:
-		# a DAG edge always runs from the game nearer you to the game nearer the
-		# Amulet, so the chevrons read as "this way to the goal".
+		var dash: float = maxf(9.0, casing * 2.4)
+
+		for seg in segments:
+			var a: Vector2 = view.to_screen(lay.position_of(int(seg[0])))
+			var b: Vector2 = view.to_screen(lay.position_of(int(seg[1])))
+			if _jumped(seg):
+				draw_dashed_line(a, b, AtlasView.COL_TRAIL_CASING, casing, dash, true)
+			else:
+				draw_line(a, b, AtlasView.COL_TRAIL_CASING, casing, true)
+		for seg in segments:
+			var a2: Vector2 = view.to_screen(lay.position_of(int(seg[0])))
+			var b2: Vector2 = view.to_screen(lay.position_of(int(seg[1])))
+			if _jumped(seg):
+				draw_dashed_line(a2, b2, col, core, dash, true)
+			else:
+				draw_line(a2, b2, col, core, true)
+
+		# Arrowheads point the way the run travels: along the road ahead a DAG edge
+		# always runs from the game nearer you to the game nearer the Amulet, and
+		# along the walked road from the older game to the newer one.
 		var head: float = clampf(core * 3.1, 8.0, 24.0)
-		for seg in view._trail:
+		for seg in segments:
 			var from_i: int = int(seg[0])
 			var to_i: int = int(seg[1])
-			var a: Vector2 = view.to_screen(lay.position_of(from_i))
-			var b: Vector2 = view.to_screen(lay.position_of(to_i))
-			var delta: Vector2 = b - a
+			var a3: Vector2 = view.to_screen(lay.position_of(from_i))
+			var delta: Vector2 = view.to_screen(lay.position_of(to_i)) - a3
 			var length: float = delta.length()
 			if length < 1.0:
 				continue
 			var dir: Vector2 = delta / length
-			var col: Color = AtlasView.COL_TRAIL_DONE if bool(seg[2]) else AtlasView.COL_TRAIL
 			for t in AtlasView.route_arrow_offsets(length,
 					view.drawn_half_height(from_i), view.drawn_half_height(to_i), head):
-				_chevron(a + dir * t, dir, head, col)
+				_chevron(a3 + dir * t, dir, head, col)
+
+	# A hop the player made without traversing a link — a Teleportation scroll or
+	# Winged Boots. Drawn dashed, because no such road exists on the map.
+	func _jumped(seg: Array) -> bool:
+		return seg.size() > 2 and bool(seg[2])
 
 	# One arrowhead: a cased triangle, so it stays legible over cover art the
 	# same way the road itself does.
