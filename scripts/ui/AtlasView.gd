@@ -67,6 +67,10 @@ const COL_TRAIL := Color(1.0, 0.60, 0.24, 0.95)          # road ahead — ember
 const COL_HISTORY := Color(0.36, 0.85, 0.48, 0.92)       # the path actually walked — green
 const COL_TRAIL_CASING := Color(0.055, 0.04, 0.028, 0.92)
 const COL_SELECTED_EDGE := Color(0.98, 0.94, 0.86, 0.85) # a clicked game's links
+# Sequel / same-studio links. The hand-drawn draw.io map has always drawn these
+# blue and apart from plain influence; the game flattened the distinction until
+# the sheet's Dev/Series column was imported. ~112 links carry it.
+const COL_EDGE_SEQUEL := Color(0.42, 0.62, 1.0, 0.42)
 const COL_DIM := Color(1, 1, 1, 0.11)
 
 const PICK_RADIUS := 14.0        # screen-space click tolerance, so tiny dots stay clickable
@@ -94,6 +98,7 @@ var _near: Dictionary = {}           # selection halo: index -> true
 var _trail: Array = []               # road ahead:  [[from_idx, to_idx], ...]
 var _history: Array = []             # walked:      [[from_idx, to_idx, jumped: bool], ...]
 var _hulls: Array = []               # [{ci, centre: Vector2, radius: float}], built lazily
+var _sequel_cache: Dictionary = {}   # edge index -> bool, built lazily
 
 var _canvas: Control = null
 var _card: PanelContainer = null
@@ -375,6 +380,28 @@ static func route_arrow_offsets(length: float, pad_a: float, pad_b: float,
 		out.append(start + step * (float(k) + 0.5))
 	return out
 
+# Whether an edge is a sequel / same-developers link rather than plain influence.
+# Cached: the answer never changes for a given sky, and _draw_edges asks about
+# every edge on every frame.
+func is_sequel_link(edge_index: int) -> bool:
+	if not has_layout() or edge_index < 0 or edge_index >= layout.edge_count():
+		return false
+	if _sequel_cache.is_empty():
+		for e in range(layout.edge_count()):
+			var d: Dictionary = edge_details(e)
+			_sequel_cache[e] = not d.is_empty() and String(d.get("relation", "")) != ""
+	return bool(_sequel_cache.get(edge_index, false))
+
+func sequel_link_count() -> int:
+	if not has_layout():
+		return 0
+	is_sequel_link(0)
+	var n: int = 0
+	for v in _sequel_cache.values():
+		if bool(v):
+			n += 1
+	return n
+
 # How many stars are showing art right now — drives the zoom readout.
 func cover_count() -> int:
 	if not has_layout():
@@ -567,6 +594,8 @@ func _build_legend() -> Control:
 	bar.add_child(row)
 	for t in RunGraph.TYPE_ORDER:
 		row.add_child(_legend_chip(RunGraph.type_label(t), RunGraph.type_color(t)))
+	if sequel_link_count() > 0:
+		row.add_child(_legend_chip("Sequel / same devs", COL_EDGE_SEQUEL))
 	if not _history.is_empty():
 		row.add_child(_route_key("Path taken", COL_HISTORY))
 	if not _trail.is_empty():
@@ -1033,17 +1062,25 @@ class StarCanvas extends Control:
 		while e + 1 < lay.edges.size():
 			var a: int = lay.edges[e]
 			var b: int = lay.edges[e + 1]
+			var edge_index: int = e / 2      # `edges` is flat pairs; this is the pair's index
 			e += 2
 			var incident: bool = focused and (a == view._selected or b == view._selected)
 			if focused and not incident:
 				continue
 			var col: Color = AtlasView.COL_EDGE
+			var w: float = width
 			if incident:
 				col = AtlasView.COL_SELECTED_EDGE
+				w = sel_width
+			elif view.is_sequel_link(edge_index):
+				# A sequel or same-studio link is a stronger claim than "inspired",
+				# so it reads stronger — and matches the hand map's blue.
+				col = AtlasView.COL_EDGE_SEQUEL
+				w = width * 1.5
 			elif lay.region[a] != lay.region[b]:
 				col = AtlasView.COL_EDGE_CROSS
 			draw_line(view.to_screen(lay.position_of(a)), view.to_screen(lay.position_of(b)),
-				col, sel_width if incident else width, true)
+				col, w, true)
 
 	# The two roads of a run, drawn as cased lines with arrowheads along them:
 	# where the player has been (green) and where they are going (ember). The
@@ -1151,6 +1188,12 @@ class StarCanvas extends Control:
 			var reserved: float = AtlasLayout.star_radius(lay.degree_of(i)) * view._scale
 			var r: float = maxf(1.2, reserved * 0.9)
 			var faded: bool = focused and not view._near.has(i)
+			# A game you've beaten burns at full strength; one you haven't is dim.
+			# The sky fills in as the collection does, with no new systems behind it.
+			var beaten: bool = GameState.has_beaten_game(lay.id_at(i)) \
+				or GameStats.amulet_wins(lay.id_at(i)) > 0
+			if not beaten:
+				col = col.lerp(UITheme.BG_DEEP, 0.42)
 			if faded:
 				col = col.lerp(UITheme.BG_DEEP, 0.78)
 
@@ -1177,6 +1220,9 @@ class StarCanvas extends Control:
 			# how many connections there are, the rings say which games they reach.
 			if focused and not faded and i != view._selected:
 				draw_arc(p, r + 2.5, 0.0, TAU, 24, AtlasView.COL_SELECTED_EDGE, 1.4, true)
+			# A game the player owns wears a ring, so the sky doubles as a shelf.
+			if not faded and game != null and game.owned:
+				draw_arc(p, r + 2.0, 0.0, TAU, 20, Color(UITheme.TEXT_DIM, 0.5), 1.0, true)
 			if not faded and i == view._hovered:
 				draw_arc(p, r + 3.0, 0.0, TAU, 24, UITheme.TEXT, 1.5, true)
 			if i == current:

@@ -967,3 +967,39 @@ func test_every_link_on_the_map_can_be_described() -> void:
 	for e in range(view.layout.edge_count()):
 		var d: Dictionary = view.edge_details(e)
 		assert_false(d.is_empty(), "link %d names its two games" % e)
+
+# ---------------------------------------------------------------------------
+# Sequel links, and owned / beaten stars
+# ---------------------------------------------------------------------------
+
+func test_sequel_links_are_identified() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	var count: int = view.sequel_link_count()
+	assert_gt(count, 50, "the sheet's ~112 sequel / same-devs links are found on the map")
+	assert_lt(count, view.layout.edge_count(), "but they're a minority of all links")
+
+func test_a_sequel_link_agrees_with_its_card() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	for e in range(view.layout.edge_count()):
+		var flagged: bool = view.is_sequel_link(e)
+		var d: Dictionary = view.edge_details(e)
+		var relation: String = String(d.get("relation", ""))
+		assert_eq(flagged, relation != "",
+			"link %d draws as a sequel exactly when its card says so" % e)
+
+func test_sequel_stroke_is_distinct_from_the_other_lines() -> void:
+	assert_gt(_separation(AtlasView.COL_EDGE_SEQUEL, AtlasView.COL_EDGE), 0.3,
+		"a sequel link doesn't look like a plain influence")
+	assert_gt(_separation(AtlasView.COL_EDGE_SEQUEL, AtlasView.COL_TRAIL), 0.3,
+		"nor like the route")
+
+func test_bad_edge_index_is_not_a_sequel() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	assert_false(view.is_sequel_link(-1))
+	assert_false(view.is_sequel_link(view.layout.edge_count()))

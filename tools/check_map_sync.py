@@ -56,6 +56,7 @@ import argparse
 import collections
 import difflib
 import html
+import glob
 import os
 import re
 import sys
@@ -66,6 +67,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 DEFAULT_SVG = os.path.join(SCRIPT_DIR, "Roguelikes.drawio6.svg")
 XLSX_PATH = os.path.join(SCRIPT_DIR, "Roguelikes.xlsx")
+GAMES_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "data", "games")
 
 BLUE = "#0000FF"
 GREY = "#C8C8C8"
@@ -111,6 +113,13 @@ def strip_markup(value: str) -> str:
     value = re.sub(r"<br[^>]*>", " ", value)
     value = re.sub(r"<[^>]+>", "", value)
     return re.sub(r"\s+", " ", html.unescape(value)).strip()
+
+
+def norm_id(name: str) -> str:
+    """Game id slug. MUST match id_for() in import-games-godot.py."""
+    cleaned = re.sub(r"[\[\]]", "", name)
+    cleaned = re.sub(r"[^a-zA-Z0-9\s]", " ", cleaned)
+    return "_".join(p.lower() for p in cleaned.split() if p)
 
 
 def norm(name: str) -> str:
@@ -632,11 +641,72 @@ def main():
     else:
         print("  OK  no 'convergent evolution' links have leaked into the sheet")
 
-    dropped = sheet["dev_flags"], sheet["sourced"]
     print("  note: the sheet's Dev/Series Relation (%d rows) and Source (%d rows)"
-          % dropped)
-    print("        columns are not carried into GameData by import-games-godot.py.")
+          % (sheet["dev_flags"], sheet["sourced"]))
+    print("        columns ARE carried into GameData (influence_relations /")
+    print("        influence_sources) as of the connection-proof import.")
+
+    # Sheet vs. data/games/. The drawio map and the sheet are compared above; this
+    # is the OTHER drift, and the one that actually bites — the sheet can be ahead
+    # of the imported .tres for months without anything noticing, because the game
+    # only ever reads the .tres files.
+    catalog_drift(sheet)
     return 0
+
+
+def load_catalog() -> dict:
+    """The imported catalog as {game_id: set(influenced_ids)}."""
+    out = {}
+    for path in sorted(glob.glob(os.path.join(GAMES_DIR, "*.tres"))):
+        src = open(path, encoding="utf-8").read()
+        gid = re.search(r'^id = &"([^"]+)"', src, re.M)
+        if not gid:
+            continue
+        infl = re.search(r"^games_influenced = Array\[StringName\]\(\[(.*?)\]\)", src, re.M)
+        out[gid.group(1)] = set(re.findall(r'&"([^"]+)"', infl.group(1) if infl else ""))
+    return out
+
+
+def catalog_drift(sheet) -> None:
+    head("SHEET vs data/games/")
+    catalog = load_catalog()
+    if not catalog:
+        print("  no imported catalog found — run tools/import-games-godot.py")
+        return
+
+    want_games = {norm_id(g["name"]) for g in sheet["games"].values()}
+    have_games = set(catalog)
+    missing_games = sorted(want_games - have_games)
+    extra_games = sorted(have_games - want_games)
+
+    want_links = set()
+    for link in sheet["connections"].values():
+        a, b = norm_id(link["a"]), norm_id(link["b"])
+        if a in want_games and b in want_games and a != b:
+            want_links.add((a, b))
+    have_links = {(a, b) for a, outs in catalog.items() for b in outs}
+
+    missing_links = sorted(want_links - have_links)
+    extra_links = sorted(have_links - want_links)
+
+    print("  games      in sheet: %d | imported: %d" % (len(want_games), len(have_games)))
+    print("  connections in sheet: %d | imported: %d" % (len(want_links), len(have_links)))
+    if not (missing_games or extra_games or missing_links or extra_links):
+        print("  OK  data/games/ is up to date with the sheet")
+        return
+    if missing_games:
+        print("  !! %d game(s) in the sheet were never imported:" % len(missing_games))
+        listing(missing_games, False)
+    if extra_games:
+        print("  !! %d imported game(s) are no longer in the sheet:" % len(extra_games))
+        listing(extra_games, False)
+    if missing_links:
+        print("  !! %d connection(s) in the sheet were never imported:" % len(missing_links))
+        listing(["%s -> %s" % pair for pair in missing_links], False)
+    if extra_links:
+        print("  !! %d imported connection(s) are no longer in the sheet:" % len(extra_links))
+        listing(["%s -> %s" % pair for pair in extra_links], False)
+    print("  fix: python3 tools/import-games-godot.py")
 
 
 if __name__ == "__main__":
