@@ -39,6 +39,7 @@ CHAR_W = 6.6
 PAD_X = 14.0
 MIN_GAP = 26.0     # horizontal gap between boxes; also the shared edge highway
 CLEAR = 5.0        # how far an edge stays off a box
+COLUMN_W = 2.0     # a shared free column must be at least this wide to use
 
 
 def load():
@@ -145,26 +146,83 @@ def build(name, year, edges, seed_x, per_row=1):
                 bd, best = d, a if want < a else b
         return best
 
+    def overlap(spans, other):
+        """Intersect two sorted lists of free intervals."""
+        out, i, j = [], 0, 0
+        while i < len(spans) and j < len(other):
+            lo = max(spans[i][0], other[j][0])
+            hi = min(spans[i][1], other[j][1])
+            if hi - lo >= COLUMN_W:
+                out.append((lo, hi))
+            if spans[i][1] < other[j][1]:
+                i += 1
+            else:
+                j += 1
+        return out
+
+    def pick(spans, want):
+        best, bd = None, 1e18
+        for lo, hi in spans:
+            c = min(max(want, lo), hi)
+            if abs(c - want) < bd:
+                bd, best = abs(c - want), c
+        return best
+
+    # Horizontal runs share the gutter between two rows. Spreading them over
+    # lanes stops every jog in a gutter landing on the same pixel row. The lane
+    # is keyed by the GROUP, not the edge, so siblings coincide exactly.
+    def lane_y(li, key):
+        top = li * ROW_H + NODE_H / 2 + CLEAR
+        usable = ROW_H - NODE_H - 2 * CLEAR
+        return top + usable * (0.15 + 0.7 * (((key * 2654435761) % 1000) / 1000.0))
+
     y = {g: layer_of[year[g]] * ROW_H for g in year}
-    routes, intra = [], []
+
+    # Group by (source, target row). Everything in a group shares one trunk down
+    # from the source and one horizontal bus in the gutter above the target row,
+    # with a short vertical dropping to each target — the org-chart comb. Without
+    # this, Slay the Spire's 124 children draw 124 parallel horizontal runs in
+    # one gutter and they merge into a solid bar.
+    groups = collections.OrderedDict()
+    intra = []
     for a, b, dev in edges:
         la, lb = layer_of[year[a]], layer_of[year[b]]
         if la >= lb:
             intra.append({"a": a, "b": b, "dev": dev})
             continue
-        pts = [(x[a], y[a] + NODE_H / 2)]
-        for li in range(la + 1, lb):
-            t = (li - la) / float(lb - la)
-            want = x[a] + (x[b] - x[a]) * t
-            cx = clear_x(li, want)
-            # Two points at the SAME x, bracketing the row band: the line must be
-            # vertical while it is level with the boxes, or it clips one on the
-            # way in even though the waypoint itself is in a gap.
-            band = NODE_H / 2 + CLEAR
-            pts.append((cx, li * ROW_H - band))
-            pts.append((cx, li * ROW_H + band))
-        pts.append((x[b], y[b] - NODE_H / 2))
-        routes.append({"pts": pts, "dev": dev, "a": a, "b": b})
+        groups.setdefault((a, lb), []).append((b, dev))
+
+    routes = []
+    for key, ((a, lb), members) in enumerate(groups.items()):
+        la = layer_of[year[a]]
+        # Aim the trunk at the middle of the children it serves.
+        xs = sorted(x[b] for b, _ in members)
+        aim = xs[len(xs) // 2]
+        # Orthogonal staircase down from the source: a vertical run may only
+        # descend through a column free in EVERY row it passes, so greedily take
+        # the longest run of rows sharing a free column before jogging again.
+        trunk = [(x[a], y[a] + NODE_H / 2)]
+        cur, cx = la + 1, x[a]
+        while cur < lb:
+            acc, end = gaps[cur], cur
+            while end + 1 < lb:
+                nxt = overlap(acc, gaps[end + 1])
+                if not nxt:
+                    break
+                acc, end = nxt, end + 1
+            want = x[a] + (aim - x[a]) * ((end - la + 0.5) / float(lb - la))
+            nx = pick(acc, want)
+            if nx is None:                      # no shared column: step one row
+                nx, end = clear_x(cur, want), cur
+            gy = lane_y(cur - 1, key)
+            trunk.append((cx, gy))              # down out of the previous run
+            trunk.append((nx, gy))              # across the gutter
+            cx, cur = nx, end + 1
+        bus = lane_y(lb - 1, key)
+        trunk.append((cx, bus))
+        for b, dev in members:
+            routes.append({"pts": trunk + [(x[b], bus), (x[b], y[b] - NODE_H / 2)],
+                           "dev": dev, "a": a, "b": b})
     return {"layers": layers, "x": x, "y": y, "w": width, "routes": routes,
             "intra": intra, "row_years": row_years, "years": years,
             "per_row": per_row}
