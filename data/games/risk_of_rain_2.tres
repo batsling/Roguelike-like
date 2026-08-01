@@ -9,7 +9,9 @@ id = &"risk_of_rain_2"
 display_name = "Risk of Rain 2"
 year = 2020
 type = 0
-games_influenced = Array[StringName]([&"endless_alice", &"everything_is_crab", &"gatekeeper", &"lort", &"megabonk", &"morbid_metal", &"muck", &"pok_rogue", &"swapmeat", &"terroguelike", &"vellum", &"tears_of_metal"])
+games_influenced = Array[StringName]([&"endless_alice", &"everything_is_crab", &"gatekeeper", &"lort", &"megabonk", &"morbid_metal", &"muck", &"pok_rogue", &"swapmeat", &"tears_of_metal", &"terroguelike", &"vellum"])
+influence_sources = PackedStringArray("https://steamcommunity.com/app/1425000/discussions/0/595137684887848950/#c595137684887857500", "check folder", "look at it", "https://www.reddit.com/r/pcgaming/comments/1p30oqw/were_big_distraction_an_indie_studio_founded_by/", "check folder", "check folder", "https://youtu.be/GWc7QppCPHM", "check folder", "https://www.reddit.com/r/pcgaming/comments/1f9y4d8/weve_been_making_our_totally_normal_coop_shooter/", "https://youtu.be/Jn9yS2eSJzg", "it's clear from the discord messages", "https://rogueliker.com/vellum-inspirations/#:~:text=Vellum's%20Inspirations,chapter%20of%20the%20original%20series.")
+influence_relations = PackedStringArray("", "", "", "", "", "", "", "", "", "", "", "")
 tags = PackedStringArray("space")
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

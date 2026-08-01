@@ -70,6 +70,7 @@ const COL_SELECTED_EDGE := Color(0.98, 0.94, 0.86, 0.85) # a clicked game's link
 const COL_DIM := Color(1, 1, 1, 0.11)
 
 const PICK_RADIUS := 14.0        # screen-space click tolerance, so tiny dots stay clickable
+const PICK_EDGE_RADIUS := 7.0    # how near a link you must click to open it
 
 # A star turns into its cover art as soon as that art would be drawn at least
 # this wide. This is a per-star test, not one global zoom threshold: a star's
@@ -84,6 +85,7 @@ var _scale: float = 1.0
 var _fit_scale: float = 1.0
 var _offset: Vector2 = Vector2.ZERO
 var _selected: int = -1
+var _selected_edge: int = -1         # index of the clicked link, as an edge pair
 var _hovered: int = -1
 var _dragging: bool = false
 var _drag_moved: float = 0.0
@@ -401,8 +403,62 @@ func pick(at: Vector2) -> int:
 			best = i
 	return best
 
+# Nearest LINK to a click, as an edge-pair index, or -1. Stars win ties: a click
+# near a hub touches dozens of lines, and the star is almost always what was
+# meant, so `pick()` is consulted first by the caller.
+func pick_edge(at: Vector2) -> int:
+	if not has_layout():
+		return -1
+	var best: int = -1
+	var best_d: float = PICK_EDGE_RADIUS * PICK_EDGE_RADIUS
+	var pairs: int = layout.edge_count()
+	for e in range(pairs):
+		var a: int = layout.edges[e * 2]
+		var b: int = layout.edges[e * 2 + 1]
+		# Only links actually on screen can be clicked, so what you see is what
+		# you get: when a star is selected the sky shows just its links.
+		if _selected >= 0 and a != _selected and b != _selected:
+			continue
+		var pa: Vector2 = to_screen(layout.position_of(a))
+		var pb: Vector2 = to_screen(layout.position_of(b))
+		var d: float = at.distance_squared_to(Geometry2D.get_closest_point_to_segment(at, pa, pb))
+		if d < best_d:
+			best_d = d
+			best = e
+	return best
+
+# The two games a link joins, in the direction the connection was authored:
+# {"from": GameData, "to": GameData, "source": String, "relation": String}.
+# Empty when the edge index is out of range or either game is missing.
+func edge_details(edge_index: int) -> Dictionary:
+	if not has_layout() or edge_index < 0 or edge_index >= layout.edge_count():
+		return {}
+	var a: GameData = Data.get_game(layout.id_at(layout.edges[edge_index * 2]))
+	var b: GameData = Data.get_game(layout.id_at(layout.edges[edge_index * 2 + 1]))
+	var found: Dictionary = GameData.describe_influence(a, b)
+	if found.is_empty():
+		# Both endpoints are real but the authored direction is gone — treat the
+		# baked order as the claim rather than showing nothing.
+		if a == null or b == null:
+			return {}
+		return {"from": a, "to": b, "source": "", "relation": ""}
+	return found
+
+func select_edge(e: int) -> void:
+	_selected_edge = e
+	if e >= 0:
+		_selected = -1
+		_near.clear()
+	_refresh_card()
+	_redraw()
+
+func selected_edge_index() -> int:
+	return _selected_edge
+
 func select(i: int) -> void:
 	_selected = i
+	if i >= 0:
+		_selected_edge = -1
 	_near.clear()
 	if i >= 0:
 		_near[i] = true
@@ -570,23 +626,31 @@ func _build_card() -> PanelContainer:
 		UITheme.flat(UITheme.PANEL, 8, 12, 1, UITheme.BORDER))
 	card.custom_minimum_size = Vector2(272, 0)
 	card.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	card.position = Vector2(-292, 76)
+	card.offset_top = 76
+	card.offset_bottom = 76             # grows with its content
+	card.grow_vertical = Control.GROW_DIRECTION_END
 	card.visible = false
 	_card_box = VBoxContainer.new()
 	_card_box.add_theme_constant_override("separation", 8)
 	card.add_child(_card_box)
 	return card
 
-# The click-through card: cover art, the facts, and a way back to the real game.
+# The click-through card. Two shapes: a GAME (cover, facts, launch) when a star
+# is clicked, and a CONNECTION (both games, the claim, the evidence) when a link
+# is clicked.
 func _refresh_card() -> void:
 	if _card == null:
 		return
 	for c in _card_box.get_children():
 		c.queue_free()
+	if _selected_edge >= 0 and has_layout():
+		_fill_connection_card()
+		return
 	if _selected < 0 or not has_layout():
 		_card.visible = false
 		return
 	_card.visible = true
+	_set_card_width(272.0)
 
 	var id: StringName = layout.id_at(_selected)
 	var game: GameData = Data.get_game(id)
@@ -646,6 +710,152 @@ func _refresh_card() -> void:
 	dismiss.add_theme_font_size_override("font_size", 12)
 	dismiss.pressed.connect(func(): select(-1))
 	_card_box.add_child(dismiss)
+
+# One connection: who influenced whom, and what backs the claim.
+func _fill_connection_card() -> void:
+	var d: Dictionary = edge_details(_selected_edge)
+	if d.is_empty():
+		_card.visible = false
+		return
+	_card.visible = true
+	_set_card_width(348.0)
+
+	var from_game: GameData = d["from"]
+	var to_game: GameData = d["to"]
+
+	var heading := Label.new()
+	heading.text = "CONNECTION"
+	heading.add_theme_font_size_override("font_size", 10)
+	heading.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	_card_box.add_child(heading)
+
+	# The two games, influencer on the left, with the arrow between them showing
+	# which way the influence ran.
+	var pair := HBoxContainer.new()
+	pair.add_theme_constant_override("separation", 8)
+	pair.alignment = BoxContainer.ALIGNMENT_CENTER
+	_card_box.add_child(pair)
+	pair.add_child(_connection_side(from_game))
+	var arrow := Label.new()
+	arrow.text = "→"
+	arrow.add_theme_font_size_override("font_size", 22)
+	arrow.add_theme_color_override("font_color", UITheme.ACCENT)
+	arrow.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	pair.add_child(arrow)
+	pair.add_child(_connection_side(to_game))
+
+	var claim := Label.new()
+	claim.text = "%s inspired %s" % [from_game.display_name, to_game.display_name]
+	claim.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	claim.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	claim.add_theme_font_size_override("font_size", 13)
+	claim.add_theme_color_override("font_color", UITheme.TEXT)
+	_card_box.add_child(claim)
+
+	# The sheet flags roughly 110 links as a sequel or the same studio rather than
+	# one game merely inspiring another. That's a stronger claim, so it's said.
+	if String(d.get("relation", "")) != "":
+		var chip := Label.new()
+		chip.text = "SEQUEL / SAME DEVELOPERS"
+		chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		chip.add_theme_font_size_override("font_size", 10)
+		chip.add_theme_color_override("font_color", UITheme.GOLD)
+		_card_box.add_child(chip)
+
+	_card_box.add_child(_hairline())
+
+	var proof_label := Label.new()
+	proof_label.text = "PROOF"
+	proof_label.add_theme_font_size_override("font_size", 10)
+	proof_label.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	_card_box.add_child(proof_label)
+
+	var source: String = String(d.get("source", "")).strip_edges()
+	if source == "":
+		_card_box.add_child(_proof_note("No source recorded for this connection yet."))
+	elif GameData.is_openable_source(source):
+		var open_btn := Button.new()
+		open_btn.text = "🔗  Open source"
+		open_btn.add_theme_font_size_override("font_size", 12)
+		open_btn.pressed.connect(func(): OS.shell_open(source))
+		_card_box.add_child(open_btn)
+		var url := Label.new()
+		url.text = source
+		url.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+		url.add_theme_font_size_override("font_size", 10)
+		url.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+		_card_box.add_child(url)
+	else:
+		# Notes like "check folder" or "game credits" point at evidence kept
+		# somewhere else — shown as written rather than dressed up as a link.
+		_card_box.add_child(_proof_note(source))
+
+	var dismiss := Button.new()
+	dismiss.text = "Dismiss"
+	dismiss.add_theme_font_size_override("font_size", 12)
+	dismiss.pressed.connect(func(): select_edge(-1))
+	_card_box.add_child(dismiss)
+
+# One half of a connection card: cover, name, year — clickable through to that
+# game's own card.
+func _connection_side(game: GameData) -> Control:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	col.custom_minimum_size.x = 132
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if game.cover_image != null:
+		var art := TextureRect.new()
+		art.texture = game.cover_image
+		art.custom_minimum_size = Vector2(132, 72)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		col.add_child(art)
+	var name_label := Label.new()
+	name_label.text = game.display_name
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.add_theme_color_override("font_color", UITheme.GOLD)
+	col.add_child(name_label)
+	var meta := Label.new()
+	meta.text = "%s · %d" % [RunGraph.type_label(game.type), game.year] if game.year > 0 \
+		else RunGraph.type_label(game.type)
+	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	meta.add_theme_font_size_override("font_size", 10)
+	meta.add_theme_color_override("font_color", RunGraph.type_color(game.type))
+	col.add_child(meta)
+	var jump := Button.new()
+	jump.text = "Inspect"
+	jump.add_theme_font_size_override("font_size", 10)
+	jump.pressed.connect(func(): focus_game(game.id))
+	col.add_child(jump)
+	return col
+
+func _proof_note(text: String) -> Control:
+	var l := Label.new()
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	return l
+
+func _hairline() -> Control:
+	var line := PanelContainer.new()
+	line.custom_minimum_size.y = 1
+	line.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BORDER, 0, 0))
+	return line
+
+# The card is anchored to the top-right, so its offset has to be re-derived
+# whenever its width changes — otherwise the wider connection card hangs off the
+# edge of the screen.
+func _set_card_width(width: float) -> void:
+	const MARGIN := 20.0
+	# The card is anchored to the top-right, so its horizontal extent is the pair
+	# of OFFSETS, not `position` — writing position here fights the anchor and the
+	# card ends up off-screen.
+	_card.custom_minimum_size.x = width
+	_card.offset_left = -(width + MARGIN)
+	_card.offset_right = -MARGIN
 
 func _fact(key: String, value: String) -> Control:
 	var row := HBoxContainer.new()
@@ -714,8 +924,9 @@ func _finish() -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		if _selected >= 0:
+		if _selected >= 0 or _selected_edge >= 0:
 			select(-1)
+			select_edge(-1)
 		else:
 			_finish()
 		get_viewport().set_input_as_handled()
@@ -737,10 +948,20 @@ func _on_canvas_input(event: InputEvent) -> void:
 				_drag_moved = 0.0
 			else:
 				_dragging = false
-				# A click, not a drag: select what's under the cursor (or clear).
+				# A click, not a drag. A star wins over a link under the same
+				# cursor — near a hub the cursor is always over some line, and the
+				# star is what was meant.
 				if _drag_moved < 5.0:
 					var hit: int = pick(mb.position)
-					select(-1 if hit == _selected else hit)
+					if hit >= 0:
+						select(-1 if hit == _selected else hit)
+					else:
+						var link: int = pick_edge(mb.position)
+						if link >= 0:
+							select_edge(-1 if link == _selected_edge else link)
+						else:
+							select(-1)
+							select_edge(-1)
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
 		if _dragging:
@@ -792,6 +1013,7 @@ class StarCanvas extends Control:
 			_draw_edges(lay, focused)
 		_draw_roads()
 		_draw_stars(lay, show_rims, focused, visible_rect)
+		_draw_picked_edge(lay)
 		_draw_capital_rings(lay)
 		_draw_region_names(lay)
 		if show_labels:
@@ -873,6 +1095,31 @@ class StarCanvas extends Control:
 			for t in AtlasView.route_arrow_offsets(length,
 					view.drawn_half_height(from_i), view.drawn_half_height(to_i), head):
 				_chevron(a3 + dir * t, dir, head, col)
+
+	# The link the player clicked: drawn over the stars so it can't be lost in a
+	# hub's fan of lines, with both endpoints ringed so it's obvious which two
+	# games the card is talking about.
+	func _draw_picked_edge(lay: AtlasLayout) -> void:
+		var e: int = view._selected_edge
+		if e < 0 or e >= lay.edge_count():
+			return
+		var a: int = lay.edges[e * 2]
+		var b: int = lay.edges[e * 2 + 1]
+		var pa: Vector2 = view.to_screen(lay.position_of(a))
+		var pb: Vector2 = view.to_screen(lay.position_of(b))
+		var core: float = clampf(view._scale * 0.32, 2.0, 4.0)
+		draw_line(pa, pb, AtlasView.COL_TRAIL_CASING, core + 3.0, true)
+		draw_line(pa, pb, AtlasView.COL_SELECTED_EDGE, core, true)
+		# One arrowhead at the midpoint, pointing the way the influence ran.
+		var delta: Vector2 = pb - pa
+		if delta.length() > 1.0:
+			var dir: Vector2 = delta.normalized()
+			_chevron(pa + delta * 0.5, dir, clampf(core * 3.4, 10.0, 22.0),
+				AtlasView.COL_SELECTED_EDGE)
+		for idx in [a, b]:
+			var p: Vector2 = view.to_screen(lay.position_of(idx))
+			var r: float = maxf(6.0, view.drawn_half_height(idx) + 3.0)
+			draw_arc(p, r, 0.0, TAU, 28, AtlasView.COL_SELECTED_EDGE, 1.8, true)
 
 	# A hop the player made without traversing a link — a Teleportation scroll or
 	# Winged Boots. Drawn dashed, because no such road exists on the map.

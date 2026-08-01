@@ -348,3 +348,12 @@ eligible starts filtered at degree ≥ 3.
 
 Measured 31 Jul 2026 at 751 games / 988 undirected edges. Re-run after any
 catalog import — the hub degrees in particular move.
+
+**Superseded 01 Aug 2026:** re-importing from `Roguelikes.xlsx` to pick up the
+`Source` and `Dev/Series Relation` columns also caught the catalog up with the
+sheet, which it had drifted behind. The figures throughout this note are from
+before that: the catalog is now **757 games / 1000 connections** (6 games and 11
+net connections had been authored in the sheet but never imported). Every
+proportion here still holds — Slay the Spire went 124 -> 126 connections, the
+capitals and their ordering are unchanged — but re-run the measurements before
+quoting an exact number.

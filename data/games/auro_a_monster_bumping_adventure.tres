@@ -10,6 +10,8 @@ display_name = "Auro: A Monster-Bumping Adventure"
 year = 2014
 type = 1
 games_influenced = Array[StringName]([&"rack_and_slay"])
+influence_sources = PackedStringArray("https://www.youtube.com/watch?v=kYUYXX5vdkU")
+influence_relations = PackedStringArray("")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

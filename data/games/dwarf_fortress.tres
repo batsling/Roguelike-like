@@ -10,6 +10,8 @@ display_name = "Dwarf Fortress"
 year = 2006
 type = 1
 games_influenced = Array[StringName]([&"keeperrl", &"soulash_2", &"super_fantasy_kingdom", &"the_doors_of_trithius", &"ultima_ratio_regum", &"void_war", &"warsim_the_realm_of_aslona", &"wayward"])
+influence_sources = PackedStringArray("https://steamcommunity.com/app/329970/discussions/0/620700960829035333/#c606068060818832019", "https://www.bay12forums.com/smf/index.php?topic=182370.0#:~:text=Escaped%20Lunatic-,Soulash%202%20%2D%20Adventures%20and%20Conquest%20in%20Procedural%20Fantasy%20Worlds,to%20the%20Roguelike%20design%20formula.", "https://store.epicgames.com/en-US/news/super-fantasy-kingdom-city-builder-next-vampire-survivors-obsession", "https://doorsoftrithius.com/", "https://www.youtube.com/watch?v=giIIoIKntnw", "https://youtu.be/-I__TxhbQgw", "http://www.bay12forums.com/smf/index.php?topic=173000.0", "https://roguebasin.com/index.php/Wayward")
+influence_relations = PackedStringArray("", "", "", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

@@ -10,6 +10,8 @@ display_name = "Battle Brothers"
 year = 2017
 type = 1
 games_influenced = Array[StringName]([&"legend_of_keepers_career_of_a_dungeon_manager", &"the_last_spell"])
+influence_sources = PackedStringArray("https://legendofkeepers.fandom.com/wiki/Legend_of_Keepers", "https://gamerant.com/the-last-spell-game-interview-launch-dlc/#:~:text=The%20Last%20Spell's%20unique%20blend,build%20characters%20however%20they%20want.")
+influence_relations = PackedStringArray("", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

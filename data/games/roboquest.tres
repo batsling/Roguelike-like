@@ -10,6 +10,8 @@ display_name = "Roboquest"
 year = 2020
 type = 0
 games_influenced = Array[StringName]([&"brew", &"swapmeat"])
+influence_sources = PackedStringArray("https://www.gamingfurever.com/news/editorials/brew-interview-with-ceo-of-snow-leaf-studios-isak-wahl#:~:text=JW%2C%20GF:%20What%20are%20some,us%20a%20lot%20of%20motivation.", "https://www.reddit.com/r/pcgaming/comments/1f9y4d8/weve_been_making_our_totally_normal_coop_shooter/")
+influence_relations = PackedStringArray("", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

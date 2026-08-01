@@ -245,7 +245,7 @@ editing the sheet, then review the diff):
 | `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesnew` sheet |
 | `generate_event_tres.py` | `data/events/*.tres` from authored Python dicts |
 | `generate_encounter_tres.py` | `data/encounters/*.tres` from the `encounters` sheet |
-| `import-games-godot.py` | `data/games/*.tres`, resolving each cover in `images2.0/games/` — then re-bakes the Atlas |
+| `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — then re-bakes the Atlas |
 | `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 
@@ -286,6 +286,41 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 ---
 
 ## Recent changes
+
+- **Connection proof, and a card for the links themselves** — clicking a *line*
+  on the Atlas now opens a card showing **both games side by side**, the
+  influencer on the left with an arrow to the game it influenced, the claim in
+  words ("X inspired Y"), and the **evidence** underneath. Links flagged in the
+  sheet as a sequel or the same studio say so. A source that's a URL gets an
+  **Open source** button; the ~280 that are notes ("check folder", "game
+  credits") are shown as written rather than dressed up as links. Either game can
+  be inspected from the card. Clicking a star still wins over a link under the
+  same cursor, since near a hub the pointer is always over some line.
+
+  This needed data the importer had been discarding. `Roguelikes.xlsx`'s
+  `connections` sheet carries a **Source** column (884 of 1000 rows) and a
+  **Dev/Series Relation** column (114 rows); `import-games-godot.py` read only
+  the two game names and dropped both. `GameData` gains `influence_sources` and
+  `influence_relations`, index-aligned with `games_influenced`, and the importer
+  now carries them through. This closes the README's long-standing "connection
+  proof" roadmap item — the evidence was gathered years ago and simply wasn't
+  being imported.
+
+  **Re-importing also caught the catalog up with the spreadsheet**, which it had
+  drifted behind: **6 games** (How Many Dudes?, Inkbound, Mystery Chronicle: One
+  Way Heroics, One Way Heroics, Runeveil, Zoominoes) and **11 net connections**
+  that were authored in the sheet but had never reached `data/games/`. The
+  catalog is now 757 games / 1000 connections, up from 751 / 988. This changes
+  which routes exist, so runs will differ.
+
+- **A staleness guard on the baked skies** — `data/atlas_layout*.tres` are
+  generated and committed, so they can silently fall behind the catalog: a
+  half-failed import, a hand-edited `.tres`, a merge that took one side. Star
+  count alone never caught it — add a connection between two existing games and
+  the count is identical while the map is wrong. The Atlas tests now rebuild the
+  edge set from `data/games/*.tres` and compare it to each baked sky, and check
+  every star is drawn at the size its real connection count says. A failure names
+  the offending connection and tells you to re-run `tools/bake_atlas.py`.
 
 - **The Atlas — all 751 games as a star chart** — a new full-screen map
   (`scripts/ui/AtlasView.gd`, opened from the main menu's **✦ Atlas** button, or

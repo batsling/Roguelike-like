@@ -9,7 +9,9 @@ id = &"snkrx"
 display_name = "SNKRX"
 year = 2021
 type = 0
-games_influenced = Array[StringName]([&"centipede_gun", &"just_king", &"lone_ruin", &"node_crown", &"stackflow"])
+games_influenced = Array[StringName]([&"centipede_gun", &"flerp", &"just_king", &"lone_ruin", &"node_crown", &"stackflow"])
+influence_sources = PackedStringArray("https://store.steampowered.com/app/2308000/Centipede_Gun/", "look at it", "look at it", "https://gamerant.com/lone-ruin-interview-roguelike-indie-game-design-inspirations-visuals-coding/#:~:text=As%20inspiration%20from%20different%20games,dangerous%20to%20go%20alone%22%20line.", "check folder", "check folder")
+influence_relations = PackedStringArray("", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

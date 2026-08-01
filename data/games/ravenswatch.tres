@@ -10,6 +10,8 @@ display_name = "Ravenswatch"
 year = 2023
 type = 0
 games_influenced = Array[StringName]([&"shape_of_dreams"])
+influence_sources = PackedStringArray("https://screenrant.com/shape-of-dreams-eunseop-shim-interview/#:~:text=MOBAs%20were%20a%20key%20inspiration,like%20action%20roguelites%20in%20general.")
+influence_relations = PackedStringArray("")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

@@ -10,6 +10,8 @@ display_name = "Backpack Battles"
 year = 2023
 type = 1
 games_influenced = Array[StringName]([&"he_is_coming", &"knightica", &"lootplot", &"oaken_tower", &"toy_smash_kaboom", &"turnbound"])
+influence_sources = PackedStringArray("check folder", "https://www.reddit.com/r/IndieGaming/comments/1iooyqr/roguelike_autobattler_cute_creatures_what_do_you/", "https://codetheory.itch.io/lootplot-playtest#:~:text=A%20downloadable%20game%20for%20Windows,it%20to%20the%20next%20round.", "check folder", "look at it", "https://youtu.be/DY-KwfFTU9g")
+influence_relations = PackedStringArray("", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

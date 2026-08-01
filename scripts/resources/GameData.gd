@@ -24,6 +24,19 @@ enum GameType { ACTION, STRATEGY, DECKBUILDER, TRADITIONAL }
 # The graph is directed; build the inverse at load time if needed.
 @export var games_influenced: Array[StringName] = []
 
+# Per-connection evidence, INDEX-ALIGNED with `games_influenced` — entry i backs
+# the claim "this game influenced games_influenced[i]". Both come from the
+# spreadsheet's `connections` sheet, which has carried them all along; they were
+# simply not imported until now.
+#
+# `influence_sources` is a URL or a short note ("check folder", "game credits").
+# Roughly two thirds are links; the rest are pointers at evidence kept elsewhere.
+# `influence_relations` marks the ~110 connections that are a sequel or the same
+# developers rather than one game merely inspiring another, so the two can be
+# worded and drawn differently.
+@export var influence_sources: PackedStringArray = PackedStringArray()
+@export var influence_relations: PackedStringArray = PackedStringArray()
+
 # Tags layered on top of type (e.g. "space", "casino", "horror"). Drives flavor
 # without owning the combat mode. (Deckbuilder/Traditional once lived here as
 # tags but are now authored as GameType values.)
@@ -50,6 +63,45 @@ enum GameType { ACTION, STRATEGY, DECKBUILDER, TRADITIONAL }
 # Fallback store/page URL (e.g. https://store.steampowered.com/app/<id>) opened
 # when there's no usable local file.
 @export var steam_page: String = ""
+
+# What backs the connection between this game and `other`, as
+# {"source": String, "relation": String}. Empty strings mean the sheet had
+# nothing for that column. Returns {} when the two aren't connected THIS way
+# round — influence is directed, so callers wanting either direction should ask
+# both games (see `describe_influence`).
+func influence_evidence(other: StringName) -> Dictionary:
+	var i: int = games_influenced.find(other)
+	if i < 0:
+		return {}
+	return {
+		"source": influence_sources[i] if i < influence_sources.size() else "",
+		"relation": influence_relations[i] if i < influence_relations.size() else "",
+	}
+
+# Describe the connection between two games in the direction it was authored.
+# Returns {} if they aren't connected at all, otherwise:
+#   {"from": GameData, "to": GameData, "source": String, "relation": String}
+# where `from` is the influencer. Release year is not consulted — the sheet's
+# direction is the authored claim, and every edge already runs older -> newer.
+static func describe_influence(a: GameData, b: GameData) -> Dictionary:
+	if a == null or b == null:
+		return {}
+	for pair in [[a, b], [b, a]]:
+		var from_game: GameData = pair[0]
+		var to_game: GameData = pair[1]
+		var found: Dictionary = from_game.influence_evidence(to_game.id)
+		if not found.is_empty():
+			return {
+				"from": from_game, "to": to_game,
+				"source": found["source"], "relation": found["relation"],
+			}
+	return {}
+
+# Whether a source string is something we can actually open, as opposed to a note
+# pointing at evidence kept elsewhere ("check folder", "game credits").
+static func is_openable_source(source: String) -> bool:
+	var s: String = source.strip_edges().to_lower()
+	return s.begins_with("http://") or s.begins_with("https://")
 
 # True when there's something the "Play the real game" button can open.
 func has_launch_target() -> bool:

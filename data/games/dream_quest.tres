@@ -10,6 +10,8 @@ display_name = "Dream Quest"
 year = 2014
 type = 2
 games_influenced = Array[StringName]([&"dicey_dungeons", &"monster_slayers", &"nowhere_prophet", &"slay_the_spire"])
+influence_sources = PackedStringArray("https://www.polygon.com/pc/2019/4/7/18299068/dicey-dungeons-terry-cavanagh-gdc-preview", "https://store.steampowered.com/app/496620/Monster_Slayers/", "https://game-wisdom.com/podcast/five-year-development-behind-nowhere-prophet mentions plaing dream quest in this interview", "https://podcasts.apple.com/us/podcast/slay-the-spire-with-anthony-giovannetti/id1435365252?i=1000447140877")
+influence_relations = PackedStringArray("", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

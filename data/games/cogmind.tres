@@ -10,6 +10,8 @@ display_name = "Cogmind"
 year = 2017
 type = 3
 games_influenced = Array[StringName]([&"mainframe_defenders", &"the_doors_of_trithius"])
+influence_sources = PackedStringArray("https://www.reddit.com/r/roguelikes/comments/fwbx5g/mainframe_defenders_cogmind_inspired_tactics/#:~:text=*Mainframe%20Defenders*%20is%20a%20roguelite%20game%20available,**Earning%20Matter%20and%20drops**%20*%20**Upgrading%20mechs**", "https://steamcommunity.com/app/1519490/discussions/0/5456682769556329213/#c5456682769558786398")
+influence_relations = PackedStringArray("", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
