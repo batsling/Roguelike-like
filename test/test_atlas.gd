@@ -285,17 +285,63 @@ func test_most_games_have_cover_art() -> void:
 	assert_gt(with_art, int(view.layout.star_count() * 0.9),
 		"the great majority of stars have box art to show")
 
-# A star with no art keeps its dot, and the label still clears whatever is drawn.
 func test_drawn_half_height_tracks_what_is_actually_drawn() -> void:
 	var view := _open()
 	if not view.has_layout():
 		return
 	var i: int = view.layout.capitals[0]
-	var dot_h: float = view.drawn_half_height(i, false)
-	var cover_h: float = view.drawn_half_height(i, true)
-	assert_gt(dot_h, 0.0, "a dot has height")
-	if view.cover_texture(i) != null:
-		assert_gt(cover_h, 0.0, "a cover has height")
+	assert_gt(view.drawn_half_height(i), 0.0, "something is always drawn for a star")
+
+# The point of a per-star threshold: the best-connected games become art at a
+# lower zoom than the fringe does, so the map fills in from its hubs outward.
+func test_well_connected_games_become_art_sooner() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	var hub: int = view.layout.capitals[0]
+	var leaf: int = -1
+	for i in range(view.layout.star_count()):
+		if view.layout.degree_of(i) == 1 and view.cover_texture(i) != null:
+			leaf = i
+			break
+	if leaf < 0 or view.cover_texture(hub) == null:
+		return
+	# Zoom up from the overview one step at a time and record which flips first.
+	var hub_at: float = -1.0
+	var leaf_at: float = -1.0
+	view.frame_all()
+	for _step in range(120):
+		if hub_at < 0.0 and view.shows_cover(hub):
+			hub_at = view.zoom_ratio()
+		if leaf_at < 0.0 and view.shows_cover(leaf):
+			leaf_at = view.zoom_ratio()
+		if hub_at > 0.0 and leaf_at > 0.0:
+			break
+		view.zoom_by(1.1, Vector2(400, 300))
+	assert_gt(hub_at, 0.0, "the hub becomes art at some zoom")
+	assert_gt(leaf_at, 0.0, "the dead end becomes art at some zoom")
+	assert_lt(hub_at, leaf_at,
+		"a 124-connection hub shows its cover before a 1-connection game does")
+
+func test_nothing_shows_art_at_the_overview() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	view.frame_all()
+	assert_eq(view.cover_count(), 0, "the whole-sky overview is dots, not stamps")
+
+func test_everything_with_art_shows_it_when_zoomed_right_in() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	for _step in range(80):
+		view.zoom_by(1.3, Vector2(400, 300))
+	var with_art: int = 0
+	for i in range(view.layout.star_count()):
+		if view.cover_texture(i) != null:
+			with_art += 1
+	assert_eq(view.cover_count(), with_art,
+		"at maximum zoom every game that has art is showing it")
 
 # ---------------------------------------------------------------------------
 # The run trail — the corridor drawn over the sky
@@ -337,3 +383,87 @@ func test_framing_the_trail_keeps_the_route_on_screen() -> void:
 		if idx >= 0:
 			assert_true(canvas.grow(4.0).has_point(view.to_screen(view.layout.position_of(idx))),
 				"the route's endpoints are framed")
+
+# ---------------------------------------------------------------------------
+# Filtered skies — one layout per Settings.game_filter
+# ---------------------------------------------------------------------------
+
+# The Atlas has to draw the graph the run actually travels. With an owned-only
+# filter a route through an unowned game doesn't exist, so the sky is laid out
+# over the owned subgraph rather than being the full map with stars hidden.
+func test_owned_sky_holds_only_owned_games() -> void:
+	var owned: AtlasLayout = ATLAS.load_layout(Settings.GameFilter.OWNED)
+	assert_not_null(owned, "data/atlas_layout_owned.tres is baked")
+	if owned == null:
+		return
+	assert_eq(owned.source_filter, "owned", "the sky knows which filter it is")
+	for i in range(owned.star_count()):
+		var game: GameData = Data.get_game(owned.id_at(i))
+		assert_not_null(game, "every star is a real game")
+		if game != null:
+			assert_true(game.owned, "%s is owned" % game.id)
+
+func test_owned_sky_is_smaller_than_the_full_one() -> void:
+	var owned: AtlasLayout = ATLAS.load_layout(Settings.GameFilter.OWNED)
+	if owned == null or _layout == null:
+		return
+	assert_lt(owned.star_count(), _layout.star_count(),
+		"the owned sky is a subset of the whole catalog")
+	assert_gt(owned.star_count(), 0, "and it isn't empty")
+
+# It's laid out from scratch, not cropped — so a game's position differs between
+# the two skies, and the owned sky picks its own capitals.
+func test_owned_sky_is_laid_out_independently() -> void:
+	var owned: AtlasLayout = ATLAS.load_layout(Settings.GameFilter.OWNED)
+	if owned == null or _layout == null:
+		return
+	assert_gt(owned.capitals.size(), 0, "the owned sky has its own capitals")
+	var moved: int = 0
+	for i in range(owned.star_count()):
+		var j: int = _layout.index_of(owned.id_at(i))
+		if j >= 0 and owned.position_of(i).distance_to(_layout.position_of(j)) > 0.5:
+			moved += 1
+	assert_gt(moved, owned.star_count() / 2,
+		"most stars sit somewhere else than they do on the full map")
+
+func test_owned_sky_has_no_overlapping_stars() -> void:
+	var owned: AtlasLayout = ATLAS.load_layout(Settings.GameFilter.OWNED)
+	if owned == null:
+		return
+	var overlaps: int = 0
+	for i in range(owned.star_count()):
+		for j in range(i + 1, owned.star_count()):
+			var need: float = AtlasLayout.star_radius(owned.degree_of(i)) \
+				+ AtlasLayout.star_radius(owned.degree_of(j))
+			if owned.position_of(i).distance_to(owned.position_of(j)) < need - 0.001:
+				overlaps += 1
+	assert_eq(overlaps, 0, "the owned sky packs cleanly too")
+
+# Every edge in a filtered sky must have both ends inside that filter — this is
+# what stops the map drawing a route the run can't walk.
+func test_filtered_sky_edges_stay_inside_the_filter() -> void:
+	var owned: AtlasLayout = ATLAS.load_layout(Settings.GameFilter.OWNED)
+	if owned == null:
+		return
+	var e: int = 0
+	while e + 1 < owned.edges.size():
+		for idx in [owned.edges[e], owned.edges[e + 1]]:
+			var game: GameData = Data.get_game(owned.id_at(int(idx)))
+			assert_true(game != null and game.owned, "both ends of a link are owned")
+		e += 2
+
+func test_the_view_opens_the_sky_matching_the_active_filter() -> void:
+	var previous: int = Settings.game_filter
+	Settings.game_filter = Settings.GameFilter.OWNED
+	var view := _open()
+	if view.has_layout():
+		assert_eq(view.layout.source_filter, "owned",
+			"opening the Atlas under an owned-only filter shows the owned sky")
+	Settings.game_filter = previous
+
+func test_an_unbaked_filter_falls_back_to_the_full_sky() -> void:
+	# 99 is not a real GameFilter value, so nothing is baked for it.
+	var fallback: AtlasLayout = ATLAS.load_layout(99)
+	assert_not_null(fallback, "an unknown filter still gets a map")
+	if fallback != null:
+		assert_eq(fallback.source_filter, "all", "and it's the full one")

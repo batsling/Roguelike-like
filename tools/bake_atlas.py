@@ -25,8 +25,16 @@ The layout, in three stages:
 
 Nothing here is random: same catalog in, same sky out.
 
+One sky is baked per `Settings.game_filter` value, because the Atlas has to show
+the same graph the run actually travels — an owned-only run drawn over the full
+751-game sky would offer routes through games the run cannot enter. Each variant
+is laid out from scratch over its own subgraph, so it gets its own capitals and
+its own shape rather than being the full map with stars hidden.
+
 Usage:
+    python3 tools/bake_atlas.py --all-filters      # every sky (what the importer runs)
     python3 tools/bake_atlas.py                    # 8 capitals -> data/atlas_layout.tres
+    python3 tools/bake_atlas.py --filter owned     # -> data/atlas_layout_owned.tres
     python3 tools/bake_atlas.py --capitals 6
     python3 tools/bake_atlas.py --stats            # report without writing
 """
@@ -43,6 +51,18 @@ GAMES_DIR = os.path.join(PROJECT_ROOT, "data", "games")
 OUT_PATH = os.path.join(PROJECT_ROOT, "data", "atlas_layout.tres")
 
 DEFAULT_CAPITALS = 8
+
+# One sky per game filter. `Settings.game_filter` decides which run graph the
+# player travels, and the Atlas has to agree with it — an owned-only run drawn
+# over the full 751-game sky would show routes through games the run can't use.
+# Each variant is laid out from scratch over its own subgraph, so an owned-only
+# sky has its own capitals and its own shape.
+FILTERS = {
+    "all": lambda g: True,
+    "owned": lambda g: g["owned"],
+    "downloaded": lambda g: g["downloaded"],
+}
+FILTER_SUFFIX = {"all": "", "owned": "_owned", "downloaded": "_downloaded"}
 PAD = 3.0                 # clear space kept between any two stars
 GAP_SAMPLES = 72          # directions tried when looking for a cluster's exit
 
@@ -75,6 +95,10 @@ def load_games() -> list[dict]:
             "year": int(field(r"^year = (-?\d+)", "0")),
             "type": int(field(r"^type = (\d+)", "1")),
             "out": re.findall(r'&"([^"]+)"', influenced or ""),
+            # Mirrors RunGraph._passes_filter: these are what Settings.game_filter
+            # tests, so the sky and the run graph agree on who is in.
+            "owned": field(r"^owned = (true|false)", "false") == "true",
+            "downloaded": bool((field(r'^file_location = "(.*)"', "") or "").strip()),
         })
     return games
 
@@ -399,7 +423,7 @@ def fmt_floats(values) -> str:
     return ", ".join(f"{v:.3f}" for v in values)
 
 
-def write_resource(games, edges, layout, path: str) -> None:
+def write_resource(games, edges, layout, path: str, filter_name: str) -> None:
     xs, ys = layout["xs"], layout["ys"]
     minx, maxx = min(xs), max(xs)
     miny, maxy = min(ys), max(ys)
@@ -426,6 +450,7 @@ def write_resource(games, edges, layout, path: str) -> None:
 
 [resource]
 script = ExtResource("1_atlas")
+source_filter = "{filter_name}"
 game_ids = PackedStringArray({", ".join('"%s"' % g["id"] for g in games)})
 xs = PackedFloat32Array({fmt_floats(xs)})
 ys = PackedFloat32Array({fmt_floats(ys)})
@@ -442,14 +467,15 @@ bounds = Rect2({minx - pad:.3f}, {miny - pad:.3f}, {maxx - minx + pad * 2:.3f}, 
         fh.write(body)
 
 
-def report(games, edges, layout, num_capitals: int) -> None:
+def report(games, edges, layout, num_capitals: int, filter_name: str) -> None:
     owner, degree = layout["owner"], layout["degree"]
     sizes = collections.Counter(o for o in owner if o >= 0)
     cross = sum(1 for a, b in edges if owner[a] != owner[b])
     drift = sum(1 for o in owner if o < 0)
     xs, ys = layout["xs"], layout["ys"]
 
-    print(f"[bake_atlas] {len(games)} games, {len(edges)} edges, {num_capitals} capitals")
+    print(f"[bake_atlas] filter '{filter_name}': {len(games)} games, {len(edges)} edges, "
+          f"{num_capitals} capitals")
     for ci, cap in enumerate(layout["capitals"]):
         print(f"[bake_atlas]   {games[cap]['name']:<28} {sizes.get(ci, 0):>4} games  "
               f"deg {degree[cap]:>3}")
@@ -484,28 +510,42 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--capitals", type=int, default=DEFAULT_CAPITALS,
                     help=f"how many hubs become capitals (default {DEFAULT_CAPITALS})")
-    ap.add_argument("--out", default=OUT_PATH, help="where to write the layout resource")
+    ap.add_argument("--filter", default="all", choices=sorted(FILTERS),
+                    help="which games to include; one sky per Settings.game_filter value")
+    ap.add_argument("--all-filters", action="store_true",
+                    help="bake every filter's sky in one go (what the importer does)")
+    ap.add_argument("--out", default=None, help="override the output path")
     ap.add_argument("--stats", action="store_true", help="report only, write nothing")
     args = ap.parse_args()
 
-    games = load_games()
-    if not games:
+    every = load_games()
+    if not every:
         print(f"[bake_atlas] no games found in {GAMES_DIR}", file=sys.stderr)
         return 1
-    adj, edges = build_graph(games)
-    layout = build_layout(games, adj, max(1, min(args.capitals, len(games))))
 
-    report(games, edges, layout, args.capitals)
-    overlaps = verify(layout)
-    if overlaps:
-        print(f"[bake_atlas] {overlaps} overlapping star pairs — layout is wrong", file=sys.stderr)
-        return 1
-    print("[bake_atlas] no overlapping stars")
+    wanted = sorted(FILTERS) if args.all_filters else [args.filter]
+    for filter_name in wanted:
+        games = [g for g in every if FILTERS[filter_name](g)]
+        if not games:
+            print(f"[bake_atlas] filter '{filter_name}' matches no games — skipped")
+            continue
+        adj, edges = build_graph(games)
+        layout = build_layout(games, adj, max(1, min(args.capitals, len(games))))
 
-    if args.stats:
-        return 0
-    write_resource(games, edges, layout, args.out)
-    print(f"[bake_atlas] wrote {os.path.relpath(args.out, PROJECT_ROOT)}")
+        report(games, edges, layout, args.capitals, filter_name)
+        overlaps = verify(layout)
+        if overlaps:
+            print(f"[bake_atlas] {overlaps} overlapping star pairs in '{filter_name}' — "
+                  f"layout is wrong", file=sys.stderr)
+            return 1
+        print("[bake_atlas] no overlapping stars")
+
+        if args.stats:
+            continue
+        out = args.out or os.path.join(
+            PROJECT_ROOT, "data", f"atlas_layout{FILTER_SUFFIX[filter_name]}.tres")
+        write_resource(games, edges, layout, out, filter_name)
+        print(f"[bake_atlas] wrote {os.path.relpath(out, PROJECT_ROOT)}")
     return 0
 
 

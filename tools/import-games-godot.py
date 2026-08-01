@@ -237,7 +237,8 @@ def main() -> int:
     # Re-bake the Atlas star chart. Its layout is a pure function of the games
     # just written, so a new game or connection has to move the sky with it —
     # otherwise the Atlas silently shows a stale catalog.
-    rc = subprocess.call([sys.executable, os.path.join(SCRIPT_DIR, "bake_atlas.py")])
+    rc = subprocess.call([sys.executable, os.path.join(SCRIPT_DIR, "bake_atlas.py"),
+                          "--all-filters"])
     if rc != 0:
         print("[import-games-godot] atlas bake FAILED — run tools/bake_atlas.py to see why")
         return rc

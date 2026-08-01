@@ -12,6 +12,11 @@ extends Resource
 # Every array below is indexed the same way — index i refers to `game_ids[i]` —
 # so a lookup is one Dictionary hit (see `index_of`) followed by array reads.
 
+# Which Settings.game_filter this sky was baked for: "all", "owned" or
+# "downloaded". Each is laid out over its own subgraph, so an owned-only sky has
+# its own capitals rather than being the full map with stars hidden.
+@export var source_filter: String = "all"
+
 # Canonical game ids, sorted, one per star.
 @export var game_ids: PackedStringArray = PackedStringArray()
 

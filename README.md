@@ -50,7 +50,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 ├── data/                  # Game content as Godot Resources (.tres) — the source
 │   │                      # of truth the game loads at startup (see Data.gd)
 │   ├── games/            #   GameData — the ~750 real games that form the map
-│   ├── atlas_layout.tres #   BAKED star positions for the Atlas (tools/bake_atlas.py)
+│   ├── atlas_layout*.tres#   BAKED star positions for the Atlas, one sky per game
+│   │                      #   filter: all / _owned / _downloaded (tools/bake_atlas.py)
 │   ├── items2.0/         #   ItemData — the relics that drop from a defeated enemy
 │   ├── enemies2.0/       #   GoalEnemyData — goal-enemies, one per game beaten
 │   ├── bosses2.0/        #   GoalEnemyData — the difficulty-gate bosses
@@ -260,10 +261,18 @@ adding a game or a connection to the spreadsheet and re-importing moves the sky
 with it. Run it directly to re-tune the layout:
 
 ```bash
-python3 tools/bake_atlas.py                # 8 capitals (shipped)
+python3 tools/bake_atlas.py --all-filters  # every sky (what the importer runs)
+python3 tools/bake_atlas.py                # 8 capitals, full catalog
+python3 tools/bake_atlas.py --filter owned # just the owned-games sky
 python3 tools/bake_atlas.py --capitals 12  # re-cut the constellations
 python3 tools/bake_atlas.py --stats        # report without writing
 ```
+
+One sky is baked per `Settings.game_filter` value. The Atlas has to show the
+graph the run actually travels — an owned-only run drawn over the full 751-game
+sky would offer routes through games the run cannot enter — so each variant is
+laid out from scratch over its own subgraph and gets its own capitals rather
+than being the full map with stars hidden.
 
 It refuses to write a layout in which any two stars overlap, so a bad run fails
 loudly rather than shipping an unreadable map.
@@ -294,9 +303,15 @@ See `docs/stat-dispatcher.md` for how stats resolve.
   as an **ember trail** (green behind you, ember ahead), so the run map and the
   atlas are the same picture at two altitudes.
 
+  There is **one sky per game filter**. Setting the path filter to *owned* (or
+  *downloaded*) opens a different, independently laid out map — 457 games, its
+  own capitals, Enter the Gungeon promoted where Balatro sits on the full map —
+  because a route through an unowned game doesn't exist for that run and drawing
+  it would be a lie.
+
   Positions are **baked, not computed at runtime** — `tools/bake_atlas.py` writes
-  `data/atlas_layout.tres`, and `import-games-godot.py` re-runs it, so editing
-  the spreadsheet moves the sky. Inside a constellation each game orbits the game
+  `data/atlas_layout*.tres`, and `import-games-godot.py` re-runs it for every
+  filter, so editing the spreadsheet moves the sky. Inside a constellation each game orbits the game
   that influenced it, with subtrees packed as discs around their parent; a
   subtree's radius is *measured* from its realised layout rather than bounded
   from its children's, because the nested bound doubles at every level and threw

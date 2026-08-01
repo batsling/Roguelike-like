@@ -17,7 +17,9 @@ extends Control
 #   far    — dots only, constellation names
 #   mid    — links inside a constellation, stars sized and outlined
 #   near   — every star labelled
-#   closer — each star becomes its cover art
+# Cover art arrives per star rather than all at once: a game turns into its box
+# art once that art would be at least MIN_COVER_PX wide, so hubs bloom first and
+# the fringe follows as you keep zooming.
 # Clicking a star isolates it: its links light up and the rest of the sky dims.
 # When a run is in progress the shortest path to the Amulet is drawn over the
 # top as an ember trail, so the run and the atlas are the same picture.
@@ -26,15 +28,20 @@ signal finished
 
 const LAYOUT_PATH := "res://data/atlas_layout.tres"
 
+# One baked sky per Settings.game_filter. The Atlas has to show the graph the run
+# actually travels: with an owned-only filter, routes through unowned games don't
+# exist, so drawing them would be a lie.
+const LAYOUT_PATHS := {
+	Settings.GameFilter.ALL: "res://data/atlas_layout.tres",
+	Settings.GameFilter.OWNED: "res://data/atlas_layout_owned.tres",
+	Settings.GameFilter.DOWNLOADED: "res://data/atlas_layout_downloaded.tres",
+}
+
 # Zoom thresholds, as multiples of the fit-to-screen scale. Below FIT the sky is
 # an overview and links would be noise; above LABELS every star is named.
 const ZOOM_LINKS := 0.85
 const ZOOM_RIMS := 1.35
 const ZOOM_LABELS := 3.6
-# Past this, stars become their cover art. Deliberately deep: a cover is drawn
-# inside the circle the packing reserved for that star, and a one-connection
-# game's circle is small, so any earlier and half the sky is unreadable stamps.
-const ZOOM_COVERS := 5.0
 const ZOOM_MIN := 0.55
 # Headroom above ZOOM_COVERS, so zooming further keeps growing the art rather
 # than hitting the ceiling the moment covers appear.
@@ -51,6 +58,13 @@ const COL_FOCUS_EDGE := Color(1.0, 0.541, 0.235, 0.55)
 const COL_DIM := Color(1, 1, 1, 0.11)
 
 const PICK_RADIUS := 14.0        # screen-space click tolerance, so tiny dots stay clickable
+
+# A star turns into its cover art as soon as that art would be drawn at least
+# this wide. This is a per-star test, not one global zoom threshold: a star's
+# reserved circle scales with its connection count, so the best-connected games
+# bloom into art first and dead ends follow as you keep zooming. Below this a
+# cover is an unreadable smudge and the dot carries more information.
+const MIN_COVER_PX := 26.0
 
 var layout: AtlasLayout = null
 
@@ -94,14 +108,18 @@ func _ready() -> void:
 	_build_trail()
 	frame_all()
 
-# Loads the baked layout. Returns null when it hasn't been generated yet, and
+# Loads the sky matching the active game filter, falling back to the full one if
+# that variant was never baked. Returns null when nothing has been generated, and
 # every caller treats that as "the atlas isn't available" rather than crashing —
-# the resource is a build artefact, not authored content.
-static func load_layout() -> AtlasLayout:
-	if not ResourceLoader.exists(LAYOUT_PATH):
-		return null
-	var res: Resource = load(LAYOUT_PATH)
-	return res as AtlasLayout
+# these resources are build artefacts, not authored content.
+static func load_layout(filter_value: int = -1) -> AtlasLayout:
+	var wanted: int = filter_value if filter_value >= 0 else Settings.game_filter
+	for path in [LAYOUT_PATHS.get(wanted, LAYOUT_PATH), LAYOUT_PATH]:
+		if ResourceLoader.exists(path):
+			var res: Resource = load(path)
+			if res is AtlasLayout and (res as AtlasLayout).star_count() > 0:
+				return res as AtlasLayout
+	return null
 
 func _fit_to_viewport() -> void:
 	var rect: Rect2 = get_viewport().get_visible_rect()
@@ -261,16 +279,37 @@ func cover_texture(i: int) -> Texture2D:
 		return null
 	return game.cover_image
 
+# Screen-space size this star's cover would be drawn at, or ZERO if it has none.
+func cover_screen_size(i: int) -> Vector2:
+	var tex: Texture2D = cover_texture(i)
+	if tex == null:
+		return Vector2.ZERO
+	var aspect: float = float(tex.get_height()) / float(tex.get_width())
+	return cover_size(AtlasLayout.star_radius(layout.degree_of(i)) * _scale, aspect)
+
+# Whether this star is currently drawn as art rather than a dot. Big, well
+# connected games cross the threshold at a much lower zoom than dead ends do,
+# which is the whole point — the map fills in from its hubs outward.
+func shows_cover(i: int) -> bool:
+	return cover_screen_size(i).x >= MIN_COVER_PX
+
 # Half-height of whatever is actually drawn for a star, in screen pixels. Labels
 # hang off this so they clear the art instead of sitting on top of it.
-func drawn_half_height(i: int, showing_covers: bool) -> float:
-	var r: float = AtlasLayout.star_radius(layout.degree_of(i)) * _scale
-	if showing_covers:
-		var tex: Texture2D = cover_texture(i)
-		if tex != null:
-			var aspect: float = float(tex.get_height()) / float(tex.get_width())
-			return cover_size(r, aspect).y * 0.5
-	return r
+func drawn_half_height(i: int) -> float:
+	var size: Vector2 = cover_screen_size(i)
+	if size.x >= MIN_COVER_PX:
+		return size.y * 0.5
+	return AtlasLayout.star_radius(layout.degree_of(i)) * _scale
+
+# How many stars are showing art right now — drives the zoom readout.
+func cover_count() -> int:
+	if not has_layout():
+		return 0
+	var n: int = 0
+	for i in range(layout.star_count()):
+		if shows_cover(i):
+			n += 1
+	return n
 
 # ---------------------------------------------------------------------------
 # Picking
@@ -546,14 +585,20 @@ func _refresh_hud() -> void:
 		_hud.text = "No baked layout — run tools/bake_atlas.py"
 		return
 	var detail: String = "overview"
-	if zoom_ratio() >= ZOOM_COVERS:
-		detail = "cover art"
+	var arts: int = cover_count()
+	if arts > 0:
+		detail = "%d showing art" % arts
 	elif zoom_ratio() >= ZOOM_LABELS:
 		detail = "labelled"
 	elif zoom_ratio() >= ZOOM_LINKS:
 		detail = "links shown"
-	_hud.text = "%d games · %d links · %d constellations · %s" % [
-		layout.star_count(), layout.edge_count(), layout.capitals.size(), detail]
+	var scope: String = ""
+	if layout.source_filter == "owned":
+		scope = " · owned only"
+	elif layout.source_filter == "downloaded":
+		scope = " · downloaded only"
+	_hud.text = "%d games · %d links · %d constellations%s · %s" % [
+		layout.star_count(), layout.edge_count(), layout.capitals.size(), scope, detail]
 
 func _redraw() -> void:
 	_refresh_hud()
@@ -630,22 +675,21 @@ class StarCanvas extends Control:
 		var show_links: bool = ratio >= AtlasView.ZOOM_LINKS
 		var show_rims: bool = ratio >= AtlasView.ZOOM_RIMS
 		var show_labels: bool = ratio >= AtlasView.ZOOM_LABELS
-		var show_covers: bool = ratio >= AtlasView.ZOOM_COVERS
 		var focused: bool = view._selected >= 0
 		# Covers are far bigger than dots, so a star whose centre is off-screen can
-		# still have art on screen — widen the cull margin once they're drawn.
-		var margin: float = 400.0 if show_covers else 60.0
+		# still have art on screen — widen the cull margin generously.
+		var margin: float = 400.0
 		var visible_rect := Rect2(Vector2(-margin, -margin), size + Vector2(margin, margin) * 2.0)
 
 		_draw_hulls(lay)
 		if show_links:
 			_draw_edges(lay, focused)
 		_draw_trail()
-		_draw_stars(lay, show_rims, show_covers, focused, visible_rect)
+		_draw_stars(lay, show_rims, focused, visible_rect)
 		_draw_capital_rings(lay)
 		_draw_region_names(lay)
 		if show_labels:
-			_draw_star_labels(lay, focused, show_covers, visible_rect)
+			_draw_star_labels(lay, focused, visible_rect)
 
 	# A faint disc behind each constellation, so a region reads as a place even
 	# before its name is legible.
@@ -685,8 +729,7 @@ class StarCanvas extends Control:
 				view.to_screen(lay.position_of(int(seg[1]))),
 				col, clampf(view._scale * 0.34, 1.4, 3.0), true)
 
-	func _draw_stars(lay: AtlasLayout, show_rims: bool, show_covers: bool,
-			focused: bool, vis: Rect2) -> void:
+	func _draw_stars(lay: AtlasLayout, show_rims: bool, focused: bool, vis: Rect2) -> void:
 		var current: int = lay.index_of(GameState.current_game_id)
 		var amulet: int = lay.index_of(GameState.amulet_game_id)
 		for i in range(lay.star_count()):
@@ -701,7 +744,7 @@ class StarCanvas extends Control:
 			if faded:
 				col = col.lerp(UITheme.BG_DEEP, 0.78)
 
-			var art: Texture2D = view.cover_texture(i) if show_covers else null
+			var art: Texture2D = view.cover_texture(i) if view.shows_cover(i) else null
 			if art != null:
 				# The star becomes its box art, inscribed in the circle the packing
 				# reserved for it — so covers can never overlap either. The type
@@ -771,7 +814,7 @@ class StarCanvas extends Control:
 
 	# Star names, best-connected first. A label that would land on another label
 	# or across a star is dropped rather than overprinted.
-	func _draw_star_labels(lay: AtlasLayout, focused: bool, show_covers: bool, vis: Rect2) -> void:
+	func _draw_star_labels(lay: AtlasLayout, focused: bool, vis: Rect2) -> void:
 		var font: Font = get_theme_default_font()
 		var fs: int = 11
 		var visible: Array = []
@@ -786,13 +829,13 @@ class StarCanvas extends Control:
 		var taken: Array[Rect2] = []
 		for i in visible:
 			var p: Vector2 = view.to_screen(lay.position_of(i))
-			var r: float = view.drawn_half_height(i, show_covers)
+			var r: float = view.drawn_half_height(i)
 			taken.append(Rect2(p.x - r, p.y - r, r * 2.0, r * 2.0))
 		for i in visible:
 			var game: GameData = Data.get_game(lay.id_at(i))
 			var label: String = game.display_name if game != null else String(lay.id_at(i))
 			var p: Vector2 = view.to_screen(lay.position_of(i))
-			var r: float = view.drawn_half_height(i, show_covers)
+			var r: float = view.drawn_half_height(i)
 			var w: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 			var box := Rect2(p.x - w * 0.5 - 2.0, p.y + r + 1.0, w + 4.0, fs + 3.0)
 			if taken.any(func(t): return t.intersects(box)):
