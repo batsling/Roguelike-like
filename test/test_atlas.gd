@@ -1218,10 +1218,12 @@ func test_an_amulet_win_is_gold_and_outranks_silver() -> void:
 		"gold outranks silver when both apply")
 	_restore_stats()
 
-func test_the_record_is_the_same_in_a_run_and_in_the_catalog() -> void:
+# The record belongs to the Collection. During a run the sky is about the run,
+# so the middles stay empty however much of the catalog has been beaten.
+func test_the_record_is_drawn_in_the_catalog_but_not_in_a_run() -> void:
 	_start_run()
 	var gid: StringName = &"rogue"
-	_stub_stats(gid, 1, 0)
+	_stub_stats(gid, 4, 2)
 	var run_view := _open()
 	var pure_view := _open_pure()
 	if not run_view.has_layout():
@@ -1231,10 +1233,24 @@ func test_the_record_is_the_same_in_a_run_and_in_the_catalog() -> void:
 	if i < 0:
 		_restore_stats()
 		return
-	assert_eq(run_view.star_record_color(i), pure_view.star_record_color(i),
-		"what you've done with a game doesn't depend on which screen you're on")
-	assert_eq(run_view.star_record_color(i), AtlasView.COL_BEATEN, "and it's silver")
+	assert_true(pure_view.has_record(i), "the catalog view fills its middle")
+	assert_eq(pure_view.star_record_color(i), AtlasView.COL_AMULET_WIN, "gold, here")
+	assert_false(run_view.has_record(i), "the run's map leaves it empty")
+	assert_eq(run_view.star_record_color(i).a, 0.0, "with nothing drawn in it")
 	_restore_stats()
+
+# Genre is unaffected by the gating — it's on the rim in both views.
+func test_genre_is_drawn_in_both_views() -> void:
+	var run_view := _open()
+	var pure_view := _open_pure()
+	if not run_view.has_layout():
+		return
+	var game: GameData = Data.get_game(run_view.layout.id_at(0))
+	if game == null:
+		return
+	for view in [run_view, pure_view]:
+		assert_eq(RunGraph.type_color(view.game_at(0).type), RunGraph.type_color(game.type),
+			"the rim is the game's genre either way")
 
 func test_silver_and_gold_are_tellable_apart() -> void:
 	assert_gt(_separation(AtlasView.COL_BEATEN, AtlasView.COL_AMULET_WIN), 0.25,

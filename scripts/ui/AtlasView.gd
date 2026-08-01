@@ -20,8 +20,10 @@ extends Control
 # Cover art arrives per star rather than all at once: a game turns into its box
 # art once that art would be at least MIN_COVER_PX wide, so hubs bloom first and
 # the fringe follows as you keep zooming.
-# A star's rim is its genre and its middle is your record with it — silver once
-# beaten, gold once you've won a run on it, hollow if you never have.
+# A star's rim is its genre. In the Collection's catalog view its MIDDLE is your
+# lifetime record — silver once beaten, gold once you've won a run on it, hollow
+# if you never have; during a run the middle stays empty, because the sky is
+# about the run rather than the collection.
 # Clicking a star isolates it: every one of its connections lights up, the games
 # they reach get rings, and the rest of the sky dims.
 # A run draws two roads over the sky, both cased and arrowed so they can be
@@ -444,11 +446,13 @@ func sequel_link_count() -> int:
 
 # What fills the middle of a star: gold once a run has been won on that game,
 # silver once it has been beaten at all, and TRANSPARENT when neither — a game
-# you've never played has a hollow centre. Uses the LIFETIME record, so the
-# in-run Atlas and the Collection's Constellations agree; what you've done with a
-# game doesn't depend on which screen you opened.
+# you've never played has a hollow centre.
+#
+# COLLECTION ONLY. This is the lifetime record, which is what the Collection's
+# Constellations are for; during a run the sky should be about the run, and a
+# lifetime marker sitting next to the you-are-here ring competes with it.
 func star_record_color(i: int) -> Color:
-	if not has_layout():
+	if not has_layout() or not pure_catalog:
 		return Color(0, 0, 0, 0)
 	var gid: StringName = layout.id_at(i)
 	if GameStats.amulet_wins(gid) > 0:
@@ -457,9 +461,10 @@ func star_record_color(i: int) -> Color:
 		return COL_BEATEN
 	return Color(0, 0, 0, 0)
 
-# Whether the player has any record with this game — i.e. its centre is filled.
+# Whether this star's centre is filled. False outside the Collection's catalog
+# view, where the record isn't drawn at all.
 func has_record(i: int) -> bool:
-	if not has_layout():
+	if not has_layout() or not pure_catalog:
 		return false
 	var gid: StringName = layout.id_at(i)
 	return GameStats.amulet_wins(gid) > 0 or GameStats.beaten_count(gid) > 0
@@ -675,8 +680,10 @@ func _build_legend() -> Control:
 	bar.add_child(row)
 	for t in RunGraph.TYPE_ORDER:
 		row.add_child(_legend_chip(RunGraph.type_label(t), RunGraph.type_color(t)))
-	row.add_child(_legend_chip("⚔ Beaten", COL_BEATEN, true))
-	row.add_child(_legend_chip("👑 Amulet won", COL_AMULET_WIN, true))
+	# The record is only drawn in the catalog view, so only key it there.
+	if pure_catalog:
+		row.add_child(_legend_chip("⚔ Beaten", COL_BEATEN, true))
+		row.add_child(_legend_chip("👑 Amulet won", COL_AMULET_WIN, true))
 	if sequel_link_count() > 0:
 		row.add_child(_legend_chip("Sequel / same devs", COL_EDGE_SEQUEL))
 	if not _history.is_empty():

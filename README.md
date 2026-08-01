@@ -287,17 +287,18 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
 ## Recent changes
 
-- **A star's rim is its genre; its middle is your record with it** — **gold**
-  once a run has been won on that game, **silver** once it has been beaten at
-  all, hollow if you never have. Gold outranks silver, since winning a run on a
-  game implies beating it and the rarer fact is the one worth seeing. Putting the
+- **A star's rim is its genre; in the Collection, its middle is your record** —
+  **gold** once a run has been won on that game, **silver** once it has been
+  beaten at all, hollow if you never have. Gold outranks silver, since winning a
+  run implies beating it and the rarer fact is the one worth seeing. Putting the
   record in the core rather than on the rim keeps the sky readable **as genre at
-  every zoom** while the centres light up as the collection fills. Below the size
-  where rims are drawn the dot is genre alone, and the existing beaten/unbeaten
-  brightness still carries progress at overview zoom. This applies to the in-run
-  Atlas and the Collection's Constellations alike — what you've done with a game
-  doesn't depend on which screen you're on. The card carries the Collection's own
-  numbers in the Collection's own vocabulary: **⚔ Beaten** and **👑 Amulet won**.
+  every zoom** while the centres light up as the collection fills.
+
+  The record is drawn **only in the Collection's Constellations**. During a run
+  the sky is about the run — the route, where you stand, what you've bashed — and
+  a lifetime marker competes with that, so the middles stay empty there. The
+  info card still carries the numbers in either view, in the Collection's own
+  vocabulary: **⚔ Beaten** and **👑 Amulet won**.
 
 - **"Show constellation" in the Collection** — the Games tab gains a button that
   opens the whole catalog as the star chart, in **pure-catalog mode**: no run is
