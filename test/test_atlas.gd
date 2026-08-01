@@ -569,3 +569,60 @@ func test_the_route_survives_selecting_something_else() -> void:
 	view.select(view.layout.capitals[0])
 	assert_eq(view.trail_segment_count(), before,
 		"clicking a game elsewhere leaves the route to the Amulet drawn")
+
+# ---------------------------------------------------------------------------
+# Route arrowheads — which way the road runs
+# ---------------------------------------------------------------------------
+
+func test_arrows_clear_the_stars_at_both_ends() -> void:
+	var pad_a: float = 30.0
+	var pad_b: float = 18.0
+	var size: float = 14.0
+	var offsets: PackedFloat32Array = AtlasView.route_arrow_offsets(400.0, pad_a, pad_b, size)
+	assert_gt(offsets.size(), 0, "a long segment carries arrows")
+	for t in offsets:
+		assert_gte(t, pad_a, "no arrow sits on the star it leaves")
+		assert_lte(t, 400.0 - pad_b, "and none sits on the star it reaches")
+
+func test_a_long_segment_gets_several_arrows() -> void:
+	var few: PackedFloat32Array = AtlasView.route_arrow_offsets(160.0, 6.0, 6.0, 12.0)
+	var many: PackedFloat32Array = AtlasView.route_arrow_offsets(900.0, 6.0, 6.0, 12.0)
+	assert_gt(many.size(), few.size(),
+		"a route crossing the sky gets more arrows than a short hop")
+	assert_gte(few.size(), 1, "even a modest segment gets one")
+
+func test_arrows_are_evenly_spaced() -> void:
+	var offsets: PackedFloat32Array = AtlasView.route_arrow_offsets(900.0, 10.0, 10.0, 12.0)
+	if offsets.size() < 3:
+		return
+	var first_gap: float = offsets[1] - offsets[0]
+	for i in range(2, offsets.size()):
+		assert_almost_eq(offsets[i] - offsets[i - 1], first_gap, 0.01,
+			"the spacing between arrowheads is uniform")
+
+# A plain line beats a smudge: too short to hold an arrowhead means no arrowhead.
+func test_a_short_segment_gets_no_arrow() -> void:
+	assert_eq(AtlasView.route_arrow_offsets(20.0, 8.0, 8.0, 14.0).size(), 0,
+		"a segment swallowed by its endpoints carries nothing")
+	assert_eq(AtlasView.route_arrow_offsets(0.0, 0.0, 0.0, 12.0).size(), 0,
+		"a zero-length segment carries nothing")
+	assert_eq(AtlasView.route_arrow_offsets(400.0, 0.0, 0.0, 0.0).size(), 0,
+		"a zero-size arrow is never placed")
+
+# Arrows have to point from the game nearer you toward the game nearer the
+# Amulet, or they'd send the player the wrong way.
+func test_route_segments_run_toward_the_amulet() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var view := _open()
+	if not view.has_layout() or view.trail_segment_count() == 0:
+		return
+	var to_amulet: Dictionary = RunGraph.bfs_distances(GameState.amulet_game_id)
+	for seg in view._trail:
+		var from_id: StringName = view.layout.id_at(int(seg[0]))
+		var to_id: StringName = view.layout.id_at(int(seg[1]))
+		assert_true(to_amulet.has(from_id) and to_amulet.has(to_id),
+			"both ends of a route segment can reach the Amulet")
+		assert_eq(int(to_amulet[to_id]), int(to_amulet[from_id]) - 1,
+			"every arrow points one step closer to the Amulet")

@@ -24,7 +24,8 @@ extends Control
 # they reach get rings, and the rest of the sky dims.
 # When a run is in progress the shortest path to the Amulet — the same DAG the
 # run minimap draws — is laid over the sky as a cased road, green behind you and
-# ember ahead, so the run map and the atlas are one picture at two altitudes.
+# ember ahead, with arrowheads along it pointing toward the goal, so the run map
+# and the atlas are one picture at two altitudes.
 
 signal finished
 
@@ -313,6 +314,30 @@ func drawn_half_height(i: int) -> float:
 		return size.y * 0.5
 	return AtlasLayout.star_radius(layout.degree_of(i)) * _scale
 
+# Where arrowheads sit along one route segment, as distances from its start.
+#
+# The span is first shortened at both ends to clear the stars it joins, so an
+# arrow is never buried under a cover, then arrows are spread evenly through
+# what's left. A segment too short to carry one legibly gets none — better a
+# plain line than a smudge. Long segments get several, which is what makes a
+# route crossing the whole sky followable.
+static func route_arrow_offsets(length: float, pad_a: float, pad_b: float,
+		size: float) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	if length <= 0.0 or size <= 0.0:
+		return out
+	var start: float = pad_a + size * 0.75
+	var finish: float = length - pad_b - size * 0.75
+	var span: float = finish - start
+	if span < size:
+		return out
+	var spacing: float = maxf(size * 3.4, 58.0)
+	var count: int = maxi(1, int(floor(span / spacing)))
+	var step: float = span / float(count)
+	for k in range(count):
+		out.append(start + step * (float(k) + 0.5))
+	return out
+
 # How many stars are showing art right now — drives the zoom readout.
 func cover_count() -> int:
 	if not has_layout():
@@ -499,6 +524,9 @@ class RouteKey extends Control:
 		var y: float = size.y * 0.5
 		draw_line(Vector2(0, y), Vector2(size.x, y), AtlasView.COL_TRAIL_CASING, 6.0, true)
 		draw_line(Vector2(0, y), Vector2(size.x, y), core, 3.0, true)
+		var tip := Vector2(size.x, y)
+		draw_colored_polygon(PackedVector2Array([
+			tip, tip + Vector2(-6.5, -4.0), tip + Vector2(-6.5, 4.0)]), core)
 
 func _build_card() -> PanelContainer:
 	var card := PanelContainer.new()
@@ -777,6 +805,37 @@ class StarCanvas extends Control:
 			var col: Color = AtlasView.COL_TRAIL_DONE if bool(seg[2]) else AtlasView.COL_TRAIL
 			draw_line(view.to_screen(lay.position_of(int(seg[0]))),
 				view.to_screen(lay.position_of(int(seg[1]))), col, core, true)
+		# Arrowheads last, on top of every core, pointing the way the run travels:
+		# a DAG edge always runs from the game nearer you to the game nearer the
+		# Amulet, so the chevrons read as "this way to the goal".
+		var head: float = clampf(core * 3.1, 8.0, 24.0)
+		for seg in view._trail:
+			var from_i: int = int(seg[0])
+			var to_i: int = int(seg[1])
+			var a: Vector2 = view.to_screen(lay.position_of(from_i))
+			var b: Vector2 = view.to_screen(lay.position_of(to_i))
+			var delta: Vector2 = b - a
+			var length: float = delta.length()
+			if length < 1.0:
+				continue
+			var dir: Vector2 = delta / length
+			var col: Color = AtlasView.COL_TRAIL_DONE if bool(seg[2]) else AtlasView.COL_TRAIL
+			for t in AtlasView.route_arrow_offsets(length,
+					view.drawn_half_height(from_i), view.drawn_half_height(to_i), head):
+				_chevron(a + dir * t, dir, head, col)
+
+	# One arrowhead: a cased triangle, so it stays legible over cover art the
+	# same way the road itself does.
+	func _chevron(at: Vector2, dir: Vector2, size: float, col: Color) -> void:
+		var perp := Vector2(-dir.y, dir.x)
+		var tip: Vector2 = dir * size * 0.5
+		var left: Vector2 = -dir * size * 0.5 + perp * size * 0.44
+		var right: Vector2 = -dir * size * 0.5 - perp * size * 0.44
+		var grow: float = (size + 3.4) / size
+		draw_colored_polygon(PackedVector2Array([
+			at + tip * grow, at + left * grow, at + right * grow]),
+			AtlasView.COL_TRAIL_CASING)
+		draw_colored_polygon(PackedVector2Array([at + tip, at + left, at + right]), col)
 
 	func _draw_stars(lay: AtlasLayout, show_rims: bool, focused: bool, vis: Rect2) -> void:
 		var current: int = lay.index_of(GameState.current_game_id)
