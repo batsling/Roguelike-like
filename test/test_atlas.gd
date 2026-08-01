@@ -1181,7 +1181,7 @@ func _restore_stats() -> void:
 		GameStats.stats = _saved_stats
 		_saved_stats = {}
 
-func test_an_unplayed_game_is_outlined_by_genre() -> void:
+func test_an_unplayed_game_has_a_hollow_middle() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
 		return
@@ -1193,33 +1193,32 @@ func test_an_unplayed_game_is_outlined_by_genre() -> void:
 			break
 	if i < 0:
 		return
-	var game: GameData = Data.get_game(view.layout.id_at(i))
-	assert_false(view.has_achievement_outline(i), "nothing earned on it yet")
-	assert_eq(view.star_outline_color(i), RunGraph.type_color(game.type),
-		"so its outline is its genre")
+	assert_false(view.has_record(i), "nothing earned on it yet")
+	assert_eq(view.star_record_color(i).a, 0.0,
+		"so nothing is drawn in its middle")
 
-func test_a_beaten_game_is_outlined_silver() -> void:
+func test_a_beaten_game_has_a_silver_middle() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
 		return
 	var gid: StringName = view.layout.id_at(0)
 	_stub_stats(gid, 3, 0)
-	assert_true(view.has_achievement_outline(0), "beating it earns an outline")
-	assert_eq(view.star_outline_color(0), AtlasView.COL_BEATEN, "silver for beaten")
+	assert_true(view.has_record(0), "beating it fills the middle")
+	assert_eq(view.star_record_color(0), AtlasView.COL_BEATEN, "silver for beaten")
 	_restore_stats()
 
-func test_an_amulet_win_is_outlined_gold_and_outranks_silver() -> void:
+func test_an_amulet_win_is_gold_and_outranks_silver() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
 		return
 	var gid: StringName = view.layout.id_at(0)
 	# A game won on is also a game beaten — gold has to win.
 	_stub_stats(gid, 5, 2)
-	assert_eq(view.star_outline_color(0), AtlasView.COL_AMULET_WIN,
+	assert_eq(view.star_record_color(0), AtlasView.COL_AMULET_WIN,
 		"gold outranks silver when both apply")
 	_restore_stats()
 
-func test_the_outline_is_the_same_in_a_run_and_in_the_catalog() -> void:
+func test_the_record_is_the_same_in_a_run_and_in_the_catalog() -> void:
 	_start_run()
 	var gid: StringName = &"rogue"
 	_stub_stats(gid, 1, 0)
@@ -1232,9 +1231,9 @@ func test_the_outline_is_the_same_in_a_run_and_in_the_catalog() -> void:
 	if i < 0:
 		_restore_stats()
 		return
-	assert_eq(run_view.star_outline_color(i), pure_view.star_outline_color(i),
+	assert_eq(run_view.star_record_color(i), pure_view.star_record_color(i),
 		"what you've done with a game doesn't depend on which screen you're on")
-	assert_eq(run_view.star_outline_color(i), AtlasView.COL_BEATEN, "and it's silver")
+	assert_eq(run_view.star_record_color(i), AtlasView.COL_BEATEN, "and it's silver")
 	_restore_stats()
 
 func test_silver_and_gold_are_tellable_apart() -> void:
@@ -1243,3 +1242,16 @@ func test_silver_and_gold_are_tellable_apart() -> void:
 	for t in RunGraph.TYPE_ORDER:
 		assert_gt(_separation(AtlasView.COL_BEATEN, RunGraph.type_color(t)), 0.2,
 			"nor does silver look like a genre colour")
+
+# Genre now owns the rim at every zoom, which is the point of the swap.
+func test_genre_still_reads_on_a_game_with_a_record() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	var gid: StringName = view.layout.id_at(0)
+	_stub_stats(gid, 2, 1)
+	var game: GameData = Data.get_game(gid)
+	assert_true(view.has_record(0), "it has a record")
+	assert_ne(view.star_record_color(0), RunGraph.type_color(game.type),
+		"the middle carries the record, not the genre")
+	_restore_stats()
