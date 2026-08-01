@@ -62,6 +62,14 @@ Of the 988 authored directed edges, **981 point from an older game to a newer
 one, 7 join same-year games, and zero point backwards.** Release year is a
 global coordinate that no edge violates.
 
+This holds because of a specific authoring rule: **`year` is earliest public
+availability, not 1.0.** An early-access date, or a demo where that is when the
+game began influencing others — Balatro is dated 2023 for its demo rather than
+its 2024 release. The rule is load-bearing, not cosmetic. Balatro influences
+Schism, also 2023; under a 1.0 date Balatro would become 2024 and that edge
+would run backwards, breaking the acyclicity the entire chronological layout
+depends on. `tools/check_map_sync.py` fails loudly on any backward edge.
+
 This is the most valuable fact in this document. It means the influence graph is
 a DAG in time, that year can be an axis with no edge ever doubling back, and
 that Sugiyama-style layering is essentially free — the hard part of layered
@@ -187,10 +195,20 @@ than broad drift:
   `FTL -> Fights in Tight Spaces` (map) against
   `Into the Breach -> Fights in Tight Spaces` (sheet).
 
-The 13 year disagreements look like an early-access / 1.0 distinction rather
-than errors — Knock on the Coffin Lid is drawn at 2024 and recorded as 2020.
-Worth deciding which date the catalog means, since the run graph's chronology
-depends on it.
+The 13 year disagreements are an early-access / 1.0 distinction. Under the
+earliest-availability rule (§2A) the checker splits them by direction:
+
+- **9 drawn later than the sheet** — a 1.0 date most likely crept onto the map.
+  Knock on the Coffin Lid is drawn at 2024 and recorded as 2020; We Need To Go
+  Deeper 2019 vs 2017; Terraformers 2023 vs 2022. The sheet is probably right in
+  each of these and the node should move up.
+- **4 drawn earlier than the sheet** — here the *sheet* may be carrying the 1.0
+  date. Buckshot Roulette is the clearest: drawn ~2023, recorded 2024, and its
+  itch.io release preceded the Steam one. Beat Blast, Elin and Quest of Dungeons
+  differ by a single year and could go either way.
+
+Only the second group can actually break anything, since moving a game later is
+what creates a backward edge. Neither group does today.
 
 Re-run the checker after either side changes:
 

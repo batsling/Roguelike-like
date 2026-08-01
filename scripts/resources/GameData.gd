@@ -12,6 +12,11 @@ enum GameType { ACTION, STRATEGY, DECKBUILDER, TRADITIONAL }
 
 @export var id: StringName                # canonical key (lowercase slug)
 @export var display_name: String
+# EARLIEST PUBLIC AVAILABILITY, not 1.0 — an early-access date, or a demo where
+# that is when the game started influencing others (Balatro is 2023 for its
+# demo, not its 2024 release). Every `games_influenced` edge runs from an older
+# game to a newer one, and that only holds under this rule; a 1.0 date can push
+# an influencer past something it influenced. tools/check_map_sync.py guards it.
 @export var year: int = 0
 @export var type: GameType = GameType.STRATEGY
 

@@ -21,6 +21,17 @@ What it checks:
   * each node's Y position against the sheet's Year column (the map's Y axis is
     a chronological scale — see the year labels running down the left edge)
   * the three edge types the map draws, by stroke colour
+  * that no connection runs backwards in time (see below)
+
+YEAR means EARLIEST PUBLIC AVAILABILITY, not 1.0 — an early-access date, or a
+demo where that is when the game started influencing others (Balatro is dated
+2023 for its demo, not its 2024 release). This is not a stylistic preference:
+it is what keeps the influence graph acyclic in time. Every one of the 988
+connections currently runs from an older game to a newer one, which is what lets
+the map use Y as a chronological axis at all and what makes layered layout cheap
+on the Godot side. Entering a 1.0 date for an influencer can push it past
+something it influenced and break that property, so this script fails loudly on
+any backward edge.
 
 Edge types on the map (per its own legend):
     default stroke  -> "Inspired / Was Iterated Upon By"   (plain influence)
@@ -195,6 +206,26 @@ def load_sheet(path: str) -> dict:
             "dev_flags": dev_flags, "sourced": sourced, "total": total}
 
 
+def temporal_violations(sheet):
+    """Connections whose influencee predates its influencer.
+
+    Year is earliest public availability, so an influence can never point
+    backwards. Same-year pairs are legal (and expected — a demo influencing
+    something shipped later the same year).
+    """
+    backward, same_year = [], 0
+    for link in sheet["connections"].values():
+        ya = sheet["games"].get(norm(link["a"]), {}).get("year")
+        yb = sheet["games"].get(norm(link["b"]), {}).get("year")
+        if not ya or not yb:
+            continue
+        if yb < ya:
+            backward.append("%s (%d) -> %s (%d)" % (link["a"], ya, link["b"], yb))
+        elif yb == ya:
+            same_year += 1
+    return backward, same_year
+
+
 # --------------------------------------------------------------------------
 # report
 # --------------------------------------------------------------------------
@@ -287,17 +318,25 @@ def main():
         print("  %d year labels, %.0f px per year, spanning %d-%d"
               % (len(dmap["year_axis"]), 1 / slope if slope else 0,
                  min(y for _, y in dmap["year_axis"]), max(y for _, y in dmap["year_axis"])))
-        off = []
+        # Year is earliest availability, so a node drawn LATER than the sheet is
+        # the suspicious direction: a 1.0 date most likely crept onto the map.
+        drawn_late, drawn_early = [], []
         for key, node in matched:
             year = sheet["games"][key]["year"]
             if not year:
                 continue
             implied = slope * node["y"] + intercept
-            if abs(implied - year) > YEAR_TOLERANCE:
-                off.append("%-44s drawn at ~%d, sheet says %d"
-                           % (node["label"][:42], round(implied), year))
-        print("  nodes whose Y disagrees with the sheet's Year: %d" % len(off))
-        listing(off, args.full)
+            if abs(implied - year) <= YEAR_TOLERANCE:
+                continue
+            entry = "%-44s drawn at ~%d, sheet says %d" % (node["label"][:42], round(implied), year)
+            (drawn_late if implied > year else drawn_early).append(entry)
+
+        print("  nodes whose Y disagrees with the sheet's Year: %d"
+              % (len(drawn_late) + len(drawn_early)))
+        print("\n  drawn LATER than the sheet — likely a 1.0 date on the map: %d" % len(drawn_late))
+        listing(drawn_late, args.full)
+        print("  drawn EARLIER than the sheet — likely a 1.0 date in the sheet: %d" % len(drawn_early))
+        listing(drawn_early, args.full)
 
     # ---- edges ----
     head("CONNECTIONS")
@@ -339,6 +378,15 @@ def main():
     listing(sheet_only, args.full)
 
     head("INTEGRITY")
+    backward, same_year = temporal_violations(sheet)
+    if backward:
+        print("  !! %d connection(s) run BACKWARDS in time. Year is earliest public" % len(backward))
+        print("     availability, so an influence must never point at an older game.")
+        print("     This breaks the chronological axis the map and the atlas rely on:")
+        listing(backward, True)
+    else:
+        print("  OK  every connection runs forward in time (%d same-year, which is legal)"
+              % same_year)
     if leaked:
         print("  !! %d 'neither creators knew about the other' link(s) are in the" % len(leaked))
         print("     connections sheet. RunGraph will treat these as traversable")
