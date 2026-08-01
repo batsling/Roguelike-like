@@ -467,3 +467,105 @@ func test_an_unbaked_filter_falls_back_to_the_full_sky() -> void:
 	assert_not_null(fallback, "an unknown filter still gets a map")
 	if fallback != null:
 		assert_eq(fallback.source_filter, "all", "and it's the full one")
+
+# ---------------------------------------------------------------------------
+# Line hierarchy — background links, a clicked game's connections, the route
+# ---------------------------------------------------------------------------
+
+# Clicking a game must light up ALL of its connections, not a sample of them.
+func test_clicking_a_game_lights_every_one_of_its_connections() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	for target in [view.layout.capitals[0], view.layout.capitals[3]]:
+		view.select(target)
+		var lit: int = 0
+		var e: int = 0
+		while e + 1 < view.layout.edges.size():
+			var a: int = view.layout.edges[e]
+			var b: int = view.layout.edges[e + 1]
+			e += 2
+			if a == target or b == target:
+				lit += 1
+		assert_eq(lit, view.neighbors_of(target).size(),
+			"%s lights all %d of its links" % [view.layout.id_at(target), lit])
+		assert_eq(view._near.size(), lit + 1,
+			"and every game they reach is in the halo, plus the game itself")
+
+# A dead end has exactly one connection and it still highlights.
+func test_a_one_connection_game_still_highlights() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	var leaf: int = -1
+	for i in range(view.layout.star_count()):
+		if view.layout.degree_of(i) == 1:
+			leaf = i
+			break
+	if leaf < 0:
+		return
+	view.select(leaf)
+	assert_eq(view._near.size(), 2, "a dead end highlights itself and its one neighbour")
+
+func test_selection_survives_zooming_out_past_the_link_threshold() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	view.select(view.layout.capitals[0])
+	for _i in range(30):
+		view.zoom_by(0.6, Vector2(400, 300))
+	assert_lt(view.zoom_ratio(), AtlasView.ZOOM_LINKS,
+		"we are zoomed out past where background links stop drawing")
+	assert_eq(view.selected_index(), view.layout.capitals[0],
+		"the clicked game stays selected, so its connections still draw")
+
+# The route is a distinct treatment, not a brighter background link — the three
+# line colours must stay tellable apart.
+func test_route_selection_and_background_lines_are_distinct() -> void:
+	var route: Color = AtlasView.COL_TRAIL
+	var picked: Color = AtlasView.COL_SELECTED_EDGE
+	var backdrop: Color = AtlasView.COL_EDGE
+	assert_gt(_separation(route, picked), 0.25, "the route can't be mistaken for a selection")
+	assert_gt(_separation(route, backdrop), 0.25, "or for a background link")
+	assert_gt(picked.a, backdrop.a, "a clicked game's links are stronger than the backdrop")
+
+func _separation(a: Color, b: Color) -> float:
+	return absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b)
+
+func test_walked_and_remaining_route_are_told_apart() -> void:
+	assert_gt(_separation(AtlasView.COL_TRAIL, AtlasView.COL_TRAIL_DONE), 0.4,
+		"the road behind you doesn't look like the road ahead")
+
+# The route drawn on the atlas is exactly the DAG the run minimap draws.
+func test_route_matches_the_run_minimap_exactly() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var view := _open()
+	if not view.has_layout() or view.trail_segment_count() == 0:
+		return
+	var dag: Dictionary = RunGraph.shortest_path_dag(
+		GameState.current_game_id, GameState.amulet_game_id)
+	var expected: Dictionary = {}
+	for edge in dag.get("edges", []):
+		expected["%s>%s" % [edge["from"], edge["to"]]] = true
+	assert_eq(view.trail_segment_count(), expected.size(),
+		"the atlas route has one segment per minimap edge")
+	for seg in view._trail:
+		var key: String = "%s>%s" % [view.layout.id_at(int(seg[0])), view.layout.id_at(int(seg[1]))]
+		assert_true(expected.has(key), "%s is an edge the minimap also draws" % key)
+
+# Selecting a game must not hide the route — it's the one thing that stays.
+func test_the_route_survives_selecting_something_else() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var view := _open()
+	if not view.has_layout():
+		return
+	var before: int = view.trail_segment_count()
+	if before == 0:
+		return
+	view.select(view.layout.capitals[0])
+	assert_eq(view.trail_segment_count(), before,
+		"clicking a game elsewhere leaves the route to the Amulet drawn")

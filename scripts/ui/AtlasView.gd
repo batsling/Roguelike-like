@@ -20,9 +20,11 @@ extends Control
 # Cover art arrives per star rather than all at once: a game turns into its box
 # art once that art would be at least MIN_COVER_PX wide, so hubs bloom first and
 # the fringe follows as you keep zooming.
-# Clicking a star isolates it: its links light up and the rest of the sky dims.
-# When a run is in progress the shortest path to the Amulet is drawn over the
-# top as an ember trail, so the run and the atlas are the same picture.
+# Clicking a star isolates it: every one of its connections lights up, the games
+# they reach get rings, and the rest of the sky dims.
+# When a run is in progress the shortest path to the Amulet — the same DAG the
+# run minimap draws — is laid over the sky as a cased road, green behind you and
+# ember ahead, so the run map and the atlas are one picture at two altitudes.
 
 signal finished
 
@@ -43,18 +45,26 @@ const ZOOM_LINKS := 0.85
 const ZOOM_RIMS := 1.35
 const ZOOM_LABELS := 3.6
 const ZOOM_MIN := 0.55
-# Headroom above ZOOM_COVERS, so zooming further keeps growing the art rather
-# than hitting the ceiling the moment covers appear.
+# Headroom above the point covers appear, so zooming further keeps growing the
+# art rather than hitting the ceiling the moment the first cover shows.
 const ZOOM_MAX := 26.0
 
 # Colours. Star outlines come from RunGraph.type_color so the atlas, the
 # choose-your-start panel and the overworld all agree on what a Deckbuilder is.
+# Three kinds of line have to stay tellable apart at a glance, so each gets its
+# own treatment rather than three shades of the same ember:
+#   background links — faint, thin, uncased
+#   a clicked game's connections — bright parchment, thicker
+#   the route to the Amulet — a CASED line (dark under-stroke, bright core), the
+#     cartographic convention for a highway, which reads as special over any
+#     background and can't be confused with a selection highlight
 const COL_EDGE := Color(0.902, 0.835, 0.722, 0.20)
 const COL_EDGE_CROSS := Color(1.0, 0.541, 0.235, 0.13)
 const COL_HULL := Color(0.902, 0.835, 0.722, 0.028)
-const COL_TRAIL := Color(1.0, 0.541, 0.235, 0.62)
-const COL_TRAIL_DONE := Color(0.30, 0.78, 0.42, 0.58)
-const COL_FOCUS_EDGE := Color(1.0, 0.541, 0.235, 0.55)
+const COL_TRAIL := Color(1.0, 0.60, 0.24, 0.95)          # road ahead — ember
+const COL_TRAIL_DONE := Color(0.36, 0.85, 0.48, 0.92)    # already walked — green
+const COL_TRAIL_CASING := Color(0.055, 0.04, 0.028, 0.92)
+const COL_SELECTED_EDGE := Color(0.98, 0.94, 0.86, 0.85) # a clicked game's links
 const COL_DIM := Color(1, 1, 1, 0.11)
 
 const PICK_RADIUS := 14.0        # screen-space click tolerance, so tiny dots stay clickable
@@ -104,8 +114,10 @@ func _ready() -> void:
 		layout = load_layout()
 	_fit_to_viewport()
 	get_viewport().size_changed.connect(_fit_to_viewport)
-	_build()
+	# Before _build(): the header's "My run" button and the route legend both ask
+	# whether there IS a route, so the trail has to exist first.
 	_build_trail()
+	_build()
 	frame_all()
 
 # Loads the sky matching the active game filter, falling back to the full one if
@@ -439,6 +451,9 @@ func _build_legend() -> Control:
 	bar.add_child(row)
 	for t in RunGraph.TYPE_ORDER:
 		row.add_child(_legend_chip(RunGraph.type_label(t), RunGraph.type_color(t)))
+	if not _trail.is_empty():
+		row.add_child(_route_key("Route ahead", COL_TRAIL))
+		row.add_child(_route_key("Walked", COL_TRAIL_DONE))
 	var note := Label.new()
 	note.text = "Star size = connections"
 	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -460,6 +475,30 @@ func _legend_chip(text: String, col: Color) -> Control:
 	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	box.add_child(l)
 	return box
+
+# A short cased line, drawn the same way the route is, so the legend key looks
+# like the thing it names rather than a flat swatch.
+func _route_key(text: String, col: Color) -> Control:
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	var line := RouteKey.new()
+	line.core = col
+	line.custom_minimum_size = Vector2(22, 11)
+	box.add_child(line)
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	box.add_child(l)
+	return box
+
+class RouteKey extends Control:
+	var core: Color = Color.WHITE
+
+	func _draw() -> void:
+		var y: float = size.y * 0.5
+		draw_line(Vector2(0, y), Vector2(size.x, y), AtlasView.COL_TRAIL_CASING, 6.0, true)
+		draw_line(Vector2(0, y), Vector2(size.x, y), core, 3.0, true)
 
 func _build_card() -> PanelContainer:
 	var card := PanelContainer.new()
@@ -682,7 +721,10 @@ class StarCanvas extends Control:
 		var visible_rect := Rect2(Vector2(-margin, -margin), size + Vector2(margin, margin) * 2.0)
 
 		_draw_hulls(lay)
-		if show_links:
+		# Background links fade out when zoomed way out, but a game you actually
+		# clicked shows its connections at every zoom — that's the question the
+		# click asked, and the answer shouldn't depend on the camera.
+		if show_links or focused:
 			_draw_edges(lay, focused)
 		_draw_trail()
 		_draw_stars(lay, show_rims, focused, visible_rect)
@@ -700,22 +742,22 @@ class StarCanvas extends Control:
 
 	func _draw_edges(lay: AtlasLayout, focused: bool) -> void:
 		var width: float = clampf(view._scale * 0.22, 0.8, 2.0)
-		if focused:
-			width = minf(width, 1.3)
+		var sel_width: float = clampf(view._scale * 0.3, 1.6, 3.0)
 		var e: int = 0
 		while e + 1 < lay.edges.size():
 			var a: int = lay.edges[e]
 			var b: int = lay.edges[e + 1]
 			e += 2
-			if focused and a != view._selected and b != view._selected:
+			var incident: bool = focused and (a == view._selected or b == view._selected)
+			if focused and not incident:
 				continue
 			var col: Color = AtlasView.COL_EDGE
-			if focused:
-				col = AtlasView.COL_FOCUS_EDGE
+			if incident:
+				col = AtlasView.COL_SELECTED_EDGE
 			elif lay.region[a] != lay.region[b]:
 				col = AtlasView.COL_EDGE_CROSS
 			draw_line(view.to_screen(lay.position_of(a)), view.to_screen(lay.position_of(b)),
-				col, width, true)
+				col, sel_width if incident else width, true)
 
 	# The run's route to the Amulet, laid over the sky. Walked segments read
 	# green, the road ahead ember.
@@ -723,11 +765,18 @@ class StarCanvas extends Control:
 		if view._trail.is_empty():
 			return
 		var lay: AtlasLayout = view.layout
+		var core: float = clampf(view._scale * 0.42, 2.0, 5.0)
+		var casing: float = core + maxf(2.0, core * 0.75)
+		# Casing first, whole route, so one segment's core never sits on another's
+		# outline — that would read as a break in the road.
+		for seg in view._trail:
+			draw_line(view.to_screen(lay.position_of(int(seg[0]))),
+				view.to_screen(lay.position_of(int(seg[1]))),
+				AtlasView.COL_TRAIL_CASING, casing, true)
 		for seg in view._trail:
 			var col: Color = AtlasView.COL_TRAIL_DONE if bool(seg[2]) else AtlasView.COL_TRAIL
 			draw_line(view.to_screen(lay.position_of(int(seg[0]))),
-				view.to_screen(lay.position_of(int(seg[1]))),
-				col, clampf(view._scale * 0.34, 1.4, 3.0), true)
+				view.to_screen(lay.position_of(int(seg[1]))), col, core, true)
 
 	func _draw_stars(lay: AtlasLayout, show_rims: bool, focused: bool, vis: Rect2) -> void:
 		var current: int = lay.index_of(GameState.current_game_id)
@@ -763,6 +812,10 @@ class StarCanvas extends Control:
 			else:
 				draw_circle(p, r, col)
 
+			# Neighbours of the clicked star get a ring of their own — the lines say
+			# how many connections there are, the rings say which games they reach.
+			if focused and not faded and i != view._selected:
+				draw_arc(p, r + 2.5, 0.0, TAU, 24, AtlasView.COL_SELECTED_EDGE, 1.4, true)
 			if not faded and i == view._hovered:
 				draw_arc(p, r + 3.0, 0.0, TAU, 24, UITheme.TEXT, 1.5, true)
 			if i == current:
