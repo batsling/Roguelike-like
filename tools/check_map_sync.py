@@ -32,6 +32,7 @@ The grey ones are explicitly NOT influence and must never reach the
 
 import argparse
 import collections
+import difflib
 import html
 import os
 import re
@@ -52,6 +53,8 @@ KIND_INFLUENCE = "influence"
 
 # A node whose Y implies a year this far from the sheet's Year is reported.
 YEAR_TOLERANCE = 0.75
+# Similarity above which two unmatched names are suggested as the same game.
+NAME_SIMILARITY = 0.82
 
 
 # --------------------------------------------------------------------------
@@ -229,7 +232,10 @@ def main():
           % (len(dmap["nodes"]), len(dmap["edges"]), len(sheet["games"]), len(sheet["connections"])))
 
     # ---- games ----
-    map_games = {norm(n["label"]): n for n in dmap["nodes"].values()}
+    by_label = collections.defaultdict(list)
+    for node in dmap["nodes"].values():
+        by_label[norm(node["label"])].append(node)
+    map_games = {k: v[0] for k, v in by_label.items()}
     # Legend / annotation text boxes are vertices too; they simply won't match.
     on_map_only = {n["label"] for k, n in map_games.items() if k not in sheet["games"]}
     in_sheet_only = {g["name"] for k, g in sheet["games"].items() if k not in map_games}
@@ -242,8 +248,37 @@ def main():
     print("  in sheet, not on the map : %d" % len(in_sheet_only))
     listing(in_sheet_only, args.full)
 
+    # A one-character difference in a label shows up as a game missing from each
+    # side at once. Pair those up rather than reporting them as two absences.
+    sheet_keys = {norm(g["name"]): g["name"] for g in sheet["games"].values()
+                  if g["name"] in in_sheet_only}
+    near = []
+    for label in on_map_only:
+        hit = difflib.get_close_matches(norm(label), list(sheet_keys),
+                                        n=1, cutoff=NAME_SIMILARITY)
+        if hit:
+            near.append('map "%s"  vs  sheet "%s"' % (label, sheet_keys[hit[0]]))
+    if near:
+        print("  probable spelling mismatches (counted once on each side above): %d" % len(near))
+        listing(near, True)
+
+    # Two nodes sharing a label usually means a sequel was drawn but never
+    # relabelled — which also produces a phantom self-loop and a year conflict.
+    axis = fit_year_axis(dmap["year_axis"])
+
+    def placed_at(node):
+        if axis:
+            return "~%d" % round(axis[0] * node["y"] + axis[1])
+        return "y=%.0f" % node["y"]
+
+    dupes = ["%-38s drawn %d times, at %s"
+             % (group[0]["label"][:36], len(group), " and ".join(placed_at(n) for n in group))
+             for group in by_label.values() if len(group) > 1]
+    print("  labels drawn more than once on the map: %d" % len(dupes))
+    listing(dupes, True)
+
     # ---- year axis ----
-    fit = fit_year_axis(dmap["year_axis"])
+    fit = axis
     head("YEAR AXIS")
     if not fit:
         print("  no year-label column found — skipping the chronology check")

@@ -108,15 +108,17 @@ The Binding of Isaac on 48%, Spelunky Classic on 37%.
 
 ## 2a. The hand-drawn map already solves this
 
-`tools/Roguelikes.drawio6.svg` is a 26,648 × 10,156 px draw.io canvas with 491
-labelled nodes and 663 edges. The draw.io XML model is embedded in the SVG's
-`content` attribute, so it is fully machine-readable — geometry, styles and all.
-Run `tools/check_map_sync.py` to parse it.
+`tools/RoguelikeMap.svg` is a draw.io canvas with **750 labelled nodes and 1,038
+edges** — against 751 games and 988 connections in the sheet. The draw.io XML
+model is embedded in the SVG's `content` attribute, so it is fully
+machine-readable — geometry, styles and all. Run `tools/check_map_sync.py` to
+parse it. (`Roguelikes.drawio6.svg` is an older export of the same map, kept for
+comparison; it had 491 nodes and 663 edges.)
 
-**Its Y axis is release year.** A column of 47 year labels runs down the left
-edge at x = -10460, from 1978 to 2025, at a near-exact **196 px per year**. And
-the placement is disciplined: of the 481 nodes that match a game in the sheet,
-**467 (97%) sit within 0.75 years of their recorded release year.**
+**Its Y axis is release year.** A column of 48 year labels runs down the left
+edge at x = -10460, from 1978 to 2026, at a near-exact **196 px per year**. And
+the placement is disciplined: of the 741 nodes that match a game in the sheet,
+**728 (98%) sit within 0.75 years of their recorded release year.**
 
 That is section 2A of this document, built by hand, years before this research
 note. The recommendation to put year on an axis is not a new idea to import —
@@ -130,9 +132,9 @@ stroke colour:
 
 | Legend | Stroke | Count |
 | --- | --- | ---: |
-| Inspired / Was Iterated Upon By | default | 527 |
-| Sequel / Same Devs & Inspired | `#0000FF` | 86 |
-| Neither creators knew about the other | `#C8C8C8` | 50 |
+| Inspired / Was Iterated Upon By | default | 868 |
+| Sequel / Same Devs & Inspired | `#0000FF` | 119 |
+| Neither creators knew about the other | `#C8C8C8` | 51 |
 
 `games_influenced` is a single flat `Array[StringName]`, so all of this
 collapses to one undifferentiated edge type. The distinction already exists in
@@ -152,32 +154,48 @@ imported. `GameData` has nowhere to put it.
 
 ### Drift between the map and the sheet
 
-The two are maintained separately and have drifted **in both directions**. As of
-the checked-in (stale) SVG:
+The two are maintained separately and have drifted **in both directions**,
+though the current map is close:
 
 | | Count |
 | --- | ---: |
-| Games in the sheet, not drawn on the map | 270 |
-| Games drawn on the map, not in the sheet | 2 (Crafty Survival, The Spells Brigade) |
-| Connections in the sheet, not drawn on the map | 394 |
-| Connections drawn on the map, not in the sheet | 16 |
-| Nodes whose Y disagrees with the sheet's Year | 14 |
+| Games matched by name | 741 |
+| Games in the sheet, not drawn | 10 |
+| Games drawn, not in the sheet | 1 (plus 5 legend / era text boxes) |
+| Connections in the sheet, not drawn | 20 |
+| Connections drawn, not in the sheet | 14 |
+| Nodes whose Y disagrees with the sheet's Year | 13 |
+| Labels drawn more than once | 3 |
 
-The 16 map-only connections include genuine history the sheet is missing
-(`Rogue -> Beneath Apple Manor`) and four sequel links between titles the sheet
-doesn't pair up. There is also one self-loop on Fights in Tight Spaces, which is
-a drawing artifact.
+Most of the remainder is a handful of specific, fixable discrepancies rather
+than broad drift:
 
-The 14 year disagreements look like an early-access / 1.0 distinction rather
-than errors — Knock on the Coffin Lid is drawn at 2024 and recorded as 2020,
-Fights in Tight Spaces at 2025 versus 2021. Worth deciding which date the
-catalog means, since the run graph's chronology depends on it.
+- **`Gunlocked` is drawn twice**, at ~2022 and ~2025. The second one is almost
+  certainly *Gunlocked 2* left unrelabelled — which explains three separate
+  symptoms at once: the phantom self-loop `Gunlocked -> Gunlocked`, the year
+  conflict (drawn ~2025, sheet says 2022), and `Gunlocked 2` appearing as
+  missing from the map.
+- **`Disfigure` is drawn twice** eight pixels apart — an accidental duplicate.
+- **`Ragnarok` is drawn twice**, at ~1992 and ~1993. Possibly two real games of
+  that name, possibly a duplicate; worth a look.
+- **`Crafty Survival` (map) vs `Crafty Survivors` (sheet)** — a one-letter
+  difference that makes one game look absent from both sides at once.
+- Several pairs disagree on *which* title is the parent. The map draws
+  `Cataclysm -> Cataclysm: The Last Generation` while the sheet records
+  `Cataclysm: Dark Days Ahead -> Cataclysm: The Last Generation`, and the two
+  swap roles on the Bright Nights link. Same for
+  `FTL -> Fights in Tight Spaces` (map) against
+  `Into the Breach -> Fights in Tight Spaces` (sheet).
 
-These figures are from the old export in the repo. Re-run the checker against
-the current map to get real numbers:
+The 13 year disagreements look like an early-access / 1.0 distinction rather
+than errors — Knock on the Coffin Lid is drawn at 2024 and recorded as 2020.
+Worth deciding which date the catalog means, since the run graph's chronology
+depends on it.
+
+Re-run the checker after either side changes:
 
 ```
-python3 tools/check_map_sync.py path/to/updated.svg --full
+python3 tools/check_map_sync.py tools/RoguelikeMap.svg --full
 ```
 
 ---
