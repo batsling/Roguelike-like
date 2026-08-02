@@ -24,6 +24,7 @@ func _ready() -> void:
 	%ContinueBtn.pressed.connect(_on_continue_toggle)
 	%RunHistoryBtn.pressed.connect(_on_run_history)
 	%CollectionBtn.pressed.connect(_on_collection)
+	%AtlasBtn.pressed.connect(_on_atlas)
 	%TierListBtn.pressed.connect(_on_tier_list)
 	%SettingsBtn.pressed.connect(_on_settings)
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
@@ -482,11 +483,31 @@ func _delete_save(entry: Dictionary) -> void:
 # Stub buttons — backing systems land later.
 # ---------------------------------------------------------------------------
 
+# Run History sits ON TOP of the Atlas: the strip lists each route in order and
+# the sky behind it is where that route went, so one screen answers both.
 func _on_run_history() -> void:
-	_show_coming_soon("Run History", "Run history will live here once we track finished runs.")
+	var atlas: AtlasView = null
+	if AtlasView.load_layout() != null:
+		atlas = AtlasView.open(_modal_layer)
+	var history := RunHistoryScreen.open(_modal_layer, atlas)
+	if atlas != null:
+		# Closing the history closes the map it was laid over.
+		history.finished.connect(func():
+			if is_instance_valid(atlas):
+				atlas._finish())
 
 func _on_collection() -> void:
 	Collection.open(_modal_layer)
+
+# The Atlas — the whole influence graph as a star chart. Needs the baked layout
+# (tools/bake_atlas.py); without it we say so plainly rather than opening an
+# empty sky.
+func _on_atlas() -> void:
+	if AtlasView.load_layout() == null:
+		_show_coming_soon("Atlas",
+			"The star chart hasn't been generated yet. Run tools/bake_atlas.py to build it.")
+		return
+	AtlasView.open(_modal_layer)
 
 func _on_tier_list() -> void:
 	TierListScreen.open(_modal_layer)

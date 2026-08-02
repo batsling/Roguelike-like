@@ -16,6 +16,7 @@ build) but writes Godot .tres files instead of a JS object.
 import openpyxl
 import os
 import re
+import subprocess
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -70,9 +71,11 @@ def _stringname_array(ids: list[str]) -> str:
 
 
 def _packed_string_array(strings: list[str]) -> str:
+    # Escaped: source notes are free text off a spreadsheet and a stray quote or
+    # backslash would otherwise produce a .tres Godot can't parse.
     if not strings:
         return "PackedStringArray()"
-    quoted = ", ".join(f"\"{s}\"" for s in strings)
+    quoted = ", ".join(f"\"{_escape(s)}\"" for s in strings)
     return f"PackedStringArray({quoted})"
 
 
@@ -111,6 +114,8 @@ def write_game_tres(game: dict) -> None:
         f'year = {game["year"]}',
         f'type = {game["type"]}',
         f'games_influenced = {_stringname_array(game["games_influenced"])}',
+        f'influence_sources = {_packed_string_array(game["influence_sources"])}',
+        f'influence_relations = {_packed_string_array(game["influence_relations"])}',
         f'tags = {_packed_string_array(game["tags"])}',
         "enemy_pool = Array[StringName]([])",
         "item_pool = Array[StringName]([])",
@@ -179,6 +184,8 @@ def main() -> int:
             "file_location": (str(file_location_cell).strip() if file_location_cell else ""),
             "steam_page": (str(steam_page_cell).strip() if steam_page_cell else ""),
             "games_influenced": [],  # filled in pass 2
+            "influence_sources": [],   # index-aligned with games_influenced
+            "influence_relations": [],
             "cover_asset": None,     # filled below
         })
         name_to_id[name] = gid
@@ -189,6 +196,10 @@ def main() -> int:
     games_by_id: dict[str, dict] = {g["id"]: g for g in games}
     unresolved: set[str] = set()
     skipped = 0
+    # Columns: Influencer | Influencee | Influencer Time | Dev/Series Relation | Source.
+    # The last two used to be dropped on the floor; they are the evidence behind
+    # each claim and the thing that tells a sequel apart from an influence, so
+    # they now ride along index-aligned with games_influenced.
     for row in wb["connections"].iter_rows(min_row=2, values_only=True):
         a, b = row[0], row[1]
         if not a or not b:
@@ -203,7 +214,11 @@ def main() -> int:
         if b_id in seen[a_id]:
             continue
         seen[a_id].add(b_id)
+        relation = "dev/series" if _truthy(row[3] if len(row) > 3 else None) else ""
+        source = str(row[4]).strip() if len(row) > 4 and row[4] not in (None, "") else ""
         games_by_id[a_id]["games_influenced"].append(b_id)
+        games_by_id[a_id]["influence_sources"].append(source)
+        games_by_id[a_id]["influence_relations"].append(relation)
 
     # Pass 3: resolve covers in place (images2.0/games/ is the only cover home).
     os.makedirs(COVERS_DIR, exist_ok=True)
@@ -226,12 +241,25 @@ def main() -> int:
         write_game_tres(g)
 
     total_connections = sum(len(g["games_influenced"]) for g in games)
+    with_source = sum(1 for g in games for src in g["influence_sources"] if src)
+    dev_series = sum(1 for g in games for rel in g["influence_relations"] if rel)
     print(f"[import-games-godot] {len(games)} games written to {os.path.relpath(GAMES_OUT_DIR, PROJECT_ROOT)}")
     print(f"[import-games-godot] {total_connections} connections baked in")
+    print(f"[import-games-godot] {with_source} connections carry a source, "
+          f"{dev_series} are a sequel / same devs")
     print(f"[import-games-godot] covers resolved from {os.path.relpath(COVERS_DIR, PROJECT_ROOT)}")
     print(f"[import-games-godot] {missing_cover} games have no cover art (written without one)")
     if unresolved:
         print(f"[import-games-godot] {skipped} connection rows skipped — unresolved names: {sorted(unresolved)}")
+
+    # Re-bake the Atlas star chart. Its layout is a pure function of the games
+    # just written, so a new game or connection has to move the sky with it —
+    # otherwise the Atlas silently shows a stale catalog.
+    rc = subprocess.call([sys.executable, os.path.join(SCRIPT_DIR, "bake_atlas.py"),
+                          "--all-filters"])
+    if rc != 0:
+        print("[import-games-godot] atlas bake FAILED — run tools/bake_atlas.py to see why")
+        return rc
     return 0
 
 

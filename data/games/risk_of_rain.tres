@@ -9,7 +9,9 @@ id = &"risk_of_rain"
 display_name = "Risk of Rain"
 year = 2013
 type = 0
-games_influenced = Array[StringName]([&"dead_cells", &"putrid_shot_ultra", &"risk_of_rain_2", &"risk_of_rain_returns", &"shape_of_dreams", &"synthetik_legion_rising", &"wildfrost", &"in_celebration_of_violence"])
+games_influenced = Array[StringName]([&"dead_cells", &"in_celebration_of_violence", &"putrid_shot_ultra", &"risk_of_rain_2", &"risk_of_rain_returns", &"shape_of_dreams", &"synthetik_legion_rising", &"wildfrost"])
+influence_sources = PackedStringArray("https://mcvuk.com/development-news/when-we-made-dead-cells/", "https://www.julianedisonart.com/icov", "https://www.reddit.com/r/Games/comments/wifqwk/putrid_shot_ultra_abhi_sundu_chaotic_roguelike/", "", "", "https://screenrant.com/shape-of-dreams-eunseop-shim-interview/#:~:text=MOBAs%20were%20a%20key%20inspiration,like%20action%20roguelites%20in%20general.", "https://www.reddit.com/r/IAmA/comments/9m53vr/after_a_failed_kickstarter_and_3_years_of_working/", "https://mcvuk.com/business-news/when-we-made-wildfrost/")
+influence_relations = PackedStringArray("", "", "", "dev/series", "dev/series", "", "", "")
 tags = PackedStringArray("space")
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

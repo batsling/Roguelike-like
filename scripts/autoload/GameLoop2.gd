@@ -94,6 +94,12 @@ var stack: Array = []
 # again this run. The overworld consults is_bashed() when drawing games.
 var bashed: Array[StringName] = []
 
+# Games PASTED over a map node by Transmute (§4), as node id -> replacement id.
+# The node keeps its place on the graph — its routes to the Amulet are unchanged
+# — but it now plays a different game, for the rest of the run. Keyed by the
+# node, so a transmute sticks to the SPOT rather than to one offering.
+var transmuted: Dictionary = {}
+
 var run_over: bool = false
 var won: bool = false
 var defeated_count: int = 0
@@ -126,6 +132,7 @@ func reset() -> void:
 	stack.clear()
 	attempt_costs.clear()
 	bashed.clear()
+	transmuted.clear()
 	run_over = false
 	won = false
 	defeated_count = 0
@@ -162,6 +169,7 @@ func serialize() -> Dictionary:
 		"current": _serialize_entry(current),
 		"stack": stacked,
 		"bashed": bashed_ids,
+		"transmuted": _transmuted_ids(),
 		"run_over": run_over,
 		"won": won,
 		"defeated_count": defeated_count,
@@ -184,6 +192,11 @@ func restore(data: Dictionary) -> void:
 	bashed.clear()
 	for gid in data.get("bashed", []):
 		bashed.append(StringName(gid))
+	transmuted.clear()
+	for node in data.get("transmuted", {}).keys():
+		var replacement: StringName = StringName(data["transmuted"][node])
+		if Data.get_game(replacement) != null:
+			transmuted[StringName(node)] = replacement
 	run_over = bool(data.get("run_over", false))
 	won = bool(data.get("won", false))
 	defeated_count = int(data.get("defeated_count", 0))
@@ -367,9 +380,7 @@ func log_attempt() -> String:
 	else:
 		GameState.change_hp(-ATTEMPT_HEALTH_COST)
 		if GameState.hp <= 0:
-			run_over = true
-			won = false
-			run_lost.emit()
+			_finish_run(false)
 	attempt_costs.append(cost)
 	attempt_logged.emit(cost, false)
 	loop_changed.emit()
@@ -713,10 +724,8 @@ func clear_amulet() -> void:
 	if not current.is_empty():
 		_defeat(current["enemy"], true, {"defeats": [], "drops": 0})
 		current = {}
-	won = true
-	run_over = true
 	loop_changed.emit()
-	run_won.emit()
+	_finish_run(true)
 
 # --- Board verbs on the game pool (Bash / Transmute, §4) ------------------
 
@@ -739,8 +748,75 @@ func game_type_key(game: GameData) -> StringName:
 		_:
 			return &"strategy"
 
+func _transmuted_ids() -> Dictionary:
+	var out: Dictionary = {}
+	for node in transmuted.keys():
+		out[String(node)] = String(transmuted[node])
+	return out
+
+# The single exit from a run. Everything that ends one comes through here, so
+# the run can never finish without being written to history.
+func _finish_run(did_win: bool) -> void:
+	run_over = true
+	won = did_win
+	GameStats.record_run(did_win)
+	if did_win:
+		run_won.emit()
+	else:
+		run_lost.emit()
+
+# --- "how much of this is left" denominators -------------------------------
+#
+# Both stats read x/y, and y has to be the number that could HAVE happened, not
+# the whole catalog: an Action goal-enemy never turns up at a Deckbuilder game,
+# so counting it against all 757 games would make every number meaningless.
+# Enemies are drawn by matching game_type (see _pick_by_type_tier), so the pool
+# for a game is the enemies sharing its type, and the games an enemy can appear
+# at are the games sharing its.
+
+# Ids of every goal-enemy and boss that can be rolled at `game`.
+func possible_enemies_at(game: GameData) -> Array:
+	if game == null:
+		return []
+	var out: Array = []
+	var key: StringName = game_type_key(game)
+	for e in Data.all_goal_enemies() + Data.all_bosses():
+		if e is GoalEnemyData and StringName(String(e.game_type).to_lower()) == key:
+			out.append(e.id)
+	return out
+
+# How many games `enemy` could be rolled at.
+func possible_games_for(enemy: GoalEnemyData) -> int:
+	if enemy == null:
+		return 0
+	var key: StringName = StringName(String(enemy.game_type).to_lower())
+	var n: int = 0
+	for g in Data.all_games():
+		if g is GameData and game_type_key(g) == key:
+			n += 1
+	return n
+
 func is_bashed(game_id: StringName) -> bool:
 	return bashed.has(game_id)
+
+# The game actually played at a map node: the transmuted replacement if one has
+# been pasted there, otherwise the node's own game. Everything that asks "what
+# game is here?" should go through this.
+func game_at(node_id: StringName) -> GameData:
+	var replacement: StringName = transmuted.get(node_id, &"")
+	if replacement != &"":
+		var repl: GameData = Data.get_game(replacement)
+		if repl != null:
+			return repl
+	return Data.get_game(node_id)
+
+func is_transmuted(node_id: StringName) -> bool:
+	return transmuted.has(node_id)
+
+# The game that USED to be at a transmuted node — what the replacement was
+# pasted over. Null when nothing was.
+func original_at(node_id: StringName) -> GameData:
+	return Data.get_game(node_id) if is_transmuted(node_id) else null
 
 # Bash (§4): destroy a game outright — removed from the pool for the rest of the
 # run, never offered again. Spends a bash charge. Returns true on success. This
@@ -785,7 +861,12 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 	if pool.is_empty():
 		return null
 	GameState.transmute -= 1
-	return pool[randi() % pool.size()]
+	var replacement: GameData = pool[randi() % pool.size()]
+	# Pasted onto the SPOT, not onto this offering: the node plays the new game
+	# for the rest of the run, and the map shows it there.
+	transmuted[game_id] = replacement.id
+	loop_changed.emit()
+	return replacement
 
 # --- HUD / query helpers --------------------------------------------------
 
@@ -849,9 +930,7 @@ func _take_hit(damage: int, res: Dictionary) -> int:
 	res["blocked"] = int(res.get("blocked", 0)) + absorbed
 	res["damage_taken"] = int(res.get("damage_taken", 0)) + overflow
 	if GameState.hp <= 0 and not run_over:
-		run_over = true
-		won = false
-		run_lost.emit()
+		_finish_run(false)
 	return absorbed
 
 # Removes and returns the GoalEnemyData for `instance`, or null if not stacked.

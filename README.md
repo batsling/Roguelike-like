@@ -45,11 +45,13 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── events/           #   the D20 event system (EventModal, D20DieView)
 │   ├── menu/             #   the main menu
 │   ├── runtime/          #   RunGraph — the real-games influence graph
-│   └── ui/               #   shared UI (UITheme, RewardScreen, Collection, toasts)
+│   └── ui/               #   shared UI (UITheme, RewardScreen, Collection, AtlasView, toasts)
 │
 ├── data/                  # Game content as Godot Resources (.tres) — the source
 │   │                      # of truth the game loads at startup (see Data.gd)
 │   ├── games/            #   GameData — the ~750 real games that form the map
+│   ├── atlas_layout*.tres#   BAKED star positions for the Atlas, one sky per game
+│   │                      #   filter: all / _owned / _downloaded (tools/bake_atlas.py)
 │   ├── items2.0/         #   ItemData — the relics that drop from a defeated enemy
 │   ├── enemies2.0/       #   GoalEnemyData — goal-enemies, one per game beaten
 │   ├── bosses2.0/        #   GoalEnemyData — the difficulty-gate bosses
@@ -243,7 +245,8 @@ editing the sheet, then review the diff):
 | `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesnew` sheet |
 | `generate_event_tres.py` | `data/events/*.tres` from authored Python dicts |
 | `generate_encounter_tres.py` | `data/encounters/*.tres` from the `encounters` sheet |
-| `import-games-godot.py` | `data/games/*.tres`, resolving each cover in `images2.0/games/` |
+| `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — then re-bakes the Atlas |
+| `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 
 These require Python 3 with `openpyxl` (`pip install openpyxl`) and are run from
@@ -253,11 +256,207 @@ the repository root, e.g.:
 python3 tools/generate_item2_tres.py
 ```
 
+`bake_atlas.py` runs automatically at the end of `import-games-godot.py`, so
+adding a game or a connection to the spreadsheet and re-importing moves the sky
+with it. Run it directly to re-tune the layout:
+
+```bash
+python3 tools/bake_atlas.py --all-filters  # every sky (what the importer runs)
+python3 tools/bake_atlas.py                # 8 capitals, full catalog
+python3 tools/bake_atlas.py --filter owned # just the owned-games sky
+python3 tools/bake_atlas.py --capitals 12  # re-cut the constellations
+python3 tools/bake_atlas.py --stats        # report without writing
+```
+
+One sky is baked per `Settings.game_filter` value. The Atlas has to show the
+graph the run actually travels — an owned-only run drawn over the full 751-game
+sky would offer routes through games the run cannot enter — so each variant is
+laid out from scratch over its own subgraph and gets its own capitals rather
+than being the full map with stars hidden.
+
+It refuses to write a layout in which any two stars overlap, so a bad run fails
+loudly rather than shipping an unreadable map.
+
+`tools/` carries a `.gdignore`, which keeps Godot from importing the working
+files in there. Without it the editor rasterises `RoguelikeMap.svg` — a
+133,638 × 51,748 px canvas — into a clamped 16384² texture on every fresh import.
+
 See `docs/stat-dispatcher.md` for how stats resolve.
 
 ---
 
 ## Recent changes
+
+- **Filters on the Collection's Constellations** — a filter row above the sky:
+  **Constellations** (6 / 8 / 12), **Library** (owned / downloaded / not owned),
+  **Type**, **Record** (beaten / never beaten / amulet won / has notes) and
+  **Region** (one constellation), with a Clear button and a live *"88 of 757
+  games"* count. Filters combine.
+
+  Everything except the capital count **hides rather than moves**: the sky is a
+  baked layout, and a star that jumps when you tick a box destroys any sense of
+  where things are, so a filtered-out game dims right down in place and its links
+  stop drawing. The capital count is the exception — it re-cuts every region and
+  re-packs the sky, so 6 and 12 are baked as their own files
+  (`atlas_layout_c6.tres` / `_c12.tres`) and switching swaps between them.
+  Changing it clears the Region filter, since region indices mean different
+  places in a different cut. The filter row only exists in the Collection's
+  catalog view; a run's Atlas has no filters.
+
+- **"Beatable:" on the offering** — while choosing where to travel, a card shows
+  small portraits of the enemies you have **already beaten at that game before**:
+  the enemy standing there now, and anything currently following you. It is not a
+  prediction — it is your own record saying this pair has worked, which is
+  exactly what you want while deciding where to drag a follower. Hovering a
+  portrait gives the goal, how many times it fell there and whatever note you
+  wrote. A card with nothing proven stays clean.
+
+- **Per-game enemy notes** — games now remember **which enemies were beaten on
+  them**, and you can write down how. Every enemy line on the end-of-game
+  checklist carries a **🗒 Notes** button on its right; the button shows a pen
+  once something is written, so an annotated row reads at a glance. Ticking the
+  goal (or a follower you also cleared) logs that enemy against that game.
+
+  On a game's Atlas card, **🗒 Notes — beaten enemies (n)** opens the list: each
+  enemy's **art**, its goal, how many times it fell there, and your note under
+  it, most-beaten first. Notes can be **edited or deleted** from there as well as
+  written on the checklist — you often only work out how you beat something after
+  the run is over. Deleting clears the note alone; how many times the enemy fell
+  there is a record of fact, not a note, and stays.
+
+  The Collection's **Enemies** tab shows the same record from the other side:
+  each enemy's detail lists the **games it has been beaten in**, with cover,
+  count and note in the same format, editable in place. The **Games** tab carries
+  the mirror of it — every enemy beaten at that game.
+
+  Both sides carry a completion stat as **x / y**: an enemy's *Games beaten in
+  (3 / 91)*, a game's *Enemies beaten in (4 / 12)*. `y` is what **could** have
+  happened rather than the whole catalog — enemies are rolled by matching game
+  type, so an Action goal-enemy never appears at a Deckbuilder game and counting
+  it against all 757 would make the number meaningless.
+
+  A note belongs to the **pair**, not to the enemy — the same goal-enemy turns up
+  on many games and how you cleared it is a fact about that combination. Notes
+  are written where you actually beat the thing, which is when you remember how,
+  and the Atlas panel is read-only. Stored in `game_stats.json` next to the rest
+  of the lifetime record.
+
+- **A star's rim is its genre; in the Collection, its middle is your record** —
+  a game you've never played is drawn **solid in its own genre colour**, and one
+  you have wears a **silver** pip once beaten or a **gold** one once you've won a
+  run on it. Gold outranks silver, since winning a run implies beating it and the
+  rarer fact is the one worth seeing. Putting the record in the core rather than
+  on the rim keeps the sky readable **as genre at every zoom**, and a record
+  reads as something *gained* rather than as the absence of dimming — the earlier
+  "unplayed games are dimmed" rule is gone, since it washed out most of a catalog
+  nobody has finished.
+
+  The record is drawn **only in the Collection's Constellations**. During a run
+  the sky is about the run — the route, where you stand, what you've bashed — and
+  a lifetime marker competes with that, so the middles stay empty there. The
+  info card still carries the numbers in either view, in the Collection's own
+  vocabulary: **⚔ Beaten** and **👑 Amulet won**.
+
+- **"Show constellation" in the Collection** — the Games tab gains a button that
+  opens the whole catalog as the star chart, in **pure-catalog mode**: no run is
+  laid over it. No route to the Amulet, no path taken, no you-are-here or Amulet
+  rings, no strike-throughs on games bashed this run, and a transmuted node shows
+  the game the catalog says lives there rather than what was pasted on it. It is
+  titled *Constellations* rather than *Atlas* to make the difference plain.
+  "Beaten" means the lifetime record here, where the in-run Atlas also counts what
+  you've beaten on the way. Same sky, same layout — only what's drawn over it
+  differs.
+
+- **Run History, over the map** — the main menu's Run History is no longer a
+  stub. Every finished run is kept as **the route it actually walked**: covers
+  left to right in the order played, an arrow between each pair, the Amulet
+  closing the row marked won or lost. A run that died short of the Amulet shows
+  a **dashed** arrow across the stretch it never covered. The screen sits **on
+  top of the Atlas**, so the strip is the route in order and the sky behind it is
+  where that route went; **Show on map** throws a run onto it. Runs are written
+  by `GameLoop2._finish_run`, now the single exit from a run, so one can't end
+  without being recorded, and they persist in `game_stats.json` (capped at 40).
+
+- **Bash and Transmute on the map** — a **bashed** game's star is struck through
+  in red and every link into it turns red, because those routes no longer exist;
+  its card says so, and so does any connection touching it. **Transmute is now a
+  paste onto the spot**: it used to be a property of one offering, held locally
+  by `Overworld2` and cleared on every move and scramble, so it evaporated the
+  moment you walked on. It now lives in `GameLoop2` as node → replacement,
+  survives moving, scrambling and saving, and the node plays that game for the
+  rest of the run. `GameLoop2.game_at()` is the one place that answers "what game
+  is actually here". The node keeps its place on the graph, so the map draws the
+  pasted game's cover at the old spot with an ember ring and its card names both
+  **Now** and **Was**; a connection card keeps naming the *original* games —
+  the influence claim is between those — and adds a line saying what has been
+  pasted over an endpoint.
+
+- **Connection proof, and a card for the links themselves** — clicking a *line*
+  on the Atlas now opens a card showing **both games side by side**, the
+  influencer on the left with an arrow to the game it influenced, the claim in
+  words ("X inspired Y"), and the **evidence** underneath. Links flagged in the
+  sheet as a sequel or the same studio say so. A source that's a URL gets an
+  **Open source** button; the ~280 that are notes ("check folder", "game
+  credits") are shown as written rather than dressed up as links. Either game can
+  be inspected from the card. Clicking a star still wins over a link under the
+  same cursor, since near a hub the pointer is always over some line.
+
+  This needed data the importer had been discarding. `Roguelikes.xlsx`'s
+  `connections` sheet carries a **Source** column (884 of 1000 rows) and a
+  **Dev/Series Relation** column (114 rows); `import-games-godot.py` read only
+  the two game names and dropped both. `GameData` gains `influence_sources` and
+  `influence_relations`, index-aligned with `games_influenced`, and the importer
+  now carries them through. This closes the README's long-standing "connection
+  proof" roadmap item — the evidence was gathered years ago and simply wasn't
+  being imported.
+
+  **Re-importing also caught the catalog up with the spreadsheet**, which it had
+  drifted behind: **6 games** (How Many Dudes?, Inkbound, Mystery Chronicle: One
+  Way Heroics, One Way Heroics, Runeveil, Zoominoes) and **11 net connections**
+  that were authored in the sheet but had never reached `data/games/`. The
+  catalog is now 757 games / 1000 connections, up from 751 / 988. This changes
+  which routes exist, so runs will differ.
+
+- **A staleness guard on the baked skies** — `data/atlas_layout*.tres` are
+  generated and committed, so they can silently fall behind the catalog: a
+  half-failed import, a hand-edited `.tres`, a merge that took one side. Star
+  count alone never caught it — add a connection between two existing games and
+  the count is identical while the map is wrong. The Atlas tests now rebuild the
+  edge set from `data/games/*.tres` and compare it to each baked sky, and check
+  every star is drawn at the size its real connection count says. A failure names
+  the offending connection and tells you to re-run `tools/bake_atlas.py`.
+
+- **The Atlas — all 751 games as a star chart** — a new full-screen map
+  (`scripts/ui/AtlasView.gd`, opened from the main menu's **✦ Atlas** button, or
+  from the run map's **✦ Star chart** button). Every game is a star: size is its
+  connection count, the outline colour is its `GameType`. Games are grouped into
+  **eight constellations** around the highest-degree hubs — Slay the Spire,
+  The Binding of Isaac, Vampire Survivors, NetHack, FTL, Hades, Balatro,
+  Spelunky Classic — with each game joining whichever capital it reaches in
+  fewest hops. Detail follows zoom: dots and constellation names when zoomed out,
+  links in the middle, every star named up close. Clicking a star isolates it —
+  its links light up, the rest of the sky dims — and opens a card with the cover
+  art, release year, connection count, home constellation, distance from its
+  capital, and a **Play the real game** button where there's a launch target.
+  While a run is under way the shortest path to the Amulet is drawn over the sky
+  as an **ember trail** (green behind you, ember ahead), so the run map and the
+  atlas are the same picture at two altitudes.
+
+  There is **one sky per game filter**. Setting the path filter to *owned* (or
+  *downloaded*) opens a different, independently laid out map — 457 games, its
+  own capitals, Enter the Gungeon promoted where Balatro sits on the full map —
+  because a route through an unowned game doesn't exist for that run and drawing
+  it would be a lie.
+
+  Positions are **baked, not computed at runtime** — `tools/bake_atlas.py` writes
+  `data/atlas_layout*.tres`, and `import-games-godot.py` re-runs it for every
+  filter, so editing the spreadsheet moves the sky. Inside a constellation each game orbits the game
+  that influenced it, with subtrees packed as discs around their parent; a
+  subtree's radius is *measured* from its realised layout rather than bounded
+  from its children's, because the nested bound doubles at every level and threw
+  deep chains thousands of units into the void. The bake verifies that no two
+  stars overlap at their drawn radii and fails rather than writing a bad map.
+  `Settings.game_filter` never moves a star — the atlas is the whole catalog.
 
 Highlights from the most recent Godot sessions (newest first). The
 spreadsheet-driven content below regenerates via the `tools/` importers, so

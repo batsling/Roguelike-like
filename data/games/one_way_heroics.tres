@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_one_way_heroics"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://images2.0/games/one-way-heroics.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"one_way_heroics"
+display_name = "One Way Heroics"
+year = 2014
+type = 3
+games_influenced = Array[StringName]([&"mystery_chronicle_one_way_heroics"])
+influence_sources = PackedStringArray("")
+influence_relations = PackedStringArray("dev/series")
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\One Way Heroics.url"
+steam_page = "https://store.steampowered.com/app/266210/One_Way_Heroics/"

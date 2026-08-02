@@ -75,9 +75,6 @@ var _slot_enemy_key: String = ""
 var _boss_round: bool = false
 var _phase: int = Phase.SELECT
 var _chosen: Dictionary = {}          # the choice being played (Phase.PLAYING)
-# Transmute overrides for the current position: reachable game id -> the off-graph
-# game it was swapped to (§4). Cleared when the player moves on.
-var _transmuted: Dictionary = {}
 # Scramble (§4) reroll counter. The offering is drawn in a STABLE position-seeded
 # order so bashing one card doesn't reshuffle the rest; this salt is what a
 # scramble changes, re-drawing which games fill the slots (and, through
@@ -227,7 +224,6 @@ func start_run(character_id: StringName = &"") -> void:
 	_chosen = {}
 	_choices.clear()
 	_drop_queue.clear()
-	_transmuted.clear()
 	_slot_enemies.clear()
 	_slot_enemy_key = ""
 	var pick: Dictionary = RunGraph.pick_amulet_and_starts(_rng)
@@ -331,9 +327,6 @@ func capture_view_state() -> Dictionary:
 	var choices: Array = []
 	for c in _choices:
 		choices.append(_serialize_choice(c))
-	var transmuted: Dictionary = {}
-	for slot in _transmuted.keys():
-		transmuted[String(slot)] = String((_transmuted[slot] as GameData).id)
 	var visits: Dictionary = {}
 	for gid in _visits.keys():
 		visits[String(gid)] = int(_visits[gid])
@@ -348,7 +341,6 @@ func capture_view_state() -> Dictionary:
 		"boss_round": _boss_round,
 		"dash_mode": _dash_mode,
 		"scramble_salt": _scramble_salt,
-		"transmuted": transmuted,
 		"visits": visits,
 		"drops": drops,
 		"last_played_game": String(_last_played_game.id) if _last_played_game != null else "",
@@ -373,12 +365,6 @@ func restore_view_state(view: Dictionary) -> void:
 	_boss_round = bool(view.get("boss_round", false))
 	_dash_mode = bool(view.get("dash_mode", false))
 	_scramble_salt = int(view.get("scramble_salt", 0))
-	_transmuted.clear()
-	var tm: Dictionary = view.get("transmuted", {})
-	for slot in tm.keys():
-		var tg: GameData = Data.get_game(StringName(tm[slot]))
-		if tg != null:
-			_transmuted[StringName(slot)] = tg
 	_visits.clear()
 	var vs: Dictionary = view.get("visits", {})
 	for gid in vs.keys():
@@ -598,8 +584,8 @@ func scramble() -> bool:
 		return false
 	GameState.scramble -= 1
 	_scramble_salt += 1
-	# A transmuted card is a swap made on the OLD offering — a reroll replaces it.
-	_transmuted.clear()
+	# A transmute is pasted onto the NODE, not onto an offering, so re-drawing the
+	# cards leaves it in place — the spot still plays the game you pasted there.
 	_build_choices()
 	GameLog.add("Scrambled the offering — %d new game(s) to choose from." % _choices.size(),
 		Color(0.6, 0.75, 1.0))
@@ -681,6 +667,19 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	# owned items react (Burning Blood +1 Health, Meat on the Bone's conditional
 	# heal), the Harvesting stat pays out, charged actives tick, and the toast
 	# shows. Defeated-enemy drops were already banked by beat_game above.
+	# Remember WHICH enemies fell at this game, so the Atlas can list them later
+	# alongside whatever the player wrote about them.
+	if played_game != null:
+		var goal_enemy: GoalEnemyData = _chosen.get("enemy")
+		if goal_met and goal_enemy != null:
+			GameStats.record_enemy_beaten(played_game.id, goal_enemy.id)
+		for inst in fulfilled_instances:
+			for entry in GameLoop2.stack:
+				if int(entry.get("instance", -1)) == int(inst):
+					var follower: GoalEnemyData = entry["enemy"]
+					if follower != null:
+						GameStats.record_enemy_beaten(played_game.id, follower.id)
+					break
 	if played_game != null:
 		TriggerBus.game_beaten.emit({"game_id": played_game.id})
 		# Bank the clear (and pay the repeat-beat Dash). Recorded after the item
@@ -702,7 +701,6 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 		_apply_level_up()
 	GameState.games_played += 1
 	_chosen = {}
-	_transmuted.clear()   # transmutes apply only to the offering you moved from
 	# Rating is a BUTTON, never a pop-up: remember the game so the "★ Rate <game>"
 	# button on the select screen can score it whenever the player feels like it.
 	if played_game != null:
@@ -872,7 +870,7 @@ func bash_choice(index: int) -> void:
 	if not GameLoop2.bash_game(slot):
 		return
 	# A transmute on the destroyed slot dies with it, and so does its cached enemy.
-	_transmuted.erase(slot)
+	GameLoop2.transmuted.erase(slot)
 	_slot_enemies.erase("%s>%s" % [String(slot), String(game.id)])
 	_build_choices()
 	_refresh()
@@ -899,7 +897,8 @@ func transmute_choice(index: int) -> void:
 		on_map.append(c["slot"])
 	var repl: GameData = GameLoop2.transmute_game(slot, on_map)
 	if repl != null:
-		_transmuted[slot] = repl
+		# GameLoop2 records the paste against the NODE, so it survives moving on,
+		# scrambling, and saving — the spot plays that game for the rest of the run.
 		_build_choices()
 		_refresh()
 
@@ -1032,7 +1031,7 @@ func _build_choices() -> void:
 		_slot_enemy_key = enemy_key
 	var amulet: StringName = GameState.amulet_game_id
 	for gid in _offered_ids():
-		var game: GameData = _transmuted.get(gid, Data.get_game(gid))
+		var game: GameData = GameLoop2.game_at(gid)
 		if game == null:
 			continue
 		var type_key: StringName = GameLoop2.game_type_key(game)
@@ -1355,7 +1354,79 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 		verbs.add_child(_mini_button("Transmute", func(): transmute_choice(index)))
 	if verbs.get_child_count() > 0:
 		card.add_child(verbs)
+	var proven := _beatable_row(choice)
+	if proven != null:
+		card.add_child(proven)
 	return card
+
+# "Beatable:" — the enemies on the board right now that you have ALREADY beaten
+# at this game before. Not a prediction: it's your own record saying this pair
+# has worked, which is exactly what you want to know while choosing where to go
+# with a follower stuck to you.
+#
+# Returns null when there's nothing to say, so an unproven card stays clean.
+func _beatable_row(choice: Dictionary) -> Control:
+	var game: GameData = choice.get("game")
+	if game == null:
+		return null
+	# The enemy standing at this card, plus everything currently following you.
+	var on_board: Array = []
+	var here: GoalEnemyData = choice.get("enemy")
+	if here != null:
+		on_board.append(here)
+	for entry in GameLoop2.stack:
+		var follower: GoalEnemyData = entry.get("enemy")
+		if follower != null:
+			on_board.append(follower)
+
+	var proven: Array = []
+	var seen: Dictionary = {}
+	for enemy in on_board:
+		if seen.has(enemy.id):
+			continue
+		if GameStats.enemy_beaten_count(game.id, enemy.id) > 0:
+			seen[enemy.id] = true
+			proven.append(enemy)
+	if proven.is_empty():
+		return null
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var label := Label.new()
+	label.text = "Beatable:"
+	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_color_override("font_color", UITheme.SUCCESS)
+	row.add_child(label)
+	for enemy in proven:
+		row.add_child(_beatable_pip(game, enemy))
+	return row
+
+# One enemy on the Beatable row: its portrait, with the record and whatever note
+# was written on the hover — the note is the reason you know it's beatable.
+func _beatable_pip(game: GameData, enemy: GoalEnemyData) -> Control:
+	var times: int = GameStats.enemy_beaten_count(game.id, enemy.id)
+	var note: String = GameStats.enemy_note(game.id, enemy.id).strip_edges()
+	var tip: String = "%s — beaten here ×%d" % [enemy.display_name, times]
+	if enemy.goal != "":
+		tip += "\n%s" % enemy.goal
+	if note != "":
+		tip += "\n\n🗒 %s" % note
+	if enemy.image != null:
+		var art := TextureRect.new()
+		art.texture = enemy.image
+		art.custom_minimum_size = Vector2(20, 20)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.tooltip_text = tip
+		return art
+	# No portrait authored — fall back to the name rather than an empty gap.
+	var chip := Label.new()
+	chip.text = enemy.display_name
+	chip.add_theme_font_size_override("font_size", 9)
+	chip.add_theme_color_override("font_color", UITheme.SUCCESS)
+	chip.tooltip_text = tip
+	return chip
 
 # Build the self-report panel for the chosen game: a launch button (when the
 # game can be launched) and a fulfilment checkbox per following enemy so old
@@ -1402,7 +1473,7 @@ func _populate_play_panel() -> void:
 	if enemy != null and enemy.goal != "":
 		var is_amulet: bool = bool(_chosen.get("amulet", false))
 		var goal_text: String = "%s %s" % ["🏆 Amulet goal —" if is_amulet else "Goal —", enemy.goal]
-		var goal_row := _verify_row(goal_text, UITheme.SUCCESS, true)
+		var goal_row := _verify_row(goal_text, UITheme.SUCCESS, true, enemy)
 		_goal_check = goal_row["check"]
 		_verify_box.add_child(goal_row["row"])
 
@@ -1419,7 +1490,7 @@ func _populate_play_panel() -> void:
 
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
-		var row := _verify_row("Also cleared: %s — %s" % [e.display_name, e.goal], UITheme.TEXT, false)
+		var row := _verify_row("Also cleared: %s — %s" % [e.display_name, e.goal], UITheme.TEXT, false, e)
 		_verify_box.add_child(row["row"])
 		_fulfil_checks.append({"check": row["check"], "instance": int(entry["instance"])})
 
@@ -1486,17 +1557,42 @@ func _goal_met() -> bool:
 # main-goal row a heavier border so it reads as the primary question. Kept to a
 # single tight line each — the stage above it is the board, and the checklist has
 # to stay a glanceable list rather than a stack of cards.
-func _verify_row(text: String, color: Color, emphasise: bool) -> Dictionary:
+# One checklist line. When `enemy` is given the row also carries a Notes button
+# on the right, for writing down how this enemy was actually beaten AT this game
+# — the note belongs to the pair, and the Atlas surfaces it on the game later.
+func _verify_row(text: String, color: Color, emphasise: bool,
+		enemy: GoalEnemyData = null) -> Dictionary:
 	var wrap := PanelContainer.new()
 	var border: Color = color.lerp(UITheme.BORDER, 0.35)
 	wrap.add_theme_stylebox_override("panel", UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 2 if emphasise else 1, border))
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 8)
+	wrap.add_child(line)
 	var cb := CheckBox.new()
 	cb.text = text
 	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cb.add_theme_font_size_override("font_size", 13)
 	cb.add_theme_color_override("font_color", color)
-	wrap.add_child(cb)
+	line.add_child(cb)
+	if enemy != null:
+		var game: GameData = _chosen.get("game")
+		if game != null:
+			line.add_child(_notes_button(game, enemy))
 	return {"row": wrap, "check": cb}
+
+# The per-row Notes button. Shows a filled glyph once something is written, so a
+# game you've already annotated reads at a glance.
+func _notes_button(game: GameData, enemy: GoalEnemyData) -> Button:
+	var b := Button.new()
+	b.add_theme_font_size_override("font_size", 11)
+	b.tooltip_text = "Write down how you beat %s here" % enemy.display_name
+	var refresh := func():
+		var has: bool = GameStats.enemy_note(game.id, enemy.id).strip_edges() != ""
+		b.text = "🗒 Notes ✎" if has else "🗒 Notes"
+		b.add_theme_color_override("font_color", UITheme.GOLD if has else UITheme.TEXT_DIM)
+	refresh.call()
+	b.pressed.connect(func(): EnemyNoteModal.open(self, game, enemy, refresh))
+	return b
 
 func _verify_head(text: String) -> Label:
 	var l := Label.new()

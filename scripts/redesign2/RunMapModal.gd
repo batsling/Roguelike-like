@@ -109,6 +109,10 @@ func _build() -> void:
 	header.add_child(_zoom_button("−", func(): _set_zoom(_zoom / 1.25)))
 	header.add_child(_zoom_button("+", func(): _set_zoom(_zoom * 1.25)))
 	header.add_child(_zoom_button("Reset", func(): _set_zoom(1.0)))
+	# The same route at atlas altitude — this corridor drawn over the whole
+	# 751-game sky. Only offered once the layout has actually been baked.
+	if AtlasView.load_layout() != null:
+		header.add_child(_zoom_button("✦ Star chart", _open_atlas))
 	var close := Button.new()
 	close.text = "Close"
 	close.pressed.connect(_finish)
@@ -284,6 +288,14 @@ func _zoom_button(text: String, cb: Callable) -> Button:
 	b.add_theme_font_size_override("font_size", 13)
 	b.pressed.connect(cb)
 	return b
+
+# Open the Atlas framed on this run's route. The corridor modal stays open
+# underneath, so closing the star chart drops the player straight back here.
+func _open_atlas() -> void:
+	if _layer == null:
+		return
+	var atlas := AtlasView.open(_layer)
+	atlas.frame_trail.call_deferred()
 
 func _set_zoom(z: float) -> void:
 	_zoom = clampf(z, 0.4, 2.5)

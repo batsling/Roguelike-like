@@ -9,7 +9,9 @@ id = &"brotato"
 display_name = "Brotato"
 year = 2022
 type = 0
-games_influenced = Array[StringName]([&"astro_prospector", &"kill_the_music", &"maid_survivors_little_angels", &"noobs_are_coming", &"pesticide_not_required", &"rack_and_slay", &"voids_vigil"])
+games_influenced = Array[StringName]([&"astro_prospector", &"how_many_dudes", &"kill_the_music", &"maid_survivors_little_angels", &"noobs_are_coming", &"pesticide_not_required", &"rack_and_slay", &"voids_vigil"])
+influence_sources = PackedStringArray("check folder", "check folder", "https://x.com/nikkonikkoLTD/status/1984291038723457227?s=20", "https://gamingtrend.com/previews/little-angels-maid-survivors-preview-playx4-a-brotato-esque-horde-survival-game-with-anime-packaging-and-evolutions-to-the-genre/", "https://store.steampowered.com/app/2225960/Noobs_Are_Coming/", "https://store.steampowered.com/app/2479320/Pesticide_Not_Required/", "https://www.youtube.com/watch?v=kYUYXX5vdkU", "https://store.steampowered.com/app/2738940/Voids_Vigil/?inqueue=2_eyJzdHJDb250ZW50SHViVHlwZSI6InRhZ3MiLCJuQ29udGVudEh1YlRhZ0lEIjoxNzE2LCJiRGlzY291bnRzT25seSI6ZmFsc2UsImJQcmlvcml0aXplRGlzY291bnRzIjpmYWxzZX0")
+influence_relations = PackedStringArray("", "", "", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

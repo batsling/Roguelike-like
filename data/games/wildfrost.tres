@@ -10,6 +10,8 @@ display_name = "Wildfrost"
 year = 2023
 type = 2
 games_influenced = Array[StringName]([&"decktamer", &"hungry_horrors"])
+influence_sources = PackedStringArray("check folder", "https://www.youtube.com/watch?v=txv0XsRrFwo")
+influence_relations = PackedStringArray("", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

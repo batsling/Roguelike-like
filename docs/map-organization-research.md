@@ -1,9 +1,23 @@
 # Map Organization — research note
 
-Status: **research / no code changes.** Answers the question "is there a clearer
-way to organize the map, and what can be done with a graph this connected?"
-Recommendations are ranked but none are decided — this is input to a decision,
-not a spec.
+Status: **partly built.** This began as research answering "is there a clearer
+way to organize the map, and what can be done with a graph this connected?" The
+ranked recommendations below are still the honest analysis, but the decision has
+since been made and one option shipped.
+
+**What shipped: the constellation atlas** (§4.5 here, "name the regions after
+their capitals"), taken further than this note proposed — regions are not just
+named, they are the layout. `tools/bake_atlas.py` writes
+`data/atlas_layout.tres` and `scripts/ui/AtlasView.gd` draws it. Eight capitals,
+chosen over six and twelve by comparing cross-region link counts: 6 gives 17.8%,
+8 gives 20.4%, 12 gives 23.9%, but 12 also produces regions of seven games,
+which read as arbitrary rather than as places.
+
+Chronology was deliberately **left off the atlas** — year is on the info card
+instead, and the star outline carries `GameType`, which is the more useful thing
+to see at a glance. That means recommendation §4.3 (year × genre swimlanes) was
+considered and passed over, not overlooked; §4.1 and §4.2, the run-map
+improvements, remain unbuilt and are still worth doing.
 
 An interactive companion renders all five layouts below against the real
 catalog: <https://claude.ai/code/artifact/a1955a75-bd47-44b9-a39b-47392693caeb>
@@ -334,3 +348,12 @@ eligible starts filtered at degree ≥ 3.
 
 Measured 31 Jul 2026 at 751 games / 988 undirected edges. Re-run after any
 catalog import — the hub degrees in particular move.
+
+**Superseded 01 Aug 2026:** re-importing from `Roguelikes.xlsx` to pick up the
+`Source` and `Dev/Series Relation` columns also caught the catalog up with the
+sheet, which it had drifted behind. The figures throughout this note are from
+before that: the catalog is now **757 games / 1000 connections** (6 games and 11
+net connections had been authored in the sheet but never imported). Every
+proportion here still holds — Slay the Spire went 124 -> 126 connections, the
+capitals and their ordering are unchanged — but re-run the measurements before
+quoting an exact number.

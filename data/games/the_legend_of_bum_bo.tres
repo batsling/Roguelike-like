@@ -10,6 +10,8 @@ display_name = "The Legend of Bum-Bo"
 year = 2019
 type = 1
 games_influenced = Array[StringName]([&"brutal_orchestra", &"pronoun_palace"])
+influence_sources = PackedStringArray("https://steamcommunity.com/app/1734320/discussions/0/598515896185532848/", "https://store.steampowered.com/news/app/3618850/view/527612739964633653?l=english")
+influence_relations = PackedStringArray("", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

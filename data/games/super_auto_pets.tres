@@ -10,6 +10,8 @@ display_name = "Super Auto Pets"
 year = 2021
 type = 1
 games_influenced = Array[StringName]([&"backpack_battles", &"cursed_words", &"facehand", &"k_domon_hyper_auto_battlers", &"knightica", &"lunchbreak_tactics", &"merge_maestro", &"nubby_s_number_factory", &"oaken_tower"])
+influence_sources = PackedStringArray("check folder", "https://www.youtube.com/watch?v=7SjRhK9wdEE", "look at it", "check folder", "https://www.reddit.com/r/IndieGaming/comments/1iooyqr/roguelike_autobattler_cute_creatures_what_do_you/", "check folder", "check folder", "check folder", "check folder")
+influence_relations = PackedStringArray("", "", "", "", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

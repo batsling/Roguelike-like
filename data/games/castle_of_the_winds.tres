@@ -7,9 +7,11 @@
 script = ExtResource("1_game")
 id = &"castle_of_the_winds"
 display_name = "Castle of the Winds"
-year = 1989
+year = 1994
 type = 3
 games_influenced = Array[StringName]([&"dungeonmans"])
+influence_sources = PackedStringArray("https://www.reddit.com/r/Games/comments/2osauc/hi_rgames_were_a_group_of_aaa_and_exaaa/")
+influence_relations = PackedStringArray("")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

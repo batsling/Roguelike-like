@@ -10,6 +10,8 @@ display_name = "Brogue"
 year = 2009
 type = 3
 games_influenced = Array[StringName]([&"labyrinth_of_legendary_loot", &"moonring", &"pixel_dungeon", &"rogue_fp", &"unexplored", &"warpvector"])
+influence_sources = PackedStringArray("https://roguebasin.com/index.php/Labyrinth_of_Legendary_Loot", "check folder", "https://roguebasin.com/index.php/Pixel_Dungeon", "https://roguebasin.com/index.php/ROGUE-FP", "https://steamcommunity.com/app/506870/discussions/0/1354868867726398236/", "https://www.youtube.com/watch?v=G8e_zxWb3QA")
+influence_relations = PackedStringArray("", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

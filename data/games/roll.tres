@@ -10,6 +10,8 @@ display_name = "Roll"
 year = 2021
 type = 1
 games_influenced = Array[StringName]([&"rollscape"])
+influence_sources = PackedStringArray("https://steamcommunity.com/games/2904290/announcements/detail/4185610799649293674#:~:text=RollScape%20is%20a%20game%20inspired,I%20played%20throughout%20the%20years.")
+influence_relations = PackedStringArray("")
 tags = PackedStringArray("dice")
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
