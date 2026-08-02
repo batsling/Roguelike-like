@@ -667,6 +667,19 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	# owned items react (Burning Blood +1 Health, Meat on the Bone's conditional
 	# heal), the Harvesting stat pays out, charged actives tick, and the toast
 	# shows. Defeated-enemy drops were already banked by beat_game above.
+	# Remember WHICH enemies fell at this game, so the Atlas can list them later
+	# alongside whatever the player wrote about them.
+	if played_game != null:
+		var goal_enemy: GoalEnemyData = _chosen.get("enemy")
+		if goal_met and goal_enemy != null:
+			GameStats.record_enemy_beaten(played_game.id, goal_enemy.id)
+		for inst in fulfilled_instances:
+			for entry in GameLoop2.stack:
+				if int(entry.get("instance", -1)) == int(inst):
+					var follower: GoalEnemyData = entry["enemy"]
+					if follower != null:
+						GameStats.record_enemy_beaten(played_game.id, follower.id)
+					break
 	if played_game != null:
 		TriggerBus.game_beaten.emit({"game_id": played_game.id})
 		# Bank the clear (and pay the repeat-beat Dash). Recorded after the item
@@ -1388,7 +1401,7 @@ func _populate_play_panel() -> void:
 	if enemy != null and enemy.goal != "":
 		var is_amulet: bool = bool(_chosen.get("amulet", false))
 		var goal_text: String = "%s %s" % ["🏆 Amulet goal —" if is_amulet else "Goal —", enemy.goal]
-		var goal_row := _verify_row(goal_text, UITheme.SUCCESS, true)
+		var goal_row := _verify_row(goal_text, UITheme.SUCCESS, true, enemy)
 		_goal_check = goal_row["check"]
 		_verify_box.add_child(goal_row["row"])
 
@@ -1405,7 +1418,7 @@ func _populate_play_panel() -> void:
 
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
-		var row := _verify_row("Also cleared: %s — %s" % [e.display_name, e.goal], UITheme.TEXT, false)
+		var row := _verify_row("Also cleared: %s — %s" % [e.display_name, e.goal], UITheme.TEXT, false, e)
 		_verify_box.add_child(row["row"])
 		_fulfil_checks.append({"check": row["check"], "instance": int(entry["instance"])})
 
@@ -1472,17 +1485,105 @@ func _goal_met() -> bool:
 # main-goal row a heavier border so it reads as the primary question. Kept to a
 # single tight line each — the stage above it is the board, and the checklist has
 # to stay a glanceable list rather than a stack of cards.
-func _verify_row(text: String, color: Color, emphasise: bool) -> Dictionary:
+# One checklist line. When `enemy` is given the row also carries a Notes button
+# on the right, for writing down how this enemy was actually beaten AT this game
+# — the note belongs to the pair, and the Atlas surfaces it on the game later.
+func _verify_row(text: String, color: Color, emphasise: bool,
+		enemy: GoalEnemyData = null) -> Dictionary:
 	var wrap := PanelContainer.new()
 	var border: Color = color.lerp(UITheme.BORDER, 0.35)
 	wrap.add_theme_stylebox_override("panel", UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 2 if emphasise else 1, border))
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 8)
+	wrap.add_child(line)
 	var cb := CheckBox.new()
 	cb.text = text
 	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cb.add_theme_font_size_override("font_size", 13)
 	cb.add_theme_color_override("font_color", color)
-	wrap.add_child(cb)
+	line.add_child(cb)
+	if enemy != null:
+		var game: GameData = _chosen.get("game")
+		if game != null:
+			line.add_child(_notes_button(game, enemy))
 	return {"row": wrap, "check": cb}
+
+# The per-row Notes button. Shows a filled glyph once something is written, so a
+# game you've already annotated reads at a glance.
+func _notes_button(game: GameData, enemy: GoalEnemyData) -> Button:
+	var b := Button.new()
+	b.add_theme_font_size_override("font_size", 11)
+	b.tooltip_text = "Write down how you beat %s here" % enemy.display_name
+	var refresh := func():
+		var has: bool = GameStats.enemy_note(game.id, enemy.id).strip_edges() != ""
+		b.text = "🗒 Notes ✎" if has else "🗒 Notes"
+		b.add_theme_color_override("font_color", UITheme.GOLD if has else UITheme.TEXT_DIM)
+	refresh.call()
+	b.pressed.connect(func(): _open_enemy_note(game, enemy, refresh))
+	return b
+
+# A small editor for one (game, enemy) note. Saves on OK, leaves it alone on
+# Cancel — the note is the player's own record, so nothing else writes to it.
+func _open_enemy_note(game: GameData, enemy: GoalEnemyData, on_saved: Callable) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 140
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(layer)
+	var host := Control.new()
+	host.set_anchors_preset(Control.PRESET_FULL_RECT)
+	host.mouse_filter = Control.MOUSE_FILTER_STOP
+	host.theme = UITheme.shared()
+	layer.add_child(host)
+
+	var close := func(): layer.queue_free()
+	var panel := ModalScaffold.build_panel(host, UITheme.GOLD, close, Vector2(520, 380))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	margin.add_child(box)
+	panel.add_child(margin)
+
+	var title := Label.new()
+	title.text = "🗒  Notes — %s" % enemy.display_name
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", UITheme.GOLD)
+	box.add_child(title)
+
+	var sub := Label.new()
+	sub.text = "at %s%s" % [game.display_name,
+		("   ·   " + enemy.goal) if enemy.goal != "" else ""]
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sub.add_theme_font_size_override("font_size", 12)
+	sub.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	box.add_child(sub)
+
+	var edit := TextEdit.new()
+	edit.text = GameStats.enemy_note(game.id, enemy.id)
+	edit.placeholder_text = "How did you actually beat it? Build, route, what nearly killed you…"
+	edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(edit)
+
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 8)
+	buttons.alignment = BoxContainer.ALIGNMENT_END
+	box.add_child(buttons)
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.pressed.connect(close)
+	buttons.add_child(cancel)
+	var save := Button.new()
+	save.text = "Save note"
+	save.pressed.connect(func():
+		GameStats.set_enemy_note(game.id, enemy.id, edit.text.strip_edges())
+		if on_saved.is_valid():
+			on_saved.call()
+		close.call())
+	buttons.add_child(save)
 
 func _verify_head(text: String) -> Label:
 	var l := Label.new()

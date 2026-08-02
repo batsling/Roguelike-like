@@ -847,6 +847,14 @@ func _refresh_card() -> void:
 	if game != null and game.owned:
 		facts.add_child(_fact("Owned", "yes"))
 
+	# What the player has actually fought here, and what they wrote about it.
+	if GameStats.has_enemy_log(id):
+		var notes_btn := Button.new()
+		notes_btn.text = "🗒  Notes — beaten enemies (%d)" % GameStats.enemies_for(id).size()
+		notes_btn.add_theme_font_size_override("font_size", 12)
+		notes_btn.pressed.connect(func(): _open_enemy_notes(id, name_text))
+		_card_box.add_child(notes_btn)
+
 	if game != null and game.has_launch_target():
 		var play := Button.new()
 		play.text = "▶  Play the real game"
@@ -1032,6 +1040,106 @@ func _set_card_width(width: float) -> void:
 	_card.custom_minimum_size.x = width
 	_card.offset_left = -(width + MARGIN)
 	_card.offset_right = -MARGIN
+
+# Every enemy beaten at this game, with the player's note under each. Read-only
+# — notes are written on the checklist, at the moment you actually beat the
+# thing, which is when you remember how.
+func _open_enemy_notes(game_id: StringName, game_name: String) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 140
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(layer)
+	var host := Control.new()
+	host.set_anchors_preset(Control.PRESET_FULL_RECT)
+	host.mouse_filter = Control.MOUSE_FILTER_STOP
+	host.theme = UITheme.shared()
+	layer.add_child(host)
+
+	var close := func(): layer.queue_free()
+	var panel := ModalScaffold.build_panel(host, UITheme.GOLD, close, Vector2(620, 520))
+	var root := VBoxContainer.new()
+	root.add_theme_constant_override("separation", 10)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	margin.add_child(root)
+	panel.add_child(margin)
+
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 12)
+	root.add_child(header)
+	var title := Label.new()
+	title.text = "🗒  Beaten at %s" % game_name
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", UITheme.GOLD)
+	header.add_child(title)
+	var dismiss := Button.new()
+	dismiss.text = "Close"
+	dismiss.pressed.connect(close)
+	header.add_child(dismiss)
+
+	var scroller := ScrollContainer.new()
+	scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(scroller)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 8)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroller.add_child(list)
+
+	var entries: Array = GameStats.enemies_for(game_id)
+	if entries.is_empty():
+		var none := Label.new()
+		none.text = "Nothing beaten here yet."
+		none.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		list.add_child(none)
+	for entry in entries:
+		list.add_child(_enemy_note_row(entry))
+
+func _enemy_note_row(entry: Dictionary) -> Control:
+	var enemy: GoalEnemyData = Data.get_goal_enemy_any(StringName(entry["id"]))
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.PANEL, 6, 10, 1, UITheme.BORDER))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 5)
+	panel.add_child(col)
+
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
+	col.add_child(top)
+	var who := Label.new()
+	who.text = enemy.display_name if enemy != null else String(entry["id"])
+	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	who.add_theme_font_size_override("font_size", 15)
+	who.add_theme_color_override("font_color", UITheme.TEXT)
+	top.add_child(who)
+	var times := Label.new()
+	var n: int = int(entry["beaten"])
+	times.text = "beaten ×%d" % n
+	times.add_theme_font_size_override("font_size", 11)
+	times.add_theme_color_override("font_color", UITheme.SUCCESS)
+	top.add_child(times)
+
+	if enemy != null and enemy.goal != "":
+		var goal := Label.new()
+		goal.text = enemy.goal
+		goal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		goal.add_theme_font_size_override("font_size", 12)
+		goal.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+		col.add_child(goal)
+
+	var note_text: String = String(entry["note"]).strip_edges()
+	var note := Label.new()
+	note.text = note_text if note_text != "" else "No note written for this one."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_size_override("font_size", 13)
+	note.add_theme_color_override("font_color",
+		UITheme.GOLD if note_text != "" else UITheme.TEXT_FAINT)
+	col.add_child(note)
+	return panel
 
 func _fact(key: String, value: String) -> Control:
 	var row := HBoxContainer.new()

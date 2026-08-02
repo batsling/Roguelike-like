@@ -287,6 +287,22 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
 ## Recent changes
 
+- **Per-game enemy notes** — games now remember **which enemies were beaten on
+  them**, and you can write down how. Every enemy line on the end-of-game
+  checklist carries a **🗒 Notes** button on its right; the button shows a pen
+  once something is written, so an annotated row reads at a glance. Ticking the
+  goal (or a follower you also cleared) logs that enemy against that game.
+
+  On a game's Atlas card, **🗒 Notes — beaten enemies (n)** opens the list: each
+  enemy with its goal, how many times it fell there, and your note under it.
+  Sorted most-beaten first.
+
+  A note belongs to the **pair**, not to the enemy — the same goal-enemy turns up
+  on many games and how you cleared it is a fact about that combination. Notes
+  are written where you actually beat the thing, which is when you remember how,
+  and the Atlas panel is read-only. Stored in `game_stats.json` next to the rest
+  of the lifetime record.
+
 - **A star's rim is its genre; in the Collection, its middle is your record** —
   a game you've never played is drawn **solid in its own genre colour**, and one
   you have wears a **silver** pip once beaten or a **gold** one once you've won a

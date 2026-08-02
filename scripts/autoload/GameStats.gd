@@ -38,6 +38,13 @@ var deck_wins: Dictionary = {}
 const MAX_RUNS := 40
 var runs: Array = []
 
+# Which enemies have been beaten ON which game, and the player's own notes about
+# how. Keyed game id -> enemy id -> {"beaten": int, "note": String}.
+#
+# A note belongs to the PAIR, not to the enemy: the same goal-enemy shows up on
+# many games and how you cleared it is a fact about that combination.
+var enemy_log: Dictionary = {}
+
 func _ready() -> void:
 	load_data()
 
@@ -133,6 +140,59 @@ func record_run(did_win: bool) -> void:
 	save_data()
 	changed.emit()
 
+# Record that `enemy_id` was beaten while playing `game_id`. Idempotent per
+# clear — the count is how many times, so a re-clear is visible.
+func record_enemy_beaten(game_id, enemy_id) -> void:
+	var g := String(game_id)
+	var e := String(enemy_id)
+	if g == "" or e == "":
+		return
+	if not enemy_log.has(g):
+		enemy_log[g] = {}
+	var entry: Dictionary = enemy_log[g].get(e, {"beaten": 0, "note": ""})
+	entry["beaten"] = int(entry.get("beaten", 0)) + 1
+	enemy_log[g][e] = entry
+	save_data()
+	changed.emit()
+
+# The player's note on how they beat `enemy_id` at `game_id`. Storing a note for
+# a pair that was never beaten is allowed — you might write it before ticking.
+func set_enemy_note(game_id, enemy_id, note: String) -> void:
+	var g := String(game_id)
+	var e := String(enemy_id)
+	if g == "" or e == "":
+		return
+	if not enemy_log.has(g):
+		enemy_log[g] = {}
+	var entry: Dictionary = enemy_log[g].get(e, {"beaten": 0, "note": ""})
+	entry["note"] = note
+	enemy_log[g][e] = entry
+	save_data()
+	changed.emit()
+
+func enemy_note(game_id, enemy_id) -> String:
+	return String(enemy_log.get(String(game_id), {}).get(String(enemy_id), {}).get("note", ""))
+
+func enemy_beaten_count(game_id, enemy_id) -> int:
+	return int(enemy_log.get(String(game_id), {}).get(String(enemy_id), {}).get("beaten", 0))
+
+# Every enemy logged against a game, most-beaten first then by name, as
+# [{"id": String, "beaten": int, "note": String}]. Used by the Atlas card.
+func enemies_for(game_id) -> Array:
+	var out: Array = []
+	for e in enemy_log.get(String(game_id), {}).keys():
+		var entry: Dictionary = enemy_log[String(game_id)][e]
+		out.append({"id": String(e), "beaten": int(entry.get("beaten", 0)),
+			"note": String(entry.get("note", ""))})
+	out.sort_custom(func(a, b):
+		if int(a["beaten"]) != int(b["beaten"]):
+			return int(a["beaten"]) > int(b["beaten"])
+		return String(a["id"]) < String(b["id"]))
+	return out
+
+func has_enemy_log(game_id) -> bool:
+	return not enemy_log.get(String(game_id), {}).is_empty()
+
 func run_count() -> int:
 	return runs.size()
 
@@ -142,13 +202,15 @@ func save_data() -> bool:
 		push_error("[GameStats] could not open '%s' for write" % SAVE_PATH)
 		return false
 	f.store_string(JSON.stringify(
-		{"games": stats, "deck_wins": deck_wins, "runs": runs}, "  "))
+		{"games": stats, "deck_wins": deck_wins, "runs": runs,
+		 "enemy_log": enemy_log}, "  "))
 	return true
 
 func load_data() -> void:
 	stats = {}
 	deck_wins = {}
 	runs = []
+	enemy_log = {}
 	if not FileAccess.file_exists(SAVE_PATH):
 		return
 	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
@@ -161,6 +223,8 @@ func load_data() -> void:
 	# game dictionary. Both parse — a game will never be named "games".
 	if json.data.has("runs") and typeof(json.data["runs"]) == TYPE_ARRAY:
 		runs = json.data["runs"]
+	if json.data.has("enemy_log") and typeof(json.data["enemy_log"]) == TYPE_DICTIONARY:
+		enemy_log = json.data["enemy_log"]
 	var games: Dictionary = json.data
 	if json.data.has("games") and typeof(json.data["games"]) == TYPE_DICTIONARY:
 		games = json.data["games"]
