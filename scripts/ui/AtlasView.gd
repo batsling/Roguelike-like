@@ -100,6 +100,9 @@ const COL_BASHED := Color(0.90, 0.26, 0.22, 0.95)
 # you stand, gold for what you came for.
 const COL_YOU := Color(0.36, 0.92, 0.52)
 const COL_GOAL := Color(1.0, 0.82, 0.30)
+# A game being weighed up rather than stood on: the ember the offering already
+# uses for "this is the card you're pointing at".
+const COL_CONSIDERING := Color(1.0, 0.60, 0.24)
 const COL_EDGE_BASHED := Color(0.90, 0.26, 0.22, 0.45)
 const COL_DIM := Color(1, 1, 1, 0.11)
 
@@ -119,6 +122,13 @@ const MIN_COVER_PX := 26.0
 # opens, because the Collection is about the catalog, not about a run in progress.
 var pure_catalog: bool = false
 
+# PREVIEW mode: draw the road ahead from a game the player is only CONSIDERING
+# rather than from the one they're standing on — the route an offered card would
+# open. Set BEFORE the view enters the tree (the trail is built in _ready).
+# You-are-here still marks the real position, so the sky reads as
+# "here → if you take this → the Amulet".
+var preview_origin: StringName = &""
+
 var layout: AtlasLayout = null
 
 var _scale: float = 1.0
@@ -133,6 +143,8 @@ var _neighbors: Dictionary = {}      # star index -> Array[int], built lazily
 var _near: Dictionary = {}           # selection halo: index -> true
 var _trail: Array = []               # road ahead:  [[from_idx, to_idx], ...]
 var _steps_ahead: int = -1           # hops still to walk to the Amulet, -1 = no route
+var _reserve_left: float = 0.0       # screen edges something is floating over
+var _reserve_right: float = 0.0
 var _history: Array = []             # walked:      [[from_idx, to_idx, jumped: bool], ...]
 var _hulls: Array = []               # [{ci, centre: Vector2, radius: float}], built lazily
 var _sequel_cache: Dictionary = {}   # edge index -> bool, built lazily
@@ -229,7 +241,9 @@ func _build_trail() -> void:
 	_trail.clear()
 	if not has_layout() or pure_catalog:
 		return
-	var current: StringName = GameState.current_game_id
+	# In preview mode the road ahead starts at the game being considered — that is
+	# the whole question the preview asks.
+	var current: StringName = preview_origin if preview_origin != &"" else GameState.current_game_id
 	var amulet: StringName = GameState.amulet_game_id
 	if current == &"" or amulet == &"":
 		return
@@ -271,6 +285,13 @@ func amulet_index() -> int:
 		return -1
 	return layout.index_of(GameState.amulet_game_id)
 
+# The game a preview is routing FROM, when this sky is previewing one.
+func preview_index() -> int:
+	if pure_catalog or not has_layout() or preview_origin == &"":
+		return -1
+	var i: int = layout.index_of(preview_origin)
+	return -1 if i == current_index() else i
+
 # Hops from where the player stands to the Amulet, or -1 when the Amulet can't be
 # reached from here (a bashed-out corridor) or there is no run.
 func steps_to_amulet() -> int:
@@ -283,6 +304,8 @@ func marker_text(index: int) -> String:
 		return ""
 	if index == current_index():
 		return "YOU ARE HERE"
+	if index == preview_index():
+		return "IF YOU GO HERE"
 	if index == amulet_index():
 		if _steps_ahead > 0:
 			return "THE AMULET — %d STEP%s" % [_steps_ahead, "" if _steps_ahead == 1 else "S"]
@@ -294,6 +317,8 @@ func marker_text(index: int) -> String:
 func marker_color(index: int) -> Color:
 	if index >= 0 and index == current_index():
 		return COL_YOU
+	if index >= 0 and index == preview_index():
+		return COL_CONSIDERING
 	if index >= 0 and index == amulet_index():
 		return COL_GOAL
 	return UITheme.TEXT_DIM
@@ -358,16 +383,28 @@ func _canvas_size() -> Vector2:
 func to_screen(p: Vector2) -> Vector2:
 	return p * _scale + _offset
 
+# Space along the edges that framing must keep clear, because something is
+# floating over the sky there — the run map's movable window. Framing then aims
+# at the part of the chart you can actually see, instead of centring the route
+# under whatever is covering it.
+func reserve_margins(left: float, right: float) -> void:
+	_reserve_left = maxf(0.0, left)
+	_reserve_right = maxf(0.0, right)
+
 func frame_rect(world: Rect2) -> void:
 	if world.size.x <= 0.0 or world.size.y <= 0.0:
 		return
 	var view: Vector2 = _canvas_size()
 	var pad: float = 40.0
+	# The strip of chart that isn't hidden behind a floating panel.
+	var free_x: float = _reserve_left
+	var free_w: float = maxf(160.0, view.x - _reserve_left - _reserve_right)
 	_fit_scale = minf((view.x - pad * 2.0) / layout.bounds.size.x,
 		(view.y - pad * 2.0) / layout.bounds.size.y)
-	_scale = minf((view.x - pad * 2.0) / world.size.x, (view.y - pad * 2.0) / world.size.y)
+	_scale = minf((free_w - pad * 2.0) / world.size.x, (view.y - pad * 2.0) / world.size.y)
 	_scale = clampf(_scale, _fit_scale * ZOOM_MIN, _fit_scale * ZOOM_MAX)
-	_offset = view * 0.5 - (world.position + world.size * 0.5) * _scale
+	var centre: Vector2 = world.position + world.size * 0.5
+	_offset = Vector2(free_x + free_w * 0.5, view.y * 0.5) - centre * _scale
 	_redraw()
 
 func frame_all() -> void:
@@ -888,13 +925,18 @@ func _build_header() -> Control:
 
 	_hud = Label.new()
 	_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Clipped rather than sized to its text: the run line names two or three real
+	# games, and a label that long would push the header's buttons off the edge of
+	# a 1280-wide screen.
+	_hud.clip_text = true
+	_hud.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_hud.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	_hud.add_theme_font_size_override("font_size", 12)
 	row.add_child(_hud)
 
 	_search = LineEdit.new()
 	_search.placeholder_text = "Find a game…"
-	_search.custom_minimum_size.x = 190
+	_search.custom_minimum_size.x = 150
 	_search.text_submitted.connect(_on_search)
 	row.add_child(_search)
 
@@ -902,6 +944,8 @@ func _build_header() -> Control:
 	# are one click each rather than a hunt across the sky.
 	if current_index() >= 0:
 		row.add_child(_tool_button("📍 You", func(): _frame_star(current_index())))
+	if preview_index() >= 0:
+		row.add_child(_tool_button("▶ This game", func(): _frame_star(preview_index())))
 	if amulet_index() >= 0:
 		row.add_child(_tool_button("🏆 Amulet", func(): _frame_star(amulet_index())))
 	if not pure_catalog and (not _trail.is_empty() or not _history.is_empty()):
@@ -950,6 +994,8 @@ func _build_legend() -> Control:
 	# the rest of the run's drawing hangs off.
 	if current_index() >= 0:
 		row.add_child(_legend_chip("📍 You are here", COL_YOU))
+	if preview_index() >= 0:
+		row.add_child(_legend_chip("▶ If you go here", COL_CONSIDERING))
 	if amulet_index() >= 0:
 		row.add_child(_legend_chip("🏆 The Amulet — the goal", COL_GOAL))
 	if not _history.is_empty():
@@ -1552,11 +1598,19 @@ func run_summary() -> String:
 	var parts: Array = []
 	if here != null:
 		parts.append("📍 %s" % here.display_name)
+	# A preview reads as the three-stop journey it is: here, the game on the
+	# card, and what it's a step toward.
+	var considering: int = preview_index()
+	if considering >= 0:
+		var candidate: GameData = game_at(considering)
+		if candidate != null:
+			parts.append("▶ %s" % candidate.display_name)
 	if there != null:
 		parts.append("🏆 %s" % there.display_name)
 	var line: String = "  →  ".join(parts)
 	if _steps_ahead > 0:
-		line += "   (%d step%s to go)" % [_steps_ahead, "" if _steps_ahead == 1 else "s"]
+		line += "   (%d step%s %s)" % [_steps_ahead, "" if _steps_ahead == 1 else "s",
+			"from there" if considering >= 0 else "to go"]
 	elif _steps_ahead == 0:
 		line += "   (you're standing on it)"
 	elif cur >= 0 and goal >= 0:
@@ -1906,28 +1960,46 @@ class StarCanvas extends Control:
 	func _draw_run_markers(lay: AtlasLayout) -> void:
 		var cur: int = view.current_index()
 		var goal: int = view.amulet_index()
+		var considering: int = view.preview_index()
+		# Badges already placed this frame. Two anchors a few stars apart would
+		# otherwise print on top of each other, which is worse than either alone.
+		var taken: Array[Rect2] = []
 		# The Amulet first, so the you-are-here badge wins any overlap — the map
 		# is read from where you stand.
-		if goal >= 0 and goal != cur:
-			_draw_marker(lay, goal, view.marker_text(goal), AtlasView.COL_GOAL)
+		if goal >= 0 and goal != cur and goal != considering:
+			_draw_marker(lay, goal, view.marker_text(goal), AtlasView.COL_GOAL, taken)
+		if considering >= 0:
+			_draw_marker(lay, considering, view.marker_text(considering),
+				AtlasView.COL_CONSIDERING, taken)
 		if cur >= 0:
-			_draw_marker(lay, cur, view.marker_text(cur), AtlasView.COL_YOU)
+			_draw_marker(lay, cur, view.marker_text(cur), AtlasView.COL_YOU, taken)
 
-	func _draw_marker(lay: AtlasLayout, i: int, text: String, col: Color) -> void:
+	func _draw_marker(lay: AtlasLayout, i: int, text: String, col: Color,
+			taken: Array[Rect2]) -> void:
 		var p: Vector2 = view.to_screen(lay.position_of(i))
 		if not Rect2(Vector2.ZERO, size).has_point(p):
-			_draw_offscreen_marker(p, text, col)
+			_draw_offscreen_marker(p, text, col, taken)
 			return
 		var r: float = maxf(11.0, view.drawn_half_height(i) + 7.0)
 		draw_arc(p, r + 7.0, 0.0, TAU, 40, Color(col, 0.22), 9.0, true)
 		draw_arc(p, r, 0.0, TAU, 40, AtlasView.COL_TRAIL_CASING, 5.5, true)
 		draw_arc(p, r, 0.0, TAU, 40, col, 2.6, true)
 		draw_arc(p, r + 6.0, 0.0, TAU, 40, Color(col, 0.75), 1.4, true)
-		_draw_badge(Vector2(p.x, p.y - r - 8.0), text, col)
+		# Above the star by preference, below it when that spot is already spoken
+		# for — a badge that lands on another badge names neither anchor.
+		var box: Rect2 = _badge_rect(Vector2(p.x, p.y - r - 8.0), text)
+		if _overlaps(box, taken):
+			var below: Rect2 = _badge_rect(
+				Vector2(p.x, p.y + r + 9.0 + box.size.y), text)
+			if not _overlaps(below, taken):
+				box = below
+		taken.append(box)
+		_draw_badge_rect(box, text, col)
 
 	# The marker's star is outside the viewport: park a pointer on the nearest
 	# edge, aimed at it.
-	func _draw_offscreen_marker(target: Vector2, text: String, col: Color) -> void:
+	func _draw_offscreen_marker(target: Vector2, text: String, col: Color,
+			taken: Array[Rect2]) -> void:
 		const PAD := 30.0
 		var edge := Vector2(
 			clampf(target.x, PAD, maxf(PAD, size.x - PAD)),
@@ -1937,23 +2009,41 @@ class StarCanvas extends Control:
 		draw_circle(edge, 13.0, Color(UITheme.BG_DEEP, 0.92))
 		draw_arc(edge, 13.0, 0.0, TAU, 26, col, 2.0, true)
 		_chevron(edge + dir * 3.0, dir, 17.0, col)
-		_draw_badge(edge - Vector2(0, 16.0), text, col)
+		var box: Rect2 = _badge_rect(edge - Vector2(0, 16.0), text)
+		if _overlaps(box, taken):
+			box.position.y = edge.y + 20.0
+		taken.append(box)
+		_draw_badge_rect(box, text, col)
 
-	# A boxed caption above a point, cased so it reads over cover art, and kept
+	func _overlaps(box: Rect2, taken: Array[Rect2]) -> bool:
+		for t in taken:
+			if t.intersects(box):
+				return true
+		return false
+
+	const BADGE_FONT_SIZE := 12
+
+	# Where a boxed caption sits: bottom-anchored on `at`, centred on it, and kept
 	# inside the canvas so an anchor near an edge still says what it is.
-	func _draw_badge(at: Vector2, text: String, col: Color) -> void:
-		if text == "":
-			return
+	func _badge_rect(at: Vector2, text: String) -> Rect2:
 		var font: Font = get_theme_default_font()
-		var fs: int = 12
-		var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var box := Rect2(at.x - w * 0.5 - 8.0, at.y - float(fs) - 9.0, w + 16.0, float(fs) + 10.0)
+		var fs: float = float(BADGE_FONT_SIZE)
+		var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			BADGE_FONT_SIZE).x
+		var box := Rect2(at.x - w * 0.5 - 8.0, at.y - fs - 9.0, w + 16.0, fs + 10.0)
 		box.position.x = clampf(box.position.x, 3.0, maxf(3.0, size.x - box.size.x - 3.0))
 		box.position.y = clampf(box.position.y, 3.0, maxf(3.0, size.y - box.size.y - 3.0))
+		return box
+
+	# Cased, so it reads over cover art the same way the roads do.
+	func _draw_badge_rect(box: Rect2, text: String, col: Color) -> void:
+		if text == "":
+			return
 		draw_rect(box, Color(UITheme.BG_DEEP, 0.93))
 		draw_rect(box, col, false, 1.6)
-		draw_string(font, box.position + Vector2(8.0, float(fs) + 1.0), text,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+		draw_string(get_theme_default_font(),
+			box.position + Vector2(8.0, float(BADGE_FONT_SIZE) + 1.0), text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, BADGE_FONT_SIZE, col)
 
 	func _draw_capital_rings(lay: AtlasLayout) -> void:
 		for ci in range(lay.capitals.size()):

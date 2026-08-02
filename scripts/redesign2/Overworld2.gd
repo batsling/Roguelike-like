@@ -607,35 +607,67 @@ func scramble() -> bool:
 	_refresh()
 	return true
 
-# Open the bird's-eye "Map to the Amulet" — the layered shortest-path graph from
-# the current game down to the amulet (ported from the old web build). The current
-# offering's reachable games are passed so the map can flag them as choices.
-func open_map() -> void:
-	var modal := preload("res://scripts/redesign2/RunMapModal.gd").new()
+# --- the map ---------------------------------------------------------------
+#
+# "Map" means the STAR CHART with the route on it, and a movable window over the
+# top holding the same route as a ladder of decisions. One route, drawn twice:
+# the chart says where in the 751 games this corridor actually runs, the ladder
+# says what the next three choices are. They're wired together — clicking a game
+# on the ladder flies the chart to it, and the ladder's ⌖ button puts the whole
+# corridor back in frame — and the window drags out of the way by its header,
+# since the sky underneath stays live.
+
+# The run's own map: from where the player stands to the Amulet, with the games
+# currently on offer flagged.
+func open_map() -> Node:
 	var choice_ids: Array = []
 	for c in _choices:
 		choice_ids.append(c["slot"])
-	modal.start(self, GameState.current_game_id, GameState.amulet_game_id, choice_ids)
+	return _open_route_map(GameState.current_game_id, choice_ids, {})
 
-# The same map, but for a game you have NOT taken: the optimal road to the Amulet
-# as it would stand if you picked this card. Every offered game carries a 🗺
-# button above its cover, because the whole decision is a routing decision and it
+# The same map for a game you have NOT taken: the optimal road to the Amulet as
+# it would stand if you picked this card. Every offered game carries a 🗺 button
+# above its cover, because the whole decision is a routing decision and it
 # shouldn't have to be made from a single distance number.
 #
-# From the start picker the destination is drawn without being named — the panel
-# gives away the distance to the Amulet and nothing else, and a map that spelled
-# out which game it is would hand over the run's one secret.
+# From the START PICKER the destination is drawn without being named, and no
+# chart is raised: the panel gives away the distance to the Amulet and nothing
+# else, and a sky with the route drawn across it would point straight at the game
+# the whole run is a search for.
 func preview_map(game_id: StringName) -> Node:
 	if game_id == &"" or GameState.amulet_game_id == &"":
 		return null
 	var game: GameData = Data.get_game(game_id)
-	var modal := preload("res://scripts/redesign2/RunMapModal.gd").new()
-	modal.start(self, game_id, GameState.amulet_game_id, [], {
+	var starting: bool = _phase == Phase.START_SELECT
+	return _open_route_map(game_id, [], {
 		"preview": true,
-		"hide_amulet": _phase == Phase.START_SELECT,
+		"hide_amulet": starting,
+		"chart": not starting,
 		"title": "🗺  If you take %s" % (game.display_name if game != null else String(game_id)),
 	})
-	return modal
+
+func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary) -> Node:
+	var opts: Dictionary = options.duplicate()
+	var wants_chart: bool = bool(opts.get("chart", true)) and AtlasView.load_layout() != null
+	opts.erase("chart")
+	if wants_chart:
+		var atlas := AtlasView.new()
+		# A preview routes the sky from the game being considered rather than from
+		# where the player stands, so the corridor drawn on the chart is the one
+		# the card is offering.
+		if bool(opts.get("preview", false)):
+			atlas.preview_origin = origin
+		add_child(atlas)
+		opts["atlas"] = atlas
+		var modal := preload("res://scripts/redesign2/RunMapModal.gd").new()
+		# Mounted UNDER the chart, so closing the chart takes its window with it.
+		# The window frames the route on the chart itself, once it knows how much
+		# of the sky it's covering.
+		modal.start(atlas, origin, GameState.amulet_game_id, choice_ids, opts)
+		return modal
+	var solo := preload("res://scripts/redesign2/RunMapModal.gd").new()
+	solo.start(self, origin, GameState.amulet_game_id, choice_ids, opts)
+	return solo
 
 # --- routing: how each offered card sits relative to the Amulet -------------
 #

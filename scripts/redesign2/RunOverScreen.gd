@@ -109,14 +109,15 @@ func route_ids() -> Array:
 
 # The headline, in the words the screen prints.
 func headline() -> String:
-	return "🏆  THE AMULET IS YOURS" if won else "💀  THE RUN ENDS HERE"
+	return "🏆  YOU WIN — THE AMULET IS YOURS" if won else "💀  THE RUN ENDS HERE"
 
 func subtitle() -> String:
 	var here: GameData = Data.get_game(_route[_route.size() - 1]) if not _route.is_empty() else null
 	if won:
 		var goal: GameData = Data.get_game(_amulet)
-		return "You cleared %s and took the Amulet." % [
-			goal.display_name if goal != null else "the Amulet game"]
+		return "You cleared %s — the Amulet game — in a run of %d game%s." % [
+			goal.display_name if goal != null else "the Amulet game",
+			int(_stats.get("played", 0)), "" if int(_stats.get("played", 0)) == 1 else "s"]
 	var left: int = int(_stats.get("steps_left", -1))
 	if left > 0:
 		return "Health hit 0 at %s — %d step%s short of the Amulet." % [

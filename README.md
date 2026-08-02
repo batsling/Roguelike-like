@@ -288,6 +288,24 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
 ## Recent changes
 
+- **The map is the star chart now** — "🗺 Map" (the header's, and the one on
+  every offered card) opens the **Atlas with the route drawn across it**, and the
+  layered ladder of decisions floats over it in a **movable window**: drag it by
+  its header, and the sky underneath stays live — pannable, zoomable, clickable.
+  The two halves are wired together: **clicking a game on the ladder flies the
+  chart to it** and opens its card, **⌖ Frame route** puts the whole corridor back
+  in frame, and framing keeps clear of whichever side the window is parked on, so
+  the route is never centred underneath it. A card's map routes the chart from the
+  game being *considered* — its star wears an **IF YOU GO HERE** marker in ember,
+  between the green you-are-here and the gold Amulet — and the corridor drawn on
+  the sky is the same graph as the ladder, edge for edge. The choose-your-start
+  panel is the one exception: no chart is raised there, since a route drawn across
+  the sky would point straight at the game the run is a search for.
+
+- **Clearing the Amulet game wins the run** — and says so: the end screen reads
+  **🏆 YOU WIN — THE AMULET IS YOURS**, names the game you took it on and how many
+  games the run lasted, and closes the road strip on that game in gold.
+
 - **The end of a run is a screen** — a finished run no longer just prints a line
   over an overworld that's still sitting there. `RunOverScreen` opens over the
   board with the verdict (**🏆 THE AMULET IS YOURS** / **💀 THE RUN ENDS HERE**),

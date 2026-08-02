@@ -1206,3 +1206,127 @@ func test_an_enemy_that_walks_onto_the_grid_reads_as_having_moved() -> void:
 	var moved: float = (after[inst] as Rect2).position.distance_to((before[inst] as Rect2).position)
 	assert_gt(moved, 2.0,
 		"the advance is measurable straight away — a stale off-field token would say it never moved")
+
+# ---------------------------------------------------------------------------
+# Winning: clearing the Amulet game ends the run, in your favour
+# ---------------------------------------------------------------------------
+
+# Put the Amulet on the board next door and return the card offering it. The
+# Amulet is always included in the offering when it's reachable, so this is the
+# ordinary end of a run, reached early.
+func _offer_the_amulet_next_door() -> int:
+	var nb: StringName = RunGraph.neighbors(GameState.current_game_id)[0]
+	GameState.amulet_game_id = nb
+	_ui._build_choices()
+	for i in range(_ui._choices.size()):
+		if _ui._choices[i]["slot"] == nb:
+			return i
+	return -1
+
+func test_beating_the_amulet_game_wins_the_run() -> void:
+	var idx: int = _offer_the_amulet_next_door()
+	assert_gt(idx, -1, "the Amulet is offered once it's reachable")
+	assert_true(bool(_ui._choices[idx]["amulet"]), "and the card knows what it is")
+	_ui.pick(idx)
+	_ui.report(true)                          # the goal is met — that's the run
+	assert_true(GameLoop2.run_over, "clearing the Amulet game ends the run")
+	assert_true(GameLoop2.won, "as a win")
+	_ui._end_resolve()                        # the board finishes its playback
+	var screen = _end_screen()
+	assert_not_null(screen, "and it lands on a win screen")
+	if screen == null:
+		return
+	assert_eq(screen.verdict(), "won")
+	assert_true(screen.headline().contains("YOU WIN"), "which says so: %s" % screen.headline())
+	assert_eq(int(screen.stats()["steps_left"]), 0, "nothing left between you and it")
+	assert_eq(StringName(screen.route_ids()[screen.route_ids().size() - 1]),
+		GameState.amulet_game_id, "the road ends on the Amulet game")
+
+func test_the_win_is_banked_on_the_amulet_game() -> void:
+	var idx: int = _offer_the_amulet_next_door()
+	var amulet: StringName = GameState.amulet_game_id
+	var wins_before: int = GameStats.amulet_wins(amulet)
+	_ui.pick(idx)
+	_ui.report(true)
+	assert_eq(GameStats.amulet_wins(amulet), wins_before + 1,
+		"the game you won on carries the crown afterwards")
+
+func test_missing_the_goal_on_the_amulet_game_is_not_a_win() -> void:
+	var idx: int = _offer_the_amulet_next_door()
+	_ui.pick(idx)
+	_ui.report(false)                         # played it, didn't clear it
+	assert_false(GameLoop2.run_over, "the run goes on")
+	assert_null(_end_screen(), "and nothing declares a winner")
+
+# ---------------------------------------------------------------------------
+# The map: the star chart, with the ladder floating over it
+# ---------------------------------------------------------------------------
+
+func _chart() -> AtlasView:
+	for c in _ui.get_children():
+		if c is AtlasView and not c.is_queued_for_deletion():
+			return c
+	return null
+
+func test_the_map_is_the_star_chart_with_the_ladder_over_it() -> void:
+	var modal = _ui.open_map()
+	assert_not_null(modal, "the Map button opens something")
+	var atlas: AtlasView = _chart()
+	assert_not_null(atlas, "and what it opens is the star chart")
+	if atlas == null or modal == null:
+		return
+	assert_true(atlas.is_ancestor_of(modal),
+		"with the ladder mounted over it, so closing the chart takes it along")
+	assert_eq(modal.mouse_filter, Control.MOUSE_FILTER_IGNORE,
+		"the ladder is a window, not a modal — the sky under it stays live")
+	assert_eq(atlas.preview_origin, &"", "the run's own map routes from where you stand")
+
+func test_the_ladder_window_can_be_moved_but_not_lost() -> void:
+	var modal = _ui.open_map()
+	var before: Vector2 = modal.panel_position()
+	modal._move_panel(before + Vector2(140, 70))
+	assert_ne(modal.panel_position(), before, "it drags")
+	modal._move_panel(Vector2(-9000, -9000))
+	assert_gte(modal.panel_position().y, 0.0, "and can't be dragged off the top…")
+	assert_gt(modal.panel_position().x + modal._panel.size.x, 0.0, "…or off the side")
+
+func test_clicking_a_game_on_the_ladder_finds_it_on_the_chart() -> void:
+	var modal = _ui.open_map()
+	var atlas: AtlasView = _chart()
+	if atlas == null or not atlas.has_layout():
+		return
+	assert_true(modal.show_on_chart(GameState.amulet_game_id), "the chart takes the click")
+	assert_eq(atlas.layout.id_at(atlas.selected_index()), GameState.amulet_game_id,
+		"and lands on that game")
+
+func test_a_card_map_draws_that_cards_route_on_the_chart() -> void:
+	var slot: StringName = _ui._choices[0]["slot"]
+	var modal = _ui.preview_map(slot)
+	var atlas: AtlasView = _chart()
+	assert_not_null(atlas, "a card's map opens the chart too")
+	if atlas == null or not atlas.has_layout():
+		return
+	assert_eq(atlas.preview_origin, slot, "routed from the game on the card")
+	assert_eq(atlas.preview_index(), atlas.layout.index_of(slot))
+	assert_true(atlas.marker_text(atlas.preview_index()).contains("IF YOU GO HERE"),
+		"and the chart says which star that is")
+	# The corridor drawn on the sky IS the ladder in the window: same DAG, edge
+	# for edge, from the candidate rather than from where the player stands.
+	var dag: Dictionary = RunGraph.shortest_path_dag(slot, GameState.amulet_game_id)
+	var expected: int = 0
+	for edge in dag.get("edges", []):
+		if atlas.layout.index_of(StringName(edge["from"])) >= 0 \
+				and atlas.layout.index_of(StringName(edge["to"])) >= 0:
+			expected += 1
+	assert_eq(atlas.trail_segment_count(), expected,
+		"the chart's route and the ladder are the same graph")
+	assert_eq(modal.shortest_distance(), _ui.steps_to_amulet(slot))
+
+func test_the_start_pickers_map_raises_no_chart() -> void:
+	# Before the run has a position the Amulet's identity is the one secret the
+	# picker keeps; a sky with the route drawn on it would point straight at it.
+	_ui.start_run()
+	var modal = _ui.preview_map(_ui._start_options[0]["game"].id)
+	assert_null(_chart(), "no star chart from the start picker")
+	assert_eq(modal.node_name(GameState.amulet_game_id), "The Amulet — ???",
+		"and the ladder still won't name the destination")
