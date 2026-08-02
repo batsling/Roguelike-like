@@ -1274,3 +1274,114 @@ func test_genre_still_reads_on_a_game_with_a_record() -> void:
 	assert_ne(view.star_record_color(0), RunGraph.type_color(game.type),
 		"the middle carries the record, not the genre")
 	_restore_stats()
+
+# ---------------------------------------------------------------------------
+# Catalog filters — narrowing the sky without moving it
+# ---------------------------------------------------------------------------
+
+func test_no_filtering_outside_the_catalog_view() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	view._f_type = 0
+	for i in range(mini(30, view.layout.star_count())):
+		assert_true(view.passes_filter(i), "a run's map has no filter bar and hides nothing")
+
+func test_everything_passes_by_default() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	assert_eq(view.filtered_count(), view.layout.star_count(), "nothing is hidden to start")
+
+func test_the_type_filter_keeps_only_that_type() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	view._f_type = GameData.GameType.DECKBUILDER
+	var shown: int = 0
+	for i in range(view.layout.star_count()):
+		if view.passes_filter(i):
+			shown += 1
+			assert_eq(int(Data.get_game(view.layout.id_at(i)).type),
+				int(GameData.GameType.DECKBUILDER), "only deckbuilders survive")
+	assert_gt(shown, 0, "and some do")
+	assert_lt(shown, view.layout.star_count(), "but not all of them")
+
+func test_the_library_filter_keeps_only_owned() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	view._f_owned = 1
+	for i in range(view.layout.star_count()):
+		if view.passes_filter(i):
+			assert_true(Data.get_game(view.layout.id_at(i)).owned, "only owned games survive")
+
+func test_not_owned_is_the_complement_of_owned() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	view._f_owned = 1
+	var owned: int = view.filtered_count()
+	view._f_owned = 3
+	var unowned: int = view.filtered_count()
+	assert_eq(owned + unowned, view.layout.star_count(),
+		"owned and not-owned partition the catalog")
+
+func test_filters_combine() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	view._f_type = GameData.GameType.ACTION
+	var by_type: int = view.filtered_count()
+	view._f_owned = 1
+	var both: int = view.filtered_count()
+	assert_lte(both, by_type, "adding a second filter can only narrow the result")
+
+func test_the_region_filter_keeps_one_constellation() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	view._f_region = 0
+	for i in range(view.layout.star_count()):
+		if view.passes_filter(i):
+			assert_eq(view.layout.region[i], 0, "only the chosen constellation survives")
+
+func test_the_record_filters_split_the_catalog() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	view._f_record = 1
+	var beaten: int = view.filtered_count()
+	view._f_record = 2
+	var never: int = view.filtered_count()
+	assert_eq(beaten + never, view.layout.star_count(),
+		"beaten and never-beaten account for every game")
+
+# Changing the capital count is a different baked sky, not a filter.
+func test_changing_the_capital_count_swaps_the_sky() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	var before: int = view.layout.capitals.size()
+	view.set_capital_count(12)
+	assert_eq(view.layout.capitals.size(), 12, "twelve capitals now")
+	assert_ne(view.layout.capitals.size(), before, "which is a different cut")
+	assert_eq(view.layout.star_count(), Data.all_games().size(),
+		"still the whole catalog, just cut differently")
+
+func test_an_unbaked_capital_count_is_refused() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	var before: int = view.layout.capitals.size()
+	view.set_capital_count(99)
+	assert_eq(view.layout.capitals.size(), before, "a sky that was never baked is ignored")
+
+# A region filter can't survive a re-cut — the indices mean different places.
+func test_changing_capitals_clears_the_region_filter() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	view._f_region = 1
+	view.set_capital_count(6)
+	assert_eq(view._f_region, -1, "region indices belong to the sky they came from")

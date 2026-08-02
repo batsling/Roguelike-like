@@ -39,6 +39,16 @@ const LAYOUT_PATH := "res://data/atlas_layout.tres"
 # One baked sky per Settings.game_filter. The Atlas has to show the graph the run
 # actually travels: with an owned-only filter, routes through unowned games don't
 # exist, so drawing them would be a lie.
+# Alternate capital counts for the full catalog. Changing how many capitals there
+# are re-cuts every region AND re-packs the sky, so each is its own baked file —
+# it is not something that can be filtered at runtime.
+const CAPITAL_LAYOUTS := {
+	6: "res://data/atlas_layout_c6.tres",
+	8: "res://data/atlas_layout.tres",
+	12: "res://data/atlas_layout_c12.tres",
+}
+const CAPITAL_CHOICES := [6, 8, 12]
+
 const LAYOUT_PATHS := {
 	Settings.GameFilter.ALL: "res://data/atlas_layout.tres",
 	Settings.GameFilter.OWNED: "res://data/atlas_layout_owned.tres",
@@ -121,11 +131,22 @@ var _hulls: Array = []               # [{ci, centre: Vector2, radius: float}], b
 var _sequel_cache: Dictionary = {}   # edge index -> bool, built lazily
 var _notes_refill: Callable = Callable()   # rebuilds the open notes panel
 
+# Catalog-view filters. These HIDE rather than move: the sky is a baked layout
+# and a star that jumps when you tick a box destroys any sense of place, so a
+# filtered-out game dims right down and its links stop drawing instead.
+var _f_capitals: int = 8
+var _f_owned: int = 0                # 0 all · 1 owned · 2 downloaded · 3 not owned
+var _f_type: int = -1                # -1 all, else GameData.GameType
+var _f_record: int = 0               # 0 all · 1 beaten · 2 unbeaten · 3 amulet won · 4 has notes
+var _f_region: int = -1              # -1 all, else index into layout.capitals
+
 var _canvas: Control = null
 var _card: PanelContainer = null
 var _card_box: VBoxContainer = null
 var _hud: Label = null
 var _search: LineEdit = null
+var _filter_bar: PanelContainer = null
+var _filter_count: Label = null
 
 # ---------------------------------------------------------------------------
 # Lifecycle
@@ -462,6 +483,73 @@ func star_record_color(i: int) -> Color:
 		return COL_BEATEN
 	return Color(0, 0, 0, 0)
 
+# Whether a star survives the catalog filters. Always true outside the catalog
+# view, which has no filter bar.
+func passes_filter(i: int) -> bool:
+	if not pure_catalog or not has_layout():
+		return true
+	var game: GameData = Data.get_game(layout.id_at(i))
+	if game == null:
+		return false
+	match _f_owned:
+		1:
+			if not game.owned:
+				return false
+		2:
+			if game.file_location.strip_edges() == "":
+				return false
+		3:
+			if game.owned:
+				return false
+	if _f_type >= 0 and int(game.type) != _f_type:
+		return false
+	var gid: StringName = game.id
+	match _f_record:
+		1:
+			if GameStats.beaten_count(gid) <= 0:
+				return false
+		2:
+			if GameStats.beaten_count(gid) > 0:
+				return false
+		3:
+			if GameStats.amulet_wins(gid) <= 0:
+				return false
+		4:
+			if not GameStats.has_enemy_log(gid):
+				return false
+	if _f_region >= 0 and layout.region[i] != _f_region:
+		return false
+	return true
+
+func filtered_count() -> int:
+	if not has_layout():
+		return 0
+	var n: int = 0
+	for i in range(layout.star_count()):
+		if passes_filter(i):
+			n += 1
+	return n
+
+# Swap to the sky baked with `count` capitals. Keeps the filters, drops anything
+# derived from the old layout.
+func set_capital_count(count: int) -> void:
+	var path: String = String(CAPITAL_LAYOUTS.get(count, LAYOUT_PATH))
+	if not ResourceLoader.exists(path):
+		return
+	var res: Resource = load(path)
+	if not (res is AtlasLayout):
+		return
+	_f_capitals = count
+	_f_region = -1                    # region indices belong to the old sky
+	layout = res as AtlasLayout
+	_neighbors.clear()
+	_hulls.clear()
+	_sequel_cache.clear()
+	select(-1)
+	select_edge(-1)
+	_rebuild_filter_bar()
+	frame_all()
+
 # Whether this star's centre is filled. False outside the Collection's catalog
 # view, where the record isn't drawn at all.
 func has_record(i: int) -> bool:
@@ -612,6 +700,11 @@ func _build() -> void:
 	add_child(root)
 
 	root.add_child(_build_header())
+	if pure_catalog:
+		_filter_bar = PanelContainer.new()
+		_filter_bar.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 8, 0))
+		root.add_child(_filter_bar)
+		_rebuild_filter_bar()
 
 	_canvas = StarCanvas.new()
 	(_canvas as StarCanvas).view = self
@@ -628,6 +721,96 @@ func _build() -> void:
 	_card = _build_card()
 	add_child(_card)
 	_refresh_card()
+
+# The catalog's filter row. Rebuilt wholesale when the capital count changes,
+# since the list of constellations to filter by changes with it.
+func _rebuild_filter_bar() -> void:
+	if _filter_bar == null:
+		return
+	for c in _filter_bar.get_children():
+		c.queue_free()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	_filter_bar.add_child(row)
+
+	row.add_child(_filter_label("Constellations"))
+	var caps := OptionButton.new()
+	for count in CAPITAL_CHOICES:
+		caps.add_item(str(count), count)
+	for i in range(caps.item_count):
+		if caps.get_item_id(i) == _f_capitals:
+			caps.select(i)
+	caps.item_selected.connect(func(idx): set_capital_count(caps.get_item_id(idx)))
+	row.add_child(caps)
+
+	row.add_child(_filter_label("Library"))
+	row.add_child(_filter_option(["Any", "Owned", "Downloaded", "Not owned"], _f_owned,
+		func(v): _f_owned = v))
+
+	row.add_child(_filter_label("Type"))
+	var types: Array = ["Any"]
+	for t in RunGraph.TYPE_ORDER:
+		types.append(RunGraph.type_label(t))
+	row.add_child(_filter_option(types, _f_type + 1, func(v): _f_type = v - 1))
+
+	row.add_child(_filter_label("Record"))
+	row.add_child(_filter_option(
+		["Any", "Beaten", "Never beaten", "Amulet won", "Has notes"], _f_record,
+		func(v): _f_record = v))
+
+	row.add_child(_filter_label("Region"))
+	var regions: Array = ["Any"]
+	for ci in range(layout.capitals.size() if has_layout() else 0):
+		var cap: GameData = Data.get_game(layout.id_at(layout.capitals[ci]))
+		regions.append(cap.display_name if cap != null else "Region %d" % ci)
+	row.add_child(_filter_option(regions, _f_region + 1, func(v): _f_region = v - 1))
+
+	var clear := Button.new()
+	clear.text = "Clear"
+	clear.add_theme_font_size_override("font_size", 12)
+	clear.pressed.connect(func():
+		_f_owned = 0
+		_f_type = -1
+		_f_record = 0
+		_f_region = -1
+		_rebuild_filter_bar()
+		_redraw())
+	row.add_child(clear)
+
+	_filter_count = Label.new()
+	_filter_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_filter_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_filter_count.add_theme_font_size_override("font_size", 12)
+	_filter_count.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	row.add_child(_filter_count)
+	_refresh_filter_count()
+
+func _filter_label(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	return l
+
+func _filter_option(items: Array, selected: int, on_pick: Callable) -> OptionButton:
+	var opt := OptionButton.new()
+	for i in range(items.size()):
+		opt.add_item(String(items[i]), i)
+	opt.select(clampi(selected, 0, items.size() - 1))
+	opt.item_selected.connect(func(idx):
+		on_pick.call(int(idx))
+		_refresh_filter_count()
+		select(-1)
+		select_edge(-1)
+		_redraw())
+	return opt
+
+func _refresh_filter_count() -> void:
+	if _filter_count == null or not has_layout():
+		return
+	var shown: int = filtered_count()
+	_filter_count.text = ("%d games" % shown) if shown == layout.star_count() \
+		else ("%d of %d games" % [shown, layout.star_count()])
 
 func _build_header() -> Control:
 	var bar := PanelContainer.new()
@@ -1375,6 +1558,9 @@ class StarCanvas extends Control:
 			var incident: bool = focused and (a == view._selected or b == view._selected)
 			if focused and not incident:
 				continue
+			# A link is only drawn when both games it joins survive the filter.
+			if not (view.passes_filter(a) and view.passes_filter(b)):
+				continue
 			var col: Color = AtlasView.COL_EDGE
 			var w: float = width
 			# A link into a destroyed game is a route that no longer exists.
@@ -1505,7 +1691,11 @@ class StarCanvas extends Control:
 			var col: Color = RunGraph.type_color(game.type) if game != null else UITheme.TEXT_DIM
 			var reserved: float = AtlasLayout.star_radius(lay.degree_of(i)) * view._scale
 			var r: float = maxf(1.2, reserved * 0.9)
-			var faded: bool = focused and not view._near.has(i)
+			# Filtered-out stars stay in place and dim right down: the sky is a baked
+			# layout, and a star that moves when you tick a box destroys any sense
+			# of where things are.
+			var filtered_out: bool = not view.passes_filter(i)
+			var faded: bool = (focused and not view._near.has(i)) or filtered_out
 			# Genre owns the rim at every zoom; the record fills the middle, so the
 			# sky stays readable as genre while the centres light up as you play.
 			var record: Color = view.star_record_color(i)
@@ -1516,7 +1706,7 @@ class StarCanvas extends Control:
 			# played made most of the sky washed out and fought the point of a
 			# catalog — what you HAVE played is said by the middle instead.
 			if faded:
-				col = col.lerp(UITheme.BG_DEEP, 0.78)
+				col = col.lerp(UITheme.BG_DEEP, 0.88 if filtered_out else 0.78)
 
 			var art: Texture2D = view.cover_texture(i) if view.shows_cover(i) else null
 			if art != null:
@@ -1616,6 +1806,8 @@ class StarCanvas extends Control:
 			if not vis.has_point(p):
 				continue
 			if focused and not view._near.has(i):
+				continue
+			if not view.passes_filter(i):
 				continue
 			visible.append(i)
 		visible.sort_custom(func(a, b): return lay.degree_of(a) > lay.degree_of(b))

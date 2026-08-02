@@ -287,6 +287,22 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
 ## Recent changes
 
+- **Filters on the Collection's Constellations** — a filter row above the sky:
+  **Constellations** (6 / 8 / 12), **Library** (owned / downloaded / not owned),
+  **Type**, **Record** (beaten / never beaten / amulet won / has notes) and
+  **Region** (one constellation), with a Clear button and a live *"88 of 757
+  games"* count. Filters combine.
+
+  Everything except the capital count **hides rather than moves**: the sky is a
+  baked layout, and a star that jumps when you tick a box destroys any sense of
+  where things are, so a filtered-out game dims right down in place and its links
+  stop drawing. The capital count is the exception — it re-cuts every region and
+  re-packs the sky, so 6 and 12 are baked as their own files
+  (`atlas_layout_c6.tres` / `_c12.tres`) and switching swaps between them.
+  Changing it clears the Region filter, since region indices mean different
+  places in a different cut. The filter row only exists in the Collection's
+  catalog view; a run's Atlas has no filters.
+
 - **"Beatable:" on the offering** — while choosing where to travel, a card shows
   small portraits of the enemies you have **already beaten at that game before**:
   the enemy standing there now, and anything currently following you. It is not a

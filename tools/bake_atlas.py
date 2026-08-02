@@ -63,6 +63,12 @@ FILTERS = {
     "downloaded": lambda g: g["downloaded"],
 }
 FILTER_SUFFIX = {"all": "", "owned": "_owned", "downloaded": "_downloaded"}
+
+# Extra capital counts baked for the full catalog, so the Collection can re-cut
+# the constellations without a rebuild. The capital count decides region
+# assignment AND the packing, so each one is a genuinely different sky and has to
+# be its own file — it can't be filtered at runtime.
+CAPITAL_VARIANTS = [6, 12]
 PAD = 3.0                 # clear space kept between any two stars
 GAP_SAMPLES = 72          # directions tried when looking for a cluster's exit
 
@@ -546,6 +552,19 @@ def main() -> int:
             PROJECT_ROOT, "data", f"atlas_layout{FILTER_SUFFIX[filter_name]}.tres")
         write_resource(games, edges, layout, out, filter_name)
         print(f"[bake_atlas] wrote {os.path.relpath(out, PROJECT_ROOT)}")
+
+        # Alternate capital counts, full catalog only — the Collection offers them
+        # as a "how many constellations" filter.
+        if args.all_filters and filter_name == "all" and not args.out:
+            for count in CAPITAL_VARIANTS:
+                alt = build_layout(games, adj, count)
+                report(games, edges, alt, count, f"all/{count}-capitals")
+                if verify(alt):
+                    print(f"[bake_atlas] overlaps in the {count}-capital sky", file=sys.stderr)
+                    return 1
+                alt_path = os.path.join(PROJECT_ROOT, "data", f"atlas_layout_c{count}.tres")
+                write_resource(games, edges, alt, alt_path, "all")
+                print(f"[bake_atlas] wrote {os.path.relpath(alt_path, PROJECT_ROOT)}")
     return 0
 
 
