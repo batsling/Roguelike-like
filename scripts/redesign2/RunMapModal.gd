@@ -4,17 +4,23 @@ extends Control
 # (legacy-web/js/map-render.js: showMapModal / generateMapView / drawMapArrows).
 #
 # The games-first overworld (Overworld2) only ever shows the games reachable from
-# where you stand. This modal restores the old bird's-eye map: a top-to-bottom
-# LAYERED GRAPH of the shortest-path DAG from the current game down to the Amulet,
-# with green arrows along the routes, so the player can see the whole road ahead
-# and how their immediate choices fit into it.
+# where you stand. This restores the old bird's-eye map: a top-to-bottom LAYERED
+# GRAPH of the shortest-path DAG from the current game down to the Amulet, with
+# green arrows along the routes, so the player can see the whole road ahead and
+# how their immediate choices fit into it.
+#
+# It is a MOVABLE PANEL, not a modal: the overworld opens it over the ATLAS, so
+# the same route is on screen twice at two altitudes — the corridor as a clean
+# ladder of decisions here, and the same corridor drawn across the real sky
+# behind it. Nothing is dimmed and nothing is blocked; drag the panel by its
+# header to get it out of the way of the stars, and click any game on the ladder
+# to fly the sky to it.
 #
 # Nodes are colour-coded by role (current / amulet / reachable choice / visited /
 # on-path), a journey trail lists where the player has been, and +/- zoom rebuilds
 # the layout so a long run still fits. Built entirely in code on its own
-# CanvasLayer (same pattern as ScrollReadModal) so it centres over the overworld
-# regardless of what opened it, and every layout step is a plain method a headless
-# test can call.
+# CanvasLayer (same pattern as ScrollReadModal) so it floats above whatever opened
+# it, and every layout step is a plain method a headless test can call.
 
 signal finished
 
@@ -36,22 +42,59 @@ var _current: StringName = &""
 var _amulet: StringName = &""
 var _choice_ids: Dictionary = {}        # reachable-now offering slots -> true
 var _zoom: float = 1.0
+# PREVIEW mode: the map is drawn from a game the player is only CONSIDERING, so
+# the top node is "if you go here" rather than "you are here", and the journey
+# trail is left off — it isn't this map's journey.
+var _preview: bool = false
+var _title: String = ""
+# The Amulet's identity is a secret before the run has a position (the start
+# picker only ever gives away the DISTANCE), so a map opened from a start card
+# draws the destination without naming it.
+var _hide_amulet: bool = false
+
+# The star chart this panel is floating over, when it was opened onto one. The
+# ladder and the sky are two views of ONE route, so they're wired together:
+# clicking a game here flies the chart to it, and the panel can re-frame the
+# whole corridor on it.
+var _atlas: AtlasView = null
 
 var _layer: CanvasLayer = null
 var _panel: PanelContainer = null
 var _canvas_holder: Control = null      # the GraphCanvas (rebuilt on zoom)
 var _dist_label: Label = null
+# Panel dragging, off the header bar.
+var _dragging: bool = false
+
+# Where the panel opens: left of centre, clear of the Atlas's own top-right info
+# card, and clear of its header and legend bars.
+const PANEL_SIZE := Vector2(760, 560)
+const PANEL_MARGIN := Vector2(44, 96)
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	# The panel is a window, not a modal: everything outside it belongs to
+	# whatever is underneath (the star chart), which stays pannable and
+	# zoomable while the ladder is up.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 # Entry point. `choice_ids` is the list of games currently offered on the board
 # (the reachable-now slots) so the map can flag them; pass [] if unknown.
-func start(host: Node, current: StringName, amulet: StringName, choice_ids: Array = []) -> void:
+#
+# `options` turns it into a PREVIEW of a game not yet taken — what the road ahead
+# would look like if you picked it:
+#   preview      bool       top node reads "if you go here"; no journey trail
+#   hide_amulet  bool       draw the destination without naming it (start picker)
+#   title        String     replaces the header title
+#   atlas        AtlasView  the star chart underneath, wired to the ladder
+func start(host: Node, current: StringName, amulet: StringName, choice_ids: Array = [],
+		options: Dictionary = {}) -> void:
 	_current = current
 	_amulet = amulet
+	_preview = bool(options.get("preview", false))
+	_hide_amulet = bool(options.get("hide_amulet", false))
+	_title = String(options.get("title", ""))
+	_atlas = options.get("atlas")
 	_choice_ids.clear()
 	for id in choice_ids:
 		_choice_ids[StringName(id)] = true
@@ -81,46 +124,36 @@ func shortest_distance() -> int:
 func _build() -> void:
 	for c in get_children():
 		c.queue_free()
-	_panel = ModalScaffold.build_panel(self, UITheme.GOLD, _finish, Vector2(880, 620))
+	_panel = _build_floating_panel()
 
 	var root := VBoxContainer.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.add_theme_constant_override("separation", 10)
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 16)
 	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_top", 10)
 	margin.add_theme_constant_override("margin_bottom", 14)
 	margin.add_child(root)
 	_panel.add_child(margin)
 
-	# Header: title + shortest distance, zoom controls, close.
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 12)
-	var title := Label.new()
-	title.text = "🗺  Map to the Amulet"
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", UITheme.GOLD)
-	header.add_child(title)
-	_dist_label = Label.new()
-	_dist_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_dist_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	header.add_child(_dist_label)
-	header.add_child(_zoom_button("−", func(): _set_zoom(_zoom / 1.25)))
-	header.add_child(_zoom_button("+", func(): _set_zoom(_zoom * 1.25)))
-	header.add_child(_zoom_button("Reset", func(): _set_zoom(1.0)))
-	# The same route at atlas altitude — this corridor drawn over the whole
-	# 751-game sky. Only offered once the layout has actually been baked.
-	if AtlasView.load_layout() != null:
-		header.add_child(_zoom_button("✦ Star chart", _open_atlas))
-	var close := Button.new()
-	close.text = "Close"
-	close.pressed.connect(_finish)
-	header.add_child(close)
-	root.add_child(header)
+	# Header: the drag handle, the title, the distance, zoom, close.
+	root.add_child(_build_header())
+
+	# What this map IS, when it isn't the run's own: the optimal road from a game
+	# you're only thinking about.
+	if _preview:
+		var note := Label.new()
+		var here: GameData = Data.get_game(_current)
+		note.text = "The shortest route to the Amulet if you take %s — every step of it, %s." % [
+			here.display_name if here != null else String(_current),
+			"destination hidden until the run begins" if _hide_amulet else "destination included"]
+		note.add_theme_font_size_override("font_size", 12)
+		note.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		root.add_child(note)
 
 	# Journey trail — the games already behind the player (visited_games).
-	var journey: Array = GameState.visited_games
+	var journey: Array = [] if _preview else GameState.visited_games
 	if not journey.is_empty():
 		var trail := Label.new()
 		trail.text = "Journey:  " + " → ".join(_names(journey)) + "  → 📍"
@@ -139,13 +172,164 @@ func _build() -> void:
 
 	root.add_child(_legend())
 	_refresh_distance_label()
+	_fit_panel_width()
+	# The chart underneath frames the same route, in whatever half of the sky this
+	# window leaves free. Deferred: the panel's own size isn't final until the
+	# layout pass, and the reservation is read off it.
+	if _atlas != null:
+		_frame_route.call_deferred()
+
+# The window itself: a free-floating panel, positioned rather than anchored, so
+# it can be dragged anywhere over the chart underneath.
+func _build_floating_panel() -> PanelContainer:
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.075, 0.062, 0.05, 0.97)
+	sb.border_color = UITheme.GOLD
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.shadow_color = Color(0, 0, 0, 0.55)
+	sb.shadow_size = 14
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	var view: Vector2 = get_viewport_rect().size
+	var box := Vector2(minf(PANEL_SIZE.x, maxf(360.0, view.x - 80.0)),
+		minf(PANEL_SIZE.y, maxf(280.0, view.y - 150.0)))
+	panel.custom_minimum_size = box
+	panel.size = box
+	# Over a chart it sits off to the left; on its own it centres.
+	panel.position = PANEL_MARGIN if _atlas != null else ((view - box) * 0.5).floor()
+	add_child(panel)
+	return panel
+
+# The header, in two rows: the TITLE BAR — which doubles as the window's grab
+# handle, so pressing anywhere on it that isn't a button picks the panel up — and
+# a tools row under it. Two rows rather than one because the title bar's width
+# would otherwise set the window's minimum width, and over a star chart every
+# pixel the window doesn't take is sky the route can be framed in.
+func _build_header() -> Control:
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 6)
+
+	var bar := PanelContainer.new()
+	bar.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.PANEL_HI.lerp(UITheme.BG, 0.35), 6, 6, 0))
+	bar.mouse_filter = Control.MOUSE_FILTER_STOP
+	bar.mouse_default_cursor_shape = Control.CURSOR_MOVE
+	bar.tooltip_text = "Drag to move the map out of the way of the chart."
+	bar.gui_input.connect(_on_header_input)
+	stack.add_child(bar)
+
+	var title_row := HBoxContainer.new()
+	title_row.add_theme_constant_override("separation", 10)
+	bar.add_child(title_row)
+
+	var grip := Label.new()
+	grip.text = "⣿"
+	grip.add_theme_font_size_override("font_size", 16)
+	grip.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	title_row.add_child(grip)
+
+	var title := Label.new()
+	title.text = _title if _title != "" else "🗺  Map to the Amulet"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", UITheme.GOLD)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_row.add_child(title)
+
+	var close := Button.new()
+	close.text = "Close"
+	close.pressed.connect(_finish)
+	title_row.add_child(close)
+
+	var tools := HBoxContainer.new()
+	tools.add_theme_constant_override("separation", 8)
+	stack.add_child(tools)
+
+	_dist_label = Label.new()
+	_dist_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_dist_label.clip_text = true
+	_dist_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_dist_label.add_theme_font_size_override("font_size", 13)
+	_dist_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	tools.add_child(_dist_label)
+
+	tools.add_child(_zoom_button("−", func(): _set_zoom(_zoom / 1.25)))
+	tools.add_child(_zoom_button("+", func(): _set_zoom(_zoom * 1.25)))
+	tools.add_child(_zoom_button("Reset", func(): _set_zoom(1.0)))
+	if _atlas != null:
+		# Put the whole corridor back in frame on the chart behind — the window is
+		# a second view of the same route, and it should be able to point at it.
+		tools.add_child(_zoom_button("⌖ Frame route", _frame_route))
+	elif AtlasView.load_layout() != null and not _hide_amulet:
+		# Opened without a chart under it: offer to raise one — unless this is the
+		# start picker, where a sky with the route drawn on it would point straight
+		# at the game this map is refusing to name.
+		tools.add_child(_zoom_button("✦ Star chart", _open_atlas))
+	return stack
+
+func _on_header_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		var was: bool = _dragging
+		_dragging = (event as InputEventMouseButton).pressed
+		# Dropped somewhere new: the chart's idea of which side of the sky is
+		# free moves with the window.
+		if was and not _dragging and _atlas != null and is_instance_valid(_atlas):
+			_atlas.reserve_margins(_reserved_left(), _reserved_right())
+	elif event is InputEventMouseMotion and _dragging and _panel != null:
+		_move_panel(_panel.position + (event as InputEventMouseMotion).relative)
+
+# How much of the chart this window is covering, per side. Only the side it's
+# actually hugging is claimed — a window parked in the middle claims nothing and
+# framing just centres as it always did.
+func _reserved_left() -> float:
+	if _panel == null or _atlas == null:
+		return 0.0
+	var view_w: float = get_viewport_rect().size.x
+	if _panel.position.x + _panel.size.x * 0.5 >= view_w * 0.5:
+		return 0.0
+	return clampf(_panel.position.x + _panel.size.x + 16.0, 0.0, view_w * 0.65)
+
+func _reserved_right() -> float:
+	if _panel == null or _atlas == null:
+		return 0.0
+	var view_w: float = get_viewport_rect().size.x
+	if _panel.position.x + _panel.size.x * 0.5 < view_w * 0.5:
+		return 0.0
+	return clampf(view_w - _panel.position.x + 16.0, 0.0, view_w * 0.65)
+
+# Keep a dragged panel reachable: its header can never leave the viewport, so it
+# can always be grabbed again.
+func _move_panel(to: Vector2) -> void:
+	if _panel == null:
+		return
+	var view: Vector2 = get_viewport_rect().size
+	_panel.position = Vector2(
+		clampf(to.x, 12.0 - _panel.size.x * 0.6, view.x - _panel.size.x * 0.4),
+		clampf(to.y, 0.0, maxf(0.0, view.y - 46.0)))
+
+func panel_position() -> Vector2:
+	return _panel.position if _panel != null else Vector2.ZERO
+
+# Put the whole corridor back in frame on the chart, in the part of the sky this
+# window isn't sitting on.
+func _frame_route() -> void:
+	if _atlas == null or not is_instance_valid(_atlas):
+		return
+	_atlas.reserve_margins(_reserved_left(), _reserved_right())
+	_atlas.frame_trail()
 
 func _refresh_distance_label() -> void:
 	var d: int = shortest_distance()
 	if map_data().get("layers", []).is_empty():
 		_dist_label.text = "No route — the Amulet isn't connected from here."
 	else:
-		_dist_label.text = "Shortest path: %d step%s" % [d, "" if d == 1 else "s"]
+		_dist_label.text = "%s: %d step%s" % [
+			"Optimal path from there" if _preview else "Shortest path",
+			d, "" if d == 1 else "s"]
 
 # Build (or rebuild, on zoom) the graph canvas: positioned node boxes plus a
 # GraphCanvas child that draws the arrows behind them.
@@ -216,7 +400,7 @@ func _node_box(id: StringName, rect: Rect2) -> Control:
 	var is_current: bool = id == _current
 	var is_amulet: bool = id == _amulet
 	var is_choice: bool = _choice_ids.has(id) and not is_current and not is_amulet
-	var is_visited: bool = GameState.visited_games.has(id) and not is_current
+	var is_visited: bool = not _preview and GameState.visited_games.has(id) and not is_current
 
 	var bg: Color = COL_PATH_BG
 	var border: Color = UITheme.BORDER
@@ -226,7 +410,7 @@ func _node_box(id: StringName, rect: Rect2) -> Control:
 		bg = COL_CURRENT
 		border = UITheme.SUCCESS
 		border_w = 2
-		prefix = "📍 "
+		prefix = "▶ " if _preview else "📍 "
 	elif is_amulet:
 		bg = COL_AMULET
 		border = UITheme.GOLD
@@ -247,23 +431,56 @@ func _node_box(id: StringName, rect: Rect2) -> Control:
 	panel.size = rect.size
 	panel.add_theme_stylebox_override("panel", UITheme.flat(bg, 6, 6, border_w, border))
 
-	var game: GameData = Data.get_game(id)
+	# Over a star chart, a node is a way IN to it: click a rung of the ladder and
+	# the sky flies to that game and opens its card. Never for a hidden Amulet —
+	# the chart would name what this map is deliberately not naming.
+	if _atlas != null and not (_hide_amulet and is_amulet):
+		panel.mouse_filter = Control.MOUSE_FILTER_STOP
+		panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		panel.tooltip_text = "%s — click to find it on the star chart." % node_name(id)
+		panel.gui_input.connect(func(event): _on_node_input(event, id))
+	else:
+		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 	var label := Label.new()
-	label.text = prefix + (game.display_name if game != null else String(id))
+	label.text = prefix + node_name(id)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.add_theme_font_size_override("font_size", int(11 * clampf(_zoom, 0.7, 1.4)))
 	label.add_theme_color_override("font_color",
 		Color.WHITE if (is_current or is_amulet) else UITheme.TEXT)
 	panel.add_child(label)
 	return panel
 
+func _on_node_input(event: InputEvent, id: StringName) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT \
+			and (event as InputEventMouseButton).pressed:
+		show_on_chart(id)
+
+# Fly the chart behind to one game on the ladder. Public so a test can ask for
+# the same thing a click asks for.
+func show_on_chart(id: StringName) -> bool:
+	if _atlas == null or not is_instance_valid(_atlas):
+		return false
+	return _atlas.focus_game(id)
+
+# What a node is called on this map. Everything is named as itself except the
+# Amulet in a start-picker preview, where naming it would give away the one thing
+# the choose-your-start panel keeps back.
+func node_name(id: StringName) -> String:
+	if _hide_amulet and id == _amulet:
+		return "The Amulet — ???"
+	var game: GameData = Data.get_game(id)
+	return game.display_name if game != null else String(id)
+
 func _legend() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
-	row.add_child(_legend_chip("📍 You are here", COL_CURRENT))
-	row.add_child(_legend_chip("◆ Reachable now", COL_CHOICE_BG))
+	row.add_child(_legend_chip("▶ If you go here" if _preview else "📍 You are here", COL_CURRENT))
+	if not _preview:
+		row.add_child(_legend_chip("◆ Reachable now", COL_CHOICE_BG))
 	row.add_child(_legend_chip("On the path", COL_PATH_BG))
 	row.add_child(_legend_chip("🏆 Amulet", COL_AMULET))
 	return row
@@ -304,6 +521,20 @@ func _set_zoom(z: float) -> void:
 		_canvas_holder.queue_free()
 		_canvas_holder = _build_graph()
 		scroller.add_child(_canvas_holder)
+		_fit_panel_width()
+
+# A window no wider than the ladder inside it. A single-file route down one
+# column doesn't need 760px of chart hidden behind it — and over the star chart
+# every pixel this doesn't take is sky the route can be framed in. The header
+# still sets the floor, so the title and the buttons always fit.
+func _fit_panel_width() -> void:
+	if _panel == null or _canvas_holder == null:
+		return
+	var view: Vector2 = get_viewport_rect().size
+	var ceiling: float = minf(PANEL_SIZE.x, maxf(360.0, view.x - 80.0))
+	var want: float = clampf(_canvas_holder.custom_minimum_size.x + 54.0, 380.0, ceiling)
+	_panel.custom_minimum_size.x = want
+	_panel.size.x = want
 
 func _names(ids: Array) -> Array:
 	var out: Array = []
@@ -314,10 +545,11 @@ func _names(ids: Array) -> Array:
 
 func _finish() -> void:
 	finished.emit()
-	if _layer != null:
+	# Only this window goes: whatever it was floating over (the star chart) is a
+	# screen in its own right and closes on its own terms.
+	queue_free()
+	if _layer != null and is_instance_valid(_layer):
 		_layer.queue_free()
-	else:
-		queue_free()
 
 # ---------------------------------------------------------------------------
 # GraphCanvas — a bare Control that draws the arrow segments behind the node

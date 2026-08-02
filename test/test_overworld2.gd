@@ -578,22 +578,38 @@ func test_beating_a_game_again_grants_a_dash() -> void:
 	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
 		"beating it a second time granted a Dash")
 
+# Where the cover-art button sits among a card's children, so the tests below can
+# say "above the art" without pinning an exact index.
+func _cover_index(card: Node) -> int:
+	for i in range(card.get_child_count()):
+		var child: Node = card.get_child(i)
+		if child is Button and (child as Button).custom_minimum_size == _ui.COVER_SIZE:
+			return i
+	return -1
+
+func _label_index(card: Node, text: String) -> int:
+	for i in range(card.get_child_count()):
+		var child: Node = card.get_child(i)
+		if child is Label and String((child as Label).text) == text:
+			return i
+	return -1
+
 func test_repeat_card_shows_the_dash_bonus_above_it() -> void:
 	var target: GameData = _ui._choices[0]["game"]
 	GameState.note_game_beaten(target.id)
 	_ui._build_choices()
 	_ui._render_choices()
-	var first: Node = _ui._choices_row.get_child(0).get_child(0)
-	assert_true(first is Label, "the bonus sits ABOVE the cover art")
-	assert_eq((first as Label).text, "⚡ Gain +%d Dash" % _ui.REPEAT_BEAT_DASH,
-		"and it says what beating it again grants")
+	var card: Node = _ui._choices_row.get_child(0)
+	var bonus: int = _label_index(card, "⚡ Gain +%d Dash" % _ui.REPEAT_BEAT_DASH)
+	assert_gt(bonus, -1, "the card says what beating it again grants")
+	assert_lt(bonus, _cover_index(card), "and it sits ABOVE the cover art")
 	# A game not yet beaten keeps the row (so the covers stay in line) but says
 	# nothing in it.
 	GameState.beaten_games.clear()
 	_ui._build_choices()
 	_ui._render_choices()
-	var plain: Node = _ui._choices_row.get_child(0).get_child(0)
-	assert_true(plain is Label and (plain as Label).text == "",
+	var plain: Node = _ui._choices_row.get_child(0)
+	assert_gt(_label_index(plain, ""), -1,
 		"an unbeaten game's card has an empty bonus row")
 
 # --- revisiting a game offers a different draw -----------------------------
@@ -962,3 +978,355 @@ func test_a_lost_run_clears_its_recovery_point() -> void:
 	_ui.log_attempt()                       # a lost run with no shields costs the last Health
 	assert_true(GameLoop2.run_over, "the run ended")
 	assert_false(SaveSystem.has_autosave(), "Continue must not offer a finished run")
+
+# ---------------------------------------------------------------------------
+# Routing: what a card says about where it puts you
+#
+# Every offered game is a routing decision, and the card states it up front —
+# the Amulet itself, a step along a shortest path, or ground given away.
+# ---------------------------------------------------------------------------
+
+# A game one step nearer the Amulet than where the player stands.
+func _a_step_forward() -> StringName:
+	var dag: Dictionary = RunGraph.shortest_path_dag(
+		GameState.current_game_id, GameState.amulet_game_id)
+	var layers: Array = dag.get("layers", [])
+	if layers.size() < 2 or (layers[1] as Array).is_empty():
+		return &""
+	return StringName(layers[1][0])
+
+func test_a_step_along_the_shortest_path_reads_as_optimal() -> void:
+	var forward: StringName = _a_step_forward()
+	assert_ne(String(forward), "", "there is a route to the Amulet from the start")
+	if forward == &"":
+		return
+	var note: Dictionary = _ui.route_note({"slot": forward, "amulet": false})
+	assert_true(String(note["text"]).contains("OPTIMAL"),
+		"the card calls it out: %s" % note["text"])
+	assert_eq(_ui.steps_to_amulet(forward), _ui.steps_to_amulet(GameState.current_game_id) - 1,
+		"and it really is a step closer")
+
+func test_the_amulet_card_says_it_is_the_amulet() -> void:
+	var note: Dictionary = _ui.route_note({
+		"slot": GameState.amulet_game_id, "amulet": true})
+	assert_true(String(note["text"]).contains("AMULET"),
+		"the run-ending card names itself: %s" % note["text"])
+	assert_eq(note["color"], UITheme.GOLD, "in the Amulet's own colour")
+
+func test_a_card_that_walks_away_reads_as_a_detour() -> void:
+	# A game FURTHER from the Amulet than where the player stands: landing there
+	# costs ground, and the card has to say so before it's clicked. (Bash and
+	# Transmute can put any game on a card, so this isn't restricted to
+	# neighbours — the label is judged on distance, not adjacency.)
+	var here: int = _ui.steps_to_amulet(GameState.current_game_id)
+	assert_gt(here, 0, "the run starts some distance out")
+	var away: StringName = &""
+	for gid in _ui._amulet_dist.keys():
+		if int(_ui._amulet_dist[gid]) > here:
+			away = gid
+			break
+	assert_ne(String(away), "", "the graph has ground to lose")
+	var note: Dictionary = _ui.route_note({"slot": away, "amulet": false})
+	assert_true(String(note["text"]).contains("Detour"),
+		"a step backwards is labelled one: %s" % note["text"])
+	# And a game the same distance out is neither progress nor loss.
+	var level: StringName = &""
+	for gid in _ui._amulet_dist.keys():
+		if int(_ui._amulet_dist[gid]) == here and gid != GameState.current_game_id:
+			level = gid
+			break
+	if level != &"":
+		assert_true(String(_ui.route_note({"slot": level, "amulet": false})["text"]).contains("Sideways"),
+			"and standing still is labelled that")
+
+func test_every_offered_card_states_its_route_above_the_art() -> void:
+	_ui._render_choices()
+	for i in range(_ui._choices.size()):
+		var card: Node = _ui._choices_row.get_child(i)
+		var note: Dictionary = _ui.route_note(_ui._choices[i])
+		var idx: int = _label_index(card, String(note["text"]))
+		assert_gt(idx, -1, "card %d states where it puts you" % i)
+		assert_lt(idx, _cover_index(card), "and does it above the cover art")
+
+# ---------------------------------------------------------------------------
+# The per-card map: the optimal path a game WOULD open, before taking it
+# ---------------------------------------------------------------------------
+
+func _map_button(card: Node) -> Button:
+	for child in card.get_children():
+		if child is Button and String((child as Button).text).contains("Map"):
+			return child
+	return null
+
+func test_every_offered_card_carries_a_map_button_above_its_art() -> void:
+	_ui._render_choices()
+	for i in range(_ui._choices.size()):
+		var card: Node = _ui._choices_row.get_child(i)
+		var btn: Button = _map_button(card)
+		assert_not_null(btn, "card %d offers its map" % i)
+		if btn != null:
+			assert_lt(btn.get_index(), _cover_index(card), "the map button sits above the image")
+
+func test_the_card_map_is_the_optimal_path_from_that_game() -> void:
+	var slot: StringName = _ui._choices[0]["slot"]
+	var modal = _ui.preview_map(slot)
+	assert_not_null(modal, "the button opens a map")
+	if modal == null:
+		return
+	var layers: Array = modal.map_data().get("layers", [])
+	assert_gt(layers.size(), 0, "the preview has a route to draw")
+	assert_true((layers[0] as Array).has(slot), "it starts at the game you're considering")
+	assert_true((layers[layers.size() - 1] as Array).has(GameState.amulet_game_id),
+		"and ends at the Amulet")
+	assert_eq(modal.shortest_distance(), _ui.steps_to_amulet(slot),
+		"its depth is that game's own distance to the Amulet")
+
+func test_the_start_picker_maps_each_start_without_naming_the_amulet() -> void:
+	_ui.start_run()                       # back to the choose-your-start panel
+	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT)
+	_ui._render_start_choices()
+	var card: Node = _ui._choices_row.get_child(0)
+	assert_not_null(_map_button(card), "a start card offers its map too")
+	var start_id: StringName = _ui._start_options[0]["game"].id
+	var modal = _ui.preview_map(start_id)
+	assert_not_null(modal)
+	if modal == null:
+		return
+	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
+	assert_eq(modal.node_name(GameState.amulet_game_id), "The Amulet — ???",
+		"the destination is drawn, never named — that's the run's one secret")
+	assert_ne(modal.node_name(start_id), "The Amulet — ???")
+	if amulet != null:
+		assert_ne(modal.node_name(GameState.amulet_game_id), amulet.display_name)
+
+# ---------------------------------------------------------------------------
+# The board gets to finish
+#
+# The resolve animation is the only place the run's consequences are SHOWN, so
+# the screen it plays on has to still be there when it plays.
+# ---------------------------------------------------------------------------
+
+func test_the_board_says_how_long_its_playback_runs() -> void:
+	_ui.pick(0)
+	var before: Dictionary = _ui._board.capture_positions()
+	assert_eq(_ui._board.animate_resolve(before, {"attacks": []}), 0.0,
+		"nothing to show, nothing to wait for")
+	assert_gt(before.size(), 0, "the picked game put an enemy on the board")
+	var inst: int = int(before.keys()[0])
+	var secs: float = _ui._board.animate_resolve(before,
+		{"attacks": [{"instance": inst, "damage": 3}]})
+	assert_almost_eq(secs, _ui._board.FX_ATTACK_TIME, 0.001,
+		"a strike is what the host waits on")
+
+func test_the_offering_waits_for_the_board_before_coming_back() -> void:
+	_ui.pick(0)
+	_ui.report(false)
+	# The RUN has already moved on — nothing in it waits on an animation.
+	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "the next decision is already built")
+	assert_gt(_ui._choices.size(), 0)
+	if _ui._resolving:
+		assert_false(_ui._select_box.visible,
+			"but the screen stays on the board while it plays the resolve")
+		await wait_seconds(1.2)
+	assert_false(_ui._resolving, "the hold releases itself")
+	assert_true(_ui._select_box.visible, "and the offering comes back")
+
+# ---------------------------------------------------------------------------
+# The end of a run
+# ---------------------------------------------------------------------------
+
+func _end_screen():
+	for c in _ui.get_children():
+		if c is CanvasLayer:
+			for g in c.get_children():
+				if g is RunOverScreen and not g.is_queued_for_deletion():
+					return g
+	return null
+
+func test_a_lost_run_ends_on_a_verdict_screen() -> void:
+	_ui.pick(0)
+	GameState.shields = 0
+	GameState.hp = 1
+	_ui.log_attempt()                        # the last Health goes
+	assert_true(GameLoop2.run_over, "the run ended")
+	var screen = _end_screen()
+	assert_not_null(screen, "a finished run ends on a screen, not just a banner line")
+	if screen == null:
+		return
+	assert_eq(screen.verdict(), "lost")
+	assert_true(screen.headline().contains("ENDS HERE"), "it says so: %s" % screen.headline())
+	assert_eq(int(screen.stats()["played"]), GameState.games_played,
+		"and reads the run back: games played")
+	assert_gt(screen.route_ids().size(), 0, "with the road actually walked")
+
+func test_a_won_run_ends_on_the_amulet_screen() -> void:
+	GameLoop2._finish_run(true)
+	var screen = _end_screen()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	assert_eq(screen.verdict(), "won")
+	assert_true(screen.headline().contains("AMULET"), "it names the prize: %s" % screen.headline())
+	assert_eq(int(screen.stats()["steps_left"]), 0, "you were standing on it")
+
+func test_the_verdict_waits_for_the_killing_blow_to_finish_playing() -> void:
+	_ui.pick(0)
+	_ui._resolving = true                    # as it is between a report and its playback
+	GameLoop2._finish_run(false)
+	assert_null(_end_screen(), "the verdict doesn't land on top of the animation")
+	assert_true(_ui._run_over_pending, "it's owed, though")
+	_ui._end_resolve()                       # the board finishes
+	assert_not_null(_end_screen(), "and lands the moment the board is done")
+
+func test_only_one_verdict_screen_per_run() -> void:
+	GameLoop2._finish_run(false)
+	var first = _end_screen()
+	_ui._queue_run_over(false)
+	assert_eq(_end_screen(), first, "a second end signal doesn't stack a second screen")
+
+func test_a_new_run_clears_the_last_ones_verdict() -> void:
+	GameLoop2._finish_run(false)
+	assert_not_null(_end_screen())
+	_ui.start_run()
+	assert_null(_end_screen(), "a fresh run starts on a clean page")
+	assert_false(_ui._resolving, "and with nothing held over from the last one")
+
+# The advance has to be MEASURABLE the instant the board repaints, or it never
+# animates: the resolve compares where everyone stood with where they now stand,
+# and a rebuilt overflow lane that still holds last frame's token answers for an
+# enemy that has already walked onto the grid.
+func test_an_enemy_that_walks_onto_the_grid_reads_as_having_moved() -> void:
+	_ui.pick(0)
+	var before: Dictionary = _ui._board.capture_positions()
+	var inst: int = int(GameLoop2.current["instance"])
+	assert_true(before.has(inst), "the game in play waits off the field")
+	_ui.report(false)                      # missed -> it walks onto the board
+	var after: Dictionary = _ui._board.capture_positions()
+	assert_true(after.has(inst), "and now stands on the grid")
+	var moved: float = (after[inst] as Rect2).position.distance_to((before[inst] as Rect2).position)
+	assert_gt(moved, 2.0,
+		"the advance is measurable straight away — a stale off-field token would say it never moved")
+
+# ---------------------------------------------------------------------------
+# Winning: clearing the Amulet game ends the run, in your favour
+# ---------------------------------------------------------------------------
+
+# Put the Amulet on the board next door and return the card offering it. The
+# Amulet is always included in the offering when it's reachable, so this is the
+# ordinary end of a run, reached early.
+func _offer_the_amulet_next_door() -> int:
+	var nb: StringName = RunGraph.neighbors(GameState.current_game_id)[0]
+	GameState.amulet_game_id = nb
+	_ui._build_choices()
+	for i in range(_ui._choices.size()):
+		if _ui._choices[i]["slot"] == nb:
+			return i
+	return -1
+
+func test_beating_the_amulet_game_wins_the_run() -> void:
+	var idx: int = _offer_the_amulet_next_door()
+	assert_gt(idx, -1, "the Amulet is offered once it's reachable")
+	assert_true(bool(_ui._choices[idx]["amulet"]), "and the card knows what it is")
+	_ui.pick(idx)
+	_ui.report(true)                          # the goal is met — that's the run
+	assert_true(GameLoop2.run_over, "clearing the Amulet game ends the run")
+	assert_true(GameLoop2.won, "as a win")
+	_ui._end_resolve()                        # the board finishes its playback
+	var screen = _end_screen()
+	assert_not_null(screen, "and it lands on a win screen")
+	if screen == null:
+		return
+	assert_eq(screen.verdict(), "won")
+	assert_true(screen.headline().contains("YOU WIN"), "which says so: %s" % screen.headline())
+	assert_eq(int(screen.stats()["steps_left"]), 0, "nothing left between you and it")
+	assert_eq(StringName(screen.route_ids()[screen.route_ids().size() - 1]),
+		GameState.amulet_game_id, "the road ends on the Amulet game")
+
+func test_the_win_is_banked_on_the_amulet_game() -> void:
+	var idx: int = _offer_the_amulet_next_door()
+	var amulet: StringName = GameState.amulet_game_id
+	var wins_before: int = GameStats.amulet_wins(amulet)
+	_ui.pick(idx)
+	_ui.report(true)
+	assert_eq(GameStats.amulet_wins(amulet), wins_before + 1,
+		"the game you won on carries the crown afterwards")
+
+func test_missing_the_goal_on_the_amulet_game_is_not_a_win() -> void:
+	var idx: int = _offer_the_amulet_next_door()
+	_ui.pick(idx)
+	_ui.report(false)                         # played it, didn't clear it
+	assert_false(GameLoop2.run_over, "the run goes on")
+	assert_null(_end_screen(), "and nothing declares a winner")
+
+# ---------------------------------------------------------------------------
+# The map: the star chart, with the ladder floating over it
+# ---------------------------------------------------------------------------
+
+func _chart() -> AtlasView:
+	for c in _ui.get_children():
+		if c is AtlasView and not c.is_queued_for_deletion():
+			return c
+	return null
+
+func test_the_map_is_the_star_chart_with_the_ladder_over_it() -> void:
+	var modal = _ui.open_map()
+	assert_not_null(modal, "the Map button opens something")
+	var atlas: AtlasView = _chart()
+	assert_not_null(atlas, "and what it opens is the star chart")
+	if atlas == null or modal == null:
+		return
+	assert_true(atlas.is_ancestor_of(modal),
+		"with the ladder mounted over it, so closing the chart takes it along")
+	assert_eq(modal.mouse_filter, Control.MOUSE_FILTER_IGNORE,
+		"the ladder is a window, not a modal — the sky under it stays live")
+	assert_eq(atlas.preview_origin, &"", "the run's own map routes from where you stand")
+
+func test_the_ladder_window_can_be_moved_but_not_lost() -> void:
+	var modal = _ui.open_map()
+	var before: Vector2 = modal.panel_position()
+	modal._move_panel(before + Vector2(140, 70))
+	assert_ne(modal.panel_position(), before, "it drags")
+	modal._move_panel(Vector2(-9000, -9000))
+	assert_gte(modal.panel_position().y, 0.0, "and can't be dragged off the top…")
+	assert_gt(modal.panel_position().x + modal._panel.size.x, 0.0, "…or off the side")
+
+func test_clicking_a_game_on_the_ladder_finds_it_on_the_chart() -> void:
+	var modal = _ui.open_map()
+	var atlas: AtlasView = _chart()
+	if atlas == null or not atlas.has_layout():
+		return
+	assert_true(modal.show_on_chart(GameState.amulet_game_id), "the chart takes the click")
+	assert_eq(atlas.layout.id_at(atlas.selected_index()), GameState.amulet_game_id,
+		"and lands on that game")
+
+func test_a_card_map_draws_that_cards_route_on_the_chart() -> void:
+	var slot: StringName = _ui._choices[0]["slot"]
+	var modal = _ui.preview_map(slot)
+	var atlas: AtlasView = _chart()
+	assert_not_null(atlas, "a card's map opens the chart too")
+	if atlas == null or not atlas.has_layout():
+		return
+	assert_eq(atlas.preview_origin, slot, "routed from the game on the card")
+	assert_eq(atlas.preview_index(), atlas.layout.index_of(slot))
+	assert_true(atlas.marker_text(atlas.preview_index()).contains("IF YOU GO HERE"),
+		"and the chart says which star that is")
+	# The corridor drawn on the sky IS the ladder in the window: same DAG, edge
+	# for edge, from the candidate rather than from where the player stands.
+	var dag: Dictionary = RunGraph.shortest_path_dag(slot, GameState.amulet_game_id)
+	var expected: int = 0
+	for edge in dag.get("edges", []):
+		if atlas.layout.index_of(StringName(edge["from"])) >= 0 \
+				and atlas.layout.index_of(StringName(edge["to"])) >= 0:
+			expected += 1
+	assert_eq(atlas.trail_segment_count(), expected,
+		"the chart's route and the ladder are the same graph")
+	assert_eq(modal.shortest_distance(), _ui.steps_to_amulet(slot))
+
+func test_the_start_pickers_map_raises_no_chart() -> void:
+	# Before the run has a position the Amulet's identity is the one secret the
+	# picker keeps; a sky with the route drawn on it would point straight at it.
+	_ui.start_run()
+	var modal = _ui.preview_map(_ui._start_options[0]["game"].id)
+	assert_null(_chart(), "no star chart from the start picker")
+	assert_eq(modal.node_name(GameState.amulet_game_id), "The Amulet — ???",
+		"and the ladder still won't name the destination")
