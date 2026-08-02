@@ -85,6 +85,17 @@ var _scramble_salt: int = 0
 # coming back to a game you've already stood on offers a DIFFERENT set of its
 # neighbours rather than replaying the same three cards (see _offer_seed).
 var _visits: Dictionary = {}
+# BFS distances from the Amulet over the current graph, rebuilt with the offering
+# (see _rebuild_amulet_distances). What every card's route badge is read off.
+var _amulet_dist: Dictionary = {}
+# True between a report and the end of the board's playback of it: the run has
+# already moved on, but the screen is still showing how (see _hold_for_resolve).
+var _resolving: bool = false
+# An end-of-run screen owed to the player, held back until the board has finished
+# playing the resolve that ended the run.
+var _run_over_pending: bool = false
+var _run_over_won: bool = false
+var _run_over_screen: RunOverScreen = null
 var _rng := RandomNumberGenerator.new()
 
 # --- UI nodes (built in code) --------------------------------------------
@@ -219,6 +230,10 @@ func _ready() -> void:
 # offering is drawn from whichever start they take. `character_id` empty -> the
 # first authored 2.0 character.
 func start_run(character_id: StringName = &"") -> void:
+	# Whatever the last run left on the page goes with it: a verdict screen, a
+	# resolve still being played back, an offering.
+	_dismiss_run_over()
+	_resolving = false
 	_visits.clear()
 	_last_played_game = null
 	_chosen = {}
@@ -602,6 +617,87 @@ func open_map() -> void:
 		choice_ids.append(c["slot"])
 	modal.start(self, GameState.current_game_id, GameState.amulet_game_id, choice_ids)
 
+# The same map, but for a game you have NOT taken: the optimal road to the Amulet
+# as it would stand if you picked this card. Every offered game carries a 🗺
+# button above its cover, because the whole decision is a routing decision and it
+# shouldn't have to be made from a single distance number.
+#
+# From the start picker the destination is drawn without being named — the panel
+# gives away the distance to the Amulet and nothing else, and a map that spelled
+# out which game it is would hand over the run's one secret.
+func preview_map(game_id: StringName) -> Node:
+	if game_id == &"" or GameState.amulet_game_id == &"":
+		return null
+	var game: GameData = Data.get_game(game_id)
+	var modal := preload("res://scripts/redesign2/RunMapModal.gd").new()
+	modal.start(self, game_id, GameState.amulet_game_id, [], {
+		"preview": true,
+		"hide_amulet": _phase == Phase.START_SELECT,
+		"title": "🗺  If you take %s" % (game.display_name if game != null else String(game_id)),
+	})
+	return modal
+
+# --- routing: how each offered card sits relative to the Amulet -------------
+#
+# Distances to the Amulet over the run's graph — the same BFS the "Map to the
+# Amulet" modal is layered from, so a card's badge and the map it opens can never
+# disagree. (Bashing removes a game from the OFFERING, not from the graph, so it
+# doesn't move these numbers; RunGraph memoizes the BFS, and this is re-read with
+# each offering so a change of amulet or game filter is picked up.)
+func _rebuild_amulet_distances() -> void:
+	_amulet_dist = {}
+	if GameState.amulet_game_id == &"":
+		return
+	_amulet_dist = RunGraph.bfs_distances(GameState.amulet_game_id)
+
+# Hops from `game_id` to the Amulet, or -1 when no route reaches it.
+func steps_to_amulet(game_id: StringName) -> int:
+	if game_id == &"":
+		return -1
+	if _amulet_dist.is_empty():
+		_rebuild_amulet_distances()
+	return int(_amulet_dist[game_id]) if _amulet_dist.has(game_id) else -1
+
+# What a card is, as a route: is it the Amulet, does it step toward it, or does
+# it cost you ground? Returned as {"text", "color", "tip"} so the card and its
+# tests read the same words.
+func route_note(choice: Dictionary) -> Dictionary:
+	var slot: StringName = choice.get("slot", &"")
+	if bool(choice.get("amulet", false)):
+		return {
+			"text": "🏆 THE AMULET — the run ends here",
+			"color": UITheme.GOLD,
+			"tip": "Beat this game's goal and you win the run.",
+		}
+	var here: int = steps_to_amulet(GameState.current_game_id)
+	var there: int = steps_to_amulet(slot)
+	if there < 0:
+		return {
+			"text": "⛔ No route to the Amulet",
+			"color": UITheme.DANGER,
+			"tip": "Nothing connects this game to the Amulet any more.",
+		}
+	var plural: String = "" if there == 1 else "s"
+	if here >= 0 and there < here:
+		return {
+			"text": "★ OPTIMAL — %d step%s left" % [there, plural],
+			"color": UITheme.SUCCESS,
+			"tip": "On a shortest path: taking this leaves %d step%s to the Amulet." % [there, plural],
+		}
+	if here >= 0 and there == here:
+		return {
+			"text": "→ Sideways — still %d step%s" % [there, plural],
+			"color": UITheme.TEXT_DIM,
+			"tip": "No closer, no further: %d step%s to the Amulet either way." % [there, plural],
+		}
+	var lost: int = there - here if here >= 0 else 0
+	return {
+		"text": "↩ Detour +%d — %d step%s left" % [lost, there, plural],
+		"color": UITheme.ACCENT,
+		"tip": "This walks away from the Amulet: %d step%s left instead of %d." % [
+			there, plural, maxi(here - 1, 0)],
+	}
+
 # Read the carried scroll at loot index `idx` (Scrolls panel). Opens the 2.0
 # read modal, which consumes the scroll and applies its effect (§4.1).
 func read_scroll(idx: int) -> void:
@@ -651,6 +747,11 @@ func scroll_teleport(_dir: String, spread: int) -> void:
 func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	if _phase != Phase.PLAYING or _chosen.is_empty():
 		return
+	# The board is about to play the whole resolve back — the front line striking,
+	# the field closing in one column. Hold the screen on it: the run's state moves
+	# on immediately (so nothing here waits on an animation), but the OFFERING
+	# doesn't come back until the playback has finished. See _end_resolve.
+	_resolving = true
 	var played_game: GameData = _chosen.get("game")
 	var fulfilled_instances: Array = fulfilled if fulfilled is Array else _ticked_fulfilments()
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
@@ -708,21 +809,54 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	if GameLoop2.run_over:
 		_phase = Phase.OVER
 		_refresh()
-		_board.animate_resolve(before, res)
+		# Repaint first, then replay the strike + advance from the snapshot: the
+		# board is already in its final state, the animation just shows how it got
+		# there. The end-of-run screen waits for it to land (_end_resolve).
+		_hold_for_resolve(_board.animate_resolve(before, res))
 		return
 	if was_amulet and goal_met:
+		# Winning on the Amulet ends the run through GameLoop2 (-> _on_run_won),
+		# and the last advance still deserves to be seen before the win screen.
 		GameLoop2.clear_amulet()
+		_hold_for_resolve(_board.animate_resolve(before, res))
 		return
 	_phase = Phase.SELECT
 	_build_choices()
 	_refresh()
-	# Back to the offering — that's the decision now, so put it back on screen.
-	_scroll_to_top()
 	# The run moved, so the recovery point moves with it.
 	autosave()
-	# Repaint first, then replay the strike + advance from the snapshot: the board
-	# is already in its final state, the animation just shows how it got there.
-	_board.animate_resolve(before, res)
+	_hold_for_resolve(_board.animate_resolve(before, res))
+
+# --- holding the screen while the board plays -----------------------------
+#
+# The resolve animation is the only place the run's consequences are ever SHOWN:
+# what hit you, what closed in. It used to be started at the same moment the
+# screen changed under it — the offering came back, the page scrolled to the top,
+# and the strike and the advance played to nobody. So the state advances at once
+# (nothing in the run waits on a tween) and only the VIEW is held back: the stage
+# keeps the shape it had while you were playing until the board is done.
+
+func _hold_for_resolve(seconds: float) -> void:
+	if seconds <= 0.0 or not is_inside_tree():
+		_end_resolve()
+		return
+	# process_always, so a resolve that opens a modal (a reward chest pausing the
+	# tree) still finishes rather than stranding the screen mid-animation.
+	get_tree().create_timer(seconds, true, false, true).timeout.connect(_end_resolve)
+
+# The board has finished: hand the screen over to whatever comes next — the new
+# offering, or the end-of-run screen the run has been sitting on.
+func _end_resolve() -> void:
+	if not _resolving:
+		return
+	_resolving = false
+	_refresh_stage()
+	if _run_over_pending:
+		_run_over_pending = false
+		_show_run_over()
+		return
+	# Back to the offering — that's the decision now, so put it back on screen.
+	_scroll_to_top()
 
 # The reward for beating a game you'd already cleared this run: +1 Dash (§4).
 # Announced on both channels — the toast for the moment, the log for the record —
@@ -1019,6 +1153,10 @@ func _offer_seed() -> String:
 
 func _build_choices() -> void:
 	_choices.clear()
+	# The distances the route badges quote are re-read with the offering rather
+	# than cached for the run — the amulet and the game filter both outlive a
+	# single draw, and neither is this screen's to assume.
+	_rebuild_amulet_distances()
 	_boss_round = _is_boss_round()
 	var tier: int = _current_tier()
 	# The enemy behind a slot is remembered for as long as the offering itself
@@ -1123,11 +1261,14 @@ func _refresh_stage() -> void:
 		return
 	# The offering box hosts the choose-your-start cards too, so it's up in both
 	# choosing phases; the scrolls panel isn't — there's nothing to read before the
-	# run has a position.
-	_select_box.visible = _phase == Phase.SELECT or _phase == Phase.START_SELECT
-	_scrolls_wrap.visible = _phase == Phase.SELECT
-	_play_panel.visible = _phase != Phase.OVER
-	_report_panel.visible = _phase != Phase.OVER
+	# run has a position. While the board is playing a resolve back, neither is up:
+	# the screen stays exactly as it was so the animation happens where the player
+	# is already looking (_hold_for_resolve).
+	var choosing: bool = (_phase == Phase.SELECT or _phase == Phase.START_SELECT) and not _resolving
+	_select_box.visible = choosing
+	_scrolls_wrap.visible = _phase == Phase.SELECT and not _resolving
+	_play_panel.visible = _phase != Phase.OVER or _resolving
+	_report_panel.visible = _phase != Phase.OVER or _resolving
 	# The report-only parts of the panel: without a game in hand there is nothing to
 	# launch, retry or complete.
 	var playing: bool = _phase == Phase.PLAYING
@@ -1199,6 +1340,12 @@ func _make_start_card(index: int, opt: Dictionary) -> Control:
 	type_lbl.add_theme_font_size_override("font_size", 13)
 	type_lbl.add_theme_color_override("font_color", accent.lerp(UITheme.TEXT, 0.35))
 	card.add_child(type_lbl)
+
+	# The road this start opens on, before committing to it. The destination is
+	# drawn unnamed — the distance is still the only thing the picker gives away
+	# about the Amulet — but its SHAPE is exactly what makes one start different
+	# from another, so it's on the table.
+	card.add_child(_map_preview_button(game.id, game))
 
 	var btn := Button.new()
 	btn.custom_minimum_size = COVER_SIZE
@@ -1283,6 +1430,25 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 
 	var accent: Color = UITheme.DANGER if choice["boss"] else (UITheme.GOLD if choice["amulet"] else UITheme.type_color(int(game.type)))
 
+	# WHAT THIS CARD IS, as a route — the first thing on it, above the art: the
+	# Amulet game itself, a step along a shortest path, or ground given away. The
+	# offering is a routing decision and it shouldn't have to be reverse-engineered
+	# from the map every time.
+	var note: Dictionary = route_note(choice)
+	var route := Label.new()
+	route.text = String(note["text"])
+	route.tooltip_text = String(note["tip"])
+	route.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	route.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
+	route.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	route.add_theme_font_size_override("font_size", 13)
+	route.add_theme_color_override("font_color", note["color"])
+	card.add_child(route)
+
+	# …and the map that backs the claim up: the whole optimal road from this game
+	# to the Amulet, without having to take it first.
+	card.add_child(_map_preview_button(choice["slot"], game))
+
 	# A game already beaten this run pays a Dash for beating it again — called out
 	# ABOVE the cover so the bonus is visible while you're still choosing. The row is
 	# mounted on EVERY card (blank when there's no bonus) so one flagged card doesn't
@@ -1358,6 +1524,18 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	if proven != null:
 		card.add_child(proven)
 	return card
+
+# The 🗺 button every offered card wears above its cover: opens the optimal path
+# from that game to the Amulet. Full width of the card, so the row of covers stays
+# in line whatever a card's route badge says.
+func _map_preview_button(slot: StringName, game: GameData) -> Button:
+	var b := Button.new()
+	b.text = "🗺  Map"
+	b.tooltip_text = "See the shortest route to the Amulet if you take %s." % game.display_name
+	b.custom_minimum_size = Vector2(COVER_SIZE.x, 26)
+	b.add_theme_font_size_override("font_size", 12)
+	b.pressed.connect(func(): preview_map(slot))
+	return b
 
 # "Beatable:" — the enemies on the board right now that you have ALREADY beaten
 # at this game before. Not a prediction: it's your own record saying this pair
@@ -1951,12 +2129,53 @@ func _on_run_lost() -> void:
 	_drop_queue.clear()
 	SaveSystem.clear_autosave()
 	_show_banner("💀  Run lost — Health reached 0.", Color(0.9, 0.3, 0.25))
+	_queue_run_over(false)
 
 func _on_run_won() -> void:
 	_phase = Phase.OVER
 	_drop_queue.clear()
 	SaveSystem.clear_autosave()
 	_show_banner("🏆  You cleared the Amulet — you win!", Color(0.95, 0.8, 0.2))
+	_queue_run_over(true)
+
+# --- the end of the run ----------------------------------------------------
+#
+# A run that ends has an END SCREEN (RunOverScreen): the verdict, the run in
+# numbers, and the road it walked. The banner stays as the line on the page
+# behind it, so dismissing the screen leaves a finished run that still says so.
+#
+# The screen waits for the board when the run ended DURING a resolve — the blow
+# that killed you is the last thing worth watching, and it plays before the
+# verdict lands on top of it.
+
+func _queue_run_over(did_win: bool) -> void:
+	if _run_over_screen != null and is_instance_valid(_run_over_screen):
+		return
+	_run_over_won = did_win
+	if _resolving:
+		_run_over_pending = true
+		return
+	_show_run_over()
+
+func _show_run_over() -> void:
+	if not is_inside_tree():
+		return
+	if _run_over_screen != null and is_instance_valid(_run_over_screen):
+		return
+	var screen := RunOverScreen.open(self, _run_over_won)
+	_run_over_screen = screen
+	screen.restart_requested.connect(func(): start_run())
+	screen.menu_requested.connect(func():
+		get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn"))
+	screen.finished.connect(func(): _run_over_screen = null)
+
+# The end screen, while one is up — so a run can't stack two of them, and so a
+# fresh run clears the old verdict off the page.
+func _dismiss_run_over() -> void:
+	_run_over_pending = false
+	if _run_over_screen != null and is_instance_valid(_run_over_screen):
+		_run_over_screen._close()
+	_run_over_screen = null
 
 func _show_banner(text: String, color: Color) -> void:
 	_banner.text = text

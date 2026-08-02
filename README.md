@@ -41,6 +41,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     Overworld2      — run flow: offering, report, pack
 │   │                      #     BattlefieldView — the grid the enemies close in on
 │   │                      #     EnemyInfoCard   — click-to-inspect enemy card
+│   │                      #     RunOverScreen   — the end-of-run verdict screen
 │   │                      #     RunMapModal / ScrollReadModal
 │   ├── events/           #   the D20 event system (EventModal, D20DieView)
 │   ├── menu/             #   the main menu
@@ -286,6 +287,55 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 ---
 
 ## Recent changes
+
+- **The end of a run is a screen** — a finished run no longer just prints a line
+  over an overworld that's still sitting there. `RunOverScreen` opens over the
+  board with the verdict (**🏆 THE AMULET IS YOURS** / **💀 THE RUN ENDS HERE**),
+  how it ended (*"Health hit 0 at Scourgebringer — 5 steps short of the
+  Amulet"*), the run in numbers — character, games played and beaten, health,
+  relics carried, difficulty reached, how far the Amulet still was, what was
+  still following — and **the road you walked** as covers and arrows, closing on
+  the Amulet with a dashed arrow across the stretch a lost run never covered
+  (the same picture Run History draws). From there: another run, the run laid
+  over the Atlas, the menu, or dismiss it to look at the board it ended on.
+
+- **The board gets to finish** — reporting a game used to start the resolve
+  animation and change the screen out from under it in the same breath: the
+  offering came back, the page scrolled to the top, and the strike and the
+  advance played to nobody. The run's state still moves on instantly (nothing
+  waits on a tween), but the **view** is held: the stage keeps the shape it had
+  while you were playing until the board has finished, and only then does the
+  offering — or the end-of-run screen — take over. The advance was also being
+  measured against a stale overflow-lane token, so an enemy walking onto the grid
+  read as "didn't move" and never slid at all; the lane is now detached as well
+  as freed, like every other layer on the board.
+
+- **Every offered game says where it puts you** — above each card, before the
+  art: **🏆 THE AMULET — the run ends here**, **★ OPTIMAL — n steps left** for a
+  game on a shortest path, **→ Sideways** for one that's no closer, or **↩ Detour
+  +n** for ground given away. Read off the same BFS the "Map to the Amulet" modal
+  is layered from, so a card's badge and the map it opens can't disagree.
+
+- **A map on every card** — a **🗺 Map** button above each cover (on the offering
+  *and* on the choose-your-start panel) opens the optimal path to the Amulet **as
+  it would stand if you took that game** — the whole road, not just a distance
+  number. From the start picker the destination is drawn but deliberately not
+  named (*The Amulet — ???*): the panel gives away the distance and nothing else.
+
+- **The Atlas says where you are and what you came for** — the you-are-here and
+  the Amulet used to be one more thin ring among the owned / hovered /
+  transmuted rings. They're markers now: a halo, a cased ring pair and a printed
+  badge (**YOU ARE HERE**, **THE AMULET — 5 STEPS**), drawn over everything and
+  at every zoom, with an arrow parked on the edge of the view pointing the way
+  when one is off screen. The header gains **📍 You** and **🏆 Amulet** buttons
+  that jump to either end, the HUD carries the run in one line (*📍 Downwell → 🏆
+  Rack and Slay (5 steps to go)*), and both are keyed in the legend.
+
+- **A clicked game shows its whole cover** — the Atlas card used to crop the box
+  art to a 248×124 letterbox. The card is the panel you opened to *look* at the
+  game, so it now fits the entire picture to the card's width (scaled down, never
+  cut, if that would make it too tall). The stars themselves still inscribe art in
+  the circle the packing reserved for them.
 
 - **Filters on the Collection's Constellations** — a filter row above the sky:
   **Constellations** (6 / 8 / 12), **Library** (owned / downloaded / not owned),

@@ -95,3 +95,48 @@ func test_unreachable_amulet_yields_an_empty_map() -> void:
 	assert_true(modal.map_data().get("layers", []).is_empty(),
 		"an unreachable amulet produces no route")
 	assert_eq(modal.shortest_distance(), 0, "no route means zero steps")
+
+# ---------------------------------------------------------------------------
+# Preview maps — the same corridor, for a game not taken yet
+#
+# Every offered card (and every choose-your-start card) opens one of these: the
+# optimal path to the Amulet as it would stand if you picked that game.
+# ---------------------------------------------------------------------------
+
+func _open_preview_from(game_id: StringName, hide_amulet: bool = false):
+	var host := Node.new()
+	add_child_autofree(host)
+	var modal = MAP_MODAL.new()
+	modal.start(host, game_id, GameState.amulet_game_id, [], {
+		"preview": true, "hide_amulet": hide_amulet, "title": "🗺  If you take it",
+	})
+	return modal
+
+func test_a_preview_maps_the_route_from_the_game_being_considered() -> void:
+	var candidate: StringName = _ui._choices[0]["slot"]
+	var modal = _open_preview_from(candidate)
+	var layers: Array = modal.map_data().get("layers", [])
+	assert_gt(layers.size(), 0, "a candidate has a road to the Amulet")
+	assert_true((layers[0] as Array).has(candidate), "the road starts where you'd be standing")
+	assert_true((layers[layers.size() - 1] as Array).has(GameState.amulet_game_id),
+		"and ends on the Amulet")
+
+func test_a_preview_names_every_stop_by_default() -> void:
+	var modal = _open_preview_from(_ui._choices[0]["slot"])
+	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
+	assert_eq(modal.node_name(GameState.amulet_game_id), amulet.display_name,
+		"mid-run the Amulet is already known, so it's named")
+
+func test_a_start_preview_keeps_the_amulet_a_secret() -> void:
+	var modal = _open_preview_from(GameState.current_game_id, true)
+	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
+	assert_eq(modal.node_name(GameState.amulet_game_id), "The Amulet — ???",
+		"the start picker gives away the distance and nothing else")
+	assert_ne(modal.node_name(GameState.current_game_id), amulet.display_name)
+
+func test_a_preview_depth_is_that_games_own_distance() -> void:
+	var candidate: StringName = _ui._choices[0]["slot"]
+	var modal = _open_preview_from(candidate)
+	var dist: Dictionary = RunGraph.bfs_distances(GameState.amulet_game_id)
+	assert_eq(modal.shortest_distance(), int(dist[candidate]),
+		"the preview is as deep as that game is far")

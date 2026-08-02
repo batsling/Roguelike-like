@@ -36,6 +36,15 @@ var _current: StringName = &""
 var _amulet: StringName = &""
 var _choice_ids: Dictionary = {}        # reachable-now offering slots -> true
 var _zoom: float = 1.0
+# PREVIEW mode: the map is drawn from a game the player is only CONSIDERING, so
+# the top node is "if you go here" rather than "you are here", and the journey
+# trail is left off — it isn't this map's journey.
+var _preview: bool = false
+var _title: String = ""
+# The Amulet's identity is a secret before the run has a position (the start
+# picker only ever gives away the DISTANCE), so a map opened from a start card
+# draws the destination without naming it.
+var _hide_amulet: bool = false
 
 var _layer: CanvasLayer = null
 var _panel: PanelContainer = null
@@ -49,9 +58,19 @@ func _init() -> void:
 
 # Entry point. `choice_ids` is the list of games currently offered on the board
 # (the reachable-now slots) so the map can flag them; pass [] if unknown.
-func start(host: Node, current: StringName, amulet: StringName, choice_ids: Array = []) -> void:
+#
+# `options` turns it into a PREVIEW of a game not yet taken — what the road ahead
+# would look like if you picked it:
+#   preview      bool    top node reads "if you go here"; no journey trail
+#   hide_amulet  bool    draw the destination without naming it (start picker)
+#   title        String  replaces the header title
+func start(host: Node, current: StringName, amulet: StringName, choice_ids: Array = [],
+		options: Dictionary = {}) -> void:
 	_current = current
 	_amulet = amulet
+	_preview = bool(options.get("preview", false))
+	_hide_amulet = bool(options.get("hide_amulet", false))
+	_title = String(options.get("title", ""))
 	_choice_ids.clear()
 	for id in choice_ids:
 		_choice_ids[StringName(id)] = true
@@ -98,7 +117,7 @@ func _build() -> void:
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	var title := Label.new()
-	title.text = "🗺  Map to the Amulet"
+	title.text = _title if _title != "" else "🗺  Map to the Amulet"
 	title.add_theme_font_size_override("font_size", 22)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	header.add_child(title)
@@ -119,8 +138,21 @@ func _build() -> void:
 	header.add_child(close)
 	root.add_child(header)
 
+	# What this map IS, when it isn't the run's own: the optimal road from a game
+	# you're only thinking about.
+	if _preview:
+		var note := Label.new()
+		var here: GameData = Data.get_game(_current)
+		note.text = "The shortest route to the Amulet if you take %s — every step of it, %s." % [
+			here.display_name if here != null else String(_current),
+			"destination hidden until the run begins" if _hide_amulet else "destination included"]
+		note.add_theme_font_size_override("font_size", 12)
+		note.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		root.add_child(note)
+
 	# Journey trail — the games already behind the player (visited_games).
-	var journey: Array = GameState.visited_games
+	var journey: Array = [] if _preview else GameState.visited_games
 	if not journey.is_empty():
 		var trail := Label.new()
 		trail.text = "Journey:  " + " → ".join(_names(journey)) + "  → 📍"
@@ -145,7 +177,9 @@ func _refresh_distance_label() -> void:
 	if map_data().get("layers", []).is_empty():
 		_dist_label.text = "No route — the Amulet isn't connected from here."
 	else:
-		_dist_label.text = "Shortest path: %d step%s" % [d, "" if d == 1 else "s"]
+		_dist_label.text = "%s: %d step%s" % [
+			"Optimal path from there" if _preview else "Shortest path",
+			d, "" if d == 1 else "s"]
 
 # Build (or rebuild, on zoom) the graph canvas: positioned node boxes plus a
 # GraphCanvas child that draws the arrows behind them.
@@ -216,7 +250,7 @@ func _node_box(id: StringName, rect: Rect2) -> Control:
 	var is_current: bool = id == _current
 	var is_amulet: bool = id == _amulet
 	var is_choice: bool = _choice_ids.has(id) and not is_current and not is_amulet
-	var is_visited: bool = GameState.visited_games.has(id) and not is_current
+	var is_visited: bool = not _preview and GameState.visited_games.has(id) and not is_current
 
 	var bg: Color = COL_PATH_BG
 	var border: Color = UITheme.BORDER
@@ -226,7 +260,7 @@ func _node_box(id: StringName, rect: Rect2) -> Control:
 		bg = COL_CURRENT
 		border = UITheme.SUCCESS
 		border_w = 2
-		prefix = "📍 "
+		prefix = "▶ " if _preview else "📍 "
 	elif is_amulet:
 		bg = COL_AMULET
 		border = UITheme.GOLD
@@ -249,7 +283,7 @@ func _node_box(id: StringName, rect: Rect2) -> Control:
 
 	var game: GameData = Data.get_game(id)
 	var label := Label.new()
-	label.text = prefix + (game.display_name if game != null else String(id))
+	label.text = prefix + node_name(id)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -259,11 +293,21 @@ func _node_box(id: StringName, rect: Rect2) -> Control:
 	panel.add_child(label)
 	return panel
 
+# What a node is called on this map. Everything is named as itself except the
+# Amulet in a start-picker preview, where naming it would give away the one thing
+# the choose-your-start panel keeps back.
+func node_name(id: StringName) -> String:
+	if _hide_amulet and id == _amulet:
+		return "The Amulet — ???"
+	var game: GameData = Data.get_game(id)
+	return game.display_name if game != null else String(id)
+
 func _legend() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
-	row.add_child(_legend_chip("📍 You are here", COL_CURRENT))
-	row.add_child(_legend_chip("◆ Reachable now", COL_CHOICE_BG))
+	row.add_child(_legend_chip("▶ If you go here" if _preview else "📍 You are here", COL_CURRENT))
+	if not _preview:
+		row.add_child(_legend_chip("◆ Reachable now", COL_CHOICE_BG))
 	row.add_child(_legend_chip("On the path", COL_PATH_BG))
 	row.add_child(_legend_chip("🏆 Amulet", COL_AMULET))
 	return row

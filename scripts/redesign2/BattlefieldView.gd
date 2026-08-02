@@ -322,7 +322,13 @@ func refresh(show_current: bool = false) -> void:
 			layer.remove_child(c)
 			c.queue_free()
 	_enemy_nodes.clear()
+	# DETACHED as well as freed, exactly like the two layers above: queue_free
+	# alone leaves the old token in the tree until the end of the frame, and
+	# capture_positions() reads the overflow lane by walking these children — so a
+	# stale token would answer for an enemy that has already walked onto the grid,
+	# the advance would measure as "didn't move", and the slide would never play.
 	for c in _offgrid_box.get_children():
+		_offgrid_box.remove_child(c)
 		c.queue_free()
 
 	# Enemies standing on the board, drawn BACK-TO-FRONT: a body lower on the grid
@@ -658,9 +664,13 @@ func clear_fx() -> void:
 # attacker flashes and throws its damage number at the hero, who recoils), then
 # the whole field slides one column closer — including the game you just reported,
 # which walks in from off-field onto the spawn column.
-func animate_resolve(before: Dictionary, res: Dictionary) -> void:
+#
+# Returns HOW LONG the playback runs, in seconds (0.0 when there was nothing to
+# show). The host holds the screen on the board for that long before moving on —
+# an animation the next screen wipes off mid-flight may as well not exist.
+func animate_resolve(before: Dictionary, res: Dictionary) -> float:
 	if _fx_layer == null or not is_inside_tree():
-		return
+		return 0.0
 	clear_fx()
 	var after: Dictionary = capture_positions()
 
@@ -682,6 +692,7 @@ func animate_resolve(before: Dictionary, res: Dictionary) -> void:
 
 	# 2. The advance: ghost-slide every enemy whose cell changed, after the strike
 	#    has played. The real art stays hidden until its ghost lands.
+	var slid: bool = false
 	for inst in after.keys():
 		if not before.has(inst):
 			continue
@@ -689,7 +700,12 @@ func animate_resolve(before: Dictionary, res: Dictionary) -> void:
 		var to_rect: Rect2 = after[inst]
 		if from_rect.position.distance_to(to_rect.position) < 2.0:
 			continue
+		slid = true
 		_spawn_slide_ghost(inst, from_rect, to_rect)
+
+	if slid:
+		return FX_ATTACK_TIME + FX_SLIDE_TIME
+	return FX_ATTACK_TIME if struck else 0.0
 
 # A logged attempt, played on the hero (§3): a lost run pops one shield pip off and
 # floats what it cost. `cost` is "shield" while any are left, "health" once they're

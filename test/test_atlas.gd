@@ -1385,3 +1385,134 @@ func test_changing_capitals_clears_the_region_filter() -> void:
 	view._f_region = 1
 	view.set_capital_count(6)
 	assert_eq(view._f_region, -1, "region indices belong to the sky they came from")
+
+# ---------------------------------------------------------------------------
+# The card's cover art — shown WHOLE
+#
+# The chart inscribes art in a circle and the connection strip is a thumbnail,
+# but the card is the panel you opened by CLICKING a game, so nothing may be
+# cropped off it.
+# ---------------------------------------------------------------------------
+
+func _any_cover() -> Texture2D:
+	for game in Data.all_games():
+		if game.cover_image != null and game.cover_image.get_width() > 0:
+			return game.cover_image
+	return null
+
+func test_card_art_keeps_the_whole_picture() -> void:
+	var tex: Texture2D = _any_cover()
+	assert_not_null(tex, "the catalog has cover art to show")
+	if tex == null:
+		return
+	var box: Vector2 = ATLAS.card_art_size(tex, ATLAS.CARD_ART_WIDTH)
+	var want: float = float(tex.get_width()) / float(tex.get_height())
+	assert_almost_eq(box.x / box.y, want, 0.001,
+		"the frame is the shape of the picture, so none of it is cut")
+	assert_lte(box.y, ATLAS.CARD_ART_MAX_HEIGHT, "a tall cover is scaled down, not cropped")
+	assert_lte(box.x, ATLAS.CARD_ART_WIDTH, "and never wider than the card")
+
+func test_card_art_refuses_a_degenerate_texture() -> void:
+	assert_eq(ATLAS.card_art_size(null, 200.0), Vector2.ZERO, "no texture, no frame")
+	assert_eq(ATLAS.card_art_size(_any_cover(), 0.0), Vector2.ZERO, "no width, no frame")
+
+func test_the_clicked_card_never_crops_its_cover() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	# The first star that actually has art — that's the card with a picture on it.
+	var target: int = -1
+	for i in range(view.layout.star_count()):
+		if view.cover_texture(i) != null:
+			target = i
+			break
+	assert_gt(target, -1, "some game on the map has cover art")
+	view.select(target)
+	var art: TextureRect = null
+	for c in view._card_box.get_children():
+		if c is TextureRect:
+			art = c
+			break
+	assert_not_null(art, "the card shows the cover")
+	if art == null:
+		return
+	assert_eq(art.stretch_mode, TextureRect.STRETCH_KEEP_ASPECT_CENTERED,
+		"KEEP_ASPECT_CENTERED — a COVERED cover is a cropped cover")
+	assert_almost_eq(art.custom_minimum_size.x / art.custom_minimum_size.y,
+		float(art.texture.get_width()) / float(art.texture.get_height()), 0.001,
+		"and the frame it sits in is the picture's own shape")
+
+# ---------------------------------------------------------------------------
+# The run's two anchors — where you stand and what you came for
+# ---------------------------------------------------------------------------
+
+func test_the_sky_knows_where_the_player_is_and_where_the_goal_is() -> void:
+	_start_run()
+	var view := _open()
+	if not view.has_layout():
+		return
+	assert_eq(view.current_index(), view.layout.index_of(GameState.current_game_id),
+		"you-are-here is the star of the game being stood on")
+	assert_eq(view.amulet_index(), view.layout.index_of(GameState.amulet_game_id),
+		"and the goal is the Amulet's star")
+	assert_ne(view.current_index(), -1)
+	assert_ne(view.amulet_index(), -1)
+
+func test_both_anchors_are_named_on_the_map() -> void:
+	_start_run()
+	var view := _open()
+	if not view.has_layout():
+		return
+	assert_true(view.marker_text(view.current_index()).contains("YOU ARE HERE"),
+		"the spot you're on says so: %s" % view.marker_text(view.current_index()))
+	assert_true(view.marker_text(view.amulet_index()).contains("AMULET"),
+		"and so does the goal: %s" % view.marker_text(view.amulet_index()))
+	assert_eq(view.marker_color(view.current_index()), ATLAS.COL_YOU)
+	assert_eq(view.marker_color(view.amulet_index()), ATLAS.COL_GOAL)
+	assert_eq(view.marker_text(-1), "", "nothing else is an anchor")
+
+func test_the_goal_marker_counts_the_steps_left() -> void:
+	_start_run()
+	var view := _open()
+	if not view.has_layout():
+		return
+	var dist: Dictionary = RunGraph.bfs_distances(GameState.current_game_id)
+	var hops: int = int(dist.get(GameState.amulet_game_id, -1))
+	assert_eq(view.steps_to_amulet(), hops, "the distance is the graph's own")
+	assert_true(view.marker_text(view.amulet_index()).contains(str(hops)),
+		"and the marker prints it: %s" % view.marker_text(view.amulet_index()))
+
+func test_the_run_line_names_both_ends() -> void:
+	_start_run()
+	var view := _open()
+	if not view.has_layout():
+		return
+	var here: GameData = Data.get_game(GameState.current_game_id)
+	var goal: GameData = Data.get_game(GameState.amulet_game_id)
+	var line: String = view.run_summary()
+	assert_true(line.contains(here.display_name), "the HUD line says where you are: %s" % line)
+	assert_true(line.contains(goal.display_name), "and where you're going: %s" % line)
+
+func test_the_catalog_view_has_no_anchors() -> void:
+	_start_run()
+	var view := _open_pure()
+	assert_eq(view.current_index(), -1, "the catalog is about the games, not a run")
+	assert_eq(view.amulet_index(), -1)
+	assert_eq(view.run_summary(), "", "so it says nothing about one")
+
+func test_no_anchors_before_a_run_starts() -> void:
+	var view := _open()
+	assert_eq(view.current_index(), -1, "nothing to stand on yet")
+	assert_eq(view.amulet_index(), -1)
+	assert_eq(view.steps_to_amulet(), -1, "and nowhere to go")
+
+func test_framing_an_anchor_puts_it_on_screen() -> void:
+	_start_run()
+	var view := _open()
+	if not view.has_layout():
+		return
+	for idx in [view.current_index(), view.amulet_index()]:
+		view._frame_star(idx)
+		var canvas := Rect2(Vector2.ZERO, view._canvas_size())
+		assert_true(canvas.grow(4.0).has_point(view.to_screen(view.layout.position_of(idx))),
+			"the anchor the button jumps to is in view")
