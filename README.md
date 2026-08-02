@@ -287,6 +287,14 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
 ## Recent changes
 
+- **"Beatable:" on the offering** — while choosing where to travel, a card shows
+  small portraits of the enemies you have **already beaten at that game before**:
+  the enemy standing there now, and anything currently following you. It is not a
+  prediction — it is your own record saying this pair has worked, which is
+  exactly what you want while deciding where to drag a follower. Hovering a
+  portrait gives the goal, how many times it fell there and whatever note you
+  wrote. A card with nothing proven stays clean.
+
 - **Per-game enemy notes** — games now remember **which enemies were beaten on
   them**, and you can write down how. Every enemy line on the end-of-game
   checklist carries a **🗒 Notes** button on its right; the button shows a pen

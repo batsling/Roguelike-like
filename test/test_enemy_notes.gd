@@ -225,3 +225,50 @@ func test_beating_one_enemy_moves_only_that_games_number() -> void:
 	GameStats.record_enemy_beaten(&"slay_the_spire", foes[0].id)
 	assert_eq(GameStats.enemies_for(&"slay_the_spire").size(), 1,
 		"a repeat clear doesn't count as another enemy")
+
+# ---------------------------------------------------------------------------
+# "Beatable:" on the offering — proof you've cleared this pair before
+# ---------------------------------------------------------------------------
+
+func _offering() -> Node:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	return ui
+
+func test_no_beatable_row_without_a_record() -> void:
+	var ui = _offering()
+	if ui._choices.is_empty():
+		return
+	assert_null(ui._beatable_row(ui._choices[0]),
+		"a card you've never cleared anything at stays clean")
+
+func test_the_card_enemy_shows_when_beaten_here_before() -> void:
+	var ui = _offering()
+	if ui._choices.is_empty():
+		return
+	var choice: Dictionary = ui._choices[0]
+	var game: GameData = choice.get("game")
+	var enemy: GoalEnemyData = choice.get("enemy")
+	if game == null or enemy == null:
+		return
+	GameStats.record_enemy_beaten(game.id, enemy.id)
+	assert_not_null(ui._beatable_row(choice),
+		"having beaten this enemy here before is worth saying")
+
+# The record is per pair, so beating an enemy somewhere else proves nothing here.
+func test_beating_the_same_enemy_elsewhere_does_not_count() -> void:
+	var ui = _offering()
+	if ui._choices.is_empty():
+		return
+	var choice: Dictionary = ui._choices[0]
+	var enemy: GoalEnemyData = choice.get("enemy")
+	if enemy == null:
+		return
+	GameStats.record_enemy_beaten(&"some_other_game", enemy.id)
+	assert_null(ui._beatable_row(choice),
+		"a clear at a different game says nothing about this one")
+
+func test_a_card_with_no_game_has_no_row() -> void:
+	var ui = _offering()
+	assert_null(ui._beatable_row({}), "an empty choice has nothing to show")
