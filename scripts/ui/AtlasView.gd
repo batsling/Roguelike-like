@@ -848,6 +848,12 @@ func _refresh_card() -> void:
 	if game != null and game.owned:
 		facts.add_child(_fact("Owned", "yes"))
 
+	# How much of this game's enemy pool has actually been cleared here.
+	var possible: int = GameLoop2.possible_enemies_at(game).size()
+	var fought: int = GameStats.enemies_for(id).size()
+	if possible > 0 or fought > 0:
+		facts.add_child(_fact("Enemies beaten", "%d / %d" % [fought, maxi(possible, fought)]))
+
 	# What the player has actually fought here, and what they wrote about it.
 	if GameStats.has_enemy_log(id):
 		var notes_btn := Button.new()

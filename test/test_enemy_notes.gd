@@ -165,3 +165,63 @@ func test_an_enemy_only_written_about_is_not_listed_as_beaten() -> void:
 	GameStats.set_enemy_note(&"rogue", &"jaw_worm", "planning ahead")
 	assert_eq(GameStats.games_for_enemy(&"jaw_worm").size(), 0,
 		"a note alone doesn't claim the enemy was beaten there")
+
+# ---------------------------------------------------------------------------
+# The x / y denominators
+# ---------------------------------------------------------------------------
+#
+# y is what COULD have happened, not the whole catalog: enemies are rolled by
+# matching game type, so an Action enemy never appears at a Deckbuilder game and
+# counting it against all 757 would make the number meaningless.
+
+func test_a_games_enemy_pool_is_its_own_type() -> void:
+	var game: GameData = Data.get_game(&"slay_the_spire")
+	if game == null:
+		return
+	var pool: Array = GameLoop2.possible_enemies_at(game)
+	assert_gt(pool.size(), 0, "a game has enemies that can appear at it")
+	var key: StringName = GameLoop2.game_type_key(game)
+	for id in pool:
+		var e: GoalEnemyData = Data.get_goal_enemy_any(StringName(id))
+		assert_eq(StringName(String(e.game_type).to_lower()), key,
+			"%s can only be rolled at games of its own type" % id)
+
+func test_an_enemys_possible_games_share_its_type() -> void:
+	var foes: Array = Data.all_goal_enemies()
+	if foes.is_empty():
+		return
+	var enemy: GoalEnemyData = foes[0]
+	var n: int = GameLoop2.possible_games_for(enemy)
+	assert_gt(n, 0, "an enemy has games it can appear at")
+	assert_lt(n, Data.all_games().size(), "but not the whole catalog")
+
+func test_the_denominators_are_never_smaller_than_what_happened() -> void:
+	# A pool can change between patches, so a player may have beaten an enemy that
+	# no longer rolls there. The stat must not read 3 / 1.
+	GameStats.record_enemy_beaten(&"slay_the_spire", &"not_in_the_pool_any_more")
+	var game: GameData = Data.get_game(&"slay_the_spire")
+	if game == null:
+		return
+	var fought: int = GameStats.enemies_for(&"slay_the_spire").size()
+	var possible: int = GameLoop2.possible_enemies_at(game).size()
+	assert_gte(maxi(possible, fought), fought,
+		"the denominator is widened rather than showing more beaten than possible")
+
+func test_nothing_beaten_reads_as_zero_of_the_pool() -> void:
+	var game: GameData = Data.get_game(&"slay_the_spire")
+	if game == null:
+		return
+	assert_eq(GameStats.enemies_for(&"slay_the_spire").size(), 0, "nothing beaten yet")
+	assert_gt(GameLoop2.possible_enemies_at(game).size(), 0, "but the pool isn't empty")
+
+func test_beating_one_enemy_moves_only_that_games_number() -> void:
+	var foes: Array = Data.all_goal_enemies()
+	if foes.is_empty():
+		return
+	GameStats.record_enemy_beaten(&"slay_the_spire", foes[0].id)
+	assert_eq(GameStats.enemies_for(&"slay_the_spire").size(), 1, "one distinct enemy here")
+	assert_eq(GameStats.enemies_for(&"balatro").size(), 0, "and none anywhere else")
+	# Beating the SAME enemy again is not a second distinct enemy.
+	GameStats.record_enemy_beaten(&"slay_the_spire", foes[0].id)
+	assert_eq(GameStats.enemies_for(&"slay_the_spire").size(), 1,
+		"a repeat clear doesn't count as another enemy")

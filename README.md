@@ -302,7 +302,14 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
   The Collection's **Enemies** tab shows the same record from the other side:
   each enemy's detail lists the **games it has been beaten in**, with cover,
-  count and note in the same format, editable in place.
+  count and note in the same format, editable in place. The **Games** tab carries
+  the mirror of it — every enemy beaten at that game.
+
+  Both sides carry a completion stat as **x / y**: an enemy's *Games beaten in
+  (3 / 91)*, a game's *Enemies beaten in (4 / 12)*. `y` is what **could** have
+  happened rather than the whole catalog — enemies are rolled by matching game
+  type, so an Action goal-enemy never appears at a Deckbuilder game and counting
+  it against all 757 would make the number meaningless.
 
   A note belongs to the **pair**, not to the enemy — the same goal-enemy turns up
   on many games and how you cleared it is a fact about that combination. Notes

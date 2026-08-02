@@ -765,6 +765,37 @@ func _finish_run(did_win: bool) -> void:
 	else:
 		run_lost.emit()
 
+# --- "how much of this is left" denominators -------------------------------
+#
+# Both stats read x/y, and y has to be the number that could HAVE happened, not
+# the whole catalog: an Action goal-enemy never turns up at a Deckbuilder game,
+# so counting it against all 757 games would make every number meaningless.
+# Enemies are drawn by matching game_type (see _pick_by_type_tier), so the pool
+# for a game is the enemies sharing its type, and the games an enemy can appear
+# at are the games sharing its.
+
+# Ids of every goal-enemy and boss that can be rolled at `game`.
+func possible_enemies_at(game: GameData) -> Array:
+	if game == null:
+		return []
+	var out: Array = []
+	var key: StringName = game_type_key(game)
+	for e in Data.all_goal_enemies() + Data.all_bosses():
+		if e is GoalEnemyData and StringName(String(e.game_type).to_lower()) == key:
+			out.append(e.id)
+	return out
+
+# How many games `enemy` could be rolled at.
+func possible_games_for(enemy: GoalEnemyData) -> int:
+	if enemy == null:
+		return 0
+	var key: StringName = StringName(String(enemy.game_type).to_lower())
+	var n: int = 0
+	for g in Data.all_games():
+		if g is GameData and game_type_key(g) == key:
+			n += 1
+	return n
+
 func is_bashed(game_id: StringName) -> bool:
 	return bashed.has(game_id)
 
