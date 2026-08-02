@@ -929,6 +929,64 @@ func _enemy_cell(e: GoalEnemyData) -> Control:
 			Color(0.7, 0.7, 0.75), 10, true))
 	return cell.panel
 
+# One game this enemy has been beaten at: its cover, how many times it fell
+# there, and the note — matching the Atlas's beaten-enemies rows, since it is the
+# same record seen from the enemy's side. Editable here too.
+func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
+	var game: GameData = Data.get_game(StringName(entry["id"]))
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel",
+		UITheme.flat(CELL_BG, 6, 9, 1, UITheme.BORDER))
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 9)
+	panel.add_child(body)
+
+	if game != null and game.cover_image != null:
+		var art := TextureRect.new()
+		art.texture = game.cover_image
+		art.custom_minimum_size = Vector2(54, 40)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		body.add_child(art)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 3)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(col)
+
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	col.add_child(top)
+	var name_label := Label.new()
+	name_label.text = game.display_name if game != null else String(entry["id"])
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.add_theme_font_size_override("font_size", 13)
+	name_label.add_theme_color_override("font_color", UITheme.TEXT)
+	top.add_child(name_label)
+	var times := Label.new()
+	times.text = "beaten ×%d" % int(entry["beaten"])
+	times.add_theme_font_size_override("font_size", 11)
+	times.add_theme_color_override("font_color", UITheme.SUCCESS)
+	top.add_child(times)
+
+	var note_text: String = String(entry["note"]).strip_edges()
+	var note := Label.new()
+	note.text = note_text if note_text != "" else "No note written for this one."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_size_override("font_size", 12)
+	note.add_theme_color_override("font_color",
+		UITheme.GOLD if note_text != "" else Color(0.55, 0.55, 0.6))
+	col.add_child(note)
+
+	if game != null:
+		var edit := Button.new()
+		edit.text = "✎ Edit note" if note_text != "" else "✎ Add note"
+		edit.add_theme_font_size_override("font_size", 11)
+		edit.pressed.connect(func():
+			EnemyNoteModal.open(self, game, enemy, func(): _show_enemy_detail(enemy)))
+		col.add_child(edit)
+	return panel
+
 func _show_enemy_detail(e: GoalEnemyData) -> void:
 	_clear_children(_detail_box)
 	var ac := _enemy_accent(e)
@@ -962,6 +1020,17 @@ func _show_enemy_detail(e: GoalEnemyData) -> void:
 # ------------------------------------------------------------------
 # Scrolls tab (2.0 catalog — revealed reference)
 # ------------------------------------------------------------------
+
+	# Where this enemy has actually been fought, and what the player wrote about
+	# it — the same record the Atlas shows on a game, read from the other side.
+	var fought: Array = GameStats.games_for_enemy(e.id)
+	_detail_box.add_child(HSeparator.new())
+	_detail_box.add_child(_detail_section("Games beaten in (%d)" % fought.size()))
+	if fought.is_empty():
+		_detail_box.add_child(_label("Not beaten anywhere yet.",
+			Color(0.55, 0.55, 0.6), 12, false, true))
+	for entry in fought:
+		_detail_box.add_child(_enemy_game_row(e, entry))
 
 func _build_scrolls() -> void:
 	var row := _controls_row()

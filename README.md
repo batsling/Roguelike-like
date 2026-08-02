@@ -294,8 +294,15 @@ See `docs/stat-dispatcher.md` for how stats resolve.
   goal (or a follower you also cleared) logs that enemy against that game.
 
   On a game's Atlas card, **🗒 Notes — beaten enemies (n)** opens the list: each
-  enemy with its goal, how many times it fell there, and your note under it.
-  Sorted most-beaten first.
+  enemy's **art**, its goal, how many times it fell there, and your note under
+  it, most-beaten first. Notes can be **edited or deleted** from there as well as
+  written on the checklist — you often only work out how you beat something after
+  the run is over. Deleting clears the note alone; how many times the enemy fell
+  there is a record of fact, not a note, and stays.
+
+  The Collection's **Enemies** tab shows the same record from the other side:
+  each enemy's detail lists the **games it has been beaten in**, with cover,
+  count and note in the same format, editable in place.
 
   A note belongs to the **pair**, not to the enemy — the same goal-enemy turns up
   on many games and how you cleared it is a fact about that combination. Notes

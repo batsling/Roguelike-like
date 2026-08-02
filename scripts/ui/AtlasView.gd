@@ -119,6 +119,7 @@ var _trail: Array = []               # road ahead:  [[from_idx, to_idx], ...]
 var _history: Array = []             # walked:      [[from_idx, to_idx, jumped: bool], ...]
 var _hulls: Array = []               # [{ci, centre: Vector2, radius: float}], built lazily
 var _sequel_cache: Dictionary = {}   # edge index -> bool, built lazily
+var _notes_refill: Callable = Callable()   # rebuilds the open notes panel
 
 var _canvas: Control = null
 var _card: PanelContainer = null
@@ -1089,23 +1090,43 @@ func _open_enemy_notes(game_id: StringName, game_name: String) -> void:
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroller.add_child(list)
 
-	var entries: Array = GameStats.enemies_for(game_id)
-	if entries.is_empty():
-		var none := Label.new()
-		none.text = "Nothing beaten here yet."
-		none.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-		list.add_child(none)
-	for entry in entries:
-		list.add_child(_enemy_note_row(entry))
+	# Refilled in place after an edit or a delete, so the panel stays open and the
+	# player can work through several enemies in one sitting.
+	var refill := func():
+		for c in list.get_children():
+			c.queue_free()
+		var entries: Array = GameStats.enemies_for(game_id)
+		if entries.is_empty():
+			var none := Label.new()
+			none.text = "Nothing beaten here yet."
+			none.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+			list.add_child(none)
+			return
+		for entry in entries:
+			list.add_child(_enemy_note_row(game_id, entry, list))
+	refill.call()
+	_notes_refill = refill
 
-func _enemy_note_row(entry: Dictionary) -> Control:
+func _enemy_note_row(game_id: StringName, entry: Dictionary, _list: Control) -> Control:
 	var enemy: GoalEnemyData = Data.get_goal_enemy_any(StringName(entry["id"]))
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.PANEL, 6, 10, 1, UITheme.BORDER))
+	# Art on the left, everything about the encounter on the right.
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 10)
+	panel.add_child(body)
+	if enemy != null and enemy.image != null:
+		var art := TextureRect.new()
+		art.texture = enemy.image
+		art.custom_minimum_size = Vector2(60, 60)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		body.add_child(art)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 5)
-	panel.add_child(col)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(col)
 
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 10)
@@ -1139,6 +1160,32 @@ func _enemy_note_row(entry: Dictionary) -> Control:
 	note.add_theme_color_override("font_color",
 		UITheme.GOLD if note_text != "" else UITheme.TEXT_FAINT)
 	col.add_child(note)
+
+	# Notes can be revisited here as well as written on the checklist — you often
+	# only realise how you beat something after the run is over.
+	if enemy != null:
+		var game: GameData = Data.get_game(game_id)
+		var actions := HBoxContainer.new()
+		actions.add_theme_constant_override("separation", 6)
+		col.add_child(actions)
+		var edit := Button.new()
+		edit.text = "✎ Edit note" if note_text != "" else "✎ Add note"
+		edit.add_theme_font_size_override("font_size", 11)
+		edit.pressed.connect(func():
+			EnemyNoteModal.open(self, game, enemy, func():
+				if _notes_refill.is_valid():
+					_notes_refill.call()))
+		actions.add_child(edit)
+		if note_text != "":
+			var wipe := Button.new()
+			wipe.text = "Delete"
+			wipe.add_theme_font_size_override("font_size", 11)
+			wipe.add_theme_color_override("font_color", UITheme.DANGER)
+			wipe.pressed.connect(func():
+				GameStats.clear_enemy_note(game_id, enemy.id)
+				if _notes_refill.is_valid():
+					_notes_refill.call())
+			actions.add_child(wipe)
 	return panel
 
 func _fact(key: String, value: String) -> Control:

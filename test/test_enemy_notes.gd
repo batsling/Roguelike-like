@@ -114,3 +114,54 @@ func test_failing_the_goal_logs_nothing() -> void:
 	ui.report(false, [])
 	assert_eq(GameStats.enemy_beaten_count(game.id, enemy.id), 0,
 		"an unticked goal means the enemy wasn't beaten")
+
+# ---------------------------------------------------------------------------
+# Editing and deleting, and the enemy's side of the record
+# ---------------------------------------------------------------------------
+
+func test_a_note_can_be_edited() -> void:
+	GameStats.set_enemy_note(&"rogue", &"jaw_worm", "first attempt")
+	GameStats.set_enemy_note(&"rogue", &"jaw_worm", "actually, block first")
+	assert_eq(GameStats.enemy_note(&"rogue", &"jaw_worm"), "actually, block first",
+		"writing again replaces the note")
+
+func test_deleting_a_note_keeps_the_clear() -> void:
+	GameStats.record_enemy_beaten(&"rogue", &"jaw_worm")
+	GameStats.record_enemy_beaten(&"rogue", &"jaw_worm")
+	GameStats.set_enemy_note(&"rogue", &"jaw_worm", "delete me")
+	GameStats.clear_enemy_note(&"rogue", &"jaw_worm")
+	assert_eq(GameStats.enemy_note(&"rogue", &"jaw_worm"), "", "the note is gone")
+	assert_eq(GameStats.enemy_beaten_count(&"rogue", &"jaw_worm"), 2,
+		"but beating it twice is a fact, not a note — the count stays")
+
+func test_deleting_a_note_that_never_existed_is_harmless() -> void:
+	GameStats.clear_enemy_note(&"rogue", &"never_fought")
+	GameStats.clear_enemy_note(&"no_such_game", &"jaw_worm")
+	assert_eq(GameStats.enemy_note(&"rogue", &"never_fought"), "", "still nothing")
+
+# The Collection reads the same record from the enemy's side.
+func test_an_enemy_lists_the_games_it_was_beaten_in() -> void:
+	GameStats.record_enemy_beaten(&"rogue", &"jaw_worm")
+	for _i in range(3):
+		GameStats.record_enemy_beaten(&"brogue", &"jaw_worm")
+	GameStats.set_enemy_note(&"brogue", &"jaw_worm", "chip it down")
+	var games: Array = GameStats.games_for_enemy(&"jaw_worm")
+	assert_eq(games.size(), 2, "both games listed")
+	assert_eq(String(games[0]["id"]), "brogue", "most-beaten first")
+	assert_eq(int(games[0]["beaten"]), 3, "with its count")
+	assert_eq(String(games[0]["note"]), "chip it down", "and its note")
+
+func test_the_two_sides_agree() -> void:
+	GameStats.record_enemy_beaten(&"rogue", &"jaw_worm")
+	GameStats.set_enemy_note(&"rogue", &"jaw_worm", "shared record")
+	var from_game: Array = GameStats.enemies_for(&"rogue")
+	var from_enemy: Array = GameStats.games_for_enemy(&"jaw_worm")
+	assert_eq(from_game.size(), 1, "the game knows the enemy")
+	assert_eq(from_enemy.size(), 1, "and the enemy knows the game")
+	assert_eq(String(from_game[0]["note"]), String(from_enemy[0]["note"]),
+		"both sides read the same note")
+
+func test_an_enemy_only_written_about_is_not_listed_as_beaten() -> void:
+	GameStats.set_enemy_note(&"rogue", &"jaw_worm", "planning ahead")
+	assert_eq(GameStats.games_for_enemy(&"jaw_worm").size(), 0,
+		"a note alone doesn't claim the enemy was beaten there")

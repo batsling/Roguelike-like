@@ -1519,71 +1519,8 @@ func _notes_button(game: GameData, enemy: GoalEnemyData) -> Button:
 		b.text = "🗒 Notes ✎" if has else "🗒 Notes"
 		b.add_theme_color_override("font_color", UITheme.GOLD if has else UITheme.TEXT_DIM)
 	refresh.call()
-	b.pressed.connect(func(): _open_enemy_note(game, enemy, refresh))
+	b.pressed.connect(func(): EnemyNoteModal.open(self, game, enemy, refresh))
 	return b
-
-# A small editor for one (game, enemy) note. Saves on OK, leaves it alone on
-# Cancel — the note is the player's own record, so nothing else writes to it.
-func _open_enemy_note(game: GameData, enemy: GoalEnemyData, on_saved: Callable) -> void:
-	var layer := CanvasLayer.new()
-	layer.layer = 140
-	layer.process_mode = Node.PROCESS_MODE_ALWAYS
-	add_child(layer)
-	var host := Control.new()
-	host.set_anchors_preset(Control.PRESET_FULL_RECT)
-	host.mouse_filter = Control.MOUSE_FILTER_STOP
-	host.theme = UITheme.shared()
-	layer.add_child(host)
-
-	var close := func(): layer.queue_free()
-	var panel := ModalScaffold.build_panel(host, UITheme.GOLD, close, Vector2(520, 380))
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 16)
-	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_top", 14)
-	margin.add_theme_constant_override("margin_bottom", 14)
-	margin.add_child(box)
-	panel.add_child(margin)
-
-	var title := Label.new()
-	title.text = "🗒  Notes — %s" % enemy.display_name
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", UITheme.GOLD)
-	box.add_child(title)
-
-	var sub := Label.new()
-	sub.text = "at %s%s" % [game.display_name,
-		("   ·   " + enemy.goal) if enemy.goal != "" else ""]
-	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sub.add_theme_font_size_override("font_size", 12)
-	sub.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	box.add_child(sub)
-
-	var edit := TextEdit.new()
-	edit.text = GameStats.enemy_note(game.id, enemy.id)
-	edit.placeholder_text = "How did you actually beat it? Build, route, what nearly killed you…"
-	edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	box.add_child(edit)
-
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 8)
-	buttons.alignment = BoxContainer.ALIGNMENT_END
-	box.add_child(buttons)
-	var cancel := Button.new()
-	cancel.text = "Cancel"
-	cancel.pressed.connect(close)
-	buttons.add_child(cancel)
-	var save := Button.new()
-	save.text = "Save note"
-	save.pressed.connect(func():
-		GameStats.set_enemy_note(game.id, enemy.id, edit.text.strip_edges())
-		if on_saved.is_valid():
-			on_saved.call()
-		close.call())
-	buttons.add_child(save)
 
 func _verify_head(text: String) -> Label:
 	var l := Label.new()

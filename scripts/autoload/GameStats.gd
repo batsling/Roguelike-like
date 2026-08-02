@@ -170,6 +170,35 @@ func set_enemy_note(game_id, enemy_id, note: String) -> void:
 	save_data()
 	changed.emit()
 
+# Erase the note for a pair, keeping how many times the enemy fell there — that
+# is a record of fact rather than something the player wrote.
+func clear_enemy_note(game_id, enemy_id) -> void:
+	var g := String(game_id)
+	var e := String(enemy_id)
+	if not enemy_log.has(g) or not enemy_log[g].has(e):
+		return
+	enemy_log[g][e]["note"] = ""
+	save_data()
+	changed.emit()
+
+# The inverse of enemies_for(): every GAME this enemy has been beaten at, most
+# beaten first, as [{"id": String, "beaten": int, "note": String}]. Drives the
+# Collection's enemy detail.
+func games_for_enemy(enemy_id) -> Array:
+	var target := String(enemy_id)
+	var out: Array = []
+	for g in enemy_log.keys():
+		var entry: Dictionary = enemy_log[g].get(target, {})
+		if entry.is_empty() or int(entry.get("beaten", 0)) <= 0:
+			continue
+		out.append({"id": String(g), "beaten": int(entry.get("beaten", 0)),
+			"note": String(entry.get("note", ""))})
+	out.sort_custom(func(a, b):
+		if int(a["beaten"]) != int(b["beaten"]):
+			return int(a["beaten"]) > int(b["beaten"])
+		return String(a["id"]) < String(b["id"]))
+	return out
+
 func enemy_note(game_id, enemy_id) -> String:
 	return String(enemy_log.get(String(game_id), {}).get(String(enemy_id), {}).get("note", ""))
 
