@@ -619,6 +619,75 @@ func _game_enemy_row(game: GameData, entry: Dictionary) -> Control:
 		col.add_child(edit)
 	return panel
 
+# One (game, character) level-up row — the level-up counterpart to
+# `_game_enemy_row`. Used from both sides of the pair: the game detail lists the
+# characters who levelled there, the character detail lists the games they
+# levelled at, and the row is drawn the same way in both so the record reads as
+# one thing. `side` picks which half of the pair names the row.
+func _levelup_row(game: GameData, ch: CharacterData, entry: Dictionary,
+		on_done: Callable, side: String = "character") -> Control:
+	var gold := Color(1.0, 0.82, 0.35)
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UITheme.flat(CELL_BG, 6, 9, 1, UITheme.BORDER))
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 9)
+	panel.add_child(body)
+
+	var art_tex: Texture2D = null
+	if side == "character":
+		art_tex = ch.icon if ch.icon != null else ch.portrait
+	else:
+		art_tex = game.cover_image
+	if art_tex != null:
+		var art := TextureRect.new()
+		art.texture = art_tex
+		art.custom_minimum_size = Vector2(54, 48) if side == "game" else Vector2(48, 48)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED \
+			if side == "game" else TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		body.add_child(art)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 3)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(col)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	col.add_child(top)
+	var who := Label.new()
+	who.text = ch.display_name if side == "character" else game.display_name
+	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	who.add_theme_font_size_override("font_size", 13)
+	who.add_theme_color_override("font_color", UITheme.TEXT)
+	top.add_child(who)
+	var levels: int = int(entry.get("levels", 0))
+	if levels > 0:
+		var times := Label.new()
+		times.text = "levelled ×%d" % levels
+		times.add_theme_font_size_override("font_size", 11)
+		times.add_theme_color_override("font_color", gold)
+		top.add_child(times)
+
+	# The condition itself, so the note has something to be a note ABOUT.
+	if ch.level_up_condition != "":
+		col.add_child(_label(ch.level_up_condition, Color(0.72, 0.75, 0.82), 11, false, true))
+
+	var note_text: String = String(entry.get("note", "")).strip_edges()
+	var note := Label.new()
+	note.text = note_text if note_text != "" else "No note written for this one."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_size_override("font_size", 12)
+	note.add_theme_color_override("font_color",
+		gold if note_text != "" else Color(0.55, 0.55, 0.6))
+	col.add_child(note)
+
+	var edit := Button.new()
+	edit.text = "✎ Edit note" if note_text != "" else "✎ Add note"
+	edit.add_theme_font_size_override("font_size", 11)
+	edit.pressed.connect(func(): EnemyNoteModal.open_level_up(self, game, ch, on_done))
+	col.add_child(edit)
+	return panel
+
 func _show_game_detail(g: GameData) -> void:
 	_clear_children(_detail_box)
 	var tc := _game_type_color(int(g.type))
@@ -682,6 +751,17 @@ func _show_game_detail(g: GameData) -> void:
 			Color(0.55, 0.55, 0.6), 12, false, true))
 	for entry in beaten_here:
 		_detail_box.add_child(_game_enemy_row(g, entry))
+
+	# The same record for LEVEL-UPS taken here: which characters managed their
+	# standing condition at this game, and what they wrote about doing it.
+	var levelled_here: Array = GameStats.characters_for_game(g.id)
+	if not levelled_here.is_empty():
+		_detail_box.add_child(HSeparator.new())
+		_detail_box.add_child(_detail_section("Levelled up here (%d)" % levelled_here.size()))
+		for entry in levelled_here:
+			var ch: CharacterData = Data.get_character2(StringName(entry["id"]))
+			if ch != null:
+				_detail_box.add_child(_levelup_row(g, ch, entry, func(): _show_game_detail(g)))
 
 func _game_names(ids) -> String:
 	var names: Array = []
@@ -883,6 +963,71 @@ func _show_character_detail(ch: CharacterData) -> void:
 		_detail_box.add_child(_label(ch.level_up_condition, Color(0.8, 0.85, 0.95), 11, false, true))
 		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
 			_detail_box.add_child(_kv("Reward", ch.level_up_reward))
+
+	# The character's own record, the mirror of the game tab's: what this
+	# character has put down, and where they managed their level-up condition.
+	var trophies: Array = GameStats.enemies_for_character(ch.id)
+	var roster: int = Data.all_goal_enemies().size() + Data.all_bosses().size()
+	_detail_box.add_child(HSeparator.new())
+	_detail_box.add_child(_detail_section("Enemies beaten with (%d / %d)"
+		% [trophies.size(), maxi(roster, trophies.size())]))
+	if trophies.is_empty():
+		_detail_box.add_child(_label("Nothing has fallen to %s yet." % ch.display_name,
+			Color(0.55, 0.55, 0.6), 12, false, true))
+	for entry in trophies:
+		var enemy: GoalEnemyData = Data.get_goal_enemy_any(StringName(entry["id"]))
+		if enemy != null:
+			_detail_box.add_child(_character_enemy_row(enemy, entry))
+
+	var levelled_at: Array = GameStats.games_for_character(ch.id)
+	if not levelled_at.is_empty():
+		_detail_box.add_child(HSeparator.new())
+		_detail_box.add_child(_detail_section("Levelled up at (%d)" % levelled_at.size()))
+		for entry in levelled_at:
+			var game: GameData = Data.get_game(StringName(entry["id"]))
+			if game != null:
+				_detail_box.add_child(_levelup_row(game, ch, entry,
+					func(): _show_character_detail(ch), "game"))
+
+# One enemy on a character's trophy shelf: art, name and how many times this
+# character put it down. No note — the write-up belongs to the (game, enemy)
+# pair and lives on those two tabs, and duplicating it here would give the
+# player two places to edit the same text.
+func _character_enemy_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UITheme.flat(CELL_BG, 6, 9, 1, UITheme.BORDER))
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 9)
+	panel.add_child(body)
+	if enemy.image != null:
+		var art := TextureRect.new()
+		art.texture = enemy.image
+		art.custom_minimum_size = Vector2(44, 44)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		body.add_child(art)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(col)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	col.add_child(top)
+	var who := Label.new()
+	who.text = enemy.display_name
+	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	who.add_theme_font_size_override("font_size", 13)
+	who.add_theme_color_override("font_color",
+		Color(0.95, 0.55, 0.2) if enemy.is_boss() else UITheme.TEXT)
+	top.add_child(who)
+	var times := Label.new()
+	times.text = "beaten ×%d" % int(entry.get("beaten", 0))
+	times.add_theme_font_size_override("font_size", 11)
+	times.add_theme_color_override("font_color", UITheme.SUCCESS)
+	top.add_child(times)
+	if enemy.goal != "":
+		col.add_child(_label(enemy.goal, Color(0.72, 0.75, 0.82), 11, false, true))
+	return panel
 
 # ------------------------------------------------------------------
 # Enemies tab (2.0 goal-enemies + bosses)

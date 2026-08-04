@@ -17,8 +17,12 @@ extends Node
 #
 # Persisted shape (user://game_stats.json):
 #   { "games": { "hades": {"beaten": 3, "amulets": 1}, ... },
-#     "deck_wins": { "ironclad": ["Random", "Silent"], ... } }
-# (Older files were the bare games dictionary; load_data migrates them.)
+#     "deck_wins": { "ironclad": ["Random", "Silent"], ... },
+#     "enemy_log": { "<game>": { "<enemy>": {"beaten": 2, "note": "…"} } },
+#     "levelup_log": { "<game>": { "<character>": {"levels": 1, "note": "…"} } },
+#     "character_enemy_log": { "<character>": { "<enemy>": {"beaten": 4} } } }
+# (Older files were the bare games dictionary; load_data migrates them, and a
+# file predating any of the three logs just starts that log empty.)
 
 signal changed
 
@@ -44,6 +48,24 @@ var runs: Array = []
 # A note belongs to the PAIR, not to the enemy: the same goal-enemy shows up on
 # many games and how you cleared it is a fact about that combination.
 var enemy_log: Dictionary = {}
+
+# The same record for LEVEL-UPS: which characters levelled at which game, and
+# what the player wrote about doing it. Keyed game id -> character id ->
+# {"levels": int, "note": String}.
+#
+# The pairing matches enemy_log for the same reason. A character's level-up is a
+# standing condition ("Unlock a new Item", "Collect 3+ types of currency") that
+# reads completely differently game to game, so how you satisfied it is a fact
+# about the (game, character) combination, not about the character alone.
+var levelup_log: Dictionary = {}
+
+# Which goal-enemies each CHARACTER has beaten, across every run and every game
+# they were beaten at. Keyed character id -> enemy id -> {"beaten": int}.
+#
+# Deliberately not keyed by game as well: this is the character's own trophy
+# shelf, the roster-side counterpart to "enemies beaten in <game>". Which game
+# each fell at is already in enemy_log.
+var character_enemy_log: Dictionary = {}
 
 func _ready() -> void:
 	load_data()
@@ -222,6 +244,124 @@ func enemies_for(game_id) -> Array:
 func has_enemy_log(game_id) -> bool:
 	return not enemy_log.get(String(game_id), {}).is_empty()
 
+# ---------------------------------------------------------------------------
+# Level-ups: the (game, character) pair, mirroring enemy_log
+# ---------------------------------------------------------------------------
+
+# Record that `character_id` levelled up while playing `game_id`. One call per
+# level gained, so a Crown-chained double level counts twice.
+func record_level_up(game_id, character_id) -> void:
+	var g := String(game_id)
+	var c := String(character_id)
+	if g == "" or c == "":
+		return
+	if not levelup_log.has(g):
+		levelup_log[g] = {}
+	var entry: Dictionary = levelup_log[g].get(c, {"levels": 0, "note": ""})
+	entry["levels"] = int(entry.get("levels", 0)) + 1
+	levelup_log[g][c] = entry
+	save_data()
+	changed.emit()
+
+# The player's note on how they hit `character_id`'s level-up at `game_id`.
+# Writable before the level is ever taken, exactly like an enemy note.
+func set_level_up_note(game_id, character_id, note: String) -> void:
+	var g := String(game_id)
+	var c := String(character_id)
+	if g == "" or c == "":
+		return
+	if not levelup_log.has(g):
+		levelup_log[g] = {}
+	var entry: Dictionary = levelup_log[g].get(c, {"levels": 0, "note": ""})
+	entry["note"] = note
+	levelup_log[g][c] = entry
+	save_data()
+	changed.emit()
+
+# Erase the note, keeping how many times the level was taken there — that is a
+# record of fact rather than something the player wrote.
+func clear_level_up_note(game_id, character_id) -> void:
+	var g := String(game_id)
+	var c := String(character_id)
+	if not levelup_log.has(g) or not levelup_log[g].has(c):
+		return
+	levelup_log[g][c]["note"] = ""
+	save_data()
+	changed.emit()
+
+func level_up_note(game_id, character_id) -> String:
+	return String(levelup_log.get(String(game_id), {}).get(String(character_id), {}).get("note", ""))
+
+func level_up_count(game_id, character_id) -> int:
+	return int(levelup_log.get(String(game_id), {}).get(String(character_id), {}).get("levels", 0))
+
+# Every character logged against a game, most levels first then by id, as
+# [{"id": String, "levels": int, "note": String}]. Drives the game detail.
+func characters_for_game(game_id) -> Array:
+	var out: Array = []
+	for c in levelup_log.get(String(game_id), {}).keys():
+		var entry: Dictionary = levelup_log[String(game_id)][c]
+		out.append({"id": String(c), "levels": int(entry.get("levels", 0)),
+			"note": String(entry.get("note", ""))})
+	_sort_log(out, "levels")
+	return out
+
+# The inverse: every GAME this character has levelled up at. Drives the
+# character detail.
+func games_for_character(character_id) -> Array:
+	var target := String(character_id)
+	var out: Array = []
+	for g in levelup_log.keys():
+		var entry: Dictionary = levelup_log[g].get(target, {})
+		if entry.is_empty():
+			continue
+		if int(entry.get("levels", 0)) <= 0 and String(entry.get("note", "")).strip_edges() == "":
+			continue
+		out.append({"id": String(g), "levels": int(entry.get("levels", 0)),
+			"note": String(entry.get("note", ""))})
+	_sort_log(out, "levels")
+	return out
+
+# ---------------------------------------------------------------------------
+# The character's trophy shelf: which enemies fell to whom
+# ---------------------------------------------------------------------------
+
+# Record that `character_id` beat `enemy_id`. Called alongside
+# record_enemy_beaten, so the two records can never disagree about a defeat.
+func record_character_enemy(character_id, enemy_id) -> void:
+	var c := String(character_id)
+	var e := String(enemy_id)
+	if c == "" or e == "":
+		return
+	if not character_enemy_log.has(c):
+		character_enemy_log[c] = {}
+	var entry: Dictionary = character_enemy_log[c].get(e, {"beaten": 0})
+	entry["beaten"] = int(entry.get("beaten", 0)) + 1
+	character_enemy_log[c][e] = entry
+	save_data()
+	changed.emit()
+
+# Every enemy this character has beaten, most-beaten first then by id, as
+# [{"id": String, "beaten": int}].
+func enemies_for_character(character_id) -> Array:
+	var out: Array = []
+	for e in character_enemy_log.get(String(character_id), {}).keys():
+		var entry: Dictionary = character_enemy_log[String(character_id)][e]
+		out.append({"id": String(e), "beaten": int(entry.get("beaten", 0))})
+	_sort_log(out, "beaten")
+	return out
+
+func character_enemy_count(character_id, enemy_id) -> int:
+	return int(character_enemy_log.get(String(character_id), {}).get(String(enemy_id), {}).get("beaten", 0))
+
+# Shared ordering for the log lists: the biggest tally first, ties by id, so the
+# panels read the same way whichever log they are drawn from.
+func _sort_log(rows: Array, key: String) -> void:
+	rows.sort_custom(func(a, b):
+		if int(a[key]) != int(b[key]):
+			return int(a[key]) > int(b[key])
+		return String(a["id"]) < String(b["id"]))
+
 func run_count() -> int:
 	return runs.size()
 
@@ -232,7 +372,8 @@ func save_data() -> bool:
 		return false
 	f.store_string(JSON.stringify(
 		{"games": stats, "deck_wins": deck_wins, "runs": runs,
-		 "enemy_log": enemy_log}, "  "))
+		 "enemy_log": enemy_log, "levelup_log": levelup_log,
+		 "character_enemy_log": character_enemy_log}, "  "))
 	return true
 
 func load_data() -> void:
@@ -240,6 +381,8 @@ func load_data() -> void:
 	deck_wins = {}
 	runs = []
 	enemy_log = {}
+	levelup_log = {}
+	character_enemy_log = {}
 	if not FileAccess.file_exists(SAVE_PATH):
 		return
 	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
@@ -254,6 +397,12 @@ func load_data() -> void:
 		runs = json.data["runs"]
 	if json.data.has("enemy_log") and typeof(json.data["enemy_log"]) == TYPE_DICTIONARY:
 		enemy_log = json.data["enemy_log"]
+	# Both added after the file format existed, so an older save simply has
+	# neither key and starts them empty rather than migrating.
+	if json.data.has("levelup_log") and typeof(json.data["levelup_log"]) == TYPE_DICTIONARY:
+		levelup_log = json.data["levelup_log"]
+	if json.data.has("character_enemy_log") and typeof(json.data["character_enemy_log"]) == TYPE_DICTIONARY:
+		character_enemy_log = json.data["character_enemy_log"]
 	var games: Dictionary = json.data
 	if json.data.has("games") and typeof(json.data["games"]) == TYPE_DICTIONARY:
 		games = json.data["games"]

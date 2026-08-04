@@ -827,6 +827,32 @@ func test_transmute_requires_charge() -> void:
 	var g: GameData = Data.all_games()[0]
 	assert_null(GameLoop2.transmute_game(g.id, []))
 
+# A Traditional game is the run's long haul — 5 tries rather than 3 — so
+# transmuting one into another Traditional is no relief. It leaves the type
+# instead, drawn flat from every non-Traditional game off the map.
+func test_transmute_moves_a_traditional_game_off_its_type() -> void:
+	GameState.transmute = 12
+	var trad: GameData = _find_game_with_type(GameData.GameType.TRADITIONAL)
+	for _i in range(12):
+		var repl: GameData = GameLoop2.transmute_game(trad.id, [trad.id])
+		assert_not_null(repl, "a non-Traditional off-graph game exists")
+		assert_ne(String(GameLoop2.game_type_key(repl)), "traditional",
+			"%s must not transmute into another Traditional game" % repl.display_name)
+		GameLoop2.transmuted.clear()
+
+func test_transmute_reaches_more_than_one_type_from_traditional() -> void:
+	# Flat across the non-Traditional catalog, so over enough rolls it must land
+	# on at least two different types rather than being pinned to one.
+	GameState.transmute = 40
+	var trad: GameData = _find_game_with_type(GameData.GameType.TRADITIONAL)
+	var seen := {}
+	for _i in range(40):
+		var repl: GameData = GameLoop2.transmute_game(trad.id, [trad.id])
+		if repl != null:
+			seen[String(GameLoop2.game_type_key(repl))] = true
+		GameLoop2.transmuted.clear()
+	assert_gt(seen.size(), 1, "the roll spreads across types, got %s" % [seen.keys()])
+
 # --- run start (loadout) --------------------------------------------------
 
 func test_start_run_applies_isaac_loadout() -> void:

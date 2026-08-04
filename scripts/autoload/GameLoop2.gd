@@ -901,11 +901,18 @@ func bash_game(game_id: StringName) -> bool:
 	loop_changed.emit()
 	return true
 
-# Transmute (§4): turn a game into a random game of the SAME effective type that
-# is NOT currently on the map (`connected`) and not bashed. Spends a transmute
-# charge. Returns the replacement GameData, or null if there's no charge, the
-# source is unknown, or no off-graph same-type game is available. The overworld
-# passes the ids currently on the map and swaps the node to the returned game.
+# Transmute (§4): turn a game into a random game that is NOT currently on the
+# map (`connected`) and not bashed. Spends a transmute charge. Returns the
+# replacement GameData, or null if there's no charge, the source is unknown, or
+# no off-graph candidate is available. The overworld passes the ids currently on
+# the map and swaps the node to the returned game.
+#
+# The replacement keeps the source's TYPE — except for a **Traditional** game,
+# which transmutes into a random game of any OTHER type. A Traditional roguelike
+# is the run's long haul (it grants 5 tries rather than 3 for a reason), so
+# trading one for another is no relief at all; trading it for anything else is.
+# The roll is flat across every non-Traditional game off the map, so the types
+# with the deeper catalogs come up more often.
 func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 	if GameState.transmute <= 0:
 		return null
@@ -913,6 +920,7 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 	if src == null:
 		return null
 	var key: StringName = game_type_key(src)
+	var away_from_traditional: bool = key == &"traditional"
 	var on_map := {}
 	for c in connected:
 		on_map[StringName(c)] = true
@@ -922,7 +930,8 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 			continue
 		if g.id == game_id or on_map.has(g.id) or is_bashed(g.id):
 			continue
-		if game_type_key(g) != key:
+		var same_type: bool = game_type_key(g) == key
+		if same_type == away_from_traditional:
 			continue
 		pool.append(g)
 	if pool.is_empty():
