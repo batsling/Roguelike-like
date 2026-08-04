@@ -46,7 +46,9 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── events/           #   the D20 event system (EventModal, D20DieView)
 │   ├── menu/             #   the main menu
 │   ├── runtime/          #   RunGraph — the real-games influence graph
-│   └── ui/               #   shared UI (UITheme, RewardScreen, Collection, AtlasView, toasts)
+│   └── ui/               #   shared UI (UITheme, RewardScreen, Collection, toasts)
+│                          #     AtlasView + AtlasLayoutBuilder — the star chart
+│                          #     and the runtime layout behind its filters
 │
 ├── data/                  # Game content as Godot Resources (.tres) — the source
 │   │                      # of truth the game loads at startup (see Data.gd)
@@ -278,6 +280,18 @@ than being the full map with stars hidden.
 It refuses to write a layout in which any two stars overlap, so a bad run fails
 loudly rather than shipping an unreadable map.
 
+**The same layout also runs at runtime.** `scripts/ui/AtlasLayoutBuilder.gd` is
+a GDScript port of the baker's layout half (`build_graph` / `span_tree` /
+`cluster_layout` / `pack_around` / `pack_discs`), because the sky for a filter
+the player assembles in the Collection — "Deckbuilder + never beaten + owned" —
+is one of hundreds of combinations and cannot be baked. The two agree about the
+*shape* of a sky (same capitals, same regions, same hops, same no-overlap
+guarantee) but are not bit-identical: `math.hypot` is not `sqrt(x*x + y*y)` in
+the last bits, and the packer picks positions with strict comparisons a one-ulp
+difference can flip. That never shows, because the unfiltered catalog is drawn
+from the baked file. Keep the two in step when either changes — the tests in
+`test/test_atlas_layout_builder.gd` assert the agreement.
+
 `tools/` carries a `.gdignore`, which keeps Godot from importing the working
 files in there. Without it the editor rasterises `RoguelikeMap.svg` — a
 133,638 × 51,748 px canvas — into a clamped 16384² texture on every fresh import.
@@ -287,6 +301,30 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 ---
 
 ## Recent changes
+
+- **The Atlas rearranges itself, and grew a second layout** — a filter on the
+  Collection's Constellations used to dim stars where they stood, leaving the
+  survivors scattered across their neighbours' holes. It now hands them to the
+  new **`AtlasLayoutBuilder`** — a GDScript port of `tools/bake_atlas.py`'s
+  layout half — and the sky is packed from scratch around whatever is left, with
+  its own capitals. Filtering to Deckbuilders draws the deckbuilders' own
+  constellations in ~120 ms; the whole catalog re-lays in ~0.5 s; and with
+  nothing filtered the baked sky is still shown untouched. A **Layout** picker
+  adds a second arrangement of the same graph: a **radial tree in a disk**, Rogue
+  at the centre, a ring per generation of influence, and the 83 games with no
+  connections ringed around the outside. Only 712 of the graph's 1,115 links are
+  tree branches, so branches draw solid and cross-links fade — `AtlasLayout` now
+  carries a `parent` array so the view can tell them apart. Both modes honour
+  every filter.
+
+- **Traditional transmutes off its type, and the record follows the character** —
+  Transmute kept the source's game type, which made it useless on a Traditional
+  roguelike: trading one long haul (5 tries, not 3) for another is no relief. A
+  Traditional game now becomes a random game of any *other* type. Separately, the
+  level-up row on the report checklist gained a **Notes** button — keyed to the
+  (game, character) pair, the way an enemy note is keyed to (game, enemy) — and
+  every defeat is now banked against the **character** as well as the game, so a
+  character's page carries *Enemies beaten with* and *Levelled up at*.
 
 - **The new sheet roster, and a board that can grow** — the catalog is up to
   **804 games and 1,115 connections** (47 games and 115 links added, every one of
@@ -376,15 +414,35 @@ See `docs/stat-dispatcher.md` for how stats resolve.
   **Region** (one constellation), with a Clear button and a live *"88 of 757
   games"* count. Filters combine.
 
-  Everything except the capital count **hides rather than moves**: the sky is a
-  baked layout, and a star that jumps when you tick a box destroys any sense of
-  where things are, so a filtered-out game dims right down in place and its links
-  stop drawing. The capital count is the exception — it re-cuts every region and
-  re-packs the sky, so 6 and 12 are baked as their own files
-  (`atlas_layout_c6.tres` / `_c12.tres`) and switching swaps between them.
-  Changing it clears the Region filter, since region indices mean different
-  places in a different cut. The filter row only exists in the Collection's
-  catalog view; a run's Atlas has no filters.
+  A filter **re-lays the sky** rather than dimming stars where they stand.
+  Dimming leaves the survivors scattered across the holes their neighbours left
+  — a picture of the full catalog with gaps in it, not a map of what you asked
+  for. So the survivors are handed to `AtlasLayoutBuilder` and laid out from
+  scratch: filtering to Deckbuilders gives you *the deckbuilders' own*
+  constellations, cut around their own capitals (Slay the Spire, Balatro, Luck
+  be a Landlord, …). It takes ~120 ms for a slice like that and ~0.5 s for the
+  whole catalog. With nothing filtered the **baked** sky is drawn untouched —
+  it is the one that shipped and the one you have a sense of place in.
+
+  **Region** is the exception that stays measured against the baked sky: a
+  rebuilt sky cuts its own regions, so "games from the Slay the Spire
+  constellation" has to keep meaning the canonical constellation. The capital
+  count (6 / 8 / 12) picks which baked sky is the base — each is its own file
+  (`atlas_layout_c6.tres` / `_c12.tres`) since the cut changes every region —
+  and changing it clears the Region filter. The filter row only exists in the
+  Collection's catalog view; a run's Atlas has no filters and never moves,
+  because routes are drawn across it.
+
+- **Two layouts: Constellations and Tree** — a **Layout** picker at the head of
+  the filter row switches how the same graph is arranged. *Constellations* is
+  the star chart: hubs with their influence trees packed around them.
+  *Tree* is a radial tree in a disk — **Rogue at the centre**, each generation
+  of influence a ring further out (29 games at ring 1, 313 by ring 4), and the
+  **83 games with no connections at all ringed around the outside**. Children
+  are ordered oldest-first, so a branch reads outward in time. The influence
+  graph is not a tree — only 712 of its 1,115 links are branches — so the
+  branches draw solid and the cross-links drop to a whisper, otherwise the shape
+  is buried under chords across the disk. The tree honours every filter too.
 
 - **"Beatable:" on the offering** — while choosing where to travel, a card shows
   small portraits of the enemies you have **already beaten at that game before**:

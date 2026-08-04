@@ -105,6 +105,10 @@ const COL_GOAL := Color(1.0, 0.82, 0.30)
 const COL_CONSIDERING := Color(1.0, 0.60, 0.24)
 const COL_EDGE_BASHED := Color(0.90, 0.26, 0.22, 0.45)
 const COL_DIM := Color(1, 1, 1, 0.11)
+# How far a non-branch link fades on a tree sky. The influence graph is not a
+# tree — most of its links cut across the branches — so they have to stay
+# visible enough to read as cross-talk without drowning the shape.
+const TREE_CROSSLINK_FADE := 0.22
 
 const PICK_RADIUS := 14.0        # screen-space click tolerance, so tiny dots stay clickable
 const PICK_EDGE_RADIUS := 7.0    # how near a link you must click to open it
@@ -150,14 +154,40 @@ var _hulls: Array = []               # [{ci, centre: Vector2, radius: float}], b
 var _sequel_cache: Dictionary = {}   # edge index -> bool, built lazily
 var _notes_refill: Callable = Callable()   # rebuilds the open notes panel
 
-# Catalog-view filters. These HIDE rather than move: the sky is a baked layout
-# and a star that jumps when you tick a box destroys any sense of place, so a
-# filtered-out game dims right down and its links stop drawing instead.
+# Catalog-view filters. These pick a SUBGRAPH and the sky is rebuilt around it
+# (AtlasLayoutBuilder), rather than dimming stars where they stand: a filter that
+# only dims leaves the survivors scattered across the holes their neighbours left,
+# which is a picture of the full catalog with gaps in it rather than a map of what
+# you asked for. Filtering to Deckbuilders should give you the deckbuilders' own
+# constellations, with their own capitals.
 var _f_capitals: int = 8
 var _f_owned: int = 0                # 0 all · 1 owned · 2 downloaded · 3 not owned
 var _f_type: int = -1                # -1 all, else GameData.GameType
 var _f_record: int = 0               # 0 all · 1 beaten · 2 unbeaten · 3 amulet won · 4 has notes
-var _f_region: int = -1              # -1 all, else index into layout.capitals
+# -1 all, else an index into the BASE layout's capitals. Deliberately read off
+# the baked sky rather than whatever is currently drawn: a rebuilt sky cuts its
+# own regions, so a region index into it would mean something different after
+# every other filter change. "Which constellation is this game from" is a stable
+# fact about the canonical sky, and that is what this asks.
+var _f_region: int = -1
+
+# How the sky is arranged. CONSTELLATIONS is the baked star chart — hubs with
+# their influence trees packed around them. TREE is the radial tree in a disk
+# (see AtlasLayoutBuilder._radial_tree): one trunk from the root outward, so the
+# shape of descent is the thing you read instead of the shape of clustering.
+enum Mode { CONSTELLATIONS, TREE }
+var _mode: int = Mode.CONSTELLATIONS
+
+# The game at the middle of the tree. Rogue is the root of the genre and the
+# oldest game with any connection at all; if a filter excludes it, the builder
+# falls back to the oldest connected game that survived.
+const TREE_ROOT := &"rogue"
+
+# The baked sky the filters are measured against, and which is drawn as-is when
+# nothing is filtered and the mode is CONSTELLATIONS. `layout` is what's actually
+# on screen — the same object when nothing narrows it, a freshly built one when
+# something does.
+var _base_layout: AtlasLayout = null
 
 var _canvas: Control = null
 var _card: PanelContainer = null
@@ -184,6 +214,9 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	if layout == null:
 		layout = load_layout()
+	# The baked sky the filters measure against. Held separately from `layout`,
+	# which becomes a freshly built one as soon as anything narrows the catalog.
+	_base_layout = layout
 	_fit_to_viewport()
 	get_viewport().size_changed.connect(_fit_to_viewport)
 	# Before _build(): the header's "My run" button and the route legend both ask
@@ -582,11 +615,18 @@ func star_record_color(i: int) -> Color:
 	return Color(0, 0, 0, 0)
 
 # Whether a star survives the catalog filters. Always true outside the catalog
-# view, which has no filter bar.
+# view, which has no filter bar — and, in it, true for everything currently
+# drawn, because the sky is rebuilt from the survivors. Kept as the one place
+# that answers "is this game in?", so the rebuild and the drawing can never
+# disagree about which games those are.
 func passes_filter(i: int) -> bool:
 	if not pure_catalog or not has_layout():
 		return true
-	var game: GameData = Data.get_game(layout.id_at(i))
+	return passes_game_filter(Data.get_game(layout.id_at(i)))
+
+# The same question asked of a game rather than a star index — this is what
+# selects the subgraph to lay out, so it cannot depend on the sky being drawn.
+func passes_game_filter(game: GameData) -> bool:
 	if game == null:
 		return false
 	match _f_owned:
@@ -615,8 +655,13 @@ func passes_filter(i: int) -> bool:
 		4:
 			if not GameStats.has_enemy_log(gid):
 				return false
-	if _f_region >= 0 and layout.region[i] != _f_region:
-		return false
+	# Region is measured against the BASE sky, so it keeps meaning something when
+	# the drawn sky has been recut around a narrower set.
+	if _f_region >= 0:
+		var base: AtlasLayout = _base_layout if _base_layout != null else layout
+		var bi: int = base.index_of(game.id)
+		if bi < 0 or base.region[bi] != _f_region:
+			return false
 	return true
 
 func filtered_count() -> int:
@@ -627,6 +672,65 @@ func filtered_count() -> int:
 		if passes_filter(i):
 			n += 1
 	return n
+
+# True when nothing narrows the catalog — the case where the baked sky is
+# exactly what should be drawn, so no rebuild happens at all.
+func _filters_clear() -> bool:
+	return _f_owned == 0 and _f_type < 0 and _f_record == 0 and _f_region < 0
+
+# Every game id that survives the filters, sorted, ready for the builder.
+func _filtered_ids() -> PackedStringArray:
+	var out := PackedStringArray()
+	var source: AtlasLayout = _base_layout if _base_layout != null else layout
+	if source == null:
+		return out
+	for i in range(source.star_count()):
+		var gid: StringName = source.id_at(i)
+		if passes_game_filter(Data.get_game(gid)):
+			out.append(String(gid))
+	return out
+
+# Rebuild the sky for the current mode + filters, and re-frame onto it.
+#
+# The unfiltered constellation view is the baked file, untouched: it is the sky
+# that shipped, it costs nothing to show, and it is the one the player has built
+# a sense of place in. Anything else is laid out here and now — half a second for
+# the whole catalog, less for the narrower sets that are the reason to filter at
+# all.
+func _relayout(reframe: bool = true) -> void:
+	if not pure_catalog:
+		return
+	var built: AtlasLayout = null
+	if _mode == Mode.TREE:
+		built = AtlasLayoutBuilder.build_tree(_filtered_ids(), TREE_ROOT, "tree")
+	elif not _filters_clear():
+		built = AtlasLayoutBuilder.build(_filtered_ids(), _f_capitals, "filtered")
+	if built == null and _base_layout != null:
+		built = _base_layout
+	if built == null:
+		return
+	layout = built
+	_neighbors.clear()
+	_hulls.clear()
+	_sequel_cache.clear()
+	_trail.clear()
+	_history.clear()
+	select(-1)
+	select_edge(-1)
+	_build_trail()
+	_build_history()
+	_refresh_filter_count()
+	if reframe:
+		frame_all()
+	_redraw()
+
+# Switch between the constellation sky and the radial tree.
+func set_mode(mode: int) -> void:
+	if mode == _mode:
+		return
+	_mode = mode
+	_rebuild_filter_bar()
+	_relayout()
 
 # Swap to the sky baked with `count` capitals. Keeps the filters, drops anything
 # derived from the old layout.
@@ -639,12 +743,9 @@ func set_capital_count(count: int) -> void:
 		return
 	_f_capitals = count
 	_f_region = -1                    # region indices belong to the old sky
-	layout = res as AtlasLayout
-	_neighbors.clear()
-	_hulls.clear()
-	_sequel_cache.clear()
-	select(-1)
-	select_edge(-1)
+	_base_layout = res as AtlasLayout
+	layout = _base_layout
+	_relayout(false)
 	_rebuild_filter_bar()
 	frame_all()
 
@@ -831,15 +932,30 @@ func _rebuild_filter_bar() -> void:
 	row.add_theme_constant_override("separation", 10)
 	_filter_bar.add_child(row)
 
-	row.add_child(_filter_label("Constellations"))
-	var caps := OptionButton.new()
-	for count in CAPITAL_CHOICES:
-		caps.add_item(str(count), count)
-	for i in range(caps.item_count):
-		if caps.get_item_id(i) == _f_capitals:
-			caps.select(i)
-	caps.item_selected.connect(func(idx): set_capital_count(caps.get_item_id(idx)))
-	row.add_child(caps)
+	# Two ways of arranging the same graph. Constellations cluster it around its
+	# hubs; the tree runs it outward from Rogue, generation by generation.
+	row.add_child(_filter_label("Layout"))
+	var modes := OptionButton.new()
+	modes.add_item("Constellations", Mode.CONSTELLATIONS)
+	modes.add_item("Tree", Mode.TREE)
+	for i in range(modes.item_count):
+		if modes.get_item_id(i) == _mode:
+			modes.select(i)
+	modes.item_selected.connect(func(idx): set_mode(modes.get_item_id(idx)))
+	row.add_child(modes)
+
+	# How many hubs the constellation sky is cut around. Meaningless in the tree,
+	# which has one root and no regions at all, so it isn't offered there.
+	if _mode == Mode.CONSTELLATIONS:
+		row.add_child(_filter_label("Constellations"))
+		var caps := OptionButton.new()
+		for count in CAPITAL_CHOICES:
+			caps.add_item(str(count), count)
+		for i in range(caps.item_count):
+			if caps.get_item_id(i) == _f_capitals:
+				caps.select(i)
+		caps.item_selected.connect(func(idx): set_capital_count(caps.get_item_id(idx)))
+		row.add_child(caps)
 
 	row.add_child(_filter_label("Library"))
 	row.add_child(_filter_option(["Any", "Owned", "Downloaded", "Not owned"], _f_owned,
@@ -856,12 +972,17 @@ func _rebuild_filter_bar() -> void:
 		["Any", "Beaten", "Never beaten", "Amulet won", "Has notes"], _f_record,
 		func(v): _f_record = v))
 
-	row.add_child(_filter_label("Region"))
-	var regions: Array = ["Any"]
-	for ci in range(layout.capitals.size() if has_layout() else 0):
-		var cap: GameData = Data.get_game(layout.id_at(layout.capitals[ci]))
-		regions.append(cap.display_name if cap != null else "Region %d" % ci)
-	row.add_child(_filter_option(regions, _f_region + 1, func(v): _f_region = v - 1))
+	# Named off the BASE sky, not the drawn one — the drawn one may have been
+	# recut around a handful of games and have entirely different capitals, and
+	# "games from the Slay the Spire constellation" has to keep meaning that.
+	var base: AtlasLayout = _base_layout if _base_layout != null else layout
+	if base != null and base.capitals.size() > 0:
+		row.add_child(_filter_label("Region"))
+		var regions: Array = ["Any"]
+		for ci in range(base.capitals.size()):
+			var cap: GameData = Data.get_game(base.id_at(base.capitals[ci]))
+			regions.append(cap.display_name if cap != null else "Region %d" % ci)
+		row.add_child(_filter_option(regions, _f_region + 1, func(v): _f_region = v - 1))
 
 	var clear := Button.new()
 	clear.text = "Clear"
@@ -872,7 +993,7 @@ func _rebuild_filter_bar() -> void:
 		_f_record = 0
 		_f_region = -1
 		_rebuild_filter_bar()
-		_redraw())
+		_relayout())
 	row.add_child(clear)
 
 	_filter_count = Label.new()
@@ -897,18 +1018,20 @@ func _filter_option(items: Array, selected: int, on_pick: Callable) -> OptionBut
 	opt.select(clampi(selected, 0, items.size() - 1))
 	opt.item_selected.connect(func(idx):
 		on_pick.call(int(idx))
-		_refresh_filter_count()
-		select(-1)
-		select_edge(-1)
-		_redraw())
+		# The sky is the filter's output, not a backdrop it dims: changing one
+		# re-lays the survivors and frames the result.
+		_relayout())
 	return opt
 
 func _refresh_filter_count() -> void:
 	if _filter_count == null or not has_layout():
 		return
-	var shown: int = filtered_count()
-	_filter_count.text = ("%d games" % shown) if shown == layout.star_count() \
-		else ("%d of %d games" % [shown, layout.star_count()])
+	# The drawn sky IS the survivors, so the interesting number is how many of
+	# the whole catalog they are — which the base layout still knows.
+	var shown: int = layout.star_count()
+	var total: int = _base_layout.star_count() if _base_layout != null else shown
+	_filter_count.text = ("%d games" % shown) if shown == total \
+		else ("%d of %d games" % [shown, total])
 
 func _build_header() -> Control:
 	var bar := PanelContainer.new()
@@ -1580,11 +1703,36 @@ func _refresh_hud() -> void:
 		scope = " · owned only"
 	elif layout.source_filter == "downloaded":
 		scope = " · downloaded only"
-	_hud.text = "%d games · %d links · %d constellations%s · %s" % [
-		layout.star_count(), layout.edge_count(), layout.capitals.size(), scope, detail]
+	# A tree has no constellations to count; what it has instead is a root and a
+	# depth, which is the thing worth saying about it.
+	var shape: String = "%d constellations" % layout.capitals.size()
+	if layout.is_tree():
+		var root_game: GameData = Data.get_game(layout.id_at(_tree_root_index()))
+		shape = "rooted at %s, %d deep" % [
+			root_game.display_name if root_game != null else "?", _tree_depth()]
+	_hud.text = "%d games · %d links · %s%s · %s" % [
+		layout.star_count(), layout.edge_count(), shape, scope, detail]
 	var run_line: String = run_summary()
 	if run_line != "":
 		_hud.text = "%s\n%s" % [run_line, _hud.text]
+
+# The tree's root — the only star with no parent. -1 on a constellation sky.
+func _tree_root_index() -> int:
+	if not has_layout() or not layout.is_tree():
+		return -1
+	for i in range(layout.star_count()):
+		if layout.parent[i] < 0 and layout.hops[i] == 0:
+			return i
+	return 0
+
+# How many generations the tree runs to.
+func _tree_depth() -> int:
+	if not has_layout():
+		return 0
+	var deepest: int = 0
+	for h in layout.hops:
+		deepest = maxi(deepest, h)
+	return deepest
 
 # The run in one line: the game you're standing on, the game you're going to, and
 # how far apart they are. Empty outside a run (and in the catalog view).
@@ -1766,6 +1914,16 @@ class StarCanvas extends Control:
 				w = width * 1.5
 			elif lay.region[a] != lay.region[b]:
 				col = AtlasView.COL_EDGE_CROSS
+			# On a tree, the branch a game hangs off is the whole point of the
+			# arrangement, and the other 900-odd links are chords straight across
+			# the disk. Drawn at equal weight they bury it, so the branches keep
+			# their colour and everything else drops to a whisper.
+			if lay.is_tree() and not incident:
+				if lay.is_tree_edge(a, b):
+					w = maxf(w, width * 1.4)
+				else:
+					col = Color(col, col.a * AtlasView.TREE_CROSSLINK_FADE)
+					w = width * 0.7
 			draw_line(view.to_screen(lay.position_of(a)), view.to_screen(lay.position_of(b)),
 				col, w, true)
 

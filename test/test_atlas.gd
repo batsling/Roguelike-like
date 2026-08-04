@@ -1276,7 +1276,12 @@ func test_genre_still_reads_on_a_game_with_a_record() -> void:
 	_restore_stats()
 
 # ---------------------------------------------------------------------------
-# Catalog filters — narrowing the sky without moving it
+# Catalog filters — the sky is rebuilt around what survives
+#
+# `passes_filter` is the membership predicate: it answers "is this game in the
+# set the sky should be drawn from". The tests below check the predicate; the
+# ones under "Relayout" check that changing a filter actually re-lays the sky
+# rather than dimming stars where they stand.
 # ---------------------------------------------------------------------------
 
 func test_no_filtering_outside_the_catalog_view() -> void:
@@ -1345,6 +1350,133 @@ func test_the_region_filter_keeps_one_constellation() -> void:
 	for i in range(view.layout.star_count()):
 		if view.passes_filter(i):
 			assert_eq(view.layout.region[i], 0, "only the chosen constellation survives")
+
+# Region is measured against the BASE sky. After a relayout the drawn sky has
+# its own capitals, so asking it "which region is this star in" would answer a
+# different question every time; the baked sky's answer is the stable one.
+func test_the_region_filter_still_means_the_baked_constellation() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	var base: AtlasLayout = view._base_layout
+	view._f_region = 0
+	view._relayout()
+	assert_ne(view.layout, base, "the sky was rebuilt around the region")
+	for i in range(view.layout.star_count()):
+		var bi: int = base.index_of(view.layout.id_at(i))
+		assert_eq(base.region[bi], 0,
+			"%s is drawn because it belongs to region 0 of the baked sky"
+				% view.layout.id_at(i))
+
+# ---------------------------------------------------------------------------
+# Relayout — a filter picks a subgraph and the sky is built around it
+# ---------------------------------------------------------------------------
+
+func test_an_unfiltered_catalog_draws_the_baked_sky() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	assert_eq(view.layout, view._base_layout,
+		"nothing narrows it, so there is nothing to rebuild")
+
+func test_a_filter_rebuilds_the_sky_around_the_survivors() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	var before: int = view.layout.star_count()
+	view._f_type = GameData.GameType.DECKBUILDER
+	view._relayout()
+	assert_ne(view.layout, view._base_layout, "a new sky, not the baked one")
+	assert_lt(view.layout.star_count(), before, "holding only the survivors")
+	for i in range(view.layout.star_count()):
+		assert_eq(int(Data.get_game(view.layout.id_at(i)).type),
+			int(GameData.GameType.DECKBUILDER), "every star drawn passes the filter")
+
+func test_a_rebuilt_sky_cuts_its_own_constellations() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	var baked_caps: Array = []
+	for c in view._base_layout.capitals:
+		baked_caps.append(String(view._base_layout.id_at(c)))
+	view._f_type = GameData.GameType.TRADITIONAL
+	view._relayout()
+	var built_caps: Array = []
+	for c in view.layout.capitals:
+		built_caps.append(String(view.layout.id_at(c)))
+	assert_gt(built_caps.size(), 0, "the filtered sky has capitals of its own")
+	assert_ne(built_caps, baked_caps, "and they are not the full catalog's")
+
+func test_clearing_the_filter_returns_the_baked_sky() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	view._f_type = GameData.GameType.ACTION
+	view._relayout()
+	assert_ne(view.layout, view._base_layout)
+	view._f_type = -1
+	view._relayout()
+	assert_eq(view.layout, view._base_layout,
+		"back to the sky that shipped, not a rebuild of it")
+
+func test_a_relayout_drops_the_selection() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	view.select(3)
+	view._f_owned = 1
+	view._relayout()
+	assert_eq(view._selected, -1,
+		"the old index pointed into a sky that no longer exists")
+
+# ---------------------------------------------------------------------------
+# Layout modes
+# ---------------------------------------------------------------------------
+
+func test_the_tree_mode_builds_a_tree() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	view.set_mode(AtlasView.Mode.TREE)
+	assert_true(view.layout.is_tree(), "the drawn sky is a tree")
+	assert_eq(view.layout.star_count(), view._base_layout.star_count(),
+		"holding the whole catalog, arranged differently")
+	assert_eq(String(view.layout.id_at(view._tree_root_index())), "rogue",
+		"rooted where the genre is")
+
+func test_switching_back_returns_the_constellations() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	view.set_mode(AtlasView.Mode.TREE)
+	view.set_mode(AtlasView.Mode.CONSTELLATIONS)
+	assert_false(view.layout.is_tree())
+	assert_eq(view.layout, view._base_layout, "and with no filter, the baked one")
+
+func test_the_tree_honours_the_filters_too() -> void:
+	var view := _open_pure()
+	if not view.has_layout():
+		return
+	view.set_mode(AtlasView.Mode.TREE)
+	var whole: int = view.layout.star_count()
+	view._f_type = GameData.GameType.STRATEGY
+	view._relayout()
+	assert_true(view.layout.is_tree(), "still a tree")
+	assert_lt(view.layout.star_count(), whole, "of just the strategy games")
+	for i in range(view.layout.star_count()):
+		assert_eq(int(Data.get_game(view.layout.id_at(i)).type),
+			int(GameData.GameType.STRATEGY))
+
+func test_the_run_map_never_relayouts() -> void:
+	# Outside the catalog the sky is the run's own baked map: routes are drawn
+	# across it and moving the stars underneath them would be a lie.
+	var view := _open()
+	if not view.has_layout():
+		return
+	var before: AtlasLayout = view.layout
+	view._f_type = GameData.GameType.ACTION
+	view._relayout()
+	assert_eq(view.layout, before, "a run's map holds still")
 
 func test_the_record_filters_split_the_catalog() -> void:
 	var view := _open_pure()
