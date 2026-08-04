@@ -12,6 +12,25 @@ func _new_collection() -> Collection:
 	add_child_autofree(col)
 	return col
 
+# `Collection._input` asks the InputMap for "backpack" on every event, so if the
+# action is missing the compendium spams an error per keystroke and Tab stops
+# closing it. It went missing once already: project.godot comments are ';', and
+# the two '#' lines above the action were parsed as part of its NAME, leaving the
+# action registered as "#Thegames-firstbuild…backpack".
+func test_the_backpack_action_is_registered() -> void:
+	assert_true(InputMap.has_action("backpack"),
+		"project.godot must define the action Collection._input listens for")
+	var keys: Array = []
+	for e in InputMap.action_get_events("backpack"):
+		if e is InputEventKey:
+			keys.append((e as InputEventKey).keycode)
+	assert_true(keys.has(KEY_TAB), "and bind it to Tab")
+
+func test_no_action_name_carries_a_comment() -> void:
+	for action in InputMap.get_actions():
+		assert_false(String(action).begins_with("#"),
+			"'%s' is a comment that was parsed as an action name" % action)
+
 func test_games_is_the_landing_tab() -> void:
 	var col := _new_collection()
 	assert_eq(col._tab, Collection.Tab.GAMES)

@@ -302,7 +302,7 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
 ## Recent changes
 
-- **The Atlas rearranges itself, and grew a second layout** — a filter on the
+- **The Atlas rearranges itself, and grew a year-ringed second layout** — a filter on the
   Collection's Constellations used to dim stars where they stood, leaving the
   survivors scattered across their neighbours' holes. It now hands them to the
   new **`AtlasLayoutBuilder`** — a GDScript port of `tools/bake_atlas.py`'s
@@ -310,9 +310,10 @@ See `docs/stat-dispatcher.md` for how stats resolve.
   its own capitals. Filtering to Deckbuilders draws the deckbuilders' own
   constellations in ~120 ms; the whole catalog re-lays in ~0.5 s; and with
   nothing filtered the baked sky is still shown untouched. A **Layout** picker
-  adds a second arrangement of the same graph: a **radial tree in a disk**, Rogue
-  at the centre, a ring per generation of influence, and the 83 games with no
-  connections ringed around the outside. Only 712 of the graph's 1,115 links are
+  adds a second arrangement of the same graph: a **radial timeline**, one ring
+  per release year with the earliest at the centre (Rogue 1980 dead middle, 43
+  rings out to 2026), and the 83 games with no connections ringed around the
+  outside. Only 712 of the graph's 1,115 links are
   tree branches, so branches draw solid and cross-links fade — `AtlasLayout` now
   carries a `parent` array so the view can tell them apart. Both modes honour
   every filter.
@@ -436,13 +437,22 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 - **Two layouts: Constellations and Tree** — a **Layout** picker at the head of
   the filter row switches how the same graph is arranged. *Constellations* is
   the star chart: hubs with their influence trees packed around them.
-  *Tree* is a radial tree in a disk — **Rogue at the centre**, each generation
-  of influence a ring further out (29 games at ring 1, 313 by ring 4), and the
-  **83 games with no connections at all ringed around the outside**. Children
-  are ordered oldest-first, so a branch reads outward in time. The influence
-  graph is not a tree — only 712 of its 1,115 links are branches — so the
-  branches draw solid and the cross-links drop to a whisper, otherwise the shape
-  is buried under chords across the disk. The tree honours every filter too.
+
+  *Tree* is a radial timeline: **one ring per release year**, earliest at the
+  centre. Rogue (1980) sits dead middle, 1996 is a ring, 2025 is a ring 108
+  games wide, and the **83 games with no connections at all** are ringed around
+  the outside. Rings are spaced by *time*, not by rank, so the years nobody
+  shipped in (1981, 1985, 1988–89) read as real gaps and the 1980s are sparse
+  while the 2020s are dense — which is the shape of the catalog. A ring is
+  widened past its year's place only if it has too many games to fit otherwise.
+
+  Within a ring, a game sits at the bearing its **branch** put it at, nudged
+  apart only where two would touch. Re-spacing each ring evenly would be simpler
+  but every ring would pick its own phase, and a game would end up at an
+  unrelated bearing from its parent — branches would cross the disk rather than
+  run out along it. The influence graph is not a tree either (only 712 of its
+  1,115 links are branches), so branches draw solid and cross-links drop to a
+  whisper. The tree honours every filter too.
 
 - **"Beatable:" on the offering** — while choosing where to travel, a card shows
   small portraits of the enemies you have **already beaten at that game before**:

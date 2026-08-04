@@ -41,8 +41,11 @@ enabled=PackedStringArray("res://addons/gut/plugin.cfg")
 
 [input]
 
-# The games-first build is click-driven; the only key binding left is the one
-# the Collection listens for (Tab) to close itself.
+; The games-first build is click-driven, and the only key binding left is the
+; one the Collection listens for (Tab) to close itself. NOTE the leading ';':
+; project.godot comments are ';', not '#'. A '#' line is parsed as part of the
+; NEXT key, which silently renamed this action to
+; "#Thegames-firstbuild...backpack" and left "backpack" undefined.
 backpack={
 "deadzone": 0.5,
 "events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":4194306,"physical_keycode":0,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)

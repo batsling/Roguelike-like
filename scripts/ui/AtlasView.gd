@@ -172,9 +172,10 @@ var _f_record: int = 0               # 0 all · 1 beaten · 2 unbeaten · 3 amul
 var _f_region: int = -1
 
 # How the sky is arranged. CONSTELLATIONS is the baked star chart — hubs with
-# their influence trees packed around them. TREE is the radial tree in a disk
-# (see AtlasLayoutBuilder._radial_tree): one trunk from the root outward, so the
-# shape of descent is the thing you read instead of the shape of clustering.
+# their influence trees packed around them. TREE is the radial timeline (see
+# AtlasLayoutBuilder._radial_tree): one ring per release year with the earliest
+# at the centre, so WHEN a game arrived is the thing you read instead of how it
+# clusters, with the influence branches running outward across the rings.
 enum Mode { CONSTELLATIONS, TREE }
 var _mode: int = Mode.CONSTELLATIONS
 
@@ -724,7 +725,7 @@ func _relayout(reframe: bool = true) -> void:
 		frame_all()
 	_redraw()
 
-# Switch between the constellation sky and the radial tree.
+# Switch between the constellation sky and the radial timeline.
 func set_mode(mode: int) -> void:
 	if mode == _mode:
 		return

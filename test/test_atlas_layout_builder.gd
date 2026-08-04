@@ -149,6 +149,9 @@ func test_the_tree_is_rooted_at_rogue() -> void:
 	var root: int = tree.index_of(&"rogue")
 	assert_eq(tree.parent[root], -1, "the root hangs off nothing")
 	assert_eq(tree.hops[root], 0, "and sits at depth 0")
+	# It lands in the middle because it is the oldest CONNECTED game, not because
+	# it is the root — radius is the year now. The two coincide for the full
+	# catalog, which is exactly why the tree is rooted there.
 	assert_almost_eq(tree.position_of(root).length(), 0.0, 0.001, "dead centre")
 
 func test_every_connected_game_hangs_off_the_tree() -> void:
@@ -162,48 +165,87 @@ func test_every_connected_game_hangs_off_the_tree() -> void:
 		if i != root:
 			assert_gte(tree.parent[i], 0, "%s hangs off a branch" % tree.id_at(i))
 
+# `hops` stays the BRANCH depth even though the rings are years now: it is what
+# the HUD's "N deep" reads, and besides `parent` it is the only record that the
+# sky has a tree structure at all.
 func test_a_child_is_always_one_generation_deeper_than_its_parent() -> void:
 	var tree: AtlasLayout = AtlasLayoutBuilder.build_tree(_all_ids(), &"rogue", "test")
 	for i in range(tree.star_count()):
 		var p: int = tree.parent[i]
 		if p >= 0:
 			assert_eq(tree.hops[i], tree.hops[p] + 1,
-				"%s sits one ring out from %s" % [tree.id_at(i), tree.id_at(p)])
+				"%s is one branch step past %s" % [tree.id_at(i), tree.id_at(p)])
 
-func test_older_games_sit_closer_to_the_middle() -> void:
-	# The tree runs outward in time because influence does — but only in the
-	# large. Ring by ring it PLATEAUS at the modern end (rings 4 and 5 are both
-	# ~2021: nearly everything recent is three or four steps from Rogue however
-	# it got there), so the honest assertion is that the inner rings are decisively
-	# older than the outer ones, not that every ring beats the last.
+func test_each_year_is_its_own_ring() -> void:
+	# The point of the layout: radius IS the release year, so every game from a
+	# given year sits at exactly one distance from the middle.
 	var tree: AtlasLayout = AtlasLayoutBuilder.build_tree(_all_ids(), &"rogue", "test")
-	var sum_year := {}
-	var count := {}
+	var ring_of := {}
 	for i in range(tree.star_count()):
-		var d: int = tree.hops[i]
-		if d < 0:
+		if tree.hops[i] < 0:
+			continue                       # the unconnected outer ring
+		var year: int = Data.get_game(tree.id_at(i)).year
+		var r: float = tree.position_of(i).length()
+		if ring_of.has(year):
+			assert_almost_eq(r, float(ring_of[year]), 0.01,
+				"%s (%d) sits on its year's ring" % [tree.id_at(i), year])
+		else:
+			ring_of[year] = r
+	assert_gt(ring_of.size(), 30, "the catalog spans a lot of years, so a lot of rings")
+
+func test_the_rings_run_outward_in_time() -> void:
+	var tree: AtlasLayout = AtlasLayoutBuilder.build_tree(_all_ids(), &"rogue", "test")
+	var ring_of := {}
+	for i in range(tree.star_count()):
+		if tree.hops[i] < 0:
 			continue
-		var g: GameData = Data.get_game(tree.id_at(i))
-		sum_year[d] = float(sum_year.get(d, 0.0)) + float(g.year)
-		count[d] = int(count.get(d, 0)) + 1
-	var depths: Array = count.keys()
-	depths.sort()
-	var populated: Array = depths.filter(func(d): return int(count[d]) >= 5)
-	assert_gt(populated.size(), 2, "there are enough rings to compare")
-	var mean_of := func(d): return float(sum_year[d]) / float(count[d])
-	var innermost: float = mean_of.call(populated[0])
-	var outermost: float = mean_of.call(populated[-1])
-	assert_gt(outermost, innermost + 5.0,
-		"the outer rings are years newer than the inner ones (%.0f vs %.0f)"
-			% [outermost, innermost])
-	# And no ring is a real step BACK in time — a plateau is fine, a reversal
-	# would mean the tree is putting ancestors outside their descendants.
-	var previous: float = -INF
-	for d in populated:
-		var mean: float = mean_of.call(d)
-		assert_gt(mean, previous - 1.0,
-			"ring %d does not run backwards in time" % d)
-		previous = mean
+		ring_of[Data.get_game(tree.id_at(i)).year] = tree.position_of(i).length()
+	var years: Array = ring_of.keys()
+	years.sort()
+	var previous := -1.0
+	for y in years:
+		assert_gt(float(ring_of[y]), previous,
+			"%d sits outside every year before it" % y)
+		previous = float(ring_of[y])
+
+func test_the_earliest_year_is_the_middle() -> void:
+	var tree: AtlasLayout = AtlasLayoutBuilder.build_tree(_all_ids(), &"rogue", "test")
+	var earliest: int = 1 << 30
+	for i in range(tree.star_count()):
+		if tree.hops[i] >= 0:
+			earliest = mini(earliest, Data.get_game(tree.id_at(i)).year)
+	for i in range(tree.star_count()):
+		if tree.hops[i] >= 0 and Data.get_game(tree.id_at(i)).year == earliest:
+			assert_almost_eq(tree.position_of(i).length(), 0.0, 0.01,
+				"the oldest connected game is the centre")
+
+func test_a_gap_in_the_catalog_is_a_gap_on_the_map() -> void:
+	# Years are spaced by TIME, not by rank, so a decade nobody shipped in reads
+	# as empty space rather than being closed up.
+	var tree: AtlasLayout = AtlasLayoutBuilder.build_tree(_all_ids(), &"rogue", "test")
+	var ring_of := {}
+	for i in range(tree.star_count()):
+		if tree.hops[i] < 0:
+			continue
+		ring_of[Data.get_game(tree.id_at(i)).year] = tree.position_of(i).length()
+	var years: Array = ring_of.keys()
+	years.sort()
+	# Find a one-year step and a multi-year step, and check the second is wider.
+	var single := -1.0
+	var jump := -1.0
+	var jump_years: int = 0
+	for k in range(1, years.size()):
+		var span: int = int(years[k]) - int(years[k - 1])
+		var step: float = float(ring_of[years[k]]) - float(ring_of[years[k - 1]])
+		if span == 1 and single < 0.0:
+			single = step
+		elif span > 1 and jump < 0.0:
+			jump = step
+			jump_years = span
+	if single < 0.0 or jump < 0.0:
+		return                             # no gaps in this catalog to check
+	assert_almost_eq(jump, single * float(jump_years), single * 0.5,
+		"a %d-year gap is about %d times a one-year step" % [jump_years, jump_years])
 
 func test_unconnected_games_ring_the_outside() -> void:
 	var tree: AtlasLayout = AtlasLayoutBuilder.build_tree(_all_ids(), &"rogue", "test")

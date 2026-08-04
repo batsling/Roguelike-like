@@ -24,9 +24,10 @@ extends RefCounted
 # catalog is drawn from the BAKED sky (see AtlasView._layout_for), so nobody
 # ever sees the two versions of the same graph side by side.
 #
-# It also carries a second, non-baked mode — `build_tree`, the radial tree in a
-# disk (§Atlas modes) — which the baker has no equivalent for because it is
-# purely a way of looking at the same graph.
+# It also carries a second, non-baked mode — `build_tree`, the radial timeline:
+# one ring per release year, earliest at the centre, with the influence tree's
+# branches running outward across them. The baker has no equivalent because it
+# is purely a way of looking at the same graph.
 
 # Clear space kept between any two stars. Mirrors bake_atlas.PAD.
 const PAD := 3.0
@@ -63,9 +64,10 @@ static func build(game_ids: PackedStringArray, num_capitals: int = 8,
 		return null
 	return b._constellations(maxi(1, mini(num_capitals, b._ids.size())), source_filter)
 
-# The radial-tree sky for `game_ids`: one tree rooted at `root_id` (Rogue, by
-# convention — see AtlasView.TREE_ROOT), drawn in a disk, with everything the
-# tree cannot reach ringed around the outside.
+# The radial-timeline sky for `game_ids`: one ring per release year with the
+# earliest at the centre, the influence tree rooted at `root_id` (Rogue, by
+# convention — see AtlasView.TREE_ROOT) running its branches outward across
+# them, and everything the tree cannot reach ringed around the outside.
 static func build_tree(game_ids: PackedStringArray, root_id: StringName,
 		source_filter: String = "runtime") -> AtlasLayout:
 	var b := AtlasLayoutBuilder.new()
@@ -512,13 +514,14 @@ func _constellations(num_capitals: int, source_filter: String) -> AtlasLayout:
 	return layout
 
 # ---------------------------------------------------------------------------
-# The radial tree in a disk
+# The radial timeline — one ring per year, the tree's branches across them
 # ---------------------------------------------------------------------------
 
-# How hard the rings crowd toward the rim. 0 would space them evenly; higher
-# values push the outer generations together the way a Poincare projection does,
-# which is what makes the deep end of a 700-game tree readable at all.
-const TREE_CROWD := 1.25
+# How far apart the year rings are pushed, per game on the busiest ring. The
+# chart's scale is set by the year that has the most games in it: everything
+# else is spaced against that, so a 40-game filter and the full 804 both come
+# out legible without a magic size anywhere.
+const YEAR_RING_SPREAD := 26.0
 # Where the ring of unconnected games sits, as a multiple of the tree's own
 # radius. They are not IN the tree — nothing influenced them and they influenced
 # nothing — so they ring it rather than joining it.
@@ -581,8 +584,10 @@ func _radial_tree(root_id: StringName, source_filter: String) -> AtlasLayout:
 	for i in range(n):
 		(children[i] as Array).sort_custom(_older_first)
 
-	# Angular wedges proportional to leaf count: every leaf gets its own slot, so
-	# no two stars in the tree can ever land on the same bearing.
+	# Angular wedges proportional to leaf count. This is not the final bearing —
+	# each ring re-spaces its own members below — but it is the ORDER they go
+	# round in, which is what keeps a branch's descendants near each other
+	# instead of scattered across the disk.
 	var leaves := PackedInt32Array()
 	leaves.resize(n)
 	leaves.fill(0)
@@ -590,38 +595,67 @@ func _radial_tree(root_id: StringName, source_filter: String) -> AtlasLayout:
 	var angle := PackedFloat32Array()
 	angle.resize(n)
 	angle.fill(0.0)
-	var max_depth: int = 0
-	for i in range(n):
-		max_depth = maxi(max_depth, depth[i])
 	_assign_angles(root, children, leaves, 0.0, TAU, angle)
 
-	# Ring radii: crowd toward the rim, then scale the whole disk up until the
-	# tightest ring clears its stars. Sizing from the data rather than from a
-	# constant is what keeps a 40-game filter and the full catalog both readable.
-	var ring := PackedFloat32Array()
-	ring.resize(maxi(max_depth + 1, 1))
-	for d in range(ring.size()):
-		ring[d] = _ring_fraction(d, max_depth)
-	var scale: float = _tree_scale(depth, angle, ring, leaves)
+	# ONE RING PER YEAR. Radius is when a game came out, not how many steps it
+	# sits from the root: "older games closest" is a claim about time, and depth
+	# was only ever a proxy for it. A ring therefore holds everything released
+	# that year, and the rings run outward chronologically with the earliest at
+	# the middle.
+	var years: Array = []
+	var seen_year := {}
+	for i in range(n):
+		if depth[i] < 0:
+			continue
+		var y: int = _year_of(i)
+		if not seen_year.has(y):
+			seen_year[y] = true
+			years.append(y)
+	years.sort()
+	var ring_of := PackedInt32Array()
+	ring_of.resize(n)
+	ring_of.fill(-1)
+	var members: Array = []
+	for _k in range(years.size()):
+		members.append([])
+	for i in range(n):
+		if depth[i] < 0:
+			continue
+		var ri: int = years.bsearch(_year_of(i))
+		ring_of[i] = ri
+		(members[ri] as Array).append(i)
+
+	var radius: PackedFloat64Array = _year_ring_radii(years, members)
+
+	# Settle each ring at its members' BRANCH bearings, pushing apart only where
+	# two would collide. Re-spacing a ring evenly instead would be simpler, but
+	# every ring would then pick its own phase and a game would sit at an
+	# unrelated bearing from its parent — branches would cross the disk rather
+	# than run out along it, which is the whole thing the tree is for.
+	for ri in range(members.size()):
+		_settle_ring(members[ri], radius[ri], angle)
 
 	_xs.resize(n)
 	_ys.resize(n)
 	for i in range(n):
 		if depth[i] < 0:
 			continue
-		var r: float = ring[depth[i]] * scale
+		var r: float = radius[ring_of[i]]
 		_xs[i] = cos(angle[i]) * r
 		_ys[i] = sin(angle[i]) * r
 
 	# The outer ring, evenly spaced and pushed far enough out that it clears both
-	# the tree and itself.
+	# the tree and itself. These are the games with no connection at all — they
+	# have years like everything else, but nothing to be chronologically BETWEEN,
+	# so they ring the whole thing rather than joining a year.
 	if not orbit.is_empty():
 		orbit.sort_custom(_older_first)
-		var step: float = TAU / float(orbit.size())
-		var orbit_r: float = maxf(scale * TREE_ORBIT,
-			(_max_star_radius(orbit) + PAD) / maxf(sin(step * 0.5), 1e-4))
+		var outermost: float = radius[radius.size() - 1] if radius.size() > 0 else 0.0
+		var step2: float = TAU / float(orbit.size())
+		var orbit_r: float = maxf(outermost * TREE_ORBIT,
+			(_max_star_radius(orbit) + PAD) / maxf(sin(step2 * 0.5), 1e-4))
 		for k in range(orbit.size()):
-			var a: float = step * k
+			var a: float = step2 * k
 			_xs[orbit[k]] = cos(a) * orbit_r
 			_ys[orbit[k]] = sin(a) * orbit_r
 
@@ -705,55 +739,101 @@ func _assign_angles(v: int, children: Dictionary, leaves: PackedInt32Array,
 		_assign_angles(c, children, leaves, cursor, cursor + share, angle)
 		cursor += share
 
-# Where ring `d` sits, as a fraction of the disk. tanh crowds the outer rings
-# toward the rim — the look the projection is named for — while keeping ring 0
-# at the centre and the last ring just inside the edge.
-func _ring_fraction(d: int, max_depth: int) -> float:
-	if max_depth <= 0:
-		return 0.0
-	var t: float = float(d) / float(max_depth)
-	return tanh(TREE_CROWD * t) / tanh(TREE_CROWD)
+# Spread one ring's members so no two touch, moving them as little as possible
+# from the bearing their branch put them at.
+#
+# Sorted by bearing, then walked once round pushing each star just clear of the
+# one before it, and once more to close the wrap-around. `_year_ring_radii` has
+# already guaranteed the ring is big enough to hold everything at even spacing,
+# so the walk can always succeed — it just usually has to move far less than
+# that, which is what keeps a branch pointing outward.
+func _settle_ring(row: Array, r: float, angle: PackedFloat32Array) -> void:
+	if row.size() < 2 or r <= 0.0:
+		return
+	row.sort_custom(func(a, b): return angle[a] < angle[b])
+	var gap := PackedFloat64Array()
+	gap.resize(row.size())
+	for k in range(row.size()):
+		var a: int = row[k]
+		var b: int = row[(k + 1) % row.size()]
+		# The angle a star of each size needs between their centres at this radius.
+		gap[k] = (_star_r[a] + _star_r[b] + PAD) / r
+	var total := 0.0
+	for g in gap:
+		total += g
+	if total >= TAU:
+		# Cannot honour every gap: fall back to even spacing, which the ring was
+		# sized for. (Only reachable if the sizing floor ever changes.)
+		var step: float = TAU / float(row.size())
+		var base: float = angle[row[0]]
+		for k in range(row.size()):
+			angle[row[k]] = base + step * float(k)
+		return
+	# Forward pass: nothing may sit closer to its predecessor than gap allows.
+	for k in range(1, row.size()):
+		var want: float = angle[row[k - 1]] + gap[k - 1]
+		if angle[row[k]] < want:
+			angle[row[k]] = want
+	# And the wrap: the last star must also clear the first, one turn on.
+	var overshoot: float = (angle[row[-1]] + gap[row.size() - 1]) - (angle[row[0]] + TAU)
+	if overshoot > 0.0:
+		# Give the slack back evenly around the ring rather than to one star.
+		var share: float = overshoot / float(row.size() - 1)
+		for k in range(1, row.size()):
+			angle[row[k]] -= share * float(k)
 
-# How big the disk has to be for the tightest pair of neighbours on any ring to
-# clear each other. Walks the stars ring by ring in angle order and asks what
-# radius that ring would need; the answer is the largest such demand.
-func _tree_scale(depth: PackedInt32Array, angle: PackedFloat32Array,
-		ring: PackedFloat32Array, _leaves: PackedInt32Array) -> float:
-	var by_ring := {}
-	for i in range(_ids.size()):
-		if depth[i] < 0:
-			continue
-		if not by_ring.has(depth[i]):
-			by_ring[depth[i]] = []
-		(by_ring[depth[i]] as Array).append(i)
-	var scale := 1.0
-	for d in by_ring.keys():
-		if float(ring[d]) <= 1e-4:
-			continue
-		var members: Array = by_ring[d]
-		members.sort_custom(func(a, b): return angle[a] < angle[b])
-		for k in range(members.size()):
-			var a: int = members[k]
-			var b: int = members[(k + 1) % members.size()]
-			if a == b:
-				continue
-			var gap: float = absf(angle[b] - angle[a])
-			if k == members.size() - 1:
-				gap = TAU - gap
-			gap = minf(gap, TAU - gap) if members.size() > 2 else gap
-			var need: float = _radius_of(a) + _radius_of(b) + PAD
-			# chord = 2 r sin(gap/2)  ->  r = need / (2 sin(gap/2))
-			var half: float = maxf(sin(absf(gap) * 0.5), 1e-4)
-			scale = maxf(scale, need / (2.0 * half * float(ring[d])))
-	# And enough room between consecutive rings for the stars themselves.
-	var biggest := 0.0
-	for i in range(_ids.size()):
-		biggest = maxf(biggest, _radius_of(i))
-	for d in range(1, ring.size()):
-		var delta: float = float(ring[d]) - float(ring[d - 1])
-		if delta > 1e-5:
-			scale = maxf(scale, (2.0 * biggest + PAD) / delta)
-	return scale
+# Where each YEAR's ring sits, given the games on it.
+#
+# Two forces. Time wants the rings evenly spaced, so a decade-long gap in the
+# catalog reads as a gap on the map — that is what makes the chart a timeline
+# rather than an ordered list, and it matches the hand-drawn map's linear year
+# axis. Legibility wants each ring big enough that its own members clear each
+# other, and 2024 has fifty times the games of 1984. The answer is the larger of
+# the two, ring by ring, so time sets the shape and the crowded years push out
+# from it. Monotonic by construction: a ring is never inside the one before it.
+func _year_ring_radii(years: Array, members: Array) -> PackedFloat64Array:
+	var out := PackedFloat64Array()
+	out.resize(years.size())
+	if years.is_empty():
+		return out
+	var first_year: int = int(years[0])
+	var span: float = maxf(float(int(years[-1]) - first_year), 1.0)
+
+	# The linear time axis, in the same units the packing works in. Scaled off the
+	# busiest ring so the whole chart grows with the catalog instead of being
+	# pinned to a magic number.
+	var busiest: int = 1
+	for row in members:
+		busiest = maxi(busiest, (row as Array).size())
+	var time_span: float = float(busiest) * YEAR_RING_SPREAD
+
+	var previous := -INF
+	for ri in range(years.size()):
+		var row: Array = members[ri]
+		var biggest := 0.0
+		for i in row:
+			biggest = maxf(biggest, _star_r[i])
+		# Even spacing on a ring of n stars leaves a 2*pi/n gap; the chord across
+		# that gap has to clear two stars and the pad between them.
+		var needed := 0.0
+		if row.size() > 1:
+			var half: float = maxf(sin(PI / float(row.size())), 1e-4)
+			needed = (2.0 * biggest + PAD) / (2.0 * half)
+		var target: float = float(int(years[ri]) - first_year) / span * time_span
+		var r: float = maxf(target, needed)
+		# And never inside — or touching — the ring before it.
+		if previous > -INF:
+			r = maxf(r, previous + 2.0 * biggest + PAD)
+		elif row.size() == 1:
+			r = 0.0                        # a lone earliest game sits dead centre
+		out[ri] = r
+		previous = r
+	return out
+
+# The release year of star `i`, 0 when the catalog doesn't say.
+func _year_of(i: int) -> int:
+	var g: GameData = Data.get_game(StringName(_ids[i]))
+	return g.year if g != null else 0
 
 func _max_star_radius(indices: Array) -> float:
 	var out := 0.0
