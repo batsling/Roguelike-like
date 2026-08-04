@@ -9,9 +9,9 @@ id = &"ancient_domains_of_mystery"
 display_name = "Ancient Domains of Mystery"
 year = 1994
 type = 3
-games_influenced = Array[StringName]([&"caves_of_qud", &"elona", &"gearhead_caramel", &"incursion", &"keeperrl", &"lambdarogue_the_book_of_stars", &"moonring", &"rogue_empire", &"soulash", &"sproggiwood", &"stoneshard", &"ultimate_adom"])
-influence_sources = PackedStringArray("", "", "https://roguebasin.com/index.php/GearHead_Caramel", "game credits", "check folder", "https://roguebasin.com/index.php/LambdaRogue", "check folder", "https://www.patreon.com/roguempire/about", "https://x.com/ArturSmiarowski/status/1870390372389597210", "https://www.roguebasin.com/index.php/Sproggiwood", "https://www.kickstarter.com/projects/1926605606/stoneshard-open-world-roguelike-rpg-with-tactical", "")
-influence_relations = PackedStringArray("", "", "", "", "", "", "", "", "", "", "", "")
+games_influenced = Array[StringName]([&"caves_of_qud", &"elona", &"gearhead_caramel", &"incursion", &"keeperrl", &"lambdarogue_the_book_of_stars", &"moonring", &"rogue_empire", &"soulash", &"sproggiwood", &"stoneshard", &"ultimate_adom", &"hyperrogue", &"powder", &"dungeonmans", &"frozen_depths", &"crablike"])
+influence_sources = PackedStringArray("", "", "https://roguebasin.com/index.php/GearHead_Caramel", "game credits", "check folder", "https://roguebasin.com/index.php/LambdaRogue", "check folder", "https://www.patreon.com/roguempire/about", "https://x.com/ArturSmiarowski/status/1870390372389597210", "https://www.roguebasin.com/index.php/Sproggiwood", "https://www.kickstarter.com/projects/1926605606/stoneshard-open-world-roguelike-rpg-with-tactical", "", "https://zenorogue.blogspot.com/search/label/sources", "http://www.zincland.com/powder/?pagename=about", "https://www.youtube.com/watch?v=JXv8hQguGCI", "https://frozendepths.net/roguelike/info.php", "https://www.reddit.com/r/roguelikes/comments/1kanmof/crablike_an_underwater_dungeon_crawler/")
+influence_relations = PackedStringArray("", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

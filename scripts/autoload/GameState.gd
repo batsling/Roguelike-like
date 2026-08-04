@@ -1276,6 +1276,17 @@ func bombs_stun() -> bool:
 func bombs_cardinal() -> bool:
 	return _any_item_flag("bomb_cardinal")
 
+# Mine-r Construction: how many columns AND rows the battlefield has grown by
+# (§7.3). This one counts rather than answering a bool — the grid is a number,
+# so a second copy is a second column and a second lane. GameLoop2.grid_cols /
+# grid_rows add it to their base.
+func grid_growth() -> int:
+	var n: int = 0
+	for it in inventory:
+		if it is ItemData and it.grid_grow:
+			n += 1
+	return n
+
 # ---------------------------------------------------------------------------
 # Usable consumables + temporary buffs
 # ---------------------------------------------------------------------------

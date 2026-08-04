@@ -284,7 +284,7 @@ func _image_with_bg(tex: Texture2D, size: int, border: Color, crisp: bool = fals
 
 # --- battlefield footprint diagram ---------------------------------------
 # "Grid size" is a shape, not a number, so the DETAIL PANEL draws it: the 2.0
-# battlefield (GameLoop2.GRID_COLS x GRID_ROWS) as empty cells with the enemy's
+# battlefield (GameLoop2.grid_cols() x grid_rows()) as empty cells with the enemy's
 # OWN ARTWORK laid over the cells its footprint fills — the same reading as the
 # board in a live run, where a wide body spawns with its rightmost cell on the
 # back column. A non-rectangular shape (Skeletal Bastion's 2x3 L) tints only its
@@ -295,8 +295,8 @@ const BOARD_GAP := 3
 const BOARD_CELL_EMPTY := Color(0.13, 0.13, 0.17, 0.9)
 
 func _footprint_board(e: GoalEnemyData, accent: Color, cell: int) -> Control:
-	var rows: int = GameLoop2.GRID_ROWS
-	var cols: int = GameLoop2.GRID_COLS
+	var rows: int = GameLoop2.grid_rows()
+	var cols: int = GameLoop2.grid_cols()
 	var step: int = cell + BOARD_GAP
 	var board := Control.new()
 	board.custom_minimum_size = Vector2(cols * step - BOARD_GAP, rows * step - BOARD_GAP)

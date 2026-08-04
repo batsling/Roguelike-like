@@ -55,7 +55,7 @@ func _bastion(dmg: int = 3) -> GoalEnemyData:
 	return _shaped(dmg, 2, 3, [0b100, 0b111])
 
 # The front (leftmost) grid column a stacked enemy occupies (1 = front/melee,
-# GRID_COLS = the back of the board, OFFGRID_COL = off-grid queue), or -1 if it's
+# grid_cols() = the back of the board, offgrid_col() = off-grid queue), or -1 if it's
 # gone.
 func _col_of(instance: int) -> int:
 	for e in GameLoop2.stack:
@@ -97,7 +97,7 @@ func _tick() -> void:
 # strikes once it reaches the front" — instead of how wide the board happens to
 # be.
 func _march_to_front(instance: int) -> void:
-	for _i in range(GameLoop2.GRID_COLS + 2):
+	for _i in range(GameLoop2.grid_cols() + 2):
 		if _col_of(instance) <= 1:
 			return
 		_tick()
@@ -136,10 +136,10 @@ func test_failed_enemy_does_not_attack_the_game_it_stacks() -> void:
 # game and strikes on the next.
 func test_stacked_enemy_marches_forward_then_attacks() -> void:
 	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # A -> spawn col
-	assert_eq(_col_of(a), GameLoop2.SPAWN_COL, "spawns at the back")
+	assert_eq(_col_of(a), GameLoop2.spawn_col(), "spawns at the back")
 	assert_eq(GameState.hp, 10, "the back column can't strike")
 	_tick()                                          # A closes one column
-	assert_eq(_col_of(a), GameLoop2.SPAWN_COL - 1)
+	assert_eq(_col_of(a), GameLoop2.spawn_col() - 1)
 	assert_eq(GameState.hp, 10)
 	_march_to_front(a)                               # A -> col 1 (front), no strike yet
 	assert_eq(_col_of(a), 1)
@@ -151,10 +151,10 @@ func test_stacked_enemy_marches_forward_then_attacks() -> void:
 
 func test_enemy_closes_one_column_per_game() -> void:
 	var a: int = GameLoop2.choose_game(_enemy(1)) ; GameLoop2.beat_game(false)
-	assert_eq(_col_of(a), GameLoop2.SPAWN_COL, "spawns at the back column")
-	for step in range(1, GameLoop2.SPAWN_COL):
+	assert_eq(_col_of(a), GameLoop2.spawn_col(), "spawns at the back column")
+	for step in range(1, GameLoop2.spawn_col()):
 		_tick()
-		assert_eq(_col_of(a), GameLoop2.SPAWN_COL - step, "closes one column per game")
+		assert_eq(_col_of(a), GameLoop2.spawn_col() - step, "closes one column per game")
 	assert_eq(_col_of(a), 1, "reaches the front")
 	_tick()
 	assert_eq(_col_of(a), 1, "cannot advance past the front")
@@ -164,10 +164,10 @@ func test_enemy_closes_one_column_per_game() -> void:
 # edge closer to the player and shortens its march (§grid).
 func test_wide_enemy_spawns_with_its_back_edge_on_the_last_column() -> void:
 	var small: int = GameLoop2.spawn_to_stack(_enemy(1))
-	assert_eq(_col_of(small), GameLoop2.GRID_COLS, "a 1x1 spawns on the back column")
+	assert_eq(_col_of(small), GameLoop2.grid_cols(), "a 1x1 spawns on the back column")
 	GameLoop2.reset()
 	var wide: int = GameLoop2.spawn_to_stack(_shaped(1, 1, 3))
-	assert_eq(_col_of(wide), GameLoop2.GRID_COLS - 2,
+	assert_eq(_col_of(wide), GameLoop2.grid_cols() - 2,
 		"a 3-wide body starts two columns further in so its back edge touches the last column")
 
 # The consequence of that: a long enemy reaches you in fewer games.
@@ -177,7 +177,7 @@ func test_a_longer_enemy_reaches_the_front_sooner() -> void:
 	while _col_of(wide) > 1 and games < 10:
 		_tick()
 		games += 1
-	assert_eq(games, GameLoop2.GRID_COLS - 3,
+	assert_eq(games, GameLoop2.grid_cols() - 3,
 		"a 3-wide body only has to cross the columns its front edge hasn't reached")
 	assert_eq(GameState.hp, 10, "and it still gets its one game of grace at the front")
 	_tick()
@@ -185,7 +185,7 @@ func test_a_longer_enemy_reaches_the_front_sooner() -> void:
 
 func test_enemies_spawn_on_a_random_row() -> void:
 	# Spawning one enemy at a time onto an empty board should not always pick the
-	# same lane. (Flakes with probability GRID_ROWS^-19 — 1 in ~2.7e11 at 4 rows.)
+	# same lane. (Flakes with probability grid_rows()^-19 — 1 in ~2.7e11 at 4 rows.)
 	var seen: Dictionary = {}
 	for i in range(20):
 		GameLoop2.reset()
@@ -193,7 +193,7 @@ func test_enemies_spawn_on_a_random_row() -> void:
 		seen[_row_of(inst)] = true
 	assert_gt(seen.size(), 1, "spawn rows vary instead of always filling row 0")
 	for row in seen:
-		assert_between(int(row), 0, GameLoop2.GRID_ROWS - 1, "and stay on the board")
+		assert_between(int(row), 0, GameLoop2.grid_rows() - 1, "and stay on the board")
 
 # A random row, but never a DEAD one: enemies never change lanes, so a row with a
 # body parked in it is a row the new arrival could never strike from. Those rows
@@ -213,12 +213,12 @@ func test_spawns_pick_a_row_with_a_clear_path_to_the_player() -> void:
 func test_a_blocked_lane_is_still_used_when_no_lane_is_clear() -> void:
 	# Every row walled at the front: there is no good answer, so the enemy still
 	# takes the board rather than stalling off-grid forever.
-	for row in range(GameLoop2.GRID_ROWS):
+	for row in range(GameLoop2.grid_rows()):
 		GameLoop2.stack.append({"instance": 900 + row, "enemy": _enemy(0), "stun": 0,
 			"health": 1, "col": 1, "row": row})
 	var inst: int = GameLoop2.spawn_to_stack(_enemy(0))
 	assert_eq(GameLoop2.offgrid_count(), 0, "it still finds somewhere to stand")
-	assert_between(_row_of(inst), 0, GameLoop2.GRID_ROWS - 1, "on the board")
+	assert_between(_row_of(inst), 0, GameLoop2.grid_rows() - 1, "on the board")
 
 # When NO lane is completely clear, take the emptiest one rather than treating
 # every option as equally hopeless. This is the board from the Beholster report: a
@@ -234,9 +234,9 @@ func test_a_big_enemy_takes_the_lane_with_the_fewest_bodies_in_the_way() -> void
 		{"instance": 953, "enemy": _enemy(0), "stun": 0, "health": 1, "col": 1, "row": 3},
 	]
 	var big: GoalEnemyData = _shaped(3, 2, 2)
-	assert_eq(int(GameLoop2.path_blockers(big, 1, GameLoop2.GRID_COLS - 1)["enemies"]), 1,
+	assert_eq(int(GameLoop2.path_blockers(big, 1, GameLoop2.grid_cols() - 1)["enemies"]), 1,
 		"entering a row up, it only has to outlive one body")
-	assert_eq(int(GameLoop2.path_blockers(big, 2, GameLoop2.GRID_COLS - 1)["enemies"]), 2,
+	assert_eq(int(GameLoop2.path_blockers(big, 2, GameLoop2.grid_cols() - 1)["enemies"]), 2,
 		"a row down, it is stuck behind two")
 	for i in range(12):
 		var inst: int = GameLoop2.spawn_to_stack(big)
@@ -258,31 +258,31 @@ func test_path_check_uses_the_whole_footprint() -> void:
 	GameLoop2.stack = [{"instance": 901, "enemy": _enemy(0), "stun": 0, "health": 1,
 		"col": 1, "row": 1}]
 	var tall: GoalEnemyData = _shaped(0, 2, 1)      # two rows tall, one column wide
-	assert_false(GameLoop2.has_clear_path(tall, 0, GameLoop2.GRID_COLS),
+	assert_false(GameLoop2.has_clear_path(tall, 0, GameLoop2.grid_cols()),
 		"a 2-tall body starting at row 0 would drag its lower half into the blocked lane")
-	assert_true(GameLoop2.has_clear_path(tall, 2, GameLoop2.GRID_COLS),
+	assert_true(GameLoop2.has_clear_path(tall, 2, GameLoop2.grid_cols()),
 		"but rows 2-3 are clear all the way in")
 
 func test_spawn_column_overflows_to_off_grid_when_full() -> void:
-	for i in range(GameLoop2.GRID_ROWS):
+	for i in range(GameLoop2.grid_rows()):
 		GameLoop2.spawn_to_stack(_enemy(0))
-	assert_eq(GameLoop2.offgrid_count(), 0, "the spawn column holds GRID_ROWS enemies")
+	assert_eq(GameLoop2.offgrid_count(), 0, "the spawn column holds grid_rows() enemies")
 	GameLoop2.spawn_to_stack(_enemy(0))
 	assert_eq(GameLoop2.offgrid_count(), 1, "the next enemy waits off-grid")
 
 func test_full_front_column_stalls_the_queue() -> void:
-	# Six enemies converging on a GRID_ROWS-wide front column.
+	# Six enemies converging on a grid_rows()-wide front column.
 	for i in range(6):
 		GameLoop2.spawn_to_stack(_enemy(0))
-	assert_eq(GameLoop2.offgrid_count(), 6 - GameLoop2.GRID_ROWS, "two overflow the spawn column")
-	# March forward; the front column caps attackers at GRID_ROWS and the rest jam.
+	assert_eq(GameLoop2.offgrid_count(), 6 - GameLoop2.grid_rows(), "two overflow the spawn column")
+	# March forward; the front column caps attackers at grid_rows() and the rest jam.
 	for i in range(12):
 		_tick()
 	var front: int = 0
 	for e in GameLoop2.stack:
 		if int(e["col"]) == 1:
 			front += 1
-	assert_eq(front, GameLoop2.GRID_ROWS, "no more than GRID_ROWS enemies pack the front")
+	assert_eq(front, GameLoop2.grid_rows(), "no more than grid_rows() enemies pack the front")
 	assert_eq(GameLoop2.stack_size(), 6, "the jammed enemies are still on the field")
 	assert_eq(GameLoop2.offgrid_count(), 0, "the off-grid queue has slid onto the grid")
 
@@ -502,10 +502,10 @@ func test_push_needs_a_free_cell_behind_the_target() -> void:
 	var a: int = GameLoop2.spawn_to_stack(_enemy(0))
 	_march_to_front(a)
 	assert_eq(_col_of(a), 1, "A is at the front")
-	for i in range(GameLoop2.GRID_ROWS):
+	for i in range(GameLoop2.grid_rows()):
 		GameLoop2.spawn_to_stack(_enemy(0))
 	# Walk the fresh spawns up until they fill the column right behind A.
-	while _count_in_col(2) < GameLoop2.GRID_ROWS:
+	while _count_in_col(2) < GameLoop2.grid_rows():
 		_tick()
 	assert_false(GameLoop2.can_push(a), "column 2 is packed — nowhere to shove A")
 	assert_false(GameLoop2.push(a), "a blocked push fails")
@@ -515,7 +515,7 @@ func test_push_needs_a_free_cell_behind_the_target() -> void:
 func test_push_fails_at_the_back_column() -> void:
 	GameState.push = 1
 	var a: int = GameLoop2.spawn_to_stack(_enemy(1))
-	assert_eq(_col_of(a), GameLoop2.SPAWN_COL)
+	assert_eq(_col_of(a), GameLoop2.spawn_col())
 	assert_false(GameLoop2.can_push(a), "already as far back as the grid goes")
 	assert_false(GameLoop2.push(a))
 	assert_eq(GameState.push, 1, "the charge is kept")
@@ -629,6 +629,74 @@ func test_barricade_banks_unspent_shields() -> void:
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.shields, 4, "Barricade rolls them into the next game")
 
+# --- Mine-r Construction: the board grows (§7.3) --------------------------
+
+func _minor() -> ItemData:
+	return Data.get_item2(&"mine_r_construction")
+
+func test_the_board_is_four_by_four_until_something_grows_it() -> void:
+	assert_eq(GameLoop2.grid_cols(), 4)
+	assert_eq(GameLoop2.grid_rows(), 4)
+	assert_eq(GameLoop2.spawn_col(), 4, "the back column is the last one")
+	assert_eq(GameLoop2.offgrid_col(), 5, "and the queue waits one past it")
+
+func test_mine_r_construction_adds_a_column_and_a_row() -> void:
+	GameState.add_item(_minor())
+	assert_eq(GameLoop2.grid_cols(), 5, "one more column of distance to cross")
+	assert_eq(GameLoop2.grid_rows(), 5, "and one more lane to stand in")
+	assert_eq(GameLoop2.offgrid_col(), 6, "the queue moves out with the edge")
+
+func test_copies_of_mine_r_construction_stack() -> void:
+	GameState.add_item(_minor())
+	GameState.add_item(_minor())
+	assert_eq(GameLoop2.grid_cols(), 6)
+	assert_eq(GameLoop2.grid_rows(), 6)
+
+func test_losing_mine_r_construction_takes_the_column_back() -> void:
+	var inst: ItemData = GameState.add_item(_minor())
+	GameState.remove_item(inst)
+	assert_eq(GameLoop2.grid_cols(), 4)
+	assert_eq(GameLoop2.grid_rows(), 4)
+
+func test_a_grown_board_spawns_enemies_a_column_further_out() -> void:
+	GameState.add_item(_minor())
+	var a: int = GameLoop2.choose_game(_enemy(1))
+	GameLoop2.beat_game(false)
+	assert_eq(_col_of(a), 5, "the new back column is where it walks on")
+
+func test_growing_the_board_buys_a_game_of_distance() -> void:
+	# The enemy already standing on the board keeps its column — the board grew
+	# behind it, it did not get pushed back — so the gain is for what spawns next.
+	var a: int = GameLoop2.choose_game(_enemy(1))
+	GameLoop2.beat_game(false)
+	assert_eq(_col_of(a), 4)
+	GameState.add_item(_minor())
+	assert_eq(_col_of(a), 4, "the bodies on the board stay where they stand")
+	var b: int = GameLoop2.choose_game(_enemy(1))
+	GameLoop2.beat_game(false)
+	assert_eq(_col_of(b), 5, "the newcomer starts a column further out")
+
+func test_the_queue_walks_onto_the_room_the_growth_made() -> void:
+	# Fill the back column, then jam one more enemy behind it: with 4 lanes the
+	# fifth has nowhere to stand and waits off-grid.
+	for _i in range(GameLoop2.grid_rows()):
+		GameLoop2.spawn_to_stack(_enemy(1))
+	var waiting: int = GameLoop2.spawn_to_stack(_enemy(1))
+	assert_eq(_col_of(waiting), GameLoop2.offgrid_col(), "no lane left for it")
+	assert_eq(GameLoop2.offgrid_count(), 1)
+	GameState.add_item(_minor())
+	assert_eq(GameLoop2.offgrid_count(), 0,
+		"the new lane is somewhere to stand, so it walks straight on")
+	assert_lte(_col_of(waiting), GameLoop2.grid_cols(), "and it is on the board")
+
+func test_shrinking_the_board_re_seats_a_body_it_no_longer_holds() -> void:
+	var item: ItemData = GameState.add_item(_minor())
+	var a: int = GameLoop2.spawn_to_stack(_enemy(1))
+	assert_eq(_col_of(a), 5, "standing on the column the item added")
+	GameState.remove_item(item)
+	assert_lte(_col_of(a), GameLoop2.grid_cols(),
+		"losing the item cannot leave it standing off the edge of the board")
+
 # --- loss / run-over ------------------------------------------------------
 
 func test_lethal_hit_ends_the_run() -> void:
@@ -670,7 +738,7 @@ func test_spawn_to_stack_adds_a_following_enemy() -> void:
 	var inst: int = GameLoop2.spawn_to_stack(_enemy(2))
 	assert_gt(inst, 0)
 	assert_eq(GameLoop2.stack_size(), 1)
-	assert_eq(_col_of(inst), GameLoop2.SPAWN_COL, "conjured at the back column")
+	assert_eq(_col_of(inst), GameLoop2.spawn_col(), "conjured at the back column")
 	# Like any spawn, it closes in and only strikes once it reaches the front.
 	_march_to_front(inst)
 	assert_eq(_col_of(inst), 1)

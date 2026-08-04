@@ -153,7 +153,7 @@ var _attempt_undo: Button
 var _np_box: HBoxContainer
 var _attempt_wrap: Control
 var _done_btn: Button
-# The board itself (§grid): the player on the left, a GRID_COLS x GRID_ROWS grid on
+# The board itself (§grid): the player on the left, a grid_cols() x grid_rows() grid on
 # the right where enemies close in one column per game beaten (MMBN-style). It's a
 # BattlefieldView — a view over GameLoop2 that reports Push / Bomb / inspect back
 # here, since this screen owns the charges and the run.

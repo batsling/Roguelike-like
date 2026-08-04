@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_ragnarok"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://images2.0/games/ragnarok.jpg" id="2_cover"]
+[ext_resource type="Texture2D" path="res://images2.0/games/ragnarok.png" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")
@@ -9,9 +9,9 @@ id = &"ragnarok"
 display_name = "Ragnarok"
 year = 1992
 type = 3
-games_influenced = Array[StringName]([])
-influence_sources = PackedStringArray()
-influence_relations = PackedStringArray()
+games_influenced = Array[StringName]([&"hyperrogue"])
+influence_sources = PackedStringArray("https://zenorogue.blogspot.com/search/label/sources")
+influence_relations = PackedStringArray("")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

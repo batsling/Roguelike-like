@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_omega_labyrinth_z"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://images2.0/games/omega-labyrinth-z.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"omega_labyrinth_z"
+display_name = "Omega Labyrinth Z"
+year = 2017
+type = 3
+games_influenced = Array[StringName]([&"omega_labyrinth_life"])
+influence_sources = PackedStringArray("")
+influence_relations = PackedStringArray("dev/series")
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = false
+file_location = ""
+steam_page = ""

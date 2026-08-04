@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_sword_of_fargoal"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://images2.0/games/sword-of-fargoal.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"sword_of_fargoal"
+display_name = "Sword of Fargoal"
+year = 1982
+type = 3
+games_influenced = Array[StringName]([&"rogue_wizards"])
+influence_sources = PackedStringArray("https://www.gameskinny.com/culture/interview-with-colin-day-creator-of-rogue-wizards-and-founder-of-spellbind-studios/")
+influence_relations = PackedStringArray("")
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = false
+file_location = ""
+steam_page = "https://store.steampowered.com/app/2231080/Sword_of_Fargoal/"

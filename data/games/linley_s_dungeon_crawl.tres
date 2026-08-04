@@ -9,9 +9,9 @@ id = &"linley_s_dungeon_crawl"
 display_name = "Linley's Dungeon Crawl"
 year = 1995
 type = 3
-games_influenced = Array[StringName]([&"dungeon_crawl_stone_soup", &"strange_adventures_in_infinite_space"])
-influence_sources = PackedStringArray("https://roguebasin.com/index.php/Dungeon_Crawl_Stone_Soup", "https://www.gamedeveloper.com/design/making-a-case-for-short-games")
-influence_relations = PackedStringArray("", "")
+games_influenced = Array[StringName]([&"dungeon_crawl_stone_soup", &"strange_adventures_in_infinite_space", &"powder", &"frozen_depths"])
+influence_sources = PackedStringArray("https://roguebasin.com/index.php/Dungeon_Crawl_Stone_Soup", "https://www.gamedeveloper.com/design/making-a-case-for-short-games", "http://www.zincland.com/powder/?pagename=about", "https://frozendepths.net/roguelike/info.php")
+influence_relations = PackedStringArray("", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

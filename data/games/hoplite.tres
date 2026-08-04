@@ -9,9 +9,9 @@ id = &"hoplite"
 display_name = "Hoplite"
 year = 2013
 type = 3
-games_influenced = Array[StringName]([&"into_the_breach"])
-influence_sources = PackedStringArray("https://youtu.be/s_I07Iq_2XM?si=AWX0JtDGVzx0vl36")
-influence_relations = PackedStringArray("")
+games_influenced = Array[StringName]([&"into_the_breach", &"hyperrogue"])
+influence_sources = PackedStringArray("https://youtu.be/s_I07Iq_2XM?si=AWX0JtDGVzx0vl36", "https://zenorogue.blogspot.com/search/label/sources")
+influence_relations = PackedStringArray("", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_mine_r_construction"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/MinerConstruction.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"mine_r_construction"
+display_name = "Mine-r Construction"
+kind = 0
+rarity = 1
+description = "Increase the Grid length and width by 1"
+triggers = []
+stat_bonuses = {}
+grid_grow = true
+max_uses = -1
+source_game = "BroomSweeper"
+tags = PackedStringArray()
+image = ExtResource("2_img")

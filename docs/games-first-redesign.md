@@ -318,8 +318,20 @@ The stack is drawn as a **Mega-Man-Battle-Network-style board**: the player on
 the left, a **4 x 4 grid** of columns (distance) x rows (lanes) on the right.
 Column 1 is melee, column 4 the back edge.
 
+4 x 4 is the **starting** size, not a fixed one. **Mine-r Construction**
+(Broomsweeper, Uncommon) adds **a column and a row per copy owned** — a deeper
+board to cross before anything reaches you, and another lane to stand in, which
+also means one more body can pack the front line. `GameLoop2.grid_cols()` /
+`grid_rows()` answer the current size (base 4 plus `GameState.grid_growth()`),
+so nothing measures the board against a constant. Growth doesn't shove the
+bodies already standing on it — they keep their column, and the gain lands on
+what spawns next — but it does open room for the overflow queue, which walks
+onto the new lane immediately, picking its row by the usual clearest-run rule.
+Should the item ever leave the inventory the board shrinks back, and anything it
+would strand off the edge is put back in the queue rather than left hanging.
+
 - **Spawn** — an enemy walks onto the board positioned so its **rightmost cell
-  lands on column 4**. A 1x1 therefore starts on column 4, but a 3-wide body
+  lands on the back column**. A 1x1 therefore starts on column 4, but a 3-wide body
   starts on column 2, with its leading edge already two columns closer. The row
   is **random among the lanes it can actually reach the player from** — enemies
   never change lanes, so a row with a body parked in it would leave the new
@@ -387,9 +399,10 @@ gain +1 Transmute" (Snowball).
 
 **Effect vocabulary** items grant, all small: `+Health`, `+Max Health`, `+Shield`,
 `+Bash / +Dash / +Transmute / +Scramble`, `+Scroll`, Small Chest, Level Up (extra),
-teleport (by type), obtain-item. **Sorting** buckets them for UI: Health / Defense
-/ Economy / Stats / Movement. **tags** (alien, dice, food, sea…) drive synergy
-with enemy tags (§7) and goals.
+teleport (by type), obtain-item, and **grow the Grid** (Mine-r Construction,
+§7.3). **Sorting** buckets them for UI: Health / Defense / Economy / Stats /
+Movement / Bomb / Grid — a design-side column the generator does not read.
+**tags** (alien, dice, food, sea…) drive synergy with enemy tags (§7) and goals.
 
 Sample synergies already in the sheet: **Crown** doubles Level Ups; **Snowball**
 doubles Transmute gains; **Alien Baby** (+6 Max Health but all enemies +1 Health)

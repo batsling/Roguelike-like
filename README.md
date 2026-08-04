@@ -288,6 +288,21 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
 ## Recent changes
 
+- **The new sheet roster, and a board that can grow** — the catalog is up to
+  **804 games and 1,115 connections** (47 games and 115 links added, every one of
+  them with cover art), and the 2.0 rosters gained six goal-enemies (**Numbskull,
+  Wringer, Gigantic Vermin, Nemean Chariot** off Hades, **Ice Slime**, **Spider
+  Kitten**), two bosses (**Scylla**; **Mom's Heart**, which had been sitting on
+  the sheet without a `.tres`), and one item — **Mine-r Construction**, which
+  needed a rule the runtime didn't have. The battlefield's 4 x 4 was a pair of
+  constants; it is now `GameLoop2.grid_cols()` / `grid_rows()`, base 4 plus one
+  per copy of the item owned, so the board **gains a column of distance and a
+  lane** the moment it's picked up (§7.3). The bodies already standing keep their
+  column — the board grows behind them — but the overflow queue walks onto the new
+  lane at once, and losing the item puts anything it would strand back in the
+  queue rather than off the edge. The backdrop is rebuilt only when the size
+  actually changes, so the repaint costs nothing on every other refresh.
+
 - **The map is the star chart now** — "🗺 Map" (the header's, and the one on
   every offered card) opens the **Atlas with the route drawn across it**, and the
   layered ladder of decisions floats over it in a **movable window**: drag it by

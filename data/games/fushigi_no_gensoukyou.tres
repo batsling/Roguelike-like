@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_fushigi_no_gensoukyou"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://images2.0/games/fushigi-no-gensoukyou.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"fushigi_no_gensoukyou"
+display_name = "Fushigi no Gensoukyou"
+year = 2010
+type = 3
+games_influenced = Array[StringName]([&"sanae_no_chou_tokkyuu_the_express_trial", &"atai_no_gensoukyou", &"motto_fushigi_no_gensoukyou_under_the_moonlight", &"miracle_party_fushigi_no_gensoukyou_2"])
+influence_sources = PackedStringArray("", "", "", "")
+influence_relations = PackedStringArray("dev/series", "dev/series", "dev/series", "dev/series")
+tags = PackedStringArray("touhou")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = false
+file_location = ""
+steam_page = ""
