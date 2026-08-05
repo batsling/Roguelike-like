@@ -403,6 +403,34 @@ func test_a_catalog_sky_has_no_route_and_dims_nothing() -> void:
 		assert_true(view.on_route(i),
 			"with nothing to be off, every star draws at full strength")
 
+# The road has to cross the sky, not be stitched out of whatever showed between
+# 700 dots: the stars split in two around it, so a game the route has nothing to
+# do with is drawn UNDER the corridor and a game on the route still keeps its own
+# art on top of it.
+func test_the_road_is_drawn_over_the_games_it_has_nothing_to_do_with() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var view := _open()
+	if not view.has_layout() or view.trail_segment_count() == 0:
+		return
+	var layers: Array = view.draw_layers()
+	var roads: int = layers.find(view.LAYER_ROADS)
+	var scenery: int = layers.find(view.LAYER_STARS_OFF_ROUTE)
+	var route: int = layers.find(view.LAYER_STARS_ON_ROUTE)
+	assert_gt(roads, -1, "the roads are drawn")
+	assert_gt(scenery, -1, "so is the scenery")
+	assert_gt(route, -1, "and so are the games on the route")
+	assert_lt(scenery, roads, "an off-route game goes down BEFORE the road, so the road covers it")
+	assert_lt(roads, route, "and the road goes down before the games it runs between")
+	assert_false(layers.has(view.LAYER_STARS_ALL),
+		"a split sky never draws the single all-stars pass as well")
+
+func test_a_sky_with_no_route_keeps_its_single_star_pass() -> void:
+	var view := _open()               # no run booted
+	assert_eq(view.draw_layers(), [view.LAYER_ROADS, view.LAYER_STARS_ALL],
+		"with no corridor to protect, the sky is one pass with the roads beneath it")
+
 func test_the_route_set_is_rebuilt_when_the_run_moves() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)

@@ -351,6 +351,27 @@ func on_route(i: int) -> bool:
 		return true
 	return _route_stars.has(i)
 
+# --- what goes down over what -----------------------------------------------
+#
+# The stars and the roads are one pile of draw calls, and which of them is on
+# top is the difference between a route you can follow across the sky and a
+# route stitched out of whatever showed between 700 dots.
+#
+# With no route there is one star pass and the roads sit under it, as they
+# always did. With a route the stars split in two around them: SCENERY first,
+# then the roads, then the games the roads actually run between — so the
+# corridor crosses everything it has nothing to do with, and still tucks
+# politely behind the cover art of the games on it.
+const LAYER_STARS_ALL := 0
+const LAYER_STARS_OFF_ROUTE := 1
+const LAYER_STARS_ON_ROUTE := 2
+const LAYER_ROADS := 3
+
+func draw_layers() -> Array:
+	if not showing_route():
+		return [LAYER_ROADS, LAYER_STARS_ALL]
+	return [LAYER_STARS_OFF_ROUTE, LAYER_ROADS, LAYER_STARS_ON_ROUTE]
+
 # ---------------------------------------------------------------------------
 # The run's two anchors
 #
@@ -1929,8 +1950,21 @@ class StarCanvas extends Control:
 		# click asked, and the answer shouldn't depend on the camera.
 		if show_links or focused:
 			_draw_edges(lay, focused)
-		_draw_roads()
-		_draw_stars(lay, show_rims, focused, visible_rect)
+		# The roads go down BETWEEN the two halves of the sky (view.draw_layers):
+		# over the scenery, under the games they actually run between. A corridor
+		# that crosses 700 stars was being chopped into dashes by every one of them
+		# it passed behind — and the ones doing the chopping were the games the
+		# route has nothing to do with.
+		for layer in view.draw_layers():
+			match layer:
+				AtlasView.LAYER_ROADS:
+					_draw_roads()
+				AtlasView.LAYER_STARS_OFF_ROUTE:
+					_draw_stars(lay, show_rims, focused, visible_rect, AtlasView.LAYER_STARS_OFF_ROUTE)
+				AtlasView.LAYER_STARS_ON_ROUTE:
+					_draw_stars(lay, show_rims, focused, visible_rect, AtlasView.LAYER_STARS_ON_ROUTE)
+				_:
+					_draw_stars(lay, show_rims, focused, visible_rect, AtlasView.LAYER_STARS_ALL)
 		_draw_picked_edge(lay)
 		_draw_capital_rings(lay)
 		_draw_region_names(lay)
@@ -2087,13 +2121,21 @@ class StarCanvas extends Control:
 			AtlasView.COL_TRAIL_CASING)
 		draw_colored_polygon(PackedVector2Array([at + tip, at + left, at + right]), col)
 
-	func _draw_stars(lay: AtlasLayout, show_rims: bool, focused: bool, vis: Rect2) -> void:
+	# One pass over the sky. `layer` says WHICH stars this pass is for — all of
+	# them (no route), the scenery, or the route itself — so the roads can be laid
+	# down in between the last two (see _draw / AtlasView.draw_layers).
+	func _draw_stars(lay: AtlasLayout, show_rims: bool, focused: bool, vis: Rect2,
+			layer: int = AtlasView.LAYER_STARS_ALL) -> void:
 		var current: int = -1
 		var amulet: int = -1
 		if not view.pure_catalog:
 			current = lay.index_of(GameState.current_game_id)
 			amulet = lay.index_of(GameState.amulet_game_id)
 		for i in range(lay.star_count()):
+			if layer == AtlasView.LAYER_STARS_OFF_ROUTE and view.on_route(i):
+				continue
+			if layer == AtlasView.LAYER_STARS_ON_ROUTE and not view.on_route(i):
+				continue
 			var p: Vector2 = view.to_screen(lay.position_of(i))
 			if not vis.has_point(p):
 				continue
@@ -2184,7 +2226,9 @@ class StarCanvas extends Control:
 			if (i == current or i == amulet) and faded:
 				draw_arc(p, r + 2.0, 0.0, TAU, 24,
 					AtlasView.COL_YOU if i == current else AtlasView.COL_GOAL, 1.6, true)
-		if view._selected >= 0:
+		# The clicked star's ring belongs to the sky, not to one pass of it: drawn on
+		# the LAST pass only, so a split draw doesn't ring the same star twice.
+		if view._selected >= 0 and layer != AtlasView.LAYER_STARS_OFF_ROUTE:
 			var sp: Vector2 = view.to_screen(lay.position_of(view._selected))
 			var sr: float = maxf(7.0,
 				AtlasLayout.star_radius(lay.degree_of(view._selected)) * view._scale * 1.7)
