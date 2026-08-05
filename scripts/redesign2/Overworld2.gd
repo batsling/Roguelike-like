@@ -130,6 +130,12 @@ var _right_col: VBoxContainer
 var _report_panel: PanelContainer    # frames the checklist half (left)
 var _stage_panel: PanelContainer     # frames the board (right, above the pack)
 var _board_head: VBoxContainer       # the board's heading + summary line
+# The beat between the resolve animation and the next decision: the board stops,
+# this appears under it saying what just happened, and the offering only comes
+# back when it's pressed (see _offer_continue).
+var _continue_bar: PanelContainer
+var _continue_btn: Button
+var _continue_note: RichTextLabel
 var _pack_col: Control               # inventory + loot tray, under the board
 var _scrolls_wrap: VBoxContainer
 # The page's ScrollContainer. The stage is taller than a screen with the board on
@@ -234,6 +240,8 @@ func start_run(character_id: StringName = &"") -> void:
 	# resolve still being played back, an offering.
 	_dismiss_run_over()
 	_resolving = false
+	if _continue_bar != null:
+		_continue_bar.hide()
 	_visits.clear()
 	_last_played_game = null
 	_chosen = {}
@@ -948,11 +956,38 @@ func _announce_difficulty_step(tier_before: int, board_before: Vector2i) -> void
 
 func _hold_for_resolve(seconds: float) -> void:
 	if seconds <= 0.0 or not is_inside_tree():
-		_end_resolve()
+		_offer_continue()
 		return
 	# process_always, so a resolve that opens a modal (a reward chest pausing the
 	# tree) still finishes rather than stranding the screen mid-animation.
-	get_tree().create_timer(seconds, true, false, true).timeout.connect(_end_resolve)
+	get_tree().create_timer(seconds, true, false, true).timeout.connect(_offer_continue)
+
+# The board has stopped moving. What it just showed — who struck, who closed in,
+# what that cost — is the whole point of the resolve, and having the screen snap
+# straight back to the next offering the instant the last tween lands gives the
+# player no beat to read it in. So the animation hands over to a CONTINUE button
+# rather than to the next decision: the field stays exactly as it ended, with a
+# line saying what happened, until the player says go on.
+func _offer_continue() -> void:
+	if not _resolving:
+		return
+	if _continue_bar == null:
+		_end_resolve()
+		return
+	_continue_note.text = _result_text(GameLoop2.last_result)
+	# What pressing it leads to, so the button isn't a blind "next".
+	if _run_over_pending:
+		_continue_btn.text = "Continue  →   see how the run ended"
+	else:
+		_continue_btn.text = "Continue  →   choose the next game"
+	_continue_bar.show()
+	_continue_btn.grab_focus()
+
+# The Continue button (and any test standing in for it): release the held screen.
+func continue_resolve() -> void:
+	if not _resolving:
+		return
+	_end_resolve()
 
 # The board has finished: hand the screen over to whatever comes next — the new
 # offering, or the end-of-run screen the run has been sitting on.
@@ -960,6 +995,8 @@ func _end_resolve() -> void:
 	if not _resolving:
 		return
 	_resolving = false
+	if _continue_bar != null:
+		_continue_bar.hide()
 	_refresh_stage()
 	if _run_over_pending:
 		_run_over_pending = false
@@ -1378,6 +1415,11 @@ func _refresh_stage() -> void:
 	# is already looking (_hold_for_resolve).
 	var choosing: bool = (_phase == Phase.SELECT or _phase == Phase.START_SELECT) and not _resolving
 	_select_box.visible = choosing
+	# The offering's frame goes with it, or an empty bordered box sits above the
+	# checklist between games.
+	var select_wrap = _select_box.get_meta("wrap", null)
+	if select_wrap is Control:
+		(select_wrap as Control).visible = choosing
 	_scrolls_wrap.visible = _phase == Phase.SELECT and not _resolving
 	_play_panel.visible = _phase != Phase.OVER or _resolving
 	_report_panel.visible = _phase != Phase.OVER or _resolving
@@ -1448,7 +1490,7 @@ func _make_start_card(index: int, opt: Dictionary) -> Control:
 	var type_lbl := Label.new()
 	type_lbl.text = RunGraph.type_label(int(opt["type"]))
 	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	type_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
+	type_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
 	type_lbl.add_theme_font_size_override("font_size", 13)
 	type_lbl.add_theme_color_override("font_color", accent.lerp(UITheme.TEXT, 0.35))
 	card.add_child(type_lbl)
@@ -1486,8 +1528,9 @@ func _make_start_card(index: int, opt: Dictionary) -> Control:
 	name_lbl.text = game.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
-	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, NAME_BOX_H)
+	name_lbl.add_theme_font_size_override("font_size", NAME_FONT)
 	name_lbl.add_theme_color_override("font_color", UITheme.TEXT)
 	card.add_child(name_lbl)
 
@@ -1495,8 +1538,10 @@ func _make_start_card(index: int, opt: Dictionary) -> Control:
 	dist.text = "%d games from the Amulet" % int(opt["path_len"])
 	dist.tooltip_text = "The shortest route from %s to the hidden Amulet game." % game.display_name
 	dist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dist.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
-	dist.add_theme_font_size_override("font_size", 12)
+	dist.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	dist.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dist.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE * 2 + 2)
+	dist.add_theme_font_size_override("font_size", BADGE_FONT)
 	dist.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
 	card.add_child(dist)
 	return card
@@ -1524,12 +1569,29 @@ func _render_choices() -> void:
 	_preview.text = "[i]Hover a game to see the enemy it would spawn.[/i]"
 	_preview_img.texture = null
 
-# The offered cover art, sized as BOX ART rather than as a thumbnail: the covers
-# ship at 3:4 (528x704 / 300x450), so a 3:4 frame fills edge to edge with nothing
-# letterboxed, and the game you're being offered is the biggest thing on the page.
-# Three cards at this size still sit in one row on a 1280px viewport; a wider
-# offering (the game_choices bonus) wraps in the HFlowContainer.
-const COVER_SIZE := Vector2(210, 280)
+# The offered cover art. Still box art rather than a thumbnail — the covers ship
+# at 3:4 (528x704 / 300x450), so a 3:4 frame fills edge to edge with nothing
+# letterboxed — but at HALF the size it was drawn at when the offering had the
+# full width of the page to itself. It now shares a column with the checklist,
+# beside the board, and that is the trade: the cards are smaller, and the game
+# you are choosing between and the enemies closing in on you are finally on
+# screen at the same time. A wider offering (the game_choices bonus) wraps in
+# the HFlowContainer.
+const COVER_SIZE := Vector2(105, 140)
+
+# The badge rows stacked above and below each cover (route, pace, repeat bonus,
+# name). Every one of them is pinned to a whole number of lines at this font, so
+# the covers in a row start and end at the same y whatever their text wraps to.
+const BADGE_FONT := 11
+const BADGE_LINE := 15               # one line of BADGE_FONT, in px
+const ROUTE_LINES := 3               # "🏆 THE AMULET — the run ends here" at this width
+const PACE_LINES := 2                # "⏱ Enemies speed up — ×2 turns"
+# The game's NAME keeps a readable size rather than dropping to BADGE_FONT, so it
+# gets its own two-line box — a card whose title wraps must not push its tries
+# row below its neighbours'.
+const NAME_FONT := 13
+const NAME_BOX_H := 51               # three lines of NAME_FONT — "Shotgun King:
+                                     # The Final Checkmate" needs all three
 
 # One choice = the game's cover art with its name below, plus (off a boss round)
 # small Bash/Transmute verbs when the player has charges. Hover updates the
@@ -1551,9 +1613,14 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	route.text = String(note["text"])
 	route.tooltip_text = String(note["tip"])
 	route.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	route.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
+	route.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# Pinned to ROUTE_LINES tall, not left to grow: at half width these badges wrap
+	# to a different number of lines per card ("OPTIMAL — 4 steps left" against
+	# "Detour +1 — 6 steps left"), and a header that is a line taller on one card
+	# pushes that card's cover out of line with the rest of the row.
+	route.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE * ROUTE_LINES)
 	route.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	route.add_theme_font_size_override("font_size", 13)
+	route.add_theme_font_size_override("font_size", BADGE_FONT)
 	route.add_theme_color_override("font_color", note["color"])
 	card.add_child(route)
 
@@ -1565,9 +1632,10 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	pace_lbl.text = String(pace["text"])
 	pace_lbl.tooltip_text = String(pace["tip"])
 	pace_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pace_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
+	pace_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	pace_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE * PACE_LINES)
 	pace_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	pace_lbl.add_theme_font_size_override("font_size", 12)
+	pace_lbl.add_theme_font_size_override("font_size", BADGE_FONT)
 	pace_lbl.add_theme_color_override("font_color", pace["color"])
 	card.add_child(pace_lbl)
 
@@ -1585,8 +1653,10 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	if repeat:
 		bonus.tooltip_text = "You've already beaten %s this run — beat it again for a Dash charge." % game.display_name
 	bonus.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	bonus.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
-	bonus.add_theme_font_size_override("font_size", 13)
+	bonus.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	bonus.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
+	bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bonus.add_theme_font_size_override("font_size", BADGE_FONT)
 	bonus.add_theme_color_override("font_color", DASH_BLUE)
 	card.add_child(bonus)
 
@@ -1618,8 +1688,9 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	name_lbl.text = ("☠ " if choice["boss"] else ("🏆 " if choice["amulet"] else "")) + game.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
-	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, NAME_BOX_H)
+	name_lbl.add_theme_font_size_override("font_size", NAME_FONT)
 	name_lbl.add_theme_color_override("font_color", accent if (choice["boss"] or choice["amulet"]) else UITheme.TEXT)
 	card.add_child(name_lbl)
 
@@ -1631,8 +1702,9 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	tries_lbl.tooltip_text = "Selecting %s grants %d shields — one per run of it you lose." % [
 		game.display_name, tries]
 	tries_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tries_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
-	tries_lbl.add_theme_font_size_override("font_size", 12)
+	tries_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tries_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
+	tries_lbl.add_theme_font_size_override("font_size", BADGE_FONT)
 	tries_lbl.add_theme_color_override("font_color", SHIELD_BLUE)
 	card.add_child(tries_lbl)
 
@@ -1658,8 +1730,8 @@ func _map_preview_button(slot: StringName, game: GameData) -> Button:
 	var b := Button.new()
 	b.text = "🗺  Map"
 	b.tooltip_text = "See the shortest route to the Amulet if you take %s." % game.display_name
-	b.custom_minimum_size = Vector2(COVER_SIZE.x, 26)
-	b.add_theme_font_size_override("font_size", 12)
+	b.custom_minimum_size = Vector2(COVER_SIZE.x, 24)
+	b.add_theme_font_size_override("font_size", BADGE_FONT)
 	b.pressed.connect(func(): preview_map(slot))
 	return b
 
@@ -1876,7 +1948,14 @@ func _verify_row(text: String, color: Color, emphasise: bool,
 		enemy: GoalEnemyData = null, character: CharacterData = null) -> Dictionary:
 	var wrap := PanelContainer.new()
 	var border: Color = color.lerp(UITheme.BORDER, 0.35)
-	wrap.add_theme_stylebox_override("panel", UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 2 if emphasise else 1, border))
+	var width: int = 2 if emphasise else 1
+	var idle: StyleBox = UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, width, border)
+	# The WHOLE ROW answers, not just the box: a ticked row goes green-washed and
+	# green-rimmed, so a filled checklist reads at a glance from the board beside
+	# it rather than needing each little box squinted at in turn.
+	var ticked_box: StyleBox = UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.80), 5, 4,
+		maxi(width, 2), UITheme.SUCCESS.lerp(UITheme.BORDER, 0.15))
+	wrap.add_theme_stylebox_override("panel", idle)
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 8)
 	wrap.add_child(line)
@@ -1885,6 +1964,12 @@ func _verify_row(text: String, color: Color, emphasise: bool,
 	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cb.add_theme_font_size_override("font_size", 13)
 	cb.add_theme_color_override("font_color", color)
+	cb.add_theme_color_override("font_pressed_color", color)
+	cb.add_theme_color_override("font_hover_color", UITheme.GOLD)
+	cb.toggled.connect(func(on: bool):
+		wrap.add_theme_stylebox_override("panel", ticked_box if on else idle)
+		cb.add_theme_color_override("font_color",
+			UITheme.SUCCESS.lerp(Color.WHITE, 0.55) if on else color))
 	line.add_child(cb)
 	var game: GameData = _chosen.get("game")
 	if game != null:
@@ -2370,7 +2455,12 @@ func _build_ui() -> void:
 	scroll.offset_top = 16
 	scroll.offset_right = -16
 	scroll.offset_bottom = -16
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# AUTO rather than DISABLED. The page is laid out to fit its width — the board
+	# fits itself to a budget, the bars flow — but DISABLED doesn't clamp anything
+	# that doesn't, it CLIPS it, and a board hanging off the right edge with no way
+	# to reach it is exactly the failure this is guarding against. Nothing should
+	# ever be wide enough to raise the bar; if something is, it stays reachable.
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	add_child(scroll)
 	_scroll = scroll
 	var root := VBoxContainer.new()
@@ -2429,12 +2519,65 @@ func _build_ui() -> void:
 	boss_wrap.hide()
 	root.add_child(boss_wrap)
 
+	# THE STAGE, in two columns. LEFT is the run's paperwork, top to bottom in the
+	# order it's read: the OFFERING (which game next) above the CHECKLIST (what to
+	# tick while that game is open). RIGHT is the BOARD with the PACK under it —
+	# the things you look at rather than drive.
+	#
+	# The offering used to sit full-width ABOVE the pair, which meant the board was
+	# a scroll away from the cards being chosen between; the two halves of the same
+	# decision — "where do I go" and "what is closing in on me" — were never on
+	# screen together. Stacked into the left column they are, at the cost of the
+	# covers being drawn half-size (COVER_SIZE).
+	var main_row := HBoxContainer.new()
+	main_row.add_theme_constant_override("separation", 12)
+	root.add_child(main_row)
+
+	# Left column: takes the room the board doesn't need.
+	_left_col = VBoxContainer.new()
+	_left_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_left_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_left_col.add_theme_constant_override("separation", 10)
+	main_row.add_child(_left_col)
+
 	# Everything that belongs to CHOOSING a game, in one box the phase toggles: the
 	# offering and its verbs are irrelevant once you've committed to a game, and the
-	# room they free is what lets the board and the checklist sit together below.
+	# room they free goes to the checklist that replaces them.
+	var select_panel := PanelContainer.new()
+	select_panel.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.5), 12, 12, 1))
 	_select_box = VBoxContainer.new()
 	_select_box.add_theme_constant_override("separation", 8)
-	root.add_child(_select_box)
+	select_panel.add_child(_select_box)
+	_select_box.set_meta("wrap", select_panel)
+	_left_col.add_child(select_panel)
+
+	# The hand-over from the resolve animation to the next decision, mounted at the
+	# TOP of the left column — the slot the offering itself comes back into, so the
+	# button sits exactly where the thing it unlocks will appear, and (unlike under
+	# the board, which is a screen tall on a big grid) it is on screen without a
+	# scroll at every board size.
+	_continue_bar = PanelContainer.new()
+	_continue_bar.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.GOLD.lerp(UITheme.BG, 0.86), 12, 10, 2, UITheme.GOLD.lerp(UITheme.BG, 0.45)))
+	_continue_bar.hide()
+	var cont_box := VBoxContainer.new()
+	cont_box.add_theme_constant_override("separation", 6)
+	_continue_bar.add_child(cont_box)
+	_continue_note = _panel_label()
+	_continue_note.add_theme_color_override("default_color", UITheme.TEXT_DIM)
+	cont_box.add_child(_continue_note)
+	_continue_btn = Button.new()
+	_continue_btn.text = "Continue  →"
+	_continue_btn.custom_minimum_size = Vector2(0, 40)
+	_continue_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_continue_btn.add_theme_font_size_override("font_size", 15)
+	_continue_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.GOLD.lerp(UITheme.BG, 0.72), 8, 8, 2, UITheme.GOLD.lerp(UITheme.BG, 0.35)))
+	_continue_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.GOLD.lerp(UITheme.BG, 0.55), 8, 8, 2, UITheme.GOLD))
+	_continue_btn.add_theme_color_override("font_color", UITheme.GOLD)
+	_continue_btn.pressed.connect(continue_resolve)
+	cont_box.add_child(_continue_btn)
+	_left_col.add_child(_continue_bar)
 
 	_select_head = _section("Choose a game to travel to:")
 	_select_box.add_child(_select_head)
@@ -2454,27 +2597,14 @@ func _build_ui() -> void:
 	preview_box.add_theme_constant_override("separation", 12)
 	preview_wrap.add_child(preview_box)
 	_preview_img = _enemy_image_rect()
+	_preview_img.custom_minimum_size = Vector2(64, 64)
 	preview_box.add_child(_preview_img)
 	_preview = _panel_label()
-	_preview.custom_minimum_size = Vector2(0, 40)
+	_preview.custom_minimum_size = Vector2(0, 24)
 	_preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_preview.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	preview_box.add_child(_preview)
 	_select_box.add_child(preview_wrap)
-
-	# THE STAGE, in two columns: the CHECKLIST on the left — what you're reading and
-	# ticking while the real game is open — and on the right the BOARD with the PACK
-	# under it, the two things you look at rather than drive. Side by side they both
-	# fit a screen, where stacked they didn't.
-	var main_row := HBoxContainer.new()
-	main_row.add_theme_constant_override("separation", 12)
-	root.add_child(main_row)
-
-	# Left column: takes the room the board doesn't need.
-	_left_col = VBoxContainer.new()
-	_left_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_left_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	main_row.add_child(_left_col)
 
 	_report_panel = PanelContainer.new()
 	_report_panel.add_theme_stylebox_override("panel",
@@ -2514,6 +2644,7 @@ func _build_ui() -> void:
 	_board.enemy_inspected.connect(_show_enemy_info)
 	stage_box.add_child(_board)
 
+
 	# --- the report checklist (left column, shown while a game is in play) ----
 
 	# One tight row: the cover, the enemy, and the goal text — sized down from the
@@ -2522,7 +2653,7 @@ func _build_ui() -> void:
 	var np_box := _np_box
 	np_box.add_theme_constant_override("separation", 10)
 	_now_playing_cover = TextureRect.new()
-	_now_playing_cover.custom_minimum_size = COVER_SIZE * 0.36
+	_now_playing_cover.custom_minimum_size = COVER_SIZE * 0.72
 	_now_playing_cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_now_playing_cover.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	var cover_frame := PanelContainer.new()

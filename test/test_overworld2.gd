@@ -502,6 +502,95 @@ func test_the_checklist_sits_left_of_the_board_with_the_pack_below() -> void:
 	assert_gt(_ui._pack_col.global_position.y, _ui._board.global_position.y,
 		"the pack is drawn below the board")
 
+# The report checklist is the one place the player ANSWERS something, and Godot's
+# stock check glyphs are a hairline outline drawn for a light theme — against this
+# palette they read as an empty gap. The theme draws its own.
+func test_the_checklist_boxes_are_drawn_not_left_to_the_stock_theme() -> void:
+	var theme: Theme = UITheme.shared()
+	for name in ["checked", "unchecked", "checked_disabled", "unchecked_disabled"]:
+		assert_true(theme.has_icon(name, "CheckBox"), "CheckBox/%s is themed" % name)
+		var icon: Texture2D = theme.get_icon(name, "CheckBox")
+		assert_eq(icon.get_width(), UITheme.CHECK_ICON,
+			"%s is drawn at the chunky size, not the stock 16px" % name)
+	# The two states have to differ in COLOUR, not only in contents — a tick alone
+	# is what was already too faint to see.
+	var on: Image = theme.get_icon("checked", "CheckBox").get_image()
+	var off: Image = theme.get_icon("unchecked", "CheckBox").get_image()
+	assert_ne(on.get_pixel(1, 1), off.get_pixel(1, 1), "the border changes with the state")
+	assert_ne(on.get_pixel(12, 12), off.get_pixel(12, 12), "and so does the fill")
+
+# A ticked row restyles itself, so a part-filled checklist is readable from the
+# board beside it rather than box by box.
+func test_ticking_a_checklist_row_restyles_the_whole_row() -> void:
+	_ui.pick(0)
+	if _ui._goal_check == null:
+		return
+	var row: Control = _ui._goal_check.get_parent().get_parent()
+	var before: StyleBox = row.get_theme_stylebox("panel")
+	_ui._goal_check.button_pressed = true
+	assert_ne(row.get_theme_stylebox("panel"), before, "the row answers with the box")
+	_ui._goal_check.button_pressed = false
+	assert_eq(row.get_theme_stylebox("panel"), before, "and goes back when unticked")
+
+# The offering moved out of the full-width band above the stage and into the LEFT
+# column, above the checklist — so the cards being chosen between and the board
+# they will be walked onto are on screen together, without a scroll.
+func test_the_offering_sits_above_the_checklist_beside_the_board() -> void:
+	assert_true(_ui._left_col.is_ancestor_of(_ui._select_box),
+		"the offering is in the left column, not in a band of its own")
+	var offering: Control = _ui._select_box.get_meta("wrap")
+	assert_lt(offering.get_index(), _ui._report_panel.get_index(),
+		"and above the checklist in it")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_lt(_ui._select_box.global_position.x, _ui._board.global_position.x,
+		"which puts it left of the board")
+	assert_lt(_ui._select_box.global_position.y + _ui._select_box.size.y,
+		_ui._board.global_position.y + _ui._board.size.y,
+		"and alongside it rather than above the whole stage")
+
+# Nothing on the page may be wider than the page. The board grows a column per
+# difficulty tier, so this is checked on the WIDEST board the run can reach.
+func test_the_stage_fits_the_viewport_at_every_board_size() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var page: float = get_viewport().get_visible_rect().size.x - 32.0  # scroll margins
+	assert_gt(page, 0.0)
+	for growth in range(0, RunDifficulty.grid_growth_for(RunDifficulty.MAX_TIER) + 1):
+		GameState.games_played = growth * RunDifficulty.GAMES_PER_TIER
+		GameLoop2.sync_grid_bounds()
+		_ui._refresh()
+		await get_tree().process_frame
+		var row: Control = _ui._left_col.get_parent()
+		assert_lte(row.get_combined_minimum_size().x, page,
+			"the %d-column board still fits the page (needs %.0f of %.0f)" % [
+				GameLoop2.grid_cols(), row.get_combined_minimum_size().x, page])
+
+# …which it manages by shrinking the cells rather than by running off the edge.
+func test_the_cells_shrink_as_the_board_widens() -> void:
+	var small: int = BattlefieldView.fitted_cell(GameLoop2.BASE_GRID_COLS)
+	var big: int = BattlefieldView.fitted_cell(GameLoop2.BASE_GRID_COLS + 3)
+	assert_eq(small, BattlefieldView.CELL_MAX, "a small board draws at full size")
+	assert_lt(big, small, "a wide one draws tighter")
+	assert_gte(big, BattlefieldView.CELL_MIN, "but never below the readable floor")
+	# The budget holds for every board the run can actually reach, and the cell
+	# never grows back as columns are added.
+	var widest: int = GameLoop2.BASE_GRID_COLS \
+		+ RunDifficulty.grid_growth_for(RunDifficulty.MAX_TIER)
+	var last: int = BattlefieldView.CELL_MAX + 1
+	for cols in range(2, widest + 1):
+		var cell: int = BattlefieldView.fitted_cell(cols)
+		var w: int = cols * cell + (cols - 1) * BattlefieldView.CELL_SEP
+		assert_lte(w, BattlefieldView.FIELD_WIDTH_BUDGET,
+			"%d columns stay within the width budget" % cols)
+		assert_lte(cell, last, "%d columns don't draw bigger than %d" % [cols, cols - 1])
+		last = cell
+	# Past that — a board widened further by items — the floor wins over the
+	# budget on purpose: cells that small stop being readable, and the page has
+	# the room, since the offering column shrinks to meet it.
+	assert_eq(BattlefieldView.fitted_cell(widest + 6), BattlefieldView.CELL_MIN,
+		"an item-widened board bottoms out at the readable floor rather than vanishing")
+
 func test_the_pack_stays_in_the_right_column_in_both_phases() -> void:
 	assert_true(_ui._right_col.is_ancestor_of(_ui._pack_col), "choosing: the pack is on the right")
 	assert_true(_ui._pack_col.visible, "and the inventory never goes away")
@@ -1124,12 +1213,30 @@ func test_the_offering_waits_for_the_board_before_coming_back() -> void:
 	# The RUN has already moved on — nothing in it waits on an animation.
 	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "the next decision is already built")
 	assert_gt(_ui._choices.size(), 0)
-	if _ui._resolving:
-		assert_false(_ui._select_box.visible,
-			"but the screen stays on the board while it plays the resolve")
-		await wait_seconds(1.2)
-	assert_false(_ui._resolving, "the hold releases itself")
+	assert_false(_ui._select_box.visible,
+		"but the screen stays on the board while it plays the resolve")
+	# …and when the board lands it hands over to a CONTINUE button rather than to
+	# the next offering: the resolve is the only place the run's consequences are
+	# shown, and it shouldn't be snatched away the instant the last tween ends.
+	await wait_seconds(1.2)
+	assert_true(_ui._resolving, "the screen is still held on the board it just played")
+	assert_true(_ui._continue_bar.visible, "waiting on Continue")
+	assert_false(_ui._select_box.visible, "so the offering hasn't jumped back in")
+
+	_ui.continue_resolve()                   # what pressing the button does
+	assert_false(_ui._resolving, "pressing it releases the hold")
+	assert_false(_ui._continue_bar.visible, "and takes the button with it")
 	assert_true(_ui._select_box.visible, "and the offering comes back")
+
+func test_continue_is_what_lands_the_end_of_run_screen() -> void:
+	_ui.pick(0)
+	_ui._resolving = true                    # as it is between a report and its playback
+	GameLoop2._finish_run(false)
+	_ui._offer_continue()                    # the board finishes its playback
+	assert_true(_ui._continue_bar.visible, "the verdict waits behind a Continue too")
+	assert_null(_end_screen(), "so it doesn't land on top of the animation")
+	_ui.continue_resolve()
+	assert_not_null(_end_screen(), "and lands when the player says go on")
 
 # ---------------------------------------------------------------------------
 # The end of a run
