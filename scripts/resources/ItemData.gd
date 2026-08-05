@@ -395,6 +395,13 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 # row or column is hit too. Read by GameLoop2.bomb via GameState.bombs_cardinal.
 @export var bomb_cardinal: bool = false
 
+# Mine-r Construction: the battlefield itself grows by one column and one row
+# while this is owned (§7.3) — a deeper board to cross before anything reaches
+# the player, and one more lane to stand in. Unlike the three flags above this
+# one STACKS: GameState.grid_growth counts the copies rather than answering a
+# bool, so two of them add two columns and two rows.
+@export var grid_grow: bool = false
+
 # Runtime-minted unique id per inventory slot (set by GameState.add_item).
 # Two duplicated copies of the same template get different instance_ids,
 # which is how weapon items pair with their granted CardInstance in the

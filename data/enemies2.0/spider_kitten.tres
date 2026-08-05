@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_spider_kitten"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/enemies/SpiderKitten.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"spider_kitten"
+display_name = "Spider Kitten"
+game_type = &"strategy"
+difficulty = 2
+source_game = "Mewgenics"
+health = 1
+damage = 3
+goal_type = &"feat"
+goal = "Trap an enemy in place"
+tag = &"cat, bug, spider"
+size = "1x1"
+shape_rows = 1
+shape_cols = 1
+shape_mask = PackedInt32Array(1)
+file = "SpiderKitten"
+image = ExtResource("2_img")

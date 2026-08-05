@@ -29,7 +29,7 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   reroll_low_rarity:, carries_leftover_energy:,
                   lower_hp_damage_mult:, gold_spend_stat_per=N, level_up:,
                   charged (charge_cost N), keep_shields, bomb_stun,
-                  bomb_cardinal.
+                  bomb_cardinal, grid_grow.
 
 Targets are written in parens after an effect value: (self) / (enemy) /
 (all_enemies) / (random_enemies count=2). Bare prose in parens (explanatory
@@ -682,6 +682,10 @@ def parse_item(row):
             # Brimstone Bombs: the blast runs down the target's row and column.
             fields["bomb_cardinal"] = True
             last_trigger = None
+        elif kl0 == "grid_grow":
+            # Mine-r Construction: the battlefield gains a column and a row.
+            fields["grid_grow"] = True
+            last_trigger = None
         elif kl0 == "lower_hp_damage_mult":
             fields["lower_hp_damage_mult"] = float(re.search(r"[0-9.]+", payload).group(0))
             last_trigger = None
@@ -916,6 +920,7 @@ def item_tres(row):
         ("keep_shields", lambda v: "true"),
         ("bomb_stun", lambda v: "true"),
         ("bomb_cardinal", lambda v: "true"),
+        ("grid_grow", lambda v: "true"),
     ]:
         if key in f and f[key] not in (None, [], {}, 0, False, ""):
             lines.append("%s = %s" % (key, gd(f[key])))

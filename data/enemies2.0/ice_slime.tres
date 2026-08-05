@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_ice_slime"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/enemies/IceSlime.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"ice_slime"
+display_name = "Ice Slime"
+game_type = &"deckbuilder"
+difficulty = 0
+source_game = "Dungeon Clawler"
+health = 1
+damage = 1
+goal_type = &"feat"
+goal = "Freeze an enemy"
+tag = &"slime, ice"
+size = "1x1"
+shape_rows = 1
+shape_cols = 1
+shape_mask = PackedInt32Array(1)
+file = "IceSlime"
+image = ExtResource("2_img")

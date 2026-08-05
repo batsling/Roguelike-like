@@ -125,7 +125,7 @@ func test_clicking_an_enemy_selects_it_and_opens_its_card() -> void:
 func test_the_game_being_played_is_not_targetable_by_the_verbs() -> void:
 	_ui.pick(0)                                    # its enemy waits off the field
 	var cur: Dictionary = GameLoop2.current
-	_ui._board.click_enemy(int(cur["instance"]), cur, GameLoop2.OFFGRID_COL, true)
+	_ui._board.click_enemy(int(cur["instance"]), cur, GameLoop2.offgrid_col(), true)
 	assert_eq(_ui._board.selected_instance, 0, "the current game's enemy can't be pushed/bombed")
 	assert_not_null(_ui._info_popup, "but its card still opens")
 
@@ -140,7 +140,7 @@ func test_toolbar_push_is_disabled_without_a_target_or_room() -> void:
 	var inst: int = int(GameLoop2.stack[0]["instance"])
 	_ui._board.selected_instance = inst
 	_ui._board.refresh_toolbar()
-	assert_eq(int(GameLoop2.stack[0]["col"]), GameLoop2.SPAWN_COL)
+	assert_eq(int(GameLoop2.stack[0]["col"]), GameLoop2.spawn_col())
 	assert_true(_ui._board.push_btn.disabled, "nothing behind the back column -> Push is unavailable")
 
 func test_toolbar_bomb_is_offered_against_a_boss() -> void:

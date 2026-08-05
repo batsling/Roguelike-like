@@ -196,6 +196,25 @@ func test_bomb_rule_flags_read_off_the_inventory() -> void:
 	assert_true(GameState.bombs_stun(), "owning it flips the rule")
 	assert_false(GameState.bombs_cardinal(), "and only that rule")
 
+# --- Mine-r Construction (§7.3) -------------------------------------------
+# The grid-growth flag is read off the inventory as a COUNT rather than a bool,
+# so copies stack (board behaviour is covered in test_gameloop2.gd).
+
+func test_mine_r_construction_carries_the_grid_flag() -> void:
+	var it: ItemData = Data.get_item2(&"mine_r_construction")
+	assert_not_null(it)
+	assert_eq(int(it.kind), int(ItemData.ItemKind.PASSIVE))
+	assert_eq(int(it.rarity), int(ItemData.Rarity.UNCOMMON))
+	assert_true(it.grid_grow, "the sheet's Effect cell is the grid_grow flag")
+	assert_false(Data.get_item2(&"lunch").grid_grow, "an ordinary item leaves it off")
+
+func test_grid_growth_counts_the_copies() -> void:
+	assert_eq(GameState.grid_growth(), 0, "nothing owned, board unchanged")
+	GameState.add_item(Data.get_item2(&"mine_r_construction"))
+	assert_eq(GameState.grid_growth(), 1)
+	GameState.add_item(Data.get_item2(&"mine_r_construction"))
+	assert_eq(GameState.grid_growth(), 2, "a second copy is a second column")
+
 func test_crown_bonus_level_up() -> void:
 	var crown: ItemData = Data.get_item2(&"crown")
 	assert_almost_eq(crown.bonus_level_up_chance, 0.5, 0.001)
@@ -251,6 +270,56 @@ func test_jabberwock_goal_enemy_fields() -> void:
 	assert_eq(String(j.goal_type), "feat")
 	assert_not_null(j.image, "Jabberwock.png resolves")
 
+func test_hades_goal_enemies_load_with_art() -> void:
+	# Four Action enemies off Hades, spanning the Low and High tiers.
+	for id in [&"numbskull", &"wringer", &"gigantic_vermin", &"nemean_chariot"]:
+		var e: GoalEnemyData = Data.get_goal_enemy(id)
+		assert_not_null(e, "%s loads" % id)
+		assert_eq(String(e.game_type), "action")
+		assert_eq(e.source_game, "Hades")
+		assert_not_null(e.image, "%s art resolves" % id)
+	assert_eq(Data.get_goal_enemy(&"numbskull").damage, 1, "Low tier deals 1")
+	assert_eq(Data.get_goal_enemy(&"nemean_chariot").damage, 3, "High tier deals 3")
+
+func test_gigantic_vermin_is_a_two_by_two_wall() -> void:
+	var v: GoalEnemyData = Data.get_goal_enemy(&"gigantic_vermin")
+	assert_eq(v.footprint_rows(), 2)
+	assert_eq(v.footprint_cols(), 2)
+	assert_eq(v.footprint_cells().size(), 4, "a solid 2x2, no notch")
+
+func test_ice_slime_and_spider_kitten_load() -> void:
+	var ice: GoalEnemyData = Data.get_goal_enemy(&"ice_slime")
+	assert_not_null(ice)
+	assert_eq(String(ice.game_type), "deckbuilder")
+	assert_eq(ice.source_game, "Dungeon Clawler")
+	assert_eq(int(ice.difficulty), int(GoalEnemyData.Difficulty.LOW))
+	assert_not_null(ice.image, "IceSlime.png resolves")
+	var kitten: GoalEnemyData = Data.get_goal_enemy(&"spider_kitten")
+	assert_not_null(kitten)
+	assert_eq(String(kitten.game_type), "strategy")
+	assert_eq(kitten.source_game, "Mewgenics")
+	assert_eq(int(kitten.difficulty), int(GoalEnemyData.Difficulty.HIGH))
+	assert_not_null(kitten.image, "SpiderKitten.png resolves")
+
+func test_scylla_is_the_medium_action_boss() -> void:
+	var s: GoalEnemyData = Data.get_boss(&"scylla")
+	assert_not_null(s)
+	assert_true(s.is_boss())
+	assert_eq(String(s.game_type), "action")
+	assert_eq(s.source_game, "Hades II")
+	assert_eq(int(s.difficulty), int(GoalEnemyData.Difficulty.MEDIUM))
+	assert_eq(s.damage, 5, "Medium-tier boss hits for 5")
+	assert_not_null(s.image, "Scylla.png resolves")
+
+func test_moms_heart_boss_is_generated() -> void:
+	# It has been on the bosses2.0 sheet all along; its .tres was the one row the
+	# generator had never been re-run for.
+	var h: GoalEnemyData = Data.get_boss(&"moms_heart")
+	assert_not_null(h, "Mom's Heart loads")
+	assert_true(h.is_boss())
+	assert_eq(h.source_game, "The Binding of Isaac")
+	assert_not_null(h.image, "MomsHeart.png resolves")
+
 func test_banshee_bosses_load_with_art() -> void:
 	for id in [&"banshee", &"green_banshee"]:
 		var b: GoalEnemyData = Data.get_boss(id)
@@ -278,6 +347,19 @@ func test_every_source_game_names_a_real_game() -> void:
 				continue
 			assert_true(known.has(entry.source_game),
 				"%s: source game %s is not in the games sheet" % [entry.id, entry.source_game])
+
+# Every game on the map is drawn as a COVER CARD — in the offering, the Games
+# compendium, and the Atlas's card. The importer resolves each cover by the
+# sheet's File column, so a new row whose art never landed in images2.0/games/
+# is a nameplate where a cover should be. The whole catalog carries art today;
+# this is what says so when the next batch arrives.
+func test_every_game_resolves_its_cover_art() -> void:
+	var missing: Array = []
+	for g in Data.all_games():
+		if g.cover_image == null:
+			missing.append(String(g.id))
+	assert_eq(missing.size(), 0,
+		"games with no cover in images2.0/games/: %s" % [missing])
 
 func test_transient_high_tier_damage() -> void:
 	var t: GoalEnemyData = Data.get_goal_enemy(&"transient")

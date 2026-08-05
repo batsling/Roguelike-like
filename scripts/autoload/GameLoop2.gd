@@ -51,27 +51,53 @@ const SHIELDS_TRADITIONAL: int = 5
 const ATTEMPT_HEALTH_COST: int = 1
 
 # The battlefield is a Mega-Man-Battle-Network-style grid: the player sits on the
-# left, and following enemies occupy a GRID_COLS x GRID_ROWS grid on the right.
+# left, and following enemies occupy a grid_cols() x grid_rows() grid on the right.
 # An enemy SPAWNS ON the grid, positioned so its RIGHTMOST cell sits on the back
-# column (GRID_COLS) — so a wide enemy's front edge starts closer to the player
+# column (grid_cols()) — so a wide enemy's front edge starts closer to the player
 # and reaches you in fewer games — in a RANDOM row among those with the clearest
 # run at the player (enemies never change lanes, so a row with bodies parked in
 # it is a row it may never strike from). After each game beaten
 # every enemy closes one column toward the player. An enemy strikes once ANY of
 # its cells is in the front column (col 1). Enemies that can't fit anywhere wait
-# OFF-GRID (OFFGRID_COL) and slide in as space frees.
+# OFF-GRID (offgrid_col()) and slide in as space frees.
 #
 # Each entry carries `row` (0-based, the TOP row of its footprint) and `col`
 # (1-based, the LEFTMOST/frontmost column of its footprint): 1 = melee/front,
-# GRID_COLS = the back of the board, OFFGRID_COL = the off-grid holding queue
+# grid_cols() = the back of the board, offgrid_col() = the off-grid holding queue
 # (never attacks). An enemy is not a single cell — it covers its GoalEnemyData
 # footprint (see `size` on the sheet), and every solid cell of that footprint has
 # to be free for it to stand or move there. That is what makes a big enemy a WALL:
 # a 2x3 L plugs lanes a 1x1 would otherwise slip through.
-const GRID_COLS: int = 4          # distance columns (back at 4, melee at 1)
-const GRID_ROWS: int = 4          # rows -> up to GRID_ROWS enemies abreast
-const SPAWN_COL: int = GRID_COLS  # an enemy's rightmost cell lands on this column
-const OFFGRID_COL: int = GRID_COLS + 1  # overflow queue just off the grid's edge
+#
+# The board is 4 x 4 by DEFAULT, not by definition: Mine-r Construction grows it
+# a column and a row per copy owned (§7.3), so every dimension is asked for at
+# the moment it is used rather than baked into a const.
+const BASE_GRID_COLS: int = 4     # distance columns (back at 4, melee at 1)
+const BASE_GRID_ROWS: int = 4     # rows -> up to grid_rows() enemies abreast
+
+# Distance columns on the board right now. Column 1 is melee, grid_cols() the back.
+func grid_cols() -> int:
+	return BASE_GRID_COLS + GameState.grid_growth()
+
+# Lanes on the board right now, 0-based rows 0..grid_rows() - 1.
+func grid_rows() -> int:
+	return BASE_GRID_ROWS + GameState.grid_growth()
+
+# The back column — where an enemy's rightmost cell lands when it spawns.
+func spawn_col() -> int:
+	return grid_cols()
+
+# The off-grid holding queue, one step past the board's back edge. Anything at a
+# column ABOVE grid_cols() is off the board, so a stale value from before the
+# board grew still reads as off-grid (sync_grid_bounds re-parks it).
+func offgrid_col() -> int:
+	return grid_cols() + 1
+
+# The board dimensions the stack's positions were last reconciled against, so a
+# growth / loss of Mine-r Construction can tell which entries were parked
+# off-grid under the OLD bounds. See sync_grid_bounds.
+var _bounds_cols: int = BASE_GRID_COLS
+var _bounds_rows: int = BASE_GRID_ROWS
 
 # The enemy on the currently-chosen game, or {} when none is chosen. Shape:
 #   {"instance": int, "enemy": GoalEnemyData, "health": int}
@@ -86,8 +112,8 @@ var current: Dictionary = {}
 # `instance` is a unique per-spawn handle so two games rolling the same enemy
 # type stay distinct; bomb / stun / push / fulfil target by instance. `health` is
 # the remaining goal completions needed to defeat it (Alien Baby raises it, §8).
-# `col` is the FRONT (leftmost) column of its footprint (1..GRID_COLS on-grid,
-# OFFGRID_COL off-grid) and `row` the TOP row of its footprint (0-based).
+# `col` is the FRONT (leftmost) column of its footprint (1..grid_cols() on-grid,
+# offgrid_col() off-grid) and `row` the TOP row of its footprint (0-based).
 var stack: Array = []
 
 # Games removed from the pool by Bash (§4) — destroyed outright, never offered
@@ -127,6 +153,12 @@ var _next_instance: int = 1
 
 # ---------------------------------------------------------------------------
 
+func _ready() -> void:
+	# The board's size is a function of the inventory (Mine-r Construction), so
+	# every pickup and loss is a chance for it to have changed shape under the
+	# bodies standing on it.
+	GameState.inventory_changed.connect(sync_grid_bounds)
+
 func reset() -> void:
 	current = {}
 	stack.clear()
@@ -141,6 +173,36 @@ func reset() -> void:
 	enemy_damage_bonus_games = 0
 	last_result = {}
 	_next_instance = 1
+	_bounds_cols = grid_cols()
+	_bounds_rows = grid_rows()
+	loop_changed.emit()
+
+# Re-seat the stack after the board changed size (Mine-r Construction gained or
+# lost, §7.3). Anything that was waiting OFF-grid under the old bounds, and
+# anything whose footprint no longer stands on a legal, unoccupied square (a
+# shrink can pull the ground out from under a body), is parked in the queue and
+# then walked back on the normal way — through _admit_offgrid, so it picks a
+# lane by the same clearest-run rule a fresh spawn does rather than landing
+# wherever its stale coordinates happened to point.
+#
+# Idempotent: with the board unchanged this returns before touching anything,
+# so it is safe to hang off `inventory_changed` (which fires for every pickup).
+func sync_grid_bounds() -> void:
+	var cols: int = grid_cols()
+	var rows: int = grid_rows()
+	if cols == _bounds_cols and rows == _bounds_rows:
+		return
+	var was_offgrid_from: int = _bounds_cols
+	_bounds_cols = cols
+	_bounds_rows = rows
+	for entry in stack:
+		var col: int = int(entry.get("col", offgrid_col()))
+		if col > was_offgrid_from or col > cols or not fits_at(
+				entry.get("enemy"), int(entry.get("row", 0)), col,
+				int(entry.get("instance", 0))):
+			entry["col"] = offgrid_col()
+			entry["row"] = 0
+	_admit_offgrid()
 	loop_changed.emit()
 
 # Full run start for the games-first loop: wipes run state, applies the chosen
@@ -212,6 +274,11 @@ func restore(data: Dictionary) -> void:
 		_next_instance = maxi(_next_instance, int(entry.get("instance", 0)) + 1)
 	if not current.is_empty():
 		_next_instance = maxi(_next_instance, int(current.get("instance", 0)) + 1)
+	# The saved columns were written against the saved inventory's board, and
+	# SaveSystem restores that inventory too — so the bounds already agree and
+	# nothing needs re-seating. Recording them keeps the next real change honest.
+	_bounds_cols = grid_cols()
+	_bounds_rows = grid_rows()
 	loop_changed.emit()
 
 func _serialize_entry(entry: Dictionary) -> Dictionary:
@@ -226,7 +293,7 @@ func _serialize_entry(entry: Dictionary) -> Dictionary:
 		"boss": enemy.is_boss(),
 		"health": int(entry.get("health", 1)),
 		"stun": int(entry.get("stun", 0)),
-		"col": int(entry.get("col", OFFGRID_COL)),
+		"col": int(entry.get("col", offgrid_col())),
 		"row": int(entry.get("row", 0)),
 	}
 
@@ -244,7 +311,7 @@ func _deserialize_entry(raw) -> Dictionary:
 		"enemy": enemy,
 		"health": maxi(1, int(d.get("health", 1))),
 		"stun": int(d.get("stun", 0)),
-		"col": int(d.get("col", OFFGRID_COL)),
+		"col": int(d.get("col", offgrid_col())),
 		"row": int(d.get("row", 0)),
 	}
 
@@ -474,7 +541,7 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 
 	# After the front column strikes, the grid ADVANCES: every enemy closes one
 	# column toward the player, but only into a free row — the front column caps
-	# attackers at GRID_ROWS, so the queue stalls behind a full column and the
+	# attackers at grid_rows(), so the queue stalls behind a full column and the
 	# off-grid queue slides in only as cells free. Stunned enemies stay put this
 	# game; then each stun ticks down once for the game that elapsed.
 	_advance_stack()
@@ -654,10 +721,10 @@ func can_push(instance: int) -> bool:
 	if idx < 0:
 		return false
 	var entry: Dictionary = stack[idx]
-	if int(entry.get("col", OFFGRID_COL)) > GRID_COLS:
+	if int(entry.get("col", offgrid_col())) > grid_cols():
 		return false          # off-grid: nothing to shove it across
 	return fits_at(entry.get("enemy"), int(entry.get("row", 0)),
-		int(entry.get("col", SPAWN_COL)) + 1, instance)
+		int(entry.get("col", spawn_col())) + 1, instance)
 
 # Push a following enemy back one column (Manager's verb, from Raccoin): spends a
 # GameState.push charge to shove the target one grid column farther from the
@@ -673,7 +740,7 @@ func push(instance: int) -> bool:
 		return false
 	var idx: int = _index_of(instance)
 	GameState.push -= 1
-	stack[idx]["col"] = int(stack[idx].get("col", SPAWN_COL)) + 1
+	stack[idx]["col"] = int(stack[idx].get("col", spawn_col())) + 1
 	# Shoving a body off the front line can open the gap a waiting enemy needs.
 	_admit_offgrid()
 	loop_changed.emit()
@@ -834,11 +901,20 @@ func bash_game(game_id: StringName) -> bool:
 	loop_changed.emit()
 	return true
 
-# Transmute (§4): turn a game into a random game of the SAME effective type that
-# is NOT currently on the map (`connected`) and not bashed. Spends a transmute
-# charge. Returns the replacement GameData, or null if there's no charge, the
-# source is unknown, or no off-graph same-type game is available. The overworld
-# passes the ids currently on the map and swaps the node to the returned game.
+# Transmute (§4): turn a game into a random game that is NOT currently on the
+# map (`connected`) and not bashed. Spends a transmute charge. Returns the
+# replacement GameData, or null if there's no charge, the source is unknown, or
+# no off-graph candidate is available. The overworld passes the ids currently on
+# the map and swaps the node to the returned game.
+#
+# The replacement keeps the source's TYPE. **Traditional** is the one exception,
+# and it is a SETTING (Settings.traditional_transmute): a Traditional roguelike
+# is the run's long haul — it grants 5 tries rather than 3 for a reason — so
+# trading one for another is arguably no relief at all, and ANY_OTHER lets a
+# Traditional transmute land on any other type instead. Default is SAME_TYPE,
+# the same rule every other type follows. Under ANY_OTHER the roll is flat
+# across every non-Traditional game off the map, so the types with the deeper
+# catalogs come up more often.
 func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 	if GameState.transmute <= 0:
 		return null
@@ -846,6 +922,8 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 	if src == null:
 		return null
 	var key: StringName = game_type_key(src)
+	var away_from_traditional: bool = key == &"traditional" \
+		and Settings.traditional_transmute == Settings.TraditionalTransmute.ANY_OTHER
 	var on_map := {}
 	for c in connected:
 		on_map[StringName(c)] = true
@@ -855,7 +933,8 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 			continue
 		if g.id == game_id or on_map.has(g.id) or is_bashed(g.id):
 			continue
-		if game_type_key(g) != key:
+		var same_type: bool = game_type_key(g) == key
+		if same_type == away_from_traditional:
 			continue
 		pool.append(g)
 	if pool.is_empty():
@@ -884,7 +963,7 @@ func stacked_damage_per_game() -> int:
 # Number of enemies waiting off the grid's edge (overflow queue) — never attacks,
 # slides in as cells free. Exposed for the battlefield UI / HUD.
 func offgrid_count() -> int:
-	return _count_in_col(OFFGRID_COL)
+	return _count_in_col(offgrid_col())
 
 # Number of enemies touching the front column — the ones that strike next game.
 func front_count() -> int:
@@ -972,12 +1051,12 @@ func footprint_at(enemy: GoalEnemyData, row: int, col: int) -> Array:
 	return out
 
 func _on_board(col: int, row: int) -> bool:
-	return col >= 1 and col <= GRID_COLS and row >= 0 and row < GRID_ROWS
+	return col >= 1 and col <= grid_cols() and row >= 0 and row < grid_rows()
 
 # The cells an on-grid stack entry currently fills. Off-grid entries fill none.
 func entry_cells(entry: Dictionary) -> Array:
-	var col: int = int(entry.get("col", OFFGRID_COL))
-	if col > GRID_COLS:
+	var col: int = int(entry.get("col", offgrid_col()))
+	if col > grid_cols():
 		return []
 	return footprint_at(entry.get("enemy"), int(entry.get("row", 0)), col)
 
@@ -1008,7 +1087,7 @@ func fits_at(enemy: GoalEnemyData, row: int, col: int, exclude: int = 0) -> bool
 # Every row `enemy` could stand in at column `col` right now.
 func _open_rows(enemy: GoalEnemyData, col: int, exclude: int = 0) -> Array:
 	var rows: Array = []
-	for row in range(GRID_ROWS):
+	for row in range(grid_rows()):
 		if fits_at(enemy, row, col, exclude):
 			rows.append(row)
 	return rows
@@ -1062,35 +1141,35 @@ func _spawn_rows(enemy: GoalEnemyData, col: int, exclude: int = 0) -> Array:
 # the board.
 func spawn_col_for(enemy: GoalEnemyData) -> int:
 	var w: int = enemy.footprint_cols() if enemy != null else 1
-	return maxi(1, GRID_COLS - w + 1)
+	return maxi(1, grid_cols() - w + 1)
 
 # The frontmost column this enemy actually occupies — its footprint's left edge
 # plus however far in the first solid cell sits. This is what "reached the front"
 # means, so a shape with a notch on its leading edge isn't counted early.
 func _front_col(entry: Dictionary) -> int:
-	var col: int = int(entry.get("col", OFFGRID_COL))
-	if col > GRID_COLS:
+	var col: int = int(entry.get("col", offgrid_col()))
+	if col > grid_cols():
 		return col
 	var enemy: GoalEnemyData = entry.get("enemy")
 	if enemy == null:
 		return col
-	var best: int = GRID_COLS + 1
+	var best: int = grid_cols() + 1
 	for off in enemy.footprint_cells():
 		best = mini(best, col + int(off.x))
-	return best if best <= GRID_COLS else col
+	return best if best <= grid_cols() else col
 
 # Is this enemy in the front column — i.e. does any of its body touch column 1,
 # the strip next to the player? Those are the enemies that strike each game.
 func in_front(entry: Dictionary) -> bool:
-	return _front_col(entry) <= 1 and int(entry.get("col", OFFGRID_COL)) <= GRID_COLS
+	return _front_col(entry) <= 1 and int(entry.get("col", offgrid_col())) <= grid_cols()
 
 # How many enemies currently START in grid column `col` (or wait in the
-# OFFGRID_COL queue). Used for the off-grid tally; front-line counting goes
+# offgrid_col() queue). Used for the off-grid tally; front-line counting goes
 # through in_front so multi-cell bodies are judged by their leading edge.
 func _count_in_col(col: int) -> int:
 	var n: int = 0
 	for e in stack:
-		if int(e.get("col", SPAWN_COL)) == col:
+		if int(e.get("col", spawn_col())) == col:
 			n += 1
 	return n
 
@@ -1102,7 +1181,7 @@ func _count_in_col(col: int) -> int:
 # grid — it waits in the off-grid queue and slides on later (see _admit_offgrid).
 func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int) -> void:
 	var entry := {"instance": instance, "enemy": enemy, "stun": 0,
-		"health": health, "col": OFFGRID_COL, "row": 0}
+		"health": health, "col": offgrid_col(), "row": 0}
 	stack.append(entry)
 	_place_on_spawn(entry)
 
@@ -1113,7 +1192,7 @@ func _place_on_spawn(entry: Dictionary) -> bool:
 	var col: int = spawn_col_for(enemy)
 	var rows: Array = _spawn_rows(enemy, col, int(entry.get("instance", 0)))
 	if rows.is_empty():
-		entry["col"] = OFFGRID_COL
+		entry["col"] = offgrid_col()
 		return false
 	entry["row"] = int(rows[randi() % rows.size()])
 	entry["col"] = col
@@ -1125,12 +1204,12 @@ func _place_on_spawn(entry: Dictionary) -> bool:
 # put and everything stuck behind it stalls with it. Stunned enemies hold
 # position. Anything still waiting off-grid then tries to walk on.
 func _advance_stack() -> void:
-	var movers: Array = stack.filter(func(e): return int(e.get("col", OFFGRID_COL)) <= GRID_COLS)
+	var movers: Array = stack.filter(func(e): return int(e.get("col", offgrid_col())) <= grid_cols())
 	movers.sort_custom(func(a, b): return int(a.get("col", 1)) < int(b.get("col", 1)))
 	for entry in movers:
 		if int(entry.get("stun", 0)) > 0:
 			continue
-		var col: int = int(entry.get("col", SPAWN_COL))
+		var col: int = int(entry.get("col", spawn_col()))
 		if col <= 1:
 			continue
 		if fits_at(entry.get("enemy"), int(entry.get("row", 0)), col - 1,
@@ -1142,5 +1221,5 @@ func _advance_stack() -> void:
 # opens up.
 func _admit_offgrid() -> void:
 	for entry in stack:
-		if int(entry.get("col", OFFGRID_COL)) > GRID_COLS:
+		if int(entry.get("col", offgrid_col())) > grid_cols():
 			_place_on_spawn(entry)

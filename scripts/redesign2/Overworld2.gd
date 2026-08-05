@@ -153,7 +153,7 @@ var _attempt_undo: Button
 var _np_box: HBoxContainer
 var _attempt_wrap: Control
 var _done_btn: Button
-# The board itself (§grid): the player on the left, a GRID_COLS x GRID_ROWS grid on
+# The board itself (§grid): the player on the left, a grid_cols() x grid_rows() grid on
 # the right where enemies close in one column per game beaten (MMBN-style). It's a
 # BattlefieldView — a view over GameLoop2 that reports Push / Bomb / inspect back
 # here, since this screen owns the charges and the run.
@@ -802,16 +802,19 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	# shows. Defeated-enemy drops were already banked by beat_game above.
 	# Remember WHICH enemies fell at this game, so the Atlas can list them later
 	# alongside whatever the player wrote about them.
+	# Every defeat is banked twice: against the GAME it happened at (the Atlas's
+	# "enemies beaten in <game>") and against the CHARACTER who did it (the
+	# roster's trophy shelf). One call site, so the two can't disagree.
 	if played_game != null:
 		var goal_enemy: GoalEnemyData = _chosen.get("enemy")
 		if goal_met and goal_enemy != null:
-			GameStats.record_enemy_beaten(played_game.id, goal_enemy.id)
+			_record_defeat(played_game, goal_enemy)
 		for inst in fulfilled_instances:
 			for entry in GameLoop2.stack:
 				if int(entry.get("instance", -1)) == int(inst):
 					var follower: GoalEnemyData = entry["enemy"]
 					if follower != null:
-						GameStats.record_enemy_beaten(played_game.id, follower.id)
+						_record_defeat(played_game, follower)
 					break
 	if played_game != null:
 		TriggerBus.game_beaten.emit({"game_id": played_game.id})
@@ -832,6 +835,10 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	# the player.
 	if leveled and not GameLoop2.run_over:
 		_apply_level_up()
+		# Which game the level was taken at, so the character's page can list it
+		# beside whatever the player wrote about doing it here.
+		if played_game != null:
+			GameStats.record_level_up(played_game.id, GameState.character_id)
 	GameState.games_played += 1
 	_chosen = {}
 	# Rating is a BUTTON, never a pop-up: remember the game so the "★ Rate <game>"
@@ -1052,8 +1059,10 @@ func bash_choice(index: int) -> void:
 			Color(1.0, 0.72, 0.4))
 
 # Transmute the offered game at `index` (§4): swap it for a random off-graph game
-# of the same type. Allowed on a boss round — the replacement game still spawns a
-# boss, because boss-ness follows the difficulty gate rather than the game.
+# of the same type — or, for a Traditional game, of any OTHER type, since trading
+# one long haul for another is no relief. Allowed on a boss round — the
+# replacement game still spawns a boss, because boss-ness follows the difficulty
+# gate rather than the game.
 func transmute_choice(index: int) -> void:
 	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
 		return
@@ -1688,13 +1697,15 @@ func _populate_play_panel() -> void:
 		_verify_box.add_child(goal_row["row"])
 
 	# Level-up challenge (§3.1): a per-game Yes/No for the character's condition,
-	# with its reward shown inline so the payoff reads at a glance.
+	# with its reward shown inline so the payoff reads at a glance. It carries its
+	# own Notes button for the same reason the goal rows do — the condition is a
+	# standing one, and how you satisfied it is a fact about THIS game.
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	if ch != null and ch.level_up_condition != "":
 		var lu_text: String = "Leveled up — %s" % ch.level_up_condition
 		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
 			lu_text += "   → %s" % ch.level_up_reward
-		var lu_row := _verify_row(lu_text, UITheme.GOLD, false)
+		var lu_row := _verify_row(lu_text, UITheme.GOLD, false, null, ch)
 		_levelup_check = lu_row["check"]
 		_verify_box.add_child(lu_row["row"])
 
@@ -1771,7 +1782,7 @@ func _goal_met() -> bool:
 # on the right, for writing down how this enemy was actually beaten AT this game
 # — the note belongs to the pair, and the Atlas surfaces it on the game later.
 func _verify_row(text: String, color: Color, emphasise: bool,
-		enemy: GoalEnemyData = null) -> Dictionary:
+		enemy: GoalEnemyData = null, character: CharacterData = null) -> Dictionary:
 	var wrap := PanelContainer.new()
 	var border: Color = color.lerp(UITheme.BORDER, 0.35)
 	wrap.add_theme_stylebox_override("panel", UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 2 if emphasise else 1, border))
@@ -1784,24 +1795,41 @@ func _verify_row(text: String, color: Color, emphasise: bool,
 	cb.add_theme_font_size_override("font_size", 13)
 	cb.add_theme_color_override("font_color", color)
 	line.add_child(cb)
-	if enemy != null:
-		var game: GameData = _chosen.get("game")
-		if game != null:
+	var game: GameData = _chosen.get("game")
+	if game != null:
+		if enemy != null:
 			line.add_child(_notes_button(game, enemy))
+		elif character != null:
+			line.add_child(_levelup_notes_button(game, character))
 	return {"row": wrap, "check": cb}
 
 # The per-row Notes button. Shows a filled glyph once something is written, so a
 # game you've already annotated reads at a glance.
 func _notes_button(game: GameData, enemy: GoalEnemyData) -> Button:
+	return _note_button_for(
+		"Write down how you beat %s here" % enemy.display_name,
+		func(): return GameStats.enemy_note(game.id, enemy.id),
+		func(refresh): EnemyNoteModal.open(self, game, enemy, refresh))
+
+# The same button for the level-up row, writing the (game, character) note.
+func _levelup_notes_button(game: GameData, character: CharacterData) -> Button:
+	return _note_button_for(
+		"Write down how you hit %s's level-up here" % character.display_name,
+		func(): return GameStats.level_up_note(game.id, character.id),
+		func(refresh): EnemyNoteModal.open_level_up(self, game, character, refresh))
+
+# Shared shape for both: `read` answers the current text (so the glyph can say
+# whether there is one) and `open` is handed the refresh to call on save.
+func _note_button_for(tip: String, read: Callable, open: Callable) -> Button:
 	var b := Button.new()
 	b.add_theme_font_size_override("font_size", 11)
-	b.tooltip_text = "Write down how you beat %s here" % enemy.display_name
+	b.tooltip_text = tip
 	var refresh := func():
-		var has: bool = GameStats.enemy_note(game.id, enemy.id).strip_edges() != ""
+		var has: bool = String(read.call()).strip_edges() != ""
 		b.text = "🗒 Notes ✎" if has else "🗒 Notes"
 		b.add_theme_color_override("font_color", UITheme.GOLD if has else UITheme.TEXT_DIM)
 	refresh.call()
-	b.pressed.connect(func(): EnemyNoteModal.open(self, game, enemy, refresh))
+	b.pressed.connect(func(): open.call(refresh))
 	return b
 
 func _verify_head(text: String) -> Label:
@@ -1869,6 +1897,12 @@ func _apply_level_up() -> void:
 	# perfect-aware items can fire on it.
 	if ch.level_up_condition.to_lower().contains("perfect"):
 		GameState.last_game_perfected = true
+
+# Bank one enemy defeat against both records that care about it: the game it
+# happened at, and the character who was playing.
+func _record_defeat(game: GameData, enemy: GoalEnemyData) -> void:
+	GameStats.record_enemy_beaten(game.id, enemy.id)
+	GameStats.record_character_enemy(GameState.character_id, enemy.id)
 
 # Crown (§8): true if any owned item's bonus_level_up_chance rolls a hit.
 func _roll_bonus_level_up() -> bool:

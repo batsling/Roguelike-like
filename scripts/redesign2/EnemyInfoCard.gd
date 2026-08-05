@@ -23,7 +23,7 @@ signal closed
 
 var _closing: bool = false
 
-# Fill the card in for one enemy. `col` is its FRONT column (OFFGRID_COL for an
+# Fill the card in for one enemy. `col` is its FRONT column (offgrid_col() for an
 # off-field body); `is_current` marks the game being played right now, which can be
 # read but not pushed or bombed. Call once, right after adding the card to the
 # screen it should cover.
@@ -229,7 +229,7 @@ func _chip(text: String, color: Color) -> Control:
 func _position_text(entry: Dictionary, col: int, is_current: bool) -> String:
 	if is_current:
 		return "off field — steps in when you report this game"
-	if col >= GameLoop2.OFFGRID_COL:
+	if col >= GameLoop2.offgrid_col():
 		return "off field — waiting for room on the board"
 	var lane: String = "row %d, " % (int(entry.get("row", 0)) + 1)
 	if col <= 1:

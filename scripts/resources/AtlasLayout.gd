@@ -32,12 +32,23 @@ extends Resource
 @export var hops: PackedInt32Array = PackedInt32Array()
 
 # Undirected edges as flat index pairs: edges[0]-edges[1], edges[2]-edges[3], …
-# Deduped, and NOT filtered by Settings.game_filter — the atlas shows the whole
-# catalog, and the filter only ever dims stars rather than moving them.
+# Deduped, and holding only edges BETWEEN stars in this layout: a sky is a whole
+# graph, not a graph with some of it hidden. A baked sky covers whatever
+# Settings.game_filter selected; a runtime one (AtlasLayoutBuilder) covers
+# whatever the Collection's filters left standing.
 @export var edges: PackedInt32Array = PackedInt32Array()
 
 # Star indices of the capitals, in descending degree order.
 @export var capitals: PackedInt32Array = PackedInt32Array()
+
+# TREE SKIES ONLY: each star's parent in the tree being drawn, -1 for the root
+# and for anything the tree doesn't reach (the unconnected outer ring). Empty on
+# a constellation sky, which has no single tree — `is_tree()` is that test.
+#
+# It exists because a tree drawn with all 1,115 links at equal weight is a
+# hairball: the branch a game hangs off is the thing the layout is *for*, so the
+# view draws those links solid and everything else as faint cross-talk.
+@export var parent: PackedInt32Array = PackedInt32Array()
 
 # Where each constellation sits and how far it reaches, one entry per capital.
 # The packer built each cluster around its capital and knows these exactly, so
@@ -96,6 +107,18 @@ static func star_radius(degree: int) -> float:
 
 func is_capital(i: int) -> bool:
 	return capitals.has(i)
+
+# Whether this sky is a tree (one root, every star hanging off a parent) rather
+# than a set of constellations.
+func is_tree() -> bool:
+	return not parent.is_empty()
+
+# Whether the link between stars `a` and `b` is one of the tree's own branches.
+# False on a constellation sky, where there is no tree to be part of.
+func is_tree_edge(a: int, b: int) -> bool:
+	if parent.is_empty():
+		return false
+	return parent[a] == b or parent[b] == a
 
 # Display name of the capital a star belongs to, or "" when it drifts.
 func region_name(i: int) -> String:

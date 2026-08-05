@@ -5,8 +5,8 @@ extends PanelContainer
 # Overworld2 so the board's geometry, painting and animation live in one file and
 # the overworld itself stays a run-flow screen.
 #
-# The layout is: the hero on the left, a GRID_COLS x GRID_ROWS grid of cells in
-# the middle (column 1 = melee/front nearest the hero, column GRID_COLS = spawn),
+# The layout is: the hero on the left, a grid_cols() x grid_rows() grid of cells in
+# the middle (column 1 = melee/front nearest the hero, column grid_cols() = spawn),
 # and a slim off-field lane on the right for enemies with no room on the board.
 # Enemies are not one-per-cell: each covers its GoalEnemyData footprint, so the
 # board is a fixed grid of backdrop panels with a free-positioned OVERLAY on top
@@ -37,6 +37,11 @@ var _hero_hp: Label
 # run. This is what the attempt tracker visibly drains.
 var _hero_shields: Label
 var _field: Control                  # fixed-size board the two layers stack inside
+var _cell_layer: Control             # the static backdrop of empty cells
+# The board dimensions the backdrop was last drawn at. The grid can GROW mid-run
+# (Mine-r Construction), so the panels are rebuilt when this stops matching
+# GameLoop2 rather than being laid down once and trusted forever.
+var _cells_drawn := Vector2i.ZERO
 var _enemy_layer: Control            # free-positioned enemy nodes, drawn over the board
 # Health / damage / status badges live on their own layer ABOVE every body, so an
 # enemy overlapping another never hides what that other one is about to do to you.
@@ -97,11 +102,38 @@ class FootprintControl extends Control:
 				return true
 		return false
 
-# Board size in px: GRID_COLS x GRID_ROWS cells with a gutter between them.
+# Board size in px: grid_cols() x grid_rows() cells with a gutter between them.
 func _field_size() -> Vector2:
 	return Vector2(
-		GameLoop2.GRID_COLS * CELL + (GameLoop2.GRID_COLS - 1) * CELL_SEP,
-		GameLoop2.GRID_ROWS * CELL + (GameLoop2.GRID_ROWS - 1) * CELL_SEP)
+		GameLoop2.grid_cols() * CELL + (GameLoop2.grid_cols() - 1) * CELL_SEP,
+		GameLoop2.grid_rows() * CELL + (GameLoop2.grid_rows() - 1) * CELL_SEP)
+
+# Lay down the backdrop: one empty panel per cell, column 1 nearest the hero.
+# Cheap and idempotent — it returns untouched unless the board actually changed
+# size, which only Mine-r Construction does (§7.3), and then it also re-sizes the
+# field so the new column and row have somewhere to be.
+func _rebuild_cells() -> void:
+	if _cell_layer == null:
+		return
+	var dims := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows())
+	if dims == _cells_drawn:
+		return
+	_cells_drawn = dims
+	for c in _cell_layer.get_children():
+		_cell_layer.remove_child(c)
+		c.queue_free()
+	_field.custom_minimum_size = _field_size()
+	# Every backdrop panel looks the same, so one shared StyleBox does for all of
+	# them instead of rows x cols identical copies.
+	var empty_style: StyleBox = UITheme.flat(UITheme.BG.lerp(UITheme.PANEL, 0.4), 6, 4, 1, UITheme.BORDER.lerp(UITheme.BG, 0.3))
+	for row in range(dims.y):
+		for col in range(1, dims.x + 1):
+			var cell := PanelContainer.new()
+			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cell.position = _cell_pos(row, col)
+			cell.size = Vector2(CELL, CELL)
+			cell.add_theme_stylebox_override("panel", empty_style)
+			_cell_layer.add_child(cell)
 
 # Top-left of grid cell (`row`, `col`) inside the board (0-based row, 1-based col).
 func _cell_pos(row: int, col: int) -> Vector2:
@@ -156,7 +188,7 @@ func refresh_toolbar() -> void:
 		_target_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	else:
 		_target_label.text = "▸ %s  (col %d, row %d)" % [
-			e.display_name, int(entry.get("col", GameLoop2.SPAWN_COL)),
+			e.display_name, int(entry.get("col", GameLoop2.spawn_col())),
 			int(entry.get("row", 0)) + 1]
 		_target_label.add_theme_color_override("font_color", UITheme.ACCENT)
 
@@ -167,7 +199,7 @@ func refresh_toolbar() -> void:
 		push_btn.tooltip_text = "Select an enemy to push."
 	elif GameState.push <= 0:
 		push_btn.tooltip_text = "No Push charges left."
-	elif int(entry.get("col", 0)) + e.footprint_cols() - 1 >= GameLoop2.GRID_COLS:
+	elif int(entry.get("col", 0)) + e.footprint_cols() - 1 >= GameLoop2.grid_cols():
 		push_btn.tooltip_text = "%s is already against the back edge — nowhere to push it." % e.display_name
 	elif not push_ok:
 		push_btn.tooltip_text = "Something is parked behind %s — no room to shove it back." % e.display_name
@@ -190,8 +222,8 @@ func _stack_entry(instance: int) -> Dictionary:
 			return entry
 	return {}
 
-# Build the battlefield once: the hero on the left, then a GRID_COLS x GRID_ROWS
-# grid of cells (col 1 = melee/front nearest the hero, col GRID_COLS = spawn), then
+# Build the battlefield once: the hero on the left, then a grid_cols() x grid_rows()
+# grid of cells (col 1 = melee/front nearest the hero, col grid_cols() = spawn), then
 # a slim off-grid overflow lane on the right. Cells are reused each refresh so the
 # layout stays put; only their contents change.
 func _build() -> void:
@@ -242,31 +274,20 @@ func _build() -> void:
 	hero_box.add_child(_hero_hp)
 	_battlefield.add_child(hero_box)
 
-	# The board: a fixed-size Control holding two stacked layers. The lower one is
-	# the static backdrop — GRID_ROWS x GRID_COLS empty panels, column 1 nearest the
-	# hero — and the upper one is where enemies are positioned by hand, because an
-	# enemy can span several cells and must be free to overlap its neighbours.
+	# The board: a Control holding two stacked layers, sized to the grid. The lower
+	# one is the backdrop — grid_rows() x grid_cols() empty panels, column 1 nearest
+	# the hero — and the upper one is where enemies are positioned by hand, because
+	# an enemy can span several cells and must be free to overlap its neighbours.
 	_field = Control.new()
-	_field.custom_minimum_size = _field_size()
 	_field.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_field.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_battlefield.add_child(_field)
 
-	var cell_layer := Control.new()
-	cell_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	cell_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_field.add_child(cell_layer)
-	# Every backdrop panel looks the same, so one shared StyleBox does for all of
-	# them instead of GRID_ROWS x GRID_COLS identical copies.
-	var empty_style: StyleBox = UITheme.flat(UITheme.BG.lerp(UITheme.PANEL, 0.4), 6, 4, 1, UITheme.BORDER.lerp(UITheme.BG, 0.3))
-	for row in range(GameLoop2.GRID_ROWS):
-		for col in range(1, GameLoop2.GRID_COLS + 1):
-			var cell := PanelContainer.new()
-			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			cell.position = _cell_pos(row, col)
-			cell.size = Vector2(CELL, CELL)
-			cell.add_theme_stylebox_override("panel", empty_style)
-			cell_layer.add_child(cell)
+	_cell_layer = Control.new()
+	_cell_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_cell_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.add_child(_cell_layer)
+	_rebuild_cells()
 
 	_enemy_layer = Control.new()
 	_enemy_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -316,6 +337,10 @@ func refresh(show_current: bool = false) -> void:
 	_hero_shields.text = "◆".repeat(left) + "◇".repeat(spent)
 	_hero_shields.tooltip_text = "%d shield(s) left — one per lost run." % left
 
+	# The backdrop only changes when the board does (Mine-r Construction), so
+	# this is a no-op on all but the refresh that follows the pickup.
+	_rebuild_cells()
+
 	# Clear the overlays and the overflow lane; the backdrop panels are static.
 	for layer in [_enemy_layer, _badge_layer]:
 		for c in layer.get_children():
@@ -338,7 +363,7 @@ func refresh(show_current: bool = false) -> void:
 	# reaches down past.
 	var placed: Array = []
 	for entry in GameLoop2.stack:
-		if int(entry.get("col", GameLoop2.OFFGRID_COL)) <= GameLoop2.GRID_COLS:
+		if int(entry.get("col", GameLoop2.offgrid_col())) <= GameLoop2.grid_cols():
 			placed.append(entry)
 	placed.sort_custom(func(a, b): return _draw_order_key(a) < _draw_order_key(b))
 	for entry in placed:
@@ -348,7 +373,7 @@ func refresh(show_current: bool = false) -> void:
 	# isn't on the stack yet and only walks onto the board when you report the
 	# result (that entrance is the one-game grace made visible, §7.2).
 	for entry in GameLoop2.stack:
-		if int(entry.get("col", GameLoop2.OFFGRID_COL)) > GameLoop2.GRID_COLS:
+		if int(entry.get("col", GameLoop2.offgrid_col())) > GameLoop2.grid_cols():
 			_offgrid_box.add_child(_offgrid_token(entry, false))
 	if show_current and GameLoop2.has_current():
 		_offgrid_box.add_child(_offgrid_token(GameLoop2.current, true))
@@ -422,7 +447,7 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	var rows: int = e.footprint_rows()
 	var cols: int = e.footprint_cols()
 	var cells: Array = e.footprint_cells()
-	var front: int = GameLoop2.GRID_COLS
+	var front: int = GameLoop2.grid_cols()
 	for off in cells:
 		front = mini(front, col + int(off.x))
 
@@ -586,7 +611,7 @@ func _offgrid_token(entry: Dictionary, is_current: bool = false) -> Control:
 		cell.mouse_exited.connect(func(): paint.call(false))
 		cell.gui_input.connect(func(ev: InputEvent):
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				click_enemy(int(entry.get("instance", 0)), entry, GameLoop2.OFFGRID_COL, is_current))
+				click_enemy(int(entry.get("instance", 0)), entry, GameLoop2.offgrid_col(), is_current))
 		cell.set_meta("instance", int(entry.get("instance", 0)))
 		var holder := _cell_holder(cell)
 		cell.set_meta("holder", holder)

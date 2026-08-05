@@ -147,6 +147,31 @@ func _build_ui() -> void:
 
 	vbox.add_child(HSeparator.new())
 
+	var rules_heading := Label.new()
+	rules_heading.text = "Transmute"
+	rules_heading.add_theme_font_size_override("font_size", 17)
+	rules_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	vbox.add_child(rules_heading)
+
+	var trad_chk := CheckButton.new()
+	trad_chk.text = "Traditional transmutes off its type"
+	trad_chk.button_pressed = (Settings.traditional_transmute
+		== Settings.TraditionalTransmute.ANY_OTHER)
+	trad_chk.toggled.connect(func(on: bool) -> void:
+		Settings.set_traditional_transmute(Settings.TraditionalTransmute.ANY_OTHER if on
+			else Settings.TraditionalTransmute.SAME_TYPE))
+	vbox.add_child(trad_chk)
+
+	var trad_hint := Label.new()
+	trad_hint.text = "A transmute normally swaps a game for another of its own type. Turn this on and a Traditional game instead becomes a random game of any OTHER type — a Traditional is the run's long haul, so trading one for another is no relief. Off by default; every other type always transmutes within its own type."
+	trad_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	trad_hint.custom_minimum_size = Vector2(0, 74)
+	trad_hint.add_theme_font_size_override("font_size", 13)
+	trad_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	vbox.add_child(trad_hint)
+
+	vbox.add_child(HSeparator.new())
+
 	var dev_heading := Label.new()
 	dev_heading.text = "Developer"
 	dev_heading.add_theme_font_size_override("font_size", 17)

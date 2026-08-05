@@ -61,7 +61,12 @@ var _atlas: AtlasView = null
 var _layer: CanvasLayer = null
 var _panel: PanelContainer = null
 var _canvas_holder: Control = null      # the GraphCanvas (rebuilt on zoom)
+var _scroller: ScrollContainer = null   # what the ladder scrolls inside
+var _rows: VBoxContainer = null         # the window's contents, ladder included
 var _dist_label: Label = null
+# Whether the opening zoom-to-fit has happened. Only the FIRST build does it —
+# after that the zoom is whatever the player set with the −/+ buttons.
+var _auto_zoomed: bool = false
 # Panel dragging, off the header bar.
 var _dragging: bool = false
 
@@ -69,6 +74,11 @@ var _dragging: bool = false
 # card, and clear of its header and legend bars.
 const PANEL_SIZE := Vector2(760, 560)
 const PANEL_MARGIN := Vector2(44, 96)
+# Clear space kept between the ladder and the window's left and right edges.
+const LADDER_PAD_X := 54.0
+# How far the opening fit is allowed to shrink the ladder. Past this the game
+# names stop being readable and scrolling a bigger ladder is the better deal.
+const FIT_ZOOM_MIN := 0.55
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -128,6 +138,7 @@ func _build() -> void:
 
 	var root := VBoxContainer.new()
 	root.add_theme_constant_override("separation", 10)
+	_rows = root
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 16)
 	margin.add_theme_constant_override("margin_right", 16)
@@ -167,17 +178,16 @@ func _build() -> void:
 	scroller.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(scroller)
+	_scroller = scroller
 	_canvas_holder = _build_graph()
 	scroller.add_child(_canvas_holder)
 
 	root.add_child(_legend())
 	_refresh_distance_label()
-	_fit_panel_width()
-	# The chart underneath frames the same route, in whatever half of the sky this
-	# window leaves free. Deferred: the panel's own size isn't final until the
-	# layout pass, and the reservation is read off it.
-	if _atlas != null:
-		_frame_route.call_deferred()
+	# Deferred, and it has to be. A PanelContainer takes whatever its children
+	# claim as they go in — sizing the window before Godot has run its layout
+	# pass just gets overwritten by the ladder on the way through.
+	_settle.call_deferred()
 
 # The window itself: a free-floating panel, positioned rather than anchored, so
 # it can be dragged anywhere over the chart underneath.
@@ -521,20 +531,94 @@ func _set_zoom(z: float) -> void:
 		_canvas_holder.queue_free()
 		_canvas_holder = _build_graph()
 		scroller.add_child(_canvas_holder)
-		_fit_panel_width()
+		# Same story as the first build: the new ladder inflates the window on the
+		# way in, and only a pass after the layout puts it back.
+		_settle.call_deferred()
 
-# A window no wider than the ladder inside it. A single-file route down one
-# column doesn't need 760px of chart hidden behind it — and over the star chart
-# every pixel this doesn't take is sky the route can be framed in. The header
-# still sets the floor, so the title and the buttons always fit.
-func _fit_panel_width() -> void:
-	if _panel == null or _canvas_holder == null:
+# Everything that can only be done once the window has been laid out: put it back
+# to the size it is supposed to be, fit the route into it the first time, and
+# point the chart underneath at the same route.
+func _settle() -> void:
+	if _panel == null or not is_inside_tree():
+		return
+	_fit_panel()
+	# Opening on a route too big for the window: shrink the ladder until the whole
+	# thing is visible, rather than handing the player a scrollbar and a quarter
+	# of their route. Only on the way in — after that the zoom is theirs.
+	if not _auto_zoomed:
+		_auto_zoomed = true
+		var fit: float = _fit_zoom()
+		if fit < 0.995:
+			_set_zoom(fit)          # rebuilds, and settles again behind it
+			return
+	if _atlas != null and is_instance_valid(_atlas):
+		_frame_route()
+
+# Size the window to what is inside it — and, more to the point, size it OURSELVES.
+#
+# A PanelContainer grows to whatever its children claim while they are being
+# added, and it never gives that back. The five-step ladder below measures
+# 1090x668, and a panel that simply accepted those numbers came out 1787px tall:
+# most of it off the bottom of the screen, its legend and half its rungs
+# unreachable, and the route still clipped. So the window takes the sensible box
+# (PANEL_SIZE, or what the viewport allows), gives the ladder whatever is left
+# after the header, the note and the legend, and lets the ScrollContainer handle
+# the remainder.
+#
+# It still SHRINKS to a small ladder: a single-file route down one column doesn't
+# need 760px of chart hidden behind it, and over the star chart every pixel this
+# window doesn't take is sky the route can be framed in.
+func _fit_panel() -> void:
+	if _panel == null or _canvas_holder == null or _rows == null:
 		return
 	var view: Vector2 = get_viewport_rect().size
-	var ceiling: float = minf(PANEL_SIZE.x, maxf(360.0, view.x - 80.0))
-	var want: float = clampf(_canvas_holder.custom_minimum_size.x + 54.0, 380.0, ceiling)
-	_panel.custom_minimum_size.x = want
-	_panel.size.x = want
+	var ceiling := Vector2(minf(PANEL_SIZE.x, maxf(360.0, view.x - 80.0)),
+		minf(PANEL_SIZE.y, maxf(280.0, view.y - 150.0)))
+	var chrome: Vector2 = _chrome()
+	var ladder: Vector2 = _canvas_holder.custom_minimum_size
+	# Height stacks (the rows sit under each other); width overlays (the widest
+	# row wins, and the ladder needs its margins on top of its own width).
+	var want := Vector2(
+		clampf(maxf(chrome.x, ladder.x + LADDER_PAD_X), 380.0, ceiling.x),
+		clampf(chrome.y + ladder.y, 280.0, ceiling.y))
+	want = want.ceil()             # whole pixels, so the border doesn't blur
+	_panel.custom_minimum_size = want
+	_panel.size = want
+	# Resizing can leave the window hanging off the screen; the header must stay
+	# grabbable.
+	_move_panel(_panel.position)
+
+# The window minus the ladder: header, note, journey, legend, and every margin,
+# separator and border around them. Measured rather than tallied by hand — the
+# ScrollContainer reports no minimum of its own, so zeroing the panel's floor and
+# asking it what it needs gives exactly the non-ladder part.
+func _chrome() -> Vector2:
+	var was: Vector2 = _panel.custom_minimum_size
+	_panel.custom_minimum_size = Vector2.ZERO
+	var chrome: Vector2 = _panel.get_combined_minimum_size()
+	_panel.custom_minimum_size = was
+	return chrome
+
+# The zoom at which the whole route fits the window, capped at 1.0 (never blow a
+# short route up) and floored at FIT_ZOOM_MIN (never shrink it past legible).
+#
+# Measured against the room the window is ALLOWED to give the ladder rather than
+# against the scroll area's current size — the scroll area is whatever the last
+# layout pass made it, which on the first build is the inflated one this whole
+# dance exists to undo.
+func _fit_zoom() -> float:
+	if _canvas_holder == null:
+		return 1.0
+	var view: Vector2 = get_viewport_rect().size
+	var ceiling := Vector2(minf(PANEL_SIZE.x, maxf(360.0, view.x - 80.0)),
+		minf(PANEL_SIZE.y, maxf(280.0, view.y - 150.0)))
+	var room := Vector2(ceiling.x - LADDER_PAD_X, ceiling.y - _chrome().y)
+	var ladder: Vector2 = _canvas_holder.custom_minimum_size
+	if room.x <= 0.0 or room.y <= 0.0 or ladder.x <= 0.0 or ladder.y <= 0.0:
+		return 1.0
+	# `ladder` is measured at the CURRENT zoom, so the ratio scales it from there.
+	var fit: float = _zoom * minf(room.x / ladder.x, room.y / ladder.y)
+	return clampf(fit, FIT_ZOOM_MIN, 1.0)
 
 func _names(ids: Array) -> Array:
 	var out: Array = []

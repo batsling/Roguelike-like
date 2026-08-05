@@ -140,3 +140,65 @@ func test_a_preview_depth_is_that_games_own_distance() -> void:
 	var dist: Dictionary = RunGraph.bfs_distances(GameState.amulet_game_id)
 	assert_eq(modal.shortest_distance(), int(dist[candidate]),
 		"the preview is as deep as that game is far")
+
+
+# --- the window fits what it is showing ------------------------------------
+#
+# The ladder is built inside a PanelContainer, and a PanelContainer takes
+# whatever its children claim on the way in and never gives it back. A five-step
+# route measures ~1090x668, and the window used to simply become that: 1787px
+# tall, most of it below the bottom of the screen, with the legend and half the
+# rungs unreachable and the route still clipped. _settle() puts it back after the
+# layout pass and fits the route into what is left.
+
+func _settled(modal) -> void:
+	# _settle is deferred (it has to run after Godot's layout pass), and a first
+	# fit re-enters it once more behind a rebuild.
+	for _i in range(4):
+		await get_tree().process_frame
+
+func test_the_map_window_stays_inside_its_own_ceiling() -> void:
+	var modal = _open_map()
+	await _settled(modal)
+	var view: Vector2 = modal.get_viewport_rect().size
+	var ceiling := Vector2(
+		minf(modal.PANEL_SIZE.x, maxf(360.0, view.x - 80.0)),
+		minf(modal.PANEL_SIZE.y, maxf(280.0, view.y - 150.0)))
+	assert_lte(modal._panel.size.x, ceiling.x + 1.0,
+		"the window is no wider than the box it is allowed")
+	assert_lte(modal._panel.size.y, ceiling.y + 1.0,
+		"and no taller — the ladder does not get to set the window's height")
+
+func test_the_map_window_stays_on_screen() -> void:
+	var modal = _open_map()
+	await _settled(modal)
+	var view: Vector2 = modal.get_viewport_rect().size
+	var box: Rect2 = Rect2(modal._panel.position, modal._panel.size)
+	assert_lte(box.end.y, view.y,
+		"the whole window is on screen, legend included")
+	assert_gte(box.position.y, 0.0)
+
+func test_the_route_fits_the_window_it_opens_in() -> void:
+	# The opening zoom-to-fit: the player should see their whole route, not a
+	# quarter of it and a scrollbar.
+	var modal = _open_map()
+	await _settled(modal)
+	var ladder: Vector2 = modal._canvas_holder.custom_minimum_size
+	var room: Vector2 = modal._scroller.size
+	if modal._zoom <= modal.FIT_ZOOM_MIN + 0.001:
+		return                    # a route too big to fit legibly; scrolling is right
+	assert_lte(ladder.x, room.x + 1.0, "the whole route is visible across")
+	assert_lte(ladder.y, room.y + 1.0, "and all the way down")
+
+func test_a_short_route_is_never_blown_up() -> void:
+	# Fit only ever shrinks. A two-rung ladder in a 760px window should stay at
+	# its natural size rather than being stretched to fill it.
+	var modal = _open_map_to(GameState.current_game_id)
+	await _settled(modal)
+	assert_almost_eq(modal._zoom, 1.0, 0.001, "nothing to shrink, so no zoom")
+
+func test_a_short_route_shrinks_the_window_to_match() -> void:
+	var modal = _open_map_to(GameState.current_game_id)
+	await _settled(modal)
+	assert_lt(modal._panel.size.x, modal.PANEL_SIZE.x,
+		"a one-column route doesn't need the full window hiding the chart")

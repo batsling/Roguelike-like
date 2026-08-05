@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_touhou_genso_wanderer_lotus_labyrinth_r"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+[ext_resource type="Texture2D" path="res://images2.0/games/touhou-genso-wanderer-lotus-labyrinth-r.png" id="2_cover"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"touhou_genso_wanderer_lotus_labyrinth_r"
+display_name = "Touhou Genso Wanderer: Lotus Labyrinth R"
+year = 2021
+type = 3
+games_influenced = Array[StringName]([])
+influence_sources = PackedStringArray()
+influence_relations = PackedStringArray()
+tags = PackedStringArray("touhou")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_image = ExtResource("2_cover")
+owned = false
+file_location = ""
+steam_page = "https://store.steampowered.com/app/1005120/Touhou_Genso_Wanderer_Lotus_Labyrinth_R/"

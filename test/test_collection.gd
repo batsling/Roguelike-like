@@ -12,6 +12,25 @@ func _new_collection() -> Collection:
 	add_child_autofree(col)
 	return col
 
+# `Collection._input` asks the InputMap for "backpack" on every event, so if the
+# action is missing the compendium spams an error per keystroke and Tab stops
+# closing it. It went missing once already: project.godot comments are ';', and
+# the two '#' lines above the action were parsed as part of its NAME, leaving the
+# action registered as "#Thegames-firstbuild…backpack".
+func test_the_backpack_action_is_registered() -> void:
+	assert_true(InputMap.has_action("backpack"),
+		"project.godot must define the action Collection._input listens for")
+	var keys: Array = []
+	for e in InputMap.action_get_events("backpack"):
+		if e is InputEventKey:
+			keys.append((e as InputEventKey).keycode)
+	assert_true(keys.has(KEY_TAB), "and bind it to Tab")
+
+func test_no_action_name_carries_a_comment() -> void:
+	for action in InputMap.get_actions():
+		assert_false(String(action).begins_with("#"),
+			"'%s' is a comment that was parsed as an action name" % action)
+
 func test_games_is_the_landing_tab() -> void:
 	var col := _new_collection()
 	assert_eq(col._tab, Collection.Tab.GAMES)
@@ -36,6 +55,50 @@ func test_items_type_filter_applies() -> void:
 		if int(it.kind) == ItemData.ItemKind.PICKUP:
 			expected += 1
 	assert_eq(col._grid.get_child_count(), maxi(expected, 1), "type filter narrows to matching items (or the empty-state label)")
+
+# The character page carries the same two records the game page does — the
+# enemies that fell to them, and where they managed their level-up — so it has
+# to survive both a blank record and a filled one.
+func test_character_detail_draws_the_trophy_shelf_and_level_up_log() -> void:
+	var trophies: Dictionary = GameStats.character_enemy_log.duplicate(true)
+	var levels: Dictionary = GameStats.levelup_log.duplicate(true)
+	GameStats.character_enemy_log.clear()
+	GameStats.levelup_log.clear()
+	var ch: CharacterData = Data.all_characters2()[0]
+	var enemy: GoalEnemyData = Data.all_goal_enemies()[0]
+	var game: GameData = Data.all_games()[0]
+
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.CHARACTERS)
+	col._show_character_detail(ch)
+	var empty_rows: int = col._detail_box.get_child_count()
+	assert_gt(empty_rows, 1, "the page draws with nothing recorded")
+
+	GameStats.record_character_enemy(ch.id, enemy.id)
+	GameStats.record_level_up(game.id, ch.id)
+	GameStats.set_level_up_note(game.id, ch.id, "did it on the first run")
+	col._show_character_detail(ch)
+	assert_gt(col._detail_box.get_child_count(), empty_rows,
+		"a trophy and a level-up both add rows to the page")
+
+	GameStats.character_enemy_log = trophies
+	GameStats.levelup_log = levels
+
+func test_game_detail_lists_who_levelled_up_there() -> void:
+	var levels: Dictionary = GameStats.levelup_log.duplicate(true)
+	GameStats.levelup_log.clear()
+	var ch: CharacterData = Data.all_characters2()[0]
+	var game: GameData = Data.all_games()[0]
+
+	var col := _new_collection()
+	col._show_game_detail(game)
+	var before: int = col._detail_box.get_child_count()
+	GameStats.record_level_up(game.id, ch.id)
+	col._show_game_detail(game)
+	assert_gt(col._detail_box.get_child_count(), before,
+		"the game page gains the level-up section once something is logged")
+
+	GameStats.levelup_log = levels
 
 func test_characters_tab_shows_the_2_0_roster() -> void:
 	var col := _new_collection()
