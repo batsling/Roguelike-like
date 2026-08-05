@@ -11,8 +11,8 @@ extends Control
 # which it supersedes as the real overworld panel): every action is a public
 # method a headless test can call, and the whole UI refreshes on `loop_changed`.
 #
-# This file owns the RUN: the offering, the report step, the pack column (the
-# inventory with the loot tray under it), and the charges the combat verbs spend.
+# This file owns the RUN: the offering, the report step, the pack strip above the
+# board, and the charges the combat verbs spend.
 # Two pieces live next door — BattlefieldView (the board and its animation) and
 # EnemyInfoCard (the click-to-inspect card) — and talk back through signals.
 #
@@ -124,19 +124,13 @@ var _select_box: VBoxContainer
 # start the run (START_SELECT) or where to travel next (SELECT).
 var _select_head: Label
 # The STAGE, two columns wide: the report checklist on the left, and on the right
-# the board with the pack (inventory + loot tray) under it.
+# the board with the pack strip (the carried items) above it.
 var _left_col: VBoxContainer
 var _right_col: VBoxContainer
 var _report_panel: PanelContainer    # frames the checklist half (left)
-var _stage_panel: PanelContainer     # frames the board (right, above the pack)
+var _stage_panel: PanelContainer     # frames the board (right, under the pack strip)
 var _board_head: VBoxContainer       # the board's heading + summary line
-# The beat between the resolve animation and the next decision: the board stops,
-# this appears under it saying what just happened, and the offering only comes
-# back when it's pressed (see _offer_continue).
-var _continue_bar: PanelContainer
-var _continue_btn: Button
-var _continue_note: RichTextLabel
-var _pack_col: Control               # inventory + loot tray, under the board
+var _inv_wrap: PanelContainer        # the carried items, in a strip above the board
 var _scrolls_wrap: VBoxContainer
 # The page's ScrollContainer. The stage is taller than a screen with the board on
 # top, so picking a game scrolls the report half into reach (the board is a scroll
@@ -167,11 +161,13 @@ var _board: BattlefieldView
 var _info_popup: EnemyInfoCard      # the click-to-inspect enemy card (null when closed)
 var _log: RichTextLabel
 var _scrolls_box: VBoxContainer
-# The side column right of the grid: the player's inventory, and under it the loot
-# tray where a defeated enemy's drop waits to be claimed or skipped (§8).
-var _items_box: VBoxContainer       # owned items with Use buttons (§4/§8)
-var _loot_box: VBoxContainer
-var _drop_queue: Array = []         # [{item: ItemData}] waiting in the loot tray
+# The pack strip above the grid: one small token per carried item (§4/§8).
+var _items_box: HFlowContainer
+# Drops a defeated enemy left, waiting to be ASKED about — one ItemDropModal at a
+# time, in the order they fell (§8, _pump_drops). The modal in front of the
+# player right now, or null when nothing is being asked.
+var _drop_queue: Array = []         # [{item: ItemData}]
+var _drop_modal: Node = null
 var _reward_open: bool = false      # a RewardScreen is currently showing
 # The game most recently reported on. Rating is OPT-IN and never pops itself up
 # (see _prompt_rating): this is what the "★ Rate <game>" button on the select
@@ -213,8 +209,8 @@ func _ready() -> void:
 	# several rewards in a row.
 	if not TriggerBus.chest_granted.is_connected(_on_chest_granted):
 		TriggerBus.chest_granted.connect(_on_chest_granted)
-	# Every defeated enemy drops an item that lands in the loot tray beside the board
-	# (§8), instead of banking a RewardScreen chest.
+	# Every defeated enemy drops an item, and the drop ASKS to be taken (§8) rather
+	# than banking a RewardScreen chest.
 	if not GameLoop2.enemy_defeated.is_connected(_on_enemy_defeated):
 		GameLoop2.enemy_defeated.connect(_on_enemy_defeated)
 	# A save being resumed takes precedence over booting a fresh run: the state is
@@ -240,8 +236,7 @@ func start_run(character_id: StringName = &"") -> void:
 	# resolve still being played back, an offering.
 	_dismiss_run_over()
 	_resolving = false
-	if _continue_bar != null:
-		_continue_bar.hide()
+	_board.clear_fx()
 	_visits.clear()
 	_last_played_game = null
 	_chosen = {}
@@ -334,7 +329,7 @@ func resume_run(view: Dictionary) -> void:
 #
 # GameState + GameLoop2 hold the RUN (health, verbs, inventory, the enemy stack,
 # the destroyed games); this screen holds the bit of it you can see — which cards
-# are on the table, which game is in play, what's waiting in the loot tray. Neither
+# are on the table, which game is in play, which drops are still unanswered. Neither
 # half restores a usable run on its own, so the save carries both: SaveSystem
 # writes the run and asks the mounted overworld for the view (capture_view_state),
 # and a load hands the view back here (restore_view_state).
@@ -426,6 +421,9 @@ func restore_view_state(view: Dictionary) -> void:
 		else:
 			_show_banner("💀  Run lost — Health reached 0.", Color(0.9, 0.3, 0.25))
 	_scroll_to_top()
+	# A save taken with a drop still unanswered asks about it again on the way back
+	# in — the question is the only place the item exists.
+	_pump_drops()
 
 # One offered card as plain data. The enemy's pool is recorded alongside its id
 # because a goal-enemy and a boss can't be told apart by id alone on the way back.
@@ -843,6 +841,9 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	# Snapshot where everyone stands BEFORE the resolve, so the animation can play
 	# the strike and the advance back from the old positions to the new ones.
 	var before: Dictionary = _board.capture_positions()
+	# …and how much Health was standing before any of them swung, so the board can
+	# take it down one strike at a time instead of showing the total up front.
+	var hp_before: int = GameState.hp
 	# And what tier / board this game was fought on, so the step into the next one
 	# can be announced rather than just silently happening (§7.3).
 	var tier_before: int = _current_tier()
@@ -908,20 +909,20 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 		# Repaint first, then replay the strike + advance from the snapshot: the
 		# board is already in its final state, the animation just shows how it got
 		# there. The end-of-run screen waits for it to land (_end_resolve).
-		_hold_for_resolve(_board.animate_resolve(before, res))
+		_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
 		return
 	if was_amulet and goal_met:
 		# Winning on the Amulet ends the run through GameLoop2 (-> _on_run_won),
 		# and the last advance still deserves to be seen before the win screen.
 		GameLoop2.clear_amulet()
-		_hold_for_resolve(_board.animate_resolve(before, res))
+		_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
 		return
 	_phase = Phase.SELECT
 	_build_choices()
 	_refresh()
 	# The run moved, so the recovery point moves with it.
 	autosave()
-	_hold_for_resolve(_board.animate_resolve(before, res))
+	_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
 
 # The run just stepped up a difficulty tier, which widens the battlefield by a
 # column and a row (§7.3). Reconcile the board's coordinates with its new size
@@ -945,65 +946,37 @@ func _announce_difficulty_step(tier_before: int, board_before: Vector2i) -> void
 	Notifications.notify(msg, UITheme.GOLD)
 	GameLog.add(msg, UITheme.GOLD)
 
-# --- holding the screen while the board plays -----------------------------
+# --- waiting out the board's playback --------------------------------------
 #
 # The resolve animation is the only place the run's consequences are ever SHOWN:
-# what hit you, what closed in. It used to be started at the same moment the
-# screen changed under it — the offering came back, the page scrolled to the top,
-# and the strike and the advance played to nobody. So the state advances at once
-# (nothing in the run waits on a tween) and only the VIEW is held back: the stage
-# keeps the shape it had while you were playing until the board is done.
+# what hit you, what closed in. The run's state moves on the instant the game is
+# reported (nothing here waits on a tween) and so does the SCREEN — the next
+# offering is already back on the left of the page while the board plays the
+# strikes and the advance out on the right. The two halves are side by side, so
+# neither has to wait for the other, and there is nothing to press in between.
+#
+# What IS still held back is the end-of-run screen: the blow that killed you is
+# the last thing worth watching, and a verdict dropped on top of it wipes it off
+# mid-flight. That's what `_resolving` marks now.
 
 func _hold_for_resolve(seconds: float) -> void:
 	if seconds <= 0.0 or not is_inside_tree():
-		_offer_continue()
+		_end_resolve()
 		return
 	# process_always, so a resolve that opens a modal (a reward chest pausing the
 	# tree) still finishes rather than stranding the screen mid-animation.
-	get_tree().create_timer(seconds, true, false, true).timeout.connect(_offer_continue)
+	get_tree().create_timer(seconds, true, false, true).timeout.connect(_end_resolve)
 
-# The board has stopped moving. What it just showed — who struck, who closed in,
-# what that cost — is the whole point of the resolve, and having the screen snap
-# straight back to the next offering the instant the last tween lands gives the
-# player no beat to read it in. So the animation hands over to a CONTINUE button
-# rather than to the next decision: the field stays exactly as it ended, with a
-# line saying what happened, until the player says go on.
-func _offer_continue() -> void:
-	if not _resolving:
-		return
-	if _continue_bar == null:
-		_end_resolve()
-		return
-	_continue_note.text = _result_text(GameLoop2.last_result)
-	# What pressing it leads to, so the button isn't a blind "next".
-	if _run_over_pending:
-		_continue_btn.text = "Continue  →   see how the run ended"
-	else:
-		_continue_btn.text = "Continue  →   choose the next game"
-	_continue_bar.show()
-	_continue_btn.grab_focus()
-
-# The Continue button (and any test standing in for it): release the held screen.
-func continue_resolve() -> void:
-	if not _resolving:
-		return
-	_end_resolve()
-
-# The board has finished: hand the screen over to whatever comes next — the new
-# offering, or the end-of-run screen the run has been sitting on.
+# The board has finished: hand the screen over to whatever the playback was
+# standing in front of — today, only the end-of-run screen.
 func _end_resolve() -> void:
 	if not _resolving:
 		return
 	_resolving = false
-	if _continue_bar != null:
-		_continue_bar.hide()
 	_refresh_stage()
 	if _run_over_pending:
 		_run_over_pending = false
 		_show_run_over()
-		return
-	# Back to the offering — that's the decision now, so put it back on screen.
-	_scroll_to_top()
 
 # The reward for beating a game you'd already cleared this run: +1 Dash (§4).
 # Announced on both channels — the toast for the moment, the log for the record —
@@ -1338,7 +1311,7 @@ func _build_choices() -> void:
 # --- rendering ------------------------------------------------------------
 
 # Repaint just the HUD line. Its own function because the run resources move
-# outside a loop resolve too — an item picked up from the loot tray or a chest
+# outside a loop resolve too — an item taken from a kill-drop or a chest
 # changes Health / Max Health / a verb count the instant it lands, and the numbers
 # on screen have to agree immediately.
 func _refresh_hud(_a = null) -> void:
@@ -1361,7 +1334,6 @@ func _refresh(_a = null) -> void:
 	_refresh_hud()
 	_refresh_scrolls()
 	_refresh_items()
-	_refresh_loot()
 	_stack.text = "[b]Battlefield[/b]  —  " + _stack_summary()
 	_board.refresh(_phase == Phase.PLAYING)
 	_refresh_attempts()
@@ -1410,17 +1382,17 @@ func _refresh_stage() -> void:
 		return
 	# The offering box hosts the choose-your-start cards too, so it's up in both
 	# choosing phases; the scrolls panel isn't — there's nothing to read before the
-	# run has a position. While the board is playing a resolve back, neither is up:
-	# the screen stays exactly as it was so the animation happens where the player
-	# is already looking (_hold_for_resolve).
-	var choosing: bool = (_phase == Phase.SELECT or _phase == Phase.START_SELECT) and not _resolving
+	# run has a position. Both come straight back the moment a game is reported,
+	# resolve animation or not: the board plays out beside the offering, not
+	# instead of it (_hold_for_resolve).
+	var choosing: bool = _phase == Phase.SELECT or _phase == Phase.START_SELECT
 	_select_box.visible = choosing
 	# The offering's frame goes with it, or an empty bordered box sits above the
 	# checklist between games.
 	var select_wrap = _select_box.get_meta("wrap", null)
 	if select_wrap is Control:
 		(select_wrap as Control).visible = choosing
-	_scrolls_wrap.visible = _phase == Phase.SELECT and not _resolving
+	_scrolls_wrap.visible = _phase == Phase.SELECT
 	_play_panel.visible = _phase != Phase.OVER or _resolving
 	_report_panel.visible = _phase != Phase.OVER or _resolving
 	# The report-only parts of the panel: without a game in hand there is nothing to
@@ -1910,7 +1882,8 @@ func _populate_standing_checklist() -> void:
 		# "dmg N" in words: the board's ⚔ badge is a fine-detail glyph that reads as
 		# an ✕ at list-row sizes.
 		_verify_box.add_child(_objective_row(
-			"%s — %s   (dmg %d)" % [e.goal, e.display_name, e.damage], tint))
+			"%s — %s   (dmg %d)" % [e.goal, e.display_name, e.damage], tint,
+			_boss_icon(e)))
 
 	if GameLoop2.stack.is_empty():
 		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")
@@ -1918,19 +1891,45 @@ func _populate_standing_checklist() -> void:
 
 # One read-only checklist row: the same frame the tick-box rows use, without the
 # box, so the standing list and the report step read as the same list in two
-# states.
-func _objective_row(text: String, color: Color) -> Control:
+# states. `icon` is the boss portrait, when the row belongs to one (_boss_icon).
+func _objective_row(text: String, color: Color, icon: Texture2D = null) -> Control:
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 1, color.lerp(UITheme.BORDER, 0.35)))
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 6)
+	wrap.add_child(line)
+	if icon != null:
+		line.add_child(_boss_icon_rect(icon))
 	var l := Label.new()
 	l.text = "•  " + text
 	l.add_theme_font_size_override("font_size", 13)
 	l.add_theme_color_override("font_color", color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	wrap.add_child(l)
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	line.add_child(l)
 	return wrap
+
+# A BOSS is the one thing on the checklist that isn't just another line of text:
+# it's the difficulty gate the run is standing in front of (§7.1). Its portrait
+# rides beside its name in both checklists, so "which of these is the boss" is
+# answered by looking rather than by remembering the name.
+const BOSS_ICON_SIZE := 26
+
+func _boss_icon(enemy: GoalEnemyData) -> Texture2D:
+	if enemy == null or not enemy.is_boss():
+		return null
+	return enemy.image
+
+func _boss_icon_rect(icon: Texture2D) -> Control:
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG, 4, 2, 1, Color(0.95, 0.55, 0.2)))
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	frame.tooltip_text = "Boss"
+	frame.add_child(UITheme.crisp_tex(icon, BOSS_ICON_SIZE))
+	return frame
 
 # Whether the chosen game's MAIN goal was met — true when its checkbox is ticked,
 # or when the game had no enemy/goal to meet (a free game auto-clears).
@@ -1959,6 +1958,10 @@ func _verify_row(text: String, color: Color, emphasise: bool,
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 8)
 	wrap.add_child(line)
+	# A boss's own portrait, right where its name is about to be read.
+	var boss_art: Texture2D = _boss_icon(enemy)
+	if boss_art != null:
+		line.add_child(_boss_icon_rect(boss_art))
 	var cb := CheckBox.new()
 	cb.text = text
 	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2147,8 +2150,12 @@ func _hud_shields() -> String:
 	return "[b]Shields[/b] %d" % GameState.shields
 
 func _hud_text() -> String:
+	# Health is quoted off the BOARD while a resolve plays back, so the two places
+	# it's printed can't disagree: the hero's line comes down one strike at a time
+	# (BattlefieldView.animate_resolve) and the HUD comes down with it.
+	var hp: int = _board.shown_hp() if _board != null else GameState.hp
 	return "[b]Health[/b] %d/%d   %s      [b]Tier[/b] %s      [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Push[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d  [b]Scrolls[/b] %d   [b]Chests[/b] %d" % [
-		GameState.hp, GameState.max_hp, _hud_shields(),
+		hp, GameState.max_hp, _hud_shields(),
 		RunDifficulty.tier_name(_current_tier()),
 		GameState.bash, GameState.dash_charges, GameState.push, GameState.transmute,
 		GameState.scramble, GameState.bombs, GameState.keys,
@@ -2194,14 +2201,19 @@ func _refresh_scrolls() -> void:
 		row.add_child(read_btn)
 		_scrolls_box.add_child(row)
 
-# Owned items in the pack column, each with its rarity-tinted name and — for
-# USABLE / CHARGED actives — a Use button that's enabled only when the item can
-# fire right now (a charged item needs a full bar; charged bars show their fill).
-# Passive / triggered items list without a button. Mirrors the scrolls panel.
+# The pack, as a STRIP of small tokens above the board rather than a list of
+# named rows beside it. A run ends up carrying a dozen relics and a dozen named
+# rows is a column taller than the battlefield; at 34px a whole pack is two rows
+# of art. The name, the rarity, what it does and how to fire it all move into the
+# tooltip, which is where they were being read from anyway.
 #
-# The panel stays readable while a game is being reported, but the actives are
-# locked for that stretch: the report step is mid-resolve, so firing an item there
-# would land between "played the game" and "said what happened".
+# An ACTIVE (USABLE / CHARGED) token is the button: clicking it fires the item
+# when it can fire, and it wears a gold ring to say so. Passive and triggered
+# items are just art. Actives are locked while a game is being reported — the
+# report step is mid-resolve, so firing an item there would land between "played
+# the game" and "said what happened".
+const ITEM_TOKEN := 34
+
 func _refresh_items() -> void:
 	if _items_box == null:
 		return
@@ -2213,77 +2225,63 @@ func _refresh_items() -> void:
 	for item in GameState.inventory:
 		if not (item is ItemData):
 			continue
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		row.add_child(UITheme.crisp_tex(item.image, 28))
-		var name_lbl := Label.new()
-		var label_text: String = item.display_name
-		if item.is_charged():
-			label_text += "  [%d/%d]" % [item.current_charge, item.max_charge()]
-		name_lbl.text = label_text
-		name_lbl.tooltip_text = item.description
-		name_lbl.add_theme_font_size_override("font_size", 12)
-		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		name_lbl.add_theme_color_override("font_color", UITheme.rarity_color(int(item.rarity)))
-		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(name_lbl)
-		# Only actives get a Use button; a charged item shows a disabled "Charging"
-		# until its bar fills.
-		if item.kind == ItemData.ItemKind.USABLE or item.is_charged():
-			var use_btn := Button.new()
-			var ready: bool = GameState.can_fire_item(item) and not reporting
-			use_btn.text = "Use" if ready else ("Charging" if item.is_charged() else "Use")
-			use_btn.disabled = not ready
-			if reporting:
-				use_btn.tooltip_text = "Report this game first."
-			var target_item: ItemData = item
-			use_btn.pressed.connect(func(): use_item(target_item))
-			row.add_child(use_btn)
-		_items_box.add_child(row)
+		_items_box.add_child(_item_token(item, reporting))
 
-# The loot tray under the inventory: one row per drop waiting to be claimed, with
-# the item's art, its rarity-tinted name, and the Claim / Skip pair. Loot lives
-# beside the board rather than on it, so a packed grid never hides a drop and the
-# melee column stays about enemies (§8).
-func _refresh_loot() -> void:
-	if _loot_box == null:
-		return
-	_clear(_loot_box)
-	if _drop_queue.is_empty() or _phase == Phase.OVER:
-		_loot_box.add_child(_empty_note("no drops waiting"))
-		return
-	for drop in _drop_queue:
-		_loot_box.add_child(_loot_row(drop))
-
-# One waiting drop. The whole row is tinted by rarity so a Legendary reads at a
-# glance from across the screen.
-func _loot_row(drop: Dictionary) -> Control:
-	var item: ItemData = drop["item"]
+func _item_token(item: ItemData, reporting: bool) -> Control:
 	var tint: Color = UITheme.rarity_color(int(item.rarity))
-	var wrap := PanelContainer.new()
-	wrap.add_theme_stylebox_override("panel", UITheme.flat(tint.lerp(UITheme.BG, 0.82), 6, 6, 1, tint.lerp(UITheme.BG, 0.35)))
-	wrap.tooltip_text = "%s\n%s" % [item.display_name,
-		item.description if String(item.description) != "" else "A dropped relic."]
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	row.add_child(UITheme.crisp_tex(item.image, 40))
-	var name_lbl := Label.new()
-	name_lbl.text = item.display_name
-	name_lbl.add_theme_font_size_override("font_size", 12)
-	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.add_theme_color_override("font_color", tint)
-	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(name_lbl)
-	var take := _mini_button("✓", func(): _collect_drop(drop))
-	take.tooltip_text = "Claim %s" % item.display_name
-	take.add_theme_color_override("font_color", UITheme.SUCCESS)
-	row.add_child(take)
-	var skip := _mini_button("✗", func(): _skip_drop(drop))
-	skip.tooltip_text = "Leave it on the ground"
-	row.add_child(skip)
-	wrap.add_child(row)
-	return wrap
+	var active: bool = item.kind == ItemData.ItemKind.USABLE or item.is_charged()
+	var ready: bool = active and GameState.can_fire_item(item) and not reporting
+
+	var tile := PanelContainer.new()
+	var border: Color = UITheme.GOLD if ready else tint.lerp(UITheme.BG, 0.45)
+	tile.add_theme_stylebox_override("panel",
+		UITheme.flat(tint.lerp(UITheme.BG, 0.86), 5, 3, 2 if ready else 1, border))
+	tile.tooltip_text = _item_tip(item, active, ready, reporting)
+
+	var stack := Control.new()
+	stack.custom_minimum_size = Vector2(ITEM_TOKEN, ITEM_TOKEN)
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tile.add_child(stack)
+	var art := UITheme.crisp_tex(item.image, ITEM_TOKEN)
+	art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(art)
+	# A charged item's bar is the one number that changes on its own, so it stays
+	# printed on the token instead of hiding in the tooltip.
+	if item.is_charged():
+		var charge := Label.new()
+		charge.text = "%d/%d" % [item.current_charge, item.max_charge()]
+		charge.add_theme_font_size_override("font_size", 9)
+		charge.add_theme_color_override("font_color", UITheme.GOLD if ready else UITheme.TEXT_DIM)
+		charge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		charge.add_theme_constant_override("outline_size", 4)
+		charge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		charge.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE)
+		stack.add_child(charge)
+
+	if ready:
+		tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var target_item: ItemData = item
+		tile.gui_input.connect(func(ev: InputEvent):
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				use_item(target_item))
+	return tile
+
+# Everything the old named row said, in the tooltip the token carries.
+func _item_tip(item: ItemData, active: bool, ready: bool, reporting: bool) -> String:
+	var tip: String = "%s  ·  %s" % [item.display_name, UITheme.rarity_name(int(item.rarity))]
+	if item.is_charged():
+		tip += "  [%d/%d]" % [item.current_charge, item.max_charge()]
+	if String(item.description) != "":
+		tip += "\n%s" % item.description
+	if active:
+		if ready:
+			tip += "\n▸ Click to use."
+		elif reporting:
+			tip += "\n▸ Report this game first."
+		elif item.is_charged():
+			tip += "\n▸ Charging."
+	return tip
 
 # The dim "there's nothing here" line the pack panels show when they're empty.
 func _empty_note(text: String) -> Label:
@@ -2314,9 +2312,10 @@ func _stack_summary() -> String:
 
 # --- kill-drops (§8) -------------------------------------------------------
 
-# A defeated enemy dropped loot: roll an item and queue it in the loot tray under
-# the inventory, where it waits to be claimed or skipped. Skipped once the run is
-# over (win/lose screens take over the board).
+# A defeated enemy dropped loot: roll an item and queue it. The queue is drained
+# one ItemDropModal at a time (_pump_drops) — the kill ASKS whether you want what
+# fell off it, rather than leaving it in a tray to be noticed. Skipped once the
+# run is over (win/lose screens take over the board).
 func _on_enemy_defeated(_enemy: GoalEnemyData) -> void:
 	if GameLoop2.run_over:
 		return
@@ -2324,10 +2323,42 @@ func _on_enemy_defeated(_enemy: GoalEnemyData) -> void:
 	if item == null:
 		return
 	_drop_queue.append({"item": item})
-	# The resolve that produced this defeat also emits loop_changed -> _refresh,
-	# which repaints the tray; repaint here too in case the defeat came from a
-	# direct action (bomb never drops, fulfil does).
-	_refresh_loot()
+	_pump_drops()
+
+# Ask about the next waiting drop, if nothing else is already asking. Several
+# defeats in one report queue behind each other rather than stacking modals.
+#
+# Deferred, because a defeat lands in the MIDDLE of GameLoop2.beat_game: the run
+# is still mid-resolve, the board hasn't repainted and the report step hasn't
+# handed over yet. Opening on the next idle frame puts the question after all of
+# that, over a screen that has finished moving.
+func _pump_drops() -> void:
+	if _drop_modal != null and is_instance_valid(_drop_modal):
+		return
+	if _drop_queue.is_empty() or not is_inside_tree():
+		return
+	if _phase == Phase.OVER or GameLoop2.run_over:
+		return
+	_open_next_drop.call_deferred()
+
+func _open_next_drop() -> void:
+	if _drop_modal != null and is_instance_valid(_drop_modal):
+		return
+	if _drop_queue.is_empty() or not is_inside_tree():
+		return
+	if _phase == Phase.OVER or GameLoop2.run_over:
+		return
+	var drop: Dictionary = _drop_queue[0]
+	var modal = ItemDropModal.open(self, drop["item"])
+	_drop_modal = modal
+	modal.answered.connect(func(taken: bool):
+		_drop_modal = null
+		if taken:
+			_collect_drop(drop)
+		else:
+			_skip_drop(drop)
+		# Whatever is behind it in the queue is the next question.
+		_pump_drops())
 
 # Roll one drop item from the games-first reward pool, weighted by rarity the same
 # way the RewardScreen chest roll is (§8) — minus the luck advantage, which is the
@@ -2345,14 +2376,13 @@ func _collect_drop(drop: Dictionary) -> void:
 	var item: ItemData = drop["item"]
 	GameState.add_item(item)
 	GameLog.add("Collected %s." % item.display_name, Color(0.7, 1.0, 0.7))
-	_refresh_loot()
+	Notifications.notify("Took %s." % item.display_name, UITheme.rarity_color(int(item.rarity)))
 
 func _skip_drop(drop: Dictionary) -> void:
 	if not _drop_queue.has(drop):
 		return
 	_drop_queue.erase(drop)
-	GameLog.add("Skipped %s." % String(drop["item"].display_name), Color(0.8, 0.8, 0.8))
-	_refresh_loot()
+	GameLog.add("Left %s behind." % String(drop["item"].display_name), Color(0.8, 0.8, 0.8))
 
 
 func _result_text(res: Dictionary) -> String:
@@ -2434,8 +2464,8 @@ func _show_banner(text: String, color: Color) -> void:
 	# drops to the page bottom showing the field the run ended on.
 	_refresh_stage()
 	_refresh_attempts()
-	# The run is over, so any loot still on the ground is gone with it.
-	_refresh_loot()
+	# The run is over, so anything still waiting to be asked about goes with it.
+	_drop_queue.clear()
 
 # --- UI construction ------------------------------------------------------
 
@@ -2552,33 +2582,6 @@ func _build_ui() -> void:
 	_select_box.set_meta("wrap", select_panel)
 	_left_col.add_child(select_panel)
 
-	# The hand-over from the resolve animation to the next decision, mounted at the
-	# TOP of the left column — the slot the offering itself comes back into, so the
-	# button sits exactly where the thing it unlocks will appear, and (unlike under
-	# the board, which is a screen tall on a big grid) it is on screen without a
-	# scroll at every board size.
-	_continue_bar = PanelContainer.new()
-	_continue_bar.add_theme_stylebox_override("panel",
-		UITheme.flat(UITheme.GOLD.lerp(UITheme.BG, 0.86), 12, 10, 2, UITheme.GOLD.lerp(UITheme.BG, 0.45)))
-	_continue_bar.hide()
-	var cont_box := VBoxContainer.new()
-	cont_box.add_theme_constant_override("separation", 6)
-	_continue_bar.add_child(cont_box)
-	_continue_note = _panel_label()
-	_continue_note.add_theme_color_override("default_color", UITheme.TEXT_DIM)
-	cont_box.add_child(_continue_note)
-	_continue_btn = Button.new()
-	_continue_btn.text = "Continue  →"
-	_continue_btn.custom_minimum_size = Vector2(0, 40)
-	_continue_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_continue_btn.add_theme_font_size_override("font_size", 15)
-	_continue_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.GOLD.lerp(UITheme.BG, 0.72), 8, 8, 2, UITheme.GOLD.lerp(UITheme.BG, 0.35)))
-	_continue_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.GOLD.lerp(UITheme.BG, 0.55), 8, 8, 2, UITheme.GOLD))
-	_continue_btn.add_theme_color_override("font_color", UITheme.GOLD)
-	_continue_btn.pressed.connect(continue_resolve)
-	cont_box.add_child(_continue_btn)
-	_left_col.add_child(_continue_bar)
-
 	_select_head = _section("Choose a game to travel to:")
 	_select_box.add_child(_select_head)
 	# Controls row (Dash) — populated per refresh.
@@ -2614,13 +2617,33 @@ func _build_ui() -> void:
 	_play_panel.add_theme_constant_override("separation", 6)
 	_report_panel.add_child(_play_panel)
 
-	# Right column: the board, then the pack beneath it. Shrink-wrapped to the
+	# Right column: the pack, then the board under it. Shrink-wrapped to the
 	# board's real width so the checklist gets everything else.
 	_right_col = VBoxContainer.new()
 	_right_col.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_right_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_right_col.add_theme_constant_override("separation", 8)
 	main_row.add_child(_right_col)
+
+	# What you're carrying, in a strip ABOVE the field it gets spent on. It used to
+	# sit under the board, which on a 7x7 grid is a screen and a half down the page:
+	# the items were out of sight at exactly the moment the board was telling you
+	# how much trouble you were in. As a strip it is only as tall as the rows of
+	# tokens it needs (see _refresh_items), so the board keeps the room.
+	_inv_wrap = PanelContainer.new()
+	_inv_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 8, 1))
+	_inv_wrap.size_flags_horizontal = Control.SIZE_FILL
+	var inv_box := VBoxContainer.new()
+	inv_box.add_theme_constant_override("separation", 4)
+	_inv_wrap.add_child(inv_box)
+	var inv_head := _section("🎒  Inventory")
+	inv_head.add_theme_font_size_override("font_size", 13)
+	inv_box.add_child(inv_head)
+	_items_box = HFlowContainer.new()
+	_items_box.add_theme_constant_override("h_separation", 4)
+	_items_box.add_theme_constant_override("v_separation", 4)
+	inv_box.add_child(_items_box)
+	_right_col.add_child(_inv_wrap)
 
 	_stage_panel = PanelContainer.new()
 	_stage_panel.add_theme_stylebox_override("panel",
@@ -2639,6 +2662,9 @@ func _build_ui() -> void:
 	stage_box.add_child(_board_head)
 
 	_board = BattlefieldView.new()
+	# The HUD's Health quotes the board's, so it has to repaint when the board's
+	# does — that's every strike of a resolve playback.
+	_board.shown_hp_changed.connect(func(_hp): _refresh_hud())
 	_board.push_requested.connect(push_follower)
 	_board.bomb_requested.connect(bomb_follower)
 	_board.enemy_inspected.connect(_show_enemy_info)
@@ -2702,11 +2728,6 @@ func _build_ui() -> void:
 	done.add_theme_font_size_override("font_size", 15)
 	done.pressed.connect(func(): report(_goal_met()))
 	_play_panel.add_child(done)
-
-	# The pack lives under the board: what you're carrying and what's waiting on the
-	# ground belong with the field, not with the checklist you're ticking.
-	_pack_col = _build_pack_column()
-	_right_col.add_child(_pack_col)
 
 	_scrolls_wrap = VBoxContainer.new()
 	_scrolls_wrap.add_theme_constant_override("separation", 4)
@@ -2794,43 +2815,6 @@ func _refresh_attempts() -> void:
 	var live: bool = _phase == Phase.PLAYING and not GameLoop2.run_over
 	_attempt_btn.disabled = not live
 	_attempt_undo.disabled = not live or attempts == 0
-
-# The pack that sits UNDER the grid in the right column: everything the player is
-# carrying, then the loot tray. Both panels are always mounted — only their
-# contents change — so the column doesn't jump around as items come and go. It
-# fills the column, so it's as wide as the board above it (and falls back to
-# PACK_WIDTH when the board is put away).
-const PACK_WIDTH := 300
-
-func _build_pack_column() -> Control:
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
-	col.custom_minimum_size = Vector2(PACK_WIDTH, 0)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-
-	var inv_wrap := PanelContainer.new()
-	inv_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 10, 1))
-	var inv := VBoxContainer.new()
-	inv.add_theme_constant_override("separation", 6)
-	inv.add_child(_section("🎒  Inventory"))
-	_items_box = VBoxContainer.new()
-	_items_box.add_theme_constant_override("separation", 4)
-	inv.add_child(_items_box)
-	inv_wrap.add_child(inv)
-	col.add_child(inv_wrap)
-
-	var loot_wrap := PanelContainer.new()
-	loot_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.BG, UITheme.GOLD.lerp(UITheme.BORDER, 0.55), 10, 10, 1))
-	var loot := VBoxContainer.new()
-	loot.add_theme_constant_override("separation", 6)
-	loot.add_child(_section("✦  Loot on the ground"))
-	_loot_box = VBoxContainer.new()
-	_loot_box.add_theme_constant_override("separation", 4)
-	loot.add_child(_loot_box)
-	loot_wrap.add_child(loot)
-	col.add_child(loot_wrap)
-	return col
 
 func _enemy_image_rect() -> TextureRect:
 	var t := TextureRect.new()

@@ -32,11 +32,14 @@ const COL_PATH_BG := Color(0.29, 0.27, 0.25)      # on the road to the amulet
 const COL_VISITED_BG := Color(0.16, 0.16, 0.16)   # already behind you
 const COL_ARROW := Color(0.30, 0.78, 0.42, 0.85)  # shortest-path arrow green
 
-# Layout constants (pre-zoom). Mirrors the box/gap sizing in generateMapView.
+# Layout constants (pre-zoom). Mirrors the box/gap sizing in generateMapView,
+# with the vertical gap pulled in: at 6-8 steps the ladder is nine rows deep, and
+# a gap bigger than half a rung spent more of the window on nothing than on the
+# route it exists to show.
 const BOX := Vector2(150, 48)
-const H_GAP := 22.0
-const V_GAP := 60.0
-const PAD := 40.0
+const H_GAP := 14.0
+const V_GAP := 40.0
+const PAD := 22.0
 
 var _current: StringName = &""
 var _amulet: StringName = &""
@@ -72,13 +75,24 @@ var _dragging: bool = false
 
 # Where the panel opens: left of centre, clear of the Atlas's own top-right info
 # card, and clear of its header and legend bars.
-const PANEL_SIZE := Vector2(760, 560)
+#
+# The window is sized for the ROUTE, and the route got longer: starts are rolled
+# 6-8 games from the Amulet (RunGraph.MIN/MAX_PATH_LENGTH), so the opening map —
+# the one every start card offers — is an eight-layer ladder that has to be read
+# whole. A 760x560 window fitted that at a zoom where the names were gone.
+const PANEL_SIZE := Vector2(940, 680)
 const PANEL_MARGIN := Vector2(44, 96)
+# How much of the screen the window is NOT allowed to take, per axis: enough to
+# see the sky is still there behind it, and no more.
+const VIEW_MARGIN := Vector2(60, 72)
 # Clear space kept between the ladder and the window's left and right edges.
 const LADDER_PAD_X := 54.0
 # How far the opening fit is allowed to shrink the ladder. Past this the game
 # names stop being readable and scrolling a bigger ladder is the better deal.
-const FIT_ZOOM_MIN := 0.55
+# The node labels hold a 9px floor of their own (_node_box), so a route squeezed
+# this far is still a route with names on it.
+const FIT_ZOOM_MIN := 0.40
+const FIT_SLACK := 0.96
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -203,8 +217,7 @@ func _build_floating_panel() -> PanelContainer:
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	var view: Vector2 = get_viewport_rect().size
-	var box := Vector2(minf(PANEL_SIZE.x, maxf(360.0, view.x - 80.0)),
-		minf(PANEL_SIZE.y, maxf(280.0, view.y - 150.0)))
+	var box: Vector2 = view_ceiling()
 	panel.custom_minimum_size = box
 	panel.size = box
 	# Over a chart it sits off to the left; on its own it centres.
@@ -435,30 +448,47 @@ func _node_box(id: StringName, rect: Rect2) -> Control:
 		bg = COL_VISITED_BG
 		border = UITheme.BORDER.lerp(UITheme.BG, 0.4)
 
-	var panel := PanelContainer.new()
+	# A Panel, NOT a PanelContainer. A container takes its child's minimum size as
+	# its own, and a shrunk rung holding a name like "Crypt of the NecroDancer"
+	# wraps to four lines and grows the box back to fit them — straight over the
+	# rung below it. The box owns its size here; the name is clipped into it.
+	var panel := Panel.new()
 	panel.position = rect.position
 	panel.custom_minimum_size = rect.size
 	panel.size = rect.size
-	panel.add_theme_stylebox_override("panel", UITheme.flat(bg, 6, 6, border_w, border))
-
-	# Over a star chart, a node is a way IN to it: click a rung of the ladder and
-	# the sky flies to that game and opens its card. Never for a hidden Amulet —
-	# the chart would name what this map is deliberately not naming.
-	if _atlas != null and not (_hide_amulet and is_amulet):
-		panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.clip_contents = true
+	panel.add_theme_stylebox_override("panel", UITheme.flat(bg, 6, 0, border_w, border))
+	# The full name, always — a rung whose name was clipped to fit still has to be
+	# identifiable, and over a chart the node is also a way IN to it: click a rung
+	# and the sky flies to that game and opens its card. Never for a hidden Amulet
+	# — the chart would name what this map is deliberately not naming.
+	var secret_amulet: bool = _hide_amulet and is_amulet
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	if _atlas != null and not secret_amulet:
 		panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		panel.tooltip_text = "%s — click to find it on the star chart." % node_name(id)
 		panel.gui_input.connect(func(event): _on_node_input(event, id))
 	else:
-		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.tooltip_text = node_name(id)
 
 	var label := Label.new()
-	label.text = prefix + node_name(id)
+	# A shrunk rung is barely wider than the glyph, and a name is worth more than
+	# a marker the colour already carries.
+	label.text = (prefix if _zoom >= 0.62 else "") + node_name(id)
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	label.offset_left = 4
+	label.offset_right = -4
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# Clipped rather than wrapped forever: what doesn't fit the rung is trimmed to
+	# an ellipsis, and the whole name is a hover away (the tooltip above).
+	label.clip_text = true
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", int(11 * clampf(_zoom, 0.7, 1.4)))
+	# A floor as well as a ceiling: a long route fits by shrinking, and a rung
+	# whose name has shrunk out of legibility isn't a rung any more.
+	label.add_theme_font_size_override("font_size", maxi(9, int(11 * clampf(_zoom, 0.7, 1.4))))
 	label.add_theme_color_override("font_color",
 		Color.WHITE if (is_current or is_amulet) else UITheme.TEXT)
 	panel.add_child(label)
@@ -571,9 +601,7 @@ func _settle() -> void:
 func _fit_panel() -> void:
 	if _panel == null or _canvas_holder == null or _rows == null:
 		return
-	var view: Vector2 = get_viewport_rect().size
-	var ceiling := Vector2(minf(PANEL_SIZE.x, maxf(360.0, view.x - 80.0)),
-		minf(PANEL_SIZE.y, maxf(280.0, view.y - 150.0)))
+	var ceiling: Vector2 = view_ceiling()
 	var chrome: Vector2 = _chrome()
 	var ladder: Vector2 = _canvas_holder.custom_minimum_size
 	# Height stacks (the rows sit under each other); width overlays (the widest
@@ -587,6 +615,16 @@ func _fit_panel() -> void:
 	# Resizing can leave the window hanging off the screen; the header must stay
 	# grabbable.
 	_move_panel(_panel.position)
+
+# The biggest box the window is allowed to be: PANEL_SIZE, or whatever the
+# viewport leaves once VIEW_MARGIN is kept clear of it — and never so small that
+# the ladder has nowhere to go. Public, because it is also what the fit-zoom
+# measures the route against and what a test checks the window against.
+func view_ceiling() -> Vector2:
+	var view: Vector2 = get_viewport_rect().size
+	return Vector2(
+		minf(PANEL_SIZE.x, maxf(360.0, view.x - VIEW_MARGIN.x)),
+		minf(PANEL_SIZE.y, maxf(280.0, view.y - VIEW_MARGIN.y)))
 
 # The window minus the ladder: header, note, journey, legend, and every margin,
 # separator and border around them. Measured rather than tallied by hand — the
@@ -609,15 +647,16 @@ func _chrome() -> Vector2:
 func _fit_zoom() -> float:
 	if _canvas_holder == null:
 		return 1.0
-	var view: Vector2 = get_viewport_rect().size
-	var ceiling := Vector2(minf(PANEL_SIZE.x, maxf(360.0, view.x - 80.0)),
-		minf(PANEL_SIZE.y, maxf(280.0, view.y - 150.0)))
+	var ceiling: Vector2 = view_ceiling()
 	var room := Vector2(ceiling.x - LADDER_PAD_X, ceiling.y - _chrome().y)
 	var ladder: Vector2 = _canvas_holder.custom_minimum_size
 	if room.x <= 0.0 or room.y <= 0.0 or ladder.x <= 0.0 or ladder.y <= 0.0:
 		return 1.0
 	# `ladder` is measured at the CURRENT zoom, so the ratio scales it from there.
-	var fit: float = _zoom * minf(room.x / ladder.x, room.y / ladder.y)
+	# FIT_SLACK keeps a hair of room in hand: a route fitted to the last pixel
+	# raises a scrollbar for two pixels of overshoot, and the scrollbar then eats
+	# the room the fit was measured against.
+	var fit: float = _zoom * minf(room.x / ladder.x, room.y / ladder.y) * FIT_SLACK
 	return clampf(fit, FIT_ZOOM_MIN, 1.0)
 
 func _names(ids: Array) -> Array:

@@ -7,12 +7,12 @@ extends RefCounted
 # Godot main menu can drive the same start-game progression.
 
 # Path length tuning. The run opens with a CHOICE OF THREE starting games, and
-# every one of them is the same distance band from the amulet — 5 to 7 games — so
+# every one of them is the same distance band from the amulet — 6 to 8 games — so
 # picking a start is a choice of genre and route, never a choice of run length.
 # With the full imported catalog (~750 games, ~840 connections) the graph diameter
 # is large enough to support that band from several genres at once.
-const MIN_PATH_LENGTH := 5
-const MAX_PATH_LENGTH := 7
+const MIN_PATH_LENGTH := 6
+const MAX_PATH_LENGTH := 8
 const EARLY_LAYERS_FOR_SCORE := 3
 # How many starts the choose-your-start panel offers. Each comes from a DIFFERENT
 # game type (see TYPE_ORDER), so the three cards are three genres.
@@ -230,7 +230,7 @@ static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Di
 const AMULET_ATTEMPTS := 8
 
 # The best in-window start per game type for one amulet: for each type, the
-# eligible start whose route to `amulet` is 5..7 games long and whose early
+# eligible start whose route to `amulet` is 6..8 games long and whose early
 # branching is richest. Types with no start inside that band are simply absent —
 # the caller reads the SIZE of this to judge whether an amulet can fill the panel.
 static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
@@ -343,7 +343,7 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	else:
 		amulet_finalists = amulet_candidates
 	# Pick the amulet, then check it can actually SUPPLY the panel: three genres
-	# each with a start inside the 5..7 band. Most amulets can; the odd one leaves a
+	# each with a start inside the 6..8 band. Most amulets can; the odd one leaves a
 	# genre short, and rather than quietly offering a 4-hop start we try another
 	# amulet from the same finalist pool. bfs_distances is memoized, so an extra
 	# attempt is nearly free after the first. The best attempt seen is what we keep
@@ -406,7 +406,7 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 				"path_len": int(rec["path_len"]),
 				"in_window": bool(rec.get("in_window", false)),
 			})
-	# In-window starts first (the 5..7 band is the promise the panel makes), then
+	# In-window starts first (the 6..8 band is the promise the panel makes), then
 	# by early-branching score. Slicing after this sort means a relaxed option only
 	# survives when there aren't NUM_START_OPTIONS genres inside the band.
 	ranked.sort_custom(func(a, b):
