@@ -21,17 +21,29 @@ What it checks:
   * each node's Y position against the sheet's Year column (the map's Y axis is
     a chronological scale — see the year labels running down the left edge)
   * the three edge types the map draws, by stroke colour
-  * that no connection runs backwards in time (see below)
+  * connections that run backwards in time — reported, not rejected (see below)
 
 YEAR means EARLIEST PUBLIC AVAILABILITY, not 1.0 — an early-access date, or a
 demo where that is when the game started influencing others (Balatro is dated
-2023 for its demo, not its 2024 release). This is not a stylistic preference:
-it is what keeps the influence graph acyclic in time. Every one of the 988
-connections currently runs from an older game to a newer one, which is what lets
-the map use Y as a chronological axis at all and what makes layered layout cheap
-on the Godot side. Entering a 1.0 date for an influencer can push it past
-something it influenced and break that property, so this script fails loudly on
-any backward edge.
+2023 for its demo, not its 2024 release). It is the year a game started being
+available to influence others, and that is all it is.
+
+It is NOT the year the game stopped changing. A roguelike is very often a
+decades-long project — NetHack, DCSS, Cataclysm, HyperRogue, ADOM — that keeps
+being developed for years after its first release, and a game still under
+development can absolutely take an influence from something that shipped after
+it. HyperRogue (2012) picking up an idea from Crypt of the NecroDancer (2015) is
+a real event, not a data-entry mistake, and the sheet has to be able to say so.
+
+So a BACKWARD EDGE — an influence pointing at a game with an earlier year — is
+LEGAL, and nothing downstream rejects one: the importer writes it like any other
+connection, RunGraph traverses the graph undirected, and the Atlas lays out from
+hop distance rather than from years. The map simply draws that line running
+upward instead of down.
+
+They are still listed below, because a backward edge is also what a mistyped
+year looks like (entering a 1.0 date for an influencer can push it past
+something it influenced). Read the list, and leave the entries that are real.
 
 Edge types on the map (per its own legend):
     default stroke  -> "Inspired / Was Iterated Upon By"   (plain influence)
@@ -383,12 +395,17 @@ def _fmt(value):
     return str(int(value)) if float(value).is_integer() else ("%g" % value)
 
 
-def temporal_violations(sheet):
+def backward_links(sheet):
     """Connections whose influencee predates its influencer.
 
-    Year is earliest public availability, so an influence can never point
-    backwards. Same-year pairs are legal (and expected — a demo influencing
-    something shipped later the same year).
+    Legal, not a violation: Year is the year a game became available to
+    influence others, not the year it stopped being developed, and a
+    long-running project can take an influence from something newer than its
+    own first release. Returned so they can be listed and eyeballed — the same
+    shape is what a mistyped year produces — never to be rejected.
+
+    Same-year pairs are ordinary (a demo influencing something shipped later
+    the same year) and are only counted.
     """
     backward, same_year = [], 0
     for link in sheet["connections"].values():
@@ -624,15 +641,17 @@ def main():
         listing(["%s -> %s" % (a, b) for a, b in drawable], args.full)
 
     head("INTEGRITY")
-    backward, same_year = temporal_violations(sheet)
+    backward, same_year = backward_links(sheet)
     if backward:
-        print("  !! %d connection(s) run BACKWARDS in time. Year is earliest public" % len(backward))
-        print("     availability, so an influence must never point at an older game.")
-        print("     This breaks the chronological axis the map and the atlas rely on:")
+        print("  -- %d connection(s) point at a game with an EARLIER year (%d same-year)."
+              % (len(backward), same_year))
+        print("     Legal: Year is when a game became available to influence others, not")
+        print("     when it stopped being developed, and a long-running project can take")
+        print("     an influence from something newer. Listed only so a mistyped year,")
+        print("     which looks identical, gets noticed:")
         listing(backward, True)
     else:
-        print("  OK  every connection runs forward in time (%d same-year, which is legal)"
-              % same_year)
+        print("  OK  no connection points at an earlier game (%d same-year)" % same_year)
     if leaked:
         print("  !! %d 'neither creators knew about the other' link(s) are in the" % len(leaked))
         print("     connections sheet. RunGraph will treat these as traversable")

@@ -30,6 +30,15 @@ signal enemy_inspected(entry: Dictionary, col: int, is_current: bool)
 signal repainted
 
 var _battlefield: HBoxContainer
+# The amulet-pressure strip across the top of the board (§7.4): how many turns
+# the enemies take per game, why, and how big the board they take them on is.
+# This is the mechanic's home — it sits ON the thing it governs, so the pace and
+# the field it plays out on are read in one glance.
+var _pressure_panel: PanelContainer
+var _pressure_turns: Label          # "⏱ ENEMY TURNS ×2"
+var _pressure_rungs: Array = []     # the three ladder pips, far -> near
+var _pressure_why: Label            # "Amulet 4 hops away — Closing"
+var _size_label: Label              # "▦ 5×5 · Medium"
 var _hero_icon: TextureRect
 var _hero_hp: Label
 # Shields — the tries at the game in play (§3), drawn as pips over the hero:
@@ -49,6 +58,10 @@ var _badge_layer: Control
 var _enemy_nodes: Dictionary = {}    # instance -> the node currently drawing it
 var _offgrid_box: VBoxContainer      # overflow queue just off the grid's right edge
 var _fx_layer: Control               # overlay for damage numbers + sliding ghosts
+# Bodies (and their badges) currently hidden behind a travelling ghost. Held for
+# the whole multi-turn playback rather than per slide — an enemy that walks on
+# turn 1 and stands still on turn 3 has no last ghost to hand it back.
+var _hidden_parts: Array = []
 # Whether the game being played right now shows in the off-field lane. Kept from
 # the last refresh so a click can repaint without the host passing it again.
 var _show_current: bool = false
@@ -110,14 +123,20 @@ func _field_size() -> Vector2:
 
 # Lay down the backdrop: one empty panel per cell, column 1 nearest the hero.
 # Cheap and idempotent — it returns untouched unless the board actually changed
-# size, which only Mine-r Construction does (§7.3), and then it also re-sizes the
-# field so the new column and row have somewhere to be.
+# size, which a difficulty step (§7.3) or a Mine-r Construction does, and then it
+# also re-sizes the field so the new column and row have somewhere to be.
+#
+# When the board GREW, the cells that weren't there a moment ago are lit and
+# pulsed in the accent colour. The board silently becoming a size larger is the
+# kind of change a player feels ("that took longer to reach me") without ever
+# seeing, so the new ground says so itself, wherever the growth came from.
 func _rebuild_cells() -> void:
 	if _cell_layer == null:
 		return
 	var dims := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows())
 	if dims == _cells_drawn:
 		return
+	var was: Vector2i = _cells_drawn
 	_cells_drawn = dims
 	for c in _cell_layer.get_children():
 		_cell_layer.remove_child(c)
@@ -126,14 +145,41 @@ func _rebuild_cells() -> void:
 	# Every backdrop panel looks the same, so one shared StyleBox does for all of
 	# them instead of rows x cols identical copies.
 	var empty_style: StyleBox = UITheme.flat(UITheme.BG.lerp(UITheme.PANEL, 0.4), 6, 4, 1, UITheme.BORDER.lerp(UITheme.BG, 0.3))
+	# The one exception: ground that is new this repaint gets its own lit style.
+	var grew: bool = was != Vector2i.ZERO and (dims.x > was.x or dims.y > was.y)
+	var new_style: StyleBox = UITheme.flat(
+		UITheme.BG.lerp(UITheme.ACCENT, 0.22), 6, 4, 2, UITheme.ACCENT)
+	var fresh: Array = []
 	for row in range(dims.y):
 		for col in range(1, dims.x + 1):
 			var cell := PanelContainer.new()
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			cell.position = _cell_pos(row, col)
 			cell.size = Vector2(CELL, CELL)
-			cell.add_theme_stylebox_override("panel", empty_style)
+			var is_new: bool = grew and (col > was.x or row >= was.y)
+			cell.add_theme_stylebox_override("panel", new_style if is_new else empty_style)
 			_cell_layer.add_child(cell)
+			if is_new:
+				fresh.append(cell)
+	if not fresh.is_empty():
+		_pulse_new_ground(fresh, empty_style)
+
+# Breathe the just-appeared cells a couple of times, then settle them into the
+# ordinary backdrop. Purely a "look here, this is new" cue — the cells are
+# already fully functional ground.
+func _pulse_new_ground(cells: Array, settled: StyleBox) -> void:
+	if not is_inside_tree():
+		return
+	for cell: PanelContainer in cells:
+		cell.modulate = Color(1, 1, 1, 0.25)
+		var t: Tween = cell.create_tween()
+		t.set_loops(3)
+		t.tween_property(cell, "modulate:a", 1.0, 0.32).set_trans(Tween.TRANS_SINE)
+		t.tween_property(cell, "modulate:a", 0.35, 0.32).set_trans(Tween.TRANS_SINE)
+		t.chain().tween_callback(func():
+			if is_instance_valid(cell):
+				cell.modulate.a = 1.0
+				cell.add_theme_stylebox_override("panel", settled))
 
 # Top-left of grid cell (`row`, `col`) inside the board (0-based row, 1-based col).
 func _cell_pos(row: int, col: int) -> Vector2:
@@ -144,6 +190,111 @@ func _cell_pos(row: int, col: int) -> Vector2:
 func _span_size(rows: int, cols: int) -> Vector2:
 	return Vector2(cols * CELL + (cols - 1) * CELL_SEP,
 		rows * CELL + (rows - 1) * CELL_SEP)
+
+# --- the amulet-pressure strip (§7.4) --------------------------------------
+#
+# The one thing a player has to understand about this board is that the enemies
+# on it move faster the closer the run gets to the Amulet. So it is not a
+# tooltip and not a number in a HUD row — it is a strip across the top of the
+# board itself, in the band's own colour, saying the pace, the ladder it sits on,
+# and the distance that put it there. The board's SIZE rides along on the right
+# because that is the other half of the same bargain: the difficulty tier that
+# makes the enemies heavier also gives you a wider board to see them coming on.
+
+# Pip glyphs for the three-rung ladder — filled to the current band, hollow past it.
+const RUNG_ON := "▮"
+const RUNG_OFF := "▯"
+
+func _build_pressure_bar() -> Control:
+	_pressure_panel = PanelContainer.new()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	_pressure_panel.add_child(row)
+
+	_pressure_turns = Label.new()
+	_pressure_turns.add_theme_font_size_override("font_size", 14)
+	row.add_child(_pressure_turns)
+
+	# The ladder: three pips, far band on the left. Filled up to where the run
+	# stands, so "how much worse can this get?" is answerable without a tooltip.
+	var ladder := HBoxContainer.new()
+	ladder.add_theme_constant_override("separation", 2)
+	_pressure_rungs.clear()
+	for i in range(RunDifficulty.TURNS_NEAR):
+		var pip := Label.new()
+		pip.add_theme_font_size_override("font_size", 15)
+		ladder.add_child(pip)
+		_pressure_rungs.append(pip)
+	row.add_child(ladder)
+
+	_pressure_why = Label.new()
+	_pressure_why.add_theme_font_size_override("font_size", 12)
+	_pressure_why.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	row.add_child(_pressure_why)
+
+	# Pushes the board size to the far end of the strip.
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spacer)
+
+	_size_label = Label.new()
+	_size_label.add_theme_font_size_override("font_size", 12)
+	_size_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	row.add_child(_size_label)
+	return _pressure_panel
+
+# Repaint the strip from the loop. Everything on it is derived — the turn count,
+# the rung, the hop count, the board's dimensions — so there is nothing to keep
+# in sync by hand.
+func _refresh_pressure() -> void:
+	if _pressure_turns == null:
+		return
+	var turns: int = GameLoop2.enemy_turns()
+	var hops: int = GameLoop2.hops_to_amulet()
+	var band: Color = RunDifficulty.turns_band_color(turns)
+
+	_pressure_panel.add_theme_stylebox_override("panel",
+		UITheme.flat(band.lerp(UITheme.BG, 0.82), 6, 6, 1, band.lerp(UITheme.BG, 0.45)))
+	_pressure_turns.text = "⏱  ENEMY TURNS ×%d" % turns
+	_pressure_turns.add_theme_color_override("font_color", band)
+
+	for i in range(_pressure_rungs.size()):
+		var pip: Label = _pressure_rungs[i]
+		var lit: bool = i < turns
+		pip.text = RUNG_ON if lit else RUNG_OFF
+		pip.add_theme_color_override("font_color",
+			band if lit else UITheme.TEXT_FAINT)
+
+	# WHY it's that number. Without the hop count the turn count reads as a random
+	# difficulty spike rather than as the price of the route the player chose.
+	if hops < 0:
+		_pressure_why.text = "no route to the Amulet"
+	elif hops == 0:
+		_pressure_why.text = "standing ON the Amulet — %s" % RunDifficulty.turns_band_name(turns)
+	else:
+		_pressure_why.text = "Amulet %d hop%s away — %s" % [
+			hops, "" if hops == 1 else "s", RunDifficulty.turns_band_name(turns)]
+
+	var ladder_tip: String = ("Every enemy acts %d time%s per game you report.\n"
+		+ "A turn is one action: strike from the front column, or step a column closer.\n\n"
+		+ "%s\n\nRush the Amulet and they get faster; take the long way and they stay slow.") % [
+			turns, "" if turns == 1 else "s", RunDifficulty.turns_ladder_text(turns)]
+	_pressure_panel.tooltip_text = ladder_tip
+	_pressure_turns.tooltip_text = ladder_tip
+	_pressure_why.tooltip_text = ladder_tip
+
+	var tier: int = RunDifficulty.current_tier()
+	_size_label.text = "▦ %d×%d · %s" % [
+		GameLoop2.grid_cols(), GameLoop2.grid_rows(), RunDifficulty.tier_name(tier)]
+	_size_label.tooltip_text = ("The battlefield is %d columns by %d rows.\n"
+		+ "It gains a column AND a row on every difficulty step — %d×%d at Low, "
+		+ "up to %d×%d at Insane — so the tier that makes the enemies heavier also "
+		+ "gives you more ground to lose before they reach you.\n"
+		+ "Each Mine-r Construction adds another of each on top.") % [
+			GameLoop2.grid_cols(), GameLoop2.grid_rows(),
+			GameLoop2.BASE_GRID_COLS, GameLoop2.BASE_GRID_ROWS,
+			GameLoop2.BASE_GRID_COLS + RunDifficulty.grid_growth_for(RunDifficulty.MAX_TIER),
+			GameLoop2.BASE_GRID_ROWS + RunDifficulty.grid_growth_for(RunDifficulty.MAX_TIER)]
 
 # The combat verbs live with the combat: Push and Bomb sit on a toolbar attached to
 # the battlefield and act on the enemy you clicked. Each button explains why it's
@@ -233,6 +384,7 @@ func _build() -> void:
 	var outer := VBoxContainer.new()
 	outer.add_theme_constant_override("separation", 10)
 	add_child(outer)
+	outer.add_child(_build_pressure_bar())
 	outer.add_child(_build_battle_toolbar())
 	_battlefield = HBoxContainer.new()
 	_battlefield.add_theme_constant_override("separation", 14)
@@ -337,8 +489,13 @@ func refresh(show_current: bool = false) -> void:
 	_hero_shields.text = "◆".repeat(left) + "◇".repeat(spent)
 	_hero_shields.tooltip_text = "%d shield(s) left — one per lost run." % left
 
-	# The backdrop only changes when the board does (Mine-r Construction), so
-	# this is a no-op on all but the refresh that follows the pickup.
+	# The pace the enemies below move at, and the size of the board they move on.
+	_refresh_pressure()
+
+	# The backdrop only changes when the board does (a difficulty step, or a
+	# Mine-r Construction), so this is a no-op on all but the refresh that
+	# follows one — and on that one it also lights up the ground that just
+	# appeared (see _rebuild_cells).
 	_rebuild_cells()
 
 	# Clear the overlays and the overflow lane; the backdrop panels are static.
@@ -413,15 +570,21 @@ func click_enemy(instance: int, entry: Dictionary, col: int, is_current: bool) -
 	enemy_inspected.emit(entry, col, is_current)
 	refresh(_show_current)
 
-# The accent colour for an enemy whose front edge is at grid column `col`: red at
-# the front (about to strike), amber a column back, gold farther out, orange for
-# a boss.
-static func threat_color(col: int, is_boss: bool) -> Color:
+# The accent colour for an enemy: red when it strikes on the next game reported,
+# amber when it strikes on the one after, gold farther out, orange for a boss.
+#
+# `games` is how many games away its first strike is (GameLoop2.games_until_
+# strike). Callers that don't have it pass nothing, and the colour falls back to
+# reading the COLUMN as if enemies moved one square a game — which is true at one
+# turn a game and a lie at three, so anything drawing the live board should hand
+# the real number in.
+static func threat_color(col: int, is_boss: bool, games: int = -1) -> Color:
 	if is_boss:
 		return Color(0.95, 0.55, 0.2)
-	if col <= 1:
+	var away: int = games if games >= 0 else maxi(0, col - 1)
+	if away <= 0:
 		return UITheme.DANGER
-	if col == 2:
+	if away == 1:
 		return Color(1.0, 0.62, 0.24)
 	return UITheme.GOLD
 
@@ -452,7 +615,7 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 		front = mini(front, col + int(off.x))
 
 	var stun: int = int(entry.get("stun", 0))
-	var accent: Color = threat_color(front, e.is_boss())
+	var accent: Color = threat_color(front, e.is_boss(), GameLoop2.games_until_strike(entry))
 	if stun > 0:
 		accent = accent.lerp(Color(0.5, 0.7, 1.0), 0.5)
 	var inst: int = int(entry.get("instance", 0))
@@ -468,6 +631,7 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	node.size = _span_size(rows, cols)
 	node.mouse_filter = Control.MOUSE_FILTER_STOP
 	node.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	node.tooltip_text = _timing_tip(entry, e)
 	node.set_meta("instance", inst)
 	_enemy_layer.add_child(node)
 	_enemy_nodes[inst] = node
@@ -541,16 +705,38 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		accent: Color, selected: bool) -> void:
 	var stun: int = int(entry.get("stun", 0))
+
+	# TOP CENTRE — what this body does to you on the NEXT game reported: "×2" for
+	# two swings, "in 2" for two games of walking still to do. Once enemies take
+	# more than one turn a game the column alone can't answer that, and this is
+	# the number the player is actually deciding on. It shares the strip with the
+	# boss skull rather than taking a corner of its own, because the corners are
+	# spoken for and a cell is only 84px wide — a wider badge down in the ⚔ corner
+	# ran straight into the ❤ one.
+	var strikes: int = GameLoop2.attacks_next_game(entry)
+	var away: int = GameLoop2.games_until_strike(entry)
+	var top_bits: Array = []
 	if e.is_boss():
-		var skull := _corner_badge("☠", accent)
-		skull.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 2)
-		holder.add_child(skull)
+		top_bits.append("☠")
+	var timing: Color = accent
+	if strikes > 0:
+		top_bits.append("×%d" % strikes)
+		timing = UITheme.DANGER.lerp(Color.WHITE, 0.3)
+	elif away > 0:
+		top_bits.append("in %d" % away)
+		timing = UITheme.TEXT_DIM
+	if not top_bits.is_empty():
+		var top := _corner_badge(" ".join(top_bits), timing)
+		top.add_theme_color_override("font_color", timing)
+		top.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 2)
+		holder.add_child(top)
 
 	var hp: int = int(entry.get("health", e.health))
 	var hp_lbl := _corner_badge("❤%d" % hp, Color(1.0, 0.5, 0.5))
 	hp_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 2)
 	holder.add_child(hp_lbl)
 
+	# Damage PER SWING, unchanged — how many swings there are is the badge above.
 	var dmg_lbl := _corner_badge("⚔%d" % e.damage, Color(1.0, 0.8, 0.35))
 	dmg_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
 	holder.add_child(dmg_lbl)
@@ -566,6 +752,27 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		var pin := _corner_badge("▸", UITheme.ACCENT)
 		pin.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
 		holder.add_child(pin)
+
+# What this enemy does on the next game you report, in a sentence: how many
+# swings it gets and for how much, or how many games of walking it still owes.
+# The badge is the glance; this is the answer when the glance isn't enough.
+func _timing_tip(entry: Dictionary, e: GoalEnemyData) -> String:
+	var turns: int = GameLoop2.enemy_turns()
+	var strikes: int = GameLoop2.attacks_next_game(entry)
+	var away: int = GameLoop2.games_until_strike(entry)
+	var pace: String = "Enemies take %d turn%s per game right now (%s)." % [
+		turns, "" if turns == 1 else "s",
+		RunDifficulty.turns_band_name(turns).to_lower()]
+	if int(entry.get("stun", 0)) > 0:
+		pace += "\n❄ Stunned: %d of its turns go to nothing." % int(entry.get("stun", 0))
+	if strikes > 0:
+		return "%s\n%s strikes %d time%s next game — %d damage total." % [
+			pace, e.display_name, strikes, "" if strikes == 1 else "s",
+			strikes * int(e.damage)]
+	if away > 0:
+		return "%s\n%s is %d game%s of walking from its first strike." % [
+			pace, e.display_name, away, "" if away == 1 else "s"]
+	return "%s\n%s is waiting off the field — it can't reach you yet." % [pace, e.display_name]
 
 # A single full-rect Control child of a cell PanelContainer, inside which art and
 # corner-anchored overlays lay out freely (the PanelContainer stretches this one
@@ -642,9 +849,24 @@ func _offgrid_token(entry: Dictionary, is_current: bool = false) -> Control:
 const FX_ATTACK_TIME: float = 0.55   # how long the front-line strike phase runs
 const FX_SLIDE_TIME: float = 0.34    # how long the advance slide takes
 
-# Where every enemy is drawn right now: instance -> global Rect2 of its cell (or
-# off-field token). Captured before a resolve and again after, so the difference
-# is exactly the movement to animate.
+# A node's rect in the FX LAYER'S OWN SPACE rather than in global coordinates.
+#
+# Everything the resolve animation draws is positioned this way, and it has to
+# be: the page re-lays out between the snapshot and the playback — reporting a
+# game hides the whole offering above the board, and the host may scroll the page
+# while the ghosts are still in flight — so a global rect captured before that
+# shift points hundreds of pixels away from the board by the time something is
+# drawn at it. The board's offset INSIDE the view never changes, so a local rect
+# survives every one of those moves.
+func _local_rect(node: Control) -> Rect2:
+	var r: Rect2 = node.get_global_rect()
+	if _fx_layer == null:
+		return r
+	return Rect2(r.position - _fx_layer.get_global_rect().position, r.size)
+
+# Where every enemy is drawn right now: instance -> Rect2 (FX-layer space) of its
+# cell or off-field token. Captured before a resolve and again after, so the
+# difference is exactly the movement to animate.
 func capture_positions() -> Dictionary:
 	var out: Dictionary = {}
 	if _battlefield == null:
@@ -652,11 +874,11 @@ func capture_positions() -> Dictionary:
 	for inst in _enemy_nodes:
 		var node: Control = _enemy_nodes[inst]
 		if is_instance_valid(node):
-			out[int(inst)] = node.get_global_rect()
+			out[int(inst)] = _local_rect(node)
 	if _offgrid_box != null:
 		for tok in _offgrid_box.get_children():
 			if tok.has_meta("instance") and int(tok.get_meta("instance")) > 0:
-				out[int(tok.get_meta("instance"))] = tok.get_global_rect()
+				out[int(tok.get_meta("instance"))] = _local_rect(tok)
 	return out
 
 # The holder Control of whichever node currently draws `instance`, so it can be
@@ -680,10 +902,21 @@ func _badges_for_instance(instance: int) -> Control:
 	return null
 
 func clear_fx() -> void:
+	# A playback cut short must not leave a body invisible behind a ghost that
+	# will never land, so the reveal happens here too.
+	_reveal_hidden()
 	if _fx_layer == null:
 		return
 	for c in _fx_layer.get_children():
 		c.queue_free()
+
+# Show every body a ghost was standing in for. Idempotent, and safe against the
+# nodes having been rebuilt by a repaint mid-playback.
+func _reveal_hidden() -> void:
+	for part in _hidden_parts:
+		if is_instance_valid(part):
+			part.modulate.a = 1.0
+	_hidden_parts.clear()
 
 # Play back the resolve the player just triggered: the front line strikes (each
 # attacker flashes and throws its damage number at the hero, who recoils), then
@@ -699,38 +932,156 @@ func animate_resolve(before: Dictionary, res: Dictionary) -> float:
 	clear_fx()
 	var after: Dictionary = capture_positions()
 
-	# 1. The strike: flash each attacker where it stood and float its damage.
-	var hero_rect: Rect2 = _hero_icon.get_global_rect()
+	# One playback per TURN (§7.4). Each turn is the same beat the board has
+	# always played — the front line strikes, then the field closes up — and the
+	# whole point of the mechanic is that near the Amulet you watch that beat land
+	# three times instead of once. Collapsing it into a single slide would hide
+	# exactly the thing the player needs to feel.
+	var frames: Array = _turn_rect_frames(before, after, res)
+	var turns: int = maxi(1, frames.size() - 1)
+	var elapsed: float = 0.0
+	for turn in range(turns):
+		var from_frame: Dictionary = frames[turn]
+		var to_frame: Dictionary = frames[turn + 1]
+		var struck: bool = _play_turn_strikes(turn, from_frame, res, elapsed)
+		# The slide waits for its own turn's strike to land, and only for that:
+		# a turn where nothing attacked starts moving immediately.
+		var slide_at: float = elapsed + (FX_ATTACK_TIME if struck else 0.0)
+		var slid: bool = _play_turn_slides(from_frame, to_frame, slide_at)
+		# A turn nobody acted on costs no time — an empty board resolves as
+		# instantly as it always did.
+		if struck or slid:
+			# The counter only earns its place when there is more than one turn to
+			# count; at one turn a game it would be noise over every single report.
+			if turns > 1:
+				_spawn_turn_counter(turn + 1, turns, elapsed)
+			elapsed = slide_at + (FX_SLIDE_TIME if slid else 0.0)
+	# Whatever the ghosts were standing in for comes back at the end of the whole
+	# playback, not at the end of each turn: a body that moved on turn 1 and then
+	# stood still has no turn-3 ghost to hand it back.
+	if elapsed > 0.0:
+		_after(elapsed, _reveal_hidden)
+	else:
+		_reveal_hidden()
+	return elapsed
+
+# The board's geometry at the start of each turn, as instance -> global Rect2.
+# frames[0] is where everyone stood before the resolve and frames[n] where they
+# ended up; the ones between are rebuilt from the grid coordinates the loop
+# snapshotted per turn (res.turn_frames), because those positions were never
+# drawn and so cannot be captured from live nodes.
+func _turn_rect_frames(before: Dictionary, after: Dictionary, res: Dictionary) -> Array:
+	var snapshots: Array = res.get("turn_frames", [])
+	var frames: Array = [before]
+	for i in range(snapshots.size()):
+		# The last snapshot IS the board as drawn, so use the real rects for it —
+		# they carry the off-field lane's layout, which grid maths can't derive.
+		if i == snapshots.size() - 1:
+			frames.append(after)
+			continue
+		var frame: Dictionary = {}
+		var snap: Dictionary = snapshots[i]
+		for inst in snap.keys():
+			var rect: Variant = _grid_rect_for(int(inst), snap[inst])
+			# No rect (off-grid, or an enemy that has since left the board): hold it
+			# wherever it was last seen so it doesn't teleport to the origin.
+			frame[int(inst)] = rect if rect != null else (
+				after.get(int(inst)) if after.has(int(inst)) else before.get(int(inst)))
+		frames.append(frame)
+	if frames.size() == 1:
+		frames.append(after)
+	return frames
+
+# The global Rect2 an enemy's footprint would occupy standing at `at` =
+# Vector2i(col, row). Null when that isn't a spot on the board (the off-grid
+# queue), since the overflow lane is laid out by a container, not by grid maths.
+func _grid_rect_for(instance: int, at: Vector2i):
+	if _field == null or at.x > GameLoop2.grid_cols():
+		return null
+	var entry: Dictionary = _stack_entry(instance)
+	var e: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
+	if e == null:
+		return null
+	return Rect2(_local_rect(_field).position + _cell_pos(at.y, at.x),
+		_span_size(e.footprint_rows(), e.footprint_cols()))
+
+# Play the strikes belonging to one turn, from the positions the attackers held
+# when they threw them. Returns whether anything actually connected.
+func _play_turn_strikes(turn: int, frame: Dictionary, res: Dictionary,
+		delay: float) -> bool:
+	var hero_rect: Rect2 = _local_rect(_hero_icon)
 	var struck: bool = false
 	for a in res.get("attacks", []):
 		if not (a is Dictionary) or not a.has("damage"):
 			continue
+		# Attacks logged before the turn field existed (a restored save, a test
+		# building a result by hand) all belong to the first turn.
+		if int(a.get("turn", 0)) != turn:
+			continue
 		var inst: int = int(a.get("instance", 0))
-		if not before.has(inst):
+		if not frame.has(inst):
 			continue
 		struck = true
-		var from: Rect2 = before[inst]
-		_spawn_strike_flash(from)
-		_spawn_damage_number(int(a["damage"]), from, hero_rect)
+		var from: Rect2 = frame[inst]
+		_after(delay, func():
+			_spawn_strike_flash(from)
+			_spawn_damage_number(int(a["damage"]), from, hero_rect))
 	if struck:
-		_punch_hero()
+		_after(delay, _punch_hero)
+	return struck
 
-	# 2. The advance: ghost-slide every enemy whose cell changed, after the strike
-	#    has played. The real art stays hidden until its ghost lands.
+# Slide every body whose square changed over one turn, starting `delay` seconds
+# into the playback.
+func _play_turn_slides(from_frame: Dictionary, to_frame: Dictionary, delay: float) -> bool:
 	var slid: bool = false
-	for inst in after.keys():
-		if not before.has(inst):
+	for inst in to_frame.keys():
+		if not from_frame.has(inst):
 			continue
-		var from_rect: Rect2 = before[inst]
-		var to_rect: Rect2 = after[inst]
+		var from_rect: Rect2 = from_frame[inst]
+		var to_rect: Rect2 = to_frame[inst]
 		if from_rect.position.distance_to(to_rect.position) < 2.0:
 			continue
 		slid = true
-		_spawn_slide_ghost(inst, from_rect, to_rect)
+		_spawn_slide_ghost(int(inst), from_rect, to_rect, delay)
+	return slid
 
-	if slid:
-		return FX_ATTACK_TIME + FX_SLIDE_TIME
-	return FX_ATTACK_TIME if struck else 0.0
+# Run `fn` after `delay` seconds of the playback (immediately at delay 0). One
+# helper so every phase of a multi-turn resolve is scheduled the same way.
+func _after(delay: float, fn: Callable) -> void:
+	if delay <= 0.0:
+		fn.call()
+		return
+	var t := create_tween()
+	t.tween_interval(delay)
+	t.tween_callback(fn)
+
+# "TURN 2 / 3" over the board as each turn opens — the count is the mechanic, so
+# it is spelled out rather than left to be inferred from how many times the hero
+# flinched.
+func _spawn_turn_counter(turn: int, turns: int, delay: float) -> void:
+	if _field == null:
+		return
+	var band: Color = RunDifficulty.turns_band_color(turns)
+	var rect: Rect2 = _local_rect(_field)
+	_after(delay, func():
+		var lbl := Label.new()
+		lbl.text = "TURN %d / %d" % [turn, turns]
+		lbl.add_theme_font_size_override("font_size", 28)
+		lbl.add_theme_color_override("font_color", band)
+		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+		lbl.add_theme_constant_override("outline_size", 7)
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_fx_layer.add_child(lbl)
+		# Inside the board's top edge, not above it: the strip and the verb toolbar
+		# live up there, and a counter drawn over them reads as part of the chrome
+		# instead of as something happening on the field.
+		lbl.position = rect.position + Vector2(rect.size.x * 0.5 - 60, 30)
+		var t := lbl.create_tween()
+		t.set_parallel(true)
+		t.tween_property(lbl, "position", lbl.position - Vector2(0, 22), 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		t.tween_property(lbl, "modulate:a", 0.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		t.set_parallel(false)
+		t.tween_callback(lbl.queue_free))
 
 # A logged attempt, played on the hero (§3): a lost run pops one shield pip off and
 # floats what it cost. `cost` is "shield" while any are left, "health" once they're
@@ -759,11 +1110,11 @@ func _float_over_hero(text: String, color: Color) -> void:
 	lbl.add_theme_constant_override("outline_size", 6)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fx_layer.add_child(lbl)
-	var from: Rect2 = _hero_icon.get_global_rect()
-	lbl.global_position = from.position + Vector2(from.size.x * 0.3, 0)
+	var from: Rect2 = _local_rect(_hero_icon)
+	lbl.position = from.position + Vector2(from.size.x * 0.3, 0)
 	var t := lbl.create_tween()
 	t.set_parallel(true)
-	t.tween_property(lbl, "global_position", lbl.global_position - Vector2(0, 46), 0.7).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t.tween_property(lbl, "position", lbl.position - Vector2(0, 46), 0.7).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	t.tween_property(lbl, "modulate:a", 0.0, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	t.set_parallel(false)
 	t.tween_callback(lbl.queue_free)
@@ -788,7 +1139,7 @@ func _spawn_strike_flash(rect: Rect2) -> void:
 	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flash.size = rect.size
 	_fx_layer.add_child(flash)
-	flash.global_position = rect.position
+	flash.position = rect.position
 	var t := flash.create_tween()
 	t.tween_property(flash, "modulate:a", 0.0, 0.42).set_trans(Tween.TRANS_SINE)
 	t.tween_callback(flash.queue_free)
@@ -803,11 +1154,11 @@ func _spawn_damage_number(amount: int, from: Rect2, hero: Rect2) -> void:
 	lbl.add_theme_constant_override("outline_size", 6)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fx_layer.add_child(lbl)
-	lbl.global_position = from.position + Vector2(from.size.x * 0.25, 0)
+	lbl.position = from.position + Vector2(from.size.x * 0.25, 0)
 	var target: Vector2 = hero.position + Vector2(hero.size.x * 0.25, -18)
 	var t := lbl.create_tween()
 	t.set_parallel(true)
-	t.tween_property(lbl, "global_position", target, FX_ATTACK_TIME * 0.85).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t.tween_property(lbl, "position", target, FX_ATTACK_TIME * 0.85).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	t.tween_property(lbl, "modulate:a", 0.0, FX_ATTACK_TIME * 0.85).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	t.set_parallel(false)
 	t.tween_callback(lbl.queue_free)
@@ -825,8 +1176,12 @@ func _punch_hero() -> void:
 	f.tween_property(_hero_icon, "modulate", Color.WHITE, 0.34)
 
 # Slide a copy of an enemy from where it stood to where it now stands, hiding the
-# real one until it lands.
-func _spawn_slide_ghost(instance: int, from_rect: Rect2, to_rect: Rect2) -> void:
+# real one until the whole playback is over (_reveal_hidden). `delay` is how far
+# into the playback this slide begins — the body stays hidden across every turn
+# in between, so the next turn's ghost picks up from an empty square instead of
+# sliding past a copy of itself.
+func _spawn_slide_ghost(instance: int, from_rect: Rect2, to_rect: Rect2,
+		delay: float = 0.0) -> void:
 	var entry: Dictionary = _stack_entry(instance)
 	var e: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
 	var ghost := TextureRect.new()
@@ -838,23 +1193,24 @@ func _spawn_slide_ghost(instance: int, from_rect: Rect2, to_rect: Rect2) -> void
 		ghost.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ghost.size = from_rect.size
 	_fx_layer.add_child(ghost)
-	ghost.global_position = from_rect.position
+	ghost.position = from_rect.position
 
-	# Hide the settled body AND its badges while the ghost travels, so the enemy
-	# isn't drawn in two places at once.
-	var hidden: Array = []
+	# Hide the settled body AND its badges while the ghosts travel, so the enemy
+	# isn't drawn in two places at once. They come back when the playback ends.
 	for part in [_holder_for_instance(instance), _badges_for_instance(instance)]:
 		if part != null:
 			part.modulate.a = 0.0
-			hidden.append(part)
+			if not _hidden_parts.has(part):
+				_hidden_parts.append(part)
+
+	# Invisible until its own turn comes up, so the ghosts of earlier turns aren't
+	# all sitting on the board at once.
+	ghost.modulate.a = 0.0 if delay > 0.0 else 1.0
 
 	var t := ghost.create_tween()
-	t.tween_interval(FX_ATTACK_TIME)
+	t.tween_interval(delay)
+	t.tween_callback(func(): ghost.modulate.a = 1.0)
 	t.set_parallel(true)
-	t.tween_property(ghost, "global_position", to_rect.position, FX_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	t.tween_property(ghost, "position", to_rect.position, FX_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	t.tween_property(ghost, "size", to_rect.size, FX_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	t.chain().tween_callback(func():
-		for part in hidden:
-			if is_instance_valid(part):
-				part.modulate.a = 1.0
-		ghost.queue_free())
+	t.chain().tween_callback(ghost.queue_free)

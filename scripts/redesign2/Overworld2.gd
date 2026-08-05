@@ -730,6 +730,47 @@ func route_note(choice: Dictionary) -> Dictionary:
 			there, plural, maxi(here - 1, 0)],
 	}
 
+# What taking this card does to the PACE of the board (§7.4). The route badge
+# above says how much ground a card gives or takes; this says what that ground
+# costs, because the two are the same decision: every step toward the Amulet is a
+# step toward enemies that act three times a game instead of once.
+#
+# Returned as {"text", "color", "tip", "turns"} — same shape as route_note, and
+# `turns` is the count the card would leave you on, so a test can assert the
+# number without parsing the sentence.
+func turn_note(choice: Dictionary) -> Dictionary:
+	var here: int = steps_to_amulet(GameState.current_game_id)
+	var there: int = steps_to_amulet(choice.get("slot", &""))
+	# The Amulet card ends the run on the spot: what the enemies would have done
+	# afterwards is moot, and saying "×3 turns" there would just be alarming.
+	if bool(choice.get("amulet", false)):
+		there = 0
+	var now: int = RunDifficulty.turns_for_hops(here)
+	var then: int = RunDifficulty.turns_for_hops(there)
+	var color: Color = RunDifficulty.turns_band_color(then)
+	var tip: String = ("Standing there, every enemy acts %d time%s per game.\n\n%s"
+		% [then, "" if then == 1 else "s", RunDifficulty.turns_ladder_text(then)])
+	if bool(choice.get("amulet", false)):
+		return {"text": "", "color": color, "tip": tip, "turns": then}
+	if then > now:
+		return {
+			"text": "⏱ Enemies speed up — ×%d turns" % then,
+			"color": color, "turns": then,
+			"tip": "Closing on the Amulet is what wakes them up: %d turns a game here, %d there.\n\n%s"
+				% [now, then, RunDifficulty.turns_ladder_text(then)],
+		}
+	if then < now:
+		return {
+			"text": "⏱ Enemies slow down — ×%d turns" % then,
+			"color": color, "turns": then,
+			"tip": "Backing off buys you pace: %d turns a game here, %d there.\n\n%s"
+				% [now, then, RunDifficulty.turns_ladder_text(then)],
+		}
+	return {
+		"text": "⏱ Still ×%d turn%s" % [then, "" if then == 1 else "s"],
+		"color": UITheme.TEXT_DIM, "turns": then, "tip": tip,
+	}
+
 # Read the carried scroll at loot index `idx` (Scrolls panel). Opens the 2.0
 # read modal, which consumes the scroll and applies its effect (§4.1).
 func read_scroll(idx: int) -> void:
@@ -794,6 +835,10 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	# Snapshot where everyone stands BEFORE the resolve, so the animation can play
 	# the strike and the advance back from the old positions to the new ones.
 	var before: Dictionary = _board.capture_positions()
+	# And what tier / board this game was fought on, so the step into the next one
+	# can be announced rather than just silently happening (§7.3).
+	var tier_before: int = _current_tier()
+	var board_before := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows())
 	_close_enemy_info()
 	var res: Dictionary = GameLoop2.beat_game(goal_met, fulfilled_instances)
 	# "After beating a game" is the dominant 2.0 item trigger (§8): fire it now so
@@ -840,6 +885,10 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 		if played_game != null:
 			GameStats.record_level_up(played_game.id, GameState.character_id)
 	GameState.games_played += 1
+	# That count is what the difficulty tier is read off, so the board may have
+	# just grown under the bodies standing on it (§7.3). Reconcile it and say so.
+	if not GameLoop2.run_over:
+		_announce_difficulty_step(tier_before, board_before)
 	_chosen = {}
 	# Rating is a BUTTON, never a pop-up: remember the game so the "★ Rate <game>"
 	# button on the select screen can score it whenever the player feels like it.
@@ -865,6 +914,28 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 	# The run moved, so the recovery point moves with it.
 	autosave()
 	_hold_for_resolve(_board.animate_resolve(before, res))
+
+# The run just stepped up a difficulty tier, which widens the battlefield by a
+# column and a row (§7.3). Reconcile the board's coordinates with its new size
+# and announce BOTH halves of the step, because they pull in opposite directions
+# and a player who only notices one will misread the other: the enemies get
+# heavier, and the ground you have to lose before they reach you gets deeper.
+#
+# The new cells light up and pulse on the board itself (BattlefieldView's
+# _rebuild_cells) — this is the words that go with them.
+func _announce_difficulty_step(tier_before: int, board_before: Vector2i) -> void:
+	var tier_now: int = RunDifficulty.tier_for(GameState.games_played)
+	if tier_now == tier_before:
+		return
+	# Re-seat anything the old bounds had parked off-grid: a wider board is
+	# somewhere for the overflow queue to finally stand.
+	GameLoop2.sync_grid_bounds()
+	var board_now := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows())
+	var msg: String = "Difficulty up — %s." % RunDifficulty.tier_name(tier_now)
+	if board_now != board_before:
+		msg += " The battlefield grows to %d×%d." % [board_now.x, board_now.y]
+	Notifications.notify(msg, UITheme.GOLD)
+	GameLog.add(msg, UITheme.GOLD)
 
 # --- holding the screen while the board plays -----------------------------
 #
@@ -1486,6 +1557,20 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	route.add_theme_color_override("font_color", note["color"])
 	card.add_child(route)
 
+	# …and what that ground costs in PACE (§7.4). Mounted on every card, blank on
+	# the Amulet's, so one card carrying a warning doesn't shove its cover out of
+	# line with the rest of the offering.
+	var pace: Dictionary = turn_note(choice)
+	var pace_lbl := Label.new()
+	pace_lbl.text = String(pace["text"])
+	pace_lbl.tooltip_text = String(pace["tip"])
+	pace_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pace_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, 0)
+	pace_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pace_lbl.add_theme_font_size_override("font_size", 12)
+	pace_lbl.add_theme_color_override("font_color", pace["color"])
+	card.add_child(pace_lbl)
+
 	# …and the map that backs the claim up: the whole optimal road from this game
 	# to the Amulet, without having to take it first.
 	card.add_child(_map_preview_button(choice["slot"], game))
@@ -1709,9 +1794,13 @@ func _populate_play_panel() -> void:
 		_levelup_check = lu_row["check"]
 		_verify_box.add_child(lu_row["row"])
 
+	# GOAL FIRST, then whose it is. The checklist is scanned for "what did I
+	# actually do", and the goal is the part being answered — the enemy's name is
+	# the label on it. Leading with the name made every row start with a proper
+	# noun the player has to read past to reach the thing they're ticking.
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
-		var row := _verify_row("Also cleared: %s — %s" % [e.display_name, e.goal], UITheme.TEXT, false, e)
+		var row := _verify_row("Also cleared: %s — %s" % [e.goal, e.display_name], UITheme.TEXT, false, e)
 		_verify_box.add_child(row["row"])
 		_fulfil_checks.append({"check": row["check"], "instance": int(entry["instance"])})
 
@@ -1744,10 +1833,12 @@ func _populate_standing_checklist() -> void:
 		var e: GoalEnemyData = entry["enemy"]
 		var urgent: bool = GameLoop2.in_front(entry)
 		var tint: Color = UITheme.DANGER if urgent else UITheme.GOLD.lerp(UITheme.TEXT, 0.4)
+		# Goal first, then whose it is — same order as the report step, since these
+		# are the same list in two states and the goal is what's being read for.
 		# "dmg N" in words: the board's ⚔ badge is a fine-detail glyph that reads as
 		# an ✕ at list-row sizes.
 		_verify_box.add_child(_objective_row(
-			"%s — %s   (dmg %d)" % [e.display_name, e.goal, e.damage], tint))
+			"%s — %s   (dmg %d)" % [e.goal, e.display_name, e.damage], tint))
 
 	if GameLoop2.stack.is_empty():
 		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")
@@ -2118,7 +2209,10 @@ func _empty_note(text: String) -> Label:
 	return l
 
 # One-line header above the follower cards: how many are on your tail and the
-# damage the stack lands on the next game beaten.
+# damage the stack lands on the next game beaten — which, once enemies take more
+# than one turn a game, includes the rank behind the front line, because it walks
+# into range and swings before the game is out (§7.4). Counting the swings rather
+# than the bodies is what keeps this line honest at three turns a game.
 func _stack_summary() -> String:
 	var following: int = GameLoop2.stack.size()
 	if _phase == Phase.PLAYING and not _chosen.is_empty() and _chosen.get("enemy") != null:
@@ -2126,8 +2220,11 @@ func _stack_summary() -> String:
 	if following == 0:
 		return "clear  —  nothing following you"
 	var dmg: int = GameLoop2.stacked_damage_per_game()
-	return "%d closing in, %d at the front dealing %d damage next game" % [
-		following, GameLoop2.front_count(), dmg]
+	var swings: int = 0
+	for entry in GameLoop2.stack:
+		swings += GameLoop2.attacks_next_game(entry)
+	return "%d closing in, %d swing%s landing for %d damage next game" % [
+		following, swings, "" if swings == 1 else "s", dmg]
 
 
 # --- kill-drops (§8) -------------------------------------------------------

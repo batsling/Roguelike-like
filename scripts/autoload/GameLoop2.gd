@@ -22,10 +22,12 @@ extends Node
 #   choose_game(enemy)  — the enemy SPAWNS when you pick its game (current).
 #   beat_game(goal_met, fulfilled) — you played & beat the real game:
 #     1. Old goals you fulfilled this game defeat those stacked enemies (drop).
-#     2. Every enemy ALREADY on the stack attacks for its damage (shields, then
-#        hp) — unless stunned (skips one attack). The current game's enemy is
-#        not on the stack yet, so it cannot attack this game: that ordering IS
-#        the one-game grace.
+#     2. The stack takes its TURNS — enemy_turns() of them, 1 out in the wilds
+#        and 3 on the Amulet's doorstep (§7.4). Each turn every enemy acts once:
+#        the front column attacks for its damage (shields, then hp), everything
+#        behind it steps a column closer, and a stun costs one turn of either.
+#        The current game's enemy is not on the stack yet, so it cannot attack
+#        this game whatever the pace: that ordering IS the one-game grace.
 #     3. The current enemy resolves: completing its goal deals it one hit —
 #        defeated + item drop at 0 Health, else it joins the stack (a survivor,
 #        e.g. an Alien-Baby-buffed two-Health enemy, must be beaten again) and
@@ -56,10 +58,11 @@ const ATTEMPT_HEALTH_COST: int = 1
 # column (grid_cols()) — so a wide enemy's front edge starts closer to the player
 # and reaches you in fewer games — in a RANDOM row among those with the clearest
 # run at the player (enemies never change lanes, so a row with bodies parked in
-# it is a row it may never strike from). After each game beaten
-# every enemy closes one column toward the player. An enemy strikes once ANY of
-# its cells is in the front column (col 1). Enemies that can't fit anywhere wait
-# OFF-GRID (offgrid_col()) and slide in as space frees.
+# it is a row it may never strike from). Each game beaten every enemy takes
+# enemy_turns() turns, and each turn it either strikes — once ANY of its cells is
+# in the front column (col 1) — or closes one column toward the player. Enemies
+# that can't fit anywhere wait OFF-GRID (offgrid_col()) and slide in as space
+# frees.
 #
 # Each entry carries `row` (0-based, the TOP row of its footprint) and `col`
 # (1-based, the LEFTMOST/frontmost column of its footprint): 1 = melee/front,
@@ -69,19 +72,30 @@ const ATTEMPT_HEALTH_COST: int = 1
 # to be free for it to stand or move there. That is what makes a big enemy a WALL:
 # a 2x3 L plugs lanes a 1x1 would otherwise slip through.
 #
-# The board is 4 x 4 by DEFAULT, not by definition: Mine-r Construction grows it
-# a column and a row per copy owned (§7.3), so every dimension is asked for at
-# the moment it is used rather than baked into a const.
+# The board is 4 x 4 by DEFAULT, not by definition: it grows a column and a row
+# per DIFFICULTY TIER (RunDifficulty.grid_growth_for — 4x4 Low through 7x7
+# Insane) and another per copy of Mine-r Construction owned (§7.3), so every
+# dimension is asked for at the moment it is used rather than baked into a const.
+#
+# A bigger board is the counterweight to the amulet-pressure ladder below: the
+# tier that makes the enemies heavier also gives you more ground to lose before
+# they are on you, which is what stops "3 turns a game" from being an instant
+# loss at the high tiers.
 const BASE_GRID_COLS: int = 4     # distance columns (back at 4, melee at 1)
 const BASE_GRID_ROWS: int = 4     # rows -> up to grid_rows() enemies abreast
 
+# Every source of board growth added up: the run's difficulty tier, plus each
+# Mine-r Construction in the pack. Asked for in one place so the two can't drift.
+func grid_growth() -> int:
+	return RunDifficulty.current_grid_growth() + GameState.grid_growth()
+
 # Distance columns on the board right now. Column 1 is melee, grid_cols() the back.
 func grid_cols() -> int:
-	return BASE_GRID_COLS + GameState.grid_growth()
+	return BASE_GRID_COLS + grid_growth()
 
 # Lanes on the board right now, 0-based rows 0..grid_rows() - 1.
 func grid_rows() -> int:
-	return BASE_GRID_ROWS + GameState.grid_growth()
+	return BASE_GRID_ROWS + grid_growth()
 
 # The back column — where an enemy's rightmost cell lands when it spawns.
 func spawn_col() -> int:
@@ -156,7 +170,10 @@ var _next_instance: int = 1
 func _ready() -> void:
 	# The board's size is a function of the inventory (Mine-r Construction), so
 	# every pickup and loss is a chance for it to have changed shape under the
-	# bodies standing on it.
+	# bodies standing on it. The OTHER source of growth — the difficulty tier —
+	# moves when games_played does, and the overworld calls sync_grid_bounds
+	# itself at that moment (see Overworld2.report) because it also has a banner
+	# to raise about it.
 	GameState.inventory_changed.connect(sync_grid_bounds)
 
 func reset() -> void:
@@ -476,19 +493,59 @@ func effective_health(enemy: GoalEnemyData) -> int:
 		return 1
 	return maxi(1, int(enemy.health) + GameState.enemy_health_bonus())
 
+# --- amulet pressure: how fast the stack moves (§7.4) ----------------------
+
+# Hops from where the player stands to the Amulet over the run's graph, or -1
+# when there is no route (or no amulet yet — every headless test starts there).
+# Same BFS the overworld's route badges read, so the number the board shows and
+# the number the loop resolves on are the same number.
+func hops_to_amulet() -> int:
+	var amulet: StringName = GameState.amulet_game_id
+	var here: StringName = GameState.current_game_id
+	if amulet == &"" or here == &"":
+		return -1
+	if here == amulet:
+		return 0
+	var dist: Dictionary = RunGraph.bfs_distances(amulet)
+	return int(dist[here]) if dist.has(here) else -1
+
+# How many TURNS every enemy takes on the next game resolved: 1 out in the wilds,
+# 3 on the Amulet's doorstep (see RunDifficulty.turns_for_hops for the ladder and
+# why it exists). A turn is one action — attack from the front column, or step a
+# column closer from anywhere behind it.
+func enemy_turns() -> int:
+	return RunDifficulty.turns_for_hops(hops_to_amulet())
+
+# Where every body on the board stands right now, as instance -> Vector2i(col,
+# row). Snapshotted after each turn so the board can play the turns back one at a
+# time instead of teleporting everyone to their final square (see
+# BattlefieldView.animate_resolve).
+func _board_snapshot() -> Dictionary:
+	var out: Dictionary = {}
+	for entry in stack:
+		out[int(entry.get("instance", 0))] = Vector2i(
+			int(entry.get("col", offgrid_col())), int(entry.get("row", 0)))
+	return out
+
 # --- Resolving a game -----------------------------------------------------
 
 # Resolves beating the current game. `goal_met` is whether you met the current
 # enemy's goal; `fulfilled_instances` are stacked enemies whose OLD goals you
 # also fulfilled while playing this game (§2). Returns last_result:
-#   {beaten, defeats:[enemy...], drops:int, attacks:[{instance,damage|stunned}],
+#   {beaten, defeats:[enemy...], drops:int,
+#    attacks:[{instance, turn, damage|stunned|goal_hit}],
+#    turns:int, turn_frames:[{instance: Vector2i(col,row)}, ...],
 #    damage_taken, blocked, hp, shields, shields_expired, attempts, stack_size,
 #    run_over, won}
 # `blocked` is what the unspent shields absorbed; `shields_expired` is what was
-# left over afterwards and went away with the game (§3).
+# left over afterwards and went away with the game (§3). `turns` is how many
+# actions each enemy got (enemy_turns()), and `turn_frames` holds the board after
+# each one so the view can replay them in order.
 func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
+	var turns: int = enemy_turns()
 	var res := {
 		"beaten": true, "defeats": [], "drops": 0, "attacks": [],
+		"turns": turns, "turn_frames": [],
 		"damage_taken": 0, "blocked": 0, "hp": GameState.hp,
 		"shields": GameState.shields, "shields_expired": 0,
 		"attempts": attempts(), "stack_size": stack.size(),
@@ -516,38 +573,17 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 		else:
 			hit_this_game[int(inst)] = true
 
-	# 2. FRONT COLUMN ATTACKS. An enemy strikes once ANY part of it reaches the
-	#    front column (col 1) — which is why a long enemy gets to you sooner. A
-	#    stunned or just-goal-hit enemy holds fire. Iterate a copy so a lethal hit
-	#    ending the run mid-loop is safe.
-	for entry in stack.duplicate():
+	# 2. THE ENEMY TURNS. Every enemy gets `turns` actions this game — one out in
+	#    the wilds, three on the Amulet's doorstep (§7.4) — and each action is
+	#    either a STRIKE (from the front column) or a STEP (from anywhere behind
+	#    it). One turn is exactly the strike-then-advance the loop has always
+	#    resolved, so the far band is the old behaviour unchanged and the near
+	#    bands are that same beat, repeated.
+	for turn in range(turns):
 		if run_over:
 			break
-		if not in_front(entry):
-			continue
-		if hit_this_game.has(int(entry["instance"])):
-			res["attacks"].append({"instance": entry["instance"], "goal_hit": true})
-			continue
-		if int(entry.get("stun", 0)) > 0:
-			res["attacks"].append({"instance": entry["instance"], "stunned": true})
-			continue
-		# Aggravate Monsters adds a flat bonus to each hit while it's active (§4.1).
-		var bonus: int = enemy_damage_bonus if enemy_damage_bonus_games > 0 else 0
-		var dmg: int = int(entry["enemy"].damage) + bonus
-		var blocked: int = _take_hit(dmg, res)
-		res["attacks"].append({"instance": entry["instance"], "damage": dmg,
-			"blocked": blocked})
-		player_hit.emit(dmg, blocked)
-
-	# After the front column strikes, the grid ADVANCES: every enemy closes one
-	# column toward the player, but only into a free row — the front column caps
-	# attackers at grid_rows(), so the queue stalls behind a full column and the
-	# off-grid queue slides in only as cells free. Stunned enemies stay put this
-	# game; then each stun ticks down once for the game that elapsed.
-	_advance_stack()
-	for entry in stack:
-		if int(entry.get("stun", 0)) > 0:
-			entry["stun"] = int(entry["stun"]) - 1
+		_resolve_enemy_turn(turn, hit_this_game, res)
+		(res["turn_frames"] as Array).append(_board_snapshot())
 
 	# The enemies have struck and moved, so this game is over — and with it go the
 	# shields it granted (§3). Shields are the tries at ONE game: what you didn't
@@ -592,6 +628,55 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 	last_result = res
 	loop_changed.emit()
 	return res
+
+# ONE turn of the stack, the atomic unit `enemy_turns()` counts out. Every enemy
+# acts once: the ones touching the front column STRIKE, everything behind it
+# STEPS a column closer. `hit_this_game` holds the followers whose goals the
+# player fulfilled this game — they were engaged, so they hold their fire for the
+# WHOLE game (every turn of it), which is what keeps fulfilling a goal worth more
+# the closer you push rather than less.
+#
+# A stun, by contrast, costs exactly ONE turn: a stunned enemy neither strikes
+# nor steps, and one stun ticks off at the end of the turn. So a stun read at the
+# Amulet's doorstep buys a third of a game rather than all of it — the same
+# charge, worth what the pace of the board says it's worth.
+func _resolve_enemy_turn(turn: int, hit_this_game: Dictionary, res: Dictionary) -> void:
+	# a. FRONT COLUMN STRIKES. An enemy attacks once ANY part of it reaches the
+	#    front column (col 1) — which is why a long enemy gets to you sooner.
+	#    Iterate a copy so a lethal hit ending the run mid-loop is safe.
+	for entry in stack.duplicate():
+		if run_over:
+			return
+		if not in_front(entry):
+			continue
+		if hit_this_game.has(int(entry["instance"])):
+			res["attacks"].append({"instance": entry["instance"], "turn": turn,
+				"goal_hit": true})
+			continue
+		if int(entry.get("stun", 0)) > 0:
+			res["attacks"].append({"instance": entry["instance"], "turn": turn,
+				"stunned": true})
+			continue
+		# Aggravate Monsters adds a flat bonus to each hit while it's active (§4.1).
+		# It is per HIT, so a three-turn game is three buffed hits — the buff gets
+		# the same amplification from the pace that everything else does.
+		var bonus: int = enemy_damage_bonus if enemy_damage_bonus_games > 0 else 0
+		var dmg: int = int(entry["enemy"].damage) + bonus
+		var blocked: int = _take_hit(dmg, res)
+		res["attacks"].append({"instance": entry["instance"], "turn": turn,
+			"damage": dmg, "blocked": blocked})
+		player_hit.emit(dmg, blocked)
+
+	# b. THE STEP. Everything that didn't strike closes one column toward the
+	#    player, but only into a free row — the front column caps attackers at
+	#    grid_rows(), so the queue stalls behind a full column and the off-grid
+	#    queue slides in only as cells free. Stunned enemies stay put.
+	_advance_stack()
+
+	# c. One stun ticks off for the turn that elapsed.
+	for entry in stack:
+		if int(entry.get("stun", 0)) > 0:
+			entry["stun"] = int(entry["stun"]) - 1
 
 # Fulfil a stacked enemy's goal outside a beat_game call (e.g. a scroll/UI path):
 # deals it one hit. Defeats it and drops its item only when its Health reaches 0
@@ -642,7 +727,7 @@ func bomb(instance: int) -> bool:
 				destroyed.append(enemy)
 				stack.remove_at(i)
 				continue
-		# Survived the blast — Sticky Bombs makes that cost it its next attack.
+		# Survived the blast — Sticky Bombs makes that cost it its next turn.
 		if stuns:
 			stack[i]["stun"] = int(stack[i].get("stun", 0)) + 1
 	# Clearing a body can open the space a waiting enemy needs to walk on.
@@ -700,9 +785,10 @@ func _blast_instances(instance: int) -> Array:
 				break
 	return out
 
-# Stun a stacked enemy (Scroll of Scare Monster, §4.1): it skips its next attack,
-# pushing its timing one game later (§7.2). Stacks additively. Returns true if
-# the target is on the stack.
+# Stun a stacked enemy (Scroll of Scare Monster, §4.1): it loses its next TURN,
+# neither striking nor stepping, and the stun ticks off with it. That is a whole
+# game out in the wilds and a third of one on the Amulet's doorstep (§7.4).
+# Stacks additively. Returns true if the target is on the stack.
 func stun(instance: int) -> bool:
 	var idx: int = _index_of(instance)
 	if idx < 0:
@@ -834,32 +920,43 @@ func _finish_run(did_win: bool) -> void:
 
 # --- "how much of this is left" denominators -------------------------------
 #
-# Both stats read x/y, and y has to be the number that could HAVE happened, not
-# the whole catalog: an Action goal-enemy never turns up at a Deckbuilder game,
-# so counting it against all 757 games would make every number meaningless.
-# Enemies are drawn by matching game_type (see _pick_by_type_tier), so the pool
-# for a game is the enemies sharing its type, and the games an enemy can appear
-# at are the games sharing its.
+# Both stats read x/y, and y is every pairing that COULD be recorded — which is
+# all of them, because the pairing is not decided by the roll.
+#
+# It looks like it should be: an enemy is ROLLED for a game of its own type
+# (_pick_by_type_tier), so an Action goal-enemy never spawns AT a Deckbuilder
+# game, and these two counts used to be filtered by game_type on exactly that
+# reasoning. But spawning is not the only way an enemy is beaten at a game.
+# An enemy that survives FOLLOWS the player (§2), and it keeps following across
+# games of every type — so clearing its old goal while playing anything at all
+# records that enemy against THAT game (see Overworld2.report -> _record_defeat).
+# An Action enemy beaten while the player was playing a Deckbuilder is an
+# ordinary event, not an anomaly, and it was being counted against a denominator
+# that excluded it — which is why both call sites had to guard with
+# maxi(possible, actual) to stop the display reading 5 / 3.
+#
+# So the honest denominator is the whole catalog on both sides: any enemy can be
+# beaten at any game, given a board that carries it there.
 
-# Ids of every goal-enemy and boss that can be rolled at `game`.
+# Ids of every goal-enemy and boss that can be beaten at `game` — the whole
+# roster, since a follower can be carried to any game and cleared there.
 func possible_enemies_at(game: GameData) -> Array:
 	if game == null:
 		return []
 	var out: Array = []
-	var key: StringName = game_type_key(game)
 	for e in Data.all_goal_enemies() + Data.all_bosses():
-		if e is GoalEnemyData and StringName(String(e.game_type).to_lower()) == key:
+		if e is GoalEnemyData:
 			out.append(e.id)
 	return out
 
-# How many games `enemy` could be rolled at.
+# How many games `enemy` could be beaten at — the whole catalog, for the same
+# reason: it spawns at its own type, but it can be carried anywhere.
 func possible_games_for(enemy: GoalEnemyData) -> int:
 	if enemy == null:
 		return 0
-	var key: StringName = StringName(String(enemy.game_type).to_lower())
 	var n: int = 0
 	for g in Data.all_games():
-		if g is GameData and game_type_key(g) == key:
+		if g is GameData:
 			n += 1
 	return n
 
@@ -949,15 +1046,55 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 
 # --- HUD / query helpers --------------------------------------------------
 
-# Total damage the stack would deal on the next game beaten — only the FRONT
-# column can strike, and stunned enemies hold fire — the "how bad is my front
-# line" number for the HUD (§9).
+# How many times `entry` strikes on the next game beaten. Its distance from the
+# front is turns it spends WALKING, its stun is turns it spends frozen, and
+# whatever is left over is swings (§7.4). `turns` defaults to what this position
+# on the route buys the enemies.
+#
+# Assumes every step it wants is free. A jam in front of it can only make the
+# real number smaller, never larger, so this is the worst case — which is the
+# number worth putting in front of the player.
+func attacks_next_game(entry: Dictionary, turns: int = -1) -> int:
+	if turns < 0:
+		turns = enemy_turns()
+	if entry.get("enemy") == null:
+		return 0
+	if int(entry.get("col", offgrid_col())) > grid_cols():
+		return 0       # off-grid: it isn't even on the board to walk in from
+	return maxi(0, turns - _turns_owed(entry))
+
+# The turns this enemy must spend before it can swing at all: one per column
+# between its leading edge and the front line, plus one per stack of stun.
+func _turns_owed(entry: Dictionary) -> int:
+	return maxi(0, _front_col(entry) - 1) + int(entry.get("stun", 0))
+
+# How many GAMES away this enemy's first strike is: 0 means it swings on the very
+# next game you report, 1 means the game after that. Off-grid bodies report -1 —
+# they aren't on the board to start walking yet.
+#
+# This is the number the board's threat colours are read off, and it is why they
+# can't just be read off the column any more: at three turns a game an enemy
+# three columns back still reaches you and swings before the game is out, and
+# painting it "safely distant" gold would be a lie.
+func games_until_strike(entry: Dictionary) -> int:
+	if entry.get("enemy") == null:
+		return -1
+	if int(entry.get("col", offgrid_col())) > grid_cols():
+		return -1
+	@warning_ignore("integer_division")
+	var games: int = _turns_owed(entry) / maxi(1, enemy_turns())
+	return games
+
+# Total damage the stack would deal on the next game beaten, across every turn of
+# it — the "how bad is this going to be" number for the HUD (§9). At one turn a
+# game this is the front line and nothing else; at three it also counts the rank
+# behind them, which walks into range and swings before the game is out.
 func stacked_damage_per_game() -> int:
 	var total: int = 0
+	var turns: int = enemy_turns()
 	var bonus: int = enemy_damage_bonus if enemy_damage_bonus_games > 0 else 0
 	for entry in stack:
-		if in_front(entry) and int(entry.get("stun", 0)) <= 0:
-			total += int(entry["enemy"].damage) + bonus
+		total += attacks_next_game(entry, turns) * (int(entry["enemy"].damage) + bonus)
 	return total
 
 # Number of enemies waiting off the grid's edge (overflow queue) — never attacks,

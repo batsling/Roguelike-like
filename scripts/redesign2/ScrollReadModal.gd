@@ -147,7 +147,8 @@ func _pick_stun(req: Dictionary) -> void:
 		_body.add_child(_muted("No following enemies to Stun."))
 		_body.add_child(_continue_button())
 		return
-	_body.add_child(_muted("Choose up to %d following enemy to Stun (it skips its next attack)." % max_pick))
+	_body.add_child(_muted("Choose up to %d following enemy to Stun (it loses its next turn — %s)."
+		% [max_pick, _stun_worth()]))
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
 		var inst: int = int(entry["instance"])
@@ -237,6 +238,17 @@ func _rebuild_panel() -> void:
 	_body.add_theme_constant_override("separation", 10)
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_body)
+
+# What one stun is actually worth where the run is standing (§7.4). A stun costs
+# the target one TURN, and a turn is the whole game out in the wilds but only a
+# third of one on the Amulet's doorstep — so the scroll has to price itself
+# against the current pace rather than promising "skips its next attack", which
+# stopped being true the moment enemies started taking more than one turn.
+func _stun_worth() -> String:
+	var turns: int = GameLoop2.enemy_turns()
+	if turns <= 1:
+		return "its whole game, at 1 turn per game here"
+	return "1 of the %d turns it gets per game here" % turns
 
 func _heading(text: String, color: Color, size: int) -> Label:
 	var l := Label.new()

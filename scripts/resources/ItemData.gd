@@ -386,7 +386,7 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 @export var keep_shields: bool = false
 
 # Sticky Bombs: everything a bomb HITS and does not destroy is stunned instead
-# (skips its next attack, §4.1) — which in practice means bosses, the only
+# (loses its next turn, §4.1 / §7.4) — which in practice means bosses, the only
 # things that survive a bomb. Read by GameLoop2.bomb via GameState.bombs_stun.
 @export var bomb_stun: bool = false
 

@@ -307,10 +307,18 @@ solution:
 4. Thereafter it keeps attacking on each game beaten, per §2, until its goal is
    met or it's removed.
 
-**Stun** (Scroll of Scare Monster, §4.1) pushes the next attack **one more game
-later**, adding another step of breathing room. This grace window is why bombs,
-old-goal fulfilment, and Stun are all viable answers rather than needing to solve
-an enemy the instant it appears.
+The grace is **one game**, not one action, and it survives §7.4: however many
+turns the enemies are taking, the current game's enemy resolves *after* all of
+them, so it never strikes on the game that spawned it.
+
+**Stun** (Scroll of Scare Monster, §4.1) costs the target **one turn** — it
+neither strikes nor steps, and one stack of stun ticks off with it. Out in the
+wilds that is the whole game; on the Amulet's doorstep it is a third of one (see
+§7.4). Old-goal **fulfilment** works the other way round: a follower you engaged
+this game holds its fire for **every** turn of it, so it grows *more* valuable
+as the pace rises. This grace window is why bombs, old-goal fulfilment, and Stun
+are all viable answers rather than needing to solve an enemy the instant it
+appears.
 
 ### 7.3 The battlefield grid — footprints, rows, and blocking
 
@@ -318,12 +326,22 @@ The stack is drawn as a **Mega-Man-Battle-Network-style board**: the player on
 the left, a **4 x 4 grid** of columns (distance) x rows (lanes) on the right.
 Column 1 is melee, column 4 the back edge.
 
-4 x 4 is the **starting** size, not a fixed one. **Mine-r Construction**
-(Broomsweeper, Uncommon) adds **a column and a row per copy owned** — a deeper
-board to cross before anything reaches you, and another lane to stand in, which
-also means one more body can pack the front line. `GameLoop2.grid_cols()` /
-`grid_rows()` answer the current size (base 4 plus `GameState.grid_growth()`),
-so nothing measures the board against a constant. Growth doesn't shove the
+4 x 4 is the **starting** size, not a fixed one. Two things grow it, and they
+add together:
+
+- **The difficulty tier.** Every step of the tier ladder (§7.1) adds **a column
+  and a row**: 4x4 at Low, 5x5 Medium, 6x6 High, 7x7 Insane, and there it stops,
+  because the tier does. This is the counterweight to §7.4 — the tier that makes
+  the enemies heavier also gives you more ground to lose before they arrive, so
+  three turns a game at the high tiers is still a couple of games of warning.
+- **Mine-r Construction** (Broomsweeper, Uncommon) adds another column and row
+  **per copy owned** — a deeper board to cross before anything reaches you, and
+  another lane to stand in, which also means one more body can pack the front
+  line.
+
+`GameLoop2.grid_cols()` / `grid_rows()` answer the current size (base 4 plus
+`GameLoop2.grid_growth()`, which is the tier's growth plus the inventory's), so
+nothing measures the board against a constant. Growth doesn't shove the
 bodies already standing on it — they keep their column, and the gain lands on
 what spawns next — but it does open room for the overflow queue, which walks
 onto the new lane immediately, picking its row by the usual clearest-run rule.
@@ -338,7 +356,8 @@ would strand off the edge is put back in the queue rather than left hanging.
   arrival stuck behind a wall forever, and those rows are skipped while any
   clear lane is left. Nothing waits outside the board unless it has nowhere to
   stand; that overflow queue slides on as space frees.
-- **Advance** — every game beaten, each enemy closes one column, front-first.
+- **Advance** — each turn (§7.4), every enemy that isn't striking closes one
+  column, front-first.
 - **Strike** — an enemy attacks once **any** of its cells is in column 1. Wide
   bodies reach that line in fewer games; that's the point of `Size`.
 - **Blocking** — an enemy occupies every solid cell of its footprint, and moves
@@ -371,6 +390,72 @@ a hovered one), so an overlapped enemy's stats are never hidden. All of this
 layers by **tree order, never `z_index`** — `z_index` is relative to the parent
 and would punch the board out through the enemy info card and the reward
 screens, which sit above the battlefield only because they're mounted after it.
+
+### 7.4 Amulet pressure — the enemies speed up as you close in
+
+The run has two difficulty axes. The tier ladder (§7.1) is the clock: it ticks
+up on its own, every `GAMES_PER_TIER` games, and the player only rides it. This
+is the other one, and it's the one the player **steers**.
+
+**How many turns the enemies take each game is read off how far you are from the
+Amulet**, in hops over the run graph:
+
+| Hops to the Amulet | Turns per game | Band |
+|---|---|---|
+| 5 or more | 1 | Distant |
+| 3 – 4 | 2 | Closing |
+| 2 – 0 | 3 | Doorstep |
+
+A **turn** is one action, and every enemy takes one on each of them: a body
+touching column 1 **strikes**, everything behind it **steps** a column closer. A
+turn is exactly the strike-then-advance the loop has always resolved, so the
+Distant band *is* the pre-ladder game and the near bands are that same beat,
+repeated. One turn a game therefore changes nothing about the rules — it just
+stops being the only speed.
+
+**Why.** The routing decision used to be one-directional: the Amulet is the win
+condition, so every step toward it was strictly good and the only reason to take
+the long way was to farm. This makes the long way a real option. Route wide and
+you fight a slow stack for more games; bum-rush the Amulet and you fight a fast
+one for fewer. Neither dominates, and the stack you've accumulated decides which
+is right — three followers on your tail is a very different calculation at ×3
+than at ×1.
+
+The consequences fall out of the same rule rather than being special-cased:
+
+- An enemy two columns back is no longer safe. At ×3 it walks into range **and**
+  swings before the game is out, so "how far away is it" has to be measured in
+  turns, not columns (`GameLoop2.games_until_strike`).
+- **Stun** costs one turn, so it's worth a third of a game at the doorstep and a
+  whole one in the wilds — the same charge, priced by the pace.
+- **Old-goal fulfilment** holds a follower's fire for the whole game, so it goes
+  the other way and is worth *more* the closer you push (§7.2).
+- **Aggravate Monsters** buffs each hit, so a three-turn game is three buffed
+  hits — the pace amplifies it like everything else.
+- Taking the **Amulet card itself** ends the run on the spot, so it carries no
+  pace warning: there is no next game for the enemies to act in.
+
+**Where the player sees it.** All of it, before committing:
+
+- A **strip across the top of the battlefield**, in the band's colour, reading
+  `⏱ ENEMY TURNS ×N`, a three-rung ladder filled to the current band, and the
+  hop count that put it there — plus the board's current size and tier on the
+  right, since §7.3 is the other half of the same bargain.
+- Every **offered card** says what taking it does to the pace — *speeds up*,
+  *slows down*, or *still ×N* — next to the route badge that says what it does
+  to the distance, because they are the same decision.
+- Each **body on the board** carries what it does on the next game reported:
+  `×2` for two swings, `in 2` for two games of walking still to do. Threat
+  colours follow that number rather than the raw column.
+- The **resolve plays turn by turn**, counter and all (`TURN 2 / 3`), instead of
+  collapsing into one slide — watching the same beat land three times is how the
+  ladder is felt rather than merely read.
+
+`RunDifficulty.turns_for_hops` owns the ladder and `GameLoop2.enemy_turns()`
+applies it; both are pure, so the board, the cards and the resolver cannot
+disagree about the number. A run with no Amulet picked, or standing somewhere
+with no route to it, reads as Distant — nothing is closing in on a goal that
+isn't there.
 
 ---
 
@@ -494,6 +579,22 @@ Resource schema in `scripts/resources/`.
 - **games** — extend with richer tags and the promoted **type** (§6.1). Regenerate
   via `import-games-godot.py`.
 - **curses** — **shelved** (§5). **bingo** — **retired**; legacy not ported.
+
+**What `Year` means, and what a backward connection is.** `Year` is the year a
+game first became **available to influence others** — an early-access date, or a
+demo where that's when it started mattering (Balatro is dated 2023 for its demo,
+not its 2024 release). It is *not* the year the game stopped changing. Roguelikes
+are frequently decades-long projects (NetHack, DCSS, Cataclysm, HyperRogue,
+ADOM), and a game still under active development can take an influence from
+something that shipped after its own first release.
+
+So a **backward connection** — an influence pointing at a game with an earlier
+`Year` — is **legal and supported end to end**: `import-games-godot.py` writes it
+like any other, `RunGraph` traverses the graph undirected, the Atlas lays out
+from hop distance rather than from years, and `map_layout.py` draws it sweeping
+upward into the older game instead of down. `check_map_sync.py` lists them
+without failing, purely so a mistyped year — which produces the identical shape —
+gets noticed rather than buried.
 
 ### 10.1 Art / image folders (`images2.0/`)
 
