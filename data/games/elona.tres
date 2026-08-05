@@ -9,9 +9,9 @@ id = &"elona"
 display_name = "Elona"
 year = 2008
 type = 3
-games_influenced = Array[StringName]([&"elin", &"dungeonmans"])
-influence_sources = PackedStringArray("", "https://www.youtube.com/watch?v=JXv8hQguGCI")
-influence_relations = PackedStringArray("dev/series", "")
+games_influenced = Array[StringName]([&"dungeonmans", &"elin"])
+influence_sources = PackedStringArray("https://www.youtube.com/watch?v=JXv8hQguGCI", "")
+influence_relations = PackedStringArray("", "dev/series")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

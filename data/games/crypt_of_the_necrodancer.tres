@@ -9,8 +9,8 @@ id = &"crypt_of_the_necrodancer"
 display_name = "Crypt of the NecroDancer"
 year = 2015
 type = 3
-games_influenced = Array[StringName]([&"20xx", &"bpm_bullets_per_minute", &"demon_lord_just_a_block", &"kill_the_music", &"shogun_showdown", &"chess_survivors", &"hyperrogue", &"guidus"])
-influence_sources = PackedStringArray("https://www.reddit.com/r/IAmA/comments/4po4pn/i_am_the_developer_of_20xx_the_megaman_xinspired/", "https://en.wikipedia.org/wiki/BPM:_Bullets_Per_Minute#:~:text=The%20game%20was%20inspired%20by,of%20the%20NecroDancer%20and%20Cuphead.", "https://www.reddit.com/r/Games/comments/1syyjc8/ama_demon_lord_just_a_block_the_gridbased/", "https://x.com/nikkonikkoLTD/status/1925953983178269138?s=20", "https://shogunshowdown.wiki.gg/wiki/Shogun_Showdown", "https://www.youtube.com/watch?v=dfLSGkKC2ug", "https://zenorogue.blogspot.com/search/label/sources", "check folder")
+games_influenced = Array[StringName]([&"20xx", &"bpm_bullets_per_minute", &"chess_survivors", &"demon_lord_just_a_block", &"guidus", &"hyperrogue", &"kill_the_music", &"shogun_showdown"])
+influence_sources = PackedStringArray("https://www.reddit.com/r/IAmA/comments/4po4pn/i_am_the_developer_of_20xx_the_megaman_xinspired/", "https://en.wikipedia.org/wiki/BPM:_Bullets_Per_Minute#:~:text=The%20game%20was%20inspired%20by,of%20the%20NecroDancer%20and%20Cuphead.", "https://www.youtube.com/watch?v=dfLSGkKC2ug", "https://www.reddit.com/r/Games/comments/1syyjc8/ama_demon_lord_just_a_block_the_gridbased/", "check folder", "https://zenorogue.blogspot.com/search/label/sources", "https://x.com/nikkonikkoLTD/status/1925953983178269138?s=20", "https://shogunshowdown.wiki.gg/wiki/Shogun_Showdown")
 influence_relations = PackedStringArray("", "", "", "", "", "", "", "")
 tags = PackedStringArray("rhythm")
 enemy_pool = Array[StringName]([])

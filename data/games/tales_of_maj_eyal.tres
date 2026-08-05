@@ -9,8 +9,8 @@ id = &"tales_of_maj_eyal"
 display_name = "Tales of Maj'Eyal"
 year = 1998
 type = 3
-games_influenced = Array[StringName]([&"incursion", &"labyrinth_of_legendary_loot", &"path_of_achra", &"rogue_empire", &"tangledeep", &"dungeonmans", &"rift_wizard", &"cardinal_quest"])
-influence_sources = PackedStringArray("game credits", "https://roguebasin.com/index.php/Labyrinth_of_Legendary_Loot", "https://store.steampowered.com/app/2128270/Path_of_Achra/", "https://www.patreon.com/roguempire/about", "https://www.reddit.com/r/Games/comments/7ukbl1/im_the_lead_developer_of_tangledeep_a_roguelike/", "https://www.youtube.com/watch?v=JXv8hQguGCI", "https://www.youtube.com/watch?v=xsmbVWflwpw", "https://www.roguelikeradio.com/2011/10/interview-with-ido-yehieli.html")
+games_influenced = Array[StringName]([&"cardinal_quest", &"dungeonmans", &"incursion", &"labyrinth_of_legendary_loot", &"path_of_achra", &"rift_wizard", &"rogue_empire", &"tangledeep"])
+influence_sources = PackedStringArray("https://www.roguelikeradio.com/2011/10/interview-with-ido-yehieli.html", "https://www.youtube.com/watch?v=JXv8hQguGCI", "game credits", "https://roguebasin.com/index.php/Labyrinth_of_Legendary_Loot", "https://store.steampowered.com/app/2128270/Path_of_Achra/", "https://www.youtube.com/watch?v=xsmbVWflwpw", "https://www.patreon.com/roguempire/about", "https://www.reddit.com/r/Games/comments/7ukbl1/im_the_lead_developer_of_tangledeep_a_roguelike/")
 influence_relations = PackedStringArray("", "", "", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])

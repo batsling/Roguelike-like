@@ -98,6 +98,57 @@ static func apply_crisp(tr: TextureRect, tex: Texture2D) -> void:
 	else:
 		tr.texture_filter = CanvasItem.TEXTURE_FILTER_PARENT_NODE
 
+# --- Check boxes -----------------------------------------------------------
+#
+# The tick box the report checklist is built out of, drawn rather than themed:
+# Godot's stock `checked`/`unchecked` icons are a hairline outline meant for a
+# light editor theme, and against BG they read as an empty gap. These are 24px,
+# 3px-bordered, and change COLOUR as well as contents between the two states, so
+# "did I tick that one?" is answerable from across the panel.
+
+const CHECK_ICON := 24               # icon edge in px
+const CHECK_BORDER := 3              # border thickness
+
+# Empty: a gold-rimmed hollow square. Ticked: green-rimmed, green-washed, with a
+# heavy pale tick across it. `dim` is the disabled pair — same shapes, drained.
+static func check_icon(ticked: bool, dim: bool = false) -> ImageTexture:
+	var n := CHECK_ICON
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var border: Color = SUCCESS if ticked else GOLD.lerp(TEXT_DIM, 0.30)
+	var fill: Color = SUCCESS.lerp(BG, 0.62) if ticked else BG.lerp(Color.BLACK, 0.30)
+	var tick: Color = SUCCESS.lerp(Color.WHITE, 0.75)
+	if dim:
+		border = border.lerp(BG, 0.6)
+		fill = fill.lerp(BG, 0.6)
+		tick = tick.lerp(BG, 0.6)
+	for y in range(n):
+		for x in range(n):
+			var edge: bool = x < CHECK_BORDER or y < CHECK_BORDER \
+				or x >= n - CHECK_BORDER or y >= n - CHECK_BORDER
+			img.set_pixel(x, y, border if edge else fill)
+	if ticked:
+		# Two strokes, drawn fat: the short down-leg then the long up-stroke.
+		_stroke(img, Vector2(5.5, 12.0), Vector2(10.0, 17.0), tick, 3.0)
+		_stroke(img, Vector2(10.0, 17.0), Vector2(18.5, 6.5), tick, 3.0)
+	return ImageTexture.create_from_image(img)
+
+# Paint a `width`-thick line into `img` by distance-to-segment, so the diagonal
+# leg of the tick comes out even rather than stair-stepped.
+static func _stroke(img: Image, from: Vector2, to: Vector2, color: Color, width: float) -> void:
+	var seg: Vector2 = to - from
+	var len_sq: float = seg.length_squared()
+	var half: float = width * 0.5
+	for y in range(img.get_height()):
+		for x in range(img.get_width()):
+			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
+			var t: float = 0.0 if len_sq <= 0.0 else clampf((p - from).dot(seg) / len_sq, 0.0, 1.0)
+			var d: float = p.distance_to(from + seg * t)
+			if d <= half:
+				img.set_pixel(x, y, color)
+			elif d <= half + 1.0:
+				# One pixel of feathering, so the stroke isn't jagged.
+				img.set_pixel(x, y, img.get_pixel(x, y).lerp(color, half + 1.0 - d))
+
 # --- Theme -----------------------------------------------------------------
 
 # One Theme shared by all 2.0 screens. Assign with `theme = UITheme.make_theme()`
@@ -149,6 +200,21 @@ static func make_theme() -> Theme:
 	t.set_stylebox("focus", "CheckBox", clear)
 	t.set_color("font_color", "CheckBox", TEXT)
 	t.set_color("font_hover_color", "CheckBox", GOLD)
+	# Godot's stock check glyphs are a thin grey outline drawn for a light theme,
+	# and on these near-black panels they all but vanish — the report checklist is
+	# the one place the player is actually ANSWERING something, so its boxes are
+	# drawn here instead: a chunky bordered square, gold-rimmed when empty and
+	# filled green with a heavy tick when answered.
+	t.set_icon("unchecked", "CheckBox", check_icon(false))
+	t.set_icon("checked", "CheckBox", check_icon(true))
+	t.set_icon("unchecked_disabled", "CheckBox", check_icon(false, true))
+	t.set_icon("checked_disabled", "CheckBox", check_icon(true, true))
+	t.set_icon("radio_unchecked", "CheckBox", check_icon(false))
+	t.set_icon("radio_checked", "CheckBox", check_icon(true))
+	t.set_icon("radio_unchecked_disabled", "CheckBox", check_icon(false, true))
+	t.set_icon("radio_checked_disabled", "CheckBox", check_icon(true, true))
+	t.set_constant("h_separation", "CheckBox", 10)
+	t.set_constant("check_v_offset", "CheckBox", 0)
 
 	# --- Panel / PanelContainer ---
 	t.set_stylebox("panel", "PanelContainer", panel_box())

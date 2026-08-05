@@ -91,9 +91,34 @@ func _hero_texture() -> Texture2D:
 			_hero_tex = ch.icon if ch.icon != null else ch.portrait
 	return _hero_tex
 
-const CELL: int = 84                # grid cell edge in px
+# The grid cell edge, in px. It is NOT a constant, because the board is not a
+# constant size: every difficulty step adds a column and a row (4x4 at Low up to
+# 7x7 at Insane, and Mine-r Construction adds more on top), and a board drawn at
+# a fixed 84px cell runs off the right of a 1280px page well before it gets
+# there. So the cells are fitted to a WIDTH BUDGET instead — big and readable at
+# 4x4, tighter as the ground opens up — which keeps the board inside the column
+# it shares with the offering at every tier.
+const CELL_MAX: int = 84            # cell edge on the smallest board
+const CELL_MIN: int = 44            # never smaller than this, whatever the tier
 const CELL_SEP: int = 6
-const CELL_STEP: int = CELL + CELL_SEP
+# How wide the grid itself (cells + gutters, excluding the hero and the off-field
+# lane) is allowed to get. Sized so the whole battlefield panel stays inside the
+# right-hand column with the offering beside it — see Overworld2's stage.
+const FIELD_WIDTH_BUDGET: int = 410
+
+# The fitted cell edge and its step, recomputed whenever the grid changes size
+# (_rebuild_cells). Everything that positions or sizes anything on the board
+# reads these rather than a constant.
+var _cell: int = CELL_MAX
+var _cell_step: int = CELL_MAX + CELL_SEP
+
+# The largest cell that fits `cols` columns inside the budget, clamped to the
+# readable range.
+static func fitted_cell(cols: int) -> int:
+	if cols <= 0:
+		return CELL_MAX
+	var per: float = float(FIELD_WIDTH_BUDGET - (cols - 1) * CELL_SEP) / float(cols)
+	return clampi(int(floor(per)), CELL_MIN, CELL_MAX)
 # Shields (the tries, §3) share the overworld's steel blue.
 const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
 # Everything on the board layers by TREE ORDER, never z_index: z_index is relative
@@ -118,8 +143,8 @@ class FootprintControl extends Control:
 # Board size in px: grid_cols() x grid_rows() cells with a gutter between them.
 func _field_size() -> Vector2:
 	return Vector2(
-		GameLoop2.grid_cols() * CELL + (GameLoop2.grid_cols() - 1) * CELL_SEP,
-		GameLoop2.grid_rows() * CELL + (GameLoop2.grid_rows() - 1) * CELL_SEP)
+		GameLoop2.grid_cols() * _cell + (GameLoop2.grid_cols() - 1) * CELL_SEP,
+		GameLoop2.grid_rows() * _cell + (GameLoop2.grid_rows() - 1) * CELL_SEP)
 
 # Lay down the backdrop: one empty panel per cell, column 1 nearest the hero.
 # Cheap and idempotent — it returns untouched unless the board actually changed
@@ -138,6 +163,11 @@ func _rebuild_cells() -> void:
 		return
 	var was: Vector2i = _cells_drawn
 	_cells_drawn = dims
+	# A wider board means smaller cells (fitted_cell): this is the one place the
+	# board's size changes, so it is the one place the cell edge is re-fitted.
+	_cell = fitted_cell(dims.x)
+	_cell_step = _cell + CELL_SEP
+	_scale_hero()
 	for c in _cell_layer.get_children():
 		_cell_layer.remove_child(c)
 		c.queue_free()
@@ -155,7 +185,7 @@ func _rebuild_cells() -> void:
 			var cell := PanelContainer.new()
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			cell.position = _cell_pos(row, col)
-			cell.size = Vector2(CELL, CELL)
+			cell.size = Vector2(_cell, _cell)
 			var is_new: bool = grew and (col > was.x or row >= was.y)
 			cell.add_theme_stylebox_override("panel", new_style if is_new else empty_style)
 			_cell_layer.add_child(cell)
@@ -181,15 +211,25 @@ func _pulse_new_ground(cells: Array, settled: StyleBox) -> void:
 				cell.modulate.a = 1.0
 				cell.add_theme_stylebox_override("panel", settled))
 
+# The hero rides the same scale as the cells: on a wide board the portrait is the
+# other thing eating the row's width, and a 96px hero beside 48px cells reads as
+# a mistake rather than as scale. Floored well above the cell so the character
+# never becomes a thumbnail.
+func _scale_hero() -> void:
+	if _hero_icon == null:
+		return
+	var side: int = maxi(_cell, 64)
+	_hero_icon.custom_minimum_size = Vector2(side, side)
+
 # Top-left of grid cell (`row`, `col`) inside the board (0-based row, 1-based col).
 func _cell_pos(row: int, col: int) -> Vector2:
-	return Vector2((col - 1) * CELL_STEP, row * CELL_STEP)
+	return Vector2((col - 1) * _cell_step, row * _cell_step)
 
 # Pixel size of a footprint `cols` wide and `rows` tall, gutters included — the
 # rect an enemy's art is drawn across.
 func _span_size(rows: int, cols: int) -> Vector2:
-	return Vector2(cols * CELL + (cols - 1) * CELL_SEP,
-		rows * CELL + (rows - 1) * CELL_SEP)
+	return Vector2(cols * _cell + (cols - 1) * CELL_SEP,
+		rows * _cell + (rows - 1) * CELL_SEP)
 
 # --- the amulet-pressure strip (§7.4) --------------------------------------
 #
@@ -207,8 +247,13 @@ const RUNG_OFF := "▯"
 
 func _build_pressure_bar() -> Control:
 	_pressure_panel = PanelContainer.new()
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	# A FLOW row, not an HBox: everything on this strip is a fixed-width label, and
+	# an HBox adds their widths up into a minimum the whole battlefield panel then
+	# has to honour — which is how the board ended up wider than the page. Flowing
+	# lets the strip take a second line on a narrow column instead.
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 10)
+	row.add_theme_constant_override("v_separation", 2)
 	_pressure_panel.add_child(row)
 
 	_pressure_turns = Label.new()
@@ -231,11 +276,6 @@ func _build_pressure_bar() -> Control:
 	_pressure_why.add_theme_font_size_override("font_size", 12)
 	_pressure_why.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(_pressure_why)
-
-	# Pushes the board size to the far end of the strip.
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(spacer)
 
 	_size_label = Label.new()
 	_size_label.add_theme_font_size_override("font_size", 12)
@@ -301,20 +341,25 @@ func _refresh_pressure() -> void:
 # unavailable (no target / no charge / no room behind / boss) rather than vanishing,
 # so the rules stay visible.
 func _build_battle_toolbar() -> Control:
-	var bar := HBoxContainer.new()
-	bar.add_theme_constant_override("separation", 8)
+	# Flowing for the same reason the pressure strip is: the hint, the target line
+	# and the two verbs add up to more than the board is wide, and as an HBox that
+	# sum became the panel's minimum width and pushed the board off the page.
+	var bar := HFlowContainer.new()
+	bar.add_theme_constant_override("h_separation", 8)
+	bar.add_theme_constant_override("v_separation", 4)
 
 	var hint := Label.new()
-	hint.text = "Click an enemy to inspect it:"
+	hint.text = "Click an enemy:"
 	hint.add_theme_font_size_override("font_size", 12)
 	hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	bar.add_child(hint)
 
 	_target_label = Label.new()
 	_target_label.add_theme_font_size_override("font_size", 13)
-	# Deliberately not expanding: the verbs must stay packed beside the field they
-	# act on, not drift to the far edge of a full-width panel.
-	_target_label.custom_minimum_size = Vector2(230, 0)
+	# Enough width that the usual "no target selected" doesn't make the verbs jump
+	# when a name lands in it, but not so much that it sets the panel's width.
+	_target_label.custom_minimum_size = Vector2(140, 0)
+	_target_label.clip_text = true
 	bar.add_child(_target_label)
 
 	push_btn = Button.new()
@@ -414,11 +459,11 @@ func _build() -> void:
 	var hero_frame := PanelContainer.new()
 	hero_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL, 8, 8, 2, UITheme.ACCENT))
 	_hero_icon = TextureRect.new()
-	_hero_icon.custom_minimum_size = Vector2(96, 96)
 	_hero_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_hero_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	hero_frame.add_child(_hero_icon)
 	hero_box.add_child(hero_frame)
+	_scale_hero()
 	_hero_hp = Label.new()
 	_hero_hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hero_hp.add_theme_font_size_override("font_size", 14)
@@ -625,8 +670,8 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	# the enemy really fills — an L's notch belongs to whoever stands in it.
 	var node := FootprintControl.new()
 	node.cells = cells
-	node.cell_size = float(CELL)
-	node.step = float(CELL_STEP)
+	node.cell_size = float(_cell)
+	node.step = float(_cell_step)
 	node.position = _cell_pos(row, col)
 	node.size = _span_size(rows, cols)
 	node.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -641,8 +686,8 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	for off in cells:
 		var frame := PanelContainer.new()
 		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		frame.position = Vector2(off.x, off.y) * float(CELL_STEP)
-		frame.size = Vector2(CELL, CELL)
+		frame.position = Vector2(off.x, off.y) * float(_cell_step)
+		frame.size = Vector2(_cell, _cell)
 		node.add_child(frame)
 		frames.append(frame)
 	_style_enemy_cell(frames, accent, is_current, selected, false)
@@ -680,7 +725,7 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if e.image != null:
 		art.texture = e.image
-		if e.image.get_width() < CELL or e.image.get_height() < CELL:
+		if e.image.get_width() < _cell or e.image.get_height() < _cell:
 			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	else:
 		art.modulate = accent
@@ -803,7 +848,7 @@ func _offgrid_token(entry: Dictionary, is_current: bool = false) -> Control:
 	if e != null and e.is_boss():
 		accent = Color(0.95, 0.55, 0.2)
 	var cell := PanelContainer.new()
-	cell.custom_minimum_size = Vector2(CELL if is_current else 44, CELL if is_current else 44)
+	cell.custom_minimum_size = Vector2(_cell if is_current else 44, _cell if is_current else 44)
 	var paint := func(hovered: bool) -> void:
 		var border: Color = accent.lerp(Color.WHITE, 0.55) if hovered else accent.lerp(UITheme.BG, 0.25)
 		var fill: Color = UITheme.PANEL.lerp(UITheme.BG, 0.3)

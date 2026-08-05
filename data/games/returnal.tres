@@ -9,9 +9,9 @@ id = &"returnal"
 display_name = "Returnal"
 year = 2023
 type = 0
-games_influenced = Array[StringName]([&"swapmeat"])
-influence_sources = PackedStringArray("https://www.reddit.com/r/pcgaming/comments/1f9y4d8/weve_been_making_our_totally_normal_coop_shooter/")
-influence_relations = PackedStringArray("")
+games_influenced = Array[StringName]([&"swapmeat", &"dark_light_survivor"])
+influence_sources = PackedStringArray("https://www.reddit.com/r/pcgaming/comments/1f9y4d8/weve_been_making_our_totally_normal_coop_shooter/", "https://x.com/search?q=from%3AMiraricogames%20survivors&src=typed_query")
+influence_relations = PackedStringArray("", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

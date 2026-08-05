@@ -18,6 +18,7 @@ start_transmute = 0
 start_scramble = 0
 start_bombs = 0
 start_keys = 0
+start_random = 2
 starting_items = Array[StringName]([])
 starting_weapon = &""
 level_up_condition = "Beat a game without meta progression"

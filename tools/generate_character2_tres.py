@@ -11,11 +11,13 @@ and `Reward` is what meeting it grants (parsed into level_up_stats +
 level_up_reward_type here).
 
   characters2.0: Name | Game | Health | Bash | Dash | Push | Transmute |
-                 Scramble | Bombs | Keys | Level Up | Reward | Description |
-                 Starting items | File
+                 Scramble | Bombs | Keys | Random | Level Up | Reward |
+                 Description | Starting items | File
 
 Health -> base_max_hp (a 2.0 run's tiny Health/Max Health reuse hp/max_hp).
 Bash/Dash/Push/Transmute/Scramble/Bombs/Keys -> start_* fields.
+Random -> start_random: points of loadout the character does NOT bring fixed,
+          rolled across the verb pool at run start (GameState.roll_start_random).
 Reward -> level_up_stats (verb / max_hp gains) + level_up_reward_type
           (a sized Chest -> item, with level_up_reward_chest_choices set from
           the size — Small 1 / Medium 2 / Large 3 / Huge 5; Random Sized Chest
@@ -195,6 +197,9 @@ def character_tres(row) -> tuple:
     lines.append("start_scramble = %d" % _int(row.get("Scramble")))
     lines.append("start_bombs = %d" % _int(row.get("Bombs")))
     lines.append("start_keys = %d" % _int(row.get("Keys")))
+    # Unrolled loadout — spent across the verb pool at run start, not here, so
+    # every run of the character opens differently.
+    lines.append("start_random = %d" % _int(row.get("Random")))
     lines.append("starting_items = %s" % string_name_array(items))
     lines.append('starting_weapon = &""')
     lines.append('level_up_condition = "%s"' % gd_str(row.get("Level Up")))

@@ -52,6 +52,14 @@ extends Resource
 @export var start_scramble: int = 0
 @export var start_bombs: int = 0
 @export var start_keys: int = 0
+# Points of verb loadout the character does NOT bring fixed: rolled at run start
+# across the 2.0 verb pool (GameState.START_RANDOM_POOL — Bash, Dash, Push,
+# Transmute, Scramble, Bombs; Keys is on the sheet but has nothing to open yet,
+# so it is deliberately not in the pool). Each point is rolled independently, so
+# two can land on the same verb — Erratic Deck opening on +2 Bash is a legal and
+# intended roll, not a bug. The character screens list it as "Random N" rather
+# than pretending to know which verbs a run will get.
+@export var start_random: int = 0
 
 # === Level-up mechanic ===
 # Each character levels up by meeting `level_up_condition` — an honour-system

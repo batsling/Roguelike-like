@@ -9,9 +9,9 @@ id = &"mystery_dungeon_2_shiren_the_wanderer"
 display_name = "Mystery Dungeon 2: Shiren the Wanderer"
 year = 1995
 type = 3
-games_influenced = Array[StringName]([&"100_rogues", &"house_of_necrosis", &"one_way_heroics", &"shiren_the_wanderer_2_shiren_s_castle_and_the_oni_invasion", &"shiren_the_wanderer_gb_monster_of_moonlight_village", &"tangledeep", &"dungeon_drafters"])
-influence_sources = PackedStringArray("https://www.gamedeveloper.com/business/marketing-on-the-app-store-the-cautionary-tale-of-i-100-rogues-i-", "https://www.reddit.com/r/roguelikes/comments/1iyzkws/house_of_necrosis_demo_is_out_now_on_steam/#:~:text=House%20of%20Necrosis%20is%20a,Linux)%20and%20the%20Steam%20Deck", "https://www.moguragames.com/smokingwolfinterview/", "", "", "https://www.pcgamer.com/how-a-videogame-composer-designed-the-tangledeep-rpg/", "check folder")
-influence_relations = PackedStringArray("", "", "", "dev/series", "dev/series", "", "")
+games_influenced = Array[StringName]([&"100_rogues", &"dungeon_drafters", &"house_of_necrosis", &"one_way_heroics", &"shiren_the_wanderer_2_shiren_s_castle_and_the_oni_invasion", &"shiren_the_wanderer_gb_monster_of_moonlight_village", &"tangledeep"])
+influence_sources = PackedStringArray("https://www.gamedeveloper.com/business/marketing-on-the-app-store-the-cautionary-tale-of-i-100-rogues-i-", "check folder", "https://www.reddit.com/r/roguelikes/comments/1iyzkws/house_of_necrosis_demo_is_out_now_on_steam/#:~:text=House%20of%20Necrosis%20is%20a,Linux)%20and%20the%20Steam%20Deck", "https://www.moguragames.com/smokingwolfinterview/", "", "", "https://www.pcgamer.com/how-a-videogame-composer-designed-the-tangledeep-rpg/")
+influence_relations = PackedStringArray("", "", "", "", "dev/series", "dev/series", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

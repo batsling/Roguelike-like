@@ -949,6 +949,11 @@ func _show_character_detail(ch: CharacterData) -> void:
 	for v in verbs:
 		if int(v[1]) > 0:
 			_detail_box.add_child(_kv(String(v[0]), str(int(v[1]))))
+	# The unrolled points, said as what they are rather than as a verb count:
+	# which verbs they land on isn't known until the run starts.
+	if ch.start_random > 0:
+		_detail_box.add_child(_kv("Random",
+			"%d, rolled across the verbs at run start" % ch.start_random))
 	if ch.starting_items.size() > 0:
 		_detail_box.add_child(_detail_section("Starting Items"))
 		var inames: Array = []

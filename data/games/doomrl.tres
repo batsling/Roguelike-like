@@ -9,9 +9,9 @@ id = &"doomrl"
 display_name = "DoomRL"
 year = 2002
 type = 3
-games_influenced = Array[StringName]([&"cataclysm", &"infra_arcana", &"jupiter_hell", &"quasimorph", &"dungeonmans", &"frozen_depths", &"cardinal_quest", &"space_grunts"])
-influence_sources = PackedStringArray("https://roguebasin.com/index.php/Cataclysm", "check folder", "", "https://sassygamers.com/2023/10/20/gamedev-interview-quasimorph/", "https://www.youtube.com/watch?v=JXv8hQguGCI", "https://frozendepths.net/roguelike/info.php", "https://www.roguelikeradio.com/2011/10/interview-with-ido-yehieli.html", "https://steamcommunity.com/app/371430/discussions/0/494631967651210890/#c494631967651765393")
-influence_relations = PackedStringArray("", "", "dev/series", "", "", "", "", "")
+games_influenced = Array[StringName]([&"cardinal_quest", &"cataclysm", &"dungeonmans", &"frozen_depths", &"infra_arcana", &"jupiter_hell", &"quasimorph", &"space_grunts"])
+influence_sources = PackedStringArray("https://www.roguelikeradio.com/2011/10/interview-with-ido-yehieli.html", "https://roguebasin.com/index.php/Cataclysm", "https://www.youtube.com/watch?v=JXv8hQguGCI", "https://frozendepths.net/roguelike/info.php", "check folder", "", "https://sassygamers.com/2023/10/20/gamedev-interview-quasimorph/", "https://steamcommunity.com/app/371430/discussions/0/494631967651210890/#c494631967651765393")
+influence_relations = PackedStringArray("", "", "", "", "", "dev/series", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

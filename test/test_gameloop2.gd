@@ -922,7 +922,7 @@ func test_start_run_applies_isaac_loadout() -> void:
 func test_start_run_applies_mina_verbs() -> void:
 	GameLoop2.start_run(Data.get_character2(&"min"))
 	assert_eq(GameState.max_hp, 8, "Noita Health 8")
-	assert_eq(GameState.transmute, 1, "Minä starts with 1 Transmute")
+	assert_eq(GameState.transmute, 2, "Minä starts with 2 Transmute")
 
 # --- scramble (§4) --------------------------------------------------------
 
