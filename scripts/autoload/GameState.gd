@@ -821,6 +821,17 @@ func apply_character2(char_data: CharacterData) -> void:
 	scramble = char_data.start_scramble
 	bombs = char_data.start_bombs
 	keys = char_data.start_keys
+	# …then whatever the character brings UNROLLED (the sheet's Random column).
+	# Done before the starting items so an item that reads a verb count on pickup
+	# sees the loadout the run actually opens on. The roll is announced on both
+	# channels: a loadout that differs run to run is the whole point of the
+	# column, and a silent one just looks like the character screen lying.
+	var rolled: Dictionary = roll_start_random(char_data.start_random)
+	if not rolled.is_empty():
+		var msg: String = "%s's random loadout: %s." % [
+			char_data.display_name, describe_start_random(rolled)]
+		Notifications.notify(msg, Color(1.0, 0.80, 0.40))
+		GameLog.add(msg, Color(1.0, 0.80, 0.40))
 
 	inventory.clear()
 	_reset_item_tracking()
@@ -831,6 +842,36 @@ func apply_character2(char_data: CharacterData) -> void:
 	emit_signal("stats_changed")
 	emit_signal("hp_changed", hp, max_hp)
 	emit_signal("inventory_changed")
+
+# The 2.0 verbs a character's Random points can land on. Keys is a verb on the
+# sheet but there is nothing in the build for a key to open yet, so it is left
+# out — a run that rolled its whole random loadout into Keys would open on
+# nothing at all.
+const START_RANDOM_POOL := ["bash", "dash", "push", "transmute", "scramble", "bombs"]
+
+# Spend `points` of unrolled starting loadout across START_RANDOM_POOL, one
+# independent roll each (so two points may land on the same verb). Returns the
+# roll as a verb -> amount dictionary, which is what the character screens and
+# the run log say out loud — a loadout that differs run to run has to be
+# ANNOUNCED, or it reads as the numbers being wrong.
+func roll_start_random(points: int) -> Dictionary:
+	var rolled: Dictionary = {}
+	for _i in range(maxi(0, points)):
+		var verb: String = START_RANDOM_POOL[randi() % START_RANDOM_POOL.size()]
+		var field: String = String(_LEVEL_UP_ABILITY_FIELDS.get(verb, verb))
+		set(field, int(get(field)) + 1)
+		rolled[verb] = int(rolled.get(verb, 0)) + 1
+	return rolled
+
+# "+2 Bash, +1 Dash" for a roll_start_random() result, in pool order so the same
+# roll always reads the same way. "" when nothing was rolled.
+func describe_start_random(rolled: Dictionary) -> String:
+	var parts: Array = []
+	for verb in START_RANDOM_POOL:
+		var n: int = int(rolled.get(verb, 0))
+		if n > 0:
+			parts.append("+%d %s" % [n, _pretty_stat(verb)])
+	return ", ".join(parts)
 
 # Clears the bookkeeping that tracks item-granted bonuses and instance ids.
 # Shared by reset_run() and apply_character() so the two can't drift apart.

@@ -9,8 +9,8 @@ id = &"dungeon_crawl_stone_soup"
 display_name = "Dungeon Crawl Stone Soup"
 year = 2006
 type = 3
-games_influenced = Array[StringName]([&"cataclysm", &"cogmind", &"desktop_dungeons", &"dungeonmans", &"golden_krone_hotel", &"path_of_achra", &"touhou_crawl", &"vagante", &"zmangband", &"rift_wizard"])
-influence_sources = PackedStringArray("https://roguebasin.com/index.php/Cataclysm", "https://www.gridsagegames.com/forums/index.php?topic=648.msg5316#msg5316", "https://www.qcfdesign.com/wiki/DesktopDungeons/index.php?title=Desktop_Dungeons", "https://www.reddit.com/r/Games/comments/2osauc/hi_rgames_were_a_group_of_aaa_and_exaaa/", "check folder", "https://store.steampowered.com/app/2128270/Path_of_Achra/", "https://store.steampowered.com/app/3601130/Touhou_Crawl/", "https://www.gamedeveloper.com/game-platforms/eugene-paik-talks-about-vagante-a-roguelite-8-years-in-the-making", "https://roguebasin.com/index.php/ZMAngband", "https://www.youtube.com/watch?v=xsmbVWflwpw")
+games_influenced = Array[StringName]([&"cataclysm", &"cogmind", &"desktop_dungeons", &"dungeonmans", &"golden_krone_hotel", &"path_of_achra", &"rift_wizard", &"touhou_crawl", &"vagante", &"zmangband"])
+influence_sources = PackedStringArray("https://roguebasin.com/index.php/Cataclysm", "https://www.gridsagegames.com/forums/index.php?topic=648.msg5316#msg5316", "https://www.qcfdesign.com/wiki/DesktopDungeons/index.php?title=Desktop_Dungeons", "https://www.reddit.com/r/Games/comments/2osauc/hi_rgames_were_a_group_of_aaa_and_exaaa/", "check folder", "https://store.steampowered.com/app/2128270/Path_of_Achra/", "https://www.youtube.com/watch?v=xsmbVWflwpw", "https://store.steampowered.com/app/3601130/Touhou_Crawl/", "https://www.gamedeveloper.com/game-platforms/eugene-paik-talks-about-vagante-a-roguelite-8-years-in-the-making", "https://roguebasin.com/index.php/ZMAngband")
 influence_relations = PackedStringArray("", "", "", "", "", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])

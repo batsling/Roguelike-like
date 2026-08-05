@@ -302,6 +302,31 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
 ## Recent changes
 
+- **Six more games, a new character, and a loadout that isn't the same twice** —
+  the spreadsheet grew and the build caught up with it. `Roguelikes.xlsx` now
+  carries **814 games and 1133 connections** (Into The Grid, Serpent's Gaze,
+  TumbleSeed, Dark Light: Survivor, Arc Seed, For The Warp — every one of them
+  wired into the influence graph, none an orphan), re-imported through
+  `import-games-godot.py` with covers resolved and all five Atlas skies re-baked.
+  **Regent** (Slay the Spire 2) joins the roster as the eleventh character, and a
+  chunk of the existing roster was re-authored — Ironclad opens on 2 Bash,
+  Manager on 2 Push, Minä on 2 Transmute, Zoe on Dash + Push, and several
+  level-up conditions and rewards were rewritten (Isaac's now grants a Small
+  Chest **and** a Scramble, which the reward parser reads as both).
+
+  The sheet also gained a **Random** column, and with it a starting loadout that
+  is not fully known until the run begins: `start_random` is N points spent
+  across Bash / Dash / Push / Transmute / Scramble / Bombs when the run starts
+  (`GameState.roll_start_random`), one independent roll each, so two points may
+  land on the same verb. **Keys is deliberately out of the pool** — it is a verb
+  on the sheet but nothing in the build opens with one yet, and a run that rolled
+  its whole loadout into Keys would open on nothing at all. Erratic Deck and
+  Rodney bring their whole loadout this way; the character screens show it as a
+  gold **🎲 N random** pill rather than pretending to know which verbs a run will
+  get, and the roll is announced to the toast channel and the run log when it
+  happens, because a loadout that differs run to run otherwise just reads as the
+  character screen being wrong.
+
 - **The offering and the board on screen at once, and a beat between them** —
   four fixes to the stage, all of them one complaint: you could not see the run.
   **(1)** The offering had a full-width band above the two-column stage, so the

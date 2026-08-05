@@ -30,9 +30,58 @@ func test_manager_levels_push() -> void:
 	var manager: CharacterData = Data.get_character2(&"manager")
 	assert_not_null(manager, "manager.tres should load from data/characters2.0")
 	assert_eq(manager.source_game, "Raccoin: Coin Pusher Roguelike")
-	assert_eq(manager.start_push, 0, "Manager starts with no Push charges")
+	assert_eq(manager.start_push, 2, "Manager starts with 2 Push charges")
 	assert_eq(int(manager.level_up_stats.get("push", 0)), 1, "level-up reward is +1 Push")
 	assert_eq(manager.level_up_condition, "Collect 3+ different types of currency")
+
+# --- the unrolled loadout (the sheet's Random column) ----------------------
+#
+# Erratic Deck and Rodney bring part of their loadout UNROLLED: N points spent
+# across the verb pool when the run starts, so no two runs of them open the same.
+
+func test_the_random_column_reaches_the_roster() -> void:
+	assert_eq(Data.get_character2(&"erratic_deck").start_random, 2,
+		"Erratic Deck's whole loadout is rolled")
+	assert_eq(Data.get_character2(&"rodney").start_random, 2, "and so is Rodney's")
+	assert_eq(Data.get_character2(&"ironclad").start_random, 0,
+		"a character with a fixed loadout rolls nothing")
+
+func test_a_random_loadout_lands_entirely_inside_the_verb_pool() -> void:
+	var erratic: CharacterData = Data.get_character2(&"erratic_deck")
+	# Run it enough times that a leak into the wrong field would show.
+	for _i in range(40):
+		GameLoop2.start_run(erratic)
+		var total: int = GameState.bash + GameState.dash_charges + GameState.push \
+			+ GameState.transmute + GameState.scramble + GameState.bombs
+		assert_eq(total, erratic.start_random,
+			"every rolled point landed on a verb in the pool, and only one each")
+		assert_eq(GameState.keys, 0,
+			"Keys is out of the pool — nothing in the build opens with one yet")
+
+func test_the_roll_is_actually_random() -> void:
+	# Not a distribution test — just that 60 rolls of 2 points don't all produce
+	# the same loadout, which is what a broken (or unseeded) pick would give.
+	var seen: Dictionary = {}
+	var erratic: CharacterData = Data.get_character2(&"erratic_deck")
+	for _i in range(60):
+		GameLoop2.start_run(erratic)
+		seen["%d/%d/%d/%d/%d/%d" % [GameState.bash, GameState.dash_charges,
+			GameState.push, GameState.transmute, GameState.scramble, GameState.bombs]] = true
+	assert_gt(seen.size(), 1, "the loadout differs between runs")
+
+func test_a_fixed_loadout_is_untouched_by_the_roll() -> void:
+	var manager: CharacterData = Data.get_character2(&"manager")
+	GameLoop2.start_run(manager)
+	assert_eq(GameState.push, manager.start_push,
+		"a character that rolls nothing opens on exactly its sheet row")
+	assert_eq(GameState.bash, 0)
+
+func test_the_roll_is_reported_in_words() -> void:
+	# The run log has to be able to say what was rolled, or a loadout that differs
+	# every run just reads as the character screen being wrong.
+	assert_eq(GameState.describe_start_random({"bash": 2, "push": 1}), "+2 Bash, +1 Push",
+		"named in pool order, whatever order they were rolled in")
+	assert_eq(GameState.describe_start_random({}), "", "and nothing to say for no roll")
 
 func test_isaac_starting_loadout() -> void:
 	var isaac: CharacterData = Data.get_character2(&"isaac")
@@ -47,7 +96,11 @@ func test_isaac_levelup_reward_is_chest() -> void:
 	assert_eq(String(isaac.level_up_reward_type), "item", "Small Chest -> item reward")
 	assert_eq(isaac.level_up_reward_amount, 1)
 	assert_eq(isaac.level_up_reward_chest_choices, 1, "Small -> 1 item, no choice")
-	assert_eq(isaac.level_up_condition, "Unlock a new Item")
+	assert_eq(isaac.level_up_condition, "Use sorrow or self-inflicted pain as a weapon")
+	# "Gain +1 Small Chest and +1 Scramble" — the chest AND the stat, not one or
+	# the other: the reward parser reads the verb gain alongside the chest type.
+	assert_eq(int(isaac.level_up_stats.get("scramble", 0)), 1,
+		"the second half of the reward is a Scramble")
 
 func test_zagreus_levelup_reward_is_a_large_chest() -> void:
 	var zag: CharacterData = Data.get_character2(&"zagreus")
@@ -69,7 +122,7 @@ func test_zagreus_has_art() -> void:
 func test_minä_starts_and_levels_transmute() -> void:
 	var mina: CharacterData = Data.get_character2(&"min")
 	assert_not_null(mina, "Minä loads (id slugs to 'min')")
-	assert_eq(mina.start_transmute, 1, "Noita starts with 1 Transmute")
+	assert_eq(mina.start_transmute, 2, "Noita starts with 2 Transmute")
 	assert_eq(int(mina.level_up_stats.get("transmute", 0)), 1, "reward +1 Transmute")
 
 func test_poe_ratcho_starting_loadout_and_reward() -> void:

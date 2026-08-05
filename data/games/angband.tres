@@ -9,8 +9,8 @@ id = &"angband"
 display_name = "Angband"
 year = 1990
 type = 3
-games_influenced = Array[StringName]([&"elona", &"incursion", &"infra_arcana", &"lambdarogue_the_book_of_stars", &"sil", &"the_ground_gives_way", &"zangband", &"zmangband", &"zorbus", &"powder", &"diablo", &"dungeonmans", &"cardinal_quest", &"crablike"])
-influence_sources = PackedStringArray("", "game credits", "check folder", "https://roguebasin.com/index.php/LambdaRogue", "https://roguebasin.com/index.php/Sil", "https://roguebasin.com/index.php/The_Ground_Gives_Way", "https://roguebasin.com/index.php/Zangband", "https://roguebasin.com/index.php/ZMAngband", "check folder", "http://www.zincland.com/powder/?pagename=about", "https://roguebasin.com/index.php?title=Diablo", "https://www.youtube.com/watch?v=JXv8hQguGCI", "https://x.com/tametick/status/1202248124221272064", "https://roguebasin.com/index.php/Crablike")
+games_influenced = Array[StringName]([&"cardinal_quest", &"crablike", &"diablo", &"dungeonmans", &"elona", &"incursion", &"infra_arcana", &"lambdarogue_the_book_of_stars", &"powder", &"sil", &"the_ground_gives_way", &"zangband", &"zmangband", &"zorbus"])
+influence_sources = PackedStringArray("https://x.com/tametick/status/1202248124221272064", "https://roguebasin.com/index.php/Crablike", "https://roguebasin.com/index.php?title=Diablo", "https://www.youtube.com/watch?v=JXv8hQguGCI", "", "game credits", "check folder", "https://roguebasin.com/index.php/LambdaRogue", "http://www.zincland.com/powder/?pagename=about", "https://roguebasin.com/index.php/Sil", "https://roguebasin.com/index.php/The_Ground_Gives_Way", "https://roguebasin.com/index.php/Zangband", "https://roguebasin.com/index.php/ZMAngband", "check folder")
 influence_relations = PackedStringArray("", "", "", "", "", "", "", "", "", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])

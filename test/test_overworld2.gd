@@ -461,7 +461,8 @@ func test_the_standing_checklist_lists_what_you_owe() -> void:
 		return "\n".join(out)
 	var listed: String = texts.call()
 	assert_true(listed.contains("What you need to do"), "the panel says what it is: %s" % listed)
-	assert_true(listed.contains("Unlock a new Item"), "the level-up challenge is listed: %s" % listed)
+	assert_true(listed.contains("Use sorrow or self-inflicted pain as a weapon"),
+		"the level-up challenge is listed: %s" % listed)
 	assert_true(listed.contains("Nothing is following you"), "and an empty stack says so: %s" % listed)
 	# Miss a goal so an enemy follows: its goal joins the list.
 	_ui.pick(0)
@@ -545,9 +546,14 @@ func test_the_offering_sits_above_the_checklist_beside_the_board() -> void:
 	await get_tree().process_frame
 	assert_lt(_ui._select_box.global_position.x, _ui._board.global_position.x,
 		"which puts it left of the board")
-	assert_lt(_ui._select_box.global_position.y + _ui._select_box.size.y,
-		_ui._board.global_position.y + _ui._board.size.y,
-		"and alongside it rather than above the whole stage")
+	# ALONGSIDE, not above: the two have to share rows on the page, or the board is
+	# still a scroll away from the cards. Whichever is taller, they overlap.
+	var cards_top: float = _ui._select_box.global_position.y
+	var cards_bottom: float = cards_top + _ui._select_box.size.y
+	var board_top: float = _ui._board.global_position.y
+	var board_bottom: float = board_top + _ui._board.size.y
+	assert_lt(maxf(cards_top, board_top), minf(cards_bottom, board_bottom),
+		"the offering and the board occupy the same band of the page")
 
 # Nothing on the page may be wider than the page. The board grows a column per
 # difficulty tier, so this is checked on the WIDEST board the run can reach.

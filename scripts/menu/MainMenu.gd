@@ -359,6 +359,23 @@ func _verb_chips(ch: CharacterData) -> Control:
 		pl.add_theme_color_override("font_color", UITheme.ACCENT.lerp(UITheme.TEXT, 0.3))
 		pill.add_child(pl)
 		flow.add_child(pill)
+	# The unrolled part of the loadout gets its own pill, tinted apart from the
+	# fixed verbs and saying what it will become — "Random 2" beside a solid
+	# "Bash 1" would otherwise read as a verb called Random.
+	if ch.start_random > 0:
+		any = true
+		var pill := PanelContainer.new()
+		pill.add_theme_stylebox_override("panel",
+			UITheme.flat(UITheme.GOLD.lerp(UITheme.BG, 0.78), 6, 4, 1, UITheme.GOLD.lerp(UITheme.BORDER, 0.4)))
+		var pl := Label.new()
+		pl.text = "🎲 %d random" % ch.start_random
+		pl.tooltip_text = ("%d point%s of Bash / Dash / Push / Transmute / Scramble / Bombs, "
+			+ "rolled fresh when the run starts.") % [
+				ch.start_random, "" if ch.start_random == 1 else "s"]
+		pl.add_theme_font_size_override("font_size", 11)
+		pl.add_theme_color_override("font_color", UITheme.GOLD)
+		pill.add_child(pl)
+		flow.add_child(pill)
 	return flow if any else null
 
 func _begin_run(character_id: StringName) -> void:

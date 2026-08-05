@@ -18,11 +18,14 @@ start_transmute = 0
 start_scramble = 0
 start_bombs = 1
 start_keys = 0
+start_random = 0
 starting_items = Array[StringName]([&"d6"])
 starting_weapon = &""
-level_up_condition = "Unlock a new Item"
-level_up_reward = "Gain +1 Small Chest"
-level_up_stats = {}
+level_up_condition = "Use sorrow or self-inflicted pain as a weapon"
+level_up_reward = "Gain +1 Small Chest and +1 Scramble"
+level_up_stats = {
+"scramble": 1
+}
 level_up_reward_type = &"item"
 level_up_reward_amount = 1
 level_up_reward_chest_choices = 1
