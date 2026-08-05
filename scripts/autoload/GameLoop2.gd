@@ -727,7 +727,7 @@ func bomb(instance: int) -> bool:
 				destroyed.append(enemy)
 				stack.remove_at(i)
 				continue
-		# Survived the blast — Sticky Bombs makes that cost it its next attack.
+		# Survived the blast — Sticky Bombs makes that cost it its next turn.
 		if stuns:
 			stack[i]["stun"] = int(stack[i].get("stun", 0)) + 1
 	# Clearing a body can open the space a waiting enemy needs to walk on.
@@ -785,9 +785,10 @@ func _blast_instances(instance: int) -> Array:
 				break
 	return out
 
-# Stun a stacked enemy (Scroll of Scare Monster, §4.1): it skips its next attack,
-# pushing its timing one game later (§7.2). Stacks additively. Returns true if
-# the target is on the stack.
+# Stun a stacked enemy (Scroll of Scare Monster, §4.1): it loses its next TURN,
+# neither striking nor stepping, and the stun ticks off with it. That is a whole
+# game out in the wilds and a third of one on the Amulet's doorstep (§7.4).
+# Stacks additively. Returns true if the target is on the stack.
 func stun(instance: int) -> bool:
 	var idx: int = _index_of(instance)
 	if idx < 0:
@@ -919,32 +920,43 @@ func _finish_run(did_win: bool) -> void:
 
 # --- "how much of this is left" denominators -------------------------------
 #
-# Both stats read x/y, and y has to be the number that could HAVE happened, not
-# the whole catalog: an Action goal-enemy never turns up at a Deckbuilder game,
-# so counting it against all 757 games would make every number meaningless.
-# Enemies are drawn by matching game_type (see _pick_by_type_tier), so the pool
-# for a game is the enemies sharing its type, and the games an enemy can appear
-# at are the games sharing its.
+# Both stats read x/y, and y is every pairing that COULD be recorded — which is
+# all of them, because the pairing is not decided by the roll.
+#
+# It looks like it should be: an enemy is ROLLED for a game of its own type
+# (_pick_by_type_tier), so an Action goal-enemy never spawns AT a Deckbuilder
+# game, and these two counts used to be filtered by game_type on exactly that
+# reasoning. But spawning is not the only way an enemy is beaten at a game.
+# An enemy that survives FOLLOWS the player (§2), and it keeps following across
+# games of every type — so clearing its old goal while playing anything at all
+# records that enemy against THAT game (see Overworld2.report -> _record_defeat).
+# An Action enemy beaten while the player was playing a Deckbuilder is an
+# ordinary event, not an anomaly, and it was being counted against a denominator
+# that excluded it — which is why both call sites had to guard with
+# maxi(possible, actual) to stop the display reading 5 / 3.
+#
+# So the honest denominator is the whole catalog on both sides: any enemy can be
+# beaten at any game, given a board that carries it there.
 
-# Ids of every goal-enemy and boss that can be rolled at `game`.
+# Ids of every goal-enemy and boss that can be beaten at `game` — the whole
+# roster, since a follower can be carried to any game and cleared there.
 func possible_enemies_at(game: GameData) -> Array:
 	if game == null:
 		return []
 	var out: Array = []
-	var key: StringName = game_type_key(game)
 	for e in Data.all_goal_enemies() + Data.all_bosses():
-		if e is GoalEnemyData and StringName(String(e.game_type).to_lower()) == key:
+		if e is GoalEnemyData:
 			out.append(e.id)
 	return out
 
-# How many games `enemy` could be rolled at.
+# How many games `enemy` could be beaten at — the whole catalog, for the same
+# reason: it spawns at its own type, but it can be carried anywhere.
 func possible_games_for(enemy: GoalEnemyData) -> int:
 	if enemy == null:
 		return 0
-	var key: StringName = StringName(String(enemy.game_type).to_lower())
 	var n: int = 0
 	for g in Data.all_games():
-		if g is GameData and game_type_key(g) == key:
+		if g is GameData:
 			n += 1
 	return n
 

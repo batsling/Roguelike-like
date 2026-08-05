@@ -170,30 +170,56 @@ func test_an_enemy_only_written_about_is_not_listed_as_beaten() -> void:
 # The x / y denominators
 # ---------------------------------------------------------------------------
 #
-# y is what COULD have happened, not the whole catalog: enemies are rolled by
-# matching game type, so an Action enemy never appears at a Deckbuilder game and
-# counting it against all 757 would make the number meaningless.
+# y is every pairing that COULD be recorded, and that is all of them. An enemy
+# SPAWNS only at a game of its own type, but a survivor FOLLOWS the player
+# across games of every type, and clearing its old goal records it against
+# whatever was being played at the time — so any enemy can end up beaten at any
+# game. A type-filtered denominator excluded real, reachable pairings.
 
-func test_a_games_enemy_pool_is_its_own_type() -> void:
+func test_a_games_enemy_pool_is_the_whole_roster() -> void:
 	var game: GameData = Data.get_game(&"slay_the_spire")
 	if game == null:
 		return
 	var pool: Array = GameLoop2.possible_enemies_at(game)
-	assert_gt(pool.size(), 0, "a game has enemies that can appear at it")
+	assert_eq(pool.size(), Data.all_goal_enemies().size() + Data.all_bosses().size(),
+		"every enemy and boss can be carried here and cleared here")
+	# Specifically including the types that never SPAWN at this game.
 	var key: StringName = GameLoop2.game_type_key(game)
+	var off_type := 0
 	for id in pool:
 		var e: GoalEnemyData = Data.get_goal_enemy_any(StringName(id))
-		assert_eq(StringName(String(e.game_type).to_lower()), key,
-			"%s can only be rolled at games of its own type" % id)
+		if e != null and StringName(String(e.game_type).to_lower()) != key:
+			off_type += 1
+	assert_gt(off_type, 0, "a follower of another type is a real thing to beat here")
 
-func test_an_enemys_possible_games_share_its_type() -> void:
+func test_an_enemys_possible_games_are_the_whole_catalog() -> void:
 	var foes: Array = Data.all_goal_enemies()
 	if foes.is_empty():
 		return
 	var enemy: GoalEnemyData = foes[0]
-	var n: int = GameLoop2.possible_games_for(enemy)
-	assert_gt(n, 0, "an enemy has games it can appear at")
-	assert_lt(n, Data.all_games().size(), "but not the whole catalog")
+	assert_eq(GameLoop2.possible_games_for(enemy), Data.all_games().size(),
+		"it can be carried to any game in the catalog and beaten there")
+
+func test_an_off_type_kill_still_fits_its_denominator() -> void:
+	# The case the type filter got wrong: a follower rolled at one type, beaten
+	# while the player was playing another. Both sides of the stat must have room
+	# for it without being widened after the fact.
+	var game: GameData = Data.get_game(&"slay_the_spire")
+	if game == null:
+		return
+	var key: StringName = GameLoop2.game_type_key(game)
+	var off: GoalEnemyData = null
+	for e in Data.all_goal_enemies():
+		if StringName(String(e.game_type).to_lower()) != key:
+			off = e
+			break
+	assert_not_null(off, "the roster has an enemy of another type")
+	GameStats.record_enemy_beaten(game.id, off.id)
+	assert_true(GameLoop2.possible_enemies_at(game).has(off.id),
+		"the game counts the follower it just had beaten on it")
+	assert_lte(GameStats.enemies_for(game.id).size(),
+		GameLoop2.possible_enemies_at(game).size(),
+		"so the stat never needs widening to stay honest")
 
 func test_the_denominators_are_never_smaller_than_what_happened() -> void:
 	# A pool can change between patches, so a player may have beaten an enemy that

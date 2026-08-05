@@ -302,6 +302,27 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
 ## Recent changes
 
+- **Backward influences are legal, and the completion stats count the whole
+  catalog** — three corrections to rules that were stricter than the game is.
+  **(1)** `tools/check_map_sync.py` treated any connection pointing at a game
+  with an earlier year as an integrity violation. But Year is when a game became
+  available to *influence* others, not when it stopped being *developed*, and a
+  roguelike is very often a decades-long project — HyperRogue (2012) taking an
+  idea from Crypt of the NecroDancer (2015) is a real event. Backward edges are
+  now reported for eyeballing (a mistyped year looks identical) rather than
+  rejected, and `tools/map_layout.py`, which was silently dropping them along
+  with every same-year link, now draws all 1120 connections — the ones that can't
+  use the downward comb sweep upward into the older game instead. **(2)** The
+  Collection's *Enemies beaten in (x / y)* filtered `y` by game type, on the
+  reasoning that an enemy only spawns at a game of its own type — but a survivor
+  **follows you across games of every type**, so any enemy can be beaten at any
+  game, and both denominators are now the full roster / full catalog. **(3)** The
+  report and standing checklists lead with the **goal** and name the enemy after
+  it (*"Defeat 10+ spiders — Spider"*), since the goal is the part being read
+  for. Stun's wording caught up with the turn ladder too: it costs one **turn**,
+  which the scroll and the enemy card now price against the current pace instead
+  of promising "skips its next attack".
+
 - **Amulet pressure: the enemies speed up as you close in** — the run had one
   difficulty axis and it ticked on its own, which made routing one-directional:
   the Amulet is the win condition, so every step toward it was strictly good.
@@ -533,10 +554,15 @@ See `docs/stat-dispatcher.md` for how stats resolve.
   the mirror of it — every enemy beaten at that game.
 
   Both sides carry a completion stat as **x / y**: an enemy's *Games beaten in
-  (3 / 91)*, a game's *Enemies beaten in (4 / 12)*. `y` is what **could** have
-  happened rather than the whole catalog — enemies are rolled by matching game
-  type, so an Action goal-enemy never appears at a Deckbuilder game and counting
-  it against all 757 would make the number meaningless.
+  (3 / 808)*, a game's *Enemies beaten in (4 / 77)*. `y` is **every pairing that
+  could be recorded, which is all of them**. It used to be filtered by game type,
+  on the reasoning that an enemy is *rolled* for a game of its own type — but
+  spawning isn't the only way an enemy gets beaten somewhere. A survivor
+  **follows you across games of every type**, and clearing its old goal records
+  it against whatever you were playing at the time, so an Action enemy beaten
+  during a Deckbuilder is ordinary. The type filter was excluding real, reachable
+  pairings, which is why both call sites had to guard the display against reading
+  *5 / 3*.
 
   A note belongs to the **pair**, not to the enemy — the same goal-enemy turns up
   on many games and how you cleared it is a fact about that combination. Notes

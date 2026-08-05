@@ -580,6 +580,22 @@ Resource schema in `scripts/resources/`.
   via `import-games-godot.py`.
 - **curses** — **shelved** (§5). **bingo** — **retired**; legacy not ported.
 
+**What `Year` means, and what a backward connection is.** `Year` is the year a
+game first became **available to influence others** — an early-access date, or a
+demo where that's when it started mattering (Balatro is dated 2023 for its demo,
+not its 2024 release). It is *not* the year the game stopped changing. Roguelikes
+are frequently decades-long projects (NetHack, DCSS, Cataclysm, HyperRogue,
+ADOM), and a game still under active development can take an influence from
+something that shipped after its own first release.
+
+So a **backward connection** — an influence pointing at a game with an earlier
+`Year` — is **legal and supported end to end**: `import-games-godot.py` writes it
+like any other, `RunGraph` traverses the graph undirected, the Atlas lays out
+from hop distance rather than from years, and `map_layout.py` draws it sweeping
+upward into the older game instead of down. `check_map_sync.py` lists them
+without failing, purely so a mistyped year — which produces the identical shape —
+gets noticed rather than buried.
+
 ### 10.1 Art / image folders (`images2.0/`)
 
 Reshaping the project creates a **new `images2.0/` drop folder** (parallel to the

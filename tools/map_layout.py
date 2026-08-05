@@ -3,11 +3,18 @@
 
 PROTOTYPE — proposes a layout, it does not modify tools/Roguelikes.drawio.
 
-Release year is already a valid layering (no edge points backwards in time), so
-the expensive part of layered graph drawing is free. Rows are years; games are
-ordered within a row by the mean position of their neighbours so families cluster;
-and every edge that crosses a row is nudged sideways into the nearest FREE GAP
-between that row's boxes.
+Release year is very nearly a valid layering already, so the expensive part of
+layered graph drawing is free. Rows are years; games are ordered within a row by
+the mean position of their neighbours so families cluster; and every edge that
+crosses a row is nudged sideways into the nearest FREE GAP between that row's
+boxes.
+
+"Very nearly", because a handful of edges do NOT run downward: Year is when a
+game became available to influence others, not when it stopped being developed,
+so a long-running project can take an influence from something newer than its
+own first release. Those edges (and same-year ones) can't use the downward comb
+— they arc through the gutter above their target instead, drawn upward, which is
+the honest picture of what they are.
 
 Sharing gaps is the point. Giving each edge its own reserved corridor also
 guarantees no box is crossed, but needs 5,744 corridors and reads as a curtain of
@@ -47,9 +54,14 @@ def load():
     year = {k: g["year"] for k, g in sheet["games"].items() if g["year"]}
     name = {k: g["name"] for k, g in sheet["games"].items()}
     edges = []
+    # Every connection between two dated games, whichever way it runs in time.
+    # This used to keep only year[a] < year[b], which quietly dropped both the
+    # same-year links and the backward ones — so a real influence on a
+    # long-developed game was simply missing from the drawing rather than drawn
+    # awkwardly. build() buckets them (see `intra`); it doesn't need them gone.
     for link in sheet["connections"].values():
         a, b = C.norm(link["a"]), C.norm(link["b"])
-        if a in year and b in year and year[a] < year[b]:
+        if a in year and b in year:
             edges.append((a, b, link["dev"]))
     return name, year, edges
 
@@ -316,15 +328,30 @@ def render(name, year, L, gmap, path, view=None, scale=1.0, labels=True, title="
                                         max(0.55, 1.15 / max(scale, 0.25) ** 0.5),
                                         0.75 if len(pts) <= 4 else 0.42))
 
-    # same-row edges arc through the gutter above the row, so they still enter
-    # their target from the top like every other edge and never touch a box.
+    # The edges the downward comb can't carry, both leaving their source through
+    # its TOP edge:
+    #   * same-row — arc through the gutter above the row and come back down, so
+    #     they still enter their target from the top like every other edge;
+    #   * BACKWARD — the influencer is the newer game, so it sits LOWER on the
+    #     page and the line sweeps upward into the older game's underside. Year
+    #     is when a game became available to influence others, not when it
+    #     stopped being developed, so this is a real relationship and it is drawn
+    #     rather than dropped. Reading against the page's chronology is exactly
+    #     what makes it recognisable at a glance.
     for e in L.get("intra", []):
         xa, xb = X[e["a"]], X[e["b"]]
-        yr = Y[e["a"]]
-        top = yr - NODE_H / 2
-        lift = min(ROW * 0.42, 40 + abs(xb - xa) * 0.05)
+        ya, yb = Y[e["a"]], Y[e["b"]]
+        start = ya - NODE_H / 2
+        if abs(ya - yb) < 1.0:
+            end = start
+            lift = min(ROW * 0.42, 40 + abs(xb - xa) * 0.05)
+            c1y = c2y = start - lift
+        else:
+            end = yb + NODE_H / 2          # arrive under the older game
+            bow = min(ROW * 0.5, 30 + abs(xb - xa) * 0.05)
+            c1y, c2y = start - bow, end + bow
         d = ("M %.1f %.1f C %.1f %.1f %.1f %.1f %.1f %.1f"
-             % (xa, top, xa, top - lift, xb, top - lift, xb, top))
+             % (xa, start, xa, c1y, xb, c2y, xb, end))
         out.append('<path d="%s" fill="none" stroke="%s" stroke-width="%.2f" opacity="0.8"/>'
                    % (d, EDGE_DEV if e["dev"] else EDGE,
                       max(0.8, 1.4 / max(scale, 0.25) ** 0.5)))
@@ -381,7 +408,13 @@ def main():
                 args.span, args.span * 0.42)
     w, h = render(name, year, L, genres(), args.out, view=view, scale=args.zoom,
                   labels=bool(args.around))
-    print("%d games, %d edges" % (len(L["x"]), len(L["routes"])))
+    # Counted in both buckets: the comb carries the edges that run down the page,
+    # and the arcs carry the ones that can't (same-year, and backward — an
+    # influence on a game still being developed). Reporting only the comb made
+    # the arced ones look like they had been dropped.
+    arced = len(L.get("intra", []))
+    print("%d games, %d edges (%d combed down, %d arced: same-year or backward)"
+          % (len(L["x"]), len(L["routes"]) + arced, len(L["routes"]), arced))
     print("canvas %.0f x %.0f px" % (w, h))
     print("segments crossing a box: %d %s" % (len(bad), "" if not bad else bad[:5]))
     print("wrote %s" % args.out)

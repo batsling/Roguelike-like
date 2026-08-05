@@ -114,7 +114,13 @@ func setup(entry: Dictionary, col: int, is_current: bool) -> void:
 		stat_col.add_child(_stat_row("▦", "Size", _size_text(e), UITheme.TEXT_DIM))
 	var stun: int = int(entry.get("stun", 0))
 	if stun > 0:
-		stat_col.add_child(_stat_row("❄", "Frozen", "skips its next %d game(s)" % stun, Color(0.6, 0.8, 1.0)))
+		# A stun costs one TURN, and how much of a game that is depends on how close
+		# the run is to the Amulet (§7.4) — so the card says turns AND what they are
+		# worth here rather than a "games" figure that is only true in the far band.
+		var turns: int = GameLoop2.enemy_turns()
+		stat_col.add_child(_stat_row("❄", "Frozen",
+			"loses its next %d turn(s) of %d per game" % [stun, turns],
+			Color(0.6, 0.8, 1.0)))
 	top.add_child(stat_col)
 	inner.add_child(top)
 

@@ -1794,9 +1794,13 @@ func _populate_play_panel() -> void:
 		_levelup_check = lu_row["check"]
 		_verify_box.add_child(lu_row["row"])
 
+	# GOAL FIRST, then whose it is. The checklist is scanned for "what did I
+	# actually do", and the goal is the part being answered — the enemy's name is
+	# the label on it. Leading with the name made every row start with a proper
+	# noun the player has to read past to reach the thing they're ticking.
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
-		var row := _verify_row("Also cleared: %s — %s" % [e.display_name, e.goal], UITheme.TEXT, false, e)
+		var row := _verify_row("Also cleared: %s — %s" % [e.goal, e.display_name], UITheme.TEXT, false, e)
 		_verify_box.add_child(row["row"])
 		_fulfil_checks.append({"check": row["check"], "instance": int(entry["instance"])})
 
@@ -1829,10 +1833,12 @@ func _populate_standing_checklist() -> void:
 		var e: GoalEnemyData = entry["enemy"]
 		var urgent: bool = GameLoop2.in_front(entry)
 		var tint: Color = UITheme.DANGER if urgent else UITheme.GOLD.lerp(UITheme.TEXT, 0.4)
+		# Goal first, then whose it is — same order as the report step, since these
+		# are the same list in two states and the goal is what's being read for.
 		# "dmg N" in words: the board's ⚔ badge is a fine-detail glyph that reads as
 		# an ✕ at list-row sizes.
 		_verify_box.add_child(_objective_row(
-			"%s — %s   (dmg %d)" % [e.display_name, e.goal, e.damage], tint))
+			"%s — %s   (dmg %d)" % [e.goal, e.display_name, e.damage], tint))
 
 	if GameLoop2.stack.is_empty():
 		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")
