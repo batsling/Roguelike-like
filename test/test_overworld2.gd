@@ -1330,3 +1330,148 @@ func test_the_start_pickers_map_raises_no_chart() -> void:
 	assert_null(_chart(), "no star chart from the start picker")
 	assert_eq(modal.node_name(GameState.amulet_game_id), "The Amulet — ???",
 		"and the ladder still won't name the destination")
+
+# ---------------------------------------------------------------------------
+# Amulet pressure on the offering: what a card costs in PACE (§7.4)
+# ---------------------------------------------------------------------------
+#
+# The route badge says how much ground a card gives or takes. These say what that
+# ground costs, because a player who can't see the pace change before clicking
+# can't make the trade the mechanic exists to offer.
+
+# A game at exactly `hops` from the Amulet, or &"" if the graph has none.
+func _a_game_at_hops(hops: int) -> StringName:
+	for gid in _ui._amulet_dist.keys():
+		if int(_ui._amulet_dist[gid]) == hops:
+			return gid
+	return &""
+
+func test_a_card_names_the_pace_it_would_put_you_on() -> void:
+	for hops in [6, 4, 1]:
+		var gid: StringName = _a_game_at_hops(hops)
+		if gid == &"":
+			continue
+		var note: Dictionary = _ui.turn_note({"slot": gid, "amulet": false})
+		assert_eq(int(note["turns"]), RunDifficulty.turns_for_hops(hops),
+			"a card %d hops out reads the same rung the loop resolves on" % hops)
+		assert_true(String(note["text"]).contains("×%d" % int(note["turns"])),
+			"and says the number out loud: %s" % note["text"])
+
+func test_stepping_toward_the_amulet_warns_that_they_speed_up() -> void:
+	# Stand in the far band and look at a card deep in the near one: the card has
+	# to say the enemies get faster BEFORE it's clicked.
+	var here: StringName = _a_game_at_hops(6)
+	var there: StringName = _a_game_at_hops(1)
+	if here == &"" or there == &"":
+		return
+	GameState.set_current_game(here)
+	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
+	assert_eq(int(note["turns"]), 3, "one hop from the Amulet is the doorstep")
+	assert_true(String(note["text"]).contains("speed up"),
+		"the card warns before the click: %s" % note["text"])
+	assert_eq(note["color"], RunDifficulty.turns_band_color(3),
+		"in the band's own colour, same as the board's strip")
+
+func test_backing_off_reads_as_the_relief_it_is() -> void:
+	var here: StringName = _a_game_at_hops(1)
+	var there: StringName = _a_game_at_hops(6)
+	if here == &"" or there == &"":
+		return
+	GameState.set_current_game(here)
+	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
+	assert_eq(int(note["turns"]), 1)
+	assert_true(String(note["text"]).contains("slow down"),
+		"walking away buys pace, and the card says so: %s" % note["text"])
+
+func test_a_card_that_changes_nothing_says_so_quietly() -> void:
+	var here: StringName = _a_game_at_hops(6)
+	var there: StringName = _a_game_at_hops(5)
+	if here == &"" or there == &"":
+		return
+	GameState.set_current_game(here)
+	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
+	assert_true(String(note["text"]).contains("Still"),
+		"same band either way: %s" % note["text"])
+	assert_eq(note["color"], UITheme.TEXT_DIM, "and it doesn't shout about it")
+
+func test_the_amulet_card_makes_no_threat_about_afterwards() -> void:
+	# Taking the Amulet ends the run on the spot; a "×3 turns" warning there would
+	# be describing a game that never happens.
+	var note: Dictionary = _ui.turn_note({
+		"slot": GameState.amulet_game_id, "amulet": true})
+	assert_eq(String(note["text"]), "", "the winning card carries no pace warning")
+
+func test_every_offered_card_states_its_pace_above_the_art() -> void:
+	_ui._render_choices()
+	for i in range(_ui._choices.size()):
+		var card: Node = _ui._choices_row.get_child(i)
+		var note: Dictionary = _ui.turn_note(_ui._choices[i])
+		if String(note["text"]) == "":
+			continue                       # the Amulet's card, which says nothing
+		var idx: int = _label_index(card, String(note["text"]))
+		assert_gt(idx, -1, "card %d states the pace it puts you on" % i)
+		assert_lt(idx, _cover_index(card), "and does it above the cover art")
+
+# ---------------------------------------------------------------------------
+# The difficulty step widens the battlefield (§7.3)
+# ---------------------------------------------------------------------------
+
+func test_crossing_a_tier_grows_the_board_and_says_so() -> void:
+	# Park the run one game short of a tier step, then play that game: the board
+	# is a column and a row wider on the other side of the report, and the run log
+	# carries the news (the new cells light up on the board itself).
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+	_ui._build_choices()
+	var cols_before: int = GameLoop2.grid_cols()
+	var rows_before: int = GameLoop2.grid_rows()
+	var log_before: int = GameLog.messages.size()
+	_ui.pick(0)
+	_ui.report(false)
+	assert_eq(GameLoop2.grid_cols(), cols_before + 1, "the step widened the board")
+	assert_eq(GameLoop2.grid_rows(), rows_before + 1, "in both dimensions")
+	var said: bool = false
+	for i in range(log_before, GameLog.messages.size()):
+		if String(GameLog.messages[i].get("text", "")).contains("battlefield grows"):
+			said = true
+	assert_true(said, "and the run log says the battlefield grew")
+
+func test_an_ordinary_game_leaves_the_board_alone() -> void:
+	GameState.games_played = 0
+	_ui._build_choices()
+	var cols_before: int = GameLoop2.grid_cols()
+	_ui.pick(0)
+	_ui.report(false)
+	assert_eq(GameLoop2.grid_cols(), cols_before,
+		"a game that crosses no gate changes nothing about the board")
+
+func test_the_playback_runs_one_beat_per_turn() -> void:
+	# Three turns of enemy action have to be SHOWN as three, not collapsed into a
+	# single slide — watching the same beat land three times is how the amulet
+	# ladder is felt rather than merely read (§7.4).
+	_ui.pick(0)
+	var before: Dictionary = _ui._board.capture_positions()
+	assert_gt(before.size(), 0, "the picked game put an enemy on the board")
+	var inst: int = int(before.keys()[0])
+	var one: float = _ui._board.animate_resolve(before, {
+		"turns": 1, "turn_frames": [{inst: Vector2i(1, 0)}],
+		"attacks": [{"instance": inst, "turn": 0, "damage": 3}]})
+	var three: float = _ui._board.animate_resolve(before, {
+		"turns": 3,
+		"turn_frames": [{inst: Vector2i(1, 0)}, {inst: Vector2i(1, 0)}, {inst: Vector2i(1, 0)}],
+		"attacks": [
+			{"instance": inst, "turn": 0, "damage": 3},
+			{"instance": inst, "turn": 1, "damage": 3},
+			{"instance": inst, "turn": 2, "damage": 3}]})
+	assert_almost_eq(three, one * 3.0, 0.001,
+		"the host holds the screen for every turn, not just the first")
+
+func test_a_resolve_from_before_the_ladder_still_plays() -> void:
+	# A result with no turn/turn_frames fields — a save restored from before the
+	# ladder existed, or a test building one by hand — is one turn's worth of
+	# playback rather than nothing at all.
+	_ui.pick(0)
+	var before: Dictionary = _ui._board.capture_positions()
+	var inst: int = int(before.keys()[0])
+	assert_almost_eq(_ui._board.animate_resolve(before,
+			{"attacks": [{"instance": inst, "damage": 1}]}),
+		_ui._board.FX_ATTACK_TIME, 0.001, "an untagged attack belongs to turn one")

@@ -1030,3 +1030,261 @@ func test_real_boss_takes_no_bomb_damage() -> void:
 	assert_true(GameLoop2.bomb(inst), "a real boss is a legal bomb target")
 	assert_eq(GameState.bombs, 2, "the charge is spent")
 	assert_eq(GameLoop2.stack_size(), 1, "but the boss takes no damage from it")
+
+# ---------------------------------------------------------------------------
+# Amulet pressure: enemies take more turns the closer the run gets (§7.4)
+# ---------------------------------------------------------------------------
+
+# Stand the run `hops` games from the Amulet over the real catalog, so
+# enemy_turns() resolves at a known rung of the ladder. Slay the Spire is the
+# graph's biggest hub, so every distance 0..6 exists off it. Returns false if the
+# catalog somehow can't supply that distance, so a thin graph fails as a skip
+# rather than as a mystery.
+func _stand_at_hops(hops: int) -> bool:
+	var amulet: StringName = &"slay_the_spire"
+	var dist: Dictionary = RunGraph.bfs_distances(amulet)
+	if dist.is_empty():
+		return false
+	for gid in dist.keys():
+		if int(dist[gid]) == hops:
+			GameState.amulet_game_id = amulet
+			GameState.current_game_id = gid
+			return true
+	return false
+
+# Stack one enemy and walk it to the front column, then return its instance.
+# Marches at the FAR pace so the setup itself doesn't depend on the rung under
+# test — the caller moves the run afterwards.
+func _stacked_at_front(dmg: int) -> int:
+	var inst: int = GameLoop2.choose_game(_enemy(dmg))
+	GameLoop2.beat_game(false)      # it stacks at the back column
+	_march_to_front(inst)
+	return inst
+
+func test_no_amulet_means_the_old_one_turn_pace() -> void:
+	# Every headless setup starts with no amulet picked, and that has to read as
+	# the calmest band — it's what keeps the whole suite describing the old rules.
+	assert_eq(String(GameState.amulet_game_id), "", "no amulet in a bare run")
+	assert_eq(GameLoop2.hops_to_amulet(), -1, "so there is no distance to it")
+	assert_eq(GameLoop2.enemy_turns(), 1, "and the enemies take one turn a game")
+
+func test_the_ladder_reads_off_the_distance_to_the_amulet() -> void:
+	for pair in [[6, 1], [5, 1], [4, 2], [3, 2], [2, 3], [1, 3], [0, 3]]:
+		var hops: int = int(pair[0])
+		if not _stand_at_hops(hops):
+			continue
+		assert_eq(GameLoop2.hops_to_amulet(), hops, "standing %d hops out" % hops)
+		assert_eq(GameLoop2.enemy_turns(), int(pair[1]),
+			"%d hops from the Amulet buys the enemies %d turns" % [hops, int(pair[1])])
+
+func test_the_ladder_is_pure_maths_without_a_graph() -> void:
+	# The thresholds themselves, independent of any catalog: 5+ is one turn, 3-4
+	# two, 2-0 three. Nothing between the rungs is left undefined.
+	assert_eq(RunDifficulty.turns_for_hops(99), 1)
+	assert_eq(RunDifficulty.turns_for_hops(5), 1)
+	assert_eq(RunDifficulty.turns_for_hops(4), 2, "4 hops is inside the middle band")
+	assert_eq(RunDifficulty.turns_for_hops(3), 2)
+	assert_eq(RunDifficulty.turns_for_hops(2), 3)
+	assert_eq(RunDifficulty.turns_for_hops(0), 3, "standing on it is the doorstep")
+	assert_eq(RunDifficulty.turns_for_hops(-1), 1, "unreachable reads as distant")
+
+func test_at_the_doorstep_the_front_line_strikes_three_times() -> void:
+	if not _stand_at_hops(1):
+		return
+	var inst: int = _stacked_at_front(1)
+	assert_eq(_col_of(inst), 1, "it is on the front line")
+	GameState.hp = 10
+	var res: Dictionary = GameLoop2.beat_game(false)
+	assert_eq(int(res["turns"]), 3, "one hop out, so three turns")
+	assert_eq(GameState.hp, 7, "and three separate 1-damage hits land")
+	var swings: int = 0
+	for a in res["attacks"]:
+		if (a as Dictionary).has("damage"):
+			swings += 1
+	assert_eq(swings, 3, "each turn is logged as its own attack")
+
+func test_out_in_the_wilds_the_same_enemy_strikes_once() -> void:
+	if not _stand_at_hops(6):
+		return
+	_stacked_at_front(1)
+	GameState.hp = 10
+	var res: Dictionary = GameLoop2.beat_game(false)
+	assert_eq(int(res["turns"]), 1, "six hops out is the far band")
+	assert_eq(GameState.hp, 9, "one turn, one hit — the pre-ladder behaviour")
+
+func test_each_attack_names_the_turn_it_happened_on() -> void:
+	if not _stand_at_hops(0):
+		return
+	_stacked_at_front(1)
+	var res: Dictionary = GameLoop2.beat_game(false)
+	var turns_seen: Array = []
+	for a in res["attacks"]:
+		if (a as Dictionary).has("damage"):
+			turns_seen.append(int((a as Dictionary).get("turn", -1)))
+	assert_eq(turns_seen, [0, 1, 2], "the board replays them in order")
+
+func test_the_board_is_snapshotted_once_per_turn() -> void:
+	if not _stand_at_hops(1):
+		return
+	var inst: int = GameLoop2.choose_game(_enemy(1))
+	GameLoop2.beat_game(false)      # stacks at the back
+	var res: Dictionary = GameLoop2.beat_game(false)
+	var frames: Array = res["turn_frames"]
+	assert_eq(frames.size(), 3, "one frame per turn, so the view can replay them")
+	# Three turns of walking is three columns closer, one frame at a time.
+	var cols: Array = []
+	for f in frames:
+		cols.append(int((f as Dictionary)[inst].x))
+	assert_eq(cols, [cols[0], cols[0] - 1, cols[0] - 2],
+		"and each frame is one step on from the last: %s" % str(cols))
+
+func test_a_walk_and_a_strike_can_both_fit_in_one_game() -> void:
+	# The point of the mechanic: near the Amulet an enemy that is NOT on the front
+	# line still reaches it and swings before the game is out.
+	if not _stand_at_hops(0):
+		return
+	var inst: int = GameLoop2.choose_game(_enemy(2))
+	GameLoop2.beat_game(false)              # stacks at the back column
+	_tick()                                 # three turns of walking -> the front
+	assert_eq(_col_of(inst), 1, "three turns brought it all the way in")
+	GameState.hp = 10
+	GameLoop2.beat_game(false)
+	assert_eq(GameState.hp, 4, "and now it lands all three of its turns")
+
+# --- stun and goal-fulfilment under the new pace ---------------------------
+
+func test_a_stun_costs_one_turn_not_the_whole_game() -> void:
+	if not _stand_at_hops(1):
+		return
+	var inst: int = _stacked_at_front(1)
+	GameLoop2.stun(inst)
+	GameState.hp = 10
+	GameLoop2.beat_game(false)
+	assert_eq(GameState.hp, 8, "the stun eats one of the three turns, not all of them")
+	assert_eq(int(_entry(inst).get("stun", -1)), 0, "and it ticks off with that turn")
+
+func test_a_stun_still_costs_the_whole_game_out_in_the_wilds() -> void:
+	if not _stand_at_hops(6):
+		return
+	var inst: int = _stacked_at_front(3)
+	GameLoop2.stun(inst)
+	GameState.hp = 10
+	GameLoop2.beat_game(false)
+	assert_eq(GameState.hp, 10, "one turn a game means one stun is the whole game")
+
+func test_fulfilling_a_goal_holds_its_fire_for_every_turn() -> void:
+	if not _stand_at_hops(1):
+		return
+	# A two-Health enemy survives the fulfilment hit, so it is still standing to
+	# (not) attack — the only case where "one turn or all of them" is visible.
+	var tough: GoalEnemyData = _enemy(3)
+	tough.health = 2
+	var inst: int = GameLoop2.choose_game(tough)
+	GameLoop2.beat_game(false)
+	_march_to_front(inst)
+	GameState.hp = 10
+	var res: Dictionary = GameLoop2.beat_game(false, [inst])
+	assert_eq(int(_entry(inst).get("health", -1)), 1, "the fulfilment took one Health")
+	assert_eq(GameState.hp, 10, "and it was engaged all game, so it never swings")
+	for a in res["attacks"]:
+		if int((a as Dictionary).get("instance", 0)) == inst:
+			assert_true((a as Dictionary).get("goal_hit", false),
+				"every turn is logged as held, not as a hit")
+
+# --- what the HUD promises matches what lands ------------------------------
+
+func test_attacks_next_game_counts_walking_and_stun_against_the_turns() -> void:
+	if not _stand_at_hops(1):
+		return
+	var inst: int = _stacked_at_front(2)
+	var entry: Dictionary = _entry(inst)
+	assert_eq(GameLoop2.attacks_next_game(entry), 3, "on the front line, all three turns swing")
+	entry["stun"] = 1
+	assert_eq(GameLoop2.attacks_next_game(entry), 2, "a stun takes one of them")
+	entry["stun"] = 0
+	entry["col"] = 3
+	assert_eq(GameLoop2.attacks_next_game(entry), 1, "two columns of walking leaves one swing")
+	entry["col"] = 4
+	assert_eq(GameLoop2.attacks_next_game(entry), 0, "three columns of walking leaves none")
+
+func test_the_damage_promised_is_the_damage_taken() -> void:
+	if not _stand_at_hops(1):
+		return
+	_stacked_at_front(2)
+	var promised: int = GameLoop2.stacked_damage_per_game()
+	assert_eq(promised, 6, "three turns of a 2-damage enemy")
+	# Room to take all of it: set_hp clamps to max_hp, so a headroom-less pool
+	# would swallow hits and make the comparison meaningless.
+	GameState.max_hp = 20
+	GameState.hp = 20
+	GameLoop2.beat_game(false)
+	assert_eq(20 - GameState.hp, promised,
+		"the HUD's number for the coming game is what actually lands")
+
+func test_games_until_strike_shortens_as_the_pace_rises() -> void:
+	var inst: int = GameLoop2.choose_game(_enemy(1))
+	GameLoop2.beat_game(false)                 # stacks at the back column
+	var entry: Dictionary = _entry(inst)
+	entry["col"] = 4                           # three columns of walking to do
+	if _stand_at_hops(6):
+		assert_eq(GameLoop2.games_until_strike(entry), 3,
+			"at one turn a game, three columns is three games of walking")
+	if _stand_at_hops(4):
+		assert_eq(GameLoop2.games_until_strike(entry), 1,
+			"at two turns a game it is on you the game after next")
+	if _stand_at_hops(1):
+		# Three turns spends exactly three of them walking, so the swing itself
+		# lands on the following game — the count is turns SPARE, not turns taken.
+		assert_eq(GameLoop2.games_until_strike(entry), 1)
+		assert_eq(GameLoop2.attacks_next_game(entry), 0, "no turn left over to swing with")
+		entry["col"] = 3                       # one column nearer: two to walk, one to hit
+		assert_eq(GameLoop2.games_until_strike(entry), 0,
+			"from here it arrives AND swings inside a single game")
+		assert_eq(GameLoop2.attacks_next_game(entry), 1)
+
+# ---------------------------------------------------------------------------
+# The battlefield grows with the difficulty tier (§7.3)
+# ---------------------------------------------------------------------------
+
+func test_the_board_gains_a_column_and_a_row_per_tier() -> void:
+	for tier in range(4):
+		GameState.games_played = tier * RunDifficulty.GAMES_PER_TIER
+		assert_eq(RunDifficulty.current_tier(), tier, "tier %d" % tier)
+		assert_eq(GameLoop2.grid_cols(), GameLoop2.BASE_GRID_COLS + tier,
+			"%s widens the board to %d columns" % [RunDifficulty.tier_name(tier),
+				GameLoop2.BASE_GRID_COLS + tier])
+		assert_eq(GameLoop2.grid_rows(), GameLoop2.BASE_GRID_ROWS + tier,
+			"and to %d rows — both dimensions, not just the distance" % [
+				GameLoop2.BASE_GRID_ROWS + tier])
+
+func test_the_board_stops_growing_with_the_tier_ladder() -> void:
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER * 40
+	assert_eq(RunDifficulty.current_tier(), RunDifficulty.MAX_TIER, "Insane is the top")
+	assert_eq(GameLoop2.grid_cols(), GameLoop2.BASE_GRID_COLS + RunDifficulty.MAX_TIER,
+		"a very long run doesn't run off the edge of the screen")
+	assert_eq(GameLoop2.grid_rows(), GameLoop2.BASE_GRID_ROWS + RunDifficulty.MAX_TIER)
+
+func test_a_wider_board_spawns_enemies_further_out() -> void:
+	# The counterweight: the tier that makes the enemies heavier also gives you
+	# more ground to lose before they arrive.
+	GameState.games_played = 0
+	GameLoop2.reset()
+	var near: int = GameLoop2.spawn_col_for(_enemy(1))
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER * RunDifficulty.MAX_TIER
+	GameLoop2.reset()
+	assert_eq(GameLoop2.spawn_col_for(_enemy(1)), near + RunDifficulty.MAX_TIER,
+		"Insane spawns them %d columns further back than Low" % RunDifficulty.MAX_TIER)
+
+func test_growing_the_board_walks_the_overflow_queue_on() -> void:
+	# Enough bodies to jam a Low board, then a tier step: the new column is
+	# somewhere for the queue to finally stand.
+	GameState.games_played = 0
+	GameLoop2.reset()
+	for _i in range(GameLoop2.grid_rows() + 2):
+		GameLoop2.spawn_to_stack(_shaped(1, GameLoop2.grid_rows(), 1))
+	var waiting: int = GameLoop2.offgrid_count()
+	assert_gt(waiting, 0, "the board is jammed and some are waiting off it")
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER
+	GameLoop2.sync_grid_bounds()
+	assert_lt(GameLoop2.offgrid_count(), waiting,
+		"the tier's new column takes some of the queue")

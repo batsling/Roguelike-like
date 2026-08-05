@@ -302,6 +302,34 @@ See `docs/stat-dispatcher.md` for how stats resolve.
 
 ## Recent changes
 
+- **Amulet pressure: the enemies speed up as you close in** — the run had one
+  difficulty axis and it ticked on its own, which made routing one-directional:
+  the Amulet is the win condition, so every step toward it was strictly good.
+  Enemies now take **more turns per game the nearer the Amulet you stand** — 1 at
+  five hops or more, 2 at three or four, **3 at two or fewer** — where a turn is
+  one action: strike from the front column, or step a column closer. One turn is
+  exactly the strike-then-advance the loop always resolved, so the far band is
+  the old game unchanged and the near bands are that beat repeated. Route wide
+  and you fight a slow stack for more games; bum-rush and you fight a fast one
+  for fewer, and the followers on your tail decide which is right. Everything
+  else falls out of the same rule rather than being special-cased: an enemy two
+  columns back now walks in **and** swings inside one game, a **stun** costs one
+  turn (a third of a game at the doorstep, a whole one in the wilds), and
+  **fulfilling a follower's goal** holds its fire for every turn of the game, so
+  it's worth *more* the harder you push. Alongside it the battlefield now
+  **gains a column and a row on every difficulty step** — 4×4 at Low up to 7×7 at
+  Insane, on top of any Mine-r Constructions — which is the counterweight: the
+  tier that makes the enemies heavier also gives you more ground to lose before
+  they arrive. Both halves are on screen before you commit: a colour-coded
+  **strip across the top of the board** (`⏱ ENEMY TURNS ×3`, a three-rung ladder,
+  the hop count that caused it, and the board's size and tier), a line on **every
+  offered card** saying whether taking it speeds the enemies up or slows them
+  down, a badge on **each body** reading `×2` swings or `in 2` games with the
+  threat colours following that rather than the raw column, freshly-grown cells
+  that **light up and pulse**, and a resolve that **plays turn by turn**
+  (`TURN 2 / 3`) instead of collapsing into one slide. See §7.4 of
+  `docs/games-first-redesign.md`.
+
 - **The Atlas rearranges itself, and grew a year-ringed second layout** — a filter on the
   Collection's Constellations used to dim stars where they stood, leaving the
   survivors scattered across their neighbours' holes. It now hands them to the
@@ -736,10 +764,11 @@ re-run them after pulling and review the diff.
   follows the mask, not the box.
 
 - **The MMBN-style grid battlefield with inline drops** — followers are drawn on
-  a 4x4 grid (columns = distance, rows = lanes) with the player on the left.
-  Enemies enter at the back, close one column per game beaten, and strike once
-  any of their cells touch the front column; an overflow queue waits off-grid and
-  slides on as space frees. Every defeated enemy's drop appears as loot to claim
+  a grid (columns = distance, rows = lanes) with the player on the left, 4x4 at
+  the run's opening tier and a column and a row wider on each step past it.
+  Enemies enter at the back, close one column per TURN (see the amulet-pressure
+  entry above), and strike once any of their cells touch the front column; an
+  overflow queue waits off-grid and slides on as space frees. Every defeated enemy's drop appears as loot to claim
   or skip instead of opening a reward screen.
 
 - **Push + the Manager, and Deckbuilder promoted to a first-class game type** —
