@@ -907,12 +907,14 @@ func bash_game(game_id: StringName) -> bool:
 # no off-graph candidate is available. The overworld passes the ids currently on
 # the map and swaps the node to the returned game.
 #
-# The replacement keeps the source's TYPE — except for a **Traditional** game,
-# which transmutes into a random game of any OTHER type. A Traditional roguelike
-# is the run's long haul (it grants 5 tries rather than 3 for a reason), so
-# trading one for another is no relief at all; trading it for anything else is.
-# The roll is flat across every non-Traditional game off the map, so the types
-# with the deeper catalogs come up more often.
+# The replacement keeps the source's TYPE. **Traditional** is the one exception,
+# and it is a SETTING (Settings.traditional_transmute): a Traditional roguelike
+# is the run's long haul — it grants 5 tries rather than 3 for a reason — so
+# trading one for another is arguably no relief at all, and ANY_OTHER lets a
+# Traditional transmute land on any other type instead. Default is SAME_TYPE,
+# the same rule every other type follows. Under ANY_OTHER the roll is flat
+# across every non-Traditional game off the map, so the types with the deeper
+# catalogs come up more often.
 func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 	if GameState.transmute <= 0:
 		return null
@@ -920,7 +922,8 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 	if src == null:
 		return null
 	var key: StringName = game_type_key(src)
-	var away_from_traditional: bool = key == &"traditional"
+	var away_from_traditional: bool = key == &"traditional" \
+		and Settings.traditional_transmute == Settings.TraditionalTransmute.ANY_OTHER
 	var on_map := {}
 	for c in connected:
 		on_map[StringName(c)] = true

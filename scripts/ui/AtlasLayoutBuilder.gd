@@ -37,6 +37,15 @@ const GAP_SAMPLES := 72
 # as separate from the constellations. Mirrors the baker's group "pad".
 const DRIFT_PAD := 9.0
 
+# The halo: how the games with NO links at all ring the constellation sky.
+# Concentric bands, so the ring reads as scattered rather than marched.
+const HALO_BANDS := 3
+# Clear sky between the outermost constellation and the innermost halo star.
+const HALO_GAP := 16.0
+# How far a halo star may wander off its slot, as a fraction of the room it has.
+const HALO_ANGLE_JITTER := 0.3
+const HALO_RADIUS_JITTER := 0.35
+
 # --- the subgraph being laid out ------------------------------------------
 var _ids: PackedStringArray = PackedStringArray()
 var _names: PackedStringArray = PackedStringArray()
@@ -431,10 +440,19 @@ func _constellations(num_capitals: int, source_filter: String) -> AtlasLayout:
 		groups.append({"radius": float(laid[0]), "nodes": laid[1], "xy": laid[2],
 			"pad": 0.0})
 
-	# Components no capital can reach — the drifting stars.
+	# Games with no links at all: not packed with the rest, ringed around it —
+	# see _scatter_halo. (A degree-0 game that is itself a capital owns itself,
+	# so `owner` is what separates the two cases.)
+	var halo: Array = []
+	for i in range(n):
+		if _degree[i] == 0 and owner[i] < 0:
+			halo.append(i)
+
+	# Components no capital can reach but that DO have links — real little
+	# constellations, packed as discs alongside the regions.
 	var visited := {}
 	for i in range(n):
-		if owner[i] >= 0 or visited.has(i):
+		if owner[i] >= 0 or visited.has(i) or _degree[i] == 0:
 			continue
 		var comp: Array = []
 		var queue: Array = [i]
@@ -491,6 +509,31 @@ func _constellations(num_capitals: int, source_filter: String) -> AtlasLayout:
 			_xs[nodes[p]] = cx + xy[p * 2]
 			_ys[nodes[p]] = cy + xy[p * 2 + 1]
 
+	# Everything packed is placed; the halo rings all of it. Measured from the
+	# packing's own MIDDLE rather than from the origin — the disc packer grows
+	# outward from (0,0) but nothing makes the result symmetric about it, and a
+	# halo centred on the origin comes out visibly off to one side of the sky it
+	# is supposed to be surrounding.
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for gi in range(groups.size()):
+		var nodes2: PackedInt32Array = groups[gi]["nodes"]
+		for p in range(nodes2.size()):
+			var v: int = nodes2[p]
+			lo = lo.min(Vector2(_xs[v] - _star_r[v], _ys[v] - _star_r[v]))
+			hi = hi.max(Vector2(_xs[v] + _star_r[v], _ys[v] + _star_r[v]))
+	var core := Vector2.ZERO
+	var core_r: float = 0.0
+	if lo.x <= hi.x:
+		core = (lo + hi) * 0.5
+		for gi in range(groups.size()):
+			var nodes3: PackedInt32Array = groups[gi]["nodes"]
+			for p in range(nodes3.size()):
+				var v2: int = nodes3[p]
+				core_r = maxf(core_r,
+					core.distance_to(Vector2(_xs[v2], _ys[v2])) + _star_r[v2])
+	_scatter_halo(halo, core, core_r)
+
 	var layout := AtlasLayout.new()
 	layout.source_filter = source_filter
 	layout.game_ids = _ids
@@ -512,6 +555,68 @@ func _constellations(num_capitals: int, source_filter: String) -> AtlasLayout:
 	layout.hops = out_hop
 	layout.bounds = _bounds()
 	return layout
+
+# Ring the unconnected games around everything else, scattered rather than
+# marched round a perfect circle.
+#
+# A game with no links is not part of any constellation, and packing it as a
+# one-star "component" among the real ones — which is what the disc packer did —
+# sprinkles 83 meaningless dots through the middle of the chart and shoves the
+# constellations apart to make room for them. Out here they read as what they
+# are: the catalog's unjoined edge.
+#
+# Scattered, but provably never overlapping. Stars are dealt round-robin into
+# HALO_BANDS concentric bands, so anything that ends up angularly adjacent is in
+# a DIFFERENT band and is clear of its neighbour radially; within one band the
+# slots are even and the jitter is capped at a fraction of a slot, so a band's
+# own neighbours keep their gap as well. The halo's radius is then SOLVED from
+# those two bounds rather than picked, which is what lets a 5-star halo and an
+# 83-star one both come out clear.
+func _scatter_halo(halo: Array, core: Vector2, core_r: float) -> void:
+	if halo.is_empty():
+		return
+	halo.sort_custom(_older_first)
+	# Every halo star has degree 0, so they are all exactly the same size and one
+	# separation covers every pair.
+	var sep: float = 2.0 * AtlasLayout.star_radius(0) + PAD
+	var bands: int = mini(HALO_BANDS, halo.size())
+	var jitter_r: float = sep * HALO_RADIUS_JITTER
+	var band_gap: float = sep + 2.0 * jitter_r
+
+	var slot := PackedFloat64Array()
+	slot.resize(bands)
+	var base: float = core_r + HALO_GAP + jitter_r
+	for b in range(bands):
+		var count: int = (halo.size() - b + bands - 1) / bands
+		slot[b] = TAU / float(maxi(count, 1))
+		if count < 2:
+			continue
+		# Two neighbours jittering toward each other is the worst gap this band
+		# can produce; the chord across it still has to clear `sep`.
+		var worst: float = slot[b] * (1.0 - 2.0 * HALO_ANGLE_JITTER)
+		var need: float = sep / (2.0 * maxf(sin(worst * 0.5), 1e-4))
+		base = maxf(base, need + jitter_r - float(b) * band_gap)
+
+	for k in range(halo.size()):
+		var i: int = halo[k]
+		var b2: int = k % bands
+		var seat: int = k / bands
+		# Half a slot of phase per band, so the bands don't line up into spokes.
+		var a: float = slot[b2] * (float(seat) + 0.5 * float(b2)
+			+ (_jitter(i, 1) - 0.5) * 2.0 * HALO_ANGLE_JITTER)
+		var r: float = base + float(b2) * band_gap \
+			+ (_jitter(i, 2) - 0.5) * 2.0 * jitter_r
+		_xs[i] = core.x + cos(a) * r
+		_ys[i] = core.y + sin(a) * r
+
+# A deterministic [0, 1) per star, so the halo looks scattered but is the SAME
+# scatter every time — the sky has to be a pure function of the game set, and a
+# random() here would reshuffle it on every rebuild. Integer-only and kept well
+# inside 64 bits so tools/bake_atlas.py can compute it identically in Python.
+func _jitter(i: int, salt: int) -> float:
+	var h: int = (i * 374761393 + salt * 668265263) & 0xFFFFFFFF
+	h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
+	return float(h) / 4294967296.0
 
 # ---------------------------------------------------------------------------
 # The radial timeline — one ring per year, the tree's branches across them

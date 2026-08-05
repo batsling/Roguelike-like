@@ -1648,3 +1648,59 @@ func test_framing_an_anchor_puts_it_on_screen() -> void:
 		var canvas := Rect2(Vector2.ZERO, view._canvas_size())
 		assert_true(canvas.grow(4.0).has_point(view.to_screen(view.layout.position_of(idx))),
 			"the anchor the button jumps to is in view")
+
+
+# --- panning ---------------------------------------------------------------
+#
+# Right-drag is the map-moving button. Left-drag still pans as well, but the
+# left button has to decide between "moved the map" and "picked a star", so it
+# only counts as a pan past a 5px threshold; the right button only ever pans and
+# can be nudged a pixel at a time.
+
+func _press(view: AtlasView, button: int, pressed: bool, at: Vector2 = Vector2(400, 300)) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = button
+	ev.pressed = pressed
+	ev.position = at
+	view._on_canvas_input(ev)
+
+func _move(view: AtlasView, by: Vector2) -> void:
+	var ev := InputEventMouseMotion.new()
+	ev.relative = by
+	ev.position = Vector2(400, 300) + by
+	view._on_canvas_input(ev)
+
+func test_right_drag_pans_the_chart() -> void:
+	var view: AtlasView = _open()
+	var before: Vector2 = view._offset
+	_press(view, MOUSE_BUTTON_RIGHT, true)
+	_move(view, Vector2(60, -25))
+	assert_ne(view._offset, before, "holding right and moving pans the sky")
+	_press(view, MOUSE_BUTTON_RIGHT, false)
+	var parked: Vector2 = view._offset
+	_move(view, Vector2(40, 40))
+	assert_eq(view._offset, parked, "and it stops when the button comes up")
+
+func test_right_drag_pans_by_a_single_pixel() -> void:
+	# No click-vs-drag threshold on this button, because it has nothing to click.
+	var view: AtlasView = _open()
+	var before: Vector2 = view._offset
+	_press(view, MOUSE_BUTTON_RIGHT, true)
+	_move(view, Vector2(1, 0))
+	assert_ne(view._offset, before, "a one-pixel right-drag still moves the map")
+	_press(view, MOUSE_BUTTON_RIGHT, false)
+
+func test_right_drag_never_selects_a_star() -> void:
+	var view: AtlasView = _open()
+	view.select(-1)
+	_press(view, MOUSE_BUTTON_RIGHT, true)
+	_press(view, MOUSE_BUTTON_RIGHT, false)
+	assert_eq(view._selected, -1, "the pan button is not a picking button")
+
+func test_left_drag_still_pans() -> void:
+	var view: AtlasView = _open()
+	var before: Vector2 = view._offset
+	_press(view, MOUSE_BUTTON_LEFT, true)
+	_move(view, Vector2(50, 30))
+	assert_ne(view._offset, before, "left-drag keeps working for anyone used to it")
+	_press(view, MOUSE_BUTTON_LEFT, false)

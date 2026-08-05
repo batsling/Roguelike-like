@@ -141,6 +141,94 @@ func test_unknown_ids_are_ignored() -> void:
 		PackedStringArray(["rogue", "no_such_game_at_all"]), 8, "test")
 	assert_eq(built.star_count(), 1, "a game that isn't in the catalog isn't a star")
 
+# --- the halo of unconnected games ----------------------------------------
+
+func _halo_and_core(l: AtlasLayout) -> Array:
+	# Returns [halo indices, core indices]. A game with no links is halo; a game
+	# with any link at all belongs to the packing.
+	var halo: Array = []
+	var core: Array = []
+	for i in range(l.star_count()):
+		if l.degree_of(i) == 0:
+			halo.append(i)
+		else:
+			core.append(i)
+	return [halo, core]
+
+func test_unconnected_games_ring_the_constellations() -> void:
+	var built: AtlasLayout = AtlasLayoutBuilder.build(_all_ids(), 8, "test")
+	var split: Array = _halo_and_core(built)
+	var halo: Array = split[0]
+	var core: Array = split[1]
+	assert_gt(halo.size(), 50, "the catalog has plenty of unjoined games")
+	# The middle of the packing, which is what the halo is drawn around.
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for i in core:
+		lo = lo.min(built.position_of(i))
+		hi = hi.max(built.position_of(i))
+	var centre: Vector2 = (lo + hi) * 0.5
+	var furthest_core: float = 0.0
+	for i in core:
+		furthest_core = maxf(furthest_core, centre.distance_to(built.position_of(i)))
+	for i in halo:
+		assert_gt(centre.distance_to(built.position_of(i)), furthest_core,
+			"%s has no links, so it sits outside the constellations" % built.id_at(i))
+
+func test_the_halo_is_scattered_not_a_drawn_circle() -> void:
+	# The whole point of the bands and the jitter: it should read as a scatter
+	# around the sky, not as a rendered circle. Distinct radii is the test.
+	var built: AtlasLayout = AtlasLayoutBuilder.build(_all_ids(), 8, "test")
+	var halo: Array = _halo_and_core(built)[0]
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for i in range(built.star_count()):
+		if built.degree_of(i) > 0:
+			lo = lo.min(built.position_of(i))
+			hi = hi.max(built.position_of(i))
+	var centre: Vector2 = (lo + hi) * 0.5
+	var radii := {}
+	for i in halo:
+		radii[roundi(centre.distance_to(built.position_of(i)))] = true
+	assert_gt(radii.size(), 10,
+		"a scattered halo lands at many different distances, got %d" % radii.size())
+
+func test_the_halo_never_overlaps_anything() -> void:
+	# The bands and the capped jitter exist to make this provable rather than
+	# lucky, so it is worth asserting on a filter as well as the full catalog.
+	for ids in [_all_ids(), _ids_of_type(GameData.GameType.ACTION)]:
+		var built: AtlasLayout = AtlasLayoutBuilder.build(ids, 8, "test")
+		assert_eq(_overlaps(built), 0, "%d stars, none touching" % built.star_count())
+
+func test_the_halo_is_the_same_scatter_every_time() -> void:
+	# Jittered, but from a hash of the star rather than from random() — the sky
+	# has to be a pure function of the game set.
+	var a: AtlasLayout = AtlasLayoutBuilder.build(_all_ids(), 8, "test")
+	var b: AtlasLayout = AtlasLayoutBuilder.build(_all_ids(), 8, "test")
+	assert_eq(a.xs, b.xs, "same scatter")
+	assert_eq(a.ys, b.ys)
+
+func test_the_baked_sky_rings_its_unconnected_games_too() -> void:
+	# The shipped skies come from tools/bake_atlas.py, so the Python half has to
+	# have the halo as well — otherwise the unfiltered Atlas (which draws the
+	# BAKED layout) would still have its unjoined games sprinkled through the
+	# middle.
+	var baked: AtlasLayout = load(BAKED)
+	var split: Array = _halo_and_core(baked)
+	var core: Array = split[1]
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for i in core:
+		lo = lo.min(baked.position_of(i))
+		hi = hi.max(baked.position_of(i))
+	var centre: Vector2 = (lo + hi) * 0.5
+	var furthest_core: float = 0.0
+	for i in core:
+		furthest_core = maxf(furthest_core, centre.distance_to(baked.position_of(i)))
+	for i in split[0]:
+		assert_gt(centre.distance_to(baked.position_of(i)), furthest_core,
+			"%s is outside the baked constellations" % baked.id_at(i))
+
 # --- the radial tree -------------------------------------------------------
 
 func test_the_tree_is_rooted_at_rogue() -> void:

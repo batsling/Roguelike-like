@@ -72,6 +72,13 @@ CAPITAL_VARIANTS = [6, 12]
 PAD = 3.0                 # clear space kept between any two stars
 GAP_SAMPLES = 72          # directions tried when looking for a cluster's exit
 
+# The halo: how the games with NO links at all ring the constellation sky.
+# Mirrored exactly in AtlasLayoutBuilder — see scatter_halo.
+HALO_BANDS = 3
+HALO_GAP = 16.0           # clear sky between the outermost star and the halo
+HALO_ANGLE_JITTER = 0.3   # how far a star may wander off its slot, as a fraction
+HALO_RADIUS_JITTER = 0.35
+
 
 def star_radius(degree: int) -> float:
     """Drawn size of a star. Must match AtlasView.star_radius()."""
@@ -387,10 +394,16 @@ def build_layout(games, adj, num_capitals: int):
         groups.append({"root": cap, "region": ci, "members": list(children),
                        "radius": rad, "cloud": cloud, "pad": 0.0})
 
-    # Components no capital can reach — the drifting stars.
+    # Games with no links at all: not packed with the rest, ringed around it —
+    # see scatter_halo. (A degree-0 game that is itself a capital owns itself,
+    # so `owner` is what separates the two cases.)
+    halo = [i for i in range(n) if degree[i] == 0 and owner[i] < 0]
+
+    # Components no capital can reach but that DO have links — real little
+    # constellations, packed as discs alongside the regions.
     visited = [False] * n
     for i in range(n):
-        if owner[i] >= 0 or visited[i]:
+        if owner[i] >= 0 or visited[i] or degree[i] == 0:
             continue
         comp, queue, visited[i] = [], collections.deque([i]), True
         while queue:
@@ -417,8 +430,86 @@ def build_layout(games, adj, num_capitals: int):
         for node, px, py in group["cloud"]:
             xs[node], ys[node] = cx + px, cy + py
 
+    # Everything packed is placed; the halo rings all of it. Measured from the
+    # packing's own MIDDLE rather than from the origin — pack_discs grows outward
+    # from (0,0) but nothing makes the result symmetric about it, and a halo
+    # centred on the origin comes out visibly off to one side of the sky it is
+    # supposed to be surrounding.
+    placed = [v for g in groups for v, _, _ in g["cloud"]]
+    if placed:
+        cx0 = 0.5 * (min(xs[v] - radius_of(v) for v in placed)
+                     + max(xs[v] + radius_of(v) for v in placed))
+        cy0 = 0.5 * (min(ys[v] - radius_of(v) for v in placed)
+                     + max(ys[v] + radius_of(v) for v in placed))
+        core_r = max(math.hypot(xs[v] - cx0, ys[v] - cy0) + radius_of(v)
+                     for v in placed)
+    else:
+        cx0, cy0, core_r = 0.0, 0.0, 0.0
+    scatter_halo(halo, games, (cx0, cy0), core_r, xs, ys)
+
     return {"capitals": capitals, "owner": owner, "hop": hop,
             "degree": degree, "xs": xs, "ys": ys, "groups": groups}
+
+
+def jitter(i: int, salt: int) -> float:
+    """A deterministic [0, 1) per star, so the halo looks scattered but is the
+    SAME scatter every time — the sky is a pure function of the catalog, and a
+    random() here would reshuffle it on every bake. Integer-only and kept well
+    inside 64 bits so AtlasLayoutBuilder._jitter computes it identically in
+    GDScript, where ints wrap at 2**63."""
+    h = (i * 374761393 + salt * 668265263) & 0xFFFFFFFF
+    h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
+    return h / 4294967296.0
+
+
+def scatter_halo(halo, games, core, core_r: float, xs, ys) -> None:
+    """Ring the unconnected games around everything else, scattered rather than
+    marched round a perfect circle.
+
+    A game with no links is not part of any constellation, and packing it as a
+    one-star "component" among the real ones — which is what the disc packer did
+    — sprinkles 83 meaningless dots through the middle of the chart and shoves
+    the constellations apart to make room for them. Out here they read as what
+    they are: the catalog's unjoined edge.
+
+    Scattered, but provably never overlapping. Stars are dealt round-robin into
+    HALO_BANDS concentric bands, so anything that ends up angularly adjacent is
+    in a DIFFERENT band and is clear of its neighbour radially; within one band
+    the slots are even and the jitter is capped at a fraction of a slot, so a
+    band's own neighbours keep their gap as well. The halo's radius is then
+    SOLVED from those two bounds rather than picked, which is what lets a 5-star
+    halo and an 83-star one both come out clear."""
+    if not halo:
+        return
+    halo = sorted(halo, key=lambda i: (games[i]["year"], games[i]["name"].lower()))
+    # Every halo star has degree 0, so they are all exactly the same size and one
+    # separation covers every pair.
+    sep = 2.0 * star_radius(0) + PAD
+    bands = min(HALO_BANDS, len(halo))
+    jitter_r = sep * HALO_RADIUS_JITTER
+    band_gap = sep + 2.0 * jitter_r
+
+    slot = [0.0] * bands
+    base = core_r + HALO_GAP + jitter_r
+    for b in range(bands):
+        count = (len(halo) - b + bands - 1) // bands
+        slot[b] = math.tau / max(count, 1)
+        if count < 2:
+            continue
+        # Two neighbours jittering toward each other is the worst gap this band
+        # can produce; the chord across it still has to clear `sep`.
+        worst = slot[b] * (1.0 - 2.0 * HALO_ANGLE_JITTER)
+        need = sep / (2.0 * max(math.sin(worst * 0.5), 1e-4))
+        base = max(base, need + jitter_r - b * band_gap)
+
+    for k, i in enumerate(halo):
+        b = k % bands
+        seat = k // bands
+        # Half a slot of phase per band, so the bands don't line up into spokes.
+        a = slot[b] * (seat + 0.5 * b
+                       + (jitter(i, 1) - 0.5) * 2.0 * HALO_ANGLE_JITTER)
+        r = base + b * band_gap + (jitter(i, 2) - 0.5) * 2.0 * jitter_r
+        xs[i], ys[i] = core[0] + math.cos(a) * r, core[1] + math.sin(a) * r
 
 
 # ---------------------------------------------------------------------------

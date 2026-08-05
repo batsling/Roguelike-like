@@ -143,6 +143,11 @@ var _selected_edge: int = -1         # index of the clicked link, as an edge pai
 var _hovered: int = -1
 var _dragging: bool = false
 var _drag_moved: float = 0.0
+# Right-drag pans too, and does it without the click-vs-drag question — the
+# left button has to decide between "moved the map" and "picked a star", and
+# below the 5px threshold it picks. The right button only ever pans, so it can
+# be nudged a pixel at a time.
+var _panning: bool = false
 var _neighbors: Dictionary = {}      # star index -> Array[int], built lazily
 var _near: Dictionary = {}           # selection halo: index -> true
 var _trail: Array = []               # road ahead:  [[from_idx, to_idx], ...]
@@ -1795,6 +1800,15 @@ func _on_canvas_input(event: InputEvent) -> void:
 			zoom_by(1.12, mb.position)
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
 			zoom_by(1.0 / 1.12, mb.position)
+		elif mb.button_index == MOUSE_BUTTON_RIGHT:
+			_panning = mb.pressed
+			if not mb.pressed:
+				# Released after a pan: don't leave a star lit up under a cursor
+				# that has been dragged somewhere else entirely.
+				var over: int = pick(mb.position)
+				if over != _hovered:
+					_hovered = over
+					_redraw()
 		elif mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
 				_dragging = true
@@ -1817,8 +1831,9 @@ func _on_canvas_input(event: InputEvent) -> void:
 							select_edge(-1)
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
-		if _dragging:
-			_drag_moved += mm.relative.length()
+		if _dragging or _panning:
+			if _dragging:
+				_drag_moved += mm.relative.length()
 			_offset += mm.relative
 			_clamp_view()
 			_redraw()

@@ -318,10 +318,22 @@ See `docs/stat-dispatcher.md` for how stats resolve.
   carries a `parent` array so the view can tell them apart. Both modes honour
   every filter.
 
+- **The route map fits its window** — the "Map to the Amulet" ladder is built
+  inside a floating panel, and a `PanelContainer` takes whatever its children
+  claim on the way in and never gives it back. A five-step route measures
+  ~1090×668, so the window simply *became* that: 1787px tall, most of it below
+  the bottom of the screen, legend and half the rungs unreachable, route still
+  clipped. The window now sizes itself after the layout pass, and the opening
+  view **zooms the route down to fit** (never up, and never past legible) so you
+  see the whole road rather than a quarter of it and a scrollbar.
+
 - **Traditional transmutes off its type, and the record follows the character** —
   Transmute kept the source's game type, which made it useless on a Traditional
   roguelike: trading one long haul (5 tries, not 3) for another is no relief. A
-  Traditional game now becomes a random game of any *other* type. Separately, the
+  Traditional game could become a random game of any *other* type. That is now a
+  **setting** (Settings ▸ Transmute) rather than the law, and it is **off** by
+  default — same-type is the rule every other type follows, and a Traditional
+  player who wants Traditional games should keep getting them. Separately, the
   level-up row on the report checklist gained a **Notes** button — keyed to the
   (game, character) pair, the way an enemy note is keyed to (game, enemy) — and
   every defeat is now banked against the **character** as well as the game, so a
@@ -434,9 +446,21 @@ See `docs/stat-dispatcher.md` for how stats resolve.
   Collection's catalog view; a run's Atlas has no filters and never moves,
   because routes are drawn across it.
 
+  **Right-drag is the pan button.** Left-drag still pans, but the left button has
+  to decide between "moved the map" and "picked a star" and only counts as a pan
+  past 5px; the right button only ever pans, so it moves the sky a pixel at a
+  time.
+
 - **Two layouts: Constellations and Tree** — a **Layout** picker at the head of
   the filter row switches how the same graph is arranged. *Constellations* is
-  the star chart: hubs with their influence trees packed around them.
+  the star chart: hubs with their influence trees packed around them, with the
+  **83 games that have no links at all scattered in a halo around the whole
+  sky** instead of being packed in among the constellations as one-star
+  "components" — they aren't part of any constellation, and out there they read
+  as what they are: the catalog's unjoined edge. The halo is jittered but never
+  overlapping: stars are dealt into three concentric bands so anything angularly
+  adjacent is separated radially, and the ring's radius is solved from those
+  bounds rather than picked.
 
   *Tree* is a radial timeline: **one ring per release year**, earliest at the
   centre. Rogue (1980) sits dead middle, 1996 is a ring, 2025 is a ring 108
