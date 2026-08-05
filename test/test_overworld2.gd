@@ -54,39 +54,67 @@ func test_pick_then_report_advances_the_loop() -> void:
 
 func test_report_goal_met_defeats_and_drops() -> void:
 	_ui.pick(0)
-	_ui.report(true)              # met -> defeat + a drop in the tray, nothing stacks
+	_ui.report(true)              # met -> defeat + a drop to be asked about
 	assert_eq(GameLoop2.stack_size(), 0, "a met goal leaves nothing following")
 	assert_eq(_ui._drop_queue.size(), 1, "the kill queued a drop")
 
-# An enemy kill drops loot into the tray under the inventory, right of the grid
-# (not a RewardScreen chest, §8); claiming it adds the item and clears the drop.
-func test_defeat_drop_is_collectable_from_the_loot_tray() -> void:
+# An enemy kill ASKS whether you want what fell off it (§8): a modal with the
+# item on it, Take or Leave, no tray to notice later. Taking it adds the item and
+# clears the drop.
+func test_defeat_drop_opens_a_take_it_or_leave_it_popup() -> void:
 	_ui.pick(0)
 	_ui.report(true)
-	assert_eq(_ui._drop_queue.size(), 1, "a drop is waiting to be claimed")
-	assert_eq(_ui._loot_box.get_child_count(), 1, "and it shows as a row in the loot tray")
-	# No RewardScreen is opened for an enemy drop anymore.
+	assert_eq(_ui._drop_queue.size(), 1, "a drop is waiting to be asked about")
+	# The modal opens on the next idle frame — the defeat lands mid-resolve.
+	await wait_frames(2)
+	var modal = _ui._drop_modal
+	assert_not_null(modal, "the kill asked about its drop")
+	if modal == null:
+		return
+	# No RewardScreen is opened for an enemy drop.
 	var found: RewardScreen = null
 	for c in _ui.get_children():
 		if c is RewardScreen:
 			found = c
 			break
-	assert_null(found, "enemy drops go to the tray, not a RewardScreen")
+	assert_null(found, "enemy drops ask on their own screen, not a RewardScreen")
 	var inv_before: int = GameState.inventory.size()
-	_ui._collect_drop(_ui._drop_queue[0])        # click Claim
+	modal.take()                                 # click Take it
 	assert_eq(_ui._drop_queue.size(), 0, "the drop was consumed")
-	assert_eq(GameState.inventory.size(), inv_before + 1, "claiming adds the item")
+	assert_eq(GameState.inventory.size(), inv_before + 1, "taking it adds the item")
 	assert_eq(_ui._items_box.get_child_count(), GameState.inventory.size(),
-		"and the inventory panel beside the board lists it")
+		"and the pack strip above the board holds a token for it")
 
-func test_skipped_drop_is_discarded() -> void:
+func test_leaving_a_drop_discards_it() -> void:
 	_ui.pick(0)
 	_ui.report(true)
 	assert_eq(_ui._drop_queue.size(), 1)
+	await wait_frames(2)
+	var modal = _ui._drop_modal
+	assert_not_null(modal)
+	if modal == null:
+		return
 	var inv_before: int = GameState.inventory.size()
-	_ui._skip_drop(_ui._drop_queue[0])           # click Skip
+	modal.leave()                                # click Leave it
 	assert_eq(_ui._drop_queue.size(), 0, "the drop was cleared")
-	assert_eq(GameState.inventory.size(), inv_before, "skipping keeps the inventory unchanged")
+	assert_eq(GameState.inventory.size(), inv_before, "leaving it keeps the inventory unchanged")
+
+# Two kills in one report ask twice, one after the other, rather than stacking
+# two modals on top of each other.
+func test_drops_are_asked_about_one_at_a_time() -> void:
+	_ui.pick(0)
+	_ui.report(true)
+	_ui._drop_queue.append({"item": Data.reward_item2_pool_of(0)[0]})
+	await wait_frames(2)
+	var first = _ui._drop_modal
+	assert_not_null(first, "the first drop is the question in front of you")
+	if first == null:
+		return
+	assert_eq(_ui._drop_queue.size(), 2, "the second is still queued behind it")
+	first.leave()
+	await wait_frames(2)
+	assert_not_null(_ui._drop_modal, "and comes up once the first is answered")
+	assert_eq(_ui._drop_queue.size(), 1)
 
 func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# Miss a goal so an enemy follows, then on the next game tick its fulfilment
@@ -100,7 +128,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	assert_eq(_ui._fulfil_checks.size(), 1, "the follower is offered for fulfilment")
 	_ui._fulfil_checks[0]["check"].button_pressed = true
 	_ui.report(false)                            # miss current, but fulfil the follower
-	assert_eq(_ui._drop_queue.size(), drops_before + 1, "the fulfilled follower dropped into the tray")
+	assert_eq(_ui._drop_queue.size(), drops_before + 1, "the fulfilled follower dropped an item")
 	assert_eq(GameState.hp, hp_before, "fulfilling it before it hit means no damage")
 	# The only follower now is this game's freshly-stacked enemy, not the old one.
 	assert_eq(GameLoop2.stack_size(), 1, "old follower gone; current game's enemy stacked")
@@ -440,25 +468,30 @@ func test_the_stage_keeps_its_shape_in_both_phases() -> void:
 	assert_false(_ui._np_box.visible, "and nothing being played")
 	_ui.pick(0)
 	assert_eq(_ui._stage_panel.get_parent(), _ui._right_col, "the board hasn't moved")
-	assert_eq(_ui._stage_panel.get_index(), 0, "still above the pack in that column")
+	assert_eq(_ui._inv_wrap.get_index(), 0, "still under the pack strip in that column")
 	assert_true(_ui._play_panel.visible, "the checklist is now the report step")
 	assert_true(_ui._done_btn.visible, "with something to complete")
 	assert_true(_ui._attempt_wrap.visible, "and runs to lose")
 	assert_false(_ui._select_box.visible, "the offering is out of the way")
 
+func _labels_under(node: Node) -> Array:
+	var out: Array = []
+	for child in node.get_children():
+		if child is Label:
+			out.append(String((child as Label).text))
+		elif child is CheckBox:
+			out.append(String((child as CheckBox).text))
+		out.append_array(_labels_under(child))
+	return out
+
 # Choosing a game, the checklist lists the goals already on you: the character's
 # level-up challenge and every follower's outstanding goal.
 func test_the_standing_checklist_lists_what_you_owe() -> void:
 	_reboot(&"isaac")                       # Isaac has a level-up condition
+	# Every Label under the panel, however deeply a row nests it — a boss row wraps
+	# its text beside a portrait, so the depth is not fixed.
 	var texts := func() -> String:
-		var out: Array = []
-		for row in _ui._verify_box.get_children():
-			if row is Label:
-				out.append(String((row as Label).text))
-			for child in row.get_children():
-				if child is Label:
-					out.append(String((child as Label).text))
-		return "\n".join(out)
+		return "\n".join(_labels_under(_ui._verify_box))
 	var listed: String = texts.call()
 	assert_true(listed.contains("What you need to do"), "the panel says what it is: %s" % listed)
 	assert_true(listed.contains("Use sorrow or self-inflicted pain as a weapon"),
@@ -473,6 +506,43 @@ func test_the_standing_checklist_lists_what_you_owe() -> void:
 		"the follower's outstanding goal is listed: %s" % listed)
 	assert_false(listed.contains("Nothing is following you"), "and the empty note is gone")
 
+# A boss is the difficulty gate the run is standing in front of, and on a list of
+# goals it used to be one more line of text. Its portrait rides beside its name
+# in both checklists, so which of these is the boss is answered by looking.
+func _texture_rects_under(node: Node) -> Array:
+	var out: Array = []
+	for child in node.get_children():
+		if child is TextureRect and (child as TextureRect).texture != null:
+			out.append(child)
+		out.append_array(_texture_rects_under(child))
+	return out
+
+func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER   # the gate
+	_ui._build_choices()
+	assert_true(_ui._boss_round, "this selection is the boss round")
+	assert_eq(_texture_rects_under(_ui._verify_box).size(), 0,
+		"nothing is following yet, so no portraits on the list")
+	_ui.pick(0)
+	var boss: GoalEnemyData = _ui._chosen["enemy"]
+	assert_true(boss.is_boss(), "the boss round spawned a boss")
+	if boss.image == null:
+		return                                # this boss ships without art
+	assert_eq(_texture_rects_under(_ui._verify_box).size(), 1,
+		"the report step shows the boss beside the goal it is asking about")
+	_ui.report(false)                         # miss it: now it follows you
+	assert_eq(_texture_rects_under(_ui._verify_box).size(), 1,
+		"and it keeps its portrait on the standing list it moves to")
+
+func test_an_ordinary_follower_gets_no_portrait() -> void:
+	_ui.pick(0)
+	if _ui._chosen["enemy"].is_boss():
+		return
+	_ui.report(false)
+	assert_eq(GameLoop2.stack_size(), 1, "a missed goal leaves a follower")
+	assert_eq(_texture_rects_under(_ui._verify_box).size(), 0,
+		"only the boss is called out — a portrait on every row calls out nothing")
+
 func test_the_standing_checklist_has_no_tick_boxes() -> void:
 	# Nothing is reportable until a game is in play, so the standing list is rows.
 	for row in _ui._verify_box.get_children():
@@ -483,25 +553,25 @@ func test_the_standing_checklist_has_no_tick_boxes() -> void:
 	assert_null(_ui._levelup_check)
 
 # The stage is two columns: what you tick on the left, what you look at on the
-# right — board first, the pack under it.
-func test_the_checklist_sits_left_of_the_board_with_the_pack_below() -> void:
+# right — the pack strip first, the board under it.
+func test_the_checklist_sits_left_of_the_board_with_the_pack_above() -> void:
 	_ui.pick(0)
 	assert_eq(_ui._left_col.get_parent(), _ui._right_col.get_parent(), "one row holds both columns")
 	assert_lt(_ui._left_col.get_index(), _ui._right_col.get_index(),
 		"the checklist column comes first — it's on the left")
 	assert_true(_ui._left_col.is_ancestor_of(_ui._play_panel), "the checklist is in the left column")
 	assert_true(_ui._right_col.is_ancestor_of(_ui._board), "the board is in the right column")
-	assert_true(_ui._right_col.is_ancestor_of(_ui._pack_col), "and so is the pack")
-	assert_lt(_ui._stage_panel.get_index(), _ui._pack_col.get_index(),
-		"the pack sits under the board, not over it")
+	assert_true(_ui._right_col.is_ancestor_of(_ui._inv_wrap), "and so is the pack strip")
+	assert_lt(_ui._inv_wrap.get_index(), _ui._stage_panel.get_index(),
+		"the pack sits above the board, not under it")
 	# On screen, that has to actually be left-of / below — tree order alone would
 	# still pass if the columns were stacked. Needs a frame for layout to run.
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert_lt(_ui._play_panel.global_position.x, _ui._board.global_position.x,
 		"the checklist is drawn to the left of the board")
-	assert_gt(_ui._pack_col.global_position.y, _ui._board.global_position.y,
-		"the pack is drawn below the board")
+	assert_lt(_ui._inv_wrap.global_position.y, _ui._board.global_position.y,
+		"the pack is drawn above the board")
 
 # The report checklist is the one place the player ANSWERS something, and Godot's
 # stock check glyphs are a hairline outline drawn for a light theme — against this
@@ -597,12 +667,30 @@ func test_the_cells_shrink_as_the_board_widens() -> void:
 	assert_eq(BattlefieldView.fitted_cell(widest + 6), BattlefieldView.CELL_MIN,
 		"an item-widened board bottoms out at the readable floor rather than vanishing")
 
+# The pack is a strip of small tokens, not a column of named rows: a run carries
+# a dozen relics and a dozen rows is taller than the battlefield they belong to.
+func test_the_pack_is_one_small_token_per_item() -> void:
+	var heart: ItemData = Data.get_item2(&"hollow_heart")
+	assert_not_null(heart)
+	GameState.add_item(heart)
+	_ui._refresh_items()
+	assert_eq(_ui._items_box.get_child_count(), GameState.inventory.size(),
+		"one token per carried item")
+	var token: Control = _ui._items_box.get_child(_ui._items_box.get_child_count() - 1)
+	assert_lte(token.get_combined_minimum_size().x, 60.0,
+		"and a token is small enough that a packful fits above the board")
+	assert_true(String(token.tooltip_text).contains(heart.display_name),
+		"the name it gave up is in the tooltip: %s" % token.tooltip_text)
+	for other in _ui._items_box.get_children():
+		assert_lte((other as Control).get_combined_minimum_size().x, 60.0,
+			"every token is a token, not a row")
+
 func test_the_pack_stays_in_the_right_column_in_both_phases() -> void:
-	assert_true(_ui._right_col.is_ancestor_of(_ui._pack_col), "choosing: the pack is on the right")
-	assert_true(_ui._pack_col.visible, "and the inventory never goes away")
+	assert_true(_ui._right_col.is_ancestor_of(_ui._inv_wrap), "choosing: the pack is on the right")
+	assert_true(_ui._inv_wrap.visible, "and the inventory never goes away")
 	_ui.pick(0)
-	assert_true(_ui._right_col.is_ancestor_of(_ui._pack_col), "playing: it stays there")
-	assert_true(_ui._pack_col.visible)
+	assert_true(_ui._right_col.is_ancestor_of(_ui._inv_wrap), "playing: it stays there")
+	assert_true(_ui._inv_wrap.visible)
 
 func test_the_summary_line_counts_the_followers() -> void:
 	_ui.pick(0)
@@ -748,7 +836,6 @@ func test_claimed_loot_updates_the_hud_immediately() -> void:
 	var max_before: int = GameState.max_hp
 	var drop: Dictionary = {"item": heart}
 	_ui._drop_queue.append(drop)
-	_ui._refresh_loot()
 	_ui._collect_drop(drop)
 	assert_eq(GameState.max_hp, max_before + 4, "the pickup's effect landed")
 	assert_true(_ui._hud.text.contains("%d/%d" % [GameState.hp, GameState.max_hp]),
@@ -1201,6 +1288,48 @@ func test_the_start_picker_maps_each_start_without_naming_the_amulet() -> void:
 # the screen it plays on has to still be there when it plays.
 # ---------------------------------------------------------------------------
 
+# --- the swing count lives with the damage, not over the art -----------------
+#
+# "x2" printed across the middle of a body hid the enemy it belonged to, and it
+# was answering the same question as the ⚔ badge anyway: how hard does this thing
+# hit me next game. The two are one badge in the corner now.
+
+func test_the_sword_badge_carries_the_swing_count() -> void:
+	var e := GoalEnemyData.new()
+	e.damage = 3
+	assert_eq(_ui._board._damage_badge_text(e, 1), "⚔3",
+		"one swing is the ordinary case and says nothing extra")
+	assert_eq(_ui._board._damage_badge_text(e, 0), "⚔3",
+		"a body still walking in shows what it will hit for")
+	assert_eq(_ui._board._damage_badge_text(e, 2), "⚔3 x2",
+		"two swings are counted on the damage itself")
+	assert_eq(_ui._board._damage_badge_text(e, 3), "⚔3 x3")
+
+func _badge_texts(instance: int) -> Array:
+	var out: Array = []
+	var badges: Control = _ui._board._badges_for_instance(instance)
+	if badges == null:
+		return out
+	for child in badges.get_children():
+		if child is Label:
+			out.append(String((child as Label).text))
+	return out
+
+func test_nothing_prints_the_swing_count_over_the_body() -> void:
+	_ui.pick(0)
+	_ui.report(false)                         # miss, so the enemy stands on the board
+	assert_eq(GameLoop2.stack_size(), 1)
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	var texts: Array = _badge_texts(inst)
+	assert_gt(texts.size(), 0, "the body wears badges")
+	for t in texts:
+		assert_false(String(t).begins_with("×"),
+			"no swing count sitting on top of the art: %s" % t)
+		if String(t).begins_with("⚔"):
+			assert_eq(String(t), _ui._board._damage_badge_text(
+				GameLoop2.stack[0]["enemy"], GameLoop2.attacks_next_game(GameLoop2.stack[0])),
+				"the ⚔ badge is where the count went")
+
 func test_the_board_says_how_long_its_playback_runs() -> void:
 	_ui.pick(0)
 	var before: Dictionary = _ui._board.capture_positions()
@@ -1213,36 +1342,28 @@ func test_the_board_says_how_long_its_playback_runs() -> void:
 	assert_almost_eq(secs, _ui._board.FX_ATTACK_TIME, 0.001,
 		"a strike is what the host waits on")
 
-func test_the_offering_waits_for_the_board_before_coming_back() -> void:
+# The offering does NOT wait for the board: it comes straight back beside it, and
+# the resolve plays out on the board next to the cards. There is no Continue step
+# between the two — the animation and the next decision share the screen.
+func test_the_offering_comes_back_while_the_board_still_plays() -> void:
 	_ui.pick(0)
 	_ui.report(false)
-	# The RUN has already moved on — nothing in it waits on an animation.
 	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "the next decision is already built")
 	assert_gt(_ui._choices.size(), 0)
-	assert_false(_ui._select_box.visible,
-		"but the screen stays on the board while it plays the resolve")
-	# …and when the board lands it hands over to a CONTINUE button rather than to
-	# the next offering: the resolve is the only place the run's consequences are
-	# shown, and it shouldn't be snatched away the instant the last tween ends.
+	assert_true(_ui._select_box.visible,
+		"and it is already on screen, with the board playing beside it")
+	assert_true(_ui._resolving, "the board is still playing the resolve back")
 	await wait_seconds(1.2)
-	assert_true(_ui._resolving, "the screen is still held on the board it just played")
-	assert_true(_ui._continue_bar.visible, "waiting on Continue")
-	assert_false(_ui._select_box.visible, "so the offering hasn't jumped back in")
+	assert_false(_ui._resolving, "which finishes on its own, with nothing to press")
+	assert_true(_ui._select_box.visible, "leaving the offering where it was")
 
-	_ui.continue_resolve()                   # what pressing the button does
-	assert_false(_ui._resolving, "pressing it releases the hold")
-	assert_false(_ui._continue_bar.visible, "and takes the button with it")
-	assert_true(_ui._select_box.visible, "and the offering comes back")
-
-func test_continue_is_what_lands_the_end_of_run_screen() -> void:
+func test_the_end_of_run_screen_is_what_the_playback_still_holds_back() -> void:
 	_ui.pick(0)
 	_ui._resolving = true                    # as it is between a report and its playback
 	GameLoop2._finish_run(false)
-	_ui._offer_continue()                    # the board finishes its playback
-	assert_true(_ui._continue_bar.visible, "the verdict waits behind a Continue too")
-	assert_null(_end_screen(), "so it doesn't land on top of the animation")
-	_ui.continue_resolve()
-	assert_not_null(_end_screen(), "and lands when the player says go on")
+	assert_null(_end_screen(), "the verdict doesn't land on top of the animation")
+	_ui._end_resolve()                       # the board finishes its playback
+	assert_not_null(_end_screen(), "and lands the moment it is done")
 
 # ---------------------------------------------------------------------------
 # The end of a run
@@ -1577,6 +1698,79 @@ func test_the_playback_runs_one_beat_per_turn() -> void:
 			{"instance": inst, "turn": 2, "damage": 3}]})
 	assert_almost_eq(three, one * 3.0, 0.001,
 		"the host holds the screen for every turn, not just the first")
+
+# --- the Health comes down WITH the blows -----------------------------------
+#
+# The run's Health moves the instant a game is reported: by the time the first
+# strike is drawn, every one of them has already landed. A Health line wired
+# straight to GameState therefore shows the whole bill before the animation has
+# shown a single hit. During a playback the board drives the number itself.
+
+func test_health_starts_the_playback_where_it_was_before_the_blows() -> void:
+	_ui.pick(0)
+	_ui.report(false)                        # miss, so the enemy stands on the board
+	assert_eq(GameLoop2.stack_size(), 1)
+	var entry: Dictionary = GameLoop2.stack[0]
+	var inst: int = int(entry["instance"])
+	var row: int = int(entry.get("row", 0))
+	var col: int = int(entry.get("col", 1))
+	var walk_from: int = 1 if col != 1 else 2
+	var before: Dictionary = _ui._board.capture_positions()
+	GameState.shields = 0
+	var hp_before: int = GameState.hp
+	GameState.change_hp(-5)                  # as beat_game already would have
+	# Turn one is a WALK and turn two is the swing, so nothing has landed at the
+	# moment the playback starts.
+	_ui._board.animate_resolve(before, {
+		"turns": 2,
+		"turn_frames": [{inst: Vector2i(walk_from, row)}, {inst: Vector2i(col, row)}],
+		"attacks": [{"instance": inst, "turn": 1, "damage": 5}]}, hp_before)
+	assert_eq(_ui._board.shown_hp(), hp_before,
+		"the board opens on the Health the player had before the resolve")
+	assert_true(_ui._board._hero_hp.text.contains("%d/" % hp_before),
+		"and says so: %s" % _ui._board._hero_hp.text)
+	assert_ne(GameState.hp, hp_before, "the run itself already paid the bill")
+
+func test_each_strike_takes_its_own_bite_out_of_the_shown_health() -> void:
+	_ui.pick(0)
+	var before: Dictionary = _ui._board.capture_positions()
+	var inst: int = int(before.keys()[0])
+	GameState.shields = 0
+	var hp_before: int = GameState.hp
+	var secs: float = _ui._board.animate_resolve(before, {
+		"turns": 2,
+		"turn_frames": [{inst: Vector2i(1, 0)}, {inst: Vector2i(1, 0)}],
+		"attacks": [
+			{"instance": inst, "turn": 0, "damage": 2},
+			{"instance": inst, "turn": 1, "damage": 2}]}, hp_before)
+	# The first turn's strike fires immediately; the second waits for its turn.
+	assert_eq(_ui._board.shown_hp(), hp_before - 2,
+		"one blow landed, one blow's worth of Health gone")
+	assert_true(_ui._hud.text.contains("%d/%d" % [hp_before - 2, GameState.max_hp]),
+		"and the HUD agrees with the board: %s" % _ui._hud.text)
+	await wait_seconds(secs + 0.2)
+	assert_eq(_ui._board.shown_hp(), GameState.hp,
+		"and when the playback ends the line is the run's own Health again")
+
+func test_a_blow_a_shield_swallowed_moves_no_health() -> void:
+	_ui.pick(0)
+	var before: Dictionary = _ui._board.capture_positions()
+	var inst: int = int(before.keys()[0])
+	var hp_before: int = GameState.hp
+	_ui._board.animate_resolve(before, {"attacks": [
+		{"instance": inst, "turn": 0, "damage": 3, "blocked": 3}]}, hp_before)
+	assert_eq(_ui._board.shown_hp(), hp_before,
+		"the shield took it, so the Health line doesn't flinch")
+
+func test_a_cut_short_playback_hands_the_health_line_back() -> void:
+	_ui.pick(0)
+	var before: Dictionary = _ui._board.capture_positions()
+	var inst: int = int(before.keys()[0])
+	_ui._board.animate_resolve(before,
+		{"attacks": [{"instance": inst, "turn": 0, "damage": 2}]}, GameState.hp + 2)
+	_ui._board.clear_fx()
+	assert_eq(_ui._board.shown_hp(), GameState.hp,
+		"a playback wiped mid-flight leaves no stale number behind")
 
 func test_a_resolve_from_before_the_ladder_still_plays() -> void:
 	# A result with no turn/turn_frames fields — a save restored from before the

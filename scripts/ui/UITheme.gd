@@ -44,8 +44,13 @@ const TYPE_COLORS := [
 	Color(0.55, 0.80, 0.50),   # Traditional — green
 ]
 
+const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+
 static func rarity_color(i: int) -> Color:
 	return RARITY[clampi(i, 0, RARITY.size() - 1)]
+
+static func rarity_name(i: int) -> String:
+	return RARITY_NAMES[clampi(i, 0, RARITY_NAMES.size() - 1)]
 
 static func type_color(i: int) -> Color:
 	return TYPE_COLORS[clampi(i, 0, TYPE_COLORS.size() - 1)]

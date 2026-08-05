@@ -74,9 +74,14 @@ func _on_start_run() -> void:
 	_modal_layer.add_child(picker)
 
 # A code-built character-select overlay over the roster in data/characters2.0.
-# Layout (per UI pass): a GRID of small icon tiles on the left, the selected
-# hero's FULL portrait + full information on the right, and a Confirm button along
-# the bottom. Selecting a tile only previews it; Confirm starts the run.
+# Layout (per UI pass): a four-column GRID of small icon tiles on the left, the
+# selected hero's FULL portrait beside its full information on the right, and a
+# Confirm button along the bottom. Selecting a tile only previews it; Confirm
+# starts the run.
+#
+# The detail half NEVER scrolls: the portrait takes the left of it and every
+# other fact is stacked to the RIGHT of the portrait rather than under it, which
+# is what buys the room to fit a hero on one screen. See _fill_char_detail.
 func _build_character_picker() -> Control:
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -93,7 +98,10 @@ func _build_character_picker() -> Control:
 	root.add_child(center)
 
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(880, 600)
+	# Wide enough for FOUR icon columns on the left and a portrait-beside-facts
+	# detail panel on the right, and short enough that both halves are one screen
+	# on a 720p window.
+	panel.custom_minimum_size = Vector2(1080, 620)
 	panel.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.BG, UITheme.ACCENT.lerp(UITheme.BORDER, 0.4), 12, 22, 2))
 	center.add_child(panel)
 
@@ -123,30 +131,32 @@ func _build_character_picker() -> Control:
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(body)
 
+	# A GridContainer rather than a flow: the roster reads as a fixed four-wide
+	# board, so a hero is always in the same place whatever the panel's width does.
 	var grid_scroll := ScrollContainer.new()
 	grid_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	grid_scroll.custom_minimum_size = Vector2(420, 460)
+	grid_scroll.custom_minimum_size = Vector2(TILE_COLUMNS * (TILE_SIZE.x + TILE_GAP), 470)
 	grid_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(grid_scroll)
-	var grid := HFlowContainer.new()
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
+	var grid := GridContainer.new()
+	grid.columns = TILE_COLUMNS
+	grid.add_theme_constant_override("h_separation", TILE_GAP)
+	grid.add_theme_constant_override("v_separation", TILE_GAP)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid_scroll.add_child(grid)
 
 	var detail_wrap := PanelContainer.new()
 	detail_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 12, 14, 1))
-	detail_wrap.custom_minimum_size = Vector2(400, 0)
+	detail_wrap.custom_minimum_size = Vector2(520, 0)
 	detail_wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(detail_wrap)
-	var detail_scroll := ScrollContainer.new()
-	detail_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_wrap.add_child(detail_scroll)
-	var detail_box := VBoxContainer.new()
-	detail_box.add_theme_constant_override("separation", 8)
+	# NO ScrollContainer: the hero has to be readable in one look. The two columns
+	# inside are filled by _fill_char_detail — portrait left, facts right.
+	var detail_box := HBoxContainer.new()
+	detail_box.add_theme_constant_override("separation", 14)
 	detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_box.custom_minimum_size = Vector2(372, 0)
-	detail_scroll.add_child(detail_box)
+	detail_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail_wrap.add_child(detail_box)
 
 	# Footer: Cancel (left) and the Confirm button (right), enabled once a hero is
 	# selected.
@@ -193,12 +203,19 @@ func _build_character_picker() -> Control:
 		select.call(roster[0])
 	return root
 
+# The roster board: four tiles per row, and the tile sized to suit that rather
+# than the other way round — four 122px tiles ran past the grid's half of the
+# panel, so the icon token gives up a little to buy the extra column.
+const TILE_COLUMNS := 4
+const TILE_SIZE := Vector2(108, 122)
+const TILE_GAP := 10
+
 # One roster tile = the character's ICON (small token, falling back to the full
 # portrait) with the name below. Clicking previews the hero via `select`; the
 # stored callback re-styles the tile for the selected / unselected state.
 func _character_tile(ch: CharacterData, state: Dictionary, select: Callable) -> Control:
 	var tile := PanelContainer.new()
-	tile.custom_minimum_size = Vector2(122, 132)
+	tile.custom_minimum_size = TILE_SIZE
 	tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	var normal := UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 8, 1)
 	var selected := UITheme.accent_box(UITheme.GOLD, UITheme.PANEL_HI, 10)
@@ -224,12 +241,12 @@ func _character_tile(ch: CharacterData, state: Dictionary, select: Callable) -> 
 	tile.add_child(vb)
 	var tex: Texture2D = ch.icon if ch.icon != null else ch.portrait
 	if tex != null:
-		vb.add_child(_char_tex(tex, 84))
+		vb.add_child(_char_tex(tex, 76))
 	var name_lbl := Label.new()
 	name_lbl.text = ch.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.custom_minimum_size = Vector2(106, 0)
+	name_lbl.custom_minimum_size = Vector2(TILE_SIZE.x - 16, 0)
 	name_lbl.add_theme_font_size_override("font_size", 12)
 	name_lbl.add_theme_color_override("font_color", UITheme.TEXT)
 	vb.add_child(name_lbl)
@@ -237,52 +254,79 @@ func _character_tile(ch: CharacterData, state: Dictionary, select: Callable) -> 
 
 # Fill the right-hand detail panel with the selected hero's FULL portrait and all
 # of its information (source, Health, verbs, description, starting items, level-up).
-func _fill_char_detail(box: VBoxContainer, ch: CharacterData) -> void:
+#
+# Two columns, because one column plus a scrollbar is what this used to be: the
+# portrait, the name and the vitals go LEFT, and the prose — verbs, description,
+# starting items, level-up — stacks to the RIGHT of them. Nothing here scrolls,
+# so everything the pick is made on is on screen at once.
+func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 	for c in box.get_children():
+		box.remove_child(c)
 		c.queue_free()
+
+	# LEFT: who they are — portrait, name, where they're from, how much Health.
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", 6)
+	left.custom_minimum_size = Vector2(CHAR_PORTRAIT_SIZE, 0)
+	left.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	box.add_child(left)
 	if ch.portrait != null:
-		var portrait := _char_tex(ch.portrait, 220)
+		var portrait := _char_tex(ch.portrait, CHAR_PORTRAIT_SIZE)
 		portrait.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		box.add_child(portrait)
+		left.add_child(portrait)
 
 	var name_lbl := Label.new()
 	name_lbl.text = ch.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_font_size_override("font_size", 24)
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_lbl.custom_minimum_size = Vector2(CHAR_PORTRAIT_SIZE, 0)
+	name_lbl.add_theme_font_size_override("font_size", 22)
 	name_lbl.add_theme_color_override("font_color", UITheme.GOLD)
-	box.add_child(name_lbl)
+	left.add_child(name_lbl)
 
 	if ch.source_game != "":
 		var src := Label.new()
 		src.text = "From: %s" % ch.source_game
 		src.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		src.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		src.custom_minimum_size = Vector2(CHAR_PORTRAIT_SIZE, 0)
 		src.add_theme_font_size_override("font_size", 12)
 		src.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-		box.add_child(src)
+		left.add_child(src)
 
 	var hp := Label.new()
 	hp.text = "❤ %d Health" % ch.base_max_hp
 	hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hp.add_theme_font_size_override("font_size", 15)
 	hp.add_theme_color_override("font_color", UITheme.DANGER.lerp(UITheme.TEXT, 0.35))
-	box.add_child(hp)
+	left.add_child(hp)
+
+	# RIGHT: what they play like.
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 6)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Centred against the portrait rather than hung off the top of the panel: a
+	# hero with two facts and one with five both sit beside their own picture.
+	right.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	box.add_child(right)
 
 	var chips := _verb_chips(ch)
 	if chips != null:
-		box.add_child(chips)
+		right.add_child(_detail_head("Starting Verbs"))
+		(chips as FlowContainer).alignment = FlowContainer.ALIGNMENT_BEGIN
+		right.add_child(chips)
 
 	if ch.description != "":
-		box.add_child(HSeparator.new())
 		var desc := Label.new()
 		desc.text = ch.description
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		desc.add_theme_font_size_override("font_size", 13)
 		desc.add_theme_color_override("font_color", UITheme.TEXT.lerp(UITheme.TEXT_DIM, 0.3))
-		box.add_child(desc)
+		right.add_child(desc)
 
 	if ch.starting_items.size() > 0:
-		box.add_child(HSeparator.new())
-		box.add_child(_detail_head("Starting Items"))
+		right.add_child(HSeparator.new())
+		right.add_child(_detail_head("Starting Items"))
 		var inames: Array = []
 		for iid in ch.starting_items:
 			var idd: ItemData = Data.get_item2(iid)
@@ -294,23 +338,28 @@ func _fill_char_detail(box: VBoxContainer, ch: CharacterData) -> void:
 		items_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		items_lbl.add_theme_font_size_override("font_size", 12)
 		items_lbl.add_theme_color_override("font_color", UITheme.TEXT.lerp(Color(0.7, 0.85, 0.95), 0.5))
-		box.add_child(items_lbl)
+		right.add_child(items_lbl)
 
 	if ch.level_up_condition != "":
-		box.add_child(HSeparator.new())
-		box.add_child(_detail_head("Level Up"))
+		right.add_child(HSeparator.new())
+		right.add_child(_detail_head("Level Up"))
 		var lu := Label.new()
 		lu.text = ch.level_up_condition
 		lu.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		lu.add_theme_font_size_override("font_size", 12)
 		lu.add_theme_color_override("font_color", UITheme.TEXT.lerp(Color(0.7, 0.85, 0.95), 0.5))
-		box.add_child(lu)
+		right.add_child(lu)
 		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
 			var reward := Label.new()
 			reward.text = "→ %s" % ch.level_up_reward
+			reward.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			reward.add_theme_font_size_override("font_size", 12)
 			reward.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
-			box.add_child(reward)
+			right.add_child(reward)
+
+# The portrait's edge in the detail panel. Also the width its name / source /
+# Health column is laid out to, so the two columns line up.
+const CHAR_PORTRAIT_SIZE := 210
 
 func _detail_head(text: String) -> Label:
 	var l := Label.new()

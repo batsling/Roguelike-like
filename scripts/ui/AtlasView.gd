@@ -105,6 +105,11 @@ const COL_GOAL := Color(1.0, 0.82, 0.30)
 const COL_CONSIDERING := Color(1.0, 0.60, 0.24)
 const COL_EDGE_BASHED := Color(0.90, 0.26, 0.22, 0.45)
 const COL_DIM := Color(1, 1, 1, 0.11)
+# Scenery, while a route is on the sky: a game off the optimal path keeps its
+# place and its shape, and gives up some of its colour so the corridor reads as
+# the near thing and everything else as the far one (StarCanvas._draw_stars).
+const COL_OFF_ROUTE_BG := Color(0.20, 0.20, 0.22)
+const OFF_ROUTE_FADE := 0.5
 # How far a non-branch link fades on a tree sky. The influence graph is not a
 # tree — most of its links cut across the branches — so they have to stay
 # visible enough to read as cross-talk without drowning the shape.
@@ -151,6 +156,9 @@ var _panning: bool = false
 var _neighbors: Dictionary = {}      # star index -> Array[int], built lazily
 var _near: Dictionary = {}           # selection halo: index -> true
 var _trail: Array = []               # road ahead:  [[from_idx, to_idx], ...]
+# Both roads as a SET of star indices, built on demand off _trail + _history
+# (see route_stars). Wiped wherever those two are.
+var _route_stars: Dictionary = {}
 var _steps_ahead: int = -1           # hops still to walk to the Amulet, -1 = no route
 var _reserve_left: float = 0.0       # screen edges something is floating over
 var _reserve_right: float = 0.0
@@ -278,6 +286,7 @@ func neighbors_of(i: int) -> Array:
 # are flagged so the trail can show progress.
 func _build_trail() -> void:
 	_trail.clear()
+	_route_stars.clear()
 	if not has_layout() or pure_catalog:
 		return
 	# In preview mode the road ahead starts at the game being considered — that is
@@ -302,6 +311,45 @@ func _build_trail() -> void:
 
 func trail_segment_count() -> int:
 	return _trail.size()
+
+# --- the route as a set of stars -------------------------------------------
+#
+# The roads are drawn as SEGMENTS, which is what you need to draw a line and no
+# use at all for the question the sky is really being asked while a run is on:
+# "is this game part of my route or is it scenery?". This is the same two roads
+# as a set of star indices — everything on the optimal path to the Amulet, plus
+# everything already walked, plus the two anchors — so the canvas can push
+# scenery back and leave the route standing out of it.
+#
+# Empty when there is no run and in the catalog view: with no route, nothing is
+# off it, and the whole sky is drawn at full strength as before.
+func route_stars() -> Dictionary:
+	if not _route_stars.is_empty() or pure_catalog:
+		return _route_stars
+	if _trail.is_empty() and _history.is_empty():
+		return _route_stars
+	for seg in _trail:
+		_route_stars[int(seg[0])] = true
+		_route_stars[int(seg[1])] = true
+	for seg in _history:
+		_route_stars[int(seg[0])] = true
+		_route_stars[int(seg[1])] = true
+	for anchor in [current_index(), amulet_index(), preview_index()]:
+		if anchor >= 0:
+			_route_stars[anchor] = true
+	return _route_stars
+
+# Whether a route is on screen at all — the state the "push the scenery back"
+# treatment and the hover-only constellation names belong to.
+func showing_route() -> bool:
+	return not route_stars().is_empty()
+
+# Is this star part of the route being shown? True for everything when there is
+# no route, so a plain catalog sky is never dimmed.
+func on_route(i: int) -> bool:
+	if not showing_route():
+		return true
+	return _route_stars.has(i)
 
 # ---------------------------------------------------------------------------
 # The run's two anchors
@@ -376,6 +424,7 @@ func marker_color(index: int) -> Color:
 # passed off as a road that exists.
 func _build_history() -> void:
 	_history.clear()
+	_route_stars.clear()
 	if not has_layout() or pure_catalog:
 		return
 	var walked: Array = []
@@ -721,6 +770,7 @@ func _relayout(reframe: bool = true) -> void:
 	_sequel_cache.clear()
 	_trail.clear()
 	_history.clear()
+	_route_stars.clear()
 	select(-1)
 	select_edge(-1)
 	_build_trail()
@@ -2058,17 +2108,29 @@ class StarCanvas extends Control:
 			# of where things are.
 			var filtered_out: bool = not view.passes_filter(i)
 			var faded: bool = (focused and not view._near.has(i)) or filtered_out
+			# While a route is on the sky, everything that isn't part of it is
+			# SCENERY: still there, still in place, but pushed back a step so the
+			# corridor the run actually runs down is what the eye lands on. A
+			# lighter touch than `faded` on purpose — this is depth, not a filter,
+			# and an off-route game is still a game you might Dash to.
+			var off_route: bool = not faded and not view.on_route(i)
 			# Genre owns the rim at every zoom; the record fills the middle, so the
 			# sky stays readable as genre while the centres light up as you play.
 			var record: Color = view.star_record_color(i)
 			var earned: bool = view.has_record(i)
 			if faded:
 				record = record.lerp(UITheme.BG_DEEP, 0.78)
+			elif off_route:
+				record = record.lerp(AtlasView.COL_OFF_ROUTE_BG, AtlasView.OFF_ROUTE_FADE)
 			# Every game is drawn at full strength. Dimming the ones you hadn't
 			# played made most of the sky washed out and fought the point of a
 			# catalog — what you HAVE played is said by the middle instead.
 			if faded:
 				col = col.lerp(UITheme.BG_DEEP, 0.88 if filtered_out else 0.78)
+			elif off_route:
+				# Toward grey as well as toward the background: losing the genre
+				# colour is what makes the route's own colour read as nearer.
+				col = col.lerp(AtlasView.COL_OFF_ROUTE_BG, AtlasView.OFF_ROUTE_FADE)
 
 			var art: Texture2D = view.cover_texture(i) if view.shows_cover(i) else null
 			if art != null:
@@ -2078,8 +2140,12 @@ class StarCanvas extends Control:
 				var aspect: float = float(art.get_height()) / float(art.get_width())
 				var box_size: Vector2 = AtlasView.cover_size(reserved, aspect)
 				var box := Rect2(p - box_size * 0.5, box_size)
-				draw_texture_rect(art, box, false,
-					Color(0.32, 0.30, 0.28) if faded else Color.WHITE)
+				var art_tint: Color = Color.WHITE
+				if faded:
+					art_tint = Color(0.32, 0.30, 0.28)
+				elif off_route:
+					art_tint = Color(0.52, 0.52, 0.54)
+				draw_texture_rect(art, box, false, art_tint)
 				draw_rect(box, col, false, maxf(1.0, reserved * 0.09))
 				r = maxf(box_size.x, box_size.y) * 0.5
 			elif show_rims and r > 3.4:
@@ -2227,13 +2293,23 @@ class StarCanvas extends Control:
 				AtlasLayout.star_radius(lay.degree_of(cap)) * view._scale * 1.3)
 			draw_arc(p, r, 0.0, TAU, 28, Color(UITheme.GOLD, 0.85), 1.4, true)
 
-	# Constellation names. Biggest region claims its spot first; a smaller one
-	# steps up rather than printing on top of it.
+	# Constellation names — the big gold capitals the sky's regions are named
+	# after. Biggest region claims its spot first; a smaller one steps up rather
+	# than printing on top of it.
+	#
+	# WHILE A ROUTE IS ON THE SKY they are drawn ON HOVER ONLY. A dozen names in
+	# 17px gold is the loudest thing on the chart, and when the question is "which
+	# way does my run go" they are answering a different one — they sit right on
+	# top of the corridor and out-shout it. The name of the hub under the cursor
+	# is one label, asked for, so that one still prints.
 	func _draw_region_names(lay: AtlasLayout) -> void:
 		var font: Font = get_theme_default_font()
+		var hover_only: bool = view.showing_route()
 		var taken: Array[Rect2] = []
 		for entry in view.hulls():
 			var cap: int = lay.capitals[int(entry["ci"])]
+			if hover_only and cap != view._hovered:
+				continue
 			var game: GameData = Data.get_game(lay.id_at(cap))
 			var label: String = (game.display_name if game != null else String(lay.id_at(cap))).to_upper()
 			var fs: int = int(clampf(8.0 + float(entry["radius"]) * view._scale * 0.03, 11.0, 17.0))
@@ -2287,5 +2363,10 @@ class StarCanvas extends Control:
 			if taken.any(func(t): return t.intersects(box)):
 				continue
 			taken.append(box)
+			# A name goes back with the star it names: an off-route game's label at
+			# full strength would undo the depth the dimming just bought.
+			var tint: Color = UITheme.TEXT_DIM
+			if not view.on_route(i):
+				tint = tint.lerp(AtlasView.COL_OFF_ROUTE_BG, AtlasView.OFF_ROUTE_FADE)
 			draw_string(font, Vector2(p.x - w * 0.5, p.y + r + fs), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UITheme.TEXT_DIM)
+				HORIZONTAL_ALIGNMENT_LEFT, -1, fs, tint)

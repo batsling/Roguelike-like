@@ -28,6 +28,11 @@ signal bomb_requested(instance: int)
 signal enemy_inspected(entry: Dictionary, col: int, is_current: bool)
 # A repaint finished — the host repaints anything anchored to the board with it.
 signal repainted
+# The Health the board is showing moved. During a resolve playback that is NOT
+# the run's Health (which moved all at once, at report time) but the number the
+# strikes have got through so far — the host's HUD follows it so both copies of
+# the number say the same thing.
+signal shown_hp_changed(hp: int)
 
 var _battlefield: HBoxContainer
 # The amulet-pressure strip across the top of the board (§7.4): how many turns
@@ -41,6 +46,17 @@ var _pressure_why: Label            # "Amulet 4 hops away — Closing"
 var _size_label: Label              # "▦ 5×5 · Medium"
 var _hero_icon: TextureRect
 var _hero_hp: Label
+# The Health the hero READS AS while a resolve plays back, or -1 when the label
+# just says what GameState says. The run's Health moves the instant a game is
+# reported — every strike of the resolve has already landed by the time the first
+# one is drawn — so a label wired straight to GameState shows the total before
+# the animation has shown a single blow. During a playback the label is driven by
+# the strikes instead, dropping as each one connects (see animate_resolve).
+var _hp_shown: int = -1
+# Which playback the scheduled callbacks belong to. A resolve interrupted by the
+# next one must not have its leftover timers keep subtracting from the new one's
+# Health.
+var _fx_gen: int = 0
 # Shields — the tries at the game in play (§3), drawn as pips over the hero:
 # filled for the ones still standing, hollow for the ones already spent on a lost
 # run. This is what the attempt tracker visibly drains.
@@ -527,7 +543,7 @@ func refresh(show_current: bool = false) -> void:
 	var hero_tex: Texture2D = _hero_texture()
 	_hero_icon.texture = hero_tex
 	UITheme.apply_crisp(_hero_icon, hero_tex)
-	_hero_hp.text = "♥ %d/%d" % [GameState.hp, GameState.max_hp]
+	_paint_hp()
 	# Filled pips = shields still standing, hollow = tries already spent on one.
 	var left: int = GameState.shields
 	var spent: int = GameLoop2.attempts_on_shields()
@@ -751,23 +767,17 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		accent: Color, selected: bool) -> void:
 	var stun: int = int(entry.get("stun", 0))
 
-	# TOP CENTRE — what this body does to you on the NEXT game reported: "×2" for
-	# two swings, "in 2" for two games of walking still to do. Once enemies take
-	# more than one turn a game the column alone can't answer that, and this is
-	# the number the player is actually deciding on. It shares the strip with the
-	# boss skull rather than taking a corner of its own, because the corners are
-	# spoken for and a cell is only 84px wide — a wider badge down in the ⚔ corner
-	# ran straight into the ❤ one.
+	# TOP CENTRE — the boss skull, and how many games of WALKING a body that can't
+	# reach you yet still owes ("in 2"). What it no longer carries is the swing
+	# count: "×2" printed over the middle of the art hid the enemy it belonged to,
+	# and it belongs with the damage anyway (see the ⚔ badge below).
 	var strikes: int = GameLoop2.attacks_next_game(entry)
 	var away: int = GameLoop2.games_until_strike(entry)
 	var top_bits: Array = []
 	if e.is_boss():
 		top_bits.append("☠")
 	var timing: Color = accent
-	if strikes > 0:
-		top_bits.append("×%d" % strikes)
-		timing = UITheme.DANGER.lerp(Color.WHITE, 0.3)
-	elif away > 0:
+	if strikes <= 0 and away > 0:
 		top_bits.append("in %d" % away)
 		timing = UITheme.TEXT_DIM
 	if not top_bits.is_empty():
@@ -781,8 +791,13 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	hp_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 2)
 	holder.add_child(hp_lbl)
 
-	# Damage PER SWING, unchanged — how many swings there are is the badge above.
-	var dmg_lbl := _corner_badge("⚔%d" % e.damage, Color(1.0, 0.8, 0.35))
+	# Damage per swing, and — once this body gets more than one swing on the next
+	# game — how many swings that is: "⚔3 x2". The two numbers are one fact ("it
+	# hits you twice for 3"), so they read as one badge in the corner instead of
+	# the count sitting over the art.
+	var dmg_lbl := _corner_badge(_damage_badge_text(e, strikes), Color(1.0, 0.8, 0.35))
+	if strikes > 1:
+		dmg_lbl.add_theme_color_override("font_color", UITheme.DANGER.lerp(Color.WHITE, 0.45))
 	dmg_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
 	holder.add_child(dmg_lbl)
 
@@ -797,6 +812,14 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		var pin := _corner_badge("▸", UITheme.ACCENT)
 		pin.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
 		holder.add_child(pin)
+
+# The ⚔ badge: damage per swing, with the multi-swing count appended when the
+# next game gives this body more than one. One swing needs no "x1" — that's the
+# normal case and printing it everywhere is noise.
+func _damage_badge_text(e: GoalEnemyData, strikes: int) -> String:
+	if strikes > 1:
+		return "⚔%d x%d" % [e.damage, strikes]
+	return "⚔%d" % e.damage
 
 # What this enemy does on the next game you report, in a sentence: how many
 # swings it gets and for how much, or how many games of walking it still owes.
@@ -946,10 +969,45 @@ func _badges_for_instance(instance: int) -> Control:
 		return node.get_meta("badges")
 	return null
 
+# The Health the board is currently SHOWING: the playback's number while one is
+# running, the run's own the rest of the time. The host quotes this in its HUD so
+# the two copies of the number never disagree mid-animation.
+func shown_hp() -> int:
+	return _hp_shown if _hp_shown >= 0 else GameState.hp
+
+# The hero's Health line, and the HUD that follows it.
+func _paint_hp() -> void:
+	if _hero_hp == null:
+		return
+	_hero_hp.text = "♥ %d/%d" % [shown_hp(), GameState.max_hp]
+	shown_hp_changed.emit(shown_hp())
+
+# One strike connected: take it off the number the hero is reading as, and flash
+# the line so the drop is seen rather than just noticed later.
+func _drop_shown_hp(amount: int) -> void:
+	if _hp_shown < 0 or amount <= 0:
+		return
+	_hp_shown = maxi(0, _hp_shown - amount)
+	_paint_hp()
+	if _hero_hp == null:
+		return
+	var t := _hero_hp.create_tween()
+	t.tween_property(_hero_hp, "modulate", Color(1.0, 0.45, 0.4), 0.08)
+	t.tween_property(_hero_hp, "modulate", Color.WHITE, 0.3)
+
+# The playback is over (or was cut short): the label goes back to the run's real
+# Health, which by now includes anything that healed after the resolve.
+func _end_hp_playback() -> void:
+	if _hp_shown < 0:
+		return
+	_hp_shown = -1
+	_paint_hp()
+
 func clear_fx() -> void:
 	# A playback cut short must not leave a body invisible behind a ghost that
 	# will never land, so the reveal happens here too.
 	_reveal_hidden()
+	_end_hp_playback()
 	if _fx_layer == null:
 		return
 	for c in _fx_layer.get_children():
@@ -968,14 +1026,23 @@ func _reveal_hidden() -> void:
 # the whole field slides one column closer — including the game you just reported,
 # which walks in from off-field onto the spawn column.
 #
+# The hero's Health comes down WITH it: `hp_before` is what the run had before
+# the report, and each strike takes its own bite out of that number as it lands
+# (see _drop_shown_hp). Pass -1 and it's reconstructed by adding the resolve's
+# damage back onto the current Health — near enough for a caller that didn't
+# snapshot, exact for one that did.
+#
 # Returns HOW LONG the playback runs, in seconds (0.0 when there was nothing to
-# show). The host holds the screen on the board for that long before moving on —
-# an animation the next screen wipes off mid-flight may as well not exist.
-func animate_resolve(before: Dictionary, res: Dictionary) -> float:
+# show). The end-of-run screen waits that long before landing — a killing blow
+# the verdict wipes off mid-flight may as well not exist.
+func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1) -> float:
 	if _fx_layer == null or not is_inside_tree():
 		return 0.0
 	clear_fx()
+	_fx_gen += 1
 	var after: Dictionary = capture_positions()
+	_hp_shown = hp_before if hp_before >= 0 else GameState.hp + _health_damage_in(res)
+	_paint_hp()
 
 	# One playback per TURN (§7.4). Each turn is the same beat the board has
 	# always played — the front line strikes, then the field closes up — and the
@@ -1003,12 +1070,27 @@ func animate_resolve(before: Dictionary, res: Dictionary) -> float:
 			elapsed = slide_at + (FX_SLIDE_TIME if slid else 0.0)
 	# Whatever the ghosts were standing in for comes back at the end of the whole
 	# playback, not at the end of each turn: a body that moved on turn 1 and then
-	# stood still has no turn-3 ghost to hand it back.
+	# stood still has no turn-3 ghost to hand it back. The Health line stops being
+	# the playback's and goes back to the run's at the same moment.
+	var gen: int = _fx_gen
 	if elapsed > 0.0:
-		_after(elapsed, _reveal_hidden)
+		_after(elapsed, func():
+			_reveal_hidden()
+			if gen == _fx_gen:
+				_end_hp_playback())
 	else:
 		_reveal_hidden()
+		_end_hp_playback()
 	return elapsed
+
+# How much HEALTH a resolve cost, as opposed to how much damage was thrown at it:
+# shields eat the difference, and a hit a shield swallowed moves no Health.
+func _health_damage_in(res: Dictionary) -> int:
+	var total: int = 0
+	for a in res.get("attacks", []):
+		if a is Dictionary and a.has("damage"):
+			total += maxi(0, int(a["damage"]) - int(a.get("blocked", 0)))
+	return total
 
 # The board's geometry at the start of each turn, as instance -> global Rect2.
 # frames[0] is where everyone stood before the resolve and frames[n] where they
@@ -1068,9 +1150,15 @@ func _play_turn_strikes(turn: int, frame: Dictionary, res: Dictionary,
 			continue
 		struck = true
 		var from: Rect2 = frame[inst]
+		# What this one blow actually cost in Health — the rest of it was eaten by a
+		# shield, and the hero's number shouldn't move for the part that was.
+		var to_health: int = maxi(0, int(a["damage"]) - int(a.get("blocked", 0)))
+		var gen: int = _fx_gen
 		_after(delay, func():
 			_spawn_strike_flash(from)
-			_spawn_damage_number(int(a["damage"]), from, hero_rect))
+			_spawn_damage_number(int(a["damage"]), from, hero_rect)
+			if gen == _fx_gen:
+				_drop_shown_hp(to_health))
 	if struck:
 		_after(delay, _punch_hero)
 	return struck

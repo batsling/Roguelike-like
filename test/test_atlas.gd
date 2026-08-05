@@ -367,6 +367,58 @@ func test_trail_follows_the_run() -> void:
 		assert_true(b >= 0 and b < view.layout.star_count(), "trail end is a real star")
 		assert_true(view.neighbors_of(a).has(b), "a trail segment is a real connection")
 
+# --- route focus: the corridor in front, the rest of the sky behind ---------
+#
+# While a route is drawn, the sky answers "which way do I go" — so the games on
+# the route stay at full strength, everything else is pushed back a step, and the
+# big gold constellation names stop shouting over the corridor.
+
+func test_a_run_puts_its_whole_route_in_the_route_set() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var view := _open()
+	if not view.has_layout() or view.trail_segment_count() == 0:
+		return
+	assert_true(view.showing_route(), "a run in progress is a route on the sky")
+	# Every star either road touches is on the route…
+	for seg in view._trail:
+		assert_true(view.on_route(int(seg[0])), "the road ahead is on the route")
+		assert_true(view.on_route(int(seg[1])))
+	for seg in view._history:
+		assert_true(view.on_route(int(seg[0])), "so is the road already walked")
+		assert_true(view.on_route(int(seg[1])))
+	# …and so are the two anchors, whatever the roads do.
+	assert_true(view.on_route(view.current_index()), "where you stand is on it")
+	assert_true(view.on_route(view.amulet_index()), "and so is what you came for")
+	# The sky is 751 games; a route is a corridor through it, not most of it.
+	assert_lt(view.route_stars().size(), view.layout.star_count() / 2,
+		"most of the sky is off-route scenery")
+
+func test_a_catalog_sky_has_no_route_and_dims_nothing() -> void:
+	var view := _open()               # no run booted
+	assert_false(view.showing_route(), "no run, no route")
+	assert_eq(view.route_stars().size(), 0)
+	for i in [0, 1, 2]:
+		assert_true(view.on_route(i),
+			"with nothing to be off, every star draws at full strength")
+
+func test_the_route_set_is_rebuilt_when_the_run_moves() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var view := _open()
+	if not view.has_layout() or view.trail_segment_count() == 0:
+		return
+	var before: Dictionary = view.route_stars().duplicate()
+	ui.pick(0)
+	ui.report(false)
+	view._build_trail()
+	view._build_history()
+	assert_true(view.on_route(view.current_index()),
+		"the game just travelled to is on the route, not scenery")
+	assert_ne(view.route_stars(), before, "and the set moved with the run")
+
 func test_framing_the_trail_keeps_the_route_on_screen() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)

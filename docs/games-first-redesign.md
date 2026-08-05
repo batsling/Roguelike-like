@@ -696,13 +696,13 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   same-type game — or, from a Traditional game, an unconnected game of any other
   type (§4).
 - **The run opens on a choice of three starting games**, one per game type, each
-  5–7 games from the randomly-rolled amulet (`RunGraph.pick_amulet_and_starts`).
+  6–8 games from the randomly-rolled amulet (`RunGraph.pick_amulet_and_starts`).
   The start is where you BEGIN — it spawns no enemy and grants no shields; the
   run's first game is whatever you travel to from it.
 - **A run can be saved and resumed.** The save carries GameState (vitals, verbs,
   pack, visited/beaten games), GameLoop2 (the enemy stack and its positions, the
   destroyed games, the attempt tracker) and the overworld's own view (the cards on
-  the table, the game in play, the loot tray). The overworld's **💾 Save** button
+  the table, the game in play, any unanswered kill-drop). The overworld's **💾 Save** button
   writes a named save; the run also keeps an **autosave** that is rewritten every
   time it moves and cleared when it ends. Both are resumable from the menu's
   **Continue** list.

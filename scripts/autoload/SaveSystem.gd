@@ -14,7 +14,7 @@ extends Node
 #   2. GameLoop2 — the enemy stack, the destroyed (bashed) games, the attempt
 #      tracker, and whether the run is already over.
 #   3. The overworld's VIEW — which cards are on the table, which game is in play,
-#      what's waiting in the loot tray. Collected from the mounted overworld
+#      which kill-drops are still unanswered. Collected from the mounted overworld
 #      (capture_view_state) rather than reached into from here.
 # Loading applies 1 and 2 immediately; 3 is handed to the overworld if one is
 # mounted, and otherwise parked in pending_view_state for the next one to boot

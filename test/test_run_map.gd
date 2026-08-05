@@ -160,10 +160,7 @@ func _settled(modal) -> void:
 func test_the_map_window_stays_inside_its_own_ceiling() -> void:
 	var modal = _open_map()
 	await _settled(modal)
-	var view: Vector2 = modal.get_viewport_rect().size
-	var ceiling := Vector2(
-		minf(modal.PANEL_SIZE.x, maxf(360.0, view.x - 80.0)),
-		minf(modal.PANEL_SIZE.y, maxf(280.0, view.y - 150.0)))
+	var ceiling: Vector2 = modal.view_ceiling()
 	assert_lte(modal._panel.size.x, ceiling.x + 1.0,
 		"the window is no wider than the box it is allowed")
 	assert_lte(modal._panel.size.y, ceiling.y + 1.0,
