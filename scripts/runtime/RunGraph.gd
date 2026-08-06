@@ -198,7 +198,7 @@ static func layer_widths(start_id: StringName, amulet_id: StringName) -> Array:
 static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Dictionary:
 	var d_from_start := bfs_distances(start_id)
 	if not d_from_start.has(amulet_id):
-		return {"layers": [], "edges": []}
+		return {"layers": [], "edges": [], "waypoint_depth": -1}
 	var amulet_dist: int = d_from_start[amulet_id]
 	var d_to_amulet := bfs_distances(amulet_id)
 	var layers: Array = []
@@ -215,8 +215,81 @@ static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Di
 		for a in layers[d]:
 			for b in neighbors(a):
 				if (layers[d + 1] as Array).has(b):
-					edges.append({"from": a, "to": b})
-	return {"layers": layers, "edges": edges}
+					# The depths travel with the edge. Within one DAG they're
+					# redundant (a game sits at exactly one depth), but a route
+					# forced through a waypoint is two of these glued together and
+					# can hold the same game at two depths — see route_dag_via.
+					edges.append({"from": a, "to": b, "from_depth": d, "to_depth": d + 1})
+	return {"layers": layers, "edges": edges, "waypoint_depth": -1}
+
+# ---------------------------------------------------------------------------
+# Routing through a game you INSIST on visiting
+# ---------------------------------------------------------------------------
+
+# The optimal route from `start_id` to `amulet_id` that is forced through
+# `waypoint_id`: the shortest way to the waypoint, then the shortest way on to
+# the Amulet, glued at the waypoint. Same shape as shortest_path_dag, plus
+# `waypoint_depth` — which layer the join sits on.
+#
+# THE RETURNING PATH is the whole difficulty here. The road out of a waypoint is
+# free to walk straight back over the games that led into it, so a forced route
+# is not a DAG over game ids at all: the same game can legitimately appear twice,
+# at two different depths, once on the way there and once on the way back. That's
+# why the layers are kept as they fall and every edge carries its endpoints'
+# DEPTHS — a consumer that keys nodes by id alone will collapse the two visits
+# into one and draw a road that doesn't exist (see RunMapModal._node_key).
+#
+# An empty `waypoint_id`, or one you're already standing on, is not a detour at
+# all and gives the ordinary shortest-path DAG. A waypoint that can't be reached,
+# or that can't reach the Amulet, gives an empty route.
+static func route_dag_via(start_id: StringName, waypoint_id: StringName,
+		amulet_id: StringName) -> Dictionary:
+	if waypoint_id == &"" or waypoint_id == start_id:
+		var plain: Dictionary = shortest_path_dag(start_id, amulet_id)
+		plain["waypoint_depth"] = 0 if waypoint_id == start_id else -1
+		return plain
+	var leg_in: Dictionary = shortest_path_dag(start_id, waypoint_id)
+	var leg_out: Dictionary = shortest_path_dag(waypoint_id, amulet_id)
+	var in_layers: Array = leg_in.get("layers", [])
+	var out_layers: Array = leg_out.get("layers", [])
+	if in_layers.is_empty() or out_layers.is_empty():
+		return {"layers": [], "edges": [], "waypoint_depth": -1}
+
+	var layers: Array = []
+	for l in in_layers:
+		layers.append((l as Array).duplicate())
+	# The join layer belongs to both legs and is only added once — it holds the
+	# waypoint alone, since it is the last layer of one shortest-path DAG and the
+	# first of the other.
+	var offset: int = in_layers.size() - 1
+	for i in range(1, out_layers.size()):
+		layers.append((out_layers[i] as Array).duplicate())
+
+	var edges: Array = []
+	for e in leg_in.get("edges", []):
+		edges.append(e.duplicate())
+	for e in leg_out.get("edges", []):
+		edges.append({
+			"from": e["from"], "to": e["to"],
+			"from_depth": int(e["from_depth"]) + offset,
+			"to_depth": int(e["to_depth"]) + offset,
+		})
+	return {"layers": layers, "edges": edges, "waypoint_depth": offset}
+
+# How many hops the forced route costs: to the waypoint, then on to the Amulet.
+# -1 when either leg has no route.
+static func route_length_via(start_id: StringName, waypoint_id: StringName,
+		amulet_id: StringName) -> int:
+	if waypoint_id == &"" or waypoint_id == start_id:
+		var direct: Dictionary = bfs_distances(start_id)
+		return int(direct[amulet_id]) if direct.has(amulet_id) else -1
+	var to_wp: Dictionary = bfs_distances(start_id)
+	if not to_wp.has(waypoint_id):
+		return -1
+	var from_wp: Dictionary = bfs_distances(waypoint_id)
+	if not from_wp.has(amulet_id):
+		return -1
+	return int(to_wp[waypoint_id]) + int(from_wp[amulet_id])
 
 # ---------------------------------------------------------------------------
 # Run setup — pick an amulet, then the top-3 starts (one per game type

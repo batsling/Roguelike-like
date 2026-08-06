@@ -33,6 +33,10 @@ extends Control
 # map and the atlas are one picture at two altitudes.
 
 signal finished
+# The run's road ahead has been re-planned from here — the player pinned a game
+# to route through, or dropped the pin. Anything else drawing the same route (the
+# map-to-the-Amulet, when it's floating over this chart) redraws on it.
+signal route_changed
 
 const LAYOUT_PATH := "res://data/atlas_layout.tres"
 
@@ -103,6 +107,9 @@ const COL_GOAL := Color(1.0, 0.82, 0.30)
 # A game being weighed up rather than stood on: the ember the offering already
 # uses for "this is the card you're pointing at".
 const COL_CONSIDERING := Color(1.0, 0.60, 0.24)
+# A game the player has PINNED to route through — a third anchor, and one they
+# put there themselves, so it gets a colour neither of the other two owns.
+const COL_WAYPOINT := Color(0.78, 0.45, 0.95)
 const COL_EDGE_BASHED := Color(0.90, 0.26, 0.22, 0.45)
 const COL_DIM := Color(1, 1, 1, 0.11)
 # Scenery, while a route is on the sky: a game off the optimal path keeps its
@@ -209,6 +216,7 @@ var _card_box: VBoxContainer = null
 var _hud: Label = null
 var _search: LineEdit = null
 var _filter_bar: PanelContainer = null
+var _legend_bar: PanelContainer = null
 var _filter_count: Label = null
 
 # ---------------------------------------------------------------------------
@@ -295,7 +303,10 @@ func _build_trail() -> void:
 	var amulet: StringName = GameState.amulet_game_id
 	if current == &"" or amulet == &"":
 		return
-	var dag: Dictionary = RunGraph.shortest_path_dag(current, amulet)
+	# Through the pinned game when the player has set one — the sky and the
+	# map-to-the-Amulet draw ONE route, and a road that ignores the pin here while
+	# the ladder honours it is two different answers to the same question.
+	var dag: Dictionary = RunGraph.route_dag_via(current, GameState.route_waypoint, amulet)
 	# The depth of that DAG is how far the run still has to go, and the markers
 	# quote it. Cached here rather than recomputed in _draw: it's a BFS over the
 	# whole graph, and the sky redraws on every pan.
@@ -311,6 +322,20 @@ func _build_trail() -> void:
 
 func trail_segment_count() -> int:
 	return _trail.size()
+
+# Re-read the run's route and redraw the sky. The road ahead is cached (it costs
+# a BFS over the whole graph and the sky redraws on every pan), so anything that
+# CHANGES the route — pinning a game to go through, dropping that pin — has to
+# say so. The card is refreshed too: it carries the pin's own button.
+func refresh_route() -> void:
+	_trail.clear()
+	_route_stars.clear()
+	_build_trail()
+	_build_history()
+	_refresh_card()
+	_rebuild_legend()
+	_refresh_hud()
+	_redraw()
 
 # --- the route as a set of stars -------------------------------------------
 #
@@ -334,7 +359,7 @@ func route_stars() -> Dictionary:
 	for seg in _history:
 		_route_stars[int(seg[0])] = true
 		_route_stars[int(seg[1])] = true
-	for anchor in [current_index(), amulet_index(), preview_index()]:
+	for anchor in [current_index(), amulet_index(), preview_index(), waypoint_index()]:
 		if anchor >= 0:
 			_route_stars[anchor] = true
 	return _route_stars
@@ -393,6 +418,35 @@ func amulet_index() -> int:
 		return -1
 	return layout.index_of(GameState.amulet_game_id)
 
+# The pinned game, when there is one and it isn't already an anchor in its own
+# right. -1 otherwise.
+func waypoint_index() -> int:
+	if pure_catalog or not has_layout() or GameState.route_waypoint == &"":
+		return -1
+	var i: int = layout.index_of(GameState.route_waypoint)
+	return -1 if (i == current_index() or i == amulet_index()) else i
+
+# Whether this game can be pinned as the route's waypoint: a live run, a game
+# that isn't already one of the run's two anchors, and a game the route can
+# actually be bent through.
+func can_pin_route(id: StringName) -> bool:
+	if pure_catalog or preview_origin != &"":
+		return false
+	var current: StringName = GameState.current_game_id
+	var amulet: StringName = GameState.amulet_game_id
+	if current == &"" or amulet == &"" or id == current or id == amulet:
+		return false
+	if id == GameState.route_waypoint:
+		return true            # always droppable, even if the graph changed under it
+	return RunGraph.route_length_via(current, id, amulet) >= 0
+
+# Pin or unpin, and redraw the sky (and tell the ladder, if one is floating over
+# it) around the new road.
+func _toggle_waypoint(id: StringName) -> void:
+	GameState.route_waypoint = &"" if GameState.route_waypoint == id else id
+	refresh_route()
+	route_changed.emit()
+
 # The game a preview is routing FROM, when this sky is previewing one.
 func preview_index() -> int:
 	if pure_catalog or not has_layout() or preview_origin == &"":
@@ -414,6 +468,8 @@ func marker_text(index: int) -> String:
 		return "YOU ARE HERE"
 	if index == preview_index():
 		return "IF YOU GO HERE"
+	if index == waypoint_index():
+		return "ROUTING THROUGH HERE"
 	if index == amulet_index():
 		if _steps_ahead > 0:
 			return "THE AMULET — %d STEP%s" % [_steps_ahead, "" if _steps_ahead == 1 else "S"]
@@ -427,6 +483,8 @@ func marker_color(index: int) -> Color:
 		return COL_YOU
 	if index >= 0 and index == preview_index():
 		return COL_CONSIDERING
+	if index >= 0 and index == waypoint_index():
+		return COL_WAYPOINT
 	if index >= 0 and index == amulet_index():
 		return COL_GOAL
 	return UITheme.TEXT_DIM
@@ -1146,6 +1204,8 @@ func _build_header() -> Control:
 		row.add_child(_tool_button("📍 You", func(): _frame_star(current_index())))
 	if preview_index() >= 0:
 		row.add_child(_tool_button("▶ This game", func(): _frame_star(preview_index())))
+	if waypoint_index() >= 0:
+		row.add_child(_tool_button("⚑ Pinned", func(): _frame_star(waypoint_index())))
 	if amulet_index() >= 0:
 		row.add_child(_tool_button("🏆 Amulet", func(): _frame_star(amulet_index())))
 	if not pure_catalog and (not _trail.is_empty() or not _history.is_empty()):
@@ -1177,8 +1237,24 @@ func _tool_button(text: String, cb: Callable) -> Button:
 	return b
 
 func _build_legend() -> Control:
-	var bar := PanelContainer.new()
-	bar.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 8, 0))
+	_legend_bar = PanelContainer.new()
+	_legend_bar.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 8, 0))
+	_fill_legend()
+	return _legend_bar
+
+# The key is rebuilt rather than built once: pinning a game puts a colour on the
+# sky that wasn't there a moment ago, and a key that doesn't mention it is a key
+# with a hole in it.
+func _rebuild_legend() -> void:
+	if _legend_bar == null or not is_instance_valid(_legend_bar):
+		return
+	for c in _legend_bar.get_children():
+		_legend_bar.remove_child(c)
+		c.queue_free()
+	_fill_legend()
+
+func _fill_legend() -> void:
+	var bar := _legend_bar
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	bar.add_child(row)
@@ -1196,6 +1272,8 @@ func _build_legend() -> Control:
 		row.add_child(_legend_chip("📍 You are here", COL_YOU))
 	if preview_index() >= 0:
 		row.add_child(_legend_chip("▶ If you go here", COL_CONSIDERING))
+	if waypoint_index() >= 0:
+		row.add_child(_legend_chip("⚑ Routing through here", COL_WAYPOINT))
 	if amulet_index() >= 0:
 		row.add_child(_legend_chip("🏆 The Amulet — the goal", COL_GOAL))
 	if not _history.is_empty():
@@ -1208,7 +1286,6 @@ func _build_legend() -> Control:
 	note.add_theme_font_size_override("font_size", 11)
 	note.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	row.add_child(note)
-	return bar
 
 # `filled` draws a solid dot rather than a ring, for the keys that describe what
 # fills a star's middle rather than what outlines it.
@@ -1399,6 +1476,19 @@ func _refresh_card() -> void:
 		notes_btn.add_theme_font_size_override("font_size", 12)
 		notes_btn.pressed.connect(func(): _open_enemy_notes(id, name_text))
 		_card_box.add_child(notes_btn)
+
+	# Force the run's route through this game. The whole point of having the sky and
+	# the ladder on screen together: you pick the detour off the chart, where you
+	# can see what's near it, and the ladder redraws around it.
+	if can_pin_route(id):
+		var pin := Button.new()
+		pin.text = "✖  Stop routing through here" if GameState.route_waypoint == id \
+			else "⚑  Route through here"
+		pin.tooltip_text = "Bend the road to the Amulet through this game." \
+			if GameState.route_waypoint != id else "Go back to the shortest road."
+		pin.add_theme_font_size_override("font_size", 12)
+		pin.pressed.connect(func(): _toggle_waypoint(id))
+		_card_box.add_child(pin)
 
 	if game != null and game.has_launch_target():
 		var play := Button.new()
@@ -1830,6 +1920,13 @@ func run_summary() -> String:
 		var candidate: GameData = game_at(considering)
 		if candidate != null:
 			parts.append("▶ %s" % candidate.display_name)
+	# A pinned game is a stop on the way, and the run line says so — the step count
+	# under it is the DETOUR's length, not the straight road's.
+	var pinned: int = waypoint_index()
+	if pinned >= 0:
+		var stop: GameData = game_at(pinned)
+		if stop != null:
+			parts.append("⚑ %s" % stop.display_name)
 	if there != null:
 		parts.append("🏆 %s" % there.display_name)
 	var line: String = "  →  ".join(parts)
@@ -2252,6 +2349,10 @@ class StarCanvas extends Control:
 		# is read from where you stand.
 		if goal >= 0 and goal != cur and goal != considering:
 			_draw_marker(lay, goal, view.marker_text(goal), AtlasView.COL_GOAL, taken)
+		var pinned: int = view.waypoint_index()
+		if pinned >= 0 and pinned != cur and pinned != considering:
+			_draw_marker(lay, pinned, view.marker_text(pinned),
+				AtlasView.COL_WAYPOINT, taken)
 		if considering >= 0:
 			_draw_marker(lay, considering, view.marker_text(considering),
 				AtlasView.COL_CONSIDERING, taken)

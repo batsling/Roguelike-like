@@ -199,3 +199,224 @@ func test_a_short_route_shrinks_the_window_to_match() -> void:
 	await _settled(modal)
 	assert_lt(modal._panel.size.x, modal.PANEL_SIZE.x,
 		"a one-column route doesn't need the full window hiding the chart")
+
+
+# ---------------------------------------------------------------------------
+# Clickable rungs
+#
+# A rung is 150x48 with a clipped name in it — enough to follow a route, nowhere
+# near enough to decide anything on. Clicking one opens a card on that game.
+# ---------------------------------------------------------------------------
+
+func test_clicking_a_rung_opens_a_card_on_that_game() -> void:
+	var modal = _open_map()
+	var card = modal.open_node_card(GameState.current_game_id, 0)
+	assert_not_null(card, "a rung opens a card")
+	assert_true(_text_of(card).contains(Data.get_game(GameState.current_game_id).display_name),
+		"and the card is about the game that was clicked")
+
+func test_the_card_says_which_rung_it_is() -> void:
+	# The same game can hold two rungs on a forced route, so "step 3 of 9" is part
+	# of the answer, not decoration.
+	var modal = _open_map()
+	var total: int = modal.shortest_distance()
+	var card = modal.open_node_card(GameState.amulet_game_id, total)
+	assert_true(_text_of(card).contains("step %d of %d" % [total, total]),
+		"the Amulet's card places it at the bottom of the route")
+
+func test_only_one_card_is_open_at_a_time() -> void:
+	var modal = _open_map()
+	modal.open_node_card(GameState.current_game_id, 0)
+	var second = modal.open_node_card(GameState.amulet_game_id, modal.shortest_distance())
+	assert_eq(modal._node_card, second, "opening a second rung replaces the first")
+	modal.close_node_card()
+	assert_null(modal._node_card, "and Close puts it away")
+
+func test_a_start_picker_never_opens_a_card_on_the_hidden_amulet() -> void:
+	var modal = _open_preview_from(GameState.current_game_id, true)
+	assert_null(modal.open_node_card(GameState.amulet_game_id, 1),
+		"the map that refuses to NAME the Amulet doesn't hand out its card either")
+
+# ---------------------------------------------------------------------------
+# The waypoint — forcing the route through a game you insist on visiting
+# ---------------------------------------------------------------------------
+
+# A game that is NOT on the optimal road, so routing through it has to cost
+# something — the CHEAPEST such game, which is the detour a player would
+# actually take and keeps the test's ladder short. The graph is undirected, so
+# the two BFS sweeps give every candidate's round trip without a BFS apiece.
+# &"" only if every reachable game already sits on a shortest path.
+func _detour_candidate() -> StringName:
+	var from_here: Dictionary = RunGraph.bfs_distances(GameState.current_game_id)
+	var from_amulet: Dictionary = RunGraph.bfs_distances(GameState.amulet_game_id)
+	var direct: int = int(from_here.get(GameState.amulet_game_id, -1))
+	if direct < 0:
+		return &""
+	var best: StringName = &""
+	var best_cost: int = 1 << 30
+	for id in from_here.keys():
+		if id == GameState.current_game_id or id == GameState.amulet_game_id:
+			continue
+		if not from_amulet.has(id):
+			continue
+		var cost: int = int(from_here[id]) + int(from_amulet[id]) - direct
+		if cost > 0 and cost < best_cost:
+			best = StringName(id)
+			best_cost = cost
+	return best
+
+func test_pinning_a_game_bends_the_route_through_it() -> void:
+	var modal = _open_map()
+	var pin: StringName = _detour_candidate()
+	if pin == &"":
+		return                    # this roll had no off-route neighbour to pin
+	var was: int = modal.shortest_distance()
+	assert_true(modal.set_waypoint(pin), "the pin is accepted")
+	var layers: Array = modal.map_data().get("layers", [])
+	var on_route := false
+	for layer in layers:
+		if (layer as Array).has(pin):
+			on_route = true
+	assert_true(on_route, "the pinned game is now a stop on the route")
+	assert_gt(modal.shortest_distance(), was, "and the road is longer for it")
+	assert_eq(modal.detour_cost(), modal.shortest_distance() - was,
+		"the detour cost is exactly what the pin added")
+
+func test_dropping_the_pin_restores_the_shortest_road() -> void:
+	var modal = _open_map()
+	var pin: StringName = _detour_candidate()
+	if pin == &"":
+		return
+	var was: int = modal.shortest_distance()
+	modal.set_waypoint(pin)
+	modal.clear_waypoint()
+	assert_eq(GameState.route_waypoint, &"", "the pin is gone")
+	assert_eq(modal.shortest_distance(), was, "and so is the detour")
+	assert_eq(modal.detour_cost(), 0)
+
+func test_the_amulet_and_where_you_stand_cannot_be_pinned() -> void:
+	var modal = _open_map()
+	assert_false(modal.set_waypoint(GameState.current_game_id),
+		"you're already standing on it")
+	assert_false(modal.set_waypoint(GameState.amulet_game_id),
+		"the route ends there whatever you do")
+	assert_eq(GameState.route_waypoint, &"")
+
+func test_a_forced_route_still_starts_where_you_stand_and_ends_on_the_amulet() -> void:
+	var modal = _open_map()
+	var pin: StringName = _detour_candidate()
+	if pin == &"":
+		return
+	modal.set_waypoint(pin)
+	var layers: Array = modal.map_data().get("layers", [])
+	assert_true((layers[0] as Array).has(GameState.current_game_id))
+	assert_true((layers[layers.size() - 1] as Array).has(GameState.amulet_game_id))
+
+# THE RETURNING PATH. Walking out to a pinned game and back means the same game
+# can hold two rungs, at two depths. The ladder keys its boxes by (depth, id) so
+# both survive; keying by id alone silently merged them and drew an arrow into a
+# step of the route that doesn't exist.
+func test_a_game_walked_through_twice_gets_two_rungs() -> void:
+	var modal = _open_map()
+	var pin: StringName = _detour_candidate()
+	if pin == &"":
+		return
+	modal.set_waypoint(pin)
+	var layers: Array = modal.map_data().get("layers", [])
+	var entries: int = 0
+	var distinct: Dictionary = {}
+	for i in range(layers.size()):
+		for id in layers[i]:
+			entries += 1
+			distinct[StringName(id)] = true
+	var boxes: int = 0
+	for child in modal._canvas_holder.get_children():
+		if child is Panel:
+			boxes += 1
+	assert_eq(boxes, entries,
+		"one box per rung — repeats included, not collapsed onto each other")
+	if entries > distinct.size():
+		assert_gt(entries, distinct.size(),
+			"this route really does pass through a game twice")
+
+func test_every_edge_of_a_forced_route_advances_one_layer() -> void:
+	var modal = _open_map()
+	var pin: StringName = _detour_candidate()
+	if pin == &"":
+		return
+	modal.set_waypoint(pin)
+	for e in modal.map_data().get("edges", []):
+		assert_eq(int(e["to_depth"]) - int(e["from_depth"]), 1,
+			"every drawn edge is one step of the route, on the way out or the way back")
+
+func test_the_start_picker_ignores_a_pin_it_has_no_route_for() -> void:
+	var pin: StringName = _detour_candidate()
+	if pin == &"":
+		return
+	GameState.route_waypoint = pin
+	var modal = _open_preview_from(GameState.current_game_id, true)
+	assert_eq(modal.waypoint(), &"",
+		"the run has no position yet, so there is nothing to detour from")
+
+# --- the model underneath ---------------------------------------------------
+
+func test_route_via_the_game_you_are_on_is_just_the_shortest_route() -> void:
+	var plain: Dictionary = RunGraph.shortest_path_dag(
+		GameState.current_game_id, GameState.amulet_game_id)
+	var via: Dictionary = RunGraph.route_dag_via(
+		GameState.current_game_id, GameState.current_game_id, GameState.amulet_game_id)
+	assert_eq(via.get("layers", []).size(), plain.get("layers", []).size(),
+		"a waypoint you're standing on is not a detour")
+
+func test_a_waypoint_that_cannot_be_reached_yields_no_route() -> void:
+	var via: Dictionary = RunGraph.route_dag_via(
+		GameState.current_game_id, &"__no_such_game__", GameState.amulet_game_id)
+	assert_true(via.get("layers", []).is_empty(), "no way there means no route")
+	assert_eq(RunGraph.route_length_via(
+		GameState.current_game_id, &"__no_such_game__", GameState.amulet_game_id), -1)
+
+func test_the_waypoint_sits_alone_on_the_join_layer() -> void:
+	var pin: StringName = _detour_candidate()
+	if pin == &"":
+		return
+	var via: Dictionary = RunGraph.route_dag_via(
+		GameState.current_game_id, pin, GameState.amulet_game_id)
+	var join: int = int(via.get("waypoint_depth", -1))
+	assert_gt(join, 0, "the join is somewhere down the route")
+	var layer: Array = via["layers"][join]
+	assert_eq(layer.size(), 1, "the two legs meet on one game")
+	assert_eq(StringName(layer[0]), pin, "and that game is the pinned one")
+
+# Every rung's text, flattened — enough to assert what a card actually says
+# without reaching into its layout.
+func _text_of(node: Node) -> String:
+	var out: String = ""
+	if node is Label:
+		out += (node as Label).text + "\n"
+	elif node is Button:
+		out += (node as Button).text + "\n"
+	for c in node.get_children():
+		out += _text_of(c)
+	return out
+
+func test_arriving_at_the_pinned_game_spends_the_pin() -> void:
+	var pin: StringName = _detour_candidate()
+	if pin == &"":
+		return
+	GameState.route_waypoint = pin
+	GameState.set_current_game(pin)
+	assert_eq(GameState.route_waypoint, &"",
+		"the detour is done — the road on from here is just the road")
+
+func test_pinning_from_the_card_leaves_the_card_open_on_the_same_game() -> void:
+	var pin: StringName = _detour_candidate()
+	if pin == &"":
+		return
+	var modal = _open_map()
+	modal.open_node_card(pin, modal.depth_of(pin))
+	modal.set_waypoint(pin)
+	assert_not_null(modal._node_card,
+		"the card that pinned the route stays up to say what the detour cost")
+	assert_eq(modal._node_card_id, pin, "and it is still about the same game")
+	assert_true(_text_of(modal._node_card).contains("Pinned"),
+		"now reading as the pinned stop it has become")
