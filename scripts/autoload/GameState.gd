@@ -23,6 +23,12 @@ var save_name: String = ""
 var current_game_id: StringName = &""
 var start_game_id: StringName = &""
 var amulet_game_id: StringName = &""
+# A game the player has PINNED to route through on the way to the Amulet. Purely
+# a planning mark — it doesn't gate anything, it just tells the star chart and the
+# map-to-the-Amulet to draw the road that goes via this game instead of the
+# straight-line shortest one (RunGraph.route_dag_via). &"" is the ordinary
+# shortest route.
+var route_waypoint: StringName = &""
 var visited_games: Array[StringName] = []
 var beaten_games: Array[StringName] = []
 var total_games_beaten: int = 0
@@ -697,6 +703,7 @@ func reset_run() -> void:
 	current_game_id = &""
 	start_game_id = &""
 	amulet_game_id = &""
+	route_waypoint = &""
 	visited_games.clear()
 	beaten_games.clear()
 	total_games_beaten = 0
@@ -1023,6 +1030,10 @@ func set_current_game(id: StringName) -> void:
 	if current_game_id != &"" and current_game_id != id and not visited_games.has(current_game_id):
 		visited_games.append(current_game_id)
 	current_game_id = id
+	# Arriving at the game you pinned to route through spends the pin: the detour
+	# is done, and the road on from here is just the road.
+	if route_waypoint == id:
+		route_waypoint = &""
 	emit_signal("current_game_changed", id)
 
 # Records that the player BEAT `game_id` this run and reports whether that was a

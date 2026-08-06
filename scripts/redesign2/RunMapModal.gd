@@ -31,6 +31,7 @@ const COL_CHOICE_BG := Color(0.24, 0.18, 0.0)     # reachable-now choice
 const COL_PATH_BG := Color(0.29, 0.27, 0.25)      # on the road to the amulet
 const COL_VISITED_BG := Color(0.16, 0.16, 0.16)   # already behind you
 const COL_ARROW := Color(0.30, 0.78, 0.42, 0.85)  # shortest-path arrow green
+const COL_WAYPOINT := Color(0.45, 0.24, 0.42)     # the game you insisted on
 
 # Layout constants (pre-zoom). Mirrors the box/gap sizing in generateMapView,
 # with the vertical gap pulled in: at 6-8 steps the ladder is nine rows deep, and
@@ -67,6 +68,11 @@ var _canvas_holder: Control = null      # the GraphCanvas (rebuilt on zoom)
 var _scroller: ScrollContainer = null   # what the ladder scrolls inside
 var _rows: VBoxContainer = null         # the window's contents, ladder included
 var _dist_label: Label = null
+var _pin_bar: PanelContainer = null     # the "routing through X" bar (hidden when unpinned)
+var _pin_label: Label = null
+var _node_card: PanelContainer = null   # the open rung's card, if any
+var _node_card_id: StringName = &""
+var _node_card_body: VBoxContainer = null   # what the card is sized against
 # Whether the opening zoom-to-fit has happened. Only the FIRST build does it —
 # after that the zoom is whatever the player set with the −/+ buttons.
 var _auto_zoomed: bool = false
@@ -119,6 +125,10 @@ func start(host: Node, current: StringName, amulet: StringName, choice_ids: Arra
 	_hide_amulet = bool(options.get("hide_amulet", false))
 	_title = String(options.get("title", ""))
 	_atlas = options.get("atlas")
+	# The chart can re-plan the route too (its card carries the same pin button),
+	# and when it does this ladder is drawing a road that no longer exists.
+	if _atlas != null and is_instance_valid(_atlas):
+		_atlas.route_changed.connect(_reroute)
 	_choice_ids.clear()
 	for id in choice_ids:
 		_choice_ids[StringName(id)] = true
@@ -131,17 +141,55 @@ func start(host: Node, current: StringName, amulet: StringName, choice_ids: Arra
 
 # --- graph model ----------------------------------------------------------
 
-# The shortest-path DAG from the current game to the amulet, as
-# {layers: Array[Array[StringName]], edges: [{from, to}]}. Empty layers mean
-# no route (amulet unreachable / not set).
+# The route this ladder draws, as {layers: Array[Array[StringName]],
+# edges: [{from, to, from_depth, to_depth}]}. Empty layers mean no route (amulet
+# unreachable / not set).
+#
+# Normally the shortest-path DAG from the current game to the Amulet. When the
+# player has PINNED a game to go through (GameState.route_waypoint), it's the
+# forced route instead — the shortest way to the pin, then the shortest way on —
+# which is a longer road and, unlike the plain DAG, can pass through the same
+# game twice. See _node_key for what that costs the layout.
 func map_data() -> Dictionary:
 	if _current == &"" or _amulet == &"":
-		return {"layers": [], "edges": []}
-	return RunGraph.shortest_path_dag(_current, _amulet)
+		return {"layers": [], "edges": [], "waypoint_depth": -1}
+	return RunGraph.route_dag_via(_current, waypoint(), _amulet)
+
+# The pinned game, or &"" — never in the start picker, where the run has no
+# position yet and there is nothing to detour from.
+func waypoint() -> StringName:
+	if _hide_amulet:
+		return &""
+	var pin: StringName = GameState.route_waypoint
+	# A pin you have arrived at, or that turns out to be the Amulet, is not a
+	# detour any more — the road from here is just the road.
+	return &"" if (pin == _amulet or pin == _current) else pin
 
 func shortest_distance() -> int:
 	var layers: Array = map_data().get("layers", [])
 	return maxi(0, layers.size() - 1)
+
+# What the detour actually costs: the forced route's length minus the straight
+# one. 0 when nothing is pinned, when the pin was already on the optimal road, or
+# when there is no route at all to compare against.
+func detour_cost() -> int:
+	var pin: StringName = waypoint()
+	if pin == &"" or _current == &"" or _amulet == &"":
+		return 0
+	var direct: int = RunGraph.route_length_via(_current, &"", _amulet)
+	var forced: int = RunGraph.route_length_via(_current, pin, _amulet)
+	if direct < 0 or forced < 0:
+		return 0
+	return maxi(0, forced - direct)
+
+# A node's identity ON THIS LADDER is (depth, game) — not the game.
+#
+# A forced route walks to the pinned game and then walks on, and the way on is
+# free to come straight back over the games that led in: the same game can hold
+# two rungs, at two depths. Keying rects by id alone silently merged them into
+# one rung and drew arrows into a step of the route that isn't there.
+static func _node_key(depth: int, id: StringName) -> String:
+	return "%d|%s" % [depth, id]
 
 # --- UI construction ------------------------------------------------------
 
@@ -163,6 +211,8 @@ func _build() -> void:
 
 	# Header: the drag handle, the title, the distance, zoom, close.
 	root.add_child(_build_header())
+	root.add_child(_build_pin_bar())
+	_refresh_pin_bar()
 
 	# What this map IS, when it isn't the run's own: the optimal road from a game
 	# you're only thinking about.
@@ -333,6 +383,8 @@ func _move_panel(to: Vector2) -> void:
 	_panel.position = Vector2(
 		clampf(to.x, 12.0 - _panel.size.x * 0.6, view.x - _panel.size.x * 0.4),
 		clampf(to.y, 0.0, maxf(0.0, view.y - 46.0)))
+	# The card is parked against the window, so it travels with it.
+	_place_node_card()
 
 func panel_position() -> Vector2:
 	return _panel.position if _panel != null else Vector2.ZERO
@@ -349,6 +401,9 @@ func _refresh_distance_label() -> void:
 	var d: int = shortest_distance()
 	if map_data().get("layers", []).is_empty():
 		_dist_label.text = "No route — the Amulet isn't connected from here."
+	elif waypoint() != &"":
+		_dist_label.text = "Route via %s: %d step%s" % [node_name(waypoint()), d,
+			"" if d == 1 else "s"]
 	else:
 		_dist_label.text = "%s: %d step%s" % [
 			"Optimal path from there" if _preview else "Shortest path",
@@ -374,7 +429,9 @@ func _build_graph() -> Control:
 	content_w = maxf(content_w, box.x)
 	var content_h: float = maxf(box.y, layers.size() * box.y + maxf(0, layers.size() - 1) * v_gap)
 
-	var rects: Dictionary = {}     # id -> Rect2 (in canvas space, pre-pad)
+	# Keyed by (depth, id), not by id — a forced route can hold the same game on
+	# two rungs, and they are two different places on this ladder.
+	var rects: Dictionary = {}     # "depth|id" -> Rect2 (in canvas space, pre-pad)
 	for i in range(layers.size()):
 		var layer: Array = layers[i]
 		var n: int = layer.size()
@@ -384,13 +441,13 @@ func _build_graph() -> Control:
 		for j in range(n):
 			var id: StringName = StringName(layer[j])
 			var x: float = start_x + j * (box.x + h_gap)
-			rects[id] = Rect2(Vector2(x + pad, y + pad), box)
+			rects[_node_key(i, id)] = Rect2(Vector2(x + pad, y + pad), box)
 
 	# Arrow segments (bottom-centre of the parent -> top-centre of the child).
 	var segments: Array = []
 	for e in data.get("edges", []):
-		var a: StringName = StringName(e.get("from", ""))
-		var b: StringName = StringName(e.get("to", ""))
+		var a: String = _node_key(int(e.get("from_depth", 0)), StringName(e.get("from", "")))
+		var b: String = _node_key(int(e.get("to_depth", 0)), StringName(e.get("to", "")))
 		if rects.has(a) and rects.has(b):
 			var ra: Rect2 = rects[a]
 			var rb: Rect2 = rects[b]
@@ -405,10 +462,14 @@ func _build_graph() -> Control:
 	canvas.custom_minimum_size = Vector2(content_w + pad * 2, content_h + pad * 2)
 
 	# Node boxes on top of the arrows.
+	var seen: Dictionary = {}      # id -> the depth it was FIRST met at
 	for i in range(layers.size()):
 		for id in layers[i]:
 			var sid: StringName = StringName(id)
-			canvas.add_child(_node_box(sid, rects[sid]))
+			var revisit: bool = seen.has(sid)
+			if not revisit:
+				seen[sid] = i
+			canvas.add_child(_node_box(sid, rects[_node_key(i, sid)], i, revisit))
 
 	if layers.is_empty():
 		var empty := Label.new()
@@ -419,10 +480,14 @@ func _build_graph() -> Control:
 	return canvas
 
 # One node = a bordered box with the game's name, coloured by its role.
-func _node_box(id: StringName, rect: Rect2) -> Control:
-	var is_current: bool = id == _current
+#
+# `depth` is the rung's layer and `revisit` says this game already had a rung
+# further up — a forced route that doubles back through it on the way out.
+func _node_box(id: StringName, rect: Rect2, depth: int, revisit: bool = false) -> Control:
+	var is_current: bool = id == _current and depth == 0
 	var is_amulet: bool = id == _amulet
-	var is_choice: bool = _choice_ids.has(id) and not is_current and not is_amulet
+	var is_waypoint: bool = id == waypoint() and not is_current and not is_amulet
+	var is_choice: bool = _choice_ids.has(id) and not is_current and not is_amulet and not is_waypoint
 	var is_visited: bool = not _preview and GameState.visited_games.has(id) and not is_current
 
 	var bg: Color = COL_PATH_BG
@@ -439,6 +504,11 @@ func _node_box(id: StringName, rect: Rect2) -> Control:
 		border = UITheme.GOLD
 		border_w = 2
 		prefix = "🏆 "
+	elif is_waypoint:
+		bg = COL_WAYPOINT
+		border = UITheme.GOLD
+		border_w = 2
+		prefix = "⚑ "
 	elif is_choice:
 		bg = COL_CHOICE_BG
 		border = UITheme.ACCENT
@@ -447,6 +517,11 @@ func _node_box(id: StringName, rect: Rect2) -> Control:
 	elif is_visited:
 		bg = COL_VISITED_BG
 		border = UITheme.BORDER.lerp(UITheme.BG, 0.4)
+	# A rung you are passing over for the second time is drawn as the same game,
+	# faded, so the doubling-back reads as doubling back rather than as a bug.
+	if revisit and not is_amulet:
+		bg = bg.lerp(UITheme.BG, 0.45)
+		prefix = "↩ "
 
 	# A Panel, NOT a PanelContainer. A container takes its child's minimum size as
 	# its own, and a shrunk rung holding a name like "Crypt of the NecroDancer"
@@ -458,18 +533,36 @@ func _node_box(id: StringName, rect: Rect2) -> Control:
 	panel.size = rect.size
 	panel.clip_contents = true
 	panel.add_theme_stylebox_override("panel", UITheme.flat(bg, 6, 0, border_w, border))
-	# The full name, always — a rung whose name was clipped to fit still has to be
-	# identifiable, and over a chart the node is also a way IN to it: click a rung
-	# and the sky flies to that game and opens its card. Never for a hidden Amulet
-	# — the chart would name what this map is deliberately not naming.
+	# Every rung is a way IN to its game: click it and the map opens a card on that
+	# game — what it is, what you've done there, and what it would cost to route
+	# through it. Never for a hidden Amulet, which is the one thing a start-picker
+	# map is deliberately not telling you.
 	var secret_amulet: bool = _hide_amulet and is_amulet
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	if _atlas != null and not secret_amulet:
+	if not secret_amulet:
 		panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		panel.tooltip_text = "%s — click to find it on the star chart." % node_name(id)
-		panel.gui_input.connect(func(event): _on_node_input(event, id))
+		panel.tooltip_text = "%s — click for the details." % node_name(id)
+		panel.gui_input.connect(func(event): _on_node_input(event, id, depth))
 	else:
 		panel.tooltip_text = node_name(id)
+
+	# The badge: games you have beaten an enemy in, flagged on the route itself.
+	# This is the whole reason to read the ladder rather than the offering — the
+	# choice in front of you may be a game you already have a record in.
+	var fought: int = 0 if secret_amulet else GameStats.enemies_for(id).size()
+	var badge_w: float = 0.0
+	if fought > 0 and _zoom >= 0.62:
+		var badge := Label.new()
+		badge.text = "⚔%d" % fought
+		badge.add_theme_font_size_override("font_size", 9)
+		badge.add_theme_color_override("font_color", UITheme.GOLD)
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		badge.offset_right = -4
+		badge.offset_top = 2
+		badge_w = 22.0
+		panel.add_child(badge)
 
 	var label := Label.new()
 	# A shrunk rung is barely wider than the glyph, and a name is worth more than
@@ -477,7 +570,8 @@ func _node_box(id: StringName, rect: Rect2) -> Control:
 	label.text = (prefix if _zoom >= 0.62 else "") + node_name(id)
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	label.offset_left = 4
-	label.offset_right = -4
+	# The name keeps clear of the badge rather than running under it.
+	label.offset_right = -(4.0 + badge_w)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -490,14 +584,14 @@ func _node_box(id: StringName, rect: Rect2) -> Control:
 	# whose name has shrunk out of legibility isn't a rung any more.
 	label.add_theme_font_size_override("font_size", maxi(9, int(11 * clampf(_zoom, 0.7, 1.4))))
 	label.add_theme_color_override("font_color",
-		Color.WHITE if (is_current or is_amulet) else UITheme.TEXT)
+		Color.WHITE if (is_current or is_amulet or is_waypoint) else UITheme.TEXT)
 	panel.add_child(label)
 	return panel
 
-func _on_node_input(event: InputEvent, id: StringName) -> void:
+func _on_node_input(event: InputEvent, id: StringName, depth: int) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT \
 			and (event as InputEventMouseButton).pressed:
-		show_on_chart(id)
+		open_node_card(id, depth)
 
 # Fly the chart behind to one game on the ladder. Public so a test can ask for
 # the same thing a click asks for.
@@ -515,6 +609,317 @@ func node_name(id: StringName) -> String:
 	var game: GameData = Data.get_game(id)
 	return game.display_name if game != null else String(id)
 
+# ---------------------------------------------------------------------------
+# The node card
+#
+# A rung is 150x48 with a clipped name in it, which is all a ladder should be and
+# nowhere near enough to decide anything on. Clicking one opens this: the game's
+# cover, where it sits on this route, what you have already done there, and the
+# two things you can do about it — find it on the chart, or pin the route through
+# it. It floats beside the window and follows it when the window is dragged.
+# ---------------------------------------------------------------------------
+
+const CARD_W := 300.0
+const CARD_GAP := 12.0
+
+# Open the card on one rung. `depth` is which rung — a forced route can hold the
+# same game twice, and "step 2 of 9" and "step 7 of 9" are different answers.
+# Public so a test can ask for exactly what a click asks for.
+func open_node_card(id: StringName, depth: int = 0) -> Control:
+	close_node_card()
+	if _hide_amulet and id == _amulet:
+		return null
+	var game: GameData = Data.get_game(id)
+
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel",
+		UITheme.flat(Color(0.075, 0.062, 0.05, 0.98), 8, 12, 2, UITheme.GOLD))
+	card.custom_minimum_size = Vector2(CARD_W, 0)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	_node_card = card
+	_node_card_id = id
+	add_child(card)
+
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	card.add_child(scroll)
+	# A ScrollContainer hands its child the full width and draws the scrollbar over
+	# it, so right-aligned values need the bar's width kept clear of them.
+	var inset := MarginContainer.new()
+	inset.add_theme_constant_override("margin_right", 14)
+	inset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(inset)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 7)
+	box.custom_minimum_size = Vector2(CARD_W - 54.0, 0)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inset.add_child(box)
+	_node_card_body = box
+
+	var title := Label.new()
+	title.text = node_name(id)
+	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_color_override("font_color", UITheme.GOLD)
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(title)
+
+	var role := Label.new()
+	role.text = _node_role_text(id, depth)
+	role.add_theme_font_size_override("font_size", 12)
+	role.add_theme_color_override("font_color", UITheme.ACCENT)
+	role.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(role)
+
+	if game != null and game.cover_image != null:
+		var art := AtlasView.card_art(game.cover_image, CARD_W - 52.0, 190.0)
+		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		box.add_child(art)
+
+	if game != null:
+		var meta: Array = []
+		if game.year > 0:
+			meta.append(str(game.year))
+		meta.append(RunGraph.type_label(game.type))
+		var chip := Label.new()
+		chip.text = "  •  ".join(meta).to_upper()
+		chip.add_theme_font_size_override("font_size", 11)
+		chip.add_theme_color_override("font_color", RunGraph.type_color(game.type))
+		box.add_child(chip)
+
+	var facts := VBoxContainer.new()
+	facts.add_theme_constant_override("separation", 3)
+	box.add_child(facts)
+	var total: int = shortest_distance()
+	facts.add_child(_card_fact("On this route", "step %d of %d" % [depth, total]))
+	var left: int = RunGraph.route_length_via(id, &"", _amulet)
+	if left >= 0 and not (_hide_amulet and id != _current):
+		facts.add_child(_card_fact("From here to the Amulet",
+			"%d step%s" % [left, "" if left == 1 else "s"]))
+	var beaten_times: int = GameStats.beaten_count(id)
+	facts.add_child(_card_fact("⚔ Beaten", ("%d time%s" % [beaten_times,
+		"" if beaten_times == 1 else "s"]) if beaten_times > 0 else "never"))
+	var amulet_runs: int = GameStats.amulet_wins(id)
+	if amulet_runs > 0:
+		facts.add_child(_card_fact("👑 Amulet won", "%d run%s" % [amulet_runs,
+			"" if amulet_runs == 1 else "s"]))
+	if TierList.has_rating(id):
+		var tier_i: int = TierList.tier_of(id)
+		facts.add_child(_card_fact("Your rating", "%d / 10%s" % [
+			int(TierList.get_rating(id).get("score", 0)),
+			("  (%s tier)" % TierList.tier_names[tier_i]) if tier_i >= 0
+				and tier_i < TierList.tier_names.size() else ""]))
+
+	# The record you have IN this game — the same fact the rung's ⚔ badge carries,
+	# spelled out.
+	var fought: Array = GameStats.enemies_for(id)
+	if not fought.is_empty():
+		box.add_child(_card_heading("Enemies you have beaten here (%d)" % fought.size()))
+		for i in range(mini(fought.size(), 6)):
+			var e: Dictionary = fought[i]
+			var ed: GoalEnemyData = Data.get_goal_enemy_any(StringName(e["id"]))
+			box.add_child(_card_fact(
+				ed.display_name if ed != null else String(e["id"]),
+				"x%d" % int(e["beaten"])))
+		if fought.size() > 6:
+			box.add_child(_card_note("…and %d more." % (fought.size() - 6)))
+
+	box.add_child(HSeparator.new())
+	if _atlas != null and is_instance_valid(_atlas):
+		box.add_child(_card_button("✦  Find it on the star chart",
+			func(): show_on_chart(id)))
+	# Pinning is a live run's business: a preview is asking "what if I went here",
+	# and the start picker has no route to detour from yet.
+	if not _preview and not _hide_amulet and id != _current and id != _amulet:
+		if waypoint() == id:
+			box.add_child(_card_button("✖  Stop routing through here", clear_waypoint))
+		else:
+			box.add_child(_card_button("⚑  Route through here", func(): set_waypoint(id)))
+	if game != null and game.has_launch_target():
+		box.add_child(_card_button("▶  Play the real game", func(): game.launch()))
+	box.add_child(_card_button("Close", close_node_card))
+
+	_place_node_card()
+	# And again once Godot has laid the contents out. Until it has, the card's
+	# ScrollContainer reports almost no height of its own, and a card sized from
+	# that opened as a 250px sliver with its facts and its buttons scrolled out of
+	# sight below the fold.
+	_place_node_card.call_deferred()
+	return card
+
+func close_node_card() -> void:
+	if _node_card != null and is_instance_valid(_node_card):
+		_node_card.queue_free()
+	_node_card = null
+	_node_card_id = &""
+	_node_card_body = null
+
+# Which rung this is, in words.
+func _node_role_text(id: StringName, depth: int) -> String:
+	if id == _current and depth == 0:
+		return "Where you'd be standing." if _preview else "You are here."
+	if id == _amulet:
+		return "The Amulet — the end of the run."
+	if id == waypoint():
+		var cost: int = detour_cost()
+		if cost <= 0:
+			return "Pinned — and it costs you nothing: it was already on the optimal road."
+		return "Pinned. The route bends through here, %d step%s longer than the direct road." % [
+			cost, "" if cost == 1 else "s"]
+	if _choice_ids.has(id):
+		return "Offered right now — you can take this one next."
+	if not _preview and GameState.visited_games.has(id):
+		return "You have already been here this run."
+	return "On the road to the Amulet."
+
+# Park the card beside the window: to its right if the viewport has room there,
+# otherwise to its left, and always fully on screen.
+func _place_node_card() -> void:
+	if _node_card == null or not is_instance_valid(_node_card) or _panel == null:
+		return
+	var view: Vector2 = get_viewport_rect().size
+	# Sized against the CONTENTS, not against the panel: the ScrollContainer
+	# between them reports no height of its own, and asking the panel gives the
+	# sliver instead of the card.
+	var want: float = 320.0
+	if _node_card_body != null and is_instance_valid(_node_card_body):
+		want = _node_card_body.get_combined_minimum_size().y + 34.0
+	var h: float = clampf(want, 240.0, maxf(240.0, view.y - 40.0))
+	_node_card.size = Vector2(CARD_W, h)
+	var right: float = _panel.position.x + _panel.size.x + CARD_GAP
+	var x: float = right if right + CARD_W <= view.x - 8.0 \
+		else _panel.position.x - CARD_W - CARD_GAP
+	_node_card.position = Vector2(
+		clampf(x, 8.0, maxf(8.0, view.x - CARD_W - 8.0)),
+		clampf(_panel.position.y + 24.0, 8.0, maxf(8.0, view.y - h - 8.0)))
+
+func _card_fact(key: String, value: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var k := Label.new()
+	k.text = key
+	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	k.add_theme_font_size_override("font_size", 12)
+	k.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	row.add_child(k)
+	var v := Label.new()
+	v.text = value
+	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	v.add_theme_font_size_override("font_size", 12)
+	v.add_theme_color_override("font_color", UITheme.TEXT)
+	row.add_child(v)
+	return row
+
+func _card_heading(text: String) -> Control:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", UITheme.GOLD)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	return l
+
+func _card_note(text: String) -> Control:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	return l
+
+func _card_button(text: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.add_theme_font_size_override("font_size", 12)
+	b.pressed.connect(cb)
+	return b
+
+# ---------------------------------------------------------------------------
+# The waypoint — a game the player insists on visiting
+# ---------------------------------------------------------------------------
+
+# Pin the route through `id`. The ladder redraws around the detour and the star
+# chart behind redraws the same road, because they are one route seen twice.
+func set_waypoint(id: StringName) -> bool:
+	if _preview or _hide_amulet or id == &"" or id == _current or id == _amulet:
+		return false
+	if RunGraph.route_length_via(_current, id, _amulet) < 0:
+		return false
+	GameState.route_waypoint = id
+	_reroute()
+	return true
+
+func clear_waypoint() -> void:
+	GameState.route_waypoint = &""
+	_reroute()
+
+# Redraw everything that reads the route: the ladder, the distance line, the pin
+# bar, the card that was open, and the chart underneath.
+func _reroute() -> void:
+	# The card that was open is usually the one that CAUSED this — its own "route
+	# through here" button — so it comes back on the same game, at whatever rung
+	# the new route puts it on, rather than vanishing at the moment it has
+	# something new to say.
+	var was: StringName = _node_card_id
+	close_node_card()
+	if _canvas_holder != null and is_instance_valid(_canvas_holder):
+		var scroller: Node = _canvas_holder.get_parent()
+		_canvas_holder.queue_free()
+		_canvas_holder = _build_graph()
+		scroller.add_child(_canvas_holder)
+	_refresh_distance_label()
+	_refresh_pin_bar()
+	if _atlas != null and is_instance_valid(_atlas):
+		_atlas.refresh_route()
+	if was != &"":
+		var depth: int = depth_of(was)
+		if depth >= 0:
+			open_node_card(was, depth)
+	_settle.call_deferred()
+
+# The first rung this game holds on the current route, or -1 if the route doesn't
+# pass through it at all.
+func depth_of(id: StringName) -> int:
+	var layers: Array = map_data().get("layers", [])
+	for i in range(layers.size()):
+		if (layers[i] as Array).has(id):
+			return i
+	return -1
+
+# The bar under the header, shown only while a pin is set: what the detour is and
+# how to drop it.
+func _build_pin_bar() -> Control:
+	var bar := PanelContainer.new()
+	bar.add_theme_stylebox_override("panel",
+		UITheme.flat(COL_WAYPOINT.lerp(UITheme.BG, 0.4), 6, 8, 1, UITheme.GOLD))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	bar.add_child(row)
+	_pin_label = Label.new()
+	_pin_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_pin_label.add_theme_font_size_override("font_size", 12)
+	_pin_label.add_theme_color_override("font_color", UITheme.TEXT)
+	_pin_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(_pin_label)
+	var drop := Button.new()
+	drop.text = "Drop pin"
+	drop.add_theme_font_size_override("font_size", 12)
+	drop.pressed.connect(clear_waypoint)
+	row.add_child(drop)
+	_pin_bar = bar
+	return bar
+
+func _refresh_pin_bar() -> void:
+	if _pin_bar == null or not is_instance_valid(_pin_bar):
+		return
+	var pin: StringName = waypoint()
+	_pin_bar.visible = pin != &""
+	if pin == &"":
+		return
+	var cost: int = detour_cost()
+	_pin_label.text = "⚑ Routing through %s — %s" % [node_name(pin),
+		"free, it was already on the optimal road." if cost <= 0
+			else "%d step%s longer than going straight." % [cost, "" if cost == 1 else "s"]]
+
 func _legend() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
@@ -522,8 +927,22 @@ func _legend() -> Control:
 	if not _preview:
 		row.add_child(_legend_chip("◆ Reachable now", COL_CHOICE_BG))
 	row.add_child(_legend_chip("On the path", COL_PATH_BG))
+	if not _preview and not _hide_amulet:
+		row.add_child(_legend_chip("⚑ Pinned", COL_WAYPOINT))
 	row.add_child(_legend_chip("🏆 Amulet", COL_AMULET))
-	return row
+	# On its own line under the chips rather than beside them. The window's width
+	# is set by the LADDER, and a hint sharing the chips' row was simply clipped
+	# out of existence on every route narrower than the sentence.
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 4)
+	stack.add_child(row)
+	var hint := Label.new()
+	hint.text = "⚔ = you've beaten an enemy there  •  click any game for the details"
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.add_theme_font_size_override("font_size", 11)
+	hint.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	stack.add_child(hint)
+	return stack
 
 func _legend_chip(text: String, swatch: Color) -> Control:
 	var box := HBoxContainer.new()

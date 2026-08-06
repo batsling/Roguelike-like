@@ -142,6 +142,7 @@ func _build_payload() -> Dictionary:
 		"current_game_id": String(GameState.current_game_id),
 		"start_game_id": String(GameState.start_game_id),
 		"amulet_game_id": String(GameState.amulet_game_id),
+		"route_waypoint": String(GameState.route_waypoint),
 		"visited_games": _stringnames_to_strings(GameState.visited_games),
 		"beaten_games": _stringnames_to_strings(GameState.beaten_games),
 		"total_games_beaten": GameState.total_games_beaten,
@@ -259,6 +260,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.current_game_id = StringName(data.get("current_game_id", ""))
 	GameState.start_game_id = StringName(data.get("start_game_id", ""))
 	GameState.amulet_game_id = StringName(data.get("amulet_game_id", ""))
+	GameState.route_waypoint = StringName(data.get("route_waypoint", ""))
 	GameState.visited_games = _strings_to_stringnames(data.get("visited_games", []))
 	GameState.beaten_games = _strings_to_stringnames(data.get("beaten_games", []))
 	GameState.total_games_beaten = data.get("total_games_beaten", 0)
