@@ -6,12 +6,27 @@ extends RefCounted
 # `getGameConnections` helper from the HTML build into GDScript so the
 # Godot main menu can drive the same start-game progression.
 
-# Path length tuning. The run opens with a CHOICE OF THREE starting games, and
-# every one of them is the same distance band from the amulet — 6 to 8 games — so
-# picking a start is a choice of genre and route, never a choice of run length.
-# With the full imported catalog (~750 games, ~840 connections) the graph diameter
-# is large enough to support that band from several genres at once.
-const MIN_PATH_LENGTH := 6
+# Path length tuning. The run opens with a CHOICE OF THREE starting games, each
+# 5 to 8 games from the Amulet — so picking a start is a choice of genre, route,
+# AND run length. The length is not flavour: enemies take more turns per game the
+# closer the run stands to the Amulet (RunDifficulty.turns_for_hops, FAR_HOPS =
+# 5), so a start 8 hops out opens with FOUR games in the calm 1-turn band while a
+# start 5 hops out gets exactly one before the stack picks up your scent. Starting
+# far is a longer run fought slowly; starting near is a short run fought fast.
+#
+# The band was 6..8 and the floor came back down to 5 because 6 was quietly
+# expensive: the Amulet is drawn from games that sit inside the band from some
+# eligible start, and on an OWNED-filtered catalog a floor of 6 struck 36 games
+# off that list — every one of them a hub (Isaac, Hades, FTL, NetHack, Enter the
+# Gungeon, Rogue), because being influential is exactly what puts a game within 5
+# hops of everything. It also left only 96 of 357 Amulets able to field the
+# three-genre start panel, against 346 at a floor of 5.
+#
+# The CEILING is not what governs that. With ~100 eligible starts any game 8 hops
+# from one of them is <= 7 from another, so sweeping the ceiling from 8 out to 12
+# does not add a single Amulet — the pool is set by the floor alone. 8 is kept
+# because it is the longest run the pressure ladder still has room to grade.
+const MIN_PATH_LENGTH := 5
 const MAX_PATH_LENGTH := 8
 const EARLY_LAYERS_FOR_SCORE := 3
 # How many starts the choose-your-start panel offers. Each comes from a DIFFERENT
@@ -303,9 +318,17 @@ static func route_length_via(start_id: StringName, waypoint_id: StringName,
 const AMULET_ATTEMPTS := 8
 
 # The best in-window start per game type for one amulet: for each type, the
-# eligible start whose route to `amulet` is 6..8 games long and whose early
+# eligible start whose route to `amulet` is 5..8 games long and whose early
 # branching is richest. Types with no start inside that band are simply absent —
 # the caller reads the SIZE of this to judge whether an amulet can fill the panel.
+#
+# NOTE this ranks on branching ALONE and is blind to route length, so the three
+# cards it returns are three genres but often not three lengths — on the owned
+# catalog 21% of filled panels come back with all three cards the same distance
+# out. Since the 5..8 band is now a run-length choice (see MIN_PATH_LENGTH), a
+# selector that also spread the picks across the band would make that choice real
+# rather than incidental. 224 of 393 Amulets can field three genres AND three
+# distinct lengths at once, so the spread is available where it matters.
 static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
 		d_to_amulet: Dictionary) -> Dictionary:
 	var best_per_type: Dictionary = {}
