@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_coal_spider"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/enemies/CoalSpider.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"coal_spider"
+display_name = "Coal Spider"
+game_type = &"action"
+difficulty = 1
+source_game = "The Binding of Isaac"
+health = 1
+damage = 2
+goal_type = &"feat"
+goal = "Set a rock on fire"
+tag = &"spider, rock, fire"
+size = "1x1"
+shape_rows = 1
+shape_cols = 1
+shape_mask = PackedInt32Array(1)
+file = "CoalSpider"
+image = ExtResource("2_img")
