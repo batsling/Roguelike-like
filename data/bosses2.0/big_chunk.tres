@@ -15,6 +15,7 @@ health = 1
 damage = 3
 goal_type = &"bounty"
 goal = "Defeat an enemy made of stone"
+tag = &"rock"
 size = "2x2"
 shape_rows = 2
 shape_cols = 2

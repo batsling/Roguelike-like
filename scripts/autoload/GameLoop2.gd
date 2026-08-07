@@ -998,11 +998,21 @@ func bash_game(game_id: StringName) -> bool:
 	loop_changed.emit()
 	return true
 
-# Transmute (§4): turn a game into a random game that is NOT currently on the
-# map (`connected`) and not bashed. Spends a transmute charge. Returns the
-# replacement GameData, or null if there's no charge, the source is unknown, or
-# no off-graph candidate is available. The overworld passes the ids currently on
-# the map and swaps the node to the returned game.
+# Transmute (§4): turn a game into a random game that is genuinely OFF THE MAP —
+# outside the run graph's main group, so no route could reach it — and that is
+# neither currently on the map (`connected`) nor bashed. Spends a transmute
+# charge. Returns the replacement GameData, or null if there's no charge, the
+# source is unknown, or no off-map candidate is available. The overworld passes
+# the ids currently on the map and swaps the node to the returned game.
+#
+# This is the ONLY way an off-map game is ever played. The influence graph is not
+# one piece — on the owned catalog 76 games sit in sequel pairs and lone stars
+# outside the 395-game mainland — and rather than being dead weight they are
+# exactly what this verb spends its charge on. Which also means the pool is small
+# and lopsided (owned: Action 41, Strategy 23, Traditional 7, Deckbuilder 5), so a
+# Deckbuilder transmute repeats itself far sooner than an Action one does. It
+# empties as the run bashes and visits, and returns null rather than a charge
+# wasted on nothing when a type runs dry.
 #
 # The replacement keeps the source's TYPE. **Traditional** is the one exception,
 # and it is a SETTING (Settings.traditional_transmute): a Traditional roguelike
@@ -1024,9 +1034,16 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 	var on_map := {}
 	for c in connected:
 		on_map[StringName(c)] = true
+	# The pool is the OFF-MAP catalog: games inside the run's filter that fall
+	# outside the main group, so no route could ever have reached them (see
+	# RunGraph._prune_to_main_component). That is what "not connected to the map"
+	# means in §Transmute — the verb is the only way these games are ever played,
+	# and drawing from the mainland instead would hand back a game the run could
+	# simply have walked to.
 	var pool: Array = []
-	for g in Data.all_games():
-		if not (g is GameData):
+	for off_id in RunGraph.off_map_ids():
+		var g: GameData = Data.get_game(off_id)
+		if g == null:
 			continue
 		if g.id == game_id or on_map.has(g.id) or is_bashed(g.id):
 			continue
@@ -1034,6 +1051,9 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 		if same_type == away_from_traditional:
 			continue
 		pool.append(g)
+	# Deterministic order regardless of how the set enumerated, so a seeded run
+	# transmutes the same way twice.
+	pool.sort_custom(func(a, b): return a.id < b.id)
 	if pool.is_empty():
 		return null
 	GameState.transmute -= 1

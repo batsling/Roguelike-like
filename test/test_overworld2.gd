@@ -13,9 +13,9 @@ var _ui
 func before_each() -> void:
 	_ui = SCENE.instantiate()
 	add_child_autofree(_ui)   # _ready -> builds UI + rolls the choose-your-start panel
-	# A fresh run opens on the START-SELECT panel (three genres, all the same
-	# distance from the amulet); taking one is what gives the run a position, so
-	# every test below starts from there.
+	# A fresh run opens on the START-SELECT panel (one card per genre, each inside
+	# the 5..8 band); taking one is what gives the run a position, so every test
+	# below starts from there.
 	_ui.choose_start(0)
 
 func after_each() -> void:
@@ -918,7 +918,7 @@ func test_a_fresh_run_opens_on_the_start_picker() -> void:
 	assert_ne(String(GameState.amulet_game_id), "", "but the amulet is already rolled")
 	assert_true(_ui._choices.is_empty(), "and there is no travel offering yet")
 
-func test_the_start_picker_offers_three_games_of_different_types() -> void:
+func test_the_start_picker_offers_a_card_per_genre_and_never_repeats_one() -> void:
 	_ui.start_run()
 	assert_eq(_ui._start_options.size(), RunGraph.NUM_START_OPTIONS,
 		"the panel offers %d starts" % RunGraph.NUM_START_OPTIONS)
@@ -938,6 +938,62 @@ func test_every_offered_start_sits_in_the_amulet_distance_band() -> void:
 		assert_true(hops >= RunGraph.MIN_PATH_LENGTH and hops <= RunGraph.MAX_PATH_LENGTH,
 			"%s is %d games from the amulet, inside the %d-%d band" % [
 				game.display_name, hops, RunGraph.MIN_PATH_LENGTH, RunGraph.MAX_PATH_LENGTH])
+
+# The two cards are a choice of RUN LENGTH as well as genre: distance from the
+# Amulet decides how many games the run gets in the calm 1-turn band before the
+# stack picks up its scent (RunDifficulty.turns_for_hops). Two cards at the same
+# distance would offer a genre and nothing else.
+#
+# It is a preference, not a promise — 23 Amulets on the owned catalog have every
+# in-band start at a single distance — so the assertion is that the panel took a
+# spread WHERE ONE EXISTED, which is checked against the graph rather than assumed.
+func test_the_two_starts_are_different_distances_when_the_graph_allows_it() -> void:
+	for _attempt in range(12):
+		_ui.start_run()
+		var amulet: StringName = GameState.amulet_game_id
+		var lens: Dictionary = {}
+		for opt in _ui._start_options:
+			lens[int(opt["path_len"])] = true
+		# What the graph could have offered: every distance an eligible start of
+		# any genre sits at from this amulet.
+		var available: Dictionary = {}
+		var d_to: Dictionary = RunGraph.bfs_distances(amulet)
+		for g in Data.all_games():
+			if not (g is GameData) or g.id == amulet:
+				continue
+			if RunGraph.neighbors(g.id).size() < RunGraph.MIN_START_CONNECTIONS:
+				continue
+			var hops: int = int(d_to.get(g.id, -1))
+			if hops >= RunGraph.MIN_PATH_LENGTH and hops <= RunGraph.MAX_PATH_LENGTH:
+				available[hops] = true
+		if _ui._start_options.size() < 2:
+			continue
+		if available.size() >= 2:
+			assert_eq(lens.size(), _ui._start_options.size(),
+				"%d distances were on offer, so the two cards must not share one" %
+				available.size())
+		else:
+			assert_eq(lens.size(), 1,
+				"only one distance exists here, so repeating it is the fallback")
+
+func test_the_panel_keeps_both_cards_when_no_spread_is_possible() -> void:
+	# The fallback is the point: an Amulet with nothing to spread across must
+	# still get a full panel rather than a short one.
+	for _attempt in range(12):
+		_ui.start_run()
+		assert_eq(_ui._start_options.size(), RunGraph.NUM_START_OPTIONS,
+			"the panel is full whether or not the lengths could differ")
+
+func test_the_longer_route_is_the_first_card() -> void:
+	# Distance leads the display order, so the panel reads the same way every run
+	# instead of reshuffling on branch score.
+	for _attempt in range(8):
+		_ui.start_run()
+		var prev: int = 1 << 30
+		for opt in _ui._start_options:
+			assert_true(int(opt["path_len"]) <= prev,
+				"cards run longest-first: %d after %d" % [int(opt["path_len"]), prev])
+			prev = int(opt["path_len"])
 
 func test_choosing_a_start_places_the_player_and_draws_the_first_offering() -> void:
 	_ui.start_run()
@@ -1346,6 +1402,20 @@ func test_the_board_says_how_long_its_playback_runs() -> void:
 # the resolve plays out on the board next to the cards. There is no Continue step
 # between the two — the animation and the next decision share the screen.
 func test_the_offering_comes_back_while_the_board_still_plays() -> void:
+	# Play a game and MISS first, which is what puts a body on the board: the
+	# chosen enemy lives in GameLoop2.current while a game is being played and
+	# only joins the stack when the goal is missed. On the very first game the
+	# stack is still empty, so its resolve has nobody to strike and nobody to
+	# slide — and _hold_for_resolve ends a zero-length playback synchronously,
+	# which left _resolving false and failed this test on roughly one run in four.
+	# The SECOND game is the one with a board to play back, which is what this
+	# test is actually about.
+	_ui.pick(0)
+	_ui.report(false)
+	await wait_seconds(1.2)                   # let the first playback finish
+	assert_eq(GameLoop2.stack_size(), 1, "the miss left an enemy standing on the board")
+	assert_false(_ui._resolving, "and its own playback is done before the real test")
+
 	_ui.pick(0)
 	_ui.report(false)
 	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "the next decision is already built")

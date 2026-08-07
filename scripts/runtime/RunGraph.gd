@@ -6,17 +6,32 @@ extends RefCounted
 # `getGameConnections` helper from the HTML build into GDScript so the
 # Godot main menu can drive the same start-game progression.
 
-# Path length tuning. The run opens with a CHOICE OF THREE starting games, and
-# every one of them is the same distance band from the amulet — 6 to 8 games — so
-# picking a start is a choice of genre and route, never a choice of run length.
-# With the full imported catalog (~750 games, ~840 connections) the graph diameter
-# is large enough to support that band from several genres at once.
-const MIN_PATH_LENGTH := 6
+# Path length tuning. The run opens with a CHOICE OF THREE starting games, each
+# 5 to 8 games from the Amulet — so picking a start is a choice of genre, route,
+# AND run length. The length is not flavour: enemies take more turns per game the
+# closer the run stands to the Amulet (RunDifficulty.turns_for_hops, FAR_HOPS =
+# 5), so a start 8 hops out opens with FOUR games in the calm 1-turn band while a
+# start 5 hops out gets exactly one before the stack picks up your scent. Starting
+# far is a longer run fought slowly; starting near is a short run fought fast.
+#
+# The band was 6..8 and the floor came back down to 5 because 6 was quietly
+# expensive: the Amulet is drawn from games that sit inside the band from some
+# eligible start, and on an OWNED-filtered catalog a floor of 6 struck 36 games
+# off that list — every one of them a hub (Isaac, Hades, FTL, NetHack, Enter the
+# Gungeon, Rogue), because being influential is exactly what puts a game within 5
+# hops of everything. It also left only 96 of 357 Amulets able to field the
+# three-genre start panel, against 346 at a floor of 5.
+#
+# The CEILING is not what governs that. With ~100 eligible starts any game 8 hops
+# from one of them is <= 7 from another, so sweeping the ceiling from 8 out to 12
+# does not add a single Amulet — the pool is set by the floor alone. 8 is kept
+# because it is the longest run the pressure ladder still has room to grade.
+const MIN_PATH_LENGTH := 5
 const MAX_PATH_LENGTH := 8
 const EARLY_LAYERS_FOR_SCORE := 3
 # How many starts the choose-your-start panel offers. Each comes from a DIFFERENT
-# game type (see TYPE_ORDER), so the three cards are three genres.
-const NUM_START_OPTIONS := 3
+# game type (see TYPE_ORDER), so the two cards are always two genres.
+const NUM_START_OPTIONS := 2
 # Minimum outgoing connections a game needs to qualify as a "start".
 # Falls back to any-game on sparse graphs (see pick_amulet_and_starts).
 const MIN_START_CONNECTIONS := 3
@@ -24,7 +39,9 @@ const MIN_START_CONNECTIONS := 3
 # Game-type ordering used to pick "one start per type" for the
 # choose-your-start panel. All four authored types are eligible, and
 # pick_amulet_and_starts takes the best-scoring NUM_START_OPTIONS of them — so the
-# three offered starts are always three DIFFERENT genres.
+# offered starts are always DIFFERENT genres. One per type is what guarantees
+# that: the panel can never draw two cards from the same genre no matter how the
+# scores fall, so shrinking the panel narrows the choice without weakening it.
 const TYPE_ORDER: Array = [
 	GameData.GameType.ACTION,
 	GameData.GameType.STRATEGY,
@@ -46,11 +63,15 @@ const TYPE_ORDER: Array = [
 static var _adj_cache: Dictionary = {}      # StringName -> Array[StringName]
 static var _adj_cache_built: bool = false
 static var _bfs_cache: Dictionary = {}       # StringName -> Dictionary (dist map)
+# Games that passed the filter but fell outside the main group, as a set. Pruned
+# out of _adj_cache and kept here because Transmute needs exactly this list.
+static var _off_map: Dictionary = {}         # StringName -> true
 
 static func invalidate_cache() -> void:
 	_adj_cache.clear()
 	_adj_cache_built = false
 	_bfs_cache.clear()
+	_off_map.clear()
 
 # Whether a game is eligible to appear in path selection, per the global
 # Settings.game_filter. Filtered-out games are excluded from the graph
@@ -95,7 +116,76 @@ static func _build_adj() -> void:
 			if not seen[influenced_id].has(g.id):
 				seen[influenced_id][g.id] = true
 				(_adj_cache[influenced_id] as Array).append(g.id)
+	_prune_to_main_component()
 	_adj_cache_built = true
+
+# Third pass — keep only the MAIN GROUP. The influence graph is not one piece:
+# on the owned catalog it is a 395-game mainland plus 76 games in sequel pairs and
+# lone stars that no route can reach. Leaving them in as nodes made them dead
+# weight — a run could never travel to one, but they still counted as games, could
+# clear MIN_START_CONNECTIONS on an island of their own, and confused anything
+# that asked the graph how big it was.
+#
+# They are not deleted from the catalog, only from the ROUTE. Off-map games are
+# exactly the pool Transmute draws from (see GameLoop2.transmute_game and
+# §Transmute in docs/games-first-redesign.md: "a random game of the same game type
+# that is not connected to the map"), so being off the map IS their role — it is
+# the only way a run ever meets one.
+#
+# Ties are broken on the lowest id so the same catalog always yields the same
+# mainland; a graph that reshuffled itself between calls would move the Amulet.
+static func _prune_to_main_component() -> void:
+	_off_map.clear()
+	if _adj_cache.is_empty():
+		return
+	var seen: Dictionary = {}
+	var best: Array = []
+	var best_key: StringName = &""
+	var ids: Array = _adj_cache.keys()
+	ids.sort()
+	for start_id in ids:
+		if seen.has(start_id):
+			continue
+		var comp: Array = []
+		var queue: Array = [start_id]
+		seen[start_id] = true
+		var qi := 0
+		while qi < queue.size():
+			var cur: StringName = queue[qi]
+			qi += 1
+			comp.append(cur)
+			for nb in (_adj_cache.get(cur, []) as Array):
+				if not seen.has(nb):
+					seen[nb] = true
+					queue.append(nb)
+		if comp.size() > best.size() or (comp.size() == best.size() and start_id < best_key):
+			best = comp
+			best_key = start_id
+	var main: Dictionary = {}
+	for id in best:
+		main[id] = true
+	for id in ids:
+		if not main.has(id):
+			_off_map[id] = true
+			_adj_cache.erase(id)
+	# Nothing in the mainland can still point at a pruned node — every edge is
+	# mirrored, so an edge to an off-map game would have merged the two groups.
+
+# Games inside the active filter that the run's routes cannot reach: everything
+# outside the main group. This is the Transmute pool.
+static func off_map_ids() -> Array[StringName]:
+	_build_adj()
+	var out: Array[StringName] = []
+	for id in _off_map:
+		out.append(id)
+	return out
+
+# Whether `game_id` is off the route entirely — filtered out, or in the catalog
+# but not in the main group. Both mean the same thing to a run: you cannot walk
+# there, and Transmute is the only way to play it.
+static func is_off_map(game_id: StringName) -> bool:
+	_build_adj()
+	return not _adj_cache.has(game_id)
 
 static func neighbors(game_id: StringName) -> Array[StringName]:
 	_build_adj()
@@ -302,30 +392,135 @@ static func route_length_via(start_id: StringName, waypoint_id: StringName,
 # pick_amulet_and_starts).
 const AMULET_ATTEMPTS := 8
 
-# The best in-window start per game type for one amulet: for each type, the
-# eligible start whose route to `amulet` is 6..8 games long and whose early
-# branching is richest. Types with no start inside that band are simply absent —
-# the caller reads the SIZE of this to judge whether an amulet can fill the panel.
+# How many reference starts the Amulet pool is drawn from before the pick.
+#
+# It used to be one, and which one it was mattered enormously: the number of
+# games sitting 5..8 hops from a single eligible start ranges 21..318 across the
+# owned catalog, median 77, against a union of 393 over every start. A run that
+# rolled a narrow reference was offered a fifteenth of the goals another run
+# would see, for no reason the player could observe. Unioning a few references
+# flattens that, and costs one BFS each — bfs_distances is memoized, so every
+# later lookup against the same start is free.
+const AMULET_REFERENCE_STARTS := 3
+
+# How far below the best early-branching score an Amulet candidate may sit and
+# still make the final draw.
+#
+# The filter is there so the goal has a route worth walking, not so that the same
+# handful of well-connected games are the goal every run — at a slack of 1 the
+# top ten Amulets took 18% of 600 sampled runs on the owned catalog. Widening it
+# spreads the draw across the pool while still excluding candidates whose
+# approach has no branching in it at all.
+const AMULET_SCORE_SLACK := 2
+
+# Every in-window start worth offering, as type -> (path_len -> record): for each
+# genre, the best-branching eligible start AT EACH DISTANCE its routes to `amulet`
+# can take. The caller reads the SIZE of the outer dictionary — one entry per
+# genre — to judge whether an amulet can fill the panel, exactly as before.
+#
+# Keeping one start PER LENGTH rather than one per genre is the whole point. The
+# panel wants its cards at different distances (see _spread_across_band), and
+# collapsing each genre to its single best-scoring start first throws that choice
+# away before it can be made: a genre whose top start is 5 hops out still has a 7
+# and an 8 further down the score order, and those are what a spread is built
+# from. Deciding the spread here, with every length still on the table, is what
+# keeps the cost of the rule down to the 23 Amulets that genuinely have no two
+# lengths to offer.
 static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
 		d_to_amulet: Dictionary) -> Dictionary:
-	var best_per_type: Dictionary = {}
+	var by_type: Dictionary = {}
+	for g in eligible_starts:
+		if g.id == amulet.id:
+			continue
+		var d_from := bfs_distances(g.id)
+		if not d_from.has(amulet.id):
+			continue
+		var path_len: int = d_from[amulet.id]
+		if path_len < MIN_PATH_LENGTH or path_len > MAX_PATH_LENGTH:
+			continue
+		var score := dag_branch_score_early(d_from, amulet.id, EARLY_LAYERS_FOR_SCORE, d_to_amulet)
+		if not by_type.has(g.type):
+			by_type[g.type] = {}
+		var per_len: Dictionary = by_type[g.type]
+		var cur: Dictionary = per_len.get(path_len, {})
+		# Ties break on the id so the same catalog always offers the same card.
+		if cur.is_empty() or score > int(cur["score"]) \
+				or (score == int(cur["score"]) and g.id < (cur["start"] as GameData).id):
+			per_len[path_len] = {"start": g, "score": score, "path_len": path_len,
+				"in_window": true}
+	return by_type
+
+# Pick `count` records out of `by_type` — one per genre, and at DIFFERENT
+# DISTANCES from the Amulet wherever the graph allows it.
+#
+# Distance is a real choice now that the band is 5..8: enemies take more turns per
+# game the closer the run stands to the Amulet (RunDifficulty.turns_for_hops), so
+# an 8-hop card opens with four games in the calm band and a 5-hop card with one.
+# Two cards at the same distance offer a genre and nothing else.
+#
+# It is a PREFERENCE, not a requirement. 23 Amulets on the owned catalog have
+# every in-band start at one single distance — no differing-length pair exists at
+# any price — and dropping them from the Amulet pool to enforce a presentation
+# rule is the worse trade. Those fall back to repeating a length rather than
+# shrinking the panel, the same way a sparse graph falls back to an out-of-band
+# start rather than offering fewer cards.
+#
+# Selections are compared on, in order: how many cards are in-window (the band is
+# the panel's first promise), then how many DISTINCT lengths they cover, then
+# total branching. Exhaustive over at most 4 genres x 4 lengths, so a few hundred
+# leaves at worst, run once per amulet attempt.
+static func _spread_across_band(by_type: Dictionary, count: int) -> Array:
+	var types: Array = []
 	for type_val in TYPE_ORDER:
-		var best: Dictionary = {}
-		for g in eligible_starts:
-			if g.type != type_val or g.id == amulet.id:
-				continue
-			var d_from := bfs_distances(g.id)
-			if not d_from.has(amulet.id):
-				continue
-			var path_len: int = d_from[amulet.id]
-			if path_len < MIN_PATH_LENGTH or path_len > MAX_PATH_LENGTH:
-				continue
-			var score := dag_branch_score_early(d_from, amulet.id, EARLY_LAYERS_FOR_SCORE, d_to_amulet)
-			if best.is_empty() or score > int(best.get("score", -1)):
-				best = {"start": g, "score": score, "path_len": path_len, "in_window": true}
-		if not best.is_empty():
-			best_per_type[type_val] = best
-	return best_per_type
+		if by_type.has(type_val):
+			types.append(type_val)
+	var want: int = mini(count, types.size())
+	if want <= 0:
+		return []
+	var out: Dictionary = {"key": [], "best": []}
+	_spread_search(types, 0, by_type, want, [], out)
+	return out["best"]
+
+# Ranks one candidate selection. Higher is better, compared left to right.
+static func _spread_key(chosen: Array) -> Array:
+	var lens: Dictionary = {}
+	var in_window := 0
+	var total := 0
+	for rec in chosen:
+		lens[int(rec["path_len"])] = true
+		total += int(rec["score"])
+		if bool(rec.get("in_window", false)):
+			in_window += 1
+	return [in_window, lens.size(), total]
+
+static func _key_greater(a: Array, b: Array) -> bool:
+	for i in range(mini(a.size(), b.size())):
+		if int(a[i]) != int(b[i]):
+			return int(a[i]) > int(b[i])
+	return false
+
+static func _spread_search(types: Array, ti: int, by_type: Dictionary, want: int,
+		chosen: Array, out: Dictionary) -> void:
+	if chosen.size() == want:
+		var key: Array = _spread_key(chosen)
+		if (out["best"] as Array).is_empty() or _key_greater(key, out["key"]):
+			out["key"] = key
+			out["best"] = chosen.duplicate()
+		return
+	if ti >= types.size():
+		return
+	# Not enough genres left to reach `want` — abandon this branch.
+	if types.size() - ti < want - chosen.size():
+		return
+	var per_len: Dictionary = by_type[types[ti]]
+	var lens: Array = per_len.keys()
+	lens.sort()
+	for l in lens:
+		chosen.append(per_len[l])
+		_spread_search(types, ti + 1, by_type, want, chosen, out)
+		chosen.pop_back()
+	# ...or skip this genre entirely and take the remaining cards from later ones.
+	_spread_search(types, ti + 1, by_type, want, chosen, out)
 
 # Result format:
 #   {
@@ -339,6 +534,12 @@ static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
 # One option per game type, NUM_START_OPTIONS of them, each `path_len` inside
 # MIN..MAX_PATH_LENGTH — `in_window` is false only on the sparse-graph fallbacks
 # that fill a slot no in-band start could.
+#
+# The options are also spread across the band: different genres AND different
+# distances from the Amulet, longest first, so the panel is a choice of how long
+# the run is as well as what it is played in (see _spread_across_band). Where the
+# graph has no two lengths to offer — 23 Amulets on the owned catalog — the cards
+# repeat a distance rather than the panel losing one.
 # Returns {} if no valid pair could be found (extremely unlikely with
 # the current data set but the JS guards it too).
 static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
@@ -366,25 +567,49 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 		eligible_starts = all
 	var start_pool: Array[GameData] = eligible_starts
 
-	# Pick the amulet via a random reference start, then score amulet
-	# candidates by early-branching from that reference. Candidates with
-	# (best - 1) or better score advance to the random pick.
-	var ref_start: GameData = start_pool[rng.randi() % start_pool.size()]
-	var d_from_ref := bfs_distances(ref_start.id)
+	# Pick the amulet from the games sitting in the band from ANY OF SEVERAL
+	# reference starts, then score each by early-branching. Candidates within
+	# AMULET_SCORE_SLACK of the best advance to the random pick.
+	var refs: Array[GameData] = []
+	var ref_pool: Array[GameData] = start_pool.duplicate()
+	for _i in range(mini(AMULET_REFERENCE_STARTS, ref_pool.size())):
+		var ri: int = rng.randi() % ref_pool.size()
+		refs.append(ref_pool[ri])
+		ref_pool.remove_at(ri)
+	var ref_ids: Dictionary = {}
+	for r in refs:
+		ref_ids[r.id] = true
+	var ref_dists: Array = []
+	for r in refs:
+		ref_dists.append(bfs_distances(r.id))
 
-	var amulet_candidates: Array[GameData] = []
-	for g in all:
-		if g.id == ref_start.id:
-			continue
-		if not d_from_ref.has(g.id):
-			continue
-		var d: int = d_from_ref[g.id]
-		if d >= MIN_PATH_LENGTH and d <= MAX_PATH_LENGTH:
-			amulet_candidates.append(g)
-	if amulet_candidates.is_empty():
-		# Looser fallback: anything reachable that isn't the reference.
+	# A game keeps its BEST score across the references it is in band from — it
+	# only has to be a good goal from somewhere, not from all of them.
+	var cand_game: Dictionary = {}       # StringName -> GameData
+	var cand_score: Dictionary = {}      # StringName -> int
+	for i in range(refs.size()):
+		var d_ref: Dictionary = ref_dists[i]
 		for g in all:
-			if g.id != ref_start.id and d_from_ref.has(g.id):
+			if ref_ids.has(g.id) or not d_ref.has(g.id):
+				continue
+			var d: int = d_ref[g.id]
+			if d < MIN_PATH_LENGTH or d > MAX_PATH_LENGTH:
+				continue
+			var s := dag_branch_score_early(d_ref, g.id)
+			if not cand_score.has(g.id) or s > int(cand_score[g.id]):
+				cand_score[g.id] = s
+				cand_game[g.id] = g
+	var amulet_candidates: Array[GameData] = []
+	for id in cand_game:
+		amulet_candidates.append(cand_game[id])
+	if amulet_candidates.is_empty():
+		# Looser fallback: anything reachable from any reference.
+		for i in range(refs.size()):
+			var d_ref: Dictionary = ref_dists[i]
+			for g in all:
+				if ref_ids.has(g.id) or not d_ref.has(g.id) or cand_score.has(g.id):
+					continue
+				cand_score[g.id] = 0
 				amulet_candidates.append(g)
 	if amulet_candidates.is_empty():
 		return {}
@@ -402,17 +627,13 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 			amulet_candidates = unbeaten
 
 	var best_amulet_score := 0
-	var amulet_scored: Array = []
 	for g in amulet_candidates:
-		var s := dag_branch_score_early(d_from_ref, g.id)
-		amulet_scored.append({"g": g, "score": s})
-		if s > best_amulet_score:
-			best_amulet_score = s
+		best_amulet_score = maxi(best_amulet_score, int(cand_score.get(g.id, 0)))
 	var amulet_finalists: Array[GameData] = []
 	if best_amulet_score > 0:
-		for entry in amulet_scored:
-			if int(entry["score"]) >= best_amulet_score - 1:
-				amulet_finalists.append(entry["g"])
+		for g in amulet_candidates:
+			if int(cand_score.get(g.id, 0)) >= best_amulet_score - AMULET_SCORE_SLACK:
+				amulet_finalists.append(g)
 	else:
 		amulet_finalists = amulet_candidates
 	# Pick the amulet, then check it can actually SUPPLY the panel: three genres
@@ -466,27 +687,32 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 				if relaxed.is_empty() or score > int(relaxed.get("score", -1)):
 					relaxed = {"start": g, "score": score, "path_len": path_len, "in_window": false}
 			if not relaxed.is_empty():
-				best_per_type[type_val] = relaxed
+				best_per_type[type_val] = {int(relaxed["path_len"]): relaxed}
 
-	var ranked: Array = []
-	for type_val in TYPE_ORDER:
-		if best_per_type.has(type_val):
-			var rec: Dictionary = best_per_type[type_val]
-			ranked.append({
-				"type": type_val,
-				"start_id": (rec["start"] as GameData).id,
-				"score": int(rec["score"]),
-				"path_len": int(rec["path_len"]),
-				"in_window": bool(rec.get("in_window", false)),
-			})
-	# In-window starts first (the 6..8 band is the promise the panel makes), then
-	# by early-branching score. Slicing after this sort means a relaxed option only
-	# survives when there aren't NUM_START_OPTIONS genres inside the band.
-	ranked.sort_custom(func(a, b):
+	# Choose the cards: one genre each, spread across the band where it can be.
+	# _spread_across_band already prefers in-window records over relaxed ones and
+	# distinct lengths over repeated ones, so what comes back is the panel.
+	var chosen: Array = _spread_across_band(best_per_type, NUM_START_OPTIONS)
+	var options: Array = []
+	for rec in chosen:
+		options.append({
+			"type": (rec["start"] as GameData).type,
+			"start_id": (rec["start"] as GameData).id,
+			"score": int(rec["score"]),
+			"path_len": int(rec["path_len"]),
+			"in_window": bool(rec.get("in_window", false)),
+		})
+	# In-window cards first (the 5..8 band is the promise the panel makes), then
+	# the LONGER route, then branching. Distance leads the display order because it
+	# is the choice the spread exists to offer — the first card is the long way
+	# round, the second the short one, every time, so the panel reads the same way
+	# twice rather than reshuffling on score.
+	options.sort_custom(func(a, b):
 		if bool(a["in_window"]) != bool(b["in_window"]):
 			return bool(a["in_window"])
+		if int(a["path_len"]) != int(b["path_len"]):
+			return int(a["path_len"]) > int(b["path_len"])
 		return int(a["score"]) > int(b["score"]))
-	var options: Array = ranked.slice(0, mini(NUM_START_OPTIONS, ranked.size()))
 	if options.is_empty():
 		# Sparse-graph fallback: ignore the path-length window and just pick
 		# any reachable game(s) that aren't the amulet. Prefer one per type

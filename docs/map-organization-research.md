@@ -110,8 +110,8 @@ size, and it is exactly the part of the map runs actually travel through.
 ### D — Runs are small
 
 Across 300 simulated start/amulet pairs at the then-shipped `MIN_PATH_LENGTH`..
-`MAX_PATH_LENGTH` = 5..7 (the band has since moved to 6..8; eligible starts
-filtered at degree ≥ 3, matching
+`MAX_PATH_LENGTH` = 5..7 (the band went to 6..8 and the floor has since come
+back down, so it is 5..8 today; eligible starts filtered at degree ≥ 3, matching
 `pick_amulet_and_starts`), the shortest-path DAG held:
 
 | Measure | Median | p90 | Worst |

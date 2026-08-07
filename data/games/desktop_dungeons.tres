@@ -9,9 +9,9 @@ id = &"desktop_dungeons"
 display_name = "Desktop Dungeons"
 year = 2010
 type = 3
-games_influenced = Array[StringName]([&"the_binding_of_isaac"])
-influence_sources = PackedStringArray("https://www.youtube.com/watch?v=-X_QYumQQGk")
-influence_relations = PackedStringArray("")
+games_influenced = Array[StringName]([&"the_binding_of_isaac", &"lost_for_swords"])
+influence_sources = PackedStringArray("https://www.youtube.com/watch?v=-X_QYumQQGk", "https://www.reddit.com/r/iosgaming/comments/1hjehh9/lost_for_swords_a_dungeon_crawler_focusing_on/")
+influence_relations = PackedStringArray("", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
