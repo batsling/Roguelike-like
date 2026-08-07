@@ -11,6 +11,56 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The stats moved to what they do, and a card asks before it commits.** Two
+  changes to the overworld's layout, both undoing the same problem: a decision
+  and the things it needs were on opposite ends of the page.
+
+  **The HUD is the player now, and nothing else.** It used to be twelve numbers
+  in one strip across the top — Health, Shields, Tier, Bash, Dash, Push,
+  Transmute, Scramble, Bombs, Keys, Scrolls, Chests — which is a strip nobody
+  reads. Health and Shields stay where they were, top left, because they are what
+  is true about *you*. Everything else went to sit under the thing it is spent
+  on: **Bash / Dash / Transmute / Scramble** on a chip row beneath the offering,
+  since every one of them changes what is on the table; **Tier / Push / Bombs**
+  on a chip row beneath the board, since every one of them acts on the field. A
+  charge you can fire from where it is drawn (Dash, Scramble) is a button there —
+  which also retires the duplicate Dash and Scramble buttons that used to sit
+  above the cards while their counts sat on the HUD. One that needs a target
+  (Bash and Transmute pick a game; Push and Bombs pick an enemy) is a readout
+  whose tooltip says where it actually gets pressed. **Scrolls** moved into the
+  pack, which is where a carried thing belongs — they had their own panel at the
+  foot of the page, below the whole two-column stage, filed under the log.
+  **Keys and Chests came off entirely**: Keys are deferred and unauthored (§4),
+  and a chest is redeemed the moment it lands, so its count was a zero the player
+  never saw move.
+
+  **Clicking a game opens it rather than taking it.** The offering was a routing
+  decision made on a click, so every fact that decision needed had to be printed
+  on the cover: a route badge, a pace warning, the tries it grants, a repeat
+  bonus, a 🗺 Map button, a Beatable row, and the Bash/Transmute verbs. Seven
+  stacked rows per card — which is why the covers had to be *halved* when the
+  offering moved in beside the board, and the offering still ran taller than the
+  board next to it. So the click asks instead. **`GameChoiceModal`** opens on the
+  game: the **optimal path from there drawn as the real route ladder** — the same
+  arrowed shortest-path graph the 🗺 map window shows, no longer one click
+  further away than the decision it informs — beside the game at full cover size,
+  its type and year, the tries, the pace, your record in it, and the enemy waiting
+  there with the goal you would actually be playing for. Under all of it, the
+  three buttons that answer the card: **Travel**, **Bash**, **Transmute**. The
+  modal decides nothing itself — each button calls the same public verb the cards
+  always called (`pick` / `bash_choice` / `transmute_choice`), so a headless test
+  drives the run exactly as before.
+
+  The card, freed of all that, is the **cover, the name, and the Amulet's flag**
+  when it is the one — and the cover goes back up to 150x200 from the 105x140 it
+  had been squeezed to.
+
+  The ladder itself is now **`RouteLadder`**, lifted out of `RunMapModal` so the
+  map window and the popup draw one graph from one place rather than two that can
+  drift.
+
+---
+
 - **Statuses where you fight, items you can read, and a dev panel worth opening.**
   Four changes, all about seeing what the run is doing to you.
 

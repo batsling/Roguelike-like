@@ -447,14 +447,76 @@ func test_the_hud_previews_the_hovered_games_grant() -> void:
 	assert_true(_ui._hud.text.contains("[b]Shields[/b] %d" % GameState.shields),
 		"in play it's the real count: %s" % _ui._hud.text)
 
-func test_the_offering_shows_the_tries_each_game_grants() -> void:
+func test_the_popup_shows_the_tries_the_game_grants() -> void:
+	# The tries a game hands you used to be printed on its card. The card is the
+	# cover and the name now — this is one of the facts that moved into the popup.
+	var modal = _ui.open_choice(0)
+	var grant: int = GameLoop2.shields_for_game(_ui._choices[0]["game"])
+	assert_true(_text_of(modal).contains("%d tries" % grant),
+		"the popup states the game's shield grant: %s" % _text_of(modal))
+
+# --- the HUD carries the player, and only the player -----------------------
+#
+# Twelve numbers in one strip is a strip nobody reads, and a charge that is only
+# ever spent on an offered card was being kept a page away from the offering.
+# Health and Shields stay; every verb moved under the thing it acts on.
+
+func test_the_hud_is_health_and_shields_only() -> void:
+	var text: String = _ui._hud.text
+	assert_true(text.contains("[b]Health[/b]"), "Health stays top-left: %s" % text)
+	assert_true(text.contains("[b]Shields[/b]"), "and so does the try pool: %s" % text)
+	for moved in ["Bash", "Dash", "Push", "Transmute", "Scramble", "Bombs", "Tier"]:
+		assert_false(text.contains("[b]%s[/b]" % moved),
+			"%s moved out of the HUD: %s" % [moved, text])
+	for gone in ["Keys", "Chests"]:
+		assert_false(text.contains(gone), "%s is not shown at all: %s" % [gone, text])
+
+func test_the_choosing_verbs_sit_under_the_offering() -> void:
+	GameState.bash = 2
+	GameState.transmute = 1
+	GameState.scramble = 3
+	GameState.dash_charges = 1
+	_ui._refresh_hud()
+	var text: String = _text_of(_ui._select_stats)
+	for want in ["Bash 2", "Dash 1", "Transmute 1", "Scramble 3"]:
+		assert_true(text.contains(want), "%s is under the offering: %s" % [want, text])
+	# And it is genuinely inside the offering panel, not merely built.
+	assert_true(_ui._select_box.is_ancestor_of(_ui._select_stats),
+		"the row lives in the choose-a-game box")
+
+func test_the_board_verbs_sit_under_the_board() -> void:
+	GameState.push = 2
+	GameState.bombs = 4
+	_ui._refresh_hud()
+	var text: String = _text_of(_ui._board_stats)
+	for want in ["Push 2", "Bombs 4", "Tier"]:
+		assert_true(text.contains(want), "%s is under the board: %s" % [want, text])
+	assert_true(_ui._stage_panel.is_ancestor_of(_ui._board_stats),
+		"the row lives in the board's panel")
+
+func test_a_spendable_charge_is_a_button_and_an_empty_one_is_not() -> void:
+	GameState.scramble = 0
+	_ui._refresh_hud()
+	assert_eq(_buttons_in(_ui._select_stats).size(), 0,
+		"no charges -> nothing to press")
+	GameState.scramble = 1
+	_ui._refresh_hud()
 	var labels: Array = []
-	for card in _ui._choices_row.get_children():
-		for child in card.get_children():
-			if child is Label:
-				labels.append(String((child as Label).text))
-	var joined: String = "\n".join(labels)
-	assert_true(joined.contains("tries"), "each card states its shield grant: %s" % joined)
+	for b in _buttons_in(_ui._select_stats):
+		labels.append(String(b.text))
+	assert_true("\n".join(labels).contains("Scramble 1"),
+		"a charge that can be fired from here is a button: %s" % str(labels))
+
+func test_scrolls_are_carried_in_the_inventory() -> void:
+	assert_true(_ui._inv_wrap.is_ancestor_of(_ui._scrolls_box),
+		"the scroll list is part of the pack, not a panel at the foot of the page")
+
+func _buttons_in(node: Node) -> Array:
+	var out: Array = []
+	for c in node.get_children():
+		if c is Button:
+			out.append(c)
+	return out
 
 # --- the board / checklist stage -------------------------------------------
 
@@ -764,39 +826,35 @@ func test_beating_a_game_again_grants_a_dash() -> void:
 	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
 		"beating it a second time granted a Dash")
 
-# Where the cover-art button sits among a card's children, so the tests below can
-# say "above the art" without pinning an exact index.
-func _cover_index(card: Node) -> int:
-	for i in range(card.get_child_count()):
-		var child: Node = card.get_child(i)
-		if child is Button and (child as Button).custom_minimum_size == _ui.COVER_SIZE:
-			return i
-	return -1
+# Every label/button/rich-text string under a node, flattened — enough to assert
+# what a screen actually says without reaching into its layout.
+func _text_of(node: Node) -> String:
+	var out: String = ""
+	if node is Label:
+		out += (node as Label).text + "\n"
+	elif node is Button:
+		out += (node as Button).text + "\n"
+	elif node is RichTextLabel:
+		out += (node as RichTextLabel).get_parsed_text() + "\n"
+	for c in node.get_children():
+		out += _text_of(c)
+	return out
 
-func _label_index(card: Node, text: String) -> int:
-	for i in range(card.get_child_count()):
-		var child: Node = card.get_child(i)
-		if child is Label and String((child as Label).text) == text:
-			return i
-	return -1
-
-func test_repeat_card_shows_the_dash_bonus_above_it() -> void:
+func test_the_popup_shows_the_dash_bonus_for_a_repeat() -> void:
 	var target: GameData = _ui._choices[0]["game"]
 	GameState.note_game_beaten(target.id)
 	_ui._build_choices()
 	_ui._render_choices()
-	var card: Node = _ui._choices_row.get_child(0)
-	var bonus: int = _label_index(card, "⚡ Gain +%d Dash" % _ui.REPEAT_BEAT_DASH)
-	assert_gt(bonus, -1, "the card says what beating it again grants")
-	assert_lt(bonus, _cover_index(card), "and it sits ABOVE the cover art")
-	# A game not yet beaten keeps the row (so the covers stay in line) but says
-	# nothing in it.
+	var bonus: String = "⚡ Gain +%d Dash" % _ui.REPEAT_BEAT_DASH
+	assert_true(_text_of(_ui.open_choice(0)).contains(bonus),
+		"the popup says what beating it again grants")
+	_ui._choice_modal._close()
+	# A game not yet beaten says nothing about it.
 	GameState.beaten_games.clear()
 	_ui._build_choices()
 	_ui._render_choices()
-	var plain: Node = _ui._choices_row.get_child(0)
-	assert_gt(_label_index(plain, ""), -1,
-		"an unbeaten game's card has an empty bonus row")
+	assert_false(_text_of(_ui.open_choice(0)).contains(bonus),
+		"and nothing about it on a game you haven't cleared")
 
 # --- revisiting a game offers a different draw -----------------------------
 
@@ -844,12 +902,16 @@ func test_claimed_loot_updates_the_hud_immediately() -> void:
 	assert_true(_ui._hud.text.contains("%d/%d" % [GameState.hp, GameState.max_hp]),
 		"and the HUD already shows it: %s" % _ui._hud.text)
 
-func test_hud_follows_a_verb_gain_without_a_loop_resolve() -> void:
-	var before: String = _ui._hud.text
+func test_the_verb_chips_follow_a_gain_without_a_loop_resolve() -> void:
+	# Dash sits under the offering now rather than on the HUD, but it has to move
+	# for the same reason the HUD's numbers do: an item off a drop or a chest can
+	# hand you a charge between one frame and the next.
+	var before: String = _text_of(_ui._select_stats)
 	GameState.grant_run_stat("dash", 2)      # emits stats_changed, no loop tick
-	assert_ne(_ui._hud.text, before, "the HUD repaints off the stat change")
-	assert_true(_ui._hud.text.contains("[b]Dash[/b] %d" % GameState.dash_charges),
-		"showing the new Dash count: %s" % _ui._hud.text)
+	var after: String = _text_of(_ui._select_stats)
+	assert_ne(after, before, "the chips repaint off the stat change")
+	assert_true(after.contains("Dash %d" % GameState.dash_charges),
+		"showing the new Dash count: %s" % after)
 
 func test_bash_removes_a_choice_from_the_pool() -> void:
 	GameState.bash = 1
@@ -1280,33 +1342,40 @@ func test_a_card_that_walks_away_reads_as_a_detour() -> void:
 		assert_true(String(_ui.route_note({"slot": level, "amulet": false})["text"]).contains("Sideways"),
 			"and standing still is labelled that")
 
-func test_every_offered_card_states_its_route_above_the_art() -> void:
+func test_the_popup_states_where_the_game_puts_you() -> void:
+	# The route badge used to ride above every cover. It heads the popup now, over
+	# the map that backs the claim up.
 	_ui._render_choices()
 	for i in range(_ui._choices.size()):
-		var card: Node = _ui._choices_row.get_child(i)
 		var note: Dictionary = _ui.route_note(_ui._choices[i])
-		var idx: int = _label_index(card, String(note["text"]))
-		assert_gt(idx, -1, "card %d states where it puts you" % i)
-		assert_lt(idx, _cover_index(card), "and does it above the cover art")
+		var text: String = _text_of(_ui.open_choice(i))
+		assert_true(text.contains(String(note["text"])),
+			"choice %d states where it puts you: %s" % [i, text])
+		_ui._choice_modal._close()
 
 # ---------------------------------------------------------------------------
 # The per-card map: the optimal path a game WOULD open, before taking it
 # ---------------------------------------------------------------------------
 
+# The START cards keep their 🗺 button: the start picker has no popup — there is
+# no run to route from yet, only three genres and a distance band.
 func _map_button(card: Node) -> Button:
 	for child in card.get_children():
 		if child is Button and String((child as Button).text).contains("Map"):
 			return child
 	return null
 
-func test_every_offered_card_carries_a_map_button_above_its_art() -> void:
+func test_every_offered_game_draws_its_route_in_the_popup() -> void:
+	# The 🗺 button each card used to wear is gone: the map it opened is drawn
+	# INSIDE the popup now, so the road and the button that takes it are one
+	# screen rather than two.
 	_ui._render_choices()
 	for i in range(_ui._choices.size()):
-		var card: Node = _ui._choices_row.get_child(i)
-		var btn: Button = _map_button(card)
-		assert_not_null(btn, "card %d offers its map" % i)
-		if btn != null:
-			assert_lt(btn.get_index(), _cover_index(card), "the map button sits above the image")
+		var modal = _ui.open_choice(i)
+		assert_not_null(modal, "choice %d opens" % i)
+		assert_eq(StringName(modal._ladder_cfg()["current"]), StringName(_ui._choices[i]["slot"]),
+			"and its ladder is routed from that game")
+		modal._close()
 
 func test_the_card_map_is_the_optimal_path_from_that_game() -> void:
 	var slot: StringName = _ui._choices[0]["slot"]
@@ -1708,16 +1777,16 @@ func test_the_amulet_card_makes_no_threat_about_afterwards() -> void:
 		"slot": GameState.amulet_game_id, "amulet": true})
 	assert_eq(String(note["text"]), "", "the winning card carries no pace warning")
 
-func test_every_offered_card_states_its_pace_above_the_art() -> void:
+func test_the_popup_states_the_pace_the_game_puts_you_on() -> void:
 	_ui._render_choices()
 	for i in range(_ui._choices.size()):
-		var card: Node = _ui._choices_row.get_child(i)
 		var note: Dictionary = _ui.turn_note(_ui._choices[i])
 		if String(note["text"]) == "":
 			continue                       # the Amulet's card, which says nothing
-		var idx: int = _label_index(card, String(note["text"]))
-		assert_gt(idx, -1, "card %d states the pace it puts you on" % i)
-		assert_lt(idx, _cover_index(card), "and does it above the cover art")
+		var text: String = _text_of(_ui.open_choice(i))
+		assert_true(text.contains(String(note["text"])),
+			"choice %d states the pace it puts you on: %s" % [i, text])
+		_ui._choice_modal._close()
 
 # ---------------------------------------------------------------------------
 # The difficulty step widens the battlefield (§7.3)

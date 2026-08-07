@@ -1,3 +1,4 @@
+class_name Overworld2
 extends Control
 
 # Overworld2 — the games-first (2.0) overworld: a CLICK-TO-CHOOSE board that
@@ -118,6 +119,10 @@ var _rng := RandomNumberGenerator.new()
 
 # --- UI nodes (built in code) --------------------------------------------
 var _hud: RichTextLabel
+# The verb charges, split out of the HUD and mounted under the thing each one is
+# spent on: the choosing verbs under the offering, the board verbs under the board.
+var _select_stats: HFlowContainer
+var _board_stats: HFlowContainer
 var _status_strip: HBoxContainer    # the player's statuses, under the HUD numbers (§13)
 var _item_card: ItemInfoCard = null # the open item reading card, or null
 var _banner: Label
@@ -187,6 +192,7 @@ var _done_btn: Button
 # here, since this screen owns the charges and the run.
 var _board: BattlefieldView
 var _info_popup: EnemyInfoCard      # the click-to-inspect enemy card (null when closed)
+var _choice_modal: GameChoiceModal = null   # the open offered-game popup, or null
 var _log: RichTextLabel
 var _scrolls_box: VBoxContainer
 # The pack strip above the grid: one small token per carried item (§4/§8).
@@ -552,6 +558,37 @@ func prompt_save() -> void:
 	dlg.popup_centered(Vector2i(440, 190))
 	edit.grab_focus()
 	edit.select_all()
+
+# Open the offered game at `index` for inspection (§4). Clicking a card no longer
+# commits to it: it raises GameChoiceModal, which shows the optimal path from that
+# game drawn as the real route ladder, what is waiting there, what it costs, and
+# the three buttons that answer the card — travel, bash, transmute.
+#
+# The modal decides nothing itself. Every answer comes straight back out to the
+# public verb it was always spelled as (pick / bash_choice / transmute_choice), so
+# the modal is a way of ASKING and nothing more, and a headless test can still
+# drive the run by calling those verbs directly.
+#
+# Returns the modal (or null when there's nothing to open), so a test can answer
+# it without a click.
+func open_choice(index: int) -> GameChoiceModal:
+	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
+		return null
+	if _choice_modal != null and is_instance_valid(_choice_modal):
+		return _choice_modal
+	var choice: Dictionary = _choices[index]
+	var modal := GameChoiceModal.open(self, index, choice, {
+		"route": route_note(choice),
+		"pace": turn_note(choice),
+		"tries": GameLoop2.shields_for_game(choice["game"]),
+		"beatable": _beatable_row(choice),
+	})
+	_choice_modal = modal
+	modal.chose.connect(pick)
+	modal.bashed.connect(bash_choice)
+	modal.transmuted.connect(transmute_choice)
+	modal.finished.connect(func(): _choice_modal = null)
+	return modal
 
 # Travel to the offered game at `index`: its goal-enemy spawns and we move there.
 func pick(index: int) -> void:
@@ -1439,6 +1476,11 @@ func _refresh_hud(_a = null) -> void:
 		return
 	_hud.text = _hud_text()
 	_refresh_status_strip()
+	# The charges live under the offering and the board now, but they move for the
+	# same reasons the HUD's numbers do — an item off a kill-drop or a chest can
+	# hand you a Bash between one frame and the next — so they repaint with it.
+	_refresh_select_stats()
+	_refresh_board_stats()
 
 # The player's statuses as icon + stack-count chips (§13), tinted by kind: a buff
 # is gold because it pays, a debuff red because it taxes. Hidden entirely when
@@ -1561,6 +1603,11 @@ func _refresh_stage() -> void:
 	_attempt_wrap.visible = playing
 	_done_btn.visible = playing
 
+# The row above the offering. Dash and Scramble used to keep their buttons here
+# AND their counts on the HUD; they are one chip apiece on the stat row under the
+# offering now (_refresh_select_stats), so the only thing left to say up here is
+# that a Dash is currently open — that's a MODE the offering is in, and it has to
+# be stated where the cards it changes are.
 func _render_controls() -> void:
 	_clear(_controls_row)
 	if _dash_mode:
@@ -1569,17 +1616,6 @@ func _render_controls() -> void:
 		hint.add_theme_color_override("font_color", DASH_BLUE)
 		_controls_row.add_child(hint)
 		_controls_row.add_child(_mini_button("Cancel", cancel_dash))
-	elif GameState.dash_charges > 0:
-		var b := Button.new()
-		b.text = "⚡ Dash — pick any connected (%d)" % GameState.dash_charges
-		b.pressed.connect(dash)
-		_controls_row.add_child(b)
-	if not _dash_mode and GameState.scramble > 0:
-		var s := Button.new()
-		s.text = "🎲 Scramble — reroll the %d choices (%d)" % [_choices.size(), GameState.scramble]
-		s.tooltip_text = "Draws new games into the slots, each with a fresh goal-enemy."
-		s.pressed.connect(scramble)
-		_controls_row.add_child(s)
 	# Rating is opt-in and lives on a button (it never pops itself up): the game you
 	# last reported on stays scorable from here until you report another.
 	if _last_played_game != null:
@@ -1700,106 +1736,65 @@ func _render_choices() -> void:
 	_preview.text = "[i]Hover a game to see the enemy it would spawn.[/i]"
 	_preview_img.texture = null
 
-# The offered cover art. Still box art rather than a thumbnail — the covers ship
-# at 3:4 (528x704 / 300x450), so a 3:4 frame fills edge to edge with nothing
-# letterboxed — but at HALF the size it was drawn at when the offering had the
-# full width of the page to itself. It now shares a column with the checklist,
-# beside the board, and that is the trade: the cards are smaller, and the game
-# you are choosing between and the enemies closing in on you are finally on
-# screen at the same time. A wider offering (the game_choices bonus) wraps in
-# the HFlowContainer.
-const COVER_SIZE := Vector2(105, 140)
+# The offered cover art, back at the size it deserves. It was halved when the
+# offering moved into the left column beside the board (COVER_SIZE was 105x140),
+# because seven rows of badges were stacked around every cover and three of those
+# columns had to fit side by side. The badges have gone into GameChoiceModal, so
+# the art gets the room back.
+const COVER_SIZE := Vector2(150, 200)
 
-# The badge rows stacked above and below each cover (route, pace, repeat bonus,
-# name). Every one of them is pinned to a whole number of lines at this font, so
-# the covers in a row start and end at the same y whatever their text wraps to.
+# The badge rows on a card. There is one left — the name — plus the Amulet's
+# flag; everything else a card used to carry (the route, the pace, the tries, the
+# repeat bonus, the map, the Beatable row, the Bash/Transmute verbs) now lives in
+# the popup the card opens.
 const BADGE_FONT := 11
 const BADGE_LINE := 15               # one line of BADGE_FONT, in px
-const ROUTE_LINES := 3               # "🏆 THE AMULET — the run ends here" at this width
-const PACE_LINES := 2                # "⏱ Enemies speed up — ×2 turns"
-# The game's NAME keeps a readable size rather than dropping to BADGE_FONT, so it
-# gets its own two-line box — a card whose title wraps must not push its tries
-# row below its neighbours'.
+# The game's NAME keeps a readable size, in its own fixed box, so a card whose
+# title wraps to three lines doesn't sit a line taller than its neighbours.
 const NAME_FONT := 13
 const NAME_BOX_H := 51               # three lines of NAME_FONT — "Shotgun King:
                                      # The Final Checkmate" needs all three
 
-# One choice = the game's cover art with its name below, plus (off a boss round)
-# small Bash/Transmute verbs when the player has charges. Hover updates the
-# shared enemy preview.
+# One choice = the game's cover art, its name, and — when it is the game the whole
+# run is a search for — the Amulet's flag above it. Nothing else: clicking the
+# card opens GameChoiceModal, which is where the route, the enemy, the tries and
+# the verbs all get said properly, and where the game is actually chosen.
+#
+# Hover still updates the shared enemy preview under the row, so the offering can
+# be read at a glance without opening anything.
 func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	var game: GameData = choice["game"]
 	var card := VBoxContainer.new()
 	card.add_theme_constant_override("separation", 4)
 	card.custom_minimum_size = Vector2(COVER_SIZE.x + 10, 0)
 
-	var accent: Color = UITheme.DANGER if choice["boss"] else (UITheme.GOLD if choice["amulet"] else UITheme.type_color(int(game.type)))
+	var amulet: bool = bool(choice["amulet"])
+	var accent: Color = UITheme.DANGER if choice["boss"] else (UITheme.GOLD if amulet else UITheme.type_color(int(game.type)))
 
-	# WHAT THIS CARD IS, as a route — the first thing on it, above the art: the
-	# Amulet game itself, a step along a shortest path, or ground given away. The
-	# offering is a routing decision and it shouldn't have to be reverse-engineered
-	# from the map every time.
-	var note: Dictionary = route_note(choice)
-	var route := Label.new()
-	route.text = String(note["text"])
-	route.tooltip_text = String(note["tip"])
-	route.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	route.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	# Pinned to ROUTE_LINES tall, not left to grow: at half width these badges wrap
-	# to a different number of lines per card ("OPTIMAL — 4 steps left" against
-	# "Detour +1 — 6 steps left"), and a header that is a line taller on one card
-	# pushes that card's cover out of line with the rest of the row.
-	route.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE * ROUTE_LINES)
-	route.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	route.add_theme_font_size_override("font_size", BADGE_FONT)
-	route.add_theme_color_override("font_color", note["color"])
-	card.add_child(route)
-
-	# …and what that ground costs in PACE (§7.4). Mounted on every card, blank on
-	# the Amulet's, so one card carrying a warning doesn't shove its cover out of
-	# line with the rest of the offering.
-	var pace: Dictionary = turn_note(choice)
-	var pace_lbl := Label.new()
-	pace_lbl.text = String(pace["text"])
-	pace_lbl.tooltip_text = String(pace["tip"])
-	pace_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pace_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	pace_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE * PACE_LINES)
-	pace_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	pace_lbl.add_theme_font_size_override("font_size", BADGE_FONT)
-	pace_lbl.add_theme_color_override("font_color", pace["color"])
-	card.add_child(pace_lbl)
-
-	# …and the map that backs the claim up: the whole optimal road from this game
-	# to the Amulet, without having to take it first.
-	card.add_child(_map_preview_button(choice["slot"], game))
-
-	# A game already beaten this run pays a Dash for beating it again — called out
-	# ABOVE the cover so the bonus is visible while you're still choosing. The row is
-	# mounted on EVERY card (blank when there's no bonus) so one flagged card doesn't
-	# shove its cover down out of line with the rest of the offering.
-	var repeat: bool = bool(choice.get("repeat", false))
-	var bonus := Label.new()
-	bonus.text = ("⚡ Gain +%d Dash" % REPEAT_BEAT_DASH) if repeat else ""
-	if repeat:
-		bonus.tooltip_text = "You've already beaten %s this run — beat it again for a Dash charge." % game.display_name
-	bonus.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	bonus.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	bonus.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
-	bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	bonus.add_theme_font_size_override("font_size", BADGE_FONT)
-	bonus.add_theme_color_override("font_color", DASH_BLUE)
-	card.add_child(bonus)
+	# THE ONE THING that has to be legible without opening anything: this is the
+	# game the run ends on. The row is mounted on every card, blank off the Amulet,
+	# so the flagged card's cover stays in line with the rest of the offering.
+	var flag := Label.new()
+	flag.text = "🏆 THE AMULET" if amulet else ""
+	if amulet:
+		flag.tooltip_text = "Beat this game's goal and you win the run."
+	flag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	flag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	flag.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
+	flag.add_theme_font_size_override("font_size", BADGE_FONT)
+	flag.add_theme_color_override("font_color", UITheme.GOLD)
+	card.add_child(flag)
 
 	var btn := Button.new()
 	btn.custom_minimum_size = COVER_SIZE
-	var frame_n := UITheme.flat(UITheme.BG, 8, 4, 1, UITheme.BORDER)
+	btn.tooltip_text = "Open %s — the route it leaves you on, what's waiting there, and the button that takes it." % game.display_name
+	var frame_n := UITheme.flat(UITheme.BG, 8, 4, 1, UITheme.GOLD if amulet else UITheme.BORDER)
 	var frame_h := UITheme.flat(UITheme.PANEL_HI, 8, 4, 2, accent)
 	btn.add_theme_stylebox_override("normal", frame_n)
 	btn.add_theme_stylebox_override("hover", frame_h)
 	btn.add_theme_stylebox_override("pressed", frame_h)
 	btn.add_theme_stylebox_override("focus", frame_h)
-	btn.pressed.connect(func(): pick(index))
+	btn.pressed.connect(func(): open_choice(index))
 	btn.mouse_entered.connect(func(): _show_preview(index))
 	btn.mouse_exited.connect(_clear_hover_grant)
 	if game.cover_image != null:
@@ -1816,42 +1811,14 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	card.add_child(btn)
 
 	var name_lbl := Label.new()
-	name_lbl.text = ("☠ " if choice["boss"] else ("🏆 " if choice["amulet"] else "")) + game.display_name
+	name_lbl.text = ("☠ " if choice["boss"] else ("🏆 " if amulet else "")) + game.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, NAME_BOX_H)
 	name_lbl.add_theme_font_size_override("font_size", NAME_FONT)
-	name_lbl.add_theme_color_override("font_color", accent if (choice["boss"] or choice["amulet"]) else UITheme.TEXT)
+	name_lbl.add_theme_color_override("font_color", accent if (choice["boss"] or amulet) else UITheme.TEXT)
 	card.add_child(name_lbl)
-
-	# The tries this game hands you (§3): a Traditional roguelike is the long haul
-	# and grants more, which is a real reason to route through one.
-	var tries: int = GameLoop2.shields_for_game(game)
-	var tries_lbl := Label.new()
-	tries_lbl.text = "%s  %d tries" % ["◆".repeat(tries), tries]
-	tries_lbl.tooltip_text = "Selecting %s grants %d shields — one per run of it you lose." % [
-		game.display_name, tries]
-	tries_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tries_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	tries_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
-	tries_lbl.add_theme_font_size_override("font_size", BADGE_FONT)
-	tries_lbl.add_theme_color_override("font_color", SHIELD_BLUE)
-	card.add_child(tries_lbl)
-
-	# Bash/Transmute are available even on a boss round — the boss follows the
-	# gate, so escaping a specific game still lands you on a boss.
-	var verbs := HBoxContainer.new()
-	verbs.alignment = BoxContainer.ALIGNMENT_CENTER
-	if GameState.bash > 0:
-		verbs.add_child(_mini_button("Bash", func(): bash_choice(index)))
-	if GameState.transmute > 0:
-		verbs.add_child(_mini_button("Transmute", func(): transmute_choice(index)))
-	if verbs.get_child_count() > 0:
-		card.add_child(verbs)
-	var proven := _beatable_row(choice)
-	if proven != null:
-		card.add_child(proven)
 	return card
 
 # The 🗺 button every offered card wears above its cover: opens the optimal path
@@ -2410,18 +2377,100 @@ func _hud_shields() -> String:
 		return "[b]Shields[/b] [color=#%s]+%d[/color]" % [SHIELD_BLUE.to_html(false), _hover_grant]
 	return "[b]Shields[/b] %d" % GameState.shields
 
+# The HUD is the player's OWN state and nothing else: what they have left to be
+# hit with, and how many lost runs stand between them and being hit at all.
+#
+# Everything else that used to run along this line — Bash, Dash, Transmute,
+# Scramble, Push, Bombs, Tier — has moved to sit under the thing it acts on
+# (_refresh_select_stats / _refresh_board_stats). Twelve numbers in one strip is a
+# strip nobody reads: a charge that only ever gets spent on an offered card was
+# being kept a page away from the offering, and one that only ever gets spent on
+# the board was being kept a page away from the board. Keys and Chests came off
+# entirely — Keys are deferred and unauthored (§4), and a pending chest is
+# redeemed the moment it lands, so its count was a zero the player never saw move.
 func _hud_text() -> String:
 	# Health is quoted off the BOARD while a resolve plays back, so the two places
 	# it's printed can't disagree: the hero's line comes down one strike at a time
 	# (BattlefieldView.animate_resolve) and the HUD comes down with it.
 	var hp: int = _board.shown_hp() if _board != null else GameState.hp
-	return "[b]Health[/b] %d/%d   %s      [b]Tier[/b] %s      [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Push[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d  [b]Scrolls[/b] %d   [b]Chests[/b] %d" % [
-		hp, GameState.max_hp, _hud_shields(),
-		RunDifficulty.tier_name(_current_tier()),
-		GameState.bash, GameState.dash_charges, GameState.push, GameState.transmute,
-		GameState.scramble, GameState.bombs, GameState.keys,
-		GameState.get_loot_count("scroll"), GameState.pending_chests,
-	]
+	return "[b]Health[/b] %d/%d      %s" % [hp, GameState.max_hp, _hud_shields()]
+
+# --- the stats that moved out of the HUD ------------------------------------
+
+const STAT_FONT := 13
+
+# One stat, as a chip: the glyph, the name and the count, dimmed to nothing when
+# there is nothing to spend.
+#
+# A verb the player can fire FROM HERE (Dash, Scramble — both act on the offering
+# as a whole) is a real button. One that needs a target (Bash and Transmute both
+# act on a specific offered game, Push and Bombs on a specific enemy) is a
+# readout, and its tooltip says where it actually gets spent, so a charge is never
+# a number with no visible way to use it.
+func _stat_chip(text: String, count: int, tint: Color, tip: String,
+		fire: Callable = Callable()) -> Control:
+	var live: bool = count > 0
+	if fire.is_valid() and live:
+		var b := Button.new()
+		b.text = text
+		b.tooltip_text = tip
+		b.add_theme_font_size_override("font_size", STAT_FONT)
+		b.add_theme_stylebox_override("normal", UITheme.flat(tint.lerp(UITheme.BG, 0.78), 6, 8, 1, tint.lerp(UITheme.BG, 0.4)))
+		b.add_theme_stylebox_override("hover", UITheme.flat(tint.lerp(UITheme.BG, 0.58), 6, 8, 1, tint))
+		b.add_theme_color_override("font_color", tint)
+		b.pressed.connect(fire)
+		return b
+	var color: Color = tint if live else UITheme.TEXT_FAINT
+	var chip := PanelContainer.new()
+	chip.tooltip_text = tip
+	chip.add_theme_stylebox_override("panel",
+		UITheme.flat(color.lerp(UITheme.BG, 0.86), 6, 8, 1, color.lerp(UITheme.BG, 0.55)))
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", STAT_FONT)
+	label.add_theme_color_override("font_color", color)
+	chip.add_child(label)
+	return chip
+
+# The charges that are spent CHOOSING — mounted under the offering, because every
+# one of them changes what is on the table rather than what is on the board.
+func _refresh_select_stats() -> void:
+	if _select_stats == null:
+		return
+	_clear(_select_stats)
+	_select_stats.add_child(_stat_chip("⛏ Bash %d" % GameState.bash, GameState.bash,
+		Color(1.0, 0.72, 0.4),
+		"Destroy an offered game outright — it leaves the pool for good and another connected game takes the slot.\nSpent from a game's card: click one and press Bash."))
+	_select_stats.add_child(_stat_chip("⚡ Dash %d" % GameState.dash_charges,
+		GameState.dash_charges, DASH_BLUE,
+		"Ignore the offering and travel to ANY connected game.\nClick to pick your destination.",
+		dash if not _dash_mode else Callable()))
+	_select_stats.add_child(_stat_chip("⚗ Transmute %d" % GameState.transmute, GameState.transmute,
+		UITheme.ACCENT,
+		"Swap an offered game for a random off-graph game of the same type.\nSpent from a game's card: click one and press Transmute."))
+	_select_stats.add_child(_stat_chip("🎲 Scramble %d" % GameState.scramble, GameState.scramble,
+		UITheme.GOLD,
+		"Redraw the whole offering — new games in the slots, each with a fresh goal-enemy.",
+		scramble))
+
+# The charges that are spent ON THE BOARD, plus the tier that says how hard the
+# board is pushing — mounted under the board for the same reason.
+func _refresh_board_stats() -> void:
+	if _board_stats == null:
+		return
+	_clear(_board_stats)
+	var tier: int = _current_tier()
+	var turns: int = RunDifficulty.turns_for_hops(steps_to_amulet(GameState.current_game_id))
+	_board_stats.add_child(_stat_chip("📊 Tier: %s" % RunDifficulty.tier_name(tier), 1,
+		RunDifficulty.turns_band_color(turns),
+		"The run's difficulty band — it steps up every %d games, and the game that crosses a gate spawns a boss.\n\n%s"
+			% [RunDifficulty.GAMES_PER_TIER, RunDifficulty.turns_ladder_text(turns)]))
+	_board_stats.add_child(_stat_chip("👊 Push %d" % GameState.push, GameState.push,
+		UITheme.SUCCESS,
+		"Shove a following enemy back one space, delaying its next attack by a game.\nSpent on the board: click the enemy, then Push."))
+	_board_stats.add_child(_stat_chip("💣 Bombs %d" % GameState.bombs, GameState.bombs,
+		UITheme.DANGER,
+		"Deal 1 damage to an enemy on the board — enough to remove a normal one outright.\nSpent on the board: click the enemy, then Bomb."))
 
 # Rebuild the Scrolls panel: one Read button per carried scroll, showing its
 # identified name/art or the Unidentified mask (§4.1). Reading is always allowed
@@ -2970,6 +3019,15 @@ func _build_ui() -> void:
 	preview_box.add_child(_preview)
 	_select_box.add_child(preview_wrap)
 
+	# The choosing charges, at the foot of the panel they're spent in. They used to
+	# be four numbers in the middle of a twelve-number HUD strip at the top of the
+	# page — a Bash charge is only ever spent on a card in this box, and this is
+	# where it should be readable from.
+	_select_stats = HFlowContainer.new()
+	_select_stats.add_theme_constant_override("h_separation", 6)
+	_select_stats.add_theme_constant_override("v_separation", 4)
+	_select_box.add_child(_select_stats)
+
 	_report_panel = PanelContainer.new()
 	_report_panel.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.5), 12, 12, 1))
@@ -3004,6 +3062,21 @@ func _build_ui() -> void:
 	_items_box.add_theme_constant_override("h_separation", 4)
 	_items_box.add_theme_constant_override("v_separation", 4)
 	inv_box.add_child(_items_box)
+
+	# Scrolls are inventory. They used to have their own panel at the bottom of the
+	# page, below the whole two-column stage — a carried thing, filed under the log
+	# rather than under the pack it's carried in. In here they sit with the relics,
+	# and the strip only grows by the rows it actually has to draw.
+	_scrolls_wrap = VBoxContainer.new()
+	_scrolls_wrap.add_theme_constant_override("separation", 4)
+	var scrolls_head := _section("📜  Scrolls")
+	scrolls_head.add_theme_font_size_override("font_size", 13)
+	scrolls_head.tooltip_text = "Read from the overworld, between games."
+	_scrolls_wrap.add_child(scrolls_head)
+	_scrolls_box = VBoxContainer.new()
+	_scrolls_box.add_theme_constant_override("separation", 4)
+	_scrolls_wrap.add_child(_scrolls_box)
+	inv_box.add_child(_scrolls_wrap)
 	_right_col.add_child(_inv_wrap)
 
 	_stage_panel = PanelContainer.new()
@@ -3030,6 +3103,15 @@ func _build_ui() -> void:
 	_board.bomb_requested.connect(bomb_follower)
 	_board.enemy_inspected.connect(_show_enemy_info)
 	stage_box.add_child(_board)
+
+	# The board's own charges, under the board. Push and Bombs are both spent by
+	# clicking an enemy up there and pressing the verb on the board's toolbar, so
+	# the count belongs beside the field it's aimed at rather than at the top of
+	# the page; Tier joins them because what it describes is this board's pace.
+	_board_stats = HFlowContainer.new()
+	_board_stats.add_theme_constant_override("h_separation", 6)
+	_board_stats.add_theme_constant_override("v_separation", 4)
+	stage_box.add_child(_board_stats)
 
 
 	# --- the report checklist (left column, shown while a game is in play) ----
@@ -3109,14 +3191,6 @@ func _build_ui() -> void:
 	_escape_btn.add_theme_color_override("font_color", UITheme.ACCENT)
 	_escape_btn.pressed.connect(escape_game)
 	_play_panel.add_child(_escape_btn)
-
-	_scrolls_wrap = VBoxContainer.new()
-	_scrolls_wrap.add_theme_constant_override("separation", 4)
-	_scrolls_wrap.add_child(_section("Scrolls (read on the overworld):"))
-	_scrolls_box = VBoxContainer.new()
-	_scrolls_box.add_theme_constant_override("separation", 4)
-	_scrolls_wrap.add_child(_scrolls_box)
-	root.add_child(_scrolls_wrap)
 
 	_log = _panel_label()
 	root.add_child(_log)

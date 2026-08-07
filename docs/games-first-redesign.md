@@ -115,7 +115,8 @@ A roguelike is not beaten in one run, so **shields are how many runs you get**:
   reads straight off the game's type. Items hooked on *"when a game is selected"*
   add to the grant, which is what **Anchor** now does (+1 Shield): the extra try
   has to arrive *before* you go and play. The grant is part of the routing
-  decision, so it's on every offered card and previews in the HUD on hover.
+  decision, so it's stated in the game's popup (§4.2) and previews in the HUD on
+  hover.
 - **Every run of that game you LOSE is one tick of the attempt tracker**, and each
   tick **spends a shield**. The tracker lives with the checklist in the left column
   of the playing screen; the board stands in the right column (with the pack under
@@ -142,7 +143,11 @@ burning tries, not to one who isn't.
 ## 4. The verbs & consumables (the "hand")
 
 These replace card-play as the way you manipulate the board. All are small
-integer counts on the HUD.
+integer counts, drawn as chips **under the thing they are spent on**: Bash, Dash,
+Transmute and Scramble under the offering (they change what is on the table),
+Push and Bombs under the board (they act on the field). The HUD itself carries
+only Health and Shields. **Keys are not drawn at all** — they are deferred and
+unauthored (§4.1), so there is nothing yet for a count to mean.
 
 ### Verbs (map manipulation)
 | Verb | Effect |
@@ -204,6 +209,32 @@ existing `images/scrolls/Unidentified.png`. Scrolls get the identical treatment:
 
 *(The old **Fog** scroll and **Keys** are both **deferred — author later**; they
 stay in the design but no `2.0` content exists for them yet.)*
+
+Scrolls are carried, so they are listed **in the pack** — the strip above the
+board, with the relics — rather than in a panel of their own.
+
+### 4.2 Choosing a game is a screen, not a click
+
+The offering is a **routing decision**, and a routing decision cannot be made off
+a cover. Clicking an offered card therefore **opens it** rather than taking it,
+and the card is only the **cover art, the game's name, and the Amulet's flag**
+when it is the game the run is a search for.
+
+The popup is where the decision is actually made. It carries:
+
+- the **optimal path from that game to the Amulet**, drawn as the same arrowed
+  shortest-path ladder the 🗺 map window shows (§6), routed from the game being
+  considered rather than from where the player stands — plus the route badge in
+  words (`★ OPTIMAL — 4 steps left` / `↩ Detour +1` / `🏆 THE AMULET`);
+- the **game**: cover at full size, type and year, the **tries** it grants (§3.2),
+  what taking it does to the board's **pace** (§7.4), whether beating it again
+  pays a Dash, and the player's own record in it;
+- the **enemy waiting there**: portrait, name, and the goal as it would actually
+  be played — the player's own status clauses included (§13) — plus which enemies
+  on the board have already been beaten *at this game*;
+- and the three things that can be done about the card: **Travel**, **Bash**,
+  **Transmute**. Bash and Transmute only appear when there is a charge, and the
+  Amulet's card never offers a Bash (§4).
 
 ---
 

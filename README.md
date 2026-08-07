@@ -44,6 +44,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     BattlefieldView — the grid the enemies close in on
 │   │                      #     EnemyInfoCard   — click-to-inspect enemy card
 │   │                      #     ItemInfoCard    — click-to-inspect item card
+│   │                      #     GameChoiceModal — the popup an offered card opens
+│   │                      #     RouteLadder     — the arrowed shortest-path graph
 │   │                      #     RunOverScreen   — the end-of-run verdict screen
 │   │                      #     RunMapModal / ScrollReadModal
 │   ├── events/           #   the D20 event system (EventModal, D20DieView)
@@ -204,9 +206,28 @@ node and its script.
   (cover cards), and
   then a two-column stage — checklist on the left (the standing goals while you're
   choosing, the honour-system report step + attempt tracker while you're playing),
-  the battlefield on the right with the player's inventory and loot tray beneath
-  it. Also owns the scrolls panel and hosts the toast strip, so an item's effects
-  announce themselves the moment it's picked up.
+  the battlefield on the right with the player's pack (items **and** scrolls)
+  above it. Hosts the toast strip, so an item's effects announce themselves the
+  moment it's picked up.
+
+  **Where the numbers are.** The HUD, top left, is the player and only the
+  player: **Health** and **Shields**. Every verb charge sits under the thing it is
+  spent on — **Bash / Dash / Transmute / Scramble** on a row beneath the offering
+  (they all change what is on the table), **Tier / Push / Bombs** on a row beneath
+  the board (they all act on the field). Dash and Scramble are buttons there;
+  Bash and Transmute need a target, so they are readouts and get pressed inside a
+  game's popup. Keys and Chests aren't shown — Keys are deferred and unauthored,
+  and a chest is redeemed the moment it lands.
+  - **`GameChoiceModal.gd`** — what clicking an offered card opens. A card is the
+    cover, the name and the Amulet's flag; everything else about the decision
+    lives here — the **optimal path from that game drawn as the real route
+    ladder**, the enemy waiting there and its goal, the tries the game grants, the
+    pace it puts the board on, your record in it — over the three buttons that
+    answer it: **Travel**, **Bash**, **Transmute**. It decides nothing itself;
+    each button calls the overworld's `pick` / `bash_choice` / `transmute_choice`.
+  - **`RouteLadder.gd`** — the shortest-path DAG as a top-to-bottom ladder of
+    boxes with green arrows between them, colour-coded by role. Shared: the 🗺 map
+    window (`RunMapModal`) and `GameChoiceModal` draw the same graph from it.
   - **`BattlefieldView.gd`** — the board: the hero on the left with the shield
     pips over them, the grid the goal-enemies close in across, the off-field lane,
     the Push / Bomb toolbar, and the strike / advance animation.
