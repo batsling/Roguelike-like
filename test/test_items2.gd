@@ -3,7 +3,8 @@ extends GutTest
 # Games-first (2.0) item + reward wiring: the items2.0 relics that drop from
 # defeated enemies must actually DO something. Covers the reward pool, the
 # "after beating a game" trigger (Anchor / Burning Blood / Meat on the Bone),
-# passive board-verb bonuses (Vajra), the chest choice-count queue, and the
+# the status-granting stat relics (Vajra / Oddly Smooth Stone, §13), the
+# board-verb pickups, the chest choice-count queue, and the
 # active-item effect handlers (Unstable Genome's random_item_choice +
 # destroy_self). See docs/games-first-redesign.md §8.
 
@@ -67,17 +68,30 @@ func test_meat_on_the_bone_heals_only_when_low() -> void:
 	TriggerBus.game_beaten.emit({"game_id": &"rogue"})
 	assert_eq(GameState.hp, 7, "Meat on the Bone: +2 Health at/below 50%")
 
-# --- pickup board-verb grant (Vajra) -------------------------------------
+# --- pickup grants (Vajra / Oddly Smooth Stone) --------------------------
 
-# Vajra is a PICKUP (sheet Type), so its +1 Bash is a permanent grant made once
-# on acquisition — not a stat_bonus that unwinds if the item leaves. That's the
-# same shape the bomb pickups use for their +1 Bomb.
-func test_vajra_pickup_grants_bash_permanently() -> void:
-	var before: int = GameState.bash
+# The two Slay the Spire stat relics grant STATUSES (§13) rather than board verbs:
+# in the game they are lifted from, Vajra gives Strength and Oddly Smooth Stone
+# gives Dexterity, and both of those are statuses here. Each is a PICKUP, so the
+# grant is made once on acquisition and is not a stat_bonus that unwinds if the
+# item leaves.
+func test_vajra_pickup_grants_the_strength_status_permanently() -> void:
 	var v: ItemData = _give(&"vajra")
-	assert_eq(GameState.bash, before + 1, "Vajra: +1 Bash on pickup")
+	assert_eq(GameState.status_stacks(&"strength"), 1, "Vajra: +1 Strength on pickup")
 	GameState.remove_item(v)
-	assert_eq(GameState.bash, before + 1, "a pickup's grant is kept, not rented")
+	assert_eq(GameState.status_stacks(&"strength"), 1,
+		"a pickup's grant is kept, not rented")
+
+func test_oddly_smooth_stone_grants_the_dexterity_status() -> void:
+	_give(&"oddly_smooth_stone")
+	assert_eq(GameState.status_stacks(&"dexterity"), 1, "+1 Dexterity on pickup")
+
+func test_the_two_stat_relics_stack_by_intensity() -> void:
+	# Two Vajras are one Strength at 2, not two separate Strengths (§13).
+	_give(&"vajra")
+	_give(&"vajra")
+	assert_eq(GameState.status_stacks(&"strength"), 2)
+	assert_eq(GameState.status_list().size(), 1, "still one status")
 
 # --- chest choice-count queue (§8.2) -------------------------------------
 
@@ -157,16 +171,16 @@ func test_pickup_effects_land_and_are_reported_on_acquire() -> void:
 	assert_true(joined.contains("+2 Max Health"), "the report names the Max Health gain: %s" % joined)
 	assert_true(joined.contains("+2 Health"), "and the Health gain: %s" % joined)
 
-func test_passive_pickup_reports_its_verb_bonus() -> void:
-	# Vajra's +1 Bash arrives through stat_bonuses rather than an item_acquired
-	# effect; the snapshot straddles the recompute, so it's reported the same way.
+func test_pickup_reports_its_verb_bonus() -> void:
+	# Blood Bombs' +1 Bomb arrives through an item_acquired effect; the snapshot
+	# straddles the recompute, so it is reported like any other resource move.
 	var before_history: int = Notifications.history.size()
-	_give(&"vajra")
+	_give(&"blood_bombs")
 	var texts: Array = []
 	for entry in Notifications.history.slice(before_history):
 		texts.append(String(entry.get("text", "")))
 	var joined: String = "\n".join(texts)
-	assert_true(joined.contains("+1 Bash"), "Vajra's Bash gain is named: %s" % joined)
+	assert_true(joined.contains("+1 Bomb"), "Blood Bombs' Bomb gain is named: %s" % joined)
 
 func test_resource_gain_report_names_only_what_moved() -> void:
 	var before: Dictionary = GameState.run_resource_snapshot()

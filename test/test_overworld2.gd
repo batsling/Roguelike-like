@@ -2099,3 +2099,53 @@ func test_maybe_later_takes_you_nowhere() -> void:
 	modal.dismissed.emit()
 	assert_null(_tier_list_screen(),
 		"declining to rate shouldn't hand the player a screen they didn't ask for")
+
+# --- the pack: reading vs spending ---------------------------------------
+#
+# Two gestures, deliberately separate: clicking a token READS the item (its
+# card), and only the control above the token ever SPENDS a charge. Inspecting
+# an item must never cost you one.
+
+func test_clicking_an_item_token_opens_its_card() -> void:
+	var heart: ItemData = GameState.add_item(Data.get_item2(&"hollow_heart"))
+	_ui._refresh_items()
+	_ui.open_item_card(heart)
+	assert_not_null(_ui._item_card, "the card is mounted")
+	assert_true(_ui.is_ancestor_of(_ui._item_card), "on the screen, over the page")
+	_ui._close_item_card()
+	assert_null(_ui._item_card, "and closes cleanly")
+
+func test_an_active_item_grows_a_fire_control_above_its_tile() -> void:
+	# Ride the Bus is a plain Usable: its control is the Use button, and the token
+	# below it is the art tile.
+	GameState.add_item(Data.get_item2(&"ride_the_bus"))
+	_ui._refresh_items()
+	var column: Control = _ui._items_box.get_child(_ui._items_box.get_child_count() - 1)
+	assert_eq(column.get_child_count(), 2, "fire control over art tile")
+	assert_true(column.get_child(0) is Button, "a Usable item's control is a button")
+	assert_eq((column.get_child(0) as Button).text, "Use")
+
+func test_a_passive_item_has_no_fire_control() -> void:
+	GameState.add_item(Data.get_item2(&"hollow_heart"))
+	_ui._refresh_items()
+	var column: Control = _ui._items_box.get_child(_ui._items_box.get_child_count() - 1)
+	assert_eq(column.get_child_count(), 1, "nothing to fire, so nothing above it")
+
+func test_a_part_charged_item_shows_a_battery_and_a_full_one_shows_use() -> void:
+	# The battery is one rectangle per charge — Isaac's active bar on its side —
+	# and becomes the Use button at full, so the same strip answers "how long" and
+	# "can I now".
+	var d6: ItemData = GameState.add_item(Data.get_item2(&"d6"))
+	d6.current_charge = 0
+	_ui._refresh_items()
+	var column: Control = _ui._items_box.get_child(_ui._items_box.get_child_count() - 1)
+	var meter: Control = column.get_child(0)
+	assert_false(meter is Button, "an empty charge is a meter, not a button")
+	assert_eq(meter.get_child(0).get_child_count(), d6.max_charge(),
+		"one segment per charge")
+
+	d6.current_charge = d6.max_charge()
+	_ui._refresh_items()
+	column = _ui._items_box.get_child(_ui._items_box.get_child_count() - 1)
+	assert_true(column.get_child(0) is Button, "full charge turns the meter into Use")
+	assert_eq((column.get_child(0) as Button).text, "Use")

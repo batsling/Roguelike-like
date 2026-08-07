@@ -118,6 +118,8 @@ var _rng := RandomNumberGenerator.new()
 
 # --- UI nodes (built in code) --------------------------------------------
 var _hud: RichTextLabel
+var _status_strip: HBoxContainer    # the player's statuses, under the HUD numbers (§13)
+var _item_card: ItemInfoCard = null # the open item reading card, or null
 var _banner: Label
 var _boss_banner: Label
 var _preview: RichTextLabel
@@ -131,6 +133,13 @@ var _launch_row: HBoxContainer
 var _verify_box: VBoxContainer      # clean checklist: goal + level-up + follower goals
 var _fulfil_checks: Array = []      # [{check: CheckBox, instance: int}]
 var _goal_check: CheckBox           # the chosen game's main goal; null on a free game
+# Statuses 2.0 (§13) on the report checklist. `_status_goal_checks` are the
+# player's own BUFF goals — extra rows that pay when ticked; `_bonus_checks` are
+# the OPTIONAL bonus objectives an enemy's `bonus` side hangs off it. Both are read into
+# beat_game's `claims` on report; the required clauses (enemy buffs, player
+# clauses) need no boxes of their own because they are folded into the goal line.
+var _status_goal_checks: Array = [] # [{check: CheckBox, status: StringName}]
+var _bonus_checks: Array = []       # [{check: CheckBox, instance: int, status: StringName}]
 var _levelup_check: CheckBox        # null when the character has no level-up
 var _dash_mode: bool = false        # Dash (§4): offer ANY connected game
 var _controls_row: HBoxContainer
@@ -220,6 +229,13 @@ func _ready() -> void:
 		GameState.hp_changed.connect(_on_vitals_changed)
 	if not GameState.stats_changed.is_connected(_refresh_hud):
 		GameState.stats_changed.connect(_refresh_hud)
+	# A status applied off a loop resolve (a location entered, an item picked up)
+	# changes what the checklist says the player has to DO, so it repaints the
+	# screen rather than just the HUD strip (§13). Note _refresh rebuilds the
+	# STANDING list only — a status landing mid-report updates the strip and waits,
+	# because rebuilding the report step would throw away the boxes already ticked.
+	if not GameState.player_statuses_changed.is_connected(_refresh):
+		GameState.player_statuses_changed.connect(_refresh)
 	# Arrivals salt the offering draw so a revisit isn't a rerun (§_offer_seed).
 	if not GameState.current_game_changed.is_connected(_on_arrived):
 		GameState.current_game_changed.connect(_on_arrived)
@@ -911,7 +927,11 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	var tier_before: int = _current_tier()
 	var board_before := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows())
 	_close_enemy_info()
-	var res: Dictionary = GameLoop2.beat_game(goal_met, fulfilled_instances)
+	# The status half of the same self-report (§13): the player-buff goals ticked
+	# and the enemy bonuses claimed. Read here, alongside the fulfilments, because
+	# _end_resolve rebuilds the checklist and frees the boxes.
+	var claims: Dictionary = _ticked_status_claims()
+	var res: Dictionary = GameLoop2.beat_game(goal_met, fulfilled_instances, claims)
 	# "After beating a game" is the dominant 2.0 item trigger (§8): fire it now so
 	# owned items react (Burning Blood +1 Health, Meat on the Bone's conditional
 	# heal), the Harvesting stat pays out, charged actives tick, and the toast
@@ -1123,12 +1143,21 @@ func teleport_to_type(type_key: StringName) -> void:
 			Color(0.8, 0.6, 0.4))
 		return
 	var dest: StringName = same_type[_rng.randi() % same_type.size()]
-	GameState.set_current_game(dest)
 	var g: GameData = Data.get_game(dest)
 	GameLog.add("Rode the bus to %s." % (g.display_name if g != null else String(dest)),
 		Color(0.5, 0.85, 1.0))
+	travel_to_game(dest)
+
+# Move the run to `game_id` outright and rebuild the offering around it — the
+# landing half of every teleport (Ride the Bus, and the dev panel's jump). Does
+# not resolve a game or touch the board; it only changes where you are standing.
+func travel_to_game(game_id: StringName) -> void:
+	if Data.get_game(game_id) == null:
+		return
+	GameState.set_current_game(game_id)
 	_phase = Phase.SELECT
 	_dash_mode = false
+	_chosen = {}
 	_build_choices()
 	_refresh()
 
@@ -1409,6 +1438,45 @@ func _refresh_hud(_a = null) -> void:
 	if _hud == null:
 		return
 	_hud.text = _hud_text()
+	_refresh_status_strip()
+
+# The player's statuses as icon + stack-count chips (§13), tinted by kind: a buff
+# is gold because it pays, a debuff red because it taxes. Hidden entirely when
+# nothing is on the player, so a clean run carries no empty furniture.
+const STATUS_ICON_SIZE := 22
+
+func _refresh_status_strip() -> void:
+	if _status_strip == null:
+		return
+	_clear(_status_strip)
+	var rows: Array = GameState.status_list()
+	_status_strip.visible = not rows.is_empty()
+	for row in rows:
+		var sd: StatusData = row["status"]
+		var stacks: int = int(row["stacks"])
+		var tint: Color = UITheme.GOLD if sd.is_buff() else UITheme.DANGER
+		var chip := PanelContainer.new()
+		chip.add_theme_stylebox_override("panel",
+			UITheme.flat(tint.lerp(UITheme.BG, 0.82), 6, 3, 1, tint.lerp(UITheme.BORDER, 0.3)))
+		# The whole clause, on the thing the player will hover to remember what it
+		# was: the strip shows THAT a status is on, the tooltip shows what it costs.
+		chip.tooltip_text = "%s %d — %s\n%s" % [sd.display_name, stacks,
+			("buff" if sd.is_buff() else "debuff"),
+			sd.objective_text(StatusData.PLAYER, stacks)
+				if sd.is_claimable(StatusData.PLAYER)
+				else "Every enemy's goal also needs: %s" % sd.clause_text(StatusData.PLAYER, stacks)]
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", 5)
+		chip.add_child(line)
+		if sd.image != null:
+			line.add_child(UITheme.crisp_tex(sd.image, STATUS_ICON_SIZE))
+		var label := Label.new()
+		label.text = "%s %d" % [sd.display_name, stacks]
+		label.add_theme_font_size_override("font_size", 12)
+		label.add_theme_color_override("font_color", tint)
+		label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		line.add_child(label)
+		_status_strip.add_child(chip)
 
 func _on_vitals_changed(_hp: int = 0, _max_hp: int = 0) -> void:
 	_refresh_hud()
@@ -1873,9 +1941,7 @@ func _beatable_pip(game: GameData, enemy: GoalEnemyData) -> Control:
 func _populate_play_panel() -> void:
 	_clear(_launch_row)
 	_clear(_verify_box)
-	_fulfil_checks.clear()
-	_levelup_check = null
-	_goal_check = null
+	_reset_checklist_state()
 	if _chosen.is_empty():
 		return
 	var game: GameData = _chosen["game"]
@@ -1911,10 +1977,30 @@ func _populate_play_panel() -> void:
 	var enemy: GoalEnemyData = _chosen.get("enemy")
 	if enemy != null and enemy.goal != "":
 		var is_amulet: bool = bool(_chosen.get("amulet", false))
-		var goal_text: String = "%s %s" % ["🏆 Amulet goal —" if is_amulet else "Goal —", enemy.goal]
+		# The goal LINE, not the enemy's authored goal: any status clause welded on
+		# by a clause on this enemy or one on the player is part of what ticking
+		# this box asserts (§13).
+		var goal_text: String = "%s %s" % [
+			"🏆 Amulet goal —" if is_amulet else "Goal —",
+			GameLoop2.goal_text_for(GameLoop2.current)]
 		var goal_row := _verify_row(goal_text, UITheme.SUCCESS, true, enemy)
 		_goal_check = goal_row["check"]
 		_verify_box.add_child(goal_row["row"])
+		# …and its optional bonus objectives, which are claimed separately because
+		# skipping one costs nothing.
+		_add_bonus_rows(GameLoop2.current)
+
+	# The player's own BUFF goals (§13): standing challenges that pay out every
+	# game you satisfy them, so they are on the report step of EVERY game rather
+	# than belonging to any one enemy.
+	for row in GameState.status_objectives():
+		var sd: StatusData = row["status"]
+		var stacks: int = int(row["stacks"])
+		var srow := _verify_row(
+			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.PLAYER, stacks)],
+			UITheme.GOLD, false)
+		_verify_box.add_child(srow["row"])
+		_status_goal_checks.append({"check": srow["check"], "status": sd.id})
 
 	# Level-up challenge (§3.1): a per-game Yes/No for the character's condition,
 	# with its reward shown inline so the payoff reads at a glance. It carries its
@@ -1935,9 +2021,44 @@ func _populate_play_panel() -> void:
 	# noun the player has to read past to reach the thing they're ticking.
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
-		var row := _verify_row("Also cleared: %s — %s" % [e.goal, e.display_name], UITheme.TEXT, false, e)
+		var row := _verify_row("Also cleared: %s — %s" % [
+			GameLoop2.goal_text_for(entry), e.display_name], UITheme.TEXT, false, e)
 		_verify_box.add_child(row["row"])
 		_fulfil_checks.append({"check": row["check"], "instance": int(entry["instance"])})
+		_add_bonus_rows(entry)
+
+# The OPTIONAL bonus rows an enemy's `bonus` sides hang off it (§13) — "and if you get 3
+# achievements, gain +3 Small Chests". A row of its own rather than part of the
+# goal line, because claiming it is a separate decision from meeting the goal: an
+# enemy you failed can still pay its bonus, and one you beat need not have.
+func _add_bonus_rows(entry: Dictionary) -> void:
+	if entry.is_empty():
+		return
+	var instance: int = int(entry.get("instance", 0))
+	for row in GameLoop2.bonus_objectives_for(entry):
+		var sd: StatusData = row["status"]
+		var stacks: int = int(row["stacks"])
+		var brow := _verify_row(
+			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
+			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false)
+		_verify_box.add_child(brow["row"])
+		_bonus_checks.append({"check": brow["check"], "instance": instance, "status": sd.id})
+
+# How a status announces itself on a checklist row: its name and stack count.
+# "Marked 3 —" carries the X the rest of the line was written against, which is
+# the number the player has to hold in their head while they play.
+func _status_prefix(status: StatusData, stacks: int) -> String:
+	return "%s %d —" % [status.display_name, stacks]
+
+# Every per-game checklist binding, dropped together. Four parallel arrays that
+# must be cleared as one — a stale CheckBox left in any of them is a claim read
+# off a freed node on the next report.
+func _reset_checklist_state() -> void:
+	_fulfil_checks.clear()
+	_status_goal_checks.clear()
+	_bonus_checks.clear()
+	_levelup_check = null
+	_goal_check = null
 
 # The checklist while you're CHOOSING: the goals already on you — the character's
 # level-up challenge, and every follower's outstanding goal (any of which you may
@@ -1950,9 +2071,7 @@ func _populate_play_panel() -> void:
 func _populate_standing_checklist() -> void:
 	_clear(_launch_row)
 	_clear(_verify_box)
-	_fulfil_checks.clear()
-	_levelup_check = null
-	_goal_check = null
+	_reset_checklist_state()
 	_verify_box.add_child(_verify_head("What you need to do:"))
 
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
@@ -1961,6 +2080,15 @@ func _populate_standing_checklist() -> void:
 		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
 			lu_text += "   → %s" % ch.level_up_reward
 		_verify_box.add_child(_objective_row(lu_text, UITheme.GOLD))
+
+	# The player's standing status buffs (§13) — goals that belong to no enemy and
+	# are available at whatever game gets picked next.
+	for row in GameState.status_objectives():
+		var sd: StatusData = row["status"]
+		var stacks: int = int(row["stacks"])
+		_verify_box.add_child(_objective_row(
+			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.PLAYER, stacks)],
+			UITheme.GOLD))
 
 	# Followers, tinted the way the board tints them: the ones in the front column
 	# are the goals worth clearing first, because they hit next game.
@@ -1973,10 +2101,16 @@ func _populate_standing_checklist() -> void:
 		# "dmg N" in words: the board's ⚔ badge is a fine-detail glyph that reads as
 		# an ✕ at list-row sizes.
 		_verify_box.add_child(_objective_row(
-			"%s — %s   (dmg %d)" % [e.goal, e.display_name, e.damage], tint,
-			_boss_icon(e)))
+			"%s — %s   (dmg %d)" % [GameLoop2.goal_text_for(entry), e.display_name, e.damage],
+			tint, _boss_icon(e)))
+		for bonus in GameLoop2.bonus_objectives_for(entry):
+			var sd: StatusData = bonus["status"]
+			var stacks: int = int(bonus["stacks"])
+			_verify_box.add_child(_objective_row(
+				"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
+				UITheme.GOLD.lerp(UITheme.TEXT, 0.3)))
 
-	if GameLoop2.stack.is_empty():
+	if GameLoop2.stack.is_empty() and GameState.status_objectives().is_empty():
 		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")
 		_verify_box.add_child(none)
 
@@ -2141,6 +2275,21 @@ func _ticked_fulfilments() -> Array:
 			out.append(f["instance"])
 	return out
 
+# The ticked STATUS rows, in the shape beat_game's `claims` wants (§13): the
+# player-buff goals met this game, and the enemy bonus objectives claimed.
+func _ticked_status_claims() -> Dictionary:
+	var goals: Array = []
+	for s in _status_goal_checks:
+		if is_instance_valid(s["check"]) and s["check"].button_pressed:
+			goals.append(s["status"])
+	var bonuses: Array = []
+	for b in _bonus_checks:
+		if is_instance_valid(b["check"]) and b["check"].button_pressed:
+			bonuses.append({"instance": b["instance"], "status": b["status"]})
+	if goals.is_empty() and bonuses.is_empty():
+		return {}
+	return {"status_goals": goals, "bonuses": bonuses}
+
 # Apply one level-up for the 2.0 character (§3.1): its level_up_stats plus the
 # reward, then re-roll for a Crown-style bonus level. Reuses GameState's existing
 # apply_level_up_stats (its stat vocabulary already covers the 2.0 verbs) and the
@@ -2230,10 +2379,22 @@ func _enemy_preview_text(choice: Dictionary) -> String:
 	var hp_txt: String = "%d goal%s to beat" % [hp, "" if hp == 1 else "s"]
 	return "[b]%s[/b]  →  %s%s\n[b]GOAL (%s):[/b] %s   [i](%s / %s / %s / dmg %d)[/i]%s" % [
 		game.display_name, kind, e.display_name,
-		String(e.goal_type).capitalize(), e.goal,
+		String(e.goal_type).capitalize(), GameLoop2.goal_text_for(_preview_entry(choice)),
 		String(e.game_type).capitalize(), RunDifficulty.tier_name(int(e.difficulty)), hp_txt, e.damage,
 		repeat,
 	]
+
+# The board entry to read a `choice`'s goal line off (§13). For the game in play
+# that is the live current enemy, statuses and all. For an OFFERED card there is
+# no body yet — but the player's own clauses tax every enemy's goal, so the
+# preview is built against a bare stand-in rather than falling back to the
+# unmodified stem: what a card will actually cost you is part of the routing
+# decision, not a surprise waiting on the report step.
+func _preview_entry(choice: Dictionary) -> Dictionary:
+	if not GameLoop2.current.is_empty() \
+			and GameLoop2.current.get("enemy") == choice.get("enemy"):
+		return GameLoop2.current
+	return {"enemy": choice.get("enemy"), "statuses": {}}
 
 func _now_playing_text() -> String:
 	if _chosen.is_empty():
@@ -2313,6 +2474,8 @@ func _refresh_scrolls() -> void:
 # report step is mid-resolve, so firing an item there would land between "played
 # the game" and "said what happened".
 const ITEM_TOKEN := 34
+# Height of the Use button / charge battery that sits above an active item's tile.
+const ITEM_USE_H := 14
 
 func _refresh_items() -> void:
 	if _items_box == null:
@@ -2327,16 +2490,39 @@ func _refresh_items() -> void:
 			continue
 		_items_box.add_child(_item_token(item, reporting))
 
+# One item in the pack: the art tile, with its FIRING control above it when the
+# item has one. Reading and spending are deliberately separate gestures — clicking
+# the tile opens the item's card (§ItemInfoCard), and only the control above it
+# ever spends a charge, so inspecting an item can't cost you one.
+#
+# A USABLE item gets a plain Use button. A CHARGED item gets a battery: one
+# rectangle per charge, filling as it recharges, and at full it becomes the same
+# Use button — so the bar answers "how long until I can" and "can I now" in the
+# same strip of pixels.
 func _item_token(item: ItemData, reporting: bool) -> Control:
 	var tint: Color = UITheme.rarity_color(int(item.rarity))
 	var active: bool = item.kind == ItemData.ItemKind.USABLE or item.is_charged()
 	var ready: bool = active and GameState.can_fire_item(item) and not reporting
+
+	# Bottom-aligned so every art tile sits on one baseline whether or not the item
+	# above it grew a Use button — a ragged row of tiles reads as a bug.
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	col.size_flags_vertical = Control.SIZE_SHRINK_END
+	# The whole column answers the hover, not only the art tile — the Use button
+	# and the battery override it with their own, so every pixel of an item says
+	# something rather than the gap above the tile saying nothing.
+	col.tooltip_text = _item_tip(item, active, ready, reporting)
+	if active:
+		col.add_child(_item_fire_control(item, ready, reporting))
 
 	var tile := PanelContainer.new()
 	var border: Color = UITheme.GOLD if ready else tint.lerp(UITheme.BG, 0.45)
 	tile.add_theme_stylebox_override("panel",
 		UITheme.flat(tint.lerp(UITheme.BG, 0.86), 5, 3, 2 if ready else 1, border))
 	tile.tooltip_text = _item_tip(item, active, ready, reporting)
+	tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	col.add_child(tile)
 
 	var stack := Control.new()
 	stack.custom_minimum_size = Vector2(ITEM_TOKEN, ITEM_TOKEN)
@@ -2346,26 +2532,92 @@ func _item_token(item: ItemData, reporting: bool) -> Control:
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(art)
-	# A charged item's bar is the one number that changes on its own, so it stays
-	# printed on the token instead of hiding in the tooltip.
-	if item.is_charged():
-		var charge := Label.new()
-		charge.text = "%d/%d" % [item.current_charge, item.max_charge()]
-		charge.add_theme_font_size_override("font_size", 9)
-		charge.add_theme_color_override("font_color", UITheme.GOLD if ready else UITheme.TEXT_DIM)
-		charge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-		charge.add_theme_constant_override("outline_size", 4)
-		charge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		charge.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE)
-		stack.add_child(charge)
 
+	var target_item: ItemData = item
+	tile.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			open_item_card(target_item))
+	return col
+
+# The control above an active item's tile. Full charge (or a Usable item, which
+# has none) reads "Use" and fires; a partial charge is the battery, showing how
+# many beats are left before it does.
+func _item_fire_control(item: ItemData, ready: bool, reporting: bool) -> Control:
 	if ready:
-		tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var btn := Button.new()
+		btn.text = "Use"
+		btn.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
+		btn.add_theme_font_size_override("font_size", 10)
+		btn.add_theme_stylebox_override("normal",
+			UITheme.flat(Color(0.10, 0.22, 0.16, 0.95), 4, 1, 1, Color(0.4, 0.9, 0.6)))
+		btn.add_theme_stylebox_override("hover",
+			UITheme.flat(Color(0.14, 0.30, 0.21, 1.0), 4, 1, 1, Color(0.55, 1.0, 0.75)))
+		btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
+		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		btn.tooltip_text = "Use %s" % item.display_name
 		var target_item: ItemData = item
-		tile.gui_input.connect(func(ev: InputEvent):
-			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				use_item(target_item))
-	return tile
+		btn.pressed.connect(func(): use_item(target_item))
+		return btn
+	if item.is_charged():
+		return _charge_battery(item, reporting)
+	# A Usable item that can't fire right now (mid-report) — the slot stays, greyed,
+	# so the row doesn't reflow the moment a game is picked up.
+	var idle := Button.new()
+	idle.text = "Use"
+	idle.disabled = true
+	idle.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
+	idle.add_theme_font_size_override("font_size", 10)
+	idle.tooltip_text = "Finish reporting this game first."
+	return idle
+
+# A charged item's meter: one rectangle per charge, filled left to right. Isaac's
+# active-item bar turned on its side — the shape answers "how many beats left"
+# without reading a number, and it sits where the Use button will be so the swap
+# at full charge is the same strip changing state rather than a new control.
+func _charge_battery(item: ItemData, reporting: bool) -> Control:
+	var maxc: int = maxi(1, item.max_charge())
+	var have: int = clampi(item.current_charge, 0, maxc)
+	var wrap := PanelContainer.new()
+	wrap.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(Color(0.10, 0.10, 0.13, 0.9), 2, 2, 1, UITheme.BORDER))
+	wrap.tooltip_text = "%s — %d/%d charged%s" % [item.display_name, have, maxc,
+		"; finish reporting this game to use it" if reporting else ""]
+	var cells := HBoxContainer.new()
+	cells.add_theme_constant_override("separation", 1)
+	cells.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(cells)
+	for i in range(maxc):
+		var seg := PanelContainer.new()
+		seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		seg.custom_minimum_size = Vector2(3, ITEM_USE_H - 6)
+		var filled: bool = i < have
+		seg.add_theme_stylebox_override("panel", UITheme.flat(
+			UITheme.GOLD.lerp(UITheme.BG, 0.15) if filled else Color(0.18, 0.18, 0.22, 0.9),
+			1, 0, 0))
+		seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cells.add_child(seg)
+	return wrap
+
+# Open the reading card for one item. Firing from the card routes through the same
+# use_item the token's button does, so there is one spend path.
+func open_item_card(item: ItemData) -> void:
+	if item == null:
+		return
+	_close_item_card()
+	var active: bool = item.kind == ItemData.ItemKind.USABLE or item.is_charged()
+	var usable: bool = active and GameState.can_fire_item(item) and _phase != Phase.PLAYING
+	var card := ItemInfoCard.new()
+	card.use_requested.connect(use_item)
+	card.closed.connect(func(): _item_card = null)
+	add_child(card)
+	_item_card = card
+	card.setup(item, usable)
+
+func _close_item_card() -> void:
+	if _item_card != null and is_instance_valid(_item_card):
+		_item_card.close()
+	_item_card = null
 
 # Everything the old named row said, in the tooltip the token carries.
 func _item_tip(item: ItemData, active: bool, ready: bool, reporting: bool) -> String:
@@ -2628,7 +2880,16 @@ func _build_ui() -> void:
 	_hud = _panel_label()
 	var hud_panel := PanelContainer.new()
 	hud_panel.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 10, 1))
-	hud_panel.add_child(_hud)
+	var hud_col := VBoxContainer.new()
+	hud_col.add_theme_constant_override("separation", 6)
+	hud_col.add_child(_hud)
+	# The statuses riding the PLAYER (§13), as an art strip under the numbers. They
+	# are neither a resource nor a stat — they change what the goals SAY — so they
+	# get their own line rather than another bolded number on the HUD's run.
+	_status_strip = HBoxContainer.new()
+	_status_strip.add_theme_constant_override("separation", 8)
+	hud_col.add_child(_status_strip)
+	hud_panel.add_child(hud_col)
 	root.add_child(hud_panel)
 
 	_banner = Label.new()

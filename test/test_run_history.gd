@@ -67,7 +67,12 @@ func test_newest_run_comes_first() -> void:
 	GameStats.record_run(true)
 	assert_eq(GameStats.runs.size(), 2, "both runs kept")
 	assert_true(bool(GameStats.runs[0]["won"]), "the most recent run is on top")
-	assert_ne(GameStats.runs[0]["path"], first, "and it's the other one")
+	# Ordering is asserted on the OUTCOME, not on the route: `_walk` follows an
+	# unseeded start roll and stops at the first dead end, so two runs can honestly
+	# walk the same path — comparing paths made this test fail perhaps one run in
+	# ten for a reason that had nothing to do with ordering.
+	assert_false(bool(GameStats.runs[1]["won"]), "and the older, lost run is under it")
+	assert_eq(GameStats.runs[1]["path"], first, "which is the one recorded first")
 
 func test_history_is_capped() -> void:
 	for i in range(GameStats.MAX_RUNS + 6):

@@ -154,7 +154,7 @@ func _pick_stun(req: Dictionary) -> void:
 		var inst: int = int(entry["instance"])
 		var btn := Button.new()
 		btn.toggle_mode = true
-		btn.text = "%s — %s" % [e.display_name, e.goal]
+		btn.text = "%s — %s" % [e.display_name, GameLoop2.goal_text_for(entry)]
 		btn.toggled.connect(func(on): _toggle_select(selected, inst, on, max_pick, btn))
 		_body.add_child(btn)
 	var confirm := Button.new()

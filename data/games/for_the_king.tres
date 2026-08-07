@@ -8,9 +8,9 @@ id = &"for_the_king"
 display_name = "For the King"
 year = 2018
 type = 1
-games_influenced = Array[StringName]([&"for_the_king_2", &"legend_of_keepers_career_of_a_dungeon_manager"])
-influence_sources = PackedStringArray("", "https://legendofkeepers.fandom.com/wiki/Legend_of_Keepers")
-influence_relations = PackedStringArray("dev/series", "")
+games_influenced = Array[StringName]([&"for_the_king_2", &"legend_of_keepers_career_of_a_dungeon_manager", &"sandwalkers"])
+influence_sources = PackedStringArray("", "https://legendofkeepers.fandom.com/wiki/Legend_of_Keepers", "https://x.com/studio_goblinz/status/1703121970680807815?s=20")
+influence_relations = PackedStringArray("dev/series", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

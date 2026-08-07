@@ -8,9 +8,9 @@ id = &"downwell"
 display_name = "Downwell"
 year = 2015
 type = 0
-games_influenced = Array[StringName]([&"gonner", &"lone_ruin", &"loot_rascals", &"riptale", &"scourgebringer", &"shovel_knight_dig", &"tumbleseed"])
-influence_sources = PackedStringArray("https://www.reddit.com/r/nintendo/comments/6k942k/yo_we_made_gonner_and_it_just_came_out_on_the/", "https://gamerant.com/lone-ruin-interview-roguelike-indie-game-design-inspirations-visuals-coding/#:~:text=As%20inspiration%20from%20different%20games,dangerous%20to%20go%20alone%22%20line.", "https://monstervine.com/ic/IC-LR-Interview.mp3", "https://steamcommunity.com/app/616000/discussions/0/1319962663550892419/#c1319962683447326488", "check folder", "https://www.fanbyte.com/legacy/shovel-knight-dig-interview", "https://www.reddit.com/r/nintendo/comments/691a58/we_are_team_tumbleseed_and_we_launched_tumbleseed/")
-influence_relations = PackedStringArray("", "", "", "", "", "", "")
+games_influenced = Array[StringName]([&"gonner", &"lone_ruin", &"loot_rascals", &"riptale", &"scourgebringer", &"shovel_knight_dig", &"tumbleseed", &"tower_fortress"])
+influence_sources = PackedStringArray("https://www.reddit.com/r/nintendo/comments/6k942k/yo_we_made_gonner_and_it_just_came_out_on_the/", "https://gamerant.com/lone-ruin-interview-roguelike-indie-game-design-inspirations-visuals-coding/#:~:text=As%20inspiration%20from%20different%20games,dangerous%20to%20go%20alone%22%20line.", "https://monstervine.com/ic/IC-LR-Interview.mp3", "https://steamcommunity.com/app/616000/discussions/0/1319962663550892419/#c1319962683447326488", "check folder", "https://www.fanbyte.com/legacy/shovel-knight-dig-interview", "https://www.reddit.com/r/nintendo/comments/691a58/we_are_team_tumbleseed_and_we_launched_tumbleseed/", "https://x.com/Nitrome/status/931133911408828421?s=20")
+influence_relations = PackedStringArray("", "", "", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

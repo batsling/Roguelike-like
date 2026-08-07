@@ -8,9 +8,9 @@ id = &"dome_keeper"
 display_name = "Dome Keeper"
 year = 2022
 type = 1
-games_influenced = Array[StringName]([&"feed_the_deep", &"monsters_are_coming", &"wall_world"])
-influence_sources = PackedStringArray("https://store.steampowered.com/app/2332260/Feed_the_Deep/", "https://store.steampowered.com/news/app/2934220/view/698764742929416235?l=english", "https://store.steampowered.com/news/app/2187290/view/3683427098080954737")
-influence_relations = PackedStringArray("", "", "")
+games_influenced = Array[StringName]([&"feed_the_deep", &"monsters_are_coming", &"wall_world", &"cleanfall"])
+influence_sources = PackedStringArray("https://store.steampowered.com/app/2332260/Feed_the_Deep/", "https://store.steampowered.com/news/app/2934220/view/698764742929416235?l=english", "https://store.steampowered.com/news/app/2187290/view/3683427098080954737", "https://x.com/cleanfallgame/status/1958500517597876299?s=20")
+influence_relations = PackedStringArray("", "", "", "")
 tags = PackedStringArray("space", "mining")
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

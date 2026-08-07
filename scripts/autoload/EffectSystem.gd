@@ -77,6 +77,7 @@ func _register_defaults() -> void:
 	register("teleport_type", _h_teleport_type)
 	register("obtain_item", _h_obtain_item)
 	register("random_item_choice", _h_random_item_choice)
+	register("apply_status", _h_apply_status)
 
 # Scene-less heal straight to the run HP pool. Caps at max_hp via change_hp.
 func _h_gain_hp(effect: Dictionary, _ctx: Dictionary) -> void:
@@ -90,7 +91,7 @@ func _h_gain_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	if v != 0:
 		GameState.set_max_hp(GameState.max_hp + v, false)
 
-# Permanent run-scope stat/verb grant (Vajra +1 Bash, Anchor +1 Shield, …).
+# Permanent run-scope stat/verb grant (Anchor +1 Shield, a level-up's +1 Dash, …).
 # Routes ability verbs (bash/transmute/scramble/block/…) to their backing field.
 func _h_gain_stat(effect: Dictionary, _ctx: Dictionary) -> void:
 	var stat: String = String(effect.get("stat", ""))
@@ -110,6 +111,26 @@ func _h_gain_chest(effect: Dictionary, _ctx: Dictionary) -> void:
 	if not effect.has("value") and not effect.has("value_from"):
 		n = 1
 	GameState.grant_chest(n)
+
+# Applies a STATUS (§13) — the hook a location, item, or scroll uses to reach into
+# the run's goals without knowing anything about them. `target` picks the SIDE the
+# status acts through, and what that side does is the sheet's business, not this
+# handler's:
+#   player                  -> the status's On Player side (Vajra's +1 Strength)
+#   current | all | random  -> its On Enemy side, via GameLoop2's targeting
+# Defaults to the player, since that is the side a pickup usually lands on.
+func _h_apply_status(effect: Dictionary, _ctx: Dictionary) -> void:
+	var status_id := StringName(String(effect.get("status", "")))
+	if status_id == &"":
+		return
+	var stacks: int = int(effect.get("value", 1))
+	if stacks == 0:
+		return
+	var target: String = String(effect.get("target", "player")).to_lower()
+	if target == "player" or target == "self":
+		GameState.apply_status(status_id, stacks)
+	else:
+		GameLoop2.apply_enemy_status(status_id, stacks, target)
 
 func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	var v: int = int(effect.get("value", 0))

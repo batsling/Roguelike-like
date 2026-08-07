@@ -13,6 +13,9 @@ signal inventory_changed
 # the old + new card ids so id-keyed buff systems can follow the identity change.
 signal card_evolved(from_id: StringName, to_id: StringName)
 signal current_game_changed(game_id: StringName)
+# A status on the PLAYER was applied, ticked, or removed (§13). The checklist and
+# the HUD strip rebuild off this; enemy-side statuses ride GameLoop2.loop_changed.
+signal player_statuses_changed
 
 # === Identity / progression ===
 var character_id: StringName = &""
@@ -153,7 +156,7 @@ var stat_multiplier: Dictionary = {}
 var _applied_item_max_hp: int = 0
 var _applied_item_max_energy: int = 0
 # Per-verb delta this inventory currently applies to the games-first board verbs
-# (Vajra's passive +1 Bash). The 2.0 verbs (bash/transmute/scramble/bombs/keys/
+# (a passive +1 Bash). The 2.0 verbs (bash/transmute/scramble/bombs/keys/
 # dash/shields) are plain fields the loop spends directly — not read through
 # Stats.get_value — so a passive stat_bonus on one is folded straight into the
 # field and reversed when the item leaves, tracked here like _applied_item_max_hp.
@@ -374,6 +377,18 @@ var keys: int = 0
 # normal stat plumbing ("game_choices"), so widening the offering is a granted
 # bonus rather than a rebuilt UI.
 var game_choice_bonus: int = 0
+
+# === Statuses 2.0 (docs/games-first-redesign.md §13) ===
+# Statuses ON THE PLAYER, as status id -> stack count (X). A BUFF here is an extra
+# standing goal on the checklist that pays its reward every game you satisfy it; a
+# DEBUFF here bolts its clause onto EVERY enemy's goal and sheds a stack each game
+# you complete one. Enemy-side statuses are not here — they belong to a body on the
+# board, so they ride on the GameLoop2 stack entry (and its save blob) instead.
+#
+# Run-scope: cleared by reset_run, saved by SaveSystem. Never write this directly —
+# apply_status / remove_status keep the zero-stack entries pruned so "is it on me?"
+# is just a `has`.
+var player_statuses: Dictionary = {}
 
 # === Curses / status ===
 var active_curses: Array = []            # Array[Dictionary] for now
@@ -776,6 +791,7 @@ func reset_run() -> void:
 	stat_multiplier_active = false
 	stat_multiplier.clear()
 	temp_status_stacks.clear()
+	player_statuses.clear()
 	active_curses.clear()
 	pending_chests = 0
 	pending_chest_choices.clear()
@@ -1246,7 +1262,7 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 
 # A run verb's value WITHOUT the contribution owned items currently make to it.
 # This is what a save stores, exactly like max_hp: the load restores the base and
-# then _recompute_item_bonuses re-applies the item bonuses, so a Vajra in the pack
+# then _recompute_item_bonuses re-applies the item bonuses, so a passive in the pack
 # can't add its +1 Bash again on every save/load round-trip. Aliased stat names
 # ("shields" / "block" both being the shields field) are summed once per FIELD, so
 # an item declaring either is accounted for exactly once.
@@ -1290,6 +1306,15 @@ func stat_gain_bonus_for(stat: String) -> int:
 # Technique Instructions: +1 Dash on a perfected game). Resolves ability stats
 # (dash/reroll/fov/discovery) to their backing field, applies Snowball-style
 # amplifiers to positive gains, and broadcasts the change.
+# The LIVE value of a board verb by its stat name — the read to grant_run_stat's
+# write, resolving "dash" to dash_charges through the same field map so the two
+# can't disagree about where a verb lives. Unlike base_verb_value this is the
+# number the run actually has, item bonuses folded in.
+func verb_value(stat: String) -> int:
+	var field: String = _LEVEL_UP_ABILITY_FIELDS.get(stat, stat)
+	var v: Variant = get(field)
+	return int(v) if v != null else 0
+
 func grant_run_stat(stat: String, value: int) -> void:
 	if value == 0:
 		return
@@ -1299,6 +1324,95 @@ func grant_run_stat(stat: String, value: int) -> void:
 	var field: String = _LEVEL_UP_ABILITY_FIELDS.get(stat, stat)
 	set(field, int(get(field)) + amt)
 	emit_signal("stats_changed")
+
+# ---------------------------------------------------------------------------
+# Statuses 2.0 on the PLAYER (§13)
+#
+# Stacks are INTENSITY, not duration: applying Marked twice is one Marked at 2,
+# which is why every call here adds into the existing count instead of appending.
+# An id with no StatusData behind it is refused rather than stored — a status the
+# catalog can't describe would show up on the checklist as a blank goal.
+# ---------------------------------------------------------------------------
+
+# Add `stacks` of `status_id` to the player. Returns the new stack count (0 when
+# the id is unknown). A negative `stacks` ticks it down, same as remove_status.
+func apply_status(status_id: StringName, stacks: int = 1) -> int:
+	if stacks == 0:
+		return int(player_statuses.get(status_id, 0))
+	if Data.get_status(status_id) == null:
+		push_warning("GameState.apply_status: no status '%s' in the catalog" % status_id)
+		return 0
+	var total: int = int(player_statuses.get(status_id, 0)) + stacks
+	if total <= 0:
+		player_statuses.erase(status_id)
+		total = 0
+	else:
+		player_statuses[status_id] = total
+	player_statuses_changed.emit()
+	return total
+
+# Tick `stacks` off a player status (default 1), removing it at zero. Returns what
+# is left. This is the decay path for a decaying side completed this game.
+func remove_status(status_id: StringName, stacks: int = 1) -> int:
+	if not player_statuses.has(status_id):
+		return 0
+	return apply_status(status_id, -absi(stacks))
+
+func status_stacks(status_id: StringName) -> int:
+	return int(player_statuses.get(status_id, 0))
+
+func has_status(status_id: StringName) -> bool:
+	return status_stacks(status_id) > 0
+
+# Every status on the player as [{status: StatusData, stacks: int}], in catalog
+# order so the HUD strip and the checklist don't reshuffle between frames the way
+# a raw Dictionary iteration would. Statuses whose resource has gone missing are
+# skipped rather than yielding a null row.
+func status_list() -> Array:
+	var out: Array = []
+	for s in Data.all_statuses():
+		var sd: StatusData = s
+		if player_statuses.has(sd.id):
+			out.append({"status": sd, "stacks": int(player_statuses[sd.id])})
+	return out
+
+# The statuses whose PLAYER side is claimable — a `goal` or a `bonus` (§13). These
+# are the extra checklist rows, each paying its own reward when ticked. Selected on
+# the side's MODE, not on Buff/Debuff: what a side does is what the sheet says it
+# does, and nothing stops a debuff from offering the player a way to earn.
+func status_objectives() -> Array:
+	var out: Array = []
+	for row in status_list():
+		if (row["status"] as StatusData).is_claimable(StatusData.PLAYER):
+			out.append(row)
+	return out
+
+# The statuses whose PLAYER side is a `clause` — the requirements that get ANDed
+# onto every enemy's goal.
+func status_clauses() -> Array:
+	var out: Array = []
+	for row in status_list():
+		if (row["status"] as StatusData).is_clause(StatusData.PLAYER):
+			out.append(row)
+	return out
+
+# Save blob for the player's statuses: plain String -> int, JSON-safe.
+func serialize_statuses() -> Dictionary:
+	var out: Dictionary = {}
+	for id in player_statuses.keys():
+		out[String(id)] = int(player_statuses[id])
+	return out
+
+# Restore from that blob. Ids the catalog no longer knows are DROPPED rather than
+# restored as blank goals — the same call a stale enemy id gets in GameLoop2.
+func restore_statuses(data: Dictionary) -> void:
+	player_statuses.clear()
+	for key in data.keys():
+		var id := StringName(key)
+		var stacks: int = int(data[key])
+		if stacks > 0 and Data.get_status(id) != null:
+			player_statuses[id] = stacks
+	player_statuses_changed.emit()
 
 # Sacred Orb: true while any owned item rerolls low-rarity item drops.
 func has_low_rarity_reroll() -> bool:
@@ -1558,7 +1672,7 @@ func add_item(template: ItemData) -> ItemData:
 				Color(0.7, 0.55, 0.4))
 	# Snapshot the run resources BEFORE anything the pickup does lands, so the
 	# pickup can REPORT what it changed. An item's payload is its passive
-	# stat_bonuses (Vajra +1 Bash, folded in by the recompute below) plus its
+	# stat_bonuses (a passive +1 Bash, folded in by the recompute below) plus its
 	# item_acquired effects (Lunch: +2 Max Health, +2 Health) — both used to land
 	# silently, so the numbers moved with nothing saying so, which reads as "the
 	# item did nothing".
@@ -1734,7 +1848,7 @@ func upgrade_random_passive(delta: int) -> Dictionary:
 	var picked: ItemData = eligible[randi() % eligible.size()]
 	picked.upgrade_level += delta
 	# Recompute already emits stats_changed; we add inventory_changed so
-	# HUDs that key off inventory state (Vajra+1 tooltips, etc.) refresh.
+	# HUDs that key off inventory state (passive-bonus tooltips, etc.) refresh.
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 	return {"item": picked, "delta": delta, "new_level": picked.upgrade_level}
@@ -1855,7 +1969,7 @@ func _recompute_item_bonuses() -> void:
 	_applied_scaling_max_hp = _apply_capped_max_hp_delta(scaling_max_hp_total, _applied_scaling_max_hp)
 
 	item_stat_bonus = totals
-	# Passive board-verb bonuses (Vajra +1 Bash): fold the delta into the plain
+	# Passive board-verb bonuses (a passive +1 Bash): fold the delta into the plain
 	# GameState verb field and drop the key from item_stat_bonus so it never also
 	# double-counts through Stats.get_value.
 	for verb in _ITEM_VERB_STATS:

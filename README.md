@@ -43,6 +43,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     Overworld2      — run flow: offering, report, pack
 │   │                      #     BattlefieldView — the grid the enemies close in on
 │   │                      #     EnemyInfoCard   — click-to-inspect enemy card
+│   │                      #     ItemInfoCard    — click-to-inspect item card
 │   │                      #     RunOverScreen   — the end-of-run verdict screen
 │   │                      #     RunMapModal / ScrollReadModal
 │   ├── events/           #   the D20 event system (EventModal, D20DieView)
@@ -62,6 +63,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── bosses2.0/        #   GoalEnemyData — the difficulty-gate bosses
 │   ├── characters2.0/    #   CharacterData — the playable roster
 │   ├── scrolls2.0/       #   ScrollData — identify-by-reading scrolls
+│   ├── statuses2.0/      #   StatusData — clauses bolted onto goals (§13)
 │   ├── items/            #   ItemData (pre-2.0 set, still loaded)
 │   ├── characters/       #   CharacterData (pre-2.0)
 │   ├── events/           #   EventData — the D20 events
@@ -88,6 +90,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_boss_tres.py       #   data/bosses2.0
 │   ├── generate_character2_tres.py #   data/characters2.0
 │   ├── generate_scroll2_tres.py    #   data/scrolls2.0
+│   ├── generate_status_tres.py     #   data/statuses2.0
+│   ├── _xlsx_surgery.py            #   edit one sheet without losing the charts
 │   ├── generate_item_tres.py, generate_character_tres.py,
 │   ├── generate_curse_tres.py, generate_event_tres.py,
 │   ├── generate_encounter_tres.py  #   the pre-2.0 sets
@@ -141,6 +145,7 @@ To add or replace art:
    | `images2.0/enemies/`, `images2.0/bosses/` | Goal-enemy and boss art |
    | `images2.0/characters/Full/`, `images2.0/characters/Icon/` | 2.0 character portrait + in-world token |
    | `images2.0/scrolls/` | Scroll art (identified art + `Unidentified.png`) |
+   | `images2.0/statuses/` | Status art (`data/statuses2.0`) |
    | `images/items/` | Legacy (1.0) item art for `data/items` |
    | `images/events/`, `images/encounters/` | Event / encounter art |
    | `images/characters/Full/`, `images/characters/Icon/` | Legacy character portraits |
@@ -182,7 +187,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Settings` | Run-independent preferences (e.g. game-filter) persisted to `user://settings.cfg`. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified). |
-| `DevTools` | Developer overlay (press `` ` ``) to grant 2.0 items, scrolls, or curses to the run. Gated on `Settings.dev_mode`. |
+| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Four tabs: **Grant** (items / scrolls / statuses, with a player-or-enemy target picker), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss). Everything routes through the same public API the game uses. |
 
 ### Screens & flow
 
@@ -223,7 +228,7 @@ All game content is authored as typed Godot **Resources** (`.tres`) under `data/
 with their schemas defined in `scripts/resources/`:
 
 `GameData`, `GoalEnemyData`, `ItemData`, `CharacterData`, `ScrollData`,
-`EventData`, `EncounterData`, `CurseData`, `StatDefinition`.
+`StatusData`, `EventData`, `EncounterData`, `CurseData`, `StatDefinition`.
 
 `Data.gd` loads them all on startup and serves them by id, so gameplay code never
 hardcodes content — it asks `Data` for it. Random draws all share one rarity
@@ -246,6 +251,7 @@ editing the sheet, then review the diff):
 | `generate_boss_tres.py` | `data/bosses2.0/*.tres` from the boss sheet |
 | `generate_character2_tres.py` | `data/characters2.0/*.tres` from the characters sheet |
 | `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet |
+| `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses2.0` sheet |
 | `generate_item_tres.py` | `data/items/*.tres` from the items sheet (pre-2.0 set) |
 | `generate_character_tres.py` | `data/characters/*.tres` (pre-2.0) |
 | `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesnew` sheet |
@@ -254,6 +260,7 @@ editing the sheet, then review the diff):
 | `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — then re-bakes the Atlas |
 | `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
+| `_xlsx_surgery.py` | shared helper: edit ONE sheet of `Roguelikes.xlsx` in place. An openpyxl round-trip drops the workbook's seven charts, so the sheet-editing one-shots (`_statuses_sheet_setup.py`, `_items2_statuses_setup.py`) rewrite just that sheet's XML parts and copy every other zip entry through untouched. |
 
 These require Python 3 with `openpyxl` (`pip install openpyxl`) and are run from
 the repository root, e.g.:

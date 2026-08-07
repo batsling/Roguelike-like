@@ -355,6 +355,19 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
         return {"type": "random_item_choice", "count": nums[0] if nums else 3,
                 "destroy_self": "destroy_self" in low}
 
+    # apply_status <status_id> [N] [target=player|current|all|random]
+    # Statuses 2.0 (docs/games-first-redesign.md §13) — how an item reaches the
+    # run's goals. Target defaults to the player, the side a pickup usually lands
+    # on; `target=all` is how a location blankets the board.
+    if verb == "apply_status":
+        rest, kv = _kv(toks[1:])
+        words = [t for t in rest if not re.match(r"^-?\d+$", t)]
+        nums = [int(t) for t in rest if re.match(r"^-?\d+$", t)]
+        return {"type": "apply_status",
+                "status": words[0].lower() if words else "",
+                "value": nums[0] if nums else 1,
+                "target": kv.get("target", "player").lower()}
+
     if verb == "upgrade_random_cards":
         _, kv = _kv(toks[1:])
         return {"type": "upgrade_random_cards",

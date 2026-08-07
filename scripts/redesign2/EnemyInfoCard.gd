@@ -135,6 +135,20 @@ func setup(entry: Dictionary, col: int, is_current: bool) -> void:
 		chips.add_child(_chip(String(e.tag), UITheme.TEXT_DIM))
 	inner.add_child(chips)
 
+	# Statuses riding this body (§13) — art, name and stack count, on their own row
+	# rather than crammed into the chip strip, because the card is where a player
+	# comes to actually READ what is on an enemy. Tinted by what their ENEMY side
+	# does rather than by Buff/Debuff: a `clause` tightened this enemy's goal and is
+	# bad news, a `bonus` is free reward. That is the opposite reading from the
+	# player's own strip, which is the point.
+	var statuses: Array = GameLoop2.enemy_statuses(entry)
+	if not statuses.is_empty():
+		var strip := HBoxContainer.new()
+		strip.add_theme_constant_override("separation", 8)
+		for row in statuses:
+			strip.add_child(_status_chip(row["status"], int(row["stacks"])))
+		inner.add_child(strip)
+
 	# The goal — the thing you actually have to do — gets its own panel.
 	if e.goal != "":
 		var goal_wrap := PanelContainer.new()
@@ -147,11 +161,26 @@ func setup(entry: Dictionary, col: int, is_current: bool) -> void:
 		goal_hdr.add_theme_color_override("font_color", UITheme.GOLD)
 		goal_box.add_child(goal_hdr)
 		var goal_txt := Label.new()
-		goal_txt.text = e.goal
+		# The LIVE goal line, not the authored stem: a buff on this enemy or a
+		# clause on the player has been ANDed onto what actually has to be done
+		# (§13), and this card is where a player comes to read exactly that.
+		goal_txt.text = GameLoop2.goal_text_for(entry)
 		goal_txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		goal_txt.custom_minimum_size = Vector2(460, 0)
 		goal_txt.add_theme_font_size_override("font_size", 14)
 		goal_box.add_child(goal_txt)
+		# Optional bonus objectives hanging off this enemy (§13) — inside the goal
+		# panel, since they are read at the same moment, but visibly a separate
+		# line because skipping one costs nothing (§13).
+		for row in GameLoop2.bonus_objectives_for(entry):
+			var sd: StatusData = row["status"]
+			var bonus := Label.new()
+			bonus.text = "+  %s" % sd.objective_text(StatusData.ENEMY, int(row["stacks"]))
+			bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			bonus.custom_minimum_size = Vector2(460, 0)
+			bonus.add_theme_font_size_override("font_size", 12)
+			bonus.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.3))
+			goal_box.add_child(bonus)
 		goal_wrap.add_child(goal_box)
 		inner.add_child(goal_wrap)
 
@@ -227,6 +256,44 @@ func _chip(text: String, color: Color) -> Control:
 	l.add_theme_font_size_override("font_size", 11)
 	l.add_theme_color_override("font_color", color.lerp(Color.WHITE, 0.35))
 	wrap.add_child(l)
+	return wrap
+
+# One status riding this enemy (§13): its art, its name and stack count, and the
+# live line it adds — spelled out here rather than left to a hover, because the
+# card is the place a player has already stopped to read.
+const STATUS_ART := 28
+
+func _status_chip(status: StatusData, stacks: int) -> Control:
+	var good: bool = status.is_bonus(StatusData.ENEMY)
+	var tint: Color = UITheme.GOLD if good else UITheme.DANGER
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(tint.lerp(UITheme.BG, 0.80), 6, 5, 1, tint.lerp(UITheme.BG, 0.35)))
+	wrap.tooltip_text = status.tooltip_for(StatusData.ENEMY, stacks)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 7)
+	wrap.add_child(row)
+	if status.image != null:
+		var art := UITheme.crisp_tex(status.image, STATUS_ART)
+		art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(art)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 1)
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(col)
+	var name_lbl := Label.new()
+	name_lbl.text = "%s %d" % [status.display_name, stacks]
+	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.35))
+	col.add_child(name_lbl)
+	var what := Label.new()
+	what.text = (status.objective_text(StatusData.ENEMY, stacks) if good
+		else "goal also needs: %s" % status.clause_text(StatusData.ENEMY, stacks))
+	what.add_theme_font_size_override("font_size", 11)
+	what.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	what.custom_minimum_size = Vector2(330, 0)
+	col.add_child(what)
 	return wrap
 
 # Plain-language description of where an enemy stands and what that means. `col`
