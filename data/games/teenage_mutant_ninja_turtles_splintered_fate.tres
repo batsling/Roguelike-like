@@ -1,7 +1,6 @@
-[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_teenage_mutant_ninja_turtles_splintered_fate"]
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_teenage_mutant_ninja_turtles_splintered_fate"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://images2.0/games/teenage-mutant-ninja-turtles-splintered-fate.jpg" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")
@@ -16,7 +15,7 @@ tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
-cover_image = ExtResource("2_cover")
+cover_path = "res://images2.0/games/teenage-mutant-ninja-turtles-splintered-fate.jpg"
 owned = true
 file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Teenage Mutant Ninja Turtles Splintered Fate.url"
 steam_page = "https://store.steampowered.com/app/2996040/Teenage_Mutant_Ninja_Turtles_Splintered_Fate/"

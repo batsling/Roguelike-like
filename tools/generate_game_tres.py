@@ -89,10 +89,9 @@ def emit_tres(game: dict, subset: set, idx: int) -> str:
     type_int = TYPE_MAP.get(game.get("type", ""), 2)
 
     return (
-        f'[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_{gid}"]\n'
+        f'[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_{gid}"]\n'
         f"\n"
         f'[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]\n'
-        f'[ext_resource type="Texture2D" path="{COVER_DIR_REL}{cover_filename}" id="2_cover"]\n'
         f"\n"
         f"[resource]\n"
         f'script = ExtResource("1_game")\n'
@@ -105,7 +104,9 @@ def emit_tres(game: dict, subset: set, idx: int) -> str:
         f"enemy_pool = Array[StringName]([])\n"
         f"item_pool = Array[StringName]([])\n"
         f"special_effects = PackedStringArray()\n"
-        f'cover_image = ExtResource("2_cover")\n'
+        # A path, not an ext_resource — GameData.cover_image loads it lazily so
+        # Data.gd's startup pass doesn't decode every cover in images2.0/games/.
+        f'cover_path = "{COVER_DIR_REL}{cover_filename}"\n'
     )
 
 

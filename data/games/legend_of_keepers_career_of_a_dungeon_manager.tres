@@ -1,7 +1,6 @@
-[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_legend_of_keepers_career_of_a_dungeon_manager"]
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_legend_of_keepers_career_of_a_dungeon_manager"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://images2.0/games/legend-of-keepers-career-of-a-dungeon-manager.jpg" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")
@@ -16,7 +15,7 @@ tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
-cover_image = ExtResource("2_cover")
+cover_path = "res://images2.0/games/legend-of-keepers-career-of-a-dungeon-manager.jpg"
 owned = true
 file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Legend of Keepers.url"
 steam_page = "https://store.steampowered.com/app/978520/Legend_of_Keepers_Career_of_a_Dungeon_Manager/"

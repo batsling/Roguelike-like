@@ -37,6 +37,19 @@ enum Phase { SELECT, PLAYING, OVER, START_SELECT }
 # count is always read through offer_count() rather than the constant.
 const BASE_OFFER_COUNT := 3
 
+# The hub rule. A well-connected game has far more neighbours than the offering
+# can show, so the seeded subset can come up all dead ends — three games that each
+# lead nowhere — and the run stalls at exactly the node that should have opened
+# it up. When the player stands on a game with MORE THAN HUB_CONNECTIONS
+# connections, at least one card is guaranteed to be a game with MORE THAN
+# ONWARD_CONNECTIONS connections of its own, so there is always a way onward.
+#
+# Only hubs get the guarantee: at a small node, a thin offering is the honest
+# shape of where you are, and forcing an onward card there would quietly override
+# the route the graph actually has.
+const HUB_CONNECTIONS := 20
+const ONWARD_CONNECTIONS := 2
+
 # Beating a game you have ALREADY beaten this run pays a Dash charge (§4's "total
 # select" verb). Revisiting is a real routing option — a node's offering is drawn
 # from its neighbours, so a cleared game comes back around — and this is what
@@ -51,6 +64,11 @@ const DASH_BLUE := Color(0.5, 0.85, 1.0)
 # Shields — the tries at the game in play (§3). One steel-blue used by the HUD
 # count, the attempt strip, and the pips on the board.
 const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
+
+# Lost runs of the game in play before the Escape button appears (see
+# can_escape). Five is past the shields any game grants, so reaching it means the
+# player has been paying Health to keep trying.
+const ESCAPE_AFTER_ATTEMPTS := 5
 
 # The current offering. Each entry:
 #   {"game": GameData, "enemy": GoalEnemyData, "boss": bool, "amulet": bool,
@@ -147,6 +165,7 @@ var _attempt_pips: Label
 var _attempt_hint: Label
 var _attempt_btn: Button
 var _attempt_undo: Button
+var _escape_btn: Button           # hidden until ESCAPE_AFTER_ATTEMPTS lost runs
 # The parts of the checklist panel that need a game in hand: the now-playing row,
 # the attempt strip and the Completed Game button. Hidden while you're choosing,
 # where the panel is the standing-goals list instead.
@@ -568,6 +587,44 @@ func log_attempt() -> String:
 	_refresh()
 	return cost
 
+# --- escaping a game you can't beat ---------------------------------------
+#
+# Some games won't go down, and a run shouldn't end because one of them sat in
+# the way. After ESCAPE_AFTER_ATTEMPTS lost runs the player may walk away from the
+# game in play at any point, without beating it.
+#
+# Escaping resolves the BOARD exactly as reporting a missed goal does: the
+# goal-enemy walks onto the board and follows you. That IS the price, and by the
+# time it's offered it has already been paid twice over — five lost runs is the
+# shields this game granted plus Health on top, with the front line closing in the
+# whole time. The button exists to make the way out VISIBLE to a stuck player, not
+# to discount it.
+#
+# Where it PARTS from a missed report is credit: an escape is not a beat. The run
+# doesn't bank the game (so no repeat-beat Dash, and the Atlas doesn't mark it),
+# the "after beating a game" items don't fire, and neither the run's nor the
+# lifetime beaten tally moves. A missed report still credits the game — that is
+# long-standing behaviour and is left alone; walking away is the case that isn't
+# allowed to.
+func can_escape() -> bool:
+	return _phase == Phase.PLAYING and not _chosen.is_empty() \
+		and not GameLoop2.run_over and GameLoop2.attempts() >= ESCAPE_AFTER_ATTEMPTS
+
+# Leave the game in play. Whatever else the checklist has ticked still stands —
+# a follower's goal you did clear, a level-up you did earn — because those are
+# separate honour-system claims; escaping only answers the main goal, and it
+# answers no.
+func escape_game() -> void:
+	if not can_escape():
+		return
+	var game: GameData = _chosen.get("game")
+	var game_name: String = game.display_name if game != null else "this game"
+	var msg: String = "Escaped %s after %d lost runs — its enemy comes with you." % [
+		game_name, GameLoop2.attempts()]
+	GameLog.add(msg, UITheme.ACCENT)
+	Notifications.notify(msg, UITheme.ACCENT)
+	report(false, null, true)
+
 # Take back the last tick — the tracker is hand-driven, so a mis-click has to be
 # reversible. Refunds exactly what that try spent.
 func undo_attempt() -> String:
@@ -823,7 +880,12 @@ func scroll_teleport(_dir: String, spread: int) -> void:
 # each is defeated and drops. When null the ticked fulfilment checkboxes are read
 # from the play panel. Resolves the loop, advances the difficulty clock, then
 # rebuilds the next offering.
-func report(goal_met: bool, fulfilled: Variant = null) -> void:
+#
+# `escaped` marks the report as WALKING AWAY (escape_game) rather than finishing:
+# the board still resolves and the run still moves on, but the game is not
+# credited as beaten — see the `if not escaped` block below for exactly what that
+# withholds.
+func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) -> void:
 	if _phase != Phase.PLAYING or _chosen.is_empty():
 		return
 	# The board is about to play the whole resolve back — the front line striking,
@@ -870,7 +932,13 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 					if follower != null:
 						_record_defeat(played_game, follower)
 					break
-	if played_game != null:
+	# Everything a game gets CREDITED for. An escape is the one report that earns
+	# none of it: the player walked away, so the "after beating a game" items don't
+	# fire, the run doesn't bank the clear (and so pays no repeat-beat Dash, and the
+	# Atlas doesn't mark the node), and neither tally the Collection and the tier
+	# list read moves. The run itself still advances — see games_played below —
+	# because the time was spent and the board closed in regardless.
+	if played_game != null and not escaped:
 		TriggerBus.game_beaten.emit({"game_id": played_game.id})
 		# Bank the clear (and pay the repeat-beat Dash). Recorded after the item
 		# trigger so a game_beaten item can't see a half-updated tally.
@@ -1232,7 +1300,30 @@ func _offered_ids() -> Array:
 	if amulet in nbrs and nbrs.size() > cap:
 		nbrs.erase(amulet)
 		nbrs.push_front(amulet)
-	return nbrs.slice(0, cap)
+	return _guarantee_onward(nbrs.slice(0, cap), nbrs)
+
+# The hub rule (HUB_CONNECTIONS / ONWARD_CONNECTIONS): standing on a hub, at least
+# one offered card must lead somewhere. If the seeded slice came up all dead ends,
+# swap the first onward game from the rest of the pool into the LAST slot — last
+# so the amulet, which _offered_ids pushed to the front precisely so the cap can
+# never hide it, is the one card this can't displace.
+#
+# `offered` is returned unchanged whenever the rule doesn't apply: off a hub, when
+# a card already leads onward, or when this hub genuinely has no onward neighbour
+# left (every one of them bashed or a dead end) — the guarantee promises a card
+# that exists, not one invented for the occasion.
+func _guarantee_onward(offered: Array, pool: Array) -> Array:
+	if RunGraph.degree(GameState.current_game_id) <= HUB_CONNECTIONS:
+		return offered
+	for gid in offered:
+		if RunGraph.degree(gid) > ONWARD_CONNECTIONS:
+			return offered
+	for gid in pool:
+		if offered.has(gid) or RunGraph.degree(gid) <= ONWARD_CONNECTIONS:
+			continue
+		offered[offered.size() - 1] = gid
+		return offered
+	return offered
 
 # Every game connected to where the player stands that is still in the pool, in
 # the offering's stable order. This IS the pool an offered slot is drawn from — so
@@ -2020,8 +2111,11 @@ func _verify_head(text: String) -> Label:
 
 # Open the tier-list rating prompt for `game` (1-10 + optional notes). Submitting
 # records the score via TierList (dropping the game into the Unranked tray the
-# first time); "Maybe later" just closes it. Pre-fills when already rated so the
-# player updates rather than starts over.
+# first time) and then OPENS THE TIER LIST on top, so the score the player just
+# gave lands somewhere they can see it and drag it into a row while the game is
+# still fresh. "Maybe later" just closes, and takes them nowhere — declining to
+# rate shouldn't hand them a screen they didn't ask for. Pre-fills when already
+# rated so the player updates rather than starts over.
 func _prompt_rating(game: GameData) -> void:
 	if game == null:
 		return
@@ -2029,9 +2123,15 @@ func _prompt_rating(game: GameData) -> void:
 	modal.setup(game.id, game)
 	modal.submitted.connect(func(score: int, notes: String):
 		TierList.set_rating(game.id, score, notes)
-		modal.queue_free())
+		modal.queue_free()
+		open_tier_list())
 	modal.dismissed.connect(func(): modal.queue_free())
 	add_child(modal)
+
+# The tier-list board over the run. Its own method so the rating flow and any
+# future entry point open it the same way, and so a headless test can drive it.
+func open_tier_list() -> TierListScreen:
+	return TierListScreen.open(self)
 
 # The instances the player ticked as fulfilled this game.
 func _ticked_fulfilments() -> Array:
@@ -2729,6 +2829,26 @@ func _build_ui() -> void:
 	done.pressed.connect(func(): report(_goal_met()))
 	_play_panel.add_child(done)
 
+	# The way out, directly under the way through — they resolve the same step, so
+	# they belong together. Hidden until ESCAPE_AFTER_ATTEMPTS lost runs, and
+	# deliberately quieter than Completed Game: this is the concession, not the
+	# goal. Tinted like the attempt strip's damage rather than its success green,
+	# because the enemy still follows you out.
+	_escape_btn = Button.new()
+	_escape_btn.text = "🏃  Escape this game"
+	_escape_btn.tooltip_text = ("Leave without beating it. The goal-enemy walks onto the "
+		+ "board and follows you, and the game does NOT count as beaten.")
+	_escape_btn.custom_minimum_size = Vector2(0, 30)
+	_escape_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_escape_btn.add_theme_font_size_override("font_size", 13)
+	_escape_btn.add_theme_stylebox_override("normal",
+		UITheme.flat(UITheme.ACCENT.lerp(UITheme.BG, 0.78), 6, 8, 1, UITheme.ACCENT.lerp(UITheme.BG, 0.45)))
+	_escape_btn.add_theme_stylebox_override("hover",
+		UITheme.flat(UITheme.ACCENT.lerp(UITheme.BG, 0.6), 6, 8, 1, UITheme.ACCENT))
+	_escape_btn.add_theme_color_override("font_color", UITheme.ACCENT)
+	_escape_btn.pressed.connect(escape_game)
+	_play_panel.add_child(_escape_btn)
+
 	_scrolls_wrap = VBoxContainer.new()
 	_scrolls_wrap.add_theme_constant_override("separation", 4)
 	_scrolls_wrap.add_child(_section("Scrolls (read on the overworld):"))
@@ -2815,6 +2935,10 @@ func _refresh_attempts() -> void:
 	var live: bool = _phase == Phase.PLAYING and not GameLoop2.run_over
 	_attempt_btn.disabled = not live
 	_attempt_undo.disabled = not live or attempts == 0
+	# The escape hatch only exists once the player has lost enough runs to have
+	# earned it, and it goes away again if they undo back under the line.
+	if _escape_btn != null:
+		_escape_btn.visible = can_escape()
 
 func _enemy_image_rect() -> TextureRect:
 	var t := TextureRect.new()

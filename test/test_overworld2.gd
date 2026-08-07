@@ -23,6 +23,9 @@ func after_each() -> void:
 	GameLoop2.reset()
 	SaveSystem.clear_all_saves()
 	SaveSystem.cancel_pending_resume()
+	# The tier list is a cross-run store backed by a real file, and set_rating
+	# saves — so the rating tests below would otherwise outlive themselves.
+	TierList._reset_defaults()
 
 # Re-boot the run on a specific character and take the first offered start, so a
 # test that needs a particular level-up / loadout lands where before_each does.
@@ -1852,3 +1855,247 @@ func test_a_resolve_from_before_the_ladder_still_plays() -> void:
 	assert_almost_eq(_ui._board.animate_resolve(before,
 			{"attacks": [{"instance": inst, "damage": 1}]}),
 		_ui._board.FX_ATTACK_TIME, 0.001, "an untagged attack belongs to turn one")
+
+# --- the hub rule (HUB_CONNECTIONS / ONWARD_CONNECTIONS) --------------------
+#
+# On a well-connected game the offering shows three of dozens of neighbours, and
+# the seeded subset can come up all dead ends. Slay the Spire has 138 connections
+# and 80 of them lead nowhere, so an unguarded draw strands the run there roughly
+# one time in five.
+
+# The busiest node in the run graph, or &"" if the catalog has none — every
+# assertion below is written to skip rather than fail on a filtered catalog.
+func _busiest_hub() -> StringName:
+	var best: StringName = &""
+	var best_deg: int = 0
+	for g in Data.all_games():
+		var d: int = RunGraph.degree(g.id)
+		if d > best_deg:
+			best_deg = d
+			best = g.id
+	return best if best_deg > OVERWORLD.HUB_CONNECTIONS else &""
+
+# Stand the run on `hub` and re-roll its offering under a fresh seed.
+func _offer_at(hub: StringName, salt: int) -> Array:
+	GameState.current_game_id = hub
+	_ui._scramble_salt = salt
+	_ui._build_choices()
+	return _ui._choices
+
+func test_a_hub_always_offers_at_least_one_game_that_leads_onward() -> void:
+	var hub: StringName = _busiest_hub()
+	if hub == &"":
+		return
+	# Many seeds, because the bug this guards is probabilistic: the unguarded
+	# draw only strands you on the subsets that happen to be all dead ends.
+	for salt in range(40):
+		var choices: Array = _offer_at(hub, salt)
+		assert_gt(choices.size(), 0, "a hub offers cards at all")
+		var onward: int = 0
+		for c in choices:
+			if RunGraph.degree(c["game"].id) > OVERWORLD.ONWARD_CONNECTIONS:
+				onward += 1
+		assert_gt(onward, 0,
+			"seed %d at %s offered only dead ends" % [salt, hub])
+
+func test_the_hub_rule_never_drops_the_amulet() -> void:
+	var hub: StringName = _busiest_hub()
+	if hub == &"":
+		return
+	# Park the amulet on a neighbour of the hub so it's reachable and therefore
+	# pinned to the front of the offering; the onward swap takes the LAST slot
+	# precisely so it can never be the card that goes.
+	var nbrs: Array = RunGraph.neighbors(hub)
+	if nbrs.is_empty():
+		return
+	GameState.amulet_game_id = nbrs[0]
+	for salt in range(20):
+		var ids: Array = []
+		for c in _offer_at(hub, salt):
+			ids.append(c["game"].id)
+		assert_true(ids.has(GameState.amulet_game_id),
+			"seed %d dropped the reachable amulet" % salt)
+
+func test_off_a_hub_the_offering_is_left_alone() -> void:
+	# The guarantee is a hub rule on purpose: at a small node a thin offering is
+	# the honest shape of the graph, and overriding it would invent a route.
+	var small: StringName = &""
+	for g in Data.all_games():
+		var d: int = RunGraph.degree(g.id)
+		if d > 0 and d <= OVERWORLD.HUB_CONNECTIONS:
+			small = g.id
+			break
+	if small == &"":
+		return
+	GameState.current_game_id = small
+	# Park the amulet on the node itself so it can't be among the neighbours — the
+	# amulet pin reorders the slice for its own reasons, which isn't what's on
+	# trial here.
+	GameState.amulet_game_id = small
+	var untouched: Array = _ui._sorted_neighbors().slice(0, _ui.offer_count())
+	assert_eq(_ui._offered_ids(), untouched,
+		"a non-hub offering is the plain seeded slice")
+
+func test_the_rule_promises_a_card_that_exists_not_an_invented_one() -> void:
+	# A hub whose every neighbour is a dead end gets the plain slice back rather
+	# than a card from somewhere else on the map. Ids that aren't in the graph
+	# have degree 0, which is exactly the all-dead-ends pool this guards.
+	var hub: StringName = _busiest_hub()
+	if hub == &"":
+		return
+	GameState.current_game_id = hub          # so the hub rule is actually engaged
+	var offered: Array = [&"a", &"b", &"c"]
+	assert_eq(_ui._guarantee_onward(offered.duplicate(), offered), offered,
+		"nothing onward in the pool leaves the offering as it was")
+
+# --- escaping a game you can't beat (ESCAPE_AFTER_ATTEMPTS) -----------------
+
+# Lose `n` runs of the game in play, with enough Health banked to survive doing
+# it — past the shields a game grants, each lost run costs Health.
+func _lose_runs(n: int) -> void:
+	GameState.max_hp = 99
+	GameState.hp = 99
+	for i in n:
+		_ui.log_attempt()
+
+func test_escape_is_locked_until_the_attempts_are_spent() -> void:
+	_ui.pick(0)
+	assert_false(_ui.can_escape(), "a game just started offers no way out")
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS - 1)
+	assert_false(_ui.can_escape(), "one short of the line is still locked")
+	assert_false(_ui._escape_btn.visible, "and the button stays hidden")
+
+func test_escape_unlocks_on_the_fifth_lost_run() -> void:
+	_ui.pick(0)
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	assert_true(_ui.can_escape(), "five lost runs earns the way out")
+	assert_true(_ui._escape_btn.visible, "and the button is there to press")
+
+func test_escaping_advances_the_run_and_the_enemy_follows() -> void:
+	_ui.pick(0)
+	var gp_before: int = GameState.games_played
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_ui.escape_game()
+	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
+	assert_eq(GameLoop2.stack_size(), 1,
+		"but its goal-enemy walked onto the board, as a missed goal always does")
+	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "and a fresh offering is up")
+
+func test_escaping_does_not_defeat_the_goal_enemy() -> void:
+	_ui.pick(0)
+	var game: GameData = _ui._chosen["game"]
+	var enemy: GoalEnemyData = _ui._chosen["enemy"]
+	# GameStats is a LIFETIME store that outlives the run and the test, so the
+	# question is what this escape added, not what the tally reads.
+	var before: int = GameStats.enemy_beaten_count(game.id, enemy.id)
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_ui.escape_game()
+	assert_eq(GameStats.enemy_beaten_count(game.id, enemy.id), before,
+		"escaping is leaving, not killing")
+
+# An escape earns none of a beat's credit. A missed REPORT still does — that's
+# long-standing behaviour and deliberately untouched; walking away is the case
+# that isn't allowed to count.
+func test_escaping_does_not_count_the_game_as_beaten() -> void:
+	_ui.pick(0)
+	var game: GameData = _ui._chosen["game"]
+	var lifetime_before: int = GameStats.beaten_count(game.id)
+	var run_before: int = GameState.total_games_beaten
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_ui.escape_game()
+	assert_false(GameState.has_beaten_game(game.id),
+		"escaping is leaving, not clearing")
+	assert_eq(GameState.total_games_beaten, run_before,
+		"the run's beaten count doesn't move")
+	assert_eq(GameStats.beaten_count(game.id), lifetime_before,
+		"nor does the lifetime tally the Collection and the tier list read")
+
+func test_escaping_pays_no_repeat_beat_dash() -> void:
+	# Standing on a game already cleared this run, escaping it must not pay the
+	# Dash a second clear would — there was no second clear.
+	var target: GameData = _ui._choices[0]["game"]
+	GameState.note_game_beaten(target.id)
+	_ui._build_choices()
+	_ui.pick(0)
+	var dash_before: int = GameState.dash_charges
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_ui.escape_game()
+	assert_eq(GameState.dash_charges, dash_before,
+		"walking away from a game you'd beaten before earns nothing")
+
+func test_escaping_still_advances_the_run_clock() -> void:
+	# Withholding the CREDIT doesn't stall the run: the time was spent and the
+	# board closed in, so the difficulty clock moves either way.
+	_ui.pick(0)
+	var gp_before: int = GameState.games_played
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_ui.escape_game()
+	assert_eq(GameState.games_played, gp_before + 1,
+		"games_played counts the game you walked away from")
+
+func test_a_missed_report_still_counts_as_before() -> void:
+	# The guard is on escape alone. A plain missed report keeps crediting the game
+	# exactly as it always has.
+	_ui.pick(0)
+	var game: GameData = _ui._chosen["game"]
+	_ui.report(false)
+	assert_true(GameState.has_beaten_game(game.id),
+		"a missed report is untouched by the escape rule")
+
+func test_escape_refuses_before_the_line() -> void:
+	_ui.pick(0)
+	var gp_before: int = GameState.games_played
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS - 1)
+	_ui.escape_game()
+	assert_eq(GameState.games_played, gp_before,
+		"pressing it early does nothing at all")
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "the game is still in play")
+
+func test_undoing_back_under_the_line_takes_the_escape_away() -> void:
+	_ui.pick(0)
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	assert_true(_ui.can_escape())
+	_ui.undo_attempt()
+	assert_false(_ui.can_escape(), "the tracker is hand-driven, so this reverses too")
+	assert_false(_ui._escape_btn.visible, "and the button goes with it")
+
+# --- rating flows into the tier list ---------------------------------------
+
+func _open_rating_modal() -> Node:
+	_ui._prompt_rating(Data.all_games()[0])
+	for c in _ui.get_children():
+		if c is RateGameModal:
+			return c
+	return null
+
+func _tier_list_screen() -> Node:
+	for c in _ui.get_children():
+		if c is TierListScreen:
+			return c
+	return null
+
+func test_submitting_a_rating_opens_the_tier_list() -> void:
+	var modal := _open_rating_modal()
+	assert_not_null(modal, "the rate prompt opened")
+	assert_null(_tier_list_screen(), "and nothing else is up yet")
+	modal.submitted.emit(7, "good")
+	assert_not_null(_tier_list_screen(),
+		"a submitted score lands the player on the board it went to")
+
+func test_the_score_is_recorded_before_the_board_opens() -> void:
+	var game: GameData = Data.all_games()[0]
+	_ui._prompt_rating(game)
+	var modal: Node = null
+	for c in _ui.get_children():
+		if c is RateGameModal:
+			modal = c
+	modal.submitted.emit(9, "notes here")
+	var rating: Dictionary = TierList.get_rating(game.id)
+	assert_eq(int(rating.get("score", 0)), 9, "the score persisted")
+	assert_eq(String(rating.get("notes", "")), "notes here", "and the notes with it")
+
+func test_maybe_later_takes_you_nowhere() -> void:
+	var modal := _open_rating_modal()
+	modal.dismissed.emit()
+	assert_null(_tier_list_screen(),
+		"declining to rate shouldn't hand the player a screen they didn't ask for")
