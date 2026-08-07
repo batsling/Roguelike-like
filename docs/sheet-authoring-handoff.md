@@ -30,7 +30,8 @@ The card catalog is fully sheet-authored. Study these before starting:
   Generic &"strike"/&"defend" deck entries resolve per character via
   `Data.variant_card_id` (`strike_silent`, `defend_ironclad`, …), so each
   ported character needs its `Strike (X)` / `Defend (X)` rows in `cardsnew`.
-- `docs/action-attack-translation.md` — the attack-archetype design.
+- `docs/archive/action-attack-translation.md` — the attack-archetype design
+  (archived: the Action arena was removed in the games-first cut).
 - Commits on branch `claude/nice-goldberg-0zbo4f`: the card flip
   (`Make all cards sheet-authored`, `Generate attack cards from the spreadsheet`,
   `Extend card Effects parser…`).
