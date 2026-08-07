@@ -1,167 +1,101 @@
 #!/usr/bin/env python3
-"""One-shot sheet editor: add the two machine-readable columns Statuses 2.0 needs
-to the `statuses2.0` sheet — `Condition` and `Reward`.
+"""One-shot sheet editor: give `statuses2.0` the two machine-readable columns the
+engine runs on — `On Player Effect` and `On Enemy Effect`.
 
-The sheet keeps its four PROSE quadrant columns (On Player / On Enemy) as the
-player-facing wording. What the engine actually needs out of a status is much
-smaller, because all four quadrants are the SAME two pieces rearranged:
+The sheet keeps its PROSE quadrant columns (`On Player` / `On Enemy`) as the
+author's wording. Beside each now sits its machine-readable counterpart, so the
+two sides of a status are authored INDEPENDENTLY rather than both being derived
+from one shared condition plus the Buff/Debuff type. That is what lets a status's
+two halves do genuinely different things — Marked taxes the player's every goal
+on one side and pays out on the enemy on the other.
 
-    Condition   the challenge clause, e.g. "you get {X} achievements"
-    Reward      what completing it pays, e.g. "gain_chest small {X}"
+Effect DSL (one clause per cell):
 
-    buff  on player  ->  extra goal: "If <condition>, gain <reward>"
-    buff  on enemy   ->  its goal gains "and <condition>"          (required)
-    debuff on player ->  EVERY enemy's goal gains "and <condition>" (required, ticks)
-    debuff on enemy  ->  a bonus row: "and if <condition>, gain <reward>"
+    <verb> "<condition>" [decay] [-> <reward>; <reward>; …]
 
-So two authored columns cover the whole table, and a new status is still a pure
-sheet edit: write the prose, write the condition + reward, rerun
-tools/generate_status_tres.py.
+    goal    a standing objective of the holder's own — "If <condition>, gain
+            <reward>". On the player it is an extra row on the checklist, offered
+            every game and paid every time you meet it.
+    clause  ANDed onto goals and REQUIRED — the goal is not met until you did
+            both. On an enemy it tightens that enemy's goal; on the player it
+            tightens EVERY enemy's goal.
+    bonus   an OPTIONAL objective — "and if <condition>, gain <reward>" — that can
+            be claimed for its reward and costs nothing to skip.
 
-`{...}` holds an arithmetic expression over X (the stack count), so a status can
-scale however it likes — Dexterity's window tightens on {1+(1/2)^(X-2)} while
-Strength's count is a flat {X}. The generator normalises `^` to pow() and the
-runtime evaluates it with Godot's Expression.
+    decay   completing it sheds one stack.
 
-WHY XML SURGERY AND NOT openpyxl: Roguelikes.xlsx carries 7 charts and a dozen
-table parts that an openpyxl load/save round-trip silently drops. This edits the
-two parts that actually change (worksheets/sheet8.xml + tables/table8.xml) and
-copies every other zip entry through byte-for-byte.
+The verb is what the side DOES, so Buff/Debuff no longer drives any mechanic — it
+is the tint on the HUD chip and the filter in the collection, nothing more.
+
+`{expr}` holes hold arithmetic over X (the stack count) and may carry a format:
+`{X}` counts, `{1+(1/2)^(X-2):hours}` renders as a duration in hours and minutes.
+
+WHY XML SURGERY AND NOT openpyxl: Roguelikes.xlsx carries seven charts and a
+dozen table parts that an openpyxl load/save round-trip silently drops. See
+tools/_xlsx_surgery.py.
 
 Run once: python3 tools/_statuses_sheet_setup.py
 """
 
 import os
-import re
-import shutil
-import zipfile
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _xlsx_surgery import Workbook  # noqa: E402
 
 XLSX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Roguelikes.xlsx")
 
-# statuses2.0 is rId8 in xl/_rels/workbook.xml.rels -> worksheets/sheet8.xml,
-# whose single tablePart is tables/table8.xml.
-SHEET_PART = "xl/worksheets/sheet8.xml"
-TABLE_PART = "xl/tables/table8.xml"
+SHEET = "statuses2.0"
+# The columns this script owns, appended after the sheet's authored ones. Any
+# earlier machine-readable columns (an older Condition/Reward pair) are replaced.
+NEW_COLS = ["On Player Effect", "On Enemy Effect"]
+KEEP_COLS = ["Name", "Type", "Game", "On Player", "On Enemy", "Stackable", "Image"]
 
-NEW_COLS = ["Condition", "Reward"]
-
-# Row name -> (Condition, Reward). Transcribed from the sheet's own prose:
-#   Strength  "If the difficuly is increased X times, Gain +X Small Chests and X Bashes"
-#   Dexterity "If beaten in (1+(1/2)^X-2)) hours or less, Gain +X Small Chests and X Dashes"
-#   Marked    "and you must get X achivements" / "Gain +X Small Chests"
-# The Dexterity exponent is written with balanced parens here; the sheet's prose
-# has a stray one.
+# Row name -> (On Player Effect, On Enemy Effect), transcribed from the sheet's
+# own prose. The Dexterity exponent is written with balanced parens here; the
+# sheet's prose has a stray one.
 VALUES = {
     "Strength": (
-        "the difficulty is increased {X} times",
-        "gain_chest small {X}; gain_stat bash {X}",
+        'goal "the difficulty is increased {X} [time|times]"'
+        ' -> gain_chest small {X}; gain_stat bash {X}',
+        'clause "the difficulty must be increased {X} [time|times]"',
     ),
     "Dexterity": (
-        "beaten in {1+(1/2)^(X-2)} hours or less",
-        "gain_chest small {X}; gain_stat dash {X}",
+        'goal "beaten in {1+(1/2)^(X-2):hours} or less"'
+        ' -> gain_chest small {X}; gain_stat dash {X}',
+        'clause "must be beaten in {1+(1/2)^(X-2):hours} or less"',
     ),
     "Marked": (
-        "you get {X} achievements",
-        "gain_chest small {X}",
+        # "Apply … to all enemies. Decrease stack by 1 when completed."
+        'clause "you must get {X} [achievement|achievements]" decay',
+        # "Gains 'and if you get X achivements, Gain +X Small Chests'."
+        'bonus "you get {X} [achievement|achievements]" decay -> gain_chest small {X}',
     ),
 }
 
 
-def _esc(s: str) -> str:
-    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+def main() -> None:
+    with Workbook(XLSX) as wb:
+        grid = wb.read_grid(SHEET)
+        headers = [str(h) for h in grid[0]]
+        keep = [headers.index(h) for h in KEEP_COLS]
 
-
-def _cell(ref: str, text: str) -> str:
-    """An inline-string cell, so nothing has to be appended to sharedStrings."""
-    return '<c r="%s" t="inlineStr"><is><t xml:space="preserve">%s</t></is></c>' % (
-        ref, _esc(text))
-
-
-def _row_name(row_xml: str, shared: list) -> str:
-    """The Name (column A) of one <row>, resolved through sharedStrings."""
-    m = re.search(r'<c r="A\d+"([^>]*)>(.*?)</c>', row_xml, re.S)
-    if not m:
-        return ""
-    attrs, body = m.group(1), m.group(2)
-    v = re.search(r"<v>(.*?)</v>", body, re.S)
-    if not v:
-        return ""
-    if 't="s"' in attrs:
-        idx = int(v.group(1))
-        return shared[idx] if idx < len(shared) else ""
-    return v.group(1)
-
-
-def _shared_strings(zf: zipfile.ZipFile) -> list:
-    try:
-        raw = zf.read("xl/sharedStrings.xml").decode("utf-8")
-    except KeyError:
-        return []
-    out = []
-    for si in re.findall(r"<si>(.*?)</si>", raw, re.S):
-        out.append("".join(re.findall(r"<t[^>]*>(.*?)</t>", si, re.S)))
-    return out
-
-
-def patch_sheet(xml: str, shared: list) -> str:
-    if ">Condition<" in xml:
-        raise SystemExit("statuses2.0 already has the Condition column — nothing to do.")
-
-    # Widen the used range and the per-row span hints (G=7 -> I=9).
-    xml = xml.replace('<dimension ref="A1:G4"/>', '<dimension ref="A1:I4"/>')
-    xml = xml.replace('spans="1:7"', 'spans="1:9"')
-    # Readable widths for the two new columns, matching the prose columns beside them.
-    xml = xml.replace(
-        '<col min="7" max="7" width="9.28515625" bestFit="1" customWidth="1"/>',
-        '<col min="7" max="7" width="9.28515625" bestFit="1" customWidth="1"/>'
-        '<col min="8" max="8" width="46.0" customWidth="1"/>'
-        '<col min="9" max="9" width="42.0" customWidth="1"/>')
-
-    def fill(m):
-        row_xml = m.group(0)
-        r = m.group(1)
-        if r == "1":
-            cells = [_cell("H1", NEW_COLS[0]), _cell("I1", NEW_COLS[1])]
-        else:
-            name = _row_name(row_xml, shared)
+        out = [KEEP_COLS + NEW_COLS]
+        for row in grid[1:]:
+            if not row or not str(row[0]).strip():
+                continue
+            name = str(row[0]).strip()
             if name not in VALUES:
                 raise SystemExit(
-                    "statuses2.0 row %s (%r) has no authored Condition/Reward — "
-                    "add it to VALUES in this script." % (r, name))
-            cond, reward = VALUES[name]
-            cells = [_cell("H%s" % r, cond), _cell("I%s" % r, reward)]
-        return row_xml.replace("</row>", "".join(cells) + "</row>")
+                    "statuses2.0 row %r has no authored effects — add it to VALUES "
+                    "in this script." % name)
+            out.append([row[i] for i in keep] + list(VALUES[name]))
+        wb.write_grid(SHEET, out)
 
-    return re.sub(r'<row r="(\d+)".*?</row>', fill, xml, flags=re.S)
-
-
-def patch_table(xml: str) -> str:
-    xml = xml.replace('ref="A1:G4"', 'ref="A1:I4"')
-    xml = xml.replace('<tableColumns count="7">', '<tableColumns count="9">')
-    added = "".join('<tableColumn id="%d" name="%s"/>' % (8 + i, name)
-                    for i, name in enumerate(NEW_COLS))
-    return xml.replace("</tableColumns>", added + "</tableColumns>")
-
-
-def main() -> None:
-    backup = XLSX + ".bak"
-    shutil.copy2(XLSX, backup)
-    with zipfile.ZipFile(backup) as zf:
-        shared = _shared_strings(zf)
-        entries = [(i, zf.read(i.filename)) for i in zf.infolist()]
-
-    with zipfile.ZipFile(XLSX, "w", zipfile.ZIP_DEFLATED) as out:
-        for info, data in entries:
-            if info.filename == SHEET_PART:
-                data = patch_sheet(data.decode("utf-8"), shared).encode("utf-8")
-            elif info.filename == TABLE_PART:
-                data = patch_table(data.decode("utf-8")).encode("utf-8")
-            out.writestr(info, data)
-
-    os.remove(backup)
-    print("statuses2.0: added columns %s" % ", ".join(NEW_COLS))
-    for name, (cond, reward) in VALUES.items():
-        print("  %-10s %-42s %s" % (name, cond, reward))
+    print("%s: columns are now %s" % (SHEET, ", ".join(out[0])))
+    for row in out[1:]:
+        print("  %-10s player: %s" % (row[0], row[7]))
+        print("  %-10s enemy:  %s" % ("", row[8]))
 
 
 if __name__ == "__main__":

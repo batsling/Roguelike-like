@@ -1452,8 +1452,9 @@ func _refresh_status_strip() -> void:
 		# was: the strip shows THAT a status is on, the tooltip shows what it costs.
 		chip.tooltip_text = "%s %d — %s\n%s" % [sd.display_name, stacks,
 			("buff" if sd.is_buff() else "debuff"),
-			sd.player_goal_text(stacks) if sd.is_buff()
-				else "Every enemy's goal also needs: %s" % sd.enemy_clause(stacks)]
+			sd.objective_text(StatusData.PLAYER, stacks)
+				if sd.is_claimable(StatusData.PLAYER)
+				else "Every enemy's goal also needs: %s" % sd.clause_text(StatusData.PLAYER, stacks)]
 		var line := HBoxContainer.new()
 		line.add_theme_constant_override("separation", 5)
 		chip.add_child(line)
@@ -1982,10 +1983,11 @@ func _populate_play_panel() -> void:
 	# The player's own BUFF goals (§13): standing challenges that pay out every
 	# game you satisfy them, so they are on the report step of EVERY game rather
 	# than belonging to any one enemy.
-	for row in GameState.status_buffs():
+	for row in GameState.status_objectives():
 		var sd: StatusData = row["status"]
 		var stacks: int = int(row["stacks"])
-		var srow := _verify_row("%s %s" % [_status_prefix(sd, stacks), sd.player_goal_text(stacks)],
+		var srow := _verify_row(
+			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.PLAYER, stacks)],
 			UITheme.GOLD, false)
 		_verify_box.add_child(srow["row"])
 		_status_goal_checks.append({"check": srow["check"], "status": sd.id})
@@ -2026,7 +2028,8 @@ func _add_bonus_rows(entry: Dictionary) -> void:
 	for row in GameLoop2.bonus_objectives_for(entry):
 		var sd: StatusData = row["status"]
 		var stacks: int = int(row["stacks"])
-		var brow := _verify_row("%s %s" % [_status_prefix(sd, stacks), sd.bonus_text(stacks)],
+		var brow := _verify_row(
+			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
 			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false)
 		_verify_box.add_child(brow["row"])
 		_bonus_checks.append({"check": brow["check"], "instance": instance, "status": sd.id})
@@ -2070,11 +2073,12 @@ func _populate_standing_checklist() -> void:
 
 	# The player's standing status buffs (§13) — goals that belong to no enemy and
 	# are available at whatever game gets picked next.
-	for row in GameState.status_buffs():
+	for row in GameState.status_objectives():
 		var sd: StatusData = row["status"]
 		var stacks: int = int(row["stacks"])
 		_verify_box.add_child(_objective_row(
-			"%s %s" % [_status_prefix(sd, stacks), sd.player_goal_text(stacks)], UITheme.GOLD))
+			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.PLAYER, stacks)],
+			UITheme.GOLD))
 
 	# Followers, tinted the way the board tints them: the ones in the front column
 	# are the goals worth clearing first, because they hit next game.
@@ -2093,10 +2097,10 @@ func _populate_standing_checklist() -> void:
 			var sd: StatusData = bonus["status"]
 			var stacks: int = int(bonus["stacks"])
 			_verify_box.add_child(_objective_row(
-				"%s %s" % [_status_prefix(sd, stacks), sd.bonus_text(stacks)],
+				"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
 				UITheme.GOLD.lerp(UITheme.TEXT, 0.3)))
 
-	if GameLoop2.stack.is_empty() and GameState.status_buffs().is_empty():
+	if GameLoop2.stack.is_empty() and GameState.status_objectives().is_empty():
 		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")
 		_verify_box.add_child(none)
 

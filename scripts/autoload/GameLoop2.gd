@@ -662,12 +662,12 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = [],
 				current.get("statuses", {}))
 		current = {}
 
-	# 4. The player's debuffs tick for the game just played. A debuff rides every
-	#    enemy's goal, so completing ANY goal this game satisfied its clause once.
+	# 4. The player's clauses tick for the game just played. A clause rides every
+	#    enemy's goal, so completing ANY goal this game satisfied it once.
 	#    A FREE game is not a completion: `goal_met` reads true when there was no
 	#    enemy to meet (Overworld2._goal_met auto-clears an empty checklist), and a
 	#    goal nobody set can't have carried a clause.
-	res["statuses_ticked"] = _tick_player_debuffs(
+	res["statuses_ticked"] = _tick_player_clauses(
 		(goal_met and had_current) or not fulfilled_instances.is_empty())
 
 	res["hp"] = GameState.hp
@@ -1238,15 +1238,16 @@ func _index_of(instance: int) -> int:
 # Statuses 2.0 (docs/games-first-redesign.md §13)
 #
 # A status never touches a number on this node. It rewrites GOALS, which is the
-# only currency the games-first loop has:
+# only currency the games-first loop has. Each status names a MODE per side, and
+# the mode is the whole of what that side does (StatusData):
 #
-#   enemy BUFF     -> that enemy's goal gains "and <clause>"   (required)
-#   player DEBUFF  -> EVERY enemy's goal gains "and <clause>"  (required), and
-#                     one stack falls off each game you complete one
-#   enemy DEBUFF   -> that enemy grows an OPTIONAL bonus row, claimable for its
-#                     reward alongside (or instead of) its goal
-#   player BUFF    -> not here at all: it's a standing goal of the player's own,
-#                     served by GameState.status_buffs()
+#   enemy  `clause` -> that enemy's goal gains "and <clause>"  (required)
+#   player `clause` -> EVERY enemy's goal gains it (required), and one stack falls
+#                      off each game you complete one
+#   enemy  `bonus`  -> that enemy grows an OPTIONAL row, claimable for its reward
+#                      alongside (or instead of) its goal
+#   player `goal` / `bonus` -> not here at all: a standing objective of the
+#                      player's own, served by GameState.status_objectives()
 #
 # So `goal_text_for` is the one function the UI and the OBS HUD should ask for a
 # goal line — never `enemy.goal` directly, which is only ever the unmodified stem.
@@ -1334,19 +1335,19 @@ func enemy_statuses(entry: Dictionary) -> Array:
 func required_clauses_for(entry: Dictionary) -> Array:
 	var out: Array = []
 	for row in enemy_statuses(entry):
-		if (row["status"] as StatusData).is_buff():
+		if (row["status"] as StatusData).is_clause(StatusData.ENEMY):
 			out.append({"status": row["status"], "stacks": row["stacks"], "source": "enemy"})
-	for row in GameState.status_debuffs():
+	for row in GameState.status_clauses():
 		out.append({"status": row["status"], "stacks": row["stacks"], "source": "player"})
 	return out
 
-# The OPTIONAL bonus objectives hanging off `entry` — its own debuffs. Claiming one
-# pays its reward; ignoring one costs nothing, which is the whole difference
-# between a debuff on an enemy and a buff on one.
+# The OPTIONAL bonus objectives hanging off `entry`. Claiming one pays its reward;
+# ignoring one costs nothing, which is the whole difference between a `bonus` on an
+# enemy and a `clause` on one.
 func bonus_objectives_for(entry: Dictionary) -> Array:
 	var out: Array = []
 	for row in enemy_statuses(entry):
-		if (row["status"] as StatusData).is_debuff():
+		if (row["status"] as StatusData).is_bonus(StatusData.ENEMY):
 			out.append(row)
 	return out
 
@@ -1360,34 +1361,38 @@ func goal_text_for(entry: Dictionary) -> String:
 	var text: String = enemy.goal
 	for clause in required_clauses_for(entry):
 		var sd: StatusData = clause["status"]
-		text += " and %s" % sd.enemy_clause(int(clause["stacks"]))
+		var which: StringName = StatusData.PLAYER if clause["source"] == "player" \
+			else StatusData.ENEMY
+		text += " and %s" % sd.clause_text(which, int(clause["stacks"]))
 	return text
 
 # --- claiming a status reward ---------------------------------------------
 
-# Pay out one status's reward at `stacks`, through the ordinary effect pipeline so
-# a chest granted by a status is the same chest an item grants.
-func _pay_status_reward(status: StatusData, stacks: int) -> void:
+# Pay out one side's reward at `stacks`, through the ordinary effect pipeline so a
+# chest granted by a status is the same chest an item grants.
+func _pay_status_reward(status: StatusData, which: StringName, stacks: int) -> void:
 	if status == null or stacks <= 0:
 		return
-	EffectSystem.apply_all(status.reward_effects(stacks), {"status": status})
+	EffectSystem.apply_all(status.reward_effects(which, stacks), {"status": status})
 
-# A player BUFF's standing goal was met this game (§13): pay it. The buff itself
-# persists — it is the reward, not a timer — so nothing ticks down here.
-func complete_player_status_goal(status_id: StringName) -> bool:
+# A standing objective on the PLAYER side was met this game (§13): pay it, and shed
+# a stack if that side decays. A `goal` on a buff typically does not — it IS the
+# reward, and a timer would only make it a worse item — but that is the sheet's
+# call now, not a rule baked in here.
+func claim_player_objective(status_id: StringName) -> bool:
 	var stacks: int = GameState.status_stacks(status_id)
 	if stacks <= 0:
 		return false
 	var status: StatusData = Data.get_status(status_id)
-	if status == null or not status.is_buff():
+	if status == null or not status.is_claimable(StatusData.PLAYER):
 		return false
-	_pay_status_reward(status, stacks)
-	if status.decays_on_complete:
+	_pay_status_reward(status, StatusData.PLAYER, stacks)
+	if status.decays(StatusData.PLAYER):
 		GameState.remove_status(status_id, 1)
 	return true
 
-# An enemy DEBUFF's bonus objective was claimed on `instance`: pay it, then tick
-# that stack off the enemy, since the bonus was for doing the thing once.
+# An enemy's bonus objective was claimed on `instance`: pay it, then shed a stack
+# if that side decays, since the bonus was for doing the thing once.
 func claim_enemy_bonus(instance: int, status_id: StringName) -> bool:
 	var entry: Dictionary = entry_for(instance)
 	if entry.is_empty():
@@ -1397,28 +1402,22 @@ func claim_enemy_bonus(instance: int, status_id: StringName) -> bool:
 	if stacks <= 0:
 		return false
 	var status: StatusData = Data.get_status(status_id)
-	if status == null or not status.is_debuff():
+	if status == null or not status.is_bonus(StatusData.ENEMY):
 		return false
-	_pay_status_reward(status, stacks)
-	if status.decays_on_complete:
+	_pay_status_reward(status, StatusData.ENEMY, stacks)
+	if status.decays(StatusData.ENEMY):
 		_add_status_to(entry, status_id, -1)
 	loop_changed.emit()
 	return true
 
-# The player's DEBUFFS shed a stack for the game just resolved, when a goal
-# carrying their clause was actually completed. A player debuff sits on EVERY
-# enemy's goal, so meeting any goal at all means the clause was met — that is the
-# same "and" the checklist row asserted when it was ticked. Once per game, not once
-# per goal: the sheet's "decrease stack by 1 when completed" is a per-game count,
-# and a game where you cleared four followers would otherwise wipe the debuff whole.
-# The `claims` half of a beat_game self-report: pay every player-buff goal met and
-# every enemy bonus claimed. Returns how many paid out, for the report log.
+# The `claims` half of a beat_game self-report: pay every standing objective met
+# and every enemy bonus claimed. Returns how many paid out, for the report log.
 func _resolve_status_claims(claims: Dictionary) -> int:
 	if claims.is_empty():
 		return 0
 	var paid: int = 0
 	for raw in claims.get("status_goals", []):
-		if complete_player_status_goal(StringName(raw)):
+		if claim_player_objective(StringName(raw)):
 			paid += 1
 	for raw in claims.get("bonuses", []):
 		if not (raw is Dictionary):
@@ -1428,13 +1427,19 @@ func _resolve_status_claims(claims: Dictionary) -> int:
 			paid += 1
 	return paid
 
-func _tick_player_debuffs(any_goal_completed: bool) -> Array:
+# The player's decaying CLAUSES shed a stack for the game just resolved, when a
+# goal carrying one was actually completed. A player clause sits on EVERY enemy's
+# goal, so meeting any goal at all means it was met — that is the same "and" the
+# checklist row asserted when it was ticked. Once per game, not once per goal: the
+# sheet's "decrease stack by 1 when completed" is a per-game count, and a game
+# where you cleared four followers would otherwise wipe the status whole.
+func _tick_player_clauses(any_goal_completed: bool) -> Array:
 	var ticked: Array = []
 	if not any_goal_completed:
 		return ticked
-	for row in GameState.status_debuffs():
+	for row in GameState.status_clauses():
 		var sd: StatusData = row["status"]
-		if not sd.decays_on_complete:
+		if not sd.decays(StatusData.PLAYER):
 			continue
 		GameState.remove_status(sd.id, 1)
 		ticked.append(sd.id)

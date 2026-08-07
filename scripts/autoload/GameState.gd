@@ -156,7 +156,7 @@ var stat_multiplier: Dictionary = {}
 var _applied_item_max_hp: int = 0
 var _applied_item_max_energy: int = 0
 # Per-verb delta this inventory currently applies to the games-first board verbs
-# (Vajra's passive +1 Bash). The 2.0 verbs (bash/transmute/scramble/bombs/keys/
+# (a passive +1 Bash). The 2.0 verbs (bash/transmute/scramble/bombs/keys/
 # dash/shields) are plain fields the loop spends directly — not read through
 # Stats.get_value — so a passive stat_bonus on one is folded straight into the
 # field and reversed when the item leaves, tracked here like _applied_item_max_hp.
@@ -1262,7 +1262,7 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 
 # A run verb's value WITHOUT the contribution owned items currently make to it.
 # This is what a save stores, exactly like max_hp: the load restores the base and
-# then _recompute_item_bonuses re-applies the item bonuses, so a Vajra in the pack
+# then _recompute_item_bonuses re-applies the item bonuses, so a passive in the pack
 # can't add its +1 Bash again on every save/load round-trip. Aliased stat names
 # ("shields" / "block" both being the shields field) are summed once per FIELD, so
 # an item declaring either is accounted for exactly once.
@@ -1367,20 +1367,23 @@ func status_list() -> Array:
 			out.append({"status": sd, "stacks": int(player_statuses[sd.id])})
 	return out
 
-# The player's BUFFS — the extra goals on the checklist (§13). Each pays its own
-# reward when ticked.
-func status_buffs() -> Array:
+# The statuses whose PLAYER side is claimable — a `goal` or a `bonus` (§13). These
+# are the extra checklist rows, each paying its own reward when ticked. Selected on
+# the side's MODE, not on Buff/Debuff: what a side does is what the sheet says it
+# does, and nothing stops a debuff from offering the player a way to earn.
+func status_objectives() -> Array:
 	var out: Array = []
 	for row in status_list():
-		if (row["status"] as StatusData).is_buff():
+		if (row["status"] as StatusData).is_claimable(StatusData.PLAYER):
 			out.append(row)
 	return out
 
-# The player's DEBUFFS — the clauses that get ANDed onto every enemy's goal.
-func status_debuffs() -> Array:
+# The statuses whose PLAYER side is a `clause` — the requirements that get ANDed
+# onto every enemy's goal.
+func status_clauses() -> Array:
 	var out: Array = []
 	for row in status_list():
-		if (row["status"] as StatusData).is_debuff():
+		if (row["status"] as StatusData).is_clause(StatusData.PLAYER):
 			out.append(row)
 	return out
 
@@ -1660,7 +1663,7 @@ func add_item(template: ItemData) -> ItemData:
 				Color(0.7, 0.55, 0.4))
 	# Snapshot the run resources BEFORE anything the pickup does lands, so the
 	# pickup can REPORT what it changed. An item's payload is its passive
-	# stat_bonuses (Vajra +1 Bash, folded in by the recompute below) plus its
+	# stat_bonuses (a passive +1 Bash, folded in by the recompute below) plus its
 	# item_acquired effects (Lunch: +2 Max Health, +2 Health) — both used to land
 	# silently, so the numbers moved with nothing saying so, which reads as "the
 	# item did nothing".
@@ -1836,7 +1839,7 @@ func upgrade_random_passive(delta: int) -> Dictionary:
 	var picked: ItemData = eligible[randi() % eligible.size()]
 	picked.upgrade_level += delta
 	# Recompute already emits stats_changed; we add inventory_changed so
-	# HUDs that key off inventory state (Vajra+1 tooltips, etc.) refresh.
+	# HUDs that key off inventory state (passive-bonus tooltips, etc.) refresh.
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 	return {"item": picked, "delta": delta, "new_level": picked.upgrade_level}
@@ -1957,7 +1960,7 @@ func _recompute_item_bonuses() -> void:
 	_applied_scaling_max_hp = _apply_capped_max_hp_delta(scaling_max_hp_total, _applied_scaling_max_hp)
 
 	item_stat_bonus = totals
-	# Passive board-verb bonuses (Vajra +1 Bash): fold the delta into the plain
+	# Passive board-verb bonuses (a passive +1 Bash): fold the delta into the plain
 	# GameState verb field and drop the key from item_stat_bonus so it never also
 	# double-counts through Stats.get_value.
 	for verb in _ITEM_VERB_STATS:

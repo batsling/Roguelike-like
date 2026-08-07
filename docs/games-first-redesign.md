@@ -475,7 +475,7 @@ Description | Effect | Reference | tags | File | Sorting`.
 | `Triggered` | Fires on a game event — usually **"after beating a game"** (Burning Blood +1 Health, Meat on the Bone conditional heal), or **"when a game is selected"** (Anchor +1 Shield, §3.2). |
 | `Charged, N` | Usable, recharges over N beats (D6 → +1 Scramble; Wand of Wishing → any item, 6). |
 | `Usable` | Active, player-triggered (Ride the Bus → teleport to a random Deckbuilder game). |
-| `Passive` | Always-on modifier (Vajra: +1 Bash). |
+| `Passive` | Always-on modifier (Mine-r Construction: grow the Grid). |
 
 **"After beating a game" is the dominant trigger** — the core `TriggerBus` event
 the item layer hangs on (§11). Others seen: "when Levelling Up" (Crown), "when
@@ -501,7 +501,7 @@ uses**, so no new engine is needed:
 
 - **Triggered / Usable / Charged** items → `ItemData.triggers = [{on: <TriggerBus
   signal>, if_*: <gates>, effects: [{type: <EffectSystem handler>, …}]}]`.
-- **Passive** items → `stat_bonuses` (Vajra → `{bash: 1}`).
+- **Passive** items → `stat_bonuses` (an always-on verb bonus, e.g. `{bash: 1}`).
 - **Pickup** items → a one-shot `item_acquired` trigger with scene-free effects
   (`gain_hp` / `gain_max_hp` / …).
 - The two run-lifecycle triggers are **`game_beaten`** ("after beating a game")
@@ -680,6 +680,10 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   column are the character's **starting stats** (§3.1).
 - **Chests: Small = 1 item, Regular = 1 of 2, Large = 1 of 3**, via the existing
   `grant_chest`/`RewardScreen` flow (§8.2).
+- **Statuses rewrite GOALS, and each side is authored** (§13): a status's `On
+  Player` and `On Enemy` halves each name a mode (`goal` / `clause` / `bonus`) plus
+  an optional `decay`, so the two can differ. `Type` (Buff / Debuff) is flavour —
+  the HUD tint and the collection filter — and drives nothing.
 - **Stun skips the enemy's next attack** — pushes it one game later in the timing
   model (§7.2).
 - **Enemy timing: one-game grace** — spawns on game choice, first hits after the
@@ -727,33 +731,46 @@ A **status** is the balance lever. It is not a stat modifier and not combat stat
 game has. That is what lets a location, an item, or a scroll change how hard the
 run is without any of them knowing what a goal is.
 
-Every status is authored as the same **two pieces**, and the four ways they can be
-arranged *are* the system:
+A status has **two sides** — `On Player` and `On Enemy` — authored independently,
+so its halves can do genuinely different things. Each side names a **mode**, and
+the mode is the whole of what that side does:
 
-| | on the **Player** | on an **Enemy** |
-|---|---|---|
-| **Buff** | an **extra standing goal** — "If \<condition\>, gain \<reward\>" — on the checklist every game, paying out each time you satisfy it | that enemy's goal **gains "and \<condition\>"** — required, so the goal isn't met until you did both |
-| **Debuff** | **every** enemy's goal gains "and \<condition\>" — required — and one stack falls off each game you complete one | that enemy grows an **optional bonus** — "and if \<condition\>, gain \<reward\>" — claimable for its reward |
+| Mode | What the side does |
+|---|---|
+| `goal` | a **standing objective of the holder's own** — "If \<condition\>, gain \<reward\>". On the player it is an extra checklist row, offered every game and paid every time it is met. |
+| `clause` | **ANDed onto goals and required** — the goal is not met until both were done. On an enemy it tightens that enemy's goal; on the player it tightens **every** enemy's goal. |
+| `bonus` | an **optional objective** — "and if \<condition\>, gain \<reward\>" — claimable for its reward and free to skip. |
 
-So a **buff pays the player and taxes the enemy's goal**; a **debuff taxes the
-player's goals and pays out on the enemy**. Each direction has a natural counter:
-a buff on you is free money you have to go earn, a debuff on you is a tax you can
-grind off, a buff on an enemy makes it harder to remove, and a debuff on an enemy
-is a reason to engage it.
+A side may also carry `decay`: completing it sheds one stack.
+
+Because the mode says what a side does, **`Type` (Buff / Debuff) drives no
+mechanic** — it is the HUD tint and the collection filter, nothing more. The
+interesting statuses are the ones whose two sides differ. Marked taxes every one
+of your goals on the player's side and *pays out* on the enemy's, so the same
+status is a tax you grind off and a reason to engage the thing carrying it.
 
 ### 13.1 Schema
 
 `statuses2.0` columns: `Name | Type | Game | On Player | On Enemy | Stackable |
-Image | Condition | Reward`.
+Image | On Player Effect | On Enemy Effect`.
 
 The two **prose** columns (`On Player` / `On Enemy`) are the author's wording,
-carried onto `StatusData` for tooltips. The engine builds all four quadrants' text
-itself, from the two machine-readable columns instead:
+carried onto `StatusData` for tooltips. Beside each sits its machine-readable
+counterpart, which is what the engine runs on:
 
-| Column | Meaning |
-|---|---|
-| `Condition` | the challenge clause, with `{expr}` holes over **X** (the stack count) — `you get {X} achievements`, `beaten in {1+(1/2)^(X-2)} hours or less` |
-| `Reward` | semicolon-separated effect tokens, same `{expr}` holes — `gain_chest small {X}; gain_stat bash {X}` |
+    <verb> "<condition>" [decay] [-> <reward>; <reward>; …]
+
+where `<verb>` is one of the three modes above. So the current roster reads:
+
+| Status | `On Player Effect` | `On Enemy Effect` |
+|---|---|---|
+| Strength | `goal "the difficulty is increased {X} times" -> gain_chest small {X}; gain_stat bash {X}` | `clause "the difficulty must be increased {X} times"` |
+| Dexterity | `goal "beaten in {1+(1/2)^(X-2):hours} or less" -> gain_chest small {X}; gain_stat dash {X}` | `clause "must be beaten in {1+(1/2)^(X-2):hours} or less"` |
+| Marked | `clause "you must get {X} achievements" decay` | `bonus "you get {X} achievements" decay -> gain_chest small {X}` |
+
+A `clause` may not carry a reward — it is a requirement, not a payout, and the
+generator rejects one rather than silently dropping it. Either side may be left
+blank, which reads as "this side is inert".
 
 **Reward token DSL** (compiled by `tools/generate_status_tres.py` into
 `EffectSystem` effect dicts, so a chest a status grants is the same chest an item
@@ -772,10 +789,11 @@ authored string reads correctly at every stack count.
 **Stackable: Intensity** — a second application **raises X**, it does not start a
 second timer. Marked twice is one Marked at 2. No max stack is authored.
 
-**Decay** follows the Type: a **debuff** sheds a stack each time its condition is
-completed (once per game, not once per goal — a game where you cleared four
-followers must not wipe a 4-stack debuff whole), while a **buff persists for the
-run**. A buff *is* the reward; putting a timer on it would make it a worse item.
+**Decay is authored per side**, with the `decay` flag. A side that decays sheds a
+stack each time it is completed — once per game, not once per goal, so a game where
+you cleared four followers cannot wipe a four-stack status whole. Strength's
+standing goal does *not* decay: it **is** the reward, and putting a timer on it
+would only make it a worse item.
 
 ### 13.2 The current roster
 
@@ -785,15 +803,24 @@ run**. A buff *is* the reward; putting a timer on it would make it a worse item.
 | **Dexterity** | Buff | Slay the Spire | beaten in 1+(1/2)^(X-2) hours or less | +X Small Chests, +X Dashes |
 | **Marked** | Debuff | Mewgenics | you get X achievements | +X Small Chests |
 
-Dexterity's window halves toward a floor of one hour: **3h** at one stack, **2h**
-at two, **1.5h** at three, **1.25h** at four. The reward grows with X while the
-window tightens, which is the whole trade.
+Dexterity's window halves toward a floor of one hour: **3 hours** at one stack,
+**2 hours** at two, **1 hour 30 minutes** at three, **1 hour 15 minutes** at four.
+The reward grows with X while the window tightens, which is the whole trade. A
+fractional window is rendered as hours and minutes rather than as a decimal — it
+is a time the player holds against a clock, and "1.5 hours" is arithmetic they
+would have to do themselves mid-run.
+
+Two items hand statuses out, the pair of Slay the Spire relics that grant these
+same two stats there: **Vajra** (+1 Strength) and **Oddly Smooth Stone**
+(+1 Dexterity). Both are `Pickup` items firing `item_acquired`, so the status
+lands when the relic is taken and stays for the run.
 
 ### 13.3 Where they live at runtime
 
 - **On the player** — `GameState.player_statuses` (id → stacks), with
-  `apply_status` / `remove_status` / `status_buffs` / `status_debuffs`. Run-scope:
-  cleared by `reset_run`, saved under `player_statuses`.
+  `apply_status` / `remove_status` / `status_objectives` (the claimable rows) /
+  `status_clauses` (the taxes). Run-scope: cleared by `reset_run`, saved under
+  `player_statuses`.
 - **On an enemy** — a `statuses` dict on the **GameLoop2 stack entry**, so a status
   rides the *body* and survives the current enemy walking onto the board. Saved
   inside `GameLoop2.serialize()`.
@@ -811,3 +838,8 @@ window tightens, which is the whole trade.
   of the self-report: `{"status_goals": [id…], "bonuses": [{instance, status}…]}`.
   Claims resolve **before** the board does, so beating an enemy and claiming its
   bonus in the same game pays both.
+- **Editing the sheet** — `tools/_statuses_sheet_setup.py` and
+  `tools/_items2_statuses_setup.py` go through `tools/_xlsx_surgery.py`, which
+  rewrites one sheet's two XML parts and copies every other zip entry through
+  untouched. An openpyxl round-trip of this workbook silently drops its seven
+  charts, so nothing here may use one.

@@ -11,6 +11,50 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Statuses 2.0: two sides, authored independently.** The first cut derived both
+  halves of a status from one shared Condition + Reward, with Buff/Debuff deciding
+  which behaviour each half got. That made the interesting cases unauthorable, so
+  the sheet now carries an **`On Player Effect`** and an **`On Enemy Effect`**
+  column, one per prose cell, and each names what that side DOES:
+
+      <verb> "<condition>" [decay] [-> <reward>; <reward>; …]
+
+  `goal` is a standing objective of the holder's own that pays when met; `clause`
+  is ANDed onto goals and required; `bonus` is optional and claimable. `decay`
+  sheds a stack on completion. Because the verb carries the behaviour, **Buff /
+  Debuff drives no mechanic at all** — it is the HUD tint and the collection
+  filter, nothing more. Marked is the case that motivated it: a `clause` with
+  `decay` on the player and a paying `bonus` on the enemy, which one shared
+  condition could only ever half-express. A `clause` may not carry a reward (it is
+  a requirement, not a payout) and the generator rejects one rather than dropping
+  it quietly; either side may be blank, which reads as inert.
+
+  **Fractional time windows now read as time.** An `{expr}` hole can carry a
+  format, and `{1+(1/2)^(X-2):hours}` renders as "1 hour 30 minutes" instead of
+  "1.5 hours" — a window is something the player holds against a clock, not
+  arithmetic to do mid-run. Rounded to the nearest minute, so Dexterity at five
+  stacks reads "1 hour 8 minutes" rather than "1 hour 7.5 minutes".
+
+  **Two relics hand statuses out**, the Slay the Spire pair that grant these same
+  two stats there: **Vajra** is rewritten from "+1 Bash" to **"+1 Strength"**, and
+  **Oddly Smooth Stone** is ported in from the legacy `items` sheet as **"+1
+  Dexterity"** (art copied to `images2.0/items/`). Both stay `Pickup` items firing
+  `item_acquired`, the shape Vajra already had, so the status lands when the relic
+  is taken and stays for the run. Vajra was the spec's and README's stock example
+  of a passive verb bonus; those references now name what they are actually
+  describing instead.
+
+  Condition text also gained `[singular|plural]` markers, so a status reads
+  "increased 1 time" at one stack and "increased 3 times" at three rather than
+  picking one and being wrong at the other.
+
+  Sheet edits go through a new **`tools/_xlsx_surgery.py`**, which rewrites one
+  sheet's two XML parts and copies every other zip entry through byte-for-byte —
+  an openpyxl round-trip of this workbook silently drops its seven charts. It
+  resolves a sheet's part BY NAME through the rels, because the number in
+  `sheetN.xml` is not the sheet's rId (`items2.0` is rId4 and lives in sheet4.xml
+  only by coincidence) and guessing that mapping is how you edit the wrong sheet.
+
 - **Statuses 2.0 — balance by rewriting goals** (`statuses2.0`, spec §13). The run
   had no lever between "an item that grants a number" and "an enemy with a harder
   goal", so a location or an event had nothing to reach for. A **status** is that

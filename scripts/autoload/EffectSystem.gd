@@ -91,7 +91,7 @@ func _h_gain_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	if v != 0:
 		GameState.set_max_hp(GameState.max_hp + v, false)
 
-# Permanent run-scope stat/verb grant (Vajra +1 Bash, Anchor +1 Shield, …).
+# Permanent run-scope stat/verb grant (Anchor +1 Shield, a level-up's +1 Dash, …).
 # Routes ability verbs (bash/transmute/scramble/block/…) to their backing field.
 func _h_gain_stat(effect: Dictionary, _ctx: Dictionary) -> void:
 	var stat: String = String(effect.get("stat", ""))
@@ -113,9 +113,11 @@ func _h_gain_chest(effect: Dictionary, _ctx: Dictionary) -> void:
 	GameState.grant_chest(n)
 
 # Applies a STATUS (§13) — the hook a location, item, or scroll uses to reach into
-# the run's goals without knowing anything about them. `target` picks the side:
-#   player                  -> a standing goal (buff) or a tax on every goal (debuff)
-#   current | all | random  -> onto enemies, via GameLoop2's targeting
+# the run's goals without knowing anything about them. `target` picks the SIDE the
+# status acts through, and what that side does is the sheet's business, not this
+# handler's:
+#   player                  -> the status's On Player side (Vajra's +1 Strength)
+#   current | all | random  -> its On Enemy side, via GameLoop2's targeting
 # Defaults to the player, since that is the side a pickup usually lands on.
 func _h_apply_status(effect: Dictionary, _ctx: Dictionary) -> void:
 	var status_id := StringName(String(effect.get("status", "")))

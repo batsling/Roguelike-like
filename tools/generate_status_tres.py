@@ -4,17 +4,28 @@ Generate Godot StatusData .tres for the games-first redesign (2.0) statuses, fro
 the `statuses2.0` sheet of tools/Roguelikes.xlsx into data/statuses2.0/.
 
 A status (docs/games-first-redesign.md §13) is a clause bolted onto the run's
-goals. The sheet's four prose quadrants are carried through verbatim for tooltips,
-but everything the engine runs on comes out of two authored columns:
+goals. The sheet's PROSE columns are carried through verbatim for tooltips; what
+the engine runs on is the two effect columns, one per side, authored
+independently so a status's two halves can do different things:
 
   statuses2.0: Name | Type | Game | On Player | On Enemy | Stackable | Image
-                    | Condition | Reward
+                    | On Player Effect | On Enemy Effect
 
-  Condition   the challenge clause, with {expr} holes over X (the stack count):
-              "you get {X} achievements"
-              "beaten in {1+(1/2)^(X-2)} hours or less"
-  Reward      semicolon-separated effect tokens, same {expr} holes:
-              "gain_chest small {X}; gain_stat bash {X}"
+Side effect DSL — one clause per cell:
+
+  <verb> "<condition>" [decay] [-> <reward>; <reward>; …]
+
+  goal    a standing objective of the holder's own: "If <condition>, gain
+          <reward>". On the player, an extra checklist row offered every game.
+  clause  ANDed onto goals and REQUIRED — the goal is not met until you did both.
+          On an enemy it tightens that enemy's goal; on the player it tightens
+          EVERY enemy's goal.
+  bonus   an OPTIONAL objective — "and if <condition>, gain <reward>" — claimable
+          for its reward, free to skip.
+  decay   completing it sheds one stack.
+
+Because the verb says what the side DOES, Buff/Debuff drives no mechanic: it is
+the HUD tint and the collection filter, nothing more.
 
 Reward token DSL (one clause per effect):
   gain_chest [small|medium|large|huge] <n>   -> {type: gain_chest, value, choices}
@@ -29,9 +40,9 @@ StatusData.reward_effects evaluates at apply time, since X isn't known until the
 status is actually on something. `^` is rewritten to pow() on the way out, so the
 sheet can keep writing exponents the way a person does.
 
-Decay follows the type, per the design call in §13: a DEBUFF loses a stack each
-time its condition is completed (Marked's own sheet cell says so), a BUFF persists
-for the run — it is the reward, not a timer.
+An {expr} hole may carry a FORMAT after a colon — `{1+(1/2)^(X-2):hours}` renders
+as a duration ("1 hour 30 minutes") rather than a bare number, so a fractional
+window reads as a time instead of as "1.5".
 
 Art: Image -> res://images2.0/statuses/<Image>.png, referenced eagerly (three
 files, unlike the 818 game covers that forced GameData's lazy path).
@@ -200,24 +211,93 @@ def _operand_after(s: str, i: int):
 
 HOLE = re.compile(r"\{([^{}]*)\}")
 
+# Formats an {expr} hole may ask for after a colon. `hours` is what makes a
+# fractional window read as "1 hour 30 minutes" instead of "1.5".
+FORMATS = ("hours",)
+
+
+def _split_hole(body: str):
+    """'1+(1/2)^(X-2):hours' -> ('1+(1/2)^(X-2)', 'hours'); no colon -> fmt ''."""
+    if ":" not in body:
+        return body, ""
+    expr, _, fmt = body.rpartition(":")
+    fmt = fmt.strip().lower()
+    if fmt not in FORMATS:
+        raise ValueError("status {expr} hole: unknown format %r (known: %s)"
+                         % (fmt, ", ".join(FORMATS)))
+    return expr, fmt
+
 
 def normalise_holes(text: str) -> str:
-    """Rewrite every {expr} hole's arithmetic, leaving the surrounding prose alone."""
-    return HOLE.sub(lambda m: "{%s}" % to_godot_expr(m.group(1)), text)
+    """Rewrite every {expr} hole's arithmetic, leaving the surrounding prose alone
+    and preserving any `:format` suffix for the runtime to act on."""
+    def one(m):
+        expr, fmt = _split_hole(m.group(1))
+        return "{%s%s}" % (to_godot_expr(expr), (":" + fmt) if fmt else "")
+    return HOLE.sub(one, text)
 
 
 def _amount(tok: str):
-    """A reward amount: ('literal', int) or ('expr', 'X') for a {expr} hole."""
+    """A reward amount: ('literal', int) or ('expr', 'X') for a {expr} hole.
+
+    A reward is a count of things granted, so a `:format` on it would be
+    meaningless — only the CONDITION text formats.
+    """
     tok = tok.strip()
     m = HOLE.fullmatch(tok)
     if m:
-        return "expr", to_godot_expr(m.group(1))
+        expr, fmt = _split_hole(m.group(1))
+        if fmt:
+            raise ValueError("status reward: amounts take no :format (%r)" % tok)
+        return "expr", to_godot_expr(expr)
     if re.fullmatch(r"-?\d+", tok):
         return "literal", int(tok)
     raise ValueError("status reward: %r is not a number or a {expr}" % tok)
 
 
-# --- the Reward column ----------------------------------------------------
+# --- a side's effect cell -------------------------------------------------
+
+MODES = ("goal", "clause", "bonus")
+SIDE_RE = re.compile(
+    r'^\s*(?P<verb>[a-z_]+)\s+"(?P<condition>[^"]*)"\s*(?P<flags>[^-]*?)\s*'
+    r'(?:->\s*(?P<reward>.*))?$', re.S)
+
+
+def parse_side(raw, where):
+    """Parse one `On Player Effect` / `On Enemy Effect` cell.
+
+    Returns {} for an empty cell — a status is allowed to do nothing on one side,
+    and an empty dict is what the runtime reads as "this side is inert".
+    """
+    s = _clean(raw)
+    if not s:
+        return {}
+    m = SIDE_RE.match(s)
+    if not m:
+        raise ValueError('statuses2.0 %s: cannot parse %r — expected '
+                         '<verb> "<condition>" [decay] [-> <reward>]' % (where, s))
+    mode = m.group("verb").lower()
+    if mode not in MODES:
+        raise ValueError("statuses2.0 %s: unknown verb %r (known: %s)"
+                         % (where, mode, ", ".join(MODES)))
+    flags = m.group("flags").split()
+    unknown = [f for f in flags if f.lower() != "decay"]
+    if unknown:
+        raise ValueError("statuses2.0 %s: unknown flag(s) %s" % (where, unknown))
+    reward, reward_text = parse_reward(m.group("reward"))
+    if mode == "clause" and reward:
+        raise ValueError("statuses2.0 %s: a `clause` is a requirement, not a "
+                         "payout — move the reward to a `bonus` or a `goal`" % where)
+    return {
+        "mode": mode,
+        "condition": normalise_holes(m.group("condition")),
+        "reward": reward,
+        "reward_text": reward_text,
+        "decay": any(f.lower() == "decay" for f in flags),
+    }
+
+
+# --- the Reward half of a side clause -------------------------------------
 
 def parse_reward(raw):
     """Parse the Reward column -> (effects list, human-readable text)."""
@@ -320,8 +400,10 @@ def status_tres(row) -> tuple:
     kind = (_clean(row.get("Type")) or "Buff").lower()
     if kind not in ("buff", "debuff"):
         raise ValueError("statuses2.0 %s: Type must be Buff or Debuff, got %r" % (name, kind))
-    condition = normalise_holes(_clean(row.get("Condition")))
-    reward, reward_text = parse_reward(row.get("Reward"))
+    on_player = parse_side(row.get("On Player Effect"), "%s / On Player Effect" % name)
+    on_enemy = parse_side(row.get("On Enemy Effect"), "%s / On Enemy Effect" % name)
+    if not on_player and not on_enemy:
+        raise ValueError("statuses2.0 %s: neither side does anything" % name)
     file = _clean(row.get("Image"))
     img = _image_path(file)
 
@@ -344,11 +426,8 @@ def status_tres(row) -> tuple:
     lines.append('on_player_text = "%s"' % gd_str(_clean(row.get("On Player"))))
     lines.append('on_enemy_text = "%s"' % gd_str(_clean(row.get("On Enemy"))))
     lines.append('stackable = "%s"' % gd_str(_clean(row.get("Stackable")) or "Intensity"))
-    lines.append('condition = "%s"' % gd_str(condition))
-    lines.append("reward = %s" % gd_value(reward))
-    lines.append('reward_text = "%s"' % gd_str(reward_text))
-    # Buffs persist for the run; debuffs shed a stack per completion (§13).
-    lines.append("decays_on_complete = %s" % ("true" if kind == "debuff" else "false"))
+    lines.append("on_player = %s" % gd_value(on_player))
+    lines.append("on_enemy = %s" % gd_value(on_enemy))
     lines.append('file = "%s"' % gd_str(file))
     if img:
         lines.append('image = ExtResource("2_img")')
@@ -371,7 +450,7 @@ def main():
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     sheet = wb["statuses2.0"]
     headers = [str(c.value).strip() if c.value is not None else "" for c in sheet[1]]
-    for needed in ("Condition", "Reward"):
+    for needed in ("On Player Effect", "On Enemy Effect"):
         if needed not in headers:
             raise SystemExit(
                 "statuses2.0 has no %r column — run tools/_statuses_sheet_setup.py first."

@@ -4,78 +4,72 @@ extends Resource
 # Static definition of a STATUS — the games-first redesign's balance lever
 # (docs/games-first-redesign.md §13). A status is not a stat modifier and it is
 # not combat state: it is a CLAUSE bolted onto the run's goals, which is the only
-# currency this game has. Everything a status can do is one of four rearrangements
-# of the same two authored pieces (`condition` + `reward`):
+# currency this game has. That is why a location, an item, or a scroll can reach
+# into the run's difficulty without any of them knowing what a goal is.
 #
-#   BUFF on the PLAYER    an extra standing goal — "If <condition>, gain <reward>"
-#                         — that shows up on the goal list and pays out every game
-#                         you satisfy it.
-#   BUFF on an ENEMY      that enemy's goal gains "and <condition>". REQUIRED: the
-#                         goal isn't met until you did both.
-#   DEBUFF on the PLAYER  every enemy's goal gains "and <condition>", and the stack
-#                         ticks down by 1 each game you complete it.
-#   DEBUFF on an ENEMY    that enemy gains an OPTIONAL bonus row — "and if
-#                         <condition>, gain <reward>" — claimable alongside its goal.
+# A status has TWO SIDES, `on_player` and `on_enemy`, authored independently in
+# the sheet so its halves can do genuinely different things (Marked taxes every
+# goal on the player's side and pays out on the enemy's). Each side names a MODE,
+# and the mode is the whole of what that side does:
 #
-# So a buff pays the player and taxes the enemy's goal; a debuff taxes the player's
-# goals and pays out on the enemy. That symmetry is the whole system, and it is why
-# a location, an item, or a scroll can reach into the run's difficulty without any
-# of them knowing what a goal is.
+#   goal    a standing objective of the holder's own — "If <condition>, gain
+#           <reward>". On the player it is an extra checklist row, offered every
+#           game and paid every time it is met.
+#   clause  ANDed onto goals and REQUIRED: the goal is not met until both were
+#           done. On an enemy it tightens that enemy's goal; on the player it
+#           tightens EVERY enemy's goal.
+#   bonus   an OPTIONAL objective — "and if <condition>, gain <reward>" —
+#           claimable for its reward and free to skip.
+#
+# Because the mode says what a side does, `kind` (Buff / Debuff) drives no
+# mechanic at all: it is the HUD tint and the collection filter, nothing more.
 #
 # Source-of-truth content lives in the `statuses2.0` sheet of
 # tools/Roguelikes.xlsx and is generated into data/statuses2.0/*.tres by
 # tools/generate_status_tres.py.
 
+# The two sides, named so callers read as `status.condition_text(StatusData.PLAYER, n)`
+# rather than passing a bare string nobody can typo-check.
+const PLAYER := &"player"
+const ENEMY := &"enemy"
+
 @export var id: StringName
 @export var display_name: String
 
-# Buff or Debuff (the sheet's Type column), lowercased. Decides which of the four
-# quadrants above a given application lands in — together with who it was applied
-# to, that is the entire dispatch.
+# Buff or Debuff (the sheet's Type column), lowercased. FLAVOUR ONLY — see the
+# header. Kept because it is how the player thinks about a status and how the
+# collection groups them.
 @export var kind: StringName = &"buff"
 
 # The real roguelike the status is lifted from (Slay the Spire, Mewgenics).
-# Informational / flavour, same role as GoalEnemyData.source_game.
+# Informational, same role as GoalEnemyData.source_game.
 @export var source_game: String = ""
 
-# The sheet's prose for each quadrant, kept verbatim for tooltips and the
-# collection screen. The ENGINE never parses these — it builds its own wording
-# from `condition` / `reward` — but they are the author's intent, so a mismatch
-# between the prose and the generated text is a content bug worth being able to
-# see. Not the display path: use player_goal_text / enemy_clause / bonus_text.
+# The sheet's prose for each side, kept verbatim for tooltips and the collection
+# screen. The ENGINE never parses these — it builds its own wording from the side
+# blocks below — but they are the author's intent, so a drift between the prose
+# and the generated text is a content bug worth being able to see.
 @export var on_player_text: String = ""
 @export var on_enemy_text: String = ""
 
 # How the sheet says stacks combine ("Intensity" for the current roster — a second
-# application raises X rather than starting a second timer). Kept as text because
-# nothing else has been authored yet; `stacks_by_intensity()` is the question the
-# code actually asks.
+# application raises X rather than starting a second timer).
 @export var stackable: String = "Intensity"
 
-# The challenge clause, with `{expr}` holes evaluated against the stack count X
-# (see `resolve`). "you get {X} achievements" / "beaten in {1+pow(0.5,X-2)} hours
-# or less". This is the ONE piece of text every quadrant is built out of.
-@export var condition: String = ""
-
-# What completing the condition pays, as EffectSystem effect dicts with `{expr}`
-# holes preserved in a parallel `scaled` map (see `reward_effects`). Empty for a
-# status that only taxes.
-@export var reward: Array = []
-
-# Human-readable reward wording, generated by the sheet generator from `reward`
-# so the checklist can show "+2 Small Chests, +2 Bash" without re-deriving it.
-@export var reward_text: String = ""
-
-# Whether a stack falls off when its condition is completed. Buffs persist for the
-# run (they ARE the reward); debuffs tick down, which is what makes them survivable
-# — Marked's sheet cell says so outright.
-@export var decays_on_complete: bool = false
+# THE TWO SIDES. Each is either {} (this side does nothing) or:
+#   {"mode": "goal"|"clause"|"bonus",
+#    "condition": String,        the challenge clause, with {expr} holes over X
+#    "reward": Array,            EffectSystem effect dicts, {expr} holes in `scaled`
+#    "reward_text": String,      human wording for the payout
+#    "decay": bool}              completing it sheds one stack
+@export var on_player: Dictionary = {}
+@export var on_enemy: Dictionary = {}
 
 # Art base name under res://images2.0/statuses/ (the sheet's Image column).
 @export var file: String = ""
 @export var image: Texture2D
 
-# --- kind -----------------------------------------------------------------
+# --- kind (flavour) -------------------------------------------------------
 
 func is_buff() -> bool:
 	return kind == &"buff"
@@ -85,60 +79,86 @@ func is_debuff() -> bool:
 
 # True when a second application raises X instead of stacking independently — the
 # only mode the current roster authors, but asked as a question so a future
-# "Duration" status doesn't have to be special-cased at every call site.
+# duration-based status doesn't have to be special-cased at every call site.
 func stacks_by_intensity() -> bool:
 	return stackable.to_lower().begins_with("intensity")
 
 func art_file() -> String:
 	return file if file != "" else display_name.replace(" ", "").replace("'", "")
 
+# --- sides ----------------------------------------------------------------
+
+# One side's block, or {} when that side is inert.
+func side(which: StringName) -> Dictionary:
+	return on_enemy if which == ENEMY else on_player
+
+# What `which` side DOES: &"goal", &"clause", &"bonus", or &"" when inert.
+func mode_for(which: StringName) -> StringName:
+	return StringName(String(side(which).get("mode", "")))
+
+func has_side(which: StringName) -> bool:
+	return mode_for(which) != &""
+
+func is_goal(which: StringName) -> bool:
+	return mode_for(which) == &"goal"
+
+func is_clause(which: StringName) -> bool:
+	return mode_for(which) == &"clause"
+
+func is_bonus(which: StringName) -> bool:
+	return mode_for(which) == &"bonus"
+
+# Whether completing this side sheds a stack.
+func decays(which: StringName) -> bool:
+	return bool(side(which).get("decay", false))
+
+# A side the player can tick and be PAID for — a goal or a bonus. A clause has
+# nothing to claim: it is folded into the goal it taxes.
+func is_claimable(which: StringName) -> bool:
+	var m: StringName = mode_for(which)
+	return m == &"goal" or m == &"bonus"
+
 # --- text -----------------------------------------------------------------
 
-# The condition clause at `stacks`, with every `{expr}` hole evaluated:
-#   Marked 3    -> "you get 3 achievements"
-#   Dexterity 3 -> "beaten in 1.5 hours or less"
-func condition_text(stacks: int) -> String:
-	return resolve(condition, stacks)
+# One side's condition clause at `stacks`, every {expr} hole resolved:
+#   Marked / enemy    at 3 -> "you get 3 achievements"
+#   Dexterity / enemy at 3 -> "must be beaten in 1 hour 30 minutes or less"
+func condition_text(which: StringName, stacks: int) -> String:
+	return resolve(String(side(which).get("condition", "")), stacks)
 
-# The reward wording at `stacks` — "+2 Small Chests, +2 Bash".
-func reward_at(stacks: int) -> String:
-	return resolve(reward_text, stacks)
+# One side's reward wording at `stacks` — "+2 Small Chests, +2 Bashes".
+func reward_at(which: StringName, stacks: int) -> String:
+	return resolve(String(side(which).get("reward_text", "")), stacks)
 
-# BUFF ON PLAYER — the extra goal row. The reward is part of the line because the
-# whole point of the row is that it pays; a goal you might skip has to advertise
-# what skipping costs you.
-func player_goal_text(stacks: int) -> String:
-	var line: String = "If %s" % condition_text(stacks)
-	var pay: String = reward_at(stacks)
-	if pay != "":
-		line += ", gain %s" % pay
-	return line
+# The bare clause, for ANDing onto a goal. Rendered without a leading "and" so the
+# caller joins it however its line reads.
+func clause_text(which: StringName, stacks: int) -> String:
+	return condition_text(which, stacks)
 
-# BUFF ON ENEMY / DEBUFF ON PLAYER — the clause ANDed onto a goal. Rendered
-# without the leading "and" so the caller can join it however its line reads.
-func enemy_clause(stacks: int) -> String:
-	return condition_text(stacks)
-
-# DEBUFF ON ENEMY — the optional bonus row hanging off that enemy's goal.
-func bonus_text(stacks: int) -> String:
-	var line: String = "and if %s" % condition_text(stacks)
-	var pay: String = reward_at(stacks)
+# How a CLAIMABLE side reads as a checklist row. A `goal` is a standing objective
+# and opens with "If"; a `bonus` hangs off something else and opens with "and if".
+# Either way the reward is part of the line, because the whole point of the row is
+# that it pays — a row you might skip has to advertise what skipping costs.
+func objective_text(which: StringName, stacks: int) -> String:
+	var line: String = "%s %s" % [
+		"and if" if is_bonus(which) else "If", condition_text(which, stacks)]
+	var pay: String = reward_at(which, stacks)
 	if pay != "":
 		line += ", gain %s" % pay
 	return line
 
 # --- reward effects -------------------------------------------------------
 
-# The reward as EffectSystem-ready effect dicts at `stacks`. The generator stores
-# each effect with its `{expr}` holes listed in a `scaled` sub-dict (field name ->
-# expression); this evaluates them at X = stacks and returns plain dicts the
-# EffectSystem can apply unchanged:
+# One side's reward as EffectSystem-ready effect dicts at `stacks`. The generator
+# stores each effect with its {expr} holes listed in a `scaled` sub-dict (field
+# name -> expression); this evaluates them at X = stacks and returns plain dicts
+# the EffectSystem applies unchanged:
 #
 #   {"type": "gain_chest", "choices": 1, "scaled": {"value": "X"}}   at X=2
 #     -> {"type": "gain_chest", "choices": 1, "value": 2}
-func reward_effects(stacks: int) -> Array:
+func reward_effects(which: StringName, stacks: int) -> Array:
 	var out: Array = []
-	for raw in reward:
+	for raw in side(which).get("reward", []):
 		if not (raw is Dictionary):
 			continue
 		var eff: Dictionary = (raw as Dictionary).duplicate(true)
@@ -153,9 +173,12 @@ func reward_effects(stacks: int) -> Array:
 
 # Substitutes every hole in `text` at X = `stacks`. Two kinds:
 #
-#   {expr}              an arithmetic expression over X, formatted for reading:
-#                       whole numbers lose their decimal tail ("2", not "2.0") and
-#                       fractional ones keep only the digits they need ("1.5").
+#   {expr[:format]}     an arithmetic expression over X. With no format it is a
+#                       plain number, read-ready: whole values lose their decimal
+#                       tail ("2", not "2.0"). With `:hours` it renders as a
+#                       DURATION — "1 hour 30 minutes" — because a time window is
+#                       something the player has to hold against a clock, and
+#                       "1.5 hours" is arithmetic they'd have to do themselves.
 #   [singular|plural]   agrees in number with the {expr} most recently resolved,
 #                       so "+{X} [Small Chest|Small Chests]" reads correctly at
 #                       every stack count instead of picking one and being wrong
@@ -180,8 +203,13 @@ func resolve(text: String, stacks: int) -> String:
 		out += rest.substr(0, open_at)
 		var body: String = rest.substr(open_at + 1, close_at - open_at - 1)
 		if is_expr:
+			var fmt: String = ""
+			var colon: int = body.rfind(":")
+			if colon >= 0:
+				fmt = body.substr(colon + 1).strip_edges().to_lower()
+				body = body.substr(0, colon)
 			last_value = evaluate(body, stacks)
-			out += format_number(last_value)
+			out += format_hours(last_value) if fmt == "hours" else format_number(last_value)
 		else:
 			var forms: PackedStringArray = body.split("|")
 			var singular: bool = forms.size() > 1 and is_equal_approx(last_value, 1.0)
@@ -228,3 +256,23 @@ static func format_number(v: float) -> String:
 	if s.ends_with("."):
 		s = s.substr(0, s.length() - 1)
 	return s
+
+# A count of HOURS as a duration the player can hold against a clock:
+#   3      -> "3 hours"
+#   1.5    -> "1 hour 30 minutes"
+#   1.125  -> "1 hour 8 minutes"   (67.5 min, rounded to the minute)
+#   0.75   -> "45 minutes"
+# Rounded to the nearest minute, because no honour-system timer is finer than that
+# and "1 hour 7.5 minutes" invites a precision the report step doesn't have.
+static func format_hours(hours: float) -> String:
+	var total: int = int(round(hours * 60.0))
+	if total <= 0:
+		return "0 minutes"
+	var h: int = total / 60
+	var m: int = total % 60
+	var parts: PackedStringArray = []
+	if h > 0:
+		parts.append("%d %s" % [h, "hour" if h == 1 else "hours"])
+	if m > 0:
+		parts.append("%d %s" % [m, "minute" if m == 1 else "minutes"])
+	return " ".join(parts)

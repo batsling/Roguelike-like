@@ -306,7 +306,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	# Restore the item instance-id counter.
 	GameState._next_item_instance_id = maxi(1, int(data.get("next_item_instance_id", 1)))
 	# The BASE run verbs go in before the recompute below, which is what re-applies
-	# the item half on top of them (Vajra's +1 Bash). Setting them afterwards would
+	# the item half on top of them (a passive +1 Bash). Setting them afterwards would
 	# either wipe the item contribution or bake it in twice, depending on the verb.
 	GameState.dash_charges = int(data.get("dash", 0))
 	GameState.shields = int(data.get("shields", 0))

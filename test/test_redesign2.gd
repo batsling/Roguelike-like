@@ -198,22 +198,33 @@ func test_burning_blood_is_starter_game_beaten_heal() -> void:
 	var eff: Dictionary = bb.triggers[0]["effects"][0]
 	assert_eq(String(eff.get("type", "")), "gain_hp")
 
-func test_vajra_pickup_grants_bash() -> void:
-	# Vajra is a PICKUP: the +1 Bash is granted once, permanently, on acquisition
-	# rather than being a stat_bonus that would vanish if the item ever left.
+func test_vajra_pickup_grants_the_strength_status() -> void:
+	# Vajra is a PICKUP whose payload is a STATUS (§13) — Strength, the stat it
+	# grants in Slay the Spire. Granted once, permanently, on acquisition rather
+	# than being a stat_bonus that would vanish if the item ever left.
 	var vajra: ItemData = Data.get_item2(&"vajra")
 	assert_eq(int(vajra.kind), int(ItemData.ItemKind.PICKUP))
 	var trig: Dictionary = vajra.triggers[0]
 	assert_eq(String(trig.get("on", "")), "item_acquired")
 	var eff: Dictionary = trig["effects"][0]
-	assert_eq(String(eff.get("type", "")), "gain_stat")
-	assert_eq(String(eff.get("stat", "")), "bash")
+	assert_eq(String(eff.get("type", "")), "apply_status")
+	assert_eq(String(eff.get("status", "")), "strength")
+	assert_eq(String(eff.get("target", "")), "player")
 	assert_eq(int(eff.get("value", 0)), 1)
 
-func test_vajra_pickup_actually_moves_bash() -> void:
-	var bash_before: int = GameState.bash
+func test_vajra_pickup_actually_applies_the_status() -> void:
+	var before: int = GameState.status_stacks(&"strength")
 	GameState.add_item(Data.get_item2(&"vajra"))
-	assert_eq(GameState.bash, bash_before + 1, "picking Vajra up grants the Bash")
+	assert_eq(GameState.status_stacks(&"strength"), before + 1,
+		"picking Vajra up grants the Strength")
+
+func test_oddly_smooth_stone_grants_the_dexterity_status() -> void:
+	# Its opposite number in the same game, and the second content path into §13.
+	var stone: ItemData = Data.get_item2(&"oddly_smooth_stone")
+	assert_not_null(stone, "items2.0 has oddly_smooth_stone")
+	var before: int = GameState.status_stacks(&"dexterity")
+	GameState.add_item(stone)
+	assert_eq(GameState.status_stacks(&"dexterity"), before + 1)
 
 # --- Bomb items (§4 / §8) -------------------------------------------------
 # The three Binding-of-Isaac bomb items each hand over a Bomb on pickup and then

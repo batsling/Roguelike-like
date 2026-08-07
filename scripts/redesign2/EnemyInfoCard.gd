@@ -133,13 +133,14 @@ func setup(entry: Dictionary, col: int, is_current: bool) -> void:
 		chips.add_child(_chip("BOSS", Color(0.95, 0.55, 0.2)))
 	if String(e.tag) != "":
 		chips.add_child(_chip(String(e.tag), UITheme.TEXT_DIM))
-	# Statuses riding this body (§13). A buff on an enemy is bad news for the player
-	# (it tightened the goal), a debuff on one is an opportunity — so they are tinted
-	# the OPPOSITE way round from the player's own strip, which is the point.
+	# Statuses riding this body (§13), tinted by what their ENEMY side does rather
+	# than by Buff/Debuff: a `clause` tightened this enemy's goal and is bad news,
+	# a `bonus` is free reward and is an opportunity. That is the opposite reading
+	# from the player's own strip, which is the point.
 	for row in GameLoop2.enemy_statuses(entry):
 		var sd: StatusData = row["status"]
 		chips.add_child(_chip("%s %d" % [sd.display_name, int(row["stacks"])],
-			UITheme.DANGER if sd.is_buff() else UITheme.GOLD))
+			UITheme.GOLD if sd.is_bonus(StatusData.ENEMY) else UITheme.DANGER))
 	inner.add_child(chips)
 
 	# The goal — the thing you actually have to do — gets its own panel.
@@ -162,13 +163,13 @@ func setup(entry: Dictionary, col: int, is_current: bool) -> void:
 		goal_txt.custom_minimum_size = Vector2(460, 0)
 		goal_txt.add_theme_font_size_override("font_size", 14)
 		goal_box.add_child(goal_txt)
-		# Optional bonus objectives from this enemy's debuffs — inside the goal
+		# Optional bonus objectives hanging off this enemy (§13) — inside the goal
 		# panel, since they are read at the same moment, but visibly a separate
 		# line because skipping one costs nothing (§13).
 		for row in GameLoop2.bonus_objectives_for(entry):
 			var sd: StatusData = row["status"]
 			var bonus := Label.new()
-			bonus.text = "+  %s" % sd.bonus_text(int(row["stacks"]))
+			bonus.text = "+  %s" % sd.objective_text(StatusData.ENEMY, int(row["stacks"]))
 			bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			bonus.custom_minimum_size = Vector2(460, 0)
 			bonus.add_theme_font_size_override("font_size", 12)
