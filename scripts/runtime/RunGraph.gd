@@ -195,6 +195,17 @@ static func neighbors(game_id: StringName) -> Array[StringName]:
 		out.append(n)
 	return out
 
+# How many games this one connects to IN THE RUN — after the game filter and the
+# main-component prune, so it's the count that actually matters for routing, not
+# the raw `games_influenced` length. 0 for an off-map game.
+#
+# Its own function because callers that only want the SIZE (the offering's hub
+# rule, which asks this of every candidate) shouldn't pay for neighbors()
+# copying the adjacency list out on every check.
+static func degree(game_id: StringName) -> int:
+	_build_adj()
+	return (_adj_cache.get(game_id, []) as Array).size()
+
 # Eligible games in this run that share `game_id`'s release year (Winged Boots
 # flies to one of these, ignoring connections). Excludes the game itself and any
 # already-beaten game so the jump only ever advances the run. The adjacency

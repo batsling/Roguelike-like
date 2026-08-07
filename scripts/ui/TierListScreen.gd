@@ -53,9 +53,12 @@ func _ready() -> void:
 	_refresh()
 
 func _fit_to_viewport() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
-	position = Vector2.ZERO
-	size = get_viewport_rect().size
+	# Offsets as well as anchors, and no manual size — the same fit Collection
+	# uses, which this screen's overlay pattern otherwise mirrors. Setting `size`
+	# on a node whose anchors aren't equal-opposite is overridden after _ready
+	# anyway, and Godot logs an error for it; that error surfaced the moment this
+	# screen was opened as a child of the overworld rather than the main menu.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):

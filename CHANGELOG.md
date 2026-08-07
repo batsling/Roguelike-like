@@ -11,6 +11,30 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A way onward, a way out, and somewhere for a score to land** — three things
+  the run was missing. **(1) The hub rule.** On a well-connected game the offering
+  shows three of dozens of neighbours, and the seeded subset could come up all
+  dead ends: Slay the Spire has 138 connections and 80 of them lead nowhere, so an
+  unguarded draw stranded the run there about one time in five. Standing on a game
+  with more than `HUB_CONNECTIONS` (20) connections now guarantees at least one
+  card with more than `ONWARD_CONNECTIONS` (2) of its own. It takes the LAST slot,
+  so it can never displace the reachable amulet, and it only ever offers a
+  neighbour that exists — at a small node the thin offering is the honest shape of
+  the graph and is left alone. **(2) Escape.** Some games won't go down. After
+  `ESCAPE_AFTER_ATTEMPTS` (5) lost runs — past the shields any game grants, so the
+  player has been paying Health to keep trying — an **🏃 Escape this game** button
+  appears under Completed Game and leaves the game at any time without beating it.
+  It resolves exactly as reporting a missed goal does: the goal-enemy walks onto
+  the board and follows you. That is the price, and by the time the button shows it
+  has been paid twice over; the button exists to make the way out visible to a
+  stuck player, not to discount it. Undoing back under the line takes it away
+  again. **(3) Rating flows into the tier list.** Submitting a score on the
+  ★ Rate prompt now opens the tier-list board on top, so the score lands somewhere
+  the player can see it and drag it into a row while the game is still fresh.
+  "Maybe later" still just closes — declining to rate shouldn't hand you a screen
+  you didn't ask for. `TierListScreen` sizes itself the way `Collection` does while
+  it's there, which is what it always claimed to do.
+
 - **Six more games, a new character, and a loadout that isn't the same twice** —
   the spreadsheet grew and the build caught up with it. `Roguelikes.xlsx` now
   carries **814 games and 1133 connections** (Into The Grid, Serpent's Gaze,
