@@ -824,6 +824,12 @@ lands when the relic is taken and stays for the run.
 - **On an enemy** — a `statuses` dict on the **GameLoop2 stack entry**, so a status
   rides the *body* and survives the current enemy walking onto the board. Saved
   inside `GameLoop2.serialize()`.
+- **On screen** — the player's statuses draw as art pips between the hero's
+  portrait and their health on the battlefield, and an enemy's below its box,
+  under the ❤/⚔ row (which was shrunk and dropped onto the box's bottom edge so
+  the art underneath stays readable). Every pip carries `StatusData.tooltip_for`,
+  the one place a status's hover text is built, so the board, the enemy card and
+  the HUD chip cannot disagree about what a status says.
 - **`GameLoop2.goal_text_for(entry)` is THE goal line.** Every live view asks for
   it rather than reading `GoalEnemyData.goal`, which is only ever the unmodified
   stem — the checklist, the enemy card, the scroll target picker, and the headless

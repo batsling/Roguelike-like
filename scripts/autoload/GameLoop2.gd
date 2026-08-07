@@ -1219,6 +1219,24 @@ func _take_hit(damage: int, res: Dictionary) -> int:
 		_finish_run(false)
 	return absorbed
 
+# Take a body off the board with NO defeat and NO drop — it simply stops
+# following. Distinct from fulfill() (which defeats and drops) and from bomb()
+# (which destroys and spends a charge): this is the "it was never here" removal
+# the dev panel needs, and the shape any future banish effect would want.
+# Returns true when something was removed.
+func despawn(instance: int) -> bool:
+	var idx: int = _index_of(instance)
+	if idx >= 0:
+		stack.remove_at(idx)
+		_admit_offgrid()
+		loop_changed.emit()
+		return true
+	if not current.is_empty() and int(current.get("instance", 0)) == instance:
+		current = {}
+		loop_changed.emit()
+		return true
+	return false
+
 # Removes and returns the GoalEnemyData for `instance`, or null if not stacked.
 func _pull_from_stack(instance: int) -> GoalEnemyData:
 	var idx: int = _index_of(instance)
@@ -1295,6 +1313,20 @@ func _add_status_to(entry: Dictionary, status_id: StringName, stacks: int) -> vo
 		held[status_id] = total
 	entry["statuses"] = held
 
+# Apply `stacks` of a status to ONE body, named by instance — the aimed version of
+# apply_enemy_status, for when the caller already knows which enemy it means (the
+# dev panel, and any future effect that targets a picked body). Returns the new
+# stack count, or 0 when nothing holds that instance.
+func apply_status_to(instance: int, status_id: StringName, stacks: int = 1) -> int:
+	if stacks == 0 or Data.get_status(status_id) == null:
+		return 0
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty():
+		return 0
+	_add_status_to(entry, status_id, stacks)
+	loop_changed.emit()
+	return int((entry.get("statuses", {}) as Dictionary).get(status_id, 0))
+
 # Tick a status off one enemy, by instance. Returns what is left on it.
 func remove_enemy_status(instance: int, status_id: StringName, stacks: int = 1) -> int:
 	var entry: Dictionary = entry_for(instance)
@@ -1329,7 +1361,7 @@ func enemy_statuses(entry: Dictionary) -> Array:
 	return out
 
 # Every clause that must ALSO be satisfied before `entry`'s goal counts as met:
-# the enemy's own buffs, then the player's debuffs (which are on every enemy at
+# the enemy's own clauses, then the player's (which are on every enemy at
 # once). Each row is {status, stacks, source}, `source` being "enemy" or "player"
 # — the UI tints them differently, and only the player-sourced ones decay.
 func required_clauses_for(entry: Dictionary) -> Array:

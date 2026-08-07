@@ -43,6 +43,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     Overworld2      — run flow: offering, report, pack
 │   │                      #     BattlefieldView — the grid the enemies close in on
 │   │                      #     EnemyInfoCard   — click-to-inspect enemy card
+│   │                      #     ItemInfoCard    — click-to-inspect item card
 │   │                      #     RunOverScreen   — the end-of-run verdict screen
 │   │                      #     RunMapModal / ScrollReadModal
 │   ├── events/           #   the D20 event system (EventModal, D20DieView)
@@ -186,7 +187,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Settings` | Run-independent preferences (e.g. game-filter) persisted to `user://settings.cfg`. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified). |
-| `DevTools` | Developer overlay (press `` ` ``) to grant 2.0 items, scrolls, or curses to the run. Gated on `Settings.dev_mode`. |
+| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Four tabs: **Grant** (items / scrolls / statuses, with a player-or-enemy target picker), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss). Everything routes through the same public API the game uses. |
 
 ### Screens & flow
 

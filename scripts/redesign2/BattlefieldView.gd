@@ -46,6 +46,7 @@ var _pressure_why: Label            # "Amulet 4 hops away — Closing"
 var _size_label: Label              # "▦ 5×5 · Medium"
 var _hero_icon: TextureRect
 var _hero_hp: Label
+var _hero_statuses: HBoxContainer   # the player's statuses, under the portrait (§13)
 # The Health the hero READS AS while a resolve plays back, or -1 when the label
 # just says what GameState says. The run's Health moves the instant a game is
 # reported — every strike of the resolve has already landed by the time the first
@@ -480,6 +481,14 @@ func _build() -> void:
 	hero_frame.add_child(_hero_icon)
 	hero_box.add_child(hero_frame)
 	_scale_hero()
+	# Statuses BETWEEN the portrait and the health, so the hero column reads
+	# top-to-bottom as "tries you have / who you are / what is riding you / what is
+	# left of you" (§13). Hidden entirely when nothing is on the player.
+	_hero_statuses = HBoxContainer.new()
+	_hero_statuses.alignment = BoxContainer.ALIGNMENT_CENTER
+	_hero_statuses.add_theme_constant_override("separation", 3)
+	_hero_statuses.visible = false
+	hero_box.add_child(_hero_statuses)
 	_hero_hp = Label.new()
 	_hero_hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hero_hp.add_theme_font_size_override("font_size", 14)
@@ -544,6 +553,8 @@ func refresh(show_current: bool = false) -> void:
 	_hero_icon.texture = hero_tex
 	UITheme.apply_crisp(_hero_icon, hero_tex)
 	_paint_hp()
+	_fill_status_strip(_hero_statuses, GameState.status_list(), StatusData.PLAYER,
+		STATUS_PIP_HERO)
 	# Filled pips = shields still standing, hollow = tries already spent on one.
 	var left: int = GameState.shields
 	var spent: int = GameLoop2.attempts_on_shields()
@@ -786,20 +797,41 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		top.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 2)
 		holder.add_child(top)
 
+	# ❤ health and ⚔ damage sit on the box's bottom EDGE rather than inside it, and
+	# small: printed over the art at full size they covered the enemy you were
+	# trying to recognise. Straddling the border puts them clear of the picture
+	# while still obviously belonging to this body.
 	var hp: int = int(entry.get("health", e.health))
-	var hp_lbl := _corner_badge("❤%d" % hp, Color(1.0, 0.5, 0.5))
-	hp_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 2)
+	var hp_lbl := _corner_badge("❤%d" % hp, Color(1.0, 0.5, 0.5), STAT_BADGE_FONT)
+	hp_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT,
+		Control.PRESET_MODE_MINSIZE, -STAT_BADGE_DROP)
 	holder.add_child(hp_lbl)
 
 	# Damage per swing, and — once this body gets more than one swing on the next
 	# game — how many swings that is: "⚔3 x2". The two numbers are one fact ("it
 	# hits you twice for 3"), so they read as one badge in the corner instead of
 	# the count sitting over the art.
-	var dmg_lbl := _corner_badge(_damage_badge_text(e, strikes), Color(1.0, 0.8, 0.35))
+	var dmg_lbl := _corner_badge(_damage_badge_text(e, strikes), Color(1.0, 0.8, 0.35),
+		STAT_BADGE_FONT)
 	if strikes > 1:
 		dmg_lbl.add_theme_color_override("font_color", UITheme.DANGER.lerp(Color.WHITE, 0.45))
-	dmg_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
+	dmg_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT,
+		Control.PRESET_MODE_MINSIZE, -STAT_BADGE_DROP)
 	holder.add_child(dmg_lbl)
+
+	# Statuses BELOW the box, under the health/damage row (§13) — the one piece of
+	# an enemy's state that is not a number and does not belong over its picture.
+	# Drawn on the badge layer, which is above every body, so the overhang into the
+	# gutter stays legible.
+	var statuses: Array = GameLoop2.enemy_statuses(entry)
+	if not statuses.is_empty():
+		var strip := HBoxContainer.new()
+		strip.alignment = BoxContainer.ALIGNMENT_CENTER
+		strip.add_theme_constant_override("separation", 2)
+		_fill_status_strip(strip, statuses, StatusData.ENEMY, STATUS_PIP_ENEMY)
+		strip.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM,
+			Control.PRESET_MODE_MINSIZE, -STATUS_STRIP_DROP)
+		holder.add_child(strip)
 
 	if stun > 0:
 		var frozen := _corner_badge("❄", Color(0.6, 0.8, 1.0))
@@ -852,6 +884,73 @@ func _cell_holder(cell: PanelContainer) -> Control:
 	return holder
 
 # A small pill label used for the health / damage / status badges on a cell.
+# --- status pips (§13) ----------------------------------------------------
+#
+# A status is art plus a stack count, on the body it is riding: under the hero's
+# portrait for the player's own, under an enemy's box for its own. Both are the
+# same chip so "what is on me" and "what is on that" read identically, and both
+# carry the full StatusData tooltip rather than a truncated version of it.
+
+# Icon edge for the hero's strip and for an enemy's, in px. The enemy board scales
+# with the tier (fitted_cell) but the pips do not: a status is read, not measured,
+# and shrinking it with the board makes it unreadable exactly when the board is
+# busiest.
+const STATUS_PIP_HERO := 22
+const STATUS_PIP_ENEMY := 16
+
+# How far the ❤ / ⚔ badges hang BELOW an enemy's box, and how far under them the
+# status strip sits. Both are negative insets on a bottom-anchored preset, so the
+# badges straddle the border and the statuses clear it entirely — the art keeps
+# the whole cell to itself.
+const STAT_BADGE_DROP := 7
+const STAT_BADGE_FONT := 10
+const STATUS_STRIP_DROP := 20
+
+# One status chip: the art (or the name's first letter when art is missing) with
+# its stack count, tinted by what this SIDE does — a `bonus` is an opportunity and
+# reads gold, anything that taxes reads red.
+func _status_pip(status: StatusData, stacks: int, which: StringName, size: int) -> Control:
+	var good: bool = status.is_bonus(which) or status.is_goal(which)
+	var tint: Color = UITheme.GOLD if good else UITheme.DANGER
+	var chip := PanelContainer.new()
+	chip.add_theme_stylebox_override("panel",
+		UITheme.flat(tint.lerp(UITheme.BG, 0.75), 3, 1, 1, tint.lerp(UITheme.BORDER, 0.35)))
+	chip.tooltip_text = status.tooltip_for(which, stacks)
+	chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 2)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.add_child(row)
+	if status.image != null:
+		var art := UITheme.crisp_tex(status.image, size)
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(art)
+	var count := Label.new()
+	count.text = str(stacks)
+	count.add_theme_font_size_override("font_size", maxi(9, size - 6))
+	count.add_theme_color_override("font_color", tint)
+	count.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	count.add_theme_constant_override("outline_size", 3)
+	count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(count)
+	return chip
+
+# Fill `strip` with one pip per status in `rows` ([{status, stacks}]). Returns how
+# many were drawn, so a caller can hide an empty strip rather than leave a gap.
+func _fill_status_strip(strip: HBoxContainer, rows: Array, which: StringName,
+		size: int) -> int:
+	# remove_child BEFORE queue_free: queue_free only marks a node, leaving it a
+	# child until the frame ends, so two refreshes in one frame (a status applied
+	# during a resolve) would draw every pip twice.
+	for child in strip.get_children():
+		strip.remove_child(child)
+		child.queue_free()
+	for row in rows:
+		strip.add_child(_status_pip(row["status"], int(row["stacks"]), which, size))
+	strip.visible = not rows.is_empty()
+	return rows.size()
+
 func _corner_badge(text: String, color: Color, font_size: int = 12) -> Label:
 	var l := Label.new()
 	l.text = text

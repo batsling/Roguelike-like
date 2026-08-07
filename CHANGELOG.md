@@ -11,6 +11,54 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Statuses where you fight, items you can read, and a dev panel worth opening.**
+  Four changes, all about seeing what the run is doing to you.
+
+  **Statuses are on the board now.** The player's draw as art pips between the
+  hero's portrait and their health — tries / who you are / what is riding you /
+  what is left of you, top to bottom. An enemy's draw *below* its box, under the
+  ❤/⚔ row. Those two badges were printed over the middle of the art at full size
+  and were covering the enemy you were trying to recognise, so they are smaller
+  now and sit straddling the box's bottom edge, leaving the picture the whole
+  cell. Every pip carries the full hover text, built in one place
+  (`StatusData.tooltip_for`) so the board, the enemy card and the HUD chip cannot
+  drift apart: name and stack count, what that side DOES, the live line at that
+  stack, and whether it decays. The enemy card grew a proper status row too — art,
+  name, and the clause spelled out rather than left to a hover, since the card is
+  where you have already stopped to read.
+
+  **The pack separates reading from spending.** Clicking an item's tile opens an
+  ItemInfoCard — big art, description, rarity / behaviour-class / charge / source
+  chips, tags, and a Use button when it can fire. Firing now lives *above* the
+  tile instead of on it: a Usable item gets a Use button, and a charged item gets
+  a battery — one rectangle per charge, filling left to right, Isaac's active bar
+  turned on its side — which becomes that same Use button at full. So the strip
+  answers "how long until I can" and "can I now" in the same pixels, and
+  inspecting an item can no longer spend a charge by mis-clicking it.
+
+  **The dev panel is rebuilt** from three grant lists into four tabs. GRANT:
+  items, scrolls, and statuses with a player / current / all / random target
+  picker and a stack count, listing each status's mode on the side it is about to
+  land on. RUN: vitals, every board verb, gold, banked chests, level, and games
+  played (the difficulty tier is derived from it, so the panel moves the count
+  rather than pretending the tier is a field). BOARD: spawn any goal-enemy or
+  boss, and per standing body — by instance id — stun / push / bomb / defeat /
+  remove, or hang a status on it. FLOW: jump to any game, heal, clear the board,
+  force the win or the loss. Everything routes through the same public API the
+  game uses, so the panel cannot drift into testing a path nothing else takes;
+  three small public methods were added for the ones it needed
+  (`GameLoop2.despawn` / `apply_status_to`, `Overworld2.travel_to_game`,
+  `GameState.verb_value`). It also had two plain bugs: it built its layer visible
+  and then flipped it, so the first `` ` `` press did nothing and only the second
+  opened it, and its panel had no opaque background, so the whole overworld read
+  straight through the tool you were using.
+
+  `test_run_history.test_newest_run_comes_first` was asserting run ordering by
+  comparing the two runs' PATHS. `_walk` follows an unseeded start roll and stops
+  at the first dead end, so two runs can honestly walk the same route — the test
+  failed perhaps one run in ten for a reason that had nothing to do with ordering.
+  It now asserts on the outcomes, which is what it was actually testing.
+
 - **Statuses 2.0: two sides, authored independently.** The first cut derived both
   halves of a status from one shared Condition + Reward, with Buff/Debuff deciding
   which behaviour each half got. That made the interesting cases unauthorable, so

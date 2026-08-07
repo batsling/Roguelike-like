@@ -147,6 +147,30 @@ func objective_text(which: StringName, stacks: int) -> String:
 		line += ", gain %s" % pay
 	return line
 
+# The hover tooltip for one side, Slay-the-Spire style: the status's name and
+# stack count, what that side DOES, and the live line at this stack. Every view
+# that draws a status pip asks for this — the hero strip, the enemy strip, the
+# enemy card, the HUD chip — so a status can never say one thing in one place and
+# something else in another.
+func tooltip_for(which: StringName, stacks: int) -> String:
+	var head: String = "%s %d" % [display_name, stacks]
+	if source_game != "":
+		head += "   (%s)" % source_game
+	var body: String = ""
+	match mode_for(which):
+		&"goal":
+			body = "Standing goal — %s" % objective_text(which, stacks)
+		&"bonus":
+			body = "Bonus — %s" % objective_text(which, stacks)
+		&"clause":
+			body = ("Every enemy's goal also needs: %s" if which == PLAYER
+				else "This enemy's goal also needs: %s") % clause_text(which, stacks)
+		_:
+			body = "Does nothing on this side."
+	if decays(which):
+		body += "\nLoses a stack each game you complete it."
+	return "%s\n%s" % [head, body]
+
 # --- reward effects -------------------------------------------------------
 
 # One side's reward as EffectSystem-ready effect dicts at `stacks`. The generator

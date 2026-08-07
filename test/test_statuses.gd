@@ -427,3 +427,89 @@ func test_a_side_left_blank_is_inert() -> void:
 	assert_false(s.has_side(StatusData.ENEMY))
 	assert_eq(s.mode_for(StatusData.ENEMY), &"")
 	assert_false(s.is_claimable(StatusData.ENEMY))
+
+# ---------------------------------------------------------------------------
+# 4. The views — where a status is actually READ
+#
+# The board is the primary surface: the player's own statuses under the hero's
+# portrait, an enemy's under its box. Both go through the same pip and the same
+# tooltip, so a status cannot say one thing in one place and something else in
+# another.
+# ---------------------------------------------------------------------------
+
+const OVERWORLD := preload("res://scenes/redesign2/Overworld2.tscn")
+
+# A mounted overworld with a run under way, for the view tests.
+func _booted():
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	return ui
+
+func test_the_hero_strip_shows_the_players_statuses() -> void:
+	var ui = _booted()
+	assert_false(ui._board._hero_statuses.visible, "hidden while nothing is on you")
+	GameState.apply_status(&"marked", 2)
+	GameState.apply_status(&"strength", 1)
+	ui._board.refresh()
+	assert_true(ui._board._hero_statuses.visible, "and shown once something is")
+	assert_eq(ui._board._hero_statuses.get_child_count(), 2, "one pip per status")
+
+func test_the_hero_strip_sits_between_the_portrait_and_the_health() -> void:
+	# The order is the whole point of where it was put: tries / who you are / what
+	# is riding you / what is left of you.
+	var ui = _booted()
+	GameState.apply_status(&"marked", 1)
+	ui._board.refresh()
+	var column: Node = ui._board._hero_statuses.get_parent()
+	var portrait: Node = ui._board._hero_icon.get_parent()   # the framed portrait
+	assert_gt(ui._board._hero_statuses.get_index(), portrait.get_index(),
+		"statuses come after the portrait")
+	assert_lt(ui._board._hero_statuses.get_index(), ui._board._hero_hp.get_index(),
+		"and before the health")
+	assert_eq(column, ui._board._hero_hp.get_parent(), "all in the one hero column")
+
+func test_a_status_pip_carries_the_full_tooltip() -> void:
+	var ui = _booted()
+	GameState.apply_status(&"dexterity", 3)
+	ui._board.refresh()
+	var pip: Control = ui._board._hero_statuses.get_child(0)
+	var tip: String = pip.tooltip_text
+	assert_string_contains(tip, "Dexterity 3", "the name and the live stack count")
+	assert_string_contains(tip, "1 hour 30 minutes", "and the line at that stack")
+
+func test_the_tooltip_names_what_each_side_does() -> void:
+	var marked: StatusData = Data.get_status(&"marked")
+	assert_string_contains(marked.tooltip_for(StatusData.PLAYER, 2),
+		"Every enemy's goal also needs", "the player side taxes every goal")
+	assert_string_contains(marked.tooltip_for(StatusData.ENEMY, 2),
+		"Bonus", "the enemy side pays out")
+	assert_string_contains(marked.tooltip_for(StatusData.PLAYER, 2),
+		"Loses a stack", "and a decaying side says so")
+
+func test_an_enemys_statuses_draw_under_its_box() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	GameLoop2.apply_enemy_status(&"marked", 2, "current")
+	ui.report(false)                      # it walks onto the board carrying Marked
+	ui._board.refresh()
+	assert_eq(GameLoop2.stack.size(), 1)
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	var node: Control = ui._board._enemy_nodes.get(inst)
+	assert_not_null(node, "the body has a node on the board")
+	var badges: Control = node.get_meta("badges")
+	# The strip is the one badge child that is a container of pips rather than a
+	# label, and it hangs BELOW the box (a negative bottom offset).
+	var strip: Control = null
+	for child in badges.get_children():
+		if child is HBoxContainer:
+			strip = child
+	assert_not_null(strip, "a status strip was added")
+	assert_eq(strip.get_child_count(), 1, "one pip for the one status")
+	# Pinned to the box's BOTTOM edge and pushed outward from it — the two halves
+	# of "below the box, not over the art". The resolved offsets are asserted on
+	# the anchors rather than on pixels, because a Control's offsets are not
+	# settled until it has been laid out and this test never renders a frame.
+	assert_eq(strip.anchor_top, 1.0, "anchored to the bottom edge")
+	assert_eq(strip.anchor_bottom, 1.0)
+	assert_gt(BattlefieldView.STATUS_STRIP_DROP, 0, "and pushed out past it")

@@ -1306,6 +1306,15 @@ func stat_gain_bonus_for(stat: String) -> int:
 # Technique Instructions: +1 Dash on a perfected game). Resolves ability stats
 # (dash/reroll/fov/discovery) to their backing field, applies Snowball-style
 # amplifiers to positive gains, and broadcasts the change.
+# The LIVE value of a board verb by its stat name — the read to grant_run_stat's
+# write, resolving "dash" to dash_charges through the same field map so the two
+# can't disagree about where a verb lives. Unlike base_verb_value this is the
+# number the run actually has, item bonuses folded in.
+func verb_value(stat: String) -> int:
+	var field: String = _LEVEL_UP_ABILITY_FIELDS.get(stat, stat)
+	var v: Variant = get(field)
+	return int(v) if v != null else 0
+
 func grant_run_stat(stat: String, value: int) -> void:
 	if value == 0:
 		return
@@ -1343,7 +1352,7 @@ func apply_status(status_id: StringName, stacks: int = 1) -> int:
 	return total
 
 # Tick `stacks` off a player status (default 1), removing it at zero. Returns what
-# is left. This is the decay path for a debuff completed this game.
+# is left. This is the decay path for a decaying side completed this game.
 func remove_status(status_id: StringName, stacks: int = 1) -> int:
 	if not player_statuses.has(status_id):
 		return 0

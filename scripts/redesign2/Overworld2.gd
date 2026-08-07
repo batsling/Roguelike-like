@@ -119,6 +119,7 @@ var _rng := RandomNumberGenerator.new()
 # --- UI nodes (built in code) --------------------------------------------
 var _hud: RichTextLabel
 var _status_strip: HBoxContainer    # the player's statuses, under the HUD numbers (§13)
+var _item_card: ItemInfoCard = null # the open item reading card, or null
 var _banner: Label
 var _boss_banner: Label
 var _preview: RichTextLabel
@@ -134,9 +135,9 @@ var _fulfil_checks: Array = []      # [{check: CheckBox, instance: int}]
 var _goal_check: CheckBox           # the chosen game's main goal; null on a free game
 # Statuses 2.0 (§13) on the report checklist. `_status_goal_checks` are the
 # player's own BUFF goals — extra rows that pay when ticked; `_bonus_checks` are
-# the OPTIONAL bonus objectives an enemy's debuff hangs off it. Both are read into
+# the OPTIONAL bonus objectives an enemy's `bonus` side hangs off it. Both are read into
 # beat_game's `claims` on report; the required clauses (enemy buffs, player
-# debuffs) need no boxes of their own because they are folded into the goal line.
+# clauses) need no boxes of their own because they are folded into the goal line.
 var _status_goal_checks: Array = [] # [{check: CheckBox, status: StringName}]
 var _bonus_checks: Array = []       # [{check: CheckBox, instance: int, status: StringName}]
 var _levelup_check: CheckBox        # null when the character has no level-up
@@ -1142,12 +1143,21 @@ func teleport_to_type(type_key: StringName) -> void:
 			Color(0.8, 0.6, 0.4))
 		return
 	var dest: StringName = same_type[_rng.randi() % same_type.size()]
-	GameState.set_current_game(dest)
 	var g: GameData = Data.get_game(dest)
 	GameLog.add("Rode the bus to %s." % (g.display_name if g != null else String(dest)),
 		Color(0.5, 0.85, 1.0))
+	travel_to_game(dest)
+
+# Move the run to `game_id` outright and rebuild the offering around it — the
+# landing half of every teleport (Ride the Bus, and the dev panel's jump). Does
+# not resolve a game or touch the board; it only changes where you are standing.
+func travel_to_game(game_id: StringName) -> void:
+	if Data.get_game(game_id) == null:
+		return
+	GameState.set_current_game(game_id)
 	_phase = Phase.SELECT
 	_dash_mode = false
+	_chosen = {}
 	_build_choices()
 	_refresh()
 
@@ -1968,7 +1978,7 @@ func _populate_play_panel() -> void:
 	if enemy != null and enemy.goal != "":
 		var is_amulet: bool = bool(_chosen.get("amulet", false))
 		# The goal LINE, not the enemy's authored goal: any status clause welded on
-		# by a buff on this enemy or a debuff on the player is part of what ticking
+		# by a clause on this enemy or one on the player is part of what ticking
 		# this box asserts (§13).
 		var goal_text: String = "%s %s" % [
 			"🏆 Amulet goal —" if is_amulet else "Goal —",
@@ -2017,7 +2027,7 @@ func _populate_play_panel() -> void:
 		_fulfil_checks.append({"check": row["check"], "instance": int(entry["instance"])})
 		_add_bonus_rows(entry)
 
-# The OPTIONAL bonus rows an enemy's debuffs hang off it (§13) — "and if you get 3
+# The OPTIONAL bonus rows an enemy's `bonus` sides hang off it (§13) — "and if you get 3
 # achievements, gain +3 Small Chests". A row of its own rather than part of the
 # goal line, because claiming it is a separate decision from meeting the goal: an
 # enemy you failed can still pay its bonus, and one you beat need not have.
@@ -2376,7 +2386,7 @@ func _enemy_preview_text(choice: Dictionary) -> String:
 
 # The board entry to read a `choice`'s goal line off (§13). For the game in play
 # that is the live current enemy, statuses and all. For an OFFERED card there is
-# no body yet — but the player's own debuffs tax every enemy's goal, so the
+# no body yet — but the player's own clauses tax every enemy's goal, so the
 # preview is built against a bare stand-in rather than falling back to the
 # unmodified stem: what a card will actually cost you is part of the routing
 # decision, not a surprise waiting on the report step.
@@ -2464,6 +2474,8 @@ func _refresh_scrolls() -> void:
 # report step is mid-resolve, so firing an item there would land between "played
 # the game" and "said what happened".
 const ITEM_TOKEN := 34
+# Height of the Use button / charge battery that sits above an active item's tile.
+const ITEM_USE_H := 14
 
 func _refresh_items() -> void:
 	if _items_box == null:
@@ -2478,16 +2490,39 @@ func _refresh_items() -> void:
 			continue
 		_items_box.add_child(_item_token(item, reporting))
 
+# One item in the pack: the art tile, with its FIRING control above it when the
+# item has one. Reading and spending are deliberately separate gestures — clicking
+# the tile opens the item's card (§ItemInfoCard), and only the control above it
+# ever spends a charge, so inspecting an item can't cost you one.
+#
+# A USABLE item gets a plain Use button. A CHARGED item gets a battery: one
+# rectangle per charge, filling as it recharges, and at full it becomes the same
+# Use button — so the bar answers "how long until I can" and "can I now" in the
+# same strip of pixels.
 func _item_token(item: ItemData, reporting: bool) -> Control:
 	var tint: Color = UITheme.rarity_color(int(item.rarity))
 	var active: bool = item.kind == ItemData.ItemKind.USABLE or item.is_charged()
 	var ready: bool = active and GameState.can_fire_item(item) and not reporting
+
+	# Bottom-aligned so every art tile sits on one baseline whether or not the item
+	# above it grew a Use button — a ragged row of tiles reads as a bug.
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	col.size_flags_vertical = Control.SIZE_SHRINK_END
+	# The whole column answers the hover, not only the art tile — the Use button
+	# and the battery override it with their own, so every pixel of an item says
+	# something rather than the gap above the tile saying nothing.
+	col.tooltip_text = _item_tip(item, active, ready, reporting)
+	if active:
+		col.add_child(_item_fire_control(item, ready, reporting))
 
 	var tile := PanelContainer.new()
 	var border: Color = UITheme.GOLD if ready else tint.lerp(UITheme.BG, 0.45)
 	tile.add_theme_stylebox_override("panel",
 		UITheme.flat(tint.lerp(UITheme.BG, 0.86), 5, 3, 2 if ready else 1, border))
 	tile.tooltip_text = _item_tip(item, active, ready, reporting)
+	tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	col.add_child(tile)
 
 	var stack := Control.new()
 	stack.custom_minimum_size = Vector2(ITEM_TOKEN, ITEM_TOKEN)
@@ -2497,26 +2532,92 @@ func _item_token(item: ItemData, reporting: bool) -> Control:
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(art)
-	# A charged item's bar is the one number that changes on its own, so it stays
-	# printed on the token instead of hiding in the tooltip.
-	if item.is_charged():
-		var charge := Label.new()
-		charge.text = "%d/%d" % [item.current_charge, item.max_charge()]
-		charge.add_theme_font_size_override("font_size", 9)
-		charge.add_theme_color_override("font_color", UITheme.GOLD if ready else UITheme.TEXT_DIM)
-		charge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-		charge.add_theme_constant_override("outline_size", 4)
-		charge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		charge.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE)
-		stack.add_child(charge)
 
+	var target_item: ItemData = item
+	tile.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			open_item_card(target_item))
+	return col
+
+# The control above an active item's tile. Full charge (or a Usable item, which
+# has none) reads "Use" and fires; a partial charge is the battery, showing how
+# many beats are left before it does.
+func _item_fire_control(item: ItemData, ready: bool, reporting: bool) -> Control:
 	if ready:
-		tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var btn := Button.new()
+		btn.text = "Use"
+		btn.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
+		btn.add_theme_font_size_override("font_size", 10)
+		btn.add_theme_stylebox_override("normal",
+			UITheme.flat(Color(0.10, 0.22, 0.16, 0.95), 4, 1, 1, Color(0.4, 0.9, 0.6)))
+		btn.add_theme_stylebox_override("hover",
+			UITheme.flat(Color(0.14, 0.30, 0.21, 1.0), 4, 1, 1, Color(0.55, 1.0, 0.75)))
+		btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
+		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		btn.tooltip_text = "Use %s" % item.display_name
 		var target_item: ItemData = item
-		tile.gui_input.connect(func(ev: InputEvent):
-			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				use_item(target_item))
-	return tile
+		btn.pressed.connect(func(): use_item(target_item))
+		return btn
+	if item.is_charged():
+		return _charge_battery(item, reporting)
+	# A Usable item that can't fire right now (mid-report) — the slot stays, greyed,
+	# so the row doesn't reflow the moment a game is picked up.
+	var idle := Button.new()
+	idle.text = "Use"
+	idle.disabled = true
+	idle.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
+	idle.add_theme_font_size_override("font_size", 10)
+	idle.tooltip_text = "Finish reporting this game first."
+	return idle
+
+# A charged item's meter: one rectangle per charge, filled left to right. Isaac's
+# active-item bar turned on its side — the shape answers "how many beats left"
+# without reading a number, and it sits where the Use button will be so the swap
+# at full charge is the same strip changing state rather than a new control.
+func _charge_battery(item: ItemData, reporting: bool) -> Control:
+	var maxc: int = maxi(1, item.max_charge())
+	var have: int = clampi(item.current_charge, 0, maxc)
+	var wrap := PanelContainer.new()
+	wrap.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(Color(0.10, 0.10, 0.13, 0.9), 2, 2, 1, UITheme.BORDER))
+	wrap.tooltip_text = "%s — %d/%d charged%s" % [item.display_name, have, maxc,
+		"; finish reporting this game to use it" if reporting else ""]
+	var cells := HBoxContainer.new()
+	cells.add_theme_constant_override("separation", 1)
+	cells.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(cells)
+	for i in range(maxc):
+		var seg := PanelContainer.new()
+		seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		seg.custom_minimum_size = Vector2(3, ITEM_USE_H - 6)
+		var filled: bool = i < have
+		seg.add_theme_stylebox_override("panel", UITheme.flat(
+			UITheme.GOLD.lerp(UITheme.BG, 0.15) if filled else Color(0.18, 0.18, 0.22, 0.9),
+			1, 0, 0))
+		seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cells.add_child(seg)
+	return wrap
+
+# Open the reading card for one item. Firing from the card routes through the same
+# use_item the token's button does, so there is one spend path.
+func open_item_card(item: ItemData) -> void:
+	if item == null:
+		return
+	_close_item_card()
+	var active: bool = item.kind == ItemData.ItemKind.USABLE or item.is_charged()
+	var usable: bool = active and GameState.can_fire_item(item) and _phase != Phase.PLAYING
+	var card := ItemInfoCard.new()
+	card.use_requested.connect(use_item)
+	card.closed.connect(func(): _item_card = null)
+	add_child(card)
+	_item_card = card
+	card.setup(item, usable)
+
+func _close_item_card() -> void:
+	if _item_card != null and is_instance_valid(_item_card):
+		_item_card.close()
+	_item_card = null
 
 # Everything the old named row said, in the tooltip the token carries.
 func _item_tip(item: ItemData, active: bool, ready: bool, reporting: bool) -> String:

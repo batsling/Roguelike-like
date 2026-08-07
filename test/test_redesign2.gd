@@ -495,3 +495,28 @@ func test_game_selected_fires_anchor_shield() -> void:
 	var before: int = GameState.shields
 	TriggerBus.emit_signal("game_selected", {"game_id": "test", "shields": 3})
 	assert_eq(GameState.shields, before + 1, "Anchor grants +1 Shield on selection")
+
+# --- the dev panel --------------------------------------------------------
+
+func test_the_dev_panel_opens_on_the_first_toggle() -> void:
+	# It used to build the layer VISIBLE and then flip it, so the first ` did
+	# nothing and only the second opened the panel.
+	assert_false(DevTools._is_open(), "closed to begin with")
+	DevTools._toggle()
+	assert_true(DevTools._is_open(), "one press opens it")
+	DevTools._toggle()
+	assert_false(DevTools._is_open(), "and the next closes it")
+
+func test_every_dev_tab_builds() -> void:
+	DevTools._toggle()
+	for tab in DevTools.TABS:
+		DevTools._tab = tab
+		DevTools._rebuild()
+		assert_gt(DevTools._body.get_child_count(), 0, "the %s tab has contents" % tab)
+	DevTools._tab = "grant"
+	for kind in DevTools.GRANT_KINDS:
+		DevTools._grant_kind = kind
+		DevTools._rebuild()
+		assert_gt(DevTools._body.get_child_count(), 0, "grant/%s has contents" % kind)
+	DevTools._grant_kind = "items"
+	DevTools._close()
