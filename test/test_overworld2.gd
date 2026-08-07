@@ -1347,7 +1347,18 @@ func test_the_board_says_how_long_its_playback_runs() -> void:
 # between the two — the animation and the next decision share the screen.
 func test_the_offering_comes_back_while_the_board_still_plays() -> void:
 	_ui.pick(0)
+	# Put the front enemy ON the front column first. This test is about the
+	# offering not WAITING for the playback, so it needs a playback to not wait
+	# for — and _hold_for_resolve ends the resolve synchronously when there is
+	# nothing to animate (animate_resolve returns 0.0 with no attacks). Whether a
+	# freshly spawned enemy reaches column 1 on its single far-band turn depends
+	# on the board width and the enemy rolled, so leaving it to chance made this
+	# fail roughly one run in four. A strike is what makes the playback take time.
+	assert_gt(GameLoop2.stack.size(), 0, "the picked game put an enemy on the board")
+	GameLoop2.stack[0]["col"] = 1
 	_ui.report(false)
+	assert_false(GameLoop2.last_result.get("attacks", []).is_empty(),
+		"the resolve has a strike in it, so the board has something to play back")
 	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "the next decision is already built")
 	assert_gt(_ui._choices.size(), 0)
 	assert_true(_ui._select_box.visible,
