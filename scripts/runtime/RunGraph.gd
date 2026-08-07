@@ -30,8 +30,8 @@ const MIN_PATH_LENGTH := 5
 const MAX_PATH_LENGTH := 8
 const EARLY_LAYERS_FOR_SCORE := 3
 # How many starts the choose-your-start panel offers. Each comes from a DIFFERENT
-# game type (see TYPE_ORDER), so the three cards are three genres.
-const NUM_START_OPTIONS := 3
+# game type (see TYPE_ORDER), so the two cards are always two genres.
+const NUM_START_OPTIONS := 2
 # Minimum outgoing connections a game needs to qualify as a "start".
 # Falls back to any-game on sparse graphs (see pick_amulet_and_starts).
 const MIN_START_CONNECTIONS := 3
@@ -39,7 +39,9 @@ const MIN_START_CONNECTIONS := 3
 # Game-type ordering used to pick "one start per type" for the
 # choose-your-start panel. All four authored types are eligible, and
 # pick_amulet_and_starts takes the best-scoring NUM_START_OPTIONS of them — so the
-# three offered starts are always three DIFFERENT genres.
+# offered starts are always DIFFERENT genres. One per type is what guarantees
+# that: the panel can never draw two cards from the same genre no matter how the
+# scores fall, so shrinking the panel narrows the choice without weakening it.
 const TYPE_ORDER: Array = [
 	GameData.GameType.ACTION,
 	GameData.GameType.STRATEGY,
@@ -61,11 +63,15 @@ const TYPE_ORDER: Array = [
 static var _adj_cache: Dictionary = {}      # StringName -> Array[StringName]
 static var _adj_cache_built: bool = false
 static var _bfs_cache: Dictionary = {}       # StringName -> Dictionary (dist map)
+# Games that passed the filter but fell outside the main group, as a set. Pruned
+# out of _adj_cache and kept here because Transmute needs exactly this list.
+static var _off_map: Dictionary = {}         # StringName -> true
 
 static func invalidate_cache() -> void:
 	_adj_cache.clear()
 	_adj_cache_built = false
 	_bfs_cache.clear()
+	_off_map.clear()
 
 # Whether a game is eligible to appear in path selection, per the global
 # Settings.game_filter. Filtered-out games are excluded from the graph
@@ -110,7 +116,76 @@ static func _build_adj() -> void:
 			if not seen[influenced_id].has(g.id):
 				seen[influenced_id][g.id] = true
 				(_adj_cache[influenced_id] as Array).append(g.id)
+	_prune_to_main_component()
 	_adj_cache_built = true
+
+# Third pass — keep only the MAIN GROUP. The influence graph is not one piece:
+# on the owned catalog it is a 395-game mainland plus 76 games in sequel pairs and
+# lone stars that no route can reach. Leaving them in as nodes made them dead
+# weight — a run could never travel to one, but they still counted as games, could
+# clear MIN_START_CONNECTIONS on an island of their own, and confused anything
+# that asked the graph how big it was.
+#
+# They are not deleted from the catalog, only from the ROUTE. Off-map games are
+# exactly the pool Transmute draws from (see GameLoop2.transmute_game and
+# §Transmute in docs/games-first-redesign.md: "a random game of the same game type
+# that is not connected to the map"), so being off the map IS their role — it is
+# the only way a run ever meets one.
+#
+# Ties are broken on the lowest id so the same catalog always yields the same
+# mainland; a graph that reshuffled itself between calls would move the Amulet.
+static func _prune_to_main_component() -> void:
+	_off_map.clear()
+	if _adj_cache.is_empty():
+		return
+	var seen: Dictionary = {}
+	var best: Array = []
+	var best_key: StringName = &""
+	var ids: Array = _adj_cache.keys()
+	ids.sort()
+	for start_id in ids:
+		if seen.has(start_id):
+			continue
+		var comp: Array = []
+		var queue: Array = [start_id]
+		seen[start_id] = true
+		var qi := 0
+		while qi < queue.size():
+			var cur: StringName = queue[qi]
+			qi += 1
+			comp.append(cur)
+			for nb in (_adj_cache.get(cur, []) as Array):
+				if not seen.has(nb):
+					seen[nb] = true
+					queue.append(nb)
+		if comp.size() > best.size() or (comp.size() == best.size() and start_id < best_key):
+			best = comp
+			best_key = start_id
+	var main: Dictionary = {}
+	for id in best:
+		main[id] = true
+	for id in ids:
+		if not main.has(id):
+			_off_map[id] = true
+			_adj_cache.erase(id)
+	# Nothing in the mainland can still point at a pruned node — every edge is
+	# mirrored, so an edge to an off-map game would have merged the two groups.
+
+# Games inside the active filter that the run's routes cannot reach: everything
+# outside the main group. This is the Transmute pool.
+static func off_map_ids() -> Array[StringName]:
+	_build_adj()
+	var out: Array[StringName] = []
+	for id in _off_map:
+		out.append(id)
+	return out
+
+# Whether `game_id` is off the route entirely — filtered out, or in the catalog
+# but not in the main group. Both mean the same thing to a run: you cannot walk
+# there, and Transmute is the only way to play it.
+static func is_off_map(game_id: StringName) -> bool:
+	_build_adj()
+	return not _adj_cache.has(game_id)
 
 static func neighbors(game_id: StringName) -> Array[StringName]:
 	_build_adj()

@@ -13,9 +13,9 @@ var _ui
 func before_each() -> void:
 	_ui = SCENE.instantiate()
 	add_child_autofree(_ui)   # _ready -> builds UI + rolls the choose-your-start panel
-	# A fresh run opens on the START-SELECT panel (three genres, all the same
-	# distance from the amulet); taking one is what gives the run a position, so
-	# every test below starts from there.
+	# A fresh run opens on the START-SELECT panel (one card per genre, each inside
+	# the 5..8 band); taking one is what gives the run a position, so every test
+	# below starts from there.
 	_ui.choose_start(0)
 
 func after_each() -> void:
@@ -918,7 +918,7 @@ func test_a_fresh_run_opens_on_the_start_picker() -> void:
 	assert_ne(String(GameState.amulet_game_id), "", "but the amulet is already rolled")
 	assert_true(_ui._choices.is_empty(), "and there is no travel offering yet")
 
-func test_the_start_picker_offers_three_games_of_different_types() -> void:
+func test_the_start_picker_offers_a_card_per_genre_and_never_repeats_one() -> void:
 	_ui.start_run()
 	assert_eq(_ui._start_options.size(), RunGraph.NUM_START_OPTIONS,
 		"the panel offers %d starts" % RunGraph.NUM_START_OPTIONS)
