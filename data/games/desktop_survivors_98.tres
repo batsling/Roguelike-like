@@ -1,7 +1,6 @@
-[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_desktop_survivors_98"]
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_desktop_survivors_98"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://images2.0/games/desktop-survivors-98.jpg" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")
@@ -16,7 +15,7 @@ tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
-cover_image = ExtResource("2_cover")
+cover_path = "res://images2.0/games/desktop-survivors-98.jpg"
 owned = true
 file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Desktop Survivors 98.url"
 steam_page = "https://store.steampowered.com/app/3339780/Desktop_Survivors_98/"

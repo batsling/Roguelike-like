@@ -1,7 +1,6 @@
-[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_shiren_the_wanderer_the_mystery_dungeon_of_serpentcoil_island"]
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_shiren_the_wanderer_the_mystery_dungeon_of_serpentcoil_island"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://images2.0/games/shiren-the-wanderer-the-mystery-dungeon-of-serpentcoil-island.jpg" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")
@@ -16,7 +15,7 @@ tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
-cover_image = ExtResource("2_cover")
+cover_path = "res://images2.0/games/shiren-the-wanderer-the-mystery-dungeon-of-serpentcoil-island.jpg"
 owned = true
 file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Shiren the Wanderer The Mystery Dungeon of Serpentcoil Island.url"
 steam_page = "https://store.steampowered.com/app/2178480/Shiren_the_Wanderer_The_Mystery_Dungeon_of_Serpentcoil_Island/"

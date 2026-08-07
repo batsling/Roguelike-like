@@ -94,17 +94,17 @@ def _truthy(cell) -> bool:
 
 def write_game_tres(game: dict) -> None:
     out_path = os.path.join(GAMES_OUT_DIR, f"{game['id']}.tres")
-    # A game with no art in images2.0/games/ is written without a cover
-    # ext_resource; the UI already draws a name-only card when cover_image is null.
+    # The cover is written as a PATH, not an ext_resource: GameData.cover_image
+    # loads it lazily, so Data.gd's startup pass doesn't decode every cover in
+    # images2.0/games/. A game with no art gets an empty cover_path, and the UI
+    # already draws a name-only card when cover_image is null.
     cover_asset = game.get("cover_asset")
     lines = [
-        '[gd_resource type="Resource" script_class="GameData" load_steps=%d format=3 uid="uid://game_%s"]'
-        % (3 if cover_asset else 2, game["id"]),
+        '[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_%s"]'
+        % game["id"],
         "",
         '[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]',
     ]
-    if cover_asset:
-        lines.append(f'[ext_resource type="Texture2D" path="{COVERS_DIR_RES}{cover_asset}" id="2_cover"]')
     lines += [
         "",
         "[resource]",
@@ -120,9 +120,8 @@ def write_game_tres(game: dict) -> None:
         "enemy_pool = Array[StringName]([])",
         "item_pool = Array[StringName]([])",
         "special_effects = PackedStringArray()",
+        f'cover_path = "{COVERS_DIR_RES + cover_asset if cover_asset else ""}"',
     ]
-    if cover_asset:
-        lines.append('cover_image = ExtResource("2_cover")')
     lines += [
         f'owned = {"true" if game["owned"] else "false"}',
         f'file_location = "{_escape(game["file_location"])}"',

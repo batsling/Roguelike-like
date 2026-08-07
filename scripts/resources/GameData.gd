@@ -52,7 +52,29 @@ enum GameType { ACTION, STRATEGY, DECKBUILDER, TRADITIONAL }
 @export var special_effects: PackedStringArray = PackedStringArray()
 
 # Visuals
-@export var cover_image: Texture2D
+#
+# The cover is stored as a PATH, not as an ExtResource, and loaded on first read.
+# Data.gd loads all ~818 GameData at startup, and an ExtResource is resolved
+# eagerly by load() — so an exported Texture2D here meant decoding every cover in
+# images2.0/games/ (~200 MB) before the main menu drew, on every boot and on every
+# headless test run. Measured: 5.15s of Data._ready()'s 5.66s, ~4.8s of it cover
+# decode. Paying per cover actually shown instead makes that startup cost vanish.
+#
+# `cover_image` keeps its old shape for readers, so call sites are unchanged.
+@export var cover_path: String = ""
+
+var _cover: Texture2D = null
+var _cover_loaded: bool = false          # so a missing/broken path is tried once
+
+# The cover texture, loaded on first access and cached. null when the game has no
+# art authored, or when `cover_path` doesn't resolve.
+var cover_image: Texture2D:
+	get:
+		if not _cover_loaded:
+			_cover_loaded = true
+			if cover_path != "" and ResourceLoader.exists(cover_path):
+				_cover = load(cover_path)
+		return _cover
 
 # --- Real-game launch (the player can play the actual game this represents) ---
 # Whether the player owns the real game (from the spreadsheet's "Owned" column).

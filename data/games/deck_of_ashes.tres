@@ -1,7 +1,6 @@
-[gd_resource type="Resource" script_class="GameData" load_steps=3 format=3 uid="uid://game_deck_of_ashes"]
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_deck_of_ashes"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
-[ext_resource type="Texture2D" path="res://images2.0/games/deck-of-ashes.png" id="2_cover"]
 
 [resource]
 script = ExtResource("1_game")
@@ -16,7 +15,7 @@ tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
-cover_image = ExtResource("2_cover")
+cover_path = "res://images2.0/games/deck-of-ashes.png"
 owned = true
 file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Deck of Ashes.url"
 steam_page = "https://store.steampowered.com/app/1016730/Deck_of_Ashes/"
