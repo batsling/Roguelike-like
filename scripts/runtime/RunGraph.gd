@@ -392,6 +392,27 @@ static func route_length_via(start_id: StringName, waypoint_id: StringName,
 # pick_amulet_and_starts).
 const AMULET_ATTEMPTS := 8
 
+# How many reference starts the Amulet pool is drawn from before the pick.
+#
+# It used to be one, and which one it was mattered enormously: the number of
+# games sitting 5..8 hops from a single eligible start ranges 21..318 across the
+# owned catalog, median 77, against a union of 393 over every start. A run that
+# rolled a narrow reference was offered a fifteenth of the goals another run
+# would see, for no reason the player could observe. Unioning a few references
+# flattens that, and costs one BFS each — bfs_distances is memoized, so every
+# later lookup against the same start is free.
+const AMULET_REFERENCE_STARTS := 3
+
+# How far below the best early-branching score an Amulet candidate may sit and
+# still make the final draw.
+#
+# The filter is there so the goal has a route worth walking, not so that the same
+# handful of well-connected games are the goal every run — at a slack of 1 the
+# top ten Amulets took 18% of 600 sampled runs on the owned catalog. Widening it
+# spreads the draw across the pool while still excluding candidates whose
+# approach has no branching in it at all.
+const AMULET_SCORE_SLACK := 2
+
 # Every in-window start worth offering, as type -> (path_len -> record): for each
 # genre, the best-branching eligible start AT EACH DISTANCE its routes to `amulet`
 # can take. The caller reads the SIZE of the outer dictionary — one entry per
@@ -546,25 +567,49 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 		eligible_starts = all
 	var start_pool: Array[GameData] = eligible_starts
 
-	# Pick the amulet via a random reference start, then score amulet
-	# candidates by early-branching from that reference. Candidates with
-	# (best - 1) or better score advance to the random pick.
-	var ref_start: GameData = start_pool[rng.randi() % start_pool.size()]
-	var d_from_ref := bfs_distances(ref_start.id)
+	# Pick the amulet from the games sitting in the band from ANY OF SEVERAL
+	# reference starts, then score each by early-branching. Candidates within
+	# AMULET_SCORE_SLACK of the best advance to the random pick.
+	var refs: Array[GameData] = []
+	var ref_pool: Array[GameData] = start_pool.duplicate()
+	for _i in range(mini(AMULET_REFERENCE_STARTS, ref_pool.size())):
+		var ri: int = rng.randi() % ref_pool.size()
+		refs.append(ref_pool[ri])
+		ref_pool.remove_at(ri)
+	var ref_ids: Dictionary = {}
+	for r in refs:
+		ref_ids[r.id] = true
+	var ref_dists: Array = []
+	for r in refs:
+		ref_dists.append(bfs_distances(r.id))
 
-	var amulet_candidates: Array[GameData] = []
-	for g in all:
-		if g.id == ref_start.id:
-			continue
-		if not d_from_ref.has(g.id):
-			continue
-		var d: int = d_from_ref[g.id]
-		if d >= MIN_PATH_LENGTH and d <= MAX_PATH_LENGTH:
-			amulet_candidates.append(g)
-	if amulet_candidates.is_empty():
-		# Looser fallback: anything reachable that isn't the reference.
+	# A game keeps its BEST score across the references it is in band from — it
+	# only has to be a good goal from somewhere, not from all of them.
+	var cand_game: Dictionary = {}       # StringName -> GameData
+	var cand_score: Dictionary = {}      # StringName -> int
+	for i in range(refs.size()):
+		var d_ref: Dictionary = ref_dists[i]
 		for g in all:
-			if g.id != ref_start.id and d_from_ref.has(g.id):
+			if ref_ids.has(g.id) or not d_ref.has(g.id):
+				continue
+			var d: int = d_ref[g.id]
+			if d < MIN_PATH_LENGTH or d > MAX_PATH_LENGTH:
+				continue
+			var s := dag_branch_score_early(d_ref, g.id)
+			if not cand_score.has(g.id) or s > int(cand_score[g.id]):
+				cand_score[g.id] = s
+				cand_game[g.id] = g
+	var amulet_candidates: Array[GameData] = []
+	for id in cand_game:
+		amulet_candidates.append(cand_game[id])
+	if amulet_candidates.is_empty():
+		# Looser fallback: anything reachable from any reference.
+		for i in range(refs.size()):
+			var d_ref: Dictionary = ref_dists[i]
+			for g in all:
+				if ref_ids.has(g.id) or not d_ref.has(g.id) or cand_score.has(g.id):
+					continue
+				cand_score[g.id] = 0
 				amulet_candidates.append(g)
 	if amulet_candidates.is_empty():
 		return {}
@@ -582,17 +627,13 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 			amulet_candidates = unbeaten
 
 	var best_amulet_score := 0
-	var amulet_scored: Array = []
 	for g in amulet_candidates:
-		var s := dag_branch_score_early(d_from_ref, g.id)
-		amulet_scored.append({"g": g, "score": s})
-		if s > best_amulet_score:
-			best_amulet_score = s
+		best_amulet_score = maxi(best_amulet_score, int(cand_score.get(g.id, 0)))
 	var amulet_finalists: Array[GameData] = []
 	if best_amulet_score > 0:
-		for entry in amulet_scored:
-			if int(entry["score"]) >= best_amulet_score - 1:
-				amulet_finalists.append(entry["g"])
+		for g in amulet_candidates:
+			if int(cand_score.get(g.id, 0)) >= best_amulet_score - AMULET_SCORE_SLACK:
+				amulet_finalists.append(g)
 	else:
 		amulet_finalists = amulet_candidates
 	# Pick the amulet, then check it can actually SUPPLY the panel: three genres
