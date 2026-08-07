@@ -430,22 +430,18 @@ func test_the_tracker_is_only_live_while_a_game_is_in_play() -> void:
 	_ui.report(true)
 	assert_true(_ui._attempt_btn.disabled, "reported -> closed again")
 
-# Between games the pool is empty, so the HUD previews the grant of whatever card
-# you're pointing at — the number is part of the routing decision.
-func test_the_hud_previews_the_hovered_games_grant() -> void:
-	assert_true(_ui._hud.text.contains("[b]Shields[/b] 0"),
-		"nothing hovered -> the live (empty) pool: %s" % _ui._hud.text)
+# The tries a game grants are part of the routing decision, so the hover line
+# under the offering quotes them for whatever card you're pointing at.
+func test_the_hover_line_previews_the_games_grant() -> void:
 	_ui._show_preview(0)                          # hovering the first card
 	var grant: int = GameLoop2.shields_for_game(_ui._choices[0]["game"])
-	assert_true(_ui._hud.text.contains("+%d" % grant),
-		"hovering previews what that game grants: %s" % _ui._hud.text)
+	assert_true(_ui._preview.text.contains("%d tries" % grant),
+		"hovering previews what that game grants: %s" % _ui._preview.text)
+	assert_true(_ui._preview.text.contains(_ui._choices[0]["enemy"].display_name),
+		"and what it would put on the board: %s" % _ui._preview.text)
 	_ui._clear_hover_grant()                      # mouse left the card
-	assert_true(_ui._hud.text.contains("[b]Shields[/b] 0"),
-		"and it can't advertise a game you're not pointing at: %s" % _ui._hud.text)
-	# Once a game is in play the slot is the live pool again, hover or not.
-	_ui.pick(0)
-	assert_true(_ui._hud.text.contains("[b]Shields[/b] %d" % GameState.shields),
-		"in play it's the real count: %s" % _ui._hud.text)
+	assert_false(_ui._preview.text.contains("tries"),
+		"it can't advertise a game you're not pointing at: %s" % _ui._preview.text)
 
 func test_the_popup_shows_the_tries_the_game_grants() -> void:
 	# The tries a game hands you used to be printed on its card. The card is the
@@ -458,25 +454,26 @@ func test_the_popup_shows_the_tries_the_game_grants() -> void:
 # --- the HUD carries the player, and only the player -----------------------
 #
 # Twelve numbers in one strip is a strip nobody reads, and a charge that is only
-# ever spent on an offered card was being kept a page away from the offering.
-# Health and Shields stay; every verb moved under the thing it acts on.
+# ever spent on an offered card was being kept a page away from the offering. The
+# verbs moved under the thing they act on; Health and Shields were the last two
+# left, and the BOARD was already drawing both on the hero, so the strip went
+# with them.
 
-func test_the_hud_is_health_and_shields_only() -> void:
-	var text: String = _ui._hud.text
-	assert_true(text.contains("[b]Health[/b]"), "Health stays top-left: %s" % text)
-	assert_true(text.contains("[b]Shields[/b]"), "and so does the try pool: %s" % text)
-	for moved in ["Bash", "Dash", "Push", "Transmute", "Scramble", "Bombs", "Tier"]:
-		assert_false(text.contains("[b]%s[/b]" % moved),
-			"%s moved out of the HUD: %s" % [moved, text])
-	for gone in ["Keys", "Chests"]:
-		assert_false(text.contains(gone), "%s is not shown at all: %s" % [gone, text])
+func test_the_players_own_state_is_drawn_on_the_board() -> void:
+	GameState.hp = 4
+	GameState.shields = 2
+	_ui._refresh()
+	assert_true(_ui._board._hero_hp.text.contains("%d/%d" % [GameState.hp, GameState.max_hp]),
+		"the hero carries the health: %s" % _ui._board._hero_hp.text)
+	assert_true(_ui._board._hero_shields.text.begins_with("◆◆"),
+		"and the shield pips: %s" % _ui._board._hero_shields.text)
 
 func test_the_choosing_verbs_sit_under_the_offering() -> void:
 	GameState.bash = 2
 	GameState.transmute = 1
 	GameState.scramble = 3
 	GameState.dash_charges = 1
-	_ui._refresh_hud()
+	_ui._refresh_stats()
 	var text: String = _text_of(_ui._select_stats)
 	for want in ["Bash 2", "Dash 1", "Transmute 1", "Scramble 3"]:
 		assert_true(text.contains(want), "%s is under the offering: %s" % [want, text])
@@ -484,32 +481,119 @@ func test_the_choosing_verbs_sit_under_the_offering() -> void:
 	assert_true(_ui._select_box.is_ancestor_of(_ui._select_stats),
 		"the row lives in the choose-a-game box")
 
-func test_the_board_verbs_sit_under_the_board() -> void:
+# The board's own verbs get no chip row, because the board already draws all
+# three — and a second row saying the same numbers is exactly the duplication the
+# HUD strip was cut for.
+func test_the_board_draws_its_own_verbs_and_tier() -> void:
 	GameState.push = 2
 	GameState.bombs = 4
-	_ui._refresh_hud()
-	var text: String = _text_of(_ui._board_stats)
-	for want in ["Push 2", "Bombs 4", "Tier"]:
-		assert_true(text.contains(want), "%s is under the board: %s" % [want, text])
-	assert_true(_ui._stage_panel.is_ancestor_of(_ui._board_stats),
-		"the row lives in the board's panel")
+	_ui._refresh()
+	assert_true(_ui._board.push_btn.text.contains("(2)"),
+		"the toolbar button carries the Push count: %s" % _ui._board.push_btn.text)
+	assert_true(_ui._board.bomb_btn.text.contains("(4)"),
+		"and the Bomb count: %s" % _ui._board.bomb_btn.text)
+	assert_true(_ui._board._size_label.text.contains(
+		RunDifficulty.tier_name(RunDifficulty.current_tier())),
+		"and the pressure bar carries the tier: %s" % _ui._board._size_label.text)
+	# Nothing in the overworld's own chip row repeats them.
+	var chips: String = _text_of(_ui._select_stats)
+	for dup in ["Push", "Bombs", "Tier"]:
+		assert_false(chips.contains(dup), "%s isn't drawn twice: %s" % [dup, chips])
 
 func test_a_spendable_charge_is_a_button_and_an_empty_one_is_not() -> void:
 	GameState.scramble = 0
-	_ui._refresh_hud()
+	_ui._refresh_stats()
 	assert_eq(_buttons_in(_ui._select_stats).size(), 0,
 		"no charges -> nothing to press")
 	GameState.scramble = 1
-	_ui._refresh_hud()
+	_ui._refresh_stats()
 	var labels: Array = []
 	for b in _buttons_in(_ui._select_stats):
 		labels.append(String(b.text))
 	assert_true("\n".join(labels).contains("Scramble 1"),
 		"a charge that can be fired from here is a button: %s" % str(labels))
 
-func test_scrolls_are_carried_in_the_inventory() -> void:
-	assert_true(_ui._inv_wrap.is_ancestor_of(_ui._scrolls_box),
-		"the scroll list is part of the pack, not a panel at the foot of the page")
+func test_scrolls_are_carried_on_the_pack_strip_beside_the_items() -> void:
+	# A scroll is a thing you carry and spend, exactly like a Usable relic — so it
+	# is a token on the same strip, not a titled panel of its own.
+	GameState.add_scroll_loot(&"scroll_of_teleportation")
+	_ui._refresh_items()
+	assert_true(_ui._inv_wrap.is_ancestor_of(_ui._items_box),
+		"one strip, in the pack")
+	var text: String = _text_of(_ui._items_box)
+	assert_true(text.contains("Read"), "the scroll is on it, with its Read control: %s" % text)
+
+func test_the_map_button_belongs_to_the_offering() -> void:
+	var found: Button = null
+	for c in _ui._select_box.get_children():
+		if c is HBoxContainer:
+			for b in c.get_children():
+				if b is Button and String((b as Button).text).contains("Map"):
+					found = b
+	assert_not_null(found, "the map opens from the panel it is a map of")
+
+func test_the_menu_holds_the_runs_admin() -> void:
+	# Save / New run / Main menu were three buttons parked across the top for the
+	# whole run. They are menu entries now, and the menu is the only header button.
+	var mb: MenuButton = null
+	var header: Node = _ui._scroll.get_child(0).get_child(0)
+	for c in header.get_children():
+		if c is MenuButton:
+			mb = c
+	assert_not_null(mb, "the header carries one menu button")
+	var labels: Array = []
+	for i in range(mb.get_popup().item_count):
+		labels.append(mb.get_popup().get_item_text(i))
+	var joined: String = "\n".join(labels)
+	for want in ["Save run", "New run", "Main menu"]:
+		assert_true(joined.contains(want), "%s is in the menu: %s" % [want, joined])
+	# And the entries do what they say.
+	_ui.menu_action(_ui.MenuItem.NEW_RUN)
+	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT, "New run reopens the start picker")
+
+# --- the page fits the window it ships in ---------------------------------
+#
+# The overworld is meant to be read WHOLE: the offering and the board closing in
+# on you are two halves of one decision, and a decision you have to scroll
+# between is a decision made on half the facts. project.godot ships a 1280x720
+# window, so that is the box, and it holds in every phase and at every board size
+# the tiers can reach. The page still lives in a ScrollContainer — nothing is
+# CLIPPED if a future row overruns — so this test is what notices.
+
+func _page_height() -> float:
+	var root: Control = _ui._scroll.get_child(0)
+	var total: float = 0.0
+	var shown: int = 0
+	for c in root.get_children():
+		if c is Control and (c as Control).visible:
+			total += (c as Control).size.y
+			shown += 1
+	return total + root.get_theme_constant("separation") * maxi(0, shown - 1)
+
+func _assert_fits(what: String) -> void:
+	# Sized against the window the project ships, not against whatever the test
+	# harness happens to give the viewport.
+	var room: float = 720.0 - 32.0     # the scroll's top+bottom offsets
+	assert_lte(_page_height(), room,
+		"%s fits a 720p window (needs %.0f of %.0f)" % [what, _page_height(), room])
+
+func test_the_offering_screen_fits_one_window() -> void:
+	_ui._refresh()
+	_assert_fits("the choosing screen")
+
+func test_the_playing_screen_fits_one_window() -> void:
+	_ui.pick(0)
+	_ui._refresh()
+	_assert_fits("the report screen")
+
+func test_the_biggest_board_still_fits_one_window() -> void:
+	# The board gains a column AND a row per difficulty step; the top of the
+	# ladder is the case that used to run off the bottom of the window.
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER * RunDifficulty.MAX_TIER
+	_ui._build_choices()
+	_ui._refresh()
+	assert_gt(GameLoop2.grid_rows(), GameLoop2.BASE_GRID_COLS, "the board really did grow")
+	_assert_fits("the top-tier board")
 
 func _buttons_in(node: Node) -> Array:
 	var out: Array = []
@@ -891,7 +975,7 @@ func test_revisiting_a_game_redraws_the_offering() -> void:
 
 # --- a pickup's effects show on the HUD immediately ------------------------
 
-func test_claimed_loot_updates_the_hud_immediately() -> void:
+func test_claimed_loot_updates_the_screen_immediately() -> void:
 	var heart: ItemData = Data.get_item2(&"hollow_heart")   # +4 Max Health on acquire
 	assert_not_null(heart)
 	var max_before: int = GameState.max_hp
@@ -899,8 +983,8 @@ func test_claimed_loot_updates_the_hud_immediately() -> void:
 	_ui._drop_queue.append(drop)
 	_ui._collect_drop(drop)
 	assert_eq(GameState.max_hp, max_before + 4, "the pickup's effect landed")
-	assert_true(_ui._hud.text.contains("%d/%d" % [GameState.hp, GameState.max_hp]),
-		"and the HUD already shows it: %s" % _ui._hud.text)
+	assert_true(_ui._board._hero_hp.text.contains("%d/%d" % [GameState.hp, GameState.max_hp]),
+		"and the hero already shows it: %s" % _ui._board._hero_hp.text)
 
 func test_the_verb_chips_follow_a_gain_without_a_loop_resolve() -> void:
 	# Dash sits under the offering now rather than on the HUD, but it has to move
@@ -1888,8 +1972,8 @@ func test_each_strike_takes_its_own_bite_out_of_the_shown_health() -> void:
 	# The first turn's strike fires immediately; the second waits for its turn.
 	assert_eq(_ui._board.shown_hp(), hp_before - 2,
 		"one blow landed, one blow's worth of Health gone")
-	assert_true(_ui._hud.text.contains("%d/%d" % [hp_before - 2, GameState.max_hp]),
-		"and the HUD agrees with the board: %s" % _ui._hud.text)
+	assert_true(_ui._board._hero_hp.text.contains("%d/%d" % [hp_before - 2, GameState.max_hp]),
+		"and the hero's line came down with it: %s" % _ui._board._hero_hp.text)
 	await wait_seconds(secs + 0.2)
 	assert_eq(_ui._board.shown_hp(), GameState.hp,
 		"and when the playback ends the line is the run's own Health again")

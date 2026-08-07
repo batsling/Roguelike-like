@@ -143,11 +143,14 @@ burning tries, not to one who isn't.
 ## 4. The verbs & consumables (the "hand")
 
 These replace card-play as the way you manipulate the board. All are small
-integer counts, drawn as chips **under the thing they are spent on**: Bash, Dash,
-Transmute and Scramble under the offering (they change what is on the table),
-Push and Bombs under the board (they act on the field). The HUD itself carries
-only Health and Shields. **Keys are not drawn at all** — they are deferred and
-unauthored (§4.1), so there is nothing yet for a count to mean.
+integer counts, and each is drawn **once, by whatever owns it** — there is no HUD
+strip. **Bash, Dash, Transmute and Scramble** are chips under the offering, since
+all four change what is on the table. **Push and Bombs** need no row of their
+own: the board's toolbar buttons already read `⇤ Push (1)` / `✸ Bomb (3)`, just
+as its pressure bar already ends in the run's tier and its hero already carries
+Health, the shield pips and the player's statuses. **Keys are not drawn at all** —
+they are deferred and unauthored (§4.1), so there is nothing yet for a count to
+mean.
 
 ### Verbs (map manipulation)
 | Verb | Effect |
@@ -210,8 +213,10 @@ existing `images/scrolls/Unidentified.png`. Scrolls get the identical treatment:
 *(The old **Fog** scroll and **Keys** are both **deferred — author later**; they
 stay in the design but no `2.0` content exists for them yet.)*
 
-Scrolls are carried, so they are listed **in the pack** — the strip above the
-board, with the relics — rather than in a panel of their own.
+Scrolls are carried, so they are **tokens on the pack strip** above the board,
+beside the relics, each with a small Read control above its tile — the same shape
+a Usable relic's Use button takes. Not a panel of their own: a scroll is a thing
+you carry and spend, which is what the pack is.
 
 ### 4.2 Choosing a game is a screen, not a click
 

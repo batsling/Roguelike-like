@@ -206,18 +206,32 @@ node and its script.
   (cover cards), and
   then a two-column stage — checklist on the left (the standing goals while you're
   choosing, the honour-system report step + attempt tracker while you're playing),
-  the battlefield on the right with the player's pack (items **and** scrolls)
-  above it. Hosts the toast strip, so an item's effects announce themselves the
-  moment it's picked up.
+  the battlefield on the right with the player's pack (items **and** scrolls,
+  one strip of tokens) above it. Hosts the toast strip, so an item's effects
+  announce themselves the moment it's picked up.
 
-  **Where the numbers are.** The HUD, top left, is the player and only the
-  player: **Health** and **Shields**. Every verb charge sits under the thing it is
-  spent on — **Bash / Dash / Transmute / Scramble** on a row beneath the offering
-  (they all change what is on the table), **Tier / Push / Bombs** on a row beneath
-  the board (they all act on the field). Dash and Scramble are buttons there;
-  Bash and Transmute need a target, so they are readouts and get pressed inside a
-  game's popup. Keys and Chests aren't shown — Keys are deferred and unauthored,
-  and a chest is redeemed the moment it lands.
+  **It fits one 1280×720 screen, in every phase and at every board size**, with
+  no scrollbar in either axis. That is a constraint, not an accident, and the
+  things below are what pay for it.
+
+  **Where the numbers are.** There is **no HUD strip** — every number is drawn
+  once, by whatever owns it:
+  - **the player** (Health, Shields, statuses) is on the **board's hero**:
+    `♥ hp/max` under the portrait, the shield pips over it, status pips between.
+  - **the board's verbs** are on the **board's own bars**: its pressure bar ends
+    `▦ 4×4 · Low` (that's the tier) and its toolbar buttons read `⇤ Push (1)` /
+    `✸ Bomb (3)`.
+  - **the choosing verbs** — **Bash / Dash / Transmute / Scramble** — are chips on
+    a row under the offering, since all four change what is on the table. Dash and
+    Scramble are buttons; Bash and Transmute need a target, so they are readouts
+    pressed inside a game's popup.
+  - **the tries a game grants** ride the offering's one-line hover.
+  - Keys and Chests aren't shown at all — Keys are deferred and unauthored, and a
+    chest is redeemed the moment it lands.
+
+  **The header is the title and one `☰ Menu`** (Save run / New run / Main menu).
+  The 🗺 Map moved into the offering's own heading row, beside the cards it is a
+  map of.
   - **`GameChoiceModal.gd`** — what clicking an offered card opens. A card is the
     cover, the name and the Amulet's flag; everything else about the decision
     lives here — the **optimal path from that game drawn as the real route

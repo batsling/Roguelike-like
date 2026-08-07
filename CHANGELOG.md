@@ -11,6 +11,59 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The whole overworld on one 720p screen.** The page had been growing a row at
+  a time and was 130px past the bottom of the window it ships at; it now fits
+  1280×720 with no scrollbar in either axis, in every phase, at every board size
+  up to 7×7. Nothing was hidden to get there — every cut was a thing being drawn
+  twice.
+
+  **The HUD strip is gone.** Once the verbs moved out it was Health, Shields and
+  a status strip, and the **board was already drawing all three on the hero** —
+  `♥ hp/max` under the portrait, the shield pips over it, the player's status
+  pips between them. The panel was quoting the board back at itself for 44px. The
+  vitals / stats / pickup signals now land on the hero (`BattlefieldView.
+  refresh_hero`, split out of `refresh`), so a Hollow Heart off a kill-drop moves
+  Max Health on screen the instant it lands, which is what the strip was for.
+
+  **The Tier / Push / Bombs row went the same way**, one commit after it arrived.
+  The board draws those too, and always did: its pressure bar ends `▦ 4×4 · Low`
+  and its toolbar buttons are literally `⇤ Push (1)` and `✸ Bomb (3)`. The
+  choosing verbs — Bash, Dash, Transmute, Scramble — keep their chip row under the
+  offering, because nothing else was drawing those.
+
+  **The header is the title and one `☰ Menu`.** Save, New run and Main menu were
+  three buttons parked across the top for the whole run and none of them is
+  pressed while a decision is open, so they are menu entries now. The 🗺 Map
+  wasn't admin — it is the road the offering is choosing the next step of — so it
+  moved into the offering's own heading row, on the right.
+
+  **The hover preview is one line** instead of a framed panel with a 64px
+  portrait (84px → 22px). The popup draws the enemy at full size now; what a
+  hover is for is the fastest read on the way past, so the line carries the
+  enemy, the goal, and the **tries** — which is where the shield-grant preview
+  landed when the HUD slot it used to live in went away.
+
+  **Scrolls are tokens on the pack strip**, beside the relics, with a small Read
+  above each. A scroll is a thing you carry and spend exactly like a Usable relic
+  is, and it had been getting a titled panel of its own — first at the foot of
+  the page under the log, then a second heading inside the pack. **The result
+  line** moved off the bottom of the page into the panel that asked about the
+  game, where it is the third copy of something that already toasts and is
+  already in GameLog.
+
+  **The board is fitted to a HEIGHT budget as well as a width one**
+  (`FIELD_HEIGHT_BUDGET`). It had only ever been fitted across, which kept a 7×7
+  board inside its column but still ran it off the bottom of the window; the cell
+  edge now takes the smaller of the two fits. It binds on nothing but the big
+  boards — a 4×4 is capped by `CELL_MAX` long before either budget is the
+  constraint.
+
+  And the **checklist rows wrap**. A level-up clause on one unwrapped CheckBox
+  claimed 772px as its minimum width, which is what had been putting a horizontal
+  scrollbar under the entire page.
+
+---
+
 - **The stats moved to what they do, and a card asks before it commits.** Two
   changes to the overworld's layout, both undoing the same problem: a decision
   and the things it needs were on opposite ends of the page.
