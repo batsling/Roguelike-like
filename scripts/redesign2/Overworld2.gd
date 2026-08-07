@@ -593,12 +593,19 @@ func log_attempt() -> String:
 # the way. After ESCAPE_AFTER_ATTEMPTS lost runs the player may walk away from the
 # game in play at any point, without beating it.
 #
-# Escaping resolves the game exactly as reporting a missed goal does: the
+# Escaping resolves the BOARD exactly as reporting a missed goal does: the
 # goal-enemy walks onto the board and follows you. That IS the price, and by the
 # time it's offered it has already been paid twice over — five lost runs is the
 # shields this game granted plus Health on top, with the front line closing in the
 # whole time. The button exists to make the way out VISIBLE to a stuck player, not
 # to discount it.
+#
+# Where it PARTS from a missed report is credit: an escape is not a beat. The run
+# doesn't bank the game (so no repeat-beat Dash, and the Atlas doesn't mark it),
+# the "after beating a game" items don't fire, and neither the run's nor the
+# lifetime beaten tally moves. A missed report still credits the game — that is
+# long-standing behaviour and is left alone; walking away is the case that isn't
+# allowed to.
 func can_escape() -> bool:
 	return _phase == Phase.PLAYING and not _chosen.is_empty() \
 		and not GameLoop2.run_over and GameLoop2.attempts() >= ESCAPE_AFTER_ATTEMPTS
@@ -616,7 +623,7 @@ func escape_game() -> void:
 		game_name, GameLoop2.attempts()]
 	GameLog.add(msg, UITheme.ACCENT)
 	Notifications.notify(msg, UITheme.ACCENT)
-	report(false)
+	report(false, null, true)
 
 # Take back the last tick — the tracker is hand-driven, so a mis-click has to be
 # reversible. Refunds exactly what that try spent.
@@ -873,7 +880,12 @@ func scroll_teleport(_dir: String, spread: int) -> void:
 # each is defeated and drops. When null the ticked fulfilment checkboxes are read
 # from the play panel. Resolves the loop, advances the difficulty clock, then
 # rebuilds the next offering.
-func report(goal_met: bool, fulfilled: Variant = null) -> void:
+#
+# `escaped` marks the report as WALKING AWAY (escape_game) rather than finishing:
+# the board still resolves and the run still moves on, but the game is not
+# credited as beaten — see the `if not escaped` block below for exactly what that
+# withholds.
+func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) -> void:
 	if _phase != Phase.PLAYING or _chosen.is_empty():
 		return
 	# The board is about to play the whole resolve back — the front line striking,
@@ -920,7 +932,13 @@ func report(goal_met: bool, fulfilled: Variant = null) -> void:
 					if follower != null:
 						_record_defeat(played_game, follower)
 					break
-	if played_game != null:
+	# Everything a game gets CREDITED for. An escape is the one report that earns
+	# none of it: the player walked away, so the "after beating a game" items don't
+	# fire, the run doesn't bank the clear (and so pays no repeat-beat Dash, and the
+	# Atlas doesn't mark the node), and neither tally the Collection and the tier
+	# list read moves. The run itself still advances — see games_played below —
+	# because the time was spent and the board closed in regardless.
+	if played_game != null and not escaped:
 		TriggerBus.game_beaten.emit({"game_id": played_game.id})
 		# Bank the clear (and pay the repeat-beat Dash). Recorded after the item
 		# trigger so a game_beaten item can't see a half-updated tally.
@@ -2819,7 +2837,7 @@ func _build_ui() -> void:
 	_escape_btn = Button.new()
 	_escape_btn.text = "🏃  Escape this game"
 	_escape_btn.tooltip_text = ("Leave without beating it. The goal-enemy walks onto the "
-		+ "board and follows you, exactly as reporting a missed goal does.")
+		+ "board and follows you, and the game does NOT count as beaten.")
 	_escape_btn.custom_minimum_size = Vector2(0, 30)
 	_escape_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_escape_btn.add_theme_font_size_override("font_size", 13)

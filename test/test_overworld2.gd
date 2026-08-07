@@ -1982,10 +1982,6 @@ func test_escaping_advances_the_run_and_the_enemy_follows() -> void:
 	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "and a fresh offering is up")
 
 func test_escaping_does_not_defeat_the_goal_enemy() -> void:
-	# `note_game_beaten` fires on every report — met or missed — so "beaten" is
-	# really "played", and escaping ticks it exactly as a missed report does. What
-	# separates a clear from an escape is the ENEMY: it is only recorded as
-	# defeated when the goal was actually met.
 	_ui.pick(0)
 	var game: GameData = _ui._chosen["game"]
 	var enemy: GoalEnemyData = _ui._chosen["enemy"]
@@ -1996,6 +1992,55 @@ func test_escaping_does_not_defeat_the_goal_enemy() -> void:
 	_ui.escape_game()
 	assert_eq(GameStats.enemy_beaten_count(game.id, enemy.id), before,
 		"escaping is leaving, not killing")
+
+# An escape earns none of a beat's credit. A missed REPORT still does — that's
+# long-standing behaviour and deliberately untouched; walking away is the case
+# that isn't allowed to count.
+func test_escaping_does_not_count_the_game_as_beaten() -> void:
+	_ui.pick(0)
+	var game: GameData = _ui._chosen["game"]
+	var lifetime_before: int = GameStats.beaten_count(game.id)
+	var run_before: int = GameState.total_games_beaten
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_ui.escape_game()
+	assert_false(GameState.has_beaten_game(game.id),
+		"escaping is leaving, not clearing")
+	assert_eq(GameState.total_games_beaten, run_before,
+		"the run's beaten count doesn't move")
+	assert_eq(GameStats.beaten_count(game.id), lifetime_before,
+		"nor does the lifetime tally the Collection and the tier list read")
+
+func test_escaping_pays_no_repeat_beat_dash() -> void:
+	# Standing on a game already cleared this run, escaping it must not pay the
+	# Dash a second clear would — there was no second clear.
+	var target: GameData = _ui._choices[0]["game"]
+	GameState.note_game_beaten(target.id)
+	_ui._build_choices()
+	_ui.pick(0)
+	var dash_before: int = GameState.dash_charges
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_ui.escape_game()
+	assert_eq(GameState.dash_charges, dash_before,
+		"walking away from a game you'd beaten before earns nothing")
+
+func test_escaping_still_advances_the_run_clock() -> void:
+	# Withholding the CREDIT doesn't stall the run: the time was spent and the
+	# board closed in, so the difficulty clock moves either way.
+	_ui.pick(0)
+	var gp_before: int = GameState.games_played
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_ui.escape_game()
+	assert_eq(GameState.games_played, gp_before + 1,
+		"games_played counts the game you walked away from")
+
+func test_a_missed_report_still_counts_as_before() -> void:
+	# The guard is on escape alone. A plain missed report keeps crediting the game
+	# exactly as it always has.
+	_ui.pick(0)
+	var game: GameData = _ui._chosen["game"]
+	_ui.report(false)
+	assert_true(GameState.has_beaten_game(game.id),
+		"a missed report is untouched by the escape rule")
 
 func test_escape_refuses_before_the_line() -> void:
 	_ui.pick(0)

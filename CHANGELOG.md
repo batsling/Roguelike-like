@@ -24,11 +24,16 @@ For how the project is laid out and how its systems fit together, see
   `ESCAPE_AFTER_ATTEMPTS` (5) lost runs — past the shields any game grants, so the
   player has been paying Health to keep trying — an **🏃 Escape this game** button
   appears under Completed Game and leaves the game at any time without beating it.
-  It resolves exactly as reporting a missed goal does: the goal-enemy walks onto
-  the board and follows you. That is the price, and by the time the button shows it
-  has been paid twice over; the button exists to make the way out visible to a
-  stuck player, not to discount it. Undoing back under the line takes it away
-  again. **(3) Rating flows into the tier list.** Submitting a score on the
+  The BOARD resolves as it does on a missed goal — the goal-enemy walks onto it and
+  follows you — and that is the price, paid twice over by the time the button
+  shows; it exists to make the way out visible to a stuck player, not to discount
+  it. But **an escape is not a beat**: the run doesn't bank the game (so no
+  repeat-beat Dash, and the Atlas doesn't mark it), the "after beating a game"
+  items don't fire, and neither the run's nor the lifetime beaten tally moves. The
+  run clock still advances — the time was spent and the board closed in either
+  way. A plain missed *report* still credits the game as it always has; walking
+  away is the case that isn't allowed to count. Undoing back under the line takes
+  the button away again. **(3) Rating flows into the tier list.** Submitting a score on the
   ★ Rate prompt now opens the tier-list board on top, so the score lands somewhere
   the player can see it and drag it into a row while the game is still fresh.
   "Maybe later" still just closes — declining to rate shouldn't hand you a screen
