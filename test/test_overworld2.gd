@@ -1346,19 +1346,22 @@ func test_the_board_says_how_long_its_playback_runs() -> void:
 # the resolve plays out on the board next to the cards. There is no Continue step
 # between the two — the animation and the next decision share the screen.
 func test_the_offering_comes_back_while_the_board_still_plays() -> void:
+	# Play a game and MISS first, which is what puts a body on the board: the
+	# chosen enemy lives in GameLoop2.current while a game is being played and
+	# only joins the stack when the goal is missed. On the very first game the
+	# stack is still empty, so its resolve has nobody to strike and nobody to
+	# slide — and _hold_for_resolve ends a zero-length playback synchronously,
+	# which left _resolving false and failed this test on roughly one run in four.
+	# The SECOND game is the one with a board to play back, which is what this
+	# test is actually about.
 	_ui.pick(0)
-	# Put the front enemy ON the front column first. This test is about the
-	# offering not WAITING for the playback, so it needs a playback to not wait
-	# for — and _hold_for_resolve ends the resolve synchronously when there is
-	# nothing to animate (animate_resolve returns 0.0 with no attacks). Whether a
-	# freshly spawned enemy reaches column 1 on its single far-band turn depends
-	# on the board width and the enemy rolled, so leaving it to chance made this
-	# fail roughly one run in four. A strike is what makes the playback take time.
-	assert_gt(GameLoop2.stack.size(), 0, "the picked game put an enemy on the board")
-	GameLoop2.stack[0]["col"] = 1
 	_ui.report(false)
-	assert_false(GameLoop2.last_result.get("attacks", []).is_empty(),
-		"the resolve has a strike in it, so the board has something to play back")
+	await wait_seconds(1.2)                   # let the first playback finish
+	assert_eq(GameLoop2.stack_size(), 1, "the miss left an enemy standing on the board")
+	assert_false(_ui._resolving, "and its own playback is done before the real test")
+
+	_ui.pick(0)
+	_ui.report(false)
 	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "the next decision is already built")
 	assert_gt(_ui._choices.size(), 0)
 	assert_true(_ui._select_box.visible,
