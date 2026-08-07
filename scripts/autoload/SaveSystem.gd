@@ -215,6 +215,9 @@ func _build_payload() -> Dictionary:
 		"bombs": GameState.base_verb_value("bombs"),
 		"keys": GameState.base_verb_value("keys"),
 		"game_choice_bonus": GameState.base_verb_value("game_choices"),
+		# Statuses on the PLAYER (§13). The enemy-side ones ride the bodies they are
+		# on, so they save inside GameLoop2.serialize() below rather than here.
+		"player_statuses": GameState.serialize_statuses(),
 		"pending_chests": GameState.pending_chests,
 		"pending_chest_choices": Array(GameState.pending_chest_choices),
 		"total_combats_completed": GameState.total_combats_completed,
@@ -314,6 +317,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.bombs = int(data.get("bombs", 0))
 	GameState.keys = int(data.get("keys", 0))
 	GameState.game_choice_bonus = int(data.get("game_choice_bonus", 0))
+	GameState.restore_statuses(data.get("player_statuses", {}))
 	# Reset the running item contribution so _recompute starts fresh
 	# against the saved base stats (which already had bonuses applied
 	# when the save was written, but we save the base — see below).

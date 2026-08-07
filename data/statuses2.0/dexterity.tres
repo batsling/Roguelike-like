@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="StatusData" load_steps=3 format=3 uid="uid://status2_dexterity"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatusData.gd" id="1_status"]
+[ext_resource type="Texture2D" path="res://images2.0/statuses/Dexterity.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_status")
+id = &"dexterity"
+display_name = "Dexterity"
+kind = &"buff"
+source_game = "Slay the Spire"
+on_player_text = "Gain \"If beaten in (1+(1/2)^X-2)) hours or less, Gain +X Small Chests and X Dashes\""
+on_enemy_text = "Gains \"and must be beaten in (1+(1/2)^X-2)) hours or less\""
+stackable = "Intensity"
+condition = "beaten in {1.0+pow((1.0/2.0), (X-2.0))} hours or less"
+reward = [{"type": "gain_chest", "scaled": {"value": "X"}, "choices": 1}, {"type": "gain_stat", "stat": "dash", "scaled": {"value": "X"}}]
+reward_text = "+{X} [Small Chest|Small Chests], +{X} [Dash|Dashes]"
+decays_on_complete = false
+file = "Dexterity"
+image = ExtResource("2_img")

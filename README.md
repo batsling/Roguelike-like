@@ -62,6 +62,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── bosses2.0/        #   GoalEnemyData — the difficulty-gate bosses
 │   ├── characters2.0/    #   CharacterData — the playable roster
 │   ├── scrolls2.0/       #   ScrollData — identify-by-reading scrolls
+│   ├── statuses2.0/      #   StatusData — buffs/debuffs that rewrite goals (§13)
 │   ├── items/            #   ItemData (pre-2.0 set, still loaded)
 │   ├── characters/       #   CharacterData (pre-2.0)
 │   ├── events/           #   EventData — the D20 events
@@ -88,6 +89,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_boss_tres.py       #   data/bosses2.0
 │   ├── generate_character2_tres.py #   data/characters2.0
 │   ├── generate_scroll2_tres.py    #   data/scrolls2.0
+│   ├── generate_status_tres.py     #   data/statuses2.0
 │   ├── generate_item_tres.py, generate_character_tres.py,
 │   ├── generate_curse_tres.py, generate_event_tres.py,
 │   ├── generate_encounter_tres.py  #   the pre-2.0 sets
@@ -223,7 +225,7 @@ All game content is authored as typed Godot **Resources** (`.tres`) under `data/
 with their schemas defined in `scripts/resources/`:
 
 `GameData`, `GoalEnemyData`, `ItemData`, `CharacterData`, `ScrollData`,
-`EventData`, `EncounterData`, `CurseData`, `StatDefinition`.
+`StatusData`, `EventData`, `EncounterData`, `CurseData`, `StatDefinition`.
 
 `Data.gd` loads them all on startup and serves them by id, so gameplay code never
 hardcodes content — it asks `Data` for it. Random draws all share one rarity
@@ -246,6 +248,7 @@ editing the sheet, then review the diff):
 | `generate_boss_tres.py` | `data/bosses2.0/*.tres` from the boss sheet |
 | `generate_character2_tres.py` | `data/characters2.0/*.tres` from the characters sheet |
 | `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet |
+| `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses2.0` sheet |
 | `generate_item_tres.py` | `data/items/*.tres` from the items sheet (pre-2.0 set) |
 | `generate_character_tres.py` | `data/characters/*.tres` (pre-2.0) |
 | `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesnew` sheet |

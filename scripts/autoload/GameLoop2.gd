@@ -312,6 +312,7 @@ func _serialize_entry(entry: Dictionary) -> Dictionary:
 		"stun": int(entry.get("stun", 0)),
 		"col": int(entry.get("col", offgrid_col())),
 		"row": int(entry.get("row", 0)),
+		"statuses": _serialize_statuses(entry.get("statuses", {})),
 	}
 
 # An entry whose enemy no longer exists in the catalog is DROPPED rather than
@@ -330,7 +331,31 @@ func _deserialize_entry(raw) -> Dictionary:
 		"stun": int(d.get("stun", 0)),
 		"col": int(d.get("col", offgrid_col())),
 		"row": int(d.get("row", 0)),
+		"statuses": _deserialize_statuses(d.get("statuses", {})),
 	}
+
+# A body's statuses as JSON-safe String -> int, and back. A status id the catalog
+# no longer knows is DROPPED on the way in, for the same reason a missing enemy id
+# drops the whole entry: a status that can't be described would render as a blank
+# clause welded onto a real goal.
+func _serialize_statuses(statuses) -> Dictionary:
+	var out: Dictionary = {}
+	if not (statuses is Dictionary):
+		return out
+	for id in (statuses as Dictionary).keys():
+		out[String(id)] = int((statuses as Dictionary)[id])
+	return out
+
+func _deserialize_statuses(raw) -> Dictionary:
+	var out: Dictionary = {}
+	if not (raw is Dictionary):
+		return out
+	for key in (raw as Dictionary).keys():
+		var id := StringName(key)
+		var stacks: int = int((raw as Dictionary)[key])
+		if stacks > 0 and Data.get_status(id) != null:
+			out[id] = stacks
+	return out
 
 # --- Spawning -------------------------------------------------------------
 
@@ -415,7 +440,8 @@ func choose_game(enemy: GoalEnemyData) -> int:
 		return 0
 	var inst: int = _next_instance
 	_next_instance += 1
-	current = {"instance": inst, "enemy": enemy, "health": effective_health(enemy)}
+	current = {"instance": inst, "enemy": enemy, "health": effective_health(enemy),
+		"statuses": {}}
 	loop_changed.emit()
 	return inst
 
@@ -531,17 +557,23 @@ func _board_snapshot() -> Dictionary:
 
 # Resolves beating the current game. `goal_met` is whether you met the current
 # enemy's goal; `fulfilled_instances` are stacked enemies whose OLD goals you
-# also fulfilled while playing this game (§2). Returns last_result:
+# also fulfilled while playing this game (§2). `claims` carries the STATUS side of
+# the same self-report (§13), and is optional so every pre-status call site still
+# reads correctly:
+#   {"status_goals": [status_id, ...],                       player buffs met
+#    "bonuses": [{"instance": int, "status": status_id}, …]}  enemy bonuses claimed
+# Returns last_result:
 #   {beaten, defeats:[enemy...], drops:int,
 #    attacks:[{instance, turn, damage|stunned|goal_hit}],
 #    turns:int, turn_frames:[{instance: Vector2i(col,row)}, ...],
 #    damage_taken, blocked, hp, shields, shields_expired, attempts, stack_size,
-#    run_over, won}
+#    status_rewards:int, statuses_ticked:[status_id...], run_over, won}
 # `blocked` is what the unspent shields absorbed; `shields_expired` is what was
 # left over afterwards and went away with the game (§3). `turns` is how many
 # actions each enemy got (enemy_turns()), and `turn_frames` holds the board after
 # each one so the view can replay them in order.
-func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
+func beat_game(goal_met: bool, fulfilled_instances: Array = [],
+		claims: Dictionary = {}) -> Dictionary:
 	var turns: int = enemy_turns()
 	var res := {
 		"beaten": true, "defeats": [], "drops": 0, "attacks": [],
@@ -549,12 +581,20 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 		"damage_taken": 0, "blocked": 0, "hp": GameState.hp,
 		"shields": GameState.shields, "shields_expired": 0,
 		"attempts": attempts(), "stack_size": stack.size(),
+		"status_rewards": 0, "statuses_ticked": [],
 		"run_over": run_over, "won": won,
 	}
 	if run_over:
 		last_result = res
 		return res
 	games_beaten += 1
+
+	# 0. STATUS PAYOUTS, before anything is removed from the board. An enemy bonus
+	#    is claimed against a body that step 1 or step 3 may be about to defeat, so
+	#    the claim has to be resolved while that body still exists — otherwise
+	#    clearing an enemy's goal and its bonus in the same game would silently
+	#    swallow the bonus.
+	res["status_rewards"] = _resolve_status_claims(claims)
 
 	# 1. Old-goal fulfilment: completing a follower's goal this game deals it one
 	#    hit. It's defeated (and drops) only when its Health reaches 0; a survivor
@@ -610,6 +650,7 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 	#    rightmost cell lands on the back column (added after the attack + advance
 	#    steps, so it gets its one-game grace before closing in) and must be beaten
 	#    again later. When nothing fits it waits in the off-grid queue.
+	var had_current: bool = not current.is_empty()
 	if not current.is_empty():
 		var ch: int = int(current.get("health", 1))
 		if goal_met:
@@ -617,8 +658,17 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = []) -> Dictionary:
 		if goal_met and ch <= 0:
 			_defeat(current["enemy"], true, res)
 		else:
-			_add_to_grid(int(current["instance"]), current["enemy"], maxi(1, ch))
+			_add_to_grid(int(current["instance"]), current["enemy"], maxi(1, ch),
+				current.get("statuses", {}))
 		current = {}
+
+	# 4. The player's debuffs tick for the game just played. A debuff rides every
+	#    enemy's goal, so completing ANY goal this game satisfied its clause once.
+	#    A FREE game is not a completion: `goal_met` reads true when there was no
+	#    enemy to meet (Overworld2._goal_met auto-clears an empty checklist), and a
+	#    goal nobody set can't have carried a clause.
+	res["statuses_ticked"] = _tick_player_debuffs(
+		(goal_met and had_current) or not fulfilled_instances.is_empty())
 
 	res["hp"] = GameState.hp
 	res["shields"] = GameState.shields
@@ -1184,6 +1234,212 @@ func _index_of(instance: int) -> int:
 			return i
 	return -1
 
+# ---------------------------------------------------------------------------
+# Statuses 2.0 (docs/games-first-redesign.md §13)
+#
+# A status never touches a number on this node. It rewrites GOALS, which is the
+# only currency the games-first loop has:
+#
+#   enemy BUFF     -> that enemy's goal gains "and <clause>"   (required)
+#   player DEBUFF  -> EVERY enemy's goal gains "and <clause>"  (required), and
+#                     one stack falls off each game you complete one
+#   enemy DEBUFF   -> that enemy grows an OPTIONAL bonus row, claimable for its
+#                     reward alongside (or instead of) its goal
+#   player BUFF    -> not here at all: it's a standing goal of the player's own,
+#                     served by GameState.status_buffs()
+#
+# So `goal_text_for` is the one function the UI and the OBS HUD should ask for a
+# goal line — never `enemy.goal` directly, which is only ever the unmodified stem.
+# ---------------------------------------------------------------------------
+
+# Apply `stacks` of `status_id` to enemies. `target` is one of:
+#   "current" — the enemy on the game being played right now (the default)
+#   "all"     — every body on the board AND the current enemy
+#   "random"  — one body picked at random from that same set
+# Returns how many enemies it landed on. An unknown status id lands on none.
+func apply_enemy_status(status_id: StringName, stacks: int = 1,
+		target: String = "current") -> int:
+	if stacks == 0 or Data.get_status(status_id) == null:
+		if stacks != 0:
+			push_warning("GameLoop2.apply_enemy_status: no status '%s'" % status_id)
+		return 0
+	var targets: Array = _status_targets(target)
+	for entry in targets:
+		_add_status_to(entry, status_id, stacks)
+	if not targets.is_empty():
+		loop_changed.emit()
+	return targets.size()
+
+# The bodies a `target` word names. "current" is the enemy of the game in play;
+# note it is NOT on the stack yet (§7.2), so every mode has to reach for it
+# separately or a status applied on selection would miss the enemy it was aimed at.
+func _status_targets(target: String) -> Array:
+	var everyone: Array = stack.duplicate()
+	if not current.is_empty():
+		everyone.append(current)
+	match target.to_lower():
+		"all":
+			return everyone
+		"random":
+			return [] if everyone.is_empty() else [everyone[randi() % everyone.size()]]
+		_:
+			return [] if current.is_empty() else [current]
+
+func _add_status_to(entry: Dictionary, status_id: StringName, stacks: int) -> void:
+	var held: Dictionary = entry.get("statuses", {})
+	var total: int = int(held.get(status_id, 0)) + stacks
+	if total <= 0:
+		held.erase(status_id)
+	else:
+		held[status_id] = total
+	entry["statuses"] = held
+
+# Tick a status off one enemy, by instance. Returns what is left on it.
+func remove_enemy_status(instance: int, status_id: StringName, stacks: int = 1) -> int:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty():
+		return 0
+	_add_status_to(entry, status_id, -absi(stacks))
+	loop_changed.emit()
+	return int((entry.get("statuses", {}) as Dictionary).get(status_id, 0))
+
+# The board entry (or the current enemy) holding `instance`, or {} when nothing
+# does. The current enemy is checked too because it is a legal target for every
+# status verb even though it hasn't walked onto the grid yet.
+func entry_for(instance: int) -> Dictionary:
+	var idx: int = _index_of(instance)
+	if idx >= 0:
+		return stack[idx]
+	if not current.is_empty() and int(current.get("instance", 0)) == instance:
+		return current
+	return {}
+
+# The statuses on one enemy as [{status: StatusData, stacks: int}], catalog-ordered
+# so a card redrawn between frames doesn't reshuffle its pips.
+func enemy_statuses(entry: Dictionary) -> Array:
+	var held: Dictionary = entry.get("statuses", {})
+	var out: Array = []
+	if held.is_empty():
+		return out
+	for s in Data.all_statuses():
+		var sd: StatusData = s
+		if held.has(sd.id):
+			out.append({"status": sd, "stacks": int(held[sd.id])})
+	return out
+
+# Every clause that must ALSO be satisfied before `entry`'s goal counts as met:
+# the enemy's own buffs, then the player's debuffs (which are on every enemy at
+# once). Each row is {status, stacks, source}, `source` being "enemy" or "player"
+# — the UI tints them differently, and only the player-sourced ones decay.
+func required_clauses_for(entry: Dictionary) -> Array:
+	var out: Array = []
+	for row in enemy_statuses(entry):
+		if (row["status"] as StatusData).is_buff():
+			out.append({"status": row["status"], "stacks": row["stacks"], "source": "enemy"})
+	for row in GameState.status_debuffs():
+		out.append({"status": row["status"], "stacks": row["stacks"], "source": "player"})
+	return out
+
+# The OPTIONAL bonus objectives hanging off `entry` — its own debuffs. Claiming one
+# pays its reward; ignoring one costs nothing, which is the whole difference
+# between a debuff on an enemy and a buff on one.
+func bonus_objectives_for(entry: Dictionary) -> Array:
+	var out: Array = []
+	for row in enemy_statuses(entry):
+		if (row["status"] as StatusData).is_debuff():
+			out.append(row)
+	return out
+
+# THE goal line for one enemy: its authored goal plus every required clause,
+# joined with "and". Ask for this rather than `enemy.goal` anywhere a player or a
+# viewer reads it — the stem alone is a goal the run is no longer scored against.
+func goal_text_for(entry: Dictionary) -> String:
+	var enemy: GoalEnemyData = entry.get("enemy")
+	if enemy == null:
+		return ""
+	var text: String = enemy.goal
+	for clause in required_clauses_for(entry):
+		var sd: StatusData = clause["status"]
+		text += " and %s" % sd.enemy_clause(int(clause["stacks"]))
+	return text
+
+# --- claiming a status reward ---------------------------------------------
+
+# Pay out one status's reward at `stacks`, through the ordinary effect pipeline so
+# a chest granted by a status is the same chest an item grants.
+func _pay_status_reward(status: StatusData, stacks: int) -> void:
+	if status == null or stacks <= 0:
+		return
+	EffectSystem.apply_all(status.reward_effects(stacks), {"status": status})
+
+# A player BUFF's standing goal was met this game (§13): pay it. The buff itself
+# persists — it is the reward, not a timer — so nothing ticks down here.
+func complete_player_status_goal(status_id: StringName) -> bool:
+	var stacks: int = GameState.status_stacks(status_id)
+	if stacks <= 0:
+		return false
+	var status: StatusData = Data.get_status(status_id)
+	if status == null or not status.is_buff():
+		return false
+	_pay_status_reward(status, stacks)
+	if status.decays_on_complete:
+		GameState.remove_status(status_id, 1)
+	return true
+
+# An enemy DEBUFF's bonus objective was claimed on `instance`: pay it, then tick
+# that stack off the enemy, since the bonus was for doing the thing once.
+func claim_enemy_bonus(instance: int, status_id: StringName) -> bool:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty():
+		return false
+	var held: Dictionary = entry.get("statuses", {})
+	var stacks: int = int(held.get(status_id, 0))
+	if stacks <= 0:
+		return false
+	var status: StatusData = Data.get_status(status_id)
+	if status == null or not status.is_debuff():
+		return false
+	_pay_status_reward(status, stacks)
+	if status.decays_on_complete:
+		_add_status_to(entry, status_id, -1)
+	loop_changed.emit()
+	return true
+
+# The player's DEBUFFS shed a stack for the game just resolved, when a goal
+# carrying their clause was actually completed. A player debuff sits on EVERY
+# enemy's goal, so meeting any goal at all means the clause was met — that is the
+# same "and" the checklist row asserted when it was ticked. Once per game, not once
+# per goal: the sheet's "decrease stack by 1 when completed" is a per-game count,
+# and a game where you cleared four followers would otherwise wipe the debuff whole.
+# The `claims` half of a beat_game self-report: pay every player-buff goal met and
+# every enemy bonus claimed. Returns how many paid out, for the report log.
+func _resolve_status_claims(claims: Dictionary) -> int:
+	if claims.is_empty():
+		return 0
+	var paid: int = 0
+	for raw in claims.get("status_goals", []):
+		if complete_player_status_goal(StringName(raw)):
+			paid += 1
+	for raw in claims.get("bonuses", []):
+		if not (raw is Dictionary):
+			continue
+		var d: Dictionary = raw
+		if claim_enemy_bonus(int(d.get("instance", 0)), StringName(d.get("status", ""))):
+			paid += 1
+	return paid
+
+func _tick_player_debuffs(any_goal_completed: bool) -> Array:
+	var ticked: Array = []
+	if not any_goal_completed:
+		return ticked
+	for row in GameState.status_debuffs():
+		var sd: StatusData = row["status"]
+		if not sd.decays_on_complete:
+			continue
+		GameState.remove_status(sd.id, 1)
+		ticked.append(sd.id)
+	return ticked
+
 # --- grid model (§grid) ---------------------------------------------------
 #
 # Everything below works in FOOTPRINTS, not single cells: an enemy's
@@ -1336,9 +1592,14 @@ func _count_in_col(col: int) -> int:
 # get past, so the emptiest lane wins and ties break randomly. When nothing fits
 # at all — the back of the board is walled off, or the enemy is taller than the
 # grid — it waits in the off-grid queue and slides on later (see _admit_offgrid).
-func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int) -> void:
+func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int,
+		statuses: Dictionary = {}) -> void:
+	# Statuses ride the BODY, not the board slot: a status hung on the current
+	# game's enemy has to still be on it when it walks on as a follower, or every
+	# enemy-side status would evaporate the moment it mattered.
 	var entry := {"instance": instance, "enemy": enemy, "stun": 0,
-		"health": health, "col": offgrid_col(), "row": 0}
+		"health": health, "col": offgrid_col(), "row": 0,
+		"statuses": statuses.duplicate()}
 	stack.append(entry)
 	_place_on_spawn(entry)
 

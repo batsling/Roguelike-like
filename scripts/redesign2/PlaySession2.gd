@@ -107,7 +107,8 @@ func _enemy_text() -> String:
 	var boss_tag: String = "  [color=#e0b020][b]☠ BOSS[/b][/color]" if e.is_boss() else ""
 	return "[b]Now playing:[/b] %s%s  ([i]%s / %s / dmg %d[/i])\n[b]GOAL (%s):[/b] %s" % [
 		e.display_name, boss_tag, String(e.game_type).capitalize(),
-		RunDifficulty.tier_name(int(e.difficulty)), e.damage, String(e.goal_type).capitalize(), e.goal,
+		RunDifficulty.tier_name(int(e.difficulty)), e.damage, String(e.goal_type).capitalize(),
+		GameLoop2.goal_text_for(GameLoop2.current),
 	]
 
 func _stack_text() -> String:
@@ -119,7 +120,8 @@ func _stack_text() -> String:
 		var stun: int = int(entry.get("stun", 0))
 		lines.append("  • %s — dmg %d%s — goal: %s" % [
 			e.display_name, e.damage,
-			("  [stunned x%d]" % stun) if stun > 0 else "", e.goal,
+			("  [stunned x%d]" % stun) if stun > 0 else "",
+			GameLoop2.goal_text_for(entry),
 		])
 	return "\n".join(lines)
 

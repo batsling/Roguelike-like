@@ -11,6 +11,62 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Statuses 2.0 — balance by rewriting goals** (`statuses2.0`, spec §13). The run
+  had no lever between "an item that grants a number" and "an enemy with a harder
+  goal", so a location or an event had nothing to reach for. A **status** is that
+  lever, and it works on the only currency the game has: it bolts a **clause onto
+  a goal**. One status is authored as two pieces — a `Condition` and a `Reward` —
+  and the four ways they can be arranged *are* the system. **A buff on the player**
+  is an extra standing goal on the checklist ("If the difficulty is increased 2
+  times, gain +2 Small Chests, +2 Bashes") that pays out every game you satisfy it.
+  **A buff on an enemy** welds "and ‹condition›" onto that enemy's goal — required,
+  so it is harder to remove. **A debuff on the player** welds its clause onto
+  *every* enemy's goal and sheds a stack each game you complete one. **A debuff on
+  an enemy** hangs an optional bonus off it — "and if you get 3 achievements, gain
+  +3 Small Chests" — claimable for the reward. So a buff pays you and taxes the
+  enemy; a debuff taxes you and pays out on the enemy, and each direction has its
+  own counter. Three statuses ship: **Strength** and **Dexterity** (buffs, Slay the
+  Spire) and **Marked** (debuff, Mewgenics). Stacking is **Intensity** — a second
+  Marked is one Marked at 2, not two Markeds — and only debuffs decay, once per
+  game rather than once per goal, so a game where you cleared four followers can't
+  wipe a four-stack debuff whole. A buff persists for the run, because a buff *is*
+  the reward and a timer would only make it a worse item.
+
+  The sheet gained two machine-readable columns beside its prose (added by
+  `tools/_statuses_sheet_setup.py`, which patches the two XML parts it needs
+  instead of round-tripping the workbook through openpyxl and dropping its seven
+  charts). `Condition` and `Reward` carry `{expr}` holes over **X**, the stack
+  count, so a status can scale on whatever curve it likes: Strength counts a flat
+  `{X}` while Dexterity's window is `{1+(1/2)^(X-2)}` hours — 3h at one stack, 2h
+  at two, 1.5h at three, tightening toward a floor of one hour while the reward
+  grows. `tools/generate_status_tres.py` normalises `a^b` into `pow(a, b)` and
+  every integer literal into a float (Godot's `Expression` does integer division,
+  so `1/2` was 0 and Dexterity's one-stack window came out as `pow(0, -1)` hours),
+  and emits `[singular|plural]` markers the runtime resolves against the live X —
+  one authored string reads "+1 Small Chest" and "+3 Small Chests" correctly.
+
+  Runtime: statuses on the player live on `GameState.player_statuses`; statuses on
+  an enemy ride the **body**, in the `GameLoop2` stack entry, so one applied to the
+  current game's enemy is still on it when it walks onto the board. Both save.
+  **`GameLoop2.goal_text_for(entry)` is now THE goal line** — the checklist, the
+  enemy card, the scroll target picker and the headless `PlaySession2` driver all
+  ask for it rather than reading `GoalEnemyData.goal`, which is only ever the
+  unmodified stem. (Collection, the Atlas and the note modal still show the
+  authored goal: they describe the enemy, not the run.) Content reaches the system
+  through a new **`apply_status`** effect — `apply_status marked 2 target=all` in
+  the item Effect DSL, with `player` / `current` / `all` / `random` targeting — and
+  the player reports against it through `beat_game`'s new `claims` argument, which
+  resolves **before** the board does, so beating an enemy and claiming its bonus in
+  the same game pays both. The HUD grew a status strip under its numbers, and the
+  report checklist grew the extra goal rows and bonus rows. 40 new tests in
+  `test/test_statuses.gd`.
+
+- **12 new games and 21 games' worth of new connections** ported from the
+  spreadsheet (An Amazing Wizard, Atomic Owl, Barda, Katanaut, Nadir, Roulette
+  Hero, Sandwalkers, Sir We Have an Orc Problem, Sword of the Necromancer and its
+  Resurrection, Tiny Auto Knights, Tower Fortress), taking the catalog to 830. All
+  five Atlas skies rebaked.
+
 - **A way onward, a way out, and somewhere for a score to land** — three things
   the run was missing. **(1) The hub rule.** On a well-connected game the offering
   shows three of dozens of neighbours, and the seeded subset could come up all

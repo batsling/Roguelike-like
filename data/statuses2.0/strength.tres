@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="StatusData" load_steps=3 format=3 uid="uid://status2_strength"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatusData.gd" id="1_status"]
+[ext_resource type="Texture2D" path="res://images2.0/statuses/Strength.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_status")
+id = &"strength"
+display_name = "Strength"
+kind = &"buff"
+source_game = "Slay the Spire"
+on_player_text = "Gain \"If the difficuly is increased X times, Gain +X Small Chests and X Bashes\""
+on_enemy_text = "Gains \"and the difficulty must be increased X times\""
+stackable = "Intensity"
+condition = "the difficulty is increased {X} times"
+reward = [{"type": "gain_chest", "scaled": {"value": "X"}, "choices": 1}, {"type": "gain_stat", "stat": "bash", "scaled": {"value": "X"}}]
+reward_text = "+{X} [Small Chest|Small Chests], +{X} [Bash|Bashes]"
+decays_on_complete = false
+file = "Strength"
+image = ExtResource("2_img")

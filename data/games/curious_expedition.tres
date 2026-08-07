@@ -8,9 +8,9 @@ id = &"curious_expedition"
 display_name = "Curious Expedition"
 year = 2016
 type = 1
-games_influenced = Array[StringName]([&"curious_expedition_2", &"insurmountable"])
-influence_sources = PackedStringArray("https://mcvuk.com/business-news/when-we-made-wildfrost/", "https://www.reddit.com/r/IndieGaming/comments/evnabb/a_short_impression_of_insurmountable_our_new_game/")
-influence_relations = PackedStringArray("dev/series", "")
+games_influenced = Array[StringName]([&"curious_expedition_2", &"insurmountable", &"sandwalkers"])
+influence_sources = PackedStringArray("https://mcvuk.com/business-news/when-we-made-wildfrost/", "https://www.reddit.com/r/IndieGaming/comments/evnabb/a_short_impression_of_insurmountable_our_new_game/", "https://x.com/studio_goblinz/status/1703121970680807815?s=20")
+influence_relations = PackedStringArray("dev/series", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

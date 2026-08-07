@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_sir_we_have_an_orc_problem"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"sir_we_have_an_orc_problem"
+display_name = "Sir, We Have an Orc Problem"
+year = 2026
+type = 1
+games_influenced = Array[StringName]([])
+influence_sources = PackedStringArray()
+influence_relations = PackedStringArray()
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/sir-we-have-an-orc-problem.png"
+owned = false
+file_location = ""
+steam_page = "https://store.steampowered.com/app/4594150/Sir_We_Have_an_Orc_Problem"

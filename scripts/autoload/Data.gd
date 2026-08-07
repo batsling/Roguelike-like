@@ -21,6 +21,7 @@ var _characters2: Dictionary = {}       # StringName -> CharacterData (2.0 roste
 var _items2: Dictionary = {}            # StringName -> ItemData (2.0)
 var _goal_enemies: Dictionary = {}      # StringName -> GoalEnemyData (normal)
 var _bosses: Dictionary = {}            # StringName -> GoalEnemyData (boss=true)
+var _statuses: Dictionary = {}          # StringName -> StatusData (§13)
 
 func _ready() -> void:
 	_load_dir("res://data/items/", _items)
@@ -35,12 +36,14 @@ func _ready() -> void:
 	_load_dir("res://data/enemies2.0/", _goal_enemies)
 	_load_dir("res://data/bosses2.0/", _bosses)
 	_load_dir("res://data/scrolls2.0/", _scrolls)
+	_load_dir("res://data/statuses2.0/", _statuses)
 	print("[Data] Loaded %d items, %d events, %d games, %d characters, %d curses, %d encounters" % [
 		_items.size(), _events.size(), _games.size(), _characters.size(),
 		_curses.size(), _encounters.size()
 	])
-	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls" % [
-		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(), _scrolls.size()
+	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d statuses" % [
+		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
+		_scrolls.size(), _statuses.size()
 	])
 
 func _load_dir(path: String, target: Dictionary) -> void:
@@ -196,6 +199,15 @@ func all_goal_enemies() -> Array:
 
 func all_bosses() -> Array:
 	return _bosses.values()
+
+# Statuses (§13). Looked up constantly — every goal line asks whether anything is
+# hanging off it — so an unknown id returns null rather than warning, and callers
+# skip it.
+func get_status(id: StringName) -> StatusData:
+	return _statuses.get(id)
+
+func all_statuses() -> Array:
+	return _statuses.values()
 
 func all_items() -> Array:
 	return _items.values()

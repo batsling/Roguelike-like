@@ -717,3 +717,97 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   change (§7.1). Enemies roll by type + tier (§7). Must beat the game to advance;
   unbeaten enemies stack (§2). Curses shelved
   (§5). Bingo retired (§10). Types = Action/Deckbuilder/Traditional/Strategy (§6.1).
+
+---
+
+## 13. Statuses (`statuses2.0`)
+
+A **status** is the balance lever. It is not a stat modifier and not combat state
+— it is a **clause bolted onto a goal**, because goals are the only currency this
+game has. That is what lets a location, an item, or a scroll change how hard the
+run is without any of them knowing what a goal is.
+
+Every status is authored as the same **two pieces**, and the four ways they can be
+arranged *are* the system:
+
+| | on the **Player** | on an **Enemy** |
+|---|---|---|
+| **Buff** | an **extra standing goal** — "If \<condition\>, gain \<reward\>" — on the checklist every game, paying out each time you satisfy it | that enemy's goal **gains "and \<condition\>"** — required, so the goal isn't met until you did both |
+| **Debuff** | **every** enemy's goal gains "and \<condition\>" — required — and one stack falls off each game you complete one | that enemy grows an **optional bonus** — "and if \<condition\>, gain \<reward\>" — claimable for its reward |
+
+So a **buff pays the player and taxes the enemy's goal**; a **debuff taxes the
+player's goals and pays out on the enemy**. Each direction has a natural counter:
+a buff on you is free money you have to go earn, a debuff on you is a tax you can
+grind off, a buff on an enemy makes it harder to remove, and a debuff on an enemy
+is a reason to engage it.
+
+### 13.1 Schema
+
+`statuses2.0` columns: `Name | Type | Game | On Player | On Enemy | Stackable |
+Image | Condition | Reward`.
+
+The two **prose** columns (`On Player` / `On Enemy`) are the author's wording,
+carried onto `StatusData` for tooltips. The engine builds all four quadrants' text
+itself, from the two machine-readable columns instead:
+
+| Column | Meaning |
+|---|---|
+| `Condition` | the challenge clause, with `{expr}` holes over **X** (the stack count) — `you get {X} achievements`, `beaten in {1+(1/2)^(X-2)} hours or less` |
+| `Reward` | semicolon-separated effect tokens, same `{expr}` holes — `gain_chest small {X}; gain_stat bash {X}` |
+
+**Reward token DSL** (compiled by `tools/generate_status_tres.py` into
+`EffectSystem` effect dicts, so a chest a status grants is the same chest an item
+grants, §8.2): `gain_chest [small|medium|large|huge] <n>`, `gain_stat <stat> <n>`,
+`gain_hp <n>`, `gain_max_hp <n>`, `gain_gold <n>`. Any `<n>` is a literal or an
+`{expr}`; expressions are held in a `scaled` sub-dict and evaluated at apply time,
+since X isn't known until the status is on something.
+
+**`{expr}` holes** are arithmetic over X, evaluated at runtime through Godot's
+`Expression`. The generator normalises the sheet's `a^b` into `pow(a, b)` and every
+integer literal into a float — `1/2` under integer division is 0, which turned
+Dexterity's one-stack window into `pow(0, -1)` hours. Alongside them,
+`[singular|plural]` markers agree in number with the last `{expr}` resolved, so one
+authored string reads correctly at every stack count.
+
+**Stackable: Intensity** — a second application **raises X**, it does not start a
+second timer. Marked twice is one Marked at 2. No max stack is authored.
+
+**Decay** follows the Type: a **debuff** sheds a stack each time its condition is
+completed (once per game, not once per goal — a game where you cleared four
+followers must not wipe a 4-stack debuff whole), while a **buff persists for the
+run**. A buff *is* the reward; putting a timer on it would make it a worse item.
+
+### 13.2 The current roster
+
+| Status | Type | From | Condition | Reward |
+|---|---|---|---|---|
+| **Strength** | Buff | Slay the Spire | the difficulty is increased X times | +X Small Chests, +X Bashes |
+| **Dexterity** | Buff | Slay the Spire | beaten in 1+(1/2)^(X-2) hours or less | +X Small Chests, +X Dashes |
+| **Marked** | Debuff | Mewgenics | you get X achievements | +X Small Chests |
+
+Dexterity's window halves toward a floor of one hour: **3h** at one stack, **2h**
+at two, **1.5h** at three, **1.25h** at four. The reward grows with X while the
+window tightens, which is the whole trade.
+
+### 13.3 Where they live at runtime
+
+- **On the player** — `GameState.player_statuses` (id → stacks), with
+  `apply_status` / `remove_status` / `status_buffs` / `status_debuffs`. Run-scope:
+  cleared by `reset_run`, saved under `player_statuses`.
+- **On an enemy** — a `statuses` dict on the **GameLoop2 stack entry**, so a status
+  rides the *body* and survives the current enemy walking onto the board. Saved
+  inside `GameLoop2.serialize()`.
+- **`GameLoop2.goal_text_for(entry)` is THE goal line.** Every live view asks for
+  it rather than reading `GoalEnemyData.goal`, which is only ever the unmodified
+  stem — the checklist, the enemy card, the scroll target picker, and the headless
+  `PlaySession2` driver all go through it. (Catalog views — Collection, the Atlas,
+  the note modal — keep showing the authored goal, since they describe the enemy
+  rather than the run.)
+- **Applying one** — the `apply_status` effect (`apply_status <id> [N]
+  [target=player|current|all|random]` in the item Effect DSL). `player` is the
+  default; `current` / `all` / `random` route through
+  `GameLoop2.apply_enemy_status`. This is the hook locations and items use.
+- **Claiming one** — `beat_game(goal_met, fulfilled, claims)` takes the status half
+  of the self-report: `{"status_goals": [id…], "bonuses": [{instance, status}…]}`.
+  Claims resolve **before** the board does, so beating an enemy and claiming its
+  bonus in the same game pays both.
