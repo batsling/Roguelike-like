@@ -26,6 +26,18 @@ func test_the_backpack_action_is_registered() -> void:
 			keys.append((e as InputEventKey).keycode)
 	assert_true(keys.has(KEY_TAB), "and bind it to Tab")
 
+func test_the_fullscreen_toggle_is_registered() -> void:
+	# Settings._unhandled_input listens for this on every screen, and it is the
+	# only way out of a borderless fullscreen window that doesn't involve finding
+	# the settings menu first.
+	assert_true(InputMap.has_action("toggle_fullscreen"),
+		"project.godot must define the window-mode toggle")
+	var keys: Array = []
+	for e in InputMap.action_get_events("toggle_fullscreen"):
+		if e is InputEventKey:
+			keys.append((e as InputEventKey).keycode)
+	assert_true(keys.has(KEY_F11), "and bind it to F11, not %s" % str(keys))
+
 func test_no_action_name_carries_a_comment() -> void:
 	for action in InputMap.get_actions():
 		assert_false(String(action).begins_with("#"),

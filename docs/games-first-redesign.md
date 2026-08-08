@@ -213,6 +213,10 @@ existing `images/scrolls/Unidentified.png`. Scrolls get the identical treatment:
 *(The old **Fog** scroll and **Keys** are both **deferred — author later**; they
 stay in the design but no `2.0` content exists for them yet.)*
 
+The game opens **borderless fullscreen** and the layout is built for it — see
+README's "The window" for why borderless rather than exclusive, and for the fact
+that fullscreen scales a fixed 1280×720 canvas rather than enlarging it.
+
 Scrolls are carried, so they are **tokens on the pack strip** above the board,
 beside the relics, each with a small Read control above its tile — the same shape
 a Usable relic's Use button takes. Not a panel of their own: a scroll is a thing

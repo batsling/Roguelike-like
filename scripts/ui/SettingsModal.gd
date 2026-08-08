@@ -74,6 +74,46 @@ func _build_ui() -> void:
 	title.add_theme_font_size_override("font_size", 24)
 	vbox.add_child(title)
 
+	# --- display -----------------------------------------------------------
+	#
+	# First, because it is the only setting that changes what the player is
+	# looking at rather than what the run will do.
+	var display_heading := Label.new()
+	display_heading.text = "Display"
+	display_heading.add_theme_font_size_override("font_size", 17)
+	display_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	vbox.add_child(display_heading)
+
+	var display_opt := OptionButton.new()
+	for mode in [Settings.DisplayMode.WINDOWED_FULLSCREEN, Settings.DisplayMode.WINDOWED,
+			Settings.DisplayMode.EXCLUSIVE]:
+		display_opt.add_item(Settings.display_mode_name(mode), mode)
+	display_opt.select(display_opt.get_item_index(Settings.display_mode))
+	vbox.add_child(display_opt)
+
+	var display_hint := Label.new()
+	display_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	display_hint.custom_minimum_size = Vector2(0, 56)
+	display_hint.add_theme_font_size_override("font_size", 13)
+	display_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	vbox.add_child(display_hint)
+
+	var refresh_display_hint := func() -> void:
+		match display_opt.get_selected_id():
+			Settings.DisplayMode.WINDOWED:
+				display_hint.text = "An ordinary resizable window.  ·  F11 toggles."
+			Settings.DisplayMode.EXCLUSIVE:
+				display_hint.text = "True fullscreen. Sharper on some displays, but every alt-tab out to the game you're playing is a mode switch — and you do that several times a run.  ·  F11 toggles."
+			_:
+				display_hint.text = "A borderless window filling the screen. Alt-tabbing out to the game you're playing and back is instant, which is most of what you do.  ·  F11 toggles."
+	refresh_display_hint.call()
+
+	display_opt.item_selected.connect(func(idx: int) -> void:
+		Settings.set_display_mode(display_opt.get_item_id(idx))
+		refresh_display_hint.call())
+
+	vbox.add_child(HSeparator.new())
+
 	var heading := Label.new()
 	heading.text = "Games used in path selection"
 	heading.add_theme_font_size_override("font_size", 17)

@@ -11,6 +11,38 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **It opens fullscreen now, and it is the right kind of fullscreen.** The layout
+  was always meant to be played fullscreen and the project never went fullscreen
+  — `display/window/size/mode` was unset, so it launched in a 1280×720 window,
+  and there was no toggle anywhere in the game.
+
+  It opens **borderless** (`mode=3`, Godot's `FULLSCREEN`) rather than exclusive
+  (`4`), and that is a decision rather than a default: this game's loop is
+  *leaving* it to go and play a real video game and coming back to report, so the
+  player alt-tabs out several times a run. Exclusive makes every one of those a
+  mode switch — black screen, resolution change, and sometimes a window that
+  comes back on the wrong monitor. Borderless swaps instantly. Exclusive is still
+  on the list for anyone who wants it. **F11** toggles from any screen (handled
+  by the `Settings` autoload, so no screen has to forward it), **Settings →
+  Display** offers all three, and the choice persists to `user://settings.cfg`.
+
+  Worth writing down, because it is the fact the previous entry's whole
+  one-screen exercise rests on: **fullscreen does not give the layout more room.**
+  `stretch/mode` is `canvas_items` over a fixed 1280×720, so the logical viewport
+  is 1280×720 on a 1080p monitor, a 1440p monitor and a 4K one alike — the same
+  page, drawn bigger. Measured at 1920×1080, 2560×1440 and 2560×1600 to be sure.
+  Fitting 1280×720 *is* fitting the screen.
+
+  One thing did change with it: `stretch/aspect` goes from the default `keep` to
+  **`expand`**. `keep` letterboxes anything that isn't 16:9 — a 16:10 monitor got
+  bars top and bottom, an ultrawide got them at the sides — while `expand` hands
+  those pixels back as real canvas (16:10 → 1280×**800**, 21:9 → **1706**×720).
+  It can only ever give *more* than the base size, never less, so the one-screen
+  guarantee is untouched and the tests that pin it still read as a floor. Checked
+  on all four shapes: no bars, no scrollbars, borderless, covering the screen.
+
+---
+
 - **The whole overworld on one 720p screen.** The page had been growing a row at
   a time and was 130px past the bottom of the window it ships at; it now fits
   1280×720 with no scrollbar in either axis, in every phase, at every board size

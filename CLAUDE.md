@@ -36,14 +36,19 @@ the honour system.
 ## Working here
 
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 18 scripts, ~677 tests, ~3.5 min
+godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 20 scripts, ~723 tests, ~3 min
 ```
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by
   `.claude/hooks/session-start.sh` in remote sessions).
-- `test/test_run_map.gd::test_the_route_fits_the_window_it_opens_in` reports
-  **Risky / "Did not assert"**. That is pre-existing: the test early-`return`s
-  when the route is too big to fit. Not a regression you introduced.
+- A GUT run usually reports **one Risky / "Did not assert"**, and *which* test it
+  is varies between runs. Several tests early-`return` when the run's random
+  graph doesn't reach the case they are about —
+  `test_run_map.gd::test_the_route_fits_the_window_it_opens_in` (route too big to
+  fit) and
+  `test_atlas.gd::test_path_taken_follows_the_order_the_games_were_visited`
+  (fewer than two hops available) are the two seen so far. Pre-existing, and not
+  a regression you introduced.
 - The leaked-RID / orphan warnings at the end of a GUT run are also pre-existing
   noise from UI tests that build Controls.
 - To see a change on screen rather than in assertions, use the `verify` skill

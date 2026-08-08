@@ -210,9 +210,11 @@ node and its script.
   one strip of tokens) above it. Hosts the toast strip, so an item's effects
   announce themselves the moment it's picked up.
 
-  **It fits one 1280×720 screen, in every phase and at every board size**, with
-  no scrollbar in either axis. That is a constraint, not an accident, and the
-  things below are what pay for it.
+  **It fits one 1280×720 canvas, in every phase and at every board size**, with
+  no scrollbar in either axis. That is the whole screen, not a small window:
+  `window/stretch/mode="canvas_items"` scales that fixed canvas up to fill the
+  display, so a 2560×1440 monitor draws this same page at 2×. Fitting the box is
+  a constraint, not an accident, and the things below are what pay for it.
 
   **Where the numbers are.** There is **no HUD strip** — every number is drawn
   once, by whatever owns it:
@@ -256,6 +258,25 @@ node and its script.
 
 `PlaySession2.gd` is the text-only precursor of the overworld, kept as a headless
 harness for the loop.
+
+### The window
+
+The game opens **borderless fullscreen** (`display/window/size/mode=3` — Godot's
+`FULLSCREEN`, a borderless window the size of the screen, *not* `4`
+/`EXCLUSIVE_FULLSCREEN`). That is deliberate: the core loop is leaving the game to
+go and play a real one and coming back to report, so the player alt-tabs out
+several times a run, and borderless is the only mode where that is instant.
+**F11** toggles, `Settings → Display` offers all three modes, and the choice is
+persisted to `user://settings.cfg`.
+
+The **layout's size does not change with the monitor**. `stretch/mode` is
+`canvas_items` over a fixed 1280×720, so a bigger screen draws the same page
+bigger rather than giving it more room — which is exactly why the overworld is
+built to fit 1280×720 and why `test_overworld2` pins that. `stretch/aspect` is
+`expand` rather than the default `keep`, so a screen that isn't 16:9 gets its
+extra pixels as real canvas instead of black bars (16:10 → 1280×800, ultrawide →
+1706×720); `expand` can only ever give *more* than the base, so the one-screen
+guarantee holds.
 
 ### Data as Godot Resources
 
