@@ -68,6 +68,34 @@ For how the project is laid out and how its systems fit together, see
   dimension and written nothing. It matches both now and raises if it finds
   neither.
 
+  **The modal sizes itself to its content.** Two columns when there is art — the
+  picture on the left, the words and the buttons on the right — because a
+  full-height illustration plus the Abyssal Baths prompt plus four choices with a
+  mechanical line each ran off the bottom of a 720p viewport in a single stack.
+  Side by side, the art costs no vertical room; the panel then fits whatever is
+  in it and only starts scrolling once that would overflow the window, art
+  staying put beside the scrolling column. A two-option event is a small card, a
+  nine-option one is a full-height panel with a scrollbar, and neither is padded
+  out to the other's shape.
+
+  One Godot trap on the way: centring a panel by writing `position` stores it as
+  an offset from `anchor × parent_size`, and this modal's parent is a Control in
+  a CanvasLayer that has no size yet when the fit pass first runs. With a
+  zero-size parent the panel rendered half off the top-left corner. Writing the
+  offsets directly is absolute and lands the same whenever it runs.
+
+  **An event that sends you to a tag is not staged unless the tag has games.**
+  Punch Off's whole bargain is "do the work and take everything" against "take
+  the treasure and wear the Injury" — with no mecha game to go and play, the work
+  option is a dead button. The pool is now checked before the event is placed,
+  which is before the badge is drawn, so the badge stays honest. It also fixed a
+  real bug: the destination roll used to sweep the whole catalog and ignore the
+  run's game filter, so an OWNED run could be sent off to a game the player does
+  not own. Gate and roll now read the *same* list — if those two disagreed, an
+  event could advertise a detour it cannot deliver — and the rule is derived from
+  the event's own content, so a future `play_game tag=<anything>` is covered
+  without anyone remembering to ask.
+
   `docs/event-sheet-authoring.md` §12 is the map of what runs where.
 
 - **Events have a home, and it is the dead ends.** Almost half the map is a leaf:

@@ -259,6 +259,85 @@ func test_the_mecha_tag_has_games_behind_it() -> void:
 	assert_gt(n, 1, "the mecha tag needs a pool to roll from")
 
 
+func test_the_tag_pool_respects_the_runs_game_filter() -> void:
+	# The bug this guards: `play_game` used to roll over the whole catalog, so an
+	# OWNED run could be sent off to a game the player does not own — which is the
+	# one thing the filter exists to prevent.
+	var before: int = Settings.game_filter
+	Settings.game_filter = Settings.GameFilter.OWNED
+	for id in EventSystem.games_with_tag(&"mecha"):
+		var g: GameData = Data.get_game(id)
+		assert_true(g != null and g.owned,
+			"%s is offered to an OWNED run but is not owned" % id)
+	Settings.game_filter = before
+
+
+func test_an_event_is_not_staged_when_its_tag_has_no_games() -> void:
+	# Punch Off's bargain is "do the work and take everything" against "take the
+	# treasure and wear the Injury". With no mecha game to go and play, the work
+	# option is a dead button, so the event should not be staged at all.
+	var node: StringName = _some_dead_end()
+	if node == &"":
+		return
+	# Punch Off also carries `games >= 6`; satisfy it, or this passes for the
+	# wrong reason and would keep passing if the tag gate were deleted.
+	GameState.games_played = 10
+	var ev: EventData2 = _event(PUNCH)
+	var fight: Dictionary = _choice(ev, "i_can_take_them")
+	var play: Dictionary = fight["play"]
+	var original: String = String(play.get("tag", ""))
+	play["tag"] = "no_game_carries_this_tag"
+	var staged: bool = false
+	for s in range(40):
+		GameState.run_seed = s * 104_729
+		if EventSystem.event_for(node) == ev:
+			staged = true
+			break
+	play["tag"] = original
+	assert_false(staged, "an event whose play_game tag has no pool must not appear")
+
+
+func test_punch_off_is_staged_when_mecha_games_do_exist() -> void:
+	# The other half of the same rule — the gate must not be so eager that it
+	# hides the event when the pool is fine.
+	assert_false(EventSystem.games_with_tag(&"mecha").is_empty(),
+		"the catalog carries mecha games")
+	var node: StringName = _some_dead_end()
+	if node == &"":
+		return
+	GameState.games_played = 10   # its other gate — see the test above
+	var ev: EventData2 = _event(PUNCH)
+	var staged: bool = false
+	for s in range(40):
+		GameState.run_seed = s * 104_729
+		if EventSystem.event_for(node) == ev:
+			staged = true
+			break
+	assert_true(staged, "Punch Off should reach the board when mecha games exist")
+
+
+func test_every_authored_event_has_its_art() -> void:
+	for ev in Data.all_events2():
+		var path: String = "res://images2.0/events/%s.png" % ev.art_file()
+		assert_true(ResourceLoader.exists(path), "%s is missing art at %s" % [ev.id, path])
+
+
+func test_every_curse_has_its_art() -> void:
+	for cd in Data.all_curses2():
+		var path: String = "res://images2.0/curses/%s.png" % cd.art_file()
+		assert_true(ResourceLoader.exists(path), "%s is missing art at %s" % [cd.id, path])
+
+
+func test_a_curse_is_described_once_not_twice() -> void:
+	# The curse line is rendered in full by describe_choice; the generator must
+	# not also drop a bare "Curse: Injury" into effects_text, or the button says
+	# the name twice.
+	var nab: Dictionary = _choice(_event(PUNCH), "nab")
+	assert_false(String(nab.get("effects_text", "")).to_lower().contains("curse"),
+		"effects_text should leave the curse to describe_choice")
+	assert_string_contains(EventSystem.describe_choice(nab, 0).to_lower(), "half health")
+
+
 # --- placement --------------------------------------------------------------
 
 func test_placement_is_stable_for_a_node() -> void:

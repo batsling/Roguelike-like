@@ -65,6 +65,8 @@ func _eligible_for(game_id: StringName) -> Array:
 			continue
 		if not requirement_met(ev):
 			continue
+		if not _play_pools_stocked(ev):
+			continue
 		out.append(ev)
 	return out
 
@@ -86,6 +88,51 @@ func _where_allows(ev: EventData2, game_id: StringName) -> bool:
 			# "dead_end": the whole point (§1). A leaf has exactly one way in and
 			# the same way back out.
 			return RunGraph.degree(game_id) <= 1
+
+
+# An event that sends the player to a tagged game is only worth staging if such
+# a game EXISTS for this run. Punch Off's whole bargain is "do the work and take
+# everything" against "take the treasure and wear the Injury"; with no mecha game
+# to go and play, the work option is a dead button and the event is a worse
+# version of itself. So the pool is checked before the event is ever placed —
+# which also means it is checked before the badge is drawn, and the badge stays
+# honest.
+#
+# Derived from the event's own content rather than authored in a Requirement
+# cell: a future `play_game tag=<whatever>` gets the same protection without
+# anyone remembering to ask for it.
+func _play_pools_stocked(ev: EventData2) -> bool:
+	for choice in ev.choices:
+		var play: Dictionary = choice.get("play", {})
+		if play.is_empty():
+			continue
+		if games_with_tag(StringName(String(play.get("tag", "")).to_lower())).is_empty():
+			return false
+	return true
+
+
+# Every game this run could actually be sent to that carries `tag`. ONE
+# definition, used both by the gate above and by the roll that picks the
+# destination — if those two disagreed, an event would advertise a detour it
+# could not deliver.
+#
+# Respects the run's game filter (Settings.game_filter), so an OWNED run is only
+# ever sent to a game the player owns, and skips bashed games, which are off the
+# board for the rest of the run.
+func games_with_tag(tag: StringName) -> Array:
+	var pool: Array = []
+	if tag == &"":
+		return pool
+	for g in Data.all_games():
+		if not (g is GameData) or not RunGraph.passes_filter(g):
+			continue
+		if GameLoop2.is_bashed(g.id):
+			continue
+		for t in g.tags:
+			if StringName(String(t).to_lower()) == tag:
+				pool.append(g.id)
+				break
+	return pool
 
 
 # --- gates ------------------------------------------------------------------

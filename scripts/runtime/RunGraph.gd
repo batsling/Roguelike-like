@@ -76,6 +76,13 @@ static func invalidate_cache() -> void:
 # Whether a game is eligible to appear in path selection, per the global
 # Settings.game_filter. Filtered-out games are excluded from the graph
 # entirely (no node, no edges), so runs only traverse eligible games.
+# Public face of the same question, for callers outside the graph that need to
+# know whether a game is one this run may touch at all — EventSystem's `play_game`
+# pool asks it, since sending a player to a game they do not own is exactly what
+# the filter exists to prevent.
+static func passes_filter(g: GameData) -> bool:
+	return g != null and _passes_filter(g)
+
 static func _passes_filter(g: GameData) -> bool:
 	match Settings.game_filter:
 		Settings.GameFilter.OWNED:

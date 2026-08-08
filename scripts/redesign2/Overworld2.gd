@@ -1300,17 +1300,12 @@ func _start_play_game(request: Dictionary) -> void:
 	autosave()
 
 
+# The destination pool is EventSystem's, not this screen's: the same list that
+# gated the event onto the node in the first place (§10). If these two ever
+# disagreed, an event would advertise a detour it could not deliver.
 func _random_game_with_tag(tag: StringName) -> StringName:
-	var pool: Array = []
-	for g in Data.all_games():
-		if not (g is GameData) or g.id == GameState.current_game_id:
-			continue
-		if GameLoop2.is_bashed(g.id):
-			continue
-		for t in g.tags:
-			if StringName(String(t).to_lower()) == tag:
-				pool.append(g.id)
-				break
+	var pool: Array = EventSystem.games_with_tag(tag)
+	pool.erase(GameState.current_game_id)
 	if pool.is_empty():
 		return &""
 	return pool[_rng.randi() % pool.size()]

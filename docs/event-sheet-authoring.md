@@ -1,7 +1,7 @@
 # Event sheet-authoring (`events2.0`)
 
-Status: **built and running.** Four events authored, generators and runtime in
-place, 22 tests in `test/test_events2.gd`. §12 is how it runs and the little
+Status: **built, illustrated and running.** Four events authored, generators
+and runtime in place, art in `images2.0/`, 28 tests in `test/test_events2.gd`. §12 is how it runs and the little
 that's left. Companion to `games-first-redesign.md` and
 `locations-and-events-design.md` §6, which argued events should wait for
 somewhere to live — §1 is that somewhere.
@@ -639,19 +639,35 @@ it, which is the whole difference between a bonus and a bill.
 as an ordinary game (enemy and all) without counting as a route step, pays the
 `->` payload when it is beaten, then offers stay-or-return — stay only when the
 game is actually on the run graph, since standing on a node with no edges is a
-dead run. If no game carries the tag it pays out anyway rather than swallowing a
-choice the player already made in good faith.
+dead run.
+
+**And an event that sends you to a tag is not staged unless that tag has games.**
+Punch Off's bargain is "do the work and take everything" against "take the
+treasure and wear the Injury"; with no mecha game to go and play, the work option
+is a dead button and the event is a worse version of itself. So
+`EventSystem.games_with_tag()` is consulted *before the event is placed*, which
+means before the badge is drawn — the badge stays honest. That pool respects the
+run's game filter, so an OWNED run is only ever sent somewhere the player owns,
+and it is the *same* list the destination roll uses: if the gate and the roll
+disagreed, an event could advertise a detour it cannot deliver. The rule is
+derived from the event's own content rather than authored in a `Requirement`
+cell, so a future `play_game tag=<anything>` gets the same protection without
+anyone remembering to ask for it.
+
+**The modal sizes itself to its content.** Two columns when there is art — the
+picture on the left, the words and the buttons on the right — so a full-height
+illustration costs no vertical room. The panel then fits whatever is in it and
+only starts scrolling once that would overflow the window, with the art staying
+put beside the scrolling column. A two-option event is a small card; a
+nine-option one is a full-height panel with a scrollbar. Neither is padded out to
+the other's shape.
 
 ### What is still left
 
-1. **Art.** `images2.0/events/` and `images2.0/curses/` do not exist yet. The
-   generators print a warning naming the missing file and the modal simply omits
-   the picture, so this is cosmetic, not blocking: `AbyssalBaths`,
-   `BattlewornDummy`, `UnrestSite`, `PunchOff`; `PoorSleep`, `Injury`.
-2. **The `encounters` merge.** `locations-and-events-design.md` §6 argues for one
+1. **The `encounters` merge.** `locations-and-events-design.md` §6 argues for one
    modal serving events *and* `encounters`. `EventModal2` is the modal that
    should absorb them; the combat-era `scripts/events/EventModal.gd` (d20 rolls
    against stats the redesign deleted) is now dead weight and can go with them.
-3. **More events.** Four events against ~330 leaves means most dead ends are
+2. **More events.** Four events against ~330 leaves means most dead ends are
    still plain. Nothing structural stands in the way — the last three events
    needed one new column between them, and the two before that needed none.

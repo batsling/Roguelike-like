@@ -172,7 +172,9 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids):
             # games 0 = "use the curse's own Timer", so a re-tuned curse retunes
             # every event that hands it out.
             out["curse"] = {"curse": cid, "games": int(m.group(2)) if m.group(2) else 0}
-            words.append("Curse: %s" % cid.replace("_", " ").title())
+            # Deliberately NOT added to effects_text: EventSystem.describe_choice
+            # renders a curse in full, with its condition and its window, and a
+            # bare "Curse: Injury" beside that just says the name twice.
             continue
 
         m = PLAY_RE.match(clause)
