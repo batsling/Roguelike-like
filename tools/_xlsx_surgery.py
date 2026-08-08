@@ -167,8 +167,14 @@ class Workbook:
                 if cell:
                     cells.append(cell)
             body.append('<row r="%d" spans="1:%d">%s</row>' % (i, cols, "".join(cells)))
-        xml = re.sub(r"<sheetData>.*?</sheetData>",
-                     lambda _m: "<sheetData>%s</sheetData>" % "".join(body), xml, flags=re.S)
+        # A sheet that has never held a row writes its sheetData SELF-CLOSING
+        # (`<sheetData/>`), so match both forms — matching only the paired one
+        # left a brand-new sheet with its dimension resized and no rows in it.
+        xml, hits = re.subn(r"<sheetData\s*/>|<sheetData(?:\s[^>]*)?>.*?</sheetData>",
+                            lambda _m: "<sheetData>%s</sheetData>" % "".join(body),
+                            xml, count=1, flags=re.S)
+        if hits != 1:
+            raise ValueError("no <sheetData> element in %s (%s)" % (sheet_name, part))
         xml = re.sub(r'<dimension ref="[^"]*"/>', '<dimension ref="A1:%s"/>' % last, xml)
         self._dirty[part] = xml.encode("utf-8")
 

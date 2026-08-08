@@ -11,6 +11,64 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Events have a home, and it is the dead ends.** Almost half the map is a leaf:
+  330 of the 833 games have exactly one connection, and another 199 have two.
+  Visiting a leaf is a **round trip** — a game in, a game back out the way you
+  came — for one game's reward, and every card already quotes that cost to the
+  player as a route badge. The hub rule (`HUB_CONNECTIONS`) fixed the *routing*
+  half of this years ago by guaranteeing a way onward from a big node; nothing
+  ever made the small node worth entering.
+
+  So an **event fires after the game at a dead end is beaten**, on top of the
+  normal drop. That one placement rule answers both of the questions that had
+  been keeping events shelved — where they go, and why anyone routes into a
+  corner — and it sets the exchange rate: a dead-end event should pay about one
+  game's reward, because one extra game is exactly what the detour costs.
+
+  The `events2.0` sheet is **one row per CHOICE**, not one row per event, and
+  that is the format decision the rest follows from. An event is mostly prose
+  with a repeating sub-structure; pack four choices into one delimited cell and
+  the cell stops being editable in a spreadsheet. That is how the old `events`
+  sheet failed — catalogue metadata in the sheet, and every choice, outcome and
+  effect hard-coded in an `AUTHORED` dict inside `generate_event_tres.py`, so the
+  sheet could not hold the part of an event that *is* the event. Now an event is
+  a block of contiguous rows sharing an `Event` name: the first row carries the
+  event's columns plus its first choice, each row below adds another choice.
+
+  `Effect` is the **`statuses2.0` reward-token DSL, reused unchanged**, so a
+  chest an event pays is the chest an item pays. `{X}` holes come with it — and
+  inside an event **X is the number of times this choice has already been
+  taken**, which together with the new `Repeat: Again` column is the entire
+  push-your-luck grammar. One row escalates on its own instead of four
+  near-identical rows drifting apart the moment someone tunes them.
+
+  **Abyssal Baths** (Slay the Spire 2, the Underdocks) is authored as the first
+  event and was chosen because it exercises exactly that: `Immerse` is
+  `gain_max_hp 1; lose_hp {1+X}` on `Repeat: Again` — 1 Health, then 2, then 3,
+  cumulative 10 by the fourth dip, so it really can kill you — against `Abstain`,
+  `gain_hp 2`, which closes it. The two interact, which is what keeps it a
+  decision rather than a slider: `gain_hp` is capped by Max Health and Immerse
+  raises Max Health, so bathing twice and then abstaining nets +2 Max Health for
+  1 Health. It is deliberately written out of effect tokens that already exist,
+  so the first event needs no new `EffectSystem` handler to run.
+
+  Format, column reference, DSL and what is still missing (the generator, the
+  placement seed, the badge, the modal): `docs/event-sheet-authoring.md`.
+
+- **`_xlsx_surgery` dropped every row it wrote to an empty sheet.** `write_grid`
+  matched `<sheetData>…</sheetData>` and nothing else, but a sheet that has never
+  held a row writes it **self-closing** — `<sheetData/>`. Writing the first rows
+  of `events2.0` therefore resized the sheet's `<dimension>` to `A1:M3` and wrote
+  no cells, and said nothing about it. It matches both forms now and raises if it
+  finds neither, so the failure can't be silent again.
+
+- **An unknown item `Type` no longer becomes a passive in silence.** The sheet
+  spells Vajra and Oddly Smooth Stone `Status`, a word `KIND` had never heard of,
+  so both fell through the `KIND.get(…, 0)` default to PASSIVE — and a PASSIVE
+  unwinds its grant when the item leaves, which for these two would quietly take
+  the status back. `status` maps to PICKUP (grant once, keep) and an unrecognised
+  `Type` now prints a warning naming the item instead of defaulting quietly.
+
 - **It opens fullscreen now, and it is the right kind of fullscreen.** The layout
   was always meant to be played fullscreen and the project never went fullscreen
   — `display/window/size/mode` was unset, so it launched in a 1280×720 window,

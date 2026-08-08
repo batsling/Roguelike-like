@@ -57,9 +57,12 @@ OUT_DIR = os.path.join(PROJECT_ROOT, "data", "items")
 ITEM_IMG_DIR = os.path.join(PROJECT_ROOT, "images", "items")
 IMG_RES_PREFIX = "res://images/items/"
 
-# ItemData.ItemKind enum order.
+# ItemData.ItemKind enum order. "status" is the items2.0 sheet's word for an
+# item whose whole job is to hand the player a status (Vajra, Oddly Smooth
+# Stone); it maps to PICKUP because those grant ONCE and keep — a PASSIVE would
+# unwind the status if the item ever left the inventory.
 KIND = {"passive": 0, "triggered": 1, "incremental": 1, "usable": 2,
-        "weapon": 3, "scaling": 4, "pickup": 5, "charged": 6}
+        "weapon": 3, "scaling": 4, "pickup": 5, "status": 5, "charged": 6}
 # ItemData.Rarity enum order.
 RARITY = {"common": 0, "uncommon": 1, "rare": 2, "epic": 3, "legendary": 4}
 
@@ -168,6 +171,18 @@ def _int(tok, default=0):
         return int(float(tok))
     except (ValueError, TypeError):
         return default
+
+
+def _kind_of(name, type_str):
+    # A Type word KIND has never heard of used to fall through to PASSIVE in
+    # silence, which is how a re-uploaded sheet turns a Pickup into a passive
+    # nobody notices until the item is removed and its grant unwinds. Say so.
+    word = str(type_str or "").split(",")[0].strip().lower()
+    if word not in KIND:
+        print("  ! %s: unknown Type %r — defaulting to PASSIVE. Add it to KIND "
+              "if it should be something else." % (name, str(type_str or "").strip()))
+        return 0
+    return KIND[word]
 
 
 def _usable_uses(type_str, kind):
@@ -561,7 +576,7 @@ def parse_item(row):
     fields = {
         "id": iid,
         "display_name": display_of(name),
-        "kind": KIND.get(str(row.get("Type", "")).split(",")[0].strip().lower(), 0),
+        "kind": _kind_of(name, row.get("Type", "")),
         "rarity": RARITY.get(str(row.get("Rating", "")).strip().lower(), 0),
         "starter": str(row.get("Rating", "")).strip().lower() == "starter",
         "description": str(row.get("Description") or "").strip(),
