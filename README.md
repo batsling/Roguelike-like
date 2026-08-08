@@ -44,6 +44,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     BattlefieldView — the grid the enemies close in on
 │   │                      #     EnemyInfoCard   — click-to-inspect enemy card
 │   │                      #     ItemInfoCard    — click-to-inspect item card
+│   │                      #     GameChoiceModal — the popup an offered card opens
+│   │                      #     RouteLadder     — the arrowed shortest-path graph
 │   │                      #     RunOverScreen   — the end-of-run verdict screen
 │   │                      #     RunMapModal / ScrollReadModal
 │   ├── events/           #   the D20 event system (EventModal, D20DieView)
@@ -204,9 +206,44 @@ node and its script.
   (cover cards), and
   then a two-column stage — checklist on the left (the standing goals while you're
   choosing, the honour-system report step + attempt tracker while you're playing),
-  the battlefield on the right with the player's inventory and loot tray beneath
-  it. Also owns the scrolls panel and hosts the toast strip, so an item's effects
+  the battlefield on the right with the player's pack (items **and** scrolls,
+  one strip of tokens) above it. Hosts the toast strip, so an item's effects
   announce themselves the moment it's picked up.
+
+  **It fits one 1280×720 canvas, in every phase and at every board size**, with
+  no scrollbar in either axis. That is the whole screen, not a small window:
+  `window/stretch/mode="canvas_items"` scales that fixed canvas up to fill the
+  display, so a 2560×1440 monitor draws this same page at 2×. Fitting the box is
+  a constraint, not an accident, and the things below are what pay for it.
+
+  **Where the numbers are.** There is **no HUD strip** — every number is drawn
+  once, by whatever owns it:
+  - **the player** (Health, Shields, statuses) is on the **board's hero**:
+    `♥ hp/max` under the portrait, the shield pips over it, status pips between.
+  - **the board's verbs** are on the **board's own bars**: its pressure bar ends
+    `▦ 4×4 · Low` (that's the tier) and its toolbar buttons read `⇤ Push (1)` /
+    `✸ Bomb (3)`.
+  - **the choosing verbs** — **Bash / Dash / Transmute / Scramble** — are chips on
+    a row under the offering, since all four change what is on the table. Dash and
+    Scramble are buttons; Bash and Transmute need a target, so they are readouts
+    pressed inside a game's popup.
+  - **the tries a game grants** ride the offering's one-line hover.
+  - Keys and Chests aren't shown at all — Keys are deferred and unauthored, and a
+    chest is redeemed the moment it lands.
+
+  **The header is the title and one `☰ Menu`** (Save run / New run / Main menu).
+  The 🗺 Map moved into the offering's own heading row, beside the cards it is a
+  map of.
+  - **`GameChoiceModal.gd`** — what clicking an offered card opens. A card is the
+    cover, the name and the Amulet's flag; everything else about the decision
+    lives here — the **optimal path from that game drawn as the real route
+    ladder**, the enemy waiting there and its goal, the tries the game grants, the
+    pace it puts the board on, your record in it — over the three buttons that
+    answer it: **Travel**, **Bash**, **Transmute**. It decides nothing itself;
+    each button calls the overworld's `pick` / `bash_choice` / `transmute_choice`.
+  - **`RouteLadder.gd`** — the shortest-path DAG as a top-to-bottom ladder of
+    boxes with green arrows between them, colour-coded by role. Shared: the 🗺 map
+    window (`RunMapModal`) and `GameChoiceModal` draw the same graph from it.
   - **`BattlefieldView.gd`** — the board: the hero on the left with the shield
     pips over them, the grid the goal-enemies close in across, the off-field lane,
     the Push / Bomb toolbar, and the strike / advance animation.
@@ -221,6 +258,25 @@ node and its script.
 
 `PlaySession2.gd` is the text-only precursor of the overworld, kept as a headless
 harness for the loop.
+
+### The window
+
+The game opens **borderless fullscreen** (`display/window/size/mode=3` — Godot's
+`FULLSCREEN`, a borderless window the size of the screen, *not* `4`
+/`EXCLUSIVE_FULLSCREEN`). That is deliberate: the core loop is leaving the game to
+go and play a real one and coming back to report, so the player alt-tabs out
+several times a run, and borderless is the only mode where that is instant.
+**F11** toggles, `Settings → Display` offers all three modes, and the choice is
+persisted to `user://settings.cfg`.
+
+The **layout's size does not change with the monitor**. `stretch/mode` is
+`canvas_items` over a fixed 1280×720, so a bigger screen draws the same page
+bigger rather than giving it more room — which is exactly why the overworld is
+built to fit 1280×720 and why `test_overworld2` pins that. `stretch/aspect` is
+`expand` rather than the default `keep`, so a screen that isn't 16:9 gets its
+extra pixels as real canvas instead of black bars (16:10 → 1280×800, ultrawide →
+1706×720); `expand` can only ever give *more* than the base, so the one-screen
+guarantee holds.
 
 ### Data as Godot Resources
 

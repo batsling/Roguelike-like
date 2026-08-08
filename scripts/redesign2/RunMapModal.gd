@@ -25,22 +25,25 @@ extends Control
 signal finished
 
 # --- role colours (kept close to the old web palette) ----------------------
-const COL_CURRENT := Color(0.13, 0.59, 0.95)      # #2196F3 you-are-here blue
-const COL_AMULET := Color(0.80, 0.40, 0.0)        # ember/gold amulet fill
-const COL_CHOICE_BG := Color(0.24, 0.18, 0.0)     # reachable-now choice
-const COL_PATH_BG := Color(0.29, 0.27, 0.25)      # on the road to the amulet
-const COL_VISITED_BG := Color(0.16, 0.16, 0.16)   # already behind you
-const COL_ARROW := Color(0.30, 0.78, 0.42, 0.85)  # shortest-path arrow green
-const COL_WAYPOINT := Color(0.45, 0.24, 0.42)     # the game you insisted on
+#
+# The ladder itself — the boxes, the arrows and the layout constants under them —
+# lives in RouteLadder, because GameChoiceModal draws the same graph for the game
+# a card is offering. These are aliases so the legend below still reads as the
+# window's own palette.
+const COL_CURRENT := RouteLadder.COL_CURRENT       # #2196F3 you-are-here blue
+const COL_AMULET := RouteLadder.COL_AMULET         # ember/gold amulet fill
+const COL_CHOICE_BG := RouteLadder.COL_CHOICE_BG   # reachable-now choice
+const COL_PATH_BG := RouteLadder.COL_PATH_BG       # on the road to the amulet
+const COL_VISITED_BG := RouteLadder.COL_VISITED_BG # already behind you
+const COL_ARROW := RouteLadder.COL_ARROW           # shortest-path arrow green
+const COL_WAYPOINT := RouteLadder.COL_WAYPOINT     # the game you insisted on
 
-# Layout constants (pre-zoom). Mirrors the box/gap sizing in generateMapView,
-# with the vertical gap pulled in: at 6-8 steps the ladder is nine rows deep, and
-# a gap bigger than half a rung spent more of the window on nothing than on the
-# route it exists to show.
-const BOX := Vector2(150, 48)
-const H_GAP := 14.0
-const V_GAP := 40.0
-const PAD := 22.0
+# Layout constants (pre-zoom), re-exported from RouteLadder so the window's
+# fitting maths reads in the same units the ladder is drawn in.
+const BOX := RouteLadder.BOX
+const H_GAP := RouteLadder.H_GAP
+const V_GAP := RouteLadder.V_GAP
+const PAD := RouteLadder.PAD
 
 var _current: StringName = &""
 var _amulet: StringName = &""
@@ -97,7 +100,7 @@ const VIEW_MARGIN := Vector2(60, 72)
 const LADDER_PAD_X := 54.0
 # How far the opening fit is allowed to shrink the ladder. Past this the game
 # names stop being readable and scrolling a bigger ladder is the better deal.
-# The node labels hold a 9px floor of their own (_node_box), so a route squeezed
+# The node labels hold a 9px floor of their own (RouteLadder), so a route squeezed
 # this far is still a route with names on it.
 const FIT_ZOOM_MIN := 0.40
 const FIT_SLACK := 0.96
@@ -151,7 +154,7 @@ func start(host: Node, current: StringName, amulet: StringName, choice_ids: Arra
 # player has PINNED a game to go through (GameState.route_waypoint), it's the
 # forced route instead — the shortest way to the pin, then the shortest way on —
 # which is a longer road and, unlike the plain DAG, can pass through the same
-# game twice. See _node_key for what that costs the layout.
+# game twice. See RouteLadder.node_key for what that costs the layout.
 func map_data() -> Dictionary:
 	if _current == &"" or _amulet == &"":
 		return {"layers": [], "edges": [], "waypoint_depth": -1}
@@ -183,15 +186,6 @@ func detour_cost() -> int:
 	if direct < 0 or forced < 0:
 		return 0
 	return maxi(0, forced - direct)
-
-# A node's identity ON THIS LADDER is (depth, game) — not the game.
-#
-# A forced route walks to the pinned game and then walks on, and the way on is
-# free to come straight back over the games that led in: the same game can hold
-# two rungs, at two depths. Keying rects by id alone silently merged them into
-# one rung and drew arrows into a step of the route that isn't there.
-static func _node_key(depth: int, id: StringName) -> String:
-	return "%d|%s" % [depth, id]
 
 # --- UI construction ------------------------------------------------------
 
@@ -411,189 +405,24 @@ func _refresh_distance_label() -> void:
 			"Optimal path from there" if _preview else "Shortest path",
 			d, "" if d == 1 else "s"]
 
-# Build (or rebuild, on zoom) the graph canvas: positioned node boxes plus a
-# GraphCanvas child that draws the arrows behind them.
+# Build (or rebuild, on zoom) the graph canvas. The drawing is RouteLadder's —
+# this only says WHICH route, at what zoom, and what a rung's click means here.
 func _build_graph() -> Control:
-	var data: Dictionary = map_data()
-	var layers: Array = data.get("layers", [])
+	return RouteLadder.build(_ladder_cfg())
 
-	# Compute per-node rects, layer by layer, centred horizontally.
-	var box: Vector2 = BOX * _zoom
-	var h_gap: float = H_GAP * _zoom
-	var v_gap: float = V_GAP * _zoom
-	var pad: float = PAD * _zoom
-
-	var content_w: float = 0.0
-	for layer in layers:
-		var n: int = (layer as Array).size()
-		if n > 0:
-			content_w = maxf(content_w, n * box.x + (n - 1) * h_gap)
-	content_w = maxf(content_w, box.x)
-	var content_h: float = maxf(box.y, layers.size() * box.y + maxf(0, layers.size() - 1) * v_gap)
-
-	# Keyed by (depth, id), not by id — a forced route can hold the same game on
-	# two rungs, and they are two different places on this ladder.
-	var rects: Dictionary = {}     # "depth|id" -> Rect2 (in canvas space, pre-pad)
-	for i in range(layers.size()):
-		var layer: Array = layers[i]
-		var n: int = layer.size()
-		var row_w: float = n * box.x + maxf(0, n - 1) * h_gap
-		var start_x: float = (content_w - row_w) * 0.5
-		var y: float = i * (box.y + v_gap)
-		for j in range(n):
-			var id: StringName = StringName(layer[j])
-			var x: float = start_x + j * (box.x + h_gap)
-			rects[_node_key(i, id)] = Rect2(Vector2(x + pad, y + pad), box)
-
-	# Arrow segments (bottom-centre of the parent -> top-centre of the child).
-	var segments: Array = []
-	for e in data.get("edges", []):
-		var a: String = _node_key(int(e.get("from_depth", 0)), StringName(e.get("from", "")))
-		var b: String = _node_key(int(e.get("to_depth", 0)), StringName(e.get("to", "")))
-		if rects.has(a) and rects.has(b):
-			var ra: Rect2 = rects[a]
-			var rb: Rect2 = rects[b]
-			segments.append([
-				Vector2(ra.position.x + ra.size.x * 0.5, ra.position.y + ra.size.y),
-				Vector2(rb.position.x + rb.size.x * 0.5, rb.position.y),
-			])
-
-	var canvas := GraphCanvas.new()
-	canvas.segments = segments
-	canvas.arrow_size = 9.0 * _zoom
-	canvas.custom_minimum_size = Vector2(content_w + pad * 2, content_h + pad * 2)
-
-	# Node boxes on top of the arrows.
-	var seen: Dictionary = {}      # id -> the depth it was FIRST met at
-	for i in range(layers.size()):
-		for id in layers[i]:
-			var sid: StringName = StringName(id)
-			var revisit: bool = seen.has(sid)
-			if not revisit:
-				seen[sid] = i
-			canvas.add_child(_node_box(sid, rects[_node_key(i, sid)], i, revisit))
-
-	if layers.is_empty():
-		var empty := Label.new()
-		empty.text = "The Amulet can't be reached from here."
-		empty.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-		canvas.custom_minimum_size = Vector2(420, 80)
-		canvas.add_child(empty)
-	return canvas
-
-# One node = a bordered box with the game's name, coloured by its role.
-#
-# `depth` is the rung's layer and `revisit` says this game already had a rung
-# further up — a forced route that doubles back through it on the way out.
-func _node_box(id: StringName, rect: Rect2, depth: int, revisit: bool = false) -> Control:
-	var is_current: bool = id == _current and depth == 0
-	var is_amulet: bool = id == _amulet
-	var is_waypoint: bool = id == waypoint() and not is_current and not is_amulet
-	var is_choice: bool = _choice_ids.has(id) and not is_current and not is_amulet and not is_waypoint
-	var is_visited: bool = not _preview and GameState.visited_games.has(id) and not is_current
-
-	var bg: Color = COL_PATH_BG
-	var border: Color = UITheme.BORDER
-	var border_w: int = 1
-	var prefix: String = ""
-	if is_current:
-		bg = COL_CURRENT
-		border = UITheme.SUCCESS
-		border_w = 2
-		prefix = "▶ " if _preview else "📍 "
-	elif is_amulet:
-		bg = COL_AMULET
-		border = UITheme.GOLD
-		border_w = 2
-		prefix = "🏆 "
-	elif is_waypoint:
-		bg = COL_WAYPOINT
-		border = UITheme.GOLD
-		border_w = 2
-		prefix = "⚑ "
-	elif is_choice:
-		bg = COL_CHOICE_BG
-		border = UITheme.ACCENT
-		border_w = 2
-		prefix = "◆ "
-	elif is_visited:
-		bg = COL_VISITED_BG
-		border = UITheme.BORDER.lerp(UITheme.BG, 0.4)
-	# A rung you are passing over for the second time is drawn as the same game,
-	# faded, so the doubling-back reads as doubling back rather than as a bug.
-	if revisit and not is_amulet:
-		bg = bg.lerp(UITheme.BG, 0.45)
-		prefix = "↩ "
-
-	# A Panel, NOT a PanelContainer. A container takes its child's minimum size as
-	# its own, and a shrunk rung holding a name like "Crypt of the NecroDancer"
-	# wraps to four lines and grows the box back to fit them — straight over the
-	# rung below it. The box owns its size here; the name is clipped into it.
-	var panel := Panel.new()
-	panel.position = rect.position
-	panel.custom_minimum_size = rect.size
-	panel.size = rect.size
-	panel.clip_contents = true
-	panel.add_theme_stylebox_override("panel", UITheme.flat(bg, 6, 0, border_w, border))
-	# Every rung is a way IN to its game: click it and the map opens a card on that
-	# game — what it is, what you've done there, and what it would cost to route
-	# through it. Never for a hidden Amulet, which is the one thing a start-picker
-	# map is deliberately not telling you.
-	var secret_amulet: bool = _hide_amulet and is_amulet
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	if not secret_amulet:
-		panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		panel.tooltip_text = "%s — click for the details." % node_name(id)
-		panel.gui_input.connect(func(event): _on_node_input(event, id, depth))
-	else:
-		panel.tooltip_text = node_name(id)
-
-	# The badge: games you have beaten an enemy in, flagged on the route itself.
-	# This is the whole reason to read the ladder rather than the offering — the
-	# choice in front of you may be a game you already have a record in.
-	var fought: int = 0 if secret_amulet else GameStats.enemies_for(id).size()
-	var badge_w: float = 0.0
-	if fought > 0 and _zoom >= 0.62:
-		var badge := Label.new()
-		badge.text = "⚔%d" % fought
-		badge.add_theme_font_size_override("font_size", 9)
-		badge.add_theme_color_override("font_color", UITheme.GOLD)
-		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-		badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		badge.offset_right = -4
-		badge.offset_top = 2
-		badge_w = 22.0
-		panel.add_child(badge)
-
-	var label := Label.new()
-	# A shrunk rung is barely wider than the glyph, and a name is worth more than
-	# a marker the colour already carries.
-	label.text = (prefix if _zoom >= 0.62 else "") + node_name(id)
-	label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	label.offset_left = 4
-	# The name keeps clear of the badge rather than running under it.
-	label.offset_right = -(4.0 + badge_w)
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# Clipped rather than wrapped forever: what doesn't fit the rung is trimmed to
-	# an ellipsis, and the whole name is a hover away (the tooltip above).
-	label.clip_text = true
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# A floor as well as a ceiling: a long route fits by shrinking, and a rung
-	# whose name has shrunk out of legibility isn't a rung any more.
-	label.add_theme_font_size_override("font_size", maxi(9, int(11 * clampf(_zoom, 0.7, 1.4))))
-	label.add_theme_color_override("font_color",
-		Color.WHITE if (is_current or is_amulet or is_waypoint) else UITheme.TEXT)
-	panel.add_child(label)
-	return panel
-
-func _on_node_input(event: InputEvent, id: StringName, depth: int) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT \
-			and (event as InputEventMouseButton).pressed:
-		open_node_card(id, depth)
+# This window's model, in the shape RouteLadder reads.
+func _ladder_cfg() -> Dictionary:
+	return {
+		"data": map_data(),
+		"current": _current,
+		"amulet": _amulet,
+		"waypoint": waypoint(),
+		"choice_ids": _choice_ids,
+		"zoom": _zoom,
+		"preview": _preview,
+		"hide_amulet": _hide_amulet,
+		"on_node": func(id: StringName, depth: int): open_node_card(id, depth),
+	}
 
 # Fly the chart behind to one game on the ladder. Public so a test can ask for
 # the same thing a click asks for.
@@ -606,10 +435,7 @@ func show_on_chart(id: StringName) -> bool:
 # Amulet in a start-picker preview, where naming it would give away the one thing
 # the choose-your-start panel keeps back.
 func node_name(id: StringName) -> String:
-	if _hide_amulet and id == _amulet:
-		return "The Amulet — ???"
-	var game: GameData = Data.get_game(id)
-	return game.display_name if game != null else String(id)
+	return RouteLadder.node_name(id, _amulet, _hide_amulet)
 
 # ---------------------------------------------------------------------------
 # The node card
@@ -1070,15 +896,9 @@ func _fit_zoom() -> float:
 		return 1.0
 	var ceiling: Vector2 = view_ceiling()
 	var room := Vector2(ceiling.x - LADDER_PAD_X, ceiling.y - _chrome().y)
-	var ladder: Vector2 = _canvas_holder.custom_minimum_size
-	if room.x <= 0.0 or room.y <= 0.0 or ladder.x <= 0.0 or ladder.y <= 0.0:
-		return 1.0
-	# `ladder` is measured at the CURRENT zoom, so the ratio scales it from there.
-	# FIT_SLACK keeps a hair of room in hand: a route fitted to the last pixel
-	# raises a scrollbar for two pixels of overshoot, and the scrollbar then eats
-	# the room the fit was measured against.
-	var fit: float = _zoom * minf(room.x / ladder.x, room.y / ladder.y) * FIT_SLACK
-	return clampf(fit, FIT_ZOOM_MIN, 1.0)
+	# `ladder` is measured at the CURRENT zoom, so RouteLadder scales it from there.
+	return RouteLadder.fit_zoom(_canvas_holder.custom_minimum_size, room, _zoom,
+		FIT_ZOOM_MIN, FIT_SLACK)
 
 func _names(ids: Array) -> Array:
 	var out: Array = []
@@ -1094,29 +914,3 @@ func _finish() -> void:
 	queue_free()
 	if _layer != null and is_instance_valid(_layer):
 		_layer.queue_free()
-
-# ---------------------------------------------------------------------------
-# GraphCanvas — a bare Control that draws the arrow segments behind the node
-# boxes (which are added as its children). Kept as an inner class so the whole
-# map lives in one file.
-# ---------------------------------------------------------------------------
-class GraphCanvas extends Control:
-	var segments: Array = []          # [[Vector2 from, Vector2 to], ...]
-	var arrow_size: float = 9.0
-
-	func _draw() -> void:
-		for seg in segments:
-			var a: Vector2 = seg[0]
-			var b: Vector2 = seg[1]
-			# Stop the line a touch short of the box so the arrowhead sits clear.
-			var dir: Vector2 = (b - a)
-			if dir.length() < 0.001:
-				continue
-			dir = dir.normalized()
-			var tip: Vector2 = b - dir * 2.0
-			draw_line(a, tip - dir * arrow_size, COL_ARROW, 2.5 * (arrow_size / 9.0), true)
-			# Arrowhead triangle at the child end.
-			var perp: Vector2 = Vector2(-dir.y, dir.x) * (arrow_size * 0.5)
-			var base: Vector2 = tip - dir * arrow_size
-			draw_colored_polygon(
-				PackedVector2Array([tip, base + perp, base - perp]), COL_ARROW)

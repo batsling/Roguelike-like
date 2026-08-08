@@ -122,6 +122,12 @@ const CELL_SEP: int = 6
 # lane) is allowed to get. Sized so the whole battlefield panel stays inside the
 # right-hand column with the offering beside it — see Overworld2's stage.
 const FIELD_WIDTH_BUDGET: int = 410
+# …and how TALL. Same idea, other axis, and it exists for the same reason the
+# width budget does: the overworld is meant to fit a 720p window without
+# scrolling, and a board fitted only across still ran a 7x7 grid off the bottom
+# of one. It binds on nothing but the big boards — a 4x4 is capped by CELL_MAX
+# long before either budget is the constraint.
+const FIELD_HEIGHT_BUDGET: int = 360
 
 # The fitted cell edge and its step, recomputed whenever the grid changes size
 # (_rebuild_cells). Everything that positions or sizes anything on the board
@@ -129,13 +135,17 @@ const FIELD_WIDTH_BUDGET: int = 410
 var _cell: int = CELL_MAX
 var _cell_step: int = CELL_MAX + CELL_SEP
 
-# The largest cell that fits `cols` columns inside the budget, clamped to the
-# readable range.
-static func fitted_cell(cols: int) -> int:
+# The largest cell that fits a `cols` x `rows` board inside BOTH budgets, clamped
+# to the readable range. The tiers add a column and a row together, so a square
+# board is the normal case and `rows` defaults to matching; it is only passed
+# separately by something that widens one axis on its own.
+static func fitted_cell(cols: int, rows: int = -1) -> int:
 	if cols <= 0:
 		return CELL_MAX
-	var per: float = float(FIELD_WIDTH_BUDGET - (cols - 1) * CELL_SEP) / float(cols)
-	return clampi(int(floor(per)), CELL_MIN, CELL_MAX)
+	var r: int = rows if rows > 0 else cols
+	var per_w: float = float(FIELD_WIDTH_BUDGET - (cols - 1) * CELL_SEP) / float(cols)
+	var per_h: float = float(FIELD_HEIGHT_BUDGET - (r - 1) * CELL_SEP) / float(r)
+	return clampi(int(floor(minf(per_w, per_h))), CELL_MIN, CELL_MAX)
 # Shields (the tries, §3) share the overworld's steel blue.
 const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
 # Everything on the board layers by TREE ORDER, never z_index: z_index is relative
@@ -182,7 +192,7 @@ func _rebuild_cells() -> void:
 	_cells_drawn = dims
 	# A wider board means smaller cells (fitted_cell): this is the one place the
 	# board's size changes, so it is the one place the cell edge is re-fitted.
-	_cell = fitted_cell(dims.x)
+	_cell = fitted_cell(dims.x, dims.y)
 	_cell_step = _cell + CELL_SEP
 	_scale_hero()
 	for c in _cell_layer.get_children():
@@ -549,17 +559,7 @@ func refresh(show_current: bool = false) -> void:
 	if _battlefield == null:
 		return
 	_show_current = show_current
-	var hero_tex: Texture2D = _hero_texture()
-	_hero_icon.texture = hero_tex
-	UITheme.apply_crisp(_hero_icon, hero_tex)
-	_paint_hp()
-	_fill_status_strip(_hero_statuses, GameState.status_list(), StatusData.PLAYER,
-		STATUS_PIP_HERO)
-	# Filled pips = shields still standing, hollow = tries already spent on one.
-	var left: int = GameState.shields
-	var spent: int = GameLoop2.attempts_on_shields()
-	_hero_shields.text = "◆".repeat(left) + "◇".repeat(spent)
-	_hero_shields.tooltip_text = "%d shield(s) left — one per lost run." % left
+	refresh_hero()
 
 	# The pace the enemies below move at, and the size of the board they move on.
 	_refresh_pressure()
@@ -884,6 +884,27 @@ func _cell_holder(cell: PanelContainer) -> Control:
 	return holder
 
 # A small pill label used for the health / damage / status badges on a cell.
+# Just the hero block: the portrait, the health line, the status pips and the
+# shield pips. Split out of refresh() and public, because this is now the ONLY
+# place the player's own state is drawn — the overworld used to print it a second
+# time in a HUD strip, and that strip repainted on every stat / vitals / pickup
+# signal while the board waited for a full refresh. The signals come here now, and
+# a pickup that moves Max Health shows on the hero the instant it lands.
+func refresh_hero() -> void:
+	if _hero_hp == null:
+		return
+	var hero_tex: Texture2D = _hero_texture()
+	_hero_icon.texture = hero_tex
+	UITheme.apply_crisp(_hero_icon, hero_tex)
+	_paint_hp()
+	_fill_status_strip(_hero_statuses, GameState.status_list(), StatusData.PLAYER,
+		STATUS_PIP_HERO)
+	# Filled pips = shields still standing, hollow = tries already spent on one.
+	var left: int = GameState.shields
+	var spent: int = GameLoop2.attempts_on_shields()
+	_hero_shields.text = "◆".repeat(left) + "◇".repeat(spent)
+	_hero_shields.tooltip_text = "%d shield(s) left — one per lost run." % left
+
 # --- status pips (§13) ----------------------------------------------------
 #
 # A status is art plus a stack count, on the body it is riding: under the hero's

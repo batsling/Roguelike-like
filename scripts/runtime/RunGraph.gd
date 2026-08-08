@@ -338,7 +338,7 @@ static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Di
 # at two different depths, once on the way there and once on the way back. That's
 # why the layers are kept as they fall and every edge carries its endpoints'
 # DEPTHS — a consumer that keys nodes by id alone will collapse the two visits
-# into one and draw a road that doesn't exist (see RunMapModal._node_key).
+# into one and draw a road that doesn't exist (see RouteLadder.node_key).
 #
 # An empty `waypoint_id`, or one you're already standing on, is not a detour at
 # all and gives the ordinary shortest-path DAG. A waypoint that can't be reached,

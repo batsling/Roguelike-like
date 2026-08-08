@@ -11,6 +11,141 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **It opens fullscreen now, and it is the right kind of fullscreen.** The layout
+  was always meant to be played fullscreen and the project never went fullscreen
+  — `display/window/size/mode` was unset, so it launched in a 1280×720 window,
+  and there was no toggle anywhere in the game.
+
+  It opens **borderless** (`mode=3`, Godot's `FULLSCREEN`) rather than exclusive
+  (`4`), and that is a decision rather than a default: this game's loop is
+  *leaving* it to go and play a real video game and coming back to report, so the
+  player alt-tabs out several times a run. Exclusive makes every one of those a
+  mode switch — black screen, resolution change, and sometimes a window that
+  comes back on the wrong monitor. Borderless swaps instantly. Exclusive is still
+  on the list for anyone who wants it. **F11** toggles from any screen (handled
+  by the `Settings` autoload, so no screen has to forward it), **Settings →
+  Display** offers all three, and the choice persists to `user://settings.cfg`.
+
+  Worth writing down, because it is the fact the previous entry's whole
+  one-screen exercise rests on: **fullscreen does not give the layout more room.**
+  `stretch/mode` is `canvas_items` over a fixed 1280×720, so the logical viewport
+  is 1280×720 on a 1080p monitor, a 1440p monitor and a 4K one alike — the same
+  page, drawn bigger. Measured at 1920×1080, 2560×1440 and 2560×1600 to be sure.
+  Fitting 1280×720 *is* fitting the screen.
+
+  One thing did change with it: `stretch/aspect` goes from the default `keep` to
+  **`expand`**. `keep` letterboxes anything that isn't 16:9 — a 16:10 monitor got
+  bars top and bottom, an ultrawide got them at the sides — while `expand` hands
+  those pixels back as real canvas (16:10 → 1280×**800**, 21:9 → **1706**×720).
+  It can only ever give *more* than the base size, never less, so the one-screen
+  guarantee is untouched and the tests that pin it still read as a floor. Checked
+  on all four shapes: no bars, no scrollbars, borderless, covering the screen.
+
+---
+
+- **The whole overworld on one 720p screen.** The page had been growing a row at
+  a time and was 130px past the bottom of the window it ships at; it now fits
+  1280×720 with no scrollbar in either axis, in every phase, at every board size
+  up to 7×7. Nothing was hidden to get there — every cut was a thing being drawn
+  twice.
+
+  **The HUD strip is gone.** Once the verbs moved out it was Health, Shields and
+  a status strip, and the **board was already drawing all three on the hero** —
+  `♥ hp/max` under the portrait, the shield pips over it, the player's status
+  pips between them. The panel was quoting the board back at itself for 44px. The
+  vitals / stats / pickup signals now land on the hero (`BattlefieldView.
+  refresh_hero`, split out of `refresh`), so a Hollow Heart off a kill-drop moves
+  Max Health on screen the instant it lands, which is what the strip was for.
+
+  **The Tier / Push / Bombs row went the same way**, one commit after it arrived.
+  The board draws those too, and always did: its pressure bar ends `▦ 4×4 · Low`
+  and its toolbar buttons are literally `⇤ Push (1)` and `✸ Bomb (3)`. The
+  choosing verbs — Bash, Dash, Transmute, Scramble — keep their chip row under the
+  offering, because nothing else was drawing those.
+
+  **The header is the title and one `☰ Menu`.** Save, New run and Main menu were
+  three buttons parked across the top for the whole run and none of them is
+  pressed while a decision is open, so they are menu entries now. The 🗺 Map
+  wasn't admin — it is the road the offering is choosing the next step of — so it
+  moved into the offering's own heading row, on the right.
+
+  **The hover preview is one line** instead of a framed panel with a 64px
+  portrait (84px → 22px). The popup draws the enemy at full size now; what a
+  hover is for is the fastest read on the way past, so the line carries the
+  enemy, the goal, and the **tries** — which is where the shield-grant preview
+  landed when the HUD slot it used to live in went away.
+
+  **Scrolls are tokens on the pack strip**, beside the relics, with a small Read
+  above each. A scroll is a thing you carry and spend exactly like a Usable relic
+  is, and it had been getting a titled panel of its own — first at the foot of
+  the page under the log, then a second heading inside the pack. **The result
+  line** moved off the bottom of the page into the panel that asked about the
+  game, where it is the third copy of something that already toasts and is
+  already in GameLog.
+
+  **The board is fitted to a HEIGHT budget as well as a width one**
+  (`FIELD_HEIGHT_BUDGET`). It had only ever been fitted across, which kept a 7×7
+  board inside its column but still ran it off the bottom of the window; the cell
+  edge now takes the smaller of the two fits. It binds on nothing but the big
+  boards — a 4×4 is capped by `CELL_MAX` long before either budget is the
+  constraint.
+
+  And the **checklist rows wrap**. A level-up clause on one unwrapped CheckBox
+  claimed 772px as its minimum width, which is what had been putting a horizontal
+  scrollbar under the entire page.
+
+---
+
+- **The stats moved to what they do, and a card asks before it commits.** Two
+  changes to the overworld's layout, both undoing the same problem: a decision
+  and the things it needs were on opposite ends of the page.
+
+  **The HUD is the player now, and nothing else.** It used to be twelve numbers
+  in one strip across the top — Health, Shields, Tier, Bash, Dash, Push,
+  Transmute, Scramble, Bombs, Keys, Scrolls, Chests — which is a strip nobody
+  reads. Health and Shields stay where they were, top left, because they are what
+  is true about *you*. Everything else went to sit under the thing it is spent
+  on: **Bash / Dash / Transmute / Scramble** on a chip row beneath the offering,
+  since every one of them changes what is on the table; **Tier / Push / Bombs**
+  on a chip row beneath the board, since every one of them acts on the field. A
+  charge you can fire from where it is drawn (Dash, Scramble) is a button there —
+  which also retires the duplicate Dash and Scramble buttons that used to sit
+  above the cards while their counts sat on the HUD. One that needs a target
+  (Bash and Transmute pick a game; Push and Bombs pick an enemy) is a readout
+  whose tooltip says where it actually gets pressed. **Scrolls** moved into the
+  pack, which is where a carried thing belongs — they had their own panel at the
+  foot of the page, below the whole two-column stage, filed under the log.
+  **Keys and Chests came off entirely**: Keys are deferred and unauthored (§4),
+  and a chest is redeemed the moment it lands, so its count was a zero the player
+  never saw move.
+
+  **Clicking a game opens it rather than taking it.** The offering was a routing
+  decision made on a click, so every fact that decision needed had to be printed
+  on the cover: a route badge, a pace warning, the tries it grants, a repeat
+  bonus, a 🗺 Map button, a Beatable row, and the Bash/Transmute verbs. Seven
+  stacked rows per card — which is why the covers had to be *halved* when the
+  offering moved in beside the board, and the offering still ran taller than the
+  board next to it. So the click asks instead. **`GameChoiceModal`** opens on the
+  game: the **optimal path from there drawn as the real route ladder** — the same
+  arrowed shortest-path graph the 🗺 map window shows, no longer one click
+  further away than the decision it informs — beside the game at full cover size,
+  its type and year, the tries, the pace, your record in it, and the enemy waiting
+  there with the goal you would actually be playing for. Under all of it, the
+  three buttons that answer the card: **Travel**, **Bash**, **Transmute**. The
+  modal decides nothing itself — each button calls the same public verb the cards
+  always called (`pick` / `bash_choice` / `transmute_choice`), so a headless test
+  drives the run exactly as before.
+
+  The card, freed of all that, is the **cover, the name, and the Amulet's flag**
+  when it is the one — and the cover goes back up to 150x200 from the 105x140 it
+  had been squeezed to.
+
+  The ladder itself is now **`RouteLadder`**, lifted out of `RunMapModal` so the
+  map window and the popup draw one graph from one place rather than two that can
+  drift.
+
+---
+
 - **Statuses where you fight, items you can read, and a dev panel worth opening.**
   Four changes, all about seeing what the run is doing to you.
 
