@@ -27,7 +27,7 @@ For how the project is laid out and how its systems fit together, see
 
   The `events2.0` sheet is **one row per event**, like every other `*2.0` sheet,
   with the choices in numbered column groups — `Choice 1 | Repeat 1 | Result 1 |
-  Effect 1`, then the same four for 2, 3 and 4. Twenty-seven columns. The reason
+  Effect 1`, then the same four for 2, 3 and 4. Twenty-eight columns. The reason
   the choices are *columns* rather than one packed `Choices` cell is that an
   event is mostly prose, and prose needs a cell of its own to be editable at all.
   That is how the old `events` sheet failed — catalogue metadata in the sheet,
@@ -90,9 +90,49 @@ For how the project is laid out and how its systems fit together, see
   to the event's voice rather than to the option taken: the Dummy congratulates
   and insults you in exactly the same words whichever setting you picked.
 
+  **Unrest Site** (Slay the Spire 2, the Overgrowth) is the third, and it was
+  authored as a deliberate test of how far the format bends. It bent in exactly
+  one place. The event only appears at **70% HP or below** — the whole bargain is
+  about being hurt, and without that gate "heal to full" is a free top-up the
+  curse buys nothing for — and nothing in the sheet could say so: `Tier` gates on
+  the ladder, `Where` gates on the map, neither gates on the *player*. So there
+  is now a **`Requirement`** column, the state gate, `hp <= 70%`.
+
+  What it did **not** need a column for is the more interesting half. Unrest Site
+  introduces a **third kind of objective**, and it arrives entirely through a
+  token:
+
+      Rest Anyways    heal_full; add_curse "you use a rest site to replenish
+                      health" -> lose_hp 2
+      Kill the Trees  lose_max_hp 2; gain_chest small 1
+
+  An enemy goal is a **debt** — miss it and it follows you and hits. An event
+  goal is a **bonus** — miss it and it merely expires. A **curse goal** is
+  neither: a standing objective you want to *not* meet, permanent for the run,
+  that costs you every time you do meet it. It is the first thing in the game
+  that punishes you for succeeding at the wrong thing, and its checklist rows
+  read **purple** so the one objective you are trying to avoid never looks like
+  the ones you are chasing.
+
+  The rule that fell out is worth keeping: **a new kind of consequence should
+  cost a token, not a column.** `add_curse` carries the kind, the kind picks the
+  section and the colour, and the sheet never learns what a curse is. A
+  `Goal Type` column would have been the tempting wrong answer — a new value for
+  every kind, and a blank on every event that isn't it.
+
+  (Not to be confused with the shelved `CurseData` / `data/curses` system,
+  §5 of the spec. Same word, different thing: a curse goal is a checklist row,
+  not a card.)
+
+  Changed from the original, both requested: Max Health lost drops 8 → 2, and the
+  random Relic becomes a small chest — which the outcome text was already
+  describing, since the byrd spirits "drop a small box at your feet". At 5–10 Max
+  Health, losing 2 is a 20–40% cut where 8 of 75 was 11%, so Kill the Trees is
+  now the sharper option rather than the safe one.
+
   Format, column reference, DSL and what is still missing (the generator, the
-  placement seed, the badge, the checklist section, the modal):
-  `docs/event-sheet-authoring.md`.
+  requirement check, the placement seed, the badge, the two checklist sections,
+  the modal): `docs/event-sheet-authoring.md`.
 
 - **`_xlsx_surgery` dropped every row it wrote to an empty sheet.** `write_grid`
   matched `<sheetData>…</sheetData>` and nothing else, but a sheet that has never

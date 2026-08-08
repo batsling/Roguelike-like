@@ -28,6 +28,8 @@ lets one authored group escalate. Two event-only forms carry the rest:
                                                 event fits on one row
     add_goal "<cond>" for <n> games -> <reward> hand the player an objective that
                                                 outlives the modal
+    add_curse "<cond>" -> <penalty>             the same, inverted and permanent:
+                                                an objective you want to NOT meet
 
 WHY XML SURGERY AND NOT openpyxl: Roguelikes.xlsx carries seven charts and a
 dozen table parts that an openpyxl load/save round-trip silently drops. See
@@ -52,6 +54,12 @@ EVENT_COLS = [
     "Game",         # the real game this is lifted from (flavour credit)
     "Tier",         # All, or a comma list of Low / Medium / High / Insane
     "Where",        # Dead End (default) | Any | Game
+    # The state gate, beside Tier's ladder gate and Where's map gate: a condition
+    # on the RUN that has to hold before the event may appear at all. Unrest Site
+    # is the reason it exists — in Slay the Spire 2 it only shows up at 70% HP or
+    # below, and nothing else in this sheet could say so. `<stat> <op> <value>`,
+    # with a trailing % reading against the maximum. Blank = always eligible.
+    "Requirement",  # e.g. hp <= 70%
     "Trigger",      # After (default, once the game is beaten) | Before
     "Rarity",       # Common | Uncommon | Rare
     "Limit",        # times per run: a number, or None for no limit
@@ -62,8 +70,12 @@ EVENT_COLS = [
     # event-level because they belong to the event's voice, not to which option
     # was picked — the Dummy congratulates and insults you in the same words
     # whichever setting you chose. Blank on events that grant no goal.
-    "Goal Met",     # printed when the event goal is completed
-    "Goal Missed",  # printed when its window closes unmet
+    #
+    # "Met" always means THE CONDITION HAPPENED, never "it went well" — on a
+    # curse goal (`add_curse`) meeting the condition is the bad outcome and the
+    # payload is a penalty. The sign lives in the token, not in these two names.
+    "Goal Met",     # printed when the goal's condition is met
+    "Goal Missed",  # printed when its window closes unmet (curses never do)
 ]
 # Per choice: the label, what picking it does to the event, the prose it prints,
 # and the payload. Blank `Choice N` ends the event's choice list.
@@ -160,12 +172,64 @@ DUMMY_MISSED = (
 )
 
 
+# --- Unrest Site ------------------------------------------------------------
+#
+# Slay the Spire 2, the Overgrowth. Prompt and both Result strings verbatim.
+#
+# This is the event that adds the THIRD kind of goal. An enemy goal is a debt —
+# miss it and it follows you and hits. An event goal is a bonus — miss it and it
+# simply expires. A CURSE goal is neither: it is a standing objective you want to
+# NOT meet, and meeting it costs you. It is the first thing in the run that
+# punishes you for doing something rather than for failing to.
+#
+#   Rest Anyways   heal to full, and carry "if you use a rest site to replenish
+#                  health, take 2 damage" for the rest of the run
+#   Kill the Trees lose 2 Max Health, take a small chest
+#
+# `add_curse` is what marks it — the token carries the kind, so the sheet needs
+# no "what sort of goal is this" column and the checklist knows to render this
+# one purple and in its own section.
+#
+# Note this is NOT the shelved `CurseData` / `data/curses` system
+# (games-first-redesign.md §5). Same word, different thing: a curse goal is a row
+# on the checklist, not a card.
+#
+# Slay the Spire 2 names its curse "Poor Sleep" and the curse is a card; here the
+# condition itself is the display text, which is why no name is authored.
+#
+# CHANGES FROM THE ORIGINAL, both requested: Max Health lost drops 8 -> 2, and
+# the random Relic becomes a small chest — which the outcome text was already
+# describing, since the byrd spirits "drop a small box at your feet". At this
+# game's 5-10 Max Health, losing 2 is a much steeper cut than 8-of-75 was (20-40%
+# against 11%), so it is the sharper of the two options rather than the safe one.
+UNREST_PROMPT = (
+    "You find a secluded Rest Site and start a fire to get some rest. Once the "
+    "fire is started, it begins to swell, reaching not upwards but sideways "
+    "towards a grove of oil-seeping trees."
+)
+
+UNREST_REST = (
+    "All this adventuring has left you exhausted, and despite the oddities, you "
+    "decide to sleep. You toss and turn as the fire roars and crackles through "
+    "the night. The disgusting trees give off a wretched scent from their "
+    "pitch-black sap."
+)
+
+UNREST_KILL = (
+    "These trees are clearly malicious so you decide to get rid of them. Days "
+    "later, you're covered in ash and oily goop. A massive flock of little byrd "
+    "spirits rise from the slain trees and drop a small box at your feet. \"Thank "
+    "you for freeing us from those trees... cheep cheep!\""
+)
+
+
 EVENTS = [
     {
         "Event": "Abyssal Baths",
         "Game": "Slay the Spire 2",
         "Tier": "All",
         "Where": "Dead End",
+        "Requirement": "",
         "Trigger": "After",
         "Rarity": "Common",
         "Limit": "1",
@@ -192,6 +256,7 @@ EVENTS = [
         "Game": "Slay the Spire 2",
         "Tier": "All",
         "Where": "Dead End",
+        "Requirement": "",
         "Trigger": "After",
         "Rarity": "Common",
         "Limit": "1",
@@ -216,6 +281,32 @@ EVENTS = [
             ("Setting 3", "", "",
              'add_goal "beat a game in 1 attempt" for 3 games'
              ' -> gain_chest large 1'),
+        ],
+    },
+    {
+        "Event": "Unrest Site",
+        "Game": "Slay the Spire 2",
+        "Tier": "All",
+        "Where": "Dead End",
+        # The whole event is a bargain about being hurt, so it only shows up to
+        # someone who is. Without this gate "heal to full" is a free top-up and
+        # the curse buys nothing.
+        "Requirement": "hp <= 70%",
+        "Trigger": "After",
+        "Rarity": "Common",
+        "Limit": "1",
+        "Image": "UnrestSite",
+        "Prompt": UNREST_PROMPT,
+        # A curse goal has no endings to print: it never expires, and every time
+        # its condition is met the penalty simply lands.
+        "Goal Met": "",
+        "Goal Missed": "",
+        "choices": [
+            ("Rest Anyways", "", UNREST_REST,
+             'heal_full; add_curse "you use a rest site to replenish health"'
+             ' -> lose_hp 2'),
+            ("Kill the Trees", "", UNREST_KILL,
+             "lose_max_hp 2; gain_chest small 1"),
         ],
     },
 ]
