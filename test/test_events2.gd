@@ -400,6 +400,54 @@ func _some_dead_end() -> StringName:
 	return &""
 
 
+# --- the chest a sized reward actually opens --------------------------------
+
+func test_a_small_chest_offers_one_item_not_two() -> void:
+	# `choices` is the chest SIZE, and gain_chest used to drop it — so a Small
+	# chest fell through to the reward screen's own default (BASE_ITEM_CHOICES
+	# plus Discovery) and offered two. The size has to reach the screen.
+	var chests: int = GameState.pending_chests
+	var sizes: Array = GameState.pending_chest_choices.duplicate()
+	GameState.pending_chests = 0
+	GameState.pending_chest_choices.clear()
+
+	EffectSystem.apply({"type": "gain_chest", "value": 1, "choices": 1}, {})
+	assert_eq(GameState.pending_chest_choices, [1],
+		"a Small chest banks as one choice")
+	GameState.pending_chest_choices.clear()
+	GameState.pending_chests = 0
+
+	EffectSystem.apply({"type": "gain_chest", "value": 2, "choices": 1}, {})
+	assert_eq(GameState.pending_chest_choices, [1, 1],
+		"two Small chests bank as two chests of one, not one chest of two")
+
+	GameState.pending_chests = chests
+	GameState.pending_chest_choices = sizes
+
+
+func test_the_dummys_settings_bank_the_sizes_they_promise() -> void:
+	# Setting 2 pays a Small chest and Setting 3 a Large one; the ladder is the
+	# whole point of choosing a harder setting, so it has to survive the DSL.
+	var chests: int = GameState.pending_chests
+	var sizes: Array = GameState.pending_chest_choices.duplicate()
+	GameState.pending_chests = 0
+	GameState.pending_chest_choices.clear()
+
+	var ev: EventData2 = _event(DUMMY)
+	EventSystem.resolve_choice(ev, _choice(ev, "setting_2"), 0)
+	GameState.claim_event_goal(0)
+	assert_eq(GameState.pending_chest_choices, [1], "Setting 2 pays a Small chest")
+	GameState.pending_chest_choices.clear()
+	GameState.pending_chests = 0
+
+	EventSystem.resolve_choice(ev, _choice(ev, "setting_3"), 0)
+	GameState.claim_event_goal(0)
+	assert_eq(GameState.pending_chest_choices, [3], "Setting 3 pays a Large one")
+
+	GameState.pending_chests = chests
+	GameState.pending_chest_choices = sizes
+
+
 # --- persistence ------------------------------------------------------------
 
 func test_goals_and_curses_survive_a_save_round_trip() -> void:

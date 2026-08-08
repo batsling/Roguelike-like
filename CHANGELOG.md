@@ -11,6 +11,54 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Five things the events pass got wrong, found by playing it.**
+
+  **A "Small Chest" was opening two items.** `gain_chest` carried the chest's
+  SIZE as `choices` — small 1, medium 2, large 3, huge 5 — and the handler
+  dropped it on the way to `grant_chest`, so every sized chest fell through to
+  the reward screen's own default (`BASE_ITEM_CHOICES` plus Discovery). The size
+  reaches the screen now, which also means the Battleworn Dummy's ladder is real:
+  Setting 2 pays one item, Setting 3 pays three.
+
+  **Two chests are one screen with two chests on it.** They used to open two
+  screens back to back, which reads as a single screen flickering — you cannot
+  weigh the second chest's offer against what you just took from the first, and
+  nothing marks it as a different chest at all. `RewardScreen.setup_chests()`
+  takes every banked chest at once and gives each a labelled group with its own
+  roll and its own pick, so "+2 Small Chests" is visibly two chests of one item
+  rather than one chest of two. A chest you have answered collapses to a ✓ and
+  the screen waits for the rest.
+
+  **An event goal is on the checklist the moment you take it.** Events fire when
+  a game is beaten, so the goal lands while the player is still looking at the
+  OFFERING — but the choosing-phase checklist only listed enemy goals, statuses
+  and the level-up. Taking on "beat a game in 1 attempt" and then being shown
+  nothing about it until after picking the next game is exactly backwards, since
+  the goal is the thing that should inform that pick. Event goals and curses are
+  read-only rows there now, countdowns included.
+
+  **Enemies whose art fills the square have their border back.** The footprint
+  tiles carry the threat colour, the selection ring and the hover cue, and they
+  were drawn UNDER the art — fine for a sprite with space around it, invisible
+  for one drawn edge to edge like the Wisp. There is a second, transparent,
+  border-only tile over the art now, so a full-square enemy shows the same
+  outline as every other and its threat colour is legible again.
+
+  **Health is in the top-left corner and never moves.** It lived on the
+  battlefield beside the hero, which meant the one number that ends the run was
+  covered whenever anything mounted over the board — a chest, an event, a reward
+  screen. It is a header chip now, repainted from the same `_refresh_stats` every
+  `hp_changed` already routes through, and it goes white-hot under a quarter. The
+  title gave up the left edge for it and took the centre.
+
+  **And an event can be put away.** Beating a game that both drops a chest and
+  fires an event used to stack three things on one screen while the board was
+  still animating underneath them. The event modal has a **Hide** button (and
+  Escape now hides rather than doing nothing): the panel and its click-blocker go,
+  a "✦ *event* — resume" chip sits in the bottom-right corner — clear of the Menu
+  button and the toasts — and nothing about the event resolves until it is
+  brought back. Watch the board, take the chest, then answer the event.
+
 - **Events are built.** The sheet had a format and four authored events and
   nothing that read them; now the run does. `CurseData2` / `EventData2` plus two
   generators turn `curses2.0` and `events2.0` into `data/`, a new `EventSystem`

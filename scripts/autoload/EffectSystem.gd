@@ -161,7 +161,11 @@ func _h_gain_chest(effect: Dictionary, _ctx: Dictionary) -> void:
 	var n: int = _dyn_amount(effect, "value", "value_from", "value_mult")
 	if not effect.has("value") and not effect.has("value_from"):
 		n = 1
-	GameState.grant_chest(n)
+	# `choices` is the SIZE — small 1, medium 2, large 3, huge 5 — and dropping it
+	# was why a "small chest" offered two items: grant_chest's 0 means "take the
+	# reward screen's own default", which is BASE_ITEM_CHOICES plus Discovery.
+	# A sized chest has to carry its size all the way to the screen.
+	GameState.grant_chest(n, int(effect.get("choices", 0)))
 
 # Applies a STATUS (§13) — the hook a location, item, or scroll uses to reach into
 # the run's goals without knowing anything about them. `target` picks the SIDE the

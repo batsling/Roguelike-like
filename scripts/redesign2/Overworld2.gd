@@ -122,6 +122,8 @@ var _pending_event: EventData2 = null
 # _reset_checklist_state. Each entry is {check, index into GameState's array}.
 var _event_goal_checks: Array = []
 var _curse_goal_checks: Array = []
+# The header's always-visible Health readout (see _build_health_chip).
+var _health_chip: Label = null
 # A `play_game` detour in flight (docs/event-sheet-authoring.md §10). The node to
 # offer a way back to, and the payload that lands when the detour game is beaten.
 var _play_return_to: StringName = &""
@@ -1209,14 +1211,26 @@ func _redeem_pending_chests() -> void:
 		return
 	if GameState.pending_chests <= 0:
 		return
-	var choices: int = GameState.take_pending_chest()   # -1 none / 0 default / N fixed
+	# EVERY banked chest at once, not one screen each. Two chests used to open two
+	# screens back to back, which reads as one screen flickering — you cannot weigh
+	# the second chest's offer against what you just took, and nothing marks it as
+	# a different chest. One screen with a labelled group per chest says what you
+	# actually got: "2 Small Chests" is two chests of one item, not one of two.
+	var sizes: Array = []
+	while GameState.pending_chests > 0:
+		var choices: int = GameState.take_pending_chest()  # -1 none / 0 default / N
+		if choices < 0:
+			break
+		sizes.append(maxi(0, choices))
+	if sizes.is_empty():
+		return
 	_reward_open = true
 	var screen := preload("res://scripts/ui/RewardScreen.gd").new()
 	screen.closed.connect(func():
 		_reward_open = false
 		_redeem_pending_chests())
 	add_child(screen)
-	screen.setup_chest(maxi(0, choices))
+	screen.setup_chests(sizes)
 
 # --- overworld item actions (routed here by EffectSystem, §8) --------------
 
@@ -2254,6 +2268,26 @@ func _populate_standing_checklist() -> void:
 			lu_text += "   → %s" % ch.level_up_reward
 		_verify_box.add_child(_objective_row(lu_text, UITheme.GOLD))
 
+	# Event goals and curses, read-only (docs/event-sheet-authoring.md §5). These
+	# have to be here and not only on the report step: an event fires the moment a
+	# game is beaten, and the goal it hands over lands while the player is still
+	# looking at the OFFERING. Listing it only once a game is picked meant taking
+	# on "beat a game in 1 attempt" and then being shown nothing about it until
+	# after the decision it was supposed to inform.
+	for goal in GameState.event_goals:
+		var left: int = int(goal.get("games_left", 0))
+		_verify_box.add_child(_objective_row("Event goal — %s   → %s   (%d %s left)" % [
+			goal.get("condition", ""), goal.get("effects_text", ""),
+			left, "game" if left == 1 else "games"], UITheme.ACCENT))
+	for entry in GameState.curse_goals:
+		var cd: CurseData2 = Data.get_curse2(StringName(entry.get("curse", &"")))
+		if cd == null:
+			continue
+		var left: int = int(entry.get("games_left", 0))
+		_verify_box.add_child(_objective_row("%s — %s   (%d %s left)" % [
+			cd.display_name, cd.describe(),
+			left, "game" if left == 1 else "games"], UITheme.CURSE))
+
 	# The player's standing status buffs (§13) — goals that belong to no enemy and
 	# are available at whatever game gets picked next.
 	for row in GameState.status_objectives():
@@ -2607,7 +2641,37 @@ func _now_playing_text() -> String:
 # on. They repaint together, and they repaint off the same signals the HUD did:
 # an item from a kill-drop or a chest can hand you a Bash between one frame and
 # the next, and the number on screen has to agree immediately.
+# The always-on Health readout. Mounted on the header rather than in the stats
+# strip so that nothing — no modal, no reward screen, no scroll position — can
+# put it out of sight. Repainted from _refresh_stats, which every hp_changed and
+# stats_changed already routes through.
+func _build_health_chip() -> Control:
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(Color(0.18, 0.06, 0.06, 0.85), 8, 8, 1, UITheme.DANGER.lerp(UITheme.BORDER, 0.4)))
+	wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_health_chip = Label.new()
+	_health_chip.add_theme_font_size_override("font_size", 18)
+	_health_chip.add_theme_color_override("font_color", Color(1.0, 0.62, 0.62))
+	_health_chip.tooltip_text = "Health. At zero the run ends."
+	wrap.add_child(_health_chip)
+	_paint_health_chip()
+	return wrap
+
+
+func _paint_health_chip() -> void:
+	if _health_chip == null or not is_instance_valid(_health_chip):
+		return
+	_health_chip.text = "♥  %d / %d" % [GameState.hp, GameState.max_hp]
+	# It goes white-hot at a quarter left, because the number people miss is the
+	# one that stopped being comfortable rather than the one that hit zero.
+	var frac: float = float(GameState.hp) / maxf(1.0, float(GameState.max_hp))
+	_health_chip.add_theme_color_override("font_color",
+		UITheme.DANGER.lerp(Color.WHITE, 0.35) if frac <= 0.25 else Color(1.0, 0.62, 0.62))
+
+
 func _refresh_stats(_a = null) -> void:
+	_paint_health_chip()
 	_refresh_select_stats()
 	# …and the hero with them, because the board is where Health, Shields and the
 	# player's statuses are now drawn. These signals used to land on a HUD strip
@@ -3111,12 +3175,20 @@ func _build_ui() -> void:
 	# the Map, which belongs with the offering it is a map OF (see _select_head).
 	# The other three are run admin, and run admin folds into the menu it was
 	# already sitting next to.
+	# HEALTH, TITLE, MENU — in that order, and health is first for a reason. It
+	# used to live only on the battlefield, beside the hero, which meant the one
+	# number that ends the run was off-screen whenever anything was mounted over
+	# the board: a chest, an event, a reward screen. It is the top-left corner of
+	# the page now and it never moves. The title gives up the left edge for it and
+	# takes the centre.
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
+	header.add_child(_build_health_chip())
 	var title := Label.new()
 	title.text = "The Search for the Amulet"
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 	header.add_child(_build_menu_button())

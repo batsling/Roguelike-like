@@ -31,6 +31,17 @@ var _config_done: bool = false           # a setup* method has run
 # Chest tuning (games-first §8.2). When >= 0, the number of items to offer is
 # fixed (Small 1 / Regular 2 / Large 3) instead of the BASE + Discovery default.
 var _choice_count_override: int = -1
+# MULTI-CHEST. Two chests used to mean two screens, one after the other, which
+# read as the same screen flickering — you cannot compare what the second one is
+# offering against what you took from the first, and the second arrives with no
+# signal that it is a different chest at all. One screen now, with a labelled
+# group per chest and one pick from each. Empty = the ordinary single-chest path.
+#   _chest_sizes    the choice count of each chest, in the order granted
+#   _chest_choices  the rolled items for each, parallel to _chest_sizes
+#   _chest_taken    which of them have been answered
+var _chest_sizes: Array = []
+var _chest_choices: Array = []
+var _chest_taken: Array = []
 # Screen title; "Reward!" for an enemy-drop chest, "Victory!" for the (legacy)
 # section-completion reward.
 var _title: String = "Victory!"
@@ -65,6 +76,25 @@ func setup_chest(choices: int = 0) -> void:
 	_game = null
 	_title = "Choose a Reward"
 	_choice_count_override = choices if choices > 0 else -1
+	_config_done = true
+	if is_inside_tree() and not _started:
+		_started = true
+		_begin()
+
+# Several banked chests at once (games-first §8.2). `sizes` is one choice-count
+# per chest — [1, 1] is two Small chests — and each gets its own group with its
+# own roll, so "2 Small Chests" is visibly two chests of one item rather than one
+# chest of two.
+func setup_chests(sizes: Array) -> void:
+	if sizes.size() <= 1:
+		setup_chest(int(sizes[0]) if sizes.size() == 1 else 0)
+		return
+	_gold = 0
+	_game = null
+	_title = "Choose a Reward"
+	_chest_sizes = sizes.duplicate()
+	_chest_taken.resize(_chest_sizes.size())
+	_chest_taken.fill(false)
 	_config_done = true
 	if is_inside_tree() and not _started:
 		_started = true
@@ -110,7 +140,10 @@ func _begin() -> void:
 		_play_btn.visible = _game != null and _game.has_launch_target()
 		if _play_btn.visible:
 			_play_btn.text = "▶ Play %s" % _game.display_name
-	_roll_choices()
+	if not _chest_sizes.is_empty():
+		_roll_every_chest()
+	else:
+		_roll_choices()
 	_refresh()
 
 # ------------------------------------------------------------------
@@ -200,14 +233,70 @@ func _refresh() -> void:
 		_gold_line.text = "+%d gold" % _gold
 	for c in _choices_box.get_children():
 		c.queue_free()
-	for item in _choices:
-		_choices_box.add_child(_build_choice_tile(item))
+	# The reroll button is labelled and sized HERE, before the multi-chest path
+	# returns — leaving it to the tail meant a multi-chest screen showed it as an
+	# unlabelled sliver next to Skip.
 	if _reroll_btn != null:
 		_reroll_btn.text = "Reroll (%d)" % GameState.reroll_charges
 		_reroll_btn.disabled = GameState.reroll_charges <= 0
 		_reroll_btn.custom_minimum_size = Vector2(140, 40)
+	if not _chest_sizes.is_empty():
+		_refresh_multi()
+		return
+	for item in _choices:
+		_choices_box.add_child(_build_choice_tile(item))
 
-func _build_choice_tile(item: ItemData) -> Control:
+# One column per chest, each headed and each answered on its own. A chest that
+# has been taken from collapses to its answer, so the screen keeps showing what
+# you already chose while you decide the next one.
+func _refresh_multi() -> void:
+	for i in range(_chest_sizes.size()):
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 6)
+
+		var head := Label.new()
+		head.text = "%s Chest" % _size_name(int(_chest_sizes[i]))
+		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		head.add_theme_font_size_override("font_size", 15)
+		head.add_theme_color_override("font_color",
+			Color(0.6, 0.7, 0.6) if bool(_chest_taken[i]) else Color(1.0, 0.85, 0.4))
+		col.add_child(head)
+
+		if bool(_chest_taken[i]):
+			var done := Label.new()
+			done.text = "✓  taken"
+			done.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			done.custom_minimum_size = Vector2(230, 0)
+			done.add_theme_color_override("font_color", Color(0.55, 0.8, 0.6))
+			col.add_child(done)
+		else:
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 10)
+			for item in (_chest_choices[i] as Array):
+				row.add_child(_build_choice_tile(item, i))
+			col.add_child(row)
+		_choices_box.add_child(col)
+
+
+func _size_name(choices: int) -> String:
+	match choices:
+		1: return "Small"
+		2: return "Medium"
+		3: return "Large"
+		5: return "Huge"
+		_: return "Reward"
+
+
+func _roll_every_chest() -> void:
+	_chest_choices.clear()
+	for size in _chest_sizes:
+		_choice_count_override = maxi(1, int(size))
+		_roll_choices()
+		_chest_choices.append(_choices.duplicate())
+	_choice_count_override = -1
+
+
+func _build_choice_tile(item: ItemData, chest: int = -1) -> Control:
 	var tile := PanelContainer.new()
 	tile.custom_minimum_size = Vector2(230, 250)
 	tile.add_theme_stylebox_override("panel", RarityStyle.panel(int(item.rarity), 12))
@@ -242,7 +331,7 @@ func _build_choice_tile(item: ItemData) -> Control:
 
 	var take := Button.new()
 	take.text = "Take"
-	take.pressed.connect(func(): _on_take(item))
+	take.pressed.connect(func(): _on_take(item, chest))
 	vbox.add_child(take)
 	return tile
 
@@ -305,8 +394,22 @@ func _roll_with_luck_advantage() -> float:
 # Actions
 # ------------------------------------------------------------------
 
-func _on_take(item: ItemData) -> void:
+func _on_take(item: ItemData, chest: int = -1) -> void:
 	if _resolved:
+		return
+	# Multi-chest: one pick per chest, and the screen only closes once every chest
+	# has been answered. Taking from one must not silently forfeit the others.
+	if chest >= 0 and not _chest_sizes.is_empty():
+		if bool(_chest_taken[chest]):
+			return
+		_chest_taken[chest] = true
+		GameState.add_item(item)
+		GameLog.add("Picked up %s." % item.display_name, Color(0.7, 1.0, 0.7))
+		if _chest_taken.has(false):
+			_refresh()
+			return
+		_resolved = true
+		_finish()
 		return
 	_resolved = true
 	GameState.add_item(item)
@@ -317,7 +420,15 @@ func _on_skip() -> void:
 	if _resolved:
 		return
 	_resolved = true
-	GameLog.add("Skipped the item reward.", Color(0.8, 0.8, 0.8))
+	var left: int = 0
+	for taken in _chest_taken:
+		if not taken:
+			left += 1
+	if left > 0:
+		GameLog.add("Skipped %d chest%s." % [left, "" if left == 1 else "s"],
+			Color(0.8, 0.8, 0.8))
+	else:
+		GameLog.add("Skipped the item reward.", Color(0.8, 0.8, 0.8))
 	_finish()
 
 func _on_play_real() -> void:
@@ -335,7 +446,15 @@ func _on_reroll() -> void:
 	if _resolved or GameState.reroll_charges <= 0:
 		return
 	GameState.reroll_charges -= 1
-	_roll_choices()
+	if _chest_sizes.is_empty():
+		_roll_choices()
+	else:
+		# Rerolls the chests still open; a chest already answered keeps its answer.
+		var kept: Array = _chest_choices.duplicate()
+		_roll_every_chest()
+		for i in range(_chest_choices.size()):
+			if bool(_chest_taken[i]):
+				_chest_choices[i] = kept[i]
 	_refresh()
 
 func _finish() -> void:

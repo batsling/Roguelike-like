@@ -70,6 +70,15 @@ var _choice_box: VBoxContainer = null
 # and only an event with more to say than fits should start scrolling. See _fit.
 var _right: VBoxContainer = null
 var _scroll: ScrollContainer = null
+# HIDDEN state. An event fires the moment a game is beaten, which is also when
+# the board is playing its resolve back and when a chest is being offered — three
+# things arriving on one screen, two of them covering the third. So the event can
+# be put away: the panel goes, a small chip stays in the corner, and the player
+# brings it back when they have finished watching the board and taking the drop.
+# Nothing about the event resolves while it is hidden; it is only out of the way.
+var _hidden: bool = false
+var _chip: Button = null
+var _backdrop_nodes: Array = []
 
 
 func _init() -> void:
@@ -116,6 +125,12 @@ func _build() -> void:
 	_panel = ModalScaffold.build_panel(self, UITheme.ACCENT, Callable(),
 		Vector2(_panel_size().x, 0))
 	_panel.set_anchors_preset(Control.PRESET_CENTER)
+	# The scaffold's dim + click-blocker are the two children it added before the
+	# panel. Hiding has to take them with it, or an invisible modal keeps eating
+	# every click meant for the board underneath.
+	for child in get_children():
+		if child != _panel:
+			_backdrop_nodes.append(child)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -176,6 +191,20 @@ func _header() -> Control:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 21)
 	title.add_theme_color_override("font_color", UITheme.ACCENT)
+	# Put-it-away, top right of the panel. Not a close: a closed event is resolved
+	# and gone, and this one has not been answered yet.
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 6)
+	bar.alignment = BoxContainer.ALIGNMENT_END
+	var hide_btn := Button.new()
+	hide_btn.text = "⌄  Hide"
+	hide_btn.tooltip_text = "Put the event away and come back to it — nothing is decided."
+	hide_btn.custom_minimum_size = Vector2(84, 26)
+	hide_btn.add_theme_font_size_override("font_size", 12)
+	hide_btn.pressed.connect(_hide_event)
+	bar.add_child(hide_btn)
+	col.add_child(bar)
+
 	col.add_child(title)
 	if _event.source_game != "":
 		var from := Label.new()
@@ -433,6 +462,69 @@ func _rule() -> Control:
 	return line
 
 
+# --- hide / show ------------------------------------------------------------
+
+func _hide_event() -> void:
+	if _done or _hidden:
+		return
+	_hidden = true
+	_panel.visible = false
+	for n in _backdrop_nodes:
+		if is_instance_valid(n):
+			(n as CanvasItem).visible = false
+	# The chip is the whole of the hidden state: without something on screen
+	# saying an event is waiting, putting it away would look like losing it.
+	_chip = Button.new()
+	_chip.text = "✦  %s — resume" % _event.display_name
+	_chip.tooltip_text = "Bring the event back."
+	# BOTTOM right. Top right is where the Menu button and the notification toasts
+	# already live, and a resume chip that covers the menu trades one obstruction
+	# for another. The bottom corner is empty on every phase of this screen.
+	_chip.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_chip.offset_left = -320
+	_chip.offset_top = -58
+	_chip.offset_right = -16
+	_chip.offset_bottom = -16
+	_chip.add_theme_font_size_override("font_size", 13)
+	_chip.add_theme_color_override("font_color", UITheme.ACCENT)
+	_chip.add_theme_stylebox_override("normal",
+		UITheme.flat(UITheme.BG, 8, 8, 2, UITheme.ACCENT))
+	_chip.add_theme_stylebox_override("hover",
+		UITheme.flat(UITheme.PANEL_HI, 8, 8, 2, UITheme.ACCENT))
+	_chip.pressed.connect(_show_event)
+	add_child(_chip)
+	# Stop swallowing input for the screen behind while put away.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+func _show_event() -> void:
+	if _done or not _hidden:
+		return
+	_hidden = false
+	if _chip != null and is_instance_valid(_chip):
+		_chip.queue_free()
+	_chip = null
+	_panel.visible = true
+	for n in _backdrop_nodes:
+		if is_instance_valid(n):
+			(n as CanvasItem).visible = true
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	_fit.call_deferred()
+
+
+# Public so a test can drive the toggle without a click.
+func hide_event() -> void:
+	_hide_event()
+
+
+func show_event() -> void:
+	_show_event()
+
+
+func is_hidden() -> bool:
+	return _hidden
+
+
 func _close() -> void:
 	if _done:
 		return
@@ -445,7 +537,13 @@ func _close() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Escape does not dismiss an open event — see _build. Swallow it so it does
-	# not fall through to whatever is behind and close THAT instead.
-	if event.is_action_pressed("ui_cancel"):
-		accept_event()
+	if not event.is_action_pressed("ui_cancel"):
+		return
+	# Escape does not dismiss an open event — it has a price on both sides and a
+	# stray key is not an answer. It PUTS IT AWAY instead, which is the thing the
+	# player actually wants when the board is still animating behind it. While
+	# hidden, Escape is none of this modal's business.
+	if _hidden:
+		return
+	accept_event()
+	_hide_event()
