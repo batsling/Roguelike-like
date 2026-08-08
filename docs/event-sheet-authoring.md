@@ -41,47 +41,47 @@ mistake; pay more and the optimal line is to bounce off every leaf on the map.
 
 ## 2. The shape of the sheet: one row per CHOICE
 
-Every other `*2.0` sheet is one row per object. Events are not, and the reason is
-worth stating because it is the whole format decision:
-
-**an event is mostly prose, and it has a repeating sub-structure.** Pack four
-choices into one delimited cell and the cell stops being editable in a
-spreadsheet — which is precisely how the old `events` sheet failed. Look at what
-it did: catalogue metadata in the sheet, and every choice, outcome and effect
-hard-coded in an `AUTHORED` dict inside `tools/generate_event_tres.py`. The sheet
-could not hold the part of an event that *is* the event.
-
-So: **an event is a BLOCK of contiguous rows sharing an `Event` name.** The first
-row carries the event's own columns *and* its first choice; each row below adds
-another choice with the event columns left blank.
+**One row per event, like every other `*2.0` sheet.** The choices live in
+numbered column groups: `Choice 1 | Repeat 1 | Result 1 | Effect 1`, then the
+same four columns for 2, 3 and 4. Twenty-five columns in all — nine for the
+event, four groups of four.
 
 ```
-Event         │ Game             │ … │ Prompt          │ Choice  │ Repeat │ Result      │ Effect
-Abyssal Baths │ Slay the Spire 2 │ … │ Steam curls off │ Immerse │ Again  │ The water … │ gain_max_hp 1; lose_hp {1+X}
-Abyssal Baths │                  │   │                 │ Abstain │        │ You dry off │ gain_hp 2
+Event         │ … │ Prompt        │ Choice 1 │ Repeat 1 │ Result 1  │ Effect 1              │ Choice 2 │ Repeat 2 │ …
+Abyssal Baths │ … │ You discover… │ Immerse  │ Stay     │ The liquid│ gain_max_hp 2; lose…  │ Linger   │ Again    │ …
 ```
 
-You can read an event down the page, edit one outcome without touching the
-others, and every piece of prose sits in its own cell where the formula bar can
-show all of it.
+The one constraint worth understanding is **why the choices are columns rather
+than one packed cell.** An event is mostly prose, and prose needs a cell of its
+own — one you can widen, wrap, and read in the formula bar. Squeeze four choices
+into a single delimited `Choices` cell and the cell stops being editable, which
+is exactly how the old `events` sheet failed: catalogue metadata in the sheet,
+and every choice, outcome and effect hard-coded in an `AUTHORED` dict inside
+`tools/generate_event_tres.py`, because the sheet could not hold the part of an
+event that *is* the event. Numbered groups keep every string in its own cell
+*and* keep one event on one row.
 
-Two rules follow from the block being the unit:
+What that buys, beyond the row count: the sheet **sorts and filters like the
+others**. Sort by `Game`, filter to `Where = Dead End`, count rows to count
+events — all the ordinary spreadsheet moves work, none of which survive a format
+where one event spans several rows.
 
-- **Row order is choice order.** The choices appear in the modal top to bottom in
-  sheet order.
-- **Don't sort the sheet.** Sorting scatters a block and an event loses its
-  choices. `Event` is repeated on every row so a block is still *recoverable*
-  after an accidental sort, and the generator will refuse a sheet where one
-  `Event` name shows up in two separate blocks — which is what a sort looks like
-  from the other end.
+**Four groups is a soft cap**, picked to fit the real events (Abyssal Baths, the
+widest one here, uses all four). A fifth choice is four more columns and one more
+turn of the generator's loop, not a redesign. The generator reads groups left to
+right and stops at the first blank `Choice N`, so an event with two choices just
+leaves the last eight cells empty.
 
 ---
 
 ## 3. Columns
 
+Nine event columns, then `Choice N` / `Repeat N` / `Result N` / `Effect N` for
+N = 1…4.
+
 | Column | Scope | Meaning |
 |---|---|---|
-| `Event` | **every row** | Display name, and the block's grouping key. Repeated on choice rows — that is what makes filtering by event work and what catches an accidental sort. |
+| `Event` | event | Display name, and the id everything else keys off. |
 | `Game` | event | The real game this is lifted from. Flavour credit (the modal's "From: *game*" line), and the target when `Where` is `Game`. |
 | `Tier` | event | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. Gates an event to part of the tier ladder, the same vocabulary `enemies2.0` gates on. |
 | `Where` | event | Placement. `Dead End` (default — a node with one connection, §1), `Any`, or `Game` (only ever on its own `Game`, the way Abyssal Baths belongs to the Underdocks). |
@@ -90,14 +90,20 @@ Two rules follow from the block being the unit:
 | `Limit` | event | Times per run. A number, or `None` for no limit. |
 | `Image` | event | Art base name → `res://images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`, matching every other 2.0 sheet. |
 | `Prompt` | event | The prose at the top of the modal. |
-| `Choice` | choice | The button label. |
-| `Repeat` | choice | What picking it does to the event — see §4. Blank = `End`. |
-| `Result` | choice | The prose shown once the choice resolves. |
-| `Effect` | choice | The machine-readable payload — see §5. |
+| `Choice N` | choice | The button label. **Blank ends the event's choice list** — the generator stops reading groups here. |
+| `Repeat N` | choice | What picking it does to the event — see §4. Blank = `End`. |
+| `Result N` | choice | The prose shown once the choice resolves. |
+| `Effect N` | choice | The machine-readable payload — see §5. |
 
-A blank `Effect` is legal and means the choice does nothing mechanical, which is
-a real thing an event wants (walking away should be authorable without inventing
-a reward for it). Write `nothing` when the blank would read as unfinished.
+Group order is display order: the choices appear in the modal top to bottom as
+`Choice 1`, `Choice 2`, ….
+
+A blank `Effect N` is legal and means the choice does nothing mechanical, which
+is a real thing an event wants (walking away should be authorable without
+inventing a reward for it). Write `nothing` when the blank would read as
+unfinished. A blank `Result N` is legal too — the modal then prints only the
+mechanical line — which is how a choice whose flavour text you haven't got yet
+stays authorable.
 
 ---
 
@@ -115,11 +121,18 @@ one column is what separates them:
 
 `Again` is the whole of the push-your-luck grammar. Combined with `{X}` (§5.1) —
 which counts how many times *this choice has already been taken* — one authored
-row escalates on its own, instead of needing four near-identical rows that drift
-apart the moment anyone tunes them.
+group escalates on its own, instead of needing four near-identical groups that
+drift apart the moment anyone tunes them.
+
+`Stay` is the quieter one, and it is what makes a **staged** event fit on a
+single row. A `Stay` choice keeps the event open but takes itself off the table,
+so what's on offer afterwards is different from what was on offer before — which
+is a second stage, without a second row or a stage column. Abyssal Baths (§6) is
+built on exactly this: `Immerse` is `Stay`, so the first dip is a one-time act
+and the *loop* is a different button.
 
 An event with no reachable `End` is fine as long as some choice is `End` or the
-modal always offers a way out; the generator will warn on a block where every
+modal always offers a way out; the generator will warn on an event where every
 choice is `Again`, because that is an event you cannot leave.
 
 ---
@@ -168,11 +181,21 @@ The two event-only forms carry the weight `locations-and-events-design.md` §6
 asked them to:
 
 ```
-needs <token>            a gate — the choice is offered only if the player can pay
+needs <token>                  a gate — offered only if the player can pay
+needs <Choice> <op> <n>        a gate — offered only at this point in the event
 add_goal "<condition>" -> <reward>; <reward>
 ```
 
 `needs` leads a cell (`needs keys 1; obtain_item` — spend a key, take an item).
+
+Its second form is what lets one row hold a **staged** event: the gate names
+another `Choice N` in the same event and compares how often it has been taken, so
+`needs Immerse > 0` means "only once they're in the water" and
+`needs Immerse = 0` means "only while they're still dry". The two forms are told
+apart by the comparison operator, which the pick-count form always carries and
+the resource form never does.
+
+
 `add_goal` bolts an extra objective onto the **next** game, paying its reward if
 it is met and costing nothing if it is not; the condition is authored in the same
 honour-system voice as an enemy goal. It is the token that makes an event native
@@ -202,31 +225,60 @@ to kill you; here the button can just say so, and no column is needed for it.
 
 ## 6. The worked example: Abyssal Baths
 
-In Slay the Spire 2 it is an Underdocks event: **Immerse** is +2 Max HP for 3
-damage and can be taken over and over with the damage climbing until it kills
-you, and **Abstain** heals 10 and leaves. It survives translation almost intact,
-because what makes it work is not its numbers but the fact that the exit is
-always one click away and you keep not taking it.
+Slay the Spire 2's Underdocks event, authored with **the game's own text
+verbatim** — `Prompt` and the `Result` strings are quoted, not paraphrased.
 
-The numbers do have to move. Health here is 5–10, not 75:
+It is worth reading closely because it is **two-stage**, and that is what
+exercises every column here:
 
-| | Slay the Spire 2 | `events2.0` | Why |
+| | Offered when | `Repeat` | `Effect` |
 |---|---|---|---|
-| Immerse | +2 Max HP, take 3, escalating | `gain_max_hp 1; lose_hp {1+X}` | Costs 1, then 2, then 3 — cumulative 10 by the fourth dip, so a full-health character really does die in there. |
-| Abstain | Heal 10, leave | `gain_hp 2` | ~13% of max in Slay the Spire 2; 2 of 5–10 here is the same shrug. |
+| **Immerse** | you're still dry | `Stay` | `gain_max_hp 2; lose_hp 3` |
+| **Linger** | you're in the water | `Again` | `needs Immerse > 0; gain_max_hp 2; lose_hp {4+X}` |
+| **Abstain** | you're still dry | `End` | `needs Immerse = 0; gain_hp 10` |
+| **Exit Baths** | you're in the water | `End` | `needs Immerse > 0; nothing` |
 
-The pair interacts, which is what keeps it a decision instead of a slider:
-`gain_hp` is capped by Max Health and Immerse *raises* Max Health, so bathing
-twice and then abstaining nets +2 Max Health for 1 Health. The optimal line is
-neither "never get in" nor "stay until it kills you", and the player has to find
-it in their own HP total.
+Three things fall out of that, and each one is a column earning its place:
+
+- **`Immerse` is `Stay`, not `Again`.** The first dip is a one-time act; the loop
+  is a *different button*. That is the whole of the staging, and it costs no
+  stage column — a `Stay` choice removes itself, so what is on offer afterwards
+  is necessarily different.
+- **`{4+X}` is the escalation, exactly.** Slay the Spire 2's Lingers cost 4, then
+  5, then 6, climbing by one; X counts Lingers already taken, so one authored
+  group reproduces the whole ladder.
+- **The two exits are gated against each other, and that gate is load-bearing.**
+  Abstain's heal is available *only* to someone who never got in. Without it the
+  optimal line is "bathe until nearly dead, then heal 10", which is precisely
+  what Slay the Spire 2 refuses to allow — and which an earlier draft of this
+  event, with a single ungated Abstain, accidentally allowed.
+
+### The numbers are Slay the Spire 2's, and they are out of scale here
+
+Health in this game is **5–10, not 75**. Taken literally, `lose_hp 3` is a third
+of a character and `gain_hp 10` is a full heal from anywhere. Rescaled to this
+game's economy the event reads:
+
+```
+Immerse   gain_max_hp 1; lose_hp 1                    Abstain   gain_hp 2
+Linger    needs Immerse > 0; gain_max_hp 1; lose_hp {2+X}
+```
+
+— costing 1, then 2, then 3, cumulative 10 by the fourth dip, so a full-health
+character really does die in there, which is the point of the event.
+
+**Which pair to ship is a tuning call, and the sheet is where tuning calls
+belong** — it is four cells. The verbatim numbers are in there now because
+"exact" was the brief; nothing else in the design depends on them.
 
 `Where: Dead End` is doing real work here, and not only because of §1 — an event
 that can kill you is one you must have *chosen* to walk toward. Hanging it off a
 node nobody is forced through is what makes it fair.
 
-**These numbers are a first pass and are meant to be tuned in the sheet.** That is
-the point of the sheet being upstream.
+**Two `Result` cells are blank on purpose.** Linger's and Exit Baths' flavour
+text could not be sourced (every site carrying them is unreachable from here), so
+they are left empty rather than filled with an invention presented as quotation.
+Fill them from the game.
 
 ---
 
@@ -235,22 +287,23 @@ the point of the sheet being upstream.
 Not authored — these are here so the format can be read against more than one
 event.
 
+Shown a group per line for legibility; on the sheet each event is one row and
+these run left to right.
+
 ```
-Event          Choice          Repeat   Effect
-─────────────────────────────────────────────────────────────────────────────
-Golden Idol    Take the idol   End      obtain_item; apply_status marked 1
-               Leave it        End      nothing
+Golden Idol     Choice 1 Take the idol │ End │ obtain_item; apply_status marked 1
+                Choice 2 Leave it      │ End │ nothing
 
-The Colosseum  Challenge       End      add_goal "beat it without spending more
-                                        than one try" -> gain_item; gain_item
-               Watch           End      gain_gold 20
+The Colosseum   Choice 1 Challenge     │ End │ add_goal "beat it without spending
+                                              more than one try" -> obtain_item
+                Choice 2 Watch         │ End │ gain_gold 20
 
-Locked Chest   Open it         End      needs keys 1; gain_chest medium 1
-               Pry it open     End      lose_hp 2; gain_chest small 1
-               Walk away       End      nothing
+Locked Chest    Choice 1 Open it       │ End │ needs keys 1; gain_chest medium 1
+                Choice 2 Pry it open   │ End │ lose_hp 2; gain_chest small 1
+                Choice 3 Walk away     │ End │ nothing
 ```
 
-The Colosseum row is the `add_goal` shape and the one worth studying: the event
+The Colosseum is the `add_goal` shape and the one worth studying: the event
 resolves instantly, but what it hands you is a *restriction on the next real
 game*, and the payoff lands only if you pull it off.
 
@@ -262,8 +315,9 @@ The sheet is authorable now. Nothing reads it yet.
 
 1. **`EventData2` + `tools/generate_event2_tres.py`** → `data/events2.0/`.
    Closest model is `generate_status_tres.py`, which already parses the reward
-   tokens and the `{expr}` holes this sheet reuses — the new work is the block
-   grouping and the `Repeat` column, not the DSL. Note the *existing*
+   tokens and the `{expr}` holes this sheet reuses — the new work is walking the
+   numbered choice groups and the `Repeat` / `needs` semantics, not the DSL. Note
+   the *existing*
    `generate_event_tres.py` reads the legacy `events` sheet and its combat-era
    d20 outcomes; it is not a starting point, it is the thing being replaced.
 2. **Placement.** Assign an event to a node deterministically — seeded off the

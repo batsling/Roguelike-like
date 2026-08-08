@@ -25,32 +25,42 @@ For how the project is laid out and how its systems fit together, see
   corner — and it sets the exchange rate: a dead-end event should pay about one
   game's reward, because one extra game is exactly what the detour costs.
 
-  The `events2.0` sheet is **one row per CHOICE**, not one row per event, and
-  that is the format decision the rest follows from. An event is mostly prose
-  with a repeating sub-structure; pack four choices into one delimited cell and
-  the cell stops being editable in a spreadsheet. That is how the old `events`
-  sheet failed — catalogue metadata in the sheet, and every choice, outcome and
-  effect hard-coded in an `AUTHORED` dict inside `generate_event_tres.py`, so the
-  sheet could not hold the part of an event that *is* the event. Now an event is
-  a block of contiguous rows sharing an `Event` name: the first row carries the
-  event's columns plus its first choice, each row below adds another choice.
+  The `events2.0` sheet is **one row per event**, like every other `*2.0` sheet,
+  with the choices in numbered column groups — `Choice 1 | Repeat 1 | Result 1 |
+  Effect 1`, then the same four for 2, 3 and 4. Twenty-five columns. The reason
+  the choices are *columns* rather than one packed `Choices` cell is that an
+  event is mostly prose, and prose needs a cell of its own to be editable at all.
+  That is how the old `events` sheet failed — catalogue metadata in the sheet,
+  and every choice, outcome and effect hard-coded in an `AUTHORED` dict inside
+  `generate_event_tres.py`, so the sheet could not hold the part of an event that
+  *is* the event. Numbered groups keep every string in its own cell *and* keep
+  the sheet sortable and filterable like the others.
 
   `Effect` is the **`statuses2.0` reward-token DSL, reused unchanged**, so a
   chest an event pays is the chest an item pays. `{X}` holes come with it — and
   inside an event **X is the number of times this choice has already been
-  taken**, which together with the new `Repeat: Again` column is the entire
-  push-your-luck grammar. One row escalates on its own instead of four
-  near-identical rows drifting apart the moment someone tunes them.
+  taken**, which together with the new `Repeat` column is the whole
+  push-your-luck grammar. One authored group escalates on its own instead of four
+  near-identical groups drifting apart the moment someone tunes them.
 
   **Abyssal Baths** (Slay the Spire 2, the Underdocks) is authored as the first
-  event and was chosen because it exercises exactly that: `Immerse` is
-  `gain_max_hp 1; lose_hp {1+X}` on `Repeat: Again` — 1 Health, then 2, then 3,
-  cumulative 10 by the fourth dip, so it really can kill you — against `Abstain`,
-  `gain_hp 2`, which closes it. The two interact, which is what keeps it a
-  decision rather than a slider: `gain_hp` is capped by Max Health and Immerse
-  raises Max Health, so bathing twice and then abstaining nets +2 Max Health for
-  1 Health. It is deliberately written out of effect tokens that already exist,
-  so the first event needs no new `EffectSystem` handler to run.
+  event, in the game's own words — prompt and outcome text verbatim — because it
+  is two-stage and exercises every column. `Immerse` is `Stay`: it keeps the
+  event open but takes *itself* off the table, which is how a second stage fits
+  on one row without a stage column. The loop is a different button, `Linger`,
+  `Again` with `lose_hp {4+X}` — 4, then 5, then 6, exactly Slay the Spire 2's
+  climb. And the two exits are gated against each other with the new
+  `needs <Choice> <op> <n>` form: `Abstain`'s heal is offered only to someone who
+  never got in (`needs Immerse = 0`), `Exit Baths` only to someone who did. That
+  gate is load-bearing — without it the line is "bathe until nearly dead, then
+  heal", which is what the original refuses to allow and what an earlier draft of
+  this event accidentally permitted.
+
+  The event uses only effect tokens that already exist, so it needs no new
+  `EffectSystem` handler to run. Its *numbers* are Slay the Spire 2's and are
+  knowingly out of scale — Health here is 5–10, not 75, so `gain_hp 10` is a full
+  heal from anywhere. The rescaled pair is written down beside it in the doc;
+  swapping is four cells, which is the point of the sheet being upstream.
 
   Format, column reference, DSL and what is still missing (the generator, the
   placement seed, the badge, the modal): `docs/event-sheet-authoring.md`.
