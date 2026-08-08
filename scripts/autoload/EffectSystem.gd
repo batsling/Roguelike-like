@@ -72,6 +72,13 @@ func _register_defaults() -> void:
 	register("gain_gold", _h_gain_gold)
 	register("gain_chest", _h_gain_chest)
 	register("lose_hp", _h_lose_hp)
+	register("lose_max_hp", _h_lose_max_hp)
+	register("lose_stat", _h_lose_stat)
+	register("lose_gold", _h_lose_gold)
+	register("heal_full", _h_heal_full)
+	register("gain_scroll", _h_gain_scroll)
+	register("gain_loot", _h_gain_loot)
+	register("none", _h_none)
 	register("if_hp", _h_if_hp)
 	register("chance", _h_chance)
 	register("teleport_type", _h_teleport_type)
@@ -99,6 +106,50 @@ func _h_gain_stat(effect: Dictionary, _ctx: Dictionary) -> void:
 	if stat == "" or value == 0:
 		return
 	GameState.grant_run_stat(stat, value)
+
+# --- the cost half of the vocabulary (docs/event-sheet-authoring.md §5) ------
+# Events charge for things and a curse is nothing but a charge, so every grant
+# above has a mirror here rather than a second code path with its own rounding.
+
+# Max Health down. Floors at 1 — a Max Health of 0 is a run that ended without
+# anything saying so — and set_max_hp already clamps current HP under the new cap.
+func _h_lose_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
+	var v: int = int(effect.get("value", 0))
+	if v != 0:
+		GameState.set_max_hp(maxi(1, GameState.max_hp - v), false)
+
+func _h_lose_stat(effect: Dictionary, _ctx: Dictionary) -> void:
+	var stat: String = String(effect.get("stat", ""))
+	var value: int = int(effect.get("value", 0))
+	if stat == "" or value == 0:
+		return
+	GameState.grant_run_stat(stat, -value)
+
+func _h_lose_gold(effect: Dictionary, _ctx: Dictionary) -> void:
+	var v: int = int(effect.get("value", 0))
+	if v != 0:
+		GameState.change_gold(-v)
+
+func _h_heal_full(_effect: Dictionary, _ctx: Dictionary) -> void:
+	GameState.set_hp(GameState.max_hp)
+
+# LOOT is a category, not a synonym for scroll: today the only loot type is the
+# scroll, so both land in the same place, but an event authored as `gain_loot`
+# widens on its own the day a second type exists (§5).
+func _h_gain_scroll(effect: Dictionary, _ctx: Dictionary) -> void:
+	_grant_loot(int(effect.get("value", 1)))
+
+func _h_gain_loot(effect: Dictionary, _ctx: Dictionary) -> void:
+	_grant_loot(int(effect.get("value", 1)))
+
+func _grant_loot(n: int) -> void:
+	if n > 0:
+		GameState.add_loot("scroll", n)
+
+# An authored no-op, so "this choice does nothing" is a thing the sheet can say
+# rather than a blank cell that reads as unfinished.
+func _h_none(_effect: Dictionary, _ctx: Dictionary) -> void:
+	pass
 
 func _h_gain_gold(effect: Dictionary, _ctx: Dictionary) -> void:
 	var v: int = int(effect.get("value", 0))

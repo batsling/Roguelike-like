@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_punch_off"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"punch_off"
+display_name = "Punch Off"
+source_game = "Slay the Spire 2"
+tier_tags = PackedStringArray()
+where = "dead_end"
+requirement = {"stat": "games", "op": ">=", "value": 6, "percent": false}
+trigger = "after"
+rarity = "Common"
+run_limit = 1
+file = "PunchOff"
+prompt = "Two Punch Constructs are duking it out and you see some treasure in between them... Should you try to nab it?"
+goal_met = ""
+goal_missed = ""
+choices = [{"id": "nab", "text": "Nab", "repeat": "end", "repeat_max": 0, "result": "You successfully nab the relic! ...or so you thought. A right-hook clocks you in the face.", "gates": [], "effects": [{"type": "gain_chest", "value": 1, "choices": 1}], "effects_text": "Curse: Injury, +1 Small Chest", "goal": {}, "curse": {"curse": "injury", "games": 0}, "play": {}}, {"id": "i_can_take_them", "text": "I Can Take Them", "repeat": "end", "repeat_max": 0, "result": "The Constructs turn to you menacingly!", "gates": [], "effects": [], "effects_text": "", "goal": {}, "curse": {}, "play": {"tag": "mecha", "effects": [{"type": "gain_loot", "value": 1}, {"type": "gain_chest", "value": 2, "choices": 1}], "effects_text": "+1 Loot, +2 Small Chests"}}]

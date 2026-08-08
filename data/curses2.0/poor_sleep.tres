@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CurseData2" load_steps=2 format=3 uid="uid://curse2_poor_sleep"]
+
+[ext_resource type="Script" path="res://scripts/resources/CurseData2.gd" id="1_curse"]
+
+[resource]
+script = ExtResource("1_curse")
+id = &"poor_sleep"
+display_name = "Poor Sleep"
+source_game = "Slay the Spire 2"
+condition = "you use a rest site to replenish health"
+penalty = [{"type": "lose_hp", "value": 2}]
+penalty_text = "-2 Health"
+timer = 3
+file = "PoorSleep"

@@ -113,6 +113,21 @@ var _resolving: bool = false
 # An end-of-run screen owed to the player, held back until the board has finished
 # playing the resolve that ended the run.
 var _run_over_pending: bool = false
+# The event waiting to open once the board has finished playing its resolve back.
+# An event fires AFTER the game at its node is beaten (docs/event-sheet-authoring.md
+# §1) and the board is mid-animation at that moment, so it queues here the way the
+# run-over screen does rather than opening over a moving battlefield.
+var _pending_event: EventData2 = null
+# Checklist bindings for the two event-borne sections, cleared with the rest in
+# _reset_checklist_state. Each entry is {check, index into GameState's array}.
+var _event_goal_checks: Array = []
+var _curse_goal_checks: Array = []
+# A `play_game` detour in flight (docs/event-sheet-authoring.md §10). The node to
+# offer a way back to, and the payload that lands when the detour game is beaten.
+var _play_return_to: StringName = &""
+var _play_payload: Array = []
+var _play_payload_text: String = ""
+var _event_modal: EventModal2 = null
 var _run_over_won: bool = false
 var _run_over_screen: RunOverScreen = null
 var _rng := RandomNumberGenerator.new()
@@ -948,6 +963,10 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	# Was this game already cleared this run? Read BEFORE the beat is recorded, so
 	# the second clear of a game is what pays the Dash (REPEAT_BEAT_DASH).
 	var repeat_beat: bool = played_game != null and GameState.has_beaten_game(played_game.id)
+	# The event standing at this SPOT, read before _chosen is cleared. Keyed off
+	# the graph slot rather than the game, because an event belongs to the place
+	# (a dead end, §1) — a transmuted card plays a different game on the same node.
+	var slot_here: StringName = StringName(_chosen.get("slot", &""))
 	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed
 	# Snapshot where everyone stands BEFORE the resolve, so the animation can play
 	# the strike and the advance back from the old positions to the new ones.
@@ -992,6 +1011,11 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	# list read moves. The run itself still advances — see games_played below —
 	# because the time was spent and the board closed in regardless.
 	if played_game != null and not escaped:
+		# The event at this node, queued for once the board stops moving. Only a
+		# BEATEN game earns it: walking away forfeits the event and leaves it
+		# standing for a later visit, which is what makes it a reward rather than
+		# a toll for arriving.
+		_pending_event = EventSystem.event_for(slot_here)
 		TriggerBus.game_beaten.emit({"game_id": played_game.id})
 		# Bank the clear (and pay the repeat-beat Dash). Recorded after the item
 		# trigger so a game_beaten item can't see a half-updated tally.
@@ -1014,7 +1038,18 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 		# beside whatever the player wrote about doing it here.
 		if played_game != null:
 			GameStats.record_level_up(played_game.id, GameState.character_id)
+	# The event/curse half of the same honour-system report (§5): claim the event
+	# goals the player ticked and pay out the curses they owned up to. Read before
+	# games_played moves, because the tick below is what ages them.
+	_resolve_event_goal_rows()
 	GameState.games_played += 1
+	# Both kinds of standing objective age by one game. An expired event goal gets
+	# its "missed" line; an expired curse says nothing, because nothing happened.
+	for expired in GameState.tick_event_goals():
+		var src: EventData2 = Data.get_event2(StringName(expired.get("event", &"")))
+		if src != null and src.goal_missed != "":
+			Notifications.notify(src.goal_missed, UITheme.DANGER)
+			GameLog.add(src.goal_missed, UITheme.DANGER)
 	# That count is what the difficulty tier is read off, so the board may have
 	# just grown under the bodies standing on it (§7.3). Reconcile it and say so.
 	if not GameLoop2.run_over:
@@ -1044,6 +1079,10 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	# The run moved, so the recovery point moves with it.
 	autosave()
 	_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
+	# A play_game detour ends here: pay it, then ask stay-or-return (§10). After
+	# the offering is rebuilt, so whichever way it goes lands on a live screen.
+	if _play_return_to != &"":
+		_finish_play_game(not escaped)
 
 # The run just stepped up a difficulty tier, which widens the battlefield by a
 # column and a row (§7.3). Reconcile the board's coordinates with its new size
@@ -1097,7 +1136,28 @@ func _end_resolve() -> void:
 	_refresh_stage()
 	if _run_over_pending:
 		_run_over_pending = false
+		_pending_event = null   # a run that just ended has no room for a bonus
 		_show_run_over()
+		return
+	_open_pending_event()
+
+# Open the queued event, if any. The offering behind it is already rebuilt, so
+# the modal lands on the screen the player is about to act on rather than on a
+# board mid-resolve.
+func _open_pending_event() -> void:
+	var ev: EventData2 = _pending_event
+	_pending_event = null
+	if ev == null:
+		return
+	_event_modal = EventModal2.open(self, ev)
+	_event_modal.finished.connect(_on_event_finished)
+
+func _on_event_finished(play_request: Dictionary) -> void:
+	_event_modal = null
+	_refresh()
+	autosave()
+	if not play_request.is_empty():
+		_start_play_game(play_request)
 
 # The reward for beating a game you'd already cleared this run: +1 Dash (§4).
 # Announced on both channels — the toast for the moment, the log for the record —
@@ -1193,6 +1253,124 @@ func travel_to_game(game_id: StringName) -> void:
 	_chosen = {}
 	_build_choices()
 	_refresh()
+
+# `play_game tag=<tag>` — the one event token that MOVES the player (§10).
+#
+# Punch Off's "I Can Take Them" sends you off to a random mecha roguelike. It is
+# not a reward and not a goal: you go and play a game that is not on your route,
+# it spawns its enemy and runs under the ordinary rules — beating the robots IS
+# beating the game — and the payload lands on the far side of it.
+#
+# What makes it a routing decision rather than a free game is the far side: when
+# it resolves you CHOOSE whether to stay there or come back. Which is the exact
+# inverse of §1, where a dead end forces the round trip on you.
+func _start_play_game(request: Dictionary) -> void:
+	var tag: StringName = StringName(String(request.get("tag", "")).to_lower())
+	var dest: StringName = _random_game_with_tag(tag)
+	if dest == &"":
+		# Nothing in the catalog carries the tag (or everything that does is
+		# bashed). Pay the payload anyway rather than swallowing the choice the
+		# player already made — they picked the hard option in good faith.
+		GameLog.add("No %s game to reach — the payoff lands anyway." % tag, UITheme.ACCENT)
+		for eff in request.get("effects", []):
+			EffectSystem.apply(eff, {})
+		return
+	_play_return_to = GameState.current_game_id
+	_play_payload = (request.get("effects", []) as Array).duplicate(true)
+	_play_payload_text = String(request.get("effects_text", ""))
+
+	var game: GameData = Data.get_game(dest)
+	var tier: int = _current_tier()
+	var enemy: GoalEnemyData = GameLoop2.roll_enemy(GameLoop2.game_type_key(game), tier)
+	_chosen = {
+		"game": game, "enemy": enemy, "slot": dest,
+		"boss": false, "amulet": dest == GameState.amulet_game_id,
+		"repeat": GameState.has_beaten_game(game.id),
+	}
+	GameLoop2.choose_game(enemy)
+	GameLoop2.grant_selection_shields(game)
+	GameState.set_current_game(dest)
+	_dash_mode = false
+	_hover_grant = -1
+	_phase = Phase.PLAYING
+	_populate_play_panel()
+	_refresh()
+	_scroll_to_top()
+	GameLog.add("Off to %s — a %s game." % [game.display_name, tag], UITheme.ACCENT)
+	autosave()
+
+
+func _random_game_with_tag(tag: StringName) -> StringName:
+	var pool: Array = []
+	for g in Data.all_games():
+		if not (g is GameData) or g.id == GameState.current_game_id:
+			continue
+		if GameLoop2.is_bashed(g.id):
+			continue
+		for t in g.tags:
+			if StringName(String(t).to_lower()) == tag:
+				pool.append(g.id)
+				break
+	if pool.is_empty():
+		return &""
+	return pool[_rng.randi() % pool.size()]
+
+
+# The far side of a play_game detour: pay the payload, then offer the choice the
+# original event promised — stay here, or go back where you came from. Staying is
+# only offered when this game is actually ON the run graph; a game reached by tag
+# may be off-map entirely, and standing on a node with no edges is a dead run.
+func _finish_play_game(beaten: bool) -> void:
+	var payload: Array = _play_payload
+	var payload_text: String = _play_payload_text
+	var back: StringName = _play_return_to
+	_play_payload = []
+	_play_payload_text = ""
+	_play_return_to = &""
+	if beaten:
+		for eff in payload:
+			EffectSystem.apply(eff, {})
+		if payload_text != "":
+			Notifications.notify("The detour pays: %s." % payload_text, UITheme.ACCENT)
+			GameLog.add("The detour pays: %s." % payload_text, UITheme.ACCENT)
+	elif payload_text != "":
+		GameLog.add("You walked away — the detour pays nothing.", UITheme.TEXT_DIM)
+
+	var here: StringName = GameState.current_game_id
+	var can_stay: bool = not RunGraph.is_off_map(here) and RunGraph.degree(here) > 0
+	if not can_stay:
+		if back != &"":
+			travel_to_game(back)
+		return
+	_ask_stay_or_return(back)
+
+
+# Two buttons and no third option, mounted where the offering would be. Kept
+# deliberately plain: the interesting decision was taking the detour, and this is
+# only its bookkeeping.
+func _ask_stay_or_return(back: StringName) -> void:
+	if back == &"" or Data.get_game(back) == null:
+		return
+	var here: GameData = Data.get_game(GameState.current_game_id)
+	var there: GameData = Data.get_game(back)
+	var modal := ConfirmationDialog.new()
+	modal.process_mode = Node.PROCESS_MODE_ALWAYS
+	modal.title = "Stay, or head back?"
+	modal.dialog_text = "%s is connected on the map — you can carry on from here, or return to %s." % [
+		here.display_name if here != null else "This game",
+		there.display_name]
+	modal.ok_button_text = "Stay here"
+	modal.cancel_button_text = "Back to %s" % there.display_name
+	modal.confirmed.connect(func():
+		GameLog.add("Carried on from %s." % (here.display_name if here != null else "the detour"),
+			UITheme.ACCENT)
+		modal.queue_free())
+	modal.canceled.connect(func():
+		travel_to_game(back)
+		modal.queue_free())
+	add_child(modal)
+	modal.popup_centered()
+
 
 # Wand of Wishing: obtain any one item — opens a RewardScreen listing the full
 # items2.0 catalog (non-starter) to pick from.
@@ -1712,15 +1890,29 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	# THE ONE THING that has to be legible without opening anything: this is the
 	# game the run ends on. The row is mounted on every card, blank off the Amulet,
 	# so the flagged card's cover stays in line with the rest of the offering.
+	#
+	# The EVENT badge shares this row (docs/event-sheet-authoring.md §12). A dead
+	# end costs two games for one game's reward, so the thing that makes the
+	# detour worth taking has to be visible BEFORE the card is opened — the whole
+	# point of an event is that you route towards it deliberately. The Amulet wins
+	# the row when a card is both, because winning the run outranks a bonus.
+	var event: EventData2 = EventSystem.event_for(choice["slot"])
 	var flag := Label.new()
-	flag.text = "🏆 THE AMULET" if amulet else ""
 	if amulet:
+		flag.text = "🏆 THE AMULET"
 		flag.tooltip_text = "Beat this game's goal and you win the run."
+		flag.add_theme_color_override("font_color", UITheme.GOLD)
+	elif event != null:
+		flag.text = "✦ EVENT"
+		flag.tooltip_text = "%s waits here — beat this game and it fires, on top of the drop." % event.display_name
+		flag.add_theme_color_override("font_color", UITheme.ACCENT)
+	else:
+		flag.text = ""
+		flag.add_theme_color_override("font_color", UITheme.GOLD)
 	flag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	flag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	flag.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
 	flag.add_theme_font_size_override("font_size", BADGE_FONT)
-	flag.add_theme_color_override("font_color", UITheme.GOLD)
 	card.add_child(flag)
 
 	var btn := Button.new()
@@ -1920,6 +2112,15 @@ func _populate_play_panel() -> void:
 		_levelup_check = lu_row["check"]
 		_verify_box.add_child(lu_row["row"])
 
+	# EVENT GOALS and CURSE GOALS (docs/event-sheet-authoring.md §5). Their own
+	# sections, deliberately: the checklist now carries three kinds of objective
+	# and they bite in three different ways. An enemy goal is a DEBT — miss it and
+	# it follows you and hits. An event goal is a BONUS — miss it and it merely
+	# expires. A curse is a BILL, and the only row here you tick to say you did
+	# something WRONG. Rendering all three alike would misrepresent which one
+	# hurts, so the curse rows are purple and sit apart.
+	_add_event_goal_rows()
+
 	# GOAL FIRST, then whose it is. The checklist is scanned for "what did I
 	# actually do", and the goal is the part being answered — the enemy's name is
 	# the label on it. Leading with the name made every row start with a proper
@@ -1931,6 +2132,76 @@ func _populate_play_panel() -> void:
 		_verify_box.add_child(row["row"])
 		_fulfil_checks.append({"check": row["check"], "instance": int(entry["instance"])})
 		_add_bonus_rows(entry)
+
+# The two event-borne sections of the checklist. Both count down in games, and
+# both show how long is left — an objective with a clock on it is a different
+# decision on its last game than on its first, and the player cannot see the
+# clock anywhere else.
+func _add_event_goal_rows() -> void:
+	for i in range(GameState.event_goals.size()):
+		var goal: Dictionary = GameState.event_goals[i]
+		var left: int = int(goal.get("games_left", 0))
+		var text: String = "Event goal — %s   → %s   (%d %s left)" % [
+			goal.get("condition", ""), goal.get("effects_text", ""),
+			left, "game" if left == 1 else "games"]
+		var row := _verify_row(text, UITheme.ACCENT, false)
+		_verify_box.add_child(row["row"])
+		_event_goal_checks.append({"check": row["check"], "index": i})
+
+	for i in range(GameState.curse_goals.size()):
+		var entry: Dictionary = GameState.curse_goals[i]
+		var cd: CurseData2 = Data.get_curse2(StringName(entry.get("curse", &"")))
+		if cd == null:
+			continue
+		var left: int = int(entry.get("games_left", 0))
+		# Phrased as the admission it is. Every other row on this list is a thing
+		# you are pleased to tick; this one is not, and the wording should not
+		# pretend otherwise.
+		var text: String = "%s — %s   (%d %s left)" % [
+			cd.display_name, cd.describe(), left, "game" if left == 1 else "games"]
+		var row := _verify_row(text, UITheme.CURSE, false)
+		_verify_box.add_child(row["row"])
+		_curse_goal_checks.append({"check": row["check"], "index": i})
+
+
+# Pay out whatever the player ticked in those two sections. Claims are resolved
+# HIGHEST INDEX FIRST because claiming an event goal removes it from the array,
+# and a low-index removal would shift every index recorded after it.
+func _resolve_event_goal_rows() -> void:
+	var claimed: Array = []
+	for entry in _event_goal_checks:
+		var check: CheckBox = entry.get("check")
+		if check != null and is_instance_valid(check) and check.button_pressed:
+			claimed.append(int(entry.get("index", -1)))
+	claimed.sort()
+	claimed.reverse()
+	for idx in claimed:
+		var goal: Dictionary = GameState.claim_event_goal(idx)
+		if goal.is_empty():
+			continue
+		var src: EventData2 = Data.get_event2(StringName(goal.get("event", &"")))
+		var line: String = src.goal_met if src != null and src.goal_met != "" else \
+			"Event goal met — %s." % goal.get("effects_text", "")
+		Notifications.notify(line, UITheme.ACCENT)
+		GameLog.add(line, UITheme.ACCENT)
+
+	# A curse fires but does NOT clear — that is what separates it from a goal.
+	# Ticking it twice across two games costs twice; only the timer removes it.
+	var triggered: Array = []
+	for entry in _curse_goal_checks:
+		var check: CheckBox = entry.get("check")
+		if check != null and is_instance_valid(check) and check.button_pressed:
+			triggered.append(int(entry.get("index", -1)))
+	for idx in triggered:
+		var fired: Dictionary = GameState.trigger_curse_goal(idx)
+		if fired.is_empty():
+			continue
+		var cd: CurseData2 = Data.get_curse2(StringName(fired.get("curse", &"")))
+		if cd != null:
+			var line: String = "%s bites — %s." % [cd.display_name, cd.penalty_text]
+			Notifications.notify(line, UITheme.CURSE)
+			GameLog.add(line, UITheme.CURSE)
+
 
 # The OPTIONAL bonus rows an enemy's `bonus` sides hang off it (§13) — "and if you get 3
 # achievements, gain +3 Small Chests". A row of its own rather than part of the
@@ -1962,6 +2233,8 @@ func _reset_checklist_state() -> void:
 	_fulfil_checks.clear()
 	_status_goal_checks.clear()
 	_bonus_checks.clear()
+	_event_goal_checks.clear()
+	_curse_goal_checks.clear()
 	_levelup_check = null
 	_goal_check = null
 

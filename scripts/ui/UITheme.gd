@@ -27,6 +27,12 @@ const TEXT_FAINT := Color(0.46, 0.43, 0.38)       # tertiary / placeholders
 
 const SUCCESS := Color(0.30, 0.78, 0.42)
 const DANGER := Color(0.90, 0.33, 0.28)
+# CURSE purple (docs/event-sheet-authoring.md §5). The checklist carries three
+# kinds of objective and they bite differently — an enemy goal is a debt, an
+# event goal a bonus, a curse a bill you pay for SUCCEEDING at the wrong thing.
+# The one row you are trying not to complete must not read like the ones you are
+# chasing, so it gets a colour of its own rather than borrowing DANGER.
+const CURSE := Color(0.72, 0.45, 0.90)
 
 # Rarity ramp (mirrors RarityStyle / legacy CSS): Common, Uncommon, Rare, Epic,
 # Legendary.

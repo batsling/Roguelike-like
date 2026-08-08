@@ -16,6 +16,8 @@ signal current_game_changed(game_id: StringName)
 # A status on the PLAYER was applied, ticked, or removed (§13). The checklist and
 # the HUD strip rebuild off this; enemy-side statuses ride GameLoop2.loop_changed.
 signal player_statuses_changed
+# Event goals / curse goals gained, ticked, resolved or expired.
+signal event_goals_changed
 
 # === Identity / progression ===
 var character_id: StringName = &""
@@ -40,6 +42,11 @@ var total_games_beaten: int = 0
 # RunDifficulty.gd. The tier steps up every RunDifficulty.GAMES_PER_TIER
 # games played.
 var games_played: int = 0
+# One number that identifies THIS run, drawn at reset_run and saved with it.
+# Anything that has to be stable for a run but different between runs hashes
+# against it — event placement (EventSystem.event_for) is the first such thing,
+# and it has to survive a save/load, not just an offering redraw.
+var run_seed: int = 0
 
 # Combats won this run. Drives the enemy-spawn budget: the first combat of a run
 # (count 0) gets the gentle opening budget; see EnemySpawner. Bumped on victory
@@ -390,6 +397,30 @@ var game_choice_bonus: int = 0
 # is just a `has`.
 var player_statuses: Dictionary = {}
 
+# ---------------------------------------------------------------------------
+# Event goals and curse goals (docs/event-sheet-authoring.md §5)
+#
+# The two kinds of objective an EVENT can leave behind after its modal closes.
+# Both are run-scope, both tick down one per game played, and both live here
+# rather than on GameLoop2's stack because neither is attached to an enemy — an
+# enemy goal is a debt that follows you, these are a bonus and a bill.
+#
+#   event_goals  {event, condition, games_left, effects, effects_text}
+#                Meet it -> pays `effects`, and it is done. Let it run out ->
+#                nothing happens. Removed when met or when games_left hits 0.
+#
+#   curse_goals  {curse, event, games_left}
+#                The INVERSE: meeting the condition costs you the curse's
+#                penalty, and it does NOT go away — it can bite again next game.
+#                Only the timer removes it. Condition, penalty and default timer
+#                come from CurseData2 (data/curses2.0), so the same curse handed
+#                out by two events is one authored thing.
+# ---------------------------------------------------------------------------
+var event_goals: Array = []
+var curse_goals: Array = []
+# event id -> times fired this run, so an event's `run_limit` can be honoured.
+var events_fired: Dictionary = {}
+
 # === Curses / status ===
 var active_curses: Array = []            # Array[Dictionary] for now
 var pending_combat_statuses: Array = []  # carryover from events
@@ -723,6 +754,7 @@ func reset_run() -> void:
 	beaten_games.clear()
 	total_games_beaten = 0
 	games_played = 0
+	run_seed = randi()
 	total_combats_completed = 0
 	player_level = 1
 	last_game_perfected = false
@@ -792,6 +824,9 @@ func reset_run() -> void:
 	stat_multiplier.clear()
 	temp_status_stacks.clear()
 	player_statuses.clear()
+	event_goals.clear()
+	curse_goals.clear()
+	events_fired.clear()
 	active_curses.clear()
 	pending_chests = 0
 	pending_chest_choices.clear()
@@ -1397,6 +1432,112 @@ func status_clauses() -> Array:
 	return out
 
 # Save blob for the player's statuses: plain String -> int, JSON-safe.
+# --- event goals / curse goals: the run-scope API ---------------------------
+
+# Take on an event goal. `games` is the window in games played; 0 or less reads
+# as one game, since a goal with no window is a goal you can never meet.
+func add_event_goal(event_id: StringName, condition: String, games: int,
+		effects: Array, effects_text: String) -> void:
+	event_goals.append({
+		"event": event_id,
+		"condition": condition,
+		"games_left": maxi(1, games),
+		"effects": effects.duplicate(true),
+		"effects_text": effects_text,
+	})
+	event_goals_changed.emit()
+
+# Take on a curse. `games` of 0 means "use the curse's own Timer", so re-tuning
+# the curse re-tunes every event that hands it out. An unknown id is refused
+# rather than stored — a curse the catalog can't describe is a blank purple row.
+func add_curse_goal(curse_id: StringName, event_id: StringName = &"", games: int = 0) -> bool:
+	var cd: CurseData2 = Data.get_curse2(curse_id)
+	if cd == null:
+		push_warning("GameState.add_curse_goal: unknown curse '%s'" % curse_id)
+		return false
+	curse_goals.append({
+		"curse": curse_id,
+		"event": event_id,
+		"games_left": maxi(1, games if games > 0 else cd.timer),
+	})
+	event_goals_changed.emit()
+	return true
+
+func has_curse_goal(curse_id: StringName) -> bool:
+	for c in curse_goals:
+		if StringName(c.get("curse", &"")) == curse_id:
+			return true
+	return false
+
+# The player ticked an event goal on the checklist: pay it and retire it.
+# Returns the goal that was claimed, or {} when the index is stale.
+func claim_event_goal(index: int) -> Dictionary:
+	if index < 0 or index >= event_goals.size():
+		return {}
+	var goal: Dictionary = event_goals[index]
+	event_goals.remove_at(index)
+	for eff in goal.get("effects", []):
+		EffectSystem.apply(eff, {})
+	event_goals_changed.emit()
+	return goal
+
+# The player admitted doing the cursed thing: pay the penalty. The curse STAYS —
+# that is what separates it from an event goal. Only the timer clears it.
+func trigger_curse_goal(index: int) -> Dictionary:
+	if index < 0 or index >= curse_goals.size():
+		return {}
+	var entry: Dictionary = curse_goals[index]
+	var cd: CurseData2 = Data.get_curse2(StringName(entry.get("curse", &"")))
+	if cd == null:
+		return {}
+	for eff in cd.penalty:
+		EffectSystem.apply(eff, {})
+	event_goals_changed.emit()
+	return entry
+
+# One game has been played. Ticks both lists and drops whatever ran out.
+# Returns the EXPIRED event goals so the caller can print their "missed" line —
+# expired curses need no announcement, since nothing happened.
+func tick_event_goals() -> Array:
+	var expired: Array = []
+	var kept: Array = []
+	for goal in event_goals:
+		goal["games_left"] = int(goal.get("games_left", 0)) - 1
+		if int(goal["games_left"]) <= 0:
+			expired.append(goal)
+		else:
+			kept.append(goal)
+	event_goals = kept
+	var kept_curses: Array = []
+	for c in curse_goals:
+		c["games_left"] = int(c.get("games_left", 0)) - 1
+		if int(c["games_left"]) > 0:
+			kept_curses.append(c)
+	curse_goals = kept_curses
+	event_goals_changed.emit()
+	return expired
+
+func serialize_event_goals() -> Dictionary:
+	return {
+		"goals": event_goals.duplicate(true),
+		"curses": curse_goals.duplicate(true),
+		"fired": events_fired.duplicate(true),
+	}
+
+func restore_event_goals(data: Dictionary) -> void:
+	event_goals.clear()
+	curse_goals.clear()
+	events_fired.clear()
+	for g in data.get("goals", []):
+		if g is Dictionary:
+			event_goals.append(g.duplicate(true))
+	for c in data.get("curses", []):
+		if c is Dictionary:
+			curse_goals.append(c.duplicate(true))
+	for k in data.get("fired", {}).keys():
+		events_fired[StringName(k)] = int(data["fired"][k])
+	event_goals_changed.emit()
+
 func serialize_statuses() -> Dictionary:
 	var out: Dictionary = {}
 	for id in player_statuses.keys():

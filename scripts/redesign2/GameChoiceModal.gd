@@ -101,6 +101,14 @@ func _build() -> void:
 
 	root.add_child(_build_header(game, accent))
 
+	# The event waiting at this SPOT, if any (docs/event-sheet-authoring.md §12).
+	# The card's badge says one is here; this is where it says WHICH, because the
+	# popup is where the routing decision actually gets made (§4.2) and "is the
+	# detour worth two games" is exactly the question an event answers.
+	var event_row: Control = _build_event_row()
+	if event_row != null:
+		root.add_child(event_row)
+
 	# The body, in two columns: the GAME on the left (what you'd be playing and
 	# what it costs), the ROUTE on the right (where it leaves you). They are the
 	# two halves of the decision and they belong side by side.
@@ -115,6 +123,19 @@ func _build() -> void:
 	# The ladder is built at zoom 1 and only measured once Godot has laid the
 	# panel out; until then the scroll area reports nothing to fit it against.
 	_settle.call_deferred()
+
+# Null when nothing is waiting, so an ordinary card stays clean.
+func _build_event_row() -> Control:
+	var ev: EventData2 = EventSystem.event_for(StringName(_choice.get("slot", &"")))
+	if ev == null:
+		return null
+	var lbl := Label.new()
+	lbl.text = "✦  %s waits here — beat this game and it fires, on top of the drop." % ev.display_name
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_color_override("font_color", UITheme.ACCENT)
+	return lbl
+
 
 func _panel_size() -> Vector2:
 	var view: Vector2 = get_viewport_rect().size

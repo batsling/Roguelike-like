@@ -22,6 +22,8 @@ var _items2: Dictionary = {}            # StringName -> ItemData (2.0)
 var _goal_enemies: Dictionary = {}      # StringName -> GoalEnemyData (normal)
 var _bosses: Dictionary = {}            # StringName -> GoalEnemyData (boss=true)
 var _statuses: Dictionary = {}          # StringName -> StatusData (§13)
+var _events2: Dictionary = {}           # StringName -> EventData2 (docs/event-sheet-authoring.md)
+var _curses2: Dictionary = {}           # StringName -> CurseData2 (the checklist kind, not data/curses)
 
 func _ready() -> void:
 	_load_dir("res://data/items/", _items)
@@ -37,13 +39,15 @@ func _ready() -> void:
 	_load_dir("res://data/bosses2.0/", _bosses)
 	_load_dir("res://data/scrolls2.0/", _scrolls)
 	_load_dir("res://data/statuses2.0/", _statuses)
+	_load_dir("res://data/events2.0/", _events2)
+	_load_dir("res://data/curses2.0/", _curses2)
 	print("[Data] Loaded %d items, %d events, %d games, %d characters, %d curses, %d encounters" % [
 		_items.size(), _events.size(), _games.size(), _characters.size(),
 		_curses.size(), _encounters.size()
 	])
-	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d statuses" % [
+	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d statuses, %d events, %d curses" % [
 		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
-		_scrolls.size(), _statuses.size()
+		_scrolls.size(), _statuses.size(), _events2.size(), _curses2.size()
 	])
 
 func _load_dir(path: String, target: Dictionary) -> void:
@@ -203,6 +207,21 @@ func all_bosses() -> Array:
 # Statuses (§13). Looked up constantly — every goal line asks whether anything is
 # hanging off it — so an unknown id returns null rather than warning, and callers
 # skip it.
+# --- Events & curses (2.0) -------------------------------------------------
+# `get_event`/`all_events` above serve the COMBAT-ERA data/events set, which the
+# games-first build does not use; these are the ones the run reads (§12).
+func get_event2(id: StringName) -> EventData2:
+	return _events2.get(id)
+
+func all_events2() -> Array:
+	return _events2.values()
+
+func get_curse2(id: StringName) -> CurseData2:
+	return _curses2.get(id)
+
+func all_curses2() -> Array:
+	return _curses2.values()
+
 func get_status(id: StringName) -> StatusData:
 	return _statuses.get(id)
 

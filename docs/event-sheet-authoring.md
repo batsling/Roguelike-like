@@ -1,9 +1,17 @@
 # Event sheet-authoring (`events2.0`)
 
-Status: **the sheet format is settled and four events are authored. The
-generator and the runtime are not built yet** — see §12 for what's left. Companion
-to `games-first-redesign.md` and `locations-and-events-design.md` §6, which
-argued events should wait for somewhere to live. §1 is that somewhere.
+Status: **built and running.** Four events authored, generators and runtime in
+place, 22 tests in `test/test_events2.gd`. §12 is how it runs and the little
+that's left. Companion to `games-first-redesign.md` and
+`locations-and-events-design.md` §6, which argued events should wait for
+somewhere to live — §1 is that somewhere.
+
+```bash
+python3 tools/_curses2_sheet_setup.py    # (re)lay the curses2.0 sheet
+python3 tools/_events2_sheet_setup.py    # (re)lay the events2.0 sheet
+python3 tools/generate_curse2_tres.py    # sheet -> data/curses2.0/
+python3 tools/generate_event2_tres.py    # sheet -> data/events2.0/
+```
 
 ---
 
@@ -583,56 +591,67 @@ not.
 
 ---
 
-## 12. What is still missing
+## 12. How it runs
 
-The sheet is authorable now. Nothing reads it yet.
+Built and under test (`test/test_events2.gd`, 22 tests). The pieces, and the one
+thing each of them is really solving:
 
-1. **`CurseData2` + `tools/generate_curse2_tres.py`** → `data/curses2.0/`. The
-   smaller job and the one the events now depend on, since `add_curse` resolves
-   an id against it. Six columns, no nesting; closest model is
-   `generate_scroll2_tres.py`.
-2. **`EventData2` + `tools/generate_event2_tres.py`** → `data/events2.0/`.
-   Closest model is `generate_status_tres.py`, which already parses the reward
-   tokens and the `{expr}` holes this sheet reuses — the new work is walking the
-   numbered choice groups and the `Repeat` / `needs` semantics, not the DSL. Note
-   the *existing*
-   `generate_event_tres.py` reads the legacy `events` sheet and its combat-era
-   d20 outcomes; it is not a starting point, it is the thing being replaced.
-3. **`Requirement` evaluation.** The state gate has to be checked *before* the
-   badge is drawn, not when the modal opens — an event advertised on a card and
-   then not delivered is worse than one that never showed. Which means the gate
-   is read against the run state at offering time, and an event whose
-   requirement lapses between the card and the arrival has to resolve one way or
-   the other rather than silently vanishing.
-4. **Placement.** Assign an event to a node deterministically — seeded off the
-   node id and the run seed, not rolled when the card is drawn — or the badge in
-   step 5 will lie the moment the offering is redrawn. `Overworld2` already
-   solves exactly this problem for the enemy behind a card (`_slot_enemies`
-   keyed by `_offer_seed()`); the event assignment should follow it.
-5. **The badge above the game choice.** There is already a badge row mounted
-   above every cover for this: the `flag` Label at the top of
-   `_make_choice_card`, which renders `🏆 THE AMULET` on the Amulet's card and an
-   empty string of the same height everywhere else, so the covers stay in line.
-   The event marker belongs on that row — same line, same discipline of
-   reserving the space on every card.
-6. **The two new checklist sections.** *Event goals* — condition, countdown
-   (`2 games left`), reward, and the `Goal Met` / `Goal Missed` line when they
-   resolve. And *curse goals* — permanent, no countdown, **purple**, listing what
-   it costs you rather than what it pays. Kept apart from the enemy goals and
-   from each other for the reason in §5: the three bite differently and a
-   checklist that flattens them is lying. `Overworld2._verify_box` is where the
-   checklist is built; `UITheme` has no purple yet (the nearest is the palette
-   entry at `Color(0.61, 0.35, 0.71)`) and will want a named constant so the
-   modal, the checklist row and the HUD chip all agree.
-7. **The modal.** One modal for events *and* `encounters`
-   (`locations-and-events-design.md` §6) — not two. `EventModal.gd` is combat-era
-   (d20 rolls against `charisma` / `dexterity` / `intelligence`, stats the
-   redesign deleted) and is a rewrite, not an edit.
-8. **`play_game`.** The one token that moves the player. It needs to pick a
-   tagged game, run it as an ordinary game (enemy and all) without it counting as
-   a route step, pay the `->` payload on the win, and then offer stay-or-return —
-   stay only when the game is in the run graph. `Overworld2.travel_to_game` and
-   `teleport_to_type` are the two nearest existing verbs.
-9. **`images2.0/events/` and `images2.0/curses/`.** Neither folder exists yet;
-   `Image` names point into them (`AbyssalBaths`, `BattlewornDummy`, `UnrestSite`,
-   `PunchOff`; `PoorSleep`, `Injury`).
+| Piece | Where | The problem it solves |
+|---|---|---|
+| `CurseData2`, `EventData2` | `scripts/resources/` | the schemas the sheet generates into |
+| `generate_curse2_tres.py`, `generate_event2_tres.py` | `tools/` | sheet → `data/curses2.0/`, `data/events2.0/` |
+| `EventSystem` | `scripts/autoload/` | placement, gates, resolving a choice |
+| `event_goals` / `curse_goals` | `GameState` | run state, saved and reset with the run |
+| `EventModal2` | `scripts/redesign2/` | the screen an event happens on |
+| the badge, the checklist rows | `Overworld2` | telling the player before and after |
+
+**The reward-token DSL has one implementation.** `generate_status_tres.py` owns
+it; the two new generators import it rather than re-parsing `gain_chest small 1`
+a second and third way. Extending it for events (`lose_*`, `heal_full`,
+`gain_loot`, `apply_status`, `nothing`) left every existing status byte-identical.
+
+**Placement is hashed, not rolled.** `EventSystem.event_for(node)` hashes the
+node id against `GameState.run_seed` (new, saved with the run). The offering is
+redrawn constantly — a bash refilling a slot, a scramble, an arrival — and a
+rolled event would change under the player between seeing the badge and taking
+the card. `_slot_enemies` keyed off `_offer_seed()` solves the same problem for
+the enemy behind a card; this follows it. The badge cannot lie.
+
+**The badge shares the Amulet's row.** `_make_choice_card` already mounts a
+fixed-height label above every cover, blank off the Amulet, so the covers stay in
+line. `✦ EVENT` goes there in accent orange, and the Amulet wins the row when a
+card is both — winning the run outranks a bonus. `GameChoiceModal` names the
+event, since the popup is where the routing decision is actually made (§4.2).
+
+**Only a beaten game earns its event.** Escaping forfeits it and leaves it
+standing for a later visit, which is what keeps it a reward rather than a toll
+for arriving. The modal is queued and opened from `_end_resolve`, after the board
+has finished playing the resolve back, so it never lands on a moving battlefield.
+
+**Three kinds of checklist row, three colours.** Enemy goals green, event goals
+accent, curses `UITheme.CURSE` purple. Event goals and curses both show their
+countdown, because an objective with a clock on it is a different decision on its
+last game than on its first and the player can see that clock nowhere else. A
+claimed event goal retires; a triggered curse does *not* — only its timer clears
+it, which is the whole difference between a bonus and a bill.
+
+**`play_game` is the only token that moves you.** It picks a tagged game, runs it
+as an ordinary game (enemy and all) without counting as a route step, pays the
+`->` payload when it is beaten, then offers stay-or-return — stay only when the
+game is actually on the run graph, since standing on a node with no edges is a
+dead run. If no game carries the tag it pays out anyway rather than swallowing a
+choice the player already made in good faith.
+
+### What is still left
+
+1. **Art.** `images2.0/events/` and `images2.0/curses/` do not exist yet. The
+   generators print a warning naming the missing file and the modal simply omits
+   the picture, so this is cosmetic, not blocking: `AbyssalBaths`,
+   `BattlewornDummy`, `UnrestSite`, `PunchOff`; `PoorSleep`, `Injury`.
+2. **The `encounters` merge.** `locations-and-events-design.md` §6 argues for one
+   modal serving events *and* `encounters`. `EventModal2` is the modal that
+   should absorb them; the combat-era `scripts/events/EventModal.gd` (d20 rolls
+   against stats the redesign deleted) is now dead weight and can go with them.
+3. **More events.** Four events against ~330 leaves means most dead ends are
+   still plain. Nothing structural stands in the way — the last three events
+   needed one new column between them, and the two before that needed none.
