@@ -3,11 +3,11 @@ extends GutTest
 # The window mode (Settings.DisplayMode) — the preference, its persistence, and
 # the mapping onto Godot's window modes.
 #
-# The default is BORDERLESS fullscreen and that is a deliberate choice, not a
+# The default is an ordinary WINDOW and that is a deliberate choice, not a
 # default that happened: this game's loop is leaving it to play a real game and
-# coming back, so the player alt-tabs out several times a run, and exclusive
-# fullscreen makes each of those a mode switch. A test guards the default so it
-# can't be flipped without someone meaning to.
+# coming back, so the player alt-tabs out several times a run and wants the OS's
+# own taskbar reachable while they do it. A test guards the default so it can't
+# be flipped without someone meaning to.
 
 var _saved: int
 
@@ -17,21 +17,32 @@ func before_each() -> void:
 func after_each() -> void:
 	Settings.display_mode = _saved
 
-func test_the_default_is_borderless_fullscreen() -> void:
-	assert_eq(Settings.DisplayMode.WINDOWED_FULLSCREEN, 0,
-		"borderless is the first entry, so it is what an unset config falls back to")
+func test_the_default_is_windowed() -> void:
 	var cfg := ConfigFile.new()
-	assert_eq(clampi(int(cfg.get_value("display", "mode",
-			Settings.DisplayMode.WINDOWED_FULLSCREEN)), 0, Settings.DisplayMode.EXCLUSIVE),
-		Settings.DisplayMode.WINDOWED_FULLSCREEN,
-		"a config with no display section opens borderless")
+	assert_eq(clampi(int(cfg.get_value("display", Settings.DISPLAY_KEY,
+			Settings.DisplayMode.WINDOWED)), 0, Settings.DisplayMode.EXCLUSIVE),
+		Settings.DisplayMode.WINDOWED,
+		"a config with no display section opens windowed")
 
-func test_the_project_launches_into_borderless_fullscreen() -> void:
-	# 3 is Godot's FULLSCREEN (a borderless window the size of the screen), NOT 4
-	# (EXCLUSIVE_FULLSCREEN). The first frame is fullscreen before Settings has
-	# even loaded, so the project setting has to agree with the default above.
-	assert_eq(int(ProjectSettings.get_setting("display/window/size/mode", 0)), 3,
-		"project.godot opens the window borderless-fullscreen")
+# The DEFAULT moved after saves already existed, so the key moved with it: a
+# settings.cfg written under the old default holds an explicit borderless 0 for a
+# player who never chose anything. Reading a new key is what tells "never chose"
+# apart from "chose the old default" — exactly once.
+func test_a_config_from_before_the_change_still_opens_windowed() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("display", "mode", Settings.DisplayMode.WINDOWED_FULLSCREEN)
+	assert_ne(Settings.DISPLAY_KEY, "mode", "the key is versioned away from the old one")
+	assert_eq(clampi(int(cfg.get_value("display", Settings.DISPLAY_KEY,
+			Settings.DisplayMode.WINDOWED)), 0, Settings.DisplayMode.EXCLUSIVE),
+		Settings.DisplayMode.WINDOWED,
+		"the old key is not read, so the new default wins once")
+
+func test_the_project_launches_into_a_window() -> void:
+	# 0 is Godot's WINDOWED. The first frame is drawn before Settings has even
+	# loaded, so the project setting has to agree with the default above or the
+	# game flashes the wrong mode on the way in.
+	assert_eq(int(ProjectSettings.get_setting("display/window/size/mode", 0)), 0,
+		"project.godot opens an ordinary window")
 
 func test_each_mode_maps_to_the_right_window_mode() -> void:
 	assert_eq(Settings.window_mode_for(Settings.DisplayMode.WINDOWED_FULLSCREEN),
@@ -47,11 +58,12 @@ func test_every_mode_has_a_name_for_the_menu() -> void:
 		assert_ne(Settings.display_mode_name(mode), "", "mode %d is named" % mode)
 
 func test_the_preference_round_trips_through_the_config() -> void:
-	Settings.set_display_mode(Settings.DisplayMode.WINDOWED)
-	assert_eq(Settings.display_mode, Settings.DisplayMode.WINDOWED, "the choice took")
+	Settings.set_display_mode(Settings.DisplayMode.WINDOWED_FULLSCREEN)
+	assert_eq(Settings.display_mode, Settings.DisplayMode.WINDOWED_FULLSCREEN, "the choice took")
 	var cfg := ConfigFile.new()
 	assert_eq(cfg.load(Settings.CONFIG_PATH), OK, "settings were written")
-	assert_eq(int(cfg.get_value("display", "mode", -1)), Settings.DisplayMode.WINDOWED,
+	assert_eq(int(cfg.get_value("display", Settings.DISPLAY_KEY, -1)),
+		Settings.DisplayMode.WINDOWED_FULLSCREEN,
 		"and the window mode is in them, so it survives a restart")
 	Settings.set_display_mode(_saved)
 
@@ -70,6 +82,71 @@ func test_the_canvas_is_stretched_not_grown() -> void:
 		"canvas_items", "the canvas is scaled to the window")
 	assert_eq(int(ProjectSettings.get_setting("display/window/size/viewport_width", 0)), 1280)
 	assert_eq(int(ProjectSettings.get_setting("display/window/size/viewport_height", 0)), 720)
+
+# The WINDOW is a different number from the CANVAS, and the override is what
+# separates them: the canvas stays the 1280x720 box the layout is built to fit,
+# and the window it is scaled into opens at 2560x1440. Pinned together because
+# project.godot's override is what the FIRST frame uses and Settings' constant is
+# what every later switch back to windowed uses — if they drift, the window
+# changes size on its own the moment you press F11 twice.
+func test_the_window_opens_bigger_than_the_canvas_it_draws() -> void:
+	assert_eq(int(ProjectSettings.get_setting("display/window/size/window_width_override", 0)),
+		Settings.WINDOWED_SIZE.x, "the boot window width is Settings.WINDOWED_SIZE.x")
+	assert_eq(int(ProjectSettings.get_setting("display/window/size/window_height_override", 0)),
+		Settings.WINDOWED_SIZE.y, "and the height matches too")
+	assert_gt(Settings.WINDOWED_SIZE.x,
+		int(ProjectSettings.get_setting("display/window/size/viewport_width", 0)),
+		"the window is bigger than the canvas — that is what the override is for")
+	assert_gte(Settings.WINDOWED_SIZE.x, Settings.MIN_WINDOWED_SIZE.x,
+		"and never asks for less than the floor the clamp holds")
+	assert_gte(Settings.WINDOWED_SIZE.y, Settings.MIN_WINDOWED_SIZE.y)
+
+# --- where the window actually lands (Settings.windowed_fit) ----------------
+#
+# The point of being windowed is that the taskbar stays reachable, so the size
+# asked for is a REQUEST clamped to what the desktop leaves free — minus the
+# window's own title bar, which sits outside the size being set. None of this can
+# be exercised on a bare test runner (no window manager, so no decorations and no
+# taskbar), which is why the arithmetic is a pure function.
+
+# A 1440p desktop with a 48px taskbar and a 32px title bar.
+const TASKBAR := 48
+const TITLEBAR := Vector2i(0, 32)
+
+func test_the_window_never_covers_the_taskbar() -> void:
+	var usable := Rect2i(0, 0, 2560, 1440 - TASKBAR)
+	var box: Rect2i = Settings.windowed_fit(usable, TITLEBAR)
+	assert_lte(box.position.y + box.size.y + TITLEBAR.y, usable.size.y,
+		"the whole window, title bar included, sits above the taskbar")
+	assert_gte(box.position.y, 0, "and its title bar is not off the top of the screen")
+	assert_eq(box.size.x, 2560, "it still takes the full width it asked for")
+
+func test_the_full_size_is_taken_when_the_desktop_has_room() -> void:
+	# Nothing reserved and no decorations: the request is granted exactly.
+	var box: Rect2i = Settings.windowed_fit(Rect2i(0, 0, 3840, 2160), Vector2i.ZERO)
+	assert_eq(box.size, Settings.WINDOWED_SIZE, "2560x1440 asked for, 2560x1440 given")
+	assert_eq(box.position, Vector2i((3840 - 2560) / 2, (2160 - 1440) / 2), "centred")
+
+func test_a_smaller_screen_gets_as_much_as_fits() -> void:
+	var usable := Rect2i(0, 0, 1920, 1080 - TASKBAR)
+	var box: Rect2i = Settings.windowed_fit(usable, TITLEBAR)
+	assert_lt(box.size.x, Settings.WINDOWED_SIZE.x, "the request is cut down to the screen")
+	assert_eq(box.size.x, 1920, "to exactly the width available")
+	assert_eq(box.size.y, 1080 - TASKBAR - TITLEBAR.y, "and the height left over")
+
+func test_the_floor_wins_over_a_desktop_too_small_for_it() -> void:
+	# A page shown whole under a taskbar beats a page cropped to fit above one.
+	var box: Rect2i = Settings.windowed_fit(Rect2i(0, 0, 1024, 600), TITLEBAR)
+	assert_eq(box.size, Settings.MIN_WINDOWED_SIZE,
+		"never smaller than the canvas at 1:1, whatever the screen says")
+
+func test_a_second_monitor_gets_the_window_on_itself() -> void:
+	# screen_get_usable_rect is in DESKTOP coordinates, so a monitor to the right
+	# of the primary has a non-zero origin and the window must be offset onto it.
+	var usable := Rect2i(2560, 0, 2560, 1440 - TASKBAR)
+	var box: Rect2i = Settings.windowed_fit(usable, TITLEBAR)
+	assert_gte(box.position.x, 2560, "the window lands on the monitor it belongs to")
+	assert_lte(box.position.x + box.size.x, 2560 + 2560, "and not off its right edge")
 
 func test_a_non_16_9_screen_is_used_rather_than_letterboxed() -> void:
 	# "expand" hands a 16:10 or ultrawide monitor its extra pixels as real canvas

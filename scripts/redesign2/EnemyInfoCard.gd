@@ -200,7 +200,12 @@ func setup(entry: Dictionary, col: int, is_current: bool) -> void:
 		var pb := Button.new()
 		pb.text = "⇤  Push back a column (%d)" % GameState.push
 		pb.disabled = not can_push
-		pb.tooltip_text = "The column behind is full — no room to shove it back." if (GameState.push > 0 and not can_push) else "Buys the games it takes to close back in."
+		# The card's button is the BACK push only — the shorthand for the common
+		# case. The other three directions are aimed on the board itself, where the
+		# arrows can sit against the body they'd move (BattlefieldView's push mode).
+		pb.tooltip_text = ("The column behind is full — no room to shove it back."
+			if (GameState.push > 0 and not can_push)
+			else "Buys the games it takes to close back in.\nTo shove it forward or across a lane instead, use ⇤ Push on the board's toolbar.")
 		pb.pressed.connect(func():
 			push_requested.emit(instance)
 			close())

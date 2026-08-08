@@ -159,7 +159,7 @@ mean.
 | **Transmute** | **Turn a game into a random game of the *same game type* that is *not connected to the map*.** (New verb — this is the "replace with a fresh game" role bash used to have, now type-constrained and pulling from off-graph games.) **Traditional is the exception**: it transmutes into a random game of any *other* type, drawn flat from the non-Traditional catalog. A Traditional roguelike is the run's long haul — it grants 5 tries rather than 3 — so swapping one for another is no relief, and the verb has to be able to get you out of the type. |
 | **Dash** | **As in the current project: a total select, not a skip** — pick *any* connected game and move to it (bypassing the normal limited offering). Costs 1 dash charge. See `Overworld._try_dash`. |
 | **Scramble** | **Reroll the offering** — re-draw the games filling the (base three) choice slots, each with a freshly-rolled enemy/goal. At a node with no spare neighbours the slots hold and only the enemies change. Granted by the **D6** item. |
-| **Push** | **Shove a following enemy back one space — delay its next attack by one game (§7.2).** Spends 1 push charge; rides the same per-enemy delay counter as Stun, but is player-triggered. The **Manager**'s signature verb (gained on level-up: "Collect 3+ different types of currency" → +1 Push). |
+| **Push** | **Shove a following enemy one cell, in any cardinal direction.** Spends 1 push charge. *Back* is the classic use — delay its next attack by a game (§7.2), riding the same per-enemy delay counter as Stun but player-triggered. *Up / down* is a **lane change**, the one move enemies can never make for themselves, so it is how a blocked lane is opened or a clear one is plugged. *Forward* is legal too, and the player's own business. The verb is armed first and aimed second: press **⇤ Push** on the board's toolbar, click the enemy, then pick one of the arrows that appear on every side it could actually move to. Nothing is spent until an arrow is pressed. The **Manager**'s signature verb (gained on level-up: "Collect 3+ different types of currency" → +1 Push). |
 
 ### Consumables
 | Item | Effect |
@@ -213,9 +213,10 @@ existing `images/scrolls/Unidentified.png`. Scrolls get the identical treatment:
 *(The old **Fog** scroll and **Keys** are both **deferred — author later**; they
 stay in the design but no `2.0` content exists for them yet.)*
 
-The game opens **borderless fullscreen** and the layout is built for it — see
-README's "The window" for why borderless rather than exclusive, and for the fact
-that fullscreen scales a fixed 1280×720 canvas rather than enlarging it.
+The game opens in an ordinary **window** (2560×1440, clamped to whatever the
+screen leaves free) — see README's "The window" for why a window rather than
+either fullscreen, and for the fact that the **canvas** stays a fixed 1280×720
+that is *scaled* into that window rather than enlarged by it.
 
 Scrolls are carried, so they are **tokens on the pack strip** above the board,
 beside the relics, each with a small Read control above its tile — the same shape
@@ -403,8 +404,9 @@ would strand off the edge is put back in the queue rather than left hanging.
 - **Blocking** — an enemy occupies every solid cell of its footprint, and moves
   only when its **whole** footprint clears. A big body is a wall: it plugs the
   lanes behind it, and the queue stalls until it moves or dies. **Push** needs
-  the entire footprint to fit one column back, so a jammed board can't be
-  untangled by shoving.
+  the entire footprint to fit the cell it is being shoved into — in whichever of
+  the four directions — so a jammed board can't be untangled by shoving into an
+  occupied space.
 
 **`Size` notation** — `RxC`, **rows first**: `1x2` is two cells wide, `2x1` two
 cells tall. A trailing shape + rotation carves a non-rectangle out of that box:

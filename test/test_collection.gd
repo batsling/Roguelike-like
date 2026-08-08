@@ -152,3 +152,91 @@ func test_scrolls_tab_renders() -> void:
 	var col := _new_collection()
 	col._set_tab(Collection.Tab.SCROLLS)
 	assert_eq(col._grid.get_child_count(), Data.all_scrolls().size(), "every 2.0 scroll shows")
+
+# --- Events tab ------------------------------------------------------------
+#
+# Events were the one 2.0 set the compendium didn't carry, and they are the set
+# it helps most: an event fires once, mid-run, inside a modal you answer under
+# pressure, and the options you didn't take are then gone for good.
+
+func test_events_tab_shows_every_2_0_event() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.EVENTS)
+	assert_eq(col._grid.get_child_count(), Data.all_events2().size(),
+		"every event in data/events2.0 has a cell")
+	assert_gt(Data.all_events2().size(), 0, "and there are some to show")
+
+func test_the_events_tab_opens_on_a_filled_detail_panel() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.EVENTS)
+	assert_not_null(col._detail_box, "the events tab has a detail panel")
+	assert_gt(col._detail_box.get_child_count(), 0,
+		"and it is filled in rather than waiting for a click")
+
+# The detail panel is the whole point of the tab: it has to lay out EVERY event's
+# choices, gates, goals and curses without tripping over an optional field.
+func test_every_event_renders_its_choices_in_full() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.EVENTS)
+	for ev in Data.all_events2():
+		col._show_event_detail(ev)
+		assert_gt(col._detail_box.get_child_count(), 0,
+			"%s renders a detail panel" % ev.display_name)
+		var text: String = _text_of(col._detail_box)
+		assert_true(text.contains(ev.display_name), "which names %s" % ev.display_name)
+		for c in ev.choices:
+			var label: String = String(c.get("text", ""))
+			if label != "":
+				assert_true(text.contains(label),
+					"and lists %s's option '%s'" % [ev.display_name, label])
+
+# Searching an event by a word from one of its OPTIONS, not its title — the way
+# anyone actually remembers one.
+func test_events_search_reaches_the_choice_text() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.EVENTS)
+	var total: int = Data.all_events2().size()
+	col._search["events"] = "zzzznotathing"
+	col._populate_events()
+	assert_eq(col._grid.get_child_count(), 1,
+		"a search that matches nothing shows the empty note only")
+	col._search["events"] = ""
+	col._populate_events()
+	assert_eq(col._grid.get_child_count(), total, "and clearing it brings them all back")
+
+func _text_of(node: Node) -> String:
+	var out: String = ""
+	if node is Label:
+		out += (node as Label).text + "\n"
+	elif node is Button:
+		out += (node as Button).text + "\n"
+	for c in node.get_children():
+		out += _text_of(c)
+	return out
+
+# --- grid thumbnails -------------------------------------------------------
+#
+# The compendium's job is to let you SCAN a set — 833 games — and the grid was
+# fitting three covers across. Halving the art is what buys the extra columns, so
+# the sizes are pinned: a cell is its art plus padding, never a fixed number that
+# can drift away from the art it is sized for.
+
+func test_the_grid_art_is_half_the_size_of_the_detail_art() -> void:
+	assert_lt(Collection.GRID_COVER_W, Collection.DETAIL_ITEM_SIZE,
+		"the grid thumbnail is smaller than the one you open to look at")
+	assert_eq(Collection.GRID_ITEM_SIZE * 2, 100, "items: half of the old 100")
+	assert_eq(Collection.GRID_PORTRAIT_SIZE * 2, 120, "characters: half of the old 120")
+	assert_eq(Collection.GRID_ENEMY_SIZE * 2, 116, "enemies: half of the old 116")
+	assert_eq(Collection.GRID_COVER_W * 2, 190, "games: half of the old 190")
+
+func test_a_game_cell_is_no_wider_than_its_cover_needs() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.GAMES)
+	assert_gt(col._grid.get_child_count(), 0, "there are games to measure")
+	var cell: Control = col._grid.get_child(0)
+	assert_lte(cell.custom_minimum_size.x,
+		float(Collection.GRID_COVER_W + Collection.CELL_PAD),
+		"a cell is its cover plus padding — %s" % cell.custom_minimum_size)
+	# The old cell was 212 wide; anything near that is the halving having silently
+	# come undone.
+	assert_lt(cell.custom_minimum_size.x, 150.0, "and well under the 212 it used to be")

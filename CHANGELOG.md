@@ -11,6 +11,191 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Reaching the Amulet is the win, and three fixes around it.**
+
+  **Beating the Amulet game wins the run — the goal box is a bonus.** It used to
+  require BOTH: the Amulet game reported AND the goal-enemy standing there
+  satisfied. So a player who walked the whole road, got to the Amulet game and
+  beat it, but hadn't happened to "destroy an enemy spawner" on the way through,
+  watched the run carry on as though nothing had happened. The entire run is a
+  search for one game; arriving and playing it is the answer, and the enemy's
+  goal is a bonus on top rather than the lock on the door. The report step says
+  so now — the row reads "🏆 Amulet goal (bonus)" with a line under it — and the
+  win is recorded against that game either way.
+
+  **The health badge is no longer buried by the damage badge.** ❤ and ⚔ were
+  anchored to opposite bottom corners of a body, so each grew from its own corner
+  inwards — and the moment an enemy got a second swing, "⚔3×2" grew left and
+  printed itself straight over the ❤. It bit exactly when it mattered most:
+  multi-swing means the Amulet is close, which means the board is at its widest
+  and its cells at their smallest (46px at 7×7), so the damage badge was at its
+  longest over the least room. They share one row now — health left, damage
+  right, a spacer between — which is identical to the old corners whenever both
+  fit and simply cannot overlap when they don't. The badge also lost its space
+  ("⚔3×2", not "⚔3 x2"), which is a whole character of width back.
+
+  **A pickup repaints everything, not just the pack.** An item's payload lands on
+  the run the instant it is taken — passive stat bonuses folded in, item_acquired
+  effects already fired, a shield already spendable, a Mine-r Construction having
+  already grown the board — but the handler relisted the pack and repainted the
+  chip row only. The shield pips, the battlefield summary and the board itself
+  went on quoting pre-pickup numbers until the next report refreshed them. The
+  board is the one thing that waits: a repaint frees the bodies a resolve
+  animation is mid-slide on, so a pickup during the playback defers its repaint
+  to the end of it rather than wiping the animation it landed in.
+
+  **Confirmed: escaping fires no "after game beaten" trigger.** It already
+  didn't — everything hanging off finishing a game (the item hook, the Harvesting
+  gold payout, the recharge tick charged actives live on) comes through
+  TriggerBus.game_beaten, which sits inside the not-escaped branch. Now pinned by
+  tests, in both directions: an escape fires none of it, a game played to a
+  verdict fires it even when the goal was missed.
+
+---
+
+- **Four more from playing it, and one crash.**
+
+  **Escape is open from the first second on a game you have played before.** The
+  way out of a game you can't beat was gated behind five lost runs, which is the
+  right price for a game you have never got through — the alternative is a player
+  who quits the run instead — and exactly the wrong one for a game you have
+  already cleared. There is nothing left to prove there, so being made to lose at
+  it five more times to unlock the door is a tax on the least interesting thing
+  in the run. `can_escape` now has two doors: the lost-runs rule for a game with
+  no record, and immediately for one with. The tooltip says which is holding it
+  open.
+
+  It is the same escape either way — only the gate moved. The goal-enemy still
+  walks onto the board, everything already out there still takes its turns, and
+  the game still isn't credited (no drop, no event, no beat).
+
+  **And BEATEN now means WON.** The escape reads the run's own beaten list, and
+  that list was a lie: any report that wasn't an escape banked the game, a missed
+  goal included. So "⚔ Beaten 11 times" counted visits, `has_beaten_game` meant
+  "been here", and a game you had FAILED paid the repeat-beat Dash for failing it
+  a second time. Every one of those reads as a claim about winning, in the UI and
+  in the code, so all of them now require the goal to have actually been met —
+  the run's list and count, the lifetime tally the Collection and tier list
+  print, the amulet win, and the Dash.
+
+  The escape's door is the RUN's list, not the lifetime one: a win in some run
+  last week is not a fact about this one — different character, different board,
+  and the shields have to be spent again either way. What it is for is the
+  repeat, the game already cleared earlier in this same run, which is the card
+  the offering flags with ⚡ +1 DASH and the one it is pure grind to be held at.
+
+  One thing deliberately left wider: `TriggerBus.game_beaten`, which paces the
+  "after beating a game" items, still fires on any game FINISHED rather than won
+  (an escape is the only report that doesn't fire it). Every one of those items
+  is balanced around firing once per game played, so narrowing it is a balance
+  decision rather than a naming fix.
+
+  **The compendium's grid art is half the size.** Games, items, characters and
+  enemies were drawing 190/100/120/116px thumbnails, which fitted three game
+  covers across; the compendium's job is to let you SCAN 833 games, and a grid
+  you page through four at a time is a scrolling exercise. Halved, with the cells
+  and the name faces brought down to match, a row holds five. The DETAIL panel is
+  untouched: that is where you look at one piece of art properly, and it is the
+  reason the grid doesn't have to.
+
+  **Events are in the compendium.** They were the one 2.0 set it didn't carry and
+  the set it helps most: an event fires once, mid-run, inside a modal you answer
+  under pressure, and the three options you didn't take are then gone for good.
+  The new tab lists every event with its art, rarity and choice count, and the
+  detail panel carries the prompt, where on the map it can appear, its tier and
+  state gates, and every choice in full — effects, goals, curses, repeats and
+  locks. Search reaches the option text, because that is how anyone actually
+  remembers one.
+
+  **Dev mode was full of the old game.** The Add-item list appended
+  `Data.all_items()` — the 112 combat-era relics from the build this one replaced
+  — on top of the 21 that ship. They are `ItemData` too, so they listed and
+  granted cleanly and then sat in the pack doing nothing, because no games-first
+  code honours them. The pool is `DevTools.item_pool()` now, 2.0 only, with a
+  test that says so.
+
+  **A repaint under the cursor no longer errors.** Clicking an enemy repaints the
+  board, which detaches every body on it — including the one the mouse is over,
+  whose `mouse_exited` Godot then fires from inside the removal loop. That
+  handler restores the body's draw order, so it called `move_child` on a parent
+  mid-removal: "Parent node is busy setting up children". The hover handlers now
+  stand down during a repaint (and on a node that has already been detached),
+  which costs nothing — the repaint rebuilds every node they would have been
+  reordering.
+
+---
+
+- **Five UI passes, all from playing it.**
+
+  **It opens in a window now, and that is the default.** The game shipped
+  borderless-fullscreen and the reasoning still holds as far as it went — you
+  alt-tab out of this game constantly, and borderless swaps instantly where
+  exclusive is a mode switch — but it skipped the step before: a window that
+  covers the screen also covers the taskbar you are alt-tabbing *with*. So
+  `project.godot` opens `mode=0` (WINDOWED). Both fullscreens stay on the
+  Settings list and F11 still toggles; leaving either one now re-fits and
+  re-centres the window instead of handing back a "window" the size of the
+  screen.
+
+  The window and the canvas are two different numbers, and only the canvas is
+  1280x720. That stays exactly as it was — it is the box the layout is built to
+  fit, and `stretch/mode` scales it into whatever the window is — while
+  `window_width/height_override` opens the WINDOW at 2560x1440, so a 1440p screen
+  draws the page at 2x rather than in a corner of the desktop. The size is a
+  request: `Settings.windowed_fit()` clamps it to the screen's usable rect minus
+  the window frame (the title bar sits outside the size being set, so a window
+  fitted to the usable rect exactly still hangs its bottom edge under the
+  taskbar), floored at 1280x720 because a page shown whole under a taskbar beats
+  one cropped to fit above it. It is a pure static function because a headless
+  runner has no window manager, and so no decorations and no taskbar to check any
+  of this against. The saved preference moved to a versioned key
+  (`Settings.DISPLAY_KEY`): a `settings.cfg` written under the old default holds
+  an explicit borderless value for a player who never chose one, and reading a
+  new key is what tells "never chose" apart from "chose the old default" —
+  exactly once, after which a real choice sticks.
+
+  **Push is a direction now, not a distance.** It shoved a body one column back
+  and that was the whole verb: a delay, priced the same wherever it was spent. It
+  now moves one body one cell in **any cardinal direction**, and the grid's own
+  rules give each one a different job — back buys the games it takes to close in
+  again, forward hands over a free step to unjam a column, and **up/down is a
+  lane change**, which is the one move an enemy can never make for itself
+  (`path_blockers` is written on enemies never changing lanes). Shoving a body
+  into an occupied lane parks it behind whatever is there for good; shoving it
+  out of one opens the road it was blocking.
+
+  The interaction inverted with it. It used to be select-then-verb, which meant
+  the Push button spent its life disabled explaining why. Now the verb is **armed
+  first and aimed second**: press `⇤ Push`, click the enemy, and an arrow appears
+  on every side of that body a shove could actually land on. Nothing is spent
+  until an arrow is pressed, so arming, re-aiming and cancelling are all free —
+  and a direction the rules refuse is never drawn rather than drawn and refused.
+  `GameLoop2.push(instance, dir)` defaults to BACK, so the enemy card's one
+  button, DevTools and the headless harness all still mean what they meant.
+
+  **The choice popup's cover got out of the way.** At 210x280 the box art ate the
+  left column of `GameChoiceModal` and pushed the enemy, its goal and the statuses
+  riding on it under a scrollbar — and the cover is the one thing on that popup
+  you have already seen, because it is what you clicked. It is 140x187 now and
+  the enemy's portrait went up to 96px on the room it gave back.
+
+  **The map window minimises instead of closing.** Over the star chart it had a
+  Close of its own, a metre from the chart's Close, and pressing it threw away
+  the route ladder you had just opened — the chart's own Close already takes both
+  down together. The corner button rolls the window up to its title bar and
+  unrolls it again, keeping its position and its width so the bar doesn't move
+  under the cursor that clicked it. Opened *without* a chart under it (the start
+  picker, or an unbaked atlas) the panel is the only thing on screen, and there —
+  and only there — it still keeps a Close.
+
+  **A repeat game says so on the card.** Beating a game you have already beaten
+  this run pays +1 Dash, and that was stated only inside the popup — so the one
+  card on the table worth revisiting looked exactly like the ones that aren't.
+  There is a `⚡ +1 DASH` line above the cover now, mounted on every card and
+  blank off a repeat, so one badge doesn't knock the other covers out of line.
+
+---
+
 - **Five things the events pass got wrong, found by playing it.**
 
   **A "Small Chest" was opening two items.** `gain_chest` carried the chest's

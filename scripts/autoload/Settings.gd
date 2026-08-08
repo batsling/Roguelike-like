@@ -36,26 +36,60 @@ var traditional_transmute: int = TraditionalTransmute.SAME_TYPE
 
 # How the game's window is presented.
 #
-#   WINDOWED_FULLSCREEN — a borderless window the size of the screen (default).
-#   WINDOWED            — an ordinary resizable window.
+#   WINDOWED_FULLSCREEN — a borderless window the size of the screen.
+#   WINDOWED            — an ordinary resizable window (default).
 #   EXCLUSIVE           — true exclusive fullscreen.
 #
-# The default is BORDERLESS, and that is not a coin-flip: this game's whole loop
-# is leaving it to go and play a real video game and coming back to report on it,
-# so the player alt-tabs out several times per run. Exclusive fullscreen makes
-# every one of those a mode switch — a black screen, a resolution change, and
-# sometimes a window that comes back on the wrong monitor. Borderless swaps
-# instantly. It stays on the list for anyone who wants it, but it is not what a
-# game built around alt-tabbing should open in.
+# The default is WINDOWED, and that is not a coin-flip: this game's whole loop is
+# leaving it to go and play a real video game and coming back to report on it, so
+# the player alt-tabs out several times per run — and a plain window is the only
+# mode that leaves the OS's own taskbar/dock on screen to alt-tab WITH. It is
+# also the only one that draws the layout at the size it was designed at.
+#
+# Borderless fullscreen is the runner-up and what F11 toggles to: it fills the
+# screen but swaps instantly. Exclusive fullscreen makes every alt-tab a mode
+# switch — a black screen, a resolution change, and sometimes a window that comes
+# back on the wrong monitor — so it stays on the list for anyone who wants it and
+# is not what a game built around alt-tabbing should open in.
 #
 # Note that NONE of these change the LAYOUT's size. project.godot stretches a
 # fixed 1280x720 canvas to whatever the window is (`window/stretch/mode=
 # "canvas_items"`), so a 2560x1440 screen draws the same page at 2x rather than a
 # bigger page — which is why the overworld is built to fit 1280x720 exactly (see
 # Overworld2, and test_overworld2's one-window tests).
+#
+# The enum's ORDER is the saved value, so it is frozen: reordering it would
+# silently re-read every existing settings.cfg as a different mode. The default
+# moved instead (see DISPLAY_KEY).
 enum DisplayMode { WINDOWED_FULLSCREEN, WINDOWED, EXCLUSIVE }
 
-var display_mode: int = DisplayMode.WINDOWED_FULLSCREEN
+var display_mode: int = DisplayMode.WINDOWED
+
+# The config key the window mode is stored under. It is versioned because the
+# DEFAULT changed (borderless -> windowed) after saves existed: a settings.cfg
+# written under the old default holds an explicit 0, which would keep opening
+# borderless forever even for a player who never chose it. Reading a new key
+# means "never chose one" and "chose the old default" are told apart exactly
+# once, and the new default wins. A player's real choice is written under the new
+# key from then on.
+const DISPLAY_KEY := "mode2"
+
+# The window a WINDOWED session opens at. NOT the canvas: the layout's box is a
+# fixed 1280x720 that stretch/mode scales into whatever the window is, so this is
+# purely how big that scaled page is drawn — 2560x1440 draws it at 2x. Kept in
+# step with project.godot's window_width/height_override, which is what the FIRST
+# frame uses, before this autoload has run.
+#
+# It is a REQUEST, not a size. _fit_windowed clamps it to the screen's usable
+# rect (minus the window frame), so a screen smaller than this gets as much of it
+# as fits and the taskbar/dock stays clear either way — which is the whole point
+# of being windowed.
+const WINDOWED_SIZE := Vector2i(2560, 1440)
+
+# The floor the clamp above will not go under, whatever a screen claims is
+# usable. The canvas is 1280x720 and stretch scales it, so a window this size
+# still shows the whole page — it is just the smallest one that shows it at 1:1.
+const MIN_WINDOWED_SIZE := Vector2i(1280, 720)
 
 # Developer mode. When on, the DevTools overlay (backtick `) is available to add
 # any card / curse / item to the player. Default true on this build so testing
@@ -98,6 +132,48 @@ func apply_display_mode() -> void:
 	# bar to move it by.
 	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS,
 		display_mode == DisplayMode.WINDOWED_FULLSCREEN)
+	if display_mode == DisplayMode.WINDOWED:
+		_fit_windowed()
+
+# Put the window at WINDOWED_SIZE, or at as much of it as the screen has room
+# for, and centre it. Two jobs in one:
+#
+#   • Coming out of either fullscreen, the window otherwise keeps the size it
+#     filled the screen at — so "windowed" lands as a borderless-shaped window
+#     with the taskbar still buried under it, which is the one thing windowed
+#     mode is for.
+#   • On a screen smaller than WINDOWED_SIZE, project.godot's override would open
+#     a window bigger than the desktop with its own title bar off the top.
+#
+# The clamp is against the screen's USABLE rect (what is left once the taskbar /
+# dock / menu bar have taken theirs) MINUS the window frame, because the title
+# bar and borders sit outside the size being set here: a window sized to the
+# usable rect exactly still hangs its bottom edge under the bar.
+func _fit_windowed() -> void:
+	var usable: Rect2i = DisplayServer.screen_get_usable_rect(
+		DisplayServer.window_get_current_screen())
+	var frame: Vector2i = (DisplayServer.window_get_size_with_decorations()
+		- DisplayServer.window_get_size()).max(Vector2i.ZERO)
+	var box: Rect2i = windowed_fit(usable, frame)
+	if box.size != DisplayServer.window_get_size():
+		DisplayServer.window_set_size(box.size)
+	DisplayServer.window_set_position(box.position)
+
+# The arithmetic of the above, on its own so it can be checked against a desktop
+# this machine hasn't got — a taskbar, a title bar, a screen smaller than the
+# window asks for. `usable` is what the desktop leaves free, `frame` is what the
+# window's own decorations add OUTSIDE the size being set. Returns where the
+# window goes and how big it is.
+static func windowed_fit(usable: Rect2i, frame: Vector2i) -> Rect2i:
+	frame = frame.max(Vector2i.ZERO)
+	# The floor wins over the screen: a page shown whole under a taskbar beats a
+	# page cropped to fit above one.
+	var room: Vector2i = (usable.size - frame).max(MIN_WINDOWED_SIZE)
+	var size: Vector2i = WINDOWED_SIZE.min(room)
+	# Centred on what's free, counting the frame as part of what's being centred,
+	# then pinned so the title bar can never end up above the top of the desktop.
+	var at: Vector2i = usable.position + (usable.size - (size + frame)) / 2
+	return Rect2i(at.max(usable.position), size)
 
 static func window_mode_for(mode: int) -> int:
 	match mode:
@@ -160,8 +236,8 @@ func load_settings() -> void:
 	traditional_transmute = clampi(int(cfg.get_value("rules", "traditional_transmute",
 		TraditionalTransmute.SAME_TYPE)), 0, TraditionalTransmute.ANY_OTHER)
 	dev_mode = bool(cfg.get_value("dev", "dev_mode", true))
-	display_mode = clampi(int(cfg.get_value("display", "mode",
-		DisplayMode.WINDOWED_FULLSCREEN)), 0, DisplayMode.EXCLUSIVE)
+	display_mode = clampi(int(cfg.get_value("display", DISPLAY_KEY,
+		DisplayMode.WINDOWED)), 0, DisplayMode.EXCLUSIVE)
 	RunGraph.invalidate_cache()
 
 func save_settings() -> void:
@@ -170,5 +246,5 @@ func save_settings() -> void:
 	cfg.set_value("path", "exclude_beaten_amulets", exclude_beaten_amulets)
 	cfg.set_value("rules", "traditional_transmute", traditional_transmute)
 	cfg.set_value("dev", "dev_mode", dev_mode)
-	cfg.set_value("display", "mode", display_mode)
+	cfg.set_value("display", DISPLAY_KEY, display_mode)
 	cfg.save(CONFIG_PATH)

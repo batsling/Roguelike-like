@@ -85,7 +85,8 @@ func _build_ui() -> void:
 	vbox.add_child(display_heading)
 
 	var display_opt := OptionButton.new()
-	for mode in [Settings.DisplayMode.WINDOWED_FULLSCREEN, Settings.DisplayMode.WINDOWED,
+	# Default first: an ordinary window is what the game ships in (Settings.gd).
+	for mode in [Settings.DisplayMode.WINDOWED, Settings.DisplayMode.WINDOWED_FULLSCREEN,
 			Settings.DisplayMode.EXCLUSIVE]:
 		display_opt.add_item(Settings.display_mode_name(mode), mode)
 	display_opt.select(display_opt.get_item_index(Settings.display_mode))
@@ -101,7 +102,7 @@ func _build_ui() -> void:
 	var refresh_display_hint := func() -> void:
 		match display_opt.get_selected_id():
 			Settings.DisplayMode.WINDOWED:
-				display_hint.text = "An ordinary resizable window.  ·  F11 toggles."
+				display_hint.text = "The default: an ordinary 1280×720 window, drawn at the size the game is laid out for, with your taskbar still reachable underneath it.  ·  F11 toggles."
 			Settings.DisplayMode.EXCLUSIVE:
 				display_hint.text = "True fullscreen. Sharper on some displays, but every alt-tab out to the game you're playing is a mode switch — and you do that several times a run.  ·  F11 toggles."
 			_:

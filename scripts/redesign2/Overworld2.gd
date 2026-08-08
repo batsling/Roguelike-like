@@ -66,9 +66,10 @@ const DASH_BLUE := Color(0.5, 0.85, 1.0)
 # count, the attempt strip, and the pips on the board.
 const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
 
-# Lost runs of the game in play before the Escape button appears (see
-# can_escape). Five is past the shields any game grants, so reaching it means the
-# player has been paying Health to keep trying.
+# Lost runs of the game in play before the Escape button appears on a game this
+# run has NOT already beaten (see can_escape — one it has is escapable from the
+# first second). Five is past the shields any game grants, so reaching it means
+# the player has been paying Health to keep trying.
 const ESCAPE_AFTER_ATTEMPTS := 5
 
 # The current offering. Each entry:
@@ -113,6 +114,9 @@ var _resolving: bool = false
 # An end-of-run screen owed to the player, held back until the board has finished
 # playing the resolve that ended the run.
 var _run_over_pending: bool = false
+# An item picked up WHILE the board was playing a resolve back: the repaint it
+# asked for is owed, and paid at _end_resolve rather than over the animation.
+var _board_dirty: bool = false
 # The event waiting to open once the board has finished playing its resolve back.
 # An event fires AFTER the game at its node is beaten (docs/event-sheet-authoring.md
 # §1) and the board is mid-animation at that moment, so it queues here the way the
@@ -622,6 +626,10 @@ func pick(index: int) -> void:
 	# its position on the route toward the amulet).
 	GameState.set_current_game(_chosen["slot"])
 	_hover_grant = -1
+	# An armed Push doesn't survive committing to a game: the board it was aimed at
+	# is about to be marched a column, and nothing has been spent.
+	if _board != null:
+		_board.cancel_push()
 	_phase = Phase.PLAYING
 	_populate_play_panel()
 	_refresh()
@@ -656,25 +664,52 @@ func log_attempt() -> String:
 # --- escaping a game you can't beat ---------------------------------------
 #
 # Some games won't go down, and a run shouldn't end because one of them sat in
-# the way. After ESCAPE_AFTER_ATTEMPTS lost runs the player may walk away from the
-# game in play at any point, without beating it.
+# the way. The player may walk away from the game in play at any point, without
+# beating it — either after ESCAPE_AFTER_ATTEMPTS lost runs, or immediately on a
+# game this run has already beaten (see can_escape).
 #
 # Escaping resolves the BOARD exactly as reporting a missed goal does: the
-# goal-enemy walks onto the board and follows you. That IS the price, and by the
-# time it's offered it has already been paid twice over — five lost runs is the
-# shields this game granted plus Health on top, with the front line closing in the
-# whole time. The button exists to make the way out VISIBLE to a stuck player, not
-# to discount it.
+# goal-enemy walks onto the board and follows you, and every enemy already on it
+# still takes its turns. That IS the price, and on the lost-runs route it has
+# already been paid twice over by the time the button appears — five lost runs is
+# the shields this game granted plus Health on top, with the front line closing in
+# the whole time. The button exists to make the way out VISIBLE to a stuck player,
+# not to discount it.
 #
-# Where it PARTS from a missed report is credit: an escape is not a beat. The run
-# doesn't bank the game (so no repeat-beat Dash, and the Atlas doesn't mark it),
-# the "after beating a game" items don't fire, and neither the run's nor the
-# lifetime beaten tally moves. A missed report still credits the game — that is
-# long-standing behaviour and is left alone; walking away is the case that isn't
-# allowed to.
+# Where it PARTS from a missed report is the item trigger: the "after beating a
+# game" items fire on any game FINISHED, win or lose, and an escape is the one
+# report that doesn't fire them. Neither one banks a beat — beaten means won (see
+# report) — so an escape and a miss are alike in earning no repeat-beat Dash, no
+# Atlas mark and no movement in either beaten tally.
+#
+# TWO ways in. The five-lost-runs rule above is for a game this run has never got
+# through: the way out has to be earned because the alternative is a player who
+# quits the run instead. A game this run has ALREADY BEATEN is the opposite case —
+# there is nothing left to prove, and being made to lose at it five more times to
+# unlock the door is a tax on the one card the run cannot make interesting, so
+# that door is open from the first second.
+#
+# It is the same escape either way: the enemy still walks onto the board, the
+# board still takes its turns, and the game still isn't credited. Only the gate
+# moves.
 func can_escape() -> bool:
-	return _phase == Phase.PLAYING and not _chosen.is_empty() \
-		and not GameLoop2.run_over and GameLoop2.attempts() >= ESCAPE_AFTER_ATTEMPTS
+	if _phase != Phase.PLAYING or _chosen.is_empty() or GameLoop2.run_over:
+		return false
+	return beaten_this_run() or GameLoop2.attempts() >= ESCAPE_AFTER_ATTEMPTS
+
+# Whether the game in play is one this RUN has already beaten — won, with the
+# goal met (see report(): "beaten means won").
+#
+# Run-scoped, not lifetime, and that is the point. A win in some run last week is
+# not a fact about this one: the character is different, the board is different,
+# and the shields this game grants have to be spent again either way. What the
+# free escape is for is the REPEAT — the game already cleared earlier in this same
+# run, the one the offering flags with ⚡ +1 DASH — because that is the card the
+# run cannot make interesting a second time and the one it is pure grind to be
+# held at.
+func beaten_this_run() -> bool:
+	var game: GameData = _chosen.get("game")
+	return game != null and GameState.has_beaten_game(game.id)
 
 # Leave the game in play. Whatever else the checklist has ticked still stands —
 # a follower's goal you did clear, a level-up you did earn — because those are
@@ -685,8 +720,10 @@ func escape_game() -> void:
 		return
 	var game: GameData = _chosen.get("game")
 	var game_name: String = game.display_name if game != null else "this game"
-	var msg: String = "Escaped %s after %d lost runs — its enemy comes with you." % [
-		game_name, GameLoop2.attempts()]
+	var tries: int = GameLoop2.attempts()
+	var msg: String = ("Escaped %s — its enemy comes with you." % game_name if tries == 0
+		else "Escaped %s after %d lost run%s — its enemy comes with you." % [
+			game_name, tries, "" if tries == 1 else "s"])
 	GameLog.add(msg, UITheme.ACCENT)
 	Notifications.notify(msg, UITheme.ACCENT)
 	report(false, null, true)
@@ -1008,30 +1045,47 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 					break
 	# Everything a game gets CREDITED for. An escape is the one report that earns
 	# none of it: the player walked away, so the "after beating a game" items don't
-	# fire, the run doesn't bank the clear (and so pays no repeat-beat Dash, and the
-	# Atlas doesn't mark the node), and neither tally the Collection and the tier
-	# list read moves. The run itself still advances — see games_played below —
-	# because the time was spent and the board closed in regardless.
+	# fire and nothing about the game is banked. The run itself still advances —
+	# see games_played below — because the time was spent and the board closed in
+	# regardless.
 	if played_game != null and not escaped:
-		# The event at this node, queued for once the board stops moving. Only a
-		# BEATEN game earns it: walking away forfeits the event and leaves it
-		# standing for a later visit, which is what makes it a reward rather than
-		# a toll for arriving.
+		# The event at this node, queued for once the board stops moving.
 		_pending_event = EventSystem.event_for(slot_here)
+		# The item trigger fires on FINISHING a game, win or lose. Note that this
+		# is deliberately a wider net than the beat below: it is what paces the
+		# "after beating a game" items, and every one of them is balanced around
+		# firing once per game played.
 		TriggerBus.game_beaten.emit({"game_id": played_game.id})
-		# Bank the clear (and pay the repeat-beat Dash). Recorded after the item
-		# trigger so a game_beaten item can't see a half-updated tally.
+
+	# BEATEN MEANS WON. This block used to sit inside the one above — any report
+	# that wasn't an escape banked the game, a missed goal included — so "⚔ Beaten
+	# 11 times" counted visits, `has_beaten_game` meant "been here", and a game you
+	# had failed paid the repeat-beat Dash for failing it twice. Every one of those
+	# reads as a claim about winning, in the UI and in the code, so all of them now
+	# require the goal to have actually been met.
+	#
+	# Recorded after the item trigger above, so a game_beaten item can't see a
+	# half-updated tally.
+	if played_game != null and not escaped and goal_met:
+		# The run's own record: what the offering's repeat badge, the Atlas's
+		# "beaten this run" and the free escape (can_escape) all read. Run-scoped
+		# and wiped by reset_run — beating something in a previous run is not a
+		# fact about this one.
 		GameState.note_game_beaten(played_game.id)
 		if repeat_beat:
 			_grant_repeat_dash(played_game)
-		# Lifetime tally the Collection and the tier list read ("beaten N times"):
-		# in the games-first loop this report step IS the verification, so a
-		# confirmed game counts here. An amulet clear records the win instead (it
-		# bumps `beaten` too).
-		if was_amulet and goal_met:
+		# The lifetime tally the Collection, the tier list and the Atlas read
+		# ("beaten N times"). An amulet clear records the win instead — it bumps
+		# `beaten` too.
+		if was_amulet:
 			GameStats.record_amulet_win(played_game.id)
 		else:
 			GameStats.record_beaten(played_game.id)
+	elif played_game != null and not escaped and was_amulet:
+		# The Amulet game finished WITHOUT its enemy's goal: still the run's win
+		# (see the was_amulet branch below), so it is still the game the win goes
+		# on the record against.
+		GameStats.record_amulet_win(played_game.id)
 	# Level up (§3.1) — a fresh chance each game; skipped if the game just killed
 	# the player.
 	if leveled and not GameLoop2.run_over:
@@ -1069,9 +1123,17 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 		# there. The end-of-run screen waits for it to land (_end_resolve).
 		_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
 		return
-	if was_amulet and goal_met:
-		# Winning on the Amulet ends the run through GameLoop2 (-> _on_run_won),
-		# and the last advance still deserves to be seen before the win screen.
+	if was_amulet:
+		# REACHING the Amulet game and playing it IS the run. It used to also
+		# require the goal box — the goal-enemy standing there had to have its
+		# condition met as well — so a player who got all the way to the Amulet
+		# game and beat it, but hadn't happened to "destroy an enemy spawner"
+		# while doing it, watched the run carry on as if nothing had happened.
+		# The whole run is a search for one game; arriving and playing it is the
+		# answer. The enemy's goal is a bonus on top, not the lock on the door.
+		#
+		# Winning ends the run through GameLoop2 (-> _on_run_won), and the last
+		# advance still deserves to be seen before the win screen.
 		GameLoop2.clear_amulet()
 		_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
 		return
@@ -1136,6 +1198,11 @@ func _end_resolve() -> void:
 		return
 	_resolving = false
 	_refresh_stage()
+	# A pickup during the playback deferred its board repaint to here (see
+	# _on_inventory_changed) — the board is the player's again now.
+	if _board_dirty:
+		_board_dirty = false
+		_board.refresh(_phase == Phase.PLAYING)
 	if _run_over_pending:
 		_run_over_pending = false
 		_pending_event = null   # a run that just ended has no room for a bonus
@@ -1475,12 +1542,16 @@ func transmute_choice(index: int) -> void:
 		_build_choices()
 		_refresh()
 
-# Push a following enemy back one space (Manager's verb, §7.2): spend a Push
-# charge to delay its next attack by a game. Targets a stacked follower by
-# instance; GameLoop2.push guards the charge and membership, so a no-op just
-# leaves the board unchanged.
-func push_follower(instance: int) -> void:
-	if GameLoop2.push(instance):
+# Push a following enemy one space (Manager's verb, §7.2): spend a Push charge to
+# shove it back (delaying its next attack by a game), forward, or across into
+# another lane. Targets a stacked follower by instance; GameLoop2.push guards the
+# charge, the membership and the room in the destination, so a no-op just leaves
+# the board unchanged.
+#
+# `dir` defaults to BACK for the callers that predate the four directions — the
+# enemy info card's single button and the headless harness.
+func push_follower(instance: int, dir: Vector2i = GameLoop2.PUSH_BACK) -> void:
+	if GameLoop2.push(instance, dir):
 		_refresh()
 
 # Bomb a following enemy (§4): spend a Bomb charge to deal it 1 damage (no drop
@@ -1653,11 +1724,33 @@ func _build_choices() -> void:
 func _on_vitals_changed(_hp: int = 0, _max_hp: int = 0) -> void:
 	_refresh_stats()
 
-# A pickup changed the pack: relist it AND repaint the chips, since the item's
-# stat bonuses / item_acquired effects have already landed on the run.
+# A pickup changed the pack — so repaint EVERYTHING, not just the pack and the
+# chip row.
+#
+# An item's payload lands on the run the instant it is picked up: passive
+# stat_bonuses are folded in, item_acquired effects have already fired, a shield
+# grant is already spendable, and a Mine-r Construction has already grown the
+# board (GameLoop2.sync_grid_bounds hangs off this same signal). This used to
+# relist the pack and repaint the chips only, which left the shield pips, the
+# battlefield summary and the board itself quoting numbers from before the
+# pickup until the next report came along to refresh them.
 func _on_inventory_changed() -> void:
+	if _stack == null:
+		return
 	_refresh_items()
 	_refresh_stats()
+	_refresh_attempts()
+	_stack.text = "[b]Battlefield[/b]  —  " + _stack_summary()
+	_refresh_stage()
+	# The board is the one thing that has to wait. A repaint frees every body on
+	# it, and the resolve animation is sliding those bodies — so a pickup that
+	# lands mid-playback (an enemy drop, an event's payout) would wipe the
+	# animation it arrived in the middle of. Deferred to _end_resolve instead,
+	# which is the moment the board is the player's again.
+	if _resolving:
+		_board_dirty = true
+		return
+	_board.refresh(_phase == Phase.PLAYING)
 
 func _refresh(_a = null) -> void:
 	if _stack == null:
@@ -1868,10 +1961,10 @@ func _render_choices() -> void:
 # the art gets the room back.
 const COVER_SIZE := Vector2(150, 200)
 
-# The badge rows on a card. There is one left — the name — plus the Amulet's
-# flag; everything else a card used to carry (the route, the pace, the tries, the
-# repeat bonus, the map, the Beatable row, the Bash/Transmute verbs) now lives in
-# the popup the card opens.
+# The badge rows on a card: the name, plus two fixed-height flag lines above the
+# cover — the Amulet / event flag, and the repeat game's +1 Dash. Everything else
+# a card used to carry (the route, the pace, the tries, the map, the Beatable row,
+# the Bash/Transmute verbs) lives in the popup the card opens.
 const BADGE_FONT := 11
 const BADGE_LINE := 15               # one line of BADGE_FONT, in px
 # The game's NAME keeps a readable size, in its own fixed box, so a card whose
@@ -1923,6 +2016,30 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	flag.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
 	flag.add_theme_font_size_override("font_size", BADGE_FONT)
 	card.add_child(flag)
+
+	# THE SECOND THING that has to be legible without opening anything: a game you
+	# have already beaten this run pays a Dash for beating it again
+	# (REPEAT_BEAT_DASH). It is the offering's only recurring free charge, and it
+	# was only ever stated inside the popup — so the one card on the table that is
+	# worth revisiting looked exactly like the ones that aren't. It rides ABOVE the
+	# cover, next to the Amulet's flag, because it is a reason to open a card and
+	# reasons to open a card belong where the card is being scanned.
+	#
+	# Like the flag, the row is mounted on EVERY card and left blank off a repeat,
+	# so one +1 in the offering doesn't knock the other covers out of line.
+	var dash_flag := Label.new()
+	if bool(choice.get("repeat", false)):
+		dash_flag.text = "⚡ +%d DASH" % REPEAT_BEAT_DASH
+		dash_flag.tooltip_text = ("You've already beaten %s this run — beat it again and it pays %d Dash charge%s."
+			% [game.display_name, REPEAT_BEAT_DASH, "" if REPEAT_BEAT_DASH == 1 else "s"])
+	else:
+		dash_flag.text = ""
+	dash_flag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dash_flag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	dash_flag.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
+	dash_flag.add_theme_font_size_override("font_size", BADGE_FONT)
+	dash_flag.add_theme_color_override("font_color", DASH_BLUE)
+	card.add_child(dash_flag)
 
 	var btn := Button.new()
 	btn.custom_minimum_size = COVER_SIZE
@@ -2087,11 +2204,21 @@ func _populate_play_panel() -> void:
 		# by a clause on this enemy or one on the player is part of what ticking
 		# this box asserts (§13).
 		var goal_text: String = "%s %s" % [
-			"🏆 Amulet goal —" if is_amulet else "Goal —",
+			"🏆 Amulet goal (bonus) —" if is_amulet else "Goal —",
 			GameLoop2.goal_text_for(GameLoop2.current)]
 		var goal_row := _verify_row(goal_text, UITheme.SUCCESS, true, enemy)
 		_goal_check = goal_row["check"]
 		_verify_box.add_child(goal_row["row"])
+		# On the Amulet the goal is NOT the lock on the door — playing the game is
+		# (see report()). Said here because this row is the one place a player
+		# would otherwise reasonably read it as the win condition.
+		if is_amulet:
+			var win_note := Label.new()
+			win_note.text = "Completing this game wins the run — the goal above is a bonus."
+			win_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			win_note.add_theme_font_size_override("font_size", 12)
+			win_note.add_theme_color_override("font_color", UITheme.GOLD)
+			_verify_box.add_child(win_note)
 		# …and its optional bonus objectives, which are claimed separately because
 		# skipping one costs nothing.
 		_add_bonus_rows(GameLoop2.current)
@@ -3426,8 +3553,6 @@ func _build_ui() -> void:
 	# because the enemy still follows you out.
 	_escape_btn = Button.new()
 	_escape_btn.text = "🏃  Escape this game"
-	_escape_btn.tooltip_text = ("Leave without beating it. The goal-enemy walks onto the "
-		+ "board and follows you, and the game does NOT count as beaten.")
 	_escape_btn.custom_minimum_size = Vector2(0, 30)
 	_escape_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_escape_btn.add_theme_font_size_override("font_size", 13)
@@ -3523,10 +3648,20 @@ func _refresh_attempts() -> void:
 	var live: bool = _phase == Phase.PLAYING and not GameLoop2.run_over
 	_attempt_btn.disabled = not live
 	_attempt_undo.disabled = not live or attempts == 0
-	# The escape hatch only exists once the player has lost enough runs to have
-	# earned it, and it goes away again if they undo back under the line.
+	# The escape hatch is up from the first second on a game the player has been
+	# through before, and otherwise only once they have lost enough runs to have
+	# earned it — where it goes away again if they undo back under the line. The
+	# tooltip says WHICH rule is holding the door open, because "why can I leave
+	# this one and not that one" is the whole question the button raises.
 	if _escape_btn != null:
 		_escape_btn.visible = can_escape()
+		var why: String = ("You already beat this one this run, so there is nothing to prove — leave whenever you like."
+			if beaten_this_run()
+			else "%d lost runs is enough." % GameLoop2.attempts())
+		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nThe goal-enemy still walks onto "
+			+ "the board and follows you, and every enemy still takes its turns — escaping "
+			+ "resolves the board exactly as a missed goal does. What it does NOT do is credit "
+			+ "the game: no drop, no event, and it doesn't count as beaten.") % why
 
 func _enemy_image_rect() -> TextureRect:
 	var t := TextureRect.new()

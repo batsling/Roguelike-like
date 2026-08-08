@@ -43,14 +43,29 @@ EventSystem="*res://scripts/autoload/EventSystem.gd"
 ; give MORE than 1280x720, never less, so the layout's one-screen guarantee holds
 ; and a wider or taller monitor gets used instead of framed.
 ;
-; size/mode 3 is Godot's FULLSCREEN, which is a borderless window the size of the
-; screen — not 4 (EXCLUSIVE_FULLSCREEN). The whole loop here is leaving the game
-; to go and play a real one, so the player alt-tabs out several times per run and
-; borderless is the only mode where that is instant. Settings.display_mode
-; overrides this at boot when the player has chosen otherwise, and F11 toggles.
+; size/mode 0 is Godot's WINDOWED — an ordinary 1280x720 window, and the default
+; on purpose. The whole loop here is leaving the game to go and play a real one,
+; so the player alt-tabs out several times per run: a window that leaves the OS's
+; taskbar/dock reachable is the one that fits that, and it is also the only mode
+; where the 1280x720 the layout is built for is what you actually see. The two
+; fullscreen modes are still on the Settings list — mode 3 (FULLSCREEN, a
+; borderless window the size of the screen) and mode 4 (EXCLUSIVE_FULLSCREEN) —
+; and Settings.display_mode overrides this at boot when the player picks one.
+; F11 toggles windowed <-> borderless from any screen.
+;
+; The WINDOW and the CANVAS are two different numbers and only one of them is
+; 1280x720. viewport_width/height is the CANVAS — the fixed box the layout is
+; built to fit, scaled up by stretch/mode below — and it must stay 1280x720.
+; window_width/height_override is how big the window that canvas is drawn into
+; OPENS: 2560x1440, so a 1440p screen gets the page at 2x rather than a quarter
+; of the desktop. Settings.WINDOWED_SIZE holds the same pair and clamps it to
+; whatever the screen actually leaves free, so a smaller monitor (or one with a
+; taskbar) gets as much of it as fits rather than a window off the edge.
 window/size/viewport_width=1280
 window/size/viewport_height=720
-window/size/mode=3
+window/size/window_width_override=2560
+window/size/window_height_override=1440
+window/size/mode=0
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
