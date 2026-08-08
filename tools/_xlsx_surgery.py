@@ -110,6 +110,81 @@ class Workbook:
                     os.path.join("worksheets", tm.group(1))).replace(os.sep, "/")
         return part, table
 
+    # --- creating a sheet -------------------------------------------------
+
+    _BLANK_SHEET = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n'
+        '<worksheet xmlns="%s" xmlns:r="http://schemas.openxmlformats.org/'
+        'officeDocument/2006/relationships"><dimension ref="A1"/><sheetViews>'
+        '<sheetView workbookViewId="0"/></sheetViews>'
+        '<sheetFormatPr defaultRowHeight="15"/><sheetData/>'
+        '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" '
+        'header="0.3" footer="0.3"/></worksheet>' % _NS
+    )
+
+    def add_sheet(self, sheet_name: str) -> str:
+        """Append an empty worksheet named `sheet_name`; return its part path.
+
+        Four things have to agree or Excel calls the file corrupt: the part
+        itself, its `<sheet>` entry in workbook.xml, its Relationship in
+        workbook.xml.rels, and its Override in [Content_Types].xml. Miss the
+        last one and the workbook opens with the sheet silently absent.
+
+        The new sheet is empty; fill it with `write_grid` afterwards. Existing
+        names are refused rather than merged onto.
+        """
+        wb = self._by_name["xl/workbook.xml"].decode("utf-8")
+        if re.search(r'<sheet name="%s"[ /]' % re.escape(sheet_name), wb):
+            raise ValueError("%s already has a sheet named %r"
+                             % (self.path, sheet_name))
+
+        n = 1
+        while "xl/worksheets/sheet%d.xml" % n in self._by_name:
+            n += 1
+        part = "xl/worksheets/sheet%d.xml" % n
+
+        rels = self._by_name["xl/_rels/workbook.xml.rels"].decode("utf-8")
+        used = set(re.findall(r'Id="(rId\d+)"', rels))
+        k = 1
+        while "rId%d" % k in used:
+            k += 1
+        rid = "rId%d" % k
+        # sheetId is workbook-scoped and unrelated to both the rId and the
+        # filename; take one past the highest so nothing collides.
+        ids = [int(x) for x in re.findall(r'sheetId="(\d+)"', wb)]
+        sheet_id = (max(ids) + 1) if ids else 1
+
+        wb = wb.replace("</sheets>", '<sheet name="%s" sheetId="%d" r:id="%s"/></sheets>'
+                        % (_esc(sheet_name), sheet_id, rid), 1)
+        self._dirty["xl/workbook.xml"] = wb.encode("utf-8")
+        self._by_name["xl/workbook.xml"] = self._dirty["xl/workbook.xml"]
+
+        rels = rels.replace("</Relationships>",
+                            '<Relationship Id="%s" Type="http://schemas.openxmlformats.org/'
+                            'officeDocument/2006/relationships/worksheet" Target="%s"/>'
+                            "</Relationships>"
+                            % (rid, part[len("xl/"):]), 1)
+        self._dirty["xl/_rels/workbook.xml.rels"] = rels.encode("utf-8")
+        self._by_name["xl/_rels/workbook.xml.rels"] = self._dirty["xl/_rels/workbook.xml.rels"]
+
+        ct_name = "[Content_Types].xml"
+        ct = self._by_name[ct_name].decode("utf-8")
+        ct = ct.replace("</Types>",
+                        '<Override PartName="/%s" ContentType="application/vnd.'
+                        'openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+                        "</Types>" % part, 1)
+        self._dirty[ct_name] = ct.encode("utf-8")
+        self._by_name[ct_name] = self._dirty[ct_name]
+
+        data = self._BLANK_SHEET.encode("utf-8")
+        self._by_name[part] = data
+        # __exit__ writes from _entries in order, so a brand-new part has to be
+        # appended there too — putting it only in _dirty would drop it.
+        info = zipfile.ZipInfo(part, date_time=(1980, 1, 1, 0, 0, 0))
+        info.compress_type = zipfile.ZIP_DEFLATED
+        self._entries.append((info, data))
+        return part
+
     # --- reading ----------------------------------------------------------
 
     def read_grid(self, sheet_name: str) -> list:

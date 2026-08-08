@@ -28,8 +28,14 @@ lets one authored group escalate. Two event-only forms carry the rest:
                                                 event fits on one row
     add_goal "<cond>" for <n> games -> <reward> hand the player an objective that
                                                 outlives the modal
-    add_curse "<cond>" -> <penalty>             the same, inverted and permanent:
-                                                an objective you want to NOT meet
+    add_curse <curse> [for <n> games]           the same, inverted: an objective
+                                                you want to NOT meet. Authored in
+                                                `curses2.0` and referenced by id,
+                                                the way apply_status references
+                                                statuses2.0
+    play_game tag=<tag> -> <reward>             send the player off to a game that
+                                                isn't on their route, and pay when
+                                                they beat it
 
 WHY XML SURGERY AND NOT openpyxl: Roguelikes.xlsx carries seven charts and a
 dozen table parts that an openpyxl load/save round-trip silently drops. See
@@ -75,7 +81,7 @@ EVENT_COLS = [
     # curse goal (`add_curse`) meeting the condition is the bad outcome and the
     # payload is a penalty. The sign lives in the token, not in these two names.
     "Goal Met",     # printed when the goal's condition is met
-    "Goal Missed",  # printed when its window closes unmet (curses never do)
+    "Goal Missed",  # printed when its window closes unmet
 ]
 # Per choice: the label, what picking it does to the event, the prose it prints,
 # and the payload. Blank `Choice N` ends the event's choice list.
@@ -188,14 +194,18 @@ DUMMY_MISSED = (
 #
 # `add_curse` is what marks it — the token carries the kind, so the sheet needs
 # no "what sort of goal is this" column and the checklist knows to render this
-# one purple and in its own section.
+# one purple and in its own section. The curse itself (condition, penalty, how
+# long it lasts) is authored once in `curses2.0` and referenced here by id, the
+# way an item references a status.
 #
 # Note this is NOT the shelved `CurseData` / `data/curses` system
 # (games-first-redesign.md §5). Same word, different thing: a curse goal is a row
 # on the checklist, not a card.
 #
-# Slay the Spire 2 names its curse "Poor Sleep" and the curse is a card; here the
-# condition itself is the display text, which is why no name is authored.
+# Slay the Spire 2 names its curse "Poor Sleep" and the curse is a card; here it
+# is a row on the checklist that expires after 3 games (its `Timer` in
+# `curses2.0`), so it is a weight on the next stretch of run rather than a
+# permanent tax.
 #
 # CHANGES FROM THE ORIGINAL, both requested: Max Health lost drops 8 -> 2, and
 # the random Relic becomes a small chest — which the outcome text was already
@@ -221,6 +231,39 @@ UNREST_KILL = (
     "spirits rise from the slain trees and drop a small box at your feet. \"Thank "
     "you for freeing us from those trees... cheep cheep!\""
 )
+
+
+# --- Punch Off --------------------------------------------------------------
+#
+# Slay the Spire 2, the Underdocks. Prompt and both Result strings verbatim.
+#
+# The new capability here is `play_game`: an event that doesn't hand you a reward
+# or a goal but SENDS YOU SOMEWHERE. "I Can Take Them" drops the player into a
+# random game tagged `mecha` — a real tag on the games sheet, 14 games carry it —
+# which spawns its enemy and is played under the ordinary rules. Beating the
+# robots IS beating the game; the loot pays on the far side of it, which is what
+# the `->` says.
+#
+# Afterwards the player CHOOSES: stay at the mecha game if it is connected on the
+# map, or return to the node they came from. That is a round trip you are allowed
+# to decline, and it rhymes nicely with §1 — events exist because a dead end
+# forces a round trip on you, and this is the one that hands the choice back.
+#
+# The two options are the same bargain the original strikes, in this game's
+# currency: take the treasure and wear the Injury, or do the work and take
+# everything. Relic -> small chest; relic + potion + combat reward -> 2 small
+# chests + 1 loot.
+PUNCH_PROMPT = (
+    "Two Punch Constructs are duking it out and you see some treasure in between "
+    "them... Should you try to nab it?"
+)
+
+PUNCH_NAB = (
+    "You successfully nab the relic! ...or so you thought. A right-hook clocks "
+    "you in the face."
+)
+
+PUNCH_FIGHT = "The Constructs turn to you menacingly!"
 
 
 EVENTS = [
@@ -302,11 +345,30 @@ EVENTS = [
         "Goal Met": "",
         "Goal Missed": "",
         "choices": [
-            ("Rest Anyways", "", UNREST_REST,
-             'heal_full; add_curse "you use a rest site to replenish health"'
-             ' -> lose_hp 2'),
+            ("Rest Anyways", "", UNREST_REST, "heal_full; add_curse poor_sleep"),
             ("Kill the Trees", "", UNREST_KILL,
              "lose_max_hp 2; gain_chest small 1"),
+        ],
+    },
+    {
+        "Event": "Punch Off",
+        "Game": "Slay the Spire 2",
+        "Tier": "All",
+        "Where": "Dead End",
+        # "Only appears at Floor 6 or later" — depth, which this run measures in
+        # games played rather than floors.
+        "Requirement": "games >= 6",
+        "Trigger": "After",
+        "Rarity": "Common",
+        "Limit": "1",
+        "Image": "PunchOff",
+        "Prompt": PUNCH_PROMPT,
+        "Goal Met": "",
+        "Goal Missed": "",
+        "choices": [
+            ("Nab", "", PUNCH_NAB, "add_curse injury; gain_chest small 1"),
+            ("I Can Take Them", "", PUNCH_FIGHT,
+             "play_game tag=mecha -> gain_loot 1; gain_chest small 2"),
         ],
     },
 ]

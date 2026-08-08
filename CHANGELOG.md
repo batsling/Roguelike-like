@@ -108,8 +108,8 @@ For how the project is laid out and how its systems fit together, see
 
   An enemy goal is a **debt** — miss it and it follows you and hits. An event
   goal is a **bonus** — miss it and it merely expires. A **curse goal** is
-  neither: a standing objective you want to *not* meet, permanent for the run,
-  that costs you every time you do meet it. It is the first thing in the game
+  neither: a standing objective you want to *not* meet, that costs you every time
+  you do meet it, for the **3 games** it lasts. It is the first thing in the game
   that punishes you for succeeding at the wrong thing, and its checklist rows
   read **purple** so the one objective you are trying to avoid never looks like
   the ones you are chasing.
@@ -130,9 +130,56 @@ For how the project is laid out and how its systems fit together, see
   Health, losing 2 is a 20–40% cut where 8 of 75 was 11%, so Kill the Trees is
   now the sharper option rather than the safe one.
 
-  Format, column reference, DSL and what is still missing (the generator, the
+  Curses are authored in a **new `curses2.0` sheet** and referenced by id —
+  `add_curse poor_sleep` — the same relationship an item has with `statuses2.0`,
+  so a curse's condition, penalty and lifetime are written once and any number of
+  events can hand out the same one. Six columns: `Curse | Game | Condition |
+  Penalty | Timer | Image`. The checklist row is **generated** from Condition +
+  Penalty rather than authored as prose, so a curse's text cannot drift from what
+  it does — the mistake the legacy `curses` sheet made. Two curses so far, and
+  they are deliberately different flavours: **Poor Sleep** fires on something in
+  the *real game you go and play* ("you use a rest site to replenish health"),
+  **Injury** on this app's own state ("you go below half health"). Both `lose_hp
+  2`, both 3 games — the same window `add_goal` uses, so the player is never
+  tracking two countdowns at different speeds.
+
+  **Punch Off** (Slay the Spire 2, the Underdocks) is the fourth event, and it
+  does something no event has done yet: it **moves the player**.
+
+      Nab              add_curse injury; gain_chest small 1
+      I Can Take Them  play_game tag=mecha -> gain_loot 1; gain_chest small 2
+
+  `play_game tag=mecha` drops them into a random game carrying that tag, off
+  their route — `mecha` is a real tag on the `games` sheet with 14 games behind
+  it. The game spawns its enemy and is played under the ordinary rules; beating
+  the robots *is* beating the game, and the `->` payload lands on the far side.
+  Then they **choose**: stay at that game if it is connected on the map, or
+  return to the node they came from. Which is worth naming, because it is the
+  inverse of where this whole entry started — a dead end *forces* a round trip on
+  you, and this is the one event that hands the choice back. An event that begins
+  as "two robots are fighting over some treasure" ends up being about routing.
+
+  `gain_loot` is authored as a category rather than as `gain_scroll`: it resolves
+  to a scroll today, since scrolls are the only loot type there is, and widens on
+  its own as more are added without an event row being touched.
+
+  And Punch Off needed **nothing** from the events sheet — no column, no
+  rearrangement. Both of its new capabilities arrived as tokens, which is the
+  rule from the entry above holding up under the first event authored after it.
+
+  Format, column reference, DSL and what is still missing (two generators, the
   requirement check, the placement seed, the badge, the two checklist sections,
-  the modal): `docs/event-sheet-authoring.md`.
+  `play_game`, the modal): `docs/event-sheet-authoring.md`.
+
+- **`_xlsx_surgery` can create a sheet now.** `curses2.0` did not exist in the
+  workbook and `write_grid` can only write to a sheet that does — it resolves the
+  part through workbook.xml by name. `add_sheet(name)` appends an empty
+  worksheet, which means keeping four things in agreement or Excel calls the file
+  corrupt: the part itself, its `<sheet>` entry in workbook.xml, its Relationship
+  in workbook.xml.rels, and — the easy one to miss — its Override in
+  `[Content_Types].xml`, without which the workbook opens with the sheet silently
+  absent. A new part also has to join `_entries`, not just `_dirty`, since that
+  is the list `__exit__` writes from.
 
 - **`_xlsx_surgery` dropped every row it wrote to an empty sheet.** `write_grid`
   matched `<sheetData>…</sheetData>` and nothing else, but a sheet that has never

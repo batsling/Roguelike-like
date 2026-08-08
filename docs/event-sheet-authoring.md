@@ -1,7 +1,7 @@
 # Event sheet-authoring (`events2.0`)
 
-Status: **the sheet format is settled and three events are authored. The
-generator and the runtime are not built yet** — see §10 for what's left. Companion
+Status: **the sheet format is settled and four events are authored. The
+generator and the runtime are not built yet** — see §12 for what's left. Companion
 to `games-first-redesign.md` and `locations-and-events-design.md` §6, which
 argued events should wait for somewhere to live. §1 is that somewhere.
 
@@ -182,8 +182,12 @@ word.** No engine work, just the generator.
 | `nothing` | *(no-op; write it where a blank cell would read as unfinished)* |
 
 **C — needs a new handler as well.** Worth it, but budget for it:
-`lose_stat <stat> N`, `lose_gold N`, `lose_max_hp N`, `gain_scroll N`,
-`heal_full`, and the three event-only forms below.
+`lose_stat <stat> N`, `lose_gold N`, `lose_max_hp N`, `heal_full`,
+`gain_loot N`, and the four event-only forms below.
+
+`gain_loot` is a **category**, not a synonym: it resolves to a scroll today,
+because scrolls are the only loot type there is, and widens on its own as more
+are added — no event row ever gets touched for it.
 
 There is **no `kill` / `end_run` token and there should not be one**: a `lose_hp`
 that empties Health ends the run through the rule that already exists (§2), which
@@ -196,7 +200,8 @@ asked them to:
 needs <token>                  a gate — offered only if the player can pay
 needs <Choice> <op> <n>        a gate — offered only at this point in the event
 add_goal  "<condition>" [for <n> games] -> <reward>; <reward>
-add_curse "<condition>" -> <penalty>; <penalty>
+add_curse <curse> [for <n> games]
+play_game tag=<tag> -> <reward>; <reward>
 ```
 
 `needs` leads a cell (`needs keys 1; obtain_item` — spend a key, take an item).
@@ -221,9 +226,23 @@ translate a **turn limit** — the Battleworn Dummy's three turns become three
 games (§7) — and it is the difference between a goal you must hit immediately and
 one you have room to line up.
 
-`add_curse` is the same token **inverted and made permanent**: a standing
-objective you want to *not* meet, which costs you every time you do. It has no
-window — a curse is for the run. Unrest Site (§8) is where it comes from.
+`add_curse` is the same token **inverted**: a standing objective you want to
+*not* meet, which costs you every time you do. It takes a **curse id from the
+`curses2.0` sheet** (§6) rather than an inline condition, exactly as an item
+takes a status id — the curse's condition, penalty and lifetime are authored
+once and any number of events can hand out the same one. It carries a window
+like `add_goal` does, defaulting to the curse's own `Timer`; `for <n> games`
+overrides it. Unrest Site (§9) is where it comes from.
+
+`play_game` is the odd one out: it hands over neither a reward nor a goal but
+**sends the player somewhere**. `play_game tag=mecha` drops them into a random
+game carrying that tag, off their route, which spawns its enemy and is played
+under the ordinary rules — beating the game is the whole of it. The `->` payload
+lands on the far side, when they beat it. Afterwards they **choose** whether to
+stay at that game (if it is connected on the map) or return to the node they came
+from. Punch Off (§10) is where it comes from, and note what that choice is: a
+round trip you are allowed to decline, which is the exact thing §1 says a dead
+end forces on you.
 
 That gives the checklist **three kinds of objective**, and they are genuinely
 different animals:
@@ -232,7 +251,7 @@ different animals:
 |---|---|---|---|---|
 | **Enemy goal** | the card you took | the enemy dies, its item drops | it follows you and hits every game | until met |
 | **Event goal** | `add_goal` | pays its reward | **nothing** — it expires | `for <n> games` |
-| **Curse goal** | `add_curse` | **you take the penalty** | nothing | the whole run |
+| **Curse goal** | `add_curse` | **you take the penalty**, every time | nothing | its `Timer` — 3 games by default |
 
 Each gets **its own section of the post-game checklist**, and that separation is
 the point rather than decoration: an enemy goal is a debt that bites when missed,
@@ -241,6 +260,10 @@ when you *succeed* at the wrong thing. A checklist that renders all three alike
 is lying about which one hurts (`locations-and-events-design.md` §1 draws the
 same line for locations). **Curse rows read purple**, so the one objective on the
 list you are trying to avoid never looks like the ones you are chasing.
+
+Event goals and curse goals tick to the **same three-game clock** by default,
+which is deliberate: whatever the checklist is carrying, it clears at about the
+same rate, and the player is never tracking two different countdowns.
 
 Two things this is *not*. It is not the shelved `CurseData` / `data/curses`
 system (`games-first-redesign.md` §5) — same word, different thing: a curse goal
@@ -270,7 +293,50 @@ to kill you; here the button can just say so, and no column is needed for it.
 
 ---
 
-## 6. The first worked example: Abyssal Baths
+## 6. The `curses2.0` sheet
+
+A curse is authored **once**, in its own sheet, and referenced by id from any
+event that hands it out — the same relationship an item has with `statuses2.0`.
+Six columns:
+
+| Column | Meaning |
+|---|---|
+| `Curse` | Display name, and the id events reference (slugified: `Poor Sleep` → `poor_sleep`). |
+| `Game` | The real game it is lifted from. |
+| `Condition` | What you must avoid doing, in the honour-system voice the goals use. |
+| `Penalty` | What it costs when you do it — the same reward-token DSL, pointed the other way. |
+| `Timer` | Games it lasts before expiring. **3** unless a curse says otherwise. |
+| `Image` | Art base name under `images2.0/curses/`. |
+
+The roster:
+
+| Curse | From | Condition | Penalty | Timer |
+|---|---|---|---|--:|
+| **Poor Sleep** | Unrest Site | you use a rest site to replenish health | `lose_hp 2` | 3 |
+| **Injury** | Punch Off | you go below half health | `lose_hp 2` | 3 |
+
+**The checklist row is generated, not authored.** `Condition` + `Penalty` compose
+into *"If you use a rest site to replenish health, take 2 damage at the end of
+combat"*, so a curse's text cannot drift from what it actually does. There is no
+prose column to keep in sync, which is the mistake the legacy `curses` sheet made.
+
+The two are deliberately different flavours, and it's worth keeping that spread
+as more are authored:
+
+- **Poor Sleep points at the real game.** A rest site is a thing in whatever
+  roguelike you go off and play, checked on the honour system. That is the flavour
+  only this app can produce — the curse follows you out of the modal and into
+  Hades, and the app never has to know what a rest site looks like there.
+- **Injury points at the run.** Half health is this app's own number, so it fires
+  off state the app can see.
+
+Three games is the default because it matches `add_goal`'s window: whatever the
+checklist is carrying, it clears at about the same rate, and the player is never
+tracking two countdowns at different speeds.
+
+---
+
+## 7. The first worked example: Abyssal Baths
 
 Slay the Spire 2's Underdocks event, authored with **the game's own text
 verbatim** — `Prompt` and the `Result` strings are quoted, not paraphrased.
@@ -332,7 +398,7 @@ Fill them from the game.
 
 ---
 
-## 7. The second worked example: Battleworn Dummy
+## 8. The second worked example: Battleworn Dummy
 
 Slay the Spire 2's Glory event. **All four dialogue strings are the game's own,
 verbatim** — prompt, the pass message, the failure message. What is *not* a port
@@ -384,11 +450,13 @@ gamble on), "upgrade 2 cards" has no counterpart at all so it becomes the
 middle rung of the chest ladder, and a relic is a **large chest** — three items
 to choose from, which is unambiguously the best of the three and matches Setting
 3 being the hardest ask. `gain_scroll` is the one tier-C token here (§5); the
-rest already exist.
+rest already exist. (Punch Off, §10, spends its scroll through `gain_loot`
+instead — the Dummy names the scroll directly because *that* is what it pays,
+where Punch Off's "standard combat reward" is whatever loot happens to be.)
 
 ---
 
-## 8. The third worked example: Unrest Site
+## 9. The third worked example: Unrest Site
 
 Slay the Spire 2's Overgrowth event. Prompt and both `Result` strings verbatim.
 It is here because it bends the format in two places at once, which is the real
@@ -409,7 +477,7 @@ and nothing else.
 
 **It needed no column for the new goal kind.** A curse goal is a third species of
 objective (§5) — one you want to *not* meet — and it arrives entirely through
-`add_curse`. The token carries the kind, the kind picks the checklist section and
+`add_curse`, which names a curse from `curses2.0` (§6). The token carries the kind, the kind picks the checklist section and
 the purple, and the sheet is none the wiser. That is the property worth
 protecting as more events land: **new kinds of consequence should cost a token,
 not a column.** A `Goal Type` column would have been the tempting wrong answer —
@@ -421,8 +489,11 @@ kind would carry a blank.
 > *If you use a rest site to replenish health, take 2 damage at the end of
 > combat.*
 
-Slay the Spire 2 hands you a card called Poor Sleep; here the condition itself is
-the display text, so no name is authored. And note what the condition points at:
+Slay the Spire 2 hands you a card called Poor Sleep; here it is a row on the
+checklist, authored in `curses2.0` (§6) and referenced from the event as
+`add_curse poor_sleep`. It lasts **3 games** — its `Timer` — so it is a weight on
+the next stretch of run rather than a permanent tax. And note what the condition
+points at:
 a rest site **in the real game you are playing**, checked on the honour system
 like every other goal in this app. That is the shape events should reach for —
 the curse follows you out of the modal and into Hades, and the app never has to
@@ -442,7 +513,54 @@ event from the original in a way the numbers alone don't announce.
 
 ---
 
-## 9. Other shapes, for reference
+## 10. The fourth worked example: Punch Off
+
+Slay the Spire 2's Underdocks event. Prompt and both `Result` strings verbatim.
+
+| | `Effect` |
+|---|---|
+| **Nab** | `add_curse injury; gain_chest small 1` |
+| **I Can Take Them** | `play_game tag=mecha -> gain_loot 1; gain_chest small 2` |
+
+The bargain survives intact — take the treasure and wear the Injury, or do the
+work and take everything — but the second option is a **new kind of thing for an
+event to do**. It doesn't pay out and it doesn't set a goal: it *sends the player
+somewhere*.
+
+`play_game tag=mecha` drops them into a random game carrying that tag, off their
+route. `mecha` is a real tag on the `games` sheet with **14 games** behind it, so
+the roll has somewhere to land — worth checking before authoring a `play_game`
+against any tag, since the thin end of that vocabulary has single-game buckets.
+The game spawns its enemy and is played under the ordinary rules; **beating the
+robots is beating the game**, and the `->` payload lands on the far side of it.
+
+**Then the player chooses: stay, or go back.** If the mecha game is connected on
+the map they may simply carry on from there; otherwise — or if they'd rather —
+they return to the node they came from. That is worth naming, because it is the
+exact inverse of the thing this whole document starts from: §1 says a dead end
+*forces* a round trip on you, and this is the one event that hands the choice
+back. An event that started as "two robots are fighting over some treasure" ends
+up being about routing, which is the right place for this game's events to land.
+
+Reward mapping: a relic is a **small chest**, and relic + potion + standard
+combat reward is **2 small chests + 1 loot**. `gain_loot` is authored as a
+category rather than as `gain_scroll` — it resolves to a scroll today, since
+scrolls are the only loot type there is, and widens on its own as more are added
+without any event row being touched.
+
+`Requirement: games >= 6` carries the original's "Floor 6 or later" — depth,
+which this run measures in games played rather than floors.
+
+### What it needed from the format: nothing
+
+No new column, no rearrangement. Both of its new capabilities arrived as tokens
+— `play_game` and a curse reference — which is the rule §9 set out holding up
+under the first event authored after it. The one structural change this round was
+a **new sheet** (`curses2.0`), not a new shape for this one.
+
+---
+
+## 11. Other shapes, for reference
 
 Not authored — these are here so the format can be read against more than one
 event.
@@ -465,35 +583,39 @@ not.
 
 ---
 
-## 10. What is still missing
+## 12. What is still missing
 
 The sheet is authorable now. Nothing reads it yet.
 
-1. **`EventData2` + `tools/generate_event2_tres.py`** → `data/events2.0/`.
+1. **`CurseData2` + `tools/generate_curse2_tres.py`** → `data/curses2.0/`. The
+   smaller job and the one the events now depend on, since `add_curse` resolves
+   an id against it. Six columns, no nesting; closest model is
+   `generate_scroll2_tres.py`.
+2. **`EventData2` + `tools/generate_event2_tres.py`** → `data/events2.0/`.
    Closest model is `generate_status_tres.py`, which already parses the reward
    tokens and the `{expr}` holes this sheet reuses — the new work is walking the
    numbered choice groups and the `Repeat` / `needs` semantics, not the DSL. Note
    the *existing*
    `generate_event_tres.py` reads the legacy `events` sheet and its combat-era
    d20 outcomes; it is not a starting point, it is the thing being replaced.
-2. **`Requirement` evaluation.** The state gate has to be checked *before* the
+3. **`Requirement` evaluation.** The state gate has to be checked *before* the
    badge is drawn, not when the modal opens — an event advertised on a card and
    then not delivered is worse than one that never showed. Which means the gate
    is read against the run state at offering time, and an event whose
    requirement lapses between the card and the arrival has to resolve one way or
    the other rather than silently vanishing.
-3. **Placement.** Assign an event to a node deterministically — seeded off the
+4. **Placement.** Assign an event to a node deterministically — seeded off the
    node id and the run seed, not rolled when the card is drawn — or the badge in
-   step 4 will lie the moment the offering is redrawn. `Overworld2` already
+   step 5 will lie the moment the offering is redrawn. `Overworld2` already
    solves exactly this problem for the enemy behind a card (`_slot_enemies`
    keyed by `_offer_seed()`); the event assignment should follow it.
-4. **The badge above the game choice.** There is already a badge row mounted
+5. **The badge above the game choice.** There is already a badge row mounted
    above every cover for this: the `flag` Label at the top of
    `_make_choice_card`, which renders `🏆 THE AMULET` on the Amulet's card and an
    empty string of the same height everywhere else, so the covers stay in line.
    The event marker belongs on that row — same line, same discipline of
    reserving the space on every card.
-5. **The two new checklist sections.** *Event goals* — condition, countdown
+6. **The two new checklist sections.** *Event goals* — condition, countdown
    (`2 games left`), reward, and the `Goal Met` / `Goal Missed` line when they
    resolve. And *curse goals* — permanent, no countdown, **purple**, listing what
    it costs you rather than what it pays. Kept apart from the enemy goals and
@@ -502,9 +624,15 @@ The sheet is authorable now. Nothing reads it yet.
    checklist is built; `UITheme` has no purple yet (the nearest is the palette
    entry at `Color(0.61, 0.35, 0.71)`) and will want a named constant so the
    modal, the checklist row and the HUD chip all agree.
-6. **The modal.** One modal for events *and* `encounters`
+7. **The modal.** One modal for events *and* `encounters`
    (`locations-and-events-design.md` §6) — not two. `EventModal.gd` is combat-era
    (d20 rolls against `charisma` / `dexterity` / `intelligence`, stats the
    redesign deleted) and is a rewrite, not an edit.
-7. **`images2.0/events/`.** The folder does not exist yet; `Image` names point
-   into it (`AbyssalBaths`, `BattlewornDummy`, `UnrestSite`).
+8. **`play_game`.** The one token that moves the player. It needs to pick a
+   tagged game, run it as an ordinary game (enemy and all) without it counting as
+   a route step, pay the `->` payload on the win, and then offer stay-or-return —
+   stay only when the game is in the run graph. `Overworld2.travel_to_game` and
+   `teleport_to_type` are the two nearest existing verbs.
+9. **`images2.0/events/` and `images2.0/curses/`.** Neither folder exists yet;
+   `Image` names point into them (`AbyssalBaths`, `BattlewornDummy`, `UnrestSite`,
+   `PunchOff`; `PoorSleep`, `Injury`).
