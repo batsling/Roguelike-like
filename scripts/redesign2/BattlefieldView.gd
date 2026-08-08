@@ -617,7 +617,15 @@ func refresh(show_current: bool = false) -> void:
 # outline and lifts the fill (the "you can click this" cue); the selected enemy —
 # the one the toolbar's Push / Bomb act on — keeps a thick accent ring. `frames`
 # is one PanelContainer per cell the enemy fills, so an L reads as an L.
-func _style_enemy_cell(frames: Array, accent: Color, is_current: bool, selected: bool, hovered: bool) -> void:
+# `frames` are the tiles UNDER the art (fill + outline); `edges` are outline-only
+# tiles ON TOP of it. Both are needed: art that leaves the cell part empty wants the
+# fill behind it, and art that covers the cell edge to edge — the Wisp, and every
+# other sprite drawn to fill its square — would otherwise paint straight over the
+# outline and leave the enemy with no visible border at all. Threat colour, the
+# selection ring and the hover brighten are all carried on that outline, so
+# losing it loses the three things the border is for.
+func _style_enemy_cell(frames: Array, accent: Color, is_current: bool, selected: bool,
+		hovered: bool, edges: Array = []) -> void:
 	var border: Color = accent
 	var width: int = 3 if is_current else 2
 	var fill: Color = UITheme.PANEL
@@ -633,6 +641,10 @@ func _style_enemy_cell(frames: Array, accent: Color, is_current: bool, selected:
 	for f in frames:
 		if is_instance_valid(f):
 			f.add_theme_stylebox_override("panel", box)
+	var edge_box: StyleBox = UITheme.flat(Color(0, 0, 0, 0), 6, 2, width, border)
+	for e in edges:
+		if is_instance_valid(e):
+			e.add_theme_stylebox_override("panel", edge_box)
 
 # Clicking an enemy targets it for the combat verbs and opens its info card.
 func click_enemy(instance: int, entry: Dictionary, col: int, is_current: bool) -> void:
@@ -710,6 +722,8 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 
 	# One frame per filled cell, positioned inside the node.
 	var frames: Array = []
+	# Outline-only tiles mounted over the art; filled in after the art exists.
+	var edges: Array = []
 	for off in cells:
 		var frame := PanelContainer.new()
 		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -727,10 +741,10 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	var resting_index: int = node.get_index()
 	node.mouse_entered.connect(func():
 		_enemy_layer.move_child(node, -1)
-		_style_enemy_cell(frames, accent, is_current, inst == selected_instance, true))
+		_style_enemy_cell(frames, accent, is_current, inst == selected_instance, true, edges))
 	node.mouse_exited.connect(func():
 		_enemy_layer.move_child(node, mini(resting_index, _enemy_layer.get_child_count() - 1))
-		_style_enemy_cell(frames, accent, is_current, inst == selected_instance, false))
+		_style_enemy_cell(frames, accent, is_current, inst == selected_instance, false, edges))
 	node.gui_input.connect(func(ev: InputEvent):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 			click_enemy(inst, entry, front, is_current))
@@ -757,6 +771,20 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	else:
 		art.modulate = accent
 	holder.add_child(art)
+
+	# The outline again, ON TOP of the art. Sprites drawn to fill their square —
+	# the Wisp is the obvious one — cover the frames underneath completely, and
+	# with them go the threat colour, the selection ring and the hover cue. These
+	# tiles are border-only and transparent, so they cost nothing on an enemy
+	# whose art does not reach the edges and restore the border on one whose does.
+	for off in cells:
+		var edge := PanelContainer.new()
+		edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		edge.position = Vector2(off.x, off.y) * float(_cell_step)
+		edge.size = Vector2(_cell, _cell)
+		holder.add_child(edge)
+		edges.append(edge)
+	_style_enemy_cell(frames, accent, is_current, selected, false, edges)
 
 	# Badges go on the layer above every body, but stay pinned to the cells this
 	# enemy holds (not to its nudged art), so they read as "this one's stats".

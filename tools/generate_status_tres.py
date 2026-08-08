@@ -354,7 +354,67 @@ def parse_reward_clause(clause):
         label = {"gain_hp": "Health", "gain_max_hp": "Max Health", "gain_gold": "Gold"}[verb]
         return eff, "+%s %s" % (_amount_word(rest[0]), label)
 
-    raise ValueError("status reward DSL: unknown verb %r in %r" % (verb, clause))
+    # --- costs: the same amounts pointed the other way -------------------
+    # Events need to charge for things (docs/event-sheet-authoring.md §5) and a
+    # curse is nothing BUT a cost, so the payout vocabulary grows a mirror rather
+    # than a second parser. Statuses are free to use these too; none do yet.
+    if verb in ("lose_hp", "lose_max_hp", "lose_gold"):
+        if not rest:
+            raise ValueError("reward DSL: %s needs an amount in %r" % (verb, clause))
+        eff = {"type": verb}
+        put(eff, "value", rest[0])
+        label = {"lose_hp": "Health", "lose_max_hp": "Max Health",
+                 "lose_gold": "Gold"}[verb]
+        return eff, "-%s %s" % (_amount_word(rest[0]), label)
+
+    if verb == "lose_stat":
+        if len(rest) < 2:
+            raise ValueError("reward DSL: lose_stat needs <stat> <n> in %r" % clause)
+        stat = rest[0].lower()
+        eff = {"type": "lose_stat", "stat": stat}
+        put(eff, "value", rest[1])
+        fallback = stat.replace("_", " ").title()
+        one, many = STAT_LABELS.get(stat, (fallback, fallback + "s"))
+        return eff, "-%s %s" % (_amount_word(rest[1]), _plural(rest[1], one, many))
+
+    # --- the rest of the 2.0 noun vocabulary -----------------------------
+    if verb == "heal_full":
+        return {"type": "heal_full"}, "Heal to full"
+
+    # `gain_loot` is a CATEGORY, not a synonym for gain_scroll: it resolves to
+    # whatever loot types exist, which today is scrolls alone. Authoring it means
+    # an event row widens on its own as more are added (§5).
+    if verb in ("gain_loot", "gain_scroll"):
+        amount = rest[0] if rest else "1"
+        eff = {"type": verb}
+        put(eff, "value", amount)
+        one = "Loot" if verb == "gain_loot" else "Scroll"
+        many = one if verb == "gain_loot" else "Scrolls"
+        return eff, "+%s %s" % (_amount_word(amount), _plural(amount, one, many))
+
+    if verb == "obtain_item":
+        return {"type": "obtain_item"}, "+1 Item"
+
+    if verb == "random_item_choice":
+        amount = rest[0] if rest else "3"
+        eff = {"type": "random_item_choice"}
+        put(eff, "count", amount)
+        return eff, "+1 of %s Items" % _amount_word(amount)
+
+    if verb == "apply_status":
+        if not rest:
+            raise ValueError("reward DSL: apply_status needs a status in %r" % clause)
+        eff = {"type": "apply_status", "status": rest[0].lower()}
+        put(eff, "value", rest[1] if len(rest) > 1 else "1")
+        return eff, "+%s %s" % (_amount_word(rest[1] if len(rest) > 1 else "1"),
+                                rest[0].replace("_", " ").title())
+
+    # An explicit no-op, so "this choice does nothing" can be authored rather
+    # than left blank and read as unfinished.
+    if verb == "nothing":
+        return {"type": "none"}, "Nothing"
+
+    raise ValueError("reward DSL: unknown verb %r in %r" % (verb, clause))
 
 
 def _is_amount(tok: str) -> bool:

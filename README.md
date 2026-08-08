@@ -92,7 +92,9 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_boss_tres.py       #   data/bosses2.0
 │   ├── generate_character2_tres.py #   data/characters2.0
 │   ├── generate_scroll2_tres.py    #   data/scrolls2.0
-│   ├── generate_status_tres.py     #   data/statuses2.0
+│   ├── generate_status_tres.py     #   data/statuses2.0 (owns the reward-token DSL)
+│   ├── generate_event2_tres.py     #   data/events2.0
+│   ├── generate_curse2_tres.py     #   data/curses2.0
 │   ├── _xlsx_surgery.py            #   edit one sheet without losing the charts
 │   ├── generate_item_tres.py, generate_character_tres.py,
 │   ├── generate_curse_tres.py, generate_event_tres.py,
@@ -181,6 +183,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `EffectSystem` | Central dispatch for structured effects (`{type, value, target}`) applied via `EffectSystem.apply()`. |
 | `TriggerBus` | Global signal hub wiring item/event triggers to game moments (`game_beaten`, `chest_granted`, …). |
 | `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
+| `EventSystem` | Events (`docs/event-sheet-authoring.md`): which dead-end node carries which event, the Requirement/`needs` gates, and resolving a choice into effects, an event goal or a curse. |
 | `GameLoop2` | The run loop: the games-beaten clock, the goal-enemy stack, and the grid the followers advance across. `Overworld2` is a view over it. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
 | `GameLog` | Verbose run-scope message log (teleports, pickups, item procs) — the written record behind the toasts. |

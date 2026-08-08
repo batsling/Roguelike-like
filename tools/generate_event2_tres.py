@@ -1,0 +1,338 @@
+#!/usr/bin/env python3
+"""
+Generate Godot EventData2 .tres from the `events2.0` sheet of
+tools/Roguelikes.xlsx into data/events2.0/.
+
+One row per event; the choices live in numbered column groups
+(`Choice N | Repeat N | Result N | Effect N`, N = 1..4), read left to right until
+a blank `Choice N`. Full format spec: docs/event-sheet-authoring.md.
+
+The `Effect` cells speak the shared reward-token DSL — the parser lives in
+generate_status_tres.py so there is one implementation of it — plus four
+event-only forms this module adds:
+
+    needs <token>                    a gate on what the player can pay
+    needs <Choice> <op> <n>          a gate on the event's own state
+    add_goal "<cond>" [for <n> games] -> <reward>
+    add_curse <curse> [for <n> games]
+    play_game tag=<tag> -> <reward>
+
+A cell is `;`-separated clauses. If it contains `->`, everything after the FIRST
+arrow is that clause's payload (itself `;`-separated), so an arrow verb is always
+the last thing in the cell.
+
+  python3 tools/generate_event2_tres.py           # write data/events2.0/*.tres
+  python3 tools/generate_event2_tres.py --list    # print the parse, write nothing
+"""
+
+import argparse
+import os
+import re
+import sys
+
+import openpyxl
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import generate_status_tres as dsl  # noqa: E402  (the shared reward-token parser)
+
+PROJECT_ROOT = dsl.PROJECT_ROOT
+XLSX_PATH = dsl.XLSX_PATH
+OUT_DIR = os.path.join(PROJECT_ROOT, "data", "events2.0")
+IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "events")
+IMG_RES_PREFIX = "res://images2.0/events/"
+SHEET = "events2.0"
+MAX_CHOICES = 4
+
+TIERS = ("low", "medium", "high", "insane")
+WHERES = {"dead end": "dead_end", "dead_end": "dead_end", "any": "any", "game": "game"}
+TRIGGERS = ("after", "before")
+# Run stats a Requirement or a `needs` gate may name. Deliberately a closed list:
+# a typo'd stat that silently never passes is an event that silently never fires.
+GATE_STATS = ("hp", "max_hp", "gold", "games", "keys", "bombs", "bash", "dash",
+              "push", "transmute", "scramble", "shields")
+
+
+# --- the Requirement column -------------------------------------------------
+
+REQ_RE = re.compile(r"^\s*([a-z_]+)\s*(<=|>=|==|=|<|>)\s*(\d+)\s*(%?)\s*$", re.I)
+
+
+def parse_requirement(raw, where):
+    s = dsl._clean(raw)
+    if not s:
+        return {}
+    m = REQ_RE.match(s)
+    if not m:
+        raise ValueError('events2.0 %s: cannot parse Requirement %r — expected '
+                         '"<stat> <op> <value>[%%]"' % (where, s))
+    stat = m.group(1).lower()
+    if stat not in GATE_STATS:
+        raise ValueError("events2.0 %s: Requirement names unknown stat %r (known: %s)"
+                         % (where, stat, ", ".join(GATE_STATS)))
+    op = m.group(2)
+    return {"stat": stat, "op": "==" if op == "=" else op,
+            "value": int(m.group(3)), "percent": m.group(4) == "%"}
+
+
+# --- the Repeat column ------------------------------------------------------
+
+def parse_repeat(raw, where):
+    """'' -> end, 'Again' -> again, 'Again x3' -> again/3, 'Stay' -> stay."""
+    s = dsl._clean(raw).lower()
+    if not s or s == "end":
+        return "end", 0
+    if s == "stay":
+        return "stay", 0
+    m = re.match(r"^again(?:\s*x\s*(\d+))?$", s)
+    if m:
+        return "again", int(m.group(1)) if m.group(1) else 0
+    raise ValueError("events2.0 %s: unknown Repeat %r (End | Again | Again xN | Stay)"
+                     % (where, raw))
+
+
+# --- the Effect cell --------------------------------------------------------
+
+GATE_CHOICE_RE = re.compile(r"^([A-Za-z0-9_' ]+?)\s*(<=|>=|==|=|<|>)\s*(\d+)$")
+GOAL_RE = re.compile(r'^add_goal\s+"([^"]*)"\s*(?:for\s+(\d+)\s+games?)?\s*$', re.I)
+CURSE_RE = re.compile(r"^add_curse\s+([a-z0-9_]+)\s*(?:for\s+(\d+)\s+games?)?\s*$", re.I)
+PLAY_RE = re.compile(r"^play_game\s+tag\s*=\s*([A-Za-z0-9_' -]+?)\s*$", re.I)
+
+
+def _split_clauses(cell):
+    """(head clauses, payload clauses) — payload is everything past the first ->."""
+    if "->" in cell:
+        head, _, payload = cell.partition("->")
+        return ([c.strip() for c in head.split(";") if c.strip()],
+                [c.strip() for c in payload.split(";") if c.strip()])
+    return [c.strip() for c in cell.split(";") if c.strip()], []
+
+
+def parse_gate(clause, where, choice_labels):
+    body = clause[len("needs"):].strip()
+    m = GATE_CHOICE_RE.match(body)
+    if m:
+        # A pick-count gate always carries an operator; a resource gate never
+        # does. That is the whole disambiguation, so it has to hold.
+        label = m.group(1).strip()
+        slug = dsl.slugify(label)
+        if slug not in choice_labels:
+            raise ValueError("events2.0 %s: `needs %s` names no choice on this "
+                             "event (choices: %s)"
+                             % (where, label, ", ".join(sorted(choice_labels)) or "none"))
+        op = m.group(2)
+        return {"choice": slug, "op": "==" if op == "=" else op,
+                "value": int(m.group(3))}
+    toks = body.split()
+    if len(toks) != 2 or not re.fullmatch(r"\d+", toks[1]):
+        raise ValueError('events2.0 %s: cannot parse gate %r — expected '
+                         '"needs <resource> <n>" or "needs <Choice> <op> <n>"'
+                         % (where, clause))
+    stat = toks[0].lower()
+    if stat not in GATE_STATS:
+        raise ValueError("events2.0 %s: gate names unknown resource %r (known: %s)"
+                         % (where, stat, ", ".join(GATE_STATS)))
+    return {"resource": stat, "value": int(toks[1])}
+
+
+def parse_effect_cell(cell, where, choice_labels, curse_ids):
+    """-> {gates, effects, effects_text, goal, curse, play}."""
+    out = {"gates": [], "effects": [], "effects_text": "",
+           "goal": {}, "curse": {}, "play": {}}
+    s = dsl._clean(cell)
+    if not s:
+        return out
+    head, payload = _split_clauses(s)
+    words = []
+    arrow_verb = None
+
+    for i, clause in enumerate(head):
+        low = clause.lower()
+        last = (i == len(head) - 1)
+
+        if low.startswith("needs"):
+            out["gates"].append(parse_gate(clause, where, choice_labels))
+            continue
+
+        m = GOAL_RE.match(clause)
+        if m:
+            if not last:
+                raise ValueError("events2.0 %s: add_goal must be the last clause" % where)
+            out["goal"] = {"condition": dsl.normalise_holes(m.group(1)),
+                           "games": int(m.group(2)) if m.group(2) else 1}
+            arrow_verb = "goal"
+            continue
+
+        m = CURSE_RE.match(clause)
+        if m:
+            cid = m.group(1).lower()
+            if cid not in curse_ids:
+                raise ValueError("events2.0 %s: add_curse names unknown curse %r "
+                                 "(curses2.0 has: %s)"
+                                 % (where, cid, ", ".join(sorted(curse_ids)) or "none"))
+            # games 0 = "use the curse's own Timer", so a re-tuned curse retunes
+            # every event that hands it out.
+            out["curse"] = {"curse": cid, "games": int(m.group(2)) if m.group(2) else 0}
+            # Deliberately NOT added to effects_text: EventSystem.describe_choice
+            # renders a curse in full, with its condition and its window, and a
+            # bare "Curse: Injury" beside that just says the name twice.
+            continue
+
+        m = PLAY_RE.match(clause)
+        if m:
+            if not last:
+                raise ValueError("events2.0 %s: play_game must be the last clause" % where)
+            out["play"] = {"tag": m.group(1).strip().lower()}
+            arrow_verb = "play"
+            continue
+
+        eff, word = dsl.parse_reward_clause(clause)
+        out["effects"].append(eff)
+        words.append(word)
+
+    if payload and arrow_verb is None:
+        raise ValueError("events2.0 %s: `->` payload with nothing to attach it to "
+                         "(only add_goal and play_game take one)" % where)
+    if arrow_verb is not None and not payload:
+        raise ValueError("events2.0 %s: %s needs a `-> <reward>` payload"
+                         % (where, "add_goal" if arrow_verb == "goal" else "play_game"))
+    if payload:
+        effects, text = dsl.parse_reward(" ; ".join(payload))
+        out[arrow_verb]["effects"] = effects
+        out[arrow_verb]["effects_text"] = text
+
+    out["effects_text"] = ", ".join(w for w in words if w)
+    return out
+
+
+# --- one row ----------------------------------------------------------------
+
+def _tier_tags(raw, where):
+    s = dsl._clean(raw)
+    if not s or s.lower() == "all":
+        return []
+    tags = [t.strip().lower() for t in s.split(",") if t.strip()]
+    for t in tags:
+        if t not in TIERS:
+            raise ValueError("events2.0 %s: unknown Tier %r (known: %s, or All)"
+                             % (where, t, ", ".join(TIERS)))
+    return tags
+
+
+def _limit(raw) -> int:
+    s = dsl._clean(raw)
+    if not s or s.lower() == "none":
+        return 0
+    return max(0, int(float(s)))
+
+
+def event_tres(row, curse_ids) -> tuple:
+    name = str(row["Event"]).strip()
+    eid = dsl.slugify(name)
+
+    raw_choices = []
+    for n in range(1, MAX_CHOICES + 1):
+        label = dsl._clean(row.get("Choice %d" % n))
+        if not label:
+            break  # a blank Choice N ends the list; later groups are ignored
+        raw_choices.append((n, label))
+    if not raw_choices:
+        raise ValueError("events2.0 %s: no choices — an event needs at least one" % name)
+    labels = {dsl.slugify(lbl) for _n, lbl in raw_choices}
+
+    choices = []
+    for n, label in raw_choices:
+        where = "%s/Choice %d" % (name, n)
+        repeat, repeat_max = parse_repeat(row.get("Repeat %d" % n), where)
+        parsed = parse_effect_cell(row.get("Effect %d" % n), where, labels, curse_ids)
+        choices.append({
+            "id": dsl.slugify(label),
+            "text": label,
+            "repeat": repeat,
+            "repeat_max": repeat_max,
+            "result": dsl._clean(row.get("Result %d" % n)),
+            "gates": parsed["gates"],
+            "effects": parsed["effects"],
+            "effects_text": parsed["effects_text"],
+            "goal": parsed["goal"],
+            "curse": parsed["curse"],
+            "play": parsed["play"],
+        })
+
+    if choices and all(c["repeat"] == "again" and not c["gates"] for c in choices):
+        print("  ! %s: every choice is `Again` and ungated — this is an event you "
+              "cannot leave." % eid)
+
+    where_raw = dsl._clean(row.get("Where")).lower()
+    where_val = WHERES.get(where_raw, "dead_end") if where_raw else "dead_end"
+    if where_raw and where_raw not in WHERES:
+        raise ValueError("events2.0 %s: unknown Where %r (known: Dead End, Any, Game)"
+                         % (name, row.get("Where")))
+    trigger = (dsl._clean(row.get("Trigger")).lower() or "after")
+    if trigger not in TRIGGERS:
+        raise ValueError("events2.0 %s: unknown Trigger %r (known: After, Before)"
+                         % (name, row.get("Trigger")))
+
+    lines = [
+        '[gd_resource type="Resource" script_class="EventData2" load_steps=2 '
+        'format=3 uid="uid://event2_%s"]' % eid,
+        "",
+        '[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" '
+        'id="1_event"]',
+        "",
+        "[resource]",
+        'script = ExtResource("1_event")',
+        'id = &"%s"' % eid,
+        'display_name = "%s"' % dsl.gd_str(name),
+        'source_game = "%s"' % dsl.gd_str(dsl._clean(row.get("Game"))),
+        "tier_tags = PackedStringArray(%s)" % ", ".join(
+            '"%s"' % t for t in _tier_tags(row.get("Tier"), name)),
+        'where = "%s"' % where_val,
+        "requirement = %s" % dsl.gd_value(parse_requirement(row.get("Requirement"), name)),
+        'trigger = "%s"' % trigger,
+        'rarity = "%s"' % dsl.gd_str(dsl._clean(row.get("Rarity")) or "Common"),
+        "run_limit = %d" % _limit(row.get("Limit")),
+        'file = "%s"' % dsl.gd_str(dsl._clean(row.get("Image"))),
+        'prompt = "%s"' % dsl.gd_str(dsl._clean(row.get("Prompt"))),
+        'goal_met = "%s"' % dsl.gd_str(dsl._clean(row.get("Goal Met"))),
+        'goal_missed = "%s"' % dsl.gd_str(dsl._clean(row.get("Goal Missed"))),
+        "choices = %s" % dsl.gd_value(choices),
+    ]
+    return eid, "\n".join(lines) + "\n"
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--list", action="store_true", help="print, do not write")
+    args = ap.parse_args()
+
+    wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
+    if SHEET not in wb.sheetnames:
+        raise SystemExit("%s has no %r sheet — run tools/_events2_sheet_setup.py"
+                         % (XLSX_PATH, SHEET))
+    # add_curse is checked against the curse sheet rather than against
+    # data/curses2.0, so a fresh checkout generates in either order.
+    curse_ids = set()
+    if "curses2.0" in wb.sheetnames:
+        curse_ids = {dsl.slugify(r["Curse"]) for r in dsl.rows(wb["curses2.0"])}
+
+    os.makedirs(OUT_DIR, exist_ok=True)
+    written = []
+    for row in dsl.rows(wb[SHEET]):
+        eid, text = event_tres(row, curse_ids)
+        if args.list:
+            print("=== %s ===\n%s" % (eid, text))
+            continue
+        with open(os.path.join(OUT_DIR, eid + ".tres"), "w", encoding="utf-8") as f:
+            f.write(text)
+        written.append(eid)
+        img = dsl._clean(row.get("Image"))
+        if img and not os.path.exists(os.path.join(IMG_DIR, img + ".png")):
+            print("  ! %s: no art at %s%s.png" % (eid, IMG_RES_PREFIX, img))
+    if not args.list:
+        print("Wrote %d event2.0 .tres to %s" % (len(written), OUT_DIR))
+        for e in written:
+            print("  -", e)
+
+
+if __name__ == "__main__":
+    main()

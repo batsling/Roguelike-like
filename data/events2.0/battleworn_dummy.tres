@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_battleworn_dummy"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"battleworn_dummy"
+display_name = "Battleworn Dummy"
+source_game = "Slay the Spire 2"
+tier_tags = PackedStringArray()
+where = "dead_end"
+requirement = {}
+trigger = "after"
+rarity = "Common"
+run_limit = 1
+file = "BattlewornDummy"
+prompt = "As you approach, it begins to rumble and fizzle and lights up brilliantly! \"BZZZT! TIME TO TRAIN!!! YOU HAVE 3 TURNS TO DEFEAT ME! CHOOSE A SETTING OR FACE LETHAL HUMILIATION.\""
+goal_met = "\"YOU PASS THE TRAINING! YOU ARE NOW EQUIPPED TO DEFEND THIS FACTORY AGAINST INTRUDERS!! BE SURE TO HYDRATE AFTER TRAINING SESSIONS!\""
+goal_missed = "\"YOU ARE WEAK!! HUMILIATION HAS BEEN ADMINISTERED!\" The dummy is silent for a moment and— \"Choose a lower setting next time.\""
+choices = [{"id": "setting_1", "text": "Setting 1", "repeat": "end", "repeat_max": 0, "result": "", "gates": [], "effects": [], "effects_text": "", "goal": {"condition": "beat a game in 5 attempts or fewer", "games": 3, "effects": [{"type": "gain_scroll", "value": 1}], "effects_text": "+1 Scroll"}, "curse": {}, "play": {}}, {"id": "setting_2", "text": "Setting 2", "repeat": "end", "repeat_max": 0, "result": "", "gates": [], "effects": [], "effects_text": "", "goal": {"condition": "beat a game in 3 attempts or fewer", "games": 3, "effects": [{"type": "gain_chest", "value": 1, "choices": 1}], "effects_text": "+1 Small Chest"}, "curse": {}, "play": {}}, {"id": "setting_3", "text": "Setting 3", "repeat": "end", "repeat_max": 0, "result": "", "gates": [], "effects": [], "effects_text": "", "goal": {"condition": "beat a game in 1 attempt", "games": 3, "effects": [{"type": "gain_chest", "value": 1, "choices": 3}], "effects_text": "+1 Large Chest"}, "curse": {}, "play": {}}]

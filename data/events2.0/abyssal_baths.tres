@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_abyssal_baths"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"abyssal_baths"
+display_name = "Abyssal Baths"
+source_game = "Slay the Spire 2"
+tier_tags = PackedStringArray()
+where = "dead_end"
+requirement = {}
+trigger = "after"
+rarity = "Common"
+run_limit = 1
+file = "AbyssalBaths"
+prompt = "You discover a secluded chamber. Steam rises from bubbling pools of hot liquid that shifts colors with hypnotic rhythm. Barnacled growths hang from the ceiling, dripping viscous fluid that hisses and writhes when it touches the surface. The air feels heavy, laden with salt and something unmistakably organic. As you approach the edge of the largest pool, the liquid ripples. The waters bubble more intensely as if anticipating your entry."
+goal_met = ""
+goal_missed = ""
+choices = [{"id": "immerse", "text": "Immerse", "repeat": "stay", "repeat_max": 0, "result": "The liquid burns against your skin, simultaneously freezing and scalding. Beneath the surface, something brushes against your legs—tendrils? Currents with purpose? But when the pain subsides, you feel... denser somehow. More substantial.", "gates": [], "effects": [{"type": "gain_max_hp", "value": 1}, {"type": "lose_hp", "value": 3}], "effects_text": "+1 Max Health, -3 Health", "goal": {}, "curse": {}, "play": {}}, {"id": "linger", "text": "Linger", "repeat": "again", "repeat_max": 0, "result": "", "gates": [{"choice": "immerse", "op": ">", "value": 0}], "effects": [{"type": "gain_max_hp", "value": 1}, {"type": "lose_hp", "scaled": {"value": "4.0+X"}}], "effects_text": "+1 Max Health, -{4.0+X} Health", "goal": {}, "curse": {}, "play": {}}, {"id": "abstain", "text": "Abstain", "repeat": "end", "repeat_max": 0, "result": "You decline the temptation of the waters, instead gathering crystalline salts that have formed along the edges. As you apply them to your skin, the pools churn and froth agitatedly.", "gates": [{"choice": "immerse", "op": "==", "value": 0}], "effects": [{"type": "gain_hp", "value": 3}], "effects_text": "+3 Health", "goal": {}, "curse": {}, "play": {}}, {"id": "exit_baths", "text": "Exit Baths", "repeat": "end", "repeat_max": 0, "result": "", "gates": [{"choice": "immerse", "op": ">", "value": 0}], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}}]

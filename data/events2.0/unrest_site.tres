@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_unrest_site"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"unrest_site"
+display_name = "Unrest Site"
+source_game = "Slay the Spire 2"
+tier_tags = PackedStringArray()
+where = "dead_end"
+requirement = {"stat": "hp", "op": "<=", "value": 70, "percent": true}
+trigger = "after"
+rarity = "Common"
+run_limit = 1
+file = "UnrestSite"
+prompt = "You find a secluded Rest Site and start a fire to get some rest. Once the fire is started, it begins to swell, reaching not upwards but sideways towards a grove of oil-seeping trees."
+goal_met = ""
+goal_missed = ""
+choices = [{"id": "rest_anyways", "text": "Rest Anyways", "repeat": "end", "repeat_max": 0, "result": "All this adventuring has left you exhausted, and despite the oddities, you decide to sleep. You toss and turn as the fire roars and crackles through the night. The disgusting trees give off a wretched scent from their pitch-black sap.", "gates": [], "effects": [{"type": "heal_full"}], "effects_text": "Heal to full", "goal": {}, "curse": {"curse": "poor_sleep", "games": 0}, "play": {}}, {"id": "kill_the_trees", "text": "Kill the Trees", "repeat": "end", "repeat_max": 0, "result": "These trees are clearly malicious so you decide to get rid of them. Days later, you're covered in ash and oily goop. A massive flock of little byrd spirits rise from the slain trees and drop a small box at your feet. \"Thank you for freeing us from those trees... cheep cheep!\"", "gates": [], "effects": [{"type": "lose_max_hp", "value": 2}, {"type": "gain_chest", "value": 1, "choices": 1}], "effects_text": "-2 Max Health, +1 Small Chest", "goal": {}, "curse": {}, "play": {}}]
