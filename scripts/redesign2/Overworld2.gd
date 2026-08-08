@@ -114,6 +114,9 @@ var _resolving: bool = false
 # An end-of-run screen owed to the player, held back until the board has finished
 # playing the resolve that ended the run.
 var _run_over_pending: bool = false
+# An item picked up WHILE the board was playing a resolve back: the repaint it
+# asked for is owed, and paid at _end_resolve rather than over the animation.
+var _board_dirty: bool = false
 # The event waiting to open once the board has finished playing its resolve back.
 # An event fires AFTER the game at its node is beaten (docs/event-sheet-authoring.md
 # §1) and the board is mid-animation at that moment, so it queues here the way the
@@ -1078,6 +1081,11 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 			GameStats.record_amulet_win(played_game.id)
 		else:
 			GameStats.record_beaten(played_game.id)
+	elif played_game != null and not escaped and was_amulet:
+		# The Amulet game finished WITHOUT its enemy's goal: still the run's win
+		# (see the was_amulet branch below), so it is still the game the win goes
+		# on the record against.
+		GameStats.record_amulet_win(played_game.id)
 	# Level up (§3.1) — a fresh chance each game; skipped if the game just killed
 	# the player.
 	if leveled and not GameLoop2.run_over:
@@ -1115,9 +1123,17 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 		# there. The end-of-run screen waits for it to land (_end_resolve).
 		_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
 		return
-	if was_amulet and goal_met:
-		# Winning on the Amulet ends the run through GameLoop2 (-> _on_run_won),
-		# and the last advance still deserves to be seen before the win screen.
+	if was_amulet:
+		# REACHING the Amulet game and playing it IS the run. It used to also
+		# require the goal box — the goal-enemy standing there had to have its
+		# condition met as well — so a player who got all the way to the Amulet
+		# game and beat it, but hadn't happened to "destroy an enemy spawner"
+		# while doing it, watched the run carry on as if nothing had happened.
+		# The whole run is a search for one game; arriving and playing it is the
+		# answer. The enemy's goal is a bonus on top, not the lock on the door.
+		#
+		# Winning ends the run through GameLoop2 (-> _on_run_won), and the last
+		# advance still deserves to be seen before the win screen.
 		GameLoop2.clear_amulet()
 		_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
 		return
@@ -1182,6 +1198,11 @@ func _end_resolve() -> void:
 		return
 	_resolving = false
 	_refresh_stage()
+	# A pickup during the playback deferred its board repaint to here (see
+	# _on_inventory_changed) — the board is the player's again now.
+	if _board_dirty:
+		_board_dirty = false
+		_board.refresh(_phase == Phase.PLAYING)
 	if _run_over_pending:
 		_run_over_pending = false
 		_pending_event = null   # a run that just ended has no room for a bonus
@@ -1703,11 +1724,33 @@ func _build_choices() -> void:
 func _on_vitals_changed(_hp: int = 0, _max_hp: int = 0) -> void:
 	_refresh_stats()
 
-# A pickup changed the pack: relist it AND repaint the chips, since the item's
-# stat bonuses / item_acquired effects have already landed on the run.
+# A pickup changed the pack — so repaint EVERYTHING, not just the pack and the
+# chip row.
+#
+# An item's payload lands on the run the instant it is picked up: passive
+# stat_bonuses are folded in, item_acquired effects have already fired, a shield
+# grant is already spendable, and a Mine-r Construction has already grown the
+# board (GameLoop2.sync_grid_bounds hangs off this same signal). This used to
+# relist the pack and repaint the chips only, which left the shield pips, the
+# battlefield summary and the board itself quoting numbers from before the
+# pickup until the next report came along to refresh them.
 func _on_inventory_changed() -> void:
+	if _stack == null:
+		return
 	_refresh_items()
 	_refresh_stats()
+	_refresh_attempts()
+	_stack.text = "[b]Battlefield[/b]  —  " + _stack_summary()
+	_refresh_stage()
+	# The board is the one thing that has to wait. A repaint frees every body on
+	# it, and the resolve animation is sliding those bodies — so a pickup that
+	# lands mid-playback (an enemy drop, an event's payout) would wipe the
+	# animation it arrived in the middle of. Deferred to _end_resolve instead,
+	# which is the moment the board is the player's again.
+	if _resolving:
+		_board_dirty = true
+		return
+	_board.refresh(_phase == Phase.PLAYING)
 
 func _refresh(_a = null) -> void:
 	if _stack == null:
@@ -2161,11 +2204,21 @@ func _populate_play_panel() -> void:
 		# by a clause on this enemy or one on the player is part of what ticking
 		# this box asserts (§13).
 		var goal_text: String = "%s %s" % [
-			"🏆 Amulet goal —" if is_amulet else "Goal —",
+			"🏆 Amulet goal (bonus) —" if is_amulet else "Goal —",
 			GameLoop2.goal_text_for(GameLoop2.current)]
 		var goal_row := _verify_row(goal_text, UITheme.SUCCESS, true, enemy)
 		_goal_check = goal_row["check"]
 		_verify_box.add_child(goal_row["row"])
+		# On the Amulet the goal is NOT the lock on the door — playing the game is
+		# (see report()). Said here because this row is the one place a player
+		# would otherwise reasonably read it as the win condition.
+		if is_amulet:
+			var win_note := Label.new()
+			win_note.text = "Completing this game wins the run — the goal above is a bonus."
+			win_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			win_note.add_theme_font_size_override("font_size", 12)
+			win_note.add_theme_color_override("font_color", UITheme.GOLD)
+			_verify_box.add_child(win_note)
 		# …and its optional bonus objectives, which are claimed separately because
 		# skipping one costs nothing.
 		_add_bonus_rows(GameLoop2.current)

@@ -1016,21 +1016,43 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# while still obviously belonging to this body.
 	var hp: int = int(entry.get("health", e.health))
 	var hp_lbl := _corner_badge("❤%d" % hp, Color(1.0, 0.5, 0.5), STAT_BADGE_FONT)
-	hp_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT,
-		Control.PRESET_MODE_MINSIZE, -STAT_BADGE_DROP)
-	holder.add_child(hp_lbl)
 
 	# Damage per swing, and — once this body gets more than one swing on the next
-	# game — how many swings that is: "⚔3 x2". The two numbers are one fact ("it
-	# hits you twice for 3"), so they read as one badge in the corner instead of
-	# the count sitting over the art.
+	# game — how many swings that is: "⚔3 ×2". The two numbers are one fact ("it
+	# hits you twice for 3"), so they read as one badge instead of the count
+	# sitting over the art.
 	var dmg_lbl := _corner_badge(_damage_badge_text(e, strikes), Color(1.0, 0.8, 0.35),
 		STAT_BADGE_FONT)
 	if strikes > 1:
 		dmg_lbl.add_theme_color_override("font_color", UITheme.DANGER.lerp(Color.WHITE, 0.45))
-	dmg_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT,
+
+	# The two go in ONE ROW, not one in each bottom corner, and that is a bug fix.
+	# Anchored separately, each badge grew from its own corner inwards — so the
+	# moment an enemy got a second swing, "⚔3 ×2" grew left across the box and
+	# printed itself straight over the ❤ in the other corner. The health, which is
+	# the number you are reading to decide whether it dies this game, was the one
+	# that lost. It happened exactly when it mattered most: multi-swing means the
+	# Amulet is close and the board is at its widest, so the cells are at their
+	# SMALLEST (46px at 7x7) and the damage badge is at its LONGEST.
+	#
+	# A row can't overlap itself. Health takes the left, an expanding spacer eats
+	# whatever is left over, damage takes the right — identical to the old corners
+	# whenever both fit, and when they don't they sit side by side and overhang
+	# the box together instead of one erasing the other.
+	var stat_row := HBoxContainer.new()
+	stat_row.add_theme_constant_override("separation", 2)
+	stat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stat_row.add_child(hp_lbl)
+	var gap := Control.new()
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stat_row.add_child(gap)
+	stat_row.add_child(dmg_lbl)
+	# BOTTOM_WIDE: the row spans the body's full width, so "left corner" and
+	# "right corner" are still where the two numbers land on anything roomy.
+	stat_row.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE,
 		Control.PRESET_MODE_MINSIZE, -STAT_BADGE_DROP)
-	holder.add_child(dmg_lbl)
+	holder.add_child(stat_row)
 
 	# Statuses BELOW the box, under the health/damage row (§13) — the one piece of
 	# an enemy's state that is not a number and does not belong over its picture.
@@ -1062,8 +1084,10 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 # next game gives this body more than one. One swing needs no "x1" — that's the
 # normal case and printing it everywhere is noise.
 func _damage_badge_text(e: GoalEnemyData, strikes: int) -> String:
+	# "×" and no space: on a 46px cell every character of this badge is width the
+	# health beside it doesn't get.
 	if strikes > 1:
-		return "⚔%d x%d" % [e.damage, strikes]
+		return "⚔%d×%d" % [e.damage, strikes]
 	return "⚔%d" % e.damage
 
 # What this enemy does on the next game you report, in a sentence: how many

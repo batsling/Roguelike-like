@@ -11,6 +11,48 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Reaching the Amulet is the win, and three fixes around it.**
+
+  **Beating the Amulet game wins the run — the goal box is a bonus.** It used to
+  require BOTH: the Amulet game reported AND the goal-enemy standing there
+  satisfied. So a player who walked the whole road, got to the Amulet game and
+  beat it, but hadn't happened to "destroy an enemy spawner" on the way through,
+  watched the run carry on as though nothing had happened. The entire run is a
+  search for one game; arriving and playing it is the answer, and the enemy's
+  goal is a bonus on top rather than the lock on the door. The report step says
+  so now — the row reads "🏆 Amulet goal (bonus)" with a line under it — and the
+  win is recorded against that game either way.
+
+  **The health badge is no longer buried by the damage badge.** ❤ and ⚔ were
+  anchored to opposite bottom corners of a body, so each grew from its own corner
+  inwards — and the moment an enemy got a second swing, "⚔3×2" grew left and
+  printed itself straight over the ❤. It bit exactly when it mattered most:
+  multi-swing means the Amulet is close, which means the board is at its widest
+  and its cells at their smallest (46px at 7×7), so the damage badge was at its
+  longest over the least room. They share one row now — health left, damage
+  right, a spacer between — which is identical to the old corners whenever both
+  fit and simply cannot overlap when they don't. The badge also lost its space
+  ("⚔3×2", not "⚔3 x2"), which is a whole character of width back.
+
+  **A pickup repaints everything, not just the pack.** An item's payload lands on
+  the run the instant it is taken — passive stat bonuses folded in, item_acquired
+  effects already fired, a shield already spendable, a Mine-r Construction having
+  already grown the board — but the handler relisted the pack and repainted the
+  chip row only. The shield pips, the battlefield summary and the board itself
+  went on quoting pre-pickup numbers until the next report refreshed them. The
+  board is the one thing that waits: a repaint frees the bodies a resolve
+  animation is mid-slide on, so a pickup during the playback defers its repaint
+  to the end of it rather than wiping the animation it landed in.
+
+  **Confirmed: escaping fires no "after game beaten" trigger.** It already
+  didn't — everything hanging off finishing a game (the item hook, the Harvesting
+  gold payout, the recharge tick charged actives live on) comes through
+  TriggerBus.game_beaten, which sits inside the not-escaped branch. Now pinned by
+  tests, in both directions: an escape fires none of it, a game played to a
+  verdict fires it even when the goal was missed.
+
+---
+
 - **Four more from playing it, and one crash.**
 
   **Escape is open from the first second on a game you have played before.** The
