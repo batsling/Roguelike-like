@@ -18,11 +18,23 @@ For how the project is laid out and how its systems fit together, see
   alt-tab out of this game constantly, and borderless swaps instantly where
   exclusive is a mode switch — but it skipped the step before: a window that
   covers the screen also covers the taskbar you are alt-tabbing *with*. So
-  `project.godot` opens `mode=0` (WINDOWED) at 1280x720, which is also the only
-  mode that draws the layout at the size it is built for. Both fullscreens stay
-  on the Settings list and F11 still toggles. Leaving either one now puts an
-  over-sized window back to 1280x720 and re-centres it, instead of handing back a
-  "window" the size of the screen. The saved preference moved to a versioned key
+  `project.godot` opens `mode=0` (WINDOWED). Both fullscreens stay on the
+  Settings list and F11 still toggles; leaving either one now re-fits and
+  re-centres the window instead of handing back a "window" the size of the
+  screen.
+
+  The window and the canvas are two different numbers, and only the canvas is
+  1280x720. That stays exactly as it was — it is the box the layout is built to
+  fit, and `stretch/mode` scales it into whatever the window is — while
+  `window_width/height_override` opens the WINDOW at 2560x1440, so a 1440p screen
+  draws the page at 2x rather than in a corner of the desktop. The size is a
+  request: `Settings.windowed_fit()` clamps it to the screen's usable rect minus
+  the window frame (the title bar sits outside the size being set, so a window
+  fitted to the usable rect exactly still hangs its bottom edge under the
+  taskbar), floored at 1280x720 because a page shown whole under a taskbar beats
+  one cropped to fit above it. It is a pure static function because a headless
+  runner has no window manager, and so no decorations and no taskbar to check any
+  of this against. The saved preference moved to a versioned key
   (`Settings.DISPLAY_KEY`): a `settings.cfg` written under the old default holds
   an explicit borderless value for a player who never chose one, and reading a
   new key is what tells "never chose" apart from "chose the old default" —

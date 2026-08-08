@@ -74,9 +74,22 @@ var display_mode: int = DisplayMode.WINDOWED
 # key from then on.
 const DISPLAY_KEY := "mode2"
 
-# The window a WINDOWED session opens at — the canvas the layout is built for,
-# 1:1. Small enough on any modern screen to leave the taskbar reachable.
-const WINDOWED_SIZE := Vector2i(1280, 720)
+# The window a WINDOWED session opens at. NOT the canvas: the layout's box is a
+# fixed 1280x720 that stretch/mode scales into whatever the window is, so this is
+# purely how big that scaled page is drawn — 2560x1440 draws it at 2x. Kept in
+# step with project.godot's window_width/height_override, which is what the FIRST
+# frame uses, before this autoload has run.
+#
+# It is a REQUEST, not a size. _fit_windowed clamps it to the screen's usable
+# rect (minus the window frame), so a screen smaller than this gets as much of it
+# as fits and the taskbar/dock stays clear either way — which is the whole point
+# of being windowed.
+const WINDOWED_SIZE := Vector2i(2560, 1440)
+
+# The floor the clamp above will not go under, whatever a screen claims is
+# usable. The canvas is 1280x720 and stretch scales it, so a window this size
+# still shows the whole page — it is just the smallest one that shows it at 1:1.
+const MIN_WINDOWED_SIZE := Vector2i(1280, 720)
 
 # Developer mode. When on, the DevTools overlay (backtick `) is available to add
 # any card / curse / item to the player. Default true on this build so testing
@@ -122,21 +135,45 @@ func apply_display_mode() -> void:
 	if display_mode == DisplayMode.WINDOWED:
 		_fit_windowed()
 
-# Coming out of either fullscreen, the window keeps the size it filled the screen
-# at — so "windowed" lands as a borderless-shaped window with the taskbar still
-# buried under it, which is the one thing windowed mode is for. Any window as big
-# as the screen is put back to WINDOWED_SIZE and re-centred; a window the player
-# has already sized themselves is left exactly as they left it.
+# Put the window at WINDOWED_SIZE, or at as much of it as the screen has room
+# for, and centre it. Two jobs in one:
+#
+#   • Coming out of either fullscreen, the window otherwise keeps the size it
+#     filled the screen at — so "windowed" lands as a borderless-shaped window
+#     with the taskbar still buried under it, which is the one thing windowed
+#     mode is for.
+#   • On a screen smaller than WINDOWED_SIZE, project.godot's override would open
+#     a window bigger than the desktop with its own title bar off the top.
+#
+# The clamp is against the screen's USABLE rect (what is left once the taskbar /
+# dock / menu bar have taken theirs) MINUS the window frame, because the title
+# bar and borders sit outside the size being set here: a window sized to the
+# usable rect exactly still hangs its bottom edge under the bar.
 func _fit_windowed() -> void:
-	var screen: int = DisplayServer.window_get_current_screen()
-	var usable: Rect2i = DisplayServer.screen_get_usable_rect(screen)
-	var size: Vector2i = DisplayServer.window_get_size()
-	if size.x < usable.size.x and size.y < usable.size.y:
-		return
-	var want := Vector2i(mini(WINDOWED_SIZE.x, usable.size.x),
-		mini(WINDOWED_SIZE.y, usable.size.y))
-	DisplayServer.window_set_size(want)
-	DisplayServer.window_set_position(usable.position + (usable.size - want) / 2)
+	var usable: Rect2i = DisplayServer.screen_get_usable_rect(
+		DisplayServer.window_get_current_screen())
+	var frame: Vector2i = (DisplayServer.window_get_size_with_decorations()
+		- DisplayServer.window_get_size()).max(Vector2i.ZERO)
+	var box: Rect2i = windowed_fit(usable, frame)
+	if box.size != DisplayServer.window_get_size():
+		DisplayServer.window_set_size(box.size)
+	DisplayServer.window_set_position(box.position)
+
+# The arithmetic of the above, on its own so it can be checked against a desktop
+# this machine hasn't got — a taskbar, a title bar, a screen smaller than the
+# window asks for. `usable` is what the desktop leaves free, `frame` is what the
+# window's own decorations add OUTSIDE the size being set. Returns where the
+# window goes and how big it is.
+static func windowed_fit(usable: Rect2i, frame: Vector2i) -> Rect2i:
+	frame = frame.max(Vector2i.ZERO)
+	# The floor wins over the screen: a page shown whole under a taskbar beats a
+	# page cropped to fit above one.
+	var room: Vector2i = (usable.size - frame).max(MIN_WINDOWED_SIZE)
+	var size: Vector2i = WINDOWED_SIZE.min(room)
+	# Centred on what's free, counting the frame as part of what's being centred,
+	# then pinned so the title bar can never end up above the top of the desktop.
+	var at: Vector2i = usable.position + (usable.size - (size + frame)) / 2
+	return Rect2i(at.max(usable.position), size)
 
 static func window_mode_for(mode: int) -> int:
 	match mode:

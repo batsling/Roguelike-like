@@ -83,6 +83,71 @@ func test_the_canvas_is_stretched_not_grown() -> void:
 	assert_eq(int(ProjectSettings.get_setting("display/window/size/viewport_width", 0)), 1280)
 	assert_eq(int(ProjectSettings.get_setting("display/window/size/viewport_height", 0)), 720)
 
+# The WINDOW is a different number from the CANVAS, and the override is what
+# separates them: the canvas stays the 1280x720 box the layout is built to fit,
+# and the window it is scaled into opens at 2560x1440. Pinned together because
+# project.godot's override is what the FIRST frame uses and Settings' constant is
+# what every later switch back to windowed uses — if they drift, the window
+# changes size on its own the moment you press F11 twice.
+func test_the_window_opens_bigger_than_the_canvas_it_draws() -> void:
+	assert_eq(int(ProjectSettings.get_setting("display/window/size/window_width_override", 0)),
+		Settings.WINDOWED_SIZE.x, "the boot window width is Settings.WINDOWED_SIZE.x")
+	assert_eq(int(ProjectSettings.get_setting("display/window/size/window_height_override", 0)),
+		Settings.WINDOWED_SIZE.y, "and the height matches too")
+	assert_gt(Settings.WINDOWED_SIZE.x,
+		int(ProjectSettings.get_setting("display/window/size/viewport_width", 0)),
+		"the window is bigger than the canvas — that is what the override is for")
+	assert_gte(Settings.WINDOWED_SIZE.x, Settings.MIN_WINDOWED_SIZE.x,
+		"and never asks for less than the floor the clamp holds")
+	assert_gte(Settings.WINDOWED_SIZE.y, Settings.MIN_WINDOWED_SIZE.y)
+
+# --- where the window actually lands (Settings.windowed_fit) ----------------
+#
+# The point of being windowed is that the taskbar stays reachable, so the size
+# asked for is a REQUEST clamped to what the desktop leaves free — minus the
+# window's own title bar, which sits outside the size being set. None of this can
+# be exercised on a bare test runner (no window manager, so no decorations and no
+# taskbar), which is why the arithmetic is a pure function.
+
+# A 1440p desktop with a 48px taskbar and a 32px title bar.
+const TASKBAR := 48
+const TITLEBAR := Vector2i(0, 32)
+
+func test_the_window_never_covers_the_taskbar() -> void:
+	var usable := Rect2i(0, 0, 2560, 1440 - TASKBAR)
+	var box: Rect2i = Settings.windowed_fit(usable, TITLEBAR)
+	assert_lte(box.position.y + box.size.y + TITLEBAR.y, usable.size.y,
+		"the whole window, title bar included, sits above the taskbar")
+	assert_gte(box.position.y, 0, "and its title bar is not off the top of the screen")
+	assert_eq(box.size.x, 2560, "it still takes the full width it asked for")
+
+func test_the_full_size_is_taken_when_the_desktop_has_room() -> void:
+	# Nothing reserved and no decorations: the request is granted exactly.
+	var box: Rect2i = Settings.windowed_fit(Rect2i(0, 0, 3840, 2160), Vector2i.ZERO)
+	assert_eq(box.size, Settings.WINDOWED_SIZE, "2560x1440 asked for, 2560x1440 given")
+	assert_eq(box.position, Vector2i((3840 - 2560) / 2, (2160 - 1440) / 2), "centred")
+
+func test_a_smaller_screen_gets_as_much_as_fits() -> void:
+	var usable := Rect2i(0, 0, 1920, 1080 - TASKBAR)
+	var box: Rect2i = Settings.windowed_fit(usable, TITLEBAR)
+	assert_lt(box.size.x, Settings.WINDOWED_SIZE.x, "the request is cut down to the screen")
+	assert_eq(box.size.x, 1920, "to exactly the width available")
+	assert_eq(box.size.y, 1080 - TASKBAR - TITLEBAR.y, "and the height left over")
+
+func test_the_floor_wins_over_a_desktop_too_small_for_it() -> void:
+	# A page shown whole under a taskbar beats a page cropped to fit above one.
+	var box: Rect2i = Settings.windowed_fit(Rect2i(0, 0, 1024, 600), TITLEBAR)
+	assert_eq(box.size, Settings.MIN_WINDOWED_SIZE,
+		"never smaller than the canvas at 1:1, whatever the screen says")
+
+func test_a_second_monitor_gets_the_window_on_itself() -> void:
+	# screen_get_usable_rect is in DESKTOP coordinates, so a monitor to the right
+	# of the primary has a non-zero origin and the window must be offset onto it.
+	var usable := Rect2i(2560, 0, 2560, 1440 - TASKBAR)
+	var box: Rect2i = Settings.windowed_fit(usable, TITLEBAR)
+	assert_gte(box.position.x, 2560, "the window lands on the monitor it belongs to")
+	assert_lte(box.position.x + box.size.x, 2560 + 2560, "and not off its right edge")
+
 func test_a_non_16_9_screen_is_used_rather_than_letterboxed() -> void:
 	# "expand" hands a 16:10 or ultrawide monitor its extra pixels as real canvas
 	# instead of black bars. It can only ever give MORE than the base size, never

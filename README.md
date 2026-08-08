@@ -274,19 +274,35 @@ harness for the loop.
 
 ### The window
 
-The game opens **windowed** (`display/window/size/mode=0`) at 1280x720. That is
-deliberate: the core loop is leaving the game to go and play a real one and
-coming back to report, so the player alt-tabs out several times a run — and a
-window is the only mode that leaves the OS's own taskbar/dock on screen to do it
-with. It is also the only one that draws the layout at the size it is designed at.
+The game opens **windowed** (`display/window/size/mode=0`). That is deliberate:
+the core loop is leaving the game to go and play a real one and coming back to
+report, so the player alt-tabs out several times a run — and a window is the only
+mode that leaves the OS's own taskbar/dock on screen to do it with.
+
+**The window and the canvas are two different numbers.** `viewport_width/height`
+is the CANVAS — the fixed 1280x720 box the layout is built to fit — and it never
+changes. `window_width/height_override` is how big the window that canvas is
+scaled into opens: **2560x1440**, so a 1440p screen draws the page at 2x instead
+of in a quarter of the desktop. `Settings.WINDOWED_SIZE` holds the same pair for
+every later switch back to windowed, and a test pins the two together — if they
+drift, the window resizes itself the moment you press F11 twice.
+
+That size is a **request**. `Settings.windowed_fit()` clamps it to the screen's
+usable rect (what is left once the taskbar / dock / menu bar have taken theirs)
+*minus the window frame*, since the title bar sits outside the size being set —
+so a smaller monitor gets as much as fits and the taskbar stays clear either way.
+It is floored at 1280x720: a page shown whole under a taskbar beats a page
+cropped to fit above one. The arithmetic is a pure static function precisely
+because none of it can be exercised on a headless runner, which has no window
+manager and therefore no decorations and no taskbar.
 
 Both fullscreens are still on the list. `Settings → Display` offers **Windowed**,
 **Windowed fullscreen (borderless)** (`FULLSCREEN` — a borderless window the size
 of the screen, *not* `EXCLUSIVE_FULLSCREEN`) and **Exclusive fullscreen**; **F11**
 toggles windowed ⟷ borderless from any screen, and the choice is persisted to
-`user://settings.cfg`. Leaving either fullscreen puts an over-sized window back to
-1280x720 and re-centres it, so "windowed" never comes back the size of the screen
-with the taskbar still buried under it.
+`user://settings.cfg`. Leaving either fullscreen re-fits and re-centres the
+window, so "windowed" never comes back the size of the screen with the taskbar
+still buried under it.
 
 The stored preference lives under a **versioned key** (`Settings.DISPLAY_KEY`)
 because the default moved from borderless to windowed after saves existed: a

@@ -213,9 +213,10 @@ existing `images/scrolls/Unidentified.png`. Scrolls get the identical treatment:
 *(The old **Fog** scroll and **Keys** are both **deferred — author later**; they
 stay in the design but no `2.0` content exists for them yet.)*
 
-The game opens in an ordinary **1280×720 window** — see README's "The window"
-for why a window rather than either fullscreen, and for the fact that going
-fullscreen scales that fixed canvas rather than enlarging it.
+The game opens in an ordinary **window** (2560×1440, clamped to whatever the
+screen leaves free) — see README's "The window" for why a window rather than
+either fullscreen, and for the fact that the **canvas** stays a fixed 1280×720
+that is *scaled* into that window rather than enlarged by it.
 
 Scrolls are carried, so they are **tokens on the pack strip** above the board,
 beside the relics, each with a small Read control above its tile — the same shape
