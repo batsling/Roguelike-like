@@ -11,6 +11,60 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Four more from playing it, and one crash.**
+
+  **Escape is open from the first second on a game you have played before.** The
+  way out of a game you can't beat was gated behind five lost runs, which is the
+  right price for a game you have never got through — the alternative is a player
+  who quits the run instead — and exactly the wrong one for a game you have
+  already cleared. There is nothing left to prove there, so being made to lose at
+  it five more times to unlock the door is a tax on the least interesting thing
+  in the run. `can_escape` now has two doors: the lost-runs rule for a game with
+  no record, and immediately for one with. The tooltip says which is holding it
+  open.
+
+  It is the same escape either way — only the gate moved. The goal-enemy still
+  walks onto the board, everything already out there still takes its turns, and
+  the game still isn't credited (no drop, no event, no beat). Note that the
+  lifetime tally this reads counts REPORTS rather than wins (a reported miss
+  bumps it too — long-standing, deliberately untouched), so it means "a game you
+  have been to and come back from".
+
+  **The compendium's grid art is half the size.** Games, items, characters and
+  enemies were drawing 190/100/120/116px thumbnails, which fitted three game
+  covers across; the compendium's job is to let you SCAN 833 games, and a grid
+  you page through four at a time is a scrolling exercise. Halved, with the cells
+  and the name faces brought down to match, a row holds five. The DETAIL panel is
+  untouched: that is where you look at one piece of art properly, and it is the
+  reason the grid doesn't have to.
+
+  **Events are in the compendium.** They were the one 2.0 set it didn't carry and
+  the set it helps most: an event fires once, mid-run, inside a modal you answer
+  under pressure, and the three options you didn't take are then gone for good.
+  The new tab lists every event with its art, rarity and choice count, and the
+  detail panel carries the prompt, where on the map it can appear, its tier and
+  state gates, and every choice in full — effects, goals, curses, repeats and
+  locks. Search reaches the option text, because that is how anyone actually
+  remembers one.
+
+  **Dev mode was full of the old game.** The Add-item list appended
+  `Data.all_items()` — the 112 combat-era relics from the build this one replaced
+  — on top of the 21 that ship. They are `ItemData` too, so they listed and
+  granted cleanly and then sat in the pack doing nothing, because no games-first
+  code honours them. The pool is `DevTools.item_pool()` now, 2.0 only, with a
+  test that says so.
+
+  **A repaint under the cursor no longer errors.** Clicking an enemy repaints the
+  board, which detaches every body on it — including the one the mouse is over,
+  whose `mouse_exited` Godot then fires from inside the removal loop. That
+  handler restores the body's draw order, so it called `move_child` on a parent
+  mid-removal: "Parent node is busy setting up children". The hover handlers now
+  stand down during a repaint (and on a node that has already been detached),
+  which costs nothing — the repaint rebuilds every node they would have been
+  reordering.
+
+---
+
 - **Five UI passes, all from playing it.**
 
   **It opens in a window now, and that is the default.** The game shipped

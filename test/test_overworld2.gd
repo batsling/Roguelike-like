@@ -9,6 +9,8 @@ const SCENE := preload("res://scenes/redesign2/Overworld2.tscn")
 const OVERWORLD := preload("res://scripts/redesign2/Overworld2.gd")
 
 var _ui
+# Game ids this test gave a lifetime "played before" record to (see after_each).
+var _seeded_stats: Array[String] = []
 
 func before_each() -> void:
 	_ui = SCENE.instantiate()
@@ -19,6 +21,13 @@ func before_each() -> void:
 	_ui.choose_start(0)
 
 func after_each() -> void:
+	# GameStats is a LIFETIME store — it is not part of the run and reset_run()
+	# does not touch it — so a test that seeds "you have played this before" must
+	# take it back out, or the next test's random pick inherits it. The escape
+	# tests below are the ones that seed it.
+	for id in _seeded_stats:
+		GameStats.stats.erase(id)
+	_seeded_stats.clear()
 	GameState.reset_run()
 	GameLoop2.reset()
 	SaveSystem.clear_all_saves()
@@ -2184,18 +2193,81 @@ func _lose_runs(n: int) -> void:
 	for i in n:
 		_ui.log_attempt()
 
-func test_escape_is_locked_until_the_attempts_are_spent() -> void:
+# GameStats is a LIFETIME store read off disk, and a game with a record in it is
+# escapable from the first second (see below) — so the "never been here" tests
+# have to say so rather than hope the random pick has never been played.
+# Give the game in play a lifetime record, and remember to take it back out.
+func _mark_played(game: GameData) -> void:
+	GameStats.record_beaten(game.id)
+	_seeded_stats.append(String(game.id))
+
+func _pick_an_unplayed_game() -> GameData:
 	_ui.pick(0)
+	var game: GameData = _ui._chosen["game"]
+	GameStats.stats.erase(String(game.id))
+	assert_eq(GameStats.beaten_count(game.id), 0, "no record at this game")
+	return game
+
+func test_escape_is_locked_until_the_attempts_are_spent() -> void:
+	_pick_an_unplayed_game()
 	assert_false(_ui.can_escape(), "a game just started offers no way out")
 	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS - 1)
 	assert_false(_ui.can_escape(), "one short of the line is still locked")
 	assert_false(_ui._escape_btn.visible, "and the button stays hidden")
 
 func test_escape_unlocks_on_the_fifth_lost_run() -> void:
-	_ui.pick(0)
+	_pick_an_unplayed_game()
 	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
 	assert_true(_ui.can_escape(), "five lost runs earns the way out")
 	assert_true(_ui._escape_btn.visible, "and the button is there to press")
+
+# --- the second door: a game you have been through before ------------------
+#
+# The five-lost-runs rule is for a game you have never got through. On one you
+# have, there is nothing left to prove and being made to lose at it five more
+# times to unlock the door is a tax on the least interesting thing in the run.
+
+func test_a_game_you_have_played_before_can_be_left_immediately() -> void:
+	_ui.pick(0)
+	var game: GameData = _ui._chosen["game"]
+	_mark_played(game)
+	assert_true(_ui.beaten_before(), "the run knows you have a record here")
+	assert_eq(GameLoop2.attempts(), 0, "and not a single run has been lost")
+	assert_true(_ui.can_escape(), "the door is open from the first second")
+	_ui._refresh()
+	assert_true(_ui._escape_btn.visible, "and the button is up to press")
+
+func test_the_free_escape_still_costs_you_the_enemy() -> void:
+	# "Escape at any time" changes the GATE, not the price: the board resolves
+	# exactly as a missed goal does, so the enemy still walks on and everything
+	# already out there still takes its turns.
+	_ui.pick(0)
+	var game: GameData = _ui._chosen["game"]
+	_mark_played(game)
+	var gp_before: int = GameState.games_played
+	_ui.escape_game()
+	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
+	assert_eq(GameLoop2.stack_size(), 1, "and its goal-enemy came with you")
+	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "back to a fresh offering")
+
+func test_the_enemies_keep_taking_turns_through_a_free_escape() -> void:
+	# The board is not paused by walking away — the whole point of the price.
+	_ui.pick(0)
+	_mark_played(_ui._chosen["game"])
+	_ui.escape_game()
+	var follower: Dictionary = GameLoop2.stack[0]
+	var col_before: int = int(follower["col"])
+	# Take the next game the same way, so a second resolve runs.
+	_ui.pick(0)
+	_mark_played(_ui._chosen["game"])
+	_ui.escape_game()
+	var still: Dictionary = GameLoop2.stack[0]
+	assert_lt(int(still["col"]), col_before,
+		"the follower closed a column while you were escaping")
+
+func test_beaten_before_is_false_with_no_game_in_hand() -> void:
+	assert_false(_ui.beaten_before(), "nothing is in play, so nothing is escapable")
+	assert_false(_ui.can_escape(), "and there is nothing to escape from")
 
 func test_escaping_advances_the_run_and_the_enemy_follows() -> void:
 	_ui.pick(0)
@@ -2269,7 +2341,7 @@ func test_a_missed_report_still_counts_as_before() -> void:
 		"a missed report is untouched by the escape rule")
 
 func test_escape_refuses_before_the_line() -> void:
-	_ui.pick(0)
+	_pick_an_unplayed_game()
 	var gp_before: int = GameState.games_played
 	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS - 1)
 	_ui.escape_game()
@@ -2278,7 +2350,9 @@ func test_escape_refuses_before_the_line() -> void:
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "the game is still in play")
 
 func test_undoing_back_under_the_line_takes_the_escape_away() -> void:
-	_ui.pick(0)
+	# Only the lost-runs door reverses; a game you have a record at is escapable
+	# whatever the tracker says, so this has to be a game you have never played.
+	_pick_an_unplayed_game()
 	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
 	assert_true(_ui.can_escape())
 	_ui.undo_attempt()
@@ -2375,3 +2449,73 @@ func test_a_part_charged_item_shows_a_battery_and_a_full_one_shows_use() -> void
 	column = _ui._items_box.get_child(_ui._items_box.get_child_count() - 1)
 	assert_true(column.get_child(0) is Button, "full charge turns the meter into Use")
 	assert_eq((column.get_child(0) as Button).text, "Use")
+
+# --- dev mode grants 2.0 items, and only 2.0 items -------------------------
+#
+# The Add-item list used to append Data.all_items() — the 112 combat-era relics
+# from the build this one replaced — on top of the 2.0 set. They are ItemData, so
+# they listed and granted cleanly and then did nothing, because no games-first
+# code honours them; and 112 of them buried the 21 that work.
+func test_dev_mode_offers_only_the_2_0_item_set() -> void:
+	var pool: Array = DevTools.item_pool()
+	assert_eq(pool.size(), Data.all_items2().size(),
+		"the pool is exactly the 2.0 set")
+	var live: Dictionary = {}
+	for it in Data.all_items2():
+		live[it.id] = true
+	for it in pool:
+		assert_true(live.has(it.id),
+			"%s is a 2.0 item the run can actually honour" % it.id)
+	# The combat-era set is still loaded (the archive reads it); it just must not
+	# be on this list.
+	assert_gt(Data.all_items().size(), pool.size(),
+		"the old set is still there to be wrongly included, so this is a real guard")
+
+# --- the board survives a repaint under the cursor -------------------------
+#
+# refresh() detaches every body on the board, and detaching the one the mouse is
+# over makes Godot fire that body's mouse_exited from inside the removal loop.
+# The handler's job is to restore the body's draw order, so it called move_child
+# on a parent mid-removal: "Parent node is busy setting up children".
+func test_a_hover_handler_does_not_reorder_the_board_mid_repaint() -> void:
+	_ui.pick(0)
+	_ui.report(false)
+	var board = _ui._board
+	assert_gt(GameLoop2.stack_size(), 0, "there is a body on the board")
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	var node: Control = board._enemy_nodes[inst]
+	var layer: Node = node.get_parent()
+	var resting: int = node.get_index()
+	# Hovering lifts it above its neighbours…
+	node.mouse_entered.emit()
+	assert_eq(node.get_index(), layer.get_child_count() - 1, "hover lifts the body")
+	# …and while a repaint is in flight, the matching exit must NOT touch the tree.
+	board._repainting = true
+	node.mouse_exited.emit()
+	assert_eq(node.get_index(), layer.get_child_count() - 1,
+		"a repaint's own mouse_exited leaves the layer alone")
+	# Off the repaint, it still does its ordinary job.
+	board._repainting = false
+	node.mouse_exited.emit()
+	assert_eq(node.get_index(), resting, "and otherwise puts the body back")
+
+func test_clicking_an_enemy_repaints_without_a_detached_reorder() -> void:
+	# The real sequence from the crash report: a click repaints the board, which
+	# frees the very node whose handler is about to run.
+	_ui.pick(0)
+	_ui.report(false)
+	var board = _ui._board
+	var entry: Dictionary = GameLoop2.stack[0]
+	var inst: int = int(entry["instance"])
+	var node: Control = board._enemy_nodes[inst]
+	node.mouse_entered.emit()
+	board.click_enemy(inst, entry, int(entry["col"]), false)
+	# The click rebuilt the board, so the hovered node is detached — and its
+	# late-firing exit handler must be a no-op rather than a move_child on a
+	# parent it no longer has.
+	assert_false(is_instance_valid(node) and node.get_parent() == board._enemy_layer,
+		"the repaint detached the node the mouse was over")
+	if is_instance_valid(node):
+		node.mouse_exited.emit()
+	assert_not_null(board._enemy_nodes.get(inst), "and the board rebuilt it")
+	_ui._close_enemy_info()

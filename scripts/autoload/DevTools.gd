@@ -332,10 +332,23 @@ func _build_grant_tab() -> void:
 		_:
 			_list_items()
 
+# What the Add-item list may offer: the 2.0 set, and nothing else.
+#
+# It used to be this WITH Data.all_items() appended — the 112 combat-era items
+# from data/items, the deckbuilder's relics from the build this one replaced.
+# They are ItemData too, so they listed and granted cleanly and then sat in the
+# pack doing nothing, because the games-first run has no code that honours them;
+# and 112 of them buried the 21 that work. Everything else this panel grants
+# (scrolls, statuses, enemies) was already 2.0-only. This was the list that
+# wasn't, which is why dev mode looked like it was full of the old game.
+#
+# Its own function so a test can check the pool without building the panel.
+func item_pool() -> Array:
+	return Data.all_items2()
+
 func _list_items() -> void:
 	var query: String = _query()
-	var pool: Array = Data.all_items2()
-	pool.append_array(Data.all_items())
+	var pool: Array = item_pool()
 	var rows: Array = []
 	for it in pool:
 		if not (it is ItemData):

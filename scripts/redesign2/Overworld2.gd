@@ -66,9 +66,10 @@ const DASH_BLUE := Color(0.5, 0.85, 1.0)
 # count, the attempt strip, and the pips on the board.
 const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
 
-# Lost runs of the game in play before the Escape button appears (see
-# can_escape). Five is past the shields any game grants, so reaching it means the
-# player has been paying Health to keep trying.
+# Lost runs of the game in play before the Escape button appears on a game the
+# player has NEVER been through (see can_escape — one they have is escapable from
+# the first second). Five is past the shields any game grants, so reaching it
+# means the player has been paying Health to keep trying.
 const ESCAPE_AFTER_ATTEMPTS := 5
 
 # The current offering. Each entry:
@@ -660,15 +661,17 @@ func log_attempt() -> String:
 # --- escaping a game you can't beat ---------------------------------------
 #
 # Some games won't go down, and a run shouldn't end because one of them sat in
-# the way. After ESCAPE_AFTER_ATTEMPTS lost runs the player may walk away from the
-# game in play at any point, without beating it.
+# the way. The player may walk away from the game in play at any point, without
+# beating it — either after ESCAPE_AFTER_ATTEMPTS lost runs, or immediately on a
+# game they have played through before (see can_escape).
 #
 # Escaping resolves the BOARD exactly as reporting a missed goal does: the
-# goal-enemy walks onto the board and follows you. That IS the price, and by the
-# time it's offered it has already been paid twice over — five lost runs is the
-# shields this game granted plus Health on top, with the front line closing in the
-# whole time. The button exists to make the way out VISIBLE to a stuck player, not
-# to discount it.
+# goal-enemy walks onto the board and follows you, and every enemy already on it
+# still takes its turns. That IS the price, and on the lost-runs route it has
+# already been paid twice over by the time the button appears — five lost runs is
+# the shields this game granted plus Health on top, with the front line closing in
+# the whole time. The button exists to make the way out VISIBLE to a stuck player,
+# not to discount it.
 #
 # Where it PARTS from a missed report is credit: an escape is not a beat. The run
 # doesn't bank the game (so no repeat-beat Dash, and the Atlas doesn't mark it),
@@ -676,9 +679,35 @@ func log_attempt() -> String:
 # lifetime beaten tally moves. A missed report still credits the game — that is
 # long-standing behaviour and is left alone; walking away is the case that isn't
 # allowed to.
+#
+# TWO ways in. The five-lost-runs rule above is for a game you have never got
+# through: the way out has to be earned because the alternative is a player who
+# quits the run instead. A game you have BEATEN BEFORE is the opposite case —
+# there is nothing left to prove, and being made to lose at it five more times to
+# unlock the door is a tax on the one thing the run cannot make interesting, so
+# that door is open from the first second.
+#
+# It is the same escape either way: the enemy still walks onto the board, the
+# board still takes its turns, and the game still isn't credited. Only the gate
+# moves.
 func can_escape() -> bool:
-	return _phase == Phase.PLAYING and not _chosen.is_empty() \
-		and not GameLoop2.run_over and GameLoop2.attempts() >= ESCAPE_AFTER_ATTEMPTS
+	if _phase != Phase.PLAYING or _chosen.is_empty() or GameLoop2.run_over:
+		return false
+	return beaten_before() or GameLoop2.attempts() >= ESCAPE_AFTER_ATTEMPTS
+
+# Whether the game in play is one the player has a record at — the same lifetime
+# "⚔ Beaten N times" the offering's popup and the Collection both print, so what
+# opens the door is the number the player can already see.
+#
+# NOTE that tally counts REPORTS, not wins: a reported miss bumps it too (see
+# report(), "a missed report still credits the game"). That is long-standing
+# behaviour, deliberately not changed here — but it does mean this reads as "a
+# game you have been to before and come back from" rather than strictly "a game
+# you have won". Tightening it means giving `beaten` a wins-only sibling, which
+# would start empty on every existing save.
+func beaten_before() -> bool:
+	var game: GameData = _chosen.get("game")
+	return game != null and GameStats.beaten_count(game.id) > 0
 
 # Leave the game in play. Whatever else the checklist has ticked still stands —
 # a follower's goal you did clear, a level-up you did earn — because those are
@@ -689,8 +718,10 @@ func escape_game() -> void:
 		return
 	var game: GameData = _chosen.get("game")
 	var game_name: String = game.display_name if game != null else "this game"
-	var msg: String = "Escaped %s after %d lost runs — its enemy comes with you." % [
-		game_name, GameLoop2.attempts()]
+	var tries: int = GameLoop2.attempts()
+	var msg: String = ("Escaped %s — its enemy comes with you." % game_name if tries == 0
+		else "Escaped %s after %d lost run%s — its enemy comes with you." % [
+			game_name, tries, "" if tries == 1 else "s"])
 	GameLog.add(msg, UITheme.ACCENT)
 	Notifications.notify(msg, UITheme.ACCENT)
 	report(false, null, true)
@@ -3458,8 +3489,6 @@ func _build_ui() -> void:
 	# because the enemy still follows you out.
 	_escape_btn = Button.new()
 	_escape_btn.text = "🏃  Escape this game"
-	_escape_btn.tooltip_text = ("Leave without beating it. The goal-enemy walks onto the "
-		+ "board and follows you, and the game does NOT count as beaten.")
 	_escape_btn.custom_minimum_size = Vector2(0, 30)
 	_escape_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_escape_btn.add_theme_font_size_override("font_size", 13)
@@ -3555,10 +3584,20 @@ func _refresh_attempts() -> void:
 	var live: bool = _phase == Phase.PLAYING and not GameLoop2.run_over
 	_attempt_btn.disabled = not live
 	_attempt_undo.disabled = not live or attempts == 0
-	# The escape hatch only exists once the player has lost enough runs to have
-	# earned it, and it goes away again if they undo back under the line.
+	# The escape hatch is up from the first second on a game the player has been
+	# through before, and otherwise only once they have lost enough runs to have
+	# earned it — where it goes away again if they undo back under the line. The
+	# tooltip says WHICH rule is holding the door open, because "why can I leave
+	# this one and not that one" is the whole question the button raises.
 	if _escape_btn != null:
 		_escape_btn.visible = can_escape()
+		var why: String = ("You have played this one before, so there is nothing to prove — leave whenever you like."
+			if beaten_before()
+			else "%d lost runs is enough." % GameLoop2.attempts())
+		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nThe goal-enemy still walks onto "
+			+ "the board and follows you, and every enemy still takes its turns — escaping "
+			+ "resolves the board exactly as a missed goal does. What it does NOT do is credit "
+			+ "the game: no drop, no event, and it doesn't count as beaten.") % why
 
 func _enemy_image_rect() -> TextureRect:
 	var t := TextureRect.new()

@@ -192,7 +192,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Settings` | Run-independent preferences (e.g. game-filter) persisted to `user://settings.cfg`. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified). |
-| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Four tabs: **Grant** (items / scrolls / statuses, with a player-or-enemy target picker), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss). Everything routes through the same public API the game uses. |
+| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Four tabs: **Grant** (items / scrolls / statuses, with a player-or-enemy target picker — the item list is `DevTools.item_pool()`, the **2.0 set only**: it used to append the 112 combat-era relics from `data/items`, which grant cleanly and then do nothing because no games-first code honours them), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss). Everything routes through the same public API the game uses. |
 
 ### Screens & flow
 

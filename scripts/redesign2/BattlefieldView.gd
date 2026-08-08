@@ -101,6 +101,15 @@ var _hint_label: Label
 # four toolbar buttons would ask it a metre away from the thing being moved.
 var push_mode: bool = false
 var _arrow_layer: Control            # the direction arrows, above every body
+# True for the duration of refresh(), and the reason is a real crash rather than
+# bookkeeping. refresh() DETACHES every body on the board, and detaching the one
+# the mouse happens to be over makes Godot fire that body's `mouse_exited` — from
+# inside the loop that is removing it. The handler's job is to put the body back
+# in its resting draw order, so it calls move_child on a parent that is mid-
+# removal and Godot refuses it ("Parent node is busy setting up children"). The
+# hover handlers check this and do nothing: the repaint is about to rebuild every
+# node they would have been reordering anyway.
+var _repainting: bool = false
 
 func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -615,6 +624,9 @@ func refresh(show_current: bool = false) -> void:
 	if _battlefield == null:
 		return
 	_show_current = show_current
+	# Detaching the body the mouse is over fires its own mouse_exited, and that
+	# handler reorders the layer being torn down. See _repainting.
+	_repainting = true
 	refresh_hero()
 
 	# The pace the enemies below move at, and the size of the board they move on.
@@ -669,6 +681,7 @@ func refresh(show_current: bool = false) -> void:
 	refresh_toolbar()
 	# After the toolbar, which is what can disarm the verb (no charges left).
 	_refresh_push_arrows()
+	_repainting = false
 	repainted.emit()
 
 # Paint an enemy's footprint tiles for its current state. Hovering brightens the
@@ -901,10 +914,20 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	# reorder within the enemy layer, not a z_index, so a hovered body still stays
 	# under the badges and under anything mounted above the battlefield.
 	var resting_index: int = node.get_index()
+	# Both guards matter. `_repainting` catches the exit fired BY the repaint that
+	# is deleting this node; the parent check catches a node already detached by
+	# anything else, since move_child on a foster parent is equally invalid.
+	var can_reorder := func() -> bool:
+		return not _repainting and is_instance_valid(node) \
+			and node.get_parent() == _enemy_layer
 	node.mouse_entered.connect(func():
+		if not can_reorder.call():
+			return
 		_enemy_layer.move_child(node, -1)
 		_style_enemy_cell(frames, accent, is_current, inst == selected_instance, true, edges))
 	node.mouse_exited.connect(func():
+		if not can_reorder.call():
+			return
 		_enemy_layer.move_child(node, mini(resting_index, _enemy_layer.get_child_count() - 1))
 		_style_enemy_cell(frames, accent, is_current, inst == selected_instance, false, edges))
 	node.gui_input.connect(func(ev: InputEvent):

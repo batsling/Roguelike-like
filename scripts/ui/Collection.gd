@@ -14,8 +14,10 @@ extends Control
 #   Enemies    — the normal goal-enemies (data/enemies2.0), grid + detail.
 #   Bosses     — the boss roster (data/bosses2.0), grid + detail.
 #   Scrolls    — the 2.0 scroll catalog (revealed reference), grid.
+#   Events     — every 2.0 event (data/events2.0), grid + detail: what it asks,
+#                what each answer does, and where on the map it can appear.
 
-enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, SCROLLS }
+enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, SCROLLS, EVENTS }
 
 const GAME_TYPE_NAMES := ["Action", "Strategy", "Deckbuilder", "Traditional"]
 const GAME_STATUS_OPTIONS := [
@@ -43,9 +45,33 @@ const DETAIL_ITEM_SIZE := 132
 const DETAIL_PORTRAIT_SIZE := 152
 const DETAIL_ENEMY_SIZE := 176
 
+# --- grid thumbnail sizes ---------------------------------------------------
+#
+# HALF what they were (games 190, items 100, characters 120, enemies 116), and
+# the cells with them. The compendium's job is to let you SCAN a set — 833 games,
+# 45 enemies — and a grid that fits four covers across is a scrolling exercise,
+# not a wall you can read. At half size a row holds two to three times as many
+# and the whole set is in far fewer screens. The DETAIL panel is untouched: that
+# is where you actually look at one piece of art, and it is the reason the grid
+# doesn't have to.
+#
+# Cells are art + CELL_PAD (the stylebox's content margin both sides, plus its
+# border and a little slack), so a thumbnail is never squeezed by its own cell.
+const CELL_PAD := 26
+const GRID_COVER_W := 95           # game box art, drawn 3:4 (so 95x127)
+const GRID_ITEM_SIZE := 50
+const GRID_PORTRAIT_SIZE := 60
+const GRID_ENEMY_SIZE := 58
+const GRID_EVENT_SIZE := 58
+# Names get a smaller face to match: a 13px title in a 95px cell wraps to three
+# lines and hands back the height the smaller art just saved.
+const GRID_NAME_FONT := 11
+const GRID_META_FONT := 10
+
 var _tab: int = Tab.GAMES
 
-var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "games": ""}
+var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "games": "",
+	"events": ""}
 var _games_sort: String = "name"
 var _games_type: int = -1
 var _games_status: String = "all"
@@ -54,6 +80,7 @@ var _items_type: int = -1
 var _char_sort: String = "name"
 var _enemies_sort: String = "name"
 var _enemies_type: String = "all"
+var _events_sort: String = "name"
 
 var _content: VBoxContainer
 var _grid: Container = null
@@ -141,6 +168,7 @@ func _build_shell() -> void:
 	_add_tab_button(tabs, Tab.ENEMIES, "Enemies (%d)" % Data.all_goal_enemies().size())
 	_add_tab_button(tabs, Tab.BOSSES, "Bosses (%d)" % Data.all_bosses().size())
 	_add_tab_button(tabs, Tab.SCROLLS, "Scrolls (%d)" % Data.all_scrolls().size())
+	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events2().size())
 
 	root.add_child(HSeparator.new())
 
@@ -179,6 +207,8 @@ func _refresh() -> void:
 			_build_enemies()
 		Tab.SCROLLS:
 			_build_scrolls()
+		Tab.EVENTS:
+			_build_events()
 
 # ------------------------------------------------------------------
 # Shared building blocks
@@ -443,6 +473,8 @@ func _populate() -> void:
 			_populate_enemies()
 		Tab.SCROLLS:
 			_populate_scrolls()
+		Tab.EVENTS:
+			_populate_events()
 
 # ------------------------------------------------------------------
 # Games tab
@@ -548,24 +580,24 @@ func _game_type_color(t: int) -> Color:
 func _game_cell(g: GameData) -> Control:
 	var tc := _game_type_color(int(g.type))
 	var cell := _cell(tc, func(): _show_game_detail(g))
-	cell.panel.custom_minimum_size = Vector2(212, 0)
+	cell.panel.custom_minimum_size = Vector2(GRID_COVER_W + CELL_PAD, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	if g.cover_image != null:
-		var tr := _cover_rect(g.cover_image, 190)
+		var tr := _cover_rect(g.cover_image, GRID_COVER_W)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vb.add_child(tr)
-	vb.add_child(_label(g.display_name, tc, 13, true, true))
+	vb.add_child(_label(g.display_name, tc, GRID_NAME_FONT, true, true))
 	var type_name: String = GAME_TYPE_NAMES[clampi(int(g.type), 0, 3)]
 	var meta: String = ("%d  •  %s" % [g.year, type_name]) if g.year > 0 else type_name
-	vb.add_child(_label(meta, Color(0.7, 0.7, 0.75), 11, true))
+	vb.add_child(_label(meta, Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
 	var beaten: int = GameStats.beaten_count(g.id)
 	var amulets: int = GameStats.amulet_wins(g.id)
 	var stat_line: String = "⚔ %d" % beaten
 	if amulets > 0:
 		stat_line += "    👑 %d" % amulets
 	var played := beaten > 0 or amulets > 0
-	vb.add_child(_label(stat_line, Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), 11, true))
+	vb.add_child(_label(stat_line, Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), GRID_META_FONT, true))
 	return cell.panel
 
 # One enemy beaten at this game — the mirror of _enemy_game_row, so the Games and
@@ -848,15 +880,15 @@ func _item_rarity_label(it: ItemData) -> String:
 func _item_cell(it: ItemData) -> Control:
 	var rc := _item_accent(it)
 	var cell := _cell(rc, func(): _show_item_detail(it))
-	cell.panel.custom_minimum_size = Vector2(158, 0)
+	cell.panel.custom_minimum_size = Vector2(GRID_ITEM_SIZE + CELL_PAD + 34, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	if it.image != null:
-		vb.add_child(_image_with_bg(it.image, 100, rc))
-	var nm := _label(it.display_name, rc, 13, true, true)
+		vb.add_child(_image_with_bg(it.image, GRID_ITEM_SIZE, rc))
+	var nm := _label(it.display_name, rc, GRID_NAME_FONT, true, true)
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_child(nm)
-	vb.add_child(_label(_item_rarity_label(it).to_upper(), rc, 11, true))
+	vb.add_child(_label(_item_rarity_label(it).to_upper(), rc, GRID_META_FONT, true))
 	return cell.panel
 
 func _show_item_detail(it: ItemData) -> void:
@@ -916,15 +948,15 @@ func _populate_characters() -> void:
 func _character_cell(ch: CharacterData) -> Control:
 	var green := Color(0.4, 0.78, 0.4)
 	var cell := _cell(green, func(): _show_character_detail(ch))
-	cell.panel.custom_minimum_size = Vector2(182, 0)
+	cell.panel.custom_minimum_size = Vector2(GRID_PORTRAIT_SIZE + CELL_PAD + 34, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	if ch.portrait != null:
-		var tr := _tex_rect(ch.portrait, 120)
+		var tr := _tex_rect(ch.portrait, GRID_PORTRAIT_SIZE)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vb.add_child(tr)
-	vb.add_child(_label(ch.display_name, green, 14, true, true))
-	vb.add_child(_label("❤ %d" % ch.base_max_hp, Color(0.7, 0.7, 0.75), 12, true))
+	vb.add_child(_label(ch.display_name, green, GRID_NAME_FONT, true, true))
+	vb.add_child(_label("❤ %d" % ch.base_max_hp, Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
 	return cell.panel
 
 func _show_character_detail(ch: CharacterData) -> void:
@@ -1123,24 +1155,24 @@ func _enemy_accent(e: GoalEnemyData) -> Color:
 func _enemy_cell(e: GoalEnemyData) -> Control:
 	var ac := _enemy_accent(e)
 	var cell := _cell(ac, func(): _show_enemy_detail(e))
-	cell.panel.custom_minimum_size = Vector2(178, 0)
+	cell.panel.custom_minimum_size = Vector2(GRID_ENEMY_SIZE + CELL_PAD + 34, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	if e.image != null:
-		vb.add_child(_image_with_bg(e.image, 116, ac))
+		vb.add_child(_image_with_bg(e.image, GRID_ENEMY_SIZE, ac))
 	var name_text: String = ("☠ " if e.is_boss() else "") + e.display_name
-	var nm := _label(name_text, ac, 13, true, true)
+	var nm := _label(name_text, ac, GRID_NAME_FONT, true, true)
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_child(nm)
 	var tier: String = ENEMY_TIER_NAMES[clampi(e.tier_index(), 0, 3)]
 	var kind: String = "BOSS" if e.is_boss() else String(e.game_type).capitalize()
-	vb.add_child(_label("%s  •  %s" % [kind, tier], Color(0.7, 0.7, 0.75), 10, true))
-	vb.add_child(_label("⚔ %d dmg" % e.damage, Color(0.9, 0.55, 0.5), 11, true))
+	vb.add_child(_label("%s  •  %s" % [kind, tier], Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
+	vb.add_child(_label("⚔ %d dmg" % e.damage, Color(0.9, 0.55, 0.5), GRID_META_FONT, true))
 	# Anything bigger than a single cell says so here as plain text; the drawn board
 	# lives in the detail panel only, so the grid stays a clean wall of artwork.
 	if e.footprint_rows() > 1 or e.footprint_cols() > 1:
 		vb.add_child(_label("▦ %d x %d" % [e.footprint_rows(), e.footprint_cols()],
-			Color(0.7, 0.7, 0.75), 10, true))
+			Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
 	return cell.panel
 
 # One game this enemy has been beaten at: its cover, how many times it fell
@@ -1362,3 +1394,215 @@ func _select_option(opt: OptionButton, id: int) -> void:
 			opt.select(i)
 			return
 	opt.select(0)
+
+# ------------------------------------------------------------------
+# Events tab (2.0 — docs/event-sheet-authoring.md)
+# ------------------------------------------------------------------
+#
+# Events were the one 2.0 set the compendium didn't carry, and they are the set
+# it helps most: an event fires once, mid-run, inside a modal you answer under
+# pressure, and then it is gone. Reading what the other three options would have
+# done is exactly the thing you cannot do at the moment it matters — so this is
+# where the whole sheet is legible, choices and all.
+#
+# Grid + detail like the enemies tab. The grid says what it is and where it can
+# turn up; the detail says what it ASKS and what every answer costs.
+
+const EVENT_ART_DIR := "res://images2.0/events/"
+
+# Where an event can appear, in the words the map uses rather than the sheet's.
+const EVENT_WHERE_NAMES := {
+	"dead_end": "Dead ends", "any": "Anywhere", "game": "Its own game",
+}
+
+# Events name their rarity as a STRING on the sheet ("Common"), where items carry
+# it as an index. One lookup against the ladder both already share, so an event
+# and an item of the same rarity are the same colour.
+func _rarity_index_by_name(name: String) -> int:
+	var i: int = ITEM_RARITY_NAMES.find(name.strip_edges().capitalize())
+	return i if i >= 0 else 0
+
+func _rarity_color_by_name(name: String) -> Color:
+	return RARITY_COLORS[clampi(_rarity_index_by_name(name), 0, RARITY_COLORS.size() - 1)]
+
+func _event_accent(ev: EventData2) -> Color:
+	return _rarity_color_by_name(ev.rarity)
+
+func _event_art(ev: EventData2) -> Texture2D:
+	var path: String = EVENT_ART_DIR + ev.art_file() + ".png"
+	return load(path) if ResourceLoader.exists(path) else null
+
+func _build_events() -> void:
+	var row := _controls_row()
+	row.add_child(_search_box("events"))
+	row.add_child(VSeparator.new())
+	row.add_child(_label("Sort:", Color(0.7, 0.7, 0.75), 12))
+	row.add_child(_sort_button("A-Z", _events_sort == "name",
+		func(): _events_sort = "name"; _refresh()))
+	row.add_child(_sort_button("Rarity", _events_sort == "rarity",
+		func(): _events_sort = "rarity"; _refresh()))
+	row.add_child(_sort_button("Where", _events_sort == "where",
+		func(): _events_sort = "where"; _refresh()))
+	_add_count_label(row)
+	_grid_and_detail()
+	_populate_events()
+
+func _populate_events() -> void:
+	_clear_children(_grid)
+	var term: String = _search["events"].to_lower()
+	var total: int = Data.all_events2().size()
+	var list: Array = []
+	for ev in Data.all_events2():
+		if not (ev is EventData2):
+			continue
+		# Searching an event means searching what it SAYS as well as its name —
+		# the prompt and the option labels are how anyone actually remembers one.
+		if term != "" and not (term in ev.display_name.to_lower()
+				or term in ev.prompt.to_lower()
+				or term in ev.source_game.to_lower()
+				or term in _event_choice_blob(ev)):
+			continue
+		list.append(ev)
+	match _events_sort:
+		"rarity":
+			list.sort_custom(func(a, b):
+				var ra: int = _rarity_index_by_name(a.rarity)
+				var rb: int = _rarity_index_by_name(b.rarity)
+				return ra < rb if ra != rb \
+					else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+		"where":
+			list.sort_custom(func(a, b):
+				return a.where < b.where if a.where != b.where \
+					else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+		_:
+			list.sort_custom(func(a, b):
+				return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+	for ev in list:
+		_grid.add_child(_event_cell(ev))
+	if list.is_empty():
+		_grid.add_child(_label("No events match.", Color(0.55, 0.55, 0.6), 13))
+	_set_count(list.size(), total)
+	if not list.is_empty():
+		_show_event_detail(list[0])
+
+# Every option's label and its plain-language effect, lowercased, so the search
+# box reaches the thing an event is actually remembered by.
+func _event_choice_blob(ev: EventData2) -> String:
+	var out: String = ""
+	for c in ev.choices:
+		if c is Dictionary:
+			out += String(c.get("text", "")) + " " + String(c.get("effects_text", "")) + " "
+	return out.to_lower()
+
+func _event_cell(ev: EventData2) -> Control:
+	var ac := _event_accent(ev)
+	var cell := _cell(ac, func(): _show_event_detail(ev))
+	cell.panel.custom_minimum_size = Vector2(GRID_EVENT_SIZE + CELL_PAD + 34, 0)
+	var vb: VBoxContainer = cell.vbox
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	var tex: Texture2D = _event_art(ev)
+	if tex != null:
+		vb.add_child(_image_with_bg(tex, GRID_EVENT_SIZE, ac))
+	var nm := _label("✦ " + ev.display_name, ac, GRID_NAME_FONT, true, true)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_child(nm)
+	vb.add_child(_label(ev.rarity.to_upper(), ac, GRID_META_FONT, true))
+	vb.add_child(_label("%d choice%s" % [ev.choices.size(),
+		"" if ev.choices.size() == 1 else "s"], Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
+	return cell.panel
+
+func _show_event_detail(ev: EventData2) -> void:
+	_clear_children(_detail_box)
+	var ac := _event_accent(ev)
+	var tex: Texture2D = _event_art(ev)
+	if tex != null:
+		var img := _image_with_bg(tex, DETAIL_ITEM_SIZE, ac)
+		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_detail_box.add_child(img)
+	_detail_box.add_child(_label("✦ " + ev.display_name, ac, 18, true))
+	_detail_box.add_child(_detail_meta("%s  •  %s" % [ev.rarity,
+		"fires after the game" if ev.trigger != "before" else "fires on arrival"], ac))
+	if ev.source_game != "":
+		_detail_box.add_child(_label("From: %s" % ev.source_game,
+			Color(0.65, 0.7, 0.8), 11, false, true))
+
+	_detail_box.add_child(HSeparator.new())
+	if ev.prompt != "":
+		_detail_box.add_child(_label(ev.prompt, Color(0.88, 0.88, 0.9), 13, false, true))
+
+	# Where and when it can turn up at all — the three gates the roller checks.
+	_detail_box.add_child(_detail_section("Where it turns up"))
+	_detail_box.add_child(_kv("Nodes", String(EVENT_WHERE_NAMES.get(ev.where, ev.where))))
+	_detail_box.add_child(_kv("Tiers", "Every tier" if ev.tier_tags.is_empty()
+		else ", ".join(Array(ev.tier_tags)).capitalize()))
+	if ev.run_limit > 0:
+		_detail_box.add_child(_kv("Per run", "at most %d" % ev.run_limit))
+	if not ev.requirement.is_empty():
+		_detail_box.add_child(_kv("Needs", _event_requirement_text(ev.requirement)))
+
+	# The choices — the reason this tab exists. Each is its own bordered block,
+	# because in the run you only ever get to take one and this is the only place
+	# the others are readable.
+	if not ev.choices.is_empty():
+		_detail_box.add_child(_detail_section("Choices"))
+		for c in ev.choices:
+			if c is Dictionary:
+				_detail_box.add_child(_event_choice_block(c, ac))
+
+	if ev.goal_met != "" or ev.goal_missed != "":
+		_detail_box.add_child(_detail_section("If it hands you a goal"))
+		if ev.goal_met != "":
+			_detail_box.add_child(_label("Met: %s" % ev.goal_met,
+				Color(0.6, 0.85, 0.6), 11, false, true))
+		if ev.goal_missed != "":
+			_detail_box.add_child(_label("Missed: %s" % ev.goal_missed,
+				Color(0.9, 0.6, 0.55), 11, false, true))
+
+func _event_choice_block(c: Dictionary, ac: Color) -> Control:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel",
+		UITheme.flat(CELL_BG, 6, 9, 1, UITheme.BORDER))
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 3)
+	panel.add_child(vb)
+	vb.add_child(_label("▸ " + String(c.get("text", "…")), ac, 12, false, true))
+	var effects: String = String(c.get("effects_text", ""))
+	if effects != "":
+		vb.add_child(_label(effects, Color(0.75, 0.88, 0.95), 11, false, true))
+	var goal: Dictionary = c.get("goal", {}) if c.get("goal") is Dictionary else {}
+	if not goal.is_empty():
+		var games: int = int(goal.get("games", 0))
+		vb.add_child(_label("Goal: %s%s" % [String(goal.get("condition", "")),
+			"" if games <= 0 else " (%d game%s)" % [games, "" if games == 1 else "s"]],
+			Color(0.95, 0.85, 0.5), 11, false, true))
+	var curse: Dictionary = c.get("curse", {}) if c.get("curse") is Dictionary else {}
+	if not curse.is_empty():
+		var cd: CurseData2 = Data.get_curse2(StringName(curse.get("curse", &"")))
+		vb.add_child(_label("Curse: %s" % (cd.display_name if cd != null
+			else String(curse.get("curse", ""))), Color(0.85, 0.55, 0.9), 11, false, true))
+	# "again" / "stay" options loop the modal; that changes how the event plays,
+	# so it belongs next to the option it is a property of.
+	var repeat: String = String(c.get("repeat", "end"))
+	if repeat != "end":
+		var cap: int = int(c.get("repeat_max", 0))
+		vb.add_child(_label("Repeatable%s" % ("" if cap <= 0 else " ×%d" % cap),
+			Color(0.65, 0.65, 0.7), 10, false, true))
+	for gate in c.get("gates", []):
+		if gate is Dictionary:
+			vb.add_child(_label("Locked: %s" % _event_gate_text(gate),
+				Color(0.7, 0.65, 0.6), 10, false, true))
+	var result: String = String(c.get("result", ""))
+	if result != "":
+		vb.add_child(_label(result, Color(0.65, 0.65, 0.7), 10, false, true))
+	return panel
+
+func _event_gate_text(gate: Dictionary) -> String:
+	if EventData2.gate_kind(gate) == "choice":
+		return "%s taken %s %s" % [String(gate.get("choice", "")),
+			String(gate.get("op", ">")), str(gate.get("value", 0))]
+	return "needs %s %s" % [str(gate.get("value", 1)), String(gate.get("resource", ""))]
+
+func _event_requirement_text(req: Dictionary) -> String:
+	var unit: String = "%" if bool(req.get("percent", false)) else ""
+	return "%s %s %s%s" % [String(req.get("stat", "")).capitalize(),
+		String(req.get("op", "<=")), str(req.get("value", 0)), unit]
