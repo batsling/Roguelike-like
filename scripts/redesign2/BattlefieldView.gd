@@ -20,9 +20,9 @@ extends PanelContainer
 # beside it (the pack column) sits right against the off-field lane instead of being
 # pushed to the far edge of the page.
 
-# The player clicked Push / Bomb on the toolbar for `instance`. The host owns the
-# charge, so it decides whether the verb actually happens.
-signal push_requested(instance: int)
+# The player picked a direction arrow on `instance` (Push), or clicked Bomb for
+# it. The host owns the charge, so it decides whether the verb actually happens.
+signal push_requested(instance: int, dir: Vector2i)
 signal bomb_requested(instance: int)
 # An enemy was clicked: the host opens the inspect card for it.
 signal enemy_inspected(entry: Dictionary, col: int, is_current: bool)
@@ -90,6 +90,17 @@ var selected_instance: int = 0       # clicked enemy the combat verbs target (0 
 var push_btn: Button
 var bomb_btn: Button
 var _target_label: Label
+var _hint_label: Label
+# PUSH MODE. The verb is armed FIRST and aimed second: pressing Push arms it,
+# clicking an enemy picks the body, and an arrow appears on every side of that
+# body a shove could actually land on. Nothing is spent until an arrow is
+# pressed, so arming and re-aiming are both free and Cancel costs nothing.
+#
+# It is a mode rather than a button-per-direction on the toolbar because the
+# arrows have to be ON the board: "which way" is a question about a position, and
+# four toolbar buttons would ask it a metre away from the thing being moved.
+var push_mode: bool = false
+var _arrow_layer: Control            # the direction arrows, above every body
 
 func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -375,11 +386,11 @@ func _build_battle_toolbar() -> Control:
 	bar.add_theme_constant_override("h_separation", 8)
 	bar.add_theme_constant_override("v_separation", 4)
 
-	var hint := Label.new()
-	hint.text = "Click an enemy:"
-	hint.add_theme_font_size_override("font_size", 12)
-	hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	bar.add_child(hint)
+	_hint_label = Label.new()
+	_hint_label.text = "Click an enemy:"
+	_hint_label.add_theme_font_size_override("font_size", 12)
+	_hint_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	bar.add_child(_hint_label)
 
 	_target_label = Label.new()
 	_target_label.add_theme_font_size_override("font_size", 13)
@@ -391,7 +402,7 @@ func _build_battle_toolbar() -> Control:
 
 	push_btn = Button.new()
 	push_btn.add_theme_font_size_override("font_size", 13)
-	push_btn.pressed.connect(func(): push_requested.emit(selected_instance))
+	push_btn.pressed.connect(toggle_push_mode)
 	bar.add_child(push_btn)
 
 	bomb_btn = Button.new()
@@ -400,34 +411,70 @@ func _build_battle_toolbar() -> Control:
 	bar.add_child(bomb_btn)
 	return bar
 
+# --- push mode -------------------------------------------------------------
+
+# Arm the Push verb. The selection is CLEARED on the way in: the flow is "press
+# Push, then say who", so a body left selected from reading its card would put
+# arrows on a target the player didn't just choose.
+func begin_push() -> void:
+	if push_mode or GameState.push <= 0:
+		return
+	push_mode = true
+	selected_instance = 0
+	refresh(_show_current)
+
+func cancel_push() -> void:
+	if not push_mode:
+		return
+	push_mode = false
+	refresh(_show_current)
+
+func toggle_push_mode() -> void:
+	if push_mode:
+		cancel_push()
+	else:
+		begin_push()
+
 # Re-label and enable/disable the combat verbs for the current selection.
 func refresh_toolbar() -> void:
 	if push_btn == null:
 		return
+	# A charge spent elsewhere (or the last one spent here) disarms the verb — an
+	# armed Push with nothing to spend is a board full of arrows that do nothing.
+	if push_mode and GameState.push <= 0:
+		push_mode = false
 	var entry: Dictionary = _stack_entry(selected_instance)
 	var e: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
 	if e == null:
-		_target_label.text = "no target selected"
-		_target_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		# Armed, the empty target slot is where the instruction goes — it is the
+		# widest thing on the row and it is otherwise saying nothing.
+		_target_label.text = "click an enemy" if push_mode else "no target selected"
+		_target_label.add_theme_color_override("font_color",
+			UITheme.ACCENT if push_mode else UITheme.TEXT_DIM)
 	else:
 		_target_label.text = "▸ %s  (col %d, row %d)" % [
 			e.display_name, int(entry.get("col", GameLoop2.spawn_col())),
 			int(entry.get("row", 0)) + 1]
 		_target_label.add_theme_color_override("font_color", UITheme.ACCENT)
 
-	push_btn.text = "⇤  Push (%d)" % GameState.push
-	var push_ok: bool = e != null and GameState.push > 0 and GameLoop2.can_push(selected_instance)
-	push_btn.disabled = not push_ok
-	if e == null:
-		push_btn.tooltip_text = "Select an enemy to push."
+	# The hint says which half of the push the player is in. Both strings are kept
+	# SHORTER than the idle one, and so is the button below: this is an
+	# HFlowContainer inside a board that already fits its page to about ten spare
+	# pixels, so a wordier armed state wraps the toolbar onto a second row and
+	# pushes the bottom of the board off the window.
+	if _hint_label != null:
+		_hint_label.text = "⇤ Push:" if push_mode else "Click an enemy:"
+		_hint_label.add_theme_color_override("font_color",
+			UITheme.ACCENT if push_mode else UITheme.TEXT_DIM)
+
+	push_btn.text = ("✕  Cancel" if push_mode else "⇤  Push (%d)" % GameState.push)
+	push_btn.disabled = not push_mode and GameState.push <= 0
+	if push_mode:
+		push_btn.tooltip_text = "Put the Push away — nothing has been spent yet."
 	elif GameState.push <= 0:
 		push_btn.tooltip_text = "No Push charges left."
-	elif int(entry.get("col", 0)) + e.footprint_cols() - 1 >= GameLoop2.grid_cols():
-		push_btn.tooltip_text = "%s is already against the back edge — nowhere to push it." % e.display_name
-	elif not push_ok:
-		push_btn.tooltip_text = "Something is parked behind %s — no room to shove it back." % e.display_name
 	else:
-		push_btn.tooltip_text = "Shove %s back one column, buying the games it takes to close in again." % e.display_name
+		push_btn.tooltip_text = "Shove one enemy a single cell — back, forward, or across into another lane. Press this, then click the enemy, then pick an arrow."
 
 	# A boss is a legal bomb target even though the damage bounces off it — that
 	# is the only way to land Sticky Bombs' stun on one — so the button gates on
@@ -534,6 +581,15 @@ func _build() -> void:
 	_badge_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_field.add_child(_badge_layer)
 
+	# The push arrows go above even the badges — while the verb is armed they are
+	# the only thing on the board that can be pressed, and an arrow half-hidden
+	# under a health badge is an arrow that gets mis-clicked. Empty (and so
+	# invisible and unclickable) whenever a push isn't being aimed.
+	_arrow_layer = Control.new()
+	_arrow_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_arrow_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.add_child(_arrow_layer)
+
 	# Off-field lane: enemies with no cell to stand in — the overflow queue, and the
 	# game you're currently playing, whose enemy only steps onto the grid once you
 	# report the result.
@@ -571,7 +627,7 @@ func refresh(show_current: bool = false) -> void:
 	_rebuild_cells()
 
 	# Clear the overlays and the overflow lane; the backdrop panels are static.
-	for layer in [_enemy_layer, _badge_layer]:
+	for layer in [_enemy_layer, _badge_layer, _arrow_layer]:
 		for c in layer.get_children():
 			layer.remove_child(c)
 			c.queue_free()
@@ -611,6 +667,8 @@ func refresh(show_current: bool = false) -> void:
 	if selected_instance > 0 and _stack_entry(selected_instance).is_empty():
 		selected_instance = 0
 	refresh_toolbar()
+	# After the toolbar, which is what can disarm the verb (no charges left).
+	_refresh_push_arrows()
 	repainted.emit()
 
 # Paint an enemy's footprint tiles for its current state. Hovering brightens the
@@ -651,8 +709,112 @@ func click_enemy(instance: int, entry: Dictionary, col: int, is_current: bool) -
 	# The game you're currently playing isn't on the stack, so it can't be targeted
 	# by Push / Bomb — but you can still read its card.
 	selected_instance = 0 if is_current else instance
+	# While a push is being aimed the click is the AIM, not a request to read the
+	# card: a full-screen info card over the board would bury the arrows the same
+	# click just put there. (The enemy being played is still unaimable, so it falls
+	# through to its card as usual.)
+	if push_mode and not is_current:
+		refresh(_show_current)
+		return
 	enemy_inspected.emit(entry, col, is_current)
 	refresh(_show_current)
+
+# --- the push arrows -------------------------------------------------------
+
+# Edge of an arrow button, and the gap between it and the body it belongs to.
+const ARROW_SIZE: int = 30
+const ARROW_GAP: int = 3
+
+# One arrow per direction the selected body could actually be shoved in, laid
+# against the matching side of its footprint's bounding box. Nothing is drawn
+# unless a push is armed AND a target is picked, so the board is unchanged the
+# rest of the time.
+#
+# A target with no legal direction at all (boxed in on all four sides) says so in
+# words instead — an empty board around a selected enemy would otherwise read as
+# "the arrows haven't appeared yet".
+func _refresh_push_arrows() -> void:
+	if _arrow_layer == null:
+		return
+	if not push_mode or selected_instance <= 0:
+		return
+	var entry: Dictionary = _stack_entry(selected_instance)
+	var e: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
+	if e == null:
+		return
+	var row: int = int(entry.get("row", 0))
+	var col: int = int(entry.get("col", GameLoop2.spawn_col()))
+	var span: Vector2 = _span_size(e.footprint_rows(), e.footprint_cols())
+	var centre: Vector2 = _cell_pos(row, col) + span * 0.5
+	var dirs: Array = GameLoop2.push_directions(selected_instance)
+	if dirs.is_empty():
+		_arrow_layer.add_child(_no_room_note(centre, e))
+		return
+	for dir: Vector2i in dirs:
+		# Never both axes at once, so each side of the box is offset on its own.
+		var at := Vector2(
+			centre.x + float(dir.x) * (span.x * 0.5 + ARROW_SIZE * 0.5 + ARROW_GAP),
+			centre.y + float(dir.y) * (span.y * 0.5 + ARROW_SIZE * 0.5 + ARROW_GAP))
+		_arrow_layer.add_child(_push_arrow(dir, at, e))
+
+# Column 1 is the lane nearest the hero and the hero is drawn to the LEFT of the
+# board, so a push BACK (col + 1) travels right across the screen. These glyphs
+# are the screen directions, not the grid's.
+func push_arrow_glyph(dir: Vector2i) -> String:
+	if dir == GameLoop2.PUSH_FORWARD:
+		return "◀"
+	if dir == GameLoop2.PUSH_UP:
+		return "▲"
+	if dir == GameLoop2.PUSH_DOWN:
+		return "▼"
+	return "▶"
+
+# What spending the charge this way actually buys, per direction — the arrows are
+# the only place the four are told apart, so each one says what it is for.
+func push_arrow_tip(dir: Vector2i, e: GoalEnemyData) -> String:
+	var who: String = e.display_name if e != null else "it"
+	if dir == GameLoop2.PUSH_FORWARD:
+		return "Shove %s one column CLOSER. It gets a free step toward you — but it clears the space behind it." % who
+	if dir == GameLoop2.PUSH_UP or dir == GameLoop2.PUSH_DOWN:
+		return "Shove %s %s a lane. Enemies never change lanes on their own, so this is the only way to move one out of the row it's coming down." % [
+			who, "up" if dir == GameLoop2.PUSH_UP else "down"]
+	return "Shove %s one column BACK, buying the games it takes to close in again." % who
+
+func _push_arrow(dir: Vector2i, at: Vector2, e: GoalEnemyData) -> Button:
+	var b := Button.new()
+	b.text = push_arrow_glyph(dir)
+	b.tooltip_text = push_arrow_tip(dir, e)
+	b.size = Vector2(ARROW_SIZE, ARROW_SIZE)
+	b.position = at - Vector2(ARROW_SIZE, ARROW_SIZE) * 0.5
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b.add_theme_font_size_override("font_size", 15)
+	b.add_theme_color_override("font_color", UITheme.ACCENT)
+	b.add_theme_color_override("font_hover_color", Color.WHITE)
+	b.add_theme_stylebox_override("normal",
+		UITheme.flat(UITheme.BG.lerp(UITheme.ACCENT, 0.3), 6, 0, 2, UITheme.ACCENT))
+	b.add_theme_stylebox_override("hover",
+		UITheme.flat(UITheme.ACCENT.lerp(UITheme.BG, 0.35), 6, 0, 2, Color.WHITE))
+	b.add_theme_stylebox_override("pressed",
+		UITheme.flat(UITheme.ACCENT.lerp(UITheme.BG, 0.2), 6, 0, 2, Color.WHITE))
+	b.set_meta("push_dir", dir)
+	var inst: int = selected_instance
+	b.pressed.connect(func():
+		# Disarmed on the way out, so one press of Push spends at most one charge
+		# and the arrows don't linger over a body that has already moved.
+		push_mode = false
+		push_requested.emit(inst, dir))
+	return b
+
+func _no_room_note(centre: Vector2, e: GoalEnemyData) -> Control:
+	var l := Label.new()
+	l.text = "boxed in"
+	l.tooltip_text = "%s has no free cell on any side — nowhere to shove it." % e.display_name
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.size = Vector2(90, 16)
+	l.position = centre - Vector2(45, 8)
+	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_color_override("font_color", UITheme.DANGER)
+	return l
 
 # The accent colour for an enemy: red when it strikes on the next game reported,
 # amber when it strikes on the one after, gold farther out, orange for a boss.

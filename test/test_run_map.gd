@@ -420,3 +420,37 @@ func test_pinning_from_the_card_leaves_the_card_open_on_the_same_game() -> void:
 	assert_eq(modal._node_card_id, pin, "and it is still about the same game")
 	assert_true(_text_of(modal._node_card).contains("Pinned"),
 		"now reading as the pinned stop it has become")
+
+# --- minimise --------------------------------------------------------------
+#
+# The window rolls up to its title bar instead of closing. Over the star chart
+# that is the ONLY button in its corner: the chart owns the screen and its own
+# Close takes the window down with it, so a second Close there was a button that
+# threw away the thing the player had just opened.
+
+func test_the_window_rolls_up_to_its_title_bar_and_back() -> void:
+	var modal = _open_map()
+	var full: Vector2 = modal._panel.size
+	assert_false(modal.is_minimized(), "it opens unrolled")
+	modal.toggle_minimized()
+	assert_true(modal.is_minimized())
+	assert_lt(modal._panel.size.y, full.y, "rolled up, it is shorter than it was")
+	assert_eq(modal._panel.size.x, full.x,
+		"and exactly as wide, so the title bar doesn't move under the cursor")
+	# Everything under the title bar is gone, the bar itself is not.
+	assert_false(modal._header_tools.visible, "the zoom row goes with it")
+	for i in range(1, modal._rows.get_child_count()):
+		var child = modal._rows.get_child(i)
+		if child is Control:
+			assert_false((child as Control).visible,
+				"row %d is hidden while the window is rolled up" % i)
+	modal.toggle_minimized()
+	assert_false(modal.is_minimized(), "and it unrolls")
+	assert_true(modal._header_tools.visible, "with its tools back")
+
+func test_a_map_with_no_chart_under_it_still_has_a_way_out() -> void:
+	# Opened standalone, this panel is the only thing on screen — minimise alone
+	# would leave nothing that closes it.
+	var modal = _open_map()
+	assert_true(_text_of(modal._panel).contains("Close"),
+		"a chartless map keeps a Close of its own")

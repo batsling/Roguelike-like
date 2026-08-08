@@ -57,8 +57,9 @@ const ATTEMPT_HEALTH_COST: int = 1
 # An enemy SPAWNS ON the grid, positioned so its RIGHTMOST cell sits on the back
 # column (grid_cols()) — so a wide enemy's front edge starts closer to the player
 # and reaches you in fewer games — in a RANDOM row among those with the clearest
-# run at the player (enemies never change lanes, so a row with bodies parked in
-# it is a row it may never strike from). Each game beaten every enemy takes
+# run at the player (enemies never change lanes ON THEIR OWN, so a row with
+# bodies parked in it is a row it may never strike from — a PUSH is the one thing
+# that moves a body sideways, see `push`). Each game beaten every enemy takes
 # enemy_turns() turns, and each turn it either strikes — once ANY of its cells is
 # in the front column (col 1) — or closes one column toward the player. Enemies
 # that can't fit anywhere wait OFF-GRID (offgrid_col()) and slide in as space
@@ -847,36 +848,85 @@ func stun(instance: int) -> bool:
 	loop_changed.emit()
 	return true
 
-# Whether `instance` has somewhere to be pushed: a shove needs somewhere real to
-# land, so the target must be on the grid and its WHOLE footprint must fit one
-# column farther back — still on the board, and clear of every other enemy. A
-# target already against the back edge, or with something parked behind it, can't
-# be shoved (§grid).
-func can_push(instance: int) -> bool:
+# --- push (§grid) ----------------------------------------------------------
+#
+# A push shoves one body ONE CELL, in any of the four cardinal directions, as a
+# (column, row) delta. It used to be back-only, which made it a pure delay: buy a
+# game or two of walking and nothing else. Four directions makes it a positioning
+# verb instead, because the grid's own rules give each direction a different use:
+#
+#   BACK    the original — farther from the player, and off the front line.
+#   UP/DOWN a LANE CHANGE, which is the one thing enemies can never do for
+#           themselves. Shoving a body into a lane that already has something
+#           parked in it puts it behind that body for good (path_blockers), and
+#           shoving it out of one clears the lane it was blocking.
+#   FORWARD closer to the player. Legal, and the player's own business: it hands
+#           an enemy a free step, and it is also the only way to unjam a column
+#           when the space you need is in front of the thing that is in the way.
+#
+# BACK stays the default, so every caller that predates the directions (the info
+# card's one button, DevTools, the headless harness) keeps meaning what it meant.
+const PUSH_BACK := Vector2i(1, 0)
+const PUSH_FORWARD := Vector2i(-1, 0)
+const PUSH_UP := Vector2i(0, -1)
+const PUSH_DOWN := Vector2i(0, 1)
+const PUSH_DIRECTIONS := [PUSH_BACK, PUSH_FORWARD, PUSH_UP, PUSH_DOWN]
+
+# Whether `instance` can be shoved one cell in `dir`: a shove needs somewhere real
+# to land, so the target must be on the grid and its WHOLE footprint must fit in
+# the destination — still on the board, and clear of every other enemy. A target
+# against the edge it is being shoved towards, or with something parked in the
+# way, can't be shoved that way.
+func can_push(instance: int, dir: Vector2i = PUSH_BACK) -> bool:
 	var idx: int = _index_of(instance)
 	if idx < 0:
+		return false
+	if not PUSH_DIRECTIONS.has(dir):
 		return false
 	var entry: Dictionary = stack[idx]
 	if int(entry.get("col", offgrid_col())) > grid_cols():
 		return false          # off-grid: nothing to shove it across
-	return fits_at(entry.get("enemy"), int(entry.get("row", 0)),
-		int(entry.get("col", spawn_col())) + 1, instance)
+	return fits_at(entry.get("enemy"), int(entry.get("row", 0)) + dir.y,
+		int(entry.get("col", spawn_col())) + dir.x, instance)
 
-# Push a following enemy back one column (Manager's verb, from Raccoin): spends a
-# GameState.push charge to shove the target one grid column farther from the
-# player (toward the spawn column), buying the games it takes to close back in —
-# and, when it was in the front column, freeing that attack row for the queue
-# (§grid). Requires room behind the target (see can_push), so a jammed board can't
-# be untangled by shoving into an occupied space. Returns true (and spends the
+# Every direction `instance` could actually be shoved in right now, in
+# PUSH_DIRECTIONS order. This is what the board draws its arrows from, so a
+# direction the rules refuse is never offered rather than offered and refused.
+func push_directions(instance: int) -> Array:
+	var out: Array = []
+	for dir in PUSH_DIRECTIONS:
+		if can_push(instance, dir):
+			out.append(dir)
+	return out
+
+# What a direction is called, for a button's tooltip and the log.
+static func push_direction_name(dir: Vector2i) -> String:
+	match dir:
+		PUSH_FORWARD:
+			return "forward"
+		PUSH_UP:
+			return "up a lane"
+		PUSH_DOWN:
+			return "down a lane"
+		_:
+			return "back"
+
+# Push a following enemy one cell (Manager's verb, from Raccoin): spends a
+# GameState.push charge to shove the target in `dir` — back, buying the games it
+# takes to close in again and freeing the attack row it was holding; forward; or
+# across into another lane, which is movement the enemy itself can never make.
+# Requires room in the destination (see can_push), so a jammed board can't be
+# untangled by shoving into an occupied space. Returns true (and spends the
 # charge) only when a charge is available and the shove has somewhere to land.
-func push(instance: int) -> bool:
+func push(instance: int, dir: Vector2i = PUSH_BACK) -> bool:
 	if GameState.push <= 0:
 		return false
-	if not can_push(instance):
+	if not can_push(instance, dir):
 		return false
 	var idx: int = _index_of(instance)
 	GameState.push -= 1
-	stack[idx]["col"] = int(stack[idx].get("col", spawn_col())) + 1
+	stack[idx]["col"] = int(stack[idx].get("col", spawn_col())) + dir.x
+	stack[idx]["row"] = int(stack[idx].get("row", 0)) + dir.y
 	# Shoving a body off the front line can open the gap a waiting enemy needs.
 	_admit_offgrid()
 	loop_changed.emit()

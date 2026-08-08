@@ -526,6 +526,79 @@ func test_push_fails_at_the_back_column() -> void:
 	assert_false(GameLoop2.push(a))
 	assert_eq(GameState.push, 1, "the charge is kept")
 
+# --- push: the other three directions --------------------------------------
+#
+# A push moves one body one cell in any cardinal direction. BACK is the default
+# (and what every pre-existing caller means); UP / DOWN are the only lane change
+# on the board, since enemies never change lanes on their own; FORWARD is legal
+# and the player's own business.
+
+func test_push_can_move_an_enemy_across_a_lane() -> void:
+	GameState.push = 2
+	var a: int = GameLoop2.spawn_to_stack(_enemy(1))
+	var row: int = _row_of(a)
+	# Whichever way there is board to move in — a spawn can land in row 0.
+	var dir: Vector2i = GameLoop2.PUSH_DOWN if row + 1 < GameLoop2.grid_rows() else GameLoop2.PUSH_UP
+	var col: int = _col_of(a)
+	assert_true(GameLoop2.can_push(a, dir), "there is a free lane beside it")
+	assert_true(GameLoop2.push(a, dir), "the shove lands")
+	assert_eq(_row_of(a), row + dir.y, "it changed lane")
+	assert_eq(_col_of(a), col, "and kept its distance")
+	assert_eq(GameState.push, 1, "one charge per shove, whatever the direction")
+
+func test_push_can_shove_an_enemy_forward() -> void:
+	GameState.push = 1
+	var a: int = GameLoop2.spawn_to_stack(_enemy(1))
+	var col: int = _col_of(a)
+	assert_true(GameLoop2.can_push(a, GameLoop2.PUSH_FORWARD),
+		"nothing stands between a lone spawn and the player")
+	assert_true(GameLoop2.push(a, GameLoop2.PUSH_FORWARD))
+	assert_eq(_col_of(a), col - 1, "a forward shove hands it a free step toward you")
+
+func test_a_push_off_the_edge_of_the_board_is_refused() -> void:
+	GameState.push = 1
+	var a: int = GameLoop2.spawn_to_stack(_enemy(1))
+	# Walk it to the top lane, then try to keep going.
+	while _row_of(a) > 0:
+		assert_true(GameLoop2.push(a, GameLoop2.PUSH_UP), "room while there are lanes left")
+		GameState.push = 1
+	assert_eq(_row_of(a), 0, "it is in the top lane")
+	assert_false(GameLoop2.can_push(a, GameLoop2.PUSH_UP), "there is no lane above row 0")
+	assert_false(GameLoop2.push(a, GameLoop2.PUSH_UP), "and the shove is refused")
+	assert_eq(GameState.push, 1, "a refused shove spends nothing")
+
+func test_push_directions_lists_exactly_what_is_legal() -> void:
+	GameState.push = 1
+	var a: int = GameLoop2.spawn_to_stack(_enemy(1))
+	var dirs: Array = GameLoop2.push_directions(a)
+	assert_false(dirs.has(GameLoop2.PUSH_BACK),
+		"a body on the spawn column has nothing behind it")
+	assert_true(dirs.has(GameLoop2.PUSH_FORWARD), "but it can be shoved closer")
+	for dir in dirs:
+		assert_true(GameLoop2.can_push(a, dir),
+			"every offered direction is one can_push agrees to (%s)" % str(dir))
+	for dir in GameLoop2.PUSH_DIRECTIONS:
+		if not dirs.has(dir):
+			assert_false(GameLoop2.can_push(a, dir),
+				"and every direction left off is one it refuses (%s)" % str(dir))
+
+func test_an_unknown_direction_is_not_a_push() -> void:
+	GameState.push = 1
+	var a: int = GameLoop2.spawn_to_stack(_enemy(1))
+	assert_false(GameLoop2.can_push(a, Vector2i(1, 1)), "diagonals are not cardinal")
+	assert_false(GameLoop2.push(a, Vector2i(2, 0)), "and neither is a two-cell shove")
+	assert_eq(GameState.push, 1, "nothing is spent on a direction that isn't one")
+
+func test_push_defaults_to_back_for_the_callers_that_predate_directions() -> void:
+	GameState.push = 1
+	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)
+	_march_to_front(a)
+	var col: int = _col_of(a)
+	var row: int = _row_of(a)
+	assert_true(GameLoop2.push(a), "no direction given")
+	assert_eq(_col_of(a), col + 1, "means back, as it always did")
+	assert_eq(_row_of(a), row, "and stays in its lane")
+
 func test_push_requires_a_charge() -> void:
 	GameState.push = 0
 	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col

@@ -3,11 +3,11 @@ extends GutTest
 # The window mode (Settings.DisplayMode) — the preference, its persistence, and
 # the mapping onto Godot's window modes.
 #
-# The default is BORDERLESS fullscreen and that is a deliberate choice, not a
+# The default is an ordinary WINDOW and that is a deliberate choice, not a
 # default that happened: this game's loop is leaving it to play a real game and
-# coming back, so the player alt-tabs out several times a run, and exclusive
-# fullscreen makes each of those a mode switch. A test guards the default so it
-# can't be flipped without someone meaning to.
+# coming back, so the player alt-tabs out several times a run and wants the OS's
+# own taskbar reachable while they do it. A test guards the default so it can't
+# be flipped without someone meaning to.
 
 var _saved: int
 
@@ -17,21 +17,32 @@ func before_each() -> void:
 func after_each() -> void:
 	Settings.display_mode = _saved
 
-func test_the_default_is_borderless_fullscreen() -> void:
-	assert_eq(Settings.DisplayMode.WINDOWED_FULLSCREEN, 0,
-		"borderless is the first entry, so it is what an unset config falls back to")
+func test_the_default_is_windowed() -> void:
 	var cfg := ConfigFile.new()
-	assert_eq(clampi(int(cfg.get_value("display", "mode",
-			Settings.DisplayMode.WINDOWED_FULLSCREEN)), 0, Settings.DisplayMode.EXCLUSIVE),
-		Settings.DisplayMode.WINDOWED_FULLSCREEN,
-		"a config with no display section opens borderless")
+	assert_eq(clampi(int(cfg.get_value("display", Settings.DISPLAY_KEY,
+			Settings.DisplayMode.WINDOWED)), 0, Settings.DisplayMode.EXCLUSIVE),
+		Settings.DisplayMode.WINDOWED,
+		"a config with no display section opens windowed")
 
-func test_the_project_launches_into_borderless_fullscreen() -> void:
-	# 3 is Godot's FULLSCREEN (a borderless window the size of the screen), NOT 4
-	# (EXCLUSIVE_FULLSCREEN). The first frame is fullscreen before Settings has
-	# even loaded, so the project setting has to agree with the default above.
-	assert_eq(int(ProjectSettings.get_setting("display/window/size/mode", 0)), 3,
-		"project.godot opens the window borderless-fullscreen")
+# The DEFAULT moved after saves already existed, so the key moved with it: a
+# settings.cfg written under the old default holds an explicit borderless 0 for a
+# player who never chose anything. Reading a new key is what tells "never chose"
+# apart from "chose the old default" — exactly once.
+func test_a_config_from_before_the_change_still_opens_windowed() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("display", "mode", Settings.DisplayMode.WINDOWED_FULLSCREEN)
+	assert_ne(Settings.DISPLAY_KEY, "mode", "the key is versioned away from the old one")
+	assert_eq(clampi(int(cfg.get_value("display", Settings.DISPLAY_KEY,
+			Settings.DisplayMode.WINDOWED)), 0, Settings.DisplayMode.EXCLUSIVE),
+		Settings.DisplayMode.WINDOWED,
+		"the old key is not read, so the new default wins once")
+
+func test_the_project_launches_into_a_window() -> void:
+	# 0 is Godot's WINDOWED. The first frame is drawn before Settings has even
+	# loaded, so the project setting has to agree with the default above or the
+	# game flashes the wrong mode on the way in.
+	assert_eq(int(ProjectSettings.get_setting("display/window/size/mode", 0)), 0,
+		"project.godot opens an ordinary window")
 
 func test_each_mode_maps_to_the_right_window_mode() -> void:
 	assert_eq(Settings.window_mode_for(Settings.DisplayMode.WINDOWED_FULLSCREEN),
@@ -47,11 +58,12 @@ func test_every_mode_has_a_name_for_the_menu() -> void:
 		assert_ne(Settings.display_mode_name(mode), "", "mode %d is named" % mode)
 
 func test_the_preference_round_trips_through_the_config() -> void:
-	Settings.set_display_mode(Settings.DisplayMode.WINDOWED)
-	assert_eq(Settings.display_mode, Settings.DisplayMode.WINDOWED, "the choice took")
+	Settings.set_display_mode(Settings.DisplayMode.WINDOWED_FULLSCREEN)
+	assert_eq(Settings.display_mode, Settings.DisplayMode.WINDOWED_FULLSCREEN, "the choice took")
 	var cfg := ConfigFile.new()
 	assert_eq(cfg.load(Settings.CONFIG_PATH), OK, "settings were written")
-	assert_eq(int(cfg.get_value("display", "mode", -1)), Settings.DisplayMode.WINDOWED,
+	assert_eq(int(cfg.get_value("display", Settings.DISPLAY_KEY, -1)),
+		Settings.DisplayMode.WINDOWED_FULLSCREEN,
 		"and the window mode is in them, so it survives a restart")
 	Settings.set_display_mode(_saved)
 

@@ -622,6 +622,10 @@ func pick(index: int) -> void:
 	# its position on the route toward the amulet).
 	GameState.set_current_game(_chosen["slot"])
 	_hover_grant = -1
+	# An armed Push doesn't survive committing to a game: the board it was aimed at
+	# is about to be marched a column, and nothing has been spent.
+	if _board != null:
+		_board.cancel_push()
 	_phase = Phase.PLAYING
 	_populate_play_panel()
 	_refresh()
@@ -1475,12 +1479,16 @@ func transmute_choice(index: int) -> void:
 		_build_choices()
 		_refresh()
 
-# Push a following enemy back one space (Manager's verb, §7.2): spend a Push
-# charge to delay its next attack by a game. Targets a stacked follower by
-# instance; GameLoop2.push guards the charge and membership, so a no-op just
-# leaves the board unchanged.
-func push_follower(instance: int) -> void:
-	if GameLoop2.push(instance):
+# Push a following enemy one space (Manager's verb, §7.2): spend a Push charge to
+# shove it back (delaying its next attack by a game), forward, or across into
+# another lane. Targets a stacked follower by instance; GameLoop2.push guards the
+# charge, the membership and the room in the destination, so a no-op just leaves
+# the board unchanged.
+#
+# `dir` defaults to BACK for the callers that predate the four directions — the
+# enemy info card's single button and the headless harness.
+func push_follower(instance: int, dir: Vector2i = GameLoop2.PUSH_BACK) -> void:
+	if GameLoop2.push(instance, dir):
 		_refresh()
 
 # Bomb a following enemy (§4): spend a Bomb charge to deal it 1 damage (no drop
@@ -1868,10 +1876,10 @@ func _render_choices() -> void:
 # the art gets the room back.
 const COVER_SIZE := Vector2(150, 200)
 
-# The badge rows on a card. There is one left — the name — plus the Amulet's
-# flag; everything else a card used to carry (the route, the pace, the tries, the
-# repeat bonus, the map, the Beatable row, the Bash/Transmute verbs) now lives in
-# the popup the card opens.
+# The badge rows on a card: the name, plus two fixed-height flag lines above the
+# cover — the Amulet / event flag, and the repeat game's +1 Dash. Everything else
+# a card used to carry (the route, the pace, the tries, the map, the Beatable row,
+# the Bash/Transmute verbs) lives in the popup the card opens.
 const BADGE_FONT := 11
 const BADGE_LINE := 15               # one line of BADGE_FONT, in px
 # The game's NAME keeps a readable size, in its own fixed box, so a card whose
@@ -1923,6 +1931,30 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	flag.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
 	flag.add_theme_font_size_override("font_size", BADGE_FONT)
 	card.add_child(flag)
+
+	# THE SECOND THING that has to be legible without opening anything: a game you
+	# have already beaten this run pays a Dash for beating it again
+	# (REPEAT_BEAT_DASH). It is the offering's only recurring free charge, and it
+	# was only ever stated inside the popup — so the one card on the table that is
+	# worth revisiting looked exactly like the ones that aren't. It rides ABOVE the
+	# cover, next to the Amulet's flag, because it is a reason to open a card and
+	# reasons to open a card belong where the card is being scanned.
+	#
+	# Like the flag, the row is mounted on EVERY card and left blank off a repeat,
+	# so one +1 in the offering doesn't knock the other covers out of line.
+	var dash_flag := Label.new()
+	if bool(choice.get("repeat", false)):
+		dash_flag.text = "⚡ +%d DASH" % REPEAT_BEAT_DASH
+		dash_flag.tooltip_text = ("You've already beaten %s this run — beat it again and it pays %d Dash charge%s."
+			% [game.display_name, REPEAT_BEAT_DASH, "" if REPEAT_BEAT_DASH == 1 else "s"])
+	else:
+		dash_flag.text = ""
+	dash_flag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dash_flag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	dash_flag.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
+	dash_flag.add_theme_font_size_override("font_size", BADGE_FONT)
+	dash_flag.add_theme_color_override("font_color", DASH_BLUE)
+	card.add_child(dash_flag)
 
 	var btn := Button.new()
 	btn.custom_minimum_size = COVER_SIZE

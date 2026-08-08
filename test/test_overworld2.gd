@@ -160,19 +160,92 @@ func test_the_game_being_played_is_not_targetable_by_the_verbs() -> void:
 	assert_eq(_ui._board.selected_instance, 0, "the current game's enemy can't be pushed/bombed")
 	assert_not_null(_ui._info_popup, "but its card still opens")
 
-func test_toolbar_push_is_disabled_without_a_target_or_room() -> void:
+# Push is ARMED first and AIMED second, so the button gates on the charge alone —
+# "select an enemy" is what the mode is for, not a precondition of entering it.
+func test_toolbar_push_needs_a_charge_not_a_target() -> void:
 	GameState.push = 1
 	_ui.pick(0)
 	_ui.report(false)
 	_ui._board.selected_instance = 0
 	_ui._board.refresh_toolbar()
-	assert_true(_ui._board.push_btn.disabled, "no target -> Push is unavailable")
-	# Target the follower: it sits at the back column, so there's nowhere to shove it.
+	assert_false(_ui._board.push_btn.disabled, "a charge and no target -> Push can be armed")
+	GameState.push = 0
+	_ui._board.refresh_toolbar()
+	assert_true(_ui._board.push_btn.disabled, "no charge -> Push is unavailable")
+
+# Arming clears whatever was selected: the flow reads "press Push, then say who",
+# and a body left over from reading its card is not a target the player just
+# chose.
+func test_arming_push_clears_the_selection_and_disarms_on_cancel() -> void:
+	GameState.push = 1
+	_ui.pick(0)
+	_ui.report(false)
 	var inst: int = int(GameLoop2.stack[0]["instance"])
 	_ui._board.selected_instance = inst
-	_ui._board.refresh_toolbar()
-	assert_eq(int(GameLoop2.stack[0]["col"]), GameLoop2.spawn_col())
-	assert_true(_ui._board.push_btn.disabled, "nothing behind the back column -> Push is unavailable")
+	_ui._board.begin_push()
+	assert_true(_ui._board.push_mode, "the verb is armed")
+	assert_eq(_ui._board.selected_instance, 0, "and nothing is aimed at yet")
+	assert_true(_ui._board.push_btn.text.contains("Cancel"),
+		"the button becomes the way out: %s" % _ui._board.push_btn.text)
+	_ui._board.cancel_push()
+	assert_false(_ui._board.push_mode, "cancel disarms it")
+	assert_eq(GameState.push, 1, "and nothing was spent on arming or cancelling")
+
+# Aiming draws one arrow per LEGAL direction and no others — a follower on the
+# spawn column has nothing behind it, so it never gets a back arrow.
+func test_aiming_a_push_draws_an_arrow_per_legal_direction() -> void:
+	GameState.push = 1
+	_ui.pick(0)
+	_ui.report(false)
+	var entry: Dictionary = GameLoop2.stack[0]
+	var inst: int = int(entry["instance"])
+	assert_eq(int(entry["col"]), GameLoop2.spawn_col(), "it spawned at the back")
+	_ui._board.begin_push()
+	_ui._board.click_enemy(inst, entry, int(entry["col"]), false)
+	assert_eq(_ui._board.selected_instance, inst, "the click aims rather than inspects")
+	assert_null(_ui._info_popup, "so no info card covers the arrows")
+	var dirs: Array = []
+	for a in _ui._board._arrow_layer.get_children():
+		if a.has_meta("push_dir"):
+			dirs.append(a.get_meta("push_dir"))
+	assert_eq(dirs.size(), GameLoop2.push_directions(inst).size(),
+		"one arrow per direction the rules allow")
+	assert_false(dirs.has(GameLoop2.PUSH_BACK),
+		"and none for the back edge it is already against")
+	assert_true(dirs.has(GameLoop2.PUSH_FORWARD), "forward is offered")
+
+# Pressing an arrow is the only thing that spends the charge, and it moves the
+# body the way the arrow points.
+func test_the_arrow_spends_the_charge_and_moves_the_enemy() -> void:
+	GameState.push = 1
+	_ui.pick(0)
+	_ui.report(false)
+	var entry: Dictionary = GameLoop2.stack[0]
+	var inst: int = int(entry["instance"])
+	var col: int = int(entry["col"])
+	_ui._board.begin_push()
+	_ui._board.click_enemy(inst, entry, col, false)
+	var arrow: Button = null
+	for a in _ui._board._arrow_layer.get_children():
+		if a.has_meta("push_dir") and a.get_meta("push_dir") == GameLoop2.PUSH_FORWARD:
+			arrow = a
+	assert_not_null(arrow, "the forward arrow is there to press")
+	arrow.pressed.emit()
+	assert_eq(GameState.push, 0, "the charge is spent by the ARROW, not by arming")
+	assert_eq(int(GameLoop2.stack[0]["col"]), col - 1, "and it moved the way the arrow pointed")
+	assert_false(_ui._board.push_mode, "one press of Push spends at most one charge")
+
+# Nothing is drawn while the verb is idle — the arrows are a mode, not furniture.
+func test_no_arrows_when_the_push_is_not_armed() -> void:
+	GameState.push = 1
+	_ui.pick(0)
+	_ui.report(false)
+	var entry: Dictionary = GameLoop2.stack[0]
+	_ui._board.click_enemy(int(entry["instance"]), entry, int(entry["col"]), false)
+	assert_eq(_ui._board._arrow_layer.get_child_count(), 0,
+		"an ordinary click on an enemy puts no arrows on the board")
+	assert_not_null(_ui._info_popup, "it opens the info card, as it always did")
+	_ui._close_enemy_info()
 
 func test_toolbar_bomb_is_offered_against_a_boss() -> void:
 	# A boss takes no bomb damage, but it IS a legal target — that is the only way

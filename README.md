@@ -242,14 +242,24 @@ node and its script.
     lives here — the **optimal path from that game drawn as the real route
     ladder**, the enemy waiting there and its goal, the tries the game grants, the
     pace it puts the board on, your record in it — over the three buttons that
-    answer it: **Travel**, **Bash**, **Transmute**. It decides nothing itself;
+    answer it: **Travel**, **Bash**, **Transmute**. The cover is drawn small on
+    purpose: it is the one thing you have already seen (it is what you clicked),
+    and the room it gives back goes to the enemy and its goal. It decides nothing itself;
     each button calls the overworld's `pick` / `bash_choice` / `transmute_choice`.
   - **`RouteLadder.gd`** — the shortest-path DAG as a top-to-bottom ladder of
     boxes with green arrows between them, colour-coded by role. Shared: the 🗺 map
     window (`RunMapModal`) and `GameChoiceModal` draw the same graph from it.
+    Over the star chart the map window has **no Close of its own** — the chart
+    owns the screen and its Close takes the window with it — so the button in its
+    corner rolls it up to its title bar instead. Opened without a chart under it
+    (the start picker) it is the only thing on screen, and there it keeps one.
   - **`BattlefieldView.gd`** — the board: the hero on the left with the shield
     pips over them, the grid the goal-enemies close in across, the off-field lane,
-    the Push / Bomb toolbar, and the strike / advance animation.
+    the Push / Bomb toolbar, and the strike / advance animation. **Push is armed
+    then aimed**: pressing `⇤ Push` arms the verb, clicking an enemy picks the
+    body, and an arrow appears on every side of it a shove could legally land on
+    — back, forward, or up/down, which is the only lane change on the board.
+    Nothing is spent until an arrow is pressed.
   - **`EnemyInfoCard.gd`** — the click-to-inspect card for one enemy.
 - **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). Ordinary
   enemy drops don't open it: they land in the loot tray beside the board.
@@ -264,13 +274,25 @@ harness for the loop.
 
 ### The window
 
-The game opens **borderless fullscreen** (`display/window/size/mode=3` — Godot's
-`FULLSCREEN`, a borderless window the size of the screen, *not* `4`
-/`EXCLUSIVE_FULLSCREEN`). That is deliberate: the core loop is leaving the game to
-go and play a real one and coming back to report, so the player alt-tabs out
-several times a run, and borderless is the only mode where that is instant.
-**F11** toggles, `Settings → Display` offers all three modes, and the choice is
-persisted to `user://settings.cfg`.
+The game opens **windowed** (`display/window/size/mode=0`) at 1280x720. That is
+deliberate: the core loop is leaving the game to go and play a real one and
+coming back to report, so the player alt-tabs out several times a run — and a
+window is the only mode that leaves the OS's own taskbar/dock on screen to do it
+with. It is also the only one that draws the layout at the size it is designed at.
+
+Both fullscreens are still on the list. `Settings → Display` offers **Windowed**,
+**Windowed fullscreen (borderless)** (`FULLSCREEN` — a borderless window the size
+of the screen, *not* `EXCLUSIVE_FULLSCREEN`) and **Exclusive fullscreen**; **F11**
+toggles windowed ⟷ borderless from any screen, and the choice is persisted to
+`user://settings.cfg`. Leaving either fullscreen puts an over-sized window back to
+1280x720 and re-centres it, so "windowed" never comes back the size of the screen
+with the taskbar still buried under it.
+
+The stored preference lives under a **versioned key** (`Settings.DISPLAY_KEY`)
+because the default moved from borderless to windowed after saves existed: a
+`settings.cfg` written under the old default holds an explicit borderless value
+for a player who never chose one, and reading a new key is what tells those two
+apart — exactly once.
 
 The **layout's size does not change with the monitor**. `stretch/mode` is
 `canvas_items` over a fixed 1280×720, so a bigger screen draws the same page

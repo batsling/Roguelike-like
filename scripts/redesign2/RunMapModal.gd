@@ -13,8 +13,12 @@ extends Control
 # the same route is on screen twice at two altitudes — the corridor as a clean
 # ladder of decisions here, and the same corridor drawn across the real sky
 # behind it. Nothing is dimmed and nothing is blocked; drag the panel by its
-# header to get it out of the way of the stars, and click any game on the ladder
-# to fly the sky to it.
+# header to get it out of the way of the stars, roll it up to its title bar with
+# the ▁ in its corner, and click any game on the ladder to fly the sky to it.
+#
+# Over a chart it has no Close of its own — the chart owns the screen and its
+# Close takes the window with it. Opened WITHOUT a chart (the start picker) it is
+# the only thing on screen, and there it keeps one.
 #
 # Nodes are colour-coded by role (current / amulet / reachable choice / visited /
 # on-path), a journey trail lists where the player has been, and +/- zoom rebuilds
@@ -76,6 +80,12 @@ var _pin_label: Label = null
 var _node_card: PanelContainer = null   # the open rung's card, if any
 var _node_card_id: StringName = &""
 var _node_card_body: VBoxContainer = null   # what the card is sized against
+# Rolled up to its title bar (see toggle_minimized). The window stays where it
+# is and keeps its width; everything under the title bar is hidden.
+var _minimized: bool = false
+var _min_btn: Button = null
+var _header_tools: Control = null           # the zoom / frame row, hidden when rolled up
+var _restore_size: Vector2 = Vector2.ZERO   # the height to unroll back to
 # Whether the opening zoom-to-fit has happened. Only the FIRST build does it —
 # after that the zoom is whatever the player set with the −/+ buttons.
 var _auto_zoomed: bool = false
@@ -309,14 +319,32 @@ func _build_header() -> Control:
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_row.add_child(title)
 
-	var close := Button.new()
-	close.text = "Close"
-	close.pressed.connect(_finish)
-	title_row.add_child(close)
+	# MINIMISE, not close. Over the star chart this window is the second view of a
+	# route whose first view is the sky behind it, and what the player wants from
+	# the button in its corner is almost always "get the ladder off the stars for a
+	# moment", not "throw the map away" — the chart's own Close already takes both
+	# down together. So the corner rolls the window up to its title bar and unrolls
+	# it again, and the only Close is on the screen that owns the screen.
+	_min_btn = Button.new()
+	_min_btn.pressed.connect(toggle_minimized)
+	title_row.add_child(_min_btn)
+	_refresh_min_button()
+
+	# Opened WITHOUT a chart under it — the start picker, or a project with no
+	# baked atlas — this panel is the only thing on screen, and a window that can
+	# only be rolled up is a window with no way out. There, and only there, it
+	# keeps a Close of its own.
+	if _atlas == null:
+		var close := Button.new()
+		close.text = "Close"
+		close.tooltip_text = "Close the map."
+		close.pressed.connect(_finish)
+		title_row.add_child(close)
 
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 8)
 	stack.add_child(tools)
+	_header_tools = tools
 
 	_dist_label = Label.new()
 	_dist_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -339,6 +367,57 @@ func _build_header() -> Control:
 		# at the game this map is refusing to name.
 		tools.add_child(_zoom_button("✦ Star chart", _open_atlas))
 	return stack
+
+# --- minimise --------------------------------------------------------------
+
+# Roll the window up to its title bar, or unroll it. The panel keeps its position
+# and its WIDTH — a title bar that also changed width would move under the cursor
+# that just clicked it — and everything below the bar (the tools row, the pin bar,
+# the ladder, the legend) is hidden, so the panel shrinks to the bar's own height.
+#
+# Public so a test, and the Esc key, can do it without a click.
+func toggle_minimized() -> void:
+	set_minimized(not _minimized)
+
+func set_minimized(value: bool) -> void:
+	if value == _minimized or _panel == null or _rows == null:
+		return
+	_minimized = value
+	if _minimized:
+		_restore_size = _panel.size
+		# The rung card is parked against the window and is a piece of the map, not
+		# of the title bar; it goes with the rest of it.
+		close_node_card()
+	for i in range(1, _rows.get_child_count()):
+		var child = _rows.get_child(i)
+		if child is Control:
+			(child as Control).visible = not _minimized
+	if _header_tools != null and is_instance_valid(_header_tools):
+		_header_tools.visible = not _minimized
+	_refresh_min_button()
+	if _minimized:
+		# Zero the floor first: a PanelContainer never gives back the size its
+		# children once claimed, so the minimum has to be re-asked for with the
+		# hidden rows out of the sum.
+		_panel.custom_minimum_size = Vector2.ZERO
+		var bar: float = _panel.get_combined_minimum_size().y
+		_panel.custom_minimum_size = Vector2(_restore_size.x, bar)
+		_panel.size = Vector2(_restore_size.x, bar)
+	else:
+		_panel.custom_minimum_size = Vector2.ZERO
+		_panel.size = _restore_size
+		_fit_panel()
+	_move_panel(_panel.position)
+
+func is_minimized() -> bool:
+	return _minimized
+
+func _refresh_min_button() -> void:
+	if _min_btn == null or not is_instance_valid(_min_btn):
+		return
+	_min_btn.text = "▣" if _minimized else "▁"
+	_min_btn.tooltip_text = ("Unroll the map." if _minimized
+		else "Roll the map up to its title bar — it stays where it is, and the chart behind it comes clear.")
 
 func _on_header_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -847,6 +926,10 @@ func _settle() -> void:
 # window doesn't take is sky the route can be framed in.
 func _fit_panel() -> void:
 	if _panel == null or _canvas_holder == null or _rows == null:
+		return
+	# Rolled up, the window IS its title bar; sizing it to a ladder nobody can see
+	# would unroll it behind the player's back.
+	if _minimized:
 		return
 	var ceiling: Vector2 = view_ceiling()
 	var chrome: Vector2 = _chrome()

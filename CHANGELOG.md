@@ -11,6 +11,65 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Five UI passes, all from playing it.**
+
+  **It opens in a window now, and that is the default.** The game shipped
+  borderless-fullscreen and the reasoning still holds as far as it went — you
+  alt-tab out of this game constantly, and borderless swaps instantly where
+  exclusive is a mode switch — but it skipped the step before: a window that
+  covers the screen also covers the taskbar you are alt-tabbing *with*. So
+  `project.godot` opens `mode=0` (WINDOWED) at 1280x720, which is also the only
+  mode that draws the layout at the size it is built for. Both fullscreens stay
+  on the Settings list and F11 still toggles. Leaving either one now puts an
+  over-sized window back to 1280x720 and re-centres it, instead of handing back a
+  "window" the size of the screen. The saved preference moved to a versioned key
+  (`Settings.DISPLAY_KEY`): a `settings.cfg` written under the old default holds
+  an explicit borderless value for a player who never chose one, and reading a
+  new key is what tells "never chose" apart from "chose the old default" —
+  exactly once, after which a real choice sticks.
+
+  **Push is a direction now, not a distance.** It shoved a body one column back
+  and that was the whole verb: a delay, priced the same wherever it was spent. It
+  now moves one body one cell in **any cardinal direction**, and the grid's own
+  rules give each one a different job — back buys the games it takes to close in
+  again, forward hands over a free step to unjam a column, and **up/down is a
+  lane change**, which is the one move an enemy can never make for itself
+  (`path_blockers` is written on enemies never changing lanes). Shoving a body
+  into an occupied lane parks it behind whatever is there for good; shoving it
+  out of one opens the road it was blocking.
+
+  The interaction inverted with it. It used to be select-then-verb, which meant
+  the Push button spent its life disabled explaining why. Now the verb is **armed
+  first and aimed second**: press `⇤ Push`, click the enemy, and an arrow appears
+  on every side of that body a shove could actually land on. Nothing is spent
+  until an arrow is pressed, so arming, re-aiming and cancelling are all free —
+  and a direction the rules refuse is never drawn rather than drawn and refused.
+  `GameLoop2.push(instance, dir)` defaults to BACK, so the enemy card's one
+  button, DevTools and the headless harness all still mean what they meant.
+
+  **The choice popup's cover got out of the way.** At 210x280 the box art ate the
+  left column of `GameChoiceModal` and pushed the enemy, its goal and the statuses
+  riding on it under a scrollbar — and the cover is the one thing on that popup
+  you have already seen, because it is what you clicked. It is 140x187 now and
+  the enemy's portrait went up to 96px on the room it gave back.
+
+  **The map window minimises instead of closing.** Over the star chart it had a
+  Close of its own, a metre from the chart's Close, and pressing it threw away
+  the route ladder you had just opened — the chart's own Close already takes both
+  down together. The corner button rolls the window up to its title bar and
+  unrolls it again, keeping its position and its width so the bar doesn't move
+  under the cursor that clicked it. Opened *without* a chart under it (the start
+  picker, or an unbaked atlas) the panel is the only thing on screen, and there —
+  and only there — it still keeps a Close.
+
+  **A repeat game says so on the card.** Beating a game you have already beaten
+  this run pays +1 Dash, and that was stated only inside the popup — so the one
+  card on the table worth revisiting looked exactly like the ones that aren't.
+  There is a `⚡ +1 DASH` line above the cover now, mounted on every card and
+  blank off a repeat, so one badge doesn't knock the other covers out of line.
+
+---
+
 - **Five things the events pass got wrong, found by playing it.**
 
   **A "Small Chest" was opening two items.** `gain_chest` carried the chest's

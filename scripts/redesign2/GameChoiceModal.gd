@@ -17,7 +17,7 @@ extends Control
 #   • the OPTIMAL PATH, drawn as the real route ladder (RouteLadder) — the same
 #     arrowed graph the 🗺 map window shows, for the road as it would stand if
 #     you took this game;
-#   • the GAME — its cover at full size, its type and year, the tries it grants,
+#   • the GAME — its cover, its type and year, the tries it grants,
 #     the pace it puts the board on, whether you've beaten it before;
 #   • the ENEMY waiting there — portrait, name and the goal you'd be playing for;
 #   • and the three things you can DO about it: travel, bash, transmute.
@@ -41,9 +41,13 @@ signal finished
 # narrow ones nothing.
 const PANEL_SIZE := Vector2(1140, 700)
 const VIEW_MARGIN := Vector2(48, 56)
-# The cover, at the size the offering used to draw it at before it had to share a
-# column with the board — this popup is where a game gets looked at properly.
-const COVER := Vector2(210, 280)
+# The cover. Deliberately SMALLER than the offering card's own art rather than
+# bigger: the box art is the one thing on this popup you have already seen — it
+# is what you clicked — and at 210x280 it ate most of the left column, pushing the
+# enemy, its goal and the statuses riding on it down under a scrollbar. The cover
+# is now an identifier, not the exhibit, and the room it gives back goes to the
+# thing you opened the popup to read.
+const COVER := Vector2(132, 176)
 # The ladder's own column. Wide enough for a rung (RouteLadder.BOX.x = 150) plus
 # its padding, so a single-file route never has to shrink to fit.
 const LADDER_MIN_W := 360.0
@@ -188,7 +192,7 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_stretch_ratio = 0.62
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
+	col.add_theme_constant_override("separation", 6)
 	col.custom_minimum_size = Vector2(COVER.x + 40.0, 0)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(col)
@@ -272,7 +276,9 @@ func _build_enemy_block(game: GameData) -> Control:
 	if enemy.image != null:
 		var art := TextureRect.new()
 		art.texture = enemy.image
-		art.custom_minimum_size = Vector2(72, 72)
+		# The half of the popup the cover just gave its height back to: the enemy is
+		# the thing you cannot see from the offering, so it gets the bigger portrait.
+		art.custom_minimum_size = Vector2(96, 96)
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
