@@ -66,10 +66,10 @@ const DASH_BLUE := Color(0.5, 0.85, 1.0)
 # count, the attempt strip, and the pips on the board.
 const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
 
-# Lost runs of the game in play before the Escape button appears on a game the
-# player has NEVER been through (see can_escape — one they have is escapable from
-# the first second). Five is past the shields any game grants, so reaching it
-# means the player has been paying Health to keep trying.
+# Lost runs of the game in play before the Escape button appears on a game this
+# run has NOT already beaten (see can_escape — one it has is escapable from the
+# first second). Five is past the shields any game grants, so reaching it means
+# the player has been paying Health to keep trying.
 const ESCAPE_AFTER_ATTEMPTS := 5
 
 # The current offering. Each entry:
@@ -663,7 +663,7 @@ func log_attempt() -> String:
 # Some games won't go down, and a run shouldn't end because one of them sat in
 # the way. The player may walk away from the game in play at any point, without
 # beating it — either after ESCAPE_AFTER_ATTEMPTS lost runs, or immediately on a
-# game they have played through before (see can_escape).
+# game this run has already beaten (see can_escape).
 #
 # Escaping resolves the BOARD exactly as reporting a missed goal does: the
 # goal-enemy walks onto the board and follows you, and every enemy already on it
@@ -673,18 +673,17 @@ func log_attempt() -> String:
 # the whole time. The button exists to make the way out VISIBLE to a stuck player,
 # not to discount it.
 #
-# Where it PARTS from a missed report is credit: an escape is not a beat. The run
-# doesn't bank the game (so no repeat-beat Dash, and the Atlas doesn't mark it),
-# the "after beating a game" items don't fire, and neither the run's nor the
-# lifetime beaten tally moves. A missed report still credits the game — that is
-# long-standing behaviour and is left alone; walking away is the case that isn't
-# allowed to.
+# Where it PARTS from a missed report is the item trigger: the "after beating a
+# game" items fire on any game FINISHED, win or lose, and an escape is the one
+# report that doesn't fire them. Neither one banks a beat — beaten means won (see
+# report) — so an escape and a miss are alike in earning no repeat-beat Dash, no
+# Atlas mark and no movement in either beaten tally.
 #
-# TWO ways in. The five-lost-runs rule above is for a game you have never got
+# TWO ways in. The five-lost-runs rule above is for a game this run has never got
 # through: the way out has to be earned because the alternative is a player who
-# quits the run instead. A game you have BEATEN BEFORE is the opposite case —
+# quits the run instead. A game this run has ALREADY BEATEN is the opposite case —
 # there is nothing left to prove, and being made to lose at it five more times to
-# unlock the door is a tax on the one thing the run cannot make interesting, so
+# unlock the door is a tax on the one card the run cannot make interesting, so
 # that door is open from the first second.
 #
 # It is the same escape either way: the enemy still walks onto the board, the
@@ -693,21 +692,21 @@ func log_attempt() -> String:
 func can_escape() -> bool:
 	if _phase != Phase.PLAYING or _chosen.is_empty() or GameLoop2.run_over:
 		return false
-	return beaten_before() or GameLoop2.attempts() >= ESCAPE_AFTER_ATTEMPTS
+	return beaten_this_run() or GameLoop2.attempts() >= ESCAPE_AFTER_ATTEMPTS
 
-# Whether the game in play is one the player has a record at — the same lifetime
-# "⚔ Beaten N times" the offering's popup and the Collection both print, so what
-# opens the door is the number the player can already see.
+# Whether the game in play is one this RUN has already beaten — won, with the
+# goal met (see report(): "beaten means won").
 #
-# NOTE that tally counts REPORTS, not wins: a reported miss bumps it too (see
-# report(), "a missed report still credits the game"). That is long-standing
-# behaviour, deliberately not changed here — but it does mean this reads as "a
-# game you have been to before and come back from" rather than strictly "a game
-# you have won". Tightening it means giving `beaten` a wins-only sibling, which
-# would start empty on every existing save.
-func beaten_before() -> bool:
+# Run-scoped, not lifetime, and that is the point. A win in some run last week is
+# not a fact about this one: the character is different, the board is different,
+# and the shields this game grants have to be spent again either way. What the
+# free escape is for is the REPEAT — the game already cleared earlier in this same
+# run, the one the offering flags with ⚡ +1 DASH — because that is the card the
+# run cannot make interesting a second time and the one it is pure grind to be
+# held at.
+func beaten_this_run() -> bool:
 	var game: GameData = _chosen.get("game")
-	return game != null and GameStats.beaten_count(game.id) > 0
+	return game != null and GameState.has_beaten_game(game.id)
 
 # Leave the game in play. Whatever else the checklist has ticked still stands —
 # a follower's goal you did clear, a level-up you did earn — because those are
@@ -1043,27 +1042,39 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 					break
 	# Everything a game gets CREDITED for. An escape is the one report that earns
 	# none of it: the player walked away, so the "after beating a game" items don't
-	# fire, the run doesn't bank the clear (and so pays no repeat-beat Dash, and the
-	# Atlas doesn't mark the node), and neither tally the Collection and the tier
-	# list read moves. The run itself still advances — see games_played below —
-	# because the time was spent and the board closed in regardless.
+	# fire and nothing about the game is banked. The run itself still advances —
+	# see games_played below — because the time was spent and the board closed in
+	# regardless.
 	if played_game != null and not escaped:
-		# The event at this node, queued for once the board stops moving. Only a
-		# BEATEN game earns it: walking away forfeits the event and leaves it
-		# standing for a later visit, which is what makes it a reward rather than
-		# a toll for arriving.
+		# The event at this node, queued for once the board stops moving.
 		_pending_event = EventSystem.event_for(slot_here)
+		# The item trigger fires on FINISHING a game, win or lose. Note that this
+		# is deliberately a wider net than the beat below: it is what paces the
+		# "after beating a game" items, and every one of them is balanced around
+		# firing once per game played.
 		TriggerBus.game_beaten.emit({"game_id": played_game.id})
-		# Bank the clear (and pay the repeat-beat Dash). Recorded after the item
-		# trigger so a game_beaten item can't see a half-updated tally.
+
+	# BEATEN MEANS WON. This block used to sit inside the one above — any report
+	# that wasn't an escape banked the game, a missed goal included — so "⚔ Beaten
+	# 11 times" counted visits, `has_beaten_game` meant "been here", and a game you
+	# had failed paid the repeat-beat Dash for failing it twice. Every one of those
+	# reads as a claim about winning, in the UI and in the code, so all of them now
+	# require the goal to have actually been met.
+	#
+	# Recorded after the item trigger above, so a game_beaten item can't see a
+	# half-updated tally.
+	if played_game != null and not escaped and goal_met:
+		# The run's own record: what the offering's repeat badge, the Atlas's
+		# "beaten this run" and the free escape (can_escape) all read. Run-scoped
+		# and wiped by reset_run — beating something in a previous run is not a
+		# fact about this one.
 		GameState.note_game_beaten(played_game.id)
 		if repeat_beat:
 			_grant_repeat_dash(played_game)
-		# Lifetime tally the Collection and the tier list read ("beaten N times"):
-		# in the games-first loop this report step IS the verification, so a
-		# confirmed game counts here. An amulet clear records the win instead (it
-		# bumps `beaten` too).
-		if was_amulet and goal_met:
+		# The lifetime tally the Collection, the tier list and the Atlas read
+		# ("beaten N times"). An amulet clear records the win instead — it bumps
+		# `beaten` too.
+		if was_amulet:
 			GameStats.record_amulet_win(played_game.id)
 		else:
 			GameStats.record_beaten(played_game.id)
@@ -3591,8 +3602,8 @@ func _refresh_attempts() -> void:
 	# this one and not that one" is the whole question the button raises.
 	if _escape_btn != null:
 		_escape_btn.visible = can_escape()
-		var why: String = ("You have played this one before, so there is nothing to prove — leave whenever you like."
-			if beaten_before()
+		var why: String = ("You already beat this one this run, so there is nothing to prove — leave whenever you like."
+			if beaten_this_run()
 			else "%d lost runs is enough." % GameLoop2.attempts())
 		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nThe goal-enemy still walks onto "
 			+ "the board and follows you, and every enemy still takes its turns — escaping "

@@ -25,10 +25,28 @@ For how the project is laid out and how its systems fit together, see
 
   It is the same escape either way — only the gate moved. The goal-enemy still
   walks onto the board, everything already out there still takes its turns, and
-  the game still isn't credited (no drop, no event, no beat). Note that the
-  lifetime tally this reads counts REPORTS rather than wins (a reported miss
-  bumps it too — long-standing, deliberately untouched), so it means "a game you
-  have been to and come back from".
+  the game still isn't credited (no drop, no event, no beat).
+
+  **And BEATEN now means WON.** The escape reads the run's own beaten list, and
+  that list was a lie: any report that wasn't an escape banked the game, a missed
+  goal included. So "⚔ Beaten 11 times" counted visits, `has_beaten_game` meant
+  "been here", and a game you had FAILED paid the repeat-beat Dash for failing it
+  a second time. Every one of those reads as a claim about winning, in the UI and
+  in the code, so all of them now require the goal to have actually been met —
+  the run's list and count, the lifetime tally the Collection and tier list
+  print, the amulet win, and the Dash.
+
+  The escape's door is the RUN's list, not the lifetime one: a win in some run
+  last week is not a fact about this one — different character, different board,
+  and the shields have to be spent again either way. What it is for is the
+  repeat, the game already cleared earlier in this same run, which is the card
+  the offering flags with ⚡ +1 DASH and the one it is pure grind to be held at.
+
+  One thing deliberately left wider: `TriggerBus.game_beaten`, which paces the
+  "after beating a game" items, still fires on any game FINISHED rather than won
+  (an escape is the only report that doesn't fire it). Every one of those items
+  is balanced around firing once per game played, so narrowing it is a balance
+  decision rather than a naming fix.
 
   **The compendium's grid art is half the size.** Games, items, characters and
   enemies were drawing 190/100/120/116px thumbnails, which fitted three game

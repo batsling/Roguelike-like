@@ -9,8 +9,6 @@ const SCENE := preload("res://scenes/redesign2/Overworld2.tscn")
 const OVERWORLD := preload("res://scripts/redesign2/Overworld2.gd")
 
 var _ui
-# Game ids this test gave a lifetime "played before" record to (see after_each).
-var _seeded_stats: Array[String] = []
 
 func before_each() -> void:
 	_ui = SCENE.instantiate()
@@ -21,13 +19,6 @@ func before_each() -> void:
 	_ui.choose_start(0)
 
 func after_each() -> void:
-	# GameStats is a LIFETIME store — it is not part of the run and reset_run()
-	# does not touch it — so a test that seeds "you have played this before" must
-	# take it back out, or the next test's random pick inherits it. The escape
-	# tests below are the ones that seed it.
-	for id in _seeded_stats:
-		GameStats.stats.erase(id)
-	_seeded_stats.clear()
 	GameState.reset_run()
 	GameLoop2.reset()
 	SaveSystem.clear_all_saves()
@@ -991,6 +982,53 @@ func test_beating_a_game_again_grants_a_dash() -> void:
 	_ui.report(true)
 	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
 		"beating it a second time granted a Dash")
+
+# --- beaten means WON -------------------------------------------------------
+#
+# Reporting a MISSED goal used to bank the game exactly as a win did: the run's
+# beaten list, the lifetime "⚔ Beaten N times" the Collection and tier list
+# print, and the repeat-beat Dash all counted a visit. Every one of those reads
+# as a claim about winning, so all of them require the goal to have been met.
+
+func test_a_missed_goal_is_not_a_beat() -> void:
+	var played: GameData = _ui._choices[0]["game"]
+	var lifetime_before: int = GameStats.beaten_count(played.id)
+	var run_before: int = GameState.total_games_beaten
+	_ui.pick(0)
+	_ui.report(false)
+	assert_false(GameState.has_beaten_game(played.id),
+		"failing a game does not put it on the run's beaten list")
+	assert_eq(GameState.total_games_beaten, run_before,
+		"nor move the run's count")
+	assert_eq(GameStats.beaten_count(played.id), lifetime_before,
+		"nor the lifetime tally the Collection prints")
+
+func test_a_missed_goal_still_advances_the_run() -> void:
+	# The game was still played and the board still closed in — only the CREDIT is
+	# withheld, which is what separates this from an escape.
+	var gp_before: int = GameState.games_played
+	_ui.pick(0)
+	_ui.report(false)
+	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
+	assert_eq(GameLoop2.stack_size(), 1, "and its enemy followed you out")
+
+func test_failing_a_game_you_beat_earlier_pays_no_dash() -> void:
+	var target: GameData = _ui._choices[0]["game"]
+	GameState.note_game_beaten(target.id)
+	_ui._build_choices()
+	var dash_before: int = GameState.dash_charges
+	_ui.pick(0)
+	_ui.report(false)
+	assert_eq(GameState.dash_charges, dash_before,
+		"the repeat Dash is for beating it again, not for failing it again")
+
+func test_only_a_won_amulet_records_the_win() -> void:
+	var played: GameData = _ui._choices[0]["game"]
+	var wins_before: int = GameStats.amulet_wins(played.id)
+	_ui.pick(0)
+	_ui.report(false)
+	assert_eq(GameStats.amulet_wins(played.id), wins_before,
+		"a missed goal is not an amulet win either")
 
 # Every label/button/rich-text string under a node, flattened — enough to assert
 # what a screen actually says without reaching into its layout.
@@ -2193,19 +2231,18 @@ func _lose_runs(n: int) -> void:
 	for i in n:
 		_ui.log_attempt()
 
-# GameStats is a LIFETIME store read off disk, and a game with a record in it is
-# escapable from the first second (see below) — so the "never been here" tests
-# have to say so rather than hope the random pick has never been played.
-# Give the game in play a lifetime record, and remember to take it back out.
-func _mark_played(game: GameData) -> void:
-	GameStats.record_beaten(game.id)
-	_seeded_stats.append(String(game.id))
+# Mark the game in play as already beaten THIS RUN, the way a real clear does.
+func _mark_beaten_this_run(game: GameData) -> void:
+	GameState.note_game_beaten(game.id)
 
+# A game this RUN has not already beaten — which is every game on a fresh run, so
+# this only has to say so. The escape deliberately does NOT read the lifetime
+# tally (a win last week is not a fact about this run), so nothing off disk can
+# make these tests flap.
 func _pick_an_unplayed_game() -> GameData:
 	_ui.pick(0)
 	var game: GameData = _ui._chosen["game"]
-	GameStats.stats.erase(String(game.id))
-	assert_eq(GameStats.beaten_count(game.id), 0, "no record at this game")
+	assert_false(GameState.has_beaten_game(game.id), "this run has not beaten it")
 	return game
 
 func test_escape_is_locked_until_the_attempts_are_spent() -> void:
@@ -2230,8 +2267,8 @@ func test_escape_unlocks_on_the_fifth_lost_run() -> void:
 func test_a_game_you_have_played_before_can_be_left_immediately() -> void:
 	_ui.pick(0)
 	var game: GameData = _ui._chosen["game"]
-	_mark_played(game)
-	assert_true(_ui.beaten_before(), "the run knows you have a record here")
+	_mark_beaten_this_run(game)
+	assert_true(_ui.beaten_this_run(), "the run knows it already beat this one")
 	assert_eq(GameLoop2.attempts(), 0, "and not a single run has been lost")
 	assert_true(_ui.can_escape(), "the door is open from the first second")
 	_ui._refresh()
@@ -2243,7 +2280,7 @@ func test_the_free_escape_still_costs_you_the_enemy() -> void:
 	# already out there still takes its turns.
 	_ui.pick(0)
 	var game: GameData = _ui._chosen["game"]
-	_mark_played(game)
+	_mark_beaten_this_run(game)
 	var gp_before: int = GameState.games_played
 	_ui.escape_game()
 	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
@@ -2253,20 +2290,20 @@ func test_the_free_escape_still_costs_you_the_enemy() -> void:
 func test_the_enemies_keep_taking_turns_through_a_free_escape() -> void:
 	# The board is not paused by walking away — the whole point of the price.
 	_ui.pick(0)
-	_mark_played(_ui._chosen["game"])
+	_mark_beaten_this_run(_ui._chosen["game"])
 	_ui.escape_game()
 	var follower: Dictionary = GameLoop2.stack[0]
 	var col_before: int = int(follower["col"])
 	# Take the next game the same way, so a second resolve runs.
 	_ui.pick(0)
-	_mark_played(_ui._chosen["game"])
+	_mark_beaten_this_run(_ui._chosen["game"])
 	_ui.escape_game()
 	var still: Dictionary = GameLoop2.stack[0]
 	assert_lt(int(still["col"]), col_before,
 		"the follower closed a column while you were escaping")
 
-func test_beaten_before_is_false_with_no_game_in_hand() -> void:
-	assert_false(_ui.beaten_before(), "nothing is in play, so nothing is escapable")
+func test_beaten_this_run_is_false_with_no_game_in_hand() -> void:
+	assert_false(_ui.beaten_this_run(), "nothing is in play, so nothing is escapable")
 	assert_false(_ui.can_escape(), "and there is nothing to escape from")
 
 func test_escaping_advances_the_run_and_the_enemy_follows() -> void:
@@ -2331,14 +2368,16 @@ func test_escaping_still_advances_the_run_clock() -> void:
 	assert_eq(GameState.games_played, gp_before + 1,
 		"games_played counts the game you walked away from")
 
-func test_a_missed_report_still_counts_as_before() -> void:
-	# The guard is on escape alone. A plain missed report keeps crediting the game
-	# exactly as it always has.
+# This used to assert the opposite — "a missed report keeps crediting the game
+# exactly as it always has" — which is the behaviour BEATEN MEANS WON replaced.
+# What separates an escape from a miss is no longer the beat (neither is one);
+# it is the item trigger and the event, which a miss still earns.
+func test_a_missed_report_is_not_a_beat_either() -> void:
 	_ui.pick(0)
 	var game: GameData = _ui._chosen["game"]
 	_ui.report(false)
-	assert_true(GameState.has_beaten_game(game.id),
-		"a missed report is untouched by the escape rule")
+	assert_false(GameState.has_beaten_game(game.id),
+		"failing a game is not beating it, escape or no escape")
 
 func test_escape_refuses_before_the_line() -> void:
 	_pick_an_unplayed_game()
