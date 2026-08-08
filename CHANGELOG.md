@@ -27,7 +27,7 @@ For how the project is laid out and how its systems fit together, see
 
   The `events2.0` sheet is **one row per event**, like every other `*2.0` sheet,
   with the choices in numbered column groups — `Choice 1 | Repeat 1 | Result 1 |
-  Effect 1`, then the same four for 2, 3 and 4. Twenty-five columns. The reason
+  Effect 1`, then the same four for 2, 3 and 4. Twenty-seven columns. The reason
   the choices are *columns* rather than one packed `Choices` cell is that an
   event is mostly prose, and prose needs a cell of its own to be editable at all.
   That is how the old `events` sheet failed — catalogue metadata in the sheet,
@@ -57,18 +57,47 @@ For how the project is laid out and how its systems fit together, see
   this event accidentally permitted.
 
   The event uses only effect tokens that already exist, so it needs no new
-  `EffectSystem` handler to run. Its *numbers* are Slay the Spire 2's and are
-  knowingly out of scale — Health here is 5–10, not 75, so `gain_hp 10` is a full
-  heal from anywhere. The rescaled pair is written down beside it in the doc;
-  swapping is four cells, which is the point of the sheet being upstream.
+  `EffectSystem` handler to run. Its *gains* are tuned to this game — +1 Max
+  Health a dip, Abstain heals 3 — while its *costs* are still Slay the Spire 2's
+  3, 4, 5, 6, which at a 5–10 Health pool makes the water a poor trade at every
+  depth. The scaled costs are written down beside it in the doc; swapping is two
+  cells, which is the point of the sheet being upstream.
+
+  **Battleworn Dummy** (Slay the Spire 2, Glory) is the second event, and it is
+  the one that proves the format bends. Its dialogue is verbatim; its *mechanic*
+  can't be, because the original is three turns of combat against a dummy of
+  chosen HP and this game has neither turns nor HP bars to swing at. What ports
+  is its actual shape — pick your own difficulty, then go and prove it, on a
+  clock. The 75 / 150 / 300 HP settings become **beat a game in 5 / 3 / 1
+  attempt(s)**, and the three turns become **three games**:
+
+      Setting 1  add_goal "beat a game in 5 attempts or fewer" for 3 games -> gain_scroll 1
+      Setting 2  add_goal "beat a game in 3 attempts or fewer" for 3 games -> gain_chest small 1
+      Setting 3  add_goal "beat a game in 1 attempt"           for 3 games -> gain_chest large 1
+
+  Attempts were already the right currency: shields **are** the tries (§3.2) and
+  `GameLoop2.attempts()` already counts them, so "beat a game in 1 attempt" asks
+  nothing new of the run — only a checklist row to hang it on. `add_goal` gains a
+  `for <n> games` window for this, and event goals get **their own section of the
+  post-game checklist**, kept apart from the enemy goals: an enemy goal is a debt
+  that hits you when missed, an event goal merely expires, and rendering them
+  alike would misrepresent which one bites.
+
+  It also earns the sheet two new columns. An `add_goal` event does not finish in
+  the modal — it finishes on the checklist, up to three games later, long after
+  the modal closed — so its two endings have nowhere to live in a choice's
+  `Result`. **`Goal Met` and `Goal Missed`** are event-level, because they belong
+  to the event's voice rather than to the option taken: the Dummy congratulates
+  and insults you in exactly the same words whichever setting you picked.
 
   Format, column reference, DSL and what is still missing (the generator, the
-  placement seed, the badge, the modal): `docs/event-sheet-authoring.md`.
+  placement seed, the badge, the checklist section, the modal):
+  `docs/event-sheet-authoring.md`.
 
 - **`_xlsx_surgery` dropped every row it wrote to an empty sheet.** `write_grid`
   matched `<sheetData>…</sheetData>` and nothing else, but a sheet that has never
   held a row writes it **self-closing** — `<sheetData/>`. Writing the first rows
-  of `events2.0` therefore resized the sheet's `<dimension>` to `A1:M3` and wrote
+  of `events2.0` therefore resized the sheet's `<dimension>` and wrote
   no cells, and said nothing about it. It matches both forms now and raises if it
   finds neither, so the failure can't be silent again.
 
