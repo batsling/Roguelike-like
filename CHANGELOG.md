@@ -11,6 +11,46 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The Abyssal Baths finally say something when you linger, and `Result` became
+  a ladder to let them.**
+
+  Linger and Exit Baths shipped with empty `Result` cells — the text could not be
+  sourced at the time, and an invention presented as quotation was the one thing
+  worse than a gap. So the one button in the game a player presses over and over
+  answered with silence, and the way out of the water closed the modal without a
+  word.
+
+  Filling Linger's cell is what turned `Result` into a **ladder**. Slay the Spire
+  2 does not repeat one line at you; it answers each dip with a hotter one and
+  finishes on a warning:
+
+  ```
+  press 1   The temperature keeps rising! How long can you endure…
+  press 2   It keeps getting hotter! The pool's bubbling sounds like laughter…
+  press 3   …you have lost track of time and your mind... It's nice in here.
+  press 4+  If you bathe any longer you will die.
+  ```
+
+  A `Result` cell is now `||`-separated rungs, **one per press, the last standing
+  for every press after it**. That last part is what makes an unbounded ladder
+  authorable at all: Linger's cost climbs forever, so its prose cannot enumerate
+  forever, and a death warning that keeps warning while the player keeps pressing
+  is the right behaviour rather than a fallback. It is the prose half of `{X}` —
+  the numbers already escalated from one authored group (`{4+X}`), and now the
+  voice escalates with them, still from one group and still one row of the sheet.
+
+  A cell with no `||` in it is a one-rung ladder, so no event authored before this
+  changed shape. More than one rung only means anything under `Repeat: Again` —
+  `End` closes the event and `Stay` spends the choice — and the generator rejects
+  the combination rather than letting unreachable prose rot in the sheet.
+
+  **The five new strings are lower-confidence than the rest of the event.** Prompt,
+  Immerse and Abstain are the game's own, read off the source; these were
+  reconstructed from search-engine summaries because every site carrying them is
+  blocked from the environment they were authored in. The order of the first two
+  rungs is the least certain part. `docs/event-sheet-authoring.md` §7 says so where
+  an author will see it, and correcting it is one cell and a regeneration.
+
 - **An Events tab in the dev panel, and one statement of why an event turns up.**
 
   The panel's fifth tab lists every authored event with a **Start** button, but

@@ -144,6 +144,69 @@ func test_lingering_costs_one_more_each_time() -> void:
 	assert_eq(costs, [4, 5, 6], "Linger climbs by one per Linger")
 
 
+func test_every_linger_says_something_and_says_something_new() -> void:
+	# The bug this covers: Linger used to carry no prose at all, so the one choice
+	# the player presses over and over was the one that answered with silence.
+	var ev: EventData2 = _event(BATHS)
+	var linger: Dictionary = _choice(ev, "linger")
+	var ladder: Array = linger.get("results", [])
+	assert_gt(ladder.size(), 1,
+		"Linger answers each press with a hotter line, not one line repeated")
+	var seen := {}
+	for rung in ladder:
+		assert_ne(String(rung), "", "no rung of the ladder is silent")
+		assert_false(seen.has(String(rung)), "and no rung repeats an earlier one")
+		seen[String(rung)] = true
+
+
+func test_the_last_thing_the_baths_say_is_that_the_next_dip_kills_you() -> void:
+	# The ladder is unbounded — Again never stops offering and the cost never
+	# stops climbing — so the final rung has to stand for every press after it.
+	# That rung is the death warning, which is exactly the line that should keep
+	# printing while the player keeps pressing.
+	var linger: Dictionary = _choice(_event(BATHS), "linger")
+	var ladder: Array = linger.get("results", [])
+	var last: String = String(ladder[ladder.size() - 1])
+	assert_string_contains(last.to_lower(), "die",
+		"the deepest rung is the warning")
+	for taken in range(ladder.size() - 1, ladder.size() + 5):
+		assert_eq(EventSystem.result_for(linger, taken), last,
+			"and it keeps warning however deep the player goes")
+
+
+func test_each_linger_prints_its_own_rung_in_order() -> void:
+	var ev: EventData2 = _event(BATHS)
+	var linger: Dictionary = _choice(ev, "linger")
+	var ladder: Array = linger.get("results", [])
+	GameState.max_hp = 99
+	GameState.hp = 99
+	for taken in ladder.size():
+		var out: Dictionary = EventSystem.resolve_choice(ev, linger, taken)
+		assert_eq(String(out["result"]), String(ladder[taken]),
+			"press %d prints rung %d" % [taken + 1, taken + 1])
+
+
+func test_getting_out_of_the_water_says_so() -> void:
+	# Exit Baths was the other choice authored with no prose: pressing it closed
+	# the modal without a word about why.
+	var ev: EventData2 = _event(BATHS)
+	var out: Dictionary = EventSystem.resolve_choice(ev, _choice(ev, "exit_baths"), 0)
+	assert_ne(String(out["result"]), "", "leaving the bath is narrated")
+	assert_true(bool(out["close"]), "and it ends the event")
+
+
+func test_a_single_rung_ladder_answers_every_press() -> void:
+	# The ordinary case: a choice pressed once, holding one rung. Nothing should
+	# need to know whether prose was authored as a ladder or as a plain cell.
+	var ev: EventData2 = _event(BATHS)
+	var immerse: Dictionary = _choice(ev, "immerse")
+	assert_eq(immerse.get("results", []).size(), 1, "one rung is the common case")
+	assert_eq(EventSystem.result_for(immerse, 0), EventSystem.result_for(immerse, 3),
+		"and it stands however it is reached")
+	assert_eq(EventSystem.result_for({}, 0), "",
+		"a choice with no prose at all resolves to no prose, not to a crash")
+
+
 func test_the_button_says_what_this_press_costs() -> void:
 	# The player should never have to read {4+X}. Slay the Spire 2 warns you the
 	# baths may kill; here the number is just on the button.
@@ -424,7 +487,7 @@ func test_the_ooze_carries_both_endings_of_its_roll() -> void:
 	var ev: EventData2 = _event(OOZE)
 	assert_ne(ev.chance_won, "", "the success text is Slay the Spire's own")
 	assert_ne(ev.chance_lost, "", "and so is the failure text")
-	assert_eq(String(_choice(ev, "reach_inside").get("result", "")), "",
+	assert_eq(EventSystem.result_for(_choice(ev, "reach_inside"), 0), "",
 		"a rolling choice leaves its own Result blank")
 
 
@@ -542,7 +605,7 @@ func test_walking_away_does_not_roll_for_anything() -> void:
 	var ev: EventData2 = _event(OOZE)
 	var out: Dictionary = EventSystem.resolve_choice(ev, _choice(ev, "leave"), 0)
 	assert_false(bool(out["rolled"]), "Leave is a certainty, not a gamble")
-	assert_eq(out["result"], String(_choice(ev, "leave").get("result", "")),
+	assert_eq(out["result"], EventSystem.result_for(_choice(ev, "leave"), 0),
 		"and it keeps its own prose rather than borrowing the roll's")
 	assert_true(bool(out["close"]))
 

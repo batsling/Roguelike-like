@@ -18,7 +18,12 @@ event-only forms this module adds:
     play_game tag=<tag> -> <reward>
     chance <p>% -> <reward>          roll p percent; pay on a win, nothing on a loss
 
-A cell is `;`-separated clauses. If it contains `->`, everything after the FIRST
+A `Result` cell is a LADDER of prose: `||`-separated, one rung per press of the
+choice, the last rung standing for every press after it. It is the prose half of
+`{X}` — a `Repeat: Again` choice escalates its numbers from one authored group,
+and this is what lets it escalate its voice with them.
+
+An effect cell is `;`-separated clauses. If it contains `->`, everything after the FIRST
 arrow is that clause's payload (itself `;`-separated), so an arrow verb is always
 the last thing in the cell — and there is at most ONE arrow verb per cell, since
 there is only one payload for it to claim.
@@ -90,6 +95,36 @@ def parse_repeat(raw, where):
         return "again", int(m.group(1)) if m.group(1) else 0
     raise ValueError("events2.0 %s: unknown Repeat %r (End | Again | Again xN | Stay)"
                      % (where, raw))
+
+
+# --- the Result cell --------------------------------------------------------
+
+# A Result cell is a LADDER: `||`-separated prose, one rung per press of the
+# choice, the last rung standing for every press after it. Most choices are
+# pressed once and hold a single rung, which is what a cell with no `||` in it
+# is.
+#
+# It is the prose half of `{X}`. A `Repeat: Again` choice already escalates its
+# NUMBERS from one authored group; without this it could only ever say the same
+# sentence back, however deep the ladder went. Abyssal Baths is why it exists —
+# Slay the Spire 2 answers each [Linger] with a hotter line, ending on the one
+# that tells you the next dip kills you.
+#
+# `||` and not `|` so a `[singular|plural]` agreement marker can still appear in
+# the prose.
+RESULT_SEP = "||"
+
+
+def parse_result_cell(raw) -> list:
+    """-> the prose ladder, one rung per press. [] for a blank cell.
+
+    A blank rung mid-ladder is legal and means that press prints nothing, which
+    is worth keeping authorable: a choice can go quiet before it speaks again.
+    """
+    s = dsl._clean(raw)
+    if not s:
+        return []
+    return [rung.strip() for rung in s.split(RESULT_SEP)]
 
 
 # --- the Effect cell --------------------------------------------------------
@@ -290,12 +325,22 @@ def event_tres(row, curse_ids) -> tuple:
         where = "%s/Choice %d" % (name, n)
         repeat, repeat_max = parse_repeat(row.get("Repeat %d" % n), where)
         parsed = parse_effect_cell(row.get("Effect %d" % n), where, labels, curse_ids)
+        results = parse_result_cell(row.get("Result %d" % n))
+        # A ladder only climbs if the choice can be pressed again: `End` closes
+        # the event and `Stay` spends the choice, so under either one every rung
+        # past the first is prose nothing can reach.
+        if len(results) > 1 and repeat != "again":
+            raise ValueError(
+                "events2.0 %s: Result has %d rungs but Repeat is %s, so the "
+                "choice is only ever pressed once and every rung past the first "
+                "is unreachable — use one rung, or Repeat: Again."
+                % (where, len(results), repeat.capitalize()))
         choices.append({
             "id": dsl.slugify(label),
             "text": label,
             "repeat": repeat,
             "repeat_max": repeat_max,
-            "result": dsl._clean(row.get("Result %d" % n)),
+            "results": results,
             "gates": parsed["gates"],
             "effects": parsed["effects"],
             "effects_text": parsed["effects_text"],
