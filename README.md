@@ -195,7 +195,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Settings` | Run-independent preferences (e.g. game-filter) persisted to `user://settings.cfg`. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified). |
-| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Four tabs: **Grant** (items / scrolls / statuses, with a player-or-enemy target picker — the item list is `DevTools.item_pool()`, the **2.0 set only**: it used to append the 112 combat-era relics from `data/items`, which grant cleanly and then do nothing because no games-first code honours them), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss). Everything routes through the same public API the game uses. |
+| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Five tabs: **Grant** (items / scrolls / statuses, with a player-or-enemy target picker — the item list is `DevTools.item_pool()`, the **2.0 set only**: it used to append the 112 combat-era relics from `data/items`, which grant cleanly and then do nothing because no games-first code honours them), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss), **Events** (start any authored event where you stand, each row saying why it is or isn't turning up on its own — see [Authoring an event](#authoring-an-event)). Everything routes through the same public API the game uses. |
 
 ### Screens & flow
 
@@ -554,15 +554,33 @@ generator prints a `!` warning if the art is missing; the event still works.
 
 #### Seeing it in the game
 
-Placement is **hashed** from the node id and the run seed, not rolled, so a card's
-`✦ EVENT` badge cannot change under you — but it also means you cannot re-roll
-into your new event by reloading. Two ways to get to it quickly:
+**Use the dev panel's Events tab.** Turn on dev mode in Settings, press `` ` ``
+in a run, and open **Events**. Every authored event is listed, and each row
+carries the thing that is otherwise invisible — *why it is or isn't turning up
+where you stand*:
 
-- Set `Where` to `Any` while you are working on it, and it becomes eligible at
-  every node instead of only at leaves. Put it back to `Dead End` when you're done.
-- Or drive `EventModal2.open(host, Data.get_event2(&"your_event"))` from a
-  throwaway driver scene — the `verify` skill (`.claude/skills/verify/`) is set up
-  for exactly this and will screenshot it.
+```
+Scrap Ooze    (3 choices)    ✓ eligible here
+Unrest Site   (2 choices)    ✗ not a dead end, needs Health <= 70%
+Punch Off     (2 choices)    ✗ used 1/1 this run
+```
+
+Clicking a row **starts it right there**, blockers and all — the one you can't
+reach is exactly the one you need to look at. It goes through the same path an
+earned event takes, so the modal, the `finished` handling and a `play_game`
+detour all behave as they will in a real run (which also means starting one
+counts against its `Limit` — there's a **Clear fired counts** button for that,
+and a **Re-roll placement** one that moves the run seed).
+
+Why it's needed: placement is **hashed** from the node id and the run seed rather
+than rolled, so a card's `✦ EVENT` badge can never change under the player — but
+it also means you cannot reload your way into a new event, and an event that
+doesn't appear tells you nothing about which gate stopped it.
+
+The panel is the fast path; the two older ones still work if you want them —
+temporarily setting `Where` to `Any`, or driving
+`EventModal2.open(host, Data.get_event2(&"your_event"))` from a throwaway scene
+with the `verify` skill (`.claude/skills/verify/`), which will screenshot it.
 
 #### Rules of thumb
 

@@ -4,7 +4,7 @@ extends Node
 # entirely in code, and living on an autoload so it floats above whatever scene is
 # running and survives scene changes.
 #
-# Four tabs, in the order you reach for them:
+# Five tabs, in the order you reach for them:
 #
 #   GRANT   put content into the run — 2.0/1.0 items, scrolls, and statuses (§13)
 #           with a target picker, since a status can land on the player or on any
@@ -15,6 +15,9 @@ extends Node
 #           stun / push / bomb / defeat / remove, or hang a status on one.
 #   FLOW    move the run itself — jump to any game, reveal the amulet, force the
 #           win or the loss.
+#   EVENTS  start any authored event where you stand, and — the half that is
+#           really the point — say why each one is or is not turning up on its
+#           own. See _build_events_tab.
 #
 # Everything here goes through the SAME public API the game does (GameState.
 # apply_status, GameLoop2.spawn_to_stack, Overworld2.travel_to_game …) so a thing
@@ -24,8 +27,9 @@ extends Node
 const TOGGLE_KEY := KEY_QUOTELEFT     # the ` / ~ key
 const MAX_RESULTS := 120
 
-const TABS := ["grant", "run", "board", "flow"]
-const TAB_LABELS := {"grant": "Grant", "run": "Run", "board": "Board", "flow": "Flow"}
+const TABS := ["grant", "run", "board", "flow", "events"]
+const TAB_LABELS := {"grant": "Grant", "run": "Run", "board": "Board",
+	"flow": "Flow", "events": "Events"}
 # What the Grant tab is granting.
 const GRANT_KINDS := ["items", "scrolls", "statuses"]
 const GRANT_LABELS := {"items": "Items", "scrolls": "Scrolls", "statuses": "Statuses"}
@@ -190,6 +194,8 @@ func _hint_text() -> String:
 			return "Spawn a body, or act on one already standing. Instance ids are the handles the loop uses."
 		"flow":
 			return "Move the run itself. Jumping does not resolve a game or touch the board."
+		"events":
+			return "Click an event to start it where you stand. Greyed rows say why one is not turning up on its own."
 		_:
 			match _grant_kind:
 				"scrolls":
@@ -211,6 +217,8 @@ func _rebuild_body() -> void:
 			_build_board_tab()
 		"flow":
 			_build_flow_tab()
+		"events":
+			_build_events_tab()
 		_:
 			_build_grant_tab()
 
@@ -645,3 +653,83 @@ func _build_flow_tab() -> void:
 				_say("Jumped to %s." % label, Color(0.5, 0.85, 1.0))
 				_close()})
 	_emit_rows(rows)
+
+# ---------------------------------------------------------------------------
+# EVENTS
+# ---------------------------------------------------------------------------
+
+# The authoring tab (docs/event-sheet-authoring.md, README "Authoring an event").
+#
+# Starting an event is the obvious half. The half that actually saves the time is
+# the SECOND column: placement is hashed from the node id and the run seed rather
+# than rolled (so a card's badge cannot change under the player), which means a
+# new event you cannot see gives you nothing to go on — it might be gated on tier,
+# or on Health, or standing at a node that isn't a leaf, or already used up. Every
+# row here carries the reason, straight from EventSystem.blockers_for, which is
+# the same call the roller makes.
+#
+# Starting one goes through Overworld2.open_event, so a started event is wired up
+# exactly as an earned one: same finished handler, same refresh and autosave, and
+# `play_game` really does post the run off to a tagged game.
+func _build_events_tab() -> void:
+	var scene = GameState.overworld_scene
+	if scene == null or not scene.has_method("open_event"):
+		_body.add_child(_note("No overworld mounted — start a run first."))
+		return
+
+	var here: StringName = GameState.current_game_id
+	var game: GameData = Data.get_game(here)
+	var placed: EventData2 = EventSystem.event_for(here)
+	_body.add_child(_note("Standing on: %s (%d connection%s)\nWould place here: %s" % [
+		game.display_name if game != null else "(nowhere)",
+		RunGraph.degree(here), "" if RunGraph.degree(here) == 1 else "s",
+		placed.display_name if placed != null else "nothing"]))
+
+	# `Limit 1` is on every authored event, so the second look at one is blocked by
+	# a counter rather than by anything interesting. Clearing it is the single most
+	# useful button on this tab while you are iterating on an event's text.
+	var acts := HBoxContainer.new()
+	acts.add_theme_constant_override("separation", 6)
+	_body.add_child(acts)
+	acts.add_child(_mini("Clear fired counts", func() -> void:
+		GameState.events_fired.clear()
+		_say("Every event may fire again.")
+		_rebuild_body()))
+	acts.add_child(_mini("Re-roll placement", func() -> void:
+		# Placement hashes the node against the run seed. Moving the seed is the
+		# only thing that moves which event stands where without moving the run.
+		GameState.run_seed = randi()
+		_say("New run seed — placement re-hashed.")
+		_rebuild_body()))
+
+	_body.add_child(_section("Start an event here"))
+	var query: String = _query()
+	var rows: Array = []
+	for ev in Data.all_events2():
+		if not (ev is EventData2):
+			continue
+		var label: String = String(ev.display_name)
+		if query != "" and not label.to_lower().contains(query):
+			continue
+		var why: PackedStringArray = EventSystem.blockers_for(ev, here)
+		# Every row starts — that is what the tab is for. The blockers are printed
+		# as the reason it would not turn up by itself, NOT as a refusal: an event
+		# you cannot yet reach is exactly the one you need to look at.
+		var detail: String = "✓ eligible here" if why.is_empty() \
+			else "✗ " + ", ".join(why)
+		var e: EventData2 = ev
+		var nm: String = label
+		rows.append({"label": "%s   (%d choice%s)" % [label, ev.choices.size(),
+				"" if ev.choices.size() == 1 else "s"],
+			"detail": detail,
+			"press": func() -> void:
+				if scene.open_event(e):
+					_say("Started %s." % nm, Color(1.0, 0.75, 0.4))
+					_close()
+				else:
+					_say("Can't start one right now — an event is already open, "
+						+ "one is queued, or the run is over.", Color(1.0, 0.6, 0.6))})
+	_emit_rows(rows)
+
+	_body.add_child(_note("Starting an event marks it fired, so its Limit counts "
+		+ "the same as a real visit — clear the counts above to go again."))

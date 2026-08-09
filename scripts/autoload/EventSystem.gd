@@ -57,18 +57,55 @@ func _placement_hash(game_id: StringName) -> int:
 func _eligible_for(game_id: StringName) -> Array:
 	var out: Array = []
 	for ev in Data.all_events2():
-		if ev == null or not _limit_allows(ev):
-			continue
-		if not _where_allows(ev, game_id):
-			continue
-		if not ev.tier_allows(RunDifficulty.tier_name(RunDifficulty.current_tier())):
-			continue
-		if not requirement_met(ev):
-			continue
-		if not _play_pools_stocked(ev):
-			continue
-		out.append(ev)
+		if blockers_for(ev, game_id).is_empty():
+			out.append(ev)
 	return out
+
+
+# WHY `ev` cannot stand at `game_id` right now — one short phrase per gate it
+# fails, empty when it is eligible. This is the single statement of the gates:
+# `_eligible_for` is `blockers_for(...).is_empty()`, so the list an author reads
+# in the dev panel and the rule the roller applies cannot drift apart. Authoring
+# an event that never turns up is the commonest way to lose an afternoon here,
+# and it is invisible without this.
+func blockers_for(ev: EventData2, game_id: StringName) -> PackedStringArray:
+	var out := PackedStringArray()
+	if ev == null:
+		return PackedStringArray(["no event"])
+	if not _limit_allows(ev):
+		out.append("used %d/%d this run"
+			% [int(GameState.events_fired.get(ev.id, 0)), ev.run_limit])
+	if not _where_allows(ev, game_id):
+		out.append("not a %s" % ev.where.replace("_", " "))
+	if not ev.tier_allows(RunDifficulty.tier_name(RunDifficulty.current_tier())):
+		out.append("wrong tier")
+	if not requirement_met(ev):
+		out.append("needs %s" % requirement_text(ev.requirement))
+	if not _play_pools_stocked(ev):
+		out.append("no game carries its play_game tag")
+	return out
+
+
+# What each gate stat is called in front of a player. `capitalize()` alone turned
+# `hp` into "Hp" and `games` into "Games", neither of which is the name anything
+# else in the game uses for it.
+const GATE_STAT_NAMES := {
+	"hp": "Health", "max_hp": "Max Health", "gold": "Gold",
+	"games": "Games played", "keys": "Keys", "bombs": "Bombs", "bash": "Bash",
+	"dash": "Dash", "push": "Push", "transmute": "Transmute",
+	"scramble": "Scramble", "shields": "Shields",
+}
+
+# A Requirement dictionary in words: "Health <= 70%". One implementation, read by
+# the Collection's event page and by the dev panel.
+static func requirement_text(req: Dictionary) -> String:
+	if req.is_empty():
+		return "nothing"
+	var stat: String = String(req.get("stat", ""))
+	return "%s %s %s%s" % [
+		String(GATE_STAT_NAMES.get(stat, stat.capitalize())),
+		String(req.get("op", "<=")), str(req.get("value", 0)),
+		"%" if bool(req.get("percent", false)) else ""]
 
 
 func _limit_allows(ev: EventData2) -> bool:

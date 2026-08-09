@@ -1,7 +1,7 @@
 # Event sheet-authoring (`events2.0`)
 
 Status: **built, illustrated and running.** Five events authored, generators
-and runtime in place, art in `images2.0/`, 39 tests in `test/test_events2.gd`. §13 is how it runs and the little
+and runtime in place, art in `images2.0/`, 42 tests in `test/test_events2.gd`. §13 is how it runs and the little
 that's left. Companion to `games-first-redesign.md` and
 `locations-and-events-design.md` §6, which argued events should wait for
 somewhere to live — §1 is that somewhere.
@@ -711,7 +711,7 @@ not.
 
 ## 13. How it runs
 
-Built and under test (`test/test_events2.gd`, 39 tests). The pieces, and the one
+Built and under test (`test/test_events2.gd`, 42 tests). The pieces, and the one
 thing each of them is really solving:
 
 | Piece | Where | The problem it solves |
@@ -722,6 +722,16 @@ thing each of them is really solving:
 | `event_goals` / `curse_goals` | `GameState` | run state, saved and reset with the run |
 | `EventModal2` | `scripts/redesign2/` | the screen an event happens on |
 | the badge, the checklist rows | `Overworld2` | telling the player before and after |
+| the **Events** tab | `DevTools` | authoring: start one anywhere, and see which gate is hiding it |
+
+**`EventSystem.blockers_for` is the one statement of the gates.** `_eligible_for`
+is `blockers_for(...).is_empty()`, and the dev panel prints the same list in
+words — so "why is my event not turning up" is answered by the code that decides
+it, and the answer cannot drift from the decision. Placement being hashed rather
+than rolled (below) is what makes that necessary: an author cannot reload their
+way into a new event, so the gates have to be able to say what they are doing.
+Starting one from the panel goes through `Overworld2.open_event`, which queues it
+down the ordinary path rather than raising a modal of its own.
 
 **The reward-token DSL has one implementation.** `generate_status_tres.py` owns
 it; the two new generators import it rather than re-parsing `gain_chest small 1`

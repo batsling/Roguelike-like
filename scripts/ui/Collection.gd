@@ -1520,8 +1520,12 @@ func _show_event_detail(ev: EventData2) -> void:
 		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(img)
 	_detail_box.add_child(_label("✦ " + ev.display_name, ac, 18, true))
-	_detail_box.add_child(_detail_meta("%s  •  %s" % [ev.rarity,
-		"fires after the game" if ev.trigger != "before" else "fires on arrival"], ac))
+	# Always "after", regardless of the sheet's Trigger column: `Before` parses and
+	# is stored on EventData2, and nothing in Overworld2 reads it — every event is
+	# queued from _end_resolve once the game is beaten. Saying "fires on arrival"
+	# because a cell said so was describing an intention rather than the build
+	# (docs/event-sheet-authoring.md §13).
+	_detail_box.add_child(_detail_meta("%s  •  fires after the game" % ev.rarity, ac))
 	if ev.source_game != "":
 		_detail_box.add_child(_label("From: %s" % ev.source_game,
 			Color(0.65, 0.7, 0.8), 11, false, true))
@@ -1603,6 +1607,7 @@ func _event_gate_text(gate: Dictionary) -> String:
 	return "needs %s %s" % [str(gate.get("value", 1)), String(gate.get("resource", ""))]
 
 func _event_requirement_text(req: Dictionary) -> String:
-	var unit: String = "%" if bool(req.get("percent", false)) else ""
-	return "%s %s %s%s" % [String(req.get("stat", "")).capitalize(),
-		String(req.get("op", "<=")), str(req.get("value", 0)), unit]
+	# EventSystem owns this wording — the dev panel prints the same phrase when it
+	# explains why an event is not turning up, and two spellings of "hp <= 70%"
+	# would be two things to keep in step.
+	return EventSystem.requirement_text(req)

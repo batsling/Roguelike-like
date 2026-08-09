@@ -11,6 +11,48 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **An Events tab in the dev panel, and one statement of why an event turns up.**
+
+  The panel's fifth tab lists every authored event with a **Start** button, but
+  the button is the smaller half. The other column is the reason each event is or
+  is not standing where you are:
+
+  ```
+  Scrap Ooze    (3 choices)    ✓ eligible here
+  Unrest Site   (2 choices)    ✗ not a dead end, needs Health <= 70%
+  Punch Off     (2 choices)    ✗ used 1/1 this run
+  ```
+
+  That is the part worth building. Placement is **hashed** from the node id and
+  the run seed rather than rolled, so a card's `✦ EVENT` badge can never change
+  under the player — and the same property means an author cannot reload their way
+  into a new event, and an event that never appears says nothing about which of
+  the five gates stopped it. Now every gate names itself. **Clear fired counts**
+  and **Re-roll placement** sit above the list, because `Limit 1` is on every
+  authored event and the second look at one is otherwise blocked by a counter.
+
+  **The blockers and the roller are the same code.** `EventSystem.blockers_for`
+  is the single statement of the gates and `_eligible_for` is now
+  `blockers_for(...).is_empty()`, so the list an author reads cannot drift from
+  the rule the game applies — a test asserts the two agree. `requirement_text`
+  moved there too, out of `Collection`, and learned that the gate stats have
+  names: `Hp <= 70%` reads `Health <= 70%` on the event's Collection page now as
+  well as in the panel.
+
+  **Starting one goes through `Overworld2.open_event`**, which queues it down the
+  ordinary path rather than raising an `EventModal2` of its own — so a started
+  event has the same finished handler, the same refresh and autosave, and a
+  `play_game` choice really does post the run off to a tagged game. It refuses
+  when a modal is already open, when the run is over, and — the one that matters —
+  when an event is already **queued**, since overwriting that would eat the event
+  the player actually walked to a dead end for.
+
+  Also: the Collection stopped telling events they "fire on arrival". `Trigger:
+  Before` is inert (§13), so that line was describing a spreadsheet cell rather
+  than the build.
+
+---
+
 - **Two new games, and an event that rolls dice at you.**
 
   **The sheet's new games and connections are ported.** `Gordian Quest` (2020)

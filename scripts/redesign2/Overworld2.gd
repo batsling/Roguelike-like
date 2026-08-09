@@ -1344,6 +1344,25 @@ func _open_pending_event() -> void:
 	_event_modal = EventModal2.open(self, ev)
 	_event_modal.finished.connect(_on_event_finished)
 
+# Raise `ev` here and now, outside the beat-a-game path that normally queues one.
+# The dev panel's event starter is the caller: authoring an event means wanting to
+# look at it, and waiting for placement to hash it onto a leaf you can reach is
+# not a workflow. It goes through _open_pending_event rather than calling
+# EventModal2 itself, so a started event is wired up exactly as a real one — the
+# same finished handler, the same refresh and autosave, and `play_game` actually
+# posting the run off to a tagged game.
+#
+# Returns false when the screen is not in a state to hold one.
+func open_event(ev: EventData2) -> bool:
+	# `_pending_event` already holding one means a real event is queued behind a
+	# resolve that is still playing; overwriting it would silently eat the event
+	# the run actually earned.
+	if ev == null or GameLoop2.run_over or _event_modal != null or _pending_event != null:
+		return false
+	_pending_event = ev
+	_open_pending_event()
+	return _event_modal != null
+
 func _on_event_finished(play_request: Dictionary) -> void:
 	_event_modal = null
 	_refresh()

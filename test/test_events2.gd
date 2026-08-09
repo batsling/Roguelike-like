@@ -557,6 +557,55 @@ func test_a_certain_choice_still_reports_the_roll_fields() -> void:
 	assert_false(bool(out["won"]))
 
 
+# --- why an event is or isn't turning up (the dev panel's Events tab) --------
+
+func test_blockers_and_the_roller_are_the_same_rule() -> void:
+	# The panel prints blockers_for and the roller calls _eligible_for, and the
+	# whole value of the first is that it cannot disagree with the second. They
+	# share an implementation; this is the assertion that keeps them sharing it.
+	# A leaf (where events actually live), a hub, and wherever the run is standing.
+	for gid in [_some_dead_end(), &"slay_the_spire", GameState.current_game_id]:
+		if gid == &"":
+			continue
+		var eligible: Array = []
+		for ev in Data.all_events2():
+			if EventSystem.blockers_for(ev, gid).is_empty():
+				eligible.append(ev.id)
+		var placed: EventData2 = EventSystem.event_for(gid)
+		if eligible.is_empty():
+			assert_null(placed,
+				"nothing is eligible at %s, so nothing may be placed there" % gid)
+		else:
+			assert_true(placed != null and eligible.has(placed.id),
+				"%s placed at %s, which blockers_for says is not eligible"
+					% [placed.id if placed != null else &"nothing", gid])
+
+
+func test_a_blocker_names_the_gate_that_stopped_it() -> void:
+	# Unrest Site is gated on being hurt; at full Health that gate is the reason
+	# it never appears, and an author staring at an event that won't show has to
+	# be told which one it was.
+	GameState.max_hp = 10
+	GameState.hp = 10
+	var why: String = ", ".join(EventSystem.blockers_for(_event(UNREST), &"hades"))
+	assert_string_contains(why, "Health <= 70%")
+
+	# And the limit, which is what a second look at a `Limit 1` event runs into.
+	GameState.events_fired[OOZE] = 1
+	assert_string_contains(
+		", ".join(EventSystem.blockers_for(_event(OOZE), &"hades")), "1/1")
+
+
+func test_a_requirement_reads_as_words_not_as_a_column() -> void:
+	assert_eq(EventSystem.requirement_text(
+		{"stat": "hp", "op": "<=", "value": 70, "percent": true}), "Health <= 70%")
+	assert_eq(EventSystem.requirement_text(
+		{"stat": "games", "op": ">=", "value": 6, "percent": false}),
+		"Games played >= 6")
+	assert_eq(EventSystem.requirement_text({}), "nothing",
+		"an ungated event still has something to say")
+
+
 # --- the chest a sized reward actually opens --------------------------------
 
 func test_a_small_chest_offers_one_item_not_two() -> void:
