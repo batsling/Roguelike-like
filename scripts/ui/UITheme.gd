@@ -34,11 +34,11 @@ const DANGER := Color(0.90, 0.33, 0.28)
 # chasing, so it gets a colour of its own rather than borrowing DANGER.
 const CURSE := Color(0.72, 0.45, 0.90)
 
-# Rarity ramp (mirrors RarityStyle / legacy CSS): Common, Uncommon, Rare, Epic,
+# Rarity ramp (mirrors RarityStyle / legacy CSS): Common, Uncommon, Rare,
 # Legendary.
 const RARITY := [
 	Color(0.72, 0.72, 0.72), Color(0.30, 0.69, 0.31),
-	Color(0.61, 0.35, 0.71), Color(1.0, 0.42, 0.0), Color(1.0, 0.80, 0.30),
+	Color(0.61, 0.35, 0.71), Color(1.0, 0.80, 0.30),
 ]
 
 # Game-type accent colours, indexed by GameData.GameType (Action, Strategy,
@@ -50,7 +50,25 @@ const TYPE_COLORS := [
 	Color(0.55, 0.80, 0.50),   # Traditional — green
 ]
 
-const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Legendary"]
+
+# CURRENCY AND SHOPS (docs/games-first-redesign.md §14).
+#
+# COIN_GOLD is a deeper, brassier yellow than GOLD above, which this build has
+# already spent on the AMULET — the run's title, the amulet flag on a card, the
+# route badge. The two must not be confusable: one is the thing the whole run is
+# a search for and the other is pocket change, and they can appear in the same
+# row of the same card.
+#
+# SHOP_GREEN is deliberately not a gold at all, for the same reason. A shop's
+# flag sits in the very slot the Amulet's flag uses, so it needs to be a
+# different COLOUR, not a different shade of the same one.
+#
+# They live here rather than on Overworld2 because ShopModal2 and GameChoiceModal
+# need them too, and a modal reaching back into the screen that mounted it for a
+# colour is a dependency cycle — literally: it stopped the project compiling.
+const COIN_GOLD := Color(0.98, 0.74, 0.20)
+const SHOP_GREEN := Color(0.44, 0.82, 0.56)
 
 static func rarity_color(i: int) -> Color:
 	return RARITY[clampi(i, 0, RARITY.size() - 1)]

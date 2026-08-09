@@ -114,7 +114,16 @@ var crit_damage: int = 100
 var regeneration: int = 0
 
 # === Economy ===
-var gold: int = 99
+# Gold (docs/games-first-redesign.md §14). RUN-SCOPE: it is never carried between
+# runs, so what a run opens with is entirely the character's `start_gold` (3
+# across the roster today — exactly one Common item). It is earned a coin at a
+# time off defeated enemies (1, or 3 for a boss) and spent at the hub shops.
+#
+# The numbers are deliberately tiny. This started at 99 with shop prices in the
+# tens, inherited from the combat build; the whole HUD is designed to stay
+# glanceable for the OBS companion window (§9), and a purse that fits in one
+# digit is the version of that a viewer can read without pausing.
+var gold: int = 0
 
 # === Deck / items ===
 # Each entry is a CardInstance (runtime wrapper around CardData) — see
@@ -420,6 +429,30 @@ var event_goals: Array = []
 var curse_goals: Array = []
 # event id -> times fired this run, so an event's `run_limit` can be honoured.
 var events_fired: Dictionary = {}
+
+# ---------------------------------------------------------------------------
+# SHOPS (docs/games-first-redesign.md §14). The logic lives in ShopSystem; this
+# is the run-scope state it reads and writes, on the same split EventSystem uses.
+#
+#   hub_games   The run's ten shop games, FROZEN at the first ask and never
+#               recomputed. RunGraph.hub_ids() is a live read of the graph, and
+#               the graph can be rebuilt underneath a run (the game filter does
+#               exactly that), so asking it twice is not guaranteed to give the
+#               same ten. A shop that appeared or vanished mid-route would make
+#               the flag on an offered card a lie, which is the one thing the
+#               placement of every other badge in this build is designed around.
+#
+#   shops       game id -> that hub's shop, and it PERSISTS for the whole run:
+#                 {"stock": [{item, price, sold}, …], "seen": bool}
+#               Buying marks a slot sold rather than removing it, so what is left
+#               can be listed on the card's popup next time the hub comes around
+#               (§14) — a returning player is shopping from the same shelf they
+#               left. `seen` is what separates "a shop is here" from "here is
+#               what's in it": stock is only quoted once the player has stood in
+#               it, so the first visit is still a discovery.
+# ---------------------------------------------------------------------------
+var hub_games: Array[StringName] = []
+var shops: Dictionary = {}
 
 # === Curses / status ===
 var active_curses: Array = []            # Array[Dictionary] for now
@@ -775,7 +808,10 @@ func reset_run() -> void:
 	harvesting = 0
 	crit_chance = 0
 	crit_damage = 100
-	gold = 99
+	# Zeroed, not defaulted to a purse: apply_character2 puts the character's
+	# start_gold in immediately after, and a run booted without a character
+	# should hold nothing rather than a stale number.
+	gold = 0
 	deck.clear()
 	inventory.clear()
 	equipped_weapon = null
@@ -827,6 +863,10 @@ func reset_run() -> void:
 	event_goals.clear()
 	curse_goals.clear()
 	events_fired.clear()
+	# The shops go with the run, and so does the hub list — a new run may be on a
+	# different filter, so the ten biggest games are re-asked rather than reused.
+	hub_games.clear()
+	shops.clear()
 	active_curses.clear()
 	pending_chests = 0
 	pending_chest_choices.clear()
@@ -872,6 +912,10 @@ func apply_character2(char_data: CharacterData) -> void:
 	max_hp = maxi(1, char_data.base_max_hp)
 	hp = max_hp
 	shields = 0
+	# The run's whole starting purse (§14) — gold never carries between runs, so
+	# there is nothing else for this to add to. Set BEFORE the starting items, so
+	# an item that reads gold on pickup sees what the run actually opens holding.
+	set_gold(char_data.start_gold)
 	bash = char_data.start_bash
 	dash_charges = char_data.start_dash
 	push = char_data.start_push
@@ -1536,6 +1580,33 @@ func restore_event_goals(data: Dictionary) -> void:
 			curse_goals.append(c.duplicate(true))
 	for k in data.get("fired", {}).keys():
 		events_fired[StringName(k)] = int(data["fired"][k])
+
+# --- shops (§14) -----------------------------------------------------------
+#
+# The frozen hub list and every shop's shelf, as JSON-safe data. Both have to
+# ride the save: re-deriving the hubs on load would re-ask a graph that may have
+# been rebuilt since, and re-rolling the stock would hand a player who reloaded a
+# different shop from the one they walked out of.
+
+func serialize_shops() -> Dictionary:
+	var hubs: Array = []
+	for gid in hub_games:
+		hubs.append(String(gid))
+	var shelves: Dictionary = {}
+	for gid in shops.keys():
+		shelves[String(gid)] = (shops[gid] as Dictionary).duplicate(true)
+	return {"hubs": hubs, "shops": shelves}
+
+func restore_shops(data: Dictionary) -> void:
+	hub_games.clear()
+	shops.clear()
+	for raw in data.get("hubs", []):
+		hub_games.append(StringName(raw))
+	var shelves: Dictionary = data.get("shops", {})
+	for key in shelves.keys():
+		var shelf = shelves[key]
+		if shelf is Dictionary:
+			shops[StringName(key)] = (shelf as Dictionary).duplicate(true)
 	event_goals_changed.emit()
 
 func serialize_statuses() -> Dictionary:
@@ -1554,6 +1625,18 @@ func restore_statuses(data: Dictionary) -> void:
 		if stacks > 0 and Data.get_status(id) != null:
 			player_statuses[id] = stacks
 	player_statuses_changed.emit()
+
+# Whether the pack already holds an item of this id. Ownership is by ID, not by
+# instance: add_item duplicates the .tres template into the slot, so the copies
+# are distinct Resources that share the id they were minted from. The shops ask
+# this to prefer stocking something the player hasn't got (ShopSystem._draw_one).
+func has_item(item_id: StringName) -> bool:
+	if item_id == &"":
+		return false
+	for it in inventory:
+		if it is ItemData and it.id == item_id:
+			return true
+	return equipped_weapon is ItemData and equipped_weapon.id == item_id
 
 # Sacred Orb: true while any owned item rerolls low-rarity item drops.
 func has_low_rarity_reroll() -> bool:

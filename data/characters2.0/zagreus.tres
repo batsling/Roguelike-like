@@ -11,6 +11,7 @@ display_name = "Zagreus"
 description = "... All right, let's give it another shot."
 source_game = "Hades"
 base_max_hp = 8
+start_gold = 3
 start_bash = 1
 start_dash = 1
 start_push = 0

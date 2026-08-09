@@ -24,12 +24,12 @@ const GAME_STATUS_OPTIONS := [
 	["All", "all"], ["Completed", "completed"],
 	["Not Completed", "uncompleted"], ["Amulet Won", "amulet"],
 ]
-const ITEM_RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+const ITEM_RARITY_NAMES := ["Common", "Uncommon", "Rare", "Legendary"]
 const ITEM_KIND_NAMES := ["Passive", "Triggered", "Usable", "Weapon", "Scaling", "Pickup", "Charged"]
 
 const RARITY_COLORS := [
 	Color(0.72, 0.72, 0.72), Color(0.45, 0.85, 0.5),
-	Color(0.4, 0.6, 1.0), Color(0.7, 0.45, 1.0), Color(1.0, 0.7, 0.25),
+	Color(0.4, 0.6, 1.0), Color(1.0, 0.7, 0.25),
 ]
 
 const ACCENT := UITheme.ACCENT

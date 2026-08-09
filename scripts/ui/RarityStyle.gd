@@ -6,13 +6,12 @@ extends RefCounted
 # rarity-coloured border and a thicker left accent. Used by shops, reward /
 # treasure selections and the collection so items read consistently everywhere.
 #
-# Index order matches ItemData.Rarity (COMMON, UNCOMMON, RARE, EPIC, LEGENDARY).
+# Index order matches ItemData.Rarity (COMMON, UNCOMMON, RARE, LEGENDARY).
 
 const COLORS := [
 	Color(0.78, 0.78, 0.78),  # Common
 	Color(0.30, 0.69, 0.31),  # Uncommon
 	Color(0.61, 0.35, 0.71),  # Rare
-	Color(1.00, 0.42, 0.00),  # Epic
 	Color(1.00, 0.80, 0.30),  # Legendary
 ]
 

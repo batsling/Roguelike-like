@@ -756,6 +756,13 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   (§4/§7.1).
 - **Starting values authored per character** (`characters2.0`, Health 5–10);
   **Max Health** is a raisable stat (§3).
+- **Currency & shops** (§14): 1 gold an enemy, 3 a boss, paid with the drop (so a
+  bomb pays nothing); characters open on the sheet's new `Gold` column (3 each);
+  prices are 3 + the rarity rung; shops stand at the **ten best-connected games**,
+  open on beating one, keep their three-item shelf for the whole run, and reroll
+  for a **Scramble**. Gold never carries between runs. **`Epic` was deleted from
+  `ItemData.Rarity`** — nothing rolled it and nothing was authored at it, and the
+  price ladder wants no holes in it.
 - Goal Types = Bounty/Restriction/Discovery (§7). Item Types =
   Pickup/Triggered/Charged/Usable/Passive (§8). Scrolls carry a Preference and are
   identified; Fog not in the new set (§4.1). Dash is a total select (§4). Enemies
@@ -891,3 +898,132 @@ lands when the relic is taken and stays for the run.
   rewrites one sheet's two XML parts and copies every other zip entry through
   untouched. An openpyxl round-trip of this workbook silently drops its seven
   charts, so nothing here may use one.
+
+---
+
+## 14. Currency & shops (`gold`, hub shops)
+
+Gold is what the drops were never allowed to be: a reward you **choose what to do
+with**. Every other payout in the run is a thing arriving — an item off a corpse,
+a chest off a level-up — and the player's only say is take it or leave it. Gold
+banks that decision instead, and the shops are where it is spent.
+
+### 14.1 The numbers, and why they are this small
+
+| | |
+|---|---|
+| Enemy defeated | **+1 gold** |
+| Boss defeated | **+3 gold** |
+| Starting purse | the character's **`Gold`** column (**3** across the roster) |
+| Item price | **3 + the rarity's rung** — Common 3, Uncommon 4, Rare 5, Legendary 6 |
+| Carries between runs | **No.** A run opens on the character and nothing else. |
+
+A run is 6–12 games, so a player clearing most of their goals earns roughly
+**8–15 gold** and can make **two to four purchases in a whole run**. That is the
+point of the scale: at combat-era numbers (gold started at **99**, the Challenge
+Rift paid **50**) a price is a rounding error, and every purchase is automatic.
+At these numbers each one costs something. It also keeps every figure on the HUD
+to a single digit, which §9's OBS companion window needs.
+
+**Three gold to start** is exactly one Common item, so the first shop a run
+reaches is always worth walking into.
+
+**Gold rides the DROP, not the corpse** — it is paid inside the branch of
+`GameLoop2._defeat` that grants the item. So:
+
+- the current game's enemy beaten on time **pays**;
+- a follower whose old goal you fulfilled games later **pays the same** — the
+  goal was the price either way, and taxing a slow solve would argue against the
+  stack the whole run is built on;
+- a **bombed** enemy **pays nothing**. A bomb already drops no item (§4); it is
+  an escape from a goal you couldn't or wouldn't do, and letting it mint currency
+  would make bombing the cheapest way to farm the shops.
+
+### 14.2 Where shops are: the ten hubs
+
+A shop stands at each of the run's **ten best-connected games**
+(`RunGraph.hub_ids`). On the full catalog those are the genre's landmarks — Slay
+the Spire (141 connections), Vampire Survivors (85), The Binding of Isaac (69),
+Hades and Balatro (46), Spelunky Classic (37), FTL (36), NetHack (29), Dead Cells
+(28), Enter the Gungeon (26) — and the degree curve has a real shoulder there,
+with the eleventh game down in the low twenties and a long flat tail behind it.
+
+Hubs are measured **after the game filter and the main-component prune**, like
+every other degree question, so an OWNED run's ten are the ten biggest games on
+the map that run is actually walking.
+
+**This is a second routing axis, and it is deliberately the opposite shape to
+events.** An event (`docs/event-sheet-authoring.md`) hangs off a **dead end**: a
+two-game round trip for one game's reward, which is why it needs a badge to be
+worth taking. A hub is the **middle** of the map — rarely far off the road — so
+"swing through the big node" is a cheap, repeatable decision rather than a
+committed detour. Until now every step was measured against one question (does
+this take me closer to the Amulet); this is the second one.
+
+The ten are **frozen at run start** onto `GameState.hub_games` and saved.
+`RunGraph.hub_ids()` is a live read and the graph can be rebuilt underneath a run
+(the game filter does exactly that), so re-asking is not guaranteed to give the
+same answer — and a shop appearing or vanishing mid-route would make the flag on
+an offered card a lie, which is the thing every badge in this build is designed
+around.
+
+### 14.3 The shelf
+
+**Three items, and they stay.** Stock is rolled once — on the standard
+75/20/5-with-a-10%-bump ladder (`Data.roll_item_rarity`) — and **persists for the
+whole run**. Buying marks a slot sold rather than removing it. So a hub you
+cleared out is a hub you know is empty, and a hub you left two items at is a
+reason to come back.
+
+Two preferences shape the draw, both aimed at the same problem — 21 authored
+items against a run that already gets one free per defeated enemy: **no duplicate
+slots**, and **items the player doesn't already own are preferred**. Both are
+preferences rather than filters, and fall back rather than leaving a slot empty.
+
+**Rerolling costs 1 Scramble, not gold.** Scramble is the run's reroll verb
+everywhere else (§4 — "re-draw the offering"), so a shelf of three things you
+don't want is the same kind of problem as an offering of three games you don't
+want, and takes the same answer. Pricing it in gold would let a rich player grind
+the whole catalog at one hub. A reroll redraws **all three slots, sold ones
+included** — the generous reading, and the right one, because gold is the real
+limiter and three fresh items you still can't afford is not a windfall.
+
+### 14.4 When it opens, and what the road can see
+
+The shop opens **after the hub's game is beaten**, queued behind the board's
+resolve playback on the same path an event takes (`Overworld2._pending_shop`).
+**Escaping opens nothing** — escape fires no `game_beaten` triggers anywhere in
+the build, and this is not the place to make it an exception. If the Amulet game
+is itself a hub, winning the run beats the shop: the run is over.
+
+An event and a shop at one node is not a real case (every authored event is
+`Where: Dead End`, and a hub is the opposite of a dead end), but if it happened
+the **event opens first** — a shop is spending, and money should be spent knowing
+how the event went.
+
+From the road, a hub card carries a **`🛒 SHOP` flag**, ranked below the Amulet
+and the event: an event happens *to* you once, a shop is a standing place. Its
+colour is a **green**, not a gold — the flag occupies the Amulet's own slot on
+the card, so it has to be a different colour rather than a different shade
+(`UITheme.SHOP_GREEN` / `COIN_GOLD`).
+
+Opening the card shows the shop block, and this is the part that makes the
+mechanic route: **a shop you have already stood in lists what is still on its
+shelf and what it costs.** A shop you have *not* visited says only that one is
+there — the stock is what the first visit is for, and drawing a card must never
+decide what is in a shop the player hasn't walked into (`ShopSystem.peek` exists
+so the offering can ask without rolling). `ShopSystem.headline` / `stock_lines`
+are the one place a shop is put into words, so the card's tooltip and the popup's
+block cannot disagree — the same rule `StatusData.tooltip_for` follows (§13.3).
+
+### 14.5 What is still to come
+
+**The shopkeepers.** `data/encounters/` already carries two combat-era ones (P
+Mart's Tracy from Mewgenics, Trorc from Enter the Gungeon) with pools and
+discounts. A `shopkeeper` field is read by `ShopModal2` and falls back to the
+hub's own game name, so an authored roster drops in without reshaping anything.
+
+**A wider stock.** Today a shop sells items only. The obvious next step is the
+things drops *don't* give — bombs, scrolls, verb charges, health, an extra try —
+so gold buys a different axis rather than a slower version of the same one.
+

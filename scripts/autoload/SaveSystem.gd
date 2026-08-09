@@ -219,6 +219,8 @@ func _build_payload() -> Dictionary:
 		# on, so they save inside GameLoop2.serialize() below rather than here.
 		"player_statuses": GameState.serialize_statuses(),
 		"event_goals": GameState.serialize_event_goals(),
+		# The hub list and every shop's remaining shelf (§14).
+		"shops": GameState.serialize_shops(),
 		"run_seed": GameState.run_seed,
 		"pending_chests": GameState.pending_chests,
 		"pending_chest_choices": Array(GameState.pending_chest_choices),
@@ -321,6 +323,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.game_choice_bonus = int(data.get("game_choice_bonus", 0))
 	GameState.restore_statuses(data.get("player_statuses", {}))
 	GameState.restore_event_goals(data.get("event_goals", {}))
+	GameState.restore_shops(data.get("shops", {}))
 	GameState.run_seed = int(data.get("run_seed", 0))
 	# Reset the running item contribution so _recompute starts fresh
 	# against the saved base stats (which already had bonuses applied

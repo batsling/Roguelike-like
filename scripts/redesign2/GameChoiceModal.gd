@@ -113,6 +113,15 @@ func _build() -> void:
 	if event_row != null:
 		root.add_child(event_row)
 
+	# The shop, if this game is one of the run's hubs (§14). Same argument as the
+	# event row above, and one step further: a shop the player has ALREADY been to
+	# lists what is still on its shelf, because the decision "is it worth walking
+	# back to that hub" is unanswerable without knowing what is left there and
+	# what it costs. This is the only place in the run that question gets asked.
+	var shop_row: Control = _build_shop_row(game)
+	if shop_row != null:
+		root.add_child(shop_row)
+
 	# The body, in two columns: the GAME on the left (what you'd be playing and
 	# what it costs), the ROUTE on the right (where it leaves you). They are the
 	# two halves of the decision and they belong side by side.
@@ -139,6 +148,36 @@ func _build_event_row() -> Control:
 	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.add_theme_color_override("font_color", UITheme.ACCENT)
 	return lbl
+
+
+# Null off a hub, so an ordinary card stays clean. On one: the headline, then the
+# remaining shelf as one priced line per item — but only once the player has
+# stood in the shop. An unvisited shop says a shop is here and stops, because
+# opening a card must not spoil a roll the player hasn't earned the sight of.
+#
+# Both the wording and the stock come from ShopSystem, which is also what the
+# card's flag tooltip reads, so the two cannot disagree.
+func _build_shop_row(game: GameData) -> Control:
+	if game == null or not ShopSystem.is_hub(game.id):
+		return null
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+
+	var head := Label.new()
+	head.text = "🛒  %s" % ShopSystem.headline(game.id)
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.add_theme_font_size_override("font_size", 12)
+	head.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
+	col.add_child(head)
+
+	for line in ShopSystem.stock_lines(game.id):
+		var row := Label.new()
+		row.text = "      • %s" % line
+		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_theme_font_size_override("font_size", 11)
+		row.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		col.add_child(row)
+	return col
 
 
 func _panel_size() -> Vector2:

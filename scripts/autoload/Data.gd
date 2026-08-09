@@ -112,11 +112,15 @@ func roll_rarity_step(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
 		step = RarityStep.LEGENDARY
 	return step
 
-# The same roll as an ItemData.Rarity value. ItemData numbers Legendary 4 (Epic, 3,
-# is authored-only and never rolled), so only that last step needs translating.
+# The same roll as an ItemData.Rarity value — which is the identity, because the
+# two enums are now the same four rungs in the same order. It used to need a
+# translation: ItemData carried an EPIC rung at 3 that nothing rolled and nothing
+# was authored at, pushing its Legendary to 4 while this ladder's sat at 3. Epic
+# is gone, so the ladders agree and this is a straight pass-through. Kept as a
+# named function rather than inlined at the call sites, since "roll a rarity for
+# an item" is the thing callers mean and the two enums could diverge again.
 func roll_item_rarity(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
-	var step: int = roll_rarity_step(rng, roll01)
-	return ItemData.Rarity.LEGENDARY if step == RarityStep.LEGENDARY else step
+	return roll_rarity_step(rng, roll01)
 
 # Chest SIZES (docs/games-first-redesign.md §8.2) — what a "Random Sized Chest"
 # reward (the Vampire Survivors characters) draws from. A bigger chest offers more

@@ -59,8 +59,10 @@ ENGINES = ("action", "strategy", "deckbuilder")
 TELEPORT_DIRS = ("nearby", "previous", "random", "closer", "farther", "same")
 CMPS = (">=", "<=", "==", "!=", ">", "<")
 # Deal with the Devil: % of max HP lost per taken item, indexed by item rarity
-# (Common / Uncommon / Rare / Epic / Legendary).
-BY_RARITY_HP_PCT = [10, 15, 20, 25, 30]
+# (Common / Uncommon / Rare / Legendary). One entry per ItemData.Rarity rung —
+# the Epic rung this used to carry (25%) went with the enum; every surviving
+# rarity keeps the price it always had.
+BY_RARITY_HP_PCT = [10, 15, 20, 30]
 
 
 # --------------------------------------------------------------------------

@@ -48,7 +48,12 @@ func test_deal_with_the_devil_effects() -> void:
 	var per_hp: Dictionary = e.effects[1]
 	assert_eq(String(per_hp["op"]), "per_item")
 	assert_eq(String(per_hp["effect"]["op"]), "lose_hp_pct")
-	assert_eq((per_hp["effect"]["by_rarity"] as Array).size(), 5, "one HP% per rarity tier")
+	# One entry per rung of ItemData.Rarity, read off the enum rather than written
+	# out as a literal: this table is INDEXED by an item's rarity, so the day the
+	# ladder changed length (Epic was deleted, §14) a hardcoded 5 was the only
+	# thing standing between here and an out-of-range read.
+	assert_eq((per_hp["effect"]["by_rarity"] as Array).size(),
+		int(ItemData.Rarity.LEGENDARY) + 1, "one HP% per rarity tier")
 	var per_curse: Dictionary = e.effects[2]
 	assert_eq(String(per_curse["effect"]["op"]), "add_curse")
 	assert_eq(int(per_curse["effect"]["count"]), 1)

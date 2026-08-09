@@ -66,6 +66,10 @@ const DASH_BLUE := Color(0.5, 0.85, 1.0)
 # count, the attempt strip, and the pips on the board.
 const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
 
+# The currency and shop colours live on UITheme (COIN_GOLD / SHOP_GREEN, §14) —
+# the shop modal and the game popup need them too, and a modal reaching back into
+# the screen that mounted it for a constant is a dependency cycle.
+
 # Lost runs of the game in play before the Escape button appears on a game this
 # run has NOT already beaten (see can_escape — one it has is escapable from the
 # first second). Five is past the shields any game grants, so reaching it means
@@ -128,12 +132,20 @@ var _event_goal_checks: Array = []
 var _curse_goal_checks: Array = []
 # The header's always-visible Health readout (see _build_health_chip).
 var _health_chip: Label = null
+var _gold_chip: Label = null
 # A `play_game` detour in flight (docs/event-sheet-authoring.md §10). The node to
 # offer a way back to, and the payload that lands when the detour game is beaten.
 var _play_return_to: StringName = &""
 var _play_payload: Array = []
 var _play_payload_text: String = ""
 var _event_modal: EventModal2 = null
+# The hub whose shop is owed to the player once the board stops moving (§14).
+# Set on the same terms an event is — the game at this node was played through
+# and not escaped — because a shop and an event are the same kind of thing:
+# what was waiting at the node, paid after the game rather than before it.
+# &"" when nothing is owed.
+var _pending_shop: StringName = &""
+var _shop_modal: ShopModal2 = null
 var _run_over_won: bool = false
 var _run_over_screen: RunOverScreen = null
 var _rng := RandomNumberGenerator.new()
@@ -252,6 +264,11 @@ func _ready() -> void:
 		GameState.hp_changed.connect(_on_vitals_changed)
 	if not GameState.stats_changed.is_connected(_refresh_stats):
 		GameState.stats_changed.connect(_refresh_stats)
+	# Gold moves on its own signal, not on stats_changed: a defeat pays mid-resolve
+	# and a purchase pays with no loop event at all, so the purse would otherwise
+	# sit on a stale number until something else happened to repaint the header.
+	if not GameState.gold_changed.is_connected(_on_gold_changed):
+		GameState.gold_changed.connect(_on_gold_changed)
 	# A status applied off a loop resolve (a location entered, an item picked up)
 	# changes what the checklist says the player has to DO, so it repaints the
 	# screen rather than just the HUD strip (§13). Note _refresh rebuilds the
@@ -1051,6 +1068,12 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	if played_game != null and not escaped:
 		# The event at this node, queued for once the board stops moving.
 		_pending_event = EventSystem.event_for(slot_here)
+		# …and the shop, if this was one of the run's ten hubs (§14). Queued on
+		# exactly the same terms, and read off the GAME rather than the graph slot:
+		# a shop belongs to the storefront of a particular big game, so a node
+		# transmuted into something else is not that shop any more.
+		if ShopSystem.is_hub(played_game.id):
+			_pending_shop = played_game.id
 		# The item trigger fires on FINISHING a game, win or lose. Note that this
 		# is deliberately a wider net than the beat below: it is what paces the
 		# "after beating a game" items, and every one of them is balanced around
@@ -1205,7 +1228,12 @@ func _end_resolve() -> void:
 		_board.refresh(_phase == Phase.PLAYING)
 	if _run_over_pending:
 		_run_over_pending = false
-		_pending_event = null   # a run that just ended has no room for a bonus
+		# A run that just ended has no room for either. The shop matters as much as
+		# the event here: the Amulet game can itself be a hub (they are the
+		# best-connected games on the map, so it is not a rare pairing), and
+		# winning the run is not a cue to go shopping.
+		_pending_event = null
+		_pending_shop = &""
 		_show_run_over()
 		return
 	_open_pending_event()
@@ -1213,10 +1241,16 @@ func _end_resolve() -> void:
 # Open the queued event, if any. The offering behind it is already rebuilt, so
 # the modal lands on the screen the player is about to act on rather than on a
 # board mid-resolve.
+#
+# The shop comes AFTER the event when a node somehow owes both — an event is a
+# decision with consequences and a shop is spending, so the money should be spent
+# knowing how the event went. In practice they don't collide: every authored
+# event is `Where: Dead End` and a hub is the opposite of a dead end.
 func _open_pending_event() -> void:
 	var ev: EventData2 = _pending_event
 	_pending_event = null
 	if ev == null:
+		_open_pending_shop()
 		return
 	_event_modal = EventModal2.open(self, ev)
 	_event_modal.finished.connect(_on_event_finished)
@@ -1226,7 +1260,28 @@ func _on_event_finished(play_request: Dictionary) -> void:
 	_refresh()
 	autosave()
 	if not play_request.is_empty():
+		# The event is sending the player off to another game. The shop stays owed
+		# and opens when that detour comes back through _end_resolve, rather than
+		# being dropped over the top of a game about to start.
 		_start_play_game(play_request)
+		return
+	_open_pending_shop()
+
+# Open the shop owed at this hub, if any (§14).
+func _open_pending_shop() -> void:
+	var gid: StringName = _pending_shop
+	_pending_shop = &""
+	if gid == &"" or GameLoop2.run_over:
+		return
+	_shop_modal = ShopModal2.open(self, gid)
+	_shop_modal.finished.connect(_on_shop_finished)
+
+func _on_shop_finished() -> void:
+	_shop_modal = null
+	# An item bought in there is a pickup like any other: the pack, the chips and
+	# the board all need to be told, and the run wants saving at the new state.
+	_refresh()
+	autosave()
 
 # The reward for beating a game you'd already cleared this run: +1 Dash (§4).
 # Announced on both channels — the toast for the moment, the log for the record —
@@ -1261,6 +1316,8 @@ func _exit_tree() -> void:
 		GameState.hp_changed.disconnect(_on_vitals_changed)
 	if GameState.stats_changed.is_connected(_refresh_stats):
 		GameState.stats_changed.disconnect(_refresh_stats)
+	if GameState.gold_changed.is_connected(_on_gold_changed):
+		GameState.gold_changed.disconnect(_on_gold_changed)
 	if GameState.current_game_changed.is_connected(_on_arrived):
 		GameState.current_game_changed.disconnect(_on_arrived)
 
@@ -1980,6 +2037,18 @@ const NAME_BOX_H := 51               # three lines of NAME_FONT — "Shotgun Kin
 #
 # Hover still updates the shared enemy preview under the row, so the offering can
 # be read at a glance without opening anything.
+# The shop flag's hover: the headline, plus the shelf itself once the player has
+# actually been in there. Both come from ShopSystem so this and the popup's shop
+# block cannot end up describing the same shelf differently.
+func _shop_card_tooltip(game: GameData) -> String:
+	var lines: Array = [ShopSystem.headline(game.id)]
+	var stock: Array = ShopSystem.stock_lines(game.id)
+	if not stock.is_empty():
+		lines.append("")
+		lines.append_array(stock)
+	return "\n".join(lines)
+
+
 func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	var game: GameData = choice["game"]
 	var card := VBoxContainer.new()
@@ -1998,6 +2067,13 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	# detour worth taking has to be visible BEFORE the card is opened — the whole
 	# point of an event is that you route towards it deliberately. The Amulet wins
 	# the row when a card is both, because winning the run outranks a bonus.
+	#
+	# The SHOP badge (§14) is the third tenant, and it ranks below the event for
+	# the same reason the event ranks below the Amulet: an event is a one-time
+	# thing that happens TO you at this node, while a shop is a standing place
+	# that will still be there next time round. Its colour is deliberately not a
+	# gold — see UITheme.SHOP_GREEN — because a gold badge sitting in the Amulet's
+	# own slot is the one confusion this row cannot afford.
 	var event: EventData2 = EventSystem.event_for(choice["slot"])
 	var flag := Label.new()
 	if amulet:
@@ -2008,6 +2084,10 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 		flag.text = "✦ EVENT"
 		flag.tooltip_text = "%s waits here — beat this game and it fires, on top of the drop." % event.display_name
 		flag.add_theme_color_override("font_color", UITheme.ACCENT)
+	elif ShopSystem.is_hub(game.id):
+		flag.text = "🛒 SHOP"
+		flag.tooltip_text = _shop_card_tooltip(game)
+		flag.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
 	else:
 		flag.text = ""
 		flag.add_theme_color_override("font_color", UITheme.GOLD)
@@ -2786,6 +2866,38 @@ func _build_health_chip() -> Control:
 	return wrap
 
 
+# The purse, immediately right of Health in the header (§14). It sits there for
+# the same reason Health does: it is a number the player has to be able to check
+# without leaving whatever is mounted over the board, and a shop's prices are
+# meaningless without it. Health first, gold second — one ends the run, the other
+# only decides what you can afford.
+func _build_gold_chip() -> Control:
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(Color(0.16, 0.13, 0.05, 0.85), 8, 8, 1, UITheme.GOLD.lerp(UITheme.BORDER, 0.4)))
+	wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_gold_chip = Label.new()
+	_gold_chip.add_theme_font_size_override("font_size", 18)
+	_gold_chip.add_theme_color_override("font_color", UITheme.COIN_GOLD)
+	_gold_chip.tooltip_text = ("Gold. +%d for every enemy you defeat, +%d for a boss."
+		+ "\nSpent at the shops standing on the map's biggest games."
+		+ "\nIt does not carry over — a run ends with whatever you didn't spend.") % [
+			GameLoop2.GOLD_PER_ENEMY, GameLoop2.GOLD_PER_BOSS]
+	wrap.add_child(_gold_chip)
+	_paint_gold_chip()
+	return wrap
+
+
+func _paint_gold_chip() -> void:
+	if _gold_chip == null or not is_instance_valid(_gold_chip):
+		return
+	_gold_chip.text = "◉  %d" % GameState.gold
+	# Dimmed at zero: an empty purse is worth reading as empty rather than as a
+	# number, since it's the state where every shop price is out of reach.
+	_gold_chip.add_theme_color_override("font_color",
+		UITheme.COIN_GOLD.lerp(UITheme.TEXT_DIM, 0.55) if GameState.gold <= 0 else UITheme.COIN_GOLD)
+
+
 func _paint_health_chip() -> void:
 	if _health_chip == null or not is_instance_valid(_health_chip):
 		return
@@ -2797,8 +2909,13 @@ func _paint_health_chip() -> void:
 		UITheme.DANGER.lerp(Color.WHITE, 0.35) if frac <= 0.25 else Color(1.0, 0.62, 0.62))
 
 
+func _on_gold_changed(_amount: int = 0) -> void:
+	_paint_gold_chip()
+
+
 func _refresh_stats(_a = null) -> void:
 	_paint_health_chip()
+	_paint_gold_chip()
 	_refresh_select_stats()
 	# …and the hero with them, because the board is where Health, Shields and the
 	# player's statuses are now drawn. These signals used to land on a HUD strip
@@ -3311,6 +3428,7 @@ func _build_ui() -> void:
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	header.add_child(_build_health_chip())
+	header.add_child(_build_gold_chip())
 	var title := Label.new()
 	title.text = "The Search for the Amulet"
 	title.add_theme_font_size_override("font_size", 24)

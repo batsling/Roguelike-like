@@ -15,10 +15,10 @@ signal closed
 
 const BASE_ITEM_CHOICES := 2
 
-const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Legendary"]
 const RARITY_COLORS := [
 	Color(0.78, 0.78, 0.78), Color(0.45, 0.85, 0.5),
-	Color(0.4, 0.6, 1.0), Color(0.75, 0.45, 1.0), Color(1.0, 0.8, 0.3),
+	Color(0.4, 0.6, 1.0), Color(1.0, 0.8, 0.3),
 ]
 
 var _gold: int = 0

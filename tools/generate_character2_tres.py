@@ -10,11 +10,14 @@ character's STARTING loadout; `Level Up` is the per-game honour-system challenge
 and `Reward` is what meeting it grants (parsed into level_up_stats +
 level_up_reward_type here).
 
-  characters2.0: Name | Game | Health | Bash | Dash | Push | Transmute |
+  characters2.0: Name | Game | Health | Gold | Bash | Dash | Push | Transmute |
                  Scramble | Bombs | Keys | Random | Level Up | Reward |
                  Description | Starting items | File
 
 Health -> base_max_hp (a 2.0 run's tiny Health/Max Health reuse hp/max_hp).
+Gold -> start_gold, the run's starting purse (§14). It sits beside Health rather
+        than inside the verb block on purpose: START_VERBS below and
+        GameState.START_RANDOM_POOL both walk Bash..Keys as a contiguous range.
 Bash/Dash/Push/Transmute/Scramble/Bombs/Keys -> start_* fields.
 Random -> start_random: points of loadout the character does NOT bring fixed,
           rolled across the verb pool at run start (GameState.roll_start_random).
@@ -189,6 +192,9 @@ def character_tres(row) -> tuple:
     lines.append('source_game = "%s"' % gd_str(row.get("Game")))
     # Health / Max Health reuse hp / max_hp; the 2.0 Health column is both.
     lines.append("base_max_hp = %d" % _int(row.get("Health"), 5))
+    # The run's starting purse. Gold is run-scope (never carried between runs),
+    # so this column is all a run opens with.
+    lines.append("start_gold = %d" % _int(row.get("Gold")))
     # Games-first starting verb loadout.
     lines.append("start_bash = %d" % _int(row.get("Bash")))
     lines.append("start_dash = %d" % _int(row.get("Dash")))

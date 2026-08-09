@@ -213,6 +213,48 @@ static func degree(game_id: StringName) -> int:
 	_build_adj()
 	return (_adj_cache.get(game_id, []) as Array).size()
 
+# How many of the graph's biggest games carry a shop (§14). Ten is not a round
+# number picked for tidiness: on the full catalog the degree curve has a real
+# shoulder there — Slay the Spire 141, Vampire Survivors 85, Isaac 69, Hades and
+# Balatro 46, Spelunky Classic 37, FTL 36, NetHack 29, Dead Cells 28, Enter the
+# Gungeon 26 — and the eleventh game down is in the low twenties with a long flat
+# tail behind it. Those ten are also the genre's actual landmarks, which is why
+# they read as places rather than as nodes that happened to score well.
+const NUM_HUBS := 10
+
+# The run's HUB GAMES: the NUM_HUBS best-connected games on the route, biggest
+# first. A shop stands at each of them (§14).
+#
+# Measured AFTER the filter and the main-component prune, like `degree` — the
+# ten biggest games in an OWNED run are not the ten biggest in the catalog, and
+# the shops belong to the map the player is actually walking. Ties break on the
+# lowest id so the list is stable for a given catalog rather than riding
+# dictionary order; without that, two games on 24 connections could swap places
+# between calls and a shop would move.
+#
+# Callers should not lean on this staying put across a run — the game filter can
+# rebuild the graph underneath it. GameState freezes the answer at run start
+# (`hub_games`) and everything in the run reads that instead, so a shop can never
+# appear or vanish under a player mid-route.
+static func hub_ids(count: int = NUM_HUBS) -> Array[StringName]:
+	_build_adj()
+	var ids: Array = _adj_cache.keys()
+	# The tie-break lives INSIDE the comparator rather than in a pre-sort, because
+	# Godot's sort_custom is not documented as stable — sorting by id and then by
+	# degree would leave equal-degree games at the mercy of the sort's internals.
+	ids.sort_custom(func(a, b):
+		var da: int = (_adj_cache[a] as Array).size()
+		var db: int = (_adj_cache[b] as Array).size()
+		if da != db:
+			return da > db
+		return String(a) < String(b))
+	var out: Array[StringName] = []
+	for id in ids:
+		if out.size() >= count:
+			break
+		out.append(id)
+	return out
+
 # Eligible games in this run that share `game_id`'s release year (Winged Boots
 # flies to one of these, ignoring connections). Excludes the game itself and any
 # already-beaten game so the jump only ever advances the run. The adjacency

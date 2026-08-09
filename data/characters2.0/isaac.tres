@@ -11,6 +11,7 @@ display_name = "Isaac"
 description = "Who am I?"
 source_game = "The Binding of Isaac"
 base_max_hp = 6
+start_gold = 3
 start_bash = 0
 start_dash = 0
 start_push = 0

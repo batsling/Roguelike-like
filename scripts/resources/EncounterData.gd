@@ -55,7 +55,7 @@ extends Resource
 # in-sheet DSL the scrolls sheet uses). Each entry is a Dictionary with an "op"
 # plus op-specific keys, e.g.
 #   {"op": "offer_items", "tag": "evil", "count": 3, "pick": "any"}
-#   {"op": "per_item", "effect": {"op": "lose_hp_pct", "by_rarity": [10,15,20,25,30]}}
+#   {"op": "per_item", "effect": {"op": "lose_hp_pct", "by_rarity": [10,15,20,30]}}
 #   {"op": "per_item", "effect": {"op": "add_curse", "count": 1}}
 #   {"op": "shop", "pools": ["food", "pill"], "discount": 0}
 #   {"op": "shop", "pools": ["military"], "discount": 20}

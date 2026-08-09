@@ -42,6 +42,18 @@ extends Resource
 # needed — only the verbs are new. `dash` maps onto GameState.dash_charges;
 # the rest map onto same-named GameState fields (see GameState grant_run_stat).
 # All default 0, matching the current combat roster which never sets them.
+#
+# `start_gold` (§14) is the gold the character opens the run holding, and it is
+# the WHOLE of a run's starting purse — gold never carries between runs. Three
+# across the roster today, which is exactly one Common item, so the first shop a
+# run reaches is always worth walking into.
+#
+# It leads the block because it is not one of the verbs: everything from
+# start_bash to start_keys is walked as a CONTIGUOUS RANGE by both
+# generate_character2_tres.START_VERBS and GameState.START_RANDOM_POOL (the pool
+# the sheet's `Random` column spends its points into), so a non-verb sitting
+# inside it would be in the way of both. The sheet's column order matches.
+@export var start_gold: int = 0
 @export var start_bash: int = 0
 @export var start_dash: int = 0
 # Push (Manager, from Raccoin) — a board-timing verb that shoves a following
