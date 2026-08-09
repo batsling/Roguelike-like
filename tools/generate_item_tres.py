@@ -64,7 +64,11 @@ IMG_RES_PREFIX = "res://images/items/"
 KIND = {"passive": 0, "triggered": 1, "incremental": 1, "usable": 2,
         "weapon": 3, "scaling": 4, "pickup": 5, "status": 5, "charged": 6}
 # ItemData.Rarity enum order.
-RARITY = {"common": 0, "uncommon": 1, "rare": 2, "epic": 3, "legendary": 4}
+# Mirrors ItemData.Rarity, which is four rungs with no holes. "epic" maps onto
+# Legendary rather than being dropped on the floor: nothing in either sheet is
+# rated Epic today, and if a row ever is, landing at the top of the ladder is a
+# far better failure than silently defaulting to Common.
+RARITY = {"common": 0, "uncommon": 1, "rare": 2, "epic": 3, "legendary": 3}
 
 # Trigger prefixes that map onto a TriggerBus signal. combat_start/combat_end
 # are accepted as aliases for the -ed forms the engine emits.

@@ -11,6 +11,7 @@ display_name = "Regent"
 description = "Heir to the Throne of Stars. Wields cosmic powers but his minions do the work."
 source_game = "Slay the Spire 2"
 base_max_hp = 8
+start_gold = 3
 start_bash = 0
 start_dash = 0
 start_push = 1

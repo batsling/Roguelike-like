@@ -85,6 +85,14 @@ const ATTEMPT_HEALTH_COST: int = 1
 const BASE_GRID_COLS: int = 4     # distance columns (back at 4, melee at 1)
 const BASE_GRID_ROWS: int = 4     # rows -> up to grid_rows() enemies abreast
 
+# GOLD (§14) — what a defeated enemy is worth. A normal enemy pays 1 and a boss
+# 3, which sets the whole economy's scale: a run is 6 to 12 games, so a player
+# clearing most of their goals earns somewhere around 8 to 15 gold, against shop
+# prices of 3 to 6. That is two to four purchases a run — few enough that each is
+# a decision, and small enough that every number on the HUD stays one digit.
+const GOLD_PER_ENEMY: int = 1
+const GOLD_PER_BOSS: int = 3
+
 # Every source of board growth added up: the run's difficulty tier, plus each
 # Mine-r Construction in the pack. Asked for in one place so the two can't drift.
 func grid_growth() -> int:
@@ -1250,6 +1258,25 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
 		# headless core stays scene-free and unit-testable.
 		if res.has("drops"):
 			res["drops"] = int(res.get("drops", 0)) + 1
+		# GOLD (§14) rides the DROP, which is why it is paid inside this branch
+		# rather than beside it.
+		#
+		# Everything that reaches here pays on the same terms: the current game's
+		# enemy beaten on time, and a follower whose old goal you fulfilled games
+		# later (§2). Late is not worth less — the goal was the price either way,
+		# and taxing the player for solving it slowly would argue against the stack
+		# mechanic the whole run is built on.
+		#
+		# What does NOT pay is a BOMBED enemy, and note how it doesn't: `bomb`
+		# takes the body off the stack itself and never comes through here at all,
+		# so this needs no exception for it. A bomb is an escape from a goal you
+		# couldn't or wouldn't do — it buys the removal and nothing else, and
+		# letting it mint currency would make bombing the cheapest way to farm the
+		# shops. Sitting the payout under `drop` rather than at the top of the
+		# function is what keeps that true for any future no-drop defeat too.
+		var coins: int = GOLD_PER_BOSS if enemy != null and enemy.is_boss() else GOLD_PER_ENEMY
+		GameState.change_gold(coins)
+		res["gold"] = int(res.get("gold", 0)) + coins
 	enemy_defeated.emit(enemy)
 
 # Applies `damage` to the player: unspent Shields absorb first (§3), the

@@ -11,6 +11,7 @@ display_name = "Erratic Deck"
 description = "All Ranks and Suits in deck are randomized"
 source_game = "Balatro"
 base_max_hp = 8
+start_gold = 3
 start_bash = 0
 start_dash = 0
 start_push = 0

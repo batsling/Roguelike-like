@@ -11,6 +11,66 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Gold, and a shop at every hub on the map.**
+
+  **A defeated enemy pays 1 gold, a boss 3, and that is the whole faucet.** The
+  numbers are deliberately a tenth of the combat build's — gold used to start at
+  99 and the Challenge Rift paid 50, at which scale a price is a rounding error
+  and every purchase is automatic. A run is 6–12 games, so clearing most of your
+  goals earns 8–15 gold against prices of 3–6: **two to four purchases in a whole
+  run**, each of them a decision. It also keeps every figure on the HUD to one
+  digit, which the OBS companion window (§9) is going to need.
+
+  Gold **rides the drop, not the corpse** — it is paid inside the branch of
+  `GameLoop2._defeat` that grants the item, which gets three rules for free. The
+  current game's enemy pays. A follower whose old goal you fulfilled five games
+  late pays exactly the same, because the goal was the price either way and
+  taxing a slow solve would argue against the stack the whole run is built on.
+  And a **bombed** enemy pays nothing: a bomb already drops no item, it is an
+  escape from a goal you couldn't do, and letting it mint currency would make
+  bombing the cheapest way to farm the shops.
+
+  **Shops stand at the ten best-connected games on the map** — Slay the Spire,
+  Vampire Survivors, Isaac, Hades, Balatro, Spelunky Classic, FTL, NetHack, Dead
+  Cells, Enter the Gungeon on the full catalog, and whatever the ten biggest are
+  on an OWNED run, since hubs are measured after the filter like every other
+  degree question. The degree curve has a real shoulder at ten: the eleventh game
+  down is in the low twenties with a long flat tail behind it.
+
+  **This is a second routing axis, and it is the opposite shape to events.** An
+  event hangs off a dead end — a two-game round trip for one game's reward, which
+  is why it needs a badge to be worth taking at all. A hub is the *middle* of the
+  map, rarely far off the road, so "swing through the big node" is cheap and
+  repeatable. Until now every step was measured against one question, which was
+  whether it took you closer to the Amulet. This is the second one.
+
+  **The shelf is three items and it stays.** Stock rolls once and persists for the
+  whole run; buying marks a slot sold rather than removing it. So a hub you
+  cleared out is a hub you know is empty, and a hub you left two items at is a
+  reason to come back — which is the point, and why **opening that game's card
+  later lists what is still on its shelf and what it costs**. A shop you have
+  never visited says only that one is there: the stock is what the first visit is
+  for, and drawing a card must never decide what is in a shop you haven't walked
+  into. Rerolling costs **1 Scramble**, not gold, because a shelf of three things
+  you don't want is the same problem as an offering of three games you don't want
+  and deserves the same answer — and pricing it in gold would let a rich player
+  grind the whole 21-item catalog at one hub.
+
+  **Every character now starts with 3 gold**, from a new `Gold` column on
+  `characters2.0`. Three is exactly one Common item, so the first shop a run
+  reaches is always worth walking into. It sits between `Health` and `Bash`
+  rather than inside the verb block, because `Bash`..`Keys` is a contiguous range
+  that both the generator and `GameState.START_RANDOM_POOL` walk. Gold does not
+  carry between runs.
+
+  **`Epic` is gone from `ItemData.Rarity`.** Nothing ever rolled it and nothing
+  was ever authored at it — it existed only to make `ItemData.Rarity` and
+  `Data.RarityStep` disagree about what the number 3 meant, which cost a
+  translation function every time a rarity was rolled. Shop prices are "3 gold
+  plus the rung", which is the third thing that wanted the ladder to have no
+  holes in it. The two enums are now identical, `roll_item_rarity` is a
+  pass-through, and one 2.0 item and two legacy ones moved from rarity 4 to 3.
+
 - **Reaching the Amulet is the win, and three fixes around it.**
 
   **Beating the Amulet game wins the run — the goal box is a bonus.** It used to

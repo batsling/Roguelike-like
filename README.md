@@ -185,6 +185,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
 | `EventSystem` | Events (`docs/event-sheet-authoring.md`): which dead-end node carries which event, the Requirement/`needs` gates, and resolving a choice into effects, an event goal or a curse. |
 | `GameLoop2` | The run loop: the games-beaten clock, the goal-enemy stack, and the grid the followers advance across. `Overworld2` is a view over it. |
+| `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
 | `GameLog` | Verbose run-scope message log (teleports, pickups, item procs) — the written record behind the toasts. |
 | `Notifications` | Curated player-facing "important events" channel; the overworld mounts `NotificationToasts` to show them. |
@@ -427,10 +428,13 @@ cross-run tier list. What's still ahead:
   and the verb/consumable counts, reading the same autoloads the main window
   mutates. Deferred by decision until the mechanics lock; it is the largest
   unbuilt piece of the spec.
-- **Overworld encounters** — shops, deals, teleporters, and challenge rifts are
-  authored (`data/encounters/*.tres`, `EncounterData`, its sheet + generator, and
+- **Overworld encounters** — deals, teleporters, and challenge rifts are authored
+  (`data/encounters/*.tres`, `EncounterData`, its sheet + generator, and
   `GameState.encounter_requirement_met`), but nothing on the games-first board
-  offers them yet. They need a place in the offering / between games.
+  offers them yet. They need a place in the offering / between games. **Shops are
+  no longer on this list** — they landed as their own thing at the ten hub games
+  (§14), and what is left of the encounter sheet's two shopkeepers is flavour a
+  hub's shop can adopt once the roster is authored.
 - **The D20 events** — `EventModal` + `data/events` are built and tested, and are
   likewise not reachable from the current overworld. Same question: when does a
   run stop for an event?

@@ -11,6 +11,7 @@ display_name = "Poe Ratcho"
 description = "A malodorous hero"
 source_game = "Vampire Survivors"
 base_max_hp = 10
+start_gold = 3
 start_bash = 0
 start_dash = 0
 start_push = 2

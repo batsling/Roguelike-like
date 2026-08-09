@@ -2,7 +2,14 @@ class_name ItemData
 extends Resource
 
 enum ItemKind { PASSIVE, TRIGGERED, USABLE, WEAPON, SCALING, PICKUP, CHARGED }
-enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
+# Four rungs, and they line up 1:1 with Data.RarityStep — the ladder every
+# rarity roll in the game walks (75 / 20 / 5, with the top step having a 10%
+# chance to bump one further). There was a fifth, EPIC, sitting between RARE and
+# LEGENDARY; nothing ever rolled it and nothing was ever authored at it, so it
+# was a rung that existed only to make these two enums disagree about what the
+# number 3 meant. Shop prices read straight off this index (§14: 3 gold + the
+# rung), which is the third thing that wants the ladder to have no holes in it.
+enum Rarity { COMMON, UNCOMMON, RARE, LEGENDARY }
 
 @export var id: StringName
 @export var display_name: String

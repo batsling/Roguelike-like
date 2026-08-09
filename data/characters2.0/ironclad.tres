@@ -11,6 +11,7 @@ display_name = "Ironclad"
 description = "The remaining soldier of the Ironclads. Sold his soul to harness demonic energies."
 source_game = "Slay the Spire"
 base_max_hp = 10
+start_gold = 3
 start_bash = 2
 start_dash = 0
 start_push = 0
