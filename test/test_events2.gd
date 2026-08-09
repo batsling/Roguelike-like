@@ -3,16 +3,17 @@ extends GutTest
 # Events 2.0 (docs/event-sheet-authoring.md) — the payoff for walking into a
 # corner of the map, and the two kinds of objective it can leave behind.
 #
-# The four authored events were each chosen to bend the format in a different
+# The five authored events were each chosen to bend the format in a different
 # direction, so these tests follow them: Abyssal Baths is the staged
 # push-your-luck one, Battleworn Dummy hands out a goal on a clock, Unrest Site
-# hands out a curse, Punch Off moves the player. If a change breaks one shape
-# without breaking the others, that is what should show here.
+# hands out a curse, Punch Off moves the player, Scrap Ooze rolls. If a change
+# breaks one shape without breaking the others, that is what should show here.
 
 const BATHS := &"abyssal_baths"
 const DUMMY := &"battleworn_dummy"
 const UNREST := &"unrest_site"
 const PUNCH := &"punch_off"
+const OOZE := &"scrap_ooze"
 
 var _hp: int
 var _max_hp: int
@@ -66,7 +67,7 @@ func _choice(ev: EventData2, cid: String) -> Dictionary:
 # --- the catalogue ---------------------------------------------------------
 
 func test_every_authored_event_loads() -> void:
-	for id in [BATHS, DUMMY, UNREST, PUNCH]:
+	for id in [BATHS, DUMMY, UNREST, PUNCH, OOZE]:
 		var ev: EventData2 = _event(id)
 		assert_ne(ev.prompt, "", "%s must carry its prompt" % id)
 		assert_true(ev.choices.size() > 0, "%s must have choices" % id)
@@ -398,6 +399,211 @@ func _some_dead_end() -> StringName:
 		if g is GameData and not RunGraph.is_off_map(g.id) and RunGraph.degree(g.id) == 1:
 			return g.id
 	return &""
+
+
+# --- Scrap Ooze: the gamble --------------------------------------------------
+#
+# The one event whose payout is not settled by pressing the button. Everything
+# below is either the ladder (what a reach costs and what it is worth) or the
+# two things a roll decides: which prose prints, and whether the event is over.
+
+# A copy of one of the ooze's reaches with its odds forced, so a test can have a
+# certain win or a certain loss without seeding an RNG. 100% and 0% are honest
+# inputs to the real roll, not a bypass of it.
+func _rigged(cid: String, percent: int) -> Dictionary:
+	var choice: Dictionary = _choice(_event(OOZE), cid).duplicate(true)
+	var chance: Dictionary = choice["chance"]
+	chance.erase("scaled")
+	chance["percent"] = percent
+	return choice
+
+
+func test_the_ooze_carries_both_endings_of_its_roll() -> void:
+	# A gamble's prose depends on the ROLL, so it cannot live on a choice — both
+	# reaches print the same two strings, which is why they are event-level.
+	var ev: EventData2 = _event(OOZE)
+	assert_ne(ev.chance_won, "", "the success text is Slay the Spire's own")
+	assert_ne(ev.chance_lost, "", "and so is the failure text")
+	assert_eq(String(_choice(ev, "reach_inside").get("result", "")), "",
+		"a rolling choice leaves its own Result blank")
+
+
+func test_reaching_costs_one_more_health_after_each_failure() -> void:
+	# The user's change to the original: Slay the Spire opens at 3 HP against a 75
+	# HP pool; here Health is 5-10, so the ladder starts at 1 and still climbs by
+	# one per failed reach — 1, then 2, 3, 4 as Deeper repeats.
+	var ev: EventData2 = _event(OOZE)
+	GameState.max_hp = 40
+	GameState.hp = 40
+
+	var before: int = GameState.hp
+	# 0% so the roll never lands and the event never closes under the ladder.
+	EventSystem.resolve_choice(ev, _rigged("reach_inside", 0), 0)
+	assert_eq(before - GameState.hp, 1, "the first reach costs 1 Health")
+
+	var costs: Array = []
+	for taken in range(3):
+		var hp_was: int = GameState.hp
+		EventSystem.resolve_choice(ev, _rigged("deeper", 0), taken)
+		costs.append(hp_was - GameState.hp)
+	assert_eq(costs, [2, 3, 4], "and every reach after it costs one more")
+
+
+func test_the_odds_climb_with_every_failed_reach() -> void:
+	# Untouched from the original: 25%, +10 per failure. The ladder is unbounded,
+	# so the percentage has to stop at a real one rather than running past 100.
+	var ev: EventData2 = _event(OOZE)
+	var reach: Dictionary = _choice(ev, "reach_inside")
+	var deeper: Dictionary = _choice(ev, "deeper")
+	assert_eq(EventSystem.chance_percent(reach["chance"], 0), 25,
+		"the first reach is a 25% shot")
+	assert_eq(EventSystem.chance_percent(deeper["chance"], 0), 35)
+	assert_eq(EventSystem.chance_percent(deeper["chance"], 1), 45)
+	assert_eq(EventSystem.chance_percent(deeper["chance"], 2), 55)
+	assert_eq(EventSystem.chance_percent(deeper["chance"], 20), 100,
+		"a reach that would roll past certainty is just certain")
+
+
+func test_deeper_only_opens_once_a_hand_is_already_in() -> void:
+	# Slay the Spire renames the button after the first reach. `Stay` on Reach
+	# Inside plus a pick-count gate on Deeper is that, with no stage column.
+	var ev: EventData2 = _event(OOZE)
+	var first: Array = []
+	for c in ev.choices:
+		if EventSystem.choice_available(c, {}):
+			first.append(String(c.get("id", "")))
+	assert_true(first.has("reach_inside"))
+	assert_true(first.has("leave"), "walking away is always on the table")
+	assert_false(first.has("deeper"), "there is nothing to go deeper into yet")
+
+	var after: Array = []
+	for c in ev.choices:
+		if EventSystem.choice_available(c, {"reach_inside": 1}):
+			after.append(String(c.get("id", "")))
+	assert_false(after.has("reach_inside"), "the first reach is spent")
+	assert_true(after.has("deeper"), "and the loop is a different button")
+
+
+func test_the_button_quotes_the_odds_for_this_press() -> void:
+	var ev: EventData2 = _event(OOZE)
+	var reach: String = EventSystem.describe_choice(_choice(ev, "reach_inside"), 0)
+	assert_string_contains(reach, "25%")
+	assert_string_contains(reach, "Small Chest")
+	var deeper: Dictionary = _choice(ev, "deeper")
+	assert_string_contains(EventSystem.describe_choice(deeper, 0), "35%")
+	assert_string_contains(EventSystem.describe_choice(deeper, 2), "-4 Health")
+	assert_false(EventSystem.describe_choice(deeper, 2).contains("X"),
+		"the formula is for the sheet, not for the player")
+
+
+func test_a_won_reach_pays_a_relic_and_ends_the_event() -> void:
+	var ev: EventData2 = _event(OOZE)
+	var chests: int = GameState.pending_chests
+	var sizes: Array = GameState.pending_chest_choices.duplicate()
+	GameState.pending_chests = 0
+	GameState.pending_chest_choices.clear()
+	GameState.max_hp = 40
+	GameState.hp = 40
+
+	# Deeper is `Again`, so only the win can be closing it here.
+	var out: Dictionary = EventSystem.resolve_choice(ev, _rigged("deeper", 100), 0)
+	assert_true(bool(out["won"]), "a 100% reach lands")
+	assert_eq(GameState.pending_chest_choices, [1],
+		"the relic is a Small chest — one item, no pick")
+	assert_eq(out["result"], ev.chance_won, "and the ooze says so")
+	assert_true(bool(out["close"]),
+		"there is nothing left to reach for, whatever Repeat says")
+	assert_eq(GameState.hp, 38, "the acid still burns on the way in")
+
+	GameState.pending_chests = chests
+	GameState.pending_chest_choices = sizes
+
+
+func test_a_lost_reach_pays_nothing_and_leaves_the_event_open() -> void:
+	var ev: EventData2 = _event(OOZE)
+	var chests: int = GameState.pending_chests
+	var sizes: Array = GameState.pending_chest_choices.duplicate()
+	GameState.pending_chests = 0
+	GameState.pending_chest_choices.clear()
+	GameState.max_hp = 40
+	GameState.hp = 40
+
+	var out: Dictionary = EventSystem.resolve_choice(ev, _rigged("deeper", 0), 0)
+	assert_false(bool(out["won"]))
+	assert_eq(GameState.pending_chest_choices, [], "a failed reach pays nothing")
+	assert_eq(out["result"], ev.chance_lost)
+	assert_false(bool(out["close"]), "so you may keep reaching")
+
+	GameState.pending_chest_choices = sizes
+	GameState.pending_chests = chests
+
+
+func test_walking_away_does_not_roll_for_anything() -> void:
+	var ev: EventData2 = _event(OOZE)
+	var out: Dictionary = EventSystem.resolve_choice(ev, _choice(ev, "leave"), 0)
+	assert_false(bool(out["rolled"]), "Leave is a certainty, not a gamble")
+	assert_eq(out["result"], String(_choice(ev, "leave").get("result", "")),
+		"and it keeps its own prose rather than borrowing the roll's")
+	assert_true(bool(out["close"]))
+
+
+func test_a_certain_choice_still_reports_the_roll_fields() -> void:
+	# Every caller reads `close`; only the modal reads `won`. Both have to be
+	# present on a choice that never gambles, or the first non-ooze event to be
+	# resolved crashes on a missing key.
+	var out: Dictionary = EventSystem.resolve_choice(
+		_event(UNREST), _choice(_event(UNREST), "kill_the_trees"), 0)
+	assert_true(out.has("rolled") and out.has("won"))
+	assert_false(bool(out["won"]))
+
+
+# --- why an event is or isn't turning up (the dev panel's Events tab) --------
+
+func test_blockers_and_the_roller_are_the_same_rule() -> void:
+	# The panel prints blockers_for and the roller calls _eligible_for, and the
+	# whole value of the first is that it cannot disagree with the second. They
+	# share an implementation; this is the assertion that keeps them sharing it.
+	# A leaf (where events actually live), a hub, and wherever the run is standing.
+	for gid in [_some_dead_end(), &"slay_the_spire", GameState.current_game_id]:
+		if gid == &"":
+			continue
+		var eligible: Array = []
+		for ev in Data.all_events2():
+			if EventSystem.blockers_for(ev, gid).is_empty():
+				eligible.append(ev.id)
+		var placed: EventData2 = EventSystem.event_for(gid)
+		if eligible.is_empty():
+			assert_null(placed,
+				"nothing is eligible at %s, so nothing may be placed there" % gid)
+		else:
+			assert_true(placed != null and eligible.has(placed.id),
+				"%s placed at %s, which blockers_for says is not eligible"
+					% [placed.id if placed != null else &"nothing", gid])
+
+
+func test_a_blocker_names_the_gate_that_stopped_it() -> void:
+	# Unrest Site is gated on being hurt; at full Health that gate is the reason
+	# it never appears, and an author staring at an event that won't show has to
+	# be told which one it was.
+	GameState.max_hp = 10
+	GameState.hp = 10
+	var why: String = ", ".join(EventSystem.blockers_for(_event(UNREST), &"hades"))
+	assert_string_contains(why, "Health <= 70%")
+
+	# And the limit, which is what a second look at a `Limit 1` event runs into.
+	GameState.events_fired[OOZE] = 1
+	assert_string_contains(
+		", ".join(EventSystem.blockers_for(_event(OOZE), &"hades")), "1/1")
+
+
+func test_a_requirement_reads_as_words_not_as_a_column() -> void:
+	assert_eq(EventSystem.requirement_text(
+		{"stat": "hp", "op": "<=", "value": 70, "percent": true}), "Health <= 70%")
+	assert_eq(EventSystem.requirement_text(
+		{"stat": "games", "op": ">=", "value": 6, "percent": false}),
+		"Games played >= 6")
+	assert_eq(EventSystem.requirement_text({}), "nothing",
+		"an ungated event still has something to say")
 
 
 # --- the chest a sized reward actually opens --------------------------------

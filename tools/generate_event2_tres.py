@@ -16,10 +16,12 @@ event-only forms this module adds:
     add_goal "<cond>" [for <n> games] -> <reward>
     add_curse <curse> [for <n> games]
     play_game tag=<tag> -> <reward>
+    chance <p>% -> <reward>          roll p percent; pay on a win, nothing on a loss
 
 A cell is `;`-separated clauses. If it contains `->`, everything after the FIRST
 arrow is that clause's payload (itself `;`-separated), so an arrow verb is always
-the last thing in the cell.
+the last thing in the cell — and there is at most ONE arrow verb per cell, since
+there is only one payload for it to claim.
 
   python3 tools/generate_event2_tres.py           # write data/events2.0/*.tres
   python3 tools/generate_event2_tres.py --list    # print the parse, write nothing
@@ -96,6 +98,11 @@ GATE_CHOICE_RE = re.compile(r"^([A-Za-z0-9_' ]+?)\s*(<=|>=|==|=|<|>)\s*(\d+)$")
 GOAL_RE = re.compile(r'^add_goal\s+"([^"]*)"\s*(?:for\s+(\d+)\s+games?)?\s*$', re.I)
 CURSE_RE = re.compile(r"^add_curse\s+([a-z0-9_]+)\s*(?:for\s+(\d+)\s+games?)?\s*$", re.I)
 PLAY_RE = re.compile(r"^play_game\s+tag\s*=\s*([A-Za-z0-9_' -]+?)\s*$", re.I)
+# `chance 25%` or `chance {35+10*X}%` — the percent is an ordinary reward amount,
+# so it takes a {expr} hole and climbs with X exactly as a cost does.
+CHANCE_RE = re.compile(r"^chance\s+(.+?)\s*%\s*$", re.I)
+# What each arrow verb is called in an error message.
+ARROW_VERBS = {"goal": "add_goal", "play": "play_game", "chance": "chance"}
 
 
 def _split_clauses(cell):
@@ -134,10 +141,43 @@ def parse_gate(clause, where, choice_labels):
     return {"resource": stat, "value": int(toks[1])}
 
 
+def _claim_arrow(wanted, last, where):
+    """Guard the one `->` payload a cell has.
+
+    An arrow verb owns everything past the arrow, so it has to be the LAST clause
+    in the cell. That one rule is also what limits a cell to one arrow verb: a
+    second one can only appear after the first, which the first being last
+    forbids. So there is no separate "two verbs want the payload" check — this is
+    it, and the message it gives for `add_goal "x"; chance 25% -> y` is that
+    add_goal is not last, which is exactly the cell's problem.
+    """
+    if not last:
+        raise ValueError("events2.0 %s: %s must be the last clause in the cell "
+                         "(it takes the `->` payload, so nothing can follow it)"
+                         % (where, ARROW_VERBS[wanted]))
+
+
+def parse_chance(clause, where):
+    """`chance <p>%` -> the percent half of a chance dict.
+
+    The percent is parsed with the shared amount parser, so a literal lands as
+    `percent` and a {expr} hole lands in `scaled` — the same two shapes every
+    other amount in this DSL has, which is what lets EventSystem._scaled resolve
+    it against X with no second code path.
+    """
+    kind, val = dsl._amount(clause)
+    if kind == "literal":
+        if not 0 <= val <= 100:
+            raise ValueError("events2.0 %s: chance %d%% is not a percentage"
+                             % (where, val))
+        return {"percent": val}
+    return {"percent": 0, "scaled": {"percent": val}}
+
+
 def parse_effect_cell(cell, where, choice_labels, curse_ids):
-    """-> {gates, effects, effects_text, goal, curse, play}."""
+    """-> {gates, effects, effects_text, goal, curse, play, chance}."""
     out = {"gates": [], "effects": [], "effects_text": "",
-           "goal": {}, "curse": {}, "play": {}}
+           "goal": {}, "curse": {}, "play": {}, "chance": {}}
     s = dsl._clean(cell)
     if not s:
         return out
@@ -155,8 +195,7 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids):
 
         m = GOAL_RE.match(clause)
         if m:
-            if not last:
-                raise ValueError("events2.0 %s: add_goal must be the last clause" % where)
+            _claim_arrow("goal", last, where)
             out["goal"] = {"condition": dsl.normalise_holes(m.group(1)),
                            "games": int(m.group(2)) if m.group(2) else 1}
             arrow_verb = "goal"
@@ -179,10 +218,16 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids):
 
         m = PLAY_RE.match(clause)
         if m:
-            if not last:
-                raise ValueError("events2.0 %s: play_game must be the last clause" % where)
+            _claim_arrow("play", last, where)
             out["play"] = {"tag": m.group(1).strip().lower()}
             arrow_verb = "play"
+            continue
+
+        m = CHANCE_RE.match(clause)
+        if m:
+            _claim_arrow("chance", last, where)
+            out["chance"] = parse_chance(m.group(1), where)
+            arrow_verb = "chance"
             continue
 
         eff, word = dsl.parse_reward_clause(clause)
@@ -191,10 +236,11 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids):
 
     if payload and arrow_verb is None:
         raise ValueError("events2.0 %s: `->` payload with nothing to attach it to "
-                         "(only add_goal and play_game take one)" % where)
+                         "(only %s take one)"
+                         % (where, ", ".join(sorted(ARROW_VERBS.values()))))
     if arrow_verb is not None and not payload:
         raise ValueError("events2.0 %s: %s needs a `-> <reward>` payload"
-                         % (where, "add_goal" if arrow_verb == "goal" else "play_game"))
+                         % (where, ARROW_VERBS[arrow_verb]))
     if payload:
         effects, text = dsl.parse_reward(" ; ".join(payload))
         out[arrow_verb]["effects"] = effects
@@ -256,7 +302,16 @@ def event_tres(row, curse_ids) -> tuple:
             "goal": parsed["goal"],
             "curse": parsed["curse"],
             "play": parsed["play"],
+            "chance": parsed["chance"],
         })
+
+    # Chance Won / Chance Lost are the voice of a gamble; an event with no gamble
+    # in it has nothing that could ever print them, so they are a leftover.
+    if (dsl._clean(row.get("Chance Won")) or dsl._clean(row.get("Chance Lost"))) \
+            and not any(c["chance"] for c in choices):
+        raise ValueError("events2.0 %s: Chance Won / Chance Lost authored but no "
+                         "choice rolls a `chance` — nothing would ever print them"
+                         % name)
 
     if choices and all(c["repeat"] == "again" and not c["gates"] for c in choices):
         print("  ! %s: every choice is `Again` and ungated — this is an event you "
@@ -295,6 +350,8 @@ def event_tres(row, curse_ids) -> tuple:
         'prompt = "%s"' % dsl.gd_str(dsl._clean(row.get("Prompt"))),
         'goal_met = "%s"' % dsl.gd_str(dsl._clean(row.get("Goal Met"))),
         'goal_missed = "%s"' % dsl.gd_str(dsl._clean(row.get("Goal Missed"))),
+        'chance_won = "%s"' % dsl.gd_str(dsl._clean(row.get("Chance Won"))),
+        'chance_lost = "%s"' % dsl.gd_str(dsl._clean(row.get("Chance Lost"))),
         "choices = %s" % dsl.gd_value(choices),
     ]
     return eid, "\n".join(lines) + "\n"

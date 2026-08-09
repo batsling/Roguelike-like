@@ -59,6 +59,15 @@ extends Resource
 @export var goal_met: String = ""
 @export var goal_missed: String = ""
 
+# The two endings of a `chance` gamble, event-level for the same reason the two
+# above are: they are the event's voice, not the button's. Scrap Ooze is the
+# proof — [Reach Inside] and [Deeper] are two rows on the sheet and one hand in
+# the ooze, and Slay the Spire prints the same success and failure text for
+# both. A gamble's outcome depends on the ROLL, so a choice's own `result` cannot
+# hold it; when a choice rolls, whichever of these is non-empty replaces it.
+@export var chance_won: String = ""
+@export var chance_lost: String = ""
+
 # --- the choices -----------------------------------------------------------
 
 # In display order. Each is a Dictionary:
@@ -73,6 +82,12 @@ extends Resource
 #   goal          {} or {"condition", "games", "effects", "effects_text"}
 #   curse         {} or {"curse": &"poor_sleep", "games": 0}   (0 = the curse's own timer)
 #   play          {} or {"tag": "mecha", "effects": [...], "effects_text": ".."}
+#   chance        {} or {"percent": 25, "effects": [...], "effects_text": ".."} —
+#                 a gamble. `percent` may instead arrive as a {expr} hole under
+#                 "scaled", the same shape a scaling cost has, so the odds can
+#                 climb per press. Winning pays `effects` AND closes the event,
+#                 whatever `repeat` says: `Again` describes what happens when the
+#                 gamble is LOST, and the thing you were reaching for is yours now.
 @export var choices: Array = []
 
 

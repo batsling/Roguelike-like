@@ -185,7 +185,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `EffectSystem` | Central dispatch for structured effects (`{type, value, target}`) applied via `EffectSystem.apply()`. |
 | `TriggerBus` | Global signal hub wiring item/event triggers to game moments (`game_beaten`, `chest_granted`, …). |
 | `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
-| `EventSystem` | Events (`docs/event-sheet-authoring.md`): which dead-end node carries which event, the Requirement/`needs` gates, and resolving a choice into effects, an event goal or a curse. |
+| `EventSystem` | Events (`docs/event-sheet-authoring.md`): which dead-end node carries which event, the Requirement/`needs` gates, and resolving a choice into effects, an event goal, a curse, or a `chance` roll. |
 | `GameLoop2` | The run loop: the games-beaten clock, the goal-enemy stack, and the grid the followers advance across. `Overworld2` is a view over it. |
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
@@ -195,7 +195,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Settings` | Run-independent preferences (e.g. game-filter) persisted to `user://settings.cfg`. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified). |
-| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Four tabs: **Grant** (items / scrolls / statuses, with a player-or-enemy target picker — the item list is `DevTools.item_pool()`, the **2.0 set only**: it used to append the 112 combat-era relics from `data/items`, which grant cleanly and then do nothing because no games-first code honours them), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss). Everything routes through the same public API the game uses. |
+| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Five tabs: **Grant** (items / scrolls / statuses, with a player-or-enemy target picker — the item list is `DevTools.item_pool()`, the **2.0 set only**: it used to append the 112 combat-era relics from `data/items`, which grant cleanly and then do nothing because no games-first code honours them), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss), **Events** (start any authored event where you stand, each row saying why it is or isn't turning up on its own — see [Authoring an event](#authoring-an-event)). Everything routes through the same public API the game uses. |
 
 ### Screens & flow
 
@@ -365,6 +365,8 @@ editing the sheet, then review the diff):
 | `generate_character2_tres.py` | `data/characters2.0/*.tres` from the characters sheet |
 | `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet |
 | `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses2.0` sheet |
+| `generate_event2_tres.py` | `data/events2.0/*.tres` from the `events2.0` sheet — see [Authoring an event](#authoring-an-event) |
+| `generate_curse2_tres.py` | `data/curses2.0/*.tres` from the `curses2.0` sheet |
 | `generate_item_tres.py` | `data/items/*.tres` from the items sheet (pre-2.0 set) |
 | `generate_character_tres.py` | `data/characters/*.tres` (pre-2.0) |
 | `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesnew` sheet |
@@ -373,7 +375,12 @@ editing the sheet, then review the diff):
 | `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — then re-bakes the Atlas |
 | `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
-| `_xlsx_surgery.py` | shared helper: edit ONE sheet of `Roguelikes.xlsx` in place. An openpyxl round-trip drops the workbook's seven charts, so the sheet-editing one-shots (`_statuses_sheet_setup.py`, `_items2_statuses_setup.py`) rewrite just that sheet's XML parts and copy every other zip entry through untouched. |
+| `_xlsx_surgery.py` | shared helper: edit ONE sheet of `Roguelikes.xlsx` in place. An openpyxl round-trip drops the workbook's seven charts, so the sheet-editing one-shots (`_statuses_sheet_setup.py`, `_items2_statuses_setup.py`, `_events2_sheet_setup.py`, `_curses2_sheet_setup.py`) rewrite just that sheet's XML parts and copy every other zip entry through untouched. |
+
+The `_*_setup.py` scripts are **bootstraps, not generators**: they lay a sheet's
+header row down and re-author the rows they hold in Python. Once you are editing
+a tab by hand you never need them again — and they will refuse to run rather than
+overwrite a row they don't know about.
 
 These require Python 3 with `openpyxl` (`pip install openpyxl`) and are run from
 the repository root, e.g.:
@@ -414,6 +421,184 @@ the last bits, and the packer picks positions with strict comparisons a one-ulp
 difference can flip. That never shows, because the unfiltered catalog is drawn
 from the baked file. Keep the two in step when either changes — the tests in
 `test/test_atlas_layout_builder.gd` assert the agreement.
+
+---
+
+### Authoring an event
+
+An **event** is what a dead end pays. It fires after the game at a leaf node is
+beaten, on top of the normal enemy drop, so a two-game round trip buys a second
+reward. Everything about one lives in the **`events2.0` tab** of
+`tools/Roguelikes.xlsx` — one row per event — and nothing about it lives in code.
+
+The full design rationale is [`docs/event-sheet-authoring.md`](docs/event-sheet-authoring.md);
+this is the how-to.
+
+#### The loop
+
+```bash
+# 1. edit the events2.0 tab in Excel
+python3 tools/generate_event2_tres.py --list   # 2. dry run: parse it, write nothing
+python3 tools/generate_event2_tres.py          # 3. write data/events2.0/*.tres
+godot --headless -s addons/gut/gut_cmdln.gd    # 4. (optional) the suite still passes
+```
+
+The generator is **strict on purpose** — a typo'd stat or a dangling curse id is
+an event that silently never fires, so it raises instead. Read the error, it
+names the row and the cell.
+
+#### The row: fourteen event columns, then four choice groups
+
+| Column | Fill in |
+|---|---|
+| `Event` | Display name. Slugified, this is the id (`Scrap Ooze` → `scrap_ooze`) and the `.tres` filename. |
+| `Game` | The real game it's lifted from. Shows as "From: *game*" in the modal. |
+| `Tier` | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. |
+| `Where` | `Dead End` (default), `Any`, or `Game` (only ever at its own `Game`). |
+| `Requirement` | A gate on the run: `<stat> <op> <value>`, `%` reads against the max. `hp <= 70%`, `games >= 6`. Blank = always eligible. |
+| `Trigger` | `After` (fires once the game at the node is beaten). ⚠ `Before` parses and is stored, but **nothing reads it yet** — every event currently fires after. Leave it `After` until that is wired up. |
+| `Rarity` | `Common` / `Uncommon` / `Rare`. |
+| `Limit` | Times per run — a number, or `None`. |
+| `Image` | Art base name → `images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`. |
+| `Prompt` | The prose at the top of the modal. |
+| `Goal Met` / `Goal Missed` | Only if a choice uses `add_goal`: what the event says when that goal lands or lapses, games later. |
+| `Chance Won` / `Chance Lost` | Only if a choice uses `chance`: what it says when the roll lands or doesn't. |
+
+Then `Choice N | Repeat N | Result N | Effect N` for N = 1…4, in display order.
+**A blank `Choice N` ends the list** — the generator stops reading there, so a
+two-option event just leaves the last eight cells empty.
+
+`Result N` is the prose printed once that choice resolves; blank is legal (the
+modal then prints only the mechanical line). `Effect N` is the payload.
+
+#### The `Effect` cell
+
+Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
+`items2.0` speak, so a chest an event pays is the chest an item pays.
+
+| Token | Does |
+|---|---|
+| `gain_chest small\|medium\|large\|huge N` | N chests. The size is **how many items it offers to pick from** — small = 1, medium = 2, large = 3, huge = 5. |
+| `gain_hp N` / `gain_max_hp N` / `heal_full` | Health. `gain_max_hp` raises the cap without healing. |
+| `lose_hp N` / `lose_max_hp N` | The same, pointed the other way. A `lose_hp` that empties Health ends the run — no separate kill token. |
+| `gain_gold N` / `lose_gold N` | Gold. |
+| `gain_stat <verb> N` / `lose_stat <verb> N` | `bash`, `dash`, `push`, `transmute`, `scramble`, `bombs`, `keys`, `shields`. |
+| `gain_loot N` | A loot drop — a scroll today, and widens on its own as more loot types exist. `gain_scroll N` names the scroll directly. |
+| `apply_status <status> N` | A `statuses2.0` status on the player. |
+| `random_item_choice N` | Pick 1 of N random items. |
+| `obtain_item` | Pick **any** item in the catalogue. This is Wand of Wishing's picker — much stronger than a chest, use deliberately. |
+| `nothing` | An explicit no-op. Write it where a blank cell would read as unfinished. |
+
+And the event-only forms:
+
+```
+needs keys 1                           only offered if the player HAS it (a check, not a charge)
+needs Immerse > 0                      only offered at this point in the event (names another Choice)
+add_goal "<condition>" [for <n> games] -> <reward>
+add_curse <curse_id> [for <n> games]
+play_game tag=<tag> -> <reward>
+chance <p>% -> <reward>
+```
+
+- **`needs <resource> <n>` only checks.** It does not deduct — a locked chest
+  that costs a key is `needs keys 1; lose_stat keys 1; gain_chest medium 1`, with
+  the gate and the charge written separately. Gate stats: `hp`, `max_hp`, `gold`,
+  `games`, `keys`, `bombs`, `bash`, `dash`, `push`, `transmute`, `scramble`,
+  `shields`.
+- **`add_goal`** bolts an objective onto the next *n* games, in the same
+  honour-system voice enemy goals use. Pays if met, costs nothing if not.
+- **`add_curse`** is that inverted — an objective you want to *not* meet, which
+  bills you every time you do. It takes an id from the **`curses2.0` tab**, so
+  the curse is authored once and any event can hand out the same one.
+- **`play_game`** sends the player to a random game carrying `tag`, off their
+  route; the `->` payload lands when they beat it. **Check the tag has games
+  behind it first** — the thin end of that vocabulary has single-game buckets.
+- **`chance`** rolls. A win pays the `->` payload *and closes the event*; a loss
+  pays nothing. The costs in front of it are charged either way.
+
+`add_goal`, `play_game` and `chance` are **arrow verbs**: everything past the
+`->` is their payload, so each has to be the last clause in its cell — which is
+also what limits a cell to one of them, since a second could only come after the
+first.
+
+#### Making a choice repeat, and escalate
+
+Two columns do all the push-your-luck work:
+
+| `Repeat N` | After the choice resolves |
+|---|---|
+| blank / `End` | The event closes. |
+| `Again` | Stays open, choice still available. `Again x3` caps it. |
+| `Stay` | Stays open, but this choice is now **spent** — which is how a two-stage event fits on one row. |
+
+And inside an `Effect`, **`{X}` is how many times this choice has already been
+taken** (0 on the first press). So one authored group is a whole ladder:
+
+```
+Linger        Again   needs Immerse > 0; gain_max_hp 1; lose_hp {4+X}     4, then 5, then 6…
+Deeper        Again   lose_hp {2+X}; chance {35+10*X}% -> gain_chest small 1
+```
+
+Arithmetic is evaluated at press time, so the button can print what *this* press
+costs ("−3 Health · 55%: +1 Small Chest") and the player never sees the formula.
+
+A **staged** event is `Stay` plus a `needs <Choice>` gate: the first press spends
+itself and reveals a different button. Abyssal Baths (Immerse → Linger) and
+Scrap Ooze (Reach Inside → Deeper) are both built that way.
+
+#### Art
+
+Drop a PNG in `images2.0/events/` named after the `Image` column — PascalCase,
+like the rest (`ScrapOoze.png`). Portrait suits the modal's left column best. The
+generator prints a `!` warning if the art is missing; the event still works.
+
+#### Seeing it in the game
+
+**Use the dev panel's Events tab.** Turn on dev mode in Settings, press `` ` ``
+in a run, and open **Events**. Every authored event is listed, and each row
+carries the thing that is otherwise invisible — *why it is or isn't turning up
+where you stand*:
+
+```
+Scrap Ooze    (3 choices)    ✓ eligible here
+Unrest Site   (2 choices)    ✗ not a dead end, needs Health <= 70%
+Punch Off     (2 choices)    ✗ used 1/1 this run
+```
+
+Clicking a row **starts it right there**, blockers and all — the one you can't
+reach is exactly the one you need to look at. It goes through the same path an
+earned event takes, so the modal, the `finished` handling and a `play_game`
+detour all behave as they will in a real run (which also means starting one
+counts against its `Limit` — there's a **Clear fired counts** button for that,
+and a **Re-roll placement** one that moves the run seed).
+
+Why it's needed: placement is **hashed** from the node id and the run seed rather
+than rolled, so a card's `✦ EVENT` badge can never change under the player — but
+it also means you cannot reload your way into a new event, and an event that
+doesn't appear tells you nothing about which gate stopped it.
+
+The panel is the fast path; the two older ones still work if you want them —
+temporarily setting `Where` to `Any`, or driving
+`EventModal2.open(host, Data.get_event2(&"your_event"))` from a throwaway scene
+with the `verify` skill (`.claude/skills/verify/`), which will screenshot it.
+
+#### Rules of thumb
+
+- **Worth about one game's reward** — a small chest, a verb charge, a couple of
+  Health. A leaf costs two games and pays one, so pay less and the detour is
+  still a mistake; pay more and the optimal line is to bounce off every leaf.
+- **Health is 5–10, not 75.** A source game's damage numbers almost never come
+  across unscaled; 3 damage is a third of a character here.
+- **An event that can kill you belongs at a `Dead End`** — somewhere the player
+  chose to walk toward.
+- **Quote the source game verbatim** where you can, and leave a `Result` blank
+  rather than inventing prose and presenting it as the game's.
+- **Don't run `tools/_events2_sheet_setup.py`** once you've authored by hand. It
+  is the bootstrap that laid the tab down and it rewrites it wholesale from a
+  Python list; it will refuse rather than drop your rows, but it has nothing you
+  want.
+
+---
 
 `tools/` carries a `.gdignore`, which keeps Godot from importing the working
 files in there. Without it the editor rasterises `RoguelikeMap.svg` — a

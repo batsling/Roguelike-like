@@ -2909,3 +2909,37 @@ func test_an_ordinary_arrival_still_hands_over_its_event() -> void:
 	_ui.report(false)
 	assert_not_null(_ui._pending_event, "an event still fires where the run routed to")
 	assert_false(_ui._pending_detour)
+
+# --- starting an event from the dev panel -----------------------------------
+#
+# `open_event` is the panel's Events tab reaching into the run. It exists so a
+# started event is wired up exactly as an earned one — the same modal, the same
+# finished handler — rather than the panel building its own EventModal2 and
+# quietly testing a path nothing else takes.
+
+func test_the_panel_can_start_an_event_where_the_run_stands() -> void:
+	var ev: EventData2 = Data.get_event2(&"scrap_ooze")
+	assert_not_null(ev)
+	assert_true(_ui.open_event(ev), "an event opens on a live run")
+	assert_not_null(_ui._event_modal, "and it is the real modal, not a bare panel")
+	assert_eq(int(GameState.events_fired.get(&"scrap_ooze", 0)), 1,
+		"starting one counts against its Limit, exactly as arriving at one does")
+
+func test_the_panel_will_not_start_a_second_event_over_the_first() -> void:
+	var ev: EventData2 = Data.get_event2(&"scrap_ooze")
+	_ui.open_event(ev)
+	assert_false(_ui.open_event(Data.get_event2(&"punch_off")),
+		"one modal at a time")
+
+func test_the_panel_will_not_eat_an_event_the_run_already_earned() -> void:
+	# A queued event is one the run is owed, waiting on a resolve that is still
+	# playing. Starting one from the panel then would overwrite it and the player
+	# would simply never get the event they walked to the dead end for.
+	_ui._pending_event = Data.get_event2(&"punch_off")
+	assert_false(_ui.open_event(Data.get_event2(&"scrap_ooze")))
+	assert_eq(_ui._pending_event.id, &"punch_off", "the queued one is still queued")
+
+func test_the_panel_starts_nothing_once_the_run_is_over() -> void:
+	GameLoop2.run_over = true
+	assert_false(_ui.open_event(Data.get_event2(&"scrap_ooze")))
+	assert_false(_ui.open_event(null), "and null is not an event")

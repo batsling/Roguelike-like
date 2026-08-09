@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_scrap_ooze"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"scrap_ooze"
+display_name = "Scrap Ooze"
+source_game = "Slay the Spire"
+tier_tags = PackedStringArray()
+where = "dead_end"
+requirement = {}
+trigger = "after"
+rarity = "Common"
+run_limit = 1
+file = "ScrapOoze"
+prompt = "As you walk into the room you hear a gurgling and the grinding of metals. Before you is a slime-like creature that ate too much scrap for its own good. From the center of the creature you see glints of strange light, perhaps something magical? It looks like you can get some treasure if you just reach inside its... opening. However, the acid and sharp objects may hurt."
+goal_met = ""
+goal_missed = ""
+chance_won = "Success! After rummaging through the metal and burning acid, you finally grab hold of a relic and yank it out. You pull your way out of the ooze damaged but rewarded."
+chance_lost = "Ouch! All you find is corroded metal and a bit of burning pain. However, you're still convinced there's a relic..."
+choices = [{"id": "reach_inside", "text": "Reach Inside", "repeat": "stay", "repeat_max": 0, "result": "", "gates": [], "effects": [{"type": "lose_hp", "value": 1}], "effects_text": "-1 Health", "goal": {}, "curse": {}, "play": {}, "chance": {"percent": 25, "effects": [{"type": "gain_chest", "value": 1, "choices": 1}], "effects_text": "+1 Small Chest"}}, {"id": "deeper", "text": "Deeper", "repeat": "again", "repeat_max": 0, "result": "", "gates": [{"choice": "reach_inside", "op": ">", "value": 0}], "effects": [{"type": "lose_hp", "scaled": {"value": "2.0+X"}}], "effects_text": "-{2.0+X} Health", "goal": {}, "curse": {}, "play": {}, "chance": {"percent": 0, "scaled": {"percent": "35.0+10.0*X"}, "effects": [{"type": "gain_chest", "value": 1, "choices": 1}], "effects_text": "+1 Small Chest"}}, {"id": "leave", "text": "Leave", "repeat": "end", "repeat_max": 0, "result": "You decide to leave the area. The slime pays no attention, content with its meal.", "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

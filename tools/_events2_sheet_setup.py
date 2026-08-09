@@ -36,6 +36,11 @@ lets one authored group escalate. Two event-only forms carry the rest:
     play_game tag=<tag> -> <reward>             send the player off to a game that
                                                 isn't on their route, and pay when
                                                 they beat it
+    chance <p>% -> <reward>                     a gamble: roll p percent, pay the
+                                                reward on a win and nothing on a
+                                                loss. `{X}` in the percent climbs
+                                                it per press, exactly as it climbs
+                                                a cost
 
 WHY XML SURGERY AND NOT openpyxl: Roguelikes.xlsx carries seven charts and a
 dozen table parts that an openpyxl load/save round-trip silently drops. See
@@ -82,6 +87,13 @@ EVENT_COLS = [
     # payload is a penalty. The sign lives in the token, not in these two names.
     "Goal Met",     # printed when the goal's condition is met
     "Goal Missed",  # printed when its window closes unmet
+    # The two endings of a `chance` gamble, and event-level for the same reason
+    # Goal Met / Goal Missed are: they belong to the event's voice rather than to
+    # which button was pressed. Scrap Ooze is the proof — [Reach Inside] and
+    # [Deeper] are two rows of the sheet and one hand in the ooze, and Slay the
+    # Spire prints the same two strings for both. Blank on events with no gamble.
+    "Chance Won",   # printed when a `chance` roll lands
+    "Chance Lost",  # printed when it doesn't
 ]
 # Per choice: the label, what picking it does to the event, the prose it prints,
 # and the payload. Blank `Choice N` ends the event's choice list.
@@ -266,6 +278,70 @@ PUNCH_NAB = (
 PUNCH_FIGHT = "The Constructs turn to you menacingly!"
 
 
+# --- Scrap Ooze -------------------------------------------------------------
+#
+# Slay the Spire (the FIRST one — every other event here is from Slay the Spire
+# 2). All four strings are the game's own, verbatim, with its inline colour
+# markup (#r, #y, @…@) stripped and its NL line breaks flattened.
+#
+# The new capability is `chance`: a choice that ROLLS. Nothing in the sheet could
+# gamble before — an event could charge you, gate you, or hand you an objective,
+# but every payout was certain the moment you pressed the button. Scrap Ooze is
+# nothing but the gamble, so it could not be authored at all without the token.
+#
+#   [Reach Inside]  lose 1 Health, 25% for a relic     Stay
+#   [Deeper]        lose 2, 3, 4…    35%, 45%, 55%…    Again
+#   [Leave]         walk away                          End
+#
+# WHY TWO CHOICES FOR ONE HAND IN THE OOZE: because Slay the Spire renames the
+# button after the first reach, and the sheet already has the shape for that —
+# `Stay` spends [Reach Inside] and reveals [Deeper], the same staging Abyssal
+# Baths uses for Immerse -> Linger. X counts Deepers already taken, so one
+# authored group is the whole ladder.
+#
+# THE DAMAGE IS THIS GAME'S, THE ODDS ARE THE ORIGINAL'S. Slay the Spire opens at
+# 3 HP and climbs by one per attempt against a 75 HP pool — 4% of a character for
+# the first grab. Health here is 5-10 (docs/games-first-redesign.md §3), where 3
+# is 30-60%, which nobody pays for a 25% shot. So the ladder starts at 1 and
+# climbs by one per FAILED reach — 1, 2, 3, 4. The odds are untouched (25%, +10
+# per failure), which puts the cost of reaching until it lands at about 6 Health
+# over about 2.7 reaches: more than a whole character at the low end of the pool.
+#
+# A relic is a SMALL CHEST, which is the mapping Punch Off and Unrest Site
+# already use — small is one item offered, so it reads as the random relic Slay
+# the Spire hands over rather than as a pick. `obtain_item` would have been the
+# wrong token: that is Wand of Wishing's any-item-in-the-game picker.
+#
+# The gamble can kill you, and that is intended — the ladder is unbounded and
+# `Again` never stops offering. That is the Abyssal Baths rule (§7): an event
+# with a way to die in it belongs at a Dead End, somewhere you had to choose to
+# walk toward.
+OOZE_PROMPT = (
+    "As you walk into the room you hear a gurgling and the grinding of metals. "
+    "Before you is a slime-like creature that ate too much scrap for its own "
+    "good. From the center of the creature you see glints of strange light, "
+    "perhaps something magical? It looks like you can get some treasure if you "
+    "just reach inside its... opening. However, the acid and sharp objects may "
+    "hurt."
+)
+
+OOZE_WON = (
+    "Success! After rummaging through the metal and burning acid, you finally "
+    "grab hold of a relic and yank it out. You pull your way out of the ooze "
+    "damaged but rewarded."
+)
+
+OOZE_LOST = (
+    "Ouch! All you find is corroded metal and a bit of burning pain. However, "
+    "you're still convinced there's a relic..."
+)
+
+OOZE_LEAVE = (
+    "You decide to leave the area. The slime pays no attention, content with "
+    "its meal."
+)
+
+
 EVENTS = [
     {
         "Event": "Abyssal Baths",
@@ -369,6 +445,36 @@ EVENTS = [
             ("Nab", "", PUNCH_NAB, "add_curse injury; gain_chest small 1"),
             ("I Can Take Them", "", PUNCH_FIGHT,
              "play_game tag=mecha -> gain_loot 1; gain_chest small 2"),
+        ],
+    },
+    {
+        "Event": "Scrap Ooze",
+        "Game": "Slay the Spire",
+        "Tier": "All",
+        "Where": "Dead End",
+        # An Act 1 event in the original, and Act 1 is where you can least
+        # afford the Health — but this run has no acts, and the escalating
+        # ladder already prices itself. No gate.
+        "Requirement": "",
+        "Trigger": "After",
+        "Rarity": "Common",
+        "Limit": "1",
+        "Image": "ScrapOoze",
+        "Prompt": OOZE_PROMPT,
+        "Goal Met": "",
+        "Goal Missed": "",
+        "Chance Won": OOZE_WON,
+        "Chance Lost": OOZE_LOST,
+        # Result cells are blank on the two reaches: what the ooze says depends
+        # on the ROLL, not on which button produced it, so both outcomes live in
+        # Chance Won / Chance Lost above. Leave keeps its own prose, because
+        # walking away doesn't roll for anything.
+        "choices": [
+            ("Reach Inside", "Stay", "", "lose_hp 1; chance 25% -> gain_chest small 1"),
+            ("Deeper", "Again", "",
+             "needs Reach Inside > 0; lose_hp {2+X}; "
+             "chance {35+10*X}% -> gain_chest small 1"),
+            ("Leave", "", OOZE_LEAVE, "nothing"),
         ],
     },
 ]
