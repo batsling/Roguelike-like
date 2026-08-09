@@ -141,19 +141,19 @@ def parse_gate(clause, where, choice_labels):
     return {"resource": stat, "value": int(toks[1])}
 
 
-def _claim_arrow(held, wanted, last, where):
+def _claim_arrow(wanted, last, where):
     """Guard the one `->` payload a cell has.
 
-    An arrow verb has to be the last clause (everything past the arrow is its
-    payload) and there can only be one of them, since they would otherwise be
-    fighting over the same payload — silently, with the last one winning.
+    An arrow verb owns everything past the arrow, so it has to be the LAST clause
+    in the cell. That one rule is also what limits a cell to one arrow verb: a
+    second one can only appear after the first, which the first being last
+    forbids. So there is no separate "two verbs want the payload" check — this is
+    it, and the message it gives for `add_goal "x"; chance 25% -> y` is that
+    add_goal is not last, which is exactly the cell's problem.
     """
-    if held is not None:
-        raise ValueError("events2.0 %s: %s and %s both want the `->` payload; a "
-                         "cell gets one arrow verb"
-                         % (where, ARROW_VERBS[held], ARROW_VERBS[wanted]))
     if not last:
-        raise ValueError("events2.0 %s: %s must be the last clause"
+        raise ValueError("events2.0 %s: %s must be the last clause in the cell "
+                         "(it takes the `->` payload, so nothing can follow it)"
                          % (where, ARROW_VERBS[wanted]))
 
 
@@ -195,7 +195,7 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids):
 
         m = GOAL_RE.match(clause)
         if m:
-            _claim_arrow(arrow_verb, "goal", last, where)
+            _claim_arrow("goal", last, where)
             out["goal"] = {"condition": dsl.normalise_holes(m.group(1)),
                            "games": int(m.group(2)) if m.group(2) else 1}
             arrow_verb = "goal"
@@ -218,14 +218,14 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids):
 
         m = PLAY_RE.match(clause)
         if m:
-            _claim_arrow(arrow_verb, "play", last, where)
+            _claim_arrow("play", last, where)
             out["play"] = {"tag": m.group(1).strip().lower()}
             arrow_verb = "play"
             continue
 
         m = CHANCE_RE.match(clause)
         if m:
-            _claim_arrow(arrow_verb, "chance", last, where)
+            _claim_arrow("chance", last, where)
             out["chance"] = parse_chance(m.group(1), where)
             arrow_verb = "chance"
             continue

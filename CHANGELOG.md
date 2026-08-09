@@ -68,12 +68,27 @@ For how the project is laid out and how its systems fit together, see
   since an outcome decided by the roll belongs to the event's voice and not to
   the button that produced it, and both reaches print the same two lines.
   Alongside it, "must be the last clause" stopped being a rule written twice:
-  `add_goal`, `play_game` and `chance` share one check, which also catches two
-  arrow verbs fighting over a cell's single `->` payload.
+  `add_goal`, `play_game` and `chance` share one check now, and that single rule
+  is also what keeps a cell to one arrow verb — a second could only appear after
+  the first, which being last forbids.
 
   **The curses were already portable** — `curses2.0` has been a tab in
   `Roguelikes.xlsx` since the events sheet landed, and `generate_curse2_tres.py`
   regenerates both curses from it byte-identically. Nothing to do there.
+
+  **And the README now has [Authoring an event](README.md#authoring-an-event)** —
+  the how-to that `docs/event-sheet-authoring.md` never was, since that document
+  argues for the format rather than explaining how to fill it in. Columns, the
+  whole `Effect` token vocabulary, `Repeat` + `{X}`, art naming, how to reach a
+  new event in a running game, and the exchange rate a dead-end event has to pay.
+  Writing it turned up two things the sheet says but the build does not do, both
+  now flagged where an author would hit them: **`Trigger: Before` is inert** (it
+  parses, generates and is described in the Collection, and nothing reads it —
+  every event fires after the game is beaten), and **a `needs <resource>` gate
+  only checks, it does not deduct** — the design doc's "spend a key, take an item"
+  was never true, and a choice that should cost the key has to write the charge
+  itself. Every token in the new guide was run through the parser rather than
+  transcribed from memory, which is what caught them.
 
 ---
 

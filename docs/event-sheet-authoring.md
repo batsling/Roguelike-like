@@ -94,7 +94,7 @@ for N = 1…4.
 | `Tier` | event | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. Gates an event to part of the tier ladder, the same vocabulary `enemies2.0` gates on. |
 | `Where` | event | Placement. `Dead End` (default — a node with one connection, §1), `Any`, or `Game` (only ever on its own `Game`, the way Abyssal Baths belongs to the Underdocks). |
 | `Requirement` | event | A condition on the **run state** that must hold before the event can appear at all — `<stat> <op> <value>`, a trailing `%` reading against the maximum (`hp <= 70%`). Blank = always eligible. `Tier` gates on the ladder, `Where` on the map, this on the player. |
-| `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). |
+| `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). **`Before` is not implemented** — see §13. |
 | `Rarity` | event | `Common` / `Uncommon` / `Rare`. Weights the roll, same ordering as items and scrolls. |
 | `Limit` | event | Times per run. A number, or `None` for no limit. |
 | `Image` | event | Art base name → `res://images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`, matching every other 2.0 sheet. |
@@ -227,11 +227,16 @@ chance <p>% -> <reward>; <reward>
 ```
 
 `add_goal`, `play_game` and `chance` are **arrow verbs**: everything past the
-`->` is their payload, so each has to be the last clause in its cell and a cell
-gets at most one of them. The generator says so rather than letting the last one
-quietly win the payload.
+`->` is their payload, so each has to be the last clause in its cell. That single
+rule is also what keeps a cell to one arrow verb — a second one could only appear
+after the first, which being last forbids — so there is no separate check for two
+of them fighting over the payload, and none is needed.
 
-`needs` leads a cell (`needs keys 1; obtain_item` — spend a key, take an item).
+`needs` leads a cell. Its resource form is a **check, not a charge**: `needs
+keys 1` asks whether the player has a key, and nothing deducts it. A choice that
+should cost the key writes the charge itself — `needs keys 1; lose_stat keys 1;
+gain_chest medium 1` — which keeps "may I offer this" and "what it costs"
+separable, so a gate can also guard something it doesn't consume.
 
 Its second form is what lets one row hold a **staged** event: the gate names
 another `Choice N` in the same event and compares how often it has been taken, so
@@ -677,8 +682,7 @@ Two event columns and one token. The columns are the second instance of a rule
 §3 already set, not a new idea: an ending that is not any single choice's ending
 lives at event level. The token is the fourth of them, and `chance` joins
 `add_goal` and `play_game` as an **arrow verb** — which is what turned "must be
-the last clause" from a rule written twice into one shared check that also
-catches two arrow verbs fighting over one payload.
+the last clause" from a rule written twice into one shared check written once.
 
 ---
 
@@ -782,6 +786,12 @@ the other's shape.
    modal serving events *and* `encounters`. `EventModal2` is the modal that
    should absorb them; the combat-era `scripts/events/EventModal.gd` (d20 rolls
    against stats the redesign deleted) is now dead weight and can go with them.
-2. **More events.** Four events against ~330 leaves means most dead ends are
-   still plain. Nothing structural stands in the way — the last three events
-   needed one new column between them, and the two before that needed none.
+2. **`Trigger: Before` is authorable but inert.** The column parses, generates
+   into `EventData2.trigger` and is described in the Collection — and nothing
+   reads it. `Overworld2` queues an event from `_end_resolve`, so every event
+   fires after the game is beaten whatever the cell says. An arrival-time event
+   is the one that could hand you a goal *for the game you are about to play*,
+   which is a shape §8 wants; until it exists, leave the column on `After`.
+3. **More events.** Five events against ~330 leaves means most dead ends are
+   still plain. Nothing structural stands in the way — the last four events
+   needed three new columns between them, and the two before that needed none.
