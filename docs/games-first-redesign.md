@@ -31,9 +31,10 @@ so every number must stay small and glanceable.
 4. Resolve:
    - **Goal met → enemy defeated → item drops.**
    - **Game beaten but goal not met → the enemy is not defeated: it *stacks*.**
-     No item drops. A stacked enemy has a **one-game grace** (§7.2) — its first
-     hit lands only after the *next* game is beaten — then it **attacks after each
-     game you play**, for its `Damage`, until its goal is fulfilled. Unspent
+     No item drops. The enemy has been standing on the board since you chose its
+     game (§7.2) and simply keeps walking — from the back column it takes a game
+     or more to reach you — and once it is in the front column it **attacks after
+     each game you play**, for its `Damage`, until its goal is fulfilled. Unspent
      `shields` (§3.2) absorb, remainder comes off `health`. The more unbeaten enemies on
      the stack, the more damage per game, ramping until you die or clear them.
    - **Old goals can still be fulfilled later.** Fulfilling a stacked enemy's goal
@@ -325,6 +326,16 @@ Deckbuilder/Slay the Spire), Baby Alien (Action/Brotato).
 - **deals more damage** than a normal stacked enemy (above the 1–3 band),
 - and (naturally) drops a better item.
 
+**A boss round announces itself in a popup** (`BossNoticeModal`), once, as the
+offering that carries it comes back. It was a strip above the offering, which is
+the wrong shape for a thing that happens once and has to be acknowledged: it
+shoved the offering, the checklist and the board down the page at the moment
+those were being read, and then held a row of a one-screen layout for the whole
+round. The popup also has room for the part the strip never said — that a boss
+round is a different set of rules (no bomb damage; bash / transmute / scramble
+buy you a *different* boss rather than a way past this one) — and it shows the
+bosses standing on the cards, which the cards themselves already name.
+
 Otherwise a boss follows the same rules: fulfill its goal to defeat it, or it
 stacks and hits you (per §7.2) until you do. A boss **cannot be dashed
 past**, and unlike a normal enemy **takes no damage from bombs** — a boss can
@@ -334,23 +345,33 @@ throw is legal and spends the charge, it just does no damage, which is how
 whether the pre-commit escapes (**scramble** the goal / **bash** the game) are
 allowed on a boss node or whether difficulty-gate bosses are fully unskippable.
 
-### 7.2 Enemy timing — the one-game grace
+### 7.2 Enemy timing — spawn onto the board, then walk
 
-Enemies don't hit immediately; there's always **one extra game** to find a
-solution:
+An enemy **spawns onto the battlefield the moment you choose its game**, at the
+back column, and from that moment it is an ordinary body on the board: it takes
+its turns, it is drawn with everything else, and it is `GameLoop2.current` only
+in the sense that it is the one whose goal this game is being played for
+(`current` and its stack entry are literally the same record).
 
-1. **Spawn** — an enemy appears when you **choose** its game.
-2. You play & **beat that game**. If its goal wasn't met, the enemy persists (it
-   does *not* attack yet).
-3. Its **first attack lands after the *next* game is chosen and beaten** — i.e.
-   one game later. That intervening game is the "extra step" where you can still
-   fulfill the old goal (§2), bomb a normal enemy, or Stun it.
+1. **Spawn** — the enemy appears **on the back column** when you choose its game.
+2. You play & **beat that game**, and the resolve runs in this order: goals met
+   this game land their hits (the current enemy's, plus any old goals you also
+   cleared), then every surviving body takes its `enemy_turns()` actions.
+3. So an enemy whose goal you met is **defeated before it acts at all**, and one
+   whose goal you missed **starts walking during its own game** — reaching the
+   front column takes it the width of the board, which is where the breathing
+   room comes from.
 4. Thereafter it keeps attacking on each game beaten, per §2, until its goal is
    met or it's removed.
 
-The grace is **one game**, not one action, and it survives §7.4: however many
-turns the enemies are taking, the current game's enemy resolves *after* all of
-them, so it never strikes on the game that spawned it.
+**This used to be a rule and is now a distance.** The enemy used to wait in an
+off-field lane and step onto the grid only once its game was reported, which
+bought it a guaranteed "one-game grace" no matter what. The grace is now simply
+that it spawns at the far edge: it is worth exactly the ground between the back
+column and the front, which the difficulty tier widens (§7.3) and the amulet
+pressure ladder eats into (§7.4). The board says how long you have instead of a
+rule saying it, and the enemy you are playing against is visibly *on the board*
+you are trying to survive.
 
 **Stun** (Scroll of Scare Monster, §4.1) costs the target **one turn** — it
 neither strikes nor steps, and one stack of stun ticks off with it. Out in the
@@ -728,8 +749,9 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   the HUD tint and the collection filter — and drives nothing.
 - **Stun skips the enemy's next attack** — pushes it one game later in the timing
   model (§7.2).
-- **Enemy timing: one-game grace** — spawns on game choice, first hits after the
-  *next* game is beaten, giving an "extra step" to solve it (§7.2).
+- **Enemy timing: spawn onto the board, then walk** — an enemy stands on the back
+  column from the moment its game is chosen and closes in from there, so the
+  "extra step" to solve it is the ground it has to cross (§7.2).
 - **Item Effect DSL = the existing `ItemData.triggers`/`EffectSystem` grammar**;
   add the `game_beaten` and `game_selected` triggers (§8.1).
 - **Scroll identification reuses `PotionSystem`** (new `ScrollSystem`): scrolls
@@ -990,8 +1012,17 @@ limiter and three fresh items you still can't afford is not a windfall.
 
 ### 14.4 When it opens, and what the road can see
 
-The shop opens **after the hub's game is beaten**, queued behind the board's
-resolve playback on the same path an event takes (`Overworld2._pending_shop`).
+The shop appears **after the hub's game is beaten**, queued behind the board's
+resolve playback on the same path an event takes (`Overworld2._pending_shop`) —
+and it appears **on the page, under the battlefield** (`ShopPanel2`), not as a
+modal over it. A shop is not an interruption: the run's rhythm is report the
+game, see what it cost you on the board, choose where to go next, and a
+full-screen shop dropped into the middle of that stopped everything to ask a
+question the player had not asked yet — while covering the board and the offering
+the answer depends on. Mounted under the board it blocks nothing, stays for the
+whole visit (travelling on is what closes it), and is read next to the run it is
+being spent on. Because it can sit below the fold, a **`🛒 Shop ↓` pointer**
+floats at the foot of the screen until the panel has been scrolled to.
 **Escaping opens nothing** — escape fires no `game_beaten` triggers anywhere in
 the build, and this is not the place to make it an exception. If the Amulet game
 is itself a hub, winning the run beats the shop: the run is over.
@@ -1020,7 +1051,7 @@ block cannot disagree — the same rule `StatusData.tooltip_for` follows (§13.3
 
 **The shopkeepers.** `data/encounters/` already carries two combat-era ones (P
 Mart's Tracy from Mewgenics, Trorc from Enter the Gungeon) with pools and
-discounts. A `shopkeeper` field is read by `ShopModal2` and falls back to the
+discounts. A `shopkeeper` field is read by `ShopPanel2` and falls back to the
 hub's own game name, so an authored roster drops in without reshaping anything.
 
 **A wider stock.** Today a shop sells items only. The obvious next step is the

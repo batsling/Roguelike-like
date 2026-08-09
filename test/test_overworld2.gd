@@ -199,7 +199,10 @@ func test_aiming_a_push_draws_an_arrow_per_legal_direction() -> void:
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
-	assert_eq(int(entry["col"]), GameLoop2.spawn_col(), "it spawned at the back")
+	# It spawned on the back column and then walked a step during its own game
+	# (§7.2); park it back against the edge, which is the case this test is about.
+	entry["col"] = GameLoop2.spawn_col()
+	assert_eq(int(entry["col"]), GameLoop2.spawn_col(), "it is against the back edge")
 	_ui._board.begin_push()
 	_ui._board.click_enemy(inst, entry, int(entry["col"]), false)
 	assert_eq(_ui._board.selected_instance, inst, "the click aims rather than inspects")
@@ -1805,16 +1808,16 @@ func test_a_new_run_clears_the_last_ones_verdict() -> void:
 
 # The advance has to be MEASURABLE the instant the board repaints, or it never
 # animates: the resolve compares where everyone stood with where they now stand,
-# and a rebuilt overflow lane that still holds last frame's token answers for an
-# enemy that has already walked onto the grid.
+# so the board has to be drawing the enemy at its new square by the time the
+# playback asks where it is.
 func test_an_enemy_that_walks_onto_the_grid_reads_as_having_moved() -> void:
 	_ui.pick(0)
 	var before: Dictionary = _ui._board.capture_positions()
 	var inst: int = int(GameLoop2.current["instance"])
-	assert_true(before.has(inst), "the game in play waits off the field")
-	_ui.report(false)                      # missed -> it walks onto the board
+	assert_true(before.has(inst), "picking the game stood its enemy on the board")
+	_ui.report(false)                      # missed -> it takes its step
 	var after: Dictionary = _ui._board.capture_positions()
-	assert_true(after.has(inst), "and now stands on the grid")
+	assert_true(after.has(inst), "and it is still on the grid, a column closer")
 	var moved: float = (after[inst] as Rect2).position.distance_to((before[inst] as Rect2).position)
 	assert_gt(moved, 2.0,
 		"the advance is measurable straight away — a stale off-field token would say it never moved")
@@ -2097,12 +2100,17 @@ func test_the_playback_runs_one_beat_per_turn() -> void:
 	var before: Dictionary = _ui._board.capture_positions()
 	assert_gt(before.size(), 0, "the picked game put an enemy on the board")
 	var inst: int = int(before.keys()[0])
+	# Every frame holds the enemy on the square it is actually standing on, so the
+	# playback is three STRIKES and no movement — this test is about the beats, and
+	# a fabricated walk would add slide time to the number being compared.
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	var at := Vector2i(int(entry.get("col", 1)), int(entry.get("row", 0)))
 	var one: float = _ui._board.animate_resolve(before, {
-		"turns": 1, "turn_frames": [{inst: Vector2i(1, 0)}],
+		"turns": 1, "turn_frames": [{inst: at}],
 		"attacks": [{"instance": inst, "turn": 0, "damage": 3}]})
 	var three: float = _ui._board.animate_resolve(before, {
 		"turns": 3,
-		"turn_frames": [{inst: Vector2i(1, 0)}, {inst: Vector2i(1, 0)}, {inst: Vector2i(1, 0)}],
+		"turn_frames": [{inst: at}, {inst: at}, {inst: at}],
 		"attacks": [
 			{"instance": inst, "turn": 0, "damage": 3},
 			{"instance": inst, "turn": 1, "damage": 3},
@@ -2691,3 +2699,213 @@ func test_finishing_a_game_does_fire_the_trigger() -> void:
 	assert_eq(_game_beaten_count(), 1,
 		"a game played to a verdict fires it even when the goal was missed")
 	TriggerBus.game_beaten.disconnect(_note_game_beaten)
+
+# ---------------------------------------------------------------------------
+# The checklist and the board point at each other
+# ---------------------------------------------------------------------------
+#
+# A goal on the list and a body on the field are the same fact written twice.
+# Hovering either end lights both, which is the only thing that answers "which of
+# these four lines is that thing" without reading names.
+
+func test_hovering_a_goal_row_lights_the_body_it_belongs_to() -> void:
+	_ui.pick(0)
+	_ui.report(false)                      # the enemy is a follower now
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	assert_true(_ui._row_paints.has(inst),
+		"the standing checklist wrote a row about that body")
+	_ui._light_bodies([inst])
+	assert_true(_ui._board._is_lit(inst), "and lighting the row lights the body")
+	_ui._light_bodies([])
+	assert_false(_ui._board._is_lit(inst), "leaving the row puts it out again")
+
+func test_hovering_a_body_lights_the_goal_row_it_is_written_on() -> void:
+	_ui.pick(0)
+	_ui.report(false)
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	# What the board emits when the mouse crosses a body.
+	_ui._on_enemy_hovered(inst, true)
+	assert_true(_ui._lit_instances.has(inst), "the row for that body is lit")
+	assert_true(_ui._board._is_lit(inst), "and so is the body")
+	_ui._on_enemy_hovered(inst, false)
+	assert_false(_ui._lit_instances.has(inst), "and both go out together")
+
+func test_a_row_about_no_body_lights_nothing() -> void:
+	# The level-up challenge, event goals and player statuses belong to no enemy,
+	# so they bind nothing rather than lighting an arbitrary body.
+	_ui.pick(0)
+	var bound: int = _ui._row_paints.size()
+	assert_lte(bound, GameLoop2.stack.size(),
+		"only the rows written about a body are bound: %d bound, %d bodies" % [
+			bound, GameLoop2.stack.size()])
+
+func test_the_lit_set_is_dropped_when_the_checklist_is_rebuilt() -> void:
+	_ui.pick(0)
+	var inst: int = int(GameLoop2.current["instance"])
+	_ui._light_bodies([inst])
+	assert_true(_ui._board._is_lit(inst))
+	_ui.report(false)                      # rebuilds the checklist under it
+	assert_true(_ui._lit_instances.is_empty(),
+		"nothing stays lit by a list that no longer exists")
+
+# ---------------------------------------------------------------------------
+# The boss round is a popup, not a strip that shoves the page down
+# ---------------------------------------------------------------------------
+
+func _force_boss_round() -> void:
+	# A boss round is the CAPSTONE of a tier: it lands on the offering drawn after
+	# the GAMES_PER_TIER'th game has been played.
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER
+	_ui._build_choices()
+	assert_true(_ui._boss_round, "the next offering is the difficulty gate")
+
+func test_a_boss_round_announces_itself_in_a_popup() -> void:
+	_force_boss_round()
+	_ui._maybe_announce_boss()
+	assert_not_null(_ui._boss_notice, "the warning is a popup")
+	_ui._boss_notice.close()
+	assert_null(_ui._boss_notice, "and it closes on its own button")
+
+func test_the_boss_warning_opens_once_for_the_round() -> void:
+	_force_boss_round()
+	_ui._maybe_announce_boss()
+	var first = _ui._boss_notice
+	first.close()
+	# A scramble / bash redraws the offering; the warning must not come back with it.
+	_ui._build_choices()
+	_ui._maybe_announce_boss()
+	assert_null(_ui._boss_notice, "the same round warns once")
+
+# ---------------------------------------------------------------------------
+# The shop is part of the page, under the board (§14)
+# ---------------------------------------------------------------------------
+
+func _a_hub() -> StringName:
+	var hubs: Array = ShopSystem.hub_games()
+	return hubs[0] if not hubs.is_empty() else &""
+
+func test_a_shop_mounts_under_the_board_rather_than_over_it() -> void:
+	var hub: StringName = _a_hub()
+	if hub == &"":
+		return
+	_ui._mount_shop(hub)
+	assert_not_null(_ui._shop_panel, "the shop is on the page")
+	assert_eq(_ui._shop_panel.get_parent(), _ui._right_col,
+		"in the board's own column, under it")
+	assert_eq(_ui._shop_panel.game_id(), hub, "and it is that hub's shop")
+
+func test_the_pointer_at_the_shop_goes_up_with_it_and_down_with_it() -> void:
+	var hub: StringName = _a_hub()
+	if hub == &"":
+		return
+	_ui._mount_shop(hub)
+	assert_eq(_ui._shop_hint.visible, not _ui._shop_in_view(),
+		"the pointer is up exactly while the shop it points at is off screen")
+	_ui._clear_shop()
+	assert_null(_ui._shop_panel, "leaving takes the shop off the page")
+	assert_false(_ui._shop_hint.visible, "and the pointer with it")
+
+func test_travelling_on_closes_the_shop_but_not_the_shelf() -> void:
+	var hub: StringName = _a_hub()
+	if hub == &"":
+		return
+	ShopSystem.shop_for(hub)
+	_ui._mount_shop(hub)
+	_ui.pick(0)
+	assert_null(_ui._shop_panel, "picking the next game walks out of the shop")
+	assert_false(ShopSystem.shop_for(hub).is_empty(),
+		"but the shelf is still there to come back to")
+
+# ---------------------------------------------------------------------------
+# The far side of a play_game detour (§10)
+# ---------------------------------------------------------------------------
+
+func _neighbour_of_here() -> StringName:
+	var nbrs: Array = RunGraph.neighbors(GameState.current_game_id)
+	return nbrs[0] if not nbrs.is_empty() else &""
+
+func test_stay_or_return_is_asked_with_the_offering_not_a_dialog() -> void:
+	var back: StringName = _neighbour_of_here()
+	if back == &"":
+		return
+	_ui._ask_stay_or_return(back)
+	assert_true(_ui._asking_return(), "the run is standing on the question")
+	assert_eq(_ui._choices.size(), 2, "two destination cards, drawn like any offering")
+	assert_true(bool(_ui._choices[0].get("stay", false)), "the first is where you are")
+	assert_eq(StringName(_ui._choices[1]["slot"]), back, "the second is where you came from")
+	for c in _ui._choices:
+		assert_null(c["enemy"], "neither card rolls an enemy — nothing is being played")
+
+func test_a_destination_card_opens_the_same_popup_with_a_different_verb() -> void:
+	var back: StringName = _neighbour_of_here()
+	if back == &"":
+		return
+	_ui._ask_stay_or_return(back)
+	var modal: GameChoiceModal = _ui.open_choice(1)
+	assert_not_null(modal, "the card opens")
+	assert_gt(modal.route_steps(), -1, "with the route from there drawn on it")
+	modal.travel()
+	assert_false(_ui._asking_return(), "answering it ends the question")
+	assert_eq(GameState.current_game_id, back, "and moves the run back")
+
+func test_staying_keeps_the_run_where_the_detour_left_it() -> void:
+	var back: StringName = _neighbour_of_here()
+	if back == &"":
+		return
+	var here: StringName = GameState.current_game_id
+	_ui._ask_stay_or_return(back)
+	_ui.pick(0)                            # the "stay here" card
+	assert_false(_ui._asking_return())
+	assert_eq(GameState.current_game_id, here, "the run carries on from the detour")
+	assert_gt(_ui._choices.size(), 0, "with an ordinary offering back on the table")
+
+func test_the_verbs_are_held_while_the_question_is_up() -> void:
+	var back: StringName = _neighbour_of_here()
+	if back == &"":
+		return
+	GameState.dash_charges = 2
+	GameState.scramble = 2
+	_ui._ask_stay_or_return(back)
+	_ui.dash()
+	assert_false(_ui._dash_mode, "Dash cannot redraw the two destinations")
+	assert_false(_ui.scramble(), "and neither can Scramble")
+	assert_eq(_ui._choices.size(), 2, "the question is still the question")
+
+# The bug this pins: an event that posts the run off to another game (§10) used
+# to have that game hand over an event of ITS own on the way back — so beating
+# the mecha game Punch Off sends you to gave you the stay-or-return question AND
+# a second event dropped on top of it. A detour's destination is somewhere the
+# run was sent, not somewhere it routed to, and nothing is waiting there.
+
+func _node_carrying_an_event() -> StringName:
+	for g in Data.all_games():
+		if not (g is GameData) or RunGraph.is_off_map(g.id):
+			continue
+		if EventSystem.event_for(g.id) != null:
+			return g.id
+	return &""
+
+func test_a_detour_hands_over_no_event_of_its_own() -> void:
+	var node: StringName = _node_carrying_an_event()
+	if node == &"":
+		return
+	_ui.pick(0)
+	# The game being reported is a detour's destination, standing on a node that
+	# does carry an event.
+	_ui._chosen["slot"] = node
+	_ui._play_return_to = _neighbour_of_here()
+	_ui.report(false)
+	assert_null(_ui._pending_event, "the detour's far side owes no event")
+	assert_true(_ui._pending_detour, "it owes the stay-or-return question instead")
+
+func test_an_ordinary_arrival_still_hands_over_its_event() -> void:
+	# The pairing that makes the test above mean something: the guard is on the
+	# detour, not on events firing at all.
+	var node: StringName = _node_carrying_an_event()
+	if node == &"":
+		return
+	_ui.pick(0)
+	_ui._chosen["slot"] = node
+	_ui.report(false)
+	assert_not_null(_ui._pending_event, "an event still fires where the run routed to")
+	assert_false(_ui._pending_detour)

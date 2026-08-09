@@ -26,6 +26,11 @@ signal push_requested(instance: int, dir: Vector2i)
 signal bomb_requested(instance: int)
 # An enemy was clicked: the host opens the inspect card for it.
 signal enemy_inspected(entry: Dictionary, col: int, is_current: bool)
+# The mouse moved onto (or off) a body. The host lights the checklist row that
+# body's goal is written on, so "which of these lines is that thing" is answered
+# by pointing at either half of the pair. `instance` is the body; `hovered` says
+# which way it moved.
+signal enemy_hovered(instance: int, hovered: bool)
 # A repaint finished — the host repaints anything anchored to the board with it.
 signal repainted
 # The Health the board is showing moved. During a resolve playback that is NOT
@@ -73,6 +78,16 @@ var _enemy_layer: Control            # free-positioned enemy nodes, drawn over t
 # enemy overlapping another never hides what that other one is about to do to you.
 var _badge_layer: Control
 var _enemy_nodes: Dictionary = {}    # instance -> the node currently drawing it
+# instance -> a Callable that repaints that body for the current lit/selected
+# state. Rebuilt with the bodies on every refresh (a node's paint closes over its
+# own frames), and the single way anything lights an enemy up.
+var _repaint_fns: Dictionary = {}
+# The body the mouse is actually over (0 = none), and the ones something ELSE
+# asked to be lit — today the checklist rows beside the board (`highlight`).
+# Either one lights a body; they are kept apart so a highlight ending doesn't
+# darken a body the mouse is still sitting on.
+var _hovered_instance: int = 0
+var _highlighted: Dictionary = {}
 var _offgrid_box: VBoxContainer      # overflow queue just off the grid's right edge
 var _fx_layer: Control               # overlay for damage numbers + sliding ghosts
 # Bodies (and their badges) currently hidden behind a travelling ghost. Held for
@@ -617,9 +632,10 @@ func _build() -> void:
 	_battlefield.add_child(off_col)
 
 # Repaint the battlefield from the current loop state: place each following enemy
-# in its grid cell (by column = distance), the off-grid queue in the side lane,
-# and — when `show_current` is set — the just-picked enemy in the off-field lane
-# while its game is being played.
+# in its grid cell (by column = distance) and the off-grid queue in the side lane.
+# `show_current` marks the enemy of the game being played right now — it stands on
+# the board with the rest (§7.2), and this is what draws it in the current accent
+# so it is recognisable as the one this game is being played against.
 func refresh(show_current: bool = false) -> void:
 	if _battlefield == null:
 		return
@@ -644,6 +660,12 @@ func refresh(show_current: bool = false) -> void:
 			layer.remove_child(c)
 			c.queue_free()
 	_enemy_nodes.clear()
+	# The paint callables close over the frames of nodes that have just been freed,
+	# so they go with them; the bodies below register fresh ones. `_highlighted`
+	# does NOT reset — a checklist row the mouse is still on wants its enemies lit
+	# on the other side of a repaint too.
+	_repaint_fns.clear()
+	_hovered_instance = 0
 	# DETACHED as well as freed, exactly like the two layers above: queue_free
 	# alone leaves the old token in the tree until the end of the frame, and
 	# capture_positions() reads the overflow lane by walking these children — so a
@@ -658,22 +680,26 @@ func refresh(show_current: bool = false) -> void:
 	# bounding boxes overlap. Sorting by the bottom edge of the footprint (then the
 	# top edge, then the column) makes a tall enemy hang in front of what it
 	# reaches down past.
+	# The enemy of the game being played right now stands on the board with
+	# everything else (§7.2) — drawn with a thicker ring and a washed fill rather
+	# than parked in a lane of its own, so "the thing I am playing for" is a body on
+	# the field taking its turns like the rest.
+	var current_inst: int = int(GameLoop2.current.get("instance", 0)) if show_current else 0
 	var placed: Array = []
 	for entry in GameLoop2.stack:
 		if int(entry.get("col", GameLoop2.offgrid_col())) <= GameLoop2.grid_cols():
 			placed.append(entry)
 	placed.sort_custom(func(a, b): return _draw_order_key(a) < _draw_order_key(b))
 	for entry in placed:
-		_add_enemy_node(entry, false)
+		_add_enemy_node(entry, current_inst > 0 and int(entry.get("instance", 0)) == current_inst)
 
-	# Off-field: the overflow queue, plus the game you're playing right now — it
-	# isn't on the stack yet and only walks onto the board when you report the
-	# result (that entrance is the one-game grace made visible, §7.2).
+	# Off-field: the overflow queue — bodies with nowhere on the board to stand,
+	# which the current game's enemy can be one of when the back of the board is
+	# already full.
 	for entry in GameLoop2.stack:
 		if int(entry.get("col", GameLoop2.offgrid_col())) > GameLoop2.grid_cols():
-			_offgrid_box.add_child(_offgrid_token(entry, false))
-	if show_current and GameLoop2.has_current():
-		_offgrid_box.add_child(_offgrid_token(GameLoop2.current, true))
+			_offgrid_box.add_child(_offgrid_token(entry,
+				current_inst > 0 and int(entry.get("instance", 0)) == current_inst))
 
 	# Drop a selection that died / was bombed, then relabel the combat verbs.
 	if selected_instance > 0 and _stack_entry(selected_instance).is_empty():
@@ -688,18 +714,25 @@ func refresh(show_current: bool = false) -> void:
 # outline and lifts the fill (the "you can click this" cue); the selected enemy —
 # the one the toolbar's Push / Bomb act on — keeps a thick accent ring. `frames`
 # is one PanelContainer per cell the enemy fills, so an L reads as an L.
-# `frames` are the tiles UNDER the art (fill + outline); `edges` are outline-only
-# tiles ON TOP of it. Both are needed: art that leaves the cell part empty wants the
-# fill behind it, and art that covers the cell edge to edge — the Wisp, and every
-# other sprite drawn to fill its square — would otherwise paint straight over the
-# outline and leave the enemy with no visible border at all. Threat colour, the
-# selection ring and the hover brighten are all carried on that outline, so
-# losing it loses the three things the border is for.
+#
+# The tiles sit UNDER the art and nowhere else. There was briefly a second set of
+# outline-only tiles drawn ON TOP of it, so that a sprite filling its square edge
+# to edge still showed a border — but a grid line ruled across every enemy's
+# picture costs more than the border buys, and the threat colour, the selection
+# ring and the hover cue all still read off the fill and the parts of the frame
+# the art doesn't cover.
 func _style_enemy_cell(frames: Array, accent: Color, is_current: bool, selected: bool,
-		hovered: bool, edges: Array = []) -> void:
+		hovered: bool) -> void:
 	var border: Color = accent
 	var width: int = 3 if is_current else 2
 	var fill: Color = UITheme.PANEL
+	# The enemy of the game being played stands on the board with everything else
+	# (§7.2), so it needs to be tellable from its neighbours — and two bodies can be
+	# the same enemy at the same threat colour, which makes a heavier border alone
+	# not enough. It gets a washed fill BEHIND the art rather than a badge over it:
+	# the picture is the thing being protected here (see _add_enemy_badges).
+	if is_current:
+		fill = fill.lerp(accent, 0.3)
 	if selected:
 		border = UITheme.ACCENT
 		width = 4
@@ -712,15 +745,45 @@ func _style_enemy_cell(frames: Array, accent: Color, is_current: bool, selected:
 	for f in frames:
 		if is_instance_valid(f):
 			f.add_theme_stylebox_override("panel", box)
-	var edge_box: StyleBox = UITheme.flat(Color(0, 0, 0, 0), 6, 2, width, border)
-	for e in edges:
-		if is_instance_valid(e):
-			e.add_theme_stylebox_override("panel", edge_box)
+
+# --- lighting a body up from outside the board -----------------------------
+
+# Is this body currently lit — because the mouse is on it, or because something
+# else asked for it (a checklist row being hovered)?
+func _is_lit(instance: int) -> bool:
+	return instance > 0 and (_hovered_instance == instance or _highlighted.has(instance))
+
+# Light exactly `instances` (an Array of instance handles) and darken everything
+# else. The board is one half of a pair — the goals on the checklist beside it are
+# the other — and pointing at either half should light both, so the host calls
+# this as the mouse crosses a row. Pass [] to clear.
+#
+# Repaints only the bodies whose state actually changed, so a mouse dragged down
+# a checklist doesn't restyle the whole board on every row.
+func highlight(instances: Array = []) -> void:
+	var want: Dictionary = {}
+	for inst in instances:
+		if int(inst) > 0:
+			want[int(inst)] = true
+	if want == _highlighted:
+		return
+	var touched: Dictionary = {}
+	for inst in _highlighted:
+		touched[inst] = true
+	for inst in want:
+		touched[inst] = true
+	_highlighted = want
+	for inst in touched:
+		var fn: Variant = _repaint_fns.get(inst)
+		if fn is Callable and (fn as Callable).is_valid():
+			(fn as Callable).call()
 
 # Clicking an enemy targets it for the combat verbs and opens its info card.
 func click_enemy(instance: int, entry: Dictionary, col: int, is_current: bool) -> void:
-	# The game you're currently playing isn't on the stack, so it can't be targeted
-	# by Push / Bomb — but you can still read its card.
+	# The enemy of the game in play stands on the board like any other body, but it
+	# is not a target for Push / Bomb: it is the goal you are out there playing for,
+	# and shoving or bombing it would answer the game you just committed to. Its
+	# card still opens.
 	selected_instance = 0 if is_current else instance
 	# While a push is being aimed the click is the AIM, not a request to read the
 	# card: a full-screen info card over the board would bury the arrows the same
@@ -897,8 +960,6 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 
 	# One frame per filled cell, positioned inside the node.
 	var frames: Array = []
-	# Outline-only tiles mounted over the art; filled in after the art exists.
-	var edges: Array = []
 	for off in cells:
 		var frame := PanelContainer.new()
 		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -906,7 +967,15 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 		frame.size = Vector2(_cell, _cell)
 		node.add_child(frame)
 		frames.append(frame)
-	_style_enemy_cell(frames, accent, is_current, selected, false)
+
+	# Repainting this body is one callable, registered by instance, because the
+	# board is no longer the only thing that lights an enemy up: the checklist
+	# beside it highlights the bodies whose goals a row belongs to (see
+	# `highlight`), and both routes have to end at the same paint.
+	var repaint := func() -> void:
+		_style_enemy_cell(frames, accent, is_current, inst == selected_instance, _is_lit(inst))
+	_repaint_fns[inst] = repaint
+	repaint.call()
 
 	# Enemies are click-to-inspect: hovering brightens the outline to advertise it
 	# and lifts the whole body above its neighbours so an overlapped enemy can be
@@ -923,13 +992,18 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	node.mouse_entered.connect(func():
 		if not can_reorder.call():
 			return
+		_hovered_instance = inst
 		_enemy_layer.move_child(node, -1)
-		_style_enemy_cell(frames, accent, is_current, inst == selected_instance, true, edges))
+		repaint.call()
+		enemy_hovered.emit(inst, true))
 	node.mouse_exited.connect(func():
 		if not can_reorder.call():
 			return
+		if _hovered_instance == inst:
+			_hovered_instance = 0
 		_enemy_layer.move_child(node, mini(resting_index, _enemy_layer.get_child_count() - 1))
-		_style_enemy_cell(frames, accent, is_current, inst == selected_instance, false, edges))
+		repaint.call()
+		enemy_hovered.emit(inst, false))
 	node.gui_input.connect(func(ev: InputEvent):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 			click_enemy(inst, entry, front, is_current))
@@ -957,20 +1031,6 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 		art.modulate = accent
 	holder.add_child(art)
 
-	# The outline again, ON TOP of the art. Sprites drawn to fill their square —
-	# the Wisp is the obvious one — cover the frames underneath completely, and
-	# with them go the threat colour, the selection ring and the hover cue. These
-	# tiles are border-only and transparent, so they cost nothing on an enemy
-	# whose art does not reach the edges and restore the border on one whose does.
-	for off in cells:
-		var edge := PanelContainer.new()
-		edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		edge.position = Vector2(off.x, off.y) * float(_cell_step)
-		edge.size = Vector2(_cell, _cell)
-		holder.add_child(edge)
-		edges.append(edge)
-	_style_enemy_cell(frames, accent, is_current, selected, false, edges)
-
 	# Badges go on the layer above every body, but stay pinned to the cells this
 	# enemy holds (not to its nudged art), so they read as "this one's stats".
 	var badges := Control.new()
@@ -982,33 +1042,23 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	_add_enemy_badges(badges, entry, e, accent, selected)
 	return node
 
-# Badges for one enemy, laid out in the corners of the box it holds: boss skull
-# top, health bottom-left, damage bottom-right, and the stun marker when frozen.
+# Badges for one enemy, laid out around the box it holds: health bottom-left,
+# damage bottom-right, statuses under them, and the stun marker when frozen.
 # `holder` is the enemy's slot on the badge layer, so these always draw in front
 # of every body on the board. All non-blocking, so the enemy underneath still
 # takes the click and shows its tooltip.
+#
+# NOTHING is drawn over the TOP of the box any more. A boss skull and an "in 2"
+# (how many games of walking a body that can't reach you yet still owes) used to
+# sit across the head of the art, and between them they covered the part of the
+# picture that identifies the enemy — on a 7x7 board's 46px cells, most of it.
+# Neither fact is lost: a boss is already drawn in the boss's own orange
+# (threat_color) and carries its portrait beside its name on the checklist, and
+# the walking still owed is the first line of the body's own hover (_timing_tip).
 func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
-		accent: Color, selected: bool) -> void:
+		_accent: Color, selected: bool) -> void:
 	var stun: int = int(entry.get("stun", 0))
-
-	# TOP CENTRE — the boss skull, and how many games of WALKING a body that can't
-	# reach you yet still owes ("in 2"). What it no longer carries is the swing
-	# count: "×2" printed over the middle of the art hid the enemy it belonged to,
-	# and it belongs with the damage anyway (see the ⚔ badge below).
 	var strikes: int = GameLoop2.attacks_next_game(entry)
-	var away: int = GameLoop2.games_until_strike(entry)
-	var top_bits: Array = []
-	if e.is_boss():
-		top_bits.append("☠")
-	var timing: Color = accent
-	if strikes <= 0 and away > 0:
-		top_bits.append("in %d" % away)
-		timing = UITheme.TEXT_DIM
-	if not top_bits.is_empty():
-		var top := _corner_badge(" ".join(top_bits), timing)
-		top.add_theme_color_override("font_color", timing)
-		top.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 2)
-		holder.add_child(top)
 
 	# ❤ health and ⚔ damage sit on the box's bottom EDGE rather than inside it, and
 	# small: printed over the art at full size they covered the enemy you were
@@ -1229,22 +1279,33 @@ func _offgrid_token(entry: Dictionary, is_current: bool = false) -> Control:
 		accent = Color(0.95, 0.55, 0.2)
 	var cell := PanelContainer.new()
 	cell.custom_minimum_size = Vector2(_cell if is_current else 44, _cell if is_current else 44)
-	var paint := func(hovered: bool) -> void:
-		var border: Color = accent.lerp(Color.WHITE, 0.55) if hovered else accent.lerp(UITheme.BG, 0.25)
+	var inst: int = int(entry.get("instance", 0))
+	var paint := func() -> void:
+		var lit: bool = _is_lit(inst)
+		var border: Color = accent.lerp(Color.WHITE, 0.55) if lit else accent.lerp(UITheme.BG, 0.25)
 		var fill: Color = UITheme.PANEL.lerp(UITheme.BG, 0.3)
-		if hovered:
+		if lit:
 			fill = fill.lerp(Color.WHITE, 0.09)
 		cell.add_theme_stylebox_override("panel", UITheme.flat(fill, 5, 2, 2 if is_current else 1, border))
-	paint.call(false)
+	if e != null and inst > 0:
+		_repaint_fns[inst] = paint
+	paint.call()
 	if e != null:
 		cell.mouse_filter = Control.MOUSE_FILTER_STOP
 		cell.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		cell.mouse_entered.connect(func(): paint.call(true))
-		cell.mouse_exited.connect(func(): paint.call(false))
+		cell.mouse_entered.connect(func():
+			_hovered_instance = inst
+			paint.call()
+			enemy_hovered.emit(inst, true))
+		cell.mouse_exited.connect(func():
+			if _hovered_instance == inst:
+				_hovered_instance = 0
+			paint.call()
+			enemy_hovered.emit(inst, false))
 		cell.gui_input.connect(func(ev: InputEvent):
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				click_enemy(int(entry.get("instance", 0)), entry, GameLoop2.offgrid_col(), is_current))
-		cell.set_meta("instance", int(entry.get("instance", 0)))
+				click_enemy(inst, entry, GameLoop2.offgrid_col(), is_current))
+		cell.set_meta("instance", inst)
 		var holder := _cell_holder(cell)
 		cell.set_meta("holder", holder)
 		var art := TextureRect.new()
