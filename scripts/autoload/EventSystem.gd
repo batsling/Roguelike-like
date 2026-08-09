@@ -304,9 +304,9 @@ func resolve_choice(ev: EventData2, choice: Dictionary, taken: int) -> Dictionar
 
 	# A gamble's prose comes from the EVENT, because it depends on the roll rather
 	# than on which button produced it — Scrap Ooze's two reaches print the same
-	# two strings. The choice's own `result` still stands in when the event left
-	# them blank, so a gamble is authorable without them.
-	var result: String = String(choice.get("result", ""))
+	# two strings. The choice's own `results` rung still stands in when the event
+	# left them blank, so a gamble is authorable without them.
+	var result: String = result_for(choice, taken)
 	if rolled:
 		var prose: String = ev.chance_won if won else ev.chance_lost
 		if prose != "":
@@ -323,6 +323,22 @@ func resolve_choice(ev: EventData2, choice: Dictionary, taken: int) -> Dictionar
 		"rolled": rolled,
 		"won": won,
 	}
+
+
+# The prose a choice prints on THIS press. `results` is a ladder — one rung per
+# press, the LAST rung standing for every press after it — so a `Repeat: Again`
+# choice can escalate what it says the way {X} escalates what it costs, without
+# an authored column group per press.
+#
+# The last rung sticking is what makes an unbounded ladder authorable: Abyssal
+# Baths' Linger climbs forever, and its final rung is the warning that the next
+# dip kills you, which is exactly the line that should keep printing while the
+# player keeps pressing.
+func result_for(choice: Dictionary, taken: int) -> String:
+	var ladder: Array = choice.get("results", [])
+	if ladder.is_empty():
+		return ""
+	return String(ladder[clampi(taken, 0, ladder.size() - 1)])
 
 
 # The odds of a `chance` on THIS press, with its {expr} hole resolved against how

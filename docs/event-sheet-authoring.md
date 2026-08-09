@@ -1,7 +1,7 @@
 # Event sheet-authoring (`events2.0`)
 
 Status: **built, illustrated and running.** Five events authored, generators
-and runtime in place, art in `images2.0/`, 42 tests in `test/test_events2.gd`. §13 is how it runs and the little
+and runtime in place, art in `images2.0/`, 47 tests in `test/test_events2.gd`. §13 is how it runs and the little
 that's left. Companion to `games-first-redesign.md` and
 `locations-and-events-design.md` §6, which argued events should wait for
 somewhere to live — §1 is that somewhere.
@@ -105,7 +105,7 @@ for N = 1…4.
 | `Chance Lost` | event | Printed when it doesn't. |
 | `Choice N` | choice | The button label. **Blank ends the event's choice list** — the generator stops reading groups here. |
 | `Repeat N` | choice | What picking it does to the event — see §4. Blank = `End`. |
-| `Result N` | choice | The prose shown once the choice resolves. |
+| `Result N` | choice | The prose shown once the choice resolves. A **ladder**: `||`-separated rungs, one per press, the last standing for every press after — see §4.1. |
 | `Effect N` | choice | The machine-readable payload — see §5. |
 
 Group order is display order: the choices appear in the modal top to bottom as
@@ -167,6 +167,40 @@ and the *loop* is a different button.
 An event with no reachable `End` is fine as long as some choice is `End` or the
 modal always offers a way out; the generator will warn on an event where every
 choice is `Again`, because that is an event you cannot leave.
+
+### 4.1 `Result` is a ladder too
+
+`Again` escalates a choice's **numbers** from one authored group, via `{X}`
+(§5.1). Without a matching move for the prose, the one button a player presses
+over and over would be the one that answers with the same sentence every time —
+or, as Abyssal Baths shipped, with nothing at all.
+
+So a `Result` cell is **`||`-separated rungs, one per press**, and the **last
+rung stands for every press after it**:
+
+```
+Result 2   The temperature keeps rising! … || It keeps getting hotter! … || … || If you bathe any longer you will die.
+```
+
+A cell with no `||` in it is a one-rung ladder, which is what almost every choice
+is and what every event authored before this one still holds — the format did not
+change under them.
+
+Three things worth knowing:
+
+- **The last rung sticking is what makes an unbounded ladder authorable.**
+  Linger's cost climbs forever, so its prose cannot enumerate forever. The final
+  rung is the death warning, and a warning that keeps printing while the player
+  keeps pressing is the correct behaviour rather than a fallback.
+- **A blank rung mid-ladder is legal** — that press prints only the mechanical
+  line. A choice is allowed to go quiet before it speaks again.
+- **More than one rung only makes sense under `Again`.** `End` closes the event
+  and `Stay` spends the choice, so under either one every rung past the first is
+  unreachable; the generator rejects it rather than letting the prose rot
+  silently.
+
+`||` and not `|`, so a `[singular|plural]` agreement marker (§5.1) can still
+appear inside the prose.
 
 ---
 
@@ -437,10 +471,39 @@ it is a tuning call, which is why it is in the sheet and not in code.**
 that can kill you is one you must have *chosen* to walk toward. Hanging it off a
 node nobody is forced through is what makes it fair.
 
-**Two `Result` cells are blank on purpose.** Linger's and Exit Baths' flavour
-text could not be sourced (every site carrying them is unreachable from here), so
-they are left empty rather than filled with an invention presented as quotation.
-Fill them from the game.
+### Linger's prose is a ladder, and it is the reason §4.1 exists
+
+Linger's and Exit Baths' `Result` cells were blank for a long time — the text
+could not be sourced, and an invention presented as quotation was the one thing
+worse than a gap. They are now filled, and filling Linger's is what turned
+`Result` into a ladder (§4.1).
+
+The point is that Linger is **not one string**. Slay the Spire 2 answers each dip
+with a hotter line and finishes on a warning:
+
+| Press | Rung |
+|--:|---|
+| 1 | *The temperature keeps rising! How long can you endure before the steam cooks you from within?* |
+| 2 | *It keeps getting hotter! The pool's bubbling sounds like laughter. IT'S SO HOT!* |
+| 3 | *You wonder if this is what it's like to live in the Village of Demons? You have bathed so long you have lost track of time and your mind... It's nice in here. Really fantastic.* |
+| 4+ | *If you bathe any longer you will die.* |
+
+The fourth rung is last, so it stands for every press after it. That is the
+event's whole voice working the way its numbers already did: `{4+X}` says the
+dip costs one more, and the ladder says the water is one degree hotter, from the
+same single authored group. Exit Baths gets its one line — *"The heat finally
+gets to you, and you hop out of the bath."* — because a choice that closes the
+modal should say why.
+
+**Provenance, and the standard this repo set itself.** Prompt, Immerse and
+Abstain are the game's own text, read off the source. These five strings are
+**not** at the same confidence: every site carrying them is blocked from the
+environment this was authored in, so they were reconstructed from search-engine
+summaries of the untapped.gg and wiki.gg event pages. The wording held consistent
+across several independent queries; the **order of the first two rungs is the
+least certain part**. Check them against the game before treating them as
+quotation — this is one cell of the sheet, and correcting it is one edit and a
+regeneration.
 
 ---
 
@@ -711,7 +774,7 @@ not.
 
 ## 13. How it runs
 
-Built and under test (`test/test_events2.gd`, 42 tests). The pieces, and the one
+Built and under test (`test/test_events2.gd`, 47 tests). The pieces, and the one
 thing each of them is really solving:
 
 | Piece | Where | The problem it solves |

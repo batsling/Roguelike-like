@@ -59,6 +59,10 @@ XLSX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Roguelikes.xlsx
 
 SHEET = "events2.0"
 MAX_CHOICES = 4
+# Rung separator inside a Result cell — a choice that can be pressed again says
+# one rung per press. The reader is parse_result_cell() in
+# tools/generate_event2_tres.py; keep the two in step.
+RESULT_SEP = " || "
 
 EVENT_COLS = [
     "Event",        # display name, and the id everything else keys off
@@ -148,6 +152,34 @@ BATHS_ABSTAIN = (
     "salts that have formed along the edges. As you apply them to your skin, the "
     "pools churn and froth agitatedly."
 )
+
+# Linger's prose is a LADDER — Slay the Spire 2 answers each [Linger] with a
+# hotter line rather than repeating one, and the last of them is the warning that
+# the next dip kills you. One rung per press, joined with `||` into the single
+# Result cell; the last rung stands for every press after it, which is the right
+# behaviour for an unbounded ladder (the warning keeps warning).
+#
+# This is the prose half of `{4+X}`: the numbers already escalated from one
+# authored group, and now the voice escalates with them.
+#
+# PROVENANCE: unlike the Prompt / Immerse / Abstain strings above, these were not
+# read off the game or a page — every site carrying them is blocked from this
+# environment, so they were reconstructed from search-engine summaries of the
+# untapped.gg and wiki.gg event pages. The wording is consistent across several
+# independent queries; the ORDER of the first two rungs is the least certain part.
+# Check them against the game before treating them as quotation.
+BATHS_LINGER = [
+    "The temperature keeps rising! How long can you endure before the steam "
+    "cooks you from within?",
+    "It keeps getting hotter! The pool's bubbling sounds like laughter. IT'S SO "
+    "HOT!",
+    "You wonder if this is what it's like to live in the Village of Demons? You "
+    "have bathed so long you have lost track of time and your mind... It's nice "
+    "in here. Really fantastic.",
+    "If you bathe any longer you will die.",
+]
+
+BATHS_EXIT = "The heat finally gets to you, and you hop out of the bath."
 
 
 # --- Battleworn Dummy -------------------------------------------------------
@@ -361,13 +393,13 @@ EVENTS = [
             # so what's on offer afterwards is Linger, never Immerse again.
             ("Immerse", "Stay", BATHS_IMMERSE, "gain_max_hp 1; lose_hp 3"),
             # The loop. X counts Lingers already taken: 4, then 5, then 6, …
-            # Result text not sourced — fill from the game.
-            ("Linger", "Again", "",
+            # and the Result is a ladder climbing beside it, one rung per press.
+            ("Linger", "Again", RESULT_SEP.join(BATHS_LINGER),
              "needs Immerse > 0; gain_max_hp 1; lose_hp {4+X}"),
             # The heal, and only for someone who stayed out of the water.
             ("Abstain", "", BATHS_ABSTAIN, "needs Immerse = 0; gain_hp 3"),
-            # The way out once you're in. Result text not sourced.
-            ("Exit Baths", "", "", "needs Immerse > 0; nothing"),
+            # The way out once you're in.
+            ("Exit Baths", "", BATHS_EXIT, "needs Immerse > 0; nothing"),
         ],
     },
     {

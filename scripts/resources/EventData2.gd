@@ -51,7 +51,7 @@ extends Resource
 
 @export var prompt: String = ""
 # The two endings of a goal this event hands out. They cannot live on a choice's
-# `result` because an add_goal event finishes on the CHECKLIST, games after the
+# `results` because an add_goal event finishes on the CHECKLIST, games after the
 # modal closed. Event-level because they are the event's voice rather than the
 # option's — the Battleworn Dummy congratulates you in the same words whichever
 # setting you chose. "Met" means the condition happened, which on a curse is the
@@ -63,7 +63,7 @@ extends Resource
 # above are: they are the event's voice, not the button's. Scrap Ooze is the
 # proof — [Reach Inside] and [Deeper] are two rows on the sheet and one hand in
 # the ooze, and Slay the Spire prints the same success and failure text for
-# both. A gamble's outcome depends on the ROLL, so a choice's own `result` cannot
+# both. A gamble's outcome depends on the ROLL, so a choice's own `results` cannot
 # hold it; when a choice rolls, whichever of these is non-empty replaces it.
 @export var chance_won: String = ""
 @export var chance_lost: String = ""
@@ -75,7 +75,15 @@ extends Resource
 #   text          the button label
 #   repeat        "end" (default) | "again" | "stay"
 #   repeat_max    for "again xN"; 0 = unlimited
-#   result        prose printed once it resolves ("" is legal)
+#   results       the prose LADDER: one rung per press, the last rung standing
+#                 for every press after it. [] is legal (the modal then prints
+#                 only the mechanical line), and so is a blank rung mid-ladder.
+#                 A one-rung ladder is the ordinary case — a choice pressed once
+#                 that says one thing. More than one rung only makes sense under
+#                 `repeat == "again"`, which the generator enforces, and is the
+#                 prose half of what {X} does for the numbers: Abyssal Baths
+#                 answers each Linger with a hotter line. Read it through
+#                 EventSystem.result_for(), never by index.
 #   gates         Array of gate dicts — see gate_kind() below
 #   effects       Array of EffectSystem effect dicts, applied immediately
 #   effects_text  those effects in words, for the button's mechanical line
