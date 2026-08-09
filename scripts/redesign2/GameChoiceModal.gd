@@ -260,14 +260,18 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	col.add_child(chip)
 
 	# The tries this game hands you (§3) — the reason a Traditional roguelike is
-	# worth routing through even when it isn't the short way.
-	var tries: int = int(_notes.get("tries", 0))
-	col.add_child(_fact_line("%s  %d tries" % ["◆".repeat(tries), tries],
-		Overworld2.SHIELD_BLUE,
-		"Selecting %s grants %d shields — one per run of it you lose." % [game.display_name, tries]))
+	# worth routing through even when it isn't the short way. A card that only MOVES
+	# the run grants none of them: nothing is being committed to yet.
+	var tries: int = 0 if bool(_notes.get("move_only", false)) else int(_notes.get("tries", 0))
+	if tries > 0:
+		col.add_child(_fact_line("%s  %d tries" % ["◆".repeat(tries), tries],
+			Overworld2.SHIELD_BLUE,
+			"Selecting %s grants %d shields — one per run of it you lose." % [
+				game.display_name, tries]))
 
-	# What taking this does to the board's PACE (§7.4).
-	var pace: Dictionary = _notes.get("pace", {})
+	# What taking this does to the board's PACE (§7.4). Also a fact about playing a
+	# game, so it goes with the tries on a move-only card.
+	var pace: Dictionary = {} if bool(_notes.get("move_only", false)) else _notes.get("pace", {})
 	if String(pace.get("text", "")) != "":
 		col.add_child(_fact_line(String(pace["text"]), pace.get("color", UITheme.TEXT_DIM),
 			String(pace.get("tip", ""))))
@@ -299,6 +303,20 @@ func _build_enemy_block(game: GameData) -> Control:
 	head.add_theme_font_size_override("font_size", 11)
 	head.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(head)
+
+	# A card opened to MOVE the run rather than to play a game (the stay-or-return
+	# question, §10) has no enemy behind it — none is rolled until a game is
+	# actually picked — so it says what it is instead of quoting a roll that hasn't
+	# happened.
+	if _notes.has("move_note"):
+		head.text = "WHAT THIS DOES"
+		var note := Label.new()
+		note.text = String(_notes["move_note"])
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.add_theme_font_size_override("font_size", 13)
+		note.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		box.add_child(note)
+		return box
 
 	if enemy == null:
 		var free := Label.new()
@@ -491,12 +509,13 @@ func _build_actions(game: GameData, accent: Color) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 
-	if GameState.bash > 0 and not bool(_choice.get("amulet", false)):
+	var move_only: bool = bool(_notes.get("move_only", false))
+	if not move_only and GameState.bash > 0 and not bool(_choice.get("amulet", false)):
 		row.add_child(_verb_button("⛏  Bash", UITheme.DANGER,
 			"Destroy %s outright — it leaves the pool for good and another connected game takes the slot."
 				% game.display_name,
 			func(): _answer(bashed)))
-	if GameState.transmute > 0:
+	if not move_only and GameState.transmute > 0:
 		row.add_child(_verb_button("⚗  Transmute", UITheme.ACCENT,
 			"Swap %s for a random off-graph game of the same type." % game.display_name,
 			func(): _answer(transmuted)))
@@ -512,8 +531,9 @@ func _build_actions(game: GameData, accent: Color) -> Control:
 	row.add_child(back)
 
 	var go := Button.new()
-	go.text = "▶  Travel to %s" % game.display_name
-	go.tooltip_text = "Commit to this game — you'll go and play it for real."
+	go.text = String(_notes.get("action_text", "▶  Travel to %s" % game.display_name))
+	go.tooltip_text = String(_notes.get("action_tip",
+		"Commit to this game — you'll go and play it for real."))
 	go.custom_minimum_size = Vector2(280, 44)
 	go.clip_text = true
 	go.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

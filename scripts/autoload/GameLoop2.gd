@@ -18,21 +18,24 @@ extends Node
 # survives absorbs the followers' hits when you report the game, and then expires:
 # shields never carry into the next game.
 #
-# Lifecycle of one game (§7.2, the one-game grace):
-#   choose_game(enemy)  — the enemy SPAWNS when you pick its game (current).
+# Lifecycle of one game (§7.2):
+#   choose_game(enemy)  — the enemy SPAWNS ONTO THE BOARD when you pick its game.
+#     It is an ordinary body on the stack from that moment, standing at the back
+#     column; `current` is that same entry, so "the enemy of the game in play" is
+#     a label on a body rather than a body held off to one side. (It used to wait
+#     in the off-field lane and only walk on once its game was reported, which is
+#     what the "one-game grace" was: the grace still exists, but it is now the
+#     plain consequence of spawning at the back of the board and having to walk.)
 #   beat_game(goal_met, fulfilled) — you played & beat the real game:
-#     1. Old goals you fulfilled this game defeat those stacked enemies (drop).
+#     1. Goals you met this game deal one hit each — the current game's enemy when
+#        `goal_met`, plus every follower in `fulfilled`. Defeated + item drop at 0
+#        Health; a survivor (e.g. an Alien-Baby-buffed two-Health enemy) stays on
+#        the board and holds its fire for the whole game, because it was engaged.
 #     2. The stack takes its TURNS — enemy_turns() of them, 1 out in the wilds
 #        and 3 on the Amulet's doorstep (§7.4). Each turn every enemy acts once:
 #        the front column attacks for its damage (shields, then hp), everything
 #        behind it steps a column closer, and a stun costs one turn of either.
-#        The current game's enemy is not on the stack yet, so it cannot attack
-#        this game whatever the pace: that ordering IS the one-game grace.
-#     3. The current enemy resolves: completing its goal deals it one hit —
-#        defeated + item drop at 0 Health, else it joins the stack (a survivor,
-#        e.g. an Alien-Baby-buffed two-Health enemy, must be beaten again) and
-#        starts attacking NEXT game.
-#     4. Any shields still standing expire — they belonged to that game.
+#     3. Any shields still standing expire — they belonged to that game.
 # Reach & clear the Amulet game (clear_amulet) to win; hp <= 0 to lose.
 
 signal loop_changed()                 # stack / current / run-state mutated (HUD hook)
@@ -122,11 +125,13 @@ func offgrid_col() -> int:
 var _bounds_cols: int = BASE_GRID_COLS
 var _bounds_rows: int = BASE_GRID_ROWS
 
-# The enemy on the currently-chosen game, or {} when none is chosen. Shape:
-#   {"instance": int, "enemy": GoalEnemyData, "health": int}
-# The current enemy is shown off-field while its game is being played, but it is
-# NOT on the stack yet (that ordering is the one-game grace, §7.2): it only walks
-# onto the grid once its game is resolved.
+# The enemy on the currently-chosen game, or {} when none is chosen.
+#
+# It is THE SAME Dictionary as that enemy's entry on `stack` — not a copy — because
+# the enemy of the game in play stands on the board like any other body (§7.2) and
+# there must be exactly one record of its health, its statuses and its square. So
+# `current` is a pointer into the stack that says which body this game is being
+# played against, and everything that walks the board sees it without knowing that.
 var current: Dictionary = {}
 
 # Undefeated enemies following the player (§2). Each entry:
@@ -254,6 +259,12 @@ func serialize() -> Dictionary:
 	for gid in bashed:
 		bashed_ids.append(String(gid))
 	return {
+		# The current enemy is one of the bodies in `stack` (§7.2), so it is written
+		# as the HANDLE of that body rather than a second copy of it — two copies is
+		# how a load ends up with the same enemy standing on the board twice.
+		# `current` (the whole entry) is still written for saves made by an older
+		# build to be readable by an older build; restore prefers the handle.
+		"current_instance": int(current.get("instance", 0)),
 		"current": _serialize_entry(current),
 		"stack": stacked,
 		"bashed": bashed_ids,
@@ -272,11 +283,27 @@ func restore(data: Dictionary) -> void:
 	reset()
 	if data.is_empty():
 		return
-	current = _deserialize_entry(data.get("current", {}))
 	for raw in data.get("stack", []):
 		var entry: Dictionary = _deserialize_entry(raw)
 		if not entry.is_empty():
 			stack.append(entry)
+	# `current` is a POINTER into the stack, so it is restored by finding the body
+	# the save named rather than by rebuilding one. A save written before the enemy
+	# of the game in play stood on the board carries the whole entry and no handle:
+	# that body is not in the stack, so it is walked onto the board here, which is
+	# exactly where the old build would have put it on the next report.
+	current = {}
+	var cur_inst: int = int(data.get("current_instance", 0))
+	if cur_inst > 0:
+		var idx: int = _index_of(cur_inst)
+		if idx >= 0:
+			current = stack[idx]
+	elif data.has("current"):
+		var legacy: Dictionary = _deserialize_entry(data.get("current", {}))
+		if not legacy.is_empty():
+			_add_to_grid(int(legacy.get("instance", 0)), legacy.get("enemy"),
+				int(legacy.get("health", 1)), legacy.get("statuses", {}))
+			current = stack[stack.size() - 1]
 	bashed.clear()
 	for gid in data.get("bashed", []):
 		bashed.append(StringName(gid))
@@ -436,21 +463,29 @@ func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 		choose_game(boss)
 	return boss
 
-# Marks `enemy` as the enemy on the game the player just chose (it SPAWNS on
-# choose, §7.2). Returns its unique instance handle. A previously-current enemy
-# that was never resolved is dropped (choosing a new game supersedes it).
+# Marks `enemy` as the enemy on the game the player just chose, and STANDS IT ON
+# THE BOARD (§7.2) at the back column, exactly where a conjured or a surviving
+# enemy enters. Returns its unique instance handle. A previously-current enemy
+# that was never resolved is dropped from the board with it (choosing a new game
+# supersedes it — that is what Scramble is).
 func choose_game(enemy: GoalEnemyData) -> int:
 	# A new game means a fresh set of tries — whatever was logged against the last
 	# one is closed out.
 	attempt_costs.clear()
+	# The superseded enemy leaves the board rather than lingering on it as a body
+	# nobody chose: it was never played for.
+	if not current.is_empty():
+		_take_off_board(_index_of(int(current.get("instance", 0))))
+	current = {}
 	if enemy == null:
-		current = {}
 		loop_changed.emit()
 		return 0
 	var inst: int = _next_instance
 	_next_instance += 1
-	current = {"instance": inst, "enemy": enemy, "health": effective_health(enemy),
-		"statuses": {}}
+	_add_to_grid(inst, enemy, effective_health(enemy))
+	# _add_to_grid appends, so the entry it just built is the last one — and that
+	# entry IS `current` (see the var's comment): one body, one record.
+	current = stack[stack.size() - 1]
 	loop_changed.emit()
 	return inst
 
@@ -605,22 +640,40 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = [],
 	#    swallow the bonus.
 	res["status_rewards"] = _resolve_status_claims(claims)
 
-	# 1. Old-goal fulfilment: completing a follower's goal this game deals it one
-	#    hit. It's defeated (and drops) only when its Health reaches 0; a survivor
-	#    (an Alien-Baby-buffed enemy on its first of two hits) stays on the stack
-	#    but — its goal engaged this game — skips its attack in step 2.
-	var hit_this_game: Dictionary = {}
+	# 1. GOALS MET THIS GAME, all of them, in one pass: the enemy of the game you
+	#    just played (when `goal_met`) and every follower whose old goal you also
+	#    cleared. Each takes one hit; it is defeated (and drops) only when its
+	#    Health reaches 0, and a survivor (an Alien-Baby-buffed enemy on its first
+	#    of two hits) stays on the board but — its goal engaged this game — holds
+	#    its fire for every turn of step 2.
+	#
+	#    The current game's enemy is in this list rather than in a step of its own
+	#    because it is on the board like everything else now (§7.2): beating the
+	#    game you are standing on and clearing a goal you owed from three games ago
+	#    are the same act, and the loop treats them as one.
+	var had_current: bool = not current.is_empty()
+	var to_hit: Array = []
+	if had_current and goal_met:
+		to_hit.append(int(current.get("instance", 0)))
 	for inst in fulfilled_instances:
+		if not to_hit.has(int(inst)):
+			to_hit.append(int(inst))
+
+	var hit_this_game: Dictionary = {}
+	for inst in to_hit:
 		var idx: int = _index_of(int(inst))
 		if idx < 0:
 			continue
 		stack[idx]["health"] = int(stack[idx].get("health", 1)) - 1
 		if int(stack[idx]["health"]) <= 0:
 			var e: GoalEnemyData = stack[idx]["enemy"]
-			stack.remove_at(idx)
+			_take_off_board(idx)
 			_defeat(e, true, res)
 		else:
 			hit_this_game[int(inst)] = true
+	# The game is over either way: whatever became of its enemy, it is a follower
+	# like any other from here (or gone), and nothing is "in play" any more.
+	current = {}
 
 	# 2. THE ENEMY TURNS. Every enemy gets `turns` actions this game — one out in
 	#    the wilds, three on the Amulet's doorstep (§7.4) — and each action is
@@ -653,25 +706,7 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = [],
 		if enemy_damage_bonus_games <= 0:
 			enemy_damage_bonus = 0
 
-	# 3. Resolve the current game's enemy: completing its goal deals one hit.
-	#    Health 0 -> defeated + drop; a survivor (Alien Baby's two-hit enemy) or a
-	#    missed goal WALKS ONTO THE BOARD in a random row, far enough back that its
-	#    rightmost cell lands on the back column (added after the attack + advance
-	#    steps, so it gets its one-game grace before closing in) and must be beaten
-	#    again later. When nothing fits it waits in the off-grid queue.
-	var had_current: bool = not current.is_empty()
-	if not current.is_empty():
-		var ch: int = int(current.get("health", 1))
-		if goal_met:
-			ch -= 1
-		if goal_met and ch <= 0:
-			_defeat(current["enemy"], true, res)
-		else:
-			_add_to_grid(int(current["instance"]), current["enemy"], maxi(1, ch),
-				current.get("statuses", {}))
-		current = {}
-
-	# 4. The player's clauses tick for the game just played. A clause rides every
+	# 3. The player's clauses tick for the game just played. A clause rides every
 	#    enemy's goal, so completing ANY goal this game satisfied it once.
 	#    A FREE game is not a completion: `goal_met` reads true when there was no
 	#    enemy to meet (Overworld2._goal_met auto-clears an empty checklist), and a
@@ -747,7 +782,7 @@ func fulfill(instance: int) -> bool:
 	stack[idx]["health"] = int(stack[idx].get("health", 1)) - 1
 	if int(stack[idx]["health"]) <= 0:
 		var e: GoalEnemyData = stack[idx]["enemy"]
-		stack.remove_at(idx)
+		_take_off_board(idx)
 		var res := {"defeats": [], "drops": 0}
 		_defeat(e, true, res)
 		_admit_offgrid()
@@ -784,7 +819,7 @@ func bomb(instance: int) -> bool:
 			stack[i]["health"] = int(stack[i].get("health", 1)) - 1
 			if int(stack[i]["health"]) <= 0:
 				destroyed.append(enemy)
-				stack.remove_at(i)
+				_take_off_board(i)
 				continue
 		# Survived the blast — Sticky Bombs makes that cost it its next turn.
 		if stuns:
@@ -983,8 +1018,10 @@ func clear_amulet() -> void:
 	if run_over:
 		return
 	if not current.is_empty():
-		_defeat(current["enemy"], true, {"defeats": [], "drops": 0})
+		var enemy: GoalEnemyData = current["enemy"]
+		_take_off_board(_index_of(int(current.get("instance", 0))))
 		current = {}
+		_defeat(enemy, true, {"defeats": [], "drops": 0})
 	loop_changed.emit()
 	_finish_run(true)
 
@@ -1301,18 +1338,18 @@ func _take_hit(damage: int, res: Dictionary) -> int:
 # (which destroys and spends a charge): this is the "it was never here" removal
 # the dev panel needs, and the shape any future banish effect would want.
 # Returns true when something was removed.
+#
+# One branch, not two: the enemy of the game in play is on the board with
+# everything else now (§7.2), so despawning it is the same removal as any other —
+# and _take_off_board is what drops `current` along with the body.
 func despawn(instance: int) -> bool:
 	var idx: int = _index_of(instance)
-	if idx >= 0:
-		stack.remove_at(idx)
-		_admit_offgrid()
-		loop_changed.emit()
-		return true
-	if not current.is_empty() and int(current.get("instance", 0)) == instance:
-		current = {}
-		loop_changed.emit()
-		return true
-	return false
+	if idx < 0:
+		return false
+	_take_off_board(idx)
+	_admit_offgrid()
+	loop_changed.emit()
+	return true
 
 # Removes and returns the GoalEnemyData for `instance`, or null if not stacked.
 func _pull_from_stack(instance: int) -> GoalEnemyData:
@@ -1320,8 +1357,21 @@ func _pull_from_stack(instance: int) -> GoalEnemyData:
 	if idx < 0:
 		return null
 	var e: GoalEnemyData = stack[idx]["enemy"]
-	stack.remove_at(idx)
+	_take_off_board(idx)
 	return e
+
+# Take the body at `idx` off the board. THE ONE WAY a body leaves `stack`, because
+# `current` points at one of these entries (§7.2) and a removal that doesn't clear
+# that pointer leaves has_current() answering for an enemy that is not on the
+# field — the report step would then ask about a game whose enemy had been bombed
+# out from under it.
+func _take_off_board(idx: int) -> void:
+	if idx < 0 or idx >= stack.size():
+		return
+	var inst: int = int(stack[idx].get("instance", 0))
+	stack.remove_at(idx)
+	if not current.is_empty() and int(current.get("instance", 0)) == inst:
+		current = {}
 
 func _index_of(instance: int) -> int:
 	for i in range(stack.size()):
@@ -1366,13 +1416,11 @@ func apply_enemy_status(status_id: StringName, stacks: int = 1,
 		loop_changed.emit()
 	return targets.size()
 
-# The bodies a `target` word names. "current" is the enemy of the game in play;
-# note it is NOT on the stack yet (§7.2), so every mode has to reach for it
-# separately or a status applied on selection would miss the enemy it was aimed at.
+# The bodies a `target` word names. "current" is the enemy of the game in play —
+# which stands on the board with the rest (§7.2), so `stack` already holds it and
+# "all" must not append it a second time or a status would land on it twice.
 func _status_targets(target: String) -> Array:
 	var everyone: Array = stack.duplicate()
-	if not current.is_empty():
-		everyone.append(current)
 	match target.to_lower():
 		"all":
 			return everyone
@@ -1413,16 +1461,11 @@ func remove_enemy_status(instance: int, status_id: StringName, stacks: int = 1) 
 	loop_changed.emit()
 	return int((entry.get("statuses", {}) as Dictionary).get(status_id, 0))
 
-# The board entry (or the current enemy) holding `instance`, or {} when nothing
-# does. The current enemy is checked too because it is a legal target for every
-# status verb even though it hasn't walked onto the grid yet.
+# The board entry holding `instance`, or {} when nothing does. The current game's
+# enemy needs no special case: it is on the board like every other body (§7.2).
 func entry_for(instance: int) -> Dictionary:
 	var idx: int = _index_of(instance)
-	if idx >= 0:
-		return stack[idx]
-	if not current.is_empty() and int(current.get("instance", 0)) == instance:
-		return current
-	return {}
+	return stack[idx] if idx >= 0 else {}
 
 # The statuses on one enemy as [{status: StatusData, stacks: int}], catalog-ordered
 # so a card redrawn between frames doesn't reshuffle its pips.

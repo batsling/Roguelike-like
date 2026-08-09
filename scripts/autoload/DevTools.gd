@@ -484,9 +484,9 @@ func _build_run_tab() -> void:
 
 func _build_board_tab() -> void:
 	_body.add_child(_section("Standing on the board"))
+	# The current game's enemy is on the stack with everything else (§7.2), so the
+	# list is simply the board.
 	var bodies: Array = GameLoop2.stack.duplicate()
-	if not GameLoop2.current.is_empty():
-		bodies.append(GameLoop2.current)
 	if bodies.is_empty():
 		_body.add_child(_note("Nothing on the board."))
 	for entry in bodies:
@@ -532,8 +532,8 @@ func _board_row(entry: Dictionary) -> Control:
 	wrap.add_child(col)
 
 	var head := Label.new()
-	var where: String = "current game" if is_current \
-		else "col %d, row %d" % [int(entry.get("col", 0)), int(entry.get("row", 0))]
+	var where: String = "col %d, row %d%s" % [int(entry.get("col", 0)),
+		int(entry.get("row", 0)), "  · current game" if is_current else ""]
 	head.text = "#%d  %s   (%s, ❤%d, ⚔%d)" % [inst, e.display_name, where,
 		int(entry.get("health", e.health)), e.damage]
 	head.add_theme_font_size_override("font_size", 13)
@@ -549,8 +549,9 @@ func _board_row(entry: Dictionary) -> Control:
 	var acts := HBoxContainer.new()
 	acts.add_theme_constant_override("separation", 4)
 	col.add_child(acts)
-	# Stun / push / bomb only mean anything for a body actually ON the grid; the
-	# current game's enemy hasn't walked on yet (§7.2).
+	# Stun / push / bomb only mean anything for a body actually ON the grid, and the
+	# current game's enemy is deliberately left out of them for the same reason the
+	# board refuses to aim at it: it is the goal being played for.
 	if not is_current:
 		acts.add_child(_mini("Stun", func() -> void:
 			GameLoop2.stun(inst)

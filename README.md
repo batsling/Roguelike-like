@@ -45,6 +45,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     EnemyInfoCard   — click-to-inspect enemy card
 │   │                      #     ItemInfoCard    — click-to-inspect item card
 │   │                      #     GameChoiceModal — the popup an offered card opens
+│   │                      #     ShopPanel2      — a hub's shop, mounted under the board
+│   │                      #     BossNoticeModal — the "⚠ BOSS INCOMING" popup
 │   │                      #     RouteLadder     — the arrowed shortest-path graph
 │   │                      #     RunOverScreen   — the end-of-run verdict screen
 │   │                      #     RunMapModal / ScrollReadModal
@@ -211,7 +213,10 @@ node and its script.
   then a two-column stage — checklist on the left (the standing goals while you're
   choosing, the honour-system report step + attempt tracker while you're playing),
   the battlefield on the right with the player's pack (items **and** scrolls,
-  one strip of tokens) above it. Hosts the toast strip, so an item's effects
+  one strip of tokens) above it. **The two halves point at each other**: hovering
+  a goal row lights the body it belongs to on the board, and hovering a body
+  lights its row — they are the same fact written twice, and nothing else answers
+  "which of these lines is that thing" without reading names. Hosts the toast strip, so an item's effects
   announce themselves the moment it's picked up.
 
   **It fits one 1280×720 canvas, in every phase and at every board size**, with
@@ -260,8 +265,18 @@ node and its script.
     then aimed**: pressing `⇤ Push` arms the verb, clicking an enemy picks the
     body, and an arrow appears on every side of it a shove could legally land on
     — back, forward, or up/down, which is the only lane change on the board.
-    Nothing is spent until an arrow is pressed.
+    Nothing is spent until an arrow is pressed. **The enemy of the game you are
+    playing stands on the board with the rest** (§7.2), drawn on a washed fill so
+    it is tellable from its neighbours; the off-field lane is for bodies with
+    nowhere to stand. Nothing is drawn over the top of a body — the boss skull and
+    the "in 2" that used to be there covered the picture that identifies it.
   - **`EnemyInfoCard.gd`** — the click-to-inspect card for one enemy.
+  - **`ShopPanel2.gd`** — a hub's shop (§14), mounted **under the battlefield** on
+    the page rather than opened over it: it blocks nothing, stays for the whole
+    visit, and travelling on is what closes it. The overworld floats a
+    `🛒 Shop ↓` pointer at the foot of the screen until it has been scrolled to.
+  - **`BossNoticeModal.gd`** — the "⚠ BOSS INCOMING" popup (§7.1), opened once per
+    boss round. It replaced a banner strip that shoved the whole page down.
 - **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). Ordinary
   enemy drops don't open it: they land in the loot tray beside the board.
 - **`RateGameModal.gd`** — the 1-10 tier-list score for a game. Strictly opt-in:

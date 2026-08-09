@@ -11,6 +11,77 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Seven from playing it: the enemy on the board, the shop on the page.**
+
+  **The enemy of the game you are playing now stands on the battlefield.** It
+  used to wait in the off-field lane with a NOW PLAYING tag and walk onto the
+  grid only once its game was reported — which is where the "one-game grace"
+  came from. The grace is now a DISTANCE rather than a rule: the enemy spawns on
+  the back column the moment you pick its game and closes in from there, taking
+  its turns with every other body. Meeting its goal still defeats it before it
+  acts at all, because goals met this game land their hits before the turns run;
+  missing it means you have already watched it take a step. `GameLoop2.current`
+  and that body's stack entry are now literally the same Dictionary, so there is
+  exactly one record of its health, its statuses and its square — and every
+  removal goes through one door (`_take_off_board`), because a body bombed out
+  from under the report step used to be able to leave `has_current()` answering
+  for an enemy that was not there.
+
+  **The shop moved out of a modal and onto the page, under the board.** The run's
+  rhythm is report the game → see what it cost you on the board → choose where to
+  go next, and a full-screen shop dropped into the middle of that stopped
+  everything to ask a question the player had not asked yet — while covering the
+  two things the answer depends on. `ShopPanel2` mounts under the battlefield,
+  blocks nothing, and stays for the whole visit: travelling on is what closes it,
+  which is what walking out of a shop has always meant. It has no Leave button
+  for the same reason. Because it can sit below the fold, a **`🛒 Shop ↓`**
+  pointer floats at the foot of the screen until the panel is scrolled to.
+
+  **The checklist and the board point at each other.** A goal on the list and a
+  body on the field are the same fact written twice, and nothing said which line
+  went with which enemy — four goals beside four bodies left the player matching
+  them up by name. Hovering a goal row now lights the body it belongs to;
+  hovering a body lights its row. One binding, both directions.
+
+  **A boss round is a popup, not a strip.** "⚠ BOSS INCOMING" was a banner above
+  the offering: it shoved the offering, the checklist and the board down the page
+  at the moment they were being read, and then held a row of a one-screen layout
+  for the whole round. It is `BossNoticeModal` now, opened once per round, with
+  room for the part the strip never had space to say — a boss round is a
+  different set of rules, not just a harder game — and the portraits of the
+  bosses on the table.
+
+  **A detour hands over no event of its own.** An event that posts the run off to
+  another game (`play_game`, §10) had that game fire the event standing at ITS
+  node on the way back, so beating the mecha game Punch Off sends you to gave you
+  the stay-or-return question AND a second event dropped on top of it. A detour's
+  destination is somewhere the run was *sent*, not somewhere it *routed to*, and
+  nothing is waiting there. The detour's own far side is queued behind the
+  resolve now, on the same path the event and the shop take, rather than being
+  raised over an animation that is still playing.
+
+  **…and that stay-or-return question is asked with the offering.** It was a
+  ConfirmationDialog with two game names in a sentence, on the grounds that the
+  interesting decision was taking the detour. That was wrong: it is the biggest
+  routing decision the detour creates, and the run shows you a map for every
+  ordinary step. It is now two cover cards on the offering, each opening the same
+  `GameChoiceModal` every other card does — the route from there drawn as the
+  real ladder, the shop and event flags, your record in the game — with the
+  Travel button relabelled to what it actually does. The card drops the enemy
+  block and the tries line, because no enemy is rolled and no game is being
+  committed to: this question moves the run, it does not start a game.
+
+  **Two things are no longer drawn over an enemy's picture.** The grid outline
+  that was re-drawn on top of the art (so a sprite filling its square still
+  showed a border) ruled a line across every body, and the boss skull and the
+  "in 2" walking counter sat across the head of the art — on a 7×7 board's 46px
+  cells, over most of what identifies the enemy. Both are gone. Nothing is lost:
+  a boss is already drawn in the boss's own orange and carries its portrait
+  beside its name on the checklist, and the walking still owed is the first line
+  of the body's own hover.
+
+---
+
 - **Gold, and a shop at every hub on the map.**
 
   **A defeated enemy pays 1 gold, a boss 3, and that is the whole faucet.** The

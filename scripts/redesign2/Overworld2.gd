@@ -19,9 +19,8 @@ extends Control
 #
 # Difficulty gates (§7.1): the run's tier steps up every RunDifficulty.
 # GAMES_PER_TIER games (RunDifficulty.tier_for). On the game that crosses into a
-# new tier, the offering becomes a BOSS round — a "⚠ BOSS INCOMING" banner shows
-# above the choices and whichever game you pick spawns a boss (bosses are
-# unskippable: no bash/transmute on a boss round).
+# new tier, the offering becomes a BOSS round — a "⚠ BOSS INCOMING" popup opens
+# once (BossNoticeModal) and whichever game you pick spawns a boss.
 
 # Phases of one selection. START_SELECT is the one-off opening phase: before the
 # run has a position, the player picks WHERE TO START from three games, each a
@@ -138,6 +137,18 @@ var _gold_chip: Label = null
 var _play_return_to: StringName = &""
 var _play_payload: Array = []
 var _play_payload_text: String = ""
+# The far side of that detour, when the run is standing on it: the game "head
+# back" would return to, or &"" when nothing is being asked. While it is set the
+# offering is showing TWO DESTINATION CARDS rather than an offering (see
+# _build_return_choices), and every verb that redraws the offering is held.
+var _return_choice: StringName = &""
+# A detour whose stay-or-return question is owed once the board (and the event /
+# shop the game may also have owed) has finished. The question is asked on the
+# offering itself, so it has to wait for the same queue everything else does.
+var _pending_detour: bool = false
+# …and whether that detour's game was actually beaten, since the payout only
+# lands on a game played to a verdict (an escape walks away from it).
+var _detour_beaten: bool = false
 var _event_modal: EventModal2 = null
 # The hub whose shop is owed to the player once the board stops moving (§14).
 # Set on the same terms an event is — the game at this node was played through
@@ -145,7 +156,12 @@ var _event_modal: EventModal2 = null
 # what was waiting at the node, paid after the game rather than before it.
 # &"" when nothing is owed.
 var _pending_shop: StringName = &""
-var _shop_modal: ShopModal2 = null
+# The shop currently ON THE PAGE, under the board (ShopPanel2), and the pointer
+# that says it is down there. The shop is no longer a modal: it is mounted below
+# the battlefield and stays for the whole visit, so these live as long as the
+# player stands at that hub rather than as long as a dialog is open.
+var _shop_panel: ShopPanel2 = null
+var _shop_hint: Control = null
 var _run_over_won: bool = false
 var _run_over_screen: RunOverScreen = null
 var _rng := RandomNumberGenerator.new()
@@ -158,7 +174,12 @@ var _rng := RandomNumberGenerator.new()
 var _select_stats: HFlowContainer
 var _item_card: ItemInfoCard = null # the open item reading card, or null
 var _banner: Label
-var _boss_banner: Label
+# The boss round announces itself as a POPUP (BossNoticeModal), not as a strip
+# above the offering — see that file for why. This remembers which round has
+# already been announced (`GameState.games_played` at the time), so the notice
+# opens once when the round arrives rather than on every repaint of it.
+var _boss_notice_for: int = -1
+var _boss_notice: BossNoticeModal = null
 var _preview: RichTextLabel
 var _choices_row: HFlowContainer
 var _play_panel: VBoxContainer
@@ -177,6 +198,11 @@ var _goal_check: CheckBox           # the chosen game's main goal; null on a fre
 var _status_goal_checks: Array = [] # [{check: CheckBox, status: StringName}]
 var _bonus_checks: Array = []       # [{check: CheckBox, instance: int, status: StringName}]
 var _levelup_check: CheckBox        # null when the character has no level-up
+# Checklist row -> board body (see _bind_row_to_body). `_row_paints` is instance
+# -> the paint callables of every row written about that body; `_lit_instances`
+# is what is lit right now, from whichever end the mouse is on.
+var _row_paints: Dictionary = {}
+var _lit_instances: Dictionary = {}
 var _dash_mode: bool = false        # Dash (§4): offer ANY connected game
 var _controls_row: HBoxContainer
 var _stack: RichTextLabel           # battlefield summary line
@@ -319,6 +345,17 @@ func start_run(character_id: StringName = &"") -> void:
 	_drop_queue.clear()
 	_slot_enemies.clear()
 	_slot_enemy_key = ""
+	# …and everything a run can be standing in the middle of: a hub's shop, a
+	# detour waiting to ask where to carry on from, a boss round already announced.
+	_clear_shop()
+	_pending_shop = &""
+	_pending_event = null
+	_return_choice = &""
+	_pending_detour = false
+	_play_return_to = &""
+	_play_payload = []
+	_play_payload_text = ""
+	_boss_notice_for = -1
 	var pick: Dictionary = RunGraph.pick_amulet_and_starts(_rng)
 	var ch: CharacterData = Data.get_character2(character_id)
 	if ch == null:
@@ -434,6 +471,11 @@ func capture_view_state() -> Dictionary:
 		"boss_round": _boss_round,
 		"dash_mode": _dash_mode,
 		"scramble_salt": _scramble_salt,
+		"return_choice": String(_return_choice),
+		# The shop is a place on the page now, so a run saved standing in one comes
+		# back standing in it (the shelf itself lives on GameState either way).
+		"shop_open": String(_shop_panel.game_id()) if _shop_panel != null
+			and is_instance_valid(_shop_panel) else "",
 		"visits": visits,
 		"drops": drops,
 		"last_played_game": String(_last_played_game.id) if _last_played_game != null else "",
@@ -458,7 +500,14 @@ func restore_view_state(view: Dictionary) -> void:
 	_boss_round = bool(view.get("boss_round", false))
 	_dash_mode = bool(view.get("dash_mode", false))
 	_scramble_salt = int(view.get("scramble_salt", 0))
+	# A run saved on the stay-or-return screen comes back to it: `_choices` already
+	# holds the two destination cards, and this is what makes them mean "move here"
+	# rather than "travel and play".
+	_return_choice = StringName(view.get("return_choice", ""))
 	_visits.clear()
+	var shop_open: StringName = StringName(view.get("shop_open", ""))
+	if shop_open != &"":
+		_mount_shop(shop_open)
 	var vs: Dictionary = view.get("visits", {})
 	for gid in vs.keys():
 		_visits[StringName(gid)] = int(vs[gid])
@@ -611,12 +660,26 @@ func open_choice(index: int) -> GameChoiceModal:
 	if _choice_modal != null and is_instance_valid(_choice_modal):
 		return _choice_modal
 	var choice: Dictionary = _choices[index]
-	var modal := GameChoiceModal.open(self, index, choice, {
+	var notes: Dictionary = {
 		"route": route_note(choice),
 		"pace": turn_note(choice),
 		"tries": GameLoop2.shields_for_game(choice["game"]),
 		"beatable": _beatable_row(choice),
-	})
+	}
+	# The stay-or-return question opens the same card for a different verb: it
+	# MOVES the run rather than committing it to a game, so the card drops the two
+	# things that would be lies on it (the enemy it would spawn, and the Bash /
+	# Transmute that reshape an offering) and says what pressing it actually does.
+	if _asking_return():
+		var game: GameData = choice["game"]
+		var staying: bool = bool(choice.get("stay", false))
+		notes["move_only"] = true
+		notes["action_text"] = ("▶  Stay at %s" if staying else "◀  Head back to %s") % game.display_name
+		notes["action_tip"] = ("Carry on from here — the next offering is drawn from %s's neighbours."
+			if staying else "Return to %s and carry on from there.") % game.display_name
+		notes["move_note"] = ("You are already standing here. Nothing spawns — this only decides which game's neighbours the next offering is drawn from."
+			if staying else "Nothing spawns on arrival. You go back to where the detour started and choose again from there.")
+	var modal := GameChoiceModal.open(self, index, choice, notes)
 	_choice_modal = modal
 	modal.chose.connect(pick)
 	modal.bashed.connect(bash_choice)
@@ -627,6 +690,11 @@ func open_choice(index: int) -> GameChoiceModal:
 # Travel to the offered game at `index`: its goal-enemy spawns and we move there.
 func pick(index: int) -> void:
 	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
+		return
+	# The offering is showing the two ends of a detour rather than games to play,
+	# so the same click means "stand here" instead of "go and play this" (§10).
+	if _asking_return():
+		_take_return_choice(index)
 		return
 	_chosen = _choices[index]
 	# A Dash pick spends a charge (§4) — it's the "select any connected game" verb.
@@ -643,6 +711,9 @@ func pick(index: int) -> void:
 	# its position on the route toward the amulet).
 	GameState.set_current_game(_chosen["slot"])
 	_hover_grant = -1
+	# You have left the hub, so its shop comes off the page — the shelf itself
+	# survives on ShopSystem, which is what makes coming back to it a real option.
+	_clear_shop()
 	# An armed Push doesn't survive committing to a game: the board it was aimed at
 	# is about to be marched a column, and nothing has been spent.
 	if _board != null:
@@ -758,6 +829,8 @@ func undo_attempt() -> String:
 # Dash (§4): a TOTAL select — bypass the limited offering and show every connected
 # game so the player can move to any of them. Spends one dash charge on the pick.
 func dash() -> void:
+	if _asking_return():
+		return
 	if _phase != Phase.SELECT or GameState.dash_charges <= 0 or _dash_mode:
 		return
 	_dash_mode = true
@@ -778,6 +851,8 @@ func cancel_dash() -> void:
 # lands entirely on the enemies behind them; either way a scramble always changes
 # what you're being offered. Returns true when a charge was spent.
 func scramble() -> bool:
+	if _asking_return():
+		return false
 	if _phase != Phase.SELECT or GameState.scramble <= 0 or _choices.is_empty():
 		return false
 	GameState.scramble -= 1
@@ -1065,9 +1140,20 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	# fire and nothing about the game is banked. The run itself still advances —
 	# see games_played below — because the time was spent and the board closed in
 	# regardless.
+	# Was this game a play_game DETOUR (§10)? A detour is not an arrival: the run
+	# was sent to a game off its route by an event it has already resolved, and the
+	# far side of it is the stay-or-return question, not a fresh node's contents.
+	var on_detour: bool = _play_return_to != &""
 	if played_game != null and not escaped:
-		# The event at this node, queued for once the board stops moving.
-		_pending_event = EventSystem.event_for(slot_here)
+		# The event at this node, queued for once the board stops moving — but NEVER
+		# on a detour. An event fires at the place you routed to, and a detour's
+		# destination is a game the run was posted to by the last event; letting that
+		# game hand over an event of its own chained one event straight into the next
+		# and dropped it on top of the stay-or-return question. (Punch Off's "I Can
+		# Take Them" is the case that showed it: beat the mecha game, get asked
+		# whether to stay, and get a second event over the top of the asking.)
+		if not on_detour:
+			_pending_event = EventSystem.event_for(slot_here)
 		# …and the shop, if this was one of the run's ten hubs (§14). Queued on
 		# exactly the same terms, and read off the GAME rather than the graph slot:
 		# a shop belongs to the storefront of a particular big game, so a node
@@ -1165,11 +1251,14 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	_refresh()
 	# The run moved, so the recovery point moves with it.
 	autosave()
+	# A play_game detour ends here (§10) — but it QUEUES rather than resolving on
+	# the spot. Its payout and its stay-or-return question both belong on a screen
+	# the player can see, and at this moment the board is still playing the resolve
+	# back, so it waits behind that exactly as an event and a shop do (_end_resolve).
+	if on_detour:
+		_pending_detour = true
+		_detour_beaten = not escaped
 	_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
-	# A play_game detour ends here: pay it, then ask stay-or-return (§10). After
-	# the offering is rebuilt, so whichever way it goes lands on a live screen.
-	if _play_return_to != &"":
-		_finish_play_game(not escaped)
 
 # The run just stepped up a difficulty tier, which widens the battlefield by a
 # column and a row (§7.3). Reconcile the board's coordinates with its new size
@@ -1267,21 +1356,121 @@ func _on_event_finished(play_request: Dictionary) -> void:
 		return
 	_open_pending_shop()
 
-# Open the shop owed at this hub, if any (§14).
+# Mount the shop owed at this hub, if any (§14) — under the board, where it stays
+# for the whole visit. Nothing is blocked by it and nothing waits on it, so the
+# chain carries straight on to the boss notice.
 func _open_pending_shop() -> void:
 	var gid: StringName = _pending_shop
 	_pending_shop = &""
-	if gid == &"" or GameLoop2.run_over:
-		return
-	_shop_modal = ShopModal2.open(self, gid)
-	_shop_modal.finished.connect(_on_shop_finished)
+	# Only where the player is actually STANDING. As a modal a shop could be raised
+	# anywhere; as a place on the page it cannot, and the one path that gets here
+	# from somewhere else is a node that owed both an event and a shop, where the
+	# event posted the run off to another game (§10). The spec calls that pairing
+	# unreal (every authored event is `Where: Dead End`, and a hub is the opposite
+	# of one), and a shop mounted under the board while the run stands two games
+	# away from it would be a worse answer than no shop.
+	if gid != &"" and not GameLoop2.run_over and gid == _hub_underfoot():
+		_mount_shop(gid)
+	_maybe_announce_boss()
 
-func _on_shop_finished() -> void:
-	_shop_modal = null
-	# An item bought in there is a pickup like any other: the pack, the chips and
-	# the board all need to be told, and the run wants saving at the new state.
-	_refresh()
-	autosave()
+# The id of the game the run is standing on, read through the transmute map — a
+# transmuted node plays a different game, and a shop belongs to the storefront of
+# a particular big game rather than to the spot (§14).
+func _hub_underfoot() -> StringName:
+	var game: GameData = GameLoop2.game_at(GameState.current_game_id)
+	return game.id if game != null else &""
+
+# --- the shop on the page (§14) --------------------------------------------
+
+# Put `gid`'s shop under the battlefield and raise the pointer to it. Replaces
+# whatever shop was there — you can only be standing in one.
+func _mount_shop(gid: StringName) -> void:
+	_clear_shop()
+	if _right_col == null:
+		return
+	_shop_panel = ShopPanel2.mount(_right_col, gid)
+	if _shop_panel == null:
+		return
+	_shop_panel.finished.connect(func(): _shop_panel = null)
+	# The panel has no height until the page has laid it out, and "is it on screen"
+	# is unanswerable before then — so ask once now (the pointer goes up) and again
+	# after the layout has happened (it may already be in view on a short board).
+	_update_shop_hint()
+	_update_shop_hint.call_deferred()
+
+# The shop closes when you travel on, which is what leaving a shop has always
+# meant. Called from every way the run moves off this node.
+func _clear_shop() -> void:
+	if _shop_panel != null and is_instance_valid(_shop_panel):
+		_shop_panel.close()
+	_shop_panel = null
+	_update_shop_hint()
+
+# The "🛒 Shop ↓" pointer: shown while a shop is mounted and has NOT been scrolled
+# to. The whole point of moving the shop into the page is that it doesn't
+# interrupt — which is also how a shop below the fold gets missed entirely, so
+# the one thing that does reach over the page is a pointer at it.
+func _update_shop_hint() -> void:
+	if _shop_hint == null:
+		return
+	var up: bool = _shop_panel != null and is_instance_valid(_shop_panel) and not _shop_in_view()
+	_shop_hint.visible = up
+	# Only worth watching while there is a shop to point at. "Has it been scrolled
+	# to yet" cannot be answered off the scroll signal alone — the value moves
+	# before the layout does, so the answer measured at that moment is one frame
+	# stale and the pointer stayed up over a shop in plain view.
+	set_process(_shop_panel != null and is_instance_valid(_shop_panel))
+
+func _process(_delta: float) -> void:
+	_update_shop_hint()
+
+# Is any of the shop panel inside the scroll viewport? Measured against the
+# viewport's own rect rather than the page's, because "on screen" is what the
+# pointer is about.
+func _shop_in_view() -> bool:
+	if _shop_panel == null or not is_instance_valid(_shop_panel) or _scroll == null:
+		return false
+	if _shop_panel.size.y <= 0.0:
+		return false        # not laid out yet — treat it as still below the fold
+	var top: float = _shop_panel.global_position.y - _scroll.global_position.y
+	return top < _scroll.size.y - SHOP_HINT_REVEAL
+
+# How much of the shop has to be on screen before the pointer stands down. A
+# sliver of a panel edge is not "you have seen the shop".
+const SHOP_HINT_REVEAL := 60.0
+
+# An item bought down there is a pickup like any other, so it comes back through
+# GameState.inventory_changed (_on_inventory_changed) exactly as a drop does —
+# the shop needs no repaint hook of its own.
+
+
+# --- the boss round announces itself (§7.1) --------------------------------
+
+# The last thing shown between two games, when the offering that just came back
+# is a boss round. It is last on purpose: the event and the shop are the previous
+# game's aftermath, and this is about the decision in front of you, so it should
+# be the thing still on screen when the popup chain runs out.
+#
+# Once per round, keyed on the games-played count the round belongs to — the
+# offering is redrawn by a bash, a transmute and a scramble as well as by a
+# report, and a warning that reopened on each of those would be a warning the
+# player learns to click through.
+func _maybe_announce_boss() -> void:
+	var due: bool = _phase == Phase.SELECT and _boss_round and not GameLoop2.run_over \
+		and _boss_notice_for != GameState.games_played and _boss_notice == null
+	if not due:
+		_finish_pending_detour()
+		return
+	_boss_notice_for = GameState.games_played
+	var bosses: Array = []
+	for choice in _choices:
+		if bool(choice.get("boss", false)) and choice.get("enemy") != null:
+			bosses.append(choice.get("enemy"))
+	_boss_notice = BossNoticeModal.open(self,
+		RunDifficulty.tier_name(_current_tier()), bosses)
+	_boss_notice.finished.connect(func():
+		_boss_notice = null
+		_finish_pending_detour())
 
 # The reward for beating a game you'd already cleared this run: +1 Dash (§4).
 # Announced on both channels — the toast for the moment, the log for the record —
@@ -1385,6 +1574,7 @@ func teleport_to_type(type_key: StringName) -> void:
 func travel_to_game(game_id: StringName) -> void:
 	if Data.get_game(game_id) == null:
 		return
+	_clear_shop()
 	GameState.set_current_game(game_id)
 	_phase = Phase.SELECT
 	_dash_mode = false
@@ -1413,6 +1603,8 @@ func _start_play_game(request: Dictionary) -> void:
 		for eff in request.get("effects", []):
 			EffectSystem.apply(eff, {})
 		return
+	# The run is being posted off this node, so anything standing at it goes.
+	_clear_shop()
 	_play_return_to = GameState.current_game_id
 	_play_payload = (request.get("effects", []) as Array).duplicate(true)
 	_play_payload_text = String(request.get("effects_text", ""))
@@ -1449,6 +1641,16 @@ func _random_game_with_tag(tag: StringName) -> StringName:
 	return pool[_rng.randi() % pool.size()]
 
 
+# The queued far side of a detour, run once everything else the report owed has
+# been shown (the resolve, an event, the shop, a boss warning). Nothing happens
+# here unless a detour is actually in flight.
+func _finish_pending_detour() -> void:
+	if not _pending_detour:
+		return
+	_pending_detour = false
+	_finish_play_game(_detour_beaten)
+
+
 # The far side of a play_game detour: pay the payload, then offer the choice the
 # original event promised — stay here, or go back where you came from. Staying is
 # only offered when this game is actually ON the run graph; a game reached by tag
@@ -1478,31 +1680,69 @@ func _finish_play_game(beaten: bool) -> void:
 	_ask_stay_or_return(back)
 
 
-# Two buttons and no third option, mounted where the offering would be. Kept
-# deliberately plain: the interesting decision was taking the detour, and this is
-# only its bookkeeping.
+# "Stay, or head back?" — asked with the SAME SCREEN the run asks every other
+# where-do-I-go question with: two cover cards on the offering, each opening the
+# full card popup (GameChoiceModal) with the route from there drawn as the real
+# ladder, the shop and event flags, and your record in the game.
+#
+# It used to be a ConfirmationDialog with the two game names in a sentence, on the
+# grounds that the interesting decision was taking the detour and this was only
+# its bookkeeping. That was wrong: it is a ROUTING decision, and the biggest one
+# the detour creates — the whole point of being posted off your route is that you
+# are now somewhere else, and "is this a better place to carry on from?" cannot be
+# answered from two names. A player who is shown the map for every ordinary step
+# and a sentence for this one is being asked to guess exactly when it matters.
 func _ask_stay_or_return(back: StringName) -> void:
 	if back == &"" or Data.get_game(back) == null:
 		return
-	var here: GameData = Data.get_game(GameState.current_game_id)
-	var there: GameData = Data.get_game(back)
-	var modal := ConfirmationDialog.new()
-	modal.process_mode = Node.PROCESS_MODE_ALWAYS
-	modal.title = "Stay, or head back?"
-	modal.dialog_text = "%s is connected on the map — you can carry on from here, or return to %s." % [
-		here.display_name if here != null else "This game",
-		there.display_name]
-	modal.ok_button_text = "Stay here"
-	modal.cancel_button_text = "Back to %s" % there.display_name
-	modal.confirmed.connect(func():
-		GameLog.add("Carried on from %s." % (here.display_name if here != null else "the detour"),
+	_return_choice = back
+	_phase = Phase.SELECT
+	_dash_mode = false
+	_chosen = {}
+	_build_return_choices()
+	_refresh()
+	_scroll_to_top()
+
+# The two destinations as offering cards. No enemy is rolled for either: this
+# question moves the run, it does not start a game — whichever way it goes, the
+# offering at the far end is what picks the next game (and rolls its enemy).
+func _build_return_choices() -> void:
+	_choices.clear()
+	var here: StringName = GameState.current_game_id
+	var amulet: StringName = GameState.amulet_game_id
+	_rebuild_amulet_distances()
+	for gid in [here, _return_choice]:
+		var game: GameData = GameLoop2.game_at(gid)
+		if game == null:
+			continue
+		_choices.append({
+			"game": game, "enemy": null, "slot": gid,
+			"boss": false, "amulet": gid == amulet,
+			"repeat": GameState.has_beaten_game(game.id),
+			"stay": gid == here,
+		})
+
+func _asking_return() -> bool:
+	return _return_choice != &""
+
+# Answer it. Staying needs nothing but the offering rebuilt around where the run
+# already stands; heading back is an ordinary teleport to the node it came from.
+func _take_return_choice(index: int) -> void:
+	if index < 0 or index >= _choices.size():
+		return
+	var choice: Dictionary = _choices[index]
+	var back: StringName = _return_choice
+	_return_choice = &""
+	var game: GameData = choice.get("game")
+	if bool(choice.get("stay", false)):
+		GameLog.add("Carried on from %s." % (game.display_name if game != null else "the detour"),
 			UITheme.ACCENT)
-		modal.queue_free())
-	modal.canceled.connect(func():
-		travel_to_game(back)
-		modal.queue_free())
-	add_child(modal)
-	modal.popup_centered()
+		_build_choices()
+		_refresh()
+		autosave()
+		return
+	travel_to_game(back)
+	autosave()
 
 
 # Wand of Wishing: obtain any one item — opens a RewardScreen listing the full
@@ -1545,6 +1785,8 @@ func use_item(item: ItemData) -> void:
 # Allowed on a boss round — the boss is tied to the difficulty gate, not the game,
 # so whatever backfills the slot still spawns a boss.
 func bash_choice(index: int) -> void:
+	if _asking_return():
+		return
 	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
 		return
 	var choice: Dictionary = _choices[index]
@@ -1586,6 +1828,8 @@ func bash_choice(index: int) -> void:
 # replacement game still spawns a boss, because boss-ness follows the difficulty
 # gate rather than the game.
 func transmute_choice(index: int) -> void:
+	if _asking_return():
+		return
 	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
 		return
 	var slot: StringName = _choices[index]["slot"]
@@ -1820,14 +2064,14 @@ func _refresh(_a = null) -> void:
 	_refresh_stage()
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
-	_boss_banner.get_parent().visible = _boss_round and _phase == Phase.SELECT
 	if _phase == Phase.START_SELECT:
 		_select_head.text = "Choose where to start — three genres, all the same distance from the Amulet:"
 		_clear(_controls_row)
 		_render_start_choices()
 		_populate_standing_checklist()
 	elif _phase == Phase.SELECT:
-		_select_head.text = "Choose a game to travel to:"
+		_select_head.text = ("Stay here, or head back? — open either to see where it leaves you:"
+			if _asking_return() else "Choose a game to travel to:")
 		_render_controls()
 		_render_choices()
 		# The standing goals change with the stack (a bomb, a fulfilment, a scroll),
@@ -1880,6 +2124,9 @@ func _refresh_stage() -> void:
 	_np_box.visible = playing
 	_attempt_wrap.visible = playing
 	_done_btn.visible = playing
+	# The page just changed height around the shop, so where it sits relative to
+	# the window has changed with it.
+	_update_shop_hint()
 
 # The row above the offering. Dash and Scramble used to keep their buttons here
 # AND their counts on the HUD; they are one chip apiece on the stat row under the
@@ -1888,6 +2135,12 @@ func _refresh_stage() -> void:
 # be stated where the cards it changes are.
 func _render_controls() -> void:
 	_clear(_controls_row)
+	if _asking_return():
+		var note := Label.new()
+		note.text = "The detour is over — pick where the run carries on from."
+		note.add_theme_color_override("font_color", UITheme.ACCENT)
+		_controls_row.add_child(note)
+		return
 	if _dash_mode:
 		var hint := Label.new()
 		hint.text = "⚡ Dash — pick ANY connected game:"
@@ -2009,7 +2262,7 @@ func _render_choices() -> void:
 		return
 	for i in range(_choices.size()):
 		_choices_row.add_child(_make_choice_card(i, _choices[i]))
-	_preview.text = "[i]Hover a game to see the enemy it would spawn — click it for the route, the goal and the way in.[/i]"
+	_preview.text = _preview_idle_text()
 
 # The offered cover art, back at the size it deserves. It was halved when the
 # offering moved into the left column beside the board (COVER_SIZE was 105x140),
@@ -2286,7 +2539,8 @@ func _populate_play_panel() -> void:
 		var goal_text: String = "%s %s" % [
 			"🏆 Amulet goal (bonus) —" if is_amulet else "Goal —",
 			GameLoop2.goal_text_for(GameLoop2.current)]
-		var goal_row := _verify_row(goal_text, UITheme.SUCCESS, true, enemy)
+		var goal_row := _verify_row(goal_text, UITheme.SUCCESS, true, enemy, null,
+			int(GameLoop2.current.get("instance", 0)))
 		_goal_check = goal_row["check"]
 		_verify_box.add_child(goal_row["row"])
 		# On the Amulet the goal is NOT the lock on the door — playing the game is
@@ -2341,12 +2595,20 @@ func _populate_play_panel() -> void:
 	# actually do", and the goal is the part being answered — the enemy's name is
 	# the label on it. Leading with the name made every row start with a proper
 	# noun the player has to read past to reach the thing they're ticking.
+	#
+	# The current game's enemy is on the board with the followers now (§7.2), and
+	# it is skipped here because it already has the Goal row at the top of this
+	# list — listing it twice would let the same body be ticked as both.
+	var current_inst: int = int(GameLoop2.current.get("instance", 0))
 	for entry in GameLoop2.stack:
+		var inst: int = int(entry["instance"])
+		if inst == current_inst:
+			continue
 		var e: GoalEnemyData = entry["enemy"]
 		var row := _verify_row("Also cleared: %s — %s" % [
-			GameLoop2.goal_text_for(entry), e.display_name], UITheme.TEXT, false, e)
+			GameLoop2.goal_text_for(entry), e.display_name], UITheme.TEXT, false, e, null, inst)
 		_verify_box.add_child(row["row"])
-		_fulfil_checks.append({"check": row["check"], "instance": int(entry["instance"])})
+		_fulfil_checks.append({"check": row["check"], "instance": inst})
 		_add_bonus_rows(entry)
 
 # The two event-borne sections of the checklist. Both count down in games, and
@@ -2432,7 +2694,7 @@ func _add_bonus_rows(entry: Dictionary) -> void:
 		var stacks: int = int(row["stacks"])
 		var brow := _verify_row(
 			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
-			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false)
+			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance)
 		_verify_box.add_child(brow["row"])
 		_bonus_checks.append({"check": brow["check"], "instance": instance, "status": sd.id})
 
@@ -2446,6 +2708,13 @@ func _status_prefix(status: StatusData, stacks: int) -> String:
 # must be cleared as one — a stale CheckBox left in any of them is a claim read
 # off a freed node on the next report.
 func _reset_checklist_state() -> void:
+	# The rows are about to be freed, and with them every paint bound to a body.
+	# Nothing is lit on a list that no longer exists, so the board is told too.
+	_row_paints.clear()
+	if not _lit_instances.is_empty():
+		_lit_instances = {}
+		if _board != null:
+			_board.highlight([])
 	_fulfil_checks.clear()
 	_status_goal_checks.clear()
 	_bonus_checks.clear()
@@ -2514,27 +2783,84 @@ func _populate_standing_checklist() -> void:
 		# are the same list in two states and the goal is what's being read for.
 		# "dmg N" in words: the board's ⚔ badge is a fine-detail glyph that reads as
 		# an ✕ at list-row sizes.
+		var inst: int = int(entry.get("instance", 0))
 		_verify_box.add_child(_objective_row(
 			"%s — %s   (dmg %d)" % [GameLoop2.goal_text_for(entry), e.display_name, e.damage],
-			tint, _boss_icon(e)))
+			tint, _boss_icon(e), inst))
 		for bonus in GameLoop2.bonus_objectives_for(entry):
 			var sd: StatusData = bonus["status"]
 			var stacks: int = int(bonus["stacks"])
 			_verify_box.add_child(_objective_row(
 				"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
-				UITheme.GOLD.lerp(UITheme.TEXT, 0.3)))
+				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst))
 
 	if GameLoop2.stack.is_empty() and GameState.status_objectives().is_empty():
 		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")
 		_verify_box.add_child(none)
 
+# --- the checklist and the board, pointing at each other -------------------
+#
+# A goal on the checklist and a body on the board are the same fact written
+# twice, and until now nothing said which line went with which enemy: a list of
+# four goals beside a board of four bodies left the player matching them up by
+# name. So the pair is LIT FROM EITHER END. Hovering a goal row brightens the
+# enemies it belongs to; hovering an enemy brightens its row. One binding does
+# both directions, because they are the same relation read from opposite sides.
+#
+# `instance` 0 means the row belongs to no body (the level-up challenge, an event
+# goal, a player status): those rows bind nothing and stay inert.
+
+# Bind one checklist row to one body. `paint` is called with whether the row
+# should read as lit; it is kept per instance so the board's hover can find it.
+func _bind_row_to_body(row: Control, instance: int, paint: Callable) -> void:
+	if instance <= 0:
+		return
+	var rows: Array = _row_paints.get(instance, [])
+	rows.append(paint)
+	_row_paints[instance] = rows
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.mouse_entered.connect(func(): _light_bodies([instance]))
+	row.mouse_exited.connect(func(): _light_bodies([]))
+
+# Light `instances` on the BOARD (and, so the two halves never disagree, the rows
+# that belong to them). Passing [] clears.
+func _light_bodies(instances: Array) -> void:
+	var want: Dictionary = {}
+	for inst in instances:
+		want[int(inst)] = true
+	if want == _lit_instances:
+		return
+	var touched: Dictionary = _lit_instances.duplicate()
+	for inst in want:
+		touched[inst] = true
+	_lit_instances = want
+	for inst in touched:
+		for paint in _row_paints.get(inst, []):
+			if (paint as Callable).is_valid():
+				(paint as Callable).call(_lit_instances.has(inst))
+	if _board != null:
+		_board.highlight(_lit_instances.keys())
+
+# The other direction: the mouse crossed a body on the board.
+func _on_enemy_hovered(instance: int, hovered: bool) -> void:
+	_light_bodies([instance] if hovered else [])
+
 # One read-only checklist row: the same frame the tick-box rows use, without the
 # box, so the standing list and the report step read as the same list in two
-# states. `icon` is the boss portrait, when the row belongs to one (_boss_icon).
-func _objective_row(text: String, color: Color, icon: Texture2D = null) -> Control:
+# states. `icon` is the boss portrait, when the row belongs to one (_boss_icon);
+# `instance` is the body on the board this goal belongs to, which is what pairs
+# the row with the enemy in both directions (_bind_row_to_body).
+func _objective_row(text: String, color: Color, icon: Texture2D = null,
+		instance: int = 0) -> Control:
 	var wrap := PanelContainer.new()
-	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 1, color.lerp(UITheme.BORDER, 0.35)))
+	var idle: StyleBox = UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 1,
+		color.lerp(UITheme.BORDER, 0.35))
+	var lit: StyleBox = UITheme.flat(color.lerp(UITheme.BG, 0.78), 5, 4, 2,
+		color.lerp(Color.WHITE, 0.35))
+	wrap.add_theme_stylebox_override("panel", idle)
+	_bind_row_to_body(wrap, instance, func(is_lit: bool) -> void:
+		if is_instance_valid(wrap):
+			wrap.add_theme_stylebox_override("panel", lit if is_lit else idle))
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 6)
 	wrap.add_child(line)
@@ -2583,7 +2909,8 @@ func _goal_met() -> bool:
 # on the right, for writing down how this enemy was actually beaten AT this game
 # — the note belongs to the pair, and the Atlas surfaces it on the game later.
 func _verify_row(text: String, color: Color, emphasise: bool,
-		enemy: GoalEnemyData = null, character: CharacterData = null) -> Dictionary:
+		enemy: GoalEnemyData = null, character: CharacterData = null,
+		instance: int = 0) -> Dictionary:
 	var wrap := PanelContainer.new()
 	var border: Color = color.lerp(UITheme.BORDER, 0.35)
 	var width: int = 2 if emphasise else 1
@@ -2593,7 +2920,20 @@ func _verify_row(text: String, color: Color, emphasise: bool,
 	# it rather than needing each little box squinted at in turn.
 	var ticked_box: StyleBox = UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.80), 5, 4,
 		maxi(width, 2), UITheme.SUCCESS.lerp(UITheme.BORDER, 0.15))
+	# …and a LIT row is the third state: the board beside this list is pointing at
+	# the body this goal belongs to (see _bind_row_to_body).
+	var lit: StyleBox = UITheme.flat(color.lerp(UITheme.BG, 0.78), 5, 4,
+		maxi(width, 2), color.lerp(Color.WHITE, 0.35))
+	var ticked := {"on": false}
+	var paint := func(is_lit: bool) -> void:
+		if not is_instance_valid(wrap):
+			return
+		if bool(ticked["on"]):
+			wrap.add_theme_stylebox_override("panel", ticked_box)
+		else:
+			wrap.add_theme_stylebox_override("panel", lit if is_lit else idle)
 	wrap.add_theme_stylebox_override("panel", idle)
+	_bind_row_to_body(wrap, instance, paint)
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 8)
 	wrap.add_child(line)
@@ -2615,7 +2955,8 @@ func _verify_row(text: String, color: Color, emphasise: bool,
 	cb.add_theme_color_override("font_pressed_color", color)
 	cb.add_theme_color_override("font_hover_color", UITheme.GOLD)
 	cb.toggled.connect(func(on: bool):
-		wrap.add_theme_stylebox_override("panel", ticked_box if on else idle)
+		ticked["on"] = on
+		paint.call(_lit_instances.has(instance))
 		cb.add_theme_color_override("font_color",
 			UITheme.SUCCESS.lerp(Color.WHITE, 0.55) if on else color))
 	line.add_child(cb)
@@ -2762,7 +3103,8 @@ func _roll_bonus_level_up() -> bool:
 func _show_preview(index: int) -> void:
 	if index < 0 or index >= _choices.size():
 		return
-	_hover_grant = GameLoop2.shields_for_game(_choices[index]["game"])
+	# A destination card grants no tries — it isn't a game being started (§10).
+	_hover_grant = -1 if _asking_return() else GameLoop2.shields_for_game(_choices[index]["game"])
 	_preview.text = _hover_line(_choices[index])
 
 # The mouse left a card: the line stays as a reference, but the grant number goes
@@ -2771,7 +3113,15 @@ func _clear_hover_grant() -> void:
 	if _hover_grant < 0:
 		return
 	_hover_grant = -1
-	_preview.text = "[i]Hover a game to see the enemy it would spawn — click it for the route, the goal and the way in.[/i]"
+	_preview.text = _preview_idle_text()
+
+# What the hover line says with nothing hovered — which is a different sentence
+# when the two cards on the table are the ends of a detour rather than games to
+# go and play (§10).
+func _preview_idle_text() -> String:
+	if _asking_return():
+		return "[i]The detour is over. Open either game to see the road from it, then take the one you want to carry on from.[/i]"
+	return "[i]Hover a game to see the enemy it would spawn — click it for the route, the goal and the way in.[/i]"
 
 # The enemy's art (§10.1) for a choice, or null when there's no enemy.
 func _enemy_texture(choice: Dictionary) -> Texture2D:
@@ -2786,6 +3136,10 @@ func _enemy_texture(choice: Dictionary) -> Texture2D:
 func _hover_line(choice: Dictionary) -> String:
 	var game: GameData = choice["game"]
 	var e: GoalEnemyData = choice.get("enemy")
+	if choice.has("stay"):
+		return "[b]%s[/b]  ·  [i]%s[/i]" % [game.display_name,
+			"stay here and carry on from this game"
+			if bool(choice["stay"]) else "head back and carry on from there"]
 	var tries: String = "  ·  [color=#%s]◆ %d tries[/color]" % [
 		SHIELD_BLUE.to_html(false), _hover_grant] if _hover_grant >= 0 else ""
 	if e == null:
@@ -3352,6 +3706,8 @@ func _queue_run_over(did_win: bool) -> void:
 	_show_run_over()
 
 func _show_run_over() -> void:
+	# Nothing left to spend it on, and nothing under the board to scroll to.
+	_clear_shop()
 	if not is_inside_tree():
 		return
 	if _run_over_screen != null and is_instance_valid(_run_over_screen):
@@ -3375,7 +3731,6 @@ func _show_banner(text: String, color: Color) -> void:
 	_banner.text = text
 	_banner.add_theme_color_override("font_color", color)
 	_banner.show()
-	_boss_banner.get_parent().visible = false
 	# The run is over: the offering and the report step are done with, and the board
 	# drops to the page bottom showing the field the run ended on.
 	_refresh_stage()
@@ -3444,18 +3799,6 @@ func _build_ui() -> void:
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_banner.hide()
 	root.add_child(_banner)
-
-	_boss_banner = Label.new()
-	_boss_banner.text = "⚠   BOSS INCOMING   ⚠"
-	_boss_banner.add_theme_font_size_override("font_size", 20)
-	_boss_banner.add_theme_color_override("font_color", Color(1.0, 0.62, 0.24))
-	_boss_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var boss_wrap := PanelContainer.new()
-	boss_wrap.add_theme_stylebox_override("panel", UITheme.flat(Color(0.20, 0.08, 0.05, 0.9), 10, 8, 2, UITheme.DANGER.lerp(UITheme.ACCENT, 0.4)))
-	boss_wrap.add_child(_boss_banner)
-	_boss_banner.set_meta("wrap", boss_wrap)
-	boss_wrap.hide()
-	root.add_child(boss_wrap)
 
 	# THE STAGE, in two columns. LEFT is the run's paperwork, top to bottom in the
 	# order it's read: the OFFERING (which game next) above the CHECKLIST (what to
@@ -3603,6 +3946,9 @@ func _build_ui() -> void:
 	_board.push_requested.connect(push_follower)
 	_board.bomb_requested.connect(bomb_follower)
 	_board.enemy_inspected.connect(_show_enemy_info)
+	# The board points back at the checklist: hovering a body lights the goal row
+	# written about it (_bind_row_to_body).
+	_board.enemy_hovered.connect(_on_enemy_hovered)
 	stage_box.add_child(_board)
 
 
@@ -3691,6 +4037,16 @@ func _build_ui() -> void:
 	_play_panel.add_child(_log)
 
 
+	# The pointer at the shop under the board (§14). Mounted OUTSIDE the
+	# ScrollContainer, on the page itself, because its whole job is to be visible
+	# while the thing it points at is not.
+	_shop_hint = _build_shop_hint()
+	add_child(_shop_hint)
+	# It stands down the moment the shop is scrolled to. The page is watched while
+	# a shop is up (see _update_shop_hint) rather than sampled on the scroll signal,
+	# which fires before the layout it would be measured against.
+	set_process(false)
+
 	# The toast layer: pickups, item procs and the repeat-beat Dash all post to
 	# Notifications, and this is what makes them visible the instant they happen. It
 	# used to be mounted by the (now cut) combat host, so nothing showed them.
@@ -3698,6 +4054,51 @@ func _build_ui() -> void:
 	# stack anchors to its parent's top-right corner, and a Control hung straight off
 	# a CanvasLayer has no rect to anchor to, which parks the stack off-screen.
 	add_child(NotificationToasts.new())
+
+# "🛒 Shop ↓" — the pointer at the shop mounted under the board. It floats at the
+# bottom of the SCREEN (not of the page), over everything, until the shop has
+# been scrolled into view; pressing it scrolls there.
+#
+# This is the one thing the inline shop still owes the old modal. A popup could
+# not be missed and did not have to advertise itself; a panel below the fold can
+# be both, and a shop the player never noticed is worse than the interruption
+# that moving it out of the way was meant to avoid.
+func _build_shop_hint() -> Control:
+	var wrap := PanelContainer.new()
+	wrap.visible = false
+	wrap.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	wrap.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	wrap.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	wrap.offset_bottom = -18
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.SHOP_GREEN.lerp(UITheme.BG, 0.72), 10, 6, 2, UITheme.SHOP_GREEN))
+	var btn := Button.new()
+	btn.text = "🛒  Shop      ↓"
+	btn.flat = true
+	btn.tooltip_text = "A shop is open under the battlefield — scroll down to it."
+	btn.add_theme_font_size_override("font_size", 18)
+	btn.add_theme_color_override("font_color", UITheme.SHOP_GREEN.lerp(Color.WHITE, 0.45))
+	btn.add_theme_color_override("font_hover_color", Color.WHITE)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.pressed.connect(_scroll_to_shop)
+	wrap.add_child(btn)
+	# The arrow breathes rather than sitting still: the pointer is competing with a
+	# page the player is already reading, and a static chip at the bottom edge is
+	# exactly the kind of thing an eye filters out.
+	var t: Tween = wrap.create_tween().set_loops()
+	t.tween_property(wrap, "modulate:a", 0.55, 0.7).set_trans(Tween.TRANS_SINE)
+	t.tween_property(wrap, "modulate:a", 1.0, 0.7).set_trans(Tween.TRANS_SINE)
+	return wrap
+
+# Take the page to the shop. Pressing the pointer is the shortcut for the scroll
+# it is asking for, so it does the scroll itself.
+func _scroll_to_shop() -> void:
+	if _shop_panel == null or not is_instance_valid(_shop_panel) or _scroll == null:
+		return
+	var target: float = _scroll.scroll_vertical \
+		+ (_shop_panel.global_position.y - _scroll.global_position.y) - 40.0
+	_scroll.scroll_vertical = int(maxf(0.0, target))
+	_update_shop_hint()
 
 # The attempt tracker (§3): the strip the player drives between runs of the real
 # game. "Lost a run" is the only destructive button on the page, so it's tinted

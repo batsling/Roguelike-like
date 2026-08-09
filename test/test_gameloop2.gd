@@ -1,7 +1,7 @@
 extends GutTest
 
 # Tests for the games-first loop resolver (GameLoop2) — the enemy-stack state
-# machine, the one-game grace timing (§7.2), shields-then-hp damage (§3), drops on
+# machine, the spawn-and-walk timing (§7.2), shields-then-hp damage (§3), drops on
 # defeat (§8), stun, bomb, old-goal fulfilment, enemy rolling, and win/lose.
 # Pure logic, no scene: this is the headless core the overworld + OBS HUD ride on.
 
@@ -128,12 +128,31 @@ func test_goal_met_defeats_drops_and_deals_no_damage() -> void:
 	assert_eq(GameState.hp, 10, "a met goal deals no damage")
 	assert_false(GameLoop2.has_current())
 
-# --- one-game grace (§7.2) -----------------------------------------------
+# --- spawning onto the board, and the walk that follows (§7.2) -----------
+
+# Choosing a game puts its enemy ON THE BOARD, at the back column, there and then.
+# It used to wait off the field until its game was reported; the grace that gave
+# it is now simply the distance it has to walk.
+func test_choosing_a_game_stands_its_enemy_on_the_board() -> void:
+	var inst: int = GameLoop2.choose_game(_enemy(2))
+	assert_eq(GameLoop2.stack_size(), 1, "it is a body on the board, not a body in waiting")
+	assert_eq(_col_of(inst), GameLoop2.spawn_col(), "standing on the back column")
+	assert_eq(int(GameLoop2.current.get("instance", 0)), inst,
+		"and it is the enemy of the game in play")
+
+# Choosing a second game supersedes the first: the enemy nobody played for leaves
+# the board rather than lingering on it (this is what a Scramble does).
+func test_choosing_again_takes_the_superseded_enemy_off_the_board() -> void:
+	GameLoop2.choose_game(_enemy(2))
+	var second: int = GameLoop2.choose_game(_enemy(2))
+	assert_eq(GameLoop2.stack_size(), 1, "one game, one enemy")
+	assert_eq(int(GameLoop2.stack[0]["instance"]), second, "and it is the new one")
 
 func test_failed_enemy_does_not_attack_the_game_it_stacks() -> void:
 	GameLoop2.choose_game(_enemy(2))
 	GameLoop2.beat_game(false)
-	assert_eq(GameState.hp, 10, "the enemy that just stacked cannot hit this game")
+	assert_eq(GameState.hp, 10,
+		"the enemy that spawned this game is still at the back — it cannot reach you yet")
 	assert_eq(GameLoop2.stack_size(), 1)
 
 # An enemy spawns at the back column and closes one column per game beaten; only
@@ -141,11 +160,14 @@ func test_failed_enemy_does_not_attack_the_game_it_stacks() -> void:
 # BEFORE the advance, so an enemy that just stepped into the front holds fire that
 # game and strikes on the next.
 func test_stacked_enemy_marches_forward_then_attacks() -> void:
-	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # A -> spawn col
+	var a: int = GameLoop2.choose_game(_enemy(2))
 	assert_eq(_col_of(a), GameLoop2.spawn_col(), "spawns at the back")
-	assert_eq(GameState.hp, 10, "the back column can't strike")
-	_tick()                                          # A closes one column
-	assert_eq(_col_of(a), GameLoop2.spawn_col() - 1)
+	GameLoop2.beat_game(false)                       # its own game: it walks with the rest
+	assert_eq(_col_of(a), GameLoop2.spawn_col() - 1,
+		"and takes its first step during the game that spawned it")
+	assert_eq(GameState.hp, 10, "the back of the board can't strike")
+	_tick()                                          # A closes another column
+	assert_eq(_col_of(a), GameLoop2.spawn_col() - 2)
 	assert_eq(GameState.hp, 10)
 	_march_to_front(a)                               # A -> col 1 (front), no strike yet
 	assert_eq(_col_of(a), 1)
@@ -156,7 +178,7 @@ func test_stacked_enemy_marches_forward_then_attacks() -> void:
 # --- grid: advance / stall / overflow (§grid) ----------------------------
 
 func test_enemy_closes_one_column_per_game() -> void:
-	var a: int = GameLoop2.choose_game(_enemy(1)) ; GameLoop2.beat_game(false)
+	var a: int = GameLoop2.choose_game(_enemy(1))
 	assert_eq(_col_of(a), GameLoop2.spawn_col(), "spawns at the back column")
 	for step in range(1, GameLoop2.spawn_col()):
 		_tick()
@@ -740,19 +762,18 @@ func test_losing_mine_r_construction_takes_the_column_back() -> void:
 func test_a_grown_board_spawns_enemies_a_column_further_out() -> void:
 	GameState.add_item(_minor())
 	var a: int = GameLoop2.choose_game(_enemy(1))
-	GameLoop2.beat_game(false)
 	assert_eq(_col_of(a), 5, "the new back column is where it walks on")
 
 func test_growing_the_board_buys_a_game_of_distance() -> void:
 	# The enemy already standing on the board keeps its column — the board grew
 	# behind it, it did not get pushed back — so the gain is for what spawns next.
 	var a: int = GameLoop2.choose_game(_enemy(1))
-	GameLoop2.beat_game(false)
 	assert_eq(_col_of(a), 4)
+	GameLoop2.beat_game(false)      # a is an ordinary follower now, one column in
+	assert_eq(_col_of(a), 3)
 	GameState.add_item(_minor())
-	assert_eq(_col_of(a), 4, "the bodies on the board stay where they stand")
+	assert_eq(_col_of(a), 3, "the bodies on the board stay where they stand")
 	var b: int = GameLoop2.choose_game(_enemy(1))
-	GameLoop2.beat_game(false)
 	assert_eq(_col_of(b), 5, "the newcomer starts a column further out")
 
 func test_the_queue_walks_onto_the_room_the_growth_made() -> void:
@@ -1129,8 +1150,8 @@ func _stand_at_hops(hops: int) -> bool:
 # Marches at the FAR pace so the setup itself doesn't depend on the rung under
 # test — the caller moves the run afterwards.
 func _stacked_at_front(dmg: int) -> int:
-	var inst: int = GameLoop2.choose_game(_enemy(dmg))
-	GameLoop2.beat_game(false)      # it stacks at the back column
+	var inst: int = GameLoop2.choose_game(_enemy(dmg))   # spawns at the back column
+	GameLoop2.beat_game(false)      # its own game — after this it is a follower
 	_march_to_front(inst)
 	return inst
 
@@ -1199,8 +1220,9 @@ func test_each_attack_names_the_turn_it_happened_on() -> void:
 func test_the_board_is_snapshotted_once_per_turn() -> void:
 	if not _stand_at_hops(1):
 		return
+	# One game is enough to see all three turns now: the enemy stands on the back
+	# column the moment its game is chosen, and walks across the board during it.
 	var inst: int = GameLoop2.choose_game(_enemy(1))
-	GameLoop2.beat_game(false)      # stacks at the back
 	var res: Dictionary = GameLoop2.beat_game(false)
 	var frames: Array = res["turn_frames"]
 	assert_eq(frames.size(), 3, "one frame per turn, so the view can replay them")
@@ -1361,3 +1383,85 @@ func test_growing_the_board_walks_the_overflow_queue_on() -> void:
 	GameLoop2.sync_grid_bounds()
 	assert_lt(GameLoop2.offgrid_count(), waiting,
 		"the tier's new column takes some of the queue")
+
+# --- the current enemy is a body on the board, not a body beside it -------
+#
+# `current` and its stack entry are the same Dictionary (§7.2), so everything
+# below is really one property: there is exactly one record of that enemy.
+
+func test_the_current_enemy_and_its_body_are_one_record() -> void:
+	var inst: int = GameLoop2.choose_game(_enemy(1))
+	GameLoop2.apply_status_to(inst, _any_status(), 1)
+	assert_eq(int(GameLoop2.current.get("instance", 0)), inst)
+	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0]).size(),
+		GameLoop2.enemy_statuses(GameLoop2.current).size(),
+		"a status put on the current enemy is on the body standing there")
+
+func test_beating_its_goal_takes_the_body_off_the_board() -> void:
+	GameLoop2.choose_game(_enemy(1))
+	GameLoop2.beat_game(true)
+	assert_eq(GameLoop2.stack_size(), 0, "the defeated enemy leaves the field")
+	assert_false(GameLoop2.has_current(), "and the game is no longer in play")
+
+func test_removing_the_body_clears_the_game_in_play() -> void:
+	# Every removal goes through one door, because `current` points at one of these
+	# entries: a body bombed or despawned out from under the report step would
+	# otherwise leave has_current() answering for an enemy that is not there.
+	var inst: int = GameLoop2.choose_game(_enemy(1))
+	assert_true(GameLoop2.despawn(inst), "the body comes off the board")
+	assert_false(GameLoop2.has_current(),
+		"and the game in play goes with it rather than pointing at nothing")
+
+func test_the_game_in_play_survives_a_save_round_trip_once() -> void:
+	# A REAL enemy: a save stores ids, and a synthetic one is not in the catalog to
+	# be found again on the way back in.
+	var real: GoalEnemyData = _catalog_enemy()
+	if real == null:
+		return
+	var inst: int = GameLoop2.choose_game(real)
+	var blob: Dictionary = GameLoop2.serialize()
+	GameLoop2.restore(blob)
+	assert_eq(GameLoop2.stack_size(), 1, "one body, not two copies of it")
+	assert_eq(int(GameLoop2.current.get("instance", 0)), inst,
+		"and the restored run still knows which one it is playing against")
+	assert_eq(int(GameLoop2.current.get("col", 0)), int(GameLoop2.stack[0]["col"]),
+		"reading the same square from both ends")
+
+func test_a_save_from_before_the_enemy_stood_on_the_board_still_loads() -> void:
+	# Old saves wrote the current enemy as a whole entry with no handle, because it
+	# was not on the stack. It walks onto the board on the way in — which is where
+	# the old build would have put it on the next report anyway.
+	var real: GoalEnemyData = _catalog_enemy()
+	if real == null:
+		return
+	GameLoop2.choose_game(real)
+	var blob: Dictionary = GameLoop2.serialize()
+	blob.erase("current_instance")
+	blob["stack"] = []
+	GameLoop2.restore(blob)
+	assert_eq(GameLoop2.stack_size(), 1, "the legacy entry is a body on the board")
+	assert_true(GameLoop2.has_current(), "and it is still the game in play")
+
+# A status aimed at "all" must not land on the current enemy twice now that it is
+# on the stack.
+func test_a_status_aimed_at_everything_lands_once_per_body() -> void:
+	var sid: StringName = _any_status()
+	if sid == &"":
+		return
+	var inst: int = GameLoop2.choose_game(_enemy(1))
+	var n: int = GameLoop2.apply_enemy_status(sid, 1, "all")
+	assert_eq(n, 1, "one body on the board, one application")
+	assert_eq(int((GameLoop2.current.get("statuses", {}) as Dictionary).get(sid, 0)), 1,
+		"one stack, not two")
+
+# The first goal-enemy the catalog actually holds — what a save can name and find
+# again, unlike the synthetic bodies most of these tests build.
+func _catalog_enemy() -> GoalEnemyData:
+	for e in Data.all_goal_enemies():
+		if e is GoalEnemyData:
+			return e
+	return null
+
+func _any_status() -> StringName:
+	var all: Array = Data.all_statuses()
+	return (all[0] as StatusData).id if not all.is_empty() else &""
