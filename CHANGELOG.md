@@ -11,6 +11,72 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Two new games, and an event that rolls dice at you.**
+
+  **The sheet's new games and connections are ported.** `Gordian Quest` (2020)
+  and `Montabi` (2026) join `data/games/`, both with cover art, taking the map to
+  **835 games and 1191 connections**. Four new edges came with them — Slay the
+  Spire into Gordian Quest and Dice & Fold, Aethermancer and PokéRogue into Montabi
+  — and `check_map_sync.py` now reads clean against the redrawn `Roguelikes.drawio`:
+  every node matched by name, every Y position agreeing with its Year, and the
+  only two entries left in the drift report are the pre-existing pair (the
+  backward `Rogue → Beneath Apple Manor` line drawn on the map, and
+  `Diablo → Escape The Mad Empire` recorded in the sheet but never drawn).
+
+  **The Manager's level-up pays the gold it says it does.** Their `Reward` cell
+  had grown "and +1 Gold" in the sheet, and the character generator dropped it on
+  the floor: gold is not one of the run verbs `REWARD_VERBS` knows, so the token
+  parsed to nothing and the level-up quietly paid only the Push. It parses now,
+  and `GameState.apply_level_up_stats` gives it a branch of its own rather than a
+  row in `_LEVEL_UP_ABILITY_FIELDS` — that loop writes its field with `set()`, and
+  gold has to go through `change_gold` or the purse on screen never hears about it.
+
+  **Scrap Ooze, and the `chance` token it needed.** The fifth authored event, and
+  the first from the original Slay the Spire rather than Slay the Spire 2 — all
+  four of its strings are the game's own, verbatim. Every event before it was
+  settled the moment you pressed the button; you could be charged, gated, sent
+  somewhere or handed an objective, but you always knew what the press bought.
+  Scrap Ooze is nothing *but* the not-knowing, so it could not be authored at all
+  until the Effect DSL learned to gamble:
+
+  ```
+  Reach Inside   Stay    lose_hp 1;      chance 25% -> gain_chest small 1
+  Deeper         Again   lose_hp {2+X};  chance {35+10*X}% -> gain_chest small 1
+  Leave          End     nothing
+  ```
+
+  Two column groups for one hand in the ooze, because that is the game's own
+  button — Slay the Spire renames `[Reach Inside]` to `[Deeper]` after the first
+  grab, which is exactly the staging `Repeat: Stay` already did for Immerse →
+  Linger in the Baths. **The damage is this game's and the odds are the
+  original's:** Slay the Spire opens at 3 HP against a 75 HP pool, and Health here
+  is 5–10 — where 3 is a third to over half a character for a 25% shot — so, as
+  asked for, the ladder starts at **1 and climbs by one per failed reach**. The
+  25%, +10-per-failure odds are untouched, so a player who keeps reaching until it
+  lands pays about 6 Health over about 2.7 reaches: more than a whole character at
+  the low end, which is why the event belongs at a dead end you had to choose to
+  walk toward. A relic is a Small chest — one item offered, so it reads as the
+  random relic the original hands over rather than as a pick.
+
+  **`chance` is an arrow verb, and a won roll closes the event.** `Again`
+  describes what happens when you *lose*; there is nothing left to reach for once
+  the relic is in your hand. Its percentage is an ordinary reward amount, so a
+  `{expr}` hole climbs it exactly as one climbs a cost, and it is clamped to a real
+  percentage so an unbounded ladder becomes a certainty instead of running past
+  100. The prose comes from two new event-level columns, **`Chance Won` /
+  `Chance Lost`** — the same argument `Goal Met` / `Goal Missed` already made,
+  since an outcome decided by the roll belongs to the event's voice and not to
+  the button that produced it, and both reaches print the same two lines.
+  Alongside it, "must be the last clause" stopped being a rule written twice:
+  `add_goal`, `play_game` and `chance` share one check, which also catches two
+  arrow verbs fighting over a cell's single `->` payload.
+
+  **The curses were already portable** — `curses2.0` has been a tab in
+  `Roguelikes.xlsx` since the events sheet landed, and `generate_curse2_tres.py`
+  regenerates both curses from it byte-identically. Nothing to do there.
+
+---
+
 - **Seven from playing it: the enemy on the board, the shop on the page.**
 
   **The enemy of the game you are playing now stands on the battlefield.** It

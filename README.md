@@ -185,7 +185,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `EffectSystem` | Central dispatch for structured effects (`{type, value, target}`) applied via `EffectSystem.apply()`. |
 | `TriggerBus` | Global signal hub wiring item/event triggers to game moments (`game_beaten`, `chest_granted`, …). |
 | `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
-| `EventSystem` | Events (`docs/event-sheet-authoring.md`): which dead-end node carries which event, the Requirement/`needs` gates, and resolving a choice into effects, an event goal or a curse. |
+| `EventSystem` | Events (`docs/event-sheet-authoring.md`): which dead-end node carries which event, the Requirement/`needs` gates, and resolving a choice into effects, an event goal, a curse, or a `chance` roll. |
 | `GameLoop2` | The run loop: the games-beaten clock, the goal-enemy stack, and the grid the followers advance across. `Overworld2` is a view over it. |
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |

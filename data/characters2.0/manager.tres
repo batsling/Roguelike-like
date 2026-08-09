@@ -23,8 +23,9 @@ start_random = 0
 starting_items = Array[StringName]([])
 starting_weapon = &""
 level_up_condition = "Collect 3+ different types of currency"
-level_up_reward = "Gain +1 Push"
+level_up_reward = "Gain +1 Push and +1 Gold"
 level_up_stats = {
+"gold": 1,
 "push": 1
 }
 level_up_reward_type = &"none"

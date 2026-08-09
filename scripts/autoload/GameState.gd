@@ -1328,6 +1328,13 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 		change_max_hp(hp_gain)
 		change_hp(hp_gain)
 		applied.append("+%d Max HP" % hp_gain)
+	# Gold gets its own branch rather than a row in _LEVEL_UP_ABILITY_FIELDS: that
+	# loop writes its field with set(), and gold has to go through change_gold so
+	# gold_changed fires and the purse on screen keeps up.
+	var gold_gain: int = int(stats.get("gold", 0))
+	if gold_gain != 0:
+		change_gold(gold_gain)
+		applied.append("+%d Gold" % gold_gain)
 	var random_n: int = int(stats.get("random", 0))
 	for _i in range(maxi(0, random_n)):
 		var pick: String = _LEVEL_UP_RANDOM_POOL[randi() % _LEVEL_UP_RANDOM_POOL.size()]

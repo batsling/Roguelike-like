@@ -36,7 +36,7 @@ the honour system.
 ## Working here
 
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 20 scripts, ~723 tests, ~3 min
+godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 22 scripts, ~854 tests, ~4 min
 ```
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by

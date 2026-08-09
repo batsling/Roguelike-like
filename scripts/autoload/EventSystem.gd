@@ -224,11 +224,14 @@ func _gate_passes(gate: Dictionary, picks: Dictionary) -> bool:
 # Apply one choice. `taken` is how many times this choice has ALREADY been picked
 # (so the first pick is 0) — it is the X the sheet's {expr} holes scale on.
 #
-# Returns {"result", "text", "close", "play"}:
-#   result  the choice's authored prose
+# Returns {"result", "text", "close", "play", "rolled", "won"}:
+#   result  the prose to print — the choice's own, or the event's chance_won /
+#           chance_lost when this choice gambled
 #   text    what it did, in words
-#   close   true when the event should shut (Repeat: End)
+#   close   true when the event should shut (Repeat: End, or a won gamble)
 #   play    a play_game request for the caller to run, or {}
+#   rolled  whether this choice carried a `chance`
+#   won     whether that roll landed (always false when it didn't roll)
 func resolve_choice(ev: EventData2, choice: Dictionary, taken: int) -> Dictionary:
 	var words: Array = []
 
@@ -236,6 +239,19 @@ func resolve_choice(ev: EventData2, choice: Dictionary, taken: int) -> Dictionar
 		EffectSystem.apply(_scaled(eff, taken), {})
 	if String(choice.get("effects_text", "")) != "":
 		words.append(_fill_holes(String(choice["effects_text"]), taken))
+
+	# The gamble. Rolled AFTER the certain costs, because that is the order the
+	# player experiences: the acid burns whether or not there was a relic in there.
+	var chance: Dictionary = choice.get("chance", {})
+	var rolled: bool = not chance.is_empty()
+	var won: bool = false
+	if rolled:
+		won = Stats.roll_chance_with_luck(_roll_rng(), chance_percent(chance, taken))
+		if won:
+			for eff in chance.get("effects", []):
+				EffectSystem.apply(_scaled(eff, taken), {})
+			if String(chance.get("effects_text", "")) != "":
+				words.append(_fill_holes(String(chance["effects_text"]), taken))
 
 	var goal: Dictionary = choice.get("goal", {})
 	if not goal.is_empty():
@@ -249,12 +265,46 @@ func resolve_choice(ev: EventData2, choice: Dictionary, taken: int) -> Dictionar
 		GameState.add_curse_goal(StringName(curse.get("curse", &"")), ev.id,
 			int(curse.get("games", 0)))
 
+	# A gamble's prose comes from the EVENT, because it depends on the roll rather
+	# than on which button produced it — Scrap Ooze's two reaches print the same
+	# two strings. The choice's own `result` still stands in when the event left
+	# them blank, so a gamble is authorable without them.
+	var result: String = String(choice.get("result", ""))
+	if rolled:
+		var prose: String = ev.chance_won if won else ev.chance_lost
+		if prose != "":
+			result = prose
+
 	return {
-		"result": String(choice.get("result", "")),
+		"result": result,
 		"text": ", ".join(PackedStringArray(words)),
-		"close": String(choice.get("repeat", "end")) == "end",
+		# A won gamble closes the event whatever Repeat says: `Again` is what
+		# happens when you LOSE, and there is nothing left to reach for once the
+		# relic is in your hand.
+		"close": won or String(choice.get("repeat", "end")) == "end",
 		"play": choice.get("play", {}),
+		"rolled": rolled,
+		"won": won,
 	}
+
+
+# The odds of a `chance` on THIS press, with its {expr} hole resolved against how
+# often the choice has been taken and clamped to a real percentage — an unbounded
+# ladder like Scrap Ooze's 25, 35, 45… runs past 100 if you keep reaching.
+func chance_percent(chance: Dictionary, taken: int) -> int:
+	return clampi(int(_scaled(chance, taken).get("percent", 0)), 0, 100)
+
+
+# Lazily created and randomised. Events roll at press time — unlike PLACEMENT,
+# which is hashed so the card's badge cannot change under the player, a gamble is
+# supposed to be unknown until it is taken.
+var _rng: RandomNumberGenerator = null
+
+func _roll_rng() -> RandomNumberGenerator:
+	if _rng == null:
+		_rng = RandomNumberGenerator.new()
+		_rng.randomize()
+	return _rng
 
 
 # An effect whose amount is a {expr} hole, resolved against X = `taken`. The
@@ -333,6 +383,13 @@ func describe_choice(choice: Dictionary, taken: int) -> String:
 	if not play.is_empty():
 		parts.append("Go play a %s game, then: %s"
 			% [play.get("tag", ""), play.get("effects_text", "")])
+
+	# "25%: +1 Small Chest" — the shape Slay the Spire's own option line uses, and
+	# the odds for THIS press, since they climb with every failed one.
+	var chance: Dictionary = choice.get("chance", {})
+	if not chance.is_empty():
+		parts.append("%d%%: %s" % [chance_percent(chance, taken),
+			_fill_holes(String(chance.get("effects_text", "")), taken)])
 
 	return " · ".join(PackedStringArray(parts))
 

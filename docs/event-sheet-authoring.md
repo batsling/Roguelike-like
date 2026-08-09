@@ -1,7 +1,7 @@
 # Event sheet-authoring (`events2.0`)
 
-Status: **built, illustrated and running.** Four events authored, generators
-and runtime in place, art in `images2.0/`, 28 tests in `test/test_events2.gd`. §12 is how it runs and the little
+Status: **built, illustrated and running.** Five events authored, generators
+and runtime in place, art in `images2.0/`, 39 tests in `test/test_events2.gd`. §13 is how it runs and the little
 that's left. Companion to `games-first-redesign.md` and
 `locations-and-events-design.md` §6, which argued events should wait for
 somewhere to live — §1 is that somewhere.
@@ -51,7 +51,7 @@ mistake; pay more and the optimal line is to bounce off every leaf on the map.
 
 **One row per event, like every other `*2.0` sheet.** The choices live in
 numbered column groups: `Choice 1 | Repeat 1 | Result 1 | Effect 1`, then the
-same four columns for 2, 3 and 4. Twenty-eight columns in all — twelve for
+same four columns for 2, 3 and 4. Thirty columns in all — fourteen for
 the event, four groups of four.
 
 ```
@@ -84,7 +84,7 @@ leaves the last eight cells empty.
 
 ## 3. Columns
 
-Twelve event columns, then `Choice N` / `Repeat N` / `Result N` / `Effect N`
+Fourteen event columns, then `Choice N` / `Repeat N` / `Result N` / `Effect N`
 for N = 1…4.
 
 | Column | Scope | Meaning |
@@ -101,6 +101,8 @@ for N = 1…4.
 | `Prompt` | event | The prose at the top of the modal. |
 | `Goal Met` | event | Printed when a goal this event handed out has its condition **met**. |
 | `Goal Missed` | event | Printed when that goal's window closes unmet. Curses never expire, so they leave it blank. |
+| `Chance Won` | event | Printed when a `chance` roll (§5) lands. Blank on events with no gamble. |
+| `Chance Lost` | event | Printed when it doesn't. |
 | `Choice N` | choice | The button label. **Blank ends the event's choice list** — the generator stops reading groups here. |
 | `Repeat N` | choice | What picking it does to the event — see §4. Blank = `End`. |
 | `Result N` | choice | The prose shown once the choice resolves. |
@@ -124,6 +126,17 @@ closed. Those two endings therefore need somewhere that is not a choice's
 rather than to which option was taken — the Battleworn Dummy congratulates and
 insults you in exactly the same words whichever setting you chose. Leave both
 blank on an event that grants no goal.
+
+**`Chance Won` / `Chance Lost` are the same argument, for the same reason.** A
+gamble's outcome is decided by the roll rather than by which button produced it,
+so a choice's own `Result` cannot hold it — and where an event has several ways
+to take the same gamble, they all print the same two strings. Scrap Ooze (§11) is
+the case: `[Reach Inside]` and `[Deeper]` are two column groups and one hand in
+the ooze, and Slay the Spire has one success line and one failure line between
+them. When a choice rolls, whichever of these applies **replaces** its `Result`,
+so a rolling choice normally leaves that cell blank. Leave both blank on an event
+that never gambles — the generator rejects them otherwise, since nothing would
+ever print them.
 
 ---
 
@@ -201,7 +214,7 @@ There is **no `kill` / `end_run` token and there should not be one**: a `lose_hp
 that empties Health ends the run through the rule that already exists (§2), which
 is how Abyssal Baths kills you in Slay the Spire 2 as well.
 
-The two event-only forms carry the weight `locations-and-events-design.md` §6
+The event-only forms carry the weight `locations-and-events-design.md` §6
 asked them to:
 
 ```
@@ -210,7 +223,13 @@ needs <Choice> <op> <n>        a gate — offered only at this point in the even
 add_goal  "<condition>" [for <n> games] -> <reward>; <reward>
 add_curse <curse> [for <n> games]
 play_game tag=<tag> -> <reward>; <reward>
+chance <p>% -> <reward>; <reward>
 ```
+
+`add_goal`, `play_game` and `chance` are **arrow verbs**: everything past the
+`->` is their payload, so each has to be the last clause in its cell and a cell
+gets at most one of them. The generator says so rather than letting the last one
+quietly win the payload.
 
 `needs` leads a cell (`needs keys 1; obtain_item` — spend a key, take an item).
 
@@ -251,6 +270,20 @@ stay at that game (if it is connected on the map) or return to the node they cam
 from. Punch Off (§10) is where it comes from, and note what that choice is: a
 round trip you are allowed to decline, which is the exact thing §1 says a dead
 end forces on you.
+
+`chance` is the only token whose payout is not settled by pressing the button.
+It **rolls**: `p` percent for the `->` payload, nothing otherwise, and the costs
+in front of it are charged either way — the acid burns whether or not there was a
+relic in the ooze. `p` is an ordinary amount, so `{25+10*X}` climbs it per press
+exactly as `{4+X}` climbs a cost, and it is clamped to a real percentage so an
+unbounded ladder simply becomes a certainty rather than running past 100.
+
+Two things fall out of it that are worth stating plainly. **A won roll closes the
+event**, whatever `Repeat` says — `Again` describes what happens when you *lose*,
+and there is nothing left to reach for once the relic is in your hand. And the
+prose comes from `Chance Won` / `Chance Lost` (§3) rather than from the choice's
+`Result`, because the outcome is the roll's and not the button's. Scrap Ooze
+(§11) is where it comes from.
 
 That gives the checklist **three kinds of objective**, and they are genuinely
 different animals:
@@ -568,7 +601,88 @@ a **new sheet** (`curses2.0`), not a new shape for this one.
 
 ---
 
-## 11. Other shapes, for reference
+## 11. The fifth worked example: Scrap Ooze
+
+Slay the Spire's Act 1 event — the **first one here from the original game**
+rather than from Slay the Spire 2. All four strings are the game's own, verbatim,
+with its inline colour markup (`#r`, `#y`, `@…@`) stripped and its `NL` breaks
+flattened.
+
+It is the event that made the sheet learn to **gamble**. Everything before it was
+settled the moment you pressed the button: you could be charged, gated, sent
+somewhere or handed an objective, but you always knew what the press bought.
+Scrap Ooze is nothing *but* the not-knowing, so it could not be authored at all
+until `chance` existed.
+
+| | Offered when | `Repeat` | `Effect` |
+|---|---|---|---|
+| **Reach Inside** | your hand is still clean | `Stay` | `lose_hp 1; chance 25% -> gain_chest small 1` |
+| **Deeper** | you have already reached once | `Again` | `needs Reach Inside > 0; lose_hp {2+X}; chance {35+10*X}% -> gain_chest small 1` |
+| **Leave** | always | `End` | `nothing` |
+
+**Two column groups for one hand in the ooze**, and that is not duplication — it
+is the game's own button. Slay the Spire renames `[Reach Inside]` to `[Deeper]`
+after the first grab, which is precisely the staging `Stay` already does
+(§4): the first reach spends itself and reveals the loop, exactly as Immerse
+reveals Linger in the Baths. The two share one success line and one failure line,
+which is what `Chance Won` / `Chance Lost` are for (§3).
+
+### The damage is this game's; the odds are the original's
+
+Slay the Spire opens at **3 HP** and climbs by one per attempt, against a 75 HP
+pool — 4% of a character for the first grab. Health here is **5–10**
+(`games-first-redesign.md` §3), where 3 is 30–60%: a third to over half a
+character to find out whether there was anything in the pile at all, which nobody
+who has done the arithmetic pays for a 25% shot. **As requested, the ladder
+starts at 1 and climbs by one per failed reach** — 1, 2, 3, 4 — and that is the
+whole of what changed:
+
+```
+Reach Inside   lose_hp 1        25%
+Deeper         lose_hp {2+X}    {35+10*X}%      X = Deepers already taken
+```
+
+The first reach is still a steeper share of the pool than the original's (10–20%
+against 4%), which is the right direction for an event that has to be worth about
+one game's reward (§1) — it just is not the *ruinous* share 3 would have been.
+
+The **odds are untouched**: 25%, +10 per failure. Because the two ladders climb
+together the decision sharpens rather than flattens — the fourth reach is a 55%
+shot for 4 Health where the first was a 25% shot for 1 — and a player who keeps
+reaching until it lands pays **about 6 Health over about 2.7 reaches**. That is
+more than a whole character at the low end of the pool, which is the next point.
+
+Contrast §7, where the Baths' gains were rescaled and their costs were not. Here
+both halves of the trade were looked at, and only one of them needed moving.
+
+**A relic is a Small chest**, the mapping Punch Off and Unrest Site already use.
+Small means *one* item offered, so it reads as the random relic Slay the Spire
+hands over rather than as a pick from three. `obtain_item` would have been the
+wrong token — that is Wand of Wishing's any-item-in-the-catalogue picker, which
+is a far better prize than 25% of one should ever buy.
+
+### It can kill you, and that is the point
+
+The ladder is unbounded and `Again` never stops offering, so a player who keeps
+reaching runs out of Health before the odds run out of room. That is the Abyssal
+Baths rule (§7) and the reason both events sit at `Where: Dead End`: an event
+with a way to die in it has to be one you *chose* to walk toward.
+
+The button says the number, as always — "−3 Health · 55%: +1 Small Chest" — so
+the escalation never has to be discovered by losing to it.
+
+### What it needed from the format
+
+Two event columns and one token. The columns are the second instance of a rule
+§3 already set, not a new idea: an ending that is not any single choice's ending
+lives at event level. The token is the fourth of them, and `chance` joins
+`add_goal` and `play_game` as an **arrow verb** — which is what turned "must be
+the last clause" from a rule written twice into one shared check that also
+catches two arrow verbs fighting over one payload.
+
+---
+
+## 12. Other shapes, for reference
 
 Not authored — these are here so the format can be read against more than one
 event.
@@ -591,9 +705,9 @@ not.
 
 ---
 
-## 12. How it runs
+## 13. How it runs
 
-Built and under test (`test/test_events2.gd`, 22 tests). The pieces, and the one
+Built and under test (`test/test_events2.gd`, 39 tests). The pieces, and the one
 thing each of them is really solving:
 
 | Piece | Where | The problem it solves |

@@ -125,6 +125,13 @@ def parse_reward(raw):
     max_hp = _find_amt(s, r"Max Health")
     if max_hp:
         stats["max_hp"] = max_hp
+    # Gold is a reward a level-up can pay (the Manager's "+1 Push and +1 Gold").
+    # It is NOT one of REWARD_VERBS: those all name a run verb that maps onto a
+    # same-named GameState field, and gold has to go through change_gold so the
+    # purse readout hears about it.
+    gold = _find_amt(s, r"Gold")
+    if gold:
+        stats["gold"] = gold
     for verb, key in REWARD_VERBS.items():
         n = _find_amt(s, verb + r"\b")
         if n:
