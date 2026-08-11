@@ -621,11 +621,47 @@ func test_the_menu_holds_the_runs_admin() -> void:
 	for i in range(mb.get_popup().item_count):
 		labels.append(mb.get_popup().get_item_text(i))
 	var joined: String = "\n".join(labels)
-	for want in ["Save run", "New run", "Main menu"]:
+	for want in ["Save run", "New run", "Main menu", "Exit game"]:
 		assert_true(joined.contains(want), "%s is in the menu: %s" % [want, joined])
 	# And the entries do what they say.
 	_ui.menu_action(_ui.MenuItem.NEW_RUN)
 	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT, "New run reopens the start picker")
+
+# Exiting is the one menu entry with a run standing behind it, so it asks first —
+# and it asks the question that is actually open (keep this run in the save list
+# or not), rather than a bare "are you sure".
+func test_exiting_asks_before_it_leaves() -> void:
+	var dlg: ConfirmationDialog = _ui.prompt_quit()
+	assert_not_null(dlg, "Exit game raises a confirmation rather than quitting on the spot")
+	var labels: Array = [dlg.ok_button_text, dlg.get_cancel_button().text]
+	# add_button() parks its button in the dialog's own button row, not on the
+	# dialog, so this has to walk the whole subtree to find it.
+	for b in dlg.find_children("*", "Button", true, false):
+		labels.append((b as Button).text)
+	var joined: String = "\n".join(labels)
+	for want in ["Exit", "Cancel", "Save & exit"]:
+		assert_true(joined.contains(want), "%s is one of the answers: %s" % [want, joined])
+	dlg.queue_free()
+
+# "Save & exit" is one press, but it is still two steps: the name prompt has to
+# open, and the quit only happens once a save has actually been written.
+func test_save_and_exit_asks_for_a_name_first() -> void:
+	var quit_calls: Array = []
+	_ui.prompt_save(func(): quit_calls.append(true))
+	var prompt: AcceptDialog = null
+	for c in _ui.get_children():
+		if c is AcceptDialog and (c as AcceptDialog).title == "Save run":
+			prompt = c
+	assert_not_null(prompt, "the name prompt opens before anything is written")
+	assert_true(quit_calls.is_empty(), "and nothing has quit yet")
+	# A blank name is not a save, so it is not an exit either.
+	var edit: LineEdit = null
+	for node in prompt.find_children("*", "LineEdit", true, false):
+		edit = node
+	assert_not_null(edit, "the prompt takes a name")
+	edit.text = ""
+	prompt.confirmed.emit()
+	assert_true(quit_calls.is_empty(), "a refused save does not take the player out of the game")
 
 # --- the page fits the window it ships in ---------------------------------
 #

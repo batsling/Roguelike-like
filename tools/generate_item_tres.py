@@ -309,7 +309,12 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
         return eff
 
     # simple scalar verbs: verb N
-    SCALAR = {"draw", "gain_energy", "gain_gold", "gain_max_hp", "gain_hp",
+    # `gain_empty_max_hp` is the cap without the Health to fill it — the half of
+    # the Max Health split an item opts INTO. It has to be listed here or the
+    # bare-verb fallthrough at the bottom swallows its amount and emits a silent
+    # `{"type": "gain_empty_max_hp"}` worth nothing.
+    SCALAR = {"draw", "gain_energy", "gain_gold", "gain_max_hp",
+              "gain_empty_max_hp", "gain_hp",
               "gain_chest", "lose_hp", "heal", "block"}
     if verb in SCALAR:
         rest, kv = _kv(toks[1:])

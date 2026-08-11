@@ -182,6 +182,45 @@ func test_pickup_reports_its_verb_bonus() -> void:
 	var joined: String = "\n".join(texts)
 	assert_true(joined.contains("+1 Bomb"), "Blood Bombs' Bomb gain is named: %s" % joined)
 
+# --- the Max Health split -------------------------------------------------
+#
+# "+4 Max Health" hands over a container that arrives FULL, because that is what
+# the phrase means everywhere the games on this map came from. The item that
+# wants the room without the Health in it says so in the sheet, with its own
+# verb, so the healing is never a thing an author has to remember to add.
+
+func test_max_health_arrives_full() -> void:
+	GameState.max_hp = 20
+	GameState.hp = 8
+	_give(&"mango")                               # gain_max_hp 4
+	assert_eq(GameState.max_hp, 24, "Mango raises the cap by 4")
+	assert_eq(GameState.hp, 12, "and fills the room it just made")
+
+func test_an_empty_container_raises_the_cap_and_nothing_else() -> void:
+	GameState.max_hp = 20
+	GameState.hp = 8
+	_give(&"hollow_heart")                        # gain_empty_max_hp 4
+	assert_eq(GameState.max_hp, 24, "Hollow Heart raises the cap by 4")
+	assert_eq(GameState.hp, 8, "and leaves it empty — that is the whole item")
+
+func test_the_two_kinds_of_max_health_are_told_apart_on_the_card() -> void:
+	# Two items with the same number and different rules have to read
+	# differently, or the only place the split exists is the .tres.
+	var hollow: ItemData = Data.get_item2(&"hollow_heart")
+	var mango: ItemData = Data.get_item2(&"mango")
+	assert_string_contains(hollow.description.to_lower(), "empty")
+	assert_false(mango.description.to_lower().contains("empty"),
+		"a healing Max Health item does not claim to be empty: %s" % mango.description)
+
+func test_a_full_pool_still_gains_the_cap() -> void:
+	# The heal is capped by the pool it just widened, so a player at full Health
+	# ends at full Health — not above it, and not with the gain silently dropped.
+	GameState.max_hp = 20
+	GameState.hp = 20
+	_give(&"mango")
+	assert_eq(GameState.max_hp, 24)
+	assert_eq(GameState.hp, 24, "topped up to the new cap, not past it")
+
 func test_resource_gain_report_names_only_what_moved() -> void:
 	var before: Dictionary = GameState.run_resource_snapshot()
 	assert_eq(GameState.describe_resource_gains(before), "", "an unchanged run reports nothing")

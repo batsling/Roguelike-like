@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_jungle_maze_adventure"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"jungle_maze_adventure"
+display_name = "Jungle Maze Adventure"
+source_game = "Slay the Spire 2"
+tier_tags = PackedStringArray()
+where = "dead_end"
+requirement = {}
+trigger = "after"
+rarity = "Common"
+run_limit = 1
+file = "JungleMazeAdventure"
+prompt = "In a clearing, you run into a Ragtag Group of Adventurers looking down and gesturing at a gigantic maze. They offer to join forces with you in an Epic Quest to loot the riches of this maze. As an experienced adventurer yourself, it's clear this maze is filled with deadly traps and guardians. It would be easier if you work together, but then you would have to split the loot."
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "solo_quest", "text": "Solo Quest", "repeat": "end", "repeat_max": 0, "results": ["Feeling misanthropic, you wordlessly walk past their now-frowning faces. One of them even shakes their fist at you. The maze is not welcoming. You fall into a spike trap, you are struck by a massive log with spikes, and feisty creatures with spiky clubs fight you along the entire journey. You are sick of spikes, and consider teamwork for the next adventure."], "gates": [], "effects": [{"type": "gain_gold", "value": 3}, {"type": "lose_hp", "value": 2}], "effects_text": "+3 Gold, -2 Health", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "join_forces", "text": "Join Forces", "repeat": "end", "repeat_max": 0, "results": ["Everyone's face immediately lights up, including your own! One of the adventurers turns out to be a bard! You merrily waltz into the maze as Aquid the squid wizard effortlessly disarms traps, while you and the Grathorian fighter take out the spiky club-wielding guards with ease. This was the most joyous adventure of your life and you've made some truly Great Memories."], "gates": [], "effects": [{"type": "gain_gold", "value": 1}], "effects_text": "+1 Gold", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

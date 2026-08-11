@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_the_dungeon_rpg"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"the_dungeon_rpg"
+display_name = "The Dungeon RPG"
+year = 2000
+type = 3
+games_influenced = Array[StringName]([&"rogue_hearts_dungeon", &"eternal_quest"])
+influence_sources = PackedStringArray("", "https://www.reddit.com/r/JRPG/comments/1k54nny/lets_discover_rogue_hearts_dungeon_jun_ota_and/#:~:text=Apparently%2C%20Ota%20was%20a%20well%20known%20figure,to%20connect%20Tokyo's%20three%20main%20universities%20that")
+influence_relations = PackedStringArray("dev/series", "dev/series")
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/the-dungeon-rpg.png"
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\The Dungeon RPG.lnk"
+steam_page = ""

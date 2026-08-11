@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_morphic_grove"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"morphic_grove"
+display_name = "Morphic Grove"
+source_game = "Slay the Spire 2"
+tier_tags = PackedStringArray()
+where = "dead_end"
+requirement = {"stat": "gold", "op": ">=", "value": 3, "percent": false}
+trigger = "after"
+rarity = "Common"
+run_limit = 1
+file = "MorphicGrove"
+prompt = "You enter a grove of crystalline trees, and they begin to quiver excitedly! A chorus of hellos and welcomes bombard you as a group of Morphics burst forth from trees. One of the Morphics is fidgeting in the corner, clearly not as sociable as the others. Approach the group or the loner?"
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "group", "text": "Group", "repeat": "end", "repeat_max": 0, "results": ["You greet the chittering Morphics and they embrace you into their crystally arms. They share their combined knowledge and inject you with Morphic Magic, changing your nature... Such lovely creatures, these Morphics. One of them stole your gold."], "gates": [], "effects": [{"type": "gain_stat", "stat": "transmute", "value": 2}, {"type": "lose_gold", "all": true}], "effects_text": "+2 Transmutes, -All Gold", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "loner", "text": "Loner", "repeat": "end", "repeat_max": 0, "results": ["You reach out a hand to the lone Morphic, sympathizing with its nature. It gifts you a tiny crystal fruit, and you consume it, as is custom. The fruit clarifies your mind and purpose. You give thanks, then make your way onwards."], "gates": [], "effects": [{"type": "gain_max_hp", "value": 1}], "effects_text": "+1 Max Health", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

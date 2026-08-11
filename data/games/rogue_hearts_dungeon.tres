@@ -1,12 +1,12 @@
-[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_the_nightmare_of_druaga"]
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_rogue_hearts_dungeon"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
 
 [resource]
 script = ExtResource("1_game")
-id = &"the_nightmare_of_druaga"
-display_name = "The Nightmare of Druaga"
-year = 2004
+id = &"rogue_hearts_dungeon"
+display_name = "Rogue Hearts Dungeon"
+year = 2007
 type = 3
 games_influenced = Array[StringName]([])
 influence_sources = PackedStringArray()
@@ -15,7 +15,7 @@ tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
-cover_path = "res://images2.0/games/the-nightmare-of-druaga.jpg"
+cover_path = "res://images2.0/games/rogue-hearts-dungeon.png"
 owned = true
-file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\The Nightmare of Druaga.lnk"
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Rogue Hearts Dungeon.lnk"
 steam_page = ""

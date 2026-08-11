@@ -53,7 +53,9 @@ The matching per-bomb *effect* hook is the `bomb_used` trigger (Blood Bombs:
 `+N <status>` / `-N <stat>` (target from a trailing `(self)`/`(enemy)`/
 `(all_enemies)`/`(random_enemies count=2)`; bare `(prose)` is ignored),
 `dmg N|all_enemies [value_from=.. xN type=..]`, `block/heal/draw/gain_energy/
-gain_gold/gain_hp/gain_max_hp/gain_chest/lose_hp N`, `gain_stat <s> N`,
+gain_gold/gain_hp/gain_max_hp/gain_empty_max_hp/gain_chest/lose_hp N`
+(`gain_max_hp` heals by what it raises; `gain_empty_max_hp` is the container
+without the Health in it), `gain_stat <s> N`,
 `temp_stat <s> +N`, `N% chance <effect>`, `counter key=K every=N -> <effect>`,
 `if_hp above|below F -> <effect>`, `roll_block sides=N`, `roll_gold [a,b,c]`,
 `upgrade_random_cards card_type=X count=N`, `+N <name> streak` / `reset <name>`,

@@ -346,12 +346,18 @@ def parse_reward_clause(clause):
         one, many = STAT_LABELS.get(stat, (fallback, fallback + "s"))
         return eff, "+%s %s" % (_amount_word(rest[1]), _plural(rest[1], one, many))
 
-    if verb in ("gain_hp", "gain_max_hp", "gain_gold"):
+    # `gain_max_hp` raises the cap AND heals by the same amount, because that is
+    # what "+2 Max Health" means to everyone who has played a roguelike: the new
+    # container comes full. `gain_empty_max_hp` is the other half of the split —
+    # the container without the Health to fill it — so an item that wants the
+    # bare cap says so rather than the healing being the thing you opt out of.
+    if verb in ("gain_hp", "gain_max_hp", "gain_empty_max_hp", "gain_gold"):
         if not rest:
             raise ValueError("status reward: %s needs an amount in %r" % (verb, clause))
         eff = {"type": verb}
         put(eff, "value", rest[0])
-        label = {"gain_hp": "Health", "gain_max_hp": "Max Health", "gain_gold": "Gold"}[verb]
+        label = {"gain_hp": "Health", "gain_max_hp": "Max Health",
+                 "gain_empty_max_hp": "empty Max Health", "gain_gold": "Gold"}[verb]
         return eff, "+%s %s" % (_amount_word(rest[0]), label)
 
     # --- costs: the same amounts pointed the other way -------------------
@@ -361,10 +367,20 @@ def parse_reward_clause(clause):
     if verb in ("lose_hp", "lose_max_hp", "lose_gold"):
         if not rest:
             raise ValueError("reward DSL: %s needs an amount in %r" % (verb, clause))
-        eff = {"type": verb}
-        put(eff, "value", rest[0])
         label = {"lose_hp": "Health", "lose_max_hp": "Max Health",
                  "lose_gold": "Gold"}[verb]
+        # `all` is a cost that names a POOL rather than a number — the price is
+        # whatever the player is holding when the choice is taken, which no
+        # literal and no {X} hole can say, since both are settled at generation
+        # time. Only Gold takes it: an event that charges everything you have is
+        # a real trade, whereas `lose_hp all` is just a death with extra steps.
+        if rest[0].strip().lower() == "all":
+            if verb != "lose_gold":
+                raise ValueError("reward DSL: `all` is a lose_gold amount only, "
+                                 "not %s (%r)" % (verb, clause))
+            return {"type": verb, "all": True}, "-All %s" % label
+        eff = {"type": verb}
+        put(eff, "value", rest[0])
         return eff, "-%s %s" % (_amount_word(rest[0]), label)
 
     if verb == "lose_stat":

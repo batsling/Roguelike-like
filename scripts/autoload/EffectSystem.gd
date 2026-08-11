@@ -68,6 +68,7 @@ func _dynamic_count(source: String) -> int:
 func _register_defaults() -> void:
 	register("gain_hp", _h_gain_hp)
 	register("gain_max_hp", _h_gain_max_hp)
+	register("gain_empty_max_hp", _h_gain_empty_max_hp)
 	register("gain_stat", _h_gain_stat)
 	register("gain_gold", _h_gain_gold)
 	register("gain_chest", _h_gain_chest)
@@ -92,8 +93,26 @@ func _h_gain_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	if v != 0:
 		GameState.change_hp(v)
 
-# Permanent Max HP bump (does NOT auto-heal — Max HP and HP are independent, §3).
+# Permanent Max Health bump, and the Health to fill it: "+2 Max Health" hands you
+# a container that arrives FULL, which is what the phrase means to anyone who has
+# played one of the games this one is a graph of. The heal is the size of the
+# bump that actually landed, not the size asked for — Handcuffs' max_hp_cap can
+# swallow part of a raise, and healing the requested amount there would hand out
+# Health the cap just refused to make room for.
 func _h_gain_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
+	var v: int = int(effect.get("value", 0))
+	if v == 0:
+		return
+	var before: int = GameState.max_hp
+	GameState.set_max_hp(before + v, false)
+	var landed: int = GameState.max_hp - before
+	if landed > 0:
+		GameState.change_hp(landed)
+
+# The other half of the split: the container WITHOUT the Health in it. Authored
+# as `gain_empty_max_hp` so an item that wants the bare cap says so out loud,
+# rather than the heal being a thing every other author has to remember to add.
+func _h_gain_empty_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	var v: int = int(effect.get("value", 0))
 	if v != 0:
 		GameState.set_max_hp(GameState.max_hp + v, false)
@@ -112,7 +131,13 @@ func _h_gain_stat(effect: Dictionary, _ctx: Dictionary) -> void:
 # above has a mirror here rather than a second code path with its own rounding.
 
 # Max Health down. Floors at 1 — a Max Health of 0 is a run that ended without
-# anything saying so — and set_max_hp already clamps current HP under the new cap.
+# anything saying so.
+#
+# Losing the cap does NOT cost Health: the mirror of `gain_max_hp` is deliberately
+# not symmetrical, because a full container is a gift and an emptied one is a
+# second punishment on top of the one the event already charged. set_max_hp only
+# clamps, so Health moves solely when it no longer FITS — 20/30 losing 5 is
+# 20/25, while 30/30 losing 5 is 25/25 and there is nowhere else for it to go.
 func _h_lose_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	var v: int = int(effect.get("value", 0))
 	if v != 0:
@@ -125,7 +150,14 @@ func _h_lose_stat(effect: Dictionary, _ctx: Dictionary) -> void:
 		return
 	GameState.grant_run_stat(stat, -value)
 
+# `lose_gold all` empties the purse. The price names a POOL rather than a number,
+# which is the whole point of it — an event can charge everything you are carrying
+# without the sheet knowing how much that is, and the trade stays honest whether
+# the player walked in with 3 gold or 30.
 func _h_lose_gold(effect: Dictionary, _ctx: Dictionary) -> void:
+	if bool(effect.get("all", false)):
+		GameState.set_gold(0)
+		return
 	var v: int = int(effect.get("value", 0))
 	if v != 0:
 		GameState.change_gold(-v)

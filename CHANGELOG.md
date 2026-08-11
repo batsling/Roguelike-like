@@ -11,6 +11,53 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Max Health now arrives full, and the sheet's newest upload is ported: 10
+  games, 13 connections, 3 events, and a way out of the game.**
+
+  Four changes that happened to land together, each small on its own.
+
+  **The spreadsheet caught up.** `tools/Roguelikes.xlsx` had been uploaded twice
+  without a regeneration behind it, so `data/` was ten games and thirteen
+  connections behind the sheet it is generated from. `import-games-godot.py` +
+  `bake_atlas.py` bring it to 845 games / 1204 connections, and
+  `check_map_sync.py` agrees. Three new events came with it — **Jungle Maze
+  Adventure**, **Morphic Grove** and **Whispering Hollow** — and they needed no
+  new columns, which is the first time a batch of events hasn't.
+
+  **`+N Max Health` means what it says everywhere else.** It used to raise the
+  cap and leave the new room empty, which is defensible in the abstract (Max
+  Health and Health are different resources) and wrong in practice: every game
+  this project is a graph *of* hands you a full container. So `gain_max_hp N`
+  now heals by what it raises — by what actually *landed*, so Handcuffs' cap
+  can't be healed around — and the one item that genuinely meant an empty
+  container, **Hollow Heart**, says so with a token of its own,
+  `gain_empty_max_hp`. Lunch and Mango lose the second clause they used to need
+  (`gain_max_hp 2; gain_hp 2` would now heal twice); Alien Baby heals along with
+  the rest.
+
+  **Losing Max Health is deliberately not the mirror of gaining it.** The cost
+  takes the room and leaves the Health — 20/30 losing 5 is 20/25, and only a
+  player who was already at full loses anything at all, because there is nowhere
+  for the overflow to go. Emptying the container on top of the price the event
+  already charged is two punishments for one choice, and Unrest Site charges
+  enough as it is.
+
+  **`lose_gold all`** joins the reward DSL as the one amount the sheet cannot
+  write as a number: what it charges is settled when the choice is taken, not
+  when the `.tres` is written, which is what lets Morphic Grove's Morphics be
+  the same trade whether you walked in with 3 gold or 30. Gold only — `lose_hp
+  all` is a death with extra steps.
+
+  **And there is now a way to leave.** Neither menu had one: the only exits were
+  the window's close button and the process. The main menu gets an **Exit Game**
+  button that quits on the press (nothing is live there, saves are on disk, and
+  a confirmation between the player and the door is pure friction), while the
+  in-run `☰ Menu` gets an **Exit game** entry that asks first — offering **Save
+  & exit** beside Exit and Cancel, since the open question is whether this run
+  goes in the save list, not whether you meant to press the button. Save & exit
+  quits only once a save has actually been written, so a blank name leaves you
+  where you were.
+
 - **The Abyssal Baths finally say something when you linger, and `Result` became
   a ladder to let them.**
 

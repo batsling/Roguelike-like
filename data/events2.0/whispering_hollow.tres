@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_whispering_hollow"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"whispering_hollow"
+display_name = "Whispering Hollow"
+source_game = "Slay the Spire 3"
+tier_tags = PackedStringArray()
+where = "dead_end"
+requirement = {"stat": "gold", "op": ">=", "value": 1, "percent": false}
+trigger = "after"
+rarity = "Common"
+run_limit = 2
+file = "WhisperingHollow"
+prompt = "Making your way through a hollow of dead trees you happen upon a single bone-white tree. Clay baubles hang off its branches, which curve inward like protective ribs. Such a creepy tree. It whispers. ...make exchange....."
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "exchange_gold", "text": "Exchange Gold", "repeat": "end", "repeat_max": 0, "results": ["You scatter some gold at the base of the tree and two of the clay vessels drop to the floor soundlessly. They break open, and contain perfectly intact potions within. You nab the potions and flee."], "gates": [], "effects": [{"type": "lose_gold", "value": 1}, {"type": "gain_loot", "value": 2}], "effects_text": "-1 Gold, +2 Loot", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "hug_the_tree", "text": "Hug the Tree", "repeat": "end", "repeat_max": 0, "results": ["The whispering compels you to give it gold but you resist and give the tree a big hug instead! It thrashes about, scratching you with its branches, but eventually calms down. The tree-hugging experience transforms you. ...make hug.....?"], "gates": [], "effects": [{"type": "lose_hp", "value": 1}, {"type": "gain_stat", "stat": "transmute", "value": 1}], "effects_text": "-1 Health, +1 Transmute", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

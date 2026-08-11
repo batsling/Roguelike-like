@@ -617,7 +617,11 @@ func autosave() -> void:
 
 # The Save button: name the run, then write it. Re-saving under the same name
 # overwrites, which is what "save my run" means the second time.
-func prompt_save() -> void:
+#
+# `after_save` runs only if the write actually landed, which is what lets "Save &
+# exit" be one press without ever quitting on top of a failed save — a blank name
+# or an unwritable file leaves the player exactly where they were.
+func prompt_save(after_save: Callable = Callable()) -> void:
 	var dlg := AcceptDialog.new()
 	dlg.title = "Save run"
 	dlg.ok_button_text = "Save"
@@ -634,8 +638,10 @@ func prompt_save() -> void:
 	dlg.add_child(box)
 	dlg.register_text_enter(edit)
 	dlg.confirmed.connect(func():
-		save_run(edit.text)
-		dlg.queue_free())
+		var written: bool = save_run(edit.text)
+		dlg.queue_free()
+		if written and after_save.is_valid():
+			after_save.call())
 	dlg.canceled.connect(func(): dlg.queue_free())
 	add_child(dlg)
 	dlg.popup_centered(Vector2i(440, 190))
@@ -4236,18 +4242,19 @@ func _clear(box: Control) -> void:
 # menu were three buttons parked across the top of the page for the whole run,
 # and none of them is pressed while a decision is open — so they fold into the
 # menu they were already standing next to.
-enum MenuItem { SAVE, NEW_RUN, MAIN_MENU }
+enum MenuItem { SAVE, NEW_RUN, MAIN_MENU, EXIT_GAME }
 
 func _build_menu_button() -> MenuButton:
 	var mb := MenuButton.new()
 	mb.text = "☰  Menu"
 	mb.flat = false
-	mb.tooltip_text = "Save this run, start a new one, or go back to the main menu."
+	mb.tooltip_text = "Save this run, start a new one, go back to the main menu, or leave."
 	var pop: PopupMenu = mb.get_popup()
 	pop.add_item("💾   Save run", MenuItem.SAVE)
 	pop.add_item("⟳   New run", MenuItem.NEW_RUN)
 	pop.add_separator()
 	pop.add_item("←   Main menu", MenuItem.MAIN_MENU)
+	pop.add_item("⏻   Exit game", MenuItem.EXIT_GAME)
 	pop.id_pressed.connect(menu_action)
 	return mb
 
@@ -4260,6 +4267,36 @@ func menu_action(id: int) -> void:
 			start_run()
 		MenuItem.MAIN_MENU:
 			get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
+		MenuItem.EXIT_GAME:
+			prompt_quit()
+
+# The door out, and the one exit that asks first — a live run is standing behind
+# it. The autosave (see `autosave()`) means leaving is never a total loss, so the
+# question is not "are you sure" but "in the save list or not", and the dialog
+# offers the three answers that are actually different: name it and go, go, stay.
+#
+# Returned so a test can answer it without a click.
+func prompt_quit() -> ConfirmationDialog:
+	var dlg := ConfirmationDialog.new()
+	dlg.title = "Exit game"
+	dlg.dialog_text = ("Leave the game?\n\nThis run is autosaved up to your last move, "
+		+ "so Continue will pick it back up. Save it under a name to keep it in the "
+		+ "save list as well.")
+	dlg.ok_button_text = "Exit"
+	dlg.get_cancel_button().text = "Cancel"
+	dlg.add_button("Save & exit", true, "save_and_exit")
+	dlg.confirmed.connect(quit_game)
+	dlg.custom_action.connect(func(action: StringName):
+		if action == &"save_and_exit":
+			dlg.queue_free()
+			prompt_save(quit_game))
+	dlg.canceled.connect(func(): dlg.queue_free())
+	add_child(dlg)
+	dlg.popup_centered(Vector2i(480, 230))
+	return dlg
+
+func quit_game() -> void:
+	get_tree().quit()
 
 func _mini_button(text: String, cb: Callable) -> Button:
 	var b := Button.new()

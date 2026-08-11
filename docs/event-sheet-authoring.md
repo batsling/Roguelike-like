@@ -1,7 +1,7 @@
 # Event sheet-authoring (`events2.0`)
 
-Status: **built, illustrated and running.** Five events authored, generators
-and runtime in place, art in `images2.0/`, 47 tests in `test/test_events2.gd`. §13 is how it runs and the little
+Status: **built, illustrated and running.** Eight events authored, generators
+and runtime in place, art in `images2.0/`, tests in `test/test_events2.gd`. §13 is how it runs and the little
 that's left. Companion to `games-first-redesign.md` and
 `locations-and-events-design.md` §6, which argued events should wait for
 somewhere to live — §1 is that somewhere.
@@ -222,7 +222,8 @@ Author freely; these cost nothing.
 | `gain_chest [small\|medium\|large\|huge] N` | Reward chests. The size sets the number of choices offered. |
 | `gain_stat <stat> N` | A verb or consumable charge: `bash`, `dash`, `push`, `transmute`, `scramble`, `bombs`, `keys`, `shields`. |
 | `gain_hp N` | Health. **Capped by Max Health** (`set_hp` clamps). |
-| `gain_max_hp N` | The cap. Does *not* auto-heal — Max Health and Health are independent (§3). |
+| `gain_max_hp N` | The cap **and the Health to fill it** — a new container arrives full, which is what "+2 Max Health" means in every game this map is drawn from. Pays the heal that actually landed, so Handcuffs' cap can't be healed around. |
+| `gain_empty_max_hp N` | The cap **alone**. The other half of the split, for the item or event that means an empty container and has to say so (Hollow Heart). |
 | `gain_gold N` | Gold. |
 
 **B — `EffectSystem` has the handler; the reward-DSL parser has to learn the
@@ -239,6 +240,21 @@ word.** No engine work, just the generator.
 **C — needs a new handler as well.** Worth it, but budget for it:
 `lose_stat <stat> N`, `lose_gold N`, `lose_max_hp N`, `heal_full`,
 `gain_loot N`, and the four event-only forms below.
+
+Two of the costs do not simply mirror their gains, and both asymmetries are
+deliberate:
+
+- **`lose_gold all`** charges the whole purse. It is the one amount the sheet
+  cannot write as a number, because what it costs is settled when the choice is
+  taken rather than when the `.tres` is written — which is what lets Morphic
+  Grove be the same trade at 3 gold and at 30. `all` is a `lose_gold`
+  amount only: `lose_hp all` is a death with extra steps, and there is already a
+  clearer way to author one.
+- **`lose_max_hp N` does not cost Health.** `gain_max_hp` hands over the Health
+  to fill the room it makes; its mirror takes only the room. Health moves solely
+  when it no longer *fits* — 20/30 losing 5 is 20/25, while 30/30 losing 5 is
+  25/25 and there is nowhere else for it to go. An emptied container on top of
+  the cost the event already charged is two punishments for one choice.
 
 `gain_loot` is a **category**, not a synonym: it resolves to a scroll today,
 because scrolls are the only loot type there is, and widens on its own as more
@@ -453,10 +469,16 @@ come across. The **gains** have been brought down to this game's scale: +1 Max
 Health a dip rather than +2, and Abstain heals 3 rather than 10.
 
 The **costs have not moved with them** — Immerse is still 3 and Linger still
-climbs 4, 5, 6. At a 5–10 Health pool that makes the water a bad trade at every
-depth: the first dip alone can cost a third of a character for +1 Max Health, and
-nobody who has done the arithmetic gets in. If the event plays as a dead option,
-this is the cell to look at, and the scaled costs would read:
+climbs 4, 5, 6. What the player actually feels is now **one lower than each of
+those**, because a `gain_max_hp` arrives with the Health to fill it (§5): the
+first dip nets -2 and the Lingers net 3, 4, 5. That is a real softening of an
+event that was already a bad trade, and it did not come from this cell — it came
+from the rule changing under it.
+
+At a 5–10 Health pool the water is still a bad trade at every depth: the first
+dip nets a fifth of a character for +1 Max Health, and nobody who has done the
+arithmetic gets in. If the event plays as a dead option, this is the cell to look
+at, and the scaled costs would read:
 
 ```
 Immerse   gain_max_hp 1; lose_hp 1
@@ -865,6 +887,8 @@ the other's shape.
    fires after the game is beaten whatever the cell says. An arrival-time event
    is the one that could hand you a goal *for the game you are about to play*,
    which is a shape §8 wants; until it exists, leave the column on `After`.
-3. **More events.** Five events against ~330 leaves means most dead ends are
-   still plain. Nothing structural stands in the way — the last four events
-   needed three new columns between them, and the two before that needed none.
+3. **More events.** Eight events against ~330 leaves means most dead ends are
+   still plain. Nothing structural stands in the way, and it is getting easier
+   rather than harder: the five events before these needed three new columns
+   between them, while Jungle Maze Adventure, Morphic Grove and Whispering
+   Hollow needed no new columns at all and one new token (`lose_gold all`, §5).

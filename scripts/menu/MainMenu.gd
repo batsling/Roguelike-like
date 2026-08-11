@@ -29,6 +29,7 @@ func _ready() -> void:
 	%SettingsBtn.pressed.connect(_on_settings)
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
 	%ClearDataBtn.pressed.connect(_on_clear_data)
+	%QuitBtn.pressed.connect(quit_game)
 
 	_save_list_container.visible = false
 	_refresh_continue_button()
@@ -594,6 +595,14 @@ func _on_clear_data() -> void:
 	)
 	_modal_layer.add_child(confirm)
 	confirm.popup_centered(Vector2i(420, 160))
+
+# Leaving for good. No confirmation here on purpose: nothing is live on the main
+# menu, saves are already on disk, and a "are you sure?" between the player and
+# the door is a prompt that only ever gets in the way. The in-run exit
+# (Overworld2.menu_action) is the one that asks, because there a run is at stake.
+# Public so a test can press it without a click.
+func quit_game() -> void:
+	get_tree().quit()
 
 func _show_coming_soon(title: String, body: String) -> void:
 	var dlg := AcceptDialog.new()

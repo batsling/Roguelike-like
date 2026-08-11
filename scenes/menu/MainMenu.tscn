@@ -108,6 +108,12 @@ layout_mode = 2
 text = "⚙ Settings"
 custom_minimum_size = Vector2(320, 44)
 
+[node name="QuitBtn" type="Button" parent="Center/Panel/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "⏻ Exit Game"
+custom_minimum_size = Vector2(320, 44)
+
 [node name="ModalLayer" type="Control" parent="."]
 unique_name_in_owner = true
 layout_mode = 1
