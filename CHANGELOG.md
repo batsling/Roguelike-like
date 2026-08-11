@@ -11,6 +11,19 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The Relic Trader is three offers and one line.**
+
+  The **Trade Nothing** button is gone. It was a fourth choice that existed to
+  say what an empty list already says: a run he wants nothing from is shown no
+  offers at all, and `EventModal2` answers a modal with no available choices with
+  its own **Leave**. Keeping the decline made every *other* visit a four-button
+  event whose fourth button was "no".
+
+  And he says the same thing whichever row you point at — *"Hehehe Heh... Thank
+  you!"* — instead of three sentences narrating a swap the button just named in
+  full. `<give>` / `<get>` still work in result prose; this event simply spends
+  them where the player needs them, on the offer rather than after it.
+
 - **Boss relics, two Slay the Spire events, and every curse now costs an enemy.**
 
   The sheet arrived with four new relics, a new curse, a new game and two pieces

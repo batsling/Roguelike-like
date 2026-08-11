@@ -956,8 +956,7 @@ func test_the_trader_only_shows_the_rows_he_can_fill() -> void:
 	for c in ev.choices:
 		if EventSystem.choice_available(c, {}):
 			open_now.append(String(c.get("id", "")))
-	assert_eq(open_now, ["take_the_top_one", "trade_nothing"],
-		"the top row and the way out")
+	assert_eq(open_now, ["take_the_top_one"], "the top row and nothing else")
 
 func test_the_trader_never_touches_a_starter_boss_or_event_relic() -> void:
 	# The one thing a swap must never do is take the character you picked, the
@@ -976,12 +975,16 @@ func test_the_trader_never_touches_a_starter_boss_or_event_relic() -> void:
 	EventSystem.begin_event(ev)
 	assert_eq(EventSystem.trade_offers().size(), 0,
 		"a pack of off-ladder relics has nothing he will trade for")
+	# …and no button to press on it. There is no "trade nothing" choice to fall
+	# back on — every choice he has is an offer, so a pack he wants nothing from
+	# offers nothing at all and EventModal2's own Leave is the way out.
+	var ids: Array = []
 	for c in ev.choices:
-		if String(c.get("id", "")) == "trade_nothing":
-			assert_true(EventSystem.choice_available(c, {}), "the way out is still there")
-		else:
-			assert_false(EventSystem.choice_available(c, {}),
-				"%s has no offer behind it" % c.get("id", ""))
+		ids.append(String(c.get("id", "")))
+		assert_false(EventSystem.choice_available(c, {}),
+			"%s has no offer behind it" % c.get("id", ""))
+	assert_eq(ids, ["take_the_top_one", "take_the_middle_one", "take_the_bottom_one"],
+		"three offers and no way to decline")
 
 func test_a_trade_swaps_the_two_relics() -> void:
 	var ev: EventData2 = _event(TRADER)
@@ -1014,7 +1017,7 @@ func test_the_trade_names_come_from_the_sheet_not_from_code() -> void:
 	assert_string_contains(line, give.display_name)
 	assert_string_contains(line, take.display_name)
 	assert_false(line.contains("<give>"), "no hole survives to the button: %s" % line)
-	# …and the same holes in the prose the choice prints on its way out.
+	# The prose on the way out is the trader's, not the swap's: the button already
+	# named both relics, so he only has to say the one thing he ever says.
 	var out: Dictionary = EventSystem.resolve_choice(ev, top, 0)
-	assert_string_contains(String(out["result"]), give.display_name)
-	assert_string_contains(String(out["result"]), take.display_name)
+	assert_eq(String(out["result"]), "“Hehehe Heh... Thank you!”")

@@ -882,10 +882,16 @@ the same choices twice**.
 
 | Choice | Effect | Result |
 |---|---|---|
-| **Take the Top One** | `trade_relic 1` | *"He takes `<give>` off you with both hands… and presses `<get>` into your palm…"* |
-| **Take the Middle One** | `trade_relic 2` | *"'Good eye.' `<give>` vanishes into the lining. `<get>` arrives in its place, still warm."* |
-| **Take the Bottom One** | `trade_relic 3` | *"…comes up with `<get>`. `<give>` is gone from your pack by the time he stands."* |
-| **Trade Nothing** | `nothing` | *"You decline. The cloak closes…"* |
+| **Take the Top One** | `trade_relic 1` | *"Hehehe Heh... Thank you!"* |
+| **Take the Middle One** | `trade_relic 2` | *"Hehehe Heh... Thank you!"* |
+| **Take the Bottom One** | `trade_relic 3` | *"Hehehe Heh... Thank you!"* |
+
+Every row is an offer; there is **no "Trade Nothing"**. The button already names
+both relics, so the prose on the way out is only the trader's own line — the
+same one whichever row you point at. And a run he wants nothing from shows no
+rows at all, which the modal already answers with its own **Leave** (§15,
+`EventModal2`): a decline button would be a fourth choice that exists purely to
+say what an empty list already says.
 
 ### The offers are rolled once, when the event opens
 
@@ -912,10 +918,10 @@ stranger should be able to take off you.
 ### What it needed from the format: a name hole
 
 `{...}` resolves arithmetic. Naming a relic needed `<give>` / `<get>` (§5.2), and
-that is the entire addition. The sentences — including which of the three rows
-gets which phrasing — are in the spreadsheet, so the event is as portable as
-every other one: GDScript knows what the two holes mean and nothing else about
-the Relic Trader.
+that is the entire addition. The sentences are in the spreadsheet — the holes are
+spent on the buttons, where the player still has to be told what the swap is —
+so the event is as portable as every other one: GDScript knows what the two holes
+mean and nothing else about the Relic Trader.
 
 ---
 

@@ -115,23 +115,19 @@ RELIC_TRADER = {
               "there. He pivots to face you. “Welcome! What're ya trading?” "
               "The figure inquires as he flares open his cloak to reveal a slew of "
               "suspicious wares.",
+    # He says the same thing whichever row you point at — the trade itself is
+    # the answer, and the button already named the two relics. There is no
+    # "Trade Nothing" button: a run with nothing he wants shows no offers at
+    # all, and the modal's own Leave is the way out of that.
     "Choice 1": "Take the Top One", "Repeat 1": None,
-    "Result 1": "He takes <give> off you with both hands, tucks it somewhere inside "
-                "the cloak, and presses <get> into your palm before you can change "
-                "your mind.",
+    "Result 1": "“Hehehe Heh... Thank you!”",
     "Effect 1": "trade_relic 1",
     "Choice 2": "Take the Middle One", "Repeat 2": None,
-    "Result 2": "“Good eye.” <give> vanishes into the lining. <get> arrives "
-                "in its place, still warm.",
+    "Result 2": "“Hehehe Heh... Thank you!”",
     "Effect 2": "trade_relic 2",
     "Choice 3": "Take the Bottom One", "Repeat 3": None,
-    "Result 3": "He crouches, digs past three other things, and comes up with <get>. "
-                "<give> is gone from your pack by the time he stands.",
+    "Result 3": "“Hehehe Heh... Thank you!”",
     "Effect 3": "trade_relic 3",
-    "Choice 4": "Trade Nothing", "Repeat 4": None,
-    "Result 4": "You decline. The cloak closes. “Suit yourself,” he says, and "
-                "is not there when you look back.",
-    "Effect 4": "nothing",
 }
 
 
