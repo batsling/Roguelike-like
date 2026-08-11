@@ -37,7 +37,22 @@ extends Resource
 
 # Games it stays live before expiring. Three by default, matching the window an
 # event goal gets, so the checklist clears at one rate rather than two.
+#
+# ZERO means PERMANENT — the sheet writes `N/A` in the Timer column and gets it.
+# Curse of the Bell is the reason: the Slay the Spire curse it is lifted from is
+# the one you cannot remove, and a three-game version of that is a different card.
+# The run-side sentinel is a `games_left` of -1 (GameState.add_curse_goal), so a
+# permanent curse is told apart from an expiring one by the sign rather than by
+# re-reading the catalogue on every tick.
 @export var timer: int = 3
+
+# Games it stays live, as a phrase — "3 games", or "permanently". One
+# implementation, because the checklist, the standing list and an event's choice
+# line all have to say the same thing about the same curse.
+static func window_text(games_left: int) -> String:
+	if games_left < 0:
+		return "permanent"
+	return "%d %s left" % [games_left, "game" if games_left == 1 else "games"]
 
 # Art base name under res://images2.0/curses/.
 @export var file: String = ""
@@ -48,7 +63,7 @@ extends Resource
 func describe() -> String:
 	if condition == "":
 		return penalty_text
-	return "If %s, %s at the end of combat." % [condition, _penalty_phrase()]
+	return "If %s, %s when you report the game." % [condition, _penalty_phrase()]
 
 
 func _penalty_phrase() -> String:
@@ -56,7 +71,12 @@ func _penalty_phrase() -> String:
 	var t := penalty_text.strip_edges()
 	if t.begins_with("-"):
 		return "take %s damage" % t.substr(1).replace(" Health", "")
-	return t
+	# Anything else is already an act ("Spawn a random enemy") — it just arrives
+	# capitalised, because it is also printed on its own as a sentence elsewhere.
+	# Mid-sentence it needs the lower case.
+	if t == "":
+		return t
+	return t.substr(0, 1).to_lower() + t.substr(1)
 
 
 func art_file() -> String:

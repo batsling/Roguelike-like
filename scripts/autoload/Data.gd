@@ -243,20 +243,33 @@ func all_items() -> Array:
 #
 # The returned arrays are the CACHED ones: treat them as read-only and duplicate
 # before mutating.
-var _reward_pool_cache: Dictionary = {}    # "items" | "items2" -> Array[ItemData]
+var _reward_pool_cache: Dictionary = {}    # "items" | "items2" | "items2:boss" -> Array[ItemData]
 var _reward_bucket_cache: Dictionary = {}  # "items2:2" -> Array[ItemData]
 
-# Items eligible for random shop / reward / treasure draws. Excludes "starter"
-# items which belong to a character's opening loadout.
+# Items eligible for random shop / reward / treasure draws. Excludes the three
+# off-ladder classes (ItemData.is_rollable) — starters belong to a character's
+# opening loadout, boss relics to a boss, event relics to their event.
 func reward_item_pool() -> Array:
 	return _reward_pool("items", _items)
 
 # The games-first (2.0) reward pool — the items2.0 relics that drop from a
 # defeated enemy (docs/games-first-redesign.md §8 "the item table IS the reward
-# economy"). Excludes starter items (a character's opening loadout — Burning
-# Blood) so they never re-roll as a drop. The RewardScreen rolls this by rarity.
+# economy"). Excludes anything a random draw must not produce (Burning Blood, the
+# Boss relics, the Event relics). The RewardScreen rolls this by rarity.
 func reward_item2_pool() -> Array:
 	return _reward_pool("items2", _items2)
+
+# The BOSS relics — what beating a boss pays instead of a normal drop (§7.1).
+# A separate pool rather than a rarity bucket for the same reason `boss` is a flag
+# rather than a rung: nothing rolls into it, one thing rolls out of it.
+func boss_item2_pool() -> Array:
+	if not _reward_pool_cache.has("items2:boss"):
+		var out: Array = []
+		for it in _items2.values():
+			if it is ItemData and it.boss:
+				out.append(it)
+		_reward_pool_cache["items2:boss"] = out
+	return _reward_pool_cache["items2:boss"]
 
 # The 2.0 pool narrowed to one ItemData.Rarity, or the whole pool when that rarity
 # has no items — the fallback every weighted draw wants.
@@ -272,7 +285,7 @@ func _reward_pool(key: String, catalog: Dictionary) -> Array:
 	if not _reward_pool_cache.has(key):
 		var out: Array = []
 		for it in catalog.values():
-			if it is ItemData and not it.starter:
+			if it is ItemData and it.is_rollable():
 				out.append(it)
 		_reward_pool_cache[key] = out
 	return _reward_pool_cache[key]

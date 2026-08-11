@@ -1,7 +1,7 @@
 # Event sheet-authoring (`events2.0`)
 
 Status: **built, illustrated and running.** Eight events authored, generators
-and runtime in place, art in `images2.0/`, tests in `test/test_events2.gd`. §13 is how it runs and the little
+and runtime in place, art in `images2.0/`, tests in `test/test_events2.gd`. §15 is how it runs and the little
 that's left. Companion to `games-first-redesign.md` and
 `locations-and-events-design.md` §6, which argued events should wait for
 somewhere to live — §1 is that somewhere.
@@ -85,7 +85,7 @@ leaves the last eight cells empty.
 ## 3. Columns
 
 Fourteen event columns, then `Choice N` / `Repeat N` / `Result N` / `Effect N`
-for N = 1…4.
+for N = 1…6.
 
 | Column | Scope | Meaning |
 |---|---|---|
@@ -94,7 +94,7 @@ for N = 1…4.
 | `Tier` | event | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. Gates an event to part of the tier ladder, the same vocabulary `enemies2.0` gates on. |
 | `Where` | event | Placement. `Dead End` (default — a node with one connection, §1), `Any`, or `Game` (only ever on its own `Game`, the way Abyssal Baths belongs to the Underdocks). |
 | `Requirement` | event | A condition on the **run state** that must hold before the event can appear at all — `<stat> <op> <value>`, a trailing `%` reading against the maximum (`hp <= 70%`). Blank = always eligible. `Tier` gates on the ladder, `Where` on the map, this on the player. |
-| `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). **`Before` is not implemented** — see §13. |
+| `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). **`Before` is not implemented** — see §15. |
 | `Rarity` | event | `Common` / `Uncommon` / `Rare`. Weights the roll, same ordering as items and scrolls. |
 | `Limit` | event | Times per run. A number, or `None` for no limit. |
 | `Image` | event | Art base name → `res://images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`, matching every other 2.0 sheet. |
@@ -225,6 +225,8 @@ Author freely; these cost nothing.
 | `gain_max_hp N` | The cap **and the Health to fill it** — a new container arrives full, which is what "+2 Max Health" means in every game this map is drawn from. Pays the heal that actually landed, so Handcuffs' cap can't be healed around. |
 | `gain_empty_max_hp N` | The cap **alone**. The other half of the split, for the item or event that means an empty container and has to say so (Hollow Heart). |
 | `gain_gold N` | Gold. |
+| `gain_item <item_id>` | A **named** `items2.0` relic, handed straight over. The one reward token that says *which* item, for an event built around a specific one (Golden Idol, §12). The generator checks the id against the sheet, so a typo is an error rather than a choice that silently pays nothing. |
+| `spawn_enemy [N]` | Conjures N enemies at the run's current difficulty straight onto the following stack — the same thing the Scroll of Create Monster does. **This is what every curse costs** (§6). |
 
 **B — `EffectSystem` has the handler; the reward-DSL parser has to learn the
 word.** No engine work, just the generator.
@@ -347,7 +349,7 @@ different animals:
 |---|---|---|---|---|
 | **Enemy goal** | the card you took | the enemy dies, its item drops | it follows you and hits every game | until met |
 | **Event goal** | `add_goal` | pays its reward | **nothing** — it expires | `for <n> games` |
-| **Curse goal** | `add_curse` | **you take the penalty**, every time | nothing | its `Timer` — 3 games by default |
+| **Curse goal** | `add_curse` | **you take the penalty**, every time | nothing | its `Timer` — 3 games by default, or permanent |
 
 Each gets **its own section of the post-game checklist**, and that separation is
 the point rather than decoration: an enemy goal is a debt that bites when missed,
@@ -387,6 +389,34 @@ X, the modal can render it on the button ("Immerse — costs 3 Health") without
 anyone authoring a warning. Slay the Spire 2 has to tell you the baths are about
 to kill you; here the button can just say so, and no column is needed for it.
 
+**X is not the only name bound.** A hole may also read the run itself —
+`MAX_HP`, `HP`, `GOLD`, `GAMES` — which is what lets a cost be a **fraction of
+the player** rather than a number. The Golden Idol (§12) charges 25% of Max
+Health as `lose_hp {max(1,round(0.25*MAX_HP))}`, and the same machinery that
+prints "-5 Health" for a `{4+X}` hole prints "-3 Health" for this one. Two
+authoring notes fall out of it:
+
+- **Round in the hole, not in your head.** The effect rounds the number it
+  applies; the button formats the number it prints. Write `round(...)` and the
+  two agree — leave it out and a 2.5 is dealt as 3 and printed as 2.5.
+- **Floor small percentages at 1.** Health here is 5–10, not 75, so 8% of it
+  rounds to nothing for half the roster. `max(1, ...)` is the difference between
+  a cost and a button that claims to hurt and doesn't.
+
+### 5.2 `<give>` and `<get>` — name holes
+
+`{...}` holes carry arithmetic. `<give>` and `<get>` carry a **name**, and they
+exist for one event: the Relic Trader (§13), whose three offers are built out of
+what the player is actually carrying. The sheet writes the sentence —
+*"He takes `<give>` off you… and presses `<get>` into your palm"* — and the run
+fills in the two relics.
+
+They work in the `Choice` label, the `Result` prose and the mechanical line
+alike, so the whole event stays authored in the spreadsheet: the only thing
+GDScript knows about the Relic Trader is what `<give>` and `<get>` mean. An
+unfilled hole (the Collection's event page, where there is no run and no pack)
+reads "a relic", so the sentence still scans outside a run.
+
 ---
 
 ## 6. The `curses2.0` sheet
@@ -401,23 +431,36 @@ Six columns:
 | `Game` | The real game it is lifted from. |
 | `Condition` | What you must avoid doing, in the honour-system voice the goals use. |
 | `Penalty` | What it costs when you do it — the same reward-token DSL, pointed the other way. |
-| `Timer` | Games it lasts before expiring. **3** unless a curse says otherwise. |
+| `Timer` | Games it lasts before expiring. **3** unless a curse says otherwise. `N/A` (or `None` / `Permanent`) means it **never** expires — Curse of the Bell, which arrives with the Calling Bell relic and stays for the run. A **blank** cell is still the three-game default: "nobody filled this in" and "this is forever" must not be the same value. |
 | `Image` | Art base name under `images2.0/curses/`. |
 
 The roster:
 
 | Curse | From | Condition | Penalty | Timer |
 |---|---|---|---|--:|
-| **Poor Sleep** | Unrest Site | you use a rest site to replenish health | `lose_hp 2` | 3 |
-| **Injury** | Punch Off | you go below half health | `lose_hp 2` | 3 |
+| **Poor Sleep** | Unrest Site | you use a rest site to replenish health | `spawn_enemy` | 3 |
+| **Injury** | Punch Off, Golden Idol | you go below half health | `spawn_enemy` | 3 |
+| **Curse of the Bell** | the Calling Bell relic | ring a bell | `spawn_enemy` | permanent |
+
+**Every curse pays in enemies.** The penalty column used to charge Health, which
+put a curse in competition with the enemy stack for the same resource and made
+"take the curse" a piece of arithmetic: two damage against whatever the reward
+was worth. `spawn_enemy` bills in the run's own currency instead — a body that
+has to be *beaten*, that follows you until it is, and whose cost depends on where
+the board already is rather than on a number. It is also the only penalty that
+gets worse the deeper the run goes, since the conjured enemy rolls at the current
+difficulty. A test asserts this holds for the whole roster rather than for the
+rows a test happens to name, so a curse authored later has to say why if it wants
+to be the exception.
 
 **The checklist row is generated, not authored.** `Condition` + `Penalty` compose
-into *"If you use a rest site to replenish health, take 2 damage at the end of
-combat"*, so a curse's text cannot drift from what it actually does. There is no
-prose column to keep in sync, which is the mistake the legacy `curses` sheet made.
+into *"If you use a rest site to replenish health, spawn a random enemy when you
+report the game"*, so a curse's text cannot drift from what it actually does.
+There is no prose column to keep in sync, which is the mistake the legacy `curses`
+sheet made.
 
-The two are deliberately different flavours, and it's worth keeping that spread
-as more are authored:
+The flavours are deliberately different, and it's worth keeping that spread as
+more are authored:
 
 - **Poor Sleep points at the real game.** A rest site is a thing in whatever
   roguelike you go off and play, checked on the honour system. That is the flavour
@@ -771,7 +814,112 @@ the last clause" from a rule written twice into one shared check written once.
 
 ---
 
-## 12. Other shapes, for reference
+## 12. The sixth worked example: Golden Idol
+
+Slay the Spire's Act 1 shrine, and the first event whose price is a **percentage
+of the player** rather than a number.
+
+| | |
+|---|---|
+| `Where` | Dead End |
+| `Limit` | 1 |
+| `Prompt` | *"You stumble into a hidden chamber. In the centre of the room, sitting on a pedestal, is a golden idol worth a fortune. The plinth it rests on is worn smooth, and the floor around it is not."* |
+
+| Choice | Repeat | Effect |
+|---|---|---|
+| **Take** | `Stay` | `gain_item golden_idol` |
+| **Leave** | `End` | `needs Take = 0; nothing` |
+| **Outrun** | `End` | `needs Take > 0; lose_hp {max(1,round(0.25*MAX_HP))}` |
+| **Smash** | `End` | `needs Take > 0; add_curse injury` |
+| **Hide** | `End` | `needs Take > 0; lose_max_hp {max(1,round(0.08*MAX_HP))}` |
+
+### It is staged, and that is why it needed a fifth column group
+
+The original is two screens: take or leave, and then — with the boulder already
+moving — outrun, smash, or hide. That is the Abyssal Baths trick (§7) pointed at
+a different problem: **Take is `Stay`**, so pressing it spends the button and
+leaves the event open, and the three escapes are gated `needs Take > 0` so they
+are invisible until it has been. **Leave is gated the other way** (`needs Take =
+0`), because once the corridor is full of rolling stone there is no such thing as
+walking out.
+
+Five buttons is one more than the format had. Widening the sheet to six groups
+was the whole cost — a blank `Choice N` still ends the list, so every existing
+event is untouched and the two spare groups cost nothing.
+
+### The percentages are the source's; the numbers are this game's
+
+25% of Max Health and 8% of it are Slay the Spire's own figures, and they are the
+one part of that game's damage that ports directly: a percentage does not care
+that Health here is 5–10 rather than 75. What does not port is *printing* them.
+"Take 25% of your Max Health" is a sum the player has to do at the exact moment
+they are choosing, so the hole resolves against `MAX_HP` (§5.1) and the button
+says **-3 Health**.
+
+The `max(1, ...)` on both is not decoration. 8% of 10 Health rounds to nothing,
+and a Hide that costs nothing is the obviously correct answer to an event that is
+supposed to be a real decision.
+
+### Smash is where a curse comes from something other than an event's own text
+
+The third escape hands out `injury` — the curse Punch Off (§10) already uses.
+Nothing was authored twice for it: the curse lives in `curses2.0`, and the second
+event that wants it names it. That is the whole argument for §6 being a sheet
+rather than a column.
+
+---
+
+## 13. The seventh worked example: Relic Trader
+
+Slay the Spire 2's shadowy figure, and the first event whose **choices are not
+the same choices twice**.
+
+| | |
+|---|---|
+| `Where` | Dead End |
+| `Limit` | 1 |
+| `Prompt` | *"You turn a corner and suddenly, a shadowy figure is just standing there. He pivots to face you. 'Welcome! What're ya trading?'…"* |
+
+| Choice | Effect | Result |
+|---|---|---|
+| **Take the Top One** | `trade_relic 1` | *"He takes `<give>` off you with both hands… and presses `<get>` into your palm…"* |
+| **Take the Middle One** | `trade_relic 2` | *"'Good eye.' `<give>` vanishes into the lining. `<get>` arrives in its place, still warm."* |
+| **Take the Bottom One** | `trade_relic 3` | *"…comes up with `<get>`. `<give>` is gone from your pack by the time he stands."* |
+| **Trade Nothing** | `nothing` | *"You decline. The cloak closes…"* |
+
+### The offers are rolled once, when the event opens
+
+Placement is hashed so a card's badge cannot change under the player (§15). A
+trade cannot be: it depends on the **inventory**, not on the node. So the three
+pairings are rolled once, in `EventSystem.begin_event`, and held for as long as
+the modal is up — re-rolling per repaint would rename the button under the
+cursor, which is the same failure the hashed placement exists to prevent.
+
+Each offer pairs one relic you hold against one you don't, with no relic on the
+block twice and no two rows offering the same thing. **A run carrying one relic
+is shown one row**, not three buttons that swap nothing: a `trade_relic` choice
+with no offer behind it is simply not offered, which is the same gate machinery
+`needs` uses.
+
+### Both halves are drawn from the rollable pool only
+
+No Starter, no Boss, no Event relic, in either direction
+(`games-first-redesign.md` §8). A starter is the character you picked, a Boss
+relic is a boss you beat, an Event relic is an event you walked into — none of
+them is a thing to find in a stranger's coat, and none of them is a thing a
+stranger should be able to take off you.
+
+### What it needed from the format: a name hole
+
+`{...}` resolves arithmetic. Naming a relic needed `<give>` / `<get>` (§5.2), and
+that is the entire addition. The sentences — including which of the three rows
+gets which phrasing — are in the spreadsheet, so the event is as portable as
+every other one: GDScript knows what the two holes mean and nothing else about
+the Relic Trader.
+
+---
+
+## 14. Other shapes, for reference
 
 Not authored — these are here so the format can be read against more than one
 event.
@@ -780,24 +928,22 @@ Shown a group per line for legibility; on the sheet each event is one row and
 these run left to right.
 
 ```
-Golden Idol     Choice 1 Take the idol │ End │ obtain_item; apply_status marked 1
-                Choice 2 Leave it      │ End │ nothing
-
 Locked Chest    Choice 1 Open it       │ End │ needs keys 1; gain_chest medium 1
                 Choice 2 Pry it open   │ End │ lose_hp 2; gain_chest small 1
                 Choice 3 Walk away     │ End │ nothing
 ```
 
-Both are the plain shape — pick one, it resolves, the event closes — which is
-what most events are and what the two worked examples above deliberately are
-not.
+That is the plain shape — pick one, it resolves, the event closes — which is what
+most events are and what the worked examples above deliberately are not. (The
+Golden Idol used to be sketched here as the other plain one. It is authored now,
+and it turned out not to be plain at all: see §12.)
 
 ---
 
-## 13. How it runs
+## 15. How it runs
 
-Built and under test (`test/test_events2.gd`, 47 tests). The pieces, and the one
-thing each of them is really solving:
+Built and under test (`test/test_events2.gd`). The pieces, and the one thing each
+of them is really solving:
 
 | Piece | Where | The problem it solves |
 |---|---|---|
@@ -821,7 +967,16 @@ down the ordinary path rather than raising a modal of its own.
 **The reward-token DSL has one implementation.** `generate_status_tres.py` owns
 it; the two new generators import it rather than re-parsing `gain_chest small 1`
 a second and third way. Extending it for events (`lose_*`, `heal_full`,
-`gain_loot`, `apply_status`, `nothing`) left every existing status byte-identical.
+`gain_loot`, `apply_status`, `nothing`, and later `gain_item`, `spawn_enemy`,
+`trade_relic`) left every existing status byte-identical.
+
+**An event's live content is rolled in `begin_event`.** Almost every event is the
+same event every time it fires, and everything about it can therefore live in the
+`.tres`. The Relic Trader (§13) is the exception — its offers are built out of the
+player's pack — so there is one hook, called once as the modal opens, for an
+event to roll what the run has to tell it. Anything rolled there survives every
+repaint of the modal and nothing else, which is exactly the lifetime such content
+wants.
 
 **Placement is hashed, not rolled.** `EventSystem.event_for(node)` hashes the
 node id against `GameState.run_seed` (new, saved with the run). The offering is

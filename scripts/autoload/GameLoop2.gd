@@ -1311,7 +1311,10 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
 		# letting it mint currency would make bombing the cheapest way to farm the
 		# shops. Sitting the payout under `drop` rather than at the top of the
 		# function is what keeps that true for any future no-drop defeat too.
+		# Golden Idol adds to whatever the body was worth, boss or not — "all
+		# enemies drop +1 Gold" is a rate on the whole table, not a fifth tier.
 		var coins: int = GOLD_PER_BOSS if enemy != null and enemy.is_boss() else GOLD_PER_ENEMY
+		coins += GameState.enemy_gold_bonus()
 		GameState.change_gold(coins)
 		res["gold"] = int(res.get("gold", 0)) + coins
 	enemy_defeated.emit(enemy)

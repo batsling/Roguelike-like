@@ -29,7 +29,8 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   reroll_low_rarity:, carries_leftover_energy:,
                   lower_hp_damage_mult:, gold_spend_stat_per=N, level_up:,
                   charged (charge_cost N), keep_shields, bomb_stun,
-                  bomb_cardinal, grid_grow.
+                  bomb_cardinal, grid_grow, loot_multiplier: N,
+                  gold_per_enemy: N, shop_sweep.
 
 Targets are written in parens after an effect value: (self) / (enemy) /
 (all_enemies) / (random_enemies count=2). Bare prose in parens (explanatory
@@ -69,6 +70,11 @@ KIND = {"passive": 0, "triggered": 1, "incremental": 1, "usable": 2,
 # rated Epic today, and if a row ever is, landing at the top of the ladder is a
 # far better failure than silently defaulting to Common.
 RARITY = {"common": 0, "uncommon": 1, "rare": 2, "epic": 3, "legendary": 3}
+# Ratings that are NOT a rung on that ladder: they name where an item comes from,
+# and every one of them means "never rolled at random" (ItemData's three class
+# flags). Each maps to the ItemData bool it sets. They keep rarity 0, which is
+# never read for them — ItemData.item_class() answers ahead of it.
+ITEM_CLASSES = {"starter": "starter", "boss": "boss", "event": "event"}
 
 # Trigger prefixes that map onto a TriggerBus signal. combat_start/combat_end
 # are accepted as aliases for the -ed forms the engine emits.
@@ -175,6 +181,10 @@ def _int(tok, default=0):
         return int(float(tok))
     except (ValueError, TypeError):
         return default
+
+
+def _rating(row) -> str:
+    return str(row.get("Rating", "") or "").strip().lower()
 
 
 def _kind_of(name, type_str):
@@ -372,6 +382,24 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
     if verb == "obtain_item":
         rest, _ = _kv(toks[1:])
         return {"type": "obtain_item", "pool": rest[0].lower() if rest else "any"}
+    # gain_item <item_id> — a NAMED items2.0 relic, handed straight over.
+    if verb == "gain_item":
+        rest, _ = _kv(toks[1:])
+        return {"type": "gain_item", "item": rest[0].lower() if rest else ""}
+    # gain_item_per_rarity N — Calling Bell: N items, one off each rung of the
+    # ladder from the bottom (Common, Uncommon, Rare), NOT N rarity rolls.
+    if verb == "gain_item_per_rarity":
+        rest, _ = _kv(toks[1:])
+        nums = [int(x) for x in rest if re.match(r"^\d+$", x)]
+        return {"type": "gain_item_per_rarity", "count": nums[0] if nums else 3}
+    # add_curse <curse_id> [for N games] — a curses2.0 curse goal from an item.
+    if verb == "add_curse":
+        rest, _ = _kv(toks[1:])
+        words = [t for t in rest if not re.match(r"^\d+$", t) and t.lower() != "for"
+                 and not t.lower().startswith("game")]
+        nums = [int(t) for t in rest if re.match(r"^\d+$", t)]
+        return {"type": "add_curse", "curse": words[0].lower() if words else "",
+                "games": nums[0] if nums else 0}
     if verb == "random_item_choice":
         rest, _ = _kv(toks[1:])
         nums = [int(x) for x in rest if re.match(r"^\d+$", x)]
@@ -586,8 +614,7 @@ def parse_item(row):
         "id": iid,
         "display_name": display_of(name),
         "kind": _kind_of(name, row.get("Type", "")),
-        "rarity": RARITY.get(str(row.get("Rating", "")).strip().lower(), 0),
-        "starter": str(row.get("Rating", "")).strip().lower() == "starter",
+        "rarity": RARITY.get(_rating(row), 0),
         "description": str(row.get("Description") or "").strip(),
         "triggers": [],
         "card_grants": [],
@@ -595,6 +622,14 @@ def parse_item(row):
         "stat_multipliers": {},
         "scaling": [],
     }
+    rating = _rating(row)
+    if rating in ITEM_CLASSES:
+        fields[ITEM_CLASSES[rating]] = True
+    elif rating and rating not in RARITY:
+        # A Rating nobody has heard of used to become a silent Common — which is
+        # a Boss relic quietly joining the drop table. Say so.
+        print("  ! %s: unknown Rating %r — defaulting to Common. Add it to RARITY "
+              "or ITEM_CLASSES." % (name, rating))
     # USABLE pills are spent on use. The count comes from the Type cell:
     # "Usable, 3" -> 3 uses before the item is destroyed; bare "Usable" -> 1.
     # Everything else is infinite-use (-1).
@@ -722,6 +757,18 @@ def parse_item(row):
         elif kl0 == "grid_grow":
             # Mine-r Construction: the battlefield gains a column and a row.
             fields["grid_grow"] = True
+            last_trigger = None
+        elif kl0 == "loot_multiplier":
+            # Sacred Bark: every loot consumable resolves at this multiple.
+            fields["loot_multiplier"] = _int(re.search(r"\d+", clause).group(0), 1)
+            last_trigger = None
+        elif kl0 == "gold_per_enemy":
+            # Golden Idol: every defeated enemy pays this much extra Gold.
+            fields["gold_per_enemy"] = _int(re.search(r"\d+", clause).group(0), 0)
+            last_trigger = None
+        elif kl0 == "shop_sweep":
+            # Lord's Parasol: walking into a shop takes the whole shelf.
+            fields["shop_sweep"] = True
             last_trigger = None
         elif kl0 == "lower_hp_damage_mult":
             fields["lower_hp_damage_mult"] = float(re.search(r"[0-9.]+", payload).group(0))
@@ -919,8 +966,9 @@ def item_tres(row):
     lines.append('display_name = "%s"' % gd_str(f["display_name"]))
     lines.append("kind = %d" % f["kind"])
     lines.append("rarity = %d" % f["rarity"])
-    if f.get("starter"):
-        lines.append("starter = true")
+    for flag in ITEM_CLASSES.values():
+        if f.get(flag):
+            lines.append("%s = true" % flag)
     lines.append('description = "%s"' % gd_str(f["description"]))
     lines.append("triggers = %s" % gd_value(f["triggers"]))
     if f["card_grants"]:
@@ -958,6 +1006,9 @@ def item_tres(row):
         ("bomb_stun", lambda v: "true"),
         ("bomb_cardinal", lambda v: "true"),
         ("grid_grow", lambda v: "true"),
+        ("loot_multiplier", lambda v: str(v)),
+        ("gold_per_enemy", lambda v: str(v)),
+        ("shop_sweep", lambda v: "true"),
     ]:
         if key in f and f[key] not in (None, [], {}, 0, False, ""):
             lines.append("%s = %s" % (key, gd(f[key])))

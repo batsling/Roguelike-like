@@ -1506,10 +1506,15 @@ func add_curse_goal(curse_id: StringName, event_id: StringName = &"", games: int
 	if cd == null:
 		push_warning("GameState.add_curse_goal: unknown curse '%s'" % curse_id)
 		return false
+	# -1 is PERMANENT, and it is what a curse with a Timer of 0 (the sheet's `N/A`)
+	# becomes. The sign is the whole distinction: tick_event_goals decrements a
+	# positive window and leaves a negative one alone, so nothing has to go back to
+	# the catalogue to find out whether this row can ever clear.
+	var window: int = games if games > 0 else cd.timer
 	curse_goals.append({
 		"curse": curse_id,
 		"event": event_id,
-		"games_left": maxi(1, games if games > 0 else cd.timer),
+		"games_left": -1 if window <= 0 else window,
 	})
 	event_goals_changed.emit()
 	return true
@@ -1561,6 +1566,10 @@ func tick_event_goals() -> Array:
 	event_goals = kept
 	var kept_curses: Array = []
 	for c in curse_goals:
+		# A permanent curse (games_left < 0) neither counts down nor comes off.
+		if int(c.get("games_left", 0)) < 0:
+			kept_curses.append(c)
+			continue
 		c["games_left"] = int(c.get("games_left", 0)) - 1
 		if int(c["games_left"]) > 0:
 			kept_curses.append(c)
@@ -1683,6 +1692,29 @@ func grid_growth() -> int:
 		if it is ItemData and it.grid_grow:
 			n += 1
 	return n
+
+# Sacred Bark: what every loot consumable resolves at. MULTIPLIES the copies
+# together — "double the effect" applied twice is quadruple, not double — and
+# returns 1 when nothing owned changes it, so callers can multiply unconditionally.
+func loot_multiplier() -> int:
+	var mult: int = 1
+	for it in inventory:
+		if it is ItemData and it.loot_multiplier > 1:
+			mult *= it.loot_multiplier
+	return mult
+
+# Golden Idol: the extra Gold every defeated enemy pays on top of its drop (§14).
+# SUMS the copies, because this one is an amount rather than a rate.
+func enemy_gold_bonus() -> int:
+	var n: int = 0
+	for it in inventory:
+		if it is ItemData:
+			n += it.gold_per_enemy
+	return n
+
+# Lord's Parasol: walking into a shop empties its shelf into the pack (§14).
+func sweeps_shops() -> bool:
+	return _any_item_flag("shop_sweep")
 
 # ---------------------------------------------------------------------------
 # Usable consumables + temporary buffs

@@ -11,6 +11,96 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Boss relics, two Slay the Spire events, and every curse now costs an enemy.**
+
+  The sheet arrived with four new relics, a new curse, a new game and two pieces
+  of event art, and nothing behind any of them. This is what went behind them —
+  plus one rule change that touched every curse in the roster.
+
+  **A relic's Rating can now say where it came from, not just how rare it is.**
+  `items2.0` had `Starter` as a special value already: a character's opening
+  loadout, excluded from every random pool. **Boss** and **Event** join it as the
+  same shape of thing — a flag beside the rarity rather than a fifth and sixth
+  rung on it, because `ItemData.Rarity` and `Data.RarityStep` are the same four
+  rungs with no holes and a shop's price is *base + the rung* (§14). A value
+  nothing can ever roll would have put a hole in two ladders and a price list to
+  express something that is not a rarity at all. `ItemData.is_rollable()` is now
+  the single test every random draw makes, so drops, chests, shop shelves and the
+  new Relic Trader are all excluded from the three classes by one rule instead of
+  three remembered ones — and each class gets its own colour and its own word on
+  the card, since a Boss relic drawn in Common grey is a lie every screen would
+  then repeat.
+
+  **Beating a boss drops a Boss relic.** Not a better roll on the ordinary table —
+  a relic out of a pool nothing else can reach, with no rarity roll at all, since
+  "which rarity did the boss roll" is not a question with an answer. Three of them
+  are authored: **Sacred Bark** doubles every loot consumable; **Calling Bell**
+  pays one Common, one Uncommon and one Rare and saddles you with a permanent
+  curse; **Lord's Parasol** empties the next shop you walk into, free. The
+  fallback if no Boss relic is authored is the ordinary roll, because a boss that
+  drops nothing reads as a bug rather than as a thin catalogue.
+
+  Sacred Bark doubles the **bad** scrolls too, and that is the point of it: a
+  version that only doubled the upside would make reading an unidentified scroll a
+  strictly better gamble than it is, which is the one thing the identification
+  minigame cannot afford. The multiplier lands on named fields per effect rather
+  than on every integer in the dict — a Teleportation scroll's `spread` is how far
+  the landing may *vary*, and doubling that is not twice the scroll, it is a worse
+  one.
+
+  **Every curse now spawns an enemy instead of charging Health.** A curse used to
+  cost `lose_hp 2`, which put it in competition with the enemy stack for the same
+  resource and made "take the curse" a piece of arithmetic — two damage against
+  whatever the reward was worth. `spawn_enemy` bills in the run's own currency
+  instead: a body that has to be *beaten*, that follows you until it is, and whose
+  cost depends on where the board already is rather than on a number. It is also
+  the only penalty that gets worse the deeper the run goes, since the conjured
+  enemy rolls at the current difficulty. A test asserts it across the whole roster
+  rather than the two rows a test happens to name.
+
+  Curse of the Bell needed one more thing: a curse that **never expires**. The
+  `Timer` column takes `N/A` for it, which is a 0 on the resource and a -1 window
+  on the run — a *blank* cell is still the three-game default, because "nobody
+  filled this in" and "this is forever" must not be the same value.
+
+  **Golden Idol** (Slay the Spire) is the first event whose price is a fraction of
+  the player rather than a number: 25% of Max Health to outrun the boulder, 8% of
+  it to hide, the Injury curse to smash it. The percentages are the source's and
+  port directly — a percentage does not care that Health here is 5–10 rather than
+  75 — but *printing* them does not, so an `{expr}` hole may now name the run
+  (`MAX_HP` / `HP` / `GOLD` / `GAMES`) and the button says **-3 Health** instead of
+  making the player do arithmetic at the moment they are choosing. Both costs floor
+  at 1: 8% of 10 Health rounds to nothing, and a Hide that costs nothing is the
+  obviously correct answer to a decision that is supposed to be hard.
+
+  It is staged the way Abyssal Baths is — **Take** is `Stay` and the three escapes
+  are gated behind it, while **Leave** is gated the other way, because once the
+  corridor is full of rolling stone there is no such thing as walking out. That is
+  five buttons, one more than the sheet had; the events tab now carries six
+  `Choice N` groups, and a blank `Choice N` still ends the list, so every existing
+  event is untouched.
+
+  **Relic Trader** (Slay the Spire 2) is the first event whose choices are not the
+  same choices twice: three offers, each pairing one relic you are carrying
+  against one you are not. Placement is hashed so a card's badge cannot change
+  under the player; a trade cannot be, because it depends on the pack rather than
+  the node — so the offers are rolled once as the modal opens and held for as long
+  as it is up. A run carrying one relic is shown **one** row, not three buttons
+  that swap nothing.
+
+  The whole event still lives in the spreadsheet. `<give>` and `<get>` are name
+  holes the way `{...}` are arithmetic holes, and they work in the button label,
+  the result prose and the mechanical line alike — the only thing GDScript knows
+  about the Relic Trader is what those two mean. Neither half of a swap may be a
+  Starter, Boss or Event relic, in either direction: a starter is the character you
+  picked, a Boss relic is a boss you beat, an Event relic is an event you walked
+  into, and none of them is a thing to find in a stranger's coat.
+
+  **And the sheet caught up again** — one game (*Overworld*) and its NetHack edge,
+  846 games / 1205 connections, sky re-baked.
+
+---
+
 - **Max Health now arrives full, and the sheet's newest upload is ported: 10
   games, 13 connections, 3 events, and a way out of the game.**
 

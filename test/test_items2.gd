@@ -235,3 +235,119 @@ func test_charged_item_recharges_on_game_beaten() -> void:
 	d6.current_charge = 0
 	TriggerBus.game_beaten.emit({"game_id": &"the_binding_of_isaac"})
 	assert_eq(d6.current_charge, 1, "a beaten game adds one charge tick")
+
+# --- the three off-ladder classes (§7.1, §8) ------------------------------
+#
+# Starter / Boss / Event are not rungs on the rarity ladder — they say where an
+# item comes from, and each of them means "never rolled at random". The whole
+# point of the Boss relics is that beating a boss is the only way to see one, so
+# the pool boundary is the thing worth guarding.
+
+func test_only_rollable_items_are_in_the_reward_pool() -> void:
+	var ids: Array = Data.reward_item2_pool().map(func(it): return it.id)
+	var classes: Dictionary = {}
+	for it in Data.all_items2():
+		classes[it.item_class()] = true
+		if it.is_rollable():
+			assert_has(ids, it.id, "%s is an ordinary relic and should roll" % it.id)
+		else:
+			assert_does_not_have(ids, it.id,
+				"%s is a %s relic — nothing random may produce it" % [it.id, it.class_label()])
+	# The guard only means something while all three classes are authored.
+	for cls in [ItemData.ItemClass.STARTER, ItemData.ItemClass.BOSS, ItemData.ItemClass.EVENT]:
+		assert_true(classes.has(cls),
+			"the roster still carries a %s item" % ItemData.CLASS_NAMES[cls])
+
+func test_the_boss_pool_is_exactly_the_boss_relics() -> void:
+	var pool: Array = Data.boss_item2_pool()
+	assert_gt(pool.size(), 0, "there are Boss relics to drop")
+	for it in pool:
+		assert_true(it.boss, "%s is a Boss relic" % it.id)
+		assert_eq(it.class_label(), "Boss", "and says so on its card")
+
+# --- Sacred Bark: every loot consumable at double -------------------------
+
+func test_sacred_bark_doubles_what_a_scroll_does() -> void:
+	var aggravate: ScrollData = Data.get_scroll(&"scroll_of_aggravate_monsters")
+	assert_not_null(aggravate, "scrolls2.0 has Aggravate Monsters")
+	assert_eq(GameState.loot_multiplier(), 1, "nothing owned yet, so nothing doubles")
+	ScrollSystem.read_scroll(aggravate)
+	assert_eq(GameLoop2.enemy_damage_bonus, 1, "authored at +1 damage")
+
+	_give(&"sacred_bark")
+	assert_eq(GameState.loot_multiplier(), 2, "the Bark doubles loot")
+	GameLoop2.reset()
+	ScrollSystem.read_scroll(aggravate)
+	assert_eq(GameLoop2.enemy_damage_bonus, 2,
+		"and doubles the BAD scrolls too — that is what makes it a decision")
+	assert_eq(GameLoop2.enemy_damage_bonus_games, 2, "window included")
+
+func test_sacred_bark_does_not_widen_a_teleport() -> void:
+	# `spread` is how far a Teleportation scroll's landing may VARY. Doubling it
+	# is not twice the scroll, so the multiplier is authored per op rather than
+	# sprayed over every integer in the dict.
+	_give(&"sacred_bark")
+	var effect: Dictionary = {"op": "teleport", "dir": "same", "spread": 1}
+	assert_eq(int(ScrollSystem._scaled(effect).get("spread", 0)), 1, "spread is left alone")
+
+# --- Calling Bell: the curse and the three relics -------------------------
+
+func test_calling_bell_pays_one_item_per_rarity_and_a_permanent_curse() -> void:
+	var before: int = GameState.inventory.size()
+	_give(&"calling_bell")
+	# The Bell itself, plus one Common, one Uncommon and one Rare.
+	assert_eq(GameState.inventory.size(), before + 4,
+		"the Bell and its three relics")
+	var rarities: Dictionary = {}
+	for it in GameState.inventory:
+		if it is ItemData and it.is_rollable():
+			rarities[int(it.rarity)] = true
+	for rung in [ItemData.Rarity.COMMON, ItemData.Rarity.UNCOMMON, ItemData.Rarity.RARE]:
+		assert_true(rarities.has(int(rung)),
+			"one relic off the %s rung" % UITheme.rarity_name(int(rung)))
+	assert_true(GameState.has_curse_goal(&"curse_of_the_bell"), "and the curse rides in with it")
+	assert_eq(int(GameState.curse_goals[0]["games_left"]), -1, "which never expires")
+
+# --- Lord's Parasol: the shop, emptied ------------------------------------
+
+func test_lords_parasol_takes_the_whole_shelf_for_nothing() -> void:
+	var hub: StringName = ShopSystem.hub_games()[0]
+	var shelf: Array = ShopSystem.shop_for(hub).get("stock", [])
+	assert_eq(shelf.size(), ShopSystem.STOCK_SLOTS, "a full shelf to sweep")
+	_give(&"lords_parasol")
+	GameState.gold = 0
+	var before: int = GameState.inventory.size()
+	ShopSystem.mark_seen(hub)
+	assert_eq(GameState.inventory.size(), before + shelf.size(),
+		"every slot lands in the pack")
+	assert_eq(GameState.gold, 0, "and none of it is paid for")
+	assert_true(ShopSystem.is_sold_out(hub), "the shelf is bare behind you")
+
+func test_a_shop_is_only_swept_by_someone_holding_the_parasol() -> void:
+	var hub: StringName = ShopSystem.hub_games()[0]
+	var before: int = GameState.inventory.size()
+	ShopSystem.mark_seen(hub)
+	assert_eq(GameState.inventory.size(), before, "no Parasol, no sweep")
+	assert_false(ShopSystem.is_sold_out(hub), "the shelf is where you left it")
+
+# --- Golden Idol: +1 Gold off every body ----------------------------------
+
+func test_the_golden_idol_pays_on_top_of_every_drop() -> void:
+	var enemy := GoalEnemyData.new()
+	enemy.id = &"synthetic"
+	enemy.display_name = "Synthetic"
+	enemy.health = 1
+	enemy.damage = 1
+	enemy.difficulty = GoalEnemyData.Difficulty.LOW
+
+	GameState.gold = 0
+	GameLoop2.choose_game(enemy)
+	GameLoop2.beat_game(true)
+	var plain: int = GameState.gold
+	assert_eq(plain, GameLoop2.GOLD_PER_ENEMY, "a body is worth its base gold")
+
+	_give(&"golden_idol")
+	GameState.gold = 0
+	GameLoop2.choose_game(enemy)
+	GameLoop2.beat_game(true)
+	assert_eq(GameState.gold, plain + 1, "and one more while the Idol is held")

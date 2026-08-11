@@ -52,6 +52,19 @@ const TYPE_COLORS := [
 
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Legendary"]
 
+# The RARITY ramp above is the four rungs a draw can roll. An ITEM also has three
+# classes that are not rungs at all — Starter, Boss, Event (ItemData.ItemClass) —
+# and each needs a colour, because a Boss relic painted in Common grey is a lie
+# every screen would then repeat. Indexed by ItemData.ItemClass, so the first four
+# entries are the ramp again and the last three are the classes.
+const ITEM_CLASS_COLORS := [
+	Color(0.72, 0.72, 0.72), Color(0.30, 0.69, 0.31),
+	Color(0.61, 0.35, 0.71), Color(1.0, 0.80, 0.30),
+	Color(0.40, 0.85, 0.95),   # Starter — the cyan the Collection already used
+	Color(0.94, 0.33, 0.36),   # Boss — the only red on the ramp
+	Color(0.98, 0.62, 0.22),   # Event — amber, next to no other accent
+]
+
 # CURRENCY AND SHOPS (docs/games-first-redesign.md §14).
 #
 # COIN_GOLD is a deeper, brassier yellow than GOLD above, which this build has
@@ -75,6 +88,18 @@ static func rarity_color(i: int) -> Color:
 
 static func rarity_name(i: int) -> String:
 	return RARITY_NAMES[clampi(i, 0, RARITY_NAMES.size() - 1)]
+
+# The colour and the word for ONE ITEM, class included. Everything that draws an
+# item goes through these rather than through rarity_color/rarity_name, so a Boss
+# relic reads as a Boss relic on the drop modal, in the pack, in the Collection
+# and in the dev panel without each of them being taught the rule separately.
+static func item_color(item: ItemData) -> Color:
+	if item == null:
+		return TEXT_DIM
+	return ITEM_CLASS_COLORS[clampi(item.item_class(), 0, ITEM_CLASS_COLORS.size() - 1)]
+
+static func item_class_name(item: ItemData) -> String:
+	return item.class_label() if item != null else ""
 
 static func type_color(i: int) -> Color:
 	return TYPE_COLORS[clampi(i, 0, TYPE_COLORS.size() - 1)]

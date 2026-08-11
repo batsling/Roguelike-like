@@ -366,7 +366,7 @@ func _list_items() -> void:
 			continue
 		var item: ItemData = it
 		rows.append({"label": label,
-			"detail": "%s · %s" % [UITheme.rarity_name(int(it.rarity)), it.source_game],
+			"detail": "%s · %s" % [UITheme.item_class_name(it), it.source_game],
 			"press": func() -> void:
 				GameState.add_item(item)
 				_say("Added item: %s" % item.display_name)})

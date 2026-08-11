@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CurseData2" load_steps=2 format=3 uid="uid://curse2_curse_of_the_bell"]
+
+[ext_resource type="Script" path="res://scripts/resources/CurseData2.gd" id="1_curse"]
+
+[resource]
+script = ExtResource("1_curse")
+id = &"curse_of_the_bell"
+display_name = "Curse of the Bell"
+source_game = "Slay the Spire"
+condition = "ring a bell"
+penalty = [{"type": "spawn_enemy", "value": 1}]
+penalty_text = "Spawn a random enemy"
+timer = 0
+file = "CurseOfTheBell"

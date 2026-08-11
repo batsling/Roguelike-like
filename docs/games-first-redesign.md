@@ -188,6 +188,15 @@ current set is enemy/movement-facing instead:
 | Scare Monster | Positive | Choose 1 enemy to **Stun** (see below). |
 | Teleportation | Neutral | Teleport to a random space ~the same distance from the Amulet game (±1). |
 
+**Sacred Bark doubles all of it** (§8) — the Negative rows included. Whether the
+Bark doubled the downside was a real choice, and doubling it is what keeps the
+relic a decision: a version that only ever doubled the upside would make reading
+an unidentified scroll a strictly better gamble than it is, which is the one
+thing the identification minigame cannot afford. The multiplier is applied to
+*named* fields per effect, not to every integer in the dict — a Teleportation
+scroll's `spread` is how far the landing may vary, and doubling that is not twice
+the scroll, it is a worse one.
+
 This introduces two new enemy-state mechanics: **Stun** (Scare Monster) and
 **spawning** enemies (Create Monster). **Stun makes the enemy skip its next
 attack** — it pushes the enemy's attack one game later in the timing model (§7.2),
@@ -251,11 +260,21 @@ The popup is where the decision is actually made. It carries:
 
 ## 5. Curses — shelved for now
 
-**Curses are not part of the current design.** The enemy-with-a-goal *is* the
-challenge mechanic, so curses are deliberately set aside to avoid duplicating that
-role. The existing `CurseData` content and hooks stay in the repo (not deleted),
-and curses may return later as an opt-in gambit layer, but nothing in the core
-loop depends on them.
+**The combat-era curses are not part of the current design.** The
+enemy-with-a-goal *is* the challenge mechanic, so `CurseData` / `data/curses` —
+the 16 curse cards of the build this one replaced — are deliberately set aside to
+avoid duplicating that role. That content and its hooks stay in the repo (not
+deleted), and they may return later as an opt-in gambit layer, but nothing in the
+core loop depends on them.
+
+**Not to be confused with a CURSE GOAL**, which is live and authored: a row on the
+post-game checklist that you are trying *not* to complete, defined in the
+`curses2.0` sheet and described in `event-sheet-authoring.md` §6. Same word,
+different thing, and nothing wires the two together. Its penalty is always the
+same one — **spawn a random enemy at the run's current difficulty** — so a curse
+bills in the run's own currency rather than competing with the enemy stack for
+the Health bar. Events hand them out (`add_curse`), and so does one relic: the
+Calling Bell arrives with a permanent Curse of the Bell (§8).
 
 ---
 
@@ -324,7 +343,8 @@ Deckbuilder/Slay the Spire), Baby Alien (Action/Brotato).
 - carries a **more specific goal** (tighter than a normal enemy's — e.g. "beat the
   *true* ending," "clear it deathless" rather than just "beat a boss"),
 - **deals more damage** than a normal stacked enemy (above the 1–3 band),
-- and (naturally) drops a better item.
+- and drops a **Boss relic** — not a better roll on the ordinary table, but a
+  relic out of a pool nothing else can reach (§8).
 
 **A boss round announces itself in a popup** (`BossNoticeModal`), once, as the
 offering that carries it comes back. It was a strip above the offering, which is
@@ -528,7 +548,33 @@ Every defeated enemy drops an item, so the item table *is* the reward economy.
 Items are authored in `items2.0` with these columns: `Name | Rating | Type |
 Description | Effect | Reference | tags | File | Sorting`.
 
-**Rating** = rarity: Starter / Common / Uncommon / Rare / Legendary.
+**Rating** = where the relic comes from. Four of the values are rungs on the
+rarity ladder a random draw walks — **Common / Uncommon / Rare / Legendary** — and
+three are not:
+
+| Rating | Comes from | In the random pools? |
+|---|---|---|
+| Common … Legendary | any drop, chest or shop shelf, weighted 75/20/5 with a 10% bump off the top | yes |
+| **Starter** | a character's opening loadout (Burning Blood, D6) | no |
+| **Boss** | a defeated **boss**, and nowhere else (§7.1) | no |
+| **Event** | one authored event, and nowhere else (Golden Idol, `event-sheet-authoring.md` §12) | no |
+
+The three are **flags beside the rarity, not extra rungs on it**
+(`ItemData.starter` / `.boss` / `.event`, read together through `item_class()`).
+That is deliberate: `ItemData.Rarity` and `Data.RarityStep` are the same four
+rungs with no holes, and a shop price is *base + the rung* (§14) — a fifth value
+nothing can ever roll would put a hole in both ladders and in the price list.
+`ItemData.is_rollable()` is the single test every random draw uses, so the three
+classes are excluded from drops, chests, shop shelves and the Relic Trader's
+shelf by one rule rather than by three remembered ones.
+
+Each gets its own colour and its own word on the card, because a Boss relic drawn
+in Common grey is a lie every screen would then repeat.
+
+**The Boss relics** (3): **Sacred Bark** doubles every loot consumable, good and
+bad alike; **Calling Bell** pays three relics — one Common, one Uncommon, one Rare
+— and saddles you with the permanent Curse of the Bell; **Lord's Parasol** empties
+the next shop you walk into, free (§14).
 
 **Type** = *behavior class* (how the item works, not what it grants):
 
@@ -936,6 +982,7 @@ banks that decision instead, and the shops are where it is spent.
 |---|---|
 | Enemy defeated | **+1 gold** |
 | Boss defeated | **+3 gold** |
+| …while the **Golden Idol** is held | **+1 more** off every body, boss or not (§8) |
 | Starting purse | the character's **`Gold`** column (**3** across the roster) |
 | Item price | **3 + the rarity's rung** — Common 3, Uncommon 4, Rare 5, Legendary 6 |
 | Carries between runs | **No.** A run opens on the character and nothing else. |
@@ -1024,7 +1071,14 @@ whole visit (travelling on is what closes it), and is read next to the run it is
 being spent on. Because it can sit below the fold, a **`🛒 Shop ↓` pointer**
 floats at the foot of the screen until the panel has been scrolled to.
 **Escaping opens nothing** — escape fires no `game_beaten` triggers anywhere in
-the build, and this is not the place to make it an exception. If the Amulet game
+the build, and this is not the place to make it an exception.
+
+**Lord's Parasol resolves the moment you stand in one.** The Boss relic (§8)
+sweeps the whole shelf into the pack for **no gold** — not "buy everything you can
+afford", which would make it weakest exactly when the shelf is best and would read
+as a discount rather than as a relic. It fires from `ShopSystem.mark_seen`, behind
+the `seen` guard, so it is the *first* visit to each hub that empties it and a
+rerolled shelf on a return trip is not swept a second time. If the Amulet game
 is itself a hub, winning the run beats the shop: the run is over.
 
 An event and a shop at one node is not a real case (every authored event is

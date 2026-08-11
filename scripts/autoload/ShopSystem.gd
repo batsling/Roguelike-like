@@ -129,6 +129,39 @@ func mark_seen(game_id: StringName) -> void:
 	if shop.is_empty() or bool(shop.get("seen", false)):
 		return
 	shop["seen"] = true
+	# Lord's Parasol resolves HERE — the moment the player stands in the shop for
+	# the first time — because "when encountering a shop" is a moment, and this is
+	# the only place that moment is recorded. Behind the `seen` guard, so a second
+	# visit to a hub does not re-sweep a shelf that was rerolled since.
+	sweep(game_id)
+
+
+# Lord's Parasol (§8, Boss): take the whole shelf, no gold spent. Returns what was
+# taken, empty when nothing owned sweeps or the shelf was already bare.
+#
+# FREE, not "buy everything you can afford". A boss relic whose payout is capped
+# by the purse would be at its weakest exactly when the shelf is at its best, and
+# the whole point of the thing is walking out with the shop.
+func sweep(game_id: StringName) -> Array:
+	var taken: Array = []
+	if not GameState.sweeps_shops():
+		return taken
+	for entry in remaining(game_id):
+		var template: ItemData = Data.get_item2(StringName(entry.get("item", &"")))
+		if template == null:
+			continue
+		entry["sold"] = true
+		# add_item, exactly as `buy` does: a Pickup swept off the shelf has to land
+		# the same way one paid for does.
+		GameState.add_item(template)
+		taken.append(template)
+		GameLog.add("Lord's Parasol takes %s off the shelf." % template.display_name,
+			UITheme.COIN_GOLD)
+	if not taken.is_empty():
+		Notifications.notify("Lord's Parasol empties the shop — %d item%s."
+			% [taken.size(), "" if taken.size() == 1 else "s"], UITheme.SHOP_GREEN)
+		shop_changed.emit(game_id)
+	return taken
 
 
 # Everything on the shelf, sold slots included — the modal draws those greyed so

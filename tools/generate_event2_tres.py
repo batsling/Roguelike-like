@@ -4,11 +4,11 @@ Generate Godot EventData2 .tres from the `events2.0` sheet of
 tools/Roguelikes.xlsx into data/events2.0/.
 
 One row per event; the choices live in numbered column groups
-(`Choice N | Repeat N | Result N | Effect N`, N = 1..4), read left to right until
+(`Choice N | Repeat N | Result N | Effect N`, N = 1..6), read left to right until
 a blank `Choice N`. Full format spec: docs/event-sheet-authoring.md.
 
 The `Effect` cells speak the shared reward-token DSL — the parser lives in
-generate_status_tres.py so there is one implementation of it — plus four
+generate_status_tres.py so there is one implementation of it — plus the
 event-only forms this module adds:
 
     needs <token>                    a gate on what the player can pay
@@ -48,7 +48,12 @@ OUT_DIR = os.path.join(PROJECT_ROOT, "data", "events2.0")
 IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "events")
 IMG_RES_PREFIX = "res://images2.0/events/"
 SHEET = "events2.0"
-MAX_CHOICES = 4
+# Six `Choice N | Repeat N | Result N | Effect N` groups. It was four until the
+# Golden Idol needed five: Take and Leave, then the three ways out from under the
+# boulder, which are gated behind Take rather than replacing it. A blank Choice N
+# still ends the list, so the extra groups cost an event that doesn't use them
+# nothing at all.
+MAX_CHOICES = 6
 
 TIERS = ("low", "medium", "high", "insane")
 WHERES = {"dead end": "dead_end", "dead_end": "dead_end", "any": "any", "game": "game"}
@@ -209,7 +214,22 @@ def parse_chance(clause, where):
     return {"percent": 0, "scaled": {"percent": val}}
 
 
-def parse_effect_cell(cell, where, choice_labels, curse_ids):
+def _check_item_ids(effects, where, item_ids):
+    """`gain_item` names a real items2.0 relic, or the event silently pays nothing.
+
+    Checked against the SHEET rather than data/items2.0, the same way `add_curse`
+    is, so a fresh checkout generates in either order.
+    """
+    for eff in effects:
+        if eff.get("type") != "gain_item":
+            continue
+        iid = str(eff.get("item", ""))
+        if item_ids and iid not in item_ids:
+            raise ValueError("events2.0 %s: gain_item names unknown item %r "
+                             "(items2.0 has %d rows)" % (where, iid, len(item_ids)))
+
+
+def parse_effect_cell(cell, where, choice_labels, curse_ids, item_ids=()):
     """-> {gates, effects, effects_text, goal, curse, play, chance}."""
     out = {"gates": [], "effects": [], "effects_text": "",
            "goal": {}, "curse": {}, "play": {}, "chance": {}}
@@ -282,6 +302,9 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids):
         out[arrow_verb]["effects_text"] = text
 
     out["effects_text"] = ", ".join(w for w in words if w)
+    _check_item_ids(out["effects"], where, item_ids)
+    for verb in ARROW_VERBS:
+        _check_item_ids(out[verb].get("effects", []), where, item_ids)
     return out
 
 
@@ -306,7 +329,7 @@ def _limit(raw) -> int:
     return max(0, int(float(s)))
 
 
-def event_tres(row, curse_ids) -> tuple:
+def event_tres(row, curse_ids, item_ids=()) -> tuple:
     name = str(row["Event"]).strip()
     eid = dsl.slugify(name)
 
@@ -324,7 +347,8 @@ def event_tres(row, curse_ids) -> tuple:
     for n, label in raw_choices:
         where = "%s/Choice %d" % (name, n)
         repeat, repeat_max = parse_repeat(row.get("Repeat %d" % n), where)
-        parsed = parse_effect_cell(row.get("Effect %d" % n), where, labels, curse_ids)
+        parsed = parse_effect_cell(row.get("Effect %d" % n), where, labels, curse_ids,
+                                   item_ids)
         results = parse_result_cell(row.get("Result %d" % n))
         # A ladder only climbs if the choice can be pressed again: `End` closes
         # the event and `Stay` spends the choice, so under either one every rung
@@ -416,11 +440,15 @@ def main():
     curse_ids = set()
     if "curses2.0" in wb.sheetnames:
         curse_ids = {dsl.slugify(r["Curse"]) for r in dsl.rows(wb["curses2.0"])}
+    # …and `gain_item` against the items sheet, for the same reason.
+    item_ids = set()
+    if "items2.0" in wb.sheetnames:
+        item_ids = {dsl.slugify(r["Name"]) for r in dsl.rows(wb["items2.0"])}
 
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
     for row in dsl.rows(wb[SHEET]):
-        eid, text = event_tres(row, curse_ids)
+        eid, text = event_tres(row, curse_ids, item_ids)
         if args.list:
             print("=== %s ===\n%s" % (eid, text))
             continue

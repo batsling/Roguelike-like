@@ -38,14 +38,25 @@ SHEET = "curses2.0"
 DEFAULT_TIMER = 3
 
 
+# Timer words that mean "this one never expires" -> 0, which CurseData2 reads as
+# PERMANENT. Curse of the Bell is the reason it exists: the Slay the Spire curse
+# it is lifted from is the one you cannot remove, and a three-game version of that
+# is a different card. A BLANK cell still means the three-game default — "nobody
+# filled this in" and "this is forever" must not be the same value.
+PERMANENT_WORDS = ("n/a", "none", "never", "permanent", "forever")
+
+
 def _timer(raw) -> int:
-    s = dsl._clean(raw)
+    s = ("" if raw is None else str(raw)).strip()
+    if s.lower() in PERMANENT_WORDS:
+        return 0
     if not s:
         return DEFAULT_TIMER
     try:
         return max(0, int(float(s)))
     except ValueError:
-        raise ValueError("curses2.0: Timer %r is not a number" % raw)
+        raise ValueError("curses2.0: Timer %r is not a number (or one of %s)"
+                         % (raw, ", ".join(PERMANENT_WORDS)))
 
 
 def curse_tres(row) -> tuple:

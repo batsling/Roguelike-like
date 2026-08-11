@@ -27,6 +27,13 @@ var _seed: int
 var _games: int
 var _gold: int
 var _transmute: int
+# The board, too, now that a curse's penalty is a BODY rather than a number: a
+# leaked follower is the same mystery-failure-three-scripts-later the run state
+# is snapshotted against. Round-tripped through the loop's own save format.
+var _loop: Dictionary
+# And the pack: the Relic Trader's offers are built out of it, so those tests
+# stock a known one and this puts back whatever was there.
+var _inventory: Array
 
 
 func before_each() -> void:
@@ -42,6 +49,8 @@ func before_each() -> void:
 	_games = GameState.games_played
 	_gold = GameState.gold
 	_transmute = GameState.transmute
+	_loop = GameLoop2.serialize()
+	_inventory = GameState.inventory.duplicate()
 	GameState.event_goals.clear()
 	GameState.curse_goals.clear()
 	GameState.events_fired.clear()
@@ -57,6 +66,8 @@ func after_each() -> void:
 	GameState.hp = _hp
 	GameState.gold = _gold
 	GameState.transmute = _transmute
+	GameLoop2.restore(_loop)
+	GameState.inventory = _inventory.duplicate()
 
 
 func _event(id: StringName) -> EventData2:
@@ -102,7 +113,32 @@ func test_curses_describe_themselves_from_condition_and_penalty() -> void:
 	assert_eq(poor.timer, 3, "curse goals default to a three-game window")
 	# The row is composed, never authored, so it cannot drift from the effects.
 	assert_string_contains(poor.describe(), "rest site")
-	assert_string_contains(poor.describe(), "2")
+	assert_string_contains(poor.describe(), "random enemy")
+
+
+# Every curse in the sheet bills the same way now: a body on the board, not a
+# number off the Health bar. This is the guard on that being true of the WHOLE
+# roster rather than of the two rows a test happens to name.
+func test_every_curse_pays_in_enemies() -> void:
+	assert_gt(Data.all_curses2().size(), 0, "there is a curse roster")
+	for cd in Data.all_curses2():
+		assert_eq(cd.penalty.size(), 1, "%s has exactly one penalty clause" % cd.id)
+		assert_eq(String(cd.penalty[0].get("type", "")), "spawn_enemy",
+			"%s spawns an enemy rather than charging a resource" % cd.id)
+
+
+# Curse of the Bell is the one that never comes off — the Timer column says N/A,
+# which is a 0 on the resource and a -1 window on the run.
+func test_the_bells_curse_is_permanent() -> void:
+	var bell: CurseData2 = Data.get_curse2(&"curse_of_the_bell")
+	assert_not_null(bell, "data/curses2.0/curse_of_the_bell.tres must exist")
+	assert_eq(bell.timer, 0, "Timer N/A means permanent")
+	GameState.add_curse_goal(&"curse_of_the_bell")
+	assert_eq(int(GameState.curse_goals[0]["games_left"]), -1, "stored as the -1 sentinel")
+	for _i in range(6):
+		GameState.tick_event_goals()
+	assert_eq(GameState.curse_goals.size(), 1, "and no number of games clears it")
+	assert_string_contains(CurseData2.window_text(-1), "permanent")
 
 
 # --- Abyssal Baths: staging, gates, and the escalating hole ------------------
@@ -293,12 +329,12 @@ func test_a_curse_bites_repeatedly_and_only_the_timer_clears_it() -> void:
 	GameState.max_hp = 20
 	GameState.hp = 20
 	EventSystem.resolve_choice(ev, _choice(ev, "rest_anyways"), 0)
-	var after_heal: int = GameState.hp
+	var following: int = GameLoop2.stack_size()
 	GameState.trigger_curse_goal(0)
-	assert_eq(GameState.hp, after_heal - 2, "owning up costs the penalty")
+	assert_eq(GameLoop2.stack_size(), following + 1, "owning up costs the penalty")
 	assert_eq(GameState.curse_goals.size(), 1, "and the curse stays on you")
 	GameState.trigger_curse_goal(0)
-	assert_eq(GameState.hp, after_heal - 4, "so it can bite again next game")
+	assert_eq(GameLoop2.stack_size(), following + 2, "so it can bite again next game")
 	GameState.tick_event_goals()
 	GameState.tick_event_goals()
 	GameState.tick_event_goals()
@@ -803,3 +839,182 @@ func test_reset_run_clears_them() -> void:
 	assert_eq(GameState.curse_goals.size(), 0, "a new run carries no old curses")
 	assert_eq(GameState.event_goals.size(), 0)
 	assert_ne(GameState.run_seed, 0, "and gets a seed of its own")
+
+
+# --- Golden Idol: the two-stage grab, priced as a fraction of the player -----
+#
+# The idol is the first event whose costs are a PERCENTAGE rather than a number,
+# which is only authorable because an {expr} hole can name MAX_HP. What the tests
+# are really guarding is that the button prints the resolved number: a choice
+# that says "25% of Max Health" is a choice the player has to do arithmetic for.
+
+const IDOL := &"golden_idol"
+const TRADER := &"relic_trader"
+
+func test_the_idol_offers_the_grab_and_the_way_out_first() -> void:
+	var ev: EventData2 = _event(IDOL)
+	var open_now: Array = []
+	for c in ev.choices:
+		if EventSystem.choice_available(c, {}):
+			open_now.append(String(c.get("id", "")))
+	assert_eq(open_now, ["take", "leave"], "Take or Leave, and nothing else yet")
+
+func test_taking_the_idol_rolls_the_boulder_at_you() -> void:
+	var ev: EventData2 = _event(IDOL)
+	var picks: Dictionary = {"take": 1}
+	var open_now: Array = []
+	for c in ev.choices:
+		if EventSystem.choice_available(c, picks):
+			open_now.append(String(c.get("id", "")))
+	assert_eq(open_now, ["outrun", "smash", "hide"], "three ways out and no way back")
+	assert_false(open_now.has("leave"),
+		"Leave is gated on not having taken it — the boulder is already moving")
+
+func test_taking_the_idol_hands_over_the_relic() -> void:
+	var ev: EventData2 = _event(IDOL)
+	var before: int = GameState.inventory.size()
+	EventSystem.resolve_choice(ev, _choice(ev, "take"), 0)
+	assert_eq(GameState.inventory.size(), before + 1, "the idol is yours")
+	assert_true(GameState.has_item(&"golden_idol"), "and it is the Golden Idol")
+
+func test_the_escape_costs_are_the_exact_numbers_not_the_percentages() -> void:
+	# 25% of Max Health and 8% of it. At this game's Health scale both round to
+	# something small, and both have a floor of 1 — an 8% cost that rounds to
+	# nothing is a button that says it hurts and doesn't.
+	var ev: EventData2 = _event(IDOL)
+	GameState.max_hp = 12
+	GameState.hp = 12
+	var outrun: String = EventSystem.describe_choice(_choice(ev, "outrun"), 0)
+	var hide: String = EventSystem.describe_choice(_choice(ev, "hide"), 0)
+	assert_string_contains(outrun, "-3 Health")
+	assert_string_contains(hide, "-1 Max Health")
+	for line in [outrun, hide]:
+		assert_false(line.contains("MAX_HP"),
+			"the formula never reaches the player: %s" % line)
+		assert_false(line.contains("%"), "nor the percentage: %s" % line)
+
+	# …and they move with the player rather than being baked at generation time.
+	GameState.max_hp = 40
+	GameState.hp = 40
+	assert_string_contains(EventSystem.describe_choice(_choice(ev, "outrun"), 0), "-10 Health")
+
+func test_outrunning_and_hiding_charge_what_they_said() -> void:
+	var ev: EventData2 = _event(IDOL)
+	GameState.max_hp = 12
+	GameState.hp = 12
+	EventSystem.resolve_choice(ev, _choice(ev, "outrun"), 0)
+	assert_eq(GameState.hp, 9, "25% of 12, rounded")
+	GameState.max_hp = 12
+	GameState.hp = 12
+	EventSystem.resolve_choice(ev, _choice(ev, "hide"), 0)
+	assert_eq(GameState.max_hp, 11, "8% of 12 floors at 1")
+	assert_eq(GameState.hp, 11, "and the Health follows only because it no longer fits")
+
+func test_smashing_the_boulder_leaves_the_injury() -> void:
+	var ev: EventData2 = _event(IDOL)
+	EventSystem.resolve_choice(ev, _choice(ev, "smash"), 0)
+	assert_true(GameState.has_curse_goal(&"injury"), "Smash is the curse route")
+
+
+# --- Relic Trader: three offers built out of your own pack ------------------
+
+func _tradeable() -> Array:
+	var out: Array = []
+	for it in Data.reward_item2_pool():
+		out.append(it)
+	return out
+
+func test_the_trader_pairs_your_relics_against_ones_you_do_not_have() -> void:
+	var ev: EventData2 = _event(TRADER)
+	GameState.inventory.clear()
+	var mine: Array = []
+	for it in _tradeable().slice(0, 3):
+		GameState.add_item(it)
+		mine.append(it.id)
+	EventSystem.begin_event(ev)
+	var offers: Array = EventSystem.trade_offers()
+	assert_eq(offers.size(), EventSystem.TRADE_SLOTS, "three offers for three relics")
+	var given: Dictionary = {}
+	var got: Dictionary = {}
+	for offer in offers:
+		assert_has(mine, StringName(offer["give"]), "he only takes what you carry")
+		assert_false(GameState.has_item(StringName(offer["get"])),
+			"and only offers what you don't")
+		assert_false(given.has(offer["give"]), "no relic is on the block twice")
+		assert_false(got.has(offer["get"]), "and no two rows offer the same thing")
+		given[offer["give"]] = true
+		got[offer["get"]] = true
+
+func test_the_trader_only_shows_the_rows_he_can_fill() -> void:
+	# One relic in the pack is one offer, not three buttons that swap nothing.
+	var ev: EventData2 = _event(TRADER)
+	GameState.inventory.clear()
+	GameState.add_item(_tradeable()[0])
+	EventSystem.begin_event(ev)
+	assert_eq(EventSystem.trade_offers().size(), 1, "one relic, one offer")
+	var open_now: Array = []
+	for c in ev.choices:
+		if EventSystem.choice_available(c, {}):
+			open_now.append(String(c.get("id", "")))
+	assert_eq(open_now, ["take_the_top_one", "trade_nothing"],
+		"the top row and the way out")
+
+func test_the_trader_never_touches_a_starter_boss_or_event_relic() -> void:
+	# The one thing a swap must never do is take the character you picked, the
+	# boss you beat, or the event you walked into off you.
+	var ev: EventData2 = _event(TRADER)
+	GameState.inventory.clear()
+	for it in Data.all_items2():
+		if not it.is_rollable():
+			GameState.add_item(it)
+	# Calling Bell hands over three ordinary relics as it lands, which would give
+	# the trader something to work with after all. Strip them: the pack under test
+	# is the off-ladder one, not what one of them paid out.
+	for held in GameState.inventory.duplicate():
+		if held is ItemData and held.is_rollable():
+			GameState.remove_item(held)
+	EventSystem.begin_event(ev)
+	assert_eq(EventSystem.trade_offers().size(), 0,
+		"a pack of off-ladder relics has nothing he will trade for")
+	for c in ev.choices:
+		if String(c.get("id", "")) == "trade_nothing":
+			assert_true(EventSystem.choice_available(c, {}), "the way out is still there")
+		else:
+			assert_false(EventSystem.choice_available(c, {}),
+				"%s has no offer behind it" % c.get("id", ""))
+
+func test_a_trade_swaps_the_two_relics() -> void:
+	var ev: EventData2 = _event(TRADER)
+	GameState.inventory.clear()
+	for it in _tradeable().slice(0, 3):
+		GameState.add_item(it)
+	EventSystem.begin_event(ev)
+	var offer: Dictionary = EventSystem.trade_offer(1)
+	var held: int = GameState.inventory.size()
+	EventSystem.resolve_choice(ev, _choice(ev, "take_the_top_one"), 0)
+	assert_false(GameState.has_item(StringName(offer["give"])), "yours is gone")
+	assert_true(GameState.has_item(StringName(offer["get"])), "and his is yours")
+	assert_eq(GameState.inventory.size(), held, "one for one, so the pack is the same size")
+
+func test_the_trade_names_come_from_the_sheet_not_from_code() -> void:
+	# The whole reason the swap is authored with <give> / <get> holes: the
+	# sentence lives in the spreadsheet, and only the two names are filled in.
+	var ev: EventData2 = _event(TRADER)
+	GameState.inventory.clear()
+	for it in _tradeable().slice(0, 3):
+		GameState.add_item(it)
+	EventSystem.begin_event(ev)
+	var offer: Dictionary = EventSystem.trade_offer(1)
+	var give: ItemData = Data.get_item2(StringName(offer["give"]))
+	var take: ItemData = Data.get_item2(StringName(offer["get"]))
+	var top: Dictionary = _choice(ev, "take_the_top_one")
+	assert_eq(String(top.get("effects_text", "")), "Trade <give> for <get>",
+		"the .tres carries the holes, unresolved")
+	var line: String = EventSystem.describe_choice(top, 0)
+	assert_string_contains(line, give.display_name)
+	assert_string_contains(line, take.display_name)
+	assert_false(line.contains("<give>"), "no hole survives to the button: %s" % line)
+	# …and the same holes in the prose the choice prints on its way out.
+	var out: Dictionary = EventSystem.resolve_choice(ev, top, 0)
+	assert_string_contains(String(out["result"]), give.display_name)
+	assert_string_contains(String(out["result"]), take.display_name)

@@ -86,6 +86,11 @@ func _register_defaults() -> void:
 	register("obtain_item", _h_obtain_item)
 	register("random_item_choice", _h_random_item_choice)
 	register("apply_status", _h_apply_status)
+	register("gain_item", _h_gain_item)
+	register("gain_item_per_rarity", _h_gain_item_per_rarity)
+	register("add_curse", _h_add_curse)
+	register("spawn_enemy", _h_spawn_enemy)
+	register("trade_relic", _h_trade_relic)
 
 # Scene-less heal straight to the run HP pool. Caps at max_hp via change_hp.
 func _h_gain_hp(effect: Dictionary, _ctx: Dictionary) -> void:
@@ -218,6 +223,65 @@ func _h_apply_status(effect: Dictionary, _ctx: Dictionary) -> void:
 		GameState.apply_status(status_id, stacks)
 	else:
 		GameLoop2.apply_enemy_status(status_id, stacks, target)
+
+# A NAMED item, handed straight over (the Golden Idol event's `gain_item
+# golden_idol`). The counterpart to the random draws above: an authored reward
+# whose whole point is which item it is.
+func _h_gain_item(effect: Dictionary, _ctx: Dictionary) -> void:
+	var template: ItemData = Data.get_item2(StringName(String(effect.get("item", ""))))
+	if template == null:
+		push_warning("EffectSystem.gain_item: no items2.0 item '%s'" % effect.get("item", ""))
+		return
+	GameState.add_item(template)
+
+# Calling Bell: `count` items, ONE PER RARITY off the bottom of the ladder —
+# Common, then Uncommon, then Rare. Not `count` rolls: a rarity roll is 75%
+# Common, so three of them are three Commons most of the time, and the relic is
+# supposed to be a boss's payout rather than a handful of change. Prefers what the
+# player does not already own, the same preference a shop shelf has.
+func _h_gain_item_per_rarity(effect: Dictionary, _ctx: Dictionary) -> void:
+	var count: int = clampi(int(effect.get("count", 3)), 1, int(ItemData.Rarity.LEGENDARY) + 1)
+	var taken: Dictionary = {}
+	for rarity in range(count):
+		var bucket: Array = Data.reward_item2_pool_of(rarity)
+		if bucket.is_empty():
+			continue
+		var fresh: Array = bucket.filter(func(it):
+			return not taken.has(it.id) and not GameState.has_item(it.id))
+		var pick_from: Array = fresh if not fresh.is_empty() else bucket
+		var pick: ItemData = pick_from[_rng.randi_range(0, pick_from.size() - 1)]
+		taken[pick.id] = true
+		GameState.add_item(pick)
+
+# Calling Bell's other half: a curse goal (docs/event-sheet-authoring.md §6) from
+# an ITEM rather than from an event. `games` of 0 means the curse's own Timer,
+# which for Curse of the Bell is "never" — an item that hands out a permanent bill
+# is exactly what a Boss relic with a downside should be.
+func _h_add_curse(effect: Dictionary, _ctx: Dictionary) -> void:
+	GameState.add_curse_goal(StringName(String(effect.get("curse", ""))), &"",
+		int(effect.get("games", 0)))
+
+# What every CURSE now costs: a fresh enemy at the run's current difficulty, put
+# straight onto the following stack. Same conjuring the Scroll of Create Monster
+# does (§4.1) — a curse's bill is a body on the board, not a number off a bar.
+func _h_spawn_enemy(effect: Dictionary, _ctx: Dictionary) -> void:
+	var names: Array = []
+	for _i in range(maxi(1, int(effect.get("value", 1)))):
+		var enemy: GoalEnemyData = GameLoop2.roll_enemy(&"", -1)
+		if enemy == null:
+			break
+		GameLoop2.spawn_to_stack(enemy)
+		names.append(enemy.display_name)
+	if names.is_empty():
+		return
+	Notifications.notify("%s starts following you." % ", ".join(PackedStringArray(names)),
+		UITheme.CURSE)
+	GameLog.add("%s joined the stack." % ", ".join(PackedStringArray(names)), UITheme.CURSE)
+
+# The Relic Trader's swap. The pairing lives on EventSystem, which rolled it when
+# the event opened — this handler only names the slot the button belongs to.
+func _h_trade_relic(effect: Dictionary, _ctx: Dictionary) -> void:
+	EventSystem.resolve_trade(int(effect.get("slot", 1)))
 
 func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	var v: int = int(effect.get("value", 0))
