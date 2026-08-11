@@ -30,7 +30,7 @@ func setup(item: ItemData, usable: bool) -> void:
 	if item == null:
 		queue_free()
 		return
-	var tint: Color = UITheme.rarity_color(int(item.rarity))
+	var tint: Color = UITheme.item_color(item)
 
 	# Full-screen dimmer; clicking outside the card closes it. The OFFSETS have to
 	# be set along with the anchors: setup() runs once the card is already in the
@@ -118,7 +118,7 @@ func setup(item: ItemData, usable: bool) -> void:
 	# than its effect.
 	var chips := HBoxContainer.new()
 	chips.add_theme_constant_override("separation", 6)
-	chips.add_child(_chip(UITheme.rarity_name(int(item.rarity)), tint))
+	chips.add_child(_chip(UITheme.item_class_name(item), tint))
 	chips.add_child(_chip(_kind_name(item), UITheme.ACCENT))
 	if item.is_charged():
 		chips.add_child(_chip("Charge %d/%d" % [item.current_charge, item.max_charge()],

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_golden_idol"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"golden_idol"
+display_name = "Golden Idol"
+source_game = "Slay the Spire"
+tier_tags = PackedStringArray()
+where = "dead_end"
+requirement = {}
+trigger = "after"
+rarity = "Common"
+run_limit = 1
+file = "GoldenIdol"
+prompt = "You stumble into a hidden chamber. In the centre of the room, sitting on a pedestal, is a golden idol worth a fortune. The plinth it rests on is worn smooth, and the floor around it is not."
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "take", "text": "Take", "repeat": "stay", "repeat_max": 0, "results": ["You lift the idol clear. For a moment, nothing. Then the pedestal drops an inch, the wall behind you splits open, and a boulder the width of the corridor rolls out of the dark."], "gates": [], "effects": [{"type": "gain_item", "item": "golden_idol"}], "effects_text": "+Golden Idol", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "leave", "text": "Leave", "repeat": "end", "repeat_max": 0, "results": ["You leave the idol where it sits. Whatever the floor was built to do, it does not do it, and you walk out the way you came."], "gates": [{"choice": "take", "op": "==", "value": 0}], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "outrun", "text": "Outrun", "repeat": "end", "repeat_max": 0, "results": ["You run. The corridor is longer than you remember and the boulder is faster than you are; the last stretch is taken sideways, off the wall, with the thing grinding past close enough to take skin."], "gates": [{"choice": "take", "op": ">", "value": 0}], "effects": [{"type": "lose_hp", "scaled": {"value": "max(1.0,round(0.25*MAX_HP))"}}], "effects_text": "-{max(1.0,round(0.25*MAX_HP))} Health", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "smash", "text": "Smash", "repeat": "end", "repeat_max": 0, "results": ["You turn and meet it. The boulder comes apart. So, very nearly, do you — and something in your shoulder does not go back where it was."], "gates": [{"choice": "take", "op": ">", "value": 0}], "effects": [], "effects_text": "", "goal": {}, "curse": {"curse": "injury", "games": 0}, "play": {}, "chance": {}}, {"id": "hide", "text": "Hide", "repeat": "end", "repeat_max": 0, "results": ["You throw yourself into an alcove barely deep enough for it. The boulder passes a hand's width from your face and keeps going. You are alive, and permanently smaller for it."], "gates": [{"choice": "take", "op": ">", "value": 0}], "effects": [{"type": "lose_max_hp", "scaled": {"value": "max(1.0,round(0.08*MAX_HP))"}}], "effects_text": "-{max(1.0,round(0.08*MAX_HP))} Max Health", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

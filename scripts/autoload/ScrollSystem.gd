@@ -94,7 +94,38 @@ func read_scroll(scroll: ScrollData, ctx: Dictionary = {}) -> Dictionary:
 			_apply_one(effect, out, rng)
 	return out
 
-func _apply_one(effect: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> void:
+# Which of an op's numbers Sacred Bark's "double the effect" actually doubles.
+# Named per op rather than "every integer in the dict": a Teleportation scroll's
+# `spread` is how far the landing can VARY, and doubling that is not twice the
+# scroll, it is a worse one. An op absent from this table resolves unscaled.
+const LOOT_SCALED_FIELDS := {
+	"buff_enemies": ["damage", "games"],
+	"forget": ["count"],
+	"spawn_enemy": ["count"],
+	"identify_scrolls": ["count"],
+	"stun_enemies": ["count"],
+}
+
+
+# The effect as it resolves for THIS player: Sacred Bark's multiplier folded into
+# the fields above. Applied to the good and the bad alike — Aggravate Monsters is
+# a scroll too, and a relic that only ever doubled the upside would make reading
+# an unidentified scroll a strictly better gamble than it is (§4.1).
+func _scaled(effect: Dictionary) -> Dictionary:
+	var mult: int = GameState.loot_multiplier()
+	var fields: Array = LOOT_SCALED_FIELDS.get(String(effect.get("op", "")), [])
+	if mult <= 1 or fields.is_empty():
+		return effect
+	var out: Dictionary = effect.duplicate(true)
+	for field in fields:
+		# A field the scroll never authored takes its own default (1) times the
+		# multiplier, which is what "doubled" means for a count nobody wrote down.
+		out[field] = maxi(1, int(out.get(field, 1))) * mult
+	return out
+
+
+func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> void:
+	var effect: Dictionary = _scaled(raw_effect)
 	var op := String(effect.get("op", ""))
 	match op:
 		"buff_enemies":
@@ -110,7 +141,8 @@ func _apply_one(effect: Dictionary, out: Dictionary, rng: RandomNumberGenerator)
 		"spawn_enemy":
 			# Create Monster — conjure a random enemy at the run's current tier that
 			# starts following the player (§4.1).
-			_spawn_enemy(String(effect.get("difficulty", "current")), out)
+			_spawn_enemy(String(effect.get("difficulty", "current")),
+				int(effect.get("count", 1)), out)
 		"identify_scrolls":
 			# Identify — the player chooses which carried scroll(s) to reveal.
 			_identify_scrolls(String(effect.get("mode", "choose")),
@@ -153,15 +185,25 @@ func _forget_from(pool: Array, count: int, rng: RandomNumberGenerator, forget_fn
 		forget_fn.call(id)
 
 # --- spawn_enemy (Scroll of Create Monster) --------------------------------
-func _spawn_enemy(_difficulty: String, out: Dictionary) -> void:
+func _spawn_enemy(_difficulty: String, count: int, out: Dictionary) -> void:
 	# Roll at the run's current tier (-1) from any type; the enemy joins the
-	# following stack and attacks on the next game beaten (§7.2).
-	var enemy: GoalEnemyData = GameLoop2.roll_enemy(&"", -1)
-	if enemy == null:
+	# following stack and attacks on the next game beaten (§7.2). Rolled once per
+	# body rather than once and duplicated, so a doubled Create Monster conjures
+	# two DIFFERENT things.
+	var names: Array = []
+	for _i in range(maxi(1, count)):
+		var enemy: GoalEnemyData = GameLoop2.roll_enemy(&"", -1)
+		if enemy == null:
+			break
+		GameLoop2.spawn_to_stack(enemy)
+		names.append(enemy.display_name)
+	if names.is_empty():
 		out["logs"].append("No monster could be conjured.")
 		return
-	GameLoop2.spawn_to_stack(enemy)
-	out["logs"].append("A %s appears and starts following you!" % enemy.display_name)
+	out["logs"].append("%s %s and start%s following you!" % [
+		", ".join(PackedStringArray(names)),
+		"appears" if names.size() == 1 else "appear",
+		"s" if names.size() == 1 else ""])
 
 # --- identify_scrolls (Scroll of Identify) ---------------------------------
 func _identify_scrolls(mode: String, count: int, rng: RandomNumberGenerator, out: Dictionary) -> void:

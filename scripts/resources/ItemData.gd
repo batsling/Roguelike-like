@@ -11,14 +11,37 @@ enum ItemKind { PASSIVE, TRIGGERED, USABLE, WEAPON, SCALING, PICKUP, CHARGED }
 # rung), which is the third thing that wants the ladder to have no holes in it.
 enum Rarity { COMMON, UNCOMMON, RARE, LEGENDARY }
 
+# What the sheet's Rating column says, as ONE value: the four rungs above, then
+# the three classes that are not rungs at all (see `starter` / `boss` / `event`
+# below). This is what a player is shown — the Collection's label and accent, the
+# colour a drop is announced in — because "Boss" is the answer to "what rarity is
+# this?" for a relic that only ever falls off a boss, and "Common" is not.
+enum ItemClass { COMMON, UNCOMMON, RARE, LEGENDARY, STARTER, BOSS, EVENT }
+const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Boss", "Event"]
+
 @export var id: StringName
 @export var display_name: String
 @export var kind: ItemKind = ItemKind.PASSIVE
 @export var rarity: Rarity = Rarity.COMMON
-# "Starter" items (Excel Rating = "Starter", e.g. Burning Blood, Ring of the
-# Snake) belong to a character's opening loadout and must never appear in
-# random shop / reward / treasure pools. Mirrors CardData.Rarity.STARTER.
+# --- the three OFF-LADDER classes ------------------------------------------
+#
+# Rarity above is the ladder a random draw walks. These three are the rows of the
+# sheet's Rating column that are NOT a rung on it — they say where an item comes
+# from, and every one of them means "never rolled at random". They are flags
+# beside `rarity` rather than extra rungs on it deliberately: Data.RarityStep and
+# ItemData.Rarity are the same four rungs with no holes (the shop price is base +
+# the rung, §14), and a fifth value nothing can ever roll would put a hole in
+# both. Read them through `item_class()` rather than one at a time.
+#
+# "Starter" (Burning Blood, D6) belongs to a character's opening loadout.
 @export var starter: bool = false
+# "Boss" (Sacred Bark, Calling Bell, Lord's Parasol) drops from a defeated BOSS
+# and from nowhere else — beating a boss pays a boss relic instead of the normal
+# roll (docs/games-first-redesign.md §7.1 / §8). Data.boss_item2_pool is the pool.
+@export var boss: bool = false
+# "Event" (Golden Idol) is handed over by an authored event and by nothing else,
+# so the event owns the only copy of it in the run.
+@export var event: bool = false
 @export_multiline var description: String
 
 # Trigger-driven items use the declarative form: a list of trigger hooks and
@@ -409,6 +432,25 @@ enum Rarity { COMMON, UNCOMMON, RARE, LEGENDARY }
 # bool, so two of them add two columns and two rows.
 @export var grid_grow: bool = false
 
+# --- the Boss / Event relics (§7.1, §8) ------------------------------------
+# Three more rule-changers, read off the inventory the same way the four above
+# are. They are here rather than expressed as triggers because none of them
+# happens at a moment an effect could fire at: they change what a LATER thing
+# does.
+
+# Sacred Bark: every loot consumable resolves at this multiple. 1 = no change.
+# Read by ScrollSystem through GameState.loot_multiplier, which multiplies the
+# copies together, so two Barks quadruple rather than double twice.
+@export var loot_multiplier: int = 1
+
+# Golden Idol: every defeated enemy pays this much extra Gold on its drop (§14).
+# Read by GameLoop2._defeat via GameState.enemy_gold_bonus, which SUMS the copies.
+@export var gold_per_enemy: int = 0
+
+# Lord's Parasol: walking into a shop takes the whole shelf, no gold spent (§14).
+# Read by ShopSystem.mark_seen via GameState.sweeps_shops.
+@export var shop_sweep: bool = false
+
 # Runtime-minted unique id per inventory slot (set by GameState.add_item).
 # Two duplicated copies of the same template get different instance_ids,
 # which is how weapon items pair with their granted CardInstance in the
@@ -434,6 +476,30 @@ enum Rarity { COMMON, UNCOMMON, RARE, LEGENDARY }
 # "vitals" bucket and are intentionally excluded so an upgraded Lunch
 # doesn't quietly become a Hollow Heart.
 const HEALTH_BUCKET := ["max_hp", "max_energy"]
+
+# Where this item sits: a rarity rung, or one of the three off-ladder classes.
+# ONE implementation, because "is this rollable?" and "what does the card say?"
+# are the same question asked twice and they must not drift.
+func item_class() -> int:
+	if starter:
+		return ItemClass.STARTER
+	if boss:
+		return ItemClass.BOSS
+	if event:
+		return ItemClass.EVENT
+	return clampi(int(rarity), 0, int(Rarity.LEGENDARY))
+
+
+func class_label() -> String:
+	return CLASS_NAMES[item_class()]
+
+
+# True for an item a random draw may produce — the reward pools, the shops, the
+# chests, and the Relic Trader's shelf. The three classes each say "authored to
+# come from one place", so none of them is.
+func is_rollable() -> bool:
+	return not (starter or boss or event)
+
 
 # Returns this item's stat_bonuses with upgrade_level folded in for every
 # stat outside HEALTH_BUCKET. Pure read; never mutates stat_bonuses.

@@ -852,7 +852,10 @@ func _populate_items() -> void:
 		list.append(it)
 	match _items_sort:
 		"rarity":
-			list.sort_custom(func(a, b): return int(a.rarity) > int(b.rarity) if int(a.rarity) != int(b.rarity) else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+			# By CLASS, not by the raw rung: a Boss relic carries no meaningful
+			# rarity index, so sorting on `rarity` scattered the three off-ladder
+			# classes through the Commons instead of grouping them.
+			list.sort_custom(func(a, b): return a.item_class() > b.item_class() if a.item_class() != b.item_class() else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
 		"kind":
 			list.sort_custom(func(a, b): return int(a.kind) < int(b.kind) if int(a.kind) != int(b.kind) else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
 		_:
@@ -863,19 +866,17 @@ func _populate_items() -> void:
 		_grid.add_child(_label("No items match.", Color(0.55, 0.55, 0.6), 13))
 	_set_count(list.size(), Data.all_items2().size())
 
-const STARTER_NAME := "Starter"
-const STARTER_COLOR := Color(0.4, 0.85, 0.95)
-
 func _item_rarity_color(r: int) -> Color:
 	return RARITY_COLORS[clampi(r, 0, RARITY_COLORS.size() - 1)]
 
+# Starter / Boss / Event are classes rather than rungs (ItemData.ItemClass), and
+# the tab used to know that about Starter alone. It now asks the item, so the
+# three read the same way here as they do on the drop modal and in the pack.
 func _item_accent(it: ItemData) -> Color:
-	return STARTER_COLOR if it.starter else _item_rarity_color(int(it.rarity))
+	return UITheme.item_color(it)
 
 func _item_rarity_label(it: ItemData) -> String:
-	if it.starter:
-		return STARTER_NAME
-	return ITEM_RARITY_NAMES[clampi(int(it.rarity), 0, 4)]
+	return it.class_label()
 
 func _item_cell(it: ItemData) -> Control:
 	var rc := _item_accent(it)
@@ -1524,7 +1525,7 @@ func _show_event_detail(ev: EventData2) -> void:
 	# is stored on EventData2, and nothing in Overworld2 reads it — every event is
 	# queued from _end_resolve once the game is beaten. Saying "fires on arrival"
 	# because a cell said so was describing an intention rather than the build
-	# (docs/event-sheet-authoring.md §13).
+	# (docs/event-sheet-authoring.md §15).
 	_detail_box.add_child(_detail_meta("%s  •  fires after the game" % ev.rarity, ac))
 	if ev.source_game != "":
 		_detail_box.add_child(_label("From: %s" % ev.source_game,

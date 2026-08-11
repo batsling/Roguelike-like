@@ -411,6 +411,34 @@ def parse_reward_clause(clause):
     if verb == "obtain_item":
         return {"type": "obtain_item"}, "+1 Item"
 
+    # A NAMED items2.0 relic, handed straight over. The one reward verb that says
+    # WHICH item, for the events built around a specific one (Golden Idol).
+    if verb == "gain_item":
+        if not rest:
+            raise ValueError("reward DSL: gain_item needs an item id in %r" % clause)
+        iid = rest[0].strip().lower()
+        return {"type": "gain_item", "item": iid}, "+%s" % _title(iid)
+
+    # What every CURSE costs (docs/event-sheet-authoring.md §6): a fresh enemy at
+    # the run's current difficulty, straight onto the following stack. A curse's
+    # bill is a body on the board rather than a number off a bar, so there is one
+    # verb for it and every curse in the sheet writes it.
+    if verb == "spawn_enemy":
+        amount = rest[0] if rest else "1"
+        eff = {"type": "spawn_enemy"}
+        put(eff, "value", amount)
+        one = "a random enemy"
+        many = "%s random enemies" % _amount_word(amount)
+        return eff, "Spawn %s" % _plural(amount, one, many)
+
+    # The Relic Trader's swap (§5). The pairing — which of YOUR relics for which of
+    # HIS — is rolled when the event opens and lives on EventSystem; the sheet only
+    # says which of the three offers this button is, and writes the sentence with
+    # <give> / <get> holes for the names to land in.
+    if verb == "trade_relic":
+        slot = int(rest[0]) if rest and re.fullmatch(r"\d+", rest[0]) else 1
+        return {"type": "trade_relic", "slot": slot}, "Trade <give> for <get>"
+
     if verb == "random_item_choice":
         amount = rest[0] if rest else "3"
         eff = {"type": "random_item_choice"}
@@ -431,6 +459,12 @@ def parse_reward_clause(clause):
         return {"type": "none"}, "Nothing"
 
     raise ValueError("reward DSL: unknown verb %r in %r" % (verb, clause))
+
+
+def _title(slug: str) -> str:
+    """`golden_idol` -> `Golden Idol`. How a reward line names an item the sheet
+    referred to by id, so the button reads as the thing rather than as the slug."""
+    return " ".join(w.capitalize() for w in slug.split("_") if w)
 
 
 def _is_amount(tok: str) -> bool:

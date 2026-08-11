@@ -63,6 +63,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── atlas_layout*.tres#   BAKED star positions for the Atlas, one sky per game
 │   │                      #   filter: all / _owned / _downloaded (tools/bake_atlas.py)
 │   ├── items2.0/         #   ItemData — the relics that drop from a defeated enemy
+│   │                      #   (Rating Boss / Event = a relic only a boss or an
+│   │                      #   event pays; never in a random pool)
 │   ├── enemies2.0/       #   GoalEnemyData — goal-enemies, one per game beaten
 │   ├── bosses2.0/        #   GoalEnemyData — the difficulty-gate bosses
 │   ├── characters2.0/    #   CharacterData — the playable roster
@@ -380,12 +382,16 @@ editing the sheet, then review the diff):
 | `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — then re-bakes the Atlas |
 | `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
+| `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
 | `_xlsx_surgery.py` | shared helper: edit ONE sheet of `Roguelikes.xlsx` in place. An openpyxl round-trip drops the workbook's seven charts, so the sheet-editing one-shots (`_statuses_sheet_setup.py`, `_items2_statuses_setup.py`, `_events2_sheet_setup.py`, `_curses2_sheet_setup.py`) rewrite just that sheet's XML parts and copy every other zip entry through untouched. |
 
 The `_*_setup.py` scripts are **bootstraps, not generators**: they lay a sheet's
 header row down and re-author the rows they hold in Python. Once you are editing
 a tab by hand you never need them again — and they will refuse to run rather than
-overwrite a row they don't know about.
+overwrite a row they don't know about. `_relics_events_sheet_edit.py` is the same
+kind of one-shot pointed at a single change (the Boss/Event relics, the curse
+penalties, the Golden Idol and Relic Trader rows, and the two extra `Choice N`
+column groups); it is idempotent and kept as the record of that edit.
 
 These require Python 3 with `openpyxl` (`pip install openpyxl`) and are run from
 the repository root, e.g.:
@@ -469,9 +475,11 @@ names the row and the cell.
 | `Goal Met` / `Goal Missed` | Only if a choice uses `add_goal`: what the event says when that goal lands or lapses, games later. |
 | `Chance Won` / `Chance Lost` | Only if a choice uses `chance`: what it says when the roll lands or doesn't. |
 
-Then `Choice N | Repeat N | Result N | Effect N` for N = 1…4, in display order.
+Then `Choice N | Repeat N | Result N | Effect N` for N = 1…6, in display order.
 **A blank `Choice N` ends the list** — the generator stops reading there, so a
-two-option event just leaves the last eight cells empty.
+two-option event just leaves the remaining cells empty. (Six because the Golden
+Idol is a five-button event — Take and Leave, then the three ways out from under
+the boulder.)
 
 `Result N` is the prose printed once that choice resolves; blank is legal (the
 modal then prints only the mechanical line). `Effect N` is the payload.
@@ -491,6 +499,9 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `gain_loot N` | A loot drop — a scroll today, and widens on its own as more loot types exist. `gain_scroll N` names the scroll directly. |
 | `apply_status <status> N` | A `statuses2.0` status on the player. |
 | `random_item_choice N` | Pick 1 of N random items. |
+| `gain_item <item_id>` | A **named** `items2.0` relic, handed straight over — the one token that says *which* item. The generator checks the id against the sheet. |
+| `spawn_enemy [N]` | Conjures N enemies at the run's current difficulty onto the following stack. What every curse costs. |
+| `trade_relic <slot>` | The Relic Trader's swap: one of your relics for one of his. Fills `<give>` / `<get>` in the choice's prose. |
 | `obtain_item` | Pick **any** item in the catalogue. This is Wand of Wishing's picker — much stronger than a chest, use deliberately. |
 | `nothing` | An explicit no-op. Write it where a blank cell would read as unfinished. |
 
@@ -537,7 +548,10 @@ Two columns do all the push-your-luck work:
 | `Stay` | Stays open, but this choice is now **spent** — which is how a two-stage event fits on one row. |
 
 And inside an `Effect`, **`{X}` is how many times this choice has already been
-taken** (0 on the first press). So one authored group is a whole ladder:
+taken** (0 on the first press) — and a hole may also name the run itself,
+`MAX_HP` / `HP` / `GOLD` / `GAMES`, which is how the Golden Idol charges 25% of
+Max Health and still prints "-3 Health" on the button. So one authored group is a
+whole ladder:
 
 ```
 Linger        Again   needs Immerse > 0; gain_max_hp 1; lose_hp {4+X}     4, then 5, then 6…
@@ -651,9 +665,10 @@ cross-run tier list. What's still ahead:
 - **Tags and path requirements (§6.2)** — widen the tag vocabulary on `GameData`
   and let an edge demand a type or tag ("this route needs a Deckbuilder clear"),
   so routing becomes a collection puzzle rather than a shortest path.
-- **Content depth** — the catalogs are thin next to the 751 games: 29 goal-enemies,
-  32 bosses, 15 items, 6 scrolls, 9 characters. More of each (and more goals per
-  type) is the cheapest way to add run variety; all of it comes from the sheet.
+- **Content depth** — the catalogs are thin next to the 846 games: 45 goal-enemies,
+  37 bosses, 25 items (3 of them Boss relics, 1 an Event relic), 6 scrolls,
+  11 characters, 10 events, 3 curses. More of each (and more goals per type) is
+  the cheapest way to add run variety; all of it comes from the sheet.
 - **The open design decisions (§7.1 / §12)** — the boss damage band above the
   normal 1–3, whether bash / transmute / scramble should stay legal on a boss
   round (they currently are), and the goal-enemy `Ability` column, which exists
@@ -669,9 +684,10 @@ cross-run tier list. What's still ahead:
   (`game-statuses-data.js`).
 - **More map movement** — additional movement items, loot, and mechanics beyond
   Dash / Ride the Bus / Scroll of Teleportation.
-- **Curses** — shelved on purpose (§5): the enemy-with-a-goal is the challenge
-  mechanic. The 16 curses and their hooks stay in the repo in case they come back
-  as an opt-in gambit layer.
+- **Curses** — the combat-era `data/curses` cards are shelved on purpose (§5):
+  the enemy-with-a-goal is the challenge mechanic. The 16 of them and their hooks
+  stay in the repo in case they come back as an opt-in gambit layer. The live
+  **curse goals** (`curses2.0`) are a different thing and are built.
 
 New content is driven by `tools/Roguelikes.xlsx`, so adding a system is largely a
 matter of a Resource schema in `scripts/resources/`, a generator in `tools/`, and

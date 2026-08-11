@@ -2660,8 +2660,8 @@ func _add_event_goal_rows() -> void:
 		# Phrased as the admission it is. Every other row on this list is a thing
 		# you are pleased to tick; this one is not, and the wording should not
 		# pretend otherwise.
-		var text: String = "%s — %s   (%d %s left)" % [
-			cd.display_name, cd.describe(), left, "game" if left == 1 else "games"]
+		var text: String = "%s — %s   (%s)" % [
+			cd.display_name, cd.describe(), CurseData2.window_text(left)]
 		var row := _verify_row(text, UITheme.CURSE, false)
 		_verify_box.add_child(row["row"])
 		_curse_goal_checks.append({"check": row["check"], "index": i})
@@ -2785,9 +2785,9 @@ func _populate_standing_checklist() -> void:
 		if cd == null:
 			continue
 		var left: int = int(entry.get("games_left", 0))
-		_verify_box.add_child(_objective_row("%s — %s   (%d %s left)" % [
+		_verify_box.add_child(_objective_row("%s — %s   (%s)" % [
 			cd.display_name, cd.describe(),
-			left, "game" if left == 1 else "games"], UITheme.CURSE))
+			CurseData2.window_text(left)], UITheme.CURSE))
 
 	# The player's standing status buffs (§13) — goals that belong to no enemy and
 	# are available at whatever game gets picked next.
@@ -3443,7 +3443,7 @@ func _scroll_token(idx: int, entry: Dictionary, reporting: bool) -> Control:
 # Use button — so the bar answers "how long until I can" and "can I now" in the
 # same strip of pixels.
 func _item_token(item: ItemData, reporting: bool) -> Control:
-	var tint: Color = UITheme.rarity_color(int(item.rarity))
+	var tint: Color = UITheme.item_color(item)
 	var active: bool = item.kind == ItemData.ItemKind.USABLE or item.is_charged()
 	var ready: bool = active and GameState.can_fire_item(item) and not reporting
 
@@ -3564,7 +3564,7 @@ func _close_item_card() -> void:
 
 # Everything the old named row said, in the tooltip the token carries.
 func _item_tip(item: ItemData, active: bool, ready: bool, reporting: bool) -> String:
-	var tip: String = "%s  ·  %s" % [item.display_name, UITheme.rarity_name(int(item.rarity))]
+	var tip: String = "%s  ·  %s" % [item.display_name, UITheme.item_class_name(item)]
 	if item.is_charged():
 		tip += "  [%d/%d]" % [item.current_charge, item.max_charge()]
 	if String(item.description) != "":
@@ -3611,10 +3611,10 @@ func _stack_summary() -> String:
 # one ItemDropModal at a time (_pump_drops) — the kill ASKS whether you want what
 # fell off it, rather than leaving it in a tray to be noticed. Skipped once the
 # run is over (win/lose screens take over the board).
-func _on_enemy_defeated(_enemy: GoalEnemyData) -> void:
+func _on_enemy_defeated(enemy: GoalEnemyData) -> void:
 	if GameLoop2.run_over:
 		return
-	var item: ItemData = _roll_drop()
+	var item: ItemData = _roll_drop(enemy != null and enemy.is_boss())
 	if item == null:
 		return
 	_drop_queue.append({"item": item})
@@ -3658,7 +3658,17 @@ func _open_next_drop() -> void:
 # Roll one drop item from the games-first reward pool, weighted by rarity the same
 # way the RewardScreen chest roll is (§8) — minus the luck advantage, which is the
 # chest's own bonus.
-func _roll_drop() -> ItemData:
+#
+# A BOSS pays out of the boss pool instead, with no rarity roll at all: a boss
+# relic is not a rung on the ladder, it is a thing only a boss drops, so "which
+# rarity did the boss roll" is not a question with an answer (§7.1). Falls back to
+# the ordinary roll if no boss relics are authored, because a boss that drops
+# nothing would read as a bug rather than as a thin catalogue.
+func _roll_drop(from_boss: bool = false) -> ItemData:
+	if from_boss:
+		var boss_pool: Array = Data.boss_item2_pool()
+		if not boss_pool.is_empty():
+			return boss_pool[_rng.randi_range(0, boss_pool.size() - 1)]
 	var bucket: Array = Data.reward_item2_pool_of(Data.roll_item_rarity(_rng))
 	if bucket.is_empty():
 		return null
@@ -3671,7 +3681,7 @@ func _collect_drop(drop: Dictionary) -> void:
 	var item: ItemData = drop["item"]
 	GameState.add_item(item)
 	GameLog.add("Collected %s." % item.display_name, Color(0.7, 1.0, 0.7))
-	Notifications.notify("Took %s." % item.display_name, UITheme.rarity_color(int(item.rarity)))
+	Notifications.notify("Took %s." % item.display_name, UITheme.item_color(item))
 
 func _skip_drop(drop: Dictionary) -> void:
 	if not _drop_queue.has(drop):

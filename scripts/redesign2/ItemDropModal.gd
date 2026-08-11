@@ -51,7 +51,7 @@ func _start(host: Node, item: ItemData) -> void:
 	_build()
 
 func _build() -> void:
-	var tint: Color = UITheme.rarity_color(int(_item.rarity))
+	var tint: Color = UITheme.item_color(_item)
 	# No click-outside-to-close: leaving a Legendary on the ground is a decision,
 	# and it should be made on a button rather than by a stray click.
 	var panel := ModalScaffold.build_panel(self, tint, Callable(), PANEL_SIZE)
@@ -128,7 +128,7 @@ func _build() -> void:
 # The one line the tray never had room for: what kind of thing this is, so
 # "passive" and "click it on the overworld" aren't left to be discovered.
 func _kind_line() -> String:
-	var rarity: String = UITheme.rarity_name(int(_item.rarity))
+	var rarity: String = UITheme.item_class_name(_item)
 	match _item.kind:
 		ItemData.ItemKind.USABLE:
 			return "%s · active — usable from your pack" % rarity

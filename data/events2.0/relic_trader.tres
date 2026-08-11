@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_relic_trader"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"relic_trader"
+display_name = "Relic Trader"
+source_game = "Slay the Spire 2"
+tier_tags = PackedStringArray()
+where = "dead_end"
+requirement = {}
+trigger = "after"
+rarity = "Common"
+run_limit = 1
+file = "RelicTrader"
+prompt = "You turn a corner and suddenly, a shadowy figure is just standing there. He pivots to face you. “Welcome! What're ya trading?” The figure inquires as he flares open his cloak to reveal a slew of suspicious wares."
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "take_the_top_one", "text": "Take the Top One", "repeat": "end", "repeat_max": 0, "results": ["He takes <give> off you with both hands, tucks it somewhere inside the cloak, and presses <get> into your palm before you can change your mind."], "gates": [], "effects": [{"type": "trade_relic", "slot": 1}], "effects_text": "Trade <give> for <get>", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "take_the_middle_one", "text": "Take the Middle One", "repeat": "end", "repeat_max": 0, "results": ["“Good eye.” <give> vanishes into the lining. <get> arrives in its place, still warm."], "gates": [], "effects": [{"type": "trade_relic", "slot": 2}], "effects_text": "Trade <give> for <get>", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "take_the_bottom_one", "text": "Take the Bottom One", "repeat": "end", "repeat_max": 0, "results": ["He crouches, digs past three other things, and comes up with <get>. <give> is gone from your pack by the time he stands."], "gates": [], "effects": [{"type": "trade_relic", "slot": 3}], "effects_text": "Trade <give> for <get>", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "trade_nothing", "text": "Trade Nothing", "repeat": "end", "repeat_max": 0, "results": ["You decline. The cloak closes. “Suit yourself,” he says, and is not there when you look back."], "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

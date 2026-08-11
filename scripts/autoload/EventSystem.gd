@@ -172,6 +172,132 @@ func games_with_tag(tag: StringName) -> Array:
 	return pool
 
 
+# --- the Relic Trader's shelf ------------------------------------------------
+#
+# Most events are the same event every time they fire. The Relic Trader is not:
+# his three offers are built out of what YOU are carrying, so the row on the sheet
+# says "Take the Top One" and only the run can say what the top one is.
+#
+# The pairing is rolled ONCE, when the event opens (begin_event), and held here
+# for as long as it is on screen. It cannot be rolled per-draw the way placement
+# is hashed, because it depends on the inventory rather than on the node — and it
+# must not be re-rolled per repaint, or the button would name a different relic
+# every time the modal re-rendered.
+#
+# The sheet keeps the wording: `<give>` and `<get>` are holes in the choice's
+# prose and in its mechanical line, filled in here. Nothing about this event is
+# hardcoded in GDScript except the two hole names and the verb.
+const TRADE_SLOTS := 3
+const GIVE_HOLE := "<give>"
+const GET_HOLE := "<get>"
+
+var _trade_offers: Array = []   # [{ "give": StringName, "get": StringName }]
+
+
+# An event is opening: roll whatever live content it needs. Called by EventModal2
+# beside mark_fired, and by any test or dev-panel path that opens one.
+func begin_event(ev: EventData2) -> void:
+	_trade_offers.clear()
+	if ev == null or not _wants_trades(ev):
+		return
+	_trade_offers = _roll_trades()
+
+
+func _wants_trades(ev: EventData2) -> bool:
+	for choice in ev.choices:
+		if _trade_slot(choice) > 0:
+			return true
+	return false
+
+
+# Which offer a choice is the button for — 1-based, 0 for a choice that trades
+# nothing. Read off the effects rather than off the choice's position, so the
+# sheet can put "Trade Nothing" anywhere in the list.
+func _trade_slot(choice: Dictionary) -> int:
+	for eff in choice.get("effects", []):
+		if eff is Dictionary and String(eff.get("type", "")) == "trade_relic":
+			return int(eff.get("slot", 0))
+	return 0
+
+
+# Up to TRADE_SLOTS pairings of one relic you hold against one you don't.
+#
+# Both halves are drawn from the ROLLABLE pool (ItemData.is_rollable) — no
+# starters, no Boss relics, no Event relics. A starter is the character you
+# picked, a Boss relic is a boss you beat and an Event relic is an event you
+# walked into; none of them is a thing to find in a stranger's coat, in either
+# direction.
+func _roll_trades() -> Array:
+	var rng := _roll_rng()
+	var mine: Array = []
+	var held: Dictionary = {}
+	for it in GameState.inventory:
+		if it is ItemData and it.is_rollable() and not held.has(it.id):
+			held[it.id] = true
+			mine.append(it.id)
+	var theirs: Array = []
+	for it in Data.reward_item2_pool():
+		if not held.has(it.id):
+			theirs.append(it.id)
+	var offers: Array = []
+	for _i in range(TRADE_SLOTS):
+		if mine.is_empty() or theirs.is_empty():
+			break
+		var give: StringName = mine.pop_at(rng.randi_range(0, mine.size() - 1))
+		var get_id: StringName = theirs.pop_at(rng.randi_range(0, theirs.size() - 1))
+		offers.append({"give": give, "get": get_id})
+	return offers
+
+
+func trade_offers() -> Array:
+	return _trade_offers
+
+
+# The offer behind slot `slot` (1-based), or {} when there isn't one — which is
+# how a run carrying only one relic ends up being shown one trade instead of
+# three, rather than two buttons that swap nothing.
+func trade_offer(slot: int) -> Dictionary:
+	if slot < 1 or slot > _trade_offers.size():
+		return {}
+	return _trade_offers[slot - 1]
+
+
+# Do the swap. Deliberately does NOT consume the offer: the choice that fires it
+# closes the event, and the prose printed on the way out still has to be able to
+# name both halves.
+func resolve_trade(slot: int) -> bool:
+	var offer: Dictionary = trade_offer(slot)
+	if offer.is_empty():
+		return false
+	var taking: ItemData = Data.get_item2(StringName(offer.get("get", &"")))
+	if taking == null:
+		return false
+	for it in GameState.inventory:
+		if it is ItemData and it.id == StringName(offer.get("give", &"")):
+			GameState.remove_item(it)
+			break
+	GameState.add_item(taking)
+	return true
+
+
+# `<give>` / `<get>` filled in from this choice's offer. A choice that trades
+# nothing is returned untouched, so this is safe to run over every line.
+func fill_trade_names(text: String, choice: Dictionary) -> String:
+	if text == "" or not (text.contains(GIVE_HOLE) or text.contains(GET_HOLE)):
+		return text
+	var offer: Dictionary = trade_offer(_trade_slot(choice))
+	return text.replace(GIVE_HOLE, _item_name(offer.get("give", &""))) \
+		.replace(GET_HOLE, _item_name(offer.get("get", &"")))
+
+
+# "a relic" and not "" for an unresolved hole: the Collection's event page draws
+# these lines outside any run, where there is no pack to build an offer from, and
+# the sentence still has to read.
+func _item_name(id) -> String:
+	var it: ItemData = Data.get_item2(StringName(id))
+	return it.display_name if it != null else "a relic"
+
+
 # --- gates ------------------------------------------------------------------
 
 # The Requirement column: a condition on the RUN, distinct from tier (the ladder)
@@ -225,6 +351,12 @@ func _run_stat(stat: String) -> int:
 func choice_available(choice: Dictionary, picks: Dictionary) -> bool:
 	if not _repeat_allows(choice, picks):
 		return false
+	# A trade button with no offer behind it would swap nothing for nothing. The
+	# Relic Trader shows one row per thing he could actually take off you, which on
+	# a run carrying a single relic is one row and not three.
+	var slot: int = _trade_slot(choice)
+	if slot > 0 and trade_offer(slot).is_empty():
+		return false
 	for gate in choice.get("gates", []):
 		if not _gate_passes(gate, picks):
 			return false
@@ -275,7 +407,7 @@ func resolve_choice(ev: EventData2, choice: Dictionary, taken: int) -> Dictionar
 	for eff in choice.get("effects", []):
 		EffectSystem.apply(_scaled(eff, taken), {})
 	if String(choice.get("effects_text", "")) != "":
-		words.append(_fill_holes(String(choice["effects_text"]), taken))
+		words.append(fill_trade_names(_fill_holes(String(choice["effects_text"]), taken), choice))
 
 	# The gamble. Rolled AFTER the certain costs, because that is the order the
 	# player experiences: the acid burns whether or not there was a relic in there.
@@ -306,7 +438,7 @@ func resolve_choice(ev: EventData2, choice: Dictionary, taken: int) -> Dictionar
 	# than on which button produced it — Scrap Ooze's two reaches print the same
 	# two strings. The choice's own `results` rung still stands in when the event
 	# left them blank, so a gamble is authorable without them.
-	var result: String = result_for(choice, taken)
+	var result: String = fill_trade_names(result_for(choice, taken), choice)
 	if rolled:
 		var prose: String = ev.chance_won if won else ev.chance_lost
 		if prose != "":
@@ -374,12 +506,27 @@ func _scaled(effect: Dictionary, taken: int) -> Dictionary:
 	return out
 
 
+# What an {expr} hole may name, beyond X.
+#
+# X alone was enough while every hole scaled on how often a choice had been
+# pressed. A cost expressed as a FRACTION OF THE PLAYER needs the player in it:
+# the Golden Idol charges 25% of Max Health, and the whole point of writing it
+# that way is that the button prints "-3 Health" rather than the percentage. So
+# the run's own numbers are bound too, and the sheet can say
+# `lose_hp {max(1,round(0.25*MAX_HP))}`.
+#
+# A closed list, in a fixed order, because Expression binds by POSITION — the
+# names here and the values in _evaluate are one list written twice and they must
+# stay in step.
+const EXPR_VARS := ["X", "MAX_HP", "HP", "GOLD", "GAMES"]
+
 func _evaluate(expr: String, x: int) -> float:
 	var e := Expression.new()
-	if e.parse(expr.strip_edges(), ["X"]) != OK:
+	if e.parse(expr.strip_edges(), EXPR_VARS) != OK:
 		push_warning("EventSystem: cannot parse '%s' (%s)" % [expr, e.get_error_text()])
 		return float(x)
-	var value: Variant = e.execute([x], null, false)
+	var value: Variant = e.execute([x, GameState.max_hp, GameState.hp, GameState.gold,
+		GameState.games_played], null, false)
 	if e.has_execute_failed():
 		push_warning("EventSystem: cannot evaluate '%s'" % expr)
 		return float(x)
@@ -413,7 +560,7 @@ func describe_choice(choice: Dictionary, taken: int) -> String:
 	var parts: Array = []
 	var text: String = String(choice.get("effects_text", ""))
 	if text != "":
-		parts.append(_fill_holes(text, taken))
+		parts.append(fill_trade_names(_fill_holes(text, taken), choice))
 
 	var goal: Dictionary = choice.get("goal", {})
 	if not goal.is_empty():
@@ -429,8 +576,10 @@ func describe_choice(choice: Dictionary, taken: int) -> String:
 			var games: int = int(curse.get("games", 0))
 			if games <= 0:
 				games = cd.timer
-			parts.append("Curse for %d %s: %s" % [
-				games, "game" if games == 1 else "games", cd.describe()])
+			# 0 here means the curse's own Timer is 0, which is PERMANENT — the same
+			# -1 sentinel GameState.add_curse_goal will store.
+			parts.append("Curse (%s): %s" % [
+				CurseData2.window_text(games if games > 0 else -1), cd.describe()])
 
 	var play: Dictionary = choice.get("play", {})
 	if not play.is_empty():

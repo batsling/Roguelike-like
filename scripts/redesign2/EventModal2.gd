@@ -104,6 +104,10 @@ func _start(host: Node, event: EventData2) -> void:
 		_close()
 		return
 	EventSystem.mark_fired(_event)
+	# Roll whatever this event's content depends on the RUN for — the Relic
+	# Trader's three offers are built from the player's own pack. Once, here,
+	# rather than per repaint, so a button cannot rename itself under the cursor.
+	EventSystem.begin_event(_event)
 	GameLog.add("Event: %s" % _event.display_name, UITheme.ACCENT)
 	_build()
 
@@ -325,7 +329,9 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var btn := Button.new()
-	btn.text = String(choice.get("text", "…"))
+	# The label goes through the same name holes the prose does, so a sheet can
+	# write `Trade <give>` as a button as readily as it writes it as a result.
+	btn.text = EventSystem.fill_trade_names(String(choice.get("text", "…")), choice)
 	btn.custom_minimum_size = Vector2(0, 36)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.add_theme_font_size_override("font_size", 15)
