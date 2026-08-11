@@ -57,7 +57,7 @@ Kept deliberately tiny for HUD readability.
 | Stat | Value | Notes |
 |---|---|---|
 | Health | character-set (5–10) | Current HP. Lose at 0. |
-| Max Health | character-set | The cap Health heals up to; **items raise it** (`+N Max Health`). Distinct from Health — some items give one, some both, some only Max. |
+| Max Health | character-set | The cap Health heals up to; **items raise it** (`+N Max Health`). Raising it heals by the same amount — a container arrives full — so the item that means an *empty* one says so with its own token (`gain_empty_max_hp`, Hollow Heart). Lowering it is not the mirror: it takes the room and leaves the Health, which only moves when it no longer fits. |
 | Shields | granted per game, **no cap** | **The TRIES at the game you selected** (see §3.2). Absorbed before `health` on any hit, and **expire with the game that granted them**. |
 | Enemy damage | 1–3 (by tier) | Dealt by each stacked enemy after **every** game played, until its goal is fulfilled (Low 1 / Med 2 / High 3, per `enemies2.0`). |
 
@@ -534,7 +534,7 @@ Description | Effect | Reference | tags | File | Sorting`.
 
 | Type | Behavior |
 |---|---|
-| `Pickup` | One-time instant effect on acquire (e.g. Hollow Heart: +4 Max Health). |
+| `Pickup` | One-time instant effect on acquire (e.g. Hollow Heart: +4 *empty* Max Health; Mango: +4 Max Health, healed). |
 | `Triggered` | Fires on a game event — usually **"after beating a game"** (Burning Blood +1 Health, Meat on the Bone conditional heal), or **"when a game is selected"** (Anchor +1 Shield, §3.2). |
 | `Charged, N` | Usable, recharges over N beats (D6 → +1 Scramble; Wand of Wishing → any item, 6). |
 | `Usable` | Active, player-triggered (Ride the Bus → teleport to a random Deckbuilder game). |

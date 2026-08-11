@@ -59,7 +59,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │
 ├── data/                  # Game content as Godot Resources (.tres) — the source
 │   │                      # of truth the game loads at startup (see Data.gd)
-│   ├── games/            #   GameData — the ~750 real games that form the map
+│   ├── games/            #   GameData — the ~845 real games that form the map
 │   ├── atlas_layout*.tres#   BAKED star positions for the Atlas, one sky per game
 │   │                      #   filter: all / _owned / _downloaded (tools/bake_atlas.py)
 │   ├── items2.0/         #   ItemData — the relics that drop from a defeated enemy
@@ -206,7 +206,9 @@ combat. Every screen is built in code, so the scene files hold nothing but a roo
 node and its script.
 
 - **`MainMenu.gd`** — new run, character select, the **Continue** list of saved
-  runs, the Collection, the tier list, and Settings.
+  runs, the Collection, the tier list, Settings, and **Exit Game**. Quitting from
+  here doesn't confirm: nothing is live on the menu and the saves are already on
+  disk, so a prompt between the player and the door only ever gets in the way.
 - **`Overworld2.gd`** — the run itself: the opening choose-your-start panel (three
   games, three genres, all 5–7 games from the amulet), the offering of games
   (cover cards), and
@@ -240,7 +242,10 @@ node and its script.
   - Keys and Chests aren't shown at all — Keys are deferred and unauthored, and a
     chest is redeemed the moment it lands.
 
-  **The header is the title and one `☰ Menu`** (Save run / New run / Main menu).
+  **The header is the title and one `☰ Menu`** (Save run / New run / Main menu /
+  Exit game). Exit is the only entry that asks first, since a live run is
+  standing behind it — and it asks the question that is actually open, offering
+  **Save & exit** beside Exit and Cancel rather than a bare "are you sure".
   The 🗺 Map moved into the offering's own heading row, beside the cards it is a
   map of.
   - **`GameChoiceModal.gd`** — what clicking an offered card opens. A card is the
@@ -479,9 +484,9 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | Token | Does |
 |---|---|
 | `gain_chest small\|medium\|large\|huge N` | N chests. The size is **how many items it offers to pick from** — small = 1, medium = 2, large = 3, huge = 5. |
-| `gain_hp N` / `gain_max_hp N` / `heal_full` | Health. `gain_max_hp` raises the cap without healing. |
-| `lose_hp N` / `lose_max_hp N` | The same, pointed the other way. A `lose_hp` that empties Health ends the run — no separate kill token. |
-| `gain_gold N` / `lose_gold N` | Gold. |
+| `gain_hp N` / `gain_max_hp N` / `gain_empty_max_hp N` / `heal_full` | Health. `gain_max_hp` raises the cap **and heals by the same amount** — the container arrives full. `gain_empty_max_hp` is the half that doesn't heal, for the item that means an empty container (Hollow Heart). |
+| `lose_hp N` / `lose_max_hp N` | The same, pointed the other way — except `lose_max_hp` **costs no Health**: it takes the room, and Health only moves when it no longer fits. A `lose_hp` that empties Health ends the run — no separate kill token. |
+| `gain_gold N` / `lose_gold N` / `lose_gold all` | Gold. `all` empties the purse — the one amount settled when the choice is taken rather than when the `.tres` is written. |
 | `gain_stat <verb> N` / `lose_stat <verb> N` | `bash`, `dash`, `push`, `transmute`, `scramble`, `bombs`, `keys`, `shields`. |
 | `gain_loot N` | A loot drop — a scroll today, and widens on its own as more loot types exist. `gain_scroll N` names the scroll directly. |
 | `apply_status <status> N` | A `statuses2.0` status on the player. |

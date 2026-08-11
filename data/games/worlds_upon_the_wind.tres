@@ -1,12 +1,12 @@
-[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_bazr"]
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_worlds_upon_the_wind"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
 
 [resource]
 script = ExtResource("1_game")
-id = &"bazr"
-display_name = "BAZR"
-year = 2025
+id = &"worlds_upon_the_wind"
+display_name = "Worlds Upon The Wind"
+year = 2026
 type = 2
 games_influenced = Array[StringName]([])
 influence_sources = PackedStringArray()
@@ -15,7 +15,7 @@ tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
-cover_path = "res://images2.0/games/bazr.jpg"
-owned = true
-file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\BAZR.lnk"
-steam_page = ""
+cover_path = "res://images2.0/games/worlds-upon-the-wind.png"
+owned = false
+file_location = ""
+steam_page = "https://store.steampowered.com/app/3640430/Worlds_Upon_The_Wind/"

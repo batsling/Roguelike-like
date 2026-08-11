@@ -14,6 +14,9 @@ const DUMMY := &"battleworn_dummy"
 const UNREST := &"unrest_site"
 const PUNCH := &"punch_off"
 const OOZE := &"scrap_ooze"
+const JUNGLE := &"jungle_maze_adventure"
+const GROVE := &"morphic_grove"
+const HOLLOW := &"whispering_hollow"
 
 var _hp: int
 var _max_hp: int
@@ -22,6 +25,8 @@ var _curses: Array
 var _fired: Dictionary
 var _seed: int
 var _games: int
+var _gold: int
+var _transmute: int
 
 
 func before_each() -> void:
@@ -35,6 +40,8 @@ func before_each() -> void:
 	_fired = GameState.events_fired.duplicate(true)
 	_seed = GameState.run_seed
 	_games = GameState.games_played
+	_gold = GameState.gold
+	_transmute = GameState.transmute
 	GameState.event_goals.clear()
 	GameState.curse_goals.clear()
 	GameState.events_fired.clear()
@@ -48,6 +55,8 @@ func after_each() -> void:
 	GameState.games_played = _games
 	GameState.max_hp = _max_hp
 	GameState.hp = _hp
+	GameState.gold = _gold
+	GameState.transmute = _transmute
 
 
 func _event(id: StringName) -> EventData2:
@@ -67,7 +76,7 @@ func _choice(ev: EventData2, cid: String) -> Dictionary:
 # --- the catalogue ---------------------------------------------------------
 
 func test_every_authored_event_loads() -> void:
-	for id in [BATHS, DUMMY, UNREST, PUNCH, OOZE]:
+	for id in [BATHS, DUMMY, UNREST, PUNCH, OOZE, JUNGLE, GROVE, HOLLOW]:
 		var ev: EventData2 = _event(id)
 		assert_ne(ev.prompt, "", "%s must carry its prompt" % id)
 		assert_true(ev.choices.size() > 0, "%s must have choices" % id)
@@ -131,6 +140,13 @@ func test_immersing_swaps_which_choices_are_offered() -> void:
 func test_lingering_costs_one_more_each_time() -> void:
 	# Slay the Spire 2's ladder is 4, then 5, then 6. One authored group with a
 	# {4+X} hole has to reproduce all of it.
+	#
+	# What lands on the player is one lower each time, and that is not a bug in
+	# the hole: each dip is `gain_max_hp 1; lose_hp {4+X}`, and a Max Health gain
+	# now arrives with the Health to fill it. So the damage still climbs 4/5/6
+	# while the NET drop is 3/4/5, +1 Max Health a press either way. If the baths
+	# are meant to hurt as much as they did before the split, the sheet is where
+	# that is fixed — raise the hole, not the rule.
 	var linger: Dictionary = _choice(_event(BATHS), "linger")
 	GameState.max_hp = 40
 	GameState.hp = 40
@@ -139,9 +155,8 @@ func test_lingering_costs_one_more_each_time() -> void:
 		var before: int = GameState.hp
 		EventSystem.resolve_choice(_event(BATHS), linger, taken)
 		costs.append(before - GameState.hp)
-	# Each dip also grants +1 Max Health, which does not heal, so the drop is the
-	# damage alone.
-	assert_eq(costs, [4, 5, 6], "Linger climbs by one per Linger")
+	assert_eq(costs, [3, 4, 5], "Linger climbs by one per Linger")
+	assert_eq(GameState.max_hp, 43, "and each press paid its Max Health")
 
 
 func test_every_linger_says_something_and_says_something_new() -> void:
@@ -297,6 +312,51 @@ func test_killing_the_trees_costs_max_health() -> void:
 	EventSystem.resolve_choice(ev, _choice(ev, "kill_the_trees"), 0)
 	assert_eq(GameState.max_hp, 8, "Max Health down by 2")
 	assert_lte(GameState.hp, GameState.max_hp, "and current Health clamped under it")
+
+
+# Losing the cap is NOT the mirror of gaining it: `gain_max_hp` hands over the
+# Health to fill the new room, but `lose_max_hp` takes only the room. Health
+# moves solely when it no longer fits, which is why the test above (at full
+# Health, where 10 cannot survive a cap of 8) reads as a loss and this one does
+# not — the same two Max Health cost nothing to a player who was already hurt.
+func test_losing_max_health_does_not_take_health_that_still_fits() -> void:
+	var ev: EventData2 = _event(UNREST)
+	GameState.max_hp = 10
+	GameState.hp = 6
+	EventSystem.resolve_choice(ev, _choice(ev, "kill_the_trees"), 0)
+	assert_eq(GameState.max_hp, 8, "Max Health down by 2")
+	assert_eq(GameState.hp, 6, "and the Health the player already had is untouched")
+
+
+# --- Morphic Grove: a price named as a pool, not a number -------------------
+
+func test_the_grove_charges_every_coin_you_walked_in_with() -> void:
+	# `lose_gold all` is the one cost the sheet cannot write as a number: what it
+	# charges is settled when the choice is taken, not when the .tres is written.
+	var ev: EventData2 = _event(GROVE)
+	var group: Dictionary = _choice(ev, "group")
+	GameState.gold = 17
+	var before: int = GameState.transmute
+	EventSystem.resolve_choice(ev, group, 0)
+	assert_eq(GameState.gold, 0, "the Morphics take the whole purse")
+	assert_eq(GameState.transmute, before + 2, "and pay for it in Transmutes")
+
+
+func test_the_grove_is_the_same_trade_at_any_purse_size() -> void:
+	var ev: EventData2 = _event(GROVE)
+	var group: Dictionary = _choice(ev, "group")
+	GameState.gold = 3
+	EventSystem.resolve_choice(ev, group, 0)
+	assert_eq(GameState.gold, 0, "3 gold is all of it too")
+
+
+func test_an_all_cost_reads_as_all_rather_than_a_number() -> void:
+	# The button has to say what it charges, and "-0 Gold" is what a pool cost
+	# looks like when the text was generated from a value that was never there.
+	var group: Dictionary = _choice(_event(GROVE), "group")
+	var text: String = String(group.get("effects_text", ""))
+	assert_string_contains(text, "All Gold")
+	assert_false(text.contains("0 Gold"), "no phantom number in %s" % text)
 
 
 # --- Punch Off: the token that moves you ------------------------------------

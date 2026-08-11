@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_renowned_explorers_international_society"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"renowned_explorers_international_society"
+display_name = "Renowned Explorers: International Society"
+year = 2015
+type = 1
+games_influenced = Array[StringName]([&"worlds_upon_the_wind"])
+influence_sources = PackedStringArray("check folder")
+influence_relations = PackedStringArray("")
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/renowned-explorers-international-society.png"
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Renowned Explorers International Society.url"
+steam_page = "https://store.steampowered.com/app/296970/Renowned_Explorers_International_Society/"
