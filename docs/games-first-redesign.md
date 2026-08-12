@@ -354,7 +354,12 @@ those were being read, and then held a row of a one-screen layout for the whole
 round. The popup also has room for the part the strip never said — that a boss
 round is a different set of rules (no bomb damage; bash / transmute / scramble
 buy you a *different* boss rather than a way past this one) — and it shows the
-bosses standing on the cards, which the cards themselves already name.
+bosses standing on the cards, which the cards themselves already name. **Those
+portraits open**: clicking one puts the ordinary enemy card (`EnemyInfoCard`)
+over the popup, so the goal, the damage and the tier are readable at the moment
+the warning is given rather than one screen later. It is read-only — the boss has
+no body on the board yet, and the card's Push / Bomb verbs are aimed at one — and
+the warning is still there, unanswered, underneath it.
 
 Otherwise a boss follows the same rules: fulfill its goal to defeat it, or it
 stacks and hits you (per §7.2) until you do. A boss **cannot be dashed

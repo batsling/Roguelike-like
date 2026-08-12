@@ -127,6 +127,58 @@ func test_every_curse_pays_in_enemies() -> void:
 			"%s spawns an enemy rather than charging a resource" % cd.id)
 
 
+# The Bell asks for a thing you must REMEMBER, where the other two ask for things
+# you must avoid. That inversion lives entirely in the Condition column — the
+# checklist row is composed from it, so the row has to read as the admission it
+# is without any code knowing which way round this one runs.
+func test_the_bell_bites_when_you_forget_rather_than_when_you_ring() -> void:
+	var bell: CurseData2 = Data.get_curse2(&"curse_of_the_bell")
+	assert_not_null(bell, "data/curses2.0/curse_of_the_bell.tres must exist")
+	assert_eq(bell.condition, "you don't ring a bell",
+		"the bell is rung to AVOID the penalty, not to earn it")
+	assert_eq(bell.describe(),
+		"If you don't ring a bell, spawn a random enemy when you report the game.")
+
+
+# Every curse now bills a BODY, so "does the bill actually arrive" is a question
+# about the board rather than about a number. Fires the penalty the same way the
+# checklist does — GameState.trigger_curse_goal — and looks at the stack.
+func test_a_curse_that_bites_puts_an_enemy_on_the_board() -> void:
+	GameState.add_curse_goal(&"curse_of_the_bell")
+	var before: int = GameLoop2.stack.size()
+	var fired: Dictionary = GameState.trigger_curse_goal(0)
+	assert_false(fired.is_empty(), "the curse fired")
+	assert_eq(GameLoop2.stack.size(), before + 1, "and something walked on")
+	assert_eq(GameState.curse_goals.size(), 1, "a curse bites and STAYS")
+
+
+# …and the body it puts there is one from the run's own difficulty. A conjured
+# enemy is priced on nothing else, so widening the roll to "anything authored"
+# the way an offering's roll may is the one thing it must not do.
+func test_a_conjured_enemy_comes_from_the_runs_own_difficulty() -> void:
+	for games in [0, 5, 10, 15, 25]:
+		GameState.games_played = games
+		var tier: int = RunDifficulty.current_tier()
+		# Nothing is authored at Insane yet, so the roll may step DOWN to the
+		# nearest stocked tier — never up, and never to a random rung.
+		var want: int = mini(tier, _top_stocked_tier(tier))
+		for _i in range(12):
+			var e: GoalEnemyData = GameLoop2.roll_conjured_enemy()
+			assert_not_null(e, "the roster conjures something at tier %d" % tier)
+			assert_eq(e.tier_index(), want,
+				"a curse at tier %d conjured a tier-%d %s" % [tier, e.tier_index(), e.display_name])
+			assert_false(e.is_boss(), "a curse conjures an enemy, never a boss")
+
+
+# The highest tier at or below `tier` that has any goal-enemy authored for it.
+func _top_stocked_tier(tier: int) -> int:
+	for step in range(tier, -1, -1):
+		for e in Data.all_goal_enemies():
+			if e is GoalEnemyData and e.tier_index() == step:
+				return step
+	return 0
+
+
 # Curse of the Bell is the one that never comes off — the Timer column says N/A,
 # which is a 0 on the resource and a -1 window on the run.
 func test_the_bells_curse_is_permanent() -> void:
@@ -923,6 +975,47 @@ func _tradeable() -> Array:
 	for it in Data.reward_item2_pool():
 		out.append(it)
 	return out
+
+
+# He does not turn up for a pack he can barely trade with. Five, because he lays
+# out three offers and each spends one of your relics — the gate and the shelf
+# are the same statement, and the Requirement column is where it is authored.
+func test_the_trader_wants_five_relics_before_he_shows_up() -> void:
+	var ev: EventData2 = _event(TRADER)
+	GameState.inventory.clear()
+	assert_false(EventSystem.requirement_met(ev), "an empty pack is nothing to trade with")
+	for it in _tradeable().slice(0, 4):
+		GameState.add_item(it)
+	assert_false(EventSystem.requirement_met(ev), "four is still short")
+	GameState.add_item(_tradeable()[4])
+	assert_true(EventSystem.requirement_met(ev), "five opens the cloak")
+	assert_eq(EventSystem.requirement_text(ev.requirement), "Tradeable Relics >= 5",
+		"and the gate says so in the words the player's screens use")
+
+
+# The five he counts are five he would TAKE. Starter, Boss and Event relics are
+# excluded from the swap in both directions, so a pack of nothing but those is a
+# pack he has no business standing in front of — and the gate has to know that,
+# or the event opens on a shelf it cannot fill.
+func test_the_five_he_counts_are_five_he_would_take() -> void:
+	var ev: EventData2 = _event(TRADER)
+	GameState.inventory.clear()
+	var off_ladder: int = 0
+	for it in Data.all_items2():
+		if it.is_rollable():
+			continue
+		GameState.add_item(it)
+		off_ladder += 1
+		if off_ladder >= 6:
+			break
+	# Calling Bell pays out three ordinary relics as it lands; strip them, the pack
+	# under test is the off-ladder one.
+	for held in GameState.inventory.duplicate():
+		if held is ItemData and held.is_rollable():
+			GameState.remove_item(held)
+	assert_gt(GameState.inventory.size(), 4, "a pack of six off-ladder relics")
+	assert_eq(GameState.tradeable_relic_count(), 0, "none of which he would touch")
+	assert_false(EventSystem.requirement_met(ev), "so he is not offered the node")
 
 func test_the_trader_pairs_your_relics_against_ones_you_do_not_have() -> void:
 	var ev: EventData2 = _event(TRADER)

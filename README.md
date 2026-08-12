@@ -224,7 +224,9 @@ node and its script.
   announce themselves the moment it's picked up.
 
   **It fits one 1280×720 canvas, in every phase and at every board size**, with
-  no scrollbar in either axis. That is the whole screen, not a small window:
+  no horizontal scrollbar ever (the page's axis is `SHOW_NEVER` — still
+  scrollable, never drawn) and no vertical one unless a run's checklist genuinely
+  outgrows the page. That is the whole screen, not a small window:
   `window/stretch/mode="canvas_items"` scales that fixed canvas up to fill the
   display, so a 2560×1440 monitor draws this same page at 2×. Fitting the box is
   a constraint, not an accident, and the things below are what pay for it.
@@ -283,7 +285,10 @@ node and its script.
     visit, and travelling on is what closes it. The overworld floats a
     `🛒 Shop ↓` pointer at the foot of the screen until it has been scrolled to.
   - **`BossNoticeModal.gd`** — the "⚠ BOSS INCOMING" popup (§7.1), opened once per
-    boss round. It replaced a banner strip that shoved the whole page down.
+    boss round. It replaced a banner strip that shoved the whole page down. Its
+    boss portraits are **clickable**: each opens the ordinary `EnemyInfoCard` over
+    the popup, read-only (no body exists yet, so no Push / Bomb), which is where
+    "what does it want and what does it hit for" gets answered.
 - **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). Ordinary
   enemy drops don't open it: they land in the loot tray beside the board.
 - **`RateGameModal.gd`** — the 1-10 tier-list score for a game. Strictly opt-in:

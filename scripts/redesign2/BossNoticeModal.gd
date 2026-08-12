@@ -114,7 +114,6 @@ func _build() -> void:
 	go.pressed.connect(close)
 	root.add_child(go)
 	go.grab_focus.call_deferred()
-	_settle.call_deferred()
 
 
 # The bosses on the table, once each — the same boss can stand on two cards, and
@@ -135,6 +134,24 @@ func _portrait_row() -> Control:
 		var frame := PanelContainer.new()
 		frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 6, 4, 1, ACCENT))
 		frame.add_child(UITheme.crisp_tex(boss.image, ART_PX))
+		# The portrait OPENS. This popup is the first the player hears of these
+		# three, and "what does it want, and how hard does it hit" is the question
+		# it raises and used to refuse to answer — so the portrait opens the same
+		# card a click on the battlefield opens, read-only. A transparent button
+		# over the frame rather than a Button holding the art: PanelContainer
+		# stretches every child to its content rect, so the overlay covers the
+		# portrait exactly and the art keeps sizing the tile.
+		var hit := Button.new()
+		hit.flat = true
+		hit.focus_mode = Control.FOCUS_NONE
+		hit.tooltip_text = "%s — what it wants, and what it hits for" % boss.display_name
+		hit.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		hit.add_theme_stylebox_override("hover",
+			UITheme.flat(Color(1, 1, 1, 0.10), 6, 0, 2, ACCENT.lerp(Color.WHITE, 0.45)))
+		hit.add_theme_stylebox_override("pressed",
+			UITheme.flat(Color(1, 1, 1, 0.16), 6, 0, 2, ACCENT))
+		hit.pressed.connect(_inspect.bind(boss))
+		frame.add_child(hit)
 		col.add_child(frame)
 		var name_lbl := Label.new()
 		name_lbl.text = boss.display_name
@@ -148,23 +165,33 @@ func _portrait_row() -> Control:
 	return row if row.get_child_count() > 0 else null
 
 
-# Centre the panel once it has a height — it is built with a width and no height
-# so it can size to its own content, and ModalScaffold centres what it is given.
-# Same fix, same reason, as ShopModal2._settle.
-func _settle() -> void:
-	await get_tree().process_frame
-	if _panel == null or not is_instance_valid(_panel):
-		return
-	_panel.size = _panel.get_combined_minimum_size()
-	var half: Vector2 = _panel.size * 0.5
-	_panel.anchor_left = 0.5
-	_panel.anchor_top = 0.5
-	_panel.anchor_right = 0.5
-	_panel.anchor_bottom = 0.5
-	_panel.offset_left = -half.x
-	_panel.offset_top = -half.y
-	_panel.offset_right = half.x
-	_panel.offset_bottom = half.y
+# Open the ordinary enemy card on one of the bosses, over this popup rather than
+# instead of it — the notice is still waiting to be acknowledged underneath, and
+# reading a boss is not answering it.
+#
+# The card is built for a body ON THE BOARD, so it is handed the same shape of
+# entry the stack holds: instance 0 (no body has been spawned yet — this boss is
+# a threat on a card the player has not picked) and the health it will have when
+# one is. Instance 0 is also what keeps the card read-only: Push and Bomb are
+# aimed at an instance, and the card offers neither without one.
+#
+# Public so a headless test can open it without a click.
+func inspect_boss(boss: GoalEnemyData) -> EnemyInfoCard:
+	if boss == null:
+		return null
+	var card := EnemyInfoCard.new()
+	add_child(card)
+	card.setup({
+		"instance": 0, "enemy": boss, "stun": 0,
+		"health": GameLoop2.effective_health(boss),
+		"col": GameLoop2.offgrid_col(), "row": 0, "statuses": {},
+	}, GameLoop2.offgrid_col(), false,
+		"not on the board — it stands on one of the games you are about to be offered")
+	return card
+
+
+func _inspect(boss: GoalEnemyData) -> void:
+	inspect_boss(boss)
 
 
 # Public so a headless test can dismiss it without a click.

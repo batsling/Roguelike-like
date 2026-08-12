@@ -98,6 +98,13 @@ var dev_mode: bool = true
 
 func _ready() -> void:
 	load_settings()
+	# The shared theme on the WINDOW, as the floor under every screen: anything
+	# that forgets to dress itself still comes up in this palette rather than in
+	# Godot's stock light grey. It is only a floor — a theme travels down CONTROL
+	# parents, so it does NOT reach the modals, each of which mounts on a
+	# CanvasLayer of its own and dresses itself (UITheme.dress, called from
+	# ModalScaffold).
+	get_tree().root.theme = UITheme.shared()
 	# The window mode is a SAVED preference applied over the project's default, so
 	# the player's choice survives a restart. Deferred: on some platforms setting
 	# the mode in the same frame the window is created is ignored.

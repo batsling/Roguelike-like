@@ -2837,15 +2837,56 @@ func _populate_standing_checklist() -> void:
 
 # Bind one checklist row to one body. `paint` is called with whether the row
 # should read as lit; it is kept per instance so the board's hover can find it.
+#
+# Call this once the row is FULLY BUILT: the whole row is the hover target, and
+# what makes that work is walking what is actually in it.
 func _bind_row_to_body(row: Control, instance: int, paint: Callable) -> void:
 	if instance <= 0:
 		return
 	var rows: Array = _row_paints.get(instance, [])
 	rows.append(paint)
 	_row_paints[instance] = rows
+	# The frame passes its clicks on, as it always has — it is a highlight, not a
+	# button, and the page under it scrolls.
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
-	row.mouse_entered.connect(func(): _light_bodies([instance]))
-	row.mouse_exited.connect(func(): _light_bodies([]))
+	_bind_hover(row, func(): _light_bodies([instance]), func(): _light_bodies([]))
+
+
+# Hover on a ROW, not on the sliver of it nothing else claimed.
+#
+# Godot sends mouse_entered to the ONE control under the cursor — a MOUSE_FILTER
+# PASS ancestor hears nothing while a STOP child has the pointer. A checklist row
+# is a frame containing a full-width CheckBox and a Notes button, both STOP, so
+# binding the frame alone left the goal lighting its enemy only from the two or
+# three pixels of padding around the box: hover the row anywhere a player would
+# actually aim and nothing happened. So every descendant carries the same pair.
+#
+# The exit is positional rather than a plain "leave one of them": crossing from
+# the checkbox to the Notes button fires an exit and an enter in the same frame,
+# and treating that as a departure made the highlight flicker along the row. If
+# the pointer is still inside the frame, the row was never left.
+func _bind_hover(frame: Control, on_enter: Callable, on_exit: Callable) -> void:
+	var leave := func() -> void:
+		if not is_instance_valid(frame) or not frame.get_global_rect().has_point(
+				frame.get_global_mouse_position()):
+			on_exit.call()
+	for node in _hover_targets(frame):
+		if node.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+			# A Label is IGNORE by default and never reports anything; it is also
+			# most of a checklist row's width. PASS lets it report the hover while
+			# still handing the click to whatever is underneath.
+			node.mouse_filter = Control.MOUSE_FILTER_PASS
+		node.mouse_entered.connect(on_enter)
+		node.mouse_exited.connect(leave)
+
+
+# `frame` and every Control under it.
+func _hover_targets(frame: Control) -> Array:
+	var out: Array = [frame]
+	for child in frame.get_children():
+		if child is Control:
+			out.append_array(_hover_targets(child))
+	return out
 
 # Light `instances` on the BOARD (and, so the two halves never disagree, the rows
 # that belong to them). Passing [] clears.
@@ -2883,9 +2924,6 @@ func _objective_row(text: String, color: Color, icon: Texture2D = null,
 	var lit: StyleBox = UITheme.flat(color.lerp(UITheme.BG, 0.78), 5, 4, 2,
 		color.lerp(Color.WHITE, 0.35))
 	wrap.add_theme_stylebox_override("panel", idle)
-	_bind_row_to_body(wrap, instance, func(is_lit: bool) -> void:
-		if is_instance_valid(wrap):
-			wrap.add_theme_stylebox_override("panel", lit if is_lit else idle))
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 6)
 	wrap.add_child(line)
@@ -2899,6 +2937,10 @@ func _objective_row(text: String, color: Color, icon: Texture2D = null,
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	line.add_child(l)
+	# Bound last: the hover covers what is IN the row, so the row has to be in it.
+	_bind_row_to_body(wrap, instance, func(is_lit: bool) -> void:
+		if is_instance_valid(wrap):
+			wrap.add_theme_stylebox_override("panel", lit if is_lit else idle))
 	return wrap
 
 # A BOSS is the one thing on the checklist that isn't just another line of text:
@@ -2958,7 +3000,6 @@ func _verify_row(text: String, color: Color, emphasise: bool,
 		else:
 			wrap.add_theme_stylebox_override("panel", lit if is_lit else idle)
 	wrap.add_theme_stylebox_override("panel", idle)
-	_bind_row_to_body(wrap, instance, paint)
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 8)
 	wrap.add_child(line)
@@ -2991,6 +3032,8 @@ func _verify_row(text: String, color: Color, emphasise: bool,
 			line.add_child(_notes_button(game, enemy))
 		elif character != null:
 			line.add_child(_levelup_notes_button(game, character))
+	# Bound last: the hover covers what is IN the row, so the row has to be in it.
+	_bind_row_to_body(wrap, instance, paint)
 	return {"row": wrap, "check": cb}
 
 # The per-row Notes button. Shows a filled glyph once something is written, so a
@@ -3791,12 +3834,16 @@ func _build_ui() -> void:
 	scroll.offset_top = 16
 	scroll.offset_right = -16
 	scroll.offset_bottom = -16
-	# AUTO rather than DISABLED. The page is laid out to fit its width — the board
-	# fits itself to a budget, the bars flow — but DISABLED doesn't clamp anything
-	# that doesn't, it CLIPS it, and a board hanging off the right edge with no way
-	# to reach it is exactly the failure this is guarding against. Nothing should
-	# ever be wide enough to raise the bar; if something is, it stays reachable.
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	# SHOW_NEVER, not AUTO and not DISABLED. The page is laid out to fit its width
+	# — the board fits itself to a budget, the bars flow — so a horizontal bar
+	# under the whole page is never the answer to anything: it is a strip of
+	# chrome that turns up when a layout hiccups (a canvas that has not settled
+	# into the window's aspect yet is the one that started this) and then sits
+	# there for the rest of the run. DISABLED would be the wrong cure, because it
+	# CLIPS instead of clamping and a board hanging off the right edge with no way
+	# to reach it is worse than the bar. SHOW_NEVER keeps the axis scrollable — by
+	# wheel, by drag, by code — and simply never draws the bar.
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	add_child(scroll)
 	_scroll = scroll
 	var root := VBoxContainer.new()

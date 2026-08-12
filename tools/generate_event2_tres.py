@@ -60,8 +60,13 @@ WHERES = {"dead end": "dead_end", "dead_end": "dead_end", "any": "any", "game": 
 TRIGGERS = ("after", "before")
 # Run stats a Requirement or a `needs` gate may name. Deliberately a closed list:
 # a typo'd stat that silently never passes is an event that silently never fires.
+# `relics` is the pack rather than a counter: how many TRADEABLE relics are
+# carried — ordinary rollable ones, not the character's Starter and not a Boss or
+# Event relic, because those are the three classes nothing may take off you. It
+# is what the Relic Trader gates on: an event whose every button is a swap should
+# not stand on a node where there is nothing to swap.
 GATE_STATS = ("hp", "max_hp", "gold", "games", "keys", "bombs", "bash", "dash",
-              "push", "transmute", "scramble", "shields")
+              "push", "transmute", "scramble", "shields", "relics")
 
 
 # --- the Requirement column -------------------------------------------------

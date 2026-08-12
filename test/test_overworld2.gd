@@ -88,6 +88,33 @@ func test_defeat_drop_opens_a_take_it_or_leave_it_popup() -> void:
 	assert_eq(_ui._items_box.get_child_count(), GameState.inventory.size(),
 		"and the pack strip above the board holds a token for it")
 
+# …and it asks in the MIDDLE of the screen. The modal is built with a width and
+# no height so it can size to whatever the relic needs, and a panel centred while
+# it was still empty put its TOP at the middle of the page: everything it then
+# grew hung below that, so the card the player is being asked about opened against
+# the bottom edge with its art off it.
+func test_the_drop_asks_in_the_middle_of_the_screen() -> void:
+	_ui.pick(0)
+	_ui.report(true)
+	await wait_frames(4)
+	var modal = _ui._drop_modal
+	assert_not_null(modal, "the kill asked about its drop")
+	if modal == null:
+		return
+	var panel: Control = null
+	for child in modal.get_children():
+		if child is PanelContainer:
+			panel = child
+			break
+	assert_not_null(panel, "the question is on a panel")
+	assert_gt(panel.size.y, 0.0, "which has grown to fit the relic")
+	var screen: Vector2 = modal.get_viewport_rect().size
+	var centre: Vector2 = panel.get_global_rect().get_center()
+	assert_almost_eq(centre.y, screen.y * 0.5, 2.0,
+		"the panel's MIDDLE sits on the middle of the screen, not its top edge")
+	assert_almost_eq(centre.x, screen.x * 0.5, 2.0, "and across, too")
+	modal.leave()
+
 func test_leaving_a_drop_discards_it() -> void:
 	_ui.pick(0)
 	_ui.report(true)
@@ -833,6 +860,55 @@ func test_the_checklist_sits_left_of_the_board_with_the_pack_above() -> void:
 		"the checklist is drawn to the left of the board")
 	assert_lt(_ui._inv_wrap.global_position.y, _ui._board.global_position.y,
 		"the pack is drawn above the board")
+
+# The scrollbar is the one piece of chrome the player touches on every screen,
+# and Godot's stock one is a light-grey capsule drawn for the editor: on these
+# near-black pages it was the only control that looked like it came from another
+# program. Both axes are dressed, and the modals dress themselves — a theme
+# travels down Control parents, and every 2.0 modal hangs off a CanvasLayer,
+# which is not one.
+func test_the_scrollbars_are_dressed_in_the_projects_own_palette() -> void:
+	var theme: Theme = UITheme.shared()
+	for axis in ["VScrollBar", "HScrollBar"]:
+		for part in ["scroll", "grabber", "grabber_highlight", "grabber_pressed"]:
+			assert_true(theme.has_stylebox(part, axis), "%s/%s is themed" % [axis, part])
+		var idle: StyleBoxFlat = theme.get_stylebox("grabber", axis)
+		var hot: StyleBoxFlat = theme.get_stylebox("grabber_highlight", axis)
+		assert_ne(idle.bg_color, hot.bg_color, "%s lights under the pointer" % axis)
+		assert_gt(idle.corner_radius_top_left, 0, "%s's grabber is rounded" % axis)
+	assert_eq(get_tree().root.theme, theme, "the window carries it as a floor")
+	# …and every modal dresses ITSELF, because a theme travels down Control
+	# parents and a modal hangs off a CanvasLayer, which is not one. Without this
+	# the scrollbar inside an event, a shop or a map came up in the stock grey
+	# however well the page behind it was dressed.
+	_ui.pick(0)
+	_ui.report(true)
+	await wait_frames(4)
+	var modal = _ui._drop_modal
+	assert_not_null(modal, "a modal to look at")
+	if modal == null:
+		return
+	assert_eq(modal.theme, theme, "the modal root carries the shared theme")
+	var bar := VScrollBar.new()
+	modal.add_child(bar)
+	assert_eq(bar.get_theme_stylebox("grabber", "VScrollBar"),
+		theme.get_stylebox("grabber", "VScrollBar"),
+		"so a scrollbar inside it is dressed like the rest of the project")
+	bar.queue_free()
+	modal.leave()
+
+# …and the page never grows a horizontal one. The overworld is laid out to fit
+# its width, so a bar under the whole page is never the answer to anything — it
+# is a strip of chrome that turns up when a layout hiccups and then sits there
+# for the rest of the run. The axis stays scrollable, it just never draws.
+func test_the_page_never_shows_a_horizontal_scrollbar() -> void:
+	assert_eq(_ui._scroll.horizontal_scroll_mode, ScrollContainer.SCROLL_MODE_SHOW_NEVER,
+		"the page's sideways bar is never drawn")
+	assert_false(_ui._scroll.get_h_scroll_bar().visible, "so it is not on screen")
+	_ui.pick(0)
+	_ui.report(false)
+	assert_false(_ui._scroll.get_h_scroll_bar().visible,
+		"nor after a game, when the checklist is at its longest")
 
 # The report checklist is the one place the player ANSWERS something, and Godot's
 # stock check glyphs are a hairline outline drawn for a light theme — against this
@@ -2755,6 +2831,55 @@ func test_hovering_a_goal_row_lights_the_body_it_belongs_to() -> void:
 	_ui._light_bodies([])
 	assert_false(_ui._board._is_lit(inst), "leaving the row puts it out again")
 
+# The hover has to be on the ROW, not on the sliver of it the checkbox left over.
+# Godot hands mouse_entered to the one control under the cursor and not to its
+# ancestors, so a row bound only on its frame lit up from a few pixels of padding
+# and stayed dark everywhere a player actually points — which is the whole row.
+func test_every_part_of_a_goal_row_lights_the_body_not_just_its_border() -> void:
+	_ui.pick(0)
+	var inst: int = int(GameLoop2.current["instance"])
+	var enemy: GoalEnemyData = GameLoop2.current["enemy"]
+	var made: Dictionary = _ui._verify_row("Goal — %s" % GameLoop2.goal_text_for(GameLoop2.current),
+		UITheme.TEXT, false, enemy, null, inst)
+	var row: Control = made["row"]
+	var parts: Array = _ui._hover_targets(row)
+	assert_gt(parts.size(), 2, "a row is a frame with a box and a button in it")
+	var saw_box := false
+	for part in parts:
+		var ctl: Control = part
+		saw_box = saw_box or ctl is CheckBox
+		assert_gt(ctl.mouse_entered.get_connections().size(), 0,
+			"the row's %s reports its hover" % ctl.get_class())
+		_ui._light_bodies([])
+		ctl.mouse_entered.emit()
+		assert_true(_ui._lit_instances.has(inst),
+			"hovering the row's %s lights the body" % ctl.get_class())
+	assert_true(saw_box, "the checkbox — most of the row's width — is one of them")
+	_ui._light_bodies([])
+	row.queue_free()
+
+# Leaving is POSITIONAL: the exit asks where the pointer actually is rather than
+# trusting the signal, because crossing from the tick-box to the Notes button
+# fires an exit and an enter in the same frame and the row was never left. Here
+# the pointer is nowhere near it, which is the other half of that rule.
+func test_leaving_a_row_altogether_puts_the_highlight_out() -> void:
+	_ui.pick(0)
+	var inst: int = int(GameLoop2.current["instance"])
+	var made: Dictionary = _ui._verify_row("Goal — something", UITheme.TEXT, false,
+		GameLoop2.current["enemy"], null, inst)
+	var row: Control = made["row"]
+	add_child_autofree(row)          # the exit test is positional, so it needs a rect
+	row.position = Vector2(10, 10)
+	row.size = Vector2(400, 40)
+	var box: CheckBox = made["check"]
+	box.mouse_entered.emit()
+	assert_true(_ui._lit_instances.has(inst), "the box lit it")
+	# The pointer is nowhere near the row in a headless test, so leaving really is
+	# leaving: the exit clears it.
+	box.mouse_exited.emit()
+	assert_false(_ui._lit_instances.has(inst),
+		"and a pointer that is not on the row anywhere puts it out")
+
 func test_hovering_a_body_lights_the_goal_row_it_is_written_on() -> void:
 	_ui.pick(0)
 	_ui.report(false)
@@ -2801,6 +2926,53 @@ func test_a_boss_round_announces_itself_in_a_popup() -> void:
 	assert_not_null(_ui._boss_notice, "the warning is a popup")
 	_ui._boss_notice.close()
 	assert_null(_ui._boss_notice, "and it closes on its own button")
+
+# The popup names three bosses and used to say nothing else about them. Its
+# portraits open the same card the battlefield opens, so "what does it want and
+# what does it hit for" is answered where the question is asked.
+func test_the_boss_warning_opens_a_card_on_the_boss_you_click() -> void:
+	_force_boss_round()
+	_ui._maybe_announce_boss()
+	var notice = _ui._boss_notice
+	assert_not_null(notice, "the warning is up")
+	var boss: GoalEnemyData = null
+	for c in _ui._choices:
+		if c["enemy"] is GoalEnemyData and c["enemy"].is_boss():
+			boss = c["enemy"]
+			break
+	if boss == null:
+		return                     # no boss art in the roster to read
+	var card = notice.inspect_boss(boss)
+	assert_not_null(card, "the portrait opens a card")
+	assert_eq(card.get_parent(), notice,
+		"over the warning rather than instead of it — the warning is still unanswered")
+	assert_not_null(_ui._boss_notice, "and reading a boss does not dismiss it")
+	notice.close()
+
+# A boss on the notice has no body on the board yet, so the card must not offer
+# the verbs that are aimed at one — Push and Bomb take an instance, and there
+# isn't one until the game is picked.
+func test_a_boss_read_off_the_warning_is_read_only() -> void:
+	_force_boss_round()
+	_ui._maybe_announce_boss()
+	var notice = _ui._boss_notice
+	var boss: GoalEnemyData = GameLoop2.roll_boss(&"", 0)
+	if boss == null:
+		return
+	var card = notice.inspect_boss(boss)
+	assert_not_null(card)
+	for btn in _buttons_under(card):
+		assert_false(btn.text.begins_with("Push") or btn.text.begins_with("Bomb"),
+			"no verb is aimed at a body that does not exist: %s" % btn.text)
+	notice.close()
+
+func _buttons_under(node: Node) -> Array:
+	var out: Array = []
+	if node is Button:
+		out.append(node)
+	for child in node.get_children():
+		out.append_array(_buttons_under(child))
+	return out
 
 func test_the_boss_warning_opens_once_for_the_round() -> void:
 	_force_boss_round()

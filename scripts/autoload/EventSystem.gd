@@ -93,7 +93,7 @@ const GATE_STAT_NAMES := {
 	"hp": "Health", "max_hp": "Max Health", "gold": "Gold",
 	"games": "Games played", "keys": "Keys", "bombs": "Bombs", "bash": "Bash",
 	"dash": "Dash", "push": "Push", "transmute": "Transmute",
-	"scramble": "Scramble", "shields": "Shields",
+	"scramble": "Scramble", "shields": "Shields", "relics": "Tradeable Relics",
 }
 
 # A Requirement dictionary in words: "Health <= 70%". One implementation, read by
@@ -343,6 +343,11 @@ func _run_stat(stat: String) -> int:
 		"transmute": return GameState.transmute
 		"scramble": return GameState.scramble
 		"shields": return GameState.shields
+		# The pack, not a counter: relics a stranger could actually take off you.
+		# Starter, Boss and Event relics are excluded by the same is_rollable()
+		# rule the trade itself uses, so the gate cannot pass on five relics none
+		# of which he would touch.
+		"relics": return GameState.tradeable_relic_count()
 		_: return -1
 
 

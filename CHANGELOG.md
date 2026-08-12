@@ -11,6 +11,73 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A pass over the things the page gets wrong: scrollbars, where a modal opens,
+  and what you can point at.**
+
+  **The overworld never draws a horizontal scrollbar again.** The page is laid out
+  to fit its width, so a bar under the whole thing was never the answer to
+  anything — it is chrome that turns up when a layout hiccups (a canvas that has
+  not settled into the window's aspect yet) and then sits there for the rest of
+  the run. The axis is `SHOW_NEVER` rather than `DISABLED`: still scrollable by
+  wheel and by code, so nothing is ever clipped out of reach, it simply never
+  draws the bar.
+
+  **The scrollbars are dressed in the project's own palette** — a dark inset
+  trough and an ember grabber that lights under the pointer, both axes. Godot's
+  stock bar is a light-grey capsule drawn for the editor, and on these near-black
+  pages it was the one control that looked like it came from another program. The
+  theme goes on the **window** as well as on each screen root, because every 2.0
+  modal mounts on a CanvasLayer of its own and a CanvasLayer breaks the Control
+  chain a theme travels down — which is why the modals were the ones still coming
+  up grey.
+
+  **A modal opens in the middle of the screen and stays there.** `ModalScaffold`
+  centred the panel once, at build time, while it was still an empty shell with a
+  width and no height — so the panel's *top* landed on the middle of the page and
+  everything it then grew hung below that. The relic you just found opened against
+  the bottom edge with its art off it. The panel now re-centres whenever it
+  resizes *or* its content settles, and a panel built content-sized shrinks back
+  to its content: a label reports an enormous minimum height until it has wrapped,
+  and a Control on a non-container parent only ever grows to its minimum, never
+  back. `BossNoticeModal` had hand-rolled half of this; it is one implementation
+  now, and `ItemDropModal` — which had none of it — is the one that was visibly
+  wrong.
+
+  **The whole checklist row lights its enemy, not the two pixels of padding around
+  the tick-box.** Godot hands `mouse_entered` to the one control under the cursor
+  and not to its ancestors, so a row bound only on its frame reported nothing
+  while the pointer was on the CheckBox — which is most of the row's width — or on
+  the Notes button. Every descendant carries the binding now, and leaving is
+  positional: crossing from the box to the button is one row, not a departure and
+  an arrival.
+
+  **The Boss Incoming popup's portraits open.** It names three bosses it is
+  warning you about and had nothing to say about any of them; clicking one now
+  opens the same card the battlefield opens — goal, damage, tier — over the popup,
+  read-only, since no body exists to push or bomb yet.
+
+  **A conjured enemy comes from the run's own difficulty.** A curse's bill and the
+  Scroll of Create Monster roll through `roll_conjured_enemy` rather than
+  `roll_enemy`: the offering's roll widens a thin bucket all the way out to "any
+  enemy authored", which is right when a game must always get one and wrong for a
+  body that is priced on nothing but the tier it came from. It may only step
+  *down* to the nearest stocked tier — nothing is authored at Insane yet — and
+  never up.
+
+  **Curse of the Bell now bites when you forget.** Its condition reads *"you don't
+  ring a bell"* rather than *"ring a bell"*: the other two curses in the roster are
+  things you must avoid, and this is the one that is a thing you must remember,
+  every game, forever. No code knows which way a curse points — the row composes
+  from the Condition either way — so the inversion is a sentence in the sheet.
+
+  **And the Relic Trader wants five relics before he shows up** (`relics >= 5`, a
+  new Requirement stat). He lays out three offers, each spending one of yours
+  against one you don't have, so a pack of one or two was a shelf with gaps in it.
+  The five are five he would actually *take*: `relics` counts rollable relics
+  only, since Starter, Boss and Event relics are excluded from a swap in both
+  directions and counting them would let the gate pass on a pack he wouldn't
+  touch.
+
 - **The Relic Trader is three offers and one line.**
 
   The **Trade Nothing** button is gone. It was a fourth choice that existed to

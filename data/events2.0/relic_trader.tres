@@ -9,7 +9,7 @@ display_name = "Relic Trader"
 source_game = "Slay the Spire 2"
 tier_tags = PackedStringArray()
 where = "dead_end"
-requirement = {}
+requirement = {"stat": "relics", "op": ">=", "value": 5, "percent": false}
 trigger = "after"
 rarity = "Common"
 run_limit = 1

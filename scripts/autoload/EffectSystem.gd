@@ -264,10 +264,14 @@ func _h_add_curse(effect: Dictionary, _ctx: Dictionary) -> void:
 # What every CURSE now costs: a fresh enemy at the run's current difficulty, put
 # straight onto the following stack. Same conjuring the Scroll of Create Monster
 # does (§4.1) — a curse's bill is a body on the board, not a number off a bar.
+#
+# roll_conjured_enemy and not roll_enemy: the difficulty is the whole of what a
+# conjured body is priced on, so it is not allowed to widen into the rest of the
+# roster the way an offering's roll may.
 func _h_spawn_enemy(effect: Dictionary, _ctx: Dictionary) -> void:
 	var names: Array = []
 	for _i in range(maxi(1, int(effect.get("value", 1)))):
-		var enemy: GoalEnemyData = GameLoop2.roll_enemy(&"", -1)
+		var enemy: GoalEnemyData = GameLoop2.roll_conjured_enemy()
 		if enemy == null:
 			break
 		GameLoop2.spawn_to_stack(enemy)

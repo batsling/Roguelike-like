@@ -215,6 +215,19 @@ static func shared() -> Theme:
 		_shared = make_theme()
 	return _shared
 
+
+# Put the shared theme on a subtree the screen's own theme cannot reach.
+#
+# A theme travels down CONTROL parents. Every 2.0 modal mounts itself on a
+# CanvasLayer of its own so it floats above a page that scrolls — and a
+# CanvasLayer is not a Control, so the chain stops dead there and everything
+# inside comes up in Godot's stock light grey. (The window's theme is no help
+# either; it does not cross the layer.) Each of those roots calls this on itself,
+# which is one line each and the only thing that works.
+static func dress(control: Control) -> void:
+	if control != null and control.theme == null:
+		control.theme = shared()
+
 static func make_theme() -> Theme:
 	var t := Theme.new()
 	t.default_font_size = 14
@@ -308,5 +321,41 @@ static func make_theme() -> Theme:
 	vsep.vertical = true
 	t.set_stylebox("separator", "VSeparator", vsep)
 
-	# --- ScrollContainer scrollbars keep engine defaults ---
+	# --- Scrollbars ---
+	# Godot's stock bar is a light-grey capsule on a light-grey trough, drawn for
+	# the editor's theme: on these near-black pages it is the one control that
+	# still looks like it came from a different program. It is also the only piece
+	# of chrome the player touches on every screen — the overworld, the Collection,
+	# the Atlas, every modal with a long list — so it gets the same treatment the
+	# buttons got: a dark inset trough and an ember grabber that lights on hover.
+	#
+	# Both axes, and `grabber_pressed` as well as `grabber_highlight`, because a
+	# bar you are dragging that stops reacting reads as a dropped drag.
+	for axis in ["VScrollBar", "HScrollBar"]:
+		var trough := StyleBoxFlat.new()
+		trough.bg_color = BG_DEEP.lerp(BG, 0.5)
+		trough.set_corner_radius_all(6)
+		var grab := StyleBoxFlat.new()
+		grab.bg_color = BORDER.lerp(ACCENT, 0.25)
+		grab.set_corner_radius_all(6)
+		var grab_hi := StyleBoxFlat.new()
+		grab_hi.bg_color = ACCENT.lerp(BORDER, 0.35)
+		grab_hi.set_corner_radius_all(6)
+		var grab_press := StyleBoxFlat.new()
+		grab_press.bg_color = ACCENT
+		grab_press.set_corner_radius_all(6)
+		# Slim: the margins run along the bar's thin axis, so the grabber is a
+		# stripe down the middle of the trough rather than filling it.
+		for sb in [trough, grab, grab_hi, grab_press]:
+			if axis == "VScrollBar":
+				sb.content_margin_left = 3
+				sb.content_margin_right = 3
+			else:
+				sb.content_margin_top = 3
+				sb.content_margin_bottom = 3
+		t.set_stylebox("scroll", axis, trough)
+		t.set_stylebox("scroll_focus", axis, trough)
+		t.set_stylebox("grabber", axis, grab)
+		t.set_stylebox("grabber_highlight", axis, grab_hi)
+		t.set_stylebox("grabber_pressed", axis, grab_press)
 	return t

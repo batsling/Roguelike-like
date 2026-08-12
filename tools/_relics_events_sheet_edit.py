@@ -103,10 +103,12 @@ RELIC_TRADER = {
     "Game": "Slay the Spire 2",
     "Tier": "All",
     "Where": "Dead End",
-    # He trades relic for relic, so there has to BE one to trade. The offers
-    # themselves are gated per-slot at runtime; this keeps the event off a node
-    # where every button would be missing.
-    "Requirement": None,
+    # He trades relic for relic, so there have to BE relics to trade. Five, not
+    # one: he lays out three offers and each pairs one relic you hold against one
+    # you don't, so a pack of one or two is a shelf with a gap in it. The offers
+    # are still gated per-slot at runtime — this keeps the event off the node
+    # entirely rather than opening it half-empty.
+    "Requirement": "relics >= 5",
     "Trigger": "After",
     "Rarity": "Common",
     "Limit": 1,

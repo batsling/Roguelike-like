@@ -186,13 +186,13 @@ func _forget_from(pool: Array, count: int, rng: RandomNumberGenerator, forget_fn
 
 # --- spawn_enemy (Scroll of Create Monster) --------------------------------
 func _spawn_enemy(_difficulty: String, count: int, out: Dictionary) -> void:
-	# Roll at the run's current tier (-1) from any type; the enemy joins the
-	# following stack and attacks on the next game beaten (§7.2). Rolled once per
-	# body rather than once and duplicated, so a doubled Create Monster conjures
-	# two DIFFERENT things.
+	# Roll at the run's current tier and at no other (roll_conjured_enemy); the
+	# enemy joins the following stack and attacks on the next game beaten (§7.2).
+	# Rolled once per body rather than once and duplicated, so a doubled Create
+	# Monster conjures two DIFFERENT things.
 	var names: Array = []
 	for _i in range(maxi(1, count)):
-		var enemy: GoalEnemyData = GameLoop2.roll_enemy(&"", -1)
+		var enemy: GoalEnemyData = GameLoop2.roll_conjured_enemy()
 		if enemy == null:
 			break
 		GameLoop2.spawn_to_stack(enemy)
