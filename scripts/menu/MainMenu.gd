@@ -21,6 +21,7 @@ func _ready() -> void:
 	_style_menu()
 
 	%StartRunBtn.pressed.connect(_on_start_run)
+	%CustomRunBtn.pressed.connect(_on_custom_run)
 	%ContinueBtn.pressed.connect(_on_continue_toggle)
 	%RunHistoryBtn.pressed.connect(_on_run_history)
 	%CollectionBtn.pressed.connect(_on_collection)
@@ -69,6 +70,25 @@ func _style_menu() -> void:
 # ---------------------------------------------------------------------------
 
 func _on_start_run() -> void:
+	# An ordinary run is an ordinary map: whatever the last custom run configured
+	# goes with it, and RunGraph falls back to Settings.game_filter. Done here
+	# rather than in _begin_run, which the custom flow also goes through.
+	RunConfig.reset()
+	_open_character_picker()
+
+# The custom flow is the same flow with a screen in front of it: pick what the run
+# is made of, then pick who plays it. RunConfig is applied before the picker opens
+# rather than after Confirm, so the character screen — and anything it asks the
+# graph — is already looking at the map the run will actually use.
+func _on_custom_run() -> void:
+	for c in _modal_layer.get_children():
+		c.queue_free()
+	var screen := CustomRunScreen.open(self)
+	screen.begun.connect(func(config: Dictionary):
+		RunConfig.apply(config)
+		_open_character_picker())
+
+func _open_character_picker() -> void:
 	for c in _modal_layer.get_children():
 		c.queue_free()
 	var picker := _build_character_picker()

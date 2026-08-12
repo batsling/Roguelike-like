@@ -227,6 +227,10 @@ func _build_payload() -> Dictionary:
 		"total_combats_completed": GameState.total_combats_completed,
 		# The enemy stack, the destroyed games, the attempt tracker.
 		"loop": GameLoop2.serialize(),
+		# A CUSTOM RUN's filters are the run: the graph is built from them, so a save
+		# resumed without them comes back on a different map, with the saved position
+		# standing on a node the new graph may not even have.
+		"run_config": RunConfig.serialize(),
 		# What the overworld has on screen, when one is mounted to ask.
 		"overworld": _capture_view_state(),
 	}
@@ -378,6 +382,10 @@ func _apply_save_data(data: Dictionary) -> void:
 		GameState.pending_chest_choices.append(int(n))
 	GameState.total_combats_completed = int(data.get("total_combats_completed", 0))
 	GameState.phase = GameState.Phase.OVERWORLD
+	# BEFORE the loop and the view: this rebuilds the run graph (RunGraph's
+	# adjacency cache is the map), and everything restored after it — the position,
+	# the offering, the route — is read against that map.
+	RunConfig.restore(data.get("run_config", {}))
 	# The games-first enemy stack, destroyed games and attempt tracker. Order-free
 	# against the GameState half above: the loop reads GameState.shields when it
 	# RESOLVES a game, never while restoring itself.

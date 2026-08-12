@@ -133,6 +133,9 @@ var _curse_goal_checks: Array = []
 # The header's always-visible Health readout (see _build_health_chip).
 var _health_chip: Label = null
 var _gold_chip: Label = null
+# The road walked, across the top of the page. Rebuilt on every refresh — it is a
+# handful of TextureRects and the run only moves a few dozen times.
+var _route_strip: HBoxContainer = null
 # A `play_game` detour in flight (docs/event-sheet-authoring.md §10). The node to
 # offer a way back to, and the payload that lands when the detour game is beaten.
 var _play_return_to: StringName = &""
@@ -2182,6 +2185,7 @@ func _refresh(_a = null) -> void:
 		return
 	_refresh_stats()
 	_refresh_items()
+	_refresh_route_strip()
 	_stack.text = "[b]Battlefield[/b]  —  " + _stack_summary()
 	_board.refresh(_phase == Phase.PLAYING)
 	_refresh_attempts()
@@ -2212,6 +2216,137 @@ func _refresh(_a = null) -> void:
 		# thing you went to play next to the enemy you went to beat.
 		var game: GameData = _chosen.get("game")
 		_now_playing_cover.texture = game.cover_image if game != null else null
+
+# --- the road walked, across the top of the page ---------------------------
+#
+# The end-of-run screen has always drawn the run as a line of covers with arrows
+# between them, closing on the Amulet, and it is the clearest picture of a run
+# this project has. It only ever appeared once the run was over. This is the same
+# picture, live, in the header.
+#
+# It has to share one 1280-wide row with the health chip, the gold chip, the
+# title and the menu, and the page underneath it must still fit 720 without
+# scrolling — so the covers are SMALL (STRIP_COVER) and carry no name, with the
+# name on the hover instead. That is the trade the header can afford: the strip's
+# job here is the SHAPE of the run, not a readable list of it, and the names are a
+# tooltip away for anyone who wants them.
+const STRIP_COVER := Vector2(34, 45)
+const STRIP_ARROW := 15.0
+# Past this many stops the oldest ones are dropped and an ellipsis stands in for
+# them. A run of eight games fits comfortably; a run that has doubled back over a
+# hub a dozen times does not, and the recent end of the road is the half worth
+# keeping.
+const STRIP_MAX_STOPS := 12
+
+func _refresh_route_strip() -> void:
+	if _route_strip == null:
+		return
+	_clear(_route_strip)
+	# Nothing to draw before the run has a position — and on the start picker the
+	# Amulet is still hidden, so an Amulet tile there would give away the one thing
+	# that panel deliberately withholds.
+	if _phase == Phase.START_SELECT or GameState.current_game_id == &"":
+		_route_strip.hide()
+		return
+	_route_strip.show()
+
+	var stops: Array = []
+	for id in GameState.visited_games:
+		stops.append(StringName(id))
+	var here: StringName = GameState.current_game_id
+	if stops.is_empty() or stops[stops.size() - 1] != here:
+		stops.append(here)
+
+	var trimmed: bool = stops.size() > STRIP_MAX_STOPS
+	if trimmed:
+		stops = stops.slice(stops.size() - STRIP_MAX_STOPS)
+	if trimmed:
+		var more := Label.new()
+		more.text = "…"
+		more.tooltip_text = "Earlier games are off the end of the strip — the full road is on the 🗺 map."
+		more.custom_minimum_size = Vector2(16, STRIP_COVER.y)
+		more.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		more.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+		_route_strip.add_child(more)
+
+	for i in range(stops.size()):
+		_route_strip.add_child(_strip_stop(stops[i], stops[i] == here, false))
+		if i < stops.size() - 1:
+			_route_strip.add_child(_strip_arrow(false))
+
+	# The Amulet closes the strip, with the gap you have not covered yet drawn
+	# dashed — the same way the end-of-run screen draws a loss. It is what turns a
+	# list of games you have played into a picture of a journey with somewhere to be.
+	var amulet: StringName = GameState.amulet_game_id
+	if amulet != &"" and amulet != here:
+		_route_strip.add_child(_strip_arrow(true))
+		_route_strip.add_child(_strip_stop(amulet, false, true))
+
+	# The strip takes the room the title and the chips leave and no more; anything
+	# past that is clipped rather than allowed to push the menu button off the page.
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_route_strip.add_child(spacer)
+
+# One cover on the strip. `is_here` rings the game you are standing on, `is_amulet`
+# the one the run is a search for; everything else is a plain frame.
+func _strip_stop(id: StringName, is_here: bool, is_amulet: bool) -> Control:
+	var game: GameData = GameLoop2.game_at(id)
+	if game == null:
+		game = Data.get_game(id)
+	var border: Color = UITheme.BORDER
+	var width: int = 1
+	if is_amulet:
+		border = UITheme.GOLD
+		width = 2
+	elif is_here:
+		border = UITheme.ACCENT
+		width = 2
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG_DEEP, 3, 1, width, border))
+	frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	frame.set_meta("stop", id)
+	var name_text: String = game.display_name if game != null else String(id)
+	frame.tooltip_text = ("🏆 %s — the Amulet" if is_amulet
+		else ("▶ %s — you are here" if is_here else "%s")) % name_text
+
+	if game != null and game.cover_image != null:
+		var art := TextureRect.new()
+		art.texture = game.cover_image
+		art.custom_minimum_size = STRIP_COVER
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_child(art)
+	else:
+		var blank := Label.new()
+		blank.custom_minimum_size = STRIP_COVER
+		blank.text = name_text.substr(0, 2)
+		blank.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		blank.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		blank.add_theme_font_size_override("font_size", 11)
+		blank.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		frame.add_child(blank)
+	return frame
+
+func _strip_arrow(unreached: bool) -> Control:
+	var a := RunHistoryScreen.RouteArrow.new()
+	a.unreached = unreached
+	a.custom_minimum_size = Vector2(STRIP_ARROW, STRIP_COVER.y)
+	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return a
+
+# The stops the strip is showing right now, oldest first. Public so a test can
+# check the picture against the run without reading TextureRects.
+func route_strip_stops() -> Array:
+	var out: Array = []
+	if _route_strip == null:
+		return out
+	for c in _route_strip.get_children():
+		if c is PanelContainer and c.has_meta("stop"):
+			out.append(c.get_meta("stop"))
+	return out
 
 # Put the page back at the top. Both phase changes want it: picking a game lands
 # you on the board, reporting lands you back on the offering.
@@ -3968,16 +4103,33 @@ func _build_ui() -> void:
 	# the board: a chest, an event, a reward screen. It is the top-left corner of
 	# the page now and it never moves. The title gives up the left edge for it and
 	# takes the centre.
+	# …and between the health and the menu, THE ROAD YOU HAVE WALKED — the same
+	# cover-and-arrow strip the end-of-run screen draws, at the top of the page for
+	# the whole run rather than once it is over. It is the one picture of the run as
+	# a JOURNEY: the checklist says what you owe, the board says what is chasing
+	# you, the route ladder says where you could go — and none of them said where
+	# you have been. That is the thing a roguelike run is, and it was only ever
+	# shown on the screen that tells you it has finished.
+	#
+	# The title gives up the centre for it and takes the right, which is also the
+	# honest ranking: the title is decoration, and the strip is state.
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	header.add_child(_build_health_chip())
 	header.add_child(_build_gold_chip())
+	_route_strip = HBoxContainer.new()
+	_route_strip.add_theme_constant_override("separation", 0)
+	_route_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_route_strip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_route_strip.clip_contents = true
+	header.add_child(_route_strip)
 	var title := Label.new()
 	title.text = "The Search for the Amulet"
-	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.size_flags_horizontal = Control.SIZE_SHRINK_END
 	header.add_child(title)
 	header.add_child(_build_menu_button())
 	root.add_child(header)

@@ -11,6 +11,58 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A run you can build, and the road you walked put at the top of the page.**
+
+  **⚙ Custom Run.** The catalog is 846 games and the only say you had in which of
+  them a run was made of was one global switch, three values wide. "A deckbuilder
+  run", "only games I have never beaten", "send me at Balatro", "a short one" are
+  all the same wish and none of them could be asked for. So: a setup screen off
+  the main menu, and a `RunConfig` autoload behind it.
+
+  It carries **three filters, not one**, because the three questions are
+  genuinely independent — what **the map** is made of, which of those may be
+  **the start**, and which may be **the amulet** — and the interesting runs come
+  from the three disagreeing ("any map, a deckbuilder start, an amulet I've never
+  won on"). Each has the same four axes: library, genre (a multi-select, since
+  "Action or Deckbuilder" is a run someone wants and a dropdown cannot say it),
+  your lifetime record, and a release-year range. The start and amulet filters
+  select from **inside** the map rather than beside it, so a start filter can
+  never offer an opening card no route could leave.
+
+  Under them the **run length** — how many games from the start to the Amulet,
+  which used to be a pair of constants — and an optional **named target**, which
+  composes with the band rather than overriding it: name Balatro and set 4–6 and
+  you are offered starts four to six games out from Balatro. A named target
+  outranks every filter beside it, including `exclude_beaten_amulets`: you said a
+  game, and a general preference does not get to overrule a specific instruction.
+
+  Each column prints the count of games that survive it, live, which is what turns
+  "is this run even possible" from something you discover by pressing Begin into
+  something you read while you are choosing. Begin is disabled only for the things
+  that genuinely cannot produce a run — a map filter that leaves nothing, an
+  amulet filter with no game behind it, a target its own map excludes. A nine-game
+  map is a warning, not a refusal; it is a strange run and it is a run. One
+  warning is worth naming: the opening panel offers **one card per genre**, so a
+  single-genre map opens on one card, and the screen says so before you take it.
+
+  The filters ride in the **save**, because on a custom run the filters *are* the
+  map: resumed without them the graph rebuilds off `Settings` and the run comes
+  back standing on a node the new graph may not have.
+
+  **And the road you walked is at the top of the screen.** The end-of-run screen
+  has always drawn a run as a line of covers with arrows between them closing on
+  the Amulet, and it is the clearest picture of a run this project has — shown
+  once, on the screen that tells you it is over. It is in the header now, live,
+  for the whole run: the games played, then a dashed arrow to the Amulet. The
+  checklist says what you owe, the board says what is closing in, the route ladder
+  says where you could go; none of them said where you have *been*, which is what
+  a roguelike run actually is. The title gives up the centre for it and takes the
+  right, which is the honest ranking of the two — the title is decoration and the
+  strip is state. The covers are small and carry no name (that is on the hover)
+  because the strip shares one 1280-wide row with the health chip, the gold chip,
+  the title and the menu, and the page underneath still fits 720 without
+  scrolling — which the three fit tests confirm it does.
+
 - **Three new robots, a start that is a game, connections you can count, and a
   star chart that stops decoding the catalog to draw a dot.**
 
