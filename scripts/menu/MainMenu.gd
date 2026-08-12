@@ -518,6 +518,21 @@ func _save_row(entry: Dictionary) -> Control:
 	sub.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	text.add_child(sub)
 
+	# A CUSTOM RUN says so, on its own line and in its own colour. It is the one
+	# fact about a save that changes what resuming it means — an ordinary row and a
+	# deckbuilder-only row are the same character on the same game otherwise — and
+	# it comes off the save's own stored filters rather than off the live RunConfig,
+	# which describes whatever run is loaded now.
+	var custom: String = SaveSystem.describe_run_config(entry)
+	if custom != "":
+		var tag := Label.new()
+		tag.text = custom
+		tag.tooltip_text = "This run was built on the Custom Run screen — resuming it rebuilds that map."
+		tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tag.add_theme_font_size_override("font_size", 10)
+		tag.add_theme_color_override("font_color", UITheme.ACCENT)
+		text.add_child(tag)
+
 	var load_btn := Button.new()
 	load_btn.text = "Resume"
 	load_btn.custom_minimum_size = Vector2(84, 32)

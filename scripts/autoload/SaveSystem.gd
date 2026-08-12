@@ -111,7 +111,23 @@ func _summary(data: Dictionary, display_name: String, slot: int = -1) -> Diction
 		"games_played": int(data.get("games_played", 0)),
 		"saved_at": int(data.get("saved_at", 0)),
 		"version": int(data.get("save_version", 1)),
+		# A CUSTOM RUN, described without loading it. The Continue list reads this
+		# summary and nothing else, so a run built out of a chosen set of games would
+		# otherwise be indistinguishable from an ordinary one until it was resumed —
+		# and the one thing you want to know before picking a save off a list of them
+		# is which run it is.
+		"run_config": (data.get("run_config", {}) as Dictionary).duplicate(true),
 	}
+
+# One line describing the custom run behind a save summary, or "" for an ordinary
+# one. Read off the SAVED block rather than off the live RunConfig, which is
+# describing whatever run is loaded now — not the one on the row being drawn.
+static func describe_run_config(entry: Dictionary) -> String:
+	var raw = entry.get("run_config", {})
+	if not (raw is Dictionary):
+		return ""
+	var words: String = RunConfig.describe(raw)
+	return ("⚙  " + words) if words != "" else ""
 
 # The Continue list: the run's own recovery point first (it's the most recent
 # thing that happened by definition), then every named save, newest first. A

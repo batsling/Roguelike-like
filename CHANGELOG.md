@@ -49,6 +49,26 @@ For how the project is laid out and how its systems fit together, see
   map: resumed without them the graph rebuilds off `Settings` and the run comes
   back standing on a node the new graph may not have.
 
+  **The Continue list says which run a save is.** A custom run that reads exactly
+  like an ordinary one on the save list is a run you cannot tell you are about to
+  resume — and it is the one fact about a save that changes what resuming it
+  means. Each row now carries its own `⚙` line ("map: Deckbuilder · start: never
+  beaten · 4–6 games") built from the filters stored in that save, not from the
+  live `RunConfig`, which is describing whatever run happens to be in memory.
+
+  **And the suite is all green, with no Risky.** Two tests used to early-`return`
+  when the run's random graph did not reach the case they were about, so *which*
+  test reported "Did not assert" varied between runs and the noise was documented
+  as expected. Neither needed to be that way. The Atlas's path-order test walked
+  from wherever the run's random start landed and took the first unvisited
+  neighbour it found — a dead end waiting to happen, since `visited_games` is a
+  set and a walk that wanders into the fringe has nowhere left to go; it starts at
+  the best-connected game in the catalog now and steers toward degree, so the case
+  is reached every run. The route-map's fit test simply asserts the *other*
+  branch: a route too big to fit legibly should bottom out at the legibility floor
+  and scroll, which is a fact worth pinning rather than a reason to assert
+  nothing.
+
   **And the road you walked is at the top of the screen.** The end-of-run screen
   has always drawn a run as a line of covers with arrows between them closing on
   the Amulet, and it is the clearest picture of a run this project has — shown

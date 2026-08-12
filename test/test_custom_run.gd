@@ -200,6 +200,68 @@ func test_an_ordinary_runs_save_restores_as_an_ordinary_run() -> void:
 	assert_false(RunConfig.enabled, "a save with no custom block is not a custom run")
 	assert_true(RunConfig.map_passes(Data.all_games()[0]), "and it filters nothing")
 
+# --- what the Continue list says about it ----------------------------------
+#
+# A custom run that reads exactly like an ordinary one on the save list is a run
+# you cannot tell you are about to resume — and it is the one fact about a save
+# that changes what resuming it means.
+
+func test_an_ordinary_run_says_nothing_on_the_save_list() -> void:
+	RunConfig.reset()
+	assert_eq(RunConfig.describe(RunConfig.serialize()), "", "there is nothing to say")
+	assert_eq(SaveSystem.describe_run_config({"run_config": RunConfig.serialize()}), "",
+		"so the row stays as it was")
+	assert_eq(SaveSystem.describe_run_config({}), "",
+		"and a save written before custom runs existed is not one")
+
+func test_a_custom_run_describes_itself_on_the_save_list() -> void:
+	RunConfig.apply({
+		"map": _spec({"genres": [GameData.GameType.DECKBUILDER]}),
+		"start": _spec({"record": RunConfig.Record.NEVER_BEATEN}),
+		"min_path": 4, "max_path": 6,
+	})
+	var line: String = SaveSystem.describe_run_config({"run_config": RunConfig.serialize()})
+	assert_string_contains(line, "Deckbuilder", "it names what the map is made of")
+	assert_string_contains(line, "never beaten", "and what the start is drawn from")
+	assert_string_contains(line, "4–6 games", "and how long a run it is")
+
+func test_the_save_list_names_a_target_rather_than_its_filter() -> void:
+	var target: GameData = Data.get_game(&"balatro")
+	if target == null:
+		pass_test("balatro is not in this catalog")
+		return
+	RunConfig.apply({"amulet_id": "balatro"})
+	assert_string_contains(SaveSystem.describe_run_config({"run_config": RunConfig.serialize()}),
+		target.display_name, "the row says which game the run is aimed at")
+
+func test_the_save_list_reads_the_saved_run_not_the_loaded_one() -> void:
+	# The Continue list draws rows for runs it has NOT loaded, so the description
+	# has to come off each row's own stored block. Reading the live singleton would
+	# label every row with whatever run happens to be in memory.
+	RunConfig.apply({"map": _spec({"genres": [GameData.GameType.TRADITIONAL]})})
+	var saved: Dictionary = RunConfig.serialize()
+	RunConfig.apply({"map": _spec({"genres": [GameData.GameType.ACTION]})})
+	var line: String = SaveSystem.describe_run_config({"run_config": saved})
+	assert_string_contains(line, "Traditional", "the row describes the run on the row")
+	assert_false(line.contains("Action"), "not the one currently loaded: %s" % line)
+
+func test_a_save_summary_carries_the_custom_block() -> void:
+	# End to end: the summary the Continue list is built from has to bring the
+	# filters with it, since it is all the list ever reads.
+	RunConfig.apply({"map": _spec({"genres": [GameData.GameType.DECKBUILDER]})})
+	GameState.character_id = &"ironclad"
+	GameState.save_name = "custom-run-test"
+	assert_true(SaveSystem.save_named("custom-run-test"), "the run saves")
+	var found: Dictionary = {}
+	for entry in SaveSystem.list_resumable():
+		if String(entry.get("name", "")) == "custom-run-test":
+			found = entry
+			break
+	SaveSystem.clear_all_saves()
+	assert_false(found.is_empty(), "the save is on the Continue list")
+	assert_string_contains(SaveSystem.describe_run_config(found), "Deckbuilder",
+		"and the list can say what kind of run it is without loading it")
+
 # --- the screen ------------------------------------------------------------
 
 func _screen() -> Node:

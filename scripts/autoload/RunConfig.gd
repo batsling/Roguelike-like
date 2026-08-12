@@ -205,27 +205,43 @@ func apply(config: Dictionary) -> void:
 	amulet_id = StringName(config.get("amulet_id", ""))
 	RunGraph.invalidate_cache()
 
-# One line describing the run this configures, for the overworld's menu and the
-# save list — a custom run that looks exactly like an ordinary one on the way back
-# in is a run you cannot tell you are in.
+# One line describing the run this configures — for the Continue list, where a
+# custom run that reads exactly like an ordinary one is a run you cannot tell you
+# are about to resume.
 func summary() -> String:
-	if not enabled:
+	return describe(serialize())
+
+# The same line, off a SERIALIZED block rather than off this singleton. That is
+# the form the Continue list has: it reads save summaries without loading them,
+# and the live RunConfig is describing whatever run is loaded now — not the one on
+# the row being drawn. `summary()` goes through here so the two can never word the
+# same configuration differently.
+static func describe(data: Dictionary) -> String:
+	if not bool(data.get("enabled", false)):
 		return ""
 	var parts: Array = []
-	var map_words: String = describe_spec(map_spec)
+	var map_words: String = describe_spec(spec_from(data.get("map", {})))
 	parts.append("map: %s" % map_words if map_words != "" else "map: the whole catalog")
-	var start_words: String = describe_spec(start_spec)
+	var start_words: String = describe_spec(spec_from(data.get("start", {})))
 	if start_words != "":
 		parts.append("start: %s" % start_words)
-	if amulet_id != &"":
-		var target: GameData = Data.get_game(amulet_id)
-		parts.append("amulet: %s" % (target.display_name if target != null else String(amulet_id)))
+	var target_id: String = String(data.get("amulet_id", ""))
+	if target_id != "":
+		var target: GameData = Data.get_game(StringName(target_id))
+		parts.append("→ %s" % (target.display_name if target != null else target_id))
 	else:
-		var amulet_words: String = describe_spec(amulet_spec)
+		var amulet_words: String = describe_spec(spec_from(data.get("amulet", {})))
 		if amulet_words != "":
 			parts.append("amulet: %s" % amulet_words)
-	var band: Vector2i = path_band()
-	parts.append("%d–%d games" % [band.x, band.y] if band.x != band.y else "%d games" % band.x)
+	# Read off the stored numbers, put through the same clamp `path_band` applies,
+	# so a save written with a crossed or out-of-range band reads as the band the
+	# run will actually get.
+	var lo: int = clampi(int(data.get("min_path", RunGraph.MIN_PATH_LENGTH)),
+		PATH_FLOOR, PATH_CEILING)
+	var hi: int = clampi(int(data.get("max_path", RunGraph.MAX_PATH_LENGTH)),
+		PATH_FLOOR, PATH_CEILING)
+	parts.append("%d games" % lo if lo == hi
+		else "%d–%d games" % [mini(lo, hi), maxi(lo, hi)])
 	return "  ·  ".join(PackedStringArray(parts))
 
 # A spec in words, or "" when it narrows nothing.
@@ -278,17 +294,18 @@ func restore(data: Dictionary) -> void:
 		reset()
 		return
 	apply({
-		"map": _spec_from(data.get("map", {})),
-		"start": _spec_from(data.get("start", {})),
-		"amulet": _spec_from(data.get("amulet", {})),
+		"map": spec_from(data.get("map", {})),
+		"start": spec_from(data.get("start", {})),
+		"amulet": spec_from(data.get("amulet", {})),
 		"min_path": int(data.get("min_path", RunGraph.MIN_PATH_LENGTH)),
 		"max_path": int(data.get("max_path", RunGraph.MAX_PATH_LENGTH)),
 		"amulet_id": String(data.get("amulet_id", "")),
 	})
 
 # A saved spec, filled in from the default for anything the save predates — so a
-# new axis added later loads as "any" rather than as a hole.
-static func _spec_from(raw) -> Dictionary:
+# new axis added later loads as "any" rather than as a hole. Public because the
+# Continue list reads saved blocks it never restores.
+static func spec_from(raw) -> Dictionary:
 	var spec: Dictionary = default_spec()
 	if not (raw is Dictionary):
 		return spec

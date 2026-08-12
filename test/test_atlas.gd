@@ -783,20 +783,40 @@ func test_path_taken_follows_the_order_the_games_were_visited() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)
 	ui.choose_start(0)
-	# Walk three real connections.
-	for _hop in range(3):
-		var options: Array = RunGraph.neighbors(GameState.current_game_id)
-		var moved: bool = false
-		for candidate in options:
-			if not GameState.visited_games.has(candidate) and candidate != GameState.current_game_id:
-				GameState.set_current_game(candidate)
-				moved = true
-				break
-		if not moved:
-			break
-	var view := _open()
-	if not view.has_layout() or view.history_segment_count() < 2:
+	# Walk three real connections — from a HUB, and always to the best-connected
+	# game not yet stood on.
+	#
+	# It used to walk from wherever the run's random start landed, taking the first
+	# unvisited neighbour it found, and give up quietly when it ran out. That is a
+	# dead end waiting to happen: `visited_games` is a set, so a walk that wanders
+	# into the fringe has nowhere unvisited left to go, and the test then asserted
+	# nothing at all and reported itself Risky. Starting at the best-connected game
+	# in the catalog and steering toward degree keeps the walk in territory that
+	# always has somewhere to go, so the case under test is reached every run.
+	var hubs: Array = RunGraph.hub_ids(1)
+	if hubs.is_empty():
+		pass_test("no graph to walk in this catalog")
 		return
+	GameState.set_current_game(StringName(hubs[0]))
+	for _hop in range(3):
+		var best: StringName = &""
+		var best_degree: int = -1
+		for candidate in RunGraph.neighbors(GameState.current_game_id):
+			if GameState.visited_games.has(candidate) or candidate == GameState.current_game_id:
+				continue
+			var d: int = RunGraph.degree(candidate)
+			if d > best_degree:
+				best_degree = d
+				best = candidate
+		if best == &"":
+			break
+		GameState.set_current_game(best)
+	var view := _open()
+	if not view.has_layout():
+		pass_test("no baked sky in this checkout — run tools/bake_atlas.py")
+		return
+	assert_gte(view.history_segment_count(), 2,
+		"walking out from a hub records a history to check")
 	var walked: Array = GameState.visited_games.duplicate()
 	walked.append(GameState.current_game_id)
 	assert_eq(view.history_segment_count(), walked.size() - 1,

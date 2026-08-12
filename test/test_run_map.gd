@@ -190,7 +190,15 @@ func test_the_route_fits_the_window_it_opens_in() -> void:
 	var ladder: Vector2 = modal._canvas_holder.custom_minimum_size
 	var room: Vector2 = modal._scroller.size
 	if modal._zoom <= modal.FIT_ZOOM_MIN + 0.001:
-		return                    # a route too big to fit legibly; scrolling is right
+		# A route too big to fit LEGIBLY. Scrolling is the right answer there, and
+		# the thing worth pinning is that the fit went all the way to the floor and
+		# stopped rather than shrinking the rungs into a smudge — so this branch
+		# asserts that, instead of asserting nothing and reporting itself risky.
+		assert_almost_eq(modal._zoom, modal.FIT_ZOOM_MIN, 0.001,
+			"a route this big bottoms out at the legibility floor and scrolls")
+		assert_gt(ladder.x, room.x + 1.0,
+			"which is only the right call because it genuinely does not fit")
+		return
 	assert_lte(ladder.x, room.x + 1.0, "the whole route is visible across")
 	assert_lte(ladder.y, room.y + 1.0, "and all the way down")
 
