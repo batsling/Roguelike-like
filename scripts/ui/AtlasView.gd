@@ -174,6 +174,43 @@ var _hulls: Array = []               # [{ci, centre: Vector2, radius: float}], b
 var _sequel_cache: Dictionary = {}   # edge index -> bool, built lazily
 var _notes_refill: Callable = Callable()   # rebuilds the open notes panel
 
+# --- the per-star caches the draw loop lives on ----------------------------
+#
+# _draw_stars runs the whole sky up to three times a frame (roads go down between
+# the off-route and on-route passes), and every star it touches used to ask six
+# separate questions that each began by rebuilding a StringName out of the
+# layout's PackedStringArray and then going to Data / GameStats with it. At 845
+# stars that is thousands of dictionary round-trips per frame for answers that do
+# not change between frames at all.
+#
+# So the two that are pure functions of the SKY are answered once and kept: each
+# star's id, and the GameData at it. Both are wiped by `_invalidate_star_cache`,
+# which is called wherever the sky itself changes — after one of those, index i
+# is a different game.
+#
+# Only derived-from-the-sky facts are cached, never derived-from-the-run or
+# derived-from-the-record ones: the filters and the lifetime record move from
+# places that have no reason to tell a star chart about it, and a cache that has
+# to be told is a cache that eventually answers the wrong question. What is left
+# is cheap enough — with the id in hand, `passes_filter` is a few int compares
+# and at most two dictionary hits.
+var _ids_cache: Array[StringName] = []
+var _game_cache: Array = []          # star index -> GameData (or null)
+var _aspect_cache: PackedFloat32Array = PackedFloat32Array()  # cover h/w, 0 = unknown
+
+# The widest a cover can be for a given reserved radius, over any plausible cover
+# aspect. cover_size() divides the diameter by sqrt(1 + aspect²), so the WIDEST
+# result comes from the smallest aspect — box art is never wider than 2:1, which
+# puts the floor at 0.5 and the divisor at ~1.118.
+#
+# This exists so `shows_cover` can answer "definitely not" from the radius alone.
+# It used to answer by loading the cover to measure it, which meant every star in
+# the sky decoded its JPEG on the first redraw that looked at it — and
+# `cover_count()` looks at every star on EVERY redraw, so a pan across the chart
+# walked the whole 845-cover, ~200 MB catalog through the image decoder a few
+# stars at a time. That is the stutter.
+const MAX_COVER_WIDTH_FACTOR := 1.7889   # 2 / sqrt(1 + 0.5²)
+
 # Catalog-view filters. These pick a SUBGRAPH and the sky is rebuilt around it
 # (AtlasLayoutBuilder), rather than dimming stars where they stand: a filter that
 # only dims leaves the survivors scattered across the holes their neighbours left,
@@ -653,6 +690,10 @@ static func cover_size(reserved_radius: float, aspect: float) -> Vector2:
 	return Vector2(w, w * aspect)
 
 # Cover art for a star, or null when the game has none (the star stays a dot).
+#
+# READING THIS LOADS THE COVER (GameData.cover_image decodes on first access), so
+# it is only ever called for a star that is actually about to be drawn as art —
+# `shows_cover` answers the "is it big enough" question without it.
 func cover_texture(i: int) -> Texture2D:
 	if not has_layout():
 		return null
@@ -663,13 +704,42 @@ func cover_texture(i: int) -> Texture2D:
 		return null
 	return game.cover_image
 
-# Screen-space size this star's cover would be drawn at, or ZERO if it has none.
-func cover_screen_size(i: int) -> Vector2:
+# The reserved circle a star is packed into, in screen pixels. The one number
+# both the cover tests below are derived from, and free to compute.
+func _reserved_radius(i: int) -> float:
+	return AtlasLayout.star_radius(layout.degree_of(i)) * _scale
+
+# A cover's height/width, remembered per star so it is measured once. 0 until the
+# texture has been loaded for a draw — and it is only loaded when the star is
+# already over the size threshold, so a star that never blooms never pays.
+func _cover_aspect(i: int) -> float:
+	if _aspect_cache.size() != layout.star_count():
+		_aspect_cache.resize(layout.star_count())
+		_aspect_cache.fill(0.0)
+	if _aspect_cache[i] > 0.0:
+		return _aspect_cache[i]
 	var tex: Texture2D = cover_texture(i)
 	if tex == null:
-		return Vector2.ZERO
+		return 0.0
 	var aspect: float = float(tex.get_height()) / float(tex.get_width())
-	return cover_size(AtlasLayout.star_radius(layout.degree_of(i)) * _scale, aspect)
+	_aspect_cache[i] = aspect
+	return aspect
+
+# Screen-space size this star's cover would be drawn at, or ZERO if it has none
+# — or if it is nowhere near big enough to be drawn, in which case the answer is
+# reached without touching the art.
+func cover_screen_size(i: int) -> Vector2:
+	if not has_layout():
+		return Vector2.ZERO
+	var reserved: float = _reserved_radius(i)
+	# The widest this star's cover could POSSIBLY be. Under the threshold there is
+	# no aspect that would put it over, so there is nothing to measure.
+	if reserved * MAX_COVER_WIDTH_FACTOR < MIN_COVER_PX:
+		return Vector2.ZERO
+	var aspect: float = _cover_aspect(i)
+	if aspect <= 0.0:
+		return Vector2.ZERO
+	return cover_size(reserved, aspect)
 
 # Whether this star is currently drawn as art rather than a dot. Big, well
 # connected games cross the threshold at a much lower zoom than dead ends do,
@@ -741,12 +811,37 @@ func sequel_link_count() -> int:
 func star_record_color(i: int) -> Color:
 	if not has_layout() or not pure_catalog:
 		return Color(0, 0, 0, 0)
-	var gid: StringName = layout.id_at(i)
+	# Deliberately NOT cached. The two lookups behind it are dictionary hits, and
+	# the expensive half — rebuilding a StringName out of the layout's packed ids
+	# on every ask — is what `star_id` already took care of. Caching the answer
+	# instead would mean owning "has the lifetime record moved", and it moves from
+	# places that have no reason to tell a star chart about it.
+	var gid: StringName = star_id(i)
 	if GameStats.amulet_wins(gid) > 0:
 		return COL_AMULET_WIN
 	if GameStats.beaten_count(gid) > 0:
 		return COL_BEATEN
 	return Color(0, 0, 0, 0)
+
+# --- the per-star caches ---------------------------------------------------
+
+# The star's game id. `layout.id_at` builds a StringName out of the layout's
+# PackedStringArray every time it is asked; the draw loop asks several times per
+# star per pass, so the conversion is done once per sky here instead.
+func star_id(i: int) -> StringName:
+	if _ids_cache.size() != layout.star_count():
+		_ids_cache.clear()
+		for k in range(layout.star_count()):
+			_ids_cache.append(layout.id_at(k))
+	return _ids_cache[i]
+
+# Everything keyed by star index, dropped. Call this wherever the sky itself
+# changes — a different baked file, or a filter that rebuilt the layout — since
+# after one of those, index i is a different game.
+func _invalidate_star_cache() -> void:
+	_ids_cache.clear()
+	_game_cache.clear()
+	_aspect_cache.clear()
 
 # Whether a star survives the catalog filters. Always true outside the catalog
 # view, which has no filter bar — and, in it, true for everything currently
@@ -756,7 +851,7 @@ func star_record_color(i: int) -> Color:
 func passes_filter(i: int) -> bool:
 	if not pure_catalog or not has_layout():
 		return true
-	return passes_game_filter(Data.get_game(layout.id_at(i)))
+	return passes_game_filter(Data.get_game(star_id(i)))
 
 # The same question asked of a game rather than a star index — this is what
 # selects the subgraph to lay out, so it cannot depend on the sky being drawn.
@@ -843,7 +938,12 @@ func _relayout(reframe: bool = true) -> void:
 		built = _base_layout
 	if built == null:
 		return
-	layout = built
+	# Only when the stars actually moved: a filter that clears back to the baked sky
+	# hands back the same layout, and dropping the caches there would throw away the
+	# covers the chart has already decoded for nothing.
+	if built != layout:
+		layout = built
+		_invalidate_star_cache()
 	_neighbors.clear()
 	_hulls.clear()
 	_sequel_cache.clear()
@@ -880,6 +980,9 @@ func set_capital_count(count: int) -> void:
 	_f_region = -1                    # region indices belong to the old sky
 	_base_layout = res as AtlasLayout
 	layout = _base_layout
+	# The sky is a different file with different star indices; nothing keyed by
+	# index survives it. _relayout would only notice if it ended up rebuilding.
+	_invalidate_star_cache()
 	_relayout(false)
 	_rebuild_filter_bar()
 	frame_all()
@@ -889,37 +992,69 @@ func set_capital_count(count: int) -> void:
 func has_record(i: int) -> bool:
 	if not has_layout() or not pure_catalog:
 		return false
-	var gid: StringName = layout.id_at(i)
-	return GameStats.amulet_wins(gid) > 0 or GameStats.beaten_count(gid) > 0
+	# Exactly the question star_record_color already answers — an unplayed game's
+	# centre is transparent — so it is asked once and read twice.
+	return star_record_color(i).a > 0.0
 
 # Destroyed by Bash this run: the game is gone from the pool and no route can
 # pass through it any more.
 func is_bashed(i: int) -> bool:
-	return not pure_catalog and has_layout() and GameLoop2.is_bashed(layout.id_at(i))
+	return not pure_catalog and has_layout() and GameLoop2.is_bashed(star_id(i))
 
 # A node Transmute has pasted a different game onto. The node keeps its place on
 # the graph — its routes are unchanged — but it now plays the replacement.
 func is_transmuted(i: int) -> bool:
-	return not pure_catalog and has_layout() and GameLoop2.is_transmuted(layout.id_at(i))
+	return not pure_catalog and has_layout() and GameLoop2.is_transmuted(star_id(i))
 
 # The game actually AT a star now: the pasted replacement where there is one,
 # otherwise the node's own game.
 func game_at(i: int) -> GameData:
 	if not has_layout():
 		return null
-	if pure_catalog:
-		return Data.get_game(layout.id_at(i))
-	return GameLoop2.game_at(layout.id_at(i))
+	# Only the catalog's answer is cached. In a run the game AT a node is whatever
+	# Transmute last pasted there, and that can change while the chart is open —
+	# a lookup per star is the honest price of drawing what is actually there.
+	if not pure_catalog:
+		return GameLoop2.game_at(star_id(i))
+	if _game_cache.size() != layout.star_count():
+		_game_cache.resize(layout.star_count())
+		_game_cache.fill(null)
+	var cached = _game_cache[i]
+	if cached is GameData:
+		return cached
+	var game: GameData = Data.get_game(star_id(i))
+	_game_cache[i] = game
+	return game
 
 # How many stars are showing art right now — drives the zoom readout.
+#
+# ON SCREEN only, and that is not a compromise: this runs on every redraw, and
+# `shows_cover` has to load a cover to measure it once the star is over the size
+# threshold. Counting the whole sky therefore meant that zooming in far enough
+# for every star to qualify decoded all 845 covers, in a HUD label, on every pan
+# step. Bounded to the viewport it can never cost more than the frame is drawing
+# anyway — and "12 showing art" reading as twelve you can see is the more useful
+# sentence besides.
 func cover_count() -> int:
 	if not has_layout():
 		return 0
+	var vis: Rect2 = _visible_rect()
 	var n: int = 0
 	for i in range(layout.star_count()):
-		if shows_cover(i):
+		if vis.has_point(to_screen(layout.position_of(i))) and shows_cover(i):
 			n += 1
 	return n
+
+# The canvas rect a star has to fall inside to be worth drawing, widened by
+# COVER_CULL_MARGIN because a cover is far bigger than the dot at its centre and
+# a star just off the edge can still have art on screen. Shared by the count
+# above and StarCanvas._draw, so the two agree about what is showing.
+const COVER_CULL_MARGIN := 400.0
+
+func _visible_rect() -> Rect2:
+	var box: Vector2 = _canvas.size if _canvas != null else _canvas_size()
+	return Rect2(Vector2(-COVER_CULL_MARGIN, -COVER_CULL_MARGIN),
+		box + Vector2(COVER_CULL_MARGIN, COVER_CULL_MARGIN) * 2.0)
 
 # ---------------------------------------------------------------------------
 # Picking
@@ -1497,6 +1632,18 @@ func _refresh_card() -> void:
 		play.pressed.connect(func(): game.launch())
 		_card_box.add_child(play)
 
+	# The store page as its own shortcut, because `launch()` prefers the local
+	# install and an owned game's Steam page is otherwise unreachable from here —
+	# and the page is what answers "what is this and what does it cost" for the
+	# ~800 games on the chart that aren't installed.
+	if game != null and game.has_steam_page():
+		var steam := Button.new()
+		steam.text = "🎮  Steam page"
+		steam.tooltip_text = "Open %s on Steam." % game.display_name
+		steam.add_theme_font_size_override("font_size", 12)
+		steam.pressed.connect(func(): game.open_steam_page())
+		_card_box.add_child(steam)
+
 	var dismiss := Button.new()
 	dismiss.text = "Dismiss"
 	dismiss.add_theme_font_size_override("font_size", 12)
@@ -2037,9 +2184,8 @@ class StarCanvas extends Control:
 		var show_labels: bool = ratio >= AtlasView.ZOOM_LABELS
 		var focused: bool = view._selected >= 0
 		# Covers are far bigger than dots, so a star whose centre is off-screen can
-		# still have art on screen — widen the cull margin generously.
-		var margin: float = 400.0
-		var visible_rect := Rect2(Vector2(-margin, -margin), size + Vector2(margin, margin) * 2.0)
+		# still have art on screen — the cull margin is widened generously for it.
+		var visible_rect: Rect2 = view._visible_rect()
 
 		_draw_hulls(lay)
 		# Background links fade out when zoomed way out, but a game you actually
@@ -2499,8 +2645,8 @@ class StarCanvas extends Control:
 			var r: float = view.drawn_half_height(i)
 			taken.append(Rect2(p.x - r, p.y - r, r * 2.0, r * 2.0))
 		for i in visible:
-			var game: GameData = Data.get_game(lay.id_at(i))
-			var label: String = game.display_name if game != null else String(lay.id_at(i))
+			var game: GameData = view.game_at(i)
+			var label: String = game.display_name if game != null else String(view.star_id(i))
 			var p: Vector2 = view.to_screen(lay.position_of(i))
 			var r: float = view.drawn_half_height(i)
 			var w: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x

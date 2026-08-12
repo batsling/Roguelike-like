@@ -226,7 +226,7 @@ Author freely; these cost nothing.
 | `gain_empty_max_hp N` | The cap **alone**. The other half of the split, for the item or event that means an empty container and has to say so (Hollow Heart). |
 | `gain_gold N` | Gold. |
 | `gain_item <item_id>` | A **named** `items2.0` relic, handed straight over. The one reward token that says *which* item, for an event built around a specific one (Golden Idol, §12). The generator checks the id against the sheet, so a typo is an error rather than a choice that silently pays nothing. |
-| `spawn_enemy [N]` | Conjures N enemies at the run's current difficulty straight onto the following stack — the same thing the Scroll of Create Monster does. **This is what every curse costs** (§6). |
+| `spawn_enemy [N] [tag=<t>]` | Conjures N enemies at the run's current difficulty straight onto the following stack — the same thing the Scroll of Create Monster does. **This is what every curse costs** (§6). `tag=` narrows the roll to the goal-enemies carrying that tag, for a scene that has already named what it is putting on the board (`spawn_enemy tag=robot 1` on Punch Off's "I Can Take Them"). The tag is checked against the `enemies2.0` Tag column — a tag with nothing behind it raises rather than silently conjuring a stranger — and a tagged bucket widens by *difficulty* if it has to, never by dropping the tag. |
 
 **B — `EffectSystem` has the handler; the reward-DSL parser has to learn the
 word.** No engine work, just the generator.
@@ -701,12 +701,26 @@ Slay the Spire 2's Underdocks event. Prompt and both `Result` strings verbatim.
 | | `Effect` |
 |---|---|
 | **Nab** | `add_curse injury; gain_chest small 1` |
-| **I Can Take Them** | `play_game tag=mecha -> gain_loot 1; gain_chest small 2` |
+| **I Can Take Them** | `spawn_enemy tag=robot 1; play_game tag=mecha -> gain_loot 1; gain_chest small 2` |
 
 The bargain survives intact — take the treasure and wear the Injury, or do the
 work and take everything — but the second option is a **new kind of thing for an
 event to do**. It doesn't pay out and it doesn't set a goal: it *sends the player
 somewhere*.
+
+And it charges for the privilege in the same breath. "The Constructs turn to you
+menacingly" used to be prose over an option that cost nothing up front, which
+made "I Can Take Them" the obviously correct button on a *dead end* — the one
+place the format says an event may bite. `spawn_enemy tag=robot 1` is the bite:
+one of the Constructs' kin peels off and follows you, and it is still following
+you while you go and beat a mecha roguelike for the payout. Two fronts, which is
+what "I can take them" should have to mean.
+
+The tag is doing real work there. A plain `spawn_enemy` would have conjured
+whatever the roster handed over — a Leprechaun, a Fungi Beast — into a scene that
+has just told the player exactly what is standing in front of them. `tag=robot`
+is the roster answering the prose: Punch Construct, Love Bot and Robo-Cat are
+what the `enemies2.0` Tag column has behind it.
 
 `play_game tag=mecha` drops them into a random game carrying that tag, off their
 route. `mecha` is a real tag on the `games` sheet with **14 games** behind it, so
@@ -734,10 +748,11 @@ which this run measures in games played rather than floors.
 
 ### What it needed from the format: nothing
 
-No new column, no rearrangement. Both of its new capabilities arrived as tokens
-— `play_game` and a curse reference — which is the rule §9 set out holding up
-under the first event authored after it. The one structural change this round was
-a **new sheet** (`curses2.0`), not a new shape for this one.
+No new column, no rearrangement. All three of its capabilities arrived as tokens
+— `play_game`, a curse reference, and later a `tag=` on `spawn_enemy` — which is
+the rule §9 set out holding up under the first event authored after it, and again
+under the first edit to that event. The one structural change this round was a
+**new sheet** (`curses2.0`), not a new shape for this one.
 
 ---
 

@@ -83,7 +83,8 @@ const ESCAPE_AFTER_ATTEMPTS := 5
 # run — beating it again grants a Dash (REPEAT_BEAT_DASH).
 var _choices: Array = []
 # The opening choose-your-start offering (Phase.START_SELECT). Each entry:
-#   {"game": GameData, "type": int, "path_len": int, "in_window": bool}
+#   {"game": GameData, "type": int, "path_len": int, "in_window": bool,
+#    "enemy": GoalEnemyData}
 # Rolled once by RunGraph at run start: three games of three different types, each
 # MIN_PATH_LENGTH..MAX_PATH_LENGTH games from the (hidden) amulet. Cleared the
 # moment a start is chosen.
@@ -385,6 +386,10 @@ func start_run(character_id: StringName = &"") -> void:
 # amulet is recorded on the run (hidden from the player — only the DISTANCE to it
 # shows) and each option is resolved to its GameData. Options whose game is missing
 # from the catalog are dropped rather than rendered as a blank card.
+# Each option also carries the goal-enemy waiting at that game, because the start
+# is now a game you PLAY rather than a doorstep you stand on (see choose_start) —
+# and a card you are going to fight at has to say what is standing there before
+# you press it, exactly as every other card in the run does.
 func _build_start_options(pick: Dictionary) -> Array:
 	var out: Array = []
 	if pick.is_empty():
@@ -399,13 +404,82 @@ func _build_start_options(pick: Dictionary) -> Array:
 			"type": int(opt.get("type", g.type)),
 			"path_len": int(opt.get("path_len", 0)),
 			"in_window": bool(opt.get("in_window", true)),
+			# Rolled once, when the picker is built: a re-render must not reroll what
+			# is waiting, or the card would say something different every repaint.
+			# The run has not started, so this is always the Low tier and never a boss.
+			"enemy": GameLoop2.roll_enemy(GameLoop2.game_type_key(g), _current_tier()),
 		})
 	return out
 
-# Take the offered start at `index` (choose-your-start, Phase.START_SELECT): the
-# player lands on that game and its neighbours become the first offering. No enemy
-# spawns and no shields are granted — the start is where you BEGIN, not a game you
-# were sent to beat; the run's first pick is the first game you play.
+# One start option in the shape the offering's cards and GameChoiceModal read, so
+# the whole of that machinery works on the picker without a second version of it.
+# The start game is its own slot — nothing has been transmuted yet.
+func _start_choice(index: int) -> Dictionary:
+	if index < 0 or index >= _start_options.size():
+		return {}
+	var opt: Dictionary = _start_options[index]
+	var game: GameData = opt["game"]
+	return {
+		"game": game, "enemy": opt.get("enemy"), "slot": game.id,
+		"boss": false, "amulet": game.id == GameState.amulet_game_id,
+		"repeat": GameState.has_beaten_game(game.id),
+	}
+
+# Clicking a start card opens the ordinary card popup over it — the enemy waiting
+# there, its goal, the tries the game grants, the connections it opens onto, and
+# the route from it. Bash and Transmute are withheld: they reshape an OFFERING,
+# and the picker is three roads out of the same run rather than a table of cards
+# that can be refilled.
+func open_start_choice(index: int) -> GameChoiceModal:
+	if _phase != Phase.START_SELECT or index < 0 or index >= _start_options.size():
+		return null
+	if _choice_modal != null and is_instance_valid(_choice_modal):
+		return _choice_modal
+	var opt: Dictionary = _start_options[index]
+	var choice: Dictionary = _start_choice(index)
+	var modal := GameChoiceModal.open(self, index, choice, {
+		"route": {
+			"text": "%d games from the Amulet" % int(opt["path_len"]),
+			"tip": "The shortest route from %s to the hidden Amulet game." % opt["game"].display_name,
+			"color": UITheme.GOLD,
+		},
+		# The pace, stated ABSOLUTELY rather than as the offering's "speeds up /
+		# slows down". There is nowhere to compare against yet — the run has no
+		# position — and the amulet distances that comparison reads are not built
+		# until the first offering is.
+		"pace": _start_pace_note(int(opt["path_len"])),
+		"tries": GameLoop2.shields_for_game(choice["game"]),
+		"beatable": _beatable_row(choice),
+		"no_verbs": true,
+		"action_text": "▶  Start at %s" % opt["game"].display_name,
+		"action_tip": "Begin the run here — you go and play this game for real, right now.",
+	})
+	_choice_modal = modal
+	modal.chose.connect(choose_start)
+	modal.finished.connect(func(): _choice_modal = null)
+	return modal
+
+# turn_note's answer for a start: how fast the board runs at that distance from
+# the Amulet, said outright. Same ladder, same colours — only the sentence is
+# different, because there is no "here" to be faster or slower than.
+func _start_pace_note(hops: int) -> Dictionary:
+	var turns: int = RunDifficulty.turns_for_hops(hops)
+	return {
+		"text": "⏱ Enemies act ×%d turn%s there" % [turns, "" if turns == 1 else "s"],
+		"color": RunDifficulty.turns_band_color(turns),
+		"turns": turns,
+		"tip": "Standing there, every enemy acts %d time%s per game.\n\n%s" % [
+			turns, "" if turns == 1 else "s", RunDifficulty.turns_ladder_text(turns)],
+	}
+
+# Take the offered start at `index` (choose-your-start, Phase.START_SELECT).
+#
+# The start used to be a doorstep: you landed on the game, nothing spawned, no
+# shields were granted, and the run's first real game was whatever you travelled
+# to from it. It is a GAME now — its goal-enemy spawns and stands on the board
+# with the rest, it hands over its tries, and the run opens on the report panel
+# with something to beat. Mechanically this is the commit half of `pick`, which
+# is why it reads the same: one path, so a start and a travel cannot drift.
 func choose_start(index: int) -> void:
 	if _phase != Phase.START_SELECT or index < 0 or index >= _start_options.size():
 		return
@@ -416,9 +490,23 @@ func choose_start(index: int) -> void:
 	GameLog.add("Starting the run at %s (%s) — %d games from the Amulet." % [
 		game.display_name, RunGraph.type_label(int(opt["type"])), int(opt["path_len"])],
 		UITheme.GOLD)
+	_chosen = _start_choice(index)
 	_start_options.clear()
-	_phase = Phase.SELECT
+	# The offering behind the report panel is the start game's neighbours: the
+	# checklist reads `_chosen`, but a Scramble or a Dash taken while playing needs
+	# a table to act on, and so does the return from the report.
 	_build_choices()
+	if _chosen.get("enemy") != null:
+		GameLoop2.choose_game(_chosen["enemy"])
+		var granted: int = GameLoop2.grant_selection_shields(game)
+		GameLog.add("%s — %d shields to spend on tries." % [game.display_name, granted],
+			SHIELD_BLUE)
+		_phase = Phase.PLAYING
+		_populate_play_panel()
+	else:
+		# No goal-enemy could be rolled at all (an empty roster). There is nothing to
+		# play for, so the start falls back to what it always was — a place to stand.
+		_phase = Phase.SELECT
 	_refresh()
 	_scroll_to_top()
 	# The run is now a real run — park a recovery point on it straight away.
@@ -450,9 +538,13 @@ func capture_view_state() -> Dictionary:
 	var starts: Array = []
 	for opt in _start_options:
 		var sg: GameData = opt["game"]
+		var se: GoalEnemyData = opt.get("enemy")
 		starts.append({
 			"game": String(sg.id), "type": int(opt["type"]),
 			"path_len": int(opt["path_len"]), "in_window": bool(opt.get("in_window", true)),
+			# The card says what is waiting at that start, and a save taken on the
+			# picker has to come back saying the same thing.
+			"enemy": String(se.id) if se != null else "",
 		})
 	var choices: Array = []
 	for c in _choices:
@@ -486,10 +578,17 @@ func restore_view_state(view: Dictionary) -> void:
 	for s in view.get("start_options", []):
 		var sg: GameData = Data.get_game(StringName(s.get("game", "")))
 		if sg != null:
+			# A save written before starts carried an enemy (or one whose enemy has
+			# left the catalog) rolls a fresh one rather than coming back to a card
+			# with nothing standing on it.
+			var se: GoalEnemyData = Data.get_goal_enemy_any(StringName(s.get("enemy", "")))
+			if se == null:
+				se = GameLoop2.roll_enemy(GameLoop2.game_type_key(sg), _current_tier())
 			_start_options.append({
 				"game": sg, "type": int(s.get("type", sg.type)),
 				"path_len": int(s.get("path_len", 0)),
 				"in_window": bool(s.get("in_window", true)),
+				"enemy": se,
 			})
 	_choices.clear()
 	for c in view.get("choices", []):
@@ -2090,7 +2189,7 @@ func _refresh(_a = null) -> void:
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
 	if _phase == Phase.START_SELECT:
-		_select_head.text = "Choose where to start — three genres, all the same distance from the Amulet:"
+		_select_head.text = "Choose where to start — three genres, all the same distance from the Amulet. The run opens on the one you take:"
 		_clear(_controls_row)
 		_render_start_choices()
 		_populate_standing_checklist()
@@ -2231,7 +2330,11 @@ func _make_start_card(index: int, opt: Dictionary) -> Control:
 	btn.add_theme_stylebox_override("hover", frame_h)
 	btn.add_theme_stylebox_override("pressed", frame_h)
 	btn.add_theme_stylebox_override("focus", frame_h)
-	btn.pressed.connect(func(): choose_start(index))
+	# Opens the card rather than committing: the start is a game you go and play
+	# now, so it gets the same "here is what's waiting, do you want it" popup every
+	# other game in the run gets.
+	btn.tooltip_text = "Open %s — what's waiting there, the tries it grants, and the button that starts the run on it." % game.display_name
+	btn.pressed.connect(func(): open_start_choice(index))
 	btn.mouse_entered.connect(func(): _show_start_preview(index))
 	if game.cover_image != null:
 		var art := TextureRect.new()
@@ -2272,9 +2375,12 @@ func _show_start_preview(index: int) -> void:
 	if index < 0 or index >= _start_options.size():
 		return
 	var opt: Dictionary = _start_options[index]
-	var game: GameData = opt["game"]
-	_preview.text = "[b]%s[/b] · %s · %d games from the Amulet — [i]you start here; the run's first game is whatever you travel to from it.[/i]" % [
-		game.display_name, RunGraph.type_label(int(opt["type"])), int(opt["path_len"])]
+	# The same one-line hover the offering writes — the start is a game you play,
+	# so what is waiting at it is readable without opening the card, exactly as it
+	# is for every other card in the run.
+	_hover_grant = GameLoop2.shields_for_game(opt["game"])
+	_preview.text = "%s  ·  [color=#%s]%d games from the Amulet[/color]" % [
+		_hover_line(_start_choice(index)), UITheme.GOLD.to_html(false), int(opt["path_len"])]
 
 func _render_choices() -> void:
 	_clear(_choices_row)

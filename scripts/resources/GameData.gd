@@ -129,6 +129,38 @@ static func is_openable_source(source: String) -> bool:
 func has_launch_target() -> bool:
 	return file_location.strip_edges() != "" or steam_page.strip_edges() != ""
 
+# --- the Steam shortcut ----------------------------------------------------
+#
+# `launch()` prefers the local file and only falls back to the store page, which
+# is right for "play this" — but it means that for every game with a
+# file_location the store page is unreachable, and the store page is the one
+# that answers "what IS this, what does it cost, is it on sale". So it is offered
+# as its own shortcut wherever a game is being read rather than played: the
+# Atlas's star card and the Collection's game detail.
+
+# Whether this game has a Steam page to open.
+func has_steam_page() -> bool:
+	var url: String = steam_page.strip_edges()
+	return url.begins_with("http://") or url.begins_with("https://")
+
+# The Steam app id out of the store URL, or "" when the page isn't a
+# store.steampowered.com/app/<id> link (a few point at a publisher's own page).
+func steam_app_id() -> String:
+	var m := RegEx.new()
+	# A literal, so the compile cannot fail — no error handling to write.
+	m.compile("steampowered\\.com/app/(\\d+)")
+	var found: RegExMatch = m.search(steam_page.strip_edges())
+	return found.get_string(1) if found != null else ""
+
+# Open the game's Steam page in whatever handles it — the Steam client's own
+# overlay if it is installed and registered for the URL, otherwise the browser.
+# Returns false when there is no page to open.
+func open_steam_page() -> bool:
+	if not has_steam_page():
+		return false
+	OS.shell_open(steam_page.strip_edges())
+	return true
+
 # Launch the real game. Resolves shortcuts (.lnk/.url) and protocol/URL targets
 # (e.g. steam://, https://) through the OS shell, since OS.create_process can't
 # follow those. Plain executables are launched directly, falling back to the

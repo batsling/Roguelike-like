@@ -13,25 +13,48 @@ var _ui
 func before_each() -> void:
 	_ui = SCENE.instantiate()
 	add_child_autofree(_ui)   # _ready -> builds UI + rolls the choose-your-start panel
-	# A fresh run opens on the START-SELECT panel (one card per genre, each inside
-	# the 5..8 band); taking one is what gives the run a position, so every test
-	# below starts from there.
-	_ui.choose_start(0)
+	_open_at_first_offering()
 
 func after_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
+	# The log is RUN-scope, so it goes with the run. Left standing it accumulates
+	# across every test in the file and eventually hits MAX_MESSAGES, at which
+	# point `add` starts popping from the front — and a test that remembers "the
+	# log was N long before this happened" is then reading the wrong end of it.
+	GameLog.clear()
 	SaveSystem.clear_all_saves()
 	SaveSystem.cancel_pending_resume()
 	# The tier list is a cross-run store backed by a real file, and set_rating
 	# saves — so the rating tests below would otherwise outlive themselves.
 	TierList._reset_defaults()
 
-# Re-boot the run on a specific character and take the first offered start, so a
-# test that needs a particular level-up / loadout lands where before_each does.
+# A fresh run opens on the START-SELECT panel (one card per genre, each inside the
+# 5..8 band), and taking one is the run's FIRST GAME — its enemy spawns, it hands
+# over its tries, and the run lands in the report step (Overworld2.choose_start).
+#
+# Nearly every test in this file is about the OFFERING and what you can do to it,
+# which is where beating that opening game leaves you. So this is the opening
+# played out: take the start, report it beaten, skip the board's playback, and
+# clear the drop it paid — the same three things a player does before the first
+# card is on the table. Tests that are about the opening itself call `start_run`
+# and drive the picker directly instead.
+func _open_at_first_offering() -> void:
+	_ui.choose_start(0)
+	if _ui._phase != OVERWORLD.Phase.PLAYING:
+		return
+	_ui.report(true)
+	_ui._end_resolve()             # don't wait out the strike/advance animation
+	_ui._drop_queue.clear()        # the opening game's relic isn't what's under test
+	if _ui._drop_modal != null and is_instance_valid(_ui._drop_modal):
+		_ui._drop_modal.queue_free()
+		_ui._drop_modal = null
+
+# Re-boot the run on a specific character and play out its opening, so a test that
+# needs a particular level-up / loadout lands where before_each does.
 func _reboot(character_id: StringName) -> void:
 	_ui.start_run(character_id)
-	_ui.choose_start(0)
+	_open_at_first_offering()
 
 func test_boots_a_run_with_a_graph_and_choices() -> void:
 	assert_false(GameLoop2.run_over, "a fresh run is live")
@@ -1379,18 +1402,58 @@ func test_the_longer_route_is_the_first_card() -> void:
 				"cards run longest-first: %d after %d" % [int(opt["path_len"]), prev])
 			prev = int(opt["path_len"])
 
-func test_choosing_a_start_places_the_player_and_draws_the_first_offering() -> void:
+func test_choosing_a_start_places_the_player_and_opens_the_run_on_it() -> void:
 	_ui.start_run()
 	var chosen: GameData = _ui._start_options[1]["game"]
+	var waiting: GoalEnemyData = _ui._start_options[1]["enemy"]
 	_ui.choose_start(1)
 	assert_eq(GameState.current_game_id, chosen.id, "the player stands on the chosen start")
 	assert_eq(GameState.start_game_id, chosen.id, "and the run records it as its start")
-	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "the run falls through to the normal offering")
 	assert_true(_ui._start_options.is_empty(), "the start panel is done with")
-	assert_gt(_ui._choices.size(), 0, "the start's neighbours are on the table")
-	# The start is where you BEGIN, not a game you were sent to beat.
-	assert_false(GameLoop2.has_current(), "no enemy spawns for the start game")
-	assert_eq(GameState.shields, 0, "and it grants no tries")
+	assert_gt(_ui._choices.size(), 0, "the start's neighbours are already on the table")
+	# The start is the run's FIRST GAME, not a doorstep: it spawns what was
+	# advertised on its card and hands over the tries any game hands over.
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "the run opens in the report step")
+	assert_true(GameLoop2.has_current(), "with an enemy standing on the board")
+	assert_eq(GameLoop2.current.get("enemy"), waiting,
+		"and it is the one the card said was waiting there")
+	assert_eq(_ui._chosen.get("game"), chosen, "the start is the game in play")
+	assert_eq(GameState.shields, GameLoop2.shields_for_game(chosen),
+		"and it granted its tries")
+
+func test_a_start_card_opens_the_ordinary_choice_popup() -> void:
+	_ui.start_run()
+	var modal = _ui.open_start_choice(0)
+	assert_not_null(modal, "the start card opens a popup like any other card")
+	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT, "opening it chooses nothing")
+	var enemy: GoalEnemyData = _ui._start_options[0]["enemy"]
+	var text: String = _modal_text(modal)
+	assert_true(text.contains(_ui._start_options[0]["game"].display_name), "it names the game")
+	if enemy != null:
+		assert_true(text.contains(enemy.display_name), "and the enemy waiting there")
+	modal.travel()
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "and its button starts the run on it")
+
+func test_the_start_popup_withholds_bash_and_transmute() -> void:
+	_ui.start_run()
+	GameState.bash = 3
+	GameState.transmute = 3
+	var modal = _ui.open_start_choice(0)
+	var text: String = _modal_text(modal)
+	assert_false(text.contains("Bash"), "there is no offering to reshape yet")
+	assert_false(text.contains("Transmute"), "nor a slot to paste over")
+	modal._close()
+
+# Every Label / Button / RichTextLabel in a built modal, flattened.
+func _modal_text(node: Node) -> String:
+	var out: String = ""
+	if node is Label or node is Button:
+		out += String(node.text) + "\n"
+	elif node is RichTextLabel:
+		out += node.get_parsed_text() + "\n"
+	for child in node.get_children():
+		out += _modal_text(child)
+	return out
 
 func test_the_start_picker_ignores_a_travel_pick() -> void:
 	_ui.start_run()

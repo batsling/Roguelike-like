@@ -59,7 +59,32 @@ enum Difficulty { LOW, MEDIUM, HIGH, INSANE }
 
 # Synergy tag linking the enemy to items/goals sharing it (e.g. `alien` ties the
 # Baby Alien enemy to the Alien Baby item and an "defeat an alien" bounty, §7).
+# The sheet's Tag column is a COMMA LIST for the enemies that are more than one
+# thing ("cat, robot"), and it is stored here verbatim — `has_tag` is what reads
+# it as a set, so nothing has to know the separator.
 @export var tag: StringName = &""
+
+# Whether this enemy carries `wanted`, matched against the comma list in `tag`.
+# Case- and space-insensitive, so an event's `spawn_enemy tag=robot` finds
+# Robo-Cat ("cat, robot") as readily as Love Bot ("robot").
+func has_tag(wanted: StringName) -> bool:
+	var want: String = String(wanted).strip_edges().to_lower()
+	if want == "":
+		return false
+	for t in String(tag).to_lower().split(",", false):
+		if t.strip_edges() == want:
+			return true
+	return false
+
+# Every tag on this enemy, split out of the sheet's comma list. Empty when it
+# carries none.
+func tag_list() -> PackedStringArray:
+	var out := PackedStringArray()
+	for t in String(tag).to_lower().split(",", false):
+		var clean: String = t.strip_edges()
+		if clean != "":
+			out.append(clean)
+	return out
 
 # === Battlefield footprint (the sheet's Size column) ======================
 # How many grid cells this enemy takes up on the battlefield. Most enemies are a

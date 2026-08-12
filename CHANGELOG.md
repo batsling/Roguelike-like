@@ -11,6 +11,73 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Three new robots, a start that is a game, connections you can count, and a
+  star chart that stops decoding the catalog to draw a dot.**
+
+  **The start is the run's first game.** Taking one of the three opening cards
+  used to be a free move: you landed on the game, nothing spawned, no tries were
+  granted, and the run's first real game was whatever you travelled to from it.
+  That made the opening decision cheap — three roads, no cost, and the thing you
+  were actually choosing (which genre's enemy you would face first) happened one
+  click later against a card you had not seen when you chose. Now the start
+  *rolls its goal-enemy*, stands it on the board, hands over the game's tries and
+  drops the run straight into the report step. The card opens the ordinary
+  `GameChoiceModal` first — the enemy, its goal, the tries, the route, the
+  connections — so nothing about it is a surprise. **Bash and Transmute are
+  withheld there**: they reshape an *offering*, and three roads out of one run is
+  not one. The run now opens with something to go and play.
+
+  **Every card says how many doors it opens, and how many of them are worth
+  walking through.** Above the cover, before anything else: `⛓ 14 connections ·
+  ✦ 2 events · 🛒 1 shop`. Routing was the one decision the popup could not
+  answer — it drew the shortest path to the Amulet beautifully and said nothing
+  about how much *choice* the next node would give you, which is the difference
+  between a hub and a corridor. Counted off `RunGraph` rather than off the
+  sheet's raw `games_influenced`, so the number is doors this run can actually
+  use: the filter's, the main-component prune's, and Bash's removals are all
+  already taken out. Event placement is hashed off the node id, so quoting the
+  count early gives away nothing that opening that neighbour's own card wouldn't.
+
+  **Punch Off fights back.** "The Constructs turn to you menacingly!" used to be
+  prose over a button that cost nothing up front, which made *I Can Take Them*
+  the obviously correct press on a dead end — the one place the event format says
+  an event may bite. It bites now: `spawn_enemy tag=robot 1` peels one of the
+  Constructs' kin off and puts it on the board, and it is still following while
+  you go and beat a mecha roguelike for the payout. Two fronts, which is what "I
+  can take them" ought to have to mean. The `tag=` is new on the token and is the
+  point of it — a plain `spawn_enemy` conjures whatever the roster hands over,
+  which in a scene that has just told you exactly what is standing in front of
+  you is a Leprechaun walking into a robot fight. The generator checks the tag
+  against the `enemies2.0` Tag column, and a tagged roll widens by *difficulty*
+  rather than by dropping the tag: the tag is what the row promised.
+
+  **Three robots to be that robot** — Punch Construct (Slay the Spire 2), Love
+  Bot and Robo-Cat (Mewgenics), from the sheet, with art. The Tag column already
+  spoke in comma lists for the enemies that are more than one thing; `has_tag`
+  now reads it as the set it always was, so Robo-Cat answers to `cat` and to
+  `robot` both.
+
+  **The Steam page is its own shortcut in the Atlas and the Collection.**
+  `GameData.launch()` prefers the local install and only falls back to the store
+  page — right for "play this", and it meant that for every game the player owns
+  the Steam page had no way in at all, while for the ~800 they don't it was the
+  only thing behind the entry. It is a separate button now, wherever a game is
+  being *read* rather than played.
+
+  **And the Atlas stops decoding the catalog to draw a dot.** The stutter had one
+  cause, and it was a HUD label. `cover_count()` — "12 showing art", refreshed on
+  every redraw, which means on every pan and zoom step — asked `shows_cover()` of
+  all 845 stars, and `shows_cover()` answered by *loading the cover to measure
+  it*. Panning the chart therefore walked ~200 MB of box art through the image
+  decoder a few stars at a time, forever, because there was always another star
+  that had not been asked yet. Two changes: a star answers "definitely too small"
+  from its packing radius alone (the widest a cover can be for a given radius is
+  fixed arithmetic, no art needed), and the count is bounded to what is on
+  screen — which is also the more useful sentence. The per-star id conversion the
+  draw loop repeated six times a star, three passes a frame, is now done once per
+  sky. Nothing derived from the run or from the lifetime record is cached: those
+  move from places that have no reason to tell a star chart about it.
+
 - **A pass over the things the page gets wrong: scrollbars, where a modal opens,
   and what you can point at.**
 

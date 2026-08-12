@@ -14,7 +14,14 @@ var _ui
 func before_each() -> void:
 	_ui = OVERWORLD.instantiate()
 	add_child_autofree(_ui)   # _ready -> rolls the amulet + the three start options
-	_ui.choose_start(0)       # take the first offered start; the run has a position now
+	# Take the first offered start. It is the run's FIRST GAME now, so the run opens
+	# in the report step — play it out, since the map is read from a run that is
+	# standing at an offering.
+	_ui.choose_start(0)
+	if _ui._phase == _ui.Phase.PLAYING:
+		_ui.report(true)
+		_ui._end_resolve()
+		_ui._drop_queue.clear()
 
 func after_each() -> void:
 	GameState.reset_run()

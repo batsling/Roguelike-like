@@ -180,6 +180,57 @@ func _build_shop_row(game: GameData) -> Control:
 	return col
 
 
+# --- what this game OPENS ONTO ---------------------------------------------
+
+# How many games this node connects to, and how many of those carry something
+# worth routing for. Static and public because the same three numbers belong on
+# the start picker's cards, and there they are wanted before any modal exists.
+#
+# Counted off RunGraph rather than off `games_influenced`: influence is directed
+# and the sheet's raw list includes games the filter and the main-component prune
+# have already taken out of this run, so the raw length is not the number of
+# places you can actually go next. Destroyed games are dropped for the same
+# reason — a bashed neighbour is a door that no longer opens.
+#
+# Returns {"total": int, "events": int, "shops": int}.
+static func connection_counts(game_id: StringName) -> Dictionary:
+	var out := {"total": 0, "events": 0, "shops": 0}
+	if game_id == &"":
+		return out
+	for n in RunGraph.neighbors(game_id):
+		if GameLoop2.is_bashed(n):
+			continue
+		out["total"] += 1
+		# Placement is hashed from the node id, so this is the same answer the
+		# neighbour's own card gives when it turns up in the offering — asking early
+		# gives nothing away that opening that card wouldn't.
+		if EventSystem.event_for(n) != null:
+			out["events"] += 1
+		if ShopSystem.is_hub(n):
+			out["shops"] += 1
+	return out
+
+# The counts as one line, or "" when the game is a dead end with nothing to say.
+static func connection_text(counts: Dictionary) -> String:
+	var total: int = int(counts.get("total", 0))
+	if total <= 0:
+		return "⛓  No connections — a dead end"
+	var parts: Array = ["⛓  %d connection%s" % [total, "" if total == 1 else "s"]]
+	var events: int = int(counts.get("events", 0))
+	var shops: int = int(counts.get("shops", 0))
+	if events > 0:
+		parts.append("✦ %d event%s" % [events, "" if events == 1 else "s"])
+	if shops > 0:
+		parts.append("🛒 %d shop%s" % [shops, "" if shops == 1 else "s"])
+	return "  ·  ".join(parts)
+
+static func connection_tip(game: GameData, counts: Dictionary) -> String:
+	var name_text: String = game.display_name if game != null else "this game"
+	return ("%d games connect to %s — the pool the next offering is drawn from. "
+		+ "%d of them carry an event, %d are shop hubs.") % [
+		int(counts.get("total", 0)), name_text,
+		int(counts.get("events", 0)), int(counts.get("shops", 0))]
+
 func _panel_size() -> Vector2:
 	var view: Vector2 = get_viewport_rect().size
 	return Vector2(
@@ -235,6 +286,20 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	col.custom_minimum_size = Vector2(COVER.x + 40.0, 0)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(col)
+
+	# ABOVE the cover, not under it: "how many doors does this open" is a routing
+	# fact, and routing is what the popup is opened to decide. The cover is the
+	# thing you have already seen, so it does not get to sit in front of this.
+	var counts: Dictionary = connection_counts(StringName(_choice.get("slot", &"")))
+	var conn := Label.new()
+	conn.text = connection_text(counts)
+	conn.tooltip_text = connection_tip(game, counts)
+	conn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	conn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	conn.add_theme_font_size_override("font_size", 12)
+	conn.add_theme_color_override("font_color",
+		UITheme.TEXT_DIM if int(counts.get("total", 0)) > 0 else UITheme.DANGER)
+	col.add_child(conn)
 
 	if game.cover_image != null:
 		var art := TextureRect.new()
@@ -509,7 +574,10 @@ func _build_actions(game: GameData, accent: Color) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 
-	var move_only: bool = bool(_notes.get("move_only", false))
+	# `no_verbs` is the start picker (Overworld2.open_start_choice): a real game
+	# with a real enemy, so everything above this row stands — but Bash and
+	# Transmute reshape an OFFERING, and three roads out of one run is not one.
+	var move_only: bool = bool(_notes.get("move_only", false)) or bool(_notes.get("no_verbs", false))
 	if not move_only and GameState.bash > 0 and not bool(_choice.get("amulet", false)):
 		row.add_child(_verb_button("⛏  Bash", UITheme.DANGER,
 			"Destroy %s outright — it leaves the pool for good and another connected game takes the slot."

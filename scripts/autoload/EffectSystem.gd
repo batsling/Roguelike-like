@@ -268,10 +268,15 @@ func _h_add_curse(effect: Dictionary, _ctx: Dictionary) -> void:
 # roll_conjured_enemy and not roll_enemy: the difficulty is the whole of what a
 # conjured body is priced on, so it is not allowed to widen into the rest of the
 # roster the way an offering's roll may.
+#
+# An optional `tag` narrows the roll to the enemies carrying it — Punch Off's
+# robots — so an event can conjure a body that belongs to the scene it just
+# described rather than whatever the roster happened to hand over.
 func _h_spawn_enemy(effect: Dictionary, _ctx: Dictionary) -> void:
+	var tag := StringName(String(effect.get("tag", "")))
 	var names: Array = []
 	for _i in range(maxi(1, int(effect.get("value", 1)))):
-		var enemy: GoalEnemyData = GameLoop2.roll_conjured_enemy()
+		var enemy: GoalEnemyData = GameLoop2.roll_conjured_enemy(-1, tag)
 		if enemy == null:
 			break
 		GameLoop2.spawn_to_stack(enemy)

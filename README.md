@@ -212,7 +212,8 @@ node and its script.
   here doesn't confirm: nothing is live on the menu and the saves are already on
   disk, so a prompt between the player and the door only ever gets in the way.
 - **`Overworld2.gd`** — the run itself: the opening choose-your-start panel (three
-  games, three genres, all 5–7 games from the amulet), the offering of games
+  games, three genres, all 5–7 games from the amulet — and the one you take is
+  the run's first game, enemy and all), the offering of games
   (cover cards), and
   then a two-column stage — checklist on the left (the standing goals while you're
   choosing, the honour-system report step + attempt tracker while you're playing),
@@ -388,6 +389,7 @@ editing the sheet, then review the diff):
 | `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 | `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
+| `_punch_off_robot_edit.py` | one-shot: Punch Off's "I Can Take Them" also spawns a robot (`spawn_enemy tag=robot 1`) |
 | `_xlsx_surgery.py` | shared helper: edit ONE sheet of `Roguelikes.xlsx` in place. An openpyxl round-trip drops the workbook's seven charts, so the sheet-editing one-shots (`_statuses_sheet_setup.py`, `_items2_statuses_setup.py`, `_events2_sheet_setup.py`, `_curses2_sheet_setup.py`) rewrite just that sheet's XML parts and copy every other zip entry through untouched. |
 
 The `_*_setup.py` scripts are **bootstraps, not generators**: they lay a sheet's
@@ -505,7 +507,7 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `apply_status <status> N` | A `statuses2.0` status on the player. |
 | `random_item_choice N` | Pick 1 of N random items. |
 | `gain_item <item_id>` | A **named** `items2.0` relic, handed straight over — the one token that says *which* item. The generator checks the id against the sheet. |
-| `spawn_enemy [N]` | Conjures N enemies at the run's current difficulty onto the following stack. What every curse costs. |
+| `spawn_enemy [N] [tag=<t>]` | Conjures N enemies at the run's current difficulty onto the following stack. What every curse costs. `tag=` narrows the roll to the goal-enemies carrying that synergy tag (`spawn_enemy tag=robot 1` — Punch Off's Constructs); the generator checks the tag against the `enemies2.0` Tag column, and a tagged roll widens by difficulty rather than dropping the tag. |
 | `trade_relic <slot>` | The Relic Trader's swap: one of your relics for one of his. Fills `<give>` / `<get>` in the choice's prose. |
 | `obtain_item` | Pick **any** item in the catalogue. This is Wand of Wishing's picker — much stronger than a chest, use deliberately. |
 | `nothing` | An explicit no-op. Write it where a blank cell would read as unfinished. |

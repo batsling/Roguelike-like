@@ -8,9 +8,9 @@ id = &"backpack_hero"
 display_name = "Backpack Hero"
 year = 2022
 type = 2
-games_influenced = Array[StringName]([&"backpack_battles", &"moon_watch", &"rogue_voltage", &"spin_hero", &"barda"])
-influence_sources = PackedStringArray("https://www.reddit.com/r/IndieGaming/comments/13vr0mm/comment/jm7alk0/?context=3", "", "https://steamcommunity.com/app/1494560/discussions/0/4335355681660890217/#c4335355681661031211", "check folder", "https://x.com/Mudita_Games/status/1988179400454500794")
-influence_relations = PackedStringArray("", "dev/series", "", "", "")
+games_influenced = Array[StringName]([&"backpack_battles", &"barda", &"moon_watch", &"rogue_voltage", &"spin_hero"])
+influence_sources = PackedStringArray("https://www.reddit.com/r/IndieGaming/comments/13vr0mm/comment/jm7alk0/?context=3", "https://x.com/Mudita_Games/status/1988179400454500794", "", "https://steamcommunity.com/app/1494560/discussions/0/4335355681660890217/#c4335355681661031211", "check folder")
+influence_relations = PackedStringArray("", "", "dev/series", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
