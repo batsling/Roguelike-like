@@ -22,7 +22,8 @@ Columns:
 
     Curse      display name, and the id events reference (slugified)
     Game       the real game it is lifted from
-    Condition  what you must avoid doing, in the honour-system voice goals use
+    Condition  what MEETING it looks like, in the honour-system voice goals use —
+               usually a thing to avoid, sometimes a thing you must remember
     Penalty    what it costs when you do it — the shared reward-token DSL
     Timer      games it lasts before expiring (3 unless a curse says otherwise)
     Image      art base name under images2.0/curses/
@@ -30,9 +31,9 @@ Columns:
 The checklist row is generated from the three middle columns rather than authored
 as prose, so a curse cannot drift from what it actually does:
 
-    Condition "you use a rest site to replenish health" + Penalty "lose_hp 2"
-    -> "If you use a rest site to replenish health, take 2 damage at the end of
-        combat."
+    Condition "you use a rest site to replenish health" + Penalty "spawn_enemy"
+    -> "If you use a rest site to replenish health, spawn a random enemy when you
+        report the game."
 
 WHY XML SURGERY AND NOT openpyxl: Roguelikes.xlsx carries seven charts and a
 dozen table parts that an openpyxl load/save round-trip silently drops. See
@@ -59,20 +60,36 @@ HEADERS = ["Curse", "Game", "Condition", "Penalty", "Timer", "Image"]
 # the two halves of the checklist tick to the same clock.
 DEFAULT_TIMER = 3
 
+# What every curse costs. It was `lose_hp 2` when this sheet was written, which
+# put a curse in competition with the enemy stack for the same resource and made
+# taking one a piece of arithmetic; `_relics_events_sheet_edit.py` repointed the
+# whole column at `spawn_enemy` — a body on the board, billed in the run's own
+# currency. Named here so re-running this script cannot quietly undo that.
+PENALTY = "spawn_enemy"
+
 CURSES = [
     # Slay the Spire 2 hands this out as a card called Poor Sleep, from Unrest
     # Site. Here it points at a rest site in the REAL GAME being played, checked
     # on the honour system like every other goal — which is what makes it follow
     # you out of the modal and into whatever roguelike you go and play next.
     ("Poor Sleep", "Slay the Spire 2",
-     "you use a rest site to replenish health", "lose_hp 2",
+     "you use a rest site to replenish health", PENALTY,
      DEFAULT_TIMER, "PoorSleep"),
     # From Punch Off, where nabbing the treasure gets you clocked in the face.
     # Its condition is on the RUN's own health rather than on the game being
     # played, which is the other flavour a curse can have and worth having one of.
     ("Injury", "Slay the Spire 2",
-     "you go below half health", "lose_hp 2",
+     "you go below half health", PENALTY,
      DEFAULT_TIMER, "Injury"),
+    # What the Calling Bell saddles you with, and the third flavour of condition:
+    # one you meet by NOT doing something. The other two are things you must
+    # avoid; this one is a thing you must remember, every game, forever — the
+    # `N/A` Timer is the whole joke, since the Slay the Spire curse it is lifted
+    # from is the one you cannot remove. Ring a bell in whatever you are playing
+    # and nothing happens; forget, and something walks on.
+    ("Curse of the Bell", "Slay the Spire",
+     "you don't ring a bell", PENALTY,
+     "N/A", "CurseOfTheBell"),
 ]
 
 

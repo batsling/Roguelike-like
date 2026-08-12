@@ -93,7 +93,7 @@ const GATE_STAT_NAMES := {
 	"hp": "Health", "max_hp": "Max Health", "gold": "Gold",
 	"games": "Games played", "keys": "Keys", "bombs": "Bombs", "bash": "Bash",
 	"dash": "Dash", "push": "Push", "transmute": "Transmute",
-	"scramble": "Scramble", "shields": "Shields",
+	"scramble": "Scramble", "shields": "Shields", "relics": "Tradeable Relics",
 }
 
 # A Requirement dictionary in words: "Health <= 70%". One implementation, read by
@@ -212,7 +212,8 @@ func _wants_trades(ev: EventData2) -> bool:
 
 # Which offer a choice is the button for — 1-based, 0 for a choice that trades
 # nothing. Read off the effects rather than off the choice's position, so the
-# sheet can put "Trade Nothing" anywhere in the list.
+# sheet can order the rows however it likes and mix non-trade choices in among
+# them.
 func _trade_slot(choice: Dictionary) -> int:
 	for eff in choice.get("effects", []):
 		if eff is Dictionary and String(eff.get("type", "")) == "trade_relic":
@@ -342,6 +343,11 @@ func _run_stat(stat: String) -> int:
 		"transmute": return GameState.transmute
 		"scramble": return GameState.scramble
 		"shields": return GameState.shields
+		# The pack, not a counter: relics a stranger could actually take off you.
+		# Starter, Boss and Event relics are excluded by the same is_rollable()
+		# rule the trade itself uses, so the gate cannot pass on five relics none
+		# of which he would touch.
+		"relics": return GameState.tradeable_relic_count()
 		_: return -1
 
 

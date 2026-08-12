@@ -407,6 +407,30 @@ func roll_enemy(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 		tier = mini(RunDifficulty.current_tier(), GoalEnemyData.Difficulty.HIGH)
 	return _pick_by_type_tier(pool, StringName(String(game_type).to_lower()), tier)
 
+# A CONJURED enemy: the bill a curse pays, a Scroll of Create Monster's monster.
+# No game is being chosen here, so there is no type to match — only the run's
+# difficulty, and that is the one thing this roll may not trade away. roll_enemy
+# widens a thin bucket to "anything in the pool", which is right for an offering
+# (a game must always get an enemy) and wrong here: it is how a Low run gets a
+# High body dropped on the board by a curse, which is not what the row said and
+# not something the player did.
+#
+# The one widening it allows is DOWNWARD, to the nearest tier that has anything
+# authored, since the tiers grow as the run does and the top of the ladder may be
+# empty (nothing is authored at Insane today). Never upward: a run whose own tier
+# is unstocked has not earned something heavier than it asked for.
+func roll_conjured_enemy(tier: int = -1) -> GoalEnemyData:
+	var pool: Array = Data.all_goal_enemies()
+	if pool.is_empty():
+		return null
+	if tier < 0:
+		tier = RunDifficulty.current_tier()
+	for step in range(clampi(tier, 0, GoalEnemyData.Difficulty.INSANE), -1, -1):
+		var bucket: Array = pool.filter(func(e): return e is GoalEnemyData and e.tier_index() == step)
+		if not bucket.is_empty():
+			return bucket[randi() % bucket.size()]
+	return null
+
 # Picks one enemy from `pool` preferring an exact type+tier match, widening to
 # type-only, then tier-only, then anything — so a roll always returns something
 # while content is thin. Shared by roll_enemy + roll_boss.

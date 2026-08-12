@@ -93,7 +93,7 @@ for N = 1…6.
 | `Game` | event | The real game this is lifted from. Flavour credit (the modal's "From: *game*" line), and the target when `Where` is `Game`. |
 | `Tier` | event | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. Gates an event to part of the tier ladder, the same vocabulary `enemies2.0` gates on. |
 | `Where` | event | Placement. `Dead End` (default — a node with one connection, §1), `Any`, or `Game` (only ever on its own `Game`, the way Abyssal Baths belongs to the Underdocks). |
-| `Requirement` | event | A condition on the **run state** that must hold before the event can appear at all — `<stat> <op> <value>`, a trailing `%` reading against the maximum (`hp <= 70%`). Blank = always eligible. `Tier` gates on the ladder, `Where` on the map, this on the player. |
+| `Requirement` | event | A condition on the **run state** that must hold before the event can appear at all — `<stat> <op> <value>`, a trailing `%` reading against the maximum (`hp <= 70%`). Blank = always eligible. `Tier` gates on the ladder, `Where` on the map, this on the player. The stats are a closed list (a typo'd one would silently never pass): `hp`, `max_hp`, `gold`, `games`, `keys`, `bombs`, `bash`, `dash`, `push`, `transmute`, `scramble`, `shields`, and `relics` — **tradeable** relics carried, excluding Starter, Boss and Event ones, which is what the Relic Trader gates on (§13). |
 | `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). **`Before` is not implemented** — see §15. |
 | `Rarity` | event | `Common` / `Uncommon` / `Rare`. Weights the roll, same ordering as items and scrolls. |
 | `Limit` | event | Times per run. A number, or `None` for no limit. |
@@ -429,7 +429,7 @@ Six columns:
 |---|---|
 | `Curse` | Display name, and the id events reference (slugified: `Poor Sleep` → `poor_sleep`). |
 | `Game` | The real game it is lifted from. |
-| `Condition` | What you must avoid doing, in the honour-system voice the goals use. |
+| `Condition` | What meeting it looks like, in the honour-system voice the goals use. Usually a thing to **avoid** ("you use a rest site to replenish health"); it may equally be a thing you must **remember** ("you don't ring a bell"), which reads as the same row and costs the same bill. |
 | `Penalty` | What it costs when you do it — the same reward-token DSL, pointed the other way. |
 | `Timer` | Games it lasts before expiring. **3** unless a curse says otherwise. `N/A` (or `None` / `Permanent`) means it **never** expires — Curse of the Bell, which arrives with the Calling Bell relic and stays for the run. A **blank** cell is still the three-game default: "nobody filled this in" and "this is forever" must not be the same value. |
 | `Image` | Art base name under `images2.0/curses/`. |
@@ -440,7 +440,14 @@ The roster:
 |---|---|---|---|--:|
 | **Poor Sleep** | Unrest Site | you use a rest site to replenish health | `spawn_enemy` | 3 |
 | **Injury** | Punch Off, Golden Idol | you go below half health | `spawn_enemy` | 3 |
-| **Curse of the Bell** | the Calling Bell relic | ring a bell | `spawn_enemy` | permanent |
+| **Curse of the Bell** | the Calling Bell relic | you don't ring a bell | `spawn_enemy` | permanent |
+
+**The Bell runs the other way round, and that is a Condition, not a feature.**
+Poor Sleep and Injury are things you must not do; the Bell is a thing you must
+do — every game, forever, since its Timer is `N/A`. Nothing in the code knows
+which way a curse points: the row is composed from `Condition` either way, the
+tick-box means the same thing (you are admitting the condition was met), and the
+bill is paid the same. A curse that inverts is a sentence, not a column.
 
 **Every curse pays in enemies.** The penalty column used to charge Health, which
 put a curse in competition with the enemy stack for the same resource and made
@@ -878,14 +885,31 @@ the same choices twice**.
 |---|---|
 | `Where` | Dead End |
 | `Limit` | 1 |
+| `Requirement` | `relics >= 5` |
 | `Prompt` | *"You turn a corner and suddenly, a shadowy figure is just standing there. He pivots to face you. 'Welcome! What're ya trading?'…"* |
 
 | Choice | Effect | Result |
 |---|---|---|
-| **Take the Top One** | `trade_relic 1` | *"He takes `<give>` off you with both hands… and presses `<get>` into your palm…"* |
-| **Take the Middle One** | `trade_relic 2` | *"'Good eye.' `<give>` vanishes into the lining. `<get>` arrives in its place, still warm."* |
-| **Take the Bottom One** | `trade_relic 3` | *"…comes up with `<get>`. `<give>` is gone from your pack by the time he stands."* |
-| **Trade Nothing** | `nothing` | *"You decline. The cloak closes…"* |
+| **Take the Top One** | `trade_relic 1` | *"Hehehe Heh... Thank you!"* |
+| **Take the Middle One** | `trade_relic 2` | *"Hehehe Heh... Thank you!"* |
+| **Take the Bottom One** | `trade_relic 3` | *"Hehehe Heh... Thank you!"* |
+
+Every row is an offer; there is **no "Trade Nothing"**. The button already names
+both relics, so the prose on the way out is only the trader's own line — the
+same one whichever row you point at. And a run he wants nothing from shows no
+rows at all, which the modal already answers with its own **Leave** (§15,
+`EventModal2`): a decline button would be a fourth choice that exists purely to
+say what an empty list already says.
+
+### He does not turn up for a pack he cannot trade with
+
+`Requirement: relics >= 5` (§3) — and `relics` counts **tradeable** relics, the
+rollable ones, since Starter, Boss and Event relics are excluded from a swap in
+both directions and counting them would let the gate pass on a pack he would not
+touch. Five and not one: he lays out three offers, each spending one of yours
+against one you don't have, so a pack of two is a shelf with gaps in it. The
+per-slot gate below still trims the offers he can actually fill; this keeps the
+event off the node rather than opening it half-empty.
 
 ### The offers are rolled once, when the event opens
 
@@ -912,10 +936,10 @@ stranger should be able to take off you.
 ### What it needed from the format: a name hole
 
 `{...}` resolves arithmetic. Naming a relic needed `<give>` / `<get>` (§5.2), and
-that is the entire addition. The sentences — including which of the three rows
-gets which phrasing — are in the spreadsheet, so the event is as portable as
-every other one: GDScript knows what the two holes mean and nothing else about
-the Relic Trader.
+that is the entire addition. The sentences are in the spreadsheet — the holes are
+spent on the buttons, where the player still has to be told what the swap is —
+so the event is as portable as every other one: GDScript knows what the two holes
+mean and nothing else about the Relic Trader.
 
 ---
 

@@ -27,7 +27,11 @@ var _closing: bool = false
 # off-field body); `is_current` marks the game being played right now, which can be
 # read but not pushed or bombed. Call once, right after adding the card to the
 # screen it should cover.
-func setup(entry: Dictionary, col: int, is_current: bool) -> void:
+#
+# `position_note` replaces the Position line for an enemy that is not on the board
+# at all — the boss notice reads one off an OFFERED CARD, where "waiting for room"
+# would be a lie about a body that does not exist yet.
+func setup(entry: Dictionary, col: int, is_current: bool, position_note: String = "") -> void:
 	var e: GoalEnemyData = entry.get("enemy")
 	if e == null:
 		queue_free()
@@ -109,7 +113,8 @@ func setup(entry: Dictionary, col: int, is_current: bool) -> void:
 	var hp: int = int(entry.get("health", e.health))
 	stat_col.add_child(_stat_row("❤", "Health", "%d goal%s to defeat" % [hp, "" if hp == 1 else "s"], Color(1.0, 0.5, 0.5)))
 	stat_col.add_child(_stat_row("⚔", "Damage", "%d per game, from the front" % e.damage, Color(1.0, 0.8, 0.35)))
-	stat_col.add_child(_stat_row("◎", "Position", _position_text(entry, col, is_current), accent))
+	stat_col.add_child(_stat_row("◎", "Position",
+		position_note if position_note != "" else _position_text(entry, col, is_current), accent))
 	if e.footprint_rows() > 1 or e.footprint_cols() > 1:
 		stat_col.add_child(_stat_row("▦", "Size", _size_text(e), UITheme.TEXT_DIM))
 	var stun: int = int(entry.get("stun", 0))

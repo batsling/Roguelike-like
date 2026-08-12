@@ -147,6 +147,7 @@ func start(host: Node, current: StringName, amulet: StringName, choice_ids: Arra
 	_choice_ids.clear()
 	for id in choice_ids:
 		_choice_ids[StringName(id)] = true
+	UITheme.dress(self)     # a theme does not cross the CanvasLayer below
 	_layer = CanvasLayer.new()
 	_layer.layer = 130
 	_layer.process_mode = Node.PROCESS_MODE_ALWAYS

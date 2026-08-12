@@ -1654,6 +1654,18 @@ func has_item(item_id: StringName) -> bool:
 			return true
 	return equipped_weapon is ItemData and equipped_weapon.id == item_id
 
+# How many relics in the pack a random draw could also have produced — the ones
+# the Relic Trader will take, the ones a swap may hand back. Starter, Boss and
+# Event relics are none of those (ItemData.is_rollable), so an event that gates on
+# "five relics" is asking about five he would actually touch rather than about the
+# size of the pack.
+func tradeable_relic_count() -> int:
+	var n: int = 0
+	for it in inventory:
+		if it is ItemData and it.is_rollable():
+			n += 1
+	return n
+
 # Sacred Orb: true while any owned item rerolls low-rarity item drops.
 func has_low_rarity_reroll() -> bool:
 	for it in inventory:
