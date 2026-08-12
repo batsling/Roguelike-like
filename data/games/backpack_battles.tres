@@ -8,8 +8,8 @@ id = &"backpack_battles"
 display_name = "Backpack Battles"
 year = 2023
 type = 1
-games_influenced = Array[StringName]([&"he_is_coming", &"knightica", &"lootplot", &"oaken_tower", &"toy_smash_kaboom", &"turnbound", &"tiny_auto_knights"])
-influence_sources = PackedStringArray("check folder", "https://www.reddit.com/r/IndieGaming/comments/1iooyqr/roguelike_autobattler_cute_creatures_what_do_you/", "https://codetheory.itch.io/lootplot-playtest#:~:text=A%20downloadable%20game%20for%20Windows,it%20to%20the%20next%20round.", "check folder", "look at it", "https://youtu.be/DY-KwfFTU9g", "https://x.com/mumpitzgames/status/1925572756806017381")
+games_influenced = Array[StringName]([&"he_is_coming", &"knightica", &"lootplot", &"oaken_tower", &"tiny_auto_knights", &"toy_smash_kaboom", &"turnbound"])
+influence_sources = PackedStringArray("check folder", "https://www.reddit.com/r/IndieGaming/comments/1iooyqr/roguelike_autobattler_cute_creatures_what_do_you/", "https://codetheory.itch.io/lootplot-playtest#:~:text=A%20downloadable%20game%20for%20Windows,it%20to%20the%20next%20round.", "check folder", "https://x.com/mumpitzgames/status/1925572756806017381", "look at it", "https://youtu.be/DY-KwfFTU9g")
 influence_relations = PackedStringArray("", "", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])

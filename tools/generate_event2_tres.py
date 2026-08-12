@@ -234,7 +234,26 @@ def _check_item_ids(effects, where, item_ids):
                              "(items2.0 has %d rows)" % (where, iid, len(item_ids)))
 
 
-def parse_effect_cell(cell, where, choice_labels, curse_ids, item_ids=()):
+def _check_enemy_tags(effects, where, enemy_tags):
+    """`spawn_enemy tag=<t>` names a tag some enemies2.0 row actually carries.
+
+    Same argument as `play_game tag=` in the authoring guide: the thin end of the
+    tag vocabulary has empty buckets, and a spawn that rolls nothing is an event
+    which silently does less than the cell says. Checked against the SHEET, so a
+    fresh checkout generates in any order.
+    """
+    for eff in effects:
+        if eff.get("type") != "spawn_enemy":
+            continue
+        tag = str(eff.get("tag", ""))
+        if tag and enemy_tags and tag not in enemy_tags:
+            raise ValueError("events2.0 %s: spawn_enemy names unknown enemy tag %r "
+                             "(enemies2.0 carries: %s)"
+                             % (where, tag, ", ".join(sorted(enemy_tags)) or "none"))
+
+
+def parse_effect_cell(cell, where, choice_labels, curse_ids, item_ids=(),
+                      enemy_tags=()):
     """-> {gates, effects, effects_text, goal, curse, play, chance}."""
     out = {"gates": [], "effects": [], "effects_text": "",
            "goal": {}, "curse": {}, "play": {}, "chance": {}}
@@ -308,8 +327,10 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids, item_ids=()):
 
     out["effects_text"] = ", ".join(w for w in words if w)
     _check_item_ids(out["effects"], where, item_ids)
+    _check_enemy_tags(out["effects"], where, enemy_tags)
     for verb in ARROW_VERBS:
         _check_item_ids(out[verb].get("effects", []), where, item_ids)
+        _check_enemy_tags(out[verb].get("effects", []), where, enemy_tags)
     return out
 
 
@@ -334,7 +355,7 @@ def _limit(raw) -> int:
     return max(0, int(float(s)))
 
 
-def event_tres(row, curse_ids, item_ids=()) -> tuple:
+def event_tres(row, curse_ids, item_ids=(), enemy_tags=()) -> tuple:
     name = str(row["Event"]).strip()
     eid = dsl.slugify(name)
 
@@ -353,7 +374,7 @@ def event_tres(row, curse_ids, item_ids=()) -> tuple:
         where = "%s/Choice %d" % (name, n)
         repeat, repeat_max = parse_repeat(row.get("Repeat %d" % n), where)
         parsed = parse_effect_cell(row.get("Effect %d" % n), where, labels, curse_ids,
-                                   item_ids)
+                                   item_ids, enemy_tags)
         results = parse_result_cell(row.get("Result %d" % n))
         # A ladder only climbs if the choice can be pressed again: `End` closes
         # the event and `Stay` spends the choice, so under either one every rung
@@ -449,11 +470,19 @@ def main():
     item_ids = set()
     if "items2.0" in wb.sheetnames:
         item_ids = {dsl.slugify(r["Name"]) for r in dsl.rows(wb["items2.0"])}
+    # …and `spawn_enemy tag=` against the goal-enemy sheet's Tag column, which is a
+    # comma list per row ("cat, robot").
+    enemy_tags = set()
+    if "enemies2.0" in wb.sheetnames:
+        for r in dsl.rows(wb["enemies2.0"]):
+            for t in dsl._clean(r.get("Tag")).split(","):
+                if t.strip():
+                    enemy_tags.add(t.strip().lower())
 
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
     for row in dsl.rows(wb[SHEET]):
-        eid, text = event_tres(row, curse_ids, item_ids)
+        eid, text = event_tres(row, curse_ids, item_ids, enemy_tags)
         if args.list:
             print("=== %s ===\n%s" % (eid, text))
             continue

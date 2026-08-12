@@ -26,6 +26,9 @@ extends RefCounted
 # from one of them is <= 7 from another, so sweeping the ceiling from 8 out to 12
 # does not add a single Amulet — the pool is set by the floor alone. 8 is kept
 # because it is the longest run the pressure ladder still has room to grade.
+# These are the DEFAULT band. A custom run may move it (RunConfig.path_band), so
+# every place the band is tested reads that rather than these two directly — the
+# consts are what an ordinary run's band resolves to, not the band itself.
 const MIN_PATH_LENGTH := 5
 const MAX_PATH_LENGTH := 8
 const EARLY_LAYERS_FOR_SCORE := 3
@@ -84,6 +87,12 @@ static func passes_filter(g: GameData) -> bool:
 	return g != null and _passes_filter(g)
 
 static func _passes_filter(g: GameData) -> bool:
+	# A CUSTOM RUN replaces the global switch outright rather than stacking on top
+	# of it: its map filter has the same axes and more, so honouring both would mean
+	# a run whose map the player configured and then had narrowed again by a setting
+	# on another screen. RunConfig is off unless a custom run set it.
+	if RunConfig.enabled:
+		return RunConfig.map_passes(g)
 	match Settings.game_filter:
 		Settings.GameFilter.OWNED:
 			return g.owned
@@ -489,6 +498,7 @@ const AMULET_SCORE_SLACK := 2
 static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
 		d_to_amulet: Dictionary) -> Dictionary:
 	var by_type: Dictionary = {}
+	var band: Vector2i = RunConfig.path_band()
 	for g in eligible_starts:
 		if g.id == amulet.id:
 			continue
@@ -496,7 +506,7 @@ static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
 		if not d_from.has(amulet.id):
 			continue
 		var path_len: int = d_from[amulet.id]
-		if path_len < MIN_PATH_LENGTH or path_len > MAX_PATH_LENGTH:
+		if path_len < band.x or path_len > band.y:
 			continue
 		var score := dag_branch_score_early(d_from, amulet.id, EARLY_LAYERS_FOR_SCORE, d_to_amulet)
 		if not by_type.has(g.type):
@@ -610,22 +620,45 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	if all.size() < 2:
 		return {}
 
+	# A custom run may narrow WHERE IT STARTS separately from what the map is made
+	# of (RunConfig): "a deckbuilder map, opening on something I have never beaten"
+	# is two different questions and the setup screen asks them separately. Applied
+	# before the connection rule below, so the fallbacks widen within the player's
+	# choice rather than out of it — and skipped entirely if it empties the pool,
+	# since a start filter nothing satisfies should cost the run its opening
+	# preference, not the run itself.
+	var startable: Array[GameData] = []
+	for g in all:
+		if RunConfig.start_passes(g):
+			startable.append(g)
+	if startable.is_empty():
+		startable = all
+
 	# Starts must have >= MIN_START_CONNECTIONS connections; fall back to
 	# "any" if the graph is too sparse (mirrors the JS fallback path).
 	var eligible_starts: Array[GameData] = []
-	for g in all:
+	for g in startable:
 		if neighbors(g.id).size() >= MIN_START_CONNECTIONS:
 			eligible_starts.append(g)
 	if eligible_starts.is_empty():
 		# Sparse graph (e.g. a restrictive game filter): accept any *connected*
 		# game before falling back to the full pool, so we don't pick an
 		# isolated reference start that can't reach an amulet.
-		for g in all:
+		for g in startable:
 			if neighbors(g.id).size() > 0:
 				eligible_starts.append(g)
 	if eligible_starts.is_empty():
-		eligible_starts = all
-	var start_pool: Array[GameData] = eligible_starts
+		eligible_starts = startable
+	# The REFERENCE starts the amulet band is measured from are drawn from the whole
+	# map, not from the start filter: they are a measuring stick, and measuring the
+	# catalog with only never-beaten deckbuilders would move the amulet as a side
+	# effect of a preference about the opening cards.
+	var start_pool: Array[GameData] = []
+	for g in all:
+		if neighbors(g.id).size() >= MIN_START_CONNECTIONS:
+			start_pool.append(g)
+	if start_pool.is_empty():
+		start_pool = eligible_starts
 
 	# Pick the amulet from the games sitting in the band from ANY OF SEVERAL
 	# reference starts, then score each by early-branching. Candidates within
@@ -647,13 +680,18 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	# only has to be a good goal from somewhere, not from all of them.
 	var cand_game: Dictionary = {}       # StringName -> GameData
 	var cand_score: Dictionary = {}      # StringName -> int
+	var band: Vector2i = RunConfig.path_band()
 	for i in range(refs.size()):
 		var d_ref: Dictionary = ref_dists[i]
 		for g in all:
 			if ref_ids.has(g.id) or not d_ref.has(g.id):
 				continue
+			# A custom run may say which games are allowed to BE the goal — or name
+			# one outright, in which case this is the only game that passes.
+			if not RunConfig.amulet_passes(g):
+				continue
 			var d: int = d_ref[g.id]
-			if d < MIN_PATH_LENGTH or d > MAX_PATH_LENGTH:
+			if d < band.x or d > band.y:
 				continue
 			var s := dag_branch_score_early(d_ref, g.id)
 			if not cand_score.has(g.id) or s > int(cand_score[g.id]):
@@ -663,14 +701,26 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	for id in cand_game:
 		amulet_candidates.append(cand_game[id])
 	if amulet_candidates.is_empty():
-		# Looser fallback: anything reachable from any reference.
+		# Looser fallback: anything reachable from any reference. Still inside the
+		# amulet filter — the band is what gets relaxed here, and a named target is
+		# the player's answer to "which game", which no fallback may overrule.
 		for i in range(refs.size()):
 			var d_ref: Dictionary = ref_dists[i]
 			for g in all:
 				if ref_ids.has(g.id) or not d_ref.has(g.id) or cand_score.has(g.id):
 					continue
+				if not RunConfig.amulet_passes(g):
+					continue
 				cand_score[g.id] = 0
 				amulet_candidates.append(g)
+	if amulet_candidates.is_empty():
+		# A named target that no reference can reach is still the run the player
+		# asked for: take it directly and let the start search route to it. Only a
+		# target that is off the map entirely (or filtered out of it) has no run.
+		var named: GameData = Data.get_game(RunConfig.amulet_id) if RunConfig.amulet_id != &"" else null
+		if named != null and _adj_cache.has(named.id):
+			cand_score[named.id] = 0
+			amulet_candidates.append(named)
 	if amulet_candidates.is_empty():
 		return {}
 
@@ -678,7 +728,10 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	# so a fresh run aims at an unbeaten goal. Beaten games stay in the graph
 	# as intermediate stops — only the goal pool is filtered. Keep the full
 	# pool if every reachable candidate has been beaten (no softlock).
-	if Settings.exclude_beaten_amulets:
+	# …but never against a NAMED target: "aim me at Balatro" is a more specific
+	# instruction than "prefer amulets I haven't won on", and the general
+	# preference does not get to overrule it.
+	if Settings.exclude_beaten_amulets and RunConfig.amulet_id == &"":
 		var unbeaten: Array[GameData] = []
 		for g in amulet_candidates:
 			if GameStats.amulet_wins(g.id) == 0:
@@ -791,7 +844,7 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 					"start_id": g.id,
 					"score": 0,
 					"path_len": plen,
-					"in_window": plen >= MIN_PATH_LENGTH and plen <= MAX_PATH_LENGTH,
+					"in_window": plen >= band.x and plen <= band.y,
 				}
 		for type_val in TYPE_ORDER:
 			if by_type.has(type_val):

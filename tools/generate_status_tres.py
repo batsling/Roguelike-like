@@ -424,11 +424,25 @@ def parse_reward_clause(clause):
     # bill is a body on the board rather than a number off a bar, so there is one
     # verb for it and every curse in the sheet writes it.
     if verb == "spawn_enemy":
-        amount = rest[0] if rest else "1"
+        # An optional `tag=<synergy tag>` narrows the roll to the enemies carrying
+        # that tag (Punch Off's robots), in whichever order the cell writes the two
+        # — `spawn_enemy tag=robot 1` and `spawn_enemy 1 tag=robot` are the same
+        # clause. Without it the roll is the plain "anything at this difficulty"
+        # every curse writes.
+        tag = ""
+        counts = []
+        for tok in rest:
+            if tok.lower().startswith("tag="):
+                tag = tok.split("=", 1)[1].strip().lower()
+            else:
+                counts.append(tok)
+        amount = counts[0] if counts else "1"
         eff = {"type": "spawn_enemy"}
         put(eff, "value", amount)
-        one = "a random enemy"
-        many = "%s random enemies" % _amount_word(amount)
+        if tag:
+            eff["tag"] = tag
+        one = "a random %s enemy" % tag if tag else "a random enemy"
+        many = "%s random %senemies" % (_amount_word(amount), tag + " " if tag else "")
         return eff, "Spawn %s" % _plural(amount, one, many)
 
     # The Relic Trader's swap (§5). The pairing — which of YOUR relics for which of

@@ -816,8 +816,12 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   type (§4).
 - **The run opens on a choice of three starting games**, one per game type, each
   6–8 games from the randomly-rolled amulet (`RunGraph.pick_amulet_and_starts`).
-  The start is where you BEGIN — it spawns no enemy and grants no shields; the
-  run's first game is whatever you travel to from it.
+  **The start is the run's first game, not a doorstep**: taking one rolls its
+  goal-enemy, stands it on the board, hands over the game's tries, and drops
+  straight into the report step — so a run opens with something to go and play
+  rather than with a free move. The card opens the ordinary `GameChoiceModal`
+  (enemy, goal, tries, connections, route) before you commit; Bash and Transmute
+  are withheld there, since they reshape an offering and the picker is not one.
 - **A run can be saved and resumed.** The save carries GameState (vitals, verbs,
   pack, visited/beaten games), GameLoop2 (the enemy stack and its positions, the
   destroyed games, the attempt tracker) and the overworld's own view (the cards on

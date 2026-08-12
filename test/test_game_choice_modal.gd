@@ -16,7 +16,18 @@ var _ui
 func before_each() -> void:
 	_ui = SCENE.instantiate()
 	add_child_autofree(_ui)
+	# The start is the run's first game now (Overworld2.choose_start), so the run
+	# opens in the report step. This file is about the popup an OFFERED card opens,
+	# which means playing that opening game out first: report it, skip the board's
+	# playback, drop its relic on the floor.
 	_ui.choose_start(0)
+	if _ui._phase == _ui.Phase.PLAYING:
+		_ui.report(true)
+		_ui._end_resolve()
+		_ui._drop_queue.clear()
+		if _ui._drop_modal != null and is_instance_valid(_ui._drop_modal):
+			_ui._drop_modal.queue_free()
+			_ui._drop_modal = null
 
 func after_each() -> void:
 	GameState.reset_run()
@@ -188,6 +199,59 @@ func test_the_amulet_is_flagged_on_the_card_without_opening_anything() -> void:
 			"the run's destination is legible from the offering itself")
 		return
 	pass_test("the Amulet isn't on this offering — nothing to check")
+
+# --- what the card opens onto ----------------------------------------------
+
+func test_the_popup_counts_the_connections_the_game_opens_onto() -> void:
+	var slot: StringName = StringName(_ui._choices[0]["slot"])
+	var counts: Dictionary = GameChoiceModal.connection_counts(slot)
+	var modal = _ui.open_choice(0)
+	var text: String = _text_of(modal)
+	assert_eq(int(counts["total"]), RunGraph.neighbors(slot).filter(
+		func(n): return not GameLoop2.is_bashed(n)).size(),
+		"the total is the graph's own, minus anything destroyed")
+	if int(counts["total"]) > 0:
+		assert_true(text.contains("%d connection" % int(counts["total"])),
+			"and the popup prints it")
+	else:
+		assert_true(text.contains("dead end"), "a game with no way on says so")
+	modal._close()
+
+func test_the_connection_line_breaks_out_events_and_shops() -> void:
+	# Placement is hashed off the node id, so these counts are stable for a run —
+	# which is what makes them safe to show before the neighbour's own card is
+	# opened.
+	for i in range(_ui._choices.size()):
+		var slot: StringName = StringName(_ui._choices[i]["slot"])
+		var counts: Dictionary = GameChoiceModal.connection_counts(slot)
+		var events: int = 0
+		var shops: int = 0
+		for n in RunGraph.neighbors(slot):
+			if GameLoop2.is_bashed(n):
+				continue
+			if EventSystem.event_for(n) != null:
+				events += 1
+			if ShopSystem.is_hub(n):
+				shops += 1
+		assert_eq(int(counts["events"]), events, "events counted off the same placement")
+		assert_eq(int(counts["shops"]), shops, "shops counted off the same hub list")
+		var line: String = GameChoiceModal.connection_text(counts)
+		if events > 0:
+			assert_true(line.contains("%d event" % events), "the line names them: %s" % line)
+		if shops > 0:
+			assert_true(line.contains("%d shop" % shops), "and the shops: %s" % line)
+
+func test_a_bashed_neighbour_stops_counting_as_a_connection() -> void:
+	var slot: StringName = StringName(_ui._choices[0]["slot"])
+	var neighbours: Array = RunGraph.neighbors(slot)
+	if neighbours.is_empty():
+		pass_test("this start has no neighbours to destroy")
+		return
+	var before: int = int(GameChoiceModal.connection_counts(slot)["total"])
+	GameState.bash += 1                       # Bash is a charge, and it is spent here
+	assert_true(GameLoop2.bash_game(StringName(neighbours[0])), "the neighbour is destroyed")
+	assert_eq(int(GameChoiceModal.connection_counts(slot)["total"]), before - 1,
+		"a destroyed game is a door that no longer opens")
 
 func _first_bashable() -> int:
 	for i in range(_ui._choices.size()):

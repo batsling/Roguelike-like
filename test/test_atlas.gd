@@ -330,18 +330,53 @@ func test_nothing_shows_art_at_the_overview() -> void:
 	view.frame_all()
 	assert_eq(view.cover_count(), 0, "the whole-sky overview is dots, not stamps")
 
-func test_everything_with_art_shows_it_when_zoomed_right_in() -> void:
+func test_everything_on_screen_with_art_shows_it_when_zoomed_right_in() -> void:
 	var view := _open()
 	if not view.has_layout():
 		return
 	for _step in range(80):
 		view.zoom_by(1.3, Vector2(400, 300))
+	# ON SCREEN, because that is what cover_count answers — see the test below for
+	# why it is not allowed to answer for the whole sky.
+	var vis: Rect2 = view._visible_rect()
 	var with_art: int = 0
 	for i in range(view.layout.star_count()):
-		if view.cover_texture(i) != null:
+		if vis.has_point(view.to_screen(view.layout.position_of(i))) \
+				and view.cover_texture(i) != null:
 			with_art += 1
 	assert_eq(view.cover_count(), with_art,
-		"at maximum zoom every game that has art is showing it")
+		"at maximum zoom every game on screen that has art is showing it")
+
+# The stutter this guards against: `cover_count` runs on every redraw — so on
+# every pan and zoom step — and `shows_cover` used to answer by LOADING the cover
+# to measure it. Panning the chart therefore walked the whole 845-cover catalog
+# through the image decoder a few stars at a time. A star nowhere near the size
+# threshold must be answered from its packing radius alone, with the art untouched.
+func test_the_overview_decodes_no_cover_art() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	view.frame_all()
+	assert_eq(view.cover_count(), 0, "nothing is showing art out here")
+	var decoded: int = 0
+	for a in view._aspect_cache:
+		if a > 0.0:
+			decoded += 1
+	assert_eq(decoded, 0, "and no cover was loaded to work that out")
+
+func test_zooming_in_only_decodes_what_it_draws() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	view.frame_all()
+	for _step in range(14):
+		view.zoom_by(1.3, Vector2(400, 300))
+	var decoded: int = 0
+	for a in view._aspect_cache:
+		if a > 0.0:
+			decoded += 1
+	assert_lt(decoded, view.layout.star_count(),
+		"a zoom step is not allowed to cost the whole catalog")
 
 # ---------------------------------------------------------------------------
 # The run trail — the corridor drawn over the sky
@@ -439,6 +474,10 @@ func test_the_route_set_is_rebuilt_when_the_run_moves() -> void:
 	if not view.has_layout() or view.trail_segment_count() == 0:
 		return
 	var before: Dictionary = view.route_stars().duplicate()
+	# The start is the run's first game, so the run opens in the report step — beat
+	# it, and the offering that appears is the one the move under test is made from.
+	ui.report(true)
+	ui._end_resolve()
 	ui.pick(0)
 	ui.report(false)
 	view._build_trail()
@@ -744,20 +783,40 @@ func test_path_taken_follows_the_order_the_games_were_visited() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)
 	ui.choose_start(0)
-	# Walk three real connections.
-	for _hop in range(3):
-		var options: Array = RunGraph.neighbors(GameState.current_game_id)
-		var moved: bool = false
-		for candidate in options:
-			if not GameState.visited_games.has(candidate) and candidate != GameState.current_game_id:
-				GameState.set_current_game(candidate)
-				moved = true
-				break
-		if not moved:
-			break
-	var view := _open()
-	if not view.has_layout() or view.history_segment_count() < 2:
+	# Walk three real connections — from a HUB, and always to the best-connected
+	# game not yet stood on.
+	#
+	# It used to walk from wherever the run's random start landed, taking the first
+	# unvisited neighbour it found, and give up quietly when it ran out. That is a
+	# dead end waiting to happen: `visited_games` is a set, so a walk that wanders
+	# into the fringe has nowhere unvisited left to go, and the test then asserted
+	# nothing at all and reported itself Risky. Starting at the best-connected game
+	# in the catalog and steering toward degree keeps the walk in territory that
+	# always has somewhere to go, so the case under test is reached every run.
+	var hubs: Array = RunGraph.hub_ids(1)
+	if hubs.is_empty():
+		pass_test("no graph to walk in this catalog")
 		return
+	GameState.set_current_game(StringName(hubs[0]))
+	for _hop in range(3):
+		var best: StringName = &""
+		var best_degree: int = -1
+		for candidate in RunGraph.neighbors(GameState.current_game_id):
+			if GameState.visited_games.has(candidate) or candidate == GameState.current_game_id:
+				continue
+			var d: int = RunGraph.degree(candidate)
+			if d > best_degree:
+				best_degree = d
+				best = candidate
+		if best == &"":
+			break
+		GameState.set_current_game(best)
+	var view := _open()
+	if not view.has_layout():
+		pass_test("no baked sky in this checkout — run tools/bake_atlas.py")
+		return
+	assert_gte(view.history_segment_count(), 2,
+		"walking out from a hub records a history to check")
 	var walked: Array = GameState.visited_games.duplicate()
 	walked.append(GameState.current_game_id)
 	assert_eq(view.history_segment_count(), walked.size() - 1,

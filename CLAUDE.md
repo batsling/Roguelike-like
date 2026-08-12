@@ -41,14 +41,15 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 22 scripts, ~861 te
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by
   `.claude/hooks/session-start.sh` in remote sessions).
-- A GUT run usually reports **one Risky / "Did not assert"**, and *which* test it
-  is varies between runs. Several tests early-`return` when the run's random
-  graph doesn't reach the case they are about —
-  `test_run_map.gd::test_the_route_fits_the_window_it_opens_in` (route too big to
-  fit) and
-  `test_atlas.gd::test_path_taken_follows_the_order_the_games_were_visited`
-  (fewer than two hops available) are the two seen so far. Pre-existing, and not
-  a regression you introduced.
+- **A GUT run should be all green, with no Risky / "Did not assert".** It used to
+  report one or two, varying between runs, because a couple of tests early-
+  `return`ed when the run's random graph didn't reach the case they were about.
+  Both are fixed: `test_atlas.gd::test_path_taken_follows_the_order_the_games_were_visited`
+  now walks the graph's own edges (revisits included) so a history always exists,
+  and `test_run_map.gd::test_the_route_fits_the_window_it_opens_in` asserts the
+  *other* branch — the fit bottoming out at the legibility floor — rather than
+  asserting nothing. If a Risky turns up, it is a new one; find out which case
+  stopped being reachable rather than assuming it is noise.
 - The leaked-RID / orphan warnings at the end of a GUT run are also pre-existing
   noise from UI tests that build Controls.
 - To see a change on screen rather than in assertions, use the `verify` skill

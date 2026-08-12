@@ -8,9 +8,9 @@ id = &"monster_train"
 display_name = "Monster Train"
 year = 2020
 type = 2
-games_influenced = Array[StringName]([&"cross_blitz", &"dicealot", &"dicefolk", &"inkbound", &"monster_train_2", &"rogue_command", &"ship_of_fools", &"the_royal_writ", &"tower_escape", &"wildfrost", &"master_of_piece"])
-influence_sources = PackedStringArray("check folder", "https://store.steampowered.com/app/3035330/Dicealot/", "https://www.nintendolife.com/features/only-pokemon-can-make-pokemon-dicefolk-devs-on-finding-a-voice-in-a-crowded-genre", "", "", "https://steamcommunity.com/app/1461910/discussions/0/3363649332031630216/?l=finnish", "check folder", "https://store.steampowered.com/app/3333700/The_Royal_Writ/", "check folder", "https://mcvuk.com/business-news/when-we-made-wildfrost/", "https://x.com/imgame_official/status/1925464077654249724")
-influence_relations = PackedStringArray("", "", "", "dev/series", "dev/series", "", "", "", "", "", "")
+games_influenced = Array[StringName]([&"cross_blitz", &"dicealot", &"dicefolk", &"inkbound", &"master_of_piece", &"monster_train_2", &"rogue_command", &"ship_of_fools", &"the_royal_writ", &"tower_escape", &"wildfrost"])
+influence_sources = PackedStringArray("check folder", "https://store.steampowered.com/app/3035330/Dicealot/", "https://www.nintendolife.com/features/only-pokemon-can-make-pokemon-dicefolk-devs-on-finding-a-voice-in-a-crowded-genre", "", "https://x.com/imgame_official/status/1925464077654249724", "", "https://steamcommunity.com/app/1461910/discussions/0/3363649332031630216/?l=finnish", "check folder", "https://store.steampowered.com/app/3333700/The_Royal_Writ/", "check folder", "https://mcvuk.com/business-news/when-we-made-wildfrost/")
+influence_relations = PackedStringArray("", "", "", "dev/series", "", "dev/series", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

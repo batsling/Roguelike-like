@@ -240,3 +240,49 @@ func test_a_game_cell_is_no_wider_than_its_cover_needs() -> void:
 	# The old cell was 212 wide; anything near that is the halving having silently
 	# come undone.
 	assert_lt(cell.custom_minimum_size.x, 150.0, "and well under the 212 it used to be")
+
+# --- the Steam shortcut ----------------------------------------------------
+#
+# `GameData.launch()` prefers the local install and only falls back to the store
+# page, which is right for "play this" and means that for every game with a
+# file_location the Steam page has no way in at all. It is offered as its own
+# button wherever a game is being READ rather than played — the Collection's
+# detail panel and the Atlas's star card.
+
+func test_a_steam_page_is_recognised_only_when_it_is_a_url() -> void:
+	var g := GameData.new()
+	assert_false(g.has_steam_page(), "nothing authored, nothing to open")
+	g.steam_page = "check folder"
+	assert_false(g.has_steam_page(), "a note pointing at evidence is not a link")
+	g.steam_page = "https://store.steampowered.com/app/1145360/Hades/"
+	assert_true(g.has_steam_page(), "a store URL is")
+	assert_eq(g.steam_app_id(), "1145360", "and its app id reads off it")
+
+func test_a_publisher_page_still_opens_without_an_app_id() -> void:
+	var g := GameData.new()
+	g.steam_page = "https://www.gog.com/game/nethack"
+	assert_true(g.has_steam_page(), "any http(s) page is openable")
+	assert_eq(g.steam_app_id(), "", "it just isn't a Steam app link")
+
+func test_the_game_detail_offers_the_steam_page() -> void:
+	var with_page: GameData = null
+	for g in Data.all_games():
+		if g is GameData and g.has_steam_page():
+			with_page = g
+			break
+	if with_page == null:
+		pass_test("no game in the catalog carries a store page")
+		return
+	var col := _new_collection()
+	col._show_game_detail(with_page)
+	assert_true(_text_of(col._detail_box).contains("Steam page"),
+		"the detail panel carries the shortcut")
+
+func test_a_game_with_no_store_page_gets_no_steam_button() -> void:
+	var bare := GameData.new()
+	bare.id = &"__no_store_page__"
+	bare.display_name = "Nowhere In Particular"
+	var col := _new_collection()
+	col._show_game_detail(bare)
+	assert_false(_text_of(col._detail_box).contains("Steam page"),
+		"and a game without one stays clean")

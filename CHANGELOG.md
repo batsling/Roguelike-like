@@ -11,6 +11,145 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A run you can build, and the road you walked put at the top of the page.**
+
+  **⚙ Custom Run.** The catalog is 846 games and the only say you had in which of
+  them a run was made of was one global switch, three values wide. "A deckbuilder
+  run", "only games I have never beaten", "send me at Balatro", "a short one" are
+  all the same wish and none of them could be asked for. So: a setup screen off
+  the main menu, and a `RunConfig` autoload behind it.
+
+  It carries **three filters, not one**, because the three questions are
+  genuinely independent — what **the map** is made of, which of those may be
+  **the start**, and which may be **the amulet** — and the interesting runs come
+  from the three disagreeing ("any map, a deckbuilder start, an amulet I've never
+  won on"). Each has the same four axes: library, genre (a multi-select, since
+  "Action or Deckbuilder" is a run someone wants and a dropdown cannot say it),
+  your lifetime record, and a release-year range. The start and amulet filters
+  select from **inside** the map rather than beside it, so a start filter can
+  never offer an opening card no route could leave.
+
+  Under them the **run length** — how many games from the start to the Amulet,
+  which used to be a pair of constants — and an optional **named target**, which
+  composes with the band rather than overriding it: name Balatro and set 4–6 and
+  you are offered starts four to six games out from Balatro. A named target
+  outranks every filter beside it, including `exclude_beaten_amulets`: you said a
+  game, and a general preference does not get to overrule a specific instruction.
+
+  Each column prints the count of games that survive it, live, which is what turns
+  "is this run even possible" from something you discover by pressing Begin into
+  something you read while you are choosing. Begin is disabled only for the things
+  that genuinely cannot produce a run — a map filter that leaves nothing, an
+  amulet filter with no game behind it, a target its own map excludes. A nine-game
+  map is a warning, not a refusal; it is a strange run and it is a run. One
+  warning is worth naming: the opening panel offers **one card per genre**, so a
+  single-genre map opens on one card, and the screen says so before you take it.
+
+  The filters ride in the **save**, because on a custom run the filters *are* the
+  map: resumed without them the graph rebuilds off `Settings` and the run comes
+  back standing on a node the new graph may not have.
+
+  **The Continue list says which run a save is.** A custom run that reads exactly
+  like an ordinary one on the save list is a run you cannot tell you are about to
+  resume — and it is the one fact about a save that changes what resuming it
+  means. Each row now carries its own `⚙` line ("map: Deckbuilder · start: never
+  beaten · 4–6 games") built from the filters stored in that save, not from the
+  live `RunConfig`, which is describing whatever run happens to be in memory.
+
+  **And the suite is all green, with no Risky.** Two tests used to early-`return`
+  when the run's random graph did not reach the case they were about, so *which*
+  test reported "Did not assert" varied between runs and the noise was documented
+  as expected. Neither needed to be that way. The Atlas's path-order test walked
+  from wherever the run's random start landed and took the first unvisited
+  neighbour it found — a dead end waiting to happen, since `visited_games` is a
+  set and a walk that wanders into the fringe has nowhere left to go; it starts at
+  the best-connected game in the catalog now and steers toward degree, so the case
+  is reached every run. The route-map's fit test simply asserts the *other*
+  branch: a route too big to fit legibly should bottom out at the legibility floor
+  and scroll, which is a fact worth pinning rather than a reason to assert
+  nothing.
+
+  **And the road you walked is at the top of the screen.** The end-of-run screen
+  has always drawn a run as a line of covers with arrows between them closing on
+  the Amulet, and it is the clearest picture of a run this project has — shown
+  once, on the screen that tells you it is over. It is in the header now, live,
+  for the whole run: the games played, then a dashed arrow to the Amulet. The
+  checklist says what you owe, the board says what is closing in, the route ladder
+  says where you could go; none of them said where you have *been*, which is what
+  a roguelike run actually is. The title gives up the centre for it and takes the
+  right, which is the honest ranking of the two — the title is decoration and the
+  strip is state. The covers are small and carry no name (that is on the hover)
+  because the strip shares one 1280-wide row with the health chip, the gold chip,
+  the title and the menu, and the page underneath still fits 720 without
+  scrolling — which the three fit tests confirm it does.
+
+- **Three new robots, a start that is a game, connections you can count, and a
+  star chart that stops decoding the catalog to draw a dot.**
+
+  **The start is the run's first game.** Taking one of the three opening cards
+  used to be a free move: you landed on the game, nothing spawned, no tries were
+  granted, and the run's first real game was whatever you travelled to from it.
+  That made the opening decision cheap — three roads, no cost, and the thing you
+  were actually choosing (which genre's enemy you would face first) happened one
+  click later against a card you had not seen when you chose. Now the start
+  *rolls its goal-enemy*, stands it on the board, hands over the game's tries and
+  drops the run straight into the report step. The card opens the ordinary
+  `GameChoiceModal` first — the enemy, its goal, the tries, the route, the
+  connections — so nothing about it is a surprise. **Bash and Transmute are
+  withheld there**: they reshape an *offering*, and three roads out of one run is
+  not one. The run now opens with something to go and play.
+
+  **Every card says how many doors it opens, and how many of them are worth
+  walking through.** Above the cover, before anything else: `⛓ 14 connections ·
+  ✦ 2 events · 🛒 1 shop`. Routing was the one decision the popup could not
+  answer — it drew the shortest path to the Amulet beautifully and said nothing
+  about how much *choice* the next node would give you, which is the difference
+  between a hub and a corridor. Counted off `RunGraph` rather than off the
+  sheet's raw `games_influenced`, so the number is doors this run can actually
+  use: the filter's, the main-component prune's, and Bash's removals are all
+  already taken out. Event placement is hashed off the node id, so quoting the
+  count early gives away nothing that opening that neighbour's own card wouldn't.
+
+  **Punch Off fights back.** "The Constructs turn to you menacingly!" used to be
+  prose over a button that cost nothing up front, which made *I Can Take Them*
+  the obviously correct press on a dead end — the one place the event format says
+  an event may bite. It bites now: `spawn_enemy tag=robot 1` peels one of the
+  Constructs' kin off and puts it on the board, and it is still following while
+  you go and beat a mecha roguelike for the payout. Two fronts, which is what "I
+  can take them" ought to have to mean. The `tag=` is new on the token and is the
+  point of it — a plain `spawn_enemy` conjures whatever the roster hands over,
+  which in a scene that has just told you exactly what is standing in front of
+  you is a Leprechaun walking into a robot fight. The generator checks the tag
+  against the `enemies2.0` Tag column, and a tagged roll widens by *difficulty*
+  rather than by dropping the tag: the tag is what the row promised.
+
+  **Three robots to be that robot** — Punch Construct (Slay the Spire 2), Love
+  Bot and Robo-Cat (Mewgenics), from the sheet, with art. The Tag column already
+  spoke in comma lists for the enemies that are more than one thing; `has_tag`
+  now reads it as the set it always was, so Robo-Cat answers to `cat` and to
+  `robot` both.
+
+  **The Steam page is its own shortcut in the Atlas and the Collection.**
+  `GameData.launch()` prefers the local install and only falls back to the store
+  page — right for "play this", and it meant that for every game the player owns
+  the Steam page had no way in at all, while for the ~800 they don't it was the
+  only thing behind the entry. It is a separate button now, wherever a game is
+  being *read* rather than played.
+
+  **And the Atlas stops decoding the catalog to draw a dot.** The stutter had one
+  cause, and it was a HUD label. `cover_count()` — "12 showing art", refreshed on
+  every redraw, which means on every pan and zoom step — asked `shows_cover()` of
+  all 845 stars, and `shows_cover()` answered by *loading the cover to measure
+  it*. Panning the chart therefore walked ~200 MB of box art through the image
+  decoder a few stars at a time, forever, because there was always another star
+  that had not been asked yet. Two changes: a star answers "definitely too small"
+  from its packing radius alone (the widest a cover can be for a given radius is
+  fixed arithmetic, no art needed), and the count is bounded to what is on
+  screen — which is also the more useful sentence. The per-star id conversion the
+  draw loop repeated six times a star, three passes a frame, is now done once per
+  sky. Nothing derived from the run or from the lifetime record is cached: those
+  move from places that have no reason to tell a star chart about it.
+
 - **A pass over the things the page gets wrong: scrollbars, where a modal opens,
   and what you can point at.**
 

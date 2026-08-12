@@ -8,8 +8,8 @@ id = &"dota_auto_chess"
 display_name = "Dota Auto Chess"
 year = 2019
 type = 1
-games_influenced = Array[StringName]([&"pok_mon_auto_chess", &"teamfight_tactics", &"the_bazaar", &"vivid_knight", &"super_auto_pets"])
-influence_sources = PackedStringArray("", "https://en.wikipedia.org/wiki/Teamfight_Tactics", "https://gamestudio.n-ix.com/case-study/the-bazaar-game-development-story/", "https://www.youtube.com/watch?v=5fR9VYTfm2A&t=1s", "https://x.com/TeamWoodGames/status/1383470923156647938?s=20")
+games_influenced = Array[StringName]([&"pok_mon_auto_chess", &"super_auto_pets", &"teamfight_tactics", &"the_bazaar", &"vivid_knight"])
+influence_sources = PackedStringArray("", "https://x.com/TeamWoodGames/status/1383470923156647938?s=20", "https://en.wikipedia.org/wiki/Teamfight_Tactics", "https://gamestudio.n-ix.com/case-study/the-bazaar-game-development-story/", "https://www.youtube.com/watch?v=5fR9VYTfm2A&t=1s")
 influence_relations = PackedStringArray("", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])

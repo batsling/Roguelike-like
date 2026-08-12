@@ -9,4 +9,4 @@ display_name = "Scroll of Teleportation"
 reference = "Rogue"
 preference = "Neutral"
 file = "Teleportation"
-effect = [{"op": "teleport", "dir": "same", "spread": 1}]
+effect = [{"op": "teleport", "dir": "same", "spread": 2}]

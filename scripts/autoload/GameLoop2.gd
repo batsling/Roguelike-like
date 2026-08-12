@@ -419,8 +419,16 @@ func roll_enemy(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 # authored, since the tiers grow as the run does and the top of the ladder may be
 # empty (nothing is authored at Insane today). Never upward: a run whose own tier
 # is unstocked has not earned something heavier than it asked for.
-func roll_conjured_enemy(tier: int = -1) -> GoalEnemyData:
+#
+# `tag` narrows the pool to the enemies carrying that synergy tag (Punch Off's
+# robots) before any of the above happens. A tag with nothing authored behind it
+# would otherwise silently conjure an untagged body, which is not what the row
+# said either — so a tag that empties the pool rolls NOTHING and the caller says
+# so, rather than substituting a stranger.
+func roll_conjured_enemy(tier: int = -1, tag: StringName = &"") -> GoalEnemyData:
 	var pool: Array = Data.all_goal_enemies()
+	if tag != &"":
+		pool = pool.filter(func(e): return e is GoalEnemyData and e.has_tag(tag))
 	if pool.is_empty():
 		return null
 	if tier < 0:
@@ -429,6 +437,15 @@ func roll_conjured_enemy(tier: int = -1) -> GoalEnemyData:
 		var bucket: Array = pool.filter(func(e): return e is GoalEnemyData and e.tier_index() == step)
 		if not bucket.is_empty():
 			return bucket[randi() % bucket.size()]
+	# A tagged pool is a handful of bodies and may have none at or below the run's
+	# tier at all (every robot is Medium; a Low run asking for one finds nothing
+	# under it). Rather than pay the bill with an untagged enemy, widen UPWARD
+	# within the tag — the tag is what the row promised, the tier is the part it
+	# can afford to lose.
+	if tag != &"":
+		var above: Array = pool.filter(func(e): return e is GoalEnemyData)
+		if not above.is_empty():
+			return above[randi() % above.size()]
 	return null
 
 # Picks one enemy from `pool` preferring an exact type+tier match, widening to

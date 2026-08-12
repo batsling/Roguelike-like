@@ -21,6 +21,7 @@ func _ready() -> void:
 	_style_menu()
 
 	%StartRunBtn.pressed.connect(_on_start_run)
+	%CustomRunBtn.pressed.connect(_on_custom_run)
 	%ContinueBtn.pressed.connect(_on_continue_toggle)
 	%RunHistoryBtn.pressed.connect(_on_run_history)
 	%CollectionBtn.pressed.connect(_on_collection)
@@ -69,6 +70,25 @@ func _style_menu() -> void:
 # ---------------------------------------------------------------------------
 
 func _on_start_run() -> void:
+	# An ordinary run is an ordinary map: whatever the last custom run configured
+	# goes with it, and RunGraph falls back to Settings.game_filter. Done here
+	# rather than in _begin_run, which the custom flow also goes through.
+	RunConfig.reset()
+	_open_character_picker()
+
+# The custom flow is the same flow with a screen in front of it: pick what the run
+# is made of, then pick who plays it. RunConfig is applied before the picker opens
+# rather than after Confirm, so the character screen — and anything it asks the
+# graph — is already looking at the map the run will actually use.
+func _on_custom_run() -> void:
+	for c in _modal_layer.get_children():
+		c.queue_free()
+	var screen := CustomRunScreen.open(self)
+	screen.begun.connect(func(config: Dictionary):
+		RunConfig.apply(config)
+		_open_character_picker())
+
+func _open_character_picker() -> void:
 	for c in _modal_layer.get_children():
 		c.queue_free()
 	var picker := _build_character_picker()
@@ -497,6 +517,21 @@ func _save_row(entry: Dictionary) -> Control:
 	sub.add_theme_font_size_override("font_size", 11)
 	sub.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	text.add_child(sub)
+
+	# A CUSTOM RUN says so, on its own line and in its own colour. It is the one
+	# fact about a save that changes what resuming it means — an ordinary row and a
+	# deckbuilder-only row are the same character on the same game otherwise — and
+	# it comes off the save's own stored filters rather than off the live RunConfig,
+	# which describes whatever run is loaded now.
+	var custom: String = SaveSystem.describe_run_config(entry)
+	if custom != "":
+		var tag := Label.new()
+		tag.text = custom
+		tag.tooltip_text = "This run was built on the Custom Run screen — resuming it rebuilds that map."
+		tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tag.add_theme_font_size_override("font_size", 10)
+		tag.add_theme_color_override("font_color", UITheme.ACCENT)
+		text.add_child(tag)
 
 	var load_btn := Button.new()
 	load_btn.text = "Resume"

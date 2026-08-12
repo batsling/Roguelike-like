@@ -460,6 +460,49 @@ func test_punch_off_asks_for_a_game_rather_than_paying_out() -> void:
 		"and the payload waits on the far side of the game")
 
 
+func test_punch_off_drops_a_robot_on_the_board_before_it_sends_you() -> void:
+	# "The Constructs turn to you menacingly" now costs something up front: one of
+	# their kin peels off and follows you, and it is still following while you go
+	# and beat the mecha game for the payout.
+	GameLoop2.reset()
+	var ev: EventData2 = _event(PUNCH)
+	var fight: Dictionary = _choice(ev, "i_can_take_them")
+	var before: int = GameLoop2.stack_size()
+	EventSystem.resolve_choice(ev, fight, 0)
+	assert_eq(GameLoop2.stack_size(), before + 1, "a body arrives on the board")
+	var spawned: GoalEnemyData = GameLoop2.stack[GameLoop2.stack.size() - 1]["enemy"]
+	assert_true(spawned.has_tag(&"robot"),
+		"and it is a robot, not whatever the roster handed over: got %s (%s)"
+			% [spawned.display_name, spawned.tag])
+
+
+func test_the_robot_tag_has_enemies_behind_it() -> void:
+	# Same argument as the mecha tag below — a `spawn_enemy tag=` whose bucket is
+	# empty conjures nothing at all, which is an event quietly doing less than the
+	# cell says. The generator checks this against the sheet; this checks it
+	# against what actually shipped.
+	var robots: Array = Data.all_goal_enemies().filter(
+		func(e): return e is GoalEnemyData and e.has_tag(&"robot"))
+	assert_gt(robots.size(), 0, "the robot tag needs a pool to roll from")
+
+
+func test_a_tagged_conjure_never_widens_out_of_its_tag() -> void:
+	# The tier is the part a tagged roll may trade away; the tag is not. A Low run
+	# asking for a robot must still get a robot, even though every robot authored
+	# is a Medium.
+	for tier in range(0, 3):
+		var rolled: GoalEnemyData = GameLoop2.roll_conjured_enemy(tier, &"robot")
+		assert_not_null(rolled, "a robot is found at tier %d" % tier)
+		if rolled != null:
+			assert_true(rolled.has_tag(&"robot"),
+				"tier %d rolled %s, which is not a robot" % [tier, rolled.display_name])
+
+
+func test_a_conjure_for_a_tag_nothing_carries_rolls_nothing() -> void:
+	assert_null(GameLoop2.roll_conjured_enemy(-1, &"no_enemy_carries_this_tag"),
+		"an empty tag pays with nothing rather than with a stranger")
+
+
 func test_the_mecha_tag_has_games_behind_it() -> void:
 	# A play_game against a tag nothing carries is an event that quietly does
 	# nothing. The thin end of the tag vocabulary has single-game buckets, so this

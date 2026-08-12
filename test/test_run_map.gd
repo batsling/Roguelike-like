@@ -14,7 +14,14 @@ var _ui
 func before_each() -> void:
 	_ui = OVERWORLD.instantiate()
 	add_child_autofree(_ui)   # _ready -> rolls the amulet + the three start options
-	_ui.choose_start(0)       # take the first offered start; the run has a position now
+	# Take the first offered start. It is the run's FIRST GAME now, so the run opens
+	# in the report step — play it out, since the map is read from a run that is
+	# standing at an offering.
+	_ui.choose_start(0)
+	if _ui._phase == _ui.Phase.PLAYING:
+		_ui.report(true)
+		_ui._end_resolve()
+		_ui._drop_queue.clear()
 
 func after_each() -> void:
 	GameState.reset_run()
@@ -183,7 +190,15 @@ func test_the_route_fits_the_window_it_opens_in() -> void:
 	var ladder: Vector2 = modal._canvas_holder.custom_minimum_size
 	var room: Vector2 = modal._scroller.size
 	if modal._zoom <= modal.FIT_ZOOM_MIN + 0.001:
-		return                    # a route too big to fit legibly; scrolling is right
+		# A route too big to fit LEGIBLY. Scrolling is the right answer there, and
+		# the thing worth pinning is that the fit went all the way to the floor and
+		# stopped rather than shrinking the rungs into a smudge — so this branch
+		# asserts that, instead of asserting nothing and reporting itself risky.
+		assert_almost_eq(modal._zoom, modal.FIT_ZOOM_MIN, 0.001,
+			"a route this big bottoms out at the legibility floor and scrolls")
+		assert_gt(ladder.x, room.x + 1.0,
+			"which is only the right call because it genuinely does not fit")
+		return
 	assert_lte(ladder.x, room.x + 1.0, "the whole route is visible across")
 	assert_lte(ladder.y, room.y + 1.0, "and all the way down")
 

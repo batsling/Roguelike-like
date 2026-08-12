@@ -748,6 +748,19 @@ func _show_game_detail(g: GameData) -> void:
 		play_btn.pressed.connect(func(): g.launch())
 		_detail_box.add_child(play_btn)
 
+	# The Steam page, separately from Play: `launch()` prefers the local install,
+	# so for an owned game the store page has no other way in — and for the rest of
+	# the catalog it is the only thing behind the entry at all.
+	if g.has_steam_page():
+		var steam_btn := Button.new()
+		steam_btn.text = "🎮  Steam page"
+		steam_btn.tooltip_text = "Open %s on Steam." % g.display_name
+		steam_btn.custom_minimum_size = Vector2(0, 32)
+		steam_btn.add_theme_stylebox_override("normal", _flat(Color(0.10, 0.16, 0.26, 0.9), Color(0.42, 0.68, 0.95), 1))
+		steam_btn.add_theme_color_override("font_color", Color(0.68, 0.86, 1.0))
+		steam_btn.pressed.connect(func(): g.open_steam_page())
+		_detail_box.add_child(steam_btn)
+
 	_detail_box.add_child(_detail_section("📊 Tracked Stats"))
 	_detail_box.add_child(_kv("Beaten", str(GameStats.beaten_count(g.id))))
 	_detail_box.add_child(_kv("Amulet wins", str(GameStats.amulet_wins(g.id))))

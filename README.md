@@ -51,7 +51,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     RunOverScreen   — the end-of-run verdict screen
 │   │                      #     RunMapModal / ScrollReadModal
 │   ├── events/           #   the D20 event system (EventModal, D20DieView)
-│   ├── menu/             #   the main menu
+│   ├── menu/             #   the main menu + CustomRunScreen (the custom run's setup)
 │   ├── runtime/          #   RunGraph — the real-games influence graph
 │   └── ui/               #   shared UI (UITheme, RewardScreen, Collection, toasts)
 │                          #     AtlasView + AtlasLayoutBuilder — the star chart
@@ -195,6 +195,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Notifications` | Curated player-facing "important events" channel; the overworld mounts `NotificationToasts` to show them. |
 | `SaveSystem` | Save/load for a games-first run (`user://`): a named save per run plus the run's own autosave slot. Writes GameState, `GameLoop2`, and the overworld's on-screen state, and hands a loaded run back to the next `Overworld2` to boot. |
 | `Settings` | Run-independent preferences (e.g. game-filter) persisted to `user://settings.cfg`. |
+| `RunConfig` | A **custom run**'s setup, held for the run it configures: three independent filters (**map** / **start** / **amulet**, each with library, genre, record and release-year axes), the run-length band, and an optional named target game. Off by default, in which case `RunGraph` reads `Settings.game_filter` exactly as before. Written by `CustomRunScreen`, read by `RunGraph`, and saved with the run — the filters *are* the map, so a save resumed without them comes back on a different one. `RunConfig.describe()` is what the menu's Continue list prints on a custom run's row, read off that save's own stored block rather than off the loaded run. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified). |
 | `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Five tabs: **Grant** (items / scrolls / statuses, with a player-or-enemy target picker — the item list is `DevTools.item_pool()`, the **2.0 set only**: it used to append the 112 combat-era relics from `data/items`, which grant cleanly and then do nothing because no games-first code honours them), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss), **Events** (start any authored event where you stand, each row saying why it is or isn't turning up on its own — see [Authoring an event](#authoring-an-event)). Everything routes through the same public API the game uses. |
@@ -211,8 +212,18 @@ node and its script.
   runs, the Collection, the tier list, Settings, and **Exit Game**. Quitting from
   here doesn't confirm: nothing is live on the menu and the saves are already on
   disk, so a prompt between the player and the door only ever gets in the way.
+  - **`CustomRunScreen.gd`** — **⚙ Custom Run**: build a run out of a chosen set of
+    games. Three columns, because there are three independent questions — what
+    **the map** is made of, which of those may be **the start**, and which may be
+    **the amulet** — each with the same four axes (library, genre, record, release
+    years) and a live count of the games that survive it. Under them, the run
+    length (how many games from start to Amulet) and an optional **named target**,
+    which composes with the band rather than overriding it. Begin hands the
+    configuration to `RunConfig` and then opens the ordinary character picker, so
+    a custom run is the normal flow with a screen in front of it.
 - **`Overworld2.gd`** — the run itself: the opening choose-your-start panel (three
-  games, three genres, all 5–7 games from the amulet), the offering of games
+  games, three genres, all 5–7 games from the amulet — and the one you take is
+  the run's first game, enemy and all), the offering of games
   (cover cards), and
   then a two-column stage — checklist on the left (the standing goals while you're
   choosing, the honour-system report step + attempt tracker while you're playing),
@@ -230,6 +241,17 @@ node and its script.
   `window/stretch/mode="canvas_items"` scales that fixed canvas up to fill the
   display, so a 2560×1440 monitor draws this same page at 2×. Fitting the box is
   a constraint, not an accident, and the things below are what pay for it.
+
+  **The header is the road you have walked.** Across the top, between the health
+  and gold chips and the `☰ Menu`: the games played as small covers with arrows
+  between them, then a dashed arrow to the Amulet — the same picture the
+  end-of-run screen draws, live, for the whole run. It is the only view of the run
+  as a *journey*; the checklist says what you owe, the board says what is chasing
+  you, and neither said where you have been. The title moved to the right to make
+  room, which is also the honest ranking of the two. Covers are small and unnamed
+  (the name is on the hover) because the strip shares its row with everything else
+  and the page still has to fit 720; past `STRIP_MAX_STOPS` the oldest stops are
+  dropped behind an ellipsis.
 
   **Where the numbers are.** There is **no HUD strip** — every number is drawn
   once, by whatever owns it:
@@ -388,6 +410,7 @@ editing the sheet, then review the diff):
 | `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 | `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
+| `_punch_off_robot_edit.py` | one-shot: Punch Off's "I Can Take Them" also spawns a robot (`spawn_enemy tag=robot 1`) |
 | `_xlsx_surgery.py` | shared helper: edit ONE sheet of `Roguelikes.xlsx` in place. An openpyxl round-trip drops the workbook's seven charts, so the sheet-editing one-shots (`_statuses_sheet_setup.py`, `_items2_statuses_setup.py`, `_events2_sheet_setup.py`, `_curses2_sheet_setup.py`) rewrite just that sheet's XML parts and copy every other zip entry through untouched. |
 
 The `_*_setup.py` scripts are **bootstraps, not generators**: they lay a sheet's
@@ -505,7 +528,7 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `apply_status <status> N` | A `statuses2.0` status on the player. |
 | `random_item_choice N` | Pick 1 of N random items. |
 | `gain_item <item_id>` | A **named** `items2.0` relic, handed straight over — the one token that says *which* item. The generator checks the id against the sheet. |
-| `spawn_enemy [N]` | Conjures N enemies at the run's current difficulty onto the following stack. What every curse costs. |
+| `spawn_enemy [N] [tag=<t>]` | Conjures N enemies at the run's current difficulty onto the following stack. What every curse costs. `tag=` narrows the roll to the goal-enemies carrying that synergy tag (`spawn_enemy tag=robot 1` — Punch Off's Constructs); the generator checks the tag against the `enemies2.0` Tag column, and a tagged roll widens by difficulty rather than dropping the tag. |
 | `trade_relic <slot>` | The Relic Trader's swap: one of your relics for one of his. Fills `<give>` / `<get>` in the choice's prose. |
 | `obtain_item` | Pick **any** item in the catalogue. This is Wand of Wishing's picker — much stronger than a chest, use deliberately. |
 | `nothing` | An explicit no-op. Write it where a blank cell would read as unfinished. |

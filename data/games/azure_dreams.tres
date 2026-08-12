@@ -8,9 +8,9 @@ id = &"azure_dreams"
 display_name = "Azure Dreams"
 year = 1997
 type = 3
-games_influenced = Array[StringName]([&"haque", &"tao_s_adventure_curse_of_the_demon_seal", &"sword_of_the_necromancer"])
-influence_sources = PackedStringArray("http://www.roguelikeradio.com/2019/02/episode-151-haque.html", "", "https://x.com/GrimorioG/status/1213196249509376001?s=20")
-influence_relations = PackedStringArray("", "dev/series", "")
+games_influenced = Array[StringName]([&"haque", &"sword_of_the_necromancer", &"tao_s_adventure_curse_of_the_demon_seal"])
+influence_sources = PackedStringArray("http://www.roguelikeradio.com/2019/02/episode-151-haque.html", "https://x.com/GrimorioG/status/1213196249509376001?s=20", "")
+influence_relations = PackedStringArray("", "", "dev/series")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
