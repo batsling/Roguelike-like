@@ -11,6 +11,29 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Fixed: a card popup could open five times taller than the window, with its
+  buttons off the bottom of the screen.** Clicking a game on the start picker
+  opened a `GameChoiceModal` that painted as a black screen with a route graph
+  floating in it and nothing clickable anywhere — the run could not be started.
+
+  On its FIRST frame the popup's content asks for an enormous minimum size: the
+  labels have not wrapped yet and the route ladder has not been zoomed to fit
+  (`_settle` runs deferred, after the panel has been laid out). The start
+  picker's ladder is the worst case in the game, since its route runs the whole
+  depth of the run — 1409×3832 inside a 1280×720 window. Godot grows a Control
+  on a non-container parent to its content's minimum and never shrinks it back,
+  so when the minimum dropped to a sane 1140×664 one frame later the panel
+  stayed 3832 tall, and `centre` dutifully centred it: header off the top,
+  Back / Start two thousand pixels below the bottom.
+
+  `ModalScaffold.centre` now re-fits the panel to its combined minimum on every
+  shape change, not only for the panels that asked to be content-sized. A fixed
+  size is safe because it is written to `custom_minimum_size`, which is part of
+  that minimum — the panel cannot shrink below what its caller asked for, and it
+  can still grow when its content genuinely needs the room. The `FIT_CONTENT`
+  meta the old two-branch version needed is gone with it. This is the moment the
+  transient lets go: `minimum_size_changed` already fires exactly there.
+
 - **A wordless event stacks its art over the choices.** The Arcade Room's
   `Prompt` and both `Result` cells are now blank on purpose: it is a room you
   walk into, a picture of a room, and two buttons — the prose it used to carry
