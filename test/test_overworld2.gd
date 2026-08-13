@@ -3207,9 +3207,14 @@ func test_an_ordinary_arrival_still_hands_over_its_event() -> void:
 func test_the_panel_can_start_an_event_where_the_run_stands() -> void:
 	var ev: EventData2 = Data.get_event2(&"scrap_ooze")
 	assert_not_null(ev)
+	# The DELTA, not the count. The opening game this file's before_each plays
+	# deals an event of its own, and which one is a roll — when it lands on Scrap
+	# Ooze the count is already 1 before this test touches anything, and asserting
+	# "== 1" made an unrelated die decide whether the suite was green.
+	var before: int = int(GameState.events_fired.get(&"scrap_ooze", 0))
 	assert_true(_ui.open_event(ev), "an event opens on a live run")
 	assert_not_null(_ui._event_modal, "and it is the real modal, not a bare panel")
-	assert_eq(int(GameState.events_fired.get(&"scrap_ooze", 0)), 1,
+	assert_eq(int(GameState.events_fired.get(&"scrap_ooze", 0)), before + 1,
 		"starting one puts it in the bag, exactly as arriving at one does")
 	assert_true(GameState.events_seen.has(&"scrap_ooze"),
 		"…and it will not come round again until the rest of its rarity has")

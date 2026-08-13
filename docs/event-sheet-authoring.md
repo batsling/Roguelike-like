@@ -927,6 +927,13 @@ lever gets the same treatment for the same reason (the Blood Donation Machine
 is not gated on having Health to spare), and it reddens only while the lever is
 actually offered, since a jammed machine cannot carry the threat out.
 
+A press that only MIGHT kill you — one whose Health cost is on the losing side
+of a `chance`, or inside a `roll` that may not fire — gets the same red and a
+different sentence: "☠ This might kill you." The two never fire together, and
+the certain warning wins when the certain cost is already fatal. Nothing in the
+sheet gambles with Health yet (every `chance` payload authored so far is a
+reward), so this is the warning waiting for the first one that does.
+
 Taking that press ENDS THE RUN, on the same verdict screen an enemy's blow
 would raise. Health reaching 0 ends a run wherever the 0 came from — the loop
 watches `GameState.hp_changed` rather than checking only the hits it deals

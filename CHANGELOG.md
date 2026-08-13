@@ -29,6 +29,24 @@ For how the project is laid out and how its systems fit together, see
   a batch: a cell that spends Health and gives it back would otherwise read as
   fatal on the frame between the two. Where the batch LEAVES you is what counts.
 
+  **A gamble that could kill you says "might".** The certain cost and the
+  possible one are two different questions, and the player is owed both.
+  `health_cost` still answers the first — what a press definitely spends, which
+  is what says *"this will kill you"*. `possible_health_cost` answers the second:
+  every `roll` in the effect list firing, plus the worse of a two-sided
+  `chance`'s two branches, since a two-sided roll pays one of them whatever
+  happens. When that worst case would end the run but the certain cost would
+  not, the button reddens and the line under it reads *"☠ This might kill you."*
+  — never both warnings at once.
+
+  Same red either way, deliberately: the distinction the player acts on is in
+  the words, and two shades of red is a difference nobody can read at a glance.
+  The cost line stops just short of flat `DANGER` for a maybe, because it is a
+  weaker claim. No authored event or object gambles with Health today — every
+  `chance` payload in the sheet is a reward — so this shows up the day someone
+  writes `chance 40% -> gain_chest small 1 else lose_hp 4`, and the tests build
+  those choices by hand in the meantime.
+
   **A fatal press is painted as one.** `EventSystem.is_lethal` and its ☠ warning
   already existed, but the warning was a line of red text under a button that
   looked exactly like the safe one above it. A choice that would end the run now

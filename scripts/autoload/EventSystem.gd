@@ -464,14 +464,19 @@ func choice_refusal(choice: Dictionary, picks: Dictionary) -> String:
 # stays live and the WARNING does the work — the cost line reddens as the press
 # gets closer to lethal, and says so outright when it is.
 #
-# Only the CERTAIN cost counts. A `chance`'s payload might cost Health and might
-# not, and colouring a button red for something that probably will not happen is
-# how a warning stops being read.
+# The CERTAIN cost and the POSSIBLE one are two different questions and the
+# player is owed both. What a press definitely spends is what reddens the cost
+# line and what says "this will kill you"; what it COULD spend if every roll in
+# it goes the wrong way is a separate, weaker claim — "this might kill you" —
+# and it must never be dressed up as the first, or a warning that is usually
+# wrong stops being read at all.
 
-# The Health this press would definitely spend.
-func health_cost(choice: Dictionary, taken: int) -> int:
+# The Health `effects` would take. `worst` folds in the payload of any `roll` in
+# the list — the independent procs that might fire and might not — which is the
+# whole difference between what a press costs and what it could cost.
+func _health_from(effects: Array, taken: int, worst: bool) -> int:
 	var total: int = 0
-	for eff in choice.get("effects", []):
+	for eff in effects:
 		if not (eff is Dictionary):
 			continue
 		var resolved: Dictionary = _scaled(eff, taken)
@@ -485,7 +490,32 @@ func health_cost(choice: Dictionary, taken: int) -> int:
 				# Only bites Health when the cap drops below what you are holding.
 				total += maxi(0, GameState.hp - (GameState.max_hp
 					- int(resolved.get("value", 0))))
+			"chance":
+				# A `roll`: fires or doesn't, so it is only ever part of the worst
+				# case. Recursive, because its payload is an effect list like any
+				# other and may carry a roll of its own.
+				if worst:
+					total += _health_from(resolved.get("effects", []), taken, worst)
 	return maxi(0, total)
+
+
+# The Health this press would definitely spend.
+func health_cost(choice: Dictionary, taken: int) -> int:
+	return _health_from(choice.get("effects", []), taken, false)
+
+
+# The most Health this press could take if everything in it goes the wrong way:
+# the certain cost, every `roll` firing, and the WORSE of the headline gamble's
+# two branches — a two-sided `chance` pays one of them whatever happens, so the
+# bad branch is a real outcome rather than an extra.
+func possible_health_cost(choice: Dictionary, taken: int) -> int:
+	var total: int = _health_from(choice.get("effects", []), taken, true)
+	var chance: Dictionary = choice.get("chance", {})
+	if not chance.is_empty():
+		total += maxi(
+			_health_from(chance.get("effects", []), taken, true),
+			_health_from(chance.get("else_effects", []), taken, true))
+	return total
 
 
 # Would taking this press end the run?
@@ -494,10 +524,32 @@ func is_lethal(choice: Dictionary, taken: int) -> bool:
 	return cost > 0 and cost >= GameState.hp
 
 
+# COULD taking this press end the run, without it being certain? False once it is
+# certain — that is `is_lethal`'s answer and the two warnings must not both fire.
+func is_possibly_lethal(choice: Dictionary, taken: int) -> bool:
+	if is_lethal(choice, taken):
+		return false
+	var worst: int = possible_health_cost(choice, taken)
+	return worst > 0 and worst >= GameState.hp
+
+
+# Either way of dying, for the views: a button that can end the run is painted
+# red whether the death is certain or only on the table. The distinction the
+# player acts on is in the WORDS under it (will / might), not in the colour —
+# two shades of red would be a difference nobody could read at a glance.
+func is_deadly(choice: Dictionary, taken: int) -> bool:
+	return is_lethal(choice, taken) or is_possibly_lethal(choice, taken)
+
+
 # The warning under a costly button, or "" when there is nothing to warn about.
 func lethal_warning(choice: Dictionary, taken: int) -> String:
 	if is_lethal(choice, taken):
 		return "☠  This will kill you."
+	# A gamble that could take more Health than you are holding. `might`, said
+	# plainly, because the press may also cost nothing at all — the odds are on
+	# the cost line right above this.
+	if is_possibly_lethal(choice, taken):
+		return "☠  This might kill you."
 	var cost: int = health_cost(choice, taken)
 	if cost <= 0:
 		return ""
@@ -515,11 +567,16 @@ func lethal_warning(choice: Dictionary, taken: int) -> String:
 # actually judging is "how many more of these do I have in me", and that is a
 # slope, not a switch.
 func danger_color(choice: Dictionary, taken: int) -> Color:
+	if is_lethal(choice, taken):
+		return UITheme.DANGER
+	# A possible death reddens the line too — the gamble that could take it is
+	# quoted on that same line — but stops short of the flat DANGER a certain one
+	# gets, since it is a weaker claim.
+	if is_possibly_lethal(choice, taken):
+		return UITheme.DANGER.lerp(UITheme.TEXT_DIM, 0.25)
 	var cost: int = health_cost(choice, taken)
 	if cost <= 0:
 		return UITheme.TEXT_DIM
-	if is_lethal(choice, taken):
-		return UITheme.DANGER
 	# Presses left at this price, capped where the colour stops being useful.
 	var presses: float = float(GameState.hp) / float(maxi(1, cost))
 	var heat: float = clampf(1.0 - (presses - 1.0) / 5.0, 0.0, 1.0)

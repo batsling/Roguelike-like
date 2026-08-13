@@ -200,7 +200,7 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 	# event's fatal choice does. Only while the button is actually OFFERED — a
 	# jammed machine cannot take your last point of Health, and painting its
 	# greyed-out button red would be a threat it can no longer carry out.
-	if offered and EventSystem.is_lethal(choice, taken):
+	if offered and EventSystem.is_deadly(choice, taken):
 		btn.add_theme_stylebox_override("normal", UITheme.lethal_box())
 		btn.add_theme_stylebox_override("hover", UITheme.lethal_box(true))
 		btn.add_theme_color_override("font_color", UITheme.DANGER)

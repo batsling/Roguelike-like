@@ -422,7 +422,7 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 	# under it. An event can kill you — Scrap Ooze's reach on your last point of
 	# Health, Abyssal Baths' last dip — and the red text alone sat under a button
 	# that looked exactly like the safe one above it.
-	if EventSystem.is_lethal(choice, taken):
+	if EventSystem.is_deadly(choice, taken):
 		btn.add_theme_stylebox_override("normal", UITheme.lethal_box())
 		btn.add_theme_stylebox_override("hover", UITheme.lethal_box(true))
 		btn.add_theme_color_override("font_color", UITheme.DANGER)
