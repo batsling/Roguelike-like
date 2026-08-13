@@ -26,7 +26,7 @@ signal finished
 # A machine's line on the page. Two fit across the right column, so three
 # machines are two lines rather than three.
 const ROW_WIDTH := 268.0
-const ROW_HEIGHT := 30.0
+const ROW_HEIGHT := 28.0
 const ROW_ICON := 22
 
 var _row: HFlowContainer = null
@@ -52,7 +52,7 @@ func _ready() -> void:
 	# spending the last ~124px the page has, so its own chrome is competing with
 	# the machines it is there to show.
 	add_theme_stylebox_override("panel",
-		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.4), 10, 6, 2))
+		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.4), 10, 4, 2))
 	if not ObjectSystem.objects_changed.is_connected(_on_objects_changed):
 		ObjectSystem.objects_changed.connect(_on_objects_changed)
 
@@ -65,7 +65,7 @@ func _exit_tree() -> void:
 func _build() -> void:
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 6)
+		margin.add_theme_constant_override("margin_" + side, 4)
 	add_child(margin)
 
 	var root := VBoxContainer.new()
@@ -143,6 +143,11 @@ func _machine_row(inst: Dictionary) -> Control:
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn.add_theme_font_size_override("font_size", 12)
 	btn.add_theme_constant_override("icon_max_width", ROW_ICON)
+	# CLIPPED, so the row is the width it was given rather than the width its
+	# label wants. A Button's minimum size is its content, so one long relic name
+	# quietly pushed the row past ROW_WIDTH, and the flow — which is measured to
+	# the pixel — wrapped the shelf onto a second line.
+	btn.clip_text = true
 	btn.text = data.display_name if data != null else "Machine"
 	var state: String = _state_line(inst, data)
 	if state != "":

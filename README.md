@@ -312,6 +312,13 @@ node and its script.
     the page rather than opened over it: it blocks nothing, stays for the whole
     visit, and travelling on is what closes it. The overworld floats a
     `🛒 Shop ↓` pointer at the foot of the screen until it has been scrolled to.
+    The shelf is drawn as **one row per item** — thumbnail, name, price — with
+    the full card and its Buy button opening over the page on click. Three cards
+    on the page ran the overworld to 1231px inside a 688px window; the page is a
+    fixed 1280x720 canvas that `stretch/mode` scales into any window, so there is
+    no monitor big enough to buy that space back. `ObjectPanel2` draws machines
+    the same way for the same reason, and the board shrinks to a tighter height
+    budget (`BattlefieldView.set_sharing_column`) while either is under it.
   - **`BossNoticeModal.gd`** — the "⚠ BOSS INCOMING" popup (§7.1), opened once per
     boss round. It replaced a banner strip that shoved the whole page down. Its
     boss portraits are **clickable**: each opens the ordinary `EnemyInfoCard` over

@@ -3402,6 +3402,42 @@ func test_the_page_still_fits_the_window_with_machines_standing_on_it() -> void:
 	_assert_fits("the page with three machines under the board")
 	ObjectSystem.clear()
 
+func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
+	# The shop shares the machines' slot and had the same disease, worse: its
+	# three cards ran the page to 1231px of a 688px window, and that predates
+	# machines entirely.
+	var hubs: Array = ShopSystem.hub_games()
+	assert_false(hubs.is_empty(), "a run has hubs")
+	_ui._mount_shop(hubs[0])
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_not_null(_ui._shop_panel, "the shop mounts under the board")
+	_ui._refresh()
+	_assert_fits("the page with a hub's shop on it")
+
+func test_a_shelf_item_is_a_row_on_the_page_and_a_card_when_you_open_it() -> void:
+	var hubs: Array = ShopSystem.hub_games()
+	_ui._mount_shop(hubs[0])
+	await get_tree().process_frame
+	var shelf: Array = ShopSystem.stock(hubs[0])
+	if shelf.is_empty():
+		# A hub whose shop has not opened yet has nothing to draw; the fit test
+		# above is the one that matters for it.
+		assert_eq(_ui._shop_panel._cards_row.get_child_count(), 0)
+		return
+	assert_eq(_ui._shop_panel._cards_row.get_child_count(), shelf.size(),
+		"one row per thing on the shelf")
+	_ui._shop_panel.open_card(0)
+	await get_tree().process_frame
+	assert_not_null(_ui._shop_panel._card_layer, "clicking a row opens its card")
+	var buys: int = 0
+	for node in _ui._shop_panel._card_layer.find_children("*", "Button", true, false):
+		if String((node as Button).text).begins_with("◉") or (node as Button).text == "Sold":
+			buys += 1
+	assert_gt(buys, 0, "with the Buy button on it — the card is where you buy")
+	_ui._shop_panel.close_card()
+	assert_null(_ui._shop_panel._card_layer, "and putting it back closes it")
+
 func test_a_machine_is_a_row_on_the_page_and_a_card_when_you_open_it() -> void:
 	ObjectSystem.spawn_by_tag(&"arcade", 1, 1)
 	await get_tree().process_frame

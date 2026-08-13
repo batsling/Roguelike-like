@@ -11,6 +11,33 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The shop had the same disease, worse — and it was there first.** A hub's
+  shelf of three cards ran the page to **1231px inside a 688px window**, which
+  predates machines entirely: anyone standing in a shop has been scrolling the
+  overworld since shops moved onto the page.
+
+  Measured the same way as the machines, and fixed the same way. A shelf item is
+  now a **row** — thumbnail, name, price, dimmed when you cannot afford it, kept
+  in place and greyed when it is sold — and the card it used to draw on the page
+  opens over it on click, Buy button and all. Buying closes the card, because the
+  purchase is the answer to the question the card asks. The shop's title, its
+  "what's left" line, the purse and the reroll used to be a header block and a
+  footer row: 90px of furniture around 30px of shelf. They are one line now.
+
+  Two sizing lessons, both of which cost a measurement to find:
+
+  * **A Button's minimum size is its content.** The rows are given a width, but
+    one long relic name quietly pushed a row past it and the flow — measured to
+    the pixel — wrapped the shelf onto a second line, undoing 34px. `clip_text`
+    pins the row to the width it was given.
+  * **The floor has to fit the width the column actually hands over**, which is
+    less than the column's own width by the panel's padding. Measured exactly, a
+    single rounding pixel wraps the line.
+
+  A hub's shop now fits the window (669 of 688, from 1231). The one case still
+  over is a hub carrying a shop AND spawned machines at the same time, which
+  runs about 38px long.
+
 - **The machines under the board no longer push the overworld off the screen.**
   Three of them ran the page to **1674px inside a 688px window**; it is 680 now,
   at every board size.
