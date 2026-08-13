@@ -82,9 +82,11 @@ def _row(**cells) -> list:
 # the reason to keep pressing, so the odds are on the button (EventSystem's
 # `chance` renders both sides of an `else`).
 #
-# `needs hp 2` rather than `needs hp 1`: at 1 Health the trade is a death, and
-# dying to a vending machine on the honour system is not a decision anyone wants
-# to have made.
+# NOT gated on having Health to spare. Isaac lets you kill yourself on one of
+# these and so does this: the button stays live all the way down, its cost line
+# reddening as the trade gets closer to lethal and saying so outright on the
+# press that would end the run. Warned is not the same as forbidden, and the
+# whole appeal of the machine is that you can go one more.
 BLOOD_DONATION_MACHINE = _row(
     **{
         "Name": "Blood Donation Machine",
@@ -95,7 +97,7 @@ BLOOD_DONATION_MACHINE = _row(
         "Chance Won": "The machine exploded, and {ITEM} appeared.",
         "Choice 1": "Give Blood",
         "Repeat 1": "Again",
-        "Effect 1": ("needs hp 2; lose_hp 1; chance 6.7% -> "
+        "Effect 1": ("lose_hp 1; chance 6.7% -> "
                      "gain_item_of blood_bag|iv_bag; destroy_object "
                      "else gain_gold 1"),
         "Choice 2": "Bomb",
@@ -227,9 +229,12 @@ def write_objects(wb: Workbook) -> None:
 def write_events(wb: Workbook) -> None:
     grid = wb.read_grid("events2.0")
     headers = [str(c) for c in grid[0]]
-    limit_at = _index(headers, "Limit")
     where_at = _index(headers, "Where")
     name_at = _index(headers, "Event")
+    # Already dropped on a previous run. Re-running this script is a normal
+    # thing to do — every other edit it makes is idempotent — so an absent
+    # column is "done", not an error.
+    limit_at = headers.index("Limit") if "Limit" in headers else -1
 
     for row in grid[1:]:
         if not str(row[name_at]).strip():
@@ -240,9 +245,11 @@ def write_events(wb: Workbook) -> None:
                 row[_index(headers, col)] = value
 
     # Drop `Limit` last, so the lookups above are against the sheet as read.
-    out = [[c for i, c in enumerate(r) if i != limit_at] for r in grid]
+    out = grid if limit_at < 0 else [
+        [c for i, c in enumerate(r) if i != limit_at] for r in grid]
     wb.write_grid("events2.0", out)
-    print("events2.0: dropped Limit, blanked Where, completed Arcade Room")
+    print("events2.0: %s, blanked Where, completed Arcade Room"
+          % ("dropped Limit" if limit_at >= 0 else "Limit already dropped"))
 
 
 def write_items(wb: Workbook) -> None:

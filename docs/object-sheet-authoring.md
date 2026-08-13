@@ -133,7 +133,7 @@ actually rolled — "The machine exploded, and IV Bag appeared."
 No prompt. Two buttons.
 
 ```
-Give Blood   Again   needs hp 2; lose_hp 1;
+Give Blood   Again   lose_hp 1;
                      chance 6.7% -> gain_item_of blood_bag|iv_bag; destroy_object
                                  else gain_gold 1
 Bomb                 needs bombs 1; spend_bomb 1; gain_pickups 2-4 hp|gold; destroy_object
@@ -145,9 +145,24 @@ and the button says 13%, because a button that still said 6.7% would be lying to
 a player who bought a Clover for exactly this. Exploding is the outcome Luck
 pushes *toward*: a relic beats a coin.
 
-`needs hp 2` rather than `1`, because at 1 Health the trade is a death, and dying
-to a vending machine on the honour system is not a decision anyone wants to have
-made.
+**It is not gated on having Health to spare.** Isaac lets you kill yourself on
+one of these and so does this: the button stays live all the way down. What
+stands between the player and that is the warning, not a lock — the cost line
+reddens as the press gets closer to lethal, and says so outright when it is:
+
+```
+-1 Health · 93.3%: +1 Gold · 6.7%: +Blood Bag or IV Bag
+⚠  You can die here — this leaves you at 1 Health.
+☠  This will kill you.
+```
+
+The warning fires **one press early**, because a warning that only appears on
+the fatal press arrives after the decision that mattered. Both come from
+`EventSystem.danger_color` / `lethal_warning`, which read the choice's CERTAIN
+Health cost — a `chance` payload that might cost Health does not redden a
+button, or the colour stops being read. Events get the same treatment: Abyssal
+Baths' Linger climbs until it can kill, and the number goes red before the prose
+gets round to saying so.
 
 Bursting or bombing ends **that** machine. Another may still turn up.
 

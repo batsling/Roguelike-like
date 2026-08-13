@@ -137,15 +137,60 @@ func test_the_burst_is_the_outcome_luck_pushes_toward() -> void:
 		"Luck raises the burst chance rather than lowering it")
 
 
-func test_giving_blood_is_refused_at_one_health() -> void:
-	# At 1 Health the trade is a death, and dying to a vending machine on the
-	# honour system is not a decision anyone wants to have made.
+func test_giving_blood_is_never_locked_only_warned() -> void:
+	# Isaac lets you kill yourself on one of these and so does this. Taking the
+	# button away at 1 Health would remove the decision at exactly the moment it
+	# became interesting — so the button stays live and the WARNING does the work.
 	var inst: Dictionary = ObjectSystem.spawn(BLOOD)
 	var give: Dictionary = _choice(_object(BLOOD), "give_blood")
 	GameState.hp = 1
-	assert_false(ObjectSystem.choice_available(inst, give), "no trade at 1 Health")
+	assert_true(ObjectSystem.choice_available(inst, give),
+		"the trade is offered even when it is fatal")
+	assert_eq(ObjectSystem.choice_refusal(inst, give), "",
+		"…and nothing refuses it")
+
+
+func test_the_fatal_press_says_it_is_fatal() -> void:
+	var give: Dictionary = _choice(_object(BLOOD), "give_blood")
+	GameState.hp = 1
+	assert_string_contains(EventSystem.lethal_warning(give, 0), "kill you")
+	assert_true(EventSystem.is_lethal(give, 0), "1 Health against a 1 Health cost")
+
+
+func test_the_press_before_the_fatal_one_warns_too() -> void:
+	# A warning that only appears on the fatal press arrives after the decision
+	# that mattered.
+	var give: Dictionary = _choice(_object(BLOOD), "give_blood")
 	GameState.hp = 2
-	assert_true(ObjectSystem.choice_available(inst, give), "…but the trade at 2 is on")
+	assert_false(EventSystem.is_lethal(give, 0), "not fatal yet")
+	assert_string_contains(EventSystem.lethal_warning(give, 0), "can die")
+
+
+func test_a_comfortable_press_says_nothing() -> void:
+	var give: Dictionary = _choice(_object(BLOOD), "give_blood")
+	GameState.hp = 40
+	assert_eq(EventSystem.lethal_warning(give, 0), "",
+		"no warning while the price is nowhere near the run")
+
+
+func test_the_cost_line_reddens_as_the_trade_gets_dangerous() -> void:
+	var give: Dictionary = _choice(_object(BLOOD), "give_blood")
+	GameState.hp = 40
+	var safe: Color = EventSystem.danger_color(give, 0)
+	GameState.hp = 3
+	var risky: Color = EventSystem.danger_color(give, 0)
+	GameState.hp = 1
+	var fatal: Color = EventSystem.danger_color(give, 0)
+	assert_gt(risky.r - risky.b, safe.r - safe.b, "redder as the Health runs out")
+	assert_almost_eq(fatal.r, UITheme.DANGER.r, 0.001, "and fully red when it kills")
+
+
+func test_a_free_choice_is_never_coloured_as_dangerous() -> void:
+	# The Bomb button costs a Bomb, not Health — it must not redden just because
+	# the run happens to be nearly dead.
+	GameState.hp = 1
+	assert_eq(EventSystem.danger_color(_choice(_object(BLOOD), "bomb"), 0),
+		UITheme.TEXT_DIM, "no Health cost, no warning colour")
 
 
 func test_bombing_the_blood_machine_scatters_two_to_four_pickups() -> void:

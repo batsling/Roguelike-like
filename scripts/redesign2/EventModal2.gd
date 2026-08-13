@@ -381,8 +381,23 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.add_theme_font_size_override("font_size", 11)
-		lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		# Reddens as the press gets closer to lethal — Abyssal Baths' Linger
+		# climbs until it can kill, and the number on the button should look like
+		# what it is before the prose gets round to saying so.
+		lbl.add_theme_color_override("font_color",
+			EventSystem.danger_color(choice, taken))
 		col.add_child(lbl)
+
+	var warning: String = EventSystem.lethal_warning(choice, taken)
+	if warning != "":
+		var warn := Label.new()
+		warn.text = warning
+		warn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		warn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		warn.add_theme_font_size_override("font_size", 11)
+		warn.add_theme_color_override("font_color", UITheme.DANGER)
+		col.add_child(warn)
 	return col
 
 

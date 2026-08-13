@@ -48,9 +48,15 @@ For how the project is laid out and how its systems fit together, see
   new things in the DSL: fractional percentages (one-in-fifteen is 6.7%, and
   rounding it would make the number on the button not the number that gets
   rolled) and a `chance … else …` form, because a gamble that pays nothing on a
-  loss cannot say what this machine does. It is gated at `needs hp 2` rather than
-  1: at 1 Health the trade is a death, and dying to a vending machine on the
-  honour system is not a decision anyone wants to have made.
+  loss cannot say what this machine does.
+
+  It is **not** gated on having Health to spare — Isaac lets you kill yourself on
+  one of these and so does this. Taking the button away at 1 Health would remove
+  the decision at exactly the moment it got interesting, so the warning does the
+  work instead: the cost line **reddens** as the press gets closer to lethal, and
+  says so outright — `⚠ You can die here` one press early, `☠ This will kill you`
+  on the press that would. It is general rather than the machine's own, so
+  Abyssal Baths' Linger reddens too, before its prose gets round to warning you.
 
   **🪙 The Donation Machine.** Gold in, and it does not come back out. The bank
   is **persistent across runs** (`GameStats`, `user://game_stats.json`), holds

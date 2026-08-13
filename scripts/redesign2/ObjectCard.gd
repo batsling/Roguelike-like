@@ -54,6 +54,11 @@ func _ready() -> void:
 		GameState.stats_changed.connect(_on_objects_changed)
 	if not GameState.gold_changed.is_connected(_on_objects_changed):
 		GameState.gold_changed.connect(_on_objects_changed)
+	# Health has its own signal, and this card reads it twice over: a Health cost
+	# is what reddens a button, and losing Health elsewhere can make a machine
+	# lethal without the machine being touched.
+	if not GameState.hp_changed.is_connected(_on_objects_changed):
+		GameState.hp_changed.connect(_on_objects_changed)
 	_build()
 
 
@@ -64,6 +69,8 @@ func _exit_tree() -> void:
 		GameState.stats_changed.disconnect(_on_objects_changed)
 	if GameState.gold_changed.is_connected(_on_objects_changed):
 		GameState.gold_changed.disconnect(_on_objects_changed)
+	if GameState.hp_changed.is_connected(_on_objects_changed):
+		GameState.hp_changed.disconnect(_on_objects_changed)
 
 
 # Every button on the card is gated on something that moves — the purse, the
@@ -203,9 +210,24 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.add_theme_font_size_override("font_size", 11)
+		# The cost line reddens as the press gets closer to lethal. The Blood
+		# Donation Machine is not gated on having Health to spare — you may kill
+		# yourself on it, exactly as in Isaac — so this and the warning below are
+		# the whole of what stands between the player and that.
 		lbl.add_theme_color_override("font_color",
-			UITheme.TEXT_DIM if offered else UITheme.TEXT_FAINT)
+			EventSystem.danger_color(choice, taken) if offered else UITheme.TEXT_FAINT)
 		col.add_child(lbl)
+
+	var warning: String = EventSystem.lethal_warning(choice, taken)
+	if warning != "" and offered:
+		var warn := Label.new()
+		warn.text = warning
+		warn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		warn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		warn.add_theme_font_size_override("font_size", 11)
+		warn.add_theme_color_override("font_color", UITheme.DANGER)
+		col.add_child(warn)
 	return col
 
 

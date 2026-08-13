@@ -454,6 +454,78 @@ func choice_refusal(choice: Dictionary, picks: Dictionary) -> String:
 	return ""
 
 
+# --- how close a choice is to killing you -----------------------------------
+#
+# Some buttons cost Health, and one of them will eventually be the last one. The
+# build's answer is NOT to disable it: the Blood Donation Machine is a
+# push-your-luck machine, Abyssal Baths' Linger climbs until the prose tells you
+# the next dip is fatal, and a greyed-out button would take the decision away
+# from the player at exactly the moment it became interesting. So the button
+# stays live and the WARNING does the work — the cost line reddens as the press
+# gets closer to lethal, and says so outright when it is.
+#
+# Only the CERTAIN cost counts. A `chance`'s payload might cost Health and might
+# not, and colouring a button red for something that probably will not happen is
+# how a warning stops being read.
+
+# The Health this press would definitely spend.
+func health_cost(choice: Dictionary, taken: int) -> int:
+	var total: int = 0
+	for eff in choice.get("effects", []):
+		if not (eff is Dictionary):
+			continue
+		var resolved: Dictionary = _scaled(eff, taken)
+		match String(resolved.get("type", "")):
+			"lose_hp":
+				# `non_lethal` costs are clamped to leave you at 1, so they can
+				# never be the press that ends the run.
+				if not bool(resolved.get("non_lethal", false)):
+					total += int(resolved.get("value", 0))
+			"lose_max_hp":
+				# Only bites Health when the cap drops below what you are holding.
+				total += maxi(0, GameState.hp - (GameState.max_hp
+					- int(resolved.get("value", 0))))
+	return maxi(0, total)
+
+
+# Would taking this press end the run?
+func is_lethal(choice: Dictionary, taken: int) -> bool:
+	var cost: int = health_cost(choice, taken)
+	return cost > 0 and cost >= GameState.hp
+
+
+# The warning under a costly button, or "" when there is nothing to warn about.
+func lethal_warning(choice: Dictionary, taken: int) -> String:
+	if is_lethal(choice, taken):
+		return "☠  This will kill you."
+	var cost: int = health_cost(choice, taken)
+	if cost <= 0:
+		return ""
+	var left: int = GameState.hp - cost
+	# One press from the end. Said before it is true, because a warning that only
+	# appears on the fatal press arrives after the decision that mattered.
+	if left <= cost:
+		return "⚠  You can die here — this leaves you at %d Health." % left
+	return ""
+
+
+# How red the cost line runs. TEXT_DIM while the price is comfortable, walking to
+# DANGER as the Health left after the press runs out, and fully there when the
+# press is fatal. A gradient rather than a flag because the thing the player is
+# actually judging is "how many more of these do I have in me", and that is a
+# slope, not a switch.
+func danger_color(choice: Dictionary, taken: int) -> Color:
+	var cost: int = health_cost(choice, taken)
+	if cost <= 0:
+		return UITheme.TEXT_DIM
+	if is_lethal(choice, taken):
+		return UITheme.DANGER
+	# Presses left at this price, capped where the colour stops being useful.
+	var presses: float = float(GameState.hp) / float(maxi(1, cost))
+	var heat: float = clampf(1.0 - (presses - 1.0) / 5.0, 0.0, 1.0)
+	return UITheme.TEXT_DIM.lerp(UITheme.DANGER, heat)
+
+
 # --- resolving a choice -----------------------------------------------------
 
 # Apply one choice. `taken` is how many times this choice has ALREADY been picked
