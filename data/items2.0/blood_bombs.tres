@@ -13,6 +13,6 @@ description = "Gain +1 Bomb. When using a Bomb, Gain +1 Health"
 triggers = [{"on": "item_acquired", "effects": [{"type": "gain_stat", "stat": "bombs", "value": 1}]}, {"on": "bomb_used", "effects": [{"type": "gain_hp", "value": 1}]}]
 stat_bonuses = {}
 max_uses = -1
-source_game = "The Binding of Isaac"
+source_game = "The Binding of Isaac: Rebirth"
 tags = PackedStringArray("bomb", "blood")
 image = ExtResource("2_img")

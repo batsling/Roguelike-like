@@ -23,6 +23,7 @@ var _goal_enemies: Dictionary = {}      # StringName -> GoalEnemyData (normal)
 var _bosses: Dictionary = {}            # StringName -> GoalEnemyData (boss=true)
 var _statuses: Dictionary = {}          # StringName -> StatusData (§13)
 var _events2: Dictionary = {}           # StringName -> EventData2 (docs/event-sheet-authoring.md)
+var _objects2: Dictionary = {}          # StringName -> ObjectData (docs/object-sheet-authoring.md)
 var _curses2: Dictionary = {}           # StringName -> CurseData2 (the checklist kind, not data/curses)
 
 func _ready() -> void:
@@ -40,14 +41,16 @@ func _ready() -> void:
 	_load_dir("res://data/scrolls2.0/", _scrolls)
 	_load_dir("res://data/statuses2.0/", _statuses)
 	_load_dir("res://data/events2.0/", _events2)
+	_load_dir("res://data/objects2.0/", _objects2)
 	_load_dir("res://data/curses2.0/", _curses2)
 	print("[Data] Loaded %d items, %d events, %d games, %d characters, %d curses, %d encounters" % [
 		_items.size(), _events.size(), _games.size(), _characters.size(),
 		_curses.size(), _encounters.size()
 	])
-	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d statuses, %d events, %d curses" % [
+	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d statuses, %d events, %d curses, %d objects" % [
 		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
-		_scrolls.size(), _statuses.size(), _events2.size(), _curses2.size()
+		_scrolls.size(), _statuses.size(), _events2.size(), _curses2.size(),
+		_objects2.size()
 	])
 
 func _load_dir(path: String, target: Dictionary) -> void:
@@ -119,8 +122,16 @@ func roll_rarity_step(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
 # is gone, so the ladders agree and this is a straight pass-through. Kept as a
 # named function rather than inlined at the call sites, since "roll a rarity for
 # an item" is the thing callers mean and the two enums could diverge again.
+#
+# Luck rides HERE rather than at the call sites, which is what makes "Luck
+# affects every roll" true without thirty places having to remember it: item
+# rewards, chest sizes, scrolls, shop stock and the object pools all come through
+# this one function. A caller supplying its own `roll01` is asking for a
+# specific draw and gets it unmodified.
 func roll_item_rarity(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
-	return roll_rarity_step(rng, roll01)
+	if roll01 >= 0.0:
+		return roll_rarity_step(rng, roll01)
+	return Stats.roll_rarity_step_with_luck(rng)
 
 # Chest SIZES (docs/games-first-redesign.md §8.2) — what a "Random Sized Chest"
 # reward (the Vampire Survivors characters) draws from. A bigger chest offers more
@@ -134,9 +145,10 @@ const CHEST_SIZE_CHOICES := {
 	ChestSize.SMALL: 1, ChestSize.MEDIUM: 2, ChestSize.LARGE: 3, ChestSize.HUGE: 5,
 }
 
-# One size roll, as a ChestSize.
+# One size roll, as a ChestSize. Luck-rerolled through roll_item_rarity, because
+# a bigger chest is the better chest and the ladder is the same ladder.
 func roll_chest_size(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
-	return roll_rarity_step(rng, roll01)
+	return roll_item_rarity(rng, roll01)
 
 # That size as the number of items the chest offers.
 func roll_chest_size_choices(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
@@ -152,7 +164,7 @@ func roll_scroll(rng: RandomNumberGenerator = null) -> ScrollData:
 	if r == null:
 		r = RandomNumberGenerator.new()
 		r.randomize()
-	var target: int = roll_rarity_step(r)
+	var target: int = roll_item_rarity(r)
 	var bucket: Array = pool.filter(func(s): return s is ScrollData and s.rarity_index() == target)
 	if bucket.is_empty():
 		bucket = pool
@@ -219,6 +231,77 @@ func get_event2(id: StringName) -> EventData2:
 
 func all_events2() -> Array:
 	return _events2.values()
+
+# --- Objects (2.0) ---------------------------------------------------------
+# docs/object-sheet-authoring.md. Machines you stand in front of, spawned rather
+# than placed, several at a time.
+func get_object2(id: StringName) -> ObjectData:
+	return _objects2.get(id)
+
+func all_objects2() -> Array:
+	return _objects2.values()
+
+# Every object carrying `tag`, in a STABLE order. Sorted by id rather than left
+# in dictionary order because a spawn draws from this and a run has to be able to
+# replay: `_load_dir` walks the filesystem, and the order it hands back is not a
+# promise.
+func objects_with_tag(tag: StringName) -> Array:
+	var out: Array = []
+	for obj in _objects2.values():
+		if obj is ObjectData and obj.has_tag(tag):
+			out.append(obj)
+	out.sort_custom(func(a, b): return String(a.id) < String(b.id))
+	return out
+
+# One object carrying `tag`, drawn the way everything else in this build is
+# drawn: roll the rarity ladder, then pick from that rung's bucket.
+#
+# `rarity_bucket_of` is what makes the fall-back honest. Today every object is
+# Common, so a roll landing on Rare has an empty bucket to draw from — and the
+# answer is to walk DOWN to the nearest stocked rung rather than to reroll,
+# because rerolling silently redistributes the ladder: it would turn the 5% Rare
+# into extra weight on Common only for as long as no Rare exists, and then
+# quietly stop when one is authored. Falling down is the same shape the scroll
+# roll and the reward buckets already have.
+func roll_object_by_tag(tag: StringName, rng: RandomNumberGenerator,
+		exclude: Array = []) -> ObjectData:
+	var pool: Array = objects_with_tag(tag)
+	if not exclude.is_empty():
+		pool = pool.filter(func(o): return not exclude.has(o.id))
+	if pool.is_empty():
+		return null
+	var bucket: Array = rarity_bucket_of(pool, roll_item_rarity(rng))
+	# Which of the bucket is a Favour.NONE decision — one Common object is not a
+	# better draw than another — so Luck has no say past the rung.
+	return bucket[rng.randi_range(0, bucket.size() - 1)]
+
+# The rung of `pool` at `target`, falling DOWN the ladder to the nearest stocked
+# one and then up if there is nothing below. Shared so the object roll and any
+# future tag-drawn pool agree on what an empty bucket means.
+func rarity_bucket_of(pool: Array, target: int) -> Array:
+	for rung in range(target, -1, -1):
+		var bucket: Array = pool.filter(func(o): return rarity_index_of(o) == rung)
+		if not bucket.is_empty():
+			return bucket
+	for rung in range(target + 1, int(RarityStep.LEGENDARY) + 1):
+		var bucket: Array = pool.filter(func(o): return rarity_index_of(o) == rung)
+		if not bucket.is_empty():
+			return bucket
+	return pool
+
+# The rarity of anything that names its rarity as a STRING — events and objects
+# both do, where items carry the enum. Unknown names read as Common rather than
+# throwing: a typo in the sheet should make a thing common, not make it vanish.
+const RARITY_NAMES := ["common", "uncommon", "rare", "legendary"]
+
+func rarity_index_of(res: Resource) -> int:
+	if res == null:
+		return int(RarityStep.COMMON)
+	var named = res.get("rarity")
+	if named is String:
+		var at: int = RARITY_NAMES.find(String(named).to_lower())
+		return at if at >= 0 else int(RarityStep.COMMON)
+	return int(named) if named != null else int(RarityStep.COMMON)
 
 func get_curse2(id: StringName) -> CurseData2:
 	return _curses2.get(id)

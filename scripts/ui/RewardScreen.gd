@@ -374,21 +374,13 @@ func _roll_choices() -> void:
 		if not dup:
 			_choices.append(pick)
 
-# The shared 75/20/5 ladder (Data.roll_item_rarity), rolled through this screen's
-# luck advantage instead of a flat random draw.
+# The shared 75/20/5 ladder. This screen used to carry its OWN luck weighting —
+# a port of the HTML build's rollWithLuckAdvantage, which took the better of two
+# [0,1) draws on a luck*10% chance. Luck is a guaranteed reroll per point now and
+# it lives on the ladder itself (Data.roll_item_rarity), so a second
+# implementation here would have applied it twice on this one screen.
 func _roll_rarity() -> int:
-	return Data.roll_item_rarity(_rng, _roll_with_luck_advantage())
-
-# Port of rollWithLuckAdvantage (js/data.js): roll in [0,1); positive luck has
-# a luck*10% chance to take the better of two rolls, negative luck the worse.
-func _roll_with_luck_advantage() -> float:
-	var lv: int = Stats.get_value(&"luck")
-	var r: float = _rng.randf()
-	if lv > 0 and _rng.randf() < float(lv) * 0.1:
-		return maxf(r, _rng.randf())
-	if lv < 0 and _rng.randf() < float(absi(lv)) * 0.1:
-		return minf(r, _rng.randf())
-	return r
+	return Data.roll_item_rarity(_rng)
 
 # ------------------------------------------------------------------
 # Actions

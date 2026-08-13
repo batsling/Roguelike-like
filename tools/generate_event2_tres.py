@@ -13,10 +13,20 @@ event-only forms this module adds:
 
     needs <token>                    a gate on what the player can pay
     needs <Choice> <op> <n>          a gate on the event's own state
+    needs not_jammed | bank_space    a gate on the OBJECT (objects2.0 only)
     add_goal "<cond>" [for <n> games] -> <reward>
     add_curse <curse> [for <n> games]
     play_game tag=<tag> -> <reward>
     chance <p>% -> <reward>          roll p percent; pay on a win, nothing on a loss
+    chance <p>% -> <a> else <b>      …or pay `b` on the loss, for a two-sided roll
+    roll <p>% <reward>               an independent proc; no prose, does not close
+                                     the event, and as many per cell as you like
+
+`chance` and `roll` are not the same thing twice. `chance` is the cell's one
+headline gamble: it claims the `->` payload, it prints the event's Chance Won /
+Chance Lost prose, and winning it closes the event. A `roll` is a side effect
+that either fired or didn't — which is what lets the Donation Machine put two
+independent rolls (5% Luck, {1+X}% jam) on a single coin.
 
 A `Result` cell is a LADDER of prose: `||`-separated, one rung per press of the
 choice, the last rung standing for every press after it. It is the prose half of
@@ -146,8 +156,27 @@ PLAY_RE = re.compile(r"^play_game\s+tag\s*=\s*([A-Za-z0-9_' -]+?)\s*$", re.I)
 # `chance 25%` or `chance {35+10*X}%` — the percent is an ordinary reward amount,
 # so it takes a {expr} hole and climbs with X exactly as a cost does.
 CHANCE_RE = re.compile(r"^chance\s+(.+?)\s*%\s*$", re.I)
+# `roll <p>% <reward clause>` — an INDEPENDENT proc, and the difference from
+# `chance` is the whole reason both exist. `chance` is the cell's one headline
+# gamble: it takes the `->` payload, it prints the event's Chance Won / Chance
+# Lost prose, and winning it closes the event. A `roll` is a side effect that
+# either happened or didn't — no prose, no closing, and as many per cell as the
+# machine needs. The Donation Machine wants two of them on one coin (5% Luck,
+# {1+X}% jam) and the single-arrow rule makes that unsayable with `chance`.
+ROLL_RE = re.compile(r"^roll\s+(.+?)\s*%\s+(.+)$", re.I)
 # What each arrow verb is called in an error message.
 ARROW_VERBS = {"goal": "add_goal", "play": "play_game", "chance": "chance"}
+# Splits a `chance` payload into its won and lost halves. ` else ` at depth 0 —
+# the payload is a flat list of reward clauses, so there is no depth to track.
+ELSE_RE = re.compile(r"\s+else\s+", re.I)
+# Gates that ask the OBJECT rather than the player. A resource gate reads the
+# purse; these read the machine, and they are why the Donation Machine's button
+# can say "Jammed" and "Full" as two different disabled states rather than one
+# grey button with no reason on it.
+OBJECT_FLAGS = {
+    "not_jammed": "the machine is not jammed",
+    "bank_space": "the machine has room",
+}
 
 
 def _split_clauses(cell):
@@ -161,6 +190,8 @@ def _split_clauses(cell):
 
 def parse_gate(clause, where, choice_labels):
     body = clause[len("needs"):].strip()
+    if body.lower() in OBJECT_FLAGS:
+        return {"flag": body.lower()}
     m = GATE_CHOICE_RE.match(body)
     if m:
         # A pick-count gate always carries an operator; a resource gate never
@@ -177,8 +208,9 @@ def parse_gate(clause, where, choice_labels):
     toks = body.split()
     if len(toks) != 2 or not re.fullmatch(r"\d+", toks[1]):
         raise ValueError('events2.0 %s: cannot parse gate %r — expected '
-                         '"needs <resource> <n>" or "needs <Choice> <op> <n>"'
-                         % (where, clause))
+                         '"needs <resource> <n>", "needs <Choice> <op> <n>" '
+                         'or "needs <%s>"'
+                         % (where, clause, "|".join(sorted(OBJECT_FLAGS))))
     stat = toks[0].lower()
     if stat not in GATE_STATS:
         raise ValueError("events2.0 %s: gate names unknown resource %r (known: %s)"
@@ -202,36 +234,131 @@ def _claim_arrow(wanted, last, where):
                          % (where, ARROW_VERBS[wanted]))
 
 
+def parse_percent(tok, where, verb):
+    """A percentage -> ('literal', float) or ('expr', '<godot expr>').
+
+    Its own parser rather than dsl._amount because odds are the one amount in
+    this DSL that may be FRACTIONAL. Everything else counts things — you cannot
+    gain 6.7 Health — but one-in-fifteen is 6.7%, and rounding it to 6 or 7 on
+    the way in would make the number quoted on the button not the odds the
+    machine actually rolls.
+    """
+    tok = str(tok).strip()
+    m = dsl.HOLE.fullmatch(tok)
+    if m:
+        expr, fmt = dsl._split_hole(m.group(1))
+        if fmt:
+            raise ValueError("events2.0 %s: %s takes no :format on its percent (%r)"
+                             % (where, verb, tok))
+        return "expr", dsl.to_godot_expr(expr)
+    if re.fullmatch(r"\d+(?:\.\d+)?", tok):
+        val = float(tok)
+        if not 0.0 <= val <= 100.0:
+            raise ValueError("events2.0 %s: %s %s%% is not a percentage"
+                             % (where, verb, tok))
+        return "literal", val
+    raise ValueError("events2.0 %s: %s wants a percentage or a {expr}, got %r"
+                     % (where, verb, tok))
+
+
 def parse_chance(clause, where):
     """`chance <p>%` -> the percent half of a chance dict.
 
-    The percent is parsed with the shared amount parser, so a literal lands as
-    `percent` and a {expr} hole lands in `scaled` — the same two shapes every
-    other amount in this DSL has, which is what lets EventSystem._scaled resolve
-    it against X with no second code path.
+    A literal lands as `percent` and a {expr} hole lands in `scaled` — the same
+    two shapes every other amount in this DSL has, which is what lets
+    EventSystem._scaled resolve it against X with no second code path.
     """
-    kind, val = dsl._amount(clause)
+    kind, val = parse_percent(clause, where, "chance")
     if kind == "literal":
-        if not 0 <= val <= 100:
-            raise ValueError("events2.0 %s: chance %d%% is not a percentage"
-                             % (where, val))
         return {"percent": val}
-    return {"percent": 0, "scaled": {"percent": val}}
+    return {"percent": 0.0, "scaled": {"percent": val}}
+
+
+def parse_roll(percent, inner, where):
+    """`roll <p>% <reward clause>` -> one chance-wrapped effect, plus its words.
+
+    Compiles to the same `{type: chance, percent, effect}` an item's proc uses,
+    so there is one luck-weighted roll handler in the build rather than a second
+    one for objects. A {expr} percent lands in `scaled` exactly as a `chance`'s
+    does, which is what lets the Donation Machine's jam climb per coin — X is how
+    many coins have already gone in, so `{1+X}%` is 1%, 2%, 3%… and resets to 1%
+    the moment the machine is left, because a fresh machine has a fresh X.
+    """
+    eff, word = dsl.parse_reward_clause(inner.strip())
+    kind, val = parse_percent(percent, where, "roll")
+    out = {"type": "chance", "effect": eff}
+    if kind == "literal":
+        out["percent"] = val
+        odds = percent_word(val)
+    else:
+        out["percent"] = 0.0
+        out["scaled"] = {"percent": val}
+        odds = "{%s}" % val
+    return out, "%s%%: %s" % (odds, word)
+
+
+def percent_word(value):
+    """A percentage with no trailing noise: `6.7`, `5`, never `6.70` or `5.0`."""
+    return ("%g" % float(value))
+
+
+def _split_else(payload, arrow_verb, where):
+    """Split a `->` payload on ` else ` -> (won clauses, lost clauses or None)."""
+    joined = " ; ".join(payload)
+    parts = ELSE_RE.split(joined)
+    if len(parts) == 1:
+        return payload, None
+    if len(parts) > 2:
+        raise ValueError("events2.0 %s: more than one `else` in a payload — a "
+                         "roll has two sides, not three" % where)
+    if arrow_verb != "chance":
+        raise ValueError("events2.0 %s: `else` belongs to `chance` (the only "
+                         "arrow verb that rolls), not to %s"
+                         % (where, ARROW_VERBS[arrow_verb]))
+    won = [c.strip() for c in parts[0].split(";") if c.strip()]
+    lost = [c.strip() for c in parts[1].split(";") if c.strip()]
+    if not won or not lost:
+        raise ValueError("events2.0 %s: `else` needs a reward on both sides" % where)
+    return won, lost
 
 
 def _check_item_ids(effects, where, item_ids):
-    """`gain_item` names a real items2.0 relic, or the event silently pays nothing.
+    """`gain_item` / `gain_item_of` name real items2.0 relics, or the payout is
+    silently nothing.
 
     Checked against the SHEET rather than data/items2.0, the same way `add_curse`
     is, so a fresh checkout generates in either order.
     """
+    if not item_ids:
+        return
     for eff in effects:
-        if eff.get("type") != "gain_item":
+        named = []
+        if eff.get("type") == "gain_item":
+            named = [str(eff.get("item", ""))]
+        elif eff.get("type") == "gain_item_of":
+            named = [str(i) for i in eff.get("items", [])]
+        for iid in named:
+            if iid not in item_ids:
+                raise ValueError("events2.0 %s: names unknown item %r "
+                                 "(items2.0 has %d rows)"
+                                 % (where, iid, len(item_ids)))
+
+
+def _check_object_tags(effects, where, object_tags):
+    """`spawn_object tag=<t>` names a tag some objects2.0 row carries.
+
+    Same argument as the enemy-tag check: a spawn that rolls nothing is a choice
+    which silently does less than the cell promised, and Arcade Room's whole
+    content is what its tag resolves to.
+    """
+    for eff in effects:
+        if eff.get("type") != "spawn_object":
             continue
-        iid = str(eff.get("item", ""))
-        if item_ids and iid not in item_ids:
-            raise ValueError("events2.0 %s: gain_item names unknown item %r "
-                             "(items2.0 has %d rows)" % (where, iid, len(item_ids)))
+        tag = str(eff.get("tag", ""))
+        if tag and object_tags and tag not in object_tags:
+            raise ValueError("events2.0 %s: spawn_object names unknown object tag "
+                             "%r (objects2.0 carries: %s)"
+                             % (where, tag, ", ".join(sorted(object_tags)) or "none"))
 
 
 def _check_enemy_tags(effects, where, enemy_tags):
@@ -253,7 +380,7 @@ def _check_enemy_tags(effects, where, enemy_tags):
 
 
 def parse_effect_cell(cell, where, choice_labels, curse_ids, item_ids=(),
-                      enemy_tags=()):
+                      enemy_tags=(), object_tags=()):
     """-> {gates, effects, effects_text, goal, curse, play, chance}."""
     out = {"gates": [], "effects": [], "effects_text": "",
            "goal": {}, "curse": {}, "play": {}, "chance": {}}
@@ -302,6 +429,13 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids, item_ids=(),
             arrow_verb = "play"
             continue
 
+        m = ROLL_RE.match(clause)
+        if m:
+            eff, word = parse_roll(m.group(1), m.group(2), where)
+            out["effects"].append(eff)
+            words.append(word)
+            continue
+
         m = CHANCE_RE.match(clause)
         if m:
             _claim_arrow("chance", last, where)
@@ -321,16 +455,39 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids, item_ids=(),
         raise ValueError("events2.0 %s: %s needs a `-> <reward>` payload"
                          % (where, ARROW_VERBS[arrow_verb]))
     if payload:
-        effects, text = dsl.parse_reward(" ; ".join(payload))
+        won_half, lost_half = _split_else(payload, arrow_verb, where)
+        effects, text = dsl.parse_reward(" ; ".join(won_half))
         out[arrow_verb]["effects"] = effects
         out[arrow_verb]["effects_text"] = text
+        if lost_half is not None:
+            # The LOSING side of a gamble. Without it a `chance` pays on a win and
+            # nothing on a loss, which cannot say what the Blood Donation Machine
+            # does: the needle goes in either way, and what comes back is a coin
+            # or a burst machine. Two outcomes, one roll, and the button has to
+            # quote both — see EventSystem.describe_choice.
+            else_effects, else_text = dsl.parse_reward(" ; ".join(lost_half))
+            out[arrow_verb]["else_effects"] = else_effects
+            out[arrow_verb]["else_effects_text"] = else_text
 
     out["effects_text"] = ", ".join(w for w in words if w)
-    _check_item_ids(out["effects"], where, item_ids)
-    _check_enemy_tags(out["effects"], where, enemy_tags)
+
+    # Every effect list in the cell, wherever it hangs: the certain ones, each
+    # arrow verb's payload, and a `chance`'s losing half. A gate that only
+    # checked the certain effects would wave through an unknown item on exactly
+    # the branch hardest to see it on.
+    lists = [out["effects"]]
     for verb in ARROW_VERBS:
-        _check_item_ids(out[verb].get("effects", []), where, item_ids)
-        _check_enemy_tags(out[verb].get("effects", []), where, enemy_tags)
+        lists.append(out[verb].get("effects", []))
+        lists.append(out[verb].get("else_effects", []))
+    # A `roll` is a chance-wrapped effect, so its payload is one level down and
+    # would otherwise go unchecked.
+    for eff in out["effects"]:
+        if eff.get("type") == "chance" and eff.get("effect"):
+            lists.append([eff["effect"]])
+    for effects in lists:
+        _check_item_ids(effects, where, item_ids)
+        _check_enemy_tags(effects, where, enemy_tags)
+        _check_object_tags(effects, where, object_tags)
     return out
 
 
@@ -348,14 +505,7 @@ def _tier_tags(raw, where):
     return tags
 
 
-def _limit(raw) -> int:
-    s = dsl._clean(raw)
-    if not s or s.lower() == "none":
-        return 0
-    return max(0, int(float(s)))
-
-
-def event_tres(row, curse_ids, item_ids=(), enemy_tags=()) -> tuple:
+def event_tres(row, curse_ids, item_ids=(), enemy_tags=(), object_tags=()) -> tuple:
     name = str(row["Event"]).strip()
     eid = dsl.slugify(name)
 
@@ -374,7 +524,7 @@ def event_tres(row, curse_ids, item_ids=(), enemy_tags=()) -> tuple:
         where = "%s/Choice %d" % (name, n)
         repeat, repeat_max = parse_repeat(row.get("Repeat %d" % n), where)
         parsed = parse_effect_cell(row.get("Effect %d" % n), where, labels, curse_ids,
-                                   item_ids, enemy_tags)
+                                   item_ids, enemy_tags, object_tags)
         results = parse_result_cell(row.get("Result %d" % n))
         # A ladder only climbs if the choice can be pressed again: `End` closes
         # the event and `Stay` spends the choice, so under either one every rung
@@ -412,8 +562,13 @@ def event_tres(row, curse_ids, item_ids=(), enemy_tags=()) -> tuple:
         print("  ! %s: every choice is `Again` and ungated — this is an event you "
               "cannot leave." % eid)
 
+    # Blank is the ordinary case now, and it means "anywhere": an event fires
+    # after every game the run plays, so there is no placement question left for
+    # this column to answer. It stays because the per-location work (locations2.0
+    # — Burning Basement, Dross) will want to say "this one only at that kind of
+    # place", and nothing reads it until then.
     where_raw = dsl._clean(row.get("Where")).lower()
-    where_val = WHERES.get(where_raw, "dead_end") if where_raw else "dead_end"
+    where_val = WHERES.get(where_raw, "") if where_raw else ""
     if where_raw and where_raw not in WHERES:
         raise ValueError("events2.0 %s: unknown Where %r (known: Dead End, Any, Game)"
                          % (name, row.get("Where")))
@@ -440,7 +595,6 @@ def event_tres(row, curse_ids, item_ids=(), enemy_tags=()) -> tuple:
         "requirement = %s" % dsl.gd_value(parse_requirement(row.get("Requirement"), name)),
         'trigger = "%s"' % trigger,
         'rarity = "%s"' % dsl.gd_str(dsl._clean(row.get("Rarity")) or "Common"),
-        "run_limit = %d" % _limit(row.get("Limit")),
         'file = "%s"' % dsl.gd_str(dsl._clean(row.get("Image"))),
         'prompt = "%s"' % dsl.gd_str(dsl._clean(row.get("Prompt"))),
         'goal_met = "%s"' % dsl.gd_str(dsl._clean(row.get("Goal Met"))),
@@ -452,6 +606,37 @@ def event_tres(row, curse_ids, item_ids=(), enemy_tags=()) -> tuple:
     return eid, "\n".join(lines) + "\n"
 
 
+def cross_sheet_ids(wb):
+    """(curse ids, item ids, enemy tags) — the three vocabularies an Effect cell
+    may name that live on OTHER sheets.
+
+    All three are read from the SHEET rather than from data/, so a fresh checkout
+    generates in any order: an event naming a curse does not depend on the curse
+    generator having run first. Shared with the objects generator, which speaks
+    the same grammar and so has the same three things to check.
+    """
+    curse_ids = set()
+    if "curses2.0" in wb.sheetnames:
+        curse_ids = {dsl.slugify(r["Curse"]) for r in dsl.rows(wb["curses2.0"])}
+    item_ids = set()
+    if "items2.0" in wb.sheetnames:
+        for r in dsl.rows(wb["items2.0"]):
+            name = str(r["Name"]).strip()
+            item_ids.add(dsl.slugify(name))
+            # So a reward line can print the item's real name rather than a
+            # title-cased slug — "IV Bag", not "Iv Bag".
+            dsl.ITEM_NAMES[dsl.slugify(name)] = name
+    # `spawn_enemy tag=` against the goal-enemy sheet's Tag column, which is a
+    # comma list per row ("cat, robot").
+    enemy_tags = set()
+    if "enemies2.0" in wb.sheetnames:
+        for r in dsl.rows(wb["enemies2.0"]):
+            for t in dsl._clean(r.get("Tag")).split(","):
+                if t.strip():
+                    enemy_tags.add(t.strip().lower())
+    return curse_ids, item_ids, enemy_tags
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list", action="store_true", help="print, do not write")
@@ -461,28 +646,16 @@ def main():
     if SHEET not in wb.sheetnames:
         raise SystemExit("%s has no %r sheet — run tools/_events2_sheet_setup.py"
                          % (XLSX_PATH, SHEET))
-    # add_curse is checked against the curse sheet rather than against
-    # data/curses2.0, so a fresh checkout generates in either order.
-    curse_ids = set()
-    if "curses2.0" in wb.sheetnames:
-        curse_ids = {dsl.slugify(r["Curse"]) for r in dsl.rows(wb["curses2.0"])}
-    # …and `gain_item` against the items sheet, for the same reason.
-    item_ids = set()
-    if "items2.0" in wb.sheetnames:
-        item_ids = {dsl.slugify(r["Name"]) for r in dsl.rows(wb["items2.0"])}
-    # …and `spawn_enemy tag=` against the goal-enemy sheet's Tag column, which is a
-    # comma list per row ("cat, robot").
-    enemy_tags = set()
-    if "enemies2.0" in wb.sheetnames:
-        for r in dsl.rows(wb["enemies2.0"]):
-            for t in dsl._clean(r.get("Tag")).split(","):
-                if t.strip():
-                    enemy_tags.add(t.strip().lower())
+    curse_ids, item_ids, enemy_tags = cross_sheet_ids(wb)
+    # `spawn_object tag=` is checked the same way, but the objects generator owns
+    # that sheet, so the lookup lives there and is imported rather than duplicated.
+    import generate_object2_tres as objects  # noqa: E402  (circular at module scope)
+    object_tags = objects.sheet_tags(wb)
 
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
     for row in dsl.rows(wb[SHEET]):
-        eid, text = event_tres(row, curse_ids, item_ids, enemy_tags)
+        eid, text = event_tres(row, curse_ids, item_ids, enemy_tags, object_tags)
         if args.list:
             print("=== %s ===\n%s" % (eid, text))
             continue

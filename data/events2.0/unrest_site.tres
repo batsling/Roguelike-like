@@ -8,11 +8,10 @@ id = &"unrest_site"
 display_name = "Unrest Site"
 source_game = "Slay the Spire 2"
 tier_tags = PackedStringArray()
-where = "dead_end"
+where = ""
 requirement = {"stat": "hp", "op": "<=", "value": 70, "percent": true}
 trigger = "after"
 rarity = "Common"
-run_limit = 1
 file = "UnrestSite"
 prompt = "You find a secluded Rest Site and start a fire to get some rest. Once the fire is started, it begins to swell, reaching not upwards but sideways towards a grove of oil-seeping trees."
 goal_met = ""

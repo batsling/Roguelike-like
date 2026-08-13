@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_iv_bag"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/IvBag.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"iv_bag"
+display_name = "IV Bag"
+kind = 2
+rarity = 0
+event = true
+description = "Lose 1 Health and Gain +1 Gold"
+triggers = [{"on": "item_used", "effects": [{"type": "lose_hp", "value": 1}, {"type": "gain_gold", "value": 1}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("blood")
+image = ExtResource("2_img")

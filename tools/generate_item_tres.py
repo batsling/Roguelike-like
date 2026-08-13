@@ -203,11 +203,17 @@ def _usable_uses(type_str, kind):
     # Uses-before-destroyed for a USABLE item, read from the Type cell's optional
     # count ("Usable, 3" -> 3). Bare "Usable" defaults to 1; non-usable items are
     # infinite (-1). Mirrors how "Charged, N" carries its charge cost.
+    #
+    # `Usable, 0` is the IV Bag's case: a usable that is never used up. It maps to
+    # the same -1 a non-usable carries, because GameState.consume_item_use already
+    # reads -1 as "no counter to spend" — so unlimited is not a third mode, it is
+    # the absence of the counter, and 0 is how the sheet asks for it.
     if kind != KIND["usable"]:
         return -1
     parts = [p.strip() for p in str(type_str or "").split(",")]
     if len(parts) > 1 and parts[1].isdigit():
-        return max(1, int(parts[1]))
+        count = int(parts[1])
+        return -1 if count == 0 else count
     return 1
 
 

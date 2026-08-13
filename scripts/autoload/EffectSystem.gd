@@ -91,6 +91,15 @@ func _register_defaults() -> void:
 	register("add_curse", _h_add_curse)
 	register("spawn_enemy", _h_spawn_enemy)
 	register("trade_relic", _h_trade_relic)
+	# Objects (docs/object-sheet-authoring.md).
+	register("gain_pickups", _h_gain_pickups)
+	register("gain_item_of", _h_gain_item_of)
+	register("donate_gold", _h_donate_gold)
+	register("bank_payout", _h_bank_payout)
+	register("jam_object", _h_jam_object)
+	register("destroy_object", _h_destroy_object)
+	register("spawn_object", _h_spawn_object)
+	register("spend_bomb", _h_spend_bomb)
 
 # Scene-less heal straight to the run HP pool. Caps at max_hp via change_hp.
 func _h_gain_hp(effect: Dictionary, _ctx: Dictionary) -> void:
@@ -318,14 +327,132 @@ func _h_if_hp(effect: Dictionary, ctx: Dictionary) -> void:
 		apply(inner, ctx)
 
 # Rolls once (luck-weighted) and dispatches the inner effect on success.
+#
+# Which way Luck points is read off the INNER effect: a proc that hands you
+# something is one you want to fire, and a proc that jams the machine or takes
+# something off you is one Luck should be steering you away from. Reading it
+# from the payload rather than authoring a direction per clause keeps the sheet
+# free of a field whose right answer is always derivable.
 func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
-	var percent: int = int(effect.get("percent", 0))
+	var percent: float = float(effect.get("percent", 0.0))
 	var inner: Dictionary = effect.get("effect", {})
 	if inner.is_empty():
 		return
-	if not Stats.roll_chance_with_luck(_rng, percent):
+	if not Stats.roll_chance(_rng, percent, favour_of(inner)):
 		return
 	apply(inner, ctx)
+
+
+# The effect types a player does NOT want to land. Everything not named here is
+# a payout, so Favour.HIGH is the default and a new reward verb inherits the
+# right direction without being listed.
+const UNWANTED_EFFECTS := [
+	"jam_object", "lose_hp", "lose_max_hp", "lose_gold", "lose_stat",
+	"add_curse", "spawn_enemy", "item_downgrade", "forget",
+]
+
+func favour_of(effect: Dictionary) -> int:
+	return Stats.Favour.LOW if UNWANTED_EFFECTS.has(String(effect.get("type", ""))) \
+		else Stats.Favour.HIGH
+
+
+# --- objects (docs/object-sheet-authoring.md) ------------------------------
+#
+# The handlers a MACHINE needs. Each of the five that touch a machine's own state
+# reads `ctx.object` — the instance that was pressed — because the choice dict is
+# shared by every copy of that machine on screen, and "this one jams" has to mean
+# the one under the player's cursor rather than the kind.
+
+# `gain_pickups 2-4 hp|gold` — loose change on the floor. Each pickup is rolled
+# independently from `kinds`, so 3 pickups is as likely to be three coins as it
+# is two hearts and a coin.
+#
+# The COUNT is Favour.HIGH (more is better). Which kind each one lands on is
+# Favour.NONE: a heart is not better than a coin, it is different, and letting
+# Luck pick would be Luck deciding it knows what the player needs.
+func _h_gain_pickups(effect: Dictionary, _ctx: Dictionary) -> void:
+	var kinds: Array = effect.get("kinds", [])
+	if kinds.is_empty():
+		return
+	var count: int = Stats.roll_range(_rng, int(effect.get("min", 1)),
+		int(effect.get("max", 1)), Stats.Favour.HIGH)
+	var hearts: int = 0
+	var coins: int = 0
+	for _i in range(count):
+		match String(kinds[_rng.randi_range(0, kinds.size() - 1)]):
+			"hp":
+				hearts += 1
+			"gold":
+				coins += 1
+	if hearts > 0:
+		GameState.change_hp(hearts)
+	if coins > 0:
+		GameState.change_gold(coins)
+	var said: Array = []
+	if hearts > 0:
+		said.append("%d Health" % hearts)
+	if coins > 0:
+		said.append("%d Gold" % coins)
+	if not said.is_empty():
+		Notifications.notify("+%s" % " and ".join(PackedStringArray(said)),
+			Color(0.6, 1.0, 0.7))
+
+
+# `gain_item_of blood_bag|iv_bag` — one named relic at random. Favour.NONE on
+# WHICH: neither bag is the better bag, so this is a straight coin flip however
+# much Luck the run is carrying.
+#
+# Writes the name it granted back into `ctx` so the prose can say what appeared
+# (EventSystem's {ITEM} hole).
+func _h_gain_item_of(effect: Dictionary, ctx: Dictionary) -> void:
+	var ids: Array = effect.get("items", [])
+	if ids.is_empty():
+		return
+	var pick: StringName = StringName(String(ids[_rng.randi_range(0, ids.size() - 1)]))
+	var template: ItemData = Data.get_item2(pick)
+	if template == null:
+		push_warning("EffectSystem.gain_item_of: no items2.0 item '%s'" % pick)
+		return
+	GameState.add_item(template)
+	ctx["granted_item"] = pick
+	ctx["granted_item_name"] = template.display_name
+
+
+func _h_donate_gold(effect: Dictionary, ctx: Dictionary) -> void:
+	ObjectSystem.donate(ctx.get("object"), int(effect.get("value", 1)))
+
+
+func _h_bank_payout(effect: Dictionary, ctx: Dictionary) -> void:
+	var want: int = Stats.roll_range(_rng, int(effect.get("min", 1)),
+		int(effect.get("max", 1)), Stats.Favour.HIGH)
+	ObjectSystem.withdraw(ctx.get("object"), want)
+
+
+func _h_jam_object(_effect: Dictionary, ctx: Dictionary) -> void:
+	ObjectSystem.jam(ctx.get("object"))
+
+
+func _h_destroy_object(effect: Dictionary, ctx: Dictionary) -> void:
+	ObjectSystem.destroy(ctx.get("object"), String(effect.get("scope", "")) == "run")
+
+
+func _h_spawn_object(effect: Dictionary, _ctx: Dictionary) -> void:
+	ObjectSystem.spawn_by_tag(StringName(String(effect.get("tag", ""))),
+		int(effect.get("min", 1)), int(effect.get("max", 1)))
+
+
+# A Bomb spent somewhere that is not the battlefield. Fires the same bomb_used
+# trigger the board does — Blood Bombs says "when using a Bomb" and blowing up a
+# vending machine is using one — with no enemy behind it, which every surviving
+# listener already tolerates (GameState only forwards it to item triggers).
+func _h_spend_bomb(effect: Dictionary, _ctx: Dictionary) -> void:
+	var want: int = maxi(1, int(effect.get("value", 1)))
+	if GameState.bombs < want:
+		return
+	GameState.bombs -= want
+	GameState.emit_signal("stats_changed")
+	TriggerBus.bomb_used.emit({
+		"instance": -1, "enemy": null, "hits": 0, "destroyed": 0})
 
 # ---------------------------------------------------------------------------
 # Games-first (2.0) active-item effects (docs/games-first-redesign.md §8).

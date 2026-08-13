@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ObjectData" load_steps=2 format=3 uid="uid://object2_blood_donation_machine"]
+
+[ext_resource type="Script" path="res://scripts/resources/ObjectData.gd" id="1_object"]
+
+[resource]
+script = ExtResource("1_object")
+id = &"blood_donation_machine"
+display_name = "Blood Donation Machine"
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("arcade")
+rarity = "Common"
+run_limit = 0
+unique = false
+where = ""
+requirement = {}
+trigger = "after"
+file = "BloodDonationMachine"
+prompt = ""
+chance_won = "The machine exploded, and {ITEM} appeared."
+chance_lost = ""
+choices = [{"id": "give_blood", "text": "Give Blood", "repeat": "again", "repeat_max": 0, "results": [], "gates": [], "effects": [{"type": "lose_hp", "value": 1}], "effects_text": "-1 Health", "goal": {}, "curse": {}, "play": {}, "chance": {"percent": 6.7, "effects": [{"type": "gain_item_of", "items": ["blood_bag", "iv_bag"]}, {"type": "destroy_object"}], "effects_text": "+Blood Bag or IV Bag, the machine is destroyed", "else_effects": [{"type": "gain_gold", "value": 1}], "else_effects_text": "+1 Gold"}}, {"id": "bomb", "text": "Bomb", "repeat": "end", "repeat_max": 0, "results": [], "gates": [{"resource": "bombs", "value": 1}], "effects": [{"type": "spend_bomb", "value": 1}, {"type": "gain_pickups", "min": 2, "max": 4, "kinds": ["hp", "gold"]}, {"type": "destroy_object"}], "effects_text": "-1 Bomb, +2-4 Health or Gold, the machine is destroyed", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

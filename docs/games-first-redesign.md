@@ -1121,3 +1121,115 @@ hub's own game name, so an authored roster drops in without reshaping anything.
 things drops *don't* give — bombs, scrolls, verb charges, health, an extra try —
 so gold buys a different axis rather than a slower version of the same one.
 
+---
+
+## 15. Objects (`objects2.0`)
+
+An **object** is a machine you stand in front of. Full authoring spec:
+[`docs/object-sheet-authoring.md`](object-sheet-authoring.md).
+
+It is the same authored shape as an event — one row, a prompt, choices in
+numbered column groups, Effect cells in the shared reward DSL, resolved by the
+same `EventSystem` calls — and it is a separate kind for three reasons:
+
+- **an event is a room; an object is a thing in the room.** An event opens, is
+  answered, and is over. An object stands in front of you for as long as the run
+  is on that game, and **travelling on** is what ends it.
+- **an object is spawned.** Events arrive on their own after every game. Objects
+  are put in front of you — by an event (`spawn_object tag=arcade 2-3`), or by
+  anything else — and **several can be there at once**.
+- **an object is stateful.** It jams, it gets blown up, and the Donation
+  Machine's bank outlives the run entirely.
+
+### 15.1 Where one draws
+
+Two places, and which one depends on what spawned it:
+
+- **spawned by an event** → inside that event's modal. The Arcade Room *is* the
+  room the cabinets are in, so they are laid out in there with you and the
+  room's own `Leave` walks you out of both.
+- **spawned by anything else** → under the board, in the space a hub's shop
+  takes (`ObjectPanel2`, §14.4). Same argument as the shop: the run's rhythm is
+  report the game → see the board → choose where to go, and neither a shop nor a
+  machine may interrupt it. The one difference is what survives leaving — a
+  shop's shelf persists on `ShopSystem` so coming back is a real option, and a
+  machine simply ends.
+
+A machine's buttons are **drawn and greyed** when unavailable rather than
+dropped, which is the one place an object's UI deliberately departs from an
+event's. An event's options are a list of things you may do; a machine is a
+physical object, and its buttons do not vanish because you cannot afford them.
+The refusal goes on the button — **"Jammed"**, **"Full"**, **"Needs 1 Bomb"** —
+because the reason is the whole of what the player wants to know.
+
+### 15.2 The two machines
+
+**Blood Donation Machine.** No prompt — it keeps Isaac's silence. Pay 1 Health
+for 1 Gold, as often as you can pay, with a **6.7%** chance per press that it
+bursts and pays a Blood Bag or an IV Bag instead of the coin. Or spend a Bomb
+for **2-4** loose pickups, each independently a heart or a coin. Either ending
+destroys that machine; another may still turn up.
+
+**Donation Machine.** Gold in, and it does not come back out — the bank is
+**persistent across runs** (`GameStats`), holds **999**, and is the only number
+in this build deliberately not about the current run. Each coin rolls **5%** for
+a point of Luck and **{1+X}%** to jam, where X is coins already in this visit —
+so the jam chance climbs 1%, 2%, 3%… while you stand there and resets when you
+travel on. A jam is permanent for the run; a jammed machine still turns up and
+takes nothing. Bombing it pays **2-5** gold out of the bank (capped at what it
+holds) and takes **every** donation machine off the run.
+
+### 15.3 What is still to come
+
+**A way for an object to stand on the map in its own right.** `ObjectData`
+carries `where` / `requirement` / `trigger` — the same three an event gates on —
+and nothing reads them. When something wants a machine that is simply *at* a
+node rather than spawned into it, that is the seam, and the under-board panel is
+already the place it would draw.
+
+---
+
+## 16. Luck
+
+**Every point of Luck buys one more roll, and the better result is kept.**
+
+That is the whole model, and it reaches every random decision the run makes. At
+1 Luck a 25% chance is really 43.75% (`1 - 0.75²`); at 3 Luck, 68%. It compounds
+rather than adding. Negative Luck is the same machine reversed — `|Luck|` extra
+rolls, keep the worse — so −2 puts that 25% at 1.6%.
+
+It replaced a 10%-per-point chance of *advantage*, which at a single point did
+nothing at all nine times in ten. That is not a tuning difference: the old Luck
+was a stat you could hold for a whole run and never observe.
+
+### 16.1 Direction is declared, never assumed
+
+A reroll only means something when the roll has a side the player wants, and
+most rolls do not say so on their own. So every call site names its direction
+(`Stats.Favour`), and the ones with no honest answer opt out:
+
+| | |
+|---|---|
+| `HIGH` | a bigger number or a success is wanted — the rarity ladder, a chest gamble, how many pickups a bombed machine scatters |
+| `LOW` | success is the bad outcome — the Donation Machine's jam, Curse of Decay's item downgrade |
+| `NONE` | there is no better side — *which* of the twelve Commons you drew, whether a burst machine dropped a Blood Bag or an IV Bag |
+
+The case that reads backwards: the Blood Donation Machine's 6.7% explosion is
+`HIGH`. Bursting pays an Event relic where the loss pays one gold, so Luck makes
+the machine *more* likely to go off in your face.
+
+### 16.2 Where it lives
+
+`Stats.roll_chance` / `roll_range` / `roll_rarity_step_with_luck` are the entry
+points. `Data.roll_item_rarity` calls the last of them, which is what makes
+"Luck affects every roll" true without thirty call sites having to remember it —
+item rewards, chest sizes, scrolls, shop stock and the object pools all walk that
+one ladder.
+
+Odds shown to the player are the odds **Luck will actually roll**
+(`Stats.effective_chance`), not the number on the sheet. A button that said 6.7%
+to a player holding a Clover would be lying to them about the thing they bought
+it for.
+
+Luck comes from the **Clover** (Uncommon, `+1` as a passive bonus, so it goes
+away with the item) and from the Donation Machine's 5% roll. There is no cap.

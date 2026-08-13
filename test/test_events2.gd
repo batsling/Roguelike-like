@@ -23,6 +23,11 @@ var _max_hp: int
 var _goals: Array
 var _curses: Array
 var _fired: Dictionary
+# The bag, too — these tests deal from it directly, and a bag left half-empty
+# would show up as a mystery failure in whichever script ran next.
+var _seen: Dictionary
+var _last_event: StringName
+var _nodes: Dictionary
 var _seed: int
 var _games: int
 var _gold: int
@@ -45,6 +50,9 @@ func before_each() -> void:
 	_goals = GameState.event_goals.duplicate(true)
 	_curses = GameState.curse_goals.duplicate(true)
 	_fired = GameState.events_fired.duplicate(true)
+	_seen = GameState.events_seen.duplicate(true)
+	_last_event = GameState.last_event_id
+	_nodes = GameState.event_nodes_fired.duplicate(true)
 	_seed = GameState.run_seed
 	_games = GameState.games_played
 	_gold = GameState.gold
@@ -54,12 +62,18 @@ func before_each() -> void:
 	GameState.event_goals.clear()
 	GameState.curse_goals.clear()
 	GameState.events_fired.clear()
+	GameState.events_seen.clear()
+	GameState.last_event_id = &""
+	GameState.event_nodes_fired.clear()
 
 
 func after_each() -> void:
 	GameState.event_goals = _goals.duplicate(true)
 	GameState.curse_goals = _curses.duplicate(true)
 	GameState.events_fired = _fired.duplicate(true)
+	GameState.events_seen = _seen.duplicate(true)
+	GameState.last_event_id = _last_event
+	GameState.event_nodes_fired = _nodes.duplicate(true)
 	GameState.run_seed = _seed
 	GameState.games_played = _games
 	GameState.max_hp = _max_hp
@@ -543,9 +557,10 @@ func test_an_event_is_not_staged_when_its_tag_has_no_games() -> void:
 	var original: String = String(play.get("tag", ""))
 	play["tag"] = "no_game_carries_this_tag"
 	var staged: bool = false
-	for s in range(40):
-		GameState.run_seed = s * 104_729
-		if EventSystem.event_for(node) == ev:
+	for _i in range(40):
+		GameState.events_seen.clear()
+		GameState.event_nodes_fired.clear()
+		if EventSystem.roll_for_arrival(node) == ev:
 			staged = true
 			break
 	play["tag"] = original
@@ -563,9 +578,10 @@ func test_punch_off_is_staged_when_mecha_games_do_exist() -> void:
 	GameState.games_played = 10   # its other gate — see the test above
 	var ev: EventData2 = _event(PUNCH)
 	var staged: bool = false
-	for s in range(40):
-		GameState.run_seed = s * 104_729
-		if EventSystem.event_for(node) == ev:
+	for _i in range(60):
+		GameState.events_seen.clear()
+		GameState.event_nodes_fired.clear()
+		if EventSystem.roll_for_arrival(node) == ev:
 			staged = true
 			break
 	assert_true(staged, "Punch Off should reach the board when mecha games exist")
@@ -593,45 +609,86 @@ func test_a_curse_is_described_once_not_twice() -> void:
 	assert_string_contains(EventSystem.describe_choice(nab, 0).to_lower(), "half health")
 
 
-# --- placement --------------------------------------------------------------
+# --- the shuffle bag --------------------------------------------------------
+#
+# Placement used to be HASHED from the node id and the run seed, so a card's
+# `EVENT` badge could not change under the player between being drawn and being
+# taken. An event now fires after every game, the badge is gone with the subset
+# of nodes it pointed at, and what decides which event comes up is a per-rarity
+# shuffle bag. These are the rules that replaced determinism.
 
-func test_placement_is_stable_for_a_node() -> void:
-	# The badge on a card promises what is waiting there. The offering is redrawn
-	# constantly — a bash, a scramble, an arrival — so a rolled event would change
-	# under the player between seeing the badge and taking the card.
-	GameState.run_seed = 1234
-	var node: StringName = _some_dead_end()
-	if node == &"":
-		return
-	var first: EventData2 = EventSystem.event_for(node)
-	for _i in range(8):
-		assert_eq(EventSystem.event_for(node), first, "same node, same event")
+func test_every_game_pays_an_event() -> void:
+	var node: StringName = _some_game()
+	assert_not_null(EventSystem.roll_for_arrival(node),
+		"an event fires after every game, not just at dead ends")
 
 
-func test_placement_moves_with_the_run_seed() -> void:
-	var node: StringName = _some_dead_end()
-	if node == &"":
-		return
-	var seen: Dictionary = {}
-	for s in range(24):
-		GameState.run_seed = s * 7919
-		var ev: EventData2 = EventSystem.event_for(node)
+func test_a_game_only_pays_its_event_once() -> void:
+	var node: StringName = _some_game()
+	var first: EventData2 = EventSystem.roll_for_arrival(node)
+	assert_not_null(first, "the first visit pays")
+	EventSystem.mark_fired(first, node)
+	assert_null(EventSystem.roll_for_arrival(node),
+		"walking back through a game does not pay a second event")
+
+
+func test_the_bag_deals_every_event_before_repeating_one() -> void:
+	# The whole point of the bag: no event comes round again until the rest of
+	# its rarity has been seen. Every authored event is Common today, so one pass
+	# of the bag should be the whole catalogue with no duplicate in it.
+	var pool: Array = _ungated_common_ids()
+	var drawn: Dictionary = {}
+	for i in range(pool.size()):
+		var node: StringName = StringName("bag_probe_%d" % i)
+		var ev: EventData2 = EventSystem.roll_for_arrival(node)
+		if ev == null:
+			continue
+		assert_false(drawn.has(ev.id),
+			"%s came round again before the bag was empty" % ev.id)
+		drawn[ev.id] = true
+		EventSystem.mark_fired(ev, node)
+	assert_gt(drawn.size(), 1, "the bag dealt more than one event")
+
+
+func test_a_fresh_bag_does_not_open_on_the_event_that_emptied_the_last_one() -> void:
+	# Draw the whole bag, then one more. The reshuffle must not hand back the
+	# event still on screen a moment ago — back-to-back is the one repeat that
+	# reads as the bag being broken.
+	var pool: Array = _ungated_common_ids()
+	for i in range(pool.size() + 2):
+		var node: StringName = StringName("wrap_probe_%d" % i)
+		var ev: EventData2 = EventSystem.roll_for_arrival(node)
+		if ev == null:
+			continue
+		var previous: StringName = GameState.last_event_id
+		assert_ne(ev.id, previous, "drew %s twice in a row" % ev.id)
+		EventSystem.mark_fired(ev, node)
+
+
+func test_a_gated_event_is_skipped_but_stays_in_the_bag() -> void:
+	# Unrest Site needs the player hurt. At full health it must not be dealt —
+	# and being skipped must not COUNT as being seen, or a run that was healthy
+	# early would burn the event without ever being offered it.
+	GameState.max_hp = 10
+	GameState.hp = 10
+	for i in range(12):
+		var node: StringName = StringName("gate_probe_%d" % i)
+		var ev: EventData2 = EventSystem.roll_for_arrival(node)
 		if ev != null:
-			seen[ev.id] = true
-	assert_gt(seen.size(), 1, "different runs should not always stage the same event")
+			assert_ne(ev.id, UNREST, "Unrest Site was dealt at full health")
+			EventSystem.mark_fired(ev, node)
+	assert_false(GameState.events_seen.has(UNREST),
+		"a skipped event stays in the bag rather than being spent")
 
 
-func test_an_events_run_limit_takes_it_out_of_the_pool() -> void:
-	var node: StringName = _some_dead_end()
-	if node == &"":
-		return
-	GameState.run_seed = 99
-	var ev: EventData2 = EventSystem.event_for(node)
-	if ev == null or ev.run_limit <= 0:
-		return
-	for _i in range(ev.run_limit):
-		EventSystem.mark_fired(ev)
-	assert_ne(EventSystem.event_for(node), ev, "a spent event stops being offered")
+func test_drawing_an_event_marks_it_seen_even_if_it_is_walked_out_of() -> void:
+	var node: StringName = _some_game()
+	var ev: EventData2 = EventSystem.roll_for_arrival(node)
+	assert_not_null(ev)
+	# No choice taken — mark_fired is what OPENING one does, and seeing it is
+	# what was spent.
+	EventSystem.mark_fired(ev, node)
+	assert_true(GameState.events_seen.has(ev.id), "seeing it spends it")
 
 
 func test_a_requirement_gates_the_event() -> void:
@@ -644,6 +701,25 @@ func test_a_requirement_gates_the_event() -> void:
 	assert_false(EventSystem.requirement_met(ev), "not offered at full health")
 	GameState.hp = 5
 	assert_true(EventSystem.requirement_met(ev), "offered at half")
+
+
+# Any game the run could stand on. An event fires after every game now, so a
+# probe no longer has to hunt for a leaf.
+func _some_game() -> StringName:
+	for g in Data.all_games():
+		if g is GameData:
+			return g.id
+	return &""
+
+
+# The Common events with no Requirement standing in their way right now — what
+# one pass of the bag should deal.
+func _ungated_common_ids() -> Array:
+	var out: Array = []
+	for ev in Data.all_events2():
+		if ev is EventData2 and EventSystem.blockers_for(ev, _some_game()).is_empty():
+			out.append(ev.id)
+	return out
 
 
 func _some_dead_end() -> StringName:
@@ -825,13 +901,14 @@ func test_blockers_and_the_roller_are_the_same_rule() -> void:
 		for ev in Data.all_events2():
 			if EventSystem.blockers_for(ev, gid).is_empty():
 				eligible.append(ev.id)
-		var placed: EventData2 = EventSystem.event_for(gid)
+		GameState.event_nodes_fired.erase(gid)
+		var placed: EventData2 = EventSystem.roll_for_arrival(gid)
 		if eligible.is_empty():
 			assert_null(placed,
-				"nothing is eligible at %s, so nothing may be placed there" % gid)
+				"nothing is eligible at %s, so nothing may be dealt there" % gid)
 		else:
 			assert_true(placed != null and eligible.has(placed.id),
-				"%s placed at %s, which blockers_for says is not eligible"
+				"%s dealt at %s, which blockers_for says is not eligible"
 					% [placed.id if placed != null else &"nothing", gid])
 
 
@@ -844,10 +921,13 @@ func test_a_blocker_names_the_gate_that_stopped_it() -> void:
 	var why: String = ", ".join(EventSystem.blockers_for(_event(UNREST), &"hades"))
 	assert_string_contains(why, "Health <= 70%")
 
-	# And the limit, which is what a second look at a `Limit 1` event runs into.
+	# There is no longer a per-run limit to report — having already seen an event
+	# is the bag's business, not a blocker. An event that has come up stays
+	# eligible; it simply is not dealt again until the bag comes round.
 	GameState.events_fired[OOZE] = 1
-	assert_string_contains(
-		", ".join(EventSystem.blockers_for(_event(OOZE), &"hades")), "1/1")
+	GameState.events_seen[OOZE] = true
+	assert_true(EventSystem.blockers_for(_event(OOZE), &"hades").is_empty(),
+		"seeing an event does not gate it — the bag decides when it returns")
 
 
 func test_a_requirement_reads_as_words_not_as_a_column() -> void:

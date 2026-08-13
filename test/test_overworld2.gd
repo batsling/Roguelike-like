@@ -35,10 +35,10 @@ func after_each() -> void:
 #
 # Nearly every test in this file is about the OFFERING and what you can do to it,
 # which is where beating that opening game leaves you. So this is the opening
-# played out: take the start, report it beaten, skip the board's playback, and
-# clear the drop it paid — the same three things a player does before the first
-# card is on the table. Tests that are about the opening itself call `start_run`
-# and drive the picker directly instead.
+# played out: take the start, report it beaten, skip the board's playback, clear
+# the drop it paid and walk out of the event it raised — what a player does
+# before the first card is on the table. Tests that are about the opening itself
+# call `start_run` and drive the picker directly instead.
 func _open_at_first_offering() -> void:
 	_ui.choose_start(0)
 	if _ui._phase != OVERWORLD.Phase.PLAYING:
@@ -49,6 +49,20 @@ func _open_at_first_offering() -> void:
 	if _ui._drop_modal != null and is_instance_valid(_ui._drop_modal):
 		_ui._drop_modal.queue_free()
 		_ui._drop_modal = null
+	_dismiss_event()
+
+# An event fires after EVERY game now, so the opening game raises one and it is
+# sitting over the board for every test in this file that isn't about it. Closed
+# through the modal's own path rather than freed, so the chain behind it still
+# runs — the shop a hub owes opens off `finished`, and half a dozen shop tests
+# depend on that.
+func _dismiss_event() -> void:
+	if _ui._event_modal != null and is_instance_valid(_ui._event_modal):
+		_ui._event_modal._close()
+	_ui._event_modal = null
+	_ui._pending_event = null
+	_ui._pending_event_node = &""
+	ObjectSystem.clear()
 
 # Re-boot the run on a specific character and play out its opening, so a test that
 # needs a particular level-up / loadout lands where before_each does.
@@ -3148,11 +3162,13 @@ func test_the_verbs_are_held_while_the_question_is_up() -> void:
 # a second event dropped on top of it. A detour's destination is somewhere the
 # run was sent, not somewhere it routed to, and nothing is waiting there.
 
+# Every game pays an event now, so this is any on-map game the run has not
+# already taken one from.
 func _node_carrying_an_event() -> StringName:
 	for g in Data.all_games():
 		if not (g is GameData) or RunGraph.is_off_map(g.id):
 			continue
-		if EventSystem.event_for(g.id) != null:
+		if not GameState.event_nodes_fired.has(g.id):
 			return g.id
 	return &""
 
@@ -3194,7 +3210,9 @@ func test_the_panel_can_start_an_event_where_the_run_stands() -> void:
 	assert_true(_ui.open_event(ev), "an event opens on a live run")
 	assert_not_null(_ui._event_modal, "and it is the real modal, not a bare panel")
 	assert_eq(int(GameState.events_fired.get(&"scrap_ooze", 0)), 1,
-		"starting one counts against its Limit, exactly as arriving at one does")
+		"starting one puts it in the bag, exactly as arriving at one does")
+	assert_true(GameState.events_seen.has(&"scrap_ooze"),
+		"…and it will not come round again until the rest of its rarity has")
 
 func test_the_panel_will_not_start_a_second_event_over_the_first() -> void:
 	var ev: EventData2 = Data.get_event2(&"scrap_ooze")

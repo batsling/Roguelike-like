@@ -30,6 +30,7 @@ DevTools="*res://scripts/autoload/DevTools.gd"
 ScrollSystem="*res://scripts/autoload/ScrollSystem.gd"
 GameLoop2="*res://scripts/autoload/GameLoop2.gd"
 EventSystem="*res://scripts/autoload/EventSystem.gd"
+ObjectSystem="*res://scripts/autoload/ObjectSystem.gd"
 ShopSystem="*res://scripts/autoload/ShopSystem.gd"
 
 [display]

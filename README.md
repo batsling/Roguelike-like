@@ -46,6 +46,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     ItemInfoCard    — click-to-inspect item card
 │   │                      #     GameChoiceModal — the popup an offered card opens
 │   │                      #     ShopPanel2      — a hub's shop, mounted under the board
+│   │                      #     ObjectPanel2    — the machines standing here, same place
+│   │                      #     ObjectCard      — one machine, in the panel or in an event
 │   │                      #     BossNoticeModal — the "⚠ BOSS INCOMING" popup
 │   │                      #     RouteLadder     — the arrowed shortest-path graph
 │   │                      #     RunOverScreen   — the end-of-run verdict screen
@@ -59,7 +61,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │
 ├── data/                  # Game content as Godot Resources (.tres) — the source
 │   │                      # of truth the game loads at startup (see Data.gd)
-│   ├── games/            #   GameData — the ~845 real games that form the map
+│   ├── games/            #   GameData — the ~849 real games that form the map
 │   ├── atlas_layout*.tres#   BAKED star positions for the Atlas, one sky per game
 │   │                      #   filter: all / _owned / _downloaded (tools/bake_atlas.py)
 │   ├── items2.0/         #   ItemData — the relics that drop from a defeated enemy
@@ -70,6 +72,9 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── characters2.0/    #   CharacterData — the playable roster
 │   ├── scrolls2.0/       #   ScrollData — identify-by-reading scrolls
 │   ├── statuses2.0/      #   StatusData — clauses bolted onto goals (§13)
+│   ├── events2.0/        #   EventData2 — one fires after every game played
+│   ├── objects2.0/       #   ObjectData — the machines you stand in front of (§15)
+│   ├── curses2.0/        #   CurseData2 — the checklist curses events hand out
 │   ├── items/            #   ItemData (pre-2.0 set, still loaded)
 │   ├── characters/       #   CharacterData (pre-2.0)
 │   ├── events/           #   EventData — the D20 events
@@ -187,7 +192,8 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `EffectSystem` | Central dispatch for structured effects (`{type, value, target}`) applied via `EffectSystem.apply()`. |
 | `TriggerBus` | Global signal hub wiring item/event triggers to game moments (`game_beaten`, `chest_granted`, …). |
 | `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
-| `EventSystem` | Events (`docs/event-sheet-authoring.md`): which dead-end node carries which event, the Requirement/`needs` gates, and resolving a choice into effects, an event goal, a curse, or a `chance` roll. |
+| `EventSystem` | Events (`docs/event-sheet-authoring.md`): dealing an event from the per-rarity shuffle bag when a game is played, the Requirement/`needs` gates, and resolving a choice into effects, an event goal, a curse, or a `chance` roll. Objects go through the same resolution. |
+| `ObjectSystem` | Objects (`docs/object-sheet-authoring.md`): the machines standing in front of the player, spawning them by tag, and their state — jams, what has been blown off the run, and the Donation Machine's cross-run bank. |
 | `GameLoop2` | The run loop: the games-beaten clock, the goal-enemy stack, and the grid the followers advance across. `Overworld2` is a view over it. |
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
@@ -197,8 +203,8 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Settings` | Run-independent preferences (e.g. game-filter) persisted to `user://settings.cfg`. |
 | `RunConfig` | A **custom run**'s setup, held for the run it configures: three independent filters (**map** / **start** / **amulet**, each with library, genre, record and release-year axes), the run-length band, and an optional named target game. Off by default, in which case `RunGraph` reads `Settings.game_filter` exactly as before. Written by `CustomRunScreen`, read by `RunGraph`, and saved with the run — the filters *are* the map, so a save resumed without them comes back on a different one. `RunConfig.describe()` is what the menu's Continue list prints on a custom run's row, read off that save's own stored block rather than off the loaded run. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
-| `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified). |
-| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Five tabs: **Grant** (items / scrolls / statuses, with a player-or-enemy target picker — the item list is `DevTools.item_pool()`, the **2.0 set only**: it used to append the 112 combat-era relics from `data/items`, which grant cleanly and then do nothing because no games-first code honours them), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss), **Events** (start any authored event where you stand, each row saying why it is or isn't turning up on its own — see [Authoring an event](#authoring-an-event)). Everything routes through the same public API the game uses. |
+| `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified), plus the Donation Machine's bank — the one number in the build that deliberately outlives a run. |
+| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Five tabs: **Grant** (items / scrolls / statuses, with a player-or-enemy target picker — the item list is `DevTools.item_pool()`, the **2.0 set only**: it used to append the 112 combat-era relics from `data/items`, which grant cleanly and then do nothing because no games-first code honours them), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss), **Events** (start any authored event where you stand and read the state of the shuffle bag, each row saying why it is or isn't turning up on its own — see [Authoring an event](#authoring-an-event); the same tab spawns any **object** under the board, which is the only way to reach the non-event half of how a machine appears). Everything routes through the same public API the game uses. |
 
 ### Screens & flow
 
@@ -465,10 +471,33 @@ from the baked file. Keep the two in step when either changes — the tests in
 
 ### Authoring an event
 
-An **event** is what a dead end pays. It fires after the game at a leaf node is
-beaten, on top of the normal enemy drop, so a two-game round trip buys a second
-reward. Everything about one lives in the **`events2.0` tab** of
+An **event** is what the run does between games. One fires after **every** game
+the run plays — win, loss, or escape — on top of whatever the game itself paid.
+The games this is a graph of are hour-long roguelikes, and an event is the beat
+between two of them: a decision that takes a minute and costs something.
+Everything about one lives in the **`events2.0` tab** of
 `tools/Roguelikes.xlsx` — one row per event — and nothing about it lives in code.
+
+**Which event you get** is dealt from a **shuffle bag**, per rarity:
+
+- roll the rarity ladder (Luck rerolls it, like every other roll in the build),
+  falling down to the nearest stocked rung — today everything is Common;
+- draw from the events of that rarity **not yet seen this run**. Opening one
+  marks it seen whether or not you engaged with it;
+- when a rarity's bag empties it reshuffles, except that the event which just
+  emptied it may not open the next bag;
+- an event gated out right now (Requirement unmet, wrong tier) is **skipped and
+  stays in the bag** rather than being burned.
+
+Each **game** pays one event and then is spent for the run, so walking a
+two-node loop is not an event faucet. A **detour** (`play_game`) pays none — its
+destination is somewhere the run was sent, and an event there would land on top
+of the stay-or-return question. Nor does the **Amulet** game: the run is over.
+
+> Events used to hang off dead ends only, with placement **hashed** from the node
+> id so the offered card's `✦ EVENT` badge could not change under the player.
+> Both are gone — an event after every game means there is no subset of nodes to
+> badge, and no honest answer to "which event is over there" before you arrive.
 
 The full design rationale is [`docs/event-sheet-authoring.md`](docs/event-sheet-authoring.md);
 this is the how-to.
@@ -493,11 +522,10 @@ names the row and the cell.
 | `Event` | Display name. Slugified, this is the id (`Scrap Ooze` → `scrap_ooze`) and the `.tres` filename. |
 | `Game` | The real game it's lifted from. Shows as "From: *game*" in the modal. |
 | `Tier` | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. |
-| `Where` | `Dead End` (default), `Any`, or `Game` (only ever at its own `Game`). |
-| `Requirement` | A gate on the run: `<stat> <op> <value>`, `%` reads against the max. `hp <= 70%`, `games >= 6`. Blank = always eligible. |
-| `Trigger` | `After` (fires once the game at the node is beaten). ⚠ `Before` parses and is stored, but **nothing reads it yet** — every event currently fires after. Leave it `After` until that is wired up. |
-| `Rarity` | `Common` / `Uncommon` / `Rare`. |
-| `Limit` | Times per run — a number, or `None`. |
+| `Where` | **Leave blank.** An event fires after every game, so this answers nothing today. It stays wired (`Dead End` / `Any` / `Game`) for the per-location work. |
+| `Requirement` | A gate on the run: `<stat> <op> <value>`, `%` reads against the max. `hp <= 70%`, `games >= 6`. Blank = always eligible. A gated event is skipped and stays in the bag. |
+| `Trigger` | `After` (fires once the game at the node is played). ⚠ `Before` parses and is stored, but **nothing reads it yet**. Leave it `After` until that is wired up. |
+| `Rarity` | `Common` / `Uncommon` / `Rare` — which bag it is dealt from. |
 | `Image` | Art base name → `images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`. |
 | `Prompt` | The prose at the top of the modal. |
 | `Goal Met` / `Goal Missed` | Only if a choice uses `add_goal`: what the event says when that goal lands or lapses, games later. |
@@ -615,35 +643,101 @@ Punch Off     (2 choices)    ✗ used 1/1 this run
 Clicking a row **starts it right there**, blockers and all — the one you can't
 reach is exactly the one you need to look at. It goes through the same path an
 earned event takes, so the modal, the `finished` handling and a `play_game`
-detour all behave as they will in a real run (which also means starting one
-counts against its `Limit` — there's a **Clear fired counts** button for that,
-and a **Re-roll placement** one that moves the run seed).
+detour all behave as they will in a real run (which also means starting one puts
+it in the bag — there's an **Empty the bag** button for that, and an **Un-spend
+this node** one for the game you are standing on).
 
-Why it's needed: placement is **hashed** from the node id and the run seed rather
-than rolled, so a card's `✦ EVENT` badge can never change under the player — but
-it also means you cannot reload your way into a new event, and an event that
-doesn't appear tells you nothing about which gate stopped it.
+Why it's needed: an event you cannot get to tells you nothing about which gate
+stopped it, and waiting for the bag to deal you the one you are editing is not a
+workflow. Every row prints its blockers straight from `EventSystem.blockers_for`
+— the same call the dealer makes.
 
-The panel is the fast path; the two older ones still work if you want them —
-temporarily setting `Where` to `Any`, or driving
+The tab also **spawns objects**. Objects are only spawned by events today, so
+without that button the under-board panel — the whole non-event half of how a
+machine reaches the screen — would have nothing that could reach it.
+
+The panel is the fast path; driving
 `EventModal2.open(host, Data.get_event2(&"your_event"))` from a throwaway scene
-with the `verify` skill (`.claude/skills/verify/`), which will screenshot it.
+with the `verify` skill (`.claude/skills/verify/`) still works and will
+screenshot it.
 
 #### Rules of thumb
 
-- **Worth about one game's reward** — a small chest, a verb charge, a couple of
-  Health. A leaf costs two games and pays one, so pay less and the detour is
-  still a mistake; pay more and the optimal line is to bounce off every leaf.
+- **Worth well under one game's reward.** One fires after every game now, so a
+  6–12 game run sees 6–12 of them; anything that would be a fair payout for a
+  two-game detour is, at this cadence, the run's main income.
 - **Health is 5–10, not 75.** A source game's damage numbers almost never come
   across unscaled; 3 damage is a third of a character here.
-- **An event that can kill you belongs at a `Dead End`** — somewhere the player
-  chose to walk toward.
+- **Be careful with events that can kill you.** They no longer sit at the end of
+  a detour the player chose to walk; they turn up after any game at all.
 - **Quote the source game verbatim** where you can, and leave a `Result` blank
   rather than inventing prose and presenting it as the game's.
 - **Don't run `tools/_events2_sheet_setup.py`** once you've authored by hand. It
   is the bootstrap that laid the tab down and it rewrites it wholesale from a
   Python list; it will refuse rather than drop your rows, but it has nothing you
-  want.
+  want. The same goes for `tools/_objects2_sheet_setup.py`.
+
+### Authoring an object
+
+An **object** is a machine you stand in front of — the Blood Donation Machine,
+the Donation Machine. Same authored shape as an event (one row on the
+**`objects2.0` tab**, choices in numbered column groups, Effect cells in the same
+DSL), differing in that it **persists** while the run is on that game, is
+**spawned** rather than arriving on its own, and is **stateful**.
+
+```bash
+python3 tools/generate_object2_tres.py --list   # dry run
+python3 tools/generate_object2_tres.py          # write data/objects2.0/*.tres
+```
+
+Full format spec, the eight object-only verbs, and the two authored machines:
+[`docs/object-sheet-authoring.md`](docs/object-sheet-authoring.md).
+
+### Luck
+
+**Every point of Luck buys one more roll, and the better result is kept.**
+
+That is the whole model, and it applies to every random decision the run makes.
+At 1 Luck a 25% chance is really **43.75%** (`1 - 0.75²`); at 3 Luck it is
+**68%**. Luck compounds rather than adding, so it is not `p × (1 + luck)`.
+
+Negative Luck is the same machine pointed the other way — `|Luck|` extra rolls,
+keep the **worse** — so a run at −2 sees that same 25% land at **1.6%**.
+
+> This replaced a 10%-per-point chance of *advantage* (roll twice, sometimes).
+> The difference is not a tuning change: at a single point the old one did
+> nothing at all nine times in ten, so Luck was a stat you could hold and never
+> see. A guaranteed reroll is felt on the first roll after you pick up a Clover.
+
+**Which way is "better"** cannot be guessed, so every roll site declares it
+(`Stats.Favour`):
+
+| | |
+|---|---|
+| **`HIGH`** | a bigger number or a success is what you want — the rarity ladder, a chest gamble, how many pickups a bombed machine scatters, the Donation Machine's 5% Luck payout |
+| **`LOW`** | success is the bad outcome — the Donation Machine's jam, Curse of Decay's item downgrade |
+| **`NONE`** | there is no better side, so Luck stays out — *which* of the twelve Commons you drew, whether a burst machine dropped a Blood Bag or an IV Bag, heads-or-tails on a pickup |
+
+The one that reads backwards is worth spelling out: the Blood Donation Machine's
+6.7% explosion is **`HIGH`**. Bursting pays an Event relic and one gold does
+not, so Luck makes the machine *more* likely to go off in your face — which is
+the outcome you were feeding it for. At 1 Luck the button reads **13%**, not
+6.7%.
+
+**Where it lives.** `Stats.roll_chance` / `roll_range` / `roll_rarity_step_with_luck`
+are the four entry points, and `Data.roll_item_rarity` calls the last of them —
+which is what makes "Luck affects every roll" true without thirty call sites
+having to remember it. Item rewards, chest sizes, scrolls, shop stock and the
+object pools all walk that one ladder.
+
+**What the player sees.** A `🍀 Luck` chip sits with the verbs under the
+offering, and any button quoting odds quotes the ones Luck **will actually
+roll** — `Stats.effective_chance`. A button that said 6.7% to a player holding a
+Clover would be lying to them about the thing they bought it for.
+
+**Where it comes from.** The **Clover** (Uncommon, `items2.0`) is `+1 Luck` as a
+passive bonus, so the Luck goes away with the item. The Donation Machine pays a
+point on a 5% roll per coin. There is no cap.
 
 ---
 

@@ -19,11 +19,11 @@ the honour system.
 - **Two scenes only.** `scenes/menu/MainMenu.tscn` boots, `scenes/redesign2/Overworld2.tscn`
   *is* the game. Every screen is built in code, so `.tscn` files hold a root node
   and a script and nothing else — don't go looking for UI in them.
-- **14 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
+- **15 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
   that matter most: `GameState` (run-persistent state), `Data` (loads every
   `.tres` and serves it by id), `GameLoop2` (the run loop — `Overworld2` is a view
   over it), `EffectSystem` + `TriggerBus` (effect dispatch and the signal hub).
-  README's "Autoload singletons" table covers all 14.
+  README's "Autoload singletons" table covers all 15.
 - **Content is data, never code.** Everything lives as typed `.tres` under `data/`,
   with schemas in `scripts/resources/`. Gameplay code asks `Data` for content
   rather than hardcoding it.
@@ -36,11 +36,17 @@ the honour system.
 ## Working here
 
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 22 scripts, ~861 tests, ~4 min
+godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 25 scripts, ~1010 tests, ~5 min
 ```
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by
   `.claude/hooks/session-start.sh` in remote sessions).
+- **A new `class_name` needs an editor rescan before the suite can see it.**
+  `.godot/global_script_class_cache.cfg` is gitignored and only regenerates when
+  the editor scans, so a headless test run against a fresh `class_name` fails
+  with "Could not find type X" — in hundreds of unrelated tests, because the
+  script that referenced it failed to parse and its scene fell back to a bare
+  Control. Run `godot --headless --editor --quit` once after adding one.
 - **A GUT run should be all green, with no Risky / "Did not assert".** It used to
   report one or two, varying between runs, because a couple of tests early-
   `return`ed when the run's random graph didn't reach the case they were about.

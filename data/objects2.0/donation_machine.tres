@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ObjectData" load_steps=2 format=3 uid="uid://object2_donation_machine"]
+
+[ext_resource type="Script" path="res://scripts/resources/ObjectData.gd" id="1_object"]
+
+[resource]
+script = ExtResource("1_object")
+id = &"donation_machine"
+display_name = "Donation Machine"
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray("arcade")
+rarity = "Common"
+run_limit = 0
+unique = true
+where = ""
+requirement = {}
+trigger = "after"
+file = "DonationMachine"
+prompt = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "give_gold", "text": "Give Gold", "repeat": "again", "repeat_max": 0, "results": [], "gates": [{"resource": "gold", "value": 1}, {"flag": "not_jammed"}, {"flag": "bank_space"}], "effects": [{"type": "donate_gold", "value": 1}, {"type": "chance", "effect": {"type": "gain_stat", "stat": "luck", "value": 1}, "percent": 5.0}, {"type": "chance", "effect": {"type": "jam_object"}, "percent": 0.0, "scaled": {"percent": "1.0+X"}}], "effects_text": "Donate 1 Gold, 5%: +1 Luck, {1.0+X}%: the machine jams", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "bomb", "text": "Bomb", "repeat": "end", "repeat_max": 0, "results": [], "gates": [{"resource": "bombs", "value": 1}], "effects": [{"type": "spend_bomb", "value": 1}, {"type": "bank_payout", "min": 2, "max": 5}, {"type": "destroy_object", "scope": "run"}], "effects_text": "-1 Bomb, +2-5 Gold from the machine, no more this run", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

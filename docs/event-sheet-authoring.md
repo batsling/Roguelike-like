@@ -15,6 +15,13 @@ python3 tools/generate_event2_tres.py    # sheet -> data/events2.0/
 
 ---
 
+> **§1 has been superseded.** Events no longer hang off dead ends: one fires
+> after **every** game the run plays, dealt from a per-rarity shuffle bag. The
+> section below is kept because it is the argument the format was built around
+> and every worked example still reads against it — but where it says "a dead
+> end pays", read "every game pays", and where it prices an event at *one game's
+> reward*, see §1.1 for the rate that replaced it.
+
 ## 1. Why events exist: the dead end has to pay
 
 Almost half the map is a dead end. Over the `connections` sheet as it stands:
@@ -44,6 +51,48 @@ It also sets the exchange rate. **A dead-end event should be worth roughly one
 game's reward** — a Small Chest, a verb charge, a couple of Health — because one
 extra game is exactly what the round trip costs. Pay less and the leaf is still a
 mistake; pay more and the optimal line is to bounce off every leaf on the map.
+
+### 1.1 What replaced it: an event after every game
+
+An event now fires after **every** game the run plays — win, loss, or escape.
+The games this is a graph of are hour-long roguelikes, and the reason for the
+change is the one thing §1 could not give: **something to do between them.** A
+run of 6–12 games is 6–12 sittings at a real roguelike, and an event is the beat
+in between — a decision that takes a minute and costs something.
+
+Which event you get is dealt from a **shuffle bag**, per rarity:
+
+- roll the rarity ladder (Luck rerolls it, like every other roll in the build),
+  falling down to the nearest **stocked** rung — today everything authored is
+  Common, so every roll lands there;
+- draw from the events of that rarity **not yet seen this run**. Opening one
+  marks it seen whether or not the player engaged with it: seeing it is what was
+  spent;
+- when a rarity's bag empties it reshuffles, except that the event which just
+  emptied it may not open the next bag;
+- an event gated out right now (`Requirement` unmet, wrong `Tier`) is **skipped
+  and left in the bag** rather than burned.
+
+Each **game** pays one event and is then spent for the run, so walking a
+two-node loop is not an event faucet. A **detour** (`play_game`) pays none — its
+destination is somewhere the run was *sent*, and an event there would land on
+top of the stay-or-return question. Nor does the **Amulet** game: the run is
+over.
+
+**Placement is gone, and so is the badge.** An event used to be hashed onto a
+specific node from the node id and the run seed, so the offered card's
+`✦ EVENT` badge could not change under the player between being drawn and being
+taken. With an event after every game there is no subset of nodes to badge, and
+no honest answer to "which event is over there" before the run arrives — so the
+badge came off the cards along with the placement that justified it. The card's
+popup says only that an event *will* fire, and says nothing at all once that
+game has paid its one.
+
+**The exchange rate moved with it.** §1 prices an event at one game's reward
+because a leaf cost two games and paid one. At one event per game that is no
+longer a detour's compensation, it is the run's main income — so author **well
+under** a game's reward. The events in this sheet predate the change and are
+priced for the old rate.
 
 ---
 
@@ -92,11 +141,10 @@ for N = 1…6.
 | `Event` | event | Display name, and the id everything else keys off. |
 | `Game` | event | The real game this is lifted from. Flavour credit (the modal's "From: *game*" line), and the target when `Where` is `Game`. |
 | `Tier` | event | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. Gates an event to part of the tier ladder, the same vocabulary `enemies2.0` gates on. |
-| `Where` | event | Placement. `Dead End` (default — a node with one connection, §1), `Any`, or `Game` (only ever on its own `Game`, the way Abyssal Baths belongs to the Underdocks). |
-| `Requirement` | event | A condition on the **run state** that must hold before the event can appear at all — `<stat> <op> <value>`, a trailing `%` reading against the maximum (`hp <= 70%`). Blank = always eligible. `Tier` gates on the ladder, `Where` on the map, this on the player. The stats are a closed list (a typo'd one would silently never pass): `hp`, `max_hp`, `gold`, `games`, `keys`, `bombs`, `bash`, `dash`, `push`, `transmute`, `scramble`, `shields`, and `relics` — **tradeable** relics carried, excluding Starter, Boss and Event ones, which is what the Relic Trader gates on (§13). |
+| `Where` | event | **Leave blank.** An event fires after every game (§1.1), so this answers no placement question today. It stays wired — `Dead End` (a node with one connection), `Any`, `Game` (only ever on its own `Game`) — for the per-location work, and nothing authored sets it. |
+| `Requirement` | event | A condition on the **run state** that must hold before the event can be dealt. A gated event is skipped and stays in the bag. — `<stat> <op> <value>`, a trailing `%` reading against the maximum (`hp <= 70%`). Blank = always eligible. `Tier` gates on the ladder, `Where` on the map, this on the player. The stats are a closed list (a typo'd one would silently never pass): `hp`, `max_hp`, `gold`, `games`, `keys`, `bombs`, `bash`, `dash`, `push`, `transmute`, `scramble`, `shields`, and `relics` — **tradeable** relics carried, excluding Starter, Boss and Event ones, which is what the Relic Trader gates on (§13). |
 | `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). **`Before` is not implemented** — see §15. |
-| `Rarity` | event | `Common` / `Uncommon` / `Rare`. Weights the roll, same ordering as items and scrolls. |
-| `Limit` | event | Times per run. A number, or `None` for no limit. |
+| `Rarity` | event | `Common` / `Uncommon` / `Rare`. **Which bag it is dealt from** (§1.1), same ordering as items and scrolls. |
 | `Image` | event | Art base name → `res://images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`, matching every other 2.0 sheet. |
 | `Prompt` | event | The prose at the top of the modal. |
 | `Goal Met` | event | Printed when a goal this event handed out has its condition **met**. |
@@ -272,11 +320,36 @@ asked them to:
 ```
 needs <token>                  a gate — offered only if the player can pay
 needs <Choice> <op> <n>        a gate — offered only at this point in the event
+needs not_jammed | bank_space  a gate on the MACHINE (objects2.0 only)
 add_goal  "<condition>" [for <n> games] -> <reward>; <reward>
 add_curse <curse> [for <n> games]
 play_game tag=<tag> -> <reward>; <reward>
 chance <p>% -> <reward>; <reward>
+chance <p>% -> <reward> else <reward>      a two-sided roll
+roll <p>% <reward>                         an independent proc
 ```
+
+The last two arrived with **objects** (`docs/object-sheet-authoring.md`) and work
+in an events2.0 cell exactly as they do in an objects2.0 one — as does
+`spawn_object tag=<t> <lo>-<hi>`, which is how the Arcade Room puts machines in
+front of the player.
+
+`chance … else …` gives the roll a **losing payout** as well as a winning one.
+Without it a `chance` pays on a win and nothing on a loss, which cannot express
+the Blood Donation Machine: the needle goes in either way, and what comes back is
+a coin or a burst machine. The button quotes **both** sides, likely first.
+
+`roll` is the one that is *not* `chance`, and the distinction is worth holding on
+to. `chance` is the cell's **one headline gamble** — it claims the `->` payload,
+it prints `Chance Won` / `Chance Lost`, and winning it closes the event. A `roll`
+is a side effect that either fired or didn't: no prose, no closing, no arrow, and
+**as many per cell as you like**. The Donation Machine needs two on a single coin
+(5% for a point of Luck, `{1+X}%` to jam), which the one-arrow-verb rule makes
+unsayable with `chance`.
+
+Percentages may be **fractional** (`6.7%`) — odds are the one quantity in this
+DSL that is not a count of things, and one-in-fifteen rounded to 7% would make
+the number on the button not the number that gets rolled.
 
 `add_goal`, `play_game` and `chance` are **arrow verbs**: everything past the
 `->` is their payload, so each has to be the last clause in its cell. That single
@@ -328,8 +401,14 @@ from. Punch Off (§10) is where it comes from, and note what that choice is: a
 round trip you are allowed to decline, which is the exact thing §1 says a dead
 end forces on you.
 
+**Luck** applies to every one of these rolls, and always in the player's favour:
+a gamble's winning side is the good side by construction. See
+`docs/games-first-redesign.md` §16 — the odds a button quotes are the
+Luck-adjusted ones, not the number in the cell.
+
 `chance` is the only token whose payout is not settled by pressing the button.
-It **rolls**: `p` percent for the `->` payload, nothing otherwise, and the costs
+It **rolls**: `p` percent for the `->` payload, the `else` half otherwise (or
+nothing, without one), and the costs
 in front of it are charged either way — the acid burns whether or not there was a
 relic in the ooze. `p` is an ordinary amount, so `{25+10*X}` climbs it per press
 exactly as `{4+X}` climbs a cost, and it is clamped to a real percentage so an

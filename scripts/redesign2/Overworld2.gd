@@ -60,6 +60,9 @@ const REPEAT_BEAT_DASH := 1
 # The Dash verb's colour, shared by its hint, its offering label, and the
 # repeat-beat announcement so all three read as the same mechanic.
 const DASH_BLUE := Color(0.5, 0.85, 1.0)
+# The clover's own green — deliberately not the shop's, which is a place you can
+# walk into, where this is a property of every roll.
+const LUCK_GREEN := Color(0.55, 0.9, 0.55)
 
 # Shields — the tries at the game in play (§3). One steel-blue used by the HUD
 # count, the attempt strip, and the pips on the board.
@@ -122,10 +125,13 @@ var _run_over_pending: bool = false
 # asked for is owed, and paid at _end_resolve rather than over the animation.
 var _board_dirty: bool = false
 # The event waiting to open once the board has finished playing its resolve back.
-# An event fires AFTER the game at its node is beaten (docs/event-sheet-authoring.md
+# An event fires AFTER the game at its node is played (docs/event-sheet-authoring.md
 # §1) and the board is mid-animation at that moment, so it queues here the way the
 # run-over screen does rather than opening over a moving battlefield.
 var _pending_event: EventData2 = null
+# The node that event was rolled for, so opening it can SPEND that node — one
+# event per game, however many times the run walks back through it.
+var _pending_event_node: StringName = &""
 # Checklist bindings for the two event-borne sections, cleared with the rest in
 # _reset_checklist_state. Each entry is {check, index into GameState's array}.
 var _event_goal_checks: Array = []
@@ -166,6 +172,11 @@ var _pending_shop: StringName = &""
 # player stands at that hub rather than as long as a dialog is open.
 var _shop_panel: ShopPanel2 = null
 var _shop_hint: Control = null
+# The machines standing at this game, in the same space and on the same terms
+# (docs/object-sheet-authoring.md). Only ever mounted for objects spawned OUTSIDE
+# an event — an event draws its own inside its modal, because the room the
+# machines are in is the thing the event is.
+var _object_panel: ObjectPanel2 = null
 var _run_over_won: bool = false
 var _run_over_screen: RunOverScreen = null
 var _rng := RandomNumberGenerator.new()
@@ -294,6 +305,11 @@ func _ready() -> void:
 		GameState.hp_changed.connect(_on_vitals_changed)
 	if not GameState.stats_changed.is_connected(_refresh_stats):
 		GameState.stats_changed.connect(_refresh_stats)
+	# Machines appearing or leaving. Off the signal rather than at the spawn
+	# sites, so anything that spawns one — an event, the dev panel, whatever comes
+	# next — puts it on the page without knowing the panel exists.
+	if not ObjectSystem.objects_changed.is_connected(_sync_object_panel):
+		ObjectSystem.objects_changed.connect(_sync_object_panel)
 	# Gold moves on its own signal, not on stats_changed: a defeat pays mid-resolve
 	# and a purchase pays with no loop event at all, so the purse would otherwise
 	# sit on a stale number until something else happened to repaint the header.
@@ -351,9 +367,10 @@ func start_run(character_id: StringName = &"") -> void:
 	_slot_enemy_key = ""
 	# …and everything a run can be standing in the middle of: a hub's shop, a
 	# detour waiting to ask where to carry on from, a boss round already announced.
-	_clear_shop()
+	_leave_node()
 	_pending_shop = &""
 	_pending_event = null
+	_pending_event_node = &""
 	_return_choice = &""
 	_pending_detour = false
 	_play_return_to = &""
@@ -821,7 +838,9 @@ func pick(index: int) -> void:
 	_hover_grant = -1
 	# You have left the hub, so its shop comes off the page — the shelf itself
 	# survives on ShopSystem, which is what makes coming back to it a real option.
-	_clear_shop()
+	# The machines go too, and they do not survive: a Blood Donation Machine is
+	# not a place you can come back to.
+	_leave_node()
 	# An armed Push doesn't survive committing to a game: the board it was aimed at
 	# is about to be marched a column, and nothing has been spent.
 	if _board != null:
@@ -1252,17 +1271,22 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	# was sent to a game off its route by an event it has already resolved, and the
 	# far side of it is the stay-or-return question, not a fresh node's contents.
 	var on_detour: bool = _play_return_to != &""
+	# The event, rolled here and queued for once the board stops moving. An event
+	# fires after EVERY game — including one the player escaped and one whose goal
+	# they missed, because the time was spent either way and the event is what the
+	# run does between hour-long roguelikes rather than a prize for winning.
+	#
+	# NEVER on a detour, though. A detour's destination is a game the run was
+	# posted to by the last event; letting that game hand over an event of its own
+	# chained one straight into the next and dropped it on top of the stay-or-
+	# return question. (Punch Off's "I Can Take Them" is the case that showed it:
+	# beat the mecha game, get asked whether to stay, and get a second event over
+	# the top of the asking.)
+	if played_game != null and not on_detour:
+		_pending_event = EventSystem.roll_for_arrival(slot_here)
+		_pending_event_node = slot_here
 	if played_game != null and not escaped:
-		# The event at this node, queued for once the board stops moving — but NEVER
-		# on a detour. An event fires at the place you routed to, and a detour's
-		# destination is a game the run was posted to by the last event; letting that
-		# game hand over an event of its own chained one event straight into the next
-		# and dropped it on top of the stay-or-return question. (Punch Off's "I Can
-		# Take Them" is the case that showed it: beat the mecha game, get asked
-		# whether to stay, and get a second event over the top of the asking.)
-		if not on_detour:
-			_pending_event = EventSystem.event_for(slot_here)
-		# …and the shop, if this was one of the run's ten hubs (§14). Queued on
+		# The shop, if this was one of the run's ten hubs (§14). Queued on
 		# exactly the same terms, and read off the GAME rather than the graph slot:
 		# a shop belongs to the storefront of a particular big game, so a node
 		# transmuted into something else is not that shop any more.
@@ -1430,6 +1454,7 @@ func _end_resolve() -> void:
 		# best-connected games on the map, so it is not a rare pairing), and
 		# winning the run is not a cue to go shopping.
 		_pending_event = null
+		_pending_event_node = &""
 		_pending_shop = &""
 		_show_run_over()
 		return
@@ -1439,17 +1464,20 @@ func _end_resolve() -> void:
 # the modal lands on the screen the player is about to act on rather than on a
 # board mid-resolve.
 #
-# The shop comes AFTER the event when a node somehow owes both — an event is a
-# decision with consequences and a shop is spending, so the money should be spent
-# knowing how the event went. In practice they don't collide: every authored
-# event is `Where: Dead End` and a hub is the opposite of a dead end.
+# The shop comes AFTER the event when a node owes both — an event is a decision
+# with consequences and a shop is spending, so the money should be spent knowing
+# how the event went. That pairing used to be theoretical (every event was
+# `Where: Dead End` and a hub is the opposite of one); now that an event fires
+# after every game it happens at every hub, and the order matters for real.
 func _open_pending_event() -> void:
 	var ev: EventData2 = _pending_event
+	var node: StringName = _pending_event_node
 	_pending_event = null
+	_pending_event_node = &""
 	if ev == null:
 		_open_pending_shop()
 		return
-	_event_modal = EventModal2.open(self, ev)
+	_event_modal = EventModal2.open(self, ev, node)
 	_event_modal.finished.connect(_on_event_finished)
 
 # Raise `ev` here and now, outside the beat-a-game path that normally queues one.
@@ -1473,6 +1501,11 @@ func open_event(ev: EventData2) -> bool:
 
 func _on_event_finished(play_request: Dictionary) -> void:
 	_event_modal = null
+	# Machines an event put in front of you belong to that event. The Arcade Room
+	# IS the room the cabinets are in, so its `Leave` walks you out of both —
+	# rather than leaving the machines standing under the board afterwards, which
+	# would make the room's exit mean nothing.
+	ObjectSystem.clear()
 	_refresh()
 	autosave()
 	if not play_request.is_empty():
@@ -1525,8 +1558,50 @@ func _mount_shop(gid: StringName) -> void:
 	_update_shop_hint()
 	_update_shop_hint.call_deferred()
 
+# Everything mounted under the board because the run is STANDING HERE: the hub's
+# shop and any machines. Both have the same lifetime — travelling on ends them —
+# and they differ in what survives it. A shop's shelf lives on in ShopSystem, so
+# coming back to a hub is a real option; a machine is simply gone, and the next
+# one you meet is a different machine with its own press counts.
+func _leave_node() -> void:
+	_clear_shop()
+	_clear_objects()
+	ObjectSystem.clear()
+
+
+# --- the machines on the page (docs/object-sheet-authoring.md) -------------
+
+# Bring the under-board panel into line with what ObjectSystem is holding: mount
+# it when machines appear, take it down when the last one goes. Driven off the
+# signal rather than called at the spawn sites, so a machine spawned from the dev
+# panel, from an item, or from anything added later lands on the page without
+# that caller knowing the panel exists.
+func _sync_object_panel() -> void:
+	if not ObjectSystem.has_live() or GameLoop2.run_over:
+		_clear_objects()
+		return
+	# An event showing its own machines owns them for as long as it is open; a
+	# second copy under the board would be the same buttons twice.
+	if _event_modal != null and is_instance_valid(_event_modal):
+		_clear_objects()
+		return
+	if _object_panel != null and is_instance_valid(_object_panel):
+		return
+	if _right_col == null:
+		return
+	_object_panel = ObjectPanel2.mount(_right_col)
+	if _object_panel != null:
+		_object_panel.finished.connect(func(): _object_panel = null)
+
+
+func _clear_objects() -> void:
+	if _object_panel != null and is_instance_valid(_object_panel):
+		_object_panel.close()
+	_object_panel = null
+
 # The shop closes when you travel on, which is what leaving a shop has always
-# meant. Called from every way the run moves off this node.
+# meant. Also called by _mount_shop, which is replacing one rather than leaving
+# the node — which is why this stays separate from _leave_node.
 func _clear_shop() -> void:
 	if _shop_panel != null and is_instance_valid(_shop_panel):
 		_shop_panel.close()
@@ -1632,6 +1707,8 @@ func _exit_tree() -> void:
 		GameState.hp_changed.disconnect(_on_vitals_changed)
 	if GameState.stats_changed.is_connected(_refresh_stats):
 		GameState.stats_changed.disconnect(_refresh_stats)
+	if ObjectSystem.objects_changed.is_connected(_sync_object_panel):
+		ObjectSystem.objects_changed.disconnect(_sync_object_panel)
 	if GameState.gold_changed.is_connected(_on_gold_changed):
 		GameState.gold_changed.disconnect(_on_gold_changed)
 	if GameState.current_game_changed.is_connected(_on_arrived):
@@ -1701,7 +1778,7 @@ func teleport_to_type(type_key: StringName) -> void:
 func travel_to_game(game_id: StringName) -> void:
 	if Data.get_game(game_id) == null:
 		return
-	_clear_shop()
+	_leave_node()
 	GameState.set_current_game(game_id)
 	_phase = Phase.SELECT
 	_dash_mode = false
@@ -1731,7 +1808,7 @@ func _start_play_game(request: Dictionary) -> void:
 			EffectSystem.apply(eff, {})
 		return
 	# The run is being posted off this node, so anything standing at it goes.
-	_clear_shop()
+	_leave_node()
 	_play_return_to = GameState.current_game_id
 	_play_payload = (request.get("effects", []) as Array).duplicate(true)
 	_play_payload_text = String(request.get("effects_text", ""))
@@ -2581,28 +2658,21 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	# game the run ends on. The row is mounted on every card, blank off the Amulet,
 	# so the flagged card's cover stays in line with the rest of the offering.
 	#
-	# The EVENT badge shares this row (docs/event-sheet-authoring.md §12). A dead
-	# end costs two games for one game's reward, so the thing that makes the
-	# detour worth taking has to be visible BEFORE the card is opened — the whole
-	# point of an event is that you route towards it deliberately. The Amulet wins
-	# the row when a card is both, because winning the run outranks a bonus.
+	# There WAS an `✦ EVENT` badge in this row. It marked the handful of dead ends
+	# carrying an event, back when placement was hashed onto specific nodes and
+	# routing towards one was a decision. An event now fires after every game
+	# played, so a badge on every card would say nothing — and the hash it
+	# depended on is gone with it, which means there is no longer an honest answer
+	# to "which event is at that node" before the run gets there.
 	#
-	# The SHOP badge (§14) is the third tenant, and it ranks below the event for
-	# the same reason the event ranks below the Amulet: an event is a one-time
-	# thing that happens TO you at this node, while a shop is a standing place
-	# that will still be there next time round. Its colour is deliberately not a
-	# gold — see UITheme.SHOP_GREEN — because a gold badge sitting in the Amulet's
-	# own slot is the one confusion this row cannot afford.
-	var event: EventData2 = EventSystem.event_for(choice["slot"])
+	# The SHOP badge (§14) is the row's other tenant. Its colour is deliberately
+	# not a gold — see UITheme.SHOP_GREEN — because a gold badge sitting in the
+	# Amulet's own slot is the one confusion this row cannot afford.
 	var flag := Label.new()
 	if amulet:
 		flag.text = "🏆 THE AMULET"
 		flag.tooltip_text = "Beat this game's goal and you win the run."
 		flag.add_theme_color_override("font_color", UITheme.GOLD)
-	elif event != null:
-		flag.text = "✦ EVENT"
-		flag.tooltip_text = "%s waits here — beat this game and it fires, on top of the drop." % event.display_name
-		flag.add_theme_color_override("font_color", UITheme.ACCENT)
 	elif ShopSystem.is_hub(game.id):
 		flag.text = "🛒 SHOP"
 		flag.tooltip_text = _shop_card_tooltip(game)
@@ -3645,6 +3715,19 @@ func _refresh_select_stats() -> void:
 		UITheme.GOLD,
 		"Redraw the whole offering — new games in the slots, each with a fresh goal-enemy.",
 		scramble))
+	# Luck rides with the verbs rather than in the header beside Health and Gold,
+	# because it is not a resource you spend — it is a thing that is true about
+	# every roll the run makes, and the verbs are where the player is already
+	# reading what they can do to the offering. Drawn even at zero, so the stat is
+	# discoverable before a Clover ever turns up.
+	var luck: int = Stats.get_value(&"luck")
+	_select_stats.add_child(_stat_chip("🍀 Luck %d" % luck, luck, LUCK_GREEN,
+		"Every roll in the run is made %d extra time%s and the %s result kept.\n"
+		% [absi(luck), "" if absi(luck) == 1 else "s",
+			"better" if luck >= 0 else "worse"]
+		+ "Rarity ladders, event gambles, machine odds — anything with a better "
+		+ "side to land on.\nA 25%% chance is really %s%% at this much Luck."
+		% EventSystem.percent_text(Stats.effective_chance(25.0, Stats.Favour.HIGH))))
 
 # The pack, as a STRIP of small tokens above the board rather than a list of
 # named rows beside it. A run ends up carrying a dozen relics and a dozen named
@@ -4026,7 +4109,7 @@ func _queue_run_over(did_win: bool) -> void:
 
 func _show_run_over() -> void:
 	# Nothing left to spend it on, and nothing under the board to scroll to.
-	_clear_shop()
+	_leave_node()
 	if not is_inside_tree():
 		return
 	if _run_over_screen != null and is_instance_valid(_run_over_screen):

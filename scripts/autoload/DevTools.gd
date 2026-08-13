@@ -661,16 +661,19 @@ func _build_flow_tab() -> void:
 # The authoring tab (docs/event-sheet-authoring.md, README "Authoring an event").
 #
 # Starting an event is the obvious half. The half that actually saves the time is
-# the SECOND column: placement is hashed from the node id and the run seed rather
-# than rolled (so a card's badge cannot change under the player), which means a
-# new event you cannot see gives you nothing to go on — it might be gated on tier,
-# or on Health, or standing at a node that isn't a leaf, or already used up. Every
-# row here carries the reason, straight from EventSystem.blockers_for, which is
-# the same call the roller makes.
+# the SECOND column: a new event you cannot get to give you nothing to go on — it
+# might be gated on tier, or on Health, or still sitting in the bag behind five
+# others. Every row carries the reason, straight from EventSystem.blockers_for,
+# which is the same call the roller makes.
 #
 # Starting one goes through Overworld2.open_event, so a started event is wired up
 # exactly as an earned one: same finished handler, same refresh and autosave, and
 # `play_game` really does post the run off to a tagged game.
+#
+# The tab also spawns OBJECTS (docs/object-sheet-authoring.md). Objects are only
+# spawned by events today, so without a button here the under-board panel — the
+# whole non-event half of how a machine reaches the screen — would have nothing
+# that could reach it.
 func _build_events_tab() -> void:
 	var scene = GameState.overworld_scene
 	if scene == null or not scene.has_method("open_event"):
@@ -679,27 +682,33 @@ func _build_events_tab() -> void:
 
 	var here: StringName = GameState.current_game_id
 	var game: GameData = Data.get_game(here)
-	var placed: EventData2 = EventSystem.event_for(here)
-	_body.add_child(_note("Standing on: %s (%d connection%s)\nWould place here: %s" % [
+	# An event is rolled on arrival now, so there is no "what is placed here" to
+	# report — what there is instead is the state of the BAG, which is the thing
+	# that actually decides what comes up next.
+	var seen: int = GameState.events_seen.size()
+	var total: int = Data.all_events2().size()
+	_body.add_child(_note("Standing on: %s (%d connection%s)\nBag: %d/%d seen · last was %s%s" % [
 		game.display_name if game != null else "(nowhere)",
 		RunGraph.degree(here), "" if RunGraph.degree(here) == 1 else "s",
-		placed.display_name if placed != null else "nothing"]))
+		seen, total,
+		String(GameState.last_event_id) if GameState.last_event_id != &"" else "nothing",
+		"\nThis game has already paid its event." if GameState.event_nodes_fired.has(here)
+			else ""]))
 
-	# `Limit 1` is on every authored event, so the second look at one is blocked by
-	# a counter rather than by anything interesting. Clearing it is the single most
-	# useful button on this tab while you are iterating on an event's text.
 	var acts := HBoxContainer.new()
 	acts.add_theme_constant_override("separation", 6)
 	_body.add_child(acts)
-	acts.add_child(_mini("Clear fired counts", func() -> void:
+	# Emptying the bag is the single most useful button on this tab while you are
+	# iterating on an event's text: it puts everything back in the draw.
+	acts.add_child(_mini("Empty the bag", func() -> void:
+		GameState.events_seen.clear()
 		GameState.events_fired.clear()
-		_say("Every event may fire again.")
+		GameState.last_event_id = &""
+		_say("Every event is unseen again.")
 		_rebuild_body()))
-	acts.add_child(_mini("Re-roll placement", func() -> void:
-		# Placement hashes the node against the run seed. Moving the seed is the
-		# only thing that moves which event stands where without moving the run.
-		GameState.run_seed = randi()
-		_say("New run seed — placement re-hashed.")
+	acts.add_child(_mini("Un-spend this node", func() -> void:
+		GameState.event_nodes_fired.erase(here)
+		_say("This game owes an event again.")
 		_rebuild_body()))
 
 	_body.add_child(_section("Start an event here"))
@@ -731,5 +740,52 @@ func _build_events_tab() -> void:
 						+ "one is queued, or the run is over.", Color(1.0, 0.6, 0.6))})
 	_emit_rows(rows)
 
-	_body.add_child(_note("Starting an event marks it fired, so its Limit counts "
-		+ "the same as a real visit — clear the counts above to go again."))
+	_body.add_child(_note("Starting an event puts it in the bag, exactly as a real "
+		+ "one does — empty the bag above to draw it again."))
+
+	# --- objects ---------------------------------------------------------
+	_body.add_child(_section("Put a machine here"))
+	var obj_rows: Array = []
+	for obj in Data.all_objects2():
+		if not (obj is ObjectData):
+			continue
+		var oname: String = String(obj.display_name)
+		if query != "" and not oname.to_lower().contains(query):
+			continue
+		var o: ObjectData = obj
+		var state: Array = []
+		if ObjectSystem.destroyed_for_run.has(obj.id):
+			state.append("✗ blown up this run")
+		if ObjectSystem.jammed.has(obj.id):
+			state.append("jammed")
+		if obj.unique:
+			state.append("unique — one at a time")
+		state.append("tags: %s" % ", ".join(obj.tags))
+		obj_rows.append({
+			"label": "%s   (%s)" % [oname, obj.rarity],
+			"detail": " · ".join(PackedStringArray(state)),
+			"press": func() -> void:
+				if ObjectSystem.spawn(o.id).is_empty():
+					_say("%s can't stand here right now." % oname, Color(1.0, 0.6, 0.6))
+				else:
+					_say("%s is here." % oname, Color(1.0, 0.75, 0.4))
+					_close()})
+	_emit_rows(obj_rows)
+
+	var obj_acts := HBoxContainer.new()
+	obj_acts.add_theme_constant_override("separation", 6)
+	_body.add_child(obj_acts)
+	obj_acts.add_child(_mini("Clear the machines", func() -> void:
+		ObjectSystem.clear()
+		_say("Nothing standing here.")
+		_rebuild_body()))
+	obj_acts.add_child(_mini("Un-jam / un-destroy", func() -> void:
+		ObjectSystem.jammed.clear()
+		ObjectSystem.destroyed_for_run.clear()
+		ObjectSystem.spawned.clear()
+		_say("Every machine is on the table again.")
+		_rebuild_body()))
+	_body.add_child(_note("A machine spawned here stands under the board, which is "
+		+ "where one spawned by anything other than an event lives. The Donation "
+		+ "Machine's bank holds %d gold and does NOT reset with the run."
+		% ObjectSystem.bank()))

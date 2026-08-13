@@ -44,7 +44,7 @@ var total_games_beaten: int = 0
 var games_played: int = 0
 # One number that identifies THIS run, drawn at reset_run and saved with it.
 # Anything that has to be stable for a run but different between runs hashes
-# against it — event placement (EventSystem.event_for) is the first such thing,
+# against it — the offering's per-slot enemies are the first such thing,
 # and it has to survive a save/load, not just an offering redraw.
 var run_seed: int = 0
 
@@ -427,8 +427,22 @@ var player_statuses: Dictionary = {}
 # ---------------------------------------------------------------------------
 var event_goals: Array = []
 var curse_goals: Array = []
-# event id -> times fired this run, so an event's `run_limit` can be honoured.
+# event id -> times fired this run. Events have no per-run cap any more; this is
+# the lifetime-of-the-run tally the Collection reads and the shuffle bag's record
+# of what has come up.
 var events_fired: Dictionary = {}
+# THE BAG (EventSystem.roll_for_arrival). event id -> true for every event drawn
+# since that rarity last reshuffled — an event does not come round again until
+# every other one of its rarity has been seen. Drawing marks an event seen even
+# if the player walks straight back out of it: seeing it is what was spent.
+var events_seen: Dictionary = {}
+# The last event drawn, so a reshuffle cannot hand back the one that just
+# emptied the bag. The single thing a fresh bag is not allowed to open on.
+var last_event_id: StringName = &""
+# game id -> true once that game has paid its event. An event fires after every
+# game, but each GAME only ever pays one: walking a loop between two nodes would
+# otherwise be an event faucet at a game a pull.
+var event_nodes_fired: Dictionary = {}
 
 # ---------------------------------------------------------------------------
 # SHOPS (docs/games-first-redesign.md §14). The logic lives in ShopSystem; this
@@ -863,6 +877,13 @@ func reset_run() -> void:
 	event_goals.clear()
 	curse_goals.clear()
 	events_fired.clear()
+	events_seen.clear()
+	last_event_id = &""
+	event_nodes_fired.clear()
+	# The machines go with the run too — the jams, what was blown up, what has
+	# been spawned. Not the Donation Machine's bank, which is the one thing here
+	# that outlives a run on purpose (GameStats).
+	ObjectSystem.reset_run()
 	# The shops go with the run, and so does the hub list — a new run may be on a
 	# different filter, so the ten biggest games are re-asked rather than reused.
 	hub_games.clear()
@@ -1582,12 +1603,20 @@ func serialize_event_goals() -> Dictionary:
 		"goals": event_goals.duplicate(true),
 		"curses": curse_goals.duplicate(true),
 		"fired": events_fired.duplicate(true),
+		# The bag has to ride the save or a reload would re-offer an event the run
+		# had already spent, which is the one thing the bag exists to prevent.
+		"seen": events_seen.keys(),
+		"last": String(last_event_id),
+		"nodes": event_nodes_fired.keys(),
+		"objects": ObjectSystem.to_save(),
 	}
 
 func restore_event_goals(data: Dictionary) -> void:
 	event_goals.clear()
 	curse_goals.clear()
 	events_fired.clear()
+	events_seen.clear()
+	event_nodes_fired.clear()
 	for g in data.get("goals", []):
 		if g is Dictionary:
 			event_goals.append(g.duplicate(true))
@@ -1596,6 +1625,12 @@ func restore_event_goals(data: Dictionary) -> void:
 			curse_goals.append(c.duplicate(true))
 	for k in data.get("fired", {}).keys():
 		events_fired[StringName(k)] = int(data["fired"][k])
+	for k in data.get("seen", []):
+		events_seen[StringName(k)] = true
+	for k in data.get("nodes", []):
+		event_nodes_fired[StringName(k)] = true
+	last_event_id = StringName(data.get("last", ""))
+	ObjectSystem.from_save(data.get("objects", {}))
 
 # --- shops (§14) -----------------------------------------------------------
 #

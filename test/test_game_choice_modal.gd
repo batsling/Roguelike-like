@@ -229,11 +229,11 @@ func test_the_connection_line_breaks_out_events_and_shops() -> void:
 		for n in RunGraph.neighbors(slot):
 			if GameLoop2.is_bashed(n):
 				continue
-			if EventSystem.event_for(n) != null:
+			if not GameState.event_nodes_fired.has(n):
 				events += 1
 			if ShopSystem.is_hub(n):
 				shops += 1
-		assert_eq(int(counts["events"]), events, "events counted off the same placement")
+		assert_eq(int(counts["events"]), events, "events counted off the same rule")
 		assert_eq(int(counts["shops"]), shops, "shops counted off the same hub list")
 		var line: String = GameChoiceModal.connection_text(counts)
 		if events > 0:
