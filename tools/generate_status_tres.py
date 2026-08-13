@@ -467,6 +467,114 @@ def parse_reward_clause(clause):
         return eff, "+%s %s" % (_amount_word(rest[1] if len(rest) > 1 else "1"),
                                 rest[0].replace("_", " ").title())
 
+    # --- the OBJECT vocabulary (docs/object-sheet-authoring.md) ----------
+    #
+    # An object is a machine you stand in front of, and the six verbs below are
+    # the things a machine does that a room cannot: it pays in loose change, it
+    # picks which relic fell out, it holds a bank, it jams, it blows up. They
+    # live here with the rest of the reward DSL rather than in the object
+    # generator so an event can reach for them too — Arcade Room's
+    # `spawn_object` is written in an events2.0 cell.
+
+    # `gain_pickups 2-4 hp|gold` — N loose pickups, each one independently
+    # rolled from the listed kinds. NOT "2-4 Health and 2-4 Gold" and not a
+    # chest: the Blood Donation Machine bursting should read like Isaac's floor
+    # after a bomb, a scatter of hearts and coins in no particular ratio, and a
+    # count with a menu attached is the only shape that says that.
+    if verb == "gain_pickups":
+        if len(rest) < 2:
+            raise ValueError("reward DSL: gain_pickups needs <lo>-<hi> "
+                             "<kind>|<kind> in %r" % clause)
+        lo, hi = _range(rest[0], clause)
+        kinds = [k.strip().lower() for k in rest[1].split("|") if k.strip()]
+        unknown = [k for k in kinds if k not in PICKUP_KINDS]
+        if unknown:
+            raise ValueError("reward DSL: unknown pickup kind(s) %s in %r "
+                             "(known: %s)"
+                             % (unknown, clause, ", ".join(sorted(PICKUP_KINDS))))
+        eff = {"type": "gain_pickups", "min": lo, "max": hi, "kinds": kinds}
+        return eff, "+%s %s" % (_span(lo, hi),
+                                " or ".join(PICKUP_KINDS[k] for k in kinds))
+
+    # `gain_item_of blood_bag|iv_bag` — ONE named relic, chosen at random from
+    # the list. The sibling of `gain_item`, for the payout that is a specific
+    # small set rather than a specific thing.
+    if verb == "gain_item_of":
+        ids = [i.strip().lower() for i in " ".join(rest).split("|") if i.strip()]
+        if len(ids) < 2:
+            raise ValueError("reward DSL: gain_item_of needs at least two "
+                             "`|`-separated item ids in %r (use gain_item for "
+                             "one)" % clause)
+        return ({"type": "gain_item_of", "items": ids},
+                "+%s" % " or ".join(_title(i) for i in ids))
+
+    # Gold into the Donation Machine's bank — which is the one number in this
+    # build that outlives the run. Both halves live in the verb because they are
+    # one act: the purse pays and the bank fills, and a cell that wrote them as
+    # `lose_gold 1; bank_gold 1` could get them out of step.
+    if verb == "donate_gold":
+        amount = rest[0] if rest else "1"
+        eff = {"type": "donate_gold"}
+        put(eff, "value", amount)
+        return eff, "Donate %s Gold" % _amount_word(amount)
+
+    # The other direction, and the reason to bomb one: gold back OUT of the
+    # bank. Capped at what the bank actually holds — you can only take what is
+    # in it — which is settled at runtime, so the words quote the roll.
+    if verb == "bank_payout":
+        if not rest:
+            raise ValueError("reward DSL: bank_payout needs <lo>-<hi> in %r" % clause)
+        lo, hi = _range(rest[0], clause)
+        return ({"type": "bank_payout", "min": lo, "max": hi},
+                "+%s Gold from the machine" % _span(lo, hi))
+
+    # A jammed machine still stands there; it just will not take another coin
+    # for the rest of the run.
+    if verb == "jam_object":
+        return {"type": "jam_object"}, "the machine jams"
+
+    # Gone. Bare = this machine only (another Blood Donation Machine may still
+    # turn up); `run` = every object of this kind is off the run, which is what
+    # bombing the Donation Machine buys.
+    if verb == "destroy_object":
+        scope = rest[0].lower() if rest else ""
+        if scope not in ("", "run"):
+            raise ValueError("reward DSL: destroy_object takes `run` or nothing, "
+                             "not %r (%r)" % (scope, clause))
+        eff = {"type": "destroy_object"}
+        if scope:
+            eff["scope"] = "run"
+        return eff, ("no more this run" if scope else "the machine is destroyed")
+
+    # Spending a Bomb OFF the battlefield. `lose_stat bombs 1` would take the
+    # bomb without ever telling anything it was used, and Blood Bombs says "when
+    # using a Bomb" — so this fires the same bomb_used trigger the board does,
+    # with no enemy behind it.
+    if verb == "spend_bomb":
+        amount = rest[0] if rest else "1"
+        eff = {"type": "spend_bomb"}
+        put(eff, "value", amount)
+        return eff, "-%s %s" % (_amount_word(amount), _plural(amount, "Bomb", "Bombs"))
+
+    # `spawn_object tag=arcade 2-3` — put objects in front of the player. Each
+    # slot rolls rarity and then draws from that rarity's bucket of the tag,
+    # falling down the ladder when a bucket is empty, so the same roll an item
+    # reward walks decides what is in the room.
+    if verb == "spawn_object":
+        tag = ""
+        counts = []
+        for tok in rest:
+            if tok.lower().startswith("tag="):
+                tag = tok.split("=", 1)[1].strip().lower()
+            else:
+                counts.append(tok)
+        if not tag:
+            raise ValueError("reward DSL: spawn_object needs tag=<tag> in %r" % clause)
+        lo, hi = _range(counts[0], clause) if counts else (1, 1)
+        return ({"type": "spawn_object", "tag": tag, "min": lo, "max": hi},
+                "%s %s %s" % (_span(lo, hi), tag,
+                              "machine" if hi == 1 else "machines"))
+
     # An explicit no-op, so "this choice does nothing" can be authored rather
     # than left blank and read as unfinished.
     if verb == "nothing":
@@ -475,9 +583,50 @@ def parse_reward_clause(clause):
     raise ValueError("reward DSL: unknown verb %r in %r" % (verb, clause))
 
 
+# What a loose pickup can be, and what it is called on a button. A closed list
+# for the same reason GATE_STATS is one: a typo'd kind would roll nothing and
+# say nothing about it.
+PICKUP_KINDS = {"hp": "Health", "gold": "Gold"}
+
+
+def _range(tok: str, clause: str):
+    """`2-4` -> (2, 4); a bare `3` -> (3, 3). Literals only.
+
+    Deliberately not {expr}-aware. A range is a spread the player is quoted
+    up front ("+2-4 Health or Gold"), and a spread whose ends move per press is
+    a number nobody can read off a button.
+    """
+    tok = tok.strip()
+    m = re.fullmatch(r"(\d+)\s*-\s*(\d+)", tok)
+    if m:
+        lo, hi = int(m.group(1)), int(m.group(2))
+        if lo > hi:
+            raise ValueError("reward DSL: range %r counts down (%r)" % (tok, clause))
+        return lo, hi
+    if re.fullmatch(r"\d+", tok):
+        return int(tok), int(tok)
+    raise ValueError("reward DSL: %r is not <n> or <lo>-<hi> (%r)" % (tok, clause))
+
+
+def _span(lo: int, hi: int) -> str:
+    return str(lo) if lo == hi else "%d-%d" % (lo, hi)
+
+
+# id -> the Name cell it was slugified from, populated by the generators before
+# they parse (see generate_event2_tres.cross_sheet_ids). Title-casing a slug is a
+# guess, and it guesses wrong the moment a name is not word-per-word capitalised:
+# `iv_bag` came out as "Iv Bag". The sheet already knows the answer, so ask it,
+# and keep the guess only for the ids no sheet claims.
+ITEM_NAMES = {}
+
+
 def _title(slug: str) -> str:
-    """`golden_idol` -> `Golden Idol`. How a reward line names an item the sheet
-    referred to by id, so the button reads as the thing rather than as the slug."""
+    """`golden_idol` -> `Golden Idol`, `iv_bag` -> `IV Bag`. How a reward line
+    names an item the sheet referred to by id, so the button reads as the thing
+    rather than as the slug."""
+    known = ITEM_NAMES.get(slug)
+    if known:
+        return known
     return " ".join(w.capitalize() for w in slug.split("_") if w)
 
 

@@ -1,18 +1,16 @@
 extends Node
 
-# EVENTS (docs/event-sheet-authoring.md) — the payoff for walking into a corner
-# of the map.
+# EVENTS (docs/event-sheet-authoring.md) — what the run does between games.
 #
-# Roughly 40% of the run graph's games are leaves: one connection, so visiting
-# one is a ROUND TRIP — a game there, a game back the way you came — for a single
-# game's reward. Every offered card already quotes that cost as a route badge, so
-# without something waiting at the end a leaf is a mistake with a label on it. An
-# event fires AFTER the game at such a node is beaten, on top of the normal drop,
-# and that is what turns the detour into a decision.
+# An event fires after EVERY game the run plays, on top of whatever the game
+# itself paid. It used to hang off dead ends only, as the thing that made a
+# two-game round trip worth taking; it is now the run's own rhythm. The games
+# this is a graph of are hour-long roguelikes, and an event is the beat between
+# two of them — a decision that takes a minute and costs something.
 #
 # This autoload owns three things:
-#   * PLACEMENT — which node carries which event, decided deterministically so
-#     the badge on a card can never lie (see event_for).
+#   * THE DRAW — which event a game pays, dealt on arrival from a per-rarity
+#     shuffle bag (see roll_for_arrival).
 #   * GATES — the sheet's Requirement column, and a choice's `needs` clauses.
 #   * RESOLUTION — applying a choice's payload, which may leave an event goal or
 #     a curse goal behind on GameState for the checklist to carry.
@@ -20,40 +18,74 @@ extends Node
 # The state itself lives on GameState (run-scope, saved, reset); this is the
 # logic, the same split ScrollSystem has.
 
-# Placement is decided by hashing the node id together with the run seed, NOT by
-# rolling when the card is drawn. Overworld2 redraws its offering constantly — a
-# bash refilling a slot, a scramble, an arrival — and a rolled event would change
-# under the player between seeing the badge and taking the card. `_slot_enemies`
-# keyed off `_offer_seed()` solves the same problem for the enemy behind a card.
-const _PLACEMENT_SALT := "event-placement"
-
-
-# The event waiting at `game_id`, or null. Deterministic for a given node + run:
-# ask twice, get the same answer.
+# AN EVENT AFTER EVERY GAME, ROLLED ON ARRIVAL.
 #
-# Every eligible leaf carries one until the pool runs dry — with `Limit 1` across
-# the current roster that is at most four badged nodes a run, front-loaded, which
-# is the honest shape of a four-event catalogue rather than a rarity dressed up
-# as design.
-func event_for(game_id: StringName) -> EventData2:
-	if game_id == &"":
+# This used to hang events off DEAD ENDS and decide which one by hashing the node
+# id against the run seed. The hash was there for a real reason — the offered
+# card carried an `EVENT` badge, Overworld2 redraws its offering constantly, and
+# a rolled event would have changed under the player between seeing the badge and
+# taking the card.
+#
+# Both halves of that are gone. An event now fires after every game the run
+# plays, so there is no longer a subset of nodes to point at and the badge came
+# off the cards with the placement that justified it. What replaces the hash is a
+# SHUFFLE BAG:
+#
+#   * roll the rarity ladder (Luck rerolls it, like every other roll) and fall
+#     down to the nearest stocked rung — today everything is Common, so every
+#     roll lands there;
+#   * draw from the events of that rarity NOT YET SEEN this run. Drawing marks an
+#     event seen whether or not the player engaged with it — seeing it is what
+#     was spent;
+#   * when a rarity's bag empties, reshuffle it, except that the event which just
+#     emptied it may not be the one that opens the next bag;
+#   * an event gated out right now (Requirement unmet, wrong tier) is SKIPPED and
+#     stays in the bag for later rather than being burned.
+#
+# One event per GAME, not per arrival: `event_nodes_fired` spends the node, so
+# walking a two-node loop is not an event faucet.
+func roll_for_arrival(game_id: StringName) -> EventData2:
+	if game_id == &"" or GameState.event_nodes_fired.has(game_id):
 		return null
-	var pool: Array = _eligible_for(game_id)
+	var pool: Array = _pool_at_rolled_rarity(game_id)
 	if pool.is_empty():
 		return null
-	# Sorted so the pool's order can't drift with dictionary iteration order —
-	# determinism has to survive a reload, not just a redraw.
-	pool.sort_custom(func(a, b): return String(a.id) < String(b.id))
-	var pick: int = abs(_placement_hash(game_id)) % pool.size()
-	return pool[pick]
+
+	var unseen: Array = pool.filter(func(ev): return not GameState.events_seen.has(ev.id))
+	if unseen.is_empty():
+		# The bag is empty: everything at this rarity has come up. Reshuffle, and
+		# refuse to open the new bag on the event that closed the old one.
+		_reshuffle(pool)
+		unseen = pool.filter(func(ev): return ev.id != GameState.last_event_id)
+		if unseen.is_empty():
+			unseen = pool     # a one-event rarity has no other answer
+	elif unseen.size() > 1:
+		unseen = unseen.filter(func(ev): return ev.id != GameState.last_event_id)
+
+	unseen.sort_custom(func(a, b): return String(a.id) < String(b.id))
+	return unseen[_roll_rng().randi_range(0, unseen.size() - 1)]
 
 
-func _placement_hash(game_id: StringName) -> int:
-	return hash("%s|%s|%d" % [_PLACEMENT_SALT, String(game_id), GameState.run_seed])
+# Everything eligible at the rolled rarity, falling down the ladder when a rung
+# is unstocked. The fall-back is measured against the ELIGIBLE set rather than
+# the whole catalogue, so a rung whose only events are gated out right now reads
+# as unstocked and the roll drops to one that can actually pay.
+func _pool_at_rolled_rarity(game_id: StringName) -> Array:
+	var eligible: Array = _eligible_for(game_id)
+	if eligible.is_empty():
+		return []
+	return Data.rarity_bucket_of(eligible, Data.roll_item_rarity(_roll_rng()))
 
 
-# Everything that could legally stand at this node right now: not used up, in
-# tier, in the right kind of place, and past its Requirement.
+# Empty the bag for the rarity `pool` belongs to — and only that one. Rarities
+# cycle independently: seeing every Common should not reset the Rares.
+func _reshuffle(pool: Array) -> void:
+	for ev in pool:
+		GameState.events_seen.erase(ev.id)
+
+
+# Everything that could legally stand at this node right now: in tier, in the
+# right kind of place, and past its Requirement.
 func _eligible_for(game_id: StringName) -> Array:
 	var out: Array = []
 	for ev in Data.all_events2():
@@ -72,9 +104,6 @@ func blockers_for(ev: EventData2, game_id: StringName) -> PackedStringArray:
 	var out := PackedStringArray()
 	if ev == null:
 		return PackedStringArray(["no event"])
-	if not _limit_allows(ev):
-		out.append("used %d/%d this run"
-			% [int(GameState.events_fired.get(ev.id, 0)), ev.run_limit])
 	if not _where_allows(ev, game_id):
 		out.append("not a %s" % ev.where.replace("_", " "))
 	if not ev.tier_allows(RunDifficulty.tier_name(RunDifficulty.current_tier())):
@@ -108,23 +137,20 @@ static func requirement_text(req: Dictionary) -> String:
 		"%" if bool(req.get("percent", false)) else ""]
 
 
-func _limit_allows(ev: EventData2) -> bool:
-	if ev.run_limit <= 0:
-		return true
-	return int(GameState.events_fired.get(ev.id, 0)) < ev.run_limit
-
-
+# Blank is the ordinary case and means "anywhere" — an event fires after every
+# game, so the column answers no placement question today. It stays wired for the
+# per-location work (locations2.0): "this one only at a dead end", "this one only
+# at its own game".
 func _where_allows(ev: EventData2, game_id: StringName) -> bool:
 	match ev.where:
-		"any":
-			return true
+		"dead_end":
+			# A leaf: exactly one way in and the same way back out.
+			return RunGraph.degree(game_id) <= 1
 		"game":
 			var g: GameData = Data.get_game(game_id)
 			return g != null and g.display_name == ev.source_game
 		_:
-			# "dead_end": the whole point (§1). A leaf has exactly one way in and
-			# the same way back out.
-			return RunGraph.degree(game_id) <= 1
+			return true
 
 
 # An event that sends the player to a tagged game is only worth staging if such
@@ -190,6 +216,10 @@ func games_with_tag(tag: StringName) -> Array:
 const TRADE_SLOTS := 3
 const GIVE_HOLE := "<give>"
 const GET_HOLE := "<get>"
+# Filled with whatever relic a `gain_item_of` rolled, for prose that has to name
+# the thing the roll produced. Braces rather than angle brackets to match the
+# sheet's other {…} holes, and read before _fill_holes would try the arithmetic.
+const ITEM_HOLE := "{ITEM}"
 
 var _trade_offers: Array = []   # [{ "give": StringName, "get": StringName }]
 
@@ -391,7 +421,37 @@ func _gate_passes(gate: Dictionary, picks: Dictionary) -> bool:
 			">": return have > want
 			"==": return have == want
 			_: return have >= want
+	# A gate on the MACHINE rather than on the player (objects2.0 only). Asked of
+	# ObjectSystem because only it knows which machine is being pressed — the
+	# choice dict is shared by every copy of a machine on screen.
+	if gate.has("flag"):
+		return ObjectSystem.flag_passes(String(gate["flag"]))
 	return _run_stat(String(gate.get("resource", ""))) >= int(gate.get("value", 0))
+
+
+# Why a gate refuses, for the disabled button's label — "Jammed", "Full", "No
+# Bombs". One implementation so the reason shown and the rule applied cannot
+# drift, the same argument blockers_for makes for placement.
+func gate_refusal(gate: Dictionary, picks: Dictionary) -> String:
+	if _gate_passes(gate, picks):
+		return ""
+	if gate.has("flag"):
+		return ObjectSystem.flag_refusal(String(gate["flag"]))
+	if gate.has("resource"):
+		var stat: String = String(gate["resource"])
+		return "Needs %d %s" % [int(gate.get("value", 0)),
+			String(GATE_STAT_NAMES.get(stat, stat.capitalize()))]
+	return ""
+
+
+# The first reason this choice is unavailable, or "" when it is available or
+# when nothing has a reason worth printing.
+func choice_refusal(choice: Dictionary, picks: Dictionary) -> String:
+	for gate in choice.get("gates", []):
+		var why: String = gate_refusal(gate, picks)
+		if why != "":
+			return why
+	return ""
 
 
 # --- resolving a choice -----------------------------------------------------
@@ -407,26 +467,33 @@ func _gate_passes(gate: Dictionary, picks: Dictionary) -> bool:
 #   play    a play_game request for the caller to run, or {}
 #   rolled  whether this choice carried a `chance`
 #   won     whether that roll landed (always false when it didn't roll)
-func resolve_choice(ev: EventData2, choice: Dictionary, taken: int) -> Dictionary:
+func resolve_choice(ev: Resource, choice: Dictionary, taken: int,
+		ctx: Dictionary = {}) -> Dictionary:
 	var words: Array = []
 
 	for eff in choice.get("effects", []):
-		EffectSystem.apply(_scaled(eff, taken), {})
+		EffectSystem.apply(_scaled(eff, taken), ctx)
 	if String(choice.get("effects_text", "")) != "":
 		words.append(fill_trade_names(_fill_holes(String(choice["effects_text"]), taken), choice))
 
 	# The gamble. Rolled AFTER the certain costs, because that is the order the
 	# player experiences: the acid burns whether or not there was a relic in there.
+	#
+	# Always Favour.HIGH — winning a gamble is the good side by construction, and
+	# that stays true for a two-sided one: the Blood Donation Machine's burst pays
+	# an Event relic where the loss pays a coin, so Luck making the machine MORE
+	# likely to explode is Luck doing its job.
 	var chance: Dictionary = choice.get("chance", {})
 	var rolled: bool = not chance.is_empty()
 	var won: bool = false
 	if rolled:
-		won = Stats.roll_chance_with_luck(_roll_rng(), chance_percent(chance, taken))
-		if won:
-			for eff in chance.get("effects", []):
-				EffectSystem.apply(_scaled(eff, taken), {})
-			if String(chance.get("effects_text", "")) != "":
-				words.append(_fill_holes(String(chance["effects_text"]), taken))
+		won = Stats.roll_chance(_roll_rng(), chance_percent(chance, taken), Stats.Favour.HIGH)
+		var branch: String = "effects" if won else "else_effects"
+		var branch_text: String = "effects_text" if won else "else_effects_text"
+		for eff in chance.get(branch, []):
+			EffectSystem.apply(_scaled(eff, taken), ctx)
+		if String(chance.get(branch_text, "")) != "":
+			words.append(_fill_holes(String(chance[branch_text]), taken))
 
 	var goal: Dictionary = choice.get("goal", {})
 	if not goal.is_empty():
@@ -446,9 +513,15 @@ func resolve_choice(ev: EventData2, choice: Dictionary, taken: int) -> Dictionar
 	# left them blank, so a gamble is authorable without them.
 	var result: String = fill_trade_names(result_for(choice, taken), choice)
 	if rolled:
-		var prose: String = ev.chance_won if won else ev.chance_lost
+		var prose: String = String(ev.chance_won if won else ev.chance_lost)
 		if prose != "":
 			result = prose
+	# `{ITEM}` names whichever relic a `gain_item_of` actually rolled — the Blood
+	# Donation Machine says "the machine exploded, and X appeared" and only the
+	# roll knows what X was. Substituted rather than run through _fill_holes,
+	# which evaluates its holes as arithmetic and would print this one as 0.
+	if result.contains(ITEM_HOLE):
+		result = result.replace(ITEM_HOLE, String(ctx.get("granted_item_name", "something")))
 
 	return {
 		"result": result,
@@ -479,11 +552,25 @@ func result_for(choice: Dictionary, taken: int) -> String:
 	return String(ladder[clampi(taken, 0, ladder.size() - 1)])
 
 
-# The odds of a `chance` on THIS press, with its {expr} hole resolved against how
+# The odds AS AUTHORED on THIS press, with the {expr} hole resolved against how
 # often the choice has been taken and clamped to a real percentage — an unbounded
 # ladder like Scrap Ooze's 25, 35, 45… runs past 100 if you keep reaching.
-func chance_percent(chance: Dictionary, taken: int) -> int:
-	return clampi(int(_scaled(chance, taken).get("percent", 0)), 0, 100)
+#
+# Float, because one-in-fifteen is 6.7% and rounding it on the way in would make
+# the machine roll something other than what it says.
+func chance_percent(chance: Dictionary, taken: int) -> float:
+	return clampf(float(_scaled(chance, taken).get("percent", 0.0)), 0.0, 100.0)
+
+
+# The odds the roll will ACTUALLY use — chance_percent put through the player's
+# Luck. This is what a button quotes; chance_percent is what the sheet said.
+func chance_odds(chance: Dictionary, taken: int) -> float:
+	return Stats.effective_chance(chance_percent(chance, taken), Stats.Favour.HIGH)
+
+
+# A percentage with no trailing noise: "6.7", "25", never "6.70" or "25.0".
+static func percent_text(value: float) -> String:
+	return String.num(snappedf(value, 0.1), 1).trim_suffix(".0")
 
 
 # Lazily created and randomised. Events roll at press time — unlike PLACEMENT,
@@ -508,7 +595,11 @@ func _scaled(effect: Dictionary, taken: int) -> Dictionary:
 	var out: Dictionary = effect.duplicate(true)
 	out.erase("scaled")
 	for field in scaled.keys():
-		out[field] = int(round(_evaluate(String(scaled[field]), taken)))
+		var value: float = _evaluate(String(scaled[field]), taken)
+		# Percentages stay FLOAT; every other amount is a count of things and
+		# rounds. `lose_hp 4.5` is not a cost anyone can pay, but 6.7% is an odds
+		# and rounding it would make the roll disagree with the button.
+		out[field] = value if String(field) == "percent" else int(round(value))
 	return out
 
 
@@ -594,16 +685,36 @@ func describe_choice(choice: Dictionary, taken: int) -> String:
 
 	# "25%: +1 Small Chest" — the shape Slay the Spire's own option line uses, and
 	# the odds for THIS press, since they climb with every failed one.
+	#
+	# The odds quoted are the ones LUCK WILL ACTUALLY ROLL, not the number on the
+	# sheet: at 1 Luck the Blood Donation Machine's 6.7% burst really is 12.9%,
+	# and a button that said 6.7% would be lying to a player who went and bought
+	# a Clover for exactly this.
+	#
+	# A two-sided roll prints both, likely side first, which is the order the
+	# player reads it in: "93.3%: +1 Gold · 6.7%: +Blood Bag or IV Bag".
 	var chance: Dictionary = choice.get("chance", {})
 	if not chance.is_empty():
-		parts.append("%d%%: %s" % [chance_percent(chance, taken),
+		var odds: float = chance_odds(chance, taken)
+		if String(chance.get("else_effects_text", "")) != "":
+			parts.append("%s%%: %s" % [percent_text(100.0 - odds),
+				_fill_holes(String(chance["else_effects_text"]), taken)])
+		parts.append("%s%%: %s" % [percent_text(odds),
 			_fill_holes(String(chance.get("effects_text", "")), taken)])
 
 	return " · ".join(PackedStringArray(parts))
 
 
 # Record that an event has run, so its `run_limit` closes it off for the run.
-func mark_fired(ev: EventData2) -> void:
+func mark_fired(ev: EventData2, game_id: StringName = &"") -> void:
 	if ev == null:
 		return
 	GameState.events_fired[ev.id] = int(GameState.events_fired.get(ev.id, 0)) + 1
+	# Into the bag, and remembered as the last draw so a reshuffle cannot open on
+	# it. Marked when the event is SHOWN rather than when a choice is taken:
+	# walking straight back out still counts as having seen it.
+	GameState.events_seen[ev.id] = true
+	GameState.last_event_id = ev.id
+	# …and the node is spent, so this game pays no second event this run.
+	if game_id != &"":
+		GameState.event_nodes_fired[game_id] = true

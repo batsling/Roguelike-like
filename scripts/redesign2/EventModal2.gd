@@ -77,6 +77,7 @@ var _scroll: ScrollContainer = null
 # brings it back when they have finished watching the board and taking the drop.
 # Nothing about the event resolves while it is hidden; it is only out of the way.
 var _hidden: bool = false
+var _objects_box: HFlowContainer = null
 var _chip: Button = null
 var _backdrop_nodes: Array = []
 
@@ -87,13 +88,17 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 
-static func open(host: Node, event: EventData2) -> EventModal2:
+# `game_id` is the node the event was rolled for. Opening spends it, so that game
+# pays no second event this run — passed in rather than read off GameState so the
+# dev panel can raise an event without spending the node the run happens to be
+# standing on.
+static func open(host: Node, event: EventData2, game_id: StringName = &"") -> EventModal2:
 	var modal := EventModal2.new()
-	modal._start(host, event)
+	modal._start(host, event, game_id)
 	return modal
 
 
-func _start(host: Node, event: EventData2) -> void:
+func _start(host: Node, event: EventData2, game_id: StringName = &"") -> void:
 	_event = event
 	_layer = CanvasLayer.new()
 	_layer.layer = 123
@@ -103,7 +108,7 @@ func _start(host: Node, event: EventData2) -> void:
 	if _event == null:
 		_close()
 		return
-	EventSystem.mark_fired(_event)
+	EventSystem.mark_fired(_event, game_id)
 	# Roll whatever this event's content depends on the RUN for — the Relic
 	# Trader's three offers are built from the player's own pack. Once, here,
 	# rather than per repaint, so a button cannot rename itself under the cursor.
@@ -178,6 +183,16 @@ func _build() -> void:
 	_prose_box.add_theme_constant_override("separation", 8)
 	_prose_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_right.add_child(_prose_box)
+	# Machines the event put in front of you (docs/object-sheet-authoring.md),
+	# BETWEEN the prose and the buttons. The Arcade Room is a room you are
+	# standing in and the cabinets are in it with you, so they are laid out inside
+	# the event rather than under the board — and the event's own `Leave`, below
+	# them, is what takes you out of the room and the machines with it.
+	_objects_box = HFlowContainer.new()
+	_objects_box.add_theme_constant_override("h_separation", 8)
+	_objects_box.add_theme_constant_override("v_separation", 8)
+	_objects_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_right.add_child(_objects_box)
 	_right.add_child(_rule())
 	_choice_box = VBoxContainer.new()
 	_choice_box.add_theme_constant_override("separation", 8)
@@ -244,6 +259,7 @@ func _render() -> void:
 		child.queue_free()
 	for child in _choice_box.get_children():
 		child.queue_free()
+	_render_objects()
 
 	# The prompt stays up the whole event; on a repeat the last outcome sits
 	# under it, so "you surface changed" reads as the thing that just happened
@@ -276,6 +292,21 @@ func _render() -> void:
 	# The content just changed shape, so the panel has to be re-measured. Deferred
 	# because the labels have not wrapped yet this frame and a Label that has not
 	# wrapped reports the wrong height.
+	_fit.call_deferred()
+
+
+# The machines standing in this event, if it spawned any. Rebuilt only when the
+# SET changed — each card repaints itself off objects_changed, and tearing them
+# down every render would throw away the one the player is mid-click on.
+func _render_objects() -> void:
+	if _objects_box == null:
+		return
+	if _objects_box.get_child_count() == ObjectSystem.live.size():
+		return
+	for child in _objects_box.get_children():
+		child.queue_free()
+	for inst in ObjectSystem.live:
+		_objects_box.add_child(ObjectCard.make(inst))
 	_fit.call_deferred()
 
 

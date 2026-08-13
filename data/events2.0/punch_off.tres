@@ -8,11 +8,10 @@ id = &"punch_off"
 display_name = "Punch Off"
 source_game = "Slay the Spire 2"
 tier_tags = PackedStringArray()
-where = "dead_end"
+where = ""
 requirement = {"stat": "games", "op": ">=", "value": 6, "percent": false}
 trigger = "after"
 rarity = "Common"
-run_limit = 1
 file = "PunchOff"
 prompt = "Two Punch Constructs are duking it out and you see some treasure in between them... Should you try to nab it?"
 goal_met = ""

@@ -137,13 +137,20 @@ func _build() -> void:
 	# panel out; until then the scroll area reports nothing to fit it against.
 	_settle.call_deferred()
 
-# Null when nothing is waiting, so an ordinary card stays clean.
+# What the run gets out of this node beyond the game itself. It used to NAME the
+# event waiting here, which it could because placement was hashed onto the node
+# and asking early gave nothing away. An event is now rolled on arrival, so there
+# is no answer to give until the player gets there — what is left to say is that
+# something will be, and that a node already played has spent its one.
+#
+# Null on a spent node, so a card the run has already taken its event from stays
+# clean rather than promising a second.
 func _build_event_row() -> Control:
-	var ev: EventData2 = EventSystem.event_for(StringName(_choice.get("slot", &"")))
-	if ev == null:
+	var slot: StringName = StringName(_choice.get("slot", &""))
+	if slot == &"" or GameState.event_nodes_fired.has(slot):
 		return null
 	var lbl := Label.new()
-	lbl.text = "✦  %s waits here — beat this game and it fires, on top of the drop." % ev.display_name
+	lbl.text = "✦  An event fires here once the game is played."
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.add_theme_color_override("font_color", UITheme.ACCENT)
@@ -201,10 +208,11 @@ static func connection_counts(game_id: StringName) -> Dictionary:
 		if GameLoop2.is_bashed(n):
 			continue
 		out["total"] += 1
-		# Placement is hashed from the node id, so this is the same answer the
-		# neighbour's own card gives when it turns up in the offering — asking early
-		# gives nothing away that opening that card wouldn't.
-		if EventSystem.event_for(n) != null:
+		# Not "which event is there" — nothing knows that until the run arrives —
+		# but "would one fire". Every game pays an event the first time it is
+		# played, so this counts the neighbours the run has not already taken one
+		# from, which is the number that actually shapes where to go next.
+		if not GameState.event_nodes_fired.has(n):
 			out["events"] += 1
 		if ShopSystem.is_hub(n):
 			out["shops"] += 1
@@ -227,7 +235,7 @@ static func connection_text(counts: Dictionary) -> String:
 static func connection_tip(game: GameData, counts: Dictionary) -> String:
 	var name_text: String = game.display_name if game != null else "this game"
 	return ("%d games connect to %s — the pool the next offering is drawn from. "
-		+ "%d of them carry an event, %d are shop hubs.") % [
+		+ "%d of them still owe an event, %d are shop hubs.") % [
 		int(counts.get("total", 0)), name_text,
 		int(counts.get("events", 0)), int(counts.get("shops", 0))]
 

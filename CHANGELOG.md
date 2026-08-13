@@ -11,6 +11,121 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Objects, an event after every game, and Luck that does something.**
+
+  **✦ Objects (`objects2.0`).** A new content kind: a **machine you stand in
+  front of**. Same authored shape as an event — one row, a prompt, choices in
+  numbered column groups, Effect cells in the same reward DSL, resolved by the
+  same `EventSystem` calls — and a separate kind for three reasons. An event is a
+  room that opens, is answered and is over; an object **persists** while the run
+  is on that game and ends when you travel on. An event arrives on its own; an
+  object is **spawned**, and several can stand there at once. And an object is
+  **stateful**: it jams, it gets blown up, and one of them keeps a bank that
+  outlives the run.
+
+  Where it draws depends on what spawned it. Spawned by an **event**, the
+  machines are laid out *inside that event's modal* — the Arcade Room **is** the
+  room the cabinets are in, so they are in there with you and the room's own
+  `Leave` walks you out of both. Spawned by **anything else**, one stands under
+  the board in the space a hub's shop takes, on the same argument the shop is
+  there for: the run's rhythm is report the game → see the board → choose where
+  to go, and neither a shop nor a machine may interrupt it.
+
+  A machine's unavailable buttons are **drawn and greyed rather than dropped**,
+  which is the one place an object's UI departs from an event's on purpose. An
+  event's options are a list of things you may do; a machine is a physical thing,
+  and its buttons do not vanish because you cannot afford them. The refusal goes
+  *on* the button — **"Jammed"**, **"Full"**, **"Needs 1 Bomb"** — because the
+  reason is the whole of what the player wants to know, which is also why
+  `not_jammed` and `bank_space` are two gates and not one.
+
+  **🩸 The Blood Donation Machine**, from Isaac, and it keeps Isaac's silence: no
+  prompt, just the thing and two buttons. Pay 1 Health for 1 Gold as often as you
+  can pay, with a **6.7%** chance per press that it bursts and pays a Blood Bag
+  or an IV Bag instead of the coin. Or spend a Bomb for **2-4** loose pickups,
+  each independently a heart or a coin. The button quotes both sides of the roll
+  — `-1 Health · 93.3%: +1 Gold · 6.7%: +Blood Bag or IV Bag` — which needed two
+  new things in the DSL: fractional percentages (one-in-fifteen is 6.7%, and
+  rounding it would make the number on the button not the number that gets
+  rolled) and a `chance … else …` form, because a gamble that pays nothing on a
+  loss cannot say what this machine does. It is gated at `needs hp 2` rather than
+  1: at 1 Health the trade is a death, and dying to a vending machine on the
+  honour system is not a decision anyone wants to have made.
+
+  **🪙 The Donation Machine.** Gold in, and it does not come back out. The bank
+  is **persistent across runs** (`GameStats`, `user://game_stats.json`), holds
+  **999**, and is the only number in this build deliberately not about the
+  current run — a bank you could empty by starting a new run would not be a bank.
+  Each coin rolls **5%** for a point of Luck and **`{1+X}%`** to jam, where X is
+  coins already in *this visit*, so the jam chance climbs 1%, 2%, 3%… while you
+  stand there and resets when you travel on. Two independent rolls on one coin is
+  what the new **`roll`** clause is for: `chance` is a cell's one headline gamble
+  (it takes the `->` payload, prints the Chance Won / Chance Lost prose, and
+  closes the thing), where a `roll` is a side effect that either fired or didn't,
+  and you may have as many as you need. A jam is permanent for the run and the
+  machine still turns up taking nothing; **bombing** it pays 2-5 gold out of the
+  bank (capped at what it holds) and takes every donation machine off the run.
+
+  **🕹 The Arcade Room** is the event that spawns them: a gold to enter, 2-3
+  arcade-tagged machines inside, and a `Leave` that walks you out. Each slot
+  rolls rarity independently and falls down the ladder when a rung is unstocked,
+  so the same roll an item reward walks decides what is in the room. Duplicates
+  are fine — an arcade with two Blood Donation Machines in it is an arcade — but
+  never two Donation Machines, which would be two faces of one bank and the
+  second a way around the first's jam.
+
+  **✦ An event after every game.** Events used to hang off dead ends, with
+  placement **hashed** from the node id and the run seed so an offered card's
+  `✦ EVENT` badge could not change under the player. Both are gone. One fires
+  after **every** game the run plays — win, loss or escape — because the games
+  this is a graph of are hour-long roguelikes, and what the run needed was
+  something to do between two of them.
+
+  Which one you get is dealt from a **per-rarity shuffle bag**: roll the ladder,
+  draw from that rarity's events not yet seen this run, reshuffle when it empties
+  (never opening the new bag on the event that closed the old one), and **skip**
+  an event gated out right now rather than burning it. Each **game** pays one
+  event and is then spent, so walking a two-node loop is not a faucet; a
+  `play_game` **detour** pays none, and neither does the Amulet.
+
+  The `EVENT` badge came off the cards with the placement that justified it —
+  with an event after every game there is no subset of nodes to badge, and no
+  honest answer to "which event is over there" before the run arrives. The card's
+  popup now says only that one *will* fire, and says nothing once that game has
+  paid. `Limit` is gone from the sheet, and `Where` is blanked but kept for the
+  per-location work.
+
+  **🍀 Luck, rebuilt.** **Every point buys one more roll, and the better result
+  is kept.** At 1 Luck a 25% chance is really 43.75%; at 3, 68%. It compounds
+  rather than adding, and negative Luck is the same machine reversed. What it
+  replaced was a 10%-per-point chance of *advantage*, which at a single point did
+  nothing at all nine times in ten — not a tuning difference, but the difference
+  between a stat you can feel on the first roll after picking up a Clover and one
+  you could hold for a whole run and never observe.
+
+  A reroll only means something when a roll has a side the player wants, so every
+  call site **declares its direction** and the ones with no honest answer opt
+  out: `HIGH` for the rarity ladder and a chest gamble, `LOW` for the Donation
+  Machine's jam, `NONE` for which of the twelve Commons you drew or whether a
+  burst machine dropped a Blood Bag or an IV Bag. The case that reads backwards
+  is the Blood Donation Machine's explosion, which is `HIGH`: bursting pays a
+  relic where the loss pays a coin, so Luck makes it *more* likely to go off in
+  your face.
+
+  Luck rides on **`Data.roll_item_rarity`** rather than at the call sites, which
+  is what makes "it affects every roll" true without thirty places remembering
+  it — item rewards, chest sizes, scrolls, shop stock and the object pools all
+  walk that one ladder. Odds shown to the player are the ones Luck **will
+  actually roll**: a button that said 6.7% to a player holding a Clover would be
+  lying to them about the thing they bought it for.
+
+  **Three new items and three new games.** The **Clover** (Uncommon, `+1 Luck` as
+  a passive bonus, so it goes with the item), and the two Event relics the blood
+  machine bursts: the **Blood Bag** (+2 Max Health, +8 Health) and the **IV Bag**
+  (spend 1 Health for 1 Gold, **unlimited uses** — `Usable, 0` in the Type cell,
+  where Ride the Bus is `Usable, 1` and is destroyed after one). Genome Guardian
+  2, Inkshade and Netherworld Covenant join the catalog with their connections.
+
 - **A run you can build, and the road you walked put at the top of the page.**
 
   **⚙ Custom Run.** The catalog is 846 games and the only say you had in which of

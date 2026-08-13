@@ -8,11 +8,10 @@ id = &"whispering_hollow"
 display_name = "Whispering Hollow"
 source_game = "Slay the Spire 3"
 tier_tags = PackedStringArray()
-where = "dead_end"
+where = ""
 requirement = {"stat": "gold", "op": ">=", "value": 1, "percent": false}
 trigger = "after"
 rarity = "Common"
-run_limit = 2
 file = "WhisperingHollow"
 prompt = "Making your way through a hollow of dead trees you happen upon a single bone-white tree. Clay baubles hang off its branches, which curve inward like protective ribs. Such a creepy tree. It whispers. ...make exchange....."
 goal_met = ""

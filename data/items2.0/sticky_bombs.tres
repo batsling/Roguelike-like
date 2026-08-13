@@ -14,6 +14,6 @@ triggers = [{"on": "item_acquired", "effects": [{"type": "gain_stat", "stat": "b
 stat_bonuses = {}
 bomb_stun = true
 max_uses = -1
-source_game = "The Binding of Isaac"
+source_game = "The Binding of Isaac: Rebirth"
 tags = PackedStringArray("bomb", "spider")
 image = ExtResource("2_img")

@@ -373,8 +373,37 @@ func save_data() -> bool:
 	f.store_string(JSON.stringify(
 		{"games": stats, "deck_wins": deck_wins, "runs": runs,
 		 "enemy_log": enemy_log, "levelup_log": levelup_log,
-		 "character_enemy_log": character_enemy_log}, "  "))
+		 "character_enemy_log": character_enemy_log,
+		 "donation_bank": donation_bank_total}, "  "))
 	return true
+
+# --- the Donation Machine's bank -------------------------------------------
+#
+# Gold fed to a Donation Machine (docs/object-sheet-authoring.md), and the only
+# number in this build that is deliberately NOT about the current run. It lives
+# here rather than on GameState for exactly that reason: GameState.reset_run
+# wipes the run, and a bank you can empty by starting a new one is not a bank.
+#
+# Isaac's works the same way, and the machine's 999 ceiling is the reason to have
+# a lifetime counter at all — at a coin a time it is a number you fill over many
+# runs, or blow up for pocket change in one.
+var donation_bank_total: int = 0
+
+
+func donation_bank() -> int:
+	return donation_bank_total
+
+
+# Add (or, with a negative amount, take) and persist immediately. Written on
+# every coin because the alternative is losing the bank to a crash, and a bank
+# that sometimes forgets is worse than no bank.
+func add_to_donation_bank(amount: int) -> void:
+	if amount == 0:
+		return
+	donation_bank_total = maxi(0, donation_bank_total + amount)
+	save_data()
+	changed.emit()
+
 
 func load_data() -> void:
 	stats = {}
@@ -383,6 +412,7 @@ func load_data() -> void:
 	enemy_log = {}
 	levelup_log = {}
 	character_enemy_log = {}
+	donation_bank_total = 0
 	if not FileAccess.file_exists(SAVE_PATH):
 		return
 	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
@@ -403,6 +433,7 @@ func load_data() -> void:
 		levelup_log = json.data["levelup_log"]
 	if json.data.has("character_enemy_log") and typeof(json.data["character_enemy_log"]) == TYPE_DICTIONARY:
 		character_enemy_log = json.data["character_enemy_log"]
+	donation_bank_total = maxi(0, int(json.data.get("donation_bank", 0)))
 	var games: Dictionary = json.data
 	if json.data.has("games") and typeof(json.data["games"]) == TYPE_DICTIONARY:
 		games = json.data["games"]

@@ -8,11 +8,10 @@ id = &"morphic_grove"
 display_name = "Morphic Grove"
 source_game = "Slay the Spire 2"
 tier_tags = PackedStringArray()
-where = "dead_end"
+where = ""
 requirement = {"stat": "gold", "op": ">=", "value": 3, "percent": false}
 trigger = "after"
 rarity = "Common"
-run_limit = 1
 file = "MorphicGrove"
 prompt = "You enter a grove of crystalline trees, and they begin to quiver excitedly! A chorus of hellos and welcomes bombard you as a group of Morphics burst forth from trees. One of the Morphics is fidgeting in the corner, clearly not as sociable as the others. Approach the group or the loner?"
 goal_met = ""

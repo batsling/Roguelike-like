@@ -14,10 +14,12 @@ extends Control
 #   Enemies    — the normal goal-enemies (data/enemies2.0), grid + detail.
 #   Bosses     — the boss roster (data/bosses2.0), grid + detail.
 #   Scrolls    — the 2.0 scroll catalog (revealed reference), grid.
+#   Objects    — every 2.0 object (data/objects2.0), grid + detail: the machines
+#                and what each of their buttons costs.
 #   Events     — every 2.0 event (data/events2.0), grid + detail: what it asks,
 #                what each answer does, and where on the map it can appear.
 
-enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, SCROLLS, EVENTS }
+enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, SCROLLS, EVENTS, OBJECTS }
 
 const GAME_TYPE_NAMES := ["Action", "Strategy", "Deckbuilder", "Traditional"]
 const GAME_STATUS_OPTIONS := [
@@ -71,7 +73,7 @@ const GRID_META_FONT := 10
 var _tab: int = Tab.GAMES
 
 var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "games": "",
-	"events": ""}
+	"events": "", "objects": ""}
 var _games_sort: String = "name"
 var _games_type: int = -1
 var _games_status: String = "all"
@@ -81,6 +83,7 @@ var _char_sort: String = "name"
 var _enemies_sort: String = "name"
 var _enemies_type: String = "all"
 var _events_sort: String = "name"
+var _objects_sort: String = "name"
 
 var _content: VBoxContainer
 var _grid: Container = null
@@ -169,6 +172,7 @@ func _build_shell() -> void:
 	_add_tab_button(tabs, Tab.BOSSES, "Bosses (%d)" % Data.all_bosses().size())
 	_add_tab_button(tabs, Tab.SCROLLS, "Scrolls (%d)" % Data.all_scrolls().size())
 	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events2().size())
+	_add_tab_button(tabs, Tab.OBJECTS, "Objects (%d)" % Data.all_objects2().size())
 
 	root.add_child(HSeparator.new())
 
@@ -209,6 +213,8 @@ func _refresh() -> void:
 			_build_scrolls()
 		Tab.EVENTS:
 			_build_events()
+		Tab.OBJECTS:
+			_build_objects()
 
 # ------------------------------------------------------------------
 # Shared building blocks
@@ -475,6 +481,8 @@ func _populate() -> void:
 			_populate_scrolls()
 		Tab.EVENTS:
 			_populate_events()
+		Tab.OBJECTS:
+			_populate_objects()
 
 # ------------------------------------------------------------------
 # Games tab
@@ -1425,8 +1433,11 @@ func _select_option(opt: OptionButton, id: int) -> void:
 const EVENT_ART_DIR := "res://images2.0/events/"
 
 # Where an event can appear, in the words the map uses rather than the sheet's.
+# Blank is the ordinary case: an event fires after every game, so "anywhere" is
+# the truth rather than a fallback.
 const EVENT_WHERE_NAMES := {
-	"dead_end": "Dead ends", "any": "Anywhere", "game": "Its own game",
+	"": "After any game", "dead_end": "Dead ends", "any": "Anywhere",
+	"game": "Its own game",
 }
 
 # Events name their rarity as a STRING on the sheet ("Common"), where items carry
@@ -1553,8 +1564,6 @@ func _show_event_detail(ev: EventData2) -> void:
 	_detail_box.add_child(_kv("Nodes", String(EVENT_WHERE_NAMES.get(ev.where, ev.where))))
 	_detail_box.add_child(_kv("Tiers", "Every tier" if ev.tier_tags.is_empty()
 		else ", ".join(Array(ev.tier_tags)).capitalize()))
-	if ev.run_limit > 0:
-		_detail_box.add_child(_kv("Per run", "at most %d" % ev.run_limit))
 	if not ev.requirement.is_empty():
 		_detail_box.add_child(_kv("Needs", _event_requirement_text(ev.requirement)))
 
@@ -1615,13 +1624,174 @@ func _event_choice_block(c: Dictionary, ac: Color) -> Control:
 	return panel
 
 func _event_gate_text(gate: Dictionary) -> String:
-	if EventData2.gate_kind(gate) == "choice":
-		return "%s taken %s %s" % [String(gate.get("choice", "")),
-			String(gate.get("op", ">")), str(gate.get("value", 0))]
-	return "needs %s %s" % [str(gate.get("value", 1)), String(gate.get("resource", ""))]
+	match ObjectData.gate_kind(gate):
+		"choice":
+			return "%s taken %s %s" % [String(gate.get("choice", "")),
+				String(gate.get("op", ">")), str(gate.get("value", 0))]
+		"flag":
+			# A gate on the MACHINE — only objects carry these.
+			return OBJECT_FLAG_NAMES.get(String(gate.get("flag", "")),
+				String(gate.get("flag", "")))
+		_:
+			return "needs %s %s" % [str(gate.get("value", 1)),
+				String(gate.get("resource", ""))]
+
+const OBJECT_FLAG_NAMES := {
+	"not_jammed": "the machine is not jammed",
+	"bank_space": "the machine has room",
+}
 
 func _event_requirement_text(req: Dictionary) -> String:
 	# EventSystem owns this wording — the dev panel prints the same phrase when it
 	# explains why an event is not turning up, and two spellings of "hp <= 70%"
 	# would be two things to keep in step.
 	return EventSystem.requirement_text(req)
+
+
+# ------------------------------------------------------------------
+# Objects tab (2.0 — docs/object-sheet-authoring.md)
+# ------------------------------------------------------------------
+#
+# The same argument the Events tab makes, one step further along. An event at
+# least prints its options in front of you; a machine's buttons are gated on
+# things that change while you stand at it — the purse, the bombs, the jam, the
+# bank — so half of what a Donation Machine can do may never be visible in a run
+# where you could not pay for it. This is where the whole machine is legible.
+#
+# Reuses the event tab's choice blocks verbatim. An object's choices ARE event
+# choices (same dictionaries, same DSL, resolved by the same EventSystem calls),
+# and rendering them through a second implementation here would be the one place
+# the two could quietly start to disagree.
+
+const OBJECT_ART_DIR := "res://images2.0/objects/"
+
+func _object_accent(obj: ObjectData) -> Color:
+	return _rarity_color_by_name(obj.rarity)
+
+func _object_art(obj: ObjectData) -> Texture2D:
+	var path: String = OBJECT_ART_DIR + obj.art_file() + ".png"
+	return load(path) if ResourceLoader.exists(path) else null
+
+func _build_objects() -> void:
+	var row := _controls_row()
+	row.add_child(_search_box("objects"))
+	row.add_child(VSeparator.new())
+	row.add_child(_label("Sort:", Color(0.7, 0.7, 0.75), 12))
+	row.add_child(_sort_button("A-Z", _objects_sort == "name",
+		func(): _objects_sort = "name"; _refresh()))
+	row.add_child(_sort_button("Rarity", _objects_sort == "rarity",
+		func(): _objects_sort = "rarity"; _refresh()))
+	row.add_child(_sort_button("Tag", _objects_sort == "tag",
+		func(): _objects_sort = "tag"; _refresh()))
+	_add_count_label(row)
+	_grid_and_detail()
+	_populate_objects()
+
+func _populate_objects() -> void:
+	_clear_children(_grid)
+	var term: String = _search["objects"].to_lower()
+	var total: int = Data.all_objects2().size()
+	var list: Array = []
+	for obj in Data.all_objects2():
+		if not (obj is ObjectData):
+			continue
+		# Searching a machine means searching its TAGS too — "arcade" is how you
+		# find the things an Arcade Room can contain, and it is the only name the
+		# spawn that puts them there knows them by.
+		if term != "" and not (term in obj.display_name.to_lower()
+				or term in obj.prompt.to_lower()
+				or term in obj.source_game.to_lower()
+				or term in " ".join(obj.tags).to_lower()
+				or term in _object_choice_blob(obj)):
+			continue
+		list.append(obj)
+	match _objects_sort:
+		"rarity":
+			list.sort_custom(func(a, b):
+				var ra: int = _rarity_index_by_name(a.rarity)
+				var rb: int = _rarity_index_by_name(b.rarity)
+				return ra < rb if ra != rb \
+					else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+		"tag":
+			list.sort_custom(func(a, b):
+				var ta: String = " ".join(a.tags)
+				var tb: String = " ".join(b.tags)
+				return ta < tb if ta != tb \
+					else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+		_:
+			list.sort_custom(func(a, b):
+				return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+	for obj in list:
+		_grid.add_child(_object_cell(obj))
+	if list.is_empty():
+		_grid.add_child(_label("No objects match.", Color(0.55, 0.55, 0.6), 13))
+	_set_count(list.size(), total)
+	if not list.is_empty():
+		_show_object_detail(list[0])
+
+func _object_choice_blob(obj: ObjectData) -> String:
+	var out: String = ""
+	for c in obj.choices:
+		if c is Dictionary:
+			out += String(c.get("text", "")) + " " + String(c.get("effects_text", "")) + " "
+	return out.to_lower()
+
+func _object_cell(obj: ObjectData) -> Control:
+	var ac := _object_accent(obj)
+	var cell := _cell(ac, func(): _show_object_detail(obj))
+	cell.panel.custom_minimum_size = Vector2(GRID_EVENT_SIZE + CELL_PAD + 34, 0)
+	var vb: VBoxContainer = cell.vbox
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	var tex: Texture2D = _object_art(obj)
+	if tex != null:
+		vb.add_child(_image_with_bg(tex, GRID_EVENT_SIZE, ac))
+	var nm := _label("✦ " + obj.display_name, ac, GRID_NAME_FONT, true, true)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_child(nm)
+	vb.add_child(_label(obj.rarity.to_upper(), ac, GRID_META_FONT, true))
+	vb.add_child(_label(", ".join(obj.tags), Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
+	return cell.panel
+
+func _show_object_detail(obj: ObjectData) -> void:
+	_clear_children(_detail_box)
+	var ac := _object_accent(obj)
+	var tex: Texture2D = _object_art(obj)
+	if tex != null:
+		var img := _image_with_bg(tex, DETAIL_ITEM_SIZE, ac)
+		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_detail_box.add_child(img)
+	_detail_box.add_child(_label("✦ " + obj.display_name, ac, 18, true))
+	_detail_box.add_child(_detail_meta("%s  •  %s" % [obj.rarity,
+		"one at a time" if obj.unique else "several may stand together"], ac))
+	if obj.source_game != "":
+		_detail_box.add_child(_label("From: %s" % obj.source_game,
+			Color(0.65, 0.7, 0.8), 11, false, true))
+
+	_detail_box.add_child(HSeparator.new())
+	if obj.prompt != "":
+		_detail_box.add_child(_label(obj.prompt, Color(0.88, 0.88, 0.9), 13, false, true))
+
+	_detail_box.add_child(_detail_section("Where it turns up"))
+	# The tag is the whole of the answer today: an object is spawned by something
+	# ASKING for its tag, so the tag is the door it comes through.
+	_detail_box.add_child(_kv("Spawned as", ", ".join(obj.tags)))
+	if obj.run_limit > 0:
+		_detail_box.add_child(_kv("Per run", "at most %d" % obj.run_limit))
+	_detail_box.add_child(_label(
+		"Stands in front of you while the run is on that game, and ends when you "
+		+ "travel on.", Color(0.65, 0.65, 0.7), 11, false, true))
+
+	if not obj.choices.is_empty():
+		_detail_box.add_child(_detail_section("Buttons"))
+		for c in obj.choices:
+			if c is Dictionary:
+				_detail_box.add_child(_event_choice_block(c, ac))
+
+	if obj.chance_won != "" or obj.chance_lost != "":
+		_detail_box.add_child(_detail_section("If a roll lands"))
+		if obj.chance_won != "":
+			_detail_box.add_child(_label("Won: %s" % obj.chance_won,
+				Color(0.6, 0.85, 0.6), 11, false, true))
+		if obj.chance_lost != "":
+			_detail_box.add_child(_label("Lost: %s" % obj.chance_lost,
+				Color(0.9, 0.6, 0.55), 11, false, true))

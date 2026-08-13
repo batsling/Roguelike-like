@@ -8,9 +8,9 @@ id = &"inscryption"
 display_name = "Inscryption"
 year = 2021
 type = 2
-games_influenced = Array[StringName]([&"backpack_hero", &"black_jacket", &"cobalt_core", &"cursed_words", &"dicealot", &"from_the_top", &"master_of_piece", &"my_card_is_better_than_your_card", &"pocket_crystal_league", &"pokevoid", &"the_royal_writ"])
-influence_sources = PackedStringArray("check folder", "https://youtu.be/HyhYA69y62c", "https://www.rockpapershotgun.com/the-making-of-cobalt-core-how-tabletop-simulator-and-inscryption-were-the-secret-catalysts-behind-this-clever-deckbuilding-roguelike", "https://www.youtube.com/watch?v=7SjRhK9wdEE", "https://store.steampowered.com/app/3035330/Dicealot/", "https://steamcommunity.com/app/3585160/discussions/0/663844088186935277/#c695373095208229623", "https://x.com/imgame_official/status/1925464077654249724", "check folder", "https://moodytail.itch.io/pocket-crystal-league", "https://pokevoid.com/", "https://store.steampowered.com/app/3333700/The_Royal_Writ/")
-influence_relations = PackedStringArray("", "", "", "", "", "", "", "", "", "", "")
+games_influenced = Array[StringName]([&"backpack_hero", &"black_jacket", &"cobalt_core", &"cursed_words", &"dicealot", &"from_the_top", &"master_of_piece", &"my_card_is_better_than_your_card", &"pocket_crystal_league", &"pokevoid", &"the_royal_writ", &"inkshade"])
+influence_sources = PackedStringArray("check folder", "https://youtu.be/HyhYA69y62c", "https://www.rockpapershotgun.com/the-making-of-cobalt-core-how-tabletop-simulator-and-inscryption-were-the-secret-catalysts-behind-this-clever-deckbuilding-roguelike", "https://www.youtube.com/watch?v=7SjRhK9wdEE", "https://store.steampowered.com/app/3035330/Dicealot/", "https://steamcommunity.com/app/3585160/discussions/0/663844088186935277/#c695373095208229623", "https://x.com/imgame_official/status/1925464077654249724", "check folder", "https://moodytail.itch.io/pocket-crystal-league", "https://pokevoid.com/", "https://store.steampowered.com/app/3333700/The_Royal_Writ/", "check folder")
+influence_relations = PackedStringArray("", "", "", "", "", "", "", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
