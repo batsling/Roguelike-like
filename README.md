@@ -312,6 +312,13 @@ node and its script.
     the page rather than opened over it: it blocks nothing, stays for the whole
     visit, and travelling on is what closes it. The overworld floats a
     `🛒 Shop ↓` pointer at the foot of the screen until it has been scrolled to.
+    The shelf is drawn as **one row per item** — thumbnail, name, price — with
+    the full card and its Buy button opening over the page on click. Three cards
+    on the page ran the overworld to 1231px inside a 688px window; the page is a
+    fixed 1280x720 canvas that `stretch/mode` scales into any window, so there is
+    no monitor big enough to buy that space back. `ObjectPanel2` draws machines
+    the same way for the same reason, and the board shrinks to a tighter height
+    budget (`BattlefieldView.set_sharing_column`) while either is under it.
   - **`BossNoticeModal.gd`** — the "⚠ BOSS INCOMING" popup (§7.1), opened once per
     boss round. It replaced a banner strip that shoved the whole page down. Its
     boss portraits are **clickable**: each opens the ordinary `EnemyInfoCard` over
@@ -527,7 +534,7 @@ names the row and the cell.
 | `Trigger` | `After` (fires once the game at the node is played). ⚠ `Before` parses and is stored, but **nothing reads it yet**. Leave it `After` until that is wired up. |
 | `Rarity` | `Common` / `Uncommon` / `Rare` — which bag it is dealt from. |
 | `Image` | Art base name → `images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`. |
-| `Prompt` | The prose at the top of the modal. |
+| `Prompt` | The prose at the top of the modal. Blank is legal — a wordless event stacks its art *above* the choices instead of beside them (see "Art"). |
 | `Goal Met` / `Goal Missed` | Only if a choice uses `add_goal`: what the event says when that goal lands or lapses, games later. |
 | `Chance Won` / `Chance Lost` | Only if a choice uses `chance`: what it says when the roll lands or doesn't. |
 
@@ -626,6 +633,13 @@ Scrap Ooze (Reach Inside → Deeper) are both built that way.
 Drop a PNG in `images2.0/events/` named after the `Image` column — PascalCase,
 like the rest (`ScrapOoze.png`). Portrait suits the modal's left column best. The
 generator prints a `!` warning if the art is missing; the event still works.
+
+Where the picture goes depends on the `Prompt`. With prose, it stands in a fixed
+column to the LEFT of the words and buttons, costing no vertical room. With a
+BLANK prompt — the Arcade Room — there is no page of words for it to sit beside,
+so the modal stacks: art on top, centred and height-capped, choices under it. The
+shape is chosen when the modal opens and does not change if a `Result` prints
+later.
 
 #### Seeing it in the game
 

@@ -54,12 +54,6 @@ static func build_panel(parent: Control, accent: Color, dismiss: Callable = Call
 	# hung below: the "you found a relic" card opened against the bottom of the
 	# page with its art off it.
 	#
-	# The 0 is remembered, because such a panel also has to be allowed to SHRINK.
-	# A Control on a non-container parent only ever grows to its minimum size,
-	# never back, and a label reports an enormous minimum until it has wrapped —
-	# which is exactly the frame the first resize lands on. Without this the drop
-	# modal was correctly centred and five times too tall.
-	panel.set_meta(FIT_CONTENT, panel_size.y <= 0.0)
 	# BOTH signals. `resized` catches the panel growing into its content;
 	# `minimum_size_changed` catches the content settling afterwards — a label that
 	# has finally wrapped asks for a fraction of the height it asked for while it
@@ -73,9 +67,6 @@ static func build_panel(parent: Control, accent: Color, dismiss: Callable = Call
 	return panel
 
 
-const FIT_CONTENT := "scaffold_fits_content"
-
-
 # Put `panel` in the middle of its parent, at the size its contents ask for.
 #
 # Anchors AND offsets, because on a centre-anchored Control `position` is stored
@@ -87,8 +78,21 @@ const FIT_CONTENT := "scaffold_fits_content"
 static func centre(panel: Control) -> void:
 	if panel == null or not is_instance_valid(panel):
 		return
-	if bool(panel.get_meta(FIT_CONTENT, false)):
-		panel.size = panel.get_combined_minimum_size()
+	# ALWAYS back down to the minimum, whether or not the panel was given a fixed
+	# size. A Control on a non-container parent is grown to its content's minimum
+	# by Godot and never shrunk back, and a modal's content reports a minimum that
+	# is enormous for the FIRST frame — before its labels have wrapped and before
+	# a ladder or a chart has been zoomed to fit. That transient became permanent:
+	# the game-choice popup's content asked for 3832px on frame 0 of a 720px
+	# screen, dropped back to 664 on frame 1, and the panel stayed 3832 tall — so
+	# it was centred with its buttons two thousand pixels below the bottom of the
+	# window and nothing on screen could be clicked.
+	#
+	# A fixed size is safe here because it was written to `custom_minimum_size`,
+	# which is part of what `get_combined_minimum_size` returns: the panel cannot
+	# shrink below what its caller asked for. It can still be larger when its
+	# content genuinely needs the room.
+	panel.size = panel.get_combined_minimum_size()
 	var half: Vector2 = panel.size * 0.5
 	panel.anchor_left = 0.5
 	panel.anchor_top = 0.5

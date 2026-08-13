@@ -3207,9 +3207,14 @@ func test_an_ordinary_arrival_still_hands_over_its_event() -> void:
 func test_the_panel_can_start_an_event_where_the_run_stands() -> void:
 	var ev: EventData2 = Data.get_event2(&"scrap_ooze")
 	assert_not_null(ev)
+	# The DELTA, not the count. The opening game this file's before_each plays
+	# deals an event of its own, and which one is a roll — when it lands on Scrap
+	# Ooze the count is already 1 before this test touches anything, and asserting
+	# "== 1" made an unrelated die decide whether the suite was green.
+	var before: int = int(GameState.events_fired.get(&"scrap_ooze", 0))
 	assert_true(_ui.open_event(ev), "an event opens on a live run")
 	assert_not_null(_ui._event_modal, "and it is the real modal, not a bare panel")
-	assert_eq(int(GameState.events_fired.get(&"scrap_ooze", 0)), 1,
+	assert_eq(int(GameState.events_fired.get(&"scrap_ooze", 0)), before + 1,
 		"starting one puts it in the bag, exactly as arriving at one does")
 	assert_true(GameState.events_seen.has(&"scrap_ooze"),
 		"…and it will not come round again until the rest of its rarity has")
@@ -3232,3 +3237,239 @@ func test_the_panel_starts_nothing_once_the_run_is_over() -> void:
 	GameLoop2.run_over = true
 	assert_false(_ui.open_event(Data.get_event2(&"scrap_ooze")))
 	assert_false(_ui.open_event(null), "and null is not an event")
+
+# --- dying in an event ------------------------------------------------------
+#
+# An event can take Health, so an event can KILL you — Scrap Ooze's reach on your
+# last point, one dip too many in Abyssal Baths, the Blood Donation Machine's
+# lever. The loop only ever checked for death at the two places it knew about (a
+# try paid in Health, an enemy's hit), so every other Health cost left the player
+# standing at 0 with the run carrying on around them.
+
+func _lethal_choice_index(modal) -> int:
+	for i in range(modal._event.choices.size()):
+		if EventSystem.is_lethal(modal._event.choices[i], 0):
+			return i
+	return -1
+
+func test_an_event_that_takes_your_last_health_ends_the_run() -> void:
+	GameState.set_hp(1)
+	assert_true(_ui.open_event(Data.get_event2(&"scrap_ooze")))
+	var modal = _ui._event_modal
+	var idx: int = _lethal_choice_index(modal)
+	assert_gt(idx, -1, "on 1 Health, reaching into the ooze is fatal")
+	modal.take(idx)
+	await get_tree().process_frame
+	assert_eq(GameState.hp, 0, "the press was paid")
+	assert_true(GameLoop2.run_over, "and the run is over — not carrying on at 0 Health")
+	assert_eq(_ui._phase, OVERWORLD.Phase.OVER, "the screen agrees")
+
+func test_dying_in_an_event_raises_the_end_screen_over_it() -> void:
+	GameState.set_hp(1)
+	_ui.open_event(Data.get_event2(&"scrap_ooze"))
+	var modal = _ui._event_modal
+	modal.take(_lethal_choice_index(modal))
+	await get_tree().process_frame
+	assert_not_null(_ui._run_over_screen, "the verdict lands")
+	assert_null(_ui._event_modal,
+		"and the event it happened in steps aside rather than sitting under it")
+
+func test_a_health_cost_that_is_paid_back_in_the_same_breath_is_not_a_death() -> void:
+	# The death check is deferred for this: effects are applied as a BATCH, and a
+	# cell that spends Health and gives it back would otherwise read as fatal on
+	# the frame between the two.
+	GameState.set_hp(3)
+	GameState.set_hp(0)
+	GameState.set_hp(3)
+	await get_tree().process_frame
+	assert_false(GameLoop2.run_over,
+		"where the batch LEAVES you is what counts, not the dip in the middle")
+
+func test_a_fatal_press_is_painted_as_one() -> void:
+	# Not disabled — Scrap Ooze is a push-your-luck event and taking the decision
+	# away is worse than the death. The button carries the warning instead.
+	GameState.set_hp(1)
+	_ui.open_event(Data.get_event2(&"scrap_ooze"))
+	var modal = _ui._event_modal
+	var idx: int = _lethal_choice_index(modal)
+	var fatal: Button = null
+	var safe: Button = null
+	for i in range(modal._choice_box.get_child_count()):
+		for node in modal._choice_box.get_child(i).get_children():
+			if node is Button:
+				if i == idx:
+					fatal = node
+				else:
+					safe = node
+	assert_not_null(fatal, "the fatal choice has a button")
+	assert_false(fatal.disabled, "which is still pressable")
+	assert_eq(fatal.get_theme_stylebox("normal").border_color, UITheme.DANGER,
+		"and wears the warning itself, not only the line under it")
+	if safe != null:
+		assert_ne(safe.get_theme_stylebox("normal").border_color, UITheme.DANGER,
+			"while walking away looks nothing like it")
+
+# --- where the illustration goes --------------------------------------------
+#
+# Two columns are for an event with a page of prose in it. A WORDLESS one — the
+# sheet's Prompt cell left blank, which the Arcade Room does — stacks instead:
+# the picture over the choices, not beside them.
+
+# The one TextureRect the modal built for the event's own art. Objects spawn
+# their own, so this is only asked before a choice has been taken.
+func _event_art(modal) -> TextureRect:
+	for node in modal._panel.find_children("*", "TextureRect", true, false):
+		if (node as TextureRect).texture != null:
+			return node
+	return null
+
+# Children a repaint left standing. `_render` clears with queue_free, which does
+# not take the node out of the tree until the frame ends, so a plain
+# get_child_count() after a re-render counts the last painting as well as this
+# one.
+func _live_children(box: Node) -> int:
+	var n: int = 0
+	for child in box.get_children():
+		if not child.is_queued_for_deletion():
+			n += 1
+	return n
+
+func test_an_event_with_a_prompt_puts_its_art_beside_the_words() -> void:
+	assert_true(_ui.open_event(Data.get_event2(&"scrap_ooze")))
+	var modal = _ui._event_modal
+	var art: TextureRect = _event_art(modal)
+	assert_not_null(art, "Scrap Ooze is illustrated")
+	assert_false(modal._right.is_ancestor_of(art),
+		"an event with prose keeps its picture in the side column")
+	assert_eq(_live_children(modal._prose_box), 1, "and the prompt is the prose")
+
+func test_a_wordless_event_stacks_its_art_over_the_choices() -> void:
+	var ev: EventData2 = Data.get_event2(&"arcade_room")
+	assert_eq(ev.prompt, "", "the Arcade Room speaks in pictures")
+	assert_true(_ui.open_event(ev))
+	var modal = _ui._event_modal
+	var art: TextureRect = _event_art(modal)
+	assert_not_null(art, "…and it is still illustrated")
+	assert_true(modal._right.is_ancestor_of(art),
+		"with no words to sit next to, the picture goes above the buttons")
+	assert_true(art.get_index() < modal._prose_box.get_index(),
+		"above, not below")
+	assert_eq(_live_children(modal._prose_box), 0,
+		"a blank prompt prints nothing — not an empty label holding a line of height")
+	assert_eq(_live_children(modal._choice_box), 2, "Enter and Leave are still offered")
+
+func test_a_wordless_event_that_speaks_later_keeps_the_layout_it_opened_in() -> void:
+	# A result printed on the first press must not shunt the picture back into a
+	# side column halfway through the event.
+	var ev: EventData2 = Data.get_event2(&"arcade_room")
+	assert_true(_ui.open_event(ev))
+	var modal = _ui._event_modal
+	var art: TextureRect = _event_art(modal)
+	modal._last_result = "The room takes the coin."
+	modal._render()
+	assert_true(modal._right.is_ancestor_of(art), "the art has not moved")
+	assert_eq(_live_children(modal._prose_box), 1,
+		"the outcome prints on its own, with no rule above it separating it from nothing")
+
+# --- the machines on the page -----------------------------------------------
+#
+# A machine's full card is 341px tall — two buttons, their cost lines, their ☠
+# warnings. The overworld is built to fit a 720p canvas with about five pixels
+# to spare and the board under it is already at its floor (CELL_MIN), so three
+# full cards under the board ran the page to 1674px and put the whole overworld
+# behind a scrollbar. The page keeps the RECOGNITION — art, name, state — and
+# the card opens over it with every button intact.
+
+func _machine_rows() -> Array:
+	var out: Array = []
+	if _ui._object_panel == null or not is_instance_valid(_ui._object_panel):
+		return out
+	for child in _ui._object_panel._row.get_children():
+		if child is Button:
+			out.append(child)
+	return out
+
+func test_the_page_still_fits_the_window_with_machines_standing_on_it() -> void:
+	# The gap the existing fit tests left: they cover the offering, the report
+	# step and the top-tier board, and none of them has anything mounted UNDER
+	# the board. Three machines there ran the page to 1674px of a 688px window.
+	_assert_fits("the page before any machine spawns")
+	ObjectSystem.spawn_by_tag(&"arcade", 3, 3)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_not_null(_ui._object_panel, "three machines put a panel under the board")
+	_ui._refresh()
+	_assert_fits("the page with three machines under the board")
+	ObjectSystem.clear()
+
+func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
+	# The shop shares the machines' slot and had the same disease, worse: its
+	# three cards ran the page to 1231px of a 688px window, and that predates
+	# machines entirely.
+	var hubs: Array = ShopSystem.hub_games()
+	assert_false(hubs.is_empty(), "a run has hubs")
+	_ui._mount_shop(hubs[0])
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_not_null(_ui._shop_panel, "the shop mounts under the board")
+	_ui._refresh()
+	_assert_fits("the page with a hub's shop on it")
+
+func test_a_shelf_item_is_a_row_on_the_page_and_a_card_when_you_open_it() -> void:
+	var hubs: Array = ShopSystem.hub_games()
+	_ui._mount_shop(hubs[0])
+	await get_tree().process_frame
+	var shelf: Array = ShopSystem.stock(hubs[0])
+	if shelf.is_empty():
+		# A hub whose shop has not opened yet has nothing to draw; the fit test
+		# above is the one that matters for it.
+		assert_eq(_ui._shop_panel._cards_row.get_child_count(), 0)
+		return
+	assert_eq(_ui._shop_panel._cards_row.get_child_count(), shelf.size(),
+		"one row per thing on the shelf")
+	_ui._shop_panel.open_card(0)
+	await get_tree().process_frame
+	assert_not_null(_ui._shop_panel._card_layer, "clicking a row opens its card")
+	var buys: int = 0
+	for node in _ui._shop_panel._card_layer.find_children("*", "Button", true, false):
+		if String((node as Button).text).begins_with("◉") or (node as Button).text == "Sold":
+			buys += 1
+	assert_gt(buys, 0, "with the Buy button on it — the card is where you buy")
+	_ui._shop_panel.close_card()
+	assert_null(_ui._shop_panel._card_layer, "and putting it back closes it")
+
+func test_a_machine_is_a_row_on_the_page_and_a_card_when_you_open_it() -> void:
+	ObjectSystem.spawn_by_tag(&"arcade", 1, 1)
+	await get_tree().process_frame
+	var rows: Array = _machine_rows()
+	assert_eq(rows.size(), 1, "one machine, one row")
+	assert_eq(_ui._object_panel._row.find_children("*", "ObjectCard", true, false).size(), 0,
+		"the page carries no full card — that is the 341px that did not fit")
+
+	_ui._object_panel.open_card(ObjectSystem.live[0])
+	await get_tree().process_frame
+	var cards: Array = _ui._object_panel._card_layer.find_children("*", "ObjectCard", true, false)
+	assert_eq(cards.size(), 1, "opening the row opens the real card")
+	var buttons: int = 0
+	for node in (cards[0] as Control).find_children("*", "Button", true, false):
+		buttons += 1
+	assert_gt(buttons, 0, "with its buttons on it — nothing was cut, it moved")
+	_ui._object_panel.close_card()
+	ObjectSystem.clear()
+
+func test_the_board_gives_up_height_while_it_is_sharing_its_column() -> void:
+	# Measured in the FITTED CELL rather than in the board's pixel height: the
+	# cell is the number the budget actually moves, and it is settled the moment
+	# the budget changes — where a Control's size is whatever the last layout pass
+	# made it, which on the frame a test asks is often nothing at all.
+	var cols: int = GameLoop2.grid_cols()
+	var full: int = BattlefieldView.fitted_cell(cols)
+	ObjectSystem.spawn_by_tag(&"arcade", 1, 1)
+	await get_tree().process_frame
+	assert_not_null(_ui._object_panel, "a machine puts a panel under the board")
+	assert_lt(BattlefieldView.fitted_cell(cols), full,
+		"the board shrinks its cells to pay for the panel under it")
+	ObjectSystem.clear()
+	await get_tree().process_frame
+	assert_eq(BattlefieldView.fitted_cell(cols), full,
+		"…and springs back when the machines go, which is when you travel on")

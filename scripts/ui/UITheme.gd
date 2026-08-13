@@ -116,6 +116,18 @@ static func flat(bg: Color, radius: int = 8, margin: int = 10, border_w: int = 0
 		sb.border_color = border
 	return sb
 
+# A button that would END THE RUN if pressed — the last point of Health spent on
+# Scrap Ooze's reach, one dip too many in Abyssal Baths, the Blood Donation
+# Machine's lever. It is deliberately NOT disabled: these are push-your-luck
+# machines and taking the decision away is worse than the death. So the button
+# carries the warning instead, in the same red the cost line under it runs in.
+#
+# Blood-dark rather than bright red: it has to read as dangerous at a glance and
+# still be readable as a button with a label on it. Hover lifts towards DANGER,
+# because the moment the cursor is on it is the moment the warning matters most.
+static func lethal_box(hover: bool = false) -> StyleBoxFlat:
+	return flat(DANGER.lerp(BG, 0.78 if hover else 0.86), 6, 6, 2, DANGER)
+
 # A raised panel with a hairline border and a subtle top-lit gradient feel via a
 # slightly brighter border. Used for HUD strips, detail panels, cards.
 static func panel_box(bg: Color = PANEL, border: Color = BORDER, radius: int = 10, margin: int = 12, border_w: int = 1) -> StyleBoxFlat:

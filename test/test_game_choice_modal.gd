@@ -67,6 +67,52 @@ func test_nothing_opens_while_a_game_is_being_played() -> void:
 	assert_null(_ui.open_choice(0),
 		"the offering is gone once you've committed, so there is nothing to open")
 
+# --- the popup fits the window ---------------------------------------------
+#
+# The popup's content asks for an ENORMOUS minimum on its first frame: the labels
+# have not wrapped and the route ladder has not been zoomed to fit yet. Godot
+# grows a Control on a non-container parent to its content's minimum and never
+# shrinks it back, so that one transient frame used to be permanent — the start
+# picker's popup measured 1409x3832 inside a 1280x720 window, and being centred
+# put its Back / Start buttons two thousand pixels below the bottom of the
+# screen. Nothing on the screen could be clicked and the run could not be begun.
+#
+# ModalScaffold.centre now re-fits the panel to its minimum every time the shape
+# changes, which is exactly when the transient lets go.
+
+func _panel_of(modal: Node) -> PanelContainer:
+	for child in modal.get_children():
+		if child is PanelContainer:
+			return child
+	return null
+
+func _assert_fits(modal: Node, what: String) -> void:
+	var panel: PanelContainer = _panel_of(modal)
+	assert_not_null(panel, "%s has a panel" % what)
+	for i in range(4):
+		await get_tree().process_frame
+	var view: Vector2 = modal.get_viewport_rect().size
+	var rect: Rect2 = panel.get_global_rect()
+	assert_almost_eq(panel.size.y, minf(panel.size.y, view.y), 1.0,
+		"%s is no taller than the window: %s in %s" % [what, panel.size, view])
+	assert_almost_eq(panel.size.x, minf(panel.size.x, view.x), 1.0,
+		"%s is no wider than the window: %s in %s" % [what, panel.size, view])
+	assert_true(rect.position.y >= -1.0 and rect.end.y <= view.y + 1.0,
+		"%s is on screen top to bottom: %s in %s" % [what, rect, view])
+
+func test_the_popup_fits_the_window_it_opens_in() -> void:
+	await _assert_fits(_ui.open_choice(0), "an offered card's popup")
+
+func test_the_start_pickers_popup_fits_the_window_it_opens_in() -> void:
+	# The worst case, and the one that was reported: the route from a start runs
+	# the whole depth of the run, so the ladder it builds at zoom 1 is the tallest
+	# thing any modal puts on screen.
+	var picker = SCENE.instantiate()
+	add_child_autofree(picker)
+	var modal = picker.open_start_choice(0)
+	assert_not_null(modal, "a start card opens its popup")
+	await _assert_fits(modal, "the start picker's popup")
+
 # --- the optimal path ------------------------------------------------------
 
 func test_the_popup_draws_the_route_from_the_game_it_is_offering() -> void:

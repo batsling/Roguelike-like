@@ -163,6 +163,28 @@ const FIELD_WIDTH_BUDGET: int = 410
 # of one. It binds on nothing but the big boards — a 4x4 is capped by CELL_MAX
 # long before either budget is the constraint.
 const FIELD_HEIGHT_BUDGET: int = 360
+# …and what it drops to when something is mounted UNDER the board — a hub's shop,
+# or the machines standing at this game. The right column is 626px of a 688px
+# page with about five pixels to spare, so a panel below the board has nowhere to
+# come from: it has to come out of the board. At 190 a 4x4 still draws at a
+# readable cell and the page stays on one screen; the board springs back to the
+# full budget the moment the panel goes, which is when you travel on.
+const FIELD_HEIGHT_BUDGET_SHARED: int = 190
+
+# The budget in force right now. Static, because `fitted_cell` is what every
+# caller measures against and it is a static answer to "how big is a cell on a
+# board this wide" — there is only ever one board on screen.
+static var _height_budget: int = FIELD_HEIGHT_BUDGET
+
+# Tell the board it is sharing its column (or has stopped). Returns true when the
+# budget actually moved, so the caller only rebuilds when there is something to
+# rebuild — this runs off a signal that fires for every machine press.
+static func set_sharing_column(shared: bool) -> bool:
+	var want: int = FIELD_HEIGHT_BUDGET_SHARED if shared else FIELD_HEIGHT_BUDGET
+	if want == _height_budget:
+		return false
+	_height_budget = want
+	return true
 
 # The fitted cell edge and its step, recomputed whenever the grid changes size
 # (_rebuild_cells). Everything that positions or sizes anything on the board
@@ -179,7 +201,7 @@ static func fitted_cell(cols: int, rows: int = -1) -> int:
 		return CELL_MAX
 	var r: int = rows if rows > 0 else cols
 	var per_w: float = float(FIELD_WIDTH_BUDGET - (cols - 1) * CELL_SEP) / float(cols)
-	var per_h: float = float(FIELD_HEIGHT_BUDGET - (r - 1) * CELL_SEP) / float(r)
+	var per_h: float = float(_height_budget - (r - 1) * CELL_SEP) / float(r)
 	return clampi(int(floor(minf(per_w, per_h))), CELL_MIN, CELL_MAX)
 # Shields (the tries, §3) share the overworld's steel blue.
 const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
@@ -217,6 +239,16 @@ func _field_size() -> Vector2:
 # pulsed in the accent colour. The board silently becoming a size larger is the
 # kind of change a player feels ("that took longer to reach me") without ever
 # seeing, so the new ground says so itself, wherever the growth came from.
+# Re-fit the board to the budget in force now, without the grid having changed
+# size. `_rebuild_cells` short-circuits on unchanged dimensions — right when the
+# trigger is the board gaining a column, wrong when the trigger is the COLUMN IT
+# LIVES IN being shared with a shop or a machine.
+func refit() -> void:
+	_cells_drawn = Vector2i(-1, -1)
+	_rebuild_cells()
+	refresh()
+
+
 func _rebuild_cells() -> void:
 	if _cell_layer == null:
 		return

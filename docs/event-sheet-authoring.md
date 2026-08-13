@@ -146,7 +146,7 @@ for N = 1…6.
 | `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). **`Before` is not implemented** — see §15. |
 | `Rarity` | event | `Common` / `Uncommon` / `Rare`. **Which bag it is dealt from** (§1.1), same ordering as items and scrolls. |
 | `Image` | event | Art base name → `res://images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`, matching every other 2.0 sheet. |
-| `Prompt` | event | The prose at the top of the modal. |
+| `Prompt` | event | The prose at the top of the modal. **Blank is legal and changes the layout**: a wordless event stacks its illustration *above* the choices instead of standing it in a column beside them — see below. |
 | `Goal Met` | event | Printed when a goal this event handed out has its condition **met**. |
 | `Goal Missed` | event | Printed when that goal's window closes unmet. Curses never expire, so they leave it blank. |
 | `Chance Won` | event | Printed when a `chance` roll (§5) lands. Blank on events with no gamble. |
@@ -165,6 +165,19 @@ inventing a reward for it). Write `nothing` when the blank would read as
 unfinished. A blank `Result N` is legal too — the modal then prints only the
 mechanical line — which is how a choice whose flavour text you haven't got yet
 stays authorable.
+
+A blank `Prompt` is legal too, and it is the one blank cell that changes how the
+modal is *built*. Normally the illustration stands in a fixed column to the LEFT
+of the words and buttons, which is what keeps a page of prose plus four choices
+off the bottom of a 720p viewport. An event with no prompt has no page: side by
+side it would be a picture next to two lonely buttons in a half-empty column. So
+a blank `Prompt` STACKS instead — the art goes above the choices, centred, and
+the buttons sit under it. The Arcade Room is authored this way on purpose:
+it is a room you walk into, and the picture says everything the prose would.
+
+The layout is decided once, when the modal opens, from the `Prompt` cell alone.
+A wordless event whose `Result` prose prints later keeps the stacked shape it
+opened in rather than shunting the picture sideways mid-event.
 
 **Why `Goal Met` / `Goal Missed` are event columns and not choice columns.** An
 event that hands out a goal (§5, `add_goal`) does not finish in the modal; it
@@ -904,6 +917,27 @@ with a way to die in it has to be one you *chose* to walk toward.
 
 The button says the number, as always — "−3 Health · 55%: +1 Small Chest" — so
 the escalation never has to be discovered by losing to it.
+
+And when the number is bigger than the Health you are holding, the button
+**becomes the warning**: blood-dark fill, a red border, a red label, over the
+red cost line and the outright "☠ This will kill you." It is never disabled —
+the whole shape of a push-your-luck event is that the fatal press stays
+available — but it cannot be mistaken for the safe one above it. An object's
+lever gets the same treatment for the same reason (the Blood Donation Machine
+is not gated on having Health to spare), and it reddens only while the lever is
+actually offered, since a jammed machine cannot carry the threat out.
+
+A press that only MIGHT kill you — one whose Health cost is on the losing side
+of a `chance`, or inside a `roll` that may not fire — gets the same red and a
+different sentence: "☠ This might kill you." The two never fire together, and
+the certain warning wins when the certain cost is already fatal. Nothing in the
+sheet gambles with Health yet (every `chance` payload authored so far is a
+reward), so this is the warning waiting for the first one that does.
+
+Taking that press ENDS THE RUN, on the same verdict screen an enemy's blow
+would raise. Health reaching 0 ends a run wherever the 0 came from — the loop
+watches `GameState.hp_changed` rather than checking only the hits it deals
+itself — so nothing an effect cell can do leaves the player alive at 0.
 
 ### What it needed from the format
 

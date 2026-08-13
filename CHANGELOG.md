@@ -11,6 +11,164 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The shop had the same disease, worse — and it was there first.** A hub's
+  shelf of three cards ran the page to **1231px inside a 688px window**, which
+  predates machines entirely: anyone standing in a shop has been scrolling the
+  overworld since shops moved onto the page.
+
+  Measured the same way as the machines, and fixed the same way. A shelf item is
+  now a **row** — thumbnail, name, price, dimmed when you cannot afford it, kept
+  in place and greyed when it is sold — and the card it used to draw on the page
+  opens over it on click, Buy button and all. Buying closes the card, because the
+  purchase is the answer to the question the card asks. The shop's title, its
+  "what's left" line, the purse and the reroll used to be a header block and a
+  footer row: 90px of furniture around 30px of shelf. They are one line now.
+
+  Two sizing lessons, both of which cost a measurement to find:
+
+  * **A Button's minimum size is its content.** The rows are given a width, but
+    one long relic name quietly pushed a row past it and the flow — measured to
+    the pixel — wrapped the shelf onto a second line, undoing 34px. `clip_text`
+    pins the row to the width it was given.
+  * **The floor has to fit the width the column actually hands over**, which is
+    less than the column's own width by the panel's padding. Measured exactly, a
+    single rounding pixel wraps the line.
+
+  A hub's shop now fits the window (669 of 688, from 1231). The one case still
+  over is a hub carrying a shop AND spawned machines at the same time, which
+  runs about 38px long.
+
+- **The machines under the board no longer push the overworld off the screen.**
+  Three of them ran the page to **1674px inside a 688px window**; it is 680 now,
+  at every board size.
+
+  The overworld is built to fit a fixed 1280x720 canvas — `stretch/mode` scales
+  that box into whatever window you use, so a 2560x1440 monitor gets exactly the
+  same 720 of vertical room a 720p one does — and the page uses 683 of it with
+  **five pixels to spare**. There was never room under the board for a panel.
+  A full `ObjectCard` is 341px: the art, the prompt, and two buttons each with a
+  cost line and a ☠ warning under it.
+
+  Three things were wrong, and all three are fixed:
+
+  * **The board never gave anything up.** `FIELD_HEIGHT_BUDGET` is tuned so the
+    board alone fits 720p, and it stayed at that budget with a shop or a rank of
+    machines mounted below it. There is now a second, tighter budget in force
+    while the board is SHARING ITS COLUMN (`set_sharing_column`), worth 119px on
+    a 4x4 — and the board springs back to the full one when you travel on. It
+    binds down to `CELL_MIN`, which is the floor and stays the floor: the board
+    is readable or it is nothing.
+  * **The flow container wasn't flowing.** The panel's `HFlowContainer` sizes to
+    its column, the column sizes to its widest child, and the board narrows as it
+    shrinks — so the column followed the board down to 443px and every machine
+    wrapped onto a line of its own. The row now has a floor of two cards' width.
+  * **The page was carrying the whole card.** It carries a **30px row** now —
+    art, name, and the one fact worth reading without opening anything ("Jammed",
+    "holds 37 gold") — and two rows fit across the column, so three machines are
+    two lines. Clicking one opens the SAME `ObjectCard` over the page, buttons,
+    cost lines and warnings intact. Nothing was cut; it moved one click away.
+    A machine whose lever would end the run carries the ☠ on its row too, so the
+    warning is on the page and not only behind the click.
+
+  Click-outside closes a machine's card, unlike an event's: an event is a
+  decision with a price on both sides, and a machine asks nothing of you.
+
+- **An event can kill you, and now it says so and ends the run when it does.**
+  Two halves of the same hole.
+
+  **The run ends at 0 Health, wherever the 0 came from.** `GameLoop2` only ever
+  checked for death at the two places it knew about — a lost try paid in Health
+  (`log_attempt`) and an enemy's hit (`_take_hit`). Every other Health cost goes
+  through `EffectSystem`, which moves the number and says nothing, so reaching
+  into Scrap Ooze on your last point, one dip too many in Abyssal Baths, or the
+  Blood Donation Machine's lever left the player standing at **0 Health with the
+  run carrying on around them**. The loop now watches `GameState.hp_changed` and
+  ends the run itself, through the same `_finish_run` every other ending uses —
+  so the verdict screen, the history record and the cleared autosave all happen
+  exactly as they do when an enemy lands the blow.
+
+  The check is **deferred by a frame**, because a choice's effects are applied as
+  a batch: a cell that spends Health and gives it back would otherwise read as
+  fatal on the frame between the two. Where the batch LEAVES you is what counts.
+
+  **A gamble that could kill you says "might".** The certain cost and the
+  possible one are two different questions, and the player is owed both.
+  `health_cost` still answers the first — what a press definitely spends, which
+  is what says *"this will kill you"*. `possible_health_cost` answers the second:
+  every `roll` in the effect list firing, plus the worse of a two-sided
+  `chance`'s two branches, since a two-sided roll pays one of them whatever
+  happens. When that worst case would end the run but the certain cost would
+  not, the button reddens and the line under it reads *"☠ This might kill you."*
+  — never both warnings at once.
+
+  Same red either way, deliberately: the distinction the player acts on is in
+  the words, and two shades of red is a difference nobody can read at a glance.
+  The cost line stops just short of flat `DANGER` for a maybe, because it is a
+  weaker claim. No authored event or object gambles with Health today — every
+  `chance` payload in the sheet is a reward — so this shows up the day someone
+  writes `chance 40% -> gain_chest small 1 else lose_hp 4`, and the tests build
+  those choices by hand in the meantime.
+
+  **A fatal press is painted as one.** `EventSystem.is_lethal` and its ☠ warning
+  already existed, but the warning was a line of red text under a button that
+  looked exactly like the safe one above it. A choice that would end the run now
+  wears the warning itself — blood-dark fill, `DANGER` border, red label — in the
+  event modal and on an object's card alike (`UITheme.lethal_box`). It is still
+  **not disabled**: these are push-your-luck machines, and taking the decision
+  away at the moment it gets interesting is worse than the death. An object's
+  lever only reddens while it is actually offered — a jammed machine cannot carry
+  out the threat.
+
+  The event standing open when the run ends is **dismissed rather than closed**:
+  closing one runs the chain that follows an event — refresh, autosave, the hub's
+  shop — and the run it belonged to is over.
+
+- **Fixed: a card popup could open five times taller than the window, with its
+  buttons off the bottom of the screen.** Clicking a game on the start picker
+  opened a `GameChoiceModal` that painted as a black screen with a route graph
+  floating in it and nothing clickable anywhere — the run could not be started.
+
+  On its FIRST frame the popup's content asks for an enormous minimum size: the
+  labels have not wrapped yet and the route ladder has not been zoomed to fit
+  (`_settle` runs deferred, after the panel has been laid out). The start
+  picker's ladder is the worst case in the game, since its route runs the whole
+  depth of the run — 1409×3832 inside a 1280×720 window. Godot grows a Control
+  on a non-container parent to its content's minimum and never shrinks it back,
+  so when the minimum dropped to a sane 1140×664 one frame later the panel
+  stayed 3832 tall, and `centre` dutifully centred it: header off the top,
+  Back / Start two thousand pixels below the bottom.
+
+  `ModalScaffold.centre` now re-fits the panel to its combined minimum on every
+  shape change, not only for the panels that asked to be content-sized. A fixed
+  size is safe because it is written to `custom_minimum_size`, which is part of
+  that minimum — the panel cannot shrink below what its caller asked for, and it
+  can still grow when its content genuinely needs the room. The `FIT_CONTENT`
+  meta the old two-branch version needed is gone with it. This is the moment the
+  transient lets go: `minimum_size_changed` already fires exactly there.
+
+- **A wordless event stacks its art over the choices.** The Arcade Room's
+  `Prompt` and both `Result` cells are now blank on purpose: it is a room you
+  walk into, a picture of a room, and two buttons — the prose it used to carry
+  was describing what the illustration already showed.
+
+  Blank cells were already legal (`parse_result_cell` returns an empty ladder,
+  and `result_for` reads it as ""), but the modal was not built for an event with
+  nothing to say. It painted the prompt Label unconditionally, so an empty one
+  still claimed a line of height above the choices, and it put the illustration
+  in its usual **left column** — which exists to keep a page of prose off the
+  bottom of a 720p viewport, and with no page left a picture standing next to two
+  lonely buttons in a half-empty column.
+
+  So a blank `Prompt` now **stacks**: the art goes above the choices, centred and
+  capped at 190px tall (the side column's 460 is affordable only because it costs
+  no vertical room), and the buttons sit under it. The prompt Label is skipped
+  when there is nothing in it, and the rule that separates a printed outcome from
+  the prompt is skipped when there is no prompt above it to separate.
+
+  The layout is decided **once, when the modal opens, from the `Prompt` alone** —
+  a wordless event whose `Result` prose prints later keeps the shape it opened in
+  rather than shunting its picture sideways mid-event.
+
 - **Objects, an event after every game, and Luck that does something.**
 
   **✦ Objects (`objects2.0`).** A new content kind: a **machine you stand in

@@ -189,6 +189,14 @@ func _ready() -> void:
 	# itself at that moment (see Overworld2.report) because it also has a banner
 	# to raise about it.
 	GameState.inventory_changed.connect(sync_grid_bounds)
+	# DEATH, from wherever it comes. The loop used to check for it at the two
+	# places it knew about — a lost try paid in Health, and an enemy's hit — which
+	# left every other way to spend Health unable to end the run: reaching into
+	# Scrap Ooze on 1 Health, one dip too many in Abyssal Baths, the Blood
+	# Donation Machine's lever. Those all go through EffectSystem, which moves the
+	# number and says nothing, so the player was left standing at 0 Health with
+	# the run carrying on around them.
+	GameState.hp_changed.connect(_on_hp_changed)
 
 func reset() -> void:
 	current = {}
@@ -1092,6 +1100,22 @@ func _transmuted_ids() -> Dictionary:
 	for node in transmuted.keys():
 		out[String(node)] = String(transmuted[node])
 	return out
+
+# Health moved. DEFERRED, because a choice's effects are applied as a batch and
+# the dip in the middle of one is not where it leaves you: an effect cell that
+# spends Health and gives it back would otherwise be read as fatal on the frame
+# between the two. By the time this runs the batch has settled and `hp` is the
+# number the player is actually standing on.
+func _on_hp_changed(_hp: int, _max_hp: int) -> void:
+	_check_death.call_deferred()
+
+# Ends the run if Health has actually run out. Guarded on there BEING a run: the
+# menus, a run being torn down and a character being applied all move Health
+# around, and none of them is a death.
+func _check_death() -> void:
+	if run_over or GameState.hp > 0 or GameState.character_id == &"":
+		return
+	_finish_run(false)
 
 # The single exit from a run. Everything that ends one comes through here, so
 # the run can never finish without being written to history.

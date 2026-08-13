@@ -1237,3 +1237,86 @@ func test_the_trade_names_come_from_the_sheet_not_from_code() -> void:
 	# named both relics, so he only has to say the one thing he ever says.
 	var out: Dictionary = EventSystem.resolve_choice(ev, top, 0)
 	assert_eq(String(out["result"]), "“Hehehe Heh... Thank you!”")
+
+# --- how close a press is to killing you ------------------------------------
+#
+# Two different questions, and the player is owed both. What a press DEFINITELY
+# spends is what says "this will kill you"; what it COULD spend if every roll in
+# it goes the wrong way is the weaker claim, "this might kill you". No authored
+# event gambles with Health today — every `chance` payload in the sheet is a
+# reward — so these build the choices by hand, which is also the point: the
+# warning has to be right the day someone authors one.
+
+func _gamble(certain: int, on_loss: int) -> Dictionary:
+	return {
+		"id": "reach", "text": "Reach",
+		"effects": [{"type": "lose_hp", "value": certain}],
+		"chance": {
+			"percent": 50.0,
+			"effects": [{"type": "gain_gold", "value": 5}],
+			"else_effects": [{"type": "lose_hp", "value": on_loss}],
+		},
+	}
+
+func test_the_certain_cost_and_the_possible_one_are_different_numbers() -> void:
+	GameState.max_hp = 10
+	GameState.set_hp(10)
+	var choice: Dictionary = _gamble(1, 4)
+	assert_eq(EventSystem.health_cost(choice, 0), 1,
+		"one Health is what the press definitely spends")
+	assert_eq(EventSystem.possible_health_cost(choice, 0), 5,
+		"…and five is what it spends if the roll goes the wrong way")
+
+func test_a_gamble_that_could_kill_you_says_might() -> void:
+	GameState.max_hp = 10
+	GameState.set_hp(4)
+	var choice: Dictionary = _gamble(1, 4)
+	assert_false(EventSystem.is_lethal(choice, 0),
+		"the certain cost alone leaves you standing")
+	assert_true(EventSystem.is_possibly_lethal(choice, 0), "but the roll could finish it")
+	assert_true(EventSystem.is_deadly(choice, 0), "so the button is painted red")
+	assert_true(EventSystem.lethal_warning(choice, 0).contains("might"),
+		"and says MIGHT, not will: %s" % EventSystem.lethal_warning(choice, 0))
+
+func test_a_certain_death_still_says_will() -> void:
+	GameState.max_hp = 10
+	GameState.set_hp(1)
+	var choice: Dictionary = _gamble(1, 4)
+	assert_true(EventSystem.is_lethal(choice, 0), "one Health, one Health spent")
+	assert_false(EventSystem.is_possibly_lethal(choice, 0),
+		"the two warnings never both fire")
+	assert_true(EventSystem.lethal_warning(choice, 0).contains("will"),
+		"certain death is stated as such: %s" % EventSystem.lethal_warning(choice, 0))
+
+func test_a_gamble_you_can_survive_either_way_warns_about_nothing() -> void:
+	GameState.max_hp = 10
+	GameState.set_hp(10)
+	var choice: Dictionary = _gamble(1, 4)
+	assert_false(EventSystem.is_deadly(choice, 0), "5 of 10 Health is not a death")
+	assert_eq(EventSystem.lethal_warning(choice, 0), "", "and nothing is claimed")
+
+func test_an_independent_roll_counts_towards_the_worst_case() -> void:
+	# `roll 50% lose_hp 3` is stored as a nested `chance` effect — a proc that
+	# either fires or doesn't, which is exactly the worst case and not the certain
+	# one.
+	GameState.max_hp = 10
+	GameState.set_hp(3)
+	var choice: Dictionary = {
+		"id": "lever", "text": "Pull",
+		"effects": [{"type": "chance", "percent": 50.0,
+			"effects": [{"type": "lose_hp", "value": 3}]}],
+	}
+	assert_eq(EventSystem.health_cost(choice, 0), 0, "a roll costs nothing for certain")
+	assert_eq(EventSystem.possible_health_cost(choice, 0), 3, "…and three if it fires")
+	assert_true(EventSystem.is_possibly_lethal(choice, 0), "which is the run")
+
+func test_a_non_lethal_cost_is_never_a_death_however_it_is_dressed() -> void:
+	GameState.max_hp = 10
+	GameState.set_hp(1)
+	var choice: Dictionary = {
+		"id": "drain", "text": "Drain",
+		"effects": [{"type": "lose_hp", "value": 9, "non_lethal": true}],
+	}
+	assert_false(EventSystem.is_deadly(choice, 0),
+		"a non_lethal cost is clamped to leave you at 1, so it cannot end the run")
+	assert_eq(EventSystem.lethal_warning(choice, 0), "")

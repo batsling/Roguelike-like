@@ -196,8 +196,13 @@ func test_the_route_fits_the_window_it_opens_in() -> void:
 		# asserts that, instead of asserting nothing and reporting itself risky.
 		assert_almost_eq(modal._zoom, modal.FIT_ZOOM_MIN, 0.001,
 			"a route this big bottoms out at the legibility floor and scrolls")
-		assert_gt(ladder.x, room.x + 1.0,
-			"which is only the right call because it genuinely does not fit")
+		# EITHER axis. `fit_zoom` fits both, so the floor is reached by whichever
+		# one binds first — and a deep, single-file route is the common shape that
+		# bottoms out on HEIGHT while fitting comfortably across. Asserting width
+		# alone made the branch fail on exactly the routes it is describing.
+		assert_true(ladder.x > room.x + 1.0 or ladder.y > room.y + 1.0,
+			"which is only the right call because it genuinely does not fit: ladder %s in %s"
+			% [ladder, room])
 		return
 	assert_lte(ladder.x, room.x + 1.0, "the whole route is visible across")
 	assert_lte(ladder.y, room.y + 1.0, "and all the way down")
