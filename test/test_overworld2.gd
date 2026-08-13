@@ -3370,3 +3370,70 @@ func test_a_wordless_event_that_speaks_later_keeps_the_layout_it_opened_in() -> 
 	assert_true(modal._right.is_ancestor_of(art), "the art has not moved")
 	assert_eq(_live_children(modal._prose_box), 1,
 		"the outcome prints on its own, with no rule above it separating it from nothing")
+
+# --- the machines on the page -----------------------------------------------
+#
+# A machine's full card is 341px tall — two buttons, their cost lines, their ☠
+# warnings. The overworld is built to fit a 720p canvas with about five pixels
+# to spare and the board under it is already at its floor (CELL_MIN), so three
+# full cards under the board ran the page to 1674px and put the whole overworld
+# behind a scrollbar. The page keeps the RECOGNITION — art, name, state — and
+# the card opens over it with every button intact.
+
+func _machine_rows() -> Array:
+	var out: Array = []
+	if _ui._object_panel == null or not is_instance_valid(_ui._object_panel):
+		return out
+	for child in _ui._object_panel._row.get_children():
+		if child is Button:
+			out.append(child)
+	return out
+
+func test_the_page_still_fits_the_window_with_machines_standing_on_it() -> void:
+	# The gap the existing fit tests left: they cover the offering, the report
+	# step and the top-tier board, and none of them has anything mounted UNDER
+	# the board. Three machines there ran the page to 1674px of a 688px window.
+	_assert_fits("the page before any machine spawns")
+	ObjectSystem.spawn_by_tag(&"arcade", 3, 3)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_not_null(_ui._object_panel, "three machines put a panel under the board")
+	_ui._refresh()
+	_assert_fits("the page with three machines under the board")
+	ObjectSystem.clear()
+
+func test_a_machine_is_a_row_on_the_page_and_a_card_when_you_open_it() -> void:
+	ObjectSystem.spawn_by_tag(&"arcade", 1, 1)
+	await get_tree().process_frame
+	var rows: Array = _machine_rows()
+	assert_eq(rows.size(), 1, "one machine, one row")
+	assert_eq(_ui._object_panel._row.find_children("*", "ObjectCard", true, false).size(), 0,
+		"the page carries no full card — that is the 341px that did not fit")
+
+	_ui._object_panel.open_card(ObjectSystem.live[0])
+	await get_tree().process_frame
+	var cards: Array = _ui._object_panel._card_layer.find_children("*", "ObjectCard", true, false)
+	assert_eq(cards.size(), 1, "opening the row opens the real card")
+	var buttons: int = 0
+	for node in (cards[0] as Control).find_children("*", "Button", true, false):
+		buttons += 1
+	assert_gt(buttons, 0, "with its buttons on it — nothing was cut, it moved")
+	_ui._object_panel.close_card()
+	ObjectSystem.clear()
+
+func test_the_board_gives_up_height_while_it_is_sharing_its_column() -> void:
+	# Measured in the FITTED CELL rather than in the board's pixel height: the
+	# cell is the number the budget actually moves, and it is settled the moment
+	# the budget changes — where a Control's size is whatever the last layout pass
+	# made it, which on the frame a test asks is often nothing at all.
+	var cols: int = GameLoop2.grid_cols()
+	var full: int = BattlefieldView.fitted_cell(cols)
+	ObjectSystem.spawn_by_tag(&"arcade", 1, 1)
+	await get_tree().process_frame
+	assert_not_null(_ui._object_panel, "a machine puts a panel under the board")
+	assert_lt(BattlefieldView.fitted_cell(cols), full,
+		"the board shrinks its cells to pay for the panel under it")
+	ObjectSystem.clear()
+	await get_tree().process_frame
+	assert_eq(BattlefieldView.fitted_cell(cols), full,
+		"…and springs back when the machines go, which is when you travel on")

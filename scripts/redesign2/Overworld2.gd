@@ -1551,7 +1551,10 @@ func _mount_shop(gid: StringName) -> void:
 	_shop_panel = ShopPanel2.mount(_right_col, gid)
 	if _shop_panel == null:
 		return
-	_shop_panel.finished.connect(func(): _shop_panel = null)
+	_shop_panel.finished.connect(func():
+		_shop_panel = null
+		_sync_board_budget())
+	_sync_board_budget()
 	# The panel has no height until the page has laid it out, and "is it on screen"
 	# is unanswerable before then — so ask once now (the pointer goes up) and again
 	# after the layout has happened (it may already be in view on a short board).
@@ -1591,13 +1594,29 @@ func _sync_object_panel() -> void:
 		return
 	_object_panel = ObjectPanel2.mount(_right_col)
 	if _object_panel != null:
-		_object_panel.finished.connect(func(): _object_panel = null)
+		_object_panel.finished.connect(func():
+			_object_panel = null
+			_sync_board_budget())
+	_sync_board_budget()
 
 
 func _clear_objects() -> void:
 	if _object_panel != null and is_instance_valid(_object_panel):
 		_object_panel.close()
 	_object_panel = null
+	_sync_board_budget()
+
+
+# The board pays for whatever is mounted under it. The right column is 626px of
+# a 688px page — the overworld is built to fit a 720p canvas with about five
+# pixels to spare — so a shop or a rank of machines below the board has nowhere
+# to come from but the board itself. It shrinks its cells while it is sharing the
+# column and springs back when it stops, which is when you travel on.
+func _sync_board_budget() -> void:
+	var shared: bool = (_object_panel != null and is_instance_valid(_object_panel)) \
+		or (_shop_panel != null and is_instance_valid(_shop_panel))
+	if BattlefieldView.set_sharing_column(shared) and _board != null:
+		_board.refit()
 
 # The shop closes when you travel on, which is what leaving a shop has always
 # meant. Also called by _mount_shop, which is replacing one rather than leaving
@@ -1606,6 +1625,7 @@ func _clear_shop() -> void:
 	if _shop_panel != null and is_instance_valid(_shop_panel):
 		_shop_panel.close()
 	_shop_panel = null
+	_sync_board_budget()
 	_update_shop_hint()
 
 # The "🛒 Shop ↓" pointer: shown while a shop is mounted and has NOT been scrolled
@@ -4153,6 +4173,11 @@ func _show_banner(text: String, color: Color) -> void:
 func _build_ui() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	theme = UITheme.shared()
+	# The board's height budget is static (there is only ever one board), so a
+	# screen that opens with nothing under the board has to say so — otherwise a
+	# previous run's shop would leave every later board fitted for a column it is
+	# no longer sharing.
+	BattlefieldView.set_sharing_column(false)
 	var bg := ColorRect.new()
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.color = UITheme.BG_DEEP

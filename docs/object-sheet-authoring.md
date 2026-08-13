@@ -70,6 +70,22 @@ is an arcade.
 - spawned by **anything else** → under the board, in the space a hub's shop
   takes (`ObjectPanel2`). Nothing is blocked, and travelling on clears it.
 
+The two places draw the machine at different sizes, and the reason is arithmetic
+rather than taste. An event's modal is a screen of its own and shows the full
+`ObjectCard` — art, prompt, every button with its cost line and its ☠ warning,
+about 341px of it. The PAGE has roughly 124px to give: the overworld is built to
+fit a fixed 1280×720 canvas (`stretch/mode` scales that box into any window, so
+a 1440p monitor gets the same 720 of room) and it already uses 683 of it. So on
+the page a machine is a **30px row** — art, name, and the one fact worth reading
+without opening anything ("Jammed", "holds 37 gold"), plus a ☠ when a lever
+there would end the run — and clicking it opens the same full card over the
+page. Two rows fit across the column, so three machines cost two lines.
+
+The board pays for the panel: while it is sharing its column it fits itself to a
+tighter height budget (`BattlefieldView.set_sharing_column`) and springs back
+when the machines go. It never shrinks past `CELL_MIN` — a board you cannot read
+is not a saving.
+
 ---
 
 ## 3. The object verbs

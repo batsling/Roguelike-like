@@ -11,6 +11,41 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The machines under the board no longer push the overworld off the screen.**
+  Three of them ran the page to **1674px inside a 688px window**; it is 680 now,
+  at every board size.
+
+  The overworld is built to fit a fixed 1280x720 canvas — `stretch/mode` scales
+  that box into whatever window you use, so a 2560x1440 monitor gets exactly the
+  same 720 of vertical room a 720p one does — and the page uses 683 of it with
+  **five pixels to spare**. There was never room under the board for a panel.
+  A full `ObjectCard` is 341px: the art, the prompt, and two buttons each with a
+  cost line and a ☠ warning under it.
+
+  Three things were wrong, and all three are fixed:
+
+  * **The board never gave anything up.** `FIELD_HEIGHT_BUDGET` is tuned so the
+    board alone fits 720p, and it stayed at that budget with a shop or a rank of
+    machines mounted below it. There is now a second, tighter budget in force
+    while the board is SHARING ITS COLUMN (`set_sharing_column`), worth 119px on
+    a 4x4 — and the board springs back to the full one when you travel on. It
+    binds down to `CELL_MIN`, which is the floor and stays the floor: the board
+    is readable or it is nothing.
+  * **The flow container wasn't flowing.** The panel's `HFlowContainer` sizes to
+    its column, the column sizes to its widest child, and the board narrows as it
+    shrinks — so the column followed the board down to 443px and every machine
+    wrapped onto a line of its own. The row now has a floor of two cards' width.
+  * **The page was carrying the whole card.** It carries a **30px row** now —
+    art, name, and the one fact worth reading without opening anything ("Jammed",
+    "holds 37 gold") — and two rows fit across the column, so three machines are
+    two lines. Clicking one opens the SAME `ObjectCard` over the page, buttons,
+    cost lines and warnings intact. Nothing was cut; it moved one click away.
+    A machine whose lever would end the run carries the ☠ on its row too, so the
+    warning is on the page and not only behind the click.
+
+  Click-outside closes a machine's card, unlike an event's: an event is a
+  decision with a price on both sides, and a machine asks nothing of you.
+
 - **An event can kill you, and now it says so and ends the run when it does.**
   Two halves of the same hole.
 
