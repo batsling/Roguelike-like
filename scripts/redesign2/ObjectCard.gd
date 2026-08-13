@@ -196,9 +196,19 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 	btn.custom_minimum_size = Vector2(0, 32)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.add_theme_font_size_override("font_size", 14)
-	btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.BG, 6, 6, 1, UITheme.BORDER))
-	btn.add_theme_stylebox_override("hover",
-		UITheme.flat(UITheme.PANEL_HI, 6, 6, 2, UITheme.ACCENT))
+	# The lever that would kill you wears the warning itself, the same as an
+	# event's fatal choice does. Only while the button is actually OFFERED — a
+	# jammed machine cannot take your last point of Health, and painting its
+	# greyed-out button red would be a threat it can no longer carry out.
+	if offered and EventSystem.is_lethal(choice, taken):
+		btn.add_theme_stylebox_override("normal", UITheme.lethal_box())
+		btn.add_theme_stylebox_override("hover", UITheme.lethal_box(true))
+		btn.add_theme_color_override("font_color", UITheme.DANGER)
+		btn.add_theme_color_override("font_hover_color", UITheme.TEXT)
+	else:
+		btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.BG, 6, 6, 1, UITheme.BORDER))
+		btn.add_theme_stylebox_override("hover",
+			UITheme.flat(UITheme.PANEL_HI, 6, 6, 2, UITheme.ACCENT))
 	btn.pressed.connect(func(): take(index))
 	col.add_child(btn)
 

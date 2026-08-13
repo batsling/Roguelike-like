@@ -11,6 +11,38 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **An event can kill you, and now it says so and ends the run when it does.**
+  Two halves of the same hole.
+
+  **The run ends at 0 Health, wherever the 0 came from.** `GameLoop2` only ever
+  checked for death at the two places it knew about — a lost try paid in Health
+  (`log_attempt`) and an enemy's hit (`_take_hit`). Every other Health cost goes
+  through `EffectSystem`, which moves the number and says nothing, so reaching
+  into Scrap Ooze on your last point, one dip too many in Abyssal Baths, or the
+  Blood Donation Machine's lever left the player standing at **0 Health with the
+  run carrying on around them**. The loop now watches `GameState.hp_changed` and
+  ends the run itself, through the same `_finish_run` every other ending uses —
+  so the verdict screen, the history record and the cleared autosave all happen
+  exactly as they do when an enemy lands the blow.
+
+  The check is **deferred by a frame**, because a choice's effects are applied as
+  a batch: a cell that spends Health and gives it back would otherwise read as
+  fatal on the frame between the two. Where the batch LEAVES you is what counts.
+
+  **A fatal press is painted as one.** `EventSystem.is_lethal` and its ☠ warning
+  already existed, but the warning was a line of red text under a button that
+  looked exactly like the safe one above it. A choice that would end the run now
+  wears the warning itself — blood-dark fill, `DANGER` border, red label — in the
+  event modal and on an object's card alike (`UITheme.lethal_box`). It is still
+  **not disabled**: these are push-your-luck machines, and taking the decision
+  away at the moment it gets interesting is worse than the death. An object's
+  lever only reddens while it is actually offered — a jammed machine cannot carry
+  out the threat.
+
+  The event standing open when the run ends is **dismissed rather than closed**:
+  closing one runs the chain that follows an event — refresh, autosave, the hub's
+  shop — and the run it belonged to is over.
+
 - **Fixed: a card popup could open five times taller than the window, with its
   buttons off the bottom of the screen.** Clicking a game on the start picker
   opened a `GameChoiceModal` that painted as a black screen with a route graph

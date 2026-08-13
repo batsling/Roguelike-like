@@ -418,10 +418,20 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 	btn.custom_minimum_size = Vector2(0, 36)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.add_theme_font_size_override("font_size", 15)
-	btn.add_theme_stylebox_override("normal",
-		UITheme.flat(UITheme.BG, 6, 6, 1, UITheme.BORDER))
-	btn.add_theme_stylebox_override("hover",
-		UITheme.flat(UITheme.PANEL_HI, 6, 6, 2, UITheme.ACCENT))
+	# A press that would end the run wears the warning ITSELF, not only the line
+	# under it. An event can kill you — Scrap Ooze's reach on your last point of
+	# Health, Abyssal Baths' last dip — and the red text alone sat under a button
+	# that looked exactly like the safe one above it.
+	if EventSystem.is_lethal(choice, taken):
+		btn.add_theme_stylebox_override("normal", UITheme.lethal_box())
+		btn.add_theme_stylebox_override("hover", UITheme.lethal_box(true))
+		btn.add_theme_color_override("font_color", UITheme.DANGER)
+		btn.add_theme_color_override("font_hover_color", UITheme.TEXT)
+	else:
+		btn.add_theme_stylebox_override("normal",
+			UITheme.flat(UITheme.BG, 6, 6, 1, UITheme.BORDER))
+		btn.add_theme_stylebox_override("hover",
+			UITheme.flat(UITheme.PANEL_HI, 6, 6, 2, UITheme.ACCENT))
 	btn.pressed.connect(func(): _take(index))
 	col.add_child(btn)
 
@@ -634,6 +644,22 @@ func _close() -> void:
 		return
 	_done = true
 	finished.emit(_play_request)
+	if _layer != null and is_instance_valid(_layer):
+		_layer.queue_free()
+	else:
+		queue_free()
+
+
+# Take the event off the screen WITHOUT answering it. `finished` is the chain
+# that runs when an event is over — refresh, autosave, open the shop the hub
+# owes, start the game a `play_game` sent you to — and none of that should
+# happen when what ended the event was the run ending under it. The player died
+# on a press in here; there is no shop to walk into afterwards and no save to
+# write.
+func dismiss() -> void:
+	if _done:
+		return
+	_done = true
 	if _layer != null and is_instance_valid(_layer):
 		_layer.queue_free()
 	else:

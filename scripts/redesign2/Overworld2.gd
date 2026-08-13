@@ -4110,6 +4110,14 @@ func _queue_run_over(did_win: bool) -> void:
 func _show_run_over() -> void:
 	# Nothing left to spend it on, and nothing under the board to scroll to.
 	_leave_node()
+	# An event can now be the thing that KILLS you (a Health cost taken on the
+	# last point of it), and it is still standing open over the board when it
+	# does. Dismissed rather than closed: closing an event runs the chain that
+	# follows one — refresh, autosave, the hub's shop — and the run it belonged
+	# to is over.
+	if _event_modal != null and is_instance_valid(_event_modal):
+		_event_modal.dismiss()
+	_event_modal = null
 	if not is_inside_tree():
 		return
 	if _run_over_screen != null and is_instance_valid(_run_over_screen):

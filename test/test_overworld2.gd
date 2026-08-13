@@ -3233,6 +3233,77 @@ func test_the_panel_starts_nothing_once_the_run_is_over() -> void:
 	assert_false(_ui.open_event(Data.get_event2(&"scrap_ooze")))
 	assert_false(_ui.open_event(null), "and null is not an event")
 
+# --- dying in an event ------------------------------------------------------
+#
+# An event can take Health, so an event can KILL you — Scrap Ooze's reach on your
+# last point, one dip too many in Abyssal Baths, the Blood Donation Machine's
+# lever. The loop only ever checked for death at the two places it knew about (a
+# try paid in Health, an enemy's hit), so every other Health cost left the player
+# standing at 0 with the run carrying on around them.
+
+func _lethal_choice_index(modal) -> int:
+	for i in range(modal._event.choices.size()):
+		if EventSystem.is_lethal(modal._event.choices[i], 0):
+			return i
+	return -1
+
+func test_an_event_that_takes_your_last_health_ends_the_run() -> void:
+	GameState.set_hp(1)
+	assert_true(_ui.open_event(Data.get_event2(&"scrap_ooze")))
+	var modal = _ui._event_modal
+	var idx: int = _lethal_choice_index(modal)
+	assert_gt(idx, -1, "on 1 Health, reaching into the ooze is fatal")
+	modal.take(idx)
+	await get_tree().process_frame
+	assert_eq(GameState.hp, 0, "the press was paid")
+	assert_true(GameLoop2.run_over, "and the run is over — not carrying on at 0 Health")
+	assert_eq(_ui._phase, OVERWORLD.Phase.OVER, "the screen agrees")
+
+func test_dying_in_an_event_raises_the_end_screen_over_it() -> void:
+	GameState.set_hp(1)
+	_ui.open_event(Data.get_event2(&"scrap_ooze"))
+	var modal = _ui._event_modal
+	modal.take(_lethal_choice_index(modal))
+	await get_tree().process_frame
+	assert_not_null(_ui._run_over_screen, "the verdict lands")
+	assert_null(_ui._event_modal,
+		"and the event it happened in steps aside rather than sitting under it")
+
+func test_a_health_cost_that_is_paid_back_in_the_same_breath_is_not_a_death() -> void:
+	# The death check is deferred for this: effects are applied as a BATCH, and a
+	# cell that spends Health and gives it back would otherwise read as fatal on
+	# the frame between the two.
+	GameState.set_hp(3)
+	GameState.set_hp(0)
+	GameState.set_hp(3)
+	await get_tree().process_frame
+	assert_false(GameLoop2.run_over,
+		"where the batch LEAVES you is what counts, not the dip in the middle")
+
+func test_a_fatal_press_is_painted_as_one() -> void:
+	# Not disabled — Scrap Ooze is a push-your-luck event and taking the decision
+	# away is worse than the death. The button carries the warning instead.
+	GameState.set_hp(1)
+	_ui.open_event(Data.get_event2(&"scrap_ooze"))
+	var modal = _ui._event_modal
+	var idx: int = _lethal_choice_index(modal)
+	var fatal: Button = null
+	var safe: Button = null
+	for i in range(modal._choice_box.get_child_count()):
+		for node in modal._choice_box.get_child(i).get_children():
+			if node is Button:
+				if i == idx:
+					fatal = node
+				else:
+					safe = node
+	assert_not_null(fatal, "the fatal choice has a button")
+	assert_false(fatal.disabled, "which is still pressable")
+	assert_eq(fatal.get_theme_stylebox("normal").border_color, UITheme.DANGER,
+		"and wears the warning itself, not only the line under it")
+	if safe != null:
+		assert_ne(safe.get_theme_stylebox("normal").border_color, UITheme.DANGER,
+			"while walking away looks nothing like it")
+
 # --- where the illustration goes --------------------------------------------
 #
 # Two columns are for an event with a page of prose in it. A WORDLESS one — the

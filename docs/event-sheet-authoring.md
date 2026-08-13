@@ -918,6 +918,20 @@ with a way to die in it has to be one you *chose* to walk toward.
 The button says the number, as always — "−3 Health · 55%: +1 Small Chest" — so
 the escalation never has to be discovered by losing to it.
 
+And when the number is bigger than the Health you are holding, the button
+**becomes the warning**: blood-dark fill, a red border, a red label, over the
+red cost line and the outright "☠ This will kill you." It is never disabled —
+the whole shape of a push-your-luck event is that the fatal press stays
+available — but it cannot be mistaken for the safe one above it. An object's
+lever gets the same treatment for the same reason (the Blood Donation Machine
+is not gated on having Health to spare), and it reddens only while the lever is
+actually offered, since a jammed machine cannot carry the threat out.
+
+Taking that press ENDS THE RUN, on the same verdict screen an enemy's blow
+would raise. Health reaching 0 ends a run wherever the 0 came from — the loop
+watches `GameState.hp_changed` rather than checking only the hits it deals
+itself — so nothing an effect cell can do leaves the player alive at 0.
+
 ### What it needed from the format
 
 Two event columns and one token. The columns are the second instance of a rule
