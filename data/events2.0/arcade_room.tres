@@ -13,9 +13,9 @@ requirement = {"stat": "gold", "op": ">=", "value": 1, "percent": false}
 trigger = "after"
 rarity = "Common"
 file = "ArcadeRoom"
-prompt = "A door you would have walked past stands open on a low room lit the colour of a bruise. Cabinets line it, humming, most of them dark. The two that aren't are taking coins."
+prompt = ""
 goal_met = ""
 goal_missed = ""
 chance_won = ""
 chance_lost = ""
-choices = [{"id": "enter", "text": "Enter", "repeat": "stay", "repeat_max": 0, "results": ["The coin goes into the slot by the door and the room takes it without comment. The machines are yours for as long as you care to stand here."], "gates": [], "effects": [{"type": "lose_gold", "value": 1}, {"type": "spawn_object", "tag": "arcade", "min": 2, "max": 3}], "effects_text": "-1 Gold, 2-3 arcade machines", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "leave", "text": "Leave", "repeat": "end", "repeat_max": 0, "results": ["You let the door swing shut behind you."], "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]
+choices = [{"id": "enter", "text": "Enter", "repeat": "stay", "repeat_max": 0, "results": [], "gates": [], "effects": [{"type": "lose_gold", "value": 1}, {"type": "spawn_object", "tag": "arcade", "min": 2, "max": 3}], "effects_text": "-1 Gold, 2-3 arcade machines", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "leave", "text": "Leave", "repeat": "end", "repeat_max": 0, "results": [], "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

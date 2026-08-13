@@ -11,6 +11,29 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A wordless event stacks its art over the choices.** The Arcade Room's
+  `Prompt` and both `Result` cells are now blank on purpose: it is a room you
+  walk into, a picture of a room, and two buttons — the prose it used to carry
+  was describing what the illustration already showed.
+
+  Blank cells were already legal (`parse_result_cell` returns an empty ladder,
+  and `result_for` reads it as ""), but the modal was not built for an event with
+  nothing to say. It painted the prompt Label unconditionally, so an empty one
+  still claimed a line of height above the choices, and it put the illustration
+  in its usual **left column** — which exists to keep a page of prose off the
+  bottom of a 720p viewport, and with no page left a picture standing next to two
+  lonely buttons in a half-empty column.
+
+  So a blank `Prompt` now **stacks**: the art goes above the choices, centred and
+  capped at 190px tall (the side column's 460 is affordable only because it costs
+  no vertical room), and the buttons sit under it. The prompt Label is skipped
+  when there is nothing in it, and the rule that separates a printed outcome from
+  the prompt is skipped when there is no prompt above it to separate.
+
+  The layout is decided **once, when the modal opens, from the `Prompt` alone** —
+  a wordless event whose `Result` prose prints later keeps the shape it opened in
+  rather than shunting its picture sideways mid-event.
+
 - **Objects, an event after every game, and Luck that does something.**
 
   **✦ Objects (`objects2.0`).** A new content kind: a **machine you stand in

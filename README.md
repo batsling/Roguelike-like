@@ -527,7 +527,7 @@ names the row and the cell.
 | `Trigger` | `After` (fires once the game at the node is played). ⚠ `Before` parses and is stored, but **nothing reads it yet**. Leave it `After` until that is wired up. |
 | `Rarity` | `Common` / `Uncommon` / `Rare` — which bag it is dealt from. |
 | `Image` | Art base name → `images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`. |
-| `Prompt` | The prose at the top of the modal. |
+| `Prompt` | The prose at the top of the modal. Blank is legal — a wordless event stacks its art *above* the choices instead of beside them (see "Art"). |
 | `Goal Met` / `Goal Missed` | Only if a choice uses `add_goal`: what the event says when that goal lands or lapses, games later. |
 | `Chance Won` / `Chance Lost` | Only if a choice uses `chance`: what it says when the roll lands or doesn't. |
 
@@ -626,6 +626,13 @@ Scrap Ooze (Reach Inside → Deeper) are both built that way.
 Drop a PNG in `images2.0/events/` named after the `Image` column — PascalCase,
 like the rest (`ScrapOoze.png`). Portrait suits the modal's left column best. The
 generator prints a `!` warning if the art is missing; the event still works.
+
+Where the picture goes depends on the `Prompt`. With prose, it stands in a fixed
+column to the LEFT of the words and buttons, costing no vertical room. With a
+BLANK prompt — the Arcade Room — there is no page of words for it to sit beside,
+so the modal stacks: art on top, centred and height-capped, choices under it. The
+shape is chosen when the modal opens and does not change if a `Result` prints
+later.
 
 #### Seeing it in the game
 

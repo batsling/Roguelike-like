@@ -20,12 +20,19 @@ extends Control
 #   * `needs <Choice> <op> <n>` gates a choice on what's already been picked, so
 #     the two exits of Abyssal Baths can be offered to different players.
 #
-# LAYOUT. Two columns whenever there is art: the picture on the left, the words
-# and the buttons on the right. It started as one vertical stack and that was
-# wrong for this content — a full-height event illustration plus the Abyssal
-# Baths prompt plus four choices with a mechanical line each ran off the bottom
-# of a 720p viewport before anything was even scrolling. Side by side, the art
-# costs no vertical room at all.
+# LAYOUT. Two columns whenever there is art AND prose: the picture on the left,
+# the words and the buttons on the right. It started as one vertical stack and
+# that was wrong for this content — a full-height event illustration plus the
+# Abyssal Baths prompt plus four choices with a mechanical line each ran off the
+# bottom of a 720p viewport before anything was even scrolling. Side by side, the
+# art costs no vertical room at all.
+#
+# An event with a BLANK PROMPT stacks instead: the picture sits above the choices
+# rather than beside them. Two columns exist to keep a page of prose off the
+# bottom of the screen, and a wordless event (the Arcade Room, which is a room
+# you walk into and a pair of buttons) has no page — side by side it is a picture
+# next to two lonely buttons in a half-empty column. Stacked, the art is the
+# event's only voice and sits where you read it first.
 #
 # The panel SIZES ITSELF TO ITS CONTENT (see _fit) and only starts scrolling once
 # that would overflow the window. So a two-option event is a small card and a
@@ -45,6 +52,11 @@ const ART_COLUMN := 280.0
 # Below this the art column is dropped and the modal goes back to one column:
 # on a narrow window the words matter more than the picture.
 const TWO_COLUMN_MIN_WIDTH := 720.0
+# Stacked art is bounded by HEIGHT, not width: it is spending the same vertical
+# room the choices want, where the side column spent none. Kept well under the
+# 460 the column allows so a portrait illustration cannot push the buttons off
+# the bottom of a small panel.
+const STACKED_ART_HEIGHT := 190.0
 # Header, margins and separators — everything in the panel that is not the
 # scrolling column. Subtracted from the viewport cap so the panel as a whole
 # stays inside the window.
@@ -160,7 +172,12 @@ func _build() -> void:
 	root.add_child(body)
 
 	var art: Texture2D = _art()
-	if art != null and _panel_size().x >= TWO_COLUMN_MIN_WIDTH:
+	# Decided once, from the PROMPT, and never revisited: a result printed later
+	# must not make the picture jump out of the stack and into a side column
+	# mid-event. A wordless event that goes on to say something keeps the layout
+	# it opened in.
+	var stacked: bool = _event.prompt == ""
+	if art != null and not stacked and _panel_size().x >= TWO_COLUMN_MIN_WIDTH:
 		body.add_child(_art_column(art))
 
 	# ONE scroll region around the words and the buttons together. Two separate
@@ -178,6 +195,13 @@ func _build() -> void:
 	_right.add_theme_constant_override("separation", 10)
 	_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(_right)
+
+	# Inside the scroll region rather than above it, so the art is part of what
+	# _fit measures and what gives way when the panel runs out of window. Outside
+	# it, a 190px banner would be added to an already-capped column and push the
+	# panel past the viewport.
+	if art != null and stacked:
+		_right.add_child(_art_banner(art))
 
 	_prose_box = VBoxContainer.new()
 	_prose_box.add_theme_constant_override("separation", 8)
@@ -254,6 +278,27 @@ func _art_column(tex: Texture2D) -> Control:
 	return rect
 
 
+# The stacked banner: the same illustration, sized to a height the choices can
+# live under and centred over them. Width comes from the image's own aspect and
+# is capped at the panel's inner width, height recomputed from whichever bound
+# bit — a wide image stays wide and short instead of being letterboxed into a
+# 190px-tall box it never fills.
+func _art_banner(tex: Texture2D) -> Control:
+	var rect := TextureRect.new()
+	rect.texture = tex
+	var aspect: float = float(tex.get_width()) / maxf(1.0, float(tex.get_height()))
+	var height: float = STACKED_ART_HEIGHT
+	var width: float = minf(height * aspect, _panel_size().x - 56.0)
+	rect.custom_minimum_size = Vector2(width, minf(height, width / maxf(0.01, aspect)))
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	rect.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.apply_crisp(rect, tex)
+	return rect
+
+
 func _render() -> void:
 	for child in _prose_box.get_children():
 		child.queue_free()
@@ -263,10 +308,17 @@ func _render() -> void:
 
 	# The prompt stays up the whole event; on a repeat the last outcome sits
 	# under it, so "you surface changed" reads as the thing that just happened
-	# rather than replacing the room you are standing in.
-	_prose_box.add_child(_prose(_event.prompt, UITheme.TEXT, 14))
+	# rather than replacing the room you are standing in. Skipped when the sheet
+	# left it blank — an empty Label still claims a line of height, which read as
+	# a stray gap over the choices.
+	if _event.prompt != "":
+		_prose_box.add_child(_prose(_event.prompt, UITheme.TEXT, 14))
 	if _last_result != "":
-		_prose_box.add_child(_rule())
+		# The rule separates the outcome from the prompt above it. With no prompt
+		# there is nothing above it to separate, and a line across the top of an
+		# empty box is just a line.
+		if _prose_box.get_child_count() > 0:
+			_prose_box.add_child(_rule())
 		_prose_box.add_child(_prose(_last_result, UITheme.TEXT_DIM, 13))
 	if _last_text != "":
 		_prose_box.add_child(_did_line(_last_text, 12))

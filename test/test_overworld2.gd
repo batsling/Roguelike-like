@@ -3232,3 +3232,65 @@ func test_the_panel_starts_nothing_once_the_run_is_over() -> void:
 	GameLoop2.run_over = true
 	assert_false(_ui.open_event(Data.get_event2(&"scrap_ooze")))
 	assert_false(_ui.open_event(null), "and null is not an event")
+
+# --- where the illustration goes --------------------------------------------
+#
+# Two columns are for an event with a page of prose in it. A WORDLESS one — the
+# sheet's Prompt cell left blank, which the Arcade Room does — stacks instead:
+# the picture over the choices, not beside them.
+
+# The one TextureRect the modal built for the event's own art. Objects spawn
+# their own, so this is only asked before a choice has been taken.
+func _event_art(modal) -> TextureRect:
+	for node in modal._panel.find_children("*", "TextureRect", true, false):
+		if (node as TextureRect).texture != null:
+			return node
+	return null
+
+# Children a repaint left standing. `_render` clears with queue_free, which does
+# not take the node out of the tree until the frame ends, so a plain
+# get_child_count() after a re-render counts the last painting as well as this
+# one.
+func _live_children(box: Node) -> int:
+	var n: int = 0
+	for child in box.get_children():
+		if not child.is_queued_for_deletion():
+			n += 1
+	return n
+
+func test_an_event_with_a_prompt_puts_its_art_beside_the_words() -> void:
+	assert_true(_ui.open_event(Data.get_event2(&"scrap_ooze")))
+	var modal = _ui._event_modal
+	var art: TextureRect = _event_art(modal)
+	assert_not_null(art, "Scrap Ooze is illustrated")
+	assert_false(modal._right.is_ancestor_of(art),
+		"an event with prose keeps its picture in the side column")
+	assert_eq(_live_children(modal._prose_box), 1, "and the prompt is the prose")
+
+func test_a_wordless_event_stacks_its_art_over_the_choices() -> void:
+	var ev: EventData2 = Data.get_event2(&"arcade_room")
+	assert_eq(ev.prompt, "", "the Arcade Room speaks in pictures")
+	assert_true(_ui.open_event(ev))
+	var modal = _ui._event_modal
+	var art: TextureRect = _event_art(modal)
+	assert_not_null(art, "…and it is still illustrated")
+	assert_true(modal._right.is_ancestor_of(art),
+		"with no words to sit next to, the picture goes above the buttons")
+	assert_true(art.get_index() < modal._prose_box.get_index(),
+		"above, not below")
+	assert_eq(_live_children(modal._prose_box), 0,
+		"a blank prompt prints nothing — not an empty label holding a line of height")
+	assert_eq(_live_children(modal._choice_box), 2, "Enter and Leave are still offered")
+
+func test_a_wordless_event_that_speaks_later_keeps_the_layout_it_opened_in() -> void:
+	# A result printed on the first press must not shunt the picture back into a
+	# side column halfway through the event.
+	var ev: EventData2 = Data.get_event2(&"arcade_room")
+	assert_true(_ui.open_event(ev))
+	var modal = _ui._event_modal
+	var art: TextureRect = _event_art(modal)
+	modal._last_result = "The room takes the coin."
+	modal._render()
+	assert_true(modal._right.is_ancestor_of(art), "the art has not moved")
+	assert_eq(_live_children(modal._prose_box), 1,
+		"the outcome prints on its own, with no rule above it separating it from nothing")
