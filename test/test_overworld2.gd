@@ -1121,19 +1121,45 @@ func test_first_clear_records_the_game_and_grants_no_dash() -> void:
 	assert_eq(GameStats.beaten_count(played.id), lifetime_before + 1,
 		"and the lifetime tally the Collection shows moved too")
 
-func test_beating_a_game_again_grants_a_dash() -> void:
-	# Stand where a game you've already cleared is on offer (the run graph lets you
-	# double back, so an offered game can be one you beat earlier).
+func test_going_back_to_a_game_and_beating_it_grants_a_dash() -> void:
+	# Stand where a game the run has already played is on offer (the run graph
+	# lets you double back, so an offered game can be one you played earlier).
 	var target: GameData = _ui._choices[0]["game"]
-	GameState.note_game_beaten(target.id)
+	GameState.note_game_played(target.id)
 	_ui._build_choices()
 	assert_eq(_ui._choices[0]["game"], target, "the offering is stable for the position")
-	assert_true(bool(_ui._choices[0]["repeat"]), "the card is flagged as a repeat")
+	assert_true(bool(_ui._choices[0]["repeat"]), "the card is flagged as a return")
 	var dash_before: int = GameState.dash_charges
 	_ui.pick(0)
 	_ui.report(true)
 	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
-		"beating it a second time granted a Dash")
+		"going back and beating it granted a Dash")
+
+func test_the_return_dash_asks_only_that_you_went_there_before() -> void:
+	# PLAYED before, not beaten before. A game you failed and came back to is the
+	# same journey back as one you cleared, and it is the journey the Dash pays
+	# for — which is why the first trip is allowed to have gone badly.
+	var target: GameData = _ui._choices[0]["game"]
+	GameState.note_game_played(target.id)
+	assert_false(GameState.has_beaten_game(target.id), "the first visit was a failure")
+	_ui._build_choices()
+	assert_true(bool(_ui._choices[0]["repeat"]), "and the card still flags the return")
+	var dash_before: int = GameState.dash_charges
+	_ui.pick(0)
+	_ui.report(true)
+	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
+		"beating it this time pays, even though last time did not")
+
+func test_a_game_played_but_not_beaten_pays_nothing_until_you_beat_it() -> void:
+	# The goal is still what has to be earned on the return trip.
+	var target: GameData = _ui._choices[0]["game"]
+	GameState.note_game_played(target.id)
+	_ui._build_choices()
+	var dash_before: int = GameState.dash_charges
+	_ui.pick(0)
+	_ui.report(false)
+	assert_eq(GameState.dash_charges, dash_before,
+		"a second visit that misses the goal again is not a return worth paying for")
 
 # --- beaten means WON -------------------------------------------------------
 #
@@ -1198,19 +1224,19 @@ func _text_of(node: Node) -> String:
 
 func test_the_popup_shows_the_dash_bonus_for_a_repeat() -> void:
 	var target: GameData = _ui._choices[0]["game"]
-	GameState.note_game_beaten(target.id)
+	GameState.note_game_played(target.id)
 	_ui._build_choices()
 	_ui._render_choices()
 	var bonus: String = "⚡ Gain +%d Dash" % _ui.REPEAT_BEAT_DASH
 	assert_true(_text_of(_ui.open_choice(0)).contains(bonus),
-		"the popup says what beating it again grants")
+		"the popup says what going back and beating it grants")
 	_ui._choice_modal._close()
-	# A game not yet beaten says nothing about it.
-	GameState.beaten_games.clear()
+	# A game the run has not been to says nothing about it.
+	GameState.played_games.clear()
 	_ui._build_choices()
 	_ui._render_choices()
 	assert_false(_text_of(_ui.open_choice(0)).contains(bonus),
-		"and nothing about it on a game you haven't cleared")
+		"and nothing about it on a game you have never been to")
 
 # --- revisiting a game offers a different draw -----------------------------
 
@@ -3473,3 +3499,62 @@ func test_the_board_gives_up_height_while_it_is_sharing_its_column() -> void:
 	await get_tree().process_frame
 	assert_eq(BattlefieldView.fitted_cell(cols), full,
 		"…and springs back when the machines go, which is when you travel on")
+
+# --- the machines inside an event -------------------------------------------
+#
+# An event that spawns machines is a ROOM, and the two things a room has to get
+# right are what happens to a machine that blows up while you are standing in it,
+# and what happens to the machines when you walk out.
+
+func _event_cards(modal) -> int:
+	return _live_children(modal._objects_box)
+
+func test_a_machine_that_blows_itself_up_leaves_the_room_it_was_in() -> void:
+	assert_true(_ui.open_event(Data.get_event2(&"arcade_room")))
+	var modal = _ui._event_modal
+	ObjectSystem.spawn_by_tag(&"arcade", 2, 2)
+	await get_tree().process_frame
+	var before: int = _event_cards(modal)
+	assert_gt(before, 1, "the room is stocked")
+	# What bombing the Blood Donation Machine does, through the same call the
+	# bomb's effect makes.
+	ObjectSystem.destroy(ObjectSystem.live[0], false)
+	await get_tree().process_frame
+	assert_eq(_event_cards(modal), before - 1,
+		"the destroyed machine's card goes with it, rather than sitting there dead")
+	modal._close()
+	ObjectSystem.clear()
+
+func test_leaving_the_arcade_takes_the_cabinets_with_it() -> void:
+	# A machine already standing at this game before the event opened.
+	ObjectSystem.spawn(&"donation_machine", false)
+	var standing: int = ObjectSystem.live.size()
+	assert_true(_ui.open_event(Data.get_event2(&"arcade_room")))
+	var modal = _ui._event_modal
+	ObjectSystem.spawn_by_tag(&"arcade", 2, 2)
+	await get_tree().process_frame
+	assert_gt(ObjectSystem.live.size(), standing, "the room filled up")
+	modal._close()
+	await get_tree().process_frame
+	assert_eq(ObjectSystem.live.size(), standing,
+		"walking out of the arcade leaves its cabinets in the arcade")
+	assert_eq(String(ObjectSystem.live[0].get("id", &"")), "donation_machine",
+		"…and only its cabinets: what was standing here before is still standing here")
+	ObjectSystem.clear()
+
+func test_walking_out_of_a_room_does_not_ask_twice() -> void:
+	# `Leave` costs nothing, pays nothing and says nothing, so its closing beat
+	# was a blank panel with one button on it — the event still on screen after
+	# the press that ended it.
+	var ev: EventData2 = Data.get_event2(&"arcade_room")
+	assert_true(_ui.open_event(ev))
+	var modal = _ui._event_modal
+	var leave: int = -1
+	for i in range(ev.choices.size()):
+		if String(ev.choices[i].get("id", "")) == "leave":
+			leave = i
+	assert_gte(leave, 0, "the room has a way out")
+	modal.take(leave)
+	assert_true(modal._done, "pressing Leave is the whole of leaving")
+	_ui._event_modal = null
+	ObjectSystem.clear()

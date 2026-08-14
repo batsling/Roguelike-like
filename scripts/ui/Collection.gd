@@ -87,6 +87,26 @@ var _objects_sort: String = "name"
 
 var _content: VBoxContainer
 var _grid: Container = null
+# The grid's scroll region, and the covers not yet loaded into it.
+#
+# THE GAMES TAB IS 845 CELLS. A game's cover is a path until something reads it
+# (GameData.cover_image), and building every cell with its picture read all 845
+# of them — about 206 MB of PNG to decode before the window could be drawn, which
+# is the second and a half the Collection took to open. Nothing is gained by it:
+# a dozen cells are on screen and the rest are a scroll away, most of them never
+# reached at all.
+#
+# So a cell opens with an empty frame of the right size, and the picture is read
+# when the cell comes near the viewport (_load_visible_covers). The layout is
+# identical either way — the frame is sized from GRID_COVER_W, not from the image
+# — so nothing moves when one lands.
+var _grid_scroll: ScrollContainer = null
+var _pending_covers: Array = []
+# Whether the flow has actually placed its cells yet. Until it has, every cell
+# reports a position of (0, 0) while already carrying its full size — so "is this
+# one on screen" answers YES for all 845 of them, which reads every cover and is
+# precisely the thing being avoided. The flow says when it has sorted.
+var _grid_laid_out: bool = false
 var _detail_box: VBoxContainer = null
 var _count_lbl: Label = null
 var _tab_buttons := {}
@@ -220,7 +240,17 @@ func _refresh() -> void:
 # Shared building blocks
 # ------------------------------------------------------------------
 
+# Styleboxes are SHARED, not minted per cell. The Games tab is 845 cells and the
+# whole catalog uses five border colours between them, so building a fresh
+# StyleBoxFlat for each was 845 resources allocated to describe five looks.
+# Keyed by exactly the three things this builds one from.
+var _flat_cache: Dictionary = {}
+
 func _flat(bg: Color, border: Color = Color(0, 0, 0, 0), border_w: int = 0) -> StyleBoxFlat:
+	var key: String = "%s|%s|%d" % [bg, border, border_w]
+	var cached = _flat_cache.get(key)
+	if cached is StyleBoxFlat:
+		return cached
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg
 	sb.set_corner_radius_all(8)
@@ -228,6 +258,7 @@ func _flat(bg: Color, border: Color = Color(0, 0, 0, 0), border_w: int = 0) -> S
 	if border_w > 0:
 		sb.set_border_width_all(border_w)
 		sb.border_color = border
+	_flat_cache[key] = sb
 	return sb
 
 func _search_box(key: String) -> LineEdit:
@@ -406,7 +437,55 @@ func _new_grid() -> ScrollContainer:
 	flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(flow)
 	_grid = flow
+	_grid_scroll = scroll
+	_pending_covers.clear()
+	_grid_laid_out = false
+	# Scrolling and resizing are the two things that change WHICH cells are on
+	# screen, and each is a cue to read the pictures that just became worth
+	# reading. `sort_children` is the third and the one that starts it all: it
+	# fires once the flow has placed its cells, which is the first moment the
+	# question can be answered at all.
+	scroll.get_v_scroll_bar().value_changed.connect(func(_v): _load_visible_covers())
+	scroll.resized.connect(_load_visible_covers)
+	flow.sort_children.connect(func():
+		_grid_laid_out = true
+		_load_visible_covers.call_deferred())
 	return scroll
+
+
+# A cover to read once its cell is near the viewport. The frame is already the
+# size the picture will be drawn at, so landing one moves nothing on the page.
+func _defer_cover(cell: Control, rect: TextureRect, game: GameData) -> void:
+	_pending_covers.append({"cell": cell, "rect": rect, "game": game})
+
+
+# Read the covers whose cells are on screen, or nearly. The margin is a screenful
+# either way, so an ordinary scroll lands on pictures that are already there
+# rather than on a row of empty frames filling in behind the cursor.
+func _load_visible_covers() -> void:
+	if not _grid_laid_out or _pending_covers.is_empty():
+		return
+	if _grid_scroll == null or not is_instance_valid(_grid_scroll):
+		return
+	var top: float = _grid_scroll.scroll_vertical - _grid_scroll.size.y
+	var bottom: float = _grid_scroll.scroll_vertical + _grid_scroll.size.y * 2.0
+	var still: Array = []
+	for entry in _pending_covers:
+		var cell: Control = entry["cell"]
+		var rect: TextureRect = entry["rect"]
+		if not is_instance_valid(cell) or not is_instance_valid(rect):
+			continue
+		# Before the flow has laid out, every cell is at y=0 and the whole grid
+		# reads as visible — which would decode all 845 covers, the thing this
+		# exists to avoid. A zero-height cell is one that has not been placed yet.
+		if cell.size.y <= 0.0:
+			still.append(entry)
+			continue
+		if cell.position.y > bottom or cell.position.y + cell.size.y < top:
+			still.append(entry)
+			continue
+		rect.texture = (entry["game"] as GameData).cover_image
+	_pending_covers = still
 
 const DETAIL_PANEL_W := 380
 func _new_detail_panel() -> PanelContainer:
@@ -463,6 +542,12 @@ func _set_count(shown: int, total: int) -> void:
 		_count_lbl.text = "%d / %d" % [shown, total]
 
 func _clear_children(node: Node) -> void:
+	# Emptying the grid retires whatever it was still waiting to read: the entries
+	# point at cells that are about to be freed, and a filter change re-registers
+	# the ones that survive it.
+	if node == _grid:
+		_pending_covers.clear()
+		_grid_laid_out = false
 	for c in node.get_children():
 		node.remove_child(c)
 		c.free()
@@ -576,6 +661,9 @@ func _populate_games() -> void:
 	if list.is_empty():
 		_grid.add_child(_label("No games match.", Color(0.55, 0.55, 0.6), 13))
 	_set_count(list.size(), Data.all_games().size())
+	# Deferred: the cells have no position until the flow has laid them out, and
+	# "which of these is on screen" is a question about positions.
+	_load_visible_covers.call_deferred()
 
 func _game_type_color(t: int) -> Color:
 	match t:
@@ -591,10 +679,15 @@ func _game_cell(g: GameData) -> Control:
 	cell.panel.custom_minimum_size = Vector2(GRID_COVER_W + CELL_PAD, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	if g.cover_image != null:
-		var tr := _cover_rect(g.cover_image, GRID_COVER_W)
+	# The frame goes up empty and the picture is read when the cell nears the
+	# viewport (_load_visible_covers). A game with no art authored gets no frame
+	# at all, which is the one thing that has to be decided up front — and
+	# `cover_path` answers it without touching the image.
+	if g.cover_path != "":
+		var tr := _cover_rect(null, GRID_COVER_W)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vb.add_child(tr)
+		_defer_cover(cell.panel, tr, g)
 	vb.add_child(_label(g.display_name, tc, GRID_NAME_FONT, true, true))
 	var type_name: String = GAME_TYPE_NAMES[clampi(int(g.type), 0, 3)]
 	var meta: String = ("%d  •  %s" % [g.year, type_name]) if g.year > 0 else type_name

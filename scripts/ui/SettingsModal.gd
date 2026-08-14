@@ -24,6 +24,22 @@ func _ready() -> void:
 func _fit_to_viewport() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
+# The window-size dropdown's ids: 0 is "fit the screen", and every other entry
+# is its index in Settings.WINDOW_SIZES plus one. Kept as two small functions
+# rather than as parallel arrays so the list can grow in one place.
+func _size_id(size: Vector2i) -> int:
+	for i in range(Settings.WINDOW_SIZES.size()):
+		if Settings.WINDOW_SIZES[i] == size:
+			return i + 1
+	return 0
+
+
+func _size_for(id: int) -> Vector2i:
+	if id <= 0 or id > Settings.WINDOW_SIZES.size():
+		return Settings.WINDOWED_SIZE
+	return Settings.WINDOW_SIZES[id - 1]
+
+
 func _build_ui() -> void:
 	var dim := ColorRect.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -99,10 +115,53 @@ func _build_ui() -> void:
 	display_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(display_hint)
 
+	# The WINDOW'S SIZE, for windowed mode. The page is a fixed canvas stretched
+	# into whatever the window is, so this is not a resolution in the usual sense
+	# — it is how big the same page is drawn — but it is the control the player
+	# reaches for when the game is too small or too big on their monitor, and
+	# there wasn't one. Every entry is a request: a size bigger than the desktop
+	# is clamped to what fits (Settings.windowed_fit).
+	var size_row := HBoxContainer.new()
+	size_row.add_theme_constant_override("separation", 8)
+	vbox.add_child(size_row)
+
+	var size_label := Label.new()
+	size_label.text = "Window size"
+	size_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	size_label.add_theme_font_size_override("font_size", 13)
+	size_label.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	size_row.add_child(size_label)
+
+	var size_opt := OptionButton.new()
+	size_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	size_opt.add_item("Fit the screen", 0)
+	for i in range(Settings.WINDOW_SIZES.size()):
+		var s: Vector2i = Settings.WINDOW_SIZES[i]
+		size_opt.add_item("%d × %d" % [s.x, s.y], i + 1)
+	size_opt.select(size_opt.get_item_index(_size_id(Settings.windowed_size)))
+	size_row.add_child(size_opt)
+
+	# APPLY. The mode dropdown takes effect the moment it is picked, and that is
+	# right for a mode — but it means a setting whose value has not changed does
+	# nothing at all, and "windowed, but put the window back where I asked for it"
+	# is a thing a player wants to be able to say. Apply re-applies the display
+	# section whatever it is currently set to, so the size beside it can be
+	# changed and changed again.
+	var apply_btn := Button.new()
+	apply_btn.text = "Apply"
+	apply_btn.custom_minimum_size = Vector2(96, 30)
+	apply_btn.tooltip_text = "Put the window back at the size and mode above."
+	size_row.add_child(apply_btn)
+
 	var refresh_display_hint := func() -> void:
+		# The size only means anything to a window: both fullscreens are the size
+		# of the screen by definition.
+		var windowed: bool = display_opt.get_selected_id() == Settings.DisplayMode.WINDOWED
+		size_opt.disabled = not windowed
+		size_label.modulate.a = 1.0 if windowed else 0.5
 		match display_opt.get_selected_id():
 			Settings.DisplayMode.WINDOWED:
-				display_hint.text = "The default: an ordinary 1280×720 window, drawn at the size the game is laid out for, with your taskbar still reachable underneath it.  ·  F11 toggles."
+				display_hint.text = "The default: an ordinary window, drawn at the size you pick below, with your taskbar still reachable underneath it.  ·  F11 toggles."
 			Settings.DisplayMode.EXCLUSIVE:
 				display_hint.text = "True fullscreen. Sharper on some displays, but every alt-tab out to the game you're playing is a mode switch — and you do that several times a run.  ·  F11 toggles."
 			_:
@@ -112,6 +171,16 @@ func _build_ui() -> void:
 	display_opt.item_selected.connect(func(idx: int) -> void:
 		Settings.set_display_mode(display_opt.get_item_id(idx))
 		refresh_display_hint.call())
+
+	size_opt.item_selected.connect(func(idx: int) -> void:
+		Settings.set_windowed_size(_size_for(size_opt.get_item_id(idx))))
+
+	apply_btn.pressed.connect(func() -> void:
+		Settings.set_windowed_size(_size_for(size_opt.get_selected_id()))
+		Settings.set_display_mode(display_opt.get_selected_id())
+		# set_display_mode is a no-op when the mode has not moved, which is the
+		# common case here — the point of the button is the second half.
+		Settings.apply_display_mode())
 
 	vbox.add_child(HSeparator.new())
 

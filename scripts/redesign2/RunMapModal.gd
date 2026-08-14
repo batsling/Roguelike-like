@@ -537,7 +537,6 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 	close_node_card()
 	if _hide_amulet and id == _amulet:
 		return null
-	var game: GameData = Data.get_game(id)
 
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel",
@@ -558,94 +557,40 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 	inset.add_theme_constant_override("margin_right", 14)
 	inset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(inset)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 7)
-	box.custom_minimum_size = Vector2(CARD_W - 54.0, 0)
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	inset.add_child(box)
-	_node_card_body = box
-
-	var title := Label.new()
-	title.text = node_name(id)
-	title.add_theme_font_size_override("font_size", 17)
-	title.add_theme_color_override("font_color", UITheme.GOLD)
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(title)
-
-	var role := Label.new()
-	role.text = _node_role_text(id, depth)
-	role.add_theme_font_size_override("font_size", 12)
-	role.add_theme_color_override("font_color", UITheme.ACCENT)
-	role.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(role)
-
-	if game != null and game.cover_image != null:
-		var art := AtlasView.card_art(game.cover_image, CARD_W - 52.0, 190.0)
-		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		box.add_child(art)
-
-	if game != null:
-		var meta: Array = []
-		if game.year > 0:
-			meta.append(str(game.year))
-		meta.append(RunGraph.type_label(game.type))
-		var chip := Label.new()
-		chip.text = "  •  ".join(meta).to_upper()
-		chip.add_theme_font_size_override("font_size", 11)
-		chip.add_theme_color_override("font_color", RunGraph.type_color(game.type))
-		box.add_child(chip)
-
-	var facts := VBoxContainer.new()
-	facts.add_theme_constant_override("separation", 3)
-	box.add_child(facts)
-	var total: int = shortest_distance()
-	facts.add_child(_card_fact("On this route", "step %d of %d" % [depth, total]))
+	# The facts and the picture are RouteLadder's — the popup a game card opens
+	# draws the same card off the same builder, and two views of one game must not
+	# write their own copy of it. What belongs to THIS window is the route it is a
+	# window on (which rung, how far to go) and the two things only a map can do.
+	var facts: Array = [["On this route", "step %d of %d" % [depth, shortest_distance()]]]
 	var left: int = RunGraph.route_length_via(id, &"", _amulet)
 	if left >= 0 and not (_hide_amulet and id != _current):
-		facts.add_child(_card_fact("From here to the Amulet",
-			"%d step%s" % [left, "" if left == 1 else "s"]))
-	var beaten_times: int = GameStats.beaten_count(id)
-	facts.add_child(_card_fact("⚔ Beaten", ("%d time%s" % [beaten_times,
-		"" if beaten_times == 1 else "s"]) if beaten_times > 0 else "never"))
-	var amulet_runs: int = GameStats.amulet_wins(id)
-	if amulet_runs > 0:
-		facts.add_child(_card_fact("👑 Amulet won", "%d run%s" % [amulet_runs,
-			"" if amulet_runs == 1 else "s"]))
-	if TierList.has_rating(id):
-		var tier_i: int = TierList.tier_of(id)
-		facts.add_child(_card_fact("Your rating", "%d / 10%s" % [
-			int(TierList.get_rating(id).get("score", 0)),
-			("  (%s tier)" % TierList.tier_names[tier_i]) if tier_i >= 0
-				and tier_i < TierList.tier_names.size() else ""]))
+		facts.append(["From here to the Amulet", "%d step%s" % [left, "" if left == 1 else "s"]])
 
-	# The record you have IN this game — the same fact the rung's ⚔ badge carries,
-	# spelled out.
-	var fought: Array = GameStats.enemies_for(id)
-	if not fought.is_empty():
-		box.add_child(_card_heading("Enemies you have beaten here (%d)" % fought.size()))
-		for i in range(mini(fought.size(), 6)):
-			var e: Dictionary = fought[i]
-			var ed: GoalEnemyData = Data.get_goal_enemy_any(StringName(e["id"]))
-			box.add_child(_card_fact(
-				ed.display_name if ed != null else String(e["id"]),
-				"x%d" % int(e["beaten"])))
-		if fought.size() > 6:
-			box.add_child(_card_note("…and %d more." % (fought.size() - 6)))
-
-	box.add_child(HSeparator.new())
+	var actions: Array = []
 	if _atlas != null and is_instance_valid(_atlas):
-		box.add_child(_card_button("✦  Find it on the star chart",
-			func(): show_on_chart(id)))
+		actions.append({"text": "✦  Find it on the star chart",
+			"action": func(): show_on_chart(id)})
 	# Pinning is a live run's business: a preview is asking "what if I went here",
 	# and the start picker has no route to detour from yet.
 	if not _preview and not _hide_amulet and id != _current and id != _amulet:
 		if waypoint() == id:
-			box.add_child(_card_button("✖  Stop routing through here", clear_waypoint))
+			actions.append({"text": "✖  Stop routing through here",
+				"action": Callable(self, "clear_waypoint")})
 		else:
-			box.add_child(_card_button("⚑  Route through here", func(): set_waypoint(id)))
-	if game != null and game.has_launch_target():
-		box.add_child(_card_button("▶  Play the real game", func(): game.launch()))
-	box.add_child(_card_button("Close", close_node_card))
+			actions.append({"text": "⚑  Route through here",
+				"action": func(): set_waypoint(id)})
+
+	var box := RouteLadder.node_card_body({
+		"id": id,
+		"name": node_name(id),
+		"role": _node_role_text(id, depth),
+		"facts": facts,
+		"actions": actions,
+		"on_close": Callable(self, "close_node_card"),
+	})
+	box.custom_minimum_size = Vector2(CARD_W - 54.0, 0)
+	inset.add_child(box)
+	_node_card_body = box
 
 	_place_node_card()
 	# And again once Godot has laid the contents out. Until it has, the card's
@@ -701,45 +646,8 @@ func _place_node_card() -> void:
 		clampf(x, 8.0, maxf(8.0, view.x - CARD_W - 8.0)),
 		clampf(_panel.position.y + 24.0, 8.0, maxf(8.0, view.y - h - 8.0)))
 
-func _card_fact(key: String, value: String) -> Control:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	var k := Label.new()
-	k.text = key
-	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	k.add_theme_font_size_override("font_size", 12)
-	k.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	row.add_child(k)
-	var v := Label.new()
-	v.text = value
-	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	v.add_theme_font_size_override("font_size", 12)
-	v.add_theme_color_override("font_color", UITheme.TEXT)
-	row.add_child(v)
-	return row
-
-func _card_heading(text: String) -> Control:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", 12)
-	l.add_theme_color_override("font_color", UITheme.GOLD)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	return l
-
-func _card_note(text: String) -> Control:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", 11)
-	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	return l
-
-func _card_button(text: String, cb: Callable) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.add_theme_font_size_override("font_size", 12)
-	b.pressed.connect(cb)
-	return b
+# The card's own furniture — facts, headings, buttons — lives on RouteLadder
+# beside the card builder that uses it (RouteLadder.card_fact and friends).
 
 # ---------------------------------------------------------------------------
 # The waypoint — a game the player insists on visiting

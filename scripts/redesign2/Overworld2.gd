@@ -82,7 +82,7 @@ const ESCAPE_AFTER_ATTEMPTS := 5
 #   {"game": GameData, "enemy": GoalEnemyData, "boss": bool, "amulet": bool,
 #    "repeat": bool}
 # The enemy is rolled up-front so the hover preview and the enemy that actually
-# spawns on click are the SAME roll. `repeat` marks a game already beaten this
+# spawns on click are the SAME roll. `repeat` marks a game already played this
 # run — beating it again grants a Dash (REPEAT_BEAT_DASH).
 var _choices: Array = []
 # The opening choose-your-start offering (Phase.START_SELECT). Each entry:
@@ -442,7 +442,7 @@ func _start_choice(index: int) -> Dictionary:
 	return {
 		"game": game, "enemy": opt.get("enemy"), "slot": game.id,
 		"boss": false, "amulet": game.id == GameState.amulet_game_id,
-		"repeat": GameState.has_beaten_game(game.id),
+		"repeat": GameState.has_played_game(game.id),
 	}
 
 # Clicking a start card opens the ordinary card popup over it — the enemy waiting
@@ -1218,9 +1218,14 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	var played_game: GameData = _chosen.get("game")
 	var fulfilled_instances: Array = fulfilled if fulfilled is Array else _ticked_fulfilments()
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
-	# Was this game already cleared this run? Read BEFORE the beat is recorded, so
-	# the second clear of a game is what pays the Dash (REPEAT_BEAT_DASH).
-	var repeat_beat: bool = played_game != null and GameState.has_beaten_game(played_game.id)
+	# Had the run been to this game before? Read BEFORE this visit is recorded, so
+	# it is the SECOND trip to a game that pays the Dash (REPEAT_BEAT_DASH).
+	#
+	# PLAYED before, not beaten before. Walking back to a game you failed is the
+	# same journey as walking back to one you cleared, and the Dash is paid for
+	# making it; what has to be earned on the return trip is the goal (see the
+	# grant below, which still wants this visit to be a real win).
+	var repeat_beat: bool = played_game != null and GameState.has_played_game(played_game.id)
 	# The event standing at this SPOT, read before _chosen is cleared. Keyed off
 	# the graph slot rather than the game, because an event belongs to the place
 	# (a dead end, §1) — a transmuted card plays a different game on the same node.
@@ -1298,21 +1303,29 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 		# firing once per game played.
 		TriggerBus.game_beaten.emit({"game_id": played_game.id})
 
+	# WHERE THE RUN HAS BEEN. Every report is a game played, whatever it said: a
+	# missed goal was still an evening spent on that game, and so was walking away
+	# from it. This is what the offering's ⚡ badge and the returning Dash read
+	# (has_played_game), and it is deliberately a wider net than the beat below.
+	if played_game != null:
+		GameState.note_game_played(played_game.id)
+
 	# BEATEN MEANS WON. This block used to sit inside the one above — any report
 	# that wasn't an escape banked the game, a missed goal included — so "⚔ Beaten
 	# 11 times" counted visits, `has_beaten_game` meant "been here", and a game you
-	# had failed paid the repeat-beat Dash for failing it twice. Every one of those
-	# reads as a claim about winning, in the UI and in the code, so all of them now
-	# require the goal to have actually been met.
+	# had failed counted as a win in the UI. Every one of those reads as a claim
+	# about winning, so all of them require the goal to have actually been met.
 	#
 	# Recorded after the item trigger above, so a game_beaten item can't see a
 	# half-updated tally.
 	if played_game != null and not escaped and goal_met:
-		# The run's own record: what the offering's repeat badge, the Atlas's
-		# "beaten this run" and the free escape (can_escape) all read. Run-scoped
-		# and wiped by reset_run — beating something in a previous run is not a
-		# fact about this one.
+		# The run's own record: what the Atlas's "beaten this run" and the free
+		# escape (can_escape) read. Run-scoped and wiped by reset_run — beating
+		# something in a previous run is not a fact about this one.
 		GameState.note_game_beaten(played_game.id)
+		# …and the reward for coming back: a game the run had already played,
+		# beaten this time (§4). The trip is what earns it, the win is what
+		# confirms it.
 		if repeat_beat:
 			_grant_repeat_dash(played_game)
 		# The lifetime tally the Collection, the tier list and the Atlas read
@@ -1504,11 +1517,10 @@ func open_event(ev: EventData2) -> bool:
 
 func _on_event_finished(play_request: Dictionary) -> void:
 	_event_modal = null
-	# Machines an event put in front of you belong to that event. The Arcade Room
-	# IS the room the cabinets are in, so its `Leave` walks you out of both —
-	# rather than leaving the machines standing under the board afterwards, which
-	# would make the room's exit mean nothing.
-	ObjectSystem.clear()
+	# Machines an event put in front of you belong to that event, and the modal
+	# has already taken them away (EventModal2._end_objects) — precisely the ones
+	# it spawned, where this used to clear the board outright and take a machine
+	# that was standing at the game before the event with it.
 	_refresh()
 	autosave()
 	if not play_request.is_empty():
@@ -1697,12 +1709,13 @@ func _maybe_announce_boss() -> void:
 		_boss_notice = null
 		_finish_pending_detour())
 
-# The reward for beating a game you'd already cleared this run: +1 Dash (§4).
+# The reward for going back to a game the run had already played and beating it
+# this time: +1 Dash (§4).
 # Announced on both channels — the toast for the moment, the log for the record —
 # because the HUD's Dash counter moving on its own reads as a bug.
 func _grant_repeat_dash(game: GameData) -> void:
 	GameState.dash_charges += REPEAT_BEAT_DASH
-	var msg: String = "Beat %s again — +%d Dash." % [game.display_name, REPEAT_BEAT_DASH]
+	var msg: String = "Back at %s, and beaten — +%d Dash." % [game.display_name, REPEAT_BEAT_DASH]
 	Notifications.notify(msg, DASH_BLUE)
 	GameLog.add(msg, DASH_BLUE)
 
@@ -1720,6 +1733,10 @@ func _on_arrived(game_id: StringName) -> void:
 
 func _exit_tree() -> void:
 	GameState.clear_overworld_context(self)
+	# The wider canvas belongs to THIS page (see _fit_canvas_to_page). The menu is
+	# laid out for the standard one, so it goes back with the screen that asked
+	# for it.
+	Settings.reset_canvas_width()
 	_board.clear_fx()
 	_close_enemy_info()
 	if TriggerBus.chest_granted.is_connected(_on_chest_granted):
@@ -1842,7 +1859,7 @@ func _start_play_game(request: Dictionary) -> void:
 	_chosen = {
 		"game": game, "enemy": enemy, "slot": dest,
 		"boss": false, "amulet": dest == GameState.amulet_game_id,
-		"repeat": GameState.has_beaten_game(game.id),
+		"repeat": GameState.has_played_game(game.id),
 	}
 	GameLoop2.choose_game(enemy)
 	GameLoop2.grant_selection_shields(game)
@@ -1945,7 +1962,7 @@ func _build_return_choices() -> void:
 		_choices.append({
 			"game": game, "enemy": null, "slot": gid,
 			"boss": false, "amulet": gid == amulet,
-			"repeat": GameState.has_beaten_game(game.id),
+			"repeat": GameState.has_played_game(game.id),
 			"stay": gid == here,
 		})
 
@@ -2244,7 +2261,7 @@ func _build_choices() -> void:
 			"boss": _boss_round, "amulet": gid == amulet,
 			# Judged on the GAME, not the slot: a transmuted card plays the
 			# replacement game, so that's the clear the Dash bonus keys off.
-			"repeat": GameState.has_beaten_game(game.id),
+			"repeat": GameState.has_played_game(game.id),
 		})
 
 # --- rendering ------------------------------------------------------------
@@ -2316,6 +2333,39 @@ func _refresh(_a = null) -> void:
 		# thing you went to play next to the enemy you went to beat.
 		var game: GameData = _chosen.get("game")
 		_now_playing_cover.texture = game.cover_image if game != null else null
+	_fit_canvas_to_page.call_deferred()
+
+# --- the page's own width --------------------------------------------------
+#
+# THE PAGE IS TWO COLUMNS AND THEY DO NOT SHRINK. The left is the offering — three
+# covers side by side, or more with a game_choices bonus — and the right is the
+# battlefield, which gains a column per difficulty tier. Neither is padded: both
+# are as narrow as their contents allow already. So on a big board with a wide
+# offering the pair is simply wider than the 1280 canvas, and what happened then
+# was that the right-hand edge of the board went off the page — the scroll region
+# hosting it draws no horizontal bar (SHOW_NEVER), by design, because a bar there
+# is chrome rather than a fix.
+#
+# The fix is the other way round: the CANVAS is fitted to the page. The layout
+# says how wide it needs to be, Settings widens the canvas to match, and the
+# stretch draws the whole thing a little smaller inside the same window. Nothing
+# is cropped and nothing has to be redesigned for the largest board it will ever
+# have to hold.
+#
+# Deferred and measured off the ROOT's combined minimum size, because that is the
+# one number that already accounts for every column, gutter and margin on the
+# page — and it is only correct once Godot has laid the frame out, which is why
+# every caller comes through call_deferred.
+func _fit_canvas_to_page() -> void:
+	if _scroll == null or not is_instance_valid(_scroll) or not is_inside_tree():
+		return
+	var root: Control = _scroll.get_child(0) as Control if _scroll.get_child_count() > 0 else null
+	if root == null:
+		return
+	# The scroll's own left/right offsets are outside the content and have to be
+	# paid for too, or the page fits by exactly the width of its margins.
+	var needed: float = root.get_combined_minimum_size().x + 32.0
+	Settings.request_canvas_width(int(ceil(needed)))
 
 # --- the road walked, across the top of the page ---------------------------
 #
@@ -2714,7 +2764,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	card.add_child(flag)
 
 	# THE SECOND THING that has to be legible without opening anything: a game you
-	# have already beaten this run pays a Dash for beating it again
+	# have already played this run pays a Dash for going back and beating it
 	# (REPEAT_BEAT_DASH). It is the offering's only recurring free charge, and it
 	# was only ever stated inside the popup — so the one card on the table that is
 	# worth revisiting looked exactly like the ones that aren't. It rides ABOVE the
@@ -2726,7 +2776,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	var dash_flag := Label.new()
 	if bool(choice.get("repeat", false)):
 		dash_flag.text = "⚡ +%d DASH" % REPEAT_BEAT_DASH
-		dash_flag.tooltip_text = ("You've already beaten %s this run — beat it again and it pays %d Dash charge%s."
+		dash_flag.tooltip_text = ("You have played %s already this run — go back and beat it and it pays %d Dash charge%s."
 			% [game.display_name, REPEAT_BEAT_DASH, "" if REPEAT_BEAT_DASH == 1 else "s"])
 	else:
 		dash_flag.text = ""
@@ -4305,6 +4355,15 @@ func _build_ui() -> void:
 	_select_head = _section("Choose a game to travel to:")
 	_select_head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_select_head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# WRAPPED, and it matters more than a heading usually does. A Label that does
+	# not wrap reports the whole sentence as its MINIMUM width, and this one is a
+	# whole sentence: the start picker's "Choose where to start — three genres, all
+	# the same distance from the Amulet…" set the left column's minimum at ~900px
+	# all by itself, which plus the board is wider than the canvas — and the board,
+	# on the far side of the page, is what got pushed off it. The heading is the
+	# most compressible thing on this screen and it was the thing dictating the
+	# layout.
+	_select_head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	select_head_row.add_child(_select_head)
 	var map_btn := Button.new()
 	map_btn.text = "🗺  Map"

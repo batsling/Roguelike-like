@@ -205,3 +205,36 @@ func _buttons_in(node: Node) -> Array:
 	for c in node.get_children():
 		out.append_array(_buttons_in(c))
 	return out
+
+
+# --- the corner is a button, and it belongs to the menu ---------------------
+
+func test_the_contents_start_closed_behind_their_button() -> void:
+	var menu = MENU.instantiate()
+	add_child_autofree(menu)
+	await wait_frames(2)
+	assert_not_null(menu._htp_toggle, "there is a button in the corner")
+	assert_false(menu._htp_contents.visible,
+		"and fourteen chapter titles are not standing open beside the Start button")
+	menu._toggle_how_to_play_contents()
+	assert_true(menu._htp_contents.visible, "pressing it opens the contents")
+	menu._toggle_how_to_play_contents()
+	assert_false(menu._htp_contents.visible, "and pressing it again puts them away")
+
+func test_the_corner_goes_away_while_something_is_open_over_the_menu() -> void:
+	var menu = MENU.instantiate()
+	add_child_autofree(menu)
+	await wait_frames(2)
+	assert_true(menu._htp_corner.visible, "on the menu itself, the corner is there")
+	menu._toggle_how_to_play_contents()
+	# Anything the menu opens goes into the modal layer. The corner is added after
+	# it, so it DRAWS OVER the top of whatever is opened — the Collection, the
+	# character picker — and hiding is what keeps it off someone else's screen.
+	var over := Control.new()
+	menu._modal_layer.add_child(over)
+	await wait_frames(2)
+	assert_false(menu._htp_corner.visible, "with a screen open over it, it is not")
+	assert_false(menu._htp_contents.visible, "and it is closed for when it comes back")
+	over.queue_free()
+	await wait_frames(2)
+	assert_true(menu._htp_corner.visible, "closing that screen brings the corner back")

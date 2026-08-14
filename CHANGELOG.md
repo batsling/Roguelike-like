@@ -11,6 +11,75 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A round of fixes across the screens, and one layout rule that was quietly
+  cropping the board.**
+
+  **The page could be wider than the canvas, and the battlefield was what fell
+  off it.** The overworld is two columns — the offering on the left, the board on
+  the right — inside a scroll region that deliberately draws no horizontal bar.
+  The offering's heading is a whole sentence ("Choose where to start — three
+  genres, all the same distance from the Amulet…") and it was a Label with no
+  wrapping, so that sentence WAS the left column's minimum width: about 900px of
+  the 1280 canvas, before the board asked for anything. The board went off the
+  right edge and there was no bar to bring it back. The heading wraps now, which
+  puts the page back at ~980px of minimum width.
+
+  That is the cause; the guard against it recurring is the other half. A screen
+  can now ask for the canvas it actually needs (`Settings.request_canvas_width`),
+  and the stretch draws the whole page a little smaller inside the same window
+  rather than cropping it. The overworld measures itself after every refresh and
+  asks. Nothing is cropped whatever the board grows to, and the canvas goes back
+  to 1280x720 when the screen does.
+
+  **Settings grew a window size, and an Apply.** The display section could only
+  change the MODE, and picking the mode you were already in did nothing at all —
+  so there was no way to say "windowed, but at 1600x900". There is a size list
+  now (fit-the-screen, 1280x720 up to 2560x1440), and an Apply that re-applies
+  the section whatever it is currently set to. Every entry is still a request
+  clamped to the desktop's usable rect, exactly as the default always was.
+
+  **The manual's contents page is behind a button.** Fourteen chapter titles
+  stood open in the corner of the title screen; they are one line now, and the
+  corner hides itself entirely while anything is open over the menu — it is added
+  after the modal layer, so it had been drawing on top of the Collection, the
+  Atlas and the character picker.
+
+  **The route ladder says how many ways there are on from each rung**, top right
+  of the name, as the same `⛓ N` count the offering's own cards quote —
+  `RunGraph.open_degree`, so a neighbour Bash destroyed is not counted as a door.
+  And a rung OPENS: clicking one on the card popup's route raises the same game
+  card the map window raises, minus the two things a preview cannot do (there is
+  no chart on that screen to fly to, and no route to pin from a game you have not
+  taken). The card itself moved to `RouteLadder.node_card_body` so both callers
+  draw one card rather than two that drift.
+
+  **Wording, where an event hands you something.** A curse is offered by its own
+  name — "Injury: if you…, take 2 damage when you report the game · Lasts 3
+  games" — instead of "Curse (3 games left): …", and an event goal is labelled
+  "Event Goal:" rather than "Goal for 3 games:". The clock goes at the end of the
+  sentence in both, because it is a clock and not part of the thing's name.
+
+  **The shop's shelf is legible.** A slot was a 28px row with a 20px icon and one
+  clipped line of "Name ◉ 5", so a long relic name ate the price — the one number
+  a shelf exists to show. It is a small card now: art at more than twice the size,
+  name and price on two lines beside it, and only the name is ever trimmed. The
+  page still fits its window.
+
+  **And a run of smaller things.** The shop's reroll now hears about Scramble
+  arriving, so a charge the D6 just paid can be spent without leaving the shop and
+  coming back. A machine that blows itself up inside an event has its card taken
+  off the event, and leaving the Arcade Room takes its cabinets with it — precisely
+  the ones it spawned, where the overworld used to clear the board outright and
+  take a machine that was standing there beforehand with it. Walking out of a room
+  no longer asks twice: a closing screen with nothing on it is not a beat, it is a
+  second click. The returning Dash is paid for going back to a game the run has
+  PLAYED, not only one it beat — the trip back is what earns it, the goal still has
+  to be met on arrival. And the Collection opens in about two seconds instead of
+  ten, because the Games tab was reading all 845 covers to draw the dozen cells on
+  screen.
+
+---
+
 - **A written manual, and the menu's bottom-left corner is its contents page.**
   The 📖 How to Play button raised a "coming soon" box with two sentences in it.
   It now opens thirteen chapters.

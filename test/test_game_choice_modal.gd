@@ -316,3 +316,35 @@ func _text_of(node: Node) -> String:
 	for c in node.get_children():
 		out += _text_of(c)
 	return out
+
+# --- the route ladder's rungs ----------------------------------------------
+#
+# The ladder is half of what this popup is for, and a rung is a clipped name in a
+# 150px box. "Which of these is worth walking to" cannot be answered off a name,
+# so a rung opens the same card the map window opens — minus the two things a
+# preview cannot do: there is no chart on this screen to fly to, and no route to
+# pin from a game you have not taken.
+
+func test_a_rung_opens_the_game_it_names() -> void:
+	var modal = _ui.open_choice(0)
+	var slot: StringName = _ui._choices[0]["slot"]
+	assert_null(modal._node_card, "nothing is open to begin with")
+	modal.open_node_card(slot, 0)
+	assert_not_null(modal._node_card, "clicking a rung opens its card")
+	var text: String = _text_of(modal._node_card)
+	var game: GameData = Data.get_game(slot)
+	assert_true(text.contains(game.display_name), "the card names the game")
+	assert_true(text.contains("Connections"), "and says how many ways there are on")
+	assert_true(text.contains("⚔ Beaten"), "and what you have done there")
+
+func test_a_previewed_rung_offers_nothing_only_a_map_could_do() -> void:
+	var modal = _ui.open_choice(0)
+	modal.open_node_card(_ui._choices[0]["slot"], 0)
+	var text: String = _text_of(modal._node_card)
+	assert_false(text.contains("star chart"),
+		"there is no chart on this screen to find it on")
+	assert_false(text.contains("Route through here"),
+		"and no route to pin from a card you have not taken")
+	assert_true(text.contains("Close"), "the card can be put away")
+	modal.close_node_card()
+	assert_null(modal._node_card, "and closing it closes only it")

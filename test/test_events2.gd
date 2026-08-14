@@ -1359,3 +1359,46 @@ func test_a_non_lethal_cost_is_never_a_death_however_it_is_dressed() -> void:
 	assert_false(EventSystem.is_deadly(choice, 0),
 		"a non_lethal cost is clamped to leave you at 1, so it cannot end the run")
 	assert_eq(EventSystem.lethal_warning(choice, 0), "")
+
+# --- how an objective an event hands over is worded -------------------------
+#
+# The line under a button is what the player reads before pressing it, and it was
+# naming the CATEGORY where it should name the THING: "Curse (3 games left)" told
+# you that a curse was coming and not which one, with its clock in front of the
+# sentence rather than at the end of it.
+
+func test_a_curse_is_offered_by_its_own_name() -> void:
+	var choice: Dictionary = {
+		"id": "sleep", "text": "Sleep badly",
+		"curse": {"curse": "injury", "games": 3},
+	}
+	var line: String = EventSystem.describe_choice(choice, 0)
+	var cd: CurseData2 = Data.get_curse2(&"injury")
+	assert_not_null(cd, "the catalogue has the curse")
+	assert_string_contains(line, cd.display_name)
+	assert_false(line.contains("Curse ("),
+		"the category, in brackets, in front of the sentence — that is what went")
+	assert_string_contains(line, "Lasts 3 games")
+	assert_true(line.find("Lasts") > line.find(cd.display_name),
+		"how long you have it for comes after what it is")
+
+func test_a_permanent_curse_says_so_rather_than_counting_to_zero() -> void:
+	var choice: Dictionary = {
+		"id": "ring", "text": "Take the bell",
+		"curse": {"curse": "curse_of_the_bell", "games": 0},
+	}
+	var line: String = EventSystem.describe_choice(choice, 0)
+	assert_string_contains(line, "Permanent")
+	assert_false(line.contains("Lasts 0"), "nothing lasts zero games")
+
+func test_an_event_goal_is_called_one() -> void:
+	var choice: Dictionary = {
+		"id": "swear", "text": "Swear it",
+		"goal": {"condition": "you beat a game in one attempt", "games": 3,
+			"effects_text": "+1 Small Chest"},
+	}
+	var line: String = EventSystem.describe_choice(choice, 0)
+	assert_string_contains(line, "Event Goal:")
+	assert_false(line.contains("Goal for 3 games"),
+		"the label says what KIND of objective this is, not how long it runs")
+	assert_string_contains(line, "Lasts 3 games")

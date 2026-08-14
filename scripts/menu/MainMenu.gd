@@ -21,6 +21,11 @@ const HTP_MARGIN := 16.0
 @onready var _save_list_container: VBoxContainer = %SaveList
 @onready var _modal_layer: Control = %ModalLayer
 
+# The corner panel, its toggle, and the contents list the toggle opens.
+var _htp_corner: PanelContainer = null
+var _htp_toggle: Button = null
+var _htp_contents: VBoxContainer = null
+
 func _ready() -> void:
 	GameState.phase = GameState.Phase.MENU
 	theme = UITheme.shared()
@@ -41,6 +46,12 @@ func _ready() -> void:
 	_save_list_container.visible = false
 	_refresh_continue_button()
 	_build_how_to_play_panel()
+	# The corner belongs to the MENU, not to whatever is opened over it. Anything
+	# this screen raises goes into the modal layer, so the layer's own emptiness
+	# is the whole test — no screen has to remember to hide it.
+	_modal_layer.child_entered_tree.connect(func(_c): _refresh_corner_visibility())
+	_modal_layer.child_exiting_tree.connect(func(_c): _refresh_corner_visibility.call_deferred())
+	_refresh_corner_visibility()
 
 # ---------------------------------------------------------------------------
 # Menu styling
@@ -628,16 +639,20 @@ func _on_settings() -> void:
 # How to Play — the manual, and its contents panel in the corner
 # ---------------------------------------------------------------------------
 
-# The bottom-left corner of the menu is the manual's table of contents: the
-# chapter titles, as buttons, each opening the manual AT that chapter.
+# The bottom-left corner of the menu is a BUTTON that opens the manual's table of
+# contents: the chapter titles, each opening the manual AT that chapter.
 #
-# A corner panel rather than one more entry in the middle column, for two
-# reasons. The middle column is the things you DO — start, continue, quit — and
-# a manual is not one of them. And a contents list is the part of a manual worth
-# putting in front of someone who has not asked for it: a player who does not
-# know they have a question about shops will still read the word "shops" and
-# find out that they do. A single button marked How to Play tells them nothing
-# about what is inside it.
+# A corner rather than one more entry in the middle column, for two reasons. The
+# middle column is the things you DO — start, continue, quit — and a manual is
+# not one of them. And a contents list is the part of a manual worth putting in
+# front of someone who has not asked for it: a player who does not know they have
+# a question about shops will still read the word "shops" and find out that they
+# do.
+#
+# The list starts CLOSED behind that button. Fourteen chapter titles standing
+# open in the corner of the title screen is a wall of small text beside the one
+# thing the screen is for, and it is a wall the player has read by their second
+# run and never again. Behind a button it costs one line until it is wanted.
 #
 # The list is built from HowToPlayText.chapters(), so it cannot drift out of
 # step with the manual — adding a chapter adds its line here. Chapters are
@@ -656,28 +671,47 @@ func _build_how_to_play_panel() -> void:
 	frame.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 12))
 	add_child(frame)
+	_htp_corner = frame
 
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 2)
 	frame.add_child(col)
 
 	var head := Button.new()
-	head.text = "📖  How to Play"
 	head.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	head.flat = true
-	head.tooltip_text = "Open the manual at the beginning."
 	head.custom_minimum_size = Vector2(0, 30)
 	head.add_theme_font_size_override("font_size", 16)
 	head.add_theme_color_override("font_color", UITheme.GOLD)
-	head.pressed.connect(_on_how_to_play)
+	head.pressed.connect(_toggle_how_to_play_contents)
 	col.add_child(head)
+	_htp_toggle = head
+
+	# Everything the button opens, in a box of its own so showing and hiding it is
+	# one line rather than a loop over the panel's children.
+	var contents := VBoxContainer.new()
+	contents.add_theme_constant_override("separation", 2)
+	contents.visible = false
+	col.add_child(contents)
+	_htp_contents = contents
+
+	var open_btn := Button.new()
+	open_btn.text = "▶  Read it from the start"
+	open_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	open_btn.flat = true
+	open_btn.tooltip_text = "Open the manual at the beginning."
+	open_btn.custom_minimum_size = Vector2(0, 24)
+	open_btn.add_theme_font_size_override("font_size", 12)
+	open_btn.add_theme_color_override("font_color", UITheme.ACCENT)
+	open_btn.pressed.connect(_on_how_to_play)
+	contents.add_child(open_btn)
 
 	var sub := Label.new()
-	sub.text = "New here? Start at the top."
+	sub.text = "…or straight to a chapter:"
 	sub.add_theme_font_size_override("font_size", 11)
 	sub.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	col.add_child(sub)
-	col.add_child(HSeparator.new())
+	contents.add_child(sub)
+	contents.add_child(HSeparator.new())
 
 	for ch in HowToPlayText.chapters():
 		var id: StringName = StringName(ch["id"])
@@ -691,7 +725,55 @@ func _build_how_to_play_panel() -> void:
 		row.add_theme_font_size_override("font_size", 12)
 		row.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		row.pressed.connect(func(): _open_manual(id))
-		col.add_child(row)
+		contents.add_child(row)
+	_paint_how_to_play_toggle()
+
+
+# Open or close the contents list. Public-ish through the toggle only; the state
+# lives on the box's own visibility, so there is nothing to keep in step with it.
+func _toggle_how_to_play_contents() -> void:
+	if _htp_contents == null or not is_instance_valid(_htp_contents):
+		return
+	_htp_contents.visible = not _htp_contents.visible
+	_paint_how_to_play_toggle()
+
+
+func _paint_how_to_play_toggle() -> void:
+	if _htp_toggle == null or not is_instance_valid(_htp_toggle):
+		return
+	var open: bool = _htp_contents != null and _htp_contents.visible
+	_htp_toggle.text = "📖  How to Play  %s" % ("⌄" if open else "›")
+	_htp_toggle.tooltip_text = ("Close the contents." if open
+		else "The manual's contents — every chapter, and the page it starts on.")
+
+
+# The corner is a fixture of the MENU. Anything opened from here — the character
+# picker, the Collection, the Atlas, a settings panel — mounts in the modal layer
+# and covers the screen, and a How to Play panel floating over the top of it was
+# not a menu decoration any more, it was a stray control on someone else's
+# screen. (The corner is added after the layer, so it draws ON TOP of every one
+# of them; hiding it is the only fix that works for all.)
+func _refresh_corner_visibility() -> void:
+	if _htp_corner == null or not is_instance_valid(_htp_corner):
+		return
+	var alone: bool = _modal_layer == null or _live_modal_count() == 0
+	_htp_corner.visible = alone
+	# Closed again when it comes back, so returning to the menu lands on the same
+	# corner it was left on rather than on whatever was open an hour ago.
+	if not alone and _htp_contents != null and is_instance_valid(_htp_contents):
+		_htp_contents.visible = false
+		_paint_how_to_play_toggle()
+
+
+# Children on their way out (queue_free) are still children for the rest of the
+# frame, so they are not counted — closing the last modal has to bring the corner
+# back, and it is `child_exiting_tree` that says so.
+func _live_modal_count() -> int:
+	var n: int = 0
+	for child in _modal_layer.get_children():
+		if not child.is_queued_for_deletion():
+			n += 1
+	return n
 
 
 func _on_how_to_play() -> void:

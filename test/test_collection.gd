@@ -286,3 +286,38 @@ func test_a_game_with_no_store_page_gets_no_steam_button() -> void:
 	col._show_game_detail(bare)
 	assert_false(_text_of(col._detail_box).contains("Steam page"),
 		"and a game without one stays clean")
+
+# --- the Games tab's covers -------------------------------------------------
+#
+# 845 games, and a cover is a path until something reads it (GameData.cover_path
+# -> cover_image). Building every cell with its picture read all 845 of them —
+# ~206MB of PNG decoded before the window could be drawn, which was almost all of
+# the time the Collection took to open. A dozen are on screen; the rest are a
+# scroll away and most are never reached.
+
+func test_the_games_tab_opens_without_reading_every_cover() -> void:
+	var col := _new_collection()
+	assert_gt(col._grid.get_child_count(), 100, "the whole catalog is in the grid")
+	assert_gt(col._pending_covers.size(), 100,
+		"and its covers are queued rather than read on the way in")
+
+func test_the_covers_on_screen_are_the_ones_that_get_read() -> void:
+	var col := _new_collection()
+	var queued: int = col._pending_covers.size()
+	await wait_frames(4)
+	assert_lt(col._pending_covers.size(), queued,
+		"the cells that landed on screen have their pictures")
+	assert_gt(col._pending_covers.size(), 0,
+		"and the hundreds below the fold are still waiting to be scrolled to")
+	for entry in col._pending_covers:
+		assert_null((entry["rect"] as TextureRect).texture,
+			"an unread cover is an empty frame, not a broken one")
+		break
+
+func test_a_filter_that_empties_the_grid_drops_what_it_was_waiting_to_read() -> void:
+	var col := _new_collection()
+	await wait_frames(2)
+	col._search["games"] = "__nothing matches this__"
+	col._refresh()
+	assert_eq(col._pending_covers.size(), 0,
+		"the queue points at cells that no longer exist — it goes with them")

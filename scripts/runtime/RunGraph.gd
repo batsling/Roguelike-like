@@ -222,6 +222,19 @@ static func degree(game_id: StringName) -> int:
 	_build_adj()
 	return (_adj_cache.get(game_id, []) as Array).size()
 
+# The same count as the RUN sees it: `degree` less the neighbours Bash has
+# destroyed. This is the number the player is actually reading when they ask how
+# many ways there are on from a game — a bashed neighbour is a door that no
+# longer opens — and it is what the offering card's ⛓ line and the route
+# ladder's ⛓ badge both quote, so they cannot disagree about one game.
+static func open_degree(game_id: StringName) -> int:
+	_build_adj()
+	var n: int = 0
+	for nb in (_adj_cache.get(game_id, []) as Array):
+		if not GameLoop2.is_bashed(nb):
+			n += 1
+	return n
+
 # How many of the graph's biggest games carry a shop (§14). Ten is not a round
 # number picked for tidiness: on the full catalog the degree curve has a real
 # shoulder there — Slay the Spire 141, Vampire Survivors 85, Isaac 69, Hades and
