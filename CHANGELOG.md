@@ -12,7 +12,7 @@ For how the project is laid out and how its systems fit together, see
 ---
 
 - **The header stops scrolling away, the road behind you stops showing games you
-  have never been to, and a curse row opens ticked.**
+  have never been to, and a curse reads as a thing to do.**
 
   **The header is pinned to the screen.** Health, Gold, the road walked, the
   title and the `☰ Menu` were the first row *inside* the scrolling page, which
@@ -54,15 +54,24 @@ For how the project is laid out and how its systems fit together, see
   scrollbar, a `9 games, 12 stops — 3 replays` count, and an `↻ visit 2` badge on
   a stop the run had stood on before.
 
-  **A curse row opens ticked, and unticking it is what fires it.** It used to open
-  unticked, with the tick as a *confession* — check the box to say you broke the
-  rule and pay for it. That made the default answer "I broke every curse I am
-  carrying", so a player who never touched the section was billed for all of them,
-  and a curse only ever cost the honest. A curse is a standing rule rather than a
-  thing to go and do, so the common case is that nothing happened: the row starts
-  answered and the report is unticking the ones that bit. It is the one box on the
-  checklist that opens filled in — a goal, a level-up and an event goal are all
-  things you go and *do*, and those still open as questions.
+  **A curse is a checklist row like any other now.** It used to be phrased as the
+  rule it came from — "Curse of the Bell — If you don't ring a bell, spawn a
+  random enemy when you report the game" — with a box that fired the penalty when
+  you **checked** it. That made it the one row on the list whose tick meant the
+  opposite of every other row's, and it read as a confession rather than as
+  something to go and do. It is an **instruction with its price after it** now
+  (`CurseData2.goal_text()`), and leaving it **unticked** is what bites:
+
+  ```
+  Poor Sleep         — don't use a rest site to replenish health  ✗ Spawn a random enemy  (3 games left)
+  Injury             — don't go below half health                 ✗ Spawn a random enemy  (3 games left)
+  Curse of the Bell  — ring a bell                                ✗ Spawn a random enemy  (permanent)
+  ```
+
+  Conditions authored as an absence ("you don't ring a bell") have the negation
+  stripped rather than doubled, so nobody has to work out what "don't don't ring a
+  bell" was supposed to mean. An empty box now means the same thing on every row
+  of the checklist; only what failing costs is different.
 
   **Dashing lists the connected games A–Z.** A Dash is not a hand of three cards —
   off a hub it is twenty covers, and the question stops being "which of these

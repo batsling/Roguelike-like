@@ -3097,23 +3097,20 @@ func _add_event_goal_rows() -> void:
 		if cd == null:
 			continue
 		var left: int = int(entry.get("games_left", 0))
-		# Phrased as the admission it is. Every other row on this list is a thing
-		# you are pleased to tick; this one is not, and the wording should not
-		# pretend otherwise.
-		var text: String = "%s — %s   (%s)" % [
-			cd.display_name, cd.describe(), CurseData2.window_text(left)]
+		# A CURSE IS A ROW LIKE ANY OTHER: an instruction, ticked if you followed
+		# it, with what it costs you written after it. It used to be phrased as the
+		# rule instead — "If you use a rest site to replenish health, spawn a random
+		# enemy when you report the game" — with a box that fired the penalty when
+		# you CHECKED it. That made it the one row on this list whose tick meant the
+		# opposite of every other row's, and it read as a confession rather than as
+		# something to go and do. Unticked is the failure here exactly as it is on
+		# the goal above it; the difference is only what failing costs.
+		var text: String = "%s — %s   ✗ %s   (%s)" % [
+			cd.display_name, cd.goal_text(), cd.penalty_text,
+			CurseData2.window_text(left)]
 		var row := _verify_row(text, UITheme.CURSE, false)
-		# A curse row opens TICKED, and the tick means "I held to it" — the one box
-		# on this checklist that starts answered. A curse is a standing rule rather
-		# than a thing to go and do, so the common case is that nothing happened,
-		# and the report is UNTICKING the ones that did (see
-		# _resolve_event_goal_rows). Left the other way up, the default answer was
-		# "I broke every curse I am carrying", which is both wrong and the reading
-		# a player who simply doesn't touch the section would get billed for.
-		var check: CheckBox = row["check"]
-		check.button_pressed = true
 		_verify_box.add_child(row["row"])
-		_curse_goal_checks.append({"check": check, "index": i})
+		_curse_goal_checks.append({"check": row["check"], "index": i})
 
 
 # Pay out whatever the player ticked in those two sections. Claims are resolved
@@ -3140,9 +3137,9 @@ func _resolve_event_goal_rows() -> void:
 	# A curse fires but does NOT clear — that is what separates it from a goal.
 	# Breaking it twice across two games costs twice; only the timer removes it.
 	#
-	# UNTICKED is what fires it. The rows open ticked (see _add_event_goal_rows),
-	# so a box the player left alone means "nothing happened" and the ones they
-	# UNTICK are the curses that bit this game.
+	# UNTICKED is what fires it. The row is an instruction (see
+	# _add_event_goal_rows), so a box left empty says the player did not follow it
+	# — the same thing an empty box says on every other row of the checklist.
 	var triggered: Array = []
 	for entry in _curse_goal_checks:
 		var check: CheckBox = entry.get("check")
@@ -3238,8 +3235,11 @@ func _populate_standing_checklist() -> void:
 		if cd == null:
 			continue
 		var left: int = int(entry.get("games_left", 0))
-		_verify_box.add_child(_objective_row("%s — %s   (%s)" % [
-			cd.display_name, cd.describe(),
+		# The same instruction the report step will ask about, because this list is
+		# headed "What you need to do" and the answer for a curse is the thing to
+		# do, not the rule it is derived from.
+		_verify_box.add_child(_objective_row("%s — %s   ✗ %s   (%s)" % [
+			cd.display_name, cd.goal_text(), cd.penalty_text,
 			CurseData2.window_text(left)], UITheme.CURSE))
 
 	# The player's standing status buffs (§13) — goals that belong to no enemy and

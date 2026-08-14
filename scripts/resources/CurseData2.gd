@@ -66,6 +66,45 @@ func describe() -> String:
 	return "If %s, %s when you report the game." % [condition, _penalty_phrase()]
 
 
+# Conditions authored the wrong way up. `condition` names the thing that COSTS
+# you, but a couple are written as the ABSENCE of something instead — Curse of
+# the Bell's is "you don't ring a bell" — because that is the shape the Slay the
+# Spire card has.
+const _NEGATIONS := ["you don't ", "you dont ", "you do not ", "you never ",
+	"you fail to ", "you didn't ", "you did not "]
+
+
+# The curse as an INSTRUCTION — the row the report checklist puts a tick box
+# against: "don't use a rest site to replenish health", "ring a bell".
+#
+# The checklist is a list of things to DO, ticked if you did them, and a curse
+# has to join it as one of those or it is the only row on the page whose box
+# means something different from all the others. `condition` is the wrong voice
+# for that twice over: it is a clause rather than an instruction ("you use a rest
+# site to replenish health"), and it names the thing that costs you rather than
+# the thing to do.
+#
+# Two shapes, because the conditions come in two:
+#   "you use a rest site…"     -> "don't use a rest site…"
+#   "you don't ring a bell"    -> "ring a bell"
+# The negation is stripped rather than doubled, so nobody has to work out what
+# "don't don't ring a bell" was supposed to mean.
+func goal_text() -> String:
+	var c: String = condition.strip_edges()
+	if c == "":
+		return "hold to %s" % display_name
+	var lower: String = c.to_lower()
+	for neg in _NEGATIONS:
+		if lower.begins_with(neg):
+			return c.substr(neg.length())
+	# "you go below half health" -> "go below half health", so the "don't" below
+	# lands on the verb. Every authored condition is in this second person; one
+	# that is not still gets a readable instruction, just a blunter one.
+	if lower.begins_with("you "):
+		c = c.substr(4)
+	return "don't %s" % c
+
+
 func _penalty_phrase() -> String:
 	# "-2 Health" is how a reward line reads; a curse row wants it as an act.
 	var t := penalty_text.strip_edges()

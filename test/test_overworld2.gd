@@ -939,12 +939,12 @@ func test_walking_back_to_a_game_you_played_still_pays_exactly_one_dash() -> voi
 
 # --- curses on the report checklist ----------------------------------------
 #
-# A curse row opens TICKED and the tick means "I held to it" — the one box on the
-# checklist that starts answered. A curse is a standing rule rather than a thing
-# to go and do, so the common case is that nothing happened; the report is
-# UNTICKING the ones that did. The other way up, the default answer was "I broke
-# every curse I am carrying", which is what a player who never touched the
-# section got billed for.
+# A curse is a row like any other on this list: an INSTRUCTION, ticked if you
+# followed it, with what it costs written after it. It used to be phrased as the
+# rule instead — "If you use a rest site to replenish health, spawn a random
+# enemy when you report the game" — with a box that fired the penalty when you
+# CHECKED it, which made it the one row on the checklist whose tick meant the
+# opposite of every other row's.
 
 func _curse_checks() -> Array:
 	var out: Array = []
@@ -952,47 +952,55 @@ func _curse_checks() -> Array:
 		out.append(entry["check"])
 	return out
 
-func test_a_curse_row_opens_already_ticked() -> void:
+func test_a_curse_row_reads_as_the_thing_to_do_with_its_price_after_it() -> void:
 	GameState.add_curse_goal(&"poor_sleep")
 	_ui.pick(0)
 	var checks: Array = _curse_checks()
 	assert_eq(checks.size(), 1, "the curse is on the checklist")
 	if checks.is_empty():
 		return
-	assert_true((checks[0] as CheckBox).button_pressed,
-		"a player who held to it has nothing to do")
+	var text: String = (checks[0] as CheckBox).text
+	assert_string_contains(text, "don't use a rest site to replenish health")
+	assert_string_contains(text, "Spawn a random enemy")
+	assert_false(text.contains("If you"), "not the rule it was derived from: %s" % text)
 
-# The other rows are unchanged: a goal, a level-up and an event goal are all
-# things you go and DO, so they still open unanswered.
-func test_the_other_checklist_rows_still_open_unticked() -> void:
+# …and a curse authored as the ABSENCE of something is not doubled up. Curse of
+# the Bell's condition is "you don't ring a bell", and the instruction that comes
+# out of it is "ring a bell" rather than "don't don't ring a bell".
+func test_a_negatively_authored_curse_is_not_negated_twice() -> void:
+	var bell: CurseData2 = Data.get_curse2(&"curse_of_the_bell")
+	assert_not_null(bell)
+	if bell == null:
+		return
+	assert_eq(bell.goal_text(), "ring a bell")
+
+func test_every_checklist_row_opens_unanswered_including_the_curses() -> void:
 	GameState.add_curse_goal(&"poor_sleep")
 	_ui.pick(0)
-	assert_not_null(_ui._goal_check, "the game's own goal is on the list")
+	for check in _curse_checks():
+		assert_false((check as CheckBox).button_pressed,
+			"an empty box means 'I did not do this' on every row of the list")
 	if _ui._goal_check != null:
-		assert_false(_ui._goal_check.button_pressed,
-			"and it is still a question, not a pre-filled answer")
-	if _ui._levelup_check != null:
-		assert_false(_ui._levelup_check.button_pressed,
-			"so is the level-up challenge")
+		assert_false(_ui._goal_check.button_pressed, "the game's own goal too")
 
 # Poor Sleep's bill is a BODY (every curse's is), so both halves of this are
 # read off the board: a met goal leaves nothing following, so anything standing
 # there afterwards is the curse and only the curse.
-func test_a_kept_curse_costs_nothing() -> void:
-	GameState.add_curse_goal(&"poor_sleep")
-	_ui.pick(0)
-	_ui.report(true)                       # every curse row left as it opened: ticked
-	assert_eq(GameLoop2.stack_size(), 0,
-		"the goal was met and the curse was kept, so nothing is following")
-
-func test_an_unticked_curse_is_what_bites() -> void:
+func test_a_curse_you_ticked_costs_nothing() -> void:
 	GameState.add_curse_goal(&"poor_sleep")
 	_ui.pick(0)
 	var checks: Array = _curse_checks()
 	if checks.is_empty():
 		return
-	(checks[0] as CheckBox).button_pressed = false
+	(checks[0] as CheckBox).button_pressed = true    # "I didn't use a rest site"
 	_ui.report(true)
+	assert_eq(GameLoop2.stack_size(), 0,
+		"the goal was met and the curse was followed, so nothing is following")
+
+func test_a_curse_left_unticked_is_what_bites() -> void:
+	GameState.add_curse_goal(&"poor_sleep")
+	_ui.pick(0)
+	_ui.report(true)                       # the row left exactly as it opened
 	assert_eq(GameLoop2.stack_size(), 1,
 		"the goal was met, so the body on the board is Poor Sleep's")
 	assert_eq(GameState.curse_goals.size(), 1, "and a curse that bites STAYS")
