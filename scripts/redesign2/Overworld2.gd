@@ -3105,7 +3105,7 @@ func _add_event_goal_rows() -> void:
 		# opposite of every other row's, and it read as a confession rather than as
 		# something to go and do. Unticked is the failure here exactly as it is on
 		# the goal above it; the difference is only what failing costs.
-		var text: String = "%s — %s   ✗ %s   (%s)" % [
+		var text: String = "%s — %s   if failed, %s   (%s)" % [
 			cd.display_name, cd.goal_text(), cd.penalty_text,
 			CurseData2.window_text(left)]
 		var row := _verify_row(text, UITheme.CURSE, false)
@@ -3238,7 +3238,7 @@ func _populate_standing_checklist() -> void:
 		# The same instruction the report step will ask about, because this list is
 		# headed "What you need to do" and the answer for a curse is the thing to
 		# do, not the rule it is derived from.
-		_verify_box.add_child(_objective_row("%s — %s   ✗ %s   (%s)" % [
+		_verify_box.add_child(_objective_row("%s — %s   if failed, %s   (%s)" % [
 			cd.display_name, cd.goal_text(), cd.penalty_text,
 			CurseData2.window_text(left)], UITheme.CURSE))
 

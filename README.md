@@ -618,10 +618,11 @@ chance <p>% -> <reward>
   bills you every time you do. It takes an id from the **`curses2.0` tab**, so
   the curse is authored once and any event can hand out the same one. On the
   report checklist it is a row like any other — an **instruction** with its price
-  after it (`CurseData2.goal_text()`: "don't use a rest site to replenish health
-  ✗ Spawn a random enemy"), ticked if you followed it, and **left unticked is what
-  fires the penalty**. Conditions authored as an absence ("you don't ring a bell")
-  have the negation stripped rather than doubled, so the row reads "ring a bell".
+  after it (`CurseData2.goal_text()`, then `if failed, <penalty>`: "don't use a
+  rest site to replenish health   if failed, Spawn a random enemy") — ticked if
+  you followed it, and **left unticked is what fires the penalty**. Conditions
+  authored as an absence ("you don't ring a bell") have the negation stripped
+  rather than doubled, so the row reads "ring a bell".
 - **`play_game`** sends the player to a random game carrying `tag`, off their
   route; the `->` payload lands when they beat it. **Check the tag has games
   behind it first** — the thin end of that vocabulary has single-game buckets.

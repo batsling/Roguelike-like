@@ -63,9 +63,9 @@ For how the project is laid out and how its systems fit together, see
   (`CurseData2.goal_text()`), and leaving it **unticked** is what bites:
 
   ```
-  Poor Sleep         — don't use a rest site to replenish health  ✗ Spawn a random enemy  (3 games left)
-  Injury             — don't go below half health                 ✗ Spawn a random enemy  (3 games left)
-  Curse of the Bell  — ring a bell                                ✗ Spawn a random enemy  (permanent)
+  Poor Sleep         — don't use a rest site to replenish health  if failed, Spawn a random enemy  (3 games left)
+  Injury             — don't go below half health                 if failed, Spawn a random enemy  (3 games left)
+  Curse of the Bell  — ring a bell                                if failed, Spawn a random enemy  (permanent)
   ```
 
   Conditions authored as an absence ("you don't ring a bell") have the negation

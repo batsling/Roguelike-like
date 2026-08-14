@@ -961,7 +961,7 @@ func test_a_curse_row_reads_as_the_thing_to_do_with_its_price_after_it() -> void
 		return
 	var text: String = (checks[0] as CheckBox).text
 	assert_string_contains(text, "don't use a rest site to replenish health")
-	assert_string_contains(text, "Spawn a random enemy")
+	assert_string_contains(text, "if failed, Spawn a random enemy")
 	assert_false(text.contains("If you"), "not the rule it was derived from: %s" % text)
 
 # …and a curse authored as the ABSENCE of something is not doubled up. Curse of
