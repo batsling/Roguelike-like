@@ -11,6 +11,53 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A written manual, and the menu's bottom-left corner is its contents page.**
+  The 📖 How to Play button raised a "coming soon" box with two sentences in it.
+  It now opens thirteen chapters.
+
+  **What the research says, and what it changed here.** Minimalist instruction
+  (Carroll's *minimal manual* work, and the tutorial-design advice that keeps
+  rediscovering it) is consistent about four things, and each one moved
+  something in this manual:
+
+  * **Task order, not system order.** Chapter 1 is one whole run, menu to win,
+    in the order you meet it — because a new player's first question is never
+    "what is a status", it is "what do I do". The spec's own order (schemas,
+    then systems, then screens) is exactly backwards for a reader.
+  * **What, then how, then why.** Every mechanic is named, then operated, then
+    justified, and the justification goes last so it can be skipped.
+  * **Modular and self-contained.** Each chapter opens cold. That costs some
+    repetition and is worth it: nobody reads a manual front to back, they open
+    it at the bit they are stuck on — which is also why the corner panel lists
+    chapters rather than being one more button.
+  * **Error recovery is its own chapter.** "When it goes wrong" is §12 and it is
+    the one written to be opened mid-run: I cannot do this goal, I already
+    travelled, I am out of tries, four followers are killing me. The happy path
+    is the part players work out for themselves.
+
+  The one deliberate departure from the advice is leaning on text at all — the
+  usual counsel is to teach by doing. This is the case where text is right: the
+  mechanics are strategy-game mechanics (a routing puzzle over a real graph, a
+  pressure ladder, a stack that compounds) and those are the ones nobody
+  reverse-engineers from watching. The parts that ARE self-teaching — click a
+  card and it opens, press Report and it asks — get a line each.
+
+  **The manual cannot drift.** Every number in it is interpolated from the
+  constant that governs it, and `test_how_to_play.gd` asserts the prose still
+  quotes the build's own values, so a balance change fails the suite rather than
+  turning the manual into a lie. It also asserts every block carries a kind the
+  screen can draw, every chapter renders something, and — after this shipped
+  broken once — that no raw `%d` survives into the prose: GDScript's `%` binds
+  tighter than `+`, so a format operator on the end of a concatenated string
+  formats only the last fragment.
+
+  **Where it lives.** `HowToPlayText.gd` is every word, as data. `HowToPlayScreen.gd`
+  draws seven block kinds and reads none of them. The menu's corner panel is
+  built from the same array and opens chapters **by id**, so inserting a chapter
+  in the middle cannot repoint the buttons under it.
+
+---
+
 - **The event line came off the cards, and a shop is now what happens instead of
   an event.** Two halves of the same correction.
 

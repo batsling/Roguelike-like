@@ -218,6 +218,16 @@ node and its script.
   runs, the Collection, the tier list, Settings, and **Exit Game**. Quitting from
   here doesn't confirm: nothing is live on the menu and the saves are already on
   disk, so a prompt between the player and the door only ever gets in the way.
+  - **`HowToPlayScreen.gd`** — **📖 How to Play**, the written manual: a chapter
+    list down the left, one chapter down the right. Every word of it is data in
+    **`HowToPlayText.gd`**, which the screen draws and does not read — so the
+    text, which changes every time the build does, is edited without touching
+    layout code. The manual's **numbers are interpolated from the constants that
+    govern them** (`GameLoop2.SHIELDS_PER_GAME`, `RunDifficulty.turns_for_hops`,
+    `ShopSystem.BASE_PRICE`, `RunGraph.NUM_HUBS` …), and `test_how_to_play.gd`
+    asserts the prose still quotes them, so a balance change cannot leave the
+    manual lying. The menu's **bottom-left corner is its table of contents** —
+    built from the same array, opening chapters **by id** rather than by index.
   - **`CustomRunScreen.gd`** — **⚙ Custom Run**: build a run out of a chosen set of
     games. Three columns, because there are three independent questions — what
     **the map** is made of, which of those may be **the start**, and which may be

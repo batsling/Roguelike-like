@@ -11,6 +11,12 @@ extends Control
 
 const OVERWORLD2_SCENE := "res://scenes/redesign2/Overworld2.tscn"
 
+# The How to Play contents panel in the bottom-left corner. Narrow enough to
+# clear the 320px button column in the middle of a 1280 canvas with room to
+# spare, since the two must never overlap at any window size.
+const HTP_WIDTH := 236.0
+const HTP_MARGIN := 16.0
+
 @onready var _continue_btn: Button = %ContinueBtn
 @onready var _save_list_container: VBoxContainer = %SaveList
 @onready var _modal_layer: Control = %ModalLayer
@@ -34,6 +40,7 @@ func _ready() -> void:
 
 	_save_list_container.visible = false
 	_refresh_continue_button()
+	_build_how_to_play_panel()
 
 # ---------------------------------------------------------------------------
 # Menu styling
@@ -617,8 +624,84 @@ func _on_tier_list() -> void:
 func _on_settings() -> void:
 	SettingsModal.open(_modal_layer)
 
+# ---------------------------------------------------------------------------
+# How to Play — the manual, and its contents panel in the corner
+# ---------------------------------------------------------------------------
+
+# The bottom-left corner of the menu is the manual's table of contents: the
+# chapter titles, as buttons, each opening the manual AT that chapter.
+#
+# A corner panel rather than one more entry in the middle column, for two
+# reasons. The middle column is the things you DO — start, continue, quit — and
+# a manual is not one of them. And a contents list is the part of a manual worth
+# putting in front of someone who has not asked for it: a player who does not
+# know they have a question about shops will still read the word "shops" and
+# find out that they do. A single button marked How to Play tells them nothing
+# about what is inside it.
+#
+# The list is built from HowToPlayText.chapters(), so it cannot drift out of
+# step with the manual — adding a chapter adds its line here. Chapters are
+# opened BY ID rather than by index, so inserting one in the middle does not
+# quietly repoint every button below it.
+func _build_how_to_play_panel() -> void:
+	if get_node_or_null("HowToPlayCorner") != null:
+		return
+	var frame := PanelContainer.new()
+	frame.name = "HowToPlayCorner"
+	frame.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	frame.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	frame.offset_left = HTP_MARGIN
+	frame.offset_bottom = -HTP_MARGIN
+	frame.custom_minimum_size = Vector2(HTP_WIDTH, 0)
+	frame.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 12))
+	add_child(frame)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	frame.add_child(col)
+
+	var head := Button.new()
+	head.text = "📖  How to Play"
+	head.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	head.flat = true
+	head.tooltip_text = "Open the manual at the beginning."
+	head.custom_minimum_size = Vector2(0, 30)
+	head.add_theme_font_size_override("font_size", 16)
+	head.add_theme_color_override("font_color", UITheme.GOLD)
+	head.pressed.connect(_on_how_to_play)
+	col.add_child(head)
+
+	var sub := Label.new()
+	sub.text = "New here? Start at the top."
+	sub.add_theme_font_size_override("font_size", 11)
+	sub.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	col.add_child(sub)
+	col.add_child(HSeparator.new())
+
+	for ch in HowToPlayText.chapters():
+		var id: StringName = StringName(ch["id"])
+		var row := Button.new()
+		row.text = "%s  %s" % [ch.get("icon", "•"), ch["title"]]
+		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		row.flat = true
+		row.clip_text = true
+		row.tooltip_text = String(ch.get("blurb", ""))
+		row.custom_minimum_size = Vector2(0, 24)
+		row.add_theme_font_size_override("font_size", 12)
+		row.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		row.pressed.connect(func(): _open_manual(id))
+		col.add_child(row)
+
+
 func _on_how_to_play() -> void:
-	_show_coming_soon("How to Play", "Choose a character, then route the game-graph toward the Amulet — beat each game's goal to defeat its enemy. Full tutorial coming soon.")
+	_open_manual(&"start")
+
+
+# Public-ish seam: one place the manual is opened from, so the corner panel, the
+# top button and any future entry point cannot disagree about how it mounts.
+func _open_manual(chapter) -> void:
+	HowToPlayScreen.open(_modal_layer, chapter)
 
 func _on_clear_data() -> void:
 	var confirm := ConfirmationDialog.new()
