@@ -3091,38 +3091,25 @@ func _add_event_goal_rows() -> void:
 		_verify_box.add_child(row["row"])
 		_event_goal_checks.append({"check": row["check"], "index": i})
 
-	# CURSES, under a heading of their own, and the one section on this list where
-	# the tick means the OPPOSITE of everything above it.
-	#
-	# They used to be rows you ticked to CONFESS: "Curse of the Bell — if you don't
-	# ring a bell, spawn a random enemy" with a box that fired the penalty when you
-	# checked it. Two things were wrong with that. The sentence was a conditional
-	# with a hidden subject — the box was not for the goal the row described, it was
-	# for the failure of it — and half the curses are authored as negatives, so
-	# ticking one meant asserting a double negative ("yes, I did not ring a bell").
-	# And it made the safe default the wrong way round: a player who read the list
-	# and ticked nothing paid nothing, so the curse a run is carrying only ever bit
-	# people who were being honest about it.
-	#
-	# Inverted, it is the rule the player already expects: the row states the thing
-	# to DO, you tick it if you did it, and anything left unticked bites when you
-	# press Completed Game (see _resolve_event_goal_rows).
-	if not GameState.curse_goals.is_empty():
-		var head := _verify_head("Curses — tick each one you kept. Any left unticked bites:")
-		head.add_theme_color_override("font_color", UITheme.CURSE)
-		_verify_box.add_child(head)
 	for i in range(GameState.curse_goals.size()):
 		var entry: Dictionary = GameState.curse_goals[i]
 		var cd: CurseData2 = Data.get_curse2(StringName(entry.get("curse", &"")))
 		if cd == null:
 			continue
 		var left: int = int(entry.get("games_left", 0))
+		# Phrased as the admission it is. Every other row on this list is a thing
+		# you are pleased to tick; this one is not, and the wording should not
+		# pretend otherwise.
 		var text: String = "%s — %s   (%s)" % [
-			cd.display_name, cd.goal_line(), CurseData2.window_text(left)]
+			cd.display_name, cd.describe(), CurseData2.window_text(left)]
 		var row := _verify_row(text, UITheme.CURSE, false)
-		# Curse rows open TICKED. The box means "I kept it", and a player who kept
-		# every curse this game should have nothing to do; the ones that bit are the
-		# exception and unticking them is the report.
+		# A curse row opens TICKED, and the tick means "I held to it" — the one box
+		# on this checklist that starts answered. A curse is a standing rule rather
+		# than a thing to go and do, so the common case is that nothing happened,
+		# and the report is UNTICKING the ones that did (see
+		# _resolve_event_goal_rows). Left the other way up, the default answer was
+		# "I broke every curse I am carrying", which is both wrong and the reading
+		# a player who simply doesn't touch the section would get billed for.
 		var check: CheckBox = row["check"]
 		check.button_pressed = true
 		_verify_box.add_child(row["row"])
@@ -3153,9 +3140,9 @@ func _resolve_event_goal_rows() -> void:
 	# A curse fires but does NOT clear — that is what separates it from a goal.
 	# Breaking it twice across two games costs twice; only the timer removes it.
 	#
-	# UNTICKED is what fires it: the box says "I kept this one", so a curse that
-	# was not kept — or that the player simply did not answer for — is a curse that
-	# bit. See _add_event_goal_rows for why round this way.
+	# UNTICKED is what fires it. The rows open ticked (see _add_event_goal_rows),
+	# so a box the player left alone means "nothing happened" and the ones they
+	# UNTICK are the curses that bit this game.
 	var triggered: Array = []
 	for entry in _curse_goal_checks:
 		var check: CheckBox = entry.get("check")
@@ -3251,11 +3238,8 @@ func _populate_standing_checklist() -> void:
 		if cd == null:
 			continue
 		var left: int = int(entry.get("games_left", 0))
-		# The same sentence the report step will ask about (goal_line), not the
-		# rule as an event states it (describe): this list is headed "What you need
-		# to do", and what the player needs to do about a curse is keep it.
 		_verify_box.add_child(_objective_row("%s — %s   (%s)" % [
-			cd.display_name, cd.goal_line(),
+			cd.display_name, cd.describe(),
 			CurseData2.window_text(left)], UITheme.CURSE))
 
 	# The player's standing status buffs (§13) — goals that belong to no enemy and

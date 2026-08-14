@@ -12,8 +12,7 @@ For how the project is laid out and how its systems fit together, see
 ---
 
 - **The header stops scrolling away, the road behind you stops showing games you
-  have never been to, and a curse is a goal you keep rather than a crime you
-  confess.**
+  have never been to, and a curse row opens ticked.**
 
   **The header is pinned to the screen.** Health, Gold, the road walked, the
   title and the `☰ Menu` were the first row *inside* the scrolling page, which
@@ -55,17 +54,15 @@ For how the project is laid out and how its systems fit together, see
   scrollbar, a `9 games, 12 stops — 3 replays` count, and an `↻ visit 2` badge on
   a stop the run had stood on before.
 
-  **A curse is a goal you keep.** A curse row used to be a *confession*: "Curse of
-  the Bell — if you don't ring a bell, spawn a random enemy", with a box that
-  fired the penalty when you **checked** it. Three things were wrong with that.
-  The box was not for the goal the row described, it was for the failure of it.
-  Half the curses are authored as negatives, so ticking one meant asserting a
-  double negative. And it made the safe default the wrong way round — read the
-  list, tick nothing, pay nothing, so a curse only ever bit the honest. Curses are
-  now their own section of the checklist, headed *"tick each one you kept; any
-  left unticked bites"*, opening **ticked**, stating the thing to do
-  (`CurseData2.goal_line()`) rather than the conditional the sheet stores, and
-  billing on the rows left **un**ticked.
+  **A curse row opens ticked, and unticking it is what fires it.** It used to open
+  unticked, with the tick as a *confession* — check the box to say you broke the
+  rule and pay for it. That made the default answer "I broke every curse I am
+  carrying", so a player who never touched the section was billed for all of them,
+  and a curse only ever cost the honest. A curse is a standing rule rather than a
+  thing to go and do, so the common case is that nothing happened: the row starts
+  answered and the report is unticking the ones that bit. It is the one box on the
+  checklist that opens filled in — a goal, a level-up and an event goal are all
+  things you go and *do*, and those still open as questions.
 
   **Dashing lists the connected games A–Z.** A Dash is not a hand of three cards —
   off a hub it is twenty covers, and the question stops being "which of these

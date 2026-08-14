@@ -939,12 +939,12 @@ func test_walking_back_to_a_game_you_played_still_pays_exactly_one_dash() -> voi
 
 # --- curses on the report checklist ----------------------------------------
 #
-# The one section of the checklist where the tick means the opposite of every row
-# above it. A curse row used to be a CONFESSION — "if you don't ring a bell,
-# spawn a random enemy", with a box that fired the penalty when checked — which
-# made ticking a negatively-authored curse an assertion of a double negative, and
-# made the safe default the wrong way round: read the list, tick nothing, pay
-# nothing. It is a goal now. Tick what you kept; what you leave bites.
+# A curse row opens TICKED and the tick means "I held to it" — the one box on the
+# checklist that starts answered. A curse is a standing rule rather than a thing
+# to go and do, so the common case is that nothing happened; the report is
+# UNTICKING the ones that did. The other way up, the default answer was "I broke
+# every curse I am carrying", which is what a player who never touched the
+# section got billed for.
 
 func _curse_checks() -> Array:
 	var out: Array = []
@@ -960,26 +960,20 @@ func test_a_curse_row_opens_already_ticked() -> void:
 	if checks.is_empty():
 		return
 	assert_true((checks[0] as CheckBox).button_pressed,
-		"the box means 'I kept it', and a player who kept it has nothing to do")
+		"a player who held to it has nothing to do")
 
-func test_a_curse_row_states_the_thing_to_keep_not_the_thing_that_costs() -> void:
+# The other rows are unchanged: a goal, a level-up and an event goal are all
+# things you go and DO, so they still open unanswered.
+func test_the_other_checklist_rows_still_open_unticked() -> void:
 	GameState.add_curse_goal(&"poor_sleep")
 	_ui.pick(0)
-	var text: String = _text_of(_ui._verify_box)
-	assert_string_contains(text, "Avoided: you use a rest site")
-	assert_string_contains(text, "tick each one you kept")
-
-# …and a curse authored as the ABSENCE of something is not asked about twice
-# over. Curse of the Bell's condition is "you don't ring a bell", so an
-# "Avoided:" prefix would make the box one you tick to say you rang one.
-func test_a_negatively_authored_curse_is_not_asked_as_a_double_negative() -> void:
-	var bell: CurseData2 = Data.get_curse2(&"curse_of_the_bell")
-	assert_not_null(bell)
-	if bell == null:
-		return
-	assert_string_contains(bell.goal_line(), "Kept: you ring a bell")
-	assert_false(bell.goal_line().contains("Avoided: you don't"),
-		"nobody should have to work out what avoiding a negative means")
+	assert_not_null(_ui._goal_check, "the game's own goal is on the list")
+	if _ui._goal_check != null:
+		assert_false(_ui._goal_check.button_pressed,
+			"and it is still a question, not a pre-filled answer")
+	if _ui._levelup_check != null:
+		assert_false(_ui._levelup_check.button_pressed,
+			"so is the level-up challenge")
 
 # Poor Sleep's bill is a BODY (every curse's is), so both halves of this are
 # read off the board: a met goal leaves nothing following, so anything standing

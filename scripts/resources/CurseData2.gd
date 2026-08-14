@@ -66,44 +66,6 @@ func describe() -> String:
 	return "If %s, %s when you report the game." % [condition, _penalty_phrase()]
 
 
-# Curse conditions authored the wrong way up. `condition` normally names the
-# thing that COSTS you ("you use a rest site to replenish health"), but a few are
-# written as the absence of something instead — Curse of the Bell's is "you don't
-# ring a bell" — because that is the shape the Slay the Spire card has.
-const _NEGATIONS := ["you don't ", "you dont ", "you do not ", "you never ",
-	"you fail to ", "you didn't ", "you did not "]
-
-
-# The same curse as a GOAL — what the report step asks you to tick.
-#
-# `condition` is authored as the thing that TRIGGERS the curse, because that is
-# the sentence the standing list and an event's choice line want. The checklist
-# wants the other side of it: the box is ticked when the player held to the
-# curse, so the row has to name the thing they DID rather than the thing that
-# would have cost them.
-#
-# Which way round that reads depends on how the condition was authored, and
-# getting it wrong is worse than not turning it at all. A positive condition
-# turns into an avoidance ("Avoided: you go below half health"). A negative one
-# is already an avoidance, so the same prefix would ask the player to confirm a
-# double negative — "Avoided: you don't ring a bell", which is a box you tick to
-# say you rang one. Stripping the negation gives the thing itself back: "Kept:
-# you ring a bell".
-func goal_line() -> String:
-	if condition == "":
-		return "Kept clear of %s" % display_name
-	return "%s   ✗ otherwise %s" % [_kept_phrase(), _penalty_phrase()]
-
-
-func _kept_phrase() -> String:
-	var c: String = condition.strip_edges()
-	var lower: String = c.to_lower()
-	for neg in _NEGATIONS:
-		if lower.begins_with(neg):
-			return "Kept: you %s" % c.substr(neg.length())
-	return "Avoided: %s" % c
-
-
 func _penalty_phrase() -> String:
 	# "-2 Health" is how a reward line reads; a curse row wants it as an act.
 	var t := penalty_text.strip_edges()

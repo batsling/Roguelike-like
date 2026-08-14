@@ -617,12 +617,10 @@ chance <p>% -> <reward>
 - **`add_curse`** is that inverted — an objective you want to *not* meet, which
   bills you every time you do. It takes an id from the **`curses2.0` tab**, so
   the curse is authored once and any event can hand out the same one. On the
-  report checklist it is asked as a **goal you tick when you kept it, and it bites
-  when you leave it unticked** — the opposite polarity to every other row on that
-  list, under a heading of its own that says so. The row states the thing to *do*
-  (`CurseData2.goal_line()`: "Avoided: you go below half health", or "Kept: you
-  ring a bell" for the handful of conditions authored as an absence), not the
-  conditional the sheet stores.
+  report checklist its row **opens ticked** and the tick means *"I held to it"* —
+  the one box on that list that starts answered, because a curse is a standing
+  rule rather than a thing to go and do. **Unticking** a row is what fires its
+  penalty.
 - **`play_game`** sends the player to a random game carrying `tag`, off their
   route; the `->` payload lands when they beat it. **Check the tag has games
   behind it first** — the thin end of that vocabulary has single-game buckets.
