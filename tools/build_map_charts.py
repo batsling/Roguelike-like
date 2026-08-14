@@ -16,8 +16,12 @@ SRC = "/home/user/Roguelike-like/tools/Roguelikes.xlsx"
 CALC = "Map Calc"
 DASH = "Map Analysis"
 
-GAMES = 820      # ranges run past the data so new rows are picked up
-CONNS = 1060
+# Ranges run PAST the data so new rows are picked up without regenerating. They
+# have to actually clear it: at 820 the games block stopped 29 rows short of the
+# 849 games on the sheet, so every degree, hub and median here was computed over
+# a truncated catalog. Keep a few hundred rows of headroom.
+GAMES = 950
+CONNS = 1400
 YEAR0, YEAR1 = 1978, 2026
 TYPES = ["Action", "Strategy", "Deckbuilder", "Traditional"]
 LANE = {t: i + 1 for i, t in enumerate(TYPES)}
@@ -54,7 +58,7 @@ def build_calc(wb):
         ["Game", "Year", "Type", "Degree", "Lane", "Stack",
          "Action X", "Action Y", "Strategy X", "Strategy Y",
          "Deckbuilder X", "Deckbuilder Y", "Traditional X", "Traditional Y",
-         "Rank key"], 1):
+         "Rank key", "Owned", "Owned rank key"], 1):
         head(ws, "%s1" % get_column_letter(c), h)
 
     for r in range(2, GAMES + 1):
@@ -81,6 +85,20 @@ def build_calc(wb):
                                     ).format(r, t, LANE[t])
         # Tie-break so LARGE/MATCH cannot pick the same hub twice.
         ws["O%d" % r] = "=IF($A{0}=\"\",\"\",$D{0}+ROW()/1000000)".format(r)
+        # Owned, mirrored here so the dashboard can slice any of the above by it
+        # with a plain COUNTIFS — the two blocks are the same shape and the same
+        # row order, which is what lets a criteria range on `games` line up with
+        # a sum range here.
+        # Doubly guarded so an unowned row reads blank rather than 0: a bare
+        # reference to an empty cell comes back as a zero, and a column of "Yes"
+        # and 0 is a column nobody trusts on sight.
+        ws["P%d" % r] = "=IF(OR($A{0}=\"\",games!$H{0}=\"\"),\"\",games!$H{0})".format(r)
+        # The same tie-broken rank key, but only for games you own: the run's
+        # hubs — and so its shops — are drawn from the owned catalog, not from
+        # the whole sheet, so "the biggest hub" and "the biggest hub you will
+        # ever stand on" are two different questions.
+        ws["Q%d" % r] = ("=IF(OR($A{0}=\"\",$P{0}<>\"Yes\"),\"\",$D{0}+ROW()/1000000)"
+                         ).format(r)
 
     # ---- lookup table the lane formula matches against ---------------------
     head(ws, "R1", "Genre")
@@ -101,7 +119,7 @@ def build_calc(wb):
         ws["V%d" % r] = ("=IF(OR($T{0}=\"\",$U{0}=\"\"),\"\",$U{0}-$T{0})").format(r)
 
     ws.column_dimensions["A"].width = 34
-    for col in "BCDEFOTUV":
+    for col in "BCDEFOPQTUV":
         ws.column_dimensions[col].width = 12
     ws.freeze_panes = "A2"
     return ws
@@ -118,16 +136,32 @@ def build_dash(wb):
     ws["A2"].font = Font(name=FONT, size=10, italic=True, color="5F5340")
 
     # ---- headline metrics --------------------------------------------------
+    #
+    # Two catalogs, side by side. The graph analysis proper is over every game on
+    # the sheet; the OWNED lines are over the ones a run can actually be sent to
+    # (RunConfig's default library filter, and the pool RunGraph builds its
+    # routes on). They diverge — half the sheet is unowned — so a hub count that
+    # doesn't say which catalog it means is not an answer to any question the
+    # game asks.
     head(ws, "A4", "Measure")
     head(ws, "B4", "Value")
     head(ws, "C4", "What it means")
+    owned_col = "games!$H$2:$H${}".format(GAMES)
     rows = [
         ("Games", "=COUNTA(games!$A$2:$A${})".format(GAMES),
          "Nodes in the graph"),
+        ("Games owned", '=COUNTIF({},"Yes")'.format(owned_col),
+         "Marked Owned — the catalog a default run draws from"),
+        ("Owned share", "=IF({Games}=0,0,{Games owned}/{Games})",
+         "How much of the sheet a run can actually be sent to"),
         ("Connections", "=COUNTA(connections!$A$2:$A${})".format(CONNS),
          "Authored influence edges"),
-        ("Average degree", "=IF(B5=0,0,2*B6/B5)",
+        ("Average degree", "=IF({Games}=0,0,2*{Connections}/{Games})",
          "Connections per game — under 3 means a sparse graph"),
+        ("Average degree (owned)",
+         '=IFERROR(SUMIFS(\'{0}\'!$D$2:$D${1},{2},"Yes")/{{Games owned}},0)'
+         .format(CALC, GAMES, owned_col),
+         "The same figure over the owned catalog — the graph a run walks"),
         ("Median degree", "=MEDIAN('{}'!$D$2:$D${})".format(CALC, GAMES),
          "Half of all games sit at or below this"),
         ("Largest hub", "=MAX('{}'!$D$2:$D${})".format(CALC, GAMES),
@@ -136,8 +170,14 @@ def build_dash(wb):
          "Dead ends — one way in, the same way out"),
         ("Isolated (degree 0)", "=COUNTIF('{}'!$D$2:$D${},0)".format(CALC, GAMES),
          "Unreachable; can never appear on a route"),
-        ("Leaves + isolated", "=B10+B11",
+        ("Leaves + isolated", "={Leaves (degree 1)}+{Isolated (degree 0)}",
          "Share of the map that carries no routing information"),
+        ("Owned & routable",
+         '=COUNTIFS({0},"Yes",\'{1}\'!$D$2:$D${2},">1")'.format(owned_col, CALC, GAMES),
+         "Owned games with more than one way out — real junctions on a route"),
+        ("Owned dead ends",
+         '=COUNTIFS({0},"Yes",\'{1}\'!$D$2:$D${2},"<=1")'.format(owned_col, CALC, GAMES),
+         "Owned games the run can only reach and turn around in"),
         ("Backward in time", "=SUMPRODUCT(('{0}'!$V$2:$V${1}<>\"\")*('{0}'!$V$2:$V${1}<0))"
          .format(CALC, CONNS),
          "MUST BE 0 — an influence cannot point at an older game"),
@@ -150,144 +190,212 @@ def build_dash(wb):
          "Sequel / same-devs links, distinct from plain influence"),
         ("With a source", "=COUNTA(connections!$E$2:$E${})".format(CONNS),
          "Connections carrying a URL or note as evidence"),
+        ("Owned, no Steam page",
+         '=COUNTIFS({0},"Yes",games!$J$2:$J${1},"")'.format(owned_col, GAMES),
+         "Owned rows with nothing to link to — a gap in the sheet, not the graph"),
     ]
+    # Formulas name the measures they build on rather than hardcoding a row, so
+    # inserting a line here can never silently repoint an average at the wrong
+    # one. (This bit us in reverse once already: `project.godot` comments.)
+    at = {label: "B%d" % (5 + i) for i, (label, _, _) in enumerate(rows)}
     for i, (label, formula, note) in enumerate(rows):
         r = 5 + i
         ws["A%d" % r] = label
         ws["A%d" % r].font = Font(name=FONT, size=10, bold=True)
-        ws["B%d" % r] = formula
+        ws["B%d" % r] = formula.format(**at) if "{" in formula else formula
         ws["B%d" % r].font = Font(name=FONT, size=10)
         ws["B%d" % r].fill = BOXFILL
         ws["C%d" % r] = note
         ws["C%d" % r].font = Font(name=FONT, size=10, color="5F5340")
         for c in "ABC":
             ws["%s%d" % (c, r)].border = BOX
-    ws["B7"].number_format = "0.00"
-    ws["B15"].number_format = "0.0"
+    ws[at["Owned share"]].number_format = "0%"
+    ws[at["Average degree"]].number_format = "0.00"
+    ws[at["Average degree (owned)"]].number_format = "0.00"
+    ws[at["Median edge span"]].number_format = "0.0"
     # The temporal invariant is the one that must never drift.
-    ws["B13"].font = Font(name=FONT, size=10, bold=True, color=ACCENT)
+    ws[at["Backward in time"]].font = Font(name=FONT, size=10, bold=True, color=ACCENT)
 
     # ---- distribution tables the charts read ------------------------------
+    #
+    # Every table that can be split by ownership is, in a column next to the
+    # total rather than on a sheet of its own: the comparison IS the finding, and
+    # a chart can only draw it as two bars if the two numbers sit side by side.
     head(ws, "E4", "Degree")
     head(ws, "F4", "Games")
-    bands = [("0", "=COUNTIF('{}'!$D$2:$D${},0)"), ("1", "=COUNTIF('{}'!$D$2:$D${},1)"),
-             ("2", "=COUNTIF('{}'!$D$2:$D${},2)"), ("3", "=COUNTIF('{}'!$D$2:$D${},3)"),
-             ("4", "=COUNTIF('{}'!$D$2:$D${},4)"), ("5", "=COUNTIF('{}'!$D$2:$D${},5)")]
-    for i, (lab, f) in enumerate(bands):
-        ws["E%d" % (5 + i)] = lab
-        ws["F%d" % (5 + i)] = f.format(CALC, GAMES)
-    ws["E11"] = "6-9"
-    ws["F11"] = "=COUNTIFS('{0}'!$D$2:$D${1},\">=6\",'{0}'!$D$2:$D${1},\"<=9\")".format(CALC, GAMES)
-    ws["E12"] = "10-24"
-    ws["F12"] = "=COUNTIFS('{0}'!$D$2:$D${1},\">=10\",'{0}'!$D$2:$D${1},\"<=24\")".format(CALC, GAMES)
+    head(ws, "G4", "Owned")
+    bands = [("0", "0"), ("1", "1"), ("2", "2"), ("3", "3"), ("4", "4"), ("5", "5")]
+    for i, (lab, crit) in enumerate(bands):
+        r = 5 + i
+        ws["E%d" % r] = lab
+        ws["F%d" % r] = "=COUNTIF('{}'!$D$2:$D${},{})".format(CALC, GAMES, crit)
+        ws["G%d" % r] = ("=COUNTIFS('{0}'!$D$2:$D${1},{2},'{0}'!$P$2:$P${1},\"Yes\")"
+                         ).format(CALC, GAMES, crit)
+    wide = [("6-9", '">=6"', '"<=9"'), ("10-24", '">=10"', '"<=24"')]
+    for i, (lab, lo, hi) in enumerate(wide):
+        r = 11 + i
+        ws["E%d" % r] = lab
+        ws["F%d" % r] = "=COUNTIFS('{0}'!$D$2:$D${1},{2},'{0}'!$D$2:$D${1},{3})".format(
+            CALC, GAMES, lo, hi)
+        ws["G%d" % r] = ("=COUNTIFS('{0}'!$D$2:$D${1},{2},'{0}'!$D$2:$D${1},{3},"
+                         "'{0}'!$P$2:$P${1},\"Yes\")").format(CALC, GAMES, lo, hi)
     ws["E13"] = "25+"
     ws["F13"] = "=COUNTIF('{}'!$D$2:$D${},\">=25\")".format(CALC, GAMES)
+    ws["G13"] = ("=COUNTIFS('{0}'!$D$2:$D${1},\">=25\",'{0}'!$P$2:$P${1},\"Yes\")"
+                 ).format(CALC, GAMES)
 
-    head(ws, "H4", "Genre")
-    head(ws, "I4", "Games")
+    # ---- genre, owned against total ---------------------------------------
+    head(ws, "I4", "Genre")
+    head(ws, "J4", "Games")
+    head(ws, "K4", "Owned")
+    head(ws, "L4", "Owned %")
     for i, t in enumerate(TYPES):
-        ws["H%d" % (5 + i)] = t
-        ws["I%d" % (5 + i)] = "=COUNTIF(games!$C$2:$C${},$H{})".format(GAMES, 5 + i)
+        r = 5 + i
+        ws["I%d" % r] = t
+        ws["J%d" % r] = "=COUNTIF(games!$C$2:$C${},$I{})".format(GAMES, r)
+        ws["K%d" % r] = '=COUNTIFS(games!$C$2:$C${0},$I{1},{2},"Yes")'.format(
+            GAMES, r, owned_col)
+        ws["L%d" % r] = "=IF($J{0}=0,0,$K{0}/$J{0})".format(r)
+        ws["L%d" % r].number_format = "0%"
+    r = 5 + len(TYPES)
+    ws["I%d" % r] = "All"
+    ws["I%d" % r].font = Font(name=FONT, size=10, bold=True)
+    for col in "JK":
+        ws["%s%d" % (col, r)] = "=SUM({0}5:{0}{1})".format(col, r - 1)
+        ws["%s%d" % (col, r)].font = Font(name=FONT, size=10, bold=True)
+    ws["L%d" % r] = "=IF($J{0}=0,0,$K{0}/$J{0})".format(r)
+    ws["L%d" % r].number_format = "0%"
+    ws["L%d" % r].font = Font(name=FONT, size=10, bold=True)
 
-    head(ws, "K4", "Rank")
-    head(ws, "L4", "Game")
-    head(ws, "M4", "Degree")
+    # ---- the two hub tables -----------------------------------------------
+    for col, label in (("N", "Rank"), ("O", "Game"), ("P", "Degree")):
+        head(ws, "%s4" % col, label)
+    for col, label in (("R", "Rank"), ("S", "Game you own"), ("T", "Degree")):
+        head(ws, "%s4" % col, label)
     for i in range(15):
         r = 5 + i
-        ws["K%d" % r] = i + 1
-        ws["L%d" % r] = ("=IFERROR(INDEX('{0}'!$A$2:$A${1},"
-                         "MATCH(LARGE('{0}'!$O$2:$O${1},{2}),'{0}'!$O$2:$O${1},0)),\"\")"
-                         ).format(CALC, GAMES, i + 1)
-        ws["M%d" % r] = ("=IFERROR(INDEX('{0}'!$D$2:$D${1},"
-                         "MATCH(LARGE('{0}'!$O$2:$O${1},{2}),'{0}'!$O$2:$O${1},0)),\"\")"
-                         ).format(CALC, GAMES, i + 1)
+        for rank_col, name_col, deg_col, key in (
+                ("N", "O", "P", "$O"), ("R", "S", "T", "$Q")):
+            ws["%s%d" % (rank_col, r)] = i + 1
+            ws["%s%d" % (name_col, r)] = (
+                "=IFERROR(INDEX('{0}'!$A$2:$A${1},"
+                "MATCH(LARGE('{0}'!{2}$2:{2}${1},{3}),'{0}'!{2}$2:{2}${1},0)),\"\")"
+            ).format(CALC, GAMES, key, i + 1)
+            ws["%s%d" % (deg_col, r)] = (
+                "=IFERROR(INDEX('{0}'!$D$2:$D${1},"
+                "MATCH(LARGE('{0}'!{2}$2:{2}${1},{3}),'{0}'!{2}$2:{2}${1},0)),\"\")"
+            ).format(CALC, GAMES, key, i + 1)
 
-    head(ws, "O4", "Year")
-    head(ws, "P4", "Games")
-    head(ws, "Q4", "Connections")
+    # ---- the year block, owned against total ------------------------------
+    head(ws, "V4", "Year")
+    head(ws, "W4", "Games")
+    head(ws, "X4", "Owned")
+    head(ws, "Y4", "Connections")
     for i, yr in enumerate(range(YEAR0, YEAR1 + 1)):
         r = 5 + i
-        ws["O%d" % r] = yr
-        ws["P%d" % r] = "=COUNTIF(games!$B$2:$B${},$O{})".format(GAMES, r)
-        ws["Q%d" % r] = "=COUNTIF('{}'!$T$2:$T${},$O{})".format(CALC, CONNS, r)
+        ws["V%d" % r] = yr
+        ws["W%d" % r] = "=COUNTIF(games!$B$2:$B${},$V{})".format(GAMES, r)
+        ws["X%d" % r] = '=COUNTIFS(games!$B$2:$B${0},$V{1},{2},"Yes")'.format(
+            GAMES, r, owned_col)
+        ws["Y%d" % r] = "=COUNTIF('{}'!$T$2:$T${},$V{})".format(CALC, CONNS, r)
 
-    head(ws, "S4", "Edge span")
-    head(ws, "T4", "Connections")
+    head(ws, "AA4", "Edge span")
+    head(ws, "AB4", "Connections")
     for i in range(11):
         r = 5 + i
-        ws["S%d" % r] = i
-        ws["T%d" % r] = "=COUNTIF('{}'!$V$2:$V${},$S{})".format(CALC, CONNS, r)
-    ws["S16"] = "11-20"
-    ws["T16"] = "=COUNTIFS('{0}'!$V$2:$V${1},\">=11\",'{0}'!$V$2:$V${1},\"<=20\")".format(CALC, CONNS)
-    ws["S17"] = "21+"
-    ws["T17"] = "=COUNTIF('{}'!$V$2:$V${},\">=21\")".format(CALC, CONNS)
+        ws["AA%d" % r] = i
+        ws["AB%d" % r] = "=COUNTIF('{}'!$V$2:$V${},$AA{})".format(CALC, CONNS, r)
+    ws["AA16"] = "11-20"
+    ws["AB16"] = "=COUNTIFS('{0}'!$V$2:$V${1},\">=11\",'{0}'!$V$2:$V${1},\"<=20\")".format(
+        CALC, CONNS)
+    ws["AA17"] = "21+"
+    ws["AB17"] = "=COUNTIF('{}'!$V$2:$V${},\">=21\")".format(CALC, CONNS)
 
-    for col, w in (("A", 22), ("B", 12), ("C", 52), ("E", 10), ("F", 9), ("H", 14),
-                   ("I", 9), ("K", 7), ("L", 32), ("M", 9), ("O", 8), ("P", 9),
-                   ("Q", 13), ("S", 11), ("T", 13)):
+    for col, w in (("A", 24), ("B", 12), ("C", 54), ("E", 10), ("F", 9), ("G", 9),
+                   ("I", 14), ("J", 9), ("K", 9), ("L", 9), ("N", 7), ("O", 32),
+                   ("P", 9), ("R", 7), ("S", 32), ("T", 9), ("V", 8), ("W", 9),
+                   ("X", 9), ("Y", 13), ("AA", 11), ("AB", 13)):
         ws.column_dimensions[col].width = w
     return ws
 
 
-def add_charts(ws):
-    def style(ch, t, w, h):
-        ch.title = t
-        ch.width, ch.height = w, h
-        ch.style = 2
+# Column indices on the dashboard, for the chart references. Named rather than
+# spelled as bare numbers: the tables above have moved once (to make room for the
+# owned columns) and a chart pointed at the wrong column draws a plausible,
+# wrong picture instead of failing.
+COL = {"degree": 5, "degree_games": 6, "degree_owned": 7,
+       "genre": 9, "genre_games": 10, "genre_owned": 11,
+       "hub_name": 15, "hub_degree": 16,
+       "owned_hub_name": 19, "owned_hub_degree": 20,
+       "year": 22, "year_games": 23, "year_owned": 24, "year_conns": 25,
+       "span": 27, "span_conns": 28}
 
-    # 1. Games per release year
-    c1 = BarChart()
-    style(c1, "Games per release year", 26, 9)
-    c1.type = "col"
-    c1.add_data(Reference(ws, min_col=16, min_row=4, max_row=4 + (YEAR1 - YEAR0 + 1)), titles_from_data=True)
-    c1.set_categories(Reference(ws, min_col=15, min_row=5, max_row=4 + (YEAR1 - YEAR0 + 1)))
-    c1.y_axis.title = "Games"
-    c1.gapWidth = 40
-    ws.add_chart(c1, "A21")
+YEARS_LAST = 4 + (YEAR1 - YEAR0 + 1)
+
+
+def add_charts(ws):
+    """Every chart stacked in one column below the tables.
+
+    They used to be tiled two and three across, which put them over the year and
+    edge-span tables the moment those tables grew a column. One column, spaced by
+    a chart's own height, cannot collide with anything.
+    """
+    def bar(t, anchor, cols, cats, horizontal=False, y_title=None, x_title=None,
+            first_row=4, last_row=None, width=26, height=9):
+        ch = BarChart()
+        ch.title = t
+        ch.width, ch.height = width, height
+        ch.style = 2
+        ch.type = "bar" if horizontal else "col"
+        for col in cols:
+            ch.add_data(Reference(ws, min_col=col, min_row=first_row,
+                                  max_row=last_row), titles_from_data=True)
+        ch.set_categories(Reference(ws, min_col=cats, min_row=first_row + 1,
+                                    max_row=last_row))
+        if y_title:
+            ch.y_axis.title = y_title
+        if x_title:
+            ch.x_axis.title = x_title
+        ch.gapWidth = 60
+        ws.add_chart(ch, anchor)
+        return ch
+
+    # 1. Games per release year — the whole sheet against what you own.
+    bar("Games per release year — owned against the whole sheet", "A30",
+        [COL["year_games"], COL["year_owned"]], COL["year"],
+        y_title="Games", last_row=YEARS_LAST)
 
     # 2. Connections created per year
-    c2 = BarChart()
-    style(c2, "Connections by influencer's year", 26, 9)
-    c2.type = "col"
-    c2.add_data(Reference(ws, min_col=17, min_row=4, max_row=4 + (YEAR1 - YEAR0 + 1)), titles_from_data=True)
-    c2.set_categories(Reference(ws, min_col=15, min_row=5, max_row=4 + (YEAR1 - YEAR0 + 1)))
-    c2.y_axis.title = "Connections"
-    c2.gapWidth = 40
-    ws.add_chart(c2, "A40")
+    bar("Connections by influencer's year", "A49",
+        [COL["year_conns"]], COL["year"], y_title="Connections",
+        last_row=YEARS_LAST)
 
-    # 3. Degree distribution
-    c3 = BarChart()
-    style(c3, "Degree distribution — how connected is a typical game?", 16, 9)
-    c3.type = "col"
-    c3.add_data(Reference(ws, min_col=6, min_row=4, max_row=13), titles_from_data=True)
-    c3.set_categories(Reference(ws, min_col=5, min_row=5, max_row=13))
-    c3.y_axis.title = "Games"
-    c3.x_axis.title = "Connections"
-    ws.add_chart(c3, "R21")
+    # 3. Degree distribution, both catalogs. The owned bars are the ones that
+    #    decide whether a run has anywhere to go.
+    bar("Degree distribution — how connected is a typical game?", "A68",
+        [COL["degree_games"], COL["degree_owned"]], COL["degree"],
+        y_title="Games", x_title="Connections", last_row=13)
 
-    # 4. Top hubs
-    c4 = BarChart()
-    style(c4, "The 15 biggest hubs", 16, 9)
-    c4.type = "bar"
-    c4.add_data(Reference(ws, min_col=13, min_row=4, max_row=19), titles_from_data=True)
-    c4.set_categories(Reference(ws, min_col=12, min_row=5, max_row=19))
-    ws.add_chart(c4, "R40")
+    # 4. Genre split, owned against total — the shape of what a run draws from.
+    bar("Games by genre — owned against the whole sheet", "A87",
+        [COL["genre_games"], COL["genre_owned"]], COL["genre"],
+        # The four genres only — the All row under them is a total, and a total
+        # bar next to its own parts is four times the height of any of them.
+        y_title="Games", last_row=4 + len(TYPES))
 
-    # 5. Genre split
-    c5 = BarChart()
-    style(c5, "Games by genre", 12, 7)
-    c5.type = "col"
-    c5.add_data(Reference(ws, min_col=9, min_row=4, max_row=8), titles_from_data=True)
-    c5.set_categories(Reference(ws, min_col=8, min_row=5, max_row=8))
-    ws.add_chart(c5, "AC21")
+    # 5. Top hubs on the sheet…
+    bar("The 15 biggest hubs", "A106",
+        [COL["hub_degree"]], COL["hub_name"], horizontal=True, last_row=19)
 
-    # 6. Edge span
-    c6 = BarChart()
-    style(c6, "Years between an influence and its influencee", 12, 7)
-    c6.type = "col"
-    c6.add_data(Reference(ws, min_col=20, min_row=4, max_row=17), titles_from_data=True)
-    c6.set_categories(Reference(ws, min_col=19, min_row=5, max_row=17))
-    ws.add_chart(c6, "AC36")
+    # 6. …and the top hubs a run can actually stand on. These are the games the
+    #    shops attach to (§14), so this is the shop map in table form.
+    bar("The 15 biggest hubs you own — where the shops stand", "A125",
+        [COL["owned_hub_degree"]], COL["owned_hub_name"], horizontal=True,
+        last_row=19)
+
+    # 7. Edge span
+    bar("Years between an influence and its influencee", "A144",
+        [COL["span_conns"]], COL["span"], y_title="Connections", last_row=17)
 
     # The timeline-lanes scatter is added separately: its data lives on the
     # calc sheet, so its references must be built against that worksheet.
@@ -313,7 +421,8 @@ def main():
         s.marker = Marker(symbol="circle", size=4)
         s.graphicalProperties.line = LineProperties(noFill=True)
         sc2.series.append(s)
-    dash.add_chart(sc2, "A59")
+    # Last in the same single column as the rest — see add_charts.
+    dash.add_chart(sc2, "A163")
     wb.save(SRC)
     print("saved", SRC)
 

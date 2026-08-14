@@ -845,7 +845,10 @@ func _legend() -> Control:
 	stack.add_theme_constant_override("separation", 4)
 	stack.add_child(row)
 	var hint := Label.new()
-	hint.text = "⚔ = you've beaten an enemy there  •  click any game for the details"
+	# Terser than it reads, on purpose: this label sits under the route and every
+	# line it wraps to is a line the ladder loses. Spelling the shop out cost the
+	# map enough height to push a fit past the legibility floor.
+	hint.text = "🛒 = a shop  •  ⚔ = beaten here  •  click any game for details"
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.add_theme_font_size_override("font_size", 11)
 	hint.add_theme_color_override("font_color", UITheme.TEXT_FAINT)

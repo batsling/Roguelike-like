@@ -321,6 +321,20 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		frame.add_child(art)
 		col.add_child(frame)
 
+	# Transmuted (§4): this SPOT is no longer playing its own game. Everything
+	# else on the card already speaks for the REPLACEMENT — its cover, its type,
+	# its tries, the enemy standing there — so the one fact the card cannot state
+	# for itself is that it is a replacement at all, and what it was pasted over.
+	# Which is exactly what the routing decision turns on: the rung keeps its
+	# place on the graph, so the road out is the OLD game's road, not this one's.
+	var was: GameData = GameLoop2.original_at(StringName(_choice.get("slot", &"")))
+	if was != null:
+		col.add_child(_fact_line("⚗ Transmuted — was %s" % was.display_name,
+			UITheme.ACCENT,
+			("This spot held %s; a transmute pasted %s over it for the rest of the run. "
+			+ "Its connections are unchanged — the route below is still %s's.") % [
+				was.display_name, game.display_name, was.display_name]))
+
 	var meta: Array = []
 	if game.year > 0:
 		meta.append(str(game.year))
@@ -515,7 +529,9 @@ func _build_route_column() -> Control:
 	centre.add_child(_ladder_holder)
 
 	var legend := Label.new()
-	legend.text = "▶ where you'd be  •  🏆 the Amulet  •  ⚔ you've beaten an enemy there"
+	# Kept to one line for the reason RunMapModal's hint is: the ladder above it
+	# is fitted to whatever height is left over.
+	legend.text = "▶ where you'd be  •  🏆 the Amulet  •  🛒 a shop  •  ⚔ beaten there"
 	legend.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	legend.add_theme_font_size_override("font_size", 11)
 	legend.add_theme_color_override("font_color", UITheme.TEXT_FAINT)

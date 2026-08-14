@@ -11,6 +11,51 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A card now says when the spot is not playing its own game, and the route
+  says where the shops are.** Two small things the popup and the map could not
+  answer, plus the spreadsheet's blind spot behind them.
+
+  * **Transmuted, and what it was.** A transmuted node keeps its place on the
+    graph and plays something else — but the card it opens speaks entirely for
+    the REPLACEMENT: its cover, its type, its tries, the enemy standing there.
+    The one fact it could not state was that it is a replacement at all. It now
+    carries `⚗ Transmuted — was <game>` under the cover, and the tooltip says the
+    part that actually decides the route: the connections are the OLD game's, so
+    the ladder below is still the old game's road.
+  * **🛒 on the rungs.** `RouteLadder` flags every rung a shop stands on, so both
+    the 🗺 map window and the ladder inside a card show where the shelves are —
+    "one step longer but it passes a shop" is a routing question and the ladder
+    is where it gets asked. Read off the game actually PLAYED at the rung, not
+    the rung's id: a transmuted spot plays an off-map game and off-map games are
+    never hubs, so the shop leaves with the game it belonged to.
+  * **The legends had to get SHORTER to fit it in.** Spelling out "🛒 = a shop
+    stands there" under the map wrapped the hint to a second line, which cost the
+    ladder above it enough height to push its zoom-to-fit past the legibility
+    floor — caught by `test_run_map.gd::test_the_route_fits_the_window_it_opens_in`,
+    which is exactly the failure that test exists to catch. Both legends are now
+    terser than they were before the marker was added to them.
+
+  **The Map Analysis sheet was reading 819 of 849 games.** `GAMES = 820` was
+  written as a range with headroom and had quietly been overtaken by the
+  catalog, so every degree, median, hub and genre count on the dashboard was
+  computed over a truncated sheet. Ranges are 950/1400 now.
+
+  With that fixed, the dashboard learned the distinction the game actually runs
+  on — **owned against everything**. A run draws from the owned catalog
+  (`RunConfig`'s default library), which is a little over half the sheet, so a
+  hub count that does not say which catalog it means answers no question the
+  game asks. Genre, degree bands and the per-year block each carry an Owned
+  column beside their total (genre also gets Owned % and an All row), five new
+  headline measures cover the owned catalog's size, share, average degree,
+  junctions and dead ends, and there is a second hub table: **the 15 biggest
+  hubs you own** — which is the shop map in table form, since a shop stands at
+  each of them. The charts read the new columns as a second series rather than
+  as new charts, and all eight now stack in one column: tiling them two and
+  three across put them over the year and edge-span tables the moment those
+  tables grew a column.
+
+---
+
 - **The shop had the same disease, worse — and it was there first.** A hub's
   shelf of three cards ran the page to **1231px inside a 688px window**, which
   predates machines entirely: anyone standing in a shop has been scrolling the
