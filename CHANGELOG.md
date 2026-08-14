@@ -11,6 +11,77 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The header stops scrolling away, the road behind you stops showing games you
+  have never been to, and a curse is a goal you keep rather than a crime you
+  confess.**
+
+  **The header is pinned to the screen.** Health, Gold, the road walked, the
+  title and the `☰ Menu` were the first row *inside* the scrolling page, which
+  meant the two numbers that end a run left the screen the moment you looked at
+  the bottom of a tall board — and were behind every modal the run raises, which
+  is exactly where Health is most worth reading (an event offering you a gamble is
+  a question about a health bar you cannot see). The whole bar moved onto a
+  `CanvasLayer` of its own at layer 135: over the event (123), the game-choice
+  popup (124) and the map (130), under the two screens that stand in for the run
+  rather than sit over it — the Atlas (140) and the end-of-run verdict (150) — and
+  stood down while the tier-list board is up, since that one is a full screen with
+  its own way out. The page is inset by the bar's height, so nothing hides beneath
+  it, and the canvas-fitting rule measures the header alongside the page instead
+  of through it.
+
+  **…and the title and the menu keep the right-hand edge in every phase.** They
+  used to start on the *left* on the start picker and jump right the moment the
+  first game was taken. The road strip between them was `hide()`n until the run
+  had a position, and a hidden Control takes no room, so there was nothing holding
+  them out there. The strip stays mounted and expanding with nothing in it — it is
+  the header's spacer as well as its picture.
+
+  **The road walked is games played, and only games played.** The strip used to
+  close on the **Amulet**, with the gap not yet covered drawn dashed. On the
+  end-of-run screen that reads as a journey with somewhere to be; live in the
+  header it read as a cover for a game you had never visited sitting directly
+  beside the ones you had, as if it were the next stop. The Amulet is ahead of you
+  and the road ahead already has two screens (the 🗺 map and the route ladder).
+
+  **The road walked keeps its repeats.** Both strips and Run History drew from
+  `visited_games`, which is a *set*: a run that went back to a hub three times
+  showed one cover for three stops, so "the road you walked" was quietly the road
+  you walked with the doubling-back edited out — and doubling back is a decision
+  the player made and paid a Dash for. `GameState.path_taken` records the walk in
+  order, repeats included, and `GameState.walked_path()` is the one
+  implementation the four screens that draw this picture now share (with a
+  fall-back that rebuilds the old road for a save written before it existed). The
+  end-of-run road became a framed section of its own with a permanent horizontal
+  scrollbar, a `9 games, 12 stops — 3 replays` count, and an `↻ visit 2` badge on
+  a stop the run had stood on before.
+
+  **A curse is a goal you keep.** A curse row used to be a *confession*: "Curse of
+  the Bell — if you don't ring a bell, spawn a random enemy", with a box that
+  fired the penalty when you **checked** it. Three things were wrong with that.
+  The box was not for the goal the row described, it was for the failure of it.
+  Half the curses are authored as negatives, so ticking one meant asserting a
+  double negative. And it made the safe default the wrong way round — read the
+  list, tick nothing, pay nothing, so a curse only ever bit the honest. Curses are
+  now their own section of the checklist, headed *"tick each one you kept; any
+  left unticked bites"*, opening **ticked**, stating the thing to do
+  (`CurseData2.goal_line()`) rather than the conditional the sheet stores, and
+  billing on the rows left **un**ticked.
+
+  **Dashing lists the connected games A–Z.** A Dash is not a hand of three cards —
+  off a hub it is twenty covers, and the question stops being "which of these
+  three" and becomes "is the game I have in mind in here". The position-seeded
+  shuffle that keeps a small offering from feeling like a menu is exactly wrong
+  for a list you are searching.
+
+  **…and dashing back to a game you have played leaves you a Dash up.** The
+  offering prints `⚡ +1 DASH` on a game the run has played, and the usual way back
+  to one *is* to spend a Dash, since the offering is three of a hub's twenty
+  neighbours. Spend one to travel and earn one for the clear and the counter reads
+  exactly what it read before: the card promised a charge and the player watched
+  nothing happen. The trip is what the Dash paid for; the `+1` is what the *clear*
+  pays, and the two are not the same transaction, so a return trip made by Dash
+  now refunds the fare on top of the bonus.
+
 - **A round of fixes across the screens, and one layout rule that was quietly
   cropping the board.**
 

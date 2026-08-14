@@ -258,9 +258,9 @@ node and its script.
   display, so a 2560×1440 monitor draws this same page at 2×. Fitting the box is
   a constraint, not an accident, and the things below are what pay for it.
 
-  **The header is the road you have walked.** Across the top, between the health
-  and gold chips and the `☰ Menu`: the games played as small covers with arrows
-  between them, then a dashed arrow to the Amulet — the same picture the
+  **The header is the road you have walked, and it never leaves the screen.**
+  Across the top, between the health and gold chips and the `☰ Menu`: the games
+  played as small covers with arrows between them — the same picture the
   end-of-run screen draws, live, for the whole run. It is the only view of the run
   as a *journey*; the checklist says what you owe, the board says what is chasing
   you, and neither said where you have been. The title moved to the right to make
@@ -268,6 +268,24 @@ node and its script.
   (the name is on the hover) because the strip shares its row with everything else
   and the page still has to fit 720; past `STRIP_MAX_STOPS` the oldest stops are
   dropped behind an ellipsis.
+
+  Two rules about what is on it. It is **games played only** — it does not close
+  on the Amulet, because the road ahead has two screens of its own (the 🗺 map and
+  the route ladder) and a cover for a game you have never been to, drawn beside
+  the ones you have, reads as the next stop. And it **keeps the repeats**: it
+  draws `GameState.walked_path()`, the run's walk in order, rather than
+  `visited_games`, which is a set and so showed a run that doubled back over a hub
+  four times as one stop.
+
+  The whole bar is mounted on a **`CanvasLayer` of its own** (`HEADER_LAYER`, 135)
+  rather than being the first row of the scrolling page: it stays put when the
+  player scrolls to the bottom of a tall board, and it floats above every modal
+  the run raises — the event (123), the game-choice popup (124), the map (130) —
+  which is exactly where Health is most worth reading. It sits *below* the two
+  screens that stand in for the run rather than over it (the Atlas at 140 and the
+  end-of-run verdict at 150), and it stands down while the tier-list board is up,
+  since that one is a full screen with its own way out. The page is inset by the
+  bar's height (`_fit_page_under_header`), so nothing is hidden underneath it.
 
   **Where the numbers are.** There is **no HUD strip** — every number is drawn
   once, by whatever owns it:
@@ -598,7 +616,13 @@ chance <p>% -> <reward>
   honour-system voice enemy goals use. Pays if met, costs nothing if not.
 - **`add_curse`** is that inverted — an objective you want to *not* meet, which
   bills you every time you do. It takes an id from the **`curses2.0` tab**, so
-  the curse is authored once and any event can hand out the same one.
+  the curse is authored once and any event can hand out the same one. On the
+  report checklist it is asked as a **goal you tick when you kept it, and it bites
+  when you leave it unticked** — the opposite polarity to every other row on that
+  list, under a heading of its own that says so. The row states the thing to *do*
+  (`CurseData2.goal_line()`: "Avoided: you go below half health", or "Kept: you
+  ring a bell" for the handful of conditions authored as an absence), not the
+  conditional the sheet stores.
 - **`play_game`** sends the player to a random game carrying `tag`, off their
   route; the `->` payload lands when they beat it. **Check the tag has games
   behind it first** — the thin end of that vocabulary has single-game buckets.

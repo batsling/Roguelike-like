@@ -67,11 +67,13 @@ func _ready() -> void:
 func _snapshot() -> void:
 	_amulet = GameState.amulet_game_id
 	_route.clear()
-	for id in GameState.visited_games:
+	# THE WALK, REPLAYS AND ALL. This used to be built from `visited_games`, which
+	# is a set: a run that went back to a hub three times drew as one stop, so the
+	# picture the screen calls "the road you walked" was quietly the road you
+	# walked with the doubling-back edited out — and doubling back is a decision
+	# the player made and paid a Dash for. `walked_path` keeps the repeats.
+	for id in GameState.walked_path():
 		_route.append(StringName(id))
-	var current: StringName = GameState.current_game_id
-	if current != &"" and (_route.is_empty() or _route[_route.size() - 1] != current):
-		_route.append(current)
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	_stats = {
 		"character": ch.display_name if ch != null else String(GameState.character_id),
@@ -221,27 +223,55 @@ func _tile(key: String, value: String, color: Color = UITheme.TEXT) -> Control:
 # History draws, so a run reads the same way the moment it ends as it does a
 # month later.
 func _route_strip() -> Control:
-	var wrap := VBoxContainer.new()
-	wrap.add_theme_constant_override("separation", 6)
+	# ITS OWN PANEL, framed and headed. The road is the longest thing on this
+	# screen and the only one that grows without limit — a fifteen-game run is
+	# fifteen covers and a scrollbar — so it stops being a row in the column and
+	# becomes a section with a border round it, the way the tally above it is.
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 12, 1))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	wrap.add_child(col)
+
+	var head_row := HBoxContainer.new()
+	head_row.add_theme_constant_override("separation", 10)
 	var head := Label.new()
 	head.text = "The road you walked"
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_theme_font_size_override("font_size", 15)
 	head.add_theme_color_override("font_color", UITheme.ACCENT.lerp(UITheme.TEXT, 0.25))
-	wrap.add_child(head)
+	head_row.add_child(head)
+	# The count, and the replays called out separately — the strip shows a game
+	# twice when the run went back to it twice (see _snapshot), and "12 stops" on
+	# a route of nine distinct games needs the sentence that explains it.
+	var count := Label.new()
+	count.text = _route_summary()
+	count.add_theme_font_size_override("font_size", 12)
+	count.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	head_row.add_child(count)
+	col.add_child(head_row)
 
 	var scroller := ScrollContainer.new()
-	scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	# ALWAYS, not AUTO. The bar is how the player knows there is more road off the
+	# right-hand edge, and an AUTO bar that appears only on long runs is a control
+	# that is missing exactly until the moment it is load-bearing.
+	scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
 	scroller.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroller.custom_minimum_size.y = COVER.y + 36
+	scroller.custom_minimum_size.y = COVER.y + 52
 	scroller.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	wrap.add_child(scroller)
+	col.add_child(scroller)
 
 	var strip := HBoxContainer.new()
 	strip.add_theme_constant_override("separation", 0)
 	scroller.add_child(strip)
 
 	for i in range(_route.size()):
-		strip.add_child(_stop(_route[i], _route[i] == _amulet))
+		# A REPLAY is marked on the tile rather than left to look like a duplicate
+		# the screen printed by mistake: this is the second (or third) time the run
+		# stood here, and the number says which.
+		strip.add_child(_stop(_route[i], _route[i] == _amulet, _visit_number(i)))
 		if i < _route.size() - 1:
 			strip.add_child(_arrow())
 	# A lost run still ends at the Amulet on this strip — with the gap it never
@@ -251,7 +281,30 @@ func _route_strip() -> Control:
 		strip.add_child(_stop(_amulet, true))
 	return wrap
 
-func _stop(id: StringName, is_amulet: bool) -> Control:
+# "9 games, 12 stops — 3 replays" / "7 games". The second half only appears when
+# the run actually doubled back.
+func _route_summary() -> String:
+	var seen: Dictionary = {}
+	for id in _route:
+		seen[id] = true
+	var games: int = seen.size()
+	var replays: int = _route.size() - games
+	var head: String = "%d game%s" % [games, "" if games == 1 else "s"]
+	if replays <= 0:
+		return head
+	return "%s, %d stops — %d replay%s" % [head, _route.size(), replays,
+		"" if replays == 1 else "s"]
+
+# How many times the run had stood on _route[i] by the time it got there — 1 the
+# first time, 2 the second, and so on.
+func _visit_number(index: int) -> int:
+	var n: int = 0
+	for i in range(index + 1):
+		if _route[i] == _route[index]:
+			n += 1
+	return n
+
+func _stop(id: StringName, is_amulet: bool, visit: int = 1) -> Control:
 	var game: GameData = Data.get_game(id)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 3)
@@ -287,6 +340,15 @@ func _stop(id: StringName, is_amulet: bool) -> Control:
 	label.add_theme_font_size_override("font_size", 10)
 	label.add_theme_color_override("font_color", UITheme.GOLD if is_amulet else UITheme.TEXT_DIM)
 	col.add_child(label)
+
+	if visit > 1:
+		var again := Label.new()
+		again.text = "↻ visit %d" % visit
+		again.custom_minimum_size.x = COVER.x
+		again.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		again.add_theme_font_size_override("font_size", 10)
+		again.add_theme_color_override("font_color", UITheme.ACCENT)
+		col.add_child(again)
 	return col
 
 func _arrow(unreached: bool = false) -> Control:
