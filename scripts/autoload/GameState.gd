@@ -35,6 +35,16 @@ var amulet_game_id: StringName = &""
 # shortest route.
 var route_waypoint: StringName = &""
 var visited_games: Array[StringName] = []
+# The run's WALK, in order, with the repeats left in — every game the player has
+# stood on, appended the moment they arrive, ending on the game under their feet.
+#
+# `visited_games` is a SET with an order: it drops a game the second time the run
+# reaches it, because its job is "which nodes has this run touched" (the map's
+# trail, the atlas's history segments). That makes it the wrong list for drawing
+# the road as a JOURNEY — a run that doubles back over a hub four times walked a
+# road with four stops on it, and the strip that drew it from `visited_games`
+# showed one. This is the list with the doubling-back still in it.
+var path_taken: Array[StringName] = []
 var beaten_games: Array[StringName] = []
 # Every game the run has actually PLAYED — one entry per game, added the moment
 # it is reported, whatever the report said. Beaten, failed or walked away from:
@@ -808,6 +818,7 @@ func reset_run() -> void:
 	amulet_game_id = &""
 	route_waypoint = &""
 	visited_games.clear()
+	path_taken.clear()
 	beaten_games.clear()
 	played_games.clear()
 	total_games_beaten = 0
@@ -1156,6 +1167,11 @@ func set_current_game(id: StringName) -> void:
 	# first placement (current_game_id == "") and no-op re-sets add nothing.
 	if current_game_id != &"" and current_game_id != id and not visited_games.has(current_game_id):
 		visited_games.append(current_game_id)
+	# The walk, repeats and all (see path_taken). Written on ARRIVAL rather than on
+	# departure, so the game under the player's feet is always the last entry and
+	# the strip that draws it needs no "…and here" fix-up on the end.
+	if id != &"" and current_game_id != id:
+		path_taken.append(id)
 	current_game_id = id
 	# Arriving at the game you pinned to route through spends the pin: the detour
 	# is done, and the road on from here is just the road.
@@ -1199,6 +1215,25 @@ func note_game_played(game_id: StringName) -> bool:
 # earned on the return trip is the goal, not the trip.
 func has_played_game(game_id: StringName) -> bool:
 	return played_games.has(game_id)
+
+# THE ROAD WALKED, oldest stop first and ending on the game under the player's
+# feet — one implementation, because four screens draw this same picture (the
+# header strip, the end-of-run verdict, Run History's saved runs, the Atlas) and
+# a run that reads as five stops in one place and seven in another is a bug in
+# whichever of them the player looked at second.
+#
+# REPEATS INCLUDED. `path_taken` is the walk; the fall-back below rebuilds the
+# best road available from `visited_games` for a save written before the walk was
+# recorded, which necessarily has the repeats already dropped.
+func walked_path() -> Array[StringName]:
+	if not path_taken.is_empty():
+		return path_taken.duplicate()
+	var out: Array[StringName] = []
+	for id in visited_games:
+		out.append(StringName(id))
+	if current_game_id != &"" and (out.is_empty() or out[out.size() - 1] != current_game_id):
+		out.append(current_game_id)
+	return out
 
 func set_max_hp(new_max: int, heal_to_full: bool = false) -> void:
 	# Routes through Stats so Constitution auto-gain fires off the

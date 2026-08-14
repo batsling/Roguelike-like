@@ -676,7 +676,7 @@ func test_the_menu_holds_the_runs_admin() -> void:
 	# Save / New run / Main menu were three buttons parked across the top for the
 	# whole run. They are menu entries now, and the menu is the only header button.
 	var mb: MenuButton = null
-	var header: Node = _ui._scroll.get_child(0).get_child(0)
+	var header: Node = _ui._header
 	for c in header.get_children():
 		if c is MenuButton:
 			mb = c
@@ -749,7 +749,13 @@ func _page_height() -> float:
 func _assert_fits(what: String) -> void:
 	# Sized against the window the project ships, not against whatever the test
 	# harness happens to give the viewport.
-	var room: float = 720.0 - 32.0     # the scroll's top+bottom offsets
+	#
+	# The HEADER comes off the top of the room rather than out of the page: it is
+	# pinned to the screen on its own layer now (Overworld2._mount_header), so it
+	# is not one of the rows `_page_height` adds up — but the page still only gets
+	# what is left under it.
+	var bar: float = _ui._header_bar.get_combined_minimum_size().y
+	var room: float = 720.0 - 32.0 - bar   # the scroll's top+bottom offsets
 	assert_lte(_page_height(), room,
 		"%s fits a 720p window (needs %.0f of %.0f)" % [what, _page_height(), room])
 
@@ -777,6 +783,227 @@ func _buttons_in(node: Node) -> Array:
 		if c is Button:
 			out.append(c)
 	return out
+
+# --- the header never leaves the screen ------------------------------------
+#
+# Health, Gold, the road walked, the title and the menu are the run's readout,
+# and every one of them used to be the first row INSIDE the scrolling page: they
+# left the screen the moment the player looked at the bottom of a tall board, and
+# they were behind every modal the run raises — which is exactly where Health is
+# most worth reading, because an event asking you to gamble is a question about a
+# health bar you could not see.
+
+func test_the_header_is_not_part_of_the_scrolling_page() -> void:
+	assert_not_null(_ui._header, "the header is built")
+	assert_false(_ui._scroll.is_ancestor_of(_ui._header),
+		"and it is not a row of the page that scrolls away under the board")
+	assert_true(_ui._header_layer is CanvasLayer,
+		"it floats on a layer of its own instead")
+
+func test_the_header_floats_over_the_modals_a_run_raises() -> void:
+	# Above everything the RUN puts on screen (the event modal is the tallest of
+	# them at 123, the map at 130) and below the screens that REPLACE the run
+	# rather than sit over it — the Atlas at 140 and the verdict at 150.
+	assert_gt(_ui.HEADER_LAYER, 130, "over the run's own modals and its map")
+	assert_lt(_ui.HEADER_LAYER, 140, "under the Atlas and the end-of-run verdict")
+
+func test_the_page_starts_below_the_header_bar() -> void:
+	# Floating over the page is only safe if the page is inset by exactly as much
+	# as the bar covers — otherwise the top of the offering is under it.
+	_ui._fit_page_under_header()
+	var bar: float = maxf(_ui._header_bar.size.y, _ui._header_bar.get_combined_minimum_size().y)
+	assert_gt(bar, 0.0, "the bar has a height")
+	assert_gte(_ui._scroll.offset_top, bar,
+		"and nothing on the page is hidden underneath it")
+
+# The title and the menu are the right-hand end of the header in EVERY phase.
+# They used to start on the left on the start picker and jump to the right the
+# moment the first game was taken, because the road strip between them was
+# HIDDEN until the run had a position — and a hidden Control takes no room, so
+# there was nothing holding them out there.
+func test_the_title_and_the_menu_keep_the_right_edge_before_a_game_is_picked() -> void:
+	_ui.start_run()
+	_ui._refresh()
+	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT, "back on the start picker")
+	assert_true(_ui._route_strip.visible,
+		"the road strip stays mounted even with no road to draw — it is the header's spacer too")
+	assert_true(_ui._route_strip.size_flags_horizontal & Control.SIZE_EXPAND != 0,
+		"and it is still the thing that eats the slack")
+
+# --- the road walked, across the top of the header -------------------------
+#
+# GAMES PLAYED, and nothing else. The strip used to close on the AMULET with the
+# gap not yet walked drawn dashed — so the header carried a cover for a game the
+# player had never been to, sitting directly beside the ones they had, reading as
+# the next stop on the road. The road ahead has two screens of its own.
+
+func test_the_road_walked_carries_only_games_the_run_has_reached() -> void:
+	_ui.pick(0)
+	_ui.report(true)
+	_ui._end_resolve()
+	_ui._refresh()
+	var walked: Array = GameState.walked_path()
+	var stops: Array = _ui.route_strip_stops()
+	assert_gt(stops.size(), 0, "there is a road to draw")
+	for id in stops:
+		assert_true(walked.has(id),
+			"%s is on the strip and the run has been to it" % id)
+
+func test_the_amulet_is_not_drawn_on_the_road_behind_you() -> void:
+	var amulet: StringName = GameState.amulet_game_id
+	if amulet == &"" or GameState.walked_path().has(amulet):
+		return    # standing on it is a legitimate stop; there is nothing to catch
+	_ui._refresh()
+	assert_false(_ui.route_strip_stops().has(amulet),
+		"the game the run is a search for is ahead of it, not behind it")
+
+func test_the_road_walked_keeps_the_doubling_back() -> void:
+	# `visited_games` is a set, so a run that came back to a game drew one cover
+	# for two stops. The strip reads the WALK now (GameState.walked_path).
+	var start: StringName = GameState.current_game_id
+	var away: StringName = _neighbour_of_here()
+	if away == &"" or away == start:
+		return
+	GameState.set_current_game(away)
+	GameState.set_current_game(start)
+	_ui._refresh_route_strip()
+	var stops: Array = _ui.route_strip_stops()
+	assert_eq(stops.size(), 3, "three stops on the road, not two: %s" % [stops])
+	assert_eq(StringName(stops[0]), start, "out from here")
+	assert_eq(StringName(stops[1]), away, "over to there")
+	assert_eq(StringName(stops[2]), start, "and back again")
+
+func test_only_the_last_stop_is_ringed_as_where_you_are() -> void:
+	var start: StringName = GameState.current_game_id
+	var away: StringName = _neighbour_of_here()
+	if away == &"" or away == start:
+		return
+	GameState.set_current_game(away)
+	GameState.set_current_game(start)
+	_ui._refresh_route_strip()
+	var here_tips: Array = []
+	for c in _ui._route_strip.get_children():
+		if c is PanelContainer and c.has_meta("stop") \
+				and String((c as PanelContainer).tooltip_text).contains("you are here"):
+			here_tips.append(c)
+	assert_eq(here_tips.size(), 1,
+		"the run stood on this game twice; only the stop it is standing on now says so")
+
+# --- the Dash offering ------------------------------------------------------
+
+# A Dash is not a hand of three cards — off a hub it is twenty covers, and the
+# question stops being "which of these" and becomes "is the game I want in here".
+# The seeded shuffle that keeps a three-card offering from feeling like a menu is
+# exactly wrong for a list you are searching.
+func test_dashing_lists_the_connected_games_in_alphabetical_order() -> void:
+	GameState.dash_charges = 1
+	_ui.dash()
+	assert_true(_ui._dash_mode, "the Dash panel is up")
+	var names: Array = []
+	for c in _ui._choices:
+		names.append(String((c["game"] as GameData).display_name))
+	var expected: Array = names.duplicate()
+	expected.sort_custom(func(a, b): return String(a).naturalnocasecmp_to(String(b)) < 0)
+	assert_eq(names, expected, "A-Z, so a game can be found by eye: %s" % [names])
+	_ui.cancel_dash()
+
+# The offering prints "⚡ +1 DASH" on a game the run has played, and the usual way
+# back to one is to SPEND a Dash — the offering is three of a hub's twenty
+# neighbours, so the game you want is rarely on the table. Spend one to travel
+# and earn one for the clear and the counter reads what it read before: the card
+# promised a charge and the player watched nothing happen.
+func test_dashing_back_to_a_game_you_played_leaves_you_a_dash_up() -> void:
+	GameState.dash_charges = 2
+	_ui.dash()
+	var target: GameData = _ui._choices[0]["game"]
+	GameState.note_game_played(target.id)
+	_ui._build_choices()
+	var before: int = GameState.dash_charges
+	_ui.pick(0)
+	assert_eq(GameState.dash_charges, before - 1, "the trip itself cost a charge")
+	_ui.report(true)
+	assert_eq(GameState.dash_charges, before + OVERWORLD.REPEAT_BEAT_DASH,
+		"and the clear pays the +%d the card advertised, on top of the fare"
+			% OVERWORLD.REPEAT_BEAT_DASH)
+
+func test_walking_back_to_a_game_you_played_still_pays_exactly_one_dash() -> void:
+	var target: GameData = _ui._choices[0]["game"]
+	GameState.note_game_played(target.id)
+	_ui._build_choices()
+	var before: int = GameState.dash_charges
+	_ui.pick(0)
+	assert_eq(GameState.dash_charges, before, "an ordinary pick costs nothing")
+	_ui.report(true)
+	assert_eq(GameState.dash_charges, before + OVERWORLD.REPEAT_BEAT_DASH,
+		"so the clear is the only thing that moved the counter")
+
+# --- curses on the report checklist ----------------------------------------
+#
+# A curse is a row like any other on this list: an INSTRUCTION, ticked if you
+# followed it, with what it costs written after it. It used to be phrased as the
+# rule instead — "If you use a rest site to replenish health, spawn a random
+# enemy when you report the game" — with a box that fired the penalty when you
+# CHECKED it, which made it the one row on the checklist whose tick meant the
+# opposite of every other row's.
+
+func _curse_checks() -> Array:
+	var out: Array = []
+	for entry in _ui._curse_goal_checks:
+		out.append(entry["check"])
+	return out
+
+func test_a_curse_row_reads_as_the_thing_to_do_with_its_price_after_it() -> void:
+	GameState.add_curse_goal(&"poor_sleep")
+	_ui.pick(0)
+	var checks: Array = _curse_checks()
+	assert_eq(checks.size(), 1, "the curse is on the checklist")
+	if checks.is_empty():
+		return
+	var text: String = (checks[0] as CheckBox).text
+	assert_string_contains(text, "don't use a rest site to replenish health")
+	assert_string_contains(text, "if failed, Spawn a random enemy")
+	assert_false(text.contains("If you"), "not the rule it was derived from: %s" % text)
+
+# …and a curse authored as the ABSENCE of something is not doubled up. Curse of
+# the Bell's condition is "you don't ring a bell", and the instruction that comes
+# out of it is "ring a bell" rather than "don't don't ring a bell".
+func test_a_negatively_authored_curse_is_not_negated_twice() -> void:
+	var bell: CurseData2 = Data.get_curse2(&"curse_of_the_bell")
+	assert_not_null(bell)
+	if bell == null:
+		return
+	assert_eq(bell.goal_text(), "ring a bell")
+
+func test_every_checklist_row_opens_unanswered_including_the_curses() -> void:
+	GameState.add_curse_goal(&"poor_sleep")
+	_ui.pick(0)
+	for check in _curse_checks():
+		assert_false((check as CheckBox).button_pressed,
+			"an empty box means 'I did not do this' on every row of the list")
+	if _ui._goal_check != null:
+		assert_false(_ui._goal_check.button_pressed, "the game's own goal too")
+
+# Poor Sleep's bill is a BODY (every curse's is), so both halves of this are
+# read off the board: a met goal leaves nothing following, so anything standing
+# there afterwards is the curse and only the curse.
+func test_a_curse_you_ticked_costs_nothing() -> void:
+	GameState.add_curse_goal(&"poor_sleep")
+	_ui.pick(0)
+	var checks: Array = _curse_checks()
+	if checks.is_empty():
+		return
+	(checks[0] as CheckBox).button_pressed = true    # "I didn't use a rest site"
+	_ui.report(true)
+	assert_eq(GameLoop2.stack_size(), 0,
+		"the goal was met and the curse was followed, so nothing is following")
+
+func test_a_curse_left_unticked_is_what_bites() -> void:
+	GameState.add_curse_goal(&"poor_sleep")
+	_ui.pick(0)
+	_ui.report(true)                       # the row left exactly as it opened
+	assert_eq(GameLoop2.stack_size(), 1,
+		"the goal was met, so the body on the board is Poor Sleep's")
+	assert_eq(GameState.curse_goals.size(), 1, "and a curse that bites STAYS")
 
 # --- the board / checklist stage -------------------------------------------
 
@@ -1988,6 +2215,29 @@ func test_a_lost_run_ends_on_a_verdict_screen() -> void:
 	assert_eq(int(screen.stats()["played"]), GameState.games_played,
 		"and reads the run back: games played")
 	assert_gt(screen.route_ids().size(), 0, "with the road actually walked")
+
+# "The road you walked" drew from `visited_games`, which is a set — so a run that
+# went back to a game three times showed it once, and the picture the screen calls
+# the road walked was the road walked with the doubling-back edited out. Going
+# back is a decision the player made and paid a Dash for; it stays in.
+func test_the_verdict_screen_keeps_the_replays_on_the_road() -> void:
+	var start: StringName = GameState.current_game_id
+	var away: StringName = _neighbour_of_here()
+	if away == &"" or away == start:
+		return
+	GameState.set_current_game(away)
+	GameState.set_current_game(start)
+	GameLoop2._finish_run(false)
+	var screen = _end_screen()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	var route: Array = screen.route_ids()
+	assert_eq(route.size(), 3, "three stops, not two: %s" % [route])
+	assert_eq(StringName(route[0]), start)
+	assert_eq(StringName(route[2]), start, "and the run really did come back")
+	assert_string_contains(screen._route_summary(), "replay",
+		"the heading says so, or twelve stops over nine games reads as a bug")
 
 func test_a_won_run_ends_on_the_amulet_screen() -> void:
 	GameLoop2._finish_run(true)

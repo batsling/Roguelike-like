@@ -142,11 +142,11 @@ func _entry(key: String) -> Dictionary:
 # there's no route to show.
 func record_run(did_win: bool) -> void:
 	var path: Array = []
-	for id in GameState.visited_games:
+	# The walk, repeats included (GameState.walked_path) — a run that went back to
+	# a game twice is a different run from one that passed it once, and the history
+	# it is filed under should be able to tell them apart.
+	for id in GameState.walked_path():
 		path.append(String(id))
-	var current := String(GameState.current_game_id)
-	if current != "" and (path.is_empty() or String(path[path.size() - 1]) != current):
-		path.append(current)
 	if path.size() < 2:
 		return
 	runs.push_front({

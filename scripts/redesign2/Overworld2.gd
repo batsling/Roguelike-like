@@ -142,6 +142,14 @@ var _gold_chip: Label = null
 # The road walked, across the top of the page. Rebuilt on every refresh — it is a
 # handful of TextureRects and the run only moves a few dozen times.
 var _route_strip: HBoxContainer = null
+# The header row itself, and the layer it floats on. Health / Gold / the road /
+# the title / the menu, pinned to the top of the SCREEN rather than of the page —
+# see _mount_header.
+var _header: HBoxContainer = null
+var _header_bar: PanelContainer = null
+var _header_layer: CanvasLayer = null
+# The transient-toast stack, held so it can be pushed clear of the header bar.
+var _toasts: Control = null
 # A `play_game` detour in flight (docs/event-sheet-authoring.md §10). The node to
 # offer a way back to, and the payload that lands when the detour game is beaten.
 var _play_return_to: StringName = &""
@@ -219,6 +227,9 @@ var _levelup_check: CheckBox        # null when the character has no level-up
 var _row_paints: Dictionary = {}
 var _lit_instances: Dictionary = {}
 var _dash_mode: bool = false        # Dash (§4): offer ANY connected game
+# Was the game in hand reached BY a Dash? Read by report() so the return-trip
+# Dash is not silently cancelled by the charge that paid for the trip.
+var _dashed_here: bool = false
 var _controls_row: HBoxContainer
 var _stack: RichTextLabel           # battlefield summary line
 # The offering half of the page (heading, verbs, cards, hover preview) — hidden
@@ -387,6 +398,7 @@ func start_run(character_id: StringName = &"") -> void:
 	# mounted overworld, and scrolls / overworld actives / saving all look it up.
 	GameState.set_overworld_context(self)
 	_dash_mode = false
+	_dashed_here = false
 	_scramble_salt = 0
 	_banner.hide()
 	_start_options = _build_start_options(pick)
@@ -511,6 +523,7 @@ func choose_start(index: int) -> void:
 		game.display_name, RunGraph.type_label(int(opt["type"])), int(opt["path_len"])],
 		UITheme.GOLD)
 	_chosen = _start_choice(index)
+	_dashed_here = false
 	_start_options.clear()
 	# The offering behind the report panel is the start game's neighbours: the
 	# checklist reads `_chosen`, but a Scramble or a Dash taken while playing needs
@@ -582,6 +595,7 @@ func capture_view_state() -> Dictionary:
 		"chosen": _serialize_choice(_chosen),
 		"boss_round": _boss_round,
 		"dash_mode": _dash_mode,
+		"dashed_here": _dashed_here,
 		"scramble_salt": _scramble_salt,
 		"return_choice": String(_return_choice),
 		# The shop is a place on the page now, so a run saved standing in one comes
@@ -618,6 +632,7 @@ func restore_view_state(view: Dictionary) -> void:
 	_chosen = _deserialize_choice(view.get("chosen", {}))
 	_boss_round = bool(view.get("boss_round", false))
 	_dash_mode = bool(view.get("dash_mode", false))
+	_dashed_here = bool(view.get("dashed_here", false))
 	_scramble_salt = int(view.get("scramble_salt", 0))
 	# A run saved on the stay-or-return screen comes back to it: `_choices` already
 	# holds the two destination cards, and this is what makes them mean "move here"
@@ -823,6 +838,7 @@ func pick(index: int) -> void:
 		return
 	_chosen = _choices[index]
 	# A Dash pick spends a charge (§4) — it's the "select any connected game" verb.
+	_dashed_here = _dash_mode
 	if _dash_mode:
 		GameState.dash_charges = maxi(0, GameState.dash_charges - 1)
 		_dash_mode = false
@@ -1327,7 +1343,7 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 		# beaten this time (§4). The trip is what earns it, the win is what
 		# confirms it.
 		if repeat_beat:
-			_grant_repeat_dash(played_game)
+			_grant_repeat_dash(played_game, _dashed_here)
 		# The lifetime tally the Collection, the tier list and the Atlas read
 		# ("beaten N times"). An amulet clear records the win instead — it bumps
 		# `beaten` too.
@@ -1711,11 +1727,24 @@ func _maybe_announce_boss() -> void:
 
 # The reward for going back to a game the run had already played and beating it
 # this time: +1 Dash (§4).
+#
+# `by_dash` REFUNDS the charge the trip itself cost, and it is the whole reason
+# this takes an argument. The offering prints "⚡ +1 DASH" on a game you have
+# played, and the usual way to get back to one is to spend a Dash — the offering
+# is three of a hub's twenty neighbours, so the game you want is rarely on the
+# table. Spend one to travel, earn one for the clear, and the counter reads
+# exactly what it read before: the card promised a charge and the player watched
+# nothing happen. The trip is what the Dash paid for; the +1 is what the CLEAR
+# pays, and the two are not the same transaction.
+#
 # Announced on both channels — the toast for the moment, the log for the record —
 # because the HUD's Dash counter moving on its own reads as a bug.
-func _grant_repeat_dash(game: GameData) -> void:
-	GameState.dash_charges += REPEAT_BEAT_DASH
+func _grant_repeat_dash(game: GameData, by_dash: bool = false) -> void:
+	var gained: int = REPEAT_BEAT_DASH + (1 if by_dash else 0)
+	GameState.dash_charges += gained
 	var msg: String = "Back at %s, and beaten — +%d Dash." % [game.display_name, REPEAT_BEAT_DASH]
+	if by_dash:
+		msg += " The Dash that took you there comes back too."
 	Notifications.notify(msg, DASH_BLUE)
 	GameLog.add(msg, DASH_BLUE)
 
@@ -1865,6 +1894,9 @@ func _start_play_game(request: Dictionary) -> void:
 	GameLoop2.grant_selection_shields(game)
 	GameState.set_current_game(dest)
 	_dash_mode = false
+	# A detour is posted by an event, not paid for with a charge, so there is
+	# nothing for the return-trip Dash to refund at the far end of it.
+	_dashed_here = false
 	_hover_grant = -1
 	_phase = Phase.PLAYING
 	_populate_play_panel()
@@ -2159,7 +2191,15 @@ func _offered_ids() -> Array:
 	var amulet: StringName = GameState.amulet_game_id
 	var nbrs: Array = _sorted_neighbors()
 	# Dash (§4) bypasses the cap — every connected game is a valid target.
+	#
+	# And it is the one offering that is a LIST rather than a hand of cards: a hub
+	# has twenty connections, so the Dash panel is twenty covers deep and the
+	# question stops being "which of these three" and becomes "is the game I have
+	# in mind in here". A seeded shuffle is exactly wrong for that — it is there to
+	# stop a three-card offering feeling like a menu, and this one IS a menu. Sorted
+	# by name, a player looking for a particular game can find it by eye.
 	if _dash_mode:
+		nbrs.sort_custom(_by_display_name)
 		return nbrs
 	var cap: int = offer_count()
 	if amulet in nbrs and nbrs.size() > cap:
@@ -2203,6 +2243,18 @@ func _sorted_neighbors() -> Array:
 	var seed_key := _offer_seed()
 	nbrs.sort_custom(func(a, b): return hash(seed_key + String(a)) < hash(seed_key + String(b)))
 	return nbrs
+
+# A-Z by the name printed on the card, case- and number-aware ("Spelunky 2" after
+# "Spelunky", not between "Spelunky 10" and "Spelunky"). Falls back to the id for
+# a game the catalogue has lost, so the sort can never crash the offering.
+func _by_display_name(a, b) -> bool:
+	return _display_name_of(a).naturalnocasecmp_to(_display_name_of(b)) < 0
+
+func _display_name_of(id) -> String:
+	var game: GameData = GameLoop2.game_at(StringName(id))
+	if game == null:
+		game = Data.get_game(StringName(id))
+	return game.display_name if game != null else String(id)
 
 # The game that would slide into the offering if `bashed_slot` were destroyed: the
 # next connected, un-bashed game that isn't already on one of the other cards. &""
@@ -2364,15 +2416,23 @@ func _fit_canvas_to_page() -> void:
 		return
 	# The scroll's own left/right offsets are outside the content and have to be
 	# paid for too, or the page fits by exactly the width of its margins.
-	var needed: float = root.get_combined_minimum_size().x + 32.0
-	Settings.request_canvas_width(int(ceil(needed)))
+	#
+	# The HEADER is measured alongside it rather than through it: it used to be the
+	# first row of `root` and so was already inside this number, and it is now on a
+	# layer of its own (_mount_header). Left out, a long road-walked strip would
+	# push the title and the menu off the right edge of a canvas that had been
+	# fitted to the columns underneath and nothing else.
+	var needed: float = root.get_combined_minimum_size().x
+	if _header_bar != null and is_instance_valid(_header_bar):
+		needed = maxf(needed, _header_bar.get_combined_minimum_size().x)
+	Settings.request_canvas_width(int(ceil(needed + 32.0)))
 
 # --- the road walked, across the top of the page ---------------------------
 #
 # The end-of-run screen has always drawn the run as a line of covers with arrows
-# between them, closing on the Amulet, and it is the clearest picture of a run
-# this project has. It only ever appeared once the run was over. This is the same
-# picture, live, in the header.
+# between them, and it is the clearest picture of a run this project has. It only
+# ever appeared once the run was over. This is the same picture, live, in the
+# header — games PLAYED only, oldest first, ending on the one underfoot.
 #
 # It has to share one 1280-wide row with the health chip, the gold chip, the
 # title and the menu, and the page underneath it must still fit 720 without
@@ -2392,20 +2452,23 @@ func _refresh_route_strip() -> void:
 	if _route_strip == null:
 		return
 	_clear(_route_strip)
-	# Nothing to draw before the run has a position — and on the start picker the
-	# Amulet is still hidden, so an Amulet tile there would give away the one thing
-	# that panel deliberately withholds.
+	# Nothing to draw before the run has a position. The strip stays MOUNTED and
+	# expanding even when it is empty, rather than hiding: it is the header's
+	# spacer as well as its picture, and a hidden Control takes no room — which is
+	# what used to let the title and the menu slide to the LEFT of the header on
+	# the start picker and jump to the right the moment the first game was taken.
 	if _phase == Phase.START_SELECT or GameState.current_game_id == &"":
-		_route_strip.hide()
 		return
-	_route_strip.show()
 
-	var stops: Array = []
-	for id in GameState.visited_games:
-		stops.append(StringName(id))
-	var here: StringName = GameState.current_game_id
-	if stops.is_empty() or stops[stops.size() - 1] != here:
-		stops.append(here)
+	# GAMES PLAYED, and only games played. The strip used to close on the AMULET,
+	# with the gap not yet walked drawn dashed — which meant the header carried a
+	# cover for a game the player had never been to, sitting right beside the ones
+	# they had, reading as "and then you went here". The road ahead has two screens
+	# of its own (the 🗺 map and the route ladder); this one is the road BEHIND.
+	#
+	# Repeats included (GameState.walked_path): going back to a game is a real stop
+	# on the road and the strip is the only place that says the run doubled back.
+	var stops: Array = GameState.walked_path()
 
 	var trimmed: bool = stops.size() > STRIP_MAX_STOPS
 	if trimmed:
@@ -2419,18 +2482,14 @@ func _refresh_route_strip() -> void:
 		more.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		_route_strip.add_child(more)
 
+	# `here` is the LAST stop, not every stop that happens to be this game: a run
+	# that came back to a hub has that hub on the strip twice and only one of them
+	# is where the player is standing.
+	var last: int = stops.size() - 1
 	for i in range(stops.size()):
-		_route_strip.add_child(_strip_stop(stops[i], stops[i] == here, false))
-		if i < stops.size() - 1:
-			_route_strip.add_child(_strip_arrow(false))
-
-	# The Amulet closes the strip, with the gap you have not covered yet drawn
-	# dashed — the same way the end-of-run screen draws a loss. It is what turns a
-	# list of games you have played into a picture of a journey with somewhere to be.
-	var amulet: StringName = GameState.amulet_game_id
-	if amulet != &"" and amulet != here:
-		_route_strip.add_child(_strip_arrow(true))
-		_route_strip.add_child(_strip_stop(amulet, false, true))
+		_route_strip.add_child(_strip_stop(stops[i], i == last))
+		if i < last:
+			_route_strip.add_child(_strip_arrow())
 
 	# The strip takes the room the title and the chips leave and no more; anything
 	# past that is clipped rather than allowed to push the menu button off the page.
@@ -2438,28 +2497,22 @@ func _refresh_route_strip() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_route_strip.add_child(spacer)
 
-# One cover on the strip. `is_here` rings the game you are standing on, `is_amulet`
-# the one the run is a search for; everything else is a plain frame.
-func _strip_stop(id: StringName, is_here: bool, is_amulet: bool) -> Control:
+# One cover on the strip. `is_here` rings the game you are standing on; every
+# other stop is a plain frame. There is no Amulet tile any more — see
+# _refresh_route_strip: this strip is the road behind, and the Amulet is ahead.
+func _strip_stop(id: StringName, is_here: bool) -> Control:
 	var game: GameData = GameLoop2.game_at(id)
 	if game == null:
 		game = Data.get_game(id)
-	var border: Color = UITheme.BORDER
-	var width: int = 1
-	if is_amulet:
-		border = UITheme.GOLD
-		width = 2
-	elif is_here:
-		border = UITheme.ACCENT
-		width = 2
+	var border: Color = UITheme.ACCENT if is_here else UITheme.BORDER
+	var width: int = 2 if is_here else 1
 	var frame := PanelContainer.new()
 	frame.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.BG_DEEP, 3, 1, width, border))
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP
 	frame.set_meta("stop", id)
 	var name_text: String = game.display_name if game != null else String(id)
-	frame.tooltip_text = ("🏆 %s — the Amulet" if is_amulet
-		else ("▶ %s — you are here" if is_here else "%s")) % name_text
+	frame.tooltip_text = ("▶ %s — you are here" if is_here else "%s") % name_text
 
 	if game != null and game.cover_image != null:
 		var art := TextureRect.new()
@@ -2480,9 +2533,8 @@ func _strip_stop(id: StringName, is_here: bool, is_amulet: bool) -> Control:
 		frame.add_child(blank)
 	return frame
 
-func _strip_arrow(unreached: bool) -> Control:
+func _strip_arrow() -> Control:
 	var a := RunHistoryScreen.RouteArrow.new()
-	a.unreached = unreached
 	a.custom_minimum_size = Vector2(STRIP_ARROW, STRIP_COVER.y)
 	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return a
@@ -3045,11 +3097,17 @@ func _add_event_goal_rows() -> void:
 		if cd == null:
 			continue
 		var left: int = int(entry.get("games_left", 0))
-		# Phrased as the admission it is. Every other row on this list is a thing
-		# you are pleased to tick; this one is not, and the wording should not
-		# pretend otherwise.
-		var text: String = "%s — %s   (%s)" % [
-			cd.display_name, cd.describe(), CurseData2.window_text(left)]
+		# A CURSE IS A ROW LIKE ANY OTHER: an instruction, ticked if you followed
+		# it, with what it costs you written after it. It used to be phrased as the
+		# rule instead — "If you use a rest site to replenish health, spawn a random
+		# enemy when you report the game" — with a box that fired the penalty when
+		# you CHECKED it. That made it the one row on this list whose tick meant the
+		# opposite of every other row's, and it read as a confession rather than as
+		# something to go and do. Unticked is the failure here exactly as it is on
+		# the goal above it; the difference is only what failing costs.
+		var text: String = "%s — %s   if failed, %s   (%s)" % [
+			cd.display_name, cd.goal_text(), cd.penalty_text,
+			CurseData2.window_text(left)]
 		var row := _verify_row(text, UITheme.CURSE, false)
 		_verify_box.add_child(row["row"])
 		_curse_goal_checks.append({"check": row["check"], "index": i})
@@ -3077,11 +3135,15 @@ func _resolve_event_goal_rows() -> void:
 		GameLog.add(line, UITheme.ACCENT)
 
 	# A curse fires but does NOT clear — that is what separates it from a goal.
-	# Ticking it twice across two games costs twice; only the timer removes it.
+	# Breaking it twice across two games costs twice; only the timer removes it.
+	#
+	# UNTICKED is what fires it. The row is an instruction (see
+	# _add_event_goal_rows), so a box left empty says the player did not follow it
+	# — the same thing an empty box says on every other row of the checklist.
 	var triggered: Array = []
 	for entry in _curse_goal_checks:
 		var check: CheckBox = entry.get("check")
-		if check != null and is_instance_valid(check) and check.button_pressed:
+		if check != null and is_instance_valid(check) and not check.button_pressed:
 			triggered.append(int(entry.get("index", -1)))
 	for idx in triggered:
 		var fired: Dictionary = GameState.trigger_curse_goal(idx)
@@ -3173,8 +3235,11 @@ func _populate_standing_checklist() -> void:
 		if cd == null:
 			continue
 		var left: int = int(entry.get("games_left", 0))
-		_verify_box.add_child(_objective_row("%s — %s   (%s)" % [
-			cd.display_name, cd.describe(),
+		# The same instruction the report step will ask about, because this list is
+		# headed "What you need to do" and the answer for a curse is the thing to
+		# do, not the rule it is derived from.
+		_verify_box.add_child(_objective_row("%s — %s   if failed, %s   (%s)" % [
+			cd.display_name, cd.goal_text(), cd.penalty_text,
 			CurseData2.window_text(left)], UITheme.CURSE))
 
 	# The player's standing status buffs (§13) — goals that belong to no enemy and
@@ -3482,7 +3547,22 @@ func _prompt_rating(game: GameData) -> void:
 # The tier-list board over the run. Its own method so the rating flow and any
 # future entry point open it the same way, and so a headless test can drive it.
 func open_tier_list() -> TierListScreen:
-	return TierListScreen.open(self)
+	var screen := TierListScreen.open(self)
+	# The one screen the overworld opens that REPLACES the page rather than sitting
+	# over it: it is a full-screen board with its own header and its own way out,
+	# and the run's header bar floats above everything on this page — including
+	# that way out. So the bar stands down for as long as the board is up. (The
+	# Atlas and the end-of-run verdict need no such handling: they are mounted on
+	# layers above HEADER_LAYER and cover it on their own.)
+	_show_header(false)
+	screen.tree_exiting.connect(func(): _show_header(true))
+	return screen
+
+# Whether the pinned header bar is drawn. The page keeps its inset either way —
+# a screen standing in front of it is not a cue to reflow what is behind it.
+func _show_header(shown: bool) -> void:
+	if _header_layer != null and is_instance_valid(_header_layer):
+		_header_layer.visible = shown
 
 # The instances the player ticked as fulfilled this game.
 func _ticked_fulfilments() -> Array:
@@ -4286,6 +4366,17 @@ func _build_ui() -> void:
 	#
 	# The title gives up the centre for it and takes the right, which is also the
 	# honest ranking: the title is decoration, and the strip is state.
+	#
+	# AND IT NEVER LEAVES THE SCREEN. The header used to be the first row of the
+	# page inside the ScrollContainer, which meant the two numbers that end the run
+	# scrolled away the moment the player looked at the bottom of a tall board —
+	# and disappeared entirely behind every modal the run raises, which is where
+	# Health is most worth reading (an event that offers you a gamble is a decision
+	# about the health bar you cannot see). So it is mounted on a CanvasLayer of its
+	# own, above the gameplay modals (event 123, choice 124, map 130) and below the
+	# screens that REPLACE the run rather than sit over it (atlas 140, the verdict
+	# 150). The page below is inset by exactly its height (_fit_page_under_header),
+	# so nothing is ever hidden underneath it.
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	header.add_child(_build_health_chip())
@@ -4305,7 +4396,8 @@ func _build_ui() -> void:
 	title.size_flags_horizontal = Control.SIZE_SHRINK_END
 	header.add_child(title)
 	header.add_child(_build_menu_button())
-	root.add_child(header)
+	_header = header
+	_mount_header(header)
 
 	_banner = Label.new()
 	_banner.add_theme_font_size_override("font_size", 22)
@@ -4575,7 +4667,68 @@ func _build_ui() -> void:
 	# Mounted on THIS screen (full-rect) rather than a bare CanvasLayer — the toast
 	# stack anchors to its parent's top-right corner, and a Control hung straight off
 	# a CanvasLayer has no rect to anchor to, which parks the stack off-screen.
-	add_child(NotificationToasts.new())
+	_toasts = NotificationToasts.new()
+	add_child(_toasts)
+	# …and the stack starts BELOW the header bar, which is opaque and drawn over
+	# the toasts' layer: its own 56px inset was written against a page with no bar
+	# pinned across the top of it.
+	_fit_page_under_header()
+
+# --- the header, pinned to the screen --------------------------------------
+
+# Where the header floats. Above every modal the RUN raises (scroll 120, item
+# drop / shop card 122, event and boss notice 123, game choice 124, map 130) and
+# below the two screens that stand in for the run rather than over it: the Atlas
+# (140) and the end-of-run verdict (150). A run whose Health has already hit 0
+# has nothing left for a Health chip to say, and the Atlas is a different page.
+const HEADER_LAYER := 135
+
+# Mount `header` on its own CanvasLayer, in a bar across the top of the screen.
+#
+# The bar is OPAQUE, and that is the whole reason it is a PanelContainer rather
+# than a bare row: it floats over an event's dimmed backdrop, and a line of text
+# with a modal's scrim showing through it is unreadable at exactly the moment it
+# matters most.
+func _mount_header(header: Control) -> void:
+	_header_layer = CanvasLayer.new()
+	_header_layer.layer = HEADER_LAYER
+	# The run's modals pause the tree behind them; the header is a readout, and a
+	# readout that stops repainting while an event is open is the bug this is
+	# fixing in a different shape.
+	_header_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_header_layer)
+
+	var root := Control.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# The page underneath keeps its clicks everywhere the bar itself isn't.
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# A theme does not cross a CanvasLayer, so the chips, the menu button and its
+	# popup would otherwise be drawn in Godot's stock grey.
+	UITheme.dress(root)
+	_header_layer.add_child(root)
+
+	_header_bar = PanelContainer.new()
+	_header_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_header_bar.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG_DEEP, 0, 8, 1, UITheme.BORDER.lerp(UITheme.BG_DEEP, 0.4)))
+	_header_bar.add_child(header)
+	root.add_child(_header_bar)
+
+	# The page starts below the bar, whatever height the bar turns out to be — the
+	# route strip's covers set it, and a future row would change it again.
+	_header_bar.resized.connect(_fit_page_under_header)
+	_fit_page_under_header()
+
+# Inset the scrolling page by the header's height, so the first row of the page
+# clears the bar floating over it.
+func _fit_page_under_header() -> void:
+	if _header_bar == null or not is_instance_valid(_header_bar):
+		return
+	var bar: float = maxf(_header_bar.size.y, _header_bar.get_combined_minimum_size().y)
+	if _scroll != null and is_instance_valid(_scroll):
+		_scroll.offset_top = 16.0 + bar
+	if _toasts != null and is_instance_valid(_toasts):
+		_toasts.offset_top = bar
 
 # "🛒 Shop ↓" — the pointer at the shop mounted under the board. It floats at the
 # bottom of the SCREEN (not of the page), over everything, until the shop has

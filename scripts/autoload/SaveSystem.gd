@@ -160,6 +160,7 @@ func _build_payload() -> Dictionary:
 		"amulet_game_id": String(GameState.amulet_game_id),
 		"route_waypoint": String(GameState.route_waypoint),
 		"visited_games": _stringnames_to_strings(GameState.visited_games),
+		"path_taken": _stringnames_to_strings(GameState.path_taken),
 		"beaten_games": _stringnames_to_strings(GameState.beaten_games),
 		"played_games": _stringnames_to_strings(GameState.played_games),
 		"total_games_beaten": GameState.total_games_beaten,
@@ -290,6 +291,11 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.amulet_game_id = StringName(data.get("amulet_game_id", ""))
 	GameState.route_waypoint = StringName(data.get("route_waypoint", ""))
 	GameState.visited_games = _strings_to_stringnames(data.get("visited_games", []))
+	# The walk with its repeats. A save written before it existed has no record of
+	# the doubling-back, so it is left empty and GameState.walked_path falls back to
+	# rebuilding the road from `visited_games` — the same picture that save's run
+	# was drawn with while it was live.
+	GameState.path_taken = _strings_to_stringnames(data.get("path_taken", []))
 	GameState.beaten_games = _strings_to_stringnames(data.get("beaten_games", []))
 	# A save written before this list existed falls back to the games it BEAT,
 	# which is the part of "where have I been" that old save knew about.
