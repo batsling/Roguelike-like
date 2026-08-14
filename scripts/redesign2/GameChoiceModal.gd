@@ -105,19 +105,19 @@ func _build() -> void:
 
 	root.add_child(_build_header(game, accent))
 
-	# The event waiting at this SPOT, if any (docs/event-sheet-authoring.md §12).
-	# The card's badge says one is here; this is where it says WHICH, because the
-	# popup is where the routing decision actually gets made (§4.2) and "is the
-	# detour worth two games" is exactly the question an event answers.
-	var event_row: Control = _build_event_row()
-	if event_row != null:
-		root.add_child(event_row)
-
-	# The shop, if this game is one of the run's hubs (§14). Same argument as the
-	# event row above, and one step further: a shop the player has ALREADY been to
-	# lists what is still on its shelf, because the decision "is it worth walking
-	# back to that hub" is unanswerable without knowing what is left there and
-	# what it costs. This is the only place in the run that question gets asked.
+	# There WAS an event row here — "✦ An event fires here once the game is
+	# played." It was the last survivor of the era when placement was hashed onto
+	# particular nodes and routing towards an event was a decision. Every game
+	# pays one now, so the line was on all but two kinds of card and said nothing
+	# on any of them: a fact that is always true is not information.
+	#
+	# The shop, if this game is one of the run's hubs (§14), is the row that
+	# earned its place — and it is now also the row that says an event is NOT
+	# coming, because a hub's event is the shop (§12). One step further than a
+	# badge, too: a shop the player has ALREADY been to lists what is still on its
+	# shelf, because the decision "is it worth walking back to that hub" is
+	# unanswerable without knowing what is left there and what it costs. This is
+	# the only place in the run that question gets asked.
 	var shop_row: Control = _build_shop_row(game)
 	if shop_row != null:
 		root.add_child(shop_row)
@@ -136,26 +136,6 @@ func _build() -> void:
 	# The ladder is built at zoom 1 and only measured once Godot has laid the
 	# panel out; until then the scroll area reports nothing to fit it against.
 	_settle.call_deferred()
-
-# What the run gets out of this node beyond the game itself. It used to NAME the
-# event waiting here, which it could because placement was hashed onto the node
-# and asking early gave nothing away. An event is now rolled on arrival, so there
-# is no answer to give until the player gets there — what is left to say is that
-# something will be, and that a node already played has spent its one.
-#
-# Null on a spent node, so a card the run has already taken its event from stays
-# clean rather than promising a second.
-func _build_event_row() -> Control:
-	var slot: StringName = StringName(_choice.get("slot", &""))
-	if slot == &"" or GameState.event_nodes_fired.has(slot):
-		return null
-	var lbl := Label.new()
-	lbl.text = "✦  An event fires here once the game is played."
-	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl.add_theme_font_size_override("font_size", 12)
-	lbl.add_theme_color_override("font_color", UITheme.ACCENT)
-	return lbl
-
 
 # Null off a hub, so an ordinary card stays clean. On one: the headline, then the
 # remaining shelf as one priced line per item — but only once the player has
@@ -176,6 +156,16 @@ func _build_shop_row(game: GameData) -> Control:
 	head.add_theme_font_size_override("font_size", 12)
 	head.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
 	col.add_child(head)
+
+	# The trade, said once where the routing decision is made: a shop stands here
+	# INSTEAD of an event (§14.4), which is the only way a hub costs differently
+	# from every other card on the board.
+	var instead := Label.new()
+	instead.text = "      No event fires here — the shop is what happens instead."
+	instead.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	instead.add_theme_font_size_override("font_size", 11)
+	instead.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	col.add_child(instead)
 
 	for line in ShopSystem.stock_lines(game.id):
 		var row := Label.new()
@@ -212,10 +202,14 @@ static func connection_counts(game_id: StringName) -> Dictionary:
 		# but "would one fire". Every game pays an event the first time it is
 		# played, so this counts the neighbours the run has not already taken one
 		# from, which is the number that actually shapes where to go next.
-		if not GameState.event_nodes_fired.has(n):
-			out["events"] += 1
+		#
+		# A hub is not one of them. A shop is what happens at a hub, INSTEAD of an
+		# event (§12), so counting it under both headings would promise the same
+		# neighbour twice and overstate the events on offer.
 		if ShopSystem.is_hub(n):
 			out["shops"] += 1
+		elif not GameState.event_nodes_fired.has(n):
+			out["events"] += 1
 	return out
 
 # The counts as one line, or "" when the game is a dead end with nothing to say.
@@ -235,7 +229,8 @@ static func connection_text(counts: Dictionary) -> String:
 static func connection_tip(game: GameData, counts: Dictionary) -> String:
 	var name_text: String = game.display_name if game != null else "this game"
 	return ("%d games connect to %s — the pool the next offering is drawn from. "
-		+ "%d of them still owe an event, %d are shop hubs.") % [
+		+ "%d of them still owe an event; %d are shop hubs, where the shop is "
+		+ "what happens instead of one.") % [
 		int(counts.get("total", 0)), name_text,
 		int(counts.get("events", 0)), int(counts.get("shops", 0))]
 
@@ -320,6 +315,20 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		frame.add_child(art)
 		col.add_child(frame)
+
+	# Transmuted (§4): this SPOT is no longer playing its own game. Everything
+	# else on the card already speaks for the REPLACEMENT — its cover, its type,
+	# its tries, the enemy standing there — so the one fact the card cannot state
+	# for itself is that it is a replacement at all, and what it was pasted over.
+	# Which is exactly what the routing decision turns on: the rung keeps its
+	# place on the graph, so the road out is the OLD game's road, not this one's.
+	var was: GameData = GameLoop2.original_at(StringName(_choice.get("slot", &"")))
+	if was != null:
+		col.add_child(_fact_line("⚗ Transmuted — was %s" % was.display_name,
+			UITheme.ACCENT,
+			("This spot held %s; a transmute pasted %s over it for the rest of the run. "
+			+ "Its connections are unchanged — the route below is still %s's.") % [
+				was.display_name, game.display_name, was.display_name]))
 
 	var meta: Array = []
 	if game.year > 0:
@@ -515,7 +524,9 @@ func _build_route_column() -> Control:
 	centre.add_child(_ladder_holder)
 
 	var legend := Label.new()
-	legend.text = "▶ where you'd be  •  🏆 the Amulet  •  ⚔ you've beaten an enemy there"
+	# Kept to one line for the reason RunMapModal's hint is: the ladder above it
+	# is fitted to whatever height is left over.
+	legend.text = "▶ where you'd be  •  🏆 the Amulet  •  🛒 a shop  •  ⚔ beaten there"
 	legend.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	legend.add_theme_font_size_override("font_size", 11)
 	legend.add_theme_color_override("font_color", UITheme.TEXT_FAINT)

@@ -1090,13 +1090,20 @@ the `seen` guard, so it is the *first* visit to each hub that empties it and a
 rerolled shelf on a return trip is not swept a second time. If the Amulet game
 is itself a hub, winning the run beats the shop: the run is over.
 
-An event and a shop at one node is not a real case (every authored event is
-`Where: Dead End`, and a hub is the opposite of a dead end), but if it happened
-the **event opens first** — a shop is spending, and money should be spent knowing
-how the event went.
+**A hub pays no event — the shop is what happens there.** An event fires after
+every other game played (§12), and for a while a hub paid both: the shop mounted
+under the board and the event opened a modal over it, so the shop the player had
+routed towards was something they had to dismiss an event to reach. Two things
+queued on one arrival was one thing too many, and of the two the shop is the one
+the player chose to be standing in. `EventSystem.roll_for_arrival` returns null
+at a hub, so the rule holds for every caller rather than for the overworld only.
+It reads off the game actually PLAYED at the node: a transmuted spot plays an
+off-map game, off-map games are never hubs, so the shop leaves with the game it
+belonged to and the spot goes back to paying an event.
 
-From the road, a hub card carries a **`🛒 SHOP` flag**, ranked below the Amulet
-and the event: an event happens *to* you once, a shop is a standing place. Its
+From the road, a hub card carries a **`🛒 SHOP` flag**, the only flag ranked
+below the Amulet — and its tooltip says the shop is *instead of* an event, which
+is the one way a hub costs differently from every other card. Its
 colour is a **green**, not a gold — the flag occupies the Amulet's own slot on
 the card, so it has to be a different colour rather than a different shade
 (`UITheme.SHOP_GREEN` / `COIN_GOLD`).

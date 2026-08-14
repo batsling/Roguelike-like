@@ -11,6 +11,127 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A written manual, and the menu's bottom-left corner is its contents page.**
+  The 📖 How to Play button raised a "coming soon" box with two sentences in it.
+  It now opens thirteen chapters.
+
+  **What the research says, and what it changed here.** Minimalist instruction
+  (Carroll's *minimal manual* work, and the tutorial-design advice that keeps
+  rediscovering it) is consistent about four things, and each one moved
+  something in this manual:
+
+  * **Task order, not system order.** Chapter 1 is one whole run, menu to win,
+    in the order you meet it — because a new player's first question is never
+    "what is a status", it is "what do I do". The spec's own order (schemas,
+    then systems, then screens) is exactly backwards for a reader.
+  * **What, then how, then why.** Every mechanic is named, then operated, then
+    justified, and the justification goes last so it can be skipped.
+  * **Modular and self-contained.** Each chapter opens cold. That costs some
+    repetition and is worth it: nobody reads a manual front to back, they open
+    it at the bit they are stuck on — which is also why the corner panel lists
+    chapters rather than being one more button.
+  * **Error recovery is its own chapter.** "When it goes wrong" is §12 and it is
+    the one written to be opened mid-run: I cannot do this goal, I already
+    travelled, I am out of tries, four followers are killing me. The happy path
+    is the part players work out for themselves.
+
+  The one deliberate departure from the advice is leaning on text at all — the
+  usual counsel is to teach by doing. This is the case where text is right: the
+  mechanics are strategy-game mechanics (a routing puzzle over a real graph, a
+  pressure ladder, a stack that compounds) and those are the ones nobody
+  reverse-engineers from watching. The parts that ARE self-teaching — click a
+  card and it opens, press Report and it asks — get a line each.
+
+  **The manual cannot drift.** Every number in it is interpolated from the
+  constant that governs it, and `test_how_to_play.gd` asserts the prose still
+  quotes the build's own values, so a balance change fails the suite rather than
+  turning the manual into a lie. It also asserts every block carries a kind the
+  screen can draw, every chapter renders something, and — after this shipped
+  broken once — that no raw `%d` survives into the prose: GDScript's `%` binds
+  tighter than `+`, so a format operator on the end of a concatenated string
+  formats only the last fragment.
+
+  **Where it lives.** `HowToPlayText.gd` is every word, as data. `HowToPlayScreen.gd`
+  draws seven block kinds and reads none of them. The menu's corner panel is
+  built from the same array and opens chapters **by id**, so inserting a chapter
+  in the middle cannot repoint the buttons under it.
+
+---
+
+- **The event line came off the cards, and a shop is now what happens instead of
+  an event.** Two halves of the same correction.
+
+  The card's popup carried `✦ An event fires here once the game is played.` —
+  the last survivor of the era when placement was hashed onto particular nodes
+  and routing towards an event was a decision. Every game pays one now, so the
+  line was on all but two kinds of card and said nothing on any of them: **a
+  fact that is always true is not information.** It is gone.
+
+  And at a **hub** it was worse than uninformative, it was wrong-in-waiting.
+  Both a shop and an event queued on the same arrival — the shop mounting under
+  the board, the event opening a modal over it — so the shop the player had
+  routed towards was something they had to dismiss an event to reach. A hub
+  already *is* the thing that happens at a hub. `EventSystem.roll_for_arrival`
+  now returns null at one, so the rule holds for every caller rather than for
+  the overworld only, and it reads off the game actually PLAYED at the node:
+  transmute a hub and the shop leaves with the game it belonged to, so the spot
+  goes back to paying an event.
+
+  What a card says about events is now what a hub card says. The `🛒 SHOP`
+  flag's tooltip and the popup's shop row both spell out the trade — "no event
+  fires here, the shop is what happens instead" — because it is the one way a
+  hub costs differently from every other card on the board. The connection line's
+  two headings became **exclusive** for the same reason: a hub neighbour counts
+  under 🛒 and never under ✦, where counting it under both promised the same
+  neighbour twice.
+
+---
+
+- **A card now says when the spot is not playing its own game, and the route
+  says where the shops are.** Two small things the popup and the map could not
+  answer, plus the spreadsheet's blind spot behind them.
+
+  * **Transmuted, and what it was.** A transmuted node keeps its place on the
+    graph and plays something else — but the card it opens speaks entirely for
+    the REPLACEMENT: its cover, its type, its tries, the enemy standing there.
+    The one fact it could not state was that it is a replacement at all. It now
+    carries `⚗ Transmuted — was <game>` under the cover, and the tooltip says the
+    part that actually decides the route: the connections are the OLD game's, so
+    the ladder below is still the old game's road.
+  * **🛒 on the rungs.** `RouteLadder` flags every rung a shop stands on, so both
+    the 🗺 map window and the ladder inside a card show where the shelves are —
+    "one step longer but it passes a shop" is a routing question and the ladder
+    is where it gets asked. Read off the game actually PLAYED at the rung, not
+    the rung's id: a transmuted spot plays an off-map game and off-map games are
+    never hubs, so the shop leaves with the game it belonged to.
+  * **The legends had to get SHORTER to fit it in.** Spelling out "🛒 = a shop
+    stands there" under the map wrapped the hint to a second line, which cost the
+    ladder above it enough height to push its zoom-to-fit past the legibility
+    floor — caught by `test_run_map.gd::test_the_route_fits_the_window_it_opens_in`,
+    which is exactly the failure that test exists to catch. Both legends are now
+    terser than they were before the marker was added to them.
+
+  **The Map Analysis sheet was reading 819 of 849 games.** `GAMES = 820` was
+  written as a range with headroom and had quietly been overtaken by the
+  catalog, so every degree, median, hub and genre count on the dashboard was
+  computed over a truncated sheet. Ranges are 950/1400 now.
+
+  With that fixed, the dashboard learned the distinction the game actually runs
+  on — **owned against everything**. A run draws from the owned catalog
+  (`RunConfig`'s default library), which is a little over half the sheet, so a
+  hub count that does not say which catalog it means answers no question the
+  game asks. Genre, degree bands and the per-year block each carry an Owned
+  column beside their total (genre also gets Owned % and an All row), five new
+  headline measures cover the owned catalog's size, share, average degree,
+  junctions and dead ends, and there is a second hub table: **the 15 biggest
+  hubs you own** — which is the shop map in table form, since a shop stands at
+  each of them. The charts read the new columns as a second series rather than
+  as new charts, and all eight now stack in one column: tiling them two and
+  three across put them over the year and edge-span tables the moment those
+  tables grew a column.
+
+---
+
 - **The shop had the same disease, worse — and it was there first.** A hub's
   shelf of three cards ran the page to **1231px inside a 688px window**, which
   predates machines entirely: anyone standing in a shop has been scrolling the

@@ -1464,11 +1464,14 @@ func _end_resolve() -> void:
 # the modal lands on the screen the player is about to act on rather than on a
 # board mid-resolve.
 #
-# The shop comes AFTER the event when a node owes both — an event is a decision
-# with consequences and a shop is spending, so the money should be spent knowing
-# how the event went. That pairing used to be theoretical (every event was
-# `Where: Dead End` and a hub is the opposite of one); now that an event fires
-# after every game it happens at every hub, and the order matters for real.
+# A node never owes both any more. The shop still opens behind the event here,
+# and the ordering is kept deliberately rather than collapsed into one path: a
+# hub pays no event (§14.4), so `_pending_event` is null at exactly the arrivals
+# `_pending_shop` is set on, and the fall-through below is the whole story. It
+# stays written as an order because the day something else queues an event on an
+# arrival — an item, a scroll — the shop should still come second: an event is a
+# decision with consequences and a shop is spending, so the money should be spent
+# knowing how the event went.
 func _open_pending_event() -> void:
 	var ev: EventData2 = _pending_event
 	var node: StringName = _pending_event_node
@@ -2657,7 +2660,11 @@ const NAME_BOX_H := 51               # three lines of NAME_FONT — "Shotgun Kin
 # actually been in there. Both come from ShopSystem so this and the popup's shop
 # block cannot end up describing the same shelf differently.
 func _shop_card_tooltip(game: GameData) -> String:
-	var lines: Array = [ShopSystem.headline(game.id)]
+	# "…and no event" is worth a line here because it is the ONE place a hub
+	# differs from every other card in what it costs you: a shop stands here
+	# instead of an event, not as well as one (§12).
+	var lines: Array = [ShopSystem.headline(game.id),
+		"A shop stands here, so no event fires — this is what happens instead."]
 	var stock: Array = ShopSystem.stock_lines(game.id)
 	if not stock.is_empty():
 		lines.append("")

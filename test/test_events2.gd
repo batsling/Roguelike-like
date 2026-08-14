@@ -623,6 +623,36 @@ func test_every_game_pays_an_event() -> void:
 		"an event fires after every game, not just at dead ends")
 
 
+func test_a_hub_pays_a_shop_instead_of_an_event() -> void:
+	# §14.4. A shop is what happens at a hub, not something that happens as well
+	# as an event — the two used to queue on the same arrival and the player had
+	# to dismiss a modal to reach the shop they had routed towards.
+	var hubs: Array = ShopSystem.hub_games()
+	assert_false(hubs.is_empty(), "the run has hubs to test against")
+	for hub in hubs:
+		assert_null(EventSystem.roll_for_arrival(hub),
+			"%s is a hub, so its shop is what happens there" % hub)
+
+
+func test_transmuting_a_hub_gives_the_node_its_event_back() -> void:
+	# The rule reads off the game PLAYED at the node, not the node id. A
+	# transmute pastes an off-map game over the spot, off-map games are never
+	# hubs, so the shop leaves with the game it belonged to — and a spot with no
+	# shop on it owes an event like any other.
+	var hub: StringName = ShopSystem.hub_games()[0]
+	assert_null(EventSystem.roll_for_arrival(hub), "no event while the shop stands")
+	var off: Array = RunGraph.off_map_ids()
+	if off.is_empty():
+		# The filtered catalog is one component, so there is nothing to transmute
+		# INTO and the case cannot arise. Assert that, rather than nothing.
+		assert_true(RunGraph.off_map_ids().is_empty(),
+			"nothing off the map, so a transmute has no pool and a hub stays a hub")
+		return
+	GameLoop2.transmuted[hub] = StringName(off[0])
+	assert_not_null(EventSystem.roll_for_arrival(hub),
+		"the shop went with the game, so the spot pays an event again")
+
+
 func test_a_game_only_pays_its_event_once() -> void:
 	var node: StringName = _some_game()
 	var first: EventData2 = EventSystem.roll_for_arrival(node)
@@ -704,10 +734,12 @@ func test_a_requirement_gates_the_event() -> void:
 
 
 # Any game the run could stand on. An event fires after every game now, so a
-# probe no longer has to hunt for a leaf.
+# probe no longer has to hunt for a leaf — but it does have to skip the ten
+# HUBS, which pay a shop instead of an event and would make every probe below
+# read as "no event here" for a reason that has nothing to do with what it asks.
 func _some_game() -> StringName:
 	for g in Data.all_games():
-		if g is GameData:
+		if g is GameData and not ShopSystem.is_hub(g.id):
 			return g.id
 	return &""
 
@@ -903,7 +935,14 @@ func test_blockers_and_the_roller_are_the_same_rule() -> void:
 				eligible.append(ev.id)
 		GameState.event_nodes_fired.erase(gid)
 		var placed: EventData2 = EventSystem.roll_for_arrival(gid)
-		if eligible.is_empty():
+		if ShopSystem.is_hub(gid):
+			# The hub rule sits ABOVE both of them: it is a fact about the NODE,
+			# not about any event's gates, so blockers_for can rightly report a
+			# stack of eligible events at a hub while nothing is ever dealt there
+			# (§14.4). Slay the Spire is in this list because it is a hub, and
+			# this is now the branch it exercises.
+			assert_null(placed, "a shop stands at %s, so it deals no event" % gid)
+		elif eligible.is_empty():
 			assert_null(placed,
 				"nothing is eligible at %s, so nothing may be dealt there" % gid)
 		else:

@@ -52,6 +52,14 @@ static func node_name(id: StringName, amulet: StringName, hide_amulet: bool) -> 
 	var game: GameData = Data.get_game(id)
 	return game.display_name if game != null else String(id)
 
+# The game a rung actually plays. Normally the node's own game; on a transmuted
+# spot, the replacement pasted over it (§4). Anything asking a rung a question
+# about the GAME — does it sell, has it been beaten — has to go through here,
+# because the node id only answers where the rung sits on the graph.
+static func played_id(id: StringName) -> StringName:
+	var game: GameData = GameLoop2.game_at(id)
+	return game.id if game != null else id
+
 # Build the ladder for one route. `cfg` is the model:
 #
 #   data         Dictionary  {layers, edges} from RunGraph.route_dag_via
@@ -216,6 +224,33 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	else:
 		panel.tooltip_text = name_text
 
+	# The shop badge (§14): a hub game sells, and where the shops sit is the other
+	# half of "which way do I go" — a route one step longer that passes a shelf is
+	# routinely the better road. The ladder is where that comparison is made, so
+	# the marker belongs on the rung rather than only on the page you reach.
+	#
+	# Read off the game actually PLAYED at the rung, not the rung's own id: a
+	# transmuted spot plays an off-map game, and off-map games are never hubs, so
+	# the shop leaves with the game it belonged to.
+	var shop_w: float = 0.0
+	if not secret_amulet and zoom >= 0.62 and ShopSystem.is_hub(played_id(id)):
+		var shop := Label.new()
+		shop.text = "🛒"
+		# Bigger than the ⚔ badge opposite it, and for a reason that only shows up
+		# on screen: ⚔ is a monochrome glyph that stays sharp at 9px, while 🛒 is a
+		# colour bitmap that turns to mush. 12 is the size the same cart is drawn
+		# at in the card's shop row, so the two read as the same marker.
+		shop.add_theme_font_size_override("font_size", 12)
+		shop.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
+		shop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shop.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		shop.offset_left = 4
+		shop.offset_top = 2
+		shop_w = 20.0
+		panel.add_child(shop)
+		panel.tooltip_text = "%s — a shop stands here." % name_text \
+			+ ("" if not on_node.is_valid() else " Click for the details.")
+
 	# The badge: games you have beaten an enemy in, flagged on the route itself.
 	# This is the whole reason to read the ladder rather than the offering — the
 	# choice in front of you may be a game you already have a record in.
@@ -239,8 +274,8 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	# a marker the colour already carries.
 	label.text = (prefix if zoom >= 0.62 else "") + name_text
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	label.offset_left = 4
-	# The name keeps clear of the badge rather than running under it.
+	# The name keeps clear of the badges rather than running under them.
+	label.offset_left = 4.0 + shop_w
 	label.offset_right = -(4.0 + badge_w)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
