@@ -90,6 +90,12 @@ var _scroll: ScrollContainer = null
 # Nothing about the event resolves while it is hidden; it is only out of the way.
 var _hidden: bool = false
 var _objects_box: HFlowContainer = null
+# The machines that were already standing at this game when the event opened.
+# Everything spawned after it is the event's own, and goes when the event does.
+var _objects_before: Array = []
+# The instances the object row is currently showing, so a rebuild happens when
+# the set changes rather than when the count does.
+var _objects_drawn: Array = []
 var _chip: Button = null
 var _backdrop_nodes: Array = []
 
@@ -120,6 +126,16 @@ func _start(host: Node, event: EventData2, game_id: StringName = &"") -> void:
 	if _event == null:
 		_close()
 		return
+	# What was already standing here before this event opened. Everything that
+	# appears from now on belongs to the event, and leaves with it (_close).
+	_objects_before = ObjectSystem.live.duplicate()
+	# A machine can destroy itself mid-event — the Blood Donation Machine bursts,
+	# and bombing one is a button on it — and when it does its card has to go with
+	# it. The cards repaint themselves off this signal; nothing was watching it for
+	# the SET changing, so a blown-up machine stayed on screen until the next
+	# choice was pressed.
+	if not ObjectSystem.objects_changed.is_connected(_on_objects_changed):
+		ObjectSystem.objects_changed.connect(_on_objects_changed)
 	EventSystem.mark_fired(_event, game_id)
 	# Roll whatever this event's content depends on the RUN for — the Relic
 	# Trader's three offers are built from the player's own pack. Once, here,
@@ -216,6 +232,7 @@ func _build() -> void:
 	_objects_box.add_theme_constant_override("h_separation", 8)
 	_objects_box.add_theme_constant_override("v_separation", 8)
 	_objects_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_objects_drawn = []
 	_right.add_child(_objects_box)
 	_right.add_child(_rule())
 	_choice_box = VBoxContainer.new()
@@ -347,19 +364,44 @@ func _render() -> void:
 	_fit.call_deferred()
 
 
+# A machine appeared or went. The cards look after their own state off the same
+# signal, so this only has to notice the SET changing.
+func _on_objects_changed() -> void:
+	if _done or not is_inside_tree():
+		return
+	_render_objects()
+
+
 # The machines standing in this event, if it spawned any. Rebuilt only when the
 # SET changed — each card repaints itself off objects_changed, and tearing them
 # down every render would throw away the one the player is mid-click on.
+#
+# The set is compared by the INSTANCES drawn, not by how many cards are up: a
+# machine that bursts in the same beat another spawns leaves the count untouched
+# and the room completely different.
 func _render_objects() -> void:
 	if _objects_box == null:
 		return
-	if _objects_box.get_child_count() == ObjectSystem.live.size():
+	if _same_objects(_objects_drawn, ObjectSystem.live):
 		return
+	_objects_drawn = ObjectSystem.live.duplicate()
 	for child in _objects_box.get_children():
+		_objects_box.remove_child(child)
 		child.queue_free()
-	for inst in ObjectSystem.live:
+	for inst in _objects_drawn:
 		_objects_box.add_child(ObjectCard.make(inst))
 	_fit.call_deferred()
+
+
+# Same machines, in the same order. By reference (is_same), because two untouched
+# copies of one cabinet are equal dictionaries and are still two cabinets.
+func _same_objects(a: Array, b: Array) -> bool:
+	if a.size() != b.size():
+		return false
+	for i in range(a.size()):
+		if not is_same(a[i], b[i]):
+			return false
+	return true
 
 
 # Size the panel to what is actually in it, capped at the viewport. Under the cap
@@ -491,7 +533,19 @@ func _take(index: int) -> void:
 
 	if bool(out.get("close", true)) or not _play_request.is_empty():
 		# The result of the LAST choice would otherwise never be read, since the
-		# modal closes on it. Show it on its own with a dismiss button.
+		# modal closes on it. Show it on its own with a dismiss button — unless
+		# there is nothing to read.
+		#
+		# WALKING OUT IS THE CASE. The Arcade Room's `Leave` costs nothing and pays
+		# nothing, so its epilogue was an all-but-blank panel with one button on
+		# it — the word "Nothing", which is what the sheet writes for a no-op, and
+		# an Onward. You pressed Leave and the event was still there, wanting
+		# another click before it would go. An epilogue with nothing in it is not
+		# a closing beat, it is a second press, so the event simply ends.
+		if _last_result == "" and _play_request.is_empty() \
+				and EventSystem.does_nothing(choice):
+			_close()
+			return
 		_show_epilogue()
 		return
 	_render()
@@ -643,11 +697,21 @@ func _close() -> void:
 	if _done:
 		return
 	_done = true
+	_end_objects()
 	finished.emit(_play_request)
 	if _layer != null and is_instance_valid(_layer):
 		_layer.queue_free()
 	else:
 		queue_free()
+
+
+# The room closes and what was in it goes. See ObjectSystem.clear_spawned_since:
+# machines the event spawned are the event's, and leaving the Arcade Room is
+# leaving the arcade — the cabinets do not follow you out to the board.
+func _end_objects() -> void:
+	if ObjectSystem.objects_changed.is_connected(_on_objects_changed):
+		ObjectSystem.objects_changed.disconnect(_on_objects_changed)
+	ObjectSystem.clear_spawned_since(_objects_before)
 
 
 # Take the event off the screen WITHOUT answering it. `finished` is the chain
@@ -660,6 +724,7 @@ func dismiss() -> void:
 	if _done:
 		return
 	_done = true
+	_end_objects()
 	if _layer != null and is_instance_valid(_layer):
 		_layer.queue_free()
 	else:

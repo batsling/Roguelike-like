@@ -84,6 +84,34 @@ func clear() -> void:
 	objects_changed.emit()
 
 
+# The machines an EVENT put in front of the player, taken away when that event
+# ends. `before` is the live list as it stood when the event opened, so anything
+# that arrived while it was up goes and anything that was already standing here
+# stays.
+#
+# This is what makes the Arcade Room a ROOM. Its cabinets are drawn inside the
+# modal because you are standing among them, and its `Leave` is the door: walking
+# out of an arcade does not bring the cabinets with you. Without this the room's
+# machines outlived the event that was the room, and turned up under the board as
+# if they had been standing at the game all along.
+#
+# Compared by REFERENCE (is_same), not by value: two Blood Donation Machines with
+# no presses on them yet are equal dictionaries and are still two machines.
+func clear_spawned_since(before: Array) -> void:
+	if live.is_empty():
+		return
+	var keep: Array = []
+	for inst in live:
+		for old in before:
+			if is_same(old, inst):
+				keep.append(inst)
+				break
+	if keep.size() == live.size():
+		return
+	live = keep
+	objects_changed.emit()
+
+
 # --- spawning ---------------------------------------------------------------
 
 # `spawn_object tag=arcade 2-3` — put between `lo` and `hi` machines of `tag` in

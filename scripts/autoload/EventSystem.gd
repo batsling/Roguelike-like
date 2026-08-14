@@ -795,6 +795,41 @@ func _fill_holes(text: String, x: int) -> String:
 # taken. That is what replaces Slay the Spire 2's "the baths may kill you"
 # warning — the escalation is a pure function of X, so the button can just say
 # the number instead of quoting the formula.
+# How long an objective an event hands over stays live, as the clause that goes
+# at the END of the line describing it. It reads as a clock rather than as part
+# of the objective's name, which is what it is: "Injury: if you skip a night's
+# sleep, take 2 damage · Lasts 3 games" is one sentence about a thing plus how
+# long you have it for. Anything under a game is PERMANENT — the -1 sentinel
+# GameState.add_curse_goal stores for a curse with no timer.
+func lasts_text(games: int) -> String:
+	if games < 1:
+		return " · Permanent"
+	return " · Lasts %d %s" % [games, "game" if games == 1 else "games"]
+
+
+# Does this choice actually DO anything? A choice with no objective, no gamble,
+# no errand and nothing but `none` in its effects is a door: the Arcade Room's
+# `Leave`, and every exit authored like it.
+#
+# It matters because such a choice has no outcome to read, and a modal that
+# stops to show you one is asking for a second press to tell you nothing. Judged
+# on the effects rather than on the words beside them, because the words are the
+# generator's rendering of the effects — "Nothing" is what it writes for a `none`.
+func does_nothing(choice: Dictionary) -> bool:
+	if not (choice.get("goal", {}) as Dictionary).is_empty():
+		return false
+	if not (choice.get("curse", {}) as Dictionary).is_empty():
+		return false
+	if not (choice.get("play", {}) as Dictionary).is_empty():
+		return false
+	if not (choice.get("chance", {}) as Dictionary).is_empty():
+		return false
+	for eff in choice.get("effects", []):
+		if eff is Dictionary and String(eff.get("type", "")) != "none":
+			return false
+	return true
+
+
 func describe_choice(choice: Dictionary, taken: int) -> String:
 	var parts: Array = []
 	var text: String = String(choice.get("effects_text", ""))
@@ -803,10 +838,13 @@ func describe_choice(choice: Dictionary, taken: int) -> String:
 
 	var goal: Dictionary = choice.get("goal", {})
 	if not goal.is_empty():
-		var games: int = int(goal.get("games", 1))
-		parts.append("Goal for %d %s: %s → %s" % [
-			games, "game" if games == 1 else "games",
-			goal.get("condition", ""), goal.get("effects_text", "")])
+		# "Event Goal:" and not "Goal for 3 games:" — the label says WHAT KIND of
+		# objective this is, which is the part that changes how it is read (an
+		# event goal is a bonus you may miss, an enemy's is a debt). How long it
+		# runs for goes where every other clock on this line goes: the end.
+		parts.append("Event Goal: %s → %s%s" % [
+			goal.get("condition", ""), goal.get("effects_text", ""),
+			lasts_text(int(goal.get("games", 1)))])
 
 	var curse: Dictionary = choice.get("curse", {})
 	if not curse.is_empty():
@@ -815,10 +853,13 @@ func describe_choice(choice: Dictionary, taken: int) -> String:
 			var games: int = int(curse.get("games", 0))
 			if games <= 0:
 				games = cd.timer
-			# 0 here means the curse's own Timer is 0, which is PERMANENT — the same
-			# -1 sentinel GameState.add_curse_goal will store.
-			parts.append("Curse (%s): %s" % [
-				CurseData2.window_text(games if games > 0 else -1), cd.describe()])
+			# The curse is named — "Injury", "Poor Sleep" — rather than announced
+			# as the category "Curse". The player is being handed a particular
+			# thing, and the name is what the checklist will call it from here on.
+			# 0 games here means the curse's own Timer is 0, which is PERMANENT —
+			# the same -1 sentinel GameState.add_curse_goal will store.
+			parts.append("%s: %s%s" % [cd.display_name, cd.describe(),
+				lasts_text(games if games > 0 else -1)])
 
 	var play: Dictionary = choice.get("play", {})
 	if not play.is_empty():

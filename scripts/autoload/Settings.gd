@@ -91,6 +91,52 @@ const WINDOWED_SIZE := Vector2i(2560, 1440)
 # still shows the whole page — it is just the smallest one that shows it at 1:1.
 const MIN_WINDOWED_SIZE := Vector2i(1280, 720)
 
+# The sizes the windowed mode is offered at, as a request each — every one is
+# clamped to what the screen actually has room for (windowed_fit). "Fit the
+# screen" is WINDOWED_SIZE, which is bigger than any current desktop and so
+# always clamps down to the usable rect.
+#
+# The list exists because the page is drawn at whatever size the window is: the
+# canvas is stretched, so a bigger window is the same page bigger, and which one
+# is comfortable is a fact about the player's monitor and eyes that this program
+# cannot work out for itself.
+const WINDOW_SIZES: Array[Vector2i] = [
+	Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080),
+	Vector2i(2560, 1440),
+]
+
+# The windowed size the player asked for. WINDOWED_SIZE means "as much of the
+# screen as fits", which is the default and what the build has always done.
+var windowed_size: Vector2i = WINDOWED_SIZE
+
+# ---------------------------------------------------------------------------
+# THE CANVAS
+#
+# The layout's own box, which `window/stretch/mode="canvas_items"` scales into
+# whatever the window is. It is 1280x720 in project.godot and that is the size
+# every screen is designed against — but it is not a law, and one screen has
+# outgrown it: the overworld puts the OFFERING and the BATTLEFIELD side by side,
+# and how wide that pair has to be depends on the board, which grows a column per
+# difficulty tier. Past a certain tier the pair is wider than 1280 and the right
+# edge of the board was simply cut off the page.
+#
+# So the canvas is fitted to the page instead of the page to the canvas: a screen
+# measures what it actually needs and asks for it (request_canvas_width), and the
+# stretch does the rest — everything is drawn a little smaller and all of it is on
+# screen. The aspect is "expand", so widening the canvas also hands back height on
+# a 16:9 window rather than letterboxing.
+const CANVAS_BASE := Vector2i(1280, 720)
+# The ceiling. A canvas this wide on a 1920 monitor is drawn at 0.83x, which is
+# about as small as the 11px badge text can be set and still read; past it the fit
+# is worse than the crop it was fixing.
+const CANVAS_MAX_WIDTH := 1760
+# Ignore requests within this of what is already set. The measurement moves by a
+# pixel or two as labels wrap, and a canvas that resizes on every one of those is
+# a page that never stops shifting.
+const CANVAS_SLACK := 12
+
+var canvas_width: int = CANVAS_BASE.x
+
 # Developer mode. When on, the DevTools overlay (backtick `) is available to add
 # any card / curse / item to the player. Default true on this build so testing
 # works out of the box; toggle from the Settings menu.
@@ -161,7 +207,7 @@ func _fit_windowed() -> void:
 		DisplayServer.window_get_current_screen())
 	var frame: Vector2i = (DisplayServer.window_get_size_with_decorations()
 		- DisplayServer.window_get_size()).max(Vector2i.ZERO)
-	var box: Rect2i = windowed_fit(usable, frame)
+	var box: Rect2i = windowed_fit(usable, frame, windowed_size)
 	if box.size != DisplayServer.window_get_size():
 		DisplayServer.window_set_size(box.size)
 	DisplayServer.window_set_position(box.position)
@@ -171,12 +217,13 @@ func _fit_windowed() -> void:
 # window asks for. `usable` is what the desktop leaves free, `frame` is what the
 # window's own decorations add OUTSIDE the size being set. Returns where the
 # window goes and how big it is.
-static func windowed_fit(usable: Rect2i, frame: Vector2i) -> Rect2i:
+static func windowed_fit(usable: Rect2i, frame: Vector2i,
+		want: Vector2i = WINDOWED_SIZE) -> Rect2i:
 	frame = frame.max(Vector2i.ZERO)
 	# The floor wins over the screen: a page shown whole under a taskbar beats a
 	# page cropped to fit above one.
 	var room: Vector2i = (usable.size - frame).max(MIN_WINDOWED_SIZE)
-	var size: Vector2i = WINDOWED_SIZE.min(room)
+	var size: Vector2i = want.max(MIN_WINDOWED_SIZE).min(room)
 	# Centred on what's free, counting the frame as part of what's being centred,
 	# then pinned so the title bar can never end up above the top of the desktop.
 	var at: Vector2i = usable.position + (usable.size - (size + frame)) / 2
@@ -199,6 +246,48 @@ static func display_mode_name(mode: int) -> String:
 			return "Exclusive fullscreen"
 		_:
 			return "Windowed fullscreen (borderless)"
+
+# A screen asking for the canvas it needs. Only ever WIDENS — a page that needs
+# 1420px is drawn on a 1420px canvas — and never past CANVAS_MAX_WIDTH; the base
+# is the floor, so a screen that fits has nothing to ask for. Call
+# reset_canvas_width on the way out, or the next screen inherits a canvas sized
+# for a page it isn't.
+func request_canvas_width(width: int) -> void:
+	_set_canvas_width(maxi(width, CANVAS_BASE.x))
+
+
+func reset_canvas_width() -> void:
+	_set_canvas_width(CANVAS_BASE.x)
+
+
+func _set_canvas_width(width: int) -> void:
+	var want: int = clampi(width, CANVAS_BASE.x, CANVAS_MAX_WIDTH)
+	# The floor is exact — going back to 1280 must not be swallowed by the slack —
+	# but any other move has to be worth the reflow it costs.
+	if want == canvas_width or (want != CANVAS_BASE.x
+			and absi(want - canvas_width) < CANVAS_SLACK):
+		return
+	canvas_width = want
+	apply_canvas()
+
+
+# Push the canvas at the window. Separate from the setter so the boot path can
+# apply whatever is stored without going through the slack test.
+func apply_canvas() -> void:
+	var win: Window = get_tree().root if is_inside_tree() else null
+	if win == null:
+		return
+	var size := Vector2i(canvas_width, CANVAS_BASE.y)
+	if win.content_scale_size != size:
+		win.content_scale_size = size
+
+
+func set_windowed_size(value: Vector2i) -> void:
+	windowed_size = value
+	save_settings()
+	if display_mode == DisplayMode.WINDOWED:
+		_fit_windowed()
+
 
 func set_dev_mode(value: bool) -> void:
 	if value == dev_mode:
@@ -245,6 +334,8 @@ func load_settings() -> void:
 	dev_mode = bool(cfg.get_value("dev", "dev_mode", true))
 	display_mode = clampi(int(cfg.get_value("display", DISPLAY_KEY,
 		DisplayMode.WINDOWED)), 0, DisplayMode.EXCLUSIVE)
+	var stored_size = cfg.get_value("display", "windowed_size", WINDOWED_SIZE)
+	windowed_size = stored_size if stored_size is Vector2i else WINDOWED_SIZE
 	RunGraph.invalidate_cache()
 
 func save_settings() -> void:
@@ -254,4 +345,5 @@ func save_settings() -> void:
 	cfg.set_value("rules", "traditional_transmute", traditional_transmute)
 	cfg.set_value("dev", "dev_mode", dev_mode)
 	cfg.set_value("display", DISPLAY_KEY, display_mode)
+	cfg.set_value("display", "windowed_size", windowed_size)
 	cfg.save(CONFIG_PATH)

@@ -50,8 +50,20 @@ const ART_PX := 72
 # page does not have, and the flow wraps on a single pixel. The name ellipsizes
 # on the longest relics; the row's tooltip carries the whole of it either way.
 const ROW_WIDTH := 166.0
-const ROW_HEIGHT := 28.0
-const ROW_ICON := 20
+# TALL ENOUGH TO SHOP FROM. The row was 28px with a 20px icon and one line of
+# text reading "Name   ◉ 5", clipped — which meant that on the relics with long
+# names (Bloody Lantern, Cracked Orb, Molten Egg) the clip ate the price, and the
+# one number a shelf exists to show could only be found by opening the item. A
+# thumbnail that small is not much of a picture either.
+#
+# So the row is a small card instead: the art at more than twice the size, and
+# the name and the PRICE on two lines beside it, with only the name ever
+# trimmed. It costs the page 30px and the board is not asked to pay it: the
+# board is already at its floor while it shares this column
+# (BattlefieldView.FIELD_HEIGHT_BUDGET_SHARED), and the page had the room —
+# test_overworld2's one-window tests are what say so.
+const ROW_HEIGHT := 58.0
+const ROW_ICON := 44
 
 var _game_id: StringName = &""
 var _game: GameData = null
@@ -93,6 +105,13 @@ func _ready() -> void:
 		ShopSystem.shop_changed.connect(_on_shop_changed)
 	if not GameState.gold_changed.is_connected(_on_gold_changed):
 		GameState.gold_changed.connect(_on_gold_changed)
+	# The reroll is bought with SCRAMBLE, and scramble moves for reasons that have
+	# nothing to do with this shop — the D6 is used from the inventory two panels
+	# up and pays one out. Without this the button kept the disabled state it was
+	# painted with, so the charge the player had just spent an item to get could
+	# not be spent here until something else happened to repaint the shop.
+	if not GameState.stats_changed.is_connected(_on_stats_changed):
+		GameState.stats_changed.connect(_on_stats_changed)
 
 
 func _exit_tree() -> void:
@@ -100,6 +119,8 @@ func _exit_tree() -> void:
 		ShopSystem.shop_changed.disconnect(_on_shop_changed)
 	if GameState.gold_changed.is_connected(_on_gold_changed):
 		GameState.gold_changed.disconnect(_on_gold_changed)
+	if GameState.stats_changed.is_connected(_on_stats_changed):
+		GameState.stats_changed.disconnect(_on_stats_changed)
 
 
 # The shop's name. `shopkeeper` is the seam for the authored roster that is still
@@ -227,22 +248,60 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn.add_theme_font_size_override("font_size", 12)
-	btn.add_theme_constant_override("icon_max_width", ROW_ICON)
-	# CLIPPED, so the row is the width it was given rather than the width its
-	# label wants. A Button's minimum size is its content, so one long relic name
-	# quietly pushed the row past ROW_WIDTH, and the flow — which is measured to
-	# the pixel — wrapped the shelf onto a second line.
-	btn.clip_text = true
 	if item == null:
 		btn.text = "(empty)"
 		btn.disabled = true
 		return btn
-	btn.icon = item.image
-	btn.text = "%s   ◉ %d" % [item.display_name, price]
-	btn.add_theme_color_override("font_color", tint)
-	if sold:
-		btn.text = "%s   Sold" % item.display_name
-		btn.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	# The contents are CHILDREN of the button rather than its own icon-and-text.
+	# A Button lays those out as one line and clips the lot, which is what put the
+	# price behind the ellipsis; children can be laid out as a card, and only the
+	# name given up to the clip. They ignore the mouse, so the whole row is still
+	# one button.
+	var pad := MarginContainer.new()
+	pad.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pad.add_theme_constant_override("margin_left", 6)
+	pad.add_theme_constant_override("margin_right", 6)
+	pad.add_theme_constant_override("margin_top", 5)
+	pad.add_theme_constant_override("margin_bottom", 5)
+	btn.add_child(pad)
+
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 7)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pad.add_child(line)
+
+	var art := UITheme.crisp_tex(item.image, ROW_ICON)
+	art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	line.add_child(art)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 1)
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.add_child(col)
+
+	var name_lbl := Label.new()
+	name_lbl.text = item.display_name
+	# The name is the one thing on the row allowed to be trimmed: it is also the
+	# only thing the tooltip and the card repeat in full.
+	name_lbl.clip_text = true
+	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_color_override("font_color",
+		UITheme.TEXT_FAINT if sold else tint)
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(name_lbl)
+
+	var price_lbl := Label.new()
+	price_lbl.text = "Sold" if sold else "◉ %d" % price
+	price_lbl.add_theme_font_size_override("font_size", 13)
+	price_lbl.add_theme_color_override("font_color", UITheme.TEXT_FAINT if sold
+		else (UITheme.COIN_GOLD if afford else UITheme.DANGER))
+	price_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(price_lbl)
+
 	# A sold slot keeps its place and loses its colour, and one you cannot afford
 	# is dimmed rather than dropped — the shelf has to stay recognisable on a
 	# second visit, which is the whole reason what you don't buy stays here.
@@ -454,3 +513,10 @@ func _on_gold_changed(_amount: int = 0) -> void:
 	# for any other reason while the shop is up, so the prices never lie about
 	# what is affordable.
 	_render()
+
+
+# Scramble moved. Only the chrome carries it — the shelf itself is unchanged —
+# so the reroll button is repainted rather than the whole panel rebuilt.
+func _on_stats_changed() -> void:
+	if is_inside_tree():
+		_paint_chrome()

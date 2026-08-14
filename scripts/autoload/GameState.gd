@@ -36,6 +36,16 @@ var amulet_game_id: StringName = &""
 var route_waypoint: StringName = &""
 var visited_games: Array[StringName] = []
 var beaten_games: Array[StringName] = []
+# Every game the run has actually PLAYED — one entry per game, added the moment
+# it is reported, whatever the report said. Beaten, failed or walked away from:
+# you went there and you played it.
+#
+# Not the same list as either of its neighbours above, and the difference is the
+# point. `visited_games` is the road behind you, written when you LEAVE a game,
+# so the game under your feet is never on it. `beaten_games` is your record —
+# only the ones you actually cleared. This is "have I been here before", which is
+# what the returning-to-a-game Dash is paid for (Overworld2._grant_repeat_dash).
+var played_games: Array[StringName] = []
 var total_games_beaten: int = 0
 # Count of games the player has *played* (entered + resolved, win or
 # lose), as opposed to beaten. Drives the difficulty tier — see
@@ -799,6 +809,7 @@ func reset_run() -> void:
 	route_waypoint = &""
 	visited_games.clear()
 	beaten_games.clear()
+	played_games.clear()
 	total_games_beaten = 0
 	games_played = 0
 	run_seed = randi()
@@ -1165,10 +1176,29 @@ func note_game_beaten(game_id: StringName) -> bool:
 	beaten_games.append(game_id)
 	return false
 
-# True once `game_id` has been beaten at least once this run — so the offering
-# can flag it as a repeat (and its Dash bonus) before the player commits.
+# True once `game_id` has been beaten at least once this run.
 func has_beaten_game(game_id: StringName) -> bool:
 	return beaten_games.has(game_id)
+
+# Records that the run PLAYED `game_id` and reports whether it had played it
+# before. Called for every report — a missed goal and a walk-out are both games
+# you went and played.
+func note_game_played(game_id: StringName) -> bool:
+	if game_id == &"":
+		return false
+	if played_games.has(game_id):
+		return true
+	played_games.append(game_id)
+	return false
+
+# True once the run has played `game_id` at all — so the offering can flag it as
+# a return, and its Dash bonus, before the player commits.
+#
+# PLAYED, not beaten. Going back to a game you failed is the same journey back as
+# going to one you cleared, and the Dash is paid for making it: what has to be
+# earned on the return trip is the goal, not the trip.
+func has_played_game(game_id: StringName) -> bool:
+	return played_games.has(game_id)
 
 func set_max_hp(new_max: int, heal_to_full: bool = false) -> void:
 	# Routes through Stats so Constitution auto-gain fires off the

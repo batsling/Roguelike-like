@@ -312,3 +312,45 @@ func test_a_new_run_clears_the_shops() -> void:
 	assert_true(GameState.shops.is_empty(), "shops go with the run")
 	assert_true(GameState.hub_games.is_empty(),
 		"and the hubs are re-asked, since a new run may be on a different filter")
+
+# --- the panel keeps up with the charge it spends ---------------------------
+
+func test_the_reroll_lights_up_the_moment_a_scramble_arrives() -> void:
+	# The D6 is used from the inventory, two panels up the page, and pays a
+	# Scramble. The reroll button is bought with Scramble and had no way of
+	# hearing about it, so the charge the player had just spent an item to get
+	# could not be spent here until something else repainted the shop.
+	var hub: StringName = _a_hub()
+	ShopSystem.shop_for(hub)
+	GameState.scramble = 0
+	var host := Control.new()
+	add_child_autofree(host)
+	var panel: ShopPanel2 = ShopPanel2.mount(host, hub)
+	assert_not_null(panel, "the hub has a shop to mount")
+	await wait_frames(1)
+	assert_true(panel._reroll_btn.disabled, "no charge, no reroll")
+	GameState.grant_run_stat("scramble", 1)
+	assert_false(panel._reroll_btn.disabled,
+		"the Scramble the D6 just paid can be spent here without leaving and coming back")
+
+func test_a_shelf_row_never_hides_the_price_behind_the_name() -> void:
+	# The row was one clipped line of "Name   ◉ 5", so a long relic name ate the
+	# price — the one number a shelf exists to show.
+	var hub: StringName = _a_hub()
+	var shelf: Array = ShopSystem.stock(hub)
+	if shelf.is_empty():
+		pass_test("this hub's shop rolled nothing to price")
+		return
+	var host := Control.new()
+	add_child_autofree(host)
+	var panel: ShopPanel2 = ShopPanel2.mount(host, hub)
+	await wait_frames(1)
+	var priced: int = 0
+	for row in panel._cards_row.get_children():
+		for node in (row as Control).find_children("*", "Label", true, false):
+			var text: String = String((node as Label).text)
+			if text.begins_with("◉") or text == "Sold":
+				assert_false((node as Label).clip_text,
+					"the price is never the thing that gets trimmed")
+				priced += 1
+	assert_eq(priced, shelf.size(), "every slot on the shelf shows what it costs")

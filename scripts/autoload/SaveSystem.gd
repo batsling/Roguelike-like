@@ -161,6 +161,7 @@ func _build_payload() -> Dictionary:
 		"route_waypoint": String(GameState.route_waypoint),
 		"visited_games": _stringnames_to_strings(GameState.visited_games),
 		"beaten_games": _stringnames_to_strings(GameState.beaten_games),
+		"played_games": _stringnames_to_strings(GameState.played_games),
 		"total_games_beaten": GameState.total_games_beaten,
 		"games_played": GameState.games_played,
 		"player_level": GameState.player_level,
@@ -290,6 +291,10 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.route_waypoint = StringName(data.get("route_waypoint", ""))
 	GameState.visited_games = _strings_to_stringnames(data.get("visited_games", []))
 	GameState.beaten_games = _strings_to_stringnames(data.get("beaten_games", []))
+	# A save written before this list existed falls back to the games it BEAT,
+	# which is the part of "where have I been" that old save knew about.
+	GameState.played_games = _strings_to_stringnames(
+		data.get("played_games", data.get("beaten_games", [])))
 	GameState.total_games_beaten = data.get("total_games_beaten", 0)
 	GameState.games_played = data.get("games_played", 0)
 	GameState.player_level = data.get("player_level", 1)

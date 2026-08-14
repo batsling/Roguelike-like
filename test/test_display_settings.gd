@@ -16,6 +16,9 @@ func before_each() -> void:
 
 func after_each() -> void:
 	Settings.display_mode = _saved
+	# The canvas is fitted to whatever screen is up (Settings.request_canvas_width),
+	# so a test that widened it must not leave the next one on a wider viewport.
+	Settings.reset_canvas_width()
 
 func test_the_default_is_windowed() -> void:
 	var cfg := ConfigFile.new()
@@ -154,3 +157,47 @@ func test_a_non_16_9_screen_is_used_rather_than_letterboxed() -> void:
 	# less, so the one-window guarantee still holds.
 	assert_eq(String(ProjectSettings.get_setting("display/window/stretch/aspect", "keep")),
 		"expand", "the extra on a non-16:9 screen becomes canvas, not letterbox")
+
+# --- the size the window is asked to be -------------------------------------
+#
+# The page is a canvas stretched into the window, so the window's size is how big
+# that page is DRAWN. It is the control a player reaches for when the game is too
+# small or too large on their monitor, and until the Settings panel grew one there
+# was no way to say it.
+
+func test_a_chosen_window_size_is_what_gets_asked_for() -> void:
+	var want := Vector2i(1600, 900)
+	var box: Rect2i = Settings.windowed_fit(Rect2i(0, 0, 3840, 2160), Vector2i.ZERO, want)
+	assert_eq(box.size, want, "the size picked in Settings is the size requested")
+	assert_eq(box.position, Vector2i((3840 - 1600) / 2, (2160 - 900) / 2), "still centred")
+
+func test_a_chosen_window_size_is_still_only_a_request() -> void:
+	# Every entry on the list is clamped the same way the default is: a size the
+	# desktop has no room for gets as much of it as fits.
+	var box: Rect2i = Settings.windowed_fit(Rect2i(0, 0, 1920, 1080 - TASKBAR), TITLEBAR,
+		Vector2i(2560, 1440))
+	assert_eq(box.size.x, 1920, "cut down to the screen, not granted as asked")
+
+func test_every_offered_window_size_shows_the_whole_page() -> void:
+	for size in Settings.WINDOW_SIZES:
+		assert_gte(size.x, Settings.MIN_WINDOWED_SIZE.x,
+			"%dx%d is at least the canvas at 1:1" % [size.x, size.y])
+		assert_gte(size.y, Settings.MIN_WINDOWED_SIZE.y)
+
+# --- the canvas fitted to the page ------------------------------------------
+
+func test_the_canvas_widens_for_a_page_that_needs_it() -> void:
+	Settings.request_canvas_width(1500)
+	assert_eq(Settings.canvas_width, 1500, "a page wider than the canvas gets a wider canvas")
+	Settings.reset_canvas_width()
+	assert_eq(Settings.canvas_width, Settings.CANVAS_BASE.x, "and it goes back afterwards")
+
+func test_the_canvas_never_narrows_below_the_size_everything_is_designed_at() -> void:
+	Settings.request_canvas_width(900)
+	assert_eq(Settings.canvas_width, Settings.CANVAS_BASE.x,
+		"a page that fits asks for nothing — 1280x720 is the floor")
+
+func test_the_canvas_stops_widening_before_the_page_stops_being_readable() -> void:
+	Settings.request_canvas_width(9000)
+	assert_eq(Settings.canvas_width, Settings.CANVAS_MAX_WIDTH,
+		"past the cap a smaller page is worse than the crop it was fixing")

@@ -62,6 +62,10 @@ var _ladder_holder: Control = null
 var _ladder_room: ScrollContainer = null
 var _zoom: float = 1.0
 var _auto_zoomed: bool = false
+# The rung's card, when one is open. One at a time — it is a detour from the
+# decision, not a second decision.
+var _node_card: PanelContainer = null
+var _node_card_body: VBoxContainer = null
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -358,11 +362,11 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		col.add_child(_fact_line(String(pace["text"]), pace.get("color", UITheme.TEXT_DIM),
 			String(pace.get("tip", ""))))
 
-	# A game already beaten this run pays a Dash for beating it again.
+	# A game the run has already played pays a Dash for going back and beating it.
 	if bool(_choice.get("repeat", false)):
 		col.add_child(_fact_line("⚡ Gain +%d Dash" % Overworld2.REPEAT_BEAT_DASH,
 			Overworld2.DASH_BLUE,
-			"You've already beaten %s this run — beat it again for a Dash charge." % game.display_name))
+			"You have played %s already this run — go back and beat it for a Dash charge." % game.display_name))
 
 	var beaten: int = GameStats.beaten_count(game.id)
 	if beaten > 0:
@@ -534,9 +538,16 @@ func _build_route_column() -> Control:
 	return col
 
 # The route from THIS game, as RouteLadder reads it. `preview` because the top
-# rung is where you would be standing, not where you are; the rungs are inert —
-# this popup is about one game, and a click on it should not open a second card
-# over the buttons that answer it.
+# rung is where you would be standing, not where you are.
+#
+# The rungs OPEN. They used to be inert, on the reasoning that this popup is
+# about one game and a click should not put a second card over the buttons that
+# answer it — but the route is half of what the popup is for, and a rung is a
+# clipped name in a 150px box. "Which of these is worth walking to" is exactly
+# the question being asked here, and it cannot be answered off a name. So a rung
+# opens the same card the map window opens, over the left column rather than over
+# the answer, minus the two things a preview cannot do: there is no chart on this
+# screen to fly, and no route to pin from a game you have not taken.
 func _ladder_cfg() -> Dictionary:
 	var slot: StringName = _choice.get("slot", &"")
 	var amulet: StringName = GameState.amulet_game_id
@@ -549,8 +560,102 @@ func _ladder_cfg() -> Dictionary:
 		"zoom": _zoom,
 		"preview": true,
 		"hide_amulet": false,
-		"on_node": Callable(),
+		"on_node": func(node_id: StringName, depth: int): open_node_card(node_id, depth),
 	}
+
+
+# --- the rung's card -------------------------------------------------------
+
+# The card width, and the gap it keeps from the panel's edge.
+const NODE_CARD_W := 300.0
+
+# Open the card on one rung of the route. Public so a test can ask for exactly
+# what a click asks for.
+func open_node_card(id: StringName, depth: int = 0) -> Control:
+	close_node_card()
+	if id == &"":
+		return null
+	var amulet: StringName = GameState.amulet_game_id
+
+	var facts: Array = [["On this route", "step %d of %d" % [depth, route_steps()]]]
+	var left: int = RunGraph.route_length_via(id, &"", amulet)
+	if left >= 0:
+		facts.append(["From here to the Amulet", "%d step%s" % [left, "" if left == 1 else "s"]])
+
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel",
+		UITheme.flat(Color(0.075, 0.062, 0.05, 0.98), 8, 12, 2, UITheme.GOLD))
+	card.custom_minimum_size = Vector2(NODE_CARD_W, 0)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	_node_card = card
+	add_child(card)
+
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	card.add_child(scroll)
+	# A ScrollContainer hands its child the full width and draws the scrollbar
+	# over it, so right-aligned values need the bar's lane kept clear of them.
+	var inset := MarginContainer.new()
+	inset.add_theme_constant_override("margin_right", 14)
+	inset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(inset)
+	var box := RouteLadder.node_card_body({
+		"id": id,
+		"name": RouteLadder.node_name(id, amulet, false),
+		"role": _node_role_text(id, depth),
+		"facts": facts,
+		"actions": [],
+		"on_close": Callable(self, "close_node_card"),
+	})
+	box.custom_minimum_size = Vector2(NODE_CARD_W - 54.0, 0)
+	inset.add_child(box)
+	_node_card_body = box
+
+	_place_node_card()
+	# And again once Godot has laid the contents out: until it has, the card's
+	# ScrollContainer reports almost no height of its own and the card opens as a
+	# sliver with its facts scrolled out of sight.
+	_place_node_card.call_deferred()
+	return card
+
+
+func close_node_card() -> void:
+	if _node_card != null and is_instance_valid(_node_card):
+		_node_card.queue_free()
+	_node_card = null
+	_node_card_body = null
+
+
+# Which rung this is, in words. The popup's own route is a PREVIEW — every rung
+# on it is a place you would be, not a place you are.
+func _node_role_text(id: StringName, depth: int) -> String:
+	if depth == 0:
+		return "Where this card would put you."
+	if id == GameState.amulet_game_id:
+		return "The Amulet — the end of the run."
+	if GameState.visited_games.has(id):
+		return "You have already been here this run."
+	return "On the road to the Amulet, if you take this card."
+
+
+# Park the card over the LEFT column — the game and its enemy, which the player
+# has already read by the time they are picking over the route on the right. The
+# ladder stays uncovered, so the next rung is one click away rather than one
+# close-and-click.
+func _place_node_card() -> void:
+	if _node_card == null or not is_instance_valid(_node_card):
+		return
+	var view: Vector2 = get_viewport_rect().size
+	var panel: Vector2 = _panel_size()
+	var want: float = 320.0
+	if _node_card_body != null and is_instance_valid(_node_card_body):
+		want = _node_card_body.get_combined_minimum_size().y + 34.0
+	var h: float = clampf(want, 240.0, maxf(240.0, view.y - 40.0))
+	_node_card.size = Vector2(NODE_CARD_W, h)
+	_node_card.position = Vector2(
+		clampf((view.x - panel.x) * 0.5 + 18.0, 8.0, maxf(8.0, view.x - NODE_CARD_W - 8.0)),
+		clampf((view.y - h) * 0.5, 8.0, maxf(8.0, view.y - h - 8.0)))
 
 # How many steps the ladder is showing. Public so a test can check the popup and
 # the card's badge are quoting the same route.
@@ -684,4 +789,9 @@ func _teardown() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		accept_event()
+		# Escape backs out one layer at a time: the rung's card first, the popup
+		# only once there is nothing open over it.
+		if _node_card != null and is_instance_valid(_node_card):
+			close_node_card()
+			return
 		_close()

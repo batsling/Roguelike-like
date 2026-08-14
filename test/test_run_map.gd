@@ -474,3 +474,46 @@ func test_a_map_with_no_chart_under_it_still_has_a_way_out() -> void:
 	var modal = _open_map()
 	assert_true(_text_of(modal._panel).contains("Close"),
 		"a chartless map keeps a Close of its own")
+
+# --- what a rung says, and what it opens ------------------------------------
+
+func _text_in(node: Node) -> String:
+	var out: String = ""
+	if node is Label:
+		out += String((node as Label).text) + "\n"
+	if node is Button:
+		out += String((node as Button).text) + "\n"
+	for c in node.get_children():
+		out += _text_in(c)
+	return out
+
+func test_a_rung_wears_how_many_ways_there_are_on_from_it() -> void:
+	# The pool the next offering is drawn from is the number the route is being
+	# read FOR, and it was the one thing the ladder did not say.
+	var modal = _open_map()
+	var here: StringName = GameState.current_game_id
+	var links: int = RunGraph.open_degree(here)
+	assert_gt(links, 0, "the game you are standing on connects to something")
+	assert_true(_text_in(modal._canvas_holder).contains("⛓%d" % links),
+		"the rung carries its connection count")
+
+func test_the_ladder_and_the_card_agree_about_the_connections() -> void:
+	var modal = _open_map()
+	var here: StringName = GameState.current_game_id
+	modal.open_node_card(here, 0)
+	var card: String = _text_in(modal._node_card)
+	assert_true(card.contains("Connections"), "the card spells the badge out")
+	assert_true(card.contains("%d game" % RunGraph.open_degree(here)),
+		"with the same number on it")
+
+func test_a_bashed_neighbour_is_not_a_way_on() -> void:
+	var here: StringName = GameState.current_game_id
+	var before: int = RunGraph.open_degree(here)
+	var neighbours: Array = RunGraph.neighbors(here)
+	assert_false(neighbours.is_empty(), "there is somewhere to go")
+	GameState.bash += 1
+	assert_true(GameLoop2.bash_game(neighbours[0]), "and Bash can take it out")
+	assert_eq(RunGraph.open_degree(here), before - 1,
+		"a door Bash destroyed is not a door")
+	assert_eq(RunGraph.degree(here), before,
+		"…though the graph itself is unchanged — that is the difference between them")

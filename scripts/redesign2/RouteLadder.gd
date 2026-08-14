@@ -251,23 +251,41 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 		panel.tooltip_text = "%s — a shop stands here." % name_text \
 			+ ("" if not on_node.is_valid() else " Click for the details.")
 
-	# The badge: games you have beaten an enemy in, flagged on the route itself.
-	# This is the whole reason to read the ladder rather than the offering — the
-	# choice in front of you may be a game you already have a record in.
+	# The top-right corner: what you have DONE here, and how many ways there are
+	# on from here.
+	#
+	# The connection count is the one that changes the decision. A rung is a place
+	# the offering will be drawn from when you are standing on it, and the offering
+	# is drawn from the neighbours — so a game with fourteen connections is a game
+	# that will hand you a real choice, and a game with two is a corridor. That is
+	# the odds the player is reading the ladder for, and until now the ladder was
+	# the one view that did not say it.
+	#
+	# Both counts share one label rather than taking a corner each: the box is
+	# 150px wide before zoom and the name has to fit between the badges.
 	var fought: int = 0 if secret_amulet else GameStats.enemies_for(id).size()
+	var links: int = 0 if secret_amulet else RunGraph.open_degree(id)
 	var badge_w: float = 0.0
-	if fought > 0 and zoom >= 0.62:
+	if zoom >= 0.62 and (fought > 0 or links > 0):
+		var marks: Array = []
+		if fought > 0:
+			marks.append("⚔%d" % fought)
+		if links > 0:
+			marks.append("⛓%d" % links)
 		var badge := Label.new()
-		badge.text = "⚔%d" % fought
+		badge.text = " ".join(PackedStringArray(marks))
 		badge.add_theme_font_size_override("font_size", 9)
-		badge.add_theme_color_override("font_color", UITheme.GOLD)
+		badge.add_theme_color_override("font_color", UITheme.GOLD if fought > 0
+			else UITheme.TEXT_DIM)
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 		badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 		badge.offset_right = -4
 		badge.offset_top = 2
-		badge_w = 22.0
+		badge_w = 22.0 * marks.size()
 		panel.add_child(badge)
+		# The glyphs are small and unlabelled, so the rung says what they mean.
+		panel.tooltip_text = "%s\n%s" % [panel.tooltip_text, _badge_tip(fought, links)]
 
 	var label := Label.new()
 	# A shrunk rung is barely wider than the glyph, and a name is worth more than
@@ -292,6 +310,183 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 		Color.WHITE if (is_current or is_amulet or is_waypoint) else UITheme.TEXT)
 	panel.add_child(label)
 	return panel
+
+# The corner badges in words. ⚔ is your record here; ⛓ is how many games this one
+# connects to on the run's map — the pool the next offering is drawn from when
+# you are standing on it, and the same count the offered card's own ⛓ line gives.
+static func _badge_tip(fought: int, links: int) -> String:
+	var lines: Array = []
+	if fought > 0:
+		lines.append("⚔ %d enem%s beaten here." % [fought, "y" if fought == 1 else "ies"])
+	if links > 0:
+		lines.append("⛓ %d connection%s — the pool the offering is drawn from here." % [
+			links, "" if links == 1 else "s"])
+	return "\n".join(PackedStringArray(lines))
+
+# ---------------------------------------------------------------------------
+# The rung's CARD
+#
+# A rung is 150x48 with a clipped name in it, which is all a ladder should be and
+# nowhere near enough to decide anything on. Clicking one opens the game: its
+# cover, where it sits on this route, what you have already done there, and
+# whatever the caller can offer to do about it.
+#
+# It lives HERE, with the ladder, because every ladder wants it and they must not
+# each write their own. The map window opens one beside its window; the popup a
+# card opens draws one over its route column — same facts, same order, same
+# wording, and only the ACTIONS differ (a preview has no route to pin and no sky
+# to fly). The caller owns the frame and where it sits; this owns what is in it.
+#
+# `cfg`:
+#   id       StringName  the game
+#   name     String      what to call it — node_name(), so a hidden Amulet stays hidden
+#   role     String      the line under the title ("You are here.")
+#   facts    Array       [[key, value], …] the caller's own route facts, first
+#   actions  Array       [{"text": String, "tip": String, "action": Callable}]
+#   on_close Callable    the Close button; omitted when unset
+static func node_card_body(cfg: Dictionary) -> VBoxContainer:
+	var id: StringName = cfg.get("id", &"")
+	var game: GameData = Data.get_game(id)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 7)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var title := Label.new()
+	title.text = String(cfg.get("name", "")) if String(cfg.get("name", "")) != "" \
+		else (game.display_name if game != null else String(id))
+	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_color_override("font_color", UITheme.GOLD)
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(title)
+
+	var role_text: String = String(cfg.get("role", ""))
+	if role_text != "":
+		var role := Label.new()
+		role.text = role_text
+		role.add_theme_font_size_override("font_size", 12)
+		role.add_theme_color_override("font_color", UITheme.ACCENT)
+		role.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(role)
+
+	if game != null and game.cover_image != null:
+		var art := AtlasView.card_art(game.cover_image, CARD_ART_W, 190.0)
+		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		box.add_child(art)
+
+	if game != null:
+		var meta: Array = []
+		if game.year > 0:
+			meta.append(str(game.year))
+		meta.append(RunGraph.type_label(game.type))
+		var chip := Label.new()
+		chip.text = "  •  ".join(PackedStringArray(meta)).to_upper()
+		chip.add_theme_font_size_override("font_size", 11)
+		chip.add_theme_color_override("font_color", RunGraph.type_color(game.type))
+		box.add_child(chip)
+
+	var facts := VBoxContainer.new()
+	facts.add_theme_constant_override("separation", 3)
+	box.add_child(facts)
+	for row in cfg.get("facts", []):
+		if row is Array and (row as Array).size() >= 2:
+			facts.add_child(card_fact(String(row[0]), String(row[1])))
+	# The same number the rung's ⛓ badge carries and the Atlas's card calls
+	# "Connections", spelled out in the same words on all three.
+	var links: int = RunGraph.open_degree(id)
+	if links > 0:
+		facts.add_child(card_fact("Connections", "%d game%s" % [
+			links, "" if links == 1 else "s"]))
+	var beaten_times: int = GameStats.beaten_count(id)
+	facts.add_child(card_fact("⚔ Beaten", ("%d time%s" % [beaten_times,
+		"" if beaten_times == 1 else "s"]) if beaten_times > 0 else "never"))
+	var amulet_runs: int = GameStats.amulet_wins(id)
+	if amulet_runs > 0:
+		facts.add_child(card_fact("👑 Amulet won", "%d run%s" % [amulet_runs,
+			"" if amulet_runs == 1 else "s"]))
+	if TierList.has_rating(id):
+		var tier_i: int = TierList.tier_of(id)
+		facts.add_child(card_fact("Your rating", "%d / 10%s" % [
+			int(TierList.get_rating(id).get("score", 0)),
+			("  (%s tier)" % TierList.tier_names[tier_i]) if tier_i >= 0
+				and tier_i < TierList.tier_names.size() else ""]))
+
+	# The record you have IN this game — the same fact the rung's ⚔ badge carries,
+	# spelled out.
+	var fought: Array = GameStats.enemies_for(id)
+	if not fought.is_empty():
+		box.add_child(card_heading("Enemies you have beaten here (%d)" % fought.size()))
+		for i in range(mini(fought.size(), 6)):
+			var e: Dictionary = fought[i]
+			var ed: GoalEnemyData = Data.get_goal_enemy_any(StringName(e["id"]))
+			box.add_child(card_fact(
+				ed.display_name if ed != null else String(e["id"]),
+				"x%d" % int(e["beaten"])))
+		if fought.size() > 6:
+			box.add_child(card_note("…and %d more." % (fought.size() - 6)))
+
+	box.add_child(HSeparator.new())
+	for action in cfg.get("actions", []):
+		if not (action is Dictionary):
+			continue
+		var cb = action.get("action")
+		if not (cb is Callable) or not (cb as Callable).is_valid():
+			continue
+		var btn := card_button(String(action.get("text", "…")), cb)
+		btn.tooltip_text = String(action.get("tip", ""))
+		box.add_child(btn)
+	# The real game, on every card that can reach it — the one action that is
+	# never about the route, so no caller has to remember to ask for it.
+	if game != null and game.has_launch_target():
+		box.add_child(card_button("▶  Play the real game", func(): game.launch()))
+	var on_close = cfg.get("on_close")
+	if on_close is Callable and (on_close as Callable).is_valid():
+		box.add_child(card_button("Close", on_close))
+	return box
+
+# The cover's width inside a card. The card itself is 300 wide (RunMapModal's
+# CARD_W) less its margins and the scrollbar's lane.
+const CARD_ART_W := 248.0
+
+static func card_fact(key: String, value: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var k := Label.new()
+	k.text = key
+	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	k.add_theme_font_size_override("font_size", 12)
+	k.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	row.add_child(k)
+	var v := Label.new()
+	v.text = value
+	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	v.add_theme_font_size_override("font_size", 12)
+	v.add_theme_color_override("font_color", UITheme.TEXT)
+	row.add_child(v)
+	return row
+
+static func card_heading(text: String) -> Control:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", UITheme.GOLD)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	return l
+
+static func card_note(text: String) -> Control:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	return l
+
+static func card_button(text: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.add_theme_font_size_override("font_size", 12)
+	b.pressed.connect(cb)
+	return b
 
 # The zoom at which a ladder of `ladder` px (measured at `zoom`) fits `room` px.
 # Only ever shrinks — a short route is never blown up to fill the space — and
