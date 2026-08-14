@@ -79,14 +79,26 @@ destination is somewhere the run was *sent*, and an event there would land on
 top of the stay-or-return question. Nor does the **Amulet** game: the run is
 over.
 
-**Placement is gone, and so is the badge.** An event used to be hashed onto a
-specific node from the node id and the run seed, so the offered card's
-`✦ EVENT` badge could not change under the player between being drawn and being
-taken. With an event after every game there is no subset of nodes to badge, and
-no honest answer to "which event is over there" before the run arrives — so the
-badge came off the cards along with the placement that justified it. The card's
-popup says only that an event *will* fire, and says nothing at all once that
-game has paid its one.
+**Nor does a hub** (§14.2): a **shop** is what happens at a hub, instead of an
+event rather than as well as one. Both used to queue on the same arrival — the
+shop mounting under the board, the event opening a modal over it — so the shop
+the player had routed towards was something they had to dismiss an event to
+reach. `EventSystem.roll_for_arrival` returns null at a hub, so this holds for
+every caller rather than for the overworld only, and it reads off the game
+actually PLAYED at the node: transmute a hub and the shop leaves with the game
+it belonged to, so the spot goes back to paying an event.
+
+**Placement is gone, and so is the badge — and now so is the line that replaced
+it.** An event used to be hashed onto a specific node from the node id and the
+run seed, so the offered card's `✦ EVENT` badge could not change under the
+player between being drawn and being taken. With an event after every game there
+is no subset of nodes to badge, and no honest answer to "which event is over
+there" before the run arrives — so the badge came off the cards along with the
+placement that justified it. The card's popup kept a line saying an event *will*
+fire; that has gone too, for the same reason one step further on. It was true of
+every card but the Amulet's and a hub's, and **a fact that is always true is not
+information.** What a card says about events now is what a **hub** card says:
+`🛒 SHOP`, and a tooltip that a shop stands here so no event fires.
 
 **The exchange rate moved with it.** §1 prices an event at one game's reward
 because a leaf cost two games and paid one. At one event per game that is no

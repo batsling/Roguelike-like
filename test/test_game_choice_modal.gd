@@ -264,9 +264,9 @@ func test_the_popup_counts_the_connections_the_game_opens_onto() -> void:
 	modal._close()
 
 func test_the_connection_line_breaks_out_events_and_shops() -> void:
-	# Placement is hashed off the node id, so these counts are stable for a run —
-	# which is what makes them safe to show before the neighbour's own card is
-	# opened.
+	# The two headings are EXCLUSIVE: a shop is what happens at a hub, instead of
+	# an event (§14.4), so a hub neighbour is counted under 🛒 and never under ✦.
+	# Counting it under both promised the same neighbour twice.
 	for i in range(_ui._choices.size()):
 		var slot: StringName = StringName(_ui._choices[i]["slot"])
 		var counts: Dictionary = GameChoiceModal.connection_counts(slot)
@@ -275,10 +275,10 @@ func test_the_connection_line_breaks_out_events_and_shops() -> void:
 		for n in RunGraph.neighbors(slot):
 			if GameLoop2.is_bashed(n):
 				continue
-			if not GameState.event_nodes_fired.has(n):
-				events += 1
 			if ShopSystem.is_hub(n):
 				shops += 1
+			elif not GameState.event_nodes_fired.has(n):
+				events += 1
 		assert_eq(int(counts["events"]), events, "events counted off the same rule")
 		assert_eq(int(counts["shops"]), shops, "shops counted off the same hub list")
 		var line: String = GameChoiceModal.connection_text(counts)

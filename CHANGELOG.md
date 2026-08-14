@@ -11,6 +11,35 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The event line came off the cards, and a shop is now what happens instead of
+  an event.** Two halves of the same correction.
+
+  The card's popup carried `✦ An event fires here once the game is played.` —
+  the last survivor of the era when placement was hashed onto particular nodes
+  and routing towards an event was a decision. Every game pays one now, so the
+  line was on all but two kinds of card and said nothing on any of them: **a
+  fact that is always true is not information.** It is gone.
+
+  And at a **hub** it was worse than uninformative, it was wrong-in-waiting.
+  Both a shop and an event queued on the same arrival — the shop mounting under
+  the board, the event opening a modal over it — so the shop the player had
+  routed towards was something they had to dismiss an event to reach. A hub
+  already *is* the thing that happens at a hub. `EventSystem.roll_for_arrival`
+  now returns null at one, so the rule holds for every caller rather than for
+  the overworld only, and it reads off the game actually PLAYED at the node:
+  transmute a hub and the shop leaves with the game it belonged to, so the spot
+  goes back to paying an event.
+
+  What a card says about events is now what a hub card says. The `🛒 SHOP`
+  flag's tooltip and the popup's shop row both spell out the trade — "no event
+  fires here, the shop is what happens instead" — because it is the one way a
+  hub costs differently from every other card on the board. The connection line's
+  two headings became **exclusive** for the same reason: a hub neighbour counts
+  under 🛒 and never under ✦, where counting it under both promised the same
+  neighbour twice.
+
+---
+
 - **A card now says when the spot is not playing its own game, and the route
   says where the shops are.** Two small things the popup and the map could not
   answer, plus the spreadsheet's blind spot behind them.

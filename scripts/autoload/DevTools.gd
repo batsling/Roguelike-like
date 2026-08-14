@@ -687,13 +687,20 @@ func _build_events_tab() -> void:
 	# that actually decides what comes up next.
 	var seen: int = GameState.events_seen.size()
 	var total: int = Data.all_events2().size()
+	# Same two reasons roll_for_arrival gives back nothing, in the same order it
+	# checks them: a hub never owes one, and an ordinary node owes one once.
+	var played: GameData = GameLoop2.game_at(here)
+	var why_none: String = ""
+	if played != null and ShopSystem.is_hub(played.id):
+		why_none = "\nA shop stands here, so this node never pays an event."
+	elif GameState.event_nodes_fired.has(here):
+		why_none = "\nThis game has already paid its event."
 	_body.add_child(_note("Standing on: %s (%d connection%s)\nBag: %d/%d seen · last was %s%s" % [
 		game.display_name if game != null else "(nowhere)",
 		RunGraph.degree(here), "" if RunGraph.degree(here) == 1 else "s",
 		seen, total,
 		String(GameState.last_event_id) if GameState.last_event_id != &"" else "nothing",
-		"\nThis game has already paid its event." if GameState.event_nodes_fired.has(here)
-			else ""]))
+		why_none]))
 
 	var acts := HBoxContainer.new()
 	acts.add_theme_constant_override("separation", 6)

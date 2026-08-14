@@ -44,8 +44,21 @@ extends Node
 #
 # One event per GAME, not per arrival: `event_nodes_fired` spends the node, so
 # walking a two-node loop is not an event faucet.
+#
+# EXCEPT AT A HUB, where the shop is what happens (§12, §14). Two things queued
+# on top of each other after one game was one thing too many — the shop mounts
+# under the board and the event opens a modal over it, so the shop the player
+# walked here for was something they had to dismiss an event to reach. A hub
+# already is the thing that happens at a hub; it does not also owe a roll.
+#
+# Read off the game actually PLAYED at the node, not the node's id: a transmuted
+# spot plays an off-map game, off-map games are never hubs, so the shop leaves
+# with the game it belonged to and the spot goes back to paying an event.
 func roll_for_arrival(game_id: StringName) -> EventData2:
 	if game_id == &"" or GameState.event_nodes_fired.has(game_id):
+		return null
+	var here: GameData = GameLoop2.game_at(game_id)
+	if here != null and ShopSystem.is_hub(here.id):
 		return null
 	var pool: Array = _pool_at_rolled_rarity(game_id)
 	if pool.is_empty():
