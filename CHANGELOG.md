@@ -11,6 +11,45 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Profiles: more than one player on one install — and a tick on every cover.**
+
+  **Save profiles**, the way Isaac and Balatro have them. The main menu grows a
+  `👤 <name>` row with a **Switch** button, opening a list where you create,
+  rename, delete and enter profiles. Each one keeps its own **runs, lifetime
+  stats, tier list, owned-games list and run settings** (path filter, amulet rule,
+  transmute rule) under `user://profiles/<id>/`; the window mode, window size and
+  dev mode stay **global**, because they describe the machine the game is running
+  on rather than the person playing it — switching profile to find your resolution
+  changed would be a bug in every reading of it.
+
+  The `Profiles` autoload owns the split. Stores no longer name a `user://` path
+  of their own; they ask `Profiles.path()`, so `SaveSystem.SAVE_DIR`,
+  `GameStats.SAVE_PATH`, `TierList.SAVE_PATH` and `Ownership.CONFIG_PATH` became
+  functions — a const would have baked the first profile in for the session.
+  Switching flushes the profile being left, reloads every store from the new
+  directory and emits `profile_switched`.
+
+  The failure mode this is really guarding against isn't files in the wrong
+  folder, it's an autoload that **early-returns when its file is missing** and so
+  keeps the last player's data in memory to hand to the next one. `Ownership` did
+  exactly that; it now resets before loading, and `test_profiles.gd` asserts the
+  isolation from both sides — a new profile sees nothing, and the first profile's
+  data is still there when you switch back.
+
+  An install that predates all this is migrated on first boot: the existing saves,
+  stats, tier list and ownership file move into "Player 1", and the run-shaping
+  keys are lifted out of the old `settings.cfg` — once, at migration, so profiles
+  made later still start at the defaults.
+
+  **The owned tick moved onto the cover art.** Every cell in the Collection's
+  games grid wears a mark at the top-left of its image: a green ✔ for a game you
+  own, an empty box for one you don't. On your own list it is the fastest way to
+  say so — one click marks the game without opening its page, and if that game's
+  page happens to be open it is rebuilt so the two can never disagree. On the
+  catalog's list the mark is read-only and stops taking mouse input entirely, so
+  a click there falls through and opens the game rather than hitting a dead spot
+  in the corner of every cover.
+
 - **Which games you own is now yours to answer — sync a Steam profile, or tick
   them off yourself.**
 

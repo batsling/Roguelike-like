@@ -252,4 +252,4 @@ func test_the_list_survives_a_save_and_load() -> void:
 		assert_true(Ownership.is_owned(g), "%s came back owned" % (g as GameData).id)
 	assert_eq(Ownership.source, Ownership.Source.MANUAL, "and the source came back")
 	assert_eq(Ownership.steam_username, "batsling")
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(Ownership.CONFIG_PATH))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Ownership.config_path()))

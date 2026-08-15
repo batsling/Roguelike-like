@@ -19,7 +19,10 @@ extends Node
 # counts all consult it, so the source is a single switch rather than a thing
 # each screen decides for itself.
 
-const CONFIG_PATH := "user://ownership.cfg"
+# Per-profile (see Profiles): each player answers this for themselves. A function
+# rather than a const, because the answer moves when the profile does.
+static func config_path() -> String:
+	return Profiles.path("ownership.cfg")
 
 # Steam's public games list. `<kind>` is "id" for a vanity name and "profiles"
 # for a raw 64-bit id; Steam serves the same XML from both. No API key is
@@ -319,12 +322,20 @@ func dump_last_reply() -> String:
 
 # --- persistence -----------------------------------------------------------
 
-# The manual list lives in its own file rather than in settings.cfg: it is a few
-# hundred ids next to a handful of preferences, and a player who wants to reset
-# it can delete one file without losing their window size.
+# The manual list lives in its own file rather than with the preferences: it is a
+# few hundred ids next to a handful of settings, and a player who wants to reset
+# it can delete one file without losing anything else.
 func load_ownership() -> void:
+	# Reset FIRST. This is also what a profile switch calls, and a profile with no
+	# ownership file of its own must come up as a fresh player rather than
+	# inheriting whoever was playing a moment ago.
+	source = Source.SPREADSHEET
+	steam_username = ""
+	last_sync_unix = 0
+	_manual.clear()
 	var cfg := ConfigFile.new()
-	if cfg.load(CONFIG_PATH) != OK:
+	if cfg.load(config_path()) != OK:
+		_invalidate()
 		return
 	source = clampi(int(cfg.get_value("ownership", "source", Source.SPREADSHEET)),
 		0, Source.MANUAL)
@@ -347,7 +358,7 @@ func save_ownership() -> void:
 	cfg.set_value("ownership", "owned_ids", ids)
 	cfg.set_value("steam", "username", steam_username)
 	cfg.set_value("steam", "last_sync_unix", last_sync_unix)
-	cfg.save(CONFIG_PATH)
+	cfg.save(config_path())
 
 # RunGraph caches adjacency keyed on the eligible game set, and the OWNED filter
 # is part of what makes a game eligible — so any move in the ownership answer has

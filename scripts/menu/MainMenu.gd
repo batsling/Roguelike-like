@@ -44,6 +44,10 @@ func _ready() -> void:
 	%QuitBtn.pressed.connect(quit_game)
 
 	_save_list_container.visible = false
+	_build_profile_row()
+	# A switch replaces every save on disk, so the Continue list has to be asked
+	# again — it is showing the previous player's runs until it is.
+	Profiles.profile_switched.connect(_on_profile_switched)
 	_refresh_continue_button()
 	_build_how_to_play_panel()
 	# The corner belongs to the MENU, not to whatever is opened over it. Anything
@@ -82,6 +86,54 @@ func _style_menu() -> void:
 		start.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
 		start.add_theme_color_override("font_color", UITheme.GOLD)
 		start.add_theme_font_size_override("font_size", 20)
+
+# ---------------------------------------------------------------------------
+# Profiles — who is playing
+# ---------------------------------------------------------------------------
+
+# A row under the title saying whose game this is, with the way to change it.
+# Built in code and inserted into the menu's own column, so it sits with the
+# title rather than among the actions — switching player is not a thing you do
+# in the middle of choosing a run.
+var _profile_lbl: Label = null
+
+func _build_profile_row() -> void:
+	var panel := get_node_or_null("Center/Panel")
+	if panel == null:
+		return
+	var row := HBoxContainer.new()
+	row.name = "ProfileRow"
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 10)
+
+	_profile_lbl = Label.new()
+	_profile_lbl.add_theme_font_size_override("font_size", 15)
+	_profile_lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	row.add_child(_profile_lbl)
+
+	var switch_btn := Button.new()
+	switch_btn.name = "ProfileBtn"
+	switch_btn.text = "Switch"
+	switch_btn.custom_minimum_size = Vector2(96, 30)
+	switch_btn.pressed.connect(_on_profiles)
+	row.add_child(switch_btn)
+
+	panel.add_child(row)
+	var subtitle := panel.get_node_or_null("Subtitle")
+	panel.move_child(row, (subtitle.get_index() + 1) if subtitle != null else 1)
+	_refresh_profile_row()
+
+func _refresh_profile_row() -> void:
+	if _profile_lbl != null:
+		_profile_lbl.text = "👤  %s" % Profiles.active_name()
+
+func _on_profiles() -> void:
+	ProfilePicker.open(_modal_layer)
+
+func _on_profile_switched() -> void:
+	_refresh_profile_row()
+	_save_list_container.visible = false
+	_refresh_continue_button()
 
 # ---------------------------------------------------------------------------
 # Start Run flow — pick a 2.0 character, then enter Overworld2
