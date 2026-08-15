@@ -11,6 +11,34 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The Steam sync is gone: Steam closed the door, and ticking a cover is one
+  click anyway.**
+
+  The owned-games list could be seeded from a Steam profile's public games page —
+  no API key, just a profile name. It no longer can. Steam now answers that
+  request with its **Sign In page**: HTTP 200, a 52 KB login document,
+  `logged_in: false`, redirecting back to the URL asked for — and it does this
+  for a profile whose "Game details" privacy is Public. There is no name, no
+  setting and no header a player can change to get past it; the endpoint simply
+  isn't served to anyone without a session cookie any more.
+
+  Everything Steam-shaped is removed rather than left in place failing politely:
+  the username field and Sync button, the dev-mode reply dump, the appid parsing
+  and matching, and the tests around all of it. `GameData.steam_page` and the
+  compendium's "Steam page" button stay — those open a store page in a browser,
+  which has nothing to do with reading a library.
+
+  What was weighed before removing it: the **Steam Web API** still works, since
+  its key authenticates the caller rather than the player, but it costs the
+  player a key to register and paste in; and the **local Steam install** can be
+  parsed for installed games without any key, but only on the machine Steam is on
+  and only for what is installed rather than what is owned. Against those, the
+  tick sitting on each cover in the compendium is one click per game on a screen
+  the player is already browsing. The tick won.
+
+  `Ownership.gd` carries the whole story at the top, so the next person to think
+  "we should sync this from Steam" finds out what happens before writing it.
+
 - **The same two games stopped opening every run, and the menu lost its clutter.**
 
   **Starting games repeated because they were never randomised.** The Amulet is

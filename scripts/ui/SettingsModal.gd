@@ -378,8 +378,8 @@ func _build_wipe_section(vbox: VBoxContainer) -> void:
 					hint.add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))))
 
 # Where the "Owned" answer comes from: the shipped spreadsheet column, or a list
-# this player builds — seeded from a public Steam profile and edited game by game
-# in the compendium. `on_change` re-labels the filter dropdown's owned count.
+# this player builds by ticking games off their covers in the compendium.
+# `on_change` re-labels the filter dropdown's owned count.
 func _build_ownership_section(vbox: VBoxContainer, on_change: Callable) -> void:
 	var heading := Label.new()
 	heading.text = "Which games you own"
@@ -400,58 +400,15 @@ func _build_ownership_section(vbox: VBoxContainer, on_change: Callable) -> void:
 
 	var hint := Label.new()
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.custom_minimum_size = Vector2(0, 60)
+	hint.custom_minimum_size = Vector2(0, 76)
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(hint)
 
-	var steam_row := HBoxContainer.new()
-	steam_row.add_theme_constant_override("separation", 8)
-	vbox.add_child(steam_row)
-
-	var name_edit := LineEdit.new()
-	name_edit.placeholder_text = "Steam profile name or URL"
-	name_edit.text = Ownership.steam_username
-	name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	steam_row.add_child(name_edit)
-
-	var sync_btn := Button.new()
-	sync_btn.text = "Sync"
-	sync_btn.custom_minimum_size = Vector2(90, 0)
-	steam_row.add_child(sync_btn)
-
-	var status := Label.new()
-	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status.custom_minimum_size = Vector2(0, 76)
-	status.add_theme_font_size_override("font_size", 13)
-	status.text = Ownership.last_sync_text()
-	status.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(status)
-
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 8)
-	vbox.add_child(buttons)
-
 	var clear_btn := Button.new()
 	clear_btn.text = "Clear my list"
-	buttons.add_child(clear_btn)
-
-	# Dev mode only: the sync's failure modes are all shapes of someone else's
-	# HTTP reply, so when one misbehaves the useful thing is the reply itself
-	# rather than a description of it.
-	var dump_btn := Button.new()
-	dump_btn.text = "Save Steam's reply"
-	dump_btn.tooltip_text = "Write the last reply Steam sent to a file, for diagnosing a sync that went wrong."
-	dump_btn.visible = Settings.dev_mode
-	buttons.add_child(dump_btn)
-
-	dump_btn.pressed.connect(func() -> void:
-		var path: String = Ownership.dump_last_reply()
-		status.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-		if path == "":
-			status.text = "Nothing to save — run a sync first."
-		else:
-			status.text = "Wrote Steam's last reply to %s" % path)
+	clear_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	vbox.add_child(clear_btn)
 
 	var refresh := func() -> void:
 		var i: int = src.get_item_index(Ownership.Source.MANUAL)
@@ -460,9 +417,9 @@ func _build_ownership_section(vbox: VBoxContainer, on_change: Callable) -> void:
 		src.select(src.get_item_index(Ownership.source))
 		clear_btn.disabled = Ownership.manual_count() == 0
 		if Ownership.source == Ownership.Source.MANUAL:
-			hint.text = "Ownership is whatever you've marked yourself. Sync a public Steam profile below to fill the list in, then tick anything else off in the compendium (Tab) — a sync only ever adds, so hand-ticked games from GOG, itch or anywhere else survive it."
+			hint.text = "Ownership is whatever you've marked yourself. Open the compendium (Tab) and click the tick at the top-left of a game's cover to mark it — one click per game, no account needed."
 		else:
-			hint.text = "Ownership comes from the catalog's own Owned column, the same for everyone. Switch to your own list to use your Steam library instead."
+			hint.text = "Ownership comes from the catalog's own Owned column, the same for everyone. Switch to your own list to mark games yourself."
 		on_change.call()
 	refresh.call()
 
@@ -472,36 +429,4 @@ func _build_ownership_section(vbox: VBoxContainer, on_change: Callable) -> void:
 
 	clear_btn.pressed.connect(func() -> void:
 		Ownership.clear_manual()
-		status.text = "Your list is empty."
-		refresh.call())
-
-	sync_btn.pressed.connect(func() -> void:
-		sync_btn.disabled = true
-		sync_btn.text = "Syncing…"
-		status.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-		status.text = "Asking Steam what %s owns…" % name_edit.text.strip_edges()
-		var report: Dictionary = await Ownership.sync_from_steam(name_edit.text)
-		sync_btn.disabled = false
-		sync_btn.text = "Sync"
-		if not report.get("ok", false):
-			status.add_theme_color_override("font_color", Color(0.95, 0.6, 0.55))
-			status.text = str(report.get("error", "Sync failed."))
-			# Steam's actual reply is saved on every failure, and where it landed is
-			# the useful next step when the message above isn't enough.
-			var dump: String = str(report.get("dump", ""))
-			if dump != "":
-				status.text += "\n(Steam's reply saved to %s)" % dump
-			return
-		status.add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))
-		# The catalog can only ever confirm the games it has a Steam link for, so
-		# say so rather than letting the player read a low number as a failure.
-		var unlinked: int = Data.all_games().size() - int(report.get("catalog_linked", 0))
-		status.text = "Matched %d of your %d Steam games (%d new). %d catalog games have no Steam link — tick those off in the compendium." % [
-			int(report.get("matched", 0)), int(report.get("appids", 0)),
-			int(report.get("added", 0)), unlinked]
-		# Pressing Sync means wanting the result used, so a sync from the catalog
-		# source moves the switch too — announced, never silent.
-		if Ownership.source != Ownership.Source.MANUAL:
-			Ownership.set_source(Ownership.Source.MANUAL)
-			status.text += " Switched to your own list."
 		refresh.call())
