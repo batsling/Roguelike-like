@@ -413,6 +413,21 @@ func _build_enemy_block(game: GameData) -> Control:
 		box.add_child(free)
 		return box
 
+	# Runic Dome (§7.1). This is the block the relic is BOUGHT against: the whole
+	# of what an unopened card is worth is in here, so the Dome blanks the block
+	# rather than redacting a line of it. The overworld decides — it owns the
+	# rule and the wording — and hands the answer over in the notes, so the popup
+	# and the hover line under the offering go dark together.
+	if bool(_notes.get("enemy_hidden", false)):
+		var hidden := Label.new()
+		hidden.text = String(_notes.get("hidden_note",
+			"The Runic Dome hides what is waiting there."))
+		hidden.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		hidden.add_theme_font_size_override("font_size", 13)
+		hidden.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		box.add_child(hidden)
+		return box
+
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	box.add_child(row)

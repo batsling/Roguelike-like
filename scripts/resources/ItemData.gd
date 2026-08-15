@@ -432,6 +432,26 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # bool, so two of them add two columns and two rows.
 @export var grid_grow: bool = false
 
+# Philosophers Stone / Runic Dome: the battlefield grows by one COLUMN only —
+# the length, not the width. The distinction is the whole of what separates them
+# from Mine-r Construction: a column is pure distance, more ground for the stack
+# to cross before it is on the player, with no extra lane to stand in and so no
+# extra body in the front line. Stacks the same way grid_grow does
+# (GameState.grid_length_growth counts the copies).
+@export var grid_length_grow: bool = false
+
+# Runic Dome: the enemy behind an offered game stops being visible until the game
+# is committed to. The board itself is untouched — this hides the PREVIEW, so the
+# extra column the Dome grants is bought with routing blind. Read by
+# GameState.hides_upcoming_enemies.
+@export var hide_spawns: bool = false
+
+# Philosophers Stone: statuses hung on every enemy that spawns while this is
+# owned, as status id -> stacks (§13.4). The Stone's is {&"strength": 1}, so the
+# column it gives you is paid for by every body on the board hitting harder.
+# Summed across copies by GameState.spawn_statuses.
+@export var spawn_statuses: Dictionary = {}
+
 # --- the Boss / Event relics (§7.1, §8) ------------------------------------
 # Three more rule-changers, read off the inventory the same way the four above
 # are. They are here rather than expressed as triggers because none of them

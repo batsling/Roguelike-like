@@ -192,8 +192,8 @@ func _effect_summary() -> String:
 		if not (e is Dictionary):
 			continue
 		match String(e.get("op", "")):
-			"buff_enemies":
-				parts.append("Enemies deal +%d damage for %d game(s)." % [int(e.get("damage", 1)), int(e.get("games", 1))])
+			"apply_status":
+				parts.append(ScrollSystem.status_effect_text(e))
 			"forget":
 				parts.append("Forget %d random scroll(s)." % int(e.get("count", 1)))
 			"spawn_enemy":

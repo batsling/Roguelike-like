@@ -55,6 +55,14 @@ const SHIELDS_TRADITIONAL: int = 5
 # What one lost run costs once the shields are gone.
 const ATTEMPT_HEALTH_COST: int = 1
 
+# What the player's two ways of hurting an enemy are worth, in the damage unit
+# `_damage_enemy` resolves. Both are 1: an enemy's Health is a count of goals it
+# takes to put down (§7.2) and a bomb is worth exactly one of them. They are named
+# rather than written as bare 1s because a status can now multiply them, so "how
+# much is a goal worth" is a question with an answer somewhere.
+const GOAL_HIT: int = 1
+const BOMB_HIT: int = 1
+
 # The battlefield is a Mega-Man-Battle-Network-style grid: the player sits on the
 # left, and following enemies occupy a grid_cols() x grid_rows() grid on the right.
 # An enemy SPAWNS ON the grid, positioned so its RIGHTMOST cell sits on the back
@@ -101,9 +109,12 @@ const GOLD_PER_BOSS: int = 3
 func grid_growth() -> int:
 	return RunDifficulty.current_grid_growth() + GameState.grid_growth()
 
-# Distance columns on the board right now. Column 1 is melee, grid_cols() the back.
+# Distance columns on the board right now. Column 1 is melee, grid_cols() the
+# back. Columns get the LENGTH-only growth on top of the square growth above:
+# Philosophers Stone and Runic Dome buy distance without buying a lane, so the
+# board gets deeper without the front line getting wider (§7.3).
 func grid_cols() -> int:
-	return BASE_GRID_COLS + grid_growth()
+	return BASE_GRID_COLS + grid_growth() + GameState.grid_length_growth()
 
 # Lanes on the board right now, 0-based rows 0..grid_rows() - 1.
 func grid_rows() -> int:
@@ -159,14 +170,6 @@ var won: bool = false
 var defeated_count: int = 0
 var games_beaten: int = 0
 
-# Aggravate Monsters (Scroll, §4.1): a temporary run-wide bonus added to EVERY
-# stacked enemy's per-game hit for the next `enemy_damage_bonus_games` games, then
-# it expires. `beat_game` folds the bonus into each attack and ticks the counter
-# down once per resolve; `stacked_damage_per_game()` includes it so the HUD stays
-# honest.
-var enemy_damage_bonus: int = 0
-var enemy_damage_bonus_games: int = 0
-
 # The attempt tracker for the game currently being played (§3). One entry per try
 # the player has logged, in order, holding what that try spent: "shield" or
 # "health". The list is the undo record — a mistaken tick gives back exactly what
@@ -208,8 +211,6 @@ func reset() -> void:
 	won = false
 	defeated_count = 0
 	games_beaten = 0
-	enemy_damage_bonus = 0
-	enemy_damage_bonus_games = 0
 	last_result = {}
 	_next_instance = 1
 	_bounds_cols = grid_cols()
@@ -281,8 +282,6 @@ func serialize() -> Dictionary:
 		"won": won,
 		"defeated_count": defeated_count,
 		"games_beaten": games_beaten,
-		"enemy_damage_bonus": enemy_damage_bonus,
-		"enemy_damage_bonus_games": enemy_damage_bonus_games,
 		"attempt_costs": attempt_costs.duplicate(),
 		"next_instance": _next_instance,
 	}
@@ -324,8 +323,11 @@ func restore(data: Dictionary) -> void:
 	won = bool(data.get("won", false))
 	defeated_count = int(data.get("defeated_count", 0))
 	games_beaten = int(data.get("games_beaten", 0))
-	enemy_damage_bonus = int(data.get("enemy_damage_bonus", 0))
-	enemy_damage_bonus_games = int(data.get("enemy_damage_bonus_games", 0))
+	# A save from before the combat expansion carries `enemy_damage_bonus` /
+	# `enemy_damage_bonus_games`, the temporary run-wide buff Aggravate Monsters
+	# used to arm. There is no such field any more — the scroll hands out Strength
+	# stacks, which ride the bodies and are already in each entry's `statuses` — so
+	# those two keys are read past rather than restored.
 	attempt_costs.clear()
 	for cost in data.get("attempt_costs", []):
 		attempt_costs.append(String(cost))
@@ -354,6 +356,12 @@ func _serialize_entry(entry: Dictionary) -> Dictionary:
 		"boss": enemy.is_boss(),
 		"health": int(entry.get("health", 1)),
 		"stun": int(entry.get("stun", 0)),
+		# Shield points still unspent (§13.4). Written separately from the statuses
+		# that granted them because it is a POOL, not a reading of the stack count:
+		# a Dexterity 2 body that has already soaked one hit holds two stacks and
+		# one shield, and a load that recomputed it from the stacks would hand the
+		# soaked point back.
+		"shield": int(entry.get("shield", 0)),
 		"col": int(entry.get("col", offgrid_col())),
 		"row": int(entry.get("row", 0)),
 		"statuses": _serialize_statuses(entry.get("statuses", {})),
@@ -373,6 +381,7 @@ func _deserialize_entry(raw) -> Dictionary:
 		"enemy": enemy,
 		"health": maxi(1, int(d.get("health", 1))),
 		"stun": int(d.get("stun", 0)),
+		"shield": maxi(0, int(d.get("shield", 0))),
 		"col": int(d.get("col", offgrid_col())),
 		"row": int(d.get("row", 0)),
 		"statuses": _deserialize_statuses(d.get("statuses", {})),
@@ -531,7 +540,7 @@ func choose_game(enemy: GoalEnemyData) -> int:
 		return 0
 	var inst: int = _next_instance
 	_next_instance += 1
-	_add_to_grid(inst, enemy, effective_health(enemy))
+	_add_to_grid(inst, enemy, effective_health(enemy), _spawn_statuses())
 	# _add_to_grid appends, so the entry it just built is the last one — and that
 	# entry IS `current` (see the var's comment): one body, one record.
 	current = stack[stack.size() - 1]
@@ -713,10 +722,12 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = [],
 		var idx: int = _index_of(int(inst))
 		if idx < 0:
 			continue
-		stack[idx]["health"] = int(stack[idx].get("health", 1)) - 1
-		if int(stack[idx]["health"]) <= 0:
-			var e: GoalEnemyData = stack[idx]["enemy"]
-			_take_off_board(idx)
+		# GOAL_HIT is one point of damage — the unit every hit in this game is
+		# measured in — put through the same resolver a bomb uses, so a Marked
+		# enemy dies to a goal it would otherwise have survived and a Dexterity
+		# one spends a shield instead of dying.
+		var e: GoalEnemyData = stack[idx]["enemy"]
+		if _damage_enemy(idx, GOAL_HIT):
 			_defeat(e, true, res)
 		else:
 			hit_this_game[int(inst)] = true
@@ -747,13 +758,6 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = [],
 	# The tries went with it: `res` already carries the count for the log, and the
 	# board must not keep drawing a finished game's spent pips.
 	attempt_costs.clear()
-
-	# Aggravate Monsters lasts a fixed number of games (§4.1) — one game elapses
-	# per resolve, so tick it down after the stack has taken its buffed hits.
-	if enemy_damage_bonus_games > 0:
-		enemy_damage_bonus_games -= 1
-		if enemy_damage_bonus_games <= 0:
-			enemy_damage_bonus = 0
 
 	# 3. The player's clauses tick for the game just played. A clause rides every
 	#    enemy's goal, so completing ANY goal this game satisfied it once.
@@ -800,15 +804,17 @@ func _resolve_enemy_turn(turn: int, hit_this_game: Dictionary, res: Dictionary) 
 			res["attacks"].append({"instance": entry["instance"], "turn": turn,
 				"stunned": true})
 			continue
-		# Aggravate Monsters adds a flat bonus to each hit while it's active (§4.1).
-		# It is per HIT, so a three-turn game is three buffed hits — the buff gets
-		# the same amplification from the pace that everything else does.
-		var bonus: int = enemy_damage_bonus if enemy_damage_bonus_games > 0 else 0
-		var dmg: int = int(entry["enemy"].damage) + bonus
-		var blocked: int = _take_hit(dmg, res)
+		# Strength rides the BODY, so its bonus is per HIT: a three-turn game is
+		# three buffed hits, and the status gets the same amplification from the
+		# pace of the board that everything else does (§13.4).
+		# The swing is what the STRIKER's statuses make it; what it lands for is
+		# what the TARGET's make of that (Marked doubles it). The log and the
+		# animation quote the landed number, so the board shows the hit the player
+		# actually took rather than the one the enemy threw.
+		var hit: Dictionary = _take_hit(enemy_damage(entry), res)
 		res["attacks"].append({"instance": entry["instance"], "turn": turn,
-			"damage": dmg, "blocked": blocked})
-		player_hit.emit(dmg, blocked)
+			"damage": int(hit["damage"]), "blocked": int(hit["blocked"])})
+		player_hit.emit(int(hit["damage"]), int(hit["blocked"]))
 
 	# b. THE STEP. Everything that didn't strike closes one column toward the
 	#    player, but only into a free row — the front column caps attackers at
@@ -828,10 +834,8 @@ func fulfill(instance: int) -> bool:
 	var idx: int = _index_of(instance)
 	if idx < 0:
 		return false
-	stack[idx]["health"] = int(stack[idx].get("health", 1)) - 1
-	if int(stack[idx]["health"]) <= 0:
-		var e: GoalEnemyData = stack[idx]["enemy"]
-		_take_off_board(idx)
+	var e: GoalEnemyData = stack[idx]["enemy"]
+	if _damage_enemy(idx, GOAL_HIT):
 		var res := {"defeats": [], "drops": 0}
 		_defeat(e, true, res)
 		_admit_offgrid()
@@ -863,12 +867,14 @@ func bomb(instance: int) -> bool:
 			continue
 		hits += 1
 		var enemy: GoalEnemyData = stack[i]["enemy"]
-		# A boss shrugs off the damage; everything else takes its one point.
+		# A boss shrugs off the damage; everything else takes its one point,
+		# through the same resolver a goal hit uses — so a bomb is worth double on
+		# a Marked body and is what a Dexterity shield is there to eat. No
+		# `_defeat`: a bombed enemy is destroyed, not defeated, and leaves neither
+		# a drop nor gold behind (§4).
 		if not enemy.is_boss():
-			stack[i]["health"] = int(stack[i].get("health", 1)) - 1
-			if int(stack[i]["health"]) <= 0:
+			if _damage_enemy(i, BOMB_HIT):
 				destroyed.append(enemy)
-				_take_off_board(i)
 				continue
 		# Survived the blast — Sticky Bombs makes that cost it its next turn.
 		if stuns:
@@ -1033,17 +1039,17 @@ func spawn_to_stack(enemy: GoalEnemyData) -> int:
 		return 0
 	var inst: int = _next_instance
 	_next_instance += 1
-	_add_to_grid(inst, enemy, effective_health(enemy))
+	_add_to_grid(inst, enemy, effective_health(enemy), _spawn_statuses())
 	loop_changed.emit()
 	return inst
 
-# Aggravate Monsters (Scroll, §4.1): every stacked enemy deals +`damage` on its
-# per-game hit for the next `games` games. Additive with an existing buff (the
-# larger bonus / longer window win so re-reading never weakens it).
-func aggravate(damage: int, games: int) -> void:
-	enemy_damage_bonus = maxi(enemy_damage_bonus, damage)
-	enemy_damage_bonus_games = maxi(enemy_damage_bonus_games, games)
-	loop_changed.emit()
+# The statuses a body ARRIVES carrying — Philosophers Stone's +1 Strength on
+# everything that spawns while it is owned (§13.4). Asked at the two places a new
+# enemy is actually minted rather than inside _add_to_grid, which also runs on the
+# legacy restore path: a save reloaded twice must not hand the same body two
+# Strength stacks for one relic.
+func _spawn_statuses() -> Dictionary:
+	return GameState.spawn_statuses()
 
 # Scramble (§4, granted by the D6 item): reroll the CURRENT game's enemy/goal.
 # Spends one scramble charge and replaces `current` with a freshly-rolled enemy
@@ -1322,9 +1328,8 @@ func games_until_strike(entry: Dictionary) -> int:
 func stacked_damage_per_game() -> int:
 	var total: int = 0
 	var turns: int = enemy_turns()
-	var bonus: int = enemy_damage_bonus if enemy_damage_bonus_games > 0 else 0
 	for entry in stack:
-		total += attacks_next_game(entry, turns) * (int(entry["enemy"].damage) + bonus)
+		total += attacks_next_game(entry, turns) * enemy_damage(entry)
 	return total
 
 # Number of enemies waiting off the grid's edge (overflow queue) — never attacks,
@@ -1385,12 +1390,29 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
 	enemy_defeated.emit(enemy)
 
 # Applies `damage` to the player: unspent Shields absorb first (§3), the
-# remainder comes off Health. Returns the amount the shields absorbed. Ends the
-# run on hp <= 0.
-func _take_hit(damage: int, res: Dictionary) -> int:
+# remainder comes off Health. Ends the run on hp <= 0.
+#
+# The player's own statuses are folded in here, and this is where the promise that
+# a DEBUFF is felt by whoever carries it gets paid: Marked doubles what lands and
+# takes it straight past the tries the player was counting on to absorb it, which
+# is the same rule the enemy side of `_damage_enemy` runs. `_take_hit` is the only
+# way damage reaches the player, so there is nowhere for that rule to be missed.
+#
+# Returns {damage, blocked} — what the hit ACTUALLY landed for after the statuses
+# had their say, and how much of that the shields ate. Both, rather than just the
+# blocked count, because the attack log and the board's resolve animation quote
+# this number: a hit that reads "⚔2" while Health drops by four is a UI that is
+# lying about the rule it just applied.
+func _take_hit(damage: int, res: Dictionary) -> Dictionary:
 	if damage <= 0:
-		return 0
-	var absorbed: int = mini(GameState.shields, damage)
+		return {"damage": 0, "blocked": 0}
+	var totals: Dictionary = GameState.combat_totals()
+	damage = StatusData.apply_damage_mods(
+		damage, int(totals["damage_taken"]), float(totals["damage_taken_mult"]))
+	if damage <= 0:
+		return {"damage": 0, "blocked": 0}
+	var absorbed: int = 0 if bool(totals["pierce_shields"]) \
+		else mini(GameState.shields, damage)
 	GameState.shields -= absorbed
 	var overflow: int = damage - absorbed
 	if overflow > 0:
@@ -1399,7 +1421,7 @@ func _take_hit(damage: int, res: Dictionary) -> int:
 	res["damage_taken"] = int(res.get("damage_taken", 0)) + overflow
 	if GameState.hp <= 0 and not run_over:
 		_finish_run(false)
-	return absorbed
+	return {"damage": damage, "blocked": absorbed}
 
 # Take a body off the board with NO defeat and NO drop — it simply stops
 # following. Distinct from fulfill() (which defeats and drops) and from bomb()
@@ -1499,12 +1521,31 @@ func _status_targets(target: String) -> Array:
 
 func _add_status_to(entry: Dictionary, status_id: StringName, stacks: int) -> void:
 	var held: Dictionary = entry.get("statuses", {})
-	var total: int = int(held.get(status_id, 0)) + stacks
+	var before: int = int(held.get(status_id, 0))
+	var total: int = before + stacks
 	if total <= 0:
 		held.erase(status_id)
 	else:
 		held[status_id] = total
 	entry["statuses"] = held
+	_grant_shield_for(entry, status_id, before, maxi(0, total))
+
+# A shield-granting status (Dexterity) HANDS OUT its shield when it lands, rather
+# than being read as one. The difference is the whole of how the shield behaves:
+# it is a pool the body spends absorbing hits and does not get back, so a second
+# application tops it up by the difference and losing stacks never claws back a
+# point the body already spent. Nothing is granted when a status is removed.
+func _grant_shield_for(entry: Dictionary, status_id: StringName,
+		before: int, after: int) -> void:
+	if after <= before:
+		return
+	var status: StatusData = Data.get_status(status_id)
+	if status == null or not status.combat_applies(StatusData.ENEMY):
+		return
+	var gained: int = status.combat_bonus(&"shield", after) \
+		- status.combat_bonus(&"shield", before)
+	if gained > 0:
+		entry["shield"] = int(entry.get("shield", 0)) + gained
 
 # Apply `stacks` of a status to ONE body, named by instance — the aimed version of
 # apply_enemy_status, for when the caller already knows which enemy it means (the
@@ -1585,6 +1626,78 @@ func goal_text_for(entry: Dictionary) -> String:
 			else StatusData.ENEMY
 		text += " and %s" % sd.clause_text(which, int(clause["stacks"]))
 	return text
+
+# --- statuses in combat (§13.4) -------------------------------------------
+#
+# Everything above this line is a status rewriting GOALS. Below it is the other
+# half of the mechanic: the four numbers a status moves on the board.
+#
+#   Strength   +X to the damage this body's hits land for
+#   Dexterity  +X shield points, spent one per point of damage absorbed
+#   Speed      +X columns closed per step
+#   Marked     x2 the damage this body TAKES, straight through its shields
+#
+# Marked is the only one the player feels, and that is a rule rather than a
+# special case: `StatusData.enemy_only` is off for debuffs, so a debuff is felt by
+# whoever is carrying it. Every one of these totals is worked out by
+# StatusData.combat_totals, which the player side calls too, so the two holders
+# cannot end up disagreeing about what a status does.
+
+# What every status on `entry` adds up to in combat.
+func enemy_combat(entry: Dictionary) -> Dictionary:
+	return StatusData.combat_totals(entry.get("statuses", {}), StatusData.ENEMY)
+
+# What one body's hit lands for: its authored damage plus what its statuses say.
+# Ask for this rather than `entry["enemy"].damage` anywhere a hit is dealt or
+# previewed — the bare stat is what the enemy was worth before anything happened
+# to it.
+func enemy_damage(entry: Dictionary) -> int:
+	var enemy: GoalEnemyData = entry.get("enemy")
+	if enemy == null:
+		return 0
+	var totals: Dictionary = enemy_combat(entry)
+	return StatusData.apply_damage_mods(
+		int(enemy.damage), int(totals["damage_dealt"]), float(totals["damage_dealt_mult"]))
+
+# Shield points `entry` still has to spend. Public because the board draws them.
+func enemy_shield(entry: Dictionary) -> int:
+	return maxi(0, int(entry.get("shield", 0)))
+
+# Extra columns `entry` closes per step — 0 for anything without Speed.
+func enemy_tile_move(entry: Dictionary) -> int:
+	return maxi(0, int(enemy_combat(entry)["tile_move"]))
+
+# DEAL `amount` damage to the body at `idx`, statuses and all. The one place a hit
+# on an enemy resolves, so a goal met, a bomb and a scroll all get the same
+# arithmetic: the target's own modifiers scale the hit (Marked doubles it), its
+# shields absorb what is left unless the hit pierces them (Marked's second half),
+# and the remainder comes off Health.
+#
+# Returns true when the body dropped to 0 Health, having already been taken off
+# the board. What that removal MEANS is the caller's to say and deliberately not
+# decided here: a met goal is a defeat that drops, a bomb kill leaves nothing
+# behind and never fires `_defeat` at all (§4). Three callers, three answers, one
+# damage rule.
+func _damage_enemy(idx: int, amount: int) -> bool:
+	if idx < 0 or idx >= stack.size() or amount <= 0:
+		return false
+	var entry: Dictionary = stack[idx]
+	var totals: Dictionary = enemy_combat(entry)
+	var dmg: int = StatusData.apply_damage_mods(
+		amount, int(totals["damage_taken"]), float(totals["damage_taken_mult"]))
+	if dmg <= 0:
+		return false
+	if not bool(totals["pierce_shields"]):
+		var absorbed: int = mini(enemy_shield(entry), dmg)
+		entry["shield"] = enemy_shield(entry) - absorbed
+		dmg -= absorbed
+	if dmg <= 0:
+		return false
+	entry["health"] = int(entry.get("health", 1)) - dmg
+	if int(entry["health"]) > 0:
+		return false
+	_take_off_board(idx)
+	return true
 
 # --- claiming a status reward ---------------------------------------------
 
@@ -1823,9 +1936,15 @@ func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int,
 	# game's enemy has to still be on it when it walks on as a follower, or every
 	# enemy-side status would evaporate the moment it mattered.
 	var entry := {"instance": instance, "enemy": enemy, "stun": 0,
-		"health": health, "col": offgrid_col(), "row": 0,
-		"statuses": statuses.duplicate()}
+		"health": health, "shield": 0, "col": offgrid_col(), "row": 0,
+		"statuses": {}}
 	stack.append(entry)
+	# Statuses go on THROUGH _add_status_to rather than being copied into the
+	# entry, so a body that walks on already carrying Dexterity is granted the
+	# shield that comes with it. A dict assigned straight into the entry would
+	# have the stacks and none of what they pay for.
+	for id in statuses.keys():
+		_add_status_to(entry, StringName(id), int(statuses[id]))
 	_place_on_spawn(entry)
 
 # Try to move an off-grid entry onto its spawn column in a random open row.
@@ -1852,11 +1971,18 @@ func _advance_stack() -> void:
 	for entry in movers:
 		if int(entry.get("stun", 0)) > 0:
 			continue
-		var col: int = int(entry.get("col", spawn_col()))
-		if col <= 1:
-			continue
-		if fits_at(entry.get("enemy"), int(entry.get("row", 0)), col - 1,
-				int(entry.get("instance", 0))):
+		# Speed buys EXTRA columns, taken one at a time (§13.4). Walking them
+		# singly rather than jumping straight to col - 1 - speed is what keeps a
+		# fast enemy honest about the board: it stops at the first column its
+		# footprint doesn't fit in, so it queues behind a full front line like
+		# everything else instead of teleporting through it.
+		for _step in range(1 + enemy_tile_move(entry)):
+			var col: int = int(entry.get("col", spawn_col()))
+			if col <= 1:
+				break
+			if not fits_at(entry.get("enemy"), int(entry.get("row", 0)), col - 1,
+					int(entry.get("instance", 0))):
+				break
 			entry["col"] = col - 1
 	_admit_offgrid()
 

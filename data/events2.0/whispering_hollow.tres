@@ -6,7 +6,7 @@
 script = ExtResource("1_event")
 id = &"whispering_hollow"
 display_name = "Whispering Hollow"
-source_game = "Slay the Spire 3"
+source_game = "Slay the Spire 2"
 tier_tags = PackedStringArray()
 where = ""
 requirement = {"stat": "gold", "op": ">=", "value": 1, "percent": false}

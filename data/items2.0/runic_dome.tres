@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_runic_dome"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/RunicDome.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"runic_dome"
+display_name = "Runic Dome"
+kind = 0
+rarity = 0
+boss = true
+description = "Increase the Grid length by 1, but you can no longer see enemies that will spawn"
+triggers = []
+stat_bonuses = {}
+grid_length_grow = true
+hide_spawns = true
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray()
+image = ExtResource("2_img")

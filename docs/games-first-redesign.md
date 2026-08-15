@@ -181,7 +181,7 @@ current set is enemy/movement-facing instead:
 
 | Scroll | Preference | Effect |
 |---|---|---|
-| Aggravate Monsters | Negative | Enemies deal +1 damage for one game. |
+| Aggravate Monsters | Negative | Every enemy on the board gains **+1 Strength** — +1 damage on every hit, permanently (§13.4). |
 | Amnesia | Negative | Forget 1 random scroll. |
 | Create Monster | Negative | Spawn a random enemy at the current difficulty. |
 | Identify | Positive | Choose 1 scroll to identify. |
@@ -425,9 +425,16 @@ add together:
   **per copy owned** — a deeper board to cross before anything reaches you, and
   another lane to stand in, which also means one more body can pack the front
   line.
+- **Philosophers Stone** and **Runic Dome** (Slay the Spire, Boss) each add a
+  column and *no row*, per copy owned. Length without width is the better half of
+  the trade — pure distance, with no extra lane for the stack to attack from —
+  which is why both of them charge for it: the Stone gives every enemy that spawns
+  +1 Strength (§13.4), and the Dome hides the enemy behind a game until you have
+  committed to it, so the column is bought with routing blind.
 
 `GameLoop2.grid_cols()` / `grid_rows()` answer the current size (base 4 plus
-`GameLoop2.grid_growth()`, which is the tier's growth plus the inventory's), so
+`GameLoop2.grid_growth()`, which is the tier's growth plus the inventory's, and —
+for columns alone — `GameState.grid_length_growth()`), so
 nothing measures the board against a constant. Growth doesn't shove the
 bodies already standing on it — they keep their column, and the gain lands on
 what spawns next — but it does open room for the overflow queue, which walks
@@ -518,8 +525,13 @@ The consequences fall out of the same rule rather than being special-cased:
   whole one in the wilds — the same charge, priced by the pace.
 - **Old-goal fulfilment** holds a follower's fire for the whole game, so it goes
   the other way and is worth *more* the closer you push (§7.2).
-- **Aggravate Monsters** buffs each hit, so a three-turn game is three buffed
-  hits — the pace amplifies it like everything else.
+- **Strength** buffs each hit, so a three-turn game is three buffed hits — the
+  pace amplifies it like everything else. Aggravate Monsters hands it out to the
+  whole board at once (§13.4), and unlike the temporary damage bonus it replaced,
+  it never expires.
+- **Speed** buys extra columns per step, so it is worth most in the far band —
+  where there are still columns left to skip — and nothing at all once a body is
+  already in the front line.
 - Taking the **Amulet card itself** ends the run on the spot, so it carries no
   pace warning: there is no next game for the enemies to act in.
 
@@ -643,6 +655,25 @@ the number of choices offered:
 | **Medium** | pick 1 of 2 |
 | **Large** | pick 1 of 3 |
 | **Huge** | pick 1 of 5 |
+
+A **`[chest reward]`** is a number of chest **points** spent on that ladder rather
+than a count of chests of one size — Small 1, Medium 2, Large 3, Huge 4, and past
+four greedily as Huge chests plus one remainder:
+
+| Points | Chests | | Points | Chests |
+|---|---|---|---|---|
+| 1 | Small | | 5 | Huge + Small |
+| 2 | Medium | | 6 | Huge + Medium |
+| 3 | Large | | 7 | Huge + Large |
+| 4 | Huge | | 8 | 2 Huge |
+
+It exists because every scaling payout in the game used to read "+X Small Chests",
+which grew into X separate one-item screens each worth less than the last. Spending
+the same X on a *bigger* chest keeps a growing reward growing. `Data.chest_reward_sizes`
+is the equation, `Data.chest_reward_text` the wording, and the `chest_reward`
+effect banks the chests it names through `GameState.grant_chests` — one grant, one
+announcement, because a reward promised as one line has to arrive as one line — so
+a status's payout reaches the same screen, in the same shape, as an enemy's drop.
 
 Level-up rewards (`+1 Small Chest`, `+1 Large Chest`) and drops both mint chests
 through this same flow. A level-up Reward cell that NAMES a size carries the
@@ -877,8 +908,9 @@ status is a tax you grind off and a reason to engage the thing carrying it.
 
 ### 13.1 Schema
 
-`statuses2.0` columns: `Name | Type | Game | On Player | On Enemy | Stackable |
-Image | On Player Effect | On Enemy Effect`.
+`statuses2.0` columns: `Name | Type | Game | On Player | On Player Effect |
+On Enemy | On Enemy Effect | Combat | EnemyOnly | Enemy Combat Effect |
+Stackable | Image`.
 
 The two **prose** columns (`On Player` / `On Enemy`) are the author's wording,
 carried onto `StatusData` for tooltips. Beside each sits its machine-readable
@@ -890,9 +922,10 @@ where `<verb>` is one of the three modes above. So the current roster reads:
 
 | Status | `On Player Effect` | `On Enemy Effect` |
 |---|---|---|
-| Strength | `goal "the difficulty is increased {X} times" -> gain_chest small {X}; gain_stat bash {X}` | `clause "the difficulty must be increased {X} times"` |
-| Dexterity | `goal "beaten in {1+(1/2)^(X-2):hours} or less" -> gain_chest small {X}; gain_stat dash {X}` | `clause "must be beaten in {1+(1/2)^(X-2):hours} or less"` |
-| Marked | `clause "you must get {X} achievements" decay` | `bonus "you get {X} achievements" decay -> gain_chest small {X}` |
+| Strength | `goal "the difficulty is increased {X} times" -> gain_chest reward {X}; gain_stat bash 1` | `clause "the difficulty must be increased {X} times"` |
+| Speed | `goal "beaten in {1+(1/2)^(X-2):hours} or less" -> gain_chest reward {X}; gain_stat dash 1` | `clause "must be beaten in {1+(1/2)^(X-2):hours} or less"` |
+| Marked | `clause "you must get {X} achievements" decay` | `bonus "you get {X} achievements" decay -> gain_chest reward {X}` |
+| Dexterity | `goal "{X} bosses were beaten without getting hit" -> gain_chest reward {X}` | `clause "you must beat {X} bosses without getting hit"` |
 
 A `clause` may not carry a reward — it is a requirement, not a payout, and the
 generator rejects one rather than silently dropping it. Either side may be left
@@ -900,10 +933,19 @@ blank, which reads as "this side is inert".
 
 **Reward token DSL** (compiled by `tools/generate_status_tres.py` into
 `EffectSystem` effect dicts, so a chest a status grants is the same chest an item
-grants, §8.2): `gain_chest [small|medium|large|huge] <n>`, `gain_stat <stat> <n>`,
-`gain_hp <n>`, `gain_max_hp <n>`, `gain_gold <n>`. Any `<n>` is a literal or an
+grants, §8.2): `gain_chest [small|medium|large|huge] <n>`,
+`gain_chest reward <n>`, `gain_stat <stat> <n>`, `gain_hp <n>`,
+`gain_max_hp <n>`, `gain_gold <n>`. Any `<n>` is a literal or an
 `{expr}`; expressions are held in a `scaled` sub-dict and evaluated at apply time,
 since X isn't known until the status is on something.
+
+**`gain_chest reward <n>` is the `[chest reward]` the sheet's prose writes** — one
+payout that grows with X rather than X identical Small chests. `<n>` is a count of
+chest **points**, spent on the size ladder of §8.2: Small 1, Medium 2, Large 3,
+Huge 4, and past that greedily as Huge chests plus one remainder. So 3 is a Large,
+6 is a Huge and a Medium, 8 is two Huges. `Data.chest_reward_sizes` owns the
+equation and `Data.chest_reward_text` owns the wording, so what a checklist row
+promises and what the reward screen hands over cannot drift.
 
 **`{expr}` holes** are arithmetic over X, evaluated at runtime through Godot's
 `Expression`. The generator normalises the sheet's `a^b` into `pow(a, b)` and every
@@ -923,23 +965,33 @@ would only make it a worse item.
 
 ### 13.2 The current roster
 
-| Status | Type | From | Condition | Reward |
-|---|---|---|---|---|
-| **Strength** | Buff | Slay the Spire | the difficulty is increased X times | +X Small Chests, +X Bashes |
-| **Dexterity** | Buff | Slay the Spire | beaten in 1+(1/2)^(X-2) hours or less | +X Small Chests, +X Dashes |
-| **Marked** | Debuff | Mewgenics | you get X achievements | +X Small Chests |
+| Status | Type | From | Condition | Reward | In combat |
+|---|---|---|---|---|---|
+| **Strength** | Buff | Slay the Spire | the difficulty is increased X times | [chest reward X], +1 Bash | deals +X damage |
+| **Speed** | Buff | Mewgenics | beaten in 1+(1/2)^(X-2) hours or less | [chest reward X], +1 Dash | closes +X tiles per turn |
+| **Dexterity** | Buff | Slay the Spire | X bosses were beaten without getting hit | [chest reward X] | +X Shields |
+| **Marked** | Debuff | Mewgenics | you get X achievements | [chest reward X] | takes double damage, ignoring Shields |
 
-Dexterity's window halves toward a floor of one hour: **3 hours** at one stack,
+Speed's window halves toward a floor of one hour: **3 hours** at one stack,
 **2 hours** at two, **1 hour 30 minutes** at three, **1 hour 15 minutes** at four.
 The reward grows with X while the window tightens, which is the whole trade. A
 fractional window is rendered as hours and minutes rather than as a decimal — it
 is a time the player holds against a clock, and "1.5 hours" is arithmetic they
 would have to do themselves mid-run.
 
+**Speed was Dexterity** until the combat side landed. The time-window buff kept
+its goal and its curve and took the name that describes them; Dexterity is now the
+Slay the Spire relic's own reading of the word — a shield — with a
+boss-flawless goal of its own. Anything that referred to the old Dexterity means
+Speed.
+
 Two items hand statuses out, the pair of Slay the Spire relics that grant these
 same two stats there: **Vajra** (+1 Strength) and **Oddly Smooth Stone**
 (+1 Dexterity). Both are `Pickup` items firing `item_acquired`, so the status
-lands when the relic is taken and stays for the run.
+lands when the relic is taken and stays for the run. Two more hand them to the
+OTHER side: **Scroll of Aggravate Monsters** (§4.1) puts +1 Strength on every body
+on the board, and **Philosophers Stone** (§8) puts +1 Strength on every body that
+spawns while it is owned.
 
 ### 13.3 Where they live at runtime
 
@@ -949,7 +1001,8 @@ lands when the relic is taken and stays for the run.
   `player_statuses`.
 - **On an enemy** — a `statuses` dict on the **GameLoop2 stack entry**, so a status
   rides the *body* and survives the current enemy walking onto the board. Saved
-  inside `GameLoop2.serialize()`.
+  inside `GameLoop2.serialize()`, alongside a `shield` int — the pool a
+  shield-granting status handed out, which is spent rather than recomputed (§13.4).
 - **On screen** — the player's statuses draw as art pips between the hero's
   portrait and their health on the battlefield, and an enemy's below its box,
   under the ❤/⚔ row (which was shrunk and dropped onto the box's bottom edge so
@@ -970,11 +1023,52 @@ lands when the relic is taken and stays for the run.
   of the self-report: `{"status_goals": [id…], "bonuses": [{instance, status}…]}`.
   Claims resolve **before** the board does, so beating an enemy and claiming its
   bonus in the same game pays both.
-- **Editing the sheet** — `tools/_statuses_sheet_setup.py` and
+- **Editing the sheet** — `tools/_statuses_sheet_setup.py`,
+  `tools/_statuses2_combat_setup.py` (the combat columns, §13.4) and
   `tools/_items2_statuses_setup.py` go through `tools/_xlsx_surgery.py`, which
   rewrites one sheet's two XML parts and copies every other zip entry through
   untouched. An openpyxl round-trip of this workbook silently drops its seven
   charts, so nothing here may use one.
+
+### 13.4 The combat side
+
+A status started out as goals and nothing else — it never touched a number on the
+board. It touches four of them now, authored in the `Combat` / `EnemyOnly` /
+`Enemy Combat Effect` columns and parsed onto `StatusData.combat`:
+
+| Clause | What it does |
+|---|---|
+| `damage_dealt +{X}` | this body's hits land for X more (Strength) |
+| `damage_taken +{X}` / `damage_taken x2` | hits on this body land for more (Marked) |
+| `shield +{X}` | applying the status grants X shield points (Dexterity) |
+| `tile_move +{X}` | this body closes X extra columns per step (Speed) |
+| `pierce_shields` | damage aimed at this body ignores shields outright (Marked) |
+
+Three rules hold the side together:
+
+- **Additive fields scale with the stack count; multipliers do not.** Marked
+  doubles at one stack and at four. A doubling that compounded per stack would
+  turn a board where a hit is worth 1 into one where it is worth 16, off a status
+  the player never chose to stack.
+- **`EnemyOnly` is what Buff/Debuff always meant.** Every buff sets it, because
+  Strength on the player would want a player attack to sit on and this game has
+  none. Every debuff clears it, so **a debuff is felt by whoever is carrying it**:
+  Marked on the player doubles the damage they take and takes it straight past the
+  Shields — the tries — they were counting on to absorb it.
+- **Shields are a POOL the status hands out, not a reading of the stack count.**
+  Dexterity 2 grants two shield points; each absorbs one damage and is gone. The
+  body still has two Dexterity stacks afterwards (its goal clause is unchanged) and
+  no shield left, which is why `shield` is saved on the board entry beside
+  `health` rather than recomputed from the statuses on load.
+
+Every number goes through **one** function per side.
+`StatusData.combat_totals(held, which)` aggregates a holder's statuses — bonuses
+sum, multipliers multiply, flags OR — and both holders call it:
+`GameLoop2.enemy_combat(entry)` for a body, `GameState.combat_totals()` for the
+player. `GameLoop2._damage_enemy` is the only place a hit on an enemy resolves (a
+met goal, a bomb and a scroll all land there) and `GameLoop2._take_hit` is the only
+place damage reaches the player, so there is nowhere for "does Marked pierce?" to
+be answered twice.
 
 ---
 

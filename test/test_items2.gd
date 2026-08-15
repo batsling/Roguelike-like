@@ -271,16 +271,18 @@ func test_sacred_bark_doubles_what_a_scroll_does() -> void:
 	var aggravate: ScrollData = Data.get_scroll(&"scroll_of_aggravate_monsters")
 	assert_not_null(aggravate, "scrolls2.0 has Aggravate Monsters")
 	assert_eq(GameState.loot_multiplier(), 1, "nothing owned yet, so nothing doubles")
+	GameLoop2.choose_game(Data.all_goal_enemies()[0])
 	ScrollSystem.read_scroll(aggravate)
-	assert_eq(GameLoop2.enemy_damage_bonus, 1, "authored at +1 damage")
+	assert_eq(int((GameLoop2.current["statuses"] as Dictionary).get(&"strength", 0)), 1,
+		"authored at +1 Strength")
 
 	_give(&"sacred_bark")
 	assert_eq(GameState.loot_multiplier(), 2, "the Bark doubles loot")
 	GameLoop2.reset()
+	GameLoop2.choose_game(Data.all_goal_enemies()[0])
 	ScrollSystem.read_scroll(aggravate)
-	assert_eq(GameLoop2.enemy_damage_bonus, 2,
+	assert_eq(int((GameLoop2.current["statuses"] as Dictionary).get(&"strength", 0)), 2,
 		"and doubles the BAD scrolls too — that is what makes it a decision")
-	assert_eq(GameLoop2.enemy_damage_bonus_games, 2, "window included")
 
 func test_sacred_bark_does_not_widen_a_teleport() -> void:
 	# `spread` is how far a Teleportation scroll's landing may VARY. Doubling it

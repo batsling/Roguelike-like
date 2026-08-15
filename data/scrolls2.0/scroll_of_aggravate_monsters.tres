@@ -9,4 +9,4 @@ display_name = "Scroll of Aggravate Monsters"
 reference = "Rogue"
 preference = "Negative"
 file = ""
-effect = [{"op": "buff_enemies", "damage": 1, "games": 1}]
+effect = [{"op": "apply_status", "status": "strength", "value": 1, "target": "all"}]

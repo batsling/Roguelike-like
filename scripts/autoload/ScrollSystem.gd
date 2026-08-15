@@ -99,7 +99,7 @@ func read_scroll(scroll: ScrollData, ctx: Dictionary = {}) -> Dictionary:
 # `spread` is how far the landing can VARY, and doubling that is not twice the
 # scroll, it is a worse one. An op absent from this table resolves unscaled.
 const LOOT_SCALED_FIELDS := {
-	"buff_enemies": ["damage", "games"],
+	"apply_status": ["value"],
 	"forget": ["count"],
 	"spawn_enemy": ["count"],
 	"identify_scrolls": ["count"],
@@ -128,13 +128,13 @@ func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenera
 	var effect: Dictionary = _scaled(raw_effect)
 	var op := String(effect.get("op", ""))
 	match op:
-		"buff_enemies":
-			# Aggravate Monsters — enemies deal +damage for `games` games (§4.1).
-			var dmg: int = int(effect.get("damage", 1))
-			var games: int = int(effect.get("games", 1))
-			GameLoop2.aggravate(dmg, games)
-			out["logs"].append("Monsters are aggravated: +%d damage for %d game%s." % [
-				dmg, games, "" if games == 1 else "s"])
+		"apply_status":
+			# Aggravate Monsters — every body on the board gains Strength (§13.4),
+			# which is +1 to the damage each of its hits lands for, permanently.
+			# The scroll used to arm a run-wide bonus that expired after a game;
+			# a status rides the enemy and doesn't, so reading this one is a
+			# lasting mistake rather than a bad couple of minutes.
+			_apply_enemy_status(effect, out)
 		"forget":
 			# Amnesia — forget (unidentify) random known scrolls (§4.1).
 			_forget_scrolls(int(effect.get("count", 1)), rng, out)
@@ -160,6 +160,45 @@ func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenera
 			})
 		_:
 			push_warning("ScrollSystem: unknown effect op '%s'" % op)
+
+# --- apply_status (Scroll of Aggravate Monsters) ---------------------------
+
+# How an `apply_status` clause reads on a scroll's card and in the read modal.
+# Here rather than in either of those scripts because the two describe the same
+# scroll to the same player from different screens, and a status's own words
+# (StatusData.combat_line) are the only ones either of them should be quoting.
+func status_effect_text(effect: Dictionary) -> String:
+	var status: StatusData = Data.get_status(StringName(String(effect.get("status", ""))))
+	if status == null:
+		return ""
+	var stacks: int = maxi(1, int(effect.get("value", 1)))
+	var who: String = {
+		"current": "The enemy of the game you're on",
+		"random": "One random enemy",
+	}.get(String(effect.get("target", "all")).to_lower(), "Every enemy on the board")
+	var what: String = status.combat_line(stacks)
+	return "%s gains +%d %s%s." % [who, stacks, status.display_name,
+		" (%s)" % what if what != "" else ""]
+
+# Hand `value` stacks of a status to the bodies a `target` word names, through
+# GameLoop2's own targeting so a scroll can't reach anything an item couldn't.
+# A board with nothing on it says so rather than reporting a silent success:
+# reading Aggravate Monsters into an empty room is a wasted scroll, and the log
+# is the only place the player finds that out.
+func _apply_enemy_status(effect: Dictionary, out: Dictionary) -> void:
+	var status_id := StringName(String(effect.get("status", "")))
+	var stacks: int = maxi(1, int(effect.get("value", 1)))
+	var status: StatusData = Data.get_status(status_id)
+	if status == null:
+		push_warning("ScrollSystem: no status '%s' in the catalog" % status_id)
+		return
+	var landed: int = GameLoop2.apply_enemy_status(
+		status_id, stacks, String(effect.get("target", "all")))
+	if landed <= 0:
+		out["logs"].append("Nothing out there is listening.")
+		return
+	out["logs"].append("%d %s gain +%d %s." % [
+		landed, "enemy" if landed == 1 else "enemies", stacks, status.display_name])
 
 # --- forget (Scroll of Amnesia) --------------------------------------------
 func _forget_scrolls(count: int, rng: RandomNumberGenerator, out: Dictionary) -> void:

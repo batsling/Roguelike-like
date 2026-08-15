@@ -593,19 +593,32 @@ static func _ch_pack() -> Dictionary:
 			_b("Reading one identifies that type forever. So does a Scroll of "
 				+ "Identify. Amnesia can make you forget one again."),
 			_b("The good ones stun an enemy for a turn, or teleport you across the "
-				+ "map. The bad ones spawn an enemy, or buff every hit against you "
-				+ "for a game."),
+				+ "map. The bad ones spawn an enemy, or hand every enemy on the "
+				+ "board a permanent +1 Strength."),
 			_h("Statuses"),
-			_p("A status is not a stat modifier. It is a clause bolted onto a "
-				+ "GOAL, which is the only currency this game has. That is how an "
-				+ "item or an event can make the run harder or easier without "
-				+ "knowing anything about goals."),
+			_p("A status is first of all a clause bolted onto a GOAL, which is the "
+				+ "only currency this game has. That is how an item or an event can "
+				+ "make the run harder or easier without knowing anything about "
+				+ "goals. It also does something on the BOARD."),
 			_kv("A goal", "A standing objective of your own, offered every game and "
 				+ "paid every time you meet it."),
 			_kv("A clause", "ANDed onto goals and REQUIRED. On you, it tightens "
 				+ "every enemy's goal. On an enemy, just that one's."),
 			_kv("A bonus", "An optional extra objective, claimable for a reward and "
 				+ "free to ignore."),
+			_p("The four of them, and what they do in a fight:"),
+			_kv("Strength", "Every hit that enemy lands is worth 1 more per stack."),
+			_kv("Speed", "It closes one extra tile per stack, every turn — so it "
+				+ "reaches you sooner than the board looks like it should."),
+			_kv("Dexterity", "It gets a Shield per stack. Each one soaks a point of "
+				+ "damage and is spent doing it, so a shielded enemy takes an extra "
+				+ "goal per shield to put down."),
+			_kv("Marked", "Everything that lands on it is DOUBLED and goes straight "
+				+ "through Shields."),
+			_b("The buffs are felt by enemies only. Marked is a debuff, and a debuff "
+				+ "is felt by whoever is carrying it — Marked on YOU doubles every "
+				+ "hit you take and ignores the tries you were counting on to "
+				+ "absorb them."),
 			_h("Curse goals"),
 			_p("A curse goal is a row on your checklist you are trying NOT to "
 				+ "complete. Break it and the penalty is always the same one: a "

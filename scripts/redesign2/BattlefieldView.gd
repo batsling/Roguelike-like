@@ -1103,7 +1103,7 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# game — how many swings that is: "⚔3 ×2". The two numbers are one fact ("it
 	# hits you twice for 3"), so they read as one badge instead of the count
 	# sitting over the art.
-	var dmg_lbl := _corner_badge(_damage_badge_text(e, strikes), Color(1.0, 0.8, 0.35),
+	var dmg_lbl := _corner_badge(_damage_badge_text(entry, strikes), Color(1.0, 0.8, 0.35),
 		STAT_BADGE_FONT)
 	if strikes > 1:
 		dmg_lbl.add_theme_color_override("font_color", UITheme.DANGER.lerp(Color.WHITE, 0.45))
@@ -1125,6 +1125,14 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	stat_row.add_theme_constant_override("separation", 2)
 	stat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stat_row.add_child(hp_lbl)
+	# A Dexterity shield goes next to the Health it is standing in front of, and
+	# only when there is one to spend (§13.4). It is the number that decides
+	# whether meeting this body's goal kills it, so it belongs beside the ❤ rather
+	# than under the status pips — the pip says the body HAS Dexterity, this says
+	# how much of it is left.
+	var shield: int = GameLoop2.enemy_shield(entry)
+	if shield > 0:
+		stat_row.add_child(_corner_badge("◆%d" % shield, SHIELD_BLUE, STAT_BADGE_FONT))
 	var gap := Control.new()
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1165,12 +1173,16 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 # The ⚔ badge: damage per swing, with the multi-swing count appended when the
 # next game gives this body more than one. One swing needs no "x1" — that's the
 # normal case and printing it everywhere is noise.
-func _damage_badge_text(e: GoalEnemyData, strikes: int) -> String:
+func _damage_badge_text(entry: Dictionary, strikes: int) -> String:
+	# GameLoop2.enemy_damage, not the enemy's authored damage: a Strength stack is
+	# a real +1 on every swing (§13.4), and a badge quoting the base stat would be
+	# telling the player the board is safer than it is.
+	var dmg: int = GameLoop2.enemy_damage(entry)
 	# "×" and no space: on a 46px cell every character of this badge is width the
 	# health beside it doesn't get.
 	if strikes > 1:
-		return "⚔%d×%d" % [e.damage, strikes]
-	return "⚔%d" % e.damage
+		return "⚔%d×%d" % [dmg, strikes]
+	return "⚔%d" % dmg
 
 # What this enemy does on the next game you report, in a sentence: how many
 # swings it gets and for how much, or how many games of walking it still owes.
@@ -1187,7 +1199,7 @@ func _timing_tip(entry: Dictionary, e: GoalEnemyData) -> String:
 	if strikes > 0:
 		return "%s\n%s strikes %d time%s next game — %d damage total." % [
 			pace, e.display_name, strikes, "" if strikes == 1 else "s",
-			strikes * int(e.damage)]
+			strikes * GameLoop2.enemy_damage(entry)]
 	if away > 0:
 		return "%s\n%s is %d game%s of walking from its first strike." % [
 			pace, e.display_name, away, "" if away == 1 else "s"]
@@ -1357,7 +1369,8 @@ func _offgrid_token(entry: Dictionary, is_current: bool = false) -> Control:
 			var tag := _corner_badge("NOW PLAYING", UITheme.ACCENT, 9)
 			tag.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 2)
 			holder.add_child(tag)
-			var dmg := _corner_badge("⚔%d" % e.damage, Color(1.0, 0.8, 0.35))
+			var dmg := _corner_badge("⚔%d" % GameLoop2.enemy_damage(entry),
+				Color(1.0, 0.8, 0.35))
 			dmg.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
 			holder.add_child(dmg)
 	return cell

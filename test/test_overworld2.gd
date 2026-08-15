@@ -2074,16 +2074,19 @@ func test_the_start_picker_maps_each_start_without_naming_the_amulet() -> void:
 func test_the_sword_badge_carries_the_swing_count() -> void:
 	var e := GoalEnemyData.new()
 	e.damage = 3
-	assert_eq(_ui._board._damage_badge_text(e, 1), "⚔3",
+	# The badge is built from a board ENTRY rather than the enemy, because what it
+	# hits for is the enemy's damage plus whatever statuses are riding the body.
+	var entry := {"enemy": e, "statuses": {}}
+	assert_eq(_ui._board._damage_badge_text(entry, 1), "⚔3",
 		"one swing is the ordinary case and says nothing extra")
-	assert_eq(_ui._board._damage_badge_text(e, 0), "⚔3",
+	assert_eq(_ui._board._damage_badge_text(entry, 0), "⚔3",
 		"a body still walking in shows what it will hit for")
-	assert_eq(_ui._board._damage_badge_text(e, 2), "⚔3×2",
+	assert_eq(_ui._board._damage_badge_text(entry, 2), "⚔3×2",
 		"two swings are counted on the damage itself")
-	assert_eq(_ui._board._damage_badge_text(e, 3), "⚔3×3")
+	assert_eq(_ui._board._damage_badge_text(entry, 3), "⚔3×3")
 	# No space, and "×" not "x": on the 46px cells of a 7x7 board every character
 	# of this badge is width the ❤ beside it doesn't get (see _add_enemy_badges).
-	assert_false(_ui._board._damage_badge_text(e, 3).contains(" "),
+	assert_false(_ui._board._damage_badge_text(entry, 3).contains(" "),
 		"the multi-swing badge spends no width on a space")
 
 # Recursive: the ❤ / ⚔ pair lives inside a row now (see the overlap test below),
@@ -2136,7 +2139,7 @@ func test_nothing_prints_the_swing_count_over_the_body() -> void:
 			"no swing count sitting on top of the art: %s" % t)
 		if String(t).begins_with("⚔"):
 			assert_eq(String(t), _ui._board._damage_badge_text(
-				GameLoop2.stack[0]["enemy"], GameLoop2.attacks_next_game(GameLoop2.stack[0])),
+				GameLoop2.stack[0], GameLoop2.attacks_next_game(GameLoop2.stack[0])),
 				"the ⚔ badge is where the count went")
 
 func test_the_board_says_how_long_its_playback_runs() -> void:

@@ -71,7 +71,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── bosses2.0/        #   GoalEnemyData — the difficulty-gate bosses
 │   ├── characters2.0/    #   CharacterData — the playable roster
 │   ├── scrolls2.0/       #   ScrollData — identify-by-reading scrolls
-│   ├── statuses2.0/      #   StatusData — clauses bolted onto goals (§13)
+│   ├── statuses2.0/      #   StatusData — clauses bolted onto goals, plus the
+│   │                     #   combat side they move numbers with (§13, §13.4)
 │   ├── events2.0/        #   EventData2 — one fires after every game played
 │   ├── objects2.0/       #   ObjectData — the machines you stand in front of (§15)
 │   ├── curses2.0/        #   CurseData2 — the checklist curses events hand out
@@ -454,7 +455,7 @@ editing the sheet, then review the diff):
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 | `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
 | `_punch_off_robot_edit.py` | one-shot: Punch Off's "I Can Take Them" also spawns a robot (`spawn_enemy tag=robot 1`) |
-| `_xlsx_surgery.py` | shared helper: edit ONE sheet of `Roguelikes.xlsx` in place. An openpyxl round-trip drops the workbook's seven charts, so the sheet-editing one-shots (`_statuses_sheet_setup.py`, `_items2_statuses_setup.py`, `_events2_sheet_setup.py`, `_curses2_sheet_setup.py`) rewrite just that sheet's XML parts and copy every other zip entry through untouched. |
+| `_xlsx_surgery.py` | shared helper: edit ONE sheet of `Roguelikes.xlsx` in place. An openpyxl round-trip drops the workbook's seven charts, so the sheet-editing one-shots (`_statuses_sheet_setup.py`, `_statuses2_combat_setup.py`, `_items2_statuses_setup.py`, `_events2_sheet_setup.py`, `_curses2_sheet_setup.py`) rewrite just that sheet's XML parts and copy every other zip entry through untouched. |
 
 The `_*_setup.py` scripts are **bootstraps, not generators**: they lay a sheet's
 header row down and re-author the rows they hold in Python. Once you are editing
@@ -585,6 +586,7 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | Token | Does |
 |---|---|
 | `gain_chest small\|medium\|large\|huge N` | N chests. The size is **how many items it offers to pick from** — small = 1, medium = 2, large = 3, huge = 5. |
+| `gain_chest reward N` | The sheet's **`[chest reward]`** — N chest *points* spent on the size ladder instead of N chests of one size. Small 1, Medium 2, Large 3, Huge 4, then greedily Huge + a remainder: 3 = one Large, 6 = a Huge and a Medium, 8 = two Huges. Use this wherever the payout has to grow with something (a status's stack count); `gain_chest small {X}` grows into X screens each worth less than the last. |
 | `gain_hp N` / `gain_max_hp N` / `gain_empty_max_hp N` / `heal_full` | Health. `gain_max_hp` raises the cap **and heals by the same amount** — the container arrives full. `gain_empty_max_hp` is the half that doesn't heal, for the item that means an empty container (Hollow Heart). |
 | `lose_hp N` / `lose_max_hp N` | The same, pointed the other way — except `lose_max_hp` **costs no Health**: it takes the room, and Health only moves when it no longer fits. A `lose_hp` that empties Health ends the run — no separate kill token. |
 | `gain_gold N` / `lose_gold N` / `lose_gold all` | Gold. `all` empties the purse — the one amount settled when the choice is taken rather than when the `.tres` is written. |

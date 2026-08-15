@@ -112,7 +112,21 @@ func setup(entry: Dictionary, col: int, is_current: bool, position_note: String 
 	stat_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var hp: int = int(entry.get("health", e.health))
 	stat_col.add_child(_stat_row("❤", "Health", "%d goal%s to defeat" % [hp, "" if hp == 1 else "s"], Color(1.0, 0.5, 0.5)))
-	stat_col.add_child(_stat_row("⚔", "Damage", "%d per game, from the front" % e.damage, Color(1.0, 0.8, 0.35)))
+	# Damage as it stands, with the authored number in brackets when a status has
+	# moved it (§13.4). Both, because "⚔4" alone tells you what is coming and
+	# "⚔4 (2 base)" tells you WHY — and why is what decides whether bombing the
+	# body or clearing the Strength off it is the better move.
+	var dmg: int = GameLoop2.enemy_damage(entry)
+	var dmg_note: String = "%d per game, from the front" % dmg
+	if dmg != int(e.damage):
+		dmg_note += "  (%d before statuses)" % int(e.damage)
+	stat_col.add_child(_stat_row("⚔", "Damage", dmg_note, Color(1.0, 0.8, 0.35)))
+	# Shields only when it has some to spend: a body with none is the normal case
+	# and a "◆ Shield: 0" row on every card is a line of noise per enemy.
+	var shield: int = GameLoop2.enemy_shield(entry)
+	if shield > 0:
+		stat_col.add_child(_stat_row("◆", "Shield",
+			"absorbs the next %d damage" % shield, Color(0.62, 0.78, 0.95)))
 	stat_col.add_child(_stat_row("◎", "Position",
 		position_note if position_note != "" else _position_text(entry, col, is_current), accent))
 	if e.footprint_rows() > 1 or e.footprint_cols() > 1:

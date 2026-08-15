@@ -8,8 +8,15 @@ goals. The sheet's PROSE columns are carried through verbatim for tooltips; what
 the engine runs on is the two effect columns, one per side, authored
 independently so a status's two halves can do different things:
 
-  statuses2.0: Name | Type | Game | On Player | On Enemy | Stackable | Image
-                    | On Player Effect | On Enemy Effect
+  statuses2.0: Name | Type | Game | On Player | On Player Effect | On Enemy
+                    | On Enemy Effect | Combat | EnemyOnly
+                    | Enemy Combat Effect | Stackable | Image
+
+A status has a third side beside its two goal sides: a COMBAT side, which is the
+one place it touches a number on the board rather than a goal. `Combat` is the
+prose, `Enemy Combat Effect` the machine-readable counterpart, and `EnemyOnly`
+says whether it is felt on enemies alone (every buff) or on whoever is carrying
+it, the player included (every debuff). See parse_combat below.
 
 Side effect DSL — one clause per cell:
 
@@ -29,6 +36,7 @@ the HUD tint and the collection filter, nothing more.
 
 Reward token DSL (one clause per effect):
   gain_chest [small|medium|large|huge] <n>   -> {type: gain_chest, value, choices}
+  gain_chest reward <n>                      -> {type: chest_reward, value}
   gain_stat  <stat> <n>                      -> {type: gain_stat, stat, value}
   gain_hp     <n>                            -> {type: gain_hp, value}
   gain_max_hp <n>                            -> {type: gain_max_hp, value}
@@ -42,7 +50,8 @@ sheet can keep writing exponents the way a person does.
 
 An {expr} hole may carry a FORMAT after a colon — `{1+(1/2)^(X-2):hours}` renders
 as a duration ("1 hour 30 minutes") rather than a bare number, so a fractional
-window reads as a time instead of as "1.5".
+window reads as a time instead of as "1.5", and `{X:chests}` renders a count of
+chest POINTS as the chests it buys ("1 Huge Chest and 1 Small Chest").
 
 Art: Image -> res://images2.0/statuses/<Image>.png, referenced eagerly (three
 files, unlike the 818 game covers that forced GameData's lazy path).
@@ -212,8 +221,9 @@ def _operand_after(s: str, i: int):
 HOLE = re.compile(r"\{([^{}]*)\}")
 
 # Formats an {expr} hole may ask for after a colon. `hours` is what makes a
-# fractional window read as "1 hour 30 minutes" instead of "1.5".
-FORMATS = ("hours",)
+# fractional window read as "1 hour 30 minutes" instead of "1.5"; `chests` turns
+# a count of chest POINTS into the chests it buys (§8.2).
+FORMATS = ("hours", "chests")
 
 
 def _split_hole(body: str):
@@ -297,6 +307,95 @@ def parse_side(raw, where):
     }
 
 
+# --- the COMBAT side ------------------------------------------------------
+#
+# A status used to be goals and nothing else: it never touched a number on the
+# board. It touches four of them now, and the `Enemy Combat Effect` cell is where
+# each one is authored. One clause per number, semicolons between:
+#
+#     <field> +<amount>   an ADDITIVE bonus, scaling with the stack count
+#     <field> x<factor>   a flat MULTIPLIER, the same at every stack
+#     <flag>              a bare rule with no number behind it
+#
+# The additive amounts may be literals or {expr} holes over X and are stored as
+# EXPRESSIONS either way, evaluated at the live stack count by StatusData. The
+# multipliers are plain floats and deliberately do NOT scale: Marked doubles
+# damage at one stack and at four, because a doubling that compounds per stack
+# turns a 1-damage hit economy into a 16-damage one on the fourth application.
+
+# field -> whether it takes `+` (additive, per stack) or `x` (multiplier, flat).
+COMBAT_ADD_FIELDS = {
+    # What this thing's own hits land for. Strength on an enemy is the hit it
+    # makes on the player each turn it spends in the front column.
+    "damage_dealt",
+    # What hits AIMED AT this thing land for, before any multiplier.
+    "damage_taken",
+    # Shield points granted when the status lands. Spent absorbing damage and not
+    # refilled — the shield is what the status GAVE you, not what it is.
+    "shield",
+    # Extra columns closed per step. Speed 2 walks three columns a turn.
+    "tile_move",
+}
+COMBAT_MULT_FIELDS = {"damage_taken", "damage_dealt"}
+# Bare flags: a rule, not a number.
+COMBAT_FLAGS = {
+    # Damage aimed at this thing ignores shields outright — it does not spend
+    # them, it goes past them. Marked's second half.
+    "pierce_shields",
+}
+
+
+def parse_combat(raw, where):
+    """Parse one `Enemy Combat Effect` cell into the dict StatusData runs on.
+
+    {} for an empty cell: most statuses will never have a combat side, and a
+    blank cell has to read as "this one does nothing on the board" rather than as
+    an authoring mistake.
+    """
+    s = _clean(raw)
+    if not s:
+        return {}
+    out = {}
+    for clause in [c.strip() for c in s.split(";") if c.strip()]:
+        toks = clause.split()
+        field = toks[0].lower()
+        if len(toks) == 1:
+            if field not in COMBAT_FLAGS:
+                raise ValueError(
+                    "statuses2.0 %s: %r takes an amount, or is not a known combat "
+                    "flag (known flags: %s)"
+                    % (where, clause, ", ".join(sorted(COMBAT_FLAGS))))
+            out[field] = True
+            continue
+        if len(toks) != 2:
+            raise ValueError("statuses2.0 %s: cannot parse combat clause %r — "
+                             "expected `<field> +<n>`, `<field> x<n>` or a flag"
+                             % (where, clause))
+        amount = toks[1]
+        if amount.startswith("x"):
+            if field not in COMBAT_MULT_FIELDS:
+                raise ValueError("statuses2.0 %s: %r takes no xN multiplier "
+                                 "(known: %s)"
+                                 % (where, field, ", ".join(sorted(COMBAT_MULT_FIELDS))))
+            try:
+                out[field + "_mult"] = float(amount[1:])
+            except ValueError:
+                raise ValueError("statuses2.0 %s: %r is not a multiplier (%r)"
+                                 % (where, amount, clause))
+            continue
+        if not amount.startswith("+"):
+            raise ValueError("statuses2.0 %s: combat amount %r needs a leading + "
+                             "or x (%r)" % (where, amount, clause))
+        if field not in COMBAT_ADD_FIELDS:
+            raise ValueError("statuses2.0 %s: unknown combat field %r (known: %s)"
+                             % (where, field, ", ".join(sorted(COMBAT_ADD_FIELDS))))
+        kind, val = _amount(amount[1:])
+        # Literal or hole, it is stored as an expression string: one evaluator at
+        # runtime rather than two code paths that have to agree.
+        out[field] = str(val)
+    return out
+
+
 # --- the Reward half of a side clause -------------------------------------
 
 def parse_reward(raw):
@@ -327,6 +426,18 @@ def parse_reward_clause(clause):
     if verb == "gain_chest":
         size = rest[0].lower() if rest and not _is_amount(rest[0]) else ""
         amount = rest[1] if size else (rest[0] if rest else "1")
+        # `gain_chest reward <n>` is the sheet's [chest reward] (§8.2): <n> chest
+        # POINTS spent on the size ladder, not <n> chests of one size. It is a
+        # different effect with a different handler, so it forks here rather than
+        # becoming a fifth entry in CHEST_CHOICES.
+        if size == "reward":
+            eff = {"type": "chest_reward"}
+            put(eff, "value", amount)
+            # The words are the equation's, not this generator's: `:chests` hands
+            # the point count to Data.chest_reward_text at the live stack count,
+            # so "+1 Large Chest" and "+1 Huge Chest and 1 Small Chest" are the
+            # same authored string read at three stacks and at five.
+            return eff, "+%s" % _formatted_word(amount, "chests")
         eff = {"type": "gain_chest"}
         put(eff, "value", amount)
         if size:
@@ -641,6 +752,15 @@ def _amount_word(tok: str) -> str:
     return "{%s}" % to_godot_expr(m.group(1)) if m else tok.strip()
 
 
+def _formatted_word(tok: str, fmt: str) -> str:
+    """Like _amount_word, but the amount always lands as a `:fmt` hole — even a
+    literal one, since the FORMAT is what does the reading. A chest reward of 5
+    is not the word "5", it is "1 Huge Chest and 1 Small Chest", and only
+    StatusData.resolve knows how to say that."""
+    m = HOLE.fullmatch(tok.strip())
+    return "{%s:%s}" % (to_godot_expr(m.group(1)) if m else tok.strip(), fmt)
+
+
 def _plural(tok: str, one: str, many: str) -> str:
     """The noun for an amount, agreeing in number.
 
@@ -675,8 +795,15 @@ def status_tres(row) -> tuple:
         raise ValueError("statuses2.0 %s: Type must be Buff or Debuff, got %r" % (name, kind))
     on_player = parse_side(row.get("On Player Effect"), "%s / On Player Effect" % name)
     on_enemy = parse_side(row.get("On Enemy Effect"), "%s / On Enemy Effect" % name)
-    if not on_player and not on_enemy:
+    combat = parse_combat(row.get("Enemy Combat Effect"), "%s / Enemy Combat Effect" % name)
+    if not on_player and not on_enemy and not combat:
         raise ValueError("statuses2.0 %s: neither side does anything" % name)
+    # EnemyOnly gates the COMBAT side alone — the goal sides are already authored
+    # one per side and say for themselves who they land on. Blank reads as Yes,
+    # which is the conservative half: a status nobody thought about does not
+    # start taxing the player's own Health.
+    enemy_only = (_clean(row.get("EnemyOnly")) or "Yes").strip().lower() \
+        not in ("no", "false", "0")
     file = _clean(row.get("Image"))
     img = _image_path(file)
 
@@ -699,8 +826,11 @@ def status_tres(row) -> tuple:
     lines.append('on_player_text = "%s"' % gd_str(_clean(row.get("On Player"))))
     lines.append('on_enemy_text = "%s"' % gd_str(_clean(row.get("On Enemy"))))
     lines.append('stackable = "%s"' % gd_str(_clean(row.get("Stackable")) or "Intensity"))
+    lines.append('combat_text = "%s"' % gd_str(_clean(row.get("Combat"))))
+    lines.append("enemy_only = %s" % gd_value(enemy_only))
     lines.append("on_player = %s" % gd_value(on_player))
     lines.append("on_enemy = %s" % gd_value(on_enemy))
+    lines.append("combat = %s" % gd_value(combat))
     lines.append('file = "%s"' % gd_str(file))
     if img:
         lines.append('image = ExtResource("2_img")')
@@ -723,11 +853,14 @@ def main():
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     sheet = wb["statuses2.0"]
     headers = [str(c.value).strip() if c.value is not None else "" for c in sheet[1]]
-    for needed in ("On Player Effect", "On Enemy Effect"):
+    for needed, setup in (("On Player Effect", "_statuses_sheet_setup.py"),
+                          ("On Enemy Effect", "_statuses_sheet_setup.py"),
+                          ("Combat", "_statuses2_combat_setup.py"),
+                          ("EnemyOnly", "_statuses2_combat_setup.py"),
+                          ("Enemy Combat Effect", "_statuses2_combat_setup.py")):
         if needed not in headers:
             raise SystemExit(
-                "statuses2.0 has no %r column — run tools/_statuses_sheet_setup.py first."
-                % needed)
+                "statuses2.0 has no %r column — run tools/%s first." % (needed, setup))
 
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
