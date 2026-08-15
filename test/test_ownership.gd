@@ -253,3 +253,35 @@ func test_the_list_survives_a_save_and_load() -> void:
 	assert_eq(Ownership.source, Ownership.Source.MANUAL, "and the source came back")
 	assert_eq(Ownership.steam_username, "batsling")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Ownership.config_path()))
+
+# --- what Steam says when it says no ---------------------------------------
+#
+# The live request is the one part of this that no test can exercise, and the
+# first real sync came back "Steam listed no games" — a message that describes
+# our own parse result rather than Steam's answer. Steam explains itself in an
+# <error> element; repeating it beats guessing.
+
+func test_steams_own_error_is_read_out_of_the_reply() -> void:
+	assert_eq(Ownership.steam_error_in(
+		"<response><error>This profile is private.</error></response>"),
+		"This profile is private.")
+	assert_eq(Ownership.steam_error_in(
+		"<response><error>The specified profile could not be found.</error></response>"),
+		"The specified profile could not be found.")
+	assert_eq(Ownership.steam_error_in(SAMPLE_XML % [440, 620]), "",
+		"a good reply has no error to report")
+
+func test_a_cdata_wrapped_error_is_still_read() -> void:
+	# Steam wraps some fields in CDATA, and the words are what matter either way.
+	assert_eq(Ownership.steam_error_in(
+		"<response><error><![CDATA[This profile is private.]]></error></response>"),
+		"This profile is private.")
+
+func test_markup_inside_an_error_is_stripped() -> void:
+	assert_eq(Ownership.steam_error_in(
+		"<error>Profile <b>not</b> found.</error>"), "Profile not found.")
+
+func test_the_privacy_hint_names_the_setting_to_change() -> void:
+	# "Set your profile to public" is the wrong instruction — the profile can be
+	# public while the games list is not. It is the Game details setting.
+	assert_true(Ownership.PRIVACY_HINT.contains("Game details"))

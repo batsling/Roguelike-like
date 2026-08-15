@@ -422,7 +422,7 @@ func _build_ownership_section(vbox: VBoxContainer, on_change: Callable) -> void:
 
 	var status := Label.new()
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status.custom_minimum_size = Vector2(0, 46)
+	status.custom_minimum_size = Vector2(0, 76)
 	status.add_theme_font_size_override("font_size", 13)
 	status.text = Ownership.last_sync_text()
 	status.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
@@ -486,6 +486,11 @@ func _build_ownership_section(vbox: VBoxContainer, on_change: Callable) -> void:
 		if not report.get("ok", false):
 			status.add_theme_color_override("font_color", Color(0.95, 0.6, 0.55))
 			status.text = str(report.get("error", "Sync failed."))
+			# Steam's actual reply is saved on every failure, and where it landed is
+			# the useful next step when the message above isn't enough.
+			var dump: String = str(report.get("dump", ""))
+			if dump != "":
+				status.text += "\n(Steam's reply saved to %s)" % dump
 			return
 		status.add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))
 		# The catalog can only ever confirm the games it has a Steam link for, so

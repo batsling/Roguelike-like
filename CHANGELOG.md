@@ -11,6 +11,43 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The same two games stopped opening every run, and the menu lost its clutter.**
+
+  **Starting games repeated because they were never randomised.** The Amulet is
+  drawn at random from every candidate within `AMULET_SCORE_SLACK` of the best —
+  but the START panel was a strict argmax: `_strict_starts_for` kept the single
+  best-branching game per genre per distance, ties broken on the id, so for any
+  given Amulet the two cards were fully determined. The well-connected games are
+  the best start for MANY different Amulets, so a handful of them opened nearly
+  every run. Measured over 400 runs of the full catalog: **63 distinct starts,
+  the top ten taking 55.6% of the cards and one of them 15.6% on its own**, while
+  the Amulet draw over the same runs produced 281 distinct goals.
+
+  Starts now draw the way Amulets do — every candidate within `START_SCORE_SLACK`
+  (3) of its cell's best advances to a random pick. The same 400 runs now give
+  **150 distinct starts with the top ten at 32.4%**. The panel's SHAPE is
+  unchanged: which genre and which distance each card offers is still ranked on
+  the cell's best score, so only which game wears the card moves. A slack of 5
+  measures identically, so the pools are already saturated at 3.
+
+  **The menu.** The "A games-first roguelike" subtitle is gone. **Exit Game**
+  moved out of the button column into the bottom-right corner — it is the one
+  entry that isn't a way into the game, and it was sitting directly under
+  Settings. The bottom-left How to Play contents panel is gone too; the button
+  above Start Run was always the same door, and now it is the only one.
+
+  **When a Steam sync fails it now says what Steam said.** The first real sync
+  came back "Steam listed no games for <name>", which describes our own parse
+  result rather than Steam's answer — and Steam does answer, in an `<error>`
+  element it returns with HTTP 200 ("This profile is private.", "The specified
+  profile could not be found."). That text is now read out and shown verbatim. A
+  reply that isn't a game list at all is recognised separately, since a mistyped
+  vanity name lands on a web page rather than an error document, and it says
+  where to find the right name. Steam's raw reply is now saved on **every**
+  failure rather than only in dev mode — asking a player to turn on dev mode and
+  press another button is asking them to reproduce the failure — and the panel
+  reports the path.
+
 - **Profiles: more than one player on one install — and a tick on every cover.**
 
   **Save profiles**, the way Isaac and Balatro have them. The main menu grows a

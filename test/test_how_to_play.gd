@@ -170,34 +170,6 @@ func test_the_pager_stops_at_both_ends() -> void:
 	assert_true(screen._next_btn.disabled, "nothing after the last one")
 
 
-# --- the menu's corner panel ------------------------------------------------
-
-func test_the_menu_lists_every_chapter_in_the_corner() -> void:
-	var menu = MENU.instantiate()
-	add_child_autofree(menu)
-	await wait_frames(2)
-	var corner: Control = menu.get_node_or_null("HowToPlayCorner")
-	assert_not_null(corner, "the contents panel is on the menu")
-	var labels: Array = []
-	for btn in _buttons_in(corner):
-		labels.append(String(btn.text))
-	for ch in HowToPlayText.chapters():
-		var wanted: String = "%s  %s" % [ch["icon"], ch["title"]]
-		assert_true(labels.has(wanted), "the corner lists %s" % ch["title"])
-
-
-func test_the_corner_panel_never_covers_the_button_column() -> void:
-	# Both are anchored rather than laid out together, so nothing but a
-	# measurement keeps them apart.
-	var menu = MENU.instantiate()
-	add_child_autofree(menu)
-	await wait_frames(4)
-	var corner: Control = menu.get_node("HowToPlayCorner")
-	var centre: Control = menu.get_node("Center/Panel")
-	assert_false(corner.get_global_rect().intersects(centre.get_global_rect()),
-		"the manual's contents and the menu's buttons do not overlap")
-
-
 func _buttons_in(node: Node) -> Array:
 	var out: Array = []
 	if node is Button:
@@ -207,34 +179,23 @@ func _buttons_in(node: Node) -> Array:
 	return out
 
 
-# --- the corner is a button, and it belongs to the menu ---------------------
+# --- the menu's one way into the manual ------------------------------------
+#
+# The bottom-left corner panel (a contents list with every chapter) is gone: the
+# button above Start Run is the only entry point now, so the menu has one door
+# into the manual rather than two.
 
-func test_the_contents_start_closed_behind_their_button() -> void:
+func test_the_menu_opens_the_manual_from_its_button() -> void:
 	var menu = MENU.instantiate()
 	add_child_autofree(menu)
 	await wait_frames(2)
-	assert_not_null(menu._htp_toggle, "there is a button in the corner")
-	assert_false(menu._htp_contents.visible,
-		"and fourteen chapter titles are not standing open beside the Start button")
-	menu._toggle_how_to_play_contents()
-	assert_true(menu._htp_contents.visible, "pressing it opens the contents")
-	menu._toggle_how_to_play_contents()
-	assert_false(menu._htp_contents.visible, "and pressing it again puts them away")
+	assert_null(menu.get_node_or_null("HowToPlayCorner"),
+		"the corner panel is gone from the menu")
+	menu._on_how_to_play()
+	await wait_frames(2)
+	var opened: HowToPlayScreen = null
+	for c in menu._modal_layer.get_children():
+		if c is HowToPlayScreen:
+			opened = c
+	assert_not_null(opened, "the button still opens the manual")
 
-func test_the_corner_goes_away_while_something_is_open_over_the_menu() -> void:
-	var menu = MENU.instantiate()
-	add_child_autofree(menu)
-	await wait_frames(2)
-	assert_true(menu._htp_corner.visible, "on the menu itself, the corner is there")
-	menu._toggle_how_to_play_contents()
-	# Anything the menu opens goes into the modal layer. The corner is added after
-	# it, so it DRAWS OVER the top of whatever is opened — the Collection, the
-	# character picker — and hiding is what keeps it off someone else's screen.
-	var over := Control.new()
-	menu._modal_layer.add_child(over)
-	await wait_frames(2)
-	assert_false(menu._htp_corner.visible, "with a screen open over it, it is not")
-	assert_false(menu._htp_contents.visible, "and it is closed for when it comes back")
-	over.queue_free()
-	await wait_frames(2)
-	assert_true(menu._htp_corner.visible, "closing that screen brings the corner back")

@@ -167,6 +167,11 @@ func sync_from_steam(username: String) -> Dictionary:
 	_syncing = true
 	var result: Dictionary = await _fetch_and_apply(name)
 	_syncing = false
+	# A failed sync is exactly when the reply is worth having, and asking a player
+	# to turn on dev mode and press another button before it can be looked at is
+	# asking them to reproduce it. Write it either way.
+	if not result.get("ok", false) and has_last_reply():
+		result["dump"] = dump_last_reply()
 	if result.get("ok", false):
 		steam_username = name
 		last_sync_unix = int(Time.get_unix_time_from_system())
@@ -203,11 +208,21 @@ func _fetch_and_apply(name: String) -> Dictionary:
 	var xml: String = _last_reply
 	if xml.strip_edges() == "":
 		return _sync_error("Steam sent an empty reply — try again in a minute.")
-	if is_private_profile(xml):
-		return _sync_error("That profile's game details are private. Set them to Public in Steam's privacy settings and sync again.")
+	# Steam answers most problems with HTTP 200 and an <error> element — a private
+	# profile, a name nobody has, an age gate. Its own words are better than any
+	# guess we could make from the outside, so they are what the player is shown.
+	var reported: String = steam_error_in(xml)
+	if reported != "":
+		return _sync_error("Steam says: %s%s" % [reported, PRIVACY_HINT
+			if reported.to_lower().contains("private") else ""])
+	if not xml.contains("<gamesList"):
+		# Not the XML at all — Steam served a web page. This is what a mistyped
+		# vanity name usually looks like, since /id/<something-that-is-not-a-name>
+		# lands on a page rather than an error document.
+		return _sync_error("That didn't come back as a game list. Check the name is the one in your profile URL (steamcommunity.com/id/<name>) — if your profile has no custom URL, paste the whole URL or your 17-digit SteamID64 instead.")
 	var appids: PackedInt64Array = parse_appids(xml)
 	if appids.is_empty():
-		return _sync_error("Steam listed no games for \"%s\". If the profile is right, its game details may be private." % name)
+		return _sync_error("Steam returned an empty game list for \"%s\".%s" % [name, PRIVACY_HINT])
 	var report: Dictionary = apply_appids(appids)
 	report["ok"] = true
 	report["error"] = ""
@@ -229,11 +244,30 @@ static func profile_url(username: String) -> String:
 static func is_steam_id64(name: String) -> bool:
 	return name.length() == 17 and name.is_valid_int()
 
+# What to add whenever the likely cause is privacy, which is the single most
+# common reason a sync comes back empty.
+const PRIVACY_HINT := " Steam only shares a games list when the profile's \"Game details\" privacy is set to Public — check that, then sync again."
+
 # Steam answers a private profile with a 200 and an <error> element rather than
 # a status code, so the body is what tells us.
 static func is_private_profile(xml: String) -> bool:
 	var lower: String = xml.to_lower()
 	return lower.contains("<error>") and lower.contains("private")
+
+# The text inside Steam's own <error> element, or "" when there isn't one.
+# Steam explains itself here — "This profile is private.", "The specified
+# profile could not be found." — and repeating it verbatim beats guessing.
+static func steam_error_in(xml: String) -> String:
+	var re := RegEx.new()
+	re.compile("(?is)<error>\\s*(?:<!\\[CDATA\\[)?(.*?)(?:\\]\\]>)?\\s*</error>")
+	var m: RegExMatch = re.search(xml)
+	if m == null:
+		return ""
+	var text: String = m.get_string(1).strip_edges()
+	# Steam has been known to wrap the text in markup; the words are what matter.
+	var tags := RegEx.new()
+	tags.compile("<[^>]*>")
+	return tags.sub(text, "", true).strip_edges()
 
 # Every <appID> in the games list. Regex rather than XMLParser because that is
 # the whole of the shape we need and it survives Steam wrapping the values in
