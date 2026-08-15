@@ -41,23 +41,25 @@ For how the project is laid out and how its systems fit together, see
   keys are lifted out of the old `settings.cfg` — once, at migration, so profiles
   made later still start at the defaults.
 
-  **"Clear All Data" is gone from the main menu**, replaced by a **Wipe** button
-  on each row of the profile list. The old button sat beside How to Play,
-  promised more than it did — only saves, never stats or rankings — and once
-  profiles existed it could have meant any of three things. Wiping empties one
-  profile (runs, stats, tier list, owned games, run settings) and keeps it, so
-  unlike deleting it is offered on the profile you are playing: "start over as
-  me" is the likeliest reason to want it. It wears the bin (🗑); **delete** wears
-  ✖ rather than a second bin, since the two sit side by side and mean different
-  unrecoverable things.
+  **"Clear All Data" is gone from the main menu**, and what replaced it is split
+  by what it is *about*. The old button sat beside How to Play and promised more
+  than it did — only saves, never stats or rankings — and once profiles existed
+  it could have meant any of three things.
 
-  Both ask first, in a confirmation built as an ordinary in-game panel. Godot's
-  `ConfirmationDialog` is a `Window`: it draws its own background from the
-  DEFAULT theme regardless of the project's, so on this game's dark screen it
-  arrived looking like a system error box. The replacement names the profile,
-  spells out what is deleted, says it cannot be undone, and puts the destructive
-  button in red beside a plain Cancel. Escape backs out of the question rather
-  than out of the picker under it.
+  - **Delete a profile** is on the **profile screen** (🗑), because it is a
+    choice about which players exist. Never offered for the profile you are
+    playing: you would be deleting the game out from under yourself.
+  - **Wipe this profile** is in **Settings**, because it is about the player you
+    already are — "start over as me". It empties the active profile (runs, stats,
+    tier list, owned games, run settings) and keeps it. Disabled while a run is
+    in progress, since a wipe deletes the save that run is running on.
+
+  Both ask first, through a shared `ConfirmPanel`. Godot's `ConfirmationDialog`
+  is a `Window`: it draws its own background from the DEFAULT theme regardless of
+  the project's — setting `theme` on it does not help — so on this game's dark
+  screen it arrived looking like a system error box. The replacement names the
+  profile, spells out what is deleted, says it cannot be undone, and puts the
+  destructive button in red beside a plain Cancel. Escape is a No.
 
   **The owned tick moved onto the cover art.** Every cell in the Collection's
   games grid wears a mark at the top-left of its image: a green ✔ for a game you

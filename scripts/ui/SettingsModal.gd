@@ -314,6 +314,9 @@ func _build_ui() -> void:
 	dev_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(dev_hint)
 
+	vbox.add_child(HSeparator.new())
+	_build_wipe_section(vbox)
+
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(spacer)
@@ -325,6 +328,54 @@ func _build_ui() -> void:
 	close_btn.pressed.connect(queue_free)
 	vbox.add_child(close_btn)
 
+
+# Starting over as yourself: empty the profile you are playing and keep it —
+# its runs, lifetime stats, tier list, owned-game list and run settings all go.
+#
+# It lives here rather than on the profile screen because it is about the player
+# currently playing, not about picking between players. Deleting a whole profile
+# is the profile screen's job, and is never offered for the active one.
+func _build_wipe_section(vbox: VBoxContainer) -> void:
+	var heading := Label.new()
+	heading.text = "This profile"
+	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	vbox.add_child(heading)
+
+	var hint := Label.new()
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(0, 50)
+	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	hint.text = "Starting over as %s: erases this profile's runs, stats, tier list, owned games and run settings. The profile itself stays, and no other profile is touched." % Profiles.active_name()
+	vbox.add_child(hint)
+
+	var wipe := Button.new()
+	wipe.name = "WipeBtn"
+	wipe.text = "🗑  Wipe this profile"
+	wipe.custom_minimum_size = Vector2(0, 36)
+	wipe.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	wipe.add_theme_color_override("font_color", Color(1, 0.72, 0.68))
+	vbox.add_child(wipe)
+
+	# Settings is reachable from the main menu today, but a run is exactly what a
+	# wipe would pull the floor out from under — so the button is only live when
+	# there is no run in progress, whoever opens this screen later.
+	var in_run: bool = GameState.phase != GameState.Phase.MENU
+	wipe.disabled = in_run
+	if in_run:
+		wipe.tooltip_text = "Finish or leave your run first — wiping deletes the save it is running on."
+		return
+
+	wipe.pressed.connect(func() -> void:
+		ConfirmPanel.ask(self, "Wipe profile",
+			"Erase everything saved under \"%s\"?\n\nIts runs, lifetime stats, tier list, owned-game list and run settings are all deleted. The profile itself stays. This cannot be undone." % Profiles.active_name(),
+			"Wipe",
+			func() -> void:
+				var who: String = Profiles.active_name()
+				if Profiles.wipe(Profiles.active_id):
+					hint.text = "\"%s\" is empty again." % who
+					hint.add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))))
 
 # Where the "Owned" answer comes from: the shipped spreadsheet column, or a list
 # this player builds — seeded from a public Steam profile and edited game by game

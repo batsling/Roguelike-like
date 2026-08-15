@@ -299,23 +299,34 @@ func _picker() -> ProfilePicker:
 # The open confirmation panel, or null. It is an ordinary Control in the picker
 # (not a ConfirmationDialog — a Window draws its own background from the default
 # theme and lands on a dark screen looking like a system error box).
-func _confirm_of(picker: ProfilePicker) -> Control:
-	return picker.get_node_or_null("Confirm")
+# Both the profile screen and Settings raise the same ConfirmPanel, so this takes
+# whatever screen raised it rather than one of them.
+func _confirm_of(screen: Node) -> Control:
+	return screen.get_node_or_null("Confirm")
 
 func _press(node: Node, button_name: String) -> void:
 	var btn: Button = node.find_child(button_name, true, false)
 	assert_not_null(btn, "the confirmation offers %s" % button_name)
 	btn.emit_signal("pressed")
 
-func test_wiping_asks_first_and_does_nothing_until_told() -> void:
+func _settings() -> SettingsModal:
+	var m := SettingsModal.new()
+	add_child_autofree(m)
+	return m
+
+func test_settings_wipes_the_profile_being_played_and_asks_first() -> void:
 	var id: String = _make("Ask me")
 	Profiles.switch_to(id)
 	var game: GameData = Data.all_games()[0]
 	GameStats.record_beaten(game.id)
 
-	var picker := _picker()
-	picker._confirm_wipe(id)
-	var confirm: Control = _confirm_of(picker)
+	var modal := _settings()
+	var wipe: Button = modal.find_child("WipeBtn", true, false)
+	assert_not_null(wipe, "Settings offers the wipe")
+	assert_false(wipe.disabled, "and it is live at the menu")
+	wipe.emit_signal("pressed")
+
+	var confirm: Control = _confirm_of(modal)
 	assert_not_null(confirm, "a confirmation is raised")
 	assert_true(_text_under(confirm).contains("Ask me"), "naming the profile at stake")
 	assert_true(_text_under(confirm).contains("cannot be undone"),
@@ -331,10 +342,33 @@ func test_cancelling_a_wipe_leaves_everything_where_it_was() -> void:
 	var game: GameData = Data.all_games()[0]
 	GameStats.record_beaten(game.id)
 
-	var picker := _picker()
-	picker._confirm_wipe(id)
-	_press(_confirm_of(picker), "CancelBtn")
+	var modal := _settings()
+	(modal.find_child("WipeBtn", true, false) as Button).emit_signal("pressed")
+	_press(_confirm_of(modal), "CancelBtn")
 	assert_eq(GameStats.beaten_count(game.id), 1, "the run record survived")
+
+func test_the_wipe_is_refused_while_a_run_is_in_progress() -> void:
+	# A wipe deletes the save the run is running on, so it is not something to
+	# offer from a screen that might one day be opened mid-run.
+	var was: int = GameState.phase
+	GameState.phase = GameState.Phase.OVERWORLD
+	var modal := _settings()
+	var wipe: Button = modal.find_child("WipeBtn", true, false)
+	assert_not_null(wipe)
+	assert_true(wipe.disabled, "not while a run is live")
+	assert_true(str(wipe.tooltip_text).contains("run"), "and it says why")
+	GameState.phase = was
+
+func test_the_profile_screen_does_not_offer_a_wipe() -> void:
+	# It moved to Settings: the profile screen is for choosing between players,
+	# and emptying the one you are is a thing about the player you already are.
+	var other: String = _make("Row under test")
+	var picker := _picker()
+	for row in picker._list.get_children():
+		for c in row.get_child(0).get_children():
+			if c is Button:
+				assert_false(str(c.tooltip_text).begins_with("Wipe"),
+					"no wipe button on the profile rows")
 
 func test_deleting_asks_first_and_does_nothing_until_told() -> void:
 	var id: String = _make("Doomed but asked")
@@ -362,7 +396,7 @@ func test_only_one_confirmation_can_be_open_at_a_time() -> void:
 	var a: String = _make("First ask")
 	var b: String = _make("Second ask")
 	var picker := _picker()
-	picker._confirm_wipe(a)
+	picker._confirm_delete(a)
 	picker._confirm_delete(b)
 	var open_panels: int = 0
 	for c in picker.get_children():
@@ -376,23 +410,16 @@ func test_only_one_confirmation_can_be_open_at_a_time() -> void:
 	assert_false(live.is_queued_for_deletion(), "the panel found by name is the live one")
 	assert_true(_text_under(live).contains("Second ask"), "and it is the second question")
 
-func test_wipe_and_delete_do_not_wear_the_same_icon() -> void:
-	# One empties the profile, the other removes it. Both are unrecoverable and
-	# they sit side by side, so they must not look like the same button.
+func test_delete_wears_the_bin_on_the_profile_screen() -> void:
 	var other: String = _make("Row under test")
 	var picker := _picker()
-	var wipes: Array = []
 	var dels: Array = []
 	for row in picker._list.get_children():
 		for c in row.get_child(0).get_children():
-			if c is Button and str(c.tooltip_text).begins_with("Wipe"):
-				wipes.append(c.text)
-			elif c is Button and str(c.tooltip_text).begins_with("Delete"):
+			if c is Button and str(c.tooltip_text).begins_with("Delete"):
 				dels.append(c.text)
-	assert_gt(wipes.size(), 0, "there are wipe buttons")
-	assert_gt(dels.size(), 0, "and delete buttons")
-	assert_eq(wipes[0], "🗑", "wipe is the bin")
-	assert_ne(dels[0], wipes[0], "delete is not a second bin")
+	assert_gt(dels.size(), 0, "the inactive rows offer a delete")
+	assert_eq(dels[0], "🗑", "and it is the bin")
 
 # Every Label under `node`, joined — the confirmation's words, whoever laid them
 # out.
