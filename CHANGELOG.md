@@ -47,7 +47,17 @@ For how the project is laid out and how its systems fit together, see
   profiles existed it could have meant any of three things. Wiping empties one
   profile (runs, stats, tier list, owned games, run settings) and keeps it, so
   unlike deleting it is offered on the profile you are playing: "start over as
-  me" is the likeliest reason to want it.
+  me" is the likeliest reason to want it. It wears the bin (🗑); **delete** wears
+  ✖ rather than a second bin, since the two sit side by side and mean different
+  unrecoverable things.
+
+  Both ask first, in a confirmation built as an ordinary in-game panel. Godot's
+  `ConfirmationDialog` is a `Window`: it draws its own background from the
+  DEFAULT theme regardless of the project's, so on this game's dark screen it
+  arrived looking like a system error box. The replacement names the profile,
+  spells out what is deleted, says it cannot be undone, and puts the destructive
+  button in red beside a plain Cancel. Escape backs out of the question rather
+  than out of the picker under it.
 
   **The owned tick moved onto the cover art.** Every cell in the Collection's
   games grid wears a mark at the top-left of its image: a green ✔ for a game you

@@ -14,6 +14,9 @@ const ROW_H := 40
 var _list: VBoxContainer = null
 var _new_name: LineEdit = null
 var _status: Label = null
+# The open "are you sure?" panel, or null. Held so Escape can back out of it
+# rather than out of the picker, and so a second one can never stack.
+var _confirm_layer: Control = null
 
 static func open(parent: Node) -> ProfilePicker:
 	var p := ProfilePicker.new()
@@ -33,6 +36,11 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		accept_event()
+		# Escape backs out of the confirmation first — closing the whole picker
+		# under an open "are you sure?" would read as having answered it.
+		if _confirm_layer != null and is_instance_valid(_confirm_layer):
+			_confirm_layer.queue_free()
+			return
 		queue_free()
 
 func _build() -> void:
@@ -166,9 +174,9 @@ func _profile_row(p: Dictionary) -> Control:
 	# over as me" is the likeliest reason to want it, and unlike deleting there is
 	# always somewhere to stand afterwards.
 	var wipe := Button.new()
-	wipe.text = "Wipe"
-	wipe.tooltip_text = "Erase everything saved under %s, keeping the profile." % str(p["name"])
-	wipe.custom_minimum_size = Vector2(64, 0)
+	wipe.text = "🗑"
+	wipe.tooltip_text = "Wipe — erase everything saved under %s. The profile stays." % str(p["name"])
+	wipe.custom_minimum_size = Vector2(44, 0)
 	wipe.pressed.connect(func(): _confirm_wipe(id))
 
 	if is_active:
@@ -189,52 +197,140 @@ func _profile_row(p: Dictionary) -> Control:
 		row.add_child(play)
 		row.add_child(wipe)
 
+		# NOT a second trash can. Wipe empties the profile and delete removes it,
+		# and two bins side by side would say the same thing twice for two
+		# different, unrecoverable outcomes.
 		var del := Button.new()
-		del.text = "🗑"
-		del.tooltip_text = "Delete %s and everything saved under it." % str(p["name"])
-		del.custom_minimum_size = Vector2(40, 0)
+		del.text = "✖"
+		del.tooltip_text = "Delete %s — the profile itself, and everything under it." % str(p["name"])
+		del.custom_minimum_size = Vector2(44, 0)
 		del.pressed.connect(func(): _confirm_delete(id))
 		row.add_child(del)
 	return panel
 
-# Deleting takes every run, stat and ranking under that profile with it, so it
-# asks first. The active profile has no delete button at all — you would be
-# deleting the game out from under yourself — which is also why this is only
-# reachable for the others.
+# Deleting takes every run, stat and ranking under that profile with it, and
+# wiping empties it. Both are unrecoverable, so both ask first — and the asking
+# is a panel built here rather than a ConfirmationDialog, because that one is a
+# Window: it draws its own background from the DEFAULT theme, ignores this
+# project's, and lands on a dark screen looking like a system error box.
+#
+# The active profile has no delete button at all — you would be deleting the game
+# out from under yourself — so only the others can reach _confirm_delete.
 func _confirm_delete(id: String) -> void:
-	var dialog := ConfirmationDialog.new()
-	dialog.title = "Delete profile"
-	dialog.dialog_text = "Delete \"%s\"?\n\nEvery run, stat, ranking and owned-game list saved under it goes with it. This cannot be undone." % Profiles.name_of(id)
-	dialog.ok_button_text = "Delete"
-	add_child(dialog)
-	dialog.confirmed.connect(func() -> void:
-		var gone: String = Profiles.name_of(id)
-		if Profiles.delete(id):
-			_say("Deleted \"%s\"." % gone)
-			refresh()
-		else:
-			_say("That profile can't be deleted."))
-	dialog.canceled.connect(dialog.queue_free)
-	dialog.popup_centered()
+	_confirm("Delete profile",
+		"Delete \"%s\"?\n\nEvery run, stat, ranking and owned-game list saved under it goes with it. This cannot be undone." % Profiles.name_of(id),
+		"Delete",
+		func() -> void:
+			var gone: String = Profiles.name_of(id)
+			if Profiles.delete(id):
+				_say("Deleted \"%s\"." % gone)
+				refresh()
+			else:
+				_say("That profile can't be deleted."))
 
 # Wiping keeps the profile and empties it. This is where the main menu's old
 # "Clear All Data" went: that button sat next to How to Play, promised more than
 # it did (only saves, never stats or rankings) and, once profiles existed, could
 # only ever have meant one of several things.
 func _confirm_wipe(id: String) -> void:
-	var dialog := ConfirmationDialog.new()
-	dialog.title = "Wipe profile"
-	dialog.dialog_text = "Erase everything saved under \"%s\"?\n\nIts runs, lifetime stats, tier list, owned-game list and run settings are all deleted. The profile itself stays. This cannot be undone." % Profiles.name_of(id)
-	dialog.ok_button_text = "Wipe"
-	add_child(dialog)
-	dialog.confirmed.connect(func() -> void:
-		if Profiles.wipe(id):
-			_say("\"%s\" is empty again." % Profiles.name_of(id))
-			refresh()
-		else:
-			_say("That profile can't be wiped."))
-	dialog.canceled.connect(dialog.queue_free)
-	dialog.popup_centered()
+	_confirm("Wipe profile",
+		"Erase everything saved under \"%s\"?\n\nIts runs, lifetime stats, tier list, owned-game list and run settings are all deleted. The profile itself stays. This cannot be undone." % Profiles.name_of(id),
+		"Wipe",
+		func() -> void:
+			if Profiles.wipe(id):
+				_say("\"%s\" is empty again." % Profiles.name_of(id))
+				refresh()
+			else:
+				_say("That profile can't be wiped."))
+
+# The confirmation itself: a dimmed layer over the picker with the question, the
+# consequences spelled out, and two ways out. Cancel is the wide, plain button
+# and the destructive one is coloured — the shape of the pair is doing as much
+# work as the words, since this is the last thing between a click and losing a
+# profile's history.
+func _confirm(title: String, body: String, ok_text: String, on_ok: Callable) -> Control:
+	if _confirm_layer != null and is_instance_valid(_confirm_layer):
+		# `queue_free` doesn't leave the tree until the end of the frame, and Godot
+		# renames a second child that wants a name already taken. Without standing
+		# the old one down by name first, the NEW panel is the one that gets
+		# renamed — and a lookup for "Confirm" then finds the dying one.
+		_confirm_layer.name = "ConfirmClosing"
+		_confirm_layer.queue_free()
+	var layer := Control.new()
+	layer.name = "Confirm"
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(layer)
+	_confirm_layer = layer
+
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.6)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(460, 0)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.09, 0.11, 0.99)
+	sb.set_corner_radius_all(8)
+	sb.set_content_margin_all(20)
+	sb.set_border_width_all(2)
+	sb.border_color = Color(0.85, 0.45, 0.35)
+	panel.add_theme_stylebox_override("panel", sb)
+	center.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	panel.add_child(vbox)
+
+	var head := Label.new()
+	head.text = title
+	head.add_theme_font_size_override("font_size", 20)
+	head.add_theme_color_override("font_color", Color(1, 0.72, 0.45))
+	vbox.add_child(head)
+
+	var text := Label.new()
+	text.text = body
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.custom_minimum_size = Vector2(420, 0)
+	text.add_theme_font_size_override("font_size", 14)
+	text.add_theme_color_override("font_color", Color(0.86, 0.86, 0.9))
+	vbox.add_child(text)
+
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 10)
+	buttons.alignment = BoxContainer.ALIGNMENT_END
+	vbox.add_child(buttons)
+
+	var cancel := Button.new()
+	cancel.name = "CancelBtn"
+	cancel.text = "Cancel"
+	cancel.custom_minimum_size = Vector2(120, 38)
+	cancel.pressed.connect(func(): layer.queue_free())
+	buttons.add_child(cancel)
+
+	var ok := Button.new()
+	ok.name = "OkBtn"
+	ok.text = ok_text
+	ok.custom_minimum_size = Vector2(120, 38)
+	var ok_style := StyleBoxFlat.new()
+	ok_style.bg_color = Color(0.34, 0.12, 0.12, 0.95)
+	ok_style.set_corner_radius_all(6)
+	ok_style.set_content_margin_all(8)
+	ok_style.set_border_width_all(1)
+	ok_style.border_color = Color(0.95, 0.45, 0.4)
+	ok.add_theme_stylebox_override("normal", ok_style)
+	ok.add_theme_color_override("font_color", Color(1, 0.72, 0.68))
+	ok.pressed.connect(func() -> void:
+		on_ok.call()
+		layer.queue_free())
+	buttons.add_child(ok)
+	return layer
 
 func _on_create() -> void:
 	var wanted: String = _new_name.text
