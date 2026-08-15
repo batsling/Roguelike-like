@@ -2086,7 +2086,7 @@ func test_the_sword_badge_carries_the_swing_count() -> void:
 	assert_eq(_ui._board._damage_badge_text(entry, 3), "⚔3×3")
 	# No space, and "×" not "x": on the 46px cells of a 7x7 board every character
 	# of this badge is width the ❤ beside it doesn't get (see _add_enemy_badges).
-	assert_false(_ui._board._damage_badge_text(e, 3).contains(" "),
+	assert_false(_ui._board._damage_badge_text(entry, 3).contains(" "),
 		"the multi-swing badge spends no width on a space")
 
 # Recursive: the ❤ / ⚔ pair lives inside a row now (see the overlap test below),
