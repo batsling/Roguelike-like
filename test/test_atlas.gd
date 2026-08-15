@@ -473,7 +473,9 @@ func test_the_route_set_is_rebuilt_when_the_run_moves() -> void:
 	var view := _open()
 	if not view.has_layout() or view.trail_segment_count() == 0:
 		return
-	var before: Dictionary = view.route_stars().duplicate()
+	var left: int = view.current_index()
+	assert_eq(view.history_segment_count(), 0, "nothing walked yet — this is the first game")
+	view.route_stars()                # fill the cache, so a stale one has somewhere to hide
 	# The start is the run's first game, so the run opens in the report step — beat
 	# it, and the offering that appears is the one the move under test is made from.
 	ui.report(true)
@@ -482,9 +484,22 @@ func test_the_route_set_is_rebuilt_when_the_run_moves() -> void:
 	ui.report(false)
 	view._build_trail()
 	view._build_history()
+	assert_gt(view.history_segment_count(), 0, "the step just taken is on the record")
 	assert_true(view.on_route(view.current_index()),
 		"the game just travelled to is on the route, not scenery")
-	assert_ne(view.route_stars(), before, "and the set moved with the run")
+	assert_true(view.on_route(left), "and so is the one it came from, as road walked")
+	# THE CACHE, which is what "rebuilt" means here: route_stars() memoises, so the
+	# two builders above have to drop it or the sky goes on painting the old route.
+	# Checked against a FRESH build rather than against the pre-move set, because
+	# the pre-move set is not reliably different: route_stars() is the union of the
+	# road AHEAD and the road WALKED, so a step along the optimal path moves the
+	# game you left out of one half and into the other and leaves the union
+	# identical. That is a correct rebuild that reads exactly like a stale cache —
+	# which is why asserting the two differ failed on whichever runs the offering
+	# happened to point straight down the route.
+	var cached: Dictionary = view.route_stars().duplicate()
+	view._route_stars.clear()
+	assert_eq(view.route_stars(), cached, "the cached set is the freshly built one")
 
 func test_framing_the_trail_keeps_the_route_on_screen() -> void:
 	var ui = OVERWORLD.instantiate()

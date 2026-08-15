@@ -56,6 +56,15 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 25 scripts, ~1010 t
   *other* branch — the fit bottoming out at the legibility floor — rather than
   asserting nothing. If a Risky turns up, it is a new one; find out which case
   stopped being reachable rather than assuming it is noise.
+- **The same goes for a FAILURE that comes and goes.** `test_atlas.gd::test_the_route_set_is_rebuilt_when_the_run_moves`
+  failed on roughly one run in four, on any tree, because it asserted that
+  `AtlasView.route_stars()` DIFFERS after the run moves. It doesn't always:
+  that set is the union of the road ahead and the road walked, so stepping along
+  the optimal path moves the game you left from one half into the other and
+  leaves the union identical — a correct rebuild that reads exactly like a stale
+  cache. It now checks the cache against a fresh build instead, which is what
+  "rebuilt" meant and is true either way. Before blaming a random graph for a
+  varying failure, work out which assertion is only *usually* true.
 - The leaked-RID / orphan warnings at the end of a GUT run are also pre-existing
   noise from UI tests that build Controls.
 - To see a change on screen rather than in assertions, use the `verify` skill
