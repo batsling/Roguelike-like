@@ -837,6 +837,7 @@ func _show_game_detail(g: GameData) -> void:
 	if g.tags.size() > 0:
 		_detail_box.add_child(_label(", ".join(g.tags), Color(0.73, 0.55, 0.78), 11, false, true))
 	_detail_box.add_child(HSeparator.new())
+	_detail_box.add_child(_owned_toggle(g))
 
 	# "Open the real game" — launches the executable/shortcut in the game's
 	# file_location column (falling back to its store page).
@@ -908,6 +909,23 @@ func _show_game_detail(g: GameData) -> void:
 			var ch: CharacterData = Data.get_character2(StringName(entry["id"]))
 			if ch != null:
 				_detail_box.add_child(_levelup_row(g, ch, entry, func(): _show_game_detail(g)))
+
+# "I own this" — the per-game half of the ownership setting. Live only while the
+# player's own list is the source; under the catalog's list it shows what the
+# catalog says and explains where to change that, rather than offering a tick
+# that would go nowhere.
+func _owned_toggle(g: GameData) -> Control:
+	var chk := CheckButton.new()
+	chk.text = "I own this"
+	chk.button_pressed = Ownership.is_owned(g)
+	if Ownership.is_editable():
+		chk.tooltip_text = "Counts %s as owned for the \"owned games only\" filters." % g.display_name
+		chk.toggled.connect(func(on: bool) -> void:
+			Ownership.set_manual_owned(g.id, on))
+	else:
+		chk.disabled = true
+		chk.tooltip_text = "Ownership is coming from the catalog's own list. Switch to your own list in Settings to edit this."
+	return chk
 
 func _game_names(ids) -> String:
 	var names: Array = []

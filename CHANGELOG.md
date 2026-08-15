@@ -11,6 +11,42 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Which games you own is now yours to answer — sync a Steam profile, or tick
+  them off yourself.**
+
+  The "Owned" column in `tools/Roguelikes.xlsx` is baked into all 849 game
+  `.tres` and shipped to everyone, which made every owned-only filter — the
+  path-selection setting, a custom run's library axis, the atlas's owned rings —
+  a report on *one person's* shelf. `Ownership` (a new autoload) puts a second
+  answer beside it and makes the choice a setting:
+
+  - **The catalog's list** — `GameData.owned`, exactly as before, still the default.
+  - **My own list** — a set of game ids kept in `user://ownership.cfg`.
+
+  Under the second, **Settings → Which games you own** takes a Steam profile name
+  (a vanity name, a SteamID64 or a pasted profile URL) and reads that profile's
+  public games list — `steamcommunity.com/id/<name>/games?xml=1`, no API key and
+  no account linking; the profile's *Game details* just has to be Public. Every
+  appid it returns is matched against the store link the catalog already carries
+  (`GameData.steam_app_id()`), which 585 of the 849 games have, and the matches
+  are ticked. The panel reports what it matched *and* how many games have no
+  Steam link at all, so a partial number reads as the catalog's coverage rather
+  than as a failed sync.
+
+  The rest is hand-editable: every game's page in the Collection (Tab) grows an
+  **I own this** toggle, live while your own list is the source and showing the
+  catalog's answer, disabled, when it isn't. A sync only ever **adds** — a GOG,
+  itch, emulated or borrowed copy ticked by hand is never wiped by the next one.
+
+  The spreadsheet's column is never written to, so switching back restores it
+  exactly and the manual list survives the round trip. `Ownership.is_owned()` is
+  the single read — `RunGraph`, `RunConfig`, `AtlasView` and `SettingsModal` all
+  go through it — and any move in the answer drops `RunGraph`'s adjacency cache
+  the way a filter change does. One knock-on: `data/atlas_layout_owned.tres` is
+  baked from the *catalog's* column, so on a player's own list the owned sky
+  would draw a subgraph the run doesn't travel; the atlas falls back to the full
+  sky there instead.
+
 - **The header stops scrolling away, the road behind you stops showing games you
   have never been to, and a curse reads as a thing to do.**
 

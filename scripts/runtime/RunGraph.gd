@@ -95,7 +95,7 @@ static func _passes_filter(g: GameData) -> bool:
 		return RunConfig.map_passes(g)
 	match Settings.game_filter:
 		Settings.GameFilter.OWNED:
-			return g.owned
+			return Ownership.is_owned(g)
 		Settings.GameFilter.DOWNLOADED:
 			return g.file_location.strip_edges() != ""
 		_:
