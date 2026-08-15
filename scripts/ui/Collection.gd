@@ -938,16 +938,25 @@ func _show_game_detail(g: GameData) -> void:
 # that would go nowhere.
 func _owned_toggle(g: GameData) -> Control:
 	var chk := CheckButton.new()
-	chk.text = "I own this"
-	chk.button_pressed = Ownership.is_owned(g)
+	var owns: bool = Ownership.is_owned(g)
+	chk.button_pressed = owns
 	if Ownership.is_editable():
+		chk.text = "I own this"
 		chk.tooltip_text = "Counts %s as owned for the \"owned games only\" filters." % g.display_name
 		chk.toggled.connect(func(on: bool) -> void:
 			Ownership.set_manual_owned(g.id, on)
 			_paint_owned_mark(g.id))
-	else:
-		chk.disabled = true
-		chk.tooltip_text = "Ownership is coming from the catalog's own list. Switch to your own list in Settings to edit this."
+		return chk
+	# On the catalog's list the state is shown and nothing more. `disabled` is
+	# what makes it unclickable, but the default theme greys a disabled control
+	# to near-unreadable — and the whole point of leaving it on screen is that it
+	# can still be READ — so the label says whose answer it is and the colour
+	# carries the state rather than the washed-out switch.
+	chk.disabled = true
+	chk.text = "Owned — the catalog's list" if owns else "Not owned — the catalog's list"
+	chk.add_theme_color_override("font_disabled_color",
+		Color(0.55, 0.85, 0.65) if owns else Color(0.62, 0.62, 0.68))
+	chk.tooltip_text = "Ownership is coming from the catalog's own list, so this is read-only. Switch to your own list in Settings to tick games off yourself."
 	return chk
 
 func _game_names(ids) -> String:

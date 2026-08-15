@@ -97,6 +97,25 @@ func test_clearing_empties_the_list_without_touching_the_catalog() -> void:
 	Ownership.set_source(Ownership.Source.SPREADSHEET)
 	assert_true(Ownership.owned_count() > 0, "the catalog's column is still there")
 
+func test_nothing_the_player_does_writes_the_catalogs_column() -> void:
+	# The sheet is upstream of data/games/*.tres and is regenerated from
+	# tools/Roguelikes.xlsx, so a runtime write would be both a lie about what the
+	# catalog says and something the next import silently reverts. Ticking games
+	# and running a sync must leave every one of the 849 columns where it was.
+	var before: Dictionary = {}
+	for g in Data.all_games():
+		if g is GameData:
+			before[(g as GameData).id] = (g as GameData).owned
+	for g in _linked_games(5):
+		Ownership.set_manual_owned((g as GameData).id, true)
+	Ownership.apply_appids(Ownership.parse_appids(SAMPLE_XML % [
+		int((_linked_games(1)[0] as GameData).steam_app_id()), 620]))
+	var moved: Array = []
+	for g in Data.all_games():
+		if g is GameData and (g as GameData).owned != before[(g as GameData).id]:
+			moved.append((g as GameData).id)
+	assert_eq(moved, [], "the catalog's own column is read-only at runtime")
+
 # --- the filters read the switch ------------------------------------------
 
 func test_the_owned_path_filter_follows_the_players_list() -> void:

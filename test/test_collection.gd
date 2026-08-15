@@ -331,7 +331,7 @@ func test_a_filter_that_empties_the_grid_drops_what_it_was_waiting_to_read() -> 
 
 func _owned_toggle_of(box: Control) -> CheckButton:
 	for child in box.get_children():
-		if child is CheckButton and (child as CheckButton).text == "I own this":
+		if child is CheckButton:
 			return child
 	return null
 
@@ -344,6 +344,7 @@ func test_the_game_page_offers_an_owned_toggle() -> void:
 	var chk: CheckButton = _owned_toggle_of(col._detail_box)
 	assert_not_null(chk, "the detail panel carries the toggle")
 	assert_false(chk.disabled, "and it is live on the player's own list")
+	assert_eq(chk.text, "I own this", "phrased as the player's own claim")
 	assert_eq(chk.button_pressed, Ownership.is_owned(game))
 	chk.button_pressed = true
 	assert_true(Ownership.is_owned(game), "pressing it marks the game owned")
@@ -360,6 +361,7 @@ func test_the_toggle_is_read_only_while_the_catalog_is_the_source() -> void:
 	assert_not_null(chk)
 	assert_true(chk.disabled, "the catalog's column is not the player's to edit")
 	assert_eq(chk.button_pressed, game.owned, "it shows what the catalog says")
+	assert_true(chk.text.contains("catalog"), "and says whose answer it is showing")
 	Ownership.set_source(was)
 
 func test_a_cell_gains_its_owned_mark_without_the_grid_being_rebuilt() -> void:
