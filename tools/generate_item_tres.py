@@ -29,7 +29,8 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   reroll_low_rarity:, carries_leftover_energy:,
                   lower_hp_damage_mult:, gold_spend_stat_per=N, level_up:,
                   charged (charge_cost N), keep_shields, bomb_stun,
-                  bomb_cardinal, grid_grow, loot_multiplier: N,
+                  bomb_cardinal, grid_grow, grid_length, hide_spawns,
+                  spawn_status <status> N, loot_multiplier: N,
                   gold_per_enemy: N, shop_sweep.
 
 Targets are written in parens after an effect value: (self) / (enemy) /
@@ -764,6 +765,23 @@ def parse_item(row):
             # Mine-r Construction: the battlefield gains a column and a row.
             fields["grid_grow"] = True
             last_trigger = None
+        elif kl0 == "grid_length":
+            # Philosophers Stone / Runic Dome: a column and no row — distance to
+            # cross without an extra lane to be attacked from.
+            fields["grid_length_grow"] = True
+            last_trigger = None
+        elif kl0 == "hide_spawns":
+            # Runic Dome: the enemy on an offered game stops being previewed.
+            fields["hide_spawns"] = True
+            last_trigger = None
+        elif kl0 == "spawn_status":
+            # Philosophers Stone: `spawn_status strength 1` — every enemy that
+            # spawns while this is owned arrives already carrying the status.
+            mm = re.match(r"spawn_status\s+([a-z_]+)(?:\s+(\d+))?", kl)
+            if not mm:
+                raise ValueError("item DSL: spawn_status needs <status> [n] in %r" % clause)
+            fields.setdefault("spawn_statuses", {})[mm.group(1)] = int(mm.group(2) or 1)
+            last_trigger = None
         elif kl0 == "loot_multiplier":
             # Sacred Bark: every loot consumable resolves at this multiple.
             fields["loot_multiplier"] = _int(re.search(r"\d+", clause).group(0), 1)
@@ -1012,6 +1030,9 @@ def item_tres(row):
         ("bomb_stun", lambda v: "true"),
         ("bomb_cardinal", lambda v: "true"),
         ("grid_grow", lambda v: "true"),
+        ("grid_length_grow", lambda v: "true"),
+        ("hide_spawns", lambda v: "true"),
+        ("spawn_statuses", lambda v: gd_value(v)),
         ("loot_multiplier", lambda v: str(v)),
         ("gold_per_enemy", lambda v: str(v)),
         ("shop_sweep", lambda v: "true"),

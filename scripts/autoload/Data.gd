@@ -154,6 +154,84 @@ func roll_chest_size(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
 func roll_chest_size_choices(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
 	return CHEST_SIZE_CHOICES[roll_chest_size(rng, roll01)]
 
+# --- [chest reward]: one scaling payout instead of a pile of Small ones ----
+#
+# A CHEST REWARD is a number of chest POINTS, spent on the size ladder above.
+# Every scaling payout in the game used to read "+X Small Chests", which grew
+# into X separate one-item screens that were each worth less than the last; a
+# chest reward spends the same X on a BIGGER chest instead, and only starts
+# handing out second chests once it has run out of ladder:
+#
+#   1  Small          5  Huge + Small        9  2 Huge + Small
+#   2  Medium         6  Huge + Medium      10  2 Huge + Medium
+#   3  Large          7  Huge + Large        …
+#   4  Huge           8  2 Huge
+#
+# So a size costs its own 1-based rung (Small 1 … Huge 4), the points are spent
+# greedily on Huge chests, and whatever is left over buys the one chest that fits
+# it exactly. Returns the SIZES, largest first, ready for GameState.grant_chests —
+# and [] at zero or below, since a reward of nothing must not mint a chest of
+# nothing.
+const CHEST_REWARD_POINTS := {
+	ChestSize.SMALL: 1, ChestSize.MEDIUM: 2, ChestSize.LARGE: 3, ChestSize.HUGE: 4,
+}
+
+func chest_reward_sizes(points: int) -> Array[int]:
+	var out: Array[int] = []
+	if points <= 0:
+		return out
+	var huge: int = int(CHEST_REWARD_POINTS[ChestSize.HUGE])
+	# (points - 1) / huge rather than points / huge, so an exact multiple spends
+	# its last four points as a Huge chest rather than as a remainder of zero.
+	var wholes: int = (points - 1) / huge
+	for _i in range(wholes):
+		out.append(ChestSize.HUGE)
+	out.append(_size_for_points(points - wholes * huge))
+	return out
+
+# The one size worth exactly `points` (1..4). Only ever called with a remainder
+# chest_reward_sizes already reduced into range.
+func _size_for_points(points: int) -> int:
+	for size in [ChestSize.HUGE, ChestSize.LARGE, ChestSize.MEDIUM, ChestSize.SMALL]:
+		if points >= int(CHEST_REWARD_POINTS[size]):
+			return size
+	return ChestSize.SMALL
+
+const CHEST_SIZE_NAMES := {
+	ChestSize.SMALL: "Small", ChestSize.MEDIUM: "Medium",
+	ChestSize.LARGE: "Large", ChestSize.HUGE: "Huge",
+}
+
+# A chest reward in words — "1 Large Chest", "2 Huge Chests and 1 Small Chest".
+# Every place that advertises one (a status's checklist row, the collection, the
+# reward screen's heading) reads it from here, so the promise and the payout
+# cannot describe the same number differently.
+func chest_reward_text(points: int) -> String:
+	return chest_sizes_text(chest_reward_sizes(points))
+
+# The same words from the SIZES themselves, for the payout end: GameState.grant_chests
+# is handed a list of chests and has to announce them, and re-deriving the point
+# count it came from to get a sentence would be the long way round.
+func chest_sizes_text(sizes: Array) -> String:
+	if sizes.is_empty():
+		return "nothing"
+	# Sizes come out largest first and repeat, so counting runs of the same size
+	# is what turns [HUGE, HUGE, SMALL] into "2 Huge Chests and 1 Small Chest".
+	var parts: PackedStringArray = []
+	var i: int = 0
+	while i < sizes.size():
+		var j: int = i
+		while j < sizes.size() and sizes[j] == sizes[i]:
+			j += 1
+		var n: int = j - i
+		parts.append("%d %s %s" % [n, CHEST_SIZE_NAMES[sizes[i]],
+			"Chest" if n == 1 else "Chests"])
+		i = j
+	if parts.size() == 1:
+		return parts[0]
+	return "%s and %s" % [", ".join(parts.slice(0, parts.size() - 1)),
+		parts[parts.size() - 1]]
+
 # One random scroll template, rarity-weighted. Falls back to the full pool when
 # the rolled bucket is empty; null only if no scrolls are loaded.
 func roll_scroll(rng: RandomNumberGenerator = null) -> ScrollData:

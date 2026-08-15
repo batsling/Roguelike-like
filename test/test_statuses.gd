@@ -54,7 +54,7 @@ func _sideblock(mode: String, condition: String, reward: Array = [],
 
 func test_the_statuses_sheet_loaded() -> void:
 	assert_gt(Data.all_statuses().size(), 0, "data/statuses2.0 loaded at least one status")
-	for id in [&"strength", &"dexterity", &"marked"]:
+	for id in [&"strength", &"speed", &"dexterity", &"marked"]:
 		assert_not_null(Data.get_status(id), "%s is in the catalog" % id)
 
 func test_each_side_carries_its_own_authored_mode() -> void:
@@ -85,16 +85,18 @@ func test_a_flat_condition_scales_with_the_stack() -> void:
 		"singular at one stack")
 	assert_eq(marked.condition_text(StatusData.ENEMY, 3), "you get 3 achievements")
 
-func test_dexterity_window_tightens_on_the_authored_curve() -> void:
+func test_speed_window_tightens_on_the_authored_curve() -> void:
 	# 1 + (1/2)^(X-2) hours, halving toward a floor of one hour. These are the
 	# numbers the sheet's formula promises, and the reason the {expr} holes exist
 	# at all — the ONLY status behaviour that isn't a straight multiple of X.
-	var dex: StatusData = Data.get_status(&"dexterity")
-	assert_eq(dex.condition_text(StatusData.PLAYER, 1), "beaten in 3 hours or less")
-	assert_eq(dex.condition_text(StatusData.PLAYER, 2), "beaten in 2 hours or less")
-	assert_eq(dex.condition_text(StatusData.PLAYER, 3), "beaten in 1 hour 30 minutes or less")
-	assert_eq(dex.condition_text(StatusData.PLAYER, 4), "beaten in 1 hour 15 minutes or less")
-	assert_eq(dex.condition_text(StatusData.PLAYER, 5), "beaten in 1 hour 8 minutes or less")
+	# This curve was Dexterity's before the combat side landed (§13.2); it kept
+	# the goal and took the name that describes it.
+	var speed: StatusData = Data.get_status(&"speed")
+	assert_eq(speed.condition_text(StatusData.PLAYER, 1), "beaten in 3 hours or less")
+	assert_eq(speed.condition_text(StatusData.PLAYER, 2), "beaten in 2 hours or less")
+	assert_eq(speed.condition_text(StatusData.PLAYER, 3), "beaten in 1 hour 30 minutes or less")
+	assert_eq(speed.condition_text(StatusData.PLAYER, 4), "beaten in 1 hour 15 minutes or less")
+	assert_eq(speed.condition_text(StatusData.PLAYER, 5), "beaten in 1 hour 8 minutes or less")
 
 func test_a_fractional_window_reads_as_hours_and_minutes() -> void:
 	# A time window is held against a clock, so "1.5 hours" would be arithmetic the
@@ -117,11 +119,16 @@ func test_whole_numbers_lose_their_decimal_tail() -> void:
 func test_rewards_scale_with_the_stack() -> void:
 	var strength: StatusData = Data.get_status(&"strength")
 	var effects: Array = strength.reward_effects(StatusData.PLAYER, 3)
-	assert_eq(effects.size(), 2, "Strength pays a chest and a Bash")
-	for eff in effects:
-		assert_eq(int(eff.get("value", 0)), 3, "%s scales to X" % eff.get("type"))
-		assert_false(eff.has("scaled"), "the {expr} hole is resolved, not passed through")
-	assert_eq(int(effects[0].get("choices", 0)), 1, "a Small Chest offers one item (§8.2)")
+	assert_eq(effects.size(), 2, "Strength pays a chest reward and a Bash")
+	assert_eq(String(effects[0].get("type", "")), "chest_reward")
+	assert_eq(int(effects[0].get("value", 0)), 3, "the chest reward scales to X")
+	assert_false(effects[0].has("scaled"), "the {expr} hole is resolved, not passed through")
+	# The VERB payout does not scale — the chest is what grows with the stack now,
+	# so the sheet writes `gain_stat bash 1` and means it at every X.
+	assert_eq(String(effects[1].get("type", "")), "gain_stat")
+	assert_eq(int(effects[1].get("value", 0)), 1, "a flat Bash at any stack")
+	assert_eq(int(Data.get_status(&"strength").reward_effects(StatusData.PLAYER, 1)[1]
+		.get("value", 0)), 1, "and the same one at one stack")
 
 func test_a_clause_side_pays_nothing() -> void:
 	# A `clause` is a requirement, not a payout — the generator rejects a reward on
@@ -130,8 +137,12 @@ func test_a_clause_side_pays_nothing() -> void:
 	assert_eq(Data.get_status(&"marked").reward_effects(StatusData.PLAYER, 3).size(), 0)
 
 func test_reward_text_reads_at_the_live_stack() -> void:
+	# The `[chest reward]` the sheet's prose writes, resolved to the chests it
+	# actually buys at this stack count (§8.2).
 	assert_eq(Data.get_status(&"strength").reward_at(StatusData.PLAYER, 2),
-		"+2 Small Chests, +2 Bashes")
+		"+1 Medium Chest, +1 Bash")
+	assert_eq(Data.get_status(&"strength").reward_at(StatusData.PLAYER, 5),
+		"+1 Huge Chest and 1 Small Chest, +1 Bash")
 	assert_eq(Data.get_status(&"marked").reward_at(StatusData.ENEMY, 1), "+1 Small Chest")
 
 func test_every_status_has_art_and_does_something() -> void:
@@ -154,7 +165,7 @@ func test_a_goal_on_the_player_side_is_an_extra_objective_not_a_clause() -> void
 	var objectives: Array = GameState.status_objectives()
 	assert_eq(objectives.size(), 1, "it shows up as a standing objective")
 	assert_eq((objectives[0]["status"] as StatusData).objective_text(StatusData.PLAYER, 2),
-		"If the difficulty is increased 2 times, gain +2 Small Chests, +2 Bashes")
+		"If the difficulty is increased 2 times, gain +1 Medium Chest, +1 Bash")
 
 func test_a_clause_on_an_enemy_tightens_that_enemys_goal() -> void:
 	GameLoop2.choose_game(_enemy("Beat it"))
@@ -180,7 +191,7 @@ func test_a_bonus_on_an_enemy_is_claimable_not_required() -> void:
 	var bonuses: Array = GameLoop2.bonus_objectives_for(GameLoop2.current)
 	assert_eq(bonuses.size(), 1, "it hangs a bonus objective off the enemy")
 	assert_eq((bonuses[0]["status"] as StatusData).objective_text(StatusData.ENEMY, 2),
-		"and if you get 2 achievements, gain +2 Small Chests")
+		"and if you get 2 achievements, gain +1 Medium Chest")
 
 func test_clauses_stack_enemy_first_then_player() -> void:
 	GameLoop2.choose_game(_enemy("Beat it"))
@@ -302,8 +313,10 @@ func test_a_player_objective_pays_out_and_stays() -> void:
 	GameState.bash = 0
 	GameLoop2.choose_game(_enemy("Beat it"))
 	GameLoop2.beat_game(true, [], {"status_goals": [&"strength"]})
-	assert_eq(GameState.bash, 2, "+X Bashes at X = 2")
-	assert_eq(GameState.pending_chests, 2, "+X Small Chests at X = 2")
+	assert_eq(GameState.bash, 1, "a flat +1 Bash, whatever the stack")
+	# [chest reward] 2 is ONE Medium chest, not two Small ones (§8.2).
+	assert_eq(GameState.pending_chests, 1, "one chest")
+	assert_eq(GameState.pending_chest_choices, [2], "and it is a Medium")
 	assert_eq(GameState.status_stacks(&"strength"), 2,
 		"the status persists — its side does not decay")
 
@@ -320,7 +333,7 @@ func test_claiming_an_enemy_bonus_pays_and_ticks_that_enemy() -> void:
 	var res: Dictionary = GameLoop2.beat_game(false, [],
 		{"bonuses": [{"instance": inst, "status": &"marked"}]})
 	assert_eq(int(res.get("status_rewards", 0)), 1, "the claim resolved")
-	assert_eq(GameState.pending_chests, 2, "+X Small Chests at X = 2")
+	assert_eq(GameState.pending_chests, 1, "[chest reward] 2 is one Medium chest")
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0])[0]["stacks"], 1,
 		"one stack spent on the claim")
 
@@ -471,11 +484,11 @@ func test_the_hero_strip_sits_between_the_portrait_and_the_health() -> void:
 
 func test_a_status_pip_carries_the_full_tooltip() -> void:
 	var ui = _booted()
-	GameState.apply_status(&"dexterity", 3)
+	GameState.apply_status(&"speed", 3)
 	ui._board.refresh()
 	var pip: Control = ui._board._hero_statuses.get_child(0)
 	var tip: String = pip.tooltip_text
-	assert_string_contains(tip, "Dexterity 3", "the name and the live stack count")
+	assert_string_contains(tip, "Speed 3", "the name and the live stack count")
 	assert_string_contains(tip, "1 hour 30 minutes", "and the line at that stack")
 
 func test_the_tooltip_names_what_each_side_does() -> void:
@@ -513,3 +526,296 @@ func test_an_enemys_statuses_draw_under_its_box() -> void:
 	assert_eq(strip.anchor_top, 1.0, "anchored to the bottom edge")
 	assert_eq(strip.anchor_bottom, 1.0)
 	assert_gt(BattlefieldView.STATUS_STRIP_DROP, 0, "and pushed out past it")
+
+# ---------------------------------------------------------------------------
+# 5. The COMBAT side (§13.4)
+#
+# The half of the mechanic that moves a number instead of a goal. Four numbers,
+# one aggregator, and one rule about who feels them — so these tests are mostly
+# about the seams: that both holders read the same totals, that a hit on an enemy
+# and a hit on the player go through the same arithmetic, and that a shield is a
+# pool that gets spent rather than a reading of a stack count.
+# ---------------------------------------------------------------------------
+
+# A synthetic status with only a combat side, so the rules can be tested without
+# the authored roster's goals coming along for the ride.
+func _combat_status(id: StringName, combat: Dictionary, enemy_only: bool = true) -> StatusData:
+	var s: StatusData = _status(id)
+	s.combat = combat
+	s.enemy_only = enemy_only
+	return s
+
+# --- what the sheet authored ----------------------------------------------
+
+func test_the_roster_authored_the_combat_sides_the_sheet_promises() -> void:
+	assert_eq(Data.get_status(&"strength").combat_bonus(&"damage_dealt", 3), 3,
+		"Strength: +X damage dealt")
+	assert_eq(Data.get_status(&"speed").combat_bonus(&"tile_move", 2), 2,
+		"Speed: +X tiles per turn")
+	assert_eq(Data.get_status(&"dexterity").combat_bonus(&"shield", 4), 4,
+		"Dexterity: +X shields")
+	assert_eq(Data.get_status(&"marked").combat_mult(&"damage_taken"), 2.0,
+		"Marked: double damage taken")
+	assert_true(Data.get_status(&"marked").pierces_shields(), "and through shields")
+
+func test_only_the_debuff_reaches_the_player() -> void:
+	# EnemyOnly is what Buff/Debuff always meant: a debuff is felt by whoever is
+	# carrying it, a buff only ever by an enemy.
+	for id in [&"strength", &"speed", &"dexterity"]:
+		var buff: StatusData = Data.get_status(id)
+		assert_true(buff.combat_applies(StatusData.ENEMY), "%s acts on an enemy" % id)
+		assert_false(buff.combat_applies(StatusData.PLAYER), "%s does not on the player" % id)
+	var marked: StatusData = Data.get_status(&"marked")
+	assert_true(marked.combat_applies(StatusData.ENEMY))
+	assert_true(marked.combat_applies(StatusData.PLAYER), "Marked is felt both ways")
+
+func test_a_multiplier_is_flat_while_a_bonus_scales() -> void:
+	# A doubling that compounded per stack would turn a 1-damage board into a
+	# 16-damage one off a status the player never chose to stack.
+	var marked: StatusData = Data.get_status(&"marked")
+	for stacks in [1, 3, 7]:
+		assert_eq(marked.combat_mult(&"damage_taken"), 2.0,
+			"still x2 at %d stacks" % stacks)
+	var strength: StatusData = Data.get_status(&"strength")
+	assert_eq(strength.combat_bonus(&"damage_dealt", 1), 1)
+	assert_eq(strength.combat_bonus(&"damage_dealt", 4), 4, "the bonus does scale")
+
+# --- the aggregator -------------------------------------------------------
+
+func test_bonuses_sum_multipliers_multiply_and_flags_or() -> void:
+	# Two synthetic statuses, so this asserts the ARITHMETIC rather than whatever
+	# the roster happens to author today. They are put in and taken back out of the
+	# catalog around the one call, because combat_totals resolves ids through Data.
+	Data._statuses[&"synth_a"] = _combat_status(
+		&"synth_a", {"damage_dealt": "X", "damage_taken_mult": 2.0})
+	Data._statuses[&"synth_b"] = _combat_status(
+		&"synth_b", {"damage_dealt": "X", "damage_taken_mult": 3.0, "pierce_shields": true})
+	var totals: Dictionary = StatusData.combat_totals(
+		{&"synth_a": 2, &"synth_b": 3}, StatusData.ENEMY)
+	Data._statuses.erase(&"synth_a")
+	Data._statuses.erase(&"synth_b")
+	assert_eq(int(totals["damage_dealt"]), 5, "2 + 3")
+	assert_eq(float(totals["damage_taken_mult"]), 6.0, "2 x 3")
+	assert_true(bool(totals["pierce_shields"]), "one piercer is enough")
+
+func test_a_status_the_catalog_lost_contributes_nothing_to_the_totals() -> void:
+	# The same rule the goal side keeps: an id nothing can describe is skipped
+	# rather than being read as a zero-stack anything.
+	var totals: Dictionary = StatusData.combat_totals({&"no_such_status": 4},
+		StatusData.ENEMY)
+	assert_eq(int(totals["damage_dealt"]), 0)
+	assert_eq(float(totals["damage_taken_mult"]), 1.0)
+
+func test_an_empty_holder_totals_to_no_change() -> void:
+	var totals: Dictionary = StatusData.combat_totals({}, StatusData.ENEMY)
+	assert_eq(int(totals["damage_dealt"]), 0)
+	assert_eq(float(totals["damage_taken_mult"]), 1.0, "a multiplier of one, not zero")
+	assert_false(bool(totals["pierce_shields"]))
+
+func test_the_bonus_lands_before_the_multiplier() -> void:
+	assert_eq(StatusData.apply_damage_mods(1, 1, 2.0), 4, "(1 + 1) x 2")
+	assert_eq(StatusData.apply_damage_mods(3, 0, 1.0), 3, "no mods, no change")
+	assert_eq(StatusData.apply_damage_mods(1, -5, 2.0), 0, "and never below zero")
+
+# --- Strength: what a hit lands for ---------------------------------------
+
+func test_strength_raises_what_an_enemy_hits_for() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	var base: int = int(GameLoop2.current["enemy"].damage)
+	assert_eq(GameLoop2.enemy_damage(GameLoop2.current), base, "unbuffed, it is the stat")
+	GameLoop2.apply_enemy_status(&"strength", 2, "current")
+	assert_eq(GameLoop2.enemy_damage(GameLoop2.current), base + 2, "+1 per stack")
+
+func test_a_strength_stack_is_felt_on_the_players_health() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	ui.report(false)                       # it walks onto the board and starts closing
+	GameState.shields = 0                  # no tries left, so every point lands on Health
+	GameLoop2.apply_enemy_status(&"strength", 3, "all")
+	# Walk it into the front column so it actually swings this game.
+	for entry in GameLoop2.stack:
+		entry["col"] = 1
+	var before: int = GameState.hp
+	var enemy_dmg: int = GameLoop2.enemy_damage(GameLoop2.stack[0])
+	GameLoop2.beat_game(false)
+	assert_eq(before - GameState.hp, enemy_dmg * GameLoop2.enemy_turns(),
+		"every swing landed for the buffed number")
+
+func test_the_damage_badge_quotes_the_buffed_number() -> void:
+	# A badge reading the base stat would be telling the player the board is safer
+	# than it is.
+	var ui = _booted()
+	ui.pick(0)
+	ui.report(false)
+	var entry: Dictionary = GameLoop2.stack[0]
+	GameLoop2.apply_enemy_status(&"strength", 2, "all")
+	assert_true(ui._board._damage_badge_text(entry, 1).contains(
+		str(GameLoop2.enemy_damage(entry))), "the badge says what it will hit for")
+
+# --- Dexterity: a shield is a pool, spent once ----------------------------
+
+func test_dexterity_grants_shield_points_when_it_lands() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	assert_eq(GameLoop2.enemy_shield(GameLoop2.current), 0)
+	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
+	assert_eq(GameLoop2.enemy_shield(GameLoop2.current), 2, "one point per stack")
+
+func test_a_shield_absorbs_a_hit_instead_of_the_body_taking_it() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	var inst: int = int(GameLoop2.current["instance"])
+	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
+	var health: int = int(GameLoop2.current["health"])
+	GameLoop2.beat_game(true)              # goal met — one point of damage
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	assert_false(entry.is_empty(), "it survived: the shield ate the hit")
+	assert_eq(GameLoop2.enemy_shield(entry), 1, "and spent one point doing it")
+	assert_eq(int(entry["health"]), health, "Health is untouched")
+
+func test_a_spent_shield_does_not_come_back_with_the_stacks() -> void:
+	# The shield is what Dexterity GAVE the body, not a reading of how much
+	# Dexterity it has — so soaking a hit costs a point that stays gone.
+	var ui = _booted()
+	ui.pick(0)
+	var inst: int = int(GameLoop2.current["instance"])
+	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
+	GameLoop2.beat_game(true)
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	assert_eq(GameLoop2.enemy_statuses(entry)[0]["stacks"], 2, "both stacks still on it")
+	assert_eq(GameLoop2.enemy_shield(entry), 1, "but only one shield left")
+
+func test_a_second_application_tops_the_shield_up() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	GameLoop2.apply_enemy_status(&"dexterity", 1, "current")
+	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
+	assert_eq(GameLoop2.enemy_shield(GameLoop2.current), 3,
+		"the difference between the old X and the new one")
+
+func test_a_shielded_body_dies_once_the_shield_is_gone() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	var inst: int = int(GameLoop2.current["instance"])
+	GameLoop2.apply_enemy_status(&"dexterity", 1, "current")
+	GameLoop2.beat_game(true)              # shield 1 -> 0
+	assert_false(GameLoop2.entry_for(inst).is_empty(), "still standing")
+	assert_true(GameLoop2.fulfill(inst), "the next hit is fulfilled")
+	assert_true(GameLoop2.entry_for(inst).is_empty(), "and this one killed it")
+
+func test_a_shield_survives_a_save() -> void:
+	# Recomputing it from the stacks on load would hand back the point the body
+	# already spent, which is why it is saved beside Health.
+	var ui = _booted()
+	ui.pick(0)
+	GameLoop2.apply_enemy_status(&"dexterity", 3, "current")
+	GameLoop2.beat_game(true)
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	var left: int = GameLoop2.enemy_shield(GameLoop2.entry_for(inst))
+	var blob: Dictionary = GameLoop2.serialize()
+	GameLoop2.reset()
+	GameLoop2.restore(blob)
+	assert_eq(GameLoop2.enemy_shield(GameLoop2.stack[0]), left, "the pool came back as it was")
+
+# --- Marked: double damage, straight through shields ----------------------
+
+func test_marked_doubles_the_damage_an_enemy_takes() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	var inst: int = int(GameLoop2.current["instance"])
+	# Alien Baby makes a body take two goals to put down; Marked puts it down in
+	# one, which is the whole point of the status.
+	GameLoop2.current["health"] = 2
+	GameLoop2.apply_enemy_status(&"marked", 1, "current")
+	GameLoop2.beat_game(true)
+	assert_true(GameLoop2.entry_for(inst).is_empty(), "one goal was worth two damage")
+
+func test_marked_ignores_a_shield_rather_than_spending_it() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	var inst: int = int(GameLoop2.current["instance"])
+	GameLoop2.apply_enemy_status(&"dexterity", 5, "current")
+	GameLoop2.apply_enemy_status(&"marked", 1, "current")
+	GameLoop2.beat_game(true)
+	assert_true(GameLoop2.entry_for(inst).is_empty(),
+		"five shields stopped none of it")
+
+func test_marked_on_the_player_doubles_what_lands_and_skips_the_tries() -> void:
+	# The rule that makes EnemyOnly worth having: a debuff is felt by whoever is
+	# carrying it, Shields included.
+	var ui = _booted()
+	ui.pick(0)
+	ui.report(false)
+	for entry in GameLoop2.stack:
+		entry["col"] = 1
+	GameState.shields = 10                 # plenty of tries to absorb it, in theory
+	GameState.apply_status(&"marked", 1)
+	var swing: int = GameLoop2.enemy_damage(GameLoop2.stack[0])
+	var turns: int = GameLoop2.enemy_turns()
+	var before: int = GameState.hp
+	var res: Dictionary = GameLoop2.beat_game(false)
+	assert_eq(before - GameState.hp, swing * 2 * turns, "doubled, and all of it on Health")
+	# `blocked` rather than the shield count: shields are the tries at ONE game and
+	# expire when it resolves (§3), so reading them afterwards would say 0 whether
+	# they were spent or merely lost.
+	assert_eq(int(res["blocked"]), 0, "the tries absorbed nothing")
+
+func test_an_unmarked_player_still_spends_shields_first() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	ui.report(false)
+	for entry in GameLoop2.stack:
+		entry["col"] = 1
+	GameState.shields = 10
+	var before: int = GameState.hp
+	var res: Dictionary = GameLoop2.beat_game(false)
+	assert_eq(GameState.hp, before, "the tries took it, as they always have")
+	assert_gt(int(res["blocked"]), 0, "and were spent doing so")
+
+# --- Speed: extra tiles per turn ------------------------------------------
+
+func test_speed_closes_extra_columns_per_turn() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	ui.report(false)
+	var entry: Dictionary = GameLoop2.stack[0]
+	entry["col"] = GameLoop2.grid_cols()
+	var start: int = int(entry["col"])
+	GameLoop2.apply_status_to(int(entry["instance"]), &"speed", 1)
+	GameLoop2._advance_stack()
+	assert_eq(int(entry["col"]), start - 2, "one step of its own, plus one from Speed")
+
+func test_speed_stops_at_the_front_column_rather_than_overshooting() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	ui.report(false)
+	var entry: Dictionary = GameLoop2.stack[0]
+	entry["col"] = 2
+	GameLoop2.apply_status_to(int(entry["instance"]), &"speed", 5)
+	GameLoop2._advance_stack()
+	assert_eq(int(entry["col"]), 1, "melee is as far as anything walks")
+
+func test_a_stunned_body_does_not_move_however_fast_it_is() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	ui.report(false)
+	var entry: Dictionary = GameLoop2.stack[0]
+	entry["col"] = GameLoop2.grid_cols()
+	entry["stun"] = 1
+	var start: int = int(entry["col"])
+	GameLoop2.apply_status_to(int(entry["instance"]), &"speed", 3)
+	GameLoop2._advance_stack()
+	assert_eq(int(entry["col"]), start, "a stun beats Speed")
+
+# --- the tooltip ----------------------------------------------------------
+
+func test_the_tooltip_carries_the_combat_line_at_the_live_stack() -> void:
+	var tip: String = Data.get_status(&"strength").tooltip_for(StatusData.ENEMY, 3)
+	assert_true(tip.contains("+3 damage"), "the number in force, not the sheet's X")
+
+func test_the_tooltip_says_when_a_buff_is_enemies_only() -> void:
+	# Otherwise a player holding Strength has a pip that looks like it does
+	# something and a tooltip that never mentions it doesn't.
+	var tip: String = Data.get_status(&"strength").tooltip_for(StatusData.PLAYER, 2)
+	assert_true(tip.to_lower().contains("enemies only"))

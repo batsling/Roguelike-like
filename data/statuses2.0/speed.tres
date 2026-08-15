@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="StatusData" load_steps=3 format=3 uid="uid://status2_speed"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatusData.gd" id="1_status"]
+[ext_resource type="Texture2D" path="res://images2.0/statuses/Speed.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_status")
+id = &"speed"
+display_name = "Speed"
+kind = &"buff"
+source_game = "Mewgenics"
+on_player_text = "Gain \"If beaten in (1+(1/2)^X-2)) hours or less, Gain a [chest reward] and 1 Dash\""
+on_enemy_text = "Gains \"and must be beaten in (1+(1/2)^X-2)) hours or less\""
+stackable = "Intensity"
+combat_text = "Increase tile movement by X"
+enemy_only = true
+on_player = {"mode": "goal", "condition": "beaten in {1.0+pow((1.0/2.0), (X-2.0)):hours} or less", "reward": [{"type": "chest_reward", "scaled": {"value": "X"}}, {"type": "gain_stat", "stat": "dash", "value": 1}], "reward_text": "+{X:chests}, +1 Dash", "decay": false}
+on_enemy = {"mode": "clause", "condition": "must be beaten in {1.0+pow((1.0/2.0), (X-2.0)):hours} or less", "reward": [], "reward_text": "", "decay": false}
+combat = {"tile_move": "X"}
+file = "Speed"
+image = ExtResource("2_img")

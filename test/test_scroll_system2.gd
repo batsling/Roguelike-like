@@ -55,22 +55,39 @@ func test_reading_learns_by_use() -> void:
 
 # --- Effects ---------------------------------------------------------------
 
-func test_aggravate_arms_enemy_damage_bonus() -> void:
+func test_aggravate_puts_strength_on_every_body() -> void:
 	GameState.max_hp = 10
 	GameState.hp = 10
-	# Bring an enemy to the front line first — Aggravate lasts only one game, and
-	# an enemy needs several games to close from the spawn column (§grid), so the
-	# buff must be armed once the enemy is already in melee for it to land.
+	# Bring an enemy to the front line first, so the buffed hit lands this game
+	# rather than several games of walking later.
 	GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)   # spawn column
 	while int(GameLoop2.stack[0].get("col", 1)) > 1:
 		GameLoop2.beat_game(false)                                  # -> front column
 	var s: ScrollData = Data.get_scroll(&"scroll_of_aggravate_monsters")
 	ScrollSystem.read_scroll(s, {"rng": _rng()})
-	assert_eq(GameLoop2.enemy_damage_bonus, 1, "Aggravate is +1 damage")
-	assert_gt(GameLoop2.enemy_damage_bonus_games, 0, "for at least one game")
-	# The bonus lands: the front-line enemy hits for damage + bonus = 3.
+	var entry: Dictionary = GameLoop2.stack[0]
+	assert_eq(int((entry["statuses"] as Dictionary).get(&"strength", 0)), 1,
+		"Aggravate is +1 Strength, on the body")
+	assert_eq(GameLoop2.enemy_damage(entry), 3, "which is 2 base + 1")
+	# And it lands: the front-line enemy hits for the buffed number.
 	GameLoop2.beat_game(false)
-	assert_eq(GameState.hp, 7, "front-line enemy hit for 2 + 1 aggravate")
+	assert_eq(GameState.hp, 7, "front-line enemy hit for 3")
+
+func test_aggravate_does_not_wear_off() -> void:
+	# The whole reason it was moved onto a status: the old bonus expired after a
+	# game, which made a Negative scroll a bad couple of minutes rather than a
+	# lasting mistake.
+	GameState.max_hp = 20
+	GameState.hp = 20
+	GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)
+	while int(GameLoop2.stack[0].get("col", 1)) > 1:
+		GameLoop2.beat_game(false)
+	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_aggravate_monsters"),
+		{"rng": _rng()})
+	GameLoop2.beat_game(false)
+	var after_one: int = GameState.hp
+	GameLoop2.beat_game(false)
+	assert_eq(after_one - GameState.hp, 3, "still hitting for the buffed number")
 
 func test_create_monster_grows_the_stack() -> void:
 	var s: ScrollData = Data.get_scroll(&"scroll_of_create_monster")

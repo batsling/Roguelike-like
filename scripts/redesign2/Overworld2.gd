@@ -805,6 +805,8 @@ func open_choice(index: int) -> GameChoiceModal:
 		"pace": turn_note(choice),
 		"tries": GameLoop2.shields_for_game(choice["game"]),
 		"beatable": _beatable_row(choice),
+		"enemy_hidden": _enemy_hidden(choice),
+		"hidden_note": "The Runic Dome hides what is waiting there. You are routing on the game alone — the enemy, its goal and its damage are all found out on arrival.",
 	}
 	# The stay-or-return question opens the same card for a different verb: it
 	# MOVES the run rather than committing it to a game, so the card drops the two
@@ -2898,9 +2900,13 @@ func _beatable_row(choice: Dictionary) -> Control:
 	if game == null:
 		return null
 	# The enemy standing at this card, plus everything currently following you.
+	# Under the Runic Dome the card's own enemy is left out: a "Beatable" pip is a
+	# portrait with a name on it, so keeping it would hand back the exact thing
+	# the relic is meant to be hiding. The FOLLOWERS stay — they are already on
+	# the board and the Dome only ever hid what has yet to spawn.
 	var on_board: Array = []
 	var here: GoalEnemyData = choice.get("enemy")
-	if here != null:
+	if here != null and not _enemy_hidden(choice):
 		on_board.append(here)
 	for entry in GameLoop2.stack:
 		var follower: GoalEnemyData = entry.get("enemy")
@@ -3664,6 +3670,23 @@ func _enemy_texture(choice: Dictionary) -> Texture2D:
 	var e: GoalEnemyData = choice.get("enemy")
 	return e.image if e != null else null
 
+# Runic Dome (§7.1): whether this card's enemy is hidden. Only ever true for a
+# game being OFFERED — the relic buys a column of board with the routing decision,
+# not with the game you are standing on, so the moment a game is committed to its
+# enemy is on the board and describes itself like any other.
+func _enemy_hidden(choice: Dictionary) -> bool:
+	if not GameState.hides_upcoming_enemies():
+		return false
+	if choice.get("enemy") == null:
+		return false
+	return GameLoop2.current.is_empty() \
+		or GameLoop2.current.get("enemy") != choice.get("enemy")
+
+# What a hidden card says instead. Named rather than inlined because three
+# screens say it (the hover line, the now-playing panel, GameChoiceModal) and
+# they must not each invent their own wording for the same blank.
+const HIDDEN_ENEMY_TEXT := "something you can't see"
+
 # The hover, on ONE line: the enemy this card would put on the board, the goal you
 # would be playing for, and the TRIES it hands you. The tries used to be a slot on
 # the HUD that previewed on hover; the HUD has gone, and this is the line that was
@@ -3680,6 +3703,10 @@ func _hover_line(choice: Dictionary) -> String:
 		SHIELD_BLUE.to_html(false), _hover_grant] if _hover_grant >= 0 else ""
 	if e == null:
 		return "[b]%s[/b]  ·  [i]no enemy — free game[/i]%s" % [game.display_name, tries]
+	# Under the Runic Dome there is no enemy line to give: the goal is the enemy's,
+	# so hiding the name and quoting the goal would give the whole thing away.
+	if _enemy_hidden(choice):
+		return "[b]%s[/b]  →  [i]%s[/i]%s" % [game.display_name, HIDDEN_ENEMY_TEXT, tries]
 	var kind: String = "[color=#e0b020]☠ [/color]" if choice["boss"] else ""
 	return "[b]%s[/b]  →  %s%s  ·  %s%s" % [
 		game.display_name, kind, e.display_name,
@@ -3695,6 +3722,9 @@ func _enemy_preview_text(choice: Dictionary) -> String:
 		repeat = "\n[color=#80d9ff]⚡ Already beaten this run — beating it again grants +%d Dash.[/color]" % REPEAT_BEAT_DASH
 	if e == null:
 		return "[b]%s[/b]\n[i]No enemy — free game.[/i]%s" % [game.display_name, repeat]
+	if _enemy_hidden(choice):
+		return "[b]%s[/b]  →  [i]%s[/i]\n[i]The Runic Dome hides what is waiting there. You will find out when you arrive.[/i]%s" % [
+			game.display_name, HIDDEN_ENEMY_TEXT, repeat]
 	var kind: String = "[color=#e0b020][b]☠ BOSS[/b][/color] " if choice["boss"] else ""
 	# Effective Health = goal completions to defeat it (Alien Baby makes it 2).
 	var hp: int = GameLoop2.effective_health(e)

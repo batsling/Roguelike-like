@@ -28,7 +28,8 @@ extends Resource
 
 # The scroll's structured effect: a list of ops (each a Dictionary with an "op"
 # plus op-specific keys) applied by ScrollSystem.read_scroll — e.g.
-#   {"op": "buff_enemies", "damage": 1, "games": 1}          (Aggravate Monsters)
+#   {"op": "apply_status", "status": "strength", "value": 1,
+#    "target": "all"}                                        (Aggravate Monsters)
 #   {"op": "forget", "kind": "scroll", "count": 1}           (Amnesia)
 #   {"op": "spawn_enemy", "difficulty": "current"}           (Create Monster)
 #   {"op": "identify_scrolls", "mode": "choose", "count": 1} (Identify)

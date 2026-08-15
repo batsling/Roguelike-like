@@ -14,7 +14,12 @@ rewrite + combat cut land together.
   scrolls2.0: Scrolls | Game | Preference | Description | File | Effect
 
 Effect token DSL (one scroll = one clause):
+  apply_status <status> N current|all|random
+                                     -> {op:apply_status, status, value, target}
   buff_enemies damage N games M      -> {op:buff_enemies, damage:N, games:M}
+                                        (retired: Aggravate Monsters hands out
+                                        Strength now, §13.4 — kept so an old
+                                        cell still parses)
   forget scroll|potion|spell N       -> {op:forget, kind, count:N}
   spawn_enemy current|low|medium|high-> {op:spawn_enemy, difficulty}
   identify_scrolls choose|random|all N -> {op:identify_scrolls, mode, count:N}
@@ -73,6 +78,19 @@ def parse_effect(raw):
         return [{"op": "buff_enemies",
                  "damage": int(kv.get("damage", 1)),
                  "games": int(kv.get("games", 1))}]
+    if verb == "apply_status":
+        # `apply_status <status> [n] [current|all|random]` — Aggravate Monsters,
+        # in the vocabulary the statuses own since they grew a combat side (§13.4).
+        # It replaces `buff_enemies`, which armed a run-wide damage bonus that
+        # ticked away after N games; a Strength stack rides the body instead and
+        # never expires, which is what a Negative scroll should cost you.
+        if not rest:
+            raise ValueError("scroll effect DSL: apply_status needs a status in %r" % s)
+        targets = [t for t in rest[1:] if t.lower() in ("current", "all", "random")]
+        return [{"op": "apply_status",
+                 "status": rest[0].lower(),
+                 "value": nums[0] if nums else 1,
+                 "target": targets[0].lower() if targets else "all"}]
     if verb == "forget":
         kind = rest[0].lower() if rest and not rest[0].isdigit() else "scroll"
         return [{"op": "forget", "kind": kind, "count": nums[0] if nums else 1}]

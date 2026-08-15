@@ -11,6 +11,88 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Statuses grew a combat side, Dexterity split in two, and `+X Small Chests`
+  became one chest that gets bigger.**
+
+  A status used to be goals and nothing else. It never touched a number on the
+  board — that was the whole design of §13, and it is why an item, a location or
+  a scroll could reach into the run's difficulty without any of them knowing what
+  a goal is. That half is unchanged. What is new is a **combat side** beside it:
+  three columns in `statuses2.0` (`Combat`, `EnemyOnly`, `Enemy Combat Effect`)
+  and four numbers a status can now move.
+
+  | | Goal side (unchanged) | Combat side (new) |
+  |---|---|---|
+  | **Strength** | difficulty increased X times | deals +X damage |
+  | **Speed** | beaten in 1+(1/2)^(X-2) hours | closes +X tiles per turn |
+  | **Dexterity** | X bosses beaten without getting hit | +X Shields |
+  | **Marked** | you get X achievements | takes double damage, ignoring Shields |
+
+  **Dexterity split.** The old Dexterity was a time-window buff wearing a name
+  that described nothing about it. The window kept its goal, its curve and its
+  reward and became **Speed** (Mewgenics); **Dexterity** is now the Slay the Spire
+  relic's own reading of the word — a shield — with a boss-flawless goal of its
+  own. Anything that referred to the old Dexterity means Speed.
+
+  **A shield is a pool, not a stack count.** Applying Dexterity *grants* X shield
+  points; each absorbs one damage and is gone. The body keeps its stacks
+  afterwards (its goal clause is unchanged) and has no shield left — which is why
+  `shield` is saved on the board entry beside `health` rather than recomputed on
+  load, where it would hand back the point the body already spent.
+
+  **A debuff is felt by whoever is carrying it.** `EnemyOnly` is set on all three
+  buffs (Strength on the player would want a player attack to sit on, and this
+  game has none) and cleared on Marked — so Marked on the *player* doubles the
+  damage they take and takes it straight past the Shields, the tries, they were
+  counting on to absorb it. That is the one place Buff/Debuff finally became a
+  rule instead of a HUD tint, and it is spelled out in a column rather than
+  inferred from the word.
+
+  **The multipliers are flat and the bonuses scale.** Marked doubles at one stack
+  and at four. A doubling that compounded per stack would turn a board where a hit
+  is worth 1 into one where it is worth 16, off a status the player never chose to
+  stack.
+
+  Every number goes through one function per side —
+  `StatusData.combat_totals(held, which)`, called by `GameLoop2.enemy_combat` and
+  `GameState.combat_totals` alike — and lands in one place per direction:
+  `GameLoop2._damage_enemy` (a met goal, a bomb and a scroll all resolve there) and
+  `GameLoop2._take_hit`. There is nowhere for "does Marked pierce?" to get two
+  answers.
+
+  **`[chest reward]` replaced `+X Small Chests`.** Every scaling payout in the game
+  used to read "+X Small Chests", which grew into X separate one-item screens each
+  worth less than the last. A chest reward spends the same X as **chest points** on
+  the size ladder instead — Small 1, Medium 2, Large 3, Huge 4, then greedily Huge
+  plus one remainder — so 3 is a Large, 6 is a Huge and a Medium, 8 is two Huges.
+  `Data.chest_reward_sizes` is the equation and `Data.chest_reward_text` the
+  wording, reached from a status's reward text through a new `{X:chests}` hole
+  format, so the checklist row and the reward screen quote the same chests. The
+  verb payouts beside it drop to a flat `+1 Bash` / `+1 Dash`: the chest is what
+  scales now.
+
+  **Aggravate Monsters was rebuilt on Strength.** It used to arm a run-wide damage
+  bonus that ticked away after a game; it now hands **+1 Strength to every body on
+  the board**, which rides the enemy and never expires. Reading a Negative scroll
+  is a lasting mistake rather than a bad couple of minutes.
+  `GameLoop2.enemy_damage_bonus` and `aggravate()` are gone; a save written before
+  this reads past those two keys.
+
+  **Two new Slay the Spire boss relics**, both buying the same thing and charging
+  differently for it. Each adds a **column and no row** — length without width, so
+  the board gets deeper without the front line getting wider, which is the better
+  half of Mine-r Construction's trade. **Philosophers Stone** pays for it by giving
+  every enemy that *spawns* while it is held +1 Strength (bodies already on the
+  board are not taxed retroactively). **Runic Dome** pays for it by hiding the
+  enemy behind an offered game until you have committed to it — the hover line, the
+  choice popup and the Beatable row all go dark together, and the followers already
+  on the board stay visible, because the Dome only ever hid what has yet to spawn.
+
+  On screen: the ⚔ badge and the enemy card now quote the *buffed* damage (with
+  the authored number in brackets when a status has moved it), a ◆ shield badge
+  sits beside the ❤ when there is one to spend, and every status tooltip carries
+  its combat line at the live stack count.
+
 - **The Steam sync is gone: Steam closed the door, and ticking a cover is one
   click anyway.**
 

@@ -2,13 +2,19 @@ class_name StatusData
 extends Resource
 
 # Static definition of a STATUS — the games-first redesign's balance lever
-# (docs/games-first-redesign.md §13). A status is not a stat modifier and it is
-# not combat state: it is a CLAUSE bolted onto the run's goals, which is the only
-# currency this game has. That is why a location, an item, or a scroll can reach
-# into the run's difficulty without any of them knowing what a goal is.
+# (docs/games-first-redesign.md §13). A status is first of all a CLAUSE bolted
+# onto the run's goals, which is the only currency this game has, and that is why
+# a location, an item, or a scroll can reach into the run's difficulty without any
+# of them knowing what a goal is.
 #
-# A status has TWO SIDES, `on_player` and `on_enemy`, authored independently in
-# the sheet so its halves can do genuinely different things (Marked taxes every
+# It is ALSO, since the combat expansion, a modifier on the board: a Strength
+# stack makes an enemy hit harder, a Dexterity stack gives it a shield to spend, a
+# Speed stack walks it a tile closer, and Marked doubles what lands on whoever is
+# wearing it. That side is `combat`, at the bottom of the exports, and it is the
+# only part of a status that touches a number rather than a goal.
+#
+# A status has TWO GOAL SIDES, `on_player` and `on_enemy`, authored independently
+# in the sheet so its halves can do genuinely different things (Marked taxes every
 # goal on the player's side and pays out on the enemy's). Each side names a MODE,
 # and the mode is the whole of what that side does:
 #
@@ -22,7 +28,9 @@ extends Resource
 #           claimable for its reward and free to skip.
 #
 # Because the mode says what a side does, `kind` (Buff / Debuff) drives no
-# mechanic at all: it is the HUD tint and the collection filter, nothing more.
+# mechanic at all: it is the HUD tint and the collection filter, nothing more. The
+# distinction it stands for is real, but it is spelled out in `enemy_only` rather
+# than inferred from the word — a debuff's combat side reaches the player too.
 #
 # Source-of-truth content lives in the `statuses2.0` sheet of
 # tools/Roguelikes.xlsx and is generated into data/statuses2.0/*.tres by
@@ -64,6 +72,34 @@ const ENEMY := &"enemy"
 #    "decay": bool}              completing it sheds one stack
 @export var on_player: Dictionary = {}
 @export var on_enemy: Dictionary = {}
+
+# THE COMBAT SIDE. Everything above rewrites GOALS; this is the one part of a
+# status that touches a number on the board. `combat_text` is the sheet's prose
+# and `combat` is what the engine runs on — {} for a status that does nothing in
+# combat, else some of:
+#
+#   damage_dealt        String expr over X   this thing's hits land for that much more
+#   damage_taken        String expr over X   hits on this thing land for that much more
+#   damage_dealt_mult   float                flat multiplier on what it deals
+#   damage_taken_mult   float                flat multiplier on what it takes
+#   shield              String expr over X   shield points granted when it lands
+#   tile_move           String expr over X   extra columns closed per step
+#   pierce_shields      bool                 damage at this thing ignores shields
+#
+# The additive fields scale with the stack count; the MULTIPLIERS deliberately do
+# not. Marked doubles damage at one stack and at four — a doubling that compounded
+# per stack would turn a board where hits are worth 1 into one where they are
+# worth 16, off a status the player never chose to stack.
+@export var combat_text: String = ""
+@export var combat: Dictionary = {}
+
+# Whether the combat side is felt on ENEMIES ONLY (the sheet's EnemyOnly column).
+# Every buff is: Strength on the player would be a stat, and this game has no
+# player attack to put it on. Every debuff is not — a debuff is felt by whoever is
+# carrying it, so Marked doubles the damage the PLAYER takes as readily as an
+# enemy's. Nothing else in the class keys off Buff/Debuff; this column is where
+# that distinction became a rule instead of a tint.
+@export var enemy_only: bool = true
 
 # Art base name under res://images2.0/statuses/ (the sheet's Image column).
 @export var file: String = ""
@@ -169,6 +205,13 @@ func tooltip_for(which: StringName, stacks: int) -> String:
 			body = "Does nothing on this side."
 	if decays(which):
 		body += "\nLoses a stack each game you complete it."
+	# The combat side rides the same tooltip rather than a second one: a pip is
+	# one thing to the player, and "what is this doing to me" has to be answerable
+	# in one hover whether the answer is a goal, a number on the board, or both.
+	if combat_applies(which):
+		body += "\nIn combat: %s." % combat_line(stacks)
+	elif has_combat() and which == PLAYER:
+		body += "\nIts combat effect is felt by enemies only."
 	return "%s\n%s" % [head, body]
 
 # --- reward effects -------------------------------------------------------
@@ -193,6 +236,98 @@ func reward_effects(which: StringName, stacks: int) -> Array:
 		out.append(eff)
 	return out
 
+# --- the combat side ------------------------------------------------------
+
+# The keys `combat_totals` reports, and what an absent one reads as. Named here
+# so a caller reads a total by field rather than by remembering that a missing
+# multiplier is 1.0 and a missing bonus is 0.
+const COMBAT_ZERO := {
+	"damage_dealt": 0, "damage_taken": 0,
+	"damage_dealt_mult": 1.0, "damage_taken_mult": 1.0,
+	"shield": 0, "tile_move": 0, "pierce_shields": false,
+}
+
+func has_combat() -> bool:
+	return not combat.is_empty()
+
+# Whether this status's combat side is felt by `which`. A status on an ENEMY
+# always acts; on the PLAYER only when the sheet said it reaches that far.
+func combat_applies(which: StringName) -> bool:
+	return has_combat() and (which == ENEMY or not enemy_only)
+
+# One additive combat field at `stacks` — 0 when this status doesn't author it.
+func combat_bonus(field: StringName, stacks: int) -> int:
+	if not combat.has(field):
+		return 0
+	return int(round(evaluate(String(combat[field]), stacks)))
+
+# One multiplier field, 1.0 when unauthored. Flat: `stacks` is not consulted.
+func combat_mult(field: StringName) -> float:
+	return float(combat.get(String(field) + "_mult", 1.0))
+
+func pierces_shields() -> bool:
+	return bool(combat.get("pierce_shields", false))
+
+# THE aggregator: what a whole collection of statuses does in combat. `held` is
+# the id -> stacks dict both holders keep (GameState.player_statuses and the
+# `statuses` dict on a GameLoop2 board entry), and `which` says which side is
+# asking. Bonuses sum, multipliers multiply, flags OR together.
+#
+# One function for both holders on purpose. The player and an enemy carry the same
+# statuses through the same rules, and two aggregators would be two places for
+# "does Marked pierce?" to be answered differently.
+static func combat_totals(held: Dictionary, which: StringName) -> Dictionary:
+	var out: Dictionary = COMBAT_ZERO.duplicate()
+	for id in held.keys():
+		var status: StatusData = Data.get_status(StringName(id))
+		if status == null or not status.combat_applies(which):
+			continue
+		var stacks: int = int(held[id])
+		if stacks <= 0:
+			continue
+		for field in ["damage_dealt", "damage_taken", "shield", "tile_move"]:
+			out[field] = int(out[field]) + status.combat_bonus(StringName(field), stacks)
+		for field in ["damage_dealt_mult", "damage_taken_mult"]:
+			out[field] = float(out[field]) * status.combat_mult(
+				StringName(String(field).trim_suffix("_mult")))
+		out["pierce_shields"] = bool(out["pierce_shields"]) or status.pierces_shields()
+	return out
+
+# Apply one totals dict to a raw damage number: the bonus first, then the
+# multiplier, floored at 0. Both halves in one function so "does the x2 apply
+# before or after the +1?" has exactly one answer wherever damage is worked out.
+static func apply_damage_mods(damage: int, bonus: int, mult: float) -> int:
+	return maxi(0, int(round(float(damage + bonus) * mult)))
+
+# What the combat side DOES, in words, at `stacks` — the live line the tooltips
+# carry. Built from the parsed `combat` rather than from `combat_text`, so it
+# quotes the number that is actually in force instead of the sheet's bare X.
+func combat_line(stacks: int) -> String:
+	if not has_combat():
+		return ""
+	var parts: PackedStringArray = []
+	var dealt: int = combat_bonus(&"damage_dealt", stacks)
+	if dealt != 0:
+		parts.append("deals %+d damage" % dealt)
+	var dealt_mult: float = combat_mult(&"damage_dealt")
+	if not is_equal_approx(dealt_mult, 1.0):
+		parts.append("deals %sx damage" % format_number(dealt_mult))
+	var taken: int = combat_bonus(&"damage_taken", stacks)
+	if taken != 0:
+		parts.append("takes %+d damage" % taken)
+	var taken_mult: float = combat_mult(&"damage_taken")
+	if not is_equal_approx(taken_mult, 1.0):
+		parts.append("takes %sx damage" % format_number(taken_mult))
+	var shield: int = combat_bonus(&"shield", stacks)
+	if shield != 0:
+		parts.append("+%d %s" % [shield, "Shield" if shield == 1 else "Shields"])
+	var move: int = combat_bonus(&"tile_move", stacks)
+	if move != 0:
+		parts.append("moves %+d %s per turn" % [move, "tile" if absi(move) == 1 else "tiles"])
+	if pierces_shields():
+		parts.append("ignores Shields")
+	return ", ".join(parts)
+
 # --- the {expr} mini-language --------------------------------------------
 
 # Substitutes every hole in `text` at X = `stacks`. Two kinds:
@@ -203,6 +338,10 @@ func reward_effects(which: StringName, stacks: int) -> Array:
 #                       DURATION — "1 hour 30 minutes" — because a time window is
 #                       something the player has to hold against a clock, and
 #                       "1.5 hours" is arithmetic they'd have to do themselves.
+#                       With `:chests` it renders a count of chest POINTS as the
+#                       chests it buys (§8.2) — "1 Large Chest" at 3, "1 Huge
+#                       Chest and 1 Small Chest" at 5 — because the point count
+#                       is an implementation detail and the chests are the promise.
 #   [singular|plural]   agrees in number with the {expr} most recently resolved,
 #                       so "+{X} [Small Chest|Small Chests]" reads correctly at
 #                       every stack count instead of picking one and being wrong
@@ -233,7 +372,13 @@ func resolve(text: String, stacks: int) -> String:
 				fmt = body.substr(colon + 1).strip_edges().to_lower()
 				body = body.substr(0, colon)
 			last_value = evaluate(body, stacks)
-			out += format_hours(last_value) if fmt == "hours" else format_number(last_value)
+			match fmt:
+				"hours":
+					out += format_hours(last_value)
+				"chests":
+					out += Data.chest_reward_text(int(round(last_value)))
+				_:
+					out += format_number(last_value)
 		else:
 			var forms: PackedStringArray = body.split("|")
 			var singular: bool = forms.size() > 1 and is_equal_approx(last_value, 1.0)

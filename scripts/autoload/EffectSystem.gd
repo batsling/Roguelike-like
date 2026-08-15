@@ -72,6 +72,7 @@ func _register_defaults() -> void:
 	register("gain_stat", _h_gain_stat)
 	register("gain_gold", _h_gain_gold)
 	register("gain_chest", _h_gain_chest)
+	register("chest_reward", _h_chest_reward)
 	register("lose_hp", _h_lose_hp)
 	register("lose_max_hp", _h_lose_max_hp)
 	register("lose_stat", _h_lose_stat)
@@ -212,6 +213,17 @@ func _h_gain_chest(effect: Dictionary, _ctx: Dictionary) -> void:
 	# reward screen's own default", which is BASE_ITEM_CHOICES plus Discovery.
 	# A sized chest has to carry its size all the way to the screen.
 	GameState.grant_chest(n, int(effect.get("choices", 0)))
+
+# A [chest reward] (§8.2): `value` chest POINTS spent on the size ladder rather
+# than a count of identically-sized chests. Data owns the equation — 3 points is
+# one Large, 6 is a Huge and a Medium — and the chests it names are banked in ONE
+# grant, so a reward the player was promised as a single line arrives as a single
+# line rather than as one toast per chest.
+func _h_chest_reward(effect: Dictionary, _ctx: Dictionary) -> void:
+	var points: int = _dyn_amount(effect, "value", "value_from", "value_mult")
+	if not effect.has("value") and not effect.has("value_from"):
+		points = 1
+	GameState.grant_chests(Data.chest_reward_sizes(points))
 
 # Applies a STATUS (§13) — the hook a location, item, or scroll uses to reach into
 # the run's goals without knowing anything about them. `target` picks the SIDE the

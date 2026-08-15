@@ -846,19 +846,19 @@ func test_spawn_to_stack_adds_a_following_enemy() -> void:
 	_tick()                             # strikes for 2
 	assert_eq(GameState.hp, 8, "the conjured enemy hits for 2 once at the front")
 
-# --- aggravate (Scroll of Aggravate Monsters, §4.1) -----------------------
+# --- Strength on the board (Aggravate Monsters, §4.1 / §13.4) -------------
 
-func test_aggravate_adds_damage_for_n_games_then_expires() -> void:
+func test_strength_raises_a_bodys_damage_for_good() -> void:
+	# The buff Aggravate Monsters hands out is a STATUS now, so it rides the body
+	# and — unlike the run-wide bonus it replaced — never expires.
 	var a: int = GameLoop2.choose_game(_enemy(1)) ; GameLoop2.beat_game(false)  # A(1) spawn col
 	_march_to_front(a)
-	GameLoop2.aggravate(2, 1)                                       # +2 for 1 game
-	assert_eq(GameLoop2.stacked_damage_per_game(), 3, "1 base + 2 aggravate at the front")
+	GameLoop2.apply_status_to(a, &"strength", 2)                    # +2 on every hit
+	assert_eq(GameLoop2.stacked_damage_per_game(), 3, "1 base + 2 Strength at the front")
 	_tick()                                                        # A hits 1+2=3
 	assert_eq(GameState.hp, 7)
-	# The buff lasted one game; the next hit is the base damage again.
-	assert_eq(GameLoop2.enemy_damage_bonus_games, 0, "aggravate expired")
-	_tick()                                                        # A hits 1
-	assert_eq(GameState.hp, 6)
+	_tick()                                                        # and again, for 3
+	assert_eq(GameState.hp, 4, "the stack is still on it a game later")
 
 # --- stacked-damage preview (HUD) -----------------------------------------
 

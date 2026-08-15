@@ -754,6 +754,22 @@ func grant_chest(count: int = 1, choices: int = 0) -> void:
 		Color(1.0, 0.85, 0.4))
 	TriggerBus.emit_signal("chest_granted", {"count": count})
 
+# Banks several chests of DIFFERENT sizes as one grant — what a `[chest reward]`
+# pays out (§8.2), where "1 Huge and 1 Small" is one reward rather than two.
+# grant_chest takes a single size for the whole batch, so calling it per chest
+# would toast the player once per chest and fire chest_granted once per chest for
+# something they were promised as one line. Announced once, at the size the reward
+# actually was.
+func grant_chests(sizes: Array) -> void:
+	if sizes.is_empty():
+		return
+	pending_chests += sizes.size()
+	for size in sizes:
+		pending_chest_choices.append(int(Data.CHEST_SIZE_CHOICES[int(size)]))
+	Notifications.notify("Gained %s!" % Data.chest_sizes_text(sizes),
+		Color(1.0, 0.85, 0.4))
+	TriggerBus.emit_signal("chest_granted", {"count": sizes.size()})
+
 # Consumes one banked chest, returning its choice count (0 = screen default),
 # or -1 if none were pending. The overworld calls this as it opens each
 # item-reward screen.
@@ -1559,6 +1575,18 @@ func status_objectives() -> Array:
 			out.append(row)
 	return out
 
+# What the player's statuses add up to IN COMBAT (§13.4) — the other half of the
+# status mechanic, the half that moves a number instead of a goal.
+#
+# Most statuses contribute nothing here: `StatusData.enemy_only` is set on every
+# buff, because Strength on the player would want a player attack to sit on and
+# this game has none. What comes through is the DEBUFFS, which are felt by whoever
+# is carrying them — Marked doubles the damage the player takes and takes it past
+# their Shields, exactly as it does on an enemy. Same aggregator either side, so
+# the two can't drift.
+func combat_totals() -> Dictionary:
+	return StatusData.combat_totals(player_statuses, StatusData.PLAYER)
+
 # The statuses whose PLAYER side is a `clause` — the requirements that get ANDed
 # onto every enemy's goal.
 func status_clauses() -> Array:
@@ -1804,6 +1832,36 @@ func grid_growth() -> int:
 		if it is ItemData and it.grid_grow:
 			n += 1
 	return n
+
+# Philosophers Stone / Runic Dome: how many extra COLUMNS the battlefield has,
+# on top of grid_growth's columns-and-rows (§7.3). Length without width: more
+# ground to cross, and no extra lane — so the front line still holds grid_rows()
+# attackers and the column is bought purely as time.
+func grid_length_growth() -> int:
+	var n: int = 0
+	for it in inventory:
+		if it is ItemData and it.grid_length_grow:
+			n += 1
+	return n
+
+# Runic Dome: whether the enemy behind an OFFERED game is hidden until the game
+# is committed to (§7.1). One copy is enough — you cannot be more blind than
+# blind — so this answers a bool where the two above count.
+func hides_upcoming_enemies() -> bool:
+	return _any_item_flag("hide_spawns")
+
+# Philosophers Stone: the statuses every newly spawned enemy arrives carrying, as
+# id -> stacks (§13.4). Summed across copies, so two Stones mean +2 Strength on
+# each body rather than the second one doing nothing.
+func spawn_statuses() -> Dictionary:
+	var out: Dictionary = {}
+	for it in inventory:
+		if not (it is ItemData) or (it as ItemData).spawn_statuses.is_empty():
+			continue
+		for id in (it as ItemData).spawn_statuses.keys():
+			var key := StringName(id)
+			out[key] = int(out.get(key, 0)) + int((it as ItemData).spawn_statuses[id])
+	return out
 
 # Sacred Bark: what every loot consumable resolves at. MULTIPLIES the copies
 # together — "double the effect" applied twice is quadruple, not double — and

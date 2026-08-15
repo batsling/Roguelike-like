@@ -165,6 +165,49 @@ func test_chest_size_choices_map_every_size() -> void:
 	assert_eq(Data.CHEST_SIZE_CHOICES[Data.ChestSize.LARGE], 3, "Large chest = choose 1 of 3")
 	assert_eq(Data.CHEST_SIZE_CHOICES[Data.ChestSize.HUGE], 5, "Huge chest = choose 1 of 5")
 
+# --- [chest reward]: one payout that grows, not N Small ones (§8.2) -------
+
+func test_a_chest_reward_climbs_the_size_ladder_before_it_widens() -> void:
+	# The point of the equation: a growing reward gets BIGGER before it gets more
+	# numerous, because X screens of one item each are worth less than one screen
+	# of five.
+	assert_eq(Data.chest_reward_sizes(1), [Data.ChestSize.SMALL])
+	assert_eq(Data.chest_reward_sizes(2), [Data.ChestSize.MEDIUM])
+	assert_eq(Data.chest_reward_sizes(3), [Data.ChestSize.LARGE])
+	assert_eq(Data.chest_reward_sizes(4), [Data.ChestSize.HUGE],
+		"four points is the top of the ladder, still one chest")
+
+func test_past_the_top_of_the_ladder_it_pays_a_huge_plus_the_remainder() -> void:
+	assert_eq(Data.chest_reward_sizes(5), [Data.ChestSize.HUGE, Data.ChestSize.SMALL])
+	assert_eq(Data.chest_reward_sizes(6), [Data.ChestSize.HUGE, Data.ChestSize.MEDIUM])
+	assert_eq(Data.chest_reward_sizes(7), [Data.ChestSize.HUGE, Data.ChestSize.LARGE])
+	assert_eq(Data.chest_reward_sizes(8), [Data.ChestSize.HUGE, Data.ChestSize.HUGE],
+		"eight is two Huges, not a Huge and a spare")
+	assert_eq(Data.chest_reward_sizes(9),
+		[Data.ChestSize.HUGE, Data.ChestSize.HUGE, Data.ChestSize.SMALL])
+
+func test_a_chest_reward_of_nothing_mints_no_chest() -> void:
+	assert_eq(Data.chest_reward_sizes(0).size(), 0)
+	assert_eq(Data.chest_reward_sizes(-3).size(), 0, "and neither does a negative one")
+	assert_eq(Data.chest_reward_text(0), "nothing")
+
+func test_a_chest_reward_reads_as_the_chests_it_buys() -> void:
+	# The wording is Data's so the promise on a checklist row and the chests the
+	# reward screen hands over cannot describe the same number differently.
+	assert_eq(Data.chest_reward_text(1), "1 Small Chest")
+	assert_eq(Data.chest_reward_text(4), "1 Huge Chest")
+	assert_eq(Data.chest_reward_text(5), "1 Huge Chest and 1 Small Chest")
+	assert_eq(Data.chest_reward_text(8), "2 Huge Chests", "a run of one size counts up")
+	assert_eq(Data.chest_reward_text(9), "2 Huge Chests and 1 Small Chest")
+
+func test_the_chest_reward_effect_banks_one_chest_per_size() -> void:
+	EffectSystem.apply_all([{"type": "chest_reward", "value": 5}], {})
+	assert_eq(GameState.pending_chests, 2, "a Huge and a Small")
+	assert_eq(GameState.pending_chest_choices,
+		[int(Data.CHEST_SIZE_CHOICES[Data.ChestSize.HUGE]),
+		 int(Data.CHEST_SIZE_CHOICES[Data.ChestSize.SMALL])],
+		"each carrying its own size all the way to the screen")
+
 func test_chest_sizes_sit_on_the_rarity_ladder() -> void:
 	assert_eq(int(Data.ChestSize.SMALL), int(Data.RarityStep.COMMON), "Small shares Common's step")
 	assert_eq(int(Data.ChestSize.HUGE), int(Data.RarityStep.LEGENDARY), "Huge shares the top step")
@@ -278,6 +321,54 @@ func test_grid_growth_counts_the_copies() -> void:
 	assert_eq(GameState.grid_growth(), 1)
 	GameState.add_item(Data.get_item2(&"mine_r_construction"))
 	assert_eq(GameState.grid_growth(), 2, "a second copy is a second column")
+
+# --- Philosophers Stone / Runic Dome: length without width (§7.3) ---------
+
+func test_the_boss_grid_relics_grow_the_length_only() -> void:
+	for id in [&"philosophers_stone", &"runic_dome"]:
+		var it: ItemData = Data.get_item2(id)
+		assert_not_null(it, "%s is in the catalog" % id)
+		assert_true(it.grid_length_grow, "%s carries the grid_length flag" % id)
+		assert_false(it.grid_grow, "%s is not Mine-r Construction" % id)
+
+func test_a_length_relic_adds_a_column_and_no_row() -> void:
+	var cols: int = GameLoop2.grid_cols()
+	var rows: int = GameLoop2.grid_rows()
+	GameState.add_item(Data.get_item2(&"runic_dome"))
+	assert_eq(GameLoop2.grid_cols(), cols + 1, "a column of pure distance")
+	assert_eq(GameLoop2.grid_rows(), rows, "and no extra lane to be attacked from")
+
+func test_length_growth_counts_the_copies() -> void:
+	assert_eq(GameState.grid_length_growth(), 0)
+	GameState.add_item(Data.get_item2(&"philosophers_stone"))
+	GameState.add_item(Data.get_item2(&"runic_dome"))
+	assert_eq(GameState.grid_length_growth(), 2, "both relics, both columns")
+
+func test_the_philosophers_stone_taxes_every_body_that_spawns() -> void:
+	GameState.add_item(Data.get_item2(&"philosophers_stone"))
+	assert_eq(int(GameState.spawn_statuses().get(&"strength", 0)), 1, "the relic's bill")
+	var enemy: GoalEnemyData = GameLoop2.roll_enemy()
+	assert_not_null(enemy, "the pool rolled something to spawn")
+	var inst: int = GameLoop2.spawn_to_stack(enemy)
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	assert_eq(int((entry.get("statuses", {}) as Dictionary).get(&"strength", 0)), 1,
+		"it arrived carrying Strength")
+	assert_eq(GameLoop2.enemy_damage(entry), int(enemy.damage) + 1,
+		"and hits for one more because of it")
+
+func test_a_body_already_on_the_board_is_not_taxed_retroactively() -> void:
+	# The Stone taxes what SPAWNS while it is owned. Reaching back onto the board
+	# would make picking it up a burst of damage rather than a standing cost.
+	var enemy: GoalEnemyData = GameLoop2.roll_enemy()
+	var inst: int = GameLoop2.spawn_to_stack(enemy)
+	GameState.add_item(Data.get_item2(&"philosophers_stone"))
+	assert_eq(GameLoop2.enemy_damage(GameLoop2.entry_for(inst)), int(enemy.damage),
+		"the body that was already there is unchanged")
+
+func test_the_runic_dome_sets_the_hide_flag() -> void:
+	assert_false(GameState.hides_upcoming_enemies(), "nothing owned, nothing hidden")
+	GameState.add_item(Data.get_item2(&"runic_dome"))
+	assert_true(GameState.hides_upcoming_enemies())
 
 func test_crown_bonus_level_up() -> void:
 	var crown: ItemData = Data.get_item2(&"crown")
@@ -447,8 +538,10 @@ func test_identify_scroll_effect_and_preference() -> void:
 func test_aggravate_scroll_is_negative_buff() -> void:
 	var s: ScrollData = Data.get_scroll2(&"scroll_of_aggravate_monsters")
 	assert_eq(s.preference, "Negative")
-	assert_eq(String(s.effect[0].get("op", "")), "buff_enemies")
-	assert_eq(int(s.effect[0].get("damage", 0)), 1)
+	assert_eq(String(s.effect[0].get("op", "")), "apply_status")
+	assert_eq(String(s.effect[0].get("status", "")), "strength")
+	assert_eq(int(s.effect[0].get("value", 0)), 1)
+	assert_eq(String(s.effect[0].get("target", "")), "all", "the whole board, not one body")
 
 # --- GameState verb / shield resources ------------------------------------
 
