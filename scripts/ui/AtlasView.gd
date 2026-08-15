@@ -291,6 +291,13 @@ func _ready() -> void:
 # these resources are build artefacts, not authored content.
 static func load_layout(filter_value: int = -1) -> AtlasLayout:
 	var wanted: int = filter_value if filter_value >= 0 else Settings.game_filter
+	# The owned sky is baked from the CATALOG's Owned column (bake_atlas.py reads
+	# the .tres). A player using their own list owns a different set, so that
+	# variant would draw a subgraph the run doesn't travel — stars it can't enter,
+	# and none of the games it can. Fall back to the full sky, which is at least a
+	# superset of whatever they own.
+	if wanted == Settings.GameFilter.OWNED and Ownership.source != Ownership.Source.SPREADSHEET:
+		wanted = Settings.GameFilter.ALL
 	for path in [LAYOUT_PATHS.get(wanted, LAYOUT_PATH), LAYOUT_PATH]:
 		if ResourceLoader.exists(path):
 			var res: Resource = load(path)
@@ -860,13 +867,13 @@ func passes_game_filter(game: GameData) -> bool:
 		return false
 	match _f_owned:
 		1:
-			if not game.owned:
+			if not Ownership.is_owned(game):
 				return false
 		2:
 			if game.file_location.strip_edges() == "":
 				return false
 		3:
-			if game.owned:
+			if Ownership.is_owned(game):
 				return false
 	if _f_type >= 0 and int(game.type) != _f_type:
 		return false
@@ -1595,7 +1602,7 @@ func _refresh_card() -> void:
 		facts.add_child(_fact("Status", "destroyed — bashed this run"))
 	elif not pure_catalog and GameState.has_beaten_game(id):
 		facts.add_child(_fact("Status", "beaten this run"))
-	if game != null and game.owned:
+	if Ownership.is_owned(game):
 		facts.add_child(_fact("Owned", "yes"))
 
 	# How much of this game's enemy pool has actually been cleared here.
@@ -2457,7 +2464,7 @@ class StarCanvas extends Control:
 			elif view.is_transmuted(i):
 				draw_arc(p, r + 3.5, 0.0, TAU, 26, UITheme.ACCENT, 1.6, true)
 			# A game the player owns wears a ring, so the sky doubles as a shelf.
-			if not faded and game != null and game.owned:
+			if not faded and Ownership.is_owned(game):
 				draw_arc(p, r + 2.0, 0.0, TAU, 20, Color(UITheme.TEXT_DIM, 0.5), 1.0, true)
 			if not faded and i == view._hovered:
 				draw_arc(p, r + 3.0, 0.0, TAU, 24, UITheme.TEXT, 1.5, true)

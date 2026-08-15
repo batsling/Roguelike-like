@@ -321,3 +321,124 @@ func test_a_filter_that_empties_the_grid_drops_what_it_was_waiting_to_read() -> 
 	col._refresh()
 	assert_eq(col._pending_covers.size(), 0,
 		"the queue points at cells that no longer exist — it goes with them")
+
+# --- ticking games off as owned ---------------------------------------------
+#
+# The per-game half of the ownership setting (see test_ownership.gd for the
+# store behind it). It is only live while the player's own list is the source:
+# under the catalog's list the toggle shows what the catalog says and refuses
+# the click, since a tick nothing reads would look like it had worked.
+
+func _owned_toggle_of(box: Control) -> CheckButton:
+	for child in box.get_children():
+		if child is CheckButton:
+			return child
+	return null
+
+func test_the_game_page_offers_an_owned_toggle() -> void:
+	var was: int = Ownership.source
+	Ownership.set_source(Ownership.Source.MANUAL)
+	var game: GameData = Data.all_games()[0]
+	var col := _new_collection()
+	col._show_game_detail(game)
+	var chk: CheckButton = _owned_toggle_of(col._detail_box)
+	assert_not_null(chk, "the detail panel carries the toggle")
+	assert_false(chk.disabled, "and it is live on the player's own list")
+	assert_eq(chk.text, "I own this", "phrased as the player's own claim")
+	assert_eq(chk.button_pressed, Ownership.is_owned(game))
+	chk.button_pressed = true
+	assert_true(Ownership.is_owned(game), "pressing it marks the game owned")
+	Ownership.set_manual_owned(game.id, false)
+	Ownership.set_source(was)
+
+func test_the_toggle_is_read_only_while_the_catalog_is_the_source() -> void:
+	var was: int = Ownership.source
+	Ownership.set_source(Ownership.Source.SPREADSHEET)
+	var game: GameData = Data.all_games()[0]
+	var col := _new_collection()
+	col._show_game_detail(game)
+	var chk: CheckButton = _owned_toggle_of(col._detail_box)
+	assert_not_null(chk)
+	assert_true(chk.disabled, "the catalog's column is not the player's to edit")
+	assert_eq(chk.button_pressed, game.owned, "it shows what the catalog says")
+	assert_true(chk.text.contains("catalog"), "and says whose answer it is showing")
+	Ownership.set_source(was)
+
+func test_a_cell_gains_its_owned_tick_without_the_grid_being_rebuilt() -> void:
+	# Rebuilding would lose the scroll position, which on 849 games means losing
+	# your place on every tick — exactly while working down a list of them.
+	var was: int = Ownership.source
+	Ownership.set_source(Ownership.Source.MANUAL)
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.GAMES)
+	assert_gt(col._owned_marks.size(), 0, "the cells registered their ticks")
+	var id: StringName = col._owned_marks.keys()[0]
+	Ownership.set_manual_owned(id, false)
+	col._paint_owned_mark(id)
+	var badge: Button = col._owned_marks[id]
+	assert_eq(badge.text, "", "an unowned cell wears an empty box")
+	var cells_before: int = col._grid.get_child_count()
+	Ownership.set_manual_owned(id, true)
+	col._paint_owned_mark(id)
+	assert_eq((col._owned_marks[id] as Button).text, "✔", "ticking it marks the cell")
+	assert_eq(col._grid.get_child_count(), cells_before, "and the grid is the same grid")
+	assert_same(col._owned_marks[id], badge, "the same badge, repainted in place")
+	Ownership.set_manual_owned(id, false)
+	Ownership.set_source(was)
+
+func test_the_tick_sits_over_the_cover_art() -> void:
+	# "Top left of each image" — it has to be a child of the cover's own box, or
+	# it is a mark near the picture rather than on it.
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.GAMES)
+	var with_art: StringName = &""
+	for id in col._owned_marks.keys():
+		var g: GameData = Data.get_game(id)
+		if g != null and g.cover_path != "":
+			with_art = id
+			break
+	assert_ne(with_art, &"", "the grid is showing games that have art")
+	var badge: Button = col._owned_marks[with_art]
+	var box: Node = badge.get_parent()
+	var has_cover: bool = false
+	for sib in box.get_children():
+		if sib is TextureRect:
+			has_cover = true
+	assert_true(has_cover, "the tick shares its box with the cover")
+	assert_lt(badge.position.x, float(Collection.GRID_COVER_W) * 0.5, "at the left")
+	assert_lt(badge.position.y, float(Collection.GRID_COVER_W) * 0.5, "and the top")
+
+func test_clicking_the_tick_marks_the_game_on_the_players_own_list() -> void:
+	var was: int = Ownership.source
+	Ownership.set_source(Ownership.Source.MANUAL)
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.GAMES)
+	var id: StringName = col._owned_marks.keys()[0]
+	var badge: Button = col._owned_marks[id]
+	assert_false(Ownership.owns_id(id))
+	badge.emit_signal("pressed")
+	assert_true(Ownership.owns_id(id), "one click marks it, without opening the game")
+	assert_eq(badge.text, "✔", "and the tick repaints itself")
+	badge.emit_signal("pressed")
+	assert_false(Ownership.owns_id(id), "clicking again unmarks it")
+	Ownership.set_source(was)
+
+func test_the_tick_is_visible_but_lets_clicks_through_on_the_catalogs_list() -> void:
+	# Not merely disabled: a disabled button still swallows the click, which would
+	# make the top-left corner of every cover a dead spot that won't open the game.
+	var was: int = Ownership.source
+	Ownership.set_source(Ownership.Source.SPREADSHEET)
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.GAMES)
+	var owned_id: StringName = &""
+	for id in col._owned_marks.keys():
+		var g: GameData = Data.get_game(id)
+		if g != null and g.owned:
+			owned_id = id
+			break
+	assert_ne(owned_id, &"", "the catalog marks games owned")
+	var badge: Button = col._owned_marks[owned_id]
+	assert_eq(badge.text, "✔", "the catalog's answer is still shown")
+	assert_eq(badge.mouse_filter, Control.MOUSE_FILTER_IGNORE,
+		"and a click on it opens the game instead of doing nothing")
+	Ownership.set_source(was)

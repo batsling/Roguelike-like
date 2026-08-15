@@ -5,7 +5,15 @@ extends Node
 # rule, the Traditional transmute rule, and dev mode. The home for any future
 # audio/visual/dev toggle the Settings menu grows.
 
+# GLOBAL preferences — the window and the dev panel describe the machine the game
+# is running on, not the person playing it, so they are shared by every profile.
 const CONFIG_PATH := "user://settings.cfg"
+
+# PER-PROFILE preferences — the three that shape a run (which games paths may
+# use, the amulet rule, the transmute rule) belong to the player, so they follow
+# the profile. See Profiles for the split.
+static func prefs_path() -> String:
+	return Profiles.path("prefs.cfg")
 
 # Which games are eligible to appear when a run's path is generated.
 #   ALL        — every catalogued game (default).
@@ -324,13 +332,23 @@ func set_exclude_beaten_amulets(value: bool) -> void:
 
 func load_settings() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(CONFIG_PATH) != OK:
-		return
-	game_filter = clampi(int(cfg.get_value("path", "game_filter", GameFilter.ALL)),
+	var has_global: bool = cfg.load(CONFIG_PATH) == OK
+
+	# The per-profile half, from this profile's prefs and nowhere else. A profile
+	# with no prefs file takes the DEFAULTS — which is what a newly created one
+	# should get. (An upgrading install doesn't lose its old choices: Profiles
+	# lifts them out of settings.cfg into the first profile at migration.)
+	var prefs := ConfigFile.new()
+	prefs.load(prefs_path())
+	game_filter = clampi(int(prefs.get_value("path", "game_filter", GameFilter.ALL)),
 		0, GameFilter.DOWNLOADED)
-	exclude_beaten_amulets = bool(cfg.get_value("path", "exclude_beaten_amulets", false))
-	traditional_transmute = clampi(int(cfg.get_value("rules", "traditional_transmute",
+	exclude_beaten_amulets = bool(prefs.get_value("path", "exclude_beaten_amulets", false))
+	traditional_transmute = clampi(int(prefs.get_value("rules", "traditional_transmute",
 		TraditionalTransmute.SAME_TYPE)), 0, TraditionalTransmute.ANY_OTHER)
+
+	if not has_global:
+		RunGraph.invalidate_cache()
+		return
 	dev_mode = bool(cfg.get_value("dev", "dev_mode", true))
 	display_mode = clampi(int(cfg.get_value("display", DISPLAY_KEY,
 		DisplayMode.WINDOWED)), 0, DisplayMode.EXCLUSIVE)
@@ -339,10 +357,13 @@ func load_settings() -> void:
 	RunGraph.invalidate_cache()
 
 func save_settings() -> void:
+	var prefs := ConfigFile.new()
+	prefs.set_value("path", "game_filter", game_filter)
+	prefs.set_value("path", "exclude_beaten_amulets", exclude_beaten_amulets)
+	prefs.set_value("rules", "traditional_transmute", traditional_transmute)
+	prefs.save(prefs_path())
+
 	var cfg := ConfigFile.new()
-	cfg.set_value("path", "game_filter", game_filter)
-	cfg.set_value("path", "exclude_beaten_amulets", exclude_beaten_amulets)
-	cfg.set_value("rules", "traditional_transmute", traditional_transmute)
 	cfg.set_value("dev", "dev_mode", dev_mode)
 	cfg.set_value("display", DISPLAY_KEY, display_mode)
 	cfg.set_value("display", "windowed_size", windowed_size)

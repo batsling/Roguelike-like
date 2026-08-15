@@ -61,6 +61,8 @@ const DETAIL_ENEMY_SIZE := 176
 # border and a little slack), so a thumbnail is never squeezed by its own cell.
 const CELL_PAD := 26
 const GRID_COVER_W := 95           # game box art, drawn 3:4 (so 95x127)
+const OWNED_BADGE := 20            # the owned tick, over the cover's top-left
+const BADGE_INSET := 4             # how far in from the cover's corner it sits
 const GRID_ITEM_SIZE := 50
 const GRID_PORTRAIT_SIZE := 60
 const GRID_ENEMY_SIZE := 58
@@ -110,6 +112,15 @@ var _grid_laid_out: bool = false
 var _detail_box: VBoxContainer = null
 var _count_lbl: Label = null
 var _tab_buttons := {}
+# The owned mark on each visible game cell, as {game id: Label}. Held so ticking
+# a game in the detail panel can repaint its cell in place — rebuilding the grid
+# would lose the scroll position, which on 849 games means losing your place
+# every single tick, exactly while working down a list of them.
+var _owned_marks := {}
+# Which game the detail panel is currently showing, so a tick made on the grid
+# can rebuild that page when it is the same game — the two say the same thing and
+# must never disagree on screen. null whenever the panel is showing anything else.
+var _detail_game: GameData = null
 
 # ------------------------------------------------------------------
 # Lifecycle / open
@@ -508,6 +519,7 @@ func _new_detail_panel() -> PanelContainer:
 
 func _detail_placeholder(text: String) -> void:
 	_clear_children(_detail_box)
+	_detail_game = null
 	var l := _label(text, Color(0.55, 0.55, 0.6), 13)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_detail_box.add_child(l)
@@ -626,6 +638,7 @@ func _open_constellation() -> void:
 
 func _populate_games() -> void:
 	_clear_children(_grid)
+	_owned_marks.clear()
 	var term: String = _search["games"].to_lower()
 	var list: Array = []
 	for g in Data.all_games():
@@ -685,9 +698,24 @@ func _game_cell(g: GameData) -> Control:
 	# `cover_path` answers it without touching the image.
 	if g.cover_path != "":
 		var tr := _cover_rect(null, GRID_COVER_W)
-		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		vb.add_child(tr)
+		# The cover and its owned tick share one box so the tick can sit ON the
+		# art rather than under it — a column of ticks down the left edge of the
+		# grid is the thing you read when working out what you still have to mark.
+		var stack := Control.new()
+		stack.custom_minimum_size = tr.custom_minimum_size
+		stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		stack.add_child(tr)
+		stack.add_child(_owned_badge(g))
+		vb.add_child(stack)
 		_defer_cover(cell.panel, tr, g)
+	else:
+		# No art authored: the tick still needs somewhere to live, and top-left of
+		# the cell is the same place it would be if there were a cover.
+		var row := HBoxContainer.new()
+		row.custom_minimum_size = Vector2(0, OWNED_BADGE)
+		row.add_child(_owned_badge(g))
+		vb.add_child(row)
 	vb.add_child(_label(g.display_name, tc, GRID_NAME_FONT, true, true))
 	var type_name: String = GAME_TYPE_NAMES[clampi(int(g.type), 0, 3)]
 	var meta: String = ("%d  •  %s" % [g.year, type_name]) if g.year > 0 else type_name
@@ -700,6 +728,87 @@ func _game_cell(g: GameData) -> Control:
 	var played := beaten > 0 or amulets > 0
 	vb.add_child(_label(stat_line, Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), GRID_META_FONT, true))
 	return cell.panel
+
+# The tick over a game's cover: what you own, readable straight off the grid, and
+# on the player's own list the fastest way to say so — click it and the game is
+# marked without opening its page at all.
+#
+# On the catalog's list it is a read-only mark. It goes further than disabling:
+# the badge stops taking mouse input entirely, so a click there falls through to
+# the cell underneath and opens the game, which is what a click on a picture
+# should do when the tick isn't yours to change.
+func _owned_badge(g: GameData) -> Control:
+	var badge := Button.new()
+	badge.custom_minimum_size = Vector2(OWNED_BADGE, OWNED_BADGE)
+	badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	badge.position = Vector2(BADGE_INSET, BADGE_INSET)
+	badge.size = Vector2(OWNED_BADGE, OWNED_BADGE)
+	badge.focus_mode = Control.FOCUS_NONE
+	badge.add_theme_font_size_override("font_size", 13)
+	if Ownership.is_editable():
+		badge.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		badge.pressed.connect(func() -> void:
+			Ownership.toggle_manual(g.id)
+			_paint_owned_mark(g.id)
+			# The open page, if it is this game's, has a toggle saying the same
+			# thing — rebuild it so the two can't disagree.
+			if _detail_game != null and _detail_game.id == g.id:
+				_show_game_detail(g))
+	else:
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_owned_marks[g.id] = badge
+	_paint_owned_mark(g.id)
+	return badge
+
+# Repaint one cell's tick from the live answer. Safe to call for a game that
+# isn't on screen — the grid is rebuilt by search and filter, so most ids have no
+# cell most of the time.
+func _paint_owned_mark(id: StringName) -> void:
+	var badge: Button = _owned_marks.get(id)
+	if badge == null or not is_instance_valid(badge):
+		return
+	var owns: bool = Ownership.owns_id(id)
+	badge.text = "✔" if owns else ""
+	# Owned reads as a filled green tick; unowned as an empty box, which is what
+	# makes "not yet marked" legible rather than just absent — on the player's own
+	# list that empty box IS the thing to click.
+	var fill := Color(0.16, 0.42, 0.26, 0.95) if owns else Color(0.05, 0.06, 0.08, 0.78)
+	var edge := Color(0.55, 0.85, 0.65) if owns else Color(0.72, 0.72, 0.78, 0.9)
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		badge.add_theme_stylebox_override(state, _badge_style(fill, edge))
+	badge.add_theme_color_override("font_color", Color(0.75, 1.0, 0.85))
+	badge.add_theme_color_override("font_hover_color", Color(0.85, 1.0, 0.9))
+	badge.tooltip_text = _badge_tooltip(owns)
+
+# The tick's own stylebox. NOT `_flat`: that one carries a 10px content margin
+# for panels, which on a 20px badge pushes the glyph clean outside the box — the
+# tick renders as an empty circle no matter what it is set to.
+#
+# Cached like `_flat` is, and for the same reason at ten times the scale: a badge
+# takes four styleboxes (one per button state) and the grid builds 849 of them,
+# so building them fresh meant ~3,400 objects every time the games tab populated
+# — which search, sort and every filter change does again.
+static var _badge_styles: Dictionary = {}
+
+func _badge_style(fill: Color, edge: Color) -> StyleBoxFlat:
+	var key: String = "%s|%s" % [fill, edge]
+	var cached = _badge_styles.get(key)
+	if cached is StyleBoxFlat:
+		return cached
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = fill
+	sb.set_corner_radius_all(5)
+	sb.set_content_margin_all(0)
+	sb.set_border_width_all(1)
+	sb.border_color = edge
+	_badge_styles[key] = sb
+	return sb
+
+func _badge_tooltip(owns: bool) -> String:
+	if not Ownership.is_editable():
+		return "Owned — from the catalog's list." if owns \
+			else "Not owned, per the catalog's list."
+	return "You own this — click to unmark." if owns else "Click to mark as owned."
 
 # One enemy beaten at this game — the mirror of _enemy_game_row, so the Games and
 # Enemies tabs present the same record the same way from either side.
@@ -823,6 +932,7 @@ func _levelup_row(game: GameData, ch: CharacterData, entry: Dictionary,
 
 func _show_game_detail(g: GameData) -> void:
 	_clear_children(_detail_box)
+	_detail_game = g
 	var tc := _game_type_color(int(g.type))
 	if g.cover_image != null:
 		var tr := _cover_rect(g.cover_image, 240)
@@ -837,6 +947,7 @@ func _show_game_detail(g: GameData) -> void:
 	if g.tags.size() > 0:
 		_detail_box.add_child(_label(", ".join(g.tags), Color(0.73, 0.55, 0.78), 11, false, true))
 	_detail_box.add_child(HSeparator.new())
+	_detail_box.add_child(_owned_toggle(g))
 
 	# "Open the real game" — launches the executable/shortcut in the game's
 	# file_location column (falling back to its store page).
@@ -908,6 +1019,33 @@ func _show_game_detail(g: GameData) -> void:
 			var ch: CharacterData = Data.get_character2(StringName(entry["id"]))
 			if ch != null:
 				_detail_box.add_child(_levelup_row(g, ch, entry, func(): _show_game_detail(g)))
+
+# "I own this" — the per-game half of the ownership setting. Live only while the
+# player's own list is the source; under the catalog's list it shows what the
+# catalog says and explains where to change that, rather than offering a tick
+# that would go nowhere.
+func _owned_toggle(g: GameData) -> Control:
+	var chk := CheckButton.new()
+	var owns: bool = Ownership.is_owned(g)
+	chk.button_pressed = owns
+	if Ownership.is_editable():
+		chk.text = "I own this"
+		chk.tooltip_text = "Counts %s as owned for the \"owned games only\" filters." % g.display_name
+		chk.toggled.connect(func(on: bool) -> void:
+			Ownership.set_manual_owned(g.id, on)
+			_paint_owned_mark(g.id))
+		return chk
+	# On the catalog's list the state is shown and nothing more. `disabled` is
+	# what makes it unclickable, but the default theme greys a disabled control
+	# to near-unreadable — and the whole point of leaving it on screen is that it
+	# can still be READ — so the label says whose answer it is and the colour
+	# carries the state rather than the washed-out switch.
+	chk.disabled = true
+	chk.text = "Owned — the catalog's list" if owns else "Not owned — the catalog's list"
+	chk.add_theme_color_override("font_disabled_color",
+		Color(0.55, 0.85, 0.65) if owns else Color(0.62, 0.62, 0.68))
+	chk.tooltip_text = "Ownership is coming from the catalog's own list, so this is read-only. Switch to your own list in Settings to tick games off yourself."
+	return chk
 
 func _game_names(ids) -> String:
 	var names: Array = []
@@ -1008,6 +1146,7 @@ func _item_cell(it: ItemData) -> Control:
 
 func _show_item_detail(it: ItemData) -> void:
 	_clear_children(_detail_box)
+	_detail_game = null
 	var rc := _item_accent(it)
 	if it.image != null:
 		var img := _image_with_bg(it.image, DETAIL_ITEM_SIZE, rc)
@@ -1076,6 +1215,7 @@ func _character_cell(ch: CharacterData) -> Control:
 
 func _show_character_detail(ch: CharacterData) -> void:
 	_clear_children(_detail_box)
+	_detail_game = null
 	var green := Color(0.45, 0.82, 0.45)
 	if ch.portrait != null:
 		var tr := _tex_rect(ch.portrait, DETAIL_PORTRAIT_SIZE)

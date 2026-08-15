@@ -95,7 +95,7 @@ static func _passes_filter(g: GameData) -> bool:
 		return RunConfig.map_passes(g)
 	match Settings.game_filter:
 		Settings.GameFilter.OWNED:
-			return g.owned
+			return Ownership.is_owned(g)
 		Settings.GameFilter.DOWNLOADED:
 			return g.file_location.strip_edges() != ""
 		_:
@@ -485,6 +485,24 @@ const AMULET_ATTEMPTS := 8
 # later lookup against the same start is free.
 const AMULET_REFERENCE_STARTS := 3
 
+# How far below its cell's best score a START may sit and still be drawn.
+#
+# The same problem the Amulet slack above solves, and it went unnoticed for
+# longer because the amulet is the thing a run is ABOUT while the start is just
+# where you stand. `_strict_starts_for` kept the single best-scoring start per
+# genre per distance — a strict argmax, ties broken on the id — so for any given
+# amulet the panel was fully determined. The well-connected games are the best
+# start for MANY different amulets, so a handful of them opened nearly every run:
+# sampled over 400 runs of the full catalog, 63 distinct starts appeared at all
+# and the top ten took 55.6% of the cards, one of them 15.6% on its own. The
+# amulet draw over the same runs produced 281 distinct goals.
+#
+# So starts now draw the way amulets do: every candidate within this much of its
+# cell's best advances to a random pick. The SPREAD is still decided on the best
+# score in each cell (see _spread_across_band), so which genre and which distance
+# the panel offers does not move — only which game wears the card.
+const START_SCORE_SLACK := 3
+
 # How far below the best early-branching score an Amulet candidate may sit and
 # still make the final draw.
 #
@@ -525,13 +543,47 @@ static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
 		if not by_type.has(g.type):
 			by_type[g.type] = {}
 		var per_len: Dictionary = by_type[g.type]
-		var cur: Dictionary = per_len.get(path_len, {})
-		# Ties break on the id so the same catalog always offers the same card.
-		if cur.is_empty() or score > int(cur["score"]) \
-				or (score == int(cur["score"]) and g.id < (cur["start"] as GameData).id):
-			per_len[path_len] = {"start": g, "score": score, "path_len": path_len,
-				"in_window": true}
+		if not per_len.has(path_len):
+			per_len[path_len] = []
+		(per_len[path_len] as Array).append({"game": g, "score": score})
+	# Reduce each (genre, distance) cell to one record: the best for ranking, and
+	# the pool of near-best it may actually be drawn from.
+	for type_val in by_type:
+		var per_len: Dictionary = by_type[type_val]
+		for path_len in per_len:
+			per_len[path_len] = _cell_record(per_len[path_len], path_len)
 	return by_type
+
+# One (genre, distance) cell: its best candidate, its score, and every candidate
+# within START_SCORE_SLACK of that best — the pool the card is drawn from.
+#
+# `start` stays the strict best (ties on the id) because the panel's SHAPE is
+# ranked on it and must not wobble between runs; `pool` is what the draw uses.
+static func _cell_record(candidates: Array, path_len: int) -> Dictionary:
+	var best: Dictionary = {}
+	for c in candidates:
+		if best.is_empty() or int(c["score"]) > int(best["score"]) \
+				or (int(c["score"]) == int(best["score"]) \
+					and (c["game"] as GameData).id < (best["game"] as GameData).id):
+			best = c
+	var pool: Array = []
+	for c in candidates:
+		if int(c["score"]) >= int(best["score"]) - START_SCORE_SLACK:
+			pool.append(c)
+	# Sorted so the pool itself is the same list every time and the only variable
+	# is the die roll against it.
+	pool.sort_custom(func(a, b): return (a["game"] as GameData).id < (b["game"] as GameData).id)
+	return {"start": best["game"], "score": int(best["score"]), "path_len": path_len,
+		"in_window": true, "pool": pool}
+
+# Draw the game that actually wears a card, from the near-best pool its cell
+# collected. Returns {"game", "score"} — the DRAWN game's own score, not the
+# cell's best, so what the panel reports is true of what it is offering.
+static func _draw_start(rec: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	var pool: Array = rec.get("pool", [])
+	if pool.is_empty():
+		return {"game": rec["start"], "score": int(rec["score"])}
+	return pool[rng.randi() % pool.size()]
 
 # Pick `count` records out of `by_type` — one per genre, and at DIFFERENT
 # DISTANCES from the Amulet wherever the graph allows it.
@@ -811,7 +863,8 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 				var path_len: int = d_from[amulet.id]
 				var score := dag_branch_score_early(d_from, amulet.id, EARLY_LAYERS_FOR_SCORE, d_to_amulet)
 				if relaxed.is_empty() or score > int(relaxed.get("score", -1)):
-					relaxed = {"start": g, "score": score, "path_len": path_len, "in_window": false}
+					relaxed = {"start": g, "score": score, "path_len": path_len,
+						"in_window": false, "pool": [{"game": g, "score": score}]}
 			if not relaxed.is_empty():
 				best_per_type[type_val] = {int(relaxed["path_len"]): relaxed}
 
@@ -821,10 +874,12 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	var chosen: Array = _spread_across_band(best_per_type, NUM_START_OPTIONS)
 	var options: Array = []
 	for rec in chosen:
+		var drawn: Dictionary = _draw_start(rec, rng)
+		var start_game: GameData = drawn["game"]
 		options.append({
-			"type": (rec["start"] as GameData).type,
-			"start_id": (rec["start"] as GameData).id,
-			"score": int(rec["score"]),
+			"type": start_game.type,
+			"start_id": start_game.id,
+			"score": int(drawn["score"]),
 			"path_len": int(rec["path_len"]),
 			"in_window": bool(rec.get("in_window", false)),
 		})

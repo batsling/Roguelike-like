@@ -20,8 +20,14 @@ extends Node
 # mounted, and otherwise parked in pending_view_state for the next one to boot
 # (which is how the menu's Continue works — load, change scene, restore).
 
-const SAVE_DIR := "user://saves/"
-const NAMED_SAVE_DIR := "user://saves/named/"
+# Saves live under the ACTIVE PROFILE (see Profiles), so these are functions
+# rather than the constants they used to be — the answer changes when the player
+# switches profile, and a const would have baked the first one in for the session.
+static func save_dir() -> String:
+	return Profiles.path("saves/")
+
+static func named_save_dir() -> String:
+	return Profiles.path("saves/named/")
 const NUM_SLOTS := 5
 # The slot the run's own recovery point lives in.
 const AUTOSAVE_SLOT := 0
@@ -35,8 +41,15 @@ var pending_view_state: Dictionary = {}
 var _resume_pending: bool = false
 
 func _ready() -> void:
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SAVE_DIR))
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(NAMED_SAVE_DIR))
+	_ensure_dirs()
+	# A switch lands in a directory that may never have held a save before, and a
+	# wipe deletes the one we were using out from under us.
+	Profiles.profile_switched.connect(_ensure_dirs)
+	Profiles.profile_wiped.connect(_ensure_dirs)
+
+func _ensure_dirs() -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(save_dir()))
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(named_save_dir()))
 
 # --- resume handshake ------------------------------------------------------
 
@@ -74,7 +87,7 @@ func load_autosave() -> bool:
 	return load_slot(AUTOSAVE_SLOT)
 
 func slot_path(slot: int) -> String:
-	return SAVE_DIR + "slot_%d.json" % slot
+	return save_dir() + "slot_%d.json" % slot
 
 func has_save(slot: int) -> bool:
 	return FileAccess.file_exists(slot_path(slot))
@@ -464,7 +477,7 @@ func _sanitize_save_name(save_name: String) -> String:
 	return out
 
 func named_save_path(save_name: String) -> String:
-	return NAMED_SAVE_DIR + _sanitize_save_name(save_name) + ".json"
+	return named_save_dir() + _sanitize_save_name(save_name) + ".json"
 
 func has_named_save(save_name: String) -> bool:
 	return FileAccess.file_exists(named_save_path(save_name))
@@ -489,14 +502,14 @@ func delete_named(save_name: String) -> void:
 # hp, gold, games_beaten, saved_at}. Empty list if no named saves yet.
 func list_named() -> Array:
 	var out: Array = []
-	var dir := DirAccess.open(NAMED_SAVE_DIR)
+	var dir := DirAccess.open(named_save_dir())
 	if dir == null:
 		return out
 	dir.list_dir_begin()
 	var fname := dir.get_next()
 	while fname != "":
 		if not dir.current_is_dir() and fname.ends_with(".json"):
-			var data := _read_path(NAMED_SAVE_DIR + fname)
+			var data := _read_path(named_save_dir() + fname)
 			if not data.is_empty():
 				out.append(_summary(data, String(data.get("save_name", fname.get_basename()))))
 		fname = dir.get_next()
@@ -506,14 +519,14 @@ func list_named() -> Array:
 func clear_all_saves() -> void:
 	for i in range(NUM_SLOTS):
 		delete_slot(i)
-	var dir := DirAccess.open(NAMED_SAVE_DIR)
+	var dir := DirAccess.open(named_save_dir())
 	if dir == null:
 		return
 	dir.list_dir_begin()
 	var fname := dir.get_next()
 	while fname != "":
 		if not dir.current_is_dir() and fname.ends_with(".json"):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(NAMED_SAVE_DIR + fname))
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(named_save_dir() + fname))
 		fname = dir.get_next()
 
 func _read_path(path: String) -> Dictionary:

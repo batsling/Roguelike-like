@@ -92,13 +92,13 @@ static func spec_passes(spec: Dictionary, game: GameData) -> bool:
 		return false
 	match int(spec.get("library", Library.ANY)):
 		Library.OWNED:
-			if not game.owned:
+			if not Ownership.is_owned(game):
 				return false
 		Library.DOWNLOADED:
 			if game.file_location.strip_edges() == "":
 				return false
 		Library.NOT_OWNED:
-			if game.owned:
+			if Ownership.is_owned(game):
 				return false
 	var genres: Array = spec.get("genres", [])
 	if not genres.is_empty() and not genres.has(int(game.type)):

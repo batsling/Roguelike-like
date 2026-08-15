@@ -11,6 +11,178 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The Steam sync is gone: Steam closed the door, and ticking a cover is one
+  click anyway.**
+
+  The owned-games list could be seeded from a Steam profile's public games page —
+  no API key, just a profile name. It no longer can. Steam now answers that
+  request with its **Sign In page**: HTTP 200, a 52 KB login document,
+  `logged_in: false`, redirecting back to the URL asked for — and it does this
+  for a profile whose "Game details" privacy is Public. There is no name, no
+  setting and no header a player can change to get past it; the endpoint simply
+  isn't served to anyone without a session cookie any more.
+
+  Everything Steam-shaped is removed rather than left in place failing politely:
+  the username field and Sync button, the dev-mode reply dump, the appid parsing
+  and matching, and the tests around all of it. `GameData.steam_page` and the
+  compendium's "Steam page" button stay — those open a store page in a browser,
+  which has nothing to do with reading a library.
+
+  What was weighed before removing it: the **Steam Web API** still works, since
+  its key authenticates the caller rather than the player, but it costs the
+  player a key to register and paste in; and the **local Steam install** can be
+  parsed for installed games without any key, but only on the machine Steam is on
+  and only for what is installed rather than what is owned. Against those, the
+  tick sitting on each cover in the compendium is one click per game on a screen
+  the player is already browsing. The tick won.
+
+  `Ownership.gd` carries the whole story at the top, so the next person to think
+  "we should sync this from Steam" finds out what happens before writing it.
+
+- **The same two games stopped opening every run, and the menu lost its clutter.**
+
+  **Starting games repeated because they were never randomised.** The Amulet is
+  drawn at random from every candidate within `AMULET_SCORE_SLACK` of the best —
+  but the START panel was a strict argmax: `_strict_starts_for` kept the single
+  best-branching game per genre per distance, ties broken on the id, so for any
+  given Amulet the two cards were fully determined. The well-connected games are
+  the best start for MANY different Amulets, so a handful of them opened nearly
+  every run. Measured over 400 runs of the full catalog: **63 distinct starts,
+  the top ten taking 55.6% of the cards and one of them 15.6% on its own**, while
+  the Amulet draw over the same runs produced 281 distinct goals.
+
+  Starts now draw the way Amulets do — every candidate within `START_SCORE_SLACK`
+  (3) of its cell's best advances to a random pick. The same 400 runs now give
+  **150 distinct starts with the top ten at 32.4%**. The panel's SHAPE is
+  unchanged: which genre and which distance each card offers is still ranked on
+  the cell's best score, so only which game wears the card moves. A slack of 5
+  measures identically, so the pools are already saturated at 3.
+
+  **The menu.** The "A games-first roguelike" subtitle is gone. **Exit Game**
+  moved out of the button column into the bottom-right corner — it is the one
+  entry that isn't a way into the game, and it was sitting directly under
+  Settings. The bottom-left How to Play contents panel is gone too; the button
+  above Start Run was always the same door, and now it is the only one.
+
+  **When a Steam sync fails it now says what Steam said.** The first real sync
+  came back "Steam listed no games for <name>", which describes our own parse
+  result rather than Steam's answer — and Steam does answer, in an `<error>`
+  element it returns with HTTP 200 ("This profile is private.", "The specified
+  profile could not be found."). That text is now read out and shown verbatim. A
+  reply that isn't a game list at all is recognised separately, since a mistyped
+  vanity name lands on a web page rather than an error document, and it says
+  where to find the right name. Steam's raw reply is now saved on **every**
+  failure rather than only in dev mode — asking a player to turn on dev mode and
+  press another button is asking them to reproduce the failure — and the panel
+  reports the path.
+
+- **Profiles: more than one player on one install — and a tick on every cover.**
+
+  **Save profiles**, the way Isaac and Balatro have them. The main menu grows a
+  `👤 <name>` row with a **Switch** button, opening a list where you create,
+  rename, delete and enter profiles. Each one keeps its own **runs, lifetime
+  stats, tier list, owned-games list and run settings** (path filter, amulet rule,
+  transmute rule) under `user://profiles/<id>/`; the window mode, window size and
+  dev mode stay **global**, because they describe the machine the game is running
+  on rather than the person playing it — switching profile to find your resolution
+  changed would be a bug in every reading of it.
+
+  The `Profiles` autoload owns the split. Stores no longer name a `user://` path
+  of their own; they ask `Profiles.path()`, so `SaveSystem.SAVE_DIR`,
+  `GameStats.SAVE_PATH`, `TierList.SAVE_PATH` and `Ownership.CONFIG_PATH` became
+  functions — a const would have baked the first profile in for the session.
+  Switching flushes the profile being left, reloads every store from the new
+  directory and emits `profile_switched`.
+
+  The failure mode this is really guarding against isn't files in the wrong
+  folder, it's an autoload that **early-returns when its file is missing** and so
+  keeps the last player's data in memory to hand to the next one. `Ownership` did
+  exactly that; it now resets before loading, and `test_profiles.gd` asserts the
+  isolation from both sides — a new profile sees nothing, and the first profile's
+  data is still there when you switch back.
+
+  An install that predates all this is migrated on first boot: the existing saves,
+  stats, tier list and ownership file move into "Player 1", and the run-shaping
+  keys are lifted out of the old `settings.cfg` — once, at migration, so profiles
+  made later still start at the defaults.
+
+  **"Clear All Data" is gone from the main menu**, and what replaced it is split
+  by what it is *about*. The old button sat beside How to Play and promised more
+  than it did — only saves, never stats or rankings — and once profiles existed
+  it could have meant any of three things.
+
+  - **Delete a profile** is on the **profile screen** (🗑), because it is a
+    choice about which players exist. Never offered for the profile you are
+    playing: you would be deleting the game out from under yourself.
+  - **Wipe this profile** is in **Settings**, because it is about the player you
+    already are — "start over as me". It empties the active profile (runs, stats,
+    tier list, owned games, run settings) and keeps it. Disabled while a run is
+    in progress, since a wipe deletes the save that run is running on.
+
+  Both ask first, through a shared `ConfirmPanel`. Godot's `ConfirmationDialog`
+  is a `Window`: it draws its own background from the DEFAULT theme regardless of
+  the project's — setting `theme` on it does not help — so on this game's dark
+  screen it arrived looking like a system error box. The replacement names the
+  profile, spells out what is deleted, says it cannot be undone, and puts the
+  destructive button in red beside a plain Cancel. Escape is a No.
+
+  **The owned tick moved onto the cover art.** Every cell in the Collection's
+  games grid wears a mark at the top-left of its image: a green ✔ for a game you
+  own, an empty box for one you don't. On your own list it is the fastest way to
+  say so — one click marks the game without opening its page, and if that game's
+  page happens to be open it is rebuilt so the two can never disagree. On the
+  catalog's list the mark is read-only and stops taking mouse input entirely, so
+  a click there falls through and opens the game rather than hitting a dead spot
+  in the corner of every cover.
+
+- **Which games you own is now yours to answer — sync a Steam profile, or tick
+  them off yourself.**
+
+  The "Owned" column in `tools/Roguelikes.xlsx` is baked into all 849 game
+  `.tres` and shipped to everyone, which made every owned-only filter — the
+  path-selection setting, a custom run's library axis, the atlas's owned rings —
+  a report on *one person's* shelf. `Ownership` (a new autoload) puts a second
+  answer beside it and makes the choice a setting:
+
+  - **The catalog's list** — `GameData.owned`, exactly as before, still the default.
+  - **My own list** — a set of game ids kept in `user://ownership.cfg`.
+
+  Under the second, **Settings → Which games you own** takes a Steam profile name
+  (a vanity name, a SteamID64 or a pasted profile URL) and reads that profile's
+  public games list — `steamcommunity.com/id/<name>/games?xml=1`, no API key and
+  no account linking; the profile's *Game details* just has to be Public. Every
+  appid it returns is matched against the store link the catalog already carries
+  (`GameData.steam_app_id()`), which 585 of the 849 games have, and the matches
+  are ticked. The panel reports what it matched *and* how many games have no
+  Steam link at all, so a partial number reads as the catalog's coverage rather
+  than as a failed sync.
+
+  The rest is hand-editable: every game's page in the Collection (Tab) grows an
+  **I own this** toggle, live while your own list is the source and showing the
+  catalog's answer, disabled, when it isn't. Each cell in the games grid wears a
+  `✔ owned` mark so you can see what's still unticked without opening it, and a
+  tick repaints that one cell rather than rebuilding the grid — on 849 games a
+  rebuild would lose your scroll position on every tick, which is precisely when
+  you are working down a list of them. A sync only ever **adds** — a GOG, itch,
+  emulated or borrowed copy ticked by hand is never wiped by the next one.
+
+  In **dev mode**, the settings panel also offers **Save Steam's reply**, which
+  writes the last reply Steam sent — headed by the URL asked for and the HTTP
+  status — to `user://steam_reply.xml`. The reply is recorded before any of the
+  checks that can reject it, so the dump is available for exactly the syncs that
+  failed. The one part of this feature that can't be covered by a test is the
+  live request itself, so when it misbehaves the artefact worth having is Steam's
+  own answer rather than a description of it.
+
+  The spreadsheet's column is never written to, so switching back restores it
+  exactly and the manual list survives the round trip. `Ownership.is_owned()` is
+  the single read — `RunGraph`, `RunConfig`, `AtlasView` and `SettingsModal` all
+  go through it — and any move in the answer drops `RunGraph`'s adjacency cache
+  the way a filter change does. One knock-on: `data/atlas_layout_owned.tres` is
+  baked from the *catalog's* column, so on a player's own list the owned sky
+  would draw a subgraph the run doesn't travel; the atlas falls back to the full
+  sky there instead.
+
 - **The header stops scrolling away, the road behind you stops showing games you
   have never been to, and a curse reads as a thing to do.**
 

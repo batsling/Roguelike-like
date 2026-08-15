@@ -20,7 +20,10 @@ extends Node
 
 signal changed
 
-const SAVE_PATH := "user://tier_list.json"
+# Per-profile (see Profiles): a function, not a const, because the answer moves
+# when the player switches profile.
+static func save_path() -> String:
+	return Profiles.path("tier_list.json")
 
 const DEFAULT_TIER_NAMES: Array[String] = ["S", "A", "B", "C", "D", "F"]
 
@@ -123,18 +126,18 @@ func save_data() -> bool:
 		"unranked": unranked.duplicate(),
 		"ratings": ratings.duplicate(true),
 	}
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f == null:
-		push_error("[TierList] could not open '%s' for write" % SAVE_PATH)
+		push_error("[TierList] could not open '%s' for write" % save_path())
 		return false
 	f.store_string(JSON.stringify(payload, "  "))
 	return true
 
 func load_data() -> void:
 	_reset_defaults()
-	if not FileAccess.file_exists(SAVE_PATH):
+	if not FileAccess.file_exists(save_path()):
 		return
-	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	var f := FileAccess.open(save_path(), FileAccess.READ)
 	if f == null:
 		return
 	var json := JSON.new()

@@ -199,7 +199,7 @@ func _build_ui() -> void:
 		if not (g is GameData):
 			continue
 		total += 1
-		if g.owned:
+		if Ownership.is_owned(g):
 			owned_n += 1
 		if g.file_location.strip_edges() != "":
 			downloaded_n += 1
@@ -231,6 +231,17 @@ func _build_ui() -> void:
 	opt.item_selected.connect(func(idx: int) -> void:
 		Settings.set_game_filter(opt.get_item_id(idx))
 		refresh_hint.call())
+
+	# The owned count above is only as fixed as the ownership source below it, so
+	# re-label that one entry whenever the answer moves rather than leaving a
+	# stale number on screen until the panel is reopened.
+	var refresh_owned_count := func() -> void:
+		var i: int = opt.get_item_index(Settings.GameFilter.OWNED)
+		if i >= 0:
+			opt.set_item_text(i, "Any owned game (%d)" % Ownership.owned_count())
+
+	vbox.add_child(HSeparator.new())
+	_build_ownership_section(vbox, refresh_owned_count)
 
 	vbox.add_child(HSeparator.new())
 
@@ -303,6 +314,9 @@ func _build_ui() -> void:
 	dev_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(dev_hint)
 
+	vbox.add_child(HSeparator.new())
+	_build_wipe_section(vbox)
+
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(spacer)
@@ -313,3 +327,106 @@ func _build_ui() -> void:
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	close_btn.pressed.connect(queue_free)
 	vbox.add_child(close_btn)
+
+
+# Starting over as yourself: empty the profile you are playing and keep it —
+# its runs, lifetime stats, tier list, owned-game list and run settings all go.
+#
+# It lives here rather than on the profile screen because it is about the player
+# currently playing, not about picking between players. Deleting a whole profile
+# is the profile screen's job, and is never offered for the active one.
+func _build_wipe_section(vbox: VBoxContainer) -> void:
+	var heading := Label.new()
+	heading.text = "This profile"
+	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	vbox.add_child(heading)
+
+	var hint := Label.new()
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(0, 50)
+	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	hint.text = "Starting over as %s: erases this profile's runs, stats, tier list, owned games and run settings. The profile itself stays, and no other profile is touched." % Profiles.active_name()
+	vbox.add_child(hint)
+
+	var wipe := Button.new()
+	wipe.name = "WipeBtn"
+	wipe.text = "🗑  Wipe this profile"
+	wipe.custom_minimum_size = Vector2(0, 36)
+	wipe.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	wipe.add_theme_color_override("font_color", Color(1, 0.72, 0.68))
+	vbox.add_child(wipe)
+
+	# Settings is reachable from the main menu today, but a run is exactly what a
+	# wipe would pull the floor out from under — so the button is only live when
+	# there is no run in progress, whoever opens this screen later.
+	var in_run: bool = GameState.phase != GameState.Phase.MENU
+	wipe.disabled = in_run
+	if in_run:
+		wipe.tooltip_text = "Finish or leave your run first — wiping deletes the save it is running on."
+		return
+
+	wipe.pressed.connect(func() -> void:
+		ConfirmPanel.ask(self, "Wipe profile",
+			"Erase everything saved under \"%s\"?\n\nIts runs, lifetime stats, tier list, owned-game list and run settings are all deleted. The profile itself stays. This cannot be undone." % Profiles.active_name(),
+			"Wipe",
+			func() -> void:
+				var who: String = Profiles.active_name()
+				if Profiles.wipe(Profiles.active_id):
+					hint.text = "\"%s\" is empty again." % who
+					hint.add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))))
+
+# Where the "Owned" answer comes from: the shipped spreadsheet column, or a list
+# this player builds by ticking games off their covers in the compendium.
+# `on_change` re-labels the filter dropdown's owned count.
+func _build_ownership_section(vbox: VBoxContainer, on_change: Callable) -> void:
+	var heading := Label.new()
+	heading.text = "Which games you own"
+	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	vbox.add_child(heading)
+
+	var sheet_n: int = 0
+	for g in Data.all_games():
+		if g is GameData and (g as GameData).owned:
+			sheet_n += 1
+
+	var src := OptionButton.new()
+	src.add_item("The catalog's list (%d)" % sheet_n, Ownership.Source.SPREADSHEET)
+	src.add_item("My own list (%d)" % Ownership.manual_count(), Ownership.Source.MANUAL)
+	src.select(src.get_item_index(Ownership.source))
+	vbox.add_child(src)
+
+	var hint := Label.new()
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(0, 76)
+	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	vbox.add_child(hint)
+
+	var clear_btn := Button.new()
+	clear_btn.text = "Clear my list"
+	clear_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	vbox.add_child(clear_btn)
+
+	var refresh := func() -> void:
+		var i: int = src.get_item_index(Ownership.Source.MANUAL)
+		if i >= 0:
+			src.set_item_text(i, "My own list (%d)" % Ownership.manual_count())
+		src.select(src.get_item_index(Ownership.source))
+		clear_btn.disabled = Ownership.manual_count() == 0
+		if Ownership.source == Ownership.Source.MANUAL:
+			hint.text = "Ownership is whatever you've marked yourself. Open the compendium (Tab) and click the tick at the top-left of a game's cover to mark it — one click per game, no account needed."
+		else:
+			hint.text = "Ownership comes from the catalog's own Owned column, the same for everyone. Switch to your own list to mark games yourself."
+		on_change.call()
+	refresh.call()
+
+	src.item_selected.connect(func(idx: int) -> void:
+		Ownership.set_source(src.get_item_id(idx))
+		refresh.call())
+
+	clear_btn.pressed.connect(func() -> void:
+		Ownership.clear_manual()
+		refresh.call())

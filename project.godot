@@ -14,6 +14,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+Profiles="*res://scripts/autoload/Profiles.gd"
 GameState="*res://scripts/autoload/GameState.gd"
 Data="*res://scripts/autoload/Data.gd"
 EffectSystem="*res://scripts/autoload/EffectSystem.gd"
@@ -23,6 +24,7 @@ GameLog="*res://scripts/autoload/GameLog.gd"
 Notifications="*res://scripts/autoload/Notifications.gd"
 SaveSystem="*res://scripts/autoload/SaveSystem.gd"
 Settings="*res://scripts/autoload/Settings.gd"
+Ownership="*res://scripts/autoload/Ownership.gd"
 RunConfig="*res://scripts/autoload/RunConfig.gd"
 TierList="*res://scripts/autoload/TierList.gd"
 GameStats="*res://scripts/autoload/GameStats.gd"

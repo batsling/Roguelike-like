@@ -26,7 +26,10 @@ extends Node
 
 signal changed
 
-const SAVE_PATH := "user://game_stats.json"
+# Per-profile (see Profiles): a function, not a const, because the answer moves
+# when the player switches profile.
+static func save_path() -> String:
+	return Profiles.path("game_stats.json")
 
 # game-id String -> {"beaten": int, "amulets": int}
 var stats: Dictionary = {}
@@ -366,9 +369,9 @@ func run_count() -> int:
 	return runs.size()
 
 func save_data() -> bool:
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f == null:
-		push_error("[GameStats] could not open '%s' for write" % SAVE_PATH)
+		push_error("[GameStats] could not open '%s' for write" % save_path())
 		return false
 	f.store_string(JSON.stringify(
 		{"games": stats, "deck_wins": deck_wins, "runs": runs,
@@ -413,9 +416,9 @@ func load_data() -> void:
 	levelup_log = {}
 	character_enemy_log = {}
 	donation_bank_total = 0
-	if not FileAccess.file_exists(SAVE_PATH):
+	if not FileAccess.file_exists(save_path()):
 		return
-	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	var f := FileAccess.open(save_path(), FileAccess.READ)
 	if f == null:
 		return
 	var json := JSON.new()
