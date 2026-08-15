@@ -783,13 +783,25 @@ func _paint_owned_mark(id: StringName) -> void:
 # The tick's own stylebox. NOT `_flat`: that one carries a 10px content margin
 # for panels, which on a 20px badge pushes the glyph clean outside the box — the
 # tick renders as an empty circle no matter what it is set to.
+#
+# Cached like `_flat` is, and for the same reason at ten times the scale: a badge
+# takes four styleboxes (one per button state) and the grid builds 849 of them,
+# so building them fresh meant ~3,400 objects every time the games tab populated
+# — which search, sort and every filter change does again.
+static var _badge_styles: Dictionary = {}
+
 func _badge_style(fill: Color, edge: Color) -> StyleBoxFlat:
+	var key: String = "%s|%s" % [fill, edge]
+	var cached = _badge_styles.get(key)
+	if cached is StyleBoxFlat:
+		return cached
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = fill
 	sb.set_corner_radius_all(5)
 	sb.set_content_margin_all(0)
 	sb.set_border_width_all(1)
 	sb.border_color = edge
+	_badge_styles[key] = sb
 	return sb
 
 func _badge_tooltip(owns: bool) -> String:

@@ -27,7 +27,18 @@ static func config_path() -> String:
 # Steam's public games list. `<kind>` is "id" for a vanity name and "profiles"
 # for a raw 64-bit id; Steam serves the same XML from both. No API key is
 # involved — the profile's "Game details" simply has to be Public.
-const STEAM_XML_URL := "https://steamcommunity.com/%s/%s/games?tab=all&xml=1"
+const STEAM_XML_URL := "https://steamcommunity.com/%s/%s/games/?tab=all&xml=1"
+
+# Steam is asked as a BROWSER would ask. Godot's HTTPRequest identifies itself as
+# "GodotEngine/4.6.stable.official (Linux)" by default, and steamcommunity is one
+# of the many hosts that serves a non-browser agent something other than the page
+# it serves a browser — which is the shape of a sync that succeeds, returns 200,
+# and contains no games.
+const STEAM_HEADERS := [
+	"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36",
+	"Accept: text/xml,application/xml,text/html;q=0.9,*/*;q=0.8",
+	"Accept-Language: en-US,en;q=0.9",
+]
 
 # How long a sync may take before it's reported as unreachable.
 const SYNC_TIMEOUT_S := 20.0
@@ -186,7 +197,7 @@ func _fetch_and_apply(name: String) -> Dictionary:
 	var http := HTTPRequest.new()
 	http.timeout = SYNC_TIMEOUT_S
 	add_child(http)
-	var err: int = http.request(url)
+	var err: int = http.request(url, PackedStringArray(STEAM_HEADERS))
 	if err != OK:
 		http.queue_free()
 		return _sync_error("Couldn't reach Steam (error %d)." % err)
@@ -215,7 +226,7 @@ func _fetch_and_apply(name: String) -> Dictionary:
 	if reported != "":
 		return _sync_error("Steam says: %s%s" % [reported, PRIVACY_HINT
 			if reported.to_lower().contains("private") else ""])
-	if not xml.contains("<gamesList"):
+	if not xml.contains("<gamesList") and parse_appids(xml).is_empty():
 		# Not the XML at all — Steam served a web page. This is what a mistyped
 		# vanity name usually looks like, since /id/<something-that-is-not-a-name>
 		# lands on a page rather than an error document.
@@ -269,19 +280,29 @@ static func steam_error_in(xml: String) -> String:
 	tags.compile("<[^>]*>")
 	return tags.sub(text, "", true).strip_edges()
 
-# Every <appID> in the games list. Regex rather than XMLParser because that is
-# the whole of the shape we need and it survives Steam wrapping the values in
-# CDATA, which it does for some fields.
-static func parse_appids(xml: String) -> PackedInt64Array:
+# Every app id in the reply. Regex rather than XMLParser because that is the
+# whole of the shape we need and it survives Steam wrapping values in CDATA,
+# which it does for some fields.
+#
+# TWO shapes are read. `<appID>` is the XML the `xml=1` parameter asks for. The
+# `"appid":440` form is the JSON Steam embeds in the ordinary games PAGE — read
+# as a fallback because `xml=1` is an old parameter on a page Steam has rewritten
+# more than once, and a games list we can read is a games list we can read
+# whichever wrapper it arrives in. Ids are matched against the catalog either
+# way, so a stray number from elsewhere on the page can only fail to match.
+static func parse_appids(text: String) -> PackedInt64Array:
 	var out: PackedInt64Array = PackedInt64Array()
 	var seen: Dictionary = {}
-	var re := RegEx.new()
-	re.compile("(?i)<appID>\\s*(\\d+)\\s*</appID>")
-	for m in re.search_all(xml):
-		var id: int = int(m.get_string(1))
-		if id > 0 and not seen.has(id):
-			seen[id] = true
-			out.append(id)
+	for pattern in ["(?i)<appID>\\s*(\\d+)\\s*</appID>", "(?i)\"appid\"\\s*:\\s*(\\d+)"]:
+		var re := RegEx.new()
+		re.compile(pattern)
+		for m in re.search_all(text):
+			var id: int = int(m.get_string(1))
+			if id > 0 and not seen.has(id):
+				seen[id] = true
+				out.append(id)
+		if not out.is_empty():
+			break                      # the XML shape wins when it is there
 	return out
 
 # Mark every catalog game whose Steam link matches one of `appids` as owned.

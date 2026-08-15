@@ -285,3 +285,34 @@ func test_the_privacy_hint_names_the_setting_to_change() -> void:
 	# "Set your profile to public" is the wrong instruction — the profile can be
 	# public while the games list is not. It is the Game details setting.
 	assert_true(Ownership.PRIVACY_HINT.contains("Game details"))
+
+# --- asking the way a browser asks -----------------------------------------
+
+func test_steam_is_asked_with_a_browser_user_agent() -> void:
+	# Godot identifies itself as GodotEngine/<version> by default, and
+	# steamcommunity serves non-browser agents something other than the page. A
+	# sync that returns 200 with no games in it is what that looks like.
+	var joined: String = " ".join(PackedStringArray(Ownership.STEAM_HEADERS))
+	assert_true(joined.contains("User-Agent:"), "a User-Agent is sent")
+	assert_false(joined.contains("Godot"), "and it is not Godot's own")
+	assert_true(joined.contains("Mozilla/5.0"))
+
+func test_the_games_page_json_is_read_when_the_xml_is_not_there() -> void:
+	# `xml=1` is an old parameter on a page Steam has rewritten more than once.
+	# When the reply is the ordinary page instead, the games are still in it.
+	var page := '<html><script>var rgGames = [{"appid":440,"name":"One"},{"appid":620,"name":"Two"}];</script></html>'
+	var ids: PackedInt64Array = Ownership.parse_appids(page)
+	assert_eq(ids.size(), 2, "both games were read out of the page")
+	assert_true(ids.has(440) and ids.has(620))
+
+func test_the_xml_shape_still_wins_when_both_are_present() -> void:
+	var mixed := (SAMPLE_XML % [440, 620]) + '<script>{"appid":999}</script>'
+	var ids: PackedInt64Array = Ownership.parse_appids(mixed)
+	assert_false(ids.has(999), "the games list is the answer, not the page around it")
+	assert_true(ids.has(440))
+
+func test_the_games_url_is_the_one_steam_serves_today() -> void:
+	var url: String = Ownership.profile_url("batsling1234")
+	assert_true(url.contains("/id/batsling1234/games/"),
+		"the games page, with the trailing slash Steam's own links carry")
+	assert_true(url.ends_with("xml=1"))
