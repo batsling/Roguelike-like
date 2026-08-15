@@ -35,8 +35,20 @@ For how the project is laid out and how its systems fit together, see
 
   The rest is hand-editable: every game's page in the Collection (Tab) grows an
   **I own this** toggle, live while your own list is the source and showing the
-  catalog's answer, disabled, when it isn't. A sync only ever **adds** — a GOG,
-  itch, emulated or borrowed copy ticked by hand is never wiped by the next one.
+  catalog's answer, disabled, when it isn't. Each cell in the games grid wears a
+  `✔ owned` mark so you can see what's still unticked without opening it, and a
+  tick repaints that one cell rather than rebuilding the grid — on 849 games a
+  rebuild would lose your scroll position on every tick, which is precisely when
+  you are working down a list of them. A sync only ever **adds** — a GOG, itch,
+  emulated or borrowed copy ticked by hand is never wiped by the next one.
+
+  In **dev mode**, the settings panel also offers **Save Steam's reply**, which
+  writes the last reply Steam sent — headed by the URL asked for and the HTTP
+  status — to `user://steam_reply.xml`. The reply is recorded before any of the
+  checks that can reject it, so the dump is available for exactly the syncs that
+  failed. The one part of this feature that can't be covered by a test is the
+  live request itself, so when it misbehaves the artefact worth having is Steam's
+  own answer rather than a description of it.
 
   The spreadsheet's column is never written to, so switching back restores it
   exactly and the manual list survives the round trip. `Ownership.is_owned()` is

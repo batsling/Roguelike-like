@@ -377,10 +377,30 @@ func _build_ownership_section(vbox: VBoxContainer, on_change: Callable) -> void:
 	status.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(status)
 
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 8)
+	vbox.add_child(buttons)
+
 	var clear_btn := Button.new()
 	clear_btn.text = "Clear my list"
-	clear_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	vbox.add_child(clear_btn)
+	buttons.add_child(clear_btn)
+
+	# Dev mode only: the sync's failure modes are all shapes of someone else's
+	# HTTP reply, so when one misbehaves the useful thing is the reply itself
+	# rather than a description of it.
+	var dump_btn := Button.new()
+	dump_btn.text = "Save Steam's reply"
+	dump_btn.tooltip_text = "Write the last reply Steam sent to a file, for diagnosing a sync that went wrong."
+	dump_btn.visible = Settings.dev_mode
+	buttons.add_child(dump_btn)
+
+	dump_btn.pressed.connect(func() -> void:
+		var path: String = Ownership.dump_last_reply()
+		status.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+		if path == "":
+			status.text = "Nothing to save — run a sync first."
+		else:
+			status.text = "Wrote Steam's last reply to %s" % path)
 
 	var refresh := func() -> void:
 		var i: int = src.get_item_index(Ownership.Source.MANUAL)

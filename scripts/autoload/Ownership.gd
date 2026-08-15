@@ -52,6 +52,15 @@ var _manual: Dictionary = {}
 # Set while a sync is in flight, so the UI can refuse to start a second one.
 var _syncing: bool = false
 
+# What Steam actually said last time, kept in memory only (never saved) so a sync
+# that misbehaves can be dumped to a file and read. This is the whole reason the
+# dev-mode "Save Steam's reply" button exists: the failure modes here are all
+# shapes of someone else's HTTP response, which is not something the code can
+# guess at from the inside.
+var _last_reply: String = ""
+var _last_reply_url: String = ""
+var _last_reply_status: int = 0
+
 
 func _ready() -> void:
 	load_ownership()
@@ -162,10 +171,14 @@ func sync_from_steam(username: String) -> Dictionary:
 	return result
 
 func _fetch_and_apply(name: String) -> Dictionary:
+	var url: String = profile_url(name)
+	_last_reply = ""
+	_last_reply_url = url
+	_last_reply_status = 0
 	var http := HTTPRequest.new()
 	http.timeout = SYNC_TIMEOUT_S
 	add_child(http)
-	var err: int = http.request(profile_url(name))
+	var err: int = http.request(url)
 	if err != OK:
 		http.queue_free()
 		return _sync_error("Couldn't reach Steam (error %d)." % err)
@@ -174,13 +187,17 @@ func _fetch_and_apply(name: String) -> Dictionary:
 	var result_code: int = int(res[0])
 	var status: int = int(res[1])
 	var body: PackedByteArray = res[3]
+	# Recorded before any of the checks below, so a dump is available for exactly
+	# the replies that fail one of them.
+	_last_reply_status = status
+	_last_reply = body.get_string_from_utf8()
 	if result_code != HTTPRequest.RESULT_SUCCESS:
 		return _sync_error("Couldn't reach Steam — check your connection.")
 	if status == 404:
 		return _sync_error("No Steam profile called \"%s\"." % name)
 	if status < 200 or status >= 300:
 		return _sync_error("Steam returned %d." % status)
-	var xml: String = body.get_string_from_utf8()
+	var xml: String = _last_reply
 	if xml.strip_edges() == "":
 		return _sync_error("Steam sent an empty reply — try again in a minute.")
 	if is_private_profile(xml):
@@ -274,6 +291,31 @@ func _sync_error(message: String) -> Dictionary:
 		"ok": false, "error": message,
 		"appids": 0, "catalog_linked": 0, "matched": 0, "already": 0, "added": 0,
 	}
+
+# --- reading what Steam actually said --------------------------------------
+
+const REPLY_DUMP_PATH := "user://steam_reply.xml"
+
+func has_last_reply() -> bool:
+	return _last_reply_url != ""
+
+# Write the last reply — headed by the URL asked for and the status that came
+# back — and return the absolute path, or "" if the file couldn't be written.
+# The dump contains the profile's SteamID64 and its game list, which is the
+# player's own data on the player's own disk, but it is a file to look at before
+# sending anywhere.
+func dump_last_reply() -> String:
+	if not has_last_reply():
+		return ""
+	var f: FileAccess = FileAccess.open(REPLY_DUMP_PATH, FileAccess.WRITE)
+	if f == null:
+		return ""
+	f.store_line("<!-- url: %s -->" % _last_reply_url)
+	f.store_line("<!-- http status: %d -->" % _last_reply_status)
+	f.store_line("<!-- bytes: %d -->" % _last_reply.length())
+	f.store_string(_last_reply)
+	f.close()
+	return ProjectSettings.globalize_path(REPLY_DUMP_PATH)
 
 # --- persistence -----------------------------------------------------------
 

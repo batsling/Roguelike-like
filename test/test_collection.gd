@@ -321,3 +321,66 @@ func test_a_filter_that_empties_the_grid_drops_what_it_was_waiting_to_read() -> 
 	col._refresh()
 	assert_eq(col._pending_covers.size(), 0,
 		"the queue points at cells that no longer exist — it goes with them")
+
+# --- ticking games off as owned ---------------------------------------------
+#
+# The per-game half of the ownership setting (see test_ownership.gd for the
+# store behind it). It is only live while the player's own list is the source:
+# under the catalog's list the toggle shows what the catalog says and refuses
+# the click, since a tick nothing reads would look like it had worked.
+
+func _owned_toggle_of(box: Control) -> CheckButton:
+	for child in box.get_children():
+		if child is CheckButton and (child as CheckButton).text == "I own this":
+			return child
+	return null
+
+func test_the_game_page_offers_an_owned_toggle() -> void:
+	var was: int = Ownership.source
+	Ownership.set_source(Ownership.Source.MANUAL)
+	var game: GameData = Data.all_games()[0]
+	var col := _new_collection()
+	col._show_game_detail(game)
+	var chk: CheckButton = _owned_toggle_of(col._detail_box)
+	assert_not_null(chk, "the detail panel carries the toggle")
+	assert_false(chk.disabled, "and it is live on the player's own list")
+	assert_eq(chk.button_pressed, Ownership.is_owned(game))
+	chk.button_pressed = true
+	assert_true(Ownership.is_owned(game), "pressing it marks the game owned")
+	Ownership.set_manual_owned(game.id, false)
+	Ownership.set_source(was)
+
+func test_the_toggle_is_read_only_while_the_catalog_is_the_source() -> void:
+	var was: int = Ownership.source
+	Ownership.set_source(Ownership.Source.SPREADSHEET)
+	var game: GameData = Data.all_games()[0]
+	var col := _new_collection()
+	col._show_game_detail(game)
+	var chk: CheckButton = _owned_toggle_of(col._detail_box)
+	assert_not_null(chk)
+	assert_true(chk.disabled, "the catalog's column is not the player's to edit")
+	assert_eq(chk.button_pressed, game.owned, "it shows what the catalog says")
+	Ownership.set_source(was)
+
+func test_a_cell_gains_its_owned_mark_without_the_grid_being_rebuilt() -> void:
+	# Rebuilding would lose the scroll position, which on 849 games means losing
+	# your place on every tick — exactly while working down a list of them.
+	var was: int = Ownership.source
+	Ownership.set_source(Ownership.Source.MANUAL)
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.GAMES)
+	assert_gt(col._owned_marks.size(), 0, "the cells registered their marks")
+	var id: StringName = col._owned_marks.keys()[0]
+	Ownership.set_manual_owned(id, false)
+	col._paint_owned_mark(id)
+	var before: Label = col._owned_marks[id]
+	assert_false(before.text.contains("owned"), "an unowned cell wears no mark")
+	var cells_before: int = col._grid.get_child_count()
+	Ownership.set_manual_owned(id, true)
+	col._paint_owned_mark(id)
+	assert_true((col._owned_marks[id] as Label).text.contains("owned"),
+		"ticking it marks the cell")
+	assert_eq(col._grid.get_child_count(), cells_before, "and the grid is the same grid")
+	assert_same(col._owned_marks[id], before, "the same label, repainted in place")
+	Ownership.set_manual_owned(id, false)
+	Ownership.set_source(was)

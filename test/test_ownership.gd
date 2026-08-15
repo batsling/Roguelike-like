@@ -190,6 +190,34 @@ func test_an_empty_name_fails_before_any_request_goes_out() -> void:
 	assert_false(report["ok"])
 	assert_ne(str(report["error"]), "", "and says why")
 
+# --- the diagnostic dump ---------------------------------------------------
+#
+# The live request is the one half of the sync that can't be exercised in a test
+# (it needs steamcommunity.com), so when it misbehaves the useful artefact is
+# Steam's own reply rather than a description of it.
+
+func test_there_is_nothing_to_dump_before_a_sync_has_run() -> void:
+	Ownership._last_reply = ""
+	Ownership._last_reply_url = ""
+	assert_false(Ownership.has_last_reply())
+	assert_eq(Ownership.dump_last_reply(), "", "and asking writes no file")
+
+func test_the_dump_carries_the_reply_and_what_was_asked_for() -> void:
+	Ownership._last_reply = SAMPLE_XML % [440, 620]
+	Ownership._last_reply_url = "https://steamcommunity.com/id/batsling/games?tab=all&xml=1"
+	Ownership._last_reply_status = 200
+	assert_true(Ownership.has_last_reply())
+	var path: String = Ownership.dump_last_reply()
+	assert_ne(path, "", "the dump reports where it landed")
+	var f: FileAccess = FileAccess.open(Ownership.REPLY_DUMP_PATH, FileAccess.READ)
+	assert_not_null(f, "and the file is there to read")
+	var text: String = f.get_as_text()
+	f.close()
+	assert_true(text.contains("<appID>440</appID>"), "the reply is in it verbatim")
+	assert_true(text.contains("/id/batsling/games"), "headed by the URL asked for")
+	assert_true(text.contains("http status: 200"), "and the status that came back")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Ownership.REPLY_DUMP_PATH))
+
 # --- persistence -----------------------------------------------------------
 
 func test_the_list_survives_a_save_and_load() -> void:

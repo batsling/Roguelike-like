@@ -110,6 +110,11 @@ var _grid_laid_out: bool = false
 var _detail_box: VBoxContainer = null
 var _count_lbl: Label = null
 var _tab_buttons := {}
+# The owned mark on each visible game cell, as {game id: Label}. Held so ticking
+# a game in the detail panel can repaint its cell in place — rebuilding the grid
+# would lose the scroll position, which on 849 games means losing your place
+# every single tick, exactly while working down a list of them.
+var _owned_marks := {}
 
 # ------------------------------------------------------------------
 # Lifecycle / open
@@ -626,6 +631,7 @@ func _open_constellation() -> void:
 
 func _populate_games() -> void:
 	_clear_children(_grid)
+	_owned_marks.clear()
 	var term: String = _search["games"].to_lower()
 	var list: Array = []
 	for g in Data.all_games():
@@ -699,7 +705,23 @@ func _game_cell(g: GameData) -> Control:
 		stat_line += "    👑 %d" % amulets
 	var played := beaten > 0 or amulets > 0
 	vb.add_child(_label(stat_line, Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), GRID_META_FONT, true))
+	# Ownership at a glance, so working down the catalog ticking games off doesn't
+	# mean opening each one to find out whether it's already ticked. The row keeps
+	# its height either way, so cells don't jump as marks come and go.
+	var mark := _label("", Color(0.55, 0.85, 0.65), GRID_META_FONT, true)
+	_owned_marks[g.id] = mark
+	_paint_owned_mark(g.id)
+	vb.add_child(mark)
 	return cell.panel
+
+# Repaint one cell's owned mark from the live answer. Safe to call for a game
+# that isn't on screen — the grid is rebuilt by search and filter, so most ids
+# have no cell most of the time.
+func _paint_owned_mark(id: StringName) -> void:
+	var mark: Label = _owned_marks.get(id)
+	if mark == null or not is_instance_valid(mark):
+		return
+	mark.text = "✔ owned" if Ownership.owns_id(id) else " "
 
 # One enemy beaten at this game — the mirror of _enemy_game_row, so the Games and
 # Enemies tabs present the same record the same way from either side.
@@ -921,7 +943,8 @@ func _owned_toggle(g: GameData) -> Control:
 	if Ownership.is_editable():
 		chk.tooltip_text = "Counts %s as owned for the \"owned games only\" filters." % g.display_name
 		chk.toggled.connect(func(on: bool) -> void:
-			Ownership.set_manual_owned(g.id, on))
+			Ownership.set_manual_owned(g.id, on)
+			_paint_owned_mark(g.id))
 	else:
 		chk.disabled = true
 		chk.tooltip_text = "Ownership is coming from the catalog's own list. Switch to your own list in Settings to edit this."
