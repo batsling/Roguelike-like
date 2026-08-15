@@ -42,8 +42,10 @@ var _resume_pending: bool = false
 
 func _ready() -> void:
 	_ensure_dirs()
-	# A switch lands in a directory that may never have held a save before.
+	# A switch lands in a directory that may never have held a save before, and a
+	# wipe deletes the one we were using out from under us.
 	Profiles.profile_switched.connect(_ensure_dirs)
+	Profiles.profile_wiped.connect(_ensure_dirs)
 
 func _ensure_dirs() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(save_dir()))

@@ -41,6 +41,11 @@ const LEGACY_SAVE_DIR := "user://saves/"
 # screens can redraw against the new player's data.
 signal profile_switched
 
+# Emitted after a profile is wiped. Separate from a switch because it is a
+# different event — the same player, with nothing behind them — but screens
+# showing saves or stats have to react to both the same way.
+signal profile_wiped
+
 # [{id: String, name: String, created: int}], in creation order.
 var _profiles: Array = []
 
@@ -136,6 +141,24 @@ func delete(id: String) -> bool:
 		_reload_stores()
 		profile_switched.emit()
 	_save_index()
+	return true
+
+# Empty a profile without removing it: every run, stat, ranking, owned-game list
+# and run setting under it goes, and the profile stays, keeping its name and its
+# place in the list. This is the "start over as me" button, and unlike `delete` it
+# is allowed on the profile currently being played — which is in fact where it is
+# most likely to be wanted.
+func wipe(id: String) -> bool:
+	if not has_profile(id):
+		return false
+	_rm_rf(ROOT + id + "/")
+	_ensure_dir(id)
+	if id == active_id:
+		# The stores are still holding the wiped profile's data in memory. Reload
+		# them: with the files gone, each one resets to its defaults, which is what
+		# an empty profile is.
+		_reload_stores()
+		profile_wiped.emit()
 	return true
 
 # --- switching -------------------------------------------------------------

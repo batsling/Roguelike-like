@@ -40,7 +40,6 @@ func _ready() -> void:
 	%TierListBtn.pressed.connect(_on_tier_list)
 	%SettingsBtn.pressed.connect(_on_settings)
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
-	%ClearDataBtn.pressed.connect(_on_clear_data)
 	%QuitBtn.pressed.connect(quit_game)
 
 	_save_list_container.visible = false
@@ -48,6 +47,7 @@ func _ready() -> void:
 	# A switch replaces every save on disk, so the Continue list has to be asked
 	# again — it is showing the previous player's runs until it is.
 	Profiles.profile_switched.connect(_on_profile_switched)
+	Profiles.profile_wiped.connect(_on_profile_switched)
 	_refresh_continue_button()
 	_build_how_to_play_panel()
 	# The corner belongs to the MENU, not to whatever is opened over it. Anything
@@ -836,17 +836,6 @@ func _on_how_to_play() -> void:
 # top button and any future entry point cannot disagree about how it mounts.
 func _open_manual(chapter) -> void:
 	HowToPlayScreen.open(_modal_layer, chapter)
-
-func _on_clear_data() -> void:
-	var confirm := ConfirmationDialog.new()
-	confirm.dialog_text = "Delete ALL saves? This cannot be undone."
-	confirm.confirmed.connect(func():
-		SaveSystem.clear_all_saves()
-		_populate_save_list()
-		_refresh_continue_button()
-	)
-	_modal_layer.add_child(confirm)
-	confirm.popup_centered(Vector2i(420, 160))
 
 # Leaving for good. No confirmation here on purpose: nothing is live on the main
 # menu, saves are already on disk, and a "are you sure?" between the player and

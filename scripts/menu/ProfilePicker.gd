@@ -162,12 +162,22 @@ func _profile_row(p: Dictionary) -> Control:
 	name_edit.text_submitted.connect(func(_t): do_rename.call())
 	name_edit.focus_exited.connect(do_rename)
 
+	# Wiping is offered on every profile including the one being played — "start
+	# over as me" is the likeliest reason to want it, and unlike deleting there is
+	# always somewhere to stand afterwards.
+	var wipe := Button.new()
+	wipe.text = "Wipe"
+	wipe.tooltip_text = "Erase everything saved under %s, keeping the profile." % str(p["name"])
+	wipe.custom_minimum_size = Vector2(64, 0)
+	wipe.pressed.connect(func(): _confirm_wipe(id))
+
 	if is_active:
 		var here := Label.new()
 		here.text = "playing"
 		here.add_theme_font_size_override("font_size", 12)
 		here.add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))
 		row.add_child(here)
+		row.add_child(wipe)
 	else:
 		var play := Button.new()
 		play.text = "Play as"
@@ -177,6 +187,7 @@ func _profile_row(p: Dictionary) -> Control:
 				_say("Now playing as %s." % Profiles.active_name())
 				refresh())
 		row.add_child(play)
+		row.add_child(wipe)
 
 		var del := Button.new()
 		del.text = "🗑"
@@ -203,6 +214,25 @@ func _confirm_delete(id: String) -> void:
 			refresh()
 		else:
 			_say("That profile can't be deleted."))
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.popup_centered()
+
+# Wiping keeps the profile and empties it. This is where the main menu's old
+# "Clear All Data" went: that button sat next to How to Play, promised more than
+# it did (only saves, never stats or rankings) and, once profiles existed, could
+# only ever have meant one of several things.
+func _confirm_wipe(id: String) -> void:
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "Wipe profile"
+	dialog.dialog_text = "Erase everything saved under \"%s\"?\n\nIts runs, lifetime stats, tier list, owned-game list and run settings are all deleted. The profile itself stays. This cannot be undone." % Profiles.name_of(id)
+	dialog.ok_button_text = "Wipe"
+	add_child(dialog)
+	dialog.confirmed.connect(func() -> void:
+		if Profiles.wipe(id):
+			_say("\"%s\" is empty again." % Profiles.name_of(id))
+			refresh()
+		else:
+			_say("That profile can't be wiped."))
 	dialog.canceled.connect(dialog.queue_free)
 	dialog.popup_centered()
 

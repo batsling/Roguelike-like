@@ -41,6 +41,14 @@ For how the project is laid out and how its systems fit together, see
   keys are lifted out of the old `settings.cfg` — once, at migration, so profiles
   made later still start at the defaults.
 
+  **"Clear All Data" is gone from the main menu**, replaced by a **Wipe** button
+  on each row of the profile list. The old button sat beside How to Play,
+  promised more than it did — only saves, never stats or rankings — and once
+  profiles existed it could have meant any of three things. Wiping empties one
+  profile (runs, stats, tier list, owned games, run settings) and keeps it, so
+  unlike deleting it is offered on the profile you are playing: "start over as
+  me" is the likeliest reason to want it.
+
   **The owned tick moved onto the cover art.** Every cell in the Collection's
   games grid wears a mark at the top-left of its image: a green ✔ for a game you
   own, an empty box for one you don't. On your own list it is the fastest way to

@@ -212,3 +212,74 @@ func test_a_profile_directory_is_never_the_root() -> void:
 	assert_gt(Profiles.dir().length(), Profiles.ROOT.length() + 1,
 		"there is an id between the root and the files")
 	assert_true(Profiles.path("x.cfg").ends_with("/x.cfg"))
+
+# --- wiping ----------------------------------------------------------------
+#
+# The main menu's "Clear All Data" button is gone; this is what replaced it. The
+# difference from delete is that the profile survives — it is "start over as me",
+# so it is offered on the profile being played, which delete never is.
+
+func test_wiping_empties_a_profile_but_keeps_it() -> void:
+	var id: String = _make("Wipe me")
+	Profiles.switch_to(id)
+	var game: GameData = Data.all_games()[0]
+	Ownership.set_source(Ownership.Source.MANUAL)
+	Ownership.set_manual_owned(game.id, true)
+	GameStats.record_beaten(game.id)
+	Settings.set_game_filter(Settings.GameFilter.OWNED)
+
+	assert_true(Profiles.wipe(id))
+	assert_true(Profiles.has_profile(id), "the profile is still there")
+	assert_eq(Profiles.name_of(id), "Wipe me", "with its name")
+	assert_eq(Profiles.active_id, id, "and is still the one being played")
+	assert_eq(GameStats.beaten_count(game.id), 0, "its stats are gone")
+	assert_eq(Ownership.manual_count(), 0, "its owned list is gone")
+	assert_eq(Ownership.source, Ownership.Source.SPREADSHEET, "back to the default source")
+	assert_eq(Settings.game_filter, Settings.GameFilter.ALL, "and its run settings")
+
+func test_wiping_leaves_somewhere_for_saves_to_go() -> void:
+	# The wipe deletes the saves directory the game is holding open. Something has
+	# to put it back, or the next save writes into a directory that isn't there.
+	var id: String = _make("Wipe saves")
+	Profiles.switch_to(id)
+	assert_true(Profiles.wipe(id))
+	assert_true(DirAccess.dir_exists_absolute(
+		ProjectSettings.globalize_path(SaveSystem.save_dir())),
+		"the saves directory was recreated")
+	assert_true(DirAccess.dir_exists_absolute(
+		ProjectSettings.globalize_path(SaveSystem.named_save_dir())))
+
+func test_wiping_one_profile_leaves_the_others_alone() -> void:
+	var keep: String = _make("Keeper")
+	var doomed: String = _make("Wiped")
+	var game: GameData = Data.all_games()[0]
+
+	Profiles.switch_to(keep)
+	GameStats.record_beaten(game.id)
+	var kept: int = GameStats.beaten_count(game.id)
+
+	Profiles.switch_to(doomed)
+	GameStats.record_beaten(game.id)
+	assert_true(Profiles.wipe(doomed))
+	assert_eq(GameStats.beaten_count(game.id), 0)
+
+	Profiles.switch_to(keep)
+	assert_eq(GameStats.beaten_count(game.id), kept, "the other profile is untouched")
+
+func test_wiping_a_profile_you_are_not_playing_does_not_touch_your_data() -> void:
+	var other: String = _make("Elsewhere")
+	var mine: String = _make("Mine")
+	var game: GameData = Data.all_games()[0]
+	Profiles.switch_to(other)
+	GameStats.record_beaten(game.id)
+	Profiles.switch_to(mine)
+	GameStats.record_beaten(game.id)
+	var before: int = GameStats.beaten_count(game.id)
+	assert_true(Profiles.wipe(other), "wiped from outside it")
+	assert_eq(GameStats.beaten_count(game.id), before,
+		"the profile being played is unaffected")
+	Profiles.switch_to(other)
+	assert_eq(GameStats.beaten_count(game.id), 0, "and the wiped one is empty")
+
+func test_wiping_an_unknown_profile_is_refused() -> void:
+	assert_false(Profiles.wipe("no_such_profile"))
