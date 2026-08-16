@@ -30,7 +30,7 @@ func after_each() -> void:
 	TierList._reset_defaults()
 
 # A fresh run opens on the START-SELECT panel (one card per genre, each inside the
-# 5..8 band), and taking one is the run's FIRST GAME — its enemy spawns, it hands
+# 4..7 band), and taking one is the run's FIRST GAME — its enemy spawns, it hands
 # over its tries, and the run lands in the report step (Overworld2.choose_start).
 #
 # Nearly every test in this file is about the OFFERING and what you can do to it,
@@ -1677,9 +1677,10 @@ func test_every_offered_start_sits_in_the_amulet_distance_band() -> void:
 # stack picks up its scent (RunDifficulty.turns_for_hops). Two cards at the same
 # distance would offer a genre and nothing else.
 #
-# It is a preference, not a promise — 23 Amulets on the owned catalog have every
-# in-band start at a single distance — so the assertion is that the panel took a
-# spread WHERE ONE EXISTED, which is checked against the graph rather than assumed.
+# It is a preference, not a promise — an Amulet can have every in-band start at a
+# single distance (one does on the owned catalog at 4..7, and 16 did at 5..8) — so
+# the assertion is that the panel took a spread WHERE ONE EXISTED, which is
+# checked against the graph rather than assumed.
 func test_the_two_starts_are_different_distances_when_the_graph_allows_it() -> void:
 	for _attempt in range(12):
 		_ui.start_run()

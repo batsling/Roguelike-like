@@ -6,31 +6,37 @@ extends RefCounted
 # `getGameConnections` helper from the HTML build into GDScript so the
 # Godot main menu can drive the same start-game progression.
 
-# Path length tuning. The run opens with a CHOICE OF THREE starting games, each
-# 5 to 8 games from the Amulet — so picking a start is a choice of genre, route,
-# AND run length. The length is not flavour: enemies take more turns per game the
-# closer the run stands to the Amulet (RunDifficulty.turns_for_hops, FAR_HOPS =
-# 5), so a start 8 hops out opens with FOUR games in the calm 1-turn band while a
-# start 5 hops out gets exactly one before the stack picks up your scent. Starting
-# far is a longer run fought slowly; starting near is a short run fought fast.
+# Path length tuning. The run opens with a CHOICE OF STARTING GAMES, each 4 to 7
+# games from the Amulet — so picking a start is a choice of genre, route, AND run
+# length. The length is not flavour: enemies take more turns per game the closer
+# the run stands to the Amulet (RunDifficulty.turns_for_hops, FAR_HOPS = 5), so a
+# start 7 hops out opens with three games in the calm 1-turn band while a start 4
+# hops out gets NONE — it begins already inside the 2-turn band. Starting far is a
+# longer run fought slowly; starting near is a short run fought fast.
 #
-# The band was 6..8 and the floor came back down to 5 because 6 was quietly
-# expensive: the Amulet is drawn from games that sit inside the band from some
-# eligible start, and on an OWNED-filtered catalog a floor of 6 struck 36 games
-# off that list — every one of them a hub (Isaac, Hades, FTL, NetHack, Enter the
-# Gungeon, Rogue), because being influential is exactly what puts a game within 5
-# hops of everything. It also left only 96 of 357 Amulets able to field the
-# three-genre start panel, against 346 at a floor of 5.
+# The band was 6..8, then 5..8, and is now 4..7 — the whole window slid down one.
+# The reason is that the route the player actually walks is rarely the optimal
+# one: the more connections a game has, the smaller the chance that the neighbour
+# you want is among the ones offered, so a nominal 5-hop run costs more games than
+# 5 and the band's real length drifts above what it says. Sliding the window down
+# rather than only lowering the floor keeps the SPREAD at four lengths — the panel
+# still gets a genuine long/short choice — while pulling the whole run in.
 #
-# The CEILING is not what governs that. With ~100 eligible starts any game 8 hops
-# from one of them is <= 7 from another, so sweeping the ceiling from 8 out to 12
-# does not add a single Amulet — the pool is set by the floor alone. 8 is kept
-# because it is the longest run the pressure ladder still has room to grade.
+# The floor is what governs the Amulet pool. The Amulet is drawn from games that
+# sit inside the band from some eligible start, and on an OWNED-filtered catalog a
+# floor of 6 struck 36 games off that list — every one of them a hub (Isaac,
+# Hades, FTL, NetHack, Enter the Gungeon, Rogue), because being influential is
+# exactly what puts a game within 5 hops of everything. Lowering the floor only
+# ever widens that pool, so 4 is safe where 6 was not.
+#
+# The CEILING is not what governs it. With ~100 eligible starts any game 8 hops
+# from one of them is <= 7 from another, so sweeping the ceiling out does not add
+# a single Amulet — which is also why pulling it in to 7 does not cost one.
 # These are the DEFAULT band. A custom run may move it (RunConfig.path_band), so
 # every place the band is tested reads that rather than these two directly — the
 # consts are what an ordinary run's band resolves to, not the band itself.
-const MIN_PATH_LENGTH := 5
-const MAX_PATH_LENGTH := 8
+const MIN_PATH_LENGTH := 4
+const MAX_PATH_LENGTH := 7
 const EARLY_LAYERS_FOR_SCORE := 3
 # How many starts the choose-your-start panel offers. Each comes from a DIFFERENT
 # game type (see TYPE_ORDER), so the two cards are always two genres.
@@ -477,8 +483,9 @@ const AMULET_ATTEMPTS := 8
 # How many reference starts the Amulet pool is drawn from before the pick.
 #
 # It used to be one, and which one it was mattered enormously: the number of
-# games sitting 5..8 hops from a single eligible start ranges 21..318 across the
-# owned catalog, median 77, against a union of 393 over every start. A run that
+# games sitting in-band from a single eligible start ranges 21..318 across the
+# owned catalog (measured at the then-current 5..8), median 77, against a union of
+# 393 over every start. A run that
 # rolled a narrow reference was offered a fifteenth of the goals another run
 # would see, for no reason the player could observe. Unioning a few references
 # flattens that, and costs one BFS each — bfs_distances is memoized, so every
@@ -521,11 +528,11 @@ const AMULET_SCORE_SLACK := 2
 # Keeping one start PER LENGTH rather than one per genre is the whole point. The
 # panel wants its cards at different distances (see _spread_across_band), and
 # collapsing each genre to its single best-scoring start first throws that choice
-# away before it can be made: a genre whose top start is 5 hops out still has a 7
-# and an 8 further down the score order, and those are what a spread is built
+# away before it can be made: a genre whose top start is 4 hops out still has a 6
+# and a 7 further down the score order, and those are what a spread is built
 # from. Deciding the spread here, with every length still on the table, is what
-# keeps the cost of the rule down to the 23 Amulets that genuinely have no two
-# lengths to offer.
+# keeps the cost of the rule down to the handful of Amulets that genuinely have
+# no two lengths to offer.
 static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
 		d_to_amulet: Dictionary) -> Dictionary:
 	var by_type: Dictionary = {}
@@ -588,17 +595,19 @@ static func _draw_start(rec: Dictionary, rng: RandomNumberGenerator) -> Dictiona
 # Pick `count` records out of `by_type` — one per genre, and at DIFFERENT
 # DISTANCES from the Amulet wherever the graph allows it.
 #
-# Distance is a real choice now that the band is 5..8: enemies take more turns per
-# game the closer the run stands to the Amulet (RunDifficulty.turns_for_hops), so
-# an 8-hop card opens with four games in the calm band and a 5-hop card with one.
-# Two cards at the same distance offer a genre and nothing else.
+# Distance is a real choice across the 4..7 band: enemies take more turns per game
+# the closer the run stands to the Amulet (RunDifficulty.turns_for_hops), so a
+# 7-hop card opens with three games in the calm band and a 4-hop card starts
+# already out of it. Two cards at the same distance offer a genre and nothing else.
 #
-# It is a PREFERENCE, not a requirement. 23 Amulets on the owned catalog have
-# every in-band start at one single distance — no differing-length pair exists at
-# any price — and dropping them from the Amulet pool to enforce a presentation
-# rule is the worse trade. Those fall back to repeating a length rather than
-# shrinking the panel, the same way a sparse graph falls back to an out-of-band
-# start rather than offering fewer cards.
+# It is a PREFERENCE, not a requirement. A few Amulets have every in-band start at
+# one single distance — no differing-length pair exists at any price — and
+# dropping them from the Amulet pool to enforce a presentation rule is the worse
+# trade. The 4..7 band all but retired the case: sweeping every amulet on the
+# owned catalog, ONE has no differing-length pair (it was 16 at 5..8) and none
+# fails to field two genres at all (21 did). Those fall back to repeating a
+# length rather than shrinking the panel, the same way a sparse graph falls back
+# to an out-of-band start rather than offering fewer cards.
 #
 # Selections are compared on, in order: how many cards are in-window (the band is
 # the panel's first promise), then how many DISTINCT lengths they cover, then
@@ -673,8 +682,8 @@ static func _spread_search(types: Array, ti: int, by_type: Dictionary, want: int
 # The options are also spread across the band: different genres AND different
 # distances from the Amulet, longest first, so the panel is a choice of how long
 # the run is as well as what it is played in (see _spread_across_band). Where the
-# graph has no two lengths to offer — 23 Amulets on the owned catalog — the cards
-# repeat a distance rather than the panel losing one.
+# graph has no two lengths to offer — one Amulet on the owned catalog at the 4..7
+# band — the cards repeat a distance rather than the panel losing one.
 # Returns {} if no valid pair could be found (extremely unlikely with
 # the current data set but the JS guards it too).
 static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
@@ -883,7 +892,7 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 			"path_len": int(rec["path_len"]),
 			"in_window": bool(rec.get("in_window", false)),
 		})
-	# In-window cards first (the 5..8 band is the promise the panel makes), then
+	# In-window cards first (the 4..7 band is the promise the panel makes), then
 	# the LONGER route, then branching. Distance leads the display order because it
 	# is the choice the spread exists to offer — the first card is the long way
 	# round, the second the short one, every time, so the panel reads the same way

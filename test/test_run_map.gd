@@ -200,8 +200,20 @@ func test_the_route_fits_the_window_it_opens_in() -> void:
 		# one binds first — and a deep, single-file route is the common shape that
 		# bottoms out on HEIGHT while fitting comfortably across. Asserting width
 		# alone made the branch fail on exactly the routes it is describing.
-		assert_true(ladder.x > room.x + 1.0 or ladder.y > room.y + 1.0,
-			"which is only the right call because it genuinely does not fit: ladder %s in %s"
+		#
+		# And what the floor branch means is "the fit RAN OUT OF ROOM", not "the
+		# ladder overflows". Those are not the same thing, because `fit_zoom` aims
+		# at FIT_SLACK of the room rather than all of it: a route whose true fit
+		# lands just under the floor is clamped back up to it and then still fits,
+		# inside that 4% margin. Asserting outright overflow therefore failed on
+		# real, correct floor cases — rare while routes were 5..8 deep, common once
+		# the band came down to 4..7 and near-floor fits became the normal shape.
+		# So the assertion is that the ladder FILLS the room to within the slack,
+		# which is true both of a route that overflows and of one that lands on the
+		# floor exactly.
+		var fill: float = modal.FIT_SLACK - 0.01
+		assert_true(ladder.x > room.x * fill or ladder.y > room.y * fill,
+			"which is only the right call because the fit ran out of room: ladder %s in %s"
 			% [ladder, room])
 		return
 	assert_lte(ladder.x, room.x + 1.0, "the whole route is visible across")

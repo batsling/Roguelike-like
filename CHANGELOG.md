@@ -11,6 +11,46 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The start band slid down a hop: starts are now 4–7 games from the Amulet,
+  not 5–8.**
+
+  `RunGraph.MIN_PATH_LENGTH` / `MAX_PATH_LENGTH` are 4 and 7. The whole window
+  moved rather than just the floor, so the panel still spreads its cards over
+  four possible lengths and still offers a genuine long/short choice — the run
+  just starts closer.
+
+  **Why the nominal number was never the real one.** The route a player walks is
+  rarely the shortest one: the offering shows three of the node's neighbours
+  (`Overworld2.BASE_OFFER_COUNT`) out of a mean degree near 28 on the full
+  catalog, so the card that advances toward the Amulet is often simply not on the
+  table. Simulated against the real graph — greedy play, always taking the offered
+  card closest to the Amulet — a nominal 5-hop start costs a median of 15 games
+  played, not 5.
+
+  **What actually moved.** Almost all of it is on the SHORT card. Taking the
+  shortest card offered, median games played falls 15 → 11 on the full catalog
+  (12 → 10 owned-only). Taking the LONGEST card is unchanged — median 19 either
+  way — because the drift above swamps the one hop the ceiling lost. So the band
+  shift sharpened the rush option and left the scenic route alone.
+
+  **And the short card is hotter now.** `RunDifficulty.FAR_HOPS` is still 5, so a
+  4-hop start opens *inside* the 2-turn Closing band with no calm game at all,
+  where a 5-hop start got one. Calm games over a rushing run fall from ~3 to ~0.5.
+  Shorter and fought faster from the first card, which is the trade the band shift
+  buys.
+
+  The Amulet pool does not pay for it: the floor is what governs which games can
+  be the goal, and lowering it only widens the pool (owned-only, the share of
+  Amulets that can field the full two-genre panel goes 93% → 100%).
+
+  One test moved with it. `test_run_map.gd::test_the_route_fits_the_window_it_opens_in`
+  asserted that a fit which bottoms out at `FIT_ZOOM_MIN` must *overflow* the
+  window. That was only usually true: `fit_zoom` aims at `FIT_SLACK` (96%) of the
+  room, so a route whose true fit lands just under the floor is clamped back up
+  and then still fits inside that margin. Rare at 5..8 depth, ordinary at 4..7. It
+  now asserts the ladder FILLS the room to within the slack, which is what "the
+  fit ran out of room" meant and is true of both cases.
+
 - **Nothing spawns alone any more: every game brings an escort.**
 
   Combat was too easy in exactly one way. The stack only ever grew when the
