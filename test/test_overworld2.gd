@@ -45,11 +45,50 @@ func _open_at_first_offering() -> void:
 		return
 	_ui.report(true)
 	_ui._end_resolve()             # don't wait out the strike/advance animation
+	# ...and drop what the playback was holding with it. The board freezes the
+	# hero's Health at its pre-resolve value for the length of the animation
+	# (BattlefieldView._hp_shown) and lets go when the tween ends — which, in a
+	# test that never waits out the tween, is never. This used to come out in the
+	# wash because the opening game had an empty board and so played back nothing
+	# at all; the escort (§7.5) gives it a body to slide, so the playback is real
+	# now and has to be cut short deliberately.
+	_ui._board.clear_fx()
 	_ui._drop_queue.clear()        # the opening game's relic isn't what's under test
 	if _ui._drop_modal != null and is_instance_valid(_ui._drop_modal):
 		_ui._drop_modal.queue_free()
 		_ui._drop_modal = null
 	_dismiss_event()
+	# The opening game's ESCORT (§7.5) survived it — beating a game answers for its
+	# own enemy and nothing else — so a run that opens perfectly still walks away
+	# from the first card with one body on the board. That is correct, and it is
+	# ALSO a body every test below would then be counting without having asked for
+	# it. Cleared here so each test starts on an empty board and the followers it
+	# counts are the ones it put there itself.
+	_clear_board()
+
+# Take every body off the board, the way DevTools' "clear the board" does.
+func _clear_board() -> void:
+	_clear_board_except(0)
+
+# The same, but leaving one body standing — for a test that wants exactly one
+# follower to reason about and does not want the escort that came with it.
+func _clear_board_except(keep: int) -> void:
+	for entry in GameLoop2.stack.duplicate():
+		var inst: int = int(entry.get("instance", 0))
+		if inst != keep:
+			GameLoop2.despawn(inst)
+
+# Travel to the offered game at `index` and take its ESCORT (§7.5) straight back
+# off the board.
+#
+# Committing to a game stands TWO bodies on the board — the game's own enemy and
+# a second one rolled from the same pool. The tests that are ABOUT that say so
+# and use `_ui.pick` directly; every other test here is about a verb, a panel or
+# a screen, and uses this so the followers it counts are the ones it put there.
+func _pick_solo(index: int) -> void:
+	_ui.pick(index)
+	if GameLoop2.current_escort > 0:
+		GameLoop2.despawn(GameLoop2.current_escort)
 
 # An event fires after EVERY game now, so the opening game raises one and it is
 # sitting over the board for every test in this file that isn't about it. Closed
@@ -89,13 +128,16 @@ func test_pick_then_report_advances_the_loop() -> void:
 	var gp_before: int = GameState.games_played
 	_ui.report(false)             # miss -> the enemy stacks and follows
 	assert_eq(GameState.games_played, gp_before + 1, "the game counts as played")
-	assert_eq(GameLoop2.stack_size(), 1, "a missed goal leaves a following enemy")
+	assert_eq(GameLoop2.stack_size(), 2,
+		"a missed goal leaves the game's enemy AND the escort that spawned with it")
 	assert_gt(_ui._choices.size(), 0, "a fresh offering is drawn from the new position")
 
+# A game played perfectly still leaves the escort (§7.5): the goal answered for
+# the game's OWN enemy, and the escort's goal is a debt for a later game.
 func test_report_goal_met_defeats_and_drops() -> void:
 	_ui.pick(0)
 	_ui.report(true)              # met -> defeat + a drop to be asked about
-	assert_eq(GameLoop2.stack_size(), 0, "a met goal leaves nothing following")
+	assert_eq(GameLoop2.stack_size(), 1, "a met goal still leaves the escort standing")
 	assert_eq(_ui._drop_queue.size(), 1, "the kill queued a drop")
 
 # An enemy kill ASKS whether you want what fell off it (§8): a modal with the
@@ -188,17 +230,22 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# checkbox: it should be defeated (and drop) before it can hit (§2).
 	_ui.pick(0)
 	_ui.report(false)
-	assert_eq(GameLoop2.stack_size(), 1, "a missed goal leaves a follower")
+	# Two followers: the game's own enemy and its escort (§7.5). The escort is taken
+	# off so this test is about ONE follower being fulfilled, which is what it is
+	# checking — the escort's own rules are in test_gameloop2.gd.
+	assert_eq(GameLoop2.stack_size(), 2, "a missed goal leaves a follower and its escort")
+	_clear_board_except(int(GameLoop2.stack[0].get("instance", 0)))
 	var hp_before: int = GameState.hp
 	var drops_before: int = _ui._drop_queue.size()
 	_ui.pick(0)                                  # play another game
-	assert_eq(_ui._fulfil_checks.size(), 1, "the follower is offered for fulfilment")
+	assert_eq(_ui._fulfil_checks.size(), 2,
+		"the old follower is offered for fulfilment, and so is this game's escort")
 	_ui._fulfil_checks[0]["check"].button_pressed = true
 	_ui.report(false)                            # miss current, but fulfil the follower
 	assert_eq(_ui._drop_queue.size(), drops_before + 1, "the fulfilled follower dropped an item")
 	assert_eq(GameState.hp, hp_before, "fulfilling it before it hit means no damage")
-	# The only follower now is this game's freshly-stacked enemy, not the old one.
-	assert_eq(GameLoop2.stack_size(), 1, "old follower gone; current game's enemy stacked")
+	# The old follower is gone; what stands is this game's own pair.
+	assert_eq(GameLoop2.stack_size(), 2, "old follower gone; this game's enemy and escort stacked")
 
 # --- battlefield interaction (click-to-inspect + combat verbs) -------------
 #
@@ -336,7 +383,7 @@ func test_toolbar_bomb_is_offered_against_a_boss() -> void:
 
 func test_selection_clears_when_the_enemy_dies() -> void:
 	GameState.bombs = 1
-	_ui.pick(0)
+	_pick_solo(0)
 	_ui.report(false)
 	var inst: int = int(GameLoop2.stack[0]["instance"])
 	_ui._board.selected_instance = inst
@@ -988,7 +1035,7 @@ func test_every_checklist_row_opens_unanswered_including_the_curses() -> void:
 # there afterwards is the curse and only the curse.
 func test_a_curse_you_ticked_costs_nothing() -> void:
 	GameState.add_curse_goal(&"poor_sleep")
-	_ui.pick(0)
+	_pick_solo(0)
 	var checks: Array = _curse_checks()
 	if checks.is_empty():
 		return
@@ -999,7 +1046,7 @@ func test_a_curse_you_ticked_costs_nothing() -> void:
 
 func test_a_curse_left_unticked_is_what_bites() -> void:
 	GameState.add_curse_goal(&"poor_sleep")
-	_ui.pick(0)
+	_pick_solo(0)
 	_ui.report(true)                       # the row left exactly as it opened
 	assert_eq(GameLoop2.stack_size(), 1,
 		"the goal was met, so the body on the board is Poor Sleep's")
@@ -1050,7 +1097,7 @@ func test_the_standing_checklist_lists_what_you_owe() -> void:
 		"the level-up challenge is listed: %s" % listed)
 	assert_true(listed.contains("Nothing is following you"), "and an empty stack says so: %s" % listed)
 	# Miss a goal so an enemy follows: its goal joins the list.
-	_ui.pick(0)
+	_pick_solo(0)
 	_ui.report(false)
 	var follower: GoalEnemyData = GameLoop2.stack[0]["enemy"]
 	listed = texts.call()
@@ -1087,7 +1134,7 @@ func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
 		"and it keeps its portrait on the standing list it moves to")
 
 func test_an_ordinary_follower_gets_no_portrait() -> void:
-	_ui.pick(0)
+	_pick_solo(0)
 	if _ui._chosen["enemy"].is_boss():
 		return
 	_ui.report(false)
@@ -1293,12 +1340,24 @@ func test_the_pack_stays_in_the_right_column_in_both_phases() -> void:
 	assert_true(_ui._right_col.is_ancestor_of(_ui._inv_wrap), "playing: it stays there")
 	assert_true(_ui._inv_wrap.visible)
 
+# The count on the board's heading is the BODIES ON THE BOARD, and nothing else.
+# A missed goal leaves two of them now — the game's enemy and the escort that
+# spawned with it (§7.5) — so this is also the test that would catch the heading
+# going back to counting the game in play twice.
 func test_the_summary_line_counts_the_followers() -> void:
 	_ui.pick(0)
-	_ui.report(false)                    # a missed goal leaves one following
-	assert_eq(GameLoop2.stack.size(), 1)
-	assert_true(_ui._stack.text.contains("1 closing in"),
+	_ui.report(false)                    # a missed goal leaves the pair following
+	assert_eq(GameLoop2.stack.size(), 2)
+	assert_true(_ui._stack.text.contains("2 closing in"),
 		"the board's own heading says what's out there: %s" % _ui._stack.text)
+
+# ...and while a game is being PLAYED, the enemy standing on the board for it is
+# one body on that list, not two.
+func test_the_summary_line_does_not_count_the_game_in_play_twice() -> void:
+	_pick_solo(0)
+	assert_eq(GameLoop2.stack.size(), 1, "the game in play put one body out there")
+	assert_true(_ui._stack.text.contains("1 closing in"),
+		"and the heading says one: %s" % _ui._stack.text)
 
 # --- rating is a button, never a pop-up -----------------------------------
 
@@ -1412,7 +1471,7 @@ func test_a_missed_goal_still_advances_the_run() -> void:
 	# The game was still played and the board still closed in — only the CREDIT is
 	# withheld, which is what separates this from an escape.
 	var gp_before: int = GameState.games_played
-	_ui.pick(0)
+	_pick_solo(0)
 	_ui.report(false)
 	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
 	assert_eq(GameLoop2.stack_size(), 1, "and its enemy followed you out")
@@ -1862,7 +1921,7 @@ func test_a_saved_run_round_trips_through_a_live_overworld() -> void:
 	assert_eq(_ui._choices.size(), expect_choices, "the offering came back with it")
 
 func test_a_restored_follower_keeps_its_place_on_the_board() -> void:
-	_ui.pick(0)
+	_pick_solo(0)
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	var expect: Dictionary = {
@@ -2128,7 +2187,7 @@ func test_the_two_stat_badges_share_one_row_so_they_cannot_overlap() -> void:
 		"health first, so it keeps the left edge it always had")
 
 func test_nothing_prints_the_swing_count_over_the_body() -> void:
-	_ui.pick(0)
+	_pick_solo(0)
 	_ui.report(false)                         # miss, so the enemy stands on the board
 	assert_eq(GameLoop2.stack_size(), 1)
 	var inst: int = int(GameLoop2.stack[0]["instance"])
@@ -2166,13 +2225,13 @@ func test_the_offering_comes_back_while_the_board_still_plays() -> void:
 	# which left _resolving false and failed this test on roughly one run in four.
 	# The SECOND game is the one with a board to play back, which is what this
 	# test is actually about.
-	_ui.pick(0)
+	_pick_solo(0)
 	_ui.report(false)
 	await wait_seconds(1.2)                   # let the first playback finish
 	assert_eq(GameLoop2.stack_size(), 1, "the miss left an enemy standing on the board")
 	assert_false(_ui._resolving, "and its own playback is done before the real test")
 
-	_ui.pick(0)
+	_pick_solo(0)
 	_ui.report(false)
 	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "the next decision is already built")
 	assert_gt(_ui._choices.size(), 0)
@@ -2594,7 +2653,7 @@ func test_the_playback_runs_one_beat_per_turn() -> void:
 # shown a single hit. During a playback the board drives the number itself.
 
 func test_health_starts_the_playback_where_it_was_before_the_blows() -> void:
-	_ui.pick(0)
+	_pick_solo(0)
 	_ui.report(false)                        # miss, so the enemy stands on the board
 	assert_eq(GameLoop2.stack_size(), 1)
 	var entry: Dictionary = GameLoop2.stack[0]
@@ -2819,7 +2878,7 @@ func test_the_free_escape_still_costs_you_the_enemy() -> void:
 	# "Escape at any time" changes the GATE, not the price: the board resolves
 	# exactly as a missed goal does, so the enemy still walks on and everything
 	# already out there still takes its turns.
-	_ui.pick(0)
+	_pick_solo(0)
 	var game: GameData = _ui._chosen["game"]
 	_mark_beaten_this_run(game)
 	var gp_before: int = GameState.games_played
@@ -2848,7 +2907,7 @@ func test_beaten_this_run_is_false_with_no_game_in_hand() -> void:
 	assert_false(_ui.can_escape(), "and there is nothing to escape from")
 
 func test_escaping_advances_the_run_and_the_enemy_follows() -> void:
-	_ui.pick(0)
+	_pick_solo(0)
 	var gp_before: int = GameState.games_played
 	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
 	_ui.escape_game()

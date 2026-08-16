@@ -11,6 +11,19 @@ extends GutTest
 #   3. the WIRING — the apply_status effect verb, and save/load round-trips for
 #      both the player's statuses and the ones riding bodies on the board.
 
+# Choose a game and take its ESCORT straight back off the board.
+#
+# Committing to a game stands a second, randomly-rolled body beside the game's
+# own enemy (§7.5, and test_gameloop2.gd, which is where that rule is tested).
+# These tests are about something else, and a stranger from the authored roster
+# standing on the board would put content they never asked about inside their
+# assertions.
+func _choose_solo(enemy: GoalEnemyData) -> int:
+	var inst: int = GameLoop2.choose_game(enemy)
+	if GameLoop2.current_escort > 0:
+		GameLoop2.despawn(GameLoop2.current_escort)
+	return inst
+
 func before_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
@@ -158,7 +171,7 @@ func test_every_status_has_art_and_does_something() -> void:
 
 func test_a_goal_on_the_player_side_is_an_extra_objective_not_a_clause() -> void:
 	GameState.apply_status(&"strength", 2)
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	# It pays the player; it does not tighten anything the enemy asked for.
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.current), "Beat it",
 		"a player-side goal leaves enemy goals alone")
@@ -168,15 +181,15 @@ func test_a_goal_on_the_player_side_is_an_extra_objective_not_a_clause() -> void
 		"If the difficulty is increased 2 times, gain +1 Medium Chest, +1 Bash")
 
 func test_a_clause_on_an_enemy_tightens_that_enemys_goal() -> void:
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.current),
 		"Beat it and the difficulty must be increased 2 times")
 
 func test_a_clause_on_the_player_tightens_every_enemys_goal() -> void:
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(false)          # it walks onto the board
-	GameLoop2.choose_game(_enemy("Beat another"))
+	_choose_solo(_enemy("Beat another"))
 	GameState.apply_status(&"marked", 3)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.current),
 		"Beat another and you must get 3 achievements", "the current enemy")
@@ -184,7 +197,7 @@ func test_a_clause_on_the_player_tightens_every_enemys_goal() -> void:
 		"Beat it and you must get 3 achievements", "and the follower too")
 
 func test_a_bonus_on_an_enemy_is_claimable_not_required() -> void:
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.current), "Beat it",
 		"the goal itself is untouched")
@@ -194,7 +207,7 @@ func test_a_bonus_on_an_enemy_is_claimable_not_required() -> void:
 		"and if you get 2 achievements, gain +1 Medium Chest")
 
 func test_clauses_stack_enemy_first_then_player() -> void:
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"strength", 1, "current")
 	GameState.apply_status(&"marked", 2)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.current),
@@ -205,25 +218,25 @@ func test_clauses_stack_enemy_first_then_player() -> void:
 # --- targeting ------------------------------------------------------------
 
 func test_target_all_covers_the_board_and_the_current_enemy() -> void:
-	GameLoop2.choose_game(_enemy("A"))
+	_choose_solo(_enemy("A"))
 	GameLoop2.beat_game(false)
-	GameLoop2.choose_game(_enemy("B"))
+	_choose_solo(_enemy("B"))
 	assert_eq(GameLoop2.apply_enemy_status(&"marked", 1, "all"), 2, "both bodies")
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.current).size(), 1)
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0]).size(), 1)
 
 func test_target_current_leaves_the_followers_alone() -> void:
-	GameLoop2.choose_game(_enemy("A"))
+	_choose_solo(_enemy("A"))
 	GameLoop2.beat_game(false)
-	GameLoop2.choose_game(_enemy("B"))
+	_choose_solo(_enemy("B"))
 	assert_eq(GameLoop2.apply_enemy_status(&"marked", 1, "current"), 1)
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0]).size(), 0,
 		"the follower is untouched")
 
 func test_target_random_lands_on_exactly_one_body() -> void:
-	GameLoop2.choose_game(_enemy("A"))
+	_choose_solo(_enemy("A"))
 	GameLoop2.beat_game(false)
-	GameLoop2.choose_game(_enemy("B"))
+	_choose_solo(_enemy("B"))
 	assert_eq(GameLoop2.apply_enemy_status(&"marked", 1, "random"), 1)
 	var total: int = GameLoop2.enemy_statuses(GameLoop2.current).size() \
 		+ GameLoop2.enemy_statuses(GameLoop2.stack[0]).size()
@@ -245,7 +258,7 @@ func test_an_unknown_status_id_is_refused_rather_than_stored() -> void:
 func test_a_status_on_the_current_enemy_survives_it_walking_onto_the_board() -> void:
 	# The one place this could silently break: the current enemy is not on the
 	# stack, and joining it rebuilds the entry.
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	GameLoop2.beat_game(false)
 	assert_eq(GameLoop2.stack.size(), 1)
@@ -260,7 +273,7 @@ func test_a_status_on_the_current_enemy_survives_it_walking_onto_the_board() -> 
 func test_an_enemy_clause_survives_it_walking_onto_the_board() -> void:
 	# The same move for the other mode: a clause has to still be welded onto the
 	# goal once the enemy is a follower.
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
 	GameLoop2.beat_game(false)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.stack[0]),
@@ -272,13 +285,13 @@ func test_an_enemy_clause_survives_it_walking_onto_the_board() -> void:
 
 func test_a_player_clause_ticks_once_for_a_game_whose_goal_was_met() -> void:
 	GameState.apply_status(&"marked", 3)
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.status_stacks(&"marked"), 2, "one stack for the completion")
 
 func test_a_player_clause_does_not_tick_on_a_missed_goal() -> void:
 	GameState.apply_status(&"marked", 3)
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(false)
 	assert_eq(GameState.status_stacks(&"marked"), 3, "nothing was completed")
 
@@ -295,15 +308,15 @@ func test_a_player_clause_ticks_once_per_game_not_once_per_goal() -> void:
 	GameState.apply_status(&"marked", 4)
 	var instances: Array = []
 	for i in range(3):
-		instances.append(GameLoop2.choose_game(_enemy("Goal %d" % i)))
+		instances.append(_choose_solo(_enemy("Goal %d" % i)))
 		GameLoop2.beat_game(false)
-	GameLoop2.choose_game(_enemy("Current"))
+	_choose_solo(_enemy("Current"))
 	GameLoop2.beat_game(true, instances)
 	assert_eq(GameState.status_stacks(&"marked"), 3, "one tick for the whole game")
 
 func test_a_player_clause_falls_off_at_zero() -> void:
 	GameState.apply_status(&"marked", 1)
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(true)
 	assert_false(GameState.has_status(&"marked"), "spent")
 	assert_eq(GameState.status_list().size(), 0, "and pruned, not left at zero")
@@ -311,7 +324,7 @@ func test_a_player_clause_falls_off_at_zero() -> void:
 func test_a_player_objective_pays_out_and_stays() -> void:
 	GameState.apply_status(&"strength", 2)
 	GameState.bash = 0
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(true, [], {"status_goals": [&"strength"]})
 	assert_eq(GameState.bash, 1, "a flat +1 Bash, whatever the stack")
 	# [chest reward] 2 is ONE Medium chest, not two Small ones (§8.2).
@@ -323,12 +336,12 @@ func test_a_player_objective_pays_out_and_stays() -> void:
 func test_a_player_objective_pays_nothing_when_it_is_not_ticked() -> void:
 	GameState.apply_status(&"strength", 2)
 	GameState.bash = 0
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.bash, 0, "an unticked standing goal is simply not claimed")
 
 func test_claiming_an_enemy_bonus_pays_and_ticks_that_enemy() -> void:
-	var inst: int = GameLoop2.choose_game(_enemy("Beat it"))
+	var inst: int = _choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	var res: Dictionary = GameLoop2.beat_game(false, [],
 		{"bonuses": [{"instance": inst, "status": &"marked"}]})
@@ -340,7 +353,7 @@ func test_claiming_an_enemy_bonus_pays_and_ticks_that_enemy() -> void:
 func test_an_enemy_bonus_can_be_claimed_on_the_game_that_kills_it() -> void:
 	# The claim is resolved BEFORE the board is, so beating an enemy and claiming
 	# its bonus in the same game pays both rather than swallowing the bonus.
-	var inst: int = GameLoop2.choose_game(_enemy("Beat it"))
+	var inst: int = _choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"marked", 1, "current")
 	var res: Dictionary = GameLoop2.beat_game(true, [],
 		{"bonuses": [{"instance": inst, "status": &"marked"}]})
@@ -350,7 +363,7 @@ func test_an_enemy_bonus_can_be_claimed_on_the_game_that_kills_it() -> void:
 func test_a_clause_side_cannot_be_claimed_as_an_enemy_bonus() -> void:
 	# The modes are not interchangeable: Strength's enemy side is a tax, and there
 	# is nothing to claim on it.
-	var inst: int = GameLoop2.choose_game(_enemy("Beat it"))
+	var inst: int = _choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
 	assert_false(GameLoop2.claim_enemy_bonus(inst, &"strength"))
 	assert_eq(GameState.pending_chests, 0)
@@ -369,7 +382,7 @@ func test_the_apply_status_effect_reaches_the_player() -> void:
 	assert_eq(GameState.status_stacks(&"marked"), 2, "target defaults to the player")
 
 func test_the_apply_status_effect_reaches_the_board() -> void:
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	EffectSystem.apply({"type": "apply_status", "status": "strength", "value": 1,
 		"target": "current"}, {})
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.current).size(), 1)
@@ -392,7 +405,7 @@ func test_a_status_id_the_catalog_lost_is_dropped_on_load() -> void:
 		"a status with no resource would render as a blank clause")
 
 func test_enemy_statuses_round_trip_through_a_save() -> void:
-	GameLoop2.choose_game(_enemy("Beat it"))
+	_choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	GameLoop2.beat_game(false)
 	var blob: Dictionary = GameLoop2.serialize()
@@ -408,7 +421,7 @@ func test_enemy_statuses_round_trip_through_a_save() -> void:
 
 func test_a_real_enemy_keeps_its_statuses_across_a_save() -> void:
 	var real: GoalEnemyData = Data.all_goal_enemies()[0]
-	GameLoop2.choose_game(real)
+	_choose_solo(real)
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	GameLoop2.beat_game(false)
 	var blob: Dictionary = GameLoop2.serialize()
@@ -457,6 +470,11 @@ func _booted():
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)
 	ui.choose_start(0)
+	# The opening game stands an ESCORT beside its enemy (§7.5). Everything below
+	# is about what a status does to ONE body, so it comes straight back off —
+	# same reason as _choose_solo above.
+	if GameLoop2.current_escort > 0:
+		GameLoop2.despawn(GameLoop2.current_escort)
 	return ui
 
 func test_the_hero_strip_shows_the_players_statuses() -> void:

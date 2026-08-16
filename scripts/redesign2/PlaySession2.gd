@@ -105,10 +105,16 @@ func _enemy_text() -> String:
 		return "[i]No game chosen — pick a game type below to spawn its enemy.[/i]"
 	var e: GoalEnemyData = GameLoop2.current["enemy"]
 	var boss_tag: String = "  [color=#e0b020][b]☠ BOSS[/b][/color]" if e.is_boss() else ""
-	return "[b]Now playing:[/b] %s%s  ([i]%s / %s / dmg %d[/i])\n[b]GOAL (%s):[/b] %s" % [
+	# Who came WITH it (§7.5). Named here rather than left to be spotted in the
+	# stack below, because the escort is the one body on that list the player did
+	# not choose.
+	var escort: GoalEnemyData = GameLoop2.escort_enemy()
+	var escort_line: String = "" if escort == null else \
+		"\n[color=#e06060]⚠ %s spawned alongside it — its goal is on the stack below.[/color]" % escort.display_name
+	return "[b]Now playing:[/b] %s%s  ([i]%s / %s / dmg %d[/i])\n[b]GOAL (%s):[/b] %s%s" % [
 		e.display_name, boss_tag, String(e.game_type).capitalize(),
 		RunDifficulty.tier_name(int(e.difficulty)), e.damage, String(e.goal_type).capitalize(),
-		GameLoop2.goal_text_for(GameLoop2.current),
+		GameLoop2.goal_text_for(GameLoop2.current), escort_line,
 	]
 
 func _stack_text() -> String:

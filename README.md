@@ -195,7 +195,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
 | `EventSystem` | Events (`docs/event-sheet-authoring.md`): dealing an event from the per-rarity shuffle bag when a game is played, the Requirement/`needs` gates, and resolving a choice into effects, an event goal, a curse, or a `chance` roll. Objects go through the same resolution. |
 | `ObjectSystem` | Objects (`docs/object-sheet-authoring.md`): the machines standing in front of the player, spawning them by tag, and their state — jams, what has been blown off the run, and the Donation Machine's cross-run bank. |
-| `GameLoop2` | The run loop: the games-beaten clock, the goal-enemy stack, and the grid the followers advance across. `Overworld2` is a view over it. |
+| `GameLoop2` | The run loop: the games-beaten clock, the goal-enemy stack, and the grid the followers advance across. Committing to a game spawns **two** bodies — its own enemy and an **escort** rolled from the same pool (§7.5); boss rounds spawn solo. `Overworld2` is a view over it. |
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
 | `GameLog` | Verbose run-scope message log (teleports, pickups, item procs) — the written record behind the toasts. |

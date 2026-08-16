@@ -19,6 +19,16 @@ func after_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
 
+# Pick a game and take the ESCORT (§7.5) straight back off the board. Picking
+# spawns two bodies now; the escort's own rules are tested in test_gameloop2.gd,
+# and the tests below are about what the HARNESS does with the one you picked, so
+# they clear the board down to it rather than carrying a random second enemy
+# through their damage arithmetic.
+func _pick_solo(game_type: StringName) -> void:
+	_ui.pick(game_type)
+	if GameLoop2.current_escort > 0:
+		GameLoop2.despawn(GameLoop2.current_escort)
+
 func test_harness_builds_and_opens_a_run() -> void:
 	assert_false(GameLoop2.run_over, "a fresh run is live")
 	assert_eq(GameState.max_hp, 6, "default harness run is Isaac (Health 6)")
@@ -32,6 +42,10 @@ func test_pick_spawns_enemy_and_beat_resolves() -> void:
 	var enemy: GoalEnemyData = GameLoop2.current["enemy"]
 	assert_eq(String(enemy.game_type), "action", "picked an action enemy")
 	assert_false(enemy.is_boss(), "a normal pick is not a boss")
+	# Picking spawns an escort alongside it (§7.5). Taken off here so the damage
+	# arithmetic below is ONE enemy's — see _pick_solo.
+	assert_eq(GameLoop2.stack_size(), 2, "the picked enemy, and the escort with it")
+	GameLoop2.despawn(GameLoop2.current_escort)
 	var dmg: int = enemy.damage
 	_ui.beat(false)                    # fails goal -> spawn column, one-game grace
 	assert_eq(GameLoop2.stack_size(), 1)
@@ -54,7 +68,7 @@ func test_pick_gated_until_current_resolved() -> void:
 func test_bomb_button_removes_first_follower() -> void:
 	_ui.restart(&"ironclad")
 	GameState.bombs = 1
-	_ui.pick(&"action") ; _ui.beat(false)
+	_pick_solo(&"action") ; _ui.beat(false)
 	assert_eq(GameLoop2.stack_size(), 1)
 	_ui.bomb_first()
 	assert_eq(GameLoop2.stack_size(), 0)
