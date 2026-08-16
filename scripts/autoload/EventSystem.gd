@@ -555,6 +555,16 @@ func is_deadly(choice: Dictionary, taken: int) -> bool:
 
 
 # The warning under a costly button, or "" when there is nothing to warn about.
+#
+# ONLY when the press itself can end the run. There used to be a third, softer
+# tier — "⚠ You can die here", shown whenever the press left you at or below the
+# price of another identical press — and it fired far too readily to mean
+# anything: on a 5-Health choice it appears from 10 Health down, which on most
+# events is most of the run, so a line that should read as an alarm became the
+# background state of the panel. Death is either on this button or it isn't, and
+# the two lines below are the ones that say so. The cost line above them already
+# carries the number, reddening as the Health left runs out (danger_color), which
+# is the gradient the removed tier was trying to be.
 func lethal_warning(choice: Dictionary, taken: int) -> String:
 	if is_lethal(choice, taken):
 		return "☠  This will kill you."
@@ -563,14 +573,6 @@ func lethal_warning(choice: Dictionary, taken: int) -> String:
 	# the cost line right above this.
 	if is_possibly_lethal(choice, taken):
 		return "☠  This might kill you."
-	var cost: int = health_cost(choice, taken)
-	if cost <= 0:
-		return ""
-	var left: int = GameState.hp - cost
-	# One press from the end. Said before it is true, because a warning that only
-	# appears on the fatal press arrives after the decision that mattered.
-	if left <= cost:
-		return "⚠  You can die here — this leaves you at %d Health." % left
 	return ""
 
 

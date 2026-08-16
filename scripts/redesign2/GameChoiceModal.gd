@@ -238,11 +238,15 @@ static func connection_tip(game: GameData, counts: Dictionary) -> String:
 		int(counts.get("total", 0)), name_text,
 		int(counts.get("events", 0)), int(counts.get("shops", 0))]
 
+# The screen this popup gets to use. NOT the window: the run's header bar is
+# pinned across the top of it on a layer above this one (ModalScaffold.reserved_top),
+# so the height available is the window less that band — a popup sized to the
+# whole window is a popup whose top rows open underneath the bar.
 func _panel_size() -> Vector2:
-	var view: Vector2 = get_viewport_rect().size
+	var free: Rect2 = ModalScaffold.free_rect(self)
 	return Vector2(
-		minf(PANEL_SIZE.x, maxf(560.0, view.x - VIEW_MARGIN.x)),
-		minf(PANEL_SIZE.y, maxf(420.0, view.y - VIEW_MARGIN.y)))
+		minf(PANEL_SIZE.x, maxf(560.0, free.size.x - VIEW_MARGIN.x)),
+		minf(PANEL_SIZE.y, maxf(420.0, free.size.y - VIEW_MARGIN.y)))
 
 func _accent() -> Color:
 	var game: GameData = _choice.get("game")
@@ -598,7 +602,6 @@ func _ladder_cfg() -> Dictionary:
 		"choice_ids": {},
 		"zoom": _zoom,
 		"preview": true,
-		"hide_amulet": false,
 		"on_node": func(node_id: StringName, depth: int): open_node_card(node_id, depth),
 	}
 
@@ -641,7 +644,7 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 	scroll.add_child(inset)
 	var box := RouteLadder.node_card_body({
 		"id": id,
-		"name": RouteLadder.node_name(id, amulet, false),
+		"name": RouteLadder.node_name(id),
 		"role": _node_role_text(id, depth),
 		"facts": facts,
 		"actions": [],
@@ -685,7 +688,9 @@ func _node_role_text(id: StringName, depth: int) -> String:
 func _place_node_card() -> void:
 	if _node_card == null or not is_instance_valid(_node_card):
 		return
-	var view: Vector2 = get_viewport_rect().size
+	var free: Rect2 = ModalScaffold.free_rect(self)
+	var view: Vector2 = free.size
+	var top: float = free.position.y
 	var panel: Vector2 = _panel_size()
 	var want: float = 320.0
 	if _node_card_body != null and is_instance_valid(_node_card_body):
@@ -694,7 +699,7 @@ func _place_node_card() -> void:
 	_node_card.size = Vector2(NODE_CARD_W, h)
 	_node_card.position = Vector2(
 		clampf((view.x - panel.x) * 0.5 + 18.0, 8.0, maxf(8.0, view.x - NODE_CARD_W - 8.0)),
-		clampf((view.y - h) * 0.5, 8.0, maxf(8.0, view.y - h - 8.0)))
+		top + clampf((view.y - h) * 0.5, 8.0, maxf(8.0, view.y - h - 8.0)))
 
 # How many steps the ladder is showing. Public so a test can check the popup and
 # the card's badge are quoting the same route.

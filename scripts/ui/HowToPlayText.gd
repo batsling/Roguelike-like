@@ -105,7 +105,10 @@ static func _ch_start() -> Dictionary:
 			_step(7, "You are offered a new set of games, connected to where you "
 				+ "stand. Choose one. Go to 3."),
 			_p("The run ends when you reach and clear the AMULET game — that is "
-				+ "the win — or when your Health hits zero."),
+				+ "the win — or when your Health hits zero. You are told which "
+				+ "game the Amulet is on the very first screen of the run, so "
+				+ "every route decision after that is made knowing where you are "
+				+ "going."),
 			_h("What makes it a game rather than a list"),
 			_p("Three things, and they are the three chapters after this one."),
 			_b("The map is the real influence graph of the genre. Rogue connects "
@@ -460,7 +463,11 @@ static func _ch_verbs() -> Dictionary:
 				+ "the road out is unchanged and only the game you play there is "
 				+ "different."),
 			_kv("⚡ Dash", "A total select. Skip the offering and move to ANY "
-				+ "connected game, not just the ones on the table."),
+				+ "connected game, not just the ones on the table. Going back to "
+				+ "a game you have already played this run pays a charge STRAIGHT "
+				+ "BACK the moment you arrive — beat it, fail it or walk away, "
+				+ "the charge is yours for making the trip. Cards you can do that "
+				+ "with are flagged ⚡ +1 DASH."),
 			_kv("🎲 Scramble", "Reroll the whole offering — new games, new enemies. "
 				+ "At a node with no spare neighbours the games hold and only the "
 				+ "enemies change, which is still often what you wanted."),
@@ -599,6 +606,11 @@ static func _ch_pack() -> Dictionary:
 				+ "economy. Most are passive and simply apply; some are Usable and "
 				+ "carry their own button on the token; a few only fire on a "
 				+ "trigger, like after beating a game or when a game is selected."),
+			_p("A Usable or Charged relic can be fired WHILE you are reporting a "
+				+ "game — that is the fight, so that is what they are for. The "
+				+ "exceptions are the ones that move you: a scroll, or a relic "
+				+ "that travels, would walk you off a game you are in the middle "
+				+ "of, so those wait until you have reported it."),
 			_p("Rarity runs Common, Uncommon, Rare, Legendary — and there are "
 				+ "relics off that ladder entirely, from bosses and events, out of "
 				+ "pools nothing else can reach."),

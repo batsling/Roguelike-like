@@ -42,6 +42,7 @@ func _ready() -> void:
 	Profiles.profile_wiped.connect(_on_profile_switched)
 	_refresh_continue_button()
 	_move_quit_to_corner()
+	_watch_for_overlays()
 
 # ---------------------------------------------------------------------------
 # Menu styling
@@ -127,6 +128,43 @@ func _move_quit_to_corner() -> void:
 	quit_btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	quit_btn.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	corner.add_child(quit_btn)
+	_quit_corner = corner
+
+# Exit Game belongs to THE MAIN MENU, and to nothing that opens over it.
+#
+# It is anchored to the window's own bottom-right corner rather than mounted in
+# the button column, which is what made it outlive the screen it belongs to: the
+# character picker, the custom-run screen, the Collection, the Atlas and the rest
+# all open as overlays ON this scene rather than replacing it, so a door out of
+# the whole game sat in the corner of every one of them — under the picker you
+# use to START a run, which is the worst place in the project for a one-click
+# quit. The overlays cover the menu; they don't cover the corner, because the
+# corner is anchored over the top of them.
+#
+# So the corner watches for them and gets out of the way. An overlay is either a
+# child of the modal layer (every screen opened with `open(_modal_layer)`) or a
+# CanvasLayer parked on this scene (CustomRunScreen, which mounts its own).
+var _quit_corner: Control = null
+
+func _watch_for_overlays() -> void:
+	for host in [self, _modal_layer]:
+		host.child_entered_tree.connect(func(_c): _sync_quit_corner.call_deferred())
+		host.child_exiting_tree.connect(func(_c): _sync_quit_corner.call_deferred())
+	_sync_quit_corner()
+
+# Whether anything is currently drawn over the menu.
+func _overlay_open() -> bool:
+	if _modal_layer != null and is_instance_valid(_modal_layer) and _modal_layer.get_child_count() > 0:
+		return true
+	for child in get_children():
+		if child is CanvasLayer:
+			return true
+	return false
+
+func _sync_quit_corner() -> void:
+	if _quit_corner == null or not is_instance_valid(_quit_corner):
+		return
+	_quit_corner.visible = not _overlay_open()
 
 func _refresh_profile_row() -> void:
 	if _profile_lbl != null:

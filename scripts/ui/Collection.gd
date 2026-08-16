@@ -42,7 +42,7 @@ const ENEMY_TIER_NAMES := ["Low", "Medium", "High", "Insane"]
 
 # Artwork sizes in the right-hand DETAIL panel. Deliberately larger than the grid
 # cells' thumbnails — the detail pane is where you actually look at the art, and
-# the panel is wide enough (340px of content) to carry them.
+# the panel is wide enough (288px of content) to carry them.
 const DETAIL_ITEM_SIZE := 132
 const DETAIL_PORTRAIT_SIZE := 152
 const DETAIL_ENEMY_SIZE := 176
@@ -61,8 +61,14 @@ const DETAIL_ENEMY_SIZE := 176
 # border and a little slack), so a thumbnail is never squeezed by its own cell.
 const CELL_PAD := 26
 const GRID_COVER_W := 95           # game box art, drawn 3:4 (so 95x127)
-const OWNED_BADGE := 20            # the owned tick, over the cover's top-left
-const BADGE_INSET := 4             # how far in from the cover's corner it sits
+# The owned tick, over the cover's top-left corner. Small and tucked right into
+# the corner: it is a MARK on a piece of art, not a control sitting on top of one,
+# and at 20px inset 4 it took a visible bite out of every cover in the grid. The
+# glyph is still legible at 16 and the column of ticks down the left edge — which
+# is what you actually read when working out what is left to mark — reads exactly
+# as well from further into the corner.
+const OWNED_BADGE := 16
+const BADGE_INSET := 2             # how far in from the cover's corner it sits
 const GRID_ITEM_SIZE := 50
 const GRID_PORTRAIT_SIZE := 60
 const GRID_ENEMY_SIZE := 58
@@ -498,7 +504,16 @@ func _load_visible_covers() -> void:
 		rect.texture = (entry["game"] as GameData).cover_image
 	_pending_covers = still
 
-const DETAIL_PANEL_W := 380
+# The right-hand detail panel's width.
+#
+# 380 once, and it cost the grid a column: the games tab is a flow of 121px cells
+# (GRID_COVER_W + CELL_PAD) in whatever the panel leaves of a 1280 canvas, and 380
+# left room for five of them with almost enough slack for a sixth. 340 buys that
+# sixth column outright — six covers a row instead of five, which on 852 games is
+# a fifth off every scroll — and costs the detail pane 40px it was not spending:
+# its widest contents are the 240px game cover and the 176px enemy art, both of
+# which still sit inside the 288px of content this leaves.
+const DETAIL_PANEL_W := 340
 func _new_detail_panel() -> PanelContainer:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", _flat(Color(0.06, 0.06, 0.09, 0.95)))

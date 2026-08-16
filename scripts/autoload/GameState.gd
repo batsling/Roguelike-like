@@ -1914,8 +1914,23 @@ func clear_overworld_context(scene = null) -> void:
 		overworld_scene = null
 
 # Pills may only be used in combat or while an event roll is open.
+#
+# "In combat" in the games-first build is the REPORT step: the game is committed,
+# the goal-enemy and its escort are on the board, and the player is sitting there
+# logging attempts against them. There is no combat SCENE any more, so this used
+# to be false everywhere outside an event — which meant an ordinary USABLE pill
+# (IV Bag: lose 1 Health, gain 1 Gold) could never be fired at all, in a build
+# where the only fight is the one this returns false for. `overworld_in_combat`
+# is what makes the report step count.
 func can_use_items() -> bool:
-	return combat_scene != null or event_active
+	return combat_scene != null or event_active or overworld_in_combat()
+
+# Whether the mounted overworld is mid-game: a game picked, its enemies standing
+# on the board, the report not yet made. False off the map and false between
+# games — the offering is not a fight.
+func overworld_in_combat() -> bool:
+	return overworld_scene != null and overworld_scene.has_method("in_combat") \
+		and bool(overworld_scene.in_combat())
 
 # Whether `item` can be fired right now. USABLE pills need a combat/event
 # context; CHARGED actives only need a full bar and can be popped from any
@@ -1926,11 +1941,15 @@ func can_fire_item(item: ItemData) -> bool:
 	if item.is_charged():
 		return item.is_fully_charged()
 	if item.kind == ItemData.ItemKind.USABLE:
-		# Overworld actives (Winged Boots) fire only on the map — never in combat,
-		# where their effect would no-op and waste a use. Ordinary pills are the
-		# inverse: combat/event only.
+		# Overworld actives (Ride the Bus) fire only on the map — never in combat,
+		# where their effect would no-op and waste a use. And never mid-GAME either:
+		# their payload MOVES the run (travel_to_game clears the committed game and
+		# rebuilds the offering), so firing one during the report step would walk
+		# away from a game with its enemies on the board and its shields spent,
+		# without ever resolving it. Ordinary pills are the inverse — they want a
+		# fight or an event, which is what can_use_items answers.
 		if item.overworld_usable:
-			return overworld_scene != null
+			return overworld_scene != null and not overworld_in_combat()
 		return can_use_items()
 	return false
 

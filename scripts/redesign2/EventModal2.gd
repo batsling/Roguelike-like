@@ -145,11 +145,14 @@ func _start(host: Node, event: EventData2, game_id: StringName = &"") -> void:
 	_build()
 
 
+# The screen an event gets to use — the window less the run's header band, which
+# is pinned above this layer and would otherwise paint over the event's title and
+# the first line of what it is asking (ModalScaffold.reserved_top).
 func _panel_size() -> Vector2:
-	var view: Vector2 = get_viewport_rect().size
+	var free: Rect2 = ModalScaffold.free_rect(self)
 	return Vector2(
-		minf(PANEL_MAX.x, maxf(420.0, view.x - VIEW_MARGIN.x)),
-		minf(PANEL_MAX.y, maxf(360.0, view.y - VIEW_MARGIN.y)))
+		minf(PANEL_MAX.x, maxf(420.0, free.size.x - VIEW_MARGIN.x)),
+		minf(PANEL_MAX.y, maxf(360.0, free.size.y - VIEW_MARGIN.y)))
 
 
 func _build() -> void:
@@ -431,15 +434,10 @@ func _fit() -> void:
 # what it did. Offsets are absolute, so they land the same however the parent is
 # sized at the time.
 func _recentre() -> void:
-	var half: Vector2 = _panel.size * 0.5
-	_panel.anchor_left = 0.5
-	_panel.anchor_top = 0.5
-	_panel.anchor_right = 0.5
-	_panel.anchor_bottom = 0.5
-	_panel.offset_left = -half.x
-	_panel.offset_top = -half.y
-	_panel.offset_right = half.x
-	_panel.offset_bottom = half.y
+	# Delegated, rather than written out again here: the scaffold does exactly this
+	# and then shifts the panel clear of the run's header band, and an event that
+	# centred itself by hand was the one modal that stayed under the bar.
+	ModalScaffold.centre(_panel)
 
 
 # One choice: its label, and under it the mechanical line resolved for THIS

@@ -160,7 +160,12 @@ func _build_ui() -> void:
 
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(820, 460)
-	panel.position = (get_viewport_rect().size - Vector2(820, 460)) / 2.0
+	# Centred in the free rect rather than the viewport: the run's header bar is
+	# pinned across the top of the screen above this layer, and a chest centred on
+	# the whole window opens with "You found something" behind it.
+	var free: Rect2 = ModalScaffold.free_rect(self)
+	panel.position = (free.position + (free.size - Vector2(820, 460)) / 2.0).floor()
+	panel.position.y = maxf(panel.position.y, free.position.y)
 	add_child(panel)
 
 	var root := VBoxContainer.new()

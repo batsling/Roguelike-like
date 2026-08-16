@@ -957,7 +957,7 @@ func test_dashing_lists_the_connected_games_in_alphabetical_order() -> void:
 # The offering prints "⚡ +1 DASH" on a game the run has played, and the usual way
 # back to one is to SPEND a Dash — the offering is three of a hub's twenty
 # neighbours, so the game you want is rarely on the table. Spend one to travel
-# and earn one for the clear and the counter reads what it read before: the card
+# and earn one for arriving and the counter reads what it read before: the card
 # promised a charge and the player watched nothing happen.
 func test_dashing_back_to_a_game_you_played_leaves_you_a_dash_up() -> void:
 	GameState.dash_charges = 2
@@ -967,11 +967,12 @@ func test_dashing_back_to_a_game_you_played_leaves_you_a_dash_up() -> void:
 	_ui._build_choices()
 	var before: int = GameState.dash_charges
 	_ui.pick(0)
-	assert_eq(GameState.dash_charges, before - 1, "the trip itself cost a charge")
+	assert_eq(GameState.dash_charges, before + OVERWORLD.REPEAT_BEAT_DASH,
+		"the fare came straight back and the +%d landed on arrival"
+			% OVERWORLD.REPEAT_BEAT_DASH)
 	_ui.report(true)
 	assert_eq(GameState.dash_charges, before + OVERWORLD.REPEAT_BEAT_DASH,
-		"and the clear pays the +%d the card advertised, on top of the fare"
-			% OVERWORLD.REPEAT_BEAT_DASH)
+		"and the report pays it no second time")
 
 func test_walking_back_to_a_game_you_played_still_pays_exactly_one_dash() -> void:
 	var target: GameData = _ui._choices[0]["game"]
@@ -979,10 +980,11 @@ func test_walking_back_to_a_game_you_played_still_pays_exactly_one_dash() -> voi
 	_ui._build_choices()
 	var before: int = GameState.dash_charges
 	_ui.pick(0)
-	assert_eq(GameState.dash_charges, before, "an ordinary pick costs nothing")
+	assert_eq(GameState.dash_charges, before + OVERWORLD.REPEAT_BEAT_DASH,
+		"an ordinary pick costs nothing and arriving pays the charge")
 	_ui.report(true)
 	assert_eq(GameState.dash_charges, before + OVERWORLD.REPEAT_BEAT_DASH,
-		"so the clear is the only thing that moved the counter")
+		"so the counter moved exactly once")
 
 # --- curses on the report checklist ----------------------------------------
 #
@@ -1407,7 +1409,7 @@ func test_first_clear_records_the_game_and_grants_no_dash() -> void:
 	assert_eq(GameStats.beaten_count(played.id), lifetime_before + 1,
 		"and the lifetime tally the Collection shows moved too")
 
-func test_going_back_to_a_game_and_beating_it_grants_a_dash() -> void:
+func test_going_back_to_a_game_grants_a_dash_on_arrival() -> void:
 	# Stand where a game the run has already played is on offer (the run graph
 	# lets you double back, so an offered game can be one you played earlier).
 	var target: GameData = _ui._choices[0]["game"]
@@ -1417,9 +1419,11 @@ func test_going_back_to_a_game_and_beating_it_grants_a_dash() -> void:
 	assert_true(bool(_ui._choices[0]["repeat"]), "the card is flagged as a return")
 	var dash_before: int = GameState.dash_charges
 	_ui.pick(0)
+	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
+		"the charge lands on arrival — before anything has been reported")
 	_ui.report(true)
 	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
-		"going back and beating it granted a Dash")
+		"and beating it does not pay a second one")
 
 func test_the_return_dash_asks_only_that_you_went_there_before() -> void:
 	# PLAYED before, not beaten before. A game you failed and came back to is the
@@ -1434,18 +1438,21 @@ func test_the_return_dash_asks_only_that_you_went_there_before() -> void:
 	_ui.pick(0)
 	_ui.report(true)
 	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
-		"beating it this time pays, even though last time did not")
+		"coming back pays, even though the first visit went badly")
 
-func test_a_game_played_but_not_beaten_pays_nothing_until_you_beat_it() -> void:
-	# The goal is still what has to be earned on the return trip.
+func test_the_return_dash_survives_missing_the_goal_again() -> void:
+	# THE TRIP IS THE WHOLE OF IT. This used to be gated on the return visit being
+	# a win, which meant the one card the offering advertises a bonus on could
+	# leave you a charge DOWN — spend a Dash to get back, fail it again, nothing
+	# paid. Arriving is what earns it now.
 	var target: GameData = _ui._choices[0]["game"]
 	GameState.note_game_played(target.id)
 	_ui._build_choices()
 	var dash_before: int = GameState.dash_charges
 	_ui.pick(0)
 	_ui.report(false)
-	assert_eq(GameState.dash_charges, dash_before,
-		"a second visit that misses the goal again is not a return worth paying for")
+	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
+		"the charge was paid for going back, and a missed goal does not take it back")
 
 # --- beaten means WON -------------------------------------------------------
 #
@@ -1476,15 +1483,16 @@ func test_a_missed_goal_still_advances_the_run() -> void:
 	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
 	assert_eq(GameLoop2.stack_size(), 1, "and its enemy followed you out")
 
-func test_failing_a_game_you_beat_earlier_pays_no_dash() -> void:
+func test_a_game_never_visited_pays_no_dash() -> void:
+	# The bonus is for GOING BACK. A card the run has not played is an ordinary
+	# card, whatever happens at it.
 	var target: GameData = _ui._choices[0]["game"]
-	GameState.note_game_beaten(target.id)
-	_ui._build_choices()
+	assert_false(GameState.has_played_game(target.id), "this run has not been here")
 	var dash_before: int = GameState.dash_charges
 	_ui.pick(0)
+	assert_eq(GameState.dash_charges, dash_before, "arriving somewhere new pays nothing")
 	_ui.report(false)
-	assert_eq(GameState.dash_charges, dash_before,
-		"the repeat Dash is for beating it again, not for failing it again")
+	assert_eq(GameState.dash_charges, dash_before, "and neither does missing its goal")
 
 func test_only_a_won_amulet_records_the_win() -> void:
 	var played: GameData = _ui._choices[0]["game"]
@@ -2099,7 +2107,7 @@ func test_the_card_map_is_the_optimal_path_from_that_game() -> void:
 	assert_eq(modal.shortest_distance(), _ui.steps_to_amulet(slot),
 		"its depth is that game's own distance to the Amulet")
 
-func test_the_start_picker_maps_each_start_without_naming_the_amulet() -> void:
+func test_the_start_picker_maps_each_start_and_names_the_amulet() -> void:
 	_ui.start_run()                       # back to the choose-your-start panel
 	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT)
 	_ui._render_start_choices()
@@ -2111,11 +2119,20 @@ func test_the_start_picker_maps_each_start_without_naming_the_amulet() -> void:
 	if modal == null:
 		return
 	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
-	assert_eq(modal.node_name(GameState.amulet_game_id), "The Amulet — ???",
-		"the destination is drawn, never named — that's the run's one secret")
-	assert_ne(modal.node_name(start_id), "The Amulet — ???")
+	assert_not_null(amulet, "the picker has already chosen the run's Amulet")
 	if amulet != null:
-		assert_ne(modal.node_name(GameState.amulet_game_id), amulet.display_name)
+		assert_eq(modal.node_name(GameState.amulet_game_id), amulet.display_name,
+			"the destination is named from the picker on — it is not a secret")
+
+func test_the_start_panel_names_the_amulet_game() -> void:
+	_ui.start_run()
+	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT)
+	_ui._refresh()
+	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
+	assert_not_null(amulet)
+	if amulet != null:
+		assert_string_contains(_ui._select_head.text, amulet.display_name,
+			"the line over the start cards says which game the run is for")
 
 # ---------------------------------------------------------------------------
 # The board gets to finish
@@ -2497,14 +2514,17 @@ func test_a_card_map_draws_that_cards_route_on_the_chart() -> void:
 		"the chart's route and the ladder are the same graph")
 	assert_eq(modal.shortest_distance(), _ui.steps_to_amulet(slot))
 
-func test_the_start_pickers_map_raises_no_chart() -> void:
-	# Before the run has a position the Amulet's identity is the one secret the
-	# picker keeps; a sky with the route drawn on it would point straight at it.
+func test_the_start_pickers_map_raises_a_chart_like_any_other() -> void:
+	# It used to raise none: a sky with the route drawn across it would have
+	# pointed straight at the Amulet, back when the Amulet was a secret. It isn't
+	# one any more, so the picker's map is just a map.
 	_ui.start_run()
 	var modal = _ui.preview_map(_ui._start_options[0]["game"].id)
-	assert_null(_chart(), "no star chart from the start picker")
-	assert_eq(modal.node_name(GameState.amulet_game_id), "The Amulet — ???",
-		"and the ladder still won't name the destination")
+	assert_not_null(modal)
+	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
+	if amulet != null:
+		assert_eq(modal.node_name(GameState.amulet_game_id), amulet.display_name,
+			"and the ladder names the destination")
 
 # ---------------------------------------------------------------------------
 # Amulet pressure on the offering: what a card costs in PACE (§7.4)

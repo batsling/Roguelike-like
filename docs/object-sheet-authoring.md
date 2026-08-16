@@ -168,17 +168,21 @@ reddens as the press gets closer to lethal, and says so outright when it is:
 
 ```
 -1 Health · 93.3%: +1 Gold · 6.7%: +Blood Bag or IV Bag
-⚠  You can die here — this leaves you at 1 Health.
 ☠  This will kill you.
 ```
 
-The warning fires **one press early**, because a warning that only appears on
-the fatal press arrives after the decision that mattered. Both come from
-`EventSystem.danger_color` / `lethal_warning`, which read the choice's CERTAIN
-Health cost — a `chance` payload that might cost Health does not redden a
-button, or the colour stops being read. Events get the same treatment: Abyssal
-Baths' Linger climbs until it can kill, and the number goes red before the prose
-gets round to saying so.
+The warning fires **only when the press itself can end the run** — `☠ This will
+kill you` when the cost is certain, `☠ This might kill you` when a `chance`
+payload could take more Health than you are holding. There used to be a third,
+softer line one press early (`⚠ You can die here — this leaves you at N
+Health`); it appeared from twice the cost downwards, which on most events is
+most of the run, and a warning that is nearly always on screen is not a warning.
+The approach to lethal is carried by the COLOUR instead: `EventSystem.danger_color`
+reddens the cost line as the Health left after the press runs out, and both it
+and `lethal_warning` read the choice's CERTAIN Health cost — a `chance` payload
+that might cost Health does not redden a button, or the colour stops being read.
+Events get the same treatment: Abyssal Baths' Linger climbs until it can kill,
+and the number goes red before the prose gets round to saying so.
 
 Bursting or bombing ends **that** machine. Another may still turn up.
 

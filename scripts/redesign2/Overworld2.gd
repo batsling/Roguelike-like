@@ -50,8 +50,10 @@ const BASE_OFFER_COUNT := 3
 const HUB_CONNECTIONS := 20
 const ONWARD_CONNECTIONS := 2
 
-# Beating a game you have ALREADY beaten this run pays a Dash charge (§4's "total
-# select" verb). Revisiting is a real routing option — a node's offering is drawn
+# Going back to a game you have ALREADY PLAYED this run pays a Dash charge (§4's
+# "total select" verb), on ARRIVAL and whatever happens there afterwards — see
+# _grant_repeat_dash_on_arrival. Revisiting is a real routing option — a node's
+# offering is drawn
 # from its neighbours, so a cleared game comes back around — and this is what
 # makes doubling back worth considering instead of strictly worse. The offering
 # labels those cards up-front so the bonus is a choice, not a surprise.
@@ -83,7 +85,7 @@ const ESCAPE_AFTER_ATTEMPTS := 5
 #    "repeat": bool}
 # The enemy is rolled up-front so the hover preview and the enemy that actually
 # spawns on click are the SAME roll. `repeat` marks a game already played this
-# run — beating it again grants a Dash (REPEAT_BEAT_DASH).
+# run — going back to it grants a Dash on arrival (REPEAT_BEAT_DASH).
 var _choices: Array = []
 # The opening choose-your-start offering (Phase.START_SELECT). Each entry:
 #   {"game": GameData, "type": int, "path_len": int, "in_window": bool,
@@ -415,9 +417,10 @@ func start_run(character_id: StringName = &"") -> void:
 	_scroll_to_top()
 
 # The choose-your-start cards from a RunGraph.pick_amulet_and_starts() result: the
-# amulet is recorded on the run (hidden from the player — only the DISTANCE to it
-# shows) and each option is resolved to its GameData. Options whose game is missing
-# from the catalog are dropped rather than rendered as a blank card.
+# amulet is recorded on the run — and NAMED to the player right here, on the panel
+# and on every map it opens — and each option is resolved to its GameData. Options
+# whose game is missing from the catalog are dropped rather than rendered as a
+# blank card.
 # Each option also carries the goal-enemy waiting at that game, because the start
 # is now a game you PLAY rather than a doorstep you stand on (see choose_start) —
 # and a card you are going to fight at has to say what is standing there before
@@ -854,6 +857,8 @@ func pick(index: int) -> void:
 	GameLoop2.choose_game(_chosen["enemy"],
 		GameLoop2.game_type_key(_chosen["game"]), _current_tier())
 	_log_escort()
+	# The reward for going back (§4), paid HERE — arriving is the whole of it.
+	_grant_repeat_dash_on_arrival()
 	# Selecting the game hands over your TRIES at it (§3): 3 shields, 5 for a
 	# Traditional roguelike, plus whatever "when a game is selected" items add.
 	var granted: int = GameLoop2.grant_selection_shields(_chosen["game"])
@@ -937,8 +942,9 @@ func log_attempt() -> String:
 # Where it PARTS from a missed report is the item trigger: the "after beating a
 # game" items fire on any game FINISHED, win or lose, and an escape is the one
 # report that doesn't fire them. Neither one banks a beat — beaten means won (see
-# report) — so an escape and a miss are alike in earning no repeat-beat Dash, no
-# Atlas mark and no movement in either beaten tally.
+# report) — so an escape and a miss are alike in earning no Atlas mark and no
+# movement in either beaten tally. The return-trip Dash is not among them: that
+# one was already paid on arrival, and escaping does not take it back.
 #
 # TWO ways in. The five-lost-runs rule above is for a game this run has never got
 # through: the way out has to be earned because the alternative is a player who
@@ -1058,19 +1064,17 @@ func open_map() -> Node:
 # above its cover, because the whole decision is a routing decision and it
 # shouldn't have to be made from a single distance number.
 #
-# From the START PICKER the destination is drawn without being named, and no
-# chart is raised: the panel gives away the distance to the Amulet and nothing
-# else, and a sky with the route drawn across it would point straight at the game
-# the whole run is a search for.
+# The START PICKER gets exactly the same map. It used to draw the destination
+# unnamed and refuse to raise a chart, because the Amulet was a secret until the
+# run had a position — that secret is gone (§2): the run's goal is named on the
+# picker itself, so a route with the destination on it and a sky with the corridor
+# drawn across it are both just the road, shown early.
 func preview_map(game_id: StringName) -> Node:
 	if game_id == &"" or GameState.amulet_game_id == &"":
 		return null
 	var game: GameData = Data.get_game(game_id)
-	var starting: bool = _phase == Phase.START_SELECT
 	return _open_route_map(game_id, [], {
 		"preview": true,
-		"hide_amulet": starting,
-		"chart": not starting,
 		"title": "🗺  If you take %s" % (game.display_name if game != null else String(game_id)),
 	})
 
@@ -1261,14 +1265,6 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	var played_game: GameData = _chosen.get("game")
 	var fulfilled_instances: Array = fulfilled if fulfilled is Array else _ticked_fulfilments()
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
-	# Had the run been to this game before? Read BEFORE this visit is recorded, so
-	# it is the SECOND trip to a game that pays the Dash (REPEAT_BEAT_DASH).
-	#
-	# PLAYED before, not beaten before. Walking back to a game you failed is the
-	# same journey as walking back to one you cleared, and the Dash is paid for
-	# making it; what has to be earned on the return trip is the goal (see the
-	# grant below, which still wants this visit to be a real win).
-	var repeat_beat: bool = played_game != null and GameState.has_played_game(played_game.id)
 	# The event standing at this SPOT, read before _chosen is cleared. Keyed off
 	# the graph slot rather than the game, because an event belongs to the place
 	# (a dead end, §1) — a transmuted card plays a different game on the same node.
@@ -1366,11 +1362,10 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 		# escape (can_escape) read. Run-scoped and wiped by reset_run — beating
 		# something in a previous run is not a fact about this one.
 		GameState.note_game_beaten(played_game.id)
-		# …and the reward for coming back: a game the run had already played,
-		# beaten this time (§4). The trip is what earns it, the win is what
-		# confirms it.
-		if repeat_beat:
-			_grant_repeat_dash(played_game, _dashed_here)
+		# The return-trip Dash used to be paid here, gated on this visit being a
+		# real win. It is paid on ARRIVAL now (_grant_repeat_dash_on_arrival): the
+		# reward is for going back, and a game you went back to and could not get
+		# through cost you the trip either way.
 		# The lifetime tally the Collection, the tier list and the Atlas read
 		# ("beaten N times"). An amulet clear records the win instead — it bumps
 		# `beaten` too.
@@ -1752,24 +1747,40 @@ func _maybe_announce_boss() -> void:
 		_boss_notice = null
 		_finish_pending_detour())
 
-# The reward for going back to a game the run had already played and beating it
-# this time: +1 Dash (§4).
+# Pay the return-trip Dash if the game just committed to is one the run has
+# already played (§4). Called from every path that commits to a game, straight
+# after the escort is announced and once _dashed_here is settled.
 #
-# `by_dash` REFUNDS the charge the trip itself cost, and it is the whole reason
-# this takes an argument. The offering prints "⚡ +1 DASH" on a game you have
-# played, and the usual way to get back to one is to spend a Dash — the offering
-# is three of a hub's twenty neighbours, so the game you want is rarely on the
-# table. Spend one to travel, earn one for the clear, and the counter reads
-# exactly what it read before: the card promised a charge and the player watched
-# nothing happen. The trip is what the Dash paid for; the +1 is what the CLEAR
-# pays, and the two are not the same transaction.
+# ARRIVING IS THE WHOLE OF IT. This used to be paid at the report, and only when
+# the goal was met — the trip earned it, the win confirmed it. In practice the
+# confirmation ate the reward: the card promises "⚡ +1 DASH", the player spends a
+# charge to get back to a game they have already played once, fails to clear it a
+# second time, and the counter is one lower than before they pressed anything.
+# The point of the bonus is to make doubling back a real routing option, and a
+# bonus you only collect on games you were going to beat anyway is not that. So
+# it lands on arrival: clear it, miss it or walk away from it, the charge is
+# yours for having made the trip.
+#
+func _grant_repeat_dash_on_arrival() -> void:
+	if _chosen.is_empty() or not bool(_chosen.get("repeat", false)):
+		return
+	var game: GameData = _chosen.get("game")
+	if game == null:
+		return
+	_grant_repeat_dash(game, _dashed_here)
+
+# `by_dash` REFUNDS the charge the trip itself cost. The offering is three of a
+# hub's twenty neighbours, so the game you want is rarely on the table and the
+# usual way back to one is a Dash — spend one to travel, earn one for arriving,
+# and the counter reads what it read before, which is what the card promised.
 #
 # Announced on both channels — the toast for the moment, the log for the record —
 # because the HUD's Dash counter moving on its own reads as a bug.
 func _grant_repeat_dash(game: GameData, by_dash: bool = false) -> void:
 	var gained: int = REPEAT_BEAT_DASH + (1 if by_dash else 0)
 	GameState.dash_charges += gained
-	var msg: String = "Back at %s, and beaten — +%d Dash." % [game.display_name, REPEAT_BEAT_DASH]
+	var msg: String = "Back at %s — +%d Dash for the return trip." % [
+		game.display_name, REPEAT_BEAT_DASH]
 	if by_dash:
 		msg += " The Dash that took you there comes back too."
 	Notifications.notify(msg, DASH_BLUE)
@@ -1793,6 +1804,9 @@ func _exit_tree() -> void:
 	# laid out for the standard one, so it goes back with the screen that asked
 	# for it.
 	Settings.reset_canvas_width()
+	# The header goes with the screen, so the band modals were keeping clear of it
+	# goes too — the menu's own popups centre on the whole window.
+	ModalScaffold.clear_reserved_top()
 	_board.clear_fx()
 	_close_enemy_info()
 	if TriggerBus.chest_granted.is_connected(_on_chest_granted):
@@ -1925,6 +1939,10 @@ func _start_play_game(request: Dictionary) -> void:
 	# A detour is posted by an event, not paid for with a charge, so there is
 	# nothing for the return-trip Dash to refund at the far end of it.
 	_dashed_here = false
+	# Posted back to a game the run has already played is still going back to it,
+	# so it still pays (§4) — the event chose the destination, but the trip is the
+	# same trip.
+	_grant_repeat_dash_on_arrival()
 	_hover_grant = -1
 	_phase = Phase.PLAYING
 	_populate_play_panel()
@@ -2028,6 +2046,14 @@ func _build_return_choices() -> void:
 
 func _asking_return() -> bool:
 	return _return_choice != &""
+
+# Whether the run is mid-GAME: a game committed, its goal-enemy and escort on the
+# board, the report not yet made. This is what "in combat" means in a build with
+# no combat scene, and GameState reads it to decide whether a pill may be fired
+# (can_use_items) and whether a run-moving active must be held back
+# (can_fire_item).
+func in_combat() -> bool:
+	return _phase == Phase.PLAYING and not _chosen.is_empty()
 
 # Answer it. Staying needs nothing but the offering rebuilt around where the run
 # already stands; heading back is an ordinary teleport to the node it came from.
@@ -2390,7 +2416,7 @@ func _refresh(_a = null) -> void:
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
 	if _phase == Phase.START_SELECT:
-		_select_head.text = "Choose where to start — three genres, all the same distance from the Amulet. The run opens on the one you take:"
+		_select_head.text = _start_head_text()
 		_clear(_controls_row)
 		_render_start_choices()
 		_populate_standing_checklist()
@@ -2647,6 +2673,27 @@ func _render_controls() -> void:
 		rate.pressed.connect(func(): _prompt_rating(game))
 		_controls_row.add_child(rate)
 
+# The line over the choose-your-start cards. It NAMES the Amulet game (§2).
+#
+# The run's destination used to be withheld until the first game was taken — the
+# picker gave away the distance and nothing else, and every map it opened drew the
+# goal as "The Amulet — ???". That made the opening decision unanswerable: three
+# starts equidistant from an unknown game are three identical cards, and the only
+# thing that could have told them apart was where they were going. Naming it turns
+# the picker into what it was always described as — a choice of route.
+func _start_head_text() -> String:
+	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
+	if amulet == null:
+		return "Choose where to start — three genres, all the same distance from the Amulet. The run opens on the one you take:"
+	return ("Choose where to start — three genres, all the same distance from 🏆 %s, the Amulet game this run has to reach and clear. The run opens on the one you take:"
+		% amulet.display_name)
+
+# The Amulet game's name, for the lines that quote it. Falls back to the plain
+# word when the run has no amulet yet (an empty catalogue, a headless test).
+func _amulet_name() -> String:
+	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
+	return amulet.display_name if amulet != null else "the Amulet game"
+
 # The choose-your-start panel (Phase.START_SELECT): one card per offered start,
 # each a different genre and each the same distance band from the amulet, so the
 # decision is "which genre do I want to open on and route from", never "which of
@@ -2664,8 +2711,8 @@ func _render_start_choices() -> void:
 	_preview.text = "[i]Hover a start to see what it opens on.[/i]"
 
 # One start card: the cover, the game's name, its genre, and how many games stand
-# between it and the amulet. The amulet itself stays hidden — the distance is the
-# only thing about it the panel gives away.
+# between it and the amulet — which the panel above has already named, so the
+# distance is a distance to somewhere rather than to a question mark.
 func _make_start_card(index: int, opt: Dictionary) -> Control:
 	var game: GameData = opt["game"]
 	var accent: Color = RunGraph.type_color(int(opt["type"]))
@@ -2681,10 +2728,9 @@ func _make_start_card(index: int, opt: Dictionary) -> Control:
 	type_lbl.add_theme_color_override("font_color", accent.lerp(UITheme.TEXT, 0.35))
 	card.add_child(type_lbl)
 
-	# The road this start opens on, before committing to it. The destination is
-	# drawn unnamed — the distance is still the only thing the picker gives away
-	# about the Amulet — but its SHAPE is exactly what makes one start different
-	# from another, so it's on the table.
+	# The road this start opens on, before committing to it: the whole route, named
+	# end to end. Its SHAPE is exactly what makes one start different from another,
+	# so it's on the table.
 	card.add_child(_map_preview_button(game.id, game))
 
 	var btn := Button.new()
@@ -2726,7 +2772,8 @@ func _make_start_card(index: int, opt: Dictionary) -> Control:
 
 	var dist := Label.new()
 	dist.text = "%d games from the Amulet" % int(opt["path_len"])
-	dist.tooltip_text = "The shortest route from %s to the hidden Amulet game." % game.display_name
+	dist.tooltip_text = "The shortest route from %s to %s, the Amulet game." % [
+		game.display_name, _amulet_name()]
 	dist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dist.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	dist.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2844,7 +2891,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	card.add_child(flag)
 
 	# THE SECOND THING that has to be legible without opening anything: a game you
-	# have already played this run pays a Dash for going back and beating it
+	# have already played this run pays a Dash for going back to it
 	# (REPEAT_BEAT_DASH). It is the offering's only recurring free charge, and it
 	# was only ever stated inside the popup — so the one card on the table that is
 	# worth revisiting looked exactly like the ones that aren't. It rides ABOVE the
@@ -2856,7 +2903,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	var dash_flag := Label.new()
 	if bool(choice.get("repeat", false)):
 		dash_flag.text = "⚡ +%d DASH" % REPEAT_BEAT_DASH
-		dash_flag.tooltip_text = ("You have played %s already this run — go back and beat it and it pays %d Dash charge%s."
+		dash_flag.tooltip_text = ("You have played %s already this run — going back to it pays %d Dash charge%s the moment you arrive, whatever happens there."
 			% [game.display_name, REPEAT_BEAT_DASH, "" if REPEAT_BEAT_DASH == 1 else "s"])
 	else:
 		dash_flag.text = ""
@@ -3592,9 +3639,17 @@ func open_tier_list() -> TierListScreen:
 
 # Whether the pinned header bar is drawn. The page keeps its inset either way —
 # a screen standing in front of it is not a cue to reflow what is behind it.
+#
+# The band modals keep clear of DOES follow it, though: with the bar hidden there
+# is nothing at the top of the screen to be covered by, and a modal raised over
+# the Atlas or the verdict screen should use the whole window.
 func _show_header(shown: bool) -> void:
 	if _header_layer != null and is_instance_valid(_header_layer):
 		_header_layer.visible = shown
+	if shown:
+		_fit_page_under_header()
+	else:
+		ModalScaffold.clear_reserved_top()
 
 # The instances the player ticked as fulfilled this game.
 func _ticked_fulfilments() -> Array:
@@ -3780,7 +3835,7 @@ func _enemy_preview_text(choice: Dictionary) -> String:
 	# shows on the report panel for the game you're playing.
 	var repeat: String = ""
 	if bool(choice.get("repeat", false)):
-		repeat = "\n[color=#80d9ff]⚡ Already beaten this run — beating it again grants +%d Dash.[/color]" % REPEAT_BEAT_DASH
+		repeat = "\n[color=#80d9ff]⚡ Already played this run — going back grants +%d Dash on arrival.[/color]" % REPEAT_BEAT_DASH
 	if e == null:
 		return "[b]%s[/b]\n[i]No enemy — free game.[/i]%s" % [game.display_name, repeat]
 	# The escort (§7.5): a warning on a card, the body's name once it is standing
@@ -3992,9 +4047,20 @@ func _refresh_select_stats() -> void:
 #
 # An ACTIVE (USABLE / CHARGED) token is the button: clicking it fires the item
 # when it can fire, and it wears a gold ring to say so. Passive and triggered
-# items are just art. Actives are locked while a game is being reported — the
-# report step is mid-resolve, so firing an item there would land between "played
-# the game" and "said what happened".
+# items are just art.
+#
+# Actives used to be locked outright while a game was being reported, on the
+# reasoning that the report step is mid-resolve. That was backwards: the report
+# step IS this build's combat — the enemies are on the board, the attempts are
+# being logged against them — so it is the one moment an active is for, and a D6
+# or an IV Bag was usable everywhere except there. They fire during the report
+# now (GameState.can_use_items).
+#
+# The exception is an active whose payload MOVES the run (Ride the Bus): travel
+# clears the committed game and rebuilds the offering, so firing one mid-report
+# would abandon a game with its enemies still standing and its shields already
+# spent. GameState.can_fire_item holds those back, and `reporting` is what the
+# greyed slot and the tooltip under it explain.
 const ITEM_TOKEN := 34
 # Height of the Use button / charge battery that sits above an active item's tile.
 const ITEM_USE_H := 14
@@ -4003,7 +4069,9 @@ func _refresh_items() -> void:
 	if _items_box == null:
 		return
 	_clear(_items_box)
-	var reporting: bool = _phase == Phase.PLAYING
+	# Only the run-MOVING actives (and scrolls, which teleport) are held back here;
+	# see the note above. can_fire_item is what actually decides, per item.
+	var reporting: bool = in_combat()
 	var scrolls: Array = GameState.loot_scrolls()
 	if GameState.inventory.is_empty() and scrolls.is_empty():
 		_items_box.add_child(_empty_note("nothing carried yet"))
@@ -4067,7 +4135,9 @@ func _scroll_token(idx: int, entry: Dictionary, reporting: bool) -> Control:
 func _item_token(item: ItemData, reporting: bool) -> Control:
 	var tint: Color = UITheme.item_color(item)
 	var active: bool = item.kind == ItemData.ItemKind.USABLE or item.is_charged()
-	var ready: bool = active and GameState.can_fire_item(item) and not reporting
+	# `reporting` no longer vetoes on its own — can_fire_item already knows which
+	# items the report step blocks and which it is precisely the moment for.
+	var ready: bool = active and GameState.can_fire_item(item)
 
 	# Bottom-aligned so every art tile sits on one baseline whether or not the item
 	# above it grew a Use button — a ragged row of tiles reads as a bug.
@@ -4125,29 +4195,29 @@ func _item_fire_control(item: ItemData, ready: bool, reporting: bool) -> Control
 		return btn
 	if item.is_charged():
 		return _charge_battery(item, reporting)
-	# A Usable item that can't fire right now (mid-report) — the slot stays, greyed,
-	# so the row doesn't reflow the moment a game is picked up.
+	# A Usable item that can't fire right now — the slot stays, greyed, so the row
+	# doesn't reflow the moment a game is picked up.
 	var idle := Button.new()
 	idle.text = "Use"
 	idle.disabled = true
 	idle.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
 	idle.add_theme_font_size_override("font_size", 10)
-	idle.tooltip_text = "Finish reporting this game first."
+	idle.tooltip_text = ("This one travels — finish reporting this game first."
+		if reporting and item.overworld_usable else "Nothing to use it on right now.")
 	return idle
 
 # A charged item's meter: one rectangle per charge, filled left to right. Isaac's
 # active-item bar turned on its side — the shape answers "how many beats left"
 # without reading a number, and it sits where the Use button will be so the swap
 # at full charge is the same strip changing state rather than a new control.
-func _charge_battery(item: ItemData, reporting: bool) -> Control:
+func _charge_battery(item: ItemData, _reporting: bool) -> Control:
 	var maxc: int = maxi(1, item.max_charge())
 	var have: int = clampi(item.current_charge, 0, maxc)
 	var wrap := PanelContainer.new()
 	wrap.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(Color(0.10, 0.10, 0.13, 0.9), 2, 2, 1, UITheme.BORDER))
-	wrap.tooltip_text = "%s — %d/%d charged%s" % [item.display_name, have, maxc,
-		"; finish reporting this game to use it" if reporting else ""]
+	wrap.tooltip_text = "%s — %d/%d charged" % [item.display_name, have, maxc]
 	var cells := HBoxContainer.new()
 	cells.add_theme_constant_override("separation", 1)
 	cells.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -4171,7 +4241,7 @@ func open_item_card(item: ItemData) -> void:
 		return
 	_close_item_card()
 	var active: bool = item.kind == ItemData.ItemKind.USABLE or item.is_charged()
-	var usable: bool = active and GameState.can_fire_item(item) and _phase != Phase.PLAYING
+	var usable: bool = active and GameState.can_fire_item(item)
 	var card := ItemInfoCard.new()
 	card.use_requested.connect(use_item)
 	card.closed.connect(func(): _item_card = null)
@@ -4194,10 +4264,12 @@ func _item_tip(item: ItemData, active: bool, ready: bool, reporting: bool) -> St
 	if active:
 		if ready:
 			tip += "\n▸ Click to use."
-		elif reporting:
-			tip += "\n▸ Report this game first."
-		elif item.is_charged():
+		elif item.is_charged() and not item.is_fully_charged():
 			tip += "\n▸ Charging."
+		elif reporting and item.overworld_usable:
+			tip += "\n▸ This one travels — report this game first."
+		else:
+			tip += "\n▸ Nothing to use it on right now."
 	return tip
 
 # The dim "there's nothing here" line the pack panels show when they're empty.
@@ -4825,6 +4897,13 @@ func _mount_header(header: Control) -> void:
 
 # Inset the scrolling page by the header's height, so the first row of the page
 # clears the bar floating over it.
+#
+# And every MODAL with it. The bar is opaque and sits on a layer above all of
+# them, so a popup centred on the whole window opens with its title — sometimes
+# its first question — painted over. ModalScaffold centres everything the run
+# raises, so the bar's height is published there and the centring happens in what
+# is left of the screen instead. Re-published on every resize, because the strip
+# of covers across the header changes the bar's height as the run walks.
 func _fit_page_under_header() -> void:
 	if _header_bar == null or not is_instance_valid(_header_bar):
 		return
@@ -4833,6 +4912,7 @@ func _fit_page_under_header() -> void:
 		_scroll.offset_top = 16.0 + bar
 	if _toasts != null and is_instance_valid(_toasts):
 		_toasts.offset_top = bar
+	ModalScaffold.reserve_top(bar)
 
 # "🛒 Shop ↓" — the pointer at the shop mounted under the board. It floats at the
 # bottom of the SCREEN (not of the page), over everything, until the shop has

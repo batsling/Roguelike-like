@@ -110,12 +110,12 @@ func test_unreachable_amulet_yields_an_empty_map() -> void:
 # optimal path to the Amulet as it would stand if you picked that game.
 # ---------------------------------------------------------------------------
 
-func _open_preview_from(game_id: StringName, hide_amulet: bool = false):
+func _open_preview_from(game_id: StringName):
 	var host := Node.new()
 	add_child_autofree(host)
 	var modal = MAP_MODAL.new()
 	modal.start(host, game_id, GameState.amulet_game_id, [], {
-		"preview": true, "hide_amulet": hide_amulet, "title": "🗺  If you take it",
+		"preview": true, "title": "🗺  If you take it",
 	})
 	return modal
 
@@ -128,18 +128,20 @@ func test_a_preview_maps_the_route_from_the_game_being_considered() -> void:
 	assert_true((layers[layers.size() - 1] as Array).has(GameState.amulet_game_id),
 		"and ends on the Amulet")
 
-func test_a_preview_names_every_stop_by_default() -> void:
+func test_a_preview_names_every_stop() -> void:
 	var modal = _open_preview_from(_ui._choices[0]["slot"])
 	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
 	assert_eq(modal.node_name(GameState.amulet_game_id), amulet.display_name,
-		"mid-run the Amulet is already known, so it's named")
+		"the Amulet is known from the start of the run, so it's named")
 
-func test_a_start_preview_keeps_the_amulet_a_secret() -> void:
-	var modal = _open_preview_from(GameState.current_game_id, true)
+func test_a_map_never_hides_the_destination() -> void:
+	# There used to be a second mode here — the start picker's map drew the goal as
+	# "The Amulet — ???" — and it is gone: the run's destination is known before the
+	# first game is picked, so every map names every stop on it.
+	var modal = _open_preview_from(GameState.current_game_id)
 	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
-	assert_eq(modal.node_name(GameState.amulet_game_id), "The Amulet — ???",
-		"the start picker gives away the distance and nothing else")
-	assert_ne(modal.node_name(GameState.current_game_id), amulet.display_name)
+	assert_eq(modal.node_name(GameState.amulet_game_id), amulet.display_name)
+	assert_ne(modal.node_name(GameState.current_game_id), "The Amulet — ???")
 
 func test_a_preview_depth_is_that_games_own_distance() -> void:
 	var candidate: StringName = _ui._choices[0]["slot"]

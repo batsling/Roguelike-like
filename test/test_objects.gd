@@ -157,13 +157,20 @@ func test_the_fatal_press_says_it_is_fatal() -> void:
 	assert_true(EventSystem.is_lethal(give, 0), "1 Health against a 1 Health cost")
 
 
-func test_the_press_before_the_fatal_one_warns_too() -> void:
-	# A warning that only appears on the fatal press arrives after the decision
-	# that mattered.
+func test_the_press_before_the_fatal_one_is_not_warned_about() -> void:
+	# There used to be a softer "⚠ You can die here" one press early. It fired
+	# from twice the cost downwards, which on a 1-Health machine is nearly the
+	# whole run, and a warning that is almost always on screen is not a warning.
+	# The approach to lethal is carried by the cost line's COLOUR now
+	# (EventSystem.danger_color); the words are kept for the press that can
+	# actually end it.
 	var give: Dictionary = _choice(_object(BLOOD), "give_blood")
 	GameState.hp = 2
 	assert_false(EventSystem.is_lethal(give, 0), "not fatal yet")
-	assert_string_contains(EventSystem.lethal_warning(give, 0), "can die")
+	assert_eq(EventSystem.lethal_warning(give, 0), "",
+		"so nothing is claimed until the press itself can kill")
+	assert_ne(EventSystem.danger_color(give, 0), UITheme.TEXT_DIM,
+		"but the cost line has already reddened")
 
 
 func test_a_comfortable_press_says_nothing() -> void:

@@ -160,7 +160,7 @@ mean.
 |---|---|
 | **Bash** | **Destroy a game outright — it is removed from the pool and can never show up again.** The card it vacated is **refilled from the same pool the offering is drawn from**: another game *connected to where you are standing*, with its own freshly-rolled goal-enemy (the other cards keep the enemies they were already showing). When that node has no other connection left to give, the slot simply goes — bash is destruction, not a guaranteed reroll. Two bashes are refused outright, because both end the run rather than shape it: the **Amulet game** (destroying the goal makes the run unwinnable) and the **last card on the table** with nothing to replace it. |
 | **Transmute** | **Turn a game into a random game of the *same game type* that is *not connected to the map*.** (New verb — this is the "replace with a fresh game" role bash used to have, now type-constrained and pulling from off-graph games.) **Traditional is the exception**: it transmutes into a random game of any *other* type, drawn flat from the non-Traditional catalog. A Traditional roguelike is the run's long haul — it grants 5 tries rather than 3 — so swapping one for another is no relief, and the verb has to be able to get you out of the type. |
-| **Dash** | **As in the current project: a total select, not a skip** — pick *any* connected game and move to it (bypassing the normal limited offering). Costs 1 dash charge. See `Overworld._try_dash`. **Earned by going back**: beat a game **this run has already played** — cleared, failed, or walked away from — and it pays **+1 Dash** (`Overworld2._grant_repeat_dash`). The trip back is what earns it; the goal still has to be met on the return. The offering flags such a card with `⚡ +1 DASH`. |
+| **Dash** | **As in the current project: a total select, not a skip** — pick *any* connected game and move to it (bypassing the normal limited offering). Costs 1 dash charge. See `Overworld._try_dash`. **Earned by going back**: travel to a game **this run has already played** — cleared, failed, or walked away from — and it pays **+1 Dash the moment you arrive** (`Overworld2._grant_repeat_dash_on_arrival`), whatever happens there afterwards. The trip back is the whole of it. It used to be paid at the report and only on a win, which turned the offering's one advertised bonus into a net LOSS on the common case: the way back to a game is usually a Dash charge, and failing it a second time meant spending one and earning nothing. When the trip was itself paid for with a Dash, that charge is refunded on top. The offering flags such a card with `⚡ +1 DASH`. |
 | **Scramble** | **Reroll the offering** — re-draw the games filling the (base three) choice slots, each with a freshly-rolled enemy/goal. At a node with no spare neighbours the slots hold and only the enemies change. Granted by the **D6** item. |
 | **Push** | **Shove a following enemy one cell, in any cardinal direction.** Spends 1 push charge. *Back* is the classic use — delay its next attack by a game (§7.2), riding the same per-enemy delay counter as Stun but player-triggered. *Up / down* is a **lane change**, the one move enemies can never make for themselves, so it is how a blocked lane is opened or a clear one is plugged. *Forward* is legal too, and the player's own business. The verb is armed first and aimed second: press **⇤ Push** on the board's toolbar, click the enemy, then pick one of the arrows that appear on every side it could actually move to. Nothing is spent until an arrow is pressed. The **Manager**'s signature verb (gained on level-up: "Collect 3+ different types of currency" → +1 Push). |
 
@@ -234,6 +234,18 @@ Scrolls are carried, so they are **tokens on the pack strip** above the board,
 beside the relics, each with a small Read control above its tile — the same shape
 a Usable relic's Use button takes. Not a panel of their own: a scroll is a thing
 you carry and spend, which is what the pack is.
+
+**Actives fire during the report step**, which is this build's combat: the game is
+committed, the goal-enemy and its escort are standing on the board, and the player
+is logging attempts against them. Every Usable and Charged relic was locked there
+until now, on the reasoning that the report is mid-resolve — which meant an active
+was usable everywhere *except* the only fight in the game, and a plain Usable pill
+could not be fired at all outside an event (`GameState.can_use_items` had no
+combat scene to find, because there isn't one any more; it reads
+`overworld_in_combat()` now). Two things stay locked mid-report, and for one
+reason between them — they MOVE the run, which would walk away from a committed
+game with its enemies on the board and its shields already spent: **scrolls**, and
+any active flagged `overworld_usable` (Ride the Bus).
 
 ### 4.2 Choosing a game is a screen, not a click
 
@@ -901,6 +913,14 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   type (§4).
 - **The run opens on a choice of three starting games**, one per game type, each
   6–8 games from the randomly-rolled amulet (`RunGraph.pick_amulet_and_starts`).
+  **The Amulet game is NAMED on that panel**, and on every map opened from it —
+  it is known from the first second of the run. It used to be withheld until the
+  first game was taken (the picker gave away the distance, the route ladders drew
+  the goal as `The Amulet — ???`, and no star chart could be raised), which made
+  the opening decision unanswerable: three starts an equal distance from an
+  unknown game are three identical cards, and where they are going is the only
+  thing that could tell them apart. `RouteLadder.node_name` no longer takes a
+  hide flag and no view passes one.
   **The start is the run's first game, not a doorstep**: taking one rolls its
   goal-enemy, stands it on the board, hands over the game's tries, and drops
   straight into the report step — so a run opens with something to go and play

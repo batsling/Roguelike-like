@@ -48,6 +48,9 @@ func setup(item: ItemData, usable: bool) -> void:
 
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Centred in what is left of the screen under the run's header bar, which is
+	# pinned above this card's layer and would otherwise cover its title band.
+	center.offset_top = ModalScaffold.reserved_top
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 
