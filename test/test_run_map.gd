@@ -254,10 +254,13 @@ func test_only_one_card_is_open_at_a_time() -> void:
 	modal.close_node_card()
 	assert_null(modal._node_card, "and Close puts it away")
 
-func test_a_start_picker_never_opens_a_card_on_the_hidden_amulet() -> void:
-	var modal = _open_preview_from(GameState.current_game_id, true)
-	assert_null(modal.open_node_card(GameState.amulet_game_id, 1),
-		"the map that refuses to NAME the Amulet doesn't hand out its card either")
+func test_every_rung_opens_its_card_the_amulet_included() -> void:
+	# The start picker's map used to refuse the Amulet's card, because it refused
+	# to name the Amulet at all. It names it now, so there is no rung left that a
+	# map will not open.
+	var modal = _open_preview_from(GameState.current_game_id)
+	assert_not_null(modal.open_node_card(GameState.amulet_game_id, 1),
+		"the destination's own card opens like any other rung's")
 
 # ---------------------------------------------------------------------------
 # The waypoint — forcing the route through a game you insist on visiting
@@ -371,14 +374,14 @@ func test_every_edge_of_a_forced_route_advances_one_layer() -> void:
 		assert_eq(int(e["to_depth"]) - int(e["from_depth"]), 1,
 			"every drawn edge is one step of the route, on the way out or the way back")
 
-func test_the_start_picker_ignores_a_pin_it_has_no_route_for() -> void:
-	var pin: StringName = _detour_candidate()
-	if pin == &"":
-		return
-	GameState.route_waypoint = pin
-	var modal = _open_preview_from(GameState.current_game_id, true)
+func test_a_pin_on_the_game_you_are_standing_on_is_not_a_detour() -> void:
+	# `waypoint()` drops a pin that is where you already are — the road from here
+	# is just the road. (The start picker reaches the same answer a different way:
+	# reset_run clears route_waypoint, so there is no pin to read.)
+	GameState.route_waypoint = GameState.current_game_id
+	var modal = _open_preview_from(GameState.current_game_id)
 	assert_eq(modal.waypoint(), &"",
-		"the run has no position yet, so there is nothing to detour from")
+		"a pin you are standing on is nothing to detour through")
 
 # --- the model underneath ---------------------------------------------------
 

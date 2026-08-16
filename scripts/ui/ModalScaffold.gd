@@ -37,8 +37,19 @@ const DEFAULT_SIZE := Vector2(900, 560)
 # them, and every one of them has to obey it.
 static var reserved_top: float = 0.0
 
+# A hard ceiling on the band, and it is load-bearing rather than tidiness. The
+# height is measured off a live Control, and a Control's combined minimum size is
+# briefly ENORMOUS before its contents have wrapped — the same transient
+# `centre()` below already exists to undo. Worse, the overworld fits the CANVAS
+# to its page (Overworld2._fit_canvas_to_page), so a bad frame can hand this a
+# viewport tens of thousands of pixels tall and a header bar to match; a band read
+# from that frame parked every modal in the run thousands of pixels off the
+# bottom of the screen. The real bar is one row of 45px covers plus its padding,
+# so anything past this is a measurement, not a header.
+const MAX_RESERVED_TOP := 200.0
+
 static func reserve_top(px: float) -> void:
-	reserved_top = maxf(0.0, px)
+	reserved_top = clampf(px, 0.0, MAX_RESERVED_TOP)
 
 static func clear_reserved_top() -> void:
 	reserved_top = 0.0
@@ -49,7 +60,9 @@ static func clear_reserved_top() -> void:
 static func free_rect(node: Control) -> Rect2:
 	var view: Vector2 = node.get_viewport_rect().size if node != null and node.is_inside_tree() \
 		else Vector2(1280, 720)
-	var top: float = minf(reserved_top, maxf(0.0, view.y - 120.0))
+	# Never more than a quarter of the window, whatever was published: a band that
+	# ate the screen would leave every modal sized to a sliver.
+	var top: float = clampf(reserved_top, 0.0, maxf(0.0, view.y * 0.25))
 	return Rect2(Vector2(0.0, top), Vector2(view.x, view.y - top))
 
 static func build_panel(parent: Control, accent: Color, dismiss: Callable = Callable(), panel_size: Vector2 = DEFAULT_SIZE) -> PanelContainer:
@@ -137,11 +150,7 @@ static func centre(panel: Control) -> void:
 	panel.offset_top = -half.y
 	panel.offset_right = half.x
 	panel.offset_bottom = half.y
-	# …and then down, out from under the run's header (see reserved_top). The
-	# offsets are measured from the CENTRE of the viewport, so the shift is half
-	# the reserved band — that recentres the panel in what is left of the screen —
-	# and it is clamped so a panel taller than the free space is pushed exactly
-	# clear of the bar rather than further down than it needs to go.
+	# …and then down, out from under the run's header (see reserved_top).
 	var shift: float = _centre_shift(panel)
 	panel.offset_top += shift
 	panel.offset_bottom += shift
@@ -149,14 +158,21 @@ static func centre(panel: Control) -> void:
 
 # How far DOWN a centred panel has to move to clear the reserved band, given how
 # tall it turned out to be. 0 when nothing is reserved.
+#
+# Everything here is clamped against the panel's own height, and that is the
+# point: the band is only ever allowed to take room the panel is not using. A
+# popup that already fills the window stays exactly where a plain centre put it,
+# because the alternative — shoving it down to clear the bar — pushes the same
+# number of rows off the BOTTOM, which is not an improvement, and the modals this
+# runs on are the ones that fill the screen.
 static func _centre_shift(panel: Control) -> float:
 	if reserved_top <= 0.0 or panel == null or not panel.is_inside_tree():
 		return 0.0
-	var free := free_rect(panel)
-	# Where the top edge lands if the panel is centred in the free band, and where
-	# it lands if it is centred in the whole window. The difference is the shift.
-	var centred_in_free: float = free.position.y + (free.size.y - panel.size.y) * 0.5
-	var centred_in_view: float = (panel.get_viewport_rect().size.y - panel.size.y) * 0.5
-	# Never above the band: a panel taller than the free space centres OFF the top
-	# of it, and clamping here is what keeps its first rows out from under the bar.
-	return maxf(free.position.y, centred_in_free) - centred_in_view
+	var view: Vector2 = panel.get_viewport_rect().size
+	var h: float = panel.size.y
+	# The room there is to give: never more than the gap the panel leaves.
+	var slack: float = maxf(0.0, view.y - h)
+	var top: float = minf(reserved_top, slack)
+	# Centred in what the bar leaves, and then held inside the window at both ends.
+	var want: float = clampf(top + (view.y - top - h) * 0.5, top, slack)
+	return want - (view.y - h) * 0.5
