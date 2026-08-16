@@ -10,6 +10,19 @@ const SCROLL_IDS := [
 	"scroll_of_identify", "scroll_of_scare_monster", "scroll_of_teleportation",
 ]
 
+# Choose a game and take its ESCORT straight back off the board.
+#
+# Committing to a game stands a second, randomly-rolled body beside the game's
+# own enemy (§7.5, and test_gameloop2.gd, which is where that rule is tested).
+# These tests are about something else, and a stranger from the authored roster
+# standing on the board would put content they never asked about inside their
+# assertions.
+func _choose_solo(enemy: GoalEnemyData) -> int:
+	var inst: int = GameLoop2.choose_game(enemy)
+	if GameLoop2.current_escort > 0:
+		GameLoop2.despawn(GameLoop2.current_escort)
+	return inst
+
 func before_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
@@ -60,7 +73,7 @@ func test_aggravate_puts_strength_on_every_body() -> void:
 	GameState.hp = 10
 	# Bring an enemy to the front line first, so the buffed hit lands this game
 	# rather than several games of walking later.
-	GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)   # spawn column
+	_choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)   # spawn column
 	while int(GameLoop2.stack[0].get("col", 1)) > 1:
 		GameLoop2.beat_game(false)                                  # -> front column
 	var s: ScrollData = Data.get_scroll(&"scroll_of_aggravate_monsters")
@@ -79,7 +92,7 @@ func test_aggravate_does_not_wear_off() -> void:
 	# lasting mistake.
 	GameState.max_hp = 20
 	GameState.hp = 20
-	GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)
+	_choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)
 	while int(GameLoop2.stack[0].get("col", 1)) > 1:
 		GameLoop2.beat_game(false)
 	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_aggravate_monsters"),

@@ -19,13 +19,17 @@ extends Node
 # shields never carry into the next game.
 #
 # Lifecycle of one game (§7.2):
-#   choose_game(enemy)  — the enemy SPAWNS ONTO THE BOARD when you pick its game.
-#     It is an ordinary body on the stack from that moment, standing at the back
-#     column; `current` is that same entry, so "the enemy of the game in play" is
-#     a label on a body rather than a body held off to one side. (It used to wait
-#     in the off-field lane and only walk on once its game was reported, which is
-#     what the "one-game grace" was: the grace still exists, but it is now the
-#     plain consequence of spawning at the back of the board and having to walk.)
+#   choose_game(enemy)  — the enemy SPAWNS ONTO THE BOARD when you pick its game,
+#     and an ESCORT spawns with it (§7.5): a second body rolled from the very pool
+#     that enemy came out of — another enemy that could have been waiting there.
+#     Both are ordinary bodies on the stack from that moment, standing at the back
+#     column; `current` is the first one's entry, so "the enemy of the game in
+#     play" is a label on a body rather than a body held off to one side. (It used
+#     to wait in the off-field lane and only walk on once its game was reported,
+#     which is what the "one-game grace" was: the grace still exists, but it is now
+#     the plain consequence of spawning at the back of the board and having to
+#     walk.) Only the named enemy is the game's own: beating the game answers for
+#     IT, and the escort follows you until one of its own goals is cleared.
 #   beat_game(goal_met, fulfilled) — you played & beat the real game:
 #     1. Goals you met this game deal one hit each — the current game's enemy when
 #        `goal_met`, plus every follower in `fulfilled`. Defeated + item drop at 0
@@ -145,6 +149,19 @@ var _bounds_rows: int = BASE_GRID_ROWS
 # played against, and everything that walks the board sees it without knowing that.
 var current: Dictionary = {}
 
+# The instance handle of the ESCORT that spawned with the game in play (§7.5), or
+# 0 when there is none — a boss round, an empty roster, or no game chosen.
+#
+# It is a handle and not a pointer for the one job it has: the escort belongs to
+# the OFFERING, not to the board, and a game that supersedes the one in play
+# (choose_game again, which is what Scramble is) has to take the escort off with
+# the enemy it arrived beside. Without that the charge would be a spawn button —
+# each Scramble replaces the enemy and leaves its escort standing.
+#
+# It is cleared the moment the game is REPORTED (beat_game). From then on the
+# escort is an ordinary follower like any other and nothing may reach back for it.
+var current_escort: int = 0
+
 # Undefeated enemies following the player (§2). Each entry:
 #   {"instance": int, "enemy": GoalEnemyData, "stun": int, "health": int,
 #    "col": int, "row": int}
@@ -203,6 +220,7 @@ func _ready() -> void:
 
 func reset() -> void:
 	current = {}
+	current_escort = 0
 	stack.clear()
 	attempt_costs.clear()
 	bashed.clear()
@@ -275,6 +293,10 @@ func serialize() -> Dictionary:
 		# build to be readable by an older build; restore prefers the handle.
 		"current_instance": int(current.get("instance", 0)),
 		"current": _serialize_entry(current),
+		# The escort is already in `stack` — this is only WHICH body it is, so a
+		# Scramble taken after a reload still supersedes the pair that arrived
+		# together instead of leaving the escort behind (§7.5).
+		"current_escort": current_escort,
 		"stack": stacked,
 		"bashed": bashed_ids,
 		"transmuted": _transmuted_ids(),
@@ -311,6 +333,13 @@ func restore(data: Dictionary) -> void:
 			_add_to_grid(int(legacy.get("instance", 0)), legacy.get("enemy"),
 				int(legacy.get("health", 1)), legacy.get("statuses", {}))
 			current = stack[stack.size() - 1]
+	# Only ever a body that is actually standing there. A save from before the
+	# escort existed has no handle at all, and one whose escort was bombed between
+	# the save and the load names a body that is gone — both mean "no escort", and
+	# neither may leave a handle behind for _clear_escort to act on.
+	current_escort = int(data.get("current_escort", 0))
+	if current_escort > 0 and _index_of(current_escort) < 0:
+		current_escort = 0
 	bashed.clear()
 	for gid in data.get("bashed", []):
 		bashed.append(StringName(gid))
@@ -465,16 +494,50 @@ func roll_conjured_enemy(tier: int = -1, tag: StringName = &"") -> GoalEnemyData
 			return above[randi() % above.size()]
 	return null
 
+# THE ESCORT (§7.5): the second body that spawns alongside the enemy of the game
+# you just picked. It is rolled from the SAME pool, by the same type+tier filter
+# with the same widening — the point of it is that it is another enemy that could
+# have been waiting at that game, not a stranger dropped in from somewhere else.
+# That is also why the caller passes the GAME's type and the RUN's tier rather
+# than letting this read them off `alongside`: when the game's own roll had to
+# widen (nothing authored at that type), the escort must widen with it and come
+# out of the same bucket, not out of whatever bucket the widened pick landed in.
+#
+# `alongside` is the enemy it is spawning next to, and it is kept OUT of the roll:
+# two of the same body means two identical rows on the report checklist, which
+# reads as a duplicated line rather than as two enemies. Preference, not a rule —
+# a bucket holding nothing else still owes an escort, so the second roll allows
+# the twin rather than spawning nothing.
+func roll_escort(game_type: StringName = &"", tier: int = -1,
+		alongside: GoalEnemyData = null) -> GoalEnemyData:
+	var pool: Array = Data.all_goal_enemies()
+	if pool.is_empty():
+		return null
+	if tier < 0:
+		tier = mini(RunDifficulty.current_tier(), GoalEnemyData.Difficulty.HIGH)
+	var typ: StringName = StringName(String(game_type).to_lower())
+	var pick: GoalEnemyData = _pick_by_type_tier(pool, typ, tier, alongside)
+	if pick == null:
+		pick = _pick_by_type_tier(pool, typ, tier)
+	return pick
+
 # Picks one enemy from `pool` preferring an exact type+tier match, widening to
 # type-only, then tier-only, then anything — so a roll always returns something
-# while content is thin. Shared by roll_enemy + roll_boss.
-func _pick_by_type_tier(pool: Array, typ: StringName, tier: int) -> GoalEnemyData:
+# while content is thin. Shared by roll_enemy + roll_boss + roll_escort.
+#
+# `exclude` is dropped from every bucket, including the widest one, so a caller
+# asking for "something other than this" gets null rather than the thing it asked
+# not to have.
+func _pick_by_type_tier(pool: Array, typ: StringName, tier: int,
+		exclude: GoalEnemyData = null) -> GoalEnemyData:
 	var by_type_tier: Array = []
 	var by_type: Array = []
 	var by_tier: Array = []
+	var anything: Array = []
 	for e in pool:
-		if not (e is GoalEnemyData):
+		if not (e is GoalEnemyData) or e == exclude:
 			continue
+		anything.append(e)
 		var type_ok: bool = typ == &"" or e.game_type == typ
 		var tier_ok: bool = e.tier_index() == tier
 		if type_ok and tier_ok:
@@ -489,7 +552,7 @@ func _pick_by_type_tier(pool: Array, typ: StringName, tier: int) -> GoalEnemyDat
 	if bucket.is_empty():
 		bucket = by_tier
 	if bucket.is_empty():
-		bucket = pool
+		bucket = anything
 	return bucket[randi() % bucket.size()] if not bucket.is_empty() else null
 
 # Rolls an enemy for a game of `game_type` at `tier` and chooses it in one step
@@ -498,7 +561,9 @@ func _pick_by_type_tier(pool: Array, typ: StringName, tier: int) -> GoalEnemyDat
 func choose_game_of_type(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 	var enemy: GoalEnemyData = roll_enemy(game_type, tier)
 	if enemy != null:
-		choose_game(enemy)
+		# The type + tier are handed on so the escort comes out of the bucket the
+		# game asked for rather than the one this roll may have widened into (§7.5).
+		choose_game(enemy, game_type, tier)
 	return enemy
 
 # Rolls a BOSS for a difficulty-tier change (§7.1). Bosses are a heavier, bomb-
@@ -523,17 +588,29 @@ func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 
 # Marks `enemy` as the enemy on the game the player just chose, and STANDS IT ON
 # THE BOARD (§7.2) at the back column, exactly where a conjured or a surviving
-# enemy enters. Returns its unique instance handle. A previously-current enemy
-# that was never resolved is dropped from the board with it (choosing a new game
-# supersedes it — that is what Scramble is).
-func choose_game(enemy: GoalEnemyData) -> int:
+# enemy enters — with an ESCORT beside it (§7.5). Returns the unique instance
+# handle OF THE GAME'S OWN ENEMY; the escort's is on `current_escort`. A
+# previously-current enemy that was never resolved is dropped from the board, and
+# so is its escort (choosing a new game supersedes the pair — that is what
+# Scramble is).
+#
+# `escort_type` / `escort_tier` are the GAME's type and the run's tier, for the
+# escort roll only — see roll_escort for why it may not just read them off
+# `enemy`. Left out (the tests' path, and Scramble's) they fall back to the
+# enemy's own type and tier, which is the same bucket whenever the game's roll
+# did not have to widen.
+func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
+		escort_tier: int = -1) -> int:
 	# A new game means a fresh set of tries — whatever was logged against the last
 	# one is closed out.
 	attempt_costs.clear()
 	# The superseded enemy leaves the board rather than lingering on it as a body
-	# nobody chose: it was never played for.
+	# nobody chose: it was never played for. Its escort goes with it for the same
+	# reason — it was never played for either, and it only ever stood there because
+	# that enemy did.
 	if not current.is_empty():
 		_take_off_board(_index_of(int(current.get("instance", 0))))
+	_clear_escort()
 	current = {}
 	if enemy == null:
 		loop_changed.emit()
@@ -542,10 +619,59 @@ func choose_game(enemy: GoalEnemyData) -> int:
 	_next_instance += 1
 	_add_to_grid(inst, enemy, effective_health(enemy), _spawn_statuses())
 	# _add_to_grid appends, so the entry it just built is the last one — and that
-	# entry IS `current` (see the var's comment): one body, one record.
+	# entry IS `current` (see the var's comment): one body, one record. Bound
+	# BEFORE the escort spawns, because the escort appends too and would otherwise
+	# be the entry this picks up.
 	current = stack[stack.size() - 1]
+	_spawn_escort(enemy, escort_type, escort_tier)
 	loop_changed.emit()
 	return inst
+
+# Stand the escort (§7.5) next to the enemy of the game just chosen. Returns its
+# instance handle, or 0 when the game gets none:
+#
+#   * A BOSS ROUND spawns solo. A tier change is already the run's step up — the
+#     boss pool is heavier, bomb-immune and paid for at triple gold — and adding a
+#     body to it would stack the two difficulty rules that were meant to be felt
+#     one at a time.
+#   * An empty goal-enemy roster has nothing to roll, and the game still gets its
+#     own enemy.
+#
+# The escort is a body like any other from the moment it lands: it walks, strikes,
+# takes a bomb, carries its own goal, and drops its own item when that goal is
+# cleared. What it is NOT is the game's enemy — beating the game answers for the
+# named one alone, which is what makes the pair harder than one enemy of twice
+# the size.
+func _spawn_escort(primary: GoalEnemyData, game_type: StringName, tier: int) -> int:
+	current_escort = 0
+	if primary == null or primary.is_boss():
+		return 0
+	var typ: StringName = game_type if game_type != &"" else primary.game_type
+	var t: int = tier if tier >= 0 else primary.tier_index()
+	var escort: GoalEnemyData = roll_escort(typ, t, primary)
+	if escort == null:
+		return 0
+	var inst: int = _next_instance
+	_next_instance += 1
+	# Same spawn as everything else, so an escort that cannot fit at the back
+	# column waits off-grid and walks on as space frees — a big enemy taking the
+	# whole back row delays its escort rather than teleporting it past.
+	_add_to_grid(inst, escort, effective_health(escort), _spawn_statuses())
+	current_escort = inst
+	return inst
+
+# Take the escort off the board, if the game in play still has one standing.
+#
+# Only ever called where the game it arrived beside is SUPERSEDED, never where
+# that game is reported: from the report on, the escort is an ordinary follower
+# and reaching back for it would delete a body the player now owes a goal to.
+func _clear_escort() -> void:
+	if current_escort <= 0:
+		return
+	var idx: int = _index_of(current_escort)
+	if idx >= 0:
+		_take_off_board(idx)
+	current_escort = 0
 
 # --- shields = the tries at a game (§3) -----------------------------------
 
@@ -732,8 +858,11 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = [],
 		else:
 			hit_this_game[int(inst)] = true
 	# The game is over either way: whatever became of its enemy, it is a follower
-	# like any other from here (or gone), and nothing is "in play" any more.
+	# like any other from here (or gone), and nothing is "in play" any more. The
+	# escort is released with it (§7.5) — it survived the game it spawned at, so it
+	# is now an ordinary follower that the NEXT game's Scramble may not touch.
 	current = {}
+	current_escort = 0
 
 	# 2. THE ENEMY TURNS. Every enemy gets `turns` actions this game — one out in
 	#    the wilds, three on the Amulet's doorstep (§7.4) — and each action is
@@ -1056,6 +1185,11 @@ func _spawn_statuses() -> Dictionary:
 # of the same type + tier (a new instance). Returns the new enemy, or null if
 # there's no current game or no scramble charge. Enemies already on the stack are
 # untouched — scramble is a pre-commit escape on the game you're about to play.
+#
+# It rerolls the ESCORT with it (§7.5), because choose_game supersedes the pair.
+# That is the whole reason `current_escort` is tracked: a Scramble that swapped
+# the enemy and left the escort standing would be a way to BUY bodies with D6
+# charges, one per press.
 func scramble() -> GoalEnemyData:
 	if current.is_empty() or GameState.scramble <= 0:
 		return null
@@ -1076,6 +1210,9 @@ func clear_amulet() -> void:
 		var enemy: GoalEnemyData = current["enemy"]
 		_take_off_board(_index_of(int(current.get("instance", 0))))
 		current = {}
+		# The run is won, so the escort is simply left standing where it is — there
+		# is no next game for it to be superseded out of.
+		current_escort = 0
 		_defeat(enemy, true, {"defeats": [], "drops": 0})
 	loop_changed.emit()
 	_finish_run(true)
@@ -1351,6 +1488,16 @@ func stack_size() -> int:
 func has_current() -> bool:
 	return not current.is_empty()
 
+# The enemy standing as the game in play's ESCORT (§7.5), or null when it has
+# none — a boss round, or a game whose escort has already been bombed off. The
+# screens ask for it by name rather than digging `current_escort` out of the
+# stack themselves, so there is one answer to "what came with this game".
+func escort_enemy() -> GoalEnemyData:
+	if current_escort <= 0:
+		return null
+	var idx: int = _index_of(current_escort)
+	return stack[idx]["enemy"] if idx >= 0 else null
+
 # --- internals ------------------------------------------------------------
 
 func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
@@ -1462,6 +1609,10 @@ func _take_off_board(idx: int) -> void:
 	stack.remove_at(idx)
 	if not current.is_empty() and int(current.get("instance", 0)) == inst:
 		current = {}
+	# Same reason, one level along: an escort bombed off the board before its game
+	# is reported must not leave a handle behind for the next Scramble to chase.
+	if current_escort == inst:
+		current_escort = 0
 
 func _index_of(instance: int) -> int:
 	for i in range(stack.size()):

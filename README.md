@@ -61,7 +61,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │
 ├── data/                  # Game content as Godot Resources (.tres) — the source
 │   │                      # of truth the game loads at startup (see Data.gd)
-│   ├── games/            #   GameData — the ~849 real games that form the map
+│   ├── games/            #   GameData — the ~852 real games that form the map
 │   ├── atlas_layout*.tres#   BAKED star positions for the Atlas, one sky per game
 │   │                      #   filter: all / _owned / _downloaded (tools/bake_atlas.py)
 │   ├── items2.0/         #   ItemData — the relics that drop from a defeated enemy
@@ -195,7 +195,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
 | `EventSystem` | Events (`docs/event-sheet-authoring.md`): dealing an event from the per-rarity shuffle bag when a game is played, the Requirement/`needs` gates, and resolving a choice into effects, an event goal, a curse, or a `chance` roll. Objects go through the same resolution. |
 | `ObjectSystem` | Objects (`docs/object-sheet-authoring.md`): the machines standing in front of the player, spawning them by tag, and their state — jams, what has been blown off the run, and the Donation Machine's cross-run bank. |
-| `GameLoop2` | The run loop: the games-beaten clock, the goal-enemy stack, and the grid the followers advance across. `Overworld2` is a view over it. |
+| `GameLoop2` | The run loop: the games-beaten clock, the goal-enemy stack, and the grid the followers advance across. Committing to a game spawns **two** bodies — its own enemy and an **escort** rolled from the same pool (§7.5); boss rounds spawn solo. `Overworld2` is a view over it. |
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
 | `GameLog` | Verbose run-scope message log (teleports, pickups, item procs) — the written record behind the toasts. |
@@ -839,8 +839,8 @@ cross-run tier list. What's still ahead:
 - **Tags and path requirements (§6.2)** — widen the tag vocabulary on `GameData`
   and let an edge demand a type or tag ("this route needs a Deckbuilder clear"),
   so routing becomes a collection puzzle rather than a shortest path.
-- **Content depth** — the catalogs are thin next to the 846 games: 45 goal-enemies,
-  37 bosses, 25 items (3 of them Boss relics, 1 an Event relic), 6 scrolls,
+- **Content depth** — the catalogs are thin next to the 852 games: 48 goal-enemies,
+  38 bosses, 25 items (3 of them Boss relics, 1 an Event relic), 6 scrolls,
   11 characters, 10 events, 3 curses. More of each (and more goals per type) is
   the cheapest way to add run variety; all of it comes from the sheet.
 - **The open design decisions (§7.1 / §12)** — the boss damage band above the

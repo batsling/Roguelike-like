@@ -26,7 +26,9 @@ so every number must stay small and glanceable.
 
 1. **Choose a game** on the graph. Routing is the core decision (see §6).
 2. The game presents **one enemy** = one goal, plus its attack value and its
-   guaranteed item drop.
+   guaranteed item drop. Committing to it also spawns an **escort** (§7.5) — a
+   second enemy from the same pool, with a second goal, that beating the game
+   does *not* answer for. Boss rounds are the exception and spawn solo.
 3. **Go play the real game. You must beat the game to advance to the next area.**
 4. Resolve:
    - **Goal met → enemy defeated → item drops.**
@@ -305,7 +307,9 @@ cycle" suits Deckbuilder; "descend N floors" suits Traditional).
 
 One enemy per game, **rolled from a pool filtered by the game's `Type` and the
 run's `Difficulty` tier** (reusing `EnemySpawner`'s tier logic). Harder tier →
-more damage and (naturally) a better drop.
+more damage and (naturally) a better drop. One enemy is what the game *owns* —
+committing to it stands a second body from the same pool beside it (the escort,
+§7.5), which the game's own goal does not answer for.
 
 `enemies2.0` schema (actual columns):
 
@@ -556,6 +560,56 @@ applies it; both are pure, so the board, the cards and the resolver cannot
 disagree about the number. A run with no Amulet picked, or standing somewhere
 with no route to it, reads as Distant — nothing is closing in on a goal that
 isn't there.
+
+### 7.5 The escort — nothing spawns alone
+
+**Committing to a game puts TWO bodies on the board**: the enemy that was
+standing on it, and an **escort** rolled from the very pool that enemy came out
+of — *another enemy that could have been waiting there*, at the same game type
+and the same tier, through the same widening (`GameLoop2.roll_escort`).
+
+Both spawn the ordinary way (§7.2): back column, a random row with the clearest
+run at the player, off-grid queue when the back column is full. From the moment
+they land there is nothing to tell them apart mechanically — the escort walks,
+strikes, blocks a lane, takes a bomb, carries its own goal, and drops its own
+item and gold when that goal is cleared.
+
+**What separates them is ownership.** Only the named enemy is the game's:
+
+- Beating the game and meeting its goal answers for **that enemy alone**. The
+  escort's goal is an old goal from the moment it spawns, clearable during any
+  later game like every other follower's (§2).
+- So a game played and reported perfectly still leaves **one body on the board**,
+  and a game whose goal you missed leaves two. The stack now grows by default
+  and shrinks only when you go and work at it.
+- Both are on the report checklist: the game's enemy as the top **Goal** row, the
+  escort as an *Also cleared* row alongside every other follower.
+
+**Two rules carve out of it**, both for the same reason — the escort must not
+stack on top of a difficulty rule that was meant to be felt on its own:
+
+- **A boss spawns solo.** A tier change already swaps in the heavier, bomb-immune
+  pool at triple gold (§7.1); doubling the bodies on that round as well would
+  merge the two steps into one wall.
+- **Scramble rerolls the pair.** `choose_game` supersedes the game in play, and
+  the escort came with the enemy being rejected, so it leaves with it
+  (`GameLoop2.current_escort` is what makes that possible). Otherwise a D6 charge
+  would be a way to *buy* bodies, one per press.
+
+The escort is **rolled on arrival, not with the offering**. A card promises the
+count and withholds the name — `⚠ One more enemy spawns with it — which one is
+rolled on arrival` — so how many bodies a card puts on the board is part of the
+routing decision, while which ones is not. It is named in the log and in a
+notification the moment it lands, because it is the only body on the board the
+player did not choose.
+
+**Why.** Combat was too easy in exactly one way: a run's stack only ever grew
+when the player failed, so a player who kept meeting goals never had a board to
+survive at all, and §7.3's footprints, §7.4's turn ladder, Stun, Push and the
+bombs were machinery aimed at a board that was usually empty. A guaranteed
+second body makes the stack the baseline rather than the punishment, and it does
+it without touching a single number: no enemy hits harder, nothing has more
+Health, and every existing answer to a follower works on it unchanged.
 
 ---
 

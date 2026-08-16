@@ -11,6 +11,53 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Nothing spawns alone any more: every game brings an escort.**
+
+  Combat was too easy in exactly one way. The stack only ever grew when the
+  player *failed*, so a player who kept meeting goals never had a board to
+  survive at all — and §7.3's footprints, §7.4's turn ladder, Stun, Push and the
+  bombs were all machinery aimed at a board that was usually empty.
+
+  Committing to a game now stands **two** bodies on it: its own enemy, and an
+  **escort** rolled from the very pool that enemy came out of — same game type,
+  same tier, same widening (`GameLoop2.roll_escort`). Another enemy that could
+  have been waiting there.
+
+  **Only the named enemy is the game's.** Beating the game and meeting its goal
+  answers for that one alone; the escort keeps its own goal, which is an old goal
+  from the moment it lands and clearable during any later game like every other
+  follower's. So a game played *perfectly* still leaves one body on the board.
+  The stack is the baseline now rather than the punishment — and none of it
+  touches a number: no enemy hits harder, nothing has more Health, and every
+  existing answer to a follower (goal, bomb, Stun, Push, fulfilment) works on it
+  unchanged.
+
+  **Two carve-outs, both so one difficulty rule is felt at a time.** A **boss
+  spawns solo** — a tier change already swaps in the heavier, bomb-immune pool at
+  triple gold, and doubling the bodies on that round would merge two steps into
+  one wall. And **Scramble rerolls the pair**: `choose_game` supersedes the game
+  in play, and the escort came with the enemy being rejected, so it leaves with
+  it. Without that, a D6 charge would be a way to *buy* bodies, one per press —
+  which is what `GameLoop2.current_escort` exists to prevent, and why it is
+  written into the save.
+
+  **The card promises the count and withholds the name.** The escort is rolled on
+  ARRIVAL, not with the offering, so an offered card says `⚠ One more enemy spawns
+  with it — which one is rolled on arrival` (the Runic Dome does not hide that —
+  it was bought to hide *what* is waiting, not *how many*), and the body is named
+  in the log and a notification the moment it lands. How many bodies a card puts
+  on the board is part of the routing decision; which ones is not.
+
+  Spelled out in [§7.5](docs/games-first-redesign.md) of the spec, and in the
+  manual's *Enemies are goals* chapter.
+
+  **Fixed while it was in there:** the battlefield heading counted the game in
+  play twice. `_stack_summary` added 1 for the current game on top of
+  `stack.size()`, from the era when that enemy waited off the field — it has
+  stood on the board with everything else since §7.2, so the line read "3 closing
+  in" over a board holding two. It was invisible while a playing board usually
+  held one body; an escort beside it made the off-by-one look like the escort.
+
 - **Statuses grew a combat side, Dexterity split in two, and `+X Small Chests`
   became one chest that gets bigger.**
 

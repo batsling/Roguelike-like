@@ -91,7 +91,9 @@ static func _ch_start() -> Dictionary:
 				+ "one you take is the run's first game — not a free move."),
 			_step(3, "The game you took has an ENEMY standing on it, and that "
 				+ "enemy is a GOAL: something to do inside the real game. Beat a "
-				+ "boss without healing. Descend ten floors. Win in one deck cycle."),
+				+ "boss without healing. Descend ten floors. Win in one deck cycle. "
+				+ "An ESCORT spawns beside it — a second enemy, with a second goal, "
+				+ "that beating the game does not answer for."),
 			_step(4, "Go and play it. Actually play it — this is the part that "
 				+ "takes an evening, and it is the whole point."),
 			_step(5, "Come back and press Report. Did you beat the game? Did you "
@@ -146,7 +148,8 @@ static func _ch_choosing() -> Dictionary:
 				+ "to the road, not just where it puts you."),
 			_kv("The enemy", "Who is waiting there, and the exact goal you would "
 				+ "be playing for, written out with any clauses your own statuses "
-				+ "add to it."),
+				+ "add to it — plus a warning when an escort spawns with it, which "
+				+ "is every card that is not a boss."),
 			_kv("The tries", "How many attempts that game grants you. See §3."),
 			_kv("The pace", "What taking it does to how fast the board moves — "
 				+ "speeds up, slows down, or no change."),
@@ -270,6 +273,20 @@ static func _ch_enemies() -> Dictionary:
 				+ "from a pool matched to that game's type and the run's current "
 				+ "difficulty. The enemy IS its goal. Killing it and doing the "
 				+ "goal are the same act."),
+			_h("Nothing arrives alone"),
+			_p("Committing to a game spawns TWO bodies: its own enemy, and an "
+				+ "escort rolled from the same pool — another enemy that could "
+				+ "have been waiting there. The card warns you that a second one "
+				+ "is coming but never says which; you find that out on arrival."),
+			_b("Only the named enemy is the game's. Beating the game answers for "
+				+ "it alone — the escort keeps its own goal, and clearing that is "
+				+ "a job for a later game."),
+			_b("So a missed goal now costs you two followers rather than one, and "
+				+ "the escort's item and gold are still there to be collected "
+				+ "whenever you get round to its goal."),
+			_b("A BOSS spawns alone. The tier change is the step up on its own."),
+			_b("Scramble rerolls the pair. The escort came with the enemy you "
+				+ "rejected, so it leaves with it."),
 			_h("The three kinds of goal"),
 			_kv("Bounty", "Defeat a specific thing in the real game. Defeat an "
 				+ "enemy that splits. Defeat something that is an alien."),

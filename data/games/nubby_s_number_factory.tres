@@ -8,9 +8,9 @@ id = &"nubby_s_number_factory"
 display_name = "Nubby's Number Factory"
 year = 2024
 type = 1
-games_influenced = Array[StringName]([&"cursed_words"])
-influence_sources = PackedStringArray("https://www.youtube.com/watch?v=7SjRhK9wdEE")
-influence_relations = PackedStringArray("")
+games_influenced = Array[StringName]([&"cursed_words", &"pegs_x_stickers"])
+influence_sources = PackedStringArray("https://www.youtube.com/watch?v=7SjRhK9wdEE", "https://x.com/MrMorrisGames/status/2030327854383190254")
+influence_relations = PackedStringArray("", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

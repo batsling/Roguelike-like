@@ -482,6 +482,7 @@ func open_start_choice(index: int) -> GameChoiceModal:
 		"pace": _start_pace_note(int(opt["path_len"])),
 		"tries": GameLoop2.shields_for_game(choice["game"]),
 		"beatable": _beatable_row(choice),
+		"escort": _escort_note(choice),
 		"no_verbs": true,
 		"action_text": "▶  Start at %s" % opt["game"].display_name,
 		"action_tip": "Begin the run here — you go and play this game for real, right now.",
@@ -530,7 +531,9 @@ func choose_start(index: int) -> void:
 	# a table to act on, and so does the return from the report.
 	_build_choices()
 	if _chosen.get("enemy") != null:
-		GameLoop2.choose_game(_chosen["enemy"])
+		GameLoop2.choose_game(_chosen["enemy"],
+			GameLoop2.game_type_key(game), _current_tier())
+		_log_escort()
 		var granted: int = GameLoop2.grant_selection_shields(game)
 		GameLog.add("%s — %d shields to spend on tries." % [game.display_name, granted],
 			SHIELD_BLUE)
@@ -807,6 +810,7 @@ func open_choice(index: int) -> GameChoiceModal:
 		"beatable": _beatable_row(choice),
 		"enemy_hidden": _enemy_hidden(choice),
 		"hidden_note": "The Runic Dome hides what is waiting there. You are routing on the game alone — the enemy, its goal and its damage are all found out on arrival.",
+		"escort": _escort_note(choice),
 	}
 	# The stay-or-return question opens the same card for a different verb: it
 	# MOVES the run rather than committing it to a game, so the card drops the two
@@ -844,7 +848,12 @@ func pick(index: int) -> void:
 	if _dash_mode:
 		GameState.dash_charges = maxi(0, GameState.dash_charges - 1)
 		_dash_mode = false
-	GameLoop2.choose_game(_chosen["enemy"])
+	# The GAME's type and the run's tier ride along so the escort (§7.5) is rolled
+	# from the bucket this card's own enemy came out of. A transmuted card plays the
+	# replacement game, so it is that game's type the escort answers to.
+	GameLoop2.choose_game(_chosen["enemy"],
+		GameLoop2.game_type_key(_chosen["game"]), _current_tier())
+	_log_escort()
 	# Selecting the game hands over your TRIES at it (§3): 3 shields, 5 for a
 	# Traditional roguelike, plus whatever "when a game is selected" items add.
 	var granted: int = GameLoop2.grant_selection_shields(_chosen["game"])
@@ -872,6 +881,22 @@ func pick(index: int) -> void:
 	# Committing to a game is a move worth recovering to — the shields it granted
 	# and the tries you're about to log all hang off it.
 	autosave()
+
+# Say who came WITH the game's enemy (§7.5). Called at each of the three places a
+# game is committed to, straight after choose_game, because the escort is the one
+# thing about the board that the card could not tell you: it is rolled on arrival,
+# so the player finds out here or not at all.
+#
+# It is a notification as well as a log line for that reason — the escort is the
+# only body that appears without having been chosen, and a run of the log is not
+# where a surprise should have to be noticed.
+func _log_escort() -> void:
+	var escort: GoalEnemyData = GameLoop2.escort_enemy()
+	if escort == null:
+		return
+	var msg: String = "%s showed up too — it follows you until its goal is cleared." % escort.display_name
+	GameLog.add(msg, UITheme.DANGER)
+	Notifications.notify(msg, UITheme.DANGER)
 
 # The attempt tracker (§3): the player ticks this every time they LOSE a run of
 # the game they're playing. Each try spends a shield; once the shields are gone a
@@ -1892,7 +1917,8 @@ func _start_play_game(request: Dictionary) -> void:
 		"boss": false, "amulet": dest == GameState.amulet_game_id,
 		"repeat": GameState.has_played_game(game.id),
 	}
-	GameLoop2.choose_game(enemy)
+	GameLoop2.choose_game(enemy, GameLoop2.game_type_key(game), tier)
+	_log_escort()
 	GameLoop2.grant_selection_shields(game)
 	GameState.set_current_game(dest)
 	_dash_mode = false
@@ -3687,6 +3713,36 @@ func _enemy_hidden(choice: Dictionary) -> bool:
 # they must not each invent their own wording for the same blank.
 const HIDDEN_ENEMY_TEXT := "something you can't see"
 
+# THE ESCORT (§7.5), said before it exists. The second body is rolled on ARRIVAL,
+# so a card cannot name it — but it must not stay quiet about it either: "how many
+# bodies does this put on the board" is half of what the routing decision is
+# about, and a card that showed one enemy and delivered two would be lying by
+# omission. So the card promises the count and withholds the name.
+const ESCORT_WARNING := "⚠ One more enemy spawns with it — which one is rolled on arrival."
+const ESCORT_WARNING_SHORT := "⚠ +1 more"
+
+# Whether committing to `choice` will put a SECOND body on the board. False for a
+# BOSS round — a boss spawns solo, the tier change being step-up enough on its own
+# (GameLoop2._spawn_escort) — for a free game with no enemy at all, and for the
+# stay-or-return card, which spawns nothing either way.
+func _escort_expected(choice: Dictionary) -> bool:
+	if choice.is_empty() or choice.has("stay"):
+		return false
+	if choice.get("enemy") == null or bool(choice.get("boss", false)):
+		return false
+	return not Data.all_goal_enemies().is_empty()
+
+# The escort's line for a card: a WARNING while the game is still an offer, and
+# the body's NAME once the game has been committed to and the roll has happened.
+# Empty when this card brings no escort. One function, because the offering, the
+# popup and the now-playing panel all have to say the same thing about it.
+func _escort_note(choice: Dictionary) -> String:
+	if not GameLoop2.current.is_empty() and choice.get("enemy") != null \
+			and GameLoop2.current.get("enemy") == choice.get("enemy"):
+		var escort: GoalEnemyData = GameLoop2.escort_enemy()
+		return "" if escort == null else "⚠ %s spawned alongside it." % escort.display_name
+	return ESCORT_WARNING if _escort_expected(choice) else ""
+
 # The hover, on ONE line: the enemy this card would put on the board, the goal you
 # would be playing for, and the TRIES it hands you. The tries used to be a slot on
 # the HUD that previewed on hover; the HUD has gone, and this is the line that was
@@ -3703,14 +3759,19 @@ func _hover_line(choice: Dictionary) -> String:
 		SHIELD_BLUE.to_html(false), _hover_grant] if _hover_grant >= 0 else ""
 	if e == null:
 		return "[b]%s[/b]  ·  [i]no enemy — free game[/i]%s" % [game.display_name, tries]
+	# The escort rides even the hidden line: the Dome hides WHAT is waiting, and how
+	# many bodies arrive is not part of what it was bought to hide.
+	var escort: String = "  ·  [color=#%s]%s[/color]" % [
+		UITheme.DANGER.to_html(false), ESCORT_WARNING_SHORT] if _escort_expected(choice) else ""
 	# Under the Runic Dome there is no enemy line to give: the goal is the enemy's,
 	# so hiding the name and quoting the goal would give the whole thing away.
 	if _enemy_hidden(choice):
-		return "[b]%s[/b]  →  [i]%s[/i]%s" % [game.display_name, HIDDEN_ENEMY_TEXT, tries]
+		return "[b]%s[/b]  →  [i]%s[/i]%s%s" % [
+			game.display_name, HIDDEN_ENEMY_TEXT, escort, tries]
 	var kind: String = "[color=#e0b020]☠ [/color]" if choice["boss"] else ""
-	return "[b]%s[/b]  →  %s%s  ·  %s%s" % [
+	return "[b]%s[/b]  →  %s%s  ·  %s%s%s" % [
 		game.display_name, kind, e.display_name,
-		GameLoop2.goal_text_for(_preview_entry(choice)), tries]
+		GameLoop2.goal_text_for(_preview_entry(choice)), escort, tries]
 
 func _enemy_preview_text(choice: Dictionary) -> String:
 	var e: GoalEnemyData = choice.get("enemy")
@@ -3722,17 +3783,24 @@ func _enemy_preview_text(choice: Dictionary) -> String:
 		repeat = "\n[color=#80d9ff]⚡ Already beaten this run — beating it again grants +%d Dash.[/color]" % REPEAT_BEAT_DASH
 	if e == null:
 		return "[b]%s[/b]\n[i]No enemy — free game.[/i]%s" % [game.display_name, repeat]
+	# The escort (§7.5): a warning on a card, the body's name once it is standing
+	# there. Its own line under the goal, because it is a fact about the BOARD
+	# rather than about the enemy the rest of this text describes.
+	var escort_line: String = _escort_note(choice)
+	var escort: String = "" if escort_line == "" else "\n[color=#%s]%s[/color]" % [
+		UITheme.DANGER.to_html(false), escort_line]
 	if _enemy_hidden(choice):
-		return "[b]%s[/b]  →  [i]%s[/i]\n[i]The Runic Dome hides what is waiting there. You will find out when you arrive.[/i]%s" % [
-			game.display_name, HIDDEN_ENEMY_TEXT, repeat]
+		return "[b]%s[/b]  →  [i]%s[/i]\n[i]The Runic Dome hides what is waiting there. You will find out when you arrive.[/i]%s%s" % [
+			game.display_name, HIDDEN_ENEMY_TEXT, escort, repeat]
 	var kind: String = "[color=#e0b020][b]☠ BOSS[/b][/color] " if choice["boss"] else ""
 	# Effective Health = goal completions to defeat it (Alien Baby makes it 2).
 	var hp: int = GameLoop2.effective_health(e)
 	var hp_txt: String = "%d goal%s to beat" % [hp, "" if hp == 1 else "s"]
-	return "[b]%s[/b]  →  %s%s\n[b]GOAL (%s):[/b] %s   [i](%s / %s / %s / dmg %d)[/i]%s" % [
+	return "[b]%s[/b]  →  %s%s\n[b]GOAL (%s):[/b] %s   [i](%s / %s / %s / dmg %d)[/i]%s%s" % [
 		game.display_name, kind, e.display_name,
 		String(e.goal_type).capitalize(), GameLoop2.goal_text_for(_preview_entry(choice)),
 		String(e.game_type).capitalize(), RunDifficulty.tier_name(int(e.difficulty)), hp_txt, e.damage,
+		escort,
 		repeat,
 	]
 
@@ -4145,10 +4213,16 @@ func _empty_note(text: String) -> Label:
 # than one turn a game, includes the rank behind the front line, because it walks
 # into range and swings before the game is out (§7.4). Counting the swings rather
 # than the bodies is what keeps this line honest at three turns a game.
+#
+# The count is `stack` and nothing else. It used to add one for the game in play,
+# from the era when that enemy waited off the field and was not in the stack — it
+# has stood on the board with everything else since §7.2, so the extra 1 was
+# counting it twice, and the line said "3 closing in" over a board holding two.
+# Noticed because the escort (§7.5) makes every playing board a two-body board,
+# where an off-by-one reads as the escort having been counted rather than as the
+# old bug it is.
 func _stack_summary() -> String:
 	var following: int = GameLoop2.stack.size()
-	if _phase == Phase.PLAYING and not _chosen.is_empty() and _chosen.get("enemy") != null:
-		following += 1
 	if following == 0:
 		return "clear  —  nothing following you"
 	var dmg: int = GameLoop2.stacked_damage_per_game()

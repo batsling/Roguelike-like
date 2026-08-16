@@ -8,6 +8,19 @@ extends GutTest
 # active-item effect handlers (Unstable Genome's random_item_choice +
 # destroy_self). See docs/games-first-redesign.md §8.
 
+# Choose a game and take its ESCORT straight back off the board.
+#
+# Committing to a game stands a second, randomly-rolled body beside the game's
+# own enemy (§7.5, and test_gameloop2.gd, which is where that rule is tested).
+# These tests are about something else, and a stranger from the authored roster
+# standing on the board would put content they never asked about inside their
+# assertions.
+func _choose_solo(enemy: GoalEnemyData) -> int:
+	var inst: int = GameLoop2.choose_game(enemy)
+	if GameLoop2.current_escort > 0:
+		GameLoop2.despawn(GameLoop2.current_escort)
+	return inst
+
 func before_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
@@ -123,7 +136,7 @@ func test_alien_baby_makes_enemies_take_two_goal_completions() -> void:
 	var enemy: GoalEnemyData = Data.all_goal_enemies()[0]
 	assert_eq(GameLoop2.effective_health(enemy), 2, "the enemy now needs two hits")
 	# Spawn it and beat its goal once: it survives with 1 Health, still following.
-	GameLoop2.choose_game(enemy)
+	_choose_solo(enemy)
 	var res1: Dictionary = GameLoop2.beat_game(true)
 	assert_eq(GameLoop2.stack_size(), 1, "one goal completion doesn't kill it yet")
 	assert_eq(int(res1.get("drops", 0)), 0, "no drop until it dies")
@@ -140,7 +153,7 @@ func test_alien_baby_survivor_still_attacks_when_goal_missed() -> void:
 	GameState.hp = 10
 	GameState.shields = 0
 	var enemy: GoalEnemyData = Data.all_goal_enemies()[0]
-	GameLoop2.choose_game(enemy)
+	_choose_solo(enemy)
 	GameLoop2.beat_game(true)                 # first hit -> survives, follows @ spawn col
 	assert_eq(GameLoop2.stack_size(), 1)
 	# March it to the front — it only strikes from column 1 (§grid).
@@ -271,7 +284,7 @@ func test_sacred_bark_doubles_what_a_scroll_does() -> void:
 	var aggravate: ScrollData = Data.get_scroll(&"scroll_of_aggravate_monsters")
 	assert_not_null(aggravate, "scrolls2.0 has Aggravate Monsters")
 	assert_eq(GameState.loot_multiplier(), 1, "nothing owned yet, so nothing doubles")
-	GameLoop2.choose_game(Data.all_goal_enemies()[0])
+	_choose_solo(Data.all_goal_enemies()[0])
 	ScrollSystem.read_scroll(aggravate)
 	assert_eq(int((GameLoop2.current["statuses"] as Dictionary).get(&"strength", 0)), 1,
 		"authored at +1 Strength")
@@ -279,7 +292,7 @@ func test_sacred_bark_doubles_what_a_scroll_does() -> void:
 	_give(&"sacred_bark")
 	assert_eq(GameState.loot_multiplier(), 2, "the Bark doubles loot")
 	GameLoop2.reset()
-	GameLoop2.choose_game(Data.all_goal_enemies()[0])
+	_choose_solo(Data.all_goal_enemies()[0])
 	ScrollSystem.read_scroll(aggravate)
 	assert_eq(int((GameLoop2.current["statuses"] as Dictionary).get(&"strength", 0)), 2,
 		"and doubles the BAD scrolls too — that is what makes it a decision")
@@ -343,13 +356,13 @@ func test_the_golden_idol_pays_on_top_of_every_drop() -> void:
 	enemy.difficulty = GoalEnemyData.Difficulty.LOW
 
 	GameState.gold = 0
-	GameLoop2.choose_game(enemy)
+	_choose_solo(enemy)
 	GameLoop2.beat_game(true)
 	var plain: int = GameState.gold
 	assert_eq(plain, GameLoop2.GOLD_PER_ENEMY, "a body is worth its base gold")
 
 	_give(&"golden_idol")
 	GameState.gold = 0
-	GameLoop2.choose_game(enemy)
+	_choose_solo(enemy)
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.gold, plain + 1, "and one more while the Idol is held")

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_ogre_chambers_2222"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"ogre_chambers_2222"
+display_name = "Ogre Chambers 2222"
+year = 2026
+type = 0
+games_influenced = Array[StringName]([])
+influence_sources = PackedStringArray()
+influence_relations = PackedStringArray()
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/ogre-chambers-2222.png"
+owned = false
+file_location = ""
+steam_page = "https://store.steampowered.com/app/3375890/Ogre_Chambers_2222/"

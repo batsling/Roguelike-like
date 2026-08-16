@@ -60,6 +60,23 @@ func _shaped(dmg: int, rows: int, cols: int, mask: Array = []) -> GoalEnemyData:
 func _bastion(dmg: int = 3) -> GoalEnemyData:
 	return _shaped(dmg, 2, 3, [0b100, 0b111])
 
+# Choose a game and take its ESCORT straight back off the board (§7.5).
+#
+# Committing to a game spawns TWO bodies now: the enemy handed in here, and an
+# escort rolled from the authored roster. Almost every test in this file is about
+# what ONE body does — how far it walks, what it hits for, what a bomb does to it
+# — and a second, randomly-rolled body standing next to it would put authored
+# content inside assertions that were written to depend on nothing but the
+# synthetic enemy in front of them.
+#
+# So these tests choose SOLO, and the escort has its own section at the bottom of
+# the file where it is the subject rather than the noise.
+func _choose_solo(enemy: GoalEnemyData) -> int:
+	var inst: int = GameLoop2.choose_game(enemy)
+	if GameLoop2.current_escort > 0:
+		GameLoop2.despawn(GameLoop2.current_escort)
+	return inst
+
 # The front (leftmost) grid column a stacked enemy occupies (1 = front/melee,
 # grid_cols() = the back of the board, offgrid_col() = off-grid queue), or -1 if it's
 # gone.
@@ -111,14 +128,14 @@ func _march_to_front(instance: int) -> void:
 # --- choose / spawn -------------------------------------------------------
 
 func test_choose_game_sets_current() -> void:
-	var inst: int = GameLoop2.choose_game(_enemy(1))
+	var inst: int = _choose_solo(_enemy(1))
 	assert_gt(inst, 0)
 	assert_true(GameLoop2.has_current())
 
 # --- goal met -> defeat + drop -------------------------------------------
 
 func test_goal_met_defeats_drops_and_deals_no_damage() -> void:
-	GameLoop2.choose_game(_enemy(3))
+	_choose_solo(_enemy(3))
 	var res: Dictionary = GameLoop2.beat_game(true)
 	assert_eq(GameLoop2.defeated_count, 1)
 	# The drop is presented inline on the battlefield (no RewardScreen chest is
@@ -134,7 +151,7 @@ func test_goal_met_defeats_drops_and_deals_no_damage() -> void:
 # It used to wait off the field until its game was reported; the grace that gave
 # it is now simply the distance it has to walk.
 func test_choosing_a_game_stands_its_enemy_on_the_board() -> void:
-	var inst: int = GameLoop2.choose_game(_enemy(2))
+	var inst: int = _choose_solo(_enemy(2))
 	assert_eq(GameLoop2.stack_size(), 1, "it is a body on the board, not a body in waiting")
 	assert_eq(_col_of(inst), GameLoop2.spawn_col(), "standing on the back column")
 	assert_eq(int(GameLoop2.current.get("instance", 0)), inst,
@@ -143,13 +160,134 @@ func test_choosing_a_game_stands_its_enemy_on_the_board() -> void:
 # Choosing a second game supersedes the first: the enemy nobody played for leaves
 # the board rather than lingering on it (this is what a Scramble does).
 func test_choosing_again_takes_the_superseded_enemy_off_the_board() -> void:
-	GameLoop2.choose_game(_enemy(2))
-	var second: int = GameLoop2.choose_game(_enemy(2))
+	_choose_solo(_enemy(2))
+	var second: int = _choose_solo(_enemy(2))
 	assert_eq(GameLoop2.stack_size(), 1, "one game, one enemy")
 	assert_eq(int(GameLoop2.stack[0]["instance"]), second, "and it is the new one")
 
-func test_failed_enemy_does_not_attack_the_game_it_stacks() -> void:
+# --- the escort (§7.5) ----------------------------------------------------
+#
+# Committing to a game spawns a SECOND body beside the game's own enemy, rolled
+# from the same pool. These are the tests that let it happen, so they call
+# GameLoop2.choose_game directly rather than through _choose_solo.
+
+func test_choosing_a_game_spawns_an_escort_beside_its_enemy() -> void:
+	var inst: int = GameLoop2.choose_game(_enemy(2))
+	assert_eq(GameLoop2.stack_size(), 2, "the game's enemy AND an escort")
+	assert_gt(GameLoop2.current_escort, 0, "the escort is remembered by handle")
+	assert_ne(GameLoop2.current_escort, inst, "and it is a body of its own")
+	assert_not_null(GameLoop2.escort_enemy(), "which the screens can ask for by name")
+
+# The escort is a body like any other from the moment it lands: it spawns at the
+# back column, in a lane of its own.
+func test_the_escort_spawns_on_the_board_like_any_other_body() -> void:
 	GameLoop2.choose_game(_enemy(2))
+	var entry: Dictionary = _entry(GameLoop2.current_escort)
+	assert_false(entry.is_empty(), "it is on the stack")
+	assert_eq(int(entry.get("col", -1)), GameLoop2.spawn_col(), "at the back column")
+
+# The game's goal answers for the game's OWN enemy. The escort keeps its goal, so
+# a perfectly played game still leaves one body on the board — which is the whole
+# point of it.
+func test_beating_the_game_defeats_its_enemy_and_leaves_the_escort() -> void:
+	GameLoop2.choose_game(_enemy(2))
+	var escort: int = GameLoop2.current_escort
+	GameLoop2.beat_game(true)
+	assert_eq(GameLoop2.defeated_count, 1, "one defeat — the game's own enemy")
+	assert_eq(GameLoop2.stack_size(), 1, "and the escort is still standing")
+	assert_eq(int(GameLoop2.stack[0]["instance"]), escort)
+	assert_eq(GameLoop2.current_escort, 0,
+		"but it is an ordinary follower now, not this game's escort")
+
+# A BOSS round spawns solo — the tier change is the step up on its own (§7.1).
+func test_a_boss_spawns_without_an_escort() -> void:
+	GameLoop2.choose_game(_enemy(3, true))
+	assert_eq(GameLoop2.stack_size(), 1, "the boss stands alone")
+	assert_eq(GameLoop2.current_escort, 0)
+	assert_null(GameLoop2.escort_enemy())
+
+# Superseding the game takes the PAIR off, not just the enemy. Otherwise every
+# Scramble charge would be a way to buy a body.
+func test_superseding_a_game_takes_its_escort_off_with_it() -> void:
+	GameLoop2.choose_game(_enemy(2))
+	var first_escort: int = GameLoop2.current_escort
+	GameLoop2.choose_game(_enemy(2))
+	assert_eq(GameLoop2.stack_size(), 2, "still one game's worth of bodies")
+	assert_true(_entry(first_escort).is_empty(), "the superseded escort left with its enemy")
+	assert_ne(GameLoop2.current_escort, first_escort, "a fresh one arrived with the new game")
+
+func test_scramble_rerolls_the_escort_rather_than_stacking_them() -> void:
+	GameState.scramble = 3
+	GameLoop2.choose_game(_enemy(2))
+	GameLoop2.scramble()
+	GameLoop2.scramble()
+	assert_eq(GameLoop2.stack_size(), 2,
+		"three games' worth of scrambling still leaves one enemy and one escort")
+
+# Once the game is REPORTED the escort is an ordinary follower, so the next game
+# may not reach back and supersede it.
+func test_a_reported_games_escort_survives_the_next_choice() -> void:
+	GameLoop2.choose_game(_enemy(2))
+	var escort: int = GameLoop2.current_escort
+	GameLoop2.beat_game(true)                 # its enemy dies, the escort stays
+	GameLoop2.choose_game(_enemy(2))
+	assert_false(_entry(escort).is_empty(), "the follower is still on the board")
+	assert_eq(GameLoop2.stack_size(), 3, "old follower + the new game's pair")
+
+# An escort bombed off before its game is reported must not leave a handle behind
+# for the next supersede to chase.
+func test_bombing_the_escort_clears_the_handle_it_was_held_by() -> void:
+	GameState.bombs = 1
+	GameLoop2.choose_game(_enemy(2))
+	GameLoop2.bomb(GameLoop2.current_escort)
+	assert_eq(GameLoop2.current_escort, 0, "nothing to reach back for")
+	assert_eq(GameLoop2.stack_size(), 1)
+
+# The pairing is what the save has to carry: a Scramble taken after a reload must
+# still supersede both bodies.
+#
+# Played with a REAL enemy off the roster rather than the synthetic one the rest
+# of this file uses: a save stores enemies by id and drops any the catalog does
+# not know (_deserialize_entry), so a synthetic body does not survive the trip and
+# there would be no game in play on the other side to scramble.
+func test_the_escort_pairing_survives_a_save_round_trip() -> void:
+	GameLoop2.choose_game(Data.all_goal_enemies()[0])
+	var escort: int = GameLoop2.current_escort
+	var blob: Dictionary = GameLoop2.serialize()
+	GameLoop2.reset()
+	GameLoop2.restore(blob)
+	assert_eq(GameLoop2.current_escort, escort, "the same body is still the escort")
+	GameState.scramble = 1
+	GameLoop2.scramble()
+	assert_eq(GameLoop2.stack_size(), 2, "and scrambling still rerolls the pair")
+
+# The escort is another enemy that could have been waiting THERE: same pool, same
+# type + tier filter as the game's own roll.
+func test_the_escort_is_rolled_from_the_games_own_pool() -> void:
+	for _i in range(12):
+		var escort: GoalEnemyData = GameLoop2.roll_escort(&"action",
+			GoalEnemyData.Difficulty.LOW)
+		assert_not_null(escort)
+		assert_eq(escort.game_type, &"action", "the game's type")
+		assert_eq(escort.tier_index(), GoalEnemyData.Difficulty.LOW, "the run's tier")
+
+# Two copies of one body would read as a duplicated row on the report checklist,
+# so the roll prefers anything else in the bucket.
+func test_the_escort_avoids_being_a_copy_of_the_games_own_enemy() -> void:
+	var pool: Array = Data.all_goal_enemies()
+	var mate: GoalEnemyData = null
+	for e in pool:
+		if e is GoalEnemyData and e.game_type == &"action" \
+				and e.tier_index() == GoalEnemyData.Difficulty.LOW:
+			mate = e
+			break
+	assert_not_null(mate, "the roster has an Action/Low enemy to test against")
+	for _i in range(12):
+		assert_ne(GameLoop2.roll_escort(&"action", GoalEnemyData.Difficulty.LOW, mate),
+			mate, "the escort is not a second copy of what it spawned beside")
+
+func test_failed_enemy_does_not_attack_the_game_it_stacks() -> void:
+	_choose_solo(_enemy(2))
 	GameLoop2.beat_game(false)
 	assert_eq(GameState.hp, 10,
 		"the enemy that spawned this game is still at the back — it cannot reach you yet")
@@ -160,7 +298,7 @@ func test_failed_enemy_does_not_attack_the_game_it_stacks() -> void:
 # BEFORE the advance, so an enemy that just stepped into the front holds fire that
 # game and strikes on the next.
 func test_stacked_enemy_marches_forward_then_attacks() -> void:
-	var a: int = GameLoop2.choose_game(_enemy(2))
+	var a: int = _choose_solo(_enemy(2))
 	assert_eq(_col_of(a), GameLoop2.spawn_col(), "spawns at the back")
 	GameLoop2.beat_game(false)                       # its own game: it walks with the rest
 	assert_eq(_col_of(a), GameLoop2.spawn_col() - 1,
@@ -178,7 +316,7 @@ func test_stacked_enemy_marches_forward_then_attacks() -> void:
 # --- grid: advance / stall / overflow (§grid) ----------------------------
 
 func test_enemy_closes_one_column_per_game() -> void:
-	var a: int = GameLoop2.choose_game(_enemy(1))
+	var a: int = _choose_solo(_enemy(1))
 	assert_eq(_col_of(a), GameLoop2.spawn_col(), "spawns at the back column")
 	for step in range(1, GameLoop2.spawn_col()):
 		_tick()
@@ -377,7 +515,7 @@ func test_any_cell_in_the_front_column_counts_as_the_front_line() -> void:
 # that takes the hit — exactly where a selection grant would have put them.
 
 func test_shields_absorb_the_front_line_before_hp() -> void:
-	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
+	var a: int = _choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
 	_march_to_front(a)
 	GameState.shields = 3
 	_tick()                                                        # 2 dmg -> shields
@@ -387,7 +525,7 @@ func test_shields_absorb_the_front_line_before_hp() -> void:
 	assert_eq(int(GameLoop2.last_result["shields_expired"]), 1, "the leftover is reported too")
 
 func test_shield_overflow_hits_hp() -> void:
-	var a: int = GameLoop2.choose_game(_enemy(3)) ; GameLoop2.beat_game(false)  # spawn col
+	var a: int = _choose_solo(_enemy(3)) ; GameLoop2.beat_game(false)  # spawn col
 	_march_to_front(a)
 	GameState.shields = 1
 	_tick()                                                        # 3 dmg: 1 shield, 2 hp
@@ -395,7 +533,7 @@ func test_shield_overflow_hits_hp() -> void:
 	assert_eq(GameState.hp, 8)
 
 func test_unspent_shields_do_not_carry_into_the_next_game() -> void:
-	GameLoop2.choose_game(_enemy(1))
+	_choose_solo(_enemy(1))
 	GameState.shields = 4
 	GameLoop2.beat_game(true)          # nothing on the stack yet -> nothing to absorb
 	assert_eq(GameState.shields, 0, "the game they belonged to is over")
@@ -429,7 +567,7 @@ func test_grant_selection_shields_adds_and_announces() -> void:
 # --- the attempt tracker (§3.2) -------------------------------------------
 
 func test_each_attempt_spends_a_shield_then_health() -> void:
-	GameLoop2.choose_game(_enemy(1))
+	_choose_solo(_enemy(1))
 	GameState.shields = 2
 	assert_eq(GameLoop2.log_attempt(), "shield", "a lost run spends a shield first")
 	assert_eq(GameState.shields, 1)
@@ -442,7 +580,7 @@ func test_each_attempt_spends_a_shield_then_health() -> void:
 	assert_eq(GameLoop2.attempts_on_shields(), 2, "two of them were paid with shields")
 
 func test_attempts_can_kill_the_run() -> void:
-	GameLoop2.choose_game(_enemy(1))
+	_choose_solo(_enemy(1))
 	GameState.shields = 0
 	GameState.hp = 2
 	watch_signals(GameLoop2)
@@ -455,7 +593,7 @@ func test_attempts_can_kill_the_run() -> void:
 	assert_eq(GameLoop2.log_attempt(), "", "and no further tries are logged")
 
 func test_undo_attempt_refunds_exactly_what_it_spent() -> void:
-	GameLoop2.choose_game(_enemy(1))
+	_choose_solo(_enemy(1))
 	GameState.shields = 1
 	GameLoop2.log_attempt()                       # spends the shield
 	GameLoop2.log_attempt()                       # spends Health
@@ -469,14 +607,14 @@ func test_undo_attempt_refunds_exactly_what_it_spent() -> void:
 	assert_eq(GameLoop2.undo_attempt(), "", "nothing left to take back")
 
 func test_attempts_are_per_game() -> void:
-	GameLoop2.choose_game(_enemy(1))
+	_choose_solo(_enemy(1))
 	GameState.shields = 3
 	GameLoop2.log_attempt()
 	assert_eq(GameLoop2.attempts(), 1)
 	var res: Dictionary = GameLoop2.beat_game(true)
 	assert_eq(int(res["attempts"]), 1, "the resolve reports what the game took")
 	assert_eq(GameLoop2.attempts(), 0, "and the tracker closes with the game")
-	GameLoop2.choose_game(_enemy(1))
+	_choose_solo(_enemy(1))
 	assert_eq(GameLoop2.attempts(), 0, "a new game starts on a clean tracker")
 
 func test_attempts_need_a_game_in_play() -> void:
@@ -487,9 +625,9 @@ func test_attempts_need_a_game_in_play() -> void:
 # --- old-goal fulfilment (§2) --------------------------------------------
 
 func test_fulfilling_old_goal_defeats_and_prevents_its_attack() -> void:
-	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)
+	var a: int = _choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)
 	# Next game: fulfil A's old goal while beating this game.
-	GameLoop2.choose_game(_enemy(0))
+	_choose_solo(_enemy(0))
 	var res: Dictionary = GameLoop2.beat_game(false, [a])
 	assert_eq(GameState.hp, 10, "a fulfilled enemy never lands its hit")
 	assert_eq(int(res["drops"]), 1, "fulfilment drops its item (inline)")
@@ -500,7 +638,7 @@ func test_fulfilling_old_goal_defeats_and_prevents_its_attack() -> void:
 # --- stun (§4.1 / §7.2) ---------------------------------------------------
 
 func test_stun_skips_the_next_attack_only() -> void:
-	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
+	var a: int = _choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
 	_march_to_front(a)
 	assert_eq(_col_of(a), 1)
 	GameLoop2.stun(a)                                         # freeze its first strike
@@ -513,7 +651,7 @@ func test_stun_skips_the_next_attack_only() -> void:
 
 func test_push_shoves_the_enemy_back_a_column_and_spends_a_charge() -> void:
 	GameState.push = 1
-	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
+	var a: int = _choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
 	_march_to_front(a)
 	assert_eq(_col_of(a), 1)
 	assert_true(GameLoop2.push(a), "push a front-line enemy back a column")
@@ -613,7 +751,7 @@ func test_an_unknown_direction_is_not_a_push() -> void:
 
 func test_push_defaults_to_back_for_the_callers_that_predate_directions() -> void:
 	GameState.push = 1
-	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)
+	var a: int = _choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)
 	_march_to_front(a)
 	var col: int = _col_of(a)
 	var row: int = _row_of(a)
@@ -623,7 +761,7 @@ func test_push_defaults_to_back_for_the_callers_that_predate_directions() -> voi
 
 func test_push_requires_a_charge() -> void:
 	GameState.push = 0
-	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
+	var a: int = _choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
 	_march_to_front(a)
 	assert_false(GameLoop2.push(a), "no push without a charge")
 	assert_eq(_col_of(a), 1, "an un-pushed enemy holds its ground")
@@ -635,7 +773,7 @@ func test_push_requires_a_charge() -> void:
 func test_bomb_removes_normal_enemy_without_drop() -> void:
 	var chests_before: int = GameState.pending_chests
 	GameState.bombs = 1
-	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)
+	var a: int = _choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)
 	assert_true(GameLoop2.bomb(a))
 	assert_eq(GameLoop2.stack_size(), 0)
 	assert_eq(GameState.bombs, 0, "bomb is spent")
@@ -645,7 +783,7 @@ func test_bomb_cannot_kill_a_boss() -> void:
 	# A boss IS a legal target (that's how Sticky Bombs reaches one) — it just
 	# takes none of the damage, so the charge goes and the boss stays.
 	GameState.bombs = 1
-	var b: int = GameLoop2.choose_game(_enemy(3, true)) ; GameLoop2.beat_game(false)
+	var b: int = _choose_solo(_enemy(3, true)) ; GameLoop2.beat_game(false)
 	assert_true(GameLoop2.bomb(b), "a boss can be bombed")
 	assert_eq(GameLoop2.stack_size(), 1, "the boss shrugs off the blast")
 	assert_eq(GameState.bombs, 0, "the charge is spent either way")
@@ -656,7 +794,7 @@ func test_bomb_only_deals_one_damage() -> void:
 	GameState.bombs = 2
 	var e: GoalEnemyData = _enemy(2)
 	e.health = 2
-	var a: int = GameLoop2.choose_game(e) ; GameLoop2.beat_game(false)
+	var a: int = _choose_solo(e) ; GameLoop2.beat_game(false)
 	assert_true(GameLoop2.bomb(a))
 	assert_eq(GameLoop2.stack_size(), 1, "a two-Health enemy survives one bomb")
 	assert_true(GameLoop2.bomb(a))
@@ -664,7 +802,7 @@ func test_bomb_only_deals_one_damage() -> void:
 
 func test_bomb_requires_a_charge() -> void:
 	GameState.bombs = 0
-	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)
+	var a: int = _choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)
 	assert_false(GameLoop2.bomb(a))
 	assert_eq(GameLoop2.stack_size(), 1)
 
@@ -673,7 +811,7 @@ func test_bomb_fires_the_bomb_used_trigger_once() -> void:
 	# once per body the blast touched.
 	watch_signals(TriggerBus)
 	GameState.bombs = 1
-	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)
+	var a: int = _choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)
 	assert_true(GameLoop2.bomb(a))
 	assert_signal_emit_count(TriggerBus, "bomb_used", 1)
 
@@ -682,7 +820,7 @@ func test_bomb_fires_the_bomb_used_trigger_once() -> void:
 func test_sticky_bombs_stun_what_the_blast_cannot_kill() -> void:
 	GameState.add_item(Data.get_item2(&"sticky_bombs"))
 	GameState.bombs = 1
-	var b: int = GameLoop2.choose_game(_enemy(3, true)) ; GameLoop2.beat_game(false)
+	var b: int = _choose_solo(_enemy(3, true)) ; GameLoop2.beat_game(false)
 	assert_true(GameLoop2.bomb(b))
 	assert_eq(int(_entry(b).get("stun", 0)), 1,
 		"the boss survives the blast and is stunned by it")
@@ -720,13 +858,13 @@ func test_a_plain_bomb_only_hits_its_target() -> void:
 
 func test_barricade_banks_unspent_shields() -> void:
 	GameState.shields = 4
-	var _a: int = GameLoop2.choose_game(_enemy(1))
+	var _a: int = _choose_solo(_enemy(1))
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.shields, 0, "shields normally expire with the game")
 	GameLoop2.reset()
 	GameState.add_item(Data.get_item2(&"barricade"))
 	GameState.shields = 4
-	var _b: int = GameLoop2.choose_game(_enemy(1))
+	var _b: int = _choose_solo(_enemy(1))
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.shields, 4, "Barricade rolls them into the next game")
 
@@ -761,19 +899,19 @@ func test_losing_mine_r_construction_takes_the_column_back() -> void:
 
 func test_a_grown_board_spawns_enemies_a_column_further_out() -> void:
 	GameState.add_item(_minor())
-	var a: int = GameLoop2.choose_game(_enemy(1))
+	var a: int = _choose_solo(_enemy(1))
 	assert_eq(_col_of(a), 5, "the new back column is where it walks on")
 
 func test_growing_the_board_buys_a_game_of_distance() -> void:
 	# The enemy already standing on the board keeps its column — the board grew
 	# behind it, it did not get pushed back — so the gain is for what spawns next.
-	var a: int = GameLoop2.choose_game(_enemy(1))
+	var a: int = _choose_solo(_enemy(1))
 	assert_eq(_col_of(a), 4)
 	GameLoop2.beat_game(false)      # a is an ordinary follower now, one column in
 	assert_eq(_col_of(a), 3)
 	GameState.add_item(_minor())
 	assert_eq(_col_of(a), 3, "the bodies on the board stay where they stand")
-	var b: int = GameLoop2.choose_game(_enemy(1))
+	var b: int = _choose_solo(_enemy(1))
 	assert_eq(_col_of(b), 5, "the newcomer starts a column further out")
 
 func test_the_queue_walks_onto_the_room_the_growth_made() -> void:
@@ -802,7 +940,7 @@ func test_shrinking_the_board_re_seats_a_body_it_no_longer_holds() -> void:
 func test_lethal_hit_ends_the_run() -> void:
 	watch_signals(GameLoop2)
 	GameState.hp = 2
-	var a: int = GameLoop2.choose_game(_enemy(3)) ; GameLoop2.beat_game(false)  # spawn col
+	var a: int = _choose_solo(_enemy(3)) ; GameLoop2.beat_game(false)  # spawn col
 	_march_to_front(a)
 	_tick()                                                       # 3 dmg -> dead
 	assert_eq(GameState.hp, 0)
@@ -812,19 +950,19 @@ func test_lethal_hit_ends_the_run() -> void:
 
 func test_no_resolution_after_run_over() -> void:
 	GameState.hp = 1
-	var a: int = GameLoop2.choose_game(_enemy(5)) ; GameLoop2.beat_game(false)  # spawn col
+	var a: int = _choose_solo(_enemy(5)) ; GameLoop2.beat_game(false)  # spawn col
 	_march_to_front(a)
 	_tick()                                                       # lethal
 	assert_true(GameLoop2.run_over)
 	var beaten_before: int = GameLoop2.games_beaten
-	GameLoop2.choose_game(_enemy(5)) ; GameLoop2.beat_game(false)
+	_choose_solo(_enemy(5)) ; GameLoop2.beat_game(false)
 	assert_eq(GameLoop2.games_beaten, beaten_before, "beat_game is a no-op after loss")
 
 # --- win ------------------------------------------------------------------
 
 func test_clear_amulet_wins() -> void:
 	watch_signals(GameLoop2)
-	GameLoop2.choose_game(_enemy(1))
+	_choose_solo(_enemy(1))
 	GameLoop2.clear_amulet()
 	assert_true(GameLoop2.won)
 	assert_true(GameLoop2.run_over)
@@ -851,7 +989,7 @@ func test_spawn_to_stack_adds_a_following_enemy() -> void:
 func test_strength_raises_a_bodys_damage_for_good() -> void:
 	# The buff Aggravate Monsters hands out is a STATUS now, so it rides the body
 	# and — unlike the run-wide bonus it replaced — never expires.
-	var a: int = GameLoop2.choose_game(_enemy(1)) ; GameLoop2.beat_game(false)  # A(1) spawn col
+	var a: int = _choose_solo(_enemy(1)) ; GameLoop2.beat_game(false)  # A(1) spawn col
 	_march_to_front(a)
 	GameLoop2.apply_status_to(a, &"strength", 2)                    # +2 on every hit
 	assert_eq(GameLoop2.stacked_damage_per_game(), 3, "1 base + 2 Strength at the front")
@@ -865,8 +1003,8 @@ func test_strength_raises_a_bodys_damage_for_good() -> void:
 # Only the front column threatens damage next game; enemies still closing in do
 # not count toward the "front line" preview.
 func test_stacked_damage_per_game_sums_the_front_column() -> void:
-	var a: int = GameLoop2.choose_game(_enemy(2)) ; GameLoop2.beat_game(false)  # A spawn col
-	var b: int = GameLoop2.choose_game(_enemy(3)) ; GameLoop2.beat_game(false)  # A closes, B spawns
+	var a: int = _choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)  # A spawn col
+	var b: int = _choose_solo(_enemy(3)) ; GameLoop2.beat_game(false)  # A closes, B spawns
 	_march_to_front(a)                                             # A at the front, B a column back
 	assert_eq(GameLoop2.stacked_damage_per_game(), 2, "only A is at the front")
 	_march_to_front(b)                                             # B joins the front line
@@ -1023,7 +1161,7 @@ func test_start_run_applies_mina_verbs() -> void:
 func test_scramble_rerolls_current_and_spends_charge() -> void:
 	GameState.scramble = 1
 	var slime: GoalEnemyData = Data.get_goal_enemy(&"spike_slime_l")  # deckbuilder/low
-	GameLoop2.choose_game(slime)
+	_choose_solo(slime)
 	var fresh: GoalEnemyData = GameLoop2.scramble()
 	assert_not_null(fresh, "scramble returns a new enemy")
 	assert_eq(String(fresh.game_type), "deckbuilder", "rerolled within the same type")
@@ -1033,7 +1171,7 @@ func test_scramble_rerolls_current_and_spends_charge() -> void:
 
 func test_scramble_requires_current_and_charge() -> void:
 	GameState.scramble = 0
-	GameLoop2.choose_game(_enemy(2))
+	_choose_solo(_enemy(2))
 	assert_null(GameLoop2.scramble(), "no charge -> no reroll")
 	GameState.scramble = 1
 	GameLoop2.current = {}
@@ -1119,7 +1257,7 @@ func test_roll_boss_reaches_insane_tier() -> void:
 func test_real_boss_takes_no_bomb_damage() -> void:
 	GameState.bombs = 3
 	var b: GoalEnemyData = GameLoop2.roll_boss(&"", GoalEnemyData.Difficulty.HIGH)
-	var inst: int = GameLoop2.choose_game(b)
+	var inst: int = _choose_solo(b)
 	GameLoop2.beat_game(false)   # boss stacks
 	assert_true(GameLoop2.bomb(inst), "a real boss is a legal bomb target")
 	assert_eq(GameState.bombs, 2, "the charge is spent")
@@ -1150,7 +1288,7 @@ func _stand_at_hops(hops: int) -> bool:
 # Marches at the FAR pace so the setup itself doesn't depend on the rung under
 # test — the caller moves the run afterwards.
 func _stacked_at_front(dmg: int) -> int:
-	var inst: int = GameLoop2.choose_game(_enemy(dmg))   # spawns at the back column
+	var inst: int = _choose_solo(_enemy(dmg))   # spawns at the back column
 	GameLoop2.beat_game(false)      # its own game — after this it is a follower
 	_march_to_front(inst)
 	return inst
@@ -1222,7 +1360,7 @@ func test_the_board_is_snapshotted_once_per_turn() -> void:
 		return
 	# One game is enough to see all three turns now: the enemy stands on the back
 	# column the moment its game is chosen, and walks across the board during it.
-	var inst: int = GameLoop2.choose_game(_enemy(1))
+	var inst: int = _choose_solo(_enemy(1))
 	var res: Dictionary = GameLoop2.beat_game(false)
 	var frames: Array = res["turn_frames"]
 	assert_eq(frames.size(), 3, "one frame per turn, so the view can replay them")
@@ -1238,7 +1376,7 @@ func test_a_walk_and_a_strike_can_both_fit_in_one_game() -> void:
 	# line still reaches it and swings before the game is out.
 	if not _stand_at_hops(0):
 		return
-	var inst: int = GameLoop2.choose_game(_enemy(2))
+	var inst: int = _choose_solo(_enemy(2))
 	GameLoop2.beat_game(false)              # stacks at the back column
 	_tick()                                 # three turns of walking -> the front
 	assert_eq(_col_of(inst), 1, "three turns brought it all the way in")
@@ -1274,7 +1412,7 @@ func test_fulfilling_a_goal_holds_its_fire_for_every_turn() -> void:
 	# (not) attack — the only case where "one turn or all of them" is visible.
 	var tough: GoalEnemyData = _enemy(3)
 	tough.health = 2
-	var inst: int = GameLoop2.choose_game(tough)
+	var inst: int = _choose_solo(tough)
 	GameLoop2.beat_game(false)
 	_march_to_front(inst)
 	GameState.hp = 10
@@ -1317,7 +1455,7 @@ func test_the_damage_promised_is_the_damage_taken() -> void:
 		"the HUD's number for the coming game is what actually lands")
 
 func test_games_until_strike_shortens_as_the_pace_rises() -> void:
-	var inst: int = GameLoop2.choose_game(_enemy(1))
+	var inst: int = _choose_solo(_enemy(1))
 	GameLoop2.beat_game(false)                 # stacks at the back column
 	var entry: Dictionary = _entry(inst)
 	entry["col"] = 4                           # three columns of walking to do
@@ -1390,7 +1528,7 @@ func test_growing_the_board_walks_the_overflow_queue_on() -> void:
 # below is really one property: there is exactly one record of that enemy.
 
 func test_the_current_enemy_and_its_body_are_one_record() -> void:
-	var inst: int = GameLoop2.choose_game(_enemy(1))
+	var inst: int = _choose_solo(_enemy(1))
 	GameLoop2.apply_status_to(inst, _any_status(), 1)
 	assert_eq(int(GameLoop2.current.get("instance", 0)), inst)
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0]).size(),
@@ -1398,7 +1536,7 @@ func test_the_current_enemy_and_its_body_are_one_record() -> void:
 		"a status put on the current enemy is on the body standing there")
 
 func test_beating_its_goal_takes_the_body_off_the_board() -> void:
-	GameLoop2.choose_game(_enemy(1))
+	_choose_solo(_enemy(1))
 	GameLoop2.beat_game(true)
 	assert_eq(GameLoop2.stack_size(), 0, "the defeated enemy leaves the field")
 	assert_false(GameLoop2.has_current(), "and the game is no longer in play")
@@ -1407,7 +1545,7 @@ func test_removing_the_body_clears_the_game_in_play() -> void:
 	# Every removal goes through one door, because `current` points at one of these
 	# entries: a body bombed or despawned out from under the report step would
 	# otherwise leave has_current() answering for an enemy that is not there.
-	var inst: int = GameLoop2.choose_game(_enemy(1))
+	var inst: int = _choose_solo(_enemy(1))
 	assert_true(GameLoop2.despawn(inst), "the body comes off the board")
 	assert_false(GameLoop2.has_current(),
 		"and the game in play goes with it rather than pointing at nothing")
@@ -1418,7 +1556,7 @@ func test_the_game_in_play_survives_a_save_round_trip_once() -> void:
 	var real: GoalEnemyData = _catalog_enemy()
 	if real == null:
 		return
-	var inst: int = GameLoop2.choose_game(real)
+	var inst: int = _choose_solo(real)
 	var blob: Dictionary = GameLoop2.serialize()
 	GameLoop2.restore(blob)
 	assert_eq(GameLoop2.stack_size(), 1, "one body, not two copies of it")
@@ -1434,7 +1572,7 @@ func test_a_save_from_before_the_enemy_stood_on_the_board_still_loads() -> void:
 	var real: GoalEnemyData = _catalog_enemy()
 	if real == null:
 		return
-	GameLoop2.choose_game(real)
+	_choose_solo(real)
 	var blob: Dictionary = GameLoop2.serialize()
 	blob.erase("current_instance")
 	blob["stack"] = []
@@ -1448,7 +1586,7 @@ func test_a_status_aimed_at_everything_lands_once_per_body() -> void:
 	var sid: StringName = _any_status()
 	if sid == &"":
 		return
-	var inst: int = GameLoop2.choose_game(_enemy(1))
+	var inst: int = _choose_solo(_enemy(1))
 	var n: int = GameLoop2.apply_enemy_status(sid, 1, "all")
 	assert_eq(n, 1, "one body on the board, one application")
 	assert_eq(int((GameLoop2.current.get("statuses", {}) as Dictionary).get(sid, 0)), 1,
