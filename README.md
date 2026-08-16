@@ -61,7 +61,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │
 ├── data/                  # Game content as Godot Resources (.tres) — the source
 │   │                      # of truth the game loads at startup (see Data.gd)
-│   ├── games/            #   GameData — the ~849 real games that form the map
+│   ├── games/            #   GameData — the ~852 real games that form the map
 │   ├── atlas_layout*.tres#   BAKED star positions for the Atlas, one sky per game
 │   │                      #   filter: all / _owned / _downloaded (tools/bake_atlas.py)
 │   ├── items2.0/         #   ItemData — the relics that drop from a defeated enemy
@@ -839,8 +839,8 @@ cross-run tier list. What's still ahead:
 - **Tags and path requirements (§6.2)** — widen the tag vocabulary on `GameData`
   and let an edge demand a type or tag ("this route needs a Deckbuilder clear"),
   so routing becomes a collection puzzle rather than a shortest path.
-- **Content depth** — the catalogs are thin next to the 846 games: 45 goal-enemies,
-  37 bosses, 25 items (3 of them Boss relics, 1 an Event relic), 6 scrolls,
+- **Content depth** — the catalogs are thin next to the 852 games: 48 goal-enemies,
+  38 bosses, 25 items (3 of them Boss relics, 1 an Event relic), 6 scrolls,
   11 characters, 10 events, 3 curses. More of each (and more goals per type) is
   the cheapest way to add run variety; all of it comes from the sheet.
 - **The open design decisions (§7.1 / §12)** — the boss damage band above the

@@ -77,10 +77,10 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 25 scripts, ~1010 t
   `test/test_collection.gd` now guards against it.
 - **Game covers load lazily.** `GameData.cover_path` holds the path and
   `GameData.cover_image` loads it on first read. Do **not** turn `cover_image`
-  back into an `@export var ... : Texture2D` — `Data` loads all 845 games at
+  back into an `@export var ... : Texture2D` — `Data` loads all 852 games at
   startup and an ExtResource resolves eagerly, which meant decoding ~206 MB of
   PNG on every boot and every headless test run (~5.2s of a ~5.7s startup).
-- **`data/games/` has 845 files.** Never glob or read it wholesale to answer a
+- **`data/games/` has 852 files.** Never glob or read it wholesale to answer a
   question; query it with `grep` for the field you care about.
 - **The repo tracks source only.** `.godot/`, `*.import`, `*.uid` and
   `export_presets.cfg` are gitignored and regenerate. They show up in local file
