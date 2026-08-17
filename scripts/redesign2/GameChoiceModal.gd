@@ -238,11 +238,14 @@ static func connection_tip(game: GameData, counts: Dictionary) -> String:
 		int(counts.get("total", 0)), name_text,
 		int(counts.get("events", 0)), int(counts.get("shops", 0))]
 
+# The room the popup has: the screen minus the run's pinned header bar, which is
+# drawn OVER this modal and would otherwise take the popup's title row with it
+# (ModalScaffold.reserved_top).
 func _panel_size() -> Vector2:
-	var view: Vector2 = get_viewport_rect().size
+	var free: Vector2 = ModalScaffold.free_rect(self).size
 	return Vector2(
-		minf(PANEL_SIZE.x, maxf(560.0, view.x - VIEW_MARGIN.x)),
-		minf(PANEL_SIZE.y, maxf(420.0, view.y - VIEW_MARGIN.y)))
+		minf(PANEL_SIZE.x, maxf(560.0, free.x - VIEW_MARGIN.x)),
+		minf(PANEL_SIZE.y, maxf(420.0, free.y - VIEW_MARGIN.y)))
 
 func _accent() -> Color:
 	var game: GameData = _choice.get("game")
@@ -598,7 +601,6 @@ func _ladder_cfg() -> Dictionary:
 		"choice_ids": {},
 		"zoom": _zoom,
 		"preview": true,
-		"hide_amulet": false,
 		"on_node": func(node_id: StringName, depth: int): open_node_card(node_id, depth),
 	}
 
@@ -641,7 +643,7 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 	scroll.add_child(inset)
 	var box := RouteLadder.node_card_body({
 		"id": id,
-		"name": RouteLadder.node_name(id, amulet, false),
+		"name": RouteLadder.node_name(id),
 		"role": _node_role_text(id, depth),
 		"facts": facts,
 		"actions": [],

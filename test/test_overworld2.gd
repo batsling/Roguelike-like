@@ -167,11 +167,15 @@ func test_defeat_drop_opens_a_take_it_or_leave_it_popup() -> void:
 	assert_eq(_ui._items_box.get_child_count(), GameState.inventory.size(),
 		"and the pack strip above the board holds a token for it")
 
-# …and it asks in the MIDDLE of the screen. The modal is built with a width and
-# no height so it can size to whatever the relic needs, and a panel centred while
-# it was still empty put its TOP at the middle of the page: everything it then
-# grew hung below that, so the card the player is being asked about opened against
-# the bottom edge with its art off it.
+# …and it asks in the MIDDLE of the room it has. The modal is built with a width
+# and no height so it can size to whatever the relic needs, and a panel centred
+# while it was still empty put its TOP at the middle of the page: everything it
+# then grew hung below that, so the card the player is being asked about opened
+# against the bottom edge with its art off it.
+#
+# "The room it has" is the screen MINUS the run's pinned header bar
+# (ModalScaffold.reserved_top): the bar is opaque and drawn over every modal, so a
+# modal centred on the whole screen loses its top row to it.
 func test_the_drop_asks_in_the_middle_of_the_screen() -> void:
 	_ui.pick(0)
 	_ui.report(true)
@@ -188,9 +192,13 @@ func test_the_drop_asks_in_the_middle_of_the_screen() -> void:
 	assert_not_null(panel, "the question is on a panel")
 	assert_gt(panel.size.y, 0.0, "which has grown to fit the relic")
 	var screen: Vector2 = modal.get_viewport_rect().size
+	var bar: float = ModalScaffold.reserved_top
+	assert_gt(bar, 0.0, "the run's header bar is standing on the top of the screen")
 	var centre: Vector2 = panel.get_global_rect().get_center()
-	assert_almost_eq(centre.y, screen.y * 0.5, 2.0,
-		"the panel's MIDDLE sits on the middle of the screen, not its top edge")
+	assert_almost_eq(centre.y, bar + (screen.y - bar) * 0.5, 2.0,
+		"the panel's MIDDLE sits on the middle of the room under the header bar")
+	assert_gt(panel.get_global_rect().position.y, bar - 1.0,
+		"and its top edge clears the bar entirely")
 	assert_almost_eq(centre.x, screen.x * 0.5, 2.0, "and across, too")
 	modal.leave()
 
@@ -629,6 +637,33 @@ func test_the_hover_line_previews_the_games_grant() -> void:
 	_ui._clear_hover_grant()                      # mouse left the card
 	assert_false(_ui._preview.text.contains("tries"),
 		"it can't advertise a game you're not pointing at: %s" % _ui._preview.text)
+
+# …and the PICTURE of it, beside the line. A player recognises a body by its art
+# long before they read its name, and for a while the hover had no art at all.
+func test_the_hover_shows_the_enemys_portrait() -> void:
+	var enemy: GoalEnemyData = _ui._choices[0]["enemy"]
+	if enemy == null or enemy.image == null:
+		return                                    # a free game has nothing to draw
+	_ui._show_preview(0)
+	assert_true(_ui._preview_art.visible, "hovering a card shows what is waiting there")
+	assert_eq(_ui._preview_art.texture, enemy.image, "and it is that card's own enemy")
+	_ui._clear_hover_grant()
+	assert_false(_ui._preview_art.visible,
+		"the portrait goes with the hover — it can't show a game you left")
+
+# The Runic Dome hides what is coming, and a portrait gives that away far more
+# completely than a name does.
+func test_the_hover_portrait_respects_the_dome() -> void:
+	var enemy: GoalEnemyData = _ui._choices[0]["enemy"]
+	if enemy == null or enemy.image == null:
+		return
+	var dome := ItemData.new()
+	dome.id = &"__test_dome__"
+	dome.hide_spawns = true
+	GameState.inventory.append(dome)
+	_ui._show_preview(0)
+	assert_false(_ui._preview_art.visible, "the Dome hides the picture as well as the name")
+	GameState.inventory.erase(dome)
 
 func test_the_popup_shows_the_tries_the_game_grants() -> void:
 	# The tries a game hands you used to be printed on its card. The card is the
@@ -2051,6 +2086,31 @@ func test_a_card_that_walks_away_reads_as_a_detour() -> void:
 		assert_true(String(_ui.route_note({"slot": level, "amulet": false})["text"]).contains("Sideways"),
 			"and standing still is labelled that")
 
+# The popup opens UNDER the run's header bar, not behind it. The bar is opaque
+# and drawn over every modal the run raises; the popup grew past its nominal
+# 700px on a tall route, was centred on the whole viewport, and had its title —
+# the name of the game being decided about — sliced off by the bar.
+func test_the_popup_opens_clear_of_the_header_bar() -> void:
+	_ui._render_choices()
+	var modal = _ui.open_choice(0)
+	assert_not_null(modal, "the card opens")
+	if modal == null:
+		return
+	await wait_frames(2)
+	var panel: Control = null
+	for child in modal.get_children():
+		if child is PanelContainer:
+			panel = child
+			break
+	assert_not_null(panel, "the popup is on a panel")
+	if panel == null:
+		return
+	var bar: float = ModalScaffold.reserved_top
+	assert_gt(bar, 0.0, "the run's header bar is standing on the top of the screen")
+	assert_gte(panel.get_global_rect().position.y, bar - 1.0,
+		"and the panel starts below it, title and all")
+	_ui._choice_modal._close()
+
 func test_the_popup_states_where_the_game_puts_you() -> void:
 	# The route badge used to ride above every cover. It heads the popup now, over
 	# the map that backs the claim up.
@@ -2100,23 +2160,40 @@ func test_the_card_map_is_the_optimal_path_from_that_game() -> void:
 	assert_eq(modal.shortest_distance(), _ui.steps_to_amulet(slot),
 		"its depth is that game's own distance to the Amulet")
 
-func test_the_start_picker_maps_each_start_without_naming_the_amulet() -> void:
+func test_the_start_picker_names_the_amulet_everywhere_it_appears() -> void:
 	_ui.start_run()                       # back to the choose-your-start panel
 	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT)
 	_ui._render_start_choices()
 	var card: Node = _ui._choices_row.get_child(0)
 	assert_not_null(_map_button(card), "a start card offers its map too")
+	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
+	assert_not_null(amulet)
+	if amulet == null:
+		return
+
+	# On the heading over the whole panel...
+	assert_true(_ui._select_head.text.contains(amulet.display_name),
+		"the picker's heading names the Amulet: %s" % _ui._select_head.text)
+	# ...on each card's distance line...
+	assert_true(_card_text(card).contains(amulet.display_name),
+		"and so does the card's distance line")
+	# ...and on the map the card opens.
 	var start_id: StringName = _ui._start_options[0]["game"].id
 	var modal = _ui.preview_map(start_id)
 	assert_not_null(modal)
 	if modal == null:
 		return
-	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
-	assert_eq(modal.node_name(GameState.amulet_game_id), "The Amulet — ???",
-		"the destination is drawn, never named — that's the run's one secret")
-	assert_ne(modal.node_name(start_id), "The Amulet — ???")
-	if amulet != null:
-		assert_ne(modal.node_name(GameState.amulet_game_id), amulet.display_name)
+	assert_eq(modal.node_name(GameState.amulet_game_id), amulet.display_name,
+		"the destination is named, not drawn as a blank")
+
+# Every label on a card, joined — the distance line is a plain Label among
+# several, and which child it is is layout, not behaviour.
+func _card_text(card: Node) -> String:
+	var out: String = ""
+	for child in card.get_children():
+		if child is Label:
+			out += (child as Label).text + "\n"
+	return out
 
 # ---------------------------------------------------------------------------
 # The board gets to finish
@@ -2463,8 +2540,50 @@ func test_the_ladder_window_can_be_moved_but_not_lost() -> void:
 	modal._move_panel(before + Vector2(140, 70))
 	assert_ne(modal.panel_position(), before, "it drags")
 	modal._move_panel(Vector2(-9000, -9000))
-	assert_gte(modal.panel_position().y, 0.0, "and can't be dragged off the top…")
+	assert_gte(modal.panel_position().y, ModalScaffold.reserved_top,
+		"and can't be dragged under the header bar that is drawn over it…")
 	assert_gt(modal.panel_position().x + modal._panel.size.x, 0.0, "…or off the side")
+
+# THE WAY OFF THE CHART.
+#
+# The chart is a full-screen page whose header — the title, the search box, the
+# ✦ jump buttons and CLOSE — is its first row. The run's header bar is pinned to
+# the top of the screen on a layer above it and is opaque, so a chart drawn from
+# y=0 had that entire row eaten and no way back to the run but the Esc key.
+func test_the_chart_opens_below_the_runs_header_bar() -> void:
+	_ui.open_map()
+	var atlas: AtlasView = _chart()
+	assert_not_null(atlas)
+	if atlas == null:
+		return
+	var bar: float = ModalScaffold.reserved_top
+	assert_gt(bar, 0.0, "the run's header bar is standing on the top of the screen")
+	assert_almost_eq(atlas.position.y, bar, 0.5,
+		"so the chart starts under it rather than beneath it")
+	assert_not_null(_close_button(atlas), "and its way out is on screen")
+
+func test_the_chart_can_be_closed_back_to_the_run() -> void:
+	_ui.open_map()
+	var atlas: AtlasView = _chart()
+	if atlas == null:
+		return
+	var close: Button = _close_button(atlas)
+	assert_not_null(close, "the chart carries a way back")
+	if close == null:
+		return
+	close.pressed.emit()
+	await wait_frames(2)
+	assert_null(_chart(), "pressing it puts the run back in front")
+
+# The chart's own Close, wherever the header put it.
+func _close_button(node: Node) -> Button:
+	for child in node.get_children():
+		if child is Button and (child as Button).text.contains("Back"):
+			return child
+		var found: Button = _close_button(child)
+		if found != null:
+			return found
+	return null
 
 func test_clicking_a_game_on_the_ladder_finds_it_on_the_chart() -> void:
 	var modal = _ui.open_map()
@@ -2498,14 +2617,17 @@ func test_a_card_map_draws_that_cards_route_on_the_chart() -> void:
 		"the chart's route and the ladder are the same graph")
 	assert_eq(modal.shortest_distance(), _ui.steps_to_amulet(slot))
 
-func test_the_start_pickers_map_raises_no_chart() -> void:
-	# Before the run has a position the Amulet's identity is the one secret the
-	# picker keeps; a sky with the route drawn on it would point straight at it.
+func test_the_start_pickers_map_raises_a_chart_like_any_other() -> void:
+	# The picker used to keep the Amulet's identity back — no chart, and the
+	# destination drawn as an unnamed box — because a sky with the route on it
+	# would point straight at it. There is nothing left to point at: the Amulet is
+	# named from the first screen, so the start picker gets the whole map.
 	_ui.start_run()
 	var modal = _ui.preview_map(_ui._start_options[0]["game"].id)
-	assert_null(_chart(), "no star chart from the start picker")
-	assert_eq(modal.node_name(GameState.amulet_game_id), "The Amulet — ???",
-		"and the ladder still won't name the destination")
+	assert_not_null(_chart(), "the start picker raises the star chart too")
+	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
+	assert_eq(modal.node_name(GameState.amulet_game_id), amulet.display_name,
+		"and the ladder names the destination")
 
 # ---------------------------------------------------------------------------
 # Amulet pressure on the offering: what a card costs in PACE (§7.4)

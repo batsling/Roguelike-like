@@ -58,10 +58,6 @@ var _zoom: float = 1.0
 # trail is left off — it isn't this map's journey.
 var _preview: bool = false
 var _title: String = ""
-# The Amulet's identity is a secret before the run has a position (the start
-# picker only ever gives away the DISTANCE), so a map opened from a start card
-# draws the destination without naming it.
-var _hide_amulet: bool = false
 
 # The star chart this panel is floating over, when it was opened onto one. The
 # ladder and the sky are two views of ONE route, so they're wired together:
@@ -130,7 +126,6 @@ func _init() -> void:
 # `options` turns it into a PREVIEW of a game not yet taken — what the road ahead
 # would look like if you picked it:
 #   preview      bool       top node reads "if you go here"; no journey trail
-#   hide_amulet  bool       draw the destination without naming it (start picker)
 #   title        String     replaces the header title
 #   atlas        AtlasView  the star chart underneath, wired to the ladder
 func start(host: Node, current: StringName, amulet: StringName, choice_ids: Array = [],
@@ -138,7 +133,6 @@ func start(host: Node, current: StringName, amulet: StringName, choice_ids: Arra
 	_current = current
 	_amulet = amulet
 	_preview = bool(options.get("preview", false))
-	_hide_amulet = bool(options.get("hide_amulet", false))
 	_title = String(options.get("title", ""))
 	_atlas = options.get("atlas")
 	# The chart can re-plan the route too (its card carries the same pin button),
@@ -175,12 +169,19 @@ func map_data() -> Dictionary:
 # The pinned game, or &"" — never in the start picker, where the run has no
 # position yet and there is nothing to detour from.
 func waypoint() -> StringName:
-	if _hide_amulet:
+	if not _run_has_position():
 		return &""
 	var pin: StringName = GameState.route_waypoint
 	# A pin you have arrived at, or that turns out to be the Amulet, is not a
 	# detour any more — the road from here is just the road.
 	return &"" if (pin == _amulet or pin == _current) else pin
+
+# Whether the run is standing somewhere yet. False on the choose-your-start
+# panel, which is the one place a map is drawn before the player has a position:
+# pinning, detours and "you have already been here" all need a road behind you to
+# mean anything, and there isn't one.
+func _run_has_position() -> bool:
+	return GameState.current_game_id != &""
 
 func shortest_distance() -> int:
 	var layers: Array = map_data().get("layers", [])
@@ -227,9 +228,8 @@ func _build() -> void:
 	if _preview:
 		var note := Label.new()
 		var here: GameData = Data.get_game(_current)
-		note.text = "The shortest route to the Amulet if you take %s — every step of it, %s." % [
-			here.display_name if here != null else String(_current),
-			"destination hidden until the run begins" if _hide_amulet else "destination included"]
+		note.text = "The shortest route to the Amulet if you take %s — every step of it, destination included." % [
+			here.display_name if here != null else String(_current)]
 		note.add_theme_font_size_override("font_size", 12)
 		note.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -274,12 +274,15 @@ func _build_floating_panel() -> PanelContainer:
 	sb.shadow_size = 14
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	var view: Vector2 = get_viewport_rect().size
+	var free: Rect2 = ModalScaffold.free_rect(self)
 	var box: Vector2 = view_ceiling()
 	panel.custom_minimum_size = box
 	panel.size = box
-	# Over a chart it sits off to the left; on its own it centres.
-	panel.position = PANEL_MARGIN if _atlas != null else ((view - box) * 0.5).floor()
+	# Over a chart it sits off to the left; on its own it centres — in the room the
+	# run's pinned header bar leaves, not on the whole screen, since that bar is
+	# drawn over this window.
+	panel.position = (free.position + PANEL_MARGIN) if _atlas != null \
+		else (free.position + (free.size - box) * 0.5).floor()
 	add_child(panel)
 	return panel
 
@@ -363,10 +366,9 @@ func _build_header() -> Control:
 		# Put the whole corridor back in frame on the chart behind — the window is
 		# a second view of the same route, and it should be able to point at it.
 		tools.add_child(_zoom_button("⌖ Frame route", _frame_route))
-	elif AtlasView.load_layout() != null and not _hide_amulet:
-		# Opened without a chart under it: offer to raise one — unless this is the
-		# start picker, where a sky with the route drawn on it would point straight
-		# at the game this map is refusing to name.
+	elif AtlasView.load_layout() != null:
+		# Opened without a chart under it: offer to raise one. The start picker gets
+		# the offer too now — there is no longer a secret for the sky to give away.
 		tools.add_child(_zoom_button("✦ Star chart", _open_atlas))
 	return stack
 
@@ -456,10 +458,13 @@ func _reserved_right() -> float:
 func _move_panel(to: Vector2) -> void:
 	if _panel == null:
 		return
-	var view: Vector2 = get_viewport_rect().size
+	var free: Rect2 = ModalScaffold.free_rect(self)
+	# The title bar has to stay grabbable AND stay out from under the run's header
+	# bar, which is opaque and drawn over this window: a window dragged up to y=0
+	# lost the very handle it was dragged by.
 	_panel.position = Vector2(
-		clampf(to.x, 12.0 - _panel.size.x * 0.6, view.x - _panel.size.x * 0.4),
-		clampf(to.y, 0.0, maxf(0.0, view.y - 46.0)))
+		clampf(to.x, 12.0 - _panel.size.x * 0.6, free.size.x - _panel.size.x * 0.4),
+		clampf(to.y, free.position.y, maxf(free.position.y, free.end.y - 46.0)))
 	# The card is parked against the window, so it travels with it.
 	_place_node_card()
 
@@ -501,7 +506,6 @@ func _ladder_cfg() -> Dictionary:
 		"choice_ids": _choice_ids,
 		"zoom": _zoom,
 		"preview": _preview,
-		"hide_amulet": _hide_amulet,
 		"on_node": func(id: StringName, depth: int): open_node_card(id, depth),
 	}
 
@@ -512,11 +516,11 @@ func show_on_chart(id: StringName) -> bool:
 		return false
 	return _atlas.focus_game(id)
 
-# What a node is called on this map. Everything is named as itself except the
-# Amulet in a start-picker preview, where naming it would give away the one thing
-# the choose-your-start panel keeps back.
+# What a node is called on this map. Every rung is named as itself, the Amulet
+# included — the start picker used to draw the destination unnamed and no longer
+# does.
 func node_name(id: StringName) -> String:
-	return RouteLadder.node_name(id, _amulet, _hide_amulet)
+	return RouteLadder.node_name(id)
 
 # ---------------------------------------------------------------------------
 # The node card
@@ -536,8 +540,6 @@ const CARD_GAP := 12.0
 # Public so a test can ask for exactly what a click asks for.
 func open_node_card(id: StringName, depth: int = 0) -> Control:
 	close_node_card()
-	if _hide_amulet and id == _amulet:
-		return null
 
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel",
@@ -564,7 +566,7 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 	# window on (which rung, how far to go) and the two things only a map can do.
 	var facts: Array = [["On this route", "step %d of %d" % [depth, shortest_distance()]]]
 	var left: int = RunGraph.route_length_via(id, &"", _amulet)
-	if left >= 0 and not (_hide_amulet and id != _current):
+	if left >= 0:
 		facts.append(["From here to the Amulet", "%d step%s" % [left, "" if left == 1 else "s"]])
 
 	var actions: Array = []
@@ -573,7 +575,7 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 			"action": func(): show_on_chart(id)})
 	# Pinning is a live run's business: a preview is asking "what if I went here",
 	# and the start picker has no route to detour from yet.
-	if not _preview and not _hide_amulet and id != _current and id != _amulet:
+	if not _preview and _run_has_position() and id != _current and id != _amulet:
 		if waypoint() == id:
 			actions.append({"text": "✖  Stop routing through here",
 				"action": Callable(self, "clear_waypoint")})
@@ -631,21 +633,23 @@ func _node_role_text(id: StringName, depth: int) -> String:
 func _place_node_card() -> void:
 	if _node_card == null or not is_instance_valid(_node_card) or _panel == null:
 		return
-	var view: Vector2 = get_viewport_rect().size
+	# The room below the run's header bar, which is drawn over this card too.
+	var free: Rect2 = ModalScaffold.free_rect(self)
 	# Sized against the CONTENTS, not against the panel: the ScrollContainer
 	# between them reports no height of its own, and asking the panel gives the
 	# sliver instead of the card.
 	var want: float = 320.0
 	if _node_card_body != null and is_instance_valid(_node_card_body):
 		want = _node_card_body.get_combined_minimum_size().y + 34.0
-	var h: float = clampf(want, 240.0, maxf(240.0, view.y - 40.0))
+	var h: float = clampf(want, 240.0, maxf(240.0, free.size.y - 40.0))
 	_node_card.size = Vector2(CARD_W, h)
 	var right: float = _panel.position.x + _panel.size.x + CARD_GAP
-	var x: float = right if right + CARD_W <= view.x - 8.0 \
+	var x: float = right if right + CARD_W <= free.size.x - 8.0 \
 		else _panel.position.x - CARD_W - CARD_GAP
+	var top: float = free.position.y + 8.0
 	_node_card.position = Vector2(
-		clampf(x, 8.0, maxf(8.0, view.x - CARD_W - 8.0)),
-		clampf(_panel.position.y + 24.0, 8.0, maxf(8.0, view.y - h - 8.0)))
+		clampf(x, 8.0, maxf(8.0, free.size.x - CARD_W - 8.0)),
+		clampf(_panel.position.y + 24.0, top, maxf(top, free.end.y - h - 8.0)))
 
 # The card's own furniture — facts, headings, buttons — lives on RouteLadder
 # beside the card builder that uses it (RouteLadder.card_fact and friends).
@@ -657,7 +661,7 @@ func _place_node_card() -> void:
 # Pin the route through `id`. The ladder redraws around the detour and the star
 # chart behind redraws the same road, because they are one route seen twice.
 func set_waypoint(id: StringName) -> bool:
-	if _preview or _hide_amulet or id == &"" or id == _current or id == _amulet:
+	if _preview or not _run_has_position() or id == &"" or id == _current or id == _amulet:
 		return false
 	if RunGraph.route_length_via(_current, id, _amulet) < 0:
 		return false
@@ -744,7 +748,7 @@ func _legend() -> Control:
 	if not _preview:
 		row.add_child(_legend_chip("◆ Reachable now", COL_CHOICE_BG))
 	row.add_child(_legend_chip("On the path", COL_PATH_BG))
-	if not _preview and not _hide_amulet:
+	if not _preview and _run_has_position():
 		row.add_child(_legend_chip("⚑ Pinned", COL_WAYPOINT))
 	row.add_child(_legend_chip("🏆 Amulet", COL_AMULET))
 	# On its own line under the chips rather than beside them. The window's width
@@ -864,10 +868,10 @@ func _fit_panel() -> void:
 # the ladder has nowhere to go. Public, because it is also what the fit-zoom
 # measures the route against and what a test checks the window against.
 func view_ceiling() -> Vector2:
-	var view: Vector2 = get_viewport_rect().size
+	var free: Vector2 = ModalScaffold.free_rect(self).size
 	return Vector2(
-		minf(PANEL_SIZE.x, maxf(360.0, view.x - VIEW_MARGIN.x)),
-		minf(PANEL_SIZE.y, maxf(280.0, view.y - VIEW_MARGIN.y)))
+		minf(PANEL_SIZE.x, maxf(360.0, free.x - VIEW_MARGIN.x)),
+		minf(PANEL_SIZE.y, maxf(280.0, free.y - VIEW_MARGIN.y)))
 
 # The window minus the ladder: header, note, journey, legend, and every margin,
 # separator and border around them. Measured rather than tallied by hand — the

@@ -204,6 +204,7 @@ var _banner: Label
 var _boss_notice_for: int = -1
 var _boss_notice: BossNoticeModal = null
 var _preview: RichTextLabel
+var _preview_art: TextureRect       # the hovered card's enemy, beside the line
 var _choices_row: HFlowContainer
 var _play_panel: VBoxContainer
 var _now_playing: RichTextLabel
@@ -471,8 +472,9 @@ func open_start_choice(index: int) -> GameChoiceModal:
 	var choice: Dictionary = _start_choice(index)
 	var modal := GameChoiceModal.open(self, index, choice, {
 		"route": {
-			"text": "%d games from the Amulet" % int(opt["path_len"]),
-			"tip": "The shortest route from %s to the hidden Amulet game." % opt["game"].display_name,
+			"text": _start_distance_text(int(opt["path_len"])),
+			"tip": "The shortest route from %s to %s, the game this run ends on." % [
+				opt["game"].display_name, amulet_name()],
 			"color": UITheme.GOLD,
 		},
 		# The pace, stated ABSOLUTELY rather than as the offering's "speeds up /
@@ -1058,19 +1060,17 @@ func open_map() -> Node:
 # above its cover, because the whole decision is a routing decision and it
 # shouldn't have to be made from a single distance number.
 #
-# From the START PICKER the destination is drawn without being named, and no
-# chart is raised: the panel gives away the distance to the Amulet and nothing
-# else, and a sky with the route drawn across it would point straight at the game
-# the whole run is a search for.
+# The START PICKER gets the same map, whole. It used to get a censored one — the
+# destination drawn as an unnamed box and no star chart raised, because a sky with
+# the route on it would point straight at the game the run was a search for. The
+# Amulet is not a secret any more (amulet_name), so there is nothing left to
+# withhold and the map a start card opens is the map every other card opens.
 func preview_map(game_id: StringName) -> Node:
 	if game_id == &"" or GameState.amulet_game_id == &"":
 		return null
 	var game: GameData = Data.get_game(game_id)
-	var starting: bool = _phase == Phase.START_SELECT
 	return _open_route_map(game_id, [], {
 		"preview": true,
-		"hide_amulet": starting,
-		"chart": not starting,
 		"title": "🗺  If you take %s" % (game.display_name if game != null else String(game_id)),
 	})
 
@@ -1789,6 +1789,9 @@ func _on_arrived(game_id: StringName) -> void:
 
 func _exit_tree() -> void:
 	GameState.clear_overworld_context(self)
+	# The header bar goes with the page. Leaving its height published would push
+	# the main menu's own modals down by a strip that no longer exists.
+	ModalScaffold.reserved_top = 0.0
 	# The wider canvas belongs to THIS page (see _fit_canvas_to_page). The menu is
 	# laid out for the standard one, so it goes back with the screen that asked
 	# for it.
@@ -2390,7 +2393,9 @@ func _refresh(_a = null) -> void:
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
 	if _phase == Phase.START_SELECT:
-		_select_head.text = "Choose where to start — three genres, all the same distance from the Amulet. The run opens on the one you take:"
+		# The Amulet is NAMED here, and named first: it is the thing all three roads
+		# end on, so it belongs at the front of the sentence the roads are chosen in.
+		_select_head.text = "The Amulet is %s. Choose where to start — three genres, all the same distance from it. The run opens on the one you take:" % amulet_name()
 		_clear(_controls_row)
 		_render_start_choices()
 		_populate_standing_checklist()
@@ -2661,11 +2666,34 @@ func _render_start_choices() -> void:
 		return
 	for i in range(_start_options.size()):
 		_choices_row.add_child(_make_start_card(i, _start_options[i]))
-	_preview.text = "[i]Hover a start to see what it opens on.[/i]"
+	_preview.text = _preview_idle_text()
+	_show_hover_art({})
+
+# The Amulet, by name.
+#
+# It used to be the run's one secret until a start had been committed to: the
+# picker quoted the DISTANCE and the maps drew the destination as an unnamed box.
+# That is over — the Amulet is named from the first screen of the run, because
+# choosing a start is a routing decision and the game the road ends on is half of
+# what makes one road different from another.
+#
+# Falls back to "the Amulet" rather than an empty string, so the lines that quote
+# it still read as sentences before an amulet has been rolled (the main menu's
+# custom-run preview, and any test that builds a card without a run).
+func amulet_name() -> String:
+	var game: GameData = Data.get_game(GameState.amulet_game_id)
+	return game.display_name if game != null else "the Amulet"
+
+# The distance line every start card wears, and the same line inside the popup it
+# opens: how far the Amulet is AND which game it is. One function because the two
+# must not drift, and because "5 games from Guild of Dungeoneering" is the whole
+# sentence — the number on its own was never the interesting half.
+func _start_distance_text(hops: int) -> String:
+	return "%d game%s from %s" % [hops, "" if hops == 1 else "s", amulet_name()]
 
 # One start card: the cover, the game's name, its genre, and how many games stand
-# between it and the amulet. The amulet itself stays hidden — the distance is the
-# only thing about it the panel gives away.
+# between it and the Amulet — which is named, along with everything else on the
+# road to it (see amulet_name).
 func _make_start_card(index: int, opt: Dictionary) -> Control:
 	var game: GameData = opt["game"]
 	var accent: Color = RunGraph.type_color(int(opt["type"]))
@@ -2701,6 +2729,7 @@ func _make_start_card(index: int, opt: Dictionary) -> Control:
 	btn.tooltip_text = "Open %s — what's waiting there, the tries it grants, and the button that starts the run on it." % game.display_name
 	btn.pressed.connect(func(): open_start_choice(index))
 	btn.mouse_entered.connect(func(): _show_start_preview(index))
+	btn.mouse_exited.connect(_clear_hover_grant)
 	if game.cover_image != null:
 		var art := TextureRect.new()
 		art.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -2725,8 +2754,9 @@ func _make_start_card(index: int, opt: Dictionary) -> Control:
 	card.add_child(name_lbl)
 
 	var dist := Label.new()
-	dist.text = "%d games from the Amulet" % int(opt["path_len"])
-	dist.tooltip_text = "The shortest route from %s to the hidden Amulet game." % game.display_name
+	dist.text = _start_distance_text(int(opt["path_len"]))
+	dist.tooltip_text = "The shortest route from %s to %s, the game this run ends on." % [
+		game.display_name, amulet_name()]
 	dist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dist.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	dist.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2744,8 +2774,11 @@ func _show_start_preview(index: int) -> void:
 	# so what is waiting at it is readable without opening the card, exactly as it
 	# is for every other card in the run.
 	_hover_grant = GameLoop2.shields_for_game(opt["game"])
-	_preview.text = "%s  ·  [color=#%s]%d games from the Amulet[/color]" % [
-		_hover_line(_start_choice(index)), UITheme.GOLD.to_html(false), int(opt["path_len"])]
+	var choice: Dictionary = _start_choice(index)
+	_preview.text = "%s  ·  [color=#%s]%s[/color]" % [
+		_hover_line(choice), UITheme.GOLD.to_html(false),
+		_start_distance_text(int(opt["path_len"]))]
+	_show_hover_art(choice)
 
 func _render_choices() -> void:
 	_clear(_choices_row)
@@ -2759,6 +2792,7 @@ func _render_choices() -> void:
 	for i in range(_choices.size()):
 		_choices_row.add_child(_make_choice_card(i, _choices[i]))
 	_preview.text = _preview_idle_text()
+	_show_hover_art({})
 
 # The offered cover art, back at the size it deserves. It was halved when the
 # offering moved into the left column beside the board (COVER_SIZE was 105x140),
@@ -2766,6 +2800,22 @@ func _render_choices() -> void:
 # columns had to fit side by side. The badges have gone into GameChoiceModal, so
 # the art gets the room back.
 const COVER_SIZE := Vector2(150, 200)
+
+# The width of the enemy portrait on the hover line under the offering. Its
+# HEIGHT is the line's, whatever that turns out to be — and that is the whole
+# trick, because it is what makes the portrait FREE.
+#
+# The overworld is fitted to a 720p window with single-digit pixels to spare
+# (test_overworld2's _assert_fits), and the page's worst case — three arcade
+# machines under the board — sits within about four of them. A hover row that
+# reserved even 30px of height for art blew that budget on its own. So the art
+# fills the line instead of setting its height: same page, one more thing on it.
+#
+# That makes it small, which is the right size anyway. This is an IDENTIFIER for
+# a body the player already knows — the same job, and the same scale, as the
+# portraits on a card's Beatable row. The exhibit is in the popup the card opens,
+# where the enemy is drawn at full size.
+const HOVER_ART := 30.0
 
 # The badge rows on a card: the name, plus two fixed-height flag lines above the
 # cover — the Amulet / event flag, and the repeat game's +1 Dash. Everything else
@@ -3595,6 +3645,9 @@ func open_tier_list() -> TierListScreen:
 func _show_header(shown: bool) -> void:
 	if _header_layer != null and is_instance_valid(_header_layer):
 		_header_layer.visible = shown
+	# A bar that isn't drawn is standing on nothing, and a screen that stood in
+	# front of it must not be pushed down by a strip it can't see.
+	_publish_header_strip(shown)
 
 # The instances the player ticked as fulfilled this game.
 func _ticked_fulfilments() -> Array:
@@ -3674,10 +3727,27 @@ func _show_preview(index: int) -> void:
 	# A destination card grants no tries — it isn't a game being started (§10).
 	_hover_grant = -1 if _asking_return() else GameLoop2.shields_for_game(_choices[index]["game"])
 	_preview.text = _hover_line(_choices[index])
+	_show_hover_art(_choices[index])
 
-# The mouse left a card: the line stays as a reference, but the grant number goes
-# with the hover, so it can never advertise a game you're not pointing at.
+# The portrait beside the hover line: the body this card would put on the board.
+#
+# Blank for the stay-or-return pair (they spawn nothing), for a free game with no
+# enemy, and under the Runic Dome — the relic hides WHAT is waiting, and a picture
+# gives that away far more completely than a name would.
+func _show_hover_art(choice: Dictionary) -> void:
+	if _preview_art == null or not is_instance_valid(_preview_art):
+		return
+	var tex: Texture2D = null
+	if not choice.is_empty() and not choice.has("stay") and not _enemy_hidden(choice):
+		tex = _enemy_texture(choice)
+	_preview_art.texture = tex
+	_preview_art.visible = tex != null
+
+# The mouse left a card: the line stays as a reference, but the grant number and
+# the portrait go with the hover, so neither can advertise a game you're not
+# pointing at.
 func _clear_hover_grant() -> void:
+	_show_hover_art({})
 	if _hover_grant < 0:
 		return
 	_hover_grant = -1
@@ -3687,6 +3757,8 @@ func _clear_hover_grant() -> void:
 # when the two cards on the table are the ends of a detour rather than games to
 # go and play (§10).
 func _preview_idle_text() -> String:
+	if _phase == Phase.START_SELECT:
+		return "[i]Hover a start to see what it opens on.[/i]"
 	if _asking_return():
 		return "[i]The detour is over. Open either game to see the road from it, then take the one you want to carry on from.[/i]"
 	return "[i]Hover a game to see the enemy it would spawn — click it for the route, the goal and the way in.[/i]"
@@ -4577,15 +4649,39 @@ func _build_ui() -> void:
 	_choices_row.add_theme_constant_override("v_separation", 10)
 	_select_box.add_child(_choices_row)
 
-	# Hover preview, as ONE LINE. It used to be a framed panel with the enemy's art
-	# at 64px beside two lines of goal text — 84px of the page, mostly empty,
-	# sitting under an offering whose cards now open a popup that draws all of it
-	# at full size. What is left is what a HOVER is for: the fastest possible read
-	# of what that card would put in front of you, on the way past.
+	# Hover preview: the enemy's PORTRAIT and one line about it, side by side.
+	#
+	# It was a framed panel with 64px art and two lines of goal text (84px of page),
+	# then it was a bare line with no art at all — and the line alone lost the thing
+	# a hover is actually fastest at. A player recognises a body by its picture long
+	# before they read its name, and the picture is what says "I have fought that
+	# before" while the cursor is still moving.
+	#
+	# So the art is back, BESIDE the line and sized BY it (see HOVER_ART): the row
+	# is the same 22px it was with no art on it, and the page's 720p budget doesn't
+	# move by a pixel. The row also keeps that height whether or not anything is
+	# hovered, so running the cursor along the offering never reflows the column
+	# underneath.
+	var hover_row := HBoxContainer.new()
+	hover_row.add_theme_constant_override("separation", 8)
+	_preview_art = TextureRect.new()
+	# Width only. The height comes from the row — SIZE_FILL against a line whose
+	# floor the label sets — and EXPAND_IGNORE_SIZE stops the texture's own
+	# dimensions from claiming any of it.
+	_preview_art.custom_minimum_size = Vector2(HOVER_ART, 0)
+	_preview_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_preview_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_preview_art.size_flags_vertical = Control.SIZE_FILL
+	_preview_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# HIDDEN, not merely empty: an untextured TextureRect still claims its width and
+	# would indent the idle line away from the left edge.
+	_preview_art.visible = false
+	hover_row.add_child(_preview_art)
 	_preview = _panel_label()
 	_preview.custom_minimum_size = Vector2(0, 22)
 	_preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_select_box.add_child(_preview)
+	hover_row.add_child(_preview)
+	_select_box.add_child(hover_row)
 
 	# The choosing charges, at the foot of the panel they're spent in. They used to
 	# be four numbers in the middle of a twelve-number HUD strip at the top of the
@@ -4833,6 +4929,21 @@ func _fit_page_under_header() -> void:
 		_scroll.offset_top = 16.0 + bar
 	if _toasts != null and is_instance_valid(_toasts):
 		_toasts.offset_top = bar
+	# And the same for everything that opens OVER the page. The bar is opaque and
+	# floats above the modals, so a modal centred on the whole screen loses its top
+	# to it — which is how the game-choice popup lost its title and the Atlas lost
+	# the Close button that is the only way off it.
+	_publish_header_strip(_header_layer == null or _header_layer.visible)
+
+# Tell the shared modal machinery how much of the top of the screen this page's
+# header bar is standing on — or that it isn't standing on any, when the bar is
+# down or the page is gone. Everything that centres itself on screen reads this.
+func _publish_header_strip(shown: bool) -> void:
+	if not shown or _header_bar == null or not is_instance_valid(_header_bar):
+		ModalScaffold.reserved_top = 0.0
+		return
+	ModalScaffold.reserved_top = maxf(_header_bar.size.y,
+		_header_bar.get_combined_minimum_size().y)
 
 # "🛒 Shop ↓" — the pointer at the shop mounted under the board. It floats at the
 # bottom of the SCREEN (not of the page), over everything, until the shop has

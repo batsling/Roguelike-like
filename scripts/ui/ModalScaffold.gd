@@ -17,6 +17,30 @@ const PANEL_BG := Color(0.10, 0.08, 0.12, 0.98)
 const BACKDROP_COLOR := Color(0, 0, 0, 0.72)
 const DEFAULT_SIZE := Vector2(900, 560)
 
+# How many pixels down the top of the screen belong to something drawn OVER the
+# modals: the run's pinned header bar (Overworld2.HEADER_LAYER), which carries
+# Health, Gold, the road walked and the ☰ Menu, floats above every modal the run
+# raises and is opaque.
+#
+# Anything centred on the screen has to be centred in what is LEFT, not in the
+# screen — the game-choice popup grew past 700px on a tall route, was centred on
+# the viewport, and had its title ("Atomic Owl") sliced off by the bar sitting on
+# top of it. Modals that are their own full-screen page (the Atlas) read this too,
+# so their own header row lands below the bar rather than under it, which is what
+# put the Atlas's Close button out of reach.
+#
+# Set by whoever owns such a bar and cleared when it goes; 0 everywhere else, so
+# the main menu's modals and the Collection are unaffected.
+static var reserved_top: float = 0.0
+
+# The screen minus the reserved strip: where a modal is allowed to be, and how
+# big it may get. `basis` is any Control in the tree, used to reach the viewport.
+static func free_rect(basis: Control) -> Rect2:
+	var view: Vector2 = basis.get_viewport_rect().size if basis != null and basis.is_inside_tree() \
+		else Vector2(1280, 720)
+	var top: float = clampf(reserved_top, 0.0, maxf(0.0, view.y - 120.0))
+	return Rect2(Vector2(0.0, top), Vector2(view.x, view.y - top))
+
 static func build_panel(parent: Control, accent: Color, dismiss: Callable = Callable(), panel_size: Vector2 = DEFAULT_SIZE) -> PanelContainer:
 	# Most modals mount on a CanvasLayer, which a theme does not travel down —
 	# so the shared one is put on the modal root here rather than in each of them
@@ -99,6 +123,18 @@ static func centre(panel: Control) -> void:
 	panel.anchor_right = 0.5
 	panel.anchor_bottom = 0.5
 	panel.offset_left = -half.x
-	panel.offset_top = -half.y
 	panel.offset_right = half.x
-	panel.offset_bottom = half.y
+	# Centred in the band BELOW the reserved strip, not on the whole screen — and
+	# never allowed to start above it, whatever height the panel ended up at. A
+	# panel taller than the band overflows off the BOTTOM, where it can be
+	# scrolled to, rather than under an opaque bar that eats its title.
+	var area: float = panel.get_parent_area_size().y
+	if area <= 0.0:
+		area = panel.get_viewport_rect().size.y if panel.is_inside_tree() else 0.0
+	var strip: float = clampf(reserved_top, 0.0, maxf(0.0, area - 120.0)) if area > 0.0 \
+		else reserved_top
+	var top: float = -half.y + strip * 0.5
+	if area > 0.0:
+		top = maxf(top, strip - area * 0.5)
+	panel.offset_top = top
+	panel.offset_bottom = top + panel.size.y

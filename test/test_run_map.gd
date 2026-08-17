@@ -110,12 +110,12 @@ func test_unreachable_amulet_yields_an_empty_map() -> void:
 # optimal path to the Amulet as it would stand if you picked that game.
 # ---------------------------------------------------------------------------
 
-func _open_preview_from(game_id: StringName, hide_amulet: bool = false):
+func _open_preview_from(game_id: StringName):
 	var host := Node.new()
 	add_child_autofree(host)
 	var modal = MAP_MODAL.new()
 	modal.start(host, game_id, GameState.amulet_game_id, [], {
-		"preview": true, "hide_amulet": hide_amulet, "title": "🗺  If you take it",
+		"preview": true, "title": "🗺  If you take it",
 	})
 	return modal
 
@@ -128,18 +128,21 @@ func test_a_preview_maps_the_route_from_the_game_being_considered() -> void:
 	assert_true((layers[layers.size() - 1] as Array).has(GameState.amulet_game_id),
 		"and ends on the Amulet")
 
-func test_a_preview_names_every_stop_by_default() -> void:
+func test_a_preview_names_every_stop() -> void:
 	var modal = _open_preview_from(_ui._choices[0]["slot"])
 	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
 	assert_eq(modal.node_name(GameState.amulet_game_id), amulet.display_name,
-		"mid-run the Amulet is already known, so it's named")
+		"the Amulet is named on the ladder like every other rung")
 
-func test_a_start_preview_keeps_the_amulet_a_secret() -> void:
-	var modal = _open_preview_from(GameState.current_game_id, true)
-	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
-	assert_eq(modal.node_name(GameState.amulet_game_id), "The Amulet — ???",
-		"the start picker gives away the distance and nothing else")
-	assert_ne(modal.node_name(GameState.current_game_id), amulet.display_name)
+# The map used to have a censored mode for the start picker — the destination
+# drawn as "The Amulet — ???" with no card behind it. It is gone: there is one
+# map, it names everything on it, and the rung that ends the run opens a card
+# like any other.
+func test_the_amulets_rung_opens_a_card_like_any_other() -> void:
+	var modal = _open_preview_from(_ui._choices[0]["slot"])
+	var depth: int = modal.shortest_distance()
+	assert_not_null(modal.open_node_card(GameState.amulet_game_id, depth),
+		"the Amulet's rung is a way in to the Amulet")
 
 func test_a_preview_depth_is_that_games_own_distance() -> void:
 	var candidate: StringName = _ui._choices[0]["slot"]
@@ -264,10 +267,16 @@ func test_only_one_card_is_open_at_a_time() -> void:
 	modal.close_node_card()
 	assert_null(modal._node_card, "and Close puts it away")
 
-func test_a_start_picker_never_opens_a_card_on_the_hidden_amulet() -> void:
-	var modal = _open_preview_from(GameState.current_game_id, true)
-	assert_null(modal.open_node_card(GameState.amulet_game_id, 1),
-		"the map that refuses to NAME the Amulet doesn't hand out its card either")
+# The map used to censor itself on the start picker — the Amulet drawn unnamed
+# and its rung refusing to open a card. It doesn't any more: there is one map and
+# it names everything on it, the destination included.
+func test_the_amulets_rung_opens_a_card_on_a_start_map_too() -> void:
+	var here: StringName = GameState.current_game_id
+	GameState.current_game_id = &""             # the run has no position yet
+	var modal = _open_preview_from(here)
+	assert_not_null(modal.open_node_card(GameState.amulet_game_id, modal.shortest_distance()),
+		"the Amulet's rung is a way in to the Amulet, on every map that draws it")
+	GameState.current_game_id = here
 
 # ---------------------------------------------------------------------------
 # The waypoint — forcing the route through a game you insist on visiting
@@ -386,9 +395,13 @@ func test_the_start_picker_ignores_a_pin_it_has_no_route_for() -> void:
 	if pin == &"":
 		return
 	GameState.route_waypoint = pin
-	var modal = _open_preview_from(GameState.current_game_id, true)
+	# The start picker is the one map drawn before the run stands anywhere.
+	var here: StringName = GameState.current_game_id
+	GameState.current_game_id = &""
+	var modal = _open_preview_from(here)
 	assert_eq(modal.waypoint(), &"",
 		"the run has no position yet, so there is nothing to detour from")
+	GameState.current_game_id = here
 
 # --- the model underneath ---------------------------------------------------
 

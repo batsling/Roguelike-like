@@ -88,7 +88,10 @@ static func _ch_start() -> Dictionary:
 			_step(1, "Pick a character. That sets your Health and the charges you "
 				+ "start with."),
 			_step(2, "Pick where you start. You are offered three games, and the "
-				+ "one you take is the run's first game — not a free move."),
+				+ "one you take is the run's first game — not a free move. The "
+				+ "Amulet is named on this panel, and every card says how many "
+				+ "games away it is, so you are choosing a road knowing where it "
+				+ "ends."),
 			_step(3, "The game you took has an ENEMY standing on it, and that "
 				+ "enemy is a GOAL: something to do inside the real game. Beat a "
 				+ "boss without healing. Descend ten floors. Win in one deck cycle. "
@@ -775,6 +778,8 @@ static func _ch_screen() -> Dictionary:
 				+ "need a target, so you press them inside a game's card."),
 			_kv("Tries a game would grant", "On the offering's hover line, and in "
 				+ "full on the card."),
+			_kv("What is waiting at a game", "Hover its cover: the enemy's picture "
+				+ "and its goal, on one line under the offering."),
 			_kv("Where you have been", "The strip across the top: every game you "
 				+ "have played, in order, with a dashed arrow to the Amulet."),
 			_kv("What you owe", "The checklist, left column."),

@@ -11,6 +11,60 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The Amulet is named from the first screen, and the header bar stopped eating
+  the screens under it.**
+
+  Four fixes to the map, the atlas and the offering, reported off one screenshot.
+
+  **The Amulet is not a secret any more.** The choose-your-start panel used to
+  give away the DISTANCE and nothing else: its cards read `5 games from the
+  Amulet`, the map a card opened drew the destination as an unnamed
+  `The Amulet — ???` rung that refused to open a card, and no star chart was
+  raised from a start card in case the sky pointed straight at it. All of it is
+  gone. `RouteLadder.node_name` names every rung, the `hide_amulet` option is
+  deleted from `RouteLadder` / `RunMapModal` / `Overworld2.preview_map`, and the
+  picker's heading, each card's distance line and the card's popup all quote the
+  game itself (`Overworld2.amulet_name`, `_start_distance_text`). The one thing
+  the flag was still doing usefully — suppressing the route pin before the run
+  has anywhere to detour from — is now asked directly
+  (`RunMapModal._run_has_position`).
+
+  Choosing a start is a routing decision, and a routing decision made towards an
+  unnamed box is made on the shape of the road alone. The games the road runs
+  through, and the one it ends on, are the substance of it.
+
+  **The enemy's portrait is back on the offering's hover.** It was an 84px framed
+  panel with 64px art, then a bare line with no art at all — and the line alone
+  lost the thing a hover is fastest at, since a player recognises a body by its
+  picture long before they read its name. It is back beside the line, and it is
+  **free**: the art is given a width (`Overworld2.HOVER_ART`) and takes its
+  height from the row, so the hover row is the same 22px it was with nothing on
+  it. That matters because the page has about four pixels of slack against its
+  720p budget on its worst case (three arcade machines under the board), and a
+  row that reserved 30px of height for art blew it — which the existing
+  `_assert_fits` tests caught. It is hidden under the Runic Dome, on a free game,
+  and on the stay-or-return pair.
+
+  **The star chart had no way off it.** `AtlasView` is a full-screen page whose
+  first row is its own header — the title, the search box, the ✦ jump buttons and
+  Close. The run's header bar is pinned to the top of the screen on a layer above
+  it and is opaque, so a chart drawn from y=0 had that entire row covered and no
+  way back to the run but the Esc key. (A comment claimed the Atlas was mounted
+  at layer 140, above the bar. It never was — it is a `top_level` child of the
+  page.) The chart now starts below the bar, and its Close says where it goes:
+  `←  Back to the run`.
+
+  **And so does everything else the run raises.** `_fit_page_under_header` used to
+  inset the page and nothing else; it now publishes the bar's height as
+  **`ModalScaffold.reserved_top`**, and `ModalScaffold.centre` centres a modal in
+  the band below it and never lets a panel's top edge start above it. That is the
+  overlapped title in the screenshot: the game-choice popup grew past its nominal
+  700px on a tall route, was centred on the whole viewport, and had the name of
+  the game being decided about sliced off. `RunMapModal` reads it too, for its
+  size, its opening position, its drag clamp and its node card. It is cleared
+  when the page leaves the tree and while the bar is down, so the main menu's
+  screens and the Collection are untouched.
+
 - **The start band slid down a hop: starts are now 4–7 games from the Amulet,
   not 5–8.**
 

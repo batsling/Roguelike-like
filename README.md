@@ -261,6 +261,18 @@ node and its script.
   display, so a 2560×1440 monitor draws this same page at 2×. Fitting the box is
   a constraint, not an accident, and the things below are what pay for it.
 
+  **The Amulet is named from the first screen.** It used to be the run's one
+  secret until a start had been committed to: the picker quoted the DISTANCE
+  (`5 games from the Amulet`), the maps drew the destination as an unnamed
+  `The Amulet — ???` box that opened no card, and no star chart was raised from a
+  start card in case the sky pointed at it. All of that is gone. The picker's
+  heading names it, each start card's distance line names it
+  (`5 games from Guild of Dungeoneering`, via `Overworld2.amulet_name` /
+  `_start_distance_text`), and the map a start card opens is the same map every
+  other card opens — chart included. Choosing a start is a routing decision, and
+  the game the road ends on is half of what makes one road different from
+  another.
+
   **The header is the road you have walked, and it never leaves the screen.**
   Across the top, between the health and gold chips and the `☰ Menu`: the games
   played as small covers with arrows between them — the same picture the
@@ -284,11 +296,22 @@ node and its script.
   rather than being the first row of the scrolling page: it stays put when the
   player scrolls to the bottom of a tall board, and it floats above every modal
   the run raises — the event (123), the game-choice popup (124), the map (130) —
-  which is exactly where Health is most worth reading. It sits *below* the two
-  screens that stand in for the run rather than over it (the Atlas at 140 and the
-  end-of-run verdict at 150), and it stands down while the tier-list board is up,
+  which is exactly where Health is most worth reading. It sits *below* the
+  end-of-run verdict (150), and it stands down while the tier-list board is up,
   since that one is a full screen with its own way out. The page is inset by the
   bar's height (`_fit_page_under_header`), so nothing is hidden underneath it.
+
+  **And so is everything else on the screen.** The bar is opaque, so anything
+  centred on the viewport loses its top row to it. `_fit_page_under_header`
+  publishes the bar's height as **`ModalScaffold.reserved_top`**, and three
+  things read it: `ModalScaffold.centre` centres a modal in the band *below* the
+  bar and never lets its top edge start above it; the map window
+  (`RunMapModal`) sizes, opens and clamps its drag inside that band; and
+  **`AtlasView` offsets its whole page down by it**, so the chart's own header —
+  which holds its search box, its ✦ jump buttons and the `←  Back to the run`
+  button that is the only way off it — lands under the bar instead of beneath it.
+  It is cleared when the page leaves the tree and while the bar is down, so the
+  main menu's own screens are unaffected.
 
   **Where the numbers are.** There is **no HUD strip** — every number is drawn
   once, by whatever owns it:
@@ -301,7 +324,9 @@ node and its script.
     a row under the offering, since all four change what is on the table. Dash and
     Scramble are buttons; Bash and Transmute need a target, so they are readouts
     pressed inside a game's popup.
-  - **the tries a game grants** ride the offering's one-line hover.
+  - **the tries a game grants** ride the offering's one-line hover, which also
+    carries the enemy's **portrait** — sized by the line rather than setting its
+    height, so it costs the page nothing (`Overworld2.HOVER_ART`).
   - Keys and Chests aren't shown at all — Keys are deferred and unauthored, and a
     chest is redeemed the moment it lands.
 
@@ -326,7 +351,10 @@ node and its script.
     Over the star chart the map window has **no Close of its own** — the chart
     owns the screen and its Close takes the window with it — so the button in its
     corner rolls it up to its title bar instead. Opened without a chart under it
-    (the start picker) it is the only thing on screen, and there it keeps one.
+    it is the only thing on screen, and there it keeps one.
+    **Every rung is named, the Amulet included**: the ladder used to draw the
+    destination as `The Amulet — ???` on a start-picker map, and no longer does
+    (see "The Amulet is named from the first screen" below).
   - **`BattlefieldView.gd`** — the board: the hero on the left with the shield
     pips over them, the grid the goal-enemies close in across, the off-field lane,
     the Push / Bomb toolbar, and the strike / advance animation. **Push is armed

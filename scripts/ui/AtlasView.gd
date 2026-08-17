@@ -305,10 +305,21 @@ static func load_layout(filter_value: int = -1) -> AtlasLayout:
 				return res as AtlasLayout
 	return null
 
+# The chart fills the screen, minus whatever strip at the top of it belongs to
+# something drawn above this view.
+#
+# That strip is the run's pinned header bar (ModalScaffold.reserved_top). The
+# chart is a full-screen PAGE and its own header — the title, the search box, the
+# ✦ jump buttons, Fit, and CLOSE — is the first row of it, so a chart drawn from
+# y=0 under an opaque 96px bar had its entire header eaten and no way off it but
+# the Esc key. Sitting the whole view below the bar keeps both readable: the run's
+# numbers stay pinned where they are everywhere else, and the chart keeps its way
+# out. Outside a run the strip is 0 and this is the full screen, as before.
 func _fit_to_viewport() -> void:
 	var rect: Rect2 = get_viewport().get_visible_rect()
-	set_deferred("size", rect.size)
-	position = Vector2.ZERO
+	var top: float = clampf(ModalScaffold.reserved_top, 0.0, maxf(0.0, rect.size.y - 200.0))
+	set_deferred("size", Vector2(rect.size.x, rect.size.y - top))
+	position = Vector2(0.0, top)
 
 # ---------------------------------------------------------------------------
 # Model
@@ -1356,8 +1367,14 @@ func _build_header() -> Control:
 	row.add_child(_tool_button("+", func(): zoom_by(1.3, _canvas_size() * 0.5)))
 	row.add_child(_tool_button("Fit", frame_all))
 
+	# The way off this page, and the only one besides Esc. It says where it goes
+	# rather than just "Close": the chart is a full screen that stands in front of
+	# the run, and "Close" on a page that replaced everything reads as ambiguous at
+	# exactly the moment the player wants out of it.
 	var close := Button.new()
-	close.text = "Close"
+	close.text = "✕  Close" if pure_catalog else "←  Back to the run"
+	close.tooltip_text = "Leave the chart (Esc)."
+	close.add_theme_color_override("font_color", UITheme.GOLD)
 	close.pressed.connect(_finish)
 	row.add_child(close)
 	return bar
