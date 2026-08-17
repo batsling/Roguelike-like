@@ -500,14 +500,41 @@ func test_the_hero_strip_sits_between_the_portrait_and_the_health() -> void:
 		"and before the health")
 	assert_eq(column, ui._board._hero_hp.get_parent(), "all in the one hero column")
 
-func test_a_status_pip_carries_the_full_tooltip() -> void:
+# A pip's hover is a CARD now (HoverCard), not a wall of plain text — so what it
+# says is asserted off the model the card is built from rather than off
+# `tooltip_text`, which is only the fallback string.
+func test_a_status_pip_carries_the_full_hover_card() -> void:
 	var ui = _booted()
 	GameState.apply_status(&"speed", 3)
 	ui._board.refresh()
 	var pip: Control = ui._board._hero_statuses.get_child(0)
-	var tip: String = pip.tooltip_text
-	assert_string_contains(tip, "Speed 3", "the name and the live stack count")
-	assert_string_contains(tip, "1 hour 30 minutes", "and the line at that stack")
+	assert_true(pip.has_meta(HoverCard.META), "the pip carries a hover card")
+	var card: Dictionary = pip.get_meta(HoverCard.META)
+	assert_eq(String(card.get("title", "")), "Speed", "the name heads it")
+	assert_string_contains(String(card.get("subtitle", "")), "3 stacks",
+		"with the live stack count under it")
+	assert_string_contains("\n".join(PackedStringArray(card.get("lines", []))),
+		"1 hour 30 minutes", "and the line at that stack")
+	# The fallback text Godot needs before it will ask for a custom tooltip at all.
+	assert_string_contains(pip.tooltip_text, "Speed", "and the plain fallback still names it")
+
+# The card is drawable, and what it draws is what the model said.
+func test_a_hover_card_draws_its_model() -> void:
+	var speed: StatusData = Data.get_status(&"speed")
+	var card: Control = HoverCard.build(speed.hover_card(StatusData.PLAYER, 3))
+	assert_not_null(card, "the model builds a card")
+	assert_string_contains(_all_text(card), "Speed", "with the name on it")
+	assert_string_contains(_all_text(card), "3 stacks", "and the stack count")
+	card.queue_free()
+
+# Every Label in a built card, joined — which of them holds a line is layout.
+func _all_text(node: Node) -> String:
+	var out: String = ""
+	if node is Label:
+		out += (node as Label).text + "\n"
+	for child in node.get_children():
+		out += _all_text(child)
+	return out
 
 func test_the_tooltip_names_what_each_side_does() -> void:
 	var marked: StatusData = Data.get_status(&"marked")

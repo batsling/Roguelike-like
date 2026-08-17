@@ -11,6 +11,67 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Hover cards everywhere, an armed Bomb, and three things that were in the
+  way.**
+
+  **Everything on the page describes itself on hover, as a card.** An enemy, a
+  status, a relic and the enemy-turns readout all open something when clicked,
+  and all four spent their hover on `tooltip_text` — grey system chrome with a
+  wall of plain text in it, on a page that is otherwise entirely hand-drawn. The
+  information was there and nobody read it. They carry a condensed version of the
+  card now (`HoverCard` + the `HoverPanel` / `HoverBox` wrappers Godot's
+  `_make_custom_tooltip` requires): the art, the name in the thing's own colour,
+  its statuses as **pips** rather than three more lines of prose, and the one or
+  two lines that decide something. A status's model comes from
+  `StatusData.hover_card`, beside the string it replaces, so the board, the enemy
+  card and the hero strip cannot describe the same status differently.
+
+  **The offering gets none of it** — no card and no tooltip on an offered cover
+  or a start card. The hover line under the cards already carries the enemy's
+  portrait and its goal, and a popup over three covers while the mouse crosses
+  them is the noisiest possible way to repeat it. The cards are for scanning.
+
+  **Bomb is armed and aimed, like Push.** It used to fire on the button press, at
+  whatever was still `selected_instance` — routinely a body clicked several turns
+  earlier to read its card, so the charge went into an enemy the player was not
+  looking at. Pressing `✸ Bomb` now arms it, clears the selection and lights every
+  body it could land on; the CLICK is what spends the charge and disarms it. One
+  press, one bomb. Arming either verb puts the other away.
+
+  **And the instruction is the BOARD, not a caption.** The toolbar used to print
+  "click an enemy" in its target slot while a verb was armed. It doesn't: the
+  bodies you can click are the ones lit in `ARMED_TINT`, and a verb that has to
+  caption its own highlight is a highlight that isn't working.
+
+  **Exit Game only works on the main menu.** It is moved to the bottom-right
+  corner in code, and that appended it *last* — above `%ModalLayer`, where every
+  screen the menu raises mounts. So the door out of the application sat on top of
+  the character picker, the Collection, the Atlas and the manual, live and
+  clickable straight through their own backdrops.
+
+  **The start picker's 🗺 Map opens the ladder alone**, no star chart. The
+  question on that panel is "which of these three roads", the ladder is the answer
+  to it, and 852 stars with nothing on them to orient by — the run has no position
+  yet — is not. The chart is one `✦ Star chart` button away on the window itself.
+
+  **The pack lost its "🎒 Inventory" heading**, and that turned out to be a bug
+  fix rather than a tidy-up. A bordered strip of relic and scroll tiles is its own
+  label, and the row it was spending was the page's entire margin: measured, the
+  overworld was **626px of a 625px budget with the heading on**, before a shop was
+  even mounted under the board.
+
+  **Which uncovered a real one.** `test_the_page_still_fits_the_window_with_a_shop_on_it`
+  mounted `hubs[0]` and stopped — one hub out of ten, chosen by the random graph.
+  The shop's name was a Label with no clip, so its width was the hub's NAME
+  length; that became the shop panel's minimum, then the right column's, and it
+  took the room straight out of the LEFT column, where the checklist's goal text
+  wrapped onto extra lines and grew the page. **"Enter the Gungeon", "Vampire
+  Survivors", "The Binding of Isaac" and "Spelunky Classic" ran the overworld off
+  the bottom of its own 720p window by up to 35px; "FTL", "Hades" and "Balatro"
+  did not** — so the same bug passed or failed depending on the seed, which is
+  what the intermittent failures were. The name is clipped and asks for no width
+  of its own now, and the test walks every hub instead of the first one.
+
 - **The Amulet is named from the first screen, and the header bar stopped eating
   the screens under it.**
 

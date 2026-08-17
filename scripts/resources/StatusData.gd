@@ -183,6 +183,49 @@ func objective_text(which: StringName, stacks: int) -> String:
 		line += ", gain %s" % pay
 	return line
 
+# The same thing as a HOVER CARD — the model HoverCard.build draws (its art, its
+# name in the colour of what it does, and the one or two lines that decide
+# something). This and `tooltip_for` are the same facts at two lengths, and they
+# live beside each other so they cannot drift: the card is what the run shows on
+# a pip, the string is the fallback and what a plain-text caller still reads.
+#
+# `stacks` rides in the SUBTITLE rather than the title, because the name is what
+# is being recognised and the count is what is being read after it.
+func hover_card(which: StringName, stacks: int) -> Dictionary:
+	var mode: StringName = mode_for(which)
+	var good: bool = is_bonus(which) or is_goal(which)
+	var sub: String = "%s stack%s" % [stacks, "" if stacks == 1 else "s"]
+	match mode:
+		&"goal":
+			sub = "Standing goal  ·  " + sub
+		&"bonus":
+			sub = "Bonus  ·  " + sub
+		&"clause":
+			sub = "Goal clause  ·  " + sub
+	if source_game != "":
+		sub += "  ·  %s" % source_game
+
+	var lines: Array = []
+	match mode:
+		&"goal", &"bonus":
+			lines.append(objective_text(which, stacks))
+		&"clause":
+			lines.append(("Every enemy's goal also needs: %s" if which == PLAYER
+				else "This enemy's goal also needs: %s") % clause_text(which, stacks))
+		_:
+			lines.append("Does nothing on this side.")
+	if combat_applies(which):
+		lines.append("In combat: %s." % combat_line(stacks))
+
+	return {
+		"title": display_name,
+		"subtitle": sub,
+		"accent": Color(1.0, 0.82, 0.30) if good else Color(0.90, 0.26, 0.22),
+		"art": image,
+		"lines": lines,
+		"note": "Loses a stack each game you complete it." if decays(which) else "",
+	}
+
 # The hover tooltip for one side, Slay-the-Spire style: the status's name and
 # stack count, what that side DOES, and the live line at this stack. Every view
 # that draws a status pip asks for this — the hero strip, the enemy strip, the

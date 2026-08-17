@@ -221,6 +221,12 @@ node and its script.
   runs, the Collection, the tier list, Settings, and **Exit Game**. Quitting from
   here doesn't confirm: nothing is live on the menu and the saves are already on
   disk, so a prompt between the player and the door only ever gets in the way.
+  **Exit Game is a MAIN MENU button and only works on the main menu.** It is
+  moved to the bottom-right corner in code (`_move_quit_to_corner`), and that
+  used to append it *last* — above `%ModalLayer`, where every screen the menu
+  raises mounts — so the door out of the application sat on top of the character
+  picker, the Collection and the Atlas, live and clickable through their own
+  backdrops. The corner is mounted under the modal layer now.
   - **`HowToPlayScreen.gd`** — **📖 How to Play**, the written manual: a chapter
     list down the left, one chapter down the right. Every word of it is data in
     **`HowToPlayText.gd`**, which the screen draws and does not read — so the
@@ -263,13 +269,13 @@ node and its script.
 
   **The Amulet is named from the first screen.** It used to be the run's one
   secret until a start had been committed to: the picker quoted the DISTANCE
-  (`5 games from the Amulet`), the maps drew the destination as an unnamed
-  `The Amulet — ???` box that opened no card, and no star chart was raised from a
-  start card in case the sky pointed at it. All of that is gone. The picker's
+  (`5 games from the Amulet`) and the maps drew the destination as an unnamed
+  `The Amulet — ???` box that opened no card. All of that is gone. The picker's
   heading names it, each start card's distance line names it
   (`5 games from Guild of Dungeoneering`, via `Overworld2.amulet_name` /
-  `_start_distance_text`), and the map a start card opens is the same map every
-  other card opens — chart included. Choosing a start is a routing decision, and
+  `_start_distance_text`), and the map a start card opens names it on its last
+  rung. (That map is the ladder alone — the star chart stays down on the picker;
+  see `RouteLadder.gd`.) Choosing a start is a routing decision, and
   the game the road ends on is half of what makes one road different from
   another.
 
@@ -327,6 +333,11 @@ node and its script.
   - **the tries a game grants** ride the offering's one-line hover, which also
     carries the enemy's **portrait** — sized by the line rather than setting its
     height, so it costs the page nothing (`Overworld2.HOVER_ART`).
+  - **everything else on the page describes itself on hover**, as a small themed
+    card rather than Godot's grey tooltip — see "Hover cards" below.
+  - **the pack has no heading.** A bordered strip of relic and scroll tiles is
+    its own label, and that row is the page's whole margin against its 720p
+    budget (with it, the page was already a pixel over before a shop mounted).
   - Keys and Chests aren't shown at all — Keys are deferred and unauthored, and a
     chest is redeemed the moment it lands.
 
@@ -351,17 +362,50 @@ node and its script.
     Over the star chart the map window has **no Close of its own** — the chart
     owns the screen and its Close takes the window with it — so the button in its
     corner rolls it up to its title bar instead. Opened without a chart under it
-    it is the only thing on screen, and there it keeps one.
+    it is the only thing on screen, and there it keeps one — which is what the
+    **start picker** gets: its 🗺 Map opens the ladder ALONE, no chart. The
+    question on that panel is "which of these three roads", the ladder is the
+    answer to it, and 852 stars with nothing on them to orient by (the run has no
+    position yet) is not; the chart is one `✦ Star chart` button away on the
+    window itself.
     **Every rung is named, the Amulet included**: the ladder used to draw the
     destination as `The Amulet — ???` on a start-picker map, and no longer does
     (see "The Amulet is named from the first screen" below).
+  - **`HoverCard.gd` / `HoverPanel.gd` / `HoverBox.gd`** — the small themed card
+    that appears when the mouse rests on something you could click to read in
+    full. Four things open a card when clicked — an **enemy** on the board, a
+    **status** on a body, an **item** in the pack, and the **enemy-turns**
+    readout on the pressure bar — and all four used to spend their hover on
+    `tooltip_text`: grey system chrome with a wall of plain text in it, on a page
+    that is otherwise entirely hand-drawn. They carry a *condensed version of the
+    card* now: the art, the name in the thing's own colour, its statuses as pips,
+    and the one or two lines that actually decide something.
+    `HoverCard.attach(node, {...})` stores the model and seeds the plain
+    fallback; the node has to be a `HoverPanel` (a PanelContainer) or a
+    `HoverBox` (a VBoxContainer), or define the two-line
+    `_make_custom_tooltip` override itself, because Godot only calls that on a
+    Control's own script. A status's model comes from `StatusData.hover_card`,
+    beside the string it replaces, so the board, the enemy card and the hero
+    strip cannot describe the same status differently.
+    **The offering is the one thing that gets none** — no card and no tooltip:
+    the hover line under the cards already says what is waiting, and a popup over
+    three covers being scanned is the noisiest possible way to repeat it.
   - **`BattlefieldView.gd`** — the board: the hero on the left with the shield
     pips over them, the grid the goal-enemies close in across, the off-field lane,
-    the Push / Bomb toolbar, and the strike / advance animation. **Push is armed
-    then aimed**: pressing `⇤ Push` arms the verb, clicking an enemy picks the
-    body, and an arrow appears on every side of it a shove could legally land on
-    — back, forward, or up/down, which is the only lane change on the board.
-    Nothing is spent until an arrow is pressed. **The enemy of the game you are
+    the Push / Bomb toolbar, and the strike / advance animation. **Both verbs are
+    armed then aimed**, and neither spends anything until the aiming click.
+    Pressing `⇤ Push` arms it, clicking an enemy picks the body, and an arrow
+    appears on every side of it a shove could legally land on — back, forward, or
+    up/down, which is the only lane change on the board; the arrow is what
+    spends. Pressing `✸ Bomb` arms it and the **click on a body is what fires
+    it**, since a bomb has no direction to pick. Arming either puts the other
+    away. Bomb used to go off on the button press, at whatever was still
+    selected — routinely a body clicked several turns earlier to read its card,
+    so the charge went into an enemy the player was not looking at.
+    **The instruction is the board, not a caption**: arming lights every body the
+    verb could land on (`armed_targets` / `ARMED_TINT`) and the toolbar stops
+    printing "click an enemy" — a verb that has to caption its own highlight is a
+    highlight that isn't working. **The enemy of the game you are
     playing stands on the board with the rest** (§7.2), drawn on a washed fill so
     it is tellable from its neighbours; the off-field lane is for bodies with
     nowhere to stand. Nothing is drawn over the top of a body — the boss skull and

@@ -380,10 +380,14 @@ static func _ch_board() -> Dictionary:
 				+ "number, not the column it is standing in."),
 			_h("The two things you can do to the board"),
 			_kv("✸ Bomb", "1 damage. Kills a normal enemy, does nothing to a boss "
-				+ "except spend the charge."),
+				+ "except spend the charge. Arm the verb, then click the body you "
+				+ "want it on — the bodies it could land on light up, and the "
+				+ "CLICK is what spends the charge."),
 			_kv("⇤ Push", "Shove a follower one cell. Arm the verb, click the "
 				+ "body, then press one of the arrows that appear. Nothing is "
 				+ "spent until you press an arrow."),
+			_note("Both verbs are armed first and aimed second, and arming either "
+				+ "puts the other away. Cancel costs nothing."),
 			_p("Pushing BACK buys a game. Pushing UP or DOWN changes its lane, "
 				+ "which is the one move enemies can never make for themselves — "
 				+ "so it is how you unplug a jammed lane, or plug a clear one. "
@@ -780,6 +784,9 @@ static func _ch_screen() -> Dictionary:
 				+ "full on the card."),
 			_kv("What is waiting at a game", "Hover its cover: the enemy's picture "
 				+ "and its goal, on one line under the offering."),
+			_kv("Anything else on the page", "Hover it. An enemy, a status, a relic "
+				+ "and the enemy-turns readout each show a small card — the short "
+				+ "version of what clicking them opens."),
 			_kv("Where you have been", "The strip across the top: every game you "
 				+ "have played, in order, with a dashed arrow to the Amulet."),
 			_kv("What you owe", "The checklist, left column."),

@@ -911,7 +911,7 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   (enemy, goal, tries, connections, route) before you commit; Bash and Transmute
   are withheld there, since they reshape an offering and the picker is not one.
   **The amulet is named on this panel** — on its heading, on each card's distance
-  line and on the map the card opens, chart included. It used to be the run's one
+  line and on the last rung of the map the card opens. It used to be the run's one
   secret until a start was taken, with the maps drawing the destination as an
   unnamed box; choosing a start is a routing decision, and the game the road ends
   on is half of what tells one road from another.

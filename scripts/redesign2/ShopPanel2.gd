@@ -179,8 +179,29 @@ func _chrome_line() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 
+	# CLIPPED, and it matters far more than a shop's name should.
+	#
+	# A Label that neither wraps nor clips reports its whole string as its MINIMUM
+	# width, and this one is a game's name. That minimum became the shop panel's,
+	# the panel's became the right column's, and the right column's took the width
+	# straight out of the LEFT one — where the checklist's goal text then wrapped
+	# onto extra lines and grew the page. So a hub with a long name was a taller
+	# page than a hub with a short one, by up to 39px on a page with four to spare:
+	# "Enter the Gungeon", "Vampire Survivors" and "The Binding of Isaac" ran the
+	# overworld off the bottom of its own 720p window, and "FTL", "Hades" and
+	# "Balatro" did not. The width the name asks for is now its own business.
 	var title := Label.new()
 	title.text = "🛒  %s" % _shop_name()
+	title.tooltip_text = _shop_name()
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.custom_minimum_size.x = 0.0
+	# It ASKS FOR NOTHING and takes a share of whatever is left over, so the panel's
+	# width is set by the shelf below it (which is a fixed three rows) and never by
+	# the name. A fixed floor would be just as bad in the other direction: it would
+	# make every hub as wide as the longest one.
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.size_flags_stretch_ratio = 0.75
 	title.add_theme_font_size_override("font_size", 13)
 	title.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
 	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER

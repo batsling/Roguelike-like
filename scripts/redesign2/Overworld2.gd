@@ -870,10 +870,11 @@ func pick(index: int) -> void:
 	# The machines go too, and they do not survive: a Blood Donation Machine is
 	# not a place you can come back to.
 	_leave_node()
-	# An armed Push doesn't survive committing to a game: the board it was aimed at
-	# is about to be marched a column, and nothing has been spent.
+	# An armed verb doesn't survive committing to a game: the board it was aimed at
+	# is about to be marched a column, and nothing has been spent either way.
 	if _board != null:
 		_board.cancel_push()
+		_board.cancel_bomb()
 	_phase = Phase.PLAYING
 	_populate_play_panel()
 	_refresh()
@@ -1060,17 +1061,24 @@ func open_map() -> Node:
 # above its cover, because the whole decision is a routing decision and it
 # shouldn't have to be made from a single distance number.
 #
-# The START PICKER gets the same map, whole. It used to get a censored one — the
-# destination drawn as an unnamed box and no star chart raised, because a sky with
-# the route on it would point straight at the game the run was a search for. The
-# Amulet is not a secret any more (amulet_name), so there is nothing left to
-# withhold and the map a start card opens is the map every other card opens.
+# The START PICKER's map is the LADDER ALONE — no star chart under it.
+#
+# It used to withhold the destination as well, which is over: the Amulet is named
+# here like everywhere else (amulet_name). What it still withholds is the SKY. The
+# question being asked on that panel is "which of these three roads do I want",
+# and the answer to it is the ladder: seven rungs, in order, with the branch
+# points on them. Raising the whole 852-star chart to answer it hands the player a
+# galaxy to pan around before they have taken a single step — and the panel behind
+# is the one screen where there is nothing on the chart to orient by, since the
+# run has no position yet. The chart is one button away on the window itself
+# (✦ Star chart) for anyone who wants it.
 func preview_map(game_id: StringName) -> Node:
 	if game_id == &"" or GameState.amulet_game_id == &"":
 		return null
 	var game: GameData = Data.get_game(game_id)
 	return _open_route_map(game_id, [], {
 		"preview": true,
+		"chart": _phase != Phase.START_SELECT,
 		"title": "🗺  If you take %s" % (game.display_name if game != null else String(game_id)),
 	})
 
@@ -2725,8 +2733,8 @@ func _make_start_card(index: int, opt: Dictionary) -> Control:
 	btn.add_theme_stylebox_override("focus", frame_h)
 	# Opens the card rather than committing: the start is a game you go and play
 	# now, so it gets the same "here is what's waiting, do you want it" popup every
-	# other game in the run gets.
-	btn.tooltip_text = "Open %s — what's waiting there, the tries it grants, and the button that starts the run on it." % game.display_name
+	# other game in the run gets. No tooltip, for the same reason an offered card
+	# has none — the hover line under the cards is where a start describes itself.
 	btn.pressed.connect(func(): open_start_choice(index))
 	btn.mouse_entered.connect(func(): _show_start_preview(index))
 	btn.mouse_exited.connect(_clear_hover_grant)
@@ -2917,9 +2925,13 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	dash_flag.add_theme_color_override("font_color", DASH_BLUE)
 	card.add_child(dash_flag)
 
+	# NO TOOLTIP. The offering is the one place on the page that does NOT get a
+	# hover card: the enemy's portrait and its goal are already written on the
+	# hover line under the cards (see _show_preview), which is the same read the
+	# card would be, and a popup over the covers while the mouse crosses three of
+	# them is the noisiest possible way to say it. The cards are for scanning.
 	var btn := Button.new()
 	btn.custom_minimum_size = COVER_SIZE
-	btn.tooltip_text = "Open %s — the route it leaves you on, what's waiting there, and the button that takes it." % game.display_name
 	var frame_n := UITheme.flat(UITheme.BG, 8, 4, 1, UITheme.GOLD if amulet else UITheme.BORDER)
 	var frame_h := UITheme.flat(UITheme.PANEL_HI, 8, 4, 2, accent)
 	btn.add_theme_stylebox_override("normal", frame_n)
@@ -4143,21 +4155,22 @@ func _item_token(item: ItemData, reporting: bool) -> Control:
 
 	# Bottom-aligned so every art tile sits on one baseline whether or not the item
 	# above it grew a Use button — a ragged row of tiles reads as a bug.
-	var col := VBoxContainer.new()
+	var col := HoverBox.new()
 	col.add_theme_constant_override("separation", 2)
 	col.size_flags_vertical = Control.SIZE_SHRINK_END
 	# The whole column answers the hover, not only the art tile — the Use button
 	# and the battery override it with their own, so every pixel of an item says
 	# something rather than the gap above the tile saying nothing.
-	col.tooltip_text = _item_tip(item, active, ready, reporting)
+	var card: Dictionary = item_hover(item, active, ready, reporting)
+	HoverCard.attach(col, card)
 	if active:
 		col.add_child(_item_fire_control(item, ready, reporting))
 
-	var tile := PanelContainer.new()
+	var tile := HoverPanel.new()
 	var border: Color = UITheme.GOLD if ready else tint.lerp(UITheme.BG, 0.45)
 	tile.add_theme_stylebox_override("panel",
 		UITheme.flat(tint.lerp(UITheme.BG, 0.86), 5, 3, 2 if ready else 1, border))
-	tile.tooltip_text = _item_tip(item, active, ready, reporting)
+	HoverCard.attach(tile, card)
 	tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	col.add_child(tile)
 
@@ -4257,20 +4270,33 @@ func _close_item_card() -> void:
 	_item_card = null
 
 # Everything the old named row said, in the tooltip the token carries.
-func _item_tip(item: ItemData, active: bool, ready: bool, reporting: bool) -> String:
-	var tip: String = "%s  ·  %s" % [item.display_name, UITheme.item_class_name(item)]
+# The hover model for a carried item: the condensed version of the card its click
+# opens (ItemInfoCard). Its art, its name in its class colour, what it does, and
+# — for an active item — whether it can be fired right now, which is the one fact
+# about a relic that changes what you do in the next second.
+#
+# Public, and named for the thing rather than for the tooltip, because the shop's
+# shelf and the drop modal describe the same items and should come through here.
+func item_hover(item: ItemData, active: bool, ready: bool, reporting: bool) -> Dictionary:
+	var sub: String = UITheme.item_class_name(item)
 	if item.is_charged():
-		tip += "  [%d/%d]" % [item.current_charge, item.max_charge()]
-	if String(item.description) != "":
-		tip += "\n%s" % item.description
+		sub += "  ·  %d/%d charged" % [item.current_charge, item.max_charge()]
+	var note: String = ""
 	if active:
 		if ready:
-			tip += "\n▸ Click to use."
+			note = "▸ Click the tile above to use it."
 		elif reporting:
-			tip += "\n▸ Report this game first."
+			note = "▸ Report this game first."
 		elif item.is_charged():
-			tip += "\n▸ Charging."
-	return tip
+			note = "▸ Charging."
+	return {
+		"title": item.display_name,
+		"subtitle": sub,
+		"accent": UITheme.item_color(item),
+		"art": item.image,
+		"lines": [String(item.description)],
+		"note": note,
+	}
 
 # The dim "there's nothing here" line the pack panels show when they're empty.
 func _empty_note(text: String) -> Label:
@@ -4719,9 +4745,12 @@ func _build_ui() -> void:
 	var inv_box := VBoxContainer.new()
 	inv_box.add_theme_constant_override("separation", 4)
 	_inv_wrap.add_child(inv_box)
-	var inv_head := _section("🎒  Inventory")
-	inv_head.add_theme_font_size_override("font_size", 13)
-	inv_box.add_child(inv_head)
+	# NO HEADING. It used to carry a "🎒  Inventory" line, and a strip of relics
+	# and scrolls in a bordered panel does not need to be told what it is — the
+	# tokens are the label. That row is also the page's whole margin: the overworld
+	# is fitted to a 720p window and, with the heading on, the pack panel alone put
+	# it a pixel OVER (626 of 625) before a shop was even mounted under the board.
+	#
 	# ONE strip, relics and scrolls together. A scroll is a thing you are carrying
 	# and spend, exactly like a Usable relic is, and it used to get a whole second
 	# titled panel of its own — first at the foot of the page under the log, then

@@ -357,6 +357,75 @@ func test_the_arrow_spends_the_charge_and_moves_the_enemy() -> void:
 	assert_eq(int(GameLoop2.stack[0]["col"]), col - 1, "and it moved the way the arrow pointed")
 	assert_false(_ui._board.push_mode, "one press of Push spends at most one charge")
 
+# --- the bomb is armed and aimed too ---------------------------------------
+#
+# It used to fire the instant its button was pressed, at whatever was still
+# `selected_instance` — routinely a body clicked several turns earlier to read
+# its card, so the charge went into an enemy the player was not looking at.
+
+func test_arming_the_bomb_clears_the_selection_and_spends_nothing() -> void:
+	GameState.bombs = 1
+	_ui.pick(0)
+	_ui.report(false)
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	_ui._board.selected_instance = inst
+	_ui._board.begin_bomb()
+	assert_true(_ui._board.bomb_mode, "the verb is armed")
+	assert_eq(_ui._board.selected_instance, 0,
+		"and the body left over from reading a card is NOT the target")
+	assert_eq(GameState.bombs, 1, "arming spends nothing")
+	assert_true(_ui._board.bomb_btn.text.contains("Cancel"),
+		"the button becomes the way out: %s" % _ui._board.bomb_btn.text)
+	_ui._board.cancel_bomb()
+	assert_false(_ui._board.bomb_mode, "cancel disarms it")
+	assert_eq(GameState.bombs, 1, "and still spends nothing")
+
+# The instruction is the BOARD, not a line of text: arming lights every body the
+# verb could land on, and the toolbar stops telling you to click one.
+func test_arming_lights_the_bodies_it_could_land_on() -> void:
+	GameState.bombs = 1
+	_ui.pick(0)
+	_ui.report(false)
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	assert_true(_ui._board.armed_targets().is_empty(), "nothing is lit while idle")
+	_ui._board.begin_bomb()
+	assert_true(_ui._board.armed_targets().has(inst), "the follower is a legal target")
+	_ui._board.refresh_toolbar()
+	assert_false(_ui._board._target_label.text.to_lower().contains("click"),
+		"and the toolbar doesn't caption its own highlight: '%s'" % _ui._board._target_label.text)
+	_ui._board.cancel_bomb()
+
+# The CLICK is what spends it — one press of Bomb, one bomb.
+func test_the_click_fires_the_bomb_and_disarms_it() -> void:
+	GameState.bombs = 1
+	_ui.pick(0)
+	_ui.report(false)
+	var entry: Dictionary = GameLoop2.stack[0]
+	var inst: int = int(entry["instance"])
+	var before: int = GameLoop2.stack.size()
+	_ui._board.begin_bomb()
+	assert_eq(GameState.bombs, 1, "still nothing spent")
+	_ui._board.click_enemy(inst, entry, int(entry.get("col", 1)), false)
+	assert_eq(GameState.bombs, 0, "the click is what spends the charge")
+	assert_lt(GameLoop2.stack.size(), before, "and it took the body off the board")
+	assert_false(_ui._board.bomb_mode, "one press of Bomb spends at most one charge")
+	assert_null(_ui._info_popup, "and the click bombed rather than opening a card")
+
+# Arming one verb puts the other away — two armed verbs would make a click
+# ambiguous, and the board can only light one set of targets.
+func test_arming_one_verb_disarms_the_other() -> void:
+	GameState.bombs = 1
+	GameState.push = 1
+	_ui.pick(0)
+	_ui.report(false)
+	_ui._board.begin_push()
+	_ui._board.begin_bomb()
+	assert_false(_ui._board.push_mode, "arming the Bomb put the Push away")
+	assert_true(_ui._board.bomb_mode)
+	_ui._board.begin_push()
+	assert_false(_ui._board.bomb_mode, "and the other way round")
+	_ui._board.cancel_push()
+
 # Nothing is drawn while the verb is idle — the arrows are a mode, not furniture.
 func test_no_arrows_when_the_push_is_not_armed() -> void:
 	GameState.push = 1
@@ -637,6 +706,102 @@ func test_the_hover_line_previews_the_games_grant() -> void:
 	_ui._clear_hover_grant()                      # mouse left the card
 	assert_false(_ui._preview.text.contains("tries"),
 		"it can't advertise a game you're not pointing at: %s" % _ui._preview.text)
+
+# The pack panel carries no heading. A bordered strip of relic and scroll tiles
+# does not need to be told it is the inventory — the tokens are the label, and
+# the row it was spending is worth more to the board under it.
+func test_the_pack_has_no_heading() -> void:
+	var text: String = _text_of(_ui._inv_wrap)
+	assert_false(text.contains("Inventory"),
+		"nothing calls the pack anything: %s" % text)
+
+# --- the hover CARD ---------------------------------------------------------
+#
+# An enemy, a status, an item and the enemy-turns readout all open something when
+# clicked, and all four used to spend their hover on Godot's plain grey tooltip.
+# They carry a condensed version of that card now (HoverCard).
+
+func test_a_body_on_the_board_carries_a_hover_card() -> void:
+	_ui.pick(0)
+	_ui.report(false)
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	var node: Control = _ui._board._enemy_nodes.get(inst)
+	assert_not_null(node, "the body has a node on the board")
+	assert_true(node.has_meta(HoverCard.META), "and the node carries a card")
+	var card: Dictionary = node.get_meta(HoverCard.META)
+	var e: GoalEnemyData = GameLoop2.stack[0]["enemy"]
+	assert_eq(String(card.get("title", "")), e.display_name, "named as itself")
+	assert_eq(card.get("art"), e.image, "with its own art")
+	var lines: String = "\n".join(PackedStringArray(card.get("lines", [])))
+	assert_string_contains(lines, e.goal, "the goal you'd be playing for")
+	# One of the three shapes the timing line takes — which one depends on where
+	# the body happens to have walked to, so all three count.
+	var timing: String = lines.to_lower()
+	assert_true(timing.contains("strike") or timing.contains("walking")
+		or timing.contains("off the field"), "and when it next swings: %s" % lines)
+
+# The statuses ride as PIPS rather than as three more lines of prose.
+func test_a_bodys_statuses_ride_its_hover_card_as_pips() -> void:
+	_ui.pick(0)
+	GameLoop2.apply_enemy_status(&"marked", 2, "current")
+	_ui.report(false)
+	_ui._board.refresh()
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	var node: Control = _ui._board._enemy_nodes.get(inst)
+	if node == null:
+		return
+	var card: Dictionary = node.get_meta(HoverCard.META, {})
+	var pips: Array = card.get("pips", [])
+	assert_false(pips.is_empty(), "what is riding on it is on the card")
+	var names: String = ""
+	for pip in pips:
+		names += String(pip.get("text", "")) + " "
+	assert_string_contains(names, "Marked", "by name and stack count: %s" % names)
+
+func test_a_carried_item_carries_a_hover_card() -> void:
+	var item := ItemData.new()
+	item.id = &"__test_relic__"
+	item.display_name = "Test Relic"
+	item.description = "It does a testable thing."
+	GameState.inventory.append(item)
+	_ui._refresh_items()
+	# The run opens carrying a relic of its own, so the strip is picked through by
+	# name rather than by index.
+	var card: Dictionary = {}
+	for token in _ui._items_box.get_children():
+		if token.has_meta(HoverCard.META) \
+				and String(token.get_meta(HoverCard.META).get("title", "")) == "Test Relic":
+			card = token.get_meta(HoverCard.META)
+	assert_false(card.is_empty(), "the pack token carries a card")
+	assert_string_contains("\n".join(PackedStringArray(card.get("lines", []))),
+		"testable thing", "with what it does on it")
+	GameState.inventory.erase(item)
+
+func test_the_enemy_turns_readout_carries_a_hover_card() -> void:
+	_ui._board.refresh()
+	var panel: Control = _ui._board._pressure_panel
+	assert_true(panel.has_meta(HoverCard.META), "the pressure readout carries a card")
+	var card: Dictionary = panel.get_meta(HoverCard.META)
+	assert_string_contains(String(card.get("title", "")), "Enemy turns",
+		"named for what it is")
+	assert_string_contains("\n".join(PackedStringArray(card.get("lines", []))),
+		"Amulet", "and it says WHY the number is what it is")
+
+# The offering is the one place that gets nothing: the hover line under the cards
+# already says what is waiting, and a popup over three covers being scanned is
+# the noisiest possible way to repeat it.
+func test_an_offered_card_has_no_hover_of_its_own() -> void:
+	_ui._render_choices()
+	var card: Node = _ui._choices_row.get_child(0)
+	var cover: Button = null
+	for c in card.get_children():
+		if c is Button and not String((c as Button).text).contains("Map"):
+			cover = c
+	assert_not_null(cover, "the cover is a button")
+	if cover == null:
+		return
+	assert_eq(cover.tooltip_text, "", "and it says nothing on hover")
+	assert_false(cover.has_meta(HoverCard.META), "no card either")
 
 # …and the PICTURE of it, beside the line. A player recognises a body by its art
 # long before they read its name, and for a while the hover had no art at all.
@@ -2617,17 +2782,30 @@ func test_a_card_map_draws_that_cards_route_on_the_chart() -> void:
 		"the chart's route and the ladder are the same graph")
 	assert_eq(modal.shortest_distance(), _ui.steps_to_amulet(slot))
 
-func test_the_start_pickers_map_raises_a_chart_like_any_other() -> void:
-	# The picker used to keep the Amulet's identity back — no chart, and the
-	# destination drawn as an unnamed box — because a sky with the route on it
-	# would point straight at it. There is nothing left to point at: the Amulet is
-	# named from the first screen, so the start picker gets the whole map.
+func test_the_start_pickers_map_is_the_ladder_alone() -> void:
+	# The picker's map raises NO star chart. It used to withhold the destination as
+	# well, which is over — the ladder names it (below) — but the sky stays down:
+	# the question on that panel is "which of these three roads", the ladder is the
+	# answer to it, and 852 stars with nothing on them to orient by (the run has no
+	# position yet) is not. The chart is one button away on the window itself.
 	_ui.start_run()
 	var modal = _ui.preview_map(_ui._start_options[0]["game"].id)
-	assert_not_null(_chart(), "the start picker raises the star chart too")
+	assert_null(_chart(), "no star chart from the start picker")
 	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
 	assert_eq(modal.node_name(GameState.amulet_game_id), amulet.display_name,
-		"and the ladder names the destination")
+		"but the ladder still names the destination")
+	assert_not_null(_star_chart_button(modal),
+		"and the window offers to raise the chart for anyone who wants it")
+
+# The map window's "✦ Star chart" button, wherever its tools row put it.
+func _star_chart_button(node: Node) -> Button:
+	for child in node.get_children():
+		if child is Button and (child as Button).text.contains("Star chart"):
+			return child
+		var found: Button = _star_chart_button(child)
+		if found != null:
+			return found
+	return null
 
 # ---------------------------------------------------------------------------
 # Amulet pressure on the offering: what a card costs in PACE (§7.4)
@@ -3867,14 +4045,26 @@ func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
 	# The shop shares the machines' slot and had the same disease, worse: its
 	# three cards ran the page to 1231px of a 688px window, and that predates
 	# machines entirely.
+	#
+	# EVERY HUB, not just the first one the random graph happened to roll. This
+	# used to mount `hubs[0]` and stop, which made it a coin flip: the shop's name
+	# was a Label with no clip, so its width was the hub's NAME length, and a wide
+	# shop panel took the room out of the left column until the checklist wrapped
+	# and grew the page. "Enter the Gungeon" overran by 35px and "FTL" did not, so
+	# the same bug passed or failed depending on the seed. Walking the whole roster
+	# is what turns that back into a test.
 	var hubs: Array = ShopSystem.hub_games()
 	assert_false(hubs.is_empty(), "a run has hubs")
-	_ui._mount_shop(hubs[0])
-	await get_tree().process_frame
-	await get_tree().process_frame
-	assert_not_null(_ui._shop_panel, "the shop mounts under the board")
-	_ui._refresh()
-	_assert_fits("the page with a hub's shop on it")
+	for hub in hubs:
+		_ui._mount_shop(hub)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		assert_not_null(_ui._shop_panel, "the shop mounts under the board")
+		_ui._refresh()
+		await get_tree().process_frame
+		var game: GameData = Data.get_game(hub)
+		_assert_fits("the page with %s's shop on it" % (
+			game.display_name if game != null else String(hub)))
 
 func test_a_shelf_item_is_a_row_on_the_page_and_a_card_when_you_open_it() -> void:
 	var hubs: Array = ShopSystem.hub_games()
