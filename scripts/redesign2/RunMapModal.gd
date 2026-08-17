@@ -96,11 +96,12 @@ var _dragging: bool = false
 # card, and clear of its header and legend bars.
 #
 # The window is sized for the ROUTE, and the route got longer: starts are rolled
-# 5-8 games from the Amulet (RunGraph.MIN/MAX_PATH_LENGTH), so the opening map —
-# the one every start card offers — is up to an eight-layer ladder that has to be
+# 4-7 games from the Amulet (RunGraph.MIN/MAX_PATH_LENGTH), so the opening map —
+# the one every start card offers — is up to a seven-layer ladder that has to be
 # read whole. A 760x560 window fitted that at a zoom where the names were gone.
 # The window stays sized for the LONGEST route in the band, not the average, so a
-# 5-hop start and an 8-hop start open the same panel at the same zoom.
+# 4-hop start and a 7-hop start open the same panel at the same zoom. It is also
+# still sized for the band's old ceiling of 8, since a custom run may set one.
 const PANEL_SIZE := Vector2(940, 680)
 const PANEL_MARGIN := Vector2(44, 96)
 # How much of the screen the window is NOT allowed to take, per axis: enough to

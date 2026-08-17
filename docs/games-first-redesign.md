@@ -899,8 +899,11 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   connected to where you stand; **Transmute** turns a game into an unconnected
   same-type game — or, from a Traditional game, an unconnected game of any other
   type (§4).
-- **The run opens on a choice of three starting games**, one per game type, each
-  6–8 games from the randomly-rolled amulet (`RunGraph.pick_amulet_and_starts`).
+- **The run opens on a choice of starting games** (`RunGraph.NUM_START_OPTIONS`,
+  currently two), one per game type, each 4–7 games from the randomly-rolled
+  amulet (`RunGraph.MIN/MAX_PATH_LENGTH`, via `pick_amulet_and_starts`) and, where
+  the graph allows it, at *different* distances — so the panel is a choice of run
+  length as well as genre.
   **The start is the run's first game, not a doorstep**: taking one rolls its
   goal-enemy, stands it on the board, hands over the game's tries, and drops
   straight into the report step — so a run opens with something to go and play
