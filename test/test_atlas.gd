@@ -347,6 +347,32 @@ func test_everything_on_screen_with_art_shows_it_when_zoomed_right_in() -> void:
 	assert_eq(view.cover_count(), with_art,
 		"at maximum zoom every game on screen that has art is showing it")
 
+# `cover_count` is MEMOIZED against the camera, because _refresh_hud asks it on
+# every redraw for a text label. A memo that does not move with the camera is
+# worse than the cost it saved — it would print a stale number over a chart the
+# player has just zoomed — so the invalidation is what gets asserted here.
+func test_the_cover_count_memo_follows_the_camera() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	view.frame_all()
+	var overview: int = view.cover_count()
+	assert_eq(view.cover_count(), overview, "asking twice at one camera is one answer")
+	for _step in range(80):
+		view.zoom_by(1.3, Vector2(400, 300))
+	var zoomed: int = view.cover_count()
+	assert_ne(zoomed, overview, "and zooming right in changes it")
+	# Against a fresh count, which is what the memo is standing in for.
+	var vis: Rect2 = view._visible_rect()
+	var fresh: int = 0
+	for i in range(view.layout.star_count()):
+		if vis.has_point(view.to_screen(view.layout.position_of(i))) and view.shows_cover(i):
+			fresh += 1
+	assert_eq(zoomed, fresh, "and the memo agrees with counting it again")
+	# Panning is the other half: same scale, different offset.
+	view.frame_all()
+	assert_eq(view.cover_count(), overview, "framing back gives the overview count again")
+
 # The stutter this guards against: `cover_count` runs on every redraw — so on
 # every pan and zoom step — and `shows_cover` used to answer by LOADING the cover
 # to measure it. Panning the chart therefore walked the whole 845-cover catalog
@@ -478,7 +504,7 @@ func test_the_route_set_is_rebuilt_when_the_run_moves() -> void:
 	view.route_stars()                # fill the cache, so a stale one has somewhere to hide
 	# The start is the run's first game, so the run opens in the report step — beat
 	# it, and the offering that appears is the one the move under test is made from.
-	ui.report(true)
+	_report_beat(ui)
 	ui._end_resolve()
 	ui.pick(0)
 	ui.report(false)
@@ -1858,3 +1884,12 @@ func test_left_drag_still_pans() -> void:
 	_move(view, Vector2(50, 30))
 	assert_ne(view._offset, before, "left-drag keeps working for anyone used to it")
 	_press(view, MOUSE_BUTTON_LEFT, false)
+
+# Report the game as completed AND tick the row for the body that walked on with
+# it. This is what a bare `report(true)` used to do in one flag, back when that
+# body was the game's own enemy and beating the game answered for it; it is spelled
+# out now because the flag only records the GAME any more (GameLoop2.arrivals),
+# and clearing an enemy is ticking its checklist row like any other.
+func _report_beat(ui) -> void:
+	var landed: Dictionary = GameLoop2.arrival()
+	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])

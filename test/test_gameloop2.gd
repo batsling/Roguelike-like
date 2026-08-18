@@ -73,8 +73,8 @@ func _bastion(dmg: int = 3) -> GoalEnemyData:
 # the file where it is the subject rather than the noise.
 func _choose_solo(enemy: GoalEnemyData) -> int:
 	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.current_escort > 0:
-		GameLoop2.despawn(GameLoop2.current_escort)
+	if GameLoop2.escort_instance() > 0:
+		GameLoop2.despawn(GameLoop2.escort_instance())
 	return inst
 
 # The front (leftmost) grid column a stacked enemy occupies (1 = front/melee,
@@ -130,7 +130,7 @@ func _march_to_front(instance: int) -> void:
 func test_choose_game_sets_current() -> void:
 	var inst: int = _choose_solo(_enemy(1))
 	assert_gt(inst, 0)
-	assert_true(GameLoop2.has_current())
+	assert_true(GameLoop2.has_arrivals())
 
 # --- goal met -> defeat + drop -------------------------------------------
 
@@ -143,7 +143,7 @@ func test_goal_met_defeats_drops_and_deals_no_damage() -> void:
 	assert_eq(int(res["drops"]), 1, "a defeated enemy drops one item")
 	assert_eq(GameLoop2.stack_size(), 0)
 	assert_eq(GameState.hp, 10, "a met goal deals no damage")
-	assert_false(GameLoop2.has_current())
+	assert_false(GameLoop2.has_arrivals())
 
 # --- spawning onto the board, and the walk that follows (§7.2) -----------
 
@@ -154,7 +154,7 @@ func test_choosing_a_game_stands_its_enemy_on_the_board() -> void:
 	var inst: int = _choose_solo(_enemy(2))
 	assert_eq(GameLoop2.stack_size(), 1, "it is a body on the board, not a body in waiting")
 	assert_eq(_col_of(inst), GameLoop2.spawn_col(), "standing on the back column")
-	assert_eq(int(GameLoop2.current.get("instance", 0)), inst,
+	assert_eq(int(GameLoop2.arrival().get("instance", 0)), inst,
 		"and it is the enemy of the game in play")
 
 # Choosing a second game supersedes the first: the enemy nobody played for leaves
@@ -174,15 +174,15 @@ func test_choosing_again_takes_the_superseded_enemy_off_the_board() -> void:
 func test_choosing_a_game_spawns_an_escort_beside_its_enemy() -> void:
 	var inst: int = GameLoop2.choose_game(_enemy(2))
 	assert_eq(GameLoop2.stack_size(), 2, "the game's enemy AND an escort")
-	assert_gt(GameLoop2.current_escort, 0, "the escort is remembered by handle")
-	assert_ne(GameLoop2.current_escort, inst, "and it is a body of its own")
+	assert_gt(GameLoop2.escort_instance(), 0, "the escort is remembered by handle")
+	assert_ne(GameLoop2.escort_instance(), inst, "and it is a body of its own")
 	assert_not_null(GameLoop2.escort_enemy(), "which the screens can ask for by name")
 
 # The escort is a body like any other from the moment it lands: it spawns at the
 # back column, in a lane of its own.
 func test_the_escort_spawns_on_the_board_like_any_other_body() -> void:
 	GameLoop2.choose_game(_enemy(2))
-	var entry: Dictionary = _entry(GameLoop2.current_escort)
+	var entry: Dictionary = _entry(GameLoop2.escort_instance())
 	assert_false(entry.is_empty(), "it is on the stack")
 	assert_eq(int(entry.get("col", -1)), GameLoop2.spawn_col(), "at the back column")
 
@@ -191,30 +191,30 @@ func test_the_escort_spawns_on_the_board_like_any_other_body() -> void:
 # point of it.
 func test_beating_the_game_defeats_its_enemy_and_leaves_the_escort() -> void:
 	GameLoop2.choose_game(_enemy(2))
-	var escort: int = GameLoop2.current_escort
+	var escort: int = GameLoop2.escort_instance()
 	GameLoop2.beat_game(true)
 	assert_eq(GameLoop2.defeated_count, 1, "one defeat — the game's own enemy")
 	assert_eq(GameLoop2.stack_size(), 1, "and the escort is still standing")
 	assert_eq(int(GameLoop2.stack[0]["instance"]), escort)
-	assert_eq(GameLoop2.current_escort, 0,
+	assert_eq(GameLoop2.escort_instance(), 0,
 		"but it is an ordinary follower now, not this game's escort")
 
 # A BOSS round spawns solo — the tier change is the step up on its own (§7.1).
 func test_a_boss_spawns_without_an_escort() -> void:
 	GameLoop2.choose_game(_enemy(3, true))
 	assert_eq(GameLoop2.stack_size(), 1, "the boss stands alone")
-	assert_eq(GameLoop2.current_escort, 0)
+	assert_eq(GameLoop2.escort_instance(), 0)
 	assert_null(GameLoop2.escort_enemy())
 
 # Superseding the game takes the PAIR off, not just the enemy. Otherwise every
 # Scramble charge would be a way to buy a body.
 func test_superseding_a_game_takes_its_escort_off_with_it() -> void:
 	GameLoop2.choose_game(_enemy(2))
-	var first_escort: int = GameLoop2.current_escort
+	var first_escort: int = GameLoop2.escort_instance()
 	GameLoop2.choose_game(_enemy(2))
 	assert_eq(GameLoop2.stack_size(), 2, "still one game's worth of bodies")
 	assert_true(_entry(first_escort).is_empty(), "the superseded escort left with its enemy")
-	assert_ne(GameLoop2.current_escort, first_escort, "a fresh one arrived with the new game")
+	assert_ne(GameLoop2.escort_instance(), first_escort, "a fresh one arrived with the new game")
 
 func test_scramble_rerolls_the_escort_rather_than_stacking_them() -> void:
 	GameState.scramble = 3
@@ -228,7 +228,7 @@ func test_scramble_rerolls_the_escort_rather_than_stacking_them() -> void:
 # may not reach back and supersede it.
 func test_a_reported_games_escort_survives_the_next_choice() -> void:
 	GameLoop2.choose_game(_enemy(2))
-	var escort: int = GameLoop2.current_escort
+	var escort: int = GameLoop2.escort_instance()
 	GameLoop2.beat_game(true)                 # its enemy dies, the escort stays
 	GameLoop2.choose_game(_enemy(2))
 	assert_false(_entry(escort).is_empty(), "the follower is still on the board")
@@ -239,8 +239,8 @@ func test_a_reported_games_escort_survives_the_next_choice() -> void:
 func test_bombing_the_escort_clears_the_handle_it_was_held_by() -> void:
 	GameState.bombs = 1
 	GameLoop2.choose_game(_enemy(2))
-	GameLoop2.bomb(GameLoop2.current_escort)
-	assert_eq(GameLoop2.current_escort, 0, "nothing to reach back for")
+	GameLoop2.bomb(GameLoop2.escort_instance())
+	assert_eq(GameLoop2.escort_instance(), 0, "nothing to reach back for")
 	assert_eq(GameLoop2.stack_size(), 1)
 
 # The pairing is what the save has to carry: a Scramble taken after a reload must
@@ -252,11 +252,11 @@ func test_bombing_the_escort_clears_the_handle_it_was_held_by() -> void:
 # there would be no game in play on the other side to scramble.
 func test_the_escort_pairing_survives_a_save_round_trip() -> void:
 	GameLoop2.choose_game(Data.all_goal_enemies()[0])
-	var escort: int = GameLoop2.current_escort
+	var escort: int = GameLoop2.escort_instance()
 	var blob: Dictionary = GameLoop2.serialize()
 	GameLoop2.reset()
 	GameLoop2.restore(blob)
-	assert_eq(GameLoop2.current_escort, escort, "the same body is still the escort")
+	assert_eq(GameLoop2.escort_instance(), escort, "the same body is still the escort")
 	GameState.scramble = 1
 	GameLoop2.scramble()
 	assert_eq(GameLoop2.stack_size(), 2, "and scrambling still rerolls the pair")
@@ -966,8 +966,13 @@ func test_clear_amulet_wins() -> void:
 	GameLoop2.clear_amulet()
 	assert_true(GameLoop2.won)
 	assert_true(GameLoop2.run_over)
-	assert_false(GameLoop2.has_current())
-	assert_eq(GameLoop2.defeated_count, 1, "the amulet enemy is defeated (drops inline)")
+	assert_false(GameLoop2.has_arrivals())
+	# It takes NOTHING off the board. Winning at the Amulet used to defeat the body
+	# standing there, back when that body was the game's own; whatever is standing
+	# there now was already dealt with by the report that got us here, ticked or
+	# not, exactly like every other enemy (GameLoop2.arrivals).
+	assert_eq(GameLoop2.defeated_count, 0, "winning defeats nothing by itself")
+	assert_eq(GameLoop2.stack_size(), 1, "the body stays where it was standing")
 	assert_signal_emitted(GameLoop2, "run_won")
 
 # --- spawn_to_stack (Scroll of Create Monster, §4.1) ----------------------
@@ -1167,15 +1172,15 @@ func test_scramble_rerolls_current_and_spends_charge() -> void:
 	assert_eq(String(fresh.game_type), "deckbuilder", "rerolled within the same type")
 	assert_eq(fresh.tier_index(), slime.tier_index(), "and the same tier")
 	assert_eq(GameState.scramble, 0, "a scramble charge is spent")
-	assert_true(GameLoop2.has_current())
+	assert_true(GameLoop2.has_arrivals())
 
 func test_scramble_requires_current_and_charge() -> void:
 	GameState.scramble = 0
 	_choose_solo(_enemy(2))
 	assert_null(GameLoop2.scramble(), "no charge -> no reroll")
 	GameState.scramble = 1
-	GameLoop2.current = {}
-	assert_null(GameLoop2.scramble(), "no current game -> no reroll")
+	GameLoop2.arrivals.clear()
+	assert_null(GameLoop2.scramble(), "nothing arrived -> nothing to reroll")
 	assert_eq(GameState.scramble, 1, "a failed scramble is not spent")
 
 func test_choose_game_of_type_rolls_and_sets_current() -> void:
@@ -1184,7 +1189,7 @@ func test_choose_game_of_type_rolls_and_sets_current() -> void:
 	assert_eq(String(e.game_type), "action", "rolled an action-type enemy")
 	assert_eq(e.tier_index(), 0, "rolled at the Low tier")
 	assert_false(e.is_boss(), "a normal roll is not a boss")
-	assert_true(GameLoop2.has_current())
+	assert_true(GameLoop2.has_arrivals())
 
 # --- enemy roll by type + tier (§7) --------------------------------------
 
@@ -1530,16 +1535,16 @@ func test_growing_the_board_walks_the_overflow_queue_on() -> void:
 func test_the_current_enemy_and_its_body_are_one_record() -> void:
 	var inst: int = _choose_solo(_enemy(1))
 	GameLoop2.apply_status_to(inst, _any_status(), 1)
-	assert_eq(int(GameLoop2.current.get("instance", 0)), inst)
+	assert_eq(int(GameLoop2.arrival().get("instance", 0)), inst)
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0]).size(),
-		GameLoop2.enemy_statuses(GameLoop2.current).size(),
+		GameLoop2.enemy_statuses(GameLoop2.arrival()).size(),
 		"a status put on the current enemy is on the body standing there")
 
 func test_beating_its_goal_takes_the_body_off_the_board() -> void:
 	_choose_solo(_enemy(1))
 	GameLoop2.beat_game(true)
 	assert_eq(GameLoop2.stack_size(), 0, "the defeated enemy leaves the field")
-	assert_false(GameLoop2.has_current(), "and the game is no longer in play")
+	assert_false(GameLoop2.has_arrivals(), "and the game is no longer in play")
 
 func test_removing_the_body_clears_the_game_in_play() -> void:
 	# Every removal goes through one door, because `current` points at one of these
@@ -1547,7 +1552,7 @@ func test_removing_the_body_clears_the_game_in_play() -> void:
 	# otherwise leave has_current() answering for an enemy that is not there.
 	var inst: int = _choose_solo(_enemy(1))
 	assert_true(GameLoop2.despawn(inst), "the body comes off the board")
-	assert_false(GameLoop2.has_current(),
+	assert_false(GameLoop2.has_arrivals(),
 		"and the game in play goes with it rather than pointing at nothing")
 
 func test_the_game_in_play_survives_a_save_round_trip_once() -> void:
@@ -1560,9 +1565,9 @@ func test_the_game_in_play_survives_a_save_round_trip_once() -> void:
 	var blob: Dictionary = GameLoop2.serialize()
 	GameLoop2.restore(blob)
 	assert_eq(GameLoop2.stack_size(), 1, "one body, not two copies of it")
-	assert_eq(int(GameLoop2.current.get("instance", 0)), inst,
+	assert_eq(int(GameLoop2.arrival().get("instance", 0)), inst,
 		"and the restored run still knows which one it is playing against")
-	assert_eq(int(GameLoop2.current.get("col", 0)), int(GameLoop2.stack[0]["col"]),
+	assert_eq(int(GameLoop2.arrival().get("col", 0)), int(GameLoop2.stack[0]["col"]),
 		"reading the same square from both ends")
 
 func test_a_save_from_before_the_enemy_stood_on_the_board_still_loads() -> void:
@@ -1574,11 +1579,16 @@ func test_a_save_from_before_the_enemy_stood_on_the_board_still_loads() -> void:
 		return
 	_choose_solo(real)
 	var blob: Dictionary = GameLoop2.serialize()
+	# A save from that build has NONE of the handles a current one writes — not
+	# `arrivals`, and not the `current_instance` that preceded it. All it carries
+	# is the whole entry under "current".
+	blob.erase("arrivals")
 	blob.erase("current_instance")
+	blob.erase("current_escort")
 	blob["stack"] = []
 	GameLoop2.restore(blob)
 	assert_eq(GameLoop2.stack_size(), 1, "the legacy entry is a body on the board")
-	assert_true(GameLoop2.has_current(), "and it is still the game in play")
+	assert_true(GameLoop2.has_arrivals(), "and it is still the game in play")
 
 # A status aimed at "all" must not land on the current enemy twice now that it is
 # on the stack.
@@ -1589,7 +1599,7 @@ func test_a_status_aimed_at_everything_lands_once_per_body() -> void:
 	var inst: int = _choose_solo(_enemy(1))
 	var n: int = GameLoop2.apply_enemy_status(sid, 1, "all")
 	assert_eq(n, 1, "one body on the board, one application")
-	assert_eq(int((GameLoop2.current.get("statuses", {}) as Dictionary).get(sid, 0)), 1,
+	assert_eq(int((GameLoop2.arrival().get("statuses", {}) as Dictionary).get(sid, 0)), 1,
 		"one stack, not two")
 
 # The first goal-enemy the catalog actually holds — what a save can name and find

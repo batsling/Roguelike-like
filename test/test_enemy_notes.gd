@@ -19,6 +19,35 @@ func after_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
 
+# --- the per-game counts ----------------------------------------------------
+#
+# `beaten_count` and `amulet_wins` read `stats` DIRECTLY rather than going
+# through `get_stats`, because get_stats allocates a fresh zero-record for every
+# game it has never heard of — and the Atlas asks both counts for all 852 stars
+# on every redraw. These assert the two halves of that: the counts still answer
+# correctly for a game with no record, and get_stats still hands back a copy
+# nobody can write into the store through.
+
+func test_the_counts_answer_zero_for_a_game_with_no_record() -> void:
+	var unknown := &"__no_such_game_at_all__"
+	assert_eq(GameStats.beaten_count(unknown), 0, "never beaten")
+	assert_eq(GameStats.amulet_wins(unknown), 0, "never won on")
+	assert_false(GameStats.stats.has(String(unknown)),
+		"and asking did not put a row in the store")
+
+func test_the_counts_read_a_real_record() -> void:
+	var saved: Dictionary = GameStats.stats.duplicate(true)
+	GameStats.stats["__probe__"] = {"beaten": 4, "amulets": 2}
+	assert_eq(GameStats.beaten_count(&"__probe__"), 4)
+	assert_eq(GameStats.amulet_wins(&"__probe__"), 2)
+	GameStats.stats = saved
+
+func test_get_stats_hands_back_a_copy_for_an_unknown_game() -> void:
+	var blank: Dictionary = GameStats.get_stats(&"__no_such_game_at_all__")
+	blank["beaten"] = 99
+	assert_eq(GameStats.beaten_count(&"__no_such_game_at_all__"), 0,
+		"writing into what it returned changes nothing")
+
 func test_nothing_is_logged_to_start_with() -> void:
 	assert_false(GameStats.has_enemy_log(&"rogue"), "a fresh log has nothing on it")
 	assert_eq(GameStats.enemies_for(&"rogue").size(), 0, "and lists nothing")
@@ -95,7 +124,7 @@ func test_completing_a_game_logs_its_goal_enemy() -> void:
 	var enemy: GoalEnemyData = chosen.get("enemy")
 	if game == null or enemy == null:
 		return
-	ui.report(true, [])
+	_report_beat(ui)
 	assert_gte(GameStats.enemy_beaten_count(game.id, enemy.id), 1,
 		"the goal enemy is logged against the game it was beaten at")
 
@@ -298,3 +327,12 @@ func test_beating_the_same_enemy_elsewhere_does_not_count() -> void:
 func test_a_card_with_no_game_has_no_row() -> void:
 	var ui = _offering()
 	assert_null(ui._beatable_row({}), "an empty choice has nothing to show")
+
+# Report the game as completed AND tick the row for the body that walked on with
+# it. This is what a bare `report(true)` used to do in one flag, back when that
+# body was the game's own enemy and beating the game answered for it; it is spelled
+# out now because the flag only records the GAME any more (GameLoop2.arrivals),
+# and clearing an enemy is ticking its checklist row like any other.
+func _report_beat(ui) -> void:
+	var landed: Dictionary = GameLoop2.arrival()
+	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])

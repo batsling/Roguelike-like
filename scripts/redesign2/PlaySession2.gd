@@ -47,14 +47,14 @@ func restart(character_id: StringName) -> void:
 
 # Pick a game of `game_type` — rolls + spawns its goal-enemy at the run's tier.
 func pick(game_type: StringName) -> void:
-	if GameLoop2.run_over or GameLoop2.has_current():
+	if GameLoop2.run_over or GameLoop2.has_arrivals():
 		return
 	GameLoop2.choose_game_of_type(game_type, -1)
 	_refresh()
 
 # Report the result of playing the chosen game (the honour-system self-report).
 func beat(goal_met: bool) -> void:
-	if GameLoop2.run_over or not GameLoop2.has_current():
+	if GameLoop2.run_over or not GameLoop2.has_arrivals():
 		return
 	GameLoop2.beat_game(goal_met)
 	_refresh()
@@ -88,10 +88,10 @@ func _refresh(_a = null) -> void:
 	_stack.text = _stack_text()
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
-	var can_beat: bool = GameLoop2.has_current() and not GameLoop2.run_over
+	var can_beat: bool = GameLoop2.has_arrivals() and not GameLoop2.run_over
 	_beat_met.disabled = not can_beat
 	_beat_miss.disabled = not can_beat
-	_set_pick_enabled(not GameLoop2.has_current() and not GameLoop2.run_over)
+	_set_pick_enabled(not GameLoop2.has_arrivals() and not GameLoop2.run_over)
 
 func _hud_text() -> String:
 	return "[b]Health[/b] %d/%d    [b]Shields[/b] %d        [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Push[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d    [b]Chests[/b] %d" % [
@@ -101,9 +101,9 @@ func _hud_text() -> String:
 	]
 
 func _enemy_text() -> String:
-	if not GameLoop2.has_current():
+	if not GameLoop2.has_arrivals():
 		return "[i]No game chosen — pick a game type below to spawn its enemy.[/i]"
-	var e: GoalEnemyData = GameLoop2.current["enemy"]
+	var e: GoalEnemyData = GameLoop2.arrival()["enemy"]
 	var boss_tag: String = "  [color=#e0b020][b]☠ BOSS[/b][/color]" if e.is_boss() else ""
 	# Who came WITH it (§7.5). Named here rather than left to be spotted in the
 	# stack below, because the escort is the one body on that list the player did
@@ -114,7 +114,7 @@ func _enemy_text() -> String:
 	return "[b]Now playing:[/b] %s%s  ([i]%s / %s / dmg %d[/i])\n[b]GOAL (%s):[/b] %s%s" % [
 		e.display_name, boss_tag, String(e.game_type).capitalize(),
 		RunDifficulty.tier_name(int(e.difficulty)), e.damage, String(e.goal_type).capitalize(),
-		GameLoop2.goal_text_for(GameLoop2.current), escort_line,
+		GameLoop2.goal_text_for(GameLoop2.arrival()), escort_line,
 	]
 
 func _stack_text() -> String:
@@ -146,7 +146,7 @@ func _result_text(res: Dictionary) -> String:
 
 # Spawn a boss at the run's current tier (§7.1 bosses appear on a tier change).
 func pick_boss() -> void:
-	if GameLoop2.run_over or GameLoop2.has_current():
+	if GameLoop2.run_over or GameLoop2.has_arrivals():
 		return
 	GameLoop2.choose_boss(&"", -1)
 	_refresh()

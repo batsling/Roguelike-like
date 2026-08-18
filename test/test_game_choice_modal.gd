@@ -22,7 +22,7 @@ func before_each() -> void:
 	# playback, drop its relic on the floor.
 	_ui.choose_start(0)
 	if _ui._phase == _ui.Phase.PLAYING:
-		_ui.report(true)
+		_report_beat(_ui)
 		_ui._end_resolve()
 		_ui._drop_queue.clear()
 		if _ui._drop_modal != null and is_instance_valid(_ui._drop_modal):
@@ -348,3 +348,12 @@ func test_a_previewed_rung_offers_nothing_only_a_map_could_do() -> void:
 	assert_true(text.contains("Close"), "the card can be put away")
 	modal.close_node_card()
 	assert_null(modal._node_card, "and closing it closes only it")
+
+# Report the game as completed AND tick the row for the body that walked on with
+# it. This is what a bare `report(true)` used to do in one flag, back when that
+# body was the game's own enemy and beating the game answered for it; it is spelled
+# out now because the flag only records the GAME any more (GameLoop2.arrivals),
+# and clearing an enemy is ticking its checklist row like any other.
+func _report_beat(ui) -> void:
+	var landed: Dictionary = GameLoop2.arrival()
+	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])

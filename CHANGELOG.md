@@ -11,6 +11,204 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The star chart stopped doing the same work twice.**
+
+  Four fixes to the hottest loop in the project, found by measuring rather than
+  reading. All four are in the per-star path the sky is drawn through, and
+  together they take a redraw of the Collection's 852-star catalog view from
+  **~10.9 ms of pure lookup to ~1.9 ms** — from two thirds of a 60fps frame,
+  before anything is drawn, to a tenth of one.
+
+  **`has_record(i)` recomputed a colour that was already in hand.** It is defined
+  as `star_record_color(i).a > 0.0`, and the draw loop asked for both, one line
+  apart — so every star made the GameStats round-trip twice. `record.a > 0.0`
+  instead: **6.5 → 2.9 ms** over the sky.
+
+  **`GameStats.get_stats` allocated a Dictionary for every game with no record**
+  — which is most games — because it returns a fresh `{"beaten": 0, "amulets": 0}`
+  on a miss, and both counts went through it. A pan across the chart was minting
+  thousands of throwaway dictionaries a frame for two integers that are almost
+  always zero. `beaten_count` and `amulet_wins` read `stats` directly now;
+  `get_stats` keeps its contract for anything wanting the record as a whole.
+  With the fix above, the pair costs **1.9 ms** where they cost 6.5.
+
+  **`cover_count()` walked the whole sky on every redraw, for a HUD label.**
+  It is called from `_refresh_hud`, which `_redraw` calls — so every pan step,
+  zoom step and *selection change* re-counted 852 stars to decide whether the
+  readout says "overview" or "12 showing art". It is memoized against the camera
+  now (scale, offset, canvas size), since that is the only thing that can move
+  it: **1.97 ms → 0.001 ms** on every call after the first.
+
+  **And the per-star filter test was always true.** `passes_filter(i)` cost
+  2.4 ms a pass answering "yes" 852 times: the catalog view rebuilds the sky out
+  of the survivors (`_relayout` → `_filtered_ids`), so every star in `layout`
+  passes by construction, and outside the catalog there are no filters at all.
+  The `filtered_out` branch it fed — dimming a star in place — was unreachable
+  code left from the older design where filtering dimmed the sky where it stood
+  instead of re-laying it. Verified before removing: across eight filter
+  settings, in both layout modes, every drawn star passes.
+
+  **The rest of the pass is written up in `docs/performance-backlog.md`** — the
+  double star sweep when a route is on the sky, `RunMapModal.map_data()` being
+  uncached, `Overworld2._refresh()` rebuilding the whole page on every loop
+  signal, three dead functions, and the case for splitting up a 5218-line file.
+
+- **Nothing on the board belongs to a game any more.**
+
+  There is no such thing as "this game's enemy". A card advertises what will walk
+  on if you take it; once it has walked on it is a follower like every other body,
+  and that is the whole of the relationship.
+
+  **What that was, and what it cost.** `GameLoop2.current` pointed at the
+  advertised body for the entire game, and four separate systems deferred to it.
+  The board drew it in its own accent with a washed fill and a NOW PLAYING tag,
+  and **refused to aim Push or Bomb at it** — so the one enemy standing right in
+  front of you was the one enemy you could not remove. The report checklist gave
+  it an emphasised **Goal —** box at the top and listed everything else under
+  "Also cleared", as though clearing a goal you owed from three games ago were a
+  different kind of act. The report panel drew its portrait beside the game's box
+  art, pairing them. And `beat_game(goal_met)` folded two different claims into
+  one flag.
+
+  All four are gone. `current` is replaced by **`arrivals`** — a list of the
+  handles that walked on with the game in play, kept for exactly two jobs
+  (superseding them on a Scramble, and naming what landed) and consulted by
+  nothing that makes a body special. `is_current` is out of `BattlefieldView`,
+  `EnemyInfoCard`, `DevTools` and the board's `refresh()` signature entirely.
+
+  **Beating the game and clearing an enemy are two separate claims now.**
+  `report(beaten, fulfilled)`: pressing **✓ Completed Game** says you played and
+  finished the real video game — that is what the run's beaten set, the
+  repeat-visit Dash, the lifetime tally and the Amulet win read. What you did to
+  the bodies is the tick boxes, one per enemy on the board, arrivals among them in
+  board order. So you can finish a game and leave everything following you, or
+  clear three old goals during a game you never finished, and the report says
+  exactly that. It could not before: missing the goal box meant the game did not
+  count as beaten either.
+
+  **`clear_amulet` takes nothing off the board.** It used to defeat the body
+  standing at the Amulet, because that body was the game's own. Whatever is
+  standing there was already dealt with by the report that got you there — ticked
+  or not, like every other enemy — so winning simply ends the run.
+
+  **The report panel is the cover, centred.** The 72px enemy portrait beside it
+  is gone; what is on the board is drawn on the board.
+
+- **Hover cards everywhere, an armed Bomb, and three things that were in the
+  way.**
+
+  **Everything on the page describes itself on hover, as a card.** An enemy, a
+  status, a relic and the enemy-turns readout all open something when clicked,
+  and all four spent their hover on `tooltip_text` — grey system chrome with a
+  wall of plain text in it, on a page that is otherwise entirely hand-drawn. The
+  information was there and nobody read it. They carry a condensed version of the
+  card now (`HoverCard` + the `HoverPanel` / `HoverBox` wrappers Godot's
+  `_make_custom_tooltip` requires): the art, the name in the thing's own colour,
+  its statuses as **pips** rather than three more lines of prose, and the one or
+  two lines that decide something. A status's model comes from
+  `StatusData.hover_card`, beside the string it replaces, so the board, the enemy
+  card and the hero strip cannot describe the same status differently.
+
+  **The offering gets none of it** — no card and no tooltip on an offered cover
+  or a start card. The hover line under the cards already carries the enemy's
+  portrait and its goal, and a popup over three covers while the mouse crosses
+  them is the noisiest possible way to repeat it. The cards are for scanning.
+
+  **Bomb is armed and aimed, like Push.** It used to fire on the button press, at
+  whatever was still `selected_instance` — routinely a body clicked several turns
+  earlier to read its card, so the charge went into an enemy the player was not
+  looking at. Pressing `✸ Bomb` now arms it, clears the selection and lights every
+  body it could land on; the CLICK is what spends the charge and disarms it. One
+  press, one bomb. Arming either verb puts the other away.
+
+  **And the instruction is the BOARD, not a caption.** The toolbar used to print
+  "click an enemy" in its target slot while a verb was armed. It doesn't: the
+  bodies you can click are the ones lit in `ARMED_TINT`, and a verb that has to
+  caption its own highlight is a highlight that isn't working.
+
+  **Exit Game only works on the main menu.** It is moved to the bottom-right
+  corner in code, and that appended it *last* — above `%ModalLayer`, where every
+  screen the menu raises mounts. So the door out of the application sat on top of
+  the character picker, the Collection, the Atlas and the manual, live and
+  clickable straight through their own backdrops.
+
+  **The start picker's 🗺 Map opens the ladder alone**, no star chart. The
+  question on that panel is "which of these three roads", the ladder is the answer
+  to it, and 852 stars with nothing on them to orient by — the run has no position
+  yet — is not. The chart is one `✦ Star chart` button away on the window itself.
+
+  **The pack lost its "🎒 Inventory" heading**, and that turned out to be a bug
+  fix rather than a tidy-up. A bordered strip of relic and scroll tiles is its own
+  label, and the row it was spending was the page's entire margin: measured, the
+  overworld was **626px of a 625px budget with the heading on**, before a shop was
+  even mounted under the board.
+
+  **Which uncovered a real one.** `test_the_page_still_fits_the_window_with_a_shop_on_it`
+  mounted `hubs[0]` and stopped — one hub out of ten, chosen by the random graph.
+  The shop's name was a Label with no clip, so its width was the hub's NAME
+  length; that became the shop panel's minimum, then the right column's, and it
+  took the room straight out of the LEFT column, where the checklist's goal text
+  wrapped onto extra lines and grew the page. **"Enter the Gungeon", "Vampire
+  Survivors", "The Binding of Isaac" and "Spelunky Classic" ran the overworld off
+  the bottom of its own 720p window by up to 35px; "FTL", "Hades" and "Balatro"
+  did not** — so the same bug passed or failed depending on the seed, which is
+  what the intermittent failures were. The name is clipped and asks for no width
+  of its own now, and the test walks every hub instead of the first one.
+
+- **The Amulet is named from the first screen, and the header bar stopped eating
+  the screens under it.**
+
+  Four fixes to the map, the atlas and the offering, reported off one screenshot.
+
+  **The Amulet is not a secret any more.** The choose-your-start panel used to
+  give away the DISTANCE and nothing else: its cards read `5 games from the
+  Amulet`, the map a card opened drew the destination as an unnamed
+  `The Amulet — ???` rung that refused to open a card, and no star chart was
+  raised from a start card in case the sky pointed straight at it. All of it is
+  gone. `RouteLadder.node_name` names every rung, the `hide_amulet` option is
+  deleted from `RouteLadder` / `RunMapModal` / `Overworld2.preview_map`, and the
+  picker's heading, each card's distance line and the card's popup all quote the
+  game itself (`Overworld2.amulet_name`, `_start_distance_text`). The one thing
+  the flag was still doing usefully — suppressing the route pin before the run
+  has anywhere to detour from — is now asked directly
+  (`RunMapModal._run_has_position`).
+
+  Choosing a start is a routing decision, and a routing decision made towards an
+  unnamed box is made on the shape of the road alone. The games the road runs
+  through, and the one it ends on, are the substance of it.
+
+  **The enemy's portrait is back on the offering's hover.** It was an 84px framed
+  panel with 64px art, then a bare line with no art at all — and the line alone
+  lost the thing a hover is fastest at, since a player recognises a body by its
+  picture long before they read its name. It is back beside the line, and it is
+  **free**: the art is given a width (`Overworld2.HOVER_ART`) and takes its
+  height from the row, so the hover row is the same 22px it was with nothing on
+  it. That matters because the page has about four pixels of slack against its
+  720p budget on its worst case (three arcade machines under the board), and a
+  row that reserved 30px of height for art blew it — which the existing
+  `_assert_fits` tests caught. It is hidden under the Runic Dome, on a free game,
+  and on the stay-or-return pair.
+
+  **The star chart had no way off it.** `AtlasView` is a full-screen page whose
+  first row is its own header — the title, the search box, the ✦ jump buttons and
+  Close. The run's header bar is pinned to the top of the screen on a layer above
+  it and is opaque, so a chart drawn from y=0 had that entire row covered and no
+  way back to the run but the Esc key. (A comment claimed the Atlas was mounted
+  at layer 140, above the bar. It never was — it is a `top_level` child of the
+  page.) The chart now starts below the bar, and its Close says where it goes:
+  `←  Back to the run`.
+
+  **And so does everything else the run raises.** `_fit_page_under_header` used to
+  inset the page and nothing else; it now publishes the bar's height as
+  **`ModalScaffold.reserved_top`**, and `ModalScaffold.centre` centres a modal in
+  the band below it and never lets a panel's top edge start above it. That is the
+  overlapped title in the screenshot: the game-choice popup grew past its nominal
+  700px on a tall route, was centred on the whole viewport, and had the name of
+  the game being decided about sliced off. `RunMapModal` reads it too, for its
+  size, its opening position, its drag clamp and its node card. It is cleared
+  when the page leaves the tree and while the bar is down, so the main menu's
+  screens and the Collection are untouched.
+
 - **The start band slid down a hop: starts are now 4–7 games from the Amulet,
   not 5–8.**
 

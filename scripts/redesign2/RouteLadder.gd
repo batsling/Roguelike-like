@@ -43,12 +43,17 @@ const PAD := 22.0
 static func node_key(depth: int, id: StringName) -> String:
 	return "%d|%s" % [depth, id]
 
-# What a node is called on a map. Everything is named as itself except the Amulet
-# under `hide_amulet`, where naming it would give away the one thing the
-# choose-your-start panel keeps back.
-static func node_name(id: StringName, amulet: StringName, hide_amulet: bool) -> String:
-	if hide_amulet and id == amulet:
-		return "The Amulet — ???"
+# What a node is called on a map. Every rung is named as itself, the Amulet
+# included.
+#
+# It used to have a `hide_amulet` mode that drew the destination as
+# "The Amulet — ???" on a start-picker map, so the panel gave away the DISTANCE
+# and nothing else. That is gone: the Amulet is named everywhere it appears, from
+# the first screen of the run onwards. Choosing a start is a routing decision, and
+# a routing decision made towards an unnamed box is a decision made on the shape
+# of the road alone — the games the road actually runs through, and the one it
+# ends on, are the whole substance of it.
+static func node_name(id: StringName) -> String:
 	var game: GameData = Data.get_game(id)
 	return game.display_name if game != null else String(id)
 
@@ -69,7 +74,6 @@ static func played_id(id: StringName) -> StringName:
 #   choice_ids   Dictionary  offered-right-now slots -> true (flagged on the ladder)
 #   zoom         float       1.0 = natural size
 #   preview      bool        the route from a game only being considered
-#   hide_amulet  bool        draw the destination without naming it
 #   on_node      Callable    (id: StringName, depth: int) -> void; unset = inert rungs
 #
 # Returns the canvas: a Control whose custom_minimum_size is the ladder's real
@@ -155,7 +159,6 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	var choice_ids: Dictionary = cfg.get("choice_ids", {})
 	var zoom: float = float(cfg.get("zoom", 1.0))
 	var preview: bool = bool(cfg.get("preview", false))
-	var hide_amulet: bool = bool(cfg.get("hide_amulet", false))
 	var on_node: Callable = cfg.get("on_node", Callable())
 
 	var is_current: bool = id == current and depth == 0
@@ -208,12 +211,12 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	panel.clip_contents = true
 	panel.add_theme_stylebox_override("panel", UITheme.flat(bg, 6, 0, border_w, border))
 	# Every rung can be a way IN to its game, when the caller wants one: click it
-	# and the map opens a card on that game. Never for a hidden Amulet, which is
-	# the one thing a start-picker map is deliberately not telling you.
-	var secret_amulet: bool = hide_amulet and is_amulet
-	var name_text: String = node_name(id, amulet, hide_amulet)
+	# and the map opens a card on that game. The Amulet included — it is a game on
+	# the road like any other, and the rung that ends the run is the one most worth
+	# reading before you commit to walking towards it.
+	var name_text: String = node_name(id)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	if on_node.is_valid() and not secret_amulet:
+	if on_node.is_valid():
 		panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		panel.tooltip_text = "%s — click for the details." % name_text
 		panel.gui_input.connect(func(event):
@@ -233,7 +236,7 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	# transmuted spot plays an off-map game, and off-map games are never hubs, so
 	# the shop leaves with the game it belonged to.
 	var shop_w: float = 0.0
-	if not secret_amulet and zoom >= 0.62 and ShopSystem.is_hub(played_id(id)):
+	if zoom >= 0.62 and ShopSystem.is_hub(played_id(id)):
 		var shop := Label.new()
 		shop.text = "🛒"
 		# Bigger than the ⚔ badge opposite it, and for a reason that only shows up
@@ -263,8 +266,8 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	#
 	# Both counts share one label rather than taking a corner each: the box is
 	# 150px wide before zoom and the name has to fit between the badges.
-	var fought: int = 0 if secret_amulet else GameStats.enemies_for(id).size()
-	var links: int = 0 if secret_amulet else RunGraph.open_degree(id)
+	var fought: int = GameStats.enemies_for(id).size()
+	var links: int = RunGraph.open_degree(id)
 	var badge_w: float = 0.0
 	if zoom >= 0.62 and (fought > 0 or links > 0):
 		var marks: Array = []
@@ -339,7 +342,7 @@ static func _badge_tip(fought: int, links: int) -> String:
 #
 # `cfg`:
 #   id       StringName  the game
-#   name     String      what to call it — node_name(), so a hidden Amulet stays hidden
+#   name     String      what to call it — node_name()
 #   role     String      the line under the title ("You are here.")
 #   facts    Array       [[key, value], …] the caller's own route facts, first
 #   actions  Array       [{"text": String, "tip": String, "action": Callable}]

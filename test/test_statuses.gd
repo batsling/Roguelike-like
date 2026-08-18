@@ -20,8 +20,8 @@ extends GutTest
 # assertions.
 func _choose_solo(enemy: GoalEnemyData) -> int:
 	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.current_escort > 0:
-		GameLoop2.despawn(GameLoop2.current_escort)
+	if GameLoop2.escort_instance() > 0:
+		GameLoop2.despawn(GameLoop2.escort_instance())
 	return inst
 
 func before_each() -> void:
@@ -173,7 +173,7 @@ func test_a_goal_on_the_player_side_is_an_extra_objective_not_a_clause() -> void
 	GameState.apply_status(&"strength", 2)
 	_choose_solo(_enemy("Beat it"))
 	# It pays the player; it does not tighten anything the enemy asked for.
-	assert_eq(GameLoop2.goal_text_for(GameLoop2.current), "Beat it",
+	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()), "Beat it",
 		"a player-side goal leaves enemy goals alone")
 	var objectives: Array = GameState.status_objectives()
 	assert_eq(objectives.size(), 1, "it shows up as a standing objective")
@@ -183,7 +183,7 @@ func test_a_goal_on_the_player_side_is_an_extra_objective_not_a_clause() -> void
 func test_a_clause_on_an_enemy_tightens_that_enemys_goal() -> void:
 	_choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
-	assert_eq(GameLoop2.goal_text_for(GameLoop2.current),
+	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
 		"Beat it and the difficulty must be increased 2 times")
 
 func test_a_clause_on_the_player_tightens_every_enemys_goal() -> void:
@@ -191,7 +191,7 @@ func test_a_clause_on_the_player_tightens_every_enemys_goal() -> void:
 	GameLoop2.beat_game(false)          # it walks onto the board
 	_choose_solo(_enemy("Beat another"))
 	GameState.apply_status(&"marked", 3)
-	assert_eq(GameLoop2.goal_text_for(GameLoop2.current),
+	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
 		"Beat another and you must get 3 achievements", "the current enemy")
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.stack[0]),
 		"Beat it and you must get 3 achievements", "and the follower too")
@@ -199,9 +199,9 @@ func test_a_clause_on_the_player_tightens_every_enemys_goal() -> void:
 func test_a_bonus_on_an_enemy_is_claimable_not_required() -> void:
 	_choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
-	assert_eq(GameLoop2.goal_text_for(GameLoop2.current), "Beat it",
+	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()), "Beat it",
 		"the goal itself is untouched")
-	var bonuses: Array = GameLoop2.bonus_objectives_for(GameLoop2.current)
+	var bonuses: Array = GameLoop2.bonus_objectives_for(GameLoop2.arrival())
 	assert_eq(bonuses.size(), 1, "it hangs a bonus objective off the enemy")
 	assert_eq((bonuses[0]["status"] as StatusData).objective_text(StatusData.ENEMY, 2),
 		"and if you get 2 achievements, gain +1 Medium Chest")
@@ -210,7 +210,7 @@ func test_clauses_stack_enemy_first_then_player() -> void:
 	_choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"strength", 1, "current")
 	GameState.apply_status(&"marked", 2)
-	assert_eq(GameLoop2.goal_text_for(GameLoop2.current),
+	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
 		"Beat it and the difficulty must be increased 1 time"
 		+ " and you must get 2 achievements",
 		"the enemy's own clause reads before the one every enemy carries")
@@ -222,7 +222,7 @@ func test_target_all_covers_the_board_and_the_current_enemy() -> void:
 	GameLoop2.beat_game(false)
 	_choose_solo(_enemy("B"))
 	assert_eq(GameLoop2.apply_enemy_status(&"marked", 1, "all"), 2, "both bodies")
-	assert_eq(GameLoop2.enemy_statuses(GameLoop2.current).size(), 1)
+	assert_eq(GameLoop2.enemy_statuses(GameLoop2.arrival()).size(), 1)
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0]).size(), 1)
 
 func test_target_current_leaves_the_followers_alone() -> void:
@@ -238,7 +238,7 @@ func test_target_random_lands_on_exactly_one_body() -> void:
 	GameLoop2.beat_game(false)
 	_choose_solo(_enemy("B"))
 	assert_eq(GameLoop2.apply_enemy_status(&"marked", 1, "random"), 1)
-	var total: int = GameLoop2.enemy_statuses(GameLoop2.current).size() \
+	var total: int = GameLoop2.enemy_statuses(GameLoop2.arrival()).size() \
 		+ GameLoop2.enemy_statuses(GameLoop2.stack[0]).size()
 	assert_eq(total, 1, "one body, whichever it was")
 
@@ -385,7 +385,7 @@ func test_the_apply_status_effect_reaches_the_board() -> void:
 	_choose_solo(_enemy("Beat it"))
 	EffectSystem.apply({"type": "apply_status", "status": "strength", "value": 1,
 		"target": "current"}, {})
-	assert_eq(GameLoop2.enemy_statuses(GameLoop2.current).size(), 1)
+	assert_eq(GameLoop2.enemy_statuses(GameLoop2.arrival()).size(), 1)
 	assert_eq(GameState.status_stacks(&"strength"), 0, "and not the player")
 
 func test_player_statuses_round_trip_through_a_save() -> void:
@@ -473,8 +473,8 @@ func _booted():
 	# The opening game stands an ESCORT beside its enemy (§7.5). Everything below
 	# is about what a status does to ONE body, so it comes straight back off —
 	# same reason as _choose_solo above.
-	if GameLoop2.current_escort > 0:
-		GameLoop2.despawn(GameLoop2.current_escort)
+	if GameLoop2.escort_instance() > 0:
+		GameLoop2.despawn(GameLoop2.escort_instance())
 	return ui
 
 func test_the_hero_strip_shows_the_players_statuses() -> void:
@@ -500,14 +500,41 @@ func test_the_hero_strip_sits_between_the_portrait_and_the_health() -> void:
 		"and before the health")
 	assert_eq(column, ui._board._hero_hp.get_parent(), "all in the one hero column")
 
-func test_a_status_pip_carries_the_full_tooltip() -> void:
+# A pip's hover is a CARD now (HoverCard), not a wall of plain text — so what it
+# says is asserted off the model the card is built from rather than off
+# `tooltip_text`, which is only the fallback string.
+func test_a_status_pip_carries_the_full_hover_card() -> void:
 	var ui = _booted()
 	GameState.apply_status(&"speed", 3)
 	ui._board.refresh()
 	var pip: Control = ui._board._hero_statuses.get_child(0)
-	var tip: String = pip.tooltip_text
-	assert_string_contains(tip, "Speed 3", "the name and the live stack count")
-	assert_string_contains(tip, "1 hour 30 minutes", "and the line at that stack")
+	assert_true(pip.has_meta(HoverCard.META), "the pip carries a hover card")
+	var card: Dictionary = pip.get_meta(HoverCard.META)
+	assert_eq(String(card.get("title", "")), "Speed", "the name heads it")
+	assert_string_contains(String(card.get("subtitle", "")), "3 stacks",
+		"with the live stack count under it")
+	assert_string_contains("\n".join(PackedStringArray(card.get("lines", []))),
+		"1 hour 30 minutes", "and the line at that stack")
+	# The fallback text Godot needs before it will ask for a custom tooltip at all.
+	assert_string_contains(pip.tooltip_text, "Speed", "and the plain fallback still names it")
+
+# The card is drawable, and what it draws is what the model said.
+func test_a_hover_card_draws_its_model() -> void:
+	var speed: StatusData = Data.get_status(&"speed")
+	var card: Control = HoverCard.build(speed.hover_card(StatusData.PLAYER, 3))
+	assert_not_null(card, "the model builds a card")
+	assert_string_contains(_all_text(card), "Speed", "with the name on it")
+	assert_string_contains(_all_text(card), "3 stacks", "and the stack count")
+	card.queue_free()
+
+# Every Label in a built card, joined — which of them holds a line is layout.
+func _all_text(node: Node) -> String:
+	var out: String = ""
+	if node is Label:
+		out += (node as Label).text + "\n"
+	for child in node.get_children():
+		out += _all_text(child)
+	return out
 
 func test_the_tooltip_names_what_each_side_does() -> void:
 	var marked: StatusData = Data.get_status(&"marked")
@@ -640,10 +667,10 @@ func test_the_bonus_lands_before_the_multiplier() -> void:
 func test_strength_raises_what_an_enemy_hits_for() -> void:
 	var ui = _booted()
 	ui.pick(0)
-	var base: int = int(GameLoop2.current["enemy"].damage)
-	assert_eq(GameLoop2.enemy_damage(GameLoop2.current), base, "unbuffed, it is the stat")
+	var base: int = int(GameLoop2.arrival()["enemy"].damage)
+	assert_eq(GameLoop2.enemy_damage(GameLoop2.arrival()), base, "unbuffed, it is the stat")
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
-	assert_eq(GameLoop2.enemy_damage(GameLoop2.current), base + 2, "+1 per stack")
+	assert_eq(GameLoop2.enemy_damage(GameLoop2.arrival()), base + 2, "+1 per stack")
 
 func test_a_strength_stack_is_felt_on_the_players_health() -> void:
 	var ui = _booted()
@@ -676,16 +703,16 @@ func test_the_damage_badge_quotes_the_buffed_number() -> void:
 func test_dexterity_grants_shield_points_when_it_lands() -> void:
 	var ui = _booted()
 	ui.pick(0)
-	assert_eq(GameLoop2.enemy_shield(GameLoop2.current), 0)
+	assert_eq(GameLoop2.enemy_shield(GameLoop2.arrival()), 0)
 	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
-	assert_eq(GameLoop2.enemy_shield(GameLoop2.current), 2, "one point per stack")
+	assert_eq(GameLoop2.enemy_shield(GameLoop2.arrival()), 2, "one point per stack")
 
 func test_a_shield_absorbs_a_hit_instead_of_the_body_taking_it() -> void:
 	var ui = _booted()
 	ui.pick(0)
-	var inst: int = int(GameLoop2.current["instance"])
+	var inst: int = int(GameLoop2.arrival()["instance"])
 	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
-	var health: int = int(GameLoop2.current["health"])
+	var health: int = int(GameLoop2.arrival()["health"])
 	GameLoop2.beat_game(true)              # goal met — one point of damage
 	var entry: Dictionary = GameLoop2.entry_for(inst)
 	assert_false(entry.is_empty(), "it survived: the shield ate the hit")
@@ -697,7 +724,7 @@ func test_a_spent_shield_does_not_come_back_with_the_stacks() -> void:
 	# Dexterity it has — so soaking a hit costs a point that stays gone.
 	var ui = _booted()
 	ui.pick(0)
-	var inst: int = int(GameLoop2.current["instance"])
+	var inst: int = int(GameLoop2.arrival()["instance"])
 	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
 	GameLoop2.beat_game(true)
 	var entry: Dictionary = GameLoop2.entry_for(inst)
@@ -709,13 +736,13 @@ func test_a_second_application_tops_the_shield_up() -> void:
 	ui.pick(0)
 	GameLoop2.apply_enemy_status(&"dexterity", 1, "current")
 	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
-	assert_eq(GameLoop2.enemy_shield(GameLoop2.current), 3,
+	assert_eq(GameLoop2.enemy_shield(GameLoop2.arrival()), 3,
 		"the difference between the old X and the new one")
 
 func test_a_shielded_body_dies_once_the_shield_is_gone() -> void:
 	var ui = _booted()
 	ui.pick(0)
-	var inst: int = int(GameLoop2.current["instance"])
+	var inst: int = int(GameLoop2.arrival()["instance"])
 	GameLoop2.apply_enemy_status(&"dexterity", 1, "current")
 	GameLoop2.beat_game(true)              # shield 1 -> 0
 	assert_false(GameLoop2.entry_for(inst).is_empty(), "still standing")
@@ -741,10 +768,10 @@ func test_a_shield_survives_a_save() -> void:
 func test_marked_doubles_the_damage_an_enemy_takes() -> void:
 	var ui = _booted()
 	ui.pick(0)
-	var inst: int = int(GameLoop2.current["instance"])
+	var inst: int = int(GameLoop2.arrival()["instance"])
 	# Alien Baby makes a body take two goals to put down; Marked puts it down in
 	# one, which is the whole point of the status.
-	GameLoop2.current["health"] = 2
+	GameLoop2.arrival()["health"] = 2
 	GameLoop2.apply_enemy_status(&"marked", 1, "current")
 	GameLoop2.beat_game(true)
 	assert_true(GameLoop2.entry_for(inst).is_empty(), "one goal was worth two damage")
@@ -752,7 +779,7 @@ func test_marked_doubles_the_damage_an_enemy_takes() -> void:
 func test_marked_ignores_a_shield_rather_than_spending_it() -> void:
 	var ui = _booted()
 	ui.pick(0)
-	var inst: int = int(GameLoop2.current["instance"])
+	var inst: int = int(GameLoop2.arrival()["instance"])
 	GameLoop2.apply_enemy_status(&"dexterity", 5, "current")
 	GameLoop2.apply_enemy_status(&"marked", 1, "current")
 	GameLoop2.beat_game(true)

@@ -104,6 +104,12 @@ func _build_profile_row() -> void:
 # last in the same stack made it the neighbour of Settings — a column you scan
 # downwards ending in the door out. Anchored, so it stays in the corner at any
 # window size instead of moving with the column.
+#
+# It is mounted UNDER `%ModalLayer`, and that is the important part. The corner
+# used to be appended last, which put it above every screen the menu raises — so
+# the door out of the application sat on top of the character picker, the
+# Collection and the Atlas, live and clickable through their own backdrops. It is
+# a MAIN MENU button; anything standing in front of the main menu covers it.
 func _move_quit_to_corner() -> void:
 	var quit_btn: Button = get_node_or_null("%QuitBtn")
 	if quit_btn == null:
@@ -120,6 +126,9 @@ func _move_quit_to_corner() -> void:
 	corner.offset_bottom = -CORNER_MARGIN
 	corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(corner)
+	if _modal_layer != null and is_instance_valid(_modal_layer) \
+			and _modal_layer.get_parent() == self:
+		move_child(corner, _modal_layer.get_index())
 
 	quit_btn.custom_minimum_size = Vector2(150, 36)
 	quit_btn.size_flags_horizontal = Control.SIZE_SHRINK_END

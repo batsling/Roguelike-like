@@ -199,9 +199,18 @@ func test_beating_a_goal_fills_both_records() -> void:
 	if game == null or enemy == null:
 		return
 	var who: StringName = GameState.character_id
-	ui.report(true, [])
+	_report_beat(ui)
 	assert_gte(GameStats.enemy_beaten_count(game.id, enemy.id), 1,
 		"logged against the game")
 	assert_eq(GameStats.character_enemy_count(who, enemy.id),
 		GameStats.enemy_beaten_count(game.id, enemy.id),
 		"and against the character, the same number of times")
+
+# Report the game as completed AND tick the row for the body that walked on with
+# it. This is what a bare `report(true)` used to do in one flag, back when that
+# body was the game's own enemy and beating the game answered for it; it is spelled
+# out now because the flag only records the GAME any more (GameLoop2.arrivals),
+# and clearing an enemy is ticking its checklist row like any other.
+func _report_beat(ui) -> void:
+	var landed: Dictionary = GameLoop2.arrival()
+	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])

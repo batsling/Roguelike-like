@@ -529,8 +529,6 @@ func _build_board_tab() -> void:
 func _board_row(entry: Dictionary) -> Control:
 	var e: GoalEnemyData = entry.get("enemy")
 	var inst: int = int(entry.get("instance", 0))
-	var is_current: bool = not GameLoop2.current.is_empty() \
-		and int(GameLoop2.current.get("instance", 0)) == inst
 
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel",
@@ -540,8 +538,8 @@ func _board_row(entry: Dictionary) -> Control:
 	wrap.add_child(col)
 
 	var head := Label.new()
-	var where: String = "col %d, row %d%s" % [int(entry.get("col", 0)),
-		int(entry.get("row", 0)), "  · current game" if is_current else ""]
+	var where: String = "col %d, row %d" % [int(entry.get("col", 0)),
+		int(entry.get("row", 0))]
 	head.text = "#%d  %s   (%s, ❤%d, ⚔%d)" % [inst, e.display_name, where,
 		int(entry.get("health", e.health)), e.damage]
 	head.add_theme_font_size_override("font_size", 13)
@@ -557,23 +555,22 @@ func _board_row(entry: Dictionary) -> Control:
 	var acts := HBoxContainer.new()
 	acts.add_theme_constant_override("separation", 4)
 	col.add_child(acts)
-	# Stun / push / bomb only mean anything for a body actually ON the grid, and the
-	# current game's enemy is deliberately left out of them for the same reason the
-	# board refuses to aim at it: it is the goal being played for.
-	if not is_current:
-		acts.add_child(_mini("Stun", func() -> void:
-			GameLoop2.stun(inst)
-			_rebuild_body()))
-		acts.add_child(_mini("Push", func() -> void:
-			GameLoop2.push(inst)
-			_rebuild_body()))
-		acts.add_child(_mini("Bomb", func() -> void:
-			GameState.bombs += 1     # the panel pays for its own charge
-			GameLoop2.bomb(inst)
-			_rebuild_body()))
-		acts.add_child(_mini("Defeat (drops)", func() -> void:
-			GameLoop2.fulfill(inst)
-			_rebuild_body()))
+	# Every body gets every verb. There used to be an exemption for the enemy of
+	# the game in play, mirroring the board's refusal to aim at it; nothing is that
+	# body any more (GameLoop2.arrivals).
+	acts.add_child(_mini("Stun", func() -> void:
+		GameLoop2.stun(inst)
+		_rebuild_body()))
+	acts.add_child(_mini("Push", func() -> void:
+		GameLoop2.push(inst)
+		_rebuild_body()))
+	acts.add_child(_mini("Bomb", func() -> void:
+		GameState.bombs += 1     # the panel pays for its own charge
+		GameLoop2.bomb(inst)
+		_rebuild_body()))
+	acts.add_child(_mini("Defeat (drops)", func() -> void:
+		GameLoop2.fulfill(inst)
+		_rebuild_body()))
 	acts.add_child(_mini("Remove", func() -> void:
 		GameLoop2.despawn(inst)
 		_rebuild_body()))

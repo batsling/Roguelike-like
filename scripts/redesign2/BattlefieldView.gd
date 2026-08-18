@@ -25,7 +25,7 @@ extends PanelContainer
 signal push_requested(instance: int, dir: Vector2i)
 signal bomb_requested(instance: int)
 # An enemy was clicked: the host opens the inspect card for it.
-signal enemy_inspected(entry: Dictionary, col: int, is_current: bool)
+signal enemy_inspected(entry: Dictionary, col: int)
 # The mouse moved onto (or off) a body. The host lights the checklist row that
 # body's goal is written on, so "which of these lines is that thing" is answered
 # by pointing at either half of the pair. `instance` is the body; `hovered` says
@@ -44,7 +44,11 @@ var _battlefield: HBoxContainer
 # the enemies take per game, why, and how big the board they take them on is.
 # This is the mechanic's home — it sits ON the thing it governs, so the pace and
 # the field it plays out on are read in one glance.
-var _pressure_panel: PanelContainer
+var _pressure_panel: HoverPanel
+# The full hops-to-turns ladder, as text. The hover draws a condensed card now,
+# and this is kept because it is the LONG form the same facts have — the manual
+# and any future full readout should quote this rather than re-derive it.
+var _pressure_ladder_text: String = ""
 var _pressure_turns: Label          # "⏱ ENEMY TURNS ×2"
 var _pressure_rungs: Array = []     # the three ladder pips, far -> near
 var _pressure_why: Label            # "Amulet 4 hops away — Closing"
@@ -96,7 +100,6 @@ var _fx_layer: Control               # overlay for damage numbers + sliding ghos
 var _hidden_parts: Array = []
 # Whether the game being played right now shows in the off-field lane. Kept from
 # the last refresh so a click can repaint without the host passing it again.
-var _show_current: bool = false
 # The hero portrait, resolved once per character rather than on every repaint.
 var _hero_id: StringName = &""
 var _hero_tex: Texture2D = null
@@ -115,6 +118,18 @@ var _hint_label: Label
 # arrows have to be ON the board: "which way" is a question about a position, and
 # four toolbar buttons would ask it a metre away from the thing being moved.
 var push_mode: bool = false
+# BOMB MODE, and the same bargain. Bomb used to fire the instant its button was
+# pressed, at whatever body happened to still be selected — which was routinely a
+# body clicked several turns earlier to read its card, so a charge went into an
+# enemy the player was not looking at. It is armed and aimed like the Push now:
+# pressing Bomb clears the selection and lights the bodies it could land on, and
+# the CLICK is what spends the charge. One click after arming rather than two,
+# because a bomb has no direction to pick.
+var bomb_mode: bool = false
+# The bodies an armed verb can be pointed at, as a set of instance handles.
+# Rebuilt at the top of every repaint (`refresh`) rather than asked per body, so
+# the whole board is drawn against one answer.
+var _armed: Dictionary = {}
 var _arrow_layer: Control            # the direction arrows, above every body
 # True for the duration of refresh(), and the reason is a real crash rather than
 # bookkeeping. refresh() DETACHES every body on the board, and detaching the one
@@ -223,6 +238,11 @@ class FootprintControl extends Control:
 			if Rect2(Vector2(c.x, c.y) * step, Vector2(cell_size, cell_size)).has_point(point):
 				return true
 		return false
+
+	# A body's hover is the condensed version of the card its click opens: art,
+	# name in its threat colour, what is riding on it, and when it next swings.
+	func _make_custom_tooltip(_for_text: String) -> Object:
+		return HoverCard.of(self)
 
 # Board size in px: grid_cols() x grid_rows() cells with a gutter between them.
 func _field_size() -> Vector2:
@@ -340,7 +360,7 @@ const RUNG_ON := "▮"
 const RUNG_OFF := "▯"
 
 func _build_pressure_bar() -> Control:
-	_pressure_panel = PanelContainer.new()
+	_pressure_panel = HoverPanel.new()
 	# A FLOW row, not an HBox: everything on this strip is a fixed-width label, and
 	# an HBox adds their widths up into a minimum the whole battlefield panel then
 	# has to honour — which is how the board ended up wider than the page. Flowing
@@ -409,13 +429,33 @@ func _refresh_pressure() -> void:
 		_pressure_why.text = "Amulet %d hop%s away — %s" % [
 			hops, "" if hops == 1 else "s", RunDifficulty.turns_band_name(turns)]
 
+	# ENEMY TURNS is the one readout on the board that is a CONSEQUENCE of a
+	# decision made somewhere else — the route — so its hover has to answer "why is
+	# it that number" as well as "what does it mean". The ladder itself is the
+	# note: the whole table of hops-to-turns, which is where the answer is.
 	var ladder_tip: String = ("Every enemy acts %d time%s per game you report.\n"
 		+ "A turn is one action: strike from the front column, or step a column closer.\n\n"
 		+ "%s\n\nRush the Amulet and they get faster; take the long way and they stay slow.") % [
 			turns, "" if turns == 1 else "s", RunDifficulty.turns_ladder_text(turns)]
-	_pressure_panel.tooltip_text = ladder_tip
-	_pressure_turns.tooltip_text = ladder_tip
-	_pressure_why.tooltip_text = ladder_tip
+	HoverCard.attach(_pressure_panel, {
+		"title": "Enemy turns ×%d" % turns,
+		"subtitle": RunDifficulty.turns_band_name(turns),
+		"accent": band,
+		"lines": [
+			"Every enemy on the board acts %d time%s per game you report — a strike from the front column, or a step closer." % [
+				turns, "" if turns == 1 else "s"],
+			_pressure_why.text,
+		],
+		"note": "Rush the Amulet and they get faster; take the long way and they stay slow.",
+	})
+	# The two labels inside it are MOUSE-TRANSPARENT so the panel owns the hover —
+	# a card that changed shape depending on which word of the strip the cursor
+	# landed on would read as three different cards.
+	_pressure_turns.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pressure_why.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pressure_turns.tooltip_text = ""
+	_pressure_why.tooltip_text = ""
+	_pressure_ladder_text = ladder_tip
 
 	var tier: int = RunDifficulty.current_tier()
 	_size_label.text = "▦ %d×%d · %s" % [
@@ -463,27 +503,34 @@ func _build_battle_toolbar() -> Control:
 
 	bomb_btn = Button.new()
 	bomb_btn.add_theme_font_size_override("font_size", 13)
-	bomb_btn.pressed.connect(func(): bomb_requested.emit(selected_instance))
+	bomb_btn.pressed.connect(toggle_bomb_mode)
 	bar.add_child(bomb_btn)
 	return bar
 
-# --- push mode -------------------------------------------------------------
+# --- armed verbs -----------------------------------------------------------
+#
+# Push and Bomb are both ARMED first and AIMED second, and neither spends
+# anything until the aiming click. The selection is cleared on the way in — a
+# body left selected from reading its card is not a target the player just chose
+# — and the board says who can be hit by LIGHTING THE BODIES rather than by
+# printing an instruction: `armed_targets` is what the cells are drawn against.
+#
+# Only one can be armed at a time. Arming either puts the other away.
 
-# Arm the Push verb. The selection is CLEARED on the way in: the flow is "press
-# Push, then say who", so a body left selected from reading its card would put
-# arrows on a target the player didn't just choose.
+# Arm the Push verb: click a body, then pick one of the arrows that appear on it.
 func begin_push() -> void:
 	if push_mode or GameState.push <= 0:
 		return
 	push_mode = true
+	bomb_mode = false
 	selected_instance = 0
-	refresh(_show_current)
+	refresh()
 
 func cancel_push() -> void:
 	if not push_mode:
 		return
 	push_mode = false
-	refresh(_show_current)
+	refresh()
 
 func toggle_push_mode() -> void:
 	if push_mode:
@@ -491,37 +538,92 @@ func toggle_push_mode() -> void:
 	else:
 		begin_push()
 
+# Arm the Bomb verb: the next body clicked is the one it goes off on.
+func begin_bomb() -> void:
+	if bomb_mode or GameState.bombs <= 0:
+		return
+	bomb_mode = true
+	push_mode = false
+	selected_instance = 0
+	refresh()
+
+func cancel_bomb() -> void:
+	if not bomb_mode:
+		return
+	bomb_mode = false
+	refresh()
+
+func toggle_bomb_mode() -> void:
+	if bomb_mode:
+		cancel_bomb()
+	else:
+		begin_bomb()
+
+# Whether a verb is waiting to be pointed at something.
+func is_aiming() -> bool:
+	return push_mode or bomb_mode
+
+# The bodies an armed verb could actually land on, as instance handles. Empty
+# when nothing is armed — this is what the board lights up, and it is the whole
+# of the instruction the player gets.
+#
+# EVERY body on the board, with no exceptions. There used to be one: the enemy of
+# the game being played could not be bombed or pushed, because it was that game's
+# own and shoving it would have answered the game you had just committed to.
+# Nothing belongs to a game any more (GameLoop2.arrivals), so nothing is exempt —
+# what walked on this game takes a bomb exactly like what has been chasing you
+# since the third. A boss is included too: the damage bounces off it, but that is
+# the only way to land Sticky Bombs' stun, and a push moves it like anything else.
+func armed_targets() -> Array:
+	if not is_aiming():
+		return []
+	var out: Array = []
+	for entry in GameLoop2.stack:
+		var inst: int = int(entry.get("instance", 0))
+		if inst > 0:
+			out.append(inst)
+	return out
+
 # Re-label and enable/disable the combat verbs for the current selection.
 func refresh_toolbar() -> void:
 	if push_btn == null:
 		return
 	# A charge spent elsewhere (or the last one spent here) disarms the verb — an
-	# armed Push with nothing to spend is a board full of arrows that do nothing.
+	# armed Push with nothing to spend is a board full of arrows that do nothing,
+	# and an armed Bomb with none is a board lit up for a click that can't happen.
 	if push_mode and GameState.push <= 0:
 		push_mode = false
+	if bomb_mode and GameState.bombs <= 0:
+		bomb_mode = false
 	var entry: Dictionary = _stack_entry(selected_instance)
 	var e: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
 	if e == null:
-		# Armed, the empty target slot is where the instruction goes — it is the
-		# widest thing on the row and it is otherwise saying nothing.
-		_target_label.text = "click an enemy" if push_mode else "no target selected"
-		_target_label.add_theme_color_override("font_color",
-			UITheme.ACCENT if push_mode else UITheme.TEXT_DIM)
+		# ARMED AND UNAIMED SAYS NOTHING. The instruction used to be printed here —
+		# "click an enemy" — and it is redundant now that the bodies you could click
+		# are the ones lit up on the board (ARMED_TINT). A verb that has to caption
+		# its own highlight is a highlight that isn't working.
+		_target_label.text = "" if is_aiming() else "no target selected"
+		_target_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	else:
 		_target_label.text = "▸ %s  (col %d, row %d)" % [
 			e.display_name, int(entry.get("col", GameLoop2.spawn_col())),
 			int(entry.get("row", 0)) + 1]
 		_target_label.add_theme_color_override("font_color", UITheme.ACCENT)
 
-	# The hint says which half of the push the player is in. Both strings are kept
-	# SHORTER than the idle one, and so is the button below: this is an
+	# The hint says which half of the verb the player is in. Both armed strings are
+	# kept SHORTER than the idle one, and so is the button below: this is an
 	# HFlowContainer inside a board that already fits its page to about ten spare
 	# pixels, so a wordier armed state wraps the toolbar onto a second row and
 	# pushes the bottom of the board off the window.
 	if _hint_label != null:
-		_hint_label.text = "⇤ Push:" if push_mode else "Click an enemy:"
+		if push_mode:
+			_hint_label.text = "⇤ Push:"
+		elif bomb_mode:
+			_hint_label.text = "✸ Bomb:"
+		else:
+			_hint_label.text = "Click an enemy:"
 		_hint_label.add_theme_color_override("font_color",
-			UITheme.ACCENT if push_mode else UITheme.TEXT_DIM)
+			UITheme.ACCENT if is_aiming() else UITheme.TEXT_DIM)
 
 	push_btn.text = ("✕  Cancel" if push_mode else "⇤  Push (%d)" % GameState.push)
 	push_btn.disabled = not push_mode and GameState.push <= 0
@@ -532,12 +634,22 @@ func refresh_toolbar() -> void:
 	else:
 		push_btn.tooltip_text = "Shove one enemy a single cell — back, forward, or across into another lane. Press this, then click the enemy, then pick an arrow."
 
-	# A boss is a legal bomb target even though the damage bounces off it — that
-	# is the only way to land Sticky Bombs' stun on one — so the button gates on
-	# having a target and a charge, and the tooltip carries the caveat.
-	bomb_btn.text = "✸  Bomb (%d)" % GameState.bombs
-	bomb_btn.disabled = e == null or GameState.bombs <= 0
-	bomb_btn.tooltip_text = GameLoop2.bomb_hint(e)
+	# BOMB IS ARMED, NOT FIRED. It used to go off on the button press, at whatever
+	# was still selected — so a body clicked three turns ago to read its card took
+	# the charge. Now the press only arms it and the CLICK on a body spends it, so
+	# the button gates on having a charge rather than on having a target.
+	#
+	# A boss is a legal target even though the damage bounces off it — that is the
+	# only way to land Sticky Bombs' stun on one — and the tooltip carries the
+	# caveat for whichever body is currently selected.
+	bomb_btn.text = ("✕  Cancel" if bomb_mode else "✸  Bomb (%d)" % GameState.bombs)
+	bomb_btn.disabled = not bomb_mode and GameState.bombs <= 0
+	if bomb_mode:
+		bomb_btn.tooltip_text = "Put the Bomb away — nothing has been spent yet."
+	elif GameState.bombs <= 0:
+		bomb_btn.tooltip_text = "No Bomb charges left."
+	else:
+		bomb_btn.tooltip_text = GameLoop2.bomb_hint(e)
 
 # The stack entry for an instance, or {} when it's gone / nothing is selected.
 func _stack_entry(instance: int) -> Dictionary:
@@ -665,13 +777,26 @@ func _build() -> void:
 
 # Repaint the battlefield from the current loop state: place each following enemy
 # in its grid cell (by column = distance) and the off-grid queue in the side lane.
-# `show_current` marks the enemy of the game being played right now — it stands on
-# the board with the rest (§7.2), and this is what draws it in the current accent
-# so it is recognisable as the one this game is being played against.
-func refresh(show_current: bool = false) -> void:
+#
+# It takes no argument. It used to take `show_current`, which drew the enemy of
+# the game being played in its own accent — a washed fill, a heavier ring and a
+# NOW PLAYING tag in the overflow lane. There is no such body (GameLoop2.arrivals):
+# every enemy on this board is a follower on the same terms, and drawing one of
+# them differently was the board arguing with its own rules.
+func refresh() -> void:
 	if _battlefield == null:
 		return
-	_show_current = show_current
+	# A verb that has run out of charges is not armed any more, whatever the last
+	# click left set — asked here, before anything is drawn against it.
+	if push_mode and GameState.push <= 0:
+		push_mode = false
+	if bomb_mode and GameState.bombs <= 0:
+		bomb_mode = false
+	# Who an armed verb could be pointed at, answered once and drawn against by
+	# every body below (see _style_enemy_cell). Empty whenever nothing is armed.
+	_armed = {}
+	for inst in armed_targets():
+		_armed[int(inst)] = true
 	# Detaching the body the mouse is over fires its own mouse_exited, and that
 	# handler reorders the layer being torn down. See _repainting.
 	_repainting = true
@@ -716,22 +841,20 @@ func refresh(show_current: bool = false) -> void:
 	# everything else (§7.2) — drawn with a thicker ring and a washed fill rather
 	# than parked in a lane of its own, so "the thing I am playing for" is a body on
 	# the field taking its turns like the rest.
-	var current_inst: int = int(GameLoop2.current.get("instance", 0)) if show_current else 0
 	var placed: Array = []
 	for entry in GameLoop2.stack:
 		if int(entry.get("col", GameLoop2.offgrid_col())) <= GameLoop2.grid_cols():
 			placed.append(entry)
 	placed.sort_custom(func(a, b): return _draw_order_key(a) < _draw_order_key(b))
 	for entry in placed:
-		_add_enemy_node(entry, current_inst > 0 and int(entry.get("instance", 0)) == current_inst)
+		_add_enemy_node(entry)
 
 	# Off-field: the overflow queue — bodies with nowhere on the board to stand,
 	# which the current game's enemy can be one of when the back of the board is
 	# already full.
 	for entry in GameLoop2.stack:
 		if int(entry.get("col", GameLoop2.offgrid_col())) > GameLoop2.grid_cols():
-			_offgrid_box.add_child(_offgrid_token(entry,
-				current_inst > 0 and int(entry.get("instance", 0)) == current_inst))
+			_offgrid_box.add_child(_offgrid_token(entry))
 
 	# Drop a selection that died / was bombed, then relabel the combat verbs.
 	if selected_instance > 0 and _stack_entry(selected_instance).is_empty():
@@ -741,6 +864,13 @@ func refresh(show_current: bool = false) -> void:
 	_refresh_push_arrows()
 	_repainting = false
 	repainted.emit()
+
+# What an armed verb's legal targets are ringed in. Deliberately the ACCENT the
+# selection already uses rather than a new colour: "the verb is pointed at this"
+# and "this is one of the things it could be pointed at" are the same idea one
+# step apart, and a third hue on a board that already carries four threat colours
+# is one more thing to learn.
+const ARMED_TINT := Color(1.0, 0.72, 0.30)
 
 # Paint an enemy's footprint tiles for its current state. Hovering brightens the
 # outline and lifts the fill (the "you can click this" cue); the selected enemy —
@@ -753,18 +883,24 @@ func refresh(show_current: bool = false) -> void:
 # picture costs more than the border buys, and the threat colour, the selection
 # ring and the hover cue all still read off the fill and the parts of the frame
 # the art doesn't cover.
-func _style_enemy_cell(frames: Array, accent: Color, is_current: bool, selected: bool,
-		hovered: bool) -> void:
+func _style_enemy_cell(frames: Array, accent: Color, selected: bool,
+		hovered: bool, aimable: bool = false) -> void:
 	var border: Color = accent
-	var width: int = 3 if is_current else 2
+	var width: int = 2
 	var fill: Color = UITheme.PANEL
-	# The enemy of the game being played stands on the board with everything else
-	# (§7.2), so it needs to be tellable from its neighbours — and two bodies can be
-	# the same enemy at the same threat colour, which makes a heavier border alone
-	# not enough. It gets a washed fill BEHIND the art rather than a badge over it:
-	# the picture is the thing being protected here (see _add_enemy_badges).
-	if is_current:
-		fill = fill.lerp(accent, 0.3)
+	# ARMED. A verb is waiting to be pointed at something, and this body is one of
+	# the things it could be pointed at — so the board says so, instead of a line of
+	# toolbar text saying "click an enemy". The bodies that are NOT targets (the
+	# enemy of the game being played) are left exactly as they were, so the lit set
+	# reads as a set rather than as a colour change across the whole field.
+	if aimable:
+		border = ARMED_TINT
+		width = 3
+		fill = fill.lerp(ARMED_TINT, 0.28)
+	# There used to be a washed fill here for "the enemy of the game being played",
+	# so that body was tellable from its neighbours. It isn't one any more — every
+	# body on this board is a follower on the same terms (GameLoop2.arrivals) — and
+	# a treatment that says one of them is different would be a lie about the rules.
 	if selected:
 		border = UITheme.ACCENT
 		width = 4
@@ -810,22 +946,32 @@ func highlight(instances: Array = []) -> void:
 		if fn is Callable and (fn as Callable).is_valid():
 			(fn as Callable).call()
 
-# Clicking an enemy targets it for the combat verbs and opens its info card.
-func click_enemy(instance: int, entry: Dictionary, col: int, is_current: bool) -> void:
-	# The enemy of the game in play stands on the board like any other body, but it
-	# is not a target for Push / Bomb: it is the goal you are out there playing for,
-	# and shoving or bombing it would answer the game you just committed to. Its
-	# card still opens.
-	selected_instance = 0 if is_current else instance
+# Clicking an enemy. What that means depends on whether a verb is armed: with a
+# Push armed it AIMS, with a Bomb armed it FIRES, and with neither it selects the
+# body and opens its info card.
+func click_enemy(instance: int, entry: Dictionary, col: int) -> void:
+	# EVERY body answers this the same way. There used to be an exemption for the
+	# enemy of the game in play — it could not be selected, bombed or pushed,
+	# because it was that game's own and shoving it would have answered the game
+	# you had just committed to. Nothing belongs to a game now
+	# (GameLoop2.arrivals), so nothing is exempt.
+	selected_instance = instance
+	# An armed BOMB goes off here. This click is the whole of the aiming — a bomb
+	# has no direction to pick — so it is also what spends the charge, which is why
+	# nothing was spent when the button was pressed. The verb disarms itself either
+	# way: one press, one bomb.
+	if bomb_mode:
+		bomb_mode = false
+		bomb_requested.emit(instance)
+		return
 	# While a push is being aimed the click is the AIM, not a request to read the
 	# card: a full-screen info card over the board would bury the arrows the same
-	# click just put there. (The enemy being played is still unaimable, so it falls
-	# through to its card as usual.)
-	if push_mode and not is_current:
-		refresh(_show_current)
+	# click just put there.
+	if push_mode:
+		refresh()
 		return
-	enemy_inspected.emit(entry, col, is_current)
-	refresh(_show_current)
+	enemy_inspected.emit(entry, col)
+	refresh()
 
 # --- the push arrows -------------------------------------------------------
 
@@ -955,7 +1101,7 @@ func _draw_order_key(entry: Dictionary) -> int:
 # the FULL bounding box — never cropped to the solid cells, so the parts poking
 # out of the shape stay visible — and ❤ health / ⚔ damage / status badges sit in
 # the corners. The current (now-playing) enemy gets a thicker border.
-func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
+func _add_enemy_node(entry: Dictionary) -> Control:
 	var e: GoalEnemyData = entry.get("enemy")
 	if e == null:
 		return null
@@ -985,7 +1131,7 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	node.size = _span_size(rows, cols)
 	node.mouse_filter = Control.MOUSE_FILTER_STOP
 	node.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	node.tooltip_text = _timing_tip(entry, e)
+	HoverCard.attach(node, enemy_hover(entry, e))
 	node.set_meta("instance", inst)
 	_enemy_layer.add_child(node)
 	_enemy_nodes[inst] = node
@@ -1005,7 +1151,8 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 	# beside it highlights the bodies whose goals a row belongs to (see
 	# `highlight`), and both routes have to end at the same paint.
 	var repaint := func() -> void:
-		_style_enemy_cell(frames, accent, is_current, inst == selected_instance, _is_lit(inst))
+		_style_enemy_cell(frames, accent, inst == selected_instance, _is_lit(inst),
+			_armed.has(inst))
 	_repaint_fns[inst] = repaint
 	repaint.call()
 
@@ -1038,7 +1185,7 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 		enemy_hovered.emit(inst, false))
 	node.gui_input.connect(func(ev: InputEvent):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			click_enemy(inst, entry, front, is_current))
+			click_enemy(inst, entry, front))
 
 	# One full-rect holder so corner-anchored overlays position correctly. It's
 	# also what the resolve animation hides while a ghost slides into place.
@@ -1086,7 +1233,7 @@ func _add_enemy_node(entry: Dictionary, is_current: bool) -> Control:
 # picture that identifies the enemy — on a 7x7 board's 46px cells, most of it.
 # Neither fact is lost: a boss is already drawn in the boss's own orange
 # (threat_color) and carries its portrait beside its name on the checklist, and
-# the walking still owed is the first line of the body's own hover (_timing_tip).
+# the walking still owed is the timing line of the body's own hover (enemy_hover).
 func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		_accent: Color, selected: bool) -> void:
 	var stun: int = int(entry.get("stun", 0))
@@ -1187,23 +1334,53 @@ func _damage_badge_text(entry: Dictionary, strikes: int) -> String:
 # What this enemy does on the next game you report, in a sentence: how many
 # swings it gets and for how much, or how many games of walking it still owes.
 # The badge is the glance; this is the answer when the glance isn't enough.
-func _timing_tip(entry: Dictionary, e: GoalEnemyData) -> String:
-	var turns: int = GameLoop2.enemy_turns()
+# The hover model for one body on the board: the condensed version of the card
+# its click opens (EnemyInfoCard).
+#
+# What survives the condensing is what changes a decision in the next few
+# seconds: WHO it is (the art and the name, in its threat colour), WHAT IS ON IT
+# (its statuses, as pips — three of them are three lines of prose and one glance
+# of icons), and WHEN IT SWINGS. Its goal rides along because that is the thing
+# you are being asked to go and do. Everything else — the full stat block, the
+# position, the verbs — is a click away and stays there.
+func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 	var strikes: int = GameLoop2.attacks_next_game(entry)
 	var away: int = GameLoop2.games_until_strike(entry)
-	var pace: String = "Enemies take %d turn%s per game right now (%s)." % [
-		turns, "" if turns == 1 else "s",
-		RunDifficulty.turns_band_name(turns).to_lower()]
-	if int(entry.get("stun", 0)) > 0:
-		pace += "\n❄ Stunned: %d of its turns go to nothing." % int(entry.get("stun", 0))
+	var timing: String = ""
 	if strikes > 0:
-		return "%s\n%s strikes %d time%s next game — %d damage total." % [
-			pace, e.display_name, strikes, "" if strikes == 1 else "s",
-			strikes * GameLoop2.enemy_damage(entry)]
-	if away > 0:
-		return "%s\n%s is %d game%s of walking from its first strike." % [
-			pace, e.display_name, away, "" if away == 1 else "s"]
-	return "%s\n%s is waiting off the field — it can't reach you yet." % [pace, e.display_name]
+		timing = "Strikes %d time%s next game — %d damage." % [
+			strikes, "" if strikes == 1 else "s", strikes * GameLoop2.enemy_damage(entry)]
+	elif away > 0:
+		timing = "%d game%s of walking from its first strike." % [
+			away, "" if away == 1 else "s"]
+	else:
+		timing = "Waiting off the field — it can't reach you yet."
+
+	var pips: Array = []
+	for row in GameLoop2.enemy_statuses(entry):
+		var status: StatusData = row["status"]
+		if status == null:
+			continue
+		pips.append({
+			"art": status.image,
+			"text": "%s %d" % [status.display_name, int(row["stacks"])],
+			"good": status.is_bonus(StatusData.ENEMY) or status.is_goal(StatusData.ENEMY),
+		})
+	var stun: int = int(entry.get("stun", 0))
+	if stun > 0:
+		pips.append({"text": "❄ %d" % stun, "good": true})
+
+	var sub: String = "☠ boss" if e.is_boss() else ""
+
+	return {
+		"title": e.display_name,
+		"subtitle": sub,
+		"accent": threat_color(int(entry.get("col", GameLoop2.spawn_col())), e.is_boss()),
+		"art": e.image,
+		"pips": pips,
+		"lines": [e.goal, timing],
+		"note": "Click for the full card.",
+	}
 
 # A single full-rect Control child of a cell PanelContainer, inside which art and
 # corner-anchored overlays lay out freely (the PanelContainer stretches this one
@@ -1264,10 +1441,10 @@ const STATUS_STRIP_DROP := 20
 func _status_pip(status: StatusData, stacks: int, which: StringName, size: int) -> Control:
 	var good: bool = status.is_bonus(which) or status.is_goal(which)
 	var tint: Color = UITheme.GOLD if good else UITheme.DANGER
-	var chip := PanelContainer.new()
+	var chip := HoverPanel.new()
 	chip.add_theme_stylebox_override("panel",
 		UITheme.flat(tint.lerp(UITheme.BG, 0.75), 3, 1, 1, tint.lerp(UITheme.BORDER, 0.35)))
-	chip.tooltip_text = status.tooltip_for(which, stacks)
+	HoverCard.attach(chip, status_hover(status, stacks, which))
 	chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 2)
@@ -1287,6 +1464,12 @@ func _status_pip(status: StatusData, stacks: int, which: StringName, size: int) 
 	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(count)
 	return chip
+
+# The hover model for one status pip. A thin wrapper over StatusData's own
+# `hover_card`, so the board, the enemy card and the hero strip cannot describe
+# the same status differently.
+func status_hover(status: StatusData, stacks: int, which: StringName) -> Dictionary:
+	return status.hover_card(which, stacks)
 
 # Fill `strip` with one pip per status in `rows` ([{status, stacks}]). Returns how
 # many were drawn, so a caller can hide an empty strip rather than leave a gap.
@@ -1316,13 +1499,13 @@ func _corner_badge(text: String, color: Color, font_size: int = 12) -> Label:
 # A token for an enemy that has no cell on the field: either the overflow queue,
 # or the game you're playing right now (which enters the grid when you report it).
 # Clickable like a grid cell, with the same hover cue.
-func _offgrid_token(entry: Dictionary, is_current: bool = false) -> Control:
+func _offgrid_token(entry: Dictionary) -> Control:
 	var e: GoalEnemyData = entry.get("enemy")
-	var accent: Color = UITheme.ACCENT if is_current else UITheme.GOLD
+	var accent: Color = UITheme.GOLD
 	if e != null and e.is_boss():
 		accent = Color(0.95, 0.55, 0.2)
-	var cell := PanelContainer.new()
-	cell.custom_minimum_size = Vector2(_cell if is_current else 44, _cell if is_current else 44)
+	var cell := HoverPanel.new()
+	cell.custom_minimum_size = Vector2(44, 44)
 	var inst: int = int(entry.get("instance", 0))
 	var paint := func() -> void:
 		var lit: bool = _is_lit(inst)
@@ -1330,13 +1513,17 @@ func _offgrid_token(entry: Dictionary, is_current: bool = false) -> Control:
 		var fill: Color = UITheme.PANEL.lerp(UITheme.BG, 0.3)
 		if lit:
 			fill = fill.lerp(Color.WHITE, 0.09)
-		cell.add_theme_stylebox_override("panel", UITheme.flat(fill, 5, 2, 2 if is_current else 1, border))
+		cell.add_theme_stylebox_override("panel", UITheme.flat(fill, 5, 2, 1, border))
 	if e != null and inst > 0:
 		_repaint_fns[inst] = paint
 	paint.call()
 	if e != null:
 		cell.mouse_filter = Control.MOUSE_FILTER_STOP
 		cell.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		# A body in the overflow lane gets the same card as one on the board — it is
+		# the same enemy and the same question, and "why can't this one reach me" is
+		# answered by the timing line either way.
+		HoverCard.attach(cell, enemy_hover(entry, e))
 		cell.mouse_entered.connect(func():
 			_hovered_instance = inst
 			paint.call()
@@ -1348,7 +1535,7 @@ func _offgrid_token(entry: Dictionary, is_current: bool = false) -> Control:
 			enemy_hovered.emit(inst, false))
 		cell.gui_input.connect(func(ev: InputEvent):
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				click_enemy(inst, entry, GameLoop2.offgrid_col(), is_current))
+				click_enemy(inst, entry, GameLoop2.offgrid_col()))
 		cell.set_meta("instance", inst)
 		var holder := _cell_holder(cell)
 		cell.set_meta("holder", holder)
@@ -1363,16 +1550,8 @@ func _offgrid_token(entry: Dictionary, is_current: bool = false) -> Control:
 		else:
 			art.modulate = accent
 		holder.add_child(art)
-		# The game in play is labelled, so it reads as "waiting to enter" rather
-		# than as another queued enemy.
-		if is_current:
-			var tag := _corner_badge("NOW PLAYING", UITheme.ACCENT, 9)
-			tag.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 2)
-			holder.add_child(tag)
-			var dmg := _corner_badge("⚔%d" % GameLoop2.enemy_damage(entry),
-				Color(1.0, 0.8, 0.35))
-			dmg.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
-			holder.add_child(dmg)
+		# No "NOW PLAYING" tag. A body waiting in the overflow lane is a body
+		# waiting in the overflow lane, whichever game walked it on.
 	return cell
 
 # --- resolve animation ----------------------------------------------------

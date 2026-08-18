@@ -204,15 +204,14 @@ var _banner: Label
 var _boss_notice_for: int = -1
 var _boss_notice: BossNoticeModal = null
 var _preview: RichTextLabel
+var _preview_art: TextureRect       # the hovered card's enemy, beside the line
 var _choices_row: HFlowContainer
 var _play_panel: VBoxContainer
 var _now_playing: RichTextLabel
-var _now_playing_img: TextureRect   # the goal-enemy art on the report panel
 var _now_playing_cover: TextureRect # the chosen game's cover, beside it
 var _launch_row: HBoxContainer
 var _verify_box: VBoxContainer      # clean checklist: goal + level-up + follower goals
 var _fulfil_checks: Array = []      # [{check: CheckBox, instance: int}]
-var _goal_check: CheckBox           # the chosen game's main goal; null on a free game
 # Statuses 2.0 (§13) on the report checklist. `_status_goal_checks` are the
 # player's own BUFF goals — extra rows that pay when ticked; `_bonus_checks` are
 # the OPTIONAL bonus objectives an enemy's `bonus` side hangs off it. Both are read into
@@ -265,7 +264,7 @@ var _escape_btn: Button           # hidden until ESCAPE_AFTER_ATTEMPTS lost runs
 # The parts of the checklist panel that need a game in hand: the now-playing row,
 # the attempt strip and the Completed Game button. Hidden while you're choosing,
 # where the panel is the standing-goals list instead.
-var _np_box: HBoxContainer
+var _np_box: VBoxContainer
 var _attempt_wrap: Control
 var _done_btn: Button
 # The board itself (§grid): the player on the left, a grid_cols() x grid_rows() grid on
@@ -471,8 +470,9 @@ func open_start_choice(index: int) -> GameChoiceModal:
 	var choice: Dictionary = _start_choice(index)
 	var modal := GameChoiceModal.open(self, index, choice, {
 		"route": {
-			"text": "%d games from the Amulet" % int(opt["path_len"]),
-			"tip": "The shortest route from %s to the hidden Amulet game." % opt["game"].display_name,
+			"text": _start_distance_text(int(opt["path_len"])),
+			"tip": "The shortest route from %s to %s, the game this run ends on." % [
+				opt["game"].display_name, amulet_name()],
 			"color": UITheme.GOLD,
 		},
 		# The pace, stated ABSOLUTELY rather than as the offering's "speeds up /
@@ -868,10 +868,11 @@ func pick(index: int) -> void:
 	# The machines go too, and they do not survive: a Blood Donation Machine is
 	# not a place you can come back to.
 	_leave_node()
-	# An armed Push doesn't survive committing to a game: the board it was aimed at
-	# is about to be marched a column, and nothing has been spent.
+	# An armed verb doesn't survive committing to a game: the board it was aimed at
+	# is about to be marched a column, and nothing has been spent either way.
 	if _board != null:
 		_board.cancel_push()
+		_board.cancel_bomb()
 	_phase = Phase.PLAYING
 	_populate_play_panel()
 	_refresh()
@@ -1058,19 +1059,24 @@ func open_map() -> Node:
 # above its cover, because the whole decision is a routing decision and it
 # shouldn't have to be made from a single distance number.
 #
-# From the START PICKER the destination is drawn without being named, and no
-# chart is raised: the panel gives away the distance to the Amulet and nothing
-# else, and a sky with the route drawn across it would point straight at the game
-# the whole run is a search for.
+# The START PICKER's map is the LADDER ALONE — no star chart under it.
+#
+# It used to withhold the destination as well, which is over: the Amulet is named
+# here like everywhere else (amulet_name). What it still withholds is the SKY. The
+# question being asked on that panel is "which of these three roads do I want",
+# and the answer to it is the ladder: seven rungs, in order, with the branch
+# points on them. Raising the whole 852-star chart to answer it hands the player a
+# galaxy to pan around before they have taken a single step — and the panel behind
+# is the one screen where there is nothing on the chart to orient by, since the
+# run has no position yet. The chart is one button away on the window itself
+# (✦ Star chart) for anyone who wants it.
 func preview_map(game_id: StringName) -> Node:
 	if game_id == &"" or GameState.amulet_game_id == &"":
 		return null
 	var game: GameData = Data.get_game(game_id)
-	var starting: bool = _phase == Phase.START_SELECT
 	return _open_route_map(game_id, [], {
 		"preview": true,
-		"hide_amulet": starting,
-		"chart": not starting,
+		"chart": _phase != Phase.START_SELECT,
 		"title": "🗺  If you take %s" % (game.display_name if game != null else String(game_id)),
 	})
 
@@ -1240,17 +1246,29 @@ func scroll_teleport(_dir: String, spread: int) -> void:
 	_refresh()
 
 # Report the outcome of actually playing the chosen game (the honour-system
-# self-report). `goal_met` resolves the current enemy; `fulfilled` is the list of
-# FOLLOWING-enemy instances whose old goals you also fulfilled this game (§2) —
-# each is defeated and drops. When null the ticked fulfilment checkboxes are read
-# from the play panel. Resolves the loop, advances the difficulty clock, then
-# rebuilds the next offering.
+# self-report). `fulfilled` is the list of enemy instances whose goals you
+# cleared this game (§2) — every body on the board is a candidate, the ones that
+# walked on when you took this game included — and each is hit, defeated and
+# dropping at 0 Health. When null the ticked checkboxes are read from the play
+# panel. Resolves the loop, advances the difficulty clock, then rebuilds the next
+# offering.
 #
 # `escaped` marks the report as WALKING AWAY (escape_game) rather than finishing:
 # the board still resolves and the run still moves on, but the game is not
 # credited as beaten — see the `if not escaped` block below for exactly what that
 # withholds.
-func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) -> void:
+# `beaten` is the honour-system answer to the only question this app actually
+# asks: did you complete the real video game? It is what "✓ Completed Game"
+# presses, and it drives the RECORD half of the report — the run's beaten set, the
+# repeat-visit Dash, the lifetime tally, the Amulet win.
+#
+# It has nothing to do with the enemies. Clearing a goal is ticking that enemy's
+# row (`fulfilled`), and beating the game clears nothing by itself — the two used
+# to be one flag, back when the body standing there was the game's own and beating
+# the game answered for it (GameLoop2.arrivals). So you can beat a game and leave
+# everything on the board following you, or clear three old goals during a game
+# you never finished, and the report says exactly that.
+func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> void:
 	if _phase != Phase.PLAYING or _chosen.is_empty():
 		return
 	# The board is about to play the whole resolve back — the front line striking,
@@ -1289,7 +1307,19 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	# and the enemy bonuses claimed. Read here, alongside the fulfilments, because
 	# _end_resolve rebuilds the checklist and frees the boxes.
 	var claims: Dictionary = _ticked_status_claims()
-	var res: Dictionary = GameLoop2.beat_game(goal_met, fulfilled_instances, claims)
+	# WHO is behind each ticked instance, read BEFORE the resolve. beat_game takes
+	# a defeated body off the stack, so looking the instance up afterwards finds
+	# nothing — which is exactly the enemies worth recording.
+	var ticked_enemies: Dictionary = {}
+	for inst in fulfilled_instances:
+		for entry in GameLoop2.stack:
+			if int(entry.get("instance", -1)) == int(inst):
+				ticked_enemies[int(inst)] = entry.get("enemy")
+				break
+	# `clear_advertised` is false and always will be from here: the overworld's
+	# checklist lists the bodies that walked on this game among all the others, so
+	# they are already in `fulfilled_instances` if the player ticked them.
+	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims)
 	# "After beating a game" is the dominant 2.0 item trigger (§8): fire it now so
 	# owned items react (Burning Blood +1 Health, Meat on the Bone's conditional
 	# heal), the Harvesting stat pays out, charged actives tick, and the toast
@@ -1299,17 +1329,16 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	# Every defeat is banked twice: against the GAME it happened at (the Atlas's
 	# "enemies beaten in <game>") and against the CHARACTER who did it (the
 	# roster's trophy shelf). One call site, so the two can't disagree.
+	# One loop, because there is one kind of defeat: whatever you cleared, it was
+	# cleared AT this game. The body that walked on when you took it used to be
+	# recorded separately, off the `goal_met` flag, and that is gone with the flag.
+	# Read off the snapshot taken before the resolve, not off the stack — the ones
+	# worth recording are precisely the ones no longer standing on it.
 	if played_game != null:
-		var goal_enemy: GoalEnemyData = _chosen.get("enemy")
-		if goal_met and goal_enemy != null:
-			_record_defeat(played_game, goal_enemy)
-		for inst in fulfilled_instances:
-			for entry in GameLoop2.stack:
-				if int(entry.get("instance", -1)) == int(inst):
-					var follower: GoalEnemyData = entry["enemy"]
-					if follower != null:
-						_record_defeat(played_game, follower)
-					break
+		for inst in ticked_enemies:
+			var cleared: GoalEnemyData = ticked_enemies[inst]
+			if cleared != null:
+				_record_defeat(played_game, cleared)
 	# Everything a game gets CREDITED for. An escape is the one report that earns
 	# none of it: the player walked away, so the "after beating a game" items don't
 	# fire and nothing about the game is banked. The run itself still advances —
@@ -1361,7 +1390,7 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	#
 	# Recorded after the item trigger above, so a game_beaten item can't see a
 	# half-updated tally.
-	if played_game != null and not escaped and goal_met:
+	if played_game != null and not escaped and beaten:
 		# The run's own record: what the Atlas's "beaten this run" and the free
 		# escape (can_escape) read. Run-scoped and wiped by reset_run — beating
 		# something in a previous run is not a fact about this one.
@@ -1502,7 +1531,7 @@ func _end_resolve() -> void:
 	# _on_inventory_changed) — the board is the player's again now.
 	if _board_dirty:
 		_board_dirty = false
-		_board.refresh(_phase == Phase.PLAYING)
+		_board.refresh()
 	if _run_over_pending:
 		_run_over_pending = false
 		# A run that just ended has no room for either. The shop matters as much as
@@ -1789,6 +1818,9 @@ func _on_arrived(game_id: StringName) -> void:
 
 func _exit_tree() -> void:
 	GameState.clear_overworld_context(self)
+	# The header bar goes with the page. Leaving its height published would push
+	# the main menu's own modals down by a strip that no longer exists.
+	ModalScaffold.reserved_top = 0.0
 	# The wider canvas belongs to THIS page (see _fit_canvas_to_page). The menu is
 	# laid out for the standard one, so it goes back with the screen that asked
 	# for it.
@@ -2170,7 +2202,7 @@ func bomb_follower(instance: int) -> void:
 
 # The board reports a clicked enemy; the card is opened HERE because it dims the
 # whole screen and the board itself lives inside the scrolling page.
-func _show_enemy_info(entry: Dictionary, col: int, is_current: bool) -> void:
+func _show_enemy_info(entry: Dictionary, col: int) -> void:
 	_close_enemy_info()
 	var card := EnemyInfoCard.new()
 	card.push_requested.connect(push_follower)
@@ -2178,7 +2210,7 @@ func _show_enemy_info(entry: Dictionary, col: int, is_current: bool) -> void:
 	card.closed.connect(func(): _info_popup = null)
 	_info_popup = card
 	add_child(card)
-	card.setup(entry, col, is_current)
+	card.setup(entry, col)
 
 func _close_enemy_info() -> void:
 	if _info_popup != null and is_instance_valid(_info_popup):
@@ -2375,7 +2407,7 @@ func _on_inventory_changed() -> void:
 	if _resolving:
 		_board_dirty = true
 		return
-	_board.refresh(_phase == Phase.PLAYING)
+	_board.refresh()
 
 func _refresh(_a = null) -> void:
 	if _stack == null:
@@ -2384,13 +2416,15 @@ func _refresh(_a = null) -> void:
 	_refresh_items()
 	_refresh_route_strip()
 	_stack.text = "[b]Battlefield[/b]  —  " + _stack_summary()
-	_board.refresh(_phase == Phase.PLAYING)
+	_board.refresh()
 	_refresh_attempts()
 	_refresh_stage()
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
 	if _phase == Phase.START_SELECT:
-		_select_head.text = "Choose where to start — three genres, all the same distance from the Amulet. The run opens on the one you take:"
+		# The Amulet is NAMED here, and named first: it is the thing all three roads
+		# end on, so it belongs at the front of the sentence the roads are chosen in.
+		_select_head.text = "The Amulet is %s. Choose where to start — three genres, all the same distance from it. The run opens on the one you take:" % amulet_name()
 		_clear(_controls_row)
 		_render_start_choices()
 		_populate_standing_checklist()
@@ -2406,11 +2440,8 @@ func _refresh(_a = null) -> void:
 		_populate_standing_checklist()
 	elif _phase == Phase.PLAYING:
 		_now_playing.text = _now_playing_text()
-		var np_tex: Texture2D = null if _chosen.is_empty() else _enemy_texture(_chosen)
-		_now_playing_img.texture = np_tex
-		UITheme.apply_crisp(_now_playing_img, np_tex)
-		# The cover of the game you're actually playing, so the report step shows the
-		# thing you went to play next to the enemy you went to beat.
+		# The cover of the game you are actually playing, and nothing else: what is
+		# on the board is on the board (see the row's own comment).
 		var game: GameData = _chosen.get("game")
 		_now_playing_cover.texture = game.cover_image if game != null else null
 	_fit_canvas_to_page.call_deferred()
@@ -2661,11 +2692,34 @@ func _render_start_choices() -> void:
 		return
 	for i in range(_start_options.size()):
 		_choices_row.add_child(_make_start_card(i, _start_options[i]))
-	_preview.text = "[i]Hover a start to see what it opens on.[/i]"
+	_preview.text = _preview_idle_text()
+	_show_hover_art({})
+
+# The Amulet, by name.
+#
+# It used to be the run's one secret until a start had been committed to: the
+# picker quoted the DISTANCE and the maps drew the destination as an unnamed box.
+# That is over — the Amulet is named from the first screen of the run, because
+# choosing a start is a routing decision and the game the road ends on is half of
+# what makes one road different from another.
+#
+# Falls back to "the Amulet" rather than an empty string, so the lines that quote
+# it still read as sentences before an amulet has been rolled (the main menu's
+# custom-run preview, and any test that builds a card without a run).
+func amulet_name() -> String:
+	var game: GameData = Data.get_game(GameState.amulet_game_id)
+	return game.display_name if game != null else "the Amulet"
+
+# The distance line every start card wears, and the same line inside the popup it
+# opens: how far the Amulet is AND which game it is. One function because the two
+# must not drift, and because "5 games from Guild of Dungeoneering" is the whole
+# sentence — the number on its own was never the interesting half.
+func _start_distance_text(hops: int) -> String:
+	return "%d game%s from %s" % [hops, "" if hops == 1 else "s", amulet_name()]
 
 # One start card: the cover, the game's name, its genre, and how many games stand
-# between it and the amulet. The amulet itself stays hidden — the distance is the
-# only thing about it the panel gives away.
+# between it and the Amulet — which is named, along with everything else on the
+# road to it (see amulet_name).
 func _make_start_card(index: int, opt: Dictionary) -> Control:
 	var game: GameData = opt["game"]
 	var accent: Color = RunGraph.type_color(int(opt["type"]))
@@ -2697,10 +2751,11 @@ func _make_start_card(index: int, opt: Dictionary) -> Control:
 	btn.add_theme_stylebox_override("focus", frame_h)
 	# Opens the card rather than committing: the start is a game you go and play
 	# now, so it gets the same "here is what's waiting, do you want it" popup every
-	# other game in the run gets.
-	btn.tooltip_text = "Open %s — what's waiting there, the tries it grants, and the button that starts the run on it." % game.display_name
+	# other game in the run gets. No tooltip, for the same reason an offered card
+	# has none — the hover line under the cards is where a start describes itself.
 	btn.pressed.connect(func(): open_start_choice(index))
 	btn.mouse_entered.connect(func(): _show_start_preview(index))
+	btn.mouse_exited.connect(_clear_hover_grant)
 	if game.cover_image != null:
 		var art := TextureRect.new()
 		art.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -2725,8 +2780,9 @@ func _make_start_card(index: int, opt: Dictionary) -> Control:
 	card.add_child(name_lbl)
 
 	var dist := Label.new()
-	dist.text = "%d games from the Amulet" % int(opt["path_len"])
-	dist.tooltip_text = "The shortest route from %s to the hidden Amulet game." % game.display_name
+	dist.text = _start_distance_text(int(opt["path_len"]))
+	dist.tooltip_text = "The shortest route from %s to %s, the game this run ends on." % [
+		game.display_name, amulet_name()]
 	dist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dist.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	dist.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2744,8 +2800,11 @@ func _show_start_preview(index: int) -> void:
 	# so what is waiting at it is readable without opening the card, exactly as it
 	# is for every other card in the run.
 	_hover_grant = GameLoop2.shields_for_game(opt["game"])
-	_preview.text = "%s  ·  [color=#%s]%d games from the Amulet[/color]" % [
-		_hover_line(_start_choice(index)), UITheme.GOLD.to_html(false), int(opt["path_len"])]
+	var choice: Dictionary = _start_choice(index)
+	_preview.text = "%s  ·  [color=#%s]%s[/color]" % [
+		_hover_line(choice), UITheme.GOLD.to_html(false),
+		_start_distance_text(int(opt["path_len"]))]
+	_show_hover_art(choice)
 
 func _render_choices() -> void:
 	_clear(_choices_row)
@@ -2759,6 +2818,7 @@ func _render_choices() -> void:
 	for i in range(_choices.size()):
 		_choices_row.add_child(_make_choice_card(i, _choices[i]))
 	_preview.text = _preview_idle_text()
+	_show_hover_art({})
 
 # The offered cover art, back at the size it deserves. It was halved when the
 # offering moved into the left column beside the board (COVER_SIZE was 105x140),
@@ -2766,6 +2826,22 @@ func _render_choices() -> void:
 # columns had to fit side by side. The badges have gone into GameChoiceModal, so
 # the art gets the room back.
 const COVER_SIZE := Vector2(150, 200)
+
+# The width of the enemy portrait on the hover line under the offering. Its
+# HEIGHT is the line's, whatever that turns out to be — and that is the whole
+# trick, because it is what makes the portrait FREE.
+#
+# The overworld is fitted to a 720p window with single-digit pixels to spare
+# (test_overworld2's _assert_fits), and the page's worst case — three arcade
+# machines under the board — sits within about four of them. A hover row that
+# reserved even 30px of height for art blew that budget on its own. So the art
+# fills the line instead of setting its height: same page, one more thing on it.
+#
+# That makes it small, which is the right size anyway. This is an IDENTIFIER for
+# a body the player already knows — the same job, and the same scale, as the
+# portraits on a card's Beatable row. The exhibit is in the popup the card opens,
+# where the enemy is drawn at full size.
+const HOVER_ART := 30.0
 
 # The badge rows on a card: the name, plus two fixed-height flag lines above the
 # cover — the Amulet / event flag, and the repeat game's +1 Dash. Everything else
@@ -2867,9 +2943,13 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	dash_flag.add_theme_color_override("font_color", DASH_BLUE)
 	card.add_child(dash_flag)
 
+	# NO TOOLTIP. The offering is the one place on the page that does NOT get a
+	# hover card: the enemy's portrait and its goal are already written on the
+	# hover line under the cards (see _show_preview), which is the same read the
+	# card would be, and a popup over the covers while the mouse crosses three of
+	# them is the noisiest possible way to say it. The cards are for scanning.
 	var btn := Button.new()
 	btn.custom_minimum_size = COVER_SIZE
-	btn.tooltip_text = "Open %s — the route it leaves you on, what's waiting there, and the button that takes it." % game.display_name
 	var frame_n := UITheme.flat(UITheme.BG, 8, 4, 1, UITheme.GOLD if amulet else UITheme.BORDER)
 	var frame_h := UITheme.flat(UITheme.PANEL_HI, 8, 4, 2, accent)
 	btn.add_theme_stylebox_override("normal", frame_n)
@@ -3021,38 +3101,29 @@ func _populate_play_panel() -> void:
 
 	# One clean checklist of everything to verify this game. Tick what you actually
 	# did, then press "Completed Game" once (§2 / §3.1):
-	#   • the current game's GOAL (top) — ticked defeats its enemy, unticked leaves
-	#     it following you;
+	#   • EVERY ENEMY on the board, in one list — the ones that walked on when you
+	#     took this game and the ones that have been following you for ten;
 	#   • the character LEVEL-UP challenge;
-	#   • each FOLLOWING enemy whose old goal you also cleared this game.
+	#   • the event and curse goals.
+	#
+	# THERE IS NO "GOAL" BOX. The enemy the card advertised used to get an
+	# emphasised row of its own at the top, because it was the game's own enemy and
+	# beating the game was what cleared it. Nothing is a game's own enemy any more
+	# (GameLoop2.arrivals): a body that walked on this game and a body you have
+	# owed since three games ago are the same kind of debt, and asking about them
+	# in two different places said they were not.
 	_verify_box.add_child(_verify_head("Tick what you did this game:"))
 
-	var enemy: GoalEnemyData = _chosen.get("enemy")
-	if enemy != null and enemy.goal != "":
-		var is_amulet: bool = bool(_chosen.get("amulet", false))
-		# The goal LINE, not the enemy's authored goal: any status clause welded on
-		# by a clause on this enemy or one on the player is part of what ticking
-		# this box asserts (§13).
-		var goal_text: String = "%s %s" % [
-			"🏆 Amulet goal (bonus) —" if is_amulet else "Goal —",
-			GameLoop2.goal_text_for(GameLoop2.current)]
-		var goal_row := _verify_row(goal_text, UITheme.SUCCESS, true, enemy, null,
-			int(GameLoop2.current.get("instance", 0)))
-		_goal_check = goal_row["check"]
-		_verify_box.add_child(goal_row["row"])
-		# On the Amulet the goal is NOT the lock on the door — playing the game is
-		# (see report()). Said here because this row is the one place a player
-		# would otherwise reasonably read it as the win condition.
-		if is_amulet:
-			var win_note := Label.new()
-			win_note.text = "Completing this game wins the run — the goal above is a bonus."
-			win_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			win_note.add_theme_font_size_override("font_size", 12)
-			win_note.add_theme_color_override("font_color", UITheme.GOLD)
-			_verify_box.add_child(win_note)
-		# …and its optional bonus objectives, which are claimed separately because
-		# skipping one costs nothing.
-		_add_bonus_rows(GameLoop2.current)
+	# On the Amulet, playing the game is the win — not any goal on this list (see
+	# report()). Said at the top, because a checklist is otherwise exactly where a
+	# player would look for the win condition and not find it.
+	if bool(_chosen.get("amulet", false)):
+		var win_note := Label.new()
+		win_note.text = "🏆  Completing this game wins the run — everything below is a bonus."
+		win_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		win_note.add_theme_font_size_override("font_size", 12)
+		win_note.add_theme_color_override("font_color", UITheme.GOLD)
+		_verify_box.add_child(win_note)
 
 	# The player's own BUFF goals (§13): standing challenges that pay out every
 	# game you satisfy them, so they are on the report step of EVERY game rather
@@ -3093,16 +3164,12 @@ func _populate_play_panel() -> void:
 	# the label on it. Leading with the name made every row start with a proper
 	# noun the player has to read past to reach the thing they're ticking.
 	#
-	# The current game's enemy is on the board with the followers now (§7.2), and
-	# it is skipped here because it already has the Goal row at the top of this
-	# list — listing it twice would let the same body be ticked as both.
-	var current_inst: int = int(GameLoop2.current.get("instance", 0))
+	# EVERY body on the board, on the same terms and in board order. The ones that
+	# walked on when this game was taken are simply the last ones in the list.
 	for entry in GameLoop2.stack:
 		var inst: int = int(entry["instance"])
-		if inst == current_inst:
-			continue
 		var e: GoalEnemyData = entry["enemy"]
-		var row := _verify_row("Also cleared: %s — %s" % [
+		var row := _verify_row("Cleared: %s — %s" % [
 			GameLoop2.goal_text_for(entry), e.display_name], UITheme.TEXT, false, e, null, inst)
 		_verify_box.add_child(row["row"])
 		_fulfil_checks.append({"check": row["check"], "instance": inst})
@@ -3228,7 +3295,6 @@ func _reset_checklist_state() -> void:
 	_event_goal_checks.clear()
 	_curse_goal_checks.clear()
 	_levelup_check = null
-	_goal_check = null
 
 # The checklist while you're CHOOSING: the goals already on you — the character's
 # level-up challenge, and every follower's outstanding goal (any of which you may
@@ -3448,11 +3514,6 @@ func _boss_icon_rect(icon: Texture2D) -> Control:
 	frame.add_child(UITheme.crisp_tex(icon, BOSS_ICON_SIZE))
 	return frame
 
-# Whether the chosen game's MAIN goal was met — true when its checkbox is ticked,
-# or when the game had no enemy/goal to meet (a free game auto-clears).
-func _goal_met() -> bool:
-	return _goal_check == null or _goal_check.button_pressed
-
 # One checklist row: a bordered CheckBox tinted `color`; `emphasise` gives the
 # main-goal row a heavier border so it reads as the primary question. Kept to a
 # single tight line each — the stage above it is the board, and the checklist has
@@ -3595,6 +3656,9 @@ func open_tier_list() -> TierListScreen:
 func _show_header(shown: bool) -> void:
 	if _header_layer != null and is_instance_valid(_header_layer):
 		_header_layer.visible = shown
+	# A bar that isn't drawn is standing on nothing, and a screen that stood in
+	# front of it must not be pushed down by a strip it can't see.
+	_publish_header_strip(shown)
 
 # The instances the player ticked as fulfilled this game.
 func _ticked_fulfilments() -> Array:
@@ -3674,10 +3738,27 @@ func _show_preview(index: int) -> void:
 	# A destination card grants no tries — it isn't a game being started (§10).
 	_hover_grant = -1 if _asking_return() else GameLoop2.shields_for_game(_choices[index]["game"])
 	_preview.text = _hover_line(_choices[index])
+	_show_hover_art(_choices[index])
 
-# The mouse left a card: the line stays as a reference, but the grant number goes
-# with the hover, so it can never advertise a game you're not pointing at.
+# The portrait beside the hover line: the body this card would put on the board.
+#
+# Blank for the stay-or-return pair (they spawn nothing), for a free game with no
+# enemy, and under the Runic Dome — the relic hides WHAT is waiting, and a picture
+# gives that away far more completely than a name would.
+func _show_hover_art(choice: Dictionary) -> void:
+	if _preview_art == null or not is_instance_valid(_preview_art):
+		return
+	var tex: Texture2D = null
+	if not choice.is_empty() and not choice.has("stay") and not _enemy_hidden(choice):
+		tex = _enemy_texture(choice)
+	_preview_art.texture = tex
+	_preview_art.visible = tex != null
+
+# The mouse left a card: the line stays as a reference, but the grant number and
+# the portrait go with the hover, so neither can advertise a game you're not
+# pointing at.
 func _clear_hover_grant() -> void:
+	_show_hover_art({})
 	if _hover_grant < 0:
 		return
 	_hover_grant = -1
@@ -3687,6 +3768,8 @@ func _clear_hover_grant() -> void:
 # when the two cards on the table are the ends of a detour rather than games to
 # go and play (§10).
 func _preview_idle_text() -> String:
+	if _phase == Phase.START_SELECT:
+		return "[i]Hover a start to see what it opens on.[/i]"
 	if _asking_return():
 		return "[i]The detour is over. Open either game to see the road from it, then take the one you want to carry on from.[/i]"
 	return "[i]Hover a game to see the enemy it would spawn — click it for the route, the goal and the way in.[/i]"
@@ -3705,8 +3788,8 @@ func _enemy_hidden(choice: Dictionary) -> bool:
 		return false
 	if choice.get("enemy") == null:
 		return false
-	return GameLoop2.current.is_empty() \
-		or GameLoop2.current.get("enemy") != choice.get("enemy")
+	var landed: Dictionary = GameLoop2.arrival()
+	return landed.is_empty() or landed.get("enemy") != choice.get("enemy")
 
 # What a hidden card says instead. Named rather than inlined because three
 # screens say it (the hover line, the now-playing panel, GameChoiceModal) and
@@ -3737,8 +3820,9 @@ func _escort_expected(choice: Dictionary) -> bool:
 # Empty when this card brings no escort. One function, because the offering, the
 # popup and the now-playing panel all have to say the same thing about it.
 func _escort_note(choice: Dictionary) -> String:
-	if not GameLoop2.current.is_empty() and choice.get("enemy") != null \
-			and GameLoop2.current.get("enemy") == choice.get("enemy"):
+	var landed: Dictionary = GameLoop2.arrival()
+	if not landed.is_empty() and choice.get("enemy") != null \
+			and landed.get("enemy") == choice.get("enemy"):
 		var escort: GoalEnemyData = GameLoop2.escort_enemy()
 		return "" if escort == null else "⚠ %s spawned alongside it." % escort.display_name
 	return ESCORT_WARNING if _escort_expected(choice) else ""
@@ -3773,53 +3857,47 @@ func _hover_line(choice: Dictionary) -> String:
 		game.display_name, kind, e.display_name,
 		GameLoop2.goal_text_for(_preview_entry(choice)), escort, tries]
 
-func _enemy_preview_text(choice: Dictionary) -> String:
-	var e: GoalEnemyData = choice.get("enemy")
-	var game: GameData = choice["game"]
-	# A rematch pays a Dash — stated on the preview as well as the card, so it also
-	# shows on the report panel for the game you're playing.
-	var repeat: String = ""
-	if bool(choice.get("repeat", false)):
-		repeat = "\n[color=#80d9ff]⚡ Already beaten this run — beating it again grants +%d Dash.[/color]" % REPEAT_BEAT_DASH
-	if e == null:
-		return "[b]%s[/b]\n[i]No enemy — free game.[/i]%s" % [game.display_name, repeat]
-	# The escort (§7.5): a warning on a card, the body's name once it is standing
-	# there. Its own line under the goal, because it is a fact about the BOARD
-	# rather than about the enemy the rest of this text describes.
-	var escort_line: String = _escort_note(choice)
-	var escort: String = "" if escort_line == "" else "\n[color=#%s]%s[/color]" % [
-		UITheme.DANGER.to_html(false), escort_line]
-	if _enemy_hidden(choice):
-		return "[b]%s[/b]  →  [i]%s[/i]\n[i]The Runic Dome hides what is waiting there. You will find out when you arrive.[/i]%s%s" % [
-			game.display_name, HIDDEN_ENEMY_TEXT, escort, repeat]
-	var kind: String = "[color=#e0b020][b]☠ BOSS[/b][/color] " if choice["boss"] else ""
-	# Effective Health = goal completions to defeat it (Alien Baby makes it 2).
-	var hp: int = GameLoop2.effective_health(e)
-	var hp_txt: String = "%d goal%s to beat" % [hp, "" if hp == 1 else "s"]
-	return "[b]%s[/b]  →  %s%s\n[b]GOAL (%s):[/b] %s   [i](%s / %s / %s / dmg %d)[/i]%s%s" % [
-		game.display_name, kind, e.display_name,
-		String(e.goal_type).capitalize(), GameLoop2.goal_text_for(_preview_entry(choice)),
-		String(e.game_type).capitalize(), RunDifficulty.tier_name(int(e.difficulty)), hp_txt, e.damage,
-		escort,
-		repeat,
-	]
-
-# The board entry to read a `choice`'s goal line off (§13). For the game in play
-# that is the live current enemy, statuses and all. For an OFFERED card there is
-# no body yet — but the player's own clauses tax every enemy's goal, so the
-# preview is built against a bare stand-in rather than falling back to the
-# unmodified stem: what a card will actually cost you is part of the routing
-# decision, not a surprise waiting on the report step.
+# The board entry to read a `choice`'s goal line off (§13). Once the card has been
+# taken, that is the live body it put on the board, statuses and all. For an
+# OFFERED card there is no body yet — but the player's own clauses tax every
+# enemy's goal, so the preview is built against a bare stand-in rather than
+# falling back to the unmodified stem: what a card will actually cost you is part
+# of the routing decision, not a surprise waiting on the report step.
 func _preview_entry(choice: Dictionary) -> Dictionary:
-	if not GameLoop2.current.is_empty() \
-			and GameLoop2.current.get("enemy") == choice.get("enemy"):
-		return GameLoop2.current
+	var landed: Dictionary = GameLoop2.arrival()
+	if not landed.is_empty() and landed.get("enemy") == choice.get("enemy"):
+		return landed
 	return {"enemy": choice.get("enemy"), "statuses": {}}
 
+# The line beside the cover on the report panel: WHAT YOU ARE PLAYING, and what
+# taking it put on the board.
+#
+# It used to print the whole enemy preview here — the enemy's name, its goal, its
+# stats — as though the game came with a boss attached. It doesn't
+# (GameLoop2.arrivals): what walked on is on the board and in the checklist with
+# everything else, so this says that it walked on and stops. The one thing that IS
+# a fact about the game keeps its line: a rematch pays a Dash.
 func _now_playing_text() -> String:
 	if _chosen.is_empty():
 		return ""
-	return "[b]Now playing:[/b] %s\n%s" % [_chosen["game"].display_name, _enemy_preview_text(_chosen)]
+	var out: String = "[b]Now playing:[/b] %s" % _chosen["game"].display_name
+	var arrived: Array = []
+	var landed: Dictionary = GameLoop2.arrival()
+	if not landed.is_empty() and landed.get("enemy") != null:
+		arrived.append((landed["enemy"] as GoalEnemyData).display_name)
+	var escort: GoalEnemyData = GameLoop2.escort_enemy()
+	if escort != null:
+		arrived.append(escort.display_name)
+	if arrived.is_empty():
+		out += "\n[i]Nothing walked on with it.[/i]"
+	else:
+		out += "\n[color=#%s]%s walked onto the board — tick %s below if you clear %s.[/color]" % [
+			UITheme.DANGER.to_html(false), " and ".join(arrived),
+			"them" if arrived.size() > 1 else "it",
+			"their goals" if arrived.size() > 1 else "its goal"]
+	if bool(_chosen.get("repeat", false)):
+		out += "\n[color=#80d9ff]⚡ Already beaten this run — beating it again grants +%d Dash.[/color]" % REPEAT_BEAT_DASH
+	return out
 
 # --- the run's numbers, where they are spent ------------------------------
 #
@@ -3874,7 +3952,6 @@ func _build_gold_chip() -> Control:
 	wrap.add_child(_gold_chip)
 	_paint_gold_chip()
 	return wrap
-
 
 func _paint_gold_chip() -> void:
 	if _gold_chip == null or not is_instance_valid(_gold_chip):
@@ -4071,21 +4148,22 @@ func _item_token(item: ItemData, reporting: bool) -> Control:
 
 	# Bottom-aligned so every art tile sits on one baseline whether or not the item
 	# above it grew a Use button — a ragged row of tiles reads as a bug.
-	var col := VBoxContainer.new()
+	var col := HoverBox.new()
 	col.add_theme_constant_override("separation", 2)
 	col.size_flags_vertical = Control.SIZE_SHRINK_END
 	# The whole column answers the hover, not only the art tile — the Use button
 	# and the battery override it with their own, so every pixel of an item says
 	# something rather than the gap above the tile saying nothing.
-	col.tooltip_text = _item_tip(item, active, ready, reporting)
+	var card: Dictionary = item_hover(item, active, ready, reporting)
+	HoverCard.attach(col, card)
 	if active:
 		col.add_child(_item_fire_control(item, ready, reporting))
 
-	var tile := PanelContainer.new()
+	var tile := HoverPanel.new()
 	var border: Color = UITheme.GOLD if ready else tint.lerp(UITheme.BG, 0.45)
 	tile.add_theme_stylebox_override("panel",
 		UITheme.flat(tint.lerp(UITheme.BG, 0.86), 5, 3, 2 if ready else 1, border))
-	tile.tooltip_text = _item_tip(item, active, ready, reporting)
+	HoverCard.attach(tile, card)
 	tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	col.add_child(tile)
 
@@ -4185,20 +4263,33 @@ func _close_item_card() -> void:
 	_item_card = null
 
 # Everything the old named row said, in the tooltip the token carries.
-func _item_tip(item: ItemData, active: bool, ready: bool, reporting: bool) -> String:
-	var tip: String = "%s  ·  %s" % [item.display_name, UITheme.item_class_name(item)]
+# The hover model for a carried item: the condensed version of the card its click
+# opens (ItemInfoCard). Its art, its name in its class colour, what it does, and
+# — for an active item — whether it can be fired right now, which is the one fact
+# about a relic that changes what you do in the next second.
+#
+# Public, and named for the thing rather than for the tooltip, because the shop's
+# shelf and the drop modal describe the same items and should come through here.
+func item_hover(item: ItemData, active: bool, ready: bool, reporting: bool) -> Dictionary:
+	var sub: String = UITheme.item_class_name(item)
 	if item.is_charged():
-		tip += "  [%d/%d]" % [item.current_charge, item.max_charge()]
-	if String(item.description) != "":
-		tip += "\n%s" % item.description
+		sub += "  ·  %d/%d charged" % [item.current_charge, item.max_charge()]
+	var note: String = ""
 	if active:
 		if ready:
-			tip += "\n▸ Click to use."
+			note = "▸ Click the tile above to use it."
 		elif reporting:
-			tip += "\n▸ Report this game first."
+			note = "▸ Report this game first."
 		elif item.is_charged():
-			tip += "\n▸ Charging."
-	return tip
+			note = "▸ Charging."
+	return {
+		"title": item.display_name,
+		"subtitle": sub,
+		"accent": UITheme.item_color(item),
+		"art": item.image,
+		"lines": [String(item.description)],
+		"note": note,
+	}
 
 # The dim "there's nothing here" line the pack panels show when they're empty.
 func _empty_note(text: String) -> Label:
@@ -4577,15 +4668,39 @@ func _build_ui() -> void:
 	_choices_row.add_theme_constant_override("v_separation", 10)
 	_select_box.add_child(_choices_row)
 
-	# Hover preview, as ONE LINE. It used to be a framed panel with the enemy's art
-	# at 64px beside two lines of goal text — 84px of the page, mostly empty,
-	# sitting under an offering whose cards now open a popup that draws all of it
-	# at full size. What is left is what a HOVER is for: the fastest possible read
-	# of what that card would put in front of you, on the way past.
+	# Hover preview: the enemy's PORTRAIT and one line about it, side by side.
+	#
+	# It was a framed panel with 64px art and two lines of goal text (84px of page),
+	# then it was a bare line with no art at all — and the line alone lost the thing
+	# a hover is actually fastest at. A player recognises a body by its picture long
+	# before they read its name, and the picture is what says "I have fought that
+	# before" while the cursor is still moving.
+	#
+	# So the art is back, BESIDE the line and sized BY it (see HOVER_ART): the row
+	# is the same 22px it was with no art on it, and the page's 720p budget doesn't
+	# move by a pixel. The row also keeps that height whether or not anything is
+	# hovered, so running the cursor along the offering never reflows the column
+	# underneath.
+	var hover_row := HBoxContainer.new()
+	hover_row.add_theme_constant_override("separation", 8)
+	_preview_art = TextureRect.new()
+	# Width only. The height comes from the row — SIZE_FILL against a line whose
+	# floor the label sets — and EXPAND_IGNORE_SIZE stops the texture's own
+	# dimensions from claiming any of it.
+	_preview_art.custom_minimum_size = Vector2(HOVER_ART, 0)
+	_preview_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_preview_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_preview_art.size_flags_vertical = Control.SIZE_FILL
+	_preview_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# HIDDEN, not merely empty: an untextured TextureRect still claims its width and
+	# would indent the idle line away from the left edge.
+	_preview_art.visible = false
+	hover_row.add_child(_preview_art)
 	_preview = _panel_label()
 	_preview.custom_minimum_size = Vector2(0, 22)
 	_preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_select_box.add_child(_preview)
+	hover_row.add_child(_preview)
+	_select_box.add_child(hover_row)
 
 	# The choosing charges, at the foot of the panel they're spent in. They used to
 	# be four numbers in the middle of a twelve-number HUD strip at the top of the
@@ -4623,9 +4738,12 @@ func _build_ui() -> void:
 	var inv_box := VBoxContainer.new()
 	inv_box.add_theme_constant_override("separation", 4)
 	_inv_wrap.add_child(inv_box)
-	var inv_head := _section("🎒  Inventory")
-	inv_head.add_theme_font_size_override("font_size", 13)
-	inv_box.add_child(inv_head)
+	# NO HEADING. It used to carry a "🎒  Inventory" line, and a strip of relics
+	# and scrolls in a bordered panel does not need to be told what it is — the
+	# tokens are the label. That row is also the page's whole margin: the overworld
+	# is fitted to a 720p window and, with the heading on, the pack panel alone put
+	# it a pixel OVER (626 of 625) before a shop was even mounted under the board.
+	#
 	# ONE strip, relics and scrolls together. A scroll is a thing you are carrying
 	# and spend, exactly like a Usable relic is, and it used to get a whole second
 	# titled panel of its own — first at the foot of the page under the log, then
@@ -4672,11 +4790,27 @@ func _build_ui() -> void:
 
 	# --- the report checklist (left column, shown while a game is in play) ----
 
-	# One tight row: the cover, the enemy, and the goal text — sized down from the
-	# old card, because the board beside it is the biggest thing on the page.
-	_np_box = HBoxContainer.new()
+	# One tight row: the game's cover and what you are doing with it.
+	#
+	# THE ENEMY'S PORTRAIT IS NOT ON IT. There used to be a second 72px frame here
+	# holding the art of "this game's enemy", drawn beside the box art as if the
+	# two were a pair. They are not a pair and never were a fact about the game:
+	# the body that walked on when you took this card is a follower like every
+	# other from the moment it lands (GameLoop2.arrivals), and it is already drawn
+	# where every other body is — on the board, to the right. Showing it here said
+	# the game owned it.
+	#
+	# The cover takes the space back and is CENTRED in the row, because a lone
+	# frame hard against the left edge of a panel reads as the first of two things
+	# with the second one missing.
+	# A COLUMN, and the cover centred at the top of it. As a row with the portrait
+	# gone the cover was left hard against the left edge with the text beside it,
+	# which reads as the first of two things with the second one missing — the
+	# shape the old pair left behind. Stacked, the box art is the heading of the
+	# panel and the line about what walked on sits under it.
+	_np_box = VBoxContainer.new()
 	var np_box := _np_box
-	np_box.add_theme_constant_override("separation", 10)
+	np_box.add_theme_constant_override("separation", 8)
 	_now_playing_cover = TextureRect.new()
 	_now_playing_cover.custom_minimum_size = COVER_SIZE * 0.72
 	_now_playing_cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -4684,18 +4818,11 @@ func _build_ui() -> void:
 	var cover_frame := PanelContainer.new()
 	cover_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 6, 4, 1, UITheme.BORDER))
 	cover_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	cover_frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	cover_frame.add_child(_now_playing_cover)
 	np_box.add_child(cover_frame)
-	_now_playing_img = _enemy_image_rect()
-	_now_playing_img.custom_minimum_size = Vector2(72, 72)
-	var img_frame := PanelContainer.new()
-	img_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 6, 4, 1, UITheme.BORDER))
-	img_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	img_frame.add_child(_now_playing_img)
-	np_box.add_child(img_frame)
 	_now_playing = _panel_label()
 	_now_playing.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_now_playing.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	np_box.add_child(_now_playing)
 	_play_panel.add_child(np_box)
 
@@ -4725,7 +4852,9 @@ func _build_ui() -> void:
 	done.add_theme_stylebox_override("hover", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.35), 8, 8, 2, UITheme.SUCCESS))
 	done.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.45))
 	done.add_theme_font_size_override("font_size", 15)
-	done.pressed.connect(func(): report(_goal_met()))
+	# Pressing it IS the claim: "I completed this game." What you did to the
+	# enemies is the checklist above it, ticked row by row.
+	done.pressed.connect(func(): report(true))
 	_play_panel.add_child(done)
 
 	# The way out, directly under the way through — they resolve the same step, so
@@ -4833,6 +4962,21 @@ func _fit_page_under_header() -> void:
 		_scroll.offset_top = 16.0 + bar
 	if _toasts != null and is_instance_valid(_toasts):
 		_toasts.offset_top = bar
+	# And the same for everything that opens OVER the page. The bar is opaque and
+	# floats above the modals, so a modal centred on the whole screen loses its top
+	# to it — which is how the game-choice popup lost its title and the Atlas lost
+	# the Close button that is the only way off it.
+	_publish_header_strip(_header_layer == null or _header_layer.visible)
+
+# Tell the shared modal machinery how much of the top of the screen this page's
+# header bar is standing on — or that it isn't standing on any, when the bar is
+# down or the page is gone. Everything that centres itself on screen reads this.
+func _publish_header_strip(shown: bool) -> void:
+	if not shown or _header_bar == null or not is_instance_valid(_header_bar):
+		ModalScaffold.reserved_top = 0.0
+		return
+	ModalScaffold.reserved_top = maxf(_header_bar.size.y,
+		_header_bar.get_combined_minimum_size().y)
 
 # "🛒 Shop ↓" — the pointer at the shop mounted under the board. It floats at the
 # bottom of the SCREEN (not of the page), over everything, until the shop has
@@ -4956,17 +5100,11 @@ func _refresh_attempts() -> void:
 		var why: String = ("You already beat this one this run, so there is nothing to prove — leave whenever you like."
 			if beaten_this_run()
 			else "%d lost runs is enough." % GameLoop2.attempts())
-		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nThe goal-enemy still walks onto "
-			+ "the board and follows you, and every enemy still takes its turns — escaping "
-			+ "resolves the board exactly as a missed goal does. What it does NOT do is credit "
-			+ "the game: no drop, no event, and it doesn't count as beaten.") % why
-
-func _enemy_image_rect() -> TextureRect:
-	var t := TextureRect.new()
-	t.custom_minimum_size = Vector2(96, 96)
-	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	return t
+		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nWhatever walked on "
+			+ "when you took this game stays on the board and follows you, and every enemy "
+			+ "still takes its turns — escaping resolves the board exactly as an unticked "
+			+ "checklist does. What it does NOT do is credit the game: no drop, no event, "
+			+ "and it doesn't count as beaten.") % why
 
 func _section(text: String) -> Label:
 	var l := Label.new()

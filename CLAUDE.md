@@ -12,6 +12,7 @@ the honour system.
 | how the current build works | `docs/games-first-redesign.md` — **the canonical spec**, referenced from 25 places |
 | repo layout, autoloads, screen flow | `README.md` (~20 KB, all of it current) |
 | what changed and why | `CHANGELOG.md` — narrative history, not needed to make a change |
+| what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each, none started |
 | combat-era designs | `docs/archive/` — **describes systems that no longer exist**; see its README before trusting a path or class name |
 
 ## The shape of it

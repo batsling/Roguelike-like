@@ -26,26 +26,26 @@ func after_each() -> void:
 # through their damage arithmetic.
 func _pick_solo(game_type: StringName) -> void:
 	_ui.pick(game_type)
-	if GameLoop2.current_escort > 0:
-		GameLoop2.despawn(GameLoop2.current_escort)
+	if GameLoop2.escort_instance() > 0:
+		GameLoop2.despawn(GameLoop2.escort_instance())
 
 func test_harness_builds_and_opens_a_run() -> void:
 	assert_false(GameLoop2.run_over, "a fresh run is live")
 	assert_eq(GameState.max_hp, 6, "default harness run is Isaac (Health 6)")
-	assert_false(GameLoop2.has_current(), "no game chosen yet")
+	assert_false(GameLoop2.has_arrivals(), "no game chosen yet")
 
 func test_pick_spawns_enemy_and_beat_resolves() -> void:
 	_ui.restart(&"ironclad")           # Health 10, no bombs
 	assert_eq(GameState.max_hp, 10)
 	_ui.pick(&"action")                # rolls an action / low enemy
-	assert_true(GameLoop2.has_current())
-	var enemy: GoalEnemyData = GameLoop2.current["enemy"]
+	assert_true(GameLoop2.has_arrivals())
+	var enemy: GoalEnemyData = GameLoop2.arrival()["enemy"]
 	assert_eq(String(enemy.game_type), "action", "picked an action enemy")
 	assert_false(enemy.is_boss(), "a normal pick is not a boss")
 	# Picking spawns an escort alongside it (§7.5). Taken off here so the damage
 	# arithmetic below is ONE enemy's — see _pick_solo.
 	assert_eq(GameLoop2.stack_size(), 2, "the picked enemy, and the escort with it")
-	GameLoop2.despawn(GameLoop2.current_escort)
+	GameLoop2.despawn(GameLoop2.escort_instance())
 	var dmg: int = enemy.damage
 	_ui.beat(false)                    # fails goal -> spawn column, one-game grace
 	assert_eq(GameLoop2.stack_size(), 1)
@@ -61,9 +61,9 @@ func test_pick_spawns_enemy_and_beat_resolves() -> void:
 
 func test_pick_gated_until_current_resolved() -> void:
 	_ui.pick(&"action")
-	var first_instance: int = int(GameLoop2.current["instance"])
+	var first_instance: int = int(GameLoop2.arrival()["instance"])
 	_ui.pick(&"deckbuilder")           # ignored: a game is already chosen
-	assert_eq(int(GameLoop2.current["instance"]), first_instance)
+	assert_eq(int(GameLoop2.arrival()["instance"]), first_instance)
 
 func test_bomb_button_removes_first_follower() -> void:
 	_ui.restart(&"ironclad")
@@ -76,8 +76,8 @@ func test_bomb_button_removes_first_follower() -> void:
 
 func test_boss_button_spawns_a_boss() -> void:
 	_ui.pick_boss()
-	assert_true(GameLoop2.has_current())
-	assert_true(GameLoop2.current["enemy"].is_boss(), "the boss button spawns a boss")
+	assert_true(GameLoop2.has_arrivals())
+	assert_true(GameLoop2.arrival()["enemy"].is_boss(), "the boss button spawns a boss")
 	_ui._refresh()
 	assert_string_contains(_ui._enemy.text, "BOSS")
 

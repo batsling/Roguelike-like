@@ -23,17 +23,18 @@ extends Node
 #     and an ESCORT spawns with it (§7.5): a second body rolled from the very pool
 #     that enemy came out of — another enemy that could have been waiting there.
 #     Both are ordinary bodies on the stack from that moment, standing at the back
-#     column; `current` is the first one's entry, so "the enemy of the game in
-#     play" is a label on a body rather than a body held off to one side. (It used
-#     to wait in the off-field lane and only walk on once its game was reported,
-#     which is what the "one-game grace" was: the grace still exists, but it is now
-#     the plain consequence of spawning at the back of the board and having to
-#     walk.) Only the named enemy is the game's own: beating the game answers for
-#     IT, and the escort follows you until one of its own goals is cleared.
-#   beat_game(goal_met, fulfilled) — you played & beat the real game:
-#     1. Goals you met this game deal one hit each — the current game's enemy when
-#        `goal_met`, plus every follower in `fulfilled`. Defeated + item drop at 0
-#        Health; a survivor (e.g. an Alien-Baby-buffed two-Health enemy) stays on
+#     column, and NEITHER OF THEM BELONGS TO THE GAME. There is no such thing as
+#     "this game's enemy": what a card advertises is what will walk on if you take
+#     it, and once it has walked on it is a follower like every other body — it can
+#     be bombed, it can be pushed, and its goal is one row among the rest of the
+#     checklist. (It used to wait in the off-field lane and only walk on once its
+#     game was reported, which is what the "one-game grace" was: the grace still
+#     exists, but it is now the plain consequence of spawning at the back of the
+#     board and having to walk.)
+#   beat_game(clear_advertised, fulfilled) — you played & beat the real game:
+#     1. Goals you met this game deal one hit each — every body in `fulfilled`,
+#        whether it walked on this game or three games ago. Defeated + item drop at
+#        0 Health; a survivor (e.g. an Alien-Baby-buffed two-Health enemy) stays on
 #        the board and holds its fire for the whole game, because it was engaged.
 #     2. The stack takes its TURNS — enemy_turns() of them, 1 out in the wilds
 #        and 3 on the Amulet's doorstep (§7.4). Each turn every enemy acts once:
@@ -42,7 +43,7 @@ extends Node
 #     3. Any shields still standing expire — they belonged to that game.
 # Reach & clear the Amulet game (clear_amulet) to win; hp <= 0 to lose.
 
-signal loop_changed()                 # stack / current / run-state mutated (HUD hook)
+signal loop_changed()                 # stack / arrivals / run-state mutated (HUD hook)
 signal enemy_defeated(enemy)          # a GoalEnemyData was defeated (drop granted)
 signal player_hit(damage, blocked)    # a stacked enemy landed a hit this resolve
 # A try at the current game was logged or taken back. `cost` is "shield" or
@@ -140,27 +141,31 @@ func offgrid_col() -> int:
 var _bounds_cols: int = BASE_GRID_COLS
 var _bounds_rows: int = BASE_GRID_ROWS
 
-# The enemy on the currently-chosen game, or {} when none is chosen.
+# The bodies that walked on when the game in play was taken: the enemy the card
+# advertised, and the escort beside it (§7.5). Instance handles, the advertised
+# one first; empty when no game is in play.
 #
-# It is THE SAME Dictionary as that enemy's entry on `stack` — not a copy — because
-# the enemy of the game in play stands on the board like any other body (§7.2) and
-# there must be exactly one record of its health, its statuses and its square. So
-# `current` is a pointer into the stack that says which body this game is being
-# played against, and everything that walks the board sees it without knowing that.
-var current: Dictionary = {}
-
-# The instance handle of the ESCORT that spawned with the game in play (§7.5), or
-# 0 when there is none — a boss round, an empty roster, or no game chosen.
+# THERE IS NO SUCH THING AS "THIS GAME'S ENEMY" ANY MORE. This used to be a
+# `current` pointer into the stack, held for the whole game and treated as the
+# game's own: it could not be bombed or pushed, it had its own emphasised box at
+# the top of the report checklist, and "did you beat the game" was the question
+# that cleared it. Everything about that tie is gone. Enemies simply ARRIVE, and
+# from the moment they land they are followers like every other body — bombable,
+# pushable, and listed in the same checklist as the rest.
 #
-# It is a handle and not a pointer for the one job it has: the escort belongs to
-# the OFFERING, not to the board, and a game that supersedes the one in play
-# (choose_game again, which is what Scramble is) has to take the escort off with
-# the enemy it arrived beside. Without that the charge would be a spawn button —
-# each Scramble replaces the enemy and leaves its escort standing.
+# What is left is the record of which bodies arrived with the game in play, which
+# exists for exactly two jobs:
 #
-# It is cleared the moment the game is REPORTED (beat_game). From then on the
-# escort is an ordinary follower like any other and nothing may reach back for it.
-var current_escort: int = 0
+#   * SUPERSESSION. Choosing a game again before the last one is reported (which
+#     is what Scramble is) takes the pair that arrived with the superseded game
+#     back off the board — they were never played for. Without it the charge is a
+#     spawn button: one press, one free body.
+#   * SAYING WHAT LANDED. "⚠ Carcass spawned alongside it" on a card, and the
+#     text harness's one-line summary, both need to know what just walked on.
+#
+# Cleared the moment the game is REPORTED (beat_game). From then on those bodies
+# are ordinary followers and nothing may reach back for them.
+var arrivals: Array[int] = []
 
 # Undefeated enemies following the player (§2). Each entry:
 #   {"instance": int, "enemy": GoalEnemyData, "stun": int, "health": int,
@@ -219,8 +224,7 @@ func _ready() -> void:
 	GameState.hp_changed.connect(_on_hp_changed)
 
 func reset() -> void:
-	current = {}
-	current_escort = 0
+	arrivals.clear()
 	stack.clear()
 	attempt_costs.clear()
 	bashed.clear()
@@ -286,17 +290,20 @@ func serialize() -> Dictionary:
 	for gid in bashed:
 		bashed_ids.append(String(gid))
 	return {
-		# The current enemy is one of the bodies in `stack` (§7.2), so it is written
-		# as the HANDLE of that body rather than a second copy of it — two copies is
-		# how a load ends up with the same enemy standing on the board twice.
-		# `current` (the whole entry) is still written for saves made by an older
-		# build to be readable by an older build; restore prefers the handle.
-		"current_instance": int(current.get("instance", 0)),
-		"current": _serialize_entry(current),
-		# The escort is already in `stack` — this is only WHICH body it is, so a
-		# Scramble taken after a reload still supersedes the pair that arrived
-		# together instead of leaving the escort behind (§7.5).
-		"current_escort": current_escort,
+		# What arrived with the game in play are bodies in `stack` (§7.2), so they
+		# are written as HANDLES rather than as second copies of themselves — two
+		# copies is how a load ends up with the same enemy standing on the board
+		# twice. A Scramble taken after a reload then still supersedes everything
+		# that arrived together instead of leaving the escort behind (§7.5).
+		"arrivals": arrivals.duplicate(),
+		# Read by OLDER builds, which want the advertised body under its old names.
+		# A current build prefers `arrivals` and only falls back to these (see
+		# restore), but writing them keeps a save readable by the build before this
+		# one — including "current" as a whole entry, which is what the build before
+		# THAT wrote when the body waited off the board instead of standing on it.
+		"current_instance": int(arrival().get("instance", 0)),
+		"current": _serialize_entry(arrival()),
+		"current_escort": escort_instance(),
 		"stack": stacked,
 		"bashed": bashed_ids,
 		"transmuted": _transmuted_ids(),
@@ -316,30 +323,35 @@ func restore(data: Dictionary) -> void:
 		var entry: Dictionary = _deserialize_entry(raw)
 		if not entry.is_empty():
 			stack.append(entry)
-	# `current` is a POINTER into the stack, so it is restored by finding the body
-	# the save named rather than by rebuilding one. A save written before the enemy
-	# of the game in play stood on the board carries the whole entry and no handle:
-	# that body is not in the stack, so it is walked onto the board here, which is
-	# exactly where the old build would have put it on the next report.
-	current = {}
-	var cur_inst: int = int(data.get("current_instance", 0))
-	if cur_inst > 0:
-		var idx: int = _index_of(cur_inst)
-		if idx >= 0:
-			current = stack[idx]
-	elif data.has("current"):
-		var legacy: Dictionary = _deserialize_entry(data.get("current", {}))
-		if not legacy.is_empty():
-			_add_to_grid(int(legacy.get("instance", 0)), legacy.get("enemy"),
-				int(legacy.get("health", 1)), legacy.get("statuses", {}))
-			current = stack[stack.size() - 1]
-	# Only ever a body that is actually standing there. A save from before the
-	# escort existed has no handle at all, and one whose escort was bombed between
-	# the save and the load names a body that is gone — both mean "no escort", and
-	# neither may leave a handle behind for _clear_escort to act on.
-	current_escort = int(data.get("current_escort", 0))
-	if current_escort > 0 and _index_of(current_escort) < 0:
-		current_escort = 0
+	# `arrivals` are HANDLES into the stack, so they are restored by finding the
+	# bodies the save named rather than by rebuilding them — and only ever bodies
+	# that are actually standing there. A handle whose body was bombed between the
+	# save and the load names nothing, and must not be left behind for the next
+	# Scramble to chase.
+	arrivals.clear()
+	var saved: Array = data.get("arrivals", [])
+	if saved.is_empty():
+		# An OLDER save, from when the advertised body and its escort were two
+		# separate fields. A save older still carries the whole entry and no handle
+		# at all: that body is not in the stack, so it is walked onto the board
+		# here, which is exactly where the old build would have put it on the next
+		# report.
+		saved = []
+		var cur_inst: int = int(data.get("current_instance", 0))
+		if cur_inst <= 0 and data.has("current"):
+			var legacy: Dictionary = _deserialize_entry(data.get("current", {}))
+			if not legacy.is_empty():
+				_add_to_grid(int(legacy.get("instance", 0)), legacy.get("enemy"),
+					int(legacy.get("health", 1)), legacy.get("statuses", {}))
+				cur_inst = int(stack[stack.size() - 1].get("instance", 0))
+		if cur_inst > 0:
+			saved.append(cur_inst)
+		var esc: int = int(data.get("current_escort", 0))
+		if esc > 0:
+			saved.append(esc)
+	for handle in saved:
+		if _index_of(int(handle)) >= 0:
+			arrivals.append(int(handle))
 	bashed.clear()
 	for gid in data.get("bashed", []):
 		bashed.append(StringName(gid))
@@ -364,8 +376,7 @@ func restore(data: Dictionary) -> void:
 	_next_instance = maxi(1, int(data.get("next_instance", 1)))
 	for entry in stack:
 		_next_instance = maxi(_next_instance, int(entry.get("instance", 0)) + 1)
-	if not current.is_empty():
-		_next_instance = maxi(_next_instance, int(current.get("instance", 0)) + 1)
+
 	# The saved columns were written against the saved inventory's board, and
 	# SaveSystem restores that inventory too — so the bounds already agree and
 	# nothing needs re-seating. Recording them keeps the next real change honest.
@@ -586,13 +597,15 @@ func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 		choose_game(boss)
 	return boss
 
-# Marks `enemy` as the enemy on the game the player just chose, and STANDS IT ON
-# THE BOARD (§7.2) at the back column, exactly where a conjured or a surviving
-# enemy enters — with an ESCORT beside it (§7.5). Returns the unique instance
-# handle OF THE GAME'S OWN ENEMY; the escort's is on `current_escort`. A
-# previously-current enemy that was never resolved is dropped from the board, and
-# so is its escort (choosing a new game supersedes the pair — that is what
-# Scramble is).
+# Stands the enemy the chosen game advertised ON THE BOARD (§7.2) at the back
+# column, exactly where a conjured or a surviving enemy enters — with an ESCORT
+# beside it (§7.5). Returns the unique instance handle of the advertised one; both
+# are on `arrivals`. Bodies that arrived with a game that was never reported are
+# dropped from the board when a new game supersedes it — that is what Scramble is.
+#
+# "The enemy the game advertised" is all this is: from the moment it lands it is a
+# follower like any other, and nothing about it is owned by the game that rolled
+# it (see `arrivals`).
 #
 # `escort_type` / `escort_tier` are the GAME's type and the run's tier, for the
 # escort roll only — see roll_escort for why it may not just read them off
@@ -604,26 +617,20 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	# A new game means a fresh set of tries — whatever was logged against the last
 	# one is closed out.
 	attempt_costs.clear()
-	# The superseded enemy leaves the board rather than lingering on it as a body
-	# nobody chose: it was never played for. Its escort goes with it for the same
-	# reason — it was never played for either, and it only ever stood there because
-	# that enemy did.
-	if not current.is_empty():
-		_take_off_board(_index_of(int(current.get("instance", 0))))
-	_clear_escort()
-	current = {}
+	# The superseded bodies leave the board rather than lingering on it as ones
+	# nobody chose: they were never played for. Both of them — the escort only ever
+	# stood there because the game it came with did.
+	_clear_arrivals()
 	if enemy == null:
 		loop_changed.emit()
 		return 0
 	var inst: int = _next_instance
 	_next_instance += 1
 	_add_to_grid(inst, enemy, effective_health(enemy), _spawn_statuses())
-	# _add_to_grid appends, so the entry it just built is the last one — and that
-	# entry IS `current` (see the var's comment): one body, one record. Bound
-	# BEFORE the escort spawns, because the escort appends too and would otherwise
-	# be the entry this picks up.
-	current = stack[stack.size() - 1]
-	_spawn_escort(enemy, escort_type, escort_tier)
+	arrivals = [inst]
+	var escort_inst: int = _spawn_escort(enemy, escort_type, escort_tier)
+	if escort_inst > 0:
+		arrivals.append(escort_inst)
 	loop_changed.emit()
 	return inst
 
@@ -643,7 +650,6 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 # named one alone, which is what makes the pair harder than one enemy of twice
 # the size.
 func _spawn_escort(primary: GoalEnemyData, game_type: StringName, tier: int) -> int:
-	current_escort = 0
 	if primary == null or primary.is_boss():
 		return 0
 	var typ: StringName = game_type if game_type != &"" else primary.game_type
@@ -657,21 +663,22 @@ func _spawn_escort(primary: GoalEnemyData, game_type: StringName, tier: int) -> 
 	# column waits off-grid and walks on as space frees — a big enemy taking the
 	# whole back row delays its escort rather than teleporting it past.
 	_add_to_grid(inst, escort, effective_health(escort), _spawn_statuses())
-	current_escort = inst
 	return inst
 
-# Take the escort off the board, if the game in play still has one standing.
+# Take the bodies that arrived with the game in play back off the board.
 #
-# Only ever called where the game it arrived beside is SUPERSEDED, never where
-# that game is reported: from the report on, the escort is an ordinary follower
-# and reaching back for it would delete a body the player now owes a goal to.
-func _clear_escort() -> void:
-	if current_escort <= 0:
-		return
-	var idx: int = _index_of(current_escort)
-	if idx >= 0:
-		_take_off_board(idx)
-	current_escort = 0
+# Only ever called where that game is SUPERSEDED, never where it is reported:
+# from the report on they are ordinary followers, and reaching back for them
+# would delete bodies the player now owes goals to.
+func _clear_arrivals() -> void:
+	# A COPY, because _take_off_board erases the handle it just removed from
+	# `arrivals` — walking the live array skips every second body, which left the
+	# escort standing exactly where a Scramble was supposed to take it.
+	for inst in arrivals.duplicate():
+		var idx: int = _index_of(int(inst))
+		if idx >= 0:
+			_take_off_board(idx)
+	arrivals.clear()
 
 # --- shields = the tries at a game (§3) -----------------------------------
 
@@ -710,7 +717,7 @@ func attempts_on_shields() -> int:
 # or the run is already over. Returns the cost ("shield" / "health"), or "" when
 # nothing was logged.
 func log_attempt() -> String:
-	if run_over or current.is_empty():
+	if run_over or arrivals.is_empty():
 		return ""
 	var cost: String = "shield" if GameState.shields > 0 else "health"
 	if cost == "shield":
@@ -783,9 +790,9 @@ func _board_snapshot() -> Dictionary:
 
 # --- Resolving a game -----------------------------------------------------
 
-# Resolves beating the current game. `goal_met` is whether you met the current
-# enemy's goal; `fulfilled_instances` are stacked enemies whose OLD goals you
-# also fulfilled while playing this game (§2). `claims` carries the STATUS side of
+# Resolves beating the game in play. `fulfilled_instances` are the bodies whose
+# goals you cleared while playing it — all of them, whether they walked on this
+# game or ten ago (§2). `claims` carries the STATUS side of
 # the same self-report (§13), and is optional so every pre-status call site still
 # reads correctly:
 #   {"status_goals": [status_id, ...],                       player buffs met
@@ -800,7 +807,17 @@ func _board_snapshot() -> Dictionary:
 # left over afterwards and went away with the game (§3). `turns` is how many
 # actions each enemy got (enemy_turns()), and `turn_frames` holds the board after
 # each one so the view can replay them in order.
-func beat_game(goal_met: bool, fulfilled_instances: Array = [],
+# `clear_advertised` is a convenience for callers that have no report checklist to
+# read — the text harness, and the tests that just want "and I did the goal of the
+# thing that walked on here". It adds the body the card ADVERTISED (arrivals[0])
+# to `fulfilled_instances`, and only that one: the escort is a second goal you owe
+# (§7.5), and a flag that cleared it too would hand the player a free kill for
+# every game played.
+#
+# The overworld passes false and lists everything itself, because on its checklist
+# the arrivals are ordinary rows it cannot tell from the followers — which is the
+# whole point.
+func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		claims: Dictionary = {}) -> Dictionary:
 	var turns: int = enemy_turns()
 	var res := {
@@ -824,21 +841,18 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = [],
 	#    swallow the bonus.
 	res["status_rewards"] = _resolve_status_claims(claims)
 
-	# 1. GOALS MET THIS GAME, all of them, in one pass: the enemy of the game you
-	#    just played (when `goal_met`) and every follower whose old goal you also
-	#    cleared. Each takes one hit; it is defeated (and drops) only when its
-	#    Health reaches 0, and a survivor (an Alien-Baby-buffed enemy on its first
-	#    of two hits) stays on the board but — its goal engaged this game — holds
-	#    its fire for every turn of step 2.
+	# 1. GOALS MET THIS GAME, all of them, in one pass. Each takes one hit; a body
+	#    is defeated (and drops) only when its Health reaches 0, and a survivor (an
+	#    Alien-Baby-buffed enemy on its first of two hits) stays on the board but —
+	#    its goal engaged this game — holds its fire for every turn of step 2.
 	#
-	#    The current game's enemy is in this list rather than in a step of its own
-	#    because it is on the board like everything else now (§7.2): beating the
-	#    game you are standing on and clearing a goal you owed from three games ago
-	#    are the same act, and the loop treats them as one.
-	var had_current: bool = not current.is_empty()
+	#    ONE LIST, no special case. The bodies that arrived with this game are in
+	#    it on exactly the same terms as a follower you have owed since three games
+	#    ago, because that is what they are (§7.2, `arrivals`): clearing a goal is
+	#    clearing a goal, whatever walked on when.
 	var to_hit: Array = []
-	if had_current and goal_met:
-		to_hit.append(int(current.get("instance", 0)))
+	if clear_advertised and not arrivals.is_empty():
+		to_hit.append(int(arrivals[0]))
 	for inst in fulfilled_instances:
 		if not to_hit.has(int(inst)):
 			to_hit.append(int(inst))
@@ -857,12 +871,10 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = [],
 			_defeat(e, true, res)
 		else:
 			hit_this_game[int(inst)] = true
-	# The game is over either way: whatever became of its enemy, it is a follower
-	# like any other from here (or gone), and nothing is "in play" any more. The
-	# escort is released with it (§7.5) — it survived the game it spawned at, so it
-	# is now an ordinary follower that the NEXT game's Scramble may not touch.
-	current = {}
-	current_escort = 0
+	# The game is over, so whatever arrived with it is released: those bodies
+	# survived the game they spawned at, and are now ordinary followers that the
+	# NEXT game's Scramble may not touch.
+	arrivals.clear()
 
 	# 2. THE ENEMY TURNS. Every enemy gets `turns` actions this game — one out in
 	#    the wilds, three on the Amulet's doorstep (§7.4) — and each action is
@@ -890,11 +902,10 @@ func beat_game(goal_met: bool, fulfilled_instances: Array = [],
 
 	# 3. The player's clauses tick for the game just played. A clause rides every
 	#    enemy's goal, so completing ANY goal this game satisfied it once.
-	#    A FREE game is not a completion: `goal_met` reads true when there was no
-	#    enemy to meet (Overworld2._goal_met auto-clears an empty checklist), and a
-	#    goal nobody set can't have carried a clause.
-	res["statuses_ticked"] = _tick_player_clauses(
-		(goal_met and had_current) or not fulfilled_instances.is_empty())
+    #    A FREE game is not a completion: a goal nobody set can't have carried a
+	#    clause, so this counts the goals actually hit rather than the ticks asked
+	#    for.
+	res["statuses_ticked"] = _tick_player_clauses(not to_hit.is_empty())
 
 	res["hp"] = GameState.hp
 	res["shields"] = GameState.shields
@@ -1160,9 +1171,9 @@ func push(instance: int, dir: Vector2i = PUSH_BACK) -> bool:
 	return true
 
 # Add a fresh enemy directly to the following stack (Scroll of Create Monster,
-# §4.1). Unlike choose_game it does not become `current`: the conjured enemy
-# starts following immediately and attacks on the next game beaten, like any
-# other stacked enemy. Returns its unique instance handle, or 0 if enemy is null.
+# §4.1). Unlike choose_game it does not go on `arrivals` — nothing superseded it
+# onto the board, so a Scramble must not take it off again. Returns its unique
+# instance handle, or 0 if enemy is null.
 func spawn_to_stack(enemy: GoalEnemyData) -> int:
 	if enemy == null:
 		return 0
@@ -1180,40 +1191,41 @@ func spawn_to_stack(enemy: GoalEnemyData) -> int:
 func _spawn_statuses() -> Dictionary:
 	return GameState.spawn_statuses()
 
-# Scramble (§4, granted by the D6 item): reroll the CURRENT game's enemy/goal.
-# Spends one scramble charge and replaces `current` with a freshly-rolled enemy
-# of the same type + tier (a new instance). Returns the new enemy, or null if
-# there's no current game or no scramble charge. Enemies already on the stack are
-# untouched — scramble is a pre-commit escape on the game you're about to play.
+# Scramble (§4, granted by the D6 item): reroll what the game in play put on the
+# board. Spends one scramble charge and replaces the arrivals with a freshly-
+# rolled enemy of the same type + tier (a new instance). Returns the new enemy, or
+# null if no game is in play or there is no charge. Bodies that were already
+# following you are untouched — scramble is an escape from what just landed, not
+# a reset of the board.
 #
-# It rerolls the ESCORT with it (§7.5), because choose_game supersedes the pair.
-# That is the whole reason `current_escort` is tracked: a Scramble that swapped
-# the enemy and left the escort standing would be a way to BUY bodies with D6
-# charges, one per press.
+# It rerolls the ESCORT with it (§7.5), because choose_game supersedes everything
+# that arrived together. That is the whole reason `arrivals` holds both: a
+# Scramble that swapped the enemy and left the escort standing would be a way to
+# BUY bodies with D6 charges, one per press.
 func scramble() -> GoalEnemyData:
-	if current.is_empty() or GameState.scramble <= 0:
+	var entry: Dictionary = arrival()
+	if entry.is_empty() or GameState.scramble <= 0:
 		return null
-	var old: GoalEnemyData = current["enemy"]
+	var old: GoalEnemyData = entry["enemy"]
 	var fresh: GoalEnemyData = roll_enemy(old.game_type, old.tier_index())
 	if fresh == null:
 		return null
 	GameState.scramble -= 1
-	choose_game(fresh)  # supersedes the current enemy with a new instance
+	choose_game(fresh)  # supersedes what arrived, with a new instance
 	return fresh
 
-# The player reached & cleared the Amulet game — win the run (§2). Called by the
-# overworld when the amulet game's goal is met.
+# The player reached & played the Amulet game — win the run (§2). Called by the
+# overworld once that game has been reported.
+#
+# It takes NOTHING off the board. It used to defeat the enemy standing at the
+# Amulet, back when that body was the game's own and beating the game answered
+# for it; there is no such body now (see `arrivals`), and whatever is standing
+# there was already dealt with by the report that got us here — ticked or not,
+# like every other enemy. The run is simply over.
 func clear_amulet() -> void:
 	if run_over:
 		return
-	if not current.is_empty():
-		var enemy: GoalEnemyData = current["enemy"]
-		_take_off_board(_index_of(int(current.get("instance", 0))))
-		current = {}
-		# The run is won, so the escort is simply left standing where it is — there
-		# is no next game for it to be superseded out of.
-		current_escort = 0
-		_defeat(enemy, true, {"defeats": [], "drops": 0})
+	arrivals.clear()
 	loop_changed.emit()
 	_finish_run(true)
 
@@ -1485,17 +1497,32 @@ func front_count() -> int:
 func stack_size() -> int:
 	return stack.size()
 
-func has_current() -> bool:
-	return not current.is_empty()
+# Whether a game is in play with something still standing from it. Not a question
+# about ownership — see `arrivals` — just "did this game put anything on the board
+# and has it been reported yet".
+func has_arrivals() -> bool:
+	return not arrivals.is_empty()
 
-# The enemy standing as the game in play's ESCORT (§7.5), or null when it has
-# none — a boss round, or a game whose escort has already been bombed off. The
-# screens ask for it by name rather than digging `current_escort` out of the
-# stack themselves, so there is one answer to "what came with this game".
+# The stack entry of the body the game in play ADVERTISED — the enemy named on
+# the card you took — or {} when there is none. Nothing about that body is
+# special; this is here so the screens can name what they promised without
+# digging through the stack, and so a test can reach the thing it just spawned.
+func arrival() -> Dictionary:
+	if arrivals.is_empty():
+		return {}
+	var idx: int = _index_of(arrivals[0])
+	return stack[idx] if idx >= 0 else {}
+
+# The ESCORT's instance handle, or 0 when there is none. Asked for by handle
+# rather than by enemy wherever a caller wants to act on that body (bomb it,
+# despawn it) rather than describe it.
+func escort_instance() -> int:
+	return arrivals[1] if arrivals.size() > 1 else 0
+
+# The enemy that arrived as the ESCORT (§7.5), or null when there is none — a
+# boss round, or a game whose escort has already been bombed off.
 func escort_enemy() -> GoalEnemyData:
-	if current_escort <= 0:
-		return null
-	var idx: int = _index_of(current_escort)
+	var idx: int = _index_of(escort_instance())
 	return stack[idx]["enemy"] if idx >= 0 else null
 
 # --- internals ------------------------------------------------------------
@@ -1515,9 +1542,9 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
 		# GOLD (§14) rides the DROP, which is why it is paid inside this branch
 		# rather than beside it.
 		#
-		# Everything that reaches here pays on the same terms: the current game's
-		# enemy beaten on time, and a follower whose old goal you fulfilled games
-		# later (§2). Late is not worth less — the goal was the price either way,
+		# Everything that reaches here pays on the same terms: a body cleared on the
+		# game it walked on, and one whose goal you fulfilled games later (§2).
+		# Late is not worth less — the goal was the price either way,
 		# and taxing the player for solving it slowly would argue against the stack
 		# mechanic the whole run is built on.
 		#
@@ -1576,9 +1603,9 @@ func _take_hit(damage: int, res: Dictionary) -> Dictionary:
 # the dev panel needs, and the shape any future banish effect would want.
 # Returns true when something was removed.
 #
-# One branch, not two: the enemy of the game in play is on the board with
-# everything else now (§7.2), so despawning it is the same removal as any other —
-# and _take_off_board is what drops `current` along with the body.
+# One branch, not two: everything is on the board on the same terms (§7.2), so
+# despawning what just arrived is the same removal as any other — and
+# _take_off_board is what drops its handle off `arrivals` along with the body.
 func despawn(instance: int) -> bool:
 	var idx: int = _index_of(instance)
 	if idx < 0:
@@ -1598,21 +1625,16 @@ func _pull_from_stack(instance: int) -> GoalEnemyData:
 	return e
 
 # Take the body at `idx` off the board. THE ONE WAY a body leaves `stack`, because
-# `current` points at one of these entries (§7.2) and a removal that doesn't clear
-# that pointer leaves has_current() answering for an enemy that is not on the
-# field — the report step would then ask about a game whose enemy had been bombed
-# out from under it.
+# `arrivals` holds handles into it (§7.2) and a removal that doesn't drop them
+# leaves a Scramble chasing a body that is not on the field.
 func _take_off_board(idx: int) -> void:
 	if idx < 0 or idx >= stack.size():
 		return
 	var inst: int = int(stack[idx].get("instance", 0))
 	stack.remove_at(idx)
-	if not current.is_empty() and int(current.get("instance", 0)) == inst:
-		current = {}
-	# Same reason, one level along: an escort bombed off the board before its game
-	# is reported must not leave a handle behind for the next Scramble to chase.
-	if current_escort == inst:
-		current_escort = 0
+	# A body bombed off the board before its game is reported must not leave a
+	# handle behind for the next Scramble to chase.
+	arrivals.erase(inst)
 
 func _index_of(instance: int) -> int:
 	for i in range(stack.size()):
@@ -1657,9 +1679,10 @@ func apply_enemy_status(status_id: StringName, stacks: int = 1,
 		loop_changed.emit()
 	return targets.size()
 
-# The bodies a `target` word names. "current" is the enemy of the game in play —
-# which stands on the board with the rest (§7.2), so `stack` already holds it and
-# "all" must not append it a second time or a status would land on it twice.
+# The bodies a `target` word names. "current" means the body the game in play
+# ADVERTISED — the one the card you took named — which stands on the board with
+# the rest (§7.2), so `stack` already holds it and "all" must not append it a
+# second time or a status would land on it twice.
 func _status_targets(target: String) -> Array:
 	var everyone: Array = stack.duplicate()
 	match target.to_lower():
@@ -1668,7 +1691,8 @@ func _status_targets(target: String) -> Array:
 		"random":
 			return [] if everyone.is_empty() else [everyone[randi() % everyone.size()]]
 		_:
-			return [] if current.is_empty() else [current]
+			var landed: Dictionary = arrival()
+			return [] if landed.is_empty() else [landed]
 
 func _add_status_to(entry: Dictionary, status_id: StringName, stacks: int) -> void:
 	var held: Dictionary = entry.get("statuses", {})

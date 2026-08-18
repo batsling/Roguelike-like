@@ -305,10 +305,21 @@ static func load_layout(filter_value: int = -1) -> AtlasLayout:
 				return res as AtlasLayout
 	return null
 
+# The chart fills the screen, minus whatever strip at the top of it belongs to
+# something drawn above this view.
+#
+# That strip is the run's pinned header bar (ModalScaffold.reserved_top). The
+# chart is a full-screen PAGE and its own header — the title, the search box, the
+# ✦ jump buttons, Fit, and CLOSE — is the first row of it, so a chart drawn from
+# y=0 under an opaque 96px bar had its entire header eaten and no way off it but
+# the Esc key. Sitting the whole view below the bar keeps both readable: the run's
+# numbers stay pinned where they are everywhere else, and the chart keeps its way
+# out. Outside a run the strip is 0 and this is the full screen, as before.
 func _fit_to_viewport() -> void:
 	var rect: Rect2 = get_viewport().get_visible_rect()
-	set_deferred("size", rect.size)
-	position = Vector2.ZERO
+	var top: float = clampf(ModalScaffold.reserved_top, 0.0, maxf(0.0, rect.size.y - 200.0))
+	set_deferred("size", Vector2(rect.size.x, rect.size.y - top))
+	position = Vector2(0.0, top)
 
 # ---------------------------------------------------------------------------
 # Model
@@ -849,6 +860,8 @@ func _invalidate_star_cache() -> void:
 	_ids_cache.clear()
 	_game_cache.clear()
 	_aspect_cache.clear()
+	# A different sky is a different count at the same camera.
+	_cover_count_key = Vector4(-1, -1, -1, -1)
 
 # Whether a star survives the catalog filters. Always true outside the catalog
 # view, which has no filter bar — and, in it, true for everything currently
@@ -1042,14 +1055,31 @@ func game_at(i: int) -> GameData:
 # step. Bounded to the viewport it can never cost more than the frame is drawing
 # anyway — and "12 showing art" reading as twelve you can see is the more useful
 # sentence besides.
+#
+# And MEMOIZED against the camera, because it is still a HUD label and it was
+# still walking the sky for one. `_refresh_hud` is called by `_redraw`, so every
+# pan step, every zoom step and every SELECTION CHANGE re-counted the stars
+# (~2 ms) to decide whether the readout reads "overview" or "12 showing art".
+# The answer only moves when the camera does — same scale, same offset, same
+# canvas, same number — and a selection change cannot alter it at all, which is
+# most of what _redraw is for.
+var _cover_count_key := Vector4(-1, -1, -1, -1)
+var _cover_count_value: int = 0
+
 func cover_count() -> int:
 	if not has_layout():
 		return 0
+	var box: Vector2 = _canvas_size()
+	var key := Vector4(_scale, _offset.x, _offset.y, box.x + box.y * 65536.0)
+	if key == _cover_count_key:
+		return _cover_count_value
 	var vis: Rect2 = _visible_rect()
 	var n: int = 0
 	for i in range(layout.star_count()):
 		if vis.has_point(to_screen(layout.position_of(i))) and shows_cover(i):
 			n += 1
+	_cover_count_key = key
+	_cover_count_value = n
 	return n
 
 # The canvas rect a star has to fall inside to be worth drawing, widened by
@@ -1356,8 +1386,14 @@ func _build_header() -> Control:
 	row.add_child(_tool_button("+", func(): zoom_by(1.3, _canvas_size() * 0.5)))
 	row.add_child(_tool_button("Fit", frame_all))
 
+	# The way off this page, and the only one besides Esc. It says where it goes
+	# rather than just "Close": the chart is a full screen that stands in front of
+	# the run, and "Close" on a page that replaced everything reads as ambiguous at
+	# exactly the moment the player wants out of it.
 	var close := Button.new()
-	close.text = "Close"
+	close.text = "✕  Close" if pure_catalog else "←  Back to the run"
+	close.tooltip_text = "Leave the chart (Esc)."
+	close.add_theme_color_override("font_color", UITheme.GOLD)
 	close.pressed.connect(_finish)
 	row.add_child(close)
 	return bar
@@ -2395,11 +2431,14 @@ class StarCanvas extends Control:
 			var col: Color = RunGraph.type_color(game.type) if game != null else UITheme.TEXT_DIM
 			var reserved: float = AtlasLayout.star_radius(lay.degree_of(i)) * view._scale
 			var r: float = maxf(1.2, reserved * 0.9)
-			# Filtered-out stars stay in place and dim right down: the sky is a baked
-			# layout, and a star that moves when you tick a box destroys any sense
-			# of where things are.
-			var filtered_out: bool = not view.passes_filter(i)
-			var faded: bool = (focused and not view._near.has(i)) or filtered_out
+			# NO FILTER TEST HERE. Every star in `layout` passes the filters by
+			# construction: the catalog view rebuilds the sky out of the survivors
+			# (_relayout -> _filtered_ids), and outside the catalog there are no
+			# filters at all. So `passes_filter(i)` was answering "yes" 852 times a
+			# pass — 2.4 ms of it — and the dim-in-place branch it fed was
+			# unreachable, left over from the older design where filtering dimmed
+			# the sky where it stood instead of re-laying it.
+			var faded: bool = focused and not view._near.has(i)
 			# While a route is on the sky, everything that isn't part of it is
 			# SCENERY: still there, still in place, but pushed back a step so the
 			# corridor the run actually runs down is what the eye lands on. A
@@ -2408,8 +2447,14 @@ class StarCanvas extends Control:
 			var off_route: bool = not faded and not view.on_route(i)
 			# Genre owns the rim at every zoom; the record fills the middle, so the
 			# sky stays readable as genre while the centres light up as you play.
+			#
+			# ONE lookup, read twice. `has_record(i)` is defined as
+			# `star_record_color(i).a > 0.0` — asking it here recomputed the colour
+			# that is already in hand, which doubled the GameStats round-trips of
+			# the hottest loop in the project for a boolean the value already
+			# carries. Measured over the whole sky: 6.5 ms a pass became 2.9.
 			var record: Color = view.star_record_color(i)
-			var earned: bool = view.has_record(i)
+			var earned: bool = record.a > 0.0
 			if faded:
 				record = record.lerp(UITheme.BG_DEEP, 0.78)
 			elif off_route:
@@ -2418,7 +2463,7 @@ class StarCanvas extends Control:
 			# played made most of the sky washed out and fought the point of a
 			# catalog — what you HAVE played is said by the middle instead.
 			if faded:
-				col = col.lerp(UITheme.BG_DEEP, 0.88 if filtered_out else 0.78)
+				col = col.lerp(UITheme.BG_DEEP, 0.78)
 			elif off_route:
 				# Toward grey as well as toward the background: losing the genre
 				# colour is what makes the route's own colour read as nearer.
