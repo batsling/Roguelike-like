@@ -229,6 +229,42 @@ var _dash_mode: bool = false        # Dash (§4): offer ANY connected game
 # Was the game in hand reached BY a Dash? Read by report() so the return-trip
 # Dash is not silently cancelled by the charge that paid for the trip.
 var _dashed_here: bool = false
+
+# --- repaint guards ---------------------------------------------------------
+#
+# THREE SECTIONS OF THE PAGE ARE REBUILT FROM SCRATCH ON EVERY LOOP SIGNAL, and
+# GameLoop2 emits 23 of those, several of them inside one resolve. "Rebuilt"
+# means _clear() and a fresh set of Controls — and a fresh Control carrying one
+# of the verb glyphs costs about 2 ms to shape on its own. The project ships no
+# font file, so ⛏ ⚡ ⚗ 🎲 🍀 miss Godot's built-in one and every new Label runs
+# the system fallback search again: measured, five verb chips are 10.9 ms against
+# 0.6 ms for the same five chips in plain ASCII. That was most of a 19 ms
+# _refresh, on a page whose whole budget is one 60fps frame.
+#
+# So each of the three keeps a SIGNATURE of what it last drew and returns early
+# when it would only draw the same thing again. The signature is derived from the
+# very values the rebuild reads, which is what makes this safe: "unchanged"
+# cannot mean anything except unchanged.
+#
+# WHY NOT SPLIT THE SIGNAL, which is what docs/performance-backlog.md proposed.
+# A split decides per EMIT SITE which parts of the page need repainting, so it
+# has to be re-judged every time an emit site is added, and forgetting one leaves
+# a strip quietly showing a number that has moved — which is exactly the bug the
+# comment on _refresh_stats records (a HUD strip repainting while the board
+# waited, so a Hollow Heart off a kill-drop raised Max Health with nothing on
+# screen saying so). A signature cannot rot that way: a new emit site still
+# reaches every section, and every section still asks the same question about its
+# own inputs.
+#
+# The one way this DOES go wrong is another function writing into the same
+# container, leaving a signature that describes content which is no longer there.
+# There are two such cases and both invalidate by hand: _refresh clears
+# _controls_row itself on the start panel, and _populate_play_panel takes over
+# the checklist box during the report step.
+var _select_stats_sig: String = ""
+var _controls_sig: String = ""
+var _checklist_sig: String = ""
+
 var _controls_row: HBoxContainer
 var _stack: RichTextLabel           # battlefield summary line
 # The offering half of the page (heading, verbs, cards, hover preview) — hidden
@@ -2443,7 +2479,11 @@ func _refresh(_a = null) -> void:
 		# The Amulet is NAMED here, and named first: it is the thing all three roads
 		# end on, so it belongs at the front of the sentence the roads are chosen in.
 		_select_head.text = "The Amulet is %s. Choose where to start — three genres, all the same distance from it. The run opens on the one you take:" % amulet_name()
+		# The start panel empties the controls row itself rather than going through
+		# _render_controls, so the guard has to be told: a signature describing a
+		# row that something else has since emptied is the one way it goes stale.
 		_clear(_controls_row)
+		_controls_sig = ""
 		_render_start_choices()
 		_populate_standing_checklist()
 	elif _phase == Phase.SELECT:
@@ -2672,6 +2712,14 @@ func _refresh_stage() -> void:
 # that a Dash is currently open — that's a MODE the offering is in, and it has to
 # be stated where the cards it changes are.
 func _render_controls() -> void:
+	# Three inputs, and the row is empty for most of a run — so the guard is on the
+	# signature alone rather than on the signature plus a child count, since "no
+	# children" is a legitimate thing for it to have last drawn.
+	var sig: String = "%s|%s|%s" % [str(_asking_return()), str(_dash_mode),
+		String(_last_played_game.id) if _last_played_game != null else ""]
+	if sig == _controls_sig:
+		return
+	_controls_sig = sig
 	_clear(_controls_row)
 	if _asking_return():
 		var note := Label.new()
@@ -3090,6 +3138,13 @@ func _beatable_pip(game: GameData, enemy: GoalEnemyData) -> Control:
 # game can be launched) and a fulfilment checkbox per following enemy so old
 # goals can be cleared this game (§2).
 func _populate_play_panel() -> void:
+	# The report step and the standing checklist share _verify_box, so taking it
+	# over here has to drop the standing list's signature — otherwise the next
+	# return to the offering would match a signature describing rows this panel
+	# replaced, and leave the report step's checklist on screen. Not guarded
+	# itself: it holds the player's TICKS, and rebuilding it is what the tick
+	# handlers rely on.
+	_checklist_sig = ""
 	_clear(_launch_row)
 	_clear(_verify_box)
 	_reset_checklist_state()
@@ -3323,6 +3378,10 @@ func _reset_checklist_state() -> void:
 # Read-only by design: there is nothing to report until a game is in play, so these
 # are rows rather than tick boxes.
 func _populate_standing_checklist() -> void:
+	var sig: String = _standing_checklist_sig()
+	if sig == _checklist_sig and _verify_box.get_child_count() > 0:
+		return
+	_checklist_sig = sig
 	_clear(_launch_row)
 	_clear(_verify_box)
 	_reset_checklist_state()
@@ -3391,6 +3450,36 @@ func _populate_standing_checklist() -> void:
 	if GameLoop2.stack.is_empty() and GameState.status_objectives().is_empty():
 		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")
 		_verify_box.add_child(none)
+
+# Everything the standing checklist draws, as one string — the guard for the
+# rebuild above (see the repaint-guard block near the top of the file).
+#
+# It quotes the SAME calls the rebuild does rather than a summary of them
+# (`goal_text_for` is the row's actual text, `in_front` is its tint), so a row
+# whose wording changes for any reason at all changes the signature with it. That
+# costs those calls twice on a rebuild, which is fine: they are string work, and
+# what a rebuild actually pays for is the Labels.
+#
+# `_launch_row` is not represented because this function always leaves it empty —
+# only the report step (_populate_play_panel) puts anything in it.
+func _standing_checklist_sig() -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch != null:
+		parts.append("%s/%s" % [ch.level_up_condition, ch.level_up_reward])
+	parts.append(str(GameState.event_goals))
+	parts.append(str(GameState.curse_goals))
+	for row in GameState.status_objectives():
+		parts.append("%s:%d" % [String((row["status"] as StatusData).id), int(row["stacks"])])
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry["enemy"]
+		parts.append("%d:%s:%s:%d:%s" % [int(entry.get("instance", 0)),
+			GameLoop2.goal_text_for(entry), e.display_name, e.damage,
+			str(GameLoop2.in_front(entry))])
+		for bonus in GameLoop2.bonus_objectives_for(entry):
+			parts.append("+%s:%d" % [String((bonus["status"] as StatusData).id),
+				int(bonus["stacks"])])
+	return "|".join(parts)
 
 # --- the checklist and the board, pointing at each other -------------------
 #
@@ -4050,6 +4139,16 @@ func _stat_chip(text: String, count: int, tint: Color, tip: String,
 func _refresh_select_stats() -> void:
 	if _select_stats == null:
 		return
+	# Everything drawn below is one of these six, so the signature is the whole of
+	# what a rebuild could possibly change: the four verb counts, Luck (its own
+	# chip, and the odds quoted in that chip's tooltip), and _dash_mode, which
+	# decides whether Dash is a live button or a readout.
+	var luck: int = Stats.get_value(&"luck")
+	var sig: String = "%d|%d|%d|%d|%d|%s" % [GameState.bash, GameState.dash_charges,
+		GameState.transmute, GameState.scramble, luck, str(_dash_mode)]
+	if sig == _select_stats_sig and _select_stats.get_child_count() > 0:
+		return
+	_select_stats_sig = sig
 	_clear(_select_stats)
 	_select_stats.add_child(_stat_chip("⛏ Bash %d" % GameState.bash, GameState.bash,
 		Color(1.0, 0.72, 0.4),
@@ -4070,7 +4169,6 @@ func _refresh_select_stats() -> void:
 	# every roll the run makes, and the verbs are where the player is already
 	# reading what they can do to the offering. Drawn even at zero, so the stat is
 	# discoverable before a Clover ever turns up.
-	var luck: int = Stats.get_value(&"luck")
 	_select_stats.add_child(_stat_chip("🍀 Luck %d" % luck, luck, LUCK_GREEN,
 		"Every roll in the run is made %d extra time%s and the %s result kept.\n"
 		% [absi(luck), "" if absi(luck) == 1 else "s",

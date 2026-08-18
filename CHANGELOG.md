@@ -11,6 +11,56 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The page stopped redrawing things that had not changed.**
+
+  The last of `docs/performance-backlog.md`'s measured items: `Overworld2._refresh()`
+  tore down and rebuilt the pack strip, the route strip, the board, the offering,
+  the verb chips and the standing checklist on **every** loop signal, and
+  `GameLoop2` emits 23 of those, several inside one resolve. **19.5 ms → 6.6 ms**
+  per refresh, measured on a real run at the offering.
+
+  **The measurement moved the whole plan.** The backlog blamed the offering cards
+  and the pack strip; they are 1.5 ms and 0.3 ms. Half of the 19 ms was **five
+  small verb chips** — ⛏ Bash, ⚡ Dash, ⚗ Transmute, 🎲 Scramble, 🍀 Luck — at
+  10.9 ms. The same five chips in plain ASCII are 0.6 ms. The project ships no
+  font file, so those glyphs miss Godot's built-in font and every newly created
+  Label re-runs the system fallback search for them: about **2 ms per Label with
+  a glyph in it**, paid on every rebuild. That is now item 1 of the backlog in its
+  own right, since it is a cost on every screen and not only this one, and the
+  fix for it is an asset decision rather than a code one.
+
+  **Guards, not a signal split.** The backlog proposed deciding per emit site
+  which parts of the page need repainting. Each of the three expensive sections
+  instead keeps a signature of what it last drew and returns early when it would
+  draw the same thing again. The difference matters: a split has to be re-judged
+  every time an emit site is added, and forgetting one leaves a strip quietly
+  showing a number that has moved — which is precisely the bug the comment on
+  `_refresh_stats` records, a HUD strip repainting while the board waited, so a
+  Hollow Heart off a kill-drop raised Max Health with nothing on screen saying so.
+  A signature cannot rot that way: every signal still reaches every section, and
+  each section still asks the same question about its own inputs. Nothing about
+  the signal wiring changed, so the board's hero still repaints on `stats_changed`
+  exactly as that comment requires.
+
+  | | before | after |
+  |---|---|---|
+  | `_refresh_select_stats` | 10.0 ms | 0.003 ms |
+  | `_populate_standing_checklist` | 3.0 ms | 0.005 ms |
+  | `_render_controls` | 1.9 ms | 0.001 ms |
+  | **`_refresh()`** | **19.5 ms** | **6.6 ms** |
+
+  The remaining 6.6 ms is the board (2.3 ms) and the offering cards (1.3 ms),
+  both left alone: the offering's cards carry a shop tooltip that reads live shop
+  state, and a signature covering that is a wider promise than it is worth today.
+
+  The one way a guard goes wrong is another function writing into the same
+  container, leaving a signature describing content that is no longer there.
+  There are exactly two, and both invalidate by hand: `_refresh` empties the
+  controls row itself on the start panel, and the report step takes over the
+  checklist box. Both have a test. Ten went in altogether, one per value in each
+  signature, because the failure being guarded against is a value the rebuild
+  reads and the signature forgot.
+
 - **Two hot paths that were doing the work twice.**
 
   Items 1, 2 and 4 off `docs/performance-backlog.md`, measured before and after
