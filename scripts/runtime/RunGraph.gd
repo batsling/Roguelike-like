@@ -72,6 +72,19 @@ const TYPE_ORDER: Array = [
 static var _adj_cache: Dictionary = {}      # StringName -> Array[StringName]
 static var _adj_cache_built: bool = false
 static var _bfs_cache: Dictionary = {}       # StringName -> Dictionary (dist map)
+# The assembled route DAGs, keyed "start>amulet" and "start>waypoint>amulet".
+# See shortest_path_dag for why these exist and what a caller may do with what
+# comes out of them.
+static var _dag_cache: Dictionary = {}       # String -> Dictionary (the DAG)
+static var _route_dag_cache: Dictionary = {} # String -> Dictionary (the DAG)
+# Bound on each of the two above. A run asks for a few dozen distinct routes
+# (the offering re-previews every slot on every hop, and the pin moves), and a
+# DAG on the full catalog is layers plus a few hundred edge Dictionaries — so
+# left unbounded these would grow all session. Over the cap they are simply
+# emptied rather than evicted one at a time: the next few calls rebuild, which
+# is exactly the cost of not having had the cache, and an LRU is machinery
+# nothing here is asking for.
+const DAG_CACHE_MAX := 64
 # Games that passed the filter but fell outside the main group, as a set. Pruned
 # out of _adj_cache and kept here because Transmute needs exactly this list.
 static var _off_map: Dictionary = {}         # StringName -> true
@@ -80,6 +93,8 @@ static func invalidate_cache() -> void:
 	_adj_cache.clear()
 	_adj_cache_built = false
 	_bfs_cache.clear()
+	_dag_cache.clear()
+	_route_dag_cache.clear()
 	_off_map.clear()
 
 # Whether a game is eligible to appear in path selection, per the global
@@ -373,7 +388,32 @@ static func layer_widths(start_id: StringName, amulet_id: StringName) -> Array:
 # Returns the set of game ids that lie on a shortest path between
 # start_id and amulet_id, organized by layer. Used by the map preview
 # to draw the actual graph nodes.
+#
+# MEMOIZED, and the result is SHARED — treat what comes back as read-only. It is
+# cached for the same reason bfs_distances is, and it is safe on the same terms:
+# neither depends on anything that moves during a run. The graph is the filtered
+# catalog and nothing else — Bash takes a game out of the OFFERING, not out of
+# the map, and Transmute repaints which game sits on a node without touching a
+# single edge — so a route from A to B is the same route all session, and both
+# caches are wiped together by invalidate_cache() when the filter changes.
+#
+# Read-only matters because five callers a click share one Dictionary now. The
+# one place that used to write into the result is route_dag_via, which set
+# `waypoint_depth` on it; it builds a wrapper instead (see below). Everything
+# else — AtlasView's trail, RouteLadder's layout, the modal's label and legend —
+# only reads.
 static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Dictionary:
+	var key: String = "%s>%s" % [start_id, amulet_id]
+	if _dag_cache.has(key):
+		return _dag_cache[key]
+	var built: Dictionary = _build_shortest_path_dag(start_id, amulet_id)
+	if _dag_cache.size() >= DAG_CACHE_MAX:
+		_dag_cache.clear()
+	_dag_cache[key] = built
+	return built
+
+
+static func _build_shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Dictionary:
 	var d_from_start := bfs_distances(start_id)
 	if not d_from_start.has(amulet_id):
 		return {"layers": [], "edges": [], "waypoint_depth": -1}
@@ -388,11 +428,28 @@ static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Di
 			continue
 		if d_to_amulet.has(name) and from_d + int(d_to_amulet[name]) == amulet_dist:
 			(layers[from_d] as Array).append(name)
+	# Each layer as a SET as well as a list, so the edge pass below can ask "is
+	# this neighbour on the next layer?" in O(1) rather than by scanning an Array.
+	#
+	# THIS BOUGHT NOTHING MEASURABLE and is kept only because it is strictly
+	# better: A/B'd against the same route in the same process it was 0.322 ms
+	# with Array.has() and 0.308 ms with these sets, which is noise. The scan
+	# looked quadratic — a linear test inside a loop over each node's ~28
+	# neighbours — but the layers of a real route are two or three games wide, so
+	# it was never scanning anything. The memo above is what made this function
+	# cheap. Do not read this as evidence that the shape mattered.
+	var layer_sets: Array = []
+	for layer in layers:
+		var ids: Dictionary = {}
+		for id in layer:
+			ids[id] = true
+		layer_sets.append(ids)
 	var edges: Array = []
 	for d in range(0, amulet_dist):
+		var next: Dictionary = layer_sets[d + 1]
 		for a in layers[d]:
 			for b in neighbors(a):
-				if (layers[d + 1] as Array).has(b):
+				if next.has(b):
 					# The depths travel with the edge. Within one DAG they're
 					# redundant (a game sits at exactly one depth), but a route
 					# forced through a waypoint is two of these glued together and
@@ -420,12 +477,38 @@ static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Di
 # An empty `waypoint_id`, or one you're already standing on, is not a detour at
 # all and gives the ordinary shortest-path DAG. A waypoint that can't be reached,
 # or that can't reach the Amulet, gives an empty route.
+#
+# MEMOIZED and SHARED, on the same terms as shortest_path_dag above — the result
+# is read-only. It gets its own cache rather than riding that one because the
+# pinned case is two DAGs glued with every layer and edge copied, which is the
+# expensive half and the half a pin re-asks for on every repaint.
 static func route_dag_via(start_id: StringName, waypoint_id: StringName,
+		amulet_id: StringName) -> Dictionary:
+	var key: String = "%s>%s>%s" % [start_id, waypoint_id, amulet_id]
+	if _route_dag_cache.has(key):
+		return _route_dag_cache[key]
+	var built: Dictionary = _build_route_dag_via(start_id, waypoint_id, amulet_id)
+	if _route_dag_cache.size() >= DAG_CACHE_MAX:
+		_route_dag_cache.clear()
+	_route_dag_cache[key] = built
+	return built
+
+
+static func _build_route_dag_via(start_id: StringName, waypoint_id: StringName,
 		amulet_id: StringName) -> Dictionary:
 	if waypoint_id == &"" or waypoint_id == start_id:
 		var plain: Dictionary = shortest_path_dag(start_id, amulet_id)
-		plain["waypoint_depth"] = 0 if waypoint_id == start_id else -1
-		return plain
+		# A WRAPPER, not the thing itself. This used to write waypoint_depth
+		# straight into `plain` and hand it back, which was harmless while every
+		# call rebuilt the DAG from scratch and is poison now that shortest_path_dag
+		# hands out one shared Dictionary: the write would stick to the cached copy
+		# and the next unpinned caller would read a waypoint_depth of 0. The arrays
+		# are still shared — they are the expensive part and nobody mutates them.
+		return {
+			"layers": plain.get("layers", []),
+			"edges": plain.get("edges", []),
+			"waypoint_depth": 0 if waypoint_id == start_id else -1,
+		}
 	var leg_in: Dictionary = shortest_path_dag(start_id, waypoint_id)
 	var leg_out: Dictionary = shortest_path_dag(waypoint_id, amulet_id)
 	var in_layers: Array = leg_in.get("layers", [])

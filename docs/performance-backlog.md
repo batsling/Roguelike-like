@@ -1,109 +1,32 @@
 # Performance & streamlining backlog
 
 Findings from a read-only efficiency pass over the whole codebase (2026-08-18).
-The four *measured atlas* findings from that pass are **already fixed** — see the
-CHANGELOG entry "The star chart stopped doing the same work twice". What is left
-is here, ranked by value for effort, with everything needed to pick each one up
-cold.
 
-Nothing in this file has been started. Each item states what is wrong, why it is
-wrong, what the fix looks like, and how to know it worked.
+**Fixed since, and out of this file:** the four measured *atlas* findings (see the
+CHANGELOG entry "The star chart stopped doing the same work twice"), and then the
+star-chart double sweep, the uncached route DAG, and the three dead functions
+(see "Two hot paths that were doing the work twice"). What is left is here,
+ranked by value for effort, with everything needed to pick each one up cold.
 
----
+Each item states what is wrong, why it is wrong, what the fix looks like, and how
+to know it worked. Neither remaining item has been started.
 
-## 1. The star chart walks the whole sky twice whenever a route is on it
-
-**Where** `scripts/ui/AtlasView.gd` — `draw_layers()` (~line 450) and
-`StarCanvas._draw_stars()` (~line 2394).
-
-**What happens.** With a route drawn, `draw_layers()` returns three layers:
-
-```gdscript
-return [LAYER_STARS_OFF_ROUTE, LAYER_ROADS, LAYER_STARS_ON_ROUTE]
-```
-
-`_draw_stars` is then called once per star layer, and each call iterates *all*
-852 stars, skipping the ones that belong to the other half:
-
-```gdscript
-for i in range(lay.star_count()):
-    if layer == AtlasView.LAYER_STARS_OFF_ROUTE and view.on_route(i):
-        continue
-    if layer == AtlasView.LAYER_STARS_ON_ROUTE and not view.on_route(i):
-        continue
-```
-
-So 1704 iterations and 1704 `on_route()` dictionary hits to draw 852 stars. The
-split itself is right and worth keeping — it is what puts the roads *between* the
-scenery and the corridor, so a route is not chopped into dashes by the 700 stars
-it passes behind. Only the double sweep is waste.
-
-**The fix.** Partition once per redraw into two `PackedInt32Array`s (off-route,
-on-route) and have `_draw_stars` walk the array for its layer. Build the
-partition in `StarCanvas._draw` alongside `visible_rect`, or cache it on the view
-beside `_route_stars` and wipe it wherever that is wiped (`route_stars()`,
-`_build_trail`, `_build_history`, `_relayout`).
-
-**Worth.** ~2 ms a redraw on the in-run chart at 852 stars, plus the allocation
-churn. Note the measured record/filter costs do **not** apply here —
-`star_record_color` and `passes_filter` early-out when `pure_catalog` is false —
-so this is the main remaining cost on the *run's* chart specifically.
-
-**Verify.** `test/test_atlas.gd` covers route membership and draw layering
-already; add one asserting the two partitions are disjoint and their union is
-every star. Then measure with a driver (`.claude/skills/verify/`) that builds a
-run chart and times 20 `_draw` passes before and after.
+**One measurement worth keeping** from the pass that removed items 1, 2 and 4:
+the quadratic `Array.has()` edge loop in `RunGraph.shortest_path_dag` — the
+second half of what was item 2 — measured **flat**. A/B'd against the same route
+in the same process it was 0.322 ms with `Array.has()` and 0.308 ms with a
+`Dictionary` set per layer, which is noise. The layers of a real route are two or
+three games wide, not the 15+ the degree curve suggested, so the linear scan was
+never scanning anything. The set went in anyway (it is strictly better and
+measured no worse) but it bought nothing, and **the memo was the entire win**.
+Worth remembering before optimising another loop on its shape rather than on a
+measurement.
 
 ---
 
-## 2. `RunMapModal.map_data()` is uncached and rebuilds the whole DAG per caller
+## 1. `Overworld2._refresh()` is a full-page rebuild on every loop signal
 
-**Where** `scripts/redesign2/RunMapModal.gd:164`, and
-`scripts/runtime/RunGraph.gd:376` (`shortest_path_dag`).
-
-**What happens.** `map_data()` calls `RunGraph.route_dag_via(...)` every time,
-and five places call it per interaction:
-
-| line | caller |
-|---|---|
-| 187 | `shortest_distance()` |
-| 484 | `_refresh_distance_label()` |
-| 502 | `_ladder_cfg()` → the ladder build |
-| 703 | the legend |
-
-`shortest_distance()` is itself called from `open_node_card()` (line 567), so
-clicking a rung rebuilds the DAG twice more. `bfs_distances` is memoized
-(`RunGraph._bfs_cache`) so the BFS is cheap, but the DAG assembly on top of it is
-not cached at all.
-
-**And the assembly has a quadratic edge loop:**
-
-```gdscript
-for d in range(0, amulet_dist):
-    for a in layers[d]:
-        for b in neighbors(a):
-            if (layers[d + 1] as Array).has(b):     # linear scan
-```
-
-`Array.has()` is O(n) against the next layer, inside a loop over each node's
-neighbours. Mean degree on the full catalog is ~28 and a layer can be 15+ wide.
-
-**The fix.** Two independent changes, either worth doing alone:
-- Memoize `map_data()` on `RunMapModal` against `(current, waypoint, amulet)`,
-  invalidated in `_reroute()` and wherever the pin moves.
-- In `shortest_path_dag`, build a `Dictionary` set per layer once
-  (`{id: true}`) and test membership against that instead of `Array.has()`.
-
-**Verify.** `test/test_run_map.gd` has thorough DAG-shape coverage
-(`test_map_edges_only_step_forward_one_layer`,
-`test_every_edge_of_a_forced_route_advances_one_layer`) — those are the
-regression net. The win is felt opening the map on a 7-hop route.
-
----
-
-## 3. `Overworld2._refresh()` is a full-page rebuild on every loop signal
-
-**Where** `scripts/redesign2/Overworld2.gd:2404`, wired at lines 295 and 334:
+**Where** `scripts/redesign2/Overworld2.gd:2430`, wired at lines 299 and 338:
 
 ```gdscript
 GameLoop2.loop_changed.connect(_refresh)              # 22 emit sites
@@ -127,7 +50,7 @@ a resolve.
 - Same for `_refresh_items`: rebuild on `inventory_changed`, not on
   `loop_changed`.
 
-**Careful.** The comments on `_refresh_stats` (line ~3877) record a real bug this
+**Careful.** The comments on `_refresh_stats` (line ~3999) record a real bug this
 fixed once: signals used to land on a HUD strip that repainted immediately while
 the board waited for the next full refresh, so a Hollow Heart off a kill-drop
 raised Max Health with nothing on screen saying so. Any split has to keep the
@@ -140,25 +63,9 @@ because a chip once failed to repaint without a full resolve.
 
 ---
 
-## 4. Dead code
+## 2. `Overworld2.gd` is 5309 lines
 
-Confirmed unreferenced anywhere in `scripts/` or `test/`:
-
-| file | function |
-|---|---|
-| `scripts/autoload/GameLoop2.gd:1619` | `_pull_from_stack()` |
-| `scripts/ui/Collection.gd:1121` | `_item_rarity_color()` |
-| `scripts/ui/Collection.gd:1328` | `_all_enemies()` |
-
-Delete on sight. (Scan that found them: a regex over `^func _name(` versus
-in-file references, excluding Godot's own virtuals. Worth re-running after any
-large change — it caught a fourth that a refactor had just orphaned.)
-
----
-
-## 5. `Overworld2.gd` is 5218 lines
-
-More than double the next-biggest file (`AtlasView.gd`, 2687). It currently holds
+More than double the next-biggest file (`AtlasView.gd`, 2764). It currently holds
 the run-loop view, the report checklist, the pinned header, the map plumbing, the
 shop and machine mounting, the charge chips, the offering cards, and the
 save/load view state.
@@ -180,6 +87,30 @@ how cleanly they come out:
 Each wants to keep going through the overworld's public verbs (`pick`,
 `report`, `bash_choice`, …) rather than reaching into `GameLoop2`, which is what
 makes the current tests keep working through the move.
+
+---
+
+## The dead-code scan
+
+Three functions were found unreferenced and deleted (`GameLoop2._pull_from_stack`,
+`Collection._item_rarity_color`, `Collection._all_enemies`). The scan that found
+them is worth re-running after any large change — a private function whose name
+appears exactly once in its own file and nowhere else in `scripts/` or `test/`.
+It caught a fourth last time that a refactor had just orphaned. A heuristic, not
+a proof: Godot's virtuals (`_ready`, `_draw`, …) fall out only because they also
+appear in other files, and a name reached through `call()` would be a false
+positive — so read what it prints before deleting. It is clean as of this
+commit:
+
+```bash
+for f in $(git ls-files '*.gd' | grep -v addons/); do
+  grep -oP '^func \K_\w+' "$f" | while read -r fn; do
+    [ "$(grep -c "\b$fn\b" "$f")" -eq 1 ] \
+      && ! grep -rqF "$fn" --include='*.gd' scripts test --exclude="$(basename "$f")" \
+      && echo "$f: $fn"
+  done
+done
+```
 
 ---
 

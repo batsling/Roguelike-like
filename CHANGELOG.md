@@ -11,6 +11,61 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Two hot paths that were doing the work twice.**
+
+  Items 1, 2 and 4 off `docs/performance-backlog.md`, measured before and after
+  with a throwaway driver (`.claude/skills/verify/`) the same way the atlas
+  numbers below were.
+
+  **The star chart ran the whole sky once per star layer.** With a route on it
+  the sky is drawn in three passes — scenery, then the roads, then the games the
+  roads run between — so the corridor crosses the 700 stars it has nothing to do
+  with and still tucks behind the cover art of the ones it does. That split is
+  right and stays. What was wrong is how each pass found its half: it iterated
+  all 852 stars and `continue`d past the ones belonging to the other pass, so
+  drawing 852 stars cost 1704 iterations and 1704 `on_route()` dictionary hits,
+  on every redraw, which is every pan step. The membership question is asked once
+  per star now, into two `PackedInt32Array`s that each pass walks
+  (`AtlasView.star_indices`). A/B'd in one process on one route: **1.245 ms →
+  0.027 ms** per redraw, or 0.122 ms on the redraw right after the route moves
+  and the partition is rebuilt. The four sites that invalidate the road now go
+  through one `_clear_route_cache()`, because a partition outliving its route
+  would draw last hop's corridor and there were three things to wipe at each of
+  four places.
+
+  **The route DAG was rebuilt by every caller that asked for it.** `bfs_distances`
+  has been memoized for a long time, but the layer-and-edge assembly on top of it
+  was not, and opening the map asks for it five times (the distance label, the
+  ladder, the legend, and `shortest_distance` from every node card). Now memoized
+  on `RunGraph` beside the BFS cache, and safe on exactly the same terms: nothing
+  either depends on moves during a run — Bash takes a game out of the *offering*,
+  not out of the map, and Transmute repaints which game sits on a node without
+  touching an edge — so both are wiped together by `invalidate_cache()` when the
+  filter changes. **0.317 ms → 0.001 ms** warm; one map open went from ~1.6 ms of
+  DAG assembly to 0.012 ms. It lives on `RunGraph` rather than on the modal (the
+  backlog's suggestion) because `AtlasView._build_trail` rebuilds the same route
+  on every refresh too, and only the shared version catches that.
+
+  Caching it meant the result is now a **shared** Dictionary, and one caller was
+  writing into it: `route_dag_via` set `waypoint_depth` on what
+  `shortest_path_dag` returned, which was free when every call rebuilt it and
+  poison when there is one copy — the next unpinned caller would have read a join
+  that wasn't there. It builds a wrapper around the shared arrays instead, and
+  there is a test for exactly that.
+
+  **The quadratic edge loop in the same function measured flat, and is worth
+  writing down.** `Array.has()` against the next layer looked like an obvious
+  linear scan inside a loop over each node's ~28 neighbours. A/B'd against the
+  same route in the same process it was 0.322 ms with `Array.has()` and 0.308 ms
+  with a `Dictionary` set per layer — noise. The layers of a real route are two or
+  three games wide, not the 15+ the degree curve suggested, so the scan was never
+  scanning anything. The set went in anyway (strictly better, measured no worse)
+  but the memo was the entire win.
+
+  **Three dead functions deleted** — `GameLoop2._pull_from_stack`,
+  `Collection._item_rarity_color`, `Collection._all_enemies`. The scan that finds
+  them is written into the backlog now, and comes back clean.
+
 - **Seven Isaac relics, and the five pieces of machinery they needed.**
 
   Piggy Bank, There's Options, The Mark, Stigmata, Charm of the Vampire, D10 and

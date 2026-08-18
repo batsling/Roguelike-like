@@ -715,6 +715,89 @@ func test_route_matches_the_run_minimap_exactly() -> void:
 		var key: String = "%s>%s" % [view.layout.id_at(int(seg[0])), view.layout.id_at(int(seg[1]))]
 		assert_true(expected.has(key), "%s is an edge the minimap also draws" % key)
 
+# --- the star partition -----------------------------------------------------
+#
+# The sky is drawn in up to three passes so the roads can go down between the
+# scenery and the games they run between (draw_layers). Each star pass used to
+# run the WHOLE sky and skip the half belonging to the other one; each now walks
+# its own list. These are the properties that makes safe: the two lists together
+# are still every star, exactly once, and they follow the route when it moves.
+
+func test_the_two_star_passes_are_every_star_exactly_once() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var view := _open()
+	if not view.has_layout() or not view.showing_route():
+		return
+	var off: PackedInt32Array = view.star_indices(AtlasView.LAYER_STARS_OFF_ROUTE)
+	var on: PackedInt32Array = view.star_indices(AtlasView.LAYER_STARS_ON_ROUTE)
+	var n: int = view.layout.star_count()
+	assert_eq(off.size() + on.size(), n, "the two passes add up to the whole sky")
+	assert_gt(on.size(), 0, "the route pass has the route in it")
+	var seen: Dictionary = {}
+	for i in off:
+		assert_false(seen.has(i), "star %d is in only one pass" % i)
+		seen[i] = true
+		assert_false(view.on_route(i), "the scenery pass holds nothing on the route")
+	for i in on:
+		assert_false(seen.has(i), "star %d is in only one pass" % i)
+		seen[i] = true
+		assert_true(view.on_route(i), "the route pass holds only the route")
+	assert_eq(seen.size(), n, "and no star is missed")
+
+func test_the_partition_follows_the_route_when_it_moves() -> void:
+	# The partition is cached, and the road it describes changes when the run
+	# does. A partition that outlived its route would draw last hop's corridor.
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var view := _open()
+	if not view.has_layout() or not view.showing_route():
+		return
+	var before: PackedInt32Array = view.star_indices(AtlasView.LAYER_STARS_ON_ROUTE).duplicate()
+	# Pin a game on the route: a forced route is a different set of stars.
+	var pin: StringName = _off_route_game(view)
+	if pin == &"":
+		return
+	GameState.route_waypoint = pin
+	view.refresh_route()
+	var after: PackedInt32Array = view.star_indices(AtlasView.LAYER_STARS_ON_ROUTE)
+	assert_eq(after.size() + view.star_indices(AtlasView.LAYER_STARS_OFF_ROUTE).size(),
+		view.layout.star_count(), "still every star, exactly once")
+	# Rebuilt, not stale: check it against a partition built fresh from the set.
+	var expect_on: Array = []
+	var route: Dictionary = view.route_stars()
+	for i in range(view.layout.star_count()):
+		if route.has(i):
+			expect_on.append(i)
+	assert_eq(Array(after), expect_on, "the route pass matches the route as it now stands")
+	assert_ne(Array(after), Array(before), "and the pin did move it")
+	GameState.route_waypoint = &""
+
+func test_with_no_route_one_pass_covers_the_sky() -> void:
+	var view := _open()
+	if not view.has_layout():
+		return
+	assert_false(view.showing_route(), "the catalog view draws no run")
+	assert_eq(view.star_indices(AtlasView.LAYER_STARS_ALL).size(), view.layout.star_count(),
+		"the single pass is every star")
+	assert_eq(view.draw_layers(), [AtlasView.LAYER_ROADS, AtlasView.LAYER_STARS_ALL],
+		"and there is only one star pass to make")
+
+# A game the route does NOT already pass through, so pinning it actually changes
+# the road. &"" when every candidate is already on it.
+func _off_route_game(view: AtlasView) -> StringName:
+	var route: Dictionary = view.route_stars()
+	for g in Data.all_games():
+		var i: int = view.layout.index_of(g.id)
+		if i < 0 or route.has(i):
+			continue
+		if RunGraph.route_length_via(GameState.current_game_id, g.id,
+				GameState.amulet_game_id) > 0:
+			return g.id
+	return &""
+
 # Selecting a game must not hide the route — it's the one thing that stays.
 func test_the_route_survives_selecting_something_else() -> void:
 	var ui = OVERWORLD.instantiate()

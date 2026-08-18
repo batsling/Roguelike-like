@@ -432,6 +432,58 @@ func test_the_waypoint_sits_alone_on_the_join_layer() -> void:
 	assert_eq(layer.size(), 1, "the two legs meet on one game")
 	assert_eq(StringName(layer[0]), pin, "and that game is the pinned one")
 
+# --- the DAG memo -----------------------------------------------------------
+#
+# shortest_path_dag and route_dag_via hand back a SHARED Dictionary now, cached
+# on the same terms bfs_distances already was: nothing they depend on moves
+# during a run. These are the two ways that could go wrong — a stale answer, and
+# a caller writing into everyone else's copy.
+
+func test_the_route_dag_is_the_same_answer_cached_or_not() -> void:
+	var here: StringName = GameState.current_game_id
+	var amulet: StringName = GameState.amulet_game_id
+	var cold: Dictionary = RunGraph.shortest_path_dag(here, amulet)
+	var warm: Dictionary = RunGraph.shortest_path_dag(here, amulet)
+	assert_eq(warm.get("layers", []), cold.get("layers", []), "same layers")
+	assert_eq(warm.get("edges", []).size(), cold.get("edges", []).size(), "same edges")
+	# And the same again after the memo is emptied, which is what a filter change
+	# does to it.
+	var built: Array = cold.get("layers", []).duplicate(true)
+	RunGraph.invalidate_cache()
+	assert_eq(RunGraph.shortest_path_dag(here, amulet).get("layers", []), built,
+		"rebuilt from scratch, it says the same thing")
+
+func test_a_pinned_route_does_not_write_its_join_into_the_plain_one() -> void:
+	# route_dag_via used to set waypoint_depth on the Dictionary shortest_path_dag
+	# returned. Harmless while every call rebuilt it; with one shared copy that
+	# write would stick, and the next unpinned caller would read a join that isn't
+	# there. It builds a wrapper instead.
+	var here: StringName = GameState.current_game_id
+	var amulet: StringName = GameState.amulet_game_id
+	assert_eq(int(RunGraph.shortest_path_dag(here, amulet).get("waypoint_depth", -99)), -1,
+		"a plain DAG has no join")
+	# Standing on your own pin is the case that sets a depth of 0.
+	assert_eq(int(RunGraph.route_dag_via(here, here, amulet).get("waypoint_depth", -99)), 0,
+		"a pin you are standing on joins at the top")
+	assert_eq(int(RunGraph.shortest_path_dag(here, amulet).get("waypoint_depth", -99)), -1,
+		"and the plain DAG still has no join afterwards")
+	assert_eq(int(RunGraph.route_dag_via(here, &"", amulet).get("waypoint_depth", -99)), -1,
+		"nor does an unpinned route asked for after it")
+
+func test_the_memo_is_bounded() -> void:
+	# It is emptied wholesale over the cap rather than evicted one at a time, so
+	# the only property worth asserting is that it cannot grow without limit.
+	RunGraph.invalidate_cache()
+	var amulet: StringName = GameState.amulet_game_id
+	var asked: int = 0
+	for g in Data.all_games():
+		if asked >= RunGraph.DAG_CACHE_MAX + 5:
+			break
+		RunGraph.shortest_path_dag(g.id, amulet)
+		asked += 1
+	assert_lte(RunGraph._dag_cache.size(), RunGraph.DAG_CACHE_MAX,
+		"the DAG memo never exceeds its cap")
+
 # Every rung's text, flattened — enough to assert what a card actually says
 # without reaching into its layout.
 func _text_of(node: Node) -> String:

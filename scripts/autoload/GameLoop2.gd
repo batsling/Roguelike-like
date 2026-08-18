@@ -1720,15 +1720,6 @@ func despawn(instance: int) -> bool:
 	loop_changed.emit()
 	return true
 
-# Removes and returns the GoalEnemyData for `instance`, or null if not stacked.
-func _pull_from_stack(instance: int) -> GoalEnemyData:
-	var idx: int = _index_of(instance)
-	if idx < 0:
-		return null
-	var e: GoalEnemyData = stack[idx]["enemy"]
-	_take_off_board(idx)
-	return e
-
 # Take the body at `idx` off the board. THE ONE WAY a body leaves `stack`, because
 # `arrivals` holds handles into it (§7.2) and a removal that doesn't drop them
 # leaves a Scramble chasing a body that is not on the field.

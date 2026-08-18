@@ -1118,9 +1118,6 @@ func _populate_items() -> void:
 		_grid.add_child(_label("No items match.", Color(0.55, 0.55, 0.6), 13))
 	_set_count(list.size(), Data.all_items2().size())
 
-func _item_rarity_color(r: int) -> Color:
-	return RARITY_COLORS[clampi(r, 0, RARITY_COLORS.size() - 1)]
-
 # Starter / Boss / Event are classes rather than rungs (ItemData.ItemClass), and
 # the tab used to know that about Starter alone. It now asks the item, so the
 # three read the same way here as they do on the drop modal and in the pack.
@@ -1324,12 +1321,6 @@ func _character_enemy_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 # ------------------------------------------------------------------
 # Enemies tab (2.0 goal-enemies + bosses)
 # ------------------------------------------------------------------
-
-func _all_enemies() -> Array:
-	var out: Array = []
-	out.append_array(Data.all_goal_enemies())
-	out.append_array(Data.all_bosses())
-	return out
 
 # The roster the Enemies/Bosses tab draws from — normal goal-enemies on the
 # Enemies tab, the boss roster on the Bosses tab (they are separate tabs now).
