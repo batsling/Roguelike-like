@@ -240,9 +240,93 @@ static func dress(control: Control) -> void:
 	if control != null and control.theme == null:
 		control.theme = shared()
 
+# --- the glyph font --------------------------------------------------------
+#
+# THE UI IS DRAWN OUT OF SYMBOLS — ⚔ ☠ ⚡ 🏆 🎲 🍀 ⛏ ⚗ and about seventy more —
+# and Godot's built-in font has exactly two of them. A miss is answered by
+# searching the HOST's installed fonts, during shaping, and the answer is not
+# cached: measured, that is ~2 ms every time a Label carrying one is created, and
+# it was half the cost of a full overworld repaint. It also meant those glyphs
+# were drawn from whatever the player happened to have installed, so the game
+# looked different on different machines — the same ⚗ beige here and purple
+# there, and the colour-emoji fonts a modern desktop ships ignore the tint the
+# theme asks for, which is how a green SHOP badge got a blue trolley in it.
+#
+# So the glyphs are SHIPPED: four Noto subsets under fonts/, holding only the
+# characters this project actually draws, about 25 KB in total, built by
+# tools/build_glyph_font.py (run it when the set of glyphs changes; it reports
+# anything it could not cover). They are declared as FALLBACKS on Godot's own
+# font rather than replacing it, so every letter of ordinary text is rendered by
+# exactly the font it was before and only the symbols move.
+#
+# Monochrome on purpose — see the note in the build script. A glyph that carries
+# its own colours cannot be tinted, and tinting them is how the page tells Bash
+# from Dash.
+const GLYPH_FONTS := [
+	"res://fonts/NotoSansSymbols2-Subset.ttf",
+	"res://fonts/NotoEmoji-Subset.ttf",
+	"res://fonts/NotoSansSymbols-Subset.ttf",
+	"res://fonts/NotoSansMath-Subset.ttf",
+]
+
+static var _glyph_font: Font = null
+
+# Godot's default font with the shipped symbol subsets chained behind it. Null
+# only if the base font is somehow unavailable, in which case every screen keeps
+# working exactly as it did before this existed — the host search comes back.
+#
+# THE ORDER IS THE WHOLE POINT, and it took measuring to get right. Declaring the
+# subsets as fallbacks is not enough on its own: the BASE font runs its own
+# system search on a miss, and it runs it BEFORE the fallbacks are consulted, so
+# the expensive thing still happened and the subsets were answering a question
+# already answered. Turning that search off on the base and putting a
+# system-searching font at the END of the chain gets both halves — the subsets
+# are asked first and answer instantly, and anything they don't have (a player's
+# note in a language we ship no glyphs for, a symbol added to the UI before this
+# font was rebuilt) still falls through to the host exactly as it always did.
+#
+# Measured, on a Label carrying ten glyphs:
+#     base search on, no subsets  (as it was)   15.4 ms
+#     subsets declared, base search still on    12.4 ms
+#     subsets, base search off, system last      4.5 ms
+# and a character NOTHING here ships still renders, off the tail of the chain.
+static func glyph_font() -> Font:
+	if _glyph_font != null:
+		return _glyph_font
+	var base: Font = ThemeDB.fallback_font
+	if base == null:
+		return null
+	var fallbacks: Array[Font] = []
+	for path in GLYPH_FONTS:
+		if ResourceLoader.exists(path):
+			var f: Font = load(path)
+			if f != null:
+				fallbacks.append(f)
+	if fallbacks.is_empty():
+		return null
+	# Duplicated, because ThemeDB.fallback_font is Godot's own shared resource and
+	# the rest of the engine is entitled to find it as it was.
+	if base is FontFile:
+		var quiet: FontFile = (base as FontFile).duplicate()
+		quiet.allow_system_fallback = false
+		base = quiet
+	# The safety net, last: everything the subsets don't carry still renders.
+	var host := SystemFont.new()
+	host.allow_system_fallback = true
+	fallbacks.append(host)
+	var variation := FontVariation.new()
+	variation.base_font = base
+	variation.fallbacks = fallbacks
+	_glyph_font = variation
+	return _glyph_font
+
 static func make_theme() -> Theme:
 	var t := Theme.new()
 	t.default_font_size = 14
+	# Every Control under this theme, unless it overrides its own font.
+	var glyphs: Font = glyph_font()
+	if glyphs != null:
+		t.default_font = glyphs
 
 	# --- Button ---
 	var btn_n := flat(PANEL, 8, 8, 1, BORDER)

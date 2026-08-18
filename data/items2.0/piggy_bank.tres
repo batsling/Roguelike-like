@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_piggy_bank"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/PiggyBank.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"piggy_bank"
+display_name = "Piggy Bank"
+kind = 0
+rarity = 1
+description = "Whenever you lose Health, Gain +1 Gold"
+triggers = [{"on": "health_lost", "silent": true, "effects": [{"type": "gain_gold", "value": 1}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray("pig", "bank")
+pools = PackedStringArray("shop")
+image = ExtResource("2_img")

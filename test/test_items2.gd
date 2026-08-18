@@ -366,3 +366,258 @@ func test_the_golden_idol_pays_on_top_of_every_drop() -> void:
 	_choose_solo(enemy)
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.gold, plain + 1, "and one more while the Idol is held")
+
+
+# ==========================================================================
+# The Isaac seven (§8) — Piggy Bank, There's Options, The Mark, Stigmata,
+# Charm of the Vampire, D10, Wooden Nickel.
+# ==========================================================================
+
+# --- Piggy Bank: a coin for every point of Health that leaves ------------
+#
+# It pays on HEALTH, not on damage, which is the whole reason the card was
+# reworded: the Shields absorb first (§3), and a swing they eat whole has to be
+# worth nothing.
+
+func test_piggy_bank_pays_when_health_actually_goes_down() -> void:
+	_give(&"piggy_bank")
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.gold = 0
+	GameState.change_hp(-3)
+	assert_eq(GameState.gold, 1, "one loss, one coin — not one per point")
+
+func test_piggy_bank_ignores_a_hit_the_shields_ate() -> void:
+	_give(&"piggy_bank")
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.shields = 5
+	GameState.gold = 0
+	var res: Dictionary = {}
+	GameLoop2._take_hit(3, res)
+	assert_eq(GameState.hp, 10, "the shields took the whole swing")
+	assert_eq(GameState.gold, 0, "damage taken is not Health lost")
+
+func test_piggy_bank_pays_on_the_overflow_past_the_shields() -> void:
+	_give(&"piggy_bank")
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.shields = 1
+	GameState.gold = 0
+	var res: Dictionary = {}
+	GameLoop2._take_hit(3, res)
+	assert_eq(GameState.hp, 8, "two got through")
+	assert_eq(GameState.gold, 1, "and the loss paid once")
+
+func test_piggy_bank_pays_off_the_map_too() -> void:
+	# "Anytime you lose Health" — an event's bill is not a battlefield hit, and
+	# the relic must not care which.
+	_give(&"piggy_bank")
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.gold = 0
+	EffectSystem.apply({"type": "lose_hp", "value": 1}, {})
+	assert_eq(GameState.gold, 1, "an event's Health cost pays too")
+
+func test_a_lost_try_pays_and_undoing_it_takes_the_coin_back() -> void:
+	# The one Health loss in the game that can be taken back. Without the refund
+	# the undo button is a coin press: tick, untick, tick, untick.
+	var enemy := GoalEnemyData.new()
+	enemy.id = &"synthetic"
+	enemy.display_name = "Synthetic"
+	enemy.health = 1
+	enemy.damage = 1
+	_give(&"piggy_bank")
+	_choose_solo(enemy)
+	GameState.shields = 0
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.gold = 0
+	assert_eq(GameLoop2.log_attempt(), "health", "no shields left, so it costs Health")
+	assert_eq(GameState.gold, 1, "the lost try paid a coin")
+	GameLoop2.undo_attempt()
+	assert_eq(GameState.hp, 10, "the Health came back")
+	assert_eq(GameState.gold, 0, "and so did the coin")
+
+func test_every_undone_try_gives_back_its_own_winnings() -> void:
+	# The undo is a stack — three ticks can be taken back one at a time — so the
+	# payout is remembered per try rather than "the last one".
+	var enemy := GoalEnemyData.new()
+	enemy.id = &"synthetic"
+	enemy.display_name = "Synthetic"
+	enemy.health = 1
+	enemy.damage = 1
+	_give(&"piggy_bank")
+	_choose_solo(enemy)
+	GameState.shields = 0
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.gold = 0
+	GameLoop2.log_attempt()
+	GameLoop2.log_attempt()
+	GameLoop2.log_attempt()
+	assert_eq(GameState.gold, 3, "three lost tries, three coins")
+	GameLoop2.undo_attempt()
+	GameLoop2.undo_attempt()
+	GameLoop2.undo_attempt()
+	assert_eq(GameState.gold, 0, "and every undo gave one back")
+	assert_eq(GameState.hp, 10, "with the Health where it started")
+
+func test_undoing_a_shield_try_leaves_the_purse_alone() -> void:
+	var enemy := GoalEnemyData.new()
+	enemy.id = &"synthetic"
+	enemy.display_name = "Synthetic"
+	enemy.health = 1
+	enemy.damage = 1
+	_give(&"piggy_bank")
+	_choose_solo(enemy)
+	GameState.shields = 2
+	GameState.gold = 4
+	assert_eq(GameLoop2.log_attempt(), "shield")
+	GameLoop2.undo_attempt()
+	assert_eq(GameState.gold, 4, "a shield try never paid, so nothing is clawed back")
+
+# --- There's Options: the boss's chest goes up a size --------------------
+
+func test_theres_options_is_a_chest_point_and_sums() -> void:
+	assert_eq(GameState.boss_chest_bonus(), 0, "nothing owned, nothing added")
+	_give(&"theres_options")
+	assert_eq(GameState.boss_chest_bonus(), 1)
+	_give(&"theres_options")
+	assert_eq(GameState.boss_chest_bonus(), 2, "a second copy is a second rung")
+
+func test_a_chest_point_ladder_turns_the_bonus_into_choices() -> void:
+	# The relic buys POINTS; Data owns what a point is worth. 1 = Small (1 of 1),
+	# 2 = Medium (1 of 2), 3 = Large (1 of 3).
+	assert_eq(Data.chest_reward_sizes(1), [Data.ChestSize.SMALL] as Array[int])
+	assert_eq(Data.CHEST_SIZE_CHOICES[Data.ChestSize.SMALL], 1, "a body's drop is 1 of 1")
+	assert_eq(Data.CHEST_SIZE_CHOICES[Data.chest_reward_sizes(2)[0]], 2,
+		"one There's Options makes a boss's drop 1 of 2")
+
+# --- The Mark / Stigmata: the two board-verb pickups ---------------------
+
+func test_the_mark_grants_a_bash_and_the_speed_status() -> void:
+	var before: int = GameState.bash
+	_give(&"the_mark")
+	assert_eq(GameState.bash, before + 1, "The Mark: +1 Bash")
+	assert_eq(GameState.status_stacks(&"speed"), 1, "and +1 Speed, the 2.0 status")
+
+func test_stigmata_fills_the_container_it_adds_and_pays_a_bash() -> void:
+	GameState.max_hp = 10
+	GameState.hp = 10
+	var before: int = GameState.bash
+	_give(&"stigmata")
+	assert_eq(GameState.max_hp, 12, "+2 Max Health")
+	assert_eq(GameState.hp, 12, "which arrives full — +2 Health")
+	assert_eq(GameState.bash, before + 1, "and +1 Bash")
+
+# --- Charm of the Vampire: the first incremental relic -------------------
+
+func _kill_one() -> void:
+	TriggerBus.enemy_killed.emit({"enemy": null})
+
+func test_charm_of_the_vampire_counts_to_three_then_heals() -> void:
+	var charm: ItemData = _give(&"charm_of_the_vampire")
+	GameState.max_hp = 10
+	GameState.hp = 5
+	_kill_one()
+	assert_eq(charm.counter_value, 1, "the counter climbs on the first body")
+	assert_eq(GameState.hp, 5, "and pays nothing yet")
+	_kill_one()
+	assert_eq(charm.counter_value, 2)
+	assert_eq(GameState.hp, 5)
+	_kill_one()
+	assert_eq(GameState.hp, 6, "the third body is +1 Health")
+	assert_eq(charm.counter_value, 0, "and the counter rolls back to zero")
+
+func test_the_counter_is_per_copy_not_per_run() -> void:
+	# Slay the Spire's rule: two of the same relic each keep their own count.
+	# A copy taken later starts at zero rather than inheriting a tally it was
+	# not there for.
+	var first: ItemData = _give(&"charm_of_the_vampire")
+	GameState.max_hp = 10
+	GameState.hp = 1
+	_kill_one()
+	_kill_one()
+	var second: ItemData = _give(&"charm_of_the_vampire")
+	assert_eq(first.counter_value, 2, "the first copy has been counting")
+	assert_eq(second.counter_value, 0, "the second starts fresh")
+	_kill_one()
+	assert_eq(GameState.hp, 2, "the first copy pays out on its own third body")
+	assert_eq(second.counter_value, 1, "the second is only one in")
+
+func test_the_relic_says_what_it_is_counting() -> void:
+	var charm: ItemData = Data.get_item2(&"charm_of_the_vampire")
+	assert_true(charm.is_incremental(), "Charm of the Vampire is an incremental relic")
+	assert_eq(int(charm.incremental_spec()["every"]), 3, "every third body")
+	assert_false(Data.get_item2(&"anchor").is_incremental(),
+		"an ordinary triggered relic has no counter")
+
+# --- D10: reroll the board -----------------------------------------------
+
+func _synthetic(id: StringName, typ: StringName, tier: int, boss := false) -> GoalEnemyData:
+	var e := GoalEnemyData.new()
+	e.id = id
+	e.display_name = String(id)
+	e.health = 1
+	e.damage = 1
+	e.game_type = typ
+	e.difficulty = tier
+	e.boss = boss
+	return e
+
+func test_d10_rerolls_the_board_keeping_difficulty_and_type() -> void:
+	var body: GoalEnemyData = _synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW)
+	_choose_solo(body)
+	var swapped: int = GameLoop2.reroll_enemies()
+	assert_eq(swapped, 1, "the one body on the board was re-rolled")
+	var now: GoalEnemyData = GameLoop2.stack[0]["enemy"]
+	assert_ne(now.id, body.id, "it is a different enemy")
+	assert_eq(now.game_type, body.game_type, "of the same game type")
+	assert_eq(now.tier_index(), body.tier_index(), "at the same difficulty")
+
+func test_d10_leaves_bosses_alone() -> void:
+	var boss: GoalEnemyData = _synthetic(&"synthetic_boss", &"action",
+		GoalEnemyData.Difficulty.LOW, true)
+	_choose_solo(boss)
+	assert_eq(GameLoop2.reroll_enemies(), 0, "a boss shrugs off the die")
+	assert_eq(GameLoop2.stack[0]["enemy"], boss, "and is still standing there")
+
+func test_d10_resets_health_to_the_new_bodys_own() -> void:
+	# Health here is goal completions, and the goal just changed — carrying a hit
+	# over would credit a goal that is no longer on the board.
+	var body: GoalEnemyData = _synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW)
+	var inst: int = _choose_solo(body)
+	GameLoop2.entry_for(inst)["health"] = 0
+	GameLoop2.reroll_enemies()
+	assert_eq(int(GameLoop2.stack[0]["health"]),
+		GameLoop2.effective_health(GameLoop2.stack[0]["enemy"]),
+		"the fresh body needs its own goal done in full")
+
+func test_the_d10_is_a_two_charge_active_that_spends_its_bar() -> void:
+	var d10: ItemData = _give(&"d10")
+	assert_true(d10.is_charged(), "the D10 is a charged active")
+	assert_eq(d10.max_charge(), 2)
+	assert_eq(d10.current_charge, 2, "and arrives full")
+	_choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
+	assert_true(GameState.use_item(d10), "it fires")
+	assert_eq(d10.current_charge, 0, "and empties its bar")
+
+# --- Wooden Nickel: a coin flip for a coin -------------------------------
+
+func test_wooden_nickel_is_a_one_charge_coin_flip() -> void:
+	var nickel: ItemData = _give(&"wooden_nickel")
+	assert_eq(nickel.max_charge(), 1, "one beat between flips")
+	var effect: Dictionary = nickel.triggers[0]["effects"][0]
+	assert_eq(String(effect["type"]), "chance")
+	assert_eq(int(effect["percent"]), 50, "a coin flip")
+	assert_eq(String(effect["effect"]["type"]), "gain_gold")
+	assert_eq(int(effect["effect"]["value"]), 1, "for one gold")
+
+func test_wooden_nickel_pays_at_most_one_gold_per_flip() -> void:
+	var nickel: ItemData = _give(&"wooden_nickel")
+	GameState.gold = 0
+	assert_true(GameState.use_item(nickel))
+	assert_true(GameState.gold == 0 or GameState.gold == 1,
+		"the flip either paid a coin or it didn't")
+	assert_eq(nickel.current_charge, 0, "either way the charge is spent")

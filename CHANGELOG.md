@@ -11,6 +11,233 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The UI stopped asking the host what a ⚔ looks like.**
+
+  The item the last change uncovered, now closed. The UI is drawn out of about
+  seventy symbols — ⚔ ☠ ⚡ 🏆 🎲 🍀 ⛏ ⚗ — and Godot's built-in font has exactly
+  two of them (`−` and `≈`). A miss is answered by searching the **host's**
+  installed fonts, during shaping, and the answer is not cached: ~2 ms every time
+  a Label carrying one was created. **14.9 ms → 5.0 ms** for a Label carrying ten
+  of them.
+
+  It also means those glyphs were being drawn from whatever the player happened
+  to have installed. The colour-emoji font a modern desktop ships **ignores the
+  tint the theme asks for**, which is why the green SHOP badge had a blue trolley
+  in it and the amber verb row had a gold trophy. They are monochrome now and take
+  the colour they are given, which is what the design was always asking for.
+
+  `fonts/` holds four Noto subsets — **72 glyphs in 28 KB**, only the characters
+  the source actually draws, OFL, built by `tools/build_glyph_font.py` from the
+  @fontsource packages. The script scans `scripts/**/*.gd` for what to include and
+  *reports* anything it cannot cover rather than skipping it silently; today that
+  is `▁` alone (no Noto web subset ships Block Elements), which still renders.
+
+  **Three traps in what should have been a two-line change, all found by
+  measuring:**
+
+  - Declaring the subsets as theme fallbacks only got 15.4 → 12.4 ms. The base
+    font runs its own system search on a miss and runs it **before** the
+    fallbacks, so the expensive thing still happened. Turning that off on the
+    base and putting a system-searching font at the **end** of the chain gets
+    4.5 ms — and keeps the safety net, so a player's note in any language still
+    renders off the tail.
+  - The subsets' own vertical metrics then grew every line in the game by 9px,
+    because Godot takes a font's height to be the **maximum** over the whole
+    fallback chain. That grew the overworld by 63px and broke the "fits a 720p
+    window" tests — which is exactly what those tests are for.
+  - Matching the metrics by *ratio* fixed size 14 and broke 10, 12, 13, 15 and
+    22, because Godot takes the **ceiling** of size × ratio and a rounding error
+    lands differently at different sizes. The subsets are rescaled onto the base
+    font's exact em grid (4096 upem, ascender 4378, descender 1200) instead, and
+    a test now checks every size the UI uses.
+
+- **The page stopped redrawing things that had not changed.**
+
+  The last of `docs/performance-backlog.md`'s measured items: `Overworld2._refresh()`
+  tore down and rebuilt the pack strip, the route strip, the board, the offering,
+  the verb chips and the standing checklist on **every** loop signal, and
+  `GameLoop2` emits 23 of those, several inside one resolve. **19.5 ms → 6.6 ms**
+  per refresh, measured on a real run at the offering.
+
+  **The measurement moved the whole plan.** The backlog blamed the offering cards
+  and the pack strip; they are 1.5 ms and 0.3 ms. Half of the 19 ms was **five
+  small verb chips** — ⛏ Bash, ⚡ Dash, ⚗ Transmute, 🎲 Scramble, 🍀 Luck — at
+  10.9 ms. The same five chips in plain ASCII are 0.6 ms. The project ships no
+  font file, so those glyphs miss Godot's built-in font and every newly created
+  Label re-runs the system fallback search for them: about **2 ms per Label with
+  a glyph in it**, paid on every rebuild. That is now item 1 of the backlog in its
+  own right, since it is a cost on every screen and not only this one, and the
+  fix for it is an asset decision rather than a code one.
+
+  **Guards, not a signal split.** The backlog proposed deciding per emit site
+  which parts of the page need repainting. Each of the three expensive sections
+  instead keeps a signature of what it last drew and returns early when it would
+  draw the same thing again. The difference matters: a split has to be re-judged
+  every time an emit site is added, and forgetting one leaves a strip quietly
+  showing a number that has moved — which is precisely the bug the comment on
+  `_refresh_stats` records, a HUD strip repainting while the board waited, so a
+  Hollow Heart off a kill-drop raised Max Health with nothing on screen saying so.
+  A signature cannot rot that way: every signal still reaches every section, and
+  each section still asks the same question about its own inputs. Nothing about
+  the signal wiring changed, so the board's hero still repaints on `stats_changed`
+  exactly as that comment requires.
+
+  | | before | after |
+  |---|---|---|
+  | `_refresh_select_stats` | 10.0 ms | 0.003 ms |
+  | `_populate_standing_checklist` | 3.0 ms | 0.005 ms |
+  | `_render_controls` | 1.9 ms | 0.001 ms |
+  | **`_refresh()`** | **19.5 ms** | **6.6 ms** |
+
+  The remaining 6.6 ms is the board (2.3 ms) and the offering cards (1.3 ms),
+  both left alone: the offering's cards carry a shop tooltip that reads live shop
+  state, and a signature covering that is a wider promise than it is worth today.
+
+  The one way a guard goes wrong is another function writing into the same
+  container, leaving a signature describing content that is no longer there.
+  There are exactly two, and both invalidate by hand: `_refresh` empties the
+  controls row itself on the start panel, and the report step takes over the
+  checklist box. Both have a test. Ten went in altogether, one per value in each
+  signature, because the failure being guarded against is a value the rebuild
+  reads and the signature forgot.
+
+- **Two hot paths that were doing the work twice.**
+
+  Items 1, 2 and 4 off `docs/performance-backlog.md`, measured before and after
+  with a throwaway driver (`.claude/skills/verify/`) the same way the atlas
+  numbers below were.
+
+  **The star chart ran the whole sky once per star layer.** With a route on it
+  the sky is drawn in three passes — scenery, then the roads, then the games the
+  roads run between — so the corridor crosses the 700 stars it has nothing to do
+  with and still tucks behind the cover art of the ones it does. That split is
+  right and stays. What was wrong is how each pass found its half: it iterated
+  all 852 stars and `continue`d past the ones belonging to the other pass, so
+  drawing 852 stars cost 1704 iterations and 1704 `on_route()` dictionary hits,
+  on every redraw, which is every pan step. The membership question is asked once
+  per star now, into two `PackedInt32Array`s that each pass walks
+  (`AtlasView.star_indices`). A/B'd in one process on one route: **1.245 ms →
+  0.027 ms** per redraw, or 0.122 ms on the redraw right after the route moves
+  and the partition is rebuilt. The four sites that invalidate the road now go
+  through one `_clear_route_cache()`, because a partition outliving its route
+  would draw last hop's corridor and there were three things to wipe at each of
+  four places.
+
+  **The route DAG was rebuilt by every caller that asked for it.** `bfs_distances`
+  has been memoized for a long time, but the layer-and-edge assembly on top of it
+  was not, and opening the map asks for it five times (the distance label, the
+  ladder, the legend, and `shortest_distance` from every node card). Now memoized
+  on `RunGraph` beside the BFS cache, and safe on exactly the same terms: nothing
+  either depends on moves during a run — Bash takes a game out of the *offering*,
+  not out of the map, and Transmute repaints which game sits on a node without
+  touching an edge — so both are wiped together by `invalidate_cache()` when the
+  filter changes. **0.317 ms → 0.001 ms** warm; one map open went from ~1.6 ms of
+  DAG assembly to 0.012 ms. It lives on `RunGraph` rather than on the modal (the
+  backlog's suggestion) because `AtlasView._build_trail` rebuilds the same route
+  on every refresh too, and only the shared version catches that.
+
+  Caching it meant the result is now a **shared** Dictionary, and one caller was
+  writing into it: `route_dag_via` set `waypoint_depth` on what
+  `shortest_path_dag` returned, which was free when every call rebuilt it and
+  poison when there is one copy — the next unpinned caller would have read a join
+  that wasn't there. It builds a wrapper around the shared arrays instead, and
+  there is a test for exactly that.
+
+  **The quadratic edge loop in the same function measured flat, and is worth
+  writing down.** `Array.has()` against the next layer looked like an obvious
+  linear scan inside a loop over each node's ~28 neighbours. A/B'd against the
+  same route in the same process it was 0.322 ms with `Array.has()` and 0.308 ms
+  with a `Dictionary` set per layer — noise. The layers of a real route are two or
+  three games wide, not the 15+ the degree curve suggested, so the scan was never
+  scanning anything. The set went in anyway (strictly better, measured no worse)
+  but the memo was the entire win.
+
+  **Three dead functions deleted** — `GameLoop2._pull_from_stack`,
+  `Collection._item_rarity_color`, `Collection._all_enemies`. The scan that finds
+  them is written into the backlog now, and comes back clean.
+
+- **Seven Isaac relics, and the five pieces of machinery they needed.**
+
+  Piggy Bank, There's Options, The Mark, Stigmata, Charm of the Vampire, D10 and
+  Wooden Nickel had been sitting in the `items2.0` sheet with a Description, a
+  Rating, a Type and an **empty Effect cell** — so the generator emitted seven
+  `.tres` that read correctly on the card and did nothing at all. They are wired
+  up now. Two of them cost nothing new (Stigmata is Max Health that arrives full
+  plus a Bash; Wooden Nickel is a 50% `chance` on the shortest charge bar in the
+  game). The other five each named a moment or a rule the games-first loop did
+  not have, and that is most of what this change is.
+
+  **`health_lost` — a hook for Health leaving, not for damage arriving.** Piggy
+  Bank in Isaac reads "whenever you take damage"; here Shields absorb before
+  Health does (§3), so a swing they eat whole is damage taken and costs nothing,
+  and a relic paying for it would be paying for the absence of an injury. The
+  card was reworded to **"Whenever you lose Health"** and the hook fires from
+  `GameState.change_hp`, the choke point every drain in the 2.0 build funnels
+  through — an enemy's overflow past the shields, an event's bill, the Health a
+  failed try costs. It reports what *actually* came off rather than what was
+  asked for, so a 5-point drain against 2 Health left is one loss of 2.
+
+  A failed try is the one Health loss in the game that can be **taken back**, and
+  the undo button would otherwise have been a coin press: tick, untick, tick,
+  untick, +1 gold a cycle. `log_attempt` now measures what the tick paid out and
+  `undo_attempt` hands it back, so "refunding exactly what it spent" includes
+  what it earned.
+
+  **Incremental relics, counted per copy and drawn on the art.** Charm of the
+  Vampire pays every third defeated enemy, which needed both a counter and an
+  `enemy_killed` hook to count (a *bombed* body is destroyed rather than
+  defeated and never reaches `_defeat`, the same rule that decides whether it
+  pays gold). The counter lives on the **inventory slot** — `ItemData.counter_value`,
+  beside `current_charge`, round-tripping through saves the same way — and not
+  on the run. That is Slay the Spire's rule and it is the right one twice over:
+  two copies each count the same body once and each pay out on their own third,
+  and a copy picked up mid-run starts at zero instead of inheriting a tally it
+  was not present for. The number is drawn **bottom-right on the item's own art**,
+  where the Spire draws it, because a relic counter belongs to the picture of the
+  thing rather than to a caption beside it — just the count, since the threshold
+  is what the item's text already says and only the count moves.
+
+  **A dropped item is a chest — a Small one.** There's Options says "increase the
+  chest size dropped from bosses by 1", and the build had no chest on that path
+  at all: a defeated body rolled one relic and `ItemDropModal` asked Take it /
+  Leave it. Restating that as *choose 1 of 1* is what let the relic exist without
+  a second reward path. A boss's drop is now worth **1 chest point + 1 per copy**
+  held, spent on the same size ladder a `[chest reward]` walks
+  (`Data.chest_reward_sizes`), and at 2 or more the modal grows a row of cards to
+  pick between — still one relic taken, still one "Leave it", because the answer
+  to a chest is *which one* and not *how many*. Points past a Huge overflow into a
+  second chest, so a stack keeps paying instead of running off the end of the
+  ladder. Nothing changes for an ordinary body: 1 point, Small, the same single
+  item and the same two buttons.
+
+  **The D10 re-rolls the board against itself.** Every non-boss body is replaced
+  by a fresh roll at *its own* tier and game type, so the board keeps its weight
+  and only its faces change — the point of the relic is that the stack is a list
+  of goals and one of them is a goal you cannot or will not do, not that a High
+  board can be laundered into a Low one. The slot survives the swap (the square
+  it stands on, and the statuses hung on it); Health does not, because Health
+  here is goal completions and the goals just changed. Bosses shrug it off the
+  way they shrug off a bomb. A re-rolled body can be a different *shape*, so the
+  board is re-seated afterwards through the same rule a Mine-r Construction
+  gain/loss uses — factored out of `sync_grid_bounds` as `_reseat_stack`.
+
+  **`pools`, and shop items that turn up in shops.** The sheet's `pools` column
+  was authored but never read. It answers a different question from `tags`
+  (*where a relic is drawn from*, not what it is about), and `shop` is the first
+  entry wired up: an item in it counts **double** when a hub's shelf is rolled,
+  so Piggy Bank and There's Options are twice as likely to be standing at a shop
+  as anything else of their rarity. A weight rather than a filter, deliberately —
+  Isaac's shop pool is a separate table nothing else reaches, but against thirty
+  relics and at most ten hubs a run, that would have made every shop the same two
+  items every time. A shop relic still drops off a body, and a shelf can still
+  come up three ordinary ones. `devil_room` and `angel_room` are stored for the
+  encounters that will read them and are inert until those exist.
+
+  Five cells of sheet-vs-`.tres` drift were folded back **up** into the
+  spreadsheet on the way past (Lunch and Mango's descriptions, three blank tag
+  cells) — hand-edits the sheet had never heard about, which the first
+  regeneration after this commit would otherwise have thrown away.
+
 - **The star chart stopped doing the same work twice.**
 
   Four fixes to the hottest loop in the project, found by measuring rather than

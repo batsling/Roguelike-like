@@ -631,7 +631,7 @@ Health, and every existing answer to a follower works on it unchanged.
 
 Every defeated enemy drops an item, so the item table *is* the reward economy.
 Items are authored in `items2.0` with these columns: `Name | Rating | Type |
-Description | Effect | Reference | tags | File | Sorting`.
+Description | Effect | Reference | tags | pools | File | Sorting`.
 
 **Rating** = where the relic comes from. Four of the values are rungs on the
 rarity ladder a random draw walks — **Common / Uncommon / Rare / Legendary** — and
@@ -667,9 +667,10 @@ the next shop you walk into, free (§14).
 |---|---|
 | `Pickup` | One-time instant effect on acquire (e.g. Hollow Heart: +4 *empty* Max Health; Mango: +4 Max Health, healed). |
 | `Triggered` | Fires on a game event — usually **"after beating a game"** (Burning Blood +1 Health, Meat on the Bone conditional heal), or **"when a game is selected"** (Anchor +1 Shield, §3.2). |
-| `Charged, N` | Usable, recharges over N beats (D6 → +1 Scramble; Wand of Wishing → any item, 6). |
+| `Charged, N` | Usable, recharges over N beats (D6 → +1 Scramble; Wand of Wishing → any item, 6; D10 → re-roll the board, 2). |
 | `Usable` | Active, player-triggered (Ride the Bus → teleport to a random Deckbuilder game). |
 | `Passive` | Always-on modifier (Mine-r Construction: grow the Grid). |
+| `Incremental` | A `Triggered` item whose payout is on the **Nth** time, not every time (Charm of the Vampire: every third defeated enemy is +1 Health). The count lives on the inventory slot (`ItemData.counter_value`), so two copies each keep their own — Slay the Spire's rule — and it is **drawn on the item's own art**, bottom-right, the way the Spire draws a relic counter. |
 
 **"After beating a game" is the dominant trigger** — the core `TriggerBus` event
 the item layer hangs on (§11). Others seen: "when Levelling Up" (Crown), "when
@@ -683,10 +684,34 @@ teleport (by type), obtain-item, and **grow the Grid** (Mine-r Construction,
 Movement / Bomb / Grid — a design-side column the generator does not read.
 **tags** (alien, dice, food, sea…) drive synergy with enemy tags (§7) and goals.
 
+**pools** is a different question from tags: *where a relic is drawn from*, not
+what it is about. Only `shop` is wired up today, and it is a **weight rather than
+a filter** — an item in the shop pool counts **double** when a hub's shelf is
+rolled (`ShopSystem.SHOP_POOL_WEIGHT`, §14), so Piggy Bank and There's Options
+turn up at a shop more often than the rest of their rarity while still dropping
+off a body like anything else. Isaac's shop pool is a separate table nothing else
+reaches; against a catalogue of thirty relics and a run that visits at most ten
+hubs, that would have made every shop the same two items. `devil_room` /
+`angel_room` are authored ahead of the encounters that will read them and are
+inert until those exist.
+
 Sample synergies already in the sheet: **Crown** doubles Level Ups; **Snowball**
 doubles Transmute gains; **Alien Baby** (+6 Max Health but all enemies +1 Health)
 plays against the `alien` bounty; **Unstable Genome** self-destructs for a
 3-item choice.
+
+**The Isaac seven**, each of which named a moment or a rule the loop did not have
+and so brought a piece of machinery with it:
+
+| Relic | | Brought with it |
+|---|---|---|
+| **Piggy Bank** | Uncommon, `shop` | The `health_lost` hook — *any* Health leaving the player, anywhere in the run. |
+| **There's Options** | Uncommon, `shop` | A dropped item restated as a Small **chest**, and `boss_chest_bonus` to buy a boss's one a size up (§8.2). |
+| **The Mark** | Uncommon, `devil_room` | Nothing new: +1 Bash and the **Speed** status (§13), the way Vajra grants Strength. |
+| **Stigmata** | Uncommon, `angel_room` | Nothing new: +2 Max Health arriving full, and +1 Bash. |
+| **Charm of the Vampire** | Uncommon | The **incremental** counter, and `enemy_killed` for it to count. |
+| **D10** | Common, Charged 2 | `reroll_enemies` — the board re-rolled at its own difficulty and type. |
+| **Wooden Nickel** | Common, Charged 1 | Nothing new: a 50% `chance` at +1 Gold, on the shortest bar in the game. |
 
 ### 8.1 Effect DSL — reuse the existing item grammar
 
@@ -707,6 +732,18 @@ uses**, so no new engine is needed:
   already grants ability points; extend its vocabulary to bash/transmute/
   scramble/bombs/keys).
 
+Three more run-scope hooks and two more flags carry the Isaac relics, and they
+are listed here because each is a *moment* or a *rule* the 2.0 loop did not
+previously name:
+
+| Token | What it is |
+|---|---|
+| `health_lost:` | A trigger prefix — the player's Health went **down**, from any source anywhere in the run. Not `damage_taken`: Shields absorb first (§3), so a swing they eat whole is damage taken and no Health lost, and **Piggy Bank** must not pay for it. Emitted once per loss by `GameState.change_hp`, the choke point every drain funnels through, so an event's bill and a failed try count exactly as an enemy's swing does. A failed try is the one Health loss that can be **undone**, and `GameLoop2.undo_attempt` hands back what the tick paid — otherwise the undo button is a coin press. |
+| `enemy_killed:` | A body was **defeated** (`GameLoop2._defeat`). A bombed enemy is destroyed rather than defeated and never reaches it, the same rule that decides whether the body pays gold (§14). **Charm of the Vampire** counts them. |
+| `counter key=K every=N -> …` | The **incremental** wrapper: fire the inner effects on every Nth time, then roll the count back to zero. The count lives on the inventory slot, not on the run — see the `Incremental` row above. |
+| `boss_chest_bonus: N` | **There's Options.** Chest points added to a boss's drop; see §8.2. |
+| `reroll_enemies` | **D10.** Re-roll every non-boss body on the battlefield at *its own* difficulty and game type, keeping the square it stands on and the statuses hung on it. Health resets to the new body's own, because Health here is goal completions and the goals just changed. Bosses shrug it off, the same way they shrug off a bomb (§7.1). |
+
 Scrolls/encounters keep their **semicolon-separated, space-delimited token** DSL
 (`generate_scroll_tres.py` / `generate_encounter_tres.py`); the item generator
 (`generate_item_tres.py`) compiles the `Effect` column into `triggers`.
@@ -715,7 +752,15 @@ Scrolls/encounters keep their **semicolon-separated, space-delimited token** DSL
 
 A **chest** is the project's existing item-reward container
 (`GameState.grant_chest` → `RewardScreen`, `BASE_ITEM_CHOICES = 2`). Sizes map to
-the number of choices offered:
+the number of choices offered.
+
+**A dropped item IS a chest** — a Small one. That is not a rename: it is what
+lets There's Options exist without a second reward path. A defeated body's drop
+is one item and two buttons (`ItemDropModal`), which is exactly "choose 1 of 1";
+a boss holding There's Options drops a chest worth one point more, and a Medium
+chest is the same modal offering two cards to pick between. Points past a Huge
+overflow into a second chest — a second question, asked after the first — so a
+stack of copies keeps paying instead of running off the end of the ladder.
 
 | Chest size | Choices |
 |---|---|
@@ -1227,6 +1272,14 @@ Two preferences shape the draw, both aimed at the same problem — 21 authored
 items against a run that already gets one free per defeated enemy: **no duplicate
 slots**, and **items the player doesn't already own are preferred**. Both are
 preferences rather than filters, and fall back rather than leaving a slot empty.
+
+A third rides on top of them: an item in the sheet's **`shop` pool** (§8) counts
+**double** in the draw (`ShopSystem.SHOP_POOL_WEIGHT`), so Piggy Bank and There's
+Options are twice as likely to be standing at a hub as anything else of their
+rarity. A weight and not a separate table, for the same reason as the two above:
+Isaac's shop pool is a table nothing else reaches, but against thirty relics and
+ten hubs that would have made every shop the same two items, every run. A shop
+relic still drops off a body, and a shelf can still come up three ordinary ones.
 
 **Rerolling costs 1 Scramble, not gold.** Scramble is the run's reroll verb
 everywhere else (§4 — "re-draw the offering"), so a shelf of three things you

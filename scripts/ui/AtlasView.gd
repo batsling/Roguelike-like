@@ -164,8 +164,17 @@ var _neighbors: Dictionary = {}      # star index -> Array[int], built lazily
 var _near: Dictionary = {}           # selection halo: index -> true
 var _trail: Array = []               # road ahead:  [[from_idx, to_idx], ...]
 # Both roads as a SET of star indices, built on demand off _trail + _history
-# (see route_stars). Wiped wherever those two are.
+# (see route_stars). Wiped wherever those two are, through _clear_route_cache.
 var _route_stars: Dictionary = {}
+# The same answer again, as the two LISTS the draw loop actually wants: which
+# stars are scenery and which are the route (see star_indices). Derived from
+# _route_stars, so they are wiped with it and never separately.
+var _stars_off_route: PackedInt32Array = PackedInt32Array()
+var _stars_on_route: PackedInt32Array = PackedInt32Array()
+# And the no-route case: every star, in order. A pure function of the sky's SIZE,
+# so unlike the two above it survives a route change and is rebuilt only when the
+# layout is (the size test in star_indices catches that on its own).
+var _stars_all: PackedInt32Array = PackedInt32Array()
 var _steps_ahead: int = -1           # hops still to walk to the Amulet, -1 = no route
 var _reserve_left: float = 0.0       # screen edges something is floating over
 var _reserve_right: float = 0.0
@@ -349,7 +358,7 @@ func neighbors_of(i: int) -> Array:
 # are flagged so the trail can show progress.
 func _build_trail() -> void:
 	_trail.clear()
-	_route_stars.clear()
+	_clear_route_cache()
 	if not has_layout() or pure_catalog:
 		return
 	# In preview mode the road ahead starts at the game being considered — that is
@@ -384,7 +393,7 @@ func trail_segment_count() -> int:
 # say so. The card is refreshed too: it carries the pin's own button.
 func refresh_route() -> void:
 	_trail.clear()
-	_route_stars.clear()
+	_clear_route_cache()
 	_build_trail()
 	_build_history()
 	_refresh_card()
@@ -430,6 +439,46 @@ func on_route(i: int) -> bool:
 	if not showing_route():
 		return true
 	return _route_stars.has(i)
+
+# Wipe the route caches together. There are four places that invalidate the road
+# — the two builders, the explicit refresh, and a relayout — and three things to
+# wipe at each of them, so it is one call rather than three lines copied four
+# times. A partition that outlives its set is a sky drawing last hop's route.
+func _clear_route_cache() -> void:
+	_route_stars.clear()
+	_stars_off_route = PackedInt32Array()
+	_stars_on_route = PackedInt32Array()
+
+# WHICH STARS a draw pass is for, as a list to walk rather than a test to apply.
+#
+# The split into scenery and route is what puts the roads between the two (see
+# draw_layers), and it is worth keeping — but it used to be paid for by running
+# the WHOLE sky once per star layer and skipping the half that belonged to the
+# other pass. 1704 iterations and 1704 dictionary hits to draw 852 stars, on
+# every redraw, which is every pan step. The membership question is asked once
+# per star here instead, and each pass walks only its own list.
+#
+# Built lazily and kept until the route changes; the full-sky list is a pure
+# function of the layout and is rebuilt with it.
+func star_indices(layer: int) -> PackedInt32Array:
+	var n: int = layout.star_count() if has_layout() else 0
+	if layer != LAYER_STARS_OFF_ROUTE and layer != LAYER_STARS_ON_ROUTE:
+		if _stars_all.size() != n:
+			_stars_all = PackedInt32Array()
+			_stars_all.resize(n)
+			for i in range(n):
+				_stars_all[i] = i
+		return _stars_all
+	if _stars_off_route.size() + _stars_on_route.size() != n:
+		_stars_off_route = PackedInt32Array()
+		_stars_on_route = PackedInt32Array()
+		var route: Dictionary = route_stars()
+		for i in range(n):
+			if route.has(i):
+				_stars_on_route.append(i)
+			else:
+				_stars_off_route.append(i)
+	return _stars_on_route if layer == LAYER_STARS_ON_ROUTE else _stars_off_route
 
 # --- what goes down over what -----------------------------------------------
 #
@@ -558,7 +607,7 @@ func marker_color(index: int) -> Color:
 # passed off as a road that exists.
 func _build_history() -> void:
 	_history.clear()
-	_route_stars.clear()
+	_clear_route_cache()
 	if not has_layout() or pure_catalog:
 		return
 	var walked: Array = []
@@ -969,7 +1018,7 @@ func _relayout(reframe: bool = true) -> void:
 	_sequel_cache.clear()
 	_trail.clear()
 	_history.clear()
-	_route_stars.clear()
+	_clear_route_cache()
 	select(-1)
 	select_edge(-1)
 	_build_trail()
@@ -2417,11 +2466,11 @@ class StarCanvas extends Control:
 		if not view.pure_catalog:
 			current = lay.index_of(GameState.current_game_id)
 			amulet = lay.index_of(GameState.amulet_game_id)
-		for i in range(lay.star_count()):
-			if layer == AtlasView.LAYER_STARS_OFF_ROUTE and view.on_route(i):
-				continue
-			if layer == AtlasView.LAYER_STARS_ON_ROUTE and not view.on_route(i):
-				continue
+		# WHICH stars this pass is for is answered once, as a list, rather than by
+		# running the whole sky and skipping the half belonging to the other pass
+		# (see AtlasView.star_indices — that skipping was 1704 iterations and 1704
+		# dictionary hits per redraw to draw 852 stars).
+		for i in view.star_indices(layer):
 			var p: Vector2 = view.to_screen(lay.position_of(i))
 			if not vis.has_point(p):
 				continue

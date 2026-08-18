@@ -201,3 +201,74 @@ func test_the_canvas_stops_widening_before_the_page_stops_being_readable() -> vo
 	Settings.request_canvas_width(9000)
 	assert_eq(Settings.canvas_width, Settings.CANVAS_MAX_WIDTH,
 		"past the cap a smaller page is worse than the crop it was fixing")
+
+
+# ==========================================================================
+# The shipped glyph font (fonts/*.ttf, built by tools/build_glyph_font.py)
+#
+# The UI is drawn out of symbols Godot's built-in font does not have, and a miss
+# is answered by searching the HOST's fonts during shaping — uncached, ~2 ms per
+# Label. So the glyphs are shipped. What has to stay true is that they cover what
+# the source actually draws, and that adding them moved no layout.
+# ==========================================================================
+
+# Every non-ASCII character the UI is written with, read off the source the same
+# way the build script does — so a glyph added to a screen without rebuilding the
+# font fails here rather than at 2 ms a Label in front of a player.
+func _glyphs_in_source() -> Dictionary:
+	var skip := "‘’“”…–—′″·•"
+	var out: Dictionary = {}
+	var dirs: Array = ["res://scripts"]
+	while not dirs.is_empty():
+		var path: String = dirs.pop_back()
+		for entry in DirAccess.get_directories_at(path):
+			dirs.append("%s/%s" % [path, entry])
+		for file in DirAccess.get_files_at(path):
+			if not file.ends_with(".gd"):
+				continue
+			var text: String = FileAccess.get_file_as_string("%s/%s" % [path, file])
+			for i in range(text.length()):
+				var ch: String = text[i]
+				if ch.unicode_at(0) > 0x2000 and not skip.contains(ch):
+					out[ch] = "%s/%s" % [path, file]
+	return out
+
+func test_the_shipped_fonts_cover_the_glyphs_the_ui_draws() -> void:
+	var font: Font = UITheme.glyph_font()
+	assert_not_null(font, "the theme has a glyph font")
+	# U+2581 is knowingly uncovered — no Noto web subset ships Block Elements, and
+	# it is one button on one modal. It still renders, off the end of the chain.
+	var known_gap := "▁"
+	var missing: Array = []
+	for ch in _glyphs_in_source().keys():
+		if known_gap.contains(ch):
+			continue
+		if not font.has_char(ch.unicode_at(0)):
+			missing.append("%s (U+%04X, in %s)" % [ch, ch.unicode_at(0),
+				_glyphs_in_source()[ch]])
+	assert_eq(missing, [], "run tools/build_glyph_font.py — uncovered: %s" % str(missing))
+
+func test_the_glyph_font_does_not_change_the_line_height() -> void:
+	# Godot takes a font's height to be the MAX over its whole fallback chain, so
+	# one subset with a taller ascender silently grows every line in the game. It
+	# grew the overworld by 63px once; the build script pins every subset to the
+	# base font's metrics, and this is what says it still does.
+	var base: Font = ThemeDB.fallback_font
+	var glyphs: Font = UITheme.glyph_font()
+	for size in [10, 11, 12, 13, 14, 15, 22]:
+		assert_eq(glyphs.get_height(size), base.get_height(size),
+			"a line is the same height at font size %d" % size)
+		assert_eq(glyphs.get_ascent(size), base.get_ascent(size),
+			"and sits on the same baseline at %d" % size)
+
+func test_the_theme_hands_every_screen_the_glyph_font() -> void:
+	assert_eq(UITheme.make_theme().default_font, UITheme.glyph_font(),
+		"the shared theme's default font is the one with the glyphs in it")
+
+func test_a_character_nothing_ships_still_renders() -> void:
+	# The chain ends in a system-searching font on purpose: a player's note may be
+	# in any language, and tofu in their own writing would be a poor trade for the
+	# speed. Nothing here ships CJK, so it can only come off the tail.
+	var glyphs: Font = UITheme.glyph_font()
+	assert_gt(glyphs.get_string_size("家", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x, 0.0,
+		"a character outside every shipped subset still measures")

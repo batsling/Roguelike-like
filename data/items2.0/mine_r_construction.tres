@@ -15,5 +15,5 @@ stat_bonuses = {}
 grid_grow = true
 max_uses = -1
 source_game = "BroomSweeper"
-tags = PackedStringArray()
+tags = PackedStringArray("tool")
 image = ExtResource("2_img")

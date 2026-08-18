@@ -31,7 +31,11 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   charged (charge_cost N), keep_shields, bomb_stun,
                   bomb_cardinal, grid_grow, grid_length, hide_spawns,
                   spawn_status <status> N, loot_multiplier: N,
-                  gold_per_enemy: N, shop_sweep.
+                  gold_per_enemy: N, shop_sweep, boss_chest_bonus: N,
+                  reroll_enemies.
+
+Columns consumed beyond the DSL: `tags` (what the item is about) and `pools`
+(where it is drawn from — `shop` doubles its weight on a shop shelf).
 
 Targets are written in parens after an effect value: (self) / (enemy) /
 (all_enemies) / (random_enemies count=2). Bare prose in parens (explanatory
@@ -100,15 +104,26 @@ TRIGGER_SIGNALS = {
     # "when a Bomb is spent" (§4) — fired once per bomb by GameLoop2.bomb, run-
     # scope and scene-less, whatever the blast touched (Blood Bombs' +1 Health).
     "bomb_used": "bomb_used",
+    # "when the player's Health went down" — ANY source, anywhere in the run: an
+    # enemy swing that got past the Shields, the Health a failed try costs, an
+    # event's bill. Distinct from `damage_taken`, which is the swing: Shields
+    # absorb first, so a hit can be damage taken and cost no Health at all.
+    # Piggy Bank pays on the Health (§8.1).
+    "health_lost": "health_lost",
 }
 # Triggers whose effects default to the player (self) rather than an enemy —
 # every out-of-combat / on-self hook. game_beaten is scene-less run-scope, so
 # its grants (gain_hp / gain_stat / …) target the player.
 SELF_DEFAULT_TRIGGERS = ("combat_started", "turn_started", "turn_ended",
                          "item_acquired", "game_beaten", "game_selected",
-                         "bomb_used")
+                         "bomb_used", "health_lost")
 # Hooks that fire frequently enough to suppress the generic trigger log line.
-ALWAYS_SILENT = {"attack_landed", "attack_missed", "turn_tick", "damage_taken"}
+# `health_lost` is on the list because in the 2.0 loop it fires on every enemy
+# swing that lands AND on every failed try — a report can be a dozen of them, and
+# "(Piggy Bank triggers)" a dozen times would bury the report itself. The gold
+# counter moving is the feedback.
+ALWAYS_SILENT = {"attack_landed", "attack_missed", "turn_tick", "damage_taken",
+                 "health_lost"}
 
 # Tokens in a "+N <token>" payload that are first-class effect types rather than
 # statuses. (In a passive: clause everything is a stat bonus instead.)
@@ -435,6 +450,12 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
 
     if verb in ("free_random_hand_card", "attack_double"):
         return {"type": verb}
+
+    # reroll_enemies — D10. Every non-boss body on the battlefield is replaced by
+    # a fresh roll at its OWN difficulty and game type, keeping the slot it stood
+    # in. No arguments: "all non-boss enemies" is the whole of what it does.
+    if verb == "reroll_enemies":
+        return {"type": "reroll_enemies"}
 
     # reduce_card_cost <amount> [count=N] [tag=X] [type=Y] — Empty Tome.
     # Cost reduction on N random cards matching the filter, for the combat.
@@ -794,6 +815,12 @@ def parse_item(row):
             # Lord's Parasol: walking into a shop takes the whole shelf.
             fields["shop_sweep"] = True
             last_trigger = None
+        elif kl0 == "boss_chest_bonus":
+            # There's Options: chest POINTS added to a BOSS's drop. One item off a
+            # body is a Small chest (1 of 1); +1 point buys the next rung of the
+            # size ladder, so the boss's becomes 1 of 2.
+            fields["boss_chest_bonus"] = _int(re.search(r"\d+", clause).group(0), 0)
+            last_trigger = None
         elif kl0 == "lower_hp_damage_mult":
             fields["lower_hp_damage_mult"] = float(re.search(r"[0-9.]+", payload).group(0))
             last_trigger = None
@@ -1036,6 +1063,7 @@ def item_tres(row):
         ("loot_multiplier", lambda v: str(v)),
         ("gold_per_enemy", lambda v: str(v)),
         ("shop_sweep", lambda v: "true"),
+        ("boss_chest_bonus", lambda v: str(v)),
     ]:
         if key in f and f[key] not in (None, [], {}, 0, False, ""):
             lines.append("%s = %s" % (key, gd(f[key])))
@@ -1049,6 +1077,15 @@ def item_tres(row):
     tags = [t.strip() for t in str(row.get("tags") or "").split(",")
             if t.strip() and t.strip().lower() not in ("n/a", "none")]
     lines.append("tags = %s" % packed(tags))
+    # `pools` is WHERE a relic is drawn from, which is a different question from
+    # `tags` (what it is ABOUT — bomb, blood, dice). Only `shop` is wired up
+    # today: it doubles the item's weight on a shop shelf (ShopSystem._draw_one).
+    # `devil_room` / `angel_room` are authored ahead of the encounters that will
+    # read them, and are inert until then.
+    pools = [p.strip().lower() for p in str(row.get("pools") or "").split(",")
+             if p.strip() and p.strip().lower() not in ("n/a", "none")]
+    if pools:
+        lines.append("pools = %s" % packed(pools))
     if img_res:
         lines.append('image = ExtResource("2_img")')
     return iid, "\n".join(lines) + "\n"

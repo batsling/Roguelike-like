@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_d10"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/D10.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"d10"
+display_name = "D10"
+kind = 6
+rarity = 0
+description = "Reroll all non-boss enemies"
+triggers = [{"on": "item_used", "effects": [{"type": "reroll_enemies"}]}]
+stat_bonuses = {}
+charge_cost = 2
+starts_charged = true
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray("dice")
+image = ExtResource("2_img")

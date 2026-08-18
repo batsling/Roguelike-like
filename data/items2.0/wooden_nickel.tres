@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_wooden_nickel"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/WoodenNickel.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"wooden_nickel"
+display_name = "Wooden Nickel"
+kind = 6
+rarity = 0
+description = "50% chance to Gain +1 Gold"
+triggers = [{"on": "item_used", "effects": [{"type": "chance", "percent": 50, "effect": {"type": "gain_gold", "value": 1}}]}]
+stat_bonuses = {}
+charge_cost = 1
+starts_charged = true
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray("wood", "coin")
+image = ExtResource("2_img")

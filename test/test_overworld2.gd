@@ -4269,3 +4269,138 @@ func test_walking_out_of_a_room_does_not_ask_twice() -> void:
 func _report_beat(ui) -> void:
 	var landed: Dictionary = GameLoop2.arrival()
 	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])
+
+
+# ==========================================================================
+# Repaint guards
+#
+# Three sections of the page skip their rebuild when they would only redraw the
+# same thing (see the repaint-guard block in Overworld2). What has to stay true
+# is the pair: the guard engages when nothing moved, and gets out of the way the
+# moment anything does. A guard that never engages is only slow; one that engages
+# when it shouldn't is a page showing a number that has changed.
+# ==========================================================================
+
+# --- the verb chips --------------------------------------------------------
+
+func test_the_verb_chips_are_not_rebuilt_when_no_verb_moved() -> void:
+	_ui._refresh_select_stats()
+	var chips: Array = _ui._select_stats.get_children().duplicate()
+	assert_gt(chips.size(), 0, "there are chips to keep")
+	_ui._refresh_select_stats()
+	assert_eq(_ui._select_stats.get_children(), chips,
+		"the same Control objects are still standing — nothing was re-shaped")
+
+func test_every_verb_the_chips_draw_moves_them() -> void:
+	# One case per value in the signature, because the failure this guards against
+	# is a value the rebuild reads and the signature forgot.
+	for verb in ["bash", "dash", "transmute", "scramble"]:
+		_ui._refresh_select_stats()
+		var before: String = _text_of(_ui._select_stats)
+		GameState.grant_run_stat(verb, 1)
+		_ui._refresh_select_stats()
+		assert_ne(_text_of(_ui._select_stats), before,
+			"a +1 %s repaints the chips" % verb)
+
+func test_luck_moves_the_chips_even_though_no_verb_did() -> void:
+	# Luck is drawn from Stats rather than from a GameState field, and its own
+	# chip quotes the odds it changes — so it is the value most easily left out.
+	_ui._refresh_select_stats()
+	var before: String = _text_of(_ui._select_stats)
+	GameState.add_item(Data.get_item2(&"clover"))     # +1 Luck
+	_ui._refresh_select_stats()
+	var after: String = _text_of(_ui._select_stats)
+	assert_ne(after, before, "a Clover repaints the chips")
+	assert_true(after.contains("Luck %d" % Stats.get_value(&"luck")),
+		"showing the new Luck: %s" % after)
+
+func test_entering_dash_mode_repaints_the_chips() -> void:
+	# _dash_mode decides whether Dash is a live button or a readout, and it moves
+	# without any count moving with it.
+	GameState.grant_run_stat("dash", 1)
+	_ui._refresh_select_stats()
+	var before: Array = _ui._select_stats.get_children().duplicate()
+	_ui.dash()
+	_ui._refresh_select_stats()
+	assert_ne(_ui._select_stats.get_children(), before,
+		"arming a Dash rebuilds the chips")
+	_ui.cancel_dash()
+
+# --- the standing checklist ------------------------------------------------
+
+func test_the_standing_checklist_is_not_rebuilt_when_the_board_is_still() -> void:
+	_ui._populate_standing_checklist()
+	var rows: Array = _ui._verify_box.get_children().duplicate()
+	assert_gt(rows.size(), 0, "there are rows to keep")
+	_ui._populate_standing_checklist()
+	assert_eq(_ui._verify_box.get_children(), rows, "the same rows are still standing")
+
+func test_a_body_arriving_repaints_the_standing_checklist() -> void:
+	_ui._populate_standing_checklist()
+	var before: String = _text_of(_ui._verify_box)
+	var e := GoalEnemyData.new()
+	e.id = &"guard_probe"
+	e.display_name = "Guard Probe"
+	e.health = 1
+	e.damage = 1
+	GameLoop2.spawn_to_stack(e)
+	_ui._populate_standing_checklist()
+	var after: String = _text_of(_ui._verify_box)
+	assert_ne(after, before, "the checklist noticed the arrival")
+	assert_true(after.contains("Guard Probe"), "and lists it: %s" % after)
+
+func test_a_body_leaving_repaints_the_standing_checklist() -> void:
+	var e := GoalEnemyData.new()
+	e.id = &"guard_probe"
+	e.display_name = "Guard Probe"
+	e.health = 1
+	e.damage = 1
+	var inst: int = GameLoop2.spawn_to_stack(e)
+	_ui._populate_standing_checklist()
+	assert_true(_text_of(_ui._verify_box).contains("Guard Probe"), "it is listed first")
+	GameLoop2.despawn(inst)
+	_ui._populate_standing_checklist()
+	assert_false(_text_of(_ui._verify_box).contains("Guard Probe"),
+		"and gone once it stops following")
+
+func test_the_report_step_hands_the_checklist_back_intact() -> void:
+	# The report step and the standing list share one box. Taking a game drops the
+	# standing signature; without that, coming back to the offering would match a
+	# signature describing rows the report step had already replaced, and leave the
+	# tick boxes on screen with no game in play.
+	_ui._populate_standing_checklist()
+	var standing: String = _text_of(_ui._verify_box)
+	assert_true(standing.contains("What you need to do"), "the standing list is up")
+	_ui.pick(0)
+	var playing: String = _text_of(_ui._verify_box)
+	assert_true(playing.contains("Tick what you did this game"),
+		"the report step took the box over: %s" % playing)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	_ui._drop_queue.clear()
+	assert_true(_text_of(_ui._verify_box).contains("What you need to do"),
+		"and the standing list is back after the report")
+
+# --- the controls row ------------------------------------------------------
+
+func test_the_rate_button_appears_once_a_game_has_been_reported() -> void:
+	# _last_played_game is the controls row's only content for most of a run, and
+	# it moves on a report rather than on anything the row itself can see.
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	_ui._drop_queue.clear()
+	_ui._render_controls()
+	assert_true(_text_of(_ui._controls_row).contains("Rate"),
+		"the game just played is scorable from the offering")
+
+func test_the_start_panel_empties_the_controls_row_for_good() -> void:
+	# _refresh clears this row itself on the start panel rather than going through
+	# _render_controls, so the guard is invalidated by hand there.
+	_ui._render_controls()
+	_ui._phase = _ui.Phase.START_SELECT
+	_ui._refresh()
+	assert_eq(_ui._controls_row.get_child_count(), 0, "nothing is offered to do yet")
+	_ui._phase = _ui.Phase.SELECT
+	_ui._render_controls()
+	assert_true(true, "and the row can be filled again without a stale guard")

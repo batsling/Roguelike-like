@@ -12,7 +12,7 @@ the honour system.
 | how the current build works | `docs/games-first-redesign.md` — **the canonical spec**, referenced from 25 places |
 | repo layout, autoloads, screen flow | `README.md` (~20 KB, all of it current) |
 | what changed and why | `CHANGELOG.md` — narrative history, not needed to make a change |
-| what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each, none started |
+| what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. One left: splitting `Overworld2.gd` |
 | combat-era designs | `docs/archive/` — **describes systems that no longer exist**; see its README before trusting a path or class name |
 
 ## The shape of it
@@ -37,7 +37,7 @@ the honour system.
 ## Working here
 
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 25 scripts, ~1010 tests, ~5 min
+godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 29 scripts, ~1240 tests, ~5 min
 ```
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by
@@ -87,3 +87,14 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 25 scripts, ~1010 t
   `export_presets.cfg` are gitignored and regenerate. They show up in local file
   listings and are not part of the project.
 - Art filenames are **PascalCase**, matched to content ids by convention.
+- **A new UI glyph needs `tools/build_glyph_font.py` re-run.** The UI is drawn out
+  of ~70 symbols (⚔ ☠ ⚡ 🏆 …) and Godot's built-in font has two of them; the rest
+  are shipped as subsetted Noto fonts in `fonts/`, chained onto the theme font by
+  `UITheme.glyph_font`. A glyph that isn't in them still renders — the chain ends
+  in a system-searching font — but it costs ~2 ms of host font search every time
+  a Label carrying it is created, which is what shipping them was for.
+  `test_display_settings.gd` fails if the source uses one the fonts don't have.
+  If you ever swap a font in there, its **vertical metrics must stay on the base
+  font's em grid** (4096 upem, ascender 4378, descender 1200): Godot takes a
+  font's height as the max over the whole fallback chain, so a taller subset makes
+  every line in the game taller and the 720p fit tests fail 63px over.
