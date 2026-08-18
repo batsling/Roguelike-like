@@ -1161,6 +1161,16 @@ func _show_item_detail(it: ItemData) -> void:
 		_detail_box.add_child(_detail_section("Stat Bonuses"))
 		for stat in it.stat_bonuses.keys():
 			_detail_box.add_child(_label("%s %+d" % [String(stat).capitalize(), int(it.stat_bonuses[stat])], Color(0.7, 0.85, 0.95), 11))
+	# The status half of a passive grant reads exactly like the stat half — the
+	# player is looking at "what does holding this give me", and a section that
+	# listed one and not the other would make Bionic Face Plating look inert.
+	if not it.status_bonuses.is_empty():
+		_detail_box.add_child(_detail_section("Status Bonuses"))
+		for sid in it.status_bonuses.keys():
+			var sd: StatusData = Data.get_status(StringName(sid))
+			var sname: String = sd.display_name if sd != null else String(sid).capitalize()
+			_detail_box.add_child(_label("%s %+d" % [sname, int(it.status_bonuses[sid])],
+				Color(0.7, 0.85, 0.95), 11))
 	if it.tags.size() > 0:
 		_detail_box.add_child(_detail_section("Tags"))
 		_detail_box.add_child(_label(", ".join(it.tags), Color(0.73, 0.55, 0.78), 11, false, true))

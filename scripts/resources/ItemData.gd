@@ -219,6 +219,16 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # Keys: strength, dexterity, intelligence, charisma, luck, max_hp, max_energy, etc.
 @export var stat_bonuses: Dictionary = {}
 
+# Persistent STATUS stacks held up while the item is in inventory — the status
+# half of stat_bonuses. Maps a 2.0 status id -> stacks (Bionic Face Plating:
+# {"speed": 3}). Applied by GameState.add_item and taken back by remove_item_at,
+# so the grant lives and dies with the slot: this is what makes an item PASSIVE
+# rather than a Pickup. The distinction is load-bearing for the destructible
+# trinkets (§8.1) — The Mark's `apply_status speed 1` is a Pickup and keeps its
+# Speed forever, while a passive grant is only yours while you still have the
+# thing that gave it.
+@export var status_bonuses: Dictionary = {}
+
 # Multiplicative stat scaling (Cricket's Head: "Multiply all Strength by 1.5").
 # Maps a stat id -> multiplier applied to that stat's whole effective value
 # (base + flat item bonuses + temp buffs). Multiple owned copies/items stack
@@ -494,6 +504,15 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # chest rather than off the end of the ladder. SUMMED across copies by
 # GameState.boss_chest_bonus and read by Overworld2's kill-drop path.
 @export var boss_chest_bonus: int = 0
+
+# Mewgenics' fragile trinkets (Lucky Hat, Bionic Face Plating, Fortune Necklace):
+# the item is destroyed the moment an ENEMY ATTACK costs the player Health.
+# Deliberately narrower than the `health_lost` hook Piggy Bank rides: the Health
+# a failed try charges, an event's bill and a curse's drain all lose Health and
+# none of them break the hat. It is also narrower than "an enemy swung" — Shields
+# absorb first (§3), and a swing they eat whole costs no Health, so a stocked
+# player keeps the trinket. Read by GameState._on_health_lost.
+@export var destroyed_by_enemy_damage: bool = false
 
 # Runtime-minted unique id per inventory slot (set by GameState.add_item).
 # Two duplicated copies of the same template get different instance_ids,

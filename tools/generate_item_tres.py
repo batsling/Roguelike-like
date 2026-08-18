@@ -15,6 +15,8 @@ verification, perfect, and the long tail of one-off flags).
 
 Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
   passive:        passive: +3 strength, -2 discovery        -> stat_bonuses
+  passive status: passive_status: speed 3                   -> status_bonuses
+                  (stacks held up by the slot — gone when the item is)
   trigger:        combat_start: +10 block (self)            -> triggers[{on, effects}]
                   enemy_killed: 50% chance +2 hp
                   card_played if_type=attack: counter key=attacks_total every=10 -> gain_energy 1
@@ -32,7 +34,7 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   bomb_cardinal, grid_grow, grid_length, hide_spawns,
                   spawn_status <status> N, loot_multiplier: N,
                   gold_per_enemy: N, shop_sweep, boss_chest_bonus: N,
-                  reroll_enemies.
+                  reroll_enemies, destroy_on_damage.
 
 Columns consumed beyond the DSL: `tags` (what the item is about) and `pools`
 (where it is drawn from — `shop` doubles its weight on a shop shelf).
@@ -683,6 +685,26 @@ def parse_item(row):
         if kl0 == "passive":
             fields["stat_bonuses"].update(parse_passive(payload))
             last_trigger = None
+        elif kl0 == "passive_status":
+            # The status half of a passive grant: `passive_status: speed 3`
+            # (Bionic Face Plating). Held UP by the slot — GameState puts the
+            # stacks on at pickup and takes them back off when the item leaves,
+            # which is what separates it from `item_acquired: apply_status`
+            # (The Mark), where the status is yours to keep.
+            for part in split_top(payload, ","):
+                mm = re.match(r"^\+?\s*(?:(\d+)\s+([a-z_]+)|([a-z_]+)\s+(\d+))$",
+                              part.strip().lower())
+                if not mm:
+                    raise ValueError(
+                        "item DSL: passive_status wants `<status> <n>` in %r" % clause)
+                sid = mm.group(2) or mm.group(3)
+                fields.setdefault("status_bonuses", {})[sid] = int(mm.group(1) or mm.group(4))
+            last_trigger = None
+        elif kl0 == "destroy_on_damage":
+            # Mewgenics' fragile trinkets: an enemy attack that costs Health
+            # takes the item with it. Not every Health loss — see ItemData.
+            fields["destroyed_by_enemy_damage"] = True
+            last_trigger = None
         elif kl0 == "stat_multiply":
             fields["stat_multipliers"].update(parse_multipliers(payload))
             last_trigger = None
@@ -1064,6 +1086,8 @@ def item_tres(row):
         ("gold_per_enemy", lambda v: str(v)),
         ("shop_sweep", lambda v: "true"),
         ("boss_chest_bonus", lambda v: str(v)),
+        ("status_bonuses", lambda v: gd_value(v)),
+        ("destroyed_by_enemy_damage", lambda v: "true"),
     ]:
         if key in f and f[key] not in (None, [], {}, 0, False, ""):
             lines.append("%s = %s" % (key, gd(f[key])))

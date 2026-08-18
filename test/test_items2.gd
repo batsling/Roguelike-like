@@ -511,6 +511,125 @@ func test_stigmata_fills_the_container_it_adds_and_pays_a_bash() -> void:
 	assert_eq(GameState.hp, 12, "which arrives full — +2 Health")
 	assert_eq(GameState.bash, before + 1, "and +1 Bash")
 
+# Stigmata's sheet row spells out BOTH halves — `gain_max_hp 2; gain_hp 2` — and
+# is generated literally. The raise fills its own container (§3) and the heal
+# lands on top of that, so a wounded player gets four Health out of it and a full
+# one gets two: the second half has nowhere to go when the pool is already full,
+# which is why the test above still reads 12.
+func test_stigmatas_heal_is_on_top_of_the_container_it_fills() -> void:
+	GameState.max_hp = 10
+	GameState.hp = 5
+	_give(&"stigmata")
+	assert_eq(GameState.max_hp, 12, "+2 Max Health")
+	assert_eq(GameState.hp, 9, "the raise heals 2 and the authored +2 Health follows it")
+
+# --- Ban Hammer: two Bashes on pickup ------------------------------------
+
+func test_ban_hammer_pays_two_bashes() -> void:
+	var before: int = GameState.bash
+	_give(&"ban_hammer")
+	assert_eq(GameState.bash, before + 2, "Ban Hammer: +2 Bashes")
+
+# --- the Mewgenics trinkets: passive grants that break on a hit (§8.1) ----
+#
+# Three items with one rule between them: what they give is RENTED (it unwinds
+# when the item leaves the pack, which is what PASSIVE means here) and an enemy
+# attack that costs Health takes the item away. The Mark is the control case
+# above — a Pickup, so its Speed is kept whatever happens to the item.
+
+func test_lucky_hat_rents_its_luck() -> void:
+	var before: int = Stats.get_value(&"luck")
+	var hat: ItemData = _give(&"lucky_hat")
+	assert_eq(Stats.get_value(&"luck"), before + 1, "Lucky Hat: +1 Luck while worn")
+	GameState.remove_item(hat)
+	assert_eq(Stats.get_value(&"luck"), before, "and the luck goes with the hat")
+
+func test_bionic_face_plating_rents_the_speed_status() -> void:
+	var plating: ItemData = _give(&"bionic_face_plating")
+	assert_eq(GameState.status_stacks(&"speed"), 3, "+3 Speed while it is bolted on")
+	GameState.remove_item(plating)
+	assert_eq(GameState.status_stacks(&"speed"), 0, "and none of it once it is off")
+
+func test_a_passive_status_grant_only_takes_back_its_own_share() -> void:
+	# The Mark's Speed is a pickup and is not the plating's to take away, and a
+	# second plating stacks with the first rather than replacing it.
+	_give(&"the_mark")
+	var first: ItemData = _give(&"bionic_face_plating")
+	_give(&"bionic_face_plating")
+	assert_eq(GameState.status_stacks(&"speed"), 7, "1 kept + 3 + 3 rented")
+	GameState.remove_item(first)
+	assert_eq(GameState.status_stacks(&"speed"), 4, "one plating's worth comes off")
+
+func test_fortune_necklace_pays_a_gold_on_selection() -> void:
+	_give(&"fortune_necklace")
+	GameState.gold = 0
+	TriggerBus.game_beaten.emit({"game_id": &"rogue"})
+	assert_eq(GameState.gold, 0, "beating a game is not when it pays")
+	TriggerBus.game_selected.emit({"game_id": &"rogue", "shields": 3})
+	assert_eq(GameState.gold, 1, "Fortune Necklace: +1 Gold when a game is selected")
+
+func test_an_enemy_attack_destroys_every_fragile_trinket_at_once() -> void:
+	var hat: ItemData = _give(&"lucky_hat")
+	var necklace: ItemData = _give(&"fortune_necklace")
+	var luck_before: int = Stats.get_value(&"luck")
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.change_hp(-1, GameState.HEALTH_SOURCE_ENEMY_ATTACK)
+	assert_false(GameState.inventory.has(hat), "the hat is gone")
+	assert_false(GameState.inventory.has(necklace), "and so is the necklace")
+	assert_eq(Stats.get_value(&"luck"), luck_before - 1, "the luck went with it")
+
+func test_health_lost_to_anything_else_leaves_the_trinkets_alone() -> void:
+	var hat: ItemData = _give(&"lucky_hat")
+	GameState.max_hp = 10
+	GameState.hp = 10
+	# The Health a failed try charges, an event's bill, a curse's drain: all of
+	# them are Health lost and none of them are an attack.
+	GameState.change_hp(-1)
+	assert_true(GameState.inventory.has(hat), "a Health cost is not a hit")
+	assert_eq(GameState.hp, 9, "and it still cost the Health")
+
+func test_the_trinkets_survive_an_attack_the_shields_eat():
+	var hat: ItemData = _give(&"lucky_hat")
+	GameState.max_hp = 10
+	GameState.hp = 10
+	var inst: int = _choose_solo(_fighter(2))
+	GameLoop2.beat_game(false)
+	_march_to_front(inst)
+	GameState.shields = 3
+	GameLoop2.beat_game(false)
+	assert_eq(GameState.hp, 10, "the shields absorbed the swing")
+	assert_true(GameState.inventory.has(hat), "so nothing broke")
+
+func test_a_swing_that_gets_past_the_shields_breaks_them() -> void:
+	var hat: ItemData = _give(&"lucky_hat")
+	GameState.max_hp = 10
+	GameState.hp = 10
+	var inst: int = _choose_solo(_fighter(2))
+	GameLoop2.beat_game(false)
+	_march_to_front(inst)
+	GameState.shields = 0
+	GameLoop2.beat_game(false)
+	assert_eq(GameState.hp, 8, "the swing landed on Health")
+	assert_false(GameState.inventory.has(hat), "which is what breaks the hat")
+
+# A body with real damage, and the march that walks it into striking range —
+# the same shape test_gameloop2.gd uses for its shields-then-Health assertions.
+func _fighter(dmg: int) -> GoalEnemyData:
+	var e: GoalEnemyData = _synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW)
+	e.damage = dmg
+	return e
+
+func _march_to_front(instance: int) -> void:
+	for _i in range(GameLoop2.grid_cols() + 2):
+		var col: int = -1
+		for entry in GameLoop2.stack:
+			if int(entry["instance"]) == instance:
+				col = int(entry.get("col", -1))
+		if col <= 1:
+			return
+		GameLoop2.beat_game(false)
+
 # --- Charm of the Vampire: the first incremental relic -------------------
 
 func _kill_one() -> void:
