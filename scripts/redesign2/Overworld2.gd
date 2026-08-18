@@ -208,12 +208,10 @@ var _preview_art: TextureRect       # the hovered card's enemy, beside the line
 var _choices_row: HFlowContainer
 var _play_panel: VBoxContainer
 var _now_playing: RichTextLabel
-var _now_playing_img: TextureRect   # the goal-enemy art on the report panel
 var _now_playing_cover: TextureRect # the chosen game's cover, beside it
 var _launch_row: HBoxContainer
 var _verify_box: VBoxContainer      # clean checklist: goal + level-up + follower goals
 var _fulfil_checks: Array = []      # [{check: CheckBox, instance: int}]
-var _goal_check: CheckBox           # the chosen game's main goal; null on a free game
 # Statuses 2.0 (§13) on the report checklist. `_status_goal_checks` are the
 # player's own BUFF goals — extra rows that pay when ticked; `_bonus_checks` are
 # the OPTIONAL bonus objectives an enemy's `bonus` side hangs off it. Both are read into
@@ -266,7 +264,7 @@ var _escape_btn: Button           # hidden until ESCAPE_AFTER_ATTEMPTS lost runs
 # The parts of the checklist panel that need a game in hand: the now-playing row,
 # the attempt strip and the Completed Game button. Hidden while you're choosing,
 # where the panel is the standing-goals list instead.
-var _np_box: HBoxContainer
+var _np_box: VBoxContainer
 var _attempt_wrap: Control
 var _done_btn: Button
 # The board itself (§grid): the player on the left, a grid_cols() x grid_rows() grid on
@@ -1248,17 +1246,29 @@ func scroll_teleport(_dir: String, spread: int) -> void:
 	_refresh()
 
 # Report the outcome of actually playing the chosen game (the honour-system
-# self-report). `goal_met` resolves the current enemy; `fulfilled` is the list of
-# FOLLOWING-enemy instances whose old goals you also fulfilled this game (§2) —
-# each is defeated and drops. When null the ticked fulfilment checkboxes are read
-# from the play panel. Resolves the loop, advances the difficulty clock, then
-# rebuilds the next offering.
+# self-report). `fulfilled` is the list of enemy instances whose goals you
+# cleared this game (§2) — every body on the board is a candidate, the ones that
+# walked on when you took this game included — and each is hit, defeated and
+# dropping at 0 Health. When null the ticked checkboxes are read from the play
+# panel. Resolves the loop, advances the difficulty clock, then rebuilds the next
+# offering.
 #
 # `escaped` marks the report as WALKING AWAY (escape_game) rather than finishing:
 # the board still resolves and the run still moves on, but the game is not
 # credited as beaten — see the `if not escaped` block below for exactly what that
 # withholds.
-func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) -> void:
+# `beaten` is the honour-system answer to the only question this app actually
+# asks: did you complete the real video game? It is what "✓ Completed Game"
+# presses, and it drives the RECORD half of the report — the run's beaten set, the
+# repeat-visit Dash, the lifetime tally, the Amulet win.
+#
+# It has nothing to do with the enemies. Clearing a goal is ticking that enemy's
+# row (`fulfilled`), and beating the game clears nothing by itself — the two used
+# to be one flag, back when the body standing there was the game's own and beating
+# the game answered for it (GameLoop2.arrivals). So you can beat a game and leave
+# everything on the board following you, or clear three old goals during a game
+# you never finished, and the report says exactly that.
+func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> void:
 	if _phase != Phase.PLAYING or _chosen.is_empty():
 		return
 	# The board is about to play the whole resolve back — the front line striking,
@@ -1297,7 +1307,19 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	# and the enemy bonuses claimed. Read here, alongside the fulfilments, because
 	# _end_resolve rebuilds the checklist and frees the boxes.
 	var claims: Dictionary = _ticked_status_claims()
-	var res: Dictionary = GameLoop2.beat_game(goal_met, fulfilled_instances, claims)
+	# WHO is behind each ticked instance, read BEFORE the resolve. beat_game takes
+	# a defeated body off the stack, so looking the instance up afterwards finds
+	# nothing — which is exactly the enemies worth recording.
+	var ticked_enemies: Dictionary = {}
+	for inst in fulfilled_instances:
+		for entry in GameLoop2.stack:
+			if int(entry.get("instance", -1)) == int(inst):
+				ticked_enemies[int(inst)] = entry.get("enemy")
+				break
+	# `clear_advertised` is false and always will be from here: the overworld's
+	# checklist lists the bodies that walked on this game among all the others, so
+	# they are already in `fulfilled_instances` if the player ticked them.
+	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims)
 	# "After beating a game" is the dominant 2.0 item trigger (§8): fire it now so
 	# owned items react (Burning Blood +1 Health, Meat on the Bone's conditional
 	# heal), the Harvesting stat pays out, charged actives tick, and the toast
@@ -1307,17 +1329,16 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	# Every defeat is banked twice: against the GAME it happened at (the Atlas's
 	# "enemies beaten in <game>") and against the CHARACTER who did it (the
 	# roster's trophy shelf). One call site, so the two can't disagree.
+	# One loop, because there is one kind of defeat: whatever you cleared, it was
+	# cleared AT this game. The body that walked on when you took it used to be
+	# recorded separately, off the `goal_met` flag, and that is gone with the flag.
+	# Read off the snapshot taken before the resolve, not off the stack — the ones
+	# worth recording are precisely the ones no longer standing on it.
 	if played_game != null:
-		var goal_enemy: GoalEnemyData = _chosen.get("enemy")
-		if goal_met and goal_enemy != null:
-			_record_defeat(played_game, goal_enemy)
-		for inst in fulfilled_instances:
-			for entry in GameLoop2.stack:
-				if int(entry.get("instance", -1)) == int(inst):
-					var follower: GoalEnemyData = entry["enemy"]
-					if follower != null:
-						_record_defeat(played_game, follower)
-					break
+		for inst in ticked_enemies:
+			var cleared: GoalEnemyData = ticked_enemies[inst]
+			if cleared != null:
+				_record_defeat(played_game, cleared)
 	# Everything a game gets CREDITED for. An escape is the one report that earns
 	# none of it: the player walked away, so the "after beating a game" items don't
 	# fire and nothing about the game is banked. The run itself still advances —
@@ -1369,7 +1390,7 @@ func report(goal_met: bool, fulfilled: Variant = null, escaped: bool = false) ->
 	#
 	# Recorded after the item trigger above, so a game_beaten item can't see a
 	# half-updated tally.
-	if played_game != null and not escaped and goal_met:
+	if played_game != null and not escaped and beaten:
 		# The run's own record: what the Atlas's "beaten this run" and the free
 		# escape (can_escape) read. Run-scoped and wiped by reset_run — beating
 		# something in a previous run is not a fact about this one.
@@ -1510,7 +1531,7 @@ func _end_resolve() -> void:
 	# _on_inventory_changed) — the board is the player's again now.
 	if _board_dirty:
 		_board_dirty = false
-		_board.refresh(_phase == Phase.PLAYING)
+		_board.refresh()
 	if _run_over_pending:
 		_run_over_pending = false
 		# A run that just ended has no room for either. The shop matters as much as
@@ -2181,7 +2202,7 @@ func bomb_follower(instance: int) -> void:
 
 # The board reports a clicked enemy; the card is opened HERE because it dims the
 # whole screen and the board itself lives inside the scrolling page.
-func _show_enemy_info(entry: Dictionary, col: int, is_current: bool) -> void:
+func _show_enemy_info(entry: Dictionary, col: int) -> void:
 	_close_enemy_info()
 	var card := EnemyInfoCard.new()
 	card.push_requested.connect(push_follower)
@@ -2189,7 +2210,7 @@ func _show_enemy_info(entry: Dictionary, col: int, is_current: bool) -> void:
 	card.closed.connect(func(): _info_popup = null)
 	_info_popup = card
 	add_child(card)
-	card.setup(entry, col, is_current)
+	card.setup(entry, col)
 
 func _close_enemy_info() -> void:
 	if _info_popup != null and is_instance_valid(_info_popup):
@@ -2386,7 +2407,7 @@ func _on_inventory_changed() -> void:
 	if _resolving:
 		_board_dirty = true
 		return
-	_board.refresh(_phase == Phase.PLAYING)
+	_board.refresh()
 
 func _refresh(_a = null) -> void:
 	if _stack == null:
@@ -2395,7 +2416,7 @@ func _refresh(_a = null) -> void:
 	_refresh_items()
 	_refresh_route_strip()
 	_stack.text = "[b]Battlefield[/b]  —  " + _stack_summary()
-	_board.refresh(_phase == Phase.PLAYING)
+	_board.refresh()
 	_refresh_attempts()
 	_refresh_stage()
 	if not GameLoop2.last_result.is_empty():
@@ -2419,11 +2440,8 @@ func _refresh(_a = null) -> void:
 		_populate_standing_checklist()
 	elif _phase == Phase.PLAYING:
 		_now_playing.text = _now_playing_text()
-		var np_tex: Texture2D = null if _chosen.is_empty() else _enemy_texture(_chosen)
-		_now_playing_img.texture = np_tex
-		UITheme.apply_crisp(_now_playing_img, np_tex)
-		# The cover of the game you're actually playing, so the report step shows the
-		# thing you went to play next to the enemy you went to beat.
+		# The cover of the game you are actually playing, and nothing else: what is
+		# on the board is on the board (see the row's own comment).
 		var game: GameData = _chosen.get("game")
 		_now_playing_cover.texture = game.cover_image if game != null else null
 	_fit_canvas_to_page.call_deferred()
@@ -3083,38 +3101,29 @@ func _populate_play_panel() -> void:
 
 	# One clean checklist of everything to verify this game. Tick what you actually
 	# did, then press "Completed Game" once (§2 / §3.1):
-	#   • the current game's GOAL (top) — ticked defeats its enemy, unticked leaves
-	#     it following you;
+	#   • EVERY ENEMY on the board, in one list — the ones that walked on when you
+	#     took this game and the ones that have been following you for ten;
 	#   • the character LEVEL-UP challenge;
-	#   • each FOLLOWING enemy whose old goal you also cleared this game.
+	#   • the event and curse goals.
+	#
+	# THERE IS NO "GOAL" BOX. The enemy the card advertised used to get an
+	# emphasised row of its own at the top, because it was the game's own enemy and
+	# beating the game was what cleared it. Nothing is a game's own enemy any more
+	# (GameLoop2.arrivals): a body that walked on this game and a body you have
+	# owed since three games ago are the same kind of debt, and asking about them
+	# in two different places said they were not.
 	_verify_box.add_child(_verify_head("Tick what you did this game:"))
 
-	var enemy: GoalEnemyData = _chosen.get("enemy")
-	if enemy != null and enemy.goal != "":
-		var is_amulet: bool = bool(_chosen.get("amulet", false))
-		# The goal LINE, not the enemy's authored goal: any status clause welded on
-		# by a clause on this enemy or one on the player is part of what ticking
-		# this box asserts (§13).
-		var goal_text: String = "%s %s" % [
-			"🏆 Amulet goal (bonus) —" if is_amulet else "Goal —",
-			GameLoop2.goal_text_for(GameLoop2.current)]
-		var goal_row := _verify_row(goal_text, UITheme.SUCCESS, true, enemy, null,
-			int(GameLoop2.current.get("instance", 0)))
-		_goal_check = goal_row["check"]
-		_verify_box.add_child(goal_row["row"])
-		# On the Amulet the goal is NOT the lock on the door — playing the game is
-		# (see report()). Said here because this row is the one place a player
-		# would otherwise reasonably read it as the win condition.
-		if is_amulet:
-			var win_note := Label.new()
-			win_note.text = "Completing this game wins the run — the goal above is a bonus."
-			win_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			win_note.add_theme_font_size_override("font_size", 12)
-			win_note.add_theme_color_override("font_color", UITheme.GOLD)
-			_verify_box.add_child(win_note)
-		# …and its optional bonus objectives, which are claimed separately because
-		# skipping one costs nothing.
-		_add_bonus_rows(GameLoop2.current)
+	# On the Amulet, playing the game is the win — not any goal on this list (see
+	# report()). Said at the top, because a checklist is otherwise exactly where a
+	# player would look for the win condition and not find it.
+	if bool(_chosen.get("amulet", false)):
+		var win_note := Label.new()
+		win_note.text = "🏆  Completing this game wins the run — everything below is a bonus."
+		win_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		win_note.add_theme_font_size_override("font_size", 12)
+		win_note.add_theme_color_override("font_color", UITheme.GOLD)
+		_verify_box.add_child(win_note)
 
 	# The player's own BUFF goals (§13): standing challenges that pay out every
 	# game you satisfy them, so they are on the report step of EVERY game rather
@@ -3155,16 +3164,12 @@ func _populate_play_panel() -> void:
 	# the label on it. Leading with the name made every row start with a proper
 	# noun the player has to read past to reach the thing they're ticking.
 	#
-	# The current game's enemy is on the board with the followers now (§7.2), and
-	# it is skipped here because it already has the Goal row at the top of this
-	# list — listing it twice would let the same body be ticked as both.
-	var current_inst: int = int(GameLoop2.current.get("instance", 0))
+	# EVERY body on the board, on the same terms and in board order. The ones that
+	# walked on when this game was taken are simply the last ones in the list.
 	for entry in GameLoop2.stack:
 		var inst: int = int(entry["instance"])
-		if inst == current_inst:
-			continue
 		var e: GoalEnemyData = entry["enemy"]
-		var row := _verify_row("Also cleared: %s — %s" % [
+		var row := _verify_row("Cleared: %s — %s" % [
 			GameLoop2.goal_text_for(entry), e.display_name], UITheme.TEXT, false, e, null, inst)
 		_verify_box.add_child(row["row"])
 		_fulfil_checks.append({"check": row["check"], "instance": inst})
@@ -3290,7 +3295,6 @@ func _reset_checklist_state() -> void:
 	_event_goal_checks.clear()
 	_curse_goal_checks.clear()
 	_levelup_check = null
-	_goal_check = null
 
 # The checklist while you're CHOOSING: the goals already on you — the character's
 # level-up challenge, and every follower's outstanding goal (any of which you may
@@ -3509,11 +3513,6 @@ func _boss_icon_rect(icon: Texture2D) -> Control:
 	frame.tooltip_text = "Boss"
 	frame.add_child(UITheme.crisp_tex(icon, BOSS_ICON_SIZE))
 	return frame
-
-# Whether the chosen game's MAIN goal was met — true when its checkbox is ticked,
-# or when the game had no enemy/goal to meet (a free game auto-clears).
-func _goal_met() -> bool:
-	return _goal_check == null or _goal_check.button_pressed
 
 # One checklist row: a bordered CheckBox tinted `color`; `emphasise` gives the
 # main-goal row a heavier border so it reads as the primary question. Kept to a
@@ -3789,8 +3788,8 @@ func _enemy_hidden(choice: Dictionary) -> bool:
 		return false
 	if choice.get("enemy") == null:
 		return false
-	return GameLoop2.current.is_empty() \
-		or GameLoop2.current.get("enemy") != choice.get("enemy")
+	var landed: Dictionary = GameLoop2.arrival()
+	return landed.is_empty() or landed.get("enemy") != choice.get("enemy")
 
 # What a hidden card says instead. Named rather than inlined because three
 # screens say it (the hover line, the now-playing panel, GameChoiceModal) and
@@ -3821,8 +3820,9 @@ func _escort_expected(choice: Dictionary) -> bool:
 # Empty when this card brings no escort. One function, because the offering, the
 # popup and the now-playing panel all have to say the same thing about it.
 func _escort_note(choice: Dictionary) -> String:
-	if not GameLoop2.current.is_empty() and choice.get("enemy") != null \
-			and GameLoop2.current.get("enemy") == choice.get("enemy"):
+	var landed: Dictionary = GameLoop2.arrival()
+	if not landed.is_empty() and choice.get("enemy") != null \
+			and landed.get("enemy") == choice.get("enemy"):
 		var escort: GoalEnemyData = GameLoop2.escort_enemy()
 		return "" if escort == null else "⚠ %s spawned alongside it." % escort.display_name
 	return ESCORT_WARNING if _escort_expected(choice) else ""
@@ -3857,53 +3857,47 @@ func _hover_line(choice: Dictionary) -> String:
 		game.display_name, kind, e.display_name,
 		GameLoop2.goal_text_for(_preview_entry(choice)), escort, tries]
 
-func _enemy_preview_text(choice: Dictionary) -> String:
-	var e: GoalEnemyData = choice.get("enemy")
-	var game: GameData = choice["game"]
-	# A rematch pays a Dash — stated on the preview as well as the card, so it also
-	# shows on the report panel for the game you're playing.
-	var repeat: String = ""
-	if bool(choice.get("repeat", false)):
-		repeat = "\n[color=#80d9ff]⚡ Already beaten this run — beating it again grants +%d Dash.[/color]" % REPEAT_BEAT_DASH
-	if e == null:
-		return "[b]%s[/b]\n[i]No enemy — free game.[/i]%s" % [game.display_name, repeat]
-	# The escort (§7.5): a warning on a card, the body's name once it is standing
-	# there. Its own line under the goal, because it is a fact about the BOARD
-	# rather than about the enemy the rest of this text describes.
-	var escort_line: String = _escort_note(choice)
-	var escort: String = "" if escort_line == "" else "\n[color=#%s]%s[/color]" % [
-		UITheme.DANGER.to_html(false), escort_line]
-	if _enemy_hidden(choice):
-		return "[b]%s[/b]  →  [i]%s[/i]\n[i]The Runic Dome hides what is waiting there. You will find out when you arrive.[/i]%s%s" % [
-			game.display_name, HIDDEN_ENEMY_TEXT, escort, repeat]
-	var kind: String = "[color=#e0b020][b]☠ BOSS[/b][/color] " if choice["boss"] else ""
-	# Effective Health = goal completions to defeat it (Alien Baby makes it 2).
-	var hp: int = GameLoop2.effective_health(e)
-	var hp_txt: String = "%d goal%s to beat" % [hp, "" if hp == 1 else "s"]
-	return "[b]%s[/b]  →  %s%s\n[b]GOAL (%s):[/b] %s   [i](%s / %s / %s / dmg %d)[/i]%s%s" % [
-		game.display_name, kind, e.display_name,
-		String(e.goal_type).capitalize(), GameLoop2.goal_text_for(_preview_entry(choice)),
-		String(e.game_type).capitalize(), RunDifficulty.tier_name(int(e.difficulty)), hp_txt, e.damage,
-		escort,
-		repeat,
-	]
-
-# The board entry to read a `choice`'s goal line off (§13). For the game in play
-# that is the live current enemy, statuses and all. For an OFFERED card there is
-# no body yet — but the player's own clauses tax every enemy's goal, so the
-# preview is built against a bare stand-in rather than falling back to the
-# unmodified stem: what a card will actually cost you is part of the routing
-# decision, not a surprise waiting on the report step.
+# The board entry to read a `choice`'s goal line off (§13). Once the card has been
+# taken, that is the live body it put on the board, statuses and all. For an
+# OFFERED card there is no body yet — but the player's own clauses tax every
+# enemy's goal, so the preview is built against a bare stand-in rather than
+# falling back to the unmodified stem: what a card will actually cost you is part
+# of the routing decision, not a surprise waiting on the report step.
 func _preview_entry(choice: Dictionary) -> Dictionary:
-	if not GameLoop2.current.is_empty() \
-			and GameLoop2.current.get("enemy") == choice.get("enemy"):
-		return GameLoop2.current
+	var landed: Dictionary = GameLoop2.arrival()
+	if not landed.is_empty() and landed.get("enemy") == choice.get("enemy"):
+		return landed
 	return {"enemy": choice.get("enemy"), "statuses": {}}
 
+# The line beside the cover on the report panel: WHAT YOU ARE PLAYING, and what
+# taking it put on the board.
+#
+# It used to print the whole enemy preview here — the enemy's name, its goal, its
+# stats — as though the game came with a boss attached. It doesn't
+# (GameLoop2.arrivals): what walked on is on the board and in the checklist with
+# everything else, so this says that it walked on and stops. The one thing that IS
+# a fact about the game keeps its line: a rematch pays a Dash.
 func _now_playing_text() -> String:
 	if _chosen.is_empty():
 		return ""
-	return "[b]Now playing:[/b] %s\n%s" % [_chosen["game"].display_name, _enemy_preview_text(_chosen)]
+	var out: String = "[b]Now playing:[/b] %s" % _chosen["game"].display_name
+	var arrived: Array = []
+	var landed: Dictionary = GameLoop2.arrival()
+	if not landed.is_empty() and landed.get("enemy") != null:
+		arrived.append((landed["enemy"] as GoalEnemyData).display_name)
+	var escort: GoalEnemyData = GameLoop2.escort_enemy()
+	if escort != null:
+		arrived.append(escort.display_name)
+	if arrived.is_empty():
+		out += "\n[i]Nothing walked on with it.[/i]"
+	else:
+		out += "\n[color=#%s]%s walked onto the board — tick %s below if you clear %s.[/color]" % [
+			UITheme.DANGER.to_html(false), " and ".join(arrived),
+			"them" if arrived.size() > 1 else "it",
+			"their goals" if arrived.size() > 1 else "its goal"]
+	if bool(_chosen.get("repeat", false)):
+		out += "\n[color=#80d9ff]⚡ Already beaten this run — beating it again grants +%d Dash.[/color]" % REPEAT_BEAT_DASH
+	return out
 
 # --- the run's numbers, where they are spent ------------------------------
 #
@@ -3958,7 +3952,6 @@ func _build_gold_chip() -> Control:
 	wrap.add_child(_gold_chip)
 	_paint_gold_chip()
 	return wrap
-
 
 func _paint_gold_chip() -> void:
 	if _gold_chip == null or not is_instance_valid(_gold_chip):
@@ -4797,11 +4790,27 @@ func _build_ui() -> void:
 
 	# --- the report checklist (left column, shown while a game is in play) ----
 
-	# One tight row: the cover, the enemy, and the goal text — sized down from the
-	# old card, because the board beside it is the biggest thing on the page.
-	_np_box = HBoxContainer.new()
+	# One tight row: the game's cover and what you are doing with it.
+	#
+	# THE ENEMY'S PORTRAIT IS NOT ON IT. There used to be a second 72px frame here
+	# holding the art of "this game's enemy", drawn beside the box art as if the
+	# two were a pair. They are not a pair and never were a fact about the game:
+	# the body that walked on when you took this card is a follower like every
+	# other from the moment it lands (GameLoop2.arrivals), and it is already drawn
+	# where every other body is — on the board, to the right. Showing it here said
+	# the game owned it.
+	#
+	# The cover takes the space back and is CENTRED in the row, because a lone
+	# frame hard against the left edge of a panel reads as the first of two things
+	# with the second one missing.
+	# A COLUMN, and the cover centred at the top of it. As a row with the portrait
+	# gone the cover was left hard against the left edge with the text beside it,
+	# which reads as the first of two things with the second one missing — the
+	# shape the old pair left behind. Stacked, the box art is the heading of the
+	# panel and the line about what walked on sits under it.
+	_np_box = VBoxContainer.new()
 	var np_box := _np_box
-	np_box.add_theme_constant_override("separation", 10)
+	np_box.add_theme_constant_override("separation", 8)
 	_now_playing_cover = TextureRect.new()
 	_now_playing_cover.custom_minimum_size = COVER_SIZE * 0.72
 	_now_playing_cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -4809,18 +4818,11 @@ func _build_ui() -> void:
 	var cover_frame := PanelContainer.new()
 	cover_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 6, 4, 1, UITheme.BORDER))
 	cover_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	cover_frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	cover_frame.add_child(_now_playing_cover)
 	np_box.add_child(cover_frame)
-	_now_playing_img = _enemy_image_rect()
-	_now_playing_img.custom_minimum_size = Vector2(72, 72)
-	var img_frame := PanelContainer.new()
-	img_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 6, 4, 1, UITheme.BORDER))
-	img_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	img_frame.add_child(_now_playing_img)
-	np_box.add_child(img_frame)
 	_now_playing = _panel_label()
 	_now_playing.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_now_playing.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	np_box.add_child(_now_playing)
 	_play_panel.add_child(np_box)
 
@@ -4850,7 +4852,9 @@ func _build_ui() -> void:
 	done.add_theme_stylebox_override("hover", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.35), 8, 8, 2, UITheme.SUCCESS))
 	done.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.45))
 	done.add_theme_font_size_override("font_size", 15)
-	done.pressed.connect(func(): report(_goal_met()))
+	# Pressing it IS the claim: "I completed this game." What you did to the
+	# enemies is the checklist above it, ticked row by row.
+	done.pressed.connect(func(): report(true))
 	_play_panel.add_child(done)
 
 	# The way out, directly under the way through — they resolve the same step, so
@@ -5096,17 +5100,11 @@ func _refresh_attempts() -> void:
 		var why: String = ("You already beat this one this run, so there is nothing to prove — leave whenever you like."
 			if beaten_this_run()
 			else "%d lost runs is enough." % GameLoop2.attempts())
-		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nThe goal-enemy still walks onto "
-			+ "the board and follows you, and every enemy still takes its turns — escaping "
-			+ "resolves the board exactly as a missed goal does. What it does NOT do is credit "
-			+ "the game: no drop, no event, and it doesn't count as beaten.") % why
-
-func _enemy_image_rect() -> TextureRect:
-	var t := TextureRect.new()
-	t.custom_minimum_size = Vector2(96, 96)
-	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	return t
+		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nWhatever walked on "
+			+ "when you took this game stays on the board and follows you, and every enemy "
+			+ "still takes its turns — escaping resolves the board exactly as an unticked "
+			+ "checklist does. What it does NOT do is credit the game: no drop, no event, "
+			+ "and it doesn't count as beaten.") % why
 
 func _section(text: String) -> Label:
 	var l := Label.new()

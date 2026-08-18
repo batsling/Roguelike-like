@@ -478,7 +478,7 @@ func test_the_route_set_is_rebuilt_when_the_run_moves() -> void:
 	view.route_stars()                # fill the cache, so a stale one has somewhere to hide
 	# The start is the run's first game, so the run opens in the report step — beat
 	# it, and the offering that appears is the one the move under test is made from.
-	ui.report(true)
+	_report_beat(ui)
 	ui._end_resolve()
 	ui.pick(0)
 	ui.report(false)
@@ -1858,3 +1858,12 @@ func test_left_drag_still_pans() -> void:
 	_move(view, Vector2(50, 30))
 	assert_ne(view._offset, before, "left-drag keeps working for anyone used to it")
 	_press(view, MOUSE_BUTTON_LEFT, false)
+
+# Report the game as completed AND tick the row for the body that walked on with
+# it. This is what a bare `report(true)` used to do in one flag, back when that
+# body was the game's own enemy and beating the game answered for it; it is spelled
+# out now because the flag only records the GAME any more (GameLoop2.arrivals),
+# and clearing an enemy is ticking its checklist row like any other.
+func _report_beat(ui) -> void:
+	var landed: Dictionary = GameLoop2.arrival()
+	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])

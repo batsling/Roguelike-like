@@ -19,8 +19,8 @@ const SCROLL_IDS := [
 # assertions.
 func _choose_solo(enemy: GoalEnemyData) -> int:
 	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.current_escort > 0:
-		GameLoop2.despawn(GameLoop2.current_escort)
+	if GameLoop2.escort_instance() > 0:
+		GameLoop2.despawn(GameLoop2.escort_instance())
 	return inst
 
 func before_each() -> void:

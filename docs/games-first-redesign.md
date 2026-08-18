@@ -377,17 +377,31 @@ allowed on a boss node or whether difficulty-gate bosses are fully unskippable.
 ### 7.2 Enemy timing — spawn onto the board, then walk
 
 An enemy **spawns onto the battlefield the moment you choose its game**, at the
-back column, and from that moment it is an ordinary body on the board: it takes
-its turns, it is drawn with everything else, and it is `GameLoop2.current` only
-in the sense that it is the one whose goal this game is being played for
-(`current` and its stack entry are literally the same record).
+back column, and from that moment it is an ordinary body on the board with **no
+tie to the game that rolled it**: it takes its turns, it is drawn like the rest,
+it can be bombed and pushed like the rest, and its goal is one row in the report
+checklist among all the others.
+
+**There is no "this game's enemy".** There used to be: `GameLoop2.current`
+pointed at that body for the whole game, the board drew it in its own accent and
+refused to aim a verb at it, the checklist gave it an emphasised **Goal —** box
+at the top, and "did you beat the game" was the flag that cleared it. That is
+gone. A card advertises what will walk on if you take it, and once it has walked
+on it is a follower. `GameLoop2.arrivals` is only the record of which bodies came
+with the game in play, kept so a Scramble can supersede them.
+
+**Beating the game and clearing an enemy are two separate claims.** Pressing
+**✓ Completed Game** says you played and finished the real video game — that is
+what the run's beaten set, the repeat-visit Dash and the lifetime tally read.
+What you did to the bodies is the tick boxes, one per enemy on the board.
 
 1. **Spawn** — the enemy appears **on the back column** when you choose its game.
-2. You play & **beat that game**, and the resolve runs in this order: goals met
-   this game land their hits (the current enemy's, plus any old goals you also
-   cleared), then every surviving body takes its `enemy_turns()` actions.
-3. So an enemy whose goal you met is **defeated before it acts at all**, and one
-   whose goal you missed **starts walking during its own game** — reaching the
+2. You play & **report**, and the resolve runs in this order: every goal you
+   ticked lands its hit — bodies that walked on this game and bodies you have
+   owed for ten, on the same terms — then every survivor takes its
+   `enemy_turns()` actions.
+3. So an enemy you ticked is **defeated before it acts at all**, and one you
+   left unticked **starts walking during its own game** — reaching the
    front column takes it the width of the board, which is where the breathing
    room comes from.
 4. Thereafter it keeps attacking on each game beaten, per §2, until its goal is

@@ -11,6 +11,47 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Nothing on the board belongs to a game any more.**
+
+  There is no such thing as "this game's enemy". A card advertises what will walk
+  on if you take it; once it has walked on it is a follower like every other body,
+  and that is the whole of the relationship.
+
+  **What that was, and what it cost.** `GameLoop2.current` pointed at the
+  advertised body for the entire game, and four separate systems deferred to it.
+  The board drew it in its own accent with a washed fill and a NOW PLAYING tag,
+  and **refused to aim Push or Bomb at it** — so the one enemy standing right in
+  front of you was the one enemy you could not remove. The report checklist gave
+  it an emphasised **Goal —** box at the top and listed everything else under
+  "Also cleared", as though clearing a goal you owed from three games ago were a
+  different kind of act. The report panel drew its portrait beside the game's box
+  art, pairing them. And `beat_game(goal_met)` folded two different claims into
+  one flag.
+
+  All four are gone. `current` is replaced by **`arrivals`** — a list of the
+  handles that walked on with the game in play, kept for exactly two jobs
+  (superseding them on a Scramble, and naming what landed) and consulted by
+  nothing that makes a body special. `is_current` is out of `BattlefieldView`,
+  `EnemyInfoCard`, `DevTools` and the board's `refresh()` signature entirely.
+
+  **Beating the game and clearing an enemy are two separate claims now.**
+  `report(beaten, fulfilled)`: pressing **✓ Completed Game** says you played and
+  finished the real video game — that is what the run's beaten set, the
+  repeat-visit Dash, the lifetime tally and the Amulet win read. What you did to
+  the bodies is the tick boxes, one per enemy on the board, arrivals among them in
+  board order. So you can finish a game and leave everything following you, or
+  clear three old goals during a game you never finished, and the report says
+  exactly that. It could not before: missing the goal box meant the game did not
+  count as beaten either.
+
+  **`clear_amulet` takes nothing off the board.** It used to defeat the body
+  standing at the Amulet, because that body was the game's own. Whatever is
+  standing there was already dealt with by the report that got you there — ticked
+  or not, like every other enemy — so winning simply ends the run.
+
+  **The report panel is the cover, centred.** The 72px enemy portrait beside it
+  is gone; what is on the board is drawn on the board.
+
 - **Hover cards everywhere, an armed Bomb, and three things that were in the
   way.**
 

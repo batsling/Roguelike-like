@@ -185,7 +185,7 @@ func inspect_boss(boss: GoalEnemyData) -> EnemyInfoCard:
 		"instance": 0, "enemy": boss, "stun": 0,
 		"health": GameLoop2.effective_health(boss),
 		"col": GameLoop2.offgrid_col(), "row": 0, "statuses": {},
-	}, GameLoop2.offgrid_col(), false,
+	}, GameLoop2.offgrid_col(),
 		"not on the board — it stands on one of the games you are about to be offered")
 	return card
 

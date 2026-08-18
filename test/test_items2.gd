@@ -17,8 +17,8 @@ extends GutTest
 # assertions.
 func _choose_solo(enemy: GoalEnemyData) -> int:
 	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.current_escort > 0:
-		GameLoop2.despawn(GameLoop2.current_escort)
+	if GameLoop2.escort_instance() > 0:
+		GameLoop2.despawn(GameLoop2.escort_instance())
 	return inst
 
 func before_each() -> void:
@@ -286,7 +286,7 @@ func test_sacred_bark_doubles_what_a_scroll_does() -> void:
 	assert_eq(GameState.loot_multiplier(), 1, "nothing owned yet, so nothing doubles")
 	_choose_solo(Data.all_goal_enemies()[0])
 	ScrollSystem.read_scroll(aggravate)
-	assert_eq(int((GameLoop2.current["statuses"] as Dictionary).get(&"strength", 0)), 1,
+	assert_eq(int((GameLoop2.arrival()["statuses"] as Dictionary).get(&"strength", 0)), 1,
 		"authored at +1 Strength")
 
 	_give(&"sacred_bark")
@@ -294,7 +294,7 @@ func test_sacred_bark_doubles_what_a_scroll_does() -> void:
 	GameLoop2.reset()
 	_choose_solo(Data.all_goal_enemies()[0])
 	ScrollSystem.read_scroll(aggravate)
-	assert_eq(int((GameLoop2.current["statuses"] as Dictionary).get(&"strength", 0)), 2,
+	assert_eq(int((GameLoop2.arrival()["statuses"] as Dictionary).get(&"strength", 0)), 2,
 		"and doubles the BAD scrolls too — that is what makes it a decision")
 
 func test_sacred_bark_does_not_widen_a_teleport() -> void:

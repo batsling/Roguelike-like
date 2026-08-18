@@ -19,7 +19,7 @@ func before_each() -> void:
 	# standing at an offering.
 	_ui.choose_start(0)
 	if _ui._phase == _ui.Phase.PLAYING:
-		_ui.report(true)
+		_report_beat(_ui)
 		_ui._end_resolve()
 		_ui._drop_queue.clear()
 
@@ -542,3 +542,12 @@ func test_a_bashed_neighbour_is_not_a_way_on() -> void:
 		"a door Bash destroyed is not a door")
 	assert_eq(RunGraph.degree(here), before,
 		"…though the graph itself is unchanged — that is the difference between them")
+
+# Report the game as completed AND tick the row for the body that walked on with
+# it. This is what a bare `report(true)` used to do in one flag, back when that
+# body was the game's own enemy and beating the game answered for it; it is spelled
+# out now because the flag only records the GAME any more (GameLoop2.arrivals),
+# and clearing an enemy is ticking its checklist row like any other.
+func _report_beat(ui) -> void:
+	var landed: Dictionary = GameLoop2.arrival()
+	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])

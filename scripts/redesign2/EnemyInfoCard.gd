@@ -13,7 +13,7 @@ extends Control
 #     var card := EnemyInfoCard.new()
 #     card.push_requested.connect(push_follower)
 #     add_child(card)
-#     card.setup(entry, col, is_current)
+#     card.setup(entry, col)
 
 # The player used a combat verb from the card; the host owns the charge.
 signal push_requested(instance: int)
@@ -24,14 +24,17 @@ signal closed
 var _closing: bool = false
 
 # Fill the card in for one enemy. `col` is its FRONT column (offgrid_col() for an
-# off-field body); `is_current` marks the game being played right now, which can be
-# read but not pushed or bombed. Call once, right after adding the card to the
-# screen it should cover.
+# off-field body). Call once, right after adding the card to the screen it should
+# cover.
+#
+# There used to be an `is_current` flag here for "the enemy of the game being
+# played", which could be read but not pushed or bombed. No body is that any more
+# (GameLoop2.arrivals) — every card offers both verbs.
 #
 # `position_note` replaces the Position line for an enemy that is not on the board
 # at all — the boss notice reads one off an OFFERED CARD, where "waiting for room"
 # would be a lie about a body that does not exist yet.
-func setup(entry: Dictionary, col: int, is_current: bool, position_note: String = "") -> void:
+func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	var e: GoalEnemyData = entry.get("enemy")
 	if e == null:
 		queue_free()
@@ -128,7 +131,7 @@ func setup(entry: Dictionary, col: int, is_current: bool, position_note: String 
 		stat_col.add_child(_stat_row("◆", "Shield",
 			"absorbs the next %d damage" % shield, Color(0.62, 0.78, 0.95)))
 	stat_col.add_child(_stat_row("◎", "Position",
-		position_note if position_note != "" else _position_text(entry, col, is_current), accent))
+		position_note if position_note != "" else _position_text(entry, col), accent))
 	if e.footprint_rows() > 1 or e.footprint_cols() > 1:
 		stat_col.add_child(_stat_row("▦", "Size", _size_text(e), UITheme.TEXT_DIM))
 	var stun: int = int(entry.get("stun", 0))
@@ -210,8 +213,9 @@ func setup(entry: Dictionary, col: int, is_current: bool, position_note: String 
 		src.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		inner.add_child(src)
 
-	# Combat verbs, aimed at this enemy (a currently-played game isn't targetable).
-	if not is_current and instance > 0:
+	# Combat verbs, aimed at this enemy. Every enemy — nothing on the board is
+	# exempt from them now.
+	if instance > 0:
 		inner.add_child(HSeparator.new())
 		var acts := HBoxContainer.new()
 		acts.add_theme_constant_override("separation", 8)
@@ -323,9 +327,7 @@ func _status_chip(status: StatusData, stacks: int) -> Control:
 # Plain-language description of where an enemy stands and what that means. `col`
 # is its FRONT column — the leading edge is what decides when it strikes, so a
 # wide body reads as closer than its left-hand corner alone would suggest.
-func _position_text(entry: Dictionary, col: int, is_current: bool) -> String:
-	if is_current:
-		return "off field — steps in when you report this game"
+func _position_text(entry: Dictionary, col: int) -> String:
 	if col >= GameLoop2.offgrid_col():
 		return "off field — waiting for room on the board"
 	var lane: String = "row %d, " % (int(entry.get("row", 0)) + 1)

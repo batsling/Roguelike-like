@@ -99,12 +99,12 @@ static func _ch_start() -> Dictionary:
 				+ "that beating the game does not answer for."),
 			_step(4, "Go and play it. Actually play it — this is the part that "
 				+ "takes an evening, and it is the whole point."),
-			_step(5, "Come back and press Report. Did you beat the game? Did you "
-				+ "do the goal? Nobody is checking. That is the honour system and "
-				+ "it is load-bearing."),
-			_step(6, "Goal met: the enemy dies, drops an item, pays a gold. Goal "
-				+ "missed: it survives, follows you, and starts hitting you after "
-				+ "every game you play from now on."),
+			_step(5, "Come back and press Completed Game, and tick whichever "
+				+ "goals you actually did on the way. Nobody is checking. That is "
+				+ "the honour system and it is load-bearing."),
+			_step(6, "A goal you ticked: that enemy dies, drops an item, pays a "
+				+ "gold. One you left unticked: it survives, follows you, and "
+				+ "starts hitting you after every game you play from now on."),
 			_step(7, "You are offered a new set of games, connected to where you "
 				+ "stand. Choose one. Go to 3."),
 			_p("The run ends when you reach and clear the AMULET game — that is "
@@ -243,13 +243,23 @@ static func _ch_playing() -> Dictionary:
 				+ "Hover a body and its row lights up. They are the same fact "
 				+ "written twice."),
 			_h("Reporting"),
-			_p("Press Report when you are done with the game — done, not "
-				+ "necessarily victorious. It asks two separate questions:"),
-			_kv("Did you beat the game?", "Beating it is what lets you move on."),
-			_kv("Did you do the goal?", "Doing it is what kills the enemy."),
-			_p("Beating the game without the goal moves you on and leaves the "
-				+ "enemy alive and following. Both are real outcomes and the "
-				+ "second one is not a failure state — it is a debt."),
+			_p("Press Completed Game when you are done with the game — done, not "
+				+ "necessarily victorious. Two different things are being claimed, "
+				+ "and they are claimed separately:"),
+			_kv("The button", "Says you played and finished the real game. That is "
+				+ "what counts it as beaten, pays the return-trip Dash, and wins "
+				+ "the run at the Amulet."),
+			_kv("The tick boxes", "One per enemy on the board — including whatever "
+				+ "walked on when you took this game. Ticking one says you did that "
+				+ "enemy's goal, and doing that is what kills it."),
+			_p("So you can finish a game and leave everything on the board still "
+				+ "following you, or clear three old goals during a game you never "
+				+ "finished. Neither is a failure state; an unticked enemy is a "
+				+ "debt."),
+			_note("Nothing on the board belongs to the game you are playing. What "
+				+ "walked on with it is a follower like every other body from the "
+				+ "moment it lands — you can bomb it, push it, or leave its goal "
+				+ "for three games and clear it later."),
 			_h("Escaping"),
 			_p(("If a game is going nowhere you can leave it. Escape is offered "
 				+ "after %d lost runs, or immediately if this run has already "
