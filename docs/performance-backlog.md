@@ -55,21 +55,40 @@ tooltips (the other suspect) cost nothing. This was 10 of the 19 ms a full page
 what is left is the cost of a rebuild that genuinely has to happen — a verb
 moving, a body arriving — plus every *first* build of every screen.
 
-**The fix**, in order of how much it asks for:
-- **Ship a font with the coverage** and set it as the theme's `default_font`, or
-  add it to the built-in font's `fallbacks`. One asset, one line in `UITheme`,
-  and every glyph on every screen gets cheap at once. It is also the only one of
-  these that improves how the game *looks* — the built-in font is rendering these
-  as whatever the host system offers, which is why they differ between machines.
-- **Cache the shaped Controls** rather than rebuilding them: keep the five chips
-  and set `.text` on them, since Godot no-ops a `text` assignment that doesn't
-  change. Narrower, and only helps the sections that get rewritten.
-- **Drop the glyphs.** Cheapest, and the worst of the three — they are most of
-  how the page reads at a glance.
+**There is no code-only fix.** That was tested, not assumed. Godot resolves a
+missing glyph by searching the system's fonts *during shaping*, and the result is
+not cached — building twenty Labels with the SAME text costs the same per Label
+as twenty different ones (1.9 ms each). Declaring the fallback up front on the
+theme's font moves that search to the resource, which is where the speed comes
+from — but the speed comes with it only when the declared families differ from
+what Godot's own search would have picked. Measured against the shipped build, on
+a Label carrying ten glyphs:
 
-**Careful.** This is measured on Linux/fontconfig under `xvfb`. Confirm the same
-cost on the platform that matters before spending an asset on it; a host with a
-fast fallback path may not show it.
+| theme font | ms/Label | pixels changed |
+|---|---|---|
+| built-in, as shipped | 14.59 | — (the reference) |
+| `SystemFont`, no families named, system fallback on | 14.89 | **0** |
+| `SystemFont`, `["sans-serif"]` | 11.36 | 94 |
+| `SystemFont`, `["Noto Color Emoji", "Noto Emoji", "DejaVu Sans", "sans-serif"]` | **6.41** | 3807 |
+
+Pixel-identical is exactly as slow; 2.3× faster is visibly different glyphs. So
+the choice is a design one and it is not ours to make silently.
+
+**The fix**, in order of how much it asks for:
+- **Ship a font with the coverage** and set it as the theme's `default_font`.
+  This is the only option that is both fast and *deterministic*: today these
+  glyphs are drawn from whatever the host machine happens to have installed, so
+  the game already looks different on different machines — an ⚗ that is beige on
+  one and purple on another. A bundled font fixes the look and the cost together.
+  Wants a licence-clear file (Noto Emoji is OFL) and a few MB in the repo.
+- **Accept a different look for the speed** — declare the emoji families on the
+  theme font as in the last row above. No asset, 2.3×, and the glyphs change.
+- **Cache the shaped Controls** rather than rebuilding them: keep the chips and
+  assign `.text`, which Godot no-ops when it hasn't changed. No asset and no
+  visual change, but it only helps the sections rewritten that way, and the
+  repaint guards have already taken most of that win.
+- **Drop the glyphs.** Cheapest, and the worst — they are most of how the page
+  reads at a glance.
 
 **Verify.** Build N Labels with and without a glyph and time it — the numbers
 above came from a driver doing exactly that (`.claude/skills/verify/`). The whole
