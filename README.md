@@ -84,6 +84,9 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── curses/           #   CurseData (shelved, kept — §5)
 │   └── stats/            #   StatDefinition (the stat dispatcher's vocabulary)
 │
+├── fonts/                 # ★ Subsetted Noto symbol fonts (OFL) — the ~70 glyphs the UI
+│                          #   draws, shipped so they don't cost a host font search each
+│                          #   time a Label is made. Built by tools/build_glyph_font.py
 ├── images2.0/             # ★ Games-first art — covers, items, enemies, bosses, characters, scrolls
 ├── images/                #   Surviving pre-2.0 art (legacy items / events / encounters)
 ├── addons/gut/            # GUT — the GDScript unit-test framework
@@ -518,6 +521,7 @@ editing the sheet, then review the diff):
 | `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses2.0` sheet |
 | `generate_event2_tres.py` | `data/events2.0/*.tres` from the `events2.0` sheet — see [Authoring an event](#authoring-an-event) |
 | `generate_curse2_tres.py` | `data/curses2.0/*.tres` from the `curses2.0` sheet |
+| `build_glyph_font.py` | `fonts/*.ttf` — the UI's symbol glyphs, subsetted from Noto. Not sheet-driven: it scans `scripts/**/*.gd` for the glyphs actually used. Run it after adding a new one; `--check` verifies without writing |
 | `generate_item_tres.py` | `data/items/*.tres` from the items sheet (pre-2.0 set) |
 | `generate_character_tres.py` | `data/characters/*.tres` (pre-2.0) |
 | `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesnew` sheet |

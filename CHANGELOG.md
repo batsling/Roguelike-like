@@ -11,6 +11,46 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The UI stopped asking the host what a ⚔ looks like.**
+
+  The item the last change uncovered, now closed. The UI is drawn out of about
+  seventy symbols — ⚔ ☠ ⚡ 🏆 🎲 🍀 ⛏ ⚗ — and Godot's built-in font has exactly
+  two of them (`−` and `≈`). A miss is answered by searching the **host's**
+  installed fonts, during shaping, and the answer is not cached: ~2 ms every time
+  a Label carrying one was created. **14.9 ms → 5.0 ms** for a Label carrying ten
+  of them.
+
+  It also means those glyphs were being drawn from whatever the player happened
+  to have installed. The colour-emoji font a modern desktop ships **ignores the
+  tint the theme asks for**, which is why the green SHOP badge had a blue trolley
+  in it and the amber verb row had a gold trophy. They are monochrome now and take
+  the colour they are given, which is what the design was always asking for.
+
+  `fonts/` holds four Noto subsets — **72 glyphs in 28 KB**, only the characters
+  the source actually draws, OFL, built by `tools/build_glyph_font.py` from the
+  @fontsource packages. The script scans `scripts/**/*.gd` for what to include and
+  *reports* anything it cannot cover rather than skipping it silently; today that
+  is `▁` alone (no Noto web subset ships Block Elements), which still renders.
+
+  **Three traps in what should have been a two-line change, all found by
+  measuring:**
+
+  - Declaring the subsets as theme fallbacks only got 15.4 → 12.4 ms. The base
+    font runs its own system search on a miss and runs it **before** the
+    fallbacks, so the expensive thing still happened. Turning that off on the
+    base and putting a system-searching font at the **end** of the chain gets
+    4.5 ms — and keeps the safety net, so a player's note in any language still
+    renders off the tail.
+  - The subsets' own vertical metrics then grew every line in the game by 9px,
+    because Godot takes a font's height to be the **maximum** over the whole
+    fallback chain. That grew the overworld by 63px and broke the "fits a 720p
+    window" tests — which is exactly what those tests are for.
+  - Matching the metrics by *ratio* fixed size 14 and broke 10, 12, 13, 15 and
+    22, because Godot takes the **ceiling** of size × ratio and a rounding error
+    lands differently at different sizes. The subsets are rescaled onto the base
+    font's exact em grid (4096 upem, ascender 4378, descender 1200) instead, and
+    a test now checks every size the UI uses.
+
 - **The page stopped redrawing things that had not changed.**
 
   The last of `docs/performance-backlog.md`'s measured items: `Overworld2._refresh()`

@@ -6,11 +6,12 @@ Findings from a read-only efficiency pass over the whole codebase (2026-08-18).
 CHANGELOG entry "The star chart stopped doing the same work twice"); then the
 star-chart double sweep, the uncached route DAG and the three dead functions
 ("Two hot paths that were doing the work twice"); then the overworld's full-page
-`_refresh` ("The page stopped redrawing things that had not changed"). What is
-left is here, with everything needed to pick each one up cold.
+`_refresh` ("The page stopped redrawing things that had not changed"); and then
+the glyph shaping cost that one uncovered, by shipping the fonts ("The UI stopped
+asking the host what a ⚔ looks like").
 
-Each item states what is wrong, why it is wrong, what the fix looks like, and how
-to know it worked. Neither remaining item has been started.
+**One item is left**, below, and it has not been started. It states what is wrong,
+why it is wrong, what the fix looks like, and how to know it worked.
 
 **Two measurements worth keeping** from the passes that emptied the rest of this
 file, both because they say something about where to look next:
@@ -25,78 +26,23 @@ worse) but the memo beside it was the entire win.
 
 *Where the time in a rebuild actually went.* Not, as this file had assumed, in
 the offering cards or the pack strip — those are ~1.5 ms and ~0.3 ms. It was in
-**five small verb chips, at 10.9 ms**, for the reason that is now item 1 below.
+**five small verb chips, at 10.9 ms**, because every Label carrying one of the
+UI's symbol glyphs was making Godot search the host's fonts for it, uncached.
 Both times the thing that looked expensive was cheap and something unremarkable
 next to it was not. Measure first.
 
----
-
-## 1. Every emoji glyph on the page costs ~2 ms to draw, every time
-
-**Where** everywhere. `scripts/ui/UITheme.gd` sets `default_font_size` and no
-font; the project ships no font file at all (`find . -iname '*.ttf' -o -iname
-'*.otf'` outside `addons/` returns nothing), so the whole UI renders in Godot's
-built-in font.
-
-**What happens.** That font has no coverage for the glyphs the UI is built out of
-— `⛏ ⚡ ⚗ 🎲 🍀 🏆 🛒 ☠ ★ ✦ ⚔` and the rest — so every time a `Label` or `Button`
-carrying one is *created*, the TextServer runs a system-font fallback search for
-it. Measured on the verb chips, building five of them into the live tree:
-
-| five chips | |
-|---|---|
-| plain ASCII text | **0.613 ms** |
-| one emoji each | **10.876 ms** |
-| ASCII, long multi-line tooltip | 0.460 ms |
-
-So roughly **2 ms per Label that contains one**, paid on every rebuild, and the
-tooltips (the other suspect) cost nothing. This was 10 of the 19 ms a full page
-`_refresh` used to take; the repaint guards now skip most of those rebuilds, so
-what is left is the cost of a rebuild that genuinely has to happen — a verb
-moving, a body arriving — plus every *first* build of every screen.
-
-**There is no code-only fix.** That was tested, not assumed. Godot resolves a
-missing glyph by searching the system's fonts *during shaping*, and the result is
-not cached — building twenty Labels with the SAME text costs the same per Label
-as twenty different ones (1.9 ms each). Declaring the fallback up front on the
-theme's font moves that search to the resource, which is where the speed comes
-from — but the speed comes with it only when the declared families differ from
-what Godot's own search would have picked. Measured against the shipped build, on
-a Label carrying ten glyphs:
-
-| theme font | ms/Label | pixels changed |
-|---|---|---|
-| built-in, as shipped | 14.59 | — (the reference) |
-| `SystemFont`, no families named, system fallback on | 14.89 | **0** |
-| `SystemFont`, `["sans-serif"]` | 11.36 | 94 |
-| `SystemFont`, `["Noto Color Emoji", "Noto Emoji", "DejaVu Sans", "sans-serif"]` | **6.41** | 3807 |
-
-Pixel-identical is exactly as slow; 2.3× faster is visibly different glyphs. So
-the choice is a design one and it is not ours to make silently.
-
-**The fix**, in order of how much it asks for:
-- **Ship a font with the coverage** and set it as the theme's `default_font`.
-  This is the only option that is both fast and *deterministic*: today these
-  glyphs are drawn from whatever the host machine happens to have installed, so
-  the game already looks different on different machines — an ⚗ that is beige on
-  one and purple on another. A bundled font fixes the look and the cost together.
-  Wants a licence-clear file (Noto Emoji is OFL) and a few MB in the repo.
-- **Accept a different look for the speed** — declare the emoji families on the
-  theme font as in the last row above. No asset, 2.3×, and the glyphs change.
-- **Cache the shaped Controls** rather than rebuilding them: keep the chips and
-  assign `.text`, which Godot no-ops when it hasn't changed. No asset and no
-  visual change, but it only helps the sections rewritten that way, and the
-  repaint guards have already taken most of that win.
-- **Drop the glyphs.** Cheapest, and the worst — they are most of how the page
-  reads at a glance.
-
-**Verify.** Build N Labels with and without a glyph and time it — the numbers
-above came from a driver doing exactly that (`.claude/skills/verify/`). The whole
-of `test/test_overworld2.gd` is the net for anything that changes the theme.
+*And the fix for that was not where it looked either.* Declaring the shipped
+subsets as theme fallbacks only took 15.4 ms to 12.4 — because the BASE font runs
+its own system search on a miss, and runs it BEFORE the fallbacks. Turning that
+off and putting a system font at the END of the chain got 4.5 ms with nothing
+lost. Then the subsets' own vertical metrics grew every line in the game by 9px,
+because Godot takes a font's height as the max over the whole chain; they are
+rescaled onto the base font's exact em grid now, which `test_display_settings.gd`
+checks at every size the UI uses. Three separate traps in one two-line change.
 
 ---
 
-## 2. `Overworld2.gd` is 5309 lines
+## 1. `Overworld2.gd` is 5309 lines
 
 More than double the next-biggest file (`AtlasView.gd`, 2764). It currently holds
 the run-loop view, the report checklist, the pinned header, the map plumbing, the
