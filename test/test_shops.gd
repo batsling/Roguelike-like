@@ -354,3 +354,70 @@ func test_a_shelf_row_never_hides_the_price_behind_the_name() -> void:
 					"the price is never the thing that gets trimmed")
 				priced += 1
 	assert_eq(priced, shelf.size(), "every slot on the shelf shows what it costs")
+
+
+# --- the shop pool: a shop item is twice as likely to be on the shelf ------
+#
+# The sheet's `pools` column, which is WHERE a relic is drawn from as opposed to
+# what it is about (`tags`). Only `shop` is wired up: it doubles the item's weight
+# when a shelf is rolled, so Piggy Bank and There's Options turn up at hubs more
+# often than the rest of their rarity — without ever being the ONLY things a shelf
+# can hold, which is what a filter would have made them.
+
+func test_the_shop_pool_is_the_authored_one() -> void:
+	var shop_items: Array = Data.reward_item2_pool().filter(
+		func(it): return (it as ItemData).in_pool(&"shop"))
+	var ids: Array = shop_items.map(func(it): return it.id)
+	assert_has(ids, &"piggy_bank", "Piggy Bank is a shop relic")
+	assert_has(ids, &"theres_options", "so is There's Options")
+	assert_false(Data.get_item2(&"anchor").in_pool(&"shop"),
+		"and an ordinary relic is not")
+
+func test_a_shop_relic_is_drawn_about_twice_as_often_as_its_neighbours() -> void:
+	# Driven at the weighted picker rather than through a shelf roll, because a
+	# shelf also applies "no duplicates" and "prefer what you don't own" — three
+	# preferences at once would make the weighting unmeasurable.
+	var pool: Array = Data.reward_item2_pool_of(ItemData.Rarity.UNCOMMON)
+	var shop_ids: Dictionary = {}
+	for it in pool:
+		if (it as ItemData).in_pool(&"shop"):
+			shop_ids[it.id] = true
+	assert_gt(shop_ids.size(), 0, "the Uncommon bucket holds at least one shop relic")
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 424242
+	var draws: int = 20000
+	var shop_hits: int = 0
+	for _i in range(draws):
+		if shop_ids.has(ShopSystem._weighted_pick(rng, pool).id):
+			shop_hits += 1
+	# Expected share: each shop relic counts 2 and everything else 1.
+	var weight_total: float = float(pool.size() + shop_ids.size())
+	var expected: float = (2.0 * shop_ids.size()) / weight_total
+	var actual: float = float(shop_hits) / float(draws)
+	assert_almost_eq(actual, expected, 0.02,
+		"a shop relic is drawn at double weight (%.3f vs %.3f)" % [actual, expected])
+
+func test_the_weighting_is_a_thumb_on_the_scale_and_not_a_filter() -> void:
+	# An ordinary relic must still be able to come out of a pool that holds a
+	# shop one, or the shelf becomes the same two items every run.
+	var pool: Array = Data.reward_item2_pool_of(ItemData.Rarity.UNCOMMON)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var saw_ordinary: bool = false
+	for _i in range(200):
+		if not ShopSystem._weighted_pick(rng, pool).in_pool(&"shop"):
+			saw_ordinary = true
+			break
+	assert_true(saw_ordinary, "ordinary relics still reach the shelf")
+
+func test_a_pool_with_no_shop_relic_is_drawn_flat() -> void:
+	# The cheap path: nothing weighted, so the picker falls through to uniform.
+	var plain: Array = Data.reward_item2_pool().filter(
+		func(it): return not (it as ItemData).in_pool(&"shop"))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var seen: Dictionary = {}
+	for _i in range(400):
+		seen[ShopSystem._weighted_pick(rng, plain).id] = true
+	assert_gt(seen.size(), 1, "an unweighted pool still spreads across its items")

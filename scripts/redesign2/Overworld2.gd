@@ -280,7 +280,11 @@ var _items_box: HFlowContainer
 # Drops a defeated enemy left, waiting to be ASKED about — one ItemDropModal at a
 # time, in the order they fell (§8, _pump_drops). The modal in front of the
 # player right now, or null when nothing is being asked.
-var _drop_queue: Array = []         # [{item: ItemData}]
+# Each entry is one CHEST: {items: Array[ItemData]} — the things it is offering,
+# of which the player takes at most one. A normal body's drop is a Small chest and
+# so a list of one, which is why the single-item shorthand {item: ItemData} is
+# still accepted (see _drop_items); There's Options is what makes a boss's longer.
+var _drop_queue: Array = []
 var _drop_modal: Node = null
 var _reward_open: bool = false      # a RewardScreen is currently showing
 # The game most recently reported on. Rating is OPT-IN and never pops itself up
@@ -588,9 +592,16 @@ func capture_view_state() -> Dictionary:
 	var visits: Dictionary = {}
 	for gid in _visits.keys():
 		visits[String(gid)] = int(_visits[gid])
+	# One entry per waiting CHEST, each an array of the ids it is offering — so a
+	# boss's Medium chest comes back as the same two-item question after a reload
+	# rather than collapsing into one. Older saves wrote a bare id per chest and
+	# are read back as a chest of one (see the restore side).
 	var drops: Array = []
 	for d in _drop_queue:
-		drops.append(String((d["item"] as ItemData).id))
+		var ids: Array = []
+		for it in _drop_items(d):
+			ids.append(String((it as ItemData).id))
+		drops.append(ids)
 	return {
 		"phase": _phase,
 		"start_options": starts,
@@ -649,12 +660,19 @@ func restore_view_state(view: Dictionary) -> void:
 	for gid in vs.keys():
 		_visits[StringName(gid)] = int(vs[gid])
 	_drop_queue.clear()
-	for iid in view.get("drops", []):
-		var it: ItemData = Data.get_item2(StringName(iid))
-		if it == null:
-			it = Data.get_item(StringName(iid))
-		if it != null:
-			_drop_queue.append({"item": it})
+	for raw in view.get("drops", []):
+		# An older save wrote one id per chest; a current one writes the list the
+		# chest is offering. Both land as a list here.
+		var ids: Array = raw if raw is Array else [raw]
+		var offer: Array = []
+		for iid in ids:
+			var it: ItemData = Data.get_item2(StringName(iid))
+			if it == null:
+				it = Data.get_item(StringName(iid))
+			if it != null:
+				offer.append(it)
+		if not offer.is_empty():
+			_drop_queue.append({"items": offer})
 	_last_played_game = Data.get_game(StringName(view.get("last_played_game", "")))
 	# The enemies behind the restored cards are the saved ones, so seed the slot
 	# cache with them — otherwise the next repaint would roll new ones.
@@ -4175,12 +4193,49 @@ func _item_token(item: ItemData, reporting: bool) -> Control:
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(art)
+	var badge: Control = _counter_badge(item)
+	if badge != null:
+		stack.add_child(badge)
 
 	var target_item: ItemData = item
 	tile.gui_input.connect(func(ev: InputEvent):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 			open_item_card(target_item))
 	return col
+
+# An INCREMENTAL relic's counter, drawn in the bottom-right corner of its own art
+# — Slay the Spire's relic counters, in the same corner and for the same reason:
+# the number belongs to the picture of the thing, so a row of relics can be read
+# in one glance without any of them growing a caption.
+#
+# Just the number it is ON, not "2/3". The threshold is what the item's text says
+# and does not change; the count is the only part that moves, and a fraction
+# doubles the pixels to say the same thing. Returns null for everything that is
+# not incremental, which is almost every item.
+#
+# Public in spirit — the drop modal and the shop shelf draw the same tiles — but
+# they show TEMPLATES, whose counter is always 0, so only the pack calls it.
+func _counter_badge(item: ItemData) -> Control:
+	var spec: Dictionary = item.incremental_spec()
+	if spec.is_empty():
+		return null
+	var count: int = maxi(0, item.counter_value)
+	var wrap := PanelContainer.new()
+	wrap.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	wrap.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	wrap.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Its own dark plate rather than bare text on the art: item art is 852 games'
+	# worth of colours and a naked glyph is illegible over half of them.
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(Color(0.06, 0.06, 0.09, 0.88), 3, 3, 1, UITheme.GOLD))
+	var label := Label.new()
+	label.text = str(count)
+	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_color_override("font_color", UITheme.GOLD)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(label)
+	return wrap
 
 # The control above an active item's tile. Full charge (or a Usable item, which
 # has none) reads "Use" and fires; a partial charge is the battery, showing how
@@ -4274,6 +4329,9 @@ func item_hover(item: ItemData, active: bool, ready: bool, reporting: bool) -> D
 	var sub: String = UITheme.item_class_name(item)
 	if item.is_charged():
 		sub += "  ·  %d/%d charged" % [item.current_charge, item.max_charge()]
+	var counter: Dictionary = item.incremental_spec()
+	if not counter.is_empty():
+		sub += "  ·  %d/%d" % [item.counter_value, int(counter["every"])]
 	var note: String = ""
 	if active:
 		if ready:
@@ -4326,18 +4384,34 @@ func _stack_summary() -> String:
 
 # --- kill-drops (§8) -------------------------------------------------------
 
-# A defeated enemy dropped loot: roll an item and queue it. The queue is drained
-# one ItemDropModal at a time (_pump_drops) — the kill ASKS whether you want what
-# fell off it, rather than leaving it in a tray to be noticed. Skipped once the
-# run is over (win/lose screens take over the board).
+# A defeated enemy dropped loot: roll the chest it left and queue it. The queue is
+# drained one ItemDropModal at a time (_pump_drops) — the kill ASKS whether you
+# want what fell off it, rather than leaving it in a tray to be noticed. Skipped
+# once the run is over (win/lose screens take over the board).
+#
+# ONE ITEM OFF A BODY IS A CHEST — a Small one, "choose 1 of 1" (§8.2). Saying it
+# that way is what lets There's Options exist without a second reward path: the
+# relic buys chest POINTS on a boss's drop, those points are spent on the same
+# size ladder a [chest reward] walks (Data.chest_reward_sizes), and a Medium chest
+# is the same modal offering two. A body that isn't a boss always drops the Small
+# one, so the common case is untouched — same single item, same two buttons.
 func _on_enemy_defeated(enemy: GoalEnemyData) -> void:
 	if GameLoop2.run_over:
 		return
-	var item: ItemData = _roll_drop(enemy != null and enemy.is_boss())
-	if item == null:
-		return
-	_drop_queue.append({"item": item})
-	_pump_drops()
+	var from_boss: bool = enemy != null and enemy.is_boss()
+	var points: int = 1 + (GameState.boss_chest_bonus() if from_boss else 0)
+	var queued: bool = false
+	# Points past a Huge overflow into a SECOND chest rather than off the end of
+	# the ladder, which is the whole reason to spend them through Data — so a
+	# stack of There's Options keeps paying, one more question at a time.
+	for size in Data.chest_reward_sizes(points):
+		var offer: Array = _roll_chest(from_boss, int(Data.CHEST_SIZE_CHOICES[size]))
+		if offer.is_empty():
+			continue
+		_drop_queue.append({"items": offer})
+		queued = true
+	if queued:
+		_pump_drops()
 
 # Ask about the next waiting drop, if nothing else is already asking. Several
 # defeats in one report queue behind each other rather than stacking modals.
@@ -4363,12 +4437,12 @@ func _open_next_drop() -> void:
 	if _phase == Phase.OVER or GameLoop2.run_over:
 		return
 	var drop: Dictionary = _drop_queue[0]
-	var modal = ItemDropModal.open(self, drop["item"])
+	var modal = ItemDropModal.open(self, _drop_items(drop))
 	_drop_modal = modal
-	modal.answered.connect(func(taken: bool):
+	modal.answered.connect(func(taken: bool, chosen: ItemData):
 		_drop_modal = null
 		if taken:
-			_collect_drop(drop)
+			_collect_drop(drop, chosen)
 		else:
 			_skip_drop(drop)
 		# Whatever is behind it in the queue is the next question.
@@ -4393,11 +4467,44 @@ func _roll_drop(from_boss: bool = false) -> ItemData:
 		return null
 	return bucket[_rng.randi_range(0, bucket.size() - 1)]
 
-func _collect_drop(drop: Dictionary) -> void:
+# `count` DISTINCT items for one chest, each rolled by _roll_drop. Distinct is a
+# preference and not a rule, the same way the shop shelf treats it: two of the
+# same relic side by side is not a choice, but a thin pool still owes a full
+# chest, so the draw gives up after a few tries rather than shrinking the offer.
+# Fewer than `count` only when the pool itself is empty.
+func _roll_chest(from_boss: bool, count: int) -> Array:
+	var out: Array = []
+	var tries: int = 0
+	while out.size() < maxi(1, count) and tries < 40:
+		tries += 1
+		var item: ItemData = _roll_drop(from_boss)
+		if item == null:
+			break
+		if not out.has(item):
+			out.append(item)
+	return out
+
+# The items one queued chest is offering. `items` is the canonical shape; the
+# single-item `{item: …}` shorthand is still read so a save written before chests
+# had a size — and the tests that hand-build a drop — keep working.
+func _drop_items(drop: Dictionary) -> Array:
+	var items: Array = drop.get("items", [])
+	if not items.is_empty():
+		return items
+	var one = drop.get("item")
+	return [one] if one is ItemData else []
+
+func _collect_drop(drop: Dictionary, chosen: ItemData = null) -> void:
 	if not _drop_queue.has(drop):
 		return
 	_drop_queue.erase(drop)
-	var item: ItemData = drop["item"]
+	var offered: Array = _drop_items(drop)
+	# Defaults to the first thing offered, so a caller that doesn't care which —
+	# a test, a one-item chest — doesn't have to name it.
+	var item: ItemData = chosen if chosen != null and offered.has(chosen) \
+		else (offered[0] if not offered.is_empty() else null)
+	if item == null:
+		return
 	GameState.add_item(item)
 	GameLog.add("Collected %s." % item.display_name, Color(0.7, 1.0, 0.7))
 	Notifications.notify("Took %s." % item.display_name, UITheme.item_color(item))
@@ -4406,7 +4513,11 @@ func _skip_drop(drop: Dictionary) -> void:
 	if not _drop_queue.has(drop):
 		return
 	_drop_queue.erase(drop)
-	GameLog.add("Left %s behind." % String(drop["item"].display_name), Color(0.8, 0.8, 0.8))
+	var names: Array = []
+	for it in _drop_items(drop):
+		names.append(String((it as ItemData).display_name))
+	if not names.is_empty():
+		GameLog.add("Left %s behind." % ", ".join(names), Color(0.8, 0.8, 0.8))
 
 
 func _result_text(res: Dictionary) -> String:

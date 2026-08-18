@@ -326,21 +326,51 @@ func _roll_stock(game_id: StringName, reroll_index: int) -> Array:
 	return out
 
 
+# What an item in the `shop` pool counts for when a shelf is drawn. Two, so a
+# relic authored as a shop item is twice as likely to be standing at a hub as
+# anything else of its rarity (Piggy Bank, There's Options).
+#
+# A WEIGHT AND NOT A FILTER, deliberately. Isaac's shop pool is a separate table
+# and nothing else reaches it; here the catalogue is 30 relics against a run that
+# visits at most ten hubs, and a shop that could only ever stock two of them would
+# be the same two every run. Doubling the weight says "this belongs in a shop"
+# without saying "and nowhere else" — a shop item still drops off a body, and a
+# shelf can still come up three ordinary relics.
+const SHOP_POOL_WEIGHT := 2
+
 # One item off the rarity ladder, skipping anything already on this shelf and
 # preferring what the player doesn't own. Falls back a step at a time — unowned
 # in the rolled rarity, then anything in it, then the whole pool — so the only
-# way this returns null is an empty catalog.
+# way this returns null is an empty catalog. Every step draws through the same
+# shop-pool weighting.
 func _draw_one(rng: RandomNumberGenerator, taken: Dictionary) -> ItemData:
 	var rarity: int = Data.roll_item_rarity(rng)
 	var bucket: Array = Data.reward_item2_pool_of(rarity)
 	var fresh: Array = bucket.filter(func(it):
 		return not taken.has(it.id) and not GameState.has_item(it.id))
 	if not fresh.is_empty():
-		return fresh[rng.randi() % fresh.size()]
+		return _weighted_pick(rng, fresh)
 	var unheld: Array = bucket.filter(func(it): return not taken.has(it.id))
 	if not unheld.is_empty():
-		return unheld[rng.randi() % unheld.size()]
+		return _weighted_pick(rng, unheld)
 	var whole: Array = Data.reward_item2_pool().filter(func(it): return not taken.has(it.id))
 	if not whole.is_empty():
-		return whole[rng.randi() % whole.size()]
+		return _weighted_pick(rng, whole)
 	return null
+
+
+# One item out of `pool`, with everything in the `shop` pool counting
+# SHOP_POOL_WEIGHT times. Plain uniform when nothing in the pool is a shop item,
+# which is the common case and costs one pass to establish.
+func _weighted_pick(rng: RandomNumberGenerator, pool: Array) -> ItemData:
+	var total: int = 0
+	for it in pool:
+		total += SHOP_POOL_WEIGHT if (it as ItemData).in_pool(&"shop") else 1
+	if total <= pool.size():
+		return pool[rng.randi() % pool.size()]
+	var roll: int = rng.randi() % total
+	for it in pool:
+		roll -= SHOP_POOL_WEIGHT if (it as ItemData).in_pool(&"shop") else 1
+		if roll < 0:
+			return it
+	return pool[pool.size() - 1]

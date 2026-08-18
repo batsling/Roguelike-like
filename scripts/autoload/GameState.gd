@@ -564,6 +564,14 @@ func _connect_lifecycle_hooks() -> void:
 	# hooks above — Blood Bombs' +1 Health lands on every bomb thrown.
 	if not TriggerBus.bomb_used.is_connected(_on_bomb_used):
 		TriggerBus.bomb_used.connect(_on_bomb_used)
+	# Two more scene-less battlefield/run hooks on the same runner: a body being
+	# defeated (Charm of the Vampire counts them) and the player's Health going
+	# down (Piggy Bank pays on it). Both fire outside any combat scene, so the
+	# effects behind them must be scene-free — which the 2.0 item set is.
+	if not TriggerBus.enemy_killed.is_connected(_on_enemy_killed):
+		TriggerBus.enemy_killed.connect(_on_enemy_killed)
+	if not TriggerBus.health_lost.is_connected(_on_health_lost):
+		TriggerBus.health_lost.connect(_on_health_lost)
 	# Combats-won tally drives the enemy-spawn budget (first fight is gentler).
 	if not TriggerBus.combat_ended.is_connected(_on_combat_ended_tally):
 		TriggerBus.combat_ended.connect(_on_combat_ended_tally)
@@ -613,6 +621,12 @@ func _on_potion_used(ctx: Dictionary) -> void:
 
 func _on_bomb_used(ctx: Dictionary) -> void:
 	fire_run_item_triggers("bomb_used", ctx)
+
+func _on_enemy_killed(ctx: Dictionary) -> void:
+	fire_run_item_triggers("enemy_killed", ctx)
+
+func _on_health_lost(ctx: Dictionary) -> void:
+	fire_run_item_triggers("health_lost", ctx)
 
 # Fires every owned item's triggers whose `on:` matches `trigger_name`, with a
 # scene-less context (source/target/scene/card = null). The run-scope sibling
@@ -1286,7 +1300,17 @@ func change_hp(delta: int) -> void:
 	# live combat scene so event/overworld drains never count.
 	if delta < 0 and combat_scene != null:
 		incremental_on_player_hp_loss()
+	var before: int = hp
 	set_hp(hp + delta)
+	# "You lost Health" (Piggy Bank, §8.1) — fired on what ACTUALLY came off,
+	# not on what was asked for, so a 5-point drain against 2 Health left is one
+	# loss of 2 and a drain against 0 is no event at all. Every Health loss in
+	# the run funnels through here (an enemy swing's overflow past the Shields,
+	# the Health a failed try costs, an event's bill, IV Bag), which is why the
+	# hook lives at this choke point rather than on the battlefield: the relic
+	# says "whenever", and the overworld is a place Health is lost too.
+	if hp < before:
+		TriggerBus.health_lost.emit({"amount": before - hp})
 
 func set_gold(new_gold: int) -> void:
 	gold = max(0, new_gold)
@@ -1886,6 +1910,17 @@ func enemy_gold_bonus() -> int:
 func sweeps_shops() -> bool:
 	return _any_item_flag("shop_sweep")
 
+# There's Options: extra chest POINTS on a boss's drop (§8.2). SUMS the copies,
+# like enemy_gold_bonus — a second one is a second rung, not a second doubling.
+# 0 when nothing owned changes it, which leaves a boss dropping the Small chest
+# every body drops.
+func boss_chest_bonus() -> int:
+	var n: int = 0
+	for it in inventory:
+		if it is ItemData:
+			n += it.boss_chest_bonus
+	return n
+
 # ---------------------------------------------------------------------------
 # Usable consumables + temporary buffs
 # ---------------------------------------------------------------------------
@@ -2091,6 +2126,11 @@ func add_item(template: ItemData) -> ItemData:
 	# Charged actives start full (Isaac-style) unless the item opts out.
 	if inst.is_charged():
 		inst.current_charge = inst.max_charge() if inst.starts_charged else 0
+	# An incremental relic counts from zero, whenever in the run it is taken —
+	# the template's counter is a schema default and never a tally, but a copy
+	# minted from a duplicated INSTANCE (Duplicator, the dev panel) would inherit
+	# one, so the slot is zeroed here rather than trusted.
+	inst.counter_value = 0
 	# Curse of Decay: a passive item obtained while it's active has a chance
 	# to arrive already downgraded. Holding it twice rolls twice, independently.
 	if inst.kind == ItemData.ItemKind.PASSIVE:

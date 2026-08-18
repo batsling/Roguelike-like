@@ -31,6 +31,14 @@ One item = `clause; clause; ...` (paren/bracket aware — a `;` inside `()`,
 | `perfect` | `perfect_effects` / `perfect_save_chance` | `perfect: gain_hp 5` |
 | `status_amplify`, `status_immunity`, `attack_damage_bonus`, `upgrade_card_types`, `stat_mirror`, `stat_floor`, `stat_gain_bonus`, `negate_lethal`, `reroll_low_rarity`, `carries_leftover_energy`, `lower_hp_damage_mult`, `gold_spend_stat_per=N`, `level_up`, `charged (charge_cost N)` | the matching one-off `ItemData` field | `status_immunity: weak` (Ginger — the player can no longer gain that status) |
 | `keep_shields`, `bomb_stun`, `bomb_cardinal`, `grid_grow` | the games-first (2.0) run-loop rule flags — bare words, no payload | `keep_shields` (Barricade: unspent shields bank into the next game instead of expiring) |
+| `health_lost` | `triggers[{on:health_lost}]` (run-scope, scene-less; the PLAYER's Health went down, from any source anywhere in the run) | `health_lost: gain_gold 1` (Piggy Bank) |
+| `boss_chest_bonus: N` | `boss_chest_bonus` — chest POINTS added to a boss's drop, spent on `Data.chest_reward_sizes`' ladder | `boss_chest_bonus: 1` (There's Options: a boss's Small chest becomes a Medium, so its drop is 1-of-2) |
+
+`health_lost` is **not** `damage_taken`. Shields absorb before Health does in the
+2.0 loop, so a swing they eat whole is damage taken and no Health lost; the hook
+fires from `GameState.change_hp` on what actually came off, which also means an
+event's bill and the Health a failed try costs count exactly as an enemy's swing
+does.
 
 ### Games-first (2.0) run-loop flags
 
@@ -59,7 +67,9 @@ without the Health in it), `gain_stat <s> N`,
 `temp_stat <s> +N`, `N% chance <effect>`, `counter key=K every=N -> <effect>`,
 `if_hp above|below F -> <effect>`, `roll_block sides=N`, `roll_gold [a,b,c]`,
 `upgrade_random_cards card_type=X count=N`, `+N <name> streak` / `reset <name>`,
-`free_random_hand_card`, `attack_double`, `+Replay N`,
+`free_random_hand_card`, `attack_double`, `+Replay N`, `reroll_enemies`
+(D10: every non-boss body on the battlefield re-rolled at its own difficulty and
+game type, keeping its square and its statuses),
 `reduce_card_cost N [tag=X type=Y count=N]` (Empty Tome: at combat start, shave
 N off the cost of `count` random cards matching the tag/type filter for the rest
 of the fight — and since action cooldown is `2*cost + rarity`, the same discount
@@ -84,6 +94,11 @@ Don't put quote marks inside the verify question — the parity harness's
 - High-frequency hooks (`attack_landed`, `attack_missed`, `turn_tick`,
   `damage_taken`, and any counter/streak) get `silent: true`.
 - A counter / streak effect's `label` is the item's display name.
+- The `tags` column becomes `ItemData.tags` (what the item is *about*) and the
+  `pools` column `ItemData.pools` (where it is *drawn from*). Only `shop` is read
+  today: it doubles the item's weight when a hub's shelf is rolled
+  (`ShopSystem.SHOP_POOL_WEIGHT`). Both are comma-separated; `n/a` and `none`
+  drop out.
 - `block`/`heal`/buff effects under a self-facing trigger (`combat_started`,
   `turn_started/ended`, `item_acquired`) default to `target: self`; a bare
   `enemy` target stays implicit (it is the EffectSystem default).

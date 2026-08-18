@@ -83,6 +83,8 @@ func _register_defaults() -> void:
 	register("none", _h_none)
 	register("if_hp", _h_if_hp)
 	register("chance", _h_chance)
+	register("counter", _h_counter)
+	register("reroll_enemies", _h_reroll_enemies)
 	register("teleport_type", _h_teleport_type)
 	register("obtain_item", _h_obtain_item)
 	register("random_item_choice", _h_random_item_choice)
@@ -353,6 +355,55 @@ func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 	if not Stats.roll_chance(_rng, percent, favour_of(inner)):
 		return
 	apply(inner, ctx)
+
+
+# The INCREMENTAL wrapper: "every Nth time this happens, do the thing" (Charm of
+# the Vampire's third body). Bumps the owning relic's counter and fires the nested
+# `effects` only on the tick that trips it, then rolls the count back to zero.
+#
+# The count lives on the ITEM (ItemData.counter_value), which the run-scope trigger
+# runner hands over as ctx.item — one counter per inventory slot, so two copies each
+# count the same body once and each pay out on their own third, and a copy picked up
+# mid-run starts at zero. That is the difference from the combat-era `counter`, which
+# read a shared GameState tally and needed the tally bumped centrally to stop two
+# copies double-counting one event. The counter drawn on the item's art is this
+# number (see Overworld2._counter_badge).
+#
+# Fires nothing without an item to count on — a counter with no owner is a counter
+# with no memory, and silently paying out every time would be worse than not firing.
+func _h_counter(effect: Dictionary, ctx: Dictionary) -> void:
+	var item = ctx.get("item")
+	if not (item is ItemData):
+		return
+	var every: int = maxi(1, int(effect.get("every", 1)))
+	var inner: Array = effect.get("effects", [])
+	if inner.is_empty():
+		return
+	item.counter_value = int(item.counter_value) + 1
+	if item.counter_value < every:
+		GameState.emit_signal("inventory_changed")
+		return
+	item.counter_value = 0
+	var label: String = String(effect.get("label", item.display_name))
+	GameLog.add("%s reaches %d — it pays out." % [label, every], Color(0.85, 0.9, 0.7))
+	apply_all(inner, ctx)
+	GameState.emit_signal("inventory_changed")
+
+
+# D10: re-roll every non-boss body on the battlefield at its own difficulty and
+# game type (GameLoop2.reroll_enemies owns the rule; this is only the wiring).
+# Says so even when it changes nothing, because a charge was spent either way and
+# a silent active reads as a broken one.
+func _h_reroll_enemies(_effect: Dictionary, _ctx: Dictionary) -> void:
+	var swapped: int = GameLoop2.reroll_enemies()
+	if swapped > 0:
+		GameLog.add("The board is re-rolled — %d enem%s changed."
+			% [swapped, "y" if swapped == 1 else "ies"], Color(0.6, 0.75, 1.0))
+		Notifications.notify("Re-rolled %d enem%s."
+			% [swapped, "y" if swapped == 1 else "ies"], Color(0.6, 0.75, 1.0))
+	else:
+		GameLog.add("Nothing on the board could be re-rolled.", Color(0.8, 0.8, 0.8))
+		Notifications.notify("Nothing to re-roll.", Color(0.8, 0.8, 0.8))
 
 
 # The effect types a player does NOT want to land. Everything not named here is

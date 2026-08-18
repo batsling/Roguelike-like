@@ -198,6 +198,16 @@ var games_beaten: int = 0
 # it took — and its size is the attempt count. Cleared when a new game is chosen.
 var attempt_costs: Array = []
 
+# Gold each logged try minted on its way through, parallel to `attempt_costs`
+# (Piggy Bank pays on a Health loss, and a try is a Health loss). Held so
+# undo_attempt can hand back exactly what the try it is undoing earned — see
+# log_attempt. 0 for a try that cost a shield or paid nothing.
+#
+# A parallel LIST rather than one "last payout" int, because the undo is a stack:
+# a player can untick three tries in a row, and each has to give back its own
+# winnings rather than the most recent one's.
+var _attempt_payouts: Array[int] = []
+
 # Summary of the most recent beat_game(), for the log / HUD / tests. Rebuilt each
 # resolve; see beat_game for its shape.
 var last_result: Dictionary = {}
@@ -227,6 +237,7 @@ func reset() -> void:
 	arrivals.clear()
 	stack.clear()
 	attempt_costs.clear()
+	_attempt_payouts.clear()
 	bashed.clear()
 	transmuted.clear()
 	run_over = false
@@ -257,15 +268,25 @@ func sync_grid_bounds() -> void:
 	var was_offgrid_from: int = _bounds_cols
 	_bounds_cols = cols
 	_bounds_rows = rows
+	_reseat_stack(was_offgrid_from)
+	loop_changed.emit()
+
+# Park every body that is no longer standing on legal, unoccupied ground and walk
+# the queue back on. Shared by the two things that can pull the floor out from
+# under the stack without moving anything itself: the board changing SIZE
+# (sync_grid_bounds above) and a body changing SHAPE (reroll_enemies, where a 1x1
+# can come back as a 2x2). `was_offgrid_from` is the old off-grid threshold, which
+# only the size change has; a shape change passes the current one.
+func _reseat_stack(was_offgrid_from: int = -1) -> void:
+	var threshold: int = was_offgrid_from if was_offgrid_from >= 0 else _bounds_cols
 	for entry in stack:
 		var col: int = int(entry.get("col", offgrid_col()))
-		if col > was_offgrid_from or col > cols or not fits_at(
+		if col > threshold or col > grid_cols() or not fits_at(
 				entry.get("enemy"), int(entry.get("row", 0)), col,
 				int(entry.get("instance", 0))):
 			entry["col"] = offgrid_col()
 			entry["row"] = 0
 	_admit_offgrid()
-	loop_changed.emit()
 
 # Full run start for the games-first loop: wipes run state, applies the chosen
 # character's 2.0 loadout (Health + verbs + starting items), and clears the enemy
@@ -312,6 +333,7 @@ func serialize() -> Dictionary:
 		"defeated_count": defeated_count,
 		"games_beaten": games_beaten,
 		"attempt_costs": attempt_costs.duplicate(),
+		"attempt_payouts": _attempt_payouts.duplicate(),
 		"next_instance": _next_instance,
 	}
 
@@ -372,6 +394,18 @@ func restore(data: Dictionary) -> void:
 	attempt_costs.clear()
 	for cost in data.get("attempt_costs", []):
 		attempt_costs.append(String(cost))
+	# Absent in a save written before Piggy Bank existed, which leaves the list
+	# empty and every undo after loading refunding no gold — the safe direction
+	# to be wrong in. Forced to the same length as `attempt_costs`, since undo
+	# pops both together and a short list would misalign the pair: a short one is
+	# padded at the FRONT, so it is the OLDEST tries whose winnings are unknown.
+	_attempt_payouts.clear()
+	for paid in data.get("attempt_payouts", []):
+		_attempt_payouts.append(maxi(0, int(paid)))
+	while _attempt_payouts.size() > attempt_costs.size():
+		_attempt_payouts.remove_at(0)
+	while _attempt_payouts.size() < attempt_costs.size():
+		_attempt_payouts.insert(0, 0)
 	# Never hand out an instance handle something on the board already holds.
 	_next_instance = maxi(1, int(data.get("next_instance", 1)))
 	for entry in stack:
@@ -720,13 +754,22 @@ func log_attempt() -> String:
 	if run_over or arrivals.is_empty():
 		return ""
 	var cost: String = "shield" if GameState.shields > 0 else "health"
+	var payout: int = 0
 	if cost == "shield":
 		GameState.shields -= 1
 	else:
+		# What the Health cost PAID OUT, measured rather than assumed: losing
+		# Health is a trigger point (Piggy Bank), and a try is the one loss in the
+		# game that can be taken back. Without this the undo button is a gold
+		# faucet — tick, untick, tick, untick — so the tick's winnings are
+		# recorded here and handed back by undo_attempt below.
+		var purse: int = GameState.gold
 		GameState.change_hp(-ATTEMPT_HEALTH_COST)
+		payout = maxi(0, GameState.gold - purse)
 		if GameState.hp <= 0:
 			_finish_run(false)
 	attempt_costs.append(cost)
+	_attempt_payouts.append(payout)
 	attempt_logged.emit(cost, false)
 	loop_changed.emit()
 	return cost
@@ -738,10 +781,16 @@ func undo_attempt() -> String:
 	if run_over or attempt_costs.is_empty():
 		return ""
 	var cost: String = String(attempt_costs.pop_back())
+	# "Refunding exactly what it spent" has to include what it EARNED, or a Piggy
+	# Bank turns the undo into a coin press. Popped alongside the cost, so a try's
+	# winnings can only ever be clawed back once and only by its own undo.
+	var payout: int = int(_attempt_payouts.pop_back()) if not _attempt_payouts.is_empty() else 0
 	if cost == "shield":
 		GameState.shields += 1
 	else:
 		GameState.change_hp(ATTEMPT_HEALTH_COST)
+	if payout > 0:
+		GameState.change_gold(-payout)
 	attempt_logged.emit(cost, true)
 	loop_changed.emit()
 	return cost
@@ -1214,6 +1263,55 @@ func scramble() -> GoalEnemyData:
 	choose_game(fresh)  # supersedes what arrived, with a new instance
 	return fresh
 
+# D10 (§8): re-roll every NON-BOSS body on the battlefield where it stands.
+# Returns how many were swapped.
+#
+# The opposite shape of Scramble, and the two are worth reading together. Scramble
+# is about the game you just took: it supersedes what arrived, spends a charge for
+# a different pair, and never touches the followers. The D10 is about the crowd
+# you are already carrying — it reaches everything EXCEPT what makes the crowd
+# dangerous, since a boss shrugs it off the same way it shrugs off a bomb (§7.1).
+#
+# EACH BODY IS RE-ROLLED AGAINST ITSELF: same tier, same game type, so the board
+# keeps its weight and only its faces change. This is the whole point of the
+# relic — the stack is a list of GOALS, and a goal you cannot or will not do is
+# the thing being escaped. It is not a way to make a High board into a Low one.
+#
+# What survives the swap is THE SLOT, not the body: the grid square, and the
+# statuses hung on it (they ride the position the same way they ride a body walking
+# on, see _add_to_grid). Health resets to the new enemy's own, because Health here
+# is goal completions and the goals just changed — carrying a hit over would credit
+# the player for solving a goal that is no longer on the board.
+func reroll_enemies() -> int:
+	var pool: Array = Data.all_goal_enemies()
+	var swapped: int = 0
+	for entry in stack:
+		var old: GoalEnemyData = entry.get("enemy")
+		if old == null or old.is_boss():
+			continue
+		# The old body is EXCLUDED from its own re-roll, which is the one place
+		# this differs from Scramble's draw. A die that can hand back the exact
+		# goal you spent a charge escaping is a die the player will stop pressing,
+		# and _pick_by_type_tier already knows how to leave one out. When the
+		# bucket holds nothing else, it returns null and the body simply stays —
+		# "there is nothing else it could be" is the honest answer there.
+		var fresh: GoalEnemyData = _pick_by_type_tier(
+			pool, StringName(String(old.game_type).to_lower()), old.tier_index(), old)
+		if fresh == null or fresh == old:
+			continue
+		entry["enemy"] = fresh
+		entry["health"] = effective_health(fresh)
+		swapped += 1
+	if swapped > 0:
+		# A re-rolled body can be a different SHAPE (a 2x2 where a 1x1 stood), so
+		# the board is re-seated rather than trusted: sync_grid_bounds' own rule —
+		# anything no longer standing on legal, unoccupied ground goes back to the
+		# queue and walks on again — is exactly what a footprint change needs, and
+		# it is a no-op for the common case where every swap fits where it landed.
+		_reseat_stack()
+		loop_changed.emit()
+	return swapped
+
 # The player reached & played the Amulet game — win the run (§2). Called by the
 # overworld once that game has been reported.
 #
@@ -1561,6 +1659,13 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
 		coins += GameState.enemy_gold_bonus()
 		GameState.change_gold(coins)
 		res["gold"] = int(res.get("gold", 0)) + coins
+	# Two announcements, and they are not the same one twice. `enemy_defeated` is
+	# the BOARD's: the overworld hangs the drop question off it. `enemy_killed` is
+	# the ITEM layer's hook (Charm of the Vampire counting bodies), fired through
+	# the same run-scope runner every other scene-less item trigger uses. Both
+	# sit here, under the same rule about what counts as a defeat: a bombed body
+	# never reaches this function (see `bomb`), so it feeds neither.
+	TriggerBus.enemy_killed.emit({"enemy": enemy})
 	enemy_defeated.emit(enemy)
 
 # Applies `damage` to the player: unspent Shields absorb first (§3), the

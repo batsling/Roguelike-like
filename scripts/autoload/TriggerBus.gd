@@ -44,6 +44,18 @@ signal card_discarded(ctx: Dictionary)
 # --- Damage events ---
 signal damage_dealt(ctx: Dictionary)        # ctx.source, ctx.target, ctx.amount
 signal damage_taken(ctx: Dictionary)        # ctx.target, ctx.attacker, ctx.amount
+signal health_lost(ctx: Dictionary)         # ctx.amount — the PLAYER's Health went
+                                            # down, from any source anywhere in the
+                                            # run: an enemy swing that got past the
+                                            # Shields, the Health a failed try costs
+                                            # (§3), an event's bill. Emitted once per
+                                            # loss by GameState.change_hp, the single
+                                            # choke point every drain funnels through.
+                                            # NOT the same event as damage_taken: a
+                                            # swing the Shields eat whole is damage
+                                            # taken and no Health lost, and Piggy Bank
+                                            # must not pay for it. Run-scope and
+                                            # scene-less.
 signal attack_landed(ctx: Dictionary)       # ctx.source, ctx.target — a melee/ranged
                                             # attack connected (block counts, miss/dodge
                                             # don't). Dead Eye's streak grows here.

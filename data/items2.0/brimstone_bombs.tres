@@ -16,4 +16,5 @@ bomb_cardinal = true
 max_uses = -1
 source_game = "The Binding of Isaac: Rebirth"
 tags = PackedStringArray("bomb")
+pools = PackedStringArray("devil_room")
 image = ExtResource("2_img")

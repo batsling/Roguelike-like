@@ -11,6 +11,88 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Seven Isaac relics, and the five pieces of machinery they needed.**
+
+  Piggy Bank, There's Options, The Mark, Stigmata, Charm of the Vampire, D10 and
+  Wooden Nickel had been sitting in the `items2.0` sheet with a Description, a
+  Rating, a Type and an **empty Effect cell** — so the generator emitted seven
+  `.tres` that read correctly on the card and did nothing at all. They are wired
+  up now. Two of them cost nothing new (Stigmata is Max Health that arrives full
+  plus a Bash; Wooden Nickel is a 50% `chance` on the shortest charge bar in the
+  game). The other five each named a moment or a rule the games-first loop did
+  not have, and that is most of what this change is.
+
+  **`health_lost` — a hook for Health leaving, not for damage arriving.** Piggy
+  Bank in Isaac reads "whenever you take damage"; here Shields absorb before
+  Health does (§3), so a swing they eat whole is damage taken and costs nothing,
+  and a relic paying for it would be paying for the absence of an injury. The
+  card was reworded to **"Whenever you lose Health"** and the hook fires from
+  `GameState.change_hp`, the choke point every drain in the 2.0 build funnels
+  through — an enemy's overflow past the shields, an event's bill, the Health a
+  failed try costs. It reports what *actually* came off rather than what was
+  asked for, so a 5-point drain against 2 Health left is one loss of 2.
+
+  A failed try is the one Health loss in the game that can be **taken back**, and
+  the undo button would otherwise have been a coin press: tick, untick, tick,
+  untick, +1 gold a cycle. `log_attempt` now measures what the tick paid out and
+  `undo_attempt` hands it back, so "refunding exactly what it spent" includes
+  what it earned.
+
+  **Incremental relics, counted per copy and drawn on the art.** Charm of the
+  Vampire pays every third defeated enemy, which needed both a counter and an
+  `enemy_killed` hook to count (a *bombed* body is destroyed rather than
+  defeated and never reaches `_defeat`, the same rule that decides whether it
+  pays gold). The counter lives on the **inventory slot** — `ItemData.counter_value`,
+  beside `current_charge`, round-tripping through saves the same way — and not
+  on the run. That is Slay the Spire's rule and it is the right one twice over:
+  two copies each count the same body once and each pay out on their own third,
+  and a copy picked up mid-run starts at zero instead of inheriting a tally it
+  was not present for. The number is drawn **bottom-right on the item's own art**,
+  where the Spire draws it, because a relic counter belongs to the picture of the
+  thing rather than to a caption beside it — just the count, since the threshold
+  is what the item's text already says and only the count moves.
+
+  **A dropped item is a chest — a Small one.** There's Options says "increase the
+  chest size dropped from bosses by 1", and the build had no chest on that path
+  at all: a defeated body rolled one relic and `ItemDropModal` asked Take it /
+  Leave it. Restating that as *choose 1 of 1* is what let the relic exist without
+  a second reward path. A boss's drop is now worth **1 chest point + 1 per copy**
+  held, spent on the same size ladder a `[chest reward]` walks
+  (`Data.chest_reward_sizes`), and at 2 or more the modal grows a row of cards to
+  pick between — still one relic taken, still one "Leave it", because the answer
+  to a chest is *which one* and not *how many*. Points past a Huge overflow into a
+  second chest, so a stack keeps paying instead of running off the end of the
+  ladder. Nothing changes for an ordinary body: 1 point, Small, the same single
+  item and the same two buttons.
+
+  **The D10 re-rolls the board against itself.** Every non-boss body is replaced
+  by a fresh roll at *its own* tier and game type, so the board keeps its weight
+  and only its faces change — the point of the relic is that the stack is a list
+  of goals and one of them is a goal you cannot or will not do, not that a High
+  board can be laundered into a Low one. The slot survives the swap (the square
+  it stands on, and the statuses hung on it); Health does not, because Health
+  here is goal completions and the goals just changed. Bosses shrug it off the
+  way they shrug off a bomb. A re-rolled body can be a different *shape*, so the
+  board is re-seated afterwards through the same rule a Mine-r Construction
+  gain/loss uses — factored out of `sync_grid_bounds` as `_reseat_stack`.
+
+  **`pools`, and shop items that turn up in shops.** The sheet's `pools` column
+  was authored but never read. It answers a different question from `tags`
+  (*where a relic is drawn from*, not what it is about), and `shop` is the first
+  entry wired up: an item in it counts **double** when a hub's shelf is rolled,
+  so Piggy Bank and There's Options are twice as likely to be standing at a shop
+  as anything else of their rarity. A weight rather than a filter, deliberately —
+  Isaac's shop pool is a separate table nothing else reaches, but against thirty
+  relics and at most ten hubs a run, that would have made every shop the same two
+  items every time. A shop relic still drops off a body, and a shelf can still
+  come up three ordinary ones. `devil_room` and `angel_room` are stored for the
+  encounters that will read them and are inert until those exist.
+
+  Five cells of sheet-vs-`.tres` drift were folded back **up** into the
+  spreadsheet on the way past (Lunch and Mango's descriptions, three blank tag
+  cells) — hand-edits the sheet had never heard about, which the first
+  regeneration after this commit would otherwise have thrown away.
+
 - **The star chart stopped doing the same work twice.**
 
   Four fixes to the hottest loop in the project, found by measuring rather than

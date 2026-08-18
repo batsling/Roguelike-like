@@ -593,6 +593,7 @@ func _serialize_inventory(inv: Array) -> Array:
 				"instance_id": it.instance_id,
 				"weapon_level": it.weapon_level,
 				"current_charge": it.current_charge,
+				"counter_value": it.counter_value,
 			})
 	return out
 
@@ -612,5 +613,10 @@ func _resolve_inventory(entries: Array) -> Array:
 		if inst.is_charged():
 			inst.current_charge = int(e.get("current_charge",
 				inst.max_charge() if inst.starts_charged else 0))
+		# Incremental relics: the per-slot tally toward the next payout (Charm of
+		# the Vampire's third body). Absent in a save written before it existed,
+		# which reads as a fresh count — the same place a newly-taken copy starts.
+		if inst.is_incremental():
+			inst.counter_value = maxi(0, int(e.get("counter_value", 0)))
 		out.append(inst)
 	return out

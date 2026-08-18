@@ -363,6 +363,21 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # a half-charged active survives reload. Templates leave it 0; add_item seeds it.
 @export var current_charge: int = 0
 
+# === Incremental items ("every Nth …") ===
+# The live counter of an INCREMENTAL relic — Charm of the Vampire's tally of
+# bodies toward its next Health. Runtime per-slot, exactly like current_charge:
+# it lives on the duplicated Resource one inventory slot owns, round-trips
+# through saves, and is drawn on the item's own art (bottom-right, Slay the
+# Spire's relic counters).
+#
+# PER SLOT and not a shared run tally, which is the whole reason it lives here
+# rather than on GameState. Two copies of the same relic each count the same
+# event once and each proc on their own third body — the Spire's rule — and a
+# copy picked up mid-run starts its count at zero instead of inheriting a tally
+# it was not present for. The counter is bumped and reset by EffectSystem's
+# `counter` handler, which finds the slot through ctx.item.
+@export var counter_value: int = 0
+
 # For Weapon items: the card to add to the deck when equipped
 @export var weapon_card_id: StringName = &""
 
@@ -471,6 +486,15 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # Read by ShopSystem.mark_seen via GameState.sweeps_shops.
 @export var shop_sweep: bool = false
 
+# There's Options: chest POINTS added to a BOSS's drop (§8.2). One item off a
+# defeated body IS a chest — a Small one, 1 of 1 — so this is not a new kind of
+# reward, it is the same drop one rung up the size ladder: 2 points is a Medium
+# (1 of 2), 3 a Large (1 of 3). Spent through Data.chest_reward_sizes, the same
+# equation a [chest reward] walks, so a stack of copies overflows into a second
+# chest rather than off the end of the ladder. SUMMED across copies by
+# GameState.boss_chest_bonus and read by Overworld2's kill-drop path.
+@export var boss_chest_bonus: int = 0
+
 # Runtime-minted unique id per inventory slot (set by GameState.add_item).
 # Two duplicated copies of the same template get different instance_ids,
 # which is how weapon items pair with their granted CardInstance in the
@@ -484,6 +508,21 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 
 @export var source_game: String = ""
 @export var tags: PackedStringArray = PackedStringArray()
+
+# WHERE this relic is drawn from, as opposed to `tags`, which is what it is ABOUT
+# (bomb, blood, dice). The sheet's `pools` column.
+#
+# Only `shop` is wired up today: an item in it counts DOUBLE when a shop shelf is
+# rolled (ShopSystem._draw_one), so Piggy Bank and There's Options are twice as
+# likely to be sitting at a hub as anything else of their rarity. It is a
+# weighting and not a filter — a shop item still drops off a body, and a shelf can
+# still be three ordinary relics.
+#
+# `devil_room` / `angel_room` are authored ahead of the encounters that will draw
+# from them and are inert until those exist. They are stored rather than dropped
+# so the sheet stays the source of truth for a pool that has no reader yet.
+@export var pools: PackedStringArray = PackedStringArray()
+
 @export var image: Texture2D
 
 # Per-instance upgrade level. Lives on the duplicated Resource owned by
@@ -543,6 +582,37 @@ func is_upgradeable_passive() -> bool:
 		if not (stat in HEALTH_BUCKET) and int(stat_bonuses[stat]) != 0:
 			return true
 	return false
+
+# True when this relic is drawn from the named pool (the sheet's `pools` column).
+func in_pool(pool: StringName) -> bool:
+	return pools.has(String(pool))
+
+
+# === Incremental-item helpers ===
+
+# The `counter` effect this item is built around, as {key, every, label}, or {}
+# when it has none. ONE implementation, because "is this an incremental relic?",
+# "what number do I draw on it?" and "what is it counting toward?" are the same
+# question asked three times — the counter badge, the info card and the hover all
+# read it here rather than each walking the trigger list their own way.
+#
+# The first counter wins: an item with two of them would need two badges, and no
+# authored relic has ever wanted that.
+func incremental_spec() -> Dictionary:
+	for trig in triggers:
+		for effect in trig.get("effects", []):
+			if effect is Dictionary and String(effect.get("type", "")) == "counter":
+				return {
+					"key": String(effect.get("key", "")),
+					"every": maxi(1, int(effect.get("every", 1))),
+					"label": String(effect.get("label", display_name)),
+				}
+	return {}
+
+
+func is_incremental() -> bool:
+	return not incremental_spec().is_empty()
+
 
 # === Charged-item helpers ===
 

@@ -123,6 +123,13 @@ func setup(item: ItemData, usable: bool) -> void:
 	if item.is_charged():
 		chips.add_child(_chip("Charge %d/%d" % [item.current_charge, item.max_charge()],
 			UITheme.GOLD if GameState.can_fire_item(item) else UITheme.TEXT_DIM))
+	# An incremental relic's tally, as the fraction the corner badge on the token
+	# only has room for half of. Same chip row as the charge bar, since "how close
+	# is this to doing something" is the same question in both cases.
+	var counter: Dictionary = item.incremental_spec()
+	if not counter.is_empty():
+		chips.add_child(_chip("Counter %d/%d" % [item.counter_value, int(counter["every"])],
+			UITheme.GOLD))
 	if String(item.source_game) != "":
 		chips.add_child(_chip(item.source_game, UITheme.TEXT_DIM))
 	inner.add_child(chips)
