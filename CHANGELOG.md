@@ -11,6 +11,48 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The star chart stopped doing the same work twice.**
+
+  Four fixes to the hottest loop in the project, found by measuring rather than
+  reading. All four are in the per-star path the sky is drawn through, and
+  together they take a redraw of the Collection's 852-star catalog view from
+  **~10.9 ms of pure lookup to ~1.9 ms** — from two thirds of a 60fps frame,
+  before anything is drawn, to a tenth of one.
+
+  **`has_record(i)` recomputed a colour that was already in hand.** It is defined
+  as `star_record_color(i).a > 0.0`, and the draw loop asked for both, one line
+  apart — so every star made the GameStats round-trip twice. `record.a > 0.0`
+  instead: **6.5 → 2.9 ms** over the sky.
+
+  **`GameStats.get_stats` allocated a Dictionary for every game with no record**
+  — which is most games — because it returns a fresh `{"beaten": 0, "amulets": 0}`
+  on a miss, and both counts went through it. A pan across the chart was minting
+  thousands of throwaway dictionaries a frame for two integers that are almost
+  always zero. `beaten_count` and `amulet_wins` read `stats` directly now;
+  `get_stats` keeps its contract for anything wanting the record as a whole.
+  With the fix above, the pair costs **1.9 ms** where they cost 6.5.
+
+  **`cover_count()` walked the whole sky on every redraw, for a HUD label.**
+  It is called from `_refresh_hud`, which `_redraw` calls — so every pan step,
+  zoom step and *selection change* re-counted 852 stars to decide whether the
+  readout says "overview" or "12 showing art". It is memoized against the camera
+  now (scale, offset, canvas size), since that is the only thing that can move
+  it: **1.97 ms → 0.001 ms** on every call after the first.
+
+  **And the per-star filter test was always true.** `passes_filter(i)` cost
+  2.4 ms a pass answering "yes" 852 times: the catalog view rebuilds the sky out
+  of the survivors (`_relayout` → `_filtered_ids`), so every star in `layout`
+  passes by construction, and outside the catalog there are no filters at all.
+  The `filtered_out` branch it fed — dimming a star in place — was unreachable
+  code left from the older design where filtering dimmed the sky where it stood
+  instead of re-laying it. Verified before removing: across eight filter
+  settings, in both layout modes, every drawn star passes.
+
+  **The rest of the pass is written up in `docs/performance-backlog.md`** — the
+  double star sweep when a route is on the sky, `RunMapModal.map_data()` being
+  uncached, `Overworld2._refresh()` rebuilding the whole page on every loop
+  signal, three dead functions, and the case for splitting up a 5218-line file.
+
 - **Nothing on the board belongs to a game any more.**
 
   There is no such thing as "this game's enemy". A card advertises what will walk

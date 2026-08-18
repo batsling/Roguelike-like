@@ -28,6 +28,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 ├── icon.svg               # Application icon
 ├── .gutconfig.json        # GUT (test framework) configuration → runs res://test/
 ├── CHANGELOG.md           # The running change narrative (was this file's biggest section)
+├── docs/performance-backlog.md  # Measured slow paths not yet fixed, with the fix for each
 ├── CLAUDE.md              # Orientation for coding agents working in the repo
 │
 ├── scenes/                # .tscn scenes — two of them; the UI is built in code
