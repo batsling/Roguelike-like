@@ -845,13 +845,21 @@ func _board_snapshot() -> Dictionary:
 # the same self-report (§13), and is optional so every pre-status call site still
 # reads correctly:
 #   {"status_goals": [status_id, ...],                       player buffs met
-#    "bonuses": [{"instance": int, "status": status_id}, …]}  enemy bonuses claimed
+#    "bonuses": [{"instance": int, "status": status_id}, …]   enemy bonuses claimed
+#    "instead": [{"instance": int, "status": status_id}, …]}  goals met the OTHER
+#                                                            way (§13, Burn)
+# An `instead` claim clears the body like a met goal does — same hit, same drop —
+# but it is a SEPARATE list because the enemy's own condition was never set: the
+# caller must not record it as a beat, and a player clause riding that goal was not
+# satisfied by it. Keeping the two apart is what makes both of those the default.
 # Returns last_result:
 #   {beaten, defeats:[enemy...], drops:int,
 #    attacks:[{instance, turn, damage|stunned|goal_hit}],
 #    turns:int, turn_frames:[{instance: Vector2i(col,row)}, ...],
 #    damage_taken, blocked, hp, shields, shields_expired, attempts, stack_size,
-#    status_rewards:int, statuses_ticked:[status_id...], run_over, won}
+#    status_rewards:int, statuses_ticked:[status_id...],
+#    instead_cleared:[instance...], status_penalties:[{status, damage, blocked}],
+#    run_over, won}
 # `blocked` is what the unspent shields absorbed; `shields_expired` is what was
 # left over afterwards and went away with the game (§3). `turns` is how many
 # actions each enemy got (enemy_turns()), and `turn_frames` holds the board after
@@ -876,6 +884,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		"shields": GameState.shields, "shields_expired": 0,
 		"attempts": attempts(), "stack_size": stack.size(),
 		"status_rewards": 0, "statuses_ticked": [],
+		"instead_cleared": [], "status_penalties": [],
 		"run_over": run_over, "won": won,
 	}
 	if run_over:
@@ -903,6 +912,22 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	if clear_advertised and not arrivals.is_empty():
 		to_hit.append(int(arrivals[0]))
 	for inst in fulfilled_instances:
+		if not to_hit.has(int(inst)):
+			to_hit.append(int(inst))
+	# GOALS MET THE OTHER WAY (§13, Burn's `instead`). They take the same hit off
+	# the same list — a body cleared by skipping items in the real game is as
+	# cleared as one whose goal you did — but they are counted separately, because
+	# the enemy's own condition was never set: nothing about this is a fact about
+	# the goal, so it must not tick a player clause that rode it (step 3) and the
+	# caller must not bank it as a beat.
+	#
+	# What it IS is engagement: a survivor holds its fire this game exactly as one
+	# whose goal you did would (`hit_this_game`), because the player paid something
+	# real for the hit either way.
+	var instead_cleared: Array = _resolve_instead_claims(claims)
+	res["instead_cleared"] = instead_cleared
+	var goals_completed: bool = not to_hit.is_empty()
+	for inst in instead_cleared:
 		if not to_hit.has(int(inst)):
 			to_hit.append(int(inst))
 
@@ -937,6 +962,13 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		_resolve_enemy_turn(turn, hit_this_game, res)
 		(res["turn_frames"] as Array).append(_board_snapshot())
 
+	# 2b. THE STATUSES' OWN BILL, once the enemies have finished swinging. Burn's 3
+	#     damage lands at the END of the game and after the attacks (§13) — it is
+	#     what a burn costs for a game you spent taking every item offered, and it
+	#     arrives while the tries are still standing, so what you didn't spend
+	#     absorbs it before it reaches Health.
+	_resolve_status_demands(claims, res)
+
 	# The enemies have struck and moved, so this game is over — and with it go the
 	# shields it granted (§3). Shields are the tries at ONE game: what you didn't
 	# spend retrying, and what the front line didn't get through, expires here
@@ -953,8 +985,9 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#    enemy's goal, so completing ANY goal this game satisfied it once.
     #    A FREE game is not a completion: a goal nobody set can't have carried a
 	#    clause, so this counts the goals actually hit rather than the ticks asked
-	#    for.
-	res["statuses_ticked"] = _tick_player_clauses(not to_hit.is_empty())
+	#    for. Nor is a goal cleared the OTHER way (Burn's `instead`): its condition
+	#    was never set either, so it carried nothing to satisfy.
+	res["statuses_ticked"] = _tick_player_clauses(goals_completed)
 
 	res["hp"] = GameState.hp
 	res["shields"] = GameState.shields
@@ -1682,7 +1715,12 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
 # blocked count, because the attack log and the board's resolve animation quote
 # this number: a hit that reads "⚔2" while Health drops by four is a UI that is
 # lying about the rule it just applied.
-func _take_hit(damage: int, res: Dictionary) -> Dictionary:
+#
+# `source` names what threw it, for the health_lost hook alone (see
+# GameState.HEALTH_SOURCE_STATUS): a swing is the default because every caller but
+# one is an enemy taking its turn.
+func _take_hit(damage: int, res: Dictionary,
+		source: String = GameState.HEALTH_SOURCE_ENEMY_ATTACK) -> Dictionary:
 	if damage <= 0:
 		return {"damage": 0, "blocked": 0}
 	var totals: Dictionary = GameState.combat_totals()
@@ -1695,15 +1733,24 @@ func _take_hit(damage: int, res: Dictionary) -> Dictionary:
 	GameState.shields -= absorbed
 	var overflow: int = damage - absorbed
 	if overflow > 0:
-		# Tagged as the swing it is: this is the ONLY path an enemy's damage
-		# reaches Health by, which is what lets the destructible trinkets (§8.1)
-		# break on an attack and survive the Health a failed try charges.
-		GameState.change_hp(-overflow, GameState.HEALTH_SOURCE_ENEMY_ATTACK)
+		# Tagged as what threw it: this is the ONLY path damage reaches Health by on
+		# the battlefield, which is what lets the destructible trinkets (§8.1) break
+		# on an attack and survive both the Health a failed try charges and a
+		# status's own bill.
+		GameState.change_hp(-overflow, source)
 	res["blocked"] = int(res.get("blocked", 0)) + absorbed
 	res["damage_taken"] = int(res.get("damage_taken", 0)) + overflow
 	if GameState.hp <= 0 and not run_over:
 		_finish_run(false)
 	return {"damage": damage, "blocked": absorbed}
+
+# Damage the player from something that is NOT an enemy's swing — today, a
+# status's penalty (Burn's 3, §13). Goes through the same resolver a swing does,
+# deliberately: the tries absorb it and the player's own statuses scale it, because
+# "take 3 Damage" has to mean on the battlefield what it means everywhere else.
+# `res` is the resolve's own summary when there is one to bill it to.
+func damage_player(amount: int, res: Dictionary = {}) -> Dictionary:
+	return _take_hit(amount, res, GameState.HEALTH_SOURCE_STATUS)
 
 # Take a body off the board with NO defeat and NO drop — it simply stops
 # following. Distinct from fulfill() (which defeats and drops) and from bomb()
@@ -1748,13 +1795,20 @@ func _index_of(instance: int) -> int:
 # only currency the games-first loop has. Each status names a MODE per side, and
 # the mode is the whole of what that side does (StatusData):
 #
-#   enemy  `clause` -> that enemy's goal gains "and <clause>"  (required)
-#   player `clause` -> EVERY enemy's goal gains it (required), and one stack falls
-#                      off each game you complete one
-#   enemy  `bonus`  -> that enemy grows an OPTIONAL row, claimable for its reward
-#                      alongside (or instead of) its goal
-#   player `goal` / `bonus` -> not here at all: a standing objective of the
-#                      player's own, served by GameState.status_objectives()
+#   enemy  `clause`  -> that enemy's goal gains "and <clause>"  (required)
+#   player `clause`  -> EVERY enemy's goal gains it (required), and one stack falls
+#                       off each game you complete one
+#   enemy  `bonus`   -> that enemy grows an OPTIONAL row, claimable for its reward
+#                       alongside (or instead of) its goal
+#   enemy  `instead` -> that enemy's goal gains "or instead <clause>": a SECOND WAY
+#                       to clear the body, whose condition is not the goal's, so
+#                       clearing it that way banks no record of the beat. Never on
+#                       a boss (alternatives_for).
+#   player `goal` / `bonus` / `demand` -> not here at all: standing objectives of
+#                       the player's own, served by GameState.status_objectives().
+#                       The one part that lands on this node is the PRICE of a
+#                       missed `demand`, billed at the end of the game by
+#                       _resolve_status_demands.
 #
 # So `goal_text_for` is the one function the UI and the OBS HUD should ask for a
 # goal line — never `enemy.goal` directly, which is only ever the unmodified stem.
@@ -1764,6 +1818,7 @@ func _index_of(instance: int) -> int:
 #   "current" — the enemy on the game being played right now (the default)
 #   "all"     — every body on the board AND the current enemy
 #   "random"  — one body picked at random from that same set
+#   "front"   — everything touching the front column: the bodies that strike next
 # Returns how many enemies it landed on. An unknown status id lands on none.
 func apply_enemy_status(status_id: StringName, stacks: int = 1,
 		target: String = "current") -> int:
@@ -1789,6 +1844,17 @@ func _status_targets(target: String) -> Array:
 			return everyone
 		"random":
 			return [] if everyone.is_empty() else [everyone[randi() % everyone.size()]]
+		"front":
+			# The bodies already in your face — whatever touches the front column,
+			# which is the same test the strike uses (`in_front`), so "the ones
+			# about to hit me" and "the ones this lands on" are one list. A long
+			# body counts as soon as any part of it reaches; an off-grid one never
+			# does. Scroll of Fire's half of the board.
+			var near: Array = []
+			for entry in everyone:
+				if in_front(entry):
+					near.append(entry)
+			return near
 		_:
 			var landed: Dictionary = arrival()
 			return [] if landed.is_empty() else [landed]
@@ -1797,6 +1863,12 @@ func _add_status_to(entry: Dictionary, status_id: StringName, stacks: int) -> vo
 	var held: Dictionary = entry.get("statuses", {})
 	var before: int = int(held.get(status_id, 0))
 	var total: int = before + stacks
+	# The authored ceiling (Burn's "Max: 3"), the body's half of the rule
+	# GameState.apply_status enforces for the player. On the way UP only, so a body
+	# carrying more than the cap still ticks down one stack at a time.
+	var status: StatusData = Data.get_status(status_id)
+	if stacks > 0 and status != null:
+		total = maxi(before, status.cap_stacks(total))
 	if total <= 0:
 		held.erase(status_id)
 	else:
@@ -1886,9 +1958,32 @@ func bonus_objectives_for(entry: Dictionary) -> Array:
 			out.append(row)
 	return out
 
-# THE goal line for one enemy: its authored goal plus every required clause,
-# joined with "and". Ask for this rather than `enemy.goal` anywhere a player or a
-# viewer reads it — the stem alone is a goal the run is no longer scored against.
+# The ALTERNATIVES to `entry`'s goal — the `instead` sides on it (Burn, §13). Each
+# is a second way to clear this body: do the thing it asks and the goal counts as
+# met without its own condition ever having been set, which is why clearing one
+# this way banks no record of the beat (see Overworld2.report).
+#
+# A BOSS is exempt, and that is the one place this list is narrower than the
+# statuses on the body. A boss's goal is the whole of what the boss is (§7.1,
+# where bombs already can't touch one), so a way around it would be a way around
+# the run's own gates rather than a way out of a debt.
+func alternatives_for(entry: Dictionary) -> Array:
+	var out: Array = []
+	var enemy: GoalEnemyData = entry.get("enemy")
+	if enemy == null or enemy.is_boss():
+		return out
+	for row in enemy_statuses(entry):
+		if (row["status"] as StatusData).is_alternative(StatusData.ENEMY):
+			out.append(row)
+	return out
+
+# THE goal line for one enemy: its authored goal plus every required clause, joined
+# with "and", and then every alternative to the whole of it, joined with "or
+# instead". Ask for this rather than `enemy.goal` anywhere a player or a viewer
+# reads it — the stem alone is a goal the run is no longer scored against.
+#
+# The alternatives come LAST because that is what they are alternatives to: the
+# goal and its clauses as one, not the last clause on the pile.
 func goal_text_for(entry: Dictionary) -> String:
 	var enemy: GoalEnemyData = entry.get("enemy")
 	if enemy == null:
@@ -1899,6 +1994,10 @@ func goal_text_for(entry: Dictionary) -> String:
 		var which: StringName = StatusData.PLAYER if clause["source"] == "player" \
 			else StatusData.ENEMY
 		text += " and %s" % sd.clause_text(which, int(clause["stacks"]))
+	for alt in alternatives_for(entry):
+		var asd: StatusData = alt["status"]
+		text += " or instead %s" % asd.alternative_text(
+			StatusData.ENEMY, int(alt["stacks"]))
 	return text
 
 # --- statuses in combat (§13.4) -------------------------------------------
@@ -2016,6 +2115,86 @@ func claim_enemy_bonus(instance: int, status_id: StringName) -> bool:
 		_add_status_to(entry, status_id, -1)
 	loop_changed.emit()
 	return true
+
+# A body's goal was met THE OTHER WAY (§13): the player did the `instead` side's
+# condition — skipped the items Burn asked for — rather than the goal itself. Sheds
+# a stack if that side decays, and answers whether the claim was good for anything.
+#
+# Refused for a BOSS, matching `alternatives_for`: the row is never offered on one,
+# and a claim arriving for one anyway (a stale checklist, a caller of its own) must
+# not be the way around it.
+func claim_enemy_alternative(instance: int, status_id: StringName) -> bool:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty():
+		return false
+	var enemy: GoalEnemyData = entry.get("enemy")
+	if enemy == null or enemy.is_boss():
+		return false
+	var held: Dictionary = entry.get("statuses", {})
+	var stacks: int = int(held.get(status_id, 0))
+	if stacks <= 0:
+		return false
+	var status: StatusData = Data.get_status(status_id)
+	if status == null or not status.is_alternative(StatusData.ENEMY):
+		return false
+	if status.decays(StatusData.ENEMY):
+		_add_status_to(entry, status_id, -1)
+	return true
+
+# The `instead` half of a self-report: which bodies the player cleared the other
+# way. Returns their instances, for `beat_game` to hit alongside the goals proper.
+#
+# One claim per body however many alternatives it carries: clearing a goal is
+# clearing a goal, and two burns on one enemy are not two hits.
+func _resolve_instead_claims(claims: Dictionary) -> Array:
+	var out: Array = []
+	for raw in claims.get("instead", []):
+		if not (raw is Dictionary):
+			continue
+		var d: Dictionary = raw
+		var inst: int = int(d.get("instance", 0))
+		if not claim_enemy_alternative(inst, StringName(d.get("status", ""))):
+			continue
+		if not out.has(inst):
+			out.append(inst)
+	return out
+
+# THE PRICE OF A MISSED DEMAND (§13). Every `demand` side on the player is answered
+# by the report: the ones the player ticked were claimed at step 0 (paid out, a
+# stack shed), and every one they did NOT tick bites here — Burn's "or take 3
+# Damage".
+#
+# Read off the TICKS rather than off what is still on the player, because a claimed
+# demand may have shed its last stack and left: "did you answer this" is a question
+# about the report, and only the report has the answer.
+func _resolve_status_demands(claims: Dictionary, res: Dictionary) -> void:
+	# A run the enemies just ended has no end-of-game left to bill: the burn comes
+	# AFTER the swings (§13), and there is nothing after the swing that killed you.
+	if run_over:
+		return
+	var answered: Dictionary = {}
+	for raw in claims.get("status_goals", []):
+		answered[StringName(raw)] = true
+	for row in GameState.status_list():
+		var sd: StatusData = row["status"]
+		if not sd.is_demand(StatusData.PLAYER) or answered.has(sd.id):
+			continue
+		var stacks: int = int(row["stacks"])
+		for eff in sd.penalty_effects(StatusData.PLAYER, stacks):
+			var d: Dictionary = eff
+			if String(d.get("type", "")) == "take_damage":
+				# Through the board's own resolver, so the tries get their say and a
+				# lethal burn ends the run where every other lethal hit does.
+				var hit: Dictionary = damage_player(int(d.get("value", 0)), res)
+				(res["status_penalties"] as Array).append({
+					"status": sd.id, "damage": int(hit["damage"]),
+					"blocked": int(hit["blocked"])})
+				continue
+			# Anything else a demand charges is an ordinary effect pointed the other
+			# way (`lose_gold`, `lose_stat`), so the ordinary pipeline pays it.
+			EffectSystem.apply_all([d], {"status": sd})
+		if run_over:
+			return
 
 # The `claims` half of a beat_game self-report: pay every standing objective met
 # and every enemy bonus claimed. Returns how many paid out, for the report log.

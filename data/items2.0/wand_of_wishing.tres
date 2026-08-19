@@ -7,14 +7,13 @@
 script = ExtResource("1_item")
 id = &"wand_of_wishing"
 display_name = "Wand of Wishing"
-kind = 6
+kind = 2
 rarity = 3
 description = "Obtain any one item in the game"
 triggers = [{"on": "item_used", "effects": [{"type": "obtain_item", "pool": "any"}]}]
 stat_bonuses = {}
 overworld_usable = true
-charge_cost = 6
-starts_charged = true
+max_uses = 1
 source_game = "NetHack"
 tags = PackedStringArray("wand")
 image = ExtResource("2_img")

@@ -740,3 +740,59 @@ func test_wooden_nickel_pays_at_most_one_gold_per_flip() -> void:
 	assert_true(GameState.gold == 0 or GameState.gold == 1,
 		"the flip either paid a coin or it didn't")
 	assert_eq(nickel.current_charge, 0, "either way the charge is spent")
+
+# --- Staff of Flame: the first relic that has to be pointed at something ---
+#
+# Every other active fires where it stands. This one asks WHICH body, which is
+# the whole of what `target=enemy` means in the sheet: the pack arms it, the
+# board aims it, and the click is what spends the charge. The UI half of that
+# lives in test_statuses.gd beside the rest of Burn; these are the rules under it.
+
+func test_the_staff_is_a_three_charge_active_that_aims() -> void:
+	var staff: ItemData = _give(&"staff_of_flame")
+	assert_true(staff.is_charged(), "a charged active")
+	assert_eq(staff.max_charge(), 3, "three games beaten per firing")
+	assert_true(staff.wants_target(),
+		"and it declares that it needs a body picked (target=enemy)")
+
+func test_the_staff_burns_the_body_it_was_pointed_at() -> void:
+	var staff: ItemData = _give(&"staff_of_flame")
+	var aimed: int = _choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
+	GameLoop2.beat_game(false)                 # it walks onto the board
+	var other: int = _choose_solo(_synthetic(&"other", &"action", GoalEnemyData.Difficulty.LOW))
+	assert_true(GameState.use_item(staff, aimed), "fired at the body it was given")
+	assert_eq(int((GameLoop2.entry_for(aimed)["statuses"] as Dictionary).get(&"burn", 0)), 3,
+		"+3 Burn on that one")
+	assert_eq(int((GameLoop2.entry_for(other).get("statuses", {}) as Dictionary).get(&"burn", 0)), 0,
+		"and nothing on the one it wasn't pointed at")
+	assert_eq(staff.current_charge, 0, "the firing spent the bar")
+
+func test_the_staff_fired_at_nobody_burns_nobody() -> void:
+	# The guard behind the picker: `target=enemy` with no body aimed must not fall
+	# through to "current" and set light to whatever is standing closest.
+	var staff: ItemData = _give(&"staff_of_flame")
+	var inst: int = _choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
+	GameState.use_item(staff)
+	assert_eq(int((GameLoop2.entry_for(inst).get("statuses", {}) as Dictionary).get(&"burn", 0)), 0,
+		"nothing was burned")
+
+func test_the_staff_can_be_pointed_at_a_boss() -> void:
+	# Same rule as a bomb: a boss is a legal target. Burn's halving is what lands —
+	# its way out of the goal is refused on a boss (§13), which is a rule about the
+	# goal rather than about what can be set alight.
+	var staff: ItemData = _give(&"staff_of_flame")
+	var boss: int = _choose_solo(
+		_synthetic(&"synthetic_boss", &"action", GoalEnemyData.Difficulty.LOW, true))
+	assert_true(GameState.use_item(staff, boss))
+	assert_eq(int((GameLoop2.entry_for(boss)["statuses"] as Dictionary).get(&"burn", 0)), 3,
+		"the boss is burning")
+	assert_eq(GameLoop2.alternatives_for(GameLoop2.entry_for(boss)).size(), 0,
+		"and still has no way out of its goal")
+
+func test_the_staffs_burn_stops_at_the_status_cap() -> void:
+	var staff: ItemData = _give(&"staff_of_flame")
+	var inst: int = _choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
+	GameLoop2.apply_status_to(inst, &"burn", 2)
+	assert_true(GameState.use_item(staff, inst))
+	assert_eq(int((GameLoop2.entry_for(inst)["statuses"] as Dictionary).get(&"burn", 0)), 3,
+		"2 + 3 is still Max: 3")

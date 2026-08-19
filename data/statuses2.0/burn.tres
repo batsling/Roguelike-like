@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="StatusData" load_steps=3 format=3 uid="uid://status2_burn"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatusData.gd" id="1_status"]
+[ext_resource type="Texture2D" path="res://images2.0/statuses/Burn.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_status")
+id = &"burn"
+display_name = "Burn"
+kind = &"debuff"
+source_game = "Brutal Orchestra"
+on_player_text = "Gain \"You must skip or trash X items/upgrades or take 3 Damage.\""
+on_enemy_text = "Gains \"or instead skip or trash 4-X items/upgrades\""
+stackable = "Max: 3"
+max_stacks = 3
+decrease = "On Completion"
+combat_text = "Half Damage dealt"
+enemy_only = true
+on_player = {"mode": "demand", "condition": "skip or trash {X} [item/upgrade|items/upgrades]", "reward": [], "reward_text": "", "penalty": [{"type": "take_damage", "value": 3}], "penalty_text": "take 3 Damage", "decay": true}
+on_enemy = {"mode": "instead", "condition": "skip or trash {4.0-X} [item/upgrade|items/upgrades]", "reward": [], "reward_text": "", "penalty": [], "penalty_text": "", "decay": true}
+combat = {"damage_dealt_mult": 0.5}
+file = "Burn"
+image = ExtResource("2_img")

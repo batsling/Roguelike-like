@@ -24,6 +24,10 @@ extends PanelContainer
 # it. The host owns the charge, so it decides whether the verb actually happens.
 signal push_requested(instance: int, dir: Vector2i)
 signal bomb_requested(instance: int)
+# An AIMED ITEM was pointed at a body (Staff of Flame). The item is handed back
+# with it because the board is only holding it while the aiming lasts — what to do
+# with the pair is the overworld's, which owns the pack and the spending.
+signal item_aimed(item: ItemData, instance: int)
 # An enemy was clicked: the host opens the inspect card for it.
 signal enemy_inspected(entry: Dictionary, col: int)
 # The mouse moved onto (or off) a body. The host lights the checklist row that
@@ -107,6 +111,7 @@ var _hero_tex: Texture2D = null
 var selected_instance: int = 0       # clicked enemy the combat verbs target (0 = none)
 var push_btn: Button
 var bomb_btn: Button
+var aim_btn: Button                  # only on screen while an item is aiming
 var _target_label: Label
 var _hint_label: Label
 # PUSH MODE. The verb is armed FIRST and aimed second: pressing Push arms it,
@@ -126,6 +131,16 @@ var push_mode: bool = false
 # the CLICK is what spends the charge. One click after arming rather than two,
 # because a bomb has no direction to pick.
 var bomb_mode: bool = false
+# THE AIMED ITEM, on the same bargain again: Staff of Flame is armed from the pack
+# and aimed here, and the click on a body is what fires and spends it. Held as the
+# item rather than as a bool because the board has to say WHICH relic is waiting —
+# the pack is a scroll away from the board, and "something is armed" is not an
+# answer the player can act on. null when nothing is aiming.
+#
+# Nothing is spent while it sits here, which is the whole reason the pack does not
+# just fire it: a charged item that emptied its bar on the press would charge the
+# player for opening a picker they then cancelled.
+var aiming_item: ItemData = null
 # The bodies an armed verb can be pointed at, as a set of instance handles.
 # Rebuilt at the top of every repaint (`refresh`) rather than asked per body, so
 # the whole board is drawn against one answer.
@@ -505,6 +520,17 @@ func _build_battle_toolbar() -> Control:
 	bomb_btn.add_theme_font_size_override("font_size", 13)
 	bomb_btn.pressed.connect(toggle_bomb_mode)
 	bar.add_child(bomb_btn)
+
+	# The armed ITEM's way out. Hidden the rest of the time rather than greyed:
+	# this toolbar is an HFlowContainer inside a board that fits its page to about
+	# ten spare pixels (see refresh_toolbar), and a fourth permanent button wraps
+	# it onto a second row. An item is armed for a few seconds at a time, and those
+	# are the only seconds this needs to exist.
+	aim_btn = Button.new()
+	aim_btn.add_theme_font_size_override("font_size", 13)
+	aim_btn.visible = false
+	aim_btn.pressed.connect(cancel_item_aim)
+	bar.add_child(aim_btn)
 	return bar
 
 # --- armed verbs -----------------------------------------------------------
@@ -523,6 +549,7 @@ func begin_push() -> void:
 		return
 	push_mode = true
 	bomb_mode = false
+	aiming_item = null
 	selected_instance = 0
 	refresh()
 
@@ -544,6 +571,7 @@ func begin_bomb() -> void:
 		return
 	bomb_mode = true
 	push_mode = false
+	aiming_item = null
 	selected_instance = 0
 	refresh()
 
@@ -559,9 +587,39 @@ func toggle_bomb_mode() -> void:
 	else:
 		begin_bomb()
 
+# Arm an ITEM: the next body clicked is the one it goes off on (Staff of Flame).
+# The same shape as the Bomb, and deliberately so — an item that aims is a verb
+# the player happens to be holding, and it should not have manners of its own.
+# Returns false when there is nothing on the board to point it at, so the caller
+# can say so rather than arming a picker over an empty field.
+func begin_item_aim(item: ItemData) -> bool:
+	if item == null or GameLoop2.stack.is_empty():
+		return false
+	aiming_item = item
+	push_mode = false
+	bomb_mode = false
+	selected_instance = 0
+	refresh()
+	return true
+
+func cancel_item_aim() -> void:
+	if aiming_item == null:
+		return
+	aiming_item = null
+	refresh()
+
+# The armed item's own version of the charge check the other two verbs get: an
+# item sold, dropped, spent elsewhere or emptied of charges is not aiming any
+# more, and neither is one left armed over a board that has since been cleared.
+func _check_aimed_item() -> void:
+	if aiming_item == null:
+		return
+	if not GameState.can_fire_item(aiming_item) or GameLoop2.stack.is_empty():
+		aiming_item = null
+
 # Whether a verb is waiting to be pointed at something.
 func is_aiming() -> bool:
-	return push_mode or bomb_mode
+	return push_mode or bomb_mode or aiming_item != null
 
 # The bodies an armed verb could actually land on, as instance handles. Empty
 # when nothing is armed — this is what the board lights up, and it is the whole
@@ -595,6 +653,7 @@ func refresh_toolbar() -> void:
 		push_mode = false
 	if bomb_mode and GameState.bombs <= 0:
 		bomb_mode = false
+	_check_aimed_item()
 	var entry: Dictionary = _stack_entry(selected_instance)
 	var e: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
 	if e == null:
@@ -620,10 +679,32 @@ func refresh_toolbar() -> void:
 			_hint_label.text = "⇤ Push:"
 		elif bomb_mode:
 			_hint_label.text = "✸ Bomb:"
+		elif aiming_item != null:
+			# The relic's own name, because the pack it was armed from is a scroll
+			# away from here: "something is armed" is not an answer the player can
+			# act on, and the lit bodies say everything else.
+			_hint_label.text = "%s:" % aiming_item.display_name
 		else:
 			_hint_label.text = "Click an enemy:"
 		_hint_label.add_theme_color_override("font_color",
 			UITheme.ACCENT if is_aiming() else UITheme.TEXT_DIM)
+
+	# The armed item's Cancel, on screen only while one is aiming — and while it is,
+	# it stands in the OTHER TWO VERBS' place rather than beside them. Three buttons
+	# plus this one wrap this HFlowContainer onto a second row and push the bottom
+	# of the board off the window, which is the whole reason the armed strings above
+	# are kept shorter than the idle ones. Nothing is lost by hiding them: arming
+	# Push or Bomb would put the item away anyway (begin_push / begin_bomb), so
+	# while a relic is aiming they are two buttons whose only effect is to cancel
+	# it, and Cancel is right there saying so.
+	if aim_btn != null:
+		aim_btn.visible = aiming_item != null
+		if aiming_item != null:
+			aim_btn.text = "✕  Cancel"
+			aim_btn.tooltip_text = "Put %s away — nothing has been spent yet." \
+				% aiming_item.display_name
+	push_btn.visible = aiming_item == null
+	bomb_btn.visible = aiming_item == null
 
 	push_btn.text = ("✕  Cancel" if push_mode else "⇤  Push (%d)" % GameState.push)
 	push_btn.disabled = not push_mode and GameState.push <= 0
@@ -792,6 +873,7 @@ func refresh() -> void:
 		push_mode = false
 	if bomb_mode and GameState.bombs <= 0:
 		bomb_mode = false
+	_check_aimed_item()
 	# Who an armed verb could be pointed at, answered once and drawn against by
 	# every body below (see _style_enemy_cell). Empty whenever nothing is armed.
 	_armed = {}
@@ -963,6 +1045,15 @@ func click_enemy(instance: int, entry: Dictionary, col: int) -> void:
 	if bomb_mode:
 		bomb_mode = false
 		bomb_requested.emit(instance)
+		return
+	# An armed ITEM fires here for the same reason and on the same click. The board
+	# lets go of it first: what it costs and whether it lands are the overworld's
+	# to decide, and a board still holding an armed relic afterwards would be a
+	# second press away from firing a spent one.
+	if aiming_item != null:
+		var armed: ItemData = aiming_item
+		aiming_item = null
+		item_aimed.emit(armed, instance)
 		return
 	# While a push is being aimed the click is the AIM, not a request to read the
 	# card: a full-screen info card over the board would bury the arrows the same

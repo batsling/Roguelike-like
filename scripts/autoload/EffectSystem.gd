@@ -74,6 +74,7 @@ func _register_defaults() -> void:
 	register("gain_chest", _h_gain_chest)
 	register("chest_reward", _h_chest_reward)
 	register("lose_hp", _h_lose_hp)
+	register("take_damage", _h_take_damage)
 	register("lose_max_hp", _h_lose_max_hp)
 	register("lose_stat", _h_lose_stat)
 	register("lose_gold", _h_lose_gold)
@@ -234,7 +235,7 @@ func _h_chest_reward(effect: Dictionary, _ctx: Dictionary) -> void:
 #   player                  -> the status's On Player side (Vajra's +1 Strength)
 #   current | all | random  -> its On Enemy side, via GameLoop2's targeting
 # Defaults to the player, since that is the side a pickup usually lands on.
-func _h_apply_status(effect: Dictionary, _ctx: Dictionary) -> void:
+func _h_apply_status(effect: Dictionary, ctx: Dictionary) -> void:
 	var status_id := StringName(String(effect.get("status", "")))
 	if status_id == &"":
 		return
@@ -244,8 +245,20 @@ func _h_apply_status(effect: Dictionary, _ctx: Dictionary) -> void:
 	var target: String = String(effect.get("target", "player")).to_lower()
 	if target == "player" or target == "self":
 		GameState.apply_status(status_id, stacks)
-	else:
-		GameLoop2.apply_enemy_status(status_id, stacks, target)
+		return
+	# `target=enemy` is the sheet asking for a body to be POINTED AT rather than
+	# named by a rule (Staff of Flame). The instance rides `ctx.target`, put there
+	# by whoever did the aiming — GameState.use_item passes it through — so a
+	# firing with nobody picked lands on nothing rather than falling through to
+	# "current" and burning whatever happens to be standing closest.
+	if target == "enemy":
+		var aimed: Variant = ctx.get("target")
+		if not (aimed is int) or int(aimed) <= 0:
+			push_warning("EffectSystem.apply_status: target=enemy fired with no body aimed")
+			return
+		GameLoop2.apply_status_to(int(aimed), status_id, stacks)
+		return
+	GameLoop2.apply_enemy_status(status_id, stacks, target)
 
 # A NAMED item, handed straight over (the Golden Idol event's `gain_item
 # golden_idol`). The counterpart to the random draws above: an authored reward
@@ -314,6 +327,20 @@ func _h_spawn_enemy(effect: Dictionary, _ctx: Dictionary) -> void:
 # the event opened — this handler only names the slot the button belongs to.
 func _h_trade_relic(effect: Dictionary, _ctx: Dictionary) -> void:
 	EventSystem.resolve_trade(int(effect.get("slot", 1)))
+
+# DAMAGE, as against `lose_hp`'s bill: it resolves on the battlefield, so the tries
+# absorb it first and the player's own statuses scale it (Burn's "or take 3
+# Damage", §13). GameLoop2 owns that arithmetic and is the one place damage reaches
+# the player, so this hands off to it rather than reaching for Health itself.
+#
+# GameLoop2 bills a missed `demand` through the same function directly, with the
+# resolve's summary to write into; a `take_damage` authored anywhere else lands
+# here and simply has no summary to bill.
+func _h_take_damage(effect: Dictionary, _ctx: Dictionary) -> void:
+	var v: int = int(effect.get("value", 0))
+	if v <= 0:
+		return
+	GameLoop2.damage_player(v)
 
 func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	var v: int = int(effect.get("value", 0))
@@ -410,7 +437,7 @@ func _h_reroll_enemies(_effect: Dictionary, _ctx: Dictionary) -> void:
 # a payout, so Favour.HIGH is the default and a new reward verb inherits the
 # right direction without being listed.
 const UNWANTED_EFFECTS := [
-	"jam_object", "lose_hp", "lose_max_hp", "lose_gold", "lose_stat",
+	"jam_object", "lose_hp", "take_damage", "lose_max_hp", "lose_gold", "lose_stat",
 	"add_curse", "spawn_enemy", "item_downgrade", "forget",
 ]
 

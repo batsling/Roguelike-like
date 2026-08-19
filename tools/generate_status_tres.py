@@ -9,7 +9,7 @@ the engine runs on is the two effect columns, one per side, authored
 independently so a status's two halves can do different things:
 
   statuses2.0: Name | Type | Game | On Player | On Player Effect | On Enemy
-                    | On Enemy Effect | Combat | EnemyOnly
+                    | On Enemy Effect | Combat | Decrease | EnemyOnly
                     | Enemy Combat Effect | Stackable | Image
 
 A status has a third side beside its two goal sides: a COMBAT side, which is the
@@ -20,19 +20,38 @@ it, the player included (every debuff). See parse_combat below.
 
 Side effect DSL — one clause per cell:
 
-  <verb> "<condition>" [decay] [-> <reward>; <reward>; …]
+  <verb> "<condition>" [decay] [-> <reward>; …] [else -> <penalty>; …]
 
-  goal    a standing objective of the holder's own: "If <condition>, gain
-          <reward>". On the player, an extra checklist row offered every game.
-  clause  ANDed onto goals and REQUIRED — the goal is not met until you did both.
-          On an enemy it tightens that enemy's goal; on the player it tightens
-          EVERY enemy's goal.
-  bonus   an OPTIONAL objective — "and if <condition>, gain <reward>" — claimable
-          for its reward, free to skip.
-  decay   completing it sheds one stack.
+  goal     a standing objective of the holder's own: "If <condition>, gain
+           <reward>". On the player, an extra checklist row offered every game.
+  clause   ANDed onto goals and REQUIRED — the goal is not met until you did both.
+           On an enemy it tightens that enemy's goal; on the player it tightens
+           EVERY enemy's goal.
+  bonus    an OPTIONAL objective — "and if <condition>, gain <reward>" — claimable
+           for its reward, free to skip.
+  demand   an obligation of the holder's own with a PRICE for missing it: "you
+           must <condition>, or <penalty>". The one verb whose payload is what
+           you pay rather than what you earn, so it is written after `else ->`.
+           Burn's player side.
+  instead  an ALTERNATIVE way to satisfy the goal it hangs off — "<goal> or
+           instead <condition>". The goal counts as cleared without its own
+           condition ever being set, so the engine banks no record of the beat.
+           Burn's enemy side.
+  decay    completing it sheds one stack. Authored in the `Decrease` COLUMN now
+           (see below); the flag is still read, and must agree with it.
 
 Because the verb says what the side DOES, Buff/Debuff drives no mechanic: it is
 the HUD tint and the collection filter, nothing more.
+
+`Decrease` says how a status DEPLETES, for the player and for the code at once:
+`N/A` never, `On Completion` sheds a stack each game a side of it is completed.
+It is the truth the sides' `decay` flags are checked against, so a status cannot
+say one thing in its own column and another inside a cell.
+
+`Stackable` says how a second application combines — `Intensity` raises X — and
+may carry a CAP: `Max: 3` is a status that stops climbing at three stacks. Burn
+needs one because its condition gets EASIER per stack (4-X), so an uncapped Burn
+would eventually cost nothing at all.
 
 Reward token DSL (one clause per effect):
   gain_chest [small|medium|large|huge] <n>   -> {type: gain_chest, value, choices}
@@ -267,10 +286,15 @@ def _amount(tok: str):
 
 # --- a side's effect cell -------------------------------------------------
 
-MODES = ("goal", "clause", "bonus")
+MODES = ("goal", "clause", "bonus", "demand", "instead")
+# The verbs that name a REQUIREMENT rather than an offer: nothing is handed over
+# for meeting one, so a `-> reward` on either is an authoring mistake rather than
+# a payout to be silently dropped.
+UNPAID_MODES = ("clause", "instead")
 SIDE_RE = re.compile(
-    r'^\s*(?P<verb>[a-z_]+)\s+"(?P<condition>[^"]*)"\s*(?P<flags>[^-]*?)\s*'
-    r'(?:->\s*(?P<reward>.*))?$', re.S)
+    r'^\s*(?P<verb>[a-z_]+)\s+"(?P<condition>[^"]*)"\s*'
+    r'(?P<flags>(?:[a-z_]+\s*)*?)\s*'
+    r'(?:(?P<arrow>else\s*->|->)\s*(?P<payload>.*))?$', re.S)
 
 
 def parse_side(raw, where):
@@ -285,7 +309,8 @@ def parse_side(raw, where):
     m = SIDE_RE.match(s)
     if not m:
         raise ValueError('statuses2.0 %s: cannot parse %r — expected '
-                         '<verb> "<condition>" [decay] [-> <reward>]' % (where, s))
+                         '<verb> "<condition>" [decay] [-> <reward>] '
+                         '[else -> <penalty>]' % (where, s))
     mode = m.group("verb").lower()
     if mode not in MODES:
         raise ValueError("statuses2.0 %s: unknown verb %r (known: %s)"
@@ -294,17 +319,80 @@ def parse_side(raw, where):
     unknown = [f for f in flags if f.lower() != "decay"]
     if unknown:
         raise ValueError("statuses2.0 %s: unknown flag(s) %s" % (where, unknown))
-    reward, reward_text = parse_reward(m.group("reward"))
-    if mode == "clause" and reward:
-        raise ValueError("statuses2.0 %s: a `clause` is a requirement, not a "
-                         "payout — move the reward to a `bonus` or a `goal`" % where)
+    # ONE arrow per cell, and which arrow it is says whether the payload is earned
+    # or owed. A side that both pays and charges is not a shape any status wants,
+    # and allowing it would make "what happens when I meet this" ambiguous.
+    pays = (m.group("arrow") or "").startswith("else")
+    reward, reward_text = parse_reward(None if pays else m.group("payload"))
+    penalty, penalty_text = parse_reward(m.group("payload") if pays else None)
+    if mode in UNPAID_MODES and reward:
+        raise ValueError("statuses2.0 %s: a `%s` is a requirement, not a "
+                         "payout — move the reward to a `bonus` or a `goal`"
+                         % (where, mode))
+    if penalty and mode != "demand":
+        raise ValueError("statuses2.0 %s: only a `demand` charges for being "
+                         "missed — a `%s` has no `else ->`" % (where, mode))
+    if mode == "demand" and not penalty:
+        raise ValueError("statuses2.0 %s: a `demand` is an obligation with a "
+                         "price — write what missing it costs after `else ->`"
+                         % where)
     return {
         "mode": mode,
         "condition": normalise_holes(m.group("condition")),
         "reward": reward,
         "reward_text": reward_text,
+        "penalty": penalty,
+        "penalty_text": penalty_text,
         "decay": any(f.lower() == "decay" for f in flags),
     }
+
+
+# --- how a status depletes (the `Decrease` column) -------------------------
+#
+# One column, two readers: it is the sentence the player is shown ("Loses a stack
+# each game you complete it") and the rule the engine runs. Every value it can
+# take maps to a DECAY answer per side, and an unknown one is refused rather than
+# read as "never" — a typo that silently made a status permanent is exactly the
+# kind of content bug a generator is here to catch.
+DECREASE_RULES = {
+    "": False,
+    "n/a": False,
+    "none": False,
+    "never": False,
+    "on completion": True,
+}
+
+
+def parse_decrease(raw, name):
+    """('On Completion', 'Burn') -> (prose, decays: bool)."""
+    prose = _clean(raw) or "N/A"
+    key = prose.strip().lower()
+    if key not in DECREASE_RULES:
+        raise ValueError("statuses2.0 %s: unknown Decrease %r (known: %s)"
+                         % (name, prose, ", ".join(sorted(
+                             k for k in DECREASE_RULES if k))))
+    return prose, DECREASE_RULES[key]
+
+
+# `Max: 3` anywhere in the Stackable cell caps the climb. Written as a search
+# rather than a match so `Intensity, Max: 3` reads the same as a bare `Max: 3`:
+# the cap and the way stacks combine are two facts, and the sheet may say both.
+MAX_RE = re.compile(r"max\s*:?\s*(\d+)", re.I)
+
+
+def parse_max_stacks(raw, name):
+    """The stack ceiling the Stackable cell authors, or 0 for no ceiling."""
+    s = _clean(raw)
+    if not s:
+        return 0
+    m = MAX_RE.search(s)
+    if not m:
+        return 0
+    cap = int(m.group(1))
+    if cap <= 0:
+        raise ValueError("statuses2.0 %s: a Max of %d is a status that cannot "
+                         "exist" % (name, cap))
+    return cap
 
 
 # --- the COMBAT side ------------------------------------------------------
@@ -493,6 +581,18 @@ def parse_reward_clause(clause):
         eff = {"type": verb}
         put(eff, "value", rest[0])
         return eff, "-%s %s" % (_amount_word(rest[0]), label)
+
+    # DAMAGE, as opposed to `lose_hp`'s bill. The difference is the path it takes:
+    # damage is resolved on the battlefield, so the tries (§3) absorb it and the
+    # player's own statuses scale it, where `lose_hp` comes straight off Health
+    # whatever is standing in front of it. Burn's "or take 3 Damage" is the first
+    # cell to want the former — a burn is felt in combat, at the end of it.
+    if verb == "take_damage":
+        if not rest:
+            raise ValueError("reward DSL: take_damage needs an amount in %r" % clause)
+        eff = {"type": "take_damage"}
+        put(eff, "value", rest[0])
+        return eff, "take %s Damage" % _amount_word(rest[0])
 
     if verb == "lose_stat":
         if len(rest) < 2:
@@ -798,6 +898,23 @@ def status_tres(row) -> tuple:
     combat = parse_combat(row.get("Enemy Combat Effect"), "%s / Enemy Combat Effect" % name)
     if not on_player and not on_enemy and not combat:
         raise ValueError("statuses2.0 %s: neither side does anything" % name)
+    # The Decrease column is the truth about depletion, and the sides' `decay`
+    # flags are checked against it rather than trusted alongside it. A cell that
+    # asks to decay under an `N/A` column is a contradiction, and the older cells
+    # that carry the flag (Marked's two) simply agree with their column.
+    decrease, decays = parse_decrease(row.get("Decrease"), name)
+    for which, side in (("On Player Effect", on_player), ("On Enemy Effect", on_enemy)):
+        if side.get("decay") and not decays:
+            raise ValueError(
+                "statuses2.0 %s / %s: the cell says `decay` but Decrease says "
+                "%r — say it once, in the column" % (name, which, decrease))
+        # A side that can be COMPLETED sheds a stack when the column says so. A
+        # `clause` on the player counts: completing the goal it rides is what
+        # completes it (§13). An INERT side stays the empty dict the runtime reads
+        # as "this side does nothing" — there is nothing there to complete.
+        if decays and side:
+            side["decay"] = True
+    max_stacks = parse_max_stacks(row.get("Stackable"), name)
     # EnemyOnly gates the COMBAT side alone — the goal sides are already authored
     # one per side and say for themselves who they land on. Blank reads as Yes,
     # which is the conservative half: a status nobody thought about does not
@@ -826,6 +943,8 @@ def status_tres(row) -> tuple:
     lines.append('on_player_text = "%s"' % gd_str(_clean(row.get("On Player"))))
     lines.append('on_enemy_text = "%s"' % gd_str(_clean(row.get("On Enemy"))))
     lines.append('stackable = "%s"' % gd_str(_clean(row.get("Stackable")) or "Intensity"))
+    lines.append("max_stacks = %d" % max_stacks)
+    lines.append('decrease = "%s"' % gd_str(decrease))
     lines.append('combat_text = "%s"' % gd_str(_clean(row.get("Combat"))))
     lines.append("enemy_only = %s" % gd_value(enemy_only))
     lines.append("on_player = %s" % gd_value(on_player))
@@ -856,6 +975,7 @@ def main():
     for needed, setup in (("On Player Effect", "_statuses_sheet_setup.py"),
                           ("On Enemy Effect", "_statuses_sheet_setup.py"),
                           ("Combat", "_statuses2_combat_setup.py"),
+                          ("Decrease", "_statuses2_burn_setup.py"),
                           ("EnemyOnly", "_statuses2_combat_setup.py"),
                           ("Enemy Combat Effect", "_statuses2_combat_setup.py")):
         if needed not in headers:

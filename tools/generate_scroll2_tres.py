@@ -13,8 +13,8 @@ rewrite + combat cut land together.
 
   scrolls2.0: Scrolls | Game | Preference | Description | File | Effect
 
-Effect token DSL (one scroll = one clause):
-  apply_status <status> N current|all|random
+Effect token DSL (semicolons separate clauses; most scrolls are one):
+  apply_status <status> N player|current|all|random|front
                                      -> {op:apply_status, status, value, target}
   buff_enemies damage N games M      -> {op:buff_enemies, damage:N, games:M}
                                         (retired: Aggravate Monsters hands out
@@ -63,11 +63,35 @@ def _clean(v):
     return "" if s.upper() in ("", "N/A", "NONE") else s
 
 
+# Who an `apply_status` clause can land on. The four board words are
+# GameLoop2._status_targets'; `player` is the one that points at the reader
+# instead. A word not in here is not a silent typo — it simply isn't read as a
+# target, and the clause falls back to `all`, which is the reading every scroll
+# before Scroll of Fire wanted.
+STATUS_TARGETS = ("player", "current", "all", "random", "front")
+
+
 def parse_effect(raw):
-    """Parse the Effect token DSL into a list with a single op dict (or [])."""
+    """Parse the Effect cell into the list of op dicts the scroll runs (or []).
+
+    SEMICOLONS SEPARATE CLAUSES, the same way they do in every other sheet's
+    Effect column. Most scrolls are one clause and read exactly as they always
+    did; Scroll of Fire is the first that is genuinely two things at once — it
+    burns YOU and it burns the front column — and writing that as two clauses is
+    what keeps each of them an ordinary `apply_status` rather than inventing a
+    scroll-shaped verb that does both.
+    """
     s = _clean(raw)
     if not s:
         return []
+    out = []
+    for clause in [c.strip() for c in s.split(";") if c.strip()]:
+        out.extend(parse_clause(clause))
+    return out
+
+
+def parse_clause(s):
+    """One clause of the Effect DSL -> a list holding its op dict."""
     toks = s.split()
     verb = toks[0].lower()
     rest = toks[1:]
@@ -79,14 +103,19 @@ def parse_effect(raw):
                  "damage": int(kv.get("damage", 1)),
                  "games": int(kv.get("games", 1))}]
     if verb == "apply_status":
-        # `apply_status <status> [n] [current|all|random]` — Aggravate Monsters,
-        # in the vocabulary the statuses own since they grew a combat side (§13.4).
-        # It replaces `buff_enemies`, which armed a run-wide damage bonus that
-        # ticked away after N games; a Strength stack rides the body instead and
-        # never expires, which is what a Negative scroll should cost you.
+        # `apply_status <status> [n] [player|current|all|random|front]` —
+        # Aggravate Monsters, in the vocabulary the statuses own since they grew a
+        # combat side (§13.4). It replaces `buff_enemies`, which armed a run-wide
+        # damage bonus that ticked away after N games; a Strength stack rides the
+        # body instead and never expires, which is what a Negative scroll should
+        # cost you.
+        #
+        # `player` is the target that points the other way, at the reader: Scroll
+        # of Fire sets YOU alight as well as the room. `front` is the column that
+        # strikes next — the bodies already in your face.
         if not rest:
             raise ValueError("scroll effect DSL: apply_status needs a status in %r" % s)
-        targets = [t for t in rest[1:] if t.lower() in ("current", "all", "random")]
+        targets = [t for t in rest[1:] if t.lower() in STATUS_TARGETS]
         return [{"op": "apply_status",
                  "status": rest[0].lower(),
                  "value": nums[0] if nums else 1,
