@@ -930,6 +930,7 @@ func pick(index: int) -> void:
 	if _board != null:
 		_board.cancel_push()
 		_board.cancel_bomb()
+		_board.cancel_item_aim()
 	_phase = Phase.PLAYING
 	_populate_play_panel()
 	_refresh()
@@ -2159,6 +2160,13 @@ func obtain_any_item() -> void:
 func use_item(item: ItemData) -> void:
 	if item == null or not GameState.can_fire_item(item):
 		return
+	# AN ITEM THAT AIMS IS ARMED HERE AND FIRED ON THE BOARD (Staff of Flame).
+	# Nothing is spent by this press: GameState.use_item empties a charged bar the
+	# moment it fires, so an item whose effect needs a body picked has to wait for
+	# the pick — otherwise cancelling the picker would cost the charge anyway.
+	if item.wants_target():
+		aim_item(item)
+		return
 	# A non-charged overworld active (Ride the Bus) commits immediately, so spend
 	# its use here (use_item defers the spend for cancellable pickers).
 	var spend_after: bool = not item.is_charged() and item.overworld_usable
@@ -2166,6 +2174,40 @@ func use_item(item: ItemData) -> void:
 	if spend_after and GameState.inventory.has(item):
 		GameState.consume_item_use(item)
 	_refresh_items()
+
+# Arm an aiming item over the board: the bodies light up, and the click on one is
+# what fires it (see _on_item_aimed). Refused — loudly, and without spending
+# anything — when there is nothing out there to point it at, which is the one
+# case the pack cannot see from where its button is.
+func aim_item(item: ItemData) -> void:
+	if _board == null or not is_instance_valid(_board):
+		return
+	_close_item_card()
+	if not _board.begin_item_aim(item):
+		var empty: String = "Nothing is following you — %s has nothing to aim at." \
+			% item.display_name
+		GameLog.add(empty, UITheme.TEXT_DIM)
+		Notifications.notify(empty, UITheme.TEXT_DIM)
+		return
+	Notifications.notify("Click an enemy to aim %s." % item.display_name, UITheme.ACCENT)
+
+# The board handing back an armed item and the body it was pointed at. THIS is
+# where it fires and where the charge goes — the instance rides `use_item`'s
+# target into the effect ctx, which is how `apply_status … target=enemy` knows
+# which body the player meant.
+func _on_item_aimed(item: ItemData, instance: int) -> void:
+	if item == null or instance <= 0 or not GameState.can_fire_item(item):
+		return
+	if not GameState.use_item(item, instance):
+		return
+	var entry: Dictionary = GameLoop2.entry_for(instance)
+	var enemy: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
+	if enemy != null:
+		GameLog.add("%s is aimed at %s." % [item.display_name, enemy.display_name],
+			Color(1.0, 0.72, 0.4))
+	_refresh_items()
+	if _board != null and is_instance_valid(_board):
+		_board.refresh()
 
 # Bash the offered game at `index` (§4): destroy it out of the pool for the rest of
 # the run — it is never offered again — and REFILL its slot from the same pool the
@@ -5076,6 +5118,7 @@ func _build_ui() -> void:
 	_board = BattlefieldView.new()
 	_board.push_requested.connect(push_follower)
 	_board.bomb_requested.connect(bomb_follower)
+	_board.item_aimed.connect(_on_item_aimed)
 	_board.enemy_inspected.connect(_show_enemy_info)
 	# The board points back at the checklist: hovering a body lights the goal row
 	# written about it (_bind_row_to_body).

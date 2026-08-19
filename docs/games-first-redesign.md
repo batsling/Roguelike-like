@@ -186,9 +186,20 @@ current set is enemy/movement-facing instead:
 | Aggravate Monsters | Negative | Every enemy on the board gains **+1 Strength** — +1 damage on every hit, permanently (§13.4). |
 | Amnesia | Negative | Forget 1 random scroll. |
 | Create Monster | Negative | Spawn a random enemy at the current difficulty. |
+| Fire | Negative | **+3 Burn on you**, and +3 Burn on every enemy in the front column (§13). |
 | Identify | Positive | Choose 1 scroll to identify. |
 | Scare Monster | Positive | Choose 1 enemy to **Stun** (see below). |
 | Teleportation | Neutral | Teleport to a random space ~the same distance from the Amulet game (±1). |
+
+**Fire is the first scroll that points both ways**, and the first whose `Effect`
+cell is two clauses rather than one: `apply_status burn 3 player;
+apply_status burn 3 front`. Semicolons separate clauses here the same way they do
+in every other sheet's Effect column, and the two targets it needed are new —
+`player` is the reader, `front` is everything touching the column that strikes
+next (the same `in_front` test the strike itself uses, so "about to hit me" and
+"what this lands on" are one list). It is read for its second half: the bodies in
+your face come down to half damage and grow a cheap way out of their goals. Its
+first half lands whether or not the room has anyone in it.
 
 **Sacred Bark doubles all of it** (§8) — the Negative rows included. Whether the
 Bark doubled the downside was a real choice, and doubling it is what keeps the
@@ -667,7 +678,7 @@ the next shop you walk into, free (§14).
 |---|---|
 | `Pickup` | One-time instant effect on acquire (e.g. Hollow Heart: +4 *empty* Max Health; Mango: +4 Max Health, healed). |
 | `Triggered` | Fires on a game event — usually **"after beating a game"** (Burning Blood +1 Health, Meat on the Bone conditional heal), or **"when a game is selected"** (Anchor +1 Shield, §3.2). |
-| `Charged, N` | Usable, recharges over N beats (D6 → +1 Scramble; Wand of Wishing → any item, 6; D10 → re-roll the board, 2). |
+| `Charged, N` | Usable, recharges over N beats (D6 → +1 Scramble; D10 → re-roll the board, 2; Staff of Flame → +3 Burn on a body you point at, 3). |
 | `Usable` | Active, player-triggered (Ride the Bus → teleport to a random Deckbuilder game). |
 | `Passive` | Always-on modifier (Mine-r Construction: grow the Grid). |
 | `Incremental` | A `Triggered` item whose payout is on the **Nth** time, not every time (Charm of the Vampire: every third defeated enemy is +1 Health). The count lives on the inventory slot (`ItemData.counter_value`), so two copies each keep their own — Slay the Spire's rule — and it is **drawn on the item's own art**, bottom-right, the way the Spire draws a relic counter. |
@@ -773,6 +784,7 @@ previously name:
 | `passive_status: <status> N` | The status half of a passive grant → `status_bonuses`. **Bionic Face Plating**'s +3 Speed. Read `item_acquired: apply_status` as the *kept* form of the same grant and this as the *rented* one. |
 | `destroy_on_damage` | **The Mewgenics three.** The item is destroyed when an **enemy attack** costs the player Health — not on a swing the Shields ate, and not on the Health a failed try or an event charges. Fires from `GameState._on_health_lost` off the `source` tag `GameLoop2._take_hit` sets, so one swing that gets through breaks every fragile item at once. |
 | `reroll_enemies` | **D10.** Re-roll every non-boss body on the battlefield at *its own* difficulty and game type, keeping the square it stands on and the statuses hung on it. Health resets to the new body's own, because Health here is goal completions and the goals just changed. Bosses shrug it off, the same way they shrug off a bomb (§7.1). |
+| `apply_status <s> N target=enemy` | **Staff of Flame**, and the one target word that means *a body the player points at* rather than one a rule names. `ItemData.wants_target()` already reads it, so an item declares "aim me" in the same breath as what it does: `Overworld2.use_item` arms the board instead of firing (`BattlefieldView.begin_item_aim`), the bodies light up as they do for a Bomb, and the click fires it with the instance riding the effect ctx. **Nothing is spent until the click** — a charged item that emptied its bar on the press would charge for a picker you then cancelled. |
 
 Scrolls/encounters keep their **semicolon-separated, space-delimited token** DSL
 (`generate_scroll_tres.py` / `generate_encounter_tres.py`); the item generator
@@ -1085,7 +1097,7 @@ where `<verb>` is one of the five modes above. So the current roster reads:
 | Speed | `goal "beaten in {1+(1/2)^(X-2):hours} or less" -> gain_chest reward {X}; gain_stat dash 1` | `clause "must be beaten in {1+(1/2)^(X-2):hours} or less"` |
 | Marked | `clause "you must get {X} achievements" decay` | `bonus "you get {X} achievements" decay -> gain_chest reward {X}` |
 | Dexterity | `goal "{X} bosses were beaten without getting hit" -> gain_chest reward {X}` | `clause "you must beat {X} bosses without getting hit"` |
-| Burn | `demand "skip or trash {4-X} items/upgrades" else -> take_damage 3` | `instead "skip or trash {4-X} items/upgrades"` |
+| Burn | `demand "skip or trash {X} items/upgrades" else -> take_damage 3` | `instead "skip or trash {4-X} items/upgrades"` |
 
 **One arrow per cell**, and which arrow it is says whether the payload is earned
 or owed: `->` is a reward, `else ->` is what missing it costs. A `clause` and an
@@ -1103,8 +1115,8 @@ cell.
 **`Stackable` may carry a ceiling.** `Intensity` is the usual "a second
 application raises X"; `Max: 3` is that with a cap, enforced on the way up in
 `GameState.apply_status` and `GameLoop2._add_status_to`. Burn is the status that
-needed it: its condition gets *easier* per stack (4-X), so an uncapped Burn would
-pay itself off and then keep paying.
+needed it: on the player its condition costs X items, so an uncapped Burn would
+eventually ask for more than any game has to give.
 
 **Reward token DSL** (compiled by `tools/generate_status_tres.py` into
 `EffectSystem` effect dicts, so a chest a status grants is the same chest an item
@@ -1151,7 +1163,7 @@ would only make it a worse item.
 | **Speed** | Buff | Mewgenics | beaten in 1+(1/2)^(X-2) hours or less | [chest reward X], +1 Dash | closes +X tiles per turn |
 | **Dexterity** | Buff | Slay the Spire | X bosses were beaten without getting hit | [chest reward X] | +X Shields |
 | **Marked** | Debuff | Mewgenics | you get X achievements | [chest reward X] | takes double damage, ignoring Shields |
-| **Burn** | Debuff | Brutal Orchestra | skip or trash 4-X items/upgrades | *nothing* — it charges 3 Damage for being missed | deals half damage |
+| **Burn** | Debuff | Brutal Orchestra | skip or trash X items/upgrades (4-X on an enemy) | *nothing* — it charges 3 Damage for being missed | deals half damage |
 
 Speed's window halves toward a floor of one hour: **3 hours** at one stack,
 **2 hours** at two, **1 hour 30 minutes** at three, **1 hour 15 minutes** at four.
@@ -1166,12 +1178,12 @@ Slay the Spire relic's own reading of the word — a shield — with a
 boss-flawless goal of its own. Anything that referred to the old Dexterity means
 Speed.
 
-**Burn is the one that runs backwards.** Every other status asks more of you the
-deeper it stacks; Burn asks *less* — 3 items skipped at one stack, 1 at three —
-and that is the whole shape of it. A fresh Burn is a real tax you probably cannot
-pay in one game, so it bites for 3, and biting is what makes it stack: each new
-application brings the price down until you can clear it. `Max: 3` is the floor
-under that, since a fourth stack would take the condition to zero.
+**Burn's two sides run opposite curves, and that is one rule rather than two:
+Burn is bad for whoever is carrying it.** On the player it asks for **X** items
+skipped, so it costs more the deeper it stacks, and `Max: 3` is the ceiling on
+that. On an enemy it asks for **4-X**, so a burned body's way out gets *cheaper*
+the more Burn is on it — which is what makes setting something alight worth
+doing. The same status, read from either end of the board.
 
 The condition is honour-system like every other one on the checklist — it is
 about the **real game you are playing**, not about this project's own item
@@ -1184,8 +1196,9 @@ Its two sides bite in opposite directions, which is the point:
   row whose *unticked* state does something. The 3 Damage lands at the **end of
   the game, after the enemies have swung** — through the normal hit path, so the
   tries that game granted absorb it before Health does, and a run the enemies
-  already ended is never billed. Answering it sheds a stack; missing it does not,
-  so it keeps asking.
+  already ended is never billed. Answering it sheds a stack, which makes the next
+  game's asking price *lower*; missing it does not, so it keeps asking at the
+  same price until you pay.
 - **On an enemy** it is an `instead`: that body's goal grows "or instead skip or
   trash 4-X items/upgrades", and doing that clears the body — same hit, same
   drop, same gold. What it does *not* do is go on the record. The enemy's own
@@ -1196,8 +1209,24 @@ Its two sides bite in opposite directions, which is the point:
   what the boss is (§7.1), so `GameLoop2.alternatives_for` refuses one and
   `claim_enemy_alternative` refuses the claim behind it too.
 
-Two items hand statuses out, the pair of Slay the Spire relics that grant these
-same two stats there: **Vajra** (+1 Strength) and **Oddly Smooth Stone**
+**Two pieces of content hand Burn out**, one to each side of the board:
+
+- **Scroll of Fire** (§4.1) — `apply_status burn 3 player; apply_status burn 3
+  front`. The first scroll whose cell is two clauses, and the first that burns
+  the reader: +3 Burn on you, +3 Burn on everything touching the front column.
+  Negative, obviously, and read for the second half — the bodies about to hit you
+  come down to half damage and grow a cheap way out. Its cost lands whether or
+  not the room is empty.
+- **Staff of Flame** (§8) — `item_used: apply_status burn 3 target=enemy`, a
+  Rare `Charged, 3` active. The first relic that has to be **pointed at
+  something**: the pack arms it, the board aims it (`BattlefieldView.aiming_item`,
+  the same arm-then-aim bargain as the Bomb), and the click on a body is what
+  fires it and spends the bar — so cancelling costs nothing. A boss is a legal
+  target, exactly as it is for a bomb: what a burned boss loses is its damage,
+  not its condition.
+
+Two more items hand OTHER statuses out, the pair of Slay the Spire relics that
+grant these same two stats there: **Vajra** (+1 Strength) and **Oddly Smooth Stone**
 (+1 Dexterity). Both are `Pickup` items firing `item_acquired`, so the status
 lands when the relic is taken and stays for the run. Two more hand them to the
 OTHER side: **Scroll of Aggravate Monsters** (§4.1) puts +1 Strength on every body

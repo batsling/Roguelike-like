@@ -8,6 +8,7 @@ extends GutTest
 const SCROLL_IDS := [
 	"scroll_of_aggravate_monsters", "scroll_of_amnesia", "scroll_of_create_monster",
 	"scroll_of_identify", "scroll_of_scare_monster", "scroll_of_teleportation",
+	"scroll_of_fire",
 ]
 
 # Choose a game and take its ESCORT straight back off the board.
@@ -137,6 +138,78 @@ func test_teleport_returns_a_teleport_request() -> void:
 	var out: Dictionary = ScrollSystem.read_scroll(s, {"rng": _rng()})
 	assert_eq(out["requests"].size(), 1)
 	assert_eq(String(out["requests"][0]["kind"]), "teleport")
+
+# --- Scroll of Fire: the first scroll that burns the reader too ------------
+#
+# Two clauses in one Effect cell, pointed in opposite directions: +3 Burn on YOU,
+# and +3 Burn on everything already in your face. It is the reason the scroll DSL
+# grew semicolons and the reason `player` and `front` are targets at all.
+
+# Walk everything on the board up to the front column, so "the ones about to hit
+# you" is a set with something in it.
+func _march_to_the_front() -> void:
+	for _i in range(GameLoop2.grid_cols() + 2):
+		var waiting: bool = false
+		for entry in GameLoop2.stack:
+			if not GameLoop2.in_front(entry):
+				waiting = true
+		if not waiting:
+			return
+		GameLoop2.beat_game(false)
+
+func test_fire_burns_the_reader_and_the_front_column() -> void:
+	GameState.max_hp = 20
+	GameState.hp = 20
+	_choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)
+	_march_to_the_front()
+	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_fire"), {"rng": _rng()})
+	assert_eq(GameState.status_stacks(&"burn"), 3, "the reader catches fire")
+	assert_eq(int((GameLoop2.stack[0]["statuses"] as Dictionary).get(&"burn", 0)), 3,
+		"and so does what is standing in front of them")
+
+func test_fire_leaves_the_back_of_the_board_alone() -> void:
+	# `front` is the column that strikes next, not the whole board — a body still
+	# walking in is not in your face yet, and Aggravate Monsters is the scroll for
+	# hitting everything.
+	_choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)
+	_march_to_the_front()
+	var far: int = _choose_solo(_enemy(2))       # fresh, out at the spawn column
+	GameLoop2.beat_game(false)
+	var near: int = int(GameLoop2.stack[0]["instance"])
+	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_fire"), {"rng": _rng()})
+	assert_true(GameLoop2.in_front(GameLoop2.entry_for(near)), "the near body is in front")
+	assert_eq(int((GameLoop2.entry_for(near)["statuses"] as Dictionary).get(&"burn", 0)), 3,
+		"which is what burned")
+	assert_false(GameLoop2.in_front(GameLoop2.entry_for(far)), "the far one is not")
+	assert_eq(int((GameLoop2.entry_for(far).get("statuses", {}) as Dictionary).get(&"burn", 0)), 0,
+		"and it did not")
+
+func test_fire_read_into_an_empty_room_still_burns_you() -> void:
+	# The scroll is Negative for a reason: its cost lands whether or not its
+	# payoff finds anything.
+	var out: Dictionary = ScrollSystem.read_scroll(
+		Data.get_scroll(&"scroll_of_fire"), {"rng": _rng()})
+	assert_eq(GameState.status_stacks(&"burn"), 3, "you burn regardless")
+	assert_true(str(out["logs"]).contains("Nothing out there is listening"),
+		"and the log says the room was empty")
+
+func test_a_second_reading_cannot_push_burn_past_its_cap() -> void:
+	GameState.apply_status(&"burn", 2)
+	var out: Dictionary = ScrollSystem.read_scroll(
+		Data.get_scroll(&"scroll_of_fire"), {"rng": _rng()})
+	assert_eq(GameState.status_stacks(&"burn"), 3, "Max: 3 (§13)")
+	assert_true(str(out["logs"]).contains("+1 Burn"),
+		"and the log quotes what actually landed, not what was asked for")
+
+func test_the_fire_scrolls_wording_names_both_halves() -> void:
+	var s: ScrollData = Data.get_scroll(&"scroll_of_fire")
+	assert_eq(s.effect.size(), 2, "two clauses in one cell")
+	var said: Array = []
+	for e in s.effect:
+		said.append(ScrollSystem.status_effect_text(e))
+	assert_true(str(said).contains("You gain +3 Burn"), "it says what it does to you")
+	assert_true(str(said).contains("Every enemy in the front column"),
+		"and who else it reaches")
 
 # --- Fulfilment helpers ----------------------------------------------------
 

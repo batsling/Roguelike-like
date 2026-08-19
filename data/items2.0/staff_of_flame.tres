@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_staff_of_flame"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/StaffOfFlame.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"staff_of_flame"
+display_name = "Staff of Flame"
+kind = 6
+rarity = 2
+description = "Apply +3 Burn to a target enemy"
+triggers = [{"on": "item_used", "effects": [{"type": "apply_status", "status": "burn", "value": 3, "target": "enemy"}]}]
+stat_bonuses = {}
+charge_cost = 3
+starts_charged = true
+source_game = "Mewgenics"
+tags = PackedStringArray("magic", "fire")
+image = ExtResource("2_img")

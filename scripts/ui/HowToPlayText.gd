@@ -628,7 +628,9 @@ static func _ch_pack() -> Dictionary:
 				+ "Identify. Amnesia can make you forget one again."),
 			_b("The good ones stun an enemy for a turn, or teleport you across the "
 				+ "map. The bad ones spawn an enemy, or hand every enemy on the "
-				+ "board a permanent +1 Strength."),
+				+ "board a permanent +1 Strength. Scroll of Fire is the one that "
+				+ "cuts both ways: it sets the front column alight and you with "
+				+ "it."),
 			_h("Statuses"),
 			_p("A status is first of all a clause bolted onto a GOAL, which is the "
 				+ "only currency this game has. That is how an item or an event can "
@@ -656,11 +658,13 @@ static func _ch_pack() -> Dictionary:
 			_kv("Marked", "Everything that lands on it is DOUBLED and goes straight "
 				+ "through Shields."),
 			_kv("Burn", "It hits for half. On YOU it is a debt instead: every game, "
-				+ "skip or trash 4 items in the game you are playing — one fewer "
-				+ "for each stack — or take 3 damage once the enemies have swung. "
-				+ "Pay it and a stack comes off, which makes the next one cheaper. "
-				+ "It stacks no higher than 3. On an ENEMY it is that same deal "
-				+ "offered as a way out of its goal."),
+				+ "skip or trash as many items in the game you are playing as you "
+				+ "have stacks of it — or take 3 damage once the enemies have "
+				+ "swung. Pay it and a stack comes off, which makes the next one "
+				+ "cheaper. It stacks no higher than 3. On an ENEMY the same deal "
+				+ "runs the other way: its goal grows a way out that costs 4 minus "
+				+ "its stacks, so a badly burned enemy is the cheapest one to be "
+				+ "rid of. Burn is bad for whoever is carrying it."),
 			_b("The buffs are felt by enemies only. Marked is a debuff, and a debuff "
 				+ "is felt by whoever is carrying it — Marked on YOU doubles every "
 				+ "hit you take and ignores the tries you were counting on to "

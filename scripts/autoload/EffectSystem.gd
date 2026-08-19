@@ -235,7 +235,7 @@ func _h_chest_reward(effect: Dictionary, _ctx: Dictionary) -> void:
 #   player                  -> the status's On Player side (Vajra's +1 Strength)
 #   current | all | random  -> its On Enemy side, via GameLoop2's targeting
 # Defaults to the player, since that is the side a pickup usually lands on.
-func _h_apply_status(effect: Dictionary, _ctx: Dictionary) -> void:
+func _h_apply_status(effect: Dictionary, ctx: Dictionary) -> void:
 	var status_id := StringName(String(effect.get("status", "")))
 	if status_id == &"":
 		return
@@ -245,8 +245,20 @@ func _h_apply_status(effect: Dictionary, _ctx: Dictionary) -> void:
 	var target: String = String(effect.get("target", "player")).to_lower()
 	if target == "player" or target == "self":
 		GameState.apply_status(status_id, stacks)
-	else:
-		GameLoop2.apply_enemy_status(status_id, stacks, target)
+		return
+	# `target=enemy` is the sheet asking for a body to be POINTED AT rather than
+	# named by a rule (Staff of Flame). The instance rides `ctx.target`, put there
+	# by whoever did the aiming — GameState.use_item passes it through — so a
+	# firing with nobody picked lands on nothing rather than falling through to
+	# "current" and burning whatever happens to be standing closest.
+	if target == "enemy":
+		var aimed: Variant = ctx.get("target")
+		if not (aimed is int) or int(aimed) <= 0:
+			push_warning("EffectSystem.apply_status: target=enemy fired with no body aimed")
+			return
+		GameLoop2.apply_status_to(int(aimed), status_id, stacks)
+		return
+	GameLoop2.apply_enemy_status(status_id, stacks, target)
 
 # A NAMED item, handed straight over (the Golden Idol event's `gain_item
 # golden_idol`). The counterpart to the random draws above: an authored reward

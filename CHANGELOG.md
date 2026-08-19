@@ -11,6 +11,41 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Two ways to set something on fire, and Burn's two curves pulled apart.**
+
+  **Burn on the player now asks for X items skipped, not 4-X** — so it costs
+  *more* the deeper it stacks, and `Max: 3` is the ceiling on that. The enemy
+  side keeps 4-X, which makes the two halves one rule read from either end of the
+  board: Burn is bad for whoever is carrying it. Pay it down on yourself and the
+  next game's asking price drops; pile it onto an enemy and its way out gets
+  cheaper.
+
+  **Scroll of Fire** (Hack, Negative) — `apply_status burn 3 player;
+  apply_status burn 3 front`. The first scroll whose Effect cell is two clauses,
+  and the first that burns the reader: +3 Burn on you and +3 on everything
+  touching the front column. The scroll DSL grew semicolons for it (the same
+  separator every other sheet's Effect column already used) and two targets:
+  `player`, and `front` — the column that strikes next, tested with the same
+  `in_front` the strike itself uses, so "about to hit me" and "what this lands
+  on" cannot drift apart. You read it for the second half; the first half lands
+  whether or not the room has anyone in it.
+
+  **Staff of Flame** (Mewgenics, Rare, `Charged, 3`) — the first relic that has
+  to be **pointed at something**. `target=enemy` is the sheet asking for a body
+  to be picked rather than named by a rule, and `ItemData.wants_target()` already
+  recognised exactly that word, so the item declares "aim me" in the same breath
+  as what it does. The pack arms it, the board aims it — the same arm-then-aim
+  bargain the Bomb makes, with the bodies lit and a Cancel that appears only
+  while one is armed — and the **click** is what fires it and empties the bar. An
+  item that spent its charge on the button press would be charging for a picker
+  you then cancelled. A boss is a legal target, exactly as it is for a bomb: what
+  a burned boss loses is its damage, not its condition.
+
+  Alongside them, **Wand of Wishing regenerated as the sheet now has it**:
+  `Usable, 1` rather than `Charged, 6`. The `.tres` had been carrying the old
+  Type since before the sheet was edited — the drift only showed when the
+  generator was next run.
+
 - **Burn: a status that charges you, and a goal you can get out of.**
 
   Every status so far was a challenge you opted into and were paid for. **Burn**

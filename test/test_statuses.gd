@@ -412,22 +412,29 @@ func _boss(goal: String = "Beat the boss") -> GoalEnemyData:
 	e.boss = true
 	return e
 
-func test_burns_condition_gets_easier_the_deeper_it_stacks() -> void:
-	# 4-X: three items at one stack, one at three. The whole point of the status —
-	# and why it needs a cap.
+func test_burns_two_sides_run_opposite_curves() -> void:
+	# One rule, read from either end: Burn is bad for whoever is holding it. On the
+	# player it asks for X — deeper stacks, more given up. On an enemy it asks for
+	# 4-X, so the way out of its goal gets CHEAPER the more Burn is on it, which is
+	# what makes putting Burn on something worth doing.
 	var burn: StatusData = Data.get_status(&"burn")
 	assert_eq(burn.condition_text(StatusData.PLAYER, 1),
-		"skip or trash 3 items/upgrades")
+		"skip or trash 1 item/upgrade", "singular at one stack")
 	assert_eq(burn.condition_text(StatusData.PLAYER, 3),
-		"skip or trash 1 item/upgrade", "and singular when it is down to one")
+		"skip or trash 3 items/upgrades", "and it costs more the deeper it goes")
+	assert_eq(burn.condition_text(StatusData.ENEMY, 1),
+		"skip or trash 3 items/upgrades")
+	assert_eq(burn.condition_text(StatusData.ENEMY, 3),
+		"skip or trash 1 item/upgrade", "the other way about, on a body")
 
 func test_a_demand_reads_as_an_obligation_with_a_price() -> void:
 	# Not "If you do this, gain": there is no version of the game where a demand
 	# goes unanswered — the answer is either the thing or the price.
 	var burn: StatusData = Data.get_status(&"burn")
-	assert_eq(burn.objective_text(StatusData.PLAYER, 1),
-		"You must skip or trash 3 items/upgrades, or take 3 Damage")
-	assert_eq(burn.penalty_at(StatusData.PLAYER, 1), "take 3 Damage")
+	assert_eq(burn.objective_text(StatusData.PLAYER, 2),
+		"You must skip or trash 2 items/upgrades, or take 3 Damage")
+	assert_eq(burn.penalty_at(StatusData.PLAYER, 2), "take 3 Damage",
+		"and the price is flat — the condition is what scales")
 	assert_eq(burn.reward_at(StatusData.PLAYER, 1), "", "a demand pays nothing")
 
 func test_a_demand_is_a_row_the_player_answers() -> void:
@@ -850,6 +857,53 @@ func test_clearing_a_goal_the_other_way_banks_no_record_of_the_beat() -> void:
 	ui.report(true)
 	assert_eq(GameStats.enemy_beaten_count(game.id, enemy.id), before,
 		"no 'beaten in <game>' — its goal was never met")
+
+# --- Staff of Flame: armed in the pack, aimed on the board -----------------
+
+func test_the_staff_arms_the_board_rather_than_firing_where_it_stands() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	ui.report(false)                       # a body walks onto the board
+	var staff: ItemData = GameState.add_item(Data.get_item2(&"staff_of_flame"))
+	ui.use_item(staff)
+	assert_eq(ui._board.aiming_item, staff, "the board is holding it, waiting")
+	assert_eq(staff.current_charge, staff.max_charge(),
+		"and nothing has been spent by the press")
+
+func test_putting_the_staff_away_costs_nothing() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	ui.report(false)
+	var staff: ItemData = GameState.add_item(Data.get_item2(&"staff_of_flame"))
+	ui.use_item(staff)
+	ui._board.cancel_item_aim()
+	assert_null(ui._board.aiming_item, "put away")
+	assert_eq(staff.current_charge, staff.max_charge(), "with the bar still full")
+
+func test_clicking_a_body_with_the_staff_armed_sets_it_alight() -> void:
+	var ui = _booted()
+	ui.pick(0)
+	ui.report(false)
+	var staff: ItemData = GameState.add_item(Data.get_item2(&"staff_of_flame"))
+	ui.use_item(staff)
+	var entry: Dictionary = GameLoop2.stack[0]
+	var inst: int = int(entry["instance"])
+	ui._board.click_enemy(inst, entry, int(entry.get("col", 1)))
+	assert_eq(int((GameLoop2.entry_for(inst)["statuses"] as Dictionary).get(&"burn", 0)), 3,
+		"the body the player pointed at is burning")
+	assert_eq(staff.current_charge, 0, "and THAT is what spent the charge")
+	assert_null(ui._board.aiming_item, "one press, one firing")
+
+func test_the_staff_will_not_arm_over_an_empty_board() -> void:
+	# The one thing the pack cannot see from where its button is: whether there is
+	# anything out there to point at.
+	var ui = _booted()
+	var staff: ItemData = GameState.add_item(Data.get_item2(&"staff_of_flame"))
+	for entry in GameLoop2.stack.duplicate():
+		GameLoop2.despawn(int(entry["instance"]))
+	ui.use_item(staff)
+	assert_null(ui._board.aiming_item, "nothing to aim at, so nothing is armed")
+	assert_eq(staff.current_charge, staff.max_charge(), "and nothing spent")
 
 func test_the_way_out_row_offers_no_notes_button() -> void:
 	# A note is how you beat this enemy AT this game, and there is nothing to write

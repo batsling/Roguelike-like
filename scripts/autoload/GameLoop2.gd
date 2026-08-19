@@ -1818,6 +1818,7 @@ func _index_of(instance: int) -> int:
 #   "current" — the enemy on the game being played right now (the default)
 #   "all"     — every body on the board AND the current enemy
 #   "random"  — one body picked at random from that same set
+#   "front"   — everything touching the front column: the bodies that strike next
 # Returns how many enemies it landed on. An unknown status id lands on none.
 func apply_enemy_status(status_id: StringName, stacks: int = 1,
 		target: String = "current") -> int:
@@ -1843,6 +1844,17 @@ func _status_targets(target: String) -> Array:
 			return everyone
 		"random":
 			return [] if everyone.is_empty() else [everyone[randi() % everyone.size()]]
+		"front":
+			# The bodies already in your face — whatever touches the front column,
+			# which is the same test the strike uses (`in_front`), so "the ones
+			# about to hit me" and "the ones this lands on" are one list. A long
+			# body counts as soon as any part of it reaches; an off-grid one never
+			# does. Scroll of Fire's half of the board.
+			var near: Array = []
+			for entry in everyone:
+				if in_front(entry):
+					near.append(entry)
+			return near
 		_:
 			var landed: Dictionary = arrival()
 			return [] if landed.is_empty() else [landed]

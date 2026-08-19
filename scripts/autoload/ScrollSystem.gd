@@ -134,7 +134,12 @@ func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenera
 			# The scroll used to arm a run-wide bonus that expired after a game;
 			# a status rides the enemy and doesn't, so reading this one is a
 			# lasting mistake rather than a bad couple of minutes.
-			_apply_enemy_status(effect, out)
+			#
+			# Scroll of Fire writes the same op twice, once at the front column and
+			# once at the READER, which is why this handler knows about the player
+			# at all: a scroll that only ever hurt the other side would not need a
+			# Preference (§4.1).
+			_apply_status(effect, out)
 		"forget":
 			# Amnesia — forget (unidentify) random known scrolls (§4.1).
 			_forget_scrolls(int(effect.get("count", 1)), rng, out)
@@ -172,28 +177,46 @@ func status_effect_text(effect: Dictionary) -> String:
 	if status == null:
 		return ""
 	var stacks: int = maxi(1, int(effect.get("value", 1)))
+	var target: String = String(effect.get("target", "all")).to_lower()
 	var who: String = {
+		"player": "You",
 		"current": "The enemy of the game you're on",
 		"random": "One random enemy",
-	}.get(String(effect.get("target", "all")).to_lower(), "Every enemy on the board")
-	var what: String = status.combat_line(stacks)
-	return "%s gains +%d %s%s." % [who, stacks, status.display_name,
-		" (%s)" % what if what != "" else ""]
+		"front": "Every enemy in the front column",
+	}.get(target, "Every enemy on the board")
+	# On the PLAYER the combat line is usually the wrong half to quote — most of
+	# the roster's combat sides are felt by enemies only (§13.4), so a scroll that
+	# burns you would otherwise promise a halving that never lands on you.
+	var side: StringName = StatusData.PLAYER if target == "player" else StatusData.ENEMY
+	var what: String = status.combat_line(stacks) if status.combat_applies(side) else ""
+	return "%s %s +%d %s%s." % [who, "gain" if target == "player" else "gains",
+		stacks, status.display_name, " (%s)" % what if what != "" else ""]
 
-# Hand `value` stacks of a status to the bodies a `target` word names, through
-# GameLoop2's own targeting so a scroll can't reach anything an item couldn't.
-# A board with nothing on it says so rather than reporting a silent success:
-# reading Aggravate Monsters into an empty room is a wasted scroll, and the log
-# is the only place the player finds that out.
-func _apply_enemy_status(effect: Dictionary, out: Dictionary) -> void:
+# Hand `value` stacks of a status to whoever a `target` word names, through
+# GameState (the reader) or GameLoop2's own targeting (the board) so a scroll
+# can't reach anything an item couldn't. A board with nothing on it says so rather
+# than reporting a silent success: reading Aggravate Monsters into an empty room
+# is a wasted scroll, and the log is the only place the player finds that out.
+func _apply_status(effect: Dictionary, out: Dictionary) -> void:
 	var status_id := StringName(String(effect.get("status", "")))
 	var stacks: int = maxi(1, int(effect.get("value", 1)))
 	var status: StatusData = Data.get_status(status_id)
 	if status == null:
 		push_warning("ScrollSystem: no status '%s' in the catalog" % status_id)
 		return
-	var landed: int = GameLoop2.apply_enemy_status(
-		status_id, stacks, String(effect.get("target", "all")))
+	var target: String = String(effect.get("target", "all")).to_lower()
+	if target == "player" or target == "self":
+		# Quoted from what the player ENDED UP with rather than from what was
+		# asked for: Burn stops at 3 (§13), and a line reading "+3 Burn" beside a
+		# pip that says 3 would be describing a different scroll.
+		var before: int = GameState.status_stacks(status_id)
+		var after: int = GameState.apply_status(status_id, stacks)
+		if after <= before:
+			out["logs"].append("%s is already as deep as it goes." % status.display_name)
+			return
+		out["logs"].append("You gain +%d %s." % [after - before, status.display_name])
+		return
+	var landed: int = GameLoop2.apply_enemy_status(status_id, stacks, target)
 	if landed <= 0:
 		out["logs"].append("Nothing out there is listening.")
 		return
