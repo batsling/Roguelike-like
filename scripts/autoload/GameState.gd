@@ -627,6 +627,24 @@ func _on_enemy_killed(ctx: Dictionary) -> void:
 
 func _on_health_lost(ctx: Dictionary) -> void:
 	fire_run_item_triggers("health_lost", ctx)
+	# Fortune Necklace and friends shatter here rather than in _take_hit, so the
+	# rule holds wherever an enemy's damage is applied from — and so the Shields
+	# get their say first: this hook only runs on Health that actually came off.
+	if String(ctx.get("source", "")) == HEALTH_SOURCE_ENEMY_ATTACK:
+		_destroy_fragile_items()
+
+# Every owned item flagged `destroyed_by_enemy_damage` goes at once — one swing
+# that gets through breaks the whole set of trinkets, not the topmost one. Walked
+# backwards so removing a slot doesn't shuffle the ones not yet looked at.
+func _destroy_fragile_items() -> void:
+	for i in range(inventory.size() - 1, -1, -1):
+		var it = inventory[i]
+		if it is ItemData and it.destroyed_by_enemy_damage:
+			Notifications.notify("%s was destroyed." % it.display_name,
+				Color(1.0, 0.55, 0.35))
+			GameLog.add("%s was destroyed by the hit." % it.display_name,
+				Color(1.0, 0.55, 0.35))
+			remove_item_at(i)
 
 # Fires every owned item's triggers whose `on:` matches `trigger_name`, with a
 # scene-less context (source/target/scene/card = null). The run-scope sibling
@@ -1293,7 +1311,15 @@ func set_hp(new_hp: int) -> void:
 	hp = clamp(new_hp, 0, max_hp)
 	emit_signal("hp_changed", hp, max_hp)
 
-func change_hp(delta: int) -> void:
+# `source` names WHAT took the Health, and is passed through to the health_lost
+# ctx. Almost nothing needs it — Piggy Bank pays on any loss, which is what
+# "whenever" means — but the destructible trinkets (§8.1) break only on an enemy
+# attack, and a signal that says "Health went down by 2" cannot tell a swing from
+# the bill an event just handed you. HEALTH_SOURCE_ENEMY_ATTACK is the only tag
+# with a rule behind it today; the default of "" reads as "some other drain".
+const HEALTH_SOURCE_ENEMY_ATTACK := "enemy_attack"
+
+func change_hp(delta: int, source: String = "") -> void:
 	# Each in-combat HP loss is one "time you lost Health this combat" for
 	# Blood for Blood's discount — deckbuilder/action player HP loss (enemy
 	# hits, DoT ticks, self-damage cards) funnels through here. Gated on a
@@ -1310,7 +1336,7 @@ func change_hp(delta: int) -> void:
 	# hook lives at this choke point rather than on the battlefield: the relic
 	# says "whenever", and the overworld is a place Health is lost too.
 	if hp < before:
-		TriggerBus.health_lost.emit({"amount": before - hp})
+		TriggerBus.health_lost.emit({"amount": before - hp, "source": source})
 
 func set_gold(new_gold: int) -> void:
 	gold = max(0, new_gold)
@@ -2034,6 +2060,10 @@ func consume_item_use(item: ItemData) -> void:
 		if action_active_item_id == item.id and _count_items(item.id) <= 1:
 			action_active_item_id = &""
 		inventory.erase(item)
+		# A spent item leaves for the same reasons any other does, so it gives
+		# back its passive statuses too — this is the one removal path that does
+		# not go through remove_item_at.
+		_apply_status_bonuses(item, -1)
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 
@@ -2151,6 +2181,10 @@ func add_item(template: ItemData) -> ItemData:
 	# item did nothing".
 	var before: Dictionary = run_resource_snapshot()
 	_recompute_item_bonuses()
+	# The status half of the passive grant, put up alongside the stat bonuses the
+	# recompute just folded in, and for the same reason: it is held UP by the
+	# slot. remove_item_at takes it back down.
+	_apply_status_bonuses(inst, 1)
 	# Fire item_acquired triggers AFTER the inventory + stat recompute so
 	# the pickup hook sees the new max_hp (Lunch's +8 HP lands on top of
 	# the +8 Max HP its stat_bonuses just contributed). Scene-less — only
@@ -2257,9 +2291,26 @@ func stat_mirror_pool(stat_id: StringName) -> Array:
 func remove_item_at(index: int) -> void:
 	if index < 0 or index >= inventory.size():
 		return
+	var gone: ItemData = inventory[index] as ItemData
 	inventory.remove_at(index)
+	if gone != null:
+		_apply_status_bonuses(gone, -1)
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
+
+# Puts an item's `status_bonuses` up (direction 1) or takes them back down (-1).
+# apply_status prunes a stack count that reaches zero, so an item leaving cannot
+# leave a hollow entry behind; and because it is additive rather than a set, a
+# second copy of the same passive stacks and only its own share comes off when it
+# goes. Statuses gained any OTHER way (The Mark's pickup, an event) are untouched
+# — the item only ever gives back exactly what it put in.
+func _apply_status_bonuses(item: ItemData, direction: int) -> void:
+	if item == null or item.status_bonuses.is_empty():
+		return
+	for key in item.status_bonuses.keys():
+		var stacks: int = int(item.status_bonuses[key]) * direction
+		if stacks != 0:
+			apply_status(StringName(key), stacks)
 
 # Removes a specific owned item instance by reference (Unstable Genome's
 # destroy_self). No-op if it isn't in the inventory.

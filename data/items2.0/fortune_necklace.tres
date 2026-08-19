@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_fortune_necklace"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/FortuneNecklace.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"fortune_necklace"
+display_name = "Fortune Necklace"
+kind = 1
+rarity = 0
+description = "When selecting a game, Gain +1 Gold, but this is destroyed when taking damage"
+triggers = [{"on": "game_selected", "effects": [{"type": "gain_gold", "value": 1}]}]
+stat_bonuses = {}
+destroyed_by_enemy_damage = true
+max_uses = -1
+source_game = "Mewgenics"
+tags = PackedStringArray("wearable", "necklace")
+image = ExtResource("2_img")

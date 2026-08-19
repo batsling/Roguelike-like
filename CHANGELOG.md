@@ -11,6 +11,47 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Four items, two games, and the difference between a grant you keep and one
+  you are renting.**
+
+  **Lucky Hat** (+1 Luck), **Bionic Face Plating** (+3 Speed) and **Fortune
+  Necklace** (+1 Gold on every game selected) are Mewgenics trinkets, and all
+  three are fragile: an enemy attack that costs Health destroys them. **Ban
+  Hammer** (Yet Another Zombie Survivors, +2 Bashes) rounds the set out and
+  brought nothing new with it.
+
+  The interesting half is what "passive" had to start meaning. `stat_bonuses`
+  was already rented — Clover's Luck comes off with the clover — but a status
+  had only one door into the run, `apply_status`, which hands it over and lets
+  go. That is right for The Mark, whose Speed is yours after the item is gone,
+  and wrong for a plating you can lose. **`status_bonuses`** is the second door:
+  stacks held up by the inventory slot, put on by `add_item` and taken back by
+  `remove_item_at`, taking back only their own share so a Speed gained any other
+  way survives. The sheet says `passive_status: speed 3`; the Collection lists
+  it next to the stat bonuses, because "what does holding this give me" is one
+  question.
+
+  **What breaks them is narrower than "damage" in both directions.** Shields
+  absorb first (§3), so a swing they eat whole costs no Health and breaks
+  nothing — the trinkets are protected by the same thing protecting you. And the
+  Health a failed try charges, an event's bill, a curse's drain: all Health lost,
+  none of them an attack, none of them break the hat. `health_lost` fires on all
+  of it (that is what Piggy Bank is for), so `GameState.change_hp` now carries a
+  `source` and `GameLoop2._take_hit` — the *only* path an enemy's damage reaches
+  Health by — is the one caller that tags it as a swing. One swing that gets
+  through breaks every fragile item at once.
+
+  **Stigmata** now generates from the sheet's Effect column like everything else,
+  spelling out both halves of what it pays: `gain_max_hp 2; gain_hp 2`. The raise
+  fills its own container and the heal lands on top, so a full player still reads
+  +2 Health — there is nowhere for the second half to go — and a wounded one gets
+  four.
+
+  **Arms of God** (Brotato, Diablo, Vampire Survivors) and **Chosen Garden**
+  (Balatro) join the graph, along with Slay the Spire → **Montabi**: 854 games,
+  1227 connections, and the draw.io map still agrees with the sheet about every
+  one of them.
+
 - **The UI stopped asking the host what a ⚔ looks like.**
 
   The item the last change uncovered, now closed. The UI is drawn out of about

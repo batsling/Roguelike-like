@@ -713,6 +713,32 @@ and so brought a piece of machinery with it:
 | **D10** | Common, Charged 2 | `reroll_enemies` — the board re-rolled at its own difficulty and type. |
 | **Wooden Nickel** | Common, Charged 1 | Nothing new: a 50% `chance` at +1 Gold, on the shortest bar in the game. |
 
+**The Mewgenics three** are one rule wearing three hats — **Lucky Hat**
+(Common, +1 Luck), **Bionic Face Plating** (Uncommon, +3 Speed) and **Fortune
+Necklace** (Common, +1 Gold on every game selected). Each is *fragile*: an enemy
+attack that costs Health destroys it. What they brought is the distinction
+between a grant that is **kept** and one that is **rented**:
+
+- A `Pickup` hands you something and lets go of it — The Mark's Speed is yours
+  after the item is gone, which is why the sheet's `Status` type maps onto
+  `PICKUP` rather than `PASSIVE`.
+- A `Passive` holds its grant up for as long as you hold the item. `stat_bonuses`
+  already worked that way (Clover's Luck comes off with the clover);
+  **`status_bonuses`** is the same channel for statuses, put up by
+  `GameState.add_item` and taken back by `remove_item_at`, and it only ever takes
+  back its own share — Speed gained any other way is not the plating's to remove.
+
+The destruction is narrower than either "damage" or "Health lost", in both
+directions: **Shields absorb first** (§3), so a swing they eat whole costs no
+Health and breaks nothing, and the Health a **failed try** charges — or an
+event's bill, or a curse's drain — is not an attack and breaks nothing either.
+`GameState.change_hp` carries a `source` for exactly this one distinction, and
+`GameLoop2._take_hit` is the only caller that tags it as a swing.
+
+**Ban Hammer** (Uncommon, Yet Another Zombie Survivors) rounds the set out and
+brought nothing with it: +2 Bashes on pickup, the same `gain_stat` The Mark pays
+one of.
+
 ### 8.1 Effect DSL — reuse the existing item grammar
 
 The `items2.0.Effect` column is authored in the **same grammar the project already
@@ -720,7 +746,9 @@ uses**, so no new engine is needed:
 
 - **Triggered / Usable / Charged** items → `ItemData.triggers = [{on: <TriggerBus
   signal>, if_*: <gates>, effects: [{type: <EffectSystem handler>, …}]}]`.
-- **Passive** items → `stat_bonuses` (an always-on verb bonus, e.g. `{bash: 1}`).
+- **Passive** items → `stat_bonuses` (an always-on verb bonus, e.g. `{bash: 1}`)
+  and/or `status_bonuses` (always-on status stacks, e.g. `{speed: 3}`). Both are
+  held up by the inventory slot and come back down when it empties.
 - **Pickup** items → a one-shot `item_acquired` trigger with scene-free effects
   (`gain_hp` / `gain_max_hp` / …).
 - The two run-lifecycle triggers are **`game_beaten`** ("after beating a game")
@@ -742,6 +770,8 @@ previously name:
 | `enemy_killed:` | A body was **defeated** (`GameLoop2._defeat`). A bombed enemy is destroyed rather than defeated and never reaches it, the same rule that decides whether the body pays gold (§14). **Charm of the Vampire** counts them. |
 | `counter key=K every=N -> …` | The **incremental** wrapper: fire the inner effects on every Nth time, then roll the count back to zero. The count lives on the inventory slot, not on the run — see the `Incremental` row above. |
 | `boss_chest_bonus: N` | **There's Options.** Chest points added to a boss's drop; see §8.2. |
+| `passive_status: <status> N` | The status half of a passive grant → `status_bonuses`. **Bionic Face Plating**'s +3 Speed. Read `item_acquired: apply_status` as the *kept* form of the same grant and this as the *rented* one. |
+| `destroy_on_damage` | **The Mewgenics three.** The item is destroyed when an **enemy attack** costs the player Health — not on a swing the Shields ate, and not on the Health a failed try or an event charges. Fires from `GameState._on_health_lost` off the `source` tag `GameLoop2._take_hit` sets, so one swing that gets through breaks every fragile item at once. |
 | `reroll_enemies` | **D10.** Re-roll every non-boss body on the battlefield at *its own* difficulty and game type, keeping the square it stands on and the statuses hung on it. Health resets to the new body's own, because Health here is goal completions and the goals just changed. Bosses shrug it off, the same way they shrug off a bomb (§7.1). |
 
 Scrolls/encounters keep their **semicolon-separated, space-delimited token** DSL

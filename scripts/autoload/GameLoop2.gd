@@ -1695,7 +1695,10 @@ func _take_hit(damage: int, res: Dictionary) -> Dictionary:
 	GameState.shields -= absorbed
 	var overflow: int = damage - absorbed
 	if overflow > 0:
-		GameState.change_hp(-overflow)
+		# Tagged as the swing it is: this is the ONLY path an enemy's damage
+		# reaches Health by, which is what lets the destructible trinkets (§8.1)
+		# break on an attack and survive the Health a failed try charges.
+		GameState.change_hp(-overflow, GameState.HEALTH_SOURCE_ENEMY_ATTACK)
 	res["blocked"] = int(res.get("blocked", 0)) + absorbed
 	res["damage_taken"] = int(res.get("damage_taken", 0)) + overflow
 	if GameState.hp <= 0 and not run_over:

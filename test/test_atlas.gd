@@ -358,10 +358,26 @@ func test_the_cover_count_memo_follows_the_camera() -> void:
 	view.frame_all()
 	var overview: int = view.cover_count()
 	assert_eq(view.cover_count(), overview, "asking twice at one camera is one answer")
+	# Zoom in on a HUB, by pivoting on the star itself: the pivot is the world
+	# point the zoom holds still, so the capital stays on screen the whole way up
+	# and its art is certain to bloom (`test_well_connected_games_become_art_sooner`
+	# is where that rule is proved). Zooming at a fixed screen COORDINATE instead
+	# asks the bake where its stars happen to sit — land on an empty patch and the
+	# count at full zoom is 0, which is also the overview count
+	# (`test_nothing_shows_art_at_the_overview`), and a correctly invalidated memo
+	# reads exactly like a stale one. That is what re-baking the sky for two new
+	# games flipped, and it was the assertion at fault rather than the memo.
+	var hub: int = -1
+	for cap in view.layout.capitals:
+		if view.cover_texture(int(cap)) != null:
+			hub = int(cap)
+			break
+	assert_gt(hub, -1, "at least one capital has cover art to bloom")
 	for _step in range(80):
-		view.zoom_by(1.3, Vector2(400, 300))
+		view.zoom_by(1.3, view.to_screen(view.layout.position_of(hub)))
 	var zoomed: int = view.cover_count()
-	assert_ne(zoomed, overview, "and zooming right in changes it")
+	assert_true(view.shows_cover(hub), "the hub we zoomed onto is drawn as art now")
+	assert_ne(zoomed, overview, "and zooming right in changes the count")
 	# Against a fresh count, which is what the memo is standing in for.
 	var vis: Rect2 = view._visible_rect()
 	var fresh: int = 0
