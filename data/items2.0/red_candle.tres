@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_red_candle"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/RedCandle.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"red_candle"
+display_name = "Red Candle"
+kind = 6
+rarity = 0
+description = "Apply the Fire Tile to any tile within the columns 2 and 3"
+triggers = [{"on": "item_used", "effects": [{"type": "apply_tile", "tile": "fire", "target": "tile", "col_min": 2, "col_max": 3}]}]
+stat_bonuses = {}
+charge_cost = 1
+starts_charged = true
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray("fire")
+pools = PackedStringArray("shop")
+image = ExtResource("2_img")

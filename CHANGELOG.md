@@ -11,6 +11,108 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Tile effects and units — the board grew a floor.**
+
+  Two things can now be on a cell that are not a body: a **tile effect**
+  (something done to the ground, which stays put and acts on whoever walks in)
+  and a **unit** (something of the player's standing on it). They **layer** — a
+  unit stands on a tile effect — which is why they are two sheets, two resources
+  and two dictionaries rather than one with a flag. Neither *blocks* anything:
+  a body walks in and whatever is there reacts. Full spec:
+  [§17](docs/games-first-redesign.md).
+
+  **Fire** (`tiles2.0`) puts +1 Burn on anything that enters it *or* starts its
+  turn on it. The pair of triggers is the whole point — a cell that only bit on
+  entry would be free to park on, and one that only bit at turn start would be
+  free to walk through. It burns for **3 games**, not 3 turns: how many turns a
+  game buys is read off the distance to the Amulet (§7.4), so a tile authored in
+  turns would be worth three times as much out in the wilds as it is on the
+  Amulet's doorstep — the same content, strongest where it is needed least. The
+  generator **refuses** a Decay cell written in turns rather than reinterpreting
+  it. It ticks on every game *resolved*, beaten or missed: the ground burns for
+  the time spent, not for the result.
+
+  **Landmine** (`units2.0`) goes off under whoever steps on it — and it is a
+  **proxy bomb**, which is the whole reason it is a unit rather than a one-off
+  trap. It spends none of your Bombs, but everything that modifies a bomb
+  modifies it, because `bomb()` and a mine now go through one `_explode`:
+  Brimstone widens the blast to the row and column, Sticky stuns what survives,
+  Blood Bombs pays its Health, Hot Bombs leaves Fire behind. It inherits the rest
+  of a bomb's terms too — a body it destroys is *destroyed, not defeated*, so no
+  drop and no gold.
+
+  **Fire and a Landmine annihilate each other**, whichever arrived second: the
+  heat sets the mine off and the blast blows the fire out. That fact is authored
+  in the two sheets' `Interactions` columns — from **both ends**, because the two
+  are one event and the player looks it up from whichever half they are holding —
+  and the runtime unions them, so an interaction written on one side only still
+  resolves.
+
+  **The enemies route around a minefield.** `path_blockers` answers `mines` as
+  well as `enemies` and `cells`, and a lane is ranked on all three in that order.
+  Mines rank **below** bodies deliberately: a body in the lane is a wall that may
+  never move, a mine is a toll paid once. An enemy that treated them as equally
+  bad would rather queue forever behind a boss than step on a mine, which is not
+  caution, it is a bug that reads as one. So the stack goes around when it has
+  somewhere else to be and straight through when it doesn't.
+
+  Four pieces of content reach the new ground. **Scroll of Fire** gained the
+  middle clause its prose already promised (`apply_tile fire front`), so the
+  strip that just burned the front line keeps burning whatever steps into it.
+  **Red Candle** (Common, `Charged, 1`, shop) is the first item aimed at
+  **ground** — `target=tile` is the tile-side twin of Staff of Flame's
+  `target=enemy`, the board arms a cell picker instead of lighting up the stack,
+  and `cols=2-3` fences the reach (never column 1, where it would be a free hit
+  on whatever is already swinging; never the back, where nothing would cross it
+  before it burned out). **Hot Bombs** (Uncommon) leaves Fire on every cell a
+  blast covered — widened by Brimstone for free, since what it reads is the blast
+  rather than the target, and reaching a mine's blast for the same reason.
+  **Landmines** (Uncommon) lays one mine per game finished, on a cell with
+  nothing on it at all.
+
+  **Keywords.** An item or a scroll names a mechanic and has no room to explain
+  it, so the card now carries a Slay-the-Spire-style strip of hover chips under
+  its description — one registry (`scripts/ui/Keywords.gd`) covering statuses,
+  tile effects and units alike, because from the reader's side "what is that?" is
+  one question. Each kind writes its own words; the registry only finds the
+  mentions. Matching is on word boundaries, so "Burn" does not light up inside
+  "Burning Blood".
+
+  On screen, a tile effect is a shallow strip hugging the **bottom edge** of its
+  cell drawn **above** the bodies — above, because a fire tile under a 2x2 would
+  be one nobody can see; shallow, because the point is to read the ground without
+  losing the body standing on it. Units draw **under** the bodies, being on the
+  floor. Neither steals a click: a per-cell hover sits in the lower layer, so a
+  cell with a body on it answers with the body's card and bare ground answers
+  with the ground.
+
+  (`TileEffectData`, not `TileData` — Godot ships a native `TileData` for
+  TileMaps and a `class_name` that shadows one is a parse error that takes the
+  whole `.tres` folder down with it. The sheet, the data folder and the ids stay
+  "tile".)
+
+- **Marked is Burn-shaped now.**
+
+  Its player side was a `clause` — a tax ANDed onto every enemy's goal — and is a
+  **`demand`**: get X achievements, or take 3 Damage. The enemy side is untouched,
+  so the status keeps the thing that made it interesting (a cost on your side, a
+  payout on theirs) with the cost made of the same stuff Burn's is. The sheet's
+  prose column had already said this; only the machine-readable cell was still
+  describing the old one.
+
+  The two demands differ in one place, and it is the place that matters: Burn is
+  capped at 3 because its condition gets *easier* per stack on an enemy, while
+  Marked's asks for more the deeper it goes on both sides and needs no ceiling.
+
+  With that change nothing shipped has a player-side `clause` any more. The mode
+  is still real and still implemented — `status_clauses` and
+  `_tick_player_clauses` *are* it — so `test_statuses.gd` registers a synthetic
+  status to exercise it rather than borrowing whichever shipped status happens to
+  be shaped that way this month.
+
+  Regenerating also picked up **Staff of Flame at `Charged, 2`** (down from 3),
+  which the sheet had already been changed to.
+
 - **Two ways to set something on fire, and Burn's two curves pulled apart.**
 
   **Burn on the player now asks for X items skipped, not 4-X** — so it costs

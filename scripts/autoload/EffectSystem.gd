@@ -90,6 +90,8 @@ func _register_defaults() -> void:
 	register("obtain_item", _h_obtain_item)
 	register("random_item_choice", _h_random_item_choice)
 	register("apply_status", _h_apply_status)
+	register("apply_tile", _h_apply_tile)
+	register("apply_unit", _h_apply_unit)
 	register("gain_item", _h_gain_item)
 	register("gain_item_per_rarity", _h_gain_item_per_rarity)
 	register("add_curse", _h_add_curse)
@@ -259,6 +261,56 @@ func _h_apply_status(effect: Dictionary, ctx: Dictionary) -> void:
 		GameLoop2.apply_status_to(int(aimed), status_id, stacks)
 		return
 	GameLoop2.apply_enemy_status(status_id, stacks, target)
+
+# TILE EFFECTS AND UNITS (§17) — the two ways an item or a scroll reaches the
+# GROUND rather than a body. Both take the same target vocabulary, and the split
+# in it is the same one `apply_status` has: a word that names a RULE (`front`,
+# `all`, `back`, `random_empty`) resolves itself, while `tile` is the sheet asking
+# for a cell to be POINTED AT, with the pick riding `ctx.target` exactly as an
+# aimed body does. A firing with nothing picked lays nothing rather than falling
+# through to a rule and covering ground the player never chose.
+func _h_apply_tile(effect: Dictionary, ctx: Dictionary) -> void:
+	var tile_id := StringName(String(effect.get("tile", "")))
+	if tile_id == &"":
+		return
+	for cell in _effect_cells(effect, ctx, "apply_tile"):
+		GameLoop2.apply_tile(cell, tile_id)
+
+func _h_apply_unit(effect: Dictionary, ctx: Dictionary) -> void:
+	var unit_id := StringName(String(effect.get("unit", "")))
+	if unit_id == &"":
+		return
+	for cell in _effect_cells(effect, ctx, "apply_unit"):
+		GameLoop2.apply_unit(cell, unit_id)
+
+# Which cells a ground effect covers. Shared by the two handlers above so a target
+# word cannot mean one thing for a tile and another for a unit.
+func _effect_cells(effect: Dictionary, ctx: Dictionary, what: String) -> Array:
+	var target: String = String(effect.get("target", "tile")).to_lower()
+	if target == "tile" or target == "cell":
+		var aimed: Variant = ctx.get("target")
+		if not (aimed is Vector2i):
+			push_warning("EffectSystem.%s: target=tile fired with no cell aimed" % what)
+			return []
+		# The reach the sheet authored (Red Candle's `cols=2-3`) is enforced HERE
+		# as well as in the board's aiming highlight, so a cell that arrived some
+		# other way — a test, DevTools, a future keyboard target — obeys the same
+		# fence the mouse does.
+		var cell: Vector2i = aimed
+		var lo: int = int(effect.get("col_min", 0))
+		var hi: int = int(effect.get("col_max", 0))
+		if lo > 0 and (cell.x < lo or cell.x > hi):
+			push_warning("EffectSystem.%s: column %d is outside the authored %d-%d"
+				% [what, cell.x, lo, hi])
+			return []
+		return [cell]
+	if target == "random_empty":
+		var free: Vector2i = GameLoop2.random_empty_cell()
+		# A board with nothing free lays nothing. Landmines quietly skipping a game
+		# where every cell is occupied is the honest outcome — there is no ground
+		# for a mine to be on.
+		return [free] if free.x <= GameLoop2.grid_cols() else []
+	return GameLoop2.target_cells(target)
 
 # A NAMED item, handed straight over (the Golden Idol event's `gain_item
 # golden_idol`). The counterpart to the random draws above: an authored reward

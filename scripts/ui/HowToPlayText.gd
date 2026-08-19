@@ -656,7 +656,10 @@ static func _ch_pack() -> Dictionary:
 				+ "damage and is spent doing it, so a shielded enemy takes an extra "
 				+ "goal per shield to put down."),
 			_kv("Marked", "Everything that lands on it is DOUBLED and goes straight "
-				+ "through Shields."),
+				+ "through Shields. On YOU it is a debt as well: every game, get as "
+				+ "many achievements in the game you are playing as you have stacks "
+				+ "of it — or take 3 damage. On an ENEMY the same condition pays a "
+				+ "chest instead, so a marked body is worth engaging."),
 			_kv("Burn", "It hits for half. On YOU it is a debt instead: every game, "
 				+ "skip or trash as many items in the game you are playing as you "
 				+ "have stacks of it — or take 3 damage once the enemies have "
@@ -671,6 +674,32 @@ static func _ch_pack() -> Dictionary:
 				+ "absorb them. Burn's halving is the exception that proves it is a "
 				+ "column and not a rule about the word: there is no attack of "
 				+ "yours for a halving to sit on, so the sheet says enemies only."),
+			_h("The ground: tiles and units"),
+			_p("Two things can be on a square of the board that are not a body, and "
+				+ "they layer — a unit stands on top of a tile effect. Neither of "
+				+ "them BLOCKS anything: an enemy walks in and whatever is there "
+				+ "reacts. Wherever an item or a scroll names one, hover the chip "
+				+ "under its description to read it."),
+			_kv("Fire (a tile effect)", "Anything that walks into it, or starts its "
+				+ "turn standing in it, takes +1 Burn. A big body pays for every "
+				+ "burning square it covers. It burns for 3 GAMES — not turns — "
+				+ "wherever it is lit. Scroll of Fire lights the whole front "
+				+ "column, Red Candle lights one square you pick in columns 2-3, "
+				+ "and Hot Bombs leaves it on every square a bomb went off over."),
+			_kv("Landmine (a unit)", "Steps on it, and it explodes: no Bomb of "
+				+ "yours is spent, but it counts as one, so every bomb relic in "
+				+ "your pack reads it — Brimstone widens the blast, Sticky stuns "
+				+ "what lives, Blood Bombs heals you, Hot Bombs leaves fire in the "
+				+ "crater. Like a bomb it destroys rather than defeats, so nothing "
+				+ "drops. Landmines lays one after every game you finish."),
+			_kv("The two together", "Fire and a mine cannot share a square. "
+				+ "Whichever arrives second, the heat sets the mine off and the "
+				+ "blast blows the fire out."),
+			_b("Enemies steer around mines when they have anywhere else to go, and "
+				+ "walk straight through them when they don't — a body in the lane "
+				+ "is a wall that might never move, a mine is a toll paid once. So "
+				+ "a minefield SHAPES where they come at you rather than stopping "
+				+ "them."),
 			_h("Curse goals"),
 			_p("A curse goal is a row on your checklist you are trying NOT to "
 				+ "complete. Break it and the penalty is always the same one: a "

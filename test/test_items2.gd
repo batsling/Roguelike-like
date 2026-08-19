@@ -748,12 +748,14 @@ func test_wooden_nickel_pays_at_most_one_gold_per_flip() -> void:
 # board aims it, and the click is what spends the charge. The UI half of that
 # lives in test_statuses.gd beside the rest of Burn; these are the rules under it.
 
-func test_the_staff_is_a_three_charge_active_that_aims() -> void:
+func test_the_staff_is_a_charged_active_that_aims_at_a_body() -> void:
 	var staff: ItemData = _give(&"staff_of_flame")
 	assert_true(staff.is_charged(), "a charged active")
-	assert_eq(staff.max_charge(), 3, "three games beaten per firing")
+	assert_eq(staff.max_charge(), 2, "two games beaten per firing")
 	assert_true(staff.wants_target(),
-		"and it declares that it needs a body picked (target=enemy)")
+		"and it declares that it needs a target picked")
+	assert_eq(staff.target_kind(), &"enemy",
+		"a BODY specifically — the tile-aimed items say `tile` here (§17)")
 
 func test_the_staff_burns_the_body_it_was_pointed_at() -> void:
 	var staff: ItemData = _give(&"staff_of_flame")

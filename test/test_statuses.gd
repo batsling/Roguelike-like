@@ -33,6 +33,7 @@ func before_each() -> void:
 func after_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
+	Data._statuses.erase(CLAUSE_ID)
 
 # A synthetic goal-enemy with a known goal, so the clause assertions don't move
 # when the enemies2.0 sheet does.
@@ -61,6 +62,29 @@ func _sideblock(mode: String, condition: String, reward: Array = [],
 	return {"mode": mode, "condition": condition, "reward": reward,
 		"reward_text": reward_text, "decay": decay}
 
+# A synthetic status carrying a PLAYER-SIDE CLAUSE, registered in the catalog for
+# the length of one test and taken out again in after_each.
+#
+# The authored roster has no such status any more: Marked's player side was
+# rebuilt in Burn's shape and is a `demand` now (§13), and every other status's
+# player side is a `goal`. A clause on the player is a RULE rather than a piece of
+# content, though — it is what `status_clauses` and `_tick_player_clauses` are —
+# so these tests own their own subject instead of borrowing whichever shipped
+# status happens to be shaped that way this month. That is also what stops them
+# breaking the next time one is rebalanced.
+const CLAUSE_ID := &"synth_player_clause"
+
+func _register_player_clause(decay: bool = true) -> StatusData:
+	# The wording is the one Marked used to carry, so the goal-line assertions
+	# below read exactly as they always did.
+	var s: StatusData = _status(CLAUSE_ID,
+		_sideblock("clause", "you must get {X} [achievement|achievements]",
+			[], "", decay))
+	s.display_name = "Trial"
+	s.decrease = "On Completion" if decay else "N/A"
+	Data._statuses[CLAUSE_ID] = s
+	return s
+
 # ---------------------------------------------------------------------------
 # 1. The content
 # ---------------------------------------------------------------------------
@@ -72,13 +96,19 @@ func test_the_statuses_sheet_loaded() -> void:
 
 func test_each_side_carries_its_own_authored_mode() -> void:
 	# The two halves are authored independently: Strength taxes the enemy and pays
-	# the player, Marked taxes the player and pays out on the enemy.
+	# the player, Marked charges the player and pays out on the enemy.
 	var strength: StatusData = Data.get_status(&"strength")
 	assert_eq(strength.mode_for(StatusData.PLAYER), &"goal")
 	assert_eq(strength.mode_for(StatusData.ENEMY), &"clause")
+	# Marked's player side is a DEMAND now, rebuilt in Burn's shape: an obligation
+	# with a price for missing it rather than a clause ANDed onto goals you were
+	# doing anyway. Its enemy side is untouched, so the status keeps what made it
+	# interesting — a cost on your side, a reason to engage on theirs.
 	var marked: StatusData = Data.get_status(&"marked")
-	assert_eq(marked.mode_for(StatusData.PLAYER), &"clause")
+	assert_eq(marked.mode_for(StatusData.PLAYER), &"demand")
 	assert_eq(marked.mode_for(StatusData.ENEMY), &"bonus")
+	assert_eq(marked.penalty_effects(StatusData.PLAYER, 2).size(), 1,
+		"and an obligation with no price would be a goal that forgot its reward")
 	# Burn's two halves are the two modes it brought with it: an obligation of the
 	# player's own, and a way out of an enemy's goal.
 	var burn: StatusData = Data.get_status(&"burn")
@@ -205,10 +235,11 @@ func test_a_clause_on_an_enemy_tightens_that_enemys_goal() -> void:
 		"Beat it and the difficulty must be increased 2 times")
 
 func test_a_clause_on_the_player_tightens_every_enemys_goal() -> void:
+	_register_player_clause()
 	_choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(false)          # it walks onto the board
 	_choose_solo(_enemy("Beat another"))
-	GameState.apply_status(&"marked", 3)
+	GameState.apply_status(CLAUSE_ID, 3)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
 		"Beat another and you must get 3 achievements", "the current enemy")
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.stack[0]),
@@ -225,9 +256,10 @@ func test_a_bonus_on_an_enemy_is_claimable_not_required() -> void:
 		"and if you get 2 achievements, gain +1 Medium Chest")
 
 func test_clauses_stack_enemy_first_then_player() -> void:
+	_register_player_clause()
 	_choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"strength", 1, "current")
-	GameState.apply_status(&"marked", 2)
+	GameState.apply_status(CLAUSE_ID, 2)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
 		"Beat it and the difficulty must be increased 1 time"
 		+ " and you must get 2 achievements",
@@ -302,41 +334,46 @@ func test_an_enemy_clause_survives_it_walking_onto_the_board() -> void:
 # ---------------------------------------------------------------------------
 
 func test_a_player_clause_ticks_once_for_a_game_whose_goal_was_met() -> void:
-	GameState.apply_status(&"marked", 3)
+	_register_player_clause()
+	GameState.apply_status(CLAUSE_ID, 3)
 	_choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(true)
-	assert_eq(GameState.status_stacks(&"marked"), 2, "one stack for the completion")
+	assert_eq(GameState.status_stacks(CLAUSE_ID), 2, "one stack for the completion")
 
 func test_a_player_clause_does_not_tick_on_a_missed_goal() -> void:
-	GameState.apply_status(&"marked", 3)
+	_register_player_clause()
+	GameState.apply_status(CLAUSE_ID, 3)
 	_choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(false)
-	assert_eq(GameState.status_stacks(&"marked"), 3, "nothing was completed")
+	assert_eq(GameState.status_stacks(CLAUSE_ID), 3, "nothing was completed")
 
 func test_a_player_clause_does_not_tick_on_a_free_game() -> void:
 	# A game with no enemy reports goal_met = true (the checklist auto-clears), but
 	# a goal nobody set can't have carried the clause.
-	GameState.apply_status(&"marked", 2)
+	_register_player_clause()
+	GameState.apply_status(CLAUSE_ID, 2)
 	GameLoop2.beat_game(true)
-	assert_eq(GameState.status_stacks(&"marked"), 2)
+	assert_eq(GameState.status_stacks(CLAUSE_ID), 2)
 
 func test_a_player_clause_ticks_once_per_game_not_once_per_goal() -> void:
 	# Clearing four followers in one game must not wipe a 4-stack status whole:
 	# the sheet's "decrease stack by 1 when completed" is a per-game count.
-	GameState.apply_status(&"marked", 4)
+	_register_player_clause()
+	GameState.apply_status(CLAUSE_ID, 4)
 	var instances: Array = []
 	for i in range(3):
 		instances.append(_choose_solo(_enemy("Goal %d" % i)))
 		GameLoop2.beat_game(false)
 	_choose_solo(_enemy("Current"))
 	GameLoop2.beat_game(true, instances)
-	assert_eq(GameState.status_stacks(&"marked"), 3, "one tick for the whole game")
+	assert_eq(GameState.status_stacks(CLAUSE_ID), 3, "one tick for the whole game")
 
 func test_a_player_clause_falls_off_at_zero() -> void:
-	GameState.apply_status(&"marked", 1)
+	_register_player_clause()
+	GameState.apply_status(CLAUSE_ID, 1)
 	_choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(true)
-	assert_false(GameState.has_status(&"marked"), "spent")
+	assert_false(GameState.has_status(CLAUSE_ID), "spent")
 	assert_eq(GameState.status_list().size(), 0, "and pruned, not left at zero")
 
 func test_a_player_objective_pays_out_and_stays() -> void:
@@ -387,9 +424,10 @@ func test_a_clause_side_cannot_be_claimed_as_an_enemy_bonus() -> void:
 	assert_eq(GameState.pending_chests, 0)
 
 func test_a_clause_side_cannot_be_claimed_as_a_player_objective() -> void:
-	GameState.apply_status(&"marked", 2)
-	assert_false(GameLoop2.claim_player_objective(&"marked"))
-	assert_eq(GameState.status_stacks(&"marked"), 2, "and nothing ticked")
+	_register_player_clause()
+	GameState.apply_status(CLAUSE_ID, 2)
+	assert_false(GameLoop2.claim_player_objective(CLAUSE_ID))
+	assert_eq(GameState.status_stacks(CLAUSE_ID), 2, "and nothing ticked")
 
 # ---------------------------------------------------------------------------
 # 2b. BURN — the demand and the way out (§13)
@@ -476,9 +514,10 @@ func test_an_instead_side_offers_a_second_way_through_the_goal() -> void:
 func test_the_way_out_comes_after_every_clause_it_is_an_alternative_to() -> void:
 	# It replaces the goal AND its clauses, so it reads last — "or instead" hanging
 	# off the middle of the line would say it replaced only the tail of it.
+	_register_player_clause()
 	_choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
-	GameState.apply_status(&"marked", 2)
+	GameState.apply_status(CLAUSE_ID, 2)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
 		"Beat it and you must get 2 achievements"
 		+ " or instead skip or trash 3 items/upgrades")
@@ -812,8 +851,12 @@ func _all_text(node: Node) -> String:
 
 func test_the_tooltip_names_what_each_side_does() -> void:
 	var marked: StatusData = Data.get_status(&"marked")
+	# The player side is an obligation with a price now, so it opens the way every
+	# demand does — "Every game", and the cost of a game where it went unanswered.
 	assert_string_contains(marked.tooltip_for(StatusData.PLAYER, 2),
-		"Every enemy's goal also needs", "the player side taxes every goal")
+		"Every game", "the player side is an obligation, not an offer")
+	assert_string_contains(marked.tooltip_for(StatusData.PLAYER, 2),
+		"take 3 Damage", "and it names what missing it costs")
 	assert_string_contains(marked.tooltip_for(StatusData.ENEMY, 2),
 		"Bonus", "the enemy side pays out")
 	assert_string_contains(marked.tooltip_for(StatusData.PLAYER, 2),
@@ -1171,11 +1214,31 @@ func test_marked_on_the_player_doubles_what_lands_and_skips_the_tries() -> void:
 		entry["col"] = 1
 	GameState.shields = 10                 # plenty of tries to absorb it, in theory
 	GameState.apply_status(&"marked", 1)
+	# Topped up first: Marked doubles the swing AND bills its own demand at the end
+	# of the same game, and a player who runs out of Health part-way through that
+	# would have the sum cut short at 0 — which reads exactly like the doubling
+	# having failed to land. The starting characters have single-digit Health, so
+	# this needs a bigger pool than a top-up would give it.
+	GameState.max_hp = 40
+	GameState.hp = 40
 	var swing: int = GameLoop2.enemy_damage(GameLoop2.stack[0])
 	var turns: int = GameLoop2.enemy_turns()
 	var before: int = GameState.hp
 	var res: Dictionary = GameLoop2.beat_game(false)
-	assert_eq(before - GameState.hp, swing * 2 * turns, "doubled, and all of it on Health")
+	# The SWINGS, read off the attack log rather than off the Health delta. Marked's
+	# player side is also a demand now (§13), and an unanswered one bills at the end
+	# of the same game — so the delta is the swings plus that bill, and measuring
+	# the pair as one number would make this test quietly about both. Answering the
+	# demand instead is no good either: a completed side sheds a stack, and the
+	# stack shed here is the very Marked whose doubling is the thing being measured.
+	var landed: int = 0
+	for hit in res["attacks"]:
+		landed += int(hit.get("damage", 0))
+	assert_eq(landed, swing * 2 * turns, "every swing landed doubled")
+	var billed: int = 0
+	for penalty in res["status_penalties"]:
+		billed += int(penalty.get("damage", 0))
+	assert_eq(before - GameState.hp, landed + billed, "and all of it on Health")
 	# `blocked` rather than the shield count: shields are the tries at ONE game and
 	# expire when it resolves (§3), so reading them afterwards would say 0 whether
 	# they were spent or merely lost.

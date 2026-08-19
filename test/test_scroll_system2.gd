@@ -201,15 +201,20 @@ func test_a_second_reading_cannot_push_burn_past_its_cap() -> void:
 	assert_true(str(out["logs"]).contains("+1 Burn"),
 		"and the log quotes what actually landed, not what was asked for")
 
-func test_the_fire_scrolls_wording_names_both_halves() -> void:
+func test_the_fire_scrolls_wording_names_all_three_halves() -> void:
+	# Three clauses in one cell since the ground learned to burn (§17): you, the
+	# tiles of the front column, and the bodies standing on them.
 	var s: ScrollData = Data.get_scroll(&"scroll_of_fire")
-	assert_eq(s.effect.size(), 2, "two clauses in one cell")
+	assert_eq(s.effect.size(), 3, "three clauses in one cell")
 	var said: Array = []
 	for e in s.effect:
 		said.append(ScrollSystem.status_effect_text(e))
+		said.append(ScrollSystem.tile_effect_text(e))
 	assert_true(str(said).contains("You gain +3 Burn"), "it says what it does to you")
 	assert_true(str(said).contains("Every enemy in the front column"),
 		"and who else it reaches")
+	assert_true(str(said).contains("Lay the Fire tile over the front column"),
+		"and what it leaves on the ground behind them")
 
 # --- Fulfilment helpers ----------------------------------------------------
 

@@ -28,6 +28,11 @@ signal bomb_requested(instance: int)
 # with it because the board is only holding it while the aiming lasts — what to do
 # with the pair is the overworld's, which owns the pack and the spending.
 signal item_aimed(item: ItemData, instance: int)
+# An aimed item was pointed at a CELL rather than a body (Red Candle, §17). Its
+# own signal rather than a Vector2i squeezed through the one above, because the
+# two are answered differently at the far end: a body is an instance handle the
+# effect looks up, a cell is ground that may have nothing on it at all.
+signal item_aimed_at_cell(item: ItemData, cell: Vector2i)
 # An enemy was clicked: the host opens the inspect card for it.
 signal enemy_inspected(entry: Dictionary, col: int)
 # The mouse moved onto (or off) a body. The host lights the checklist row that
@@ -81,6 +86,12 @@ var _cell_layer: Control             # the static backdrop of empty cells
 # (Mine-r Construction), so the panels are rebuilt when this stops matching
 # GameLoop2 rather than being laid down once and trusted forever.
 var _cells_drawn := Vector2i.ZERO
+# The board's FURNITURE (§17), in two layers because the two halves belong on
+# opposite sides of the bodies: units stand on the floor UNDER an enemy, and a
+# tile effect is drawn as a strip at the foot of its cell OVER one, so that
+# burning ground is still readable with something standing on it.
+var _ground_layer: Control           # units, and the per-cell hover for both
+var _tile_layer: Control             # the tile-effect strips, above every body
 var _enemy_layer: Control            # free-positioned enemy nodes, drawn over the board
 # Health / damage / status badges live on their own layer ABOVE every body, so an
 # enemy overlapping another never hides what that other one is about to do to you.
@@ -593,7 +604,17 @@ func toggle_bomb_mode() -> void:
 # Returns false when there is nothing on the board to point it at, so the caller
 # can say so rather than arming a picker over an empty field.
 func begin_item_aim(item: ItemData) -> bool:
-	if item == null or GameLoop2.stack.is_empty():
+	if item == null:
+		return false
+	# A TILE-AIMED item points at GROUND, so an empty board is no obstacle — Red
+	# Candle laying fire on an empty column is exactly what it is for, and the
+	# "nothing to aim at" refusal below is about bodies. What it does need is a
+	# legal cell inside its authored reach, which a board too narrow for the
+	# columns it names would not have.
+	if item.target_kind() == &"tile":
+		if aim_cells(item).is_empty():
+			return false
+	elif GameLoop2.stack.is_empty():
 		return false
 	aiming_item = item
 	push_mode = false
@@ -614,7 +635,16 @@ func cancel_item_aim() -> void:
 func _check_aimed_item() -> void:
 	if aiming_item == null:
 		return
-	if not GameState.can_fire_item(aiming_item) or GameLoop2.stack.is_empty():
+	if not GameState.can_fire_item(aiming_item):
+		aiming_item = null
+		return
+	# A cleared board disarms a BODY-aimed item and not a tile-aimed one: ground is
+	# still there when the last follower dies, and Red Candle laying fire down an
+	# empty column is a perfectly good use of it (§17).
+	if aiming_item.target_kind() == &"tile":
+		if aim_cells(aiming_item).is_empty():
+			aiming_item = null
+	elif GameLoop2.stack.is_empty():
 		aiming_item = null
 
 # Whether a verb is waiting to be pointed at something.
@@ -635,11 +665,32 @@ func is_aiming() -> bool:
 func armed_targets() -> Array:
 	if not is_aiming():
 		return []
+	# A tile-aimed item lights up GROUND, not bodies (see aim_cells) — so the
+	# bodies stay unlit and a click on one reads its card as usual, which is what
+	# stops a picker for the floor from hijacking the board.
+	if aiming_item != null and aiming_item.target_kind() == &"tile":
+		return []
 	var out: Array = []
 	for entry in GameLoop2.stack:
 		var inst: int = int(entry.get("instance", 0))
 		if inst > 0:
 			out.append(inst)
+	return out
+
+# The CELLS a tile-aimed item could be pointed at right now: every square of the
+# board inside the columns the item authored (ItemData.target_columns), or every
+# square when it authored no fence. This is both what the board lights up and what
+# it accepts a click on, so the highlight and the rule are the same list.
+func aim_cells(item: ItemData) -> Array:
+	if item == null or item.target_kind() != &"tile":
+		return []
+	var fence: Vector2i = item.target_columns()
+	var lo: int = fence.x if fence.x > 0 else 1
+	var hi: int = fence.y if fence.y > 0 else GameLoop2.grid_cols()
+	var out: Array = []
+	for col in range(maxi(1, lo), mini(hi, GameLoop2.grid_cols()) + 1):
+		for row in range(GameLoop2.grid_rows()):
+			out.append(Vector2i(col, row))
 	return out
 
 # Re-label and enable/disable the combat verbs for the current selection.
@@ -817,10 +868,31 @@ func _build() -> void:
 	_field.add_child(_cell_layer)
 	_rebuild_cells()
 
+	# THE GROUND (§17): units, and the hover that reads whatever is on a cell.
+	# BELOW the bodies, because that is where it is — a unit stands on the floor
+	# and a body walks over it — and because tree order is input order here: an
+	# enemy control mounted later gets the click first, so a hover region under it
+	# only ever answers for ground nobody is standing on.
+	_ground_layer = Control.new()
+	_ground_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ground_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.add_child(_ground_layer)
+
 	_enemy_layer = Control.new()
 	_enemy_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_enemy_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_field.add_child(_enemy_layer)
+
+	# TILE EFFECTS, above the bodies and hugging the BOTTOM EDGE of their cell.
+	# Above, because a fire tile under a 2x2 would be a fire tile nobody can see;
+	# a shallow strip at the foot of the cell, because the point is to read the
+	# ground WITHOUT losing the body standing on it. Never clickable — it overlaps
+	# the bodies, and a strip that ate their clicks would make the front row
+	# unselectable exactly when it matters.
+	_tile_layer = Control.new()
+	_tile_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_tile_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.add_child(_tile_layer)
 
 	# Stats ride above every body — it's the last layer added to the board, so it
 	# draws last. Non-interactive, so it never steals a click from the enemy
@@ -894,7 +966,7 @@ func refresh() -> void:
 	_rebuild_cells()
 
 	# Clear the overlays and the overflow lane; the backdrop panels are static.
-	for layer in [_enemy_layer, _badge_layer, _arrow_layer]:
+	for layer in [_ground_layer, _tile_layer, _enemy_layer, _badge_layer, _arrow_layer]:
 		for c in layer.get_children():
 			layer.remove_child(c)
 			c.queue_free()
@@ -923,6 +995,11 @@ func refresh() -> void:
 	# everything else (§7.2) — drawn with a thicker ring and a washed fill rather
 	# than parked in a lane of its own, so "the thing I am playing for" is a body on
 	# the field taking its turns like the rest.
+	# The ground goes down before the bodies do, in both directions: the units and
+	# the cell hovers into the layer under them, the tile strips into the layer
+	# over them (see _rebuild_ground).
+	_rebuild_ground()
+
 	var placed: Array = []
 	for entry in GameLoop2.stack:
 		if int(entry.get("col", GameLoop2.offgrid_col())) <= GameLoop2.grid_cols():
@@ -944,8 +1021,109 @@ func refresh() -> void:
 	refresh_toolbar()
 	# After the toolbar, which is what can disarm the verb (no charges left).
 	_refresh_push_arrows()
+	_refresh_aim_cells()
 	_repainting = false
 	repainted.emit()
+
+# --- the ground: tile effects and units (§17) ------------------------------
+
+# How much of a cell's height the tile-effect strip takes. Sized by eye against
+# the enemy art: big enough that burning ground reads at a glance on a 7x7 board's
+# 44px cells, small enough that a body standing in it is still a body — the strip
+# covers its feet, not its face.
+const TILE_STRIP_FRACTION: float = 0.38
+# The unit's art, as a fraction of the cell. Smaller than a body on purpose: a
+# Landmine is something lying ON the floor, and one drawn at full cell size reads
+# as another enemy.
+const UNIT_ART_FRACTION: float = 0.62
+
+# Paint everything on the board that is not a body: units into `_ground_layer`
+# (under the enemies), tile-effect strips into `_tile_layer` (over them), and one
+# hover region per furnished cell into the ground layer so the player can read
+# what is on a square they can see.
+#
+# The hover lives in the LOWER layer deliberately. Tree order is input order, so
+# an enemy control mounted afterwards takes the click first: a cell with a body on
+# it answers with the body's own card, and only bare ground answers with the
+# ground. That is the right precedence and it costs no branching to get.
+func _rebuild_ground() -> void:
+	if _ground_layer == null or _tile_layer == null:
+		return
+	var furnished: Dictionary = {}
+	for cell in GameLoop2.units.keys():
+		furnished[cell] = true
+	for cell in GameLoop2.tiles.keys():
+		furnished[cell] = true
+		var tile: TileEffectData = GameLoop2.tile_at(cell)
+		if tile != null:
+			_tile_layer.add_child(_tile_strip(cell, tile))
+	for cell in GameLoop2.units.keys():
+		var unit: UnitData = GameLoop2.unit_at(cell)
+		if unit != null:
+			_ground_layer.add_child(_unit_node(cell, unit))
+	for cell in furnished.keys():
+		_ground_layer.add_child(_ground_hover(cell))
+
+# The strip itself: the tile's art across the foot of its cell, over a wash in the
+# same colour so a cell reads as covered even where the art is transparent.
+func _tile_strip(cell: Vector2i, tile: TileEffectData) -> Control:
+	var height: int = maxi(10, int(round(_cell * TILE_STRIP_FRACTION)))
+	var wrap := PanelContainer.new()
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.position = _cell_pos(cell.y, cell.x) + Vector2(0, _cell - height)
+	wrap.size = Vector2(_cell, height)
+	var tint: Color = _tile_tint(tile)
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(tint.lerp(UITheme.BG, 0.55), 5, 0, 1, tint.lerp(UITheme.BG, 0.2)))
+	if tile.image != null:
+		var art := UITheme.crisp_tex(tile.image, height)
+		art.custom_minimum_size = Vector2(_cell, height)
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wrap.add_child(art)
+	return wrap
+
+# A unit lying on the floor: its art, centred in the cell and drawn small.
+func _unit_node(cell: Vector2i, unit: UnitData) -> Control:
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.position = _cell_pos(cell.y, cell.x)
+	holder.size = Vector2(_cell, _cell)
+	if unit.image != null:
+		var side: int = maxi(16, int(round(_cell * UNIT_ART_FRACTION)))
+		var art := UITheme.crisp_tex(unit.image, side)
+		art.position = Vector2((_cell - side) * 0.5, (_cell - side) * 0.5)
+		art.size = Vector2(side, side)
+		holder.add_child(art)
+	return holder
+
+# The invisible hover region that reads a furnished cell. One per cell, carrying
+# the unit's words and the tile's — both, when a cell has both, because "what is
+# on this square" is one question.
+func _ground_hover(cell: Vector2i) -> Control:
+	var hot := Control.new()
+	hot.mouse_filter = Control.MOUSE_FILTER_STOP
+	hot.position = _cell_pos(cell.y, cell.x)
+	hot.size = Vector2(_cell, _cell)
+	var lines: Array = []
+	var unit: UnitData = GameLoop2.unit_at(cell)
+	if unit != null:
+		var held = GameLoop2.units.get(cell, {})
+		lines.append(unit.tooltip_for(int(held.get("health", unit.health))))
+	var tile: TileEffectData = GameLoop2.tile_at(cell)
+	if tile != null:
+		lines.append(tile.tooltip_for(GameLoop2.tile_games_left(cell)))
+	hot.tooltip_text = "\n\n".join(lines)
+	return hot
+
+# What colour a tile effect washes its cell in. Read off the tile's own art —
+# there is no palette column on the sheet and inventing one would be a second
+# place for a tile's identity to live — with a warm default for anything whose art
+# is missing, since the roster is Fire.
+func _tile_tint(tile: TileEffectData) -> Color:
+	if tile != null and tile.id == &"fire":
+		return Color(0.95, 0.45, 0.18)
+	return UITheme.ACCENT
 
 # What an armed verb's legal targets are ringed in. Deliberately the ACCENT the
 # selection already uses rather than a new colour: "the verb is pointed at this"
@@ -1062,6 +1240,49 @@ func click_enemy(instance: int, entry: Dictionary, col: int) -> void:
 		refresh()
 		return
 	enemy_inspected.emit(entry, col)
+	refresh()
+
+# --- aiming at the ground (§17) --------------------------------------------
+
+# The cell picker a TILE-AIMED item arms (Red Candle). Buttons over every legal
+# square, in the topmost layer — the same place and for the same reason the push
+# arrows live there: while a verb is armed, the things it can be pointed at should
+# be the only things on the board that take a press.
+#
+# Nothing is drawn unless such an item is armed, so the board is unchanged the
+# rest of the time.
+func _refresh_aim_cells() -> void:
+	if _arrow_layer == null or aiming_item == null:
+		return
+	if aiming_item.target_kind() != &"tile":
+		return
+	for cell in aim_cells(aiming_item):
+		var btn := Button.new()
+		btn.flat = true
+		btn.position = _cell_pos(cell.y, cell.x)
+		btn.size = Vector2(_cell, _cell)
+		btn.custom_minimum_size = Vector2(_cell, _cell)
+		btn.tooltip_text = "Aim %s here (column %d, row %d)." % [
+			aiming_item.display_name, cell.x, cell.y + 1]
+		btn.add_theme_stylebox_override("normal",
+			UITheme.flat(ARMED_TINT.lerp(UITheme.BG, 0.82), 6, 0, 2, ARMED_TINT))
+		btn.add_theme_stylebox_override("hover",
+			UITheme.flat(ARMED_TINT.lerp(UITheme.BG, 0.55), 6, 0, 2, ARMED_TINT))
+		btn.add_theme_stylebox_override("pressed",
+			UITheme.flat(ARMED_TINT.lerp(UITheme.BG, 0.4), 6, 0, 2, ARMED_TINT))
+		btn.pressed.connect(_click_cell.bind(cell))
+		_arrow_layer.add_child(btn)
+
+# A cell picked while a tile-aimed item was armed. The board lets go of the item
+# first, exactly as `click_enemy` does with a body-aimed one: what it costs and
+# whether it lands is the overworld's, and a board still holding a spent relic
+# would be one press from firing it again.
+func _click_cell(cell: Vector2i) -> void:
+	if aiming_item == null:
+		return
+	var armed: ItemData = aiming_item
+	aiming_item = null
+	item_aimed_at_cell.emit(armed, cell)
 	refresh()
 
 # --- the push arrows -------------------------------------------------------

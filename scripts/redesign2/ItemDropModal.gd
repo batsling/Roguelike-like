@@ -172,6 +172,15 @@ func _build_single(box: VBoxContainer, tint: Color) -> void:
 	desc.add_theme_font_size_override("font_size", 13)
 	desc.add_theme_color_override("font_color", UITheme.TEXT)
 	box.add_child(desc)
+	# The KEYWORD STRIP (§17). This is the moment the item is being decided on, so
+	# it is the moment "what is a Fire Tile?" most needs an answer. Only on the
+	# SINGLE-item layout — the shelf cards below are five abreast and have no room.
+	var keys := HBoxContainer.new()
+	keys.alignment = BoxContainer.ALIGNMENT_CENTER
+	if Keywords.attach(keys, _selected.description) > 0:
+		box.add_child(keys)
+	else:
+		keys.queue_free()
 
 # One pickable card on a multi-item chest's shelf: the same four lines the single
 # layout shows, at card width, in a panel that clicking selects. Smaller art and a

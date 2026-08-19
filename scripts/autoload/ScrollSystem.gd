@@ -140,6 +140,14 @@ func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenera
 			# at all: a scroll that only ever hurt the other side would not need a
 			# Preference (§4.1).
 			_apply_status(effect, out)
+		"apply_tile":
+			# Scroll of Fire — the ground itself, not a body (§17). The tile lands
+			# on the same front column its Burn clause targets: the bodies already
+			# in your face are burning now, and the strip they are standing on
+			# keeps burning whatever steps into it for the next three games. This
+			# is the half of the scroll that is still worth reading into an EMPTY
+			# room, which is why it is authored as its own clause.
+			_apply_tile(effect, out)
 		"forget":
 			# Amnesia — forget (unidentify) random known scrolls (§4.1).
 			_forget_scrolls(int(effect.get("count", 1)), rng, out)
@@ -165,6 +173,20 @@ func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenera
 			})
 		_:
 			push_warning("ScrollSystem: unknown effect op '%s'" % op)
+
+# How an `apply_tile` clause reads on a scroll's card and in the read modal
+# (§17). Beside status_effect_text and for the same reason: two screens describe
+# the same scroll, and the tile's own name and words are what both should quote.
+func tile_effect_text(effect: Dictionary) -> String:
+	var tile: TileEffectData = Data.get_tile(StringName(String(effect.get("tile", ""))))
+	if tile == null:
+		return ""
+	var where: String = {
+		"front": "the front column",
+		"back": "the back column",
+		"all": "every tile on the board",
+	}.get(String(effect.get("target", "front")).to_lower(), "the front column")
+	return "Lay the %s tile over %s." % [tile.display_name, where]
 
 # --- apply_status (Scroll of Aggravate Monsters) ---------------------------
 
@@ -222,6 +244,29 @@ func _apply_status(effect: Dictionary, out: Dictionary) -> void:
 		return
 	out["logs"].append("%d %s gain +%d %s." % [
 		landed, "enemy" if landed == 1 else "enemies", stacks, status.display_name])
+
+# --- apply_tile (Scroll of Fire) -------------------------------------------
+# Lay a tile effect over the cells the target word names (§17). What it reports is
+# what actually STUCK, not what was asked for: a cell whose mine ate the fire on
+# arrival is one fewer tile on the board, and a line promising four when three
+# landed would be describing a different scroll — the same rule the status branch
+# above follows for a Burn that hit its ceiling.
+func _apply_tile(effect: Dictionary, out: Dictionary) -> void:
+	var tile_id := StringName(String(effect.get("tile", "")))
+	var tile: TileEffectData = Data.get_tile(tile_id)
+	if tile == null:
+		push_warning("ScrollSystem: no tile '%s' in the catalog" % tile_id)
+		return
+	var cells: Array = GameLoop2.target_cells(String(effect.get("target", "front")).to_lower())
+	var landed: int = 0
+	for cell in cells:
+		if GameLoop2.apply_tile(cell, tile_id):
+			landed += 1
+	if landed <= 0:
+		out["logs"].append("There is no ground left to cover.")
+		return
+	out["logs"].append("%s spreads across %d %s." % [
+		tile.display_name, landed, "tile" if landed == 1 else "tiles"])
 
 # --- forget (Scroll of Amnesia) --------------------------------------------
 func _forget_scrolls(count: int, rng: RandomNumberGenerator, out: Dictionary) -> void:

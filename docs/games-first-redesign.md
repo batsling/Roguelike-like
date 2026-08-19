@@ -1073,9 +1073,9 @@ the **`Decrease` column** now (§13.1) rather than per cell.
 
 Because the mode says what a side does, **`Type` (Buff / Debuff) drives no
 mechanic** — it is the HUD tint and the collection filter, nothing more. The
-interesting statuses are the ones whose two sides differ. Marked taxes every one
-of your goals on the player's side and *pays out* on the enemy's, so the same
-status is a tax you grind off and a reason to engage the thing carrying it.
+interesting statuses are the ones whose two sides differ. Marked *charges* you on
+the player's side and *pays out* on the enemy's, so the same status is a debt you
+work off and a reason to engage the thing carrying it.
 
 ### 13.1 Schema
 
@@ -1095,7 +1095,7 @@ where `<verb>` is one of the five modes above. So the current roster reads:
 |---|---|---|
 | Strength | `goal "the difficulty is increased {X} times" -> gain_chest reward {X}; gain_stat bash 1` | `clause "the difficulty must be increased {X} times"` |
 | Speed | `goal "beaten in {1+(1/2)^(X-2):hours} or less" -> gain_chest reward {X}; gain_stat dash 1` | `clause "must be beaten in {1+(1/2)^(X-2):hours} or less"` |
-| Marked | `clause "you must get {X} achievements" decay` | `bonus "you get {X} achievements" decay -> gain_chest reward {X}` |
+| Marked | `demand "get {X} achievements" else -> take_damage 3` | `bonus "you get {X} achievements" decay -> gain_chest reward {X}` |
 | Dexterity | `goal "{X} bosses were beaten without getting hit" -> gain_chest reward {X}` | `clause "you must beat {X} bosses without getting hit"` |
 | Burn | `demand "skip or trash {X} items/upgrades" else -> take_damage 3` | `instead "skip or trash {4-X} items/upgrades"` |
 
@@ -1162,7 +1162,7 @@ would only make it a worse item.
 | **Strength** | Buff | Slay the Spire | the difficulty is increased X times | [chest reward X], +1 Bash | deals +X damage |
 | **Speed** | Buff | Mewgenics | beaten in 1+(1/2)^(X-2) hours or less | [chest reward X], +1 Dash | closes +X tiles per turn |
 | **Dexterity** | Buff | Slay the Spire | X bosses were beaten without getting hit | [chest reward X] | +X Shields |
-| **Marked** | Debuff | Mewgenics | you get X achievements | [chest reward X] | takes double damage, ignoring Shields |
+| **Marked** | Debuff | Mewgenics | you get X achievements | [chest reward X] on an enemy; on the player it charges 3 Damage for being missed | takes double damage, ignoring Shields |
 | **Burn** | Debuff | Brutal Orchestra | skip or trash X items/upgrades (4-X on an enemy) | *nothing* — it charges 3 Damage for being missed | deals half damage |
 
 Speed's window halves toward a floor of one hour: **3 hours** at one stack,
@@ -1209,10 +1209,26 @@ Its two sides bite in opposite directions, which is the point:
   what the boss is (§7.1), so `GameLoop2.alternatives_for` refuses one and
   `claim_enemy_alternative` refuses the claim behind it too.
 
+**MARKED IS BURN-SHAPED NOW, on the player's side.** It used to be a `clause` — a
+tax ANDed onto every enemy's goal — and it is a `demand`: get X achievements, or
+take 3 Damage. Its enemy side is untouched, so the status keeps the thing that
+made it interesting (a cost on your side, a payout on theirs) with the cost made
+of the same stuff Burn's is. The two demands differ in one place, and it is the
+place that matters: Burn is capped at 3 because its condition gets *easier* per
+stack on an enemy, while Marked's asks for more the deeper it goes on both sides
+and so needs no ceiling to stay honest.
+
+With that change, **nothing in the shipped roster has a player-side `clause`** any
+more. The mode is still real and still implemented — `status_clauses` and
+`_tick_player_clauses` are what it is — and `test_statuses.gd` registers a
+synthetic status to exercise it, rather than borrowing whichever shipped status
+happens to be shaped that way this month.
+
 **Two pieces of content hand Burn out**, one to each side of the board:
 
-- **Scroll of Fire** (§4.1) — `apply_status burn 3 player; apply_status burn 3
-  front`. The first scroll whose cell is two clauses, and the first that burns
+- **Scroll of Fire** (§4.1) — `apply_status burn 3 player; apply_tile fire front;
+  apply_status burn 3 front`. Three clauses now, and the middle one lights the
+  ground itself (§17). The first scroll whose cell is more than one thing, and the first that burns
   the reader: +3 Burn on you, +3 Burn on everything touching the front column.
   Negative, obviously, and read for the second half — the bodies about to hit you
   come down to half damage and grow a cheap way out. Its cost lands whether or
@@ -1582,3 +1598,200 @@ it for.
 
 Luck comes from the **Clover** (Uncommon, `+1` as a passive bonus, so it goes
 away with the item) and from the Donation Machine's 5% roll. There is no cap.
+
+---
+
+## 17. Tile effects & units (`tiles2.0`, `units2.0`)
+
+Two things can be on a cell of the battlefield that are not a body:
+
+- a **tile effect** — something done to the **ground**, which stays where it was
+  put and acts on whoever walks in;
+- a **unit** — something of the **player's** standing on it.
+
+They **layer**: a unit stands on top of a tile effect, which is why they are two
+sheets and two resources rather than one with a flag. What happens when a
+particular pair meets is authored in the content, not in the code.
+
+**Neither blocks a body.** An enemy walks into the cell and whatever is there
+*reacts*. That is the whole difference between this and the footprint rules of
+§7.3: `occupancy` is about who cannot stand where, and this is about what it
+costs to stand there. The one place the two meet is routing — a mined lane scores
+worse than a clear one, so the stack walks *around* a minefield rather than being
+unable to cross it.
+
+**A tile effect is not a status.** A status rides a body and travels with it; a
+tile effect stays where it was put. That is what makes Fire a way to threaten
+ground you cannot reach, rather than a body you have to aim at.
+
+### 17.1 The two sheets
+
+    tiles2.0: Name | Description | Effect | Interactions | Decay | Img
+    units2.0: Name | Type | Description | Effect | Interactions | Health | Img
+
+Generated by `tools/generate_tile_tres.py` and `tools/generate_unit_tres.py` into
+`data/tiles2.0/` and `data/units2.0/`, onto `TileEffectData` and `UnitData`. The
+unit generator **imports** the tile generator's parsers rather than restating
+them: a unit and a tile effect react to the same board and the same events, so a
+second grammar for the same two triggers would only be a second thing to keep in
+step.
+
+(`TileEffectData`, not `TileData` — Godot already ships a native `TileData` for
+TileMaps, and a `class_name` that shadows one is a parse error. The sheet, the
+data folder and every id stay "tile".)
+
+**Effect DSL** — `trigger: effect; effect; …`, the item sheet's shape:
+
+| Trigger | When |
+|---|---|
+| `enemy_enters` | a body's footprint newly covered the cell — it stepped in, spawned onto it, was pushed into it, or the board grew and reseated it there |
+| `enemy_turn_start` | a body was **already** standing here when an enemy turn began |
+
+The pair is the whole vocabulary on purpose. Between them they cover "walked into
+it" and "stayed in it", which is what a tile effect has to be able to say to be
+worth putting down: a cell that only bit on entry would be free to park on, and
+one that only bit at turn start would be free to walk through.
+
+| Effect | What it does |
+|---|---|
+| `apply_status <status> <n>` | puts a status on the body that triggered it |
+| `detonate` | the cell's unit goes off where it stands |
+
+**Interactions DSL** — `<kind> <id>: outcome; outcome`, parsed to
+`{"unit:landmine": ["detonate_unit", "remove_tile"]}`. The outcomes are
+`detonate_unit`, `remove_tile` and `remove_unit`.
+
+**Both sides of a pairing author the same outcome**, deliberately. Fire meeting a
+mine and a mine meeting Fire are one event, and the player will look it up from
+whichever of the two they are holding. The runtime **unions** the two lists, so an
+interaction written on one sheet only still resolves; writing it on both is what
+keeps either sheet readable on its own.
+
+**`Decay` is read in GAMES, never in turns.** How many turns a game buys is read
+off the distance to the Amulet (§7.4), so a tile authored in turns would burn for
+three games out in the wilds and less than one on the Amulet's doorstep — the same
+content, worth most where it is needed least. A cell written in turns is **refused
+by the generator** rather than silently reinterpreted. It ticks once per game
+**resolved** (`GameLoop2.beat_game`), beaten or missed: the ground burns for the
+time spent, not for the result.
+
+### 17.2 The roster
+
+| | Fire (tile) | Landmine (unit) |
+|---|---|---|
+| From | Brutal Orchestra's burn | Brotato |
+| Does | +1 Burn to anything that enters or starts its turn on it | on contact with an enemy, destroys itself and explodes |
+| Lasts | 3 games | Health 1 — going off spends the whole of it |
+| Meeting the other | the mine goes off and the fire goes out | the mine goes off and the fire goes out |
+
+**A body pays per cell.** A 2x2 standing on two fire tiles takes two stacks a
+turn — the same rule footprints follow everywhere else on this board (§7.3).
+
+**A Landmine is a PROXY BOMB, and that is the whole reason it is a unit rather
+than a one-off trap.** It spends none of the player's Bombs, but everything that
+modifies a bomb modifies it, because there is one blast in `GameLoop2._explode`
+and both go through it: **Brimstone** widens it to the row and column,
+**Sticky** stuns what survives it, **Blood Bombs** pays its Health, **Hot Bombs**
+leaves Fire behind. A mine is worth exactly what the pack has made bombs worth.
+It also inherits the rest of a bomb's terms: a body destroyed by one is
+*destroyed, not defeated* — no drop, no gold — and a boss shrugs it off.
+
+**Fire and a Landmine annihilate each other**, whichever arrived second: the heat
+sets the mine off and the blast blows the fire out. The pieces come off the board
+*before* the blast resolves, so a detonation that lays fire back over its own cell
+(Hot Bombs) does not set off the mine that just caused it. A chain of these is
+finite — every detonation spends the unit that caused it — and `MAX_CHAIN` is the
+belt to that brace.
+
+### 17.3 The four pieces of content that reach them
+
+- **Scroll of Fire** (§4.1) — `apply_status burn 3 player; apply_tile fire front;
+  apply_status burn 3 front`. Its prose gained the middle clause and its cell
+  followed: the bodies in your face are burning now, *and* the strip they are
+  standing on keeps burning whatever steps into it for three more games. That
+  second half is what makes the scroll worth reading into an empty room.
+- **Red Candle** (Common, `Charged, 1`, shop) — `item_used: apply_tile fire
+  target=tile cols=2-3`. The first item aimed at **ground** rather than at a body:
+  `target=tile` is the tile-side twin of Staff of Flame's `target=enemy`, and the
+  board arms a cell picker instead of lighting up the stack
+  (`BattlefieldView.aim_cells`). `cols=2-3` is the reach — never column 1, where
+  it would be a free hit on whatever is already swinging, and never the back,
+  where nothing would walk over it before it burned out. The fence is enforced in
+  `EffectSystem` as well as in the highlight, so a cell that arrives some other way
+  obeys it too.
+- **Hot Bombs** (Uncommon) — `item_acquired: gain_stat bombs 1; bomb_tile fire`.
+  The bomb synergy that hands out **ground** rather than damage: every cell the
+  blast covered is left on fire, so a bomb that failed to kill still costs the
+  survivor a stack of Burn a turn for three games. Widened by Brimstone for free,
+  because what it reads is the blast rather than the target — and it reaches a
+  Landmine's blast for the same reason.
+- **Landmines** (Uncommon) — `game_beaten: apply_unit landmine
+  target=random_empty`. One mine per game finished, on a cell with **nothing on it
+  at all** — no body, no unit, no tile effect. That is "a random empty Tile" read
+  strictly, and it is the right reading: a mine dropped onto burning ground would
+  go off on the spot and take the item's whole payout for that game with it.
+
+### 17.4 Routing: how the enemies read a minefield
+
+`path_blockers` now answers `{enemies, cells, mines}`, and `_spawn_rows` ranks
+lanes lexicographically on **(bodies in the way, mines to cross, cells those
+bodies block)**.
+
+**Mines rank BELOW bodies on purpose.** A body in the lane is a wall that may
+never move; a mine is a **toll** — one point of Health, paid once, and then the
+lane is clear. An enemy that treated the two as equally bad would rather queue
+forever behind a boss than step on a mine, which is not caution, it is a bug that
+reads as one. So the stack routes around a minefield when it has anywhere else to
+be and walks straight through it when it doesn't — which is what makes Landmines
+an item that **shapes** the board rather than one that seals it.
+
+### 17.5 Where they live at runtime
+
+- **On the board** — `GameLoop2.tiles` and `GameLoop2.units`, both
+  `Vector2i(col, row) -> {…}`, keyed by CELL rather than held on the entry
+  standing there. Serialized as flat lists (JSON has no key type but string).
+- **Arriving in a cell** — `GameLoop2._move_entry` is **the** one place an
+  on-board entry changes cells. A step, a spawn, a push and a board that grew
+  under a body all come through it, so there is nowhere for "does walking into
+  fire burn you?" to be answered twice. It returns whether the body **survived**,
+  and every caller that was going to keep moving it checks that.
+- **The start of a turn** — `_fire_turn_start_cells`, before anything swings, so a
+  body parked on fire is already burning when it strikes rather than a turn late.
+- **On screen** — units draw in a layer **under** the bodies (a unit is on the
+  floor), and a tile effect draws as a shallow strip hugging the **bottom edge**
+  of its cell in a layer **over** them. Over, because a fire tile under a 2x2
+  would be a fire tile nobody can see; shallow, because the point is to read the
+  ground without losing the body standing on it. The strip is never clickable —
+  it overlaps the bodies, and one that ate their clicks would make the front row
+  unselectable exactly when it matters. A per-cell hover in the **lower** layer
+  reads whatever is on a square, and tree order does the precedence for free: a
+  cell with a body on it answers with the body's card, bare ground answers with
+  the ground.
+
+### 17.6 Keywords — the dropdown a mention carries
+
+An item or a scroll describes itself in the player's vocabulary: "Gain +3 Burn",
+"Bombs Apply the Fire Tile", "Apply the Landmine Unit to a random empty Tile".
+Every one of those names a mechanic with rules of its own, and the sentence has no
+room to carry them. So the card names the thing and a **keyword strip** underneath
+says what the thing is, Slay-the-Spire style.
+
+`scripts/ui/Keywords.gd` is **one registry for all three kinds** — statuses, tile
+effects and units — because from the reader's side they are one question ("what is
+that?"), and three registries would be three places for the answer to go stale.
+Each kind already owns its own words (`StatusData.tooltip_for`,
+`TileEffectData.tooltip_for`, `UnitData.tooltip_for`), so the registry finds the
+mentions and hands the writing back to the content.
+
+Matching is on the display name at **word boundaries**, so "Burn" does not light
+up inside "Burning Blood" (which is a real relic). A tile answers to both "Fire"
+and "Fire Tile", and a unit to both "Landmine" and "Landmine Unit", because the
+sheet's prose uses both.
+
+`Keywords.attach(host, text)` adds nothing when the text names nothing, which is
+what makes it safe to call on every card rather than only the ones expected to
+need it. It hangs off the **reading** surfaces — the item info card, the item drop
+modal's single-item layout, the scroll read modal (identified scrolls only; a
+strip naming Burn and Fire under "reading it is a gamble" would give the whole
+thing away), and the Collection's detail pane. Not the shop shelf or the
+five-abreast chest cards, which have no room.

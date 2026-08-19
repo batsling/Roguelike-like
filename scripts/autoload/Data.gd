@@ -22,6 +22,8 @@ var _items2: Dictionary = {}            # StringName -> ItemData (2.0)
 var _goal_enemies: Dictionary = {}      # StringName -> GoalEnemyData (normal)
 var _bosses: Dictionary = {}            # StringName -> GoalEnemyData (boss=true)
 var _statuses: Dictionary = {}          # StringName -> StatusData (§13)
+var _tiles: Dictionary = {}             # StringName -> TileEffectData (§17)
+var _units: Dictionary = {}             # StringName -> UnitData (§17)
 var _events2: Dictionary = {}           # StringName -> EventData2 (docs/event-sheet-authoring.md)
 var _objects2: Dictionary = {}          # StringName -> ObjectData (docs/object-sheet-authoring.md)
 var _curses2: Dictionary = {}           # StringName -> CurseData2 (the checklist kind, not data/curses)
@@ -40,6 +42,8 @@ func _ready() -> void:
 	_load_dir("res://data/bosses2.0/", _bosses)
 	_load_dir("res://data/scrolls2.0/", _scrolls)
 	_load_dir("res://data/statuses2.0/", _statuses)
+	_load_dir("res://data/tiles2.0/", _tiles)
+	_load_dir("res://data/units2.0/", _units)
 	_load_dir("res://data/events2.0/", _events2)
 	_load_dir("res://data/objects2.0/", _objects2)
 	_load_dir("res://data/curses2.0/", _curses2)
@@ -47,10 +51,10 @@ func _ready() -> void:
 		_items.size(), _events.size(), _games.size(), _characters.size(),
 		_curses.size(), _encounters.size()
 	])
-	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d statuses, %d events, %d curses, %d objects" % [
+	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d statuses, %d tiles, %d units, %d events, %d curses, %d objects" % [
 		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
-		_scrolls.size(), _statuses.size(), _events2.size(), _curses2.size(),
-		_objects2.size()
+		_scrolls.size(), _statuses.size(), _tiles.size(), _units.size(),
+		_events2.size(), _curses2.size(), _objects2.size()
 	])
 
 func _load_dir(path: String, target: Dictionary) -> void:
@@ -392,6 +396,25 @@ func get_status(id: StringName) -> StatusData:
 
 func all_statuses() -> Array:
 	return _statuses.values()
+
+# --- tile effects and units (§17) ------------------------------------------
+# The two board-furniture kinds: a tile effect is something done to one CELL, a
+# unit is a body of the player's standing on one. They are separate sheets and
+# separate lookups because they layer — a unit stands on a tile effect — and a
+# single "board thing" table would have had to carry a kind flag to say which
+# half of that any given row was.
+
+func get_tile(id: StringName) -> TileEffectData:
+	return _tiles.get(id)
+
+func all_tiles() -> Array:
+	return _tiles.values()
+
+func get_unit(id: StringName) -> UnitData:
+	return _units.get(id)
+
+func all_units() -> Array:
+	return _units.values()
 
 func all_items() -> Array:
 	return _items.values()

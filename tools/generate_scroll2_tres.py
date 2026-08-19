@@ -20,6 +20,7 @@ Effect token DSL (semicolons separate clauses; most scrolls are one):
                                         (retired: Aggravate Monsters hands out
                                         Strength now, §13.4 — kept so an old
                                         cell still parses)
+  apply_tile <tile> front|all|back   -> {op:apply_tile, tile, target}
   forget scroll|potion|spell N       -> {op:forget, kind, count:N}
   spawn_enemy current|low|medium|high-> {op:spawn_enemy, difficulty}
   identify_scrolls choose|random|all N -> {op:identify_scrolls, mode, count:N}
@@ -69,6 +70,13 @@ def _clean(v):
 # target, and the clause falls back to `all`, which is the reading every scroll
 # before Scroll of Fire wanted.
 STATUS_TARGETS = ("player", "current", "all", "random", "front")
+
+# Which GROUND an `apply_tile` clause can cover. `front` is column 1, the strip
+# that strikes next; `all` is the whole board; `back` is the spawn column, the
+# ground every arrival has to walk in over. No `player` — the player does not
+# stand on the grid, which is exactly why a tile effect is a way to threaten
+# ground rather than a way to hurt yourself.
+TILE_TARGETS = ("front", "all", "back")
 
 
 def parse_effect(raw):
@@ -120,6 +128,18 @@ def parse_clause(s):
                  "status": rest[0].lower(),
                  "value": nums[0] if nums else 1,
                  "target": targets[0].lower() if targets else "all"}]
+    if verb == "apply_tile":
+        # `apply_tile <tile> [front|all|back]` — a tile effect laid on the GROUND
+        # rather than on a body (§17). Scroll of Fire lights the front column,
+        # which is the same strip its Burn clause targets: the bodies already in
+        # your face are burned now, and the ground they are standing on keeps
+        # burning whatever steps into it for the next three games.
+        if not rest:
+            raise ValueError("scroll effect DSL: apply_tile needs a tile in %r" % s)
+        targets = [t for t in rest[1:] if t.lower() in TILE_TARGETS]
+        return [{"op": "apply_tile",
+                 "tile": rest[0].lower(),
+                 "target": targets[0].lower() if targets else "front"}]
     if verb == "forget":
         kind = rest[0].lower() if rest and not rest[0].isdigit() else "scroll"
         return [{"op": "forget", "kind": kind, "count": nums[0] if nums else 1}]
