@@ -1318,6 +1318,12 @@ func set_hp(new_hp: int) -> void:
 # the bill an event just handed you. HEALTH_SOURCE_ENEMY_ATTACK is the only tag
 # with a rule behind it today; the default of "" reads as "some other drain".
 const HEALTH_SOURCE_ENEMY_ATTACK := "enemy_attack"
+# Damage a STATUS charged (Burn's 3 at the end of a game it went unpaid, §13). It
+# resolves on the battlefield like a swing — the tries absorb it, the player's own
+# statuses scale it — but nothing swung it, so the destructible trinkets (§8.1)
+# survive a burn. A relic that breaks "when an enemy hits you" should not be
+# destroyed by a bill the player ran up themselves.
+const HEALTH_SOURCE_STATUS := "status"
 
 func change_hp(delta: int, source: String = "") -> void:
 	# Each in-combat HP loss is one "time you lost Health this combat" for
@@ -1568,6 +1574,8 @@ func grant_run_stat(stat: String, value: int) -> void:
 #
 # Stacks are INTENSITY, not duration: applying Marked twice is one Marked at 2,
 # which is why every call here adds into the existing count instead of appending.
+# A status may author a CEILING on that (Burn's "Max: 3") and apply_status is where
+# the player's side of it is enforced.
 # An id with no StatusData behind it is refused rather than stored — a status the
 # catalog can't describe would show up on the checklist as a blank goal.
 # ---------------------------------------------------------------------------
@@ -1577,10 +1585,16 @@ func grant_run_stat(stat: String, value: int) -> void:
 func apply_status(status_id: StringName, stacks: int = 1) -> int:
 	if stacks == 0:
 		return int(player_statuses.get(status_id, 0))
-	if Data.get_status(status_id) == null:
+	var status: StatusData = Data.get_status(status_id)
+	if status == null:
 		push_warning("GameState.apply_status: no status '%s' in the catalog" % status_id)
 		return 0
 	var total: int = int(player_statuses.get(status_id, 0)) + stacks
+	# The authored ceiling (Burn's "Max: 3"), applied on the way UP only: a status
+	# already over its cap — from a save written before the cap, or from a cap the
+	# sheet lowered — still ticks down normally rather than being frozen there.
+	if stacks > 0:
+		total = maxi(int(player_statuses.get(status_id, 0)), status.cap_stacks(total))
 	if total <= 0:
 		player_statuses.erase(status_id)
 		total = 0

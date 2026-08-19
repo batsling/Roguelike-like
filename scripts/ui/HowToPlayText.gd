@@ -640,7 +640,13 @@ static func _ch_pack() -> Dictionary:
 				+ "every enemy's goal. On an enemy, just that one's."),
 			_kv("A bonus", "An optional extra objective, claimable for a reward and "
 				+ "free to ignore."),
-			_p("The four of them, and what they do in a fight:"),
+			_kv("A demand", "An obligation with a price. It pays nothing for being "
+				+ "met, and charges you at the end of any game you did not meet it."),
+			_kv("A way out", "An alternative to an enemy's goal — do this instead "
+				+ "and that enemy is cleared. It counts as a clear and not as a "
+				+ "win: nothing about it goes on the record, because you never did "
+				+ "what it asked. Never offered on a boss."),
+			_p("The five of them, and what they do in a fight:"),
 			_kv("Strength", "Every hit that enemy lands is worth 1 more per stack."),
 			_kv("Speed", "It closes one extra tile per stack, every turn — so it "
 				+ "reaches you sooner than the board looks like it should."),
@@ -649,10 +655,18 @@ static func _ch_pack() -> Dictionary:
 				+ "goal per shield to put down."),
 			_kv("Marked", "Everything that lands on it is DOUBLED and goes straight "
 				+ "through Shields."),
+			_kv("Burn", "It hits for half. On YOU it is a debt instead: every game, "
+				+ "skip or trash 4 items in the game you are playing — one fewer "
+				+ "for each stack — or take 3 damage once the enemies have swung. "
+				+ "Pay it and a stack comes off, which makes the next one cheaper. "
+				+ "It stacks no higher than 3. On an ENEMY it is that same deal "
+				+ "offered as a way out of its goal."),
 			_b("The buffs are felt by enemies only. Marked is a debuff, and a debuff "
 				+ "is felt by whoever is carrying it — Marked on YOU doubles every "
 				+ "hit you take and ignores the tries you were counting on to "
-				+ "absorb them."),
+				+ "absorb them. Burn's halving is the exception that proves it is a "
+				+ "column and not a rule about the word: there is no attack of "
+				+ "yours for a halving to sit on, so the sheet says enemies only."),
 			_h("Curse goals"),
 			_p("A curse goal is a row on your checklist you are trying NOT to "
 				+ "complete. Break it and the penalty is always the same one: a "

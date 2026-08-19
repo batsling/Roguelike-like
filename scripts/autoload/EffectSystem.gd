@@ -74,6 +74,7 @@ func _register_defaults() -> void:
 	register("gain_chest", _h_gain_chest)
 	register("chest_reward", _h_chest_reward)
 	register("lose_hp", _h_lose_hp)
+	register("take_damage", _h_take_damage)
 	register("lose_max_hp", _h_lose_max_hp)
 	register("lose_stat", _h_lose_stat)
 	register("lose_gold", _h_lose_gold)
@@ -315,6 +316,20 @@ func _h_spawn_enemy(effect: Dictionary, _ctx: Dictionary) -> void:
 func _h_trade_relic(effect: Dictionary, _ctx: Dictionary) -> void:
 	EventSystem.resolve_trade(int(effect.get("slot", 1)))
 
+# DAMAGE, as against `lose_hp`'s bill: it resolves on the battlefield, so the tries
+# absorb it first and the player's own statuses scale it (Burn's "or take 3
+# Damage", §13). GameLoop2 owns that arithmetic and is the one place damage reaches
+# the player, so this hands off to it rather than reaching for Health itself.
+#
+# GameLoop2 bills a missed `demand` through the same function directly, with the
+# resolve's summary to write into; a `take_damage` authored anywhere else lands
+# here and simply has no summary to bill.
+func _h_take_damage(effect: Dictionary, _ctx: Dictionary) -> void:
+	var v: int = int(effect.get("value", 0))
+	if v <= 0:
+		return
+	GameLoop2.damage_player(v)
+
 func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	var v: int = int(effect.get("value", 0))
 	if v <= 0:
@@ -410,7 +425,7 @@ func _h_reroll_enemies(_effect: Dictionary, _ctx: Dictionary) -> void:
 # a payout, so Favour.HIGH is the default and a new reward verb inherits the
 # right direction without being listed.
 const UNWANTED_EFFECTS := [
-	"jam_object", "lose_hp", "lose_max_hp", "lose_gold", "lose_stat",
+	"jam_object", "lose_hp", "take_damage", "lose_max_hp", "lose_gold", "lose_stat",
 	"add_curse", "spawn_enemy", "item_downgrade", "forget",
 ]
 

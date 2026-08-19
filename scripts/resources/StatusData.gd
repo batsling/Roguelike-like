@@ -18,14 +18,23 @@ extends Resource
 # goal on the player's side and pays out on the enemy's). Each side names a MODE,
 # and the mode is the whole of what that side does:
 #
-#   goal    a standing objective of the holder's own — "If <condition>, gain
-#           <reward>". On the player it is an extra checklist row, offered every
-#           game and paid every time it is met.
-#   clause  ANDed onto goals and REQUIRED: the goal is not met until both were
-#           done. On an enemy it tightens that enemy's goal; on the player it
-#           tightens EVERY enemy's goal.
-#   bonus   an OPTIONAL objective — "and if <condition>, gain <reward>" —
-#           claimable for its reward and free to skip.
+#   goal     a standing objective of the holder's own — "If <condition>, gain
+#            <reward>". On the player it is an extra checklist row, offered every
+#            game and paid every time it is met.
+#   clause   ANDed onto goals and REQUIRED: the goal is not met until both were
+#            done. On an enemy it tightens that enemy's goal; on the player it
+#            tightens EVERY enemy's goal.
+#   bonus    an OPTIONAL objective — "and if <condition>, gain <reward>" —
+#            claimable for its reward and free to skip.
+#   demand   an obligation of the holder's own with a PRICE for missing it — "you
+#            must <condition>, or <penalty>". The mirror image of a `goal`: the
+#            payload is what is owed rather than what is earned, so it lives in
+#            `penalty` instead of `reward`. Burn's player side, and the only mode
+#            that costs something for a game where nothing happened.
+#   instead  an ALTERNATIVE way to satisfy the goal it hangs off — "<goal> or
+#            instead <condition>". Clearing a goal through one means its own
+#            condition was never set, so the run banks no record of the beat: no
+#            "beaten in <game>" tally and no note. Burn's enemy side.
 #
 # Because the mode says what a side does, `kind` (Buff / Debuff) drives no
 # mechanic at all: it is the HUD tint and the collection filter, nothing more. The
@@ -60,15 +69,31 @@ const ENEMY := &"enemy"
 @export var on_player_text: String = ""
 @export var on_enemy_text: String = ""
 
-# How the sheet says stacks combine ("Intensity" for the current roster — a second
+# How the sheet says stacks combine ("Intensity" for most of the roster — a second
 # application raises X rather than starting a second timer).
 @export var stackable: String = "Intensity"
 
+# The stack CEILING the Stackable cell authored ("Max: 3"), or 0 for a status that
+# climbs forever. A cap exists for the statuses whose condition gets EASIER per
+# stack: Burn asks for 4-X items skipped, so an uncapped Burn would pay itself off
+# and then keep paying. Enforced where stacks are added — GameState.apply_status
+# for the player, GameLoop2._add_status_to for a body — so nothing can route
+# around it.
+@export var max_stacks: int = 0
+
+# How the status DEPLETES, verbatim from the sheet's Decrease column ("N/A", "On
+# Completion"). The prose is what the player is shown; the rule it stands for is
+# already baked into each side's `decay` by the generator, so nothing dispatches
+# on this string — see decays().
+@export var decrease: String = "N/A"
+
 # THE TWO SIDES. Each is either {} (this side does nothing) or:
-#   {"mode": "goal"|"clause"|"bonus",
+#   {"mode": "goal"|"clause"|"bonus"|"demand"|"instead",
 #    "condition": String,        the challenge clause, with {expr} holes over X
 #    "reward": Array,            EffectSystem effect dicts, {expr} holes in `scaled`
 #    "reward_text": String,      human wording for the payout
+#    "penalty": Array,           what MISSING it costs (a `demand` only)
+#    "penalty_text": String,     human wording for that price
 #    "decay": bool}              completing it sheds one stack
 @export var on_player: Dictionary = {}
 @export var on_enemy: Dictionary = {}
@@ -114,10 +139,13 @@ func is_debuff() -> bool:
 	return kind == &"debuff"
 
 # True when a second application raises X instead of stacking independently — the
-# only mode the current roster authors, but asked as a question so a future
-# duration-based status doesn't have to be special-cased at every call site.
+# only way the current roster combines, capped or not, but asked as a question so a
+# future duration-based status doesn't have to be special-cased at every call site.
 func stacks_by_intensity() -> bool:
-	return stackable.to_lower().begins_with("intensity")
+	var how: String = stackable.to_lower()
+	# A bare `Max: 3` is an intensity status with a ceiling on it: the cap says how
+	# FAR it climbs, not what climbing means.
+	return how.begins_with("intensity") or how.begins_with("max")
 
 func art_file() -> String:
 	return file if file != "" else display_name.replace(" ", "").replace("'", "")
@@ -144,15 +172,38 @@ func is_clause(which: StringName) -> bool:
 func is_bonus(which: StringName) -> bool:
 	return mode_for(which) == &"bonus"
 
-# Whether completing this side sheds a stack.
+# An obligation with a price for missing it (Burn on the player).
+func is_demand(which: StringName) -> bool:
+	return mode_for(which) == &"demand"
+
+# An alternative that satisfies the goal it hangs off (Burn on an enemy).
+func is_alternative(which: StringName) -> bool:
+	return mode_for(which) == &"instead"
+
+# Whether completing this side sheds a stack. Set from the sheet's Decrease column
+# — see `decrease` for the prose it was read from.
 func decays(which: StringName) -> bool:
 	return bool(side(which).get("decay", false))
 
-# A side the player can tick and be PAID for — a goal or a bonus. A clause has
-# nothing to claim: it is folded into the goal it taxes.
+# A side the player TICKS on the report checklist, whether or not it pays: a goal,
+# a bonus, or a demand. A clause has nothing to tick — it is folded into the goal
+# it taxes — and an `instead` is ticked against the BODY it hangs off rather than
+# as an objective of the player's own.
+#
+# A demand is in here because it is answered the same way and by the same
+# checkbox, and the answer matters even more: an unticked goal merely pays
+# nothing, an unticked demand bites (see GameLoop2._resolve_status_demands).
 func is_claimable(which: StringName) -> bool:
 	var m: StringName = mode_for(which)
-	return m == &"goal" or m == &"bonus"
+	return m == &"goal" or m == &"bonus" or m == &"demand"
+
+# What this status is allowed to climb to. `wanted` past the authored ceiling is
+# clamped; an unauthored ceiling (0) lets it through unchanged.
+func cap_stacks(wanted: int) -> int:
+	return wanted if max_stacks <= 0 else mini(wanted, max_stacks)
+
+func is_capped() -> bool:
+	return max_stacks > 0
 
 # --- text -----------------------------------------------------------------
 
@@ -166,16 +217,37 @@ func condition_text(which: StringName, stacks: int) -> String:
 func reward_at(which: StringName, stacks: int) -> String:
 	return resolve(String(side(which).get("reward_text", "")), stacks)
 
+# One side's PENALTY wording at `stacks` — "take 3 Damage". Empty for every mode
+# but `demand`, which is the only one that charges.
+func penalty_at(which: StringName, stacks: int) -> String:
+	return resolve(String(side(which).get("penalty_text", "")), stacks)
+
 # The bare clause, for ANDing onto a goal. Rendered without a leading "and" so the
 # caller joins it however its line reads.
 func clause_text(which: StringName, stacks: int) -> String:
 	return condition_text(which, stacks)
 
-# How a CLAIMABLE side reads as a checklist row. A `goal` is a standing objective
-# and opens with "If"; a `bonus` hangs off something else and opens with "and if".
-# Either way the reward is part of the line, because the whole point of the row is
-# that it pays — a row you might skip has to advertise what skipping costs.
+# The bare alternative, for ORing onto a goal — the other half of what an
+# `instead` side is (see GameLoop2.goal_text_for, which joins it with "or
+# instead"). Same shape as clause_text, and separate from it so a caller cannot
+# accidentally AND on a condition that was meant to replace the goal.
+func alternative_text(which: StringName, stacks: int) -> String:
+	return condition_text(which, stacks)
+
+# How a TICKABLE side reads as a checklist row. A `goal` is a standing objective
+# and opens with "If"; a `bonus` hangs off something else and opens with "and if";
+# a `demand` is not conditional at all and opens with "You must", because there is
+# no version of the game where it goes unanswered — the answer is either the thing
+# or the price.
+#
+# Either way what is at stake is part of the line: a row that pays has to
+# advertise what skipping it forfeits, and a row that charges has to advertise
+# what missing it costs.
 func objective_text(which: StringName, stacks: int) -> String:
+	if is_demand(which):
+		var owed: String = "You must %s" % condition_text(which, stacks)
+		var price: String = penalty_at(which, stacks)
+		return owed if price == "" else "%s, or %s" % [owed, price]
 	var line: String = "%s %s" % [
 		"and if" if is_bonus(which) else "If", condition_text(which, stacks)]
 	var pay: String = reward_at(which, stacks)
@@ -193,8 +265,10 @@ func objective_text(which: StringName, stacks: int) -> String:
 # is being recognised and the count is what is being read after it.
 func hover_card(which: StringName, stacks: int) -> Dictionary:
 	var mode: StringName = mode_for(which)
-	var good: bool = is_bonus(which) or is_goal(which)
+	var good: bool = is_bonus(which) or is_goal(which) or is_alternative(which)
 	var sub: String = "%s stack%s" % [stacks, "" if stacks == 1 else "s"]
+	if is_capped():
+		sub += " of %d" % max_stacks
 	match mode:
 		&"goal":
 			sub = "Standing goal  ·  " + sub
@@ -202,16 +276,25 @@ func hover_card(which: StringName, stacks: int) -> Dictionary:
 			sub = "Bonus  ·  " + sub
 		&"clause":
 			sub = "Goal clause  ·  " + sub
+		&"demand":
+			sub = "Obligation  ·  " + sub
+		&"instead":
+			sub = "Way out  ·  " + sub
 	if source_game != "":
 		sub += "  ·  %s" % source_game
 
 	var lines: Array = []
 	match mode:
-		&"goal", &"bonus":
+		&"goal", &"bonus", &"demand":
 			lines.append(objective_text(which, stacks))
 		&"clause":
 			lines.append(("Every enemy's goal also needs: %s" if which == PLAYER
 				else "This enemy's goal also needs: %s") % clause_text(which, stacks))
+		&"instead":
+			lines.append(("Every enemy's goal can be met instead by: %s"
+				if which == PLAYER
+				else "This enemy's goal can be met instead by: %s")
+				% alternative_text(which, stacks))
 		_:
 			lines.append("Does nothing on this side.")
 	if combat_applies(which):
@@ -220,11 +303,22 @@ func hover_card(which: StringName, stacks: int) -> Dictionary:
 	return {
 		"title": display_name,
 		"subtitle": sub,
+		# An `instead` reads GOLD like the payouts do: it is the one debuff clause
+		# the player is glad to see, since it is a way out of a goal rather than
+		# another string attached to one.
 		"accent": Color(1.0, 0.82, 0.30) if good else Color(0.90, 0.26, 0.22),
 		"art": image,
 		"lines": lines,
-		"note": "Loses a stack each game you complete it." if decays(which) else "",
+		"note": decrease_note(which),
 	}
+
+# The one line that says how this status leaves — "Loses a stack each game you
+# complete it" — or "" for one that never does. Built from `decays`, which the
+# sheet's Decrease column set, so the card and the tooltip quote the same rule.
+func decrease_note(which: StringName) -> String:
+	if not decays(which):
+		return ""
+	return "Loses a stack each game you complete it."
 
 # The hover tooltip for one side, Slay-the-Spire style: the status's name and
 # stack count, what that side DOES, and the live line at this stack. Every view
@@ -233,6 +327,8 @@ func hover_card(which: StringName, stacks: int) -> Dictionary:
 # something else in another.
 func tooltip_for(which: StringName, stacks: int) -> String:
 	var head: String = "%s %d" % [display_name, stacks]
+	if is_capped():
+		head += "/%d" % max_stacks
 	if source_game != "":
 		head += "   (%s)" % source_game
 	var body: String = ""
@@ -244,10 +340,18 @@ func tooltip_for(which: StringName, stacks: int) -> String:
 		&"clause":
 			body = ("Every enemy's goal also needs: %s" if which == PLAYER
 				else "This enemy's goal also needs: %s") % clause_text(which, stacks)
+		&"demand":
+			body = "Every game — %s" % objective_text(which, stacks)
+		&"instead":
+			body = ("Every enemy's goal can be met instead by: %s"
+				if which == PLAYER
+				else "This enemy's goal can be met instead by: %s") \
+				% alternative_text(which, stacks)
 		_:
 			body = "Does nothing on this side."
-	if decays(which):
-		body += "\nLoses a stack each game you complete it."
+	var shed: String = decrease_note(which)
+	if shed != "":
+		body += "\n%s" % shed
 	# The combat side rides the same tooltip rather than a second one: a pip is
 	# one thing to the player, and "what is this doing to me" has to be answerable
 	# in one hover whether the answer is a goal, a number on the board, or both.
@@ -267,15 +371,29 @@ func tooltip_for(which: StringName, stacks: int) -> String:
 #   {"type": "gain_chest", "choices": 1, "scaled": {"value": "X"}}   at X=2
 #     -> {"type": "gain_chest", "choices": 1, "value": 2}
 func reward_effects(which: StringName, stacks: int) -> Array:
+	return _effects_at(which, "reward", stacks)
+
+# The other direction: what MISSING a `demand` costs, in the same effect-dict shape
+# (Burn's `take_damage 3`). Empty for every other mode, so a caller can ask any
+# side what it charges and get "nothing" rather than having to check the mode
+# first.
+func penalty_effects(which: StringName, stacks: int) -> Array:
+	return _effects_at(which, "penalty", stacks)
+
+# One side's `field` list with every {expr} hole evaluated at X = stacks. Shared by
+# the payout and the price because they are the same list of effects pointed in
+# opposite directions, and a second copy of this loop would be a second place for
+# `scaled` to be resolved differently.
+func _effects_at(which: StringName, field: String, stacks: int) -> Array:
 	var out: Array = []
-	for raw in side(which).get("reward", []):
+	for raw in side(which).get(field, []):
 		if not (raw is Dictionary):
 			continue
 		var eff: Dictionary = (raw as Dictionary).duplicate(true)
 		var scaled: Dictionary = eff.get("scaled", {})
 		eff.erase("scaled")
-		for field in scaled.keys():
-			eff[field] = int(round(evaluate(String(scaled[field]), stacks)))
+		for key in scaled.keys():
+			eff[key] = int(round(evaluate(String(scaled[key]), stacks)))
 		out.append(eff)
 	return out
 

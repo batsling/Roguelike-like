@@ -1048,8 +1048,16 @@ the mode is the whole of what that side does:
 | `goal` | a **standing objective of the holder's own** — "If \<condition\>, gain \<reward\>". On the player it is an extra checklist row, offered every game and paid every time it is met. |
 | `clause` | **ANDed onto goals and required** — the goal is not met until both were done. On an enemy it tightens that enemy's goal; on the player it tightens **every** enemy's goal. |
 | `bonus` | an **optional objective** — "and if \<condition\>, gain \<reward\>" — claimable for its reward and free to skip. |
+| `demand` | an **obligation with a price** — "You must \<condition\>, or \<penalty\>". Pays nothing for being met and **charges for being missed**, billed at the end of every game it goes unanswered. Burn's player side. |
+| `instead` | an **alternative to the goal it hangs off** — "\<goal\> or instead \<condition\>". Clears the body without its own condition ever having been set, so the run **banks no record of the beat**. Burn's enemy side. |
 
-A side may also carry `decay`: completing it sheds one stack.
+Every mode but `demand` is answered by doing it or not doing it, and doing it is
+worth something. A `demand` is the one that costs. It exists because Burn is not
+a challenge you opt into — it is a debt, and a debt with no consequence for
+ignoring it is a suggestion.
+
+A side may also carry `decay`: completing it sheds one stack. That is authored in
+the **`Decrease` column** now (§13.1) rather than per cell.
 
 Because the mode says what a side does, **`Type` (Buff / Debuff) drives no
 mechanic** — it is the HUD tint and the collection filter, nothing more. The
@@ -1060,16 +1068,16 @@ status is a tax you grind off and a reason to engage the thing carrying it.
 ### 13.1 Schema
 
 `statuses2.0` columns: `Name | Type | Game | On Player | On Player Effect |
-On Enemy | On Enemy Effect | Combat | EnemyOnly | Enemy Combat Effect |
-Stackable | Image`.
+On Enemy | On Enemy Effect | Combat | Decrease | EnemyOnly |
+Enemy Combat Effect | Stackable | Image`.
 
 The two **prose** columns (`On Player` / `On Enemy`) are the author's wording,
 carried onto `StatusData` for tooltips. Beside each sits its machine-readable
 counterpart, which is what the engine runs on:
 
-    <verb> "<condition>" [decay] [-> <reward>; <reward>; …]
+    <verb> "<condition>" [decay] [-> <reward>; …] [else -> <penalty>; …]
 
-where `<verb>` is one of the three modes above. So the current roster reads:
+where `<verb>` is one of the five modes above. So the current roster reads:
 
 | Status | `On Player Effect` | `On Enemy Effect` |
 |---|---|---|
@@ -1077,16 +1085,37 @@ where `<verb>` is one of the three modes above. So the current roster reads:
 | Speed | `goal "beaten in {1+(1/2)^(X-2):hours} or less" -> gain_chest reward {X}; gain_stat dash 1` | `clause "must be beaten in {1+(1/2)^(X-2):hours} or less"` |
 | Marked | `clause "you must get {X} achievements" decay` | `bonus "you get {X} achievements" decay -> gain_chest reward {X}` |
 | Dexterity | `goal "{X} bosses were beaten without getting hit" -> gain_chest reward {X}` | `clause "you must beat {X} bosses without getting hit"` |
+| Burn | `demand "skip or trash {4-X} items/upgrades" else -> take_damage 3` | `instead "skip or trash {4-X} items/upgrades"` |
 
-A `clause` may not carry a reward — it is a requirement, not a payout, and the
-generator rejects one rather than silently dropping it. Either side may be left
-blank, which reads as "this side is inert".
+**One arrow per cell**, and which arrow it is says whether the payload is earned
+or owed: `->` is a reward, `else ->` is what missing it costs. A `clause` and an
+`instead` may carry neither — both are requirements, not payouts, and the
+generator rejects a reward on one rather than silently dropping it; a `demand`
+must carry a penalty, since an obligation with no price is a `goal` that forgot
+its reward. Either side may be left blank, which reads as "this side is inert".
+
+**`Decrease` says how the status depletes**, for the player and for the code at
+once: `N/A` never, `On Completion` sheds a stack each game a side of it is
+completed. The generator reads it as the truth and checks the older `decay` flags
+against it, so a status cannot say one thing in its column and another inside a
+cell.
+
+**`Stackable` may carry a ceiling.** `Intensity` is the usual "a second
+application raises X"; `Max: 3` is that with a cap, enforced on the way up in
+`GameState.apply_status` and `GameLoop2._add_status_to`. Burn is the status that
+needed it: its condition gets *easier* per stack (4-X), so an uncapped Burn would
+pay itself off and then keep paying.
 
 **Reward token DSL** (compiled by `tools/generate_status_tres.py` into
 `EffectSystem` effect dicts, so a chest a status grants is the same chest an item
 grants, §8.2): `gain_chest [small|medium|large|huge] <n>`,
 `gain_chest reward <n>`, `gain_stat <stat> <n>`, `gain_hp <n>`,
-`gain_max_hp <n>`, `gain_gold <n>`. Any `<n>` is a literal or an
+`gain_max_hp <n>`, `gain_gold <n>`. A penalty is written in the same vocabulary
+pointed the other way (`lose_hp`, `lose_gold`, `lose_stat`) plus one verb of its
+own: **`take_damage <n>` is damage, not a bill** — it resolves through
+`GameLoop2.damage_player`, so the tries absorb it and the player's own statuses
+scale it, where `lose_hp` comes straight off Health whatever is standing in front
+of it. Any `<n>` is a literal or an
 `{expr}`; expressions are held in a `scaled` sub-dict and evaluated at apply time,
 since X isn't known until the status is on something.
 
@@ -1106,9 +1135,9 @@ Dexterity's one-stack window into `pow(0, -1)` hours. Alongside them,
 authored string reads correctly at every stack count.
 
 **Stackable: Intensity** — a second application **raises X**, it does not start a
-second timer. Marked twice is one Marked at 2. No max stack is authored.
+second timer. Marked twice is one Marked at 2. Only Burn authors a maximum.
 
-**Decay is authored per side**, with the `decay` flag. A side that decays sheds a
+**Decay is what the `Decrease` column says**, and a side that decays sheds a
 stack each time it is completed — once per game, not once per goal, so a game where
 you cleared four followers cannot wipe a four-stack status whole. Strength's
 standing goal does *not* decay: it **is** the reward, and putting a timer on it
@@ -1122,6 +1151,7 @@ would only make it a worse item.
 | **Speed** | Buff | Mewgenics | beaten in 1+(1/2)^(X-2) hours or less | [chest reward X], +1 Dash | closes +X tiles per turn |
 | **Dexterity** | Buff | Slay the Spire | X bosses were beaten without getting hit | [chest reward X] | +X Shields |
 | **Marked** | Debuff | Mewgenics | you get X achievements | [chest reward X] | takes double damage, ignoring Shields |
+| **Burn** | Debuff | Brutal Orchestra | skip or trash 4-X items/upgrades | *nothing* — it charges 3 Damage for being missed | deals half damage |
 
 Speed's window halves toward a floor of one hour: **3 hours** at one stack,
 **2 hours** at two, **1 hour 30 minutes** at three, **1 hour 15 minutes** at four.
@@ -1135,6 +1165,36 @@ its goal and its curve and took the name that describes them; Dexterity is now t
 Slay the Spire relic's own reading of the word — a shield — with a
 boss-flawless goal of its own. Anything that referred to the old Dexterity means
 Speed.
+
+**Burn is the one that runs backwards.** Every other status asks more of you the
+deeper it stacks; Burn asks *less* — 3 items skipped at one stack, 1 at three —
+and that is the whole shape of it. A fresh Burn is a real tax you probably cannot
+pay in one game, so it bites for 3, and biting is what makes it stack: each new
+application brings the price down until you can clear it. `Max: 3` is the floor
+under that, since a fourth stack would take the condition to zero.
+
+The condition is honour-system like every other one on the checklist — it is
+about the **real game you are playing**, not about this project's own item
+economy: you skipped or trashed that many pickups in the roguelike in front of
+you, and you say so on the report step.
+
+Its two sides bite in opposite directions, which is the point:
+
+- **On the player** it is a `demand`: an extra row on every report, and the only
+  row whose *unticked* state does something. The 3 Damage lands at the **end of
+  the game, after the enemies have swung** — through the normal hit path, so the
+  tries that game granted absorb it before Health does, and a run the enemies
+  already ended is never billed. Answering it sheds a stack; missing it does not,
+  so it keeps asking.
+- **On an enemy** it is an `instead`: that body's goal grows "or instead skip or
+  trash 4-X items/upgrades", and doing that clears the body — same hit, same
+  drop, same gold. What it does *not* do is go on the record. The enemy's own
+  condition was never set, so nothing is banked against the game it happened at:
+  no "beaten in \<game\>" tally, no note (the row carries no Notes button at
+  all), and no player `clause` ticks off it either, since a goal nobody met
+  carried nothing to satisfy. **Never on a boss** — a boss's goal is the whole of
+  what the boss is (§7.1), so `GameLoop2.alternatives_for` refuses one and
+  `claim_enemy_alternative` refuses the claim behind it too.
 
 Two items hand statuses out, the pair of Slay the Spire relics that grant these
 same two stats there: **Vajra** (+1 Strength) and **Oddly Smooth Stone**

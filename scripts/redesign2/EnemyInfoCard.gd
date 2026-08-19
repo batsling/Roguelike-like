@@ -191,6 +191,22 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		goal_txt.custom_minimum_size = Vector2(460, 0)
 		goal_txt.add_theme_font_size_override("font_size", 14)
 		goal_box.add_child(goal_txt)
+		# The WAY OUT, if something burned this body (§13): the goal line above
+		# already carries it, and this repeats it as its own line for the same
+		# reason a bonus gets one — it is a separate decision from the goal, and the
+		# one line on this card that says the goal need not be done at all.
+		for row in GameLoop2.alternatives_for(entry):
+			var asd: StatusData = row["status"]
+			var alt := Label.new()
+			# ↻ rather than ↺: the shipped glyph subsets carry what the source
+			# already uses (see tools/build_glyph_font.py) and this one is in them.
+			alt.text = "↻  Or instead: %s" % asd.alternative_text(
+				StatusData.ENEMY, int(row["stacks"]))
+			alt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			alt.custom_minimum_size = Vector2(460, 0)
+			alt.add_theme_font_size_override("font_size", 12)
+			alt.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.3))
+			goal_box.add_child(alt)
 		# Optional bonus objectives hanging off this enemy (§13) — inside the goal
 		# panel, since they are read at the same moment, but visibly a separate
 		# line because skipping one costs nothing (§13).

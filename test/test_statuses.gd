@@ -67,7 +67,7 @@ func _sideblock(mode: String, condition: String, reward: Array = [],
 
 func test_the_statuses_sheet_loaded() -> void:
 	assert_gt(Data.all_statuses().size(), 0, "data/statuses2.0 loaded at least one status")
-	for id in [&"strength", &"speed", &"dexterity", &"marked"]:
+	for id in [&"strength", &"speed", &"dexterity", &"marked", &"burn"]:
 		assert_not_null(Data.get_status(id), "%s is in the catalog" % id)
 
 func test_each_side_carries_its_own_authored_mode() -> void:
@@ -79,6 +79,11 @@ func test_each_side_carries_its_own_authored_mode() -> void:
 	var marked: StatusData = Data.get_status(&"marked")
 	assert_eq(marked.mode_for(StatusData.PLAYER), &"clause")
 	assert_eq(marked.mode_for(StatusData.ENEMY), &"bonus")
+	# Burn's two halves are the two modes it brought with it: an obligation of the
+	# player's own, and a way out of an enemy's goal.
+	var burn: StatusData = Data.get_status(&"burn")
+	assert_eq(burn.mode_for(StatusData.PLAYER), &"demand")
+	assert_eq(burn.mode_for(StatusData.ENEMY), &"instead")
 
 func test_buff_and_debuff_are_flavour_not_mechanics() -> void:
 	# Kept for the HUD tint and the collection filter; nothing dispatches on it.
@@ -91,6 +96,19 @@ func test_decay_is_authored_per_side() -> void:
 	assert_false(Data.get_status(&"strength").decays(StatusData.PLAYER), "Strength persists")
 	assert_true(Data.get_status(&"marked").decays(StatusData.PLAYER), "Marked ticks down")
 	assert_true(Data.get_status(&"marked").decays(StatusData.ENEMY), "and so does its bonus")
+
+func test_the_decrease_column_is_what_says_a_status_depletes() -> void:
+	# One column, two readers: the sentence the player is shown and the rule the
+	# engine runs. A status that never sheds says so in the same place.
+	var burn: StatusData = Data.get_status(&"burn")
+	assert_eq(burn.decrease, "On Completion", "Burn sheds when you pay it")
+	assert_true(burn.decays(StatusData.PLAYER), "on the player's side")
+	assert_true(burn.decays(StatusData.ENEMY), "and on an enemy's")
+	assert_eq(burn.decrease_note(StatusData.PLAYER),
+		"Loses a stack each game you complete it.", "and says so in one line")
+	var strength: StatusData = Data.get_status(&"strength")
+	assert_eq(strength.decrease, "N/A", "Strength never does")
+	assert_eq(strength.decrease_note(StatusData.PLAYER), "", "so it says nothing")
 
 func test_a_flat_condition_scales_with_the_stack() -> void:
 	var marked: StatusData = Data.get_status(&"marked")
@@ -374,6 +392,255 @@ func test_a_clause_side_cannot_be_claimed_as_a_player_objective() -> void:
 	assert_eq(GameState.status_stacks(&"marked"), 2, "and nothing ticked")
 
 # ---------------------------------------------------------------------------
+# 2b. BURN — the demand and the way out (§13)
+#
+# Burn is the status that broke the mould twice over. Its player side is a
+# `demand`: an obligation that pays nothing for being met and CHARGES for being
+# missed, billed at the end of the game after the enemies have swung. Its enemy
+# side is an `instead`: a second way to clear a body, which the run must not
+# record as a beat, because the enemy's own condition was never set.
+#
+# And it is the first status with a ceiling. The condition gets EASIER per stack
+# (4-X), so `Max: 3` is what stops it paying itself off into nothing.
+# ---------------------------------------------------------------------------
+
+# A boss, for the one place the way out is refused.
+func _boss(goal: String = "Beat the boss") -> GoalEnemyData:
+	var e: GoalEnemyData = _enemy(goal)
+	e.id = &"synthetic_boss"
+	e.display_name = "Synthetic Boss"
+	e.boss = true
+	return e
+
+func test_burns_condition_gets_easier_the_deeper_it_stacks() -> void:
+	# 4-X: three items at one stack, one at three. The whole point of the status —
+	# and why it needs a cap.
+	var burn: StatusData = Data.get_status(&"burn")
+	assert_eq(burn.condition_text(StatusData.PLAYER, 1),
+		"skip or trash 3 items/upgrades")
+	assert_eq(burn.condition_text(StatusData.PLAYER, 3),
+		"skip or trash 1 item/upgrade", "and singular when it is down to one")
+
+func test_a_demand_reads_as_an_obligation_with_a_price() -> void:
+	# Not "If you do this, gain": there is no version of the game where a demand
+	# goes unanswered — the answer is either the thing or the price.
+	var burn: StatusData = Data.get_status(&"burn")
+	assert_eq(burn.objective_text(StatusData.PLAYER, 1),
+		"You must skip or trash 3 items/upgrades, or take 3 Damage")
+	assert_eq(burn.penalty_at(StatusData.PLAYER, 1), "take 3 Damage")
+	assert_eq(burn.reward_at(StatusData.PLAYER, 1), "", "a demand pays nothing")
+
+func test_a_demand_is_a_row_the_player_answers() -> void:
+	GameState.apply_status(&"burn", 1)
+	var rows: Array = GameState.status_objectives()
+	assert_eq(rows.size(), 1, "it stands on the checklist like a standing goal")
+	assert_eq((rows[0]["status"] as StatusData).id, &"burn")
+
+func test_burn_stops_climbing_at_its_authored_cap() -> void:
+	assert_eq(Data.get_status(&"burn").max_stacks, 3, "the sheet's Max: 3")
+	GameState.apply_status(&"burn", 5)
+	assert_eq(GameState.status_stacks(&"burn"), 3, "on the player")
+	var inst: int = _choose_solo(_enemy("Beat it"))
+	GameLoop2.apply_status_to(inst, &"burn", 9)
+	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0])[0]["stacks"], 3,
+		"and on a body")
+
+func test_an_uncapped_status_still_climbs_forever() -> void:
+	assert_eq(Data.get_status(&"strength").max_stacks, 0, "no ceiling authored")
+	GameState.apply_status(&"strength", 7)
+	assert_eq(GameState.status_stacks(&"strength"), 7)
+
+func test_a_capped_status_still_ticks_down_from_over_the_cap() -> void:
+	# A save written before the cap — or a cap the sheet lowered — leaves stacks
+	# above it. They come off one at a time rather than being frozen there.
+	GameState.player_statuses[&"burn"] = 5
+	GameState.remove_status(&"burn", 1)
+	assert_eq(GameState.status_stacks(&"burn"), 4, "down, not clamped up to 3")
+
+func test_an_instead_side_offers_a_second_way_through_the_goal() -> void:
+	_choose_solo(_enemy("Beat it"))
+	GameLoop2.apply_enemy_status(&"burn", 1, "current")
+	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
+		"Beat it or instead skip or trash 3 items/upgrades")
+	assert_eq(GameLoop2.alternatives_for(GameLoop2.arrival()).size(), 1)
+	assert_eq(GameLoop2.required_clauses_for(GameLoop2.arrival()).size(), 0,
+		"it is an alternative to the goal, not another string on it")
+
+func test_the_way_out_comes_after_every_clause_it_is_an_alternative_to() -> void:
+	# It replaces the goal AND its clauses, so it reads last — "or instead" hanging
+	# off the middle of the line would say it replaced only the tail of it.
+	_choose_solo(_enemy("Beat it"))
+	GameLoop2.apply_enemy_status(&"burn", 1, "current")
+	GameState.apply_status(&"marked", 2)
+	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
+		"Beat it and you must get 2 achievements"
+		+ " or instead skip or trash 3 items/upgrades")
+
+func test_a_boss_is_never_offered_the_way_out() -> void:
+	# A boss's goal is the whole of what the boss is (§7.1). A way around it would
+	# be a way around the run's own gates.
+	var inst: int = _choose_solo(_boss("Beat the boss"))
+	GameLoop2.apply_enemy_status(&"burn", 2, "current")
+	assert_eq(GameLoop2.alternatives_for(GameLoop2.arrival()).size(), 0,
+		"no row is offered")
+	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()), "Beat the boss",
+		"and the goal line is the goal")
+	assert_false(GameLoop2.claim_enemy_alternative(inst, &"burn"),
+		"nor can one be claimed anyway")
+
+func test_clearing_a_goal_the_other_way_hits_the_body_like_a_goal_does() -> void:
+	var inst: int = _choose_solo(_enemy("Beat it"))
+	GameLoop2.apply_enemy_status(&"burn", 1, "current")
+	var res: Dictionary = GameLoop2.beat_game(false, [],
+		{"instead": [{"instance": inst, "status": &"burn"}]})
+	assert_eq(res.get("instead_cleared", []), [inst], "reported as its own list")
+	assert_eq(GameLoop2.stack.size(), 0, "and the body is off the board")
+	assert_eq(int(res.get("drops", 0)), 1, "a full defeat: it dropped its item")
+
+func test_clearing_a_goal_the_other_way_sheds_a_stack() -> void:
+	# "On Completion" — the same rule on the enemy's side as on the player's.
+	var e: GoalEnemyData = _enemy("Beat it")
+	e.health = 2                       # survives the hit, so its stacks can be read
+	var inst: int = _choose_solo(e)
+	GameLoop2.apply_enemy_status(&"burn", 2, "current")
+	GameLoop2.beat_game(false, [], {"instead": [{"instance": inst, "status": &"burn"}]})
+	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0])[0]["stacks"], 1,
+		"one stack paid for the way out")
+
+func test_the_way_out_does_not_satisfy_a_player_clause() -> void:
+	# A player clause rides every enemy's GOAL. A goal cleared without its condition
+	# ever being set carried nothing to satisfy, so the clause does not tick.
+	var inst: int = _choose_solo(_enemy("Beat it"))
+	GameLoop2.apply_enemy_status(&"burn", 1, "current")
+	GameState.apply_status(&"marked", 2)
+	var res: Dictionary = GameLoop2.beat_game(false, [],
+		{"instead": [{"instance": inst, "status": &"burn"}]})
+	assert_eq(res.get("statuses_ticked", []), [], "nothing ticked off")
+	assert_eq(GameState.status_stacks(&"marked"), 2, "and the clause is untouched")
+
+func test_a_way_out_cannot_be_claimed_off_a_body_that_is_not_burned() -> void:
+	var inst: int = _choose_solo(_enemy("Beat it"))
+	GameLoop2.apply_enemy_status(&"marked", 1, "current")
+	assert_false(GameLoop2.claim_enemy_alternative(inst, &"burn"), "no Burn on it")
+	assert_false(GameLoop2.claim_enemy_alternative(inst, &"marked"),
+		"and a bonus side is not an alternative")
+	var res: Dictionary = GameLoop2.beat_game(false, [],
+		{"instead": [{"instance": inst, "status": &"burn"}]})
+	assert_eq(res.get("instead_cleared", []), [], "so the claim clears nothing")
+	assert_eq(GameLoop2.stack.size(), 1, "and the body is still standing")
+
+# --- what a missed demand costs -------------------------------------------
+
+func test_a_missed_demand_bites_at_the_end_of_the_game() -> void:
+	GameState.apply_status(&"burn", 1)
+	GameState.shields = 0
+	_choose_solo(_enemy("Beat it"))
+	var before: int = GameState.hp
+	var res: Dictionary = GameLoop2.beat_game(true)
+	assert_eq(before - GameState.hp, 3, "3 Damage, as the sheet says")
+	assert_eq(int(res.get("damage_taken", 0)), 3, "billed to the game's own summary")
+	var bites: Array = res.get("status_penalties", [])
+	assert_eq(bites.size(), 1, "and reported, so the run can say what happened")
+	assert_eq((bites[0] as Dictionary)["status"], &"burn")
+
+func test_answering_a_demand_costs_nothing_and_sheds_a_stack() -> void:
+	GameState.apply_status(&"burn", 2)
+	GameState.shields = 0
+	_choose_solo(_enemy("Beat it"))
+	var before: int = GameState.hp
+	var res: Dictionary = GameLoop2.beat_game(true, [], {"status_goals": [&"burn"]})
+	assert_eq(GameState.hp, before, "nothing to pay")
+	assert_eq(res.get("status_penalties", []), [], "nothing bit")
+	assert_eq(GameState.status_stacks(&"burn"), 1, "and it shed a stack")
+
+func test_the_last_stack_of_an_answered_demand_takes_the_status_with_it() -> void:
+	GameState.apply_status(&"burn", 1)
+	GameState.shields = 0
+	_choose_solo(_enemy("Beat it"))
+	var before: int = GameState.hp
+	GameLoop2.beat_game(true, [], {"status_goals": [&"burn"]})
+	assert_false(GameState.has_status(&"burn"), "paid off and gone")
+	assert_eq(GameState.hp, before, "without a parting bite")
+
+func test_a_burn_bites_every_game_it_goes_unanswered() -> void:
+	# Nothing about missing it sheds a stack: it keeps asking, and keeps charging,
+	# until the game you actually pay it.
+	GameState.apply_status(&"burn", 1)
+	GameState.shields = 0
+	var before: int = GameState.hp
+	for i in range(2):
+		_choose_solo(_enemy("Beat it"))
+		GameLoop2.beat_game(true)
+	assert_eq(before - GameState.hp, 6, "two games, two bites")
+	assert_eq(GameState.status_stacks(&"burn"), 1, "and it is still on you")
+
+func test_the_tries_are_still_standing_when_a_burn_bites() -> void:
+	# It lands at the end of the game but BEFORE the shields go with it (§3), so
+	# what you didn't spend on the game absorbs it.
+	GameState.apply_status(&"burn", 1)
+	GameState.shields = 5
+	_choose_solo(_enemy("Beat it"))
+	var before: int = GameState.hp
+	var res: Dictionary = GameLoop2.beat_game(true)
+	assert_eq(GameState.hp, before, "the tries took it")
+	assert_eq(int(res.get("blocked", 0)), 3, "all three points of it")
+	assert_eq(int(res.get("shields_expired", 0)), 2, "and the rest expired after")
+
+func test_a_burn_does_not_bite_a_run_the_enemies_already_ended() -> void:
+	# The bill comes after the swings, and there is no after for a run the swings
+	# ended.
+	GameState.apply_status(&"burn", 1)
+	GameState.shields = 0
+	_choose_solo(_enemy("Beat it"))
+	GameLoop2.beat_game(false)                 # its enemy walks onto the board
+	_choose_solo(_enemy("Beat another"))
+	for entry in GameLoop2.stack:
+		entry["col"] = 1                       # everything is in the front column
+	GameState.hp = 1
+	var res: Dictionary = GameLoop2.beat_game(false)
+	assert_true(GameLoop2.run_over, "the swings ended it")
+	assert_eq(res.get("status_penalties", []), [], "the burn never got its turn")
+
+func test_a_lethal_burn_ends_the_run() -> void:
+	GameState.apply_status(&"burn", 1)
+	GameState.shields = 0
+	GameState.hp = 2
+	_choose_solo(_enemy("Beat it"))
+	GameLoop2.beat_game(true)
+	assert_eq(GameState.hp, 0, "it took the last of it")
+	assert_true(GameLoop2.run_over, "and the run went with it")
+
+func test_the_take_damage_verb_resolves_on_the_battlefield() -> void:
+	# Which is the whole difference between it and `lose_hp`: the tries get their
+	# say, because "take 3 Damage" has to mean in a status what it means in combat.
+	GameState.shields = 2
+	var before: int = GameState.hp
+	EffectSystem.apply({"type": "take_damage", "value": 3}, {})
+	assert_eq(GameState.shields, 0, "the tries were spent on it")
+	assert_eq(before - GameState.hp, 1, "and only the overflow reached Health")
+
+func test_burn_halves_what_a_body_hits_for() -> void:
+	# Rounded the way every other hit is: a 2-damage body comes down to 1, and a
+	# 1-damage body is already as small as a hit gets.
+	var e: GoalEnemyData = _enemy("Beat it")
+	e.damage = 2
+	_choose_solo(e)
+	GameLoop2.apply_enemy_status(&"burn", 1, "current")
+	assert_eq(GameLoop2.enemy_damage(GameLoop2.arrival()), 1, "halved")
+	GameLoop2.apply_enemy_status(&"burn", 2, "current")
+	assert_eq(GameLoop2.enemy_damage(GameLoop2.arrival()), 1,
+		"and flat: the stacks move the condition, not the halving")
+
+func test_burns_halving_is_felt_by_enemies_only() -> void:
+	# A debuff is normally felt by whoever carries it, but there is no player
+	# attack for a halving to sit on — so the sheet says enemies only, and that
+	# column is what decides it rather than the word "debuff".
+	var burn: StatusData = Data.get_status(&"burn")
+	assert_true(burn.is_debuff())
+	assert_true(burn.combat_applies(StatusData.ENEMY))
+	assert_false(burn.combat_applies(StatusData.PLAYER))
+
+# ---------------------------------------------------------------------------
 # 3. The wiring
 # ---------------------------------------------------------------------------
 
@@ -544,6 +811,60 @@ func test_the_tooltip_names_what_each_side_does() -> void:
 		"Bonus", "the enemy side pays out")
 	assert_string_contains(marked.tooltip_for(StatusData.PLAYER, 2),
 		"Loses a stack", "and a decaying side says so")
+
+func test_the_tooltip_says_what_a_burn_is_on_each_side() -> void:
+	var burn: StatusData = Data.get_status(&"burn")
+	var on_me: String = burn.tooltip_for(StatusData.PLAYER, 1)
+	assert_string_contains(on_me, "Every game", "an obligation, not an offer")
+	assert_string_contains(on_me, "or take 3 Damage", "with its price on the line")
+	assert_string_contains(on_me, "Burn 1/3", "and the ceiling beside the count")
+	assert_string_contains(burn.tooltip_for(StatusData.ENEMY, 1),
+		"can be met instead by", "the enemy side is a way out")
+
+func test_the_report_offers_the_way_out_as_a_row_of_its_own() -> void:
+	# Two rows for one body: the goal, and the alternative to it. They are separate
+	# because the run records them differently — see the test below.
+	var ui = _booted()
+	ui.pick(0)
+	GameLoop2.apply_enemy_status(&"burn", 1, "current")
+	ui._populate_play_panel()
+	assert_eq(ui._instead_checks.size(), 1, "one way-out row, for the burned body")
+	assert_eq(int(ui._instead_checks[0]["instance"]),
+		int(GameLoop2.arrival()["instance"]), "bound to that body")
+	assert_string_contains(String(ui._instead_checks[0]["check"].text),
+		"or instead: skip or trash 3 items/upgrades", "and it says what to do")
+
+func test_clearing_a_goal_the_other_way_banks_no_record_of_the_beat() -> void:
+	# The whole reason the two are separate lists: the enemy's condition was never
+	# set, so nothing about it goes on the record it would have gone on.
+	var ui = _booted()
+	ui.pick(0)
+	var game: GameData = ui._chosen["game"]
+	var enemy: GoalEnemyData = GameLoop2.arrival()["enemy"]
+	GameLoop2.apply_enemy_status(&"burn", 1, "current")
+	ui._populate_play_panel()
+	# GameStats is a LIFETIME store that outlives the run, so the question is what
+	# this report added rather than what the tally reads.
+	var before: int = GameStats.enemy_beaten_count(game.id, enemy.id)
+	ui._instead_checks[0]["check"].button_pressed = true
+	ui.report(true)
+	assert_eq(GameStats.enemy_beaten_count(game.id, enemy.id), before,
+		"no 'beaten in <game>' — its goal was never met")
+
+func test_the_way_out_row_offers_no_notes_button() -> void:
+	# A note is how you beat this enemy AT this game, and there is nothing to write
+	# about a goal you didn't do. `_verify_row` grows the button only when it is
+	# handed the enemy, so this row is built without one.
+	var ui = _booted()
+	ui.pick(0)
+	GameLoop2.apply_enemy_status(&"burn", 1, "current")
+	ui._populate_play_panel()
+	var row: Node = ui._instead_checks[0]["check"].get_parent()
+	var buttons: int = 0
+	for child in row.get_children():
+		if child is Button and not (child is CheckBox):
+			buttons += 1
+	assert_eq(buttons, 0, "no Notes button on the way out")
 
 func test_an_enemys_statuses_draw_under_its_box() -> void:
 	var ui = _booted()

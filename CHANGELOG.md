@@ -11,6 +11,48 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Burn: a status that charges you, and a goal you can get out of.**
+
+  Every status so far was a challenge you opted into and were paid for. **Burn**
+  (Brutal Orchestra) is a debt, and it took two new modes to say so.
+
+  On the player it is a **`demand`** — "You must skip or trash 4-X
+  items/upgrades, or take 3 Damage". It is a row on every report step like a
+  standing goal, and the only row whose *unticked* state does something: the 3
+  Damage lands at the **end of the game, after the enemies have swung**, through
+  the same resolver their swings use, so the tries that game granted absorb it
+  before Health does. Answering it sheds a stack; missing it does not, so it
+  keeps asking. A run the enemies already ended is never billed — there is no
+  after for a game that killed you.
+
+  On an enemy it is an **`instead`** — that body's goal grows "or instead skip or
+  trash 4-X items/upgrades", and doing that clears it: same hit, same drop, same
+  gold. What it does **not** do is go on the record. The enemy's condition was
+  never set, so nothing is banked against the game it happened at (no "beaten in
+  \<game\>", no note — the row deliberately carries no Notes button), and no
+  player `clause` ticks off it either, since a goal nobody met carried nothing to
+  satisfy. The two are separate lists through the whole report for exactly that
+  reason. **Never on a boss:** a boss's goal is the whole of what the boss is.
+
+  **It runs backwards, which is the design.** 4-X is 3 items at one stack and 1
+  at three, so Burn gets *easier* the deeper it stacks — a fresh one you cannot
+  pay bites for 3, and biting is what stacks it until you can. `Max: 3` is the
+  floor under that, and the sheet's **`Stackable`** column learned to carry a
+  ceiling for it, enforced on the way up for the player and for a body alike.
+
+  Two sheet columns did real work here. **`Decrease`** ("N/A", "On Completion")
+  is now the one place a status says how it depletes — the generator reads it as
+  the truth and checks the older per-cell `decay` flags against it, so a status
+  cannot say one thing in its column and another in a cell. And **`take_damage
+  N`** joins the reward DSL as the counterpart to `lose_hp`: damage that resolves
+  on the battlefield rather than a bill that comes straight off Health.
+
+  In combat Burn **halves what the body deals** — a multiplier, so it is flat at
+  every stack, and rounded the way every other hit is (2 and 3 come down to 1; a
+  1-damage body is already as small as a hit gets). Nothing hands Burn out yet,
+  the same as Marked: the vocabulary is there for a location, an item or an event
+  to reach for.
+
 - **Four items, two games, and the difference between a grant you keep and one
   you are renting.**
 
