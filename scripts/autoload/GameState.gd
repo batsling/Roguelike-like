@@ -356,7 +356,7 @@ var action_right_card_id: StringName = &""
 var _action_upgraded_cache: Dictionary = {}
 
 # Action-mode item slots, assigned on the equipment screen:
-#   * action_active_item_id  — one USABLE consumable (pill), popped with Q.
+#   * action_active_item_id  — one USABLE consumable item, popped with Q.
 #                              Cleared when the item is spent.
 #   * action_charged_item_id — one CHARGED active, fired with E. While slotted it
 #                              is the only charged item that gains a charge per
@@ -2059,11 +2059,15 @@ func clear_overworld_context(scene = null) -> void:
 	if scene == null or overworld_scene == scene:
 		overworld_scene = null
 
-# Pills may only be used in combat or while an event roll is open.
+# A USABLE item may only be fired in combat or while an event roll is open.
+# ("Pill" used to be this file's word for a USABLE consumable item, from the
+# combat era. It means the §4.3 loot consumable now — a different thing entirely,
+# which is not an item and is not fired through here — so the old jargon is gone
+# from the two comments that still carried it.)
 func can_use_items() -> bool:
 	return combat_scene != null or event_active
 
-# Whether `item` can be fired right now. USABLE pills need a combat/event
+# Whether `item` can be fired right now. USABLE items need a combat/event
 # context; CHARGED actives only need a full bar and can be popped from any
 # screen (combat, backpack, a reward screen).
 func can_fire_item(item: ItemData) -> bool:
@@ -2073,8 +2077,8 @@ func can_fire_item(item: ItemData) -> bool:
 		return item.is_fully_charged()
 	if item.kind == ItemData.ItemKind.USABLE:
 		# Overworld actives (Winged Boots) fire only on the map — never in combat,
-		# where their effect would no-op and waste a use. Ordinary pills are the
-		# inverse: combat/event only.
+		# where their effect would no-op and waste a use. Ordinary USABLE items are
+		# the inverse: combat/event only.
 		if item.overworld_usable:
 			return overworld_scene != null
 		return can_use_items()

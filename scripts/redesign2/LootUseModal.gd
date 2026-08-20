@@ -102,6 +102,11 @@ func _show_intro() -> void:
 	read_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	read_btn.pressed.connect(_on_read)
 	_body.add_child(read_btn)
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	cancel.pressed.connect(_finish)
+	_body.add_child(cancel)
 
 # What Echo Chamber is about to add, named rather than left as a surprise: the
 # relic changes what SPENDING one piece of loot means, and a player who cannot see
@@ -117,11 +122,6 @@ func _echo_note() -> String:
 	for i in range(memory.size() - 1, maxi(0, memory.size() - depth) - 1, -1):
 		names.append(LootSystem.display_name(memory[i]))
 	return "Echo Chamber will also use: %s." % ", ".join(PackedStringArray(names))
-	var cancel := Button.new()
-	cancel.text = "Cancel"
-	cancel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	cancel.pressed.connect(_finish)
-	_body.add_child(cancel)
 
 func _on_read() -> void:
 	# Through LootSystem rather than straight into ScrollSystem: consuming the

@@ -20,11 +20,11 @@ the honour system.
 - **Two scenes only.** `scenes/menu/MainMenu.tscn` boots, `scenes/redesign2/Overworld2.tscn`
   *is* the game. Every screen is built in code, so `.tscn` files hold a root node
   and a script and nothing else — don't go looking for UI in them.
-- **15 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
+- **22 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
   that matter most: `GameState` (run-persistent state), `Data` (loads every
   `.tres` and serves it by id), `GameLoop2` (the run loop — `Overworld2` is a view
   over it), `EffectSystem` + `TriggerBus` (effect dispatch and the signal hub).
-  README's "Autoload singletons" table covers all 15.
+  README's "Autoload singletons" table covers all 22.
 - **Content is data, never code.** Everything lives as typed `.tres` under `data/`,
   with schemas in `scripts/resources/`. Gameplay code asks `Data` for content
   rather than hardcoding it.
@@ -37,7 +37,7 @@ the honour system.
 ## Working here
 
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 29 scripts, ~1240 tests, ~5 min
+godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 31 scripts, ~1400 tests, ~5 min
 ```
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by
@@ -93,7 +93,13 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 29 scripts, ~1240 t
 - **The repo tracks source only.** `.godot/`, `*.import`, `*.uid` and
   `export_presets.cfg` are gitignored and regenerate. They show up in local file
   listings and are not part of the project.
-- Art filenames are **PascalCase**, matched to content ids by convention.
+- Art filenames are **PascalCase**, matched to content ids by convention. **Pill
+  capsules are the exception**: `images2.0/pills/` is matched to pills by the RUN
+  (`PillSystem.COLORS` deals 10 of the 13 per run and leaves 3 meaning nothing),
+  so a new colour has to be added to that const list as well as to the folder, in
+  both `<Colour>.png` and `<Colour>Horse.png`. `test_pill_system.gd` checks the
+  list against the folder in one direction only — art that ships without being
+  listed is art no run can ever show.
 - **A new UI glyph needs `tools/build_glyph_font.py` re-run.** The UI is drawn out
   of ~70 symbols (⚔ ☠ ⚡ 🏆 …) and Godot's built-in font has two of them; the rest
   are shipped as subsetted Noto fonts in `fonts/`, chained onto the theme font by
