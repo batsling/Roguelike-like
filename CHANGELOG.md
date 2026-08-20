@@ -11,6 +11,44 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The pack strip moved out of the overworld, and a test stopped believing a
+  playback is always one beat long.**
+
+  `Overworld2.gd` had reached 5573 lines, more than double the next-biggest file,
+  and the last item in [`docs/performance-backlog.md`](docs/performance-backlog.md)
+  is splitting it. That file listed three candidate seams by guess. They are
+  measured now — on **genuinely shared state**, the vars a region touches that are
+  also touched from outside it — and the cleanest seam in the file was not on the
+  list at all.
+
+  **`PackStrip.gd`** is the first cut: the pack strip's ~250 lines of token,
+  battery, counter-badge and hover building, which touched exactly `_items_box`
+  and one read of `_phase`. The page still owns the container, still decides when
+  to redraw, and still owns the reading card a token opens — `ItemInfoCard` is a
+  page-level modal, not strip furniture. Everything a token does on click goes
+  back through one of the page's public verbs (`read_scroll`, `use_item`,
+  `open_item_card`), and `_refresh_items` / `item_hover` stayed put as one-line
+  forwards, so not one call site moved — in the page or in the 4476-line test
+  file that reads its privates off the instance.
+
+  Two things worth knowing before the next cut, both written down in the backlog:
+  **type the back-reference as `Node`, not `Overworld2`** (two `class_name`s that
+  name each other are a cyclic reference Godot resolves badly), and **pass the
+  phase in rather than reading it out** — `rebuild(reporting: bool)` is what left
+  the strip depending on nothing about the page except three verbs.
+
+  **And the test that only passed at one turn a game.**
+  `test_the_offering_comes_back_while_the_board_still_plays` waited a fixed 1.2s
+  for the board's resolve playback and then asserted it had finished. A playback
+  is one beat per TURN (§7.4) at `FX_ATTACK_TIME + FX_SLIDE_TIME` = 0.89s, and
+  the turn count is the run's distance band — 1 turn beyond 5 hops from the
+  Amulet, 2 inside that, 3 inside 3. So the same report runs 0.89s, 1.78s or
+  2.67s depending on where the random graph put the start, and the 1.2s await
+  covered the first case only. It failed once here, passed on the rerun, and
+  passed on the clean tree, which is exactly how this class of bug reads. It
+  waits on `_resolving` itself now, with a 5.0s ceiling over the 2.67s worst
+  case. Third one of these; the rule in `CLAUDE.md` keeps earning itself.
+
 - **The ground answers for itself, a bomb is aimed at a square, and the tier
   list fits on the screen.**
 

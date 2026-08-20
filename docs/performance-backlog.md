@@ -42,30 +42,66 @@ checks at every size the UI uses. Three separate traps in one two-line change.
 
 ---
 
-## 1. `Overworld2.gd` is 5309 lines
+## 1. `Overworld2.gd` is 5335 lines
 
-More than double the next-biggest file (`AtlasView.gd`, 2764). It currently holds
-the run-loop view, the report checklist, the pinned header, the map plumbing, the
-shop and machine mounting, the charge chips, the offering cards, and the
-save/load view state.
+More than double the next-biggest file (`AtlasView.gd`, 2764). It holds the
+run-loop view, the report checklist, the pinned header, the map plumbing, the
+shop and machine mounting, the offering cards, and the save/load view state.
 
-**Not urgent, and not a mechanical job.** The obvious seams, roughly in order of
-how cleanly they come out:
+**Not urgent, and not a mechanical job.** This file used to guess at the seams;
+they are measured now. The number that matters is **genuinely shared state** —
+vars the region touches that are also touched from outside it, which is the real
+cost of cutting there. Half of what looks shared is state that merely happens to
+be *declared* at the top of the file and is used nowhere but the one region, so
+it moves for free.
 
-- **The header** (`_mount_header`, `_fit_page_under_header`, `_publish_header_strip`,
-  `_build_health_chip`, `_build_gold_chip`, `_refresh_route_strip`, `HEADER_LAYER`)
-  — self-contained, talks to the page only through `ModalScaffold.reserved_top`
-  and the scroll's `offset_top`. ~250 lines.
-- **The report checklist** (`_populate_play_panel`, `_verify_row`,
-  `_add_bonus_rows`, `_add_event_goal_rows`, `_ticked_*`, `_reset_checklist_state`)
-  — one input (the board's bodies plus the standing goals), one output (the ticked
-  instances). ~400 lines.
-- **The offering** (`_make_choice_card`, `_make_start_card`, `_render_choices`,
-  `_render_start_choices`, `_show_preview`, `_hover_line`) — ~350 lines.
+| seam | lines | genuinely shared state | test refs |
+|---|---|---|---|
+| ~~item strip + charge chips~~ | ~~293~~ | ~~`_items_box`, `_phase`~~ | **done — `PackStrip.gd`** |
+| header proper | 79 | `_scroll`, `_toasts` | 11 |
+| kill-drops + run-over | 230 | `_banner`, `_drop_queue`, `_rng`, `_resolving` | 32 |
+| offering cards + preview | 558 | `_choices`, `_chosen`, `_start_options`, `_phase` | 24 |
+| **report checklist** | **776** | **`_board`, `_chosen`, `_rng`** | 57 |
+| save/restore view state | 251 | *16 shared vars* | — |
+| `_build_ui` | 409 | *32 vars, 16 funcs* | — |
 
-Each wants to keep going through the overworld's public verbs (`pick`,
-`report`, `bash_choice`, …) rather than reaching into `GameLoop2`, which is what
-makes the current tests keep working through the move.
+**Next, and the big one: the report checklist** (`_populate_play_panel`,
+`_populate_standing_checklist`, `_verify_row`, `_add_bonus_rows`,
+`_add_event_goal_rows`, `_bind_row_to_body`, `_light_bodies`, `_ticked_*`,
+`_reset_checklist_state`). This file used to estimate 400 lines; it is 776 once
+the standing checklist and the row↔body binding come with it, and those belong to
+the same mechanic. Three real inputs — the board, the chosen game, the rng — and
+its seven state arrays (`_fulfil_checks`, `_bonus_checks`, `_instead_checks`, …)
+have 1–3 references outside the region each. Best lines-out-per-coupling left.
+
+**Two of these should NOT be split.** `capture_view_state` / `restore_view_state`
+touches 16 shared vars because touching everything *is* its job, and `_build_ui`
+is the assembler — extracting it moves the tangle behind a node dictionary and
+buys nothing.
+
+**The constraint that shapes all of it.** `test/test_overworld2.gd` is 4476 lines
+and reads privates straight off the instance — `_ui._verify_box` ×17,
+`_ui._items_box` ×16, `_ui._drop_queue` ×16, `_ui._fulfil_checks` ×8. The
+extracted piece therefore **cannot take those names with it**: they stay declared
+on `Overworld2`, with the page owning the container and the extracted class
+filling it. Each wants to keep going through the overworld's public verbs
+(`pick`, `report`, `bash_choice`, …) rather than reaching into `GameLoop2`, which
+is what makes the current tests keep working through the move.
+
+**What `PackStrip` established**, for the next one to copy:
+
+- A `RefCounted` holding the page, constructed in `_build_ui` beside the
+  container it fills. The repo's other extraction, `AtlasLayoutBuilder`, is
+  static-only because layout is pure computation; a UI builder needs the page
+  back, for the verbs its widgets call.
+- **Type the back-reference as `Node`, not `Overworld2`.** Overworld2 names
+  `PackStrip`, and two `class_name`s that name each other are a cyclic reference
+  Godot resolves badly.
+- **Pass phase in, don't read it out.** `rebuild(reporting: bool)` rather than
+  reaching for `_phase`, which is what let the strip depend on nothing about the
+  page except three public verbs.
+- Leave the old entry points as one-line forwards (`_refresh_items`,
+  `item_hover`). Zero call-site churn, in the page or in the tests.
 
 ---
 
