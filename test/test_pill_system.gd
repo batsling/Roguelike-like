@@ -534,6 +534,16 @@ func test_loot_names_and_art_come_back_for_both_kinds() -> void:
 	assert_eq(LootSystem.glyph(_entry(&"luck_up")), "💊")
 	assert_not_null(LootSystem.art_texture(_entry(&"luck_up")))
 
+func test_the_dev_panel_grants_a_pill_without_giving_the_answer_away() -> void:
+	# A debug grant that identified what it handed over could not be used to test
+	# the finding out, which is the only thing a pill does.
+	DevTools._grant_horse = true
+	GameState.add_pill_loot(&"bad_trip", DevTools._grant_horse)
+	assert_eq(GameState.loot_pills().size(), 1)
+	assert_true(bool(GameState.loot_pills()[0].get("horse", false)), "at the dose asked for")
+	assert_false(PillSystem.is_identified(&"bad_trip"), "and still a mystery")
+	DevTools._grant_horse = false
+
 # --- Save / load -----------------------------------------------------------
 
 func test_the_alphabet_and_what_is_known_survive_a_save() -> void:
