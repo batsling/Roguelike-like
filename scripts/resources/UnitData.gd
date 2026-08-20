@@ -96,6 +96,31 @@ func tooltip_for(health_left: int = -1) -> String:
 		lines.append(interaction_line(String(pairing)))
 	return "\n".join(lines)
 
+# A unit is the PLAYER'S, so it reads in the steel blue the hero's own gear does
+# rather than in a threat colour — the board's reds and oranges all mean "this is
+# coming for you", and a Landmine is the opposite of that.
+const ACCENT := Color(0.62, 0.78, 0.95)
+
+# THE HOVER CARD for this unit on the board — the twin of TileEffectData.hover_card,
+# so a square with something standing on it and a square with something done to it
+# answer the mouse in the same shape. `health_left` is the standing unit's own.
+func hover_card(health_left: int = -1) -> Dictionary:
+	var hp: int = health_left if health_left >= 0 else health
+	var lines: Array = []
+	if description != "":
+		lines.append(description)
+	for pairing in interactions.keys():
+		lines.append(interaction_line(String(pairing)))
+	return {
+		"title": display_name,
+		"accent": ACCENT,
+		"art": image,
+		"subtitle": "Unit  ·  yours, standing on the ground",
+		"pips": [{"text": "❤ %d" % hp, "good": true}],
+		"lines": lines,
+		"note": "Nothing is blocked by it — an enemy walks in and it reacts.",
+	}
+
 # One authored interaction, in words — the mirror of TileEffectData.interaction_line,
 # written from the unit's end of the same pairing.
 func interaction_line(pairing: String) -> String:

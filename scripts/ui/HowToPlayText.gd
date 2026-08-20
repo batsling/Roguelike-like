@@ -390,9 +390,11 @@ static func _ch_board() -> Dictionary:
 				+ "number, not the column it is standing in."),
 			_h("The two things you can do to the board"),
 			_kv("✸ Bomb", "1 damage. Kills a normal enemy, does nothing to a boss "
-				+ "except spend the charge. Arm the verb, then click the body you "
-				+ "want it on — the bodies it could land on light up, and the "
-				+ "CLICK is what spends the charge."),
+				+ "except spend the charge. Arm the verb, then click the SQUARE "
+				+ "you want it on — every square lights up, bodies and bare "
+				+ "ground alike, and the CLICK is what spends the charge. Bare "
+				+ "ground is worth bombing once the pack has made a blast leave "
+				+ "something behind or reach past its own square."),
 			_kv("⇤ Push", "Shove a follower one cell. Arm the verb, click the "
 				+ "body, then press one of the arrows that appear. Nothing is "
 				+ "spent until you press an arrow."),
@@ -681,7 +683,8 @@ static func _ch_pack() -> Dictionary:
 				+ "reacts. Wherever an item or a scroll names one, hover the chip "
 				+ "under its description to read it."),
 			_kv("Fire (a tile effect)", "Anything that walks into it, or starts its "
-				+ "turn standing in it, takes +1 Burn. A big body pays for every "
+				+ "turn standing in it, takes +1 Burn — and so does anything the "
+				+ "fire is lit UNDER, on the spot. A big body pays for every "
 				+ "burning square it covers. It burns for 3 GAMES — not turns — "
 				+ "wherever it is lit. Scroll of Fire lights the whole front "
 				+ "column, Red Candle lights one square you pick in columns 2-3, "

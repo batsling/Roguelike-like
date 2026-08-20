@@ -168,7 +168,7 @@ mean.
 | Item | Effect |
 |---|---|
 | **Key** | Unlock a new game path (blocked edge / unconnected "wild" game). *(No 2.0 content grants keys yet — see open questions.)* |
-| **Bomb** | Deal 1 damage to an enemy. Normal enemies have **Health 1** (`enemies2.0`), so one bomb removes one (no item drops). A **boss is a legal target but takes no bomb damage** (§7.1) — the charge only buys what an item hangs off the throw. Three items change what a bomb does: **Brimstone Bombs** widen the blast to the target's whole row *and* column, **Sticky Bombs** stun whatever the blast fails to destroy (in practice, bosses), and **Blood Bombs** pay +1 Health per bomb via the `bomb_used` trigger. |
+| **Bomb** | Deal 1 damage to an enemy. Normal enemies have **Health 1** (`enemies2.0`), so one bomb removes one (no item drops). A **boss is a legal target but takes no bomb damage** (§7.1) — the charge only buys what an item hangs off the throw. Three items change what a bomb does: **Brimstone Bombs** widen the blast to the target's whole row *and* column, **Sticky Bombs** stun whatever the blast fails to destroy (in practice, bosses), and **Blood Bombs** pay +1 Health per bomb via the `bomb_used` trigger. **A bomb is aimed at a SQUARE, not only at a body** (`GameLoop2.bomb_cell`): every cell of the board lights up when the verb is armed, and an empty one is a legal target — which is how **Hot Bombs** lays fire in front of the stack and how **Brimstone** is aimed down a lane rather than off whoever happens to be standing in it. A click on an occupied square still routes through the body-aimed path (`GameLoop2.bomb`), so the target reaches the blast, the boss rule and the `bomb_used` trigger unchanged. |
 | **Scroll** | Consumables with an identity that starts **unidentified** and a **Preference** (Positive / Negative / Neutral). See §4.1. |
 
 Verbs and consumables come from **enemy drops, item effects, and character
@@ -1652,6 +1652,17 @@ it" and "stayed in it", which is what a tile effect has to be able to say to be
 worth putting down: a cell that only bit on entry would be free to park on, and
 one that only bit at turn start would be free to walk through.
 
+**A tile effect laid UNDER a body fires `enemy_enters` on the spot**
+(`GameLoop2._fire_tile_on_standing`). The ground arriving under somebody is as
+much a meeting as somebody walking into the ground, and it is billed the same:
+one stack per cell of the footprint the tile covers, immediately. It used to wait
+for that body's next turn, which made a Red Candle aimed at an occupied square
+read as a click that had missed. Only the **tile's** list runs, never the cell's
+unit's — the body did not step on anything, so a mine it was already standing on
+has no more reason to go off than it had a moment before. A tile that annihilates
+on arrival (fire onto a mine) bills nobody, because the check runs after the
+interaction and there is no longer a tile there.
+
 | Effect | What it does |
 |---|---|
 | `apply_status <status> <n>` | puts a status on the body that triggered it |
@@ -1767,6 +1778,14 @@ an item that **shapes** the board rather than one that seals it.
   reads whatever is on a square, and tree order does the precedence for free: a
   cell with a body on it answers with the body's card, bare ground answers with
   the ground.
+- **What the ground says** — the same `HoverCard` an enemy, an item and a status
+  carry (`TileEffectData.hover_card` / `UnitData.hover_card`, assembled per cell by
+  `BattlefieldView.ground_hover`), not Godot's grey system tooltip. The tile's
+  **clock is a pip** — `⏱ 2 games left` — rather than a sentence, because how long
+  a burning square has left is the one thing about it that changes between one
+  look and the next. A square carrying **both** a unit and a tile answers with ONE
+  card: the unit heads it, the tile joins as a pip and a line, because "what is on
+  this square" is one question.
 
 ### 17.6 Keywords — the dropdown a mention carries
 

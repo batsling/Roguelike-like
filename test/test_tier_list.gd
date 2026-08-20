@@ -181,3 +181,60 @@ func test_dropping_a_game_onto_a_tile_inserts_it_before_that_tile() -> void:
 	_screen.handle_drop(_game_b.id, 0, 0)
 	assert_eq(TierList.tiers[0], [String(_game_b.id), String(_game_a.id)],
 		"reordering within a row still works")
+
+# --- the board fits the window ----------------------------------------------
+#
+# The point of a tier list is the COMPARISON between its rows, and a row you have
+# to scroll to is a row you cannot compare with the one at the top. So the tiles
+# shrink to fit whatever the window has instead of running off the bottom of it.
+
+# Put `count` game ids on the board WITHOUT going through TierList.place: place
+# saves the store to disk and rebuilds the screen once per game, and this is about
+# what the board does with a full one, not about a hundred round trips to get there.
+func _stock_board(count: int, real: bool = true) -> void:
+	var games: Array = Data.all_games()
+	for i in count:
+		var id: String = String(games[i].id) if real and i < games.size() \
+			else "placeholder_%d" % i
+		(TierList.tiers[i % TierList.tier_names.size()] as Array).append(id)
+
+# The screen fits itself to the space it was GIVEN, which only exists once the
+# shell has been laid out — so a test waits for that, refreshes against the real
+# size, and waits again for the rows it just rebuilt to be laid out in turn.
+# Without the explicit refresh the assertion races the resize-driven re-fit.
+func _settle() -> void:
+	await get_tree().process_frame
+	_screen._refresh()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+func test_a_full_board_still_fits_the_window_it_opens_in() -> void:
+	_stock_board(60)
+	await _settle()
+	var space: float = _screen._scroll.size.y
+	assert_gt(space, 0.0, "the board has been laid out")
+	assert_lte(_screen._rows_box.size.y, space + 1.0,
+		"sixty games are drawn inside the space the board was given, not below it")
+	assert_lt(_screen._scale, 1.0, "which took shrinking the tiles")
+
+func test_a_board_with_room_to_spare_is_not_shrunk() -> void:
+	# Two games need no shrinking, and shrinking them anyway would make the common
+	# case — a run or two in — a screen of thumbnails for no reason.
+	await _settle()
+	assert_eq(_screen._scale, 1.0, "a nearly-empty board is drawn full size")
+
+func test_the_fit_stops_shrinking_at_the_legibility_floor() -> void:
+	# Past a point a cover is a smudge, and the screen scrolls rather than going on
+	# shrinking. This is the ONE case the scroll is still there for. Asked of the
+	# fit itself rather than of a built board: eight hundred tiles is a lot of cover
+	# art to decode to find out what a division already knows.
+	_stock_board(800, false)
+	await get_tree().process_frame
+	assert_eq(_screen._fit_scale(), TierListScreen.MIN_SCALE,
+		"a board that big lands on the floor rather than below it")
+
+func test_a_taller_board_is_fitted_at_a_smaller_scale() -> void:
+	await get_tree().process_frame
+	var width: float = _screen._scroll.size.x
+	assert_gt(_screen._board_height(width, 1.0), _screen._board_height(width, 0.5),
+		"the fit's own measure shrinks with the scale it is asked about")

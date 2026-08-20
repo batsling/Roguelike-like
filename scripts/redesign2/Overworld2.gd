@@ -2325,6 +2325,17 @@ func bomb_follower(instance: int) -> void:
 	if GameLoop2.bomb(instance):
 		_refresh()
 
+# A bomb spent on GROUND rather than on a body (§17). The board hands back the
+# square; the loop spends the charge and sets the blast off there, which is worth
+# doing on an empty cell whenever the pack has made a bomb leave something behind
+# (Hot Bombs) or reach past its own square (Brimstone).
+func bomb_cell(cell: Vector2i) -> void:
+	if not GameLoop2.bomb_cell(cell):
+		return
+	GameLog.add("A bomb goes off at column %d, row %d." % [cell.x, cell.y + 1],
+		Color(1.0, 0.72, 0.4))
+	_refresh()
+
 # --- enemy info card ------------------------------------------------------
 
 # The board reports a clicked enemy; the card is opened HERE because it dims the
@@ -5142,6 +5153,7 @@ func _build_ui() -> void:
 	_board = BattlefieldView.new()
 	_board.push_requested.connect(push_follower)
 	_board.bomb_requested.connect(bomb_follower)
+	_board.bomb_cell_requested.connect(bomb_cell)
 	_board.item_aimed.connect(_on_item_aimed)
 	_board.item_aimed_at_cell.connect(_on_item_aimed_at_cell)
 	_board.enemy_inspected.connect(_show_enemy_info)

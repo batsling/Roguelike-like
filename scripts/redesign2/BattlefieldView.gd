@@ -33,6 +33,10 @@ signal item_aimed(item: ItemData, instance: int)
 # two are answered differently at the far end: a body is an instance handle the
 # effect looks up, a cell is ground that may have nothing on it at all.
 signal item_aimed_at_cell(item: ItemData, cell: Vector2i)
+# A Bomb was aimed at a CELL rather than at a body. Its own signal for the same
+# reason `item_aimed_at_cell` is one: the far end spends the charge on ground
+# (GameLoop2.bomb_cell) instead of on an instance handle.
+signal bomb_cell_requested(cell: Vector2i)
 # An enemy was clicked: the host opens the inspect card for it.
 signal enemy_inspected(entry: Dictionary, col: int)
 # The mouse moved onto (or off) a body. The host lights the checklist row that
@@ -781,7 +785,12 @@ func refresh_toolbar() -> void:
 	elif GameState.bombs <= 0:
 		bomb_btn.tooltip_text = "No Bomb charges left."
 	else:
-		bomb_btn.tooltip_text = GameLoop2.bomb_hint(e)
+		# A bomb goes off on a SQUARE, whether or not anything is standing on it, so
+		# the promise names the ground when nothing is selected rather than telling
+		# the player to select an enemy first (which is no longer true).
+		bomb_btn.tooltip_text = ("Blow up any tile on the board — press this, then "
+			+ "click the square. A body standing there takes 1 damage.") if e == null \
+			else GameLoop2.bomb_hint(e)
 
 # The stack entry for an instance, or {} when it's gone / nothing is selected.
 func _stack_entry(instance: int) -> Dictionary:
@@ -1104,23 +1113,42 @@ func _unit_node(cell: Vector2i, unit: UnitData) -> Control:
 	return holder
 
 # The invisible hover region that reads a furnished cell. One per cell, carrying
-# the unit's words and the tile's — both, when a cell has both, because "what is
-# on this square" is one question.
+# the same HoverCard an enemy, an item and a status get — the ground used to
+# answer with Godot's grey system tooltip, which is the one thing on this board
+# that looked like it belonged to another program.
+#
+# A HoverBox rather than a bare Control because the card only appears on a class
+# that defines `_make_custom_tooltip` (see HoverCard's header), and a VBoxContainer
+# with no children draws nothing, which is what an invisible hot spot has to do.
 func _ground_hover(cell: Vector2i) -> Control:
-	var hot := Control.new()
+	var hot := HoverBox.new()
 	hot.mouse_filter = Control.MOUSE_FILTER_STOP
 	hot.position = _cell_pos(cell.y, cell.x)
 	hot.size = Vector2(_cell, _cell)
-	var lines: Array = []
-	var unit: UnitData = GameLoop2.unit_at(cell)
-	if unit != null:
-		var held = GameLoop2.units.get(cell, {})
-		lines.append(unit.tooltip_for(int(held.get("health", unit.health))))
-	var tile: TileEffectData = GameLoop2.tile_at(cell)
-	if tile != null:
-		lines.append(tile.tooltip_for(GameLoop2.tile_games_left(cell)))
-	hot.tooltip_text = "\n\n".join(lines)
+	HoverCard.attach(hot, ground_hover(cell))
 	return hot
+
+# The hover model for whatever is on `cell`. Public, so a test can ask what a
+# square would say without going near the mouse.
+#
+# ONE CARD for a square with both a unit and a tile effect on it: "what is on this
+# square" is one question and two cards stacked on one cell would be two answers
+# to it. The UNIT heads the card — it is the thing standing there, and the thing
+# whose Health is about to matter — and the tile joins it as a pip and a line, the
+# same way a status rides an enemy's card rather than opening one of its own.
+func ground_hover(cell: Vector2i) -> Dictionary:
+	var tile: TileEffectData = GameLoop2.tile_at(cell)
+	var unit: UnitData = GameLoop2.unit_at(cell)
+	if unit == null:
+		return tile.hover_card(GameLoop2.tile_games_left(cell)) if tile != null else {}
+	var held = GameLoop2.units.get(cell, {})
+	var card: Dictionary = unit.hover_card(int(held.get("health", unit.health)))
+	if tile != null:
+		var ground: Dictionary = tile.hover_card(GameLoop2.tile_games_left(cell))
+		card["pips"] = (card.get("pips", []) as Array) + (ground.get("pips", []) as Array)
+		card["lines"] = (card.get("lines", []) as Array) + [
+			"Standing on %s." % tile.display_name] + (ground.get("lines", []) as Array)
+	return card
 
 # What an armed verb's legal targets are ringed in. Deliberately the ACCENT the
 # selection already uses rather than a new colour: "the verb is pointed at this"
@@ -1241,40 +1269,94 @@ func click_enemy(instance: int, entry: Dictionary, col: int) -> void:
 
 # --- aiming at the ground (§17) --------------------------------------------
 
-# The cell picker a TILE-AIMED item arms (Red Candle). Buttons over every legal
-# square, in the topmost layer — the same place and for the same reason the push
-# arrows live there: while a verb is armed, the things it can be pointed at should
-# be the only things on the board that take a press.
+# EVERY SQUARE AN ARMED VERB COULD BE POINTED AT, as one list. Two verbs aim at
+# ground: a tile-aimed item inside the columns it authored (Red Candle), and the
+# BOMB, which can be spent on any square of the board — an empty one included,
+# because with Hot Bombs that is how fire gets laid in front of the stack and with
+# Brimstone it is how a cross is aimed down a lane rather than off whoever happens
+# to be standing in one.
 #
-# Nothing is drawn unless such an item is armed, so the board is unchanged the
-# rest of the time.
+# Empty when no ground-aiming verb is armed, which is what the picker draws
+# against.
+func target_cells() -> Array:
+	if bomb_mode:
+		return GameLoop2.target_cells("all")
+	return aim_cells(aiming_item)
+
+# The cell picker a ground-aiming verb arms. Buttons over every legal square, in
+# the topmost layer — the same place and for the same reason the push arrows live
+# there: while a verb is armed, the things it can be pointed at should be the only
+# things on the board that take a press.
+#
+# THE FILLS ARE TRANSLUCENT (alpha, not a lerp toward the background) and the
+# buttons are NOT `flat`. Both matter: `flat` makes a Button skip its stylebox
+# entirely, so the picker used to be eight invisible squares — legal, clickable,
+# and completely unmarked — and an opaque wash would hide the body standing on the
+# square the bomb is about to go off on.
+#
+# Nothing is drawn unless such a verb is armed, so the board is unchanged the rest
+# of the time.
 func _refresh_aim_cells() -> void:
-	if _arrow_layer == null or aiming_item == null:
+	if _arrow_layer == null:
 		return
-	if aiming_item.target_kind() != &"tile":
-		return
-	for cell in aim_cells(aiming_item):
+	for cell in target_cells():
 		var btn := Button.new()
-		btn.flat = true
 		btn.position = _cell_pos(cell.y, cell.x)
 		btn.size = Vector2(_cell, _cell)
 		btn.custom_minimum_size = Vector2(_cell, _cell)
-		btn.tooltip_text = "Aim %s here (column %d, row %d)." % [
-			aiming_item.display_name, cell.x, cell.y + 1]
+		btn.tooltip_text = _target_cell_hint(cell)
 		btn.add_theme_stylebox_override("normal",
-			UITheme.flat(ARMED_TINT.lerp(UITheme.BG, 0.82), 6, 0, 2, ARMED_TINT))
+			UITheme.flat(Color(ARMED_TINT, 0.16), 6, 0, 2, ARMED_TINT))
 		btn.add_theme_stylebox_override("hover",
-			UITheme.flat(ARMED_TINT.lerp(UITheme.BG, 0.55), 6, 0, 2, ARMED_TINT))
+			UITheme.flat(Color(ARMED_TINT, 0.38), 6, 0, 2, Color.WHITE))
 		btn.add_theme_stylebox_override("pressed",
-			UITheme.flat(ARMED_TINT.lerp(UITheme.BG, 0.4), 6, 0, 2, ARMED_TINT))
+			UITheme.flat(Color(ARMED_TINT, 0.55), 6, 0, 2, Color.WHITE))
+		btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 6, 0, 0))
 		btn.pressed.connect(_click_cell.bind(cell))
 		_arrow_layer.add_child(btn)
 
-# A cell picked while a tile-aimed item was armed. The board lets go of the item
-# first, exactly as `click_enemy` does with a body-aimed one: what it costs and
-# whether it lands is the overworld's, and a board still holding a spent relic
+# What one lit square promises, for its own tooltip. The bomb's version is asked
+# of the loop (`bomb_cell_hint`) so the picker and the rule can't drift; an item's
+# is its own name, since what it does is written on its card.
+func _target_cell_hint(cell: Vector2i) -> String:
+	if bomb_mode:
+		var entry: Dictionary = _entry_at(cell)
+		if not entry.is_empty():
+			return GameLoop2.bomb_hint(entry.get("enemy"))
+		return GameLoop2.bomb_cell_hint(cell)
+	if aiming_item != null:
+		return "Aim %s here (column %d, row %d)." % [
+			aiming_item.display_name, cell.x, cell.y + 1]
+	return ""
+
+# The stack entry whose footprint covers `cell`, or {} for bare ground. First
+# match wins — footprints don't overlap (`occupancy`), so there is only ever one.
+func _entry_at(cell: Vector2i) -> Dictionary:
+	for entry in GameLoop2.stack:
+		if GameLoop2.entry_cells(entry).has(cell):
+			return entry
+	return {}
+
+# A cell picked while a ground-aiming verb was armed. The board lets go of the
+# verb first, exactly as `click_enemy` does with a body-aimed one: what it costs
+# and whether it lands is the overworld's, and a board still holding a spent relic
 # would be one press from firing it again.
+#
+# A BOMB CLICKED ON AN OCCUPIED SQUARE is still a bomb aimed at that BODY, routed
+# through `bomb_requested` like a click on the body itself. The two are the same
+# press to the player, and only the body-aimed path carries the target through to
+# the blast — which is what a boss (immune to the damage, stunnable by Sticky
+# Bombs) and the `bomb_used` trigger read.
 func _click_cell(cell: Vector2i) -> void:
+	if bomb_mode:
+		bomb_mode = false
+		var entry: Dictionary = _entry_at(cell)
+		if not entry.is_empty():
+			bomb_requested.emit(int(entry.get("instance", 0)))
+		else:
+			bomb_cell_requested.emit(cell)
+		refresh()
+		return
 	if aiming_item == null:
 		return
 	var armed: ItemData = aiming_item

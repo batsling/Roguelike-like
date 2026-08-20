@@ -11,6 +11,47 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The ground answers for itself, a bomb is aimed at a square, and the tier
+  list fits on the screen.**
+
+  Four things that were each one step short of finished.
+
+  **Fire lit under a body burns it now.** A tile effect landing on a cell
+  somebody is standing on fires its `enemy_enters` list on the spot
+  (`GameLoop2._fire_tile_on_standing`) instead of waiting for that body's next
+  turn — the ground arriving under somebody is as much a meeting as somebody
+  walking into the ground, and a Red Candle aimed at an occupied square used to
+  read as a click that had missed. Only the *tile's* effects run, not the cell's
+  unit's: the body did not step on anything, so a mine it was already standing on
+  has no more reason to go off than it had a moment before. Fire that annihilates
+  on arrival (onto a mine) bills nobody.
+
+  **The ground carries a HoverCard**, the same card an enemy, an item and a
+  status get, instead of Godot's grey system tooltip — art, the name in its own
+  colour, what it does, and the **clock as a pip**: `⏱ 2 games left`, which is the
+  one thing about a burning square that changes between one look and the next. A
+  square with both a unit and a tile on it answers with **one** card, because
+  "what is on this square" is one question.
+
+  **A bomb can be spent on any square**, not only on a body
+  (`GameLoop2.bomb_cell`) — which is what makes Hot Bombs a way to lay fire in
+  front of the stack and Brimstone a way to aim a cross down a lane. A click on
+  an occupied square still routes through the body-aimed path, so the target
+  reaches the blast, the boss rule and the `bomb_used` trigger unchanged.
+
+  **And the squares an armed verb could be pointed at are actually visible.** The
+  cell picker was built out of `flat` Buttons, and a flat Button skips its
+  stylebox entirely: Red Candle's eight legal cells were legal, clickable and
+  completely unmarked. They are drawn now, in translucent fills over a warm ring,
+  so a body standing on a lit square still reads through the wash.
+
+  **The tier list shrinks to fit its window.** The point of a tier list is the
+  comparison between its rows, and a row you have to scroll to is a row you
+  cannot compare — so `TierListScreen` measures the space it was given and picks
+  the largest tile size the whole board fits at, re-fitting on every rebuild and
+  every window resize. About 300 beaten games fit a 720p window; past the
+  legibility floor it scrolls rather than going on shrinking.
+
 - **Tile effects and units — the board grew a floor.**
 
   Two things can now be on a cell that are not a body: a **tile effect**
