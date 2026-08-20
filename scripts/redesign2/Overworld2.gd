@@ -14,11 +14,11 @@ extends Control
 #
 # This file owns the RUN: the offering, the report step, the pack strip above the
 # board, and the charges the combat verbs spend.
-# Four pieces live next door — BattlefieldView (the board and its animation) and
-# EnemyInfoCard (the click-to-inspect card), which talk back through signals, and
-# PackStrip (the pack strip's tokens) and ReportChecklist (the left column, in
-# both its states), which fill containers this page owns and call back through
-# its public verbs.
+# Five pieces live next door. BattlefieldView (the board and its animation) and
+# EnemyInfoCard (the click-to-inspect card) talk back through signals. PackStrip
+# (the pack strip's tokens), ReportChecklist (the left column, in both its
+# states) and OfferingCards (the cards you choose from, in both choosing phases)
+# fill containers this page owns and call back through its public verbs.
 #
 # Difficulty gates (§7.1): the run's tier steps up every RunDifficulty.
 # GAMES_PER_TIER games (RunDifficulty.tier_for). On the game that crosses into a
@@ -211,6 +211,7 @@ var _boss_notice: BossNoticeModal = null
 var _preview: RichTextLabel
 var _preview_art: TextureRect       # the hovered card's enemy, beside the line
 var _choices_row: HFlowContainer
+var _offering: OfferingCards = null
 var _play_panel: VBoxContainer
 var _now_playing: RichTextLabel
 var _now_playing_cover: TextureRect # the chosen game's cover, beside it
@@ -307,11 +308,10 @@ var _inv_wrap: PanelContainer        # the carried items, in a strip above the b
 # top, so picking a game scrolls the report half into reach (the board is a scroll
 # up from there) and reporting scrolls back to the offering.
 var _scroll: ScrollContainer
-# The shield grant of the card the mouse is over, or -1 when nothing is. Between
-# games the pool is empty, so the HUD's Shields slot previews what the game you're
-# pointing at would hand you instead of reading a flat 0 — the grant is part of the
-# routing decision (a Traditional roguelike is worth 5).
-var _hover_grant: int = -1
+# The offering — the cards for both choosing phases and the hover line under
+# them (OfferingCards). Built in _build_ui, once the three containers it fills
+# exist. It also owns the hovered card's shield grant, which only its own hover
+# line reads.
 # Attempt tracker (§3) — the tries at the game in play.
 var _attempt_count: Label
 var _attempt_pips: Label
@@ -940,7 +940,8 @@ func pick(index: int) -> void:
 	# Move to the graph SLOT (a transmuted card plays an off-graph game but keeps
 	# its position on the route toward the amulet).
 	GameState.set_current_game(_chosen["slot"])
-	_hover_grant = -1
+	if _offering != null:
+		_offering.reset_hover_grant()
 	# You have left the hub, so its shop comes off the page — the shelf itself
 	# survives on ShopSystem, which is what makes coming back to it a real option.
 	# The machines go too, and they do not survive: a Blood Donation Machine is
@@ -2040,7 +2041,8 @@ func _start_play_game(request: Dictionary) -> void:
 	# A detour is posted by an event, not paid for with a charge, so there is
 	# nothing for the return-trip Dash to refund at the far end of it.
 	_dashed_here = false
-	_hover_grant = -1
+	if _offering != null:
+		_offering.reset_hover_grant()
 	_phase = Phase.PLAYING
 	_populate_play_panel()
 	_refresh()
@@ -2849,22 +2851,41 @@ func _render_controls() -> void:
 		rate.pressed.connect(func(): _prompt_rating(game))
 		_controls_row.add_child(rate)
 
-# The choose-your-start panel (Phase.START_SELECT): one card per offered start,
-# each a different genre and each the same distance band from the amulet, so the
-# decision is "which genre do I want to open on and route from", never "which of
-# these is the short run".
+# --- the offering ------------------------------------------------------------
+#
+# The cards you choose your next game from, in both choosing phases, and the
+# hover line under them, all live in OfferingCards. The page owns the three
+# containers it fills (_choices_row, _preview, _preview_art) and decides when
+# they are redrawn; these forwards keep the names the rest of this file, and the
+# tests, already call.
+
 func _render_start_choices() -> void:
-	_clear(_choices_row)
-	_hover_grant = -1
-	if _start_options.is_empty():
-		var l := Label.new()
-		l.text = "No start could be rolled — check the game filter in Settings."
-		_choices_row.add_child(l)
-		return
-	for i in range(_start_options.size()):
-		_choices_row.add_child(_make_start_card(i, _start_options[i]))
-	_preview.text = _preview_idle_text()
-	_show_hover_art({})
+	if _offering != null:
+		_offering.render_start()
+
+func _render_choices() -> void:
+	if _offering != null:
+		_offering.render()
+
+func _show_preview(index: int) -> void:
+	if _offering != null:
+		_offering.show_preview(index)
+
+func _clear_hover_grant() -> void:
+	if _offering != null:
+		_offering.clear_hover_grant()
+
+# The "you can beat this" row a card and its popup both wear, and the two lines
+# the escort warning is written as — read by the offered-game popup
+# (GameChoiceModal) as well as by the cards themselves.
+func _beatable_row(choice: Dictionary) -> Control:
+	return _offering.beatable_row(choice)
+
+func _enemy_hidden(choice: Dictionary) -> bool:
+	return _offering.enemy_hidden(choice) if _offering != null else false
+
+func _escort_note(choice: Dictionary) -> String:
+	return _offering.escort_note(choice) if _offering != null else ""
 
 # The Amulet, by name.
 #
@@ -2887,357 +2908,6 @@ func amulet_name() -> String:
 # sentence — the number on its own was never the interesting half.
 func _start_distance_text(hops: int) -> String:
 	return "%d game%s from %s" % [hops, "" if hops == 1 else "s", amulet_name()]
-
-# One start card: the cover, the game's name, its genre, and how many games stand
-# between it and the Amulet — which is named, along with everything else on the
-# road to it (see amulet_name).
-func _make_start_card(index: int, opt: Dictionary) -> Control:
-	var game: GameData = opt["game"]
-	var accent: Color = RunGraph.type_color(int(opt["type"]))
-	var card := VBoxContainer.new()
-	card.add_theme_constant_override("separation", 4)
-	card.custom_minimum_size = Vector2(COVER_SIZE.x + 10, 0)
-
-	var type_lbl := Label.new()
-	type_lbl.text = RunGraph.type_label(int(opt["type"]))
-	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	type_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
-	type_lbl.add_theme_font_size_override("font_size", 13)
-	type_lbl.add_theme_color_override("font_color", accent.lerp(UITheme.TEXT, 0.35))
-	card.add_child(type_lbl)
-
-	# The road this start opens on, before committing to it. The destination is
-	# drawn unnamed — the distance is still the only thing the picker gives away
-	# about the Amulet — but its SHAPE is exactly what makes one start different
-	# from another, so it's on the table.
-	card.add_child(_map_preview_button(game.id, game))
-
-	var btn := Button.new()
-	btn.custom_minimum_size = COVER_SIZE
-	var frame_n := UITheme.flat(UITheme.BG, 8, 4, 1, UITheme.BORDER)
-	var frame_h := UITheme.flat(UITheme.PANEL_HI, 8, 4, 2, accent)
-	btn.add_theme_stylebox_override("normal", frame_n)
-	btn.add_theme_stylebox_override("hover", frame_h)
-	btn.add_theme_stylebox_override("pressed", frame_h)
-	btn.add_theme_stylebox_override("focus", frame_h)
-	# Opens the card rather than committing: the start is a game you go and play
-	# now, so it gets the same "here is what's waiting, do you want it" popup every
-	# other game in the run gets. No tooltip, for the same reason an offered card
-	# has none — the hover line under the cards is where a start describes itself.
-	btn.pressed.connect(func(): open_start_choice(index))
-	btn.mouse_entered.connect(func(): _show_start_preview(index))
-	btn.mouse_exited.connect(_clear_hover_grant)
-	if game.cover_image != null:
-		var art := TextureRect.new()
-		art.set_anchors_preset(Control.PRESET_FULL_RECT)
-		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		art.texture = game.cover_image
-		btn.add_child(art)
-	else:
-		btn.text = game.display_name
-		btn.add_theme_color_override("font_color", accent)
-	card.add_child(btn)
-
-	var name_lbl := Label.new()
-	name_lbl.text = game.display_name
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, NAME_BOX_H)
-	name_lbl.add_theme_font_size_override("font_size", NAME_FONT)
-	name_lbl.add_theme_color_override("font_color", UITheme.TEXT)
-	card.add_child(name_lbl)
-
-	var dist := Label.new()
-	dist.text = _start_distance_text(int(opt["path_len"]))
-	dist.tooltip_text = "The shortest route from %s to %s, the game this run ends on." % [
-		game.display_name, amulet_name()]
-	dist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dist.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	dist.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dist.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE * 2 + 2)
-	dist.add_theme_font_size_override("font_size", BADGE_FONT)
-	dist.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
-	card.add_child(dist)
-	return card
-
-func _show_start_preview(index: int) -> void:
-	if index < 0 or index >= _start_options.size():
-		return
-	var opt: Dictionary = _start_options[index]
-	# The same one-line hover the offering writes — the start is a game you play,
-	# so what is waiting at it is readable without opening the card, exactly as it
-	# is for every other card in the run.
-	_hover_grant = GameLoop2.shields_for_game(opt["game"])
-	var choice: Dictionary = _start_choice(index)
-	_preview.text = "%s  ·  [color=#%s]%s[/color]" % [
-		_hover_line(choice), UITheme.GOLD.to_html(false),
-		_start_distance_text(int(opt["path_len"]))]
-	_show_hover_art(choice)
-
-func _render_choices() -> void:
-	_clear(_choices_row)
-	# The cards are rebuilt, so nothing is hovered any more.
-	_hover_grant = -1
-	if _choices.is_empty():
-		var l := Label.new()
-		l.text = "No reachable games — dead end."
-		_choices_row.add_child(l)
-		return
-	for i in range(_choices.size()):
-		_choices_row.add_child(_make_choice_card(i, _choices[i]))
-	_preview.text = _preview_idle_text()
-	_show_hover_art({})
-
-# The offered cover art, back at the size it deserves. It was halved when the
-# offering moved into the left column beside the board (COVER_SIZE was 105x140),
-# because seven rows of badges were stacked around every cover and three of those
-# columns had to fit side by side. The badges have gone into GameChoiceModal, so
-# the art gets the room back.
-const COVER_SIZE := Vector2(150, 200)
-
-# The width of the enemy portrait on the hover line under the offering. Its
-# HEIGHT is the line's, whatever that turns out to be — and that is the whole
-# trick, because it is what makes the portrait FREE.
-#
-# The overworld is fitted to a 720p window with single-digit pixels to spare
-# (test_overworld2's _assert_fits), and the page's worst case — three arcade
-# machines under the board — sits within about four of them. A hover row that
-# reserved even 30px of height for art blew that budget on its own. So the art
-# fills the line instead of setting its height: same page, one more thing on it.
-#
-# That makes it small, which is the right size anyway. This is an IDENTIFIER for
-# a body the player already knows — the same job, and the same scale, as the
-# portraits on a card's Beatable row. The exhibit is in the popup the card opens,
-# where the enemy is drawn at full size.
-const HOVER_ART := 30.0
-
-# The badge rows on a card: the name, plus two fixed-height flag lines above the
-# cover — the Amulet / event flag, and the repeat game's +1 Dash. Everything else
-# a card used to carry (the route, the pace, the tries, the map, the Beatable row,
-# the Bash/Transmute verbs) lives in the popup the card opens.
-const BADGE_FONT := 11
-const BADGE_LINE := 15               # one line of BADGE_FONT, in px
-# The game's NAME keeps a readable size, in its own fixed box, so a card whose
-# title wraps to three lines doesn't sit a line taller than its neighbours.
-const NAME_FONT := 13
-const NAME_BOX_H := 51               # three lines of NAME_FONT — "Shotgun King:
-                                     # The Final Checkmate" needs all three
-
-# One choice = the game's cover art, its name, and — when it is the game the whole
-# run is a search for — the Amulet's flag above it. Nothing else: clicking the
-# card opens GameChoiceModal, which is where the route, the enemy, the tries and
-# the verbs all get said properly, and where the game is actually chosen.
-#
-# Hover still updates the shared enemy preview under the row, so the offering can
-# be read at a glance without opening anything.
-# The shop flag's hover: the headline, plus the shelf itself once the player has
-# actually been in there. Both come from ShopSystem so this and the popup's shop
-# block cannot end up describing the same shelf differently.
-func _shop_card_tooltip(game: GameData) -> String:
-	# "…and no event" is worth a line here because it is the ONE place a hub
-	# differs from every other card in what it costs you: a shop stands here
-	# instead of an event, not as well as one (§12).
-	var lines: Array = [ShopSystem.headline(game.id),
-		"A shop stands here, so no event fires — this is what happens instead."]
-	var stock: Array = ShopSystem.stock_lines(game.id)
-	if not stock.is_empty():
-		lines.append("")
-		lines.append_array(stock)
-	return "\n".join(lines)
-
-
-func _make_choice_card(index: int, choice: Dictionary) -> Control:
-	var game: GameData = choice["game"]
-	var card := VBoxContainer.new()
-	card.add_theme_constant_override("separation", 4)
-	card.custom_minimum_size = Vector2(COVER_SIZE.x + 10, 0)
-
-	var amulet: bool = bool(choice["amulet"])
-	var accent: Color = UITheme.DANGER if choice["boss"] else (UITheme.GOLD if amulet else UITheme.type_color(int(game.type)))
-
-	# THE ONE THING that has to be legible without opening anything: this is the
-	# game the run ends on. The row is mounted on every card, blank off the Amulet,
-	# so the flagged card's cover stays in line with the rest of the offering.
-	#
-	# There WAS an `✦ EVENT` badge in this row. It marked the handful of dead ends
-	# carrying an event, back when placement was hashed onto specific nodes and
-	# routing towards one was a decision. An event now fires after every game
-	# played, so a badge on every card would say nothing — and the hash it
-	# depended on is gone with it, which means there is no longer an honest answer
-	# to "which event is at that node" before the run gets there.
-	#
-	# The SHOP badge (§14) is the row's other tenant. Its colour is deliberately
-	# not a gold — see UITheme.SHOP_GREEN — because a gold badge sitting in the
-	# Amulet's own slot is the one confusion this row cannot afford.
-	var flag := Label.new()
-	if amulet:
-		flag.text = "🏆 THE AMULET"
-		flag.tooltip_text = "Beat this game's goal and you win the run."
-		flag.add_theme_color_override("font_color", UITheme.GOLD)
-	elif ShopSystem.is_hub(game.id):
-		flag.text = "🛒 SHOP"
-		flag.tooltip_text = _shop_card_tooltip(game)
-		flag.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
-	else:
-		flag.text = ""
-		flag.add_theme_color_override("font_color", UITheme.GOLD)
-	flag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	flag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	flag.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
-	flag.add_theme_font_size_override("font_size", BADGE_FONT)
-	card.add_child(flag)
-
-	# THE SECOND THING that has to be legible without opening anything: a game you
-	# have already played this run pays a Dash for going back and beating it
-	# (REPEAT_BEAT_DASH). It is the offering's only recurring free charge, and it
-	# was only ever stated inside the popup — so the one card on the table that is
-	# worth revisiting looked exactly like the ones that aren't. It rides ABOVE the
-	# cover, next to the Amulet's flag, because it is a reason to open a card and
-	# reasons to open a card belong where the card is being scanned.
-	#
-	# Like the flag, the row is mounted on EVERY card and left blank off a repeat,
-	# so one +1 in the offering doesn't knock the other covers out of line.
-	var dash_flag := Label.new()
-	if bool(choice.get("repeat", false)):
-		dash_flag.text = "⚡ +%d DASH" % REPEAT_BEAT_DASH
-		dash_flag.tooltip_text = ("You have played %s already this run — go back and beat it and it pays %d Dash charge%s."
-			% [game.display_name, REPEAT_BEAT_DASH, "" if REPEAT_BEAT_DASH == 1 else "s"])
-	else:
-		dash_flag.text = ""
-	dash_flag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dash_flag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	dash_flag.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
-	dash_flag.add_theme_font_size_override("font_size", BADGE_FONT)
-	dash_flag.add_theme_color_override("font_color", DASH_BLUE)
-	card.add_child(dash_flag)
-
-	# NO TOOLTIP. The offering is the one place on the page that does NOT get a
-	# hover card: the enemy's portrait and its goal are already written on the
-	# hover line under the cards (see _show_preview), which is the same read the
-	# card would be, and a popup over the covers while the mouse crosses three of
-	# them is the noisiest possible way to say it. The cards are for scanning.
-	var btn := Button.new()
-	btn.custom_minimum_size = COVER_SIZE
-	var frame_n := UITheme.flat(UITheme.BG, 8, 4, 1, UITheme.GOLD if amulet else UITheme.BORDER)
-	var frame_h := UITheme.flat(UITheme.PANEL_HI, 8, 4, 2, accent)
-	btn.add_theme_stylebox_override("normal", frame_n)
-	btn.add_theme_stylebox_override("hover", frame_h)
-	btn.add_theme_stylebox_override("pressed", frame_h)
-	btn.add_theme_stylebox_override("focus", frame_h)
-	btn.pressed.connect(func(): open_choice(index))
-	btn.mouse_entered.connect(func(): _show_preview(index))
-	btn.mouse_exited.connect(_clear_hover_grant)
-	if game.cover_image != null:
-		var art := TextureRect.new()
-		art.set_anchors_preset(Control.PRESET_FULL_RECT)
-		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		art.texture = game.cover_image
-		btn.add_child(art)
-	else:
-		btn.text = game.display_name
-		btn.add_theme_color_override("font_color", accent)
-	card.add_child(btn)
-
-	var name_lbl := Label.new()
-	name_lbl.text = ("☠ " if choice["boss"] else ("🏆 " if amulet else "")) + game.display_name
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, NAME_BOX_H)
-	name_lbl.add_theme_font_size_override("font_size", NAME_FONT)
-	name_lbl.add_theme_color_override("font_color", accent if (choice["boss"] or amulet) else UITheme.TEXT)
-	card.add_child(name_lbl)
-	return card
-
-# The 🗺 button every offered card wears above its cover: opens the optimal path
-# from that game to the Amulet. Full width of the card, so the row of covers stays
-# in line whatever a card's route badge says.
-func _map_preview_button(slot: StringName, game: GameData) -> Button:
-	var b := Button.new()
-	b.text = "🗺  Map"
-	b.tooltip_text = "See the shortest route to the Amulet if you take %s." % game.display_name
-	b.custom_minimum_size = Vector2(COVER_SIZE.x, 24)
-	b.add_theme_font_size_override("font_size", BADGE_FONT)
-	b.pressed.connect(func(): preview_map(slot))
-	return b
-
-# "Beatable:" — the enemies on the board right now that you have ALREADY beaten
-# at this game before. Not a prediction: it's your own record saying this pair
-# has worked, which is exactly what you want to know while choosing where to go
-# with a follower stuck to you.
-#
-# Returns null when there's nothing to say, so an unproven card stays clean.
-func _beatable_row(choice: Dictionary) -> Control:
-	var game: GameData = choice.get("game")
-	if game == null:
-		return null
-	# The enemy standing at this card, plus everything currently following you.
-	# Under the Runic Dome the card's own enemy is left out: a "Beatable" pip is a
-	# portrait with a name on it, so keeping it would hand back the exact thing
-	# the relic is meant to be hiding. The FOLLOWERS stay — they are already on
-	# the board and the Dome only ever hid what has yet to spawn.
-	var on_board: Array = []
-	var here: GoalEnemyData = choice.get("enemy")
-	if here != null and not _enemy_hidden(choice):
-		on_board.append(here)
-	for entry in GameLoop2.stack:
-		var follower: GoalEnemyData = entry.get("enemy")
-		if follower != null:
-			on_board.append(follower)
-
-	var proven: Array = []
-	var seen: Dictionary = {}
-	for enemy in on_board:
-		if seen.has(enemy.id):
-			continue
-		if GameStats.enemy_beaten_count(game.id, enemy.id) > 0:
-			seen[enemy.id] = true
-			proven.append(enemy)
-	if proven.is_empty():
-		return null
-
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	var label := Label.new()
-	label.text = "Beatable:"
-	label.add_theme_font_size_override("font_size", 10)
-	label.add_theme_color_override("font_color", UITheme.SUCCESS)
-	row.add_child(label)
-	for enemy in proven:
-		row.add_child(_beatable_pip(game, enemy))
-	return row
-
-# One enemy on the Beatable row: its portrait, with the record and whatever note
-# was written on the hover — the note is the reason you know it's beatable.
-func _beatable_pip(game: GameData, enemy: GoalEnemyData) -> Control:
-	var times: int = GameStats.enemy_beaten_count(game.id, enemy.id)
-	var note: String = GameStats.enemy_note(game.id, enemy.id).strip_edges()
-	var tip: String = "%s — beaten here ×%d" % [enemy.display_name, times]
-	if enemy.goal != "":
-		tip += "\n%s" % enemy.goal
-	if note != "":
-		tip += "\n\n🗒 %s" % note
-	if enemy.image != null:
-		var art := TextureRect.new()
-		art.texture = enemy.image
-		art.custom_minimum_size = Vector2(20, 20)
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		art.tooltip_text = tip
-		return art
-	# No portrait authored — fall back to the name rather than an empty gap.
-	var chip := Label.new()
-	chip.text = enemy.display_name
-	chip.add_theme_font_size_override("font_size", 9)
-	chip.add_theme_color_override("font_color", UITheme.SUCCESS)
-	chip.tooltip_text = tip
-	return chip
 
 # --- the report checklist ---------------------------------------------------
 #
@@ -3390,142 +3060,6 @@ func _roll_bonus_level_up() -> bool:
 			return true
 	return false
 
-func _show_preview(index: int) -> void:
-	if index < 0 or index >= _choices.size():
-		return
-	# A destination card grants no tries — it isn't a game being started (§10).
-	_hover_grant = -1 if _asking_return() else GameLoop2.shields_for_game(_choices[index]["game"])
-	_preview.text = _hover_line(_choices[index])
-	_show_hover_art(_choices[index])
-
-# The portrait beside the hover line: the body this card would put on the board.
-#
-# Blank for the stay-or-return pair (they spawn nothing), for a free game with no
-# enemy, and under the Runic Dome — the relic hides WHAT is waiting, and a picture
-# gives that away far more completely than a name would.
-func _show_hover_art(choice: Dictionary) -> void:
-	if _preview_art == null or not is_instance_valid(_preview_art):
-		return
-	var tex: Texture2D = null
-	if not choice.is_empty() and not choice.has("stay") and not _enemy_hidden(choice):
-		tex = _enemy_texture(choice)
-	_preview_art.texture = tex
-	_preview_art.visible = tex != null
-
-# The mouse left a card: the line stays as a reference, but the grant number and
-# the portrait go with the hover, so neither can advertise a game you're not
-# pointing at.
-func _clear_hover_grant() -> void:
-	_show_hover_art({})
-	if _hover_grant < 0:
-		return
-	_hover_grant = -1
-	_preview.text = _preview_idle_text()
-
-# What the hover line says with nothing hovered — which is a different sentence
-# when the two cards on the table are the ends of a detour rather than games to
-# go and play (§10).
-func _preview_idle_text() -> String:
-	if _phase == Phase.START_SELECT:
-		return "[i]Hover a start to see what it opens on.[/i]"
-	if _asking_return():
-		return "[i]The detour is over. Open either game to see the road from it, then take the one you want to carry on from.[/i]"
-	return "[i]Hover a game to see the enemy it would spawn — click it for the route, the goal and the way in.[/i]"
-
-# The enemy's art (§10.1) for a choice, or null when there's no enemy.
-func _enemy_texture(choice: Dictionary) -> Texture2D:
-	var e: GoalEnemyData = choice.get("enemy")
-	return e.image if e != null else null
-
-# Runic Dome (§7.1): whether this card's enemy is hidden. Only ever true for a
-# game being OFFERED — the relic buys a column of board with the routing decision,
-# not with the game you are standing on, so the moment a game is committed to its
-# enemy is on the board and describes itself like any other.
-func _enemy_hidden(choice: Dictionary) -> bool:
-	if not GameState.hides_upcoming_enemies():
-		return false
-	if choice.get("enemy") == null:
-		return false
-	var landed: Dictionary = GameLoop2.arrival()
-	return landed.is_empty() or landed.get("enemy") != choice.get("enemy")
-
-# What a hidden card says instead. Named rather than inlined because three
-# screens say it (the hover line, the now-playing panel, GameChoiceModal) and
-# they must not each invent their own wording for the same blank.
-const HIDDEN_ENEMY_TEXT := "something you can't see"
-
-# THE ESCORT (§7.5), said before it exists. The second body is rolled on ARRIVAL,
-# so a card cannot name it — but it must not stay quiet about it either: "how many
-# bodies does this put on the board" is half of what the routing decision is
-# about, and a card that showed one enemy and delivered two would be lying by
-# omission. So the card promises the count and withholds the name.
-const ESCORT_WARNING := "⚠ One more enemy spawns with it — which one is rolled on arrival."
-const ESCORT_WARNING_SHORT := "⚠ +1 more"
-
-# Whether committing to `choice` will put a SECOND body on the board. False for a
-# BOSS round — a boss spawns solo, the tier change being step-up enough on its own
-# (GameLoop2._spawn_escort) — for a free game with no enemy at all, and for the
-# stay-or-return card, which spawns nothing either way.
-func _escort_expected(choice: Dictionary) -> bool:
-	if choice.is_empty() or choice.has("stay"):
-		return false
-	if choice.get("enemy") == null or bool(choice.get("boss", false)):
-		return false
-	return not Data.all_goal_enemies().is_empty()
-
-# The escort's line for a card: a WARNING while the game is still an offer, and
-# the body's NAME once the game has been committed to and the roll has happened.
-# Empty when this card brings no escort. One function, because the offering, the
-# popup and the now-playing panel all have to say the same thing about it.
-func _escort_note(choice: Dictionary) -> String:
-	var landed: Dictionary = GameLoop2.arrival()
-	if not landed.is_empty() and choice.get("enemy") != null \
-			and landed.get("enemy") == choice.get("enemy"):
-		var escort: GoalEnemyData = GameLoop2.escort_enemy()
-		return "" if escort == null else "⚠ %s spawned alongside it." % escort.display_name
-	return ESCORT_WARNING if _escort_expected(choice) else ""
-
-# The hover, on ONE line: the enemy this card would put on the board, the goal you
-# would be playing for, and the TRIES it hands you. The tries used to be a slot on
-# the HUD that previewed on hover; the HUD has gone, and this is the line that was
-# already answering "what is that card" — so the number rides here instead of
-# being the last thing keeping a panel alive.
-func _hover_line(choice: Dictionary) -> String:
-	var game: GameData = choice["game"]
-	var e: GoalEnemyData = choice.get("enemy")
-	if choice.has("stay"):
-		return "[b]%s[/b]  ·  [i]%s[/i]" % [game.display_name,
-			"stay here and carry on from this game"
-			if bool(choice["stay"]) else "head back and carry on from there"]
-	var tries: String = "  ·  [color=#%s]◆ %d tries[/color]" % [
-		SHIELD_BLUE.to_html(false), _hover_grant] if _hover_grant >= 0 else ""
-	if e == null:
-		return "[b]%s[/b]  ·  [i]no enemy — free game[/i]%s" % [game.display_name, tries]
-	# The escort rides even the hidden line: the Dome hides WHAT is waiting, and how
-	# many bodies arrive is not part of what it was bought to hide.
-	var escort: String = "  ·  [color=#%s]%s[/color]" % [
-		UITheme.DANGER.to_html(false), ESCORT_WARNING_SHORT] if _escort_expected(choice) else ""
-	# Under the Runic Dome there is no enemy line to give: the goal is the enemy's,
-	# so hiding the name and quoting the goal would give the whole thing away.
-	if _enemy_hidden(choice):
-		return "[b]%s[/b]  →  [i]%s[/i]%s%s" % [
-			game.display_name, HIDDEN_ENEMY_TEXT, escort, tries]
-	var kind: String = "[color=#e0b020]☠ [/color]" if choice["boss"] else ""
-	return "[b]%s[/b]  →  %s%s  ·  %s%s%s" % [
-		game.display_name, kind, e.display_name,
-		GameLoop2.goal_text_for(_preview_entry(choice)), escort, tries]
-
-# The board entry to read a `choice`'s goal line off (§13). Once the card has been
-# taken, that is the live body it put on the board, statuses and all. For an
-# OFFERED card there is no body yet — but the player's own clauses tax every
-# enemy's goal, so the preview is built against a bare stand-in rather than
-# falling back to the unmodified stem: what a card will actually cost you is part
-# of the routing decision, not a surprise waiting on the report step.
-func _preview_entry(choice: Dictionary) -> Dictionary:
-	var landed: Dictionary = GameLoop2.arrival()
-	if not landed.is_empty() and landed.get("enemy") == choice.get("enemy"):
-		return landed
-	return {"enemy": choice.get("enemy"), "statuses": {}}
 
 # The line beside the cover on the report panel: WHAT YOU ARE PLAYING, and what
 # taking it put on the board.
@@ -4126,7 +3660,7 @@ func _build_ui() -> void:
 	# a scroll away from the cards being chosen between; the two halves of the same
 	# decision — "where do I go" and "what is closing in on me" — were never on
 	# screen together. Stacked into the left column they are, at the cost of the
-	# covers being drawn half-size (COVER_SIZE).
+	# covers being drawn half-size (OfferingCards.COVER_SIZE).
 	var main_row := HBoxContainer.new()
 	main_row.add_theme_constant_override("separation", 12)
 	root.add_child(main_row)
@@ -4193,7 +3727,8 @@ func _build_ui() -> void:
 	# before they read its name, and the picture is what says "I have fought that
 	# before" while the cursor is still moving.
 	#
-	# So the art is back, BESIDE the line and sized BY it (see HOVER_ART): the row
+	# So the art is back, BESIDE the line and sized BY it (see OfferingCards.HOVER_ART):
+	# the row
 	# is the same 22px it was with no art on it, and the page's 720p budget doesn't
 	# move by a pixel. The row also keeps that height whether or not anything is
 	# hovered, so running the cursor along the offering never reflows the column
@@ -4204,7 +3739,7 @@ func _build_ui() -> void:
 	# Width only. The height comes from the row — SIZE_FILL against a line whose
 	# floor the label sets — and EXPAND_IGNORE_SIZE stops the texture's own
 	# dimensions from claiming any of it.
-	_preview_art.custom_minimum_size = Vector2(HOVER_ART, 0)
+	_preview_art.custom_minimum_size = Vector2(OfferingCards.HOVER_ART, 0)
 	_preview_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_preview_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_preview_art.size_flags_vertical = Control.SIZE_FILL
@@ -4218,6 +3753,9 @@ func _build_ui() -> void:
 	_preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hover_row.add_child(_preview)
 	_select_box.add_child(hover_row)
+	# Built here rather than in _ready: it fills these three, so it cannot exist
+	# before they do.
+	_offering = OfferingCards.new(self, _choices_row, _preview, _preview_art)
 
 	# The choosing charges, at the foot of the panel they're spent in. They used to
 	# be four numbers in the middle of a twelve-number HUD strip at the top of the
@@ -4333,7 +3871,7 @@ func _build_ui() -> void:
 	var np_box := _np_box
 	np_box.add_theme_constant_override("separation", 8)
 	_now_playing_cover = TextureRect.new()
-	_now_playing_cover.custom_minimum_size = COVER_SIZE * 0.72
+	_now_playing_cover.custom_minimum_size = OfferingCards.COVER_SIZE * 0.72
 	_now_playing_cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_now_playing_cover.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	var cover_frame := PanelContainer.new()

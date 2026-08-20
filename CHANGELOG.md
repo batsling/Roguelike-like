@@ -11,6 +11,30 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The offering moved out of the overworld, and the split is finished.**
+
+  **`OfferingCards.gd`** — 506 lines: the cards you choose your next game from in
+  *both* choosing phases (the choose-your-start picker and the ordinary
+  offering), the hover line under them, and the enemy portrait beside it. They
+  share every widget below their two entry points because they are the same
+  decision asked twice. `Overworld2.gd` is **4260 lines now, down from 5573** —
+  a 24% cut across three splits, and the file is no longer dominated by any one
+  mechanic.
+
+  The page kept the three containers (`_choices_row`, `_preview`,
+  `_preview_art`) and every verb a card fires on click (`open_choice`,
+  `open_start_choice`, `preview_map`), so the offering decides what the cards
+  *look* like and the page still decides what they *do*.
+
+  **One behavioural substitution, and it is the interesting part.** The hover
+  line's idle text differs between the two phases, which it read off the page's
+  `_phase`. Rather than reach back for that, the class sets its own `_starting`
+  flag in the two render entry points — the only things that can change which
+  phase drew the cards. `_page.Phase.START_SELECT` would have worked (a const or
+  enum does read through a `Node`-typed reference; that got checked rather than
+  assumed) but it re-couples the class to the page's phase model for nothing.
+  The verify pass asserts the flag flips in both directions.
+
 - **The report checklist moved out of the overworld too.**
 
   The big one, and the second cut of the split above: **`ReportChecklist.gd`**,

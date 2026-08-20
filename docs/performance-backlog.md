@@ -42,11 +42,11 @@ checks at every size the UI uses. Three separate traps in one two-line change.
 
 ---
 
-## 1. `Overworld2.gd` is 4707 lines
+## 1. `Overworld2.gd` is 4260 lines
 
-Down from 5573. Still the biggest file in the repo (`AtlasView.gd` is 2764) — it
-holds the run-loop view, the pinned header, the map plumbing, the shop and
-machine mounting, the offering cards, and the save/load view state.
+Down from 5573 — a 24% cut across three splits. Still the biggest file in the
+repo (`AtlasView.gd` is 2764), holding the run-loop view, the pinned header, the
+map plumbing, the shop and machine mounting, and the save/load view state.
 
 **Not urgent, and not a mechanical job.** This file used to guess at the seams;
 they are measured now. The number that matters is **genuinely shared state** —
@@ -59,16 +59,17 @@ it moves for free.
 |---|---|---|---|
 | ~~item strip + charge chips~~ | ~~293~~ | ~~`_items_box`, `_phase`~~ | **done — `PackStrip.gd`** |
 | ~~report checklist~~ | ~~776~~ | ~~`_board`, `_chosen`~~ | **done — `ReportChecklist.gd`** |
+| ~~offering cards + preview~~ | ~~506~~ | ~~`_choices`, `_chosen`, `_start_options`~~ | **done — `OfferingCards.gd`** |
 | header proper | 79 | `_scroll`, `_toasts` | 11 |
 | kill-drops + run-over | 230 | `_banner`, `_drop_queue`, `_rng`, `_resolving` | 32 |
-| offering cards + preview | 558 | `_choices`, `_chosen`, `_start_options`, `_phase` | 24 |
 | save/restore view state | 251 | *16 shared vars* | — |
 | `_build_ui` | 409 | *32 vars, 16 funcs* | — |
 
-**Next: the offering cards** (`_make_choice_card`, `_make_start_card`,
-`_render_choices`, `_render_start_choices`, `_show_preview`, `_hover_line`) at
-558 lines, then **kill-drops** at 230 and **the header** at 79. None of the three
-is urgent; the offering is the only one big enough to be worth the disturbance.
+**What is left is small.** Kill-drops at 230 lines and the header at 79 are the
+only untouched seams, and neither is worth the disturbance on its own — the file
+is no longer dominated by any one mechanic. **Stop here** unless something else
+grows: the next 4000 lines are the run loop itself, which is what this file is
+for.
 
 **Two of these should NOT be split.** `capture_view_state` / `restore_view_state`
 touches 16 shared vars because touching everything *is* its job, and `_build_ui`
@@ -84,7 +85,7 @@ filling it. Each wants to keep going through the overworld's public verbs
 (`pick`, `report`, `bash_choice`, …) rather than reaching into `GameLoop2`, which
 is what makes the current tests keep working through the move.
 
-**The pattern the two done splits established**, for the next one to copy:
+**The pattern the three splits established**, for anything that follows:
 
 - A `RefCounted` holding the page, constructed in `_build_ui` beside the
   containers it fills. The repo's other extraction, `AtlasLayoutBuilder`, is
@@ -95,7 +96,18 @@ is what makes the current tests keep working through the move.
   Godot resolves badly.
 - **Pass phase in, don't read it out.** `PackStrip.rebuild(reporting: bool)`
   rather than reaching for `_phase`, which is what let the strip depend on
-  nothing about the page except three public verbs.
+  nothing about the page except three public verbs. `OfferingCards` does the
+  same thing a second way: its two render entry points are the only callers that
+  can change which phase drew the cards, so it sets its own `_starting` flag in
+  them instead of reading `_phase == Phase.START_SELECT`. That also dodges
+  `_page.Phase.…`, which *works* — a const or enum reads fine through a
+  `Node`-typed reference, verified — but re-couples the class to the page's
+  phase model for no gain.
+- **A const the page still uses moves with the class**, and the page names it:
+  `OfferingCards.COVER_SIZE`, `OfferingCards.HOVER_ART`. Only three constants in
+  the offering region were shared the other way (`SHIELD_BLUE`, `DASH_BLUE`,
+  `REPEAT_BEAT_DASH`); those stayed on the page and the class reads them off
+  `_page`.
 - Leave the old entry points as one-line forwards (`_refresh_items`,
   `_populate_play_panel`, `_ticked_fulfilments`, …). Zero call-site churn, in the
   page or in the tests. Some forwards end up with no caller left in the page and
