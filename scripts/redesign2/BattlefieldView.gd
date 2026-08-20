@@ -1027,11 +1027,11 @@ func refresh() -> void:
 
 # --- the ground: tile effects and units (§17) ------------------------------
 
-# How much of a cell's height the tile-effect strip takes. Sized by eye against
-# the enemy art: big enough that burning ground reads at a glance on a 7x7 board's
-# 44px cells, small enough that a body standing in it is still a body — the strip
-# covers its feet, not its face.
-const TILE_STRIP_FRACTION: float = 0.38
+# How much of a cell's height the tile-effect art takes, measured from the BOTTOM
+# edge up: exactly half, so the top of the art lands on the middle of the cell. The
+# body standing there keeps its whole top half — its head and whatever the art
+# uses to be recognisable — and the ground reads across its feet.
+const TILE_STRIP_FRACTION: float = 0.5
 # The unit's art, as a fraction of the cell. Smaller than a body on purpose: a
 # Landmine is something lying ON the floor, and one drawn at full cell size reads
 # as another enemy.
@@ -1064,24 +1064,30 @@ func _rebuild_ground() -> void:
 	for cell in furnished.keys():
 		_ground_layer.add_child(_ground_hover(cell))
 
-# The strip itself: the tile's art across the foot of its cell, over a wash in the
-# same colour so a cell reads as covered even where the art is transparent.
+# The tile's art, sitting on the bottom half of its cell. THE ART AND NOTHING
+# ELSE — no panel behind it and no outline around it, so whatever the art doesn't
+# cover stays see-through and the body underneath reads through the gaps. A wash
+# would have made every furnished cell a solid block; a border would have drawn a
+# box the effect does not actually have edges at.
+#
+# `KEEP_ASPECT` rather than `KEEP_ASPECT_COVERED`, so the WHOLE image is shown —
+# covered fills the box by cropping whatever overflows, which quietly ate the top
+# and bottom of a square flame in a half-height box. Fitted and centred, the art
+# is as tall as the half-cell and the top of it lands on the cell's midline.
 func _tile_strip(cell: Vector2i, tile: TileEffectData) -> Control:
 	var height: int = maxi(10, int(round(_cell * TILE_STRIP_FRACTION)))
-	var wrap := PanelContainer.new()
-	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wrap.position = _cell_pos(cell.y, cell.x) + Vector2(0, _cell - height)
-	wrap.size = Vector2(_cell, height)
-	var tint: Color = _tile_tint(tile)
-	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(tint.lerp(UITheme.BG, 0.55), 5, 0, 1, tint.lerp(UITheme.BG, 0.2)))
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.position = _cell_pos(cell.y, cell.x) + Vector2(0, _cell - height)
+	holder.size = Vector2(_cell, height)
 	if tile.image != null:
 		var art := UITheme.crisp_tex(tile.image, height)
 		art.custom_minimum_size = Vector2(_cell, height)
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		art.size = Vector2(_cell, height)
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		wrap.add_child(art)
-	return wrap
+		holder.add_child(art)
+	return holder
 
 # A unit lying on the floor: its art, centred in the cell and drawn small.
 func _unit_node(cell: Vector2i, unit: UnitData) -> Control:
@@ -1115,15 +1121,6 @@ func _ground_hover(cell: Vector2i) -> Control:
 		lines.append(tile.tooltip_for(GameLoop2.tile_games_left(cell)))
 	hot.tooltip_text = "\n\n".join(lines)
 	return hot
-
-# What colour a tile effect washes its cell in. Read off the tile's own art —
-# there is no palette column on the sheet and inventing one would be a second
-# place for a tile's identity to live — with a warm default for anything whose art
-# is missing, since the roster is Fire.
-func _tile_tint(tile: TileEffectData) -> Color:
-	if tile != null and tile.id == &"fire":
-		return Color(0.95, 0.45, 0.18)
-	return UITheme.ACCENT
 
 # What an armed verb's legal targets are ringed in. Deliberately the ACCENT the
 # selection already uses rather than a new colour: "the verb is pointed at this"
