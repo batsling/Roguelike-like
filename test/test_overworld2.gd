@@ -1113,7 +1113,9 @@ func test_the_loot_window_opens_onto_a_full_3x3_over_the_left_column() -> void:
 	assert_true(text.contains("Unidentified Pill"),
 		"an unlearned colour says only what it looks like: %s" % text)
 
-func test_the_loot_window_lands_on_the_left_column() -> void:
+func test_the_loot_window_lands_on_the_board() -> void:
+	# It drops out of its own button: the pack strip sits on top of the board, so
+	# the window opens onto the board under it rather than across the page.
 	GameState.add_pill_loot(&"luck_up")
 	_ui._loot_window.open = true
 	_ui._refresh_items()
@@ -1122,11 +1124,26 @@ func test_the_loot_window_lands_on_the_left_column() -> void:
 	if _ui._loot_panel == null:
 		return
 	var panel: Rect2 = _ui._loot_panel.get_global_rect()
-	var col: Rect2 = _ui._left_col.get_global_rect()
-	assert_almost_eq(panel.position.x, maxf(col.position.x, 4.0), 2.0,
-		"its left edge is the left column's")
-	assert_lt(panel.position.x, _ui._inv_wrap.get_global_rect().position.x,
-		"which is the other side of the page from the pack that opened it")
+	var board: Rect2 = _ui._stage_panel.get_global_rect()
+	assert_almost_eq(panel.get_center().x, board.get_center().x, 3.0,
+		"centred across the board rather than pinned to a corner of it")
+	assert_gt(panel.position.y, board.position.y - 1.0, "and starting at its top")
+	assert_gt(panel.position.x, _ui._left_col.get_global_rect().end.x - 1.0,
+		"which is the pack's side of the page, not the offering's")
+
+func test_the_loot_window_stays_on_screen() -> void:
+	GameState.add_pill_loot(&"luck_up")
+	_ui._loot_window.open = true
+	_ui._refresh_items()
+	await wait_frames(2)
+	if _ui._loot_panel == null:
+		return
+	var panel: Rect2 = _ui._loot_panel.get_global_rect()
+	var screen: Vector2 = _ui.get_viewport_rect().size
+	assert_gt(panel.position.y, ModalScaffold.reserved_top - 1.0,
+		"clear of the header bar, which is drawn over everything")
+	assert_lt(panel.end.y, screen.y + 1.0, "and the whole of it fits the window")
+	assert_lt(panel.end.x, screen.x + 1.0)
 
 func _find_grid(node: Node) -> GridContainer:
 	if node is GridContainer:

@@ -48,8 +48,11 @@ For how the project is laid out and how its systems fit together, see
   **Loot moved off the pack strip into a window of its own.** Nine pieces beside
   a run's relics is a second inventory wearing the first one's clothes, so there
   is a `Loot 4/9 ▾` toggle at the end of the strip's row, and it opens a 3×3 grid
-  as a panel **over the left column** — always nine slots, filled then empty,
-  because the room left is the fact the cap makes interesting. Scrolls went with
+  as a panel **over the board** — always nine slots, filled then empty, because
+  the room left is the fact the cap makes interesting. It covers the battlefield
+  rather than the offering: the pack strip stands on top of the board, so the
+  window drops out of its own button, and the board is the half of the page that
+  does not change while you decide which pill to take. Scrolls went with
   it — one window means one place to look — and
   `ScrollReadModal` became **`LootUseModal`**, because Echo Chamber means using
   either kind can hand back the other's follow-up.

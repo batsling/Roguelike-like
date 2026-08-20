@@ -374,11 +374,17 @@ sizes in one panel read as two kinds of importance rather than as two kinds of
 thing.
 
 It is **shut until the button is pressed**, and when it opens it opens as a panel
-**over the LEFT column**, on top of the offering. Not as a row inside the pack:
-that grew the pack panel downward, which pushed the board and re-flowed the right
-column every time the player looked at what they were carrying — the window cost
-the page a relayout for the crime of being opened. The left half is the one you
-are not reading while you decide which pill to take, and nothing under it moves.
+**over the board**, centred on the battlefield directly under the toggle that
+opened it. Not as a row inside the pack: that grew the pack panel downward, which
+pushed the board and re-flowed the right column every time the player looked at
+what they were carrying — the window cost the page a relayout for the crime of
+being opened. The board is the right thing to cover, and for two reasons: the
+pack strip stands on top of it, so the window drops out of its own button rather
+than appearing across the page from it; and the board is a picture of what is
+chasing you, which does not change while you decide which pill to take — where
+the offering on the left is the decision you may be taking the pill in order to
+make. It **follows the board** as the page settles under it, rather than being
+placed once.
 
 **The grid is always nine.** Nine is the cap, and an inventory that draws only
 what is in it says nothing about the room left, which is the fact the cap makes

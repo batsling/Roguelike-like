@@ -345,6 +345,9 @@ var _pack: PackStrip = null
 var _loot_toggle_box: HBoxContainer
 var _loot_panel: Control = null
 var _loot_window: LootWindow = null
+# The board rect the overlay was last placed against, so the frame hook can tell
+# "the page moved" from "nothing happened" without re-placing every frame.
+var _loot_anchor_rect: Rect2 = Rect2()
 # Drops a defeated enemy left, waiting to be ASKED about — one ItemDropModal at a
 # time, in the order they fell (§8, _pump_drops). The modal in front of the
 # player right now, or null when nothing is being asked.
@@ -1864,10 +1867,34 @@ func _update_shop_hint() -> void:
 	# to yet" cannot be answered off the scroll signal alone — the value moves
 	# before the layout does, so the answer measured at that moment is one frame
 	# stale and the pointer stayed up over a shop in plain view.
-	set_process(_shop_panel != null and is_instance_valid(_shop_panel))
+	set_process(_wants_process())
+
+# Two things want a frame hook: the shop pointer above, and the loot overlay,
+# which has to FOLLOW the board it is standing on. One gate for both, so neither
+# can switch the other off — which is exactly what happened when each called
+# set_process with only its own answer.
+func _wants_process() -> bool:
+	return (_shop_panel != null and is_instance_valid(_shop_panel)) \
+		or (_loot_panel != null and is_instance_valid(_loot_panel))
 
 func _process(_delta: float) -> void:
 	_update_shop_hint()
+	_follow_loot_overlay()
+
+# Keep the loot overlay on the board when the page moves under it. `item_rect_
+# changed` on the board is not enough: a report regrows the LEFT column, which
+# shifts the board's GLOBAL rect without its own local rect changing, so the
+# signal never fires and the panel drifts off by the difference. Comparing the
+# anchor's global rect each frame is a couple of float compares and cannot miss.
+func _follow_loot_overlay() -> void:
+	if _loot_panel == null or not is_instance_valid(_loot_panel):
+		return
+	if _stage_panel == null or not is_instance_valid(_stage_panel):
+		return
+	var now: Rect2 = _stage_panel.get_global_rect()
+	if now == _loot_anchor_rect:
+		return
+	_place_loot_overlay()
 
 # Is any of the shop panel inside the scroll viewport? Measured against the
 # viewport's own rect rather than the page's, because "on screen" is what the
@@ -3342,15 +3369,20 @@ func refresh_loot_window() -> void:
 		return
 	_loot_window.rebuild(_phase == Phase.PLAYING)
 
-# Mount the loot window's panel OVER THE LEFT COLUMN (§4.3). A page child rather
-# than a row in the pack, so opening it moves nothing: the offering underneath is
-# the half of the page you are not reading while you decide which pill to take.
+# Mount the loot window's panel OVER THE BOARD (§4.3). A page child rather than a
+# row in the pack, so opening it moves nothing.
 #
-# Positioned against `_left_col`'s own rect rather than at a hardcoded corner, so
-# it lands on the column whatever width the page gave it — and clamped to the
-# page, so a narrow window can't push it off the left edge. Nudged down by the
-# header's height for the same reason every modal is: the header is opaque and
-# drawn over the page.
+# It opens on the BATTLEFIELD, directly under the toggle that opened it: the pack
+# strip sits on top of the board, so the window drops out of its own button rather
+# than appearing across the page from it. The board is also the right thing to
+# cover — it is a picture of what is chasing you, which does not change while you
+# decide which pill to take, where the offering on the left is the decision you
+# might be taking the pill in order to make.
+#
+# Positioned against `_stage_panel`'s own rect rather than at a hardcoded corner,
+# so it lands on the board whatever size the page gave it, and clamped so a narrow
+# window can't push it off an edge. Nudged below the header for the same reason
+# every modal is: the header is opaque and drawn over the page.
 func mount_loot_overlay(panel: Control) -> void:
 	unmount_loot_overlay()
 	if panel == null:
@@ -3359,30 +3391,49 @@ func mount_loot_overlay(panel: Control) -> void:
 	panel.top_level = true
 	add_child(panel)
 	_place_loot_overlay()
-	# The left column's rect is only final once the page has laid out, and a panel
-	# built mid-frame is measured before that. One deferred re-place puts it where
-	# the column actually ended up rather than where it was a frame ago.
+	# The board's rect is not final when a panel is built mid-frame, and it keeps
+	# moving afterwards as the page settles — a toast arriving, the checklist
+	# growing a row, a report regrowing the left column. So the placement FOLLOWS
+	# the board (see _follow_loot_overlay) rather than being computed once, and one
+	# deferred pass catches the settle that has already happened.
+	set_process(_wants_process())
 	_place_loot_overlay.call_deferred()
 
 func unmount_loot_overlay() -> void:
 	if _loot_panel != null and is_instance_valid(_loot_panel):
 		_loot_panel.queue_free()
 	_loot_panel = null
+	_loot_anchor_rect = Rect2()
+	set_process(_wants_process())
 
 func _place_loot_overlay() -> void:
 	if _loot_panel == null or not is_instance_valid(_loot_panel):
 		return
-	if _left_col == null or not is_instance_valid(_left_col):
+	var anchor: Control = _stage_panel if _stage_panel != null and is_instance_valid(_stage_panel) \
+		else _left_col
+	if anchor == null or not is_instance_valid(anchor):
 		return
-	var col: Rect2 = _left_col.get_global_rect()
-	var top: float = maxf(col.position.y, ModalScaffold.reserved_top + 4.0)
 	# SIZED TO ITS CONTENTS, not to the page. A floating Control is anchored to its
 	# parent's rect, and this page is as tall as the whole scrolling document — so
 	# left alone the panel stretched to 1043px and hung off the bottom of the
 	# window with 700px of its own background under a 258px grid.
 	_loot_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_loot_panel.size = _loot_panel.get_combined_minimum_size()
-	_loot_panel.global_position = Vector2(maxf(col.position.x, 4.0), top)
+	# CENTRED ON THE BOARD, not pinned to its corner: the board is wider than the
+	# window and a panel in the top-left of it reads as something that has come
+	# loose. Clamped to the screen afterwards, so a board pushed off the bottom of a
+	# short window still leaves the whole panel reachable.
+	var on: Rect2 = anchor.get_global_rect()
+	_loot_anchor_rect = _stage_panel.get_global_rect() if _stage_panel != null \
+		and is_instance_valid(_stage_panel) else on
+	var size: Vector2 = _loot_panel.size
+	var screen: Vector2 = get_viewport_rect().size
+	var x: float = clampf(on.position.x + (on.size.x - size.x) * 0.5,
+		4.0, maxf(4.0, screen.x - size.x - 4.0))
+	var y: float = clampf(on.position.y + 8.0,
+		ModalScaffold.reserved_top + 4.0, maxf(ModalScaffold.reserved_top + 4.0,
+			screen.y - size.y - 4.0))
+	_loot_panel.global_position = Vector2(x, y)
 
 # Open the reading card for one item. Firing from the card routes through the same
 # use_item the token's button does, so there is one spend path.

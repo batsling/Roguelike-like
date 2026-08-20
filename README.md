@@ -44,7 +44,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     Overworld2      — run flow: offering, report, pack
 │   │                      #     PackStrip       — fills Overworld2's pack strip
 │   │                      #     LootWindow      — the 3x3 loot grid, floated over
-│   │                      #                       the left column by its toggle
+│   │                      #                       the board by its toggle
 │   │                      #     ReportChecklist — its left column, both states
 │   │                      #     OfferingCards   — its choice cards + hover line
 │   │                      #     BattlefieldView — the grid the enemies close in on
