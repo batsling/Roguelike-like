@@ -820,15 +820,27 @@ func attempts_on_shields() -> int:
 # ONE LOST RUN at the game being played (§3): it spends a shield, or
 # ATTEMPT_HEALTH_COST Health once the shields are gone — and Health reaching 0
 # ends the run right there, same as an enemy hit. Refused when no game is in play
-# or the run is already over. Returns the cost ("shield" / "health"), or "" when
-# nothing was logged.
+# or the run is already over. Returns the cost ("shield" / "bonus" / "health"), or
+# "" when nothing was logged.
+#
+# THE ORDER IS PER-GAME, THEN BONUS, THEN HEALTH (§4.3). The tries granted by the
+# game in play are spent first because they die with it anyway; a Bonus Shield is
+# spent only once they are gone, because it is the one that would still be there
+# next game. A lost run DOES eat them — they are shields, and a pool that only
+# stopped enemy damage would be a different resource wearing the same pips.
 func log_attempt() -> String:
 	if run_over or arrivals.is_empty():
 		return ""
-	var cost: String = "shield" if GameState.shields > 0 else "health"
+	var cost: String = "health"
+	if GameState.shields > 0:
+		cost = "shield"
+	elif GameState.bonus_shields > 0:
+		cost = "bonus"
 	var payout: int = 0
 	if cost == "shield":
 		GameState.shields -= 1
+	elif cost == "bonus":
+		GameState.bonus_shields -= 1
 	else:
 		# What the Health cost PAID OUT, measured rather than assumed: losing
 		# Health is a trigger point (Piggy Bank), and a try is the one loss in the
@@ -859,6 +871,8 @@ func undo_attempt() -> String:
 	var payout: int = int(_attempt_payouts.pop_back()) if not _attempt_payouts.is_empty() else 0
 	if cost == "shield":
 		GameState.shields += 1
+	elif cost == "bonus":
+		GameState.bonus_shields += 1
 	else:
 		GameState.change_hp(ATTEMPT_HEALTH_COST)
 	if payout > 0:
@@ -1044,11 +1058,22 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# The enemies have struck and moved, so this game is over — and with it go the
 	# shields it granted (§3). Shields are the tries at ONE game: what you didn't
 	# spend retrying, and what the front line didn't get through, expires here
-	# rather than banking into the next game. Barricade (§8) suspends exactly that
-	# rule, so the survivors roll into the next game's tries instead.
-	if GameState.shields > 0 and not GameState.keeps_shields():
-		res["shields_expired"] = GameState.shields
-		GameState.shields = 0
+	# rather than banking into the next game.
+	#
+	# Barricade (§4.3) BANKS them instead: the survivors become Bonus Shields, the
+	# pool that does not expire. Not "they stop expiring" — that quietly made the
+	# per-game pool a second permanent pool with its own spend order, and there is
+	# one permanent pool now. Banked shields are therefore spent LAST from here on,
+	# which is a small buff and the right one: the relic is about the tries you
+	# didn't need.
+	if GameState.shields > 0:
+		if GameState.banks_shields():
+			res["shields_banked"] = GameState.shields
+			GameState.bonus_shields += GameState.shields
+			GameState.shields = 0
+		else:
+			res["shields_expired"] = GameState.shields
+			GameState.shields = 0
 	# The tries went with it: `res` already carries the count for the log, and the
 	# board must not keep drawing a finished game's spent pips.
 	attempt_costs.clear()
@@ -2224,9 +2249,18 @@ func _take_hit(damage: int, res: Dictionary,
 		damage, int(totals["damage_taken"]), float(totals["damage_taken_mult"]))
 	if damage <= 0:
 		return {"damage": 0, "blocked": 0}
-	var absorbed: int = 0 if bool(totals["pierce_shields"]) \
-		else mini(GameState.shields, damage)
-	GameState.shields -= absorbed
+	# THE PER-GAME POOL EATS FIRST, THE BONUS POOL SECOND (§4.3). Same order a lost
+	# run spends them in, and for the same reason: the tries expire with this game
+	# whether or not they were used, so spending a Bonus Shield while one of them is
+	# still standing would be burning the pool that survives to save the one that
+	# doesn't. Pierce takes both past.
+	var absorbed: int = 0
+	if not bool(totals["pierce_shields"]):
+		absorbed = mini(GameState.shields, damage)
+		GameState.shields -= absorbed
+		var bonus_eaten: int = mini(GameState.bonus_shields, damage - absorbed)
+		GameState.bonus_shields -= bonus_eaten
+		absorbed += bonus_eaten
 	var overflow: int = damage - absorbed
 	if overflow > 0:
 		# Tagged as what threw it: this is the ONLY path damage reaches Health by on

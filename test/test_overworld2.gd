@@ -66,6 +66,16 @@ func _open_at_first_offering() -> void:
 	# counts are the ones it put there itself.
 	_clear_board()
 
+# How many RELIC drops are waiting. Every report also queues the game's own loot
+# payout (§4.3) — a scroll or a pill, asked about in the same queue — so a raw
+# _drop_queue.size() no longer counts what these tests are about.
+func _item_drops() -> int:
+	var n: int = 0
+	for d in _ui._drop_queue:
+		if not (d as Dictionary).has("loot"):
+			n += 1
+	return n
+
 # Take every body off the board, the way DevTools' "clear the board" does.
 func _clear_board() -> void:
 	_clear_board_except(0)
@@ -152,7 +162,7 @@ func test_report_goal_met_defeats_and_drops() -> void:
 	_ui.pick(0)
 	_report_beat(_ui)              # met -> defeat + a drop to be asked about
 	assert_eq(GameLoop2.stack_size(), 1, "a met goal still leaves the escort standing")
-	assert_eq(_ui._drop_queue.size(), 1, "the kill queued a drop")
+	assert_eq(_item_drops(), 1, "the kill queued a drop")
 
 # An enemy kill ASKS whether you want what fell off it (§8): a modal with the
 # item on it, Take or Leave, no tray to notice later. Taking it adds the item and
@@ -160,7 +170,7 @@ func test_report_goal_met_defeats_and_drops() -> void:
 func test_defeat_drop_opens_a_take_it_or_leave_it_popup() -> void:
 	_ui.pick(0)
 	_report_beat(_ui)
-	assert_eq(_ui._drop_queue.size(), 1, "a drop is waiting to be asked about")
+	assert_eq(_item_drops(), 1, "a drop is waiting to be asked about")
 	# The modal opens on the next idle frame — the defeat lands mid-resolve.
 	await wait_frames(2)
 	var modal = _ui._drop_modal
@@ -176,7 +186,7 @@ func test_defeat_drop_opens_a_take_it_or_leave_it_popup() -> void:
 	assert_null(found, "enemy drops ask on their own screen, not a RewardScreen")
 	var inv_before: int = GameState.inventory.size()
 	modal.take()                                 # click Take it
-	assert_eq(_ui._drop_queue.size(), 0, "the drop was consumed")
+	assert_eq(_item_drops(), 0, "the drop was consumed")
 	assert_eq(GameState.inventory.size(), inv_before + 1, "taking it adds the item")
 	assert_eq(_ui._items_box.get_child_count(), GameState.inventory.size(),
 		"and the pack strip above the board holds a token for it")
@@ -219,7 +229,7 @@ func test_the_drop_asks_in_the_middle_of_the_screen() -> void:
 func test_leaving_a_drop_discards_it() -> void:
 	_ui.pick(0)
 	_report_beat(_ui)
-	assert_eq(_ui._drop_queue.size(), 1)
+	assert_eq(_item_drops(), 1)
 	await wait_frames(2)
 	var modal = _ui._drop_modal
 	assert_not_null(modal)
@@ -227,7 +237,7 @@ func test_leaving_a_drop_discards_it() -> void:
 		return
 	var inv_before: int = GameState.inventory.size()
 	modal.leave()                                # click Leave it
-	assert_eq(_ui._drop_queue.size(), 0, "the drop was cleared")
+	assert_eq(_item_drops(), 0, "the drop was cleared")
 	assert_eq(GameState.inventory.size(), inv_before, "leaving it keeps the inventory unchanged")
 
 # Two kills in one report ask twice, one after the other, rather than stacking
@@ -241,11 +251,11 @@ func test_drops_are_asked_about_one_at_a_time() -> void:
 	assert_not_null(first, "the first drop is the question in front of you")
 	if first == null:
 		return
-	assert_eq(_ui._drop_queue.size(), 2, "the second is still queued behind it")
+	assert_eq(_item_drops(), 2, "the second is still queued behind it")
 	first.leave()
 	await wait_frames(2)
 	assert_not_null(_ui._drop_modal, "and comes up once the first is answered")
-	assert_eq(_ui._drop_queue.size(), 1)
+	assert_eq(_item_drops(), 1)
 
 func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# Miss a goal so an enemy follows, then on the next game tick its fulfilment
@@ -258,7 +268,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	assert_eq(GameLoop2.stack_size(), 2, "a missed goal leaves a follower and its escort")
 	_clear_board_except(int(GameLoop2.stack[0].get("instance", 0)))
 	var hp_before: int = GameState.hp
-	var drops_before: int = _ui._drop_queue.size()
+	var drops_before: int = _item_drops()
 	_ui.pick(0)                                  # play another game
 	# THREE rows: the old follower, and both bodies this game walked on. The
 	# advertised one used to be missing from this list — it had the Goal box
@@ -267,7 +277,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 		"the old follower is offered for fulfilment, and so is this game's pair")
 	_ui._fulfil_checks[0]["check"].button_pressed = true
 	_ui.report(false)                            # miss current, but fulfil the follower
-	assert_eq(_ui._drop_queue.size(), drops_before + 1, "the fulfilled follower dropped an item")
+	assert_eq(_item_drops(), drops_before + 1, "the fulfilled follower dropped an item")
 	assert_eq(GameState.hp, hp_before, "fulfilling it before it hit means no damage")
 	# The old follower is gone; what stands is this game's own pair.
 	assert_eq(GameLoop2.stack_size(), 2, "old follower gone; this game's enemy and escort stacked")
@@ -1060,15 +1070,89 @@ func test_a_spendable_charge_is_a_button_and_an_empty_one_is_not() -> void:
 	assert_true("\n".join(labels).contains("Scramble 1"),
 		"a charge that can be fired from here is a button: %s" % str(labels))
 
-func test_scrolls_are_carried_on_the_pack_strip_beside_the_items() -> void:
-	# A scroll is a thing you carry and spend, exactly like a Usable relic — so it
-	# is a token on the same strip, not a titled panel of its own.
+func test_loot_lives_in_its_own_window_beside_the_pack() -> void:
+	# Scrolls used to be tokens on the pack strip. Pills doubled the kinds and the
+	# per-game drop made carrying nine ordinary (§4.3), so loot moved into a window
+	# of its own — opened from a toggle at the end of the strip's row, which is
+	# where the count of what you are carrying now lives.
 	GameState.add_scroll_loot(&"scroll_of_teleportation")
 	_ui._refresh_items()
-	assert_true(_ui._inv_wrap.is_ancestor_of(_ui._items_box),
-		"one strip, in the pack")
-	var text: String = _text_of(_ui._items_box)
-	assert_true(text.contains("Read"), "the scroll is on it, with its Read control: %s" % text)
+	assert_true(_ui._inv_wrap.is_ancestor_of(_ui._items_box), "the relics are still a strip")
+	assert_false(_text_of(_ui._items_box).contains("Read"),
+		"and the strip is relics only — loot is not on it")
+	var toggle: String = _text_of(_ui._loot_toggle_box)
+	assert_true(toggle.contains("Loot"), "the toggle says what it opens: %s" % toggle)
+	assert_true(toggle.contains("1/%d" % GameState.LOOT_CAPACITY),
+		"and how full the pack is: %s" % toggle)
+	assert_null(_ui._loot_panel, "the window starts closed")
+
+func test_the_loot_window_opens_onto_a_full_3x3_over_the_left_column() -> void:
+	GameState.add_scroll_loot(&"scroll_of_teleportation")
+	GameState.add_pill_loot(&"luck_up")
+	_ui._loot_window.open = true
+	_ui._refresh_items()
+	assert_not_null(_ui._loot_panel, "opening it mounts the panel")
+	if _ui._loot_panel == null:
+		return
+	# On the PAGE, not inside the pack — opening it must not re-flow the column the
+	# board is in.
+	assert_true(_ui.is_ancestor_of(_ui._loot_panel), "it floats over the page")
+	assert_false(_ui._inv_wrap.is_ancestor_of(_ui._loot_panel),
+		"and not inside the pack panel")
+	var grid: GridContainer = _find_grid(_ui._loot_panel)
+	assert_not_null(grid, "the window is a grid")
+	if grid == null:
+		return
+	assert_eq(grid.columns, 3, "three across")
+	# ALWAYS nine. The empties are how the window says how much room is left, and
+	# they are what keeps it a grid rather than a row that wraps.
+	assert_eq(grid.get_child_count(), GameState.LOOT_CAPACITY,
+		"nine slots whatever is in them")
+	var text: String = _text_of(_ui._loot_panel)
+	assert_true(text.contains("Use"), "each carried piece can be spent from here: %s" % text)
+	assert_true(text.contains("Unidentified Pill"),
+		"an unlearned colour says only what it looks like: %s" % text)
+
+func test_the_loot_window_lands_on_the_board() -> void:
+	# It drops out of its own button: the pack strip sits on top of the board, so
+	# the window opens onto the board under it rather than across the page.
+	GameState.add_pill_loot(&"luck_up")
+	_ui._loot_window.open = true
+	_ui._refresh_items()
+	await wait_frames(2)
+	assert_not_null(_ui._loot_panel)
+	if _ui._loot_panel == null:
+		return
+	var panel: Rect2 = _ui._loot_panel.get_global_rect()
+	var board: Rect2 = _ui._stage_panel.get_global_rect()
+	assert_almost_eq(panel.get_center().x, board.get_center().x, 3.0,
+		"centred across the board rather than pinned to a corner of it")
+	assert_gt(panel.position.y, board.position.y - 1.0, "and starting at its top")
+	assert_gt(panel.position.x, _ui._left_col.get_global_rect().end.x - 1.0,
+		"which is the pack's side of the page, not the offering's")
+
+func test_the_loot_window_stays_on_screen() -> void:
+	GameState.add_pill_loot(&"luck_up")
+	_ui._loot_window.open = true
+	_ui._refresh_items()
+	await wait_frames(2)
+	if _ui._loot_panel == null:
+		return
+	var panel: Rect2 = _ui._loot_panel.get_global_rect()
+	var screen: Vector2 = _ui.get_viewport_rect().size
+	assert_gt(panel.position.y, ModalScaffold.reserved_top - 1.0,
+		"clear of the header bar, which is drawn over everything")
+	assert_lt(panel.end.y, screen.y + 1.0, "and the whole of it fits the window")
+	assert_lt(panel.end.x, screen.x + 1.0)
+
+func _find_grid(node: Node) -> GridContainer:
+	if node is GridContainer:
+		return node
+	for c in node.get_children():
+		var found: GridContainer = _find_grid(c)
+		if found != null:
+			return found
+	return null
 
 func test_the_map_button_belongs_to_the_offering() -> void:
 	var found: Button = null

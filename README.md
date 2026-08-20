@@ -43,6 +43,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── redesign2/        #   the games-first screens:
 │   │                      #     Overworld2      — run flow: offering, report, pack
 │   │                      #     PackStrip       — fills Overworld2's pack strip
+│   │                      #     LootWindow      — the 3x3 loot grid, floated over
+│   │                      #                       the board by its toggle
 │   │                      #     ReportChecklist — its left column, both states
 │   │                      #     OfferingCards   — its choice cards + hover line
 │   │                      #     BattlefieldView — the grid the enemies close in on
@@ -55,7 +57,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     BossNoticeModal — the "⚠ BOSS INCOMING" popup
 │   │                      #     RouteLadder     — the arrowed shortest-path graph
 │   │                      #     RunOverScreen   — the end-of-run verdict screen
-│   │                      #     RunMapModal / ScrollReadModal
+│   │                      #     LootDropModal   — "the game paid out, keep it?"
+│   │                      #     RunMapModal / LootUseModal
 │   ├── events/           #   the D20 event system (EventModal, D20DieView)
 │   ├── menu/             #   the main menu + CustomRunScreen (the custom run's setup)
 │   ├── runtime/          #   RunGraph — the real-games influence graph
@@ -75,6 +78,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── bosses2.0/        #   GoalEnemyData — the difficulty-gate bosses
 │   ├── characters2.0/    #   CharacterData — the playable roster
 │   ├── scrolls2.0/       #   ScrollData — identify-by-reading scrolls
+│   ├── pills2.0/         #   PillData — identify-by-taking pills, two doses each
+│   │                     #   (the horse dose is a 5% roll on the drop, §4.3)
 │   ├── statuses2.0/      #   StatusData — clauses bolted onto goals, plus the
 │   │                     #   combat side they move numbers with (§13, §13.4)
 │   ├── tiles2.0/         #   TileEffectData — what sits on one CELL of the board
@@ -113,6 +118,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_boss_tres.py       #   data/bosses2.0
 │   ├── generate_character2_tres.py #   data/characters2.0
 │   ├── generate_scroll2_tres.py    #   data/scrolls2.0
+│   ├── generate_pill2_tres.py      #   data/pills2.0
 │   ├── generate_status_tres.py     #   data/statuses2.0 (owns the reward-token DSL)
 │   ├── generate_tile_tres.py       #   data/tiles2.0 (owns the tile/unit trigger DSL)
 │   ├── generate_unit_tres.py       #   data/units2.0 (imports the parsers above)
@@ -172,6 +178,7 @@ To add or replace art:
    | `images2.0/enemies/`, `images2.0/bosses/` | Goal-enemy and boss art |
    | `images2.0/characters/Full/`, `images2.0/characters/Icon/` | 2.0 character portrait + in-world token |
    | `images2.0/scrolls/` | Scroll art (identified art + `Unidentified.png`) |
+   | `images2.0/pills/` | Pill capsules — 13 colours, each with a `<Colour>Horse.png` twin. Bound to pills by the RUN, not by a `.tres` (`PillSystem.COLORS`), so adding art means adding its name to that list too |
    | `images2.0/statuses/` | Status art (`data/statuses2.0`) |
    | `images2.0/tiles/` | Tile-effect art (`data/tiles2.0`) |
    | `images2.0/units/` | Unit art (`data/units2.0`) |
@@ -213,6 +220,8 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `GameLoop2` | The run loop: the games-beaten clock, the enemy stack, and the grid the followers advance across. Committing to a game spawns **two** bodies — the one the card advertised and an **escort** rolled from the same pool (§7.5); boss rounds spawn solo. **Neither belongs to the game.** There is no "this game's enemy": what walks on is a follower like every other body from the moment it lands — bombable, pushable, one ordinary row in the report checklist — and `arrivals` is only the record of which bodies came with the game in play, kept so a Scramble can supersede them. `Overworld2` is a view over it. |
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
+| `PillSystem` | Pills (`docs/games-first-redesign.md` §4.3): the per-run deal of 10 of the 13 capsule colours (three mean nothing, so the tenth pill can't be deduced), the 5% horse-dose roll on a drop, colour-scoped identification — either dose teaches both — and the ops a dose runs. Bad Trip names itself from your Health: at or below its own damage it heals to full and reads "Full Health" while that is true. |
+| `LootSystem` | The one place a piece of carried loot is SPENT. Each kind owns its own resolution; what they share is everything around a use — consuming the entry, **Echo Chamber**'s copies of the last three used, and the memory they read (`GameState.loot_used_memory`). It belongs to neither system because an echo of a pill can be a scroll. Isaac's ordering: the copies fire off the memory as it stood *before* this use, so nothing echoes itself and no echo is remembered. |
 | `GameLog` | Verbose run-scope message log (teleports, pickups, item procs) — the written record behind the toasts. |
 | `Notifications` | Curated player-facing "important events" channel; the overworld mounts `NotificationToasts` to show them. |
 | `SaveSystem` | Save/load for a games-first run (`user://`): a named save per run plus the run's own autosave slot. Writes GameState, `GameLoop2`, and the overworld's on-screen state, and hands a loaded run back to the next `Overworld2` to boot. |
@@ -222,7 +231,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `RunConfig` | A **custom run**'s setup, held for the run it configures: three independent filters (**map** / **start** / **amulet**, each with library, genre, record and release-year axes), the run-length band, and an optional named target game. Off by default, in which case `RunGraph` reads `Settings.game_filter` exactly as before. Written by `CustomRunScreen`, read by `RunGraph`, and saved with the run — the filters *are* the map, so a save resumed without them comes back on a different one. `RunConfig.describe()` is what the menu's Continue list prints on a custom run's row, read off that save's own stored block rather than off the loaded run. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified), plus the Donation Machine's bank — the one number in the build that deliberately outlives a run. |
-| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Five tabs: **Grant** (items / scrolls / statuses, with a player-or-enemy target picker — the item list is `DevTools.item_pool()`, the **2.0 set only**: it used to append the 112 combat-era relics from `data/items`, which grant cleanly and then do nothing because no games-first code honours them), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss), **Events** (start any authored event where you stand and read the state of the shuffle bag, each row saying why it is or isn't turning up on its own — see [Authoring an event](#authoring-an-event); the same tab spawns any **object** under the board, which is the only way to reach the non-event half of how a machine appears). Everything routes through the same public API the game uses. |
+| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Five tabs: **Grant** (items / scrolls / pills / statuses, with a player-or-enemy target picker — the item list is `DevTools.item_pool()`, the **2.0 set only**: it used to append the 112 combat-era relics from `data/items`, which grant cleanly and then do nothing because no games-first code honours them), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss), **Events** (start any authored event where you stand and read the state of the shuffle bag, each row saying why it is or isn't turning up on its own — see [Authoring an event](#authoring-an-event); the same tab spawns any **object** under the board, which is the only way to reach the non-event half of how a machine appears). Everything routes through the same public API the game uses. |
 
 ### Screens & flow
 
@@ -534,6 +543,7 @@ editing the sheet, then review the diff):
 | `generate_boss_tres.py` | `data/bosses2.0/*.tres` from the boss sheet |
 | `generate_character2_tres.py` | `data/characters2.0/*.tres` from the characters sheet |
 | `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet |
+| `generate_pill2_tres.py` | `data/pills2.0/*.tres` from the `pills2.0` sheet — one row is one pill and BOTH its doses, so it parses two effect columns onto one resource |
 | `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses2.0` sheet |
 | `generate_tile_tres.py` | `data/tiles2.0/*.tres` from the `tiles2.0` sheet — owns the trigger / interaction DSL both board kinds use (§17) |
 | `generate_unit_tres.py` | `data/units2.0/*.tres` from the `units2.0` sheet — imports the parsers above rather than restating them |

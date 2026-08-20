@@ -232,6 +232,15 @@ func _build_payload() -> Dictionary:
 		"identified_potion_types": _stringnames_to_strings(GameState.identified_potion_types),
 		"identified_scroll_types": _stringnames_to_strings(GameState.identified_scroll_types),
 		"potion_color_map": GameState.potion_color_map.duplicate(),
+		# Pills (§4.3): the colours learned, and THE RUN'S ALPHABET — which capsule
+		# means which pill. The map has to persist or a reloaded run would redeal
+		# the colours underneath a player who had spent the run learning them.
+		"identified_pill_types": _stringnames_to_strings(GameState.identified_pill_types),
+		"pill_color_map": GameState.pill_color_map.duplicate(),
+		# Echo Chamber's memory of what has been used (§4.3). Saved with the run
+		# because the relic reads the RUN's history: a reload that came back with an
+		# empty memory would quietly cost the player their next three echoes.
+		"loot_used_memory": GameState.loot_used_memory.duplicate(true),
 		"loot_keys": int(GameState.loot.get("key", 0)),
 		# === games-first (2.0) run state ===
 		# The board verbs and the per-game shields are stored WITHOUT the bonus
@@ -239,6 +248,11 @@ func _build_payload() -> Dictionary:
 		# load restores the base and _recompute_item_bonuses re-applies the item
 		# half, so a passive (+1 Bash) can't compound across save/load cycles.
 		"shields": GameState.base_verb_value("shields"),
+		# The pool that does not expire (§4.3). Stored raw rather than through
+		# base_verb_value: nothing in the pack contributes a standing bonus to it —
+		# a Bonus Shield is granted once, by a pill or by Barricade banking a
+		# resolved game, and subtracting an item half would eat what was granted.
+		"bonus_shields": GameState.bonus_shields,
 		"bash": GameState.base_verb_value("bash"),
 		"push": GameState.base_verb_value("push"),
 		"transmute": GameState.base_verb_value("transmute"),
@@ -358,6 +372,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	# either wipe the item contribution or bake it in twice, depending on the verb.
 	GameState.dash_charges = int(data.get("dash", 0))
 	GameState.shields = int(data.get("shields", 0))
+	GameState.bonus_shields = int(data.get("bonus_shields", 0))
 	GameState.bash = int(data.get("bash", 0))
 	GameState.push = int(data.get("push", 0))
 	GameState.transmute = int(data.get("transmute", 0))
@@ -415,6 +430,18 @@ func _apply_save_data(data: Dictionary) -> void:
 	var cm: Dictionary = data.get("potion_color_map", {})
 	for k in cm.keys():
 		GameState.potion_color_map[String(k)] = String(cm[k])
+	var pident: Array[StringName] = []
+	for s2 in data.get("identified_pill_types", []):
+		pident.append(StringName(s2))
+	GameState.identified_pill_types = pident
+	GameState.pill_color_map = {}
+	var pm: Dictionary = data.get("pill_color_map", {})
+	for k in pm.keys():
+		GameState.pill_color_map[String(k)] = String(pm[k])
+	GameState.loot_used_memory.clear()
+	for e in data.get("loot_used_memory", []):
+		if e is Dictionary:
+			GameState.loot_used_memory.append((e as Dictionary).duplicate(true))
 	GameState.loot["key"] = int(data.get("loot_keys", 0))
 	GameState.pending_chests = int(data.get("pending_chests", 0))
 	GameState.pending_chest_choices.clear()

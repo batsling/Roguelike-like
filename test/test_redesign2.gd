@@ -294,7 +294,7 @@ func test_bomb_rule_flags() -> void:
 	assert_true(Data.get_item2(&"sticky_bombs").bomb_stun, "Sticky Bombs stun")
 	assert_true(Data.get_item2(&"brimstone_bombs").bomb_cardinal,
 		"Brimstone Bombs blast the four cardinals")
-	assert_true(Data.get_item2(&"barricade").keep_shields, "Barricade banks shields")
+	assert_true(Data.get_item2(&"barricade").bank_shields, "Barricade banks shields")
 	assert_false(Data.get_item2(&"lunch").bomb_stun, "an ordinary item sets none of them")
 
 func test_bomb_rule_flags_read_off_the_inventory() -> void:

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PillData" load_steps=2 format=3 uid="uid://pill2_bad_trip"]
+
+[ext_resource type="Script" path="res://scripts/resources/PillData.gd" id="1_pill"]
+
+[resource]
+script = ExtResource("1_pill")
+id = &"bad_trip"
+display_name = "Bad Trip"
+preference = "Negative"
+description = "Lose -2 Health"
+horse_description = "Lose -4 Health"
+effect = [{"op": "lose_hp", "value": 2, "lethal": "heal_full"}]
+horse_effect = [{"op": "lose_hp", "value": 4, "lethal": "heal_full"}]
+notes = "When a Bad Trip pill when it would kill you, it becomes Full Health"

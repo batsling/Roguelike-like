@@ -6,7 +6,7 @@ extends Node
 #
 # Five tabs, in the order you reach for them:
 #
-#   GRANT   put content into the run — 2.0/1.0 items, scrolls, and statuses (§13)
+#   GRANT   put content into the run — items, scrolls, pills, and statuses (§13)
 #           with a target picker, since a status can land on the player or on any
 #           body on the board.
 #   RUN     move the run's numbers — Health / Max Health, every board verb, gold,
@@ -31,8 +31,9 @@ const TABS := ["grant", "run", "board", "flow", "events"]
 const TAB_LABELS := {"grant": "Grant", "run": "Run", "board": "Board",
 	"flow": "Flow", "events": "Events"}
 # What the Grant tab is granting.
-const GRANT_KINDS := ["items", "scrolls", "statuses"]
-const GRANT_LABELS := {"items": "Items", "scrolls": "Scrolls", "statuses": "Statuses"}
+const GRANT_KINDS := ["items", "scrolls", "pills", "statuses"]
+const GRANT_LABELS := {"items": "Items", "scrolls": "Scrolls", "pills": "Pills",
+	"statuses": "Statuses"}
 # Where a granted status lands (GameLoop2's own target words, plus the player).
 const STATUS_TARGETS := ["player", "current", "all", "random"]
 
@@ -200,6 +201,8 @@ func _hint_text() -> String:
 			match _grant_kind:
 				"scrolls":
 					return "Click a scroll to add it (unidentified) to your loot."
+				"pills":
+					return "Click a pill to add it (unidentified) to your loot. The Horse toggle grants the oversized dose — the 5%% roll, on demand (§4.3)."
 				"statuses":
 					return "Click a status to apply it. 'Player' is your own side; the rest land on bodies (§13)."
 				_:
@@ -332,9 +335,22 @@ func _build_grant_tab() -> void:
 		_body.add_child(_stepper("Stacks to apply", func(): return _stacks,
 			func(d: int) -> void: _stacks = maxi(1, _stacks + d)))
 
+	# A pill has two doses and the 5% roll is not something a dev panel should have
+	# to re-roll for, so which one a grant hands over is a switch above the list —
+	# the same shape the status target picker takes for the same reason.
+	if _grant_kind == "pills":
+		_body.add_child(_radio_row("Dose:", [
+			{"label": "Normal", "value": "normal"},
+			{"label": "Horse", "value": "horse"},
+		], "horse" if _grant_horse else "normal", func(v: String) -> void:
+			_grant_horse = v == "horse"
+			_rebuild_body()))
+
 	match _grant_kind:
 		"scrolls":
 			_list_scrolls()
+		"pills":
+			_list_pills()
 		"statuses":
 			_list_statuses()
 		_:
@@ -386,6 +402,33 @@ func _list_scrolls() -> void:
 			"press": func() -> void:
 				GameState.add_scroll_loot(scroll.id)
 				_say("Added scroll: %s" % scroll.display_name, Color(0.61, 0.35, 0.71))})
+	_emit_rows(rows)
+
+# Every pill, at whichever dose the toggle is on, with the COLOUR this run dealt
+# it in the detail column — which is the one thing a dev panel can say that the
+# game deliberately will not (§4.3). Granting one does NOT identify it: the point
+# of a pill is finding out, and a debug grant that gave the answer away could not
+# be used to test the finding out.
+var _grant_horse: bool = false
+
+func _list_pills() -> void:
+	var query: String = _query()
+	var rows: Array = []
+	for p in Data.all_pills():
+		if not (p is PillData):
+			continue
+		var label: String = String(p.display_name)
+		if query != "" and not label.to_lower().contains(query):
+			continue
+		var pill: PillData = p
+		var color: String = PillSystem.color_for(pill.id)
+		var known: String = "known" if PillSystem.is_identified(pill.id) else "unknown"
+		rows.append({"label": label, "detail": "%s · %s · %s" % [pill.preference, color, known],
+			"press": func() -> void:
+				GameState.add_pill_loot(pill.id, _grant_horse)
+				_say("Added %spill: %s (%s)" % [
+					"horse " if _grant_horse else "", pill.display_name, color],
+					Color(0.45, 0.78, 0.55))})
 	_emit_rows(rows)
 
 func _list_statuses() -> void:

@@ -435,10 +435,23 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # fired as effects, because they change a RULE rather than move a number. Each
 # has a GameState.has_* helper so the call sites stay a single bool.
 #
-# Barricade: unspent shields stop expiring when a game is resolved (§3) — they
-# bank into the next game instead of belonging to just the one. Read by
-# GameLoop2.beat_game via GameState.keeps_shields.
-@export var keep_shields: bool = false
+# Barricade: what a resolved game left standing is BANKED as Bonus Shields
+# (§4.3) rather than expiring with the game that granted it. It used to simply
+# stop them expiring, which quietly made the per-game pool a second permanent
+# pool with its own spend order; now there is one pool that persists and this is
+# the relic that fills it. Read by GameLoop2.beat_game via GameState.banks_shields.
+@export var bank_shields: bool = false
+
+# Lucky Foot: a NEGATIVE pill taken while this is held rerolls into a random
+# Positive one (§4.3). Neutral pills are untouched, and the colour still
+# identifies as what it actually is — the relic changes the outcome, never the
+# fact. Read by PillSystem via GameState.pills_reroll_positive.
+@export var pills_positive: bool = false
+
+# Echo Chamber: using a piece of loot also uses a copy of the last N used since
+# this was picked up (§4.3). A count rather than a bool so the memory's depth is
+# the sheet's to set. Read by LootSystem via GameState.loot_echo_depth.
+@export var echo_loot: int = 0
 
 # Sticky Bombs: everything a bomb HITS and does not destroy is stunned instead
 # (loses its next turn, §4.1 / §7.4) — which in practice means bosses, the only

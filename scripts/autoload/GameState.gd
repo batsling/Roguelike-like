@@ -254,6 +254,26 @@ var identified_scroll_types: Array[StringName] = []
 # different one next run). Persisted so a reloaded run keeps its colours.
 var potion_color_map: Dictionary = {}
 
+# ECHO CHAMBER'S MEMORY (§4.3): the loot entries the player has USED, oldest
+# first. Run state rather than item state on purpose — the relic reads this, it
+# does not carry it, so two Echo Chambers see one history and picking one up
+# mid-run reads what the run already did. Written by LootSystem, which is also
+# where the ordering rule (nothing echoes itself) lives.
+var loot_used_memory: Array = []
+
+# Sibling of identified_scroll_types for PILLS (§4.3). Taking a pill reveals its
+# COLOUR for the rest of the run — both doses of it, in both directions, since a
+# horse pill is the same capsule at a bigger size. Amnesia's horse dose clears
+# this. Persisted with the save.
+var identified_pill_types: Array[StringName] = []
+
+# THE RUN'S ALPHABET: pill id (String) -> the art base under images2.0/pills/
+# ("BlueCyan", whose horse dose is "BlueCyanHorse"). Dealt once per run by
+# PillSystem from the 13 colours on disk, which leaves THREE colours unbound —
+# the reason a pill can't be deduced by elimination once the other nine are
+# known. Persisted, so a reloaded run keeps the alphabet it taught you.
+var pill_color_map: Dictionary = {}
+
 # === Incremental-item counters ===
 # Progress counters that drive "every Nth …" items (Happy Flower, Nunchaku,
 # Ornamental Fan, Shuriken, Pen Nib) and let the Backpack show how close each
@@ -336,7 +356,7 @@ var action_right_card_id: StringName = &""
 var _action_upgraded_cache: Dictionary = {}
 
 # Action-mode item slots, assigned on the equipment screen:
-#   * action_active_item_id  — one USABLE consumable (pill), popped with Q.
+#   * action_active_item_id  — one USABLE consumable item, popped with Q.
 #                              Cleared when the item is spent.
 #   * action_charged_item_id — one CHARGED active, fired with E. While slotted it
 #                              is the only charged item that gains a charge per
@@ -399,6 +419,17 @@ var discovery: int = 0
 # carry into the next one (GameLoop2.beat_game clears them after the enemies have
 # struck and advanced). No cap.
 var shields: int = 0
+# BONUS SHIELDS — the pool that is not per-game (§4.3). Gained off the board
+# (Balls of Steel, horse Full Health) or banked out of a resolved game by
+# Barricade, and unlike `shields` they do NOT expire: they stay until something
+# breaks them, which is what makes one worth saving for the game after next.
+#
+# Spent LAST, everywhere: a lost run ticks `shields` first and only reaches these
+# once the tries are gone, and enemy damage reads the same order. Drawn closest to
+# the player — nearest the portrait on the board's hero, and on the header's
+# Health chip, since a pool gained on the overworld has to be readable when no
+# board is on screen.
+var bonus_shields: int = 0
 var bash: int = 0
 # Push (Manager's signature verb, from Raccoin): spend a charge to shove a
 # following enemy back one space, delaying its next attack by a game (§7.2) —
@@ -904,7 +935,13 @@ func reset_run() -> void:
 	loot_items.clear()
 	identified_potion_types.clear()
 	identified_scroll_types.clear()
+	identified_pill_types.clear()
+	loot_used_memory.clear()
 	potion_color_map.clear()
+	# The run's pill alphabet is dealt fresh (§4.3) — the same ten pills wear
+	# different capsules next run, which is the whole reason learning one is worth
+	# anything.
+	pill_color_map.clear()
 	learned_spells.clear()
 	action_left_card_id = &""
 	action_right_card_id = &""
@@ -929,6 +966,7 @@ func reset_run() -> void:
 	discovery = 0
 	# Games-first (2.0) resources.
 	shields = 0
+	bonus_shields = 0
 	bash = 0
 	push = 0
 	transmute = 0
@@ -1003,6 +1041,7 @@ func apply_character2(char_data: CharacterData) -> void:
 	max_hp = maxi(1, char_data.base_max_hp)
 	hp = max_hp
 	shields = 0
+	bonus_shields = 0
 	# The run's whole starting purse (§14) — gold never carries between runs, so
 	# there is nothing else for this to add to. Set BEFORE the starting items, so
 	# an item that reads gold on pickup sees what the run actually opens holding.
@@ -1453,6 +1492,10 @@ const _LEVEL_UP_ABILITY_FIELDS := {
 	# Effect columns authored against the old name still land on the right field.
 	"shields": "shields",
 	"block": "shields",
+	# The pool that does not expire (§4.3). Its own field rather than an alias of
+	# `shields`, because the two differ in exactly the way that matters: one dies
+	# with the game that granted it and one does not.
+	"bonus_shields": "bonus_shields",
 	# "+1 Game Choices" widens the overworld offering past its base 3 cards (§7).
 	"game_choices": "game_choice_bonus",
 }
@@ -1874,9 +1917,25 @@ func _any_item_flag(field: String) -> bool:
 			return true
 	return false
 
-# Barricade: unspent shields bank into the next game instead of expiring (§3).
-func keeps_shields() -> bool:
-	return _any_item_flag("keep_shields")
+# Barricade: what a resolved game left standing becomes Bonus Shields (§4.3)
+# instead of expiring with the game that granted it.
+func banks_shields() -> bool:
+	return _any_item_flag("bank_shields")
+
+# Lucky Foot: a Negative pill rerolls into a random Positive one (§4.3).
+func pills_reroll_positive() -> bool:
+	return _any_item_flag("pills_positive")
+
+# Echo Chamber: how many previously-used pieces of loot a use ALSO fires (§4.3),
+# or 0 while nothing in the pack echoes. The DEEPEST copy wins rather than the
+# sum: two Echo Chambers are the same three-loot memory read twice over, and
+# adding them would make the second copy quietly the strongest relic in the game.
+func loot_echo_depth() -> int:
+	var depth: int = 0
+	for it in inventory:
+		if it is ItemData:
+			depth = maxi(depth, int(it.echo_loot))
+	return depth
 
 # Sticky Bombs: whatever a bomb hits and fails to destroy is stunned (§4.1).
 func bombs_stun() -> bool:
@@ -2000,11 +2059,15 @@ func clear_overworld_context(scene = null) -> void:
 	if scene == null or overworld_scene == scene:
 		overworld_scene = null
 
-# Pills may only be used in combat or while an event roll is open.
+# A USABLE item may only be fired in combat or while an event roll is open.
+# ("Pill" used to be this file's word for a USABLE consumable item, from the
+# combat era. It means the §4.3 loot consumable now — a different thing entirely,
+# which is not an item and is not fired through here — so the old jargon is gone
+# from the two comments that still carried it.)
 func can_use_items() -> bool:
 	return combat_scene != null or event_active
 
-# Whether `item` can be fired right now. USABLE pills need a combat/event
+# Whether `item` can be fired right now. USABLE items need a combat/event
 # context; CHARGED actives only need a full bar and can be popped from any
 # screen (combat, backpack, a reward screen).
 func can_fire_item(item: ItemData) -> bool:
@@ -2014,8 +2077,8 @@ func can_fire_item(item: ItemData) -> bool:
 		return item.is_fully_charged()
 	if item.kind == ItemData.ItemKind.USABLE:
 		# Overworld actives (Winged Boots) fire only on the map — never in combat,
-		# where their effect would no-op and waste a use. Ordinary pills are the
-		# inverse: combat/event only.
+		# where their effect would no-op and waste a use. Ordinary USABLE items are
+		# the inverse: combat/event only.
 		if item.overworld_usable:
 			return overworld_scene != null
 		return can_use_items()
@@ -2120,6 +2183,23 @@ func charge_item_by_id(id: StringName, amount: int = 1) -> void:
 			if _charge_item(it, amount):
 				emit_signal("inventory_changed")
 			return
+
+# Every relic in the pack that runs on charges — 48 Hour Energy's targets (§4.3).
+# The carried copies, not the templates, since what a charge lands on is a bar
+# that exists.
+func chargeable_items() -> Array:
+	return inventory.filter(func(it): return it is ItemData and it.is_charged())
+
+# Public front for _charge_item: tops one relic's bar up by `amount` and reports
+# whether the bar actually moved, so a caller can tell "charged it" from "it was
+# already full" and say the right thing.
+func charge_item(it: ItemData, amount: int) -> bool:
+	if not (it is ItemData) or not it.is_charged() or amount == 0:
+		return false
+	var moved: bool = _charge_item(it, amount)
+	if moved:
+		emit_signal("inventory_changed")
+	return moved
 
 # Clamps one item's bar; returns true if its fill actually moved.
 func _charge_item(it: ItemData, amount: int) -> bool:
@@ -2562,21 +2642,53 @@ func _recompute_item_bonuses() -> void:
 	emit_signal("stats_changed")
 
 # ---------------------------------------------------------------------------
-# Loot (potions / scrolls / keys)
+# Loot (scrolls / pills / keys)
 # ---------------------------------------------------------------------------
+
+# THE PACK HOLDS NINE (docs/games-first-redesign.md §4.3). Beating a game pays a
+# piece of loot and one relic pays four at once, so without a ceiling the window
+# that draws them is a list of unbounded height and the drop stops being a
+# decision. Nine is a 3x3 grid, which is the shape the window is.
+const LOOT_CAPACITY := 9
+
+func loot_is_full() -> bool:
+	return loot_items.size() >= LOOT_CAPACITY
+
+# How many more pieces will fit. The drop modal asks with this rather than
+# refusing after the fact — "you can't carry this" is an answer the player should
+# get before they take it, not a grant that silently evaporates.
+func loot_space() -> int:
+	return maxi(0, LOOT_CAPACITY - loot_items.size())
 
 func add_loot(kind: String, amount: int = 1) -> void:
 	if amount == 0:
 		return
 	match kind:
-		"scroll":
-			# Each unit becomes a concrete, rarity-rolled scroll entry (gained
-			# unidentified; ScrollSystem resolves identity on read).
+		"scroll", "pill":
+			# Each unit becomes a concrete entry (gained unidentified; ScrollSystem
+			# / PillSystem resolve identity on use). A negative amount drops that
+			# many of the kind instead.
 			if amount > 0:
 				for _i in range(amount):
-					_add_random_scroll_loot()
+					if loot_is_full():
+						break
+					if kind == "scroll":
+						_add_random_scroll_loot()
+					else:
+						_add_random_pill_loot()
 			else:
-				_drop_loot_of_type("scroll", -amount)
+				_drop_loot_of_type(kind, -amount)
+		"loot":
+			# The KIND-BLIND grant: beating a game pays "1 loot", and which kind it
+			# is a straight 50/50 (§4.3). Rolled per unit, so +2 loot is two coins
+			# rather than two of one thing.
+			if amount > 0:
+				for _i in range(amount):
+					if loot_is_full():
+						break
+					add_loot("scroll" if randi() % 2 == 0 else "pill", 1)
+				return
+			_drop_loot_of_type("scroll", -amount)
 		_:
 			if not loot.has(kind):
 				push_warning("GameState.add_loot: unknown kind '%s'" % kind)
@@ -2586,12 +2698,14 @@ func add_loot(kind: String, amount: int = 1) -> void:
 
 func get_loot_count(kind: String) -> int:
 	match kind:
-		"scroll":
+		"scroll", "pill":
 			var n: int = 0
 			for l in loot_items:
 				if l is Dictionary and String(l.get("type", "")) == kind:
 					n += 1
 			return n
+		"loot":
+			return loot_items.size()
 		_:
 			return int(loot.get(kind, 0))
 
@@ -2599,13 +2713,44 @@ func get_loot_count(kind: String) -> int:
 func loot_scrolls() -> Array:
 	return loot_items.filter(func(l): return l is Dictionary and String(l.get("type", "")) == "scroll")
 
+# The same for pills. Each entry carries its own `horse` flag: the 5% roll happens
+# at DROP time and belongs to the piece of loot, not to the pill type, so one
+# colour can be held both ways at once (§4.3).
+func loot_pills() -> Array:
+	return loot_items.filter(func(l): return l is Dictionary and String(l.get("type", "")) == "pill")
+
 func _add_random_scroll_loot() -> void:
+	loot_items.append(roll_loot_entry("scroll"))
+
+func _add_random_pill_loot() -> void:
+	var entry: Dictionary = PillSystem.roll_pill_loot()
+	if not entry.is_empty():
+		loot_items.append(entry)
+
+# Roll one piece of loot WITHOUT granting it. The per-game drop (§4.3) asks before
+# it hands anything over — the pack holds nine and the answer is sometimes no — so
+# the roll and the taking are two steps rather than one.
+#   kind: "scroll" | "pill" | "loot" (the kind-blind 50/50)
+func roll_loot_entry(kind: String = "loot") -> Dictionary:
+	var want: String = kind
+	if want == "loot":
+		want = "scroll" if randi() % 2 == 0 else "pill"
+	if want == "pill":
+		return PillSystem.roll_pill_loot()
 	var s: ScrollData = Data.roll_scroll()
-	if s != null:
-		loot_items.append({"type": "scroll", "id": s.id, "rarity": s.rarity})
-	else:
+	if s == null:
 		# No scrolls loaded — keep the old inert stub so counts/UI don't break.
-		loot_items.append({"type": "scroll", "rarity": "Common"})
+		return {"type": "scroll", "rarity": "Common"}
+	return {"type": "scroll", "id": s.id, "rarity": s.rarity}
+
+# Put a rolled entry in the pack. Refuses once the pack is full rather than
+# silently dropping it, so the caller can say so.
+func take_loot_entry(entry: Dictionary) -> bool:
+	if entry.is_empty() or loot_is_full():
+		return false
+	loot_items.append(entry.duplicate(true))
+	emit_signal("inventory_changed")
+	return true
 
 # Grant a SPECIFIC scroll id as loot (DevTools grant). Emits so loot UI refreshes.
 func add_scroll_loot(id: StringName) -> void:
@@ -2613,6 +2758,16 @@ func add_scroll_loot(id: StringName) -> void:
 	if s == null:
 		return
 	loot_items.append({"type": "scroll", "id": s.id, "rarity": s.rarity})
+	emit_signal("inventory_changed")
+
+# Grant a SPECIFIC pill id as loot, at whichever dose is asked for (DevTools
+# grant). Deliberately NOT capped: a debug grant that silently did nothing when
+# the pack was full would read as a broken command.
+func add_pill_loot(id: StringName, horse: bool = false) -> void:
+	var p: PillData = Data.get_pill(id)
+	if p == null:
+		return
+	loot_items.append({"type": "pill", "id": p.id, "horse": horse})
 	emit_signal("inventory_changed")
 
 # Removes the loot entry at `index` (called after a potion is drunk / thrown).

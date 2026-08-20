@@ -1799,10 +1799,20 @@ func refresh_hero() -> void:
 	_fill_status_strip(_hero_statuses, GameState.status_list(), StatusData.PLAYER,
 		STATUS_PIP_HERO)
 	# Filled pips = shields still standing, hollow = tries already spent on one.
+	#
+	# BONUS SHIELDS SIT CLOSEST TO THE PLAYER (§4.3), at the head of the row and in
+	# their own glyph: they are a different pool, spent only once the tries are
+	# gone, and drawing them as more ◆ would promise the player tries at THIS game
+	# that they do not have. Their position is the reading — the further from the
+	# portrait a pip is, the sooner it goes.
 	var left: int = GameState.shields
 	var spent: int = GameLoop2.attempts_on_shields()
-	_hero_shields.text = "◆".repeat(left) + "◇".repeat(spent)
+	var bonus: int = GameState.bonus_shields
+	_hero_shields.text = "◈".repeat(bonus) + "◆".repeat(left) + "◇".repeat(spent)
 	_hero_shields.tooltip_text = "%d shield(s) left — one per lost run." % left
+	if bonus > 0:
+		_hero_shields.tooltip_text += ("\n◈ %d Bonus Shield(s) — spent after those,"
+			+ " and they don't expire with this game.") % bonus
 
 # --- status pips (§13) ----------------------------------------------------
 #

@@ -11,6 +11,78 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Pills: a second loot consumable, and the identification minigame held by a
+  colour instead of by a type.**
+
+  Ten pills (`pills2.0`), thirteen capsules, and every run deals ten of them and
+  leaves **three colours meaning nothing** — which is the whole design, because
+  it is what stops the tenth pill being deducible once the other nine are known.
+  A pill never hides its art the way a scroll does; the capsule is the thing
+  being learned. What it hides is the name and the Preference.
+
+  **Every pill is two doses.** A drop rolls **5%** to arrive as the colour's
+  oversized HORSE version, which reads its own effect column. The roll belongs to
+  the piece of loot rather than to the type, so one colour can be carried both
+  ways at once — and identification is the COLOUR's, so learning either dose
+  learns both. Four horse doses are just a bigger number; the other four say
+  something the normal dose cannot (Telepills' horse lands by distance from the
+  Amulet, which is the only movement in the game that can drop you next to the
+  goal).
+
+  **Bad Trip names itself from your Health.** At or below its own damage it heals
+  to full instead of killing you, and an identified Bad Trip therefore reads
+  *"Full Health"* while you are in death range and *"Bad Trip"* the rest of the
+  time. The label follows what the pill would DO right now, which is why two
+  colours can both claim to be Full Health, and why it cannot be a stored name.
+
+  **Bonus Shields** are the pool that is not per-game: gained off the board
+  (Balls of Steel, horse Full Health) or banked out of a resolved game by
+  **Barricade**, spent only once the game's own tries are gone — a lost run and
+  an enemy's swing read the same order — and they never expire. They are drawn
+  closest to the player, `◈` at the head of the hero's pips and on the header's
+  Health chip, since a pool gained on the overworld has to be readable with no
+  board on screen. Barricade's old rule (shields simply stop expiring) quietly
+  made the per-game pool a second permanent pool with its own spend order; there
+  is one permanent pool now and one relic that fills it.
+
+  **Loot moved off the pack strip into a window of its own.** Nine pieces beside
+  a run's relics is a second inventory wearing the first one's clothes, so there
+  is a `Loot 4/9 ▾` toggle at the end of the strip's row, and it opens a 3×3 grid
+  as a panel **over the board** — always nine slots, filled then empty, because
+  the room left is the fact the cap makes interesting. It covers the battlefield
+  rather than the offering: the pack strip stands on top of the board, so the
+  window drops out of its own button, and the board is the half of the page that
+  does not change while you decide which pill to take. Scrolls went with
+  it — one window means one place to look — and
+  `ScrollReadModal` became **`LootUseModal`**, because Echo Chamber means using
+  either kind can hand back the other's follow-up.
+
+  **`LootSystem`** owns everything that happens *around* a use: consuming the
+  entry, **Echo Chamber**'s copies of the last three used, and the memory they
+  read. It belongs to neither consumable system because an echo of a pill can be
+  a scroll. The ordering is Isaac's — the copies fire off the memory as it stood
+  BEFORE this use, so nothing echoes itself and no echo is remembered — and it
+  composes with **Sacred Bark** rather than cancelling: one pill with both relics
+  is two doses of it plus three echoes at two doses each.
+
+  **Beating a game now pays one piece of loot**, a straight 50/50, asked about in
+  the kill-drop queue rather than granted as a toast. Escaping pays nothing. With
+  a nine-piece cap on the pack, taking loot is a decision, and a decision needs a
+  question.
+
+  Four relics move the number (Mom's Coin Purse, Mom's Bottle of Pills, Caffeine
+  Pill, Lucky Foot) and one changes what spending it means (Echo Chamber). **Lucky
+  Foot rerolls a Negative pill into a random Positive one — but the colour still
+  identifies as what it actually is.** The relic changes the outcome, never the
+  fact; any other reading starts lying to the player the moment the Foot leaves
+  the pack.
+
+  **Amnesia's horse dose takes its own name with it.** It identifies the colour on
+  the way in and then forgets every identified piece of loot — and "every"
+  includes the lesson taking it just taught, so the horse dose can never leave
+  itself known. Its colour is learned from the NORMAL dose, which hands out a
+  curse and forgets nothing.
+
 - **The offering moved out of the overworld, and the split is finished.**
 
   **`OfferingCards.gd`** — 506 lines: the cards you choose your next game from in

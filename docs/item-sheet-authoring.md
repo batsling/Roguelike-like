@@ -30,7 +30,7 @@ One item = `clause; clause; ...` (paren/bracket aware — a `;` inside `()`,
 | `weapon` / `verify` | `weapon_card_id` + `verification_*` | `weapon: barrel; verify: <q> => 1/2 random fish` |
 | `perfect` | `perfect_effects` / `perfect_save_chance` | `perfect: gain_hp 5` |
 | `status_amplify`, `status_immunity`, `attack_damage_bonus`, `upgrade_card_types`, `stat_mirror`, `stat_floor`, `stat_gain_bonus`, `negate_lethal`, `reroll_low_rarity`, `carries_leftover_energy`, `lower_hp_damage_mult`, `gold_spend_stat_per=N`, `level_up`, `charged (charge_cost N)` | the matching one-off `ItemData` field | `status_immunity: weak` (Ginger — the player can no longer gain that status) |
-| `keep_shields`, `bomb_stun`, `bomb_cardinal`, `grid_grow` | the games-first (2.0) run-loop rule flags — bare words, no payload | `keep_shields` (Barricade: unspent shields bank into the next game instead of expiring) |
+| `bank_shields`, `bomb_stun`, `bomb_cardinal`, `grid_grow`, `pills_positive` | the games-first (2.0) run-loop rule flags — bare words, no payload | `bank_shields` (Barricade: a resolved game's unspent shields become Bonus Shields) |
 | `health_lost` | `triggers[{on:health_lost}]` (run-scope, scene-less; the PLAYER's Health went down, from any source anywhere in the run) | `health_lost: gain_gold 1` (Piggy Bank) |
 | `boss_chest_bonus: N` | `boss_chest_bonus` — chest POINTS added to a boss's drop, spent on `Data.chest_reward_sizes`' ladder | `boss_chest_bonus: 1` (There's Options: a boss's Small chest becomes a Medium, so its drop is 1-of-2) |
 
@@ -42,13 +42,16 @@ does.
 
 ### Games-first (2.0) run-loop flags
 
-These four change a RULE rather than move a number, so `GameLoop2` reads them
-straight off the inventory (via the `GameState.keeps_shields` / `bombs_stun` /
-`bombs_cardinal` / `grid_growth` helpers) instead of firing an effect:
+These change a RULE rather than move a number, so the loop reads them straight off
+the inventory (via the `GameState.banks_shields` / `bombs_stun` /
+`bombs_cardinal` / `grid_growth` / `pills_reroll_positive` / `loot_echo_depth`
+helpers) instead of firing an effect:
 
 | Flag | Item | Rule |
 | --- | --- | --- |
-| `keep_shields` | Barricade | Shields left over when a game resolves stop expiring and roll into the next game (§3). |
+| `bank_shields` | Barricade | What a resolved game left standing becomes **Bonus Shields** — the pool that does not expire and is spent last (§4.3). |
+| `pills_positive` | Lucky Foot | A **Negative** pill taken while it is held rerolls into a random Positive one. The colour still identifies as what it actually is (§4.3). |
+| `echo_loot N` | Echo Chamber | Using a piece of loot also uses a copy of the last N used since this was picked up. Carries a payload, unlike the bare words above; the DEEPEST copy wins rather than the sum. |
 | `bomb_stun` | Sticky Bombs | Anything a bomb hits and fails to destroy is stunned instead — in practice bosses, the only thing that survives one (§4). |
 | `bomb_cardinal` | Brimstone Bombs | A bomb blasts down the target's whole row *and* column rather than hitting one body. |
 | `grid_grow` | Mine-r Construction | The battlefield gains a column and a row (§7.3). Alone among these it **stacks**: `GameState.grid_growth` counts the copies instead of answering a bool, so a second one is a second column and a second lane. |
@@ -102,7 +105,9 @@ Don't put quote marks inside the verify question — the parity harness's
 - `block`/`heal`/buff effects under a self-facing trigger (`combat_started`,
   `turn_started/ended`, `item_acquired`) default to `target: self`; a bare
   `enemy` target stays implicit (it is the EffectSystem default).
-- USABLE (pill) items default to `max_uses: 1`; everything else `-1`.
+- USABLE items default to `max_uses: 1`; everything else `-1`. (The comment this
+  line used to carry called them "pills" — that word means the loot consumable of
+  §4.3 now, which is not an item at all.)
 
 ## Parity
 
@@ -127,7 +132,7 @@ them across re-uploads or the parser falls back to wrong/old behavior:
 
 On the **`items2.0`** sheet (these rows arrived with an empty `Effect`
 cell — without them the items generate inert):
-- **Barricade** → `keep_shields`
+- **Barricade** → `bank_shields`
 - **Blood Bombs** → `item_acquired: gain_stat bombs 1; bomb_used: gain_hp 1`
 - **Brimstone Bombs** → `item_acquired: gain_stat bombs 1; bomb_cardinal`
 - **Sticky Bombs** → `item_acquired: gain_stat bombs 1; bomb_stun`
@@ -135,6 +140,23 @@ cell — without them the items generate inert):
 - **Vajra** → `item_acquired: gain_stat bash 1` (its `Type` is now `Pickup`, so
   the +1 Bash is granted once and kept, not a `passive:` bonus that unwinds if
   the item is ever removed)
+
+### The pill relics
+
+The five relics that hang off **pills** (Mom's Coin Purse, Mom's Bottle of Pills,
+Caffeine Pill, Echo Chamber, Lucky Foot) use three words the rest of the sheet
+does not:
+
+| Cell | Means |
+| --- | --- |
+| `gain_pill N` | `gain_scroll`'s sibling for the second loot type. `gain_loot N` is the kind-BLIND grant beside them — it rolls 50/50 per unit, and it is what beating a game pays (§4.3). |
+| `pills_positive` | Lucky Foot's rule flag: a Negative pill taken while it is held rerolls into a random Positive one. The colour still identifies as what it actually is. |
+| `echo_loot N` | Echo Chamber's memory depth. A count rather than a bool, in the shape `boss_chest_bonus: N` has. |
+
+**Barricade is `bank_shields`, not `keep_shields`.** The relic banks a resolved
+game's leftover shields into the Bonus Shield pool (§4.3) instead of stopping
+them expiring, and the flag was renamed with the behaviour: `keep_shields` said
+the shields stay where they are, which is exactly what stopped being true.
 
 Also re-apply on the **`items2.0`** sheet, for the same reason (a re-upload puts
 the old spelling back and the "From: `<game>`" line then points at nothing):

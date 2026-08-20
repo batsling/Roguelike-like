@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PillData" load_steps=2 format=3 uid="uid://pill2_amnesia"]
+
+[ext_resource type="Script" path="res://scripts/resources/PillData.gd" id="1_pill"]
+
+[resource]
+script = ExtResource("1_pill")
+id = &"amnesia"
+display_name = "Amnesia"
+preference = "Negative"
+description = "Gain a Random Curse"
+horse_description = "Gain a Random Curse and Forget all Identified loot"
+effect = [{"op": "add_curse", "curse": "random"}]
+horse_effect = [{"op": "add_curse", "curse": "random"}, {"op": "forget", "kind": "loot", "count": -1}]
+notes = ""

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PillData" load_steps=2 format=3 uid="uid://pill2_full_health"]
+
+[ext_resource type="Script" path="res://scripts/resources/PillData.gd" id="1_pill"]
+
+[resource]
+script = ExtResource("1_pill")
+id = &"full_health"
+display_name = "Full Health"
+preference = "Positive"
+description = "Heal to full health"
+horse_description = "Heal to full health and Gain +3 Shields"
+effect = [{"op": "heal_full"}]
+horse_effect = [{"op": "heal_full"}, {"op": "gain_stat", "stat": "bonus_shields", "value": 3}]
+notes = ""

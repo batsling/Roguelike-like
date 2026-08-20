@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PillData" load_steps=2 format=3 uid="uid://pill2_balls_of_steel"]
+
+[ext_resource type="Script" path="res://scripts/resources/PillData.gd" id="1_pill"]
+
+[resource]
+script = ExtResource("1_pill")
+id = &"balls_of_steel"
+display_name = "Balls of Steel"
+preference = "Positive"
+description = "Gain +2 Shields"
+horse_description = "Gain +4 Shields"
+effect = [{"op": "gain_stat", "stat": "bonus_shields", "value": 2}]
+horse_effect = [{"op": "gain_stat", "stat": "bonus_shields", "value": 4}]
+notes = ""

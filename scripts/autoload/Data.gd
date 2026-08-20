@@ -14,6 +14,7 @@ var _games: Dictionary = {}             # StringName -> GameData
 var _characters: Dictionary = {}        # StringName -> CharacterData
 var _curses: Dictionary = {}            # StringName -> CurseData (shelved, kept — §5)
 var _scrolls: Dictionary = {}           # StringName -> ScrollData (2.0)
+var _pills: Dictionary = {}             # StringName -> PillData (2.0, §4.3)
 var _encounters: Dictionary = {}        # StringName -> EncounterData
 
 # === Games-first redesign (2.0) content ===
@@ -41,6 +42,7 @@ func _ready() -> void:
 	_load_dir("res://data/enemies2.0/", _goal_enemies)
 	_load_dir("res://data/bosses2.0/", _bosses)
 	_load_dir("res://data/scrolls2.0/", _scrolls)
+	_load_dir("res://data/pills2.0/", _pills)
 	_load_dir("res://data/statuses2.0/", _statuses)
 	_load_dir("res://data/tiles2.0/", _tiles)
 	_load_dir("res://data/units2.0/", _units)
@@ -51,9 +53,9 @@ func _ready() -> void:
 		_items.size(), _events.size(), _games.size(), _characters.size(),
 		_curses.size(), _encounters.size()
 	])
-	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d statuses, %d tiles, %d units, %d events, %d curses, %d objects" % [
+	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d statuses, %d tiles, %d units, %d events, %d curses, %d objects" % [
 		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
-		_scrolls.size(), _statuses.size(), _tiles.size(), _units.size(),
+		_scrolls.size(), _pills.size(), _statuses.size(), _tiles.size(), _units.size(),
 		_events2.size(), _curses2.size(), _objects2.size()
 	])
 
@@ -92,6 +94,25 @@ func get_scroll2(id: StringName) -> ScrollData:
 
 func all_scrolls2() -> Array:
 	return _scrolls.values()
+
+# --- Pills (2.0, §4.3) -----------------------------------------------------
+# No rarity ladder here, unlike every other pool in this file: a pill is not
+# rolled off the 75/20/5 rungs, it is one of the ten this run dealt colours to.
+# Which ten that is belongs to PillSystem, so a flat pick over the catalog is
+# what "a random pill" means and the colour deal is what narrows it.
+func get_pill(id: StringName) -> PillData:
+	return _pills.get(id)
+
+func all_pills() -> Array:
+	return _pills.values()
+
+# The pills a given PREFERENCE covers — Lucky Foot's reroll pool (§4.3) is every
+# Positive pill, including the ones whose colours are sitting out this run. It
+# rolls over PILLS, not over what dropped, so a Foot's reroll can hand you a pill
+# no colour in this run means.
+func pills_with_preference(preference: String) -> Array:
+	var want: String = preference.to_lower()
+	return _pills.values().filter(func(p): return p is PillData and p.preference.to_lower() == want)
 
 # --- the one rarity ladder -------------------------------------------------
 

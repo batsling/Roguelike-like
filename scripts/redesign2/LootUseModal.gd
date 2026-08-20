@@ -1,21 +1,28 @@
 extends Control
 
-# The games-first (2.0) "read a scroll" flow, as a self-contained full-screen
-# modal (docs/games-first-redesign.md §4.1). The Overworld2 scroll panel
-# instantiates one and calls start(host, loot_index); the modal owns the rest:
-#   1. show the scroll (mystery art + masked name when unidentified — reading it
-#      is the Preference gamble; identified art + real name once known).
-#   2. on Read: ScrollSystem.read_scroll (which identifies it), remove it from
-#      loot, then walk any returned `requests` (identify-which / stun-which /
+# The games-first (2.0) "spend a piece of loot" flow, as a self-contained
+# full-screen modal (§4.1 scrolls, §4.3 pills). The loot window opens one with
+# start(host, loot_index, overworld); the modal owns the rest:
+#   1. show the piece — its art and, when the type is UNIDENTIFIED, a masked name
+#      and no Preference, because that mask is the gamble the player is taking.
+#   2. on Use: LootSystem.use_loot, which consumes the entry, resolves it through
+#      whichever system owns it, and fires Echo Chamber's copies of the last three
+#      used. Then walk the returned `requests` (identify-which / stun-which /
 #      teleport) through small pickers.
-#   3. emit `finished` and free itself so the panel refreshes.
+#   3. emit `finished` and free itself so the page refreshes.
+#
+# IT IS ONE MODAL FOR BOTH KINDS deliberately. A pill needs fewer words than a
+# scroll, but the two need the same THREE things — a look at what you are about
+# to spend, a confirm, and somewhere for a follow-up choice to be made — and the
+# echo means either kind can hand back a request that belongs to the other.
 #
 # Built entirely in code (no scene file), on its own CanvasLayer so it always
 # centers over the overworld regardless of what opened it.
 
 signal finished
 
-var _scroll: ScrollData = null
+# The carried entry being spent: {"type": "scroll"|"pill", "id": …, "horse": …}.
+var _entry: Dictionary = {}
 var _loot_index: int = -1
 var _requests: Array = []
 var _panel: PanelContainer = null
@@ -44,15 +51,15 @@ func start(host: Node, loot_index: int, overworld: Node) -> void:
 		_finish()
 		return
 	var entry = GameState.loot_items[loot_index]
-	if not (entry is Dictionary) or String(entry.get("type", "")) != "scroll" or not entry.has("id"):
+	if not (entry is Dictionary) or not entry.has("id"):
 		_finish()
 		return
-	_scroll = Data.get_scroll(StringName(entry.get("id", "")))
-	if _scroll == null:
-		_finish()
-		return
+	_entry = (entry as Dictionary).duplicate(true)
 	_loot_index = loot_index
 	_show_intro()
+
+func _is_pill() -> bool:
+	return String(_entry.get("type", "")) == "pill"
 
 # ---------------------------------------------------------------------------
 # Intro screen — show the scroll and offer Read.
@@ -60,30 +67,38 @@ func start(host: Node, loot_index: int, overworld: Node) -> void:
 
 func _show_intro() -> void:
 	_rebuild_panel()
-	var identified: bool = ScrollSystem.is_identified(_scroll.id)
+	var identified: bool = LootSystem.is_identified(_entry)
 	var art := TextureRect.new()
-	art.texture = ScrollSystem.art_texture(_scroll)
+	art.texture = LootSystem.art_texture(_entry)
 	art.custom_minimum_size = Vector2(96, 96)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_body.add_child(art)
-	_body.add_child(_heading("📜 " + ScrollSystem.display_name(_scroll), ACCENT, 22))
+	_body.add_child(_heading("%s %s" % [LootSystem.glyph(_entry), LootSystem.display_name(_entry)],
+		ACCENT, 22))
+	var summary: String = LootSystem.description(_entry)
 	if identified:
-		_body.add_child(_muted("%s Preference" % _scroll.preference))
-		var summary: String = _effect_summary()
+		_body.add_child(_muted("%s Preference" % LootSystem.preference(_entry)))
 		_body.add_child(_muted(summary))
 		# The KEYWORD STRIP (§17), on the same terms an item card carries one: what
 		# a Scroll of Fire does is written in the names of three mechanics, and the
-		# reader is about to spend the scroll on the strength of that sentence.
-		# Only on an IDENTIFIED scroll — an unidentified one deliberately says
-		# nothing about what it does, and a strip naming Burn and Fire under
-		# "reading it is a gamble" would give the whole thing away.
+		# reader is about to spend it on the strength of that sentence. Only on an
+		# IDENTIFIED piece — an unidentified one deliberately says nothing about what
+		# it does, and a strip naming Burn and Fire under "this is a gamble" would
+		# give the whole thing away.
 		Keywords.attach(_body, summary)
+	elif _is_pill():
+		# A pill hides its NAME, never its capsule (§4.3) — the art above is the
+		# thing being learned, so the gamble line says what is unknown rather than
+		# pretending the tile is a mystery.
+		_body.add_child(_muted("You have never taken this one. Its Preference could be Positive, Negative, or Neutral — taking it is how you find out what the colour means."))
 	else:
 		_body.add_child(_muted("Unidentified — reading it is a gamble. Its Preference could be Positive, Negative, or Neutral."))
+	if _echo_note() != "":
+		_body.add_child(_muted(_echo_note()))
 	var read_btn := Button.new()
-	read_btn.text = "Read Scroll →"
+	read_btn.text = "Take Pill →" if _is_pill() else "Read Scroll →"
 	read_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	read_btn.pressed.connect(_on_read)
 	_body.add_child(read_btn)
@@ -93,17 +108,36 @@ func _show_intro() -> void:
 	cancel.pressed.connect(_finish)
 	_body.add_child(cancel)
 
+# What Echo Chamber is about to add, named rather than left as a surprise: the
+# relic changes what SPENDING one piece of loot means, and a player who cannot see
+# the three copies coming cannot plan around them (§4.3).
+func _echo_note() -> String:
+	var depth: int = GameState.loot_echo_depth()
+	if depth <= 0:
+		return ""
+	var memory: Array = LootSystem.used_memory()
+	if memory.is_empty():
+		return "Echo Chamber: nothing used yet for it to copy."
+	var names: Array = []
+	for i in range(memory.size() - 1, maxi(0, memory.size() - depth) - 1, -1):
+		names.append(LootSystem.display_name(memory[i]))
+	return "Echo Chamber will also use: %s." % ", ".join(PackedStringArray(names))
+
 func _on_read() -> void:
-	var result: Dictionary = ScrollSystem.read_scroll(_scroll, {"rng": _rng})
-	# The scroll is consumed on read.
-	GameState.remove_loot_at(_loot_index)
+	# Through LootSystem rather than straight into ScrollSystem: consuming the
+	# entry, Echo Chamber's replay of the last three pieces used, and the memory
+	# this use joins are all things that happen AROUND a use and belong to neither
+	# consumable system (§4.3). What comes back is the merged result — this scroll's
+	# logs and requests plus every echo's — so a teleport fired twice is fulfilled
+	# twice rather than silently once.
+	var result: Dictionary = LootSystem.use_loot(_loot_index, {"rng": _rng})
 	for line in result.get("logs", []):
 		GameLog.add(String(line), ACCENT)
 	_requests = result.get("requests", [])
 	_process_next_request()
 
 # ---------------------------------------------------------------------------
-# Requests — interactive follow-ups returned by read_scroll
+# Requests — interactive follow-ups returned by the use (and by its echoes)
 # ---------------------------------------------------------------------------
 
 func _process_next_request() -> void:
@@ -184,8 +218,8 @@ func _toggle_select(selected: Dictionary, key, on: bool, max_pick: int, btn: But
 
 # --- Teleport — fulfilled by the overworld --------------------------------
 func _do_teleport(req: Dictionary) -> void:
-	if _overworld != null and _overworld.has_method("scroll_teleport"):
-		_overworld.scroll_teleport(String(req.get("dir", "same")), int(req.get("spread", 1)))
+	if _overworld != null and _overworld.has_method("loot_teleport"):
+		_overworld.loot_teleport(req)
 	else:
 		GameLog.add("The Scroll of Teleportation fizzles.", ACCENT)
 	_process_next_request()
@@ -193,28 +227,6 @@ func _do_teleport(req: Dictionary) -> void:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-func _effect_summary() -> String:
-	var parts: Array = []
-	for e in _scroll.effect:
-		if not (e is Dictionary):
-			continue
-		match String(e.get("op", "")):
-			"apply_status":
-				parts.append(ScrollSystem.status_effect_text(e))
-			"apply_tile":
-				parts.append(ScrollSystem.tile_effect_text(e))
-			"forget":
-				parts.append("Forget %d random scroll(s)." % int(e.get("count", 1)))
-			"spawn_enemy":
-				parts.append("Spawn a random enemy that follows you.")
-			"identify_scrolls":
-				parts.append("Choose %d scroll(s) to identify." % int(e.get("count", 1)))
-			"stun_enemies":
-				parts.append("Choose %d following enemy to Stun." % int(e.get("count", 1)))
-			"teleport":
-				parts.append("Teleport ~the same distance from the Amulet.")
-	return " ".join(parts)
 
 func _continue_button() -> Button:
 	var b := Button.new()
