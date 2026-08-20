@@ -11,6 +11,32 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The report checklist moved out of the overworld too.**
+
+  The big one, and the second cut of the split above: **`ReportChecklist.gd`**,
+  776 lines covering the left column in both of its states — the standing list
+  while you're choosing, the tick-box report step while you're playing — plus the
+  row↔body pairing that lights a goal and its enemy from either end.
+  `Overworld2.gd` is **4707 lines now, down from 5573**.
+
+  The backlog had this at 400 lines. It is 776 once `_populate_standing_checklist`
+  and the binding come with it, and they belong to the same mechanic: the two
+  lists are the same rows in two states and share the same container. For all
+  that size it needed three things of the page — the board, the chosen game, and
+  the container pair — because its seven tick-state arrays were only ever touched
+  from inside it.
+
+  **The state the tests read stayed put, as read-only properties.**
+  `test_overworld2.gd` reads `_ui._verify_box`, `_ui._fulfil_checks`,
+  `_ui._levelup_check`, `_ui._lit_instances` and `_ui._row_paints` straight off
+  the page, 57 references' worth. `ReportChecklist` owns them under public names
+  and the page publishes a getter for each, which works precisely because no test
+  ever *reassigns* one — they read the array and tick the CheckBox it points at,
+  which is what a player does to the same object. Not one test changed.
+
+  Verified on screen as well as in assertions (`.claude/skills/verify/`): both
+  states render, the boxes tick, and hovering still lights the body.
+
 - **The pack strip moved out of the overworld, and a test stopped believing a
   playback is always one beat long.**
 

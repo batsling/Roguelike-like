@@ -42,11 +42,11 @@ checks at every size the UI uses. Three separate traps in one two-line change.
 
 ---
 
-## 1. `Overworld2.gd` is 5335 lines
+## 1. `Overworld2.gd` is 4707 lines
 
-More than double the next-biggest file (`AtlasView.gd`, 2764). It holds the
-run-loop view, the report checklist, the pinned header, the map plumbing, the
-shop and machine mounting, the offering cards, and the save/load view state.
+Down from 5573. Still the biggest file in the repo (`AtlasView.gd` is 2764) — it
+holds the run-loop view, the pinned header, the map plumbing, the shop and
+machine mounting, the offering cards, and the save/load view state.
 
 **Not urgent, and not a mechanical job.** This file used to guess at the seams;
 they are measured now. The number that matters is **genuinely shared state** —
@@ -58,21 +58,17 @@ it moves for free.
 | seam | lines | genuinely shared state | test refs |
 |---|---|---|---|
 | ~~item strip + charge chips~~ | ~~293~~ | ~~`_items_box`, `_phase`~~ | **done — `PackStrip.gd`** |
+| ~~report checklist~~ | ~~776~~ | ~~`_board`, `_chosen`~~ | **done — `ReportChecklist.gd`** |
 | header proper | 79 | `_scroll`, `_toasts` | 11 |
 | kill-drops + run-over | 230 | `_banner`, `_drop_queue`, `_rng`, `_resolving` | 32 |
 | offering cards + preview | 558 | `_choices`, `_chosen`, `_start_options`, `_phase` | 24 |
-| **report checklist** | **776** | **`_board`, `_chosen`, `_rng`** | 57 |
 | save/restore view state | 251 | *16 shared vars* | — |
 | `_build_ui` | 409 | *32 vars, 16 funcs* | — |
 
-**Next, and the big one: the report checklist** (`_populate_play_panel`,
-`_populate_standing_checklist`, `_verify_row`, `_add_bonus_rows`,
-`_add_event_goal_rows`, `_bind_row_to_body`, `_light_bodies`, `_ticked_*`,
-`_reset_checklist_state`). This file used to estimate 400 lines; it is 776 once
-the standing checklist and the row↔body binding come with it, and those belong to
-the same mechanic. Three real inputs — the board, the chosen game, the rng — and
-its seven state arrays (`_fulfil_checks`, `_bonus_checks`, `_instead_checks`, …)
-have 1–3 references outside the region each. Best lines-out-per-coupling left.
+**Next: the offering cards** (`_make_choice_card`, `_make_start_card`,
+`_render_choices`, `_render_start_choices`, `_show_preview`, `_hover_line`) at
+558 lines, then **kill-drops** at 230 and **the header** at 79. None of the three
+is urgent; the offering is the only one big enough to be worth the disturbance.
 
 **Two of these should NOT be split.** `capture_view_state` / `restore_view_state`
 touches 16 shared vars because touching everything *is* its job, and `_build_ui`
@@ -88,20 +84,37 @@ filling it. Each wants to keep going through the overworld's public verbs
 (`pick`, `report`, `bash_choice`, …) rather than reaching into `GameLoop2`, which
 is what makes the current tests keep working through the move.
 
-**What `PackStrip` established**, for the next one to copy:
+**The pattern the two done splits established**, for the next one to copy:
 
 - A `RefCounted` holding the page, constructed in `_build_ui` beside the
-  container it fills. The repo's other extraction, `AtlasLayoutBuilder`, is
+  containers it fills. The repo's other extraction, `AtlasLayoutBuilder`, is
   static-only because layout is pure computation; a UI builder needs the page
   back, for the verbs its widgets call.
-- **Type the back-reference as `Node`, not `Overworld2`.** Overworld2 names
-  `PackStrip`, and two `class_name`s that name each other are a cyclic reference
+- **Type the back-reference as `Node`, not `Overworld2`.** Overworld2 names both
+  classes, and two `class_name`s that name each other are a cyclic reference
   Godot resolves badly.
-- **Pass phase in, don't read it out.** `rebuild(reporting: bool)` rather than
-  reaching for `_phase`, which is what let the strip depend on nothing about the
-  page except three public verbs.
+- **Pass phase in, don't read it out.** `PackStrip.rebuild(reporting: bool)`
+  rather than reaching for `_phase`, which is what let the strip depend on
+  nothing about the page except three public verbs.
 - Leave the old entry points as one-line forwards (`_refresh_items`,
-  `item_hover`). Zero call-site churn, in the page or in the tests.
+  `_populate_play_panel`, `_ticked_fulfilments`, …). Zero call-site churn, in the
+  page or in the tests. Some forwards end up with no caller left in the page and
+  exist only for the tests, which is fine and worth a comment saying so.
+- **For state the tests read, leave a read-only property behind**, not a copy:
+
+  ```gdscript
+  var _fulfil_checks: Array:
+      get: return _checklist.fulfil_checks if _checklist != null else []
+  ```
+
+  The extracted class owns the state under a public name; the page publishes a
+  view of it under the name the tests already use. This works because no test
+  ever *reassigns* one of these — they read the array and then tick the CheckBox
+  it points at, which is what a player does to the same object. Check that before
+  reaching for it: a getter-only property cannot be assigned to.
+- **A new `class_name` needs `godot --headless --editor --quit`** before the
+  suite can see it, per `CLAUDE.md`. Both splits hit this; it reads as
+  "Could not find type X" and takes the whole page down with it.
 
 ---
 

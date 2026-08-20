@@ -43,6 +43,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── redesign2/        #   the games-first screens:
 │   │                      #     Overworld2      — run flow: offering, report, pack
 │   │                      #     PackStrip       — fills Overworld2's pack strip
+│   │                      #     ReportChecklist — its left column, both states
 │   │                      #     BattlefieldView — the grid the enemies close in on
 │   │                      #     EnemyInfoCard   — click-to-inspect enemy card
 │   │                      #     ItemInfoCard    — click-to-inspect item card
