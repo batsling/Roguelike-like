@@ -296,6 +296,76 @@ func test_the_body_that_just_arrived_is_targetable_like_any_other() -> void:
 		"and an armed bomb lights it up with the rest")
 	_ui._board.cancel_bomb()
 
+# --- aiming at the ground (§17) ---------------------------------------------
+#
+# Two verbs are pointed at a SQUARE rather than at a body: the Bomb, which may be
+# spent anywhere on the board, and a tile-aimed item (Red Candle), which may be
+# spent inside the columns it authored. Both light their legal squares up, and the
+# lit set IS the rule — the board accepts a click on exactly what it drew.
+
+func test_an_armed_bomb_lights_up_every_square_of_the_board() -> void:
+	GameState.bombs = 1
+	_ui.pick(0)
+	_ui.report(false)
+	assert_true(_ui._board.target_cells().is_empty(), "nothing armed, no ground lit")
+	_ui._board.begin_bomb()
+	assert_eq(_ui._board.target_cells().size(),
+		GameLoop2.grid_cols() * GameLoop2.grid_rows(),
+		"an armed bomb can be pointed at any square, not only at the bodies")
+	_ui._board.cancel_bomb()
+
+func test_a_bomb_can_be_spent_on_empty_ground() -> void:
+	# The point of it: with Hot Bombs this is how fire is laid in front of the
+	# stack, and the charge is spent on the square whether or not anybody is on it.
+	_ui.pick(0)
+	_ui.report(false)
+	GameState.bombs = 1
+	var empty: Array = GameLoop2.empty_cells()
+	assert_false(empty.is_empty(), "the board has bare ground on it")
+	_ui._board.begin_bomb()
+	_ui._board._click_cell(empty[0])
+	assert_eq(GameState.bombs, 0, "the charge went")
+	assert_false(_ui._board.bomb_mode, "and the verb disarmed itself")
+
+func test_a_bomb_clicked_on_an_occupied_square_still_hits_that_body() -> void:
+	# The two are one press to the player, so an occupied square routes through the
+	# body-aimed path — which is the only one that carries the target into the
+	# blast (a boss's immunity, Sticky Bombs' stun, the bomb_used trigger).
+	_ui.pick(0)
+	_ui.report(false)
+	var entry: Dictionary = GameLoop2.stack[0]
+	# Stood on a known square rather than wherever the walk left it: a body out in
+	# the overflow lane fills no cells, and this test is about the ones that do.
+	entry["col"] = 2
+	entry["row"] = 0
+	var inst: int = int(entry["instance"])
+	var cell: Vector2i = GameLoop2.entry_cells(entry)[0]
+	GameState.bombs = 1
+	var hp_before: int = int(entry.get("health", 0))
+	_ui._board.begin_bomb()
+	_ui._board._click_cell(cell)
+	assert_eq(GameState.bombs, 0, "one charge, either way")
+	var after: Dictionary = GameLoop2.entry_for(inst)
+	assert_true(after.is_empty() or int(after.get("health", 0)) < hp_before,
+		"and the body standing there took the blast")
+
+func test_the_lit_squares_are_drawn_where_the_rule_says() -> void:
+	# The highlight is BUILT, not just computed: it used to be drawn with flat
+	# Buttons, which skip their stylebox entirely, so the picker was a set of
+	# invisible squares that were legal to click and impossible to see.
+	GameState.bombs = 1
+	_ui.pick(0)
+	_ui.report(false)
+	_ui._board.begin_bomb()
+	_ui._board.refresh()
+	var lit: int = 0
+	for c in _ui._board._arrow_layer.get_children():
+		if c is Button and not (c as Button).flat:
+			lit += 1
+	assert_eq(lit, _ui._board.target_cells().size(),
+		"one visible button per legal square")
+	_ui._board.cancel_bomb()
+
 # Push is ARMED first and AIMED second, so the button gates on the charge alone —
 # "select an enemy" is what the mode is for, not a precondition of entering it.
 func test_toolbar_push_needs_a_charge_not_a_target() -> void:

@@ -115,6 +115,50 @@ func tooltip_for(games_left: int = -1) -> String:
 		lines.append(interaction_line(String(pairing)))
 	return "\n".join(lines)
 
+# ONE HUE FOR THE WHOLE CATEGORY. A tile effect gets the same warm accent the
+# board's armed verbs use, rather than a colour of its own per tile: the
+# battlefield already reads colour as THREAT TIER, and a second palette competing
+# with that one would cost more than "fire is orange" buys.
+const ACCENT := Color(1.0, 0.68, 0.34)
+
+# THE HOVER CARD for this tile effect on the board — the same card an enemy, an
+# item and a status get (HoverCard), rather than the grey system tooltip the
+# ground used to answer with. `games_left` is the instance's own clock; -1 asks
+# for the catalog reading, exactly as `tooltip_for` does.
+#
+# The clock is a PIP rather than a sentence: how long it has left is the one thing
+# about a burning square that changes between one look and the next, and a number
+# beside a ⏱ is read at a glance where "burns out in 2 more games" has to be
+# actually read.
+func hover_card(games_left: int = -1) -> Dictionary:
+	# A tile authored with no decay reads "never burns out" whatever clock the
+	# board hands it: `tile_games_left` answers 0 both for a tile that has one game
+	# left and for one that never had a clock, and only the content knows which.
+	var clock: String = "⏱ never burns out"
+	if decay_games > 0:
+		var left: int = games_left if games_left >= 0 else decay_games
+		clock = "⏱ %d %s%s" % [left, "game" if left == 1 else "games",
+			" left" if games_left >= 0 else ""]
+	var pips: Array = [{"text": clock, "good": true}]
+
+	var lines: Array = []
+	if description != "":
+		lines.append(description)
+	for pairing in interactions.keys():
+		lines.append(interaction_line(String(pairing)))
+	return {
+		"title": display_name,
+		"accent": ACCENT,
+		"art": image,
+		"subtitle": "Tile effect  ·  on the ground, not on a body",
+		"pips": pips,
+		"lines": lines,
+		# The unit the clock counts in, said once. A tile effect is measured in
+		# GAMES rather than turns (§17) and the pip's number is meaningless to a
+		# player who hasn't been told which.
+		"note": "Tile effects burn down one step per game you finish.",
+	}
+
 # One authored interaction, in words. Kept here rather than in the two UI scripts
 # that show it because the pairing is a rule, and a rule the player reads should
 # be quoted from the content rather than paraphrased twice.

@@ -125,6 +125,35 @@ func test_walking_into_fire_burns_the_body() -> void:
 	assert_eq(int(GameLoop2.entry_for(inst)["statuses"].get(&"burn", 0)), 1,
 		"a shove into the fire costs a stack, exactly as walking in would")
 
+func test_fire_lit_under_a_body_burns_it_on_the_spot() -> void:
+	# The ground changing UNDER a body is as much a meeting as the body walking
+	# into it, so it costs the same stack and costs it now. It used to wait for the
+	# enemy's next turn, which made a Red Candle aimed at an occupied square look
+	# like a click that had missed.
+	var inst: int = _choose_solo(_enemy())
+	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	GameLoop2.apply_tile(Vector2i(2, 1), &"fire")
+	assert_eq(int(entry["statuses"].get(&"burn", 0)), 1,
+		"lighting the square a body is standing on burns it immediately")
+
+func test_fire_lit_on_bare_ground_burns_nobody() -> void:
+	var inst: int = _choose_solo(_enemy())
+	var entry: Dictionary = _park(inst, Vector2i(3, 0))
+	GameLoop2.apply_tile(Vector2i(2, 0), &"fire")
+	assert_eq(int(entry["statuses"].get(&"burn", 0)), 0,
+		"a square away is a square away")
+
+func test_fire_that_annihilates_on_arrival_burns_nobody() -> void:
+	# Fire laid onto a mine is taken straight back off the board (§17), and a body
+	# standing there must not be billed for ground that never existed.
+	var inst: int = _choose_solo(_enemy("Beat it", 9))
+	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	GameLoop2.apply_unit(Vector2i(2, 1), &"landmine")
+	GameLoop2.apply_tile(Vector2i(2, 1), &"fire")
+	assert_null(GameLoop2.tile_at(Vector2i(2, 1)), "the fire went out on arrival")
+	assert_eq(int(GameLoop2.entry_for(inst).get("statuses", {}).get(&"burn", 0)), 0,
+		"so nothing on that square burned")
+
 func test_standing_in_fire_burns_again_each_turn() -> void:
 	# On the FRONT column, where the body strikes rather than steps — so it is
 	# standing on the same burning cell for every turn of the game, and the count
@@ -132,13 +161,12 @@ func test_standing_in_fire_burns_again_each_turn() -> void:
 	var inst: int = _choose_solo(_enemy("Beat it", 9))
 	var entry: Dictionary = _park(inst, Vector2i(1, 0))
 	GameLoop2.apply_tile(Vector2i(1, 0), &"fire")
-	assert_eq(int(entry["statuses"].get(&"burn", 0)), 0,
-		"laying fire under a body does not burn it — it did not walk in")
+	assert_eq(int(entry["statuses"].get(&"burn", 0)), 1, "one for the lighting")
 	var turns: int = GameLoop2.enemy_turns()
 	GameLoop2.beat_game(false)
 	assert_eq(int(GameLoop2.entry_for(inst)["statuses"].get(&"burn", 0)),
-		mini(turns, Data.get_status(&"burn").max_stacks),
-		"one stack for every turn it started there, up to Burn's own ceiling")
+		mini(1 + turns, Data.get_status(&"burn").max_stacks),
+		"and one for every turn it started there, up to Burn's own ceiling")
 
 func test_fire_burns_out_after_three_games() -> void:
 	GameLoop2.apply_tile(Vector2i(2, 0), &"fire")
@@ -275,6 +303,43 @@ func test_hot_bombs_reaches_a_landmines_blast_too() -> void:
 	assert_not_null(GameLoop2.tile_at(Vector2i(2, 0)),
 		"the mine left burning ground where it went off")
 
+func test_a_bomb_spent_on_bare_ground_still_goes_off() -> void:
+	# A bomb aimed at a square rather than at a body (§17). Nothing is standing
+	# there, so nothing takes damage — and with Hot Bombs the square is left
+	# burning, which is the whole reason to spend one that way.
+	_give(&"hot_bombs")
+	GameState.bombs = 1
+	assert_true(GameLoop2.bomb_cell(Vector2i(3, 1)))
+	assert_eq(GameState.bombs, 0, "the charge went")
+	assert_not_null(GameLoop2.tile_at(Vector2i(3, 1)),
+		"and the ground it went off on is alight")
+
+func test_a_bomb_on_the_ground_hits_whoever_is_standing_there() -> void:
+	var inst: int = _choose_solo(_enemy("Beat it", 5))
+	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	GameState.bombs = 1
+	var before: int = int(entry["health"])
+	assert_true(GameLoop2.bomb_cell(Vector2i(2, 1)))
+	assert_eq(int(GameLoop2.entry_for(inst)["health"]), before - 1,
+		"the blast is measured on the board, not on who was aimed at")
+
+func test_a_bomb_needs_a_charge_and_a_square_on_the_board() -> void:
+	GameState.bombs = 0
+	assert_false(GameLoop2.bomb_cell(Vector2i(2, 1)), "no charge, no blast")
+	GameState.bombs = 1
+	assert_false(GameLoop2.bomb_cell(Vector2i(GameLoop2.grid_cols() + 3, 0)),
+		"and ground the board does not have is not a target")
+	assert_eq(GameState.bombs, 1, "a refused bomb spends nothing")
+
+func test_a_bomb_on_the_ground_pays_the_bomb_relics() -> void:
+	# One bomb, one `bomb_used` trigger, wherever it was pointed — Blood Bombs pays
+	# for a bomb spent on an empty square exactly as for one spent on a body.
+	_give(&"blood_bombs")
+	GameState.hp = 10
+	GameState.bombs = 1
+	GameLoop2.bomb_cell(Vector2i(3, 2))
+	assert_eq(GameState.hp, 11)
+
 func test_landmines_puts_one_mine_down_after_a_game() -> void:
 	_give(&"landmines")
 	assert_true(GameLoop2.units.is_empty(), "nothing on the ground yet")
@@ -348,6 +413,65 @@ func test_a_save_naming_content_the_catalog_lost_is_dropped() -> void:
 		"units": [{"col": 3, "row": 0, "id": "deleted_unit", "health": 1}]})
 	assert_true(GameLoop2.tiles.is_empty(), "a tile nobody can describe is not restored")
 	assert_true(GameLoop2.units.is_empty())
+
+# --- what the ground says when you point at it (§17) ------------------------
+#
+# A furnished square answers the mouse with the same HoverCard an enemy, an item
+# and a status get. It used to answer with Godot's plain grey tooltip, which was
+# the one thing on the board that looked like it belonged to another program —
+# and which could only spell "burns out in 2 more games" where a clock and a
+# number are read at a glance.
+
+func test_a_fire_tile_describes_itself_as_a_card() -> void:
+	var card: Dictionary = Data.get_tile(&"fire").hover_card(2)
+	assert_eq(String(card.get("title", "")), "Fire", "named as itself")
+	assert_eq(card.get("art"), Data.get_tile(&"fire").image, "with its own art")
+	var lines: String = "\n".join(PackedStringArray(card.get("lines", [])))
+	assert_string_contains(lines, "Burn", "and what it does to whoever stands in it")
+
+func test_the_tiles_clock_is_a_pip_with_the_time_left_on_it() -> void:
+	var pips: Array = Data.get_tile(&"fire").hover_card(2).get("pips", [])
+	assert_eq(pips.size(), 1, "one pip: how long it has left")
+	var text: String = String(pips[0].get("text", ""))
+	assert_string_contains(text, "⏱", "a clock, so it reads as a timer")
+	assert_string_contains(text, "2", "and the number on it")
+
+func test_the_catalog_reading_gives_the_life_the_tile_is_authored_with() -> void:
+	# -1 is "describe the tile", not "describe this one on the board".
+	var text: String = String(Data.get_tile(&"fire").hover_card().get("pips")[0]["text"])
+	assert_string_contains(text, "3", "Fire lasts three games")
+	assert_false(text.contains("left"), "but none of them has been spent yet")
+
+func test_the_board_hands_a_burning_square_the_tiles_card() -> void:
+	var board := BattlefieldView.new()
+	add_child_autofree(board)
+	GameLoop2.apply_tile(Vector2i(2, 1), &"fire")
+	var card: Dictionary = board.ground_hover(Vector2i(2, 1))
+	assert_eq(String(card.get("title", "")), "Fire")
+	assert_string_contains(String(card.get("pips")[0]["text"]), "3 games left",
+		"with the clock the square itself is running")
+
+func test_a_square_with_a_unit_and_a_tile_answers_with_one_card() -> void:
+	# "What is on this square" is one question. The unit heads the card — it is the
+	# thing standing there — and the ground joins it as a pip and a line.
+	var board := BattlefieldView.new()
+	add_child_autofree(board)
+	# Authored around the pair that annihilates: put them on the board directly, so
+	# this is about the card rather than about the interaction.
+	GameLoop2.tiles[Vector2i(2, 1)] = {"id": &"fire", "games": 2}
+	GameLoop2.units[Vector2i(2, 1)] = {"id": &"landmine", "health": 1}
+	var card: Dictionary = board.ground_hover(Vector2i(2, 1))
+	assert_eq(String(card.get("title", "")), "Landmine", "the unit heads it")
+	var pips: String = ""
+	for pip in card.get("pips", []):
+		pips += String(pip.get("text", "")) + " "
+	assert_string_contains(pips, "⏱", "and the tile's clock rides along: %s" % pips)
+
+func test_bare_ground_has_nothing_to_say() -> void:
+	var board := BattlefieldView.new()
+	add_child_autofree(board)
+	assert_true(board.ground_hover(Vector2i(2, 1)).is_empty(),
+		"an empty square opens no card")
 
 # --- the keyword strip (§17) ----------------------------------------------
 

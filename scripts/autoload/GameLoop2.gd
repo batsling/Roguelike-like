@@ -1175,6 +1175,24 @@ func bomb(instance: int) -> bool:
 	loop_changed.emit()
 	return true
 
+# Bomb a CELL rather than a body: the blast goes off on the ground, hitting
+# whatever its cells cover (nothing at all, on an empty board) and leaving a tile
+# effect behind when Hot Bombs is owned. Same charge, same `_explode`, same
+# `bomb_used` trigger — the only difference is that there is no `direct_instance`,
+# because the player aimed at a square and not at anybody.
+#
+# This is what makes a bomb worth spending on empty ground: with Hot Bombs it is
+# how fire gets laid where the stack is ABOUT to walk, and with Brimstone it is
+# how a cross is aimed down a lane rather than off whoever happens to be standing
+# in it.
+func bomb_cell(cell: Vector2i) -> bool:
+	if GameState.bombs <= 0 or not _on_board(cell.x, cell.y):
+		return false
+	GameState.bombs -= 1
+	_explode([cell])
+	loop_changed.emit()
+	return true
+
 # ONE BLAST, wherever it came from: the Bomb verb above and a Landmine going off
 # under someone both land here. `origin` is the cells at the centre of it (a
 # body's whole footprint for a bomb, the mine's one cell for a mine), and
@@ -1235,7 +1253,7 @@ func _explode(origin: Array, direct_instance: int = 0,
 # the promise and the rule above can't drift apart.
 func bomb_hint(enemy: GoalEnemyData) -> String:
 	if enemy == null:
-		return "Select an enemy to bomb."
+		return "Arm the Bomb, then click any square of the board."
 	if GameState.bombs <= 0:
 		return "No Bombs left."
 	var splash: String = (" The blast runs down its whole row and column."
@@ -1246,6 +1264,21 @@ func bomb_hint(enemy: GoalEnemyData) -> String:
 				enemy.display_name, splash]
 		return "%s is a boss — bombs can't hurt it.%s" % [enemy.display_name, splash]
 	return "Deal 1 damage to %s (no drop if it dies).%s" % [enemy.display_name, splash]
+
+# The same promise for a bomb aimed at GROUND (`bomb_cell`), as the tooltip on one
+# lit square of the picker. Says what the blast will actually find there, because
+# an empty cell is a legal target and a player who cannot see why would read the
+# lit square as a mistake.
+func bomb_cell_hint(cell: Vector2i) -> String:
+	if GameState.bombs <= 0:
+		return "No Bombs left."
+	var where: String = "column %d, row %d" % [cell.x, cell.y + 1]
+	var splash: String = (" The blast runs down its whole row and column."
+		if GameState.bombs_cardinal() else "")
+	var leaves: StringName = GameState.bomb_tile()
+	var tile: TileEffectData = Data.get_tile(leaves) if leaves != &"" else null
+	var after: String = " Leaves %s behind." % tile.display_name if tile != null else ""
+	return "Bomb the ground at %s — nothing is standing there.%s%s" % [where, splash, after]
 
 # WHICH CELLS a blast centred on `origin` covers. Just those cells normally; with
 # Brimstone Bombs the whole row and column of each of them — the blast runs down
@@ -1349,8 +1382,39 @@ func apply_tile(cell: Vector2i, tile_id: StringName) -> bool:
 		return false
 	tiles[cell] = {"id": tile_id, "games": tile.starting_life()}
 	_settle_cell(cell)
+	# The ground arriving UNDER a body bites it now (see _fire_tile_on_standing).
+	# After _settle_cell, so fire laid onto a mine has already annihilated with it
+	# and never bills anyone for a tile that is no longer there.
+	_fire_tile_on_standing(cell)
 	loop_changed.emit()
 	return tiles.has(cell)
+
+# A TILE EFFECT THAT LANDS ON AN OCCUPIED CELL FIRES ON THE SPOT. Walking into
+# fire burns you and so does standing in it when it is lit under you — a Red
+# Candle aimed at the square an enemy is on would otherwise be a click that did
+# nothing visible until the enemy's next turn, which reads as the item having
+# missed.
+#
+# It runs the tile's `enemy_enters` list and NOT the cell's unit's: the body did
+# not step on anything, the ground changed around it, so the mine it was already
+# standing on has no more reason to go off now than it had a moment ago.
+#
+# A body pays once per cell of its footprint, exactly as walking in does — a 2x2
+# lit up across two of its squares takes two stacks.
+func _fire_tile_on_standing(cell: Vector2i) -> void:
+	var tile: TileEffectData = tile_at(cell)
+	if tile == null or not tile.has_trigger(ON_ENTER):
+		return
+	for entry in stack.duplicate():
+		if run_over or not tiles.has(cell):
+			return
+		var instance: int = int(entry.get("instance", 0))
+		if _index_of(instance) < 0 or not entry_cells(entry).has(cell):
+			continue
+		for effect in tile.effects_for(ON_ENTER):
+			if _index_of(instance) < 0:
+				break
+			_run_cell_effect(effect, cell, instance)
 
 # Stand a unit on `cell`. Same rules as apply_tile, and the same return: false
 # when what was already there consumed it on arrival.
