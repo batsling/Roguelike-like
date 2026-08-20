@@ -9,4 +9,4 @@ display_name = "Scroll of Fire"
 reference = "Hack"
 preference = "Negative"
 file = ""
-effect = [{"op": "apply_status", "status": "burn", "value": 3, "target": "player"}, {"op": "apply_status", "status": "burn", "value": 3, "target": "front"}]
+effect = [{"op": "apply_status", "status": "burn", "value": 3, "target": "player"}, {"op": "apply_tile", "tile": "fire", "target": "front"}, {"op": "apply_status", "status": "burn", "value": 3, "target": "front"}]

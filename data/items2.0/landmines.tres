@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_landmines"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/Landmines.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"landmines"
+display_name = "Landmines"
+kind = 0
+rarity = 1
+description = "After Combat ends, Apply the Landmine Unit to a random empty Tile"
+triggers = [{"on": "game_beaten", "effects": [{"type": "apply_unit", "unit": "landmine", "target": "random_empty"}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Brotato"
+tags = PackedStringArray("bomb")
+image = ExtResource("2_img")

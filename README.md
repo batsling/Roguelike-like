@@ -74,6 +74,10 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── scrolls2.0/       #   ScrollData — identify-by-reading scrolls
 │   ├── statuses2.0/      #   StatusData — clauses bolted onto goals, plus the
 │   │                     #   combat side they move numbers with (§13, §13.4)
+│   ├── tiles2.0/         #   TileEffectData — what sits on one CELL of the board
+│   │                     #   and bites whatever walks in (§17)
+│   ├── units2.0/         #   UnitData — the player's own bodies on the board
+│   │                     #   (the Landmine), which layer on top of a tile (§17)
 │   ├── events2.0/        #   EventData2 — one fires after every game played
 │   ├── objects2.0/       #   ObjectData — the machines you stand in front of (§15)
 │   ├── curses2.0/        #   CurseData2 — the checklist curses events hand out
@@ -107,6 +111,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_character2_tres.py #   data/characters2.0
 │   ├── generate_scroll2_tres.py    #   data/scrolls2.0
 │   ├── generate_status_tres.py     #   data/statuses2.0 (owns the reward-token DSL)
+│   ├── generate_tile_tres.py       #   data/tiles2.0 (owns the tile/unit trigger DSL)
+│   ├── generate_unit_tres.py       #   data/units2.0 (imports the parsers above)
 │   ├── generate_event2_tres.py     #   data/events2.0
 │   ├── generate_curse2_tres.py     #   data/curses2.0
 │   ├── _xlsx_surgery.py            #   edit one sheet without losing the charts
@@ -164,6 +170,8 @@ To add or replace art:
    | `images2.0/characters/Full/`, `images2.0/characters/Icon/` | 2.0 character portrait + in-world token |
    | `images2.0/scrolls/` | Scroll art (identified art + `Unidentified.png`) |
    | `images2.0/statuses/` | Status art (`data/statuses2.0`) |
+   | `images2.0/tiles/` | Tile-effect art (`data/tiles2.0`) |
+   | `images2.0/units/` | Unit art (`data/units2.0`) |
    | `images/items/` | Legacy (1.0) item art for `data/items` |
    | `images/events/`, `images/encounters/` | Event / encounter art |
    | `images/characters/Full/`, `images/characters/Icon/` | Legacy character portraits |
@@ -495,7 +503,12 @@ All game content is authored as typed Godot **Resources** (`.tres`) under `data/
 with their schemas defined in `scripts/resources/`:
 
 `GameData`, `GoalEnemyData`, `ItemData`, `CharacterData`, `ScrollData`,
-`StatusData`, `EventData`, `EncounterData`, `CurseData`, `StatDefinition`.
+`StatusData`, `TileEffectData`, `UnitData`, `EventData`, `EncounterData`,
+`CurseData`, `StatDefinition`.
+
+(`TileEffectData` rather than `TileData` because Godot ships a native `TileData`
+for TileMaps and a `class_name` that shadows one is a parse error — the sheet, the
+data folder and the ids all stay "tile".)
 
 `Data.gd` loads them all on startup and serves them by id, so gameplay code never
 hardcodes content — it asks `Data` for it. Random draws all share one rarity
@@ -519,6 +532,8 @@ editing the sheet, then review the diff):
 | `generate_character2_tres.py` | `data/characters2.0/*.tres` from the characters sheet |
 | `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet |
 | `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses2.0` sheet |
+| `generate_tile_tres.py` | `data/tiles2.0/*.tres` from the `tiles2.0` sheet — owns the trigger / interaction DSL both board kinds use (§17) |
+| `generate_unit_tres.py` | `data/units2.0/*.tres` from the `units2.0` sheet — imports the parsers above rather than restating them |
 | `generate_event2_tres.py` | `data/events2.0/*.tres` from the `events2.0` sheet — see [Authoring an event](#authoring-an-event) |
 | `generate_curse2_tres.py` | `data/curses2.0/*.tres` from the `curses2.0` sheet |
 | `build_glyph_font.py` | `fonts/*.ttf` — the UI's symbol glyphs, subsetted from Noto. Not sheet-driven: it scans `scripts/**/*.gd` for the glyphs actually used. Run it after adding a new one; `--check` verifies without writing |
@@ -671,6 +686,8 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `gain_stat <verb> N` / `lose_stat <verb> N` | `bash`, `dash`, `push`, `transmute`, `scramble`, `bombs`, `keys`, `shields`. |
 | `gain_loot N` | A loot drop — a scroll today, and widens on its own as more loot types exist. `gain_scroll N` names the scroll directly. |
 | `apply_status <status> N` | A `statuses2.0` status on the player. On an **item** an optional `target=` says who instead: `current` / `all` / `random` name bodies by rule, and **`target=enemy` means one the player POINTS AT** — `ItemData.wants_target()` reads it, so the overworld arms the board and the click fires the item (Staff of Flame). A **scroll** takes the same words plus `player` and `front` (everything touching the front column — Scroll of Fire burns you and them at once). |
+| `apply_tile <tile> …` | A `tiles2.0` TILE EFFECT on the GROUND (§17). On a **scroll**, `front` / `back` / `all` name a strip of the board (Scroll of Fire lights the front column). On an **item**, `target=tile` means a CELL the player POINTS AT — `ItemData.target_kind()` reads it, so the board arms a cell picker instead of lighting up the stack — and `cols=A-B` fences how far it reaches (Red Candle's columns 2-3). |
+| `apply_unit <unit> …` | The same, for a `units2.0` UNIT (§17). `target=random_empty` puts it on a cell with nothing on it at all — no body, no unit, no tile effect (Landmines). |
 | `random_item_choice N` | Pick 1 of N random items. |
 | `gain_item <item_id>` | A **named** `items2.0` relic, handed straight over — the one token that says *which* item. The generator checks the id against the sheet. |
 | `spawn_enemy [N] [tag=<t>]` | Conjures N enemies at the run's current difficulty onto the following stack. What every curse costs. `tag=` narrows the roll to the goal-enemies carrying that synergy tag (`spawn_enemy tag=robot 1` — Punch Off's Constructs); the generator checks the tag against the `enemies2.0` Tag column, and a tagged roll widens by difficulty rather than dropping the tag. |

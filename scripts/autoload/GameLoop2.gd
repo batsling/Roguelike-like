@@ -177,6 +177,27 @@ var arrivals: Array[int] = []
 # offgrid_col() off-grid) and `row` the TOP row of its footprint (0-based).
 var stack: Array = []
 
+# TILE EFFECTS on the board (§17), as Vector2i(col, row) -> {"id": StringName,
+# "games": int}. `games` is how many more games this one survives, counted down
+# once per game RESOLVED (see beat_game) — not per turn, because how many turns a
+# game buys is read off the distance to the Amulet (§7.4) and a tile measured in
+# turns would be worth three times as much out in the wilds as it is on the
+# doorstep. 0 games left is a tile that has gone out; a tile authored with no
+# decay at all never counts down.
+#
+# Keyed by CELL rather than held on the entry standing there, because that is the
+# whole difference between a tile effect and a status: a status rides the body and
+# goes where it goes, a tile effect stays where it was put and bites whatever
+# walks in next.
+var tiles: Dictionary = {}
+
+# UNITS on the board (§17), as Vector2i(col, row) -> {"id": StringName,
+# "health": int}. A unit is a body of the PLAYER's — the Landmine is the whole
+# roster today — and it layers ON TOP of a tile effect rather than competing with
+# one for the cell. It does not block an enemy: a body walks into the cell and the
+# unit reacts, which for the mine means going off.
+var units: Dictionary = {}
+
 # Games removed from the pool by Bash (§4) — destroyed outright, never offered
 # again this run. The overworld consults is_bashed() when drawing games.
 var bashed: Array[StringName] = []
@@ -236,6 +257,8 @@ func _ready() -> void:
 func reset() -> void:
 	arrivals.clear()
 	stack.clear()
+	tiles.clear()
+	units.clear()
 	attempt_costs.clear()
 	_attempt_payouts.clear()
 	bashed.clear()
@@ -268,6 +291,10 @@ func sync_grid_bounds() -> void:
 	var was_offgrid_from: int = _bounds_cols
 	_bounds_cols = cols
 	_bounds_rows = rows
+	# The furniture goes with the ground it was on: a board that shrank loses the
+	# tile effects and units standing off its new edge (§17), the same way it
+	# loses the bodies.
+	_prune_offboard_cells()
 	_reseat_stack(was_offgrid_from)
 	loop_changed.emit()
 
@@ -326,6 +353,14 @@ func serialize() -> Dictionary:
 		"current": _serialize_entry(arrival()),
 		"current_escort": escort_instance(),
 		"stack": stacked,
+		# The board's FURNITURE (§17), written as flat lists rather than as the
+		# Vector2i-keyed dictionaries they are at runtime: the save goes through
+		# JSON, which has no key type but string, and a "(2, 1)" key parsed back
+		# out is a string-munging bug waiting to happen. Absent from an older save,
+		# which restores as a board with nothing on the ground — correct, since
+		# there was nothing to put there.
+		"tiles": _serialize_cells(tiles, "games"),
+		"units": _serialize_cells(units, "health"),
 		"bashed": bashed_ids,
 		"transmuted": _transmuted_ids(),
 		"run_over": run_over,
@@ -374,6 +409,12 @@ func restore(data: Dictionary) -> void:
 	for handle in saved:
 		if _index_of(int(handle)) >= 0:
 			arrivals.append(int(handle))
+	# The ground, restored before anything else reads it. A row naming a tile or a
+	# unit the catalog no longer knows is DROPPED, for the same reason a missing
+	# enemy id drops a whole entry: a cell carrying something undescribable would
+	# draw as a blank badge and trigger nothing.
+	tiles = _deserialize_cells(data.get("tiles", []), "games", func(id): return Data.get_tile(id) != null)
+	units = _deserialize_cells(data.get("units", []), "health", func(id): return Data.get_unit(id) != null)
 	bashed.clear()
 	for gid in data.get("bashed", []):
 		bashed.append(StringName(gid))
@@ -460,6 +501,37 @@ func _deserialize_entry(raw) -> Dictionary:
 		"row": int(d.get("row", 0)),
 		"statuses": _deserialize_statuses(d.get("statuses", {})),
 	}
+
+# The cell dictionaries (`tiles`, `units`) as a JSON-safe list of flat rows, and
+# back. `count_key` is the one number the kind carries — a tile's games left, a
+# unit's health — so the pair reads the same for both without either learning the
+# other's field names.
+func _serialize_cells(cells: Dictionary, count_key: String) -> Array:
+	var out: Array = []
+	for cell in cells.keys():
+		var held: Dictionary = cells[cell]
+		out.append({
+			"col": int(cell.x), "row": int(cell.y),
+			"id": String(held.get("id", "")),
+			count_key: int(held.get(count_key, 0)),
+		})
+	return out
+
+func _deserialize_cells(raw, count_key: String, known: Callable) -> Dictionary:
+	var out: Dictionary = {}
+	if not (raw is Array):
+		return out
+	for row in raw:
+		if not (row is Dictionary):
+			continue
+		var id := StringName(row.get("id", ""))
+		if id == &"" or not known.call(id):
+			continue
+		var cell := Vector2i(int(row.get("col", 0)), int(row.get("row", 0)))
+		if not _on_board(cell.x, cell.y):
+			continue
+		out[cell] = {"id": id, count_key: int(row.get(count_key, 0))}
+	return out
 
 # A body's statuses as JSON-safe String -> int, and back. A status id the catalog
 # no longer knows is DROPPED on the way in, for the same reason a missing enemy id
@@ -884,7 +956,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		"shields": GameState.shields, "shields_expired": 0,
 		"attempts": attempts(), "stack_size": stack.size(),
 		"status_rewards": 0, "statuses_ticked": [],
-		"instead_cleared": [], "status_penalties": [],
+		"instead_cleared": [], "status_penalties": [], "tiles_expired": [],
 		"run_over": run_over, "won": won,
 	}
 	if run_over:
@@ -989,6 +1061,13 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#    was never set either, so it carried nothing to satisfy.
 	res["statuses_ticked"] = _tick_player_clauses(goals_completed)
 
+	# 4. THE GROUND BURNS DOWN (§17). A tile effect is measured in GAMES, and this
+	#    is where one ends: beaten or missed, escaped or fought to a standstill,
+	#    the evening was spent and the fire is a game closer to going out. Last,
+	#    so a tile laid this game and a tile that expires this game have both had
+	#    their say on the turns above before the count moves.
+	res["tiles_expired"] = _decay_tiles()
+
 	res["hp"] = GameState.hp
 	res["shields"] = GameState.shields
 	res["stack_size"] = stack.size()
@@ -1010,12 +1089,23 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 # Amulet's doorstep buys a third of a game rather than all of it — the same
 # charge, worth what the pace of the board says it's worth.
 func _resolve_enemy_turn(turn: int, hit_this_game: Dictionary, res: Dictionary) -> void:
+	# a0. THE GROUND, before anything swings (§17). A body that has been parked on
+	#     a fire tile takes its stack of Burn now — so the halved damage is already
+	#     on it when it strikes this turn rather than a turn late — and this is
+	#     also what stops standing still on burning ground being free.
+	_fire_turn_start_cells()
 	# a. FRONT COLUMN STRIKES. An enemy attacks once ANY part of it reaches the
 	#    front column (col 1) — which is why a long enemy gets to you sooner.
 	#    Iterate a copy so a lethal hit ending the run mid-loop is safe.
 	for entry in stack.duplicate():
 		if run_over:
 			return
+		# The ground above may have taken a body off the board (a mine going off
+		# under it, §17) — and `stack.duplicate()` is a snapshot, so a dead entry
+		# is still in it, still carrying the column it died on. Without this it
+		# would strike from beyond the grave.
+		if _index_of(int(entry.get("instance", 0))) < 0:
+			continue
 		if not in_front(entry):
 			continue
 		if hit_this_game.has(int(entry["instance"])):
@@ -1076,14 +1166,35 @@ func bomb(instance: int) -> bool:
 	var idx: int = _index_of(instance)
 	if idx < 0:
 		return false
-	var target: GoalEnemyData = stack[idx]["enemy"]
+	var entry: Dictionary = stack[idx]
 	GameState.bombs -= 1
+	# The blast itself is `_explode`, shared with the Landmine (§17) — a mine is a
+	# PROXY BOMB, so everything the pack has done to bombs has to reach it, and the
+	# only way to guarantee that is for there to be one blast in this file.
+	_explode(entry_cells(entry), instance, entry["enemy"])
+	loop_changed.emit()
+	return true
+
+# ONE BLAST, wherever it came from: the Bomb verb above and a Landmine going off
+# under someone both land here. `origin` is the cells at the centre of it (a
+# body's whole footprint for a bomb, the mine's one cell for a mine), and
+# `direct_instance` is the body the blast was AIMED at, which is hit even when it
+# is standing off the board and so fills no cells at all. Returns
+# {hits, destroyed} for the caller's log.
+#
+# Everything that modifies a bomb is applied here and therefore applies to both:
+# Brimstone widens `origin` to the whole row and column, Sticky stuns what
+# survives, Hot Bombs leaves a tile effect on every cell the blast covered, and
+# the one `bomb_used` trigger at the end is what pays Blood Bombs.
+func _explode(origin: Array, direct_instance: int = 0,
+		target: GoalEnemyData = null) -> Dictionary:
 	var stuns: bool = GameState.bombs_stun()
+	var cells: Array = _blast_cells(origin)
 	var destroyed: Array = []
 	var hits: int = 0
 	# Resolve to instances first: the blast is measured on the board as it stands,
 	# so a body removed mid-loop can't shift who else was in the cross.
-	for inst in _blast_instances(instance):
+	for inst in _blast_instances(cells, direct_instance):
 		var i: int = _index_of(inst)
 		if i < 0:
 			continue
@@ -1101,16 +1212,23 @@ func bomb(instance: int) -> bool:
 		# Survived the blast — Sticky Bombs makes that cost it its next turn.
 		if stuns:
 			stack[i]["stun"] = int(stack[i].get("stun", 0)) + 1
+	# HOT BOMBS (§17): the ground the blast covered is left carrying a tile effect.
+	# After the damage, so a body the blast killed is already gone and the fire is
+	# laid for whatever walks in next rather than burning a corpse — and last,
+	# because laying it can set off another mine standing in the same cross.
+	var leaves: StringName = GameState.bomb_tile()
+	if leaves != &"":
+		for cell in cells:
+			apply_tile(cell, leaves)
 	# Clearing a body can open the space a waiting enemy needs to walk on.
 	if not destroyed.is_empty():
 		_admit_offgrid()
 	# One bomb, one trigger — however many bodies the blast touched — so a
 	# per-bomb payout (Blood Bombs' +1 Health) can't be multiplied by Brimstone.
 	TriggerBus.bomb_used.emit({
-		"instance": instance, "enemy": target,
+		"instance": direct_instance, "enemy": target,
 		"hits": hits, "destroyed": destroyed.size()})
-	loop_changed.emit()
-	return true
+	return {"hits": hits, "destroyed": destroyed.size()}
 
 # What a bomb aimed at `enemy` would actually do, as one line for the board's
 # bomb button and the enemy card. Lives here rather than in the two UI scripts so
@@ -1129,32 +1247,343 @@ func bomb_hint(enemy: GoalEnemyData) -> String:
 		return "%s is a boss — bombs can't hurt it.%s" % [enemy.display_name, splash]
 	return "Deal 1 damage to %s (no drop if it dies).%s" % [enemy.display_name, splash]
 
-# Which stacked instances one bomb aimed at `instance` hits, in stack order. Just
-# the target normally; with Brimstone Bombs every enemy sharing a row or a column
-# with it as well — the blast runs down the board's four cardinal directions from
-# the target's own footprint, so a wide enemy sweeps correspondingly more. An
-# off-grid enemy fills no cells and so is only ever hit as the direct target.
-func _blast_instances(instance: int) -> Array:
-	var out: Array = [instance]
+# WHICH CELLS a blast centred on `origin` covers. Just those cells normally; with
+# Brimstone Bombs the whole row and column of each of them — the blast runs down
+# the board's four cardinal directions from the centre's own footprint, so a wide
+# enemy sweeps correspondingly more. An off-grid target has no cells, so its blast
+# covers no ground at all and only ever hits the target itself.
+func _blast_cells(origin: Array) -> Array:
 	if not GameState.bombs_cardinal():
-		return out
-	var idx: int = _index_of(instance)
-	if idx < 0:
-		return out
+		return origin.duplicate()
 	var rows: Dictionary = {}
 	var cols: Dictionary = {}
-	for cell in entry_cells(stack[idx]):
+	for cell in origin:
 		cols[cell.x] = true
 		rows[cell.y] = true
+	var out: Array = []
+	for col in range(1, grid_cols() + 1):
+		for row in range(grid_rows()):
+			if rows.has(row) or cols.has(col):
+				out.append(Vector2i(col, row))
+	return out
+
+# Which stacked instances a blast over `cells` hits, in stack order. `always` is
+# the body it was aimed at, included whether or not it is standing on any of them
+# — an off-grid target fills no cells and is still what the bomb was spent on.
+func _blast_instances(cells: Array, always: int = 0) -> Array:
+	var out: Array = []
+	if always > 0:
+		out.append(always)
+	if cells.is_empty():
+		return out
+	var covered: Dictionary = {}
+	for cell in cells:
+		covered[cell] = true
 	for entry in stack:
 		var inst: int = int(entry.get("instance", 0))
-		if inst == instance:
+		if inst == always:
 			continue
 		for cell in entry_cells(entry):
-			if rows.has(cell.y) or cols.has(cell.x):
+			if covered.has(cell):
 				out.append(inst)
 				break
 	return out
+
+# ---------------------------------------------------------------------------
+# Tile effects and units (docs/games-first-redesign.md §17)
+#
+# Two things can sit on a cell that are not a body: a TILE EFFECT (something done
+# to the ground) and a UNIT (something of the player's standing on it). They
+# LAYER — a unit stands on a tile effect — which is why they are two dictionaries
+# rather than one, and what happens when a particular pair meets is authored in
+# the content (`TileEffectData.interactions` / `UnitData.interactions`) rather than
+# written here. Fire and a Landmine annihilate each other; that fact lives in the
+# sheet, and this file only knows how to carry out `detonate_unit` and
+# `remove_tile`.
+#
+# Neither blocks a body. An enemy walks into the cell and whatever is there
+# REACTS, which is the whole difference between this and the footprint rules
+# above: `occupancy` is about who cannot stand where, and this is about what it
+# costs to stand there. The one place the two meet is routing — a mined lane
+# scores worse than a clear one (`path_blockers`), so the stack walks AROUND a
+# minefield rather than being unable to cross it.
+
+# The triggers a tile effect or a unit may hang an effect on (the sheets' own
+# words, so a cell reads the same in the .tres and here).
+const ON_ENTER := &"enemy_enters"
+const ON_TURN_START := &"enemy_turn_start"
+
+# How deep a chain of detonations may run before it is cut off. A chain is already
+# finite — every detonation spends the unit that caused it, and there are finitely
+# many units — but Hot Bombs makes a blast lay fire, and fire sets off mines, so a
+# board packed with both can run a long way from one press. This is the belt to
+# that braces.
+const MAX_CHAIN: int = 16
+var _chain_depth: int = 0
+
+# What is on `cell`, or null. The two lookups are separate because the two things
+# are: a caller asking "is this cell on fire" must not have to know that a mine
+# might be standing in it.
+func tile_at(cell: Vector2i) -> TileEffectData:
+	var held = tiles.get(cell)
+	return Data.get_tile(StringName(held["id"])) if held != null else null
+
+func unit_at(cell: Vector2i) -> UnitData:
+	var held = units.get(cell)
+	return Data.get_unit(StringName(held["id"])) if held != null else null
+
+# How many more GAMES the tile effect on `cell` survives (0 for a bare cell, or
+# for one carrying a tile that never decays).
+func tile_games_left(cell: Vector2i) -> int:
+	var held = tiles.get(cell)
+	return int(held.get("games", 0)) if held != null else 0
+
+# Lay a tile effect on `cell`. Refuses ground that is off the board and a tile the
+# catalog doesn't know; RE-lays one that is already there, which is what makes a
+# second Scroll of Fire on the same column a refresh rather than a waste. Returns
+# true when the cell is carrying the tile afterwards — false when the interaction
+# it triggered took it straight back off again (fire laid onto a mine).
+func apply_tile(cell: Vector2i, tile_id: StringName) -> bool:
+	var tile: TileEffectData = Data.get_tile(tile_id)
+	if tile == null or not _on_board(cell.x, cell.y):
+		return false
+	tiles[cell] = {"id": tile_id, "games": tile.starting_life()}
+	_settle_cell(cell)
+	loop_changed.emit()
+	return tiles.has(cell)
+
+# Stand a unit on `cell`. Same rules as apply_tile, and the same return: false
+# when what was already there consumed it on arrival.
+func apply_unit(cell: Vector2i, unit_id: StringName) -> bool:
+	var unit: UnitData = Data.get_unit(unit_id)
+	if unit == null or not _on_board(cell.x, cell.y):
+		return false
+	units[cell] = {"id": unit_id, "health": maxi(1, unit.health)}
+	_settle_cell(cell)
+	loop_changed.emit()
+	return units.has(cell)
+
+func remove_tile(cell: Vector2i) -> bool:
+	if not tiles.has(cell):
+		return false
+	tiles.erase(cell)
+	loop_changed.emit()
+	return true
+
+func remove_unit(cell: Vector2i) -> bool:
+	if not units.has(cell):
+		return false
+	units.erase(cell)
+	loop_changed.emit()
+	return true
+
+# Every cell of `col`, for the scrolls and items that cover a whole column.
+func column_cells(col: int) -> Array:
+	var out: Array = []
+	if col < 1 or col > grid_cols():
+		return out
+	for row in range(grid_rows()):
+		out.append(Vector2i(col, row))
+	return out
+
+# The cells an `apply_tile` / `apply_unit` effect means by its target word.
+# `front` is column 1 (the strip that strikes next), `back` the spawn column, and
+# `all` the whole board. An unknown word covers nothing rather than covering
+# everything — a typo that blanketed the board would be a very expensive one.
+func target_cells(target: String) -> Array:
+	match target:
+		"front":
+			return column_cells(1)
+		"back":
+			return column_cells(grid_cols())
+		"all":
+			var out: Array = []
+			for col in range(1, grid_cols() + 1):
+				out.append_array(column_cells(col))
+			return out
+		_:
+			return []
+
+# The cells nothing at all is on: no body's footprint, no unit, and no tile
+# effect. This is "a random empty Tile" in the Landmines item's own words, and it
+# is deliberately the strictest reading — a mine dropped onto burning ground would
+# go off on the spot and the item's whole payout for that game with it.
+func empty_cells() -> Array:
+	var taken: Dictionary = occupancy()
+	var out: Array = []
+	for col in range(1, grid_cols() + 1):
+		for row in range(grid_rows()):
+			var cell := Vector2i(col, row)
+			if taken.has(cell) or units.has(cell) or tiles.has(cell):
+				continue
+			out.append(cell)
+	return out
+
+# One random empty cell, or a cell off the board when there is none — a caller
+# checks with `_on_board` (or just passes it to apply_unit, which refuses it).
+func random_empty_cell() -> Vector2i:
+	var free: Array = empty_cells()
+	if free.is_empty():
+		return Vector2i(offgrid_col(), 0)
+	return free[randi() % free.size()]
+
+# WHAT A TILE EFFECT AND A UNIT DO TO EACH OTHER when they end up sharing a cell.
+# Called after either one lands, from either direction, so a mine dropped into
+# fire and fire laid onto a mine are the same event resolved by the same code.
+#
+# BOTH SIDES of a pairing author the outcome (§17) and the two lists are UNIONED,
+# so an interaction written on one sheet only still resolves — a tile that knows
+# about a unit the unit has never heard of still fires.
+func _settle_cell(cell: Vector2i) -> void:
+	var tile: TileEffectData = tile_at(cell)
+	var unit: UnitData = unit_at(cell)
+	if tile == null or unit == null:
+		return
+	var outcomes: Dictionary = {}
+	for token in tile.interaction_with(&"unit", unit.id):
+		outcomes[token] = true
+	for token in unit.interaction_with(&"tile", tile.id):
+		outcomes[token] = true
+	if outcomes.is_empty():
+		return
+	# The pieces come off the board BEFORE the blast resolves. A detonation with
+	# Hot Bombs owned lays fire back over its own cell, and a mine that was still
+	# sitting there would be set off by the fire it just caused.
+	if outcomes.has("remove_tile"):
+		tiles.erase(cell)
+	if outcomes.has("remove_unit"):
+		units.erase(cell)
+	if outcomes.has("detonate_unit"):
+		detonate_unit(cell)
+
+# Set off the unit standing on `cell`: it is spent, and then it goes off as a
+# PROXY BOMB — no Bomb charge is paid, but every bomb modifier in the pack reads
+# it (see `_explode`). Returns true when there was something there to set off.
+func detonate_unit(cell: Vector2i) -> bool:
+	if not units.has(cell):
+		return false
+	if _chain_depth >= MAX_CHAIN:
+		# Ran out of rope. The unit is still spent, so the chain shortens rather
+		# than looping — a board that hit this is a board with sixteen mines going
+		# off on it, and the seventeenth quietly not exploding is the least
+		# surprising way to stop.
+		units.erase(cell)
+		return false
+	units.erase(cell)
+	_chain_depth += 1
+	_explode([cell])
+	_chain_depth -= 1
+	loop_changed.emit()
+	return true
+
+# Fire whatever is on `cells` at the body `entry` — the one place a tile effect or
+# a unit acts on somebody. `trigger` is ON_ENTER or ON_TURN_START.
+#
+# The body may not survive it (a mine goes off under a 1-Health follower), so this
+# returns whether it is STILL ON THE BOARD, and every caller that was going to
+# keep moving it checks that before doing so.
+func _fire_cell_triggers(entry: Dictionary, cells: Array, trigger: StringName) -> bool:
+	var instance: int = int(entry.get("instance", 0))
+	for cell in cells:
+		if _index_of(instance) < 0:
+			return false
+		# The unit first, then the ground under it: a mine going off is the louder
+		# event, and resolving it first means a body the blast kills is never also
+		# billed for the fire it was standing on.
+		var unit: UnitData = unit_at(cell)
+		if unit != null:
+			for effect in unit.effects_for(trigger):
+				_run_cell_effect(effect, cell, instance)
+		if _index_of(instance) < 0:
+			return false
+		var tile: TileEffectData = tile_at(cell)
+		if tile != null:
+			for effect in tile.effects_for(trigger):
+				_run_cell_effect(effect, cell, instance)
+	return _index_of(instance) >= 0
+
+# One effect out of a tile's or a unit's authored list. Deliberately a short
+# vocabulary: `apply_status` puts something on the body that triggered it, and
+# `detonate` sets the cell's unit off. Anything else is content the code hasn't
+# grown yet, and says so rather than failing silently.
+func _run_cell_effect(effect: Dictionary, cell: Vector2i, instance: int) -> void:
+	match String(effect.get("op", "")):
+		"apply_status":
+			apply_status_to(instance, StringName(effect.get("status", "")),
+				maxi(1, int(effect.get("value", 1))))
+		"detonate":
+			detonate_unit(cell)
+		_:
+			push_warning("GameLoop2: unknown tile/unit effect %s" % effect)
+
+# THE START OF AN ENEMY TURN, for the ground everyone is standing on. Fires before
+# anything swings, so a body that has been parked on fire all game is burning
+# before it strikes rather than after — and a mine it was somehow sitting on takes
+# it out before it gets the swing at all.
+#
+# A body pays PER CELL, so a 2x2 standing on two fire tiles takes two stacks. That
+# is the same rule footprints follow everywhere else on this board: a big body
+# covers more ground and more ground is more of everything.
+func _fire_turn_start_cells() -> void:
+	for entry in stack.duplicate():
+		if run_over:
+			return
+		if _index_of(int(entry.get("instance", 0))) < 0:
+			continue
+		_fire_cell_triggers(entry, entry_cells(entry), ON_TURN_START)
+
+# MOVE ONE BODY and pay whatever the ground it just covered charges. THE one place
+# an on-board entry changes cells — a step, a spawn, a push, a board that grew
+# under it all come through here — so there is nowhere for "does walking into fire
+# burn you?" to be answered twice.
+#
+# Returns whether the body is still on the board afterwards.
+func _move_entry(entry: Dictionary, row: int, col: int) -> bool:
+	var before: Dictionary = {}
+	for cell in entry_cells(entry):
+		before[cell] = true
+	entry["row"] = row
+	entry["col"] = col
+	var entered: Array = []
+	for cell in entry_cells(entry):
+		if not before.has(cell):
+			entered.append(cell)
+	if entered.is_empty():
+		return true
+	return _fire_cell_triggers(entry, entered, ON_ENTER)
+
+# The tile effects burn down by one GAME. Called once from beat_game, when the
+# game the player reported is finished with — beaten or not, since the ground
+# burns for the time spent rather than for the result (§17). Returns the cells
+# that went out, for the resolve log.
+func _decay_tiles() -> Array:
+	var out: Array = []
+	for cell in tiles.keys():
+		var held: Dictionary = tiles[cell]
+		var left: int = int(held.get("games", 0))
+		if left <= 0:
+			continue          # authored with no decay: it stays until something clears it
+		left -= 1
+		if left <= 0:
+			out.append(cell)
+		else:
+			held["games"] = left
+	for cell in out:
+		tiles.erase(cell)
+	return out
+
+# Take the ground off any cell the board no longer has. Runs with the stack's own
+# re-seating (sync_grid_bounds), because a board that shrank has to lose its
+# furniture for the same reason it has to lose the bodies standing off the edge:
+# a tile at column 6 of a 5-wide board is one nothing can ever walk into and
+# nothing can ever draw.
+func _prune_offboard_cells() -> void:
+	for cell in tiles.keys():
+		if not _on_board(cell.x, cell.y):
+			tiles.erase(cell)
+	for cell in units.keys():
+		if not _on_board(cell.x, cell.y):
+			units.erase(cell)
 
 # Stun a stacked enemy (Scroll of Scare Monster, §4.1): it loses its next TURN,
 # neither striking nor stepping, and the stun ticks off with it. That is a whole
@@ -1245,8 +1674,11 @@ func push(instance: int, dir: Vector2i = PUSH_BACK) -> bool:
 		return false
 	var idx: int = _index_of(instance)
 	GameState.push -= 1
-	stack[idx]["col"] = int(stack[idx].get("col", spawn_col())) + dir.x
-	stack[idx]["row"] = int(stack[idx].get("row", 0)) + dir.y
+	# Through _move_entry: a shove is a way of arriving in a cell, so shoving a
+	# body onto a mine or into a fire costs it exactly what walking there would
+	# (§17). That is what makes a Push a way to USE the ground you have laid.
+	_move_entry(stack[idx], int(stack[idx].get("row", 0)) + dir.y,
+		int(stack[idx].get("col", spawn_col())) + dir.x)
 	# Shoving a body off the front line can open the gap a waiting enemy needs.
 	_admit_offgrid()
 	loop_changed.emit()
@@ -2297,20 +2729,30 @@ func _open_rows(enemy: GoalEnemyData, col: int, exclude: int = 0) -> Array:
 	return rows
 
 # Everything standing between `enemy` at (`row`, `col`) and the player: walk its
-# footprint forward column by column and collect the instances it would run into.
-# Enemies never change lanes, so this is the complete list of bodies it must
-# outlive to ever land a hit. Returns {"enemies": int, "cells": int} — how many
-# distinct enemies are in the way, and how many cell-crossings they cost.
+# footprint forward column by column and collect what it would run into. Enemies
+# never change lanes, so this is the complete list of what a body must get past to
+# ever land a hit. Returns {"enemies": int, "cells": int, "mines": int} — how many
+# distinct enemies are in the way, how many cell-crossings they cost, and how many
+# UNITS (§17) the lane makes it walk over.
+#
+# The units are counted but kept as their own number rather than folded into the
+# other two, because they are a different kind of obstacle: a body parked in the
+# lane is a wall that may never move, while a mine is a toll — it costs a point of
+# Health and then it is gone. Which of those matters more is the caller's to
+# decide, and `_spawn_rows` decides it by ranking a wall above a toll.
 func path_blockers(enemy: GoalEnemyData, row: int, col: int, exclude: int = 0) -> Dictionary:
 	var taken: Dictionary = occupancy(exclude)
 	var who: Dictionary = {}
 	var cells: int = 0
+	var mines: int = 0
 	for c in range(col, 0, -1):
 		for cell in footprint_at(enemy, row, c):
 			if taken.has(cell):
 				who[int(taken[cell])] = true
 				cells += 1
-	return {"enemies": who.size(), "cells": cells}
+			if units.has(cell):
+				mines += 1
+	return {"enemies": who.size(), "cells": cells, "mines": mines}
 
 # Can `enemy`, standing at (`row`, `col`), march all the way to the front with
 # nothing in its way? "A path to hit the player" in one call.
@@ -2318,26 +2760,44 @@ func has_clear_path(enemy: GoalEnemyData, row: int, col: int, exclude: int = 0) 
 	return int(path_blockers(enemy, row, col, exclude).get("enemies", 0)) == 0
 
 # The rows `enemy` should consider entering at `col`: the ones with the CLEAREST
-# run at the player. A row it can't stand in is out; of the rest, the fewest
-# bodies in the way wins, then the fewest cells those bodies block. Ties come back
-# together so the caller still picks randomly among equally good lanes.
+# run at the player. A row it can't stand in is out; of the rest they are ranked
+# on three numbers in order — the fewest BODIES in the way, then the fewest MINES
+# to walk over, then the fewest cells those bodies block. Ties come back together
+# so the caller still picks randomly among equally good lanes.
 #
 # This matters most for a big enemy, which has several rows' worth of lane to get
 # through: an all-or-nothing "is this lane clear?" test would call every option
 # equally bad the moment one body sits on the board, and drop it into a lane
 # jammed behind two enemies when one row up it only had to outlive one.
+#
+# MINES RANK BELOW BODIES ON PURPOSE (§17). A body in the lane is a wall that may
+# never move; a mine is a toll — one point of Health, paid once, and then the lane
+# is clear. An enemy that treated the two as equally bad would rather queue
+# forever behind a boss than step on a mine, which is not caution, it is a bug
+# that reads as one. So the stack routes around a minefield when it has anywhere
+# else to be, and walks straight through it when it doesn't. That is what makes
+# Landmines an item that SHAPES the board rather than one that seals it.
 func _spawn_rows(enemy: GoalEnemyData, col: int, exclude: int = 0) -> Array:
 	var best: Array = []
-	var best_score := Vector2i(1 << 30, 1 << 30)
+	var best_score := Vector3i(1 << 30, 1 << 30, 1 << 30)
 	for row in _open_rows(enemy, col, exclude):
 		var blockers: Dictionary = path_blockers(enemy, int(row), col, exclude)
-		var score := Vector2i(int(blockers["enemies"]), int(blockers["cells"]))
-		if score.x < best_score.x or (score.x == best_score.x and score.y < best_score.y):
+		var score := Vector3i(int(blockers["enemies"]), int(blockers["mines"]),
+			int(blockers["cells"]))
+		if _better_lane(score, best_score):
 			best_score = score
 			best = [row]
 		elif score == best_score:
 			best.append(row)
 	return best
+
+# Lexicographic on (enemies, mines, cells) — the ranking _spawn_rows explains.
+static func _better_lane(a: Vector3i, b: Vector3i) -> bool:
+	if a.x != b.x:
+		return a.x < b.x
+	if a.y != b.y:
+		return a.y < b.y
+	return a.z < b.z
 
 # The column an enemy ENTERS on: far enough back that its rightmost cell lands on
 # the board's back column, so a wide enemy starts with its front edge already
@@ -2409,8 +2869,10 @@ func _place_on_spawn(entry: Dictionary) -> bool:
 	if rows.is_empty():
 		entry["col"] = offgrid_col()
 		return false
-	entry["row"] = int(rows[randi() % rows.size()])
-	entry["col"] = col
+	# Through _move_entry, so walking onto the board pays the ground's tolls like
+	# every other way of arriving in a cell (§17): an enemy that spawns onto a
+	# mined back column sets it off on the way in.
+	_move_entry(entry, int(rows[randi() % rows.size()]), col)
 	return true
 
 # Close the grid up by one column. Enemies step forward FRONT-FIRST, so a cell
@@ -2424,6 +2886,12 @@ func _advance_stack() -> void:
 	for entry in movers:
 		if int(entry.get("stun", 0)) > 0:
 			continue
+		# A body earlier in this same pass may have been taken off the board by
+		# something it walked into — a Landmine going off under it, or the blast
+		# from one that went off under somebody else (§17). `movers` is a snapshot,
+		# so a dead entry is still in it and must not be marched on.
+		if _index_of(int(entry.get("instance", 0))) < 0:
+			continue
 		# Speed buys EXTRA columns, taken one at a time (§13.4). Walking them
 		# singly rather than jumping straight to col - 1 - speed is what keeps a
 		# fast enemy honest about the board: it stops at the first column its
@@ -2436,12 +2904,20 @@ func _advance_stack() -> void:
 			if not fits_at(entry.get("enemy"), int(entry.get("row", 0)), col - 1,
 					int(entry.get("instance", 0))):
 				break
-			entry["col"] = col - 1
+			# The step itself, and whatever the cell it lands in charges for it. A
+			# body that doesn't survive the landing stops walking here.
+			if not _move_entry(entry, int(entry.get("row", 0)), col - 1):
+				break
 	_admit_offgrid()
 
 # Walk waiting enemies onto the board, oldest first, as space at the spawn column
 # opens up.
 func _admit_offgrid() -> void:
-	for entry in stack:
+	# Over a SNAPSHOT, and re-checking membership each time: walking a body on can
+	# set off a mine (§17), and the blast can take other waiting bodies — or this
+	# one — off the stack while the loop is still holding them.
+	for entry in stack.duplicate():
+		if _index_of(int(entry.get("instance", 0))) < 0:
+			continue
 		if int(entry.get("col", offgrid_col())) > grid_cols():
 			_place_on_spawn(entry)

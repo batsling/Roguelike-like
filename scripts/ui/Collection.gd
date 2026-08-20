@@ -1157,6 +1157,10 @@ func _show_item_detail(it: ItemData) -> void:
 		_detail_box.add_child(_label("From: %s" % it.source_game, Color(0.65, 0.7, 0.8), 11, false, true))
 	_detail_box.add_child(HSeparator.new())
 	_detail_box.add_child(_label(it.description, Color(0.85, 0.85, 0.87), 13, false, true))
+	# The KEYWORD STRIP (§17): the mechanics this item's sentence names, each with
+	# the content's own words on hover. The collection is where a player goes to
+	# read rather than to decide, so it is the surface that most wants them.
+	Keywords.attach(_detail_box, it.description)
 	if not it.stat_bonuses.is_empty():
 		_detail_box.add_child(_detail_section("Stat Bonuses"))
 		for stat in it.stat_bonuses.keys():
@@ -1611,6 +1615,8 @@ func _scroll_effect_text(s: ScrollData) -> String:
 		match String(e.get("op", "")):
 			"apply_status":
 				parts.append(ScrollSystem.status_effect_text(e))
+			"apply_tile":
+				parts.append(ScrollSystem.tile_effect_text(e))
 			"forget":
 				parts.append("Forget %d random scroll(s)." % int(e.get("count", 1)))
 			"spawn_enemy":

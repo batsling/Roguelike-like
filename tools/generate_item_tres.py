@@ -31,7 +31,7 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   reroll_low_rarity:, carries_leftover_energy:,
                   lower_hp_damage_mult:, gold_spend_stat_per=N, level_up:,
                   charged (charge_cost N), keep_shields, bomb_stun,
-                  bomb_cardinal, grid_grow, grid_length, hide_spawns,
+                  bomb_cardinal, bomb_tile <tile>, grid_grow, grid_length, hide_spawns,
                   spawn_status <status> N, loot_multiplier: N,
                   gold_per_enemy: N, shop_sweep, boss_chest_bonus: N,
                   reroll_enemies, destroy_on_damage.
@@ -444,6 +444,48 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
                 "value": nums[0] if nums else 1,
                 "target": kv.get("target", "player").lower()}
 
+    # apply_tile <tile_id> [target=tile|front|all] [cols=A-B]
+    # Tile effects 2.0 (docs/games-first-redesign.md §17) — how an item reaches
+    # the GROUND rather than a body. `target=tile` is the sheet asking for a cell
+    # to be picked, the tile-side twin of `target=enemy`, and `cols=A-B` fences
+    # what the player is allowed to pick: Red Candle reaches columns 2-3, never
+    # the front (where it would be a free hit on whatever is already swinging) and
+    # never the back (where nothing would walk over it before it decayed).
+    if verb == "apply_tile":
+        rest, kv = _kv(toks[1:])
+        words = [t for t in rest if not re.match(r"^-?\d+$", t)]
+        out = {"type": "apply_tile",
+               "tile": words[0].lower() if words else "",
+               "target": kv.get("target", "tile").lower()}
+        cols = kv.get("cols", "")
+        if cols:
+            m = re.match(r"^(\d+)\s*(?:-\s*(\d+))?$", str(cols))
+            if not m:
+                raise ValueError("item DSL: apply_tile cols wants `N` or `A-B`, got %r" % cols)
+            out["col_min"] = int(m.group(1))
+            out["col_max"] = int(m.group(2) or m.group(1))
+        return out
+
+    # apply_unit <unit_id> [target=random_empty|tile] [cols=A-B]
+    # The same reach, for a UNIT rather than a tile effect (§17). Landmines takes
+    # `random_empty` — the board fills with pressure on its own rather than with
+    # something the player aims — so the item is worth what the enemies' routing
+    # around it is worth.
+    if verb == "apply_unit":
+        rest, kv = _kv(toks[1:])
+        words = [t for t in rest if not re.match(r"^-?\d+$", t)]
+        out = {"type": "apply_unit",
+               "unit": words[0].lower() if words else "",
+               "target": kv.get("target", "random_empty").lower()}
+        cols = kv.get("cols", "")
+        if cols:
+            m = re.match(r"^(\d+)\s*(?:-\s*(\d+))?$", str(cols))
+            if not m:
+                raise ValueError("item DSL: apply_unit cols wants `N` or `A-B`, got %r" % cols)
+            out["col_min"] = int(m.group(1))
+            out["col_max"] = int(m.group(2) or m.group(1))
+        return out
+
     if verb == "upgrade_random_cards":
         _, kv = _kv(toks[1:])
         return {"type": "upgrade_random_cards",
@@ -804,6 +846,16 @@ def parse_item(row):
             # Brimstone Bombs: the blast runs down the target's row and column.
             fields["bomb_cardinal"] = True
             last_trigger = None
+        elif kl0 == "bomb_tile":
+            # Hot Bombs: every cell the blast covered is left carrying a tile
+            # effect (§17). Widened by Brimstone for free, because what it reads
+            # is the blast rather than the target — a bomb that failed to kill
+            # still costs the survivor a stack of Burn a turn for three games.
+            mm = re.match(r"bomb_tile\s+([a-z_]+)", kl)
+            if not mm:
+                raise ValueError("item DSL: bomb_tile needs <tile> in %r" % clause)
+            fields["bomb_tile"] = mm.group(1)
+            last_trigger = None
         elif kl0 == "grid_grow":
             # Mine-r Construction: the battlefield gains a column and a row.
             fields["grid_grow"] = True
@@ -1078,6 +1130,7 @@ def item_tres(row):
         ("keep_shields", lambda v: "true"),
         ("bomb_stun", lambda v: "true"),
         ("bomb_cardinal", lambda v: "true"),
+        ("bomb_tile", lambda v: '&"%s"' % gd_str(v)),
         ("grid_grow", lambda v: "true"),
         ("grid_length_grow", lambda v: "true"),
         ("hide_spawns", lambda v: "true"),

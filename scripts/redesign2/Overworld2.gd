@@ -2183,13 +2183,21 @@ func aim_item(item: ItemData) -> void:
 	if _board == null or not is_instance_valid(_board):
 		return
 	_close_item_card()
+	var at_ground: bool = item.target_kind() == &"tile"
 	if not _board.begin_item_aim(item):
-		var empty: String = "Nothing is following you — %s has nothing to aim at." \
-			% item.display_name
+		# Two different emptinesses (§17): a body-aimed relic has nobody to point
+		# at, a ground-aimed one has no square inside the columns it authored — a
+		# board narrower than its reach. Both are refused without spending
+		# anything, and both say which it was.
+		var empty: String = ("The board has no tile %s can reach." % item.display_name
+			if at_ground else "Nothing is following you — %s has nothing to aim at."
+			% item.display_name)
 		GameLog.add(empty, UITheme.TEXT_DIM)
 		Notifications.notify(empty, UITheme.TEXT_DIM)
 		return
-	Notifications.notify("Click an enemy to aim %s." % item.display_name, UITheme.ACCENT)
+	Notifications.notify("Click a tile to aim %s." % item.display_name
+		if at_ground else "Click an enemy to aim %s." % item.display_name,
+		UITheme.ACCENT)
 
 # The board handing back an armed item and the body it was pointed at. THIS is
 # where it fires and where the charge goes — the instance rides `use_item`'s
@@ -2205,6 +2213,22 @@ func _on_item_aimed(item: ItemData, instance: int) -> void:
 	if enemy != null:
 		GameLog.add("%s is aimed at %s." % [item.display_name, enemy.display_name],
 			Color(1.0, 0.72, 0.4))
+	_refresh_items()
+	if _board != null and is_instance_valid(_board):
+		_board.refresh()
+
+# The board handing back an armed item and the CELL it was pointed at (Red Candle,
+# §17). The twin of _on_item_aimed above, and deliberately its own function: the
+# cell rides `use_item`'s target as a Vector2i, which is how `apply_tile …
+# target=tile` knows which square the player meant, and the log names the ground
+# rather than a body.
+func _on_item_aimed_at_cell(item: ItemData, cell: Vector2i) -> void:
+	if item == null or not GameState.can_fire_item(item):
+		return
+	if not GameState.use_item(item, cell):
+		return
+	GameLog.add("%s is aimed at column %d, row %d." % [
+		item.display_name, cell.x, cell.y + 1], Color(1.0, 0.72, 0.4))
 	_refresh_items()
 	if _board != null and is_instance_valid(_board):
 		_board.refresh()
@@ -5119,6 +5143,7 @@ func _build_ui() -> void:
 	_board.push_requested.connect(push_follower)
 	_board.bomb_requested.connect(bomb_follower)
 	_board.item_aimed.connect(_on_item_aimed)
+	_board.item_aimed_at_cell.connect(_on_item_aimed_at_cell)
 	_board.enemy_inspected.connect(_show_enemy_info)
 	# The board points back at the checklist: hovering a body lights the goal row
 	# written about it (_bind_row_to_body).

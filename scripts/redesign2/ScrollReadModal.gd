@@ -71,7 +71,15 @@ func _show_intro() -> void:
 	_body.add_child(_heading("📜 " + ScrollSystem.display_name(_scroll), ACCENT, 22))
 	if identified:
 		_body.add_child(_muted("%s Preference" % _scroll.preference))
-		_body.add_child(_muted(_effect_summary()))
+		var summary: String = _effect_summary()
+		_body.add_child(_muted(summary))
+		# The KEYWORD STRIP (§17), on the same terms an item card carries one: what
+		# a Scroll of Fire does is written in the names of three mechanics, and the
+		# reader is about to spend the scroll on the strength of that sentence.
+		# Only on an IDENTIFIED scroll — an unidentified one deliberately says
+		# nothing about what it does, and a strip naming Burn and Fire under
+		# "reading it is a gamble" would give the whole thing away.
+		Keywords.attach(_body, summary)
 	else:
 		_body.add_child(_muted("Unidentified — reading it is a gamble. Its Preference could be Positive, Negative, or Neutral."))
 	var read_btn := Button.new()
@@ -194,6 +202,8 @@ func _effect_summary() -> String:
 		match String(e.get("op", "")):
 			"apply_status":
 				parts.append(ScrollSystem.status_effect_text(e))
+			"apply_tile":
+				parts.append(ScrollSystem.tile_effect_text(e))
 			"forget":
 				parts.append("Forget %d random scroll(s)." % int(e.get("count", 1)))
 			"spawn_enemy":

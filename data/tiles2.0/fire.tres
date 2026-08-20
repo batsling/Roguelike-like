@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TileEffectData" load_steps=3 format=3 uid="uid://tile2_fire"]
+
+[ext_resource type="Script" path="res://scripts/resources/TileEffectData.gd" id="1_tile"]
+[ext_resource type="Texture2D" path="res://images2.0/tiles/Fire.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_tile")
+id = &"fire"
+display_name = "Fire"
+description = "Apply +1 Burn to enemies who enter or start their turn on this tile"
+decay_games = 3
+decay_text = "3 Games"
+triggers = {"enemy_enters": [{"op": "apply_status", "status": "burn", "value": 1}], "enemy_turn_start": [{"op": "apply_status", "status": "burn", "value": 1}]}
+interactions = {"unit:landmine": ["detonate_unit", "remove_tile"]}
+file = "Fire"
+image = ExtResource("2_img")

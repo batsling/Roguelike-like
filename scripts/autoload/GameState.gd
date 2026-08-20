@@ -1886,6 +1886,18 @@ func bombs_stun() -> bool:
 func bombs_cardinal() -> bool:
 	return _any_item_flag("bomb_cardinal")
 
+# Hot Bombs: the TILE EFFECT a bomb's blast leaves on every cell it covered (§17),
+# or &"" while nothing in the pack does that. An id rather than a bool, so the
+# blast lays what the item names; the FIRST one owned wins, since two items each
+# wanting to leave different ground behind is a content question rather than a
+# runtime one, and stacking them would silently double the ground a bomb hands
+# out. Read by GameLoop2._explode — so it reaches a Landmine going off too.
+func bomb_tile() -> StringName:
+	for it in inventory:
+		if it is ItemData and StringName(it.bomb_tile) != &"":
+			return StringName(it.bomb_tile)
+	return &""
+
 # Mine-r Construction: how many columns AND rows the battlefield has grown by
 # (§7.3). This one counts rather than answering a bool — the grid is a number,
 # so a second copy is a second column and a second lane. GameLoop2.grid_cols /

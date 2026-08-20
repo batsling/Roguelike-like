@@ -450,6 +450,15 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # row or column is hit too. Read by GameLoop2.bomb via GameState.bombs_cardinal.
 @export var bomb_cardinal: bool = false
 
+# Hot Bombs: every cell a bomb's blast covered is left carrying this TILE EFFECT
+# (§17) — `&"fire"` today, and the field holds an id rather than a bool so a
+# second bomb-and-ground item never has to be a second flag. Read by
+# GameLoop2._explode via GameState.bomb_tile, and it therefore reaches a Landmine
+# going off exactly as it reaches a spent Bomb: a mine is a proxy bomb, so the
+# blast it makes leaves the same ground behind. Widened by Brimstone for free,
+# since what it covers is the blast rather than the target.
+@export var bomb_tile: StringName = &""
+
 # Mine-r Construction: the battlefield itself grows by one column and one row
 # while this is owned (§7.3) — a deeper board to cross before anything reaches
 # the player, and one more lane to stand in. Unlike the three flags above this
@@ -647,14 +656,43 @@ func max_charge() -> int:
 func is_fully_charged() -> bool:
 	return is_charged() and current_charge >= max_charge()
 
-# True when activating this item needs a single enemy target — i.e. one of its
-# item_used effects is aimed at an enemy. The combat UI uses this to decide
-# whether to pop the targeting arrow (Slay the Spire 2 potion style) on use.
-func wants_target() -> bool:
+# WHAT this item has to be pointed at before it can fire, or &"" for one that
+# fires on the spot: &"enemy" for a body (Staff of Flame) and &"tile" for a CELL
+# (Red Candle, §17). One function rather than two bools, because the board arms a
+# different picker for each and "which picker" is the question every caller is
+# really asking. The FIRST aimed effect wins — an item wanting two different kinds
+# of target in one firing is content that hasn't been designed, and picking the
+# first is the reading that at least does something coherent.
+func target_kind() -> StringName:
 	for trig in triggers:
 		if String(trig.get("on", "")) != "item_used":
 			continue
 		for effect in trig.get("effects", []):
-			if String(effect.get("target", "")) == "enemy":
-				return true
-	return false
+			var t: String = String(effect.get("target", ""))
+			if t == "enemy":
+				return &"enemy"
+			if t == "tile" or t == "cell":
+				return &"tile"
+	return &""
+
+# True when activating this item needs a target of any kind — the check the pack
+# makes before firing, which is the same for a body and for a cell: arm the board
+# and wait for a click rather than spending the charge here.
+func wants_target() -> bool:
+	return target_kind() != &""
+
+# The COLUMNS a tile-aimed item may reach, as (min, max), or (0, 0) for one with
+# no authored fence. Red Candle's `cols=2-3` is the case: never column 1, where a
+# fire tile would be a free hit on whatever is already swinging, and never the
+# back, where nothing would walk over it before it burned out. Read by the board
+# to decide which cells light up, and re-checked in EffectSystem so a cell that
+# arrived some other way obeys the same fence.
+func target_columns() -> Vector2i:
+	for trig in triggers:
+		if String(trig.get("on", "")) != "item_used":
+			continue
+		for effect in trig.get("effects", []):
+			var lo: int = int(effect.get("col_min", 0))
+			if lo > 0:
+				return Vector2i(lo, maxi(lo, int(effect.get("col_max", lo))))
+	return Vector2i.ZERO

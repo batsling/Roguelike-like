@@ -76,6 +76,13 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 29 scripts, ~1240 t
 - **`project.godot` comments are `;`, not `#`.** A `#` line is parsed as part of
   the NEXT key. This already silently renamed the `backpack` input action once;
   `test/test_collection.gd` now guards against it.
+- **A `class_name` that shadows a NATIVE Godot class is a parse error**, and it
+  takes down every `.tres` that names the script — `Data` then loads that whole
+  folder as zero rows and the failure surfaces hundreds of tests away as missing
+  content. `tiles2.0`'s resource is `TileEffectData` for exactly this reason:
+  Godot already ships a `TileData` for TileMaps. Check a new name with
+  `godot --headless --check-only --script scripts/resources/<New>.gd` before
+  wiring it up — it says "hides a native class" in one line.
 - **Game covers load lazily.** `GameData.cover_path` holds the path and
   `GameData.cover_image` loads it on first read. Do **not** turn `cover_image`
   back into an `@export var ... : Texture2D` — `Data` loads all 854 games at

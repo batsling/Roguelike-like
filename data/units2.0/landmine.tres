@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3 uid="uid://unit2_landmine"]
+
+[ext_resource type="Script" path="res://scripts/resources/UnitData.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://images2.0/units/Landmine.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_unit")
+id = &"landmine"
+display_name = "Landmine"
+unit_type = "Inanimate"
+description = "On contact with an enemy, destroy itself, explode, and trigger your bomb effects"
+health = 1
+triggers = {"enemy_enters": [{"op": "detonate"}]}
+interactions = {"tile:fire": ["detonate_unit", "remove_tile"]}
+file = "Landmine"
+image = ExtResource("2_img")

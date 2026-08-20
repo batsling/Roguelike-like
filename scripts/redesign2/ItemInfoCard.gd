@@ -111,6 +111,12 @@ func setup(item: ItemData, usable: bool) -> void:
 		desc.custom_minimum_size = Vector2(270, 0)
 		desc.add_theme_font_size_override("font_size", 14)
 		text_col.add_child(desc)
+		# The KEYWORD STRIP (§17): every status, tile effect or unit the sentence
+		# above names, as a hover chip that says what it is. This is the card's
+		# whole reason for existing at one more remove — the description names a
+		# mechanic and has no room to explain it, so the explanation hangs
+		# underneath. Adds nothing when the text names nothing.
+		Keywords.attach(text_col, item.description)
 	top.add_child(text_col)
 	inner.add_child(top)
 
