@@ -77,7 +77,10 @@ Current roster:
 | Manager | Raccoin: Coin Pusher Roguelike | 8 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — |
 
 Shield sources beyond the per-game grant: items (**Anchor** — "when a game is
-selected, gain +1 Shield"), and future tag routes / scrolls.
+selected, gain +1 Shield"), and future tag routes / scrolls. **Bonus Shields**
+(§4.3) are the one pool that is *not* per-game: gained off the board from a pill
+or banked out of a resolved game by Barricade, spent after the tries are gone,
+and carried until something breaks them.
 
 ### 3.1 Characters, Level Up & the reward loop
 
@@ -242,10 +245,11 @@ screen leaves free) — see README's "The window" for why a window rather than
 either fullscreen, and for the fact that the **canvas** stays a fixed 1280×720
 that is *scaled* into that window rather than enlarged by it.
 
-Scrolls are carried, so they are **tokens on the pack strip** above the board,
-beside the relics, each with a small Read control above its tile — the same shape
-a Usable relic's Use button takes. Not a panel of their own: a scroll is a thing
-you carry and spend, which is what the pack is.
+Scrolls are carried, and since pills arrived they are carried **with the pills**:
+both live in the loot window described in §4.3 rather than as tokens on the pack
+strip. The strip was the right home while a scroll or two was all there was; a
+nine-piece pack of loot beside a run's relics is not a strip, and splitting loot
+across two places to keep the old shape would be worse than moving it.
 
 ### 4.2 Choosing a game is a screen, not a click
 
@@ -327,8 +331,22 @@ horse Full Health), and those are a separate pool from the per-game tries of §3
   a bonus shield stays until something breaks it, which is what makes it worth
   saving across several games.
 
-**Where pills come from.** Beating a game pays **1 random piece of loot** — the
-run's baseline loot income, scroll or pill — and four relics move that number:
+**Barricade banks into that pool.** The relic used to stop the per-game shields
+expiring, which quietly made them a second non-expiring pool with its own rules.
+It now **converts what a resolved game left standing into Bonus Shields**, so
+there is one pool that persists and one relic that fills it. That is a small buff
+— banked shields are spent last too, where the old behaviour spent them first —
+and it is the right one: the relic is about the tries you *didn't need*.
+
+**Where pills come from.** **Beating a game pays 1 random piece of loot** — a
+straight 50/50 between a scroll and a pill, and the run's baseline loot income.
+It is paid for any game the player actually saw through: **walking away from a
+game pays nothing**, and it is **on top of** whatever the enemies defeated there
+dropped, not instead of it. It arrives the way a kill drop does — the same asked
+modal, one queued behind the other — rather than as a toast, because with a
+**nine-piece cap** on the pack, taking a piece of loot is a decision.
+
+Four relics move that number:
 
 | Relic | | |
 |---|---|---|
@@ -336,6 +354,24 @@ run's baseline loot income, scroll or pill — and four relics move that number:
 | **Mom's Bottle of Pills** | Common, Charged 2 | +1 Pill per firing. |
 | **Caffeine Pill** | Common, Passive + Pickup | +1 Speed **while held**, +1 Pill **kept** — the split is the point: lose the relic and the Speed goes with it, but the pill was already spent into the pack. |
 | **Lucky Foot** | Uncommon, Passive + Pickup | +1 Luck while held, +1 Pill kept, and a **Negative** pill taken while it is held **rerolls into a random Positive pill** rather than being swapped for a fixed opposite. Neutral pills are untouched — Telepills is not an upgrade waiting to happen. |
+
+**What Lucky Foot does NOT change is the alphabet.** The reroll is flat across the
+five Positive pills — including the ones whose colours are sitting out this run,
+since the roll is over the *pills* and not over what dropped — and a Negative
+**horse** dose rerolls into the **horse** dose of the same pool. But the colour
+still identifies as **what it actually is**: take an unknown colour that was Luck
+Down, gain Luck instead, and the colour is now known as Luck Down. The Foot
+changes the outcome, never the fact, which is the only version of it that stays
+honest when the relic is lost.
+
+**The loot window.** Nine pieces of loot will not fit in the pack strip beside a
+run's relics, so loot moves off it into a window of its own: a **Loot** button
+beside the pack — a label and a small arrow, no bar — that toggles a **3×3 grid**
+of what is carried, each cell its art and its name, each with a **Use** button and
+the same hover card an item or an enemy gets. **Nine is the cap** for now; a tenth
+piece has nowhere to go, which is what makes the drop modal's "leave it" a real
+answer. Scrolls live here too — one window for loot means one place to look, and
+the pack strip goes back to being the relics.
 
 **Echo Chamber** (Rare, Passive) is the one that turns loot into a resource
 worth hoarding: using a piece of loot also uses **a copy of the last 3 you used

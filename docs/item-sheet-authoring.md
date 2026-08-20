@@ -151,6 +151,16 @@ working authoring:
 | `pills_positive` | Lucky Foot's rule flag, in the shape `keep_shields` has: a bare word landing in an `ItemData` bool. |
 | `echo_loot N` | Echo Chamber's rule flag with a payload, in the shape `boss_chest_bonus: N` has. |
 
+**Barricade's `keep_shields` is now `bank_shields`** for the same reason and with
+a sharper edge: that row DOES have a `.tres`, and it is live. The relic banks a
+resolved game's leftover shields into the Bonus Shield pool now
+(docs/games-first-redesign.md §4.3) instead of stopping them expiring, so the
+sheet says `bank_shields` while the generator, `ItemData`, `GameState.keeps_shields`
+and `GameLoop2`'s expiry branch still say `keep_shields`. **Regenerating before
+that rename lands silently makes Barricade inert** — the unknown word is dropped
+and the `.tres` keeps none of it. Rename the flag end to end in the commit that
+regenerates.
+
 Until those land, the generator does **not** error on them — it folds an unknown
 word into a shapeless effect dict (`{"type": "gain_pill"}`, no value) or drops it
 — so `python3 tools/generate_item2_tres.py` today would emit five relics whose
