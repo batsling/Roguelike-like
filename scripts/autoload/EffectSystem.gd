@@ -446,7 +446,7 @@ func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 # mid-run starts at zero. That is the difference from the combat-era `counter`, which
 # read a shared GameState tally and needed the tally bumped centrally to stop two
 # copies double-counting one event. The counter drawn on the item's art is this
-# number (see Overworld2._counter_badge).
+# number (see PackStrip._counter_badge).
 #
 # Fires nothing without an item to count on — a counter with no owner is a counter
 # with no memory, and silently paying out every time would be worse than not firing.

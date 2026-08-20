@@ -11,6 +11,94 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The offering moved out of the overworld, and the split is finished.**
+
+  **`OfferingCards.gd`** — 506 lines: the cards you choose your next game from in
+  *both* choosing phases (the choose-your-start picker and the ordinary
+  offering), the hover line under them, and the enemy portrait beside it. They
+  share every widget below their two entry points because they are the same
+  decision asked twice. `Overworld2.gd` is **4260 lines now, down from 5573** —
+  a 24% cut across three splits, and the file is no longer dominated by any one
+  mechanic.
+
+  The page kept the three containers (`_choices_row`, `_preview`,
+  `_preview_art`) and every verb a card fires on click (`open_choice`,
+  `open_start_choice`, `preview_map`), so the offering decides what the cards
+  *look* like and the page still decides what they *do*.
+
+  **One behavioural substitution, and it is the interesting part.** The hover
+  line's idle text differs between the two phases, which it read off the page's
+  `_phase`. Rather than reach back for that, the class sets its own `_starting`
+  flag in the two render entry points — the only things that can change which
+  phase drew the cards. `_page.Phase.START_SELECT` would have worked (a const or
+  enum does read through a `Node`-typed reference; that got checked rather than
+  assumed) but it re-couples the class to the page's phase model for nothing.
+  The verify pass asserts the flag flips in both directions.
+
+- **The report checklist moved out of the overworld too.**
+
+  The big one, and the second cut of the split above: **`ReportChecklist.gd`**,
+  776 lines covering the left column in both of its states — the standing list
+  while you're choosing, the tick-box report step while you're playing — plus the
+  row↔body pairing that lights a goal and its enemy from either end.
+  `Overworld2.gd` is **4707 lines now, down from 5573**.
+
+  The backlog had this at 400 lines. It is 776 once `_populate_standing_checklist`
+  and the binding come with it, and they belong to the same mechanic: the two
+  lists are the same rows in two states and share the same container. For all
+  that size it needed three things of the page — the board, the chosen game, and
+  the container pair — because its seven tick-state arrays were only ever touched
+  from inside it.
+
+  **The state the tests read stayed put, as read-only properties.**
+  `test_overworld2.gd` reads `_ui._verify_box`, `_ui._fulfil_checks`,
+  `_ui._levelup_check`, `_ui._lit_instances` and `_ui._row_paints` straight off
+  the page, 57 references' worth. `ReportChecklist` owns them under public names
+  and the page publishes a getter for each, which works precisely because no test
+  ever *reassigns* one — they read the array and tick the CheckBox it points at,
+  which is what a player does to the same object. Not one test changed.
+
+  Verified on screen as well as in assertions (`.claude/skills/verify/`): both
+  states render, the boxes tick, and hovering still lights the body.
+
+- **The pack strip moved out of the overworld, and a test stopped believing a
+  playback is always one beat long.**
+
+  `Overworld2.gd` had reached 5573 lines, more than double the next-biggest file,
+  and the last item in [`docs/performance-backlog.md`](docs/performance-backlog.md)
+  is splitting it. That file listed three candidate seams by guess. They are
+  measured now — on **genuinely shared state**, the vars a region touches that are
+  also touched from outside it — and the cleanest seam in the file was not on the
+  list at all.
+
+  **`PackStrip.gd`** is the first cut: the pack strip's ~250 lines of token,
+  battery, counter-badge and hover building, which touched exactly `_items_box`
+  and one read of `_phase`. The page still owns the container, still decides when
+  to redraw, and still owns the reading card a token opens — `ItemInfoCard` is a
+  page-level modal, not strip furniture. Everything a token does on click goes
+  back through one of the page's public verbs (`read_scroll`, `use_item`,
+  `open_item_card`), and `_refresh_items` / `item_hover` stayed put as one-line
+  forwards, so not one call site moved — in the page or in the 4476-line test
+  file that reads its privates off the instance.
+
+  Two things worth knowing before the next cut, both written down in the backlog:
+  **type the back-reference as `Node`, not `Overworld2`** (two `class_name`s that
+  name each other are a cyclic reference Godot resolves badly), and **pass the
+  phase in rather than reading it out** — `rebuild(reporting: bool)` is what left
+  the strip depending on nothing about the page except three verbs.
+
+  **And the test that only passed at one turn a game.**
+  `test_the_offering_comes_back_while_the_board_still_plays` waited a fixed 1.2s
+  for the board's resolve playback and then asserted it had finished. A playback
+  is one beat per TURN (§7.4) at `FX_ATTACK_TIME + FX_SLIDE_TIME` = 0.89s, and
+  the turn count is the run's distance band — 1 turn beyond 5 hops from the
+  Amulet, 2 inside that, 3 inside 3. So the same report runs 0.89s, 1.78s or
+  2.67s depending on where the random graph put the start, and the 1.2s await
+  covered the first case only. It failed once here, passed on the rerun, and
+  passed on the clean tree, which is exactly how this class of bug reads. It
+  waits on `_resolving` itself now, with a 5.0s ceiling over the 2.67s worst
+  case. Third one of these; the rule in `CLAUDE.md` keeps earning itself.
+
 - **The ground answers for itself, a bomb is aimed at a square, and the tier
   list fits on the screen.**
 

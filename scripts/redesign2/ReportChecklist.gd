@@ -1,0 +1,755 @@
+class_name ReportChecklist
+extends RefCounted
+
+# The checklist half of the overworld's stage — the left column, in both of its
+# states.
+#
+# WHILE CHOOSING it is the STANDING list (populate_standing): the goals already
+# on you, read-only, because there is nothing to report until a game is in play.
+# WHILE PLAYING it is the REPORT step (populate_play_panel): the same list grown
+# tick boxes, plus the launch and rate buttons, which is what the honour system
+# is actually made of.
+#
+# It also owns the pairing between a checklist row and a body on the board —
+# they are the same fact written twice, and lighting one lights the other
+# (bind_row_to_body / light_bodies / on_enemy_hovered).
+#
+# Split out of Overworld2 (docs/performance-backlog.md §1), the largest of the
+# seams that file measures. The page still owns the two containers this fills
+# (`_verify_box` and `_launch_row`, built in Overworld2._build_ui) and still
+# decides when to rebuild; everything this needs of the run it reads through the
+# page or asks GameLoop2 / GameState for directly, exactly as it did inline.
+#
+# `_page` is the Overworld2 that owns this checklist, typed loosely because
+# Overworld2 names ReportChecklist and two class_names that name each other are a
+# cyclic reference Godot resolves badly.
+var _page: Node = null
+var _box: VBoxContainer = null       # the page's _verify_box
+var _launch: HBoxContainer = null    # the page's _launch_row
+
+# The per-game tick state, PUBLIC because it is this class's whole output and the
+# page publishes read-only views of it under the names the tests already use.
+# Five parallel arrays that must be cleared as one (reset_state).
+var fulfil_checks: Array = []        # [{check: CheckBox, instance: int}]
+# Statuses 2.0 (§13) on the report checklist. `status_goal_checks` are the
+# player's own BUFF goals — extra rows that pay when ticked, plus the `demand` rows
+# that BITE when they are not; `bonus_checks` are the OPTIONAL bonus objectives an
+# enemy's `bonus` side hangs off it; `instead_checks` are the "or instead" rows a
+# burned enemy grows, each a second way to clear that body. All three are read into
+# beat_game's `claims` on report; the required clauses (enemy buffs, player
+# clauses) need no boxes of their own because they are folded into the goal line.
+var status_goal_checks: Array = []   # [{check: CheckBox, status: StringName}]
+var bonus_checks: Array = []         # [{check: CheckBox, instance: int, status: StringName}]
+var instead_checks: Array = []       # [{check: CheckBox, instance: int, status: StringName}]
+# Bindings for the two event-borne sections, cleared with the rest in reset_state.
+# Each entry is {check, index into GameState's array}.
+var event_goal_checks: Array = []
+var curse_goal_checks: Array = []
+var levelup_check: CheckBox = null   # null when the character has no level-up
+# Checklist row -> board body (see bind_row_to_body). `row_paints` is instance ->
+# the paint callables of every row written about that body; `lit_instances` is
+# what is lit right now, from whichever end the mouse is on.
+var row_paints: Dictionary = {}
+var lit_instances: Dictionary = {}
+
+# This half's repaint guard — the standing list's signature. See the
+# "repaint guards" block in Overworld2, which explains all three of them.
+var _sig: String = ""
+
+func _init(page: Node, box: VBoxContainer, launch: HBoxContainer) -> void:
+	_page = page
+	_box = box
+	_launch = launch
+
+# Build the self-report panel for the chosen game: a launch button (when the
+# game can be launched) and a fulfilment checkbox per following enemy so old
+# goals can be cleared this game (§2).
+func populate_play_panel() -> void:
+	# The report step and the standing checklist share _box, so taking it
+	# over here has to drop the standing list's signature — otherwise the next
+	# return to the offering would match a signature describing rows this panel
+	# replaced, and leave the report step's checklist on screen. Not guarded
+	# itself: it holds the player's TICKS, and rebuilding it is what the tick
+	# handlers rely on.
+	_sig = ""
+	_page._clear(_launch)
+	_page._clear(_box)
+	reset_state()
+	if _page._chosen.is_empty():
+		return
+	var game: GameData = _page._chosen["game"]
+	# "Open the real game" — launches the executable/shortcut in the game's
+	# file_location column (falling back to its store page). Only games with a
+	# launch target get the button.
+	if game.has_launch_target():
+		var play_btn := Button.new()
+		play_btn.text = "▶  Play %s" % game.display_name
+		play_btn.custom_minimum_size = Vector2(0, 38)
+		play_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		play_btn.add_theme_stylebox_override("normal", UITheme.flat(Color(0.10, 0.22, 0.16, 0.9), 8, 8, 1, Color(0.4, 0.9, 0.6)))
+		play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
+		play_btn.pressed.connect(func(): game.launch())
+		_launch.add_child(play_btn)
+	# Manual "rate this game" entry point (the report step also auto-prompts after
+	# you press Completed Game).
+	var rate_btn := Button.new()
+	rate_btn.text = "★  Rate this game"
+	rate_btn.custom_minimum_size = Vector2(0, 38)
+	rate_btn.add_theme_color_override("font_color", UITheme.GOLD)
+	rate_btn.pressed.connect(func(): _page._prompt_rating(game))
+	_launch.add_child(rate_btn)
+
+	# One clean checklist of everything to verify this game. Tick what you actually
+	# did, then press "Completed Game" once (§2 / §3.1):
+	#   • EVERY ENEMY on the board, in one list — the ones that walked on when you
+	#     took this game and the ones that have been following you for ten;
+	#   • the character LEVEL-UP challenge;
+	#   • the event and curse goals.
+	#
+	# THERE IS NO "GOAL" BOX. The enemy the card advertised used to get an
+	# emphasised row of its own at the top, because it was the game's own enemy and
+	# beating the game was what cleared it. Nothing is a game's own enemy any more
+	# (GameLoop2.arrivals): a body that walked on this game and a body you have
+	# owed since three games ago are the same kind of debt, and asking about them
+	# in two different places said they were not.
+	_box.add_child(_verify_head("Tick what you did this game:"))
+
+	# On the Amulet, playing the game is the win — not any goal on this list (see
+	# report()). Said at the top, because a checklist is otherwise exactly where a
+	# player would look for the win condition and not find it.
+	if bool(_page._chosen.get("amulet", false)):
+		var win_note := Label.new()
+		win_note.text = "🏆  Completing this game wins the run — everything below is a bonus."
+		win_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		win_note.add_theme_font_size_override("font_size", 12)
+		win_note.add_theme_color_override("font_color", UITheme.GOLD)
+		_box.add_child(win_note)
+
+	# The player's own standing rows (§13): challenges that pay out every game you
+	# satisfy them, and the `demand` rows that CHARGE for every game you don't — so
+	# they are on the report step of EVERY game rather than belonging to any one
+	# enemy. A demand is tinted like the threat it is: on this list an unticked box
+	# usually means a prize forgone, and on that one row it means a bill.
+	for row in GameState.status_objectives():
+		var sd: StatusData = row["status"]
+		var stacks: int = int(row["stacks"])
+		var srow := verify_row(
+			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.PLAYER, stacks)],
+			_status_row_tint(sd), false)
+		_box.add_child(srow["row"])
+		status_goal_checks.append({"check": srow["check"], "status": sd.id})
+
+	# Level-up challenge (§3.1): a per-game Yes/No for the character's condition,
+	# with its reward shown inline so the payoff reads at a glance. It carries its
+	# own Notes button for the same reason the goal rows do — the condition is a
+	# standing one, and how you satisfied it is a fact about THIS game.
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch != null and ch.level_up_condition != "":
+		var lu_text: String = "Leveled up — %s" % ch.level_up_condition
+		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
+			lu_text += "   → %s" % ch.level_up_reward
+		var lu_row := verify_row(lu_text, UITheme.GOLD, false, null, ch)
+		levelup_check = lu_row["check"]
+		_box.add_child(lu_row["row"])
+
+	# EVENT GOALS and CURSE GOALS (docs/event-sheet-authoring.md §5). Their own
+	# sections, deliberately: the checklist now carries three kinds of objective
+	# and they bite in three different ways. An enemy goal is a DEBT — miss it and
+	# it follows you and hits. An event goal is a BONUS — miss it and it merely
+	# expires. A curse is a BILL, and the only row here you tick to say you did
+	# something WRONG. Rendering all three alike would misrepresent which one
+	# hurts, so the curse rows are purple and sit apart.
+	_add_event_goal_rows()
+
+	# GOAL FIRST, then whose it is. The checklist is scanned for "what did I
+	# actually do", and the goal is the part being answered — the enemy's name is
+	# the label on it. Leading with the name made every row start with a proper
+	# noun the player has to read past to reach the thing they're ticking.
+	#
+	# EVERY body on the board, on the same terms and in board order. The ones that
+	# walked on when this game was taken are simply the last ones in the list.
+	for entry in GameLoop2.stack:
+		var inst: int = int(entry["instance"])
+		var e: GoalEnemyData = entry["enemy"]
+		var row := verify_row("Cleared: %s — %s" % [
+			GameLoop2.goal_text_for(entry), e.display_name], UITheme.TEXT, false, e, null, inst)
+		_box.add_child(row["row"])
+		fulfil_checks.append({"check": row["check"], "instance": inst})
+		_add_instead_rows(entry)
+		_add_bonus_rows(entry)
+
+# The two event-borne sections of the checklist. Both count down in games, and
+# both show how long is left — an objective with a clock on it is a different
+# decision on its last game than on its first, and the player cannot see the
+# clock anywhere else.
+func _add_event_goal_rows() -> void:
+	for i in range(GameState.event_goals.size()):
+		var goal: Dictionary = GameState.event_goals[i]
+		var left: int = int(goal.get("games_left", 0))
+		var text: String = "Event goal — %s   → %s   (%d %s left)" % [
+			goal.get("condition", ""), goal.get("effects_text", ""),
+			left, "game" if left == 1 else "games"]
+		var row := verify_row(text, UITheme.ACCENT, false)
+		_box.add_child(row["row"])
+		event_goal_checks.append({"check": row["check"], "index": i})
+
+	for i in range(GameState.curse_goals.size()):
+		var entry: Dictionary = GameState.curse_goals[i]
+		var cd: CurseData2 = Data.get_curse2(StringName(entry.get("curse", &"")))
+		if cd == null:
+			continue
+		var left: int = int(entry.get("games_left", 0))
+		# A CURSE IS A ROW LIKE ANY OTHER: an instruction, ticked if you followed
+		# it, with what it costs you written after it. It used to be phrased as the
+		# rule instead — "If you use a rest site to replenish health, spawn a random
+		# enemy when you report the game" — with a box that fired the penalty when
+		# you CHECKED it. That made it the one row on this list whose tick meant the
+		# opposite of every other row's, and it read as a confession rather than as
+		# something to go and do. Unticked is the failure here exactly as it is on
+		# the goal above it; the difference is only what failing costs.
+		var text: String = "%s — %s   if failed, %s   (%s)" % [
+			cd.display_name, cd.goal_text(), cd.penalty_text,
+			CurseData2.window_text(left)]
+		var row := verify_row(text, UITheme.CURSE, false)
+		_box.add_child(row["row"])
+		curse_goal_checks.append({"check": row["check"], "index": i})
+
+
+# Pay out whatever the player ticked in those two sections. Claims are resolved
+# HIGHEST INDEX FIRST because claiming an event goal removes it from the array,
+# and a low-index removal would shift every index recorded after it.
+func resolve_event_goals() -> void:
+	var claimed: Array = []
+	for entry in event_goal_checks:
+		var check: CheckBox = entry.get("check")
+		if check != null and is_instance_valid(check) and check.button_pressed:
+			claimed.append(int(entry.get("index", -1)))
+	claimed.sort()
+	claimed.reverse()
+	for idx in claimed:
+		var goal: Dictionary = GameState.claim_event_goal(idx)
+		if goal.is_empty():
+			continue
+		var src: EventData2 = Data.get_event2(StringName(goal.get("event", &"")))
+		var line: String = src.goal_met if src != null and src.goal_met != "" else \
+			"Event goal met — %s." % goal.get("effects_text", "")
+		Notifications.notify(line, UITheme.ACCENT)
+		GameLog.add(line, UITheme.ACCENT)
+
+	# A curse fires but does NOT clear — that is what separates it from a goal.
+	# Breaking it twice across two games costs twice; only the timer removes it.
+	#
+	# UNTICKED is what fires it. The row is an instruction (see
+	# _add_event_goal_rows), so a box left empty says the player did not follow it
+	# — the same thing an empty box says on every other row of the checklist.
+	var triggered: Array = []
+	for entry in curse_goal_checks:
+		var check: CheckBox = entry.get("check")
+		if check != null and is_instance_valid(check) and not check.button_pressed:
+			triggered.append(int(entry.get("index", -1)))
+	for idx in triggered:
+		var fired: Dictionary = GameState.trigger_curse_goal(idx)
+		if fired.is_empty():
+			continue
+		var cd: CurseData2 = Data.get_curse2(StringName(fired.get("curse", &"")))
+		if cd != null:
+			var line: String = "%s bites — %s." % [cd.display_name, cd.penalty_text]
+			Notifications.notify(line, UITheme.CURSE)
+			GameLog.add(line, UITheme.CURSE)
+
+
+# Every `demand` the report left unanswered, and what it cost (§13). Says what the
+# hit was for AND what stopped it: a burn the tries absorbed whole took no Health,
+# and a line that only quoted the 3 would read as a lie next to an unmoved bar.
+func announce_status_penalties(res: Dictionary) -> void:
+	for raw in res.get("status_penalties", []):
+		if not (raw is Dictionary):
+			continue
+		var bite: Dictionary = raw
+		var sd: StatusData = Data.get_status(StringName(bite.get("status", &"")))
+		if sd == null:
+			continue
+		var dealt: int = int(bite.get("damage", 0))
+		var blocked: int = int(bite.get("blocked", 0))
+		var line: String = "%s bites — %d damage" % [sd.display_name, dealt]
+		if blocked > 0:
+			line += ", %d absorbed by the tries" % blocked
+		line += "."
+		Notifications.notify(line, UITheme.DANGER)
+		GameLog.add(line, UITheme.DANGER)
+
+# The OPTIONAL bonus rows an enemy's `bonus` sides hang off it (§13) — "and if you get 3
+# achievements, gain +3 Small Chests". A row of its own rather than part of the
+# goal line, because claiming it is a separate decision from meeting the goal: an
+# enemy you failed can still pay its bonus, and one you beat need not have.
+# The "or instead" rows a burned enemy grows (§13) — the SECOND WAY to clear this
+# body, ticked when the player did the alternative rather than the goal.
+#
+# A row of its own and not a second reading of the goal row, because the two answer
+# different questions and the run records them differently: ticking the goal says
+# the enemy's condition was met, and this one says it never was. So this row
+# deliberately carries NO Notes button — `verify_row` only grows one when it is
+# handed the enemy — since a note here would be a note about how you beat a goal you
+# didn't do. Same reason `ticked_status_claims` keeps these out of the fulfilments
+# the report records defeats from.
+func _add_instead_rows(entry: Dictionary) -> void:
+	if entry.is_empty():
+		return
+	var instance: int = int(entry.get("instance", 0))
+	for row in GameLoop2.alternatives_for(entry):
+		var sd: StatusData = row["status"]
+		var stacks: int = int(row["stacks"])
+		var irow := verify_row("%s or instead: %s" % [
+			_status_prefix(sd, stacks), sd.alternative_text(StatusData.ENEMY, stacks)],
+			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance)
+		_box.add_child(irow["row"])
+		instead_checks.append({"check": irow["check"], "instance": instance,
+			"status": sd.id})
+
+func _add_bonus_rows(entry: Dictionary) -> void:
+	if entry.is_empty():
+		return
+	var instance: int = int(entry.get("instance", 0))
+	for row in GameLoop2.bonus_objectives_for(entry):
+		var sd: StatusData = row["status"]
+		var stacks: int = int(row["stacks"])
+		var brow := verify_row(
+			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
+			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance)
+		_box.add_child(brow["row"])
+		bonus_checks.append({"check": brow["check"], "instance": instance, "status": sd.id})
+
+# What colour a player-side status row reads in. GOLD is the checklist's colour
+# for "something you can earn"; a `demand` is the one row where leaving the box
+# empty COSTS something, so it takes the danger tint the curse rows established.
+func _status_row_tint(status: StatusData) -> Color:
+	return UITheme.DANGER if status.is_demand(StatusData.PLAYER) else UITheme.GOLD
+
+# How a status announces itself on a checklist row: its name and stack count.
+# "Marked 3 —" carries the X the rest of the line was written against, which is
+# the number the player has to hold in their head while they play.
+func _status_prefix(status: StatusData, stacks: int) -> String:
+	return "%s %d —" % [status.display_name, stacks]
+
+# Every per-game checklist binding, dropped together. Five parallel arrays that
+# must be cleared as one — a stale CheckBox left in any of them is a claim read
+# off a freed node on the next report.
+func reset_state() -> void:
+	# The rows are about to be freed, and with them every paint bound to a body.
+	# Nothing is lit on a list that no longer exists, so the board is told too.
+	row_paints.clear()
+	if not lit_instances.is_empty():
+		lit_instances = {}
+		if _page._board != null:
+			_page._board.highlight([])
+	fulfil_checks.clear()
+	status_goal_checks.clear()
+	bonus_checks.clear()
+	instead_checks.clear()
+	event_goal_checks.clear()
+	curse_goal_checks.clear()
+	levelup_check = null
+
+# The checklist while you're CHOOSING: the goals already on you — the character's
+# level-up challenge, and every follower's outstanding goal (any of which you may
+# clear during whatever game you pick next, §2). Answering "what do I need to do?"
+# belongs BEFORE you commit to a game, not only after, so the panel keeps its place
+# beside the board instead of appearing out of nowhere on pick.
+#
+# Read-only by design: there is nothing to report until a game is in play, so these
+# are rows rather than tick boxes.
+func populate_standing() -> void:
+	var sig: String = _standing_checklist_sig()
+	if sig == _sig and _box.get_child_count() > 0:
+		return
+	_sig = sig
+	_page._clear(_launch)
+	_page._clear(_box)
+	reset_state()
+	_box.add_child(_verify_head("What you need to do:"))
+
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch != null and ch.level_up_condition != "":
+		var lu_text: String = "Level up — %s" % ch.level_up_condition
+		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
+			lu_text += "   → %s" % ch.level_up_reward
+		_box.add_child(_objective_row(lu_text, UITheme.GOLD))
+
+	# Event goals and curses, read-only (docs/event-sheet-authoring.md §5). These
+	# have to be here and not only on the report step: an event fires the moment a
+	# game is beaten, and the goal it hands over lands while the player is still
+	# looking at the OFFERING. Listing it only once a game is picked meant taking
+	# on "beat a game in 1 attempt" and then being shown nothing about it until
+	# after the decision it was supposed to inform.
+	for goal in GameState.event_goals:
+		var left: int = int(goal.get("games_left", 0))
+		_box.add_child(_objective_row("Event goal — %s   → %s   (%d %s left)" % [
+			goal.get("condition", ""), goal.get("effects_text", ""),
+			left, "game" if left == 1 else "games"], UITheme.ACCENT))
+	for entry in GameState.curse_goals:
+		var cd: CurseData2 = Data.get_curse2(StringName(entry.get("curse", &"")))
+		if cd == null:
+			continue
+		var left: int = int(entry.get("games_left", 0))
+		# The same instruction the report step will ask about, because this list is
+		# headed "What you need to do" and the answer for a curse is the thing to
+		# do, not the rule it is derived from.
+		_box.add_child(_objective_row("%s — %s   if failed, %s   (%s)" % [
+			cd.display_name, cd.goal_text(), cd.penalty_text,
+			CurseData2.window_text(left)], UITheme.CURSE))
+
+	# The player's standing status buffs (§13) — goals that belong to no enemy and
+	# are available at whatever game gets picked next.
+	for row in GameState.status_objectives():
+		var sd: StatusData = row["status"]
+		var stacks: int = int(row["stacks"])
+		_box.add_child(_objective_row(
+			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.PLAYER, stacks)],
+			_status_row_tint(sd)))
+
+	# Followers, tinted the way the board tints them: the ones in the front column
+	# are the goals worth clearing first, because they hit next game.
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry["enemy"]
+		var urgent: bool = GameLoop2.in_front(entry)
+		var tint: Color = UITheme.DANGER if urgent else UITheme.GOLD.lerp(UITheme.TEXT, 0.4)
+		# Goal first, then whose it is — same order as the report step, since these
+		# are the same list in two states and the goal is what's being read for.
+		# "dmg N" in words: the board's ⚔ badge is a fine-detail glyph that reads as
+		# an ✕ at list-row sizes.
+		var inst: int = int(entry.get("instance", 0))
+		_box.add_child(_objective_row(
+			"%s — %s   (dmg %d)" % [GameLoop2.goal_text_for(entry), e.display_name, e.damage],
+			tint, _boss_icon(e), inst))
+		# The way out of that goal, if something burned this body (§13) — read here
+		# rather than only on the report step, because it is a reason to play the
+		# next game differently and this list is what is read before choosing one.
+		for alt in GameLoop2.alternatives_for(entry):
+			var asd: StatusData = alt["status"]
+			var astacks: int = int(alt["stacks"])
+			_box.add_child(_objective_row("%s or instead: %s" % [
+				_status_prefix(asd, astacks),
+				asd.alternative_text(StatusData.ENEMY, astacks)],
+				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst))
+		for bonus in GameLoop2.bonus_objectives_for(entry):
+			var sd: StatusData = bonus["status"]
+			var stacks: int = int(bonus["stacks"])
+			_box.add_child(_objective_row(
+				"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
+				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst))
+
+	if GameLoop2.stack.is_empty() and GameState.status_objectives().is_empty():
+		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")
+		_box.add_child(none)
+
+# Everything the standing checklist draws, as one string — the guard for the
+# rebuild above (see the repaint-guard block near the top of the file).
+#
+# It quotes the SAME calls the rebuild does rather than a summary of them
+# (`goal_text_for` is the row's actual text, `in_front` is its tint), so a row
+# whose wording changes for any reason at all changes the signature with it. That
+# costs those calls twice on a rebuild, which is fine: they are string work, and
+# what a rebuild actually pays for is the Labels.
+#
+# `_launch` is not represented because this function always leaves it empty —
+# only the report step (populate_play_panel) puts anything in it.
+func _standing_checklist_sig() -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch != null:
+		parts.append("%s/%s" % [ch.level_up_condition, ch.level_up_reward])
+	parts.append(str(GameState.event_goals))
+	parts.append(str(GameState.curse_goals))
+	for row in GameState.status_objectives():
+		parts.append("%s:%d" % [String((row["status"] as StatusData).id), int(row["stacks"])])
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry["enemy"]
+		parts.append("%d:%s:%s:%d:%s" % [int(entry.get("instance", 0)),
+			GameLoop2.goal_text_for(entry), e.display_name, e.damage,
+			str(GameLoop2.in_front(entry))])
+		for alt in GameLoop2.alternatives_for(entry):
+			parts.append("/%s:%d" % [String((alt["status"] as StatusData).id),
+				int(alt["stacks"])])
+		for bonus in GameLoop2.bonus_objectives_for(entry):
+			parts.append("+%s:%d" % [String((bonus["status"] as StatusData).id),
+				int(bonus["stacks"])])
+	return "|".join(parts)
+
+# --- the checklist and the board, pointing at each other -------------------
+#
+# A goal on the checklist and a body on the board are the same fact written
+# twice, and until now nothing said which line went with which enemy: a list of
+# four goals beside a board of four bodies left the player matching them up by
+# name. So the pair is LIT FROM EITHER END. Hovering a goal row brightens the
+# enemies it belongs to; hovering an enemy brightens its row. One binding does
+# both directions, because they are the same relation read from opposite sides.
+#
+# `instance` 0 means the row belongs to no body (the level-up challenge, an event
+# goal, a player status): those rows bind nothing and stay inert.
+
+# Bind one checklist row to one body. `paint` is called with whether the row
+# should read as lit; it is kept per instance so the board's hover can find it.
+#
+# Call this once the row is FULLY BUILT: the whole row is the hover target, and
+# what makes that work is walking what is actually in it.
+func bind_row_to_body(row: Control, instance: int, paint: Callable) -> void:
+	if instance <= 0:
+		return
+	var rows: Array = row_paints.get(instance, [])
+	rows.append(paint)
+	row_paints[instance] = rows
+	# The frame passes its clicks on, as it always has — it is a highlight, not a
+	# button, and the page under it scrolls.
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	_bind_hover(row, func(): light_bodies([instance]), func(): light_bodies([]))
+
+
+# Hover on a ROW, not on the sliver of it nothing else claimed.
+#
+# Godot sends mouse_entered to the ONE control under the cursor — a MOUSE_FILTER
+# PASS ancestor hears nothing while a STOP child has the pointer. A checklist row
+# is a frame containing a full-width CheckBox and a Notes button, both STOP, so
+# binding the frame alone left the goal lighting its enemy only from the two or
+# three pixels of padding around the box: hover the row anywhere a player would
+# actually aim and nothing happened. So every descendant carries the same pair.
+#
+# The exit is positional rather than a plain "leave one of them": crossing from
+# the checkbox to the Notes button fires an exit and an enter in the same frame,
+# and treating that as a departure made the highlight flicker along the row. If
+# the pointer is still inside the frame, the row was never left.
+func _bind_hover(frame: Control, on_enter: Callable, on_exit: Callable) -> void:
+	var leave := func() -> void:
+		if not is_instance_valid(frame) or not frame.get_global_rect().has_point(
+				frame.get_global_mouse_position()):
+			on_exit.call()
+	for node in hover_targets(frame):
+		if node.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+			# A Label is IGNORE by default and never reports anything; it is also
+			# most of a checklist row's width. PASS lets it report the hover while
+			# still handing the click to whatever is underneath.
+			node.mouse_filter = Control.MOUSE_FILTER_PASS
+		node.mouse_entered.connect(on_enter)
+		node.mouse_exited.connect(leave)
+
+
+# `frame` and every Control under it.
+func hover_targets(frame: Control) -> Array:
+	var out: Array = [frame]
+	for child in frame.get_children():
+		if child is Control:
+			out.append_array(hover_targets(child))
+	return out
+
+# Light `instances` on the BOARD (and, so the two halves never disagree, the rows
+# that belong to them). Passing [] clears.
+func light_bodies(instances: Array) -> void:
+	var want: Dictionary = {}
+	for inst in instances:
+		want[int(inst)] = true
+	if want == lit_instances:
+		return
+	var touched: Dictionary = lit_instances.duplicate()
+	for inst in want:
+		touched[inst] = true
+	lit_instances = want
+	for inst in touched:
+		for paint in row_paints.get(inst, []):
+			if (paint as Callable).is_valid():
+				(paint as Callable).call(lit_instances.has(inst))
+	if _page._board != null:
+		_page._board.highlight(lit_instances.keys())
+
+# The other direction: the mouse crossed a body on the board.
+func on_enemy_hovered(instance: int, hovered: bool) -> void:
+	light_bodies([instance] if hovered else [])
+
+# One read-only checklist row: the same frame the tick-box rows use, without the
+# box, so the standing list and the report step read as the same list in two
+# states. `icon` is the boss portrait, when the row belongs to one (_boss_icon);
+# `instance` is the body on the board this goal belongs to, which is what pairs
+# the row with the enemy in both directions (bind_row_to_body).
+func _objective_row(text: String, color: Color, icon: Texture2D = null,
+		instance: int = 0) -> Control:
+	var wrap := PanelContainer.new()
+	var idle: StyleBox = UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 1,
+		color.lerp(UITheme.BORDER, 0.35))
+	var lit: StyleBox = UITheme.flat(color.lerp(UITheme.BG, 0.78), 5, 4, 2,
+		color.lerp(Color.WHITE, 0.35))
+	wrap.add_theme_stylebox_override("panel", idle)
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 6)
+	wrap.add_child(line)
+	if icon != null:
+		line.add_child(_boss_icon_rect(icon))
+	var l := Label.new()
+	l.text = "•  " + text
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", color)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	line.add_child(l)
+	# Bound last: the hover covers what is IN the row, so the row has to be in it.
+	bind_row_to_body(wrap, instance, func(is_lit: bool) -> void:
+		if is_instance_valid(wrap):
+			wrap.add_theme_stylebox_override("panel", lit if is_lit else idle))
+	return wrap
+
+# A BOSS is the one thing on the checklist that isn't just another line of text:
+# it's the difficulty gate the run is standing in front of (§7.1). Its portrait
+# rides beside its name in both checklists, so "which of these is the boss" is
+# answered by looking rather than by remembering the name.
+const BOSS_ICON_SIZE := 26
+
+func _boss_icon(enemy: GoalEnemyData) -> Texture2D:
+	if enemy == null or not enemy.is_boss():
+		return null
+	return enemy.image
+
+func _boss_icon_rect(icon: Texture2D) -> Control:
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG, 4, 2, 1, Color(0.95, 0.55, 0.2)))
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	frame.tooltip_text = "Boss"
+	frame.add_child(UITheme.crisp_tex(icon, BOSS_ICON_SIZE))
+	return frame
+
+# One checklist row: a bordered CheckBox tinted `color`; `emphasise` gives the
+# main-goal row a heavier border so it reads as the primary question. Kept to a
+# single tight line each — the stage above it is the board, and the checklist has
+# to stay a glanceable list rather than a stack of cards.
+# One checklist line. When `enemy` is given the row also carries a Notes button
+# on the right, for writing down how this enemy was actually beaten AT this game
+# — the note belongs to the pair, and the Atlas surfaces it on the game later.
+func verify_row(text: String, color: Color, emphasise: bool,
+		enemy: GoalEnemyData = null, character: CharacterData = null,
+		instance: int = 0) -> Dictionary:
+	var wrap := PanelContainer.new()
+	var border: Color = color.lerp(UITheme.BORDER, 0.35)
+	var width: int = 2 if emphasise else 1
+	var idle: StyleBox = UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, width, border)
+	# The WHOLE ROW answers, not just the box: a ticked row goes green-washed and
+	# green-rimmed, so a filled checklist reads at a glance from the board beside
+	# it rather than needing each little box squinted at in turn.
+	var ticked_box: StyleBox = UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.80), 5, 4,
+		maxi(width, 2), UITheme.SUCCESS.lerp(UITheme.BORDER, 0.15))
+	# …and a LIT row is the third state: the board beside this list is pointing at
+	# the body this goal belongs to (see bind_row_to_body).
+	var lit: StyleBox = UITheme.flat(color.lerp(UITheme.BG, 0.78), 5, 4,
+		maxi(width, 2), color.lerp(Color.WHITE, 0.35))
+	var ticked := {"on": false}
+	var paint := func(is_lit: bool) -> void:
+		if not is_instance_valid(wrap):
+			return
+		if bool(ticked["on"]):
+			wrap.add_theme_stylebox_override("panel", ticked_box)
+		else:
+			wrap.add_theme_stylebox_override("panel", lit if is_lit else idle)
+	wrap.add_theme_stylebox_override("panel", idle)
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 8)
+	wrap.add_child(line)
+	# A boss's own portrait, right where its name is about to be read.
+	var boss_art: Texture2D = _boss_icon(enemy)
+	if boss_art != null:
+		line.add_child(_boss_icon_rect(boss_art))
+	var cb := CheckBox.new()
+	cb.text = text
+	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# A level-up clause reads "Use sorrow or self-inflicted pain as a weapon →
+	# Gain +1 Small Chest and +1 Scramble", and an unwrapped CheckBox claims every
+	# pixel of that as its minimum width — which is what pushed the left column to
+	# 772px and put a horizontal scrollbar under the whole page. Wrapped, the row
+	# is as tall as it needs and as wide as it is given.
+	cb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cb.add_theme_font_size_override("font_size", 13)
+	cb.add_theme_color_override("font_color", color)
+	cb.add_theme_color_override("font_pressed_color", color)
+	cb.add_theme_color_override("font_hover_color", UITheme.GOLD)
+	cb.toggled.connect(func(on: bool):
+		ticked["on"] = on
+		paint.call(lit_instances.has(instance))
+		cb.add_theme_color_override("font_color",
+			UITheme.SUCCESS.lerp(Color.WHITE, 0.55) if on else color))
+	line.add_child(cb)
+	var game: GameData = _page._chosen.get("game")
+	if game != null:
+		if enemy != null:
+			line.add_child(_notes_button(game, enemy))
+		elif character != null:
+			line.add_child(_levelup_notes_button(game, character))
+	# Bound last: the hover covers what is IN the row, so the row has to be in it.
+	bind_row_to_body(wrap, instance, paint)
+	return {"row": wrap, "check": cb}
+
+# The per-row Notes button. Shows a filled glyph once something is written, so a
+# game you've already annotated reads at a glance.
+func _notes_button(game: GameData, enemy: GoalEnemyData) -> Button:
+	return _note_button_for(
+		"Write down how you beat %s here" % enemy.display_name,
+		func(): return GameStats.enemy_note(game.id, enemy.id),
+		func(refresh): EnemyNoteModal.open(_page, game, enemy, refresh))
+
+# The same button for the level-up row, writing the (game, character) note.
+func _levelup_notes_button(game: GameData, character: CharacterData) -> Button:
+	return _note_button_for(
+		"Write down how you hit %s's level-up here" % character.display_name,
+		func(): return GameStats.level_up_note(game.id, character.id),
+		func(refresh): EnemyNoteModal.open_level_up(_page, game, character, refresh))
+
+# Shared shape for both: `read` answers the current text (so the glyph can say
+# whether there is one) and `open` is handed the refresh to call on save.
+func _note_button_for(tip: String, read: Callable, open: Callable) -> Button:
+	var b := Button.new()
+	b.add_theme_font_size_override("font_size", 11)
+	b.tooltip_text = tip
+	var refresh := func():
+		var has: bool = String(read.call()).strip_edges() != ""
+		b.text = "🗒 Notes ✎" if has else "🗒 Notes"
+		b.add_theme_color_override("font_color", UITheme.GOLD if has else UITheme.TEXT_DIM)
+	refresh.call()
+	b.pressed.connect(func(): open.call(refresh))
+	return b
+
+func _verify_head(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	return l
+
+# The instances the player ticked as fulfilled this game.
+func ticked_fulfilments() -> Array:
+	var out: Array = []
+	for f in fulfil_checks:
+		if is_instance_valid(f["check"]) and f["check"].button_pressed:
+			out.append(f["instance"])
+	return out
+
+# The ticked STATUS rows, in the shape beat_game's `claims` wants (§13): the
+# player-side rows met this game (the buff goals, and the `demand` rows whose price
+# is dodged by answering them), the enemy bonus objectives claimed, and the goals
+# cleared the OTHER way.
+#
+# The `instead` ticks are a separate list all the way through — never folded into
+# `ticked_fulfilments` — because the report records a defeat for every fulfilment
+# it is handed, and these are exactly the clears that must leave no record.
+#
+# Returned even when nothing at all is ticked, unlike before: an EMPTY report is
+# the answer a missed `demand` is billed for, and a caller handed {} could not tell
+# "nothing was ticked" from "no checklist asked".
+func ticked_status_claims() -> Dictionary:
+	var goals: Array = []
+	for s in status_goal_checks:
+		if is_instance_valid(s["check"]) and s["check"].button_pressed:
+			goals.append(s["status"])
+	var bonuses: Array = []
+	for b in bonus_checks:
+		if is_instance_valid(b["check"]) and b["check"].button_pressed:
+			bonuses.append({"instance": b["instance"], "status": b["status"]})
+	var instead: Array = []
+	for i in instead_checks:
+		if is_instance_valid(i["check"]) and i["check"].button_pressed:
+			instead.append({"instance": i["instance"], "status": i["status"]})
+	return {"status_goals": goals, "bonuses": bonuses, "instead": instead}

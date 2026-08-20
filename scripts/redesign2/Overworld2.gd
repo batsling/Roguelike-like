@@ -14,8 +14,11 @@ extends Control
 #
 # This file owns the RUN: the offering, the report step, the pack strip above the
 # board, and the charges the combat verbs spend.
-# Two pieces live next door — BattlefieldView (the board and its animation) and
-# EnemyInfoCard (the click-to-inspect card) — and talk back through signals.
+# Five pieces live next door. BattlefieldView (the board and its animation) and
+# EnemyInfoCard (the click-to-inspect card) talk back through signals. PackStrip
+# (the pack strip's tokens), ReportChecklist (the left column, in both its
+# states) and OfferingCards (the cards you choose from, in both choosing phases)
+# fill containers this page owns and call back through its public verbs.
 #
 # Difficulty gates (§7.1): the run's tier steps up every RunDifficulty.
 # GAMES_PER_TIER games (RunDifficulty.tier_for). On the game that crosses into a
@@ -132,10 +135,12 @@ var _pending_event: EventData2 = null
 # The node that event was rolled for, so opening it can SPEND that node — one
 # event per game, however many times the run walks back through it.
 var _pending_event_node: StringName = &""
-# Checklist bindings for the two event-borne sections, cleared with the rest in
-# _reset_checklist_state. Each entry is {check, index into GameState's array}.
-var _event_goal_checks: Array = []
-var _curse_goal_checks: Array = []
+# Checklist bindings for the two event-borne sections. ReportChecklist owns them;
+# these are read-only views under the names the tests reach for.
+var _event_goal_checks: Array:
+	get: return _checklist.event_goal_checks if _checklist != null else []
+var _curse_goal_checks: Array:
+	get: return _checklist.curse_goal_checks if _checklist != null else []
 # The header's always-visible Health readout (see _build_health_chip).
 var _health_chip: Label = null
 var _gold_chip: Label = null
@@ -206,12 +211,21 @@ var _boss_notice: BossNoticeModal = null
 var _preview: RichTextLabel
 var _preview_art: TextureRect       # the hovered card's enemy, beside the line
 var _choices_row: HFlowContainer
+var _offering: OfferingCards = null
 var _play_panel: VBoxContainer
 var _now_playing: RichTextLabel
 var _now_playing_cover: TextureRect # the chosen game's cover, beside it
 var _launch_row: HBoxContainer
 var _verify_box: VBoxContainer      # clean checklist: goal + level-up + follower goals
-var _fulfil_checks: Array = []      # [{check: CheckBox, instance: int}]
+# The checklist itself — both states of the left column, and the row-to-body
+# pairing (ReportChecklist). Built in _build_ui, once the two containers it fills
+# exist. Everything below is a READ-ONLY VIEW of the state it owns, kept on the
+# page under the names the rest of this file and the tests already use: the tests
+# read these and then tick the CheckBoxes they point at, which is what a player
+# does to the same objects.
+var _checklist: ReportChecklist = null
+var _fulfil_checks: Array:          # [{check: CheckBox, instance: int}]
+	get: return _checklist.fulfil_checks if _checklist != null else []
 # Statuses 2.0 (§13) on the report checklist. `_status_goal_checks` are the
 # player's own BUFF goals — extra rows that pay when ticked, plus the `demand` rows
 # that BITE when they are not; `_bonus_checks` are the OPTIONAL bonus objectives an
@@ -219,15 +233,21 @@ var _fulfil_checks: Array = []      # [{check: CheckBox, instance: int}]
 # burned enemy grows, each a second way to clear that body. All three are read into
 # beat_game's `claims` on report; the required clauses (enemy buffs, player
 # clauses) need no boxes of their own because they are folded into the goal line.
-var _status_goal_checks: Array = [] # [{check: CheckBox, status: StringName}]
-var _bonus_checks: Array = []       # [{check: CheckBox, instance: int, status: StringName}]
-var _instead_checks: Array = []     # [{check: CheckBox, instance: int, status: StringName}]
-var _levelup_check: CheckBox        # null when the character has no level-up
+var _status_goal_checks: Array:     # [{check: CheckBox, status: StringName}]
+	get: return _checklist.status_goal_checks if _checklist != null else []
+var _bonus_checks: Array:           # [{check: CheckBox, instance: int, status: StringName}]
+	get: return _checklist.bonus_checks if _checklist != null else []
+var _instead_checks: Array:         # [{check: CheckBox, instance: int, status: StringName}]
+	get: return _checklist.instead_checks if _checklist != null else []
+var _levelup_check: CheckBox:       # null when the character has no level-up
+	get: return _checklist.levelup_check if _checklist != null else null
 # Checklist row -> board body (see _bind_row_to_body). `_row_paints` is instance
 # -> the paint callables of every row written about that body; `_lit_instances`
 # is what is lit right now, from whichever end the mouse is on.
-var _row_paints: Dictionary = {}
-var _lit_instances: Dictionary = {}
+var _row_paints: Dictionary:
+	get: return _checklist.row_paints if _checklist != null else {}
+var _lit_instances: Dictionary:
+	get: return _checklist.lit_instances if _checklist != null else {}
 var _dash_mode: bool = false        # Dash (§4): offer ANY connected game
 # Was the game in hand reached BY a Dash? Read by report() so the return-trip
 # Dash is not silently cancelled by the charge that paid for the trip.
@@ -266,7 +286,7 @@ var _dashed_here: bool = false
 # the checklist box during the report step.
 var _select_stats_sig: String = ""
 var _controls_sig: String = ""
-var _checklist_sig: String = ""
+# The third signature lives with the section it guards, in ReportChecklist.
 
 var _controls_row: HBoxContainer
 var _stack: RichTextLabel           # battlefield summary line
@@ -288,11 +308,10 @@ var _inv_wrap: PanelContainer        # the carried items, in a strip above the b
 # top, so picking a game scrolls the report half into reach (the board is a scroll
 # up from there) and reporting scrolls back to the offering.
 var _scroll: ScrollContainer
-# The shield grant of the card the mouse is over, or -1 when nothing is. Between
-# games the pool is empty, so the HUD's Shields slot previews what the game you're
-# pointing at would hand you instead of reading a flat 0 — the grant is part of the
-# routing decision (a Traditional roguelike is worth 5).
-var _hover_grant: int = -1
+# The offering — the cards for both choosing phases and the hover line under
+# them (OfferingCards). Built in _build_ui, once the three containers it fills
+# exist. It also owns the hovered card's shield grant, which only its own hover
+# line reads.
 # Attempt tracker (§3) — the tries at the game in play.
 var _attempt_count: Label
 var _attempt_pips: Label
@@ -315,7 +334,9 @@ var _info_popup: EnemyInfoCard      # the click-to-inspect enemy card (null when
 var _choice_modal: GameChoiceModal = null   # the open offered-game popup, or null
 var _log: RichTextLabel
 # The pack strip above the grid: one small token per carried item (§4/§8).
+# The page owns the container; PackStrip fills it (see _refresh_items).
 var _items_box: HFlowContainer
+var _pack: PackStrip = null
 # Drops a defeated enemy left, waiting to be ASKED about — one ItemDropModal at a
 # time, in the order they fell (§8, _pump_drops). The modal in front of the
 # player right now, or null when nothing is being asked.
@@ -919,7 +940,8 @@ func pick(index: int) -> void:
 	# Move to the graph SLOT (a transmuted card plays an off-graph game but keeps
 	# its position on the route toward the amulet).
 	GameState.set_current_game(_chosen["slot"])
-	_hover_grant = -1
+	if _offering != null:
+		_offering.reset_hover_grant()
 	# You have left the hub, so its shop comes off the page — the shelf itself
 	# survives on ShopSystem, which is what makes coming back to it a real option.
 	# The machines go too, and they do not survive: a Blood Donation Machine is
@@ -2019,7 +2041,8 @@ func _start_play_game(request: Dictionary) -> void:
 	# A detour is posted by an event, not paid for with a charge, so there is
 	# nothing for the return-trip Dash to refund at the far end of it.
 	_dashed_here = false
-	_hover_grant = -1
+	if _offering != null:
+		_offering.reset_hover_grant()
 	_phase = Phase.PLAYING
 	_populate_play_panel()
 	_refresh()
@@ -2828,22 +2851,41 @@ func _render_controls() -> void:
 		rate.pressed.connect(func(): _prompt_rating(game))
 		_controls_row.add_child(rate)
 
-# The choose-your-start panel (Phase.START_SELECT): one card per offered start,
-# each a different genre and each the same distance band from the amulet, so the
-# decision is "which genre do I want to open on and route from", never "which of
-# these is the short run".
+# --- the offering ------------------------------------------------------------
+#
+# The cards you choose your next game from, in both choosing phases, and the
+# hover line under them, all live in OfferingCards. The page owns the three
+# containers it fills (_choices_row, _preview, _preview_art) and decides when
+# they are redrawn; these forwards keep the names the rest of this file, and the
+# tests, already call.
+
 func _render_start_choices() -> void:
-	_clear(_choices_row)
-	_hover_grant = -1
-	if _start_options.is_empty():
-		var l := Label.new()
-		l.text = "No start could be rolled — check the game filter in Settings."
-		_choices_row.add_child(l)
-		return
-	for i in range(_start_options.size()):
-		_choices_row.add_child(_make_start_card(i, _start_options[i]))
-	_preview.text = _preview_idle_text()
-	_show_hover_art({})
+	if _offering != null:
+		_offering.render_start()
+
+func _render_choices() -> void:
+	if _offering != null:
+		_offering.render()
+
+func _show_preview(index: int) -> void:
+	if _offering != null:
+		_offering.show_preview(index)
+
+func _clear_hover_grant() -> void:
+	if _offering != null:
+		_offering.clear_hover_grant()
+
+# The "you can beat this" row a card and its popup both wear, and the two lines
+# the escort warning is written as — read by the offered-game popup
+# (GameChoiceModal) as well as by the cards themselves.
+func _beatable_row(choice: Dictionary) -> Control:
+	return _offering.beatable_row(choice)
+
+func _enemy_hidden(choice: Dictionary) -> bool:
+	return _offering.enemy_hidden(choice) if _offering != null else false
+
+func _escort_note(choice: Dictionary) -> String:
+	return _offering.escort_note(choice) if _offering != null else ""
 
 # The Amulet, by name.
 #
@@ -2867,1014 +2909,52 @@ func amulet_name() -> String:
 func _start_distance_text(hops: int) -> String:
 	return "%d game%s from %s" % [hops, "" if hops == 1 else "s", amulet_name()]
 
-# One start card: the cover, the game's name, its genre, and how many games stand
-# between it and the Amulet — which is named, along with everything else on the
-# road to it (see amulet_name).
-func _make_start_card(index: int, opt: Dictionary) -> Control:
-	var game: GameData = opt["game"]
-	var accent: Color = RunGraph.type_color(int(opt["type"]))
-	var card := VBoxContainer.new()
-	card.add_theme_constant_override("separation", 4)
-	card.custom_minimum_size = Vector2(COVER_SIZE.x + 10, 0)
-
-	var type_lbl := Label.new()
-	type_lbl.text = RunGraph.type_label(int(opt["type"]))
-	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	type_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
-	type_lbl.add_theme_font_size_override("font_size", 13)
-	type_lbl.add_theme_color_override("font_color", accent.lerp(UITheme.TEXT, 0.35))
-	card.add_child(type_lbl)
-
-	# The road this start opens on, before committing to it. The destination is
-	# drawn unnamed — the distance is still the only thing the picker gives away
-	# about the Amulet — but its SHAPE is exactly what makes one start different
-	# from another, so it's on the table.
-	card.add_child(_map_preview_button(game.id, game))
-
-	var btn := Button.new()
-	btn.custom_minimum_size = COVER_SIZE
-	var frame_n := UITheme.flat(UITheme.BG, 8, 4, 1, UITheme.BORDER)
-	var frame_h := UITheme.flat(UITheme.PANEL_HI, 8, 4, 2, accent)
-	btn.add_theme_stylebox_override("normal", frame_n)
-	btn.add_theme_stylebox_override("hover", frame_h)
-	btn.add_theme_stylebox_override("pressed", frame_h)
-	btn.add_theme_stylebox_override("focus", frame_h)
-	# Opens the card rather than committing: the start is a game you go and play
-	# now, so it gets the same "here is what's waiting, do you want it" popup every
-	# other game in the run gets. No tooltip, for the same reason an offered card
-	# has none — the hover line under the cards is where a start describes itself.
-	btn.pressed.connect(func(): open_start_choice(index))
-	btn.mouse_entered.connect(func(): _show_start_preview(index))
-	btn.mouse_exited.connect(_clear_hover_grant)
-	if game.cover_image != null:
-		var art := TextureRect.new()
-		art.set_anchors_preset(Control.PRESET_FULL_RECT)
-		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		art.texture = game.cover_image
-		btn.add_child(art)
-	else:
-		btn.text = game.display_name
-		btn.add_theme_color_override("font_color", accent)
-	card.add_child(btn)
-
-	var name_lbl := Label.new()
-	name_lbl.text = game.display_name
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, NAME_BOX_H)
-	name_lbl.add_theme_font_size_override("font_size", NAME_FONT)
-	name_lbl.add_theme_color_override("font_color", UITheme.TEXT)
-	card.add_child(name_lbl)
-
-	var dist := Label.new()
-	dist.text = _start_distance_text(int(opt["path_len"]))
-	dist.tooltip_text = "The shortest route from %s to %s, the game this run ends on." % [
-		game.display_name, amulet_name()]
-	dist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dist.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	dist.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dist.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE * 2 + 2)
-	dist.add_theme_font_size_override("font_size", BADGE_FONT)
-	dist.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
-	card.add_child(dist)
-	return card
-
-func _show_start_preview(index: int) -> void:
-	if index < 0 or index >= _start_options.size():
-		return
-	var opt: Dictionary = _start_options[index]
-	# The same one-line hover the offering writes — the start is a game you play,
-	# so what is waiting at it is readable without opening the card, exactly as it
-	# is for every other card in the run.
-	_hover_grant = GameLoop2.shields_for_game(opt["game"])
-	var choice: Dictionary = _start_choice(index)
-	_preview.text = "%s  ·  [color=#%s]%s[/color]" % [
-		_hover_line(choice), UITheme.GOLD.to_html(false),
-		_start_distance_text(int(opt["path_len"]))]
-	_show_hover_art(choice)
-
-func _render_choices() -> void:
-	_clear(_choices_row)
-	# The cards are rebuilt, so nothing is hovered any more.
-	_hover_grant = -1
-	if _choices.is_empty():
-		var l := Label.new()
-		l.text = "No reachable games — dead end."
-		_choices_row.add_child(l)
-		return
-	for i in range(_choices.size()):
-		_choices_row.add_child(_make_choice_card(i, _choices[i]))
-	_preview.text = _preview_idle_text()
-	_show_hover_art({})
-
-# The offered cover art, back at the size it deserves. It was halved when the
-# offering moved into the left column beside the board (COVER_SIZE was 105x140),
-# because seven rows of badges were stacked around every cover and three of those
-# columns had to fit side by side. The badges have gone into GameChoiceModal, so
-# the art gets the room back.
-const COVER_SIZE := Vector2(150, 200)
-
-# The width of the enemy portrait on the hover line under the offering. Its
-# HEIGHT is the line's, whatever that turns out to be — and that is the whole
-# trick, because it is what makes the portrait FREE.
+# --- the report checklist ---------------------------------------------------
 #
-# The overworld is fitted to a 720p window with single-digit pixels to spare
-# (test_overworld2's _assert_fits), and the page's worst case — three arcade
-# machines under the board — sits within about four of them. A hover row that
-# reserved even 30px of height for art blew that budget on its own. So the art
-# fills the line instead of setting its height: same page, one more thing on it.
-#
-# That makes it small, which is the right size anyway. This is an IDENTIFIER for
-# a body the player already knows — the same job, and the same scale, as the
-# portraits on a card's Beatable row. The exhibit is in the popup the card opens,
-# where the enemy is drawn at full size.
-const HOVER_ART := 30.0
+# The left column in both its states — the standing list while you're choosing,
+# the tick-box report step while you're playing — and the pairing between a
+# checklist row and a body on the board all live in ReportChecklist. The page
+# owns the two containers it fills (_verify_box, _launch_row) and decides when it
+# is rebuilt; these forwards keep the names the rest of this file, and the tests,
+# already call. A few of them (verify_row, hover_targets, light_bodies) have no
+# caller left in here and exist for the tests, which drive the checklist through
+# the page the way a player does.
 
-# The badge rows on a card: the name, plus two fixed-height flag lines above the
-# cover — the Amulet / event flag, and the repeat game's +1 Dash. Everything else
-# a card used to carry (the route, the pace, the tries, the map, the Beatable row,
-# the Bash/Transmute verbs) lives in the popup the card opens.
-const BADGE_FONT := 11
-const BADGE_LINE := 15               # one line of BADGE_FONT, in px
-# The game's NAME keeps a readable size, in its own fixed box, so a card whose
-# title wraps to three lines doesn't sit a line taller than its neighbours.
-const NAME_FONT := 13
-const NAME_BOX_H := 51               # three lines of NAME_FONT — "Shotgun King:
-                                     # The Final Checkmate" needs all three
-
-# One choice = the game's cover art, its name, and — when it is the game the whole
-# run is a search for — the Amulet's flag above it. Nothing else: clicking the
-# card opens GameChoiceModal, which is where the route, the enemy, the tries and
-# the verbs all get said properly, and where the game is actually chosen.
-#
-# Hover still updates the shared enemy preview under the row, so the offering can
-# be read at a glance without opening anything.
-# The shop flag's hover: the headline, plus the shelf itself once the player has
-# actually been in there. Both come from ShopSystem so this and the popup's shop
-# block cannot end up describing the same shelf differently.
-func _shop_card_tooltip(game: GameData) -> String:
-	# "…and no event" is worth a line here because it is the ONE place a hub
-	# differs from every other card in what it costs you: a shop stands here
-	# instead of an event, not as well as one (§12).
-	var lines: Array = [ShopSystem.headline(game.id),
-		"A shop stands here, so no event fires — this is what happens instead."]
-	var stock: Array = ShopSystem.stock_lines(game.id)
-	if not stock.is_empty():
-		lines.append("")
-		lines.append_array(stock)
-	return "\n".join(lines)
-
-
-func _make_choice_card(index: int, choice: Dictionary) -> Control:
-	var game: GameData = choice["game"]
-	var card := VBoxContainer.new()
-	card.add_theme_constant_override("separation", 4)
-	card.custom_minimum_size = Vector2(COVER_SIZE.x + 10, 0)
-
-	var amulet: bool = bool(choice["amulet"])
-	var accent: Color = UITheme.DANGER if choice["boss"] else (UITheme.GOLD if amulet else UITheme.type_color(int(game.type)))
-
-	# THE ONE THING that has to be legible without opening anything: this is the
-	# game the run ends on. The row is mounted on every card, blank off the Amulet,
-	# so the flagged card's cover stays in line with the rest of the offering.
-	#
-	# There WAS an `✦ EVENT` badge in this row. It marked the handful of dead ends
-	# carrying an event, back when placement was hashed onto specific nodes and
-	# routing towards one was a decision. An event now fires after every game
-	# played, so a badge on every card would say nothing — and the hash it
-	# depended on is gone with it, which means there is no longer an honest answer
-	# to "which event is at that node" before the run gets there.
-	#
-	# The SHOP badge (§14) is the row's other tenant. Its colour is deliberately
-	# not a gold — see UITheme.SHOP_GREEN — because a gold badge sitting in the
-	# Amulet's own slot is the one confusion this row cannot afford.
-	var flag := Label.new()
-	if amulet:
-		flag.text = "🏆 THE AMULET"
-		flag.tooltip_text = "Beat this game's goal and you win the run."
-		flag.add_theme_color_override("font_color", UITheme.GOLD)
-	elif ShopSystem.is_hub(game.id):
-		flag.text = "🛒 SHOP"
-		flag.tooltip_text = _shop_card_tooltip(game)
-		flag.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
-	else:
-		flag.text = ""
-		flag.add_theme_color_override("font_color", UITheme.GOLD)
-	flag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	flag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	flag.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
-	flag.add_theme_font_size_override("font_size", BADGE_FONT)
-	card.add_child(flag)
-
-	# THE SECOND THING that has to be legible without opening anything: a game you
-	# have already played this run pays a Dash for going back and beating it
-	# (REPEAT_BEAT_DASH). It is the offering's only recurring free charge, and it
-	# was only ever stated inside the popup — so the one card on the table that is
-	# worth revisiting looked exactly like the ones that aren't. It rides ABOVE the
-	# cover, next to the Amulet's flag, because it is a reason to open a card and
-	# reasons to open a card belong where the card is being scanned.
-	#
-	# Like the flag, the row is mounted on EVERY card and left blank off a repeat,
-	# so one +1 in the offering doesn't knock the other covers out of line.
-	var dash_flag := Label.new()
-	if bool(choice.get("repeat", false)):
-		dash_flag.text = "⚡ +%d DASH" % REPEAT_BEAT_DASH
-		dash_flag.tooltip_text = ("You have played %s already this run — go back and beat it and it pays %d Dash charge%s."
-			% [game.display_name, REPEAT_BEAT_DASH, "" if REPEAT_BEAT_DASH == 1 else "s"])
-	else:
-		dash_flag.text = ""
-	dash_flag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dash_flag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	dash_flag.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
-	dash_flag.add_theme_font_size_override("font_size", BADGE_FONT)
-	dash_flag.add_theme_color_override("font_color", DASH_BLUE)
-	card.add_child(dash_flag)
-
-	# NO TOOLTIP. The offering is the one place on the page that does NOT get a
-	# hover card: the enemy's portrait and its goal are already written on the
-	# hover line under the cards (see _show_preview), which is the same read the
-	# card would be, and a popup over the covers while the mouse crosses three of
-	# them is the noisiest possible way to say it. The cards are for scanning.
-	var btn := Button.new()
-	btn.custom_minimum_size = COVER_SIZE
-	var frame_n := UITheme.flat(UITheme.BG, 8, 4, 1, UITheme.GOLD if amulet else UITheme.BORDER)
-	var frame_h := UITheme.flat(UITheme.PANEL_HI, 8, 4, 2, accent)
-	btn.add_theme_stylebox_override("normal", frame_n)
-	btn.add_theme_stylebox_override("hover", frame_h)
-	btn.add_theme_stylebox_override("pressed", frame_h)
-	btn.add_theme_stylebox_override("focus", frame_h)
-	btn.pressed.connect(func(): open_choice(index))
-	btn.mouse_entered.connect(func(): _show_preview(index))
-	btn.mouse_exited.connect(_clear_hover_grant)
-	if game.cover_image != null:
-		var art := TextureRect.new()
-		art.set_anchors_preset(Control.PRESET_FULL_RECT)
-		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		art.texture = game.cover_image
-		btn.add_child(art)
-	else:
-		btn.text = game.display_name
-		btn.add_theme_color_override("font_color", accent)
-	card.add_child(btn)
-
-	var name_lbl := Label.new()
-	name_lbl.text = ("☠ " if choice["boss"] else ("🏆 " if amulet else "")) + game.display_name
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, NAME_BOX_H)
-	name_lbl.add_theme_font_size_override("font_size", NAME_FONT)
-	name_lbl.add_theme_color_override("font_color", accent if (choice["boss"] or amulet) else UITheme.TEXT)
-	card.add_child(name_lbl)
-	return card
-
-# The 🗺 button every offered card wears above its cover: opens the optimal path
-# from that game to the Amulet. Full width of the card, so the row of covers stays
-# in line whatever a card's route badge says.
-func _map_preview_button(slot: StringName, game: GameData) -> Button:
-	var b := Button.new()
-	b.text = "🗺  Map"
-	b.tooltip_text = "See the shortest route to the Amulet if you take %s." % game.display_name
-	b.custom_minimum_size = Vector2(COVER_SIZE.x, 24)
-	b.add_theme_font_size_override("font_size", BADGE_FONT)
-	b.pressed.connect(func(): preview_map(slot))
-	return b
-
-# "Beatable:" — the enemies on the board right now that you have ALREADY beaten
-# at this game before. Not a prediction: it's your own record saying this pair
-# has worked, which is exactly what you want to know while choosing where to go
-# with a follower stuck to you.
-#
-# Returns null when there's nothing to say, so an unproven card stays clean.
-func _beatable_row(choice: Dictionary) -> Control:
-	var game: GameData = choice.get("game")
-	if game == null:
-		return null
-	# The enemy standing at this card, plus everything currently following you.
-	# Under the Runic Dome the card's own enemy is left out: a "Beatable" pip is a
-	# portrait with a name on it, so keeping it would hand back the exact thing
-	# the relic is meant to be hiding. The FOLLOWERS stay — they are already on
-	# the board and the Dome only ever hid what has yet to spawn.
-	var on_board: Array = []
-	var here: GoalEnemyData = choice.get("enemy")
-	if here != null and not _enemy_hidden(choice):
-		on_board.append(here)
-	for entry in GameLoop2.stack:
-		var follower: GoalEnemyData = entry.get("enemy")
-		if follower != null:
-			on_board.append(follower)
-
-	var proven: Array = []
-	var seen: Dictionary = {}
-	for enemy in on_board:
-		if seen.has(enemy.id):
-			continue
-		if GameStats.enemy_beaten_count(game.id, enemy.id) > 0:
-			seen[enemy.id] = true
-			proven.append(enemy)
-	if proven.is_empty():
-		return null
-
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	var label := Label.new()
-	label.text = "Beatable:"
-	label.add_theme_font_size_override("font_size", 10)
-	label.add_theme_color_override("font_color", UITheme.SUCCESS)
-	row.add_child(label)
-	for enemy in proven:
-		row.add_child(_beatable_pip(game, enemy))
-	return row
-
-# One enemy on the Beatable row: its portrait, with the record and whatever note
-# was written on the hover — the note is the reason you know it's beatable.
-func _beatable_pip(game: GameData, enemy: GoalEnemyData) -> Control:
-	var times: int = GameStats.enemy_beaten_count(game.id, enemy.id)
-	var note: String = GameStats.enemy_note(game.id, enemy.id).strip_edges()
-	var tip: String = "%s — beaten here ×%d" % [enemy.display_name, times]
-	if enemy.goal != "":
-		tip += "\n%s" % enemy.goal
-	if note != "":
-		tip += "\n\n🗒 %s" % note
-	if enemy.image != null:
-		var art := TextureRect.new()
-		art.texture = enemy.image
-		art.custom_minimum_size = Vector2(20, 20)
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		art.tooltip_text = tip
-		return art
-	# No portrait authored — fall back to the name rather than an empty gap.
-	var chip := Label.new()
-	chip.text = enemy.display_name
-	chip.add_theme_font_size_override("font_size", 9)
-	chip.add_theme_color_override("font_color", UITheme.SUCCESS)
-	chip.tooltip_text = tip
-	return chip
-
-# Build the self-report panel for the chosen game: a launch button (when the
-# game can be launched) and a fulfilment checkbox per following enemy so old
-# goals can be cleared this game (§2).
 func _populate_play_panel() -> void:
-	# The report step and the standing checklist share _verify_box, so taking it
-	# over here has to drop the standing list's signature — otherwise the next
-	# return to the offering would match a signature describing rows this panel
-	# replaced, and leave the report step's checklist on screen. Not guarded
-	# itself: it holds the player's TICKS, and rebuilding it is what the tick
-	# handlers rely on.
-	_checklist_sig = ""
-	_clear(_launch_row)
-	_clear(_verify_box)
-	_reset_checklist_state()
-	if _chosen.is_empty():
-		return
-	var game: GameData = _chosen["game"]
-	# "Open the real game" — launches the executable/shortcut in the game's
-	# file_location column (falling back to its store page). Only games with a
-	# launch target get the button.
-	if game.has_launch_target():
-		var play_btn := Button.new()
-		play_btn.text = "▶  Play %s" % game.display_name
-		play_btn.custom_minimum_size = Vector2(0, 38)
-		play_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		play_btn.add_theme_stylebox_override("normal", UITheme.flat(Color(0.10, 0.22, 0.16, 0.9), 8, 8, 1, Color(0.4, 0.9, 0.6)))
-		play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
-		play_btn.pressed.connect(func(): game.launch())
-		_launch_row.add_child(play_btn)
-	# Manual "rate this game" entry point (the report step also auto-prompts after
-	# you press Completed Game).
-	var rate_btn := Button.new()
-	rate_btn.text = "★  Rate this game"
-	rate_btn.custom_minimum_size = Vector2(0, 38)
-	rate_btn.add_theme_color_override("font_color", UITheme.GOLD)
-	rate_btn.pressed.connect(func(): _prompt_rating(game))
-	_launch_row.add_child(rate_btn)
+	if _checklist != null:
+		_checklist.populate_play_panel()
 
-	# One clean checklist of everything to verify this game. Tick what you actually
-	# did, then press "Completed Game" once (§2 / §3.1):
-	#   • EVERY ENEMY on the board, in one list — the ones that walked on when you
-	#     took this game and the ones that have been following you for ten;
-	#   • the character LEVEL-UP challenge;
-	#   • the event and curse goals.
-	#
-	# THERE IS NO "GOAL" BOX. The enemy the card advertised used to get an
-	# emphasised row of its own at the top, because it was the game's own enemy and
-	# beating the game was what cleared it. Nothing is a game's own enemy any more
-	# (GameLoop2.arrivals): a body that walked on this game and a body you have
-	# owed since three games ago are the same kind of debt, and asking about them
-	# in two different places said they were not.
-	_verify_box.add_child(_verify_head("Tick what you did this game:"))
-
-	# On the Amulet, playing the game is the win — not any goal on this list (see
-	# report()). Said at the top, because a checklist is otherwise exactly where a
-	# player would look for the win condition and not find it.
-	if bool(_chosen.get("amulet", false)):
-		var win_note := Label.new()
-		win_note.text = "🏆  Completing this game wins the run — everything below is a bonus."
-		win_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		win_note.add_theme_font_size_override("font_size", 12)
-		win_note.add_theme_color_override("font_color", UITheme.GOLD)
-		_verify_box.add_child(win_note)
-
-	# The player's own standing rows (§13): challenges that pay out every game you
-	# satisfy them, and the `demand` rows that CHARGE for every game you don't — so
-	# they are on the report step of EVERY game rather than belonging to any one
-	# enemy. A demand is tinted like the threat it is: on this list an unticked box
-	# usually means a prize forgone, and on that one row it means a bill.
-	for row in GameState.status_objectives():
-		var sd: StatusData = row["status"]
-		var stacks: int = int(row["stacks"])
-		var srow := _verify_row(
-			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.PLAYER, stacks)],
-			_status_row_tint(sd), false)
-		_verify_box.add_child(srow["row"])
-		_status_goal_checks.append({"check": srow["check"], "status": sd.id})
-
-	# Level-up challenge (§3.1): a per-game Yes/No for the character's condition,
-	# with its reward shown inline so the payoff reads at a glance. It carries its
-	# own Notes button for the same reason the goal rows do — the condition is a
-	# standing one, and how you satisfied it is a fact about THIS game.
-	var ch: CharacterData = Data.get_character2(GameState.character_id)
-	if ch != null and ch.level_up_condition != "":
-		var lu_text: String = "Leveled up — %s" % ch.level_up_condition
-		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
-			lu_text += "   → %s" % ch.level_up_reward
-		var lu_row := _verify_row(lu_text, UITheme.GOLD, false, null, ch)
-		_levelup_check = lu_row["check"]
-		_verify_box.add_child(lu_row["row"])
-
-	# EVENT GOALS and CURSE GOALS (docs/event-sheet-authoring.md §5). Their own
-	# sections, deliberately: the checklist now carries three kinds of objective
-	# and they bite in three different ways. An enemy goal is a DEBT — miss it and
-	# it follows you and hits. An event goal is a BONUS — miss it and it merely
-	# expires. A curse is a BILL, and the only row here you tick to say you did
-	# something WRONG. Rendering all three alike would misrepresent which one
-	# hurts, so the curse rows are purple and sit apart.
-	_add_event_goal_rows()
-
-	# GOAL FIRST, then whose it is. The checklist is scanned for "what did I
-	# actually do", and the goal is the part being answered — the enemy's name is
-	# the label on it. Leading with the name made every row start with a proper
-	# noun the player has to read past to reach the thing they're ticking.
-	#
-	# EVERY body on the board, on the same terms and in board order. The ones that
-	# walked on when this game was taken are simply the last ones in the list.
-	for entry in GameLoop2.stack:
-		var inst: int = int(entry["instance"])
-		var e: GoalEnemyData = entry["enemy"]
-		var row := _verify_row("Cleared: %s — %s" % [
-			GameLoop2.goal_text_for(entry), e.display_name], UITheme.TEXT, false, e, null, inst)
-		_verify_box.add_child(row["row"])
-		_fulfil_checks.append({"check": row["check"], "instance": inst})
-		_add_instead_rows(entry)
-		_add_bonus_rows(entry)
-
-# The two event-borne sections of the checklist. Both count down in games, and
-# both show how long is left — an objective with a clock on it is a different
-# decision on its last game than on its first, and the player cannot see the
-# clock anywhere else.
-func _add_event_goal_rows() -> void:
-	for i in range(GameState.event_goals.size()):
-		var goal: Dictionary = GameState.event_goals[i]
-		var left: int = int(goal.get("games_left", 0))
-		var text: String = "Event goal — %s   → %s   (%d %s left)" % [
-			goal.get("condition", ""), goal.get("effects_text", ""),
-			left, "game" if left == 1 else "games"]
-		var row := _verify_row(text, UITheme.ACCENT, false)
-		_verify_box.add_child(row["row"])
-		_event_goal_checks.append({"check": row["check"], "index": i})
-
-	for i in range(GameState.curse_goals.size()):
-		var entry: Dictionary = GameState.curse_goals[i]
-		var cd: CurseData2 = Data.get_curse2(StringName(entry.get("curse", &"")))
-		if cd == null:
-			continue
-		var left: int = int(entry.get("games_left", 0))
-		# A CURSE IS A ROW LIKE ANY OTHER: an instruction, ticked if you followed
-		# it, with what it costs you written after it. It used to be phrased as the
-		# rule instead — "If you use a rest site to replenish health, spawn a random
-		# enemy when you report the game" — with a box that fired the penalty when
-		# you CHECKED it. That made it the one row on this list whose tick meant the
-		# opposite of every other row's, and it read as a confession rather than as
-		# something to go and do. Unticked is the failure here exactly as it is on
-		# the goal above it; the difference is only what failing costs.
-		var text: String = "%s — %s   if failed, %s   (%s)" % [
-			cd.display_name, cd.goal_text(), cd.penalty_text,
-			CurseData2.window_text(left)]
-		var row := _verify_row(text, UITheme.CURSE, false)
-		_verify_box.add_child(row["row"])
-		_curse_goal_checks.append({"check": row["check"], "index": i})
-
-
-# Pay out whatever the player ticked in those two sections. Claims are resolved
-# HIGHEST INDEX FIRST because claiming an event goal removes it from the array,
-# and a low-index removal would shift every index recorded after it.
-func _resolve_event_goal_rows() -> void:
-	var claimed: Array = []
-	for entry in _event_goal_checks:
-		var check: CheckBox = entry.get("check")
-		if check != null and is_instance_valid(check) and check.button_pressed:
-			claimed.append(int(entry.get("index", -1)))
-	claimed.sort()
-	claimed.reverse()
-	for idx in claimed:
-		var goal: Dictionary = GameState.claim_event_goal(idx)
-		if goal.is_empty():
-			continue
-		var src: EventData2 = Data.get_event2(StringName(goal.get("event", &"")))
-		var line: String = src.goal_met if src != null and src.goal_met != "" else \
-			"Event goal met — %s." % goal.get("effects_text", "")
-		Notifications.notify(line, UITheme.ACCENT)
-		GameLog.add(line, UITheme.ACCENT)
-
-	# A curse fires but does NOT clear — that is what separates it from a goal.
-	# Breaking it twice across two games costs twice; only the timer removes it.
-	#
-	# UNTICKED is what fires it. The row is an instruction (see
-	# _add_event_goal_rows), so a box left empty says the player did not follow it
-	# — the same thing an empty box says on every other row of the checklist.
-	var triggered: Array = []
-	for entry in _curse_goal_checks:
-		var check: CheckBox = entry.get("check")
-		if check != null and is_instance_valid(check) and not check.button_pressed:
-			triggered.append(int(entry.get("index", -1)))
-	for idx in triggered:
-		var fired: Dictionary = GameState.trigger_curse_goal(idx)
-		if fired.is_empty():
-			continue
-		var cd: CurseData2 = Data.get_curse2(StringName(fired.get("curse", &"")))
-		if cd != null:
-			var line: String = "%s bites — %s." % [cd.display_name, cd.penalty_text]
-			Notifications.notify(line, UITheme.CURSE)
-			GameLog.add(line, UITheme.CURSE)
-
-
-# Every `demand` the report left unanswered, and what it cost (§13). Says what the
-# hit was for AND what stopped it: a burn the tries absorbed whole took no Health,
-# and a line that only quoted the 3 would read as a lie next to an unmoved bar.
-func _announce_status_penalties(res: Dictionary) -> void:
-	for raw in res.get("status_penalties", []):
-		if not (raw is Dictionary):
-			continue
-		var bite: Dictionary = raw
-		var sd: StatusData = Data.get_status(StringName(bite.get("status", &"")))
-		if sd == null:
-			continue
-		var dealt: int = int(bite.get("damage", 0))
-		var blocked: int = int(bite.get("blocked", 0))
-		var line: String = "%s bites — %d damage" % [sd.display_name, dealt]
-		if blocked > 0:
-			line += ", %d absorbed by the tries" % blocked
-		line += "."
-		Notifications.notify(line, UITheme.DANGER)
-		GameLog.add(line, UITheme.DANGER)
-
-# The OPTIONAL bonus rows an enemy's `bonus` sides hang off it (§13) — "and if you get 3
-# achievements, gain +3 Small Chests". A row of its own rather than part of the
-# goal line, because claiming it is a separate decision from meeting the goal: an
-# enemy you failed can still pay its bonus, and one you beat need not have.
-# The "or instead" rows a burned enemy grows (§13) — the SECOND WAY to clear this
-# body, ticked when the player did the alternative rather than the goal.
-#
-# A row of its own and not a second reading of the goal row, because the two answer
-# different questions and the run records them differently: ticking the goal says
-# the enemy's condition was met, and this one says it never was. So this row
-# deliberately carries NO Notes button — `_verify_row` only grows one when it is
-# handed the enemy — since a note here would be a note about how you beat a goal you
-# didn't do. Same reason `_ticked_status_claims` keeps these out of the fulfilments
-# the report records defeats from.
-func _add_instead_rows(entry: Dictionary) -> void:
-	if entry.is_empty():
-		return
-	var instance: int = int(entry.get("instance", 0))
-	for row in GameLoop2.alternatives_for(entry):
-		var sd: StatusData = row["status"]
-		var stacks: int = int(row["stacks"])
-		var irow := _verify_row("%s or instead: %s" % [
-			_status_prefix(sd, stacks), sd.alternative_text(StatusData.ENEMY, stacks)],
-			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance)
-		_verify_box.add_child(irow["row"])
-		_instead_checks.append({"check": irow["check"], "instance": instance,
-			"status": sd.id})
-
-func _add_bonus_rows(entry: Dictionary) -> void:
-	if entry.is_empty():
-		return
-	var instance: int = int(entry.get("instance", 0))
-	for row in GameLoop2.bonus_objectives_for(entry):
-		var sd: StatusData = row["status"]
-		var stacks: int = int(row["stacks"])
-		var brow := _verify_row(
-			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
-			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance)
-		_verify_box.add_child(brow["row"])
-		_bonus_checks.append({"check": brow["check"], "instance": instance, "status": sd.id})
-
-# What colour a player-side status row reads in. GOLD is the checklist's colour
-# for "something you can earn"; a `demand` is the one row where leaving the box
-# empty COSTS something, so it takes the danger tint the curse rows established.
-func _status_row_tint(status: StatusData) -> Color:
-	return UITheme.DANGER if status.is_demand(StatusData.PLAYER) else UITheme.GOLD
-
-# How a status announces itself on a checklist row: its name and stack count.
-# "Marked 3 —" carries the X the rest of the line was written against, which is
-# the number the player has to hold in their head while they play.
-func _status_prefix(status: StatusData, stacks: int) -> String:
-	return "%s %d —" % [status.display_name, stacks]
-
-# Every per-game checklist binding, dropped together. Five parallel arrays that
-# must be cleared as one — a stale CheckBox left in any of them is a claim read
-# off a freed node on the next report.
-func _reset_checklist_state() -> void:
-	# The rows are about to be freed, and with them every paint bound to a body.
-	# Nothing is lit on a list that no longer exists, so the board is told too.
-	_row_paints.clear()
-	if not _lit_instances.is_empty():
-		_lit_instances = {}
-		if _board != null:
-			_board.highlight([])
-	_fulfil_checks.clear()
-	_status_goal_checks.clear()
-	_bonus_checks.clear()
-	_instead_checks.clear()
-	_event_goal_checks.clear()
-	_curse_goal_checks.clear()
-	_levelup_check = null
-
-# The checklist while you're CHOOSING: the goals already on you — the character's
-# level-up challenge, and every follower's outstanding goal (any of which you may
-# clear during whatever game you pick next, §2). Answering "what do I need to do?"
-# belongs BEFORE you commit to a game, not only after, so the panel keeps its place
-# beside the board instead of appearing out of nowhere on pick.
-#
-# Read-only by design: there is nothing to report until a game is in play, so these
-# are rows rather than tick boxes.
 func _populate_standing_checklist() -> void:
-	var sig: String = _standing_checklist_sig()
-	if sig == _checklist_sig and _verify_box.get_child_count() > 0:
-		return
-	_checklist_sig = sig
-	_clear(_launch_row)
-	_clear(_verify_box)
-	_reset_checklist_state()
-	_verify_box.add_child(_verify_head("What you need to do:"))
+	if _checklist != null:
+		_checklist.populate_standing()
 
-	var ch: CharacterData = Data.get_character2(GameState.character_id)
-	if ch != null and ch.level_up_condition != "":
-		var lu_text: String = "Level up — %s" % ch.level_up_condition
-		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
-			lu_text += "   → %s" % ch.level_up_reward
-		_verify_box.add_child(_objective_row(lu_text, UITheme.GOLD))
+func _resolve_event_goal_rows() -> void:
+	if _checklist != null:
+		_checklist.resolve_event_goals()
 
-	# Event goals and curses, read-only (docs/event-sheet-authoring.md §5). These
-	# have to be here and not only on the report step: an event fires the moment a
-	# game is beaten, and the goal it hands over lands while the player is still
-	# looking at the OFFERING. Listing it only once a game is picked meant taking
-	# on "beat a game in 1 attempt" and then being shown nothing about it until
-	# after the decision it was supposed to inform.
-	for goal in GameState.event_goals:
-		var left: int = int(goal.get("games_left", 0))
-		_verify_box.add_child(_objective_row("Event goal — %s   → %s   (%d %s left)" % [
-			goal.get("condition", ""), goal.get("effects_text", ""),
-			left, "game" if left == 1 else "games"], UITheme.ACCENT))
-	for entry in GameState.curse_goals:
-		var cd: CurseData2 = Data.get_curse2(StringName(entry.get("curse", &"")))
-		if cd == null:
-			continue
-		var left: int = int(entry.get("games_left", 0))
-		# The same instruction the report step will ask about, because this list is
-		# headed "What you need to do" and the answer for a curse is the thing to
-		# do, not the rule it is derived from.
-		_verify_box.add_child(_objective_row("%s — %s   if failed, %s   (%s)" % [
-			cd.display_name, cd.goal_text(), cd.penalty_text,
-			CurseData2.window_text(left)], UITheme.CURSE))
+func _announce_status_penalties(res: Dictionary) -> void:
+	if _checklist != null:
+		_checklist.announce_status_penalties(res)
 
-	# The player's standing status buffs (§13) — goals that belong to no enemy and
-	# are available at whatever game gets picked next.
-	for row in GameState.status_objectives():
-		var sd: StatusData = row["status"]
-		var stacks: int = int(row["stacks"])
-		_verify_box.add_child(_objective_row(
-			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.PLAYER, stacks)],
-			_status_row_tint(sd)))
-
-	# Followers, tinted the way the board tints them: the ones in the front column
-	# are the goals worth clearing first, because they hit next game.
-	for entry in GameLoop2.stack:
-		var e: GoalEnemyData = entry["enemy"]
-		var urgent: bool = GameLoop2.in_front(entry)
-		var tint: Color = UITheme.DANGER if urgent else UITheme.GOLD.lerp(UITheme.TEXT, 0.4)
-		# Goal first, then whose it is — same order as the report step, since these
-		# are the same list in two states and the goal is what's being read for.
-		# "dmg N" in words: the board's ⚔ badge is a fine-detail glyph that reads as
-		# an ✕ at list-row sizes.
-		var inst: int = int(entry.get("instance", 0))
-		_verify_box.add_child(_objective_row(
-			"%s — %s   (dmg %d)" % [GameLoop2.goal_text_for(entry), e.display_name, e.damage],
-			tint, _boss_icon(e), inst))
-		# The way out of that goal, if something burned this body (§13) — read here
-		# rather than only on the report step, because it is a reason to play the
-		# next game differently and this list is what is read before choosing one.
-		for alt in GameLoop2.alternatives_for(entry):
-			var asd: StatusData = alt["status"]
-			var astacks: int = int(alt["stacks"])
-			_verify_box.add_child(_objective_row("%s or instead: %s" % [
-				_status_prefix(asd, astacks),
-				asd.alternative_text(StatusData.ENEMY, astacks)],
-				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst))
-		for bonus in GameLoop2.bonus_objectives_for(entry):
-			var sd: StatusData = bonus["status"]
-			var stacks: int = int(bonus["stacks"])
-			_verify_box.add_child(_objective_row(
-				"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
-				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst))
-
-	if GameLoop2.stack.is_empty() and GameState.status_objectives().is_empty():
-		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")
-		_verify_box.add_child(none)
-
-# Everything the standing checklist draws, as one string — the guard for the
-# rebuild above (see the repaint-guard block near the top of the file).
-#
-# It quotes the SAME calls the rebuild does rather than a summary of them
-# (`goal_text_for` is the row's actual text, `in_front` is its tint), so a row
-# whose wording changes for any reason at all changes the signature with it. That
-# costs those calls twice on a rebuild, which is fine: they are string work, and
-# what a rebuild actually pays for is the Labels.
-#
-# `_launch_row` is not represented because this function always leaves it empty —
-# only the report step (_populate_play_panel) puts anything in it.
-func _standing_checklist_sig() -> String:
-	var parts: PackedStringArray = PackedStringArray()
-	var ch: CharacterData = Data.get_character2(GameState.character_id)
-	if ch != null:
-		parts.append("%s/%s" % [ch.level_up_condition, ch.level_up_reward])
-	parts.append(str(GameState.event_goals))
-	parts.append(str(GameState.curse_goals))
-	for row in GameState.status_objectives():
-		parts.append("%s:%d" % [String((row["status"] as StatusData).id), int(row["stacks"])])
-	for entry in GameLoop2.stack:
-		var e: GoalEnemyData = entry["enemy"]
-		parts.append("%d:%s:%s:%d:%s" % [int(entry.get("instance", 0)),
-			GameLoop2.goal_text_for(entry), e.display_name, e.damage,
-			str(GameLoop2.in_front(entry))])
-		for alt in GameLoop2.alternatives_for(entry):
-			parts.append("/%s:%d" % [String((alt["status"] as StatusData).id),
-				int(alt["stacks"])])
-		for bonus in GameLoop2.bonus_objectives_for(entry):
-			parts.append("+%s:%d" % [String((bonus["status"] as StatusData).id),
-				int(bonus["stacks"])])
-	return "|".join(parts)
-
-# --- the checklist and the board, pointing at each other -------------------
-#
-# A goal on the checklist and a body on the board are the same fact written
-# twice, and until now nothing said which line went with which enemy: a list of
-# four goals beside a board of four bodies left the player matching them up by
-# name. So the pair is LIT FROM EITHER END. Hovering a goal row brightens the
-# enemies it belongs to; hovering an enemy brightens its row. One binding does
-# both directions, because they are the same relation read from opposite sides.
-#
-# `instance` 0 means the row belongs to no body (the level-up challenge, an event
-# goal, a player status): those rows bind nothing and stay inert.
-
-# Bind one checklist row to one body. `paint` is called with whether the row
-# should read as lit; it is kept per instance so the board's hover can find it.
-#
-# Call this once the row is FULLY BUILT: the whole row is the hover target, and
-# what makes that work is walking what is actually in it.
 func _bind_row_to_body(row: Control, instance: int, paint: Callable) -> void:
-	if instance <= 0:
-		return
-	var rows: Array = _row_paints.get(instance, [])
-	rows.append(paint)
-	_row_paints[instance] = rows
-	# The frame passes its clicks on, as it always has — it is a highlight, not a
-	# button, and the page under it scrolls.
-	row.mouse_filter = Control.MOUSE_FILTER_PASS
-	_bind_hover(row, func(): _light_bodies([instance]), func(): _light_bodies([]))
+	if _checklist != null:
+		_checklist.bind_row_to_body(row, instance, paint)
 
-
-# Hover on a ROW, not on the sliver of it nothing else claimed.
-#
-# Godot sends mouse_entered to the ONE control under the cursor — a MOUSE_FILTER
-# PASS ancestor hears nothing while a STOP child has the pointer. A checklist row
-# is a frame containing a full-width CheckBox and a Notes button, both STOP, so
-# binding the frame alone left the goal lighting its enemy only from the two or
-# three pixels of padding around the box: hover the row anywhere a player would
-# actually aim and nothing happened. So every descendant carries the same pair.
-#
-# The exit is positional rather than a plain "leave one of them": crossing from
-# the checkbox to the Notes button fires an exit and an enter in the same frame,
-# and treating that as a departure made the highlight flicker along the row. If
-# the pointer is still inside the frame, the row was never left.
-func _bind_hover(frame: Control, on_enter: Callable, on_exit: Callable) -> void:
-	var leave := func() -> void:
-		if not is_instance_valid(frame) or not frame.get_global_rect().has_point(
-				frame.get_global_mouse_position()):
-			on_exit.call()
-	for node in _hover_targets(frame):
-		if node.mouse_filter == Control.MOUSE_FILTER_IGNORE:
-			# A Label is IGNORE by default and never reports anything; it is also
-			# most of a checklist row's width. PASS lets it report the hover while
-			# still handing the click to whatever is underneath.
-			node.mouse_filter = Control.MOUSE_FILTER_PASS
-		node.mouse_entered.connect(on_enter)
-		node.mouse_exited.connect(leave)
-
-
-# `frame` and every Control under it.
-func _hover_targets(frame: Control) -> Array:
-	var out: Array = [frame]
-	for child in frame.get_children():
-		if child is Control:
-			out.append_array(_hover_targets(child))
-	return out
-
-# Light `instances` on the BOARD (and, so the two halves never disagree, the rows
-# that belong to them). Passing [] clears.
 func _light_bodies(instances: Array) -> void:
-	var want: Dictionary = {}
-	for inst in instances:
-		want[int(inst)] = true
-	if want == _lit_instances:
-		return
-	var touched: Dictionary = _lit_instances.duplicate()
-	for inst in want:
-		touched[inst] = true
-	_lit_instances = want
-	for inst in touched:
-		for paint in _row_paints.get(inst, []):
-			if (paint as Callable).is_valid():
-				(paint as Callable).call(_lit_instances.has(inst))
-	if _board != null:
-		_board.highlight(_lit_instances.keys())
+	if _checklist != null:
+		_checklist.light_bodies(instances)
 
-# The other direction: the mouse crossed a body on the board.
 func _on_enemy_hovered(instance: int, hovered: bool) -> void:
-	_light_bodies([instance] if hovered else [])
+	if _checklist != null:
+		_checklist.on_enemy_hovered(instance, hovered)
 
-# One read-only checklist row: the same frame the tick-box rows use, without the
-# box, so the standing list and the report step read as the same list in two
-# states. `icon` is the boss portrait, when the row belongs to one (_boss_icon);
-# `instance` is the body on the board this goal belongs to, which is what pairs
-# the row with the enemy in both directions (_bind_row_to_body).
-func _objective_row(text: String, color: Color, icon: Texture2D = null,
-		instance: int = 0) -> Control:
-	var wrap := PanelContainer.new()
-	var idle: StyleBox = UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 1,
-		color.lerp(UITheme.BORDER, 0.35))
-	var lit: StyleBox = UITheme.flat(color.lerp(UITheme.BG, 0.78), 5, 4, 2,
-		color.lerp(Color.WHITE, 0.35))
-	wrap.add_theme_stylebox_override("panel", idle)
-	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", 6)
-	wrap.add_child(line)
-	if icon != null:
-		line.add_child(_boss_icon_rect(icon))
-	var l := Label.new()
-	l.text = "•  " + text
-	l.add_theme_font_size_override("font_size", 13)
-	l.add_theme_color_override("font_color", color)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	line.add_child(l)
-	# Bound last: the hover covers what is IN the row, so the row has to be in it.
-	_bind_row_to_body(wrap, instance, func(is_lit: bool) -> void:
-		if is_instance_valid(wrap):
-			wrap.add_theme_stylebox_override("panel", lit if is_lit else idle))
-	return wrap
+func _hover_targets(frame: Control) -> Array:
+	return _checklist.hover_targets(frame) if _checklist != null else [frame]
 
-# A BOSS is the one thing on the checklist that isn't just another line of text:
-# it's the difficulty gate the run is standing in front of (§7.1). Its portrait
-# rides beside its name in both checklists, so "which of these is the boss" is
-# answered by looking rather than by remembering the name.
-const BOSS_ICON_SIZE := 26
-
-func _boss_icon(enemy: GoalEnemyData) -> Texture2D:
-	if enemy == null or not enemy.is_boss():
-		return null
-	return enemy.image
-
-func _boss_icon_rect(icon: Texture2D) -> Control:
-	var frame := PanelContainer.new()
-	frame.add_theme_stylebox_override("panel",
-		UITheme.flat(UITheme.BG, 4, 2, 1, Color(0.95, 0.55, 0.2)))
-	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	frame.tooltip_text = "Boss"
-	frame.add_child(UITheme.crisp_tex(icon, BOSS_ICON_SIZE))
-	return frame
-
-# One checklist row: a bordered CheckBox tinted `color`; `emphasise` gives the
-# main-goal row a heavier border so it reads as the primary question. Kept to a
-# single tight line each — the stage above it is the board, and the checklist has
-# to stay a glanceable list rather than a stack of cards.
-# One checklist line. When `enemy` is given the row also carries a Notes button
-# on the right, for writing down how this enemy was actually beaten AT this game
-# — the note belongs to the pair, and the Atlas surfaces it on the game later.
 func _verify_row(text: String, color: Color, emphasise: bool,
 		enemy: GoalEnemyData = null, character: CharacterData = null,
 		instance: int = 0) -> Dictionary:
-	var wrap := PanelContainer.new()
-	var border: Color = color.lerp(UITheme.BORDER, 0.35)
-	var width: int = 2 if emphasise else 1
-	var idle: StyleBox = UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, width, border)
-	# The WHOLE ROW answers, not just the box: a ticked row goes green-washed and
-	# green-rimmed, so a filled checklist reads at a glance from the board beside
-	# it rather than needing each little box squinted at in turn.
-	var ticked_box: StyleBox = UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.80), 5, 4,
-		maxi(width, 2), UITheme.SUCCESS.lerp(UITheme.BORDER, 0.15))
-	# …and a LIT row is the third state: the board beside this list is pointing at
-	# the body this goal belongs to (see _bind_row_to_body).
-	var lit: StyleBox = UITheme.flat(color.lerp(UITheme.BG, 0.78), 5, 4,
-		maxi(width, 2), color.lerp(Color.WHITE, 0.35))
-	var ticked := {"on": false}
-	var paint := func(is_lit: bool) -> void:
-		if not is_instance_valid(wrap):
-			return
-		if bool(ticked["on"]):
-			wrap.add_theme_stylebox_override("panel", ticked_box)
-		else:
-			wrap.add_theme_stylebox_override("panel", lit if is_lit else idle)
-	wrap.add_theme_stylebox_override("panel", idle)
-	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", 8)
-	wrap.add_child(line)
-	# A boss's own portrait, right where its name is about to be read.
-	var boss_art: Texture2D = _boss_icon(enemy)
-	if boss_art != null:
-		line.add_child(_boss_icon_rect(boss_art))
-	var cb := CheckBox.new()
-	cb.text = text
-	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# A level-up clause reads "Use sorrow or self-inflicted pain as a weapon →
-	# Gain +1 Small Chest and +1 Scramble", and an unwrapped CheckBox claims every
-	# pixel of that as its minimum width — which is what pushed the left column to
-	# 772px and put a horizontal scrollbar under the whole page. Wrapped, the row
-	# is as tall as it needs and as wide as it is given.
-	cb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	cb.add_theme_font_size_override("font_size", 13)
-	cb.add_theme_color_override("font_color", color)
-	cb.add_theme_color_override("font_pressed_color", color)
-	cb.add_theme_color_override("font_hover_color", UITheme.GOLD)
-	cb.toggled.connect(func(on: bool):
-		ticked["on"] = on
-		paint.call(_lit_instances.has(instance))
-		cb.add_theme_color_override("font_color",
-			UITheme.SUCCESS.lerp(Color.WHITE, 0.55) if on else color))
-	line.add_child(cb)
-	var game: GameData = _chosen.get("game")
-	if game != null:
-		if enemy != null:
-			line.add_child(_notes_button(game, enemy))
-		elif character != null:
-			line.add_child(_levelup_notes_button(game, character))
-	# Bound last: the hover covers what is IN the row, so the row has to be in it.
-	_bind_row_to_body(wrap, instance, paint)
-	return {"row": wrap, "check": cb}
-
-# The per-row Notes button. Shows a filled glyph once something is written, so a
-# game you've already annotated reads at a glance.
-func _notes_button(game: GameData, enemy: GoalEnemyData) -> Button:
-	return _note_button_for(
-		"Write down how you beat %s here" % enemy.display_name,
-		func(): return GameStats.enemy_note(game.id, enemy.id),
-		func(refresh): EnemyNoteModal.open(self, game, enemy, refresh))
-
-# The same button for the level-up row, writing the (game, character) note.
-func _levelup_notes_button(game: GameData, character: CharacterData) -> Button:
-	return _note_button_for(
-		"Write down how you hit %s's level-up here" % character.display_name,
-		func(): return GameStats.level_up_note(game.id, character.id),
-		func(refresh): EnemyNoteModal.open_level_up(self, game, character, refresh))
-
-# Shared shape for both: `read` answers the current text (so the glyph can say
-# whether there is one) and `open` is handed the refresh to call on save.
-func _note_button_for(tip: String, read: Callable, open: Callable) -> Button:
-	var b := Button.new()
-	b.add_theme_font_size_override("font_size", 11)
-	b.tooltip_text = tip
-	var refresh := func():
-		var has: bool = String(read.call()).strip_edges() != ""
-		b.text = "🗒 Notes ✎" if has else "🗒 Notes"
-		b.add_theme_color_override("font_color", UITheme.GOLD if has else UITheme.TEXT_DIM)
-	refresh.call()
-	b.pressed.connect(func(): open.call(refresh))
-	return b
-
-func _verify_head(text: String) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", 12)
-	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	return l
+	return _checklist.verify_row(text, color, emphasise, enemy, character, instance)
 
 # Open the tier-list rating prompt for `game` (1-10 + optional notes). Submitting
 # records the score via TierList (dropping the game into the Unranked tray the
@@ -3920,38 +3000,16 @@ func _show_header(shown: bool) -> void:
 
 # The instances the player ticked as fulfilled this game.
 func _ticked_fulfilments() -> Array:
-	var out: Array = []
-	for f in _fulfil_checks:
-		if is_instance_valid(f["check"]) and f["check"].button_pressed:
-			out.append(f["instance"])
-	return out
+	return _checklist.ticked_fulfilments() if _checklist != null else []
 
-# The ticked STATUS rows, in the shape beat_game's `claims` wants (§13): the
-# player-side rows met this game (the buff goals, and the `demand` rows whose price
-# is dodged by answering them), the enemy bonus objectives claimed, and the goals
-# cleared the OTHER way.
-#
-# The `instead` ticks are a separate list all the way through — never folded into
-# `_ticked_fulfilments` — because the report records a defeat for every fulfilment
-# it is handed, and these are exactly the clears that must leave no record.
-#
-# Returned even when nothing at all is ticked, unlike before: an EMPTY report is
-# the answer a missed `demand` is billed for, and a caller handed {} could not tell
-# "nothing was ticked" from "no checklist asked".
+# The ticked STATUS rows, in the shape beat_game's `claims` wants (§13). Returned
+# even when nothing at all is ticked: an EMPTY report is the answer a missed
+# `demand` is billed for, and a caller handed {} could not tell "nothing was
+# ticked" from "no checklist asked".
 func _ticked_status_claims() -> Dictionary:
-	var goals: Array = []
-	for s in _status_goal_checks:
-		if is_instance_valid(s["check"]) and s["check"].button_pressed:
-			goals.append(s["status"])
-	var bonuses: Array = []
-	for b in _bonus_checks:
-		if is_instance_valid(b["check"]) and b["check"].button_pressed:
-			bonuses.append({"instance": b["instance"], "status": b["status"]})
-	var instead: Array = []
-	for i in _instead_checks:
-		if is_instance_valid(i["check"]) and i["check"].button_pressed:
-			instead.append({"instance": i["instance"], "status": i["status"]})
-	return {"status_goals": goals, "bonuses": bonuses, "instead": instead}
+	if _checklist == null:
+		return {"status_goals": [], "bonuses": [], "instead": []}
+	return _checklist.ticked_status_claims()
 
 # Apply one level-up for the 2.0 character (§3.1): its level_up_stats plus the
 # reward, then re-roll for a Crown-style bonus level. Reuses GameState's existing
@@ -4002,142 +3060,6 @@ func _roll_bonus_level_up() -> bool:
 			return true
 	return false
 
-func _show_preview(index: int) -> void:
-	if index < 0 or index >= _choices.size():
-		return
-	# A destination card grants no tries — it isn't a game being started (§10).
-	_hover_grant = -1 if _asking_return() else GameLoop2.shields_for_game(_choices[index]["game"])
-	_preview.text = _hover_line(_choices[index])
-	_show_hover_art(_choices[index])
-
-# The portrait beside the hover line: the body this card would put on the board.
-#
-# Blank for the stay-or-return pair (they spawn nothing), for a free game with no
-# enemy, and under the Runic Dome — the relic hides WHAT is waiting, and a picture
-# gives that away far more completely than a name would.
-func _show_hover_art(choice: Dictionary) -> void:
-	if _preview_art == null or not is_instance_valid(_preview_art):
-		return
-	var tex: Texture2D = null
-	if not choice.is_empty() and not choice.has("stay") and not _enemy_hidden(choice):
-		tex = _enemy_texture(choice)
-	_preview_art.texture = tex
-	_preview_art.visible = tex != null
-
-# The mouse left a card: the line stays as a reference, but the grant number and
-# the portrait go with the hover, so neither can advertise a game you're not
-# pointing at.
-func _clear_hover_grant() -> void:
-	_show_hover_art({})
-	if _hover_grant < 0:
-		return
-	_hover_grant = -1
-	_preview.text = _preview_idle_text()
-
-# What the hover line says with nothing hovered — which is a different sentence
-# when the two cards on the table are the ends of a detour rather than games to
-# go and play (§10).
-func _preview_idle_text() -> String:
-	if _phase == Phase.START_SELECT:
-		return "[i]Hover a start to see what it opens on.[/i]"
-	if _asking_return():
-		return "[i]The detour is over. Open either game to see the road from it, then take the one you want to carry on from.[/i]"
-	return "[i]Hover a game to see the enemy it would spawn — click it for the route, the goal and the way in.[/i]"
-
-# The enemy's art (§10.1) for a choice, or null when there's no enemy.
-func _enemy_texture(choice: Dictionary) -> Texture2D:
-	var e: GoalEnemyData = choice.get("enemy")
-	return e.image if e != null else null
-
-# Runic Dome (§7.1): whether this card's enemy is hidden. Only ever true for a
-# game being OFFERED — the relic buys a column of board with the routing decision,
-# not with the game you are standing on, so the moment a game is committed to its
-# enemy is on the board and describes itself like any other.
-func _enemy_hidden(choice: Dictionary) -> bool:
-	if not GameState.hides_upcoming_enemies():
-		return false
-	if choice.get("enemy") == null:
-		return false
-	var landed: Dictionary = GameLoop2.arrival()
-	return landed.is_empty() or landed.get("enemy") != choice.get("enemy")
-
-# What a hidden card says instead. Named rather than inlined because three
-# screens say it (the hover line, the now-playing panel, GameChoiceModal) and
-# they must not each invent their own wording for the same blank.
-const HIDDEN_ENEMY_TEXT := "something you can't see"
-
-# THE ESCORT (§7.5), said before it exists. The second body is rolled on ARRIVAL,
-# so a card cannot name it — but it must not stay quiet about it either: "how many
-# bodies does this put on the board" is half of what the routing decision is
-# about, and a card that showed one enemy and delivered two would be lying by
-# omission. So the card promises the count and withholds the name.
-const ESCORT_WARNING := "⚠ One more enemy spawns with it — which one is rolled on arrival."
-const ESCORT_WARNING_SHORT := "⚠ +1 more"
-
-# Whether committing to `choice` will put a SECOND body on the board. False for a
-# BOSS round — a boss spawns solo, the tier change being step-up enough on its own
-# (GameLoop2._spawn_escort) — for a free game with no enemy at all, and for the
-# stay-or-return card, which spawns nothing either way.
-func _escort_expected(choice: Dictionary) -> bool:
-	if choice.is_empty() or choice.has("stay"):
-		return false
-	if choice.get("enemy") == null or bool(choice.get("boss", false)):
-		return false
-	return not Data.all_goal_enemies().is_empty()
-
-# The escort's line for a card: a WARNING while the game is still an offer, and
-# the body's NAME once the game has been committed to and the roll has happened.
-# Empty when this card brings no escort. One function, because the offering, the
-# popup and the now-playing panel all have to say the same thing about it.
-func _escort_note(choice: Dictionary) -> String:
-	var landed: Dictionary = GameLoop2.arrival()
-	if not landed.is_empty() and choice.get("enemy") != null \
-			and landed.get("enemy") == choice.get("enemy"):
-		var escort: GoalEnemyData = GameLoop2.escort_enemy()
-		return "" if escort == null else "⚠ %s spawned alongside it." % escort.display_name
-	return ESCORT_WARNING if _escort_expected(choice) else ""
-
-# The hover, on ONE line: the enemy this card would put on the board, the goal you
-# would be playing for, and the TRIES it hands you. The tries used to be a slot on
-# the HUD that previewed on hover; the HUD has gone, and this is the line that was
-# already answering "what is that card" — so the number rides here instead of
-# being the last thing keeping a panel alive.
-func _hover_line(choice: Dictionary) -> String:
-	var game: GameData = choice["game"]
-	var e: GoalEnemyData = choice.get("enemy")
-	if choice.has("stay"):
-		return "[b]%s[/b]  ·  [i]%s[/i]" % [game.display_name,
-			"stay here and carry on from this game"
-			if bool(choice["stay"]) else "head back and carry on from there"]
-	var tries: String = "  ·  [color=#%s]◆ %d tries[/color]" % [
-		SHIELD_BLUE.to_html(false), _hover_grant] if _hover_grant >= 0 else ""
-	if e == null:
-		return "[b]%s[/b]  ·  [i]no enemy — free game[/i]%s" % [game.display_name, tries]
-	# The escort rides even the hidden line: the Dome hides WHAT is waiting, and how
-	# many bodies arrive is not part of what it was bought to hide.
-	var escort: String = "  ·  [color=#%s]%s[/color]" % [
-		UITheme.DANGER.to_html(false), ESCORT_WARNING_SHORT] if _escort_expected(choice) else ""
-	# Under the Runic Dome there is no enemy line to give: the goal is the enemy's,
-	# so hiding the name and quoting the goal would give the whole thing away.
-	if _enemy_hidden(choice):
-		return "[b]%s[/b]  →  [i]%s[/i]%s%s" % [
-			game.display_name, HIDDEN_ENEMY_TEXT, escort, tries]
-	var kind: String = "[color=#e0b020]☠ [/color]" if choice["boss"] else ""
-	return "[b]%s[/b]  →  %s%s  ·  %s%s%s" % [
-		game.display_name, kind, e.display_name,
-		GameLoop2.goal_text_for(_preview_entry(choice)), escort, tries]
-
-# The board entry to read a `choice`'s goal line off (§13). Once the card has been
-# taken, that is the live body it put on the board, statuses and all. For an
-# OFFERED card there is no body yet — but the player's own clauses tax every
-# enemy's goal, so the preview is built against a bare stand-in rather than
-# falling back to the unmodified stem: what a card will actually cost you is part
-# of the routing decision, not a surprise waiting on the report step.
-func _preview_entry(choice: Dictionary) -> Dictionary:
-	var landed: Dictionary = GameLoop2.arrival()
-	if not landed.is_empty() and landed.get("enemy") == choice.get("enemy"):
-		return landed
-	return {"enemy": choice.get("enemy"), "statuses": {}}
 
 # The line beside the cover on the report panel: WHAT YOU ARE PLAYING, and what
 # taking it put on the board.
@@ -4340,223 +3262,14 @@ func _refresh_select_stats() -> void:
 		+ "side to land on.\nA 25%% chance is really %s%% at this much Luck."
 		% EventSystem.percent_text(Stats.effective_chance(25.0, Stats.Favour.HIGH))))
 
-# The pack, as a STRIP of small tokens above the board rather than a list of
-# named rows beside it. A run ends up carrying a dozen relics and a dozen named
-# rows is a column taller than the battlefield; at 34px a whole pack is two rows
-# of art. The name, the rarity, what it does and how to fire it all move into the
-# tooltip, which is where they were being read from anyway.
-#
-# An ACTIVE (USABLE / CHARGED) token is the button: clicking it fires the item
-# when it can fire, and it wears a gold ring to say so. Passive and triggered
-# items are just art. Actives are locked while a game is being reported — the
-# report step is mid-resolve, so firing an item there would land between "played
-# the game" and "said what happened".
-const ITEM_TOKEN := 34
-# Height of the Use button / charge battery that sits above an active item's tile.
-const ITEM_USE_H := 14
-
+# The pack strip above the board is built by PackStrip; the page owns the
+# container and decides WHEN it is redrawn, the strip decides what goes in it.
+# `_phase` is read here rather than there so the strip needs nothing of the
+# page's state — only the one bit of it that changes what a token can do.
 func _refresh_items() -> void:
-	if _items_box == null:
+	if _pack == null:
 		return
-	_clear(_items_box)
-	var reporting: bool = _phase == Phase.PLAYING
-	var scrolls: Array = GameState.loot_scrolls()
-	if GameState.inventory.is_empty() and scrolls.is_empty():
-		_items_box.add_child(_empty_note("nothing carried yet"))
-		return
-	for item in GameState.inventory:
-		if not (item is ItemData):
-			continue
-		_items_box.add_child(_item_token(item, reporting))
-	# Scrolls ride the same strip. loot_scrolls() preserves pickup order; each is
-	# mapped back to its loot_items index so reading one consumes the right entry.
-	for entry in scrolls:
-		_items_box.add_child(_scroll_token(GameState.loot_items.find(entry), entry, reporting))
-
-# One carried scroll, as a token on the pack strip (§4.1). It is drawn like an
-# item's tile and read like an item's Use button — one click, because reading IS
-# the only thing a scroll does and there is no card to separate looking from
-# spending. Locked while a game is being reported, exactly as an active item is:
-# the report step is mid-resolve, and a teleport landing there would fall between
-# "played the game" and "said what happened".
-func _scroll_token(idx: int, entry: Dictionary, reporting: bool) -> Control:
-	var scroll: ScrollData = Data.get_scroll(StringName(entry.get("id", "")))
-	var name: String = ScrollSystem.display_name(scroll) if scroll != null else "Scroll"
-	var tint: Color = UITheme.ACCENT
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 2)
-	col.size_flags_vertical = Control.SIZE_SHRINK_END
-	col.tooltip_text = "📜 %s\n%s" % [name,
-		"Locked while you're reporting a game." if reporting else "Click to read it — this spends the scroll."]
-
-	var read := Button.new()
-	read.text = "Read"
-	read.disabled = reporting
-	read.custom_minimum_size = Vector2(ITEM_TOKEN, ITEM_USE_H)
-	read.add_theme_font_size_override("font_size", 9)
-	read.tooltip_text = col.tooltip_text
-	read.add_theme_stylebox_override("normal", UITheme.flat(tint.lerp(UITheme.BG, 0.55), 3, 0, 1, tint))
-	read.add_theme_stylebox_override("hover", UITheme.flat(tint.lerp(UITheme.BG, 0.35), 3, 0, 1, tint))
-	read.add_theme_color_override("font_color", UITheme.TEXT)
-	read.pressed.connect(func(): read_scroll(idx))
-	col.add_child(read)
-
-	var tile := PanelContainer.new()
-	tile.add_theme_stylebox_override("panel",
-		UITheme.flat(tint.lerp(UITheme.BG, 0.86), 5, 3, 1, tint.lerp(UITheme.BG, 0.45)))
-	tile.tooltip_text = col.tooltip_text
-	col.add_child(tile)
-	var art := UITheme.crisp_tex(ScrollSystem.art_texture(scroll) if scroll != null else null, ITEM_TOKEN)
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tile.add_child(art)
-	return col
-
-# One item in the pack: the art tile, with its FIRING control above it when the
-# item has one. Reading and spending are deliberately separate gestures — clicking
-# the tile opens the item's card (§ItemInfoCard), and only the control above it
-# ever spends a charge, so inspecting an item can't cost you one.
-#
-# A USABLE item gets a plain Use button. A CHARGED item gets a battery: one
-# rectangle per charge, filling as it recharges, and at full it becomes the same
-# Use button — so the bar answers "how long until I can" and "can I now" in the
-# same strip of pixels.
-func _item_token(item: ItemData, reporting: bool) -> Control:
-	var tint: Color = UITheme.item_color(item)
-	var active: bool = item.kind == ItemData.ItemKind.USABLE or item.is_charged()
-	var ready: bool = active and GameState.can_fire_item(item) and not reporting
-
-	# Bottom-aligned so every art tile sits on one baseline whether or not the item
-	# above it grew a Use button — a ragged row of tiles reads as a bug.
-	var col := HoverBox.new()
-	col.add_theme_constant_override("separation", 2)
-	col.size_flags_vertical = Control.SIZE_SHRINK_END
-	# The whole column answers the hover, not only the art tile — the Use button
-	# and the battery override it with their own, so every pixel of an item says
-	# something rather than the gap above the tile saying nothing.
-	var card: Dictionary = item_hover(item, active, ready, reporting)
-	HoverCard.attach(col, card)
-	if active:
-		col.add_child(_item_fire_control(item, ready, reporting))
-
-	var tile := HoverPanel.new()
-	var border: Color = UITheme.GOLD if ready else tint.lerp(UITheme.BG, 0.45)
-	tile.add_theme_stylebox_override("panel",
-		UITheme.flat(tint.lerp(UITheme.BG, 0.86), 5, 3, 2 if ready else 1, border))
-	HoverCard.attach(tile, card)
-	tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	col.add_child(tile)
-
-	var stack := Control.new()
-	stack.custom_minimum_size = Vector2(ITEM_TOKEN, ITEM_TOKEN)
-	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tile.add_child(stack)
-	var art := UITheme.crisp_tex(item.image, ITEM_TOKEN)
-	art.set_anchors_preset(Control.PRESET_FULL_RECT)
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stack.add_child(art)
-	var badge: Control = _counter_badge(item)
-	if badge != null:
-		stack.add_child(badge)
-
-	var target_item: ItemData = item
-	tile.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			open_item_card(target_item))
-	return col
-
-# An INCREMENTAL relic's counter, drawn in the bottom-right corner of its own art
-# — Slay the Spire's relic counters, in the same corner and for the same reason:
-# the number belongs to the picture of the thing, so a row of relics can be read
-# in one glance without any of them growing a caption.
-#
-# Just the number it is ON, not "2/3". The threshold is what the item's text says
-# and does not change; the count is the only part that moves, and a fraction
-# doubles the pixels to say the same thing. Returns null for everything that is
-# not incremental, which is almost every item.
-#
-# Public in spirit — the drop modal and the shop shelf draw the same tiles — but
-# they show TEMPLATES, whose counter is always 0, so only the pack calls it.
-func _counter_badge(item: ItemData) -> Control:
-	var spec: Dictionary = item.incremental_spec()
-	if spec.is_empty():
-		return null
-	var count: int = maxi(0, item.counter_value)
-	var wrap := PanelContainer.new()
-	wrap.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	wrap.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	wrap.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Its own dark plate rather than bare text on the art: item art is 852 games'
-	# worth of colours and a naked glyph is illegible over half of them.
-	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.06, 0.06, 0.09, 0.88), 3, 3, 1, UITheme.GOLD))
-	var label := Label.new()
-	label.text = str(count)
-	label.add_theme_font_size_override("font_size", 10)
-	label.add_theme_color_override("font_color", UITheme.GOLD)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wrap.add_child(label)
-	return wrap
-
-# The control above an active item's tile. Full charge (or a Usable item, which
-# has none) reads "Use" and fires; a partial charge is the battery, showing how
-# many beats are left before it does.
-func _item_fire_control(item: ItemData, ready: bool, reporting: bool) -> Control:
-	if ready:
-		var btn := Button.new()
-		btn.text = "Use"
-		btn.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
-		btn.add_theme_font_size_override("font_size", 10)
-		btn.add_theme_stylebox_override("normal",
-			UITheme.flat(Color(0.10, 0.22, 0.16, 0.95), 4, 1, 1, Color(0.4, 0.9, 0.6)))
-		btn.add_theme_stylebox_override("hover",
-			UITheme.flat(Color(0.14, 0.30, 0.21, 1.0), 4, 1, 1, Color(0.55, 1.0, 0.75)))
-		btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
-		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		btn.tooltip_text = "Use %s" % item.display_name
-		var target_item: ItemData = item
-		btn.pressed.connect(func(): use_item(target_item))
-		return btn
-	if item.is_charged():
-		return _charge_battery(item, reporting)
-	# A Usable item that can't fire right now (mid-report) — the slot stays, greyed,
-	# so the row doesn't reflow the moment a game is picked up.
-	var idle := Button.new()
-	idle.text = "Use"
-	idle.disabled = true
-	idle.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
-	idle.add_theme_font_size_override("font_size", 10)
-	idle.tooltip_text = "Finish reporting this game first."
-	return idle
-
-# A charged item's meter: one rectangle per charge, filled left to right. Isaac's
-# active-item bar turned on its side — the shape answers "how many beats left"
-# without reading a number, and it sits where the Use button will be so the swap
-# at full charge is the same strip changing state rather than a new control.
-func _charge_battery(item: ItemData, reporting: bool) -> Control:
-	var maxc: int = maxi(1, item.max_charge())
-	var have: int = clampi(item.current_charge, 0, maxc)
-	var wrap := PanelContainer.new()
-	wrap.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
-	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.10, 0.10, 0.13, 0.9), 2, 2, 1, UITheme.BORDER))
-	wrap.tooltip_text = "%s — %d/%d charged%s" % [item.display_name, have, maxc,
-		"; finish reporting this game to use it" if reporting else ""]
-	var cells := HBoxContainer.new()
-	cells.add_theme_constant_override("separation", 1)
-	cells.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wrap.add_child(cells)
-	for i in range(maxc):
-		var seg := PanelContainer.new()
-		seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		seg.custom_minimum_size = Vector2(3, ITEM_USE_H - 6)
-		var filled: bool = i < have
-		seg.add_theme_stylebox_override("panel", UITheme.flat(
-			UITheme.GOLD.lerp(UITheme.BG, 0.15) if filled else Color(0.18, 0.18, 0.22, 0.9),
-			1, 0, 0))
-		seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cells.add_child(seg)
-	return wrap
+	_pack.rebuild(_phase == Phase.PLAYING)
 
 # Open the reading card for one item. Firing from the card routes through the same
 # use_item the token's button does, so there is one spend path.
@@ -4578,45 +3291,11 @@ func _close_item_card() -> void:
 		_item_card.close()
 	_item_card = null
 
-# Everything the old named row said, in the tooltip the token carries.
-# The hover model for a carried item: the condensed version of the card its click
-# opens (ItemInfoCard). Its art, its name in its class colour, what it does, and
-# — for an active item — whether it can be fired right now, which is the one fact
-# about a relic that changes what you do in the next second.
-#
-# Public, and named for the thing rather than for the tooltip, because the shop's
-# shelf and the drop modal describe the same items and should come through here.
+# The hover model for a carried item, kept on the page as the name the shop's
+# shelf and the drop modal already reach for. PackStrip.item_hover is the one
+# implementation.
 func item_hover(item: ItemData, active: bool, ready: bool, reporting: bool) -> Dictionary:
-	var sub: String = UITheme.item_class_name(item)
-	if item.is_charged():
-		sub += "  ·  %d/%d charged" % [item.current_charge, item.max_charge()]
-	var counter: Dictionary = item.incremental_spec()
-	if not counter.is_empty():
-		sub += "  ·  %d/%d" % [item.counter_value, int(counter["every"])]
-	var note: String = ""
-	if active:
-		if ready:
-			note = "▸ Click the tile above to use it."
-		elif reporting:
-			note = "▸ Report this game first."
-		elif item.is_charged():
-			note = "▸ Charging."
-	return {
-		"title": item.display_name,
-		"subtitle": sub,
-		"accent": UITheme.item_color(item),
-		"art": item.image,
-		"lines": [String(item.description)],
-		"note": note,
-	}
-
-# The dim "there's nothing here" line the pack panels show when they're empty.
-func _empty_note(text: String) -> Label:
-	var l := Label.new()
-	l.text = "  (%s)" % text
-	l.add_theme_font_size_override("font_size", 12)
-	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	return l
+	return PackStrip.item_hover(item, active, ready, reporting)
 
 # One-line header above the follower cards: how many are on your tail and the
 # damage the stack lands on the next game beaten — which, once enemies take more
@@ -4981,7 +3660,7 @@ func _build_ui() -> void:
 	# a scroll away from the cards being chosen between; the two halves of the same
 	# decision — "where do I go" and "what is closing in on me" — were never on
 	# screen together. Stacked into the left column they are, at the cost of the
-	# covers being drawn half-size (COVER_SIZE).
+	# covers being drawn half-size (OfferingCards.COVER_SIZE).
 	var main_row := HBoxContainer.new()
 	main_row.add_theme_constant_override("separation", 12)
 	root.add_child(main_row)
@@ -5048,7 +3727,8 @@ func _build_ui() -> void:
 	# before they read its name, and the picture is what says "I have fought that
 	# before" while the cursor is still moving.
 	#
-	# So the art is back, BESIDE the line and sized BY it (see HOVER_ART): the row
+	# So the art is back, BESIDE the line and sized BY it (see OfferingCards.HOVER_ART):
+	# the row
 	# is the same 22px it was with no art on it, and the page's 720p budget doesn't
 	# move by a pixel. The row also keeps that height whether or not anything is
 	# hovered, so running the cursor along the offering never reflows the column
@@ -5059,7 +3739,7 @@ func _build_ui() -> void:
 	# Width only. The height comes from the row — SIZE_FILL against a line whose
 	# floor the label sets — and EXPAND_IGNORE_SIZE stops the texture's own
 	# dimensions from claiming any of it.
-	_preview_art.custom_minimum_size = Vector2(HOVER_ART, 0)
+	_preview_art.custom_minimum_size = Vector2(OfferingCards.HOVER_ART, 0)
 	_preview_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_preview_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_preview_art.size_flags_vertical = Control.SIZE_FILL
@@ -5073,6 +3753,9 @@ func _build_ui() -> void:
 	_preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hover_row.add_child(_preview)
 	_select_box.add_child(hover_row)
+	# Built here rather than in _ready: it fills these three, so it cannot exist
+	# before they do.
+	_offering = OfferingCards.new(self, _choices_row, _preview, _preview_art)
 
 	# The choosing charges, at the foot of the panel they're spent in. They used to
 	# be four numbers in the middle of a twelve-number HUD strip at the top of the
@@ -5125,6 +3808,7 @@ func _build_ui() -> void:
 	_items_box.add_theme_constant_override("h_separation", 4)
 	_items_box.add_theme_constant_override("v_separation", 4)
 	inv_box.add_child(_items_box)
+	_pack = PackStrip.new(self, _items_box)
 	_right_col.add_child(_inv_wrap)
 
 	_stage_panel = PanelContainer.new()
@@ -5187,7 +3871,7 @@ func _build_ui() -> void:
 	var np_box := _np_box
 	np_box.add_theme_constant_override("separation", 8)
 	_now_playing_cover = TextureRect.new()
-	_now_playing_cover.custom_minimum_size = COVER_SIZE * 0.72
+	_now_playing_cover.custom_minimum_size = OfferingCards.COVER_SIZE * 0.72
 	_now_playing_cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_now_playing_cover.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	var cover_frame := PanelContainer.new()
@@ -5217,6 +3901,9 @@ func _build_ui() -> void:
 	_verify_box = VBoxContainer.new()
 	_verify_box.add_theme_constant_override("separation", 3)
 	_play_panel.add_child(_verify_box)
+	# Built here rather than in _ready: it fills these two containers, so it cannot
+	# exist before they do.
+	_checklist = ReportChecklist.new(self, _verify_box, _launch_row)
 
 	var done := Button.new()
 	_done_btn = done

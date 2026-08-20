@@ -90,6 +90,20 @@ func _pick_solo(index: int) -> void:
 	if GameLoop2.escort_instance() > 0:
 		GameLoop2.despawn(GameLoop2.escort_instance())
 
+# Wait for the board's resolve playback to hand the screen back, however long it
+# runs. NOT a fixed sleep: a playback is one beat per TURN (§7.4) and a beat is
+# FX_ATTACK_TIME + FX_SLIDE_TIME = 0.89s, while the turn count is the run's
+# distance band (RunDifficulty.turns_for_hops) — 1 turn beyond 5 hops from the
+# Amulet, 2 inside that, 3 inside 3. So the same report plays for 0.89s, 1.78s
+# or 2.67s depending on where the RANDOM graph put the start.
+#
+# The fixed 1.2s await this replaced covered the one-turn case and nothing else,
+# which is why it failed on the occasional run and passed on the rerun: the
+# assert_false(_resolving) after it was only ever true at one turn a game. The
+# ceiling is 5.0s because the longest a playback can run is 2.67s.
+func _playback_done() -> void:
+	await wait_until(func(): return not _ui._resolving, 5.0)
+
 # An event fires after EVERY game now, so the opening game raises one and it is
 # sitting over the board for every test in this file that isn't about it. Closed
 # through the modal's own path rather than freed, so the chain behind it still
@@ -2617,7 +2631,7 @@ func test_the_offering_comes_back_while_the_board_still_plays() -> void:
 	# test is actually about.
 	_pick_solo(0)
 	_ui.report(false)
-	await wait_seconds(1.2)                   # let the first playback finish
+	await _playback_done()                    # let the first playback finish
 	assert_eq(GameLoop2.stack_size(), 1, "the miss left an enemy standing on the board")
 	assert_false(_ui._resolving, "and its own playback is done before the real test")
 
@@ -2628,7 +2642,7 @@ func test_the_offering_comes_back_while_the_board_still_plays() -> void:
 	assert_true(_ui._select_box.visible,
 		"and it is already on screen, with the board playing beside it")
 	assert_true(_ui._resolving, "the board is still playing the resolve back")
-	await wait_seconds(1.2)
+	await _playback_done()
 	assert_false(_ui._resolving, "which finishes on its own, with nothing to press")
 	assert_true(_ui._select_box.visible, "leaving the offering where it was")
 

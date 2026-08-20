@@ -42,30 +42,91 @@ checks at every size the UI uses. Three separate traps in one two-line change.
 
 ---
 
-## 1. `Overworld2.gd` is 5309 lines
+## 1. `Overworld2.gd` is 4260 lines
 
-More than double the next-biggest file (`AtlasView.gd`, 2764). It currently holds
-the run-loop view, the report checklist, the pinned header, the map plumbing, the
-shop and machine mounting, the charge chips, the offering cards, and the
-save/load view state.
+Down from 5573 — a 24% cut across three splits. Still the biggest file in the
+repo (`AtlasView.gd` is 2764), holding the run-loop view, the pinned header, the
+map plumbing, the shop and machine mounting, and the save/load view state.
 
-**Not urgent, and not a mechanical job.** The obvious seams, roughly in order of
-how cleanly they come out:
+**Not urgent, and not a mechanical job.** This file used to guess at the seams;
+they are measured now. The number that matters is **genuinely shared state** —
+vars the region touches that are also touched from outside it, which is the real
+cost of cutting there. Half of what looks shared is state that merely happens to
+be *declared* at the top of the file and is used nowhere but the one region, so
+it moves for free.
 
-- **The header** (`_mount_header`, `_fit_page_under_header`, `_publish_header_strip`,
-  `_build_health_chip`, `_build_gold_chip`, `_refresh_route_strip`, `HEADER_LAYER`)
-  — self-contained, talks to the page only through `ModalScaffold.reserved_top`
-  and the scroll's `offset_top`. ~250 lines.
-- **The report checklist** (`_populate_play_panel`, `_verify_row`,
-  `_add_bonus_rows`, `_add_event_goal_rows`, `_ticked_*`, `_reset_checklist_state`)
-  — one input (the board's bodies plus the standing goals), one output (the ticked
-  instances). ~400 lines.
-- **The offering** (`_make_choice_card`, `_make_start_card`, `_render_choices`,
-  `_render_start_choices`, `_show_preview`, `_hover_line`) — ~350 lines.
+| seam | lines | genuinely shared state | test refs |
+|---|---|---|---|
+| ~~item strip + charge chips~~ | ~~293~~ | ~~`_items_box`, `_phase`~~ | **done — `PackStrip.gd`** |
+| ~~report checklist~~ | ~~776~~ | ~~`_board`, `_chosen`~~ | **done — `ReportChecklist.gd`** |
+| ~~offering cards + preview~~ | ~~506~~ | ~~`_choices`, `_chosen`, `_start_options`~~ | **done — `OfferingCards.gd`** |
+| header proper | 79 | `_scroll`, `_toasts` | 11 |
+| kill-drops + run-over | 230 | `_banner`, `_drop_queue`, `_rng`, `_resolving` | 32 |
+| save/restore view state | 251 | *16 shared vars* | — |
+| `_build_ui` | 409 | *32 vars, 16 funcs* | — |
 
-Each wants to keep going through the overworld's public verbs (`pick`,
-`report`, `bash_choice`, …) rather than reaching into `GameLoop2`, which is what
-makes the current tests keep working through the move.
+**What is left is small.** Kill-drops at 230 lines and the header at 79 are the
+only untouched seams, and neither is worth the disturbance on its own — the file
+is no longer dominated by any one mechanic. **Stop here** unless something else
+grows: the next 4000 lines are the run loop itself, which is what this file is
+for.
+
+**Two of these should NOT be split.** `capture_view_state` / `restore_view_state`
+touches 16 shared vars because touching everything *is* its job, and `_build_ui`
+is the assembler — extracting it moves the tangle behind a node dictionary and
+buys nothing.
+
+**The constraint that shapes all of it.** `test/test_overworld2.gd` is 4476 lines
+and reads privates straight off the instance — `_ui._verify_box` ×17,
+`_ui._items_box` ×16, `_ui._drop_queue` ×16, `_ui._fulfil_checks` ×8. The
+extracted piece therefore **cannot take those names with it**: they stay declared
+on `Overworld2`, with the page owning the container and the extracted class
+filling it. Each wants to keep going through the overworld's public verbs
+(`pick`, `report`, `bash_choice`, …) rather than reaching into `GameLoop2`, which
+is what makes the current tests keep working through the move.
+
+**The pattern the three splits established**, for anything that follows:
+
+- A `RefCounted` holding the page, constructed in `_build_ui` beside the
+  containers it fills. The repo's other extraction, `AtlasLayoutBuilder`, is
+  static-only because layout is pure computation; a UI builder needs the page
+  back, for the verbs its widgets call.
+- **Type the back-reference as `Node`, not `Overworld2`.** Overworld2 names both
+  classes, and two `class_name`s that name each other are a cyclic reference
+  Godot resolves badly.
+- **Pass phase in, don't read it out.** `PackStrip.rebuild(reporting: bool)`
+  rather than reaching for `_phase`, which is what let the strip depend on
+  nothing about the page except three public verbs. `OfferingCards` does the
+  same thing a second way: its two render entry points are the only callers that
+  can change which phase drew the cards, so it sets its own `_starting` flag in
+  them instead of reading `_phase == Phase.START_SELECT`. That also dodges
+  `_page.Phase.…`, which *works* — a const or enum reads fine through a
+  `Node`-typed reference, verified — but re-couples the class to the page's
+  phase model for no gain.
+- **A const the page still uses moves with the class**, and the page names it:
+  `OfferingCards.COVER_SIZE`, `OfferingCards.HOVER_ART`. Only three constants in
+  the offering region were shared the other way (`SHIELD_BLUE`, `DASH_BLUE`,
+  `REPEAT_BEAT_DASH`); those stayed on the page and the class reads them off
+  `_page`.
+- Leave the old entry points as one-line forwards (`_refresh_items`,
+  `_populate_play_panel`, `_ticked_fulfilments`, …). Zero call-site churn, in the
+  page or in the tests. Some forwards end up with no caller left in the page and
+  exist only for the tests, which is fine and worth a comment saying so.
+- **For state the tests read, leave a read-only property behind**, not a copy:
+
+  ```gdscript
+  var _fulfil_checks: Array:
+      get: return _checklist.fulfil_checks if _checklist != null else []
+  ```
+
+  The extracted class owns the state under a public name; the page publishes a
+  view of it under the name the tests already use. This works because no test
+  ever *reassigns* one of these — they read the array and then tick the CheckBox
+  it points at, which is what a player does to the same object. Check that before
+  reaching for it: a getter-only property cannot be assigned to.
+- **A new `class_name` needs `godot --headless --editor --quit`** before the
+  suite can see it, per `CLAUDE.md`. Both splits hit this; it reads as
+  "Could not find type X" and takes the whole page down with it.
 
 ---
 
