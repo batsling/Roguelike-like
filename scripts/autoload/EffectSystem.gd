@@ -80,6 +80,7 @@ func _register_defaults() -> void:
 	register("lose_gold", _h_lose_gold)
 	register("heal_full", _h_heal_full)
 	register("gain_scroll", _h_gain_scroll)
+	register("gain_pill", _h_gain_pill)
 	register("gain_loot", _h_gain_loot)
 	register("none", _h_none)
 	register("if_hp", _h_if_hp)
@@ -185,18 +186,23 @@ func _h_lose_gold(effect: Dictionary, _ctx: Dictionary) -> void:
 func _h_heal_full(_effect: Dictionary, _ctx: Dictionary) -> void:
 	GameState.set_hp(GameState.max_hp)
 
-# LOOT is a category, not a synonym for scroll: today the only loot type is the
-# scroll, so both land in the same place, but an event authored as `gain_loot`
-# widens on its own the day a second type exists (§5).
+# LOOT is a category, not a synonym for scroll — and since pills arrived (§4.3)
+# the difference is real: `gain_scroll` and `gain_pill` name a kind, `gain_loot`
+# is the kind-BLIND grant that rolls 50/50 per unit. That last one is what beating
+# a game pays, and it is why the widening this comment promised is a rolled coin
+# rather than a rename.
 func _h_gain_scroll(effect: Dictionary, _ctx: Dictionary) -> void:
-	_grant_loot(int(effect.get("value", 1)))
+	_grant_loot("scroll", int(effect.get("value", 1)))
+
+func _h_gain_pill(effect: Dictionary, _ctx: Dictionary) -> void:
+	_grant_loot("pill", int(effect.get("value", 1)))
 
 func _h_gain_loot(effect: Dictionary, _ctx: Dictionary) -> void:
-	_grant_loot(int(effect.get("value", 1)))
+	_grant_loot("loot", int(effect.get("value", 1)))
 
-func _grant_loot(n: int) -> void:
+func _grant_loot(kind: String, n: int) -> void:
 	if n > 0:
-		GameState.add_loot("scroll", n)
+		GameState.add_loot(kind, n)
 
 # An authored no-op, so "this choice does nothing" is a thing the sheet can say
 # rather than a blank cell that reads as unfinished.

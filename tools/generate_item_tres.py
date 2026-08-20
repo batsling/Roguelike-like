@@ -30,10 +30,11 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   stat_mirror:, stat_floor:, stat_gain_bonus:, negate_lethal:,
                   reroll_low_rarity:, carries_leftover_energy:,
                   lower_hp_damage_mult:, gold_spend_stat_per=N, level_up:,
-                  charged (charge_cost N), keep_shields, bomb_stun,
+                  charged (charge_cost N), bank_shields, bomb_stun,
                   bomb_cardinal, bomb_tile <tile>, grid_grow, grid_length, hide_spawns,
                   spawn_status <status> N, loot_multiplier: N,
                   gold_per_enemy: N, shop_sweep, boss_chest_bonus: N,
+                  pills_positive, echo_loot N,
                   reroll_enemies, destroy_on_damage.
 
 Columns consumed beyond the DSL: `tags` (what the item is about) and `pools`
@@ -347,9 +348,14 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
     # the Max Health split an item opts INTO. It has to be listed here or the
     # bare-verb fallthrough at the bottom swallows its amount and emits a silent
     # `{"type": "gain_empty_max_hp"}` worth nothing.
+    # `gain_pill` / `gain_scroll` / `gain_loot` are the three loot grants (§4.3):
+    # a named kind, or the kind-blind one that rolls 50/50 between them. Listed
+    # here for the same reason gain_empty_max_hp is — the bare-verb fallthrough
+    # would swallow the count and emit a grant of nothing.
     SCALAR = {"draw", "gain_energy", "gain_gold", "gain_max_hp",
               "gain_empty_max_hp", "gain_hp",
-              "gain_chest", "lose_hp", "heal", "block"}
+              "gain_chest", "lose_hp", "heal", "block",
+              "gain_pill", "gain_scroll", "gain_loot"}
     if verb in SCALAR:
         rest, kv = _kv(toks[1:])
         nums = [int(x) for x in rest if re.match(r"^-?\d+$", x)]
@@ -834,9 +840,22 @@ def parse_item(row):
         elif kl0 == "carries_leftover_energy":
             fields["carries_leftover_energy"] = True
             last_trigger = None
-        elif kl0 == "keep_shields":
-            # Barricade: unspent shields stop expiring when a game resolves.
-            fields["keep_shields"] = True
+        elif kl0 == "bank_shields":
+            # Barricade: what a resolved game left standing becomes Bonus Shields
+            # (§4.3) instead of expiring with the game that granted it.
+            fields["bank_shields"] = True
+            last_trigger = None
+        elif kl0 == "pills_positive":
+            # Lucky Foot: a Negative pill taken while this is held rerolls into a
+            # random Positive one. Neutral pills are untouched, and the colour
+            # still identifies as what it actually is (§4.3).
+            fields["pills_positive"] = True
+            last_trigger = None
+        elif kl0 == "echo_loot":
+            # Echo Chamber: using loot also uses a copy of the last N used since
+            # this was picked up. A count, not a bool — the memory's depth is the
+            # sheet's to set.
+            fields["echo_loot"] = _int(re.search(r"\d+", clause).group(0), 3)
             last_trigger = None
         elif kl0 == "bomb_stun":
             # Sticky Bombs: a bomb stuns whatever it fails to destroy.
@@ -1127,7 +1146,9 @@ def item_tres(row):
         ("perfect_effects", lambda v: gd_value(v)),
         ("perfect_save_chance", lambda v: str(v)),
         ("bonus_level_up_chance", lambda v: str(v)),
-        ("keep_shields", lambda v: "true"),
+        ("bank_shields", lambda v: "true"),
+        ("pills_positive", lambda v: "true"),
+        ("echo_loot", lambda v: str(v)),
         ("bomb_stun", lambda v: "true"),
         ("bomb_cardinal", lambda v: "true"),
         ("bomb_tile", lambda v: '&"%s"' % gd_str(v)),

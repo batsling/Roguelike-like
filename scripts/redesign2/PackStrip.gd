@@ -17,9 +17,9 @@ extends RefCounted
 # CONTENTS and nothing else: the page still owns the container it fills, still
 # decides when to rebuild, and still owns the reading card a token opens —
 # ItemInfoCard is a page-level modal, not strip furniture. Everything a token
-# does on click goes back through one of the page's public verbs (`read_scroll`,
-# `use_item`, `open_item_card`), which is what keeps the existing tests working
-# through the move.
+# does on click goes back through one of the page's public verbs (`use_item`,
+# `open_item_card`), which is what keeps the existing tests working through the
+# move.
 #
 # `_page` is the Overworld2 that owns this strip, typed loosely because
 # Overworld2 names PackStrip and two class_names that name each other are a
@@ -42,56 +42,18 @@ func rebuild(reporting: bool) -> void:
 	if _box == null or not is_instance_valid(_box):
 		return
 	_page._clear(_box)
-	var scrolls: Array = GameState.loot_scrolls()
-	if GameState.inventory.is_empty() and scrolls.is_empty():
+	# RELICS ONLY. Scrolls used to ride this strip beside them, which was right
+	# while a scroll or two was all the loot in the game; pills and a per-game drop
+	# made nine pieces ordinary (§4.3), and nine more tiles in a strip is a second
+	# inventory wearing the first one's clothes. Loot has its own window now, opened
+	# from the toggle at the end of this row.
+	if GameState.inventory.is_empty():
 		_box.add_child(_empty_note("nothing carried yet"))
 		return
 	for item in GameState.inventory:
 		if not (item is ItemData):
 			continue
 		_box.add_child(_item_token(item, reporting))
-	# Scrolls ride the same strip. loot_scrolls() preserves pickup order; each is
-	# mapped back to its loot_items index so reading one consumes the right entry.
-	for entry in scrolls:
-		_box.add_child(_scroll_token(GameState.loot_items.find(entry), entry, reporting))
-
-# One carried scroll, as a token on the pack strip (§4.1). It is drawn like an
-# item's tile and read like an item's Use button — one click, because reading IS
-# the only thing a scroll does and there is no card to separate looking from
-# spending. Locked while a game is being reported, exactly as an active item is:
-# the report step is mid-resolve, and a teleport landing there would fall between
-# "played the game" and "said what happened".
-func _scroll_token(idx: int, entry: Dictionary, reporting: bool) -> Control:
-	var scroll: ScrollData = Data.get_scroll(StringName(entry.get("id", "")))
-	var name: String = ScrollSystem.display_name(scroll) if scroll != null else "Scroll"
-	var tint: Color = UITheme.ACCENT
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 2)
-	col.size_flags_vertical = Control.SIZE_SHRINK_END
-	col.tooltip_text = "📜 %s\n%s" % [name,
-		"Locked while you're reporting a game." if reporting else "Click to read it — this spends the scroll."]
-
-	var read := Button.new()
-	read.text = "Read"
-	read.disabled = reporting
-	read.custom_minimum_size = Vector2(ITEM_TOKEN, ITEM_USE_H)
-	read.add_theme_font_size_override("font_size", 9)
-	read.tooltip_text = col.tooltip_text
-	read.add_theme_stylebox_override("normal", UITheme.flat(tint.lerp(UITheme.BG, 0.55), 3, 0, 1, tint))
-	read.add_theme_stylebox_override("hover", UITheme.flat(tint.lerp(UITheme.BG, 0.35), 3, 0, 1, tint))
-	read.add_theme_color_override("font_color", UITheme.TEXT)
-	read.pressed.connect(func(): _page.read_scroll(idx))
-	col.add_child(read)
-
-	var tile := PanelContainer.new()
-	tile.add_theme_stylebox_override("panel",
-		UITheme.flat(tint.lerp(UITheme.BG, 0.86), 5, 3, 1, tint.lerp(UITheme.BG, 0.45)))
-	tile.tooltip_text = col.tooltip_text
-	col.add_child(tile)
-	var art := UITheme.crisp_tex(ScrollSystem.art_texture(scroll) if scroll != null else null, ITEM_TOKEN)
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tile.add_child(art)
-	return col
 
 # One item in the pack: the art tile, with its FIRING control above it when the
 # item has one. Reading and spending are deliberately separate gestures — clicking
@@ -264,14 +226,31 @@ static func item_hover(item: ItemData, active: bool, ready: bool, reporting: boo
 			note = "▸ Report this game first."
 		elif item.is_charged():
 			note = "▸ Charging."
+	var lines: Array = [String(item.description)]
+	# ECHO CHAMBER NAMES WHAT IT IS HOLDING (§4.3). Its description says "the last
+	# 3 Loot you used" and the hover is where "which three" belongs — a relic that
+	# changes what spending loot MEANS is unreadable while the three are invisible.
+	# The card its click opens draws them with art; this is the fast version.
+	if int(item.echo_loot) > 0:
+		lines.append(_echo_line(item))
 	return {
 		"title": item.display_name,
 		"subtitle": sub,
 		"accent": UITheme.item_color(item),
 		"art": item.image,
-		"lines": [String(item.description)],
+		"lines": lines,
 		"note": note,
 	}
+
+# The remembered loot, newest first — the order the echoes fire in.
+static func _echo_line(item: ItemData) -> String:
+	var memory: Array = LootSystem.used_memory()
+	if memory.is_empty():
+		return "Holding: nothing used yet."
+	var names: Array = []
+	for i in range(memory.size() - 1, maxi(0, memory.size() - maxi(1, int(item.echo_loot))) - 1, -1):
+		names.append(LootSystem.display_name(memory[i]))
+	return "Holding: %s." % ", ".join(PackedStringArray(names))
 
 # The dim "there's nothing here" line the strip shows when the pack is empty.
 func _empty_note(text: String) -> Label:

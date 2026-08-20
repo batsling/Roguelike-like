@@ -140,6 +140,14 @@ func setup(item: ItemData, usable: bool) -> void:
 		chips.add_child(_chip(item.source_game, UITheme.TEXT_DIM))
 	inner.add_child(chips)
 
+	# ECHO CHAMBER SHOWS WHAT IT IS HOLDING (§4.3). A relic whose whole effect is
+	# "also use the last three" is unreadable while the three are invisible: the
+	# player cannot tell a good moment to spend loot from a bad one, which is the
+	# only decision the relic asks for. So the card draws them, with art and name,
+	# and the token's hover names them too.
+	if int(item.echo_loot) > 0:
+		inner.add_child(_echo_strip(item))
+
 	# Tags are the synergy axis (§6.2) — what ties this item to an enemy's tag or a
 	# goal — so they are worth naming rather than leaving to the sheet.
 	if item.tags.size() > 0:
@@ -170,6 +178,56 @@ func setup(item: ItemData, usable: bool) -> void:
 	done.pressed.connect(close)
 	actions.add_child(done)
 	inner.add_child(actions)
+
+# The loot Echo Chamber would copy on the next use, newest first — the same order
+# the echoes actually fire in, so the strip reads left to right as what is about
+# to happen. An empty memory says so in words rather than as a blank row: "nothing
+# yet" is a fact about the relic, not a missing widget.
+func _echo_strip(item: ItemData) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	var head := Label.new()
+	head.text = "Echoes on your next use:"
+	head.add_theme_font_size_override("font_size", 11)
+	head.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	box.add_child(head)
+
+	var memory: Array = LootSystem.used_memory()
+	var depth: int = maxi(1, int(item.echo_loot))
+	if memory.is_empty():
+		var none := Label.new()
+		none.text = "Nothing used yet — it copies the last %d pieces of loot you spend." % depth
+		none.add_theme_font_size_override("font_size", 12)
+		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		none.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+		box.add_child(none)
+		return box
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	box.add_child(row)
+	for i in range(memory.size() - 1, maxi(0, memory.size() - depth) - 1, -1):
+		var entry: Dictionary = memory[i]
+		var cell := VBoxContainer.new()
+		cell.add_theme_constant_override("separation", 2)
+		var frame := PanelContainer.new()
+		frame.add_theme_stylebox_override("panel",
+			UITheme.flat(UITheme.BG, 8, 6, 1, UITheme.ACCENT.lerp(UITheme.BG, 0.55)))
+		frame.add_child(UITheme.crisp_tex(LootSystem.art_texture(entry), 40))
+		cell.add_child(frame)
+		var name := Label.new()
+		# Named as it reads NOW, not as it read when it was used: a colour learned
+		# since then should say what it is, and one forgotten to Amnesia should have
+		# gone back to being a mystery.
+		name.text = LootSystem.display_name(entry)
+		name.add_theme_font_size_override("font_size", 10)
+		name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		name.custom_minimum_size = Vector2(62, 0)
+		name.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		cell.add_child(name)
+		row.add_child(cell)
+	return box
 
 # The behaviour class in the sheet's own words (§8), so the card names the same
 # thing `items2.0.Type` does.

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PillData" load_steps=2 format=3 uid="uid://pill2_luck_down"]
+
+[ext_resource type="Script" path="res://scripts/resources/PillData.gd" id="1_pill"]
+
+[resource]
+script = ExtResource("1_pill")
+id = &"luck_down"
+display_name = "Luck Down"
+preference = "Negative"
+description = "Lose -1 Luck"
+horse_description = "Lose -2 Luck"
+effect = [{"op": "lose_stat", "stat": "luck", "value": 1}]
+horse_effect = [{"op": "lose_stat", "stat": "luck", "value": 2}]
+notes = ""

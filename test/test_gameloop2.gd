@@ -861,12 +861,17 @@ func test_barricade_banks_unspent_shields() -> void:
 	var _a: int = _choose_solo(_enemy(1))
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.shields, 0, "shields normally expire with the game")
+	assert_eq(GameState.bonus_shields, 0, "and bank into nothing")
 	GameLoop2.reset()
 	GameState.add_item(Data.get_item2(&"barricade"))
 	GameState.shields = 4
 	var _b: int = _choose_solo(_enemy(1))
 	GameLoop2.beat_game(true)
-	assert_eq(GameState.shields, 4, "Barricade rolls them into the next game")
+	# Banked, not kept (§4.3): the per-game pool still empties, and what was in it
+	# lands in the pool that does not expire — which is also the pool spent LAST,
+	# so a banked shield outlives the game after next as well.
+	assert_eq(GameState.shields, 0, "the game's own tries still end with it")
+	assert_eq(GameState.bonus_shields, 4, "Barricade banks them as Bonus Shields")
 
 # --- Mine-r Construction: the board grows (§7.3) --------------------------
 

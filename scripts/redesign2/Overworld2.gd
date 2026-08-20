@@ -337,6 +337,13 @@ var _log: RichTextLabel
 # The page owns the container; PackStrip fills it (see _refresh_items).
 var _items_box: HFlowContainer
 var _pack: PackStrip = null
+# The loot window (§4.3): its toggle sits at the end of the pack's row, its 3x3
+# grid drops under it. Two containers because the toggle has to stay visible while
+# the grid is closed — the count on the button is the thing that says the pack is
+# nearly full.
+var _loot_toggle_box: HBoxContainer
+var _loot_grid_box: VBoxContainer
+var _loot_window: LootWindow = null
 # Drops a defeated enemy left, waiting to be ASKED about — one ItemDropModal at a
 # time, in the order they fell (§8, _pump_drops). The modal in front of the
 # player right now, or null when nothing is being asked.
@@ -656,8 +663,14 @@ func capture_view_state() -> Dictionary:
 	# boss's Medium chest comes back as the same two-item question after a reload
 	# rather than collapsing into one. Older saves wrote a bare id per chest and
 	# are read back as a chest of one (see the restore side).
+	# A LOOT payout in the queue is saved as the entry itself rather than as a list
+	# of ids — it is not an ItemData and has no catalogue row to be looked back up
+	# by, since the horse roll on it already happened (§4.3).
 	var drops: Array = []
 	for d in _drop_queue:
+		if d.has("loot"):
+			drops.append({"loot": (d["loot"] as Dictionary).duplicate(true)})
+			continue
 		var ids: Array = []
 		for it in _drop_items(d):
 			ids.append(String((it as ItemData).id))
@@ -721,6 +734,9 @@ func restore_view_state(view: Dictionary) -> void:
 		_visits[StringName(gid)] = int(vs[gid])
 	_drop_queue.clear()
 	for raw in view.get("drops", []):
+		if raw is Dictionary and (raw as Dictionary).has("loot"):
+			_drop_queue.append({"loot": (raw["loot"] as Dictionary).duplicate(true)})
+			continue
 		# An older save wrote one id per chest; a current one writes the list the
 		# chest is offering. Both land as a list here.
 		var ids: Array = raw if raw is Array else [raw]
@@ -1285,17 +1301,38 @@ func turn_note(choice: Dictionary) -> Dictionary:
 		"color": UITheme.TEXT_DIM, "turns": then, "tip": tip,
 	}
 
-# Read the carried scroll at loot index `idx` (Scrolls panel). Opens the 2.0
-# read modal, which consumes the scroll and applies its effect (§4.1).
-func read_scroll(idx: int) -> void:
-	var modal := preload("res://scripts/redesign2/ScrollReadModal.gd").new()
+# Spend the carried piece of loot at index `idx` (the loot window's Use button).
+# Opens the one modal both kinds share, which consumes the entry, resolves it
+# through its own system and fires Echo Chamber's copies (§4.1 / §4.3).
+#
+# ONE ENTRY POINT for scrolls and pills alike: the echo means using either kind
+# can replay the other, so a path that only knew about scrolls would drop half of
+# what its own use just did.
+func use_loot(idx: int) -> void:
+	var modal := preload("res://scripts/redesign2/LootUseModal.gd").new()
 	modal.finished.connect(_refresh)
 	modal.start(self, idx, self)
 
-# Scroll of Teleportation (§4.1): move to a random game ~the same graph distance
-# from the Amulet as the current position (±`spread`), excluding the current game
-# and the amulet. Falls back to any reachable-distance node if the band is empty.
-func scroll_teleport(_dir: String, spread: int) -> void:
+# The old name for it, kept because the scroll panel's tests and DevTools' grant
+# path both say "read the scroll at this index" and mean exactly this.
+func read_scroll(idx: int) -> void:
+	use_loot(idx)
+
+# A piece of loot asked to MOVE you (§4.1 Scroll of Teleportation, §4.3
+# Telepills). Two shapes of landing zone, and the difference is the whole reason
+# the horse dose is worth the 5% roll:
+#
+#   spread — a band around where you STAND: ~the same distance from the Amulet as
+#            you already are, ±spread. Wherever you were in the run, you are still
+#            about that far from the end of it.
+#   amulet — a band around the AMULET itself, min..max steps out, regardless of
+#            where you were. This is the only movement in the game that can drop
+#            you next to the goal, which is why it is spelled as its own word
+#            rather than as a `spread` with a big number.
+#
+# Both exclude the current game and the Amulet, and both fall back to any
+# reachable node when their band is empty.
+func loot_teleport(req: Dictionary) -> void:
 	var amulet: StringName = GameState.amulet_game_id
 	if amulet == &"":
 		return
@@ -1303,6 +1340,10 @@ func scroll_teleport(_dir: String, spread: int) -> void:
 	var cur: StringName = GameState.current_game_id
 	if not dist.has(cur):
 		return
+	var to_amulet: bool = String(req.get("dir", "same")) == "amulet"
+	var spread: int = int(req.get("spread", 1))
+	var near: int = int(req.get("min", 1))
+	var far: int = int(req.get("max", 3))
 	var cur_d: int = int(dist[cur])
 	var band: Array = []
 	var any: Array = []
@@ -1310,7 +1351,11 @@ func scroll_teleport(_dir: String, spread: int) -> void:
 		if gid == cur or gid == amulet or GameLoop2.is_bashed(gid):
 			continue
 		any.append(gid)
-		if absi(int(dist[gid]) - cur_d) <= spread:
+		var d: int = int(dist[gid])
+		if to_amulet:
+			if d >= near and d <= far:
+				band.append(gid)
+		elif absi(d - cur_d) <= spread:
 			band.append(gid)
 	var pool: Array = band if not band.is_empty() else any
 	if pool.is_empty():
@@ -1458,6 +1503,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 		# "after beating a game" items, and every one of them is balanced around
 		# firing once per game played.
 		TriggerBus.game_beaten.emit({"game_id": played_game.id})
+		# THE GAME'S OWN LOOT (§4.3): one piece, a straight 50/50 between a scroll
+		# and a pill, asked about the way a kill drop is. On the same terms as the
+		# trigger above — any game seen through, win or lose — because what it pays
+		# for is the evening spent on it. An ESCAPE is the one report that earns
+		# none of it, which is why this sits inside the `not escaped` block.
+		_queue_loot_drop()
 
 	# WHERE THE RUN HAS BEEN. Every report is a game played, whatever it said: a
 	# missed goal was still an evening spent on that game, and so was walking away
@@ -3158,7 +3209,18 @@ func _paint_gold_chip() -> void:
 func _paint_health_chip() -> void:
 	if _health_chip == null or not is_instance_valid(_health_chip):
 		return
+	# BONUS SHIELDS RIDE THE HEALTH CHIP (§4.3). They are the one pool gained off
+	# the board — a pill taken on the overworld, a game Barricade banked — so they
+	# have to be readable when no board is on screen, and the number they matter
+	# most beside is the one they are standing in front of.
 	_health_chip.text = "♥  %d / %d" % [GameState.hp, GameState.max_hp]
+	if GameState.bonus_shields > 0:
+		_health_chip.text += "   ◈ %d" % GameState.bonus_shields
+		_health_chip.tooltip_text = ("Health. At zero the run ends."
+			+ "\n\n◈ %d Bonus Shield(s) — gained off the board, spent after the game's"
+			+ " own tries are gone, and they never expire.") % GameState.bonus_shields
+	else:
+		_health_chip.tooltip_text = "Health. At zero the run ends."
 	# It goes white-hot at a quarter left, because the number people miss is the
 	# one that stopped being comfortable rather than the one that hit zero.
 	var frac: float = float(GameState.hp) / maxf(1.0, float(GameState.max_hp))
@@ -3267,9 +3329,17 @@ func _refresh_select_stats() -> void:
 # `_phase` is read here rather than there so the strip needs nothing of the
 # page's state — only the one bit of it that changes what a token can do.
 func _refresh_items() -> void:
-	if _pack == null:
+	if _pack != null:
+		_pack.rebuild(_phase == Phase.PLAYING)
+	refresh_loot_window()
+
+# Redraw the loot toggle and, when it is open, the grid under it. Public because
+# the window itself calls it after a toggle — the window owns whether it is open,
+# the page owns when anything gets redrawn.
+func refresh_loot_window() -> void:
+	if _loot_window == null:
 		return
-	_pack.rebuild(_phase == Phase.PLAYING)
+	_loot_window.rebuild(_phase == Phase.PLAYING)
 
 # Open the reading card for one item. Firing from the card routes through the same
 # use_item the token's button does, so there is one spend path.
@@ -3353,6 +3423,19 @@ func _on_enemy_defeated(enemy: GoalEnemyData) -> void:
 	if queued:
 		_pump_drops()
 
+# Roll the game's loot payout and queue the question (§4.3). Queued rather than
+# granted so the nine-piece cap can be answered by the player: a full pack turns
+# the payout into "spend something or leave this", and that is a decision the run
+# should be making out loud.
+func _queue_loot_drop() -> void:
+	if GameLoop2.run_over:
+		return
+	var entry: Dictionary = GameState.roll_loot_entry("loot")
+	if entry.is_empty():
+		return
+	_drop_queue.append({"loot": entry})
+	_pump_drops()
+
 # Ask about the next waiting drop, if nothing else is already asking. Several
 # defeats in one report queue behind each other rather than stacking modals.
 #
@@ -3377,6 +3460,20 @@ func _open_next_drop() -> void:
 	if _phase == Phase.OVER or GameLoop2.run_over:
 		return
 	var drop: Dictionary = _drop_queue[0]
+	# A LOOT payout rides the same queue as the relics a body left (§4.3), because
+	# they are the same question asked about different things and a game can hand
+	# over both. It asks in its own modal — a scroll is not an ItemData and the
+	# nine-piece cap is a sentence only this one has to say.
+	if drop.has("loot"):
+		var loot_modal := LootDropModal.open(self, drop["loot"])
+		_drop_modal = loot_modal
+		loot_modal.answered.connect(func(taken: bool):
+			_drop_modal = null
+			_drop_queue.pop_front()
+			if taken:
+				_collect_loot_drop(drop["loot"])
+			_pump_drops())
+		return
 	var modal = ItemDropModal.open(self, _drop_items(drop))
 	_drop_modal = modal
 	modal.answered.connect(func(taken: bool, chosen: ItemData):
@@ -3448,6 +3545,18 @@ func _collect_drop(drop: Dictionary, chosen: ItemData = null) -> void:
 	GameState.add_item(item)
 	GameLog.add("Collected %s." % item.display_name, Color(0.7, 1.0, 0.7))
 	Notifications.notify("Took %s." % item.display_name, UITheme.item_color(item))
+
+# The player kept the game's loot payout. The queue entry is already off the front
+# by the time this runs (the loot modal pops it itself), so this only has to put
+# the piece in the pack — and it can still be refused, because the answer was given
+# to a question asked before anything else in the queue resolved.
+func _collect_loot_drop(entry: Dictionary) -> void:
+	if not GameState.take_loot_entry(entry):
+		GameLog.add("No room in the pack — %s stays on the ground."
+			% LootSystem.display_name(entry), Color(0.8, 0.8, 0.8))
+		return
+	GameLog.add("Collected %s." % LootSystem.display_name(entry), Color(0.7, 1.0, 0.7))
+	_refresh_items()
 
 func _skip_drop(drop: Dictionary) -> void:
 	if not _drop_queue.has(drop):
@@ -3799,16 +3908,28 @@ func _build_ui() -> void:
 	# is fitted to a 720p window and, with the heading on, the pack panel alone put
 	# it a pixel OVER (626 of 625) before a shop was even mounted under the board.
 	#
-	# ONE strip, relics and scrolls together. A scroll is a thing you are carrying
-	# and spend, exactly like a Usable relic is, and it used to get a whole second
-	# titled panel of its own — first at the foot of the page under the log, then
-	# as a second heading in here. As tokens on the same row they cost the pack
-	# nothing but the tiles themselves.
+	# THE STRIP IS THE RELICS AGAIN. Scrolls rode it for as long as a scroll or two
+	# was all the loot there was; pills doubled the kinds and the per-game drop made
+	# carrying nine ordinary, and nine more tiles in here is a second inventory
+	# pretending to be a strip. Loot lives in its own window now (§4.3) — opened by
+	# the toggle on the same row, so it is one click from the relics rather than a
+	# panel that is always in the way.
+	var strip_row := HBoxContainer.new()
+	strip_row.add_theme_constant_override("separation", 6)
+	inv_box.add_child(strip_row)
 	_items_box = HFlowContainer.new()
 	_items_box.add_theme_constant_override("h_separation", 4)
 	_items_box.add_theme_constant_override("v_separation", 4)
-	inv_box.add_child(_items_box)
+	_items_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	strip_row.add_child(_items_box)
 	_pack = PackStrip.new(self, _items_box)
+	_loot_toggle_box = HBoxContainer.new()
+	_loot_toggle_box.size_flags_vertical = Control.SIZE_SHRINK_END
+	strip_row.add_child(_loot_toggle_box)
+	_loot_grid_box = VBoxContainer.new()
+	_loot_grid_box.visible = false
+	inv_box.add_child(_loot_grid_box)
+	_loot_window = LootWindow.new(self, _loot_toggle_box, _loot_grid_box)
 	_right_col.add_child(_inv_wrap)
 
 	_stage_panel = PanelContainer.new()

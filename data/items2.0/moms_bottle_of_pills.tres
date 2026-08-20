@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_moms_bottle_of_pills"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/MomsBottleOfPills.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"moms_bottle_of_pills"
+display_name = "Mom's Bottle of Pills"
+kind = 6
+rarity = 0
+description = "Gain +1 Pill"
+triggers = [{"on": "item_used", "effects": [{"type": "gain_pill", "value": 1}]}]
+stat_bonuses = {}
+charge_cost = 2
+starts_charged = true
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("mom", "drugs", "pills")
+image = ExtResource("2_img")
