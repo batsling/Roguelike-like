@@ -3266,10 +3266,6 @@ func _announce_status_penalties(res: Dictionary) -> void:
 	if _checklist != null:
 		_checklist.announce_status_penalties(res)
 
-func _reset_checklist_state() -> void:
-	if _checklist != null:
-		_checklist.reset_state()
-
 func _bind_row_to_body(row: Control, instance: int, paint: Callable) -> void:
 	if _checklist != null:
 		_checklist.bind_row_to_body(row, instance, paint)
