@@ -294,7 +294,7 @@ rather than a fact that was always true.
 | Bad Trip | Negative | −2 Health | −4 Health |
 | Full Health | Positive | Heal to full | Heal to full, +3 Bonus Shields |
 | Balls of Steel | Positive | +2 Bonus Shields | +4 Bonus Shields |
-| Amnesia | Negative | A random curse goal (§5) | A random curse goal, and forget every identified loot |
+| Amnesia | Negative | A random curse goal (§5) | A random curse goal, and forget every identified loot — **itself included** |
 
 **The colours.** `images2.0/pills/` ships **13 colours**, each with a horse twin
 (`<Colour>.png` / `<Colour>Horse.png`). A run binds **10 of the 13** to the ten
@@ -368,7 +368,11 @@ honest when the relic is lost.
 run's relics, so loot moves off it into a window of its own: a **Loot** button
 beside the pack — a label and a small arrow, no bar — that toggles a **3×3 grid**
 of what is carried, each cell its art and its name, each with a **Use** button and
-the same hover card an item or an enemy gets. **Nine is the cap** for now; a tenth
+the same hover card an item or an enemy gets. It is **shut until the button is
+pressed** and takes no room while it is, so the pack's own row is the relics and
+one count; and its tiles are drawn at the relics' size, because a pill and a relic
+are both "a thing you are carrying" and two art sizes in one panel read as two
+kinds of importance rather than as two kinds of thing. **Nine is the cap** for now; a tenth
 piece has nowhere to go, which is what makes the drop modal's "leave it" a real
 answer. Scrolls live here too — one window for loot means one place to look, and
 the pack strip goes back to being the relics.

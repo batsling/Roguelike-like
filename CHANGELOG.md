@@ -72,11 +72,11 @@ For how the project is laid out and how its systems fit together, see
   fact; any other reading starts lying to the player the moment the Foot leaves
   the pack.
 
-  One hole the tests found: **Amnesia's horse dose was unlearnable.** It
-  identifies the colour on the way in and then forgets every identified piece of
-  loot, itself included — so a player who had just watched the effect happen was
-  still holding a mystery, and taking it again would do the same. The pill being
-  swallowed is now protected from its own forget.
+  **Amnesia's horse dose takes its own name with it.** It identifies the colour on
+  the way in and then forgets every identified piece of loot — and "every"
+  includes the lesson taking it just taught, so the horse dose can never leave
+  itself known. Its colour is learned from the NORMAL dose, which hands out a
+  curse and forgets nothing.
 
 - **The offering moved out of the overworld, and the split is finished.**
 

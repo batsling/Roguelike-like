@@ -258,7 +258,7 @@ func take_pill(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 
 	for op in ops:
 		if op is Dictionary:
-			_apply_one(op, out, rng, pill.id)
+			_apply_one(op, out, rng)
 	return out
 
 # Lucky Foot's pool: every Positive pill, INCLUDING the ones whose colours are
@@ -305,14 +305,7 @@ func _scaled_value(op: Dictionary, field: String, fallback: int) -> int:
 	# which is what "doubled" means for a count nobody wrote down.
 	return maxi(1, raw) * mult
 
-# `taking` is the pill being swallowed right now, and it is protected from its own
-# forget: Amnesia's horse dose wipes every identified piece of loot, and the one
-# thing it must not wipe is the lesson the player just paid for by taking it. Let
-# it, and the colour is unlearnable — every attempt teaches it and then erases the
-# teaching, so a pill whose effect the player has watched happen still reads as a
-# mystery.
-func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator,
-		taking: StringName = &"") -> void:
+func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> void:
 	var verb := String(op.get("op", ""))
 	match verb:
 		"gain_stat", "lose_stat":
@@ -344,7 +337,7 @@ func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator,
 		"add_curse":
 			_add_curses(op, out, rng)
 		"forget":
-			_forget(op, out, rng, taking)
+			_forget(op, out, rng)
 		"charge":
 			_charge(op, out, rng)
 		"teleport":
@@ -415,8 +408,13 @@ func _add_curses(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) ->
 # WHAT IT DOES NOT DO IS REDEAL THE COLOURS. The capsule still means what it
 # meant; you have merely stopped knowing it, and taking one is how you find out
 # again. Redealing would make the pill unlearnable rather than forgotten.
-func _forget(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator,
-		keep: StringName = &"") -> void:
+#
+# THE PILL BEING SWALLOWED IS NOT SPARED. Amnesia's horse dose wipes every
+# identified piece of loot, and "every" includes the lesson taking it just taught:
+# the dose that erases the run's knowledge erases its own name with it. So the
+# horse dose can never leave itself known — its colour is learned from the NORMAL
+# dose, which forgets a curse's worth of other things and not this.
+func _forget(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> void:
 	var kind: String = String(op.get("kind", "loot")).to_lower()
 	var count: int = int(op.get("count", 1))
 	if count > 0:
@@ -426,8 +424,8 @@ func _forget(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator,
 		forgot += _forget_from(GameState.identified_scroll_types.duplicate(), count, rng,
 			func(id): ScrollSystem.unidentify(id))
 	if kind == "pill" or kind == "loot":
-		var pool: Array = GameState.identified_pill_types.filter(func(id): return id != keep)
-		forgot += _forget_from(pool, count, rng, func(id): unidentify(id))
+		forgot += _forget_from(GameState.identified_pill_types.duplicate(), count, rng,
+			func(id): unidentify(id))
 	if forgot <= 0:
 		out["logs"].append("You have no loot knowledge to forget.")
 		return

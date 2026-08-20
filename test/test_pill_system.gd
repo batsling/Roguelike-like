@@ -262,14 +262,19 @@ func test_the_horse_amnesia_forgets_every_identified_piece_of_loot() -> void:
 	# one is how you find out again.
 	assert_ne(PillSystem.color_for(&"luck_up"), "", "the alphabet is intact")
 
-func test_amnesia_identifies_itself_even_as_it_forgets() -> void:
-	# The pill being swallowed is protected from its own forget. Without that the
-	# colour is UNLEARNABLE — every attempt teaches it and then erases the teaching,
-	# so a player who has watched the effect happen still holds a mystery.
+func test_the_horse_amnesia_forgets_itself_too() -> void:
+	# "Every identified piece of loot" includes the lesson taking it just taught:
+	# the dose that erases the run's knowledge erases its own name with it. So the
+	# horse dose can never leave itself known, and the colour is learned from the
+	# NORMAL dose instead — which forgets a curse's worth of other things and not
+	# this.
 	PillSystem.identify(&"luck_up")
 	_take(&"amnesia", true)
-	assert_true(PillSystem.is_identified(&"amnesia"), "the lesson you just paid for stays")
-	assert_false(PillSystem.is_identified(&"luck_up"), "everything else goes")
+	assert_false(PillSystem.is_identified(&"amnesia"), "it takes its own name with it")
+	assert_false(PillSystem.is_identified(&"luck_up"), "along with everything else")
+	_take(&"amnesia")
+	assert_true(PillSystem.is_identified(&"amnesia"),
+		"the normal dose is how the colour is learned")
 
 func test_48_hour_energy_charges_relics_and_says_so_when_there_are_none() -> void:
 	var out: Dictionary = _take(&"48_hour_energy")

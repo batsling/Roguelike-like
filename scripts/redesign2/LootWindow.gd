@@ -36,7 +36,11 @@ var _grid_host: Control = null
 var open: bool = false
 
 const COLS := 3
-const CELL_ART := 40
+# The same tile as a relic's on the pack strip (PackStrip.ITEM_TOKEN). A piece of
+# loot and a relic are both "a thing you are carrying", they sit one above the
+# other in the same panel, and two art sizes there read as two different kinds of
+# importance rather than as two different kinds of thing.
+const CELL_ART := PackStrip.ITEM_TOKEN
 const ACCENT := Color(0.72, 0.62, 0.86)
 
 func _init(page: Node, button_host: Control, grid_host: Control) -> void:
@@ -105,6 +109,11 @@ func _cell(index: int, entry: Dictionary, reporting: bool) -> Control:
 	HoverCard.attach(col, hover_card(entry))
 
 	var tile := HoverPanel.new()
+	# SHRINK_CENTER so the tile hugs the art at exactly CELL_ART. Without it the
+	# panel stretches to the widest thing in the column — the name label, which is
+	# deliberately wider so two words can wrap — and the art stretches with it, so a
+	# pill ended up bigger than a relic while both were asking for 34px.
+	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var known: bool = LootSystem.is_identified(entry)
 	# A known piece wears its accent at full strength; an unknown one is dimmed to
 	# the panel, which is the same "you have not learned this yet" the name says.
