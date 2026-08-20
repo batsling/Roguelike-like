@@ -337,12 +337,13 @@ var _log: RichTextLabel
 # The page owns the container; PackStrip fills it (see _refresh_items).
 var _items_box: HFlowContainer
 var _pack: PackStrip = null
-# The loot window (§4.3): its toggle sits at the end of the pack's row, its 3x3
-# grid drops under it. Two containers because the toggle has to stay visible while
-# the grid is closed — the count on the button is the thing that says the pack is
-# nearly full.
+# The loot window (§4.3): its toggle sits at the end of the pack's row, and the
+# 3x3 grid it opens FLOATS OVER THE LEFT COLUMN rather than dropping under the
+# toggle. Opening it used to grow the pack panel downward, which pushed the board
+# and re-flowed the right column every time the player looked at what they were
+# carrying. `_loot_panel` is the mounted overlay, or null while it is shut.
 var _loot_toggle_box: HBoxContainer
-var _loot_grid_box: VBoxContainer
+var _loot_panel: Control = null
 var _loot_window: LootWindow = null
 # Drops a defeated enemy left, waiting to be ASKED about — one ItemDropModal at a
 # time, in the order they fell (§8, _pump_drops). The modal in front of the
@@ -3333,13 +3334,55 @@ func _refresh_items() -> void:
 		_pack.rebuild(_phase == Phase.PLAYING)
 	refresh_loot_window()
 
-# Redraw the loot toggle and, when it is open, the grid under it. Public because
+# Redraw the loot toggle and, when it is open, the panel it opens. Public because
 # the window itself calls it after a toggle — the window owns whether it is open,
 # the page owns when anything gets redrawn.
 func refresh_loot_window() -> void:
 	if _loot_window == null:
 		return
 	_loot_window.rebuild(_phase == Phase.PLAYING)
+
+# Mount the loot window's panel OVER THE LEFT COLUMN (§4.3). A page child rather
+# than a row in the pack, so opening it moves nothing: the offering underneath is
+# the half of the page you are not reading while you decide which pill to take.
+#
+# Positioned against `_left_col`'s own rect rather than at a hardcoded corner, so
+# it lands on the column whatever width the page gave it — and clamped to the
+# page, so a narrow window can't push it off the left edge. Nudged down by the
+# header's height for the same reason every modal is: the header is opaque and
+# drawn over the page.
+func mount_loot_overlay(panel: Control) -> void:
+	unmount_loot_overlay()
+	if panel == null:
+		return
+	_loot_panel = panel
+	panel.top_level = true
+	add_child(panel)
+	_place_loot_overlay()
+	# The left column's rect is only final once the page has laid out, and a panel
+	# built mid-frame is measured before that. One deferred re-place puts it where
+	# the column actually ended up rather than where it was a frame ago.
+	_place_loot_overlay.call_deferred()
+
+func unmount_loot_overlay() -> void:
+	if _loot_panel != null and is_instance_valid(_loot_panel):
+		_loot_panel.queue_free()
+	_loot_panel = null
+
+func _place_loot_overlay() -> void:
+	if _loot_panel == null or not is_instance_valid(_loot_panel):
+		return
+	if _left_col == null or not is_instance_valid(_left_col):
+		return
+	var col: Rect2 = _left_col.get_global_rect()
+	var top: float = maxf(col.position.y, ModalScaffold.reserved_top + 4.0)
+	# SIZED TO ITS CONTENTS, not to the page. A floating Control is anchored to its
+	# parent's rect, and this page is as tall as the whole scrolling document — so
+	# left alone the panel stretched to 1043px and hung off the bottom of the
+	# window with 700px of its own background under a 258px grid.
+	_loot_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_loot_panel.size = _loot_panel.get_combined_minimum_size()
+	_loot_panel.global_position = Vector2(maxf(col.position.x, 4.0), top)
 
 # Open the reading card for one item. Firing from the card routes through the same
 # use_item the token's button does, so there is one spend path.
@@ -3926,10 +3969,7 @@ func _build_ui() -> void:
 	_loot_toggle_box = HBoxContainer.new()
 	_loot_toggle_box.size_flags_vertical = Control.SIZE_SHRINK_END
 	strip_row.add_child(_loot_toggle_box)
-	_loot_grid_box = VBoxContainer.new()
-	_loot_grid_box.visible = false
-	inv_box.add_child(_loot_grid_box)
-	_loot_window = LootWindow.new(self, _loot_toggle_box, _loot_grid_box)
+	_loot_window = LootWindow.new(self, _loot_toggle_box)
 	_right_col.add_child(_inv_wrap)
 
 	_stage_panel = PanelContainer.new()

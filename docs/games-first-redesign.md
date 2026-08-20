@@ -366,13 +366,25 @@ honest when the relic is lost.
 
 **The loot window.** Nine pieces of loot will not fit in the pack strip beside a
 run's relics, so loot moves off it into a window of its own: a **Loot** button
-beside the pack — a label and a small arrow, no bar — that toggles a **3×3 grid**
+beside the pack — a label and a small arrow, no bar — that opens a **3×3 grid**
 of what is carried, each cell its art and its name, each with a **Use** button and
-the same hover card an item or an enemy gets. It is **shut until the button is
-pressed** and takes no room while it is, so the pack's own row is the relics and
-one count; and its tiles are drawn at the relics' size, because a pill and a relic
-are both "a thing you are carrying" and two art sizes in one panel read as two
-kinds of importance rather than as two kinds of thing. **Nine is the cap** for now; a tenth
+the same hover card an item or an enemy gets. Its tiles are drawn at the relics'
+size, because a pill and a relic are both "a thing you are carrying" and two art
+sizes in one panel read as two kinds of importance rather than as two kinds of
+thing.
+
+It is **shut until the button is pressed**, and when it opens it opens as a panel
+**over the LEFT column**, on top of the offering. Not as a row inside the pack:
+that grew the pack panel downward, which pushed the board and re-flowed the right
+column every time the player looked at what they were carrying — the window cost
+the page a relayout for the crime of being opened. The left half is the one you
+are not reading while you decide which pill to take, and nothing under it moves.
+
+**The grid is always nine.** Nine is the cap, and an inventory that draws only
+what is in it says nothing about the room left, which is the fact the cap makes
+interesting — so the empty slots are the count. They are also what keeps the thing
+a *grid*: three tiles in a 3×3 read as three of nine, while three tiles in a row
+that wraps read as all there is. **Nine is the cap** for now; a tenth
 piece has nowhere to go, which is what makes the drop modal's "leave it" a real
 answer. Scrolls live here too — one window for loot means one place to look, and
 the pack strip goes back to being the relics.

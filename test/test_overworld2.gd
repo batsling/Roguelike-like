@@ -1084,27 +1084,58 @@ func test_loot_lives_in_its_own_window_beside_the_pack() -> void:
 	assert_true(toggle.contains("Loot"), "the toggle says what it opens: %s" % toggle)
 	assert_true(toggle.contains("1/%d" % GameState.LOOT_CAPACITY),
 		"and how full the pack is: %s" % toggle)
-	assert_false(_ui._loot_grid_box.visible, "the window starts closed")
+	assert_null(_ui._loot_panel, "the window starts closed")
 
-func test_the_loot_window_opens_onto_a_grid_of_what_you_carry() -> void:
+func test_the_loot_window_opens_onto_a_full_3x3_over_the_left_column() -> void:
 	GameState.add_scroll_loot(&"scroll_of_teleportation")
 	GameState.add_pill_loot(&"luck_up")
 	_ui._loot_window.open = true
 	_ui._refresh_items()
-	assert_true(_ui._loot_grid_box.visible, "opening it shows the grid")
-	var grid: GridContainer = null
-	for c in _ui._loot_grid_box.get_children():
-		if c is GridContainer:
-			grid = c
+	assert_not_null(_ui._loot_panel, "opening it mounts the panel")
+	if _ui._loot_panel == null:
+		return
+	# On the PAGE, not inside the pack — opening it must not re-flow the column the
+	# board is in.
+	assert_true(_ui.is_ancestor_of(_ui._loot_panel), "it floats over the page")
+	assert_false(_ui._inv_wrap.is_ancestor_of(_ui._loot_panel),
+		"and not inside the pack panel")
+	var grid: GridContainer = _find_grid(_ui._loot_panel)
 	assert_not_null(grid, "the window is a grid")
 	if grid == null:
 		return
-	assert_eq(grid.columns, 3, "three across — nine is a 3x3 pack")
-	assert_eq(grid.get_child_count(), 2, "one cell per piece carried")
-	var text: String = _text_of(_ui._loot_grid_box)
-	assert_true(text.contains("Use"), "each cell can be spent from here: %s" % text)
+	assert_eq(grid.columns, 3, "three across")
+	# ALWAYS nine. The empties are how the window says how much room is left, and
+	# they are what keeps it a grid rather than a row that wraps.
+	assert_eq(grid.get_child_count(), GameState.LOOT_CAPACITY,
+		"nine slots whatever is in them")
+	var text: String = _text_of(_ui._loot_panel)
+	assert_true(text.contains("Use"), "each carried piece can be spent from here: %s" % text)
 	assert_true(text.contains("Unidentified Pill"),
 		"an unlearned colour says only what it looks like: %s" % text)
+
+func test_the_loot_window_lands_on_the_left_column() -> void:
+	GameState.add_pill_loot(&"luck_up")
+	_ui._loot_window.open = true
+	_ui._refresh_items()
+	await wait_frames(2)
+	assert_not_null(_ui._loot_panel)
+	if _ui._loot_panel == null:
+		return
+	var panel: Rect2 = _ui._loot_panel.get_global_rect()
+	var col: Rect2 = _ui._left_col.get_global_rect()
+	assert_almost_eq(panel.position.x, maxf(col.position.x, 4.0), 2.0,
+		"its left edge is the left column's")
+	assert_lt(panel.position.x, _ui._inv_wrap.get_global_rect().position.x,
+		"which is the other side of the page from the pack that opened it")
+
+func _find_grid(node: Node) -> GridContainer:
+	if node is GridContainer:
+		return node
+	for c in node.get_children():
+		var found: GridContainer = _find_grid(c)
+		if found != null:
+			return found
+	return null
 
 func test_the_map_button_belongs_to_the_offering() -> void:
 	var found: Button = null
