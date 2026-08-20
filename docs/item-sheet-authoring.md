@@ -136,6 +136,28 @@ cell — without them the items generate inert):
   the +1 Bash is granted once and kept, not a `passive:` bonus that unwinds if
   the item is ever removed)
 
+### Authored ahead of the DSL: the five pill relics
+
+`tools/_pills2_effects_setup.py` filled the `Effect` cell of the five relics that
+hang off **pills** (Mom's Coin Purse, Mom's Bottle of Pills, Caffeine Pill, Echo
+Chamber, Lucky Foot) at the same time it filled `pills2.0`'s own effect columns.
+**Three of their tokens have no parser yet** — `gain_pill N`, `pills_positive`
+and `echo_loot N` — so those cells are content waiting on the pill runtime, not
+working authoring:
+
+| Cell | Wants |
+| --- | --- |
+| `gain_pill N` | `gain_scroll`'s sibling for the new loot type — a handler in `EffectSystem` and an effect word in the generator. |
+| `pills_positive` | Lucky Foot's rule flag, in the shape `keep_shields` has: a bare word landing in an `ItemData` bool. |
+| `echo_loot N` | Echo Chamber's rule flag with a payload, in the shape `boss_chest_bonus: N` has. |
+
+Until those land, the generator does **not** error on them — it folds an unknown
+word into a shapeless effect dict (`{"type": "gain_pill"}`, no value) or drops it
+— so `python3 tools/generate_item2_tres.py` today would emit five relics whose
+`.tres` quietly says less than the sheet does. None of the five has a `.tres` yet,
+which is the only reason that is currently harmless. Add the parser and the
+handler in the commit that regenerates them.
+
 Also re-apply on the **`items2.0`** sheet, for the same reason (a re-upload puts
 the old spelling back and the "From: `<game>`" line then points at nothing):
 - **Mine-r Construction**'s `Reference` → `BroomSweeper`, which is how the
