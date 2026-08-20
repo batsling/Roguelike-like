@@ -170,6 +170,7 @@ mean.
 | **Key** | Unlock a new game path (blocked edge / unconnected "wild" game). *(No 2.0 content grants keys yet — see open questions.)* |
 | **Bomb** | Deal 1 damage to an enemy. Normal enemies have **Health 1** (`enemies2.0`), so one bomb removes one (no item drops). A **boss is a legal target but takes no bomb damage** (§7.1) — the charge only buys what an item hangs off the throw. Three items change what a bomb does: **Brimstone Bombs** widen the blast to the target's whole row *and* column, **Sticky Bombs** stun whatever the blast fails to destroy (in practice, bosses), and **Blood Bombs** pay +1 Health per bomb via the `bomb_used` trigger. **A bomb is aimed at a SQUARE, not only at a body** (`GameLoop2.bomb_cell`): every cell of the board lights up when the verb is armed, and an empty one is a legal target — which is how **Hot Bombs** lays fire in front of the stack and how **Brimstone** is aimed down a lane rather than off whoever happens to be standing in it. A click on an occupied square still routes through the body-aimed path (`GameLoop2.bomb`), so the target reaches the blast, the boss rule and the `bomb_used` trigger unchanged. |
 | **Scroll** | Consumables with an identity that starts **unidentified** and a **Preference** (Positive / Negative / Neutral). See §4.1. |
+| **Pill** | The same gamble held by a **colour** rather than by a type, with an oversized **horse** dose behind a 5% roll. See §4.3. |
 
 Verbs and consumables come from **enemy drops, item effects, and character
 rewards**, and are spent to route around goals you can't or won't complete.
@@ -268,6 +269,88 @@ The popup is where the decision is actually made. It carries:
 - and the three things that can be done about the card: **Travel**, **Bash**,
   **Transmute**. Bash and Transmute only appear when there is a charge, and the
   Amulet's card never offers a Bash (§4).
+
+### 4.3 Pills (`pills2.0`)
+
+Pills are the **second loot consumable**, and they are the scroll's identification
+minigame moved off the *type* and onto a **colour**. A scroll's mystery is one
+shared Unidentified art and a name you learn by reading it; a pill's is thirteen
+distinct coloured capsules, ten of which mean something this run and three of
+which mean nothing at all — so learning a pill is learning *this run's* alphabet
+rather than a fact that was always true.
+
+| Pill | Preference | Effect | Horse Effect |
+|---|---|---|---|
+| Luck Up | Positive | +1 Luck | +2 Luck |
+| Luck Down | Negative | −1 Luck | −2 Luck |
+| Telepills | Neutral | Teleport ~the same distance from the Amulet (±2) | Teleport to a space **1–3** from the Amulet |
+| 48 Hour Energy | Positive | +3 charges, each landing on a random chargeable relic | Fully charge 3 random chargeable relics |
+| Health Up | Positive | +2 Max Health | +4 Max Health |
+| Health Down | Negative | −2 Max Health | −4 Max Health |
+| Bad Trip | Negative | −2 Health | −4 Health |
+| Full Health | Positive | Heal to full | Heal to full, +3 Bonus Shields |
+| Balls of Steel | Positive | +2 Bonus Shields | +4 Bonus Shields |
+| Amnesia | Negative | A random curse goal (§5) | A random curse goal, and forget every identified loot |
+
+**The colours.** `images2.0/pills/` ships **13 colours**, each with a horse twin
+(`<Colour>.png` / `<Colour>Horse.png`). A run binds **10 of the 13** to the ten
+pills and the other **three sit out** — they never drop, and next run the whole
+mapping is redealt. This is `potion_color_map`'s pattern (§4.1's sibling), and the
+three spare colours are the reason a pill can't be deduced by elimination: nine
+known colours do not tell you what the tenth is.
+
+**Horse pills.** Every pill that drops rolls **5%** to arrive as the horse dose
+instead — the colour's oversized art, reading the row's Horse Effect. It is a roll
+per *drop*, so one colour can turn up both ways in a run. **Identification belongs
+to the colour, not to the dose**: take either one and both are known from then on,
+in both directions, and an identified colour's card shows what each dose does.
+Because the art is visibly oversized, the player always knows a horse pill is a
+horse pill — what they may not know is what colour means.
+
+**A pill says what it would do to you right now.** Bad Trip's dose is lethal at
+low Health, so it does the one thing a Negative pill never does: at or below its
+own damage it **heals to full instead**, and it *names itself* accordingly — an
+identified Bad Trip colour reads **Full Health** while you are in death range and
+**Bad Trip** the rest of the time. The label follows the current Health rather
+than the pill, which is why two colours can both claim to be Full Health.
+
+**Bonus Shields.** Shields can now be gained **outside a game** (Balls of Steel,
+horse Full Health), and those are a separate pool from the per-game tries of §3.2:
+
+- They are drawn **closest to the player** — nearest the portrait on the board's
+  hero, and beside the always-visible Health chip in the header, because a pool
+  gained on the overworld has to be readable when no board is on screen.
+- They are **spent last**: a lost run ticks the per-game pool first, then bonus
+  shields, then Health (a lost run *does* eat them — the tries are shields and so
+  are these). Enemy damage reads the same order.
+- They **never expire.** The per-game pool dies with the game that granted it;
+  a bonus shield stays until something breaks it, which is what makes it worth
+  saving across several games.
+
+**Where pills come from.** Beating a game pays **1 random piece of loot** — the
+run's baseline loot income, scroll or pill — and four relics move that number:
+
+| Relic | | |
+|---|---|---|
+| **Mom's Coin Purse** | Common, Pickup | +4 Pills, once, on pickup. |
+| **Mom's Bottle of Pills** | Common, Charged 2 | +1 Pill per firing. |
+| **Caffeine Pill** | Common, Passive + Pickup | +1 Speed **while held**, +1 Pill **kept** — the split is the point: lose the relic and the Speed goes with it, but the pill was already spent into the pack. |
+| **Lucky Foot** | Uncommon, Passive + Pickup | +1 Luck while held, +1 Pill kept, and a **Negative** pill taken while it is held **rerolls into a random Positive pill** rather than being swapped for a fixed opposite. Neutral pills are untouched — Telepills is not an upgrade waiting to happen. |
+
+**Echo Chamber** (Rare, Passive) is the one that turns loot into a resource
+worth hoarding: using a piece of loot also uses **a copy of the last 3 you used
+since picking it up**. Isaac's rule, and Isaac's ordering — the loot you just used
+enters the memory *after* the echo, so nothing echoes itself, and the echoed
+copies do not themselves enter the memory. Its hover lists those three and its
+card shows them with art and name (an unidentified entry there means the run
+forgot something it knew, which Amnesia's horse dose can do).
+
+**Sacred Bark stacks with all of it.** The Bark doubles every loot consumable
+(§8), Echo Chamber multiplies the number of consumables a single use fires, and
+the two compose rather than cancelling: one pill taken with both relics is two
+doses of it plus three echoes at two doses each. That is deliberately a lot —
+it is a Boss relic meeting a Rare one — and the Negative rows are doubled too, so
+the pile it makes is only good if the alphabet is already learned.
 
 ---
 
