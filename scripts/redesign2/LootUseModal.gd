@@ -47,6 +47,10 @@ var _newly_learned: bool = false
 # where it landed rather than only what was subtracted.
 var _hp_before: int = 0
 var _max_hp_before: int = 0
+# What Echo Chamber replayed on top of this use, by name. The relic's copies land
+# in the same merged `logs` as the piece's own, so without this the outcome screen
+# is four pieces' worth of effects and no account of where three of them came from.
+var _echoed: Array = []
 var _panel: PanelContainer = null
 var _body: VBoxContainer = null
 var _layer: CanvasLayer = null
@@ -171,16 +175,25 @@ func _show_intro() -> void:
 # relic changes what SPENDING one piece of loot means, and a player who cannot see
 # the three copies coming cannot plan around them (§4.3).
 func _echo_note() -> String:
-	var depth: int = GameState.loot_echo_depth()
-	if depth <= 0:
+	if GameState.loot_echo_depth() <= 0:
 		return ""
-	var memory: Array = LootSystem.used_memory()
-	if memory.is_empty():
+	var names: Array = _echo_names()
+	if names.is_empty():
 		return "Echo Chamber: nothing used yet for it to copy."
+	return "Echo Chamber will also use: %s." % ", ".join(PackedStringArray(names))
+
+# The pieces Echo Chamber is about to replay, newest first. Read BEFORE the use —
+# `LootSystem` pushes this use onto the same memory as it resolves, so asking
+# afterwards gets an answer that includes the piece you just spent.
+func _echo_names() -> Array:
+	var depth: int = GameState.loot_echo_depth()
+	var memory: Array = LootSystem.used_memory()
+	if depth <= 0 or memory.is_empty():
+		return []
 	var names: Array = []
 	for i in range(memory.size() - 1, maxi(0, memory.size() - depth) - 1, -1):
 		names.append(LootSystem.display_name(memory[i]))
-	return "Echo Chamber will also use: %s." % ", ".join(PackedStringArray(names))
+	return names
 
 func _on_read() -> void:
 	# Through LootSystem rather than straight into ScrollSystem: consuming the
@@ -199,6 +212,9 @@ func _on_read() -> void:
 	var known_before: bool = LootSystem.is_identified(_entry)
 	_hp_before = GameState.hp
 	_max_hp_before = GameState.max_hp
+	# Same reason: the use joins the echo memory as it resolves, so what the echoes
+	# WERE can only be read from in front of it.
+	_echoed = _echo_names()
 	var result: Dictionary = LootSystem.use_entry(_entry, {"rng": _rng}) if _loot_index < 0 \
 		else LootSystem.use_loot(_loot_index, {"rng": _rng})
 	used.emit()
@@ -253,7 +269,7 @@ func _pick_identify(req: Dictionary) -> void:
 	var confirm := UITheme.confirm_button("Identify Selected", Vector2(180, 34))
 	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	confirm.pressed.connect(func():
-		ScrollSystem.identify_scrolls_chosen(selected.keys())
+		_report(ScrollSystem.identify_scrolls_chosen(selected.keys()))
 		_process_next_request())
 	_body.add_child(confirm)
 
@@ -265,10 +281,11 @@ func _pick_stun(req: Dictionary) -> void:
 	_body.add_child(_heading("Scare a Monster", ACCENT, 20))
 	if GameLoop2.stack.is_empty():
 		_body.add_child(_muted("No following enemies to Stun."))
+		_report("There was nothing following you to Stun.")
 		_body.add_child(_continue_button())
 		return
 	_body.add_child(_muted("Choose up to %d following enemy to Stun (it loses its next turn — %s)."
-		% [max_pick, _stun_worth()]))
+		% [max_pick, ScrollSystem.stun_worth()]))
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
 		var inst: int = int(entry["instance"])
@@ -280,7 +297,7 @@ func _pick_stun(req: Dictionary) -> void:
 	var confirm := UITheme.confirm_button("Stun Selected", Vector2(180, 34))
 	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	confirm.pressed.connect(func():
-		ScrollSystem.stun_enemies_chosen(selected.keys())
+		_report(ScrollSystem.stun_enemies_chosen(selected.keys()))
 		_process_next_request())
 	_body.add_child(confirm)
 
@@ -294,12 +311,37 @@ func _toggle_select(selected: Dictionary, key, on: bool, max_pick: int, btn: But
 		selected.erase(key)
 
 # --- Teleport — fulfilled by the overworld --------------------------------
+#
+# The one op on either consumable that resolves nowhere near the system that owns
+# it: `read_scroll` and `take_pill` hand back a request and are finished, so the
+# line saying where you ended up can only come from whoever moved you.
 func _do_teleport(req: Dictionary) -> void:
+	var landed: String = ""
 	if _overworld != null and _overworld.has_method("loot_teleport"):
-		_overworld.loot_teleport(req)
+		# It writes its own log line — it is the overworld's move, and it happens
+		# whether a modal asked for it or not — so this only picks the sentence up.
+		landed = String(_overworld.loot_teleport(req))
+	if landed != "":
+		_report(landed, false)
 	else:
-		GameLog.add("The Scroll of Teleportation fizzles.", ACCENT)
+		# No overworld to move you, or nowhere on it to go. Either way the piece was
+		# spent, so the outcome says the nothing that happened rather than reporting
+		# an empty screen.
+		_report("It fizzles — you do not move.")
 	_process_next_request()
+
+# Add a line to what the outcome screen will say. `log_it` because every other line
+# on that screen came back through `use_loot` and was written to the run log in
+# `_on_read`, and a fulfilment's line has to reach both — except where whoever
+# fulfilled it has already logged its own. The log and the screen must never be
+# able to say different things, or say the same thing twice.
+# Silently ignores "" so a caller can hand over whatever it has.
+func _report(line: String, log_it: bool = true) -> void:
+	if line == "":
+		return
+	_outcome_logs.append(line)
+	if log_it:
+		GameLog.add(line, ACCENT)
 
 # ---------------------------------------------------------------------------
 # What it did
@@ -340,6 +382,14 @@ func _show_outcome() -> void:
 	if _newly_learned:
 		_body.add_child(_heading("You know what this one is now." if not _is_pill()
 			else "Now you know what this capsule is.", PillSystem.PILL_COLOR, 14))
+
+	# WHOSE LINES THESE ARE. Echo Chamber's copies resolve into the same merged
+	# `logs` as the piece's own, so a run holding the relic reads four pieces' worth
+	# of effects here — and without this, no account of where three of them came
+	# from. Named before the lines, since it is the frame they are read in.
+	if not _echoed.is_empty():
+		_body.add_child(_muted("Echo Chamber also used: %s."
+			% ", ".join(PackedStringArray(_echoed))))
 
 	# The effect, line by line. A piece whose ops all no-opped (a charge into a pack
 	# with nothing chargeable, an Amnesia with nothing to forget) reports that
@@ -396,17 +446,6 @@ func _rebuild_panel() -> void:
 	_body.add_theme_constant_override("separation", 10)
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_body)
-
-# What one stun is actually worth where the run is standing (§7.4). A stun costs
-# the target one TURN, and a turn is the whole game out in the wilds but only a
-# third of one on the Amulet's doorstep — so the scroll has to price itself
-# against the current pace rather than promising "skips its next attack", which
-# stopped being true the moment enemies started taking more than one turn.
-func _stun_worth() -> String:
-	var turns: int = GameLoop2.enemy_turns()
-	if turns <= 1:
-		return "its whole game, at 1 turn per game here"
-	return "1 of the %d turns it gets per game here" % turns
 
 func _heading(text: String, color: Color, size: int) -> Label:
 	var l := Label.new()

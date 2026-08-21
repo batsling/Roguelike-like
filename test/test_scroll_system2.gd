@@ -222,3 +222,80 @@ func test_stun_enemies_chosen_stuns_the_target() -> void:
 	var inst: int = GameLoop2.spawn_to_stack(_enemy(2))
 	ScrollSystem.stun_enemies_chosen([inst])
 	assert_eq(int(GameLoop2.stack[0]["stun"]), 1, "the chosen enemy is stunned")
+
+# --- Every fulfilment answers in WORDS -------------------------------------
+#
+# `read_scroll` returns its logs BEFORE the picker has been drawn, so a scroll
+# whose whole effect is a request used to resolve reporting nothing at all — and
+# the modal's outcome screen (LootUseModal._show_outcome) can only say what it is
+# handed. These are the lines that let a Scare Monster and an Identify describe
+# themselves.
+
+func test_stunning_says_which_enemy_and_what_it_cost_them() -> void:
+	var inst: int = GameLoop2.spawn_to_stack(_enemy(2))
+	var said: String = ScrollSystem.stun_enemies_chosen([inst])
+	assert_true(said.contains("Synthetic"), "it names the body it landed on: %s" % said)
+	assert_true(said.contains("turn") or said.contains("game"),
+		"and prices the stun against the pace here rather than promising "
+		+ "'skips its next attack': %s" % said)
+
+func test_stunning_nothing_says_so() -> void:
+	var said: String = ScrollSystem.stun_enemies_chosen([])
+	assert_ne(said, "", "confirming with nothing picked is still an outcome")
+
+func test_identifying_says_what_you_learned() -> void:
+	GameState.loot_items.clear()
+	GameState.add_scroll_loot(&"scroll_of_fire")
+	ScrollSystem.unidentify(&"scroll_of_fire")
+	var said: String = ScrollSystem.identify_scrolls_chosen([&"scroll_of_fire"])
+	assert_true(ScrollSystem.is_identified(&"scroll_of_fire"), "it identifies it")
+	assert_true(said.contains(ScrollSystem.display_name(Data.get_scroll(&"scroll_of_fire"))),
+		"and NAMES it — a scroll whose entire subject is 'what is this' cannot "
+		+ "answer with a count: %s" % said)
+
+func test_identifying_nothing_says_so() -> void:
+	assert_ne(ScrollSystem.identify_scrolls_chosen([]), "",
+		"confirming with nothing picked is still an outcome")
+
+func test_a_random_identify_names_what_it_revealed() -> void:
+	GameState.loot_items.clear()
+	GameState.add_scroll_loot(&"scroll_of_fire")
+	ScrollSystem.unidentify(&"scroll_of_fire")
+	var out: Dictionary = ScrollSystem.read_scroll(
+		_scroll_with([{"op": "identify_scrolls", "mode": "random", "count": 1}]))
+	assert_true(str(out["logs"]).contains("Scroll of Fire"),
+		"the random mode used to reveal something and never say what: %s" % str(out["logs"]))
+
+func test_a_random_stun_names_who_it_hit() -> void:
+	GameLoop2.spawn_to_stack(_enemy(2))
+	var out: Dictionary = ScrollSystem.read_scroll(
+		_scroll_with([{"op": "stun_enemies", "mode": "random", "count": 1}]))
+	assert_true(str(out["logs"]).contains("Synthetic"),
+		"the random mode used to stun in silence: %s" % str(out["logs"]))
+
+# A one-off scroll carrying exactly the clause under test. The shipped catalog
+# authors both of these in `choose` mode, and the `random` modes are reachable
+# content the sheet can turn on at any time.
+func _scroll_with(effect: Array) -> ScrollData:
+	var s := ScrollData.new()
+	s.id = &"synthetic_scroll"
+	s.display_name = "Synthetic Scroll"
+	s.effect = effect
+	return s
+
+func test_every_scroll_says_something_about_itself() -> void:
+	# THE SWEEP, the twin of test_pill_system's. A scroll that resolves in silence
+	# shows the outcome screen a blank, and the catalog is where a new one arrives.
+	for scroll in Data.all_scrolls():
+		GameState.reset_run()
+		GameLoop2.reset()
+		GameState.add_scroll_loot(&"scroll_of_fire")
+		ScrollSystem.unidentify(&"scroll_of_fire")
+		GameLoop2.spawn_to_stack(_enemy(1))
+		var out: Dictionary = ScrollSystem.read_scroll(scroll)
+		var said: bool = not (out["logs"] as Array).is_empty()
+		# A request is what a scroll has to say for itself at this layer: the choice
+		# has not been made yet, and its line comes back from the fulfilment (see
+		# identify_scrolls_chosen / stun_enemies_chosen / Overworld2.loot_teleport).
+		var asked: bool = not (out["requests"] as Array).is_empty()
+		assert_true(said or asked, "%s reports what it did" % scroll.display_name)

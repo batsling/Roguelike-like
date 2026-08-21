@@ -393,8 +393,12 @@ func _apply_stat(op: Dictionary, negative: bool, out: Dictionary) -> void:
 	if amount == 0:
 		return
 	GameState.grant_run_stat(stat, -amount if negative else amount)
-	out["logs"].append("You %s %d %s." % [
-		"lose" if negative else "gain +", amount, _pretty(stat)])
+	# The sign belongs to the NUMBER, not to the verb. Splitting the format three
+	# ways put a space between them — "You gain + 1 Luck." — which nobody caught
+	# while these lines only ever went to the run log, and which is the first thing
+	# you read on the screen that now says what a pill did.
+	out["logs"].append("You %s %s." % [
+		"lose %d" % amount if negative else "gain +%d" % amount, _pretty(stat)])
 
 func _pretty(stat: String) -> String:
 	return stat.capitalize()

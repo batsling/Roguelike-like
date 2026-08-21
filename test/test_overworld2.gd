@@ -1430,6 +1430,55 @@ func test_the_outcome_screen_names_the_colour_this_use_taught_you() -> void:
 	modal._finish()
 	await wait_frames(2)
 
+func test_a_teleport_says_where_it_put_you() -> void:
+	# THE PIECE THAT USED TO SAY NOTHING. A teleport is the one op on either
+	# consumable that resolves nowhere near the system that owns it — read_scroll and
+	# take_pill hand back a REQUEST and are finished — so it contributed no log line
+	# at all and Telepills came out the far end of a use reporting "Nothing happens."
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"telepills")
+	var was: StringName = GameState.current_game_id
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	modal._on_read()
+	await wait_frames(2)
+	if not is_instance_valid(modal):
+		return
+	var text: String = _text_of(modal)
+	assert_false(text.contains("Nothing happens"),
+		"the piece that moves you is not a piece that did nothing: %s" % text)
+	assert_true(text.contains("Teleported to") or text.contains("fizzles"),
+		"it says where you ended up, or why you did not move: %s" % text)
+	if GameState.current_game_id != was:
+		assert_true(text.contains("from the Amulet"),
+			"and how far out that is, which is the fact the op is about: %s" % text)
+	modal._finish()
+	await wait_frames(2)
+
+func test_the_outcome_names_the_pieces_echo_chamber_replayed() -> void:
+	# Echo Chamber's copies resolve into the SAME merged logs as the piece's own, so
+	# without naming them the outcome is four pieces' worth of effects and no account
+	# of where three of them came from.
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"luck_up")
+	GameState.add_pill_loot(&"health_up")
+	LootSystem.use_loot(0)          # something for the relic to copy
+	GameState.add_item(Data.get_item2(&"echo_chamber"))
+	if GameState.loot_echo_depth() <= 0:
+		return                       # no such relic in the catalog — nothing to assert
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	modal._on_read()
+	await wait_frames(2)
+	if not is_instance_valid(modal):
+		return
+	assert_true(_text_of(modal).contains("Echo Chamber also used"),
+		"the outcome says whose lines those are: %s" % _text_of(modal))
+	modal._finish()
+	await wait_frames(2)
+
 func test_backing_out_of_a_use_says_nothing_about_what_it_did() -> void:
 	# Cancel is not a use. The outcome screen is what a use ends on, so a piece that
 	# was never spent must not reach it.

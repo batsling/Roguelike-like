@@ -44,6 +44,22 @@ For how the project is laid out and how its systems fit together, see
   request is part of what the piece did — and Cancel never reaches it, because
   backing out is not a use.
 
+  **And every piece has something to say now.** The screen can only report what it
+  is handed, and both systems return their logs *before* a request is fulfilled, so
+  a piece whose whole effect is a request contributed no line at all: Teleportation,
+  Telepills, Identify and Scare Monster all came out of a use reporting *"Nothing
+  happens"*. `Overworld2.loot_teleport` returns the sentence it logs (with the
+  distance from the Amulet, which is the fact the op is actually about), and
+  `identify_scrolls_chosen` / `stun_enemies_chosen` return theirs and **name** what
+  they touched — their silent `random` modes with them. Echo Chamber's replays are
+  named on the outcome as well, since its copies land in the same merged logs and
+  a run holding it was reading four pieces' worth of effects with no account of
+  where three of them came from. Every scroll and both doses of every pill were
+  taken through the real modal to check; a sweep in the suite keeps it that way as
+  the catalog grows. One thing the sweep turned up: a stat dose had been saying
+  *"You gain + 1 Luck"*, the sign a word away from its number — invisible in a run
+  log, the first thing you read on a screen that exists to be read.
+
 - **The loot window is a grid you handle, and the drop modal asks in front of
   it.**
 

@@ -1348,14 +1348,22 @@ func read_scroll(idx: int) -> void:
 #
 # Both exclude the current game and the Amulet, and both fall back to any
 # reachable node when their band is empty.
-func loot_teleport(req: Dictionary) -> void:
+#
+# IT ANSWERS IN WORDS, and the caller says them. A teleport is the one op on either
+# consumable that resolves nowhere near the system that owns it — `read_scroll` and
+# `take_pill` hand back a REQUEST and are finished — so the line that says where
+# you ended up can only come from here. Returning it rather than only logging it is
+# what lets the use modal's outcome screen report a Telepill at all: without it,
+# the one piece of loot that moves you was also the one that said nothing about
+# what it just did (see LootUseModal._do_teleport). "" means it never fired.
+func loot_teleport(req: Dictionary) -> String:
 	var amulet: StringName = GameState.amulet_game_id
 	if amulet == &"":
-		return
+		return ""
 	var dist: Dictionary = RunGraph.bfs_distances(amulet)
 	var cur: StringName = GameState.current_game_id
 	if not dist.has(cur):
-		return
+		return ""
 	var to_amulet: bool = String(req.get("dir", "same")) == "amulet"
 	var spread: int = int(req.get("spread", 1))
 	var near: int = int(req.get("min", 1))
@@ -1375,16 +1383,24 @@ func loot_teleport(req: Dictionary) -> void:
 			band.append(gid)
 	var pool: Array = band if not band.is_empty() else any
 	if pool.is_empty():
-		GameLog.add("The teleport fizzles — nowhere to go.", Color(0.61, 0.35, 0.71))
-		return
+		var fizzle := "The teleport fizzles — nowhere to go."
+		GameLog.add(fizzle, Color(0.61, 0.35, 0.71))
+		return fizzle
 	var dest: StringName = pool[_rng.randi() % pool.size()]
 	GameState.set_current_game(dest)
 	var g: GameData = Data.get_game(dest)
-	GameLog.add("Teleported to %s." % (g.display_name if g != null else String(dest)),
-		Color(0.61, 0.35, 0.71))
+	# HOW FAR OUT IT PUT YOU, not only where. Distance from the Amulet is the fact
+	# the whole op is about — `spread` keeps you about where you were and `amulet`
+	# is the one move in the game that can drop you on the doorstep — and a landing
+	# reported as a game's name alone is the half that doesn't say which happened.
+	var landed := "Teleported to %s — %d step%s from the Amulet." % [
+		g.display_name if g != null else String(dest),
+		int(dist.get(dest, 0)), "" if int(dist.get(dest, 0)) == 1 else "s"]
+	GameLog.add(landed, Color(0.61, 0.35, 0.71))
 	_dash_mode = false
 	_build_choices()
 	_refresh()
+	return landed
 
 # Report the outcome of actually playing the chosen game (the honour-system
 # self-report). `fulfilled` is the list of enemy instances whose goals you

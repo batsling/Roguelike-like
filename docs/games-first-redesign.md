@@ -563,6 +563,33 @@ Telepill has already moved you by the time it does. **Cancel is not a use** and
 never reaches this screen. On the drop modal, a piece used from that screen now
 resolves the drop when the outcome is dismissed rather than the instant it fires.
 
+**Every piece has to have something to say, and three of them didn't.** The screen
+can only report what it is handed, and `read_scroll` / `take_pill` return their
+logs *before* a request has been fulfilled — so a scroll whose whole effect is a
+request contributed no line at all. Three pieces came out of a use reporting
+*"Nothing happens"*:
+
+- **Teleportation and Telepills.** A teleport is the one op on either consumable
+  that resolves nowhere near the system that owns it, so `Overworld2.loot_teleport`
+  **returns** the sentence it logs, and it says the distance as well as the
+  destination — *`spread` keeps you about where you were* and *`amulet` is the only
+  move in the game that can drop you on the doorstep*, and a landing reported as a
+  game's name alone is the half that doesn't say which happened.
+- **Identify** and **Scare Monster**. `identify_scrolls_chosen` and
+  `stun_enemies_chosen` return their line too, and both **name** what they touched
+  — a scroll whose entire subject is *what is this* cannot answer with a count.
+  Their `random` modes were silent for the same reason and now say the same thing.
+
+`stun_worth()` — what a Stun costs its target at the run's current pace (§7.4) —
+moved onto `ScrollSystem` so the screen that ASKS which enemy to stun and the one
+that reports the answer quote one sentence rather than two.
+
+**Echo Chamber's copies are named on the outcome, too.** The relic's replays merge
+into the same `logs` as the piece's own, so a run holding it reads four pieces'
+worth of effects — and, until the outcome screen said so, no account of where three
+of them came from. The names are snapshotted *before* the use, since the use joins
+that same memory as it resolves.
+
 **The bin** (`LootTrash`). Spending a piece is not the same as being rid of one: a
 pack holding three known-Negative pills is full of loot the run will never
 willingly use, and *reading the Amnesia scroll to make room* is a worse answer than

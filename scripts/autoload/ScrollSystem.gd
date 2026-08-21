@@ -320,12 +320,20 @@ func _identify_scrolls(mode: String, count: int, rng: RandomNumberGenerator, out
 			identify(id)
 		out["logs"].append("All carried scrolls identified.")
 	elif mode == "random":
+		# NAMED, not counted. A random identify used to resolve in silence, which on a
+		# scroll whose entire subject is *what is this* left the reader knowing
+		# something new and with no way to find out what.
+		var learned: Array = []
 		for _i in range(count):
 			if unknown.is_empty():
 				break
 			var idx: int = rng.randi_range(0, unknown.size() - 1)
 			identify(unknown[idx])
+			var s: ScrollData = Data.get_scroll(unknown[idx])
+			learned.append(s.display_name if s != null else String(unknown[idx]))
 			unknown.remove_at(idx)
+		out["logs"].append("You identify %s." % ", ".join(PackedStringArray(learned))
+			if not learned.is_empty() else "No unidentified scrolls to identify.")
 	else: # choose
 		if unknown.is_empty():
 			out["logs"].append("No unidentified scrolls to identify.")
@@ -356,12 +364,18 @@ func _stun_enemies(mode: String, count: int, out: Dictionary) -> void:
 		var rng := RandomNumberGenerator.new()
 		rng.randomize()
 		var pool: Array = GameLoop2.stack.duplicate()
+		var hit: Array = []
 		for _i in range(count):
 			if pool.is_empty():
 				break
 			var idx: int = rng.randi_range(0, pool.size() - 1)
+			hit.append(enemy_name(int(pool[idx]["instance"])))
 			GameLoop2.stun(int(pool[idx]["instance"]))
 			pool.remove_at(idx)
+		# Which one it landed on, and what that is worth — a stun that resolved in
+		# silence was a scroll the reader could not plan the next game around.
+		out["logs"].append("%s %s Stunned — %s." % [", ".join(PackedStringArray(hit)),
+			"is" if hit.size() == 1 else "are", stun_worth()])
 	else: # choose
 		out["requests"].append({"kind": "stun_enemies", "count": count})
 
@@ -369,10 +383,52 @@ func _stun_enemies(mode: String, count: int, out: Dictionary) -> void:
 # Fulfilment helpers (called by the UI after a request's choice is made)
 # ===========================================================================
 
-func identify_scrolls_chosen(ids: Array) -> void:
+# BOTH OF THESE ANSWER IN WORDS, because a request is half of what the scroll did
+# and the other half only exists once the player has chosen. `read_scroll` returns
+# its logs before the picker has been drawn, so a fulfilment that stayed silent
+# left the reader with a scroll that reported nothing at all — see
+# LootUseModal._show_outcome, which is where these lines land.
+func identify_scrolls_chosen(ids: Array) -> String:
+	var names: Array = []
 	for id in ids:
 		identify(id)
+		var s: ScrollData = Data.get_scroll(StringName(id))
+		names.append(s.display_name if s != null else String(id))
+	if names.is_empty():
+		return "You identify nothing."
+	return "You identify %s." % ", ".join(PackedStringArray(names))
 
-func stun_enemies_chosen(instances: Array) -> void:
+func stun_enemies_chosen(instances: Array) -> String:
+	var names: Array = []
 	for inst in instances:
+		# Named BEFORE it is stunned: the name is read off the board, and the point of
+		# reading it first is that nothing about this line depends on what stunning
+		# leaves behind.
+		names.append(enemy_name(int(inst)))
 		GameLoop2.stun(int(inst))
+	if names.is_empty():
+		return "Nothing is Stunned."
+	return "%s %s Stunned — %s." % [", ".join(PackedStringArray(names)),
+		"is" if names.size() == 1 else "are", stun_worth()]
+
+# What one Stun is actually worth where the run is standing (§7.4). A stun costs
+# the target one TURN, and a turn is the whole game out in the wilds but only a
+# third of one on the Amulet's doorstep, so both the screen that ASKS which enemy
+# to stun and the one that reports the answer have to price it against the current
+# pace rather than promising "skips its next attack". One copy, because the two
+# saying it differently would be two answers to one question.
+func stun_worth() -> String:
+	var turns: int = GameLoop2.enemy_turns()
+	if turns <= 1:
+		return "its whole game, at 1 turn per game here"
+	return "1 of the %d turns it gets per game here" % turns
+
+# What a following enemy is called, by instance — the stack is the only place that
+# knows, and two copies of the same goblin are two instances of one name.
+func enemy_name(instance: int) -> String:
+	for entry in GameLoop2.stack:
+		if int(entry["instance"]) != instance:
+			continue
+		var e: GoalEnemyData = entry["enemy"]
+		return e.display_name if e != null else "It"
+	return "It"
