@@ -2,7 +2,7 @@ class_name LootWindow
 extends RefCounted
 
 # The LOOT WINDOW — the pack's nine pieces of loot, as a 3x3 grid that opens
-# OVER THE LEFT COLUMN (docs/games-first-redesign.md §4.3).
+# OVER THE BOARD (docs/games-first-redesign.md §4.3).
 #
 # Loot used to ride the pack strip as tokens, one per scroll, which worked while
 # a scroll or two was all there was. Pills doubled the kinds and the per-game
@@ -12,19 +12,23 @@ extends RefCounted
 # IT IS A PANEL OVER THE PAGE, NOT A ROW INSIDE THE PACK. Opening it used to grow
 # the pack panel downward, which pushed the board and re-flowed the right column
 # every time the player looked at what they were carrying — the window cost the
-# page a relayout for the crime of being opened. It floats over the LEFT column
-# now, on top of the offering: that half of the page is the one you are not
-# reading while you decide which pill to take, and nothing under it moves.
+# page a relayout for the crime of being opened. It floats over the BOARD now: the
+# pack strip stands on top of the board, so the window drops out of its own button
+# rather than appearing across the page from it, and the board is a picture of what
+# is chasing you, which does not change while you decide which pill to take.
 #
-# THE GRID IS ALWAYS NINE. Nine is the cap, and an inventory that only draws what
-# is in it says nothing about the room left — the empty slots are the count. They
-# are also what keeps the thing a GRID rather than a row that wraps: three tiles
-# in a 3x3 read as three of nine, while three tiles in a flow row read as all
-# there is.
+# THE GRID IS ALWAYS NINE, and it is LootGrid — the same class the drop modal
+# draws, so the pack you rearrange and the pack you drop a new piece into are one
+# widget rather than two that have to be kept looking alike. Pieces drag between
+# slots, each carries the button that spends it, and clicking one opens its card.
 #
-# Each filled cell draws the art, the name, and a Use button, and carries the same
-# hover card an item or an enemy does. Use goes back through the page's `use_loot`,
-# which opens the one modal both kinds share (LootUseModal).
+# WHAT YOU HAVE LEARNED lives here too, behind the "Known this run" line at the
+# foot. A pill's identity belongs to a COLOUR and only for this run, and until now
+# the only place that knowledge existed was a toast that had already scrolled away
+# — so a player who learned that green is Bad Trip on game three had nowhere to go
+# and check on game eleven. That is the whole identification minigame with no
+# record of itself. It is folded shut by default: it is a thing you consult, not a
+# thing you read every time you open the pack.
 #
 # Split out of Overworld2 the way PackStrip was (docs/performance-backlog.md §1):
 # it owns the CONTENTS of the toggle and the panel, and the page owns the mounting
@@ -39,16 +43,16 @@ var _button_host: Control = null
 # looking, and slamming it shut every time the page refreshes would make it
 # unusable exactly when loot matters.
 var open: bool = false
+# Whether the discoveries section at the foot is unfolded. Sticky for the same
+# reason `open` is.
+var discoveries_open: bool = false
 
-const COLS := 3
-# The same tile as a relic's on the pack strip (PackStrip.ITEM_TOKEN). A piece of
-# loot and a relic are both "a thing you are carrying", and two art sizes for them
-# read as two different kinds of importance rather than as two kinds of thing.
-const CELL_ART := PackStrip.ITEM_TOKEN
-# Every cell is this wide, filled or empty, so the grid stays a grid: a column
-# that sized itself to its contents would jog left and right as pills are spent.
-const CELL_W := CELL_ART + 26
 const ACCENT := Color(0.72, 0.62, 0.86)
+# The capsules the toggle carries when the window is shut — see `_toggle_button`.
+const TOGGLE_PEEK := 3
+const TOGGLE_ART := 18
+# How much of the window the "Known this run" fold is allowed to take.
+const DISCOVERIES_H := 108
 
 func _init(page: Node, button_host: Control) -> void:
 	_page = page
@@ -65,39 +69,74 @@ func rebuild(reporting: bool) -> void:
 	_button_host.add_child(_toggle_button())
 	# Rebuilt from scratch rather than refreshed in place: the page mounts and
 	# positions it, and a panel that survived a rebuild would have to be re-measured
-	# against a left column that may have changed size anyway.
+	# against a board that may have changed size anyway.
 	_page.unmount_loot_overlay()
 	if open:
 		_page.mount_loot_overlay(_panel(reporting))
 
-# The toggle. It carries the COUNT because that is the number the player is
-# actually tracking — nine is the cap, and a drop that cannot be taken is the
-# thing the count is warning about.
-func _toggle_button() -> Button:
-	var btn := Button.new()
+# The toggle, which is also THE ONLY THING ON THE PAGE THAT SAYS YOU ARE CARRYING
+# LOOT while the window is shut. It used to be a 12px text label at the far right
+# of the pack strip — eight relics drew eight pieces of art and six consumables
+# drew the word "Loot", which is backwards: the consumables are what you spend
+# turn to turn. So it carries the art of the first few pieces as well as the
+# count, and it stands at the HEAD of the strip rather than its tail, out from
+# under the toast column that was drawing over it.
+func _toggle_button() -> Control:
 	var held: int = GameState.loot_items.size()
-	btn.text = "%s Loot %d/%d %s" % [
-		"💊" if _has_pills() else "📜", held, GameState.LOOT_CAPACITY,
-		"▾" if open else "▸"]
-	btn.add_theme_font_size_override("font_size", 12)
+	var full: bool = GameState.loot_is_full()
+	# Full is a state worth colouring: a pack with no room turns the next payout
+	# into "leave it", and the moment to know that is before the drop asks.
+	var tint: Color = UITheme.DANGER if full else ACCENT
+
+	var btn := Button.new()
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	btn.tooltip_text = "Scrolls and pills you're carrying (max %d).\nClick to %s." % [
-		GameState.LOOT_CAPACITY, "close" if open else "open"]
+	btn.tooltip_text = "Scrolls and pills you're carrying (%d of %d).\nClick or Tab to %s." % [
+		held, GameState.LOOT_CAPACITY, "close" if open else "open"]
+	if full:
+		btn.tooltip_text += "\nFull — the next piece of loot has nowhere to go."
 	btn.add_theme_stylebox_override("normal",
-		UITheme.flat(ACCENT.lerp(UITheme.BG, 0.72), 5, 6, 1, ACCENT.lerp(UITheme.BG, 0.4)))
+		UITheme.flat(tint.lerp(UITheme.BG, 0.72), 5, 5, 1, tint.lerp(UITheme.BG, 0.4)))
 	btn.add_theme_stylebox_override("hover",
-		UITheme.flat(ACCENT.lerp(UITheme.BG, 0.55), 5, 6, 1, ACCENT))
+		UITheme.flat(tint.lerp(UITheme.BG, 0.55), 5, 5, 1, tint))
 	btn.pressed.connect(func():
 		open = not open
 		_page.refresh_loot_window())
+
+	# The label and the peek at what's in it, laid over the button rather than in
+	# it: a Button draws one string, and this needs art. IGNORE on the row so every
+	# click lands on the button underneath.
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 3)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 6
+	row.offset_right = -6
+	for entry in GameState.loot_items.slice(0, TOGGLE_PEEK):
+		if entry is Dictionary:
+			var art: TextureRect = LootSystem.art_tex(entry, TOGGLE_ART)
+			art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			row.add_child(art)
+	var label := Label.new()
+	label.text = "Loot %d/%d %s" % [held, GameState.LOOT_CAPACITY, "▾" if open else "▸"]
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.5))
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(label)
+	btn.add_child(row)
+	# The button has no text of its own, so it needs to be told how big the row it
+	# is carrying makes it.
+	btn.custom_minimum_size = Vector2(
+		74 + TOGGLE_ART * mini(held, TOGGLE_PEEK), TOGGLE_ART + 8)
 	return btn
 
 func _has_pills() -> bool:
 	return not GameState.loot_pills().is_empty()
 
-# The floating panel: a heading with its own close button, then the 3x3.
-# Opaque (not the page's translucent PANEL) because it is standing on top of the
-# offering — a see-through inventory over a wall of cover art is unreadable.
+# The floating panel: a heading with its own close button, the 3x3, and the
+# foldable record of what the run has learned. Opaque (not the page's translucent
+# PANEL) because it is standing on top of the board — a see-through inventory over
+# a battlefield is unreadable.
 func _panel(reporting: bool) -> Control:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel",
@@ -117,114 +156,161 @@ func _panel(reporting: bool) -> Control:
 	title.add_theme_color_override("font_color", ACCENT.lerp(Color.WHITE, 0.45))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
-	var close := Button.new()
-	close.text = "✕"
-	close.add_theme_font_size_override("font_size", 13)
+	var close := UITheme.quiet_button("✕", Vector2.ZERO, 13)
 	close.tooltip_text = "Close the loot window."
-	close.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	close.pressed.connect(func():
 		open = false
 		_page.refresh_loot_window())
 	head.add_child(close)
 
-	var grid := GridContainer.new()
-	grid.columns = COLS
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 6)
+	var grid := LootGrid.new()
+	grid.allow_reorder = true
+	grid.show_use = true
+	grid.locked = reporting
+	grid.use_requested.connect(func(i: int): _page.use_loot(i))
+	grid.inspect_requested.connect(func(i: int): _page.open_loot_card(i))
+	grid.moved.connect(func(from: int, to: int):
+		if GameState.move_loot(from, to):
+			_page.refresh_loot_window())
+	grid.rebuild()
 	box.add_child(grid)
-	# ALWAYS nine, filled then empty. The empties are how the window says how much
-	# room is left, which is the fact the cap makes interesting.
-	for i in range(GameState.LOOT_CAPACITY):
-		var entry = GameState.loot_items[i] if i < GameState.loot_items.size() else null
-		grid.add_child(_cell(i, entry, reporting) if entry is Dictionary else _empty_cell())
 
+	# The one line of instruction the grid needs, and only while there is something
+	# to rearrange — a single piece has nowhere to go.
+	if GameState.loot_items.size() > 1 and not reporting:
+		box.add_child(_note("Drag a piece to another slot to rearrange the pack."))
 	if reporting:
-		var note := Label.new()
-		note.text = "Finish reporting this game before spending any."
-		note.add_theme_font_size_override("font_size", 10)
-		note.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		box.add_child(note)
+		box.add_child(_note("Finish reporting this game before spending any."))
+
+	box.add_child(_discoveries())
 	return panel
 
-# One piece of loot: art, name, Use. The whole cell answers the hover, so the gap
-# under the name says something rather than nothing.
-func _cell(index: int, entry: Dictionary, reporting: bool) -> Control:
-	var col := HoverBox.new()
-	col.add_theme_constant_override("separation", 2)
-	col.custom_minimum_size = Vector2(CELL_W, 0)
-	HoverCard.attach(col, hover_card(entry))
+# ---------------------------------------------------------------------------
+# What the run has learned
+# ---------------------------------------------------------------------------
 
-	var tile := HoverPanel.new()
-	# SHRINK_CENTER so the tile hugs the art at exactly CELL_ART. Without it the
-	# panel stretches to the cell's width and drags the art with it, and a pill ends
-	# up bigger than a relic while both are asking for the same number.
-	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var known: bool = LootSystem.is_identified(entry)
-	# A known piece wears its accent at full strength; an unknown one is dimmed to
-	# the panel, which is the same "you have not learned this yet" the name says.
-	tile.add_theme_stylebox_override("panel", UITheme.flat(
-		ACCENT.lerp(UITheme.BG, 0.86), 5, 3, 1,
-		ACCENT.lerp(UITheme.BG, 0.35 if known else 0.7)))
-	HoverCard.attach(tile, hover_card(entry))
-	col.add_child(tile)
-	var art := UITheme.crisp_tex(LootSystem.art_texture(entry), CELL_ART)
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tile.add_child(art)
+# The run's own alphabet, folded shut (§4.3). A pill is learned as a COLOUR and
+# only for this run — the ten the run dealt, of thirteen that exist — so the fact
+# worth recording is "which capsules do I now know", and the fact worth NOT
+# recording is which of the three spares sat out, since knowing that is exactly
+# the deduction the spares exist to prevent. So this lists what has been learned
+# and counts what has not, and never names an unlearned pill.
+func _discoveries() -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
 
-	var name := Label.new()
-	name.text = LootSystem.display_name(entry)
-	name.add_theme_font_size_override("font_size", 9)
-	name.add_theme_color_override("font_color",
-		UITheme.TEXT if known else UITheme.TEXT_FAINT)
-	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name.custom_minimum_size = Vector2(CELL_W, 0)
-	name.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(name)
+	var pills: Array = _known_pills()
+	var scrolls: Array = _known_scrolls()
+	var learned: int = pills.size() + scrolls.size()
 
-	var use := Button.new()
-	use.text = "Use"
-	use.disabled = reporting
-	use.custom_minimum_size = Vector2(CELL_W, 14)
-	use.add_theme_font_size_override("font_size", 9)
-	use.tooltip_text = "Finish reporting this game first." if reporting \
-		else "Spend it — this is how an unknown one gets identified."
-	use.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	use.pressed.connect(func(): _page.use_loot(index))
-	col.add_child(use)
+	var toggle := UITheme.quiet_button(
+		"%s  Known this run — %d learned" % ["▾" if discoveries_open else "▸", learned],
+		Vector2(0, 20), 11)
+	toggle.tooltip_text = "The pills and scrolls this run has identified.\n" \
+		+ "A pill's name belongs to its colour and only until the run ends."
+	toggle.pressed.connect(func():
+		discoveries_open = not discoveries_open
+		_page.refresh_loot_window())
+	box.add_child(toggle)
+	if not discoveries_open:
+		return box
+
+	if learned == 0:
+		box.add_child(_note("Nothing yet. Spending an unknown piece is what teaches you what it was."))
+		return box
+
+	# CAPPED AND SCROLLED. A run that has learned all ten colours and all seven
+	# scrolls has seventeen rows to show, and the panel is already three cells tall
+	# inside a 720p window — left to grow it pushed itself off the bottom of the
+	# screen, which is the one thing a floating panel must never do. So the record
+	# gets a fixed slice of the window and scrolls inside it.
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(LootSlot.CELL_W * 3, DISCOVERIES_H)
+	var inner := VBoxContainer.new()
+	inner.add_theme_constant_override("separation", 6)
+	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(inner)
+	box.add_child(scroll)
+
+	if not pills.is_empty():
+		inner.add_child(_known_row("Pills", pills))
+	if not scrolls.is_empty():
+		inner.add_child(_known_row("Scrolls", scrolls))
+	# What is left to learn, as a NUMBER rather than as a list of names — the three
+	# colours sitting out this run are why a pill cannot be deduced by elimination,
+	# and a row of blanks that could be counted would hand that back.
+	var unknown: int = maxi(0, Data.all_pills().size() - pills.size())
+	if unknown > 0:
+		inner.add_child(_note("%d more colour%s out there, unlearned." % [
+			unknown, "" if unknown == 1 else "s"]))
+	return box
+
+func _known_row(heading: String, entries: Array) -> Control:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 3)
+	var head := Label.new()
+	head.text = heading
+	head.add_theme_font_size_override("font_size", 10)
+	head.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	col.add_child(head)
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 4)
+	flow.add_theme_constant_override("v_separation", 4)
+	flow.custom_minimum_size = Vector2(LootSlot.CELL_W * 3, 0)
+	col.add_child(flow)
+	for entry in entries:
+		flow.add_child(_known_chip(entry))
 	return col
 
-# An empty slot: the same footprint as a filled cell, drawn as the outline of one.
-# Room left, said as a picture rather than as a fraction.
-func _empty_cell() -> Control:
-	var slot := PanelContainer.new()
-	slot.custom_minimum_size = Vector2(CELL_W, CELL_ART + 8)
-	# FILL, so an empty slot is as tall as the filled cells sharing its row. Left to
-	# shrink it hugged its own minimum and sat against the top of the row, which
-	# made a half-full grid look ragged rather than half full.
-	slot.size_flags_vertical = Control.SIZE_FILL
-	slot.add_theme_stylebox_override("panel", UITheme.flat(
-		Color(0, 0, 0, 0.18), 5, 3, 1, ACCENT.lerp(UITheme.BG, 0.85)))
-	slot.tooltip_text = "Empty — room for one more."
-	return slot
+# One learned piece: its art and its name, at a size that fits several to a row.
+# It carries the same hover card the pack's own slots do, so "what does green do
+# again" is answered in the place the question is asked.
+func _known_chip(entry: Dictionary) -> Control:
+	var wrap := HoverPanel.new()
+	var pref: String = LootSystem.preference(entry)
+	var tint: Color = UITheme.preference_color(pref)
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(tint.lerp(UITheme.BG, 0.84), 5, 3, 1, tint.lerp(UITheme.BG, 0.55)))
+	HoverCard.attach(wrap, LootSystem.hover_card(entry))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 3)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(row)
+	var art: TextureRect = LootSystem.art_tex(entry, 16)
+	art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(art)
+	var name := Label.new()
+	name.text = LootSystem.display_name(entry)
+	name.add_theme_font_size_override("font_size", 10)
+	name.add_theme_color_override("font_color", UITheme.TEXT)
+	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(name)
+	return wrap
 
-# The hover model for a carried piece of loot, in the shape every other hover on
-# the page uses. Static and public because the drop modal describes the same
-# piece and should come through here rather than growing its own wording.
-static func hover_card(entry: Dictionary) -> Dictionary:
-	var known: bool = LootSystem.is_identified(entry)
-	var kind: String = "Pill" if String(entry.get("type", "")) == "pill" else "Scroll"
-	if bool(entry.get("horse", false)):
-		kind = "Horse Pill"
-	var sub: String = kind
-	if known and LootSystem.preference(entry) != "":
-		sub += "  ·  %s" % LootSystem.preference(entry)
-	return {
-		"title": LootSystem.display_name(entry),
-		"subtitle": sub,
-		"accent": ACCENT,
-		"art": LootSystem.art_texture(entry),
-		"lines": [LootSystem.description(entry)],
-		"note": "" if known else "▸ Using it is how you learn what it is.",
-	}
+# Every pill colour this run has identified, as loot entries at the NORMAL dose —
+# identification belongs to the colour and covers both doses, so the record shows
+# the one the player will meet nine times in ten.
+func _known_pills() -> Array:
+	var out: Array = []
+	for pill in Data.all_pills():
+		if PillSystem.is_identified(pill.id):
+			out.append({"type": "pill", "id": pill.id, "horse": false})
+	return out
+
+func _known_scrolls() -> Array:
+	var out: Array = []
+	for scroll in Data.all_scrolls():
+		if ScrollSystem.is_identified(scroll.id):
+			out.append({"type": "scroll", "id": scroll.id})
+	return out
+
+func _note(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 10)
+	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(LootSlot.CELL_W * 3, 0)
+	return l

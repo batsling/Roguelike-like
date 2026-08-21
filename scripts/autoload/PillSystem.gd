@@ -198,6 +198,33 @@ func _load_color(base: String) -> Texture2D:
 		return null
 	return load(path)
 
+# HOW MUCH BIGGER THIS DOSE DRAWS THAN A NORMAL ONE (§4.3).
+#
+# "Because the art is visibly oversized, the player always knows a horse pill is a
+# horse pill" — which was not true of anything on screen. Every surface drew loot
+# through UITheme.crisp_tex, which fits the art to a FIXED box (34 in the window,
+# 72 on the drop, 96 on the use), and a box that does not care how big the source
+# is renders a 19px capsule and a 25px one at exactly the same size. The one tell
+# the design promises was being scaled away by the thing drawing it.
+#
+# So the box takes its size from the art instead: the horse dose's own file is
+# ~1.3x the normal dose's, and this returns that ratio for the caller to scale by.
+# MEASURED rather than hardcoded, so redrawing the horse art bigger makes it draw
+# bigger — the alternative is a constant that silently stops matching the pictures.
+# Falls back to 1.0 for anything that isn't a horse dose, or whose pair can't be
+# measured (a colour with no horse file already falls back to the normal art).
+func art_scale(entry: Dictionary) -> float:
+	if not bool(entry.get("horse", false)):
+		return 1.0
+	var color: String = color_for(StringName(entry.get("id", "")))
+	if color == "":
+		return 1.0
+	var horse: Texture2D = _load_color("%sHorse" % color)
+	var normal: Texture2D = _load_color(color)
+	if horse == null or normal == null or normal.get_height() <= 0:
+		return 1.0
+	return maxf(1.0, float(horse.get_height()) / float(normal.get_height()))
+
 # ===========================================================================
 # Rolling one as loot
 # ===========================================================================

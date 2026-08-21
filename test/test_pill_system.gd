@@ -113,6 +113,41 @@ func test_a_colour_reads_back_to_its_pill() -> void:
 	assert_not_null(back)
 	assert_eq(back.id, &"luck_up")
 
+# --- The horse dose is DRAWN oversized (§4.3) ------------------------------
+#
+# "Because the art is visibly oversized, the player always knows a horse pill is a
+# horse pill." That was true of the art files and false of everything that drew
+# them: every surface fitted loot into a FIXED box, which renders a 19px capsule
+# and a 25px one at identical size. These are about the tell surviving the UI.
+
+func test_a_horse_dose_reports_a_bigger_art_scale_than_a_normal_one() -> void:
+	assert_eq(PillSystem.art_scale(_entry(&"luck_up")), 1.0,
+		"a normal dose draws at the size it is asked for")
+	assert_gt(PillSystem.art_scale(_entry(&"luck_up", true)), 1.0,
+		"and a horse dose draws BIGGER — the one tell you can always read")
+
+func test_the_horse_scale_is_measured_from_the_art_rather_than_hardcoded() -> void:
+	var color: String = PillSystem.color_for(&"luck_up")
+	var normal: Texture2D = load("res://images2.0/pills/%s.png" % color)
+	var horse: Texture2D = load("res://images2.0/pills/%sHorse.png" % color)
+	assert_not_null(normal)
+	assert_not_null(horse)
+	if normal == null or horse == null:
+		return
+	assert_almost_eq(PillSystem.art_scale(_entry(&"luck_up", true)),
+		float(horse.get_height()) / float(normal.get_height()), 0.001,
+		"the ratio comes from the two files, so redrawing the art bigger "
+		+ "draws it bigger")
+
+func test_every_surface_sizes_loot_art_through_one_rule() -> void:
+	# LootSystem.art_box is what the window, both modals and the card all call.
+	var base: int = 40
+	assert_eq(LootSystem.art_box(_entry(&"luck_up"), base), base)
+	assert_gt(LootSystem.art_box(_entry(&"luck_up", true), base), base,
+		"the horse dose comes back bigger wherever it is drawn")
+	assert_eq(LootSystem.art_box({"type": "scroll", "id": &"scroll_of_fire"}, base), base,
+		"a scroll has one size and is unaffected")
+
 # --- Identification --------------------------------------------------------
 
 func test_a_pill_starts_unknown_and_is_learned_by_taking_it() -> void:

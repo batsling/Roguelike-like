@@ -200,7 +200,11 @@ var _rng := RandomNumberGenerator.new()
 # buttons already read "⇤ Push (1)" / "✸ Bomb (3)", and its pressure bar ends in
 # the run's tier.)
 var _select_stats: HFlowContainer
-var _item_card: ItemInfoCard = null # the open item reading card, or null
+# The open READING CARD, or null. Either an ItemInfoCard (a relic) or a
+# LootInfoCard (a pill or a scroll) — they are the same slot on the screen and
+# only one of them is ever up, so the field holds whichever it is. Typed as Control
+# because the two share a shape (`close`, `closed`) rather than a base class.
+var _item_card: Control = null
 var _banner: Label
 # The boss round announces itself as a POPUP (BossNoticeModal), not as a strip
 # above the offering — see that file for why. This remembers which round has
@@ -3369,6 +3373,28 @@ func refresh_loot_window() -> void:
 		return
 	_loot_window.rebuild(_phase == Phase.PLAYING)
 
+# TAB OPENS THE PACK. The `backpack` action has been sitting in project.godot with
+# nothing on the overworld listening for it — only the Collection, which reads it
+# to close itself and is never on screen at the same time as this, so the key was
+# free. The loot window is the thing you open and shut most often in a run, and it
+# is the only pack surface that has to be opened at all.
+#
+# Not while a modal is up: a drop is being decided, a card is being read, or the
+# run is over, and in all three the pack behind them is not the thing the key is
+# about. Nothing else on this page takes a key, so this is the whole of its input.
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("backpack"):
+		return
+	if _loot_window == null or _phase == Phase.OVER:
+		return
+	if _drop_modal != null and is_instance_valid(_drop_modal):
+		return
+	if _item_card != null and is_instance_valid(_item_card):
+		return
+	_loot_window.open = not _loot_window.open
+	refresh_loot_window()
+	get_viewport().set_input_as_handled()
+
 # Mount the loot window's panel OVER THE BOARD (§4.3). A page child rather than a
 # row in the pack, so opening it moves nothing.
 #
@@ -3454,6 +3480,25 @@ func _close_item_card() -> void:
 	if _item_card != null and is_instance_valid(_item_card):
 		_item_card.close()
 	_item_card = null
+
+# The same gesture for a piece of loot: clicking one in the window opens its card,
+# and firing it from there goes back through `use_loot` — the same verb the
+# window's own Use button calls, so reading a pill can never spend it (§4.3).
+# It rides `_item_card` because the two cards are the same slot on the screen and
+# only one of them can be open at a time.
+func open_loot_card(index: int) -> void:
+	if index < 0 or index >= GameState.loot_items.size():
+		return
+	var entry = GameState.loot_items[index]
+	if not (entry is Dictionary):
+		return
+	_close_item_card()
+	var card := LootInfoCard.new()
+	card.use_requested.connect(use_loot)
+	card.closed.connect(func(): _item_card = null)
+	add_child(card)
+	_item_card = card
+	card.setup(entry, index, _phase != Phase.PLAYING)
 
 # The hover model for a carried item, kept on the page as the name the shop's
 # shelf and the drop modal already reach for. PackStrip.item_hover is the one
@@ -3561,11 +3606,13 @@ func _open_next_drop() -> void:
 	if drop.has("loot"):
 		var loot_modal := LootDropModal.open(self, drop["loot"])
 		_drop_modal = loot_modal
-		loot_modal.answered.connect(func(taken: bool):
+		# `slot` is where the player put it — the slot they dragged it into, or the
+		# end of the pack when they took it on the button (§4.3).
+		loot_modal.answered.connect(func(taken: bool, slot: int):
 			_drop_modal = null
 			_drop_queue.pop_front()
 			if taken:
-				_collect_loot_drop(drop["loot"])
+				_collect_loot_drop(drop["loot"], slot)
 			_pump_drops())
 		return
 	var modal = ItemDropModal.open(self, _drop_items(drop))
@@ -3644,8 +3691,9 @@ func _collect_drop(drop: Dictionary, chosen: ItemData = null) -> void:
 # by the time this runs (the loot modal pops it itself), so this only has to put
 # the piece in the pack — and it can still be refused, because the answer was given
 # to a question asked before anything else in the queue resolved.
-func _collect_loot_drop(entry: Dictionary) -> void:
-	if not GameState.take_loot_entry(entry):
+func _collect_loot_drop(entry: Dictionary, slot: int = -1) -> void:
+	if not GameState.take_loot_entry_at(entry,
+			slot if slot >= 0 else GameState.loot_items.size()):
 		GameLog.add("No room in the pack — %s stays on the ground."
 			% LootSystem.display_name(entry), Color(0.8, 0.8, 0.8))
 		return
@@ -4011,16 +4059,23 @@ func _build_ui() -> void:
 	var strip_row := HBoxContainer.new()
 	strip_row.add_theme_constant_override("separation", 6)
 	inv_box.add_child(strip_row)
+	#
+	# THE LOOT TOGGLE LEADS THE ROW. It used to sit at the far right end, which put
+	# it under the notification toasts — those are a right-anchored column drawn over
+	# the page, so the one control that says you are carrying any loot at all spent
+	# most of every report hidden behind "Acquired Anchor." At the head of the strip
+	# it is clear of them, and it reads in the order the two halves of the pack
+	# matter in: the things you spend, then the things you keep.
+	_loot_toggle_box = HBoxContainer.new()
+	_loot_toggle_box.size_flags_vertical = Control.SIZE_SHRINK_END
+	strip_row.add_child(_loot_toggle_box)
+	_loot_window = LootWindow.new(self, _loot_toggle_box)
 	_items_box = HFlowContainer.new()
 	_items_box.add_theme_constant_override("h_separation", 4)
 	_items_box.add_theme_constant_override("v_separation", 4)
 	_items_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	strip_row.add_child(_items_box)
 	_pack = PackStrip.new(self, _items_box)
-	_loot_toggle_box = HBoxContainer.new()
-	_loot_toggle_box.size_flags_vertical = Control.SIZE_SHRINK_END
-	strip_row.add_child(_loot_toggle_box)
-	_loot_window = LootWindow.new(self, _loot_toggle_box)
 	_right_col.add_child(_inv_wrap)
 
 	_stage_panel = PanelContainer.new()

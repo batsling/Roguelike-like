@@ -11,6 +11,63 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The loot window is a grid you handle, and the drop modal asks in front of
+  it.**
+
+  A design pass over the two inventories — the pack strip of relics, and the loot
+  window that scrolls and pills moved into when pills arrived. The strip was fine.
+  The loot side had drifted into being the least visible, least legible thing on
+  a page whose consumables are what you spend turn to turn.
+
+  **Loot can be rearranged, and a drop is placed rather than accepted.** The 3×3
+  is `LootGrid` / `LootSlot` now, and it is the same widget in both places it is
+  drawn: pieces drag between slots in the window, and the piece a game pays out is
+  **dragged out of the drop modal into the slot you want it in** — the modal shows
+  your pack beside the offer, so *"your pack is full"* is nine occupied slots
+  rather than a sentence about something you cannot see. The buttons stay: **Take
+  it** puts it in the first free slot, **Leave it** is still the answer the cap
+  makes interesting. `loot_items` stays **dense** — a drag swaps two pieces or
+  moves one to the end, never leaves a hole, because indices are what `use_loot`
+  is addressed by.
+
+  **Clicking a piece opens its card.** `LootInfoCard`, the twin of the relic's: a
+  relic answered a click by opening its card and a pill answered a click with
+  nothing at all, which is one class of object with two gestures, and the one that
+  did nothing was the one whose whole subject is *what is this*. Click reads, drag
+  moves, the button spends.
+
+  **The run's alphabet has somewhere to live.** A folded *"Known this run"* at the
+  foot of the window lists every colour and scroll the run has identified, with
+  art and hover. The knowledge existed in `identified_pill_types` and was never
+  drawn anywhere: the only time a colour was ever named was a toast that had
+  scrolled away by the next game, which is an identification minigame with no
+  record of itself. It **counts** the unlearned rather than listing them — naming
+  them would hand back the deduction the three sitting-out colours prevent.
+
+  **The horse dose is actually drawn oversized now.** The spec has always said the
+  oversized capsule is how you know a horse pill is a horse pill; every surface
+  drew loot through a *fixed* art box, which renders a 19px capsule and a 25px one
+  at exactly the same size. Loot art goes through `LootSystem.art_tex` /
+  `art_box`, which takes the ratio from `PillSystem.art_scale` — **measured from
+  the two files**, so redrawing the art bigger draws it bigger.
+
+  **Tab opens the pack.** The `backpack` action has been in `project.godot` since
+  the combat build with nothing on the overworld listening for it — only the
+  Collection, which reads it to close itself and is never on screen at the same
+  time, so the key was free.
+
+  And the rest of the pass: the **Preference** is a coloured chip on every surface
+  that shows a piece rather than grey body text, on the one fact the decision
+  turns on; the loot **toggle leads the pack strip** instead of trailing it, where
+  it spent most of every report hidden under the notification toasts, and it
+  carries the first few capsules and turns **red at 9/9**; cells are 48px art and
+  11px names instead of 34px and 9px, with **two lines reserved for the name** so
+  a short name stops pulling its Use button above its neighbours'; and every
+  button on the loot screens is `UITheme.confirm_button` / `quiet_button` instead
+  of Godot's default grey — the relic drop's take was green and 190px wide while
+  the loot drop sitting behind it in the same queue was two identical grey
+  buttons.
+
 - **Pills: a second loot consumable, and the identification minigame held by a
   colour instead of by a type.**
 

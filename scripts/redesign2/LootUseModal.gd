@@ -68,18 +68,26 @@ func _is_pill() -> bool:
 func _show_intro() -> void:
 	_rebuild_panel()
 	var identified: bool = LootSystem.is_identified(_entry)
-	var art := TextureRect.new()
-	art.texture = LootSystem.art_texture(_entry)
-	art.custom_minimum_size = Vector2(96, 96)
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# At the dose's OWN size (§4.3): a horse capsule is drawn oversized here as it is
+	# everywhere else, because it is the one fact about a dose the player can always
+	# read off the picture. This used to be a fixed 96px box, which normalised the
+	# two doses to the same size on the very screen that asks you to commit to one.
+	var art: TextureRect = LootSystem.art_tex(_entry, 96)
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_body.add_child(art)
 	_body.add_child(_heading("%s %s" % [LootSystem.glyph(_entry), LootSystem.display_name(_entry)],
 		ACCENT, 22))
 	var summary: String = LootSystem.description(_entry)
 	if identified:
-		_body.add_child(_muted("%s Preference" % LootSystem.preference(_entry)))
+		# THE PREFERENCE AS A CHIP, in its own colour. This is the fact the whole
+		# decision turns on and it was a line of grey body text — the same weight as
+		# the sentence under it, on a screen whose only question is "do you want this
+		# to happen to you".
+		_body.add_child(_chip_row([
+			UITheme.chip(LootSystem.kind_name(_entry), LootSystem.LOOT_COLOR),
+			UITheme.chip(LootSystem.preference(_entry),
+				UITheme.preference_color(LootSystem.preference(_entry))),
+		]))
 		_body.add_child(_muted(summary))
 		# The KEYWORD STRIP (§17), on the same terms an item card carries one: what
 		# a Scroll of Fire does is written in the names of three mechanics, and the
@@ -88,25 +96,36 @@ func _show_intro() -> void:
 		# it does, and a strip naming Burn and Fire under "this is a gamble" would
 		# give the whole thing away.
 		Keywords.attach(_body, summary)
-	elif _is_pill():
-		# A pill hides its NAME, never its capsule (§4.3) — the art above is the
-		# thing being learned, so the gamble line says what is unknown rather than
-		# pretending the tile is a mystery.
-		_body.add_child(_muted("You have never taken this one. Its Preference could be Positive, Negative, or Neutral — taking it is how you find out what the colour means."))
 	else:
-		_body.add_child(_muted("Unidentified — reading it is a gamble. Its Preference could be Positive, Negative, or Neutral."))
+		_body.add_child(_chip_row([
+			UITheme.chip(LootSystem.kind_name(_entry), LootSystem.LOOT_COLOR),
+			UITheme.chip("Unidentified", UITheme.TEXT_DIM),
+		]))
+		if _is_pill():
+			# A pill hides its NAME, never its capsule (§4.3) — the art above is the
+			# thing being learned, so the gamble line says what is unknown rather than
+			# pretending the tile is a mystery.
+			_body.add_child(_muted("You have never taken this one. Its Preference could be Positive, Negative, or Neutral — taking it is how you find out what the colour means."))
+		else:
+			_body.add_child(_muted("Unidentified — reading it is a gamble. Its Preference could be Positive, Negative, or Neutral."))
 	if _echo_note() != "":
 		_body.add_child(_muted(_echo_note()))
-	var read_btn := Button.new()
-	read_btn.text = "Take Pill →" if _is_pill() else "Read Scroll →"
-	read_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	read_btn.pressed.connect(_on_read)
-	_body.add_child(read_btn)
-	var cancel := Button.new()
-	cancel.text = "Cancel"
-	cancel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# ONE ROW, TWO WEIGHTS. The confirm and the way out used to be two stacked
+	# default-grey buttons, which is the same screen furniture saying the two answers
+	# are equally likely — on the relic drop sitting right behind this one in the
+	# queue, the take is green and 190px wide. Same question, same shape now.
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 10)
+	actions.alignment = BoxContainer.ALIGNMENT_CENTER
+	var cancel := UITheme.quiet_button("Cancel", Vector2(120, 38))
 	cancel.pressed.connect(_finish)
-	_body.add_child(cancel)
+	actions.add_child(cancel)
+	var read_btn := UITheme.confirm_button(
+		"Take Pill →" if _is_pill() else "Read Scroll →", Vector2(170, 38), 15)
+	read_btn.pressed.connect(_on_read)
+	actions.add_child(read_btn)
+	_body.add_child(actions)
+	read_btn.grab_focus()
 
 # What Echo Chamber is about to add, named rather than left as a surprise: the
 # relic changes what SPENDING one piece of loot means, and a player who cannot see
@@ -171,8 +190,7 @@ func _pick_identify(req: Dictionary) -> void:
 		btn.text = "📜 " + nm
 		btn.toggled.connect(func(on): _toggle_select(selected, id, on, max_pick, btn))
 		_body.add_child(btn)
-	var confirm := Button.new()
-	confirm.text = "Identify Selected"
+	var confirm := UITheme.confirm_button("Identify Selected", Vector2(180, 34))
 	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	confirm.pressed.connect(func():
 		ScrollSystem.identify_scrolls_chosen(selected.keys())
@@ -199,8 +217,7 @@ func _pick_stun(req: Dictionary) -> void:
 		btn.text = "%s — %s" % [e.display_name, GameLoop2.goal_text_for(entry)]
 		btn.toggled.connect(func(on): _toggle_select(selected, inst, on, max_pick, btn))
 		_body.add_child(btn)
-	var confirm := Button.new()
-	confirm.text = "Stun Selected"
+	var confirm := UITheme.confirm_button("Stun Selected", Vector2(180, 34))
 	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	confirm.pressed.connect(func():
 		ScrollSystem.stun_enemies_chosen(selected.keys())
@@ -229,8 +246,7 @@ func _do_teleport(req: Dictionary) -> void:
 # ---------------------------------------------------------------------------
 
 func _continue_button() -> Button:
-	var b := Button.new()
-	b.text = "Continue"
+	var b := UITheme.confirm_button("Continue", Vector2(150, 34))
 	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	b.pressed.connect(_process_next_request)
 	return b
@@ -280,6 +296,15 @@ func _heading(text: String, color: Color, size: int) -> Label:
 	l.add_theme_color_override("font_color", color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l
+
+# A centred row of chips — what this is, and what it would do to you.
+func _chip_row(chips: Array) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	for c in chips:
+		row.add_child(c)
+	return row
 
 func _muted(text: String) -> Label:
 	var l := Label.new()

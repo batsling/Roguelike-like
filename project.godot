@@ -82,10 +82,12 @@ enabled=PackedStringArray("res://addons/gut/plugin.cfg")
 
 [input]
 
-; The games-first build is click-driven, and the only key binding left is the
-; one the Collection listens for (Tab) to close itself. NOTE the leading ';':
-; project.godot comments are ';', not '#'. A '#' line is parsed as part of the
-; NEXT key, which silently renamed this action to
+; The games-first build is click-driven, and Tab is the only key binding left:
+; the Collection listens for it to close itself, and the overworld listens for it
+; to open and shut the LOOT WINDOW (Overworld2._unhandled_input) — the two are
+; never on screen at the same time, so the one action serves both.
+; NOTE the leading ';': project.godot comments are ';', not '#'. A '#' line is
+; parsed as part of the NEXT key, which silently renamed this action to
 ; "#Thegames-firstbuild...backpack" and left "backpack" undefined.
 backpack={
 "deadzone": 0.5,

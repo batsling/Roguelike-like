@@ -311,6 +311,16 @@ in both directions, and an identified colour's card shows what each dose does.
 Because the art is visibly oversized, the player always knows a horse pill is a
 horse pill — what they may not know is what colour means.
 
+**And the UI has to actually draw it that way.** For a long time it did not: every
+surface fitted loot art into a *fixed* box (`UITheme.crisp_tex`), which renders a
+19px capsule and a 25px one at identical size, so the one tell the design promises
+was being scaled away by the thing drawing it. Loot art is now sized through
+`LootSystem.art_tex` / `art_box`, which asks `PillSystem.art_scale` how much bigger
+this dose's own file is than the normal dose's — **measured from the art rather
+than hardcoded**, so redrawing the horse capsule bigger makes it draw bigger. In
+the grid the art sits in a band tall enough for the largest dose, so an oversized
+capsule fills more of its cell without making its row taller than the other two.
+
 **A pill says what it would do to you right now.** Bad Trip's dose is lethal at
 low Health, so it does the one thing a Negative pill never does: at or below its
 own damage it **heals to full instead**, and it *names itself* accordingly — an
@@ -365,13 +375,32 @@ changes the outcome, never the fact, which is the only version of it that stays
 honest when the relic is lost.
 
 **The loot window.** Nine pieces of loot will not fit in the pack strip beside a
-run's relics, so loot moves off it into a window of its own: a **Loot** button
-beside the pack — a label and a small arrow, no bar — that opens a **3×3 grid**
-of what is carried, each cell its art and its name, each with a **Use** button and
-the same hover card an item or an enemy gets. Its tiles are drawn at the relics'
-size, because a pill and a relic are both "a thing you are carrying" and two art
-sizes in one panel read as two kinds of importance rather than as two kinds of
-thing.
+run's relics, so loot moves off it into a window of its own: a **Loot** button at
+the **head** of the pack strip — the count, and a peek at the first few capsules —
+that opens a **3×3 grid** of what is carried, each cell its art, its name, its
+**Preference** and a **Use** button, and each carrying the same hover card an item
+or an enemy gets.
+
+The toggle leads the strip rather than trailing it because it is the *only* thing
+on the page that says you are carrying loot at all while the window is shut, and
+at the tail it sat underneath the notification toasts — a right-anchored column
+drawn over the page, which hid it for most of every report. It also wears **red at
+9/9**: a full pack turns the next payout into "leave it", and the moment to know
+that is before the drop asks. **Tab** opens and shuts it — the `backpack` action
+had been sitting in `project.godot` with nothing on the overworld listening for it,
+and the loot window is both the surface a run opens most often and the only pack
+surface that has to be opened at all. It is ignored while a drop modal or a card is
+up, where the pack behind them is not what the key is about.
+
+**The cell is bigger than a relic's token, and that is the correction.** Loot tiles
+were drawn at exactly the pack strip's 34px on the reasoning that a pill and a
+relic are both "a thing you are carrying" — right about parity, wrong about where
+parity is measured. In a strip of twelve tokens 34px is the size that fits; in a
+panel with 240px of slack it is a debug widget, with 9px names under it, smaller
+than any other type on the page. The cell is now 48px of art in a 66px band with an
+11px name, and the name reserves **two lines whether it needs them or not** — a
+one-line name used to pull its Use button above the two-line names either side of
+it, which made a full row read as broken.
 
 It is **shut until the button is pressed**, and when it opens it opens as a panel
 **over the board**, centred on the battlefield directly under the toggle that
@@ -394,6 +423,47 @@ that wraps read as all there is. **Nine is the cap** for now; a tenth
 piece has nowhere to go, which is what makes the drop modal's "leave it" a real
 answer. Scrolls live here too — one window for loot means one place to look, and
 the pack strip goes back to being the relics.
+
+**The grid is the thing you handle, not just the thing you read.** A piece can be
+**dragged from one slot to another**, and the piece a game pays out is **dragged
+into the slot you want it in** — see the drop modal below. Clicking a piece opens
+its **card** (`LootInfoCard`), the twin of the relic's: a relic answered a click by
+opening its card and a pill answered a click with nothing at all, which is the same
+class of object with two different gestures, and the one that did nothing was the
+one whose entire subject is *what is this*. So: **click reads, drag moves, the
+button spends** — and the card's own Use goes back through the same `use_loot`, so
+there is one spend path and inspecting a piece can never cost you one.
+
+**What an arrangement is allowed to be.** `GameState.loot_items` is **dense**, and
+its indices are what `use_loot` and `remove_loot_at` are addressed by. So a drag
+**swaps** two pieces, or moves one to the end — there is deliberately no third case
+that leaves a hole in the middle of the array for the sake of an arrangement
+nothing reads. Every arrangement the grid offers is one the run can actually hold,
+and the grid redraws from the array afterwards, so where a piece lands is where the
+array says it is rather than a position the view is remembering on its own. (True
+free placement would mean a sparse pack, which is a change to every index in the
+loot code and to the save; it is not worth it for a nine-cell bag.)
+
+**The drop modal shows the pack** (`LootDropModal`). It used to show the piece
+alone and say *"Your pack is full (9/9)"* in red when it wasn't going to fit — a
+sentence about a thing the player could not see, on the one screen where what you
+are already carrying is the whole basis of the answer. Now the 3×3 comes with it:
+the offer on the left, the pack on the right, and the piece is **dragged into the
+slot it should live in**, so taking it and placing it are one gesture and a pack
+with no room says so by having nowhere to drop. The buttons stay — **Take it** puts
+it in the first free slot, **Leave it** is still the answer the cap makes
+interesting — because drag is the good gesture, not the only one, and a decision
+this final should not depend on a drag landing.
+
+**What you have learned lives in the window too**, behind a folded *"Known this
+run"* line at its foot. A pill's identity belongs to a **colour** and only for
+**this run**, and until now the only place that knowledge ever existed was a toast
+that had already scrolled away — so a player who learned that green is Bad Trip on
+game three had nowhere to go and check on game eleven. That is the whole
+identification minigame with no record of itself. The fold lists what has been
+learned, with art and name and the same hover card, and **counts** what has not:
+naming the unlearned colours would hand back exactly the deduction the three
+sitting-out colours exist to prevent.
 
 **Echo Chamber** (Rare, Passive) is the one that turns loot into a resource
 worth hoarding: using a piece of loot also uses **a copy of the last 3 you used
