@@ -11,6 +11,39 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A piece of loot goes wherever you put it, and a use says what it did.**
+
+  Two things the loot window was still getting wrong, both of them about the
+  moment the player is actually looking at it.
+
+  **The whole cell moves, and any slot is somewhere a piece can go.** A drag used
+  to be the bare capsule following the cursor, which read as the art coming loose
+  from its tile and gave you nothing to line up against the slot you were aiming
+  at; it is the cell now — same border, same art, same name, at the size the grid
+  draws one. And the slot it lands in is any of the nine. Free placement was the
+  one thing the grid would not do, because a slot *was* an index into the dense
+  `loot_items`, so a piece dragged into the far corner of an empty pack slid back
+  to third place. The slot rides on the entry as `pack_slot` instead, and
+  `GameState.loot_layout()` is the one place slots and indices are put back
+  together — so the array stays dense and stays pickup order (which is what
+  `loot_scrolls()` and the toggle's peek read), nothing in the loot code had to
+  learn about holes, and the arrangement rides the save for free. A pack with a
+  gap in the middle of it is an arrangement somebody wanted; the grid stopped
+  tidying it away. A piece that was never placed still takes the lowest free slot,
+  so a run that drags nothing sees the pack it always saw.
+
+  **Taking a pill tells you what it did.** The use modal used to close the instant
+  the piece resolved, which put the answer to *what did that do to me* in the run
+  log on the far side of the page — the one place the player was not looking,
+  having just been looking at the pill. On an unidentified capsule that is the
+  entire minigame: the reason to swallow an unknown pill is to find out what it
+  was, and finding out was happening off-screen. So a use ends on a screen that
+  says it: the art, the name it turned out to have, its Preference, *what it turned
+  out to be* when this use is what identified it, the effect's own lines, and where
+  your Health landed when it moved. The pickers come first and the summary last — a
+  request is part of what the piece did — and Cancel never reaches it, because
+  backing out is not a use.
+
 - **The loot window is a grid you handle, and the drop modal asks in front of
   it.**
 
@@ -28,7 +61,8 @@ For how the project is laid out and how its systems fit together, see
   it** puts it in the first free slot, **Leave it** is still the answer the cap
   makes interesting. `loot_items` stays **dense** — a drag swaps two pieces or
   moves one to the end, never leaves a hole, because indices are what `use_loot`
-  is addressed by.
+  is addressed by. *(Superseded: a drag lands in any slot now — see the entry
+  above.)*
 
   **Clicking a piece opens its card.** `LootInfoCard`, the twin of the relic's: a
   relic answered a click by opening its card and a pill answered a click with

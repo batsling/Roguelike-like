@@ -9,7 +9,8 @@ extends Control
 #      whichever system owns it, and fires Echo Chamber's copies of the last three
 #      used. Then walk the returned `requests` (identify-which / stun-which /
 #      teleport) through small pickers.
-#   3. emit `finished` and free itself so the page refreshes.
+#   3. SAY WHAT IT DID, on the screen you did it on — see `_show_outcome`.
+#   4. emit `finished` and free itself so the page refreshes.
 #
 # IT IS ONE MODAL FOR BOTH KINDS deliberately. A pill needs fewer words than a
 # scroll, but the two need the same THREE things — a look at what you are about
@@ -37,6 +38,15 @@ var _loot_index: int = -1
 # caller that opened it says how high to go rather than this screen guessing.
 var layer_index: int = 120
 var _requests: Array = []
+# What the use turned out to have done — filled in by `_on_read` and read by
+# `_show_outcome`, which is the last screen before this modal takes itself away.
+var _outcome_logs: Array = []
+# The piece was a gamble and is not one any more: this use is what identified it.
+var _newly_learned: bool = false
+# Health as it stood the instant before the piece resolved, so the outcome can show
+# where it landed rather than only what was subtracted.
+var _hp_before: int = 0
+var _max_hp_before: int = 0
 var _panel: PanelContainer = null
 var _body: VBoxContainer = null
 var _layer: CanvasLayer = null
@@ -182,6 +192,13 @@ func _on_read() -> void:
 	#
 	# A LOOSE piece (`_loot_index < 0`) goes through `use_entry` instead, which is
 	# the same thing minus the slot there was never anything in.
+	#
+	# READ BEFORE, NOT AFTER. Whether this use is what taught the player the piece,
+	# and what their Health was when they took it, are both facts about the moment
+	# before it resolved — and taking a pill is precisely the thing that changes them.
+	var known_before: bool = LootSystem.is_identified(_entry)
+	_hp_before = GameState.hp
+	_max_hp_before = GameState.max_hp
 	var result: Dictionary = LootSystem.use_entry(_entry, {"rng": _rng}) if _loot_index < 0 \
 		else LootSystem.use_loot(_loot_index, {"rng": _rng})
 	used.emit()
@@ -190,6 +207,8 @@ func _on_read() -> void:
 			% LootSystem.display_name(_entry), ACCENT)
 	for line in result.get("logs", []):
 		GameLog.add(String(line), ACCENT)
+	_outcome_logs = result.get("logs", [])
+	_newly_learned = not known_before and LootSystem.is_identified(_entry)
 	_requests = result.get("requests", [])
 	_process_next_request()
 
@@ -199,7 +218,10 @@ func _on_read() -> void:
 
 func _process_next_request() -> void:
 	if _requests.is_empty():
-		_finish()
+		# The pickers come FIRST and the summary last, because a request is part of
+		# what the piece did: a Scroll of Identify has nothing to report until you have
+		# chosen, and a Telepill has moved you by the time it does.
+		_show_outcome()
 		return
 	var req: Dictionary = _requests.pop_front()
 	match String(req.get("kind", "")):
@@ -278,6 +300,66 @@ func _do_teleport(req: Dictionary) -> void:
 	else:
 		GameLog.add("The Scroll of Teleportation fizzles.", ACCENT)
 	_process_next_request()
+
+# ---------------------------------------------------------------------------
+# What it did
+# ---------------------------------------------------------------------------
+
+# THE SCREEN THAT SAYS WHAT HAPPENED. Taking a pill used to close this modal the
+# instant it resolved, which meant the answer to "what did that do to me" was a
+# couple of lines in the run log on the far side of the page — the one place the
+# player was not looking, having just been looking here. On an UNIDENTIFIED capsule
+# that is the entire minigame: the whole reason to swallow an unknown pill is to
+# find out what it was, and finding out was happening off-screen.
+#
+# So the piece gets one more screen. It is the same furniture as the intro — the
+# art, the name, the chips — said in the past tense, with the effect underneath it:
+#
+#   * WHAT IT TURNED OUT TO BE, when this use is what identified it. The capsule is
+#     right there above the line, so "this one is Bad Trip" is the colour being
+#     named without the colour ever having to be written down (see LootDiscoveries
+#     for why the run never spells a colour out).
+#   * WHAT IT DID, as the lines the effect itself reported — the same ones the log
+#     gets, so the two can never say different things.
+#   * WHERE YOUR HEALTH LANDED, when it moved. "You lose 4 Health" is the size of
+#     the hit; the number that decides what to do next is the one left afterwards.
+func _show_outcome() -> void:
+	_rebuild_panel()
+	var art: TextureRect = LootSystem.art_tex(_entry, 96)
+	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_body.add_child(art)
+	_body.add_child(_heading("%s %s" % [LootSystem.glyph(_entry),
+		LootSystem.display_name(_entry)], ACCENT, 22))
+
+	var chips: Array = [UITheme.chip(LootSystem.kind_name(_entry), LootSystem.LOOT_COLOR)]
+	var pref: String = LootSystem.preference(_entry)
+	if pref != "":
+		chips.append(UITheme.chip(pref, UITheme.preference_color(pref)))
+	_body.add_child(_chip_row(chips))
+
+	if _newly_learned:
+		_body.add_child(_heading("You know what this one is now." if not _is_pill()
+			else "Now you know what this capsule is.", PillSystem.PILL_COLOR, 14))
+
+	# The effect, line by line. A piece whose ops all no-opped (a charge into a pack
+	# with nothing chargeable, an Amnesia with nothing to forget) reports that
+	# itself, so the empty case here is only the piece that had nothing to say.
+	if _outcome_logs.is_empty():
+		_body.add_child(_muted("Nothing happens."))
+	else:
+		for line in _outcome_logs:
+			_body.add_child(_muted(String(line)))
+
+	if GameState.hp != _hp_before or GameState.max_hp != _max_hp_before:
+		var health := _heading("Health %d / %d" % [GameState.hp, GameState.max_hp],
+			UITheme.DANGER if GameState.hp < _hp_before else UITheme.SUCCESS, 16)
+		_body.add_child(health)
+
+	var done := UITheme.confirm_button("Done", Vector2(150, 36), 15)
+	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	done.pressed.connect(_finish)
+	_body.add_child(done)
+	done.grab_focus()
 
 # ---------------------------------------------------------------------------
 # Helpers

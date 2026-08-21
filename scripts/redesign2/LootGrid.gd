@@ -20,19 +20,25 @@ extends GridContainer
 #                      with nothing free in them is the same thing said in one
 #                      look.
 #
-# WHAT AN ARRANGEMENT CAN BE. `GameState.loot_items` is dense and indices are what
-# `use_loot` is addressed by, so a drag SWAPS two pieces or moves one to the end
-# rather than leaving a hole in the middle (see GameState.move_loot). Every
-# arrangement the grid offers is therefore one the run can actually hold, and the
-# grid redraws from the array afterwards — so where a piece lands is where the
-# array says it is, never a position the view is remembering on its own.
+# WHAT AN ARRANGEMENT CAN BE: ANY OF THEM. A piece goes wherever it is dropped —
+# onto another piece, which swaps the two, or onto any empty slot, which leaves a
+# hole behind it. `GameState.loot_items` stays dense because indices are what
+# `use_loot` is addressed by; the SLOT rides on the entry instead, and
+# `GameState.loot_layout()` is the one place the two are put back together. The
+# grid redraws from that afterwards — so where a piece lands is where the run says
+# it is, never a position the view is remembering on its own.
+#
+# TWO NUMBERS, AND THEY ARE NOT THE SAME NUMBER. Every signal below that names a
+# piece hands over its INDEX in `GameState.loot_items` (what `use_loot`,
+# `remove_loot_at` and the info card all take); `moved` alone deals in SLOTS,
+# because moving is the one thing that is about where a piece is drawn.
 
 # A piece was dropped into a slot from outside the pack (the drop modal's payload).
-# `index` is where it should be inserted, and `offer` says WHICH of the offers on
-# the table it was — a payout of four identical unidentified capsules cannot be
-# told apart by its entry.
-signal take_requested(entry: Dictionary, index: int, offer: int)
-# Two carried pieces changed places.
+# `slot` is which of the nine it was dropped on, and `offer` says WHICH of the
+# offers on the table it was — a payout of four identical unidentified capsules
+# cannot be told apart by its entry.
+signal take_requested(entry: Dictionary, slot: int, offer: int)
+# A carried piece moved between slots of the 3x3 (swapping with whatever was there).
 signal moved(from: int, to: int)
 # The Use button on a carried piece.
 signal use_requested(index: int)
@@ -72,9 +78,11 @@ func rebuild() -> void:
 	for c in get_children():
 		remove_child(c)
 		c.queue_free()
-	for i in range(GameState.LOOT_CAPACITY):
-		var entry = GameState.loot_items[i] if i < GameState.loot_items.size() else null
-		add_child(_slot(i, entry if entry is Dictionary else {}))
+	var layout: Array = GameState.loot_layout()
+	for slot in range(GameState.LOOT_CAPACITY):
+		var index: int = int(layout[slot])
+		var entry = GameState.loot_items[index] if index >= 0 else null
+		add_child(_slot(slot, index, entry if entry is Dictionary else {}))
 
 # A loose piece, drawn as a cell but belonging to no slot — the thing a drop modal
 # offers up to be dragged in. Public because the modal builds it beside the grid
@@ -112,12 +120,14 @@ func can_accept(slot: LootSlot, data: Dictionary) -> bool:
 		return false
 	match String(data.get("kind", "")):
 		"loot_move":
-			# Onto itself is not a move. Onto an empty slot past the end is the same
-			# "go to the end" as any other, so it is allowed and lands where the array
-			# can hold it.
+			# ANY SLOT BUT ITS OWN. Onto a piece swaps the two, onto an empty one moves
+			# it there and leaves a hole — both are arrangements the pack can hold now
+			# that a slot is a fact about the entry rather than its place in an array.
 			return allow_reorder and int(data.get("from", -1)) != slot.slot_index
 		"loot_take":
-			return allow_take and not GameState.loot_is_full()
+			# INTO A FREE SLOT. "Put it here" onto an occupied one has no answer that
+			# isn't a guess about which of the two the player meant to move.
+			return allow_take and not slot.is_filled() and not GameState.loot_is_full()
 	return false
 
 # --- The bin ---------------------------------------------------------------
@@ -131,7 +141,7 @@ func can_trash(data: Dictionary) -> bool:
 		return false
 	match String(data.get("kind", "")):
 		"loot_move":
-			return int(data.get("from", -1)) >= 0
+			return int(data.get("index", -1)) >= 0
 		"loot_take":
 			# The offer, thrown away rather than taken. Always allowed — a full pack
 			# is exactly when you most want to say no to a piece with your hands.
@@ -143,7 +153,9 @@ func trash(data: Dictionary) -> void:
 		return
 	match String(data.get("kind", "")):
 		"loot_move":
-			discard_requested.emit(int(data.get("from", -1)))
+			# The bin destroys a PIECE, so it is handed the array index the payload
+			# carries alongside the slot — `remove_loot_at` has never dealt in slots.
+			discard_requested.emit(int(data.get("index", -1)))
 		"loot_take":
 			offer_discarded.emit(int(data.get("offer", -1)))
 
@@ -157,14 +169,39 @@ func accept(slot: LootSlot, data: Dictionary) -> void:
 				take_requested.emit(entry, maxi(0, slot.slot_index),
 					int(data.get("offer", -1)))
 
+# WHAT FOLLOWS THE CURSOR: THE WHOLE CELL. It used to be the bare capsule, which
+# made a drag look like the art had come loose from its tile — and against a grid
+# of bordered cells there was nothing to line up the thing in your hand with the
+# slot you were aiming it at. So the preview is the cell: same border, same art,
+# same name, drawn at the loose-piece weight so it reads as picked up rather than
+# as a second copy sitting in the grid.
+#
+# Built here rather than on LootSlot because the cell's box and body are this
+# class's, and a LootSlot that named LootGrid back would be two class_names naming
+# each other — a cycle Godot resolves badly. The slot asks its grid for it instead.
+func drag_preview(slot: LootSlot) -> Control:
+	var holder := Control.new()
+	var cell := PanelContainer.new()
+	cell.add_theme_stylebox_override("panel", _filled_box(slot.entry, true))
+	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.size = Vector2(LootSlot.CELL_W, LootSlot.cell_height(false))
+	# Centred on the pointer, so the cell you are holding covers the slot you are
+	# pointing at rather than hanging off one corner of it.
+	cell.position = -cell.size * 0.5
+	cell.modulate = Color(1, 1, 1, 0.9)
+	cell.add_child(_cell_body(slot.entry, Callable(), false))
+	holder.add_child(cell)
+	return holder
+
 # ---------------------------------------------------------------------------
 # Building one cell
 # ---------------------------------------------------------------------------
 
-func _slot(index: int, entry: Dictionary) -> LootSlot:
+func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	var slot := LootSlot.new()
 	slot.grid = self
-	slot.slot_index = index
+	slot.slot_index = slot_index
+	slot.loot_index = index
 	slot.entry = entry
 	slot.custom_minimum_size = Vector2(LootSlot.CELL_W, 0)
 	if entry.is_empty():
@@ -173,6 +210,8 @@ func _slot(index: int, entry: Dictionary) -> LootSlot:
 		# used to promise "room for one more" on all six free slots at once.
 		var free: int = GameState.loot_space()
 		slot.tooltip_text = "Empty — room for %d more piece%s." % [free, "" if free == 1 else "s"]
+		if allow_reorder and GameState.loot_items.size() > 0:
+			slot.tooltip_text += "  Drag a piece here to put it in this slot."
 		if allow_take and not GameState.loot_is_full():
 			slot.tooltip_text = "Drop the piece here to take it."
 		slot.add_child(_empty_body(show_use))
@@ -183,7 +222,7 @@ func _slot(index: int, entry: Dictionary) -> LootSlot:
 	HoverCard.attach(slot, LootSystem.hover_card(entry))
 	var use_cb: Callable = Callable()
 	if show_use:
-		use_cb = func(): use_requested.emit(index)
+		use_cb = func(): use_requested.emit(slot.loot_index)
 	slot.add_child(_cell_body(entry, use_cb, locked))
 	# CLICK READS, DRAG MOVES, THE BUTTON SPENDS. A relic in the pack opens its card
 	# on a click and spends only from its own button, and loot answered a click with
@@ -198,7 +237,7 @@ func _slot(index: int, entry: Dictionary) -> LootSlot:
 		if ev is InputEventMouseButton and not ev.pressed \
 				and ev.button_index == MOUSE_BUTTON_LEFT \
 				and not slot.get_viewport().gui_is_dragging():
-			inspect_requested.emit(index))
+			inspect_requested.emit(slot.loot_index))
 	return slot
 
 # The art band, the name, the preference chip and (when the grid spends) the Use

@@ -234,6 +234,14 @@ var loot: Dictionary = {
 #   scroll: {"type": "scroll", "rarity": String}   (inert stub — the scroll
 #           system isn't ported yet, so these list but can't be used)
 # Potions are usable only in combat (drink / throw). See PotionSystem.
+#
+# THE ARRAY IS PICKUP ORDER; WHERE A PIECE SITS IN THE 3x3 IS `pack_slot`
+# (docs/games-first-redesign.md §4.3). The two used to be the same thing — slot i
+# drew `loot_items[i]` — which meant an arrangement the player could make had to be
+# one a dense array could hold, so a piece dragged into the middle of an empty pack
+# slid back to the end. An entry now carries the slot it was PUT IN, and the array
+# stays the order things were picked up in, which is what `loot_scrolls()`,
+# `_drop_loot_of_type` and the toggle's peek all read. See `loot_layout`.
 var loot_items: Array = []
 
 # Identification is GLOBAL per potion type (StringName ids). Drinking, throwing,
@@ -2752,12 +2760,6 @@ func take_loot_entry(entry: Dictionary) -> bool:
 	emit_signal("inventory_changed")
 	return true
 
-# Take a rolled entry INTO A CHOSEN SLOT — the drop modal's drag (§4.3). The same
-# refusal as `take_loot_entry` when the pack is full, and the same dense array
-# afterwards: `index` is where the piece is INSERTED, and the pieces at and after
-# it shift right. A slot past the end holds nothing to shift, so the piece lands
-# at the end — which is where the grid then draws it, so the player sees where it
-# went rather than being told.
 # OFFER `n` pieces of loot rather than granting them (§4.3).
 #
 # The difference matters because of the cap. `add_loot` pushes pieces in until the
@@ -2788,10 +2790,25 @@ func offer_loot(kind: String, n: int) -> void:
 		return
 	loot_offered.emit(entries)
 
-func take_loot_entry_at(entry: Dictionary, index: int) -> bool:
+# Take a rolled entry INTO A CHOSEN SLOT of the 3x3 — the drop modal's drag (§4.3).
+# The same refusal as `take_loot_entry` when the pack is full, and the piece lands
+# in the slot it was dropped on rather than at the end of the array: `slot` is
+# WHERE IT GOES, which is the whole point of dragging it somewhere. A slot that is
+# taken (or out of range) falls back to the first free one, so a stale payload puts
+# the piece in the pack rather than dropping it on the floor.
+func take_loot_entry_at(entry: Dictionary, slot: int) -> bool:
 	if entry.is_empty() or loot_is_full():
 		return false
-	loot_items.insert(clampi(index, 0, loot_items.size()), entry.duplicate(true))
+	var layout: Array = loot_layout()
+	var where: int = slot
+	if where < 0 or where >= LOOT_CAPACITY or layout[where] != -1:
+		where = layout.find(-1)
+	if where < 0:
+		return false
+	_freeze_loot_layout(layout)
+	var taken: Dictionary = entry.duplicate(true)
+	taken["pack_slot"] = where
+	loot_items.append(taken)
 	emit_signal("inventory_changed")
 	return true
 
@@ -2813,31 +2830,83 @@ func add_pill_loot(id: StringName, horse: bool = false) -> void:
 	loot_items.append({"type": "pill", "id": p.id, "horse": horse})
 	emit_signal("inventory_changed")
 
-# Move the piece at `from` to the slot at `to` — the pack grid's drag (§4.3).
+# ---------------------------------------------------------------------------
+# The 3x3 the loot window draws (§4.3)
+# ---------------------------------------------------------------------------
 #
-# THE ARRAY STAYS DENSE. The window draws nine slots and the first N of them are
-# `loot_items[0..N)`, so an arrangement the player can make has to be one this
-# array can hold: dropping onto a piece SWAPS the two, and dropping onto an empty
-# slot past the end moves the piece to the end. There is deliberately no third
-# case where a slot in the middle goes empty — index is what `use_loot` and
-# `remove_loot_at` are addressed by, and a sparse pack would put a hole in the
-# middle of every one of them for the sake of an arrangement nothing reads.
+# WHERE A PIECE SITS AND WHERE IT IS IN THE ARRAY ARE TWO DIFFERENT FACTS. Indices
+# into `loot_items` are what `use_loot` and `remove_loot_at` are addressed by and
+# they have to stay dense; slots are what the player arranges and they are allowed
+# to have holes in them — an arrangement with a gap in the middle is the arrangement
+# somebody wanted, and a pack that quietly closed it up was refusing to be tidied.
+#
+# So the slot rides on the entry as `pack_slot`, and this is the one place the two
+# are put back together: slot -> index into `loot_items`, or -1 for a free slot.
+#
+# A piece with NO slot of its own — anything `add_loot` or a save from before this
+# existed put in the pack — takes the lowest free one, in pickup order. That is
+# exactly what the dense array used to do, so a run that never drags anything sees
+# the pack it always saw.
+func loot_layout() -> Array:
+	var layout: Array = []
+	layout.resize(LOOT_CAPACITY)
+	layout.fill(-1)
+	var homeless: Array = []
+	for i in range(loot_items.size()):
+		var entry = loot_items[i]
+		var slot: int = int(entry.get("pack_slot", -1)) if entry is Dictionary else -1
+		if slot >= 0 and slot < LOOT_CAPACITY and layout[slot] == -1:
+			layout[slot] = i
+		else:
+			homeless.append(i)
+	for i in homeless:
+		var free: int = layout.find(-1)
+		if free < 0:
+			break
+		layout[free] = i
+	return layout
+
+# Which piece is in a slot (index into `loot_items`), or -1 if it is empty.
+func loot_index_at_slot(slot: int) -> int:
+	if slot < 0 or slot >= LOOT_CAPACITY:
+		return -1
+	return int(loot_layout()[slot])
+
+# Where the piece at `index` is drawn, or -1 if it isn't carried.
+func loot_slot_of(index: int) -> int:
+	return int(loot_layout().find(index))
+
+# Write the arrangement the grid is currently DRAWING onto the entries themselves.
+# Called before any rearrangement, because a piece that was only implicitly in slot
+# 2 (by being third in the array) would otherwise slide the moment something else
+# claimed a slot ahead of it — the player would drag one piece and watch two move.
+func _freeze_loot_layout(layout: Array) -> void:
+	for slot in range(layout.size()):
+		var index: int = int(layout[slot])
+		if index >= 0 and index < loot_items.size() and loot_items[index] is Dictionary:
+			loot_items[index]["pack_slot"] = slot
+
+# Move the piece in slot `from` to slot `to` — the pack grid's drag (§4.3).
+#
+# ANY SLOT IS A PLACE A PIECE CAN GO. Dropping onto a piece SWAPS the two; dropping
+# onto an EMPTY slot puts the piece there and leaves the slot it came from empty,
+# wherever in the grid that is. Both arguments are slots in the 3x3, not indices
+# into `loot_items` — see `loot_layout`.
 #
 # Returns whether anything actually moved, so a drag onto a piece's own slot is a
 # no-op rather than a redraw.
 func move_loot(from: int, to: int) -> bool:
-	if from < 0 or from >= loot_items.size() or to < 0 or to >= LOOT_CAPACITY:
+	if from < 0 or from >= LOOT_CAPACITY or to < 0 or to >= LOOT_CAPACITY or from == to:
 		return false
-	var target: int = mini(to, loot_items.size() - 1)
-	if target == from:
+	var layout: Array = loot_layout()
+	var moving: int = int(layout[from])
+	if moving < 0:
 		return false
-	var moving = loot_items[from]
-	if to < loot_items.size():
-		loot_items[from] = loot_items[to]
-		loot_items[to] = moving
-	else:
-		loot_items.remove_at(from)
-		loot_items.append(moving)
+	_freeze_loot_layout(layout)
+	var displaced: int = int(layout[to])
+	loot_items[moving]["pack_slot"] = to
+	if displaced >= 0:
+		loot_items[displaced]["pack_slot"] = from
 	emit_signal("inventory_changed")
 	return true
 

@@ -45,8 +45,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     PackStrip       — fills Overworld2's pack strip
 │   │                      #     LootWindow      — the 3x3 loot grid, floated over
 │   │                      #                       the board by its toggle
-│   │                      #     LootGrid/LootSlot — that 3x3 itself: drag to
-│   │                      #                       rearrange, drag a drop into a slot
+│   │                      #     LootGrid/LootSlot — that 3x3 itself: drag a cell
+│   │                      #                       into any slot, drag a drop into one
 │   │                      #     LootTrash       — the red bin both surfaces draw
 │   │                      #     LootDiscoveries — "Known this run", on both too
 │   │                      #     LootInfoCard    — click-to-inspect loot card
