@@ -863,21 +863,24 @@ func test_shields_expire_when_the_game_is_reported() -> void:
 
 # --- the attempt tracker ---------------------------------------------------
 
-func test_ticking_an_attempt_spends_a_shield_then_health() -> void:
+func test_ticking_an_attempt_spends_a_shield_then_gives_the_board_a_turn() -> void:
 	_ui.pick(0)
 	var shields: int = GameState.shields
 	assert_eq(_ui.log_attempt(), "shield")
 	assert_eq(GameState.shields, shields - 1, "a lost run costs a shield")
 	assert_true(_ui._attempt_count.text.contains("1"), "the strip counts it: %s" % _ui._attempt_count.text)
 	assert_true(_ui._attempt_pips.text.contains("◇"), "and a pip goes hollow: %s" % _ui._attempt_pips.text)
-	# Burn the rest, then the next tick has to come off Health.
+	# Burn the rest, then the next tick has to come off the board.
 	while GameState.shields > 0:
 		_ui.log_attempt()
-	var hp: int = GameState.hp
-	assert_eq(_ui.log_attempt(), "health")
-	assert_eq(GameState.hp, hp - GameLoop2.ATTEMPT_HEALTH_COST)
-	assert_true(_ui._attempt_hint.text.contains("Health"),
-		"and the strip warns what the next one costs: %s" % _ui._attempt_hint.text)
+	GameState.bonus_shields = 0
+	_ui._refresh()
+	assert_true(_ui._attempt_hint.text.contains("turn"),
+		"the strip warns what the next one costs: %s" % _ui._attempt_hint.text)
+	assert_eq(_ui.log_attempt(), "turn")
+	_ui._end_resolve()                     # land the playback the tick started
+	assert_false(GameLoop2.last_attempt_turn.is_empty(),
+		"and the turn it bought is left where the board can replay it")
 
 func test_undoing_an_attempt_restores_the_shield() -> void:
 	_ui.pick(0)
@@ -3209,12 +3212,23 @@ func test_reporting_a_game_keeps_the_run_recoverable() -> void:
 	assert_gt(summaries.size(), 0, "and the Continue list can see it")
 	assert_true(bool(summaries[0].get("autosave", false)), "the autosave leads the list")
 
+# Walk everything on the board into striking range, so a lost run's turn (§3) has
+# something to swing back with. The columns are set straight rather than marched
+# by reporting games at the board: these tests are about what the TICK does, and
+# getting there properly would resolve several games' worth of other rules first.
+func _board_into_reach() -> void:
+	for entry in GameLoop2.stack:
+		entry["col"] = 1
+
 func test_a_lost_run_clears_its_recovery_point() -> void:
 	_ui.pick(0)
 	assert_true(SaveSystem.has_autosave(), "there is something to clear")
 	GameState.shields = 0
+	GameState.bonus_shields = 0
 	GameState.hp = 1
-	_ui.log_attempt()                       # a lost run with no shields costs the last Health
+	_board_into_reach()
+	_ui.log_attempt()                       # out of shields, the board takes its turn
+	_ui._end_resolve()                      # and the playback of it lands
 	assert_true(GameLoop2.run_over, "the run ended")
 	assert_false(SaveSystem.has_autosave(), "Continue must not offer a finished run")
 
@@ -3535,8 +3549,11 @@ func _end_screen():
 func test_a_lost_run_ends_on_a_verdict_screen() -> void:
 	_ui.pick(0)
 	GameState.shields = 0
+	GameState.bonus_shields = 0
 	GameState.hp = 1
-	_ui.log_attempt()                        # the last Health goes
+	_board_into_reach()
+	_ui.log_attempt()                        # the turn it bought takes the last Health
+	_ui._end_resolve()                       # the screen waits for the blow to land
 	assert_true(GameLoop2.run_over, "the run ended")
 	var screen = _end_screen()
 	assert_not_null(screen, "a finished run ends on a screen, not just a banner line")
@@ -4152,12 +4169,16 @@ func test_the_rule_promises_a_card_that_exists_not_an_invented_one() -> void:
 # --- escaping a game you can't beat (ESCAPE_AFTER_ATTEMPTS) -----------------
 
 # Lose `n` runs of the game in play, with enough Health banked to survive doing
-# it — past the shields a game grants, each lost run costs Health.
+# it — past the shields a game grants, each lost run hands the board a turn and
+# whatever is in reach swings.
 func _lose_runs(n: int) -> void:
 	GameState.max_hp = 99
 	GameState.hp = 99
 	for i in n:
 		_ui.log_attempt()
+		# A tick that cost a turn is played back on the board like a report is, and
+		# these tests are not waiting out animations — land it and carry on.
+		_ui._end_resolve()
 
 # Mark the game in play as already beaten THIS RUN, the way a real clear does.
 func _mark_beaten_this_run(game: GameData) -> void:

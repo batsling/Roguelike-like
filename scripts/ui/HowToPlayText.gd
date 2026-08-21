@@ -216,7 +216,9 @@ static func _ch_playing() -> Dictionary:
 				% GameLoop2.SHIELDS_TRADITIONAL),
 			_p("Every run of that game you LOSE, you tick the attempt tracker "
 				+ "yourself, and each tick spends a try. Run out of tries and a "
-				+ "lost run costs 1 Health instead."),
+				+ "lost run gives the ENEMIES A TURN instead: the front line "
+				+ "swings and everything behind it walks a column closer, exactly "
+				+ "as it does when you report a game."),
 			_p("Here is the part that matters: whatever tries you have LEFT when "
 				+ "you report the game become armour. They soak the followers' "
 				+ "hits before your Health does — and then they expire. Tries "
@@ -783,10 +785,11 @@ static func _ch_wrong() -> Dictionary:
 				+ "game that happens to suit it. That is not a loss, it is a debt "
 				+ "— and debts in this game are payable in any currency."),
 			_h("I am out of tries and still losing"),
-			_p(("Each further lost run costs 1 Health. Escape is offered after %d "
-				+ "lost runs: take it. Escaping keeps the enemy but stops the "
-				+ "bleeding, and the goal stays on your checklist to clear "
-				+ "somewhere friendlier.") % Overworld2.ESCAPE_AFTER_ATTEMPTS),
+			_p(("Each further lost run hands the board a turn, and the board is "
+				+ "closer every time. Escape is offered after %d lost runs: take "
+				+ "it. Escaping keeps the enemy but stops the bleeding, and the "
+				+ "goal stays on your checklist to clear somewhere friendlier.")
+				% Overworld2.ESCAPE_AFTER_ATTEMPTS),
 			_h("I have four followers and they are killing me"),
 			_p("In rough order of what to try:"),
 			_b("ROUTE AWAY from the Amulet. Getting back to five or more hops "

@@ -11,6 +11,55 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A lost run gives the enemies a turn, and status goals wear their symbol.**
+
+  **Out of shields, the board takes a turn.** A lost run used to cost a flat
+  1 Health once the tries were gone, which billed the one price in the loop the
+  board could not see: the enemies walking at you are the whole tension of a game,
+  and running out of tries quietly stepped around them to move a number in the
+  corner. Now the tick hands the stack **one turn** — the same
+  `_resolve_enemy_turn` a reported game takes `enemy_turns()` of, so the ground
+  burns whoever is standing on it, everything touching the front column swings for
+  what its statuses make of its damage, everything behind it walks a column
+  closer, and a stun costs one turn of either. It still costs Health, usually more
+  than one; it costs it *through the board*, and it compounds, because the board a
+  tick moves is the board the next tick moves again. Nobody holds their fire —
+  that exemption is a fact about a *reported* game, and nothing has been reported.
+
+  **A board with nothing in reach charges nothing**, deliberately: the turn is the
+  cost, so a cleared stack has nothing to take and a body still walking in merely
+  walks. The tick is logged all the same — it is what the escape hatch counts and
+  what the pips draw.
+
+  **The undo became a restore.** A refund works for a shield; a turn walks bodies,
+  burns ground, breaks the trinkets that break on a hit and pays out whatever
+  losing Health pays out. So the tick snapshots the board (`GameLoop2.serialize`)
+  and the run's resources (`GameState.snapshot_run_resources` — Health, the purse,
+  both shield pools, banked chests, the player's statuses, the pack) before it
+  resolves, and the undo puts the whole thing back. Those snapshots are
+  runtime-only, since a save carries the run and not its undo history, so a turn
+  taken before a reload can't be taken back: `can_undo_attempt` says so and the
+  undo button greys out with a tooltip rather than half-undoing something. The
+  turn is watched, too — the board replays it with the same `animate_resolve` the
+  end of a game uses, and a lethal one holds the end-of-run screen until the blow
+  lands.
+
+  Found on the way: the three attempt lists (`attempt_costs`, the payouts and now
+  the snapshots) are indexed in lockstep but only the first was being cleared when
+  a game closed out, which left a payout to be handed to the *next* game's first
+  undo. They drop as one now (`_clear_attempts`).
+
+  **Status goals lead with the symbol.** A status row on the checklist opened with
+  its name and stack count ("Marked 3 —"), spending the widest part of a
+  glanceable list saying what the art beside every other reading of that status
+  already says. The row now leads with that same art and the prefix is the count
+  alone ("×3 —"), with the status's own hover card on the chip so the symbol
+  answers what it is rather than having to be memorised. The name comes back for a
+  status with no art. Both checklists, plus the bonus, "or instead" and nullified
+  rows.
+
+---
+
 - **The haul screen, second pass — and four things it turned up.**
 
   **Every chest at once.** They were drained one at a time, which is how the

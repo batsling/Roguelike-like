@@ -422,41 +422,41 @@ func test_piggy_bank_pays_off_the_map_too() -> void:
 func test_a_lost_try_pays_and_undoing_it_takes_the_coin_back() -> void:
 	# The one Health loss in the game that can be taken back. Without the refund
 	# the undo button is a coin press: tick, untick, tick, untick.
-	var enemy := GoalEnemyData.new()
-	enemy.id = &"synthetic"
-	enemy.display_name = "Synthetic"
-	enemy.health = 1
-	enemy.damage = 1
 	_give(&"piggy_bank")
-	_choose_solo(enemy)
+	var a: int = _choose_solo(_fighter(1))
+	_march_to_front(a)
+	_choose_solo(_fighter(0))         # a game in play, with nothing of its own to add
 	GameState.shields = 0
+	GameState.bonus_shields = 0
 	GameState.max_hp = 10
 	GameState.hp = 10
 	GameState.gold = 0
-	assert_eq(GameLoop2.log_attempt(), "health", "no shields left, so it costs Health")
+	assert_eq(GameLoop2.log_attempt(), "turn", "no shields left, so the board takes a turn")
+	assert_eq(GameState.hp, 9, "which is where the Health went")
 	assert_eq(GameState.gold, 1, "the lost try paid a coin")
 	GameLoop2.undo_attempt()
 	assert_eq(GameState.hp, 10, "the Health came back")
 	assert_eq(GameState.gold, 0, "and so did the coin")
 
 func test_every_undone_try_gives_back_its_own_winnings() -> void:
-	# The undo is a stack — three ticks can be taken back one at a time — so the
-	# payout is remembered per try rather than "the last one".
-	var enemy := GoalEnemyData.new()
-	enemy.id = &"synthetic"
-	enemy.display_name = "Synthetic"
-	enemy.health = 1
-	enemy.damage = 1
+	# The undo is a stack — three ticks can be taken back one at a time — and each
+	# gives back its own winnings rather than the most recent one's. A lost run
+	# pays Piggy Bank through the TURN it now buys (§3): the front line swings, the
+	# Health comes off, and the relic pays on the loss like any other.
 	_give(&"piggy_bank")
-	_choose_solo(enemy)
+	var a: int = _choose_solo(_fighter(1))
+	_march_to_front(a)
+	_choose_solo(_fighter(0))         # a game in play, with nothing of its own to add
 	GameState.shields = 0
+	GameState.bonus_shields = 0
 	GameState.max_hp = 10
 	GameState.hp = 10
 	GameState.gold = 0
 	GameLoop2.log_attempt()
 	GameLoop2.log_attempt()
 	GameLoop2.log_attempt()
-	assert_eq(GameState.gold, 3, "three lost tries, three coins")
+	assert_eq(GameState.hp, 7, "three lost tries, three swings")
+	assert_eq(GameState.gold, 3, "three coins")
 	GameLoop2.undo_attempt()
 	GameLoop2.undo_attempt()
 	GameLoop2.undo_attempt()

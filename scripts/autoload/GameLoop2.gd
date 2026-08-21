@@ -14,9 +14,20 @@ extends Node
 #
 # SHIELDS ARE THE TRIES (§3). Selecting a game grants shields_for_game() of them;
 # every run of that game you lose is one tick of the ATTEMPT TRACKER
-# (log_attempt), which spends a shield — or 1 Health once they're gone. Whatever
-# survives absorbs the followers' hits when you report the game, and then expires:
-# shields never carry into the next game.
+# (log_attempt), which spends a shield — and ONCE THEY ARE GONE, GIVES THE BOARD
+# A TURN instead (attempt_turn). Whatever survives absorbs the followers' hits
+# when you report the game, and then expires: shields never carry into the next
+# game.
+#
+# A lost run used to cost 1 Health flat once the shields were out. It doesn't any
+# more, and the reason is that Health was the one resource the board couldn't
+# see: the enemies walking at you were the whole tension of a game, and running
+# out of tries quietly bypassed them to bill a number in the corner. A turn is
+# the same pressure the rest of the loop is made of — the front line swings for
+# what its statuses make of its damage, everything behind it closes a column, the
+# ground burns whoever is standing on it — so losing runs now spends the ONE
+# thing the game is about, which is the distance between you and them. It still
+# costs Health, usually more than one; it just costs it through the board.
 #
 # Lifecycle of one game (§7.2):
 #   choose_game(enemy)  — the enemy SPAWNS ONTO THE BOARD when you pick its game,
@@ -46,9 +57,9 @@ extends Node
 signal loop_changed()                 # stack / arrivals / run-state mutated (HUD hook)
 signal enemy_defeated(enemy)          # a GoalEnemyData was defeated (drop granted)
 signal player_hit(damage, blocked)    # a stacked enemy landed a hit this resolve
-# A try at the current game was logged or taken back. `cost` is "shield" or
-# "health" (what that try spent), `undone` true when it was reversed. The board
-# animates off this, so it fires once per tick.
+# A try at the current game was logged or taken back. `cost` is "shield",
+# "bonus" or "turn" (what that try spent), `undone` true when it was reversed.
+# The board animates off this, so it fires once per tick.
 signal attempt_logged(cost: String, undone: bool)
 signal run_lost()
 signal run_won()
@@ -57,8 +68,11 @@ signal run_won()
 # Traditional roguelike is the long haul, so it grants more.
 const SHIELDS_PER_GAME: int = 3
 const SHIELDS_TRADITIONAL: int = 5
-# What one lost run costs once the shields are gone.
-const ATTEMPT_HEALTH_COST: int = 1
+# How many turns the board takes for one lost run once the shields are gone (§3).
+# One: the same beat the stack takes per turn of a reported game, so a try and a
+# game are measured in the same unit and "how much did that cost me" is a
+# question about the board rather than about two different currencies.
+const ATTEMPT_TURNS: int = 1
 
 # What the player's two ways of hurting an enemy are worth, in the damage unit
 # `_damage_enemy` resolves. Both are 1: an enemy's Health is a count of goals it
@@ -214,20 +228,39 @@ var defeated_count: int = 0
 var games_beaten: int = 0
 
 # The attempt tracker for the game currently being played (§3). One entry per try
-# the player has logged, in order, holding what that try spent: "shield" or
-# "health". The list is the undo record — a mistaken tick gives back exactly what
+# the player has logged, in order, holding what that try spent: "shield", "bonus"
+# or "turn". The list is the undo record — a mistaken tick gives back exactly what
 # it took — and its size is the attempt count. Cleared when a new game is chosen.
 var attempt_costs: Array = []
 
-# Gold each logged try minted on its way through, parallel to `attempt_costs`
-# (Piggy Bank pays on a Health loss, and a try is a Health loss). Held so
-# undo_attempt can hand back exactly what the try it is undoing earned — see
-# log_attempt. 0 for a try that cost a shield or paid nothing.
+# Gold each logged try minted on its way through, parallel to `attempt_costs`.
+# Kept for a save written when a try could cost Health directly and Piggy Bank
+# paid on it; nothing mints into it now (a turn's winnings are inside the
+# snapshot the undo restores wholesale), and undo_attempt still hands back what
+# an OLD save recorded here.
 #
 # A parallel LIST rather than one "last payout" int, because the undo is a stack:
 # a player can untick three tries in a row, and each has to give back its own
 # winnings rather than the most recent one's.
 var _attempt_payouts: Array[int] = []
+
+# What a try that cost the board a TURN is taken back to, parallel to
+# `attempt_costs` — {} for a try that merely spent a shield (that one is undone
+# by handing the shield back). See _run_snapshot for what one holds and why an
+# enemy turn needs one at all.
+#
+# RUNTIME ONLY, deliberately: a snapshot names ItemData by reference and is a
+# whole second copy of the board, and neither belongs in a save file — a save is
+# a place the run is resumed from, not a place its undo history lives. So a run
+# reloaded mid-game cannot take back a turn it wasn't there for, which
+# can_undo_attempt says out loud and the button reads off (Overworld2).
+var _attempt_snapshots: Array = []
+
+# The turn a lost run just cost the player, in the same shape beat_game's result
+# carries it ({attacks, turn_frames, damage_taken, blocked, …}) — because it IS
+# one of those turns, and the board replays it with the same animate_resolve the
+# end of a game uses. {} until a try has cost one.
+var last_attempt_turn: Dictionary = {}
 
 # Summary of the most recent beat_game(), for the log / HUD / tests. Rebuilt each
 # resolve; see beat_game for its shape.
@@ -259,8 +292,8 @@ func reset() -> void:
 	stack.clear()
 	tiles.clear()
 	units.clear()
-	attempt_costs.clear()
-	_attempt_payouts.clear()
+	_clear_attempts()
+	last_attempt_turn = {}
 	bashed.clear()
 	transmuted.clear()
 	run_over = false
@@ -722,7 +755,7 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 		escort_tier: int = -1) -> int:
 	# A new game means a fresh set of tries — whatever was logged against the last
 	# one is closed out.
-	attempt_costs.clear()
+	_clear_attempts()
 	# The superseded bodies leave the board rather than lingering on it as ones
 	# nobody chose: they were never played for. Both of them — the escort only ever
 	# stood there because the game it came with did.
@@ -817,69 +850,223 @@ func attempts() -> int:
 func attempts_on_shields() -> int:
 	return attempt_costs.count("shield")
 
-# ONE LOST RUN at the game being played (§3): it spends a shield, or
-# ATTEMPT_HEALTH_COST Health once the shields are gone — and Health reaching 0
-# ends the run right there, same as an enemy hit. Refused when no game is in play
-# or the run is already over. Returns the cost ("shield" / "bonus" / "health"), or
-# "" when nothing was logged.
-#
-# THE ORDER IS PER-GAME, THEN BONUS, THEN HEALTH (§4.3). The tries granted by the
-# game in play are spent first because they die with it anyway; a Bonus Shield is
-# spent only once they are gone, because it is the one that would still be there
-# next game. A lost run DOES eat them — they are shields, and a pool that only
-# stopped enemy damage would be a different resource wearing the same pips.
-func log_attempt() -> String:
+# What the NEXT lost run would cost, without spending anything: "shield",
+# "bonus", "turn", or "" when there is no game in play to be losing runs of.
+# Asked by the overworld's hint line, and by the board so it can be ready to
+# animate before the tick lands — and it is the same ladder log_attempt walks, so
+# what the strip promises and what the tick charges cannot drift apart.
+func next_attempt_cost() -> String:
 	if run_over or arrivals.is_empty():
 		return ""
-	var cost: String = "health"
 	if GameState.shields > 0:
-		cost = "shield"
-	elif GameState.bonus_shields > 0:
-		cost = "bonus"
-	var payout: int = 0
+		return "shield"
+	if GameState.bonus_shields > 0:
+		return "bonus"
+	return "turn"
+
+# ONE LOST RUN at the game being played (§3): it spends a shield, or GIVES THE
+# BOARD A TURN once the shields are gone — the enemies swing and close in, which
+# can kill, same as an enemy hit at the end of a game. Refused when no game is in
+# play or the run is already over. Returns the cost ("shield" / "bonus" / "turn"),
+# or "" when nothing was logged.
+#
+# THE ORDER IS PER-GAME, THEN BONUS, THEN THE BOARD (§4.3). The tries granted by
+# the game in play are spent first because they die with it anyway; a Bonus Shield
+# is spent only once they are gone, because it is the one that would still be
+# there next game. A lost run DOES eat them — they are shields, and a pool that
+# only stopped enemy damage would be a different resource wearing the same pips.
+#
+# A BOARD WITH NOTHING ON IT CHARGES NOTHING, and that is the design rather than
+# an oversight: the turn is the cost, so a stack that has been cleared has nothing
+# to take. The tick is still logged — it is what the escape hatch counts (§3) and
+# what the pips draw — it simply resolves to a turn in which nobody acts.
+func log_attempt() -> String:
+	var cost: String = next_attempt_cost()
+	if cost == "":
+		return ""
 	if cost == "shield":
 		GameState.shields -= 1
+		_attempt_snapshots.append({})
 	elif cost == "bonus":
 		GameState.bonus_shields -= 1
+		_attempt_snapshots.append({})
 	else:
-		# What the Health cost PAID OUT, measured rather than assumed: losing
-		# Health is a trigger point (Piggy Bank), and a try is the one loss in the
-		# game that can be taken back. Without this the undo button is a gold
-		# faucet — tick, untick, tick, untick — so the tick's winnings are
-		# recorded here and handed back by undo_attempt below.
-		var purse: int = GameState.gold
-		GameState.change_hp(-ATTEMPT_HEALTH_COST)
-		payout = maxi(0, GameState.gold - purse)
-		if GameState.hp <= 0:
-			_finish_run(false)
+		# Taken BEFORE anything swings, because everything the turn is about to do
+		# — the Health, the ground it walks onto, a trinket the hit shatters — is
+		# what the undo has to put back (see _run_snapshot).
+		_attempt_snapshots.append(_run_snapshot())
+		last_attempt_turn = attempt_turn()
 	attempt_costs.append(cost)
-	_attempt_payouts.append(payout)
+	# Nothing to record: a shield mints nothing, and what a turn minted is inside
+	# the snapshot. Kept in step with `attempt_costs` all the same — undo pops the
+	# pair together, and an old save's payouts are still read back into it.
+	_attempt_payouts.append(0)
 	attempt_logged.emit(cost, false)
 	loop_changed.emit()
 	return cost
 
-# Take back the last logged try, refunding exactly what it spent — the tracker is
-# a hand-driven counter, so a mis-click has to be reversible. Refused once the run
-# is over (a run ended by that tick stays ended). Returns the cost it undid.
-func undo_attempt() -> String:
+# THE TURN A LOST RUN COSTS (§3), in the same shape and through the same resolver
+# one turn of a reported game uses — because it is one of those turns, and a
+# second implementation of "the front line swings and the field closes up" is a
+# second place for Strength, stuns, fire tiles and the off-grid queue to be
+# handled differently.
+#
+# Nobody holds their fire: `hit_this_game` is the goals the player reported, and a
+# game in play has not been reported yet. So every body in the front column
+# swings, which is exactly the threat the tries were buying off.
+#
+# Public because the dev panel and the text harness want the same beat without
+# having to fake a tracker tick around it.
+func attempt_turn() -> Dictionary:
+	var res := {
+		"attacks": [], "turn_frames": [], "defeats": [], "drops": 0,
+		"damage_taken": 0, "blocked": 0, "hp": GameState.hp,
+		"turns": ATTEMPT_TURNS, "attempt": true,
+	}
+	for turn in range(ATTEMPT_TURNS):
+		if run_over:
+			break
+		_resolve_enemy_turn(turn, {}, res)
+		(res["turn_frames"] as Array).append(_board_snapshot())
+	res["hp"] = GameState.hp
+	res["run_over"] = run_over
+	return res
+
+# Everything an enemy turn can move, held so a mis-ticked try can be put back.
+#
+# A turn is not a number that can be handed back the way a shield is: it walks
+# bodies across the board, burns the ground under them, breaks the trinkets that
+# break on a hit (§8.1) and pays out whatever losing Health pays out. So the undo
+# is a RESTORE rather than a refund, and this is its scope: the board in full
+# (GameLoop2's own serialize, which is what a save is written from), and the
+# handful of run resources a swing reaches — Health, the purse it may have minted,
+# both shield pools, the chests a trigger banked, the player's own statuses, and
+# the inventory the hit may have thinned.
+#
+# `inventory` holds the ItemData REFERENCES, not ids: they are the same shared
+# resources `Data` serves, so putting the array back is putting the items back,
+# and _recompute_item_bonuses re-derives everything they were contributing.
+func _run_snapshot() -> Dictionary:
+	return {
+		"loop": _loop_snapshot(),
+		"state": GameState.snapshot_run_resources(),
+	}
+
+func _restore_snapshot(snap: Dictionary) -> void:
+	if snap.is_empty():
+		return
+	# The board first: restoring the run's resources re-derives the item bonuses,
+	# and sync_grid_bounds rides that — so the bodies want to be back on the board
+	# before anything can resize it under them.
+	_restore_loop_snapshot(snap.get("loop", {}))
+	GameState.restore_run_resources(snap.get("state", {}))
+
+# The loop's own state, copied IN MEMORY rather than through serialize/restore.
+# The same fields the save writes, but each held as the object it is: a save
+# names an enemy by id and looks it up again on load, which is right for a file
+# and wrong for an undo — a body the catalog has stopped serving would vanish
+# rather than come back, and a round trip through JSON shapes is work an undo
+# does not need to do. `duplicate(true)` copies the nested containers and leaves
+# the GoalEnemyData references alone, which is exactly the split wanted: the
+# entry is a new dictionary, the enemy in it is the same enemy.
+func _loop_snapshot() -> Dictionary:
+	var bodies: Array = []
+	for entry in stack:
+		bodies.append((entry as Dictionary).duplicate(true))
+	return {
+		"stack": bodies,
+		"arrivals": arrivals.duplicate(),
+		"tiles": tiles.duplicate(true),
+		"units": units.duplicate(true),
+		"bashed": bashed.duplicate(),
+		"transmuted": transmuted.duplicate(),
+		"run_over": run_over,
+		"won": won,
+		"defeated_count": defeated_count,
+		"games_beaten": games_beaten,
+		"attempt_costs": attempt_costs.duplicate(),
+		"attempt_payouts": _attempt_payouts.duplicate(),
+		"next_instance": _next_instance,
+		"last_result": last_result.duplicate(true),
+	}
+
+func _restore_loop_snapshot(snap: Dictionary) -> void:
+	if snap.is_empty():
+		return
+	stack.clear()
+	for entry in snap.get("stack", []):
+		stack.append((entry as Dictionary).duplicate(true))
+	arrivals = (snap.get("arrivals", []) as Array).duplicate()
+	tiles = (snap.get("tiles", {}) as Dictionary).duplicate(true)
+	units = (snap.get("units", {}) as Dictionary).duplicate(true)
+	bashed = (snap.get("bashed", []) as Array).duplicate()
+	transmuted = (snap.get("transmuted", {}) as Dictionary).duplicate()
+	run_over = bool(snap.get("run_over", false))
+	won = bool(snap.get("won", false))
+	defeated_count = int(snap.get("defeated_count", 0))
+	games_beaten = int(snap.get("games_beaten", 0))
+	attempt_costs = (snap.get("attempt_costs", []) as Array).duplicate()
+	_attempt_payouts.clear()
+	for paid in snap.get("attempt_payouts", []):
+		_attempt_payouts.append(int(paid))
+	# The instance counter goes back too: a body defeated by the turn is about to
+	# stand on the board again, and an id handed out since would then be a second
+	# body wearing the same one.
+	_next_instance = int(snap.get("next_instance", _next_instance))
+	last_result = (snap.get("last_result", {}) as Dictionary).duplicate(true)
+
+# Whether the last logged try can be taken back. A shield always can. A TURN can
+# only be taken back by the session that played it: its snapshot is runtime-only
+# (see `_attempt_snapshots`), so a run reloaded mid-game answers false here and
+# the undo button goes grey rather than half-undoing something.
+func can_undo_attempt() -> bool:
 	if run_over or attempt_costs.is_empty():
+		return false
+	if String(attempt_costs[attempt_costs.size() - 1]) != "turn":
+		return true
+	return not _attempt_snapshots.is_empty() and not (
+		_attempt_snapshots[_attempt_snapshots.size() - 1] as Dictionary).is_empty()
+
+# Take back the last logged try, putting back exactly what it spent — the tracker
+# is a hand-driven counter, so a mis-click has to be reversible. Refused once the
+# run is over (a run ended by that tick stays ended), and refused for a turn there
+# is no snapshot of (can_undo_attempt). Returns the cost it undid.
+func undo_attempt() -> String:
+	if not can_undo_attempt():
 		return ""
 	var cost: String = String(attempt_costs.pop_back())
-	# "Refunding exactly what it spent" has to include what it EARNED, or a Piggy
-	# Bank turns the undo into a coin press. Popped alongside the cost, so a try's
-	# winnings can only ever be clawed back once and only by its own undo.
+	# "Putting back exactly what it spent" has to include what it EARNED, or a
+	# Piggy Bank turns the undo into a coin press. Popped alongside the cost, so a
+	# try's winnings can only ever be clawed back once and only by its own undo.
+	# Only an OLD save records anything here; a turn's winnings ride its snapshot.
 	var payout: int = int(_attempt_payouts.pop_back()) if not _attempt_payouts.is_empty() else 0
+	var snap: Dictionary = _attempt_snapshots.pop_back() if not _attempt_snapshots.is_empty() else {}
 	if cost == "shield":
 		GameState.shields += 1
 	elif cost == "bonus":
 		GameState.bonus_shields += 1
 	else:
-		GameState.change_hp(ATTEMPT_HEALTH_COST)
+		# The snapshot was taken before the try was logged, so it also rewinds the
+		# tracker itself — which is why the pops above are the same lists this is
+		# about to overwrite with identical, one-shorter copies. The SNAPSHOT list
+		# is deliberately not in it: the tries before this one still have theirs,
+		# and undoing the second of two turns must not make the first un-undoable.
+		_restore_snapshot(snap)
+		last_attempt_turn = {}
 	if payout > 0:
 		GameState.change_gold(-payout)
 	attempt_logged.emit(cost, true)
 	loop_changed.emit()
 	return cost
+
+# The three attempt lists, dropped as one. They are indexed in lockstep by
+# log_attempt and popped in lockstep by undo_attempt, so anything that closes out
+# a game's tries has to drop all three — a payout or a snapshot left behind
+# outlives the try it belonged to and is then handed to the NEXT one's undo.
+func _clear_attempts() -> void:
+	attempt_costs.clear()
+	_attempt_payouts.clear()
+	_attempt_snapshots.clear()
 
 # How many goal completions it takes to defeat `enemy`: its sheet Health (1 for
 # all current content) plus the player's enemy_health item bonus (Alien Baby +1,
@@ -1076,7 +1263,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 			GameState.shields = 0
 	# The tries went with it: `res` already carries the count for the log, and the
 	# board must not keep drawing a finished game's spent pips.
-	attempt_costs.clear()
+	_clear_attempts()
 
 	# 3. The player's clauses tick for the game just played. A clause rides every
 	#    enemy's goal, so completing ANY goal this game satisfied it once.

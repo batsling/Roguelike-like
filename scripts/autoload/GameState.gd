@@ -421,8 +421,9 @@ var discovery: int = 0
 # Shields — the TRIES you get at the game you're playing (§3). A game grants
 # GameLoop2.shields_for_game() of them the moment you select it (3, or 5 for a
 # Traditional game); each run of that game you LOSE spends one (the attempt
-# tracker, GameLoop2.log_attempt), and once they're gone a lost run costs Health
-# instead. Whatever is still standing when you report the game absorbs the
+# tracker, GameLoop2.log_attempt), and once they're gone a lost run gives the
+# board a TURN instead — the enemies swing and close in, which is where the
+# Health goes now. Whatever is still standing when you report the game absorbs the
 # followers' hits before Health, then EXPIRES — shields are per-game and do not
 # carry into the next one (GameLoop2.beat_game clears them after the enemies have
 # struck and advanced). No cap.
@@ -1884,6 +1885,70 @@ func restore_statuses(data: Dictionary) -> void:
 		if stacks > 0 and Data.get_status(id) != null:
 			player_statuses[id] = stacks
 	player_statuses_changed.emit()
+
+# --- the undo snapshot (§3) ------------------------------------------------
+#
+# What a lost run's ENEMY TURN can reach, captured and put back as one — the undo
+# behind GameLoop2's attempt tracker, which cannot refund a turn the way it
+# refunds a shield (see GameLoop2._run_snapshot for the whole of that argument).
+#
+# The board itself is GameLoop2's; this is the run RESOURCES half: the Health a
+# swing took, the purse losing it minted (Piggy Bank), both shield pools, the
+# chests a trigger banked on the way through, the player's own statuses, and the
+# inventory the hit may have thinned (the trinkets that shatter on an enemy
+# attack, §8.1).
+#
+# The inventory is held by REFERENCE. add_item mints a distinct copy per slot, so
+# the array is the pack: putting the same objects back is putting the same items
+# back, with their charges and instance ids intact, and _recompute_item_bonuses
+# re-derives everything they were contributing to the run's numbers.
+func snapshot_run_resources() -> Dictionary:
+	return {
+		"hp": hp,
+		# The BASE ceiling, with what the pack is contributing subtracted out —
+		# exactly as a save writes it (SaveSystem._build_payload), and for the same
+		# reason: the restore below re-derives the pack's share, and a stored total
+		# would be that share counted twice.
+		"base_max_hp": max_hp - _applied_item_max_hp - _applied_scaling_max_hp,
+		"gold": gold,
+		"shields": shields,
+		"bonus_shields": bonus_shields,
+		"pending_chests": pending_chests,
+		"pending_chest_choices": pending_chest_choices.duplicate(),
+		"statuses": serialize_statuses(),
+		"inventory": inventory.duplicate(),
+	}
+
+# Put one back. Through the setters where there is one (set_hp, set_gold) so the
+# HUD hears about it — an undo that leaves the Health line reading the number the
+# hit took it to would be worse than no undo at all.
+func restore_run_resources(snap: Dictionary) -> void:
+	if snap.is_empty():
+		return
+	# The ceiling, put back as base + WHAT THE PACK IS CURRENTLY CONTRIBUTING, so
+	# that _recompute_item_bonuses below — which works in deltas against those same
+	# applied totals — lands on base + what the RESTORED pack contributes.
+	max_hp = maxi(1, int(snap.get("base_max_hp",
+		max_hp - _applied_item_max_hp - _applied_scaling_max_hp))
+		+ _applied_item_max_hp + _applied_scaling_max_hp)
+	shields = maxi(0, int(snap.get("shields", shields)))
+	bonus_shields = maxi(0, int(snap.get("bonus_shields", bonus_shields)))
+	pending_chests = maxi(0, int(snap.get("pending_chests", pending_chests)))
+	pending_chest_choices.clear()
+	for choices in snap.get("pending_chest_choices", []):
+		pending_chest_choices.append(int(choices))
+	restore_statuses(snap.get("statuses", {}))
+	inventory = (snap.get("inventory", inventory) as Array).duplicate()
+	# The bonuses the pack contributes are DERIVED, never stored, so they are
+	# re-derived rather than snapshotted: a broken trinket that comes back has to
+	# come back with whatever it was granting.
+	_recompute_item_bonuses()
+	inventory_changed.emit()
+	# Health last: max_hp and the item bonuses above are what it is clamped
+	# against, so a pack that was carrying +Max Health has to be back on before the
+	# number it raised is written.
+	set_hp(int(snap.get("hp", hp)))
+	set_gold(int(snap.get("gold", gold)))
 
 # Whether the pack already holds an item of this id. Ownership is by ID, not by
 # instance: add_item duplicates the .tres template into the slot, so the copies

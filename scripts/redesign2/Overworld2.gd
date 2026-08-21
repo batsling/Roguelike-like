@@ -120,7 +120,13 @@ var _visits: Dictionary = {}
 var _amulet_dist: Dictionary = {}
 # True between a report and the end of the board's playback of it: the run has
 # already moved on, but the screen is still showing how (see _hold_for_resolve).
+# A lost run's enemy turn (§3) raises it too — it is the same playback — which is
+# what `_attempt_resolve` below distinguishes.
 var _resolving: bool = false
+# …and true when the playback in flight is a TICK'S turn rather than a report's.
+# The two end differently: a report hands the screen on to the haul, an event, a
+# shop; a tick has none of those behind it and simply gives the board back.
+var _attempt_resolve: bool = false
 # An end-of-run screen owed to the player, held back until the board has finished
 # playing the resolve that ended the run.
 var _run_over_pending: bool = false
@@ -463,6 +469,7 @@ func start_run(character_id: StringName = &"") -> void:
 	_dismiss_run_over()
 	_dismiss_post_game()
 	_resolving = false
+	_attempt_resolve = false
 	_board.clear_fx()
 	_visits.clear()
 	_last_played_game = null
@@ -1040,24 +1047,68 @@ func _log_escort() -> void:
 
 # The attempt tracker (§3): the player ticks this every time they LOSE a run of
 # the game they're playing. Each try spends a shield; once the shields are gone a
-# try costs Health, and Health hitting 0 ends the run right there. The board pops
-# a pip / flashes the hero off GameLoop2's attempt_logged signal.
+# try GIVES THE BOARD A TURN, which can kill. The board pops a pip / flashes the
+# hero off GameLoop2's attempt_logged signal.
+#
+# A turn is the same beat the end of a game plays, so it is watched the same way:
+# the positions are snapshotted first, the loop resolves, and the board replays
+# the strike and the advance out of the snapshot (animate_resolve). `_resolving`
+# goes up BEFORE the tick rather than after, because a lethal turn queues the
+# end-of-run screen from inside it and that screen has to wait for the blow that
+# caused it to land.
 func log_attempt() -> String:
+	var costs_turn: bool = GameLoop2.next_attempt_cost() == "turn"
+	var before: Dictionary = _board.capture_positions() if _board != null else {}
+	var hp_before: int = GameState.hp
+	if costs_turn:
+		_resolving = true
+		_attempt_resolve = true
 	var cost: String = GameLoop2.log_attempt()
 	if cost == "":
+		_resolving = false
+		_attempt_resolve = false
 		return ""
 	var game: GameData = _chosen.get("game")
 	var game_name: String = game.display_name if game != null else "this game"
-	if cost == "shield":
+	if cost == "turn":
+		_announce_attempt_turn(game_name, GameLoop2.last_attempt_turn)
+	elif cost == "bonus":
+		GameLog.add("Lost a run of %s — a Bonus Shield goes (attempt %d)." % [
+			game_name, GameLoop2.attempts()], SHIELD_BLUE)
+	else:
 		GameLog.add("Lost a run of %s — a shield goes (attempt %d)." % [game_name, GameLoop2.attempts()],
 			SHIELD_BLUE)
-	else:
-		var msg: String = "Out of shields on %s — a lost run costs %d Health." % [
-			game_name, GameLoop2.ATTEMPT_HEALTH_COST]
-		GameLog.add(msg, UITheme.DANGER)
-		Notifications.notify(msg, UITheme.DANGER)
+	if GameLoop2.run_over:
+		_phase = Phase.OVER
 	_refresh()
+	# Repaint first, then replay: the board is already in the state the turn left
+	# it in, and the animation is how it got there (the same order report() uses).
+	if cost == "turn" and _board != null:
+		_hold_for_resolve(_board.animate_resolve(before, GameLoop2.last_attempt_turn, hp_before))
+	else:
+		_resolving = false
+		_attempt_resolve = false
 	return cost
+
+# What a lost run just cost, once it cost a turn. Two facts, because they are the
+# two the player has to act on: the tries are gone (so this is the price from here
+# on), and this is what the turn did — the Health it took, or the fact that it
+# took none and merely walked everyone a column closer, which is the version that
+# reads as "nothing happened" if it isn't said.
+func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
+	var took: int = int(res.get("damage_taken", 0))
+	var blocked: int = int(res.get("blocked", 0))
+	var msg: String = "Out of shields on %s — the enemies take a turn." % game_name
+	if took > 0:
+		msg += " They hit you for %d." % took
+	elif blocked > 0:
+		msg += " Their hits were absorbed."
+	elif not (res.get("attacks", []) as Array).is_empty():
+		msg += " Nothing landed."
+	else:
+		msg += " Nobody was in reach — they all close a column."
+	GameLog.add(msg, UITheme.DANGER)
+	Notifications.notify(msg, UITheme.DANGER)
 
 # --- escaping a game you can't beat ---------------------------------------
 #
@@ -1127,13 +1178,24 @@ func escape_game() -> void:
 	report(false, null, true)
 
 # Take back the last tick — the tracker is hand-driven, so a mis-click has to be
-# reversible. Refunds exactly what that try spent.
+# reversible. Puts back exactly what that try spent: the shield, or the whole
+# board the turn moved (GameLoop2._run_snapshot).
 func undo_attempt() -> String:
 	var cost: String = GameLoop2.undo_attempt()
-	if cost != "":
-		GameLog.add("Took back an attempt (refunded 1 %s)." % ("shield" if cost == "shield" else "Health"),
-			UITheme.TEXT_DIM)
-		_refresh()
+	if cost == "":
+		return ""
+	var what: String = "1 shield"
+	if cost == "bonus":
+		what = "1 Bonus Shield"
+	elif cost == "turn":
+		what = "the enemies' turn"
+	GameLog.add("Took back an attempt (%s)." % what, UITheme.TEXT_DIM)
+	# The board is a different board now — bodies walked back, the ground it
+	# burned is unburnt — so it is rebuilt rather than repainted in place.
+	if cost == "turn" and _board != null:
+		_board.clear_fx()
+		_board.refresh()
+	_refresh()
 	return cost
 
 # Dash (§4): a TOTAL select — bypass the limited offering and show every connected
@@ -1754,7 +1816,16 @@ func _end_resolve() -> void:
 		_pending_event_node = &""
 		_pending_shop = &""
 		_post_snapshot = {}
+		_attempt_resolve = false
 		_show_run_over()
+		return
+	# A LOST RUN'S TURN (§3) ends here rather than going down the chain a report
+	# ends in: nothing was reported, so there is no haul, no event and no shop
+	# waiting behind the playback. What there CAN be is a drop the turn shook loose
+	# — a body a mine took off the board — held back while the board was moving.
+	if _attempt_resolve:
+		_attempt_resolve = false
+		_open_next_drop.call_deferred()
 		return
 	_open_post_game()
 
@@ -3825,9 +3896,12 @@ func _pump_drops() -> void:
 	# here is what used to put "do you want this relic" over the top of the strike
 	# that had just taken eight Health off the player.
 	#
-	# Only a report sets `_resolving`, so an offer that lands at any other moment —
-	# a relic firing on the overworld, a machine, an event's payout — still asks
-	# for itself, on its own modal, immediately.
+	# A REPORT and A LOST RUN'S TURN (§3) both set `_resolving`, and both for the
+	# same reason: a board mid-playback is not a place to put a modal. The turn has
+	# no post-combat screen behind it to hand the queue to, so _end_resolve pumps
+	# it itself the moment the playback lands. An offer that arrives at any OTHER
+	# moment — a relic firing on the overworld, a machine, an event's payout —
+	# still asks for itself, on its own modal, immediately.
 	if _resolving:
 		return
 	_open_next_drop.call_deferred()
@@ -4653,7 +4727,8 @@ func _build_attempt_strip() -> Control:
 
 	_attempt_btn = Button.new()
 	_attempt_btn.text = "Lost a run  −1"
-	_attempt_btn.tooltip_text = "Tick every run of this game you lose."
+	_attempt_btn.tooltip_text = ("Tick every run of this game you lose.\n"
+		+ "It spends a shield, and once they are gone it gives the enemies a turn.")
 	_attempt_btn.custom_minimum_size = Vector2(0, 30)
 	_attempt_btn.add_theme_font_size_override("font_size", 13)
 	_attempt_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.62), 6, 8, 1, UITheme.DANGER.lerp(UITheme.BG, 0.35)))
@@ -4700,12 +4775,32 @@ func _refresh_attempts() -> void:
 	if left > 0:
 		_attempt_hint.text = "Shields %d — the next lost run spends one." % left
 		_attempt_hint.add_theme_color_override("font_color", SHIELD_BLUE)
+	elif GameState.bonus_shields > 0:
+		_attempt_hint.text = "Bonus Shields %d — the next lost run spends one of those." % GameState.bonus_shields
+		_attempt_hint.add_theme_color_override("font_color", SHIELD_BLUE)
 	else:
-		_attempt_hint.text = "No shields left — the next lost run costs %d Health." % GameLoop2.ATTEMPT_HEALTH_COST
+		# What the next press ACTUALLY costs, in the terms the board is in: not a
+		# number off the corner of the screen but a move by everything standing on
+		# it. Said before it happens, because it is the reason to stop playing this
+		# game and report it (§3).
+		_attempt_hint.text = "No shields left — the next lost run gives the enemies a turn."
 		_attempt_hint.add_theme_color_override("font_color", UITheme.DANGER)
+	# The button carries the cost too, because it is the thing under the cursor:
+	# a pip while the tries last, and the ⚔ the board's damage badges use once
+	# pressing it is a swing rather than a subtraction.
+	_attempt_btn.text = ("Lost a run  −1" if left > 0 or GameState.bonus_shields > 0
+		else "Lost a run  ⚔")
 	var live: bool = _phase == Phase.PLAYING and not GameLoop2.run_over
-	_attempt_btn.disabled = not live
-	_attempt_undo.disabled = not live or attempts == 0
+	_attempt_btn.disabled = not live or _resolving
+	# A TURN CAN ONLY BE TAKEN BACK BY THE SESSION THAT PLAYED IT (§3): its undo is
+	# a snapshot of the board, and a save carries the run rather than its undo
+	# history. The button says which of the two it is rather than going grey with
+	# no explanation.
+	var can_undo: bool = live and attempts > 0 and not _resolving and GameLoop2.can_undo_attempt()
+	_attempt_undo.disabled = not can_undo
+	_attempt_undo.tooltip_text = ("Take back the last attempt."
+		if can_undo or attempts == 0 or _resolving
+		else "The enemies' turn was taken before this run was reloaded — it can't be taken back.")
 	# The escape hatch is up from the first second on a game the player has been
 	# through before, and otherwise only once they have lost enough runs to have
 	# earned it — where it goes away again if they undo back under the line. The

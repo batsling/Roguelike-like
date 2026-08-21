@@ -131,8 +131,32 @@ A roguelike is not beaten in one run, so **shields are how many runs you get**:
   becomes the standing-goals list — the level-up challenge and every follower's
   outstanding goal (§2) — so "what do I need to do?" is answerable before you
   commit to a game, not only after.
-- **Out of shields, a lost run costs 1 Health** — and Health reaching 0 ends the
-  run right there, exactly like an enemy hit.
+- **Out of shields, a lost run gives the enemies a turn** — one turn of the board,
+  resolved by the same `_resolve_enemy_turn` a reported game takes `enemy_turns()`
+  of (§7.4): the ground burns whoever is standing on it, every body touching the
+  front column **strikes** for what its statuses make of its damage, everything
+  behind it **steps a column closer**, and a stun costs one turn of either. It can
+  kill — Health reaching 0 ends the run right there, exactly like an enemy hit at
+  the end of a game.
+  - It costs Health *through the board* rather than off the corner of the screen,
+    which is the point. A flat 1 Health was the one price in the loop the board
+    could not see: the enemies walking at you are the whole tension of a game, and
+    running out of tries quietly stepped around them. A turn spends the one thing
+    the game is about — the distance between you and them — and it compounds,
+    because the board a tick moves is the board the *next* tick moves again.
+  - **Nobody holds their fire**: the goals-met exemption is a fact about a
+    *reported* game, and nothing has been reported yet.
+  - **A board with nothing in reach charges nothing**, and that is the design
+    rather than an oversight: the turn *is* the cost, so a cleared stack has
+    nothing to take and a body still walking in merely walks. The tick is still
+    logged — it is what the escape hatch counts and what the pips draw.
+  - **The undo is a restore, not a refund.** A turn walks bodies, burns ground,
+    breaks the trinkets that break on a hit (§8.1) and pays out whatever losing
+    Health pays out, so `GameLoop2.log_attempt` snapshots the board and the run's
+    resources before it resolves and `undo_attempt` puts the whole thing back.
+    Those snapshots are **runtime-only** — a save carries the run, not its undo
+    history — so a turn taken before a reload cannot be taken back, which
+    `can_undo_attempt` answers and the undo button reads off.
 - **Whatever is left when you report the game absorbs the followers' hits** before
   Health, then **expires**. Shields never bank into the next game: an easy game
   cleared first try does not arm you for the next one.
@@ -335,8 +359,9 @@ horse Full Health), and those are a separate pool from the per-game tries of §3
   hero, and beside the always-visible Health chip in the header, because a pool
   gained on the overworld has to be readable when no board is on screen.
 - They are **spent last**: a lost run ticks the per-game pool first, then bonus
-  shields, then Health (a lost run *does* eat them — the tries are shields and so
-  are these). Enemy damage reads the same order.
+  shields, and only with both empty does it hand the board a turn (§3.2) — a lost
+  run *does* eat them, since the tries are shields and so are these. Enemy damage
+  reads the same order.
 - They **never expire.** The per-game pool dies with the game that granted it;
   a bonus shield stays until something breaks it, which is what makes it worth
   saving across several games.
@@ -1222,12 +1247,12 @@ previously name:
 
 | Token | What it is |
 |---|---|
-| `health_lost:` | A trigger prefix — the player's Health went **down**, from any source anywhere in the run. Not `damage_taken`: Shields absorb first (§3), so a swing they eat whole is damage taken and no Health lost, and **Piggy Bank** must not pay for it. Emitted once per loss by `GameState.change_hp`, the choke point every drain funnels through, so an event's bill and a failed try count exactly as an enemy's swing does. A failed try is the one Health loss that can be **undone**, and `GameLoop2.undo_attempt` hands back what the tick paid — otherwise the undo button is a coin press. |
+| `health_lost:` | A trigger prefix — the player's Health went **down**, from any source anywhere in the run. Not `damage_taken`: Shields absorb first (§3), so a swing they eat whole is damage taken and no Health lost, and **Piggy Bank** must not pay for it. Emitted once per loss by `GameState.change_hp`, the choke point every drain funnels through, so an event's bill and the swing a failed try bought count exactly as an enemy's swing at the end of a game does. A failed try is the one Health loss that can be **undone**, and `GameLoop2.undo_attempt` restores what the tick's turn moved — the purse it minted included, otherwise the undo button is a coin press. |
 | `enemy_killed:` | A body was **defeated** (`GameLoop2._defeat`). A bombed enemy is destroyed rather than defeated and never reaches it, the same rule that decides whether the body pays gold (§14). **Charm of the Vampire** counts them. |
 | `counter key=K every=N -> …` | The **incremental** wrapper: fire the inner effects on every Nth time, then roll the count back to zero. The count lives on the inventory slot, not on the run — see the `Incremental` row above. |
 | `boss_chest_bonus: N` | **There's Options.** Chest points added to a boss's drop; see §8.2. |
 | `passive_status: <status> N` | The status half of a passive grant → `status_bonuses`. **Bionic Face Plating**'s +3 Speed. Read `item_acquired: apply_status` as the *kept* form of the same grant and this as the *rented* one. |
-| `destroy_on_damage` | **The Mewgenics three.** The item is destroyed when an **enemy attack** costs the player Health — not on a swing the Shields ate, and not on the Health a failed try or an event charges. Fires from `GameState._on_health_lost` off the `source` tag `GameLoop2._take_hit` sets, so one swing that gets through breaks every fragile item at once. |
+| `destroy_on_damage` | **The Mewgenics three.** The item is destroyed when an **enemy attack** costs the player Health — not on a swing the Shields ate, and not on the Health an event charges. A failed try reaches it now that the try is a *turn* (§3.2): the swing it buys is an enemy attack like any other, and `undo_attempt`'s snapshot is what puts the broken trinket back. Fires from `GameState._on_health_lost` off the `source` tag `GameLoop2._take_hit` sets, so one swing that gets through breaks every fragile item at once. |
 | `reroll_enemies` | **D10.** Re-roll every non-boss body on the battlefield at *its own* difficulty and game type, keeping the square it stands on and the statuses hung on it. Health resets to the new body's own, because Health here is goal completions and the goals just changed. Bosses shrug it off, the same way they shrug off a bomb (§7.1). |
 | `apply_status <s> N target=enemy` | **Staff of Flame**, and the one target word that means *a body the player points at* rather than one a rule names. `ItemData.wants_target()` already reads it, so an item declares "aim me" in the same breath as what it does: `Overworld2.use_item` arms the board instead of firing (`BattlefieldView.begin_item_aim`), the bodies light up as they do for a Bomb, and the click fires it with the instance riding the effect ctx. **Nothing is spent until the click** — a charged item that emptied its bar on the press would charge for a picker you then cancelled. |
 
@@ -1417,9 +1442,10 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
 
 **Resolved:**
 - **Shields are the TRIES at a game** (§3.2): granted on selection (3, or 5 for a
-  Traditional roguelike), one spent per lost run via the attempt tracker, 1 Health
-  per lost run once they're gone, leftovers absorb the followers' hits and then
-  expire with the game. This replaced the earlier "Block carries over between
+  Traditional roguelike), one spent per lost run via the attempt tracker, **one
+  enemy turn** per lost run once they're gone (it used to be a flat 1 Health, which
+  billed a number the board could not see), leftovers absorb the followers' hits
+  and then expire with the game. This replaced the earlier "Block carries over between
   games, no cap" rule. **Anchor** moved to the new **`game_selected`** trigger so
   its +1 Shield is an extra try rather than a reward after the fact.
 - **Level Up = the current project's mechanic** (per-game `level_up_condition`

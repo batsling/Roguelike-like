@@ -2278,19 +2278,21 @@ func _spawn_turn_counter(turn: int, turns: int, delay: float) -> void:
 		t.set_parallel(false)
 		t.tween_callback(lbl.queue_free))
 
-# A logged attempt, played on the hero (§3): a lost run pops one shield pip off and
-# floats what it cost. `cost` is "shield" while any are left, "health" once they're
-# gone — and that second case is a real hit, so it recoils the hero like an enemy
-# strike would. Called by the host off GameLoop2.attempt_logged.
+# A logged attempt, played on the hero (§3): a lost run pops one shield pip off
+# and floats what it cost. `cost` is "shield" or "bonus" while either pool lasts —
+# both are a pip, since both are shields.
+#
+# "turn" plays NOTHING here. Once the pools are gone a lost run hands the board a
+# turn instead, and that turn is shown the way every other turn in the game is:
+# the host replays it with animate_resolve, which throws the real damage numbers
+# from the bodies that threw them and recoils the hero for what actually landed.
+# A "-1 ♥" floated from here on top of that would be a second, invented number.
 func play_attempt_fx(cost: String) -> void:
 	if _fx_layer == null or not is_inside_tree():
 		return
-	if cost == "shield":
+	if cost == "shield" or cost == "bonus":
 		_float_over_hero("-1 ◆", SHIELD_BLUE)
 		_pop_shield_pips()
-	else:
-		_float_over_hero("-1 ♥", UITheme.DANGER)
-		_punch_hero()
 
 # A number rising off the hero — the attempt tracker's feedback, thrown from the
 # portrait rather than from an enemy since the player is the one spending here.

@@ -42,6 +42,14 @@ func _choose_solo(enemy: GoalEnemyData) -> int:
 		GameLoop2.despawn(GameLoop2.escort_instance())
 	return inst
 
+# The grid column a stacked body stands in (1 = the front line), or -1 when it is
+# no longer on the board. What a turn moves, and so how these tests see one.
+func _col_of(instance: int) -> int:
+	for e in GameLoop2.stack:
+		if int(e["instance"]) == instance:
+			return int(e.get("col", -1))
+	return -1
+
 # --- Data ------------------------------------------------------------------
 
 func test_all_pills_load() -> void:
@@ -418,16 +426,17 @@ func test_a_lost_run_spends_the_games_own_tries_before_the_bonus_pool() -> void:
 	assert_eq(GameLoop2.log_attempt(), "bonus", "then the pool that would have survived")
 	assert_eq(GameState.bonus_shields, 1)
 
-func test_a_bonus_shield_pays_before_health_does() -> void:
+func test_a_bonus_shield_pays_before_the_board_takes_its_turn() -> void:
 	GameState.max_hp = 10
 	GameState.hp = 10
-	var _a: int = _choose_solo(_enemy(1))
+	var a: int = _choose_solo(_enemy(1))
 	GameState.shields = 0
 	GameState.bonus_shields = 1
+	var col: int = _col_of(a)
 	assert_eq(GameLoop2.log_attempt(), "bonus")
-	assert_eq(GameState.hp, 10, "Health is the last thing a lost run reaches")
-	assert_eq(GameLoop2.log_attempt(), "health")
-	assert_lt(GameState.hp, 10)
+	assert_eq(_col_of(a), col, "the board is the last thing a lost run reaches")
+	assert_eq(GameLoop2.log_attempt(), "turn")
+	assert_eq(_col_of(a), col - 1, "and with both pools empty it takes its turn")
 
 func test_undoing_a_try_refunds_the_pool_it_actually_spent() -> void:
 	var _a: int = _choose_solo(_enemy(1))
