@@ -61,6 +61,8 @@ var _taken: Array = []
 var _layer: CanvasLayer = null
 var _answered: bool = false
 var _grid: LootGrid = null
+var _panel: PanelContainer = null
+var _body_scroll: ScrollContainer = null
 # Whether loot can be spent from this screen at all. True in every real drop — by
 # the time the modal opens the report has resolved and the phase is SELECT (see
 # Overworld2._open_next_drop, which is deferred for exactly that reason) — but the
@@ -77,6 +79,18 @@ const MARGIN := 18
 const SINGLE_W := 232
 # How many rows of offers stand beside the pack before the rest scroll.
 const OFFER_ROWS := 3
+# The "Known this run" fold gets a shorter slice here than in the loot window: this
+# panel carries the offer beside the pack as well, and an unfolded record must not
+# push the answer buttons off a 720p screen.
+const DISCOVERIES_H := 76
+# What the panel leaves clear of the top and bottom of the screen before its body
+# starts scrolling instead of growing.
+const SCREEN_MARGIN := 16.0
+# What the panel spends outside the scrolling body — its own margins, the
+# scaffold's padding, and the pinned answer buttons. Subtracted from the room a
+# modal is allowed so the cap applies to the panel and not just to the part that
+# scrolls.
+const CHROME_H := 92.0
 # The use modal opens on TOP of this one, so it needs a layer above this layer.
 const LAYER := 122
 const USE_LAYER := 130
@@ -131,16 +145,31 @@ func _build() -> void:
 
 	# No click-outside-to-close: leaving loot on the ground is a decision, and it
 	# should be made on a button rather than by a stray click.
-	var panel := ModalScaffold.build_panel(self, ACCENT, Callable(), Vector2(width, 0))
+	_panel = ModalScaffold.build_panel(self, ACCENT, Callable(), Vector2(width, 0))
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", MARGIN)
 	margin.add_theme_constant_override("margin_right", MARGIN)
 	margin.add_theme_constant_override("margin_top", 14)
 	margin.add_theme_constant_override("margin_bottom", 14)
-	panel.add_child(margin)
+	_panel.add_child(margin)
+	# THE BODY SCROLLS IF IT HAS TO. Eight offers beside a pack with the "Known this
+	# run" fold open is 700px of content in a 720px canvas, and a modal whose answer
+	# buttons are off the bottom of the screen is a modal that cannot be answered.
+	# It is only clamped when it actually overflows (see `_clamp_height`), so every
+	# ordinary payout still sizes itself to its contents and shows no scrollbar.
+	# THE ANSWERS STAY OUT OF THE SCROLL. Only what the player is deciding ABOUT
+	# scrolls; "Leave the rest" and "Take" are pinned under it, because a modal whose
+	# answer buttons are somewhere below the fold is a modal that looks unanswerable.
+	var shell := VBoxContainer.new()
+	shell.add_theme_constant_override("separation", 10)
+	margin.add_child(shell)
+	_body_scroll = ScrollContainer.new()
+	_body_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	shell.add_child(_body_scroll)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
-	margin.add_child(box)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_body_scroll.add_child(box)
 
 	box.add_child(_line("✦  The game paid out" if not multi
 		else "✦  The game paid out %d pieces" % _offers.size(), UITheme.TEXT_DIM, 15))
@@ -179,7 +208,8 @@ func _build() -> void:
 			% [GameState.loot_items.size(), GameState.LOOT_CAPACITY]
 			+ "use these where you stand, or leave them.", UITheme.DANGER, 12))
 
-	box.add_child(_buttons(multi))
+	shell.add_child(_buttons(multi))
+	_fit_body(box)
 
 # How wide the offer grid runs. Two abreast is the shape of a four-pill payout;
 # three only once there are more than four, so a handful never becomes a wall.
@@ -290,6 +320,12 @@ func _pack_column() -> Control:
 	col.add_child(_line("Drag into a slot, rearrange, or bin what you don't want."
 		if not GameState.loot_is_full() else "No room — make some, or use them now.",
 		UITheme.TEXT_FAINT, 10))
+	# WHAT THE RUN HAS LEARNED, the same fold the loot window carries and sharing its
+	# state (LootDiscoveries.open) — the pack this screen shows is the inventory, so
+	# it answers "what does green do again" in the same place. Given a shorter slice
+	# than the window gets: this panel already has the offer beside it, and the fold
+	# must not push the answer buttons off a 720p screen.
+	col.add_child(LootDiscoveries.build(_rebuild, DISCOVERIES_H))
 	return col
 
 func _buttons(multi: bool) -> Control:
@@ -437,6 +473,27 @@ func _after_change() -> void:
 	if page != null and page.has_method("_refresh_items"):
 		page._refresh_items()
 	_rebuild()
+
+# Size the scrolling body to its own contents, and cap it at what the screen has
+# room for. A ScrollContainer has no natural height of its own — left alone it
+# collapses to nothing and takes the panel with it — so it is always told how tall
+# to be; the only question is whether the contents or the screen decides.
+#
+# The cap is what stops eight offers beside a full pack with the "Known this run"
+# fold open (about 700px of content in a 720px canvas) from putting the answer
+# buttons off the bottom of the screen. A modal that cannot be answered is worse
+# than one you have to scroll. Everything smaller sizes to its contents exactly and
+# never shows a scrollbar.
+func _fit_body(box: Control) -> void:
+	if _body_scroll == null or not is_instance_valid(_body_scroll):
+		return
+	var content: float = box.get_combined_minimum_size().y
+	# Against the room a modal is actually ALLOWED (ModalScaffold.free_rect), not
+	# against the screen: the run's header bar is opaque and drawn over every modal,
+	# so the top of the screen is not this panel's to use. Measuring against the
+	# whole 720 left the panel ending 19px below the window.
+	var room: float = ModalScaffold.free_rect(self).size.y - SCREEN_MARGIN * 2.0 - CHROME_H
+	_body_scroll.custom_minimum_size.y = minf(content, maxf(240.0, room))
 
 func _page() -> Node:
 	return _layer.get_parent() if _layer != null and is_instance_valid(_layer) else null

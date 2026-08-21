@@ -83,8 +83,13 @@ For how the project is laid out and how its systems fit together, see
   when nobody is, so headless runs and the tests are unchanged.
 
   **And the pack that screen shows IS the inventory** — the same `LootGrid`, with
-  rearranging, click-to-read, Use and the bin all working exactly as they do in
-  the loot window. The only difference is the offer on the left.
+  rearranging, click-to-read, Use, the bin and the "Known this run" fold all
+  working exactly as they do in the loot window. The only difference is the offer
+  on the left. The fold is shared rather than copied (`LootDiscoveries.open` is
+  static), since shut in one place and open in the other would be two answers to
+  one question. When a payout, a full pack and an unfolded record together outrun
+  a 720p canvas, the body scrolls and the answer buttons stay pinned under it — a
+  modal whose buttons are below the fold looks unanswerable.
 
   **The loot toggle moved to the pack panel's foot**, as a thin full-width bar
   under the relics. That is its third home: at the tail of the relic row it hid

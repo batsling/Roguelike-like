@@ -43,9 +43,15 @@ var _button_host: Control = null
 # looking, and slamming it shut every time the page refreshes would make it
 # unusable exactly when loot matters.
 var open: bool = false
-# Whether the discoveries section at the foot is unfolded. Sticky for the same
-# reason `open` is.
-var discoveries_open: bool = false
+# Whether the "Known this run" fold at the foot is unfolded. It lives on
+# LootDiscoveries because the reward screen draws the same section, and a fold that
+# was shut here and open there would be two answers to one question; this stays as
+# the window's own name for it.
+var discoveries_open: bool:
+	get:
+		return LootDiscoveries.open
+	set(value):
+		LootDiscoveries.open = value
 
 const ACCENT := Color(0.72, 0.62, 0.86)
 # The capsules the toggle carries when the window is shut — see `_toggle_button`.
@@ -55,8 +61,6 @@ const TOGGLE_ART := 16
 # canvas with a handful of pixels spare, so this is deliberately the smallest
 # height that still reads as a control rather than as a caption.
 const TOGGLE_H := 18
-# How much of the window the "Known this run" fold is allowed to take.
-const DISCOVERIES_H := 108
 
 func _init(page: Node, button_host: Control) -> void:
 	_page = page
@@ -229,129 +233,11 @@ func _panel(reporting: bool) -> Control:
 	if reporting:
 		box.add_child(_note("Finish reporting this game before spending any."))
 
-	box.add_child(_discoveries())
+	# WHAT YOU HAVE LEARNED, on both surfaces that draw the pack — the reward screen
+	# builds the same section, and the fold is shared so it cannot be shut here and
+	# open there (LootDiscoveries.open).
+	box.add_child(LootDiscoveries.build(func(): _page.refresh_loot_window()))
 	return panel
-
-# ---------------------------------------------------------------------------
-# What the run has learned
-# ---------------------------------------------------------------------------
-
-# The run's own alphabet, folded shut (§4.3). A pill is learned as a COLOUR and
-# only for this run — the ten the run dealt, of thirteen that exist — so the fact
-# worth recording is "which capsules do I now know", and the fact worth NOT
-# recording is which of the three spares sat out, since knowing that is exactly
-# the deduction the spares exist to prevent. So this lists what has been learned
-# and counts what has not, and never names an unlearned pill.
-func _discoveries() -> Control:
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
-
-	var pills: Array = _known_pills()
-	var scrolls: Array = _known_scrolls()
-	var learned: int = pills.size() + scrolls.size()
-
-	var toggle := UITheme.quiet_button(
-		"%s  Known this run — %d learned" % ["▾" if discoveries_open else "▸", learned],
-		Vector2(0, 20), 11)
-	toggle.tooltip_text = "The pills and scrolls this run has identified.\n" \
-		+ "A pill's name belongs to its colour and only until the run ends."
-	toggle.pressed.connect(func():
-		discoveries_open = not discoveries_open
-		_page.refresh_loot_window())
-	box.add_child(toggle)
-	if not discoveries_open:
-		return box
-
-	if learned == 0:
-		box.add_child(_note("Nothing yet. Spending an unknown piece is what teaches you what it was."))
-		return box
-
-	# CAPPED AND SCROLLED. A run that has learned all ten colours and all seven
-	# scrolls has seventeen rows to show, and the panel is already three cells tall
-	# inside a 720p window — left to grow it pushed itself off the bottom of the
-	# screen, which is the one thing a floating panel must never do. So the record
-	# gets a fixed slice of the window and scrolls inside it.
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(LootSlot.CELL_W * 3, DISCOVERIES_H)
-	var inner := VBoxContainer.new()
-	inner.add_theme_constant_override("separation", 6)
-	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(inner)
-	box.add_child(scroll)
-
-	if not pills.is_empty():
-		inner.add_child(_known_row("Pills", pills))
-	if not scrolls.is_empty():
-		inner.add_child(_known_row("Scrolls", scrolls))
-	# What is left to learn, as a NUMBER rather than as a list of names — the three
-	# colours sitting out this run are why a pill cannot be deduced by elimination,
-	# and a row of blanks that could be counted would hand that back.
-	var unknown: int = maxi(0, Data.all_pills().size() - pills.size())
-	if unknown > 0:
-		inner.add_child(_note("%d more colour%s out there, unlearned." % [
-			unknown, "" if unknown == 1 else "s"]))
-	return box
-
-func _known_row(heading: String, entries: Array) -> Control:
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
-	var head := Label.new()
-	head.text = heading
-	head.add_theme_font_size_override("font_size", 10)
-	head.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	col.add_child(head)
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 4)
-	flow.add_theme_constant_override("v_separation", 4)
-	flow.custom_minimum_size = Vector2(LootSlot.CELL_W * 3, 0)
-	col.add_child(flow)
-	for entry in entries:
-		flow.add_child(_known_chip(entry))
-	return col
-
-# One learned piece: its art and its name, at a size that fits several to a row.
-# It carries the same hover card the pack's own slots do, so "what does green do
-# again" is answered in the place the question is asked.
-func _known_chip(entry: Dictionary) -> Control:
-	var wrap := HoverPanel.new()
-	var pref: String = LootSystem.preference(entry)
-	var tint: Color = UITheme.preference_color(pref)
-	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(tint.lerp(UITheme.BG, 0.84), 5, 3, 1, tint.lerp(UITheme.BG, 0.55)))
-	HoverCard.attach(wrap, LootSystem.hover_card(entry))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 3)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wrap.add_child(row)
-	var art: TextureRect = LootSystem.art_tex(entry, 16)
-	art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(art)
-	var name := Label.new()
-	name.text = LootSystem.display_name(entry)
-	name.add_theme_font_size_override("font_size", 10)
-	name.add_theme_color_override("font_color", UITheme.TEXT)
-	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(name)
-	return wrap
-
-# Every pill colour this run has identified, as loot entries at the NORMAL dose —
-# identification belongs to the colour and covers both doses, so the record shows
-# the one the player will meet nine times in ten.
-func _known_pills() -> Array:
-	var out: Array = []
-	for pill in Data.all_pills():
-		if PillSystem.is_identified(pill.id):
-			out.append({"type": "pill", "id": pill.id, "horse": false})
-	return out
-
-func _known_scrolls() -> Array:
-	var out: Array = []
-	for scroll in Data.all_scrolls():
-		if ScrollSystem.is_identified(scroll.id):
-			out.append({"type": "scroll", "id": scroll.id})
-	return out
 
 func _note(text: String) -> Label:
 	var l := Label.new()

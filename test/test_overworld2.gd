@@ -1458,6 +1458,45 @@ func test_take_all_stops_at_the_cap_rather_than_dropping_the_rest() -> void:
 	await wait_frames(2)
 	assert_eq(kept[0].size(), 2, "which is what the page is told to log")
 
+func test_the_reward_screen_carries_the_same_record_the_window_does() -> void:
+	# "The only difference should be the loot reward on the left" — the fold at the
+	# foot of the pack is part of the inventory, so it is on both.
+	PillSystem.ensure_colors()
+	PillSystem.identify(&"luck_up")
+	var modal := LootDropModal.open(_ui, {"type": "scroll", "id": &"scroll_of_fire"})
+	await wait_frames(2)
+	var text: String = _text_of(modal)
+	assert_true(text.contains("Known this run"),
+		"the reward screen carries the record too: %s" % text.substr(0, 120))
+	modal.leave()
+
+func test_the_record_is_one_fold_shared_by_both_surfaces() -> void:
+	# A fold shut in the window and open on the reward screen would be two answers
+	# to one question.
+	LootDiscoveries.open = false
+	_ui._loot_window.discoveries_open = true
+	assert_true(LootDiscoveries.open,
+		"the window's own name for it writes through to the shared flag")
+	var modal := LootDropModal.open(_ui, {"type": "scroll", "id": &"scroll_of_fire"})
+	await wait_frames(2)
+	assert_true(_text_of(modal).contains("▾"),
+		"so the reward screen opens it unfolded too")
+	modal.leave()
+	LootDiscoveries.open = false
+
+func test_the_record_never_names_an_unlearned_colour() -> void:
+	# The rule the whole section exists under, checked on the class that owns it now.
+	PillSystem.ensure_colors()
+	PillSystem.identify(&"luck_up")
+	var known: Array = LootDiscoveries.known_pills()
+	var ids: Array = []
+	for entry in known:
+		ids.append(StringName(entry.get("id", "")))
+	assert_true(ids.has(&"luck_up"), "what was learned is listed")
+	assert_false(ids.has(&"bad_trip"),
+		"and what was not is never named — nine known colours must not tell you "
+		+ "what the tenth is")
+
 func test_a_relic_granting_loot_asks_instead_of_filling_the_pack() -> void:
 	# GameState.offer_loot rolls the pieces and hands them to whoever is listening;
 	# the page queues them as one question.

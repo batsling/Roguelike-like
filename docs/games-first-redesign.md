@@ -461,7 +461,7 @@ loot code and to the save; it is not worth it for a nine-cell bag.)
 draws, with the same everything: pieces drag between slots, each carries the button
 that spends it, clicking one opens its card, and the bin under it takes anything.
 The only thing this screen has that the loot window does not is the offer on the
-left. It used to show the piece alone and say *"Your pack is full (9/9)"* in red
+left — the bin and the "Known this run" fold come with it. It used to show the piece alone and say *"Your pack is full (9/9)"* in red
 when it wasn't going to fit — a sentence about a thing the player could not see, on
 the one screen where what you are already carrying is the whole basis of the
 answer. Now the 3×3 comes with it, and the piece is **dragged into the slot it
@@ -554,8 +554,11 @@ drop modal never opens in that state anyway: `Overworld2._open_next_drop` is
 deferred precisely so the report has finished resolving before the question is
 asked, which is why the offer can carry a Use button at all.
 
-**What you have learned lives in the window too**, behind a folded *"Known this
-run"* line at its foot. A pill's identity belongs to a **colour** and only for
+**What you have learned lives at the foot of the pack**, behind a folded *"Known
+this run"* line — on **both** surfaces that draw the pack, since the reward
+screen's right-hand side is the inventory and not a picture of one. It is one fold
+(`LootDiscoveries.open` is static): shut in the window and open on the reward
+screen would be two answers to one question. A pill's identity belongs to a **colour** and only for
 **this run**, and until now the only place that knowledge ever existed was a toast
 that had already scrolled away — so a player who learned that green is Bad Trip on
 game three had nowhere to go and check on game eleven. That is the whole
