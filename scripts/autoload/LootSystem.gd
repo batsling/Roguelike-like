@@ -39,24 +39,38 @@ func used_memory() -> Array:
 # Echo Chambers' worth of history would compound into a run-ending cascade rather
 # than into three extra doses.
 func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
-	var out := {"logs": [], "requests": []}
 	if index < 0 or index >= GameState.loot_items.size():
-		return out
+		return {"logs": [], "requests": []}
 	var entry = GameState.loot_items[index]
 	if not (entry is Dictionary):
-		return out
+		return {"logs": [], "requests": []}
 	entry = (entry as Dictionary).duplicate(true)
 	# Consumed FIRST: an effect that grants loot (or one that ends the run) must not
 	# find the spent piece still sitting in the pack, and the nine-piece cap means a
 	# pill that pays out would otherwise be refused space it is about to free.
 	GameState.remove_loot_at(index)
+	return use_entry(entry, ctx)
 
-	_merge(out, _resolve(entry, ctx))
+# Spend a piece that is NOT IN THE PACK — the one a game has just paid out, taken
+# on the spot rather than carried (§4.3). Same resolution, same echoes, same
+# memory; the only difference is that there was no slot to empty, which is exactly
+# what makes it worth having: a full pack used to turn a payout into "leave it",
+# and a piece you can drink where you stand is an answer that costs you nothing
+# you were already carrying.
+#
+# `use_loot` is this with a slot emptied first, so the two can never drift on what
+# using a piece MEANS.
+func use_entry(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
+	var out := {"logs": [], "requests": []}
+	if entry.is_empty():
+		return out
+	var spent: Dictionary = entry.duplicate(true)
+	_merge(out, _resolve(spent, ctx))
 	for echo in _echo_queue():
 		var copy: Dictionary = _resolve(echo, ctx)
 		if not copy.is_empty():
 			_merge(out, copy)
-	_remember(entry)
+	_remember(spent)
 	return out
 
 # Resolve ONE entry through whichever system owns it. No consuming, no echoing —

@@ -148,6 +148,44 @@ func test_every_surface_sizes_loot_art_through_one_rule() -> void:
 	assert_eq(LootSystem.art_box({"type": "scroll", "id": &"scroll_of_fire"}, base), base,
 		"a scroll has one size and is unaffected")
 
+# --- Spending a piece that is not in the pack (§4.3) ------------------------
+
+func test_a_loose_piece_can_be_used_without_a_slot_to_spend_it_from() -> void:
+	# The drop modal's offer, taken where you stand. Everything about spending it is
+	# the carried path minus the slot there was never anything in.
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"luck_up")
+	var held: int = GameState.loot_items.size()
+	var luck: int = GameState.luck
+	var out: Dictionary = LootSystem.use_entry(
+		{"type": "pill", "id": &"health_up", "horse": false}, {"rng": _rng()})
+	assert_eq(GameState.loot_items.size(), held,
+		"the pack is untouched — nothing was carried and nothing was spent from it")
+	assert_false(out.get("logs", []).is_empty(), "but the pill really fired")
+	assert_eq(GameState.luck, luck, "and it fired as ITSELF, not as the pill in the pack")
+
+func test_a_loose_use_identifies_and_is_remembered_like_any_other() -> void:
+	# It is a use: the colour is learned, and Echo Chamber will copy it next time.
+	GameState.loot_items.clear()
+	assert_false(PillSystem.is_identified(&"health_up"))
+	LootSystem.use_entry({"type": "pill", "id": &"health_up", "horse": false}, {"rng": _rng()})
+	assert_true(PillSystem.is_identified(&"health_up"), "spending it teaches the colour")
+	var memory: Array = LootSystem.used_memory()
+	assert_false(memory.is_empty(), "and it enters the memory the echo reads")
+	assert_eq(StringName((memory[memory.size() - 1] as Dictionary).get("id", "")),
+		&"health_up")
+
+func test_a_loose_use_can_be_made_with_a_completely_full_pack() -> void:
+	# Which is the entire point of it.
+	GameState.loot_items.clear()
+	for i in range(GameState.LOOT_CAPACITY):
+		GameState.add_pill_loot(&"luck_up")
+	assert_true(GameState.loot_is_full())
+	var out: Dictionary = LootSystem.use_entry(
+		{"type": "pill", "id": &"health_up", "horse": false}, {"rng": _rng()})
+	assert_false(out.get("logs", []).is_empty(), "a full pack does not stop it")
+	assert_true(GameState.loot_is_full(), "and it is still full afterwards")
+
 # --- Identification --------------------------------------------------------
 
 func test_a_pill_starts_unknown_and_is_learned_by_taking_it() -> void:

@@ -3604,7 +3604,13 @@ func _open_next_drop() -> void:
 	# over both. It asks in its own modal — a scroll is not an ItemData and the
 	# nine-piece cap is a sentence only this one has to say.
 	if drop.has("loot"):
-		var loot_modal := LootDropModal.open(self, drop["loot"])
+		# `_phase != PLAYING` is the same rule the pack strip and the loot window
+		# spend by, passed in rather than assumed: everything on that screen can be
+		# used from it, the offer included, and the one condition under which loot
+		# cannot be spent has to mean the same thing on all three surfaces. In
+		# practice it is always true here — this call is deferred precisely so the
+		# report has finished resolving before the question is asked.
+		var loot_modal := LootDropModal.open(self, drop["loot"], _phase != Phase.PLAYING)
 		_drop_modal = loot_modal
 		# `slot` is where the player put it — the slot they dragged it into, or the
 		# end of the pack when they took it on the button (§4.3).

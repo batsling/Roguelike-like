@@ -36,6 +36,11 @@ signal moved(from: int, to: int)
 signal use_requested(index: int)
 # A carried piece was clicked — read it, don't spend it.
 signal inspect_requested(index: int)
+# A carried piece was dragged onto the bin (LootTrash).
+signal discard_requested(index: int)
+# The piece a drop modal is offering was dragged onto the bin — which is the same
+# answer as "Leave it", said with the hands.
+signal offer_discarded()
 
 const ACCENT := Color(0.72, 0.62, 0.86)
 const COLS := 3
@@ -46,6 +51,8 @@ var allow_reorder: bool = false
 var allow_take: bool = false
 # Each filled cell carries the button that spends it.
 var show_use: bool = false
+# The bin will take a piece from this grid (LootTrash).
+var allow_discard: bool = false
 # Everything that spends or rearranges is off while a game is mid-report — the
 # report step is between "played the game" and "said what happened", and loot
 # cannot move in that gap.
@@ -108,6 +115,33 @@ func can_accept(slot: LootSlot, data: Dictionary) -> bool:
 		"loot_take":
 			return allow_take and not GameState.loot_is_full()
 	return false
+
+# --- The bin ---------------------------------------------------------------
+#
+# Asked by LootTrash, answered here for the same reason the slots' rules are: the
+# two screens that draw a grid differ in the grid they build, not in a second copy
+# of what a drop means.
+
+func can_trash(data: Dictionary) -> bool:
+	if locked or not allow_discard:
+		return false
+	match String(data.get("kind", "")):
+		"loot_move":
+			return int(data.get("from", -1)) >= 0
+		"loot_take":
+			# The offer, thrown away rather than taken. Always allowed — a full pack
+			# is exactly when you most want to say no to a piece with your hands.
+			return true
+	return false
+
+func trash(data: Dictionary) -> void:
+	if not can_trash(data):
+		return
+	match String(data.get("kind", "")):
+		"loot_move":
+			discard_requested.emit(int(data.get("from", -1)))
+		"loot_take":
+			offer_discarded.emit()
 
 func accept(slot: LootSlot, data: Dictionary) -> void:
 	match String(data.get("kind", "")):

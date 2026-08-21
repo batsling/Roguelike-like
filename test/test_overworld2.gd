@@ -1266,6 +1266,143 @@ func test_taking_a_drop_into_a_slot_lands_it_there() -> void:
 		"it went in at the front, where it was dropped")
 	assert_eq(GameState.loot_items.size(), 3, "and the pieces it displaced are still there")
 
+# --- Spending and binning from the drop screen (§4.3) ----------------------
+#
+# A full pack used to leave exactly two answers to a payout: leave it, or close
+# the modal, go and spend something, and never get the payout back. Everything on
+# that screen can be spent or binned from it now, the offered piece included.
+
+func _find_use_modal() -> Node:
+	for c in _ui.get_children():
+		if c is CanvasLayer and c.layer == LootDropModal.USE_LAYER:
+			for k in c.get_children():
+				if k.has_method("_on_read"):
+					return k
+	return null
+
+func _full_pack() -> void:
+	GameState.loot_items.clear()
+	for i in range(GameState.LOOT_CAPACITY):
+		GameState.add_pill_loot(&"luck_up")
+
+func test_a_carried_piece_can_be_spent_from_the_drop_screen() -> void:
+	_full_pack()
+	var modal := LootDropModal.open(_ui, {"type": "scroll", "id": &"scroll_of_fire"})
+	await wait_frames(2)
+	assert_true(GameState.loot_is_full(), "the pack starts full")
+	modal._use_carried(0)
+	await wait_frames(2)
+	var use_modal: Node = _find_use_modal()
+	assert_not_null(use_modal, "the Use button opens the same modal the window does")
+	if use_modal == null:
+		return
+	use_modal._on_read()
+	await wait_frames(2)
+	assert_eq(GameState.loot_items.size(), GameState.LOOT_CAPACITY - 1,
+		"spending one from here frees the slot the offer needs")
+	assert_false(GameState.loot_is_full())
+	assert_false(modal._answered,
+		"and the drop is still on the table — spending is not answering it")
+	modal.leave()
+
+func test_the_offered_piece_can_be_used_without_ever_being_carried() -> void:
+	# The answer every roguelike gives to a full bag: drink it where you stand.
+	_full_pack()
+	var held: int = GameState.loot_items.size()
+	var modal := LootDropModal.open(_ui, {"type": "pill", "id": &"health_up", "horse": false})
+	await wait_frames(2)
+	# Tracked through the signal rather than off the modal: answering frees it, so
+	# reading a field back off it afterwards is reading a freed object.
+	var fired := [false]
+	var taken_answer := [true]
+	modal.answered.connect(func(taken: bool, _slot: int):
+		fired[0] = true
+		taken_answer[0] = taken)
+	modal._use_offer()
+	await wait_frames(2)
+	var use_modal: Node = _find_use_modal()
+	assert_not_null(use_modal, "the offer opens the same spend screen a carried piece does")
+	if use_modal == null:
+		return
+	use_modal._on_read()
+	await wait_frames(2)
+	assert_eq(GameState.loot_items.size(), held,
+		"it costs no slot — it never entered the pack")
+	assert_true(fired[0], "using the offer resolves the drop")
+	assert_false(taken_answer[0],
+		"and 'taken' would be a lie: the page has nothing to collect")
+
+func test_using_the_offer_identifies_it_like_any_other_use() -> void:
+	# Spending it where you stand is spending it: the gamble pays the same lesson.
+	PillSystem.ensure_colors()
+	assert_false(PillSystem.is_identified(&"health_up"))
+	var modal := LootDropModal.open(_ui, {"type": "pill", "id": &"health_up", "horse": false})
+	await wait_frames(2)
+	modal._use_offer()
+	await wait_frames(2)
+	var use_modal: Node = _find_use_modal()
+	if use_modal == null:
+		return
+	use_modal._on_read()
+	await wait_frames(2)
+	assert_true(PillSystem.is_identified(&"health_up"),
+		"a colour taken on the spot is a colour learned")
+
+func test_binning_the_offer_is_leaving_it() -> void:
+	var modal := LootDropModal.open(_ui, {"type": "scroll", "id": &"scroll_of_fire"})
+	await wait_frames(2)
+	var answered := [true, 0]
+	modal.answered.connect(func(taken: bool, slot: int):
+		answered[0] = taken
+		answered[1] = slot)
+	var grid: LootGrid = _find_grid(modal) as LootGrid
+	assert_not_null(grid)
+	if grid == null:
+		return
+	assert_true(grid.can_trash({"kind": "loot_take", "entry": {"type": "scroll", "id": &"scroll_of_fire"}}),
+		"the bin takes the offer")
+	grid.trash({"kind": "loot_take", "entry": {"type": "scroll", "id": &"scroll_of_fire"}})
+	assert_false(answered[0], "which is 'Leave it', said with the hands")
+
+func test_binning_a_carried_piece_asks_before_destroying_it() -> void:
+	GameState.loot_items.clear()
+	GameState.add_scroll_loot(&"scroll_of_fire")
+	GameState.add_pill_loot(&"luck_up")
+	var grid: LootGrid = _open_loot_grid()
+	if grid == null:
+		return
+	assert_true(grid.can_trash({"kind": "loot_move", "from": 0}), "the bin takes a carried piece")
+	grid.trash({"kind": "loot_move", "from": 0})
+	await wait_frames(2)
+	assert_eq(GameState.loot_items.size(), 2,
+		"nothing is destroyed on the drop alone — the bin is the one gesture here "
+		+ "that gives nothing back, so it asks")
+	var confirm: ConfirmPanel = _find_confirm(_ui)
+	assert_not_null(confirm, "and this is what asks")
+	if confirm == null:
+		return
+	confirm._on_ok.call()
+	assert_eq(GameState.loot_items.size(), 1, "saying yes destroys it")
+	confirm.dismiss()
+
+func test_nothing_can_be_binned_mid_report() -> void:
+	GameState.add_pill_loot(&"luck_up")
+	var grid: LootGrid = _open_loot_grid()
+	if grid == null:
+		return
+	grid.locked = true
+	assert_false(grid.can_trash({"kind": "loot_move", "from": 0}),
+		"loot cannot leave the pack between 'played the game' and 'said what happened'")
+
+func _find_confirm(node: Node) -> ConfirmPanel:
+	if node is ConfirmPanel:
+		return node
+	for c in node.get_children():
+		var found: ConfirmPanel = _find_confirm(c)
+		if found != null:
+			return found
+	return null
+
 func test_clicking_a_carried_piece_opens_its_card() -> void:
 	# Click reads, drag moves, the button spends — a relic in the pack has answered
 	# a click with its card since ItemInfoCard shipped, and loot answered with

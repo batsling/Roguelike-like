@@ -133,6 +133,18 @@ func _toggle_button() -> Control:
 func _has_pills() -> bool:
 	return not GameState.loot_pills().is_empty()
 
+# Destroy the piece at `index`, once the player has said so twice — see
+# LootTrash.confirm for why it is asked at all and why it is asked from a layer of
+# its own rather than from this panel.
+func _discard(index: int) -> void:
+	if index < 0 or index >= GameState.loot_items.size():
+		return
+	var piece_name: String = LootSystem.display_name(GameState.loot_items[index])
+	LootTrash.confirm(_page, piece_name, func():
+		GameState.remove_loot_at(index)
+		GameLog.add("Threw away %s." % piece_name, UITheme.DANGER)
+		_page._refresh_items())
+
 # The floating panel: a heading with its own close button, the 3x3, and the
 # foldable record of what the run has learned. Opaque (not the page's translucent
 # PANEL) because it is standing on top of the board — a see-through inventory over
@@ -166,14 +178,26 @@ func _panel(reporting: bool) -> Control:
 	var grid := LootGrid.new()
 	grid.allow_reorder = true
 	grid.show_use = true
+	grid.allow_discard = true
 	grid.locked = reporting
 	grid.use_requested.connect(func(i: int): _page.use_loot(i))
 	grid.inspect_requested.connect(func(i: int): _page.open_loot_card(i))
 	grid.moved.connect(func(from: int, to: int):
 		if GameState.move_loot(from, to):
 			_page.refresh_loot_window())
+	grid.discard_requested.connect(_discard)
 	grid.rebuild()
 	box.add_child(grid)
+
+	# THE BIN, on the same terms as the drop modal's (§4.3). Spending a piece is not
+	# the same as being rid of one: a pack holding three known-Negative pills is full
+	# of loot the run will never willingly use, and reading the Amnesia scroll to
+	# make room is a worse answer than throwing it away. Hidden while the pack is
+	# locked — nothing can leave it mid-report either.
+	if not reporting and not GameState.loot_items.is_empty():
+		var bin := LootTrash.new()
+		bin.grid = grid
+		box.add_child(bin)
 
 	# The one line of instruction the grid needs, and only while there is something
 	# to rearrange — a single piece has nowhere to go.

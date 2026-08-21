@@ -455,6 +455,58 @@ it in the first free slot, **Leave it** is still the answer the cap makes
 interesting — because drag is the good gesture, not the only one, and a decision
 this final should not depend on a drag landing.
 
+**And the pack it shows is a LIVE one.** Every piece on that screen can be spent
+from it, the offered one included. A full pack used to leave exactly two answers to
+a payout — leave it, or close the modal, go and spend something, and never get the
+payout back — and only the first was on offer. So:
+
+- **a carried piece has its Use button**, the same one the loot window draws, and
+  spending it frees the slot the offer needs *in front of the offer*, which is
+  where the decision is being made. The drop stays on the table while you do it:
+  spending is not answering.
+- **the offer can be used where it stands**, without ever being carried
+  (`LootSystem.use_entry`). A Full Health that will not fit is not a piece of loot
+  anyone should have to throw away, and "drink it now" is the answer every
+  roguelike gives to a full bag. It costs no slot, so it is offered whether the
+  pack is full or not — and it is a real use, so an unknown colour taken this way
+  is **identified**, remembered, and echoed like any other. It resolves the drop:
+  nothing entered the pack, so "taken" would be a lie and the page has nothing to
+  collect.
+
+The use modal opens on a **layer above** the drop modal (`USE_LAYER`) — a
+`CanvasLayer`'s order is global, so a modal opened from on top of another has to be
+told to clear it.
+
+**The bin** (`LootTrash`). Spending a piece is not the same as being rid of one: a
+pack holding three known-Negative pills is full of loot the run will never
+willingly use, and *reading the Amnesia scroll to make room* is a worse answer than
+throwing it away. So both surfaces that draw the grid draw a red zone under it, and
+anything can be dragged onto it — a carried piece, or the offer, which is **"Leave
+it" said with the hands**.
+
+It **lights up the moment you pick anything up**, anywhere in the viewport
+(`NOTIFICATION_DRAG_BEGIN`): idle it is a quiet outline that does not shout about
+destruction on a screen nobody is discarding on, and armed it is the one red thing
+on the panel. It is a drop target only — never a drag source, never a click — which
+is the point of making drag the verb: you have to pick a specific piece up, carry
+it across the panel, and let go on the red.
+
+Binning a **carried** piece **asks first** (`LootTrash.confirm`), because it is the
+one gesture on either screen that destroys something and gives nothing back —
+spending a piece at least fires it — and a drag that ends on the red by accident
+should not be able to cost a run its Full Health. The **offer** is the exception:
+binning that is "Leave it", which is already a one-click answer. The confirmation
+sits on **a layer of its own**, above both surfaces and owned by neither: the loot
+window's panel floats with `top_level` set (so a confirmation parented to the page
+draws *underneath* the thing it is asking about) and the drop modal rebuilds itself
+when the pack changes (which would free a confirmation parented to it mid-answer).
+
+Nothing can be spent or binned **mid-report**, on all three surfaces alike — the
+report step is between "played the game" and "said what happened". In practice a
+drop modal never opens in that state anyway: `Overworld2._open_next_drop` is
+deferred precisely so the report has finished resolving before the question is
+asked, which is why the offer can carry a Use button at all.
+
 **What you have learned lives in the window too**, behind a folded *"Known this
 run"* line at its foot. A pill's identity belongs to a **colour** and only for
 **this run**, and until now the only place that knowledge ever existed was a toast

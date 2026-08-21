@@ -47,6 +47,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #                       the board by its toggle
 │   │                      #     LootGrid/LootSlot — that 3x3 itself: drag to
 │   │                      #                       rearrange, drag a drop into a slot
+│   │                      #     LootTrash       — the red bin both surfaces draw
 │   │                      #     LootInfoCard    — click-to-inspect loot card
 │   │                      #     ReportChecklist — its left column, both states
 │   │                      #     OfferingCards   — its choice cards + hover line

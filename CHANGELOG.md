@@ -51,6 +51,26 @@ For how the project is laid out and how its systems fit together, see
   `art_box`, which takes the ratio from `PillSystem.art_scale` — **measured from
   the two files**, so redrawing the art bigger draws it bigger.
 
+  **The drop screen's pack is a live one, and there is a bin.** A full pack used
+  to leave exactly two answers to a payout: leave it, or close the modal, go and
+  spend something, and never get the payout back. Now every piece on that screen
+  can be spent from it — a carried piece has its Use button, and spending one
+  frees the slot the offer needs in front of the offer, with the drop still on the
+  table because spending is not answering. The **offered piece can be used where
+  it stands**, without ever being carried (`LootSystem.use_entry`): a Full Health
+  that will not fit is not loot anyone should have to throw away, it costs no
+  slot, and it is a real use — an unknown colour taken that way is identified,
+  remembered and echoed like any other.
+
+  And both surfaces that draw the grid now draw a **red bin** under it
+  (`LootTrash`). Spending a piece is not the same as being rid of one: a pack of
+  three known-Negative pills is full of loot the run will never willingly use, and
+  reading the Amnesia scroll to make room is a worse answer than throwing it away.
+  It lights up the moment you pick anything up anywhere in the viewport, it is a
+  drop target only, and binning a carried piece asks first — it is the one gesture
+  on either screen that destroys something and gives nothing back. Binning the
+  offer is "Leave it", said with the hands, and asks nothing.
+
   **Tab opens the pack.** The `backpack` action has been in `project.godot` since
   the combat build with nothing on the overworld listening for it — only the
   Collection, which reads it to close itself and is never on screen at the same
