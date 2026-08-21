@@ -473,7 +473,9 @@ its tile and gave the player nothing to line up against the slot they were aimin
 at.
 
 **The drop modal shows the pack — and the pack it shows IS the inventory**
-(`LootDropModal`). The 3×3 on the right is the same `LootGrid` the loot window
+(`LootDropModal`). A payout that arrives with a **report** is not a modal at all
+any more: it is the right-hand column of the screen the game ends on (§18), which
+is the same code embedded. Everything below is true of it either way. The 3×3 on the right is the same `LootGrid` the loot window
 draws, with the same everything: pieces drag between slots, each carries the button
 that spends it, clicking one opens its card, and the bin under it takes anything.
 The only thing this screen has that the loot window does not is the offer on the
@@ -1177,7 +1179,9 @@ the number of choices offered.
 
 **A dropped item IS a chest** — a Small one. That is not a rename: it is what
 lets There's Options exist without a second reward path. A defeated body's drop
-is one item and two buttons (`ItemDropModal`), which is exactly "choose 1 of 1";
+is one item and two buttons (`ItemDropModal`), which is exactly "choose 1 of 1"
+— asked as a section of the post-game screen (§18) when it fell to a report, and
+as its own modal when it did not;
 a boss holding There's Options drops a chest worth one point more, and a Medium
 chest is the same modal offering two cards to pick between. Points past a Huge
 overflow into a second chest — a second question, asked after the first — so a
@@ -1816,6 +1820,14 @@ the answer depends on. Mounted under the board it blocks nothing, stays for the
 whole visit (travelling on is what closes it), and is read next to the run it is
 being spent on. Because it can sit below the fold, a **`🛒 Shop ↓` pointer**
 floats at the foot of the screen until the panel has been scrolled to.
+
+**It is shown once on arrival, then it goes under the board.** Everything above
+stays true, and the one thing it never fixed was that a shop mounted below the
+fold on the frame you arrive is a shop you may not notice at all — the pointer
+says it is down there, not what is on it. So the panel is *first* mounted on the
+screen the game ends on (§18) and handed back to the page — the same node,
+reparented — when the player leaves it. The moment of arrival gets the shelf in
+front of you; the rest of the visit gets it under the board, exactly as before.
 **Escaping opens nothing** — escape fires no `game_beaten` triggers anywhere in
 the build, and this is not the place to make it an exception.
 
@@ -2193,3 +2205,65 @@ modal's single-item layout, the scroll read modal (identified scrolls only; a
 strip naming Burn and Fire under "reading it is a gamble" would give the whole
 thing away), and the Collection's detail pane. Not the shop shelf or the
 five-abreast chest cards, which have no room.
+
+## 18. The end of a game — one screen (`PostCombatScreen`)
+
+A report used to fire **six independent surfaces**, none of which knew about the
+others: one `ItemDropModal` per defeated body, then the `LootDropModal`, then the
+event, then the shop appearing under the board, then the boss notice, with the
+toasts running underneath all of it. On a boss round at a hub that is five popups
+in a row, each re-centring on the same spot, each with its own Take/Leave, and
+nothing tying any of them to the game they came out of.
+
+Worse, **the first two opened on top of the resolve animation**. Drops are queued
+in the middle of `GameLoop2.beat_game` and were pumped on the next idle frame,
+while `Overworld2._hold_for_resolve` was still playing the strike and the advance
+back — the one place the run's consequences are ever *shown*. So the player
+answered "do you want this relic" over the top of the blow that had just taken
+eight Health off them.
+
+So the haul is **a screen**, and it opens when the board has stopped moving.
+
+| Section | What it carries |
+|---|---|
+| **The verdict** | the game's cover and name, and which of the three reports this was — beaten, goal missed, or walked away (they are three different things; see §2) |
+| **The fight** | damage taken and blocked, goals cleared, what is still following, tries left over or banked, the difficulty tier, and the board's growth if it just stepped (§7.3) |
+| **The spoils** | the relic chests down the left and the loot payout down the right, **at the same time** rather than one after another |
+| **The shelf** | a hub's shop, if this game was one of the ten (§14) |
+| **The warning** | the boss notice as a banner rather than a sixth popup (§7.1) |
+
+And **one button out**. It is the **event** when the node owes one — clicking it
+is what opens the event, so the player leaves this screen *into* the next thing
+rather than having the next thing dropped on them — and "travel on" when it
+doesn't. It counts what it is about to bin (`exit_text`), because a Legendary left
+on the ground should be a decision and not a side effect of pressing Continue.
+
+**The sections are the real modals, embedded.** `ItemDropModal.embed`,
+`LootDropModal.embed` and `BossNoticeModal.embed` build the same cards, run the
+same selection, and answer through the same signals; what they skip is the
+backdrop, the centring and the `CanvasLayer`. So the 3×3 on this screen is the
+inventory in exactly the sense §4.3 means it, a chest is still "which one of
+these", and a boss portrait still opens its card. One code path, two frames.
+
+**The standalone modals stay**, and that is the point of embedding rather than
+replacing: `GameState.offer_loot` fires from `EffectSystem`, so an item, an event
+or a machine can hand over loot at any moment, and a payout that did not arrive
+with a report has no haul screen to be a section of. `Overworld2._pump_drops`
+suppresses itself only while `_resolving` — which only a report sets — so an
+out-of-band offer still asks for itself, on the spot.
+
+**The shelf is borrowed, not moved.** §14's decision that a shop blocks nothing
+and stays for the whole visit is still right; what was missing was it being seen
+at the moment you arrive. So this screen mounts the panel and hands **the same
+node** back to the page on the way out (`release_shop` → `Overworld2._adopt_shop`),
+reparented rather than rebuilt, so a card left open survives the handover.
+
+Chests still **queue** inside it rather than standing side by side — a chest is
+"which one of these", and two of those wearing one answer is not a question
+anybody can read — but they queue with the loot and the numbers on screen the
+whole time.
+
+It sits on layer 128: **below** the run's header bar (135), so Health and Gold
+stay readable over it, and below the loot use modal (130), so spending a piece
+from the pack still opens on top. Its page is inset under the bar the same way
+every other modal is (`ModalScaffold.reserved_top`).

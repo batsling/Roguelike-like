@@ -23,6 +23,16 @@ extends Control
 #
 # Built in code on its own CanvasLayer, like every other 2.0 modal, so it centres
 # over the overworld whatever mounted it.
+#
+# IT ALSO EMBEDS (`embed`). After a game is reported the chests are not raised one
+# popup at a time any more — they are a section of the post-combat screen
+# (`PostCombatScreen`), beside the loot and the numbers, because they are one
+# haul rather than a queue of unrelated questions. Embedded, this class builds the
+# same cards, runs the same selection and answers through the same signal; what it
+# skips is the backdrop, the centring and the CanvasLayer. The standalone modal
+# stays for the chests that DON'T arrive with a report — an item or an event can
+# hand one over at any moment — so the two paths share every pixel of the card and
+# differ only in what is drawn around it.
 
 # taken = the player took something, and `item` is which (null when they didn't).
 # Emitted exactly once, before `finished`.
@@ -37,6 +47,11 @@ var _items: Array = []
 var _selected: ItemData = null
 var _layer: CanvasLayer = null
 var _answered: bool = false
+# EMBEDDED MODE. `_slot` is the container whose contents this chest is, and
+# `_body` is what it put there — the one thing an answer takes back down. When
+# both are null this is the ordinary modal and `_layer` is what goes.
+var _slot: Container = null
+var _body: Control = null
 # Redrawn on every selection change so the chosen card is the one wearing the
 # highlight; kept as fields because the panel is rebuilt in place.
 var _cards: Array = []
@@ -77,28 +92,32 @@ func _start(host: Node, offer) -> void:
 	_selected = _items[0]
 	_build()
 
+# Entry point for the post-combat screen: put this chest INSIDE `slot` rather
+# than over the page. `host` is the node the controller parks on for its lifetime
+# — it draws nothing itself and takes no room, so a Control root is as good a
+# perch as a container. Answers through the same `answered` / `finished` signals.
+static func embed(host: Node, slot: Container, offer) -> ItemDropModal:
+	var modal := ItemDropModal.new()
+	modal._slot = slot
+	# The controller is a parked logic node, not part of the picture: no size, no
+	# mouse, nothing to lay out. Everything it draws goes into `slot`.
+	modal.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	modal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for entry in (offer if offer is Array else [offer]):
+		if entry is ItemData:
+			modal._items.append(entry)
+	host.add_child(modal)
+	if modal._items.is_empty():
+		modal._answer(false)
+		return modal
+	modal._selected = modal._items[0]
+	modal._build()
+	return modal
+
 func _build() -> void:
 	var multi: bool = _items.size() > 1
 	var tint: Color = UITheme.item_color(_selected)
-	var width: float = PANEL_SIZE.x
-	if multi:
-		width = minf(MULTI_MAX_W, 80.0 + CARD_W * _items.size())
-	# No click-outside-to-close: leaving a Legendary on the ground is a decision,
-	# and it should be made on a button rather than by a stray click.
-	var panel := ModalScaffold.build_panel(self, tint, Callable(), Vector2(width, 0))
-	panel.custom_minimum_size = Vector2(width, 0)
-	panel.size = Vector2(width, 0)
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 18)
-	margin.add_theme_constant_override("margin_right", 18)
-	margin.add_theme_constant_override("margin_top", 16)
-	margin.add_theme_constant_override("margin_bottom", 16)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	margin.add_child(box)
+	var box: VBoxContainer = _build_shell(multi, tint)
 
 	var head := Label.new()
 	head.text = "✦  It dropped something" if not multi \
@@ -110,9 +129,14 @@ func _build() -> void:
 
 	_cards.clear()
 	if multi:
-		var shelf := HBoxContainer.new()
-		shelf.add_theme_constant_override("separation", 10)
-		shelf.alignment = BoxContainer.ALIGNMENT_CENTER
+		# A FLOW, not a row. As a modal the panel is widened to fit the whole chest
+		# (see _build_shell) so it lays out as the single row it always was;
+		# embedded, the column decides the width and a Huge chest wraps instead of
+		# running off the side of somebody else's screen.
+		var shelf := HFlowContainer.new()
+		shelf.add_theme_constant_override("h_separation", 10)
+		shelf.add_theme_constant_override("v_separation", 10)
+		shelf.alignment = FlowContainer.ALIGNMENT_CENTER
 		box.add_child(shelf)
 		for item in _items:
 			var card: Control = _offer_card(item)
@@ -143,10 +167,52 @@ func _build() -> void:
 	_take_btn.grab_focus()
 	_refresh_selection()
 
+# The frame the cards go in — the ONE thing the two modes disagree about, so it
+# is the one thing with a branch in it. As a modal: a dimmed backdrop and a panel
+# of its own, centred and widened to hold the whole chest on one row. Embedded: a
+# bordered section of somebody else's column, as wide as that column makes it.
+# Returns the box everything else is built into, which is identical either way.
+func _build_shell(multi: bool, tint: Color) -> VBoxContainer:
+	var panel: PanelContainer
+	if _slot != null:
+		panel = PanelContainer.new()
+		panel.add_theme_stylebox_override("panel",
+			UITheme.panel_box(UITheme.PANEL, tint.lerp(UITheme.BORDER, 0.45), 10, 0, 1))
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_slot.add_child(panel)
+		_body = panel
+	else:
+		var width: float = PANEL_SIZE.x
+		if multi:
+			width = minf(MULTI_MAX_W, 80.0 + CARD_W * _items.size())
+		# No click-outside-to-close: leaving a Legendary on the ground is a decision,
+		# and it should be made on a button rather than by a stray click.
+		panel = ModalScaffold.build_panel(self, tint, Callable(), Vector2(width, 0))
+		panel.custom_minimum_size = Vector2(width, 0)
+		panel.size = Vector2(width, 0)
+		panel.set_anchors_preset(Control.PRESET_CENTER)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 18)
+	margin.add_theme_constant_override("margin_right", 18)
+	var pad: int = 10 if _slot != null else 16
+	margin.add_theme_constant_override("margin_top", pad)
+	margin.add_theme_constant_override("margin_bottom", pad)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8 if _slot != null else 10)
+	margin.add_child(box)
+	return box
+
 # The one-item chest: the item at full size, which is what a drop has always
 # looked like and what nine drops in ten still are.
 func _build_single(box: VBoxContainer, tint: Color) -> void:
-	var art := UITheme.crisp_tex(_selected.image, 108)
+	# SMALLER WHEN EMBEDDED. 108px of art and a 22px name are the proportions of a
+	# panel that owns the screen; on the post-combat screen this chest is one
+	# section above a boss banner and a shop shelf, and at modal size it pushed
+	# both of them off the bottom of the column.
+	var embedded: bool = _slot != null
+	var art := UITheme.crisp_tex(_selected.image, 72 if embedded else 108)
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(art)
 
@@ -154,7 +220,7 @@ func _build_single(box: VBoxContainer, tint: Color) -> void:
 	name_lbl.text = _selected.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.add_theme_font_size_override("font_size", 22)
+	name_lbl.add_theme_font_size_override("font_size", 18 if embedded else 22)
 	name_lbl.add_theme_color_override("font_color", tint)
 	box.add_child(name_lbl)
 
@@ -284,6 +350,17 @@ func _answer(taken: bool) -> void:
 	_answered = true
 	answered.emit(taken, _selected if taken else null)
 	finished.emit()
+	# Take down whatever this chest actually put on screen: its own layer as a
+	# modal, or just its section of the host's column when embedded — where the
+	# rest of the column is somebody else's and must survive the answer.
+	# Unparented before it is freed, because the NEXT chest in the queue is built
+	# into that column on the very next line of the host's handler, and a
+	# `queue_free` alone would stack the two for a frame.
+	if _body != null and is_instance_valid(_body):
+		if _body.get_parent() != null:
+			_body.get_parent().remove_child(_body)
+		_body.queue_free()
+		_body = null
 	if _layer != null and is_instance_valid(_layer):
 		_layer.queue_free()
 	else:

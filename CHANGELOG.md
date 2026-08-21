@@ -11,6 +11,68 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A game now ends on a screen, and the Collection has a Loot tab.**
+
+  **One screen instead of six surfaces.** Reporting a game used to fire a queue of
+  unrelated questions at the player: one relic modal per defeated body, then the
+  loot payout, then the event, then the shop appearing under the board, then the
+  boss notice, with the toasts running underneath all of it. On a boss round at a
+  hub that is five popups in a row, each re-centring on the same spot, each with
+  its own Take/Leave, and nothing tying any of them to the game they came out of.
+
+  And the first two of them opened **on top of the resolve animation**. Drops are
+  queued in the middle of `beat_game` and were pumped on the next idle frame,
+  while the board was still playing the strike and the advance back — the one
+  place the run's consequences are ever *shown* — so you answered "do you want
+  this relic" over the top of the blow that had just taken eight Health off you.
+
+  So the haul is a screen (`PostCombatScreen`), and it opens when the board has
+  stopped moving. The verdict — beaten, goal missed, or walked away, which are
+  three different things. The fight in numbers, out of `beat_game`'s result, which
+  until now was thrown away the moment the animation had played it: damage taken
+  and blocked, goals cleared, what is still following, the tier and the board's
+  growth. The relic chests down the left and the loot payout down the right **at
+  the same time** rather than one after another. The hub's shelf. The boss warning
+  as a banner. And **one button out**, which is the *event* when the node owes one
+  — pressing it is what opens the event, so you leave the haul into the next thing
+  rather than having the next thing dropped on you.
+
+  **The sections are the real modals, embedded.** `ItemDropModal.embed`,
+  `LootDropModal.embed` and `BossNoticeModal.embed` build the same cards, run the
+  same selection and answer through the same signals; what they skip is the
+  backdrop, the centring and the `CanvasLayer`. So the 3×3 on this screen is the
+  inventory in the sense §4.3 means it, a chest is still "which one of these", and
+  a boss portrait still opens its card. The standalone modals stay — that is the
+  point of embedding rather than replacing — because `GameState.offer_loot` fires
+  from `EffectSystem`, so an item, an event or a machine can hand loot over at any
+  moment, and a payout that did not arrive with a report has no haul screen to be
+  part of. `_pump_drops` suppresses itself only while a report is resolving.
+
+  **The shelf is borrowed, not moved.** §14 chose the on-page mount deliberately —
+  a shop blocks nothing and stays for the whole visit — and that is still right;
+  what it never fixed was that a shop mounted below the fold on the frame you
+  arrive is a shop you may not notice. So the same `ShopPanel2` node is mounted on
+  this screen and reparented back under the board on the way out. The moment of
+  arrival gets the shelf in front of you; the rest of the visit is unchanged.
+
+  The way out **counts what it is about to bin**. A Legendary left on the ground
+  should be a decision, not a side effect of pressing Continue.
+
+  **The Collection's Scrolls tab is now a Loot tab**, with Scrolls and Pills as
+  sub-tabs. They are one thing to the run — one 50/50 payout, one nine-piece pack,
+  one window — and two top-level tabs said the opposite. Pills had no page at all
+  before this, which is the half that was actually missing.
+
+  A pill cell wears a **stand-in capsule and says so**. A pill carries no art of
+  its own: its picture is the colour the run deals it out of `PillSystem.COLORS`,
+  and the Collection opens from the main menu where no run has dealt one. Drawing
+  each pill in some particular colour would teach an association the game
+  randomises on purpose, so every cell wears the same capsule, dimmed, and the tab
+  explains why. It shows **both doses** — the 5% horse roll is the same colour and
+  the same identification, so a card showing only the normal one would be
+  describing half of what taking it can do.
+
+
 - **A piece of loot goes wherever you put it, and a use says what it did.**
 
   Two things the loot window was still getting wrong, both of them about the

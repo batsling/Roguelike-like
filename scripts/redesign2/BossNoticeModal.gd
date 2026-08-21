@@ -18,18 +18,34 @@ extends Control
 # scramble) is still open but buys a different boss rather than a way past this.
 #
 # Built in code on its own CanvasLayer, like every other 2.0 modal.
+#
+# IT ALSO EMBEDS (`embed`), as a banner on the post-combat screen. A boss round is
+# announced BETWEEN two games, which is exactly when that screen is up — so the
+# warning is a section of it rather than a popup that lands after the player has
+# already dismissed one. Embedded it loses its own panel and its "Face it" button
+# (the screen's own way out is the acknowledgement) and keeps everything that
+# matters: the two rules, the tier, and the portraits that still open a card.
 
 signal finished
 
 const PANEL_SIZE := Vector2(560, 0)
 const ACCENT := Color(1.0, 0.62, 0.24)
 const ART_PX := 96
+# The portraits are drawn smaller in a banner than in a popup: the banner shares a
+# column with the fight's numbers and a chest, where the popup had the screen.
+const EMBED_ART_PX := 64
 
 var _tier_name: String = ""
 var _bosses: Array = []              # GoalEnemyData standing on the offered cards
 var _layer: CanvasLayer = null
 var _panel: PanelContainer = null
 var _done: bool = false
+# EMBEDDED MODE. `_slot` is the container this banner is a section of, and
+# `_card_host` is what an opened boss card mounts on — as a modal that is `self`,
+# a full-rect Control on a layer of its own; embedded, `self` is a parked
+# controller with no size and a card added to it would never be seen.
+var _slot: Container = null
+var _card_host: Node = null
 
 
 func _init() -> void:
@@ -55,11 +71,34 @@ static func open(host: Node, tier_name: String, bosses: Array = []) -> BossNotic
 	return modal
 
 
+# The same warning as a banner inside `slot`, for the post-combat screen. `host`
+# is what the controller parks on and what a boss card opens over.
+static func embed(host: Node, slot: Container, tier_name: String, bosses: Array = []) -> BossNoticeModal:
+	var modal := BossNoticeModal.new()
+	modal._tier_name = tier_name
+	modal._bosses = bosses
+	modal._slot = slot
+	modal._card_host = host
+	modal.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	modal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.add_child(modal)
+	modal._build()
+	return modal
+
+
 func _build() -> void:
-	# No click-outside-to-close: the whole point is that this one is read.
-	_panel = ModalScaffold.build_panel(self, ACCENT, Callable(), PANEL_SIZE)
-	_panel.custom_minimum_size = Vector2(PANEL_SIZE.x, 0)
-	_panel.size = Vector2(PANEL_SIZE.x, 0)
+	var embedded: bool = _slot != null
+	if embedded:
+		_panel = PanelContainer.new()
+		_panel.add_theme_stylebox_override("panel",
+			UITheme.panel_box(UITheme.PANEL, ACCENT, 10, 0, 1))
+		_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_slot.add_child(_panel)
+	else:
+		# No click-outside-to-close: the whole point is that this one is read.
+		_panel = ModalScaffold.build_panel(self, ACCENT, Callable(), PANEL_SIZE)
+		_panel.custom_minimum_size = Vector2(PANEL_SIZE.x, 0)
+		_panel.size = Vector2(PANEL_SIZE.x, 0)
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 22)
 	margin.add_theme_constant_override("margin_right", 22)
@@ -74,7 +113,7 @@ func _build() -> void:
 	var title := Label.new()
 	title.text = "⚠   BOSS INCOMING   ⚠"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_font_size_override("font_size", 18 if embedded else 26)
 	title.add_theme_color_override("font_color", ACCENT)
 	root.add_child(title)
 
@@ -102,6 +141,13 @@ func _build() -> void:
 		l.add_theme_font_size_override("font_size", 12)
 		l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		root.add_child(l)
+
+	# THE BANNER HAS NO BUTTON. As a popup this is the only thing on screen and
+	# "Face it" is how it comes down; on the post-combat screen it is one section
+	# among several, and the screen's own way out is the acknowledgement — a second
+	# button that dismisses only part of the page would be a worse answer.
+	if embedded:
+		return
 
 	var go := Button.new()
 	go.text = "Face it"
@@ -131,9 +177,10 @@ func _portrait_row() -> Control:
 		seen[boss.id] = true
 		var col := VBoxContainer.new()
 		col.add_theme_constant_override("separation", 2)
+		var art_px: int = EMBED_ART_PX if _slot != null else ART_PX
 		var frame := PanelContainer.new()
 		frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 6, 4, 1, ACCENT))
-		frame.add_child(UITheme.crisp_tex(boss.image, ART_PX))
+		frame.add_child(UITheme.crisp_tex(boss.image, art_px))
 		# The portrait OPENS. This popup is the first the player hears of these
 		# three, and "what does it want, and how hard does it hit" is the question
 		# it raises and used to refuse to answer — so the portrait opens the same
@@ -157,7 +204,7 @@ func _portrait_row() -> Control:
 		name_lbl.text = boss.display_name
 		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		name_lbl.custom_minimum_size = Vector2(ART_PX + 12, 0)
+		name_lbl.custom_minimum_size = Vector2(art_px + 12, 0)
 		name_lbl.add_theme_font_size_override("font_size", 11)
 		name_lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		col.add_child(name_lbl)
@@ -180,7 +227,12 @@ func inspect_boss(boss: GoalEnemyData) -> EnemyInfoCard:
 	if boss == null:
 		return null
 	var card := EnemyInfoCard.new()
-	add_child(card)
+	# Over whatever is actually on screen: this modal when it IS the screen, and the
+	# host page when this is a banner parked on one.
+	if _card_host != null and is_instance_valid(_card_host):
+		_card_host.add_child(card)
+	else:
+		add_child(card)
 	card.setup({
 		"instance": 0, "enemy": boss, "stun": 0,
 		"health": GameLoop2.effective_health(boss),

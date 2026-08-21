@@ -48,6 +48,15 @@ extends Control
 #
 # The queue behind it is the kill drops' own (Overworld2._drop_queue). Built in
 # code on its own CanvasLayer, like every other 2.0 modal.
+#
+# IT ALSO EMBEDS (`embed`). A payout that arrives with a REPORT is now a column of
+# the post-combat screen (`PostCombatScreen`) rather than a popup over an
+# animating board — the relics, the loot and the numbers are one haul and are read
+# as one. Embedded it builds the same offer, the same live 3x3 and the same bin
+# into somebody else's container; what it skips is the backdrop, the centring and
+# the layer. The standalone modal stays for every payout that does NOT arrive with
+# a report — `GameState.offer_loot` fires from EffectSystem, so an item, an event
+# or a machine can hand loot over at any moment — and the two share every pixel.
 
 # Emitted exactly once, when the screen closes. `taken` is the entries that ended
 # up in the pack, in the order they were placed — the page logs them and refreshes.
@@ -69,6 +78,13 @@ var _body_scroll: ScrollContainer = null
 # page passes its own answer rather than this screen assuming one, so the rule
 # about when loot can be spent lives in one place.
 var _spendable: bool = true
+# EMBEDDED MODE. `_slot` is the container this payout is a section of, `_body` is
+# what it put there (rebuilt in place, taken down on the answer), and `_page_node`
+# is the overworld the use modal and the info card mount over — as a modal that is
+# reachable through `_layer.get_parent()`, and embedded there is no layer to ask.
+var _slot: Container = null
+var _body: Control = null
+var _page_node: Node = null
 
 const ACCENT := Color(0.72, 0.62, 0.86)
 # The pack column is a 3x3 of LootSlot plus the panel's own padding.
@@ -91,6 +107,16 @@ const SCREEN_MARGIN := 16.0
 # modal is allowed so the cap applies to the panel and not just to the part that
 # scrolls.
 const CHROME_H := 92.0
+# How wide a column this wants when embedded: the single offer, the gutter, the
+# pack, and the panel's own margins either side. Anything narrower puts the pack
+# under the offer instead of beside it, and the drag between them — which is what
+# this screen is FOR — stops reading as a direction.
+const EMBED_W := SINGLE_W + ROW_GAP + PACK_W + MARGIN * 2
+# The least room the offer and the pack are ever squeezed into when embedded. The
+# host's column decides the rest (see _fit_body); this is only the floor that
+# stops a short column from collapsing the scroll to nothing and hiding the
+# question entirely.
+const EMBED_BODY_MIN_H := 200.0
 # The use modal opens on TOP of this one, so it needs a layer above this layer.
 const LAYER := 122
 const USE_LAYER := 130
@@ -123,6 +149,27 @@ func _start(host: Node, offer) -> void:
 		return
 	_build()
 
+# Entry point for the post-combat screen: put this payout INSIDE `slot` rather
+# than over the page. `page` is the overworld — the use modal, the info card and
+# the pack-strip refresh all still go to it — and `host` is the node the
+# controller parks on, drawing nothing and taking no room.
+static func embed(page: Node, host: Node, slot: Container, offer, spendable: bool = true) -> LootDropModal:
+	var modal := LootDropModal.new()
+	modal._spendable = spendable
+	modal._slot = slot
+	modal._page_node = page
+	modal.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	modal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for entry in (offer if offer is Array else [offer]):
+		if entry is Dictionary and not (entry as Dictionary).is_empty():
+			modal._offers.append((entry as Dictionary).duplicate(true))
+	host.add_child(modal)
+	if modal._offers.is_empty():
+		modal._close()
+		return modal
+	modal._build()
+	return modal
+
 # Redrawn in place whenever anything on it changes — an offer resolved, a carried
 # piece spent, a slot emptied. Rebuilding the whole panel rather than patching it
 # is the call the loot window makes for the same reason: nine cells is cheap, and a
@@ -133,6 +180,12 @@ func _rebuild() -> void:
 	if _offers.is_empty():
 		_close()
 		return
+	# Embedded, what has to go is the section in the HOST's container — the rest of
+	# that column belongs to somebody else. As a modal it is everything under self.
+	# Unparented BEFORE it is freed, the way the modal path below does it: a
+	# `queue_free` alone leaves the old panel in the column for a frame, and the
+	# replacement built two lines later would sit under a ghost of itself.
+	_drop_body()
 	for c in get_children():
 		remove_child(c)
 		c.queue_free()
@@ -143,14 +196,33 @@ func _build() -> void:
 	var offer_w: int = _offer_columns() * (LootSlot.CELL_W + 6) if multi else SINGLE_W
 	var width: float = float(offer_w + ROW_GAP + PACK_W + MARGIN * 2)
 
-	# No click-outside-to-close: leaving loot on the ground is a decision, and it
-	# should be made on a button rather than by a stray click.
-	_panel = ModalScaffold.build_panel(self, ACCENT, Callable(), Vector2(width, 0))
+	if _slot != null:
+		# A section of the host's page: bordered like the panels around it, as wide
+		# as the column it stands in, and with no backdrop of its own — the screen
+		# under it is already the host's.
+		_panel = PanelContainer.new()
+		_panel.add_theme_stylebox_override("panel",
+			UITheme.panel_box(UITheme.PANEL, ACCENT.lerp(UITheme.BORDER, 0.45), 10, 0, 1))
+		_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# Takes the column's height as well as its width, so the body below can be
+		# handed the leftover rather than guessing at a number (see _fit_body).
+		_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		_slot.add_child(_panel)
+		_body = _panel
+	else:
+		# No click-outside-to-close: leaving loot on the ground is a decision, and it
+		# should be made on a button rather than by a stray click.
+		_panel = ModalScaffold.build_panel(self, ACCENT, Callable(), Vector2(width, 0))
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", MARGIN)
 	margin.add_theme_constant_override("margin_right", MARGIN)
-	margin.add_theme_constant_override("margin_top", 14)
-	margin.add_theme_constant_override("margin_bottom", 14)
+	# Tighter top and bottom when embedded. As a modal this panel owns the screen
+	# and can spend the air; on the post-combat screen it is one column of five
+	# sections, and every row it gives back is a row the BIN gets to stay above the
+	# fold in — which matters, because the bin is one of the three answers.
+	var pad: int = 8 if _slot != null else 14
+	margin.add_theme_constant_override("margin_top", pad)
+	margin.add_theme_constant_override("margin_bottom", pad)
 	_panel.add_child(margin)
 	# THE BODY SCROLLS IF IT HAS TO. Eight offers beside a pack with the "Known this
 	# run" fold open is 700px of content in a 720px canvas, and a modal whose answer
@@ -171,8 +243,13 @@ func _build() -> void:
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_body_scroll.add_child(box)
 
-	box.add_child(_line("✦  The game paid out" if not multi
-		else "✦  The game paid out %d pieces" % _offers.size(), UITheme.TEXT_DIM, 15))
+	# "The game paid out" — said once, by whoever owns the screen. Embedded, the
+	# host has already put a verdict and a game's name across the top of the page
+	# and this column is plainly the payout on it; a second announcement costs a row
+	# the pack needs and tells the reader nothing they are not looking at.
+	if _slot == null:
+		box.add_child(_line("✦  The game paid out" if not multi
+			else "✦  The game paid out %d pieces" % _offers.size(), UITheme.TEXT_DIM, 15))
 
 	# The pack, built FIRST because every offer cell hangs its drag rules off it.
 	# EVERYTHING THE LOOT WINDOW'S GRID DOES, because it is the same grid: rearrange,
@@ -198,8 +275,18 @@ func _build() -> void:
 	row.add_theme_constant_override("separation", ROW_GAP)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(row)
-	row.add_child(_offer_column(multi))
+	var offer_col: Control = _offer_column(multi)
+	row.add_child(offer_col)
 	row.add_child(_pack_column())
+	# THE FOLD CHANGES SIDES WHEN EMBEDDED. "Known this run" is not a fact about the
+	# pack — it is what the RUN has learned — and under the pack it was the row that
+	# pushed the bin off the bottom of the post-combat screen's column. The offer
+	# side is the short one there (one piece against nine slots), so the fold goes
+	# where the space already is. As a modal it stays under the pack, which is where
+	# it has always been and where there is room for it.
+	if _slot != null and offer_col is VBoxContainer:
+		(offer_col as VBoxContainer).add_child(
+			LootDiscoveries.build(_rebuild, DISCOVERIES_H))
 
 	if GameState.loot_is_full():
 		# The cap, said where it bites — beside the nine full slots that are the
@@ -317,15 +404,27 @@ func _pack_column() -> Control:
 	var bin := LootTrash.new()
 	bin.grid = _grid
 	col.add_child(bin)
-	col.add_child(_line("Drag into a slot, rearrange, or bin what you don't want."
-		if not GameState.loot_is_full() else "No room — make some, or use them now.",
-		UITheme.TEXT_FAINT, 10))
+	# The instruction line goes when the panel is embedded, and the bin it was
+	# explaining is what it goes FOR: on the post-combat screen this column shares
+	# a 720p page with four other sections, and a caption under a labelled bin was
+	# the cheapest row to spend to keep the bin itself above the fold. The full-pack
+	# warning is kept in both — that one says something the picture doesn't.
+	if _slot == null:
+		col.add_child(_line("Drag into a slot, rearrange, or bin what you don't want."
+			if not GameState.loot_is_full() else "No room — make some, or use them now.",
+			UITheme.TEXT_FAINT, 10))
+	elif GameState.loot_is_full():
+		col.add_child(_line("No room — make some, or use them now.", UITheme.DANGER, 10))
 	# WHAT THE RUN HAS LEARNED, the same fold the loot window carries and sharing its
 	# state (LootDiscoveries.open) — the pack this screen shows is the inventory, so
 	# it answers "what does green do again" in the same place. Given a shorter slice
 	# than the window gets: this panel already has the offer beside it, and the fold
 	# must not push the answer buttons off a 720p screen.
-	col.add_child(LootDiscoveries.build(_rebuild, DISCOVERIES_H))
+	#
+	# Embedded it is added to the OFFER column instead (see _build), which is the
+	# short side there — this column has the bin to keep above the fold.
+	if _slot == null:
+		col.add_child(LootDiscoveries.build(_rebuild, DISCOVERIES_H))
 	return col
 
 func _buttons(multi: bool) -> Control:
@@ -348,9 +447,15 @@ func _buttons(multi: bool) -> Control:
 	take.pressed.connect(_take_all)
 	buttons.add_child(take)
 	# DEFERRED: this row is built before it is parented, and `grab_focus` on a
-	# Control that is not yet in the tree fails outright.
+	# Control that is not yet in the tree fails outright. GUARDED at the other end
+	# too, now that this panel can be a section of somebody else's screen: that
+	# screen can be opened and left inside one frame (every headless test of it
+	# does), and the deferred call would then land on a button that is gone.
 	if room > 0:
-		take.grab_focus.call_deferred()
+		var btn: Button = take
+		(func():
+			if is_instance_valid(btn) and btn.is_inside_tree():
+				btn.grab_focus()).call_deferred()
 	return buttons
 
 # ---------------------------------------------------------------------------
@@ -489,6 +594,14 @@ func _after_change() -> void:
 func _fit_body(box: Control) -> void:
 	if _body_scroll == null or not is_instance_valid(_body_scroll):
 		return
+	# EMBEDDED, THE COLUMN DECIDES. The host has a header and a footer of its own
+	# on this screen, so the viewport is not this panel's to measure — it takes the
+	# height left over in the column instead, and the floor is only there so a
+	# short column cannot collapse the scroll to nothing and hide the question.
+	if _slot != null:
+		_body_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		_body_scroll.custom_minimum_size.y = EMBED_BODY_MIN_H
+		return
 	var content: float = box.get_combined_minimum_size().y
 	# Against the room a modal is actually ALLOWED (ModalScaffold.free_rect), not
 	# against the screen: the run's header bar is opaque and drawn over every modal,
@@ -497,7 +610,12 @@ func _fit_body(box: Control) -> void:
 	var room: float = ModalScaffold.free_rect(self).size.y - SCREEN_MARGIN * 2.0 - CHROME_H
 	_body_scroll.custom_minimum_size.y = minf(content, maxf(240.0, room))
 
+# The overworld: what the use modal, the info card and the pack-strip refresh are
+# mounted on and asked of. Handed in when embedded, and reached through the layer
+# this modal mounted itself on otherwise.
 func _page() -> Node:
+	if _page_node != null and is_instance_valid(_page_node):
+		return _page_node
 	return _layer.get_parent() if _layer != null and is_instance_valid(_layer) else null
 
 func _line(text: String, color: Color, size: int) -> Label:
@@ -508,6 +626,25 @@ func _line(text: String, color: Color, size: int) -> Label:
 	l.add_theme_color_override("font_color", color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l
+
+# Take this payout's section out of the host's column and free it. Unparented
+# first so the column is genuinely empty the moment this returns — the rebuild
+# adds its replacement immediately, and `queue_free` alone would leave the two
+# stacked for a frame.
+func _drop_body() -> void:
+	if _body == null or not is_instance_valid(_body):
+		_body = null
+		return
+	if _body.get_parent() != null:
+		_body.get_parent().remove_child(_body)
+	_body.queue_free()
+	_body = null
+
+# How many pieces are still on the table. The post-combat screen reads it to say
+# what its way out is about to bin, so leaving a Legendary on the ground stays a
+# decision rather than a side effect of pressing Continue.
+func remaining() -> int:
+	return _offers.size()
 
 # Public so a test can answer without a click, the way the relic drop's do.
 func take() -> void:
@@ -521,6 +658,9 @@ func _close() -> void:
 		return
 	_answered = true
 	answered.emit(_taken.duplicate(true))
+	# Its own layer as a modal; embedded, only its section of the host's column —
+	# the rest of that column is somebody else's and outlives the answer.
+	_drop_body()
 	if _layer != null and is_instance_valid(_layer):
 		_layer.queue_free()
 	else:

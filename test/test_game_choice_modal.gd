@@ -24,6 +24,10 @@ func before_each() -> void:
 	if _ui._phase == _ui.Phase.PLAYING:
 		_report_beat(_ui)
 		_ui._end_resolve()
+		# The opening game's haul is one PostCombatScreen now, relic and all —
+		# leaving it drops what is on its table, which is what this file wants.
+		if _ui._post_screen != null and is_instance_valid(_ui._post_screen):
+			_ui._post_screen.dismiss()
 		_ui._drop_queue.clear()
 		if _ui._drop_modal != null and is_instance_valid(_ui._drop_modal):
 			_ui._drop_modal.queue_free()

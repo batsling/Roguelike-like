@@ -13,13 +13,32 @@ extends Control
 #   Characters — every 2.0 CharacterData (data/characters2.0), grid + detail.
 #   Enemies    — the normal goal-enemies (data/enemies2.0), grid + detail.
 #   Bosses     — the boss roster (data/bosses2.0), grid + detail.
-#   Scrolls    — the 2.0 scroll catalog (revealed reference), grid.
+#   Loot       — the consumables (§4.3), under one tab with a sub-tab each:
+#                Scrolls (data/scrolls2.0) and Pills (data/pills2.0), both as the
+#                revealed reference. They are one tab because they are one thing
+#                to the run — one 50/50 payout, one nine-piece pack, one window —
+#                and two top-level tabs said the opposite.
 #   Objects    — every 2.0 object (data/objects2.0), grid + detail: the machines
 #                and what each of their buttons costs.
 #   Events     — every 2.0 event (data/events2.0), grid + detail: what it asks,
 #                what each answer does, and where on the map it can appear.
 
-enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, SCROLLS, EVENTS, OBJECTS }
+enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, LOOT, EVENTS, OBJECTS }
+
+# Which half of the Loot tab is showing. A sub-tab rather than a filter chip
+# because the two sets share nothing but the pack they end up in: a scroll has a
+# reference and one effect, a pill has two doses and no art of its own.
+const LOOT_SCROLLS := "scrolls"
+const LOOT_PILLS := "pills"
+
+# The stand-in capsule every pill cell wears. A PILL HAS NO ART OF ITS OWN
+# (PillData carries no image field): its picture is the COLOUR the run deals it
+# out of PillSystem.COLORS, and the Collection opens from the main menu where no
+# run exists to have dealt one. So every cell wears the same capsule, dimmed, and
+# the tab says why — drawing each pill in some particular colour would teach an
+# association the game randomises on purpose.
+const PILL_STANDIN := "res://images2.0/pills/WhiteWhite.png"
+const PILL_STANDIN_TINT := Color(0.62, 0.62, 0.66)
 
 const GAME_TYPE_NAMES := ["Action", "Strategy", "Deckbuilder", "Traditional"]
 const GAME_STATUS_OPTIONS := [
@@ -74,8 +93,10 @@ const GRID_META_FONT := 10
 
 var _tab: int = Tab.GAMES
 
-var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "games": "",
-	"events": "", "objects": ""}
+var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "pills": "",
+	"games": "", "events": "", "objects": ""}
+# Which sub-tab the Loot tab is on, one of LOOT_SCROLLS / LOOT_PILLS.
+var _loot_sub: String = LOOT_SCROLLS
 var _games_sort: String = "name"
 var _games_type: int = -1
 var _games_status: String = "all"
@@ -201,7 +222,7 @@ func _build_shell() -> void:
 	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters2().size())
 	_add_tab_button(tabs, Tab.ENEMIES, "Enemies (%d)" % Data.all_goal_enemies().size())
 	_add_tab_button(tabs, Tab.BOSSES, "Bosses (%d)" % Data.all_bosses().size())
-	_add_tab_button(tabs, Tab.SCROLLS, "Scrolls (%d)" % Data.all_scrolls().size())
+	_add_tab_button(tabs, Tab.LOOT, "Loot (%d)" % (Data.all_scrolls().size() + Data.all_pills().size()))
 	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events2().size())
 	_add_tab_button(tabs, Tab.OBJECTS, "Objects (%d)" % Data.all_objects2().size())
 
@@ -240,8 +261,8 @@ func _refresh() -> void:
 			_build_characters()
 		Tab.ENEMIES, Tab.BOSSES:
 			_build_enemies()
-		Tab.SCROLLS:
-			_build_scrolls()
+		Tab.LOOT:
+			_build_loot()
 		Tab.EVENTS:
 			_build_events()
 		Tab.OBJECTS:
@@ -574,8 +595,8 @@ func _populate() -> void:
 			_populate_characters()
 		Tab.ENEMIES, Tab.BOSSES:
 			_populate_enemies()
-		Tab.SCROLLS:
-			_populate_scrolls()
+		Tab.LOOT:
+			_populate_loot()
 		Tab.EVENTS:
 			_populate_events()
 		Tab.OBJECTS:
@@ -1540,9 +1561,28 @@ func _show_enemy_detail(e: GoalEnemyData) -> void:
 	for entry in fought:
 		_detail_box.add_child(_enemy_game_row(e, entry))
 
-func _build_scrolls() -> void:
+# The Loot tab: one sub-tab row over one grid. Both halves are the same shape — a
+# search box, a count and a flow of cards — so the switch changes what is in the
+# grid and nothing about the furniture around it.
+func _build_loot() -> void:
+	var subs := _controls_row()
+	subs.add_child(_loot_sub_button("📜  Scrolls (%d)" % Data.all_scrolls().size(), LOOT_SCROLLS))
+	subs.add_child(_loot_sub_button("💊  Pills (%d)" % Data.all_pills().size(), LOOT_PILLS))
+	# WHAT THE TAB IS, said once, where the difference between the two halves
+	# actually matters: a scroll hides behind a shared Unidentified art and a pill
+	# hides behind a colour, and the catalog shows both of them revealed.
+	var note := _label(
+		"Revealed reference — a run hides all of this until you identify it."
+		if _loot_sub == LOOT_SCROLLS else
+		"Revealed reference. Every run deals these a random colour out of 13, so the "
+		+ "capsule here is a stand-in, not the one you'll be holding.",
+		Color(0.6, 0.6, 0.65), 11)
+	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	subs.add_child(note)
+
 	var row := _controls_row()
-	row.add_child(_search_box("scrolls"))
+	row.add_child(_search_box(_loot_sub))
 	_add_count_label(row)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1555,7 +1595,20 @@ func _build_scrolls() -> void:
 	scroll.add_child(flow)
 	_grid = flow
 	_content.add_child(scroll)
-	_populate_scrolls()
+	_populate_loot()
+
+func _loot_sub_button(label: String, sub: String) -> Button:
+	# A full _refresh rather than a repopulate: the sub-tabs carry their own search
+	# term and their own note, and both live outside the grid.
+	return _sort_button(label, _loot_sub == sub, func():
+		_loot_sub = sub
+		_refresh())
+
+func _populate_loot() -> void:
+	if _loot_sub == LOOT_PILLS:
+		_populate_pills()
+	else:
+		_populate_scrolls()
 
 func _populate_scrolls() -> void:
 	_clear_children(_grid)
@@ -1628,6 +1681,54 @@ func _scroll_effect_text(s: ScrollData) -> String:
 			"teleport":
 				parts.append("Teleport ~the same distance from the Amulet.")
 	return " ".join(parts)
+
+func _populate_pills() -> void:
+	_clear_children(_grid)
+	var term: String = _search["pills"].to_lower()
+	var pills: Array = Data.all_pills()
+	pills.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
+	var shown: int = 0
+	for p in pills:
+		if not (p is PillData):
+			continue
+		if term != "" and not (term in p.display_name.to_lower()):
+			continue
+		_grid.add_child(_pill_card(p))
+		shown += 1
+	_set_count(shown, Data.all_pills().size())
+
+# 2.0 pill cell: the stand-in capsule, the name and Preference, then BOTH DOSES.
+# A pill is one resource with two effects — the 5% horse roll is the same colour
+# and the same identification, so a card that showed only the normal dose would
+# be describing half of what taking one can do (§4.3).
+func _pill_card(p: PillData) -> Control:
+	var pcol := _preference_color(p.preference)
+	var cell := _cell(pcol, Callable())
+	cell.panel.custom_minimum_size = Vector2(300, 0)
+	var vb: VBoxContainer = cell.vbox
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	vb.add_child(top)
+	var tex: Texture2D = load(PILL_STANDIN) if ResourceLoader.exists(PILL_STANDIN) else null
+	if tex != null:
+		var art := _tex_rect(tex, 48)
+		art.modulate = PILL_STANDIN_TINT
+		top.add_child(art)
+	var head := VBoxContainer.new()
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(head)
+	head.add_child(_label(p.display_name, pcol, 14))
+	head.add_child(_label("%s Preference" % p.preference, Color(0.7, 0.7, 0.75), 11))
+	vb.add_child(_pill_dose("Normal dose", p.line(false), Color(0.85, 0.85, 0.88)))
+	vb.add_child(_pill_dose("Horse dose (5%)", p.line(true), Color(0.95, 0.82, 0.55)))
+	return cell.panel
+
+func _pill_dose(heading: String, text: String, color: Color) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 1)
+	box.add_child(_label(heading, Color(0.55, 0.6, 0.7), 10))
+	box.add_child(_label(text if text.strip_edges() != "" else "—", color, 12, false, true))
+	return box
 
 # ------------------------------------------------------------------
 # Detail helpers
