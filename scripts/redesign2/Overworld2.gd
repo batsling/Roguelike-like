@@ -394,6 +394,14 @@ func _ready() -> void:
 		GameState.hp_changed.connect(_on_vitals_changed)
 	if not GameState.stats_changed.is_connected(_refresh_stats):
 		GameState.stats_changed.connect(_refresh_stats)
+	# A relic or an event GRANTING loot asks rather than filling the pack (§4.3).
+	# Connected here rather than at the grant sites so anything that pays out loot —
+	# an item, an event, the dev panel — comes through the same question, and so that
+	# GameState can tell whether there is a screen to ask on at all: with nobody
+	# connected it grants directly, which is what keeps headless runs and the tests
+	# working unchanged.
+	if not GameState.loot_offered.is_connected(_on_loot_offered):
+		GameState.loot_offered.connect(_on_loot_offered)
 	# Machines appearing or leaving. Off the signal rather than at the spawn
 	# sites, so anything that spawns one — an event, the dev panel, whatever comes
 	# next — puts it on the page without knowing the panel exists.
@@ -3575,6 +3583,20 @@ func _queue_loot_drop() -> void:
 	_drop_queue.append({"loot": entry})
 	_pump_drops()
 
+# A GRANT of loot, asked about rather than pushed into the pack (§4.3). Mom's Coin
+# Purse pays four pills at once and Sacred Bark doubles what a grant pays; shovelled
+# straight in, the surplus over the nine-piece cap used to vanish without a word.
+# GameState.offer_loot rolls the pieces and calls here, and they arrive as ONE
+# question with all of them on the table rather than as four modals in a row.
+#
+# Behind the same queue as everything else, so a game that paid its own piece AND
+# fired a relic asks in the order they landed.
+func _on_loot_offered(entries: Array) -> void:
+	if GameLoop2.run_over or entries.is_empty():
+		return
+	_drop_queue.append({"loot": entries.duplicate(true)})
+	_pump_drops()
+
 # Ask about the next waiting drop, if nothing else is already asking. Several
 # defeats in one report queue behind each other rather than stacking modals.
 #
@@ -3612,13 +3634,14 @@ func _open_next_drop() -> void:
 		# report has finished resolving before the question is asked.
 		var loot_modal := LootDropModal.open(self, drop["loot"], _phase != Phase.PLAYING)
 		_drop_modal = loot_modal
-		# `slot` is where the player put it — the slot they dragged it into, or the
-		# end of the pack when they took it on the button (§4.3).
-		loot_modal.answered.connect(func(taken: bool, slot: int):
+		# `taken` is what ended up in the pack. THE SCREEN PLACES ITS OWN takes (§4.3):
+		# with several offers, and uses and bins interleaved between them, the slot
+		# the player chose is only meaningful at the instant they choose it. So the
+		# page's job here is the log and the refresh, not the taking.
+		loot_modal.answered.connect(func(taken: Array):
 			_drop_modal = null
 			_drop_queue.pop_front()
-			if taken:
-				_collect_loot_drop(drop["loot"], slot)
+			_note_loot_taken(taken)
 			_pump_drops())
 		return
 	var modal = ItemDropModal.open(self, _drop_items(drop))
@@ -3693,18 +3716,18 @@ func _collect_drop(drop: Dictionary, chosen: ItemData = null) -> void:
 	GameLog.add("Collected %s." % item.display_name, Color(0.7, 1.0, 0.7))
 	Notifications.notify("Took %s." % item.display_name, UITheme.item_color(item))
 
-# The player kept the game's loot payout. The queue entry is already off the front
-# by the time this runs (the loot modal pops it itself), so this only has to put
-# the piece in the pack — and it can still be refused, because the answer was given
-# to a question asked before anything else in the queue resolved.
-func _collect_loot_drop(entry: Dictionary, slot: int = -1) -> void:
-	if not GameState.take_loot_entry_at(entry,
-			slot if slot >= 0 else GameState.loot_items.size()):
-		GameLog.add("No room in the pack — %s stays on the ground."
-			% LootSystem.display_name(entry), Color(0.8, 0.8, 0.8))
-		return
-	GameLog.add("Collected %s." % LootSystem.display_name(entry), Color(0.7, 1.0, 0.7))
-	_refresh_items()
+# What the player kept off a payout, written down. The pieces are ALREADY in the
+# pack — the drop screen places each one as it is resolved, because with several
+# offers on the table and uses and bins between them, the slot a piece was dropped
+# into stops meaning anything the moment the next one moves (§4.3). So this is the
+# log and the redraw, and nothing else.
+func _note_loot_taken(taken: Array) -> void:
+	for entry in taken:
+		if entry is Dictionary:
+			GameLog.add("Collected %s." % LootSystem.display_name(entry),
+				Color(0.7, 1.0, 0.7))
+	if not taken.is_empty():
+		_refresh_items()
 
 func _skip_drop(drop: Dictionary) -> void:
 	if not _drop_queue.has(drop):
@@ -4045,10 +4068,16 @@ func _build_ui() -> void:
 	# how much trouble you were in. As a strip it is only as tall as the rows of
 	# tokens it needs (see _refresh_items), so the board keeps the room.
 	_inv_wrap = PanelContainer.new()
-	_inv_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 8, 1))
+	# MARGIN 6, not the 8 the other panels use, and separation 3 rather than 4. The
+	# loot bar at the foot of this panel (below) is a row the panel did not used to
+	# have, and the page it lives on is fitted to a 720p canvas with about five
+	# pixels to spare — so the row is paid for out of this panel's own padding
+	# rather than out of the board's height. Every one of these numbers is load
+	# bearing: test_the_page_still_fits_the_window_* fails at +2.
+	_inv_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 6, 1))
 	_inv_wrap.size_flags_horizontal = Control.SIZE_FILL
 	var inv_box := VBoxContainer.new()
-	inv_box.add_theme_constant_override("separation", 4)
+	inv_box.add_theme_constant_override("separation", 3)
 	_inv_wrap.add_child(inv_box)
 	# NO HEADING. It used to carry a "🎒  Inventory" line, and a strip of relics
 	# and scrolls in a bordered panel does not need to be told what it is — the
@@ -4065,23 +4094,35 @@ func _build_ui() -> void:
 	var strip_row := HBoxContainer.new()
 	strip_row.add_theme_constant_override("separation", 6)
 	inv_box.add_child(strip_row)
-	#
-	# THE LOOT TOGGLE LEADS THE ROW. It used to sit at the far right end, which put
-	# it under the notification toasts — those are a right-anchored column drawn over
-	# the page, so the one control that says you are carrying any loot at all spent
-	# most of every report hidden behind "Acquired Anchor." At the head of the strip
-	# it is clear of them, and it reads in the order the two halves of the pack
-	# matter in: the things you spend, then the things you keep.
-	_loot_toggle_box = HBoxContainer.new()
-	_loot_toggle_box.size_flags_vertical = Control.SIZE_SHRINK_END
-	strip_row.add_child(_loot_toggle_box)
-	_loot_window = LootWindow.new(self, _loot_toggle_box)
 	_items_box = HFlowContainer.new()
 	_items_box.add_theme_constant_override("h_separation", 4)
 	_items_box.add_theme_constant_override("v_separation", 4)
 	_items_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	strip_row.add_child(_items_box)
 	_pack = PackStrip.new(self, _items_box)
+	#
+	# THE LOOT TOGGLE IS THE PANEL'S FOOT, full width, under the relics.
+	#
+	# It has now been in three places, and the two it left were each wrong in their
+	# own way. At the TAIL of the relic row it sat under the notification toasts — a
+	# right-anchored column drawn over the page — so the one control that says you
+	# are carrying any loot at all spent most of every report hidden behind
+	# "Acquired Anchor." At the HEAD of that row it was clear of them, but it ate
+	# the left end of the strip the relics wrap into, which costs a relic tile a
+	# whole row the moment the pack gets long.
+	#
+	# On its own row it costs the relics no width at all, and being full width it is
+	# a bar rather than a button — which is the shape a "the rest of what you are
+	# carrying is through here" control should have been all along. THIN, because the
+	# page is fitted to a 720p canvas with a handful of pixels spare (see
+	# test_the_page_still_fits_the_window_*): the bar is drawn at
+	# LootWindow.TOGGLE_H and the capsules it carries are sized to sit inside that,
+	# so stacking it under the strip costs the panel about twenty pixels rather than
+	# a row's worth.
+	_loot_toggle_box = HBoxContainer.new()
+	_loot_toggle_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inv_box.add_child(_loot_toggle_box)
+	_loot_window = LootWindow.new(self, _loot_toggle_box)
 	_right_col.add_child(_inv_wrap)
 
 	_stage_panel = PanelContainer.new()

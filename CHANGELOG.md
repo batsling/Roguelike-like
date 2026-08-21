@@ -71,6 +71,28 @@ For how the project is laid out and how its systems fit together, see
   on either screen that destroys something and gives nothing back. Binning the
   offer is "Leave it", said with the hands, and asks nothing.
 
+  **A payout of several pieces asks about all of them at once.** Mom's Coin Purse
+  is four pills and Sacred Bark doubles what a grant pays; one offer per screen
+  answered that by shovelling the rest into the pack and silently dropping
+  whatever did not fit, which is the one thing the nine-piece cap exists to make
+  into a decision. The offer is a list now — one cell per piece, each taken, used
+  or binned on its own terms, scrolling past three rows rather than pushing its
+  own buttons off screen — and **Take** takes as many as fit and leaves the rest
+  on the table. Grants route through `GameState.offer_loot`, which rolls the
+  pieces and hands them to whoever is listening and falls back to the direct grant
+  when nobody is, so headless runs and the tests are unchanged.
+
+  **And the pack that screen shows IS the inventory** — the same `LootGrid`, with
+  rearranging, click-to-read, Use and the bin all working exactly as they do in
+  the loot window. The only difference is the offer on the left.
+
+  **The loot toggle moved to the pack panel's foot**, as a thin full-width bar
+  under the relics. That is its third home: at the tail of the relic row it hid
+  under the toasts, and at the head it ate the left end of the strip the relics
+  wrap into. On its own row it costs the relics no width, and the pack panel's own
+  padding was trimmed to pay for the row — the page fits a 720p canvas with about
+  five pixels to spare and the fit tests fail at +2.
+
   **Tab opens the pack.** The `backpack` action has been in `project.godot` since
   the combat build with nothing on the overworld listening for it — only the
   Collection, which reads it to close itself and is never on screen at the same

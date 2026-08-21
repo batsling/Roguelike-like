@@ -32,9 +32,15 @@ extends PanelContainer
 # The grid this cell belongs to. Typed loosely because LootGrid names LootSlot and
 # two class_names that name each other are a cyclic reference Godot resolves badly.
 var grid: Node = null
-# Where this cell sits in the 3x3, or -1 for the loose piece a drop modal is
+# Where this cell sits in the 3x3, or -1 for a loose piece a drop modal is
 # offering — it is draggable but it is not IN the pack yet, so it has no slot.
 var slot_index: int = -1
+# WHICH offer this loose piece is, when a payout hands over several at once (Mom's
+# Coin Purse pays four pills). Only meaningful while `slot_index` is -1, and it is
+# what lets the modal cross the right one off when a piece lands in the pack: with
+# four identical unidentified capsules on the table, the entry alone cannot say
+# which of them the player just dragged.
+var offer_index: int = -1
 # What is in it. Empty for a free slot.
 var entry: Dictionary = {}
 
@@ -106,7 +112,7 @@ func _get_drag_data(_at: Vector2) -> Variant:
 	if get_viewport() != null and get_viewport().gui_is_dragging():
 		set_drag_preview(_drag_preview())
 	if slot_index < 0:
-		return {"kind": "loot_take", "entry": entry.duplicate(true)}
+		return {"kind": "loot_take", "entry": entry.duplicate(true), "offer": offer_index}
 	return {"kind": "loot_move", "from": slot_index}
 
 # What follows the cursor: the art at the size the cell drew it, centred on the

@@ -50,7 +50,11 @@ var discoveries_open: bool = false
 const ACCENT := Color(0.72, 0.62, 0.86)
 # The capsules the toggle carries when the window is shut — see `_toggle_button`.
 const TOGGLE_PEEK := 3
-const TOGGLE_ART := 18
+const TOGGLE_ART := 16
+# The bar's height at the foot of the pack panel. The page is fitted to a 720p
+# canvas with a handful of pixels spare, so this is deliberately the smallest
+# height that still reads as a control rather than as a caption.
+const TOGGLE_H := 18
 # How much of the window the "Known this run" fold is allowed to take.
 const DISCOVERIES_H := 108
 
@@ -90,14 +94,19 @@ func _toggle_button() -> Control:
 
 	var btn := Button.new()
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.tooltip_text = "Scrolls and pills you're carrying (%d of %d).\nClick or Tab to %s." % [
 		held, GameState.LOOT_CAPACITY, "close" if open else "open"]
 	if full:
 		btn.tooltip_text += "\nFull — the next piece of loot has nowhere to go."
+	# Margin 1, not the theme's: this is a full-width BAR at the foot of the pack
+	# panel, and a button's usual padding would make it twice as tall as it needs to
+	# be on a page with a handful of spare pixels.
 	btn.add_theme_stylebox_override("normal",
-		UITheme.flat(tint.lerp(UITheme.BG, 0.72), 5, 5, 1, tint.lerp(UITheme.BG, 0.4)))
+		UITheme.flat(tint.lerp(UITheme.BG, 0.72), 5, 1, 1, tint.lerp(UITheme.BG, 0.4)))
 	btn.add_theme_stylebox_override("hover",
-		UITheme.flat(tint.lerp(UITheme.BG, 0.55), 5, 5, 1, tint))
+		UITheme.flat(tint.lerp(UITheme.BG, 0.55), 5, 1, 1, tint))
+	btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 5, 1, 0))
 	btn.pressed.connect(func():
 		open = not open
 		_page.refresh_loot_window())
@@ -105,30 +114,44 @@ func _toggle_button() -> Control:
 	# The label and the peek at what's in it, laid over the button rather than in
 	# it: a Button draws one string, and this needs art. IGNORE on the row so every
 	# click lands on the button underneath.
+	#
+	# EVERYTHING PACKED TO THE LEFT — the name, the count, then the peek at what is
+	# in it — and the bar's right half left empty on purpose. The notification toasts
+	# are a right-anchored column drawn over the page, and they cross this panel: a
+	# count sitting at the far end of a full-width bar is a count behind "Acquired
+	# Anchor." for most of every report, which is the exact fault that moved this
+	# control off the end of the relic row in the first place.
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 3)
+	row.add_theme_constant_override("separation", 4)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
-	row.offset_left = 6
-	row.offset_right = -6
+	row.offset_left = 7
+	row.offset_right = -7
+	row.add_child(_bar_label("%s  Loot" % ("▾" if open else "▸"), tint, false))
+	row.add_child(_bar_label("%d/%d" % [held, GameState.LOOT_CAPACITY], tint, full))
 	for entry in GameState.loot_items.slice(0, TOGGLE_PEEK):
 		if entry is Dictionary:
 			var art: TextureRect = LootSystem.art_tex(entry, TOGGLE_ART)
 			art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			row.add_child(art)
-	var label := Label.new()
-	label.text = "Loot %d/%d %s" % [held, GameState.LOOT_CAPACITY, "▾" if open else "▸"]
-	label.add_theme_font_size_override("font_size", 12)
-	label.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.5))
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(label)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(spacer)
 	btn.add_child(row)
-	# The button has no text of its own, so it needs to be told how big the row it
-	# is carrying makes it.
-	btn.custom_minimum_size = Vector2(
-		74 + TOGGLE_ART * mini(held, TOGGLE_PEEK), TOGGLE_ART + 8)
+	# The button has no text of its own, so it has to be told how tall the row it is
+	# carrying makes it. Width comes from the panel — it fills.
+	btn.custom_minimum_size = Vector2(0, TOGGLE_H)
 	return btn
+
+func _bar_label(text: String, tint: Color, loud: bool) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.6 if loud else 0.4))
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return l
 
 func _has_pills() -> bool:
 	return not GameState.loot_pills().is_empty()

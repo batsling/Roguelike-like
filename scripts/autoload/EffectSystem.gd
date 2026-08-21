@@ -200,8 +200,20 @@ func _h_gain_pill(effect: Dictionary, _ctx: Dictionary) -> void:
 func _h_gain_loot(effect: Dictionary, _ctx: Dictionary) -> void:
 	_grant_loot("loot", int(effect.get("value", 1)))
 
+# A grant of loot ASKS when there is a screen to ask on (§4.3). Mom's Coin Purse
+# is four pills at once, and Sacred Bark doubles what a grant pays: pushed straight
+# into the pack, that fills the nine-piece cap without a word and silently throws
+# away whatever does not fit — which is the one thing the cap exists to make into a
+# decision. `offer_loot` rolls the pieces and hands them to whoever is listening,
+# falling back to the direct grant when nobody is (headless runs, PlaySession2, the
+# tests), so this stays a pure state change wherever there is no UI.
+#
+# A NEGATIVE grant is a loss, not an offer — nobody is asked which pills to be
+# robbed of — so it goes straight through as it always did.
 func _grant_loot(kind: String, n: int) -> void:
 	if n > 0:
+		GameState.offer_loot(kind, n)
+	elif n < 0:
 		GameState.add_loot(kind, n)
 
 # An authored no-op, so "this choice does nothing" is a thing the sheet can say

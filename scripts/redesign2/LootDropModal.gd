@@ -1,60 +1,63 @@
 class_name LootDropModal
 extends Control
 
-# LootDropModal — "the game paid out a piece of loot, where do you want it?"
-# (§4.3).
+# LootDropModal — "the game paid out, where do you want it?" (§4.3).
 #
 # Beating a game pays one random piece of loot, a straight 50/50 between a scroll
 # and a pill. It ARRIVES THE WAY A KILL DROP DOES rather than as a toast, and the
 # reason is the nine-piece cap: a pack that is already full turns the payout into
 # a decision, and a decision needs a question.
 #
-# THE PACK IS ON THE SCREEN THAT ASKS. The modal used to show the piece alone and
-# say "Your pack is full (9/9)" in red when it wasn't going to fit — a sentence
-# about a thing the player could not see, on the one screen where what you are
-# already carrying is the whole basis of the answer. So the 3x3 comes with it, and
-# the piece is DRAGGED INTO THE SLOT it should live in: taking it and placing it
-# are one gesture, the empty slots are the room left, and a pack with nothing free
-# says so by having nowhere to drop.
+# IT ASKS ABOUT A HANDFUL, not only about one. A game's own payout is a single
+# piece, but Mom's Coin Purse is four pills at once and Sacred Bark doubles what a
+# grant pays — and a screen built around exactly one offer answered that by
+# shovelling the rest straight into the pack and silently dropping whatever did not
+# fit. So the offer is a LIST: one cell per piece, each one taken, used or binned
+# on its own terms, and the screen closes when there is nothing left on the table.
 #
-# The buttons stay. Drag is the good gesture, not the only one — "Take it" puts the
-# piece in the first free slot and "Leave it" is still the answer the cap makes
-# interesting, and a decision this final should not depend on a drag landing.
+# THE PACK IT SHOWS IS THE INVENTORY, not a picture of it. The 3x3 on the right is
+# the same LootGrid the loot window draws, with the same everything: pieces drag
+# between slots, each carries the button that spends it, clicking one opens its
+# card, and the bin under it takes anything. The only thing this screen has that
+# the loot window does not is the offer on the left.
 #
-# AND THE PACK IT SHOWS IS A LIVE ONE. Every piece on this screen can be spent
-# from it, the offered one included:
+# What that buys is the answer to a full pack. It used to leave exactly two: leave
+# the payout, or close the modal, go and spend something, and never get the payout
+# back. Now:
 #
-#   * a carried piece has its Use button, the same one the loot window draws. A
-#     full pack used to leave exactly two answers — leave the payout, or close the
-#     modal, go and spend something, and never get the payout back — and the first
-#     was the only one the screen offered. Spending one here frees the slot the
-#     offer needs, in front of the offer, which is where the decision is.
-#   * the OFFER can be used where it stands, without ever being carried
-#     (LootSystem.use_entry). A Full Health you cannot fit in the pack is not a
-#     piece of loot you should have to throw away, and "drink it now" is the answer
-#     every roguelike gives to a full bag.
-#   * anything can be dragged onto the BIN (LootTrash) and destroyed. Spending is
-#     not the same as discarding: a pack of three known-Negative pills is full of
-#     loot the run will never willingly use, and reading the Amnesia scroll to make
-#     room is a worse answer than throwing it away.
+#   * spending a carried piece frees the slot the offer needs, in front of the
+#     offer, which is where the decision is being made. The drop stays on the table
+#     while you do it — spending is not answering.
+#   * an offered piece can be used WHERE IT STANDS, without ever being carried
+#     (LootSystem.use_entry). A Full Health that will not fit is not loot anyone
+#     should have to throw away, and it costs no slot.
+#   * anything can go in the bin, offers included — which is "Leave it" said with
+#     the hands.
+#
+# WHY THIS SCREEN COMMITS ITS OWN TAKES. Every other drop reports an answer and
+# lets the page act on it. This one cannot: with several offers, and uses and bins
+# interleaved between them, the slot the player chose is only meaningful at the
+# instant they choose it — one use later every index behind it has moved. So each
+# offer is placed as it is resolved, and `answered` reports the finished list for
+# the page to log.
 #
 # What it shows is what the player is allowed to know. An unidentified piece is
-# its art, "Unidentified Pill", and nothing else — the whole point of taking one
-# is finding out — while a colour the run has already learned says what it is and
-# what it does, because by then it is a decision rather than a gamble.
+# its art, "Unidentified Pill", and nothing else — the whole point of taking one is
+# finding out — while a colour the run has already learned says what it is and what
+# it does, because by then it is a decision rather than a gamble.
 #
-# The queue behind it is the kill drops' own (Overworld2._drop_queue), so a game
-# that paid loot AND left a relic asks twice, in the order they landed, rather than
-# stacking two modals. Built in code on its own CanvasLayer, like every other 2.0
-# modal.
+# The queue behind it is the kill drops' own (Overworld2._drop_queue). Built in
+# code on its own CanvasLayer, like every other 2.0 modal.
 
-# taken = the player kept it, and `slot` is WHERE they put it — the slot they
-# dragged it into, or the end of the pack when they pressed the button. Emitted
-# exactly once. The page does the taking (it owns the pack and the log line); this
-# screen only ever reports the answer, slot included.
-signal answered(taken: bool, slot: int)
+# Emitted exactly once, when the screen closes. `taken` is the entries that ended
+# up in the pack, in the order they were placed — the page logs them and refreshes.
+signal answered(taken: Array)
 
-var _entry: Dictionary = {}
+# The pieces still on the table. Resolving one takes it out of here; empty closes
+# the screen.
+var _offers: Array = []
+# What was actually placed in the pack, for the page's log.
+var _taken: Array = []
 var _layer: CanvasLayer = null
 var _answered: bool = false
 var _grid: LootGrid = null
@@ -66,7 +69,14 @@ var _grid: LootGrid = null
 var _spendable: bool = true
 
 const ACCENT := Color(0.72, 0.62, 0.86)
-const PANEL_SIZE := Vector2(600, 0)
+# The pack column is a 3x3 of LootSlot plus the panel's own padding.
+const PACK_W := 300
+const ROW_GAP := 18
+const MARGIN := 18
+# The rich single-offer column: art at full size with room for its description.
+const SINGLE_W := 232
+# How many rows of offers stand beside the pack before the rest scroll.
+const OFFER_ROWS := 3
 # The use modal opens on TOP of this one, so it needs a layer above this layer.
 const LAYER := 122
 const USE_LAYER := 130
@@ -76,32 +86,38 @@ func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
-# Entry point: mount over `host` and ask about one rolled loot entry.
-static func open(host: Node, entry: Dictionary, spendable: bool = true) -> LootDropModal:
+# Entry point: mount over `host` and ask about one rolled entry, or about a whole
+# handful. A bare Dictionary is accepted so the single-payout call site — which is
+# nine drops in ten — reads the way it always has.
+static func open(host: Node, offer, spendable: bool = true) -> LootDropModal:
 	var modal := LootDropModal.new()
 	modal._spendable = spendable
-	modal._start(host, entry)
+	modal._start(host, offer)
 	return modal
 
-func _start(host: Node, entry: Dictionary) -> void:
-	_entry = entry.duplicate(true)
+func _start(host: Node, offer) -> void:
+	for entry in (offer if offer is Array else [offer]):
+		if entry is Dictionary and not (entry as Dictionary).is_empty():
+			_offers.append((entry as Dictionary).duplicate(true))
 	_layer = CanvasLayer.new()
 	_layer.layer = LAYER
 	_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(_layer)
 	_layer.add_child(self)
-	if _entry.is_empty():
-		_answer(false, -1)
+	if _offers.is_empty():
+		_close()
 		return
 	_build()
 
-# Redrawn in place whenever the pack changes under it — spending a carried piece
-# from this screen frees a slot, which turns "your pack is full" and a dead Take
-# button into a live one. Rebuilding the whole panel rather than patching it is the
-# same call the loot window makes for the same reason: nine cells is cheap, and a
+# Redrawn in place whenever anything on it changes — an offer resolved, a carried
+# piece spent, a slot emptied. Rebuilding the whole panel rather than patching it
+# is the call the loot window makes for the same reason: nine cells is cheap, and a
 # view kept in sync by hand is a view that eventually disagrees with the array.
 func _rebuild() -> void:
 	if _answered:
+		return
+	if _offers.is_empty():
+		_close()
 		return
 	for c in get_children():
 		remove_child(c)
@@ -109,175 +125,280 @@ func _rebuild() -> void:
 	_build()
 
 func _build() -> void:
+	var multi: bool = _offers.size() > 1
+	var offer_w: int = _offer_columns() * (LootSlot.CELL_W + 6) if multi else SINGLE_W
+	var width: float = float(offer_w + ROW_GAP + PACK_W + MARGIN * 2)
+
 	# No click-outside-to-close: leaving loot on the ground is a decision, and it
 	# should be made on a button rather than by a stray click.
-	var panel := ModalScaffold.build_panel(self, ACCENT, Callable(), PANEL_SIZE)
+	var panel := ModalScaffold.build_panel(self, ACCENT, Callable(), Vector2(width, 0))
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 18)
-	margin.add_theme_constant_override("margin_right", 18)
-	margin.add_theme_constant_override("margin_top", 16)
-	margin.add_theme_constant_override("margin_bottom", 16)
+	margin.add_theme_constant_override("margin_left", MARGIN)
+	margin.add_theme_constant_override("margin_right", MARGIN)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
 	panel.add_child(margin)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 12)
+	box.add_theme_constant_override("separation", 10)
 	margin.add_child(box)
 
-	box.add_child(_line("✦  The game paid out", UITheme.TEXT_DIM, 15))
+	box.add_child(_line("✦  The game paid out" if not multi
+		else "✦  The game paid out %d pieces" % _offers.size(), UITheme.TEXT_DIM, 15))
 
-	# The pack, as a grid whose every slot will take the offer AND whose every piece
-	# can be spent or thrown away without leaving this screen. Built FIRST because
-	# the loose piece in the offer column hangs its drag rules off it.
+	# The pack, built FIRST because every offer cell hangs its drag rules off it.
+	# EVERYTHING THE LOOT WINDOW'S GRID DOES, because it is the same grid: rearrange,
+	# inspect, spend, bin — plus taking what is on the table.
 	_grid = LootGrid.new()
 	_grid.allow_take = true
+	_grid.allow_reorder = true
 	_grid.show_use = _spendable
 	_grid.allow_discard = true
-	_grid.take_requested.connect(func(_entry_in: Dictionary, index: int):
-		_answer(true, index))
+	_grid.take_requested.connect(_take_offer)
 	_grid.use_requested.connect(_use_carried)
 	_grid.discard_requested.connect(_discard_carried)
-	# Throwing the OFFER in the bin is "Leave it" said with the hands.
-	_grid.offer_discarded.connect(func(): _answer(false, -1))
+	_grid.inspect_requested.connect(_inspect_carried)
+	_grid.moved.connect(func(from: int, to: int):
+		if GameState.move_loot(from, to):
+			_rebuild())
+	_grid.offer_discarded.connect(_leave_offer)
 	_grid.rebuild()
 
 	# The offer on the left, the pack on the right, and the drag goes between them
 	# in the direction you read.
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 18)
+	row.add_theme_constant_override("separation", ROW_GAP)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(row)
-	row.add_child(_offer_column())
+	row.add_child(_offer_column(multi))
 	row.add_child(_pack_column())
 
-	var full: bool = GameState.loot_is_full()
-	if full:
-		# The cap, said where it bites — and now beside the nine full slots that are
-		# the reason, and beside the three things that can be done about it. A player
-		# who cannot see why the button is dead reads it as a bug.
+	if GameState.loot_is_full():
+		# The cap, said where it bites — beside the nine full slots that are the
+		# reason, and beside the three things that can be done about it.
 		box.add_child(_line("Your pack is full (%d/%d) — use or bin something to make room, "
 			% [GameState.loot_items.size(), GameState.LOOT_CAPACITY]
-			+ "use this one where you stand, or leave it.", UITheme.DANGER, 12))
+			+ "use these where you stand, or leave them.", UITheme.DANGER, 12))
 
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 10)
-	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_child(buttons)
-	var leave := UITheme.quiet_button("Leave it", Vector2(150, 40))
-	leave.pressed.connect(func(): _answer(false, -1))
-	buttons.add_child(leave)
-	var take := UITheme.confirm_button("✓  Take it", Vector2(190, 40), 16)
-	take.disabled = full
-	take.tooltip_text = "No room — spend something first, or leave this." if full \
-		else "Put it in the first free slot. Or drag it into the one you want."
-	take.pressed.connect(func(): _answer(true, GameState.loot_items.size()))
-	buttons.add_child(take)
-	if not full:
-		take.grab_focus()
+	box.add_child(_buttons(multi))
 
-# The piece being offered, drawn as the same cell it is about to become and
-# draggable out of. `loose_piece` hangs it off the grid so the drag rules are the
-# grid's rather than a second copy of them.
-func _offer_column() -> Control:
+# How wide the offer grid runs. Two abreast is the shape of a four-pill payout;
+# three only once there are more than four, so a handful never becomes a wall.
+func _offer_columns() -> int:
+	return 2 if _offers.size() <= 4 else 3
+
+# ---------------------------------------------------------------------------
+# The offer side
+# ---------------------------------------------------------------------------
+
+func _offer_column(multi: bool) -> Control:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	if multi:
+		col.add_child(_line("On the table — %d" % _offers.size(), UITheme.TEXT_DIM, 12))
+		col.add_child(_offer_grid())
+		col.add_child(_line("Drag each one into a slot, or use it where it stands.",
+			UITheme.TEXT_FAINT, 10))
+		return col
+	_build_single(col)
+	return col
 
+# SEVERAL OFFERS, as the same cells they would be in the pack — art, name,
+# preference badge, hover card and the button that spends them. There is no room
+# for four descriptions side by side and no need for them: the cell IS the
+# description at this size, and the hover carries the rest.
+func _offer_grid() -> Control:
+	var grid := GridContainer.new()
+	grid.columns = _offer_columns()
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	for i in range(_offers.size()):
+		var idx: int = i
+		grid.add_child(LootGrid.loose_piece(_offers[i], not GameState.loot_is_full(),
+			_grid, true, idx,
+			(func(): _use_offer(idx)) if _spendable else Callable()))
+	# Three rows fit beside the pack without the panel outgrowing a 720p canvas,
+	# which covers everything the game can currently pay at once — Mom's Coin Purse
+	# is four and Sacred Bark doubles it to eight. Anything bigger scrolls rather
+	# than pushing the buttons off the bottom of the screen: a payout that cannot be
+	# answered is worse than one you have to scroll.
+	if _offers.size() <= _offer_columns() * OFFER_ROWS:
+		return grid
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(
+		_offer_columns() * (LootSlot.CELL_W + 6),
+		LootSlot.cell_height(_spendable) * OFFER_ROWS + 6 * (OFFER_ROWS - 1))
+	scroll.add_child(grid)
+	return scroll
+
+# ONE offer, at full size — nine payouts in ten, and the layout this screen has
+# always had: the piece, what it is, what it does, and the two ways to spend it.
+func _build_single(col: VBoxContainer) -> void:
+	var entry: Dictionary = _offers[0]
 	var holder := CenterContainer.new()
 	holder.add_child(LootGrid.loose_piece(
-		_entry, not GameState.loot_is_full(), _grid, false))
+		entry, not GameState.loot_is_full(), _grid, false, 0))
 	col.add_child(holder)
 
-	col.add_child(_line(LootSystem.display_name(_entry), ACCENT, 18))
+	col.add_child(_line(LootSystem.display_name(entry), ACCENT, 18))
 	var chips := HBoxContainer.new()
 	chips.add_theme_constant_override("separation", 6)
 	chips.alignment = BoxContainer.ALIGNMENT_CENTER
-	chips.add_child(UITheme.chip(LootSystem.kind_name(_entry), LootSystem.LOOT_COLOR))
-	var pref: String = LootSystem.preference(_entry)
-	if LootSystem.is_identified(_entry) and pref != "":
+	chips.add_child(UITheme.chip(LootSystem.kind_name(entry), LootSystem.LOOT_COLOR))
+	var pref: String = LootSystem.preference(entry)
+	if LootSystem.is_identified(entry) and pref != "":
 		chips.add_child(UITheme.chip(pref, UITheme.preference_color(pref)))
 	else:
 		chips.add_child(UITheme.chip("Unidentified", UITheme.TEXT_DIM))
 	col.add_child(chips)
 
-	var desc := _line(LootSystem.description(_entry), UITheme.TEXT, 13)
-	desc.custom_minimum_size = Vector2(210, 0)
+	var desc := _line(LootSystem.description(entry), UITheme.TEXT, 13)
+	desc.custom_minimum_size = Vector2(SINGLE_W - 16, 0)
 	col.add_child(desc)
 
-	# USE IT WHERE YOU STAND. The offer is not in the pack and does not need to be:
-	# a Full Health that will not fit is not a piece of loot you should have to
-	# throw away, and drinking it now is the answer every roguelike gives to a full
-	# bag. It costs no slot, so it is offered whether the pack is full or not —
-	# spending a piece you were not going to carry is a real choice even with eight
-	# slots free, and an unidentified one is still the gamble it always was.
+	# USE IT WHERE YOU STAND. The offer is not in the pack and does not need to be.
+	# Offered whether the pack is full or not — spending a piece you were not going
+	# to carry is a real choice even with eight slots free, and an unidentified one
+	# is still the gamble it always was.
 	if _spendable:
 		var use_now := UITheme.confirm_button(
-			"Take it now" if _is_pill() else "Read it now", Vector2(0, 30), 12)
+			"Take it now" if _is_pill(entry) else "Read it now", Vector2(0, 30), 12)
 		use_now.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		use_now.tooltip_text = "Spend it on the spot, without carrying it.\n" \
 			+ "It never enters your pack, so it costs you no room."
-		use_now.pressed.connect(_use_offer)
+		use_now.pressed.connect(func(): _use_offer(0))
 		col.add_child(use_now)
-	return col
 
-func _is_pill() -> bool:
-	return String(_entry.get("type", "")) == "pill"
+func _is_pill(entry: Dictionary) -> bool:
+	return String(entry.get("type", "")) == "pill"
 
-# The pack as it stands, with every slot a target. Built before the offer column
-# asks for it, since `loose_piece` needs the grid to ask about its own drag.
+# ---------------------------------------------------------------------------
+# The pack side
+# ---------------------------------------------------------------------------
+
 func _pack_column() -> Control:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
+	col.custom_minimum_size = Vector2(PACK_W, 0)
 	col.add_child(_line("Your pack — %d / %d" % [
 		GameState.loot_items.size(), GameState.LOOT_CAPACITY], UITheme.TEXT_DIM, 12))
 	col.add_child(_grid)
-	# The bin, under the grid it empties. Anything on this screen can go in it, the
-	# offer included — see LootTrash.
 	var bin := LootTrash.new()
 	bin.grid = _grid
 	col.add_child(bin)
-	col.add_child(_line("Drag it into a slot, or onto the bin."
-		if not GameState.loot_is_full() else "No room — make some, or use it now.",
+	col.add_child(_line("Drag into a slot, rearrange, or bin what you don't want."
+		if not GameState.loot_is_full() else "No room — make some, or use them now.",
 		UITheme.TEXT_FAINT, 10))
 	return col
 
+func _buttons(multi: bool) -> Control:
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 10)
+	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	var leave := UITheme.quiet_button(
+		"Leave the rest" if multi else "Leave it", Vector2(160, 38))
+	leave.tooltip_text = "Walk away from what is still on the table."
+	leave.pressed.connect(_close)
+	buttons.add_child(leave)
+
+	var room: int = GameState.loot_space()
+	var take := UITheme.confirm_button(
+		"✓  Take it" if not multi else "✓  Take %d" % mini(room, _offers.size()),
+		Vector2(190, 38), 16)
+	take.disabled = room <= 0
+	take.tooltip_text = "No room — use or bin something first, or use these where you stand." \
+		if room <= 0 else "Put them in the first free slots. Or drag each into the one you want."
+	take.pressed.connect(_take_all)
+	buttons.add_child(take)
+	# DEFERRED: this row is built before it is parented, and `grab_focus` on a
+	# Control that is not yet in the tree fails outright.
+	if room > 0:
+		take.grab_focus.call_deferred()
+	return buttons
+
 # ---------------------------------------------------------------------------
-# Spending and binning, without leaving the screen
+# Resolving an offer
 # ---------------------------------------------------------------------------
 
-# Spend a piece already in the pack. The use modal opens ABOVE this one (see
-# USE_LAYER — a CanvasLayer's order is global, so a modal opened from on top of
-# another has to be told to clear it), and when it closes the pack has changed:
-# a slot is free, so the rebuild is what turns a dead Take button live.
+# Dropped into a slot. `offer` says which of the pieces on the table it was — with
+# four identical unidentified capsules the entry alone cannot say.
+func _take_offer(entry: Dictionary, index: int, offer: int) -> void:
+	if _answered:
+		return
+	if not GameState.take_loot_entry_at(entry, index):
+		return
+	_taken.append(entry.duplicate(true))
+	_forget_offer(offer, entry)
+	_after_change()
+
+func _take_all() -> void:
+	if _answered:
+		return
+	while not _offers.is_empty() and not GameState.loot_is_full():
+		var entry: Dictionary = _offers[0]
+		if not GameState.take_loot_entry_at(entry, GameState.loot_items.size()):
+			break
+		_taken.append(entry.duplicate(true))
+		_offers.remove_at(0)
+	_after_change()
+
+func _leave_offer(offer: int) -> void:
+	if _answered:
+		return
+	_forget_offer(offer, {})
+	_after_change()
+
+# Spend one of the offers where it stands. It never enters the pack, so it is off
+# the table either way once the use resolves; backing out of the use modal leaves
+# it exactly where it was.
+func _use_offer(offer: int) -> void:
+	if _answered or not _spendable or offer < 0 or offer >= _offers.size():
+		return
+	var entry: Dictionary = _offers[offer]
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.layer_index = USE_LAYER
+	var spent := [false]
+	modal.used.connect(func(): spent[0] = true)
+	modal.finished.connect(func():
+		if spent[0]:
+			_forget_offer(offer, entry)
+		_after_change())
+	modal.start_entry(_page(), entry, _page())
+
+# Take an offer off the table BY INDEX, falling back to the first matching entry
+# when the index is missing — a payload from an older drag, or the single-offer
+# path, can arrive without one.
+func _forget_offer(offer: int, entry: Dictionary) -> void:
+	if offer >= 0 and offer < _offers.size():
+		_offers.remove_at(offer)
+		return
+	if entry.is_empty():
+		return
+	for i in range(_offers.size()):
+		if _offers[i] == entry:
+			_offers.remove_at(i)
+			return
+
+# ---------------------------------------------------------------------------
+# Spending and binning from the pack, without leaving the screen
+# ---------------------------------------------------------------------------
+
+# The use modal opens ABOVE this one (see USE_LAYER — a CanvasLayer's order is
+# global, so a modal opened from on top of another has to be told to clear it), and
+# when it closes the pack has changed: a slot is free, which is what turns a dead
+# Take button live.
 func _use_carried(index: int) -> void:
 	if _answered or not _spendable:
 		return
 	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
 	modal.layer_index = USE_LAYER
-	modal.finished.connect(_after_use)
+	modal.finished.connect(_after_change)
 	modal.start(_page(), index, _page())
 
-# Spend the OFFER itself, which was never in the pack and never will be. The drop
-# is answered the moment it resolves: the piece is gone, and "taken" would be a lie
-# — nothing was put in the pack, so the page has nothing to collect.
-func _use_offer() -> void:
-	if _answered or not _spendable:
-		return
-	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
-	modal.layer_index = USE_LAYER
-	var spent := [false]
-	# `finished` fires whether the piece was spent or the player backed out, and the
-	# two mean different things here: backing out leaves the offer still on the
-	# table, so the drop stays open.
-	modal.used.connect(func(): spent[0] = true)
-	modal.finished.connect(func():
-		if spent[0]:
-			_answer(false, -1)
-		else:
-			_rebuild())
-	modal.start_entry(_page(), _entry, _page())
-
 # Bin a piece already in the pack, once the player has said so twice — see
-# LootTrash.confirm. The OFFER is the exception (LootGrid.can_trash lets it through
-# unasked): binning that is "Leave it", which is already a one-click answer.
+# LootTrash.confirm. The OFFERS are the exception (LootGrid.can_trash lets them
+# through unasked): binning one of those is "Leave it", already a one-click answer.
 func _discard_carried(index: int) -> void:
 	if _answered or index < 0 or index >= GameState.loot_items.size():
 		return
@@ -285,11 +406,31 @@ func _discard_carried(index: int) -> void:
 	LootTrash.confirm(_page(), piece_name, func():
 		GameState.remove_loot_at(index)
 		GameLog.add("Threw away %s." % piece_name, UITheme.DANGER)
-		_after_use())
+		_after_change())
 
-# One place for "the pack changed under this screen": redraw it, and let the page
-# redraw the strip and window behind it.
-func _after_use() -> void:
+# Reading a carried piece, on the same terms the loot window offers it: the card
+# opens above this screen, and firing from it goes back through the same use path.
+func _inspect_carried(index: int) -> void:
+	if _answered or index < 0 or index >= GameState.loot_items.size():
+		return
+	var entry = GameState.loot_items[index]
+	if not (entry is Dictionary):
+		return
+	var layer := CanvasLayer.new()
+	layer.layer = USE_LAYER
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	_page().add_child(layer)
+	var card := LootInfoCard.new()
+	card.use_requested.connect(_use_carried)
+	card.closed.connect(func():
+		if is_instance_valid(layer):
+			layer.queue_free())
+	layer.add_child(card)
+	card.setup(entry, index, _spendable)
+
+# One place for "something on this screen changed": redraw it, let the page redraw
+# the strip and window behind it, and close if the table is empty.
+func _after_change() -> void:
 	if _answered:
 		return
 	var page: Node = _page()
@@ -297,8 +438,6 @@ func _after_use() -> void:
 		page._refresh_items()
 	_rebuild()
 
-# The node this modal was mounted over — the Overworld2 page, which is the
-# CanvasLayer's parent.
 func _page() -> Node:
 	return _layer.get_parent() if _layer != null and is_instance_valid(_layer) else null
 
@@ -313,16 +452,16 @@ func _line(text: String, color: Color, size: int) -> Label:
 
 # Public so a test can answer without a click, the way the relic drop's do.
 func take() -> void:
-	_answer(true, GameState.loot_items.size())
+	_take_all()
 
 func leave() -> void:
-	_answer(false, -1)
+	_close()
 
-func _answer(taken: bool, slot: int) -> void:
+func _close() -> void:
 	if _answered:
 		return
 	_answered = true
-	answered.emit(taken, slot)
+	answered.emit(_taken.duplicate(true))
 	if _layer != null and is_instance_valid(_layer):
 		_layer.queue_free()
 	else:

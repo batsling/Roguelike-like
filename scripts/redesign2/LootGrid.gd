@@ -28,8 +28,10 @@ extends GridContainer
 # array says it is, never a position the view is remembering on its own.
 
 # A piece was dropped into a slot from outside the pack (the drop modal's payload).
-# `index` is where it should be inserted.
-signal take_requested(entry: Dictionary, index: int)
+# `index` is where it should be inserted, and `offer` says WHICH of the offers on
+# the table it was — a payout of four identical unidentified capsules cannot be
+# told apart by its entry.
+signal take_requested(entry: Dictionary, index: int, offer: int)
 # Two carried pieces changed places.
 signal moved(from: int, to: int)
 # The Use button on a carried piece.
@@ -38,9 +40,9 @@ signal use_requested(index: int)
 signal inspect_requested(index: int)
 # A carried piece was dragged onto the bin (LootTrash).
 signal discard_requested(index: int)
-# The piece a drop modal is offering was dragged onto the bin — which is the same
-# answer as "Leave it", said with the hands.
-signal offer_discarded()
+# One of the pieces a drop modal is offering was dragged onto the bin — which is
+# the same answer as "Leave it", said with the hands.
+signal offer_discarded(offer: int)
 
 const ACCENT := Color(0.72, 0.62, 0.86)
 const COLS := 3
@@ -78,17 +80,19 @@ func rebuild() -> void:
 # offers up to be dragged in. Public because the modal builds it beside the grid
 # rather than inside it.
 static func loose_piece(entry: Dictionary, draggable: bool, host: LootGrid,
-		with_name: bool = true) -> LootSlot:
+		with_name: bool = true, offer_index: int = -1,
+		use_cb: Callable = Callable()) -> LootSlot:
 	var slot := LootSlot.new()
 	slot.grid = host
 	slot.slot_index = -1
+	slot.offer_index = offer_index
 	slot.entry = entry
 	slot.custom_minimum_size = Vector2(LootSlot.CELL_W, 0)
 	slot.add_theme_stylebox_override("panel", _filled_box(entry, true))
 	slot.mouse_default_cursor_shape = Control.CURSOR_DRAG if draggable \
 		else Control.CURSOR_ARROW
 	HoverCard.attach(slot, LootSystem.hover_card(entry))
-	slot.add_child(_cell_body(entry, Callable(), false, with_name))
+	slot.add_child(_cell_body(entry, use_cb, false, with_name))
 	return slot
 
 # ---------------------------------------------------------------------------
@@ -141,7 +145,7 @@ func trash(data: Dictionary) -> void:
 		"loot_move":
 			discard_requested.emit(int(data.get("from", -1)))
 		"loot_take":
-			offer_discarded.emit()
+			offer_discarded.emit(int(data.get("offer", -1)))
 
 func accept(slot: LootSlot, data: Dictionary) -> void:
 	match String(data.get("kind", "")):
@@ -150,7 +154,8 @@ func accept(slot: LootSlot, data: Dictionary) -> void:
 		"loot_take":
 			var entry = data.get("entry", {})
 			if entry is Dictionary and not (entry as Dictionary).is_empty():
-				take_requested.emit(entry, maxi(0, slot.slot_index))
+				take_requested.emit(entry, maxi(0, slot.slot_index),
+					int(data.get("offer", -1)))
 
 # ---------------------------------------------------------------------------
 # Building one cell

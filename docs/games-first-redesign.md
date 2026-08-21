@@ -381,11 +381,23 @@ that opens a **3×3 grid** of what is carried, each cell its art, its name, its
 **Preference** and a **Use** button, and each carrying the same hover card an item
 or an enemy gets.
 
-The toggle leads the strip rather than trailing it because it is the *only* thing
-on the page that says you are carrying loot at all while the window is shut, and
-at the tail it sat underneath the notification toasts — a right-anchored column
-drawn over the page, which hid it for most of every report. It also wears **red at
-9/9**: a full pack turns the next payout into "leave it", and the moment to know
+**The toggle is the pack panel's foot** — a full-width bar under the relics rather
+than a button beside them. It has now been in three places and the first two were
+each wrong in their own way: at the *tail* of the relic row it sat underneath the
+notification toasts (a right-anchored column drawn over the page) and was hidden
+for most of every report; at the *head* of that row it was clear of them but ate
+the left end of the strip the relics wrap into, which costs a relic tile a whole
+row the moment the pack gets long. On its own row it costs the relics no width at
+all, and being full width it is a **bar**, which is the shape a "the rest of what
+you are carrying is through here" control should have had all along. Its contents
+pack to the LEFT and its right half is deliberately empty — that end is where the
+toasts cross the panel.
+
+It is deliberately **thin** (`LootWindow.TOGGLE_H`), and the pack panel's own
+padding was trimmed to pay for the row it added: the page is fitted to a 720p
+canvas with about five pixels to spare and
+`test_the_page_still_fits_the_window_*` fails at +2, so those numbers are load
+bearing. It also wears **red at 9/9**: a full pack turns the next payout into "leave it", and the moment to know
 that is before the drop asks. **Tab** opens and shuts it — the `backpack` action
 had been sitting in `project.godot` with nothing on the overworld listening for it,
 and the loot window is both the surface a run opens most often and the only pack
@@ -444,16 +456,51 @@ array says it is rather than a position the view is remembering on its own. (Tru
 free placement would mean a sparse pack, which is a change to every index in the
 loot code and to the save; it is not worth it for a nine-cell bag.)
 
-**The drop modal shows the pack** (`LootDropModal`). It used to show the piece
-alone and say *"Your pack is full (9/9)"* in red when it wasn't going to fit — a
-sentence about a thing the player could not see, on the one screen where what you
-are already carrying is the whole basis of the answer. Now the 3×3 comes with it:
-the offer on the left, the pack on the right, and the piece is **dragged into the
-slot it should live in**, so taking it and placing it are one gesture and a pack
-with no room says so by having nowhere to drop. The buttons stay — **Take it** puts
-it in the first free slot, **Leave it** is still the answer the cap makes
-interesting — because drag is the good gesture, not the only one, and a decision
-this final should not depend on a drag landing.
+**The drop modal shows the pack — and the pack it shows IS the inventory**
+(`LootDropModal`). The 3×3 on the right is the same `LootGrid` the loot window
+draws, with the same everything: pieces drag between slots, each carries the button
+that spends it, clicking one opens its card, and the bin under it takes anything.
+The only thing this screen has that the loot window does not is the offer on the
+left. It used to show the piece alone and say *"Your pack is full (9/9)"* in red
+when it wasn't going to fit — a sentence about a thing the player could not see, on
+the one screen where what you are already carrying is the whole basis of the
+answer. Now the 3×3 comes with it, and the piece is **dragged into the slot it
+should live in**, so taking it and placing it are one gesture and a pack with no
+room says so by having nowhere to drop. The buttons stay — **Take it** puts it in
+the first free slot, **Leave it** is still the answer the cap makes interesting —
+because drag is the good gesture, not the only one, and a decision this final
+should not depend on a drag landing.
+
+**It asks about a HANDFUL, not only about one.** A game's own payout is a single
+piece, but **Mom's Coin Purse is four pills at once** and Sacred Bark doubles what
+a grant pays. A screen built around exactly one offer answered that by shovelling
+the rest straight into the pack and **silently dropping whatever did not fit** —
+which is the one thing the nine-piece cap exists to make into a decision. So the
+offer is a **list**: one cell per piece, laid out two abreast up to four and three
+abreast beyond that, each taken, used or binned on its own terms, and the screen
+closes when the table is empty. Beyond three rows it scrolls rather than pushing
+its own buttons off the bottom of the screen — a payout that cannot be answered is
+worse than one you have to scroll. **Take** takes as many as still fit and leaves
+the rest **on the table** rather than throwing them away.
+
+Which piece is which matters here: four identical unidentified capsules cannot be
+told apart by their entry, so a drag carries the **offer's index** alongside it
+(`LootSlot.offer_index`) and the screen crosses off the one the player actually
+moved.
+
+**A grant of loot asks, too** (`GameState.offer_loot`, `EffectSystem._grant_loot`).
+It rolls the pieces and hands them to whoever is listening — the page queues them
+as *one* question behind the same drop queue as everything else — and falls back to
+the direct `add_loot` when nobody is, which keeps it a pure state change on
+headless runs, in `PlaySession2` and in the tests. A **negative** grant is a loss
+rather than an offer (nobody is asked which pills to be robbed of), so it goes
+straight through as it always did.
+
+**This screen places its own takes**, which is the one place it departs from every
+other drop. With several offers on the table, and uses and bins interleaved between
+them, the slot the player chose is only meaningful at the instant they choose it —
+one use later every index behind it has moved. So each offer is committed as it is
+resolved, and `answered` reports the finished list for the page to log.
 
 **And the pack it shows is a LIVE one.** Every piece on that screen can be spent
 from it, the offered one included. A full pack used to leave exactly two answers to
