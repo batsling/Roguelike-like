@@ -135,7 +135,8 @@ func populate_play_panel() -> void:
 		var stacks: int = int(row["stacks"])
 		var srow := verify_row(
 			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.PLAYER, stacks)],
-			_status_row_tint(sd), false)
+			_status_row_tint(sd), false, null, null, 0,
+			_status_mark(sd, stacks, StatusData.PLAYER))
 		_box.add_child(srow["row"])
 		status_goal_checks.append({"check": srow["check"], "status": sd.id})
 
@@ -301,7 +302,8 @@ func _add_instead_rows(entry: Dictionary) -> void:
 		var stacks: int = int(row["stacks"])
 		var irow := verify_row("%s or instead: %s" % [
 			_status_prefix(sd, stacks), sd.alternative_text(StatusData.ENEMY, stacks)],
-			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance)
+			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance,
+			_status_mark(sd, stacks, StatusData.ENEMY))
 		_box.add_child(irow["row"])
 		instead_checks.append({"check": irow["check"], "instance": instance,
 			"status": sd.id})
@@ -322,7 +324,8 @@ func _add_bonus_rows(entry: Dictionary) -> void:
 		var stacks: int = int(row["stacks"])
 		var brow := verify_row(
 			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
-			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance)
+			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance,
+			_status_mark(sd, stacks, StatusData.ENEMY))
 		_box.add_child(brow["row"])
 		bonus_checks.append({"check": brow["check"], "instance": instance, "status": sd.id})
 
@@ -332,11 +335,42 @@ func _add_bonus_rows(entry: Dictionary) -> void:
 func _status_row_tint(status: StatusData) -> Color:
 	return UITheme.DANGER if status.is_demand(StatusData.PLAYER) else UITheme.GOLD
 
-# How a status announces itself on a checklist row: its name and stack count.
-# "Marked 3 —" carries the X the rest of the line was written against, which is
-# the number the player has to hold in their head while they play.
+# How a status announces itself on a checklist row: its SYMBOL — the same art the
+# board draws as a pip — and the stack count. "×3 —" carries the X the rest of the
+# line was written against, which is the number the player has to hold in their
+# head while they play; the art carries which status is asking, in the one form
+# the player is already reading it in everywhere else (the hero strip, an enemy's
+# pips, its card). The name is what the symbol is FOR, so spelling it out beside
+# the icon is the row saying the same thing twice, on a list that has to stay
+# glanceable.
+#
+# The name comes back when a status has no art (`_status_mark` returns no icon):
+# an unlabelled row for a status with nothing to show would be a row that never
+# says what it is.
 func _status_prefix(status: StatusData, stacks: int) -> String:
+	if status.image != null:
+		return "×%d —" % stacks
 	return "%s %d —" % [status.display_name, stacks]
+
+const STATUS_ICON_SIZE := 22
+
+# The symbol itself, as a row-leading chip — or null for a status with no art, in
+# which case `_status_prefix` has already fallen back to the name. Carries the
+# status's OWN hover card (the one the board's pips use), so the icon is not a
+# symbol the player has to have memorised: it answers what it is, at what stack,
+# and what that side does, in the same words the pip would.
+func _status_mark(status: StatusData, stacks: int, which: StringName,
+		nullified: bool = false) -> Control:
+	if status == null or status.image == null:
+		return null
+	var frame := PanelContainer.new()
+	var tint: Color = _status_row_tint(status) if which == StatusData.PLAYER else UITheme.GOLD
+	frame.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG, 4, 2, 1, tint.lerp(UITheme.BORDER, 0.35)))
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	frame.add_child(UITheme.crisp_tex(status.image, STATUS_ICON_SIZE))
+	HoverCard.attach(frame, status.hover_card(which, stacks, nullified))
+	return frame
 
 # Every per-game checklist binding, dropped together. Five parallel arrays that
 # must be cleared as one — a stale CheckBox left in any of them is a claim read
@@ -412,7 +446,7 @@ func populate_standing() -> void:
 		var stacks: int = int(row["stacks"])
 		_box.add_child(_objective_row(
 			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.PLAYER, stacks)],
-			_status_row_tint(sd)))
+			_status_row_tint(sd), null, 0, _status_mark(sd, stacks, StatusData.PLAYER)))
 
 	# Followers, tinted the way the board tints them: the ones in the front column
 	# are the goals worth clearing first, because they hit next game.
@@ -437,7 +471,8 @@ func populate_standing() -> void:
 			_box.add_child(_objective_row("%s or instead: %s" % [
 				_status_prefix(asd, astacks),
 				asd.alternative_text(StatusData.ENEMY, astacks)],
-				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst))
+				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst,
+				_status_mark(asd, astacks, StatusData.ENEMY)))
 		# …and the ones a boss is ignoring, said rather than left out (see
 		# _add_instead_rows, which draws the same line on the report step).
 		for dead in GameLoop2.nullified_alternatives_for(entry):
@@ -447,7 +482,8 @@ func populate_standing() -> void:
 			var stacks: int = int(bonus["stacks"])
 			_box.add_child(_objective_row(
 				"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
-				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst))
+				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst,
+				_status_mark(sd, stacks, StatusData.ENEMY)))
 
 	if GameLoop2.stack.is_empty() and GameState.status_objectives().is_empty():
 		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")
@@ -588,10 +624,11 @@ func _nullified_row(row: Dictionary, instance: int = 0) -> Control:
 	var stacks: int = int(row["stacks"])
 	return _objective_row("%s or instead: %s  —  nullified: a boss comes off the board on its goal alone" % [
 		_status_prefix(sd, stacks), sd.alternative_text(StatusData.ENEMY, stacks)],
-		UITheme.TEXT_FAINT, null, instance)
+		UITheme.TEXT_FAINT, null, instance,
+		_status_mark(sd, stacks, StatusData.ENEMY, true))
 
 func _objective_row(text: String, color: Color, icon: Texture2D = null,
-		instance: int = 0) -> Control:
+		instance: int = 0, mark: Control = null) -> Control:
 	var wrap := PanelContainer.new()
 	var idle: StyleBox = UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 1,
 		color.lerp(UITheme.BORDER, 0.35))
@@ -603,6 +640,8 @@ func _objective_row(text: String, color: Color, icon: Texture2D = null,
 	wrap.add_child(line)
 	if icon != null:
 		line.add_child(_boss_icon_rect(icon))
+	if mark != null:
+		line.add_child(mark)
 	var l := Label.new()
 	l.text = "•  " + text
 	l.add_theme_font_size_override("font_size", 13)
@@ -644,9 +683,12 @@ func _boss_icon_rect(icon: Texture2D) -> Control:
 # One checklist line. When `enemy` is given the row also carries a Notes button
 # on the right, for writing down how this enemy was actually beaten AT this game
 # — the note belongs to the pair, and the Atlas surfaces it on the game later.
+# `mark` is a chip the row leads with instead of a word — today the status symbol
+# (_status_mark), handed in built rather than as a texture because what it carries
+# (its frame, its hover card) is the caller's fact, not the row's.
 func verify_row(text: String, color: Color, emphasise: bool,
 		enemy: GoalEnemyData = null, character: CharacterData = null,
-		instance: int = 0) -> Dictionary:
+		instance: int = 0, mark: Control = null) -> Dictionary:
 	var wrap := PanelContainer.new()
 	var border: Color = color.lerp(UITheme.BORDER, 0.35)
 	var width: int = 2 if emphasise else 1
@@ -676,6 +718,8 @@ func verify_row(text: String, color: Color, emphasise: bool,
 	var boss_art: Texture2D = _boss_icon(enemy)
 	if boss_art != null:
 		line.add_child(_boss_icon_rect(boss_art))
+	if mark != null:
+		line.add_child(mark)
 	var cb := CheckBox.new()
 	cb.text = text
 	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
