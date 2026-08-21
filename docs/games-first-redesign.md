@@ -472,25 +472,36 @@ slot draws — rather than the bare capsule, which read as the art coming loose 
 its tile and gave the player nothing to line up against the slot they were aiming
 at.
 
-**A pill goes down whenever you want one.** Everything that spends or rearranges
-the pack is off while a game is mid-report — the gap between "played the game" and
-"said what happened" is not a moment for the inventory to move — and that rule was
-applied to *spending* as well, which was wrong for a pill and only for a pill.
-Swallowing an unknown capsule is the run's one pure gamble, and the player's
-reason for it is usually the board in front of them; being told to finish their
-paperwork first is the game refusing the one thing it wants them to risk.
+**LOOT IS SPENDABLE WHENEVER YOU WANT IT.** The mid-report lock holds the pack
+*still* — nothing dragged, taken or binned between "played the game" and "said what
+happened", because that gap is not a moment for the inventory to move — and it used
+to hold spending too. That was the wrong rule twice over. Mid-game is exactly when
+a player knows what they want out of a piece: the body walking toward them is right
+there, a Scare Monster or a Scroll of Fire is the answer to it, and an unknown
+capsule is a gamble they are taking *because* of what is on the board. Being told
+to finish their paperwork first is the run refusing the thing it wants them to
+risk. Scrolls were held back further still, by an overworld-only rule of their own
+(`GameState.can_use_scrolls`), on the reasoning that Teleportation only makes sense
+on the map.
 
-So `LootGrid.use_locked` exempts pills from the mid-report lock. Everything else
-about the lock holds: nothing is dragged, taken or binned, and a **scroll** still
-waits, because scrolls are overworld-only by their own rule (§4.1,
-`GameState.can_use_scrolls`) rather than by this one.
+**So the answer is a fizzle, not a refusal.** A Use button that will not press is a
+worse thing than an effect that lands on nothing: it teaches the player the piece
+is unusable rather than that this *moment* is wrong for it. Only one op in either
+roster genuinely needs the map — a **teleport** — and `Overworld2.loot_teleport`
+returns nothing while `Phase.PLAYING`, so the use screen says the thing it already
+knew how to say: *it fizzles, you do not move*. Every other scroll op lands
+perfectly well mid-game: `apply_status` and `apply_tile` reach a board that is
+standing right there, `spawn_enemy` and `stun_enemies` act on the stack about to
+resolve, and `forget` and `identify_scrolls` never needed a map at all.
 
-**A pill whose effect cannot land fizzles, and you still learn it.** Telepills does
-not move a run halfway through a game, so `Overworld2.loot_teleport` refuses while
-`Phase.PLAYING` and the use screen says the thing it already knew how to say — *it
-fizzles, you do not move*. The colour is learned regardless, because
-`PillSystem.take_pill` identifies **before** it applies anything (§4.3): the gamble
-paid off even where the effect did not.
+**And the piece is identified either way.** Both `ScrollSystem.read_scroll` and
+`PillSystem.take_pill` identify *before* they apply anything, so a fizzle still
+teaches you what the thing was — the gamble paid off even where the effect did not.
+That is the whole reason a fizzle is an acceptable answer here and a refusal was
+not: the player spent the piece and got the information they spent it for.
+
+`GameState.can_use_scrolls` survives under its old name and now means only what it
+always meant underneath: is there a map here to move on.
 
 **The drop modal shows the pack — and the pack it shows IS the inventory**
 (`LootDropModal`). A payout that arrives with a **report** is not a modal at all

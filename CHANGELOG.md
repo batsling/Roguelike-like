@@ -66,13 +66,31 @@ For how the project is laid out and how its systems fit together, see
   three do something wanted precisely while the board is live. A charge that cannot
   be spent when it is full is a charge permanently one game behind.
 
-  **And a pill goes down whenever you want one.** The pack is otherwise frozen
-  mid-report — nothing dragged, taken or binned — but swallowing an unknown capsule
-  is the run's one pure gamble, and the reason for it is usually the board in front
-  of you. A pill whose effect cannot land fizzles instead of being refused
-  (Telepills does not move a run halfway through a game) and the colour is learned
-  either way, because identification happens before any effect is applied. Scrolls
-  keep the lock — they are overworld-only by their own, wider rule.
+  **And loot is spendable whenever you want it.** The mid-report lock holds the
+  pack *still* — nothing dragged, taken or binned — and it used to hold spending
+  too, which was wrong twice over. Mid-game is exactly when a player knows what
+  they want out of a piece: the body walking toward them is right there, a Scare
+  Monster or a Scroll of Fire is the answer to it, and an unknown capsule is a
+  gamble taken *because* of what is on the board. Scrolls were held back further
+  still by an overworld-only rule of their own.
+
+  The answer is a **fizzle, not a refusal**. A Use button that will not press
+  teaches you the piece is unusable rather than that this moment is wrong for it.
+  Only a **teleport** genuinely needs the map, and it comes back "it fizzles — you
+  do not move"; every other scroll op lands fine mid-game, because the board is
+  standing right there. And the piece is identified either way, since both systems
+  identify before they apply anything — so the gamble still paid off. That is what
+  makes a fizzle acceptable where a refusal was not: you spent the piece and got
+  the information you spent it for.
+
+  Two things fell out of that. **A relic that pays loot when it is picked up now
+  pays it onto the table beside the card that paid it** — Mom's Coin Purse is four
+  pills, and queueing them behind a screen the player has not left yet hid the
+  payout until after the decision that earned it. And the autosave had a latent
+  crash in it: the drop queue holds either shape — one entry for a game's own
+  payout, the whole handful for a relic's grant — and `capture_view_state` cast
+  both to a Dictionary, so a save taken with a grant still queued threw. It only
+  started happening once the haul screen began autosaving on its way out.
 
 
 - **A game now ends on a screen, and the Collection has a Loot tab.**

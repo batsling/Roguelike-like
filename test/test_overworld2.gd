@@ -4981,6 +4981,55 @@ func test_the_shelfs_item_card_opens_above_the_haul_screen() -> void:
 		"and the panel goes back to the page's own layer with it")
 	_dismiss_event()
 
+# Loot granted WHILE the screen is up lands on it. A relic taken from one of its
+# own chests can pay out the instant it is picked up (Mom's Coin Purse is four
+# pills), and the table it belongs on is beside the card that paid it — queueing it
+# behind a screen nobody has left yet would hide the payout until after the
+# decision that earned it.
+func test_loot_granted_on_the_screen_lands_on_its_own_table() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	var payout = screen.payout()
+	assert_not_null(payout, "the game paid something of its own")
+	if payout == null:
+		return
+	var before: int = payout.remaining()
+	var queued: int = _ui._drop_queue.size()
+	GameState.offer_loot("loot", 2)
+	assert_eq(payout.remaining(), before + 2, "the grant is on the table already")
+	assert_eq(_ui._drop_queue.size(), queued,
+		"and nothing was queued behind the screen for later")
+	_leave_post_game()
+
+# A run saved with a payout still queued has to come back. The queue holds EITHER
+# shape — one entry for a game's own payout, a whole handful for a relic's grant —
+# and the save used to cast both to a Dictionary, which took the autosave down the
+# moment a grant was in it.
+func test_a_queued_payout_survives_a_save_in_either_shape() -> void:
+	_ui._drop_queue.clear()
+	_ui._drop_queue.append({"loot": {"type": "scroll", "id": &"scroll_of_fire"}})
+	_ui._drop_queue.append({"loot": [
+		{"type": "pill", "id": &"luck_up", "horse": false},
+		{"type": "pill", "id": &"health_up", "horse": false}]})
+	var view: Dictionary = _ui.capture_view_state()
+	var saved: Array = view.get("drops", [])
+	assert_eq(saved.size(), 2, "both queued payouts were written")
+	if saved.size() < 2:
+		return
+	assert_true(saved[0]["loot"] is Dictionary, "the single piece stays a single piece")
+	assert_true(saved[1]["loot"] is Array, "and the handful stays a handful")
+	assert_eq((saved[1]["loot"] as Array).size(), 2, "with both pills in it")
+	_ui._drop_queue.clear()
+	_ui.restore_view_state(view)
+	assert_eq(_ui._drop_queue.size(), 2, "and both come back")
+	assert_true(_ui._drop_queue[1]["loot"] is Array, "in the shape they went in")
+	_ui._drop_queue.clear()
+
 # §14's decision still holds: a shop blocks nothing and stays for the whole visit.
 # The haul screen only BORROWS the shelf for the moment of arrival — the one
 # moment it was never seen — and hands the same panel back on the way out.
@@ -5672,42 +5721,88 @@ func test_a_usable_consumable_still_waits_for_the_report() -> void:
 	assert_true(PackStrip.fires_while_reporting(usable, false),
 		"and fires on the offering like it always did")
 
-# A PILL GOES DOWN WHENEVER YOU WANT ONE. The pack is otherwise frozen mid-report
-# — nothing dragged, taken or binned — but swallowing an unknown capsule is the
-# run's one pure gamble and the board in front of the player is usually the reason
-# for it. A scroll keeps the lock: it is overworld-only by its own wider rule.
-func test_a_pill_can_be_swallowed_mid_report_but_a_scroll_cannot() -> void:
+# THE LOCK HOLDS THE PACK STILL, IT DOES NOT STOP A SPEND. Mid-report nothing is
+# dragged, taken or binned — the gap between "played the game" and "said what
+# happened" is not a moment for the inventory to move — but every piece of loot can
+# be USED, scrolls included. Mid-game is exactly when the player knows what they
+# want out of one: the body walking toward them is right there.
+func test_the_mid_report_lock_stops_moving_but_never_spending() -> void:
+	GameState.loot_items.clear()
+	GameState.add_scroll_loot(&"scroll_of_fire")
+	GameState.add_pill_loot(&"luck_up")
 	var grid := LootGrid.new()
+	grid.show_use = true
+	grid.allow_reorder = true
+	grid.allow_discard = true
 	grid.locked = true
-	assert_false(grid.use_locked({"type": "pill", "id": &"luck_up"}),
-		"a pill is spendable between 'played the game' and 'said what happened'")
-	assert_true(grid.use_locked({"type": "scroll", "id": &"scroll_of_fire"}),
-		"a scroll waits")
-	grid.locked = false
-	assert_false(grid.use_locked({"type": "scroll", "id": &"scroll_of_fire"}),
-		"and off the report step nothing is held back")
-	grid.free()
+	add_child_autofree(grid)
+	grid.rebuild()
+	assert_false(grid.can_trash({"kind": "loot_move", "from": 0, "index": 0}),
+		"the pack still cannot be binned from")
+	assert_null(grid.get_child(0)._get_drag_data(Vector2.ZERO),
+		"nor rearranged")
+	var live: int = 0
+	for slot in grid.get_children():
+		for btn in (slot as Control).find_children("*", "Button", true, false):
+			if (btn as Button).text == "Use" and not (btn as Button).disabled:
+				live += 1
+	assert_eq(live, GameState.loot_items.size(),
+		"but every carried piece can still be spent, scroll and pill alike")
 
-# …and one whose effect cannot land FIZZLES rather than being refused. Telepills
-# does not move a run halfway through a game — but the colour is learned either
-# way, because take_pill identifies before it applies anything.
-func test_a_teleport_pill_fizzles_mid_game_and_still_teaches_its_colour() -> void:
+# …and one whose effect cannot land FIZZLES rather than being refused. Neither
+# Teleportation nor Telepills moves a run halfway through a game — but the piece
+# is identified either way, because both systems identify before they apply
+# anything, so the gamble still paid off.
+func test_a_teleport_fizzles_mid_game_and_the_piece_is_still_learned() -> void:
 	PillSystem.ensure_colors()
 	PillSystem.unidentify(&"telepills")
+	ScrollSystem.unidentify(&"scroll_of_teleportation")
 	_ui.pick(0)                                  # a game is now in play
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
 	assert_eq(_ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2}), "",
 		"the run does not move mid-game — the use screen says it fizzles")
-	var out: Dictionary = PillSystem.take_pill({"type": "pill", "id": &"telepills",
+
+	var pill: Dictionary = PillSystem.take_pill({"type": "pill", "id": &"telepills",
 		"horse": false})
-	assert_true(PillSystem.is_identified(&"telepills"),
-		"and the colour is learned regardless — the gamble still paid off")
-	assert_false((out.get("requests", []) as Array).is_empty(),
+	assert_true(PillSystem.is_identified(&"telepills"), "the colour is learned")
+	assert_false((pill.get("requests", []) as Array).is_empty(),
 		"the move was asked for; it is the overworld that declines it")
+
+	var scroll: ScrollData = Data.get_scroll(&"scroll_of_teleportation")
+	assert_not_null(scroll)
+	if scroll != null:
+		var read: Dictionary = ScrollSystem.read_scroll(scroll)
+		assert_true(ScrollSystem.is_identified(&"scroll_of_teleportation"),
+			"and so is the scroll, on exactly the same terms")
+		assert_false((read.get("requests", []) as Array).is_empty(),
+			"which also asks for a move it will not get")
 	_ui.report(false)
 	_ui._end_resolve()
 	_leave_post_game()
 	_dismiss_event()
+
+# Every other scroll op DOES land mid-game, which is why the gate went: only a
+# teleport needs the map. If a new op is authored that cannot work here, it needs
+# a fizzle of its own rather than the whole pack being locked again.
+func test_only_a_teleport_among_the_scroll_ops_needs_the_map() -> void:
+	var map_only := ["teleport"]
+	var seen: Array = []
+	for s in Data.all_scrolls():
+		if not (s is ScrollData):
+			continue
+		for e in s.effect:
+			if e is Dictionary:
+				var op: String = String(e.get("op", ""))
+				if not seen.has(op):
+					seen.append(op)
+	assert_gt(seen.size(), 1, "the roster uses several ops")
+	for op in seen:
+		if map_only.has(op):
+			continue
+		assert_true(op in ["apply_status", "apply_tile", "forget", "spawn_enemy",
+			"identify_scrolls", "stun_enemies"],
+			"%s is an op this rule has been thought about — a new one needs a "
+			% op + "fizzle of its own if it cannot land mid-game")
 
 # --- the controls row ------------------------------------------------------
 

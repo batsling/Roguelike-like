@@ -677,6 +677,22 @@ func _drop_body() -> void:
 	_body.queue_free()
 	_body = null
 
+# More pieces onto the table, after the panel is already up. A relic taken from a
+# chest BESIDE this one can pay loot the instant it is picked up (Mom's Coin Purse
+# is four pills, Sacred Bark doubles a grant), and on the post-combat screen that
+# lands while the player is looking straight at the table it belongs on — so it
+# goes there rather than queueing behind a screen that has not been left yet.
+func add_offers(entries: Array) -> void:
+	if _answered:
+		return
+	var added: bool = false
+	for entry in entries:
+		if entry is Dictionary and not (entry as Dictionary).is_empty():
+			_offers.append((entry as Dictionary).duplicate(true))
+			added = true
+	if added:
+		_rebuild()
+
 # Redraw against a pack that changed under this panel — a relic taken from a chest
 # beside it granting loot, say. Public because the host owns the other sections and
 # is the only thing that knows one of them moved.

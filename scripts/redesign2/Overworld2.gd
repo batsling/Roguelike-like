@@ -666,6 +666,18 @@ func resume_run(view: Dictionary) -> void:
 # writes the run and asks the mounted overworld for the view (capture_view_state),
 # and a load hands the view back here (restore_view_state).
 
+# One queued payout's entries, whichever shape it was queued in: a bare Dictionary
+# (a game's own single piece) or an Array of them (a relic's grant). Deep-copied,
+# because both sides of a save are handing the run its own state back.
+func _loot_payload(raw) -> Variant:
+	if raw is Array:
+		var out: Array = []
+		for entry in raw:
+			if entry is Dictionary:
+				out.append((entry as Dictionary).duplicate(true))
+		return out
+	return (raw as Dictionary).duplicate(true) if raw is Dictionary else {}
+
 func capture_view_state() -> Dictionary:
 	var starts: Array = []
 	for opt in _start_options:
@@ -694,7 +706,13 @@ func capture_view_state() -> Dictionary:
 	var drops: Array = []
 	for d in _drop_queue:
 		if d.has("loot"):
-			drops.append({"loot": (d["loot"] as Dictionary).duplicate(true)})
+			# EITHER SHAPE. A game's own payout queues ONE entry (`_queue_loot_drop`)
+			# and a relic's grant queues the whole handful (`_on_loot_offered`, which
+			# is what Mom's Coin Purse pays) — LootDropModal has always taken both,
+			# and this cast only ever saw the first. It threw on the second, taking
+			# the autosave down with it, and the queue is only ever non-empty at a
+			# save now that the post-combat screen hands its own drops back.
+			drops.append({"loot": _loot_payload(d["loot"])})
 			continue
 		var ids: Array = []
 		for it in _drop_items(d):
@@ -760,7 +778,7 @@ func restore_view_state(view: Dictionary) -> void:
 	_drop_queue.clear()
 	for raw in view.get("drops", []):
 		if raw is Dictionary and (raw as Dictionary).has("loot"):
-			_drop_queue.append({"loot": (raw["loot"] as Dictionary).duplicate(true)})
+			_drop_queue.append({"loot": _loot_payload(raw["loot"])})
 			continue
 		# An older save wrote one id per chest; a current one writes the list the
 		# chest is offering. Both land as a list here.
@@ -3685,10 +3703,10 @@ func open_loot_card(index: int) -> void:
 	card.closed.connect(func(): _item_card = null)
 	add_child(card)
 	_item_card = card
-	# The same per-piece rule the pack's own Use buttons spend (LootGrid.use_locked):
-	# a pill goes down at any moment, a scroll waits for the report.
-	card.setup(entry, index, _phase != Phase.PLAYING
-		or String((entry as Dictionary).get("type", "")) == "pill")
+	# ALWAYS SPENDABLE (§4.3). The mid-report lock holds the pack still; it does
+	# not stop a piece being used, and a piece whose effect cannot land right now
+	# fizzles rather than being refused.
+	card.setup(entry, index, true)
 
 # The hover model for a carried item, kept on the page as the name the shop's
 # shelf and the drop modal already reach for. PackStrip.item_hover is the one
@@ -3776,6 +3794,14 @@ func _queue_loot_drop() -> void:
 func _on_loot_offered(entries: Array) -> void:
 	if GameLoop2.run_over or entries.is_empty():
 		return
+	# ONTO THE HAUL SCREEN when one is up. A relic taken from a chest ON that
+	# screen can pay loot the instant it is picked up, and the table it belongs on
+	# is six inches to the right of the card that paid it — queueing it behind a
+	# screen the player has not left yet would hide the payout until after the
+	# decision that earned it.
+	if _post_screen != null and is_instance_valid(_post_screen) \
+			and _post_screen.add_loot(entries):
+		return
 	_drop_queue.append({"loot": entries.duplicate(true)})
 	_pump_drops()
 
@@ -3819,13 +3845,12 @@ func _open_next_drop() -> void:
 	# over both. It asks in its own modal — a scroll is not an ItemData and the
 	# nine-piece cap is a sentence only this one has to say.
 	if drop.has("loot"):
-		# `_phase != PLAYING` is the same rule the pack strip and the loot window
-		# spend by, passed in rather than assumed: everything on that screen can be
-		# used from it, the offer included, and the one condition under which loot
-		# cannot be spent has to mean the same thing on all three surfaces. In
-		# practice it is always true here — this call is deferred precisely so the
-		# report has finished resolving before the question is asked.
-		var loot_modal := LootDropModal.open(self, drop["loot"], _phase != Phase.PLAYING)
+		# Spendable, always. There is no longer a condition under which loot cannot
+		# be used (§4.3): the mid-report lock holds the pack still, and a piece whose
+		# effect cannot land right now fizzles rather than being refused. The flag
+		# stays on the call because this screen must not assume the rule — the day
+		# something else CAN forbid a use, it comes in here.
+		var loot_modal := LootDropModal.open(self, drop["loot"], true)
 		_drop_modal = loot_modal
 		# `taken` is what ended up in the pack. THE SCREEN PLACES ITS OWN takes (§4.3):
 		# with several offers, and uses and bins interleaved between them, the slot

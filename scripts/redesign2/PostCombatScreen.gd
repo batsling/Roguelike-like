@@ -488,6 +488,30 @@ func _fill_payout() -> void:
 		_on_loot_answered(taken)
 		_refresh_exit())
 
+# Loot granted while this screen is up — a relic taken from one of its own chests
+# paying out (§4.3). It goes on the table the player is looking at rather than
+# into the page's queue, which would not be drained until they had left.
+# Returns false when there is no payout column to put it on, so the page can fall
+# back to its own queue.
+func add_loot(entries: Array) -> bool:
+	if _done or entries.is_empty():
+		return false
+	if _loot_section != null and is_instance_valid(_loot_section):
+		_loot_section.add_offers(entries)
+		_refresh_exit()
+		return true
+	if _loot_slot == null or not is_instance_valid(_loot_slot):
+		return false
+	# The column was empty — this report paid nothing of its own — so the grant
+	# builds the section that was never needed until now.
+	for c in _loot_slot.get_children():
+		_loot_slot.remove_child(c)
+		c.queue_free()
+	_loot = entries.duplicate(true)
+	_fill_payout()
+	_refresh_exit()
+	return _loot_section != null
+
 # The pack changed under one of the other sections — a chest's relic firing an
 # `offer_loot`, a use freeing a slot — so the payout redraws against it.
 func refresh_payout() -> void:
