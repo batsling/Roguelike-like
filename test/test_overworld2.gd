@@ -1166,15 +1166,26 @@ func _open_loot_grid() -> LootGrid:
 	_ui._refresh_items()
 	return _find_grid(_ui._loot_panel) as LootGrid
 
+# What is in a slot, by id — the question every one of these tests is really
+# asking. `GameState.loot_layout()` is what puts a slot back together with the
+# array index the run addresses a piece by; the two stopped being the same number
+# when the grid started allowing holes.
+func _id_in_slot(slot: int) -> StringName:
+	var index: int = GameState.loot_index_at_slot(slot)
+	if index < 0:
+		return &""
+	return StringName(GameState.loot_items[index].get("id", ""))
+
 func test_a_carried_piece_can_be_dragged_onto_another_and_they_swap() -> void:
+	GameState.loot_items.clear()
 	GameState.add_scroll_loot(&"scroll_of_fire")
 	GameState.add_pill_loot(&"luck_up")
 	var grid: LootGrid = _open_loot_grid()
 	assert_not_null(grid, "the window is a LootGrid")
 	if grid == null:
 		return
-	var first: StringName = StringName(GameState.loot_items[0]["id"])
-	var second: StringName = StringName(GameState.loot_items[1]["id"])
+	var first: StringName = _id_in_slot(0)
+	var second: StringName = _id_in_slot(1)
 	var from: LootSlot = grid.get_child(0)
 	var onto: LootSlot = grid.get_child(1)
 
@@ -1185,17 +1196,20 @@ func test_a_carried_piece_can_be_dragged_onto_another_and_they_swap() -> void:
 	assert_true(onto._can_drop_data(Vector2.ZERO, payload), "another slot takes it")
 	onto._drop_data(Vector2.ZERO, payload)
 
-	assert_eq(StringName(GameState.loot_items[0]["id"]), second,
-		"the two changed places")
-	assert_eq(StringName(GameState.loot_items[1]["id"]), first)
+	assert_eq(_id_in_slot(0), second, "the two changed places")
+	assert_eq(_id_in_slot(1), first)
 
-func test_dragging_a_piece_past_the_end_moves_it_to_the_end() -> void:
-	# The array is DENSE, so an empty slot past what is carried means "the end"
-	# rather than a hole in the middle — see GameState.move_loot.
+func test_a_piece_can_be_dragged_into_any_empty_slot() -> void:
+	# THE POINT OF THE GRID. A slot used to be a position in a dense array, so an
+	# empty one past the end meant "the end" and a piece dragged into the far corner
+	# slid back to third place. Where a piece sits is a fact about the piece now, so
+	# the corner is a place it can be — and the slot it came from is allowed to stay
+	# empty. See GameState.loot_layout.
+	GameState.loot_items.clear()
 	GameState.add_scroll_loot(&"scroll_of_fire")
 	GameState.add_pill_loot(&"luck_up")
 	var held: int = GameState.loot_items.size()
-	var moving: StringName = StringName(GameState.loot_items[0]["id"])
+	var moving: StringName = _id_in_slot(0)
 	var grid: LootGrid = _open_loot_grid()
 	if grid == null:
 		return
@@ -1204,8 +1218,74 @@ func test_dragging_a_piece_past_the_end_moves_it_to_the_end() -> void:
 	assert_true(far._can_drop_data(Vector2.ZERO, payload), "an empty slot takes it")
 	far._drop_data(Vector2.ZERO, payload)
 	assert_eq(GameState.loot_items.size(), held, "nothing was gained or lost")
-	assert_eq(StringName(GameState.loot_items[held - 1]["id"]), moving,
-		"and the piece is now last rather than sitting in a hole")
+	assert_eq(_id_in_slot(GameState.LOOT_CAPACITY - 1), moving,
+		"the piece is in the corner it was dropped in")
+	assert_eq(GameState.loot_index_at_slot(0), -1,
+		"and the slot it left stays empty — a hole in the middle is an arrangement, "
+		+ "not a bug to be tidied away")
+
+func test_an_arrangement_survives_the_grid_being_redrawn() -> void:
+	# The grid rebuilds from scratch on every change, so an arrangement the view was
+	# merely remembering would be gone by the next redraw.
+	GameState.loot_items.clear()
+	GameState.add_scroll_loot(&"scroll_of_fire")
+	GameState.add_pill_loot(&"luck_up")
+	var grid: LootGrid = _open_loot_grid()
+	if grid == null:
+		return
+	var moving: StringName = _id_in_slot(0)
+	var payload = grid.get_child(0)._get_drag_data(Vector2.ZERO)
+	grid.get_child(7)._drop_data(Vector2.ZERO, payload)
+	grid.rebuild()
+	assert_eq(_id_in_slot(7), moving, "the run remembers where it was put")
+	var cell: LootSlot = grid.get_child(7)
+	assert_true(cell.is_filled(), "and the redrawn grid draws it there")
+	assert_false((grid.get_child(0) as LootSlot).is_filled(),
+		"with the slot it left still empty")
+
+func test_a_piece_stays_where_it_was_put_when_another_is_spent() -> void:
+	# The array closes up when a piece leaves it — that is what keeps `use_loot`
+	# addressable — and the arrangement must not close up with it.
+	GameState.loot_items.clear()
+	GameState.add_scroll_loot(&"scroll_of_fire")
+	GameState.add_pill_loot(&"luck_up")
+	GameState.add_pill_loot(&"health_up")
+	var grid: LootGrid = _open_loot_grid()
+	if grid == null:
+		return
+	# Put the third piece in the far corner, then destroy the first.
+	var payload = grid.get_child(2)._get_drag_data(Vector2.ZERO)
+	grid.get_child(8)._drop_data(Vector2.ZERO, payload)
+	var parked: StringName = _id_in_slot(8)
+	GameState.remove_loot_at(GameState.loot_index_at_slot(0))
+	assert_eq(_id_in_slot(8), parked,
+		"the piece in the corner is still in the corner — the array shifted, "
+		+ "the grid did not")
+
+func test_the_whole_cell_is_what_follows_the_cursor() -> void:
+	# A drag used to be the bare capsule, which read as the art coming loose from
+	# its tile and gave the player nothing to line up against the slot they were
+	# aiming at. It is the cell now: same border, same art, same name.
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"luck_up")
+	var grid: LootGrid = _open_loot_grid()
+	if grid == null:
+		return
+	var cell: LootSlot = grid.get_child(0)
+	var preview: Control = grid.drag_preview(cell)
+	assert_not_null(preview, "a filled cell has a preview")
+	if preview == null:
+		return
+	var body: Control = preview.get_child(0)
+	assert_true(body is PanelContainer,
+		"and it is a whole cell — a panel, not a loose texture")
+	assert_eq(body.size.x, float(LootSlot.CELL_W),
+		"at the size the slot draws one, so it covers the slot it is aimed at")
+	assert_true(_text_of(preview).contains(LootSystem.display_name(GameState.loot_items[0])),
+		"carrying the piece's name with it: %s" % _text_of(preview))
+	# A real drag hands this to the viewport, which owns it from then on; built here
+	# it belongs to nobody, so this test has to be the one to take it away.
+	preview.free()
 
 func test_loot_cannot_be_rearranged_mid_report() -> void:
 	GameState.add_scroll_loot(&"scroll_of_fire")
@@ -1230,7 +1310,9 @@ func test_the_drop_modal_puts_the_piece_in_the_slot_it_was_dragged_to() -> void:
 		return
 	assert_eq(grid.get_child_count(), GameState.LOOT_CAPACITY,
 		"all nine of it, so a full pack says so by having nowhere to drop")
-	var target: LootSlot = grid.get_child(1)
+	# The MIDDLE of the grid, with nothing beside it — the slot a dense array could
+	# never have put it in.
+	var target: LootSlot = grid.get_child(4)
 	var payload := {"kind": "loot_take", "entry": offer, "offer": 0}
 	assert_true(target._can_drop_data(Vector2.ZERO, payload), "an empty slot takes the offer")
 	target._drop_data(Vector2.ZERO, payload)
@@ -1238,8 +1320,29 @@ func test_the_drop_modal_puts_the_piece_in_the_slot_it_was_dragged_to() -> void:
 	# them, the slot a piece was dropped into stops meaning anything the moment the
 	# next one moves. So the piece is in the pack already, at the slot it was given.
 	assert_eq(GameState.loot_items.size(), 2, "the piece is in the pack")
-	assert_eq(String(GameState.loot_items[1].get("type", "")), "pill",
-		"in the slot it was dragged to, not appended to the end")
+	var placed: int = GameState.loot_index_at_slot(4)
+	assert_gt(placed, -1, "in the slot it was dragged to, not shuffled up to the end")
+	if placed < 0:
+		return
+	assert_eq(String(GameState.loot_items[placed].get("type", "")), "pill")
+
+func test_an_offer_cannot_be_dropped_onto_a_piece_already_carried() -> void:
+	# "Put it here" onto an occupied slot has no answer that isn't a guess about
+	# which of the two the player meant to move. The empty slots are the targets.
+	GameState.loot_items.clear()
+	GameState.add_scroll_loot(&"scroll_of_fire")
+	var offer := {"type": "pill", "id": &"luck_up", "horse": false}
+	var modal := LootDropModal.open(_ui, offer)
+	await wait_frames(2)
+	var grid: LootGrid = _find_grid(modal) as LootGrid
+	if grid == null:
+		return
+	var payload := {"kind": "loot_take", "entry": offer, "offer": 0}
+	assert_false(grid.get_child(0)._can_drop_data(Vector2.ZERO, payload),
+		"the slot holding the scroll refuses it")
+	assert_true(grid.get_child(1)._can_drop_data(Vector2.ZERO, payload),
+		"and there is always a free one to take it while the pack has room")
+	modal.leave()
 
 func test_a_full_pack_refuses_the_drop() -> void:
 	GameState.loot_items.clear()
@@ -1274,6 +1377,123 @@ func test_the_page_logs_what_a_drop_screen_placed() -> void:
 # the modal, go and spend something, and never get the payout back. Everything on
 # that screen can be spent or binned from it now, the offered piece included.
 
+# --- Saying what the piece did (§4.3) --------------------------------------
+#
+# Taking a pill used to close the modal the instant it resolved, which put the
+# answer to "what did that do to me" in the run log on the far side of the page —
+# the one place the player was not looking, having just been looking at the pill.
+# On an unidentified capsule that IS the minigame: the reason to swallow an unknown
+# pill is to find out what it was.
+
+func test_taking_a_pill_says_what_it_did() -> void:
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"health_up")
+	GameState.set_max_hp(20, false)
+	GameState.set_hp(5)
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	modal._on_read()
+	await wait_frames(2)
+	assert_true(is_instance_valid(modal),
+		"the modal stays up rather than vanishing the moment the pill resolves")
+	if not is_instance_valid(modal):
+		return
+	var text: String = _text_of(modal)
+	assert_true(text.contains("Health"),
+		"and it says what happened to you: %s" % text)
+	assert_true(text.contains("Done"), "with one way out of it")
+	modal._finish()
+	await wait_frames(2)
+
+func test_the_outcome_screen_names_the_colour_this_use_taught_you() -> void:
+	PillSystem.unidentify(&"luck_up")
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"luck_up")
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	var before: String = _text_of(modal)
+	assert_true(before.contains("Unidentified"),
+		"it goes in a gamble: %s" % before.substr(0, 80))
+	modal._on_read()
+	await wait_frames(2)
+	if not is_instance_valid(modal):
+		return
+	var text: String = _text_of(modal)
+	assert_true(text.contains(PillSystem.display_name(
+		{"type": "pill", "id": &"luck_up", "horse": false})),
+		"and comes out named — the capsule above the line is the colour, "
+		+ "so the name under it is what the colour means: %s" % text)
+	assert_true(text.contains("know"),
+		"said as the lesson it is: %s" % text)
+	modal._finish()
+	await wait_frames(2)
+
+func test_a_teleport_says_where_it_put_you() -> void:
+	# THE PIECE THAT USED TO SAY NOTHING. A teleport is the one op on either
+	# consumable that resolves nowhere near the system that owns it — read_scroll and
+	# take_pill hand back a REQUEST and are finished — so it contributed no log line
+	# at all and Telepills came out the far end of a use reporting "Nothing happens."
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"telepills")
+	var was: StringName = GameState.current_game_id
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	modal._on_read()
+	await wait_frames(2)
+	if not is_instance_valid(modal):
+		return
+	var text: String = _text_of(modal)
+	assert_false(text.contains("Nothing happens"),
+		"the piece that moves you is not a piece that did nothing: %s" % text)
+	assert_true(text.contains("Teleported to") or text.contains("fizzles"),
+		"it says where you ended up, or why you did not move: %s" % text)
+	if GameState.current_game_id != was:
+		assert_true(text.contains("from the Amulet"),
+			"and how far out that is, which is the fact the op is about: %s" % text)
+	modal._finish()
+	await wait_frames(2)
+
+func test_the_outcome_names_the_pieces_echo_chamber_replayed() -> void:
+	# Echo Chamber's copies resolve into the SAME merged logs as the piece's own, so
+	# without naming them the outcome is four pieces' worth of effects and no account
+	# of where three of them came from.
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"luck_up")
+	GameState.add_pill_loot(&"health_up")
+	LootSystem.use_loot(0)          # something for the relic to copy
+	GameState.add_item(Data.get_item2(&"echo_chamber"))
+	if GameState.loot_echo_depth() <= 0:
+		return                       # no such relic in the catalog — nothing to assert
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	modal._on_read()
+	await wait_frames(2)
+	if not is_instance_valid(modal):
+		return
+	assert_true(_text_of(modal).contains("Echo Chamber also used"),
+		"the outcome says whose lines those are: %s" % _text_of(modal))
+	modal._finish()
+	await wait_frames(2)
+
+func test_backing_out_of_a_use_says_nothing_about_what_it_did() -> void:
+	# Cancel is not a use. The outcome screen is what a use ends on, so a piece that
+	# was never spent must not reach it.
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"luck_up")
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	var done := [false]
+	modal.finished.connect(func(): done[0] = true)
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	modal._finish()
+	await wait_frames(2)
+	assert_true(done[0], "cancelling closes it outright")
+	assert_eq(GameState.loot_items.size(), 1, "and the piece is still in the pack")
+
 func _find_use_modal() -> Node:
 	for c in _ui.get_children():
 		if c is CanvasLayer and c.layer == LootDropModal.USE_LAYER:
@@ -1305,6 +1525,8 @@ func test_a_carried_piece_can_be_spent_from_the_drop_screen() -> void:
 	assert_false(GameState.loot_is_full())
 	assert_false(modal._answered,
 		"and the drop is still on the table — spending is not answering it")
+	use_modal._finish()
+	await wait_frames(2)
 	modal.leave()
 
 func test_the_offered_piece_can_be_used_without_ever_being_carried() -> void:
@@ -1330,7 +1552,13 @@ func test_the_offered_piece_can_be_used_without_ever_being_carried() -> void:
 	await wait_frames(2)
 	assert_eq(GameState.loot_items.size(), held,
 		"it costs no slot — it never entered the pack")
-	assert_true(fired[0], "using the offer resolves the drop")
+	assert_false(fired[0],
+		"the drop waits on the screen that says what the piece did — a use that "
+		+ "closed everything the instant it resolved is what the outcome screen "
+		+ "is for")
+	use_modal._finish()
+	await wait_frames(2)
+	assert_true(fired[0], "and once that is read, using the offer resolves the drop")
 	assert_eq(taken_answer[0], [],
 		"and nothing is reported as kept: the page has nothing to collect")
 
@@ -1349,6 +1577,8 @@ func test_using_the_offer_identifies_it_like_any_other_use() -> void:
 	await wait_frames(2)
 	assert_true(PillSystem.is_identified(&"health_up"),
 		"a colour taken on the spot is a colour learned")
+	use_modal._finish()
+	await wait_frames(2)
 
 func test_binning_the_offer_is_leaving_it() -> void:
 	var modal := LootDropModal.open(_ui, {"type": "scroll", "id": &"scroll_of_fire"})
@@ -1372,8 +1602,12 @@ func test_binning_a_carried_piece_asks_before_destroying_it() -> void:
 	var grid: LootGrid = _open_loot_grid()
 	if grid == null:
 		return
-	assert_true(grid.can_trash({"kind": "loot_move", "from": 0}), "the bin takes a carried piece")
-	grid.trash({"kind": "loot_move", "from": 0})
+	# The payload the grid's own cells hand over: the SLOT it is leaving and the
+	# index of the piece, which are two different numbers now that a pack can have
+	# holes in it — and the bin destroys a piece, so it reads the index.
+	var bagged := {"kind": "loot_move", "from": 0, "index": 0}
+	assert_true(grid.can_trash(bagged), "the bin takes a carried piece")
+	grid.trash(bagged)
 	await wait_frames(2)
 	assert_eq(GameState.loot_items.size(), 2,
 		"nothing is destroyed on the drop alone — the bin is the one gesture here "
@@ -1392,7 +1626,7 @@ func test_nothing_can_be_binned_mid_report() -> void:
 	if grid == null:
 		return
 	grid.locked = true
-	assert_false(grid.can_trash({"kind": "loot_move", "from": 0}),
+	assert_false(grid.can_trash({"kind": "loot_move", "from": 0, "index": 0}),
 		"loot cannot leave the pack between 'played the game' and 'said what happened'")
 
 # --- A payout of several pieces at once (§4.3) -----------------------------

@@ -20,8 +20,15 @@ extends PanelContainer
 #
 # The two payloads it deals in:
 #
-#   {"kind": "loot_move", "from": int}      a piece already in the pack, being
-#                                           rearranged (LootGrid.allow_reorder)
+#   {"kind": "loot_move", "from": int,      a piece already in the pack, being
+#    "index": int}                          rearranged (LootGrid.allow_reorder).
+#                                           `from` is the SLOT it is leaving and
+#                                           `index` is where it sits in
+#                                           GameState.loot_items — moving is about
+#                                           slots, binning is about the piece, and
+#                                           the two stopped being the same number
+#                                           when a pack was allowed to have holes
+#                                           in it.
 #   {"kind": "loot_take", "entry": {...}}   a piece being taken INTO the pack from
 #                                           a drop modal (LootGrid.allow_take)
 #
@@ -35,6 +42,11 @@ var grid: Node = null
 # Where this cell sits in the 3x3, or -1 for a loose piece a drop modal is
 # offering — it is draggable but it is not IN the pack yet, so it has no slot.
 var slot_index: int = -1
+# Where the piece in this cell sits in `GameState.loot_items`, or -1 when the cell
+# is empty (or is a loose offer, which is in no array yet). NOT the same number as
+# `slot_index`: the array is pickup order and the grid is an arrangement, and a
+# pack with a hole in it is exactly where the two come apart.
+var loot_index: int = -1
 # WHICH offer this loose piece is, when a payout hands over several at once (Mom's
 # Coin Purse pays four pills). Only meaningful while `slot_index` is -1, and it is
 # what lets the modal cross the right one off when a piece lands in the pack: with
@@ -113,20 +125,15 @@ func _get_drag_data(_at: Vector2) -> Variant:
 		set_drag_preview(_drag_preview())
 	if slot_index < 0:
 		return {"kind": "loot_take", "entry": entry.duplicate(true), "offer": offer_index}
-	return {"kind": "loot_move", "from": slot_index}
+	return {"kind": "loot_move", "from": slot_index, "index": loot_index}
 
-# What follows the cursor: the art at the size the cell drew it, centred on the
-# pointer. A horse dose drags at ITS size (LootSystem.art_box) — the whole point of
-# the oversized capsule is that you can tell which dose you are holding, and a
-# preview that normalised it would be the one place the tell went missing.
+# What follows the cursor: THE WHOLE CELL, built by the grid — see
+# LootGrid.drag_preview for why it is the cell and not the bare capsule, and why it
+# is built there. A horse dose still drags at ITS size, because the cell it is drawn
+# in draws it that way (LootSystem.art_box): the whole point of the oversized
+# capsule is that you can tell which dose you are holding.
 func _drag_preview() -> Control:
-	var holder := Control.new()
-	var art: TextureRect = LootSystem.art_tex(entry, ART)
-	var box: float = float(LootSystem.art_box(entry, ART))
-	art.position = Vector2(-box * 0.5, -box * 0.5)
-	art.modulate = Color(1, 1, 1, 0.85)
-	holder.add_child(art)
-	return holder
+	return grid.drag_preview(self)
 
 func _can_drop_data(_at: Vector2, data: Variant) -> bool:
 	if grid == null or not (data is Dictionary):

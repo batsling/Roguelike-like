@@ -446,15 +446,31 @@ one whose entire subject is *what is this*. So: **click reads, drag moves, the
 button spends** — and the card's own Use goes back through the same `use_loot`, so
 there is one spend path and inspecting a piece can never cost you one.
 
-**What an arrangement is allowed to be.** `GameState.loot_items` is **dense**, and
-its indices are what `use_loot` and `remove_loot_at` are addressed by. So a drag
-**swaps** two pieces, or moves one to the end — there is deliberately no third case
-that leaves a hole in the middle of the array for the sake of an arrangement
-nothing reads. Every arrangement the grid offers is one the run can actually hold,
-and the grid redraws from the array afterwards, so where a piece lands is where the
-array says it is rather than a position the view is remembering on its own. (True
-free placement would mean a sparse pack, which is a change to every index in the
-loot code and to the save; it is not worth it for a nine-cell bag.)
+**What an arrangement is allowed to be: any of them.** A piece goes wherever it is
+dropped — onto another piece, which **swaps** the two, or onto **any empty slot**,
+which moves it there and leaves the slot it came from empty. A pack with a hole in
+the middle of it is an arrangement somebody wanted, and a grid that quietly closed
+the hole up was refusing to be tidied.
+
+This used to be the one thing the grid would not do, because a slot *was* an index:
+`GameState.loot_items` is dense and its indices are what `use_loot` and
+`remove_loot_at` are addressed by, so an arrangement had to be one a dense array
+could hold and a piece dragged into the far corner slid back to third place. The
+array is still dense — **it is pickup order**, which is what `loot_scrolls()`, the
+kind-blind drops and the toggle's peek all read — and the **slot rides on the entry
+instead**, as `pack_slot`. `GameState.loot_layout()` is the one place the two are
+put back together: slot → index, or −1 for a free slot. So nothing in the loot code
+had to learn about holes, the save carries the arrangement for free (it is a key on
+an entry that was already being serialized), and a piece with no slot of its own —
+anything `add_loot` grants, anything from an older save — takes the lowest free one
+in pickup order, which is exactly what the dense array used to do.
+
+The grid redraws from that layout afterwards, so where a piece lands is where the
+*run* says it is rather than a position the view is remembering on its own. And
+what follows the cursor is **the whole cell** — the same border, art and name the
+slot draws — rather than the bare capsule, which read as the art coming loose from
+its tile and gave the player nothing to line up against the slot they were aiming
+at.
 
 **The drop modal shows the pack — and the pack it shows IS the inventory**
 (`LootDropModal`). The 3×3 on the right is the same `LootGrid` the loot window
@@ -523,6 +539,56 @@ payout back — and only the first was on offer. So:
 The use modal opens on a **layer above** the drop modal (`USE_LAYER`) — a
 `CanvasLayer`'s order is global, so a modal opened from on top of another has to be
 told to clear it.
+
+**A use ends by saying what it did** (`LootUseModal._show_outcome`). Taking a pill
+used to close the modal the instant it resolved, which put the answer to *what did
+that do to me* into the run log on the far side of the page — the one place the
+player was not looking, having just been looking at the pill. On an **unidentified**
+capsule that is the whole minigame: the reason to swallow an unknown pill is to find
+out what it was, and finding out was happening off-screen.
+
+So the piece gets one more screen, the same furniture as the intro said in the past
+tense: the art, the name it turned out to have, its Preference now that there is one
+to show, **what it turned out to be** when this use is what identified it (the
+capsule is right there above the line, so the colour is named without the run ever
+having to spell a colour out — see *Known this run*), **what it did** as the lines
+the effect itself reported (the same ones the log gets, so the two cannot say
+different things), and **where your Health landed** when it moved — `You lose 4
+Health` is the size of the hit, and the number that decides what to do next is the
+one left afterwards.
+
+The **pickers come first and the summary last**: a request is part of what the piece
+did, so a Scroll of Identify has nothing to report until you have chosen and a
+Telepill has already moved you by the time it does. **Cancel is not a use** and
+never reaches this screen. On the drop modal, a piece used from that screen now
+resolves the drop when the outcome is dismissed rather than the instant it fires.
+
+**Every piece has to have something to say, and three of them didn't.** The screen
+can only report what it is handed, and `read_scroll` / `take_pill` return their
+logs *before* a request has been fulfilled — so a scroll whose whole effect is a
+request contributed no line at all. Three pieces came out of a use reporting
+*"Nothing happens"*:
+
+- **Teleportation and Telepills.** A teleport is the one op on either consumable
+  that resolves nowhere near the system that owns it, so `Overworld2.loot_teleport`
+  **returns** the sentence it logs, and it says the distance as well as the
+  destination — *`spread` keeps you about where you were* and *`amulet` is the only
+  move in the game that can drop you on the doorstep*, and a landing reported as a
+  game's name alone is the half that doesn't say which happened.
+- **Identify** and **Scare Monster**. `identify_scrolls_chosen` and
+  `stun_enemies_chosen` return their line too, and both **name** what they touched
+  — a scroll whose entire subject is *what is this* cannot answer with a count.
+  Their `random` modes were silent for the same reason and now say the same thing.
+
+`stun_worth()` — what a Stun costs its target at the run's current pace (§7.4) —
+moved onto `ScrollSystem` so the screen that ASKS which enemy to stun and the one
+that reports the answer quote one sentence rather than two.
+
+**Echo Chamber's copies are named on the outcome, too.** The relic's replays merge
+into the same `logs` as the piece's own, so a run holding it reads four pieces'
+worth of effects — and, until the outcome screen said so, no account of where three
+of them came from. The names are snapshotted *before* the use, since the use joins
+that same memory as it resolves.
 
 **The bin** (`LootTrash`). Spending a piece is not the same as being rid of one: a
 pack holding three known-Negative pills is full of loot the run will never

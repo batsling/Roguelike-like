@@ -357,12 +357,12 @@ func _buttons(multi: bool) -> Control:
 # Resolving an offer
 # ---------------------------------------------------------------------------
 
-# Dropped into a slot. `offer` says which of the pieces on the table it was — with
-# four identical unidentified capsules the entry alone cannot say.
-func _take_offer(entry: Dictionary, index: int, offer: int) -> void:
+# Dropped into a slot of the 3x3. `offer` says which of the pieces on the table it
+# was — with four identical unidentified capsules the entry alone cannot say.
+func _take_offer(entry: Dictionary, slot: int, offer: int) -> void:
 	if _answered:
 		return
-	if not GameState.take_loot_entry_at(entry, index):
+	if not GameState.take_loot_entry_at(entry, slot):
 		return
 	_taken.append(entry.duplicate(true))
 	_forget_offer(offer, entry)
@@ -373,7 +373,9 @@ func _take_all() -> void:
 		return
 	while not _offers.is_empty() and not GameState.loot_is_full():
 		var entry: Dictionary = _offers[0]
-		if not GameState.take_loot_entry_at(entry, GameState.loot_items.size()):
+		# The FIRST FREE SLOT, which is what the button's own tooltip promises — the
+		# per-piece answer is the drag, and this is the one for "just take them".
+		if not GameState.take_loot_entry(entry):
 			break
 		_taken.append(entry.duplicate(true))
 		_offers.remove_at(0)

@@ -228,8 +228,9 @@ func _panel(reporting: bool) -> Control:
 
 	# The one line of instruction the grid needs, and only while there is something
 	# to rearrange — a single piece has nowhere to go.
-	if GameState.loot_items.size() > 1 and not reporting:
-		box.add_child(_note("Drag a piece to another slot to rearrange the pack."))
+	if not GameState.loot_items.is_empty() and not reporting:
+		box.add_child(_note("Drag a piece into any slot to rearrange the pack — "
+			+ "onto another piece to swap the two, onto an empty one to move it there."))
 	if reporting:
 		box.add_child(_note("Finish reporting this game before spending any."))
 

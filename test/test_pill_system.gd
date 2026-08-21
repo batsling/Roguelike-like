@@ -366,6 +366,46 @@ func test_the_horse_48_hour_energy_fills_the_relics_it_picks() -> void:
 	_take(&"48_hour_energy", true)
 	assert_eq(d6.current_charge, d6.max_charge())
 
+# --- What a dose says it did (§4.3) ----------------------------------------
+#
+# These lines used to go only to the run log, where a stray space is nobody's
+# problem. They are the body of the outcome screen now (LootUseModal._show_outcome),
+# which is the sentence the player reads to find out what an unknown capsule was.
+
+func test_a_stat_dose_signs_the_number_not_the_verb() -> void:
+	var out: Dictionary = PillSystem.take_pill(
+		{"type": "pill", "id": &"luck_up", "horse": false}, {"rng": _rng()})
+	assert_true(str(out["logs"]).contains("gain +1 Luck"),
+		"the sign belongs to the number: %s" % str(out["logs"]))
+	assert_false(str(out["logs"]).contains("+ 1"),
+		"not to the verb, with the number a word away from it")
+
+func test_a_negative_stat_dose_reads_the_same_way_round() -> void:
+	var out: Dictionary = PillSystem.take_pill(
+		{"type": "pill", "id": &"luck_down", "horse": false}, {"rng": _rng()})
+	assert_true(str(out["logs"]).contains("lose 1 Luck"),
+		"both directions of one verb, phrased alike: %s" % str(out["logs"]))
+
+func test_every_dose_of_every_pill_says_something_about_itself() -> void:
+	# THE SWEEP. "All loot tells the player what it did" is a claim about twenty
+	# doses, and a pill that resolves in silence shows the outcome screen a blank.
+	# Both doses, because the horse side is authored separately and can grow an op
+	# the normal one never had.
+	for pill in Data.all_pills():
+		for horse in [false, true]:
+			GameState.reset_run()
+			GameState.set_max_hp(30, true)
+			GameState.add_item(Data.get_item2(&"d6"))   # something a charge can land on
+			var out: Dictionary = PillSystem.take_pill(
+				{"type": "pill", "id": pill.id, "horse": horse}, {"rng": _rng()})
+			var said: bool = not (out["logs"] as Array).is_empty()
+			# A teleport is the one op that resolves in the overworld, so its line
+			# comes back from the fulfilment rather than from here — the request IS
+			# what it has to say for itself at this layer.
+			var asked: bool = not (out["requests"] as Array).is_empty()
+			assert_true(said or asked, "%s%s reports what it did" % [
+				"horse " if horse else "", pill.display_name])
+
 # --- Bonus Shields (§4.3) --------------------------------------------------
 
 func test_a_lost_run_spends_the_games_own_tries_before_the_bonus_pool() -> void:
