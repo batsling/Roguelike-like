@@ -106,15 +106,21 @@ static func _catalog() -> Array:
 	return out
 
 # The hover body for one entry, asked of the content rather than assembled here.
-# A status is described from the side the READER is on: an item's text is about
-# what the item does to somebody, and the player-side reading is the one they can
-# act on. Stacks are quoted at 1, since a card describes the mechanic rather than
-# a particular application of it.
+# Stacks are quoted at 1, since a card describes the mechanic rather than a
+# particular application of it.
+#
+# A status is described from BOTH SIDES. It used to quote the player's, on the
+# reasoning that the player-side reading is the one they can act on — but a status
+# is authored independently per side and the two are routinely opposites (§13.1).
+# Staff of Flame reads "Apply +3 Burn to a target enemy", and the strip under it
+# was explaining the obligation Burn puts on YOU: not a short version of the
+# answer, the wrong half of it. `tooltip_both` prints one side when the other is
+# inert and labels them when both do something.
 static func describe(entry: Dictionary) -> String:
 	match StringName(entry.get("kind", &"")):
 		&"status":
 			var status: StatusData = Data.get_status(entry["id"])
-			return status.tooltip_for(StatusData.PLAYER, 1) if status != null else ""
+			return status.tooltip_both(1) if status != null else ""
 		&"tile":
 			var tile: TileEffectData = Data.get_tile(entry["id"])
 			return tile.tooltip_for() if tile != null else ""

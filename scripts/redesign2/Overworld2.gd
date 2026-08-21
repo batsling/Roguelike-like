@@ -1366,6 +1366,15 @@ func read_scroll(idx: int) -> void:
 # the one piece of loot that moves you was also the one that said nothing about
 # what it just did (see LootUseModal._do_teleport). "" means it never fired.
 func loot_teleport(req: Dictionary) -> String:
+	# NOT WHILE A GAME IS IN PLAY. A pill can be swallowed at any moment now,
+	# the report step included (§4.3) — but moving the run to another game while
+	# the player is halfway through this one is not a thing the loop can mean, and
+	# the honest answer is the one the use screen already knows how to say: it
+	# fizzles. The colour was learned the moment the capsule was opened
+	# (PillSystem.take_pill identifies before it applies anything), so the gamble
+	# still paid off even though the effect did not land.
+	if _phase == Phase.PLAYING:
+		return ""
 	var amulet: StringName = GameState.amulet_game_id
 	if amulet == &"":
 		return ""
@@ -2159,6 +2168,15 @@ func _redeem_pending_chests() -> void:
 		return
 	if GameState.pending_chests <= 0:
 		return
+	# ON THE HAUL SCREEN, if one is up. A chest banked during a report — a level-up
+	# reward, Unstable Genome firing on the beat, a status paying out — used to open
+	# a RewardScreen as an ordinary child of this page, which is BELOW the
+	# post-combat screen's CanvasLayer: the player saw nothing, and then found a
+	# reward screen waiting the moment they left. It belongs with the rest of the
+	# haul anyway, so it goes there as one more chest section.
+	if _post_screen != null and is_instance_valid(_post_screen):
+		_hand_chests_to_post_game()
+		return
 	# EVERY banked chest at once, not one screen each. Two chests used to open two
 	# screens back to back, which reads as one screen flickering — you cannot weigh
 	# the second chest's offer against what you just took, and nothing marks it as
@@ -2179,6 +2197,35 @@ func _redeem_pending_chests() -> void:
 		_redeem_pending_chests())
 	add_child(screen)
 	screen.setup_chests(sizes)
+
+# Drain every banked chest onto the post-combat screen. Rolled through the same
+# `_roll_chest` a defeated body's drop uses — which is the same pool and the same
+# rarity ladder the RewardScreen rolls on (`Data.roll_item_rarity` /
+# `reward_item2_pool_of`), so a chest is the same chest whichever surface asks
+# about it.
+#
+# `take_pending_chest` hands back the CHOICE COUNT, where 0 means "the reward
+# screen's own default" — BASE_ITEM_CHOICES plus Discovery — so that reading is
+# spelled out here rather than collapsed to one card. A chest that offered one
+# item where the RewardScreen would have offered three is a silent nerf to every
+# level-up in the run.
+func _hand_chests_to_post_game() -> void:
+	var discovery: int = maxi(0, Stats.get_value(&"discovery"))
+	while GameState.pending_chests > 0:
+		var choices: int = GameState.take_pending_chest()
+		if choices < 0:
+			break
+		var count: int = choices if choices > 0 else RewardScreen.BASE_ITEM_CHOICES + discovery
+		var offer: Array = _roll_chest(false, maxi(1, count))
+		if offer.is_empty():
+			continue
+		if _post_screen != null and is_instance_valid(_post_screen):
+			_post_screen.add_chest(offer)
+		else:
+			# The screen went while we were draining: fall back to the queue the
+			# page's own modal drains, rather than losing the chest.
+			_drop_queue.append({"items": offer})
+			_pump_drops()
 
 # --- overworld item actions (routed here by EffectSystem, §8) --------------
 
@@ -3604,7 +3651,11 @@ func open_item_card(item: ItemData) -> void:
 		return
 	_close_item_card()
 	var active: bool = item.kind == ItemData.ItemKind.USABLE or item.is_charged()
-	var usable: bool = active and GameState.can_fire_item(item) and _phase != Phase.PLAYING
+	# The same rule the pack strip's own Use button spends, asked in one place: a
+	# CHARGED active fires whenever its bar is full, the report step included, and
+	# a USABLE consumable still waits for the game to be reported.
+	var usable: bool = active and GameState.can_fire_item(item) \
+		and PackStrip.fires_while_reporting(item, _phase == Phase.PLAYING)
 	var card := ItemInfoCard.new()
 	card.use_requested.connect(use_item)
 	card.closed.connect(func(): _item_card = null)
@@ -3634,7 +3685,10 @@ func open_loot_card(index: int) -> void:
 	card.closed.connect(func(): _item_card = null)
 	add_child(card)
 	_item_card = card
-	card.setup(entry, index, _phase != Phase.PLAYING)
+	# The same per-piece rule the pack's own Use buttons spend (LootGrid.use_locked):
+	# a pill goes down at any moment, a scroll waits for the report.
+	card.setup(entry, index, _phase != Phase.PLAYING
+		or String((entry as Dictionary).get("type", "")) == "pill")
 
 # The hover model for a carried item, kept on the page as the name the shop's
 # shelf and the drop modal already reach for. PackStrip.item_hover is the one

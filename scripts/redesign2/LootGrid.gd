@@ -108,6 +108,24 @@ static func loose_piece(entry: Dictionary, draggable: bool, host: LootGrid,
 # live in one place rather than in nine cells.
 # ---------------------------------------------------------------------------
 
+# Whether the mid-report lock stops THIS piece being spent. The lock still holds
+# the pack still — nothing is rearranged, taken or binned between "played the
+# game" and "said what happened" — but a PILL goes down whenever you want one
+# (§4.3). Swallowing an unknown capsule is the game's one pure gamble, and the
+# player's reason for taking it is usually the board in front of them: the run
+# should not be telling them to finish their paperwork first.
+#
+# A pill whose effect cannot land in that gap fizzles rather than being refused —
+# Telepills does not move a run mid-game (Overworld2.loot_teleport) — and the
+# colour is learned either way, because identification happens before any op runs.
+#
+# Scrolls keep the lock. They are an overworld-only consumable by their own rule
+# (§4.1, GameState.can_use_scrolls), which is a wider gate than this one.
+func use_locked(entry: Dictionary) -> bool:
+	if not locked:
+		return false
+	return String(entry.get("type", "")) != "pill"
+
 func can_drag_from(slot: LootSlot) -> bool:
 	if locked:
 		return false
@@ -223,7 +241,7 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	var use_cb: Callable = Callable()
 	if show_use:
 		use_cb = func(): use_requested.emit(slot.loot_index)
-	slot.add_child(_cell_body(entry, use_cb, locked))
+	slot.add_child(_cell_body(entry, use_cb, use_locked(entry)))
 	# CLICK READS, DRAG MOVES, THE BUTTON SPENDS. A relic in the pack opens its card
 	# on a click and spends only from its own button, and loot answered a click with
 	# nothing at all — the same object class with two different gestures. Now it
@@ -305,7 +323,7 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	if use_cb.is_valid():
 		var use := UITheme.confirm_button("Use", Vector2(0, LootSlot.USE_H), 10)
 		use.disabled = locked_now
-		use.tooltip_text = "Finish reporting this game first." if locked_now \
+		use.tooltip_text = "Scrolls wait until this game is reported." if locked_now \
 			else "Spend it — this is how an unknown one gets identified."
 		use.pressed.connect(use_cb)
 		col.add_child(use)

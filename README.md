@@ -476,8 +476,15 @@ node and its script.
     animation**, which is the one place the run's consequences are ever shown. The
     haul is one screen now, and it opens when the board has stopped moving: the
     verdict, the fight in numbers (out of `beat_game`'s result, which used to be
-    thrown away), the relic chests down the left and the loot payout down the
-    right **at the same time**, the hub's shelf, and the boss warning as a banner.
+    thrown away), **every** relic chest down the left and the loot payout down the
+    right at once, the hub's shelf, and the boss warning as a banner. All the
+    chests together is the point: a queue hides what the *other* relics are, and
+    there is often an order worth taking them in. A chest banked while the screen
+    is up lands on it too (`add_chest`) rather than opening a `RewardScreen`
+    underneath it, and a section that raises its own card — the shelf's — is given
+    a layer that clears the screen. **The payout does not close on its last piece
+    and has no Take/Leave buttons**: the piece has just gone into the pack, and the
+    pack is the reason to still be looking.
     **One button out**, which is the **event** when the node owes one — clicking it
     is what opens the event — and "travel on" when it doesn't; it counts what it is
     about to bin, because a Legendary left on the ground should be a decision and

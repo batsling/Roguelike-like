@@ -263,7 +263,12 @@ func objective_text(which: StringName, stacks: int) -> String:
 #
 # `stacks` rides in the SUBTITLE rather than the title, because the name is what
 # is being recognised and the count is what is being read after it.
-func hover_card(which: StringName, stacks: int) -> Dictionary:
+# `nullified` marks a side whose effect the BODY cancels — today that is only an
+# `instead` on a boss (§7.1), whose goal is the only way it comes off the board.
+# Passed in rather than worked out here because a status knows nothing about who
+# is wearing it, and it changes the WORDS rather than any of the facts: the pip is
+# real, the stacks are real, and what is void is what it would otherwise buy.
+func hover_card(which: StringName, stacks: int, nullified: bool = false) -> Dictionary:
 	var mode: StringName = mode_for(which)
 	var good: bool = is_bonus(which) or is_goal(which) or is_alternative(which)
 	var sub: String = "%s stack%s" % [stacks, "" if stacks == 1 else "s"]
@@ -291,10 +296,14 @@ func hover_card(which: StringName, stacks: int) -> Dictionary:
 			lines.append(("Every enemy's goal also needs: %s" if which == PLAYER
 				else "This enemy's goal also needs: %s") % clause_text(which, stacks))
 		&"instead":
-			lines.append(("Every enemy's goal can be met instead by: %s"
-				if which == PLAYER
-				else "This enemy's goal can be met instead by: %s")
-				% alternative_text(which, stacks))
+			if nullified:
+				lines.append("A boss comes off the board on its goal alone — "
+					+ "\"%s\" does nothing here." % alternative_text(which, stacks))
+			else:
+				lines.append(("Every enemy's goal can be met instead by: %s"
+					if which == PLAYER
+					else "This enemy's goal can be met instead by: %s")
+					% alternative_text(which, stacks))
 		_:
 			lines.append("Does nothing on this side.")
 	if combat_applies(which):
@@ -305,8 +314,10 @@ func hover_card(which: StringName, stacks: int) -> Dictionary:
 		"subtitle": sub,
 		# An `instead` reads GOLD like the payouts do: it is the one debuff clause
 		# the player is glad to see, since it is a way out of a goal rather than
-		# another string attached to one.
-		"accent": Color(1.0, 0.82, 0.30) if good else Color(0.90, 0.26, 0.22),
+		# another string attached to one. Not when it is nullified, though — the
+		# colour is the fastest thing on the card and it must not promise a way out
+		# that this body does not offer.
+		"accent": Color(1.0, 0.82, 0.30) if good and not nullified else Color(0.90, 0.26, 0.22),
 		"art": image,
 		"lines": lines,
 		"note": decrease_note(which),
@@ -325,7 +336,37 @@ func decrease_note(which: StringName) -> String:
 # that draws a status pip asks for this — the hero strip, the enemy strip, the
 # enemy card, the HUD chip — so a status can never say one thing in one place and
 # something else in another.
-func tooltip_for(which: StringName, stacks: int) -> String:
+# BOTH SIDES, for a reader who is not on either of them — an item's keyword strip,
+# a catalogue entry. A status is authored independently per side (§13.1) and the
+# two are routinely opposites: Burn on YOU is an obligation that bites for 3, and
+# Burn on an ENEMY is a second way to clear its goal. A card that quotes one side
+# is therefore not a short version of the truth, it is the wrong half of it —
+# Staff of Flame says "Apply +3 Burn to a target enemy" and the strip under it was
+# explaining what Burn does to the player.
+#
+# One side only when the other is inert, so nothing grows a heading it doesn't
+# need; both, labelled, whenever both do something.
+func tooltip_both(stacks: int = 1) -> String:
+	var mine: bool = has_side(PLAYER)
+	var theirs: bool = has_side(ENEMY)
+	if mine and not theirs:
+		return tooltip_for(PLAYER, stacks)
+	if theirs and not mine:
+		return tooltip_for(ENEMY, stacks)
+	if not mine and not theirs:
+		return tooltip_for(PLAYER, stacks)
+	# The ENEMY side first: everything that applies a status names a target, and
+	# the overwhelming majority of them are pointed at something else.
+	return "On an enemy — %s\n\nOn you — %s" % [
+		_side_body(ENEMY, stacks), _side_body(PLAYER, stacks)]
+
+# `tooltip_for` minus the name-and-stacks header, so the two sides can share one.
+func _side_body(which: StringName, stacks: int) -> String:
+	var full: String = tooltip_for(which, stacks)
+	var cut: int = full.find("\n")
+	return full.substr(cut + 1) if cut >= 0 else full
+
+func tooltip_for(which: StringName, stacks: int, nullified: bool = false) -> String:
 	var head: String = "%s %d" % [display_name, stacks]
 	if is_capped():
 		head += "/%d" % max_stacks
@@ -343,10 +384,14 @@ func tooltip_for(which: StringName, stacks: int) -> String:
 		&"demand":
 			body = "Every game — %s" % objective_text(which, stacks)
 		&"instead":
-			body = ("Every enemy's goal can be met instead by: %s"
-				if which == PLAYER
-				else "This enemy's goal can be met instead by: %s") \
-				% alternative_text(which, stacks)
+			if nullified:
+				body = "Nullified — a boss comes off the board on its goal alone, " \
+					+ "so \"%s\" does nothing here." % alternative_text(which, stacks)
+			else:
+				body = ("Every enemy's goal can be met instead by: %s"
+					if which == PLAYER
+					else "This enemy's goal can be met instead by: %s") \
+					% alternative_text(which, stacks)
 		_:
 			body = "Does nothing on this side."
 	var shed: String = decrease_note(which)

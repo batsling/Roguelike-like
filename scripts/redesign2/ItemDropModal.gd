@@ -62,6 +62,11 @@ const PANEL_SIZE := Vector2(460, 0)
 # a small window. The single-item layout keeps PANEL_SIZE exactly.
 const CARD_W := 168
 const MULTI_MAX_W := 900
+# The compact card the post-combat screen's chests wear: wider than the modal's,
+# because the art moved beside the words and the words now have the whole card to
+# wrap in rather than a column under a picture.
+const COMPACT_CARD_W := 260
+const COMPACT_ART := 40
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -116,56 +121,134 @@ static func embed(host: Node, slot: Container, offer) -> ItemDropModal:
 
 func _build() -> void:
 	var multi: bool = _items.size() > 1
+	var compact: bool = _slot != null
+	# A ONE-ITEM CHEST ON SOMEBODY ELSE'S PAGE lays out sideways: the card on the
+	# left, its two answers stacked on the right. Everything else — the modal, and
+	# any chest offering a choice — keeps the column it has always had.
+	var sideways: bool = compact and not multi
 	var tint: Color = UITheme.item_color(_selected)
 	var box: VBoxContainer = _build_shell(multi, tint)
 
-	var head := Label.new()
-	head.text = "✦  It dropped something" if not multi \
-		else "✦  It dropped a chest — take one"
-	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	head.add_theme_font_size_override("font_size", 15)
-	head.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	box.add_child(head)
+	# The heading goes when a chest is one item on somebody else's page. Three
+	# single-relic chests down a column, each announcing "it dropped something", is
+	# the same sentence three times over the three pictures that already say it —
+	# and the host writes it once above them all. A chest of MORE than one still
+	# says so, because the count is what the player is deciding against.
+	if not sideways:
+		var head := Label.new()
+		head.text = _heading()
+		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		head.add_theme_font_size_override("font_size", 12 if compact else 15)
+		head.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		box.add_child(head)
+
+	# Where the cards go and where the answers go. Stacked, a compact chest is
+	# ~135px, and three of those is more than the post-combat screen's column holds
+	# — which puts the third relic behind a scrollbar on the one screen built so
+	# every relic can be weighed against the others. Sideways it is half that.
+	var beside: HBoxContainer = null
+	if sideways:
+		beside = HBoxContainer.new()
+		beside.add_theme_constant_override("separation", 10)
+		box.add_child(beside)
 
 	_cards.clear()
-	if multi:
-		# A FLOW, not a row. As a modal the panel is widened to fit the whole chest
-		# (see _build_shell) so it lays out as the single row it always was;
-		# embedded, the column decides the width and a Huge chest wraps instead of
-		# running off the side of somebody else's screen.
-		var shelf := HFlowContainer.new()
-		shelf.add_theme_constant_override("h_separation", 10)
-		shelf.add_theme_constant_override("v_separation", 10)
-		shelf.alignment = FlowContainer.ALIGNMENT_CENTER
-		box.add_child(shelf)
+	# EMBEDDED, EVERY CHEST IS A SHELF — a one-item chest included. As a modal a
+	# single relic is drawn at full size, which is right when it is the only thing
+	# on screen; here it is one of several sections, and uniform compact cards mean
+	# every relic the report dropped is readable at once. That is what lets the
+	# player pick an ORDER — take the one that changes what the others are worth
+	# first.
+	if compact or multi:
+		var host: Container = beside
+		if host == null:
+			# A FLOW, not a row. As a modal the panel is widened to fit the whole
+			# chest (see _build_shell) so it lays out as the single row it always
+			# was; embedded, the column decides the width and a Huge chest wraps
+			# instead of running off the side of somebody else's screen.
+			var shelf := HFlowContainer.new()
+			shelf.add_theme_constant_override("h_separation", 10)
+			shelf.add_theme_constant_override("v_separation", 10)
+			shelf.alignment = FlowContainer.ALIGNMENT_CENTER
+			box.add_child(shelf)
+			host = shelf
 		for item in _items:
 			var card: Control = _offer_card(item)
-			shelf.add_child(card)
+			if sideways:
+				card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			host.add_child(card)
 			_cards.append({"item": item, "node": card})
 	else:
 		_build_single(box, tint)
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	# Stacked beside the card when sideways, where the two buttons read as the two
+	# answers to the one thing on their left; a row under the cards otherwise.
+	# BUILT as the container it needs to be rather than flipped afterwards: an
+	# HBoxContainer is a FIXED BoxContainer and refuses `vertical`.
+	var row: BoxContainer = VBoxContainer.new() if sideways else HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4 if sideways else 10)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_child(row)
+	if sideways:
+		row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		beside.add_child(row)
+	else:
+		box.add_child(row)
 
 	var leave := Button.new()
 	leave.text = "Leave it" if not multi else "Leave them"
-	leave.custom_minimum_size = Vector2(150, 42)
+	leave.custom_minimum_size = Vector2(110, 26) if compact else Vector2(150, 42)
+	if compact:
+		leave.add_theme_font_size_override("font_size", 12)
 	leave.pressed.connect(func(): _answer(false))
 	row.add_child(leave)
 
 	_take_btn = Button.new()
-	_take_btn.custom_minimum_size = Vector2(190, 42)
-	_take_btn.add_theme_font_size_override("font_size", 16)
+	_take_btn.custom_minimum_size = Vector2(150, 26) if compact else Vector2(190, 42)
+	_take_btn.add_theme_font_size_override("font_size", 12 if compact else 16)
 	_take_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.5), 8, 8, 2, UITheme.SUCCESS))
 	_take_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.32), 8, 8, 2, UITheme.SUCCESS))
 	_take_btn.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.45))
 	_take_btn.pressed.connect(func(): _answer(true))
 	row.add_child(_take_btn)
-	_take_btn.grab_focus()
+	# Focus is the HOST's to give when this is one section among several — grabbing
+	# it here would pull it off the way out every time another chest is answered.
+	if not compact:
+		_take_btn.grab_focus()
 	_refresh_selection()
+
+# A RELIC IS ALWAYS A PICTURE, even when the catalogue has no art for it. Every
+# item in items2.0 ships with an image today, and both card layouts used to draw
+# one only when `item.image` was non-null — so the day a row is authored without
+# art (or with a path that stops resolving) the card comes up with a silent gap
+# where the relic should be, on the screen where the player is deciding whether to
+# take it. A tinted tile with the item's initial on it is not the art, but it is
+# unmistakably a thing, and it is the size of the picture it stands in for so
+# nothing reflows behind it.
+func _item_art(item: ItemData, size: int) -> Control:
+	if item != null and item.image != null:
+		return UITheme.crisp_tex(item.image, size)
+	var tint: Color = UITheme.item_color(item) if item != null else UITheme.TEXT_DIM
+	var stand_in := PanelContainer.new()
+	stand_in.custom_minimum_size = Vector2(size, size)
+	stand_in.add_theme_stylebox_override("panel",
+		UITheme.flat(tint.lerp(UITheme.BG, 0.7), 6, 0, 1, tint.lerp(UITheme.BORDER, 0.4)))
+	var glyph := Label.new()
+	glyph.text = String(item.display_name).left(1).to_upper() if item != null else "?"
+	glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	glyph.add_theme_font_size_override("font_size", maxi(10, size / 2))
+	glyph.add_theme_color_override("font_color", tint)
+	glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stand_in.add_child(glyph)
+	return stand_in
+
+# What this chest calls itself. A chest of one has always read as "it dropped
+# something"; more than one is the choice, and the count is the part the player
+# is deciding against.
+func _heading() -> String:
+	if _items.size() <= 1:
+		return "✦  It dropped something"
+	return "✦  A chest of %d — take one" % _items.size()
 
 # The frame the cards go in — the ONE thing the two modes disagree about, so it
 # is the one thing with a branch in it. As a modal: a dimmed backdrop and a panel
@@ -212,7 +295,7 @@ func _build_single(box: VBoxContainer, tint: Color) -> void:
 	# section above a boss banner and a shop shelf, and at modal size it pushed
 	# both of them off the bottom of the column.
 	var embedded: bool = _slot != null
-	var art := UITheme.crisp_tex(_selected.image, 72 if embedded else 108)
+	var art: Control = _item_art(_selected, 72 if embedded else 108)
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(art)
 
@@ -248,50 +331,76 @@ func _build_single(box: VBoxContainer, tint: Color) -> void:
 	else:
 		keys.queue_free()
 
-# One pickable card on a multi-item chest's shelf: the same four lines the single
-# layout shows, at card width, in a panel that clicking selects. Smaller art and a
+# One pickable card on a chest's shelf: the same four lines the single layout
+# shows, at card width, in a panel that clicking selects. Smaller art and a
 # smaller name, because five of these have to sit side by side.
+#
+# COMPACT when embedded, and the art goes BESIDE the words rather than over them.
+# Stacked, a card is as tall as its picture plus four lines, and three chests of
+# those is more than the post-combat screen's column holds; laid out sideways it
+# is as tall as the words alone. It is a HoverPanel either way, so the full text
+# of a relic whose description outruns two lines is one hover away — which is what
+# lets the card be short without hiding anything.
 func _offer_card(item: ItemData) -> Control:
+	var compact: bool = _slot != null
 	var tint: Color = UITheme.item_color(item)
-	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(CARD_W, 0)
+	var card := HoverPanel.new()
+	card.custom_minimum_size = Vector2(COMPACT_CARD_W if compact else CARD_W, 0)
 	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	HoverCard.attach(card, {
+		"title": item.display_name,
+		"subtitle": _kind_line(item),
+		"accent": tint,
+		"art": item.image,
+		"lines": [item.description if String(item.description) != "" else "A dropped relic."],
+	})
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_%s" % side, 10)
+		margin.add_theme_constant_override("margin_%s" % side, 6 if compact else 10)
 	card.add_child(margin)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
-	margin.add_child(col)
 
-	var art := UITheme.crisp_tex(item.image, 72)
+	var art := UITheme.crisp_tex(item.image, COMPACT_ART if compact else 72)
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(art)
 
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2 if compact else 6)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if compact:
+		var side_by_side := HBoxContainer.new()
+		side_by_side.add_theme_constant_override("separation", 8)
+		margin.add_child(side_by_side)
+		side_by_side.add_child(art)
+		side_by_side.add_child(col)
+	else:
+		margin.add_child(col)
+		col.add_child(art)
+
+	var align: int = HORIZONTAL_ALIGNMENT_LEFT if compact else HORIZONTAL_ALIGNMENT_CENTER
 	var name_lbl := Label.new()
 	name_lbl.text = item.display_name
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.horizontal_alignment = align
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.add_theme_font_size_override("font_size", 15)
+	name_lbl.add_theme_font_size_override("font_size", 13 if compact else 15)
 	name_lbl.add_theme_color_override("font_color", tint)
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(name_lbl)
 
 	var kind := Label.new()
 	kind.text = _kind_line(item)
-	kind.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	kind.horizontal_alignment = align
 	kind.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	kind.add_theme_font_size_override("font_size", 10)
+	kind.add_theme_font_size_override("font_size", 9 if compact else 10)
 	kind.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	kind.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(kind)
 
 	var desc := Label.new()
 	desc.text = item.description if String(item.description) != "" else "A dropped relic."
-	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc.horizontal_alignment = align
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.add_theme_font_size_override("font_size", 11)
+	desc.add_theme_font_size_override("font_size", 10 if compact else 11)
 	desc.add_theme_color_override("font_color", UITheme.TEXT)
 	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(desc)
@@ -338,6 +447,13 @@ func _kind_line(item: ItemData) -> String:
 			return "%s · passive" % rarity
 
 # Public so a test can answer without a click.
+# Whether this chest has been answered. The post-combat screen keeps every chest
+# it mounted and asks each one, rather than dropping the answered ones from a list
+# — the section frees its own body, so what is left on screen and what is left to
+# decide have to be the same question asked of the same object.
+func answered_already() -> bool:
+	return _answered
+
 func take() -> void:
 	_answer(true)
 

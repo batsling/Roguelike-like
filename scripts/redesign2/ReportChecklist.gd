@@ -305,6 +305,13 @@ func _add_instead_rows(entry: Dictionary) -> void:
 		_box.add_child(irow["row"])
 		instead_checks.append({"check": irow["check"], "instance": instance,
 			"status": sd.id})
+	# A BOSS CARRYING ONE SAYS SO (§7.1). The way out is void on a boss — its goal
+	# is the only thing that takes it off the board — and until now that was said
+	# by drawing nothing at all, which is indistinguishable from the burn having
+	# failed to apply. A row with no tick box on it, in the dimmed colour the rest
+	# of the read-only lines use.
+	for row in GameLoop2.nullified_alternatives_for(entry):
+		_box.add_child(_nullified_row(row))
 
 func _add_bonus_rows(entry: Dictionary) -> void:
 	if entry.is_empty():
@@ -431,6 +438,10 @@ func populate_standing() -> void:
 				_status_prefix(asd, astacks),
 				asd.alternative_text(StatusData.ENEMY, astacks)],
 				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst))
+		# …and the ones a boss is ignoring, said rather than left out (see
+		# _add_instead_rows, which draws the same line on the report step).
+		for dead in GameLoop2.nullified_alternatives_for(entry):
+			_box.add_child(_nullified_row(dead, inst))
 		for bonus in GameLoop2.bonus_objectives_for(entry):
 			var sd: StatusData = bonus["status"]
 			var stacks: int = int(bonus["stacks"])
@@ -568,6 +579,17 @@ func on_enemy_hovered(instance: int, hovered: bool) -> void:
 # states. `icon` is the boss portrait, when the row belongs to one (_boss_icon);
 # `instance` is the body on the board this goal belongs to, which is what pairs
 # the row with the enemy in both directions (bind_row_to_body).
+# The line a burned BOSS gets where an ordinary body would get a tick box: what
+# the status promises, and the one sentence saying why it is not on offer here.
+# Read-only on purpose — there is nothing to claim, and a box that could be ticked
+# and did nothing would be a worse lie than the silence this replaces.
+func _nullified_row(row: Dictionary, instance: int = 0) -> Control:
+	var sd: StatusData = row["status"]
+	var stacks: int = int(row["stacks"])
+	return _objective_row("%s or instead: %s  —  nullified: a boss comes off the board on its goal alone" % [
+		_status_prefix(sd, stacks), sd.alternative_text(StatusData.ENEMY, stacks)],
+		UITheme.TEXT_FAINT, null, instance)
+
 func _objective_row(text: String, color: Color, icon: Texture2D = null,
 		instance: int = 0) -> Control:
 	var wrap := PanelContainer.new()

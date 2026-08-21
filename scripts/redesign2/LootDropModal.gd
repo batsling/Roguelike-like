@@ -177,7 +177,13 @@ static func embed(page: Node, host: Node, slot: Container, offer, spendable: boo
 func _rebuild() -> void:
 	if _answered:
 		return
-	if _offers.is_empty():
+	# AN EMPTY TABLE IS NOT AN ANSWER WHEN EMBEDDED. As a modal, the last piece
+	# leaving the table is the end of the question and the screen closes on it.
+	# On the post-combat screen it is the opposite: the piece has just gone INTO
+	# the pack, and the pack is the reason to still be looking — the next thing the
+	# player usually wants is to spend it. So the section stays, with its 3x3 and
+	# its bin live, until they leave the screen.
+	if _offers.is_empty() and _slot == null:
 		_close()
 		return
 	# Embedded, what has to go is the section in the HOST's container — the rest of
@@ -273,7 +279,14 @@ func _build() -> void:
 	# in the direction you read.
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", ROW_GAP)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	# TOP-ALIGNED WHEN EMBEDDED. Centred, the offer column floats down the panel
+	# to sit level with the middle of the nine slots beside it — so the piece's
+	# name and description started lower than the pack did and read as having
+	# slipped underneath it. They are two halves of one row and they start on the
+	# same line. As a modal the panel is sized to its contents and centring is what
+	# keeps a short offer from hanging off the top of a tall pack.
+	row.alignment = BoxContainer.ALIGNMENT_BEGIN if _slot != null \
+		else BoxContainer.ALIGNMENT_CENTER
 	box.add_child(row)
 	var offer_col: Control = _offer_column(multi)
 	row.add_child(offer_col)
@@ -295,7 +308,15 @@ func _build() -> void:
 			% [GameState.loot_items.size(), GameState.LOOT_CAPACITY]
 			+ "use these where you stand, or leave them.", UITheme.DANGER, 12))
 
-	shell.add_child(_buttons(multi))
+	# NO ANSWER BUTTONS WHEN EMBEDDED. "Take" and "Leave the rest" are the modal's
+	# way of ending itself, and this section does not end — the host's own way out
+	# is the answer to the whole haul. Everything the two buttons did is already on
+	# the panel and reads better for being done with the hands: a piece goes into
+	# the slot you drag it to, and the bin under the pack is "leave it" said the
+	# same way. What is left on the table when the player walks off the screen is
+	# counted on the way out (PostCombatScreen.exit_text), so nothing goes quietly.
+	if _slot == null:
+		shell.add_child(_buttons(multi))
 	_fit_body(box)
 
 # How wide the offer grid runs. Two abreast is the shape of a four-pill payout;
@@ -310,9 +331,25 @@ func _offer_columns() -> int:
 func _offer_column(multi: bool) -> Control:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
-	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.alignment = BoxContainer.ALIGNMENT_BEGIN if _slot != null \
+		else BoxContainer.ALIGNMENT_CENTER
+	# The heading the pack has, so the two columns start on the same line rather
+	# than one of them beginning wherever its contents happened to land. Only when
+	# embedded: the modal centres its offer instead (see the row's alignment).
+	if _slot != null:
+		col.add_child(_line("On the table", UITheme.TEXT_DIM, 12))
+	# THE TABLE, CLEARED. Only reachable embedded — the modal closes on its last
+	# piece — and it is the ordinary end of the section rather than an error state:
+	# what was paid out is in the pack now, and the pack beside this space is the
+	# thing still worth looking at.
+	if _offers.is_empty():
+		col.custom_minimum_size = Vector2(SINGLE_W, 0)
+		col.add_child(_line("Nothing — what you took is in the pack beside this, "
+			+ "and it can be spent from there.", UITheme.TEXT_FAINT, 11))
+		return col
 	if multi:
-		col.add_child(_line("On the table — %d" % _offers.size(), UITheme.TEXT_DIM, 12))
+		if _slot == null:
+			col.add_child(_line("On the table — %d" % _offers.size(), UITheme.TEXT_DIM, 12))
 		col.add_child(_offer_grid())
 		col.add_child(_line("Drag each one into a slot, or use it where it stands.",
 			UITheme.TEXT_FAINT, 10))
@@ -639,6 +676,13 @@ func _drop_body() -> void:
 		_body.get_parent().remove_child(_body)
 	_body.queue_free()
 	_body = null
+
+# Redraw against a pack that changed under this panel — a relic taken from a chest
+# beside it granting loot, say. Public because the host owns the other sections and
+# is the only thing that knows one of them moved.
+func redraw() -> void:
+	if not _answered:
+		_rebuild()
 
 # How many pieces are still on the table. The post-combat screen reads it to say
 # what its way out is about to bin, so leaving a Legendary on the ground stays a

@@ -56,6 +56,13 @@ extends Control
 signal finished
 
 const LAYER := 128
+# Where a card raised BY one of this screen's sections goes: above the screen and
+# still below the run's header bar (135). The shop's shelf is the one that needs
+# it — it opens an item's card on a layer of its own, and its default clears the
+# page rather than this.
+const CARD_LAYER := 131
+# …and the default it goes back to once the shelf is under the board again.
+const SHOP_CARD_LAYER_ON_PAGE := 122
 const ACCENT := UITheme.ACCENT
 # The frame's inset from the room it is allowed. Small, because this screen is
 # the page for as long as it is up and the loot column alone wants 586 of the
@@ -95,14 +102,15 @@ var _page: Node = null
 var _layer: CanvasLayer = null
 var _done: bool = false
 var _chest_slot: VBoxContainer = null
-var _chest_note: Label = null
+var _chest_head: Label = null
 var _loot_slot: VBoxContainer = null
 var _shop_slot: VBoxContainer = null
 var _boss_slot: VBoxContainer = null
 var _exit_btn: Button = null
-# The two embedded sections, held so the way out can answer them for the player
-# rather than binning what is still on the table without a word.
-var _chest: ItemDropModal = null
+# The chest sections on screen, one per chest the report dropped — ALL of them at
+# once (see _build_chests), held so the way out can answer whatever is left rather
+# than binning it without a word.
+var _chest_sections: Array = []
 var _loot_section: LootDropModal = null
 
 
@@ -259,14 +267,26 @@ func _tier_now() -> int:
 # Either is null once it has been answered, and `chest` is null when a report
 # felled nothing.
 func chest() -> ItemDropModal:
-	return _chest if _chest != null and is_instance_valid(_chest) else null
+	for c in _live_chests():
+		return c
+	return null
+
+# Every chest still waiting to be answered, oldest first.
+func _live_chests() -> Array:
+	var out: Array = []
+	for c in _chest_sections:
+		if c != null and is_instance_valid(c) and not c.answered_already():
+			out.append(c)
+	return out
 
 func payout() -> LootDropModal:
 	return _loot_section if _loot_section != null and is_instance_valid(_loot_section) else null
 
-# How many chests are still queued behind the one on screen.
+# How many chests are still unanswered besides the one `chest` hands back. They
+# are all ON the screen now rather than queued behind it — this is what is left to
+# decide, not what is left to see.
 func chests_waiting() -> int:
-	return _chests.size()
+	return maxi(0, _live_chests().size() - 1)
 
 # What the way out says. The EVENT when the node owes one, because clicking it is
 # what opens the event — the player leaves this screen into the next thing rather
@@ -285,8 +305,7 @@ func _unanswered() -> int:
 	var left: int = 0
 	if _loot_section != null and is_instance_valid(_loot_section):
 		left += _loot_section.remaining()
-	if _chest != null and is_instance_valid(_chest):
-		left += 1
+	left += _live_chests().size()
 	left += _chests.size()
 	return left
 
@@ -387,13 +406,18 @@ func _left_column() -> Control:
 
 	col.add_child(_tally_panel())
 
+	# One heading over all the chests rather than one apiece: three bodies each
+	# leaving a single relic is three panels that would otherwise each announce "it
+	# dropped something" over the picture that already says it.
+	_chest_head = _line("✦  What fell off them", UITheme.TEXT_DIM, 12)
+	_chest_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_chest_head.visible = false
+	col.add_child(_chest_head)
+
 	_chest_slot = VBoxContainer.new()
 	_chest_slot.add_theme_constant_override("separation", 6)
 	_chest_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_child(_chest_slot)
-	_chest_note = _line("", UITheme.TEXT_FAINT, 11)
-	_chest_note.visible = false
-	col.add_child(_chest_note)
 
 	_boss_slot = VBoxContainer.new()
 	_boss_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -412,7 +436,7 @@ func _fill_sections() -> void:
 		BossNoticeModal.embed(self, _boss_slot, _boss_tier, _bosses)
 	_mount_shop()
 	_fill_payout()
-	_next_chest()
+	_build_chests()
 	_refresh_exit()
 
 func _tally_panel() -> Control:
@@ -456,24 +480,19 @@ func _fill_payout() -> void:
 		_loot_slot.add_child(_empty_note("Nothing dropped for your pack."))
 		return
 	_loot_section = LootDropModal.embed(_page, self, _loot_slot, _loot, true)
+	# The section stays put once its table is clear (it says so itself) and reports
+	# only when the screen goes, so this fires on the way out and is the log of what
+	# the player ended up keeping.
 	_loot_section.answered.connect(func(taken: Array):
 		_loot_section = null
 		_on_loot_answered(taken)
-		_refresh_exit()
-		# DEFERRED, because the section frees its own panel with `queue_free` — the
-		# column still holds it on this frame, so a check for "is this column empty
-		# now" run here answers no and the note never appears.
-		_loot_cleared.call_deferred())
+		_refresh_exit())
 
-# The payout is off the table: say so where it was, rather than leaving a hole in
-# the column the rest of the screen is still laid out around.
-func _loot_cleared() -> void:
-	if _done or _loot_slot == null or not is_instance_valid(_loot_slot):
-		return
-	for c in _loot_slot.get_children():
-		if not c.is_queued_for_deletion():
-			return
-	_loot_slot.add_child(_empty_note("The table is clear."))
+# The pack changed under one of the other sections — a chest's relic firing an
+# `offer_loot`, a use freeing a slot — so the payout redraws against it.
+func refresh_payout() -> void:
+	if _loot_section != null and is_instance_valid(_loot_section):
+		_loot_section.redraw()
 
 func _empty_note(text: String) -> Control:
 	var wrap := PanelContainer.new()
@@ -519,38 +538,57 @@ func _refresh_exit() -> void:
 # The chests, one at a time
 # ---------------------------------------------------------------------------
 
-# Ask about the next chest, if any. They queue rather than stack for the same
-# reason they always did — a chest is "which one", and two of those side by side
-# is two questions wearing one answer — but the queue now drains inside a screen
-# the player can see the rest of the haul on.
-func _next_chest() -> void:
+# EVERY CHEST AT ONCE. They used to be drained one at a time, which is how the
+# page's queue had always worked — but a queue hides the thing the player most
+# needs when several relics land together, which is what the OTHER ones are. There
+# is often an order: a relic that changes what a chest is worth should be taken
+# before the chest it changes, and a Charged active you are about to fire is worth
+# more than one you are not. None of that can be reasoned about a card at a time.
+#
+# Each chest is still its own question — "which one of these" — and answering one
+# leaves the rest exactly where they were.
+func _build_chests() -> void:
 	if _done or _chest_slot == null or not is_instance_valid(_chest_slot):
 		return
-	if _chests.is_empty():
-		if _chest_note != null and is_instance_valid(_chest_note):
-			_chest_note.visible = false
-		_refresh_exit()
-		return
-	var items: Array = _chests.pop_front()
-	_chest = ItemDropModal.embed(self, _chest_slot, items)
-	_chest.answered.connect(func(taken: bool, item: ItemData):
-		_chest = null
+	while not _chests.is_empty():
+		_mount_chest(_chests.pop_front())
+	_refresh_exit()
+
+func _mount_chest(items: Array) -> void:
+	var section := ItemDropModal.embed(self, _chest_slot, items)
+	_chest_sections.append(section)
+	section.answered.connect(func(taken: bool, item: ItemData):
 		if taken and item != null:
 			_collect(item)
 		else:
 			_leave(items)
-		_next_chest())
-	_note_chests_behind()
-	_refresh_exit()
+		# A relic can pay out loot the moment it is picked up (Sacred Bark, Mom's
+		# Coin Purse), so the pack beside these cards may have just changed.
+		refresh_payout()
+		_refresh_exit()
+		_sync_chest_head.call_deferred())
+	_sync_chest_head()
 
-func _note_chests_behind() -> void:
-	if _chest_note == null or not is_instance_valid(_chest_note):
+# The heading stands exactly while there is a chest under it — the sections free
+# their own panels, so this is asked again after each answer (deferred, because
+# the freed panel is still a child on the frame it is answered).
+func _sync_chest_head() -> void:
+	if _chest_head == null or not is_instance_valid(_chest_head):
 		return
-	var behind: int = _chests.size()
-	_chest_note.visible = behind > 0
-	if behind > 0:
-		_chest_note.text = "…and %d more chest%s behind this one." % [
-			behind, "" if behind == 1 else "s"]
+	_chest_head.visible = not _live_chests().is_empty()
+
+# A chest banked AFTER this screen opened — a level-up's reward, Unstable Genome,
+# a status's payout — put on the screen rather than behind it. Without this it
+# opens a RewardScreen on the page's own layer, underneath this one, and the
+# player sees nothing until they have already left (§8.2).
+func add_chest(items: Array) -> void:
+	if _done or items.is_empty():
+		return
+	if _chest_slot == null or not is_instance_valid(_chest_slot):
+		_chests.append(items)
+		return
+	_mount_chest(items)
+	_refresh_exit()
 
 # Taking and leaving go back through the page, which owns the inventory, the log
 # and the toast — this screen decides nothing about a relic beyond which one was
@@ -578,6 +616,11 @@ func _mount_shop() -> void:
 	_shop = ShopPanel2.mount(_shop_slot, _shop_id)
 	if _shop == null:
 		return
+	# The shelf's own item card has to clear THIS screen. Its default layer (122)
+	# is under this one, so clicking a row opened a card nobody could see and then
+	# produced it the moment the player left. Put back to the panel's default when
+	# the shelf is handed over to the page (release_shop), where 122 is correct.
+	_shop.card_layer = CARD_LAYER
 	# The panel is handed back to the page on the way out (release_shop), so its
 	# `finished` is the page's to wire up — not this screen's, which is about to
 	# stop existing.
@@ -592,6 +635,11 @@ func release_shop() -> ShopPanel2:
 	_shop = null
 	if panel == null or not is_instance_valid(panel):
 		return null
+	# A card left open belongs to a screen that is about to go, and its layer is
+	# this screen's rather than the page's — so it is closed and the panel goes
+	# back to the default it will need under the board.
+	panel.close_card()
+	panel.card_layer = SHOP_CARD_LAYER_ON_PAGE
 	if panel.get_parent() != null:
 		panel.get_parent().remove_child(panel)
 	return panel
@@ -614,9 +662,9 @@ func dismiss() -> void:
 	if _loot_section != null and is_instance_valid(_loot_section):
 		_loot_section.leave()
 		_loot_section = null
-	if _chest != null and is_instance_valid(_chest):
-		_chest.leave()
-		_chest = null
+	for section in _live_chests():
+		section.leave()
+	_chest_sections.clear()
 	for items in _chests:
 		_leave(items)
 	_chests.clear()

@@ -11,6 +11,70 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The haul screen, second pass — and four things it turned up.**
+
+  **Every chest at once.** They were drained one at a time, which is how the
+  page's queue had always worked, and it hides exactly what the screen exists to
+  show: when several relics land together, the thing you most need is what the
+  *others* are. There is often an order — a relic that changes what a chest is
+  worth should be taken before the chest it changes. So all of them are on the
+  screen together, each still its own "which one of these", and a one-item chest
+  lays out sideways (card left, Leave and Take stacked right) because stacked it
+  was 135px and three of those put the third relic behind a scrollbar. A relic is
+  **always a picture** now: both layouts drew art only when `item.image` was
+  non-null, so an unarted row would have come up as a name over a gap.
+
+  **The payout stays, and loses its buttons.** As a modal, the table emptying is
+  the end of the question; here it is the opposite — the piece has just gone into
+  the pack, and the pack is the reason to still be looking, because the next thing
+  you usually want is to spend it. Take and "Leave the rest" go with it: the drag
+  already puts a piece in the slot you want and the bin is "leave it" said with the
+  hands. What is still on the table is counted on the way out, so nothing goes
+  quietly. The two columns are top-aligned as well — centred, the offer floated
+  down to the middle of the nine slots and its description read as having slipped
+  under the pack.
+
+  **Two things were opening underneath the screen.** The shop's item card mounts
+  at CanvasLayer 122 and the screen is 128, so clicking a shelf row opened a card
+  nobody could see and then produced it a screen too late; `ShopPanel2.card_layer`
+  is the host's to set now. And `RewardScreen` mounts as an ordinary child of the
+  page, so a chest banked mid-report — a level-up reward, Unstable Genome, a status
+  paying out — was invisible until you had already left. Those land on the screen
+  as chest sections, rolled on the same ladder the RewardScreen would have used.
+
+  **A boss cancels the ways out, and now it says so.** A boss comes off the board
+  on its goal alone, so an `instead` riding it buys nothing — and the way that was
+  communicated was by drawing nothing at all. A Burn pip on a boss, no row on the
+  checklist, no line on the card, no tick anywhere: indistinguishable from the burn
+  having failed to apply. `nullified_alternatives_for` is the other half of the
+  pair, and the checklist, the enemy card and the status hover all say it.
+
+  **A status is authored per side, and the two are opposites.** Burn on you is an
+  obligation that bites for 3; Burn on an enemy is a second way through its goal.
+  The keyword strip under an item's description quoted the player's side, so Staff
+  of Flame — "Apply +3 Burn to a target enemy" — had a footnote explaining what
+  Burn does to *you*. Not a short version of the answer, the wrong half.
+  `tooltip_both` prints one side when the other is inert and labels them when both
+  do something. The enemy card had the same bug from the other end: an `instead`
+  fell through to the clause branch and printed a clause Burn does not have.
+
+  **A full bar means ready.** Every active was held back until the game had been
+  reported — right for a Usable consumable, which wants a combat or an event around
+  it, and wrong for a Charged one in the way that shows: the strip said the item
+  was ready and then refused to fire it, offering "finish reporting this game
+  first". D6, Staff of Flame and Mom's Bottle of Pills are all charged and all
+  three do something wanted precisely while the board is live. A charge that cannot
+  be spent when it is full is a charge permanently one game behind.
+
+  **And a pill goes down whenever you want one.** The pack is otherwise frozen
+  mid-report — nothing dragged, taken or binned — but swallowing an unknown capsule
+  is the run's one pure gamble, and the reason for it is usually the board in front
+  of you. A pill whose effect cannot land fizzles instead of being refused
+  (Telepills does not move a run halfway through a game) and the colour is learned
+  either way, because identification happens before any effect is applied. Scrolls
+  keep the lock — they are overworld-only by their own, wider rule.
+
+
 - **A game now ends on a screen, and the Collection has a Loot tab.**
 
   **One screen instead of six surfaces.** Reporting a game used to fire a queue of
