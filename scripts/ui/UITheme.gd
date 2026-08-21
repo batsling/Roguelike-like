@@ -104,6 +104,22 @@ static func item_class_name(item: ItemData) -> String:
 static func type_color(i: int) -> Color:
 	return TYPE_COLORS[clampi(i, 0, TYPE_COLORS.size() - 1)]
 
+# The colour a loot PREFERENCE reads in (§4.1/§4.3). Positive / Negative / Neutral
+# is the single fact that decides whether a piece of loot is worth spending, and it
+# was being drawn as muted grey body text on every surface that showed it. Here so
+# the window tile, the drop modal and the use modal cannot disagree about what
+# green means. An empty preference — the unidentified case — has no colour of its
+# own on purpose: the gamble is the absence of this chip, not a grey one.
+static func preference_color(preference: String) -> Color:
+	match preference:
+		"Positive":
+			return SUCCESS
+		"Negative":
+			return DANGER
+		"Neutral":
+			return Color(0.55, 0.70, 0.90)
+	return TEXT_DIM
+
 # --- Stylebox builders -----------------------------------------------------
 
 static func flat(bg: Color, radius: int = 8, margin: int = 10, border_w: int = 0, border: Color = Color(0, 0, 0, 0)) -> StyleBoxFlat:
@@ -138,6 +154,73 @@ static func accent_box(accent: Color, bg: Color = PANEL, margin: int = 12) -> St
 	var sb := flat(bg, 10, margin, 2, accent)
 	sb.border_width_left = 4
 	return sb
+
+# --- Buttons ---------------------------------------------------------------
+#
+# THE TWO WEIGHTS A CHOICE HAS. Every modal in the 2.0 build asks the same shape
+# of question — one button that DOES the thing and one that walks away — and the
+# pack's Use button, the relic drop's "Take it" and the loot drop's "Take it" had
+# each grown their own version of the green. The loot surfaces were the ones that
+# hadn't: they shipped Godot's default grey on both answers, which read as two
+# equal options on a screen where one of them is the point.
+#
+# `confirm` is the affirmative: green plate, green rule, lifted on hover.
+# `quiet` is the way out: the theme's own button, sized to match so the pair sits
+# on one baseline. Both take a minimum size because the same pair is drawn at
+# three scales (a 14px cell button, a 34px card button, a 42px modal button).
+static func confirm_button(text: String, min_size: Vector2 = Vector2.ZERO, font_size: int = 0) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.custom_minimum_size = min_size
+	if font_size > 0:
+		btn.add_theme_font_size_override("font_size", font_size)
+	btn.add_theme_stylebox_override("normal",
+		flat(SUCCESS.lerp(BG, 0.80), 8, 6, 1, SUCCESS.lerp(BG, 0.30)))
+	btn.add_theme_stylebox_override("hover",
+		flat(SUCCESS.lerp(BG, 0.62), 8, 6, 2, SUCCESS))
+	btn.add_theme_stylebox_override("pressed",
+		flat(SUCCESS.lerp(BG, 0.52), 8, 6, 2, SUCCESS))
+	btn.add_theme_stylebox_override("disabled",
+		flat(BG.lerp(BORDER, 0.35), 8, 6, 1, BORDER))
+	# FOCUS KEEPS THE GREEN. A modal's confirm grabs focus when it opens, and the
+	# theme's focus stylebox is drawn OVER `normal` — so without this the one button
+	# the screen is steering you towards is the one that isn't wearing its own
+	# colour. Same plate, brighter rule, which is what focus should say here.
+	btn.add_theme_stylebox_override("focus",
+		flat(SUCCESS.lerp(BG, 0.62), 8, 6, 2, SUCCESS.lerp(Color.WHITE, 0.35)))
+	btn.add_theme_color_override("font_color", SUCCESS.lerp(Color.WHITE, 0.45))
+	btn.add_theme_color_override("font_hover_color", SUCCESS.lerp(Color.WHITE, 0.7))
+	btn.add_theme_color_override("font_disabled_color", TEXT_FAINT)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	return btn
+
+static func quiet_button(text: String, min_size: Vector2 = Vector2.ZERO, font_size: int = 0) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.custom_minimum_size = min_size
+	if font_size > 0:
+		btn.add_theme_font_size_override("font_size", font_size)
+	btn.add_theme_stylebox_override("normal", flat(PANEL_HI, 8, 6, 1, BORDER))
+	btn.add_theme_stylebox_override("hover", flat(PANEL_HI.lerp(TEXT, 0.12), 8, 6, 1, TEXT_DIM))
+	btn.add_theme_color_override("font_color", TEXT_DIM)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	return btn
+
+# A small labelled plate in one colour — a rarity, a preference, a charge count.
+# Three screens had grown their own private `_chip` doing exactly this; new code
+# comes through here so a chip is one shape wherever it is drawn.
+static func chip(text: String, color: Color, font_size: int = 11) -> Control:
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		flat(color.lerp(BG, 0.74), 6, 5, 1, color.lerp(BG, 0.38)))
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", font_size)
+	l.add_theme_color_override("font_color", color.lerp(Color.WHITE, 0.35))
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(l)
+	return wrap
 
 # --- Texture helpers -------------------------------------------------------
 

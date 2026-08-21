@@ -11,6 +11,110 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The loot window is a grid you handle, and the drop modal asks in front of
+  it.**
+
+  A design pass over the two inventories — the pack strip of relics, and the loot
+  window that scrolls and pills moved into when pills arrived. The strip was fine.
+  The loot side had drifted into being the least visible, least legible thing on
+  a page whose consumables are what you spend turn to turn.
+
+  **Loot can be rearranged, and a drop is placed rather than accepted.** The 3×3
+  is `LootGrid` / `LootSlot` now, and it is the same widget in both places it is
+  drawn: pieces drag between slots in the window, and the piece a game pays out is
+  **dragged out of the drop modal into the slot you want it in** — the modal shows
+  your pack beside the offer, so *"your pack is full"* is nine occupied slots
+  rather than a sentence about something you cannot see. The buttons stay: **Take
+  it** puts it in the first free slot, **Leave it** is still the answer the cap
+  makes interesting. `loot_items` stays **dense** — a drag swaps two pieces or
+  moves one to the end, never leaves a hole, because indices are what `use_loot`
+  is addressed by.
+
+  **Clicking a piece opens its card.** `LootInfoCard`, the twin of the relic's: a
+  relic answered a click by opening its card and a pill answered a click with
+  nothing at all, which is one class of object with two gestures, and the one that
+  did nothing was the one whose whole subject is *what is this*. Click reads, drag
+  moves, the button spends.
+
+  **The run's alphabet has somewhere to live.** A folded *"Known this run"* at the
+  foot of the window lists every colour and scroll the run has identified, with
+  art and hover. The knowledge existed in `identified_pill_types` and was never
+  drawn anywhere: the only time a colour was ever named was a toast that had
+  scrolled away by the next game, which is an identification minigame with no
+  record of itself. It **counts** the unlearned rather than listing them — naming
+  them would hand back the deduction the three sitting-out colours prevent.
+
+  **The horse dose is actually drawn oversized now.** The spec has always said the
+  oversized capsule is how you know a horse pill is a horse pill; every surface
+  drew loot through a *fixed* art box, which renders a 19px capsule and a 25px one
+  at exactly the same size. Loot art goes through `LootSystem.art_tex` /
+  `art_box`, which takes the ratio from `PillSystem.art_scale` — **measured from
+  the two files**, so redrawing the art bigger draws it bigger.
+
+  **The drop screen's pack is a live one, and there is a bin.** A full pack used
+  to leave exactly two answers to a payout: leave it, or close the modal, go and
+  spend something, and never get the payout back. Now every piece on that screen
+  can be spent from it — a carried piece has its Use button, and spending one
+  frees the slot the offer needs in front of the offer, with the drop still on the
+  table because spending is not answering. The **offered piece can be used where
+  it stands**, without ever being carried (`LootSystem.use_entry`): a Full Health
+  that will not fit is not loot anyone should have to throw away, it costs no
+  slot, and it is a real use — an unknown colour taken that way is identified,
+  remembered and echoed like any other.
+
+  And both surfaces that draw the grid now draw a **red bin** under it
+  (`LootTrash`). Spending a piece is not the same as being rid of one: a pack of
+  three known-Negative pills is full of loot the run will never willingly use, and
+  reading the Amnesia scroll to make room is a worse answer than throwing it away.
+  It lights up the moment you pick anything up anywhere in the viewport, it is a
+  drop target only, and binning a carried piece asks first — it is the one gesture
+  on either screen that destroys something and gives nothing back. Binning the
+  offer is "Leave it", said with the hands, and asks nothing.
+
+  **A payout of several pieces asks about all of them at once.** Mom's Coin Purse
+  is four pills and Sacred Bark doubles what a grant pays; one offer per screen
+  answered that by shovelling the rest into the pack and silently dropping
+  whatever did not fit, which is the one thing the nine-piece cap exists to make
+  into a decision. The offer is a list now — one cell per piece, each taken, used
+  or binned on its own terms, scrolling past three rows rather than pushing its
+  own buttons off screen — and **Take** takes as many as fit and leaves the rest
+  on the table. Grants route through `GameState.offer_loot`, which rolls the
+  pieces and hands them to whoever is listening and falls back to the direct grant
+  when nobody is, so headless runs and the tests are unchanged.
+
+  **And the pack that screen shows IS the inventory** — the same `LootGrid`, with
+  rearranging, click-to-read, Use, the bin and the "Known this run" fold all
+  working exactly as they do in the loot window. The only difference is the offer
+  on the left. The fold is shared rather than copied (`LootDiscoveries.open` is
+  static), since shut in one place and open in the other would be two answers to
+  one question. When a payout, a full pack and an unfolded record together outrun
+  a 720p canvas, the body scrolls and the answer buttons stay pinned under it — a
+  modal whose buttons are below the fold looks unanswerable.
+
+  **The loot toggle moved to the pack panel's foot**, as a thin full-width bar
+  under the relics. That is its third home: at the tail of the relic row it hid
+  under the toasts, and at the head it ate the left end of the strip the relics
+  wrap into. On its own row it costs the relics no width, and the pack panel's own
+  padding was trimmed to pay for the row — the page fits a 720p canvas with about
+  five pixels to spare and the fit tests fail at +2.
+
+  **Tab opens the pack.** The `backpack` action has been in `project.godot` since
+  the combat build with nothing on the overworld listening for it — only the
+  Collection, which reads it to close itself and is never on screen at the same
+  time, so the key was free.
+
+  And the rest of the pass: the **Preference** is a coloured chip on every surface
+  that shows a piece rather than grey body text, on the one fact the decision
+  turns on; the loot **toggle leads the pack strip** instead of trailing it, where
+  it spent most of every report hidden under the notification toasts, and it
+  carries the first few capsules and turns **red at 9/9**; cells are 48px art and
+  11px names instead of 34px and 9px, with **two lines reserved for the name** so
+  a short name stops pulling its Use button above its neighbours'; and every
+  button on the loot screens is `UITheme.confirm_button` / `quiet_button` instead
+  of Godot's default grey — the relic drop's take was green and 190px wide while
+  the loot drop sitting behind it in the same queue was two identical grey
+  buttons.
+
 - **Pills: a second loot consumable, and the identification minigame held by a
   colour instead of by a type.**
 

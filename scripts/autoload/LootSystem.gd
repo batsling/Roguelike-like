@@ -39,24 +39,38 @@ func used_memory() -> Array:
 # Echo Chambers' worth of history would compound into a run-ending cascade rather
 # than into three extra doses.
 func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
-	var out := {"logs": [], "requests": []}
 	if index < 0 or index >= GameState.loot_items.size():
-		return out
+		return {"logs": [], "requests": []}
 	var entry = GameState.loot_items[index]
 	if not (entry is Dictionary):
-		return out
+		return {"logs": [], "requests": []}
 	entry = (entry as Dictionary).duplicate(true)
 	# Consumed FIRST: an effect that grants loot (or one that ends the run) must not
 	# find the spent piece still sitting in the pack, and the nine-piece cap means a
 	# pill that pays out would otherwise be refused space it is about to free.
 	GameState.remove_loot_at(index)
+	return use_entry(entry, ctx)
 
-	_merge(out, _resolve(entry, ctx))
+# Spend a piece that is NOT IN THE PACK — the one a game has just paid out, taken
+# on the spot rather than carried (§4.3). Same resolution, same echoes, same
+# memory; the only difference is that there was no slot to empty, which is exactly
+# what makes it worth having: a full pack used to turn a payout into "leave it",
+# and a piece you can drink where you stand is an answer that costs you nothing
+# you were already carrying.
+#
+# `use_loot` is this with a slot emptied first, so the two can never drift on what
+# using a piece MEANS.
+func use_entry(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
+	var out := {"logs": [], "requests": []}
+	if entry.is_empty():
+		return out
+	var spent: Dictionary = entry.duplicate(true)
+	_merge(out, _resolve(spent, ctx))
 	for echo in _echo_queue():
 		var copy: Dictionary = _resolve(echo, ctx)
 		if not copy.is_empty():
 			_merge(out, copy)
-	_remember(entry)
+	_remember(spent)
 	return out
 
 # Resolve ONE entry through whichever system owns it. No consuming, no echoing —
@@ -126,6 +140,20 @@ func art_texture(entry: Dictionary) -> Texture2D:
 			return PillSystem.art_texture(entry)
 	return null
 
+# The box this piece's art should be drawn in, given the size everything else on
+# the surface is drawn at. A HORSE DOSE COMES BACK BIGGER (§4.3) — see
+# PillSystem.art_scale for why this exists at all. Every surface that draws loot
+# goes through here rather than passing a constant to crisp_tex, so the tell is
+# either on everywhere or off everywhere.
+func art_box(entry: Dictionary, base: int) -> int:
+	if String(entry.get("type", "")) != "pill":
+		return base
+	return int(round(float(base) * PillSystem.art_scale(entry)))
+
+# The art, sized to this piece's own dose. The one call the UI actually wants.
+func art_tex(entry: Dictionary, base: int) -> TextureRect:
+	return UITheme.crisp_tex(art_texture(entry), art_box(entry, base))
+
 # The glyph a kind wears in the log and on its tile.
 func glyph(entry: Dictionary) -> String:
 	return "💊" if String(entry.get("type", "")) == "pill" else "📜"
@@ -167,6 +195,32 @@ func preference(entry: Dictionary) -> String:
 		"pill":
 			return PillSystem.preference(entry)
 	return ""
+
+# What KIND of thing this is, in the words the player sees: Scroll, Pill, or the
+# dose that announces itself.
+func kind_name(entry: Dictionary) -> String:
+	if bool(entry.get("horse", false)):
+		return "Horse Pill"
+	return "Pill" if String(entry.get("type", "")) == "pill" else "Scroll"
+
+# The hover model for a piece of loot, in the shape every other hover on the page
+# uses (HoverCard). It lives here rather than on the loot window because four
+# surfaces describe the same piece — the window's slots, the drop modal's offer,
+# the drop modal's grid and the info card — and a description that differed
+# between them would be four chances to say something slightly untrue.
+func hover_card(entry: Dictionary) -> Dictionary:
+	var known: bool = is_identified(entry)
+	var sub: String = kind_name(entry)
+	if known and preference(entry) != "":
+		sub += "  ·  %s" % preference(entry)
+	return {
+		"title": display_name(entry),
+		"subtitle": sub,
+		"accent": LOOT_COLOR,
+		"art": art_texture(entry),
+		"lines": [description(entry)],
+		"note": "" if known else "▸ Using it is how you learn what it is.",
+	}
 
 # A scroll's ops in words. The read modal grew its own version of this first; this
 # is the same list, phrased for a one-line hover rather than for a full card.

@@ -200,7 +200,11 @@ var _rng := RandomNumberGenerator.new()
 # buttons already read "⇤ Push (1)" / "✸ Bomb (3)", and its pressure bar ends in
 # the run's tier.)
 var _select_stats: HFlowContainer
-var _item_card: ItemInfoCard = null # the open item reading card, or null
+# The open READING CARD, or null. Either an ItemInfoCard (a relic) or a
+# LootInfoCard (a pill or a scroll) — they are the same slot on the screen and
+# only one of them is ever up, so the field holds whichever it is. Typed as Control
+# because the two share a shape (`close`, `closed`) rather than a base class.
+var _item_card: Control = null
 var _banner: Label
 # The boss round announces itself as a POPUP (BossNoticeModal), not as a strip
 # above the offering — see that file for why. This remembers which round has
@@ -390,6 +394,14 @@ func _ready() -> void:
 		GameState.hp_changed.connect(_on_vitals_changed)
 	if not GameState.stats_changed.is_connected(_refresh_stats):
 		GameState.stats_changed.connect(_refresh_stats)
+	# A relic or an event GRANTING loot asks rather than filling the pack (§4.3).
+	# Connected here rather than at the grant sites so anything that pays out loot —
+	# an item, an event, the dev panel — comes through the same question, and so that
+	# GameState can tell whether there is a screen to ask on at all: with nobody
+	# connected it grants directly, which is what keeps headless runs and the tests
+	# working unchanged.
+	if not GameState.loot_offered.is_connected(_on_loot_offered):
+		GameState.loot_offered.connect(_on_loot_offered)
 	# Machines appearing or leaving. Off the signal rather than at the spawn
 	# sites, so anything that spawns one — an event, the dev panel, whatever comes
 	# next — puts it on the page without knowing the panel exists.
@@ -3369,6 +3381,28 @@ func refresh_loot_window() -> void:
 		return
 	_loot_window.rebuild(_phase == Phase.PLAYING)
 
+# TAB OPENS THE PACK. The `backpack` action has been sitting in project.godot with
+# nothing on the overworld listening for it — only the Collection, which reads it
+# to close itself and is never on screen at the same time as this, so the key was
+# free. The loot window is the thing you open and shut most often in a run, and it
+# is the only pack surface that has to be opened at all.
+#
+# Not while a modal is up: a drop is being decided, a card is being read, or the
+# run is over, and in all three the pack behind them is not the thing the key is
+# about. Nothing else on this page takes a key, so this is the whole of its input.
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("backpack"):
+		return
+	if _loot_window == null or _phase == Phase.OVER:
+		return
+	if _drop_modal != null and is_instance_valid(_drop_modal):
+		return
+	if _item_card != null and is_instance_valid(_item_card):
+		return
+	_loot_window.open = not _loot_window.open
+	refresh_loot_window()
+	get_viewport().set_input_as_handled()
+
 # Mount the loot window's panel OVER THE BOARD (§4.3). A page child rather than a
 # row in the pack, so opening it moves nothing.
 #
@@ -3455,6 +3489,25 @@ func _close_item_card() -> void:
 		_item_card.close()
 	_item_card = null
 
+# The same gesture for a piece of loot: clicking one in the window opens its card,
+# and firing it from there goes back through `use_loot` — the same verb the
+# window's own Use button calls, so reading a pill can never spend it (§4.3).
+# It rides `_item_card` because the two cards are the same slot on the screen and
+# only one of them can be open at a time.
+func open_loot_card(index: int) -> void:
+	if index < 0 or index >= GameState.loot_items.size():
+		return
+	var entry = GameState.loot_items[index]
+	if not (entry is Dictionary):
+		return
+	_close_item_card()
+	var card := LootInfoCard.new()
+	card.use_requested.connect(use_loot)
+	card.closed.connect(func(): _item_card = null)
+	add_child(card)
+	_item_card = card
+	card.setup(entry, index, _phase != Phase.PLAYING)
+
 # The hover model for a carried item, kept on the page as the name the shop's
 # shelf and the drop modal already reach for. PackStrip.item_hover is the one
 # implementation.
@@ -3530,6 +3583,20 @@ func _queue_loot_drop() -> void:
 	_drop_queue.append({"loot": entry})
 	_pump_drops()
 
+# A GRANT of loot, asked about rather than pushed into the pack (§4.3). Mom's Coin
+# Purse pays four pills at once and Sacred Bark doubles what a grant pays; shovelled
+# straight in, the surplus over the nine-piece cap used to vanish without a word.
+# GameState.offer_loot rolls the pieces and calls here, and they arrive as ONE
+# question with all of them on the table rather than as four modals in a row.
+#
+# Behind the same queue as everything else, so a game that paid its own piece AND
+# fired a relic asks in the order they landed.
+func _on_loot_offered(entries: Array) -> void:
+	if GameLoop2.run_over or entries.is_empty():
+		return
+	_drop_queue.append({"loot": entries.duplicate(true)})
+	_pump_drops()
+
 # Ask about the next waiting drop, if nothing else is already asking. Several
 # defeats in one report queue behind each other rather than stacking modals.
 #
@@ -3559,13 +3626,22 @@ func _open_next_drop() -> void:
 	# over both. It asks in its own modal — a scroll is not an ItemData and the
 	# nine-piece cap is a sentence only this one has to say.
 	if drop.has("loot"):
-		var loot_modal := LootDropModal.open(self, drop["loot"])
+		# `_phase != PLAYING` is the same rule the pack strip and the loot window
+		# spend by, passed in rather than assumed: everything on that screen can be
+		# used from it, the offer included, and the one condition under which loot
+		# cannot be spent has to mean the same thing on all three surfaces. In
+		# practice it is always true here — this call is deferred precisely so the
+		# report has finished resolving before the question is asked.
+		var loot_modal := LootDropModal.open(self, drop["loot"], _phase != Phase.PLAYING)
 		_drop_modal = loot_modal
-		loot_modal.answered.connect(func(taken: bool):
+		# `taken` is what ended up in the pack. THE SCREEN PLACES ITS OWN takes (§4.3):
+		# with several offers, and uses and bins interleaved between them, the slot
+		# the player chose is only meaningful at the instant they choose it. So the
+		# page's job here is the log and the refresh, not the taking.
+		loot_modal.answered.connect(func(taken: Array):
 			_drop_modal = null
 			_drop_queue.pop_front()
-			if taken:
-				_collect_loot_drop(drop["loot"])
+			_note_loot_taken(taken)
 			_pump_drops())
 		return
 	var modal = ItemDropModal.open(self, _drop_items(drop))
@@ -3640,17 +3716,18 @@ func _collect_drop(drop: Dictionary, chosen: ItemData = null) -> void:
 	GameLog.add("Collected %s." % item.display_name, Color(0.7, 1.0, 0.7))
 	Notifications.notify("Took %s." % item.display_name, UITheme.item_color(item))
 
-# The player kept the game's loot payout. The queue entry is already off the front
-# by the time this runs (the loot modal pops it itself), so this only has to put
-# the piece in the pack — and it can still be refused, because the answer was given
-# to a question asked before anything else in the queue resolved.
-func _collect_loot_drop(entry: Dictionary) -> void:
-	if not GameState.take_loot_entry(entry):
-		GameLog.add("No room in the pack — %s stays on the ground."
-			% LootSystem.display_name(entry), Color(0.8, 0.8, 0.8))
-		return
-	GameLog.add("Collected %s." % LootSystem.display_name(entry), Color(0.7, 1.0, 0.7))
-	_refresh_items()
+# What the player kept off a payout, written down. The pieces are ALREADY in the
+# pack — the drop screen places each one as it is resolved, because with several
+# offers on the table and uses and bins between them, the slot a piece was dropped
+# into stops meaning anything the moment the next one moves (§4.3). So this is the
+# log and the redraw, and nothing else.
+func _note_loot_taken(taken: Array) -> void:
+	for entry in taken:
+		if entry is Dictionary:
+			GameLog.add("Collected %s." % LootSystem.display_name(entry),
+				Color(0.7, 1.0, 0.7))
+	if not taken.is_empty():
+		_refresh_items()
 
 func _skip_drop(drop: Dictionary) -> void:
 	if not _drop_queue.has(drop):
@@ -3991,10 +4068,16 @@ func _build_ui() -> void:
 	# how much trouble you were in. As a strip it is only as tall as the rows of
 	# tokens it needs (see _refresh_items), so the board keeps the room.
 	_inv_wrap = PanelContainer.new()
-	_inv_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 8, 1))
+	# MARGIN 6, not the 8 the other panels use, and separation 3 rather than 4. The
+	# loot bar at the foot of this panel (below) is a row the panel did not used to
+	# have, and the page it lives on is fitted to a 720p canvas with about five
+	# pixels to spare — so the row is paid for out of this panel's own padding
+	# rather than out of the board's height. Every one of these numbers is load
+	# bearing: test_the_page_still_fits_the_window_* fails at +2.
+	_inv_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 6, 1))
 	_inv_wrap.size_flags_horizontal = Control.SIZE_FILL
 	var inv_box := VBoxContainer.new()
-	inv_box.add_theme_constant_override("separation", 4)
+	inv_box.add_theme_constant_override("separation", 3)
 	_inv_wrap.add_child(inv_box)
 	# NO HEADING. It used to carry a "🎒  Inventory" line, and a strip of relics
 	# and scrolls in a bordered panel does not need to be told what it is — the
@@ -4017,9 +4100,28 @@ func _build_ui() -> void:
 	_items_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	strip_row.add_child(_items_box)
 	_pack = PackStrip.new(self, _items_box)
+	#
+	# THE LOOT TOGGLE IS THE PANEL'S FOOT, full width, under the relics.
+	#
+	# It has now been in three places, and the two it left were each wrong in their
+	# own way. At the TAIL of the relic row it sat under the notification toasts — a
+	# right-anchored column drawn over the page — so the one control that says you
+	# are carrying any loot at all spent most of every report hidden behind
+	# "Acquired Anchor." At the HEAD of that row it was clear of them, but it ate
+	# the left end of the strip the relics wrap into, which costs a relic tile a
+	# whole row the moment the pack gets long.
+	#
+	# On its own row it costs the relics no width at all, and being full width it is
+	# a bar rather than a button — which is the shape a "the rest of what you are
+	# carrying is through here" control should have been all along. THIN, because the
+	# page is fitted to a 720p canvas with a handful of pixels spare (see
+	# test_the_page_still_fits_the_window_*): the bar is drawn at
+	# LootWindow.TOGGLE_H and the capsules it carries are sized to sit inside that,
+	# so stacking it under the strip costs the panel about twenty pixels rather than
+	# a row's worth.
 	_loot_toggle_box = HBoxContainer.new()
-	_loot_toggle_box.size_flags_vertical = Control.SIZE_SHRINK_END
-	strip_row.add_child(_loot_toggle_box)
+	_loot_toggle_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inv_box.add_child(_loot_toggle_box)
 	_loot_window = LootWindow.new(self, _loot_toggle_box)
 	_right_col.add_child(_inv_wrap)
 

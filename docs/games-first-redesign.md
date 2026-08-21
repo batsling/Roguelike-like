@@ -311,6 +311,16 @@ in both directions, and an identified colour's card shows what each dose does.
 Because the art is visibly oversized, the player always knows a horse pill is a
 horse pill — what they may not know is what colour means.
 
+**And the UI has to actually draw it that way.** For a long time it did not: every
+surface fitted loot art into a *fixed* box (`UITheme.crisp_tex`), which renders a
+19px capsule and a 25px one at identical size, so the one tell the design promises
+was being scaled away by the thing drawing it. Loot art is now sized through
+`LootSystem.art_tex` / `art_box`, which asks `PillSystem.art_scale` how much bigger
+this dose's own file is than the normal dose's — **measured from the art rather
+than hardcoded**, so redrawing the horse capsule bigger makes it draw bigger. In
+the grid the art sits in a band tall enough for the largest dose, so an oversized
+capsule fills more of its cell without making its row taller than the other two.
+
 **A pill says what it would do to you right now.** Bad Trip's dose is lethal at
 low Health, so it does the one thing a Negative pill never does: at or below its
 own damage it **heals to full instead**, and it *names itself* accordingly — an
@@ -365,13 +375,44 @@ changes the outcome, never the fact, which is the only version of it that stays
 honest when the relic is lost.
 
 **The loot window.** Nine pieces of loot will not fit in the pack strip beside a
-run's relics, so loot moves off it into a window of its own: a **Loot** button
-beside the pack — a label and a small arrow, no bar — that opens a **3×3 grid**
-of what is carried, each cell its art and its name, each with a **Use** button and
-the same hover card an item or an enemy gets. Its tiles are drawn at the relics'
-size, because a pill and a relic are both "a thing you are carrying" and two art
-sizes in one panel read as two kinds of importance rather than as two kinds of
-thing.
+run's relics, so loot moves off it into a window of its own: a **Loot** button at
+the **head** of the pack strip — the count, and a peek at the first few capsules —
+that opens a **3×3 grid** of what is carried, each cell its art, its name, its
+**Preference** and a **Use** button, and each carrying the same hover card an item
+or an enemy gets.
+
+**The toggle is the pack panel's foot** — a full-width bar under the relics rather
+than a button beside them. It has now been in three places and the first two were
+each wrong in their own way: at the *tail* of the relic row it sat underneath the
+notification toasts (a right-anchored column drawn over the page) and was hidden
+for most of every report; at the *head* of that row it was clear of them but ate
+the left end of the strip the relics wrap into, which costs a relic tile a whole
+row the moment the pack gets long. On its own row it costs the relics no width at
+all, and being full width it is a **bar**, which is the shape a "the rest of what
+you are carrying is through here" control should have had all along. Its contents
+pack to the LEFT and its right half is deliberately empty — that end is where the
+toasts cross the panel.
+
+It is deliberately **thin** (`LootWindow.TOGGLE_H`), and the pack panel's own
+padding was trimmed to pay for the row it added: the page is fitted to a 720p
+canvas with about five pixels to spare and
+`test_the_page_still_fits_the_window_*` fails at +2, so those numbers are load
+bearing. It also wears **red at 9/9**: a full pack turns the next payout into "leave it", and the moment to know
+that is before the drop asks. **Tab** opens and shuts it — the `backpack` action
+had been sitting in `project.godot` with nothing on the overworld listening for it,
+and the loot window is both the surface a run opens most often and the only pack
+surface that has to be opened at all. It is ignored while a drop modal or a card is
+up, where the pack behind them is not what the key is about.
+
+**The cell is bigger than a relic's token, and that is the correction.** Loot tiles
+were drawn at exactly the pack strip's 34px on the reasoning that a pill and a
+relic are both "a thing you are carrying" — right about parity, wrong about where
+parity is measured. In a strip of twelve tokens 34px is the size that fits; in a
+panel with 240px of slack it is a debug widget, with 9px names under it, smaller
+than any other type on the page. The cell is now 48px of art in a 66px band with an
+11px name, and the name reserves **two lines whether it needs them or not** — a
+one-line name used to pull its Use button above the two-line names either side of
+it, which made a full row read as broken.
 
 It is **shut until the button is pressed**, and when it opens it opens as a panel
 **over the board**, centred on the battlefield directly under the toggle that
@@ -394,6 +435,137 @@ that wraps read as all there is. **Nine is the cap** for now; a tenth
 piece has nowhere to go, which is what makes the drop modal's "leave it" a real
 answer. Scrolls live here too — one window for loot means one place to look, and
 the pack strip goes back to being the relics.
+
+**The grid is the thing you handle, not just the thing you read.** A piece can be
+**dragged from one slot to another**, and the piece a game pays out is **dragged
+into the slot you want it in** — see the drop modal below. Clicking a piece opens
+its **card** (`LootInfoCard`), the twin of the relic's: a relic answered a click by
+opening its card and a pill answered a click with nothing at all, which is the same
+class of object with two different gestures, and the one that did nothing was the
+one whose entire subject is *what is this*. So: **click reads, drag moves, the
+button spends** — and the card's own Use goes back through the same `use_loot`, so
+there is one spend path and inspecting a piece can never cost you one.
+
+**What an arrangement is allowed to be.** `GameState.loot_items` is **dense**, and
+its indices are what `use_loot` and `remove_loot_at` are addressed by. So a drag
+**swaps** two pieces, or moves one to the end — there is deliberately no third case
+that leaves a hole in the middle of the array for the sake of an arrangement
+nothing reads. Every arrangement the grid offers is one the run can actually hold,
+and the grid redraws from the array afterwards, so where a piece lands is where the
+array says it is rather than a position the view is remembering on its own. (True
+free placement would mean a sparse pack, which is a change to every index in the
+loot code and to the save; it is not worth it for a nine-cell bag.)
+
+**The drop modal shows the pack — and the pack it shows IS the inventory**
+(`LootDropModal`). The 3×3 on the right is the same `LootGrid` the loot window
+draws, with the same everything: pieces drag between slots, each carries the button
+that spends it, clicking one opens its card, and the bin under it takes anything.
+The only thing this screen has that the loot window does not is the offer on the
+left — the bin and the "Known this run" fold come with it. It used to show the piece alone and say *"Your pack is full (9/9)"* in red
+when it wasn't going to fit — a sentence about a thing the player could not see, on
+the one screen where what you are already carrying is the whole basis of the
+answer. Now the 3×3 comes with it, and the piece is **dragged into the slot it
+should live in**, so taking it and placing it are one gesture and a pack with no
+room says so by having nowhere to drop. The buttons stay — **Take it** puts it in
+the first free slot, **Leave it** is still the answer the cap makes interesting —
+because drag is the good gesture, not the only one, and a decision this final
+should not depend on a drag landing.
+
+**It asks about a HANDFUL, not only about one.** A game's own payout is a single
+piece, but **Mom's Coin Purse is four pills at once** and Sacred Bark doubles what
+a grant pays. A screen built around exactly one offer answered that by shovelling
+the rest straight into the pack and **silently dropping whatever did not fit** —
+which is the one thing the nine-piece cap exists to make into a decision. So the
+offer is a **list**: one cell per piece, laid out two abreast up to four and three
+abreast beyond that, each taken, used or binned on its own terms, and the screen
+closes when the table is empty. Beyond three rows it scrolls rather than pushing
+its own buttons off the bottom of the screen — a payout that cannot be answered is
+worse than one you have to scroll. **Take** takes as many as still fit and leaves
+the rest **on the table** rather than throwing them away.
+
+Which piece is which matters here: four identical unidentified capsules cannot be
+told apart by their entry, so a drag carries the **offer's index** alongside it
+(`LootSlot.offer_index`) and the screen crosses off the one the player actually
+moved.
+
+**A grant of loot asks, too** (`GameState.offer_loot`, `EffectSystem._grant_loot`).
+It rolls the pieces and hands them to whoever is listening — the page queues them
+as *one* question behind the same drop queue as everything else — and falls back to
+the direct `add_loot` when nobody is, which keeps it a pure state change on
+headless runs, in `PlaySession2` and in the tests. A **negative** grant is a loss
+rather than an offer (nobody is asked which pills to be robbed of), so it goes
+straight through as it always did.
+
+**This screen places its own takes**, which is the one place it departs from every
+other drop. With several offers on the table, and uses and bins interleaved between
+them, the slot the player chose is only meaningful at the instant they choose it —
+one use later every index behind it has moved. So each offer is committed as it is
+resolved, and `answered` reports the finished list for the page to log.
+
+**And the pack it shows is a LIVE one.** Every piece on that screen can be spent
+from it, the offered one included. A full pack used to leave exactly two answers to
+a payout — leave it, or close the modal, go and spend something, and never get the
+payout back — and only the first was on offer. So:
+
+- **a carried piece has its Use button**, the same one the loot window draws, and
+  spending it frees the slot the offer needs *in front of the offer*, which is
+  where the decision is being made. The drop stays on the table while you do it:
+  spending is not answering.
+- **the offer can be used where it stands**, without ever being carried
+  (`LootSystem.use_entry`). A Full Health that will not fit is not a piece of loot
+  anyone should have to throw away, and "drink it now" is the answer every
+  roguelike gives to a full bag. It costs no slot, so it is offered whether the
+  pack is full or not — and it is a real use, so an unknown colour taken this way
+  is **identified**, remembered, and echoed like any other. It resolves the drop:
+  nothing entered the pack, so "taken" would be a lie and the page has nothing to
+  collect.
+
+The use modal opens on a **layer above** the drop modal (`USE_LAYER`) — a
+`CanvasLayer`'s order is global, so a modal opened from on top of another has to be
+told to clear it.
+
+**The bin** (`LootTrash`). Spending a piece is not the same as being rid of one: a
+pack holding three known-Negative pills is full of loot the run will never
+willingly use, and *reading the Amnesia scroll to make room* is a worse answer than
+throwing it away. So both surfaces that draw the grid draw a red zone under it, and
+anything can be dragged onto it — a carried piece, or the offer, which is **"Leave
+it" said with the hands**.
+
+It **lights up the moment you pick anything up**, anywhere in the viewport
+(`NOTIFICATION_DRAG_BEGIN`): idle it is a quiet outline that does not shout about
+destruction on a screen nobody is discarding on, and armed it is the one red thing
+on the panel. It is a drop target only — never a drag source, never a click — which
+is the point of making drag the verb: you have to pick a specific piece up, carry
+it across the panel, and let go on the red.
+
+Binning a **carried** piece **asks first** (`LootTrash.confirm`), because it is the
+one gesture on either screen that destroys something and gives nothing back —
+spending a piece at least fires it — and a drag that ends on the red by accident
+should not be able to cost a run its Full Health. The **offer** is the exception:
+binning that is "Leave it", which is already a one-click answer. The confirmation
+sits on **a layer of its own**, above both surfaces and owned by neither: the loot
+window's panel floats with `top_level` set (so a confirmation parented to the page
+draws *underneath* the thing it is asking about) and the drop modal rebuilds itself
+when the pack changes (which would free a confirmation parented to it mid-answer).
+
+Nothing can be spent or binned **mid-report**, on all three surfaces alike — the
+report step is between "played the game" and "said what happened". In practice a
+drop modal never opens in that state anyway: `Overworld2._open_next_drop` is
+deferred precisely so the report has finished resolving before the question is
+asked, which is why the offer can carry a Use button at all.
+
+**What you have learned lives at the foot of the pack**, behind a folded *"Known
+this run"* line — on **both** surfaces that draw the pack, since the reward
+screen's right-hand side is the inventory and not a picture of one. It is one fold
+(`LootDiscoveries.open` is static): shut in the window and open on the reward
+screen would be two answers to one question. A pill's identity belongs to a **colour** and only for
+**this run**, and until now the only place that knowledge ever existed was a toast
+that had already scrolled away — so a player who learned that green is Bad Trip on
+game three had nowhere to go and check on game eleven. That is the whole
+identification minigame with no record of itself. The fold lists what has been
+learned, with art and name and the same hover card, and **counts** what has not:
+naming the unlearned colours would hand back exactly the deduction the three
+sitting-out colours exist to prevent.
 
 **Echo Chamber** (Rare, Passive) is the one that turns loot into a resource
 worth hoarding: using a piece of loot also uses **a copy of the last 3 you used

@@ -2752,6 +2752,49 @@ func take_loot_entry(entry: Dictionary) -> bool:
 	emit_signal("inventory_changed")
 	return true
 
+# Take a rolled entry INTO A CHOSEN SLOT — the drop modal's drag (§4.3). The same
+# refusal as `take_loot_entry` when the pack is full, and the same dense array
+# afterwards: `index` is where the piece is INSERTED, and the pieces at and after
+# it shift right. A slot past the end holds nothing to shift, so the piece lands
+# at the end — which is where the grid then draws it, so the player sees where it
+# went rather than being told.
+# OFFER `n` pieces of loot rather than granting them (§4.3).
+#
+# The difference matters because of the cap. `add_loot` pushes pieces in until the
+# pack is full and then silently drops the rest, which is fine for a payout of one
+# into an empty pack and wrong for everything else: Mom's Coin Purse pays four
+# pills at once, Sacred Bark doubles a grant, and a run carrying seven pieces would
+# have the surplus vanish without ever being told. The cap is the whole reason
+# taking loot is a decision, so a grant that runs into it has to ask.
+#
+# The pieces are rolled HERE, so what the screen offers is what the run actually
+# rolled, and handed over on `loot_offered`. When nothing is listening — a headless
+# run, PlaySession2, the tests — it falls back to the direct grant, which keeps
+# this a pure state change everywhere there is no UI to ask on.
+signal loot_offered(entries: Array)
+
+func offer_loot(kind: String, n: int) -> void:
+	if n <= 0:
+		return
+	if not has_connections("loot_offered"):
+		add_loot(kind, n)
+		return
+	var entries: Array = []
+	for _i in range(n):
+		var entry: Dictionary = roll_loot_entry(kind)
+		if not entry.is_empty():
+			entries.append(entry)
+	if entries.is_empty():
+		return
+	loot_offered.emit(entries)
+
+func take_loot_entry_at(entry: Dictionary, index: int) -> bool:
+	if entry.is_empty() or loot_is_full():
+		return false
+	loot_items.insert(clampi(index, 0, loot_items.size()), entry.duplicate(true))
+	emit_signal("inventory_changed")
+	return true
+
 # Grant a SPECIFIC scroll id as loot (DevTools grant). Emits so loot UI refreshes.
 func add_scroll_loot(id: StringName) -> void:
 	var s: ScrollData = Data.get_scroll(id)
@@ -2769,6 +2812,34 @@ func add_pill_loot(id: StringName, horse: bool = false) -> void:
 		return
 	loot_items.append({"type": "pill", "id": p.id, "horse": horse})
 	emit_signal("inventory_changed")
+
+# Move the piece at `from` to the slot at `to` — the pack grid's drag (§4.3).
+#
+# THE ARRAY STAYS DENSE. The window draws nine slots and the first N of them are
+# `loot_items[0..N)`, so an arrangement the player can make has to be one this
+# array can hold: dropping onto a piece SWAPS the two, and dropping onto an empty
+# slot past the end moves the piece to the end. There is deliberately no third
+# case where a slot in the middle goes empty — index is what `use_loot` and
+# `remove_loot_at` are addressed by, and a sparse pack would put a hole in the
+# middle of every one of them for the sake of an arrangement nothing reads.
+#
+# Returns whether anything actually moved, so a drag onto a piece's own slot is a
+# no-op rather than a redraw.
+func move_loot(from: int, to: int) -> bool:
+	if from < 0 or from >= loot_items.size() or to < 0 or to >= LOOT_CAPACITY:
+		return false
+	var target: int = mini(to, loot_items.size() - 1)
+	if target == from:
+		return false
+	var moving = loot_items[from]
+	if to < loot_items.size():
+		loot_items[from] = loot_items[to]
+		loot_items[to] = moving
+	else:
+		loot_items.remove_at(from)
+		loot_items.append(moving)
+	emit_signal("inventory_changed")
+	return true
 
 # Removes the loot entry at `index` (called after a potion is drunk / thrown).
 func remove_loot_at(index: int) -> void:
