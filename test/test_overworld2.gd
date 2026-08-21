@@ -3874,8 +3874,14 @@ func test_a_card_names_the_pace_it_would_put_you_on() -> void:
 		var note: Dictionary = _ui.turn_note({"slot": gid, "amulet": false})
 		assert_eq(int(note["turns"]), RunDifficulty.turns_for_hops(hops),
 			"a card %d hops out reads the same rung the loop resolves on" % hops)
-		assert_true(String(note["text"]).contains("×%d" % int(note["turns"])),
-			"and says the number out loud: %s" % note["text"])
+		assert_eq(int(note["bonus"]), RunDifficulty.bonus_turns_for_hops(hops),
+			"and knows which half of that the Amulet is charging")
+		# The BONUS is what the card says out loud (§7.4) — "+1 bonus turn", or
+		# "no bonus turns" on the rung where it charges nothing.
+		var said: String = ("no bonus turns" if int(note["bonus"]) <= 0
+			else "+%d bonus turn" % int(note["bonus"]))
+		assert_true(String(note["text"]).contains(said),
+			"and says the price out loud: %s" % note["text"])
 
 func test_stepping_toward_the_amulet_warns_that_they_speed_up() -> void:
 	# Stand in the far band and look at a card deep in the near one: the card has
@@ -3889,7 +3895,7 @@ func test_stepping_toward_the_amulet_warns_that_they_speed_up() -> void:
 	assert_eq(int(note["turns"]), 3, "one hop from the Amulet is the doorstep")
 	assert_true(String(note["text"]).contains("speed up"),
 		"the card warns before the click: %s" % note["text"])
-	assert_eq(note["color"], RunDifficulty.turns_band_color(3),
+	assert_eq(note["color"], RunDifficulty.bonus_band_color(RunDifficulty.BONUS_NEAR),
 		"in the band's own colour, same as the board's strip")
 
 func test_backing_off_reads_as_the_relief_it_is() -> void:
@@ -3915,8 +3921,8 @@ func test_a_card_that_changes_nothing_says_so_quietly() -> void:
 	assert_eq(note["color"], UITheme.TEXT_DIM, "and it doesn't shout about it")
 
 func test_the_amulet_card_makes_no_threat_about_afterwards() -> void:
-	# Taking the Amulet ends the run on the spot; a "×3 turns" warning there would
-	# be describing a game that never happens.
+	# Taking the Amulet ends the run on the spot; a "+2 bonus turns" warning there
+	# would be describing a game that never happens.
 	var note: Dictionary = _ui.turn_note({
 		"slot": GameState.amulet_game_id, "amulet": true})
 	assert_eq(String(note["text"]), "", "the winning card carries no pace warning")

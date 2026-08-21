@@ -62,7 +62,7 @@ var _pressure_panel: HoverPanel
 # and this is kept because it is the LONG form the same facts have — the manual
 # and any future full readout should quote this rather than re-derive it.
 var _pressure_ladder_text: String = ""
-var _pressure_turns: Label          # "⏱ ENEMY TURNS ×2"
+var _pressure_turns: Label          # "⏱ ENEMY TURNS 1 +1"
 var _pressure_rungs: Array = []     # the three ladder pips, far -> near
 var _pressure_why: Label            # "Amulet 4 hops away — Closing"
 var _size_label: Label              # "▦ 5×5 · Medium"
@@ -404,12 +404,14 @@ func _build_pressure_bar() -> Control:
 	_pressure_turns.add_theme_font_size_override("font_size", 14)
 	row.add_child(_pressure_turns)
 
-	# The ladder: three pips, far band on the left. Filled up to where the run
-	# stands, so "how much worse can this get?" is answerable without a tooltip.
+	# The ladder: one pip per turn a game can ever hand the board, base turn
+	# leftmost. Filled up to where the run stands, so "how much worse can this
+	# get?" is answerable without a tooltip — the first pip is the turn every game
+	# gives and never goes out, the rest are the Amulet's.
 	var ladder := HBoxContainer.new()
 	ladder.add_theme_constant_override("separation", 2)
 	_pressure_rungs.clear()
-	for i in range(RunDifficulty.TURNS_NEAR):
+	for i in range(RunDifficulty.MAX_TURNS):
 		var pip := Label.new()
 		pip.add_theme_font_size_override("font_size", 15)
 		ladder.add_child(pip)
@@ -434,12 +436,17 @@ func _refresh_pressure() -> void:
 	if _pressure_turns == null:
 		return
 	var turns: int = GameLoop2.enemy_turns()
+	var bonus: int = GameLoop2.bonus_enemy_turns()
 	var hops: int = GameLoop2.hops_to_amulet()
-	var band: Color = RunDifficulty.turns_band_color(turns)
+	var band: Color = RunDifficulty.bonus_band_color(bonus)
 
 	_pressure_panel.add_theme_stylebox_override("panel",
 		UITheme.flat(band.lerp(UITheme.BG, 0.82), 6, 6, 1, band.lerp(UITheme.BG, 0.45)))
-	_pressure_turns.text = "⏱  ENEMY TURNS ×%d" % turns
+	# THE BONUS IS THE NUMBER, not the total (§7.4). One turn a game is the floor
+	# and never changes, so "1" alone is the calm state and "1 +2" is what the run
+	# has walked into — a price, in the same shape the cards quote it in.
+	_pressure_turns.text = ("⏱  ENEMY TURNS  %d +%d" % [RunDifficulty.TURN_BASE, bonus]
+		if bonus > 0 else "⏱  ENEMY TURNS  %d" % RunDifficulty.TURN_BASE)
 	_pressure_turns.add_theme_color_override("font_color", band)
 
 	for i in range(_pressure_rungs.size()):
@@ -454,29 +461,31 @@ func _refresh_pressure() -> void:
 	if hops < 0:
 		_pressure_why.text = "no route to the Amulet"
 	elif hops == 0:
-		_pressure_why.text = "standing ON the Amulet — %s" % RunDifficulty.turns_band_name(turns)
+		_pressure_why.text = "standing ON the Amulet — %s" % RunDifficulty.bonus_band_name(bonus)
 	else:
 		_pressure_why.text = "Amulet %d hop%s away — %s" % [
-			hops, "" if hops == 1 else "s", RunDifficulty.turns_band_name(turns)]
+			hops, "" if hops == 1 else "s", RunDifficulty.bonus_band_name(bonus)]
 
 	# ENEMY TURNS is the one readout on the board that is a CONSEQUENCE of a
 	# decision made somewhere else — the route — so its hover has to answer "why is
 	# it that number" as well as "what does it mean". The ladder itself is the
-	# note: the whole table of hops-to-turns, which is where the answer is.
-	var ladder_tip: String = ("Every enemy acts %d time%s per game you report.\n"
+	# note: the whole table of hops-to-bonus, which is where the answer is.
+	var acts: String = ("Every enemy acts once per game you report"
+		+ ("" if bonus <= 0 else ", and %s at the end of it" % RunDifficulty.bonus_text(bonus)))
+	var ladder_tip: String = ("%s.\n"
 		+ "A turn is one action: strike from the front column, or step a column closer.\n\n"
-		+ "%s\n\nRush the Amulet and they get faster; take the long way and they stay slow.") % [
-			turns, "" if turns == 1 else "s", RunDifficulty.turns_ladder_text(turns)]
+		+ "%s\n\nRush the Amulet and they get extra turns; take the long way and they get none.") % [
+			acts, RunDifficulty.bonus_ladder_text(bonus)]
 	HoverCard.attach(_pressure_panel, {
-		"title": "Enemy turns ×%d" % turns,
-		"subtitle": RunDifficulty.turns_band_name(turns),
+		"title": "Enemy turns %d%s" % [RunDifficulty.TURN_BASE,
+			"" if bonus <= 0 else " +%d" % bonus],
+		"subtitle": RunDifficulty.bonus_band_name(bonus),
 		"accent": band,
 		"lines": [
-			"Every enemy on the board acts %d time%s per game you report — a strike from the front column, or a step closer." % [
-				turns, "" if turns == 1 else "s"],
+			"%s — a strike from the front column, or a step closer." % acts,
 			_pressure_why.text,
 		],
-		"note": "Rush the Amulet and they get faster; take the long way and they stay slow.",
+		"note": "Rush the Amulet and they get extra turns; take the long way and they get none.",
 	})
 	# The two labels inside it are MOUSE-TRANSPARENT so the panel owns the hover —
 	# a card that changed shape depending on which word of the strip the cursor
@@ -2109,10 +2118,14 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1) -
 	# One playback per TURN (§7.4). Each turn is the same beat the board has
 	# always played — the front line strikes, then the field closes up — and the
 	# whole point of the mechanic is that near the Amulet you watch that beat land
-	# three times instead of once. Collapsing it into a single slide would hide
-	# exactly the thing the player needs to feel.
+	# again, twice over, AFTER the one the game itself bought. Collapsing it into a
+	# single slide would hide exactly the thing the player needs to feel.
 	var frames: Array = _turn_rect_frames(before, after, res)
 	var turns: int = maxi(1, frames.size() - 1)
+	# How many of those were the game's own, as opposed to the Amulet's (§7.4).
+	# Read off the RESULT rather than off the frame count, which a run that ended
+	# mid-playback cuts short — the game's turn is still the first one either way.
+	var base_turns: int = maxi(1, int(res.get("turns", turns)) - int(res.get("bonus_turns", 0)))
 	var elapsed: float = 0.0
 	for turn in range(turns):
 		var from_frame: Dictionary = frames[turn]
@@ -2128,7 +2141,8 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1) -
 			# The counter only earns its place when there is more than one turn to
 			# count; at one turn a game it would be noise over every single report.
 			if turns > 1:
-				_spawn_turn_counter(turn + 1, turns, elapsed)
+				_spawn_turn_counter(turn + 1, turns, base_turns,
+					int(res.get("bonus_turns", 0)), elapsed)
 			elapsed = slide_at + (FX_SLIDE_TIME if slid else 0.0)
 	# Whatever the ghosts were standing in for comes back at the end of the whole
 	# playback, not at the end of each turn: a body that moved on turn 1 and then
@@ -2250,17 +2264,22 @@ func _after(delay: float, fn: Callable) -> void:
 	t.tween_interval(delay)
 	t.tween_callback(fn)
 
-# "TURN 2 / 3" over the board as each turn opens — the count is the mechanic, so
+# "TURN 1 / 3" over the board as each turn opens — the count is the mechanic, so
 # it is spelled out rather than left to be inferred from how many times the hero
-# flinched.
-func _spawn_turn_counter(turn: int, turns: int, delay: float) -> void:
+# flinched. The ones the AMULET bought say so ("BONUS TURN 1 / 2"): they are the
+# last `bonus` of the run, they land after every enemy has taken its own, and a
+# player watching the board flinch three times is owed the reason why.
+func _spawn_turn_counter(turn: int, turns: int, base: int, bonus: int,
+		delay: float) -> void:
 	if _field == null:
 		return
-	var band: Color = RunDifficulty.turns_band_color(turns)
+	var band: Color = RunDifficulty.bonus_band_color(bonus)
 	var rect: Rect2 = _local_rect(_field)
+	var extra: int = turn - base                 # 1-based index into the bonus turns
 	_after(delay, func():
 		var lbl := Label.new()
-		lbl.text = "TURN %d / %d" % [turn, turns]
+		lbl.text = ("BONUS TURN %d / %d" % [extra, bonus] if extra > 0
+			else "TURN %d / %d" % [turn, turns])
 		lbl.add_theme_font_size_override("font_size", 28)
 		lbl.add_theme_color_override("font_color", band)
 		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))

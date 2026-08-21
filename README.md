@@ -274,7 +274,7 @@ node and its script.
     **`HowToPlayText.gd`**, which the screen draws and does not read — so the
     text, which changes every time the build does, is edited without touching
     layout code. The manual's **numbers are interpolated from the constants that
-    govern them** (`GameLoop2.SHIELDS_PER_GAME`, `RunDifficulty.turns_for_hops`,
+    govern them** (`GameLoop2.SHIELDS_PER_GAME`, `RunDifficulty.bonus_turns_for_hops`,
     `ShopSystem.BASE_PRICE`, `RunGraph.NUM_HUBS` …), and `test_how_to_play.gd`
     asserts the prose still quotes them, so a balance change cannot leave the
     manual lying. The menu's **bottom-left corner is its table of contents** —

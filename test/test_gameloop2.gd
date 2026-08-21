@@ -1349,7 +1349,7 @@ func test_real_boss_takes_no_bomb_damage() -> void:
 	assert_eq(GameLoop2.stack_size(), 1, "but the boss takes no damage from it")
 
 # ---------------------------------------------------------------------------
-# Amulet pressure: enemies take more turns the closer the run gets (§7.4)
+# Amulet pressure: enemies get BONUS turns the closer the run gets (§7.4)
 # ---------------------------------------------------------------------------
 
 # Stand the run `hops` games from the Amulet over the real catalog, so
@@ -1395,15 +1395,43 @@ func test_the_ladder_reads_off_the_distance_to_the_amulet() -> void:
 			"%d hops from the Amulet buys the enemies %d turns" % [hops, int(pair[1])])
 
 func test_the_ladder_is_pure_maths_without_a_graph() -> void:
-	# The thresholds themselves, independent of any catalog: 5+ is one turn, 3-4
-	# two, 2-0 three. Nothing between the rungs is left undefined.
-	assert_eq(RunDifficulty.turns_for_hops(99), 1)
-	assert_eq(RunDifficulty.turns_for_hops(5), 1)
-	assert_eq(RunDifficulty.turns_for_hops(4), 2, "4 hops is inside the middle band")
-	assert_eq(RunDifficulty.turns_for_hops(3), 2)
-	assert_eq(RunDifficulty.turns_for_hops(2), 3)
-	assert_eq(RunDifficulty.turns_for_hops(0), 3, "standing on it is the doorstep")
-	assert_eq(RunDifficulty.turns_for_hops(-1), 1, "unreachable reads as distant")
+	# The thresholds themselves, independent of any catalog: 5+ buys no bonus,
+	# 3-4 one, 2-0 two. Nothing between the rungs is left undefined.
+	assert_eq(RunDifficulty.bonus_turns_for_hops(99), 0)
+	assert_eq(RunDifficulty.bonus_turns_for_hops(5), 0)
+	assert_eq(RunDifficulty.bonus_turns_for_hops(4), 1, "4 hops is inside the middle band")
+	assert_eq(RunDifficulty.bonus_turns_for_hops(3), 1)
+	assert_eq(RunDifficulty.bonus_turns_for_hops(2), 2)
+	assert_eq(RunDifficulty.bonus_turns_for_hops(0), 2, "standing on it is the doorstep")
+	assert_eq(RunDifficulty.bonus_turns_for_hops(-1), 0, "unreachable reads as distant")
+
+func test_the_total_is_the_one_turn_every_game_gives_plus_the_bonus() -> void:
+	# The resolver counts turns, not prices: whatever the ladder is authored as,
+	# what it hands GameLoop2 is the base turn with the bonus on top.
+	for hops in [99, 5, 4, 3, 2, 0, -1]:
+		assert_eq(RunDifficulty.turns_for_hops(hops),
+			RunDifficulty.TURN_BASE + RunDifficulty.bonus_turns_for_hops(hops),
+			"%d hops: total is base + bonus" % hops)
+	assert_eq(RunDifficulty.TURN_BASE, 1, "one turn a game is the floor")
+	assert_eq(RunDifficulty.MAX_TURNS, RunDifficulty.TURN_BASE + RunDifficulty.BONUS_NEAR,
+		"and the gauge draws a rung for every turn a game can ever hand the board")
+
+func test_the_bonus_turns_land_after_every_enemy_has_taken_its_own() -> void:
+	# "All at the end of combat" (§7.4), read off the resolve's own frames: the
+	# doorstep's three turns are the game's one and then two more, and the result
+	# says which of them were the Amulet's.
+	if not _stand_at_hops(1):
+		return
+	var inst: int = _stacked_at_front(1)
+	assert_eq(GameLoop2.bonus_enemy_turns(), 2, "the doorstep buys two bonus turns")
+	var before: int = GameState.hp
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	var res: Dictionary = GameLoop2.beat_game(false)
+	assert_eq(int(res.get("turns", 0)), 3, "three turns in all")
+	assert_eq(int(res.get("bonus_turns", 0)), 2, "two of them bonus")
+	assert_eq(before - GameState.hp, 3, "and the front-liner swung on every one")
+	assert_eq(_col_of(inst), 1, "standing where it started — it was already in your face")
 
 func test_at_the_doorstep_the_front_line_strikes_three_times() -> void:
 	if not _stand_at_hops(1):

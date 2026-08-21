@@ -47,10 +47,11 @@ extends Node
 #        whether it walked on this game or three games ago. Defeated + item drop at
 #        0 Health; a survivor (e.g. an Alien-Baby-buffed two-Health enemy) stays on
 #        the board and holds its fire for the whole game, because it was engaged.
-#     2. The stack takes its TURNS — enemy_turns() of them, 1 out in the wilds
-#        and 3 on the Amulet's doorstep (§7.4). Each turn every enemy acts once:
-#        the front column attacks for its damage (shields, then hp), everything
-#        behind it steps a column closer, and a stun costs one turn of either.
+#     2. The stack takes its TURNS — one each for the game just played, plus the
+#        BONUS turns the Amulet's pull adds on the end (0 out in the wilds, up to
+#        2 on its doorstep, §7.4). Each turn every enemy acts once: the front
+#        column attacks for its damage (shields, then hp), everything behind it
+#        steps a column closer, and a stun costs one turn of either.
 #     3. Any shields still standing expire — they belonged to that game.
 # Reach & clear the Amulet game (clear_amulet) to win; hp <= 0 to lose.
 
@@ -1092,12 +1093,19 @@ func hops_to_amulet() -> int:
 	var dist: Dictionary = RunGraph.bfs_distances(amulet)
 	return int(dist[here]) if dist.has(here) else -1
 
-# How many TURNS every enemy takes on the next game resolved: 1 out in the wilds,
-# 3 on the Amulet's doorstep (see RunDifficulty.turns_for_hops for the ladder and
-# why it exists). A turn is one action — attack from the front column, or step a
-# column closer from anywhere behind it.
+# How many TURNS every enemy takes on the next game resolved. ONE always, plus
+# the BONUS turns this position on the route buys them — 0 out in the wilds, up
+# to 2 on the Amulet's doorstep (see RunDifficulty for the ladder and why it
+# exists). A turn is one action — attack from the front column, or step a column
+# closer from anywhere behind it.
 func enemy_turns() -> int:
 	return RunDifficulty.turns_for_hops(hops_to_amulet())
+
+# Just the bonus half — what closing on the Amulet is costing, as opposed to what
+# the board does anyway. The views say the bonus rather than the total (§7.4), so
+# they ask for it rather than subtracting the base themselves.
+func bonus_enemy_turns() -> int:
+	return RunDifficulty.bonus_turns_for_hops(hops_to_amulet())
 
 # Where every body on the board stands right now, as instance -> Vector2i(col,
 # row). Snapshotted after each turn so the board can play the turns back one at a
@@ -1128,15 +1136,17 @@ func _board_snapshot() -> Dictionary:
 # Returns last_result:
 #   {beaten, defeats:[enemy...], drops:int,
 #    attacks:[{instance, turn, damage|stunned|goal_hit}],
-#    turns:int, turn_frames:[{instance: Vector2i(col,row)}, ...],
+#    turns:int, bonus_turns:int, turn_frames:[{instance: Vector2i(col,row)}, ...],
 #    damage_taken, blocked, hp, shields, shields_expired, attempts, stack_size,
 #    status_rewards:int, statuses_ticked:[status_id...],
 #    instead_cleared:[instance...], status_penalties:[{status, damage, blocked}],
 #    run_over, won}
 # `blocked` is what the unspent shields absorbed; `shields_expired` is what was
 # left over afterwards and went away with the game (§3). `turns` is how many
-# actions each enemy got (enemy_turns()), and `turn_frames` holds the board after
-# each one so the view can replay them in order.
+# actions each enemy got (enemy_turns()) and `bonus_turns` how many of those were
+# the Amulet's (§7.4) — the last N of them, taken after every enemy had its own —
+# while `turn_frames` holds the board after each one so the view can replay them
+# in order.
 # `clear_advertised` is a convenience for callers that have no report checklist to
 # read — the text harness, and the tests that just want "and I did the goal of the
 # thing that walked on here". It adds the body the card ADVERTISED (arrivals[0])
@@ -1152,7 +1162,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	var turns: int = enemy_turns()
 	var res := {
 		"beaten": true, "defeats": [], "drops": 0, "attacks": [],
-		"turns": turns, "turn_frames": [],
+		"turns": turns, "bonus_turns": bonus_enemy_turns(), "turn_frames": [],
 		"damage_taken": 0, "blocked": 0, "hp": GameState.hp,
 		"shields": GameState.shields, "shields_expired": 0,
 		"attempts": attempts(), "stack_size": stack.size(),
@@ -1223,12 +1233,15 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# NEXT game's Scramble may not touch.
 	arrivals.clear()
 
-	# 2. THE ENEMY TURNS. Every enemy gets `turns` actions this game — one out in
-	#    the wilds, three on the Amulet's doorstep (§7.4) — and each action is
-	#    either a STRIKE (from the front column) or a STEP (from anywhere behind
-	#    it). One turn is exactly the strike-then-advance the loop has always
-	#    resolved, so the far band is the old behaviour unchanged and the near
-	#    bands are that same beat, repeated.
+	# 2. THE ENEMY TURNS. Every enemy takes ONE turn for the game just played —
+	#    a STRIKE (from the front column) or a STEP (from anywhere behind it) —
+	#    and then, at the END of that, the BONUS turns the Amulet's pull has
+	#    bought them: 0 out in the wilds, up to 2 on its doorstep (§7.4).
+	#
+	#    Which is this one loop, because a bonus turn is not a different kind of
+	#    thing: it is the same beat again, taken after every enemy has had its
+	#    own. `turn` 0 is the game's; everything past it is bonus, which is what
+	#    `bonus_turns` in the result marks for the view.
 	for turn in range(turns):
 		if run_over:
 			break

@@ -413,10 +413,11 @@ func stun_enemies_chosen(instances: Array) -> String:
 
 # What one Stun is actually worth where the run is standing (§7.4). A stun costs
 # the target one TURN, and a turn is the whole game out in the wilds but only a
-# third of one on the Amulet's doorstep, so both the screen that ASKS which enemy
-# to stun and the one that reports the answer have to price it against the current
-# pace rather than promising "skips its next attack". One copy, because the two
-# saying it differently would be two answers to one question.
+# third of one on the Amulet's doorstep — where the game's own turn is followed by
+# two bonus ones — so both the screen that ASKS which enemy to stun and the one
+# that reports the answer have to price it against the current pace rather than
+# promising "skips its next attack". One copy, because the two saying it
+# differently would be two answers to one question.
 func stun_worth() -> String:
 	var turns: int = GameLoop2.enemy_turns()
 	if turns <= 1:

@@ -100,8 +100,8 @@ func test_the_tries_the_manual_quotes_are_the_tries_the_build_grants() -> void:
 func test_the_pressure_ladder_the_manual_prints_is_the_real_one() -> void:
 	var text: String = _all_text()
 	for hops in [0, 2, 3, 4, 5, 9]:
-		var turns: int = RunDifficulty.turns_for_hops(hops)
-		assert_string_contains(text, "×%d" % turns)
+		var bonus: int = RunDifficulty.bonus_turns_for_hops(hops)
+		assert_string_contains(text, "+%d" % bonus)
 	assert_string_contains(text, "%d or more" % RunDifficulty.FAR_HOPS)
 
 

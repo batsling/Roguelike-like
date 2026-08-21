@@ -11,6 +11,34 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Amulet pressure is BONUS turns now, not the turn count.**
+
+  The ladder used to *be* how many turns the enemies took per game — ×1 out in
+  the wilds, ×3 on the Amulet's doorstep — which quoted a stat where the player
+  needed a price, and invited the wrong reading besides: that closing in makes
+  the enemies act twice inside one beat. It doesn't. **Every enemy takes one turn
+  per game reported, wherever the run is standing**, and closeness buys them
+  BONUS turns on the end of the game — +0 / +1 / +2 — taken after every enemy has
+  had its own.
+
+  The totals are the ones the game already had (1 / 2 / 3): what changed is what
+  the ladder is authored as and what the screens say. `RunDifficulty` owns
+  `TURN_BASE` and `BONUS_FAR/MID/NEAR` with `bonus_turns_for_hops` as the ladder;
+  `turns_for_hops` stays as base + bonus for the resolver, which counts turns
+  rather than prices. The band name, colour and ladder text are all keyed on the
+  bonus now, so nothing on this axis is left speaking the old units.
+
+  **What the player sees.** The board's strip reads `⏱ ENEMY TURNS 1 +1`, and
+  plain `1` in the Distant band — "no bonus" is a state worth reading as calm.
+  Its three rungs are the same gauge with a clearer story: first pip the turn
+  every game gives, the other two the Amulet's. Cards say the price — "Enemies
+  speed up — +1 bonus turn", "Still no bonus turns" — and the resolve's counter
+  names which half of the bargain each beat came from: `TURN 1 / 3`, then
+  `BONUS TURN 1 / 2`. `beat_game`'s result carries `bonus_turns` so the board can
+  say that without recomputing it.
+
+---
+
 - **A lost run gives the enemies a turn, and status goals wear their symbol.**
 
   **Out of shields, the board takes a turn.** A lost run used to cost a flat

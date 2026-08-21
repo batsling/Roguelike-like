@@ -968,39 +968,48 @@ layers by **tree order, never `z_index`** — `z_index` is relative to the paren
 and would punch the board out through the enemy info card and the reward
 screens, which sit above the battlefield only because they're mounted after it.
 
-### 7.4 Amulet pressure — the enemies speed up as you close in
+### 7.4 Amulet pressure — the enemies get bonus turns as you close in
 
 The run has two difficulty axes. The tier ladder (§7.1) is the clock: it ticks
 up on its own, every `GAMES_PER_TIER` games, and the player only rides it. This
 is the other one, and it's the one the player **steers**.
 
-**How many turns the enemies take each game is read off how far you are from the
-Amulet**, in hops over the run graph:
+**Every enemy takes one turn per game reported, wherever the run is standing.**
+That is the floor and nothing moves it. What closeness to the Amulet buys them is
+**BONUS TURNS on the end of the game** — taken after every enemy has had its own
+— read off how far you are in hops over the run graph:
 
-| Hops to the Amulet | Turns per game | Band |
-|---|---|---|
-| 5 or more | 1 | Distant |
-| 3 – 4 | 2 | Closing |
-| 2 – 0 | 3 | Doorstep |
+| Hops to the Amulet | Bonus turns | Total turns | Band |
+|---|---|---|---|
+| 5 or more | +0 | 1 | Distant |
+| 3 – 4 | +1 | 2 | Closing |
+| 2 – 0 | +2 | 3 | Doorstep |
 
 A **turn** is one action, and every enemy takes one on each of them: a body
 touching column 1 **strikes**, everything behind it **steps** a column closer. A
 turn is exactly the strike-then-advance the loop has always resolved, so the
-Distant band *is* the pre-ladder game and the near bands are that same beat,
-repeated. One turn a game therefore changes nothing about the rules — it just
-stops being the only speed.
+Distant band *is* the pre-ladder game and a bonus turn is that same beat again,
+at the end.
+
+**Authored as the bonus, not as a total.** The ladder used to be the turn count
+itself (1 / 2 / 3), and the number a player needs is what the route is *costing*
+them: `+1` is a price, `×2` is a stat. It also removes the wrong reading the
+total invited — the enemies never act twice in one beat; they act once, and then
+the Amulet hands them another beat. `TURN_BASE` is the floor, `BONUS_FAR/MID/NEAR`
+the ladder, and `turns_for_hops` is still there as base + bonus for the resolver,
+which counts turns rather than prices.
 
 **Why.** The routing decision used to be one-directional: the Amulet is the win
 condition, so every step toward it was strictly good and the only reason to take
 the long way was to farm. This makes the long way a real option. Route wide and
 you fight a slow stack for more games; bum-rush the Amulet and you fight a fast
 one for fewer. Neither dominates, and the stack you've accumulated decides which
-is right — three followers on your tail is a very different calculation at ×3
-than at ×1.
+is right — three followers on your tail is a very different calculation at +2
+than at +0.
 
 The consequences fall out of the same rule rather than being special-cased:
 
-- An enemy two columns back is no longer safe. At ×3 it walks into range **and**
+- An enemy two columns back is no longer safe. At +2 it walks into range **and**
   swings before the game is out, so "how far away is it" has to be measured in
   turns, not columns (`GameLoop2.games_until_strike`).
 - **Stun** costs one turn, so it's worth a third of a game at the doorstep and a
@@ -1020,24 +1029,28 @@ The consequences fall out of the same rule rather than being special-cased:
 **Where the player sees it.** All of it, before committing:
 
 - A **strip across the top of the battlefield**, in the band's colour, reading
-  `⏱ ENEMY TURNS ×N`, a three-rung ladder filled to the current band, and the
-  hop count that put it there — plus the board's current size and tier on the
-  right, since §7.3 is the other half of the same bargain.
-- Every **offered card** says what taking it does to the pace — *speeds up*,
-  *slows down*, or *still ×N* — next to the route badge that says what it does
-  to the distance, because they are the same decision.
+  `⏱ ENEMY TURNS 1 +N` (just `1` in the Distant band, because "no bonus" is a
+  state worth reading as calm), a three-rung ladder — first pip the turn every
+  game gives, the other two the Amulet's — and the hop count that put it there,
+  plus the board's current size and tier on the right, since §7.3 is the other
+  half of the same bargain.
+- Every **offered card** says what taking it does to the pace — *speeds up —
+  +1 bonus turn*, *slows down*, or *still no bonus turns* — next to the route
+  badge that says what it does to the distance, because they are the same
+  decision.
 - Each **body on the board** carries what it does on the next game reported:
   `×2` for two swings, `in 2` for two games of walking still to do. Threat
   colours follow that number rather than the raw column.
-- The **resolve plays turn by turn**, counter and all (`TURN 2 / 3`), instead of
-  collapsing into one slide — watching the same beat land three times is how the
-  ladder is felt rather than merely read.
+- The **resolve plays turn by turn**, counter and all — `TURN 1 / 3` for the
+  game's own and `BONUS TURN 1 / 2` for the Amulet's, so what is being watched
+  says which half of the bargain it came from — instead of collapsing into one
+  slide.
 
-`RunDifficulty.turns_for_hops` owns the ladder and `GameLoop2.enemy_turns()`
-applies it; both are pure, so the board, the cards and the resolver cannot
-disagree about the number. A run with no Amulet picked, or standing somewhere
-with no route to it, reads as Distant — nothing is closing in on a goal that
-isn't there.
+`RunDifficulty.bonus_turns_for_hops` owns the ladder, `turns_for_hops` adds the
+base turn to it and `GameLoop2.enemy_turns()` applies that; all three are pure,
+so the board, the cards and the resolver cannot disagree about the number. A run
+with no Amulet picked, or standing somewhere with no route to it, reads as
+Distant — nothing is closing in on a goal that isn't there.
 
 ### 7.5 The escort — nothing spawns alone
 

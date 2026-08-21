@@ -137,8 +137,10 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	var stun: int = int(entry.get("stun", 0))
 	if stun > 0:
 		# A stun costs one TURN, and how much of a game that is depends on how close
-		# the run is to the Amulet (§7.4) — so the card says turns AND what they are
-		# worth here rather than a "games" figure that is only true in the far band.
+		# the run is to the Amulet (§7.4): out in the wilds a game IS one turn, and
+		# on the doorstep it is that turn plus two bonus ones. So the card says turns
+		# AND what they are worth here rather than a "games" figure that is only true
+		# in the far band.
 		var turns: int = GameLoop2.enemy_turns()
 		stat_col.add_child(_stat_row("❄", "Frozen",
 			"loses its next %d turn(s) of %d per game" % [stun, turns],
