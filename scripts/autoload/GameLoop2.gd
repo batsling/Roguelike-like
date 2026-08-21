@@ -2507,6 +2507,27 @@ func alternatives_for(entry: Dictionary) -> Array:
 			out.append(row)
 	return out
 
+# The alternatives a BOSS is carrying and ignoring (§7.1). A boss's goal is the
+# only way it comes off the board, so an `instead` on one does nothing —
+# `claim_enemy_alternative` refuses it and `alternatives_for` never offers it.
+#
+# It has to be SAID, though, and that is what this is for. A player who burns a
+# boss can see the pip on it and had no way to find out the way-out it promises
+# is void: the checklist drew no row, the card drew no line, and the tick that
+# would have cleared an ordinary body simply did not exist. Silence there reads
+# as a bug in the burn, not as a rule about bosses.
+#
+# Empty for everything that is not a boss, so a caller can ask about any body.
+func nullified_alternatives_for(entry: Dictionary) -> Array:
+	var out: Array = []
+	var enemy: GoalEnemyData = entry.get("enemy")
+	if enemy == null or not enemy.is_boss():
+		return out
+	for row in enemy_statuses(entry):
+		if (row["status"] as StatusData).is_alternative(StatusData.ENEMY):
+			out.append(row)
+	return out
+
 # THE goal line for one enemy: its authored goal plus every required clause, joined
 # with "and", and then every alternative to the whole of it, joined with "or
 # instead". Ask for this rather than `enemy.goal` anywhere a player or a viewer

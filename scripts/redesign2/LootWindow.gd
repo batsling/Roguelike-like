@@ -232,7 +232,12 @@ func _panel(reporting: bool) -> Control:
 		box.add_child(_note("Drag a piece into any slot to rearrange the pack — "
 			+ "onto another piece to swap the two, onto an empty one to move it there."))
 	if reporting:
-		box.add_child(_note("Finish reporting this game before spending any."))
+		# SPENDING IS NOT LOCKED, only moving (§4.3, LootGrid.locked). Mid-game is
+		# exactly when the player knows what they want out of a piece — the body
+		# walking toward them is right there — and anything that cannot land in that
+		# gap fizzles rather than being refused.
+		box.add_child(_note("Mid-game: spend what you like. The pack can't be "
+			+ "rearranged or binned until you've reported this one."))
 
 	# WHAT YOU HAVE LEARNED, on both surfaces that draw the pack — the reward screen
 	# builds the same section, and the fold is shared so it cannot be shut here and

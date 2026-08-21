@@ -192,6 +192,14 @@ var _shop_hint: Control = null
 var _object_panel: ObjectPanel2 = null
 var _run_over_won: bool = false
 var _run_over_screen: RunOverScreen = null
+# THE SCREEN A GAME ENDS ON (PostCombatScreen), and the report it is about. The
+# haul used to arrive as a queue of modals over an animating board and then an
+# event on top of that; it is one screen now, opened once the playback has landed
+# (_open_post_game). `_post_snapshot` is what `report` recorded on the way past —
+# empty at every other moment, which is also how _end_resolve tells a report's
+# animation from any other.
+var _post_snapshot: Dictionary = {}
+var _post_screen: PostCombatScreen = null
 var _rng := RandomNumberGenerator.new()
 
 # --- UI nodes (built in code) --------------------------------------------
@@ -453,6 +461,7 @@ func start_run(character_id: StringName = &"") -> void:
 	# Whatever the last run left on the page goes with it: a verdict screen, a
 	# resolve still being played back, an offering.
 	_dismiss_run_over()
+	_dismiss_post_game()
 	_resolving = false
 	_board.clear_fx()
 	_visits.clear()
@@ -657,6 +666,18 @@ func resume_run(view: Dictionary) -> void:
 # writes the run and asks the mounted overworld for the view (capture_view_state),
 # and a load hands the view back here (restore_view_state).
 
+# One queued payout's entries, whichever shape it was queued in: a bare Dictionary
+# (a game's own single piece) or an Array of them (a relic's grant). Deep-copied,
+# because both sides of a save are handing the run its own state back.
+func _loot_payload(raw) -> Variant:
+	if raw is Array:
+		var out: Array = []
+		for entry in raw:
+			if entry is Dictionary:
+				out.append((entry as Dictionary).duplicate(true))
+		return out
+	return (raw as Dictionary).duplicate(true) if raw is Dictionary else {}
+
 func capture_view_state() -> Dictionary:
 	var starts: Array = []
 	for opt in _start_options:
@@ -685,7 +706,13 @@ func capture_view_state() -> Dictionary:
 	var drops: Array = []
 	for d in _drop_queue:
 		if d.has("loot"):
-			drops.append({"loot": (d["loot"] as Dictionary).duplicate(true)})
+			# EITHER SHAPE. A game's own payout queues ONE entry (`_queue_loot_drop`)
+			# and a relic's grant queues the whole handful (`_on_loot_offered`, which
+			# is what Mom's Coin Purse pays) — LootDropModal has always taken both,
+			# and this cast only ever saw the first. It threw on the second, taking
+			# the autosave down with it, and the queue is only ever non-empty at a
+			# save now that the post-combat screen hands its own drops back.
+			drops.append({"loot": _loot_payload(d["loot"])})
 			continue
 		var ids: Array = []
 		for it in _drop_items(d):
@@ -751,7 +778,7 @@ func restore_view_state(view: Dictionary) -> void:
 	_drop_queue.clear()
 	for raw in view.get("drops", []):
 		if raw is Dictionary and (raw as Dictionary).has("loot"):
-			_drop_queue.append({"loot": (raw["loot"] as Dictionary).duplicate(true)})
+			_drop_queue.append({"loot": _loot_payload(raw["loot"])})
 			continue
 		# An older save wrote one id per chest; a current one writes the list the
 		# chest is offering. Both land as a list here.
@@ -1357,6 +1384,15 @@ func read_scroll(idx: int) -> void:
 # the one piece of loot that moves you was also the one that said nothing about
 # what it just did (see LootUseModal._do_teleport). "" means it never fired.
 func loot_teleport(req: Dictionary) -> String:
+	# NOT WHILE A GAME IS IN PLAY. A pill can be swallowed at any moment now,
+	# the report step included (§4.3) — but moving the run to another game while
+	# the player is halfway through this one is not a thing the loop can mean, and
+	# the honest answer is the one the use screen already knows how to say: it
+	# fizzles. The colour was learned the moment the capsule was opened
+	# (PillSystem.take_pill identifies before it applies anything), so the gamble
+	# still paid off even though the effect did not land.
+	if _phase == Phase.PLAYING:
+		return ""
 	var amulet: StringName = GameState.amulet_game_id
 	if amulet == &"":
 		return ""
@@ -1642,6 +1678,15 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 	if on_detour:
 		_pending_detour = true
 		_detour_beaten = not escaped
+	# WHAT THIS REPORT WAS, for the screen the game ends on (_open_post_game).
+	# Recorded here, on the one path that survives the report — a run that ended
+	# and a run that just won have their own screen and took the two `return`s
+	# above — and read once the board has finished playing the resolve back.
+	_post_snapshot = {
+		"game": played_game, "beaten": beaten, "escaped": escaped,
+		"amulet": was_amulet, "res": res,
+		"tier_before": tier_before, "board_before": board_before,
+	}
 	_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
 
 # The run just stepped up a difficulty tier, which widens the battlefield by a
@@ -1708,9 +1753,103 @@ func _end_resolve() -> void:
 		_pending_event = null
 		_pending_event_node = &""
 		_pending_shop = &""
+		_post_snapshot = {}
 		_show_run_over()
 		return
+	_open_post_game()
+
+# --- the screen a game ends on (PostCombatScreen) ---------------------------
+
+# Hand the haul over to one screen: the relics that fell, the loot the game paid,
+# the hub's shelf, the boss warning, and the numbers behind all of it.
+#
+# It opens HERE and nowhere earlier, which is the whole point. The drops are
+# queued in the middle of `GameLoop2.beat_game` and used to be pumped straight
+# onto the screen — on the next idle frame, with the board still playing the
+# strike and the advance back behind them. The resolve animation is the only
+# place the run's consequences are ever SHOWN, and it was being asked to share
+# the screen with "do you want this relic".
+#
+# Nothing else that reaches _end_resolve has a report behind it, and those carry
+# straight on down the chain they always did.
+func _open_post_game() -> void:
+	if _post_snapshot.is_empty():
+		_open_pending_event()
+		return
+	var snap: Dictionary = _post_snapshot
+	_post_snapshot = {}
+	# The queue is the screen's now. It stays a queue on the page's side (an
+	# out-of-band offer still opens its own modal, see _pump_drops) — this is only
+	# what THIS report put in it.
+	var drops: Array = _drop_queue.duplicate()
+	_drop_queue.clear()
+	# THE BOSS WARNING, taken over from _maybe_announce_boss rather than left to
+	# open behind this screen. A boss round is announced between two games, and
+	# this screen is what stands between them; marking the round announced here is
+	# what stops the popup arriving afterwards to say it again.
+	var boss_tier: String = ""
+	var bosses: Array = []
+	if _boss_round and not GameLoop2.run_over and _boss_notice_for != GameState.games_played:
+		_boss_notice_for = GameState.games_played
+		boss_tier = RunDifficulty.tier_name(_current_tier())
+		for choice in _choices:
+			if bool(choice.get("boss", false)) and choice.get("enemy") != null:
+				bosses.append(choice.get("enemy"))
+	# THE SHELF, on the same terms _open_pending_shop mounts one: only where the
+	# player is actually STANDING. Claimed off `_pending_shop` when it is, so the
+	# chain behind this screen doesn't mount a second one; left there when it
+	# isn't, for that method to turn down for the same reason it always has.
+	var shop_id: StringName = _pending_shop
+	if shop_id != &"" and not GameLoop2.run_over and shop_id == _hub_underfoot():
+		_pending_shop = &""
+	else:
+		shop_id = &""
+	_post_screen = PostCombatScreen.open(self, snap, drops,
+		_pending_event != null, shop_id, boss_tier, bosses)
+	var screen: PostCombatScreen = _post_screen
+	_post_screen.finished.connect(func(): _on_post_game_finished(screen))
+
+# The player is done with the haul: give the shelf back to the page and carry on
+# down the chain the report always ended in — the event, then the shop, then the
+# boss notice, then the detour question.
+func _on_post_game_finished(screen: PostCombatScreen) -> void:
+	_post_screen = null
+	if screen != null and is_instance_valid(screen):
+		var shop: ShopPanel2 = screen.release_shop()
+		if shop != null:
+			_adopt_shop(shop)
+	_refresh()
+	autosave()
 	_open_pending_event()
+
+# Take the shelf the post-combat screen borrowed and put it back under the board,
+# where §14 says a shop lives for the rest of the visit. The panel is the same
+# node the player was just buying from — reparented rather than rebuilt, so a
+# card left open and the shelf's own scroll position survive the handover.
+func _adopt_shop(panel: ShopPanel2) -> void:
+	if _right_col == null:
+		panel.queue_free()
+		return
+	_clear_shop()
+	_right_col.add_child(panel)
+	_shop_panel = panel
+	panel.finished.connect(func():
+		_shop_panel = null
+		_sync_board_budget())
+	_sync_board_budget()
+	# Same two asks as _mount_shop: the panel has no height until the page has laid
+	# it out, so "is it on screen" is unanswerable until after that.
+	_update_shop_hint()
+	_update_shop_hint.call_deferred()
+
+# Pull the screen off the wall for a reset. `abandon` rather than `dismiss`: the
+# player is not leaving the haul, the run is ending under it, and firing the way
+# out here would resume a dead run's event chain in the middle of start_run.
+func _dismiss_post_game() -> void:
+	if _post_screen != null and is_instance_valid(_post_screen):
+		_post_screen.abandon()
+	_post_screen = null
+	_post_snapshot = {}
 
 # Open the queued event, if any. The offering behind it is already rebuilt, so
 # the modal lands on the screen the player is about to act on rather than on a
@@ -2047,6 +2186,15 @@ func _redeem_pending_chests() -> void:
 		return
 	if GameState.pending_chests <= 0:
 		return
+	# ON THE HAUL SCREEN, if one is up. A chest banked during a report — a level-up
+	# reward, Unstable Genome firing on the beat, a status paying out — used to open
+	# a RewardScreen as an ordinary child of this page, which is BELOW the
+	# post-combat screen's CanvasLayer: the player saw nothing, and then found a
+	# reward screen waiting the moment they left. It belongs with the rest of the
+	# haul anyway, so it goes there as one more chest section.
+	if _post_screen != null and is_instance_valid(_post_screen):
+		_hand_chests_to_post_game()
+		return
 	# EVERY banked chest at once, not one screen each. Two chests used to open two
 	# screens back to back, which reads as one screen flickering — you cannot weigh
 	# the second chest's offer against what you just took, and nothing marks it as
@@ -2067,6 +2215,35 @@ func _redeem_pending_chests() -> void:
 		_redeem_pending_chests())
 	add_child(screen)
 	screen.setup_chests(sizes)
+
+# Drain every banked chest onto the post-combat screen. Rolled through the same
+# `_roll_chest` a defeated body's drop uses — which is the same pool and the same
+# rarity ladder the RewardScreen rolls on (`Data.roll_item_rarity` /
+# `reward_item2_pool_of`), so a chest is the same chest whichever surface asks
+# about it.
+#
+# `take_pending_chest` hands back the CHOICE COUNT, where 0 means "the reward
+# screen's own default" — BASE_ITEM_CHOICES plus Discovery — so that reading is
+# spelled out here rather than collapsed to one card. A chest that offered one
+# item where the RewardScreen would have offered three is a silent nerf to every
+# level-up in the run.
+func _hand_chests_to_post_game() -> void:
+	var discovery: int = maxi(0, Stats.get_value(&"discovery"))
+	while GameState.pending_chests > 0:
+		var choices: int = GameState.take_pending_chest()
+		if choices < 0:
+			break
+		var count: int = choices if choices > 0 else RewardScreen.BASE_ITEM_CHOICES + discovery
+		var offer: Array = _roll_chest(false, maxi(1, count))
+		if offer.is_empty():
+			continue
+		if _post_screen != null and is_instance_valid(_post_screen):
+			_post_screen.add_chest(offer)
+		else:
+			# The screen went while we were draining: fall back to the queue the
+			# page's own modal drains, rather than losing the chest.
+			_drop_queue.append({"items": offer})
+			_pump_drops()
 
 # --- overworld item actions (routed here by EffectSystem, §8) --------------
 
@@ -3492,7 +3669,11 @@ func open_item_card(item: ItemData) -> void:
 		return
 	_close_item_card()
 	var active: bool = item.kind == ItemData.ItemKind.USABLE or item.is_charged()
-	var usable: bool = active and GameState.can_fire_item(item) and _phase != Phase.PLAYING
+	# The same rule the pack strip's own Use button spends, asked in one place: a
+	# CHARGED active fires whenever its bar is full, the report step included, and
+	# a USABLE consumable still waits for the game to be reported.
+	var usable: bool = active and GameState.can_fire_item(item) \
+		and PackStrip.fires_while_reporting(item, _phase == Phase.PLAYING)
 	var card := ItemInfoCard.new()
 	card.use_requested.connect(use_item)
 	card.closed.connect(func(): _item_card = null)
@@ -3522,7 +3703,10 @@ func open_loot_card(index: int) -> void:
 	card.closed.connect(func(): _item_card = null)
 	add_child(card)
 	_item_card = card
-	card.setup(entry, index, _phase != Phase.PLAYING)
+	# ALWAYS SPENDABLE (§4.3). The mid-report lock holds the pack still; it does
+	# not stop a piece being used, and a piece whose effect cannot land right now
+	# fizzles rather than being refused.
+	card.setup(entry, index, true)
 
 # The hover model for a carried item, kept on the page as the name the shop's
 # shelf and the drop modal already reach for. PackStrip.item_hover is the one
@@ -3610,6 +3794,14 @@ func _queue_loot_drop() -> void:
 func _on_loot_offered(entries: Array) -> void:
 	if GameLoop2.run_over or entries.is_empty():
 		return
+	# ONTO THE HAUL SCREEN when one is up. A relic taken from a chest ON that
+	# screen can pay loot the instant it is picked up, and the table it belongs on
+	# is six inches to the right of the card that paid it — queueing it behind a
+	# screen the player has not left yet would hide the payout until after the
+	# decision that earned it.
+	if _post_screen != null and is_instance_valid(_post_screen) \
+			and _post_screen.add_loot(entries):
+		return
 	_drop_queue.append({"loot": entries.duplicate(true)})
 	_pump_drops()
 
@@ -3627,6 +3819,17 @@ func _pump_drops() -> void:
 		return
 	if _phase == Phase.OVER or GameLoop2.run_over:
 		return
+	# NOT WHILE A REPORT IS RESOLVING. Everything a report drops belongs to the
+	# post-combat screen, which opens when the board has finished playing the
+	# resolve back (_open_post_game) and takes the whole queue with it. Pumping
+	# here is what used to put "do you want this relic" over the top of the strike
+	# that had just taken eight Health off the player.
+	#
+	# Only a report sets `_resolving`, so an offer that lands at any other moment —
+	# a relic firing on the overworld, a machine, an event's payout — still asks
+	# for itself, on its own modal, immediately.
+	if _resolving:
+		return
 	_open_next_drop.call_deferred()
 
 func _open_next_drop() -> void:
@@ -3642,13 +3845,12 @@ func _open_next_drop() -> void:
 	# over both. It asks in its own modal — a scroll is not an ItemData and the
 	# nine-piece cap is a sentence only this one has to say.
 	if drop.has("loot"):
-		# `_phase != PLAYING` is the same rule the pack strip and the loot window
-		# spend by, passed in rather than assumed: everything on that screen can be
-		# used from it, the offer included, and the one condition under which loot
-		# cannot be spent has to mean the same thing on all three surfaces. In
-		# practice it is always true here — this call is deferred precisely so the
-		# report has finished resolving before the question is asked.
-		var loot_modal := LootDropModal.open(self, drop["loot"], _phase != Phase.PLAYING)
+		# Spendable, always. There is no longer a condition under which loot cannot
+		# be used (§4.3): the mid-report lock holds the pack still, and a piece whose
+		# effect cannot land right now fizzles rather than being refused. The flag
+		# stays on the call because this screen must not assume the rule — the day
+		# something else CAN forbid a use, it comes in here.
+		var loot_modal := LootDropModal.open(self, drop["loot"], true)
 		_drop_modal = loot_modal
 		# `taken` is what ended up in the pack. THE SCREEN PLACES ITS OWN takes (§4.3):
 		# with several offers, and uses and bins interleaved between them, the slot
@@ -3724,13 +3926,34 @@ func _collect_drop(drop: Dictionary, chosen: ItemData = null) -> void:
 	var offered: Array = _drop_items(drop)
 	# Defaults to the first thing offered, so a caller that doesn't care which —
 	# a test, a one-item chest — doesn't have to name it.
-	var item: ItemData = chosen if chosen != null and offered.has(chosen) \
-		else (offered[0] if not offered.is_empty() else null)
+	collect_drop_item(chosen if chosen != null and offered.has(chosen)
+		else (offered[0] if not offered.is_empty() else null))
+
+# TAKING ONE RELIC, wherever the chest was asked about. The queue bookkeeping above
+# belongs to the page's own modal; this is the half that touches the run, and the
+# post-combat screen — which holds its chests itself, off the queue — calls it
+# directly so a relic taken there is granted, logged and announced identically.
+func collect_drop_item(item: ItemData) -> void:
 	if item == null:
 		return
 	GameState.add_item(item)
 	GameLog.add("Collected %s." % item.display_name, Color(0.7, 1.0, 0.7))
 	Notifications.notify("Took %s." % item.display_name, UITheme.item_color(item))
+
+# …and leaving them, on the same terms.
+func skip_drop_items(items: Array) -> void:
+	var names: Array = []
+	for it in items:
+		if it is ItemData:
+			names.append(String((it as ItemData).display_name))
+	if not names.is_empty():
+		GameLog.add("Left %s behind." % ", ".join(names), Color(0.8, 0.8, 0.8))
+
+# What the player kept off a payout, written down — the public name for
+# _note_loot_taken, so the post-combat screen's embedded payout reports through
+# exactly the path the standalone modal does.
+func note_loot_taken(taken: Array) -> void:
+	_note_loot_taken(taken)
 
 # What the player kept off a payout, written down. The pieces are ALREADY in the
 # pack — the drop screen places each one as it is resolved, because with several
@@ -3749,11 +3972,7 @@ func _skip_drop(drop: Dictionary) -> void:
 	if not _drop_queue.has(drop):
 		return
 	_drop_queue.erase(drop)
-	var names: Array = []
-	for it in _drop_items(drop):
-		names.append(String((it as ItemData).display_name))
-	if not names.is_empty():
-		GameLog.add("Left %s behind." % ", ".join(names), Color(0.8, 0.8, 0.8))
+	skip_drop_items(_drop_items(drop))
 
 
 func _result_text(res: Dictionary) -> String:
@@ -3817,6 +4036,11 @@ func _show_run_over() -> void:
 	if _event_modal != null and is_instance_valid(_event_modal):
 		_event_modal.dismiss()
 	_event_modal = null
+	# The haul screen goes the same way, and for the same reason: a pill taken off
+	# the table there can be the thing that kills you (Bad Trip on the last point
+	# of Health), and abandoning it rather than dismissing it stops the way out of
+	# a finished run resuming its event chain from under the verdict.
+	_dismiss_post_game()
 	if not is_inside_tree():
 		return
 	if _run_over_screen != null and is_instance_valid(_run_over_screen):

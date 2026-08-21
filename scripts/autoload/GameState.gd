@@ -964,9 +964,9 @@ func reset_run() -> void:
 	# (Overworld2 registers on mount and clears it in _exit_tree), not run state —
 	# and a run reset happens while that scene is still mounted, since booting a run
 	# is the first thing the overworld does. Clearing it here left the whole run
-	# with no registered overworld: scrolls unreadable (can_use_scrolls), overworld
-	# actives unusable (Ride the Bus), and a save unable to find the screen to
-	# capture. The guarded clear_overworld_context is what ends the registration.
+	# with no registered overworld: nothing able to move the run (can_use_scrolls),
+	# overworld actives unusable (Ride the Bus), and a save unable to find the
+	# screen to capture. The guarded clear_overworld_context is what ends the registration.
 	event_active = false
 	dash_charges = 0
 	reroll_charges = 0
@@ -2092,12 +2092,18 @@ func can_fire_item(item: ItemData) -> bool:
 		return can_use_items()
 	return false
 
-# Whether a SCROLL can be read right now. Scrolls are an overworld-only
-# consumable (some effects, like Teleportation, only make sense there, and the
-# rest carry over into whatever comes next) — so reading is gated strictly to
-# the Overworld scene being mounted, not merely "outside combat". Shops, rest
-# sites, treasure rooms, event modals, and any in-progress deckbuilder/action/
-# strategy run all leave overworld_scene null, so scrolls are blocked there too.
+# Whether the OVERWORLD is mounted and able to act on a loot effect that needs it.
+#
+# This used to be the gate on reading a scroll at all — scrolls were an
+# overworld-only consumable, on the reasoning that Teleportation only makes sense
+# there and the rest carry over into whatever comes next. That is no longer the
+# rule (§4.3): every piece of loot can be spent whenever the player wants it, and
+# the one op that genuinely needs the map — a teleport — FIZZLES instead of being
+# refused, which is a better answer than a Use button that will not press.
+#
+# What is left is the question `Overworld2.loot_teleport` and the overworld actives
+# ask: is there a map here to move on. Kept under its old name because that is what
+# it has always meant underneath.
 func can_use_scrolls() -> bool:
 	return overworld_scene != null
 

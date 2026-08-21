@@ -11,6 +11,150 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The haul screen, second pass — and four things it turned up.**
+
+  **Every chest at once.** They were drained one at a time, which is how the
+  page's queue had always worked, and it hides exactly what the screen exists to
+  show: when several relics land together, the thing you most need is what the
+  *others* are. There is often an order — a relic that changes what a chest is
+  worth should be taken before the chest it changes. So all of them are on the
+  screen together, each still its own "which one of these", and a one-item chest
+  lays out sideways (card left, Leave and Take stacked right) because stacked it
+  was 135px and three of those put the third relic behind a scrollbar. A relic is
+  **always a picture** now: both layouts drew art only when `item.image` was
+  non-null, so an unarted row would have come up as a name over a gap.
+
+  **The payout stays, and loses its buttons.** As a modal, the table emptying is
+  the end of the question; here it is the opposite — the piece has just gone into
+  the pack, and the pack is the reason to still be looking, because the next thing
+  you usually want is to spend it. Take and "Leave the rest" go with it: the drag
+  already puts a piece in the slot you want and the bin is "leave it" said with the
+  hands. What is still on the table is counted on the way out, so nothing goes
+  quietly. The two columns are top-aligned as well — centred, the offer floated
+  down to the middle of the nine slots and its description read as having slipped
+  under the pack.
+
+  **Two things were opening underneath the screen.** The shop's item card mounts
+  at CanvasLayer 122 and the screen is 128, so clicking a shelf row opened a card
+  nobody could see and then produced it a screen too late; `ShopPanel2.card_layer`
+  is the host's to set now. And `RewardScreen` mounts as an ordinary child of the
+  page, so a chest banked mid-report — a level-up reward, Unstable Genome, a status
+  paying out — was invisible until you had already left. Those land on the screen
+  as chest sections, rolled on the same ladder the RewardScreen would have used.
+
+  **A boss cancels the ways out, and now it says so.** A boss comes off the board
+  on its goal alone, so an `instead` riding it buys nothing — and the way that was
+  communicated was by drawing nothing at all. A Burn pip on a boss, no row on the
+  checklist, no line on the card, no tick anywhere: indistinguishable from the burn
+  having failed to apply. `nullified_alternatives_for` is the other half of the
+  pair, and the checklist, the enemy card and the status hover all say it.
+
+  **A status is authored per side, and the two are opposites.** Burn on you is an
+  obligation that bites for 3; Burn on an enemy is a second way through its goal.
+  The keyword strip under an item's description quoted the player's side, so Staff
+  of Flame — "Apply +3 Burn to a target enemy" — had a footnote explaining what
+  Burn does to *you*. Not a short version of the answer, the wrong half.
+  `tooltip_both` prints one side when the other is inert and labels them when both
+  do something. The enemy card had the same bug from the other end: an `instead`
+  fell through to the clause branch and printed a clause Burn does not have.
+
+  **A full bar means ready.** Every active was held back until the game had been
+  reported — right for a Usable consumable, which wants a combat or an event around
+  it, and wrong for a Charged one in the way that shows: the strip said the item
+  was ready and then refused to fire it, offering "finish reporting this game
+  first". D6, Staff of Flame and Mom's Bottle of Pills are all charged and all
+  three do something wanted precisely while the board is live. A charge that cannot
+  be spent when it is full is a charge permanently one game behind.
+
+  **And loot is spendable whenever you want it.** The mid-report lock holds the
+  pack *still* — nothing dragged, taken or binned — and it used to hold spending
+  too, which was wrong twice over. Mid-game is exactly when a player knows what
+  they want out of a piece: the body walking toward them is right there, a Scare
+  Monster or a Scroll of Fire is the answer to it, and an unknown capsule is a
+  gamble taken *because* of what is on the board. Scrolls were held back further
+  still by an overworld-only rule of their own.
+
+  The answer is a **fizzle, not a refusal**. A Use button that will not press
+  teaches you the piece is unusable rather than that this moment is wrong for it.
+  Only a **teleport** genuinely needs the map, and it comes back "it fizzles — you
+  do not move"; every other scroll op lands fine mid-game, because the board is
+  standing right there. And the piece is identified either way, since both systems
+  identify before they apply anything — so the gamble still paid off. That is what
+  makes a fizzle acceptable where a refusal was not: you spent the piece and got
+  the information you spent it for.
+
+  Two things fell out of that. **A relic that pays loot when it is picked up now
+  pays it onto the table beside the card that paid it** — Mom's Coin Purse is four
+  pills, and queueing them behind a screen the player has not left yet hid the
+  payout until after the decision that earned it. And the autosave had a latent
+  crash in it: the drop queue holds either shape — one entry for a game's own
+  payout, the whole handful for a relic's grant — and `capture_view_state` cast
+  both to a Dictionary, so a save taken with a grant still queued threw. It only
+  started happening once the haul screen began autosaving on its way out.
+
+
+- **A game now ends on a screen, and the Collection has a Loot tab.**
+
+  **One screen instead of six surfaces.** Reporting a game used to fire a queue of
+  unrelated questions at the player: one relic modal per defeated body, then the
+  loot payout, then the event, then the shop appearing under the board, then the
+  boss notice, with the toasts running underneath all of it. On a boss round at a
+  hub that is five popups in a row, each re-centring on the same spot, each with
+  its own Take/Leave, and nothing tying any of them to the game they came out of.
+
+  And the first two of them opened **on top of the resolve animation**. Drops are
+  queued in the middle of `beat_game` and were pumped on the next idle frame,
+  while the board was still playing the strike and the advance back — the one
+  place the run's consequences are ever *shown* — so you answered "do you want
+  this relic" over the top of the blow that had just taken eight Health off you.
+
+  So the haul is a screen (`PostCombatScreen`), and it opens when the board has
+  stopped moving. The verdict — beaten, goal missed, or walked away, which are
+  three different things. The fight in numbers, out of `beat_game`'s result, which
+  until now was thrown away the moment the animation had played it: damage taken
+  and blocked, goals cleared, what is still following, the tier and the board's
+  growth. The relic chests down the left and the loot payout down the right **at
+  the same time** rather than one after another. The hub's shelf. The boss warning
+  as a banner. And **one button out**, which is the *event* when the node owes one
+  — pressing it is what opens the event, so you leave the haul into the next thing
+  rather than having the next thing dropped on you.
+
+  **The sections are the real modals, embedded.** `ItemDropModal.embed`,
+  `LootDropModal.embed` and `BossNoticeModal.embed` build the same cards, run the
+  same selection and answer through the same signals; what they skip is the
+  backdrop, the centring and the `CanvasLayer`. So the 3×3 on this screen is the
+  inventory in the sense §4.3 means it, a chest is still "which one of these", and
+  a boss portrait still opens its card. The standalone modals stay — that is the
+  point of embedding rather than replacing — because `GameState.offer_loot` fires
+  from `EffectSystem`, so an item, an event or a machine can hand loot over at any
+  moment, and a payout that did not arrive with a report has no haul screen to be
+  part of. `_pump_drops` suppresses itself only while a report is resolving.
+
+  **The shelf is borrowed, not moved.** §14 chose the on-page mount deliberately —
+  a shop blocks nothing and stays for the whole visit — and that is still right;
+  what it never fixed was that a shop mounted below the fold on the frame you
+  arrive is a shop you may not notice. So the same `ShopPanel2` node is mounted on
+  this screen and reparented back under the board on the way out. The moment of
+  arrival gets the shelf in front of you; the rest of the visit is unchanged.
+
+  The way out **counts what it is about to bin**. A Legendary left on the ground
+  should be a decision, not a side effect of pressing Continue.
+
+  **The Collection's Scrolls tab is now a Loot tab**, with Scrolls and Pills as
+  sub-tabs. They are one thing to the run — one 50/50 payout, one nine-piece pack,
+  one window — and two top-level tabs said the opposite. Pills had no page at all
+  before this, which is the half that was actually missing.
+
+  A pill cell wears a **stand-in capsule and says so**. A pill carries no art of
+  its own: its picture is the colour the run deals it out of `PillSystem.COLORS`,
+  and the Collection opens from the main menu where no run has dealt one. Drawing
+  each pill in some particular colour would teach an association the game
+  randomises on purpose, so every cell wears the same capsule, dimmed, and the tab
+  explains why. It shows **both doses** — the 5% horse roll is the same colour and
+  the same identification, so a card showing only the normal one would be
+  describing half of what taking it can do.
+
+
 - **A piece of loot goes wherever you put it, and a use says what it did.**
 
   Two things the loot window was still getting wrong, both of them about the

@@ -534,6 +534,90 @@ func test_a_boss_is_never_offered_the_way_out() -> void:
 	assert_false(GameLoop2.claim_enemy_alternative(inst, &"burn"),
 		"nor can one be claimed anyway")
 
+# …BUT IT SAYS SO. Refusing the way out and drawing nothing at all are the same
+# picture from the player's side: a Burn pip on a boss, and no row, no line and no
+# tick anywhere. That reads as the burn having failed to apply, not as a rule about
+# bosses — so the alternatives a boss is carrying and ignoring are their own list.
+func test_a_boss_says_which_ways_out_it_is_nullifying() -> void:
+	var inst: int = _choose_solo(_boss("Beat the boss"))
+	GameLoop2.apply_enemy_status(&"burn", 2, "current")
+	var entry: Dictionary = GameLoop2.arrival()
+	assert_eq(GameLoop2.alternatives_for(entry).size(), 0, "still not on offer")
+	var dead: Array = GameLoop2.nullified_alternatives_for(entry)
+	assert_eq(dead.size(), 1, "but the boss is visibly carrying one")
+	if dead.is_empty():
+		return
+	assert_eq((dead[0]["status"] as StatusData).id, &"burn", "and it is the Burn")
+	assert_false(GameLoop2.claim_enemy_alternative(inst, &"burn"),
+		"naming it changes nothing about what it buys")
+
+func test_an_ordinary_body_nullifies_nothing() -> void:
+	_choose_solo(_enemy("Beat it"))
+	GameLoop2.apply_enemy_status(&"burn", 1, "current")
+	var entry: Dictionary = GameLoop2.arrival()
+	assert_eq(GameLoop2.alternatives_for(entry).size(), 1, "the way out is real here")
+	assert_eq(GameLoop2.nullified_alternatives_for(entry).size(), 0,
+		"so there is nothing to warn about")
+
+# The pip's own words follow. A nullified way-out must not read as the good news an
+# `instead` normally is — the colour is the fastest thing on a card.
+func test_a_nullified_status_card_stops_promising_a_way_out() -> void:
+	var burn: StatusData = Data.get_status(&"burn")
+	assert_not_null(burn)
+	if burn == null:
+		return
+	var live: Dictionary = burn.hover_card(StatusData.ENEMY, 2, false)
+	var dead: Dictionary = burn.hover_card(StatusData.ENEMY, 2, true)
+	assert_true(String(live["lines"][0]).contains("can be met instead"),
+		"an ordinary body offers it: %s" % live["lines"][0])
+	assert_true(String(dead["lines"][0]).contains("goal alone"),
+		"a boss says the way out is void: %s" % dead["lines"][0])
+	assert_ne(dead["accent"], live["accent"], "and it stops reading gold")
+	assert_true(burn.tooltip_for(StatusData.ENEMY, 2, true).contains("Nullified"),
+		"the plain-text fallback says it too")
+
+# A STATUS IS AUTHORED PER SIDE, and the two are routinely opposites: Burn on YOU
+# is an obligation that bites for 3, Burn on an ENEMY is a second way through its
+# goal. A reader on neither side — an item's keyword strip, which describes the
+# mechanic rather than one application of it — has to be given both, or it prints
+# the wrong half. Staff of Flame says "Apply +3 Burn to a target enemy", and the
+# footnote under it used to explain what Burn does to the player.
+func test_a_two_sided_status_describes_both_sides_for_an_outside_reader() -> void:
+	var burn: StatusData = Data.get_status(&"burn")
+	assert_not_null(burn)
+	if burn == null:
+		return
+	assert_true(burn.has_side(StatusData.PLAYER) and burn.has_side(StatusData.ENEMY),
+		"Burn is authored on both sides")
+	var both: String = burn.tooltip_both(1)
+	assert_true(both.contains("On an enemy"), "the enemy side is labelled: %s" % both)
+	assert_true(both.contains("On you"), "and so is the player's")
+	assert_true(both.contains("instead"), "the enemy reading is in there")
+	assert_true(both.contains("Damage") or both.contains("damage"),
+		"and so is what it costs you")
+
+# …and a ONE-SIDED status grows no heading it doesn't need. Built here rather than
+# hunted for in the roster: every status that ships today is authored on both
+# sides, so a loop over the catalogue asserts nothing at all — and the branch is
+# about the shape of the data, not about which rows happen to exist this week.
+func test_a_one_sided_status_says_its_one_side_without_a_heading() -> void:
+	var enemy_only := StatusData.new()
+	enemy_only.display_name = "Enemy Only"
+	enemy_only.on_enemy = {"mode": "bonus", "condition": "do the thing",
+		"reward": [], "reward_text": "a prize", "decay": false}
+	var only_theirs: String = enemy_only.tooltip_both(1)
+	assert_false(only_theirs.contains("On an enemy —"),
+		"one side needs no label to tell it from the other: %s" % only_theirs)
+	assert_true(only_theirs.contains("Bonus"), "and it is the side that does something")
+
+	var player_only := StatusData.new()
+	player_only.display_name = "Player Only"
+	player_only.on_player = {"mode": "goal", "condition": "do the other thing",
+		"reward": [], "reward_text": "a prize", "decay": false}
+	var only_mine: String = player_only.tooltip_both(1)
+	assert_false(only_mine.contains("On you —"), "the same from the other end")
+	assert_true(only_mine.contains("Standing goal"), "and it is the player's side")
+
 func test_clearing_a_goal_the_other_way_hits_the_body_like_a_goal_does() -> void:
 	var inst: int = _choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")

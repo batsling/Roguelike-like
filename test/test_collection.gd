@@ -148,10 +148,72 @@ func test_enemies_search_filters_on_goal_text() -> void:
 			expected += 1
 	assert_eq(col._grid.get_child_count(), maxi(expected, 1), "search corpus matches")
 
-func test_scrolls_tab_renders() -> void:
+# --- Loot tab (scrolls + pills) --------------------------------------------
+#
+# One tab with two sub-tabs, because scrolls and pills are one thing to the run:
+# one 50/50 payout, one nine-piece pack, one window. The tab opens on Scrolls,
+# which is where it stood when it was a tab of its own.
+
+func test_the_loot_tab_opens_on_the_scrolls_and_renders_all_of_them() -> void:
 	var col := _new_collection()
-	col._set_tab(Collection.Tab.SCROLLS)
+	col._set_tab(Collection.Tab.LOOT)
+	assert_eq(col._loot_sub, Collection.LOOT_SCROLLS, "Loot opens on the scrolls")
 	assert_eq(col._grid.get_child_count(), Data.all_scrolls().size(), "every 2.0 scroll shows")
+
+func test_the_pills_sub_tab_renders_every_pill() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.LOOT)
+	col._loot_sub = Collection.LOOT_PILLS
+	col._refresh()
+	assert_eq(col._grid.get_child_count(), Data.all_pills().size(), "every 2.0 pill shows")
+
+# A pill is ONE resource with TWO effects, and the 5% horse roll is the same
+# colour and the same identification — so a catalog card that showed only the
+# normal dose would be describing half of what taking one can do (§4.3).
+func test_a_pill_card_carries_both_doses() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.LOOT)
+	col._loot_sub = Collection.LOOT_PILLS
+	col._refresh()
+	var pill: PillData = null
+	for p in Data.all_pills():
+		if p is PillData and String(p.horse_description).strip_edges() != "":
+			pill = p
+			break
+	assert_not_null(pill, "some pill has a horse dose authored")
+	if pill == null:
+		return
+	var text: String = _text_of(col._grid)
+	assert_true(pill.display_name in text, "the pill is named")
+	assert_true(String(pill.description) in text, "its normal dose is described")
+	assert_true(String(pill.horse_description) in text, "and so is its horse dose")
+
+# Every pill wears the SAME stand-in capsule. A pill's picture is the colour the
+# run deals it out of PillSystem.COLORS, and the Collection opens where no run
+# exists — drawing each one in some particular colour would teach an association
+# the game randomises on purpose.
+func test_pill_cells_all_wear_the_same_stand_in_capsule() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.LOOT)
+	col._loot_sub = Collection.LOOT_PILLS
+	col._refresh()
+	var seen := {}
+	for cell in col._grid.get_children():
+		for tr in _all_of_type(cell, "TextureRect"):
+			if tr.texture != null:
+				seen[tr.texture.resource_path] = true
+	assert_eq(seen.size(), 1, "one capsule across the whole grid, not one per pill")
+	assert_true(seen.has(Collection.PILL_STANDIN), "and it is the stand-in")
+
+# Every node of a type under `node`, for the tests that want the pictures rather
+# than the words. (`_text_of`, further down, is the one for the words.)
+func _all_of_type(node: Node, type_name: String) -> Array:
+	var out: Array = []
+	if node.is_class(type_name):
+		out.append(node)
+	for c in node.get_children():
+		out.append_array(_all_of_type(c, type_name))
+	return out
 
 # --- Events tab ------------------------------------------------------------
 #

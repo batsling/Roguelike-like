@@ -472,8 +472,41 @@ slot draws — rather than the bare capsule, which read as the art coming loose 
 its tile and gave the player nothing to line up against the slot they were aiming
 at.
 
+**LOOT IS SPENDABLE WHENEVER YOU WANT IT.** The mid-report lock holds the pack
+*still* — nothing dragged, taken or binned between "played the game" and "said what
+happened", because that gap is not a moment for the inventory to move — and it used
+to hold spending too. That was the wrong rule twice over. Mid-game is exactly when
+a player knows what they want out of a piece: the body walking toward them is right
+there, a Scare Monster or a Scroll of Fire is the answer to it, and an unknown
+capsule is a gamble they are taking *because* of what is on the board. Being told
+to finish their paperwork first is the run refusing the thing it wants them to
+risk. Scrolls were held back further still, by an overworld-only rule of their own
+(`GameState.can_use_scrolls`), on the reasoning that Teleportation only makes sense
+on the map.
+
+**So the answer is a fizzle, not a refusal.** A Use button that will not press is a
+worse thing than an effect that lands on nothing: it teaches the player the piece
+is unusable rather than that this *moment* is wrong for it. Only one op in either
+roster genuinely needs the map — a **teleport** — and `Overworld2.loot_teleport`
+returns nothing while `Phase.PLAYING`, so the use screen says the thing it already
+knew how to say: *it fizzles, you do not move*. Every other scroll op lands
+perfectly well mid-game: `apply_status` and `apply_tile` reach a board that is
+standing right there, `spawn_enemy` and `stun_enemies` act on the stack about to
+resolve, and `forget` and `identify_scrolls` never needed a map at all.
+
+**And the piece is identified either way.** Both `ScrollSystem.read_scroll` and
+`PillSystem.take_pill` identify *before* they apply anything, so a fizzle still
+teaches you what the thing was — the gamble paid off even where the effect did not.
+That is the whole reason a fizzle is an acceptable answer here and a refusal was
+not: the player spent the piece and got the information they spent it for.
+
+`GameState.can_use_scrolls` survives under its old name and now means only what it
+always meant underneath: is there a map here to move on.
+
 **The drop modal shows the pack — and the pack it shows IS the inventory**
-(`LootDropModal`). The 3×3 on the right is the same `LootGrid` the loot window
+(`LootDropModal`). A payout that arrives with a **report** is not a modal at all
+any more: it is the right-hand column of the screen the game ends on (§18), which
+is the same code embedded. Everything below is true of it either way. The 3×3 on the right is the same `LootGrid` the loot window
 draws, with the same everything: pieces drag between slots, each carries the button
 that spends it, clicking one opens its card, and the bin under it takes anything.
 The only thing this screen has that the loot window does not is the offer on the
@@ -739,6 +772,22 @@ Deckbuilder/Slay the Spire), Baby Alien (Action/Brotato).
 - **deals more damage** than a normal stacked enemy (above the 1–3 band),
 - and drops a **Boss relic** — not a better roll on the ordinary table, but a
   relic out of a pool nothing else can reach (§8).
+
+**A boss cancels the ways out, and now it SAYS so.** A boss comes off the board on
+its goal alone: bombs do nothing to one, and an `instead` clause riding it (§13 —
+Burn's enemy side is the one in the roster) buys nothing.
+`GameLoop2.claim_enemy_alternative` has always refused it and `alternatives_for`
+has always declined to offer it, which meant a burned boss got **no row at all** —
+the checklist drew nothing, the card drew nothing, and the tick that would have
+cleared an ordinary body simply did not exist. Silence there reads as the burn
+having failed to apply, not as a rule about bosses.
+
+`nullified_alternatives_for` is the other half of that pair: the alternatives a
+boss is *carrying and ignoring*. The checklist draws them as a read-only line
+("nullified: a boss comes off the board on its goal alone"), the enemy card says
+it on the chip, and the status's own hover and tooltip take a `nullified` flag so
+the pip stops promising a way out and stops reading gold. The pip itself is still
+drawn — the stacks are real and the player put them there.
 
 **A boss round announces itself in a popup** (`BossNoticeModal`), once, as the
 offering that carries it comes back. It was a strip above the offering, which is
@@ -1023,6 +1072,23 @@ Every defeated enemy drops an item, so the item table *is* the reward economy.
 Items are authored in `items2.0` with these columns: `Name | Rating | Type |
 Description | Effect | Reference | tags | pools | File | Sorting`.
 
+**A full bar means ready, on every screen.** Every active used to be held back
+until the game in play had been reported — right for a **Usable** consumable,
+which wants a combat or an event around it (`GameState.can_use_items`) and has
+neither while the player is off playing the real thing, and wrong for a **Charged**
+one in the way that shows: a full bar is the game saying the thing is ready, and
+the pack then refused to fire it and offered *finish reporting this game first* as
+the reason. D6, Staff of Flame and Mom's Bottle of Pills are all charged, and all
+three do something wanted precisely **while** the board is live — a Scramble
+before the next offering, a Burn on the body walking toward you, a pill in hand
+for the run ahead. A charge that cannot be spent when it is full is a charge
+permanently one game behind.
+
+`PackStrip.fires_while_reporting` is the one place that rule lives, and the pack
+strip, the item card and the loot window all ask it. Nothing about the charge
+economy moves: a firing still empties the bar and it still refills on the same
+hooks.
+
 **Rating** = where the relic comes from. Four of the values are rungs on the
 rarity ladder a random draw walks — **Common / Uncommon / Rare / Legendary** — and
 three are not:
@@ -1177,7 +1243,9 @@ the number of choices offered.
 
 **A dropped item IS a chest** — a Small one. That is not a rename: it is what
 lets There's Options exist without a second reward path. A defeated body's drop
-is one item and two buttons (`ItemDropModal`), which is exactly "choose 1 of 1";
+is one item and two buttons (`ItemDropModal`), which is exactly "choose 1 of 1"
+— asked as a section of the post-game screen (§18) when it fell to a report, and
+as its own modal when it did not;
 a boss holding There's Options drops a chest worth one point more, and a Medium
 chest is the same modal offering two cards to pick between. Points past a Huge
 overflow into a second chest — a second question, asked after the first — so a
@@ -1665,6 +1733,21 @@ spawns while it is owned.
   untouched. An openpyxl round-trip of this workbook silently drops its seven
   charts, so nothing here may use one.
 
+**A reader who is on neither side gets both** (`StatusData.tooltip_both`). A
+status is authored independently per side and the two are routinely opposites:
+Burn on **you** is an obligation that bites for 3, and Burn on an **enemy** is a
+second way to clear its goal. So the keyword strip under an item's description —
+which describes the *mechanic*, not a particular application of it — used to quote
+the player's side and get it exactly backwards: Staff of Flame reads "Apply +3
+Burn to a target enemy", and the footnote under it explained what Burn does to
+you. That is not a short version of the answer, it is the wrong half. `tooltip_both`
+prints one side when the other is inert and labels them when both do something.
+
+The card that describes a status **on a body** still asks for that body's side and
+nothing else, and the enemy card now branches on the mode: an `instead` reads "or
+instead: …" rather than falling through to the clause branch and printing a clause
+the status does not have.
+
 ### 13.4 The combat side
 
 A status started out as goals and nothing else — it never touched a number on the
@@ -1816,6 +1899,14 @@ the answer depends on. Mounted under the board it blocks nothing, stays for the
 whole visit (travelling on is what closes it), and is read next to the run it is
 being spent on. Because it can sit below the fold, a **`🛒 Shop ↓` pointer**
 floats at the foot of the screen until the panel has been scrolled to.
+
+**It is shown once on arrival, then it goes under the board.** Everything above
+stays true, and the one thing it never fixed was that a shop mounted below the
+fold on the frame you arrive is a shop you may not notice at all — the pointer
+says it is down there, not what is on it. So the panel is *first* mounted on the
+screen the game ends on (§18) and handed back to the page — the same node,
+reparented — when the player leaves it. The moment of arrival gets the shelf in
+front of you; the rest of the visit gets it under the board, exactly as before.
 **Escaping opens nothing** — escape fires no `game_beaten` triggers anywhere in
 the build, and this is not the place to make it an exception.
 
@@ -2193,3 +2284,105 @@ modal's single-item layout, the scroll read modal (identified scrolls only; a
 strip naming Burn and Fire under "reading it is a gamble" would give the whole
 thing away), and the Collection's detail pane. Not the shop shelf or the
 five-abreast chest cards, which have no room.
+
+## 18. The end of a game — one screen (`PostCombatScreen`)
+
+A report used to fire **six independent surfaces**, none of which knew about the
+others: one `ItemDropModal` per defeated body, then the `LootDropModal`, then the
+event, then the shop appearing under the board, then the boss notice, with the
+toasts running underneath all of it. On a boss round at a hub that is five popups
+in a row, each re-centring on the same spot, each with its own Take/Leave, and
+nothing tying any of them to the game they came out of.
+
+Worse, **the first two opened on top of the resolve animation**. Drops are queued
+in the middle of `GameLoop2.beat_game` and were pumped on the next idle frame,
+while `Overworld2._hold_for_resolve` was still playing the strike and the advance
+back — the one place the run's consequences are ever *shown*. So the player
+answered "do you want this relic" over the top of the blow that had just taken
+eight Health off them.
+
+So the haul is **a screen**, and it opens when the board has stopped moving.
+
+| Section | What it carries |
+|---|---|
+| **The verdict** | the game's cover and name, and which of the three reports this was — beaten, goal missed, or walked away (they are three different things; see §2) |
+| **The fight** | damage taken and blocked, goals cleared, what is still following, tries left over or banked, the difficulty tier, and the board's growth if it just stepped (§7.3) |
+| **The spoils** | every relic chest down the left and the loot payout down the right, **all of it at once** rather than one question after another |
+| **The shelf** | a hub's shop, if this game was one of the ten (§14) |
+| **The warning** | the boss notice as a banner rather than a sixth popup (§7.1) |
+
+And **one button out**. It is the **event** when the node owes one — clicking it
+is what opens the event, so the player leaves this screen *into* the next thing
+rather than having the next thing dropped on them — and "travel on" when it
+doesn't. It counts what it is about to bin (`exit_text`), because a Legendary left
+on the ground should be a decision and not a side effect of pressing Continue.
+
+**The sections are the real modals, embedded.** `ItemDropModal.embed`,
+`LootDropModal.embed` and `BossNoticeModal.embed` build the same cards, run the
+same selection, and answer through the same signals; what they skip is the
+backdrop, the centring and the `CanvasLayer`. So the 3×3 on this screen is the
+inventory in exactly the sense §4.3 means it, a chest is still "which one of
+these", and a boss portrait still opens its card. One code path, two frames.
+
+**The standalone modals stay**, and that is the point of embedding rather than
+replacing: `GameState.offer_loot` fires from `EffectSystem`, so an item, an event
+or a machine can hand over loot at any moment, and a payout that did not arrive
+with a report has no haul screen to be a section of. `Overworld2._pump_drops`
+suppresses itself only while `_resolving` — which only a report sets — so an
+out-of-band offer still asks for itself, on the spot.
+
+**The shelf is borrowed, not moved.** §14's decision that a shop blocks nothing
+and stays for the whole visit is still right; what was missing was it being seen
+at the moment you arrive. So this screen mounts the panel and hands **the same
+node** back to the page on the way out (`release_shop` → `Overworld2._adopt_shop`),
+reparented rather than rebuilt, so a card left open survives the handover.
+
+**Every chest is on the screen at once**, and that is the point of the screen.
+They were drained one at a time at first, which is how the page's queue had always
+worked — but a queue hides the thing a player most needs when several relics land
+together, which is what the *others* are. There is often an order: a relic that
+changes what a chest is worth should be taken before the chest it changes, and a
+Charged active you are about to fire is worth more than one you are not. None of
+that can be reasoned about a card at a time. Each chest is still its own question —
+"which one of these" — and answering one leaves the rest exactly where they were.
+
+A one-item chest lays out **sideways** there (`ItemDropModal`, the `sideways`
+branch): the card on the left, Leave and Take stacked on the right. Stacked it is
+~135px, and three of those is more than the column holds — which puts the third
+relic behind a scrollbar on the one screen built so relics can be weighed against
+each other. And a relic is **always a picture**: both layouts used to draw art only
+when `item.image` was non-null, so an unarted row would come up as a name over a
+gap; `_item_art` draws a tinted stand-in instead.
+
+**The payout does not close on its last piece, and it has no buttons.** As a modal
+the table emptying is the end of the question. Here it is the opposite: the piece
+has just gone *into* the pack, and the pack is the reason to still be looking —
+the next thing a player usually wants is to spend it. So the section stays, with
+its 3×3 and its bin live, until they leave the screen. Take and "Leave the rest"
+go with it: they were the modal's way of ending itself, the drag already puts a
+piece in the slot you want, and the bin under the pack is "leave it" said with the
+hands. What is still on the table when the player walks off is counted on the way
+out, so nothing goes quietly.
+
+The two columns are **top-aligned** when embedded. Centred, the offer floated down
+to sit level with the middle of the nine slots, so a piece's name and description
+started lower than the pack and read as having slipped underneath it.
+
+**A chest banked while the screen is up lands on it** (`add_chest`). A level-up
+reward, Unstable Genome firing on the beat, a status paying out — all of those
+call `grant_chest`, and `RewardScreen` mounts as an ordinary child of the page,
+*below* this screen's CanvasLayer. The player saw nothing and then found a reward
+screen waiting the moment they left. `Overworld2._hand_chests_to_post_game` rolls
+them on the same ladder the RewardScreen would (`Data.roll_item_rarity`,
+`BASE_ITEM_CHOICES + Discovery` for a default-size chest) and hands them over.
+
+**A section that raises its own card needs a layer above this one.** The shop's
+shelf opens an item card at `ShopPanel2.card_layer`, whose default (122) clears
+the page but not this screen — so clicking a row opened a card nobody could see
+and produced it a screen too late. The host sets `card_layer` to 131 while it
+holds the panel and puts it back on the way out.
+
+It sits on layer 128: **below** the run's header bar (135), so Health and Gold
+stay readable over it, and below the loot use modal (130), so spending a piece
+from the pack still opens on top. Its page is inset under the bar the same way
+every other modal is (`ModalScaffold.reserved_top`).

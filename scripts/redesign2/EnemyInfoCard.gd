@@ -165,10 +165,20 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	# player's own strip, which is the point.
 	var statuses: Array = GameLoop2.enemy_statuses(entry)
 	if not statuses.is_empty():
+		# …and a BOSS says which of them it is ignoring (§7.1). An `instead` buys
+		# nothing on a boss, and a chip that reads like a way out on the one body
+		# that has none is the worst place in the run to be vague.
+		var dead: Dictionary = {}
+		for row in GameLoop2.nullified_alternatives_for(entry):
+			var sd: StatusData = row["status"]
+			if sd != null:
+				dead[sd.id] = true
 		var strip := HBoxContainer.new()
 		strip.add_theme_constant_override("separation", 8)
 		for row in statuses:
-			strip.add_child(_status_chip(row["status"], int(row["stacks"])))
+			var st: StatusData = row["status"]
+			strip.add_child(_status_chip(st, int(row["stacks"]),
+				st != null and dead.has(st.id)))
 		inner.add_child(strip)
 
 	# The goal — the thing you actually have to do — gets its own panel.
@@ -307,13 +317,14 @@ func _chip(text: String, color: Color) -> Control:
 # card is the place a player has already stopped to read.
 const STATUS_ART := 28
 
-func _status_chip(status: StatusData, stacks: int) -> Control:
-	var good: bool = status.is_bonus(StatusData.ENEMY)
+func _status_chip(status: StatusData, stacks: int, nullified: bool = false) -> Control:
+	# A nullified way-out never reads as good news, whatever side it is on (§7.1).
+	var good: bool = status.is_bonus(StatusData.ENEMY) and not nullified
 	var tint: Color = UITheme.GOLD if good else UITheme.DANGER
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(tint.lerp(UITheme.BG, 0.80), 6, 5, 1, tint.lerp(UITheme.BG, 0.35)))
-	wrap.tooltip_text = status.tooltip_for(StatusData.ENEMY, stacks)
+	wrap.tooltip_text = status.tooltip_for(StatusData.ENEMY, stacks, nullified)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 7)
 	wrap.add_child(row)
@@ -331,8 +342,16 @@ func _status_chip(status: StatusData, stacks: int) -> Control:
 	name_lbl.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.35))
 	col.add_child(name_lbl)
 	var what := Label.new()
-	what.text = (status.objective_text(StatusData.ENEMY, stacks) if good
-		else "goal also needs: %s" % status.clause_text(StatusData.ENEMY, stacks))
+	if nullified:
+		# The whole reason this chip is drawn at all: the stacks are on the body,
+		# and what they would have bought is not available on this one.
+		what.text = "nullified — a boss comes off the board on its goal alone"
+	elif status.is_alternative(StatusData.ENEMY):
+		what.text = "or instead: %s" % status.alternative_text(StatusData.ENEMY, stacks)
+	elif good:
+		what.text = status.objective_text(StatusData.ENEMY, stacks)
+	else:
+		what.text = "goal also needs: %s" % status.clause_text(StatusData.ENEMY, stacks)
 	what.add_theme_font_size_override("font_size", 11)
 	what.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

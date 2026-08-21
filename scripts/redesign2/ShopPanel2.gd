@@ -65,6 +65,15 @@ const ROW_WIDTH := 166.0
 const ROW_HEIGHT := 58.0
 const ROW_ICON := 44
 
+# WHICH LAYER AN OPENED ITEM'S CARD GOES ON. 122 clears the page and everything
+# mounted on it, which is right while this panel is under the board; it is NOT
+# right while the panel is a section of the post-combat screen, which is itself a
+# CanvasLayer at 128 — the card drew underneath it and only became visible once
+# the player had left the screen, so a click on a shelf row looked like it had
+# done nothing and then produced a popup a screen too late. The host sets this to
+# clear itself.
+var card_layer: int = 122
+
 var _game_id: StringName = &""
 var _game: GameData = null
 var _done: bool = false
@@ -343,7 +352,7 @@ func open_card(slot: int) -> Node:
 	if slot < 0 or slot >= shelf.size():
 		return null
 	var layer := CanvasLayer.new()
-	layer.layer = 122
+	layer.layer = card_layer
 	layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(layer)
 	_card_layer = layer

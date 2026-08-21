@@ -67,7 +67,7 @@ func rebuild(reporting: bool) -> void:
 func _item_token(item: ItemData, reporting: bool) -> Control:
 	var tint: Color = UITheme.item_color(item)
 	var active: bool = item.kind == ItemData.ItemKind.USABLE or item.is_charged()
-	var ready: bool = active and GameState.can_fire_item(item) and not reporting
+	var ready: bool = active and GameState.can_fire_item(item) and fires_while_reporting(item, reporting)
 
 	# Bottom-aligned so every art tile sits on one baseline whether or not the item
 	# above it grew a Use button — a ragged row of tiles reads as a bug.
@@ -142,6 +142,25 @@ func _counter_badge(item: ItemData) -> Control:
 	wrap.add_child(label)
 	return wrap
 
+# CAN THIS ITEM FIRE WHILE A GAME IS IN PLAY? Every active used to be held back
+# until the game had been reported, which is right for a USABLE consumable — those
+# want a combat or an event around them (GameState.can_use_items) and there is
+# neither while the player is off playing the real thing.
+#
+# It was wrong for a CHARGED active, and wrong in the way that shows: a full bar
+# is the game telling you the thing is ready, and the strip then refused to fire
+# it and offered "finish reporting this game first" as the reason. D6, Staff of
+# Flame and Mom's Bottle of Pills are all charged, and all three do something the
+# player wants precisely WHILE the board is live — a Scramble before the next
+# offering, a Burn on the body walking toward them, a pill in hand for the run
+# ahead. A charge that cannot be spent when it is full is a charge that is
+# permanently one game behind.
+#
+# So a full bar means ready, on every screen. Nothing about the charge economy
+# changes: it still empties on firing and refills on the same hooks.
+static func fires_while_reporting(item: ItemData, reporting: bool) -> bool:
+	return item.is_charged() or not reporting
+
 # The control above an active item's tile. Full charge (or a Usable item, which
 # has none) reads "Use" and fires; a partial charge is the battery, showing how
 # many beats are left before it does.
@@ -162,7 +181,10 @@ func _item_fire_control(item: ItemData, ready: bool, reporting: bool) -> Control
 		btn.pressed.connect(func(): _page.use_item(target_item))
 		return btn
 	if item.is_charged():
-		return _charge_battery(item, reporting)
+		# `reporting` no longer holds a full bar back (see fires_while_reporting), so
+		# the battery here is only ever a PARTIAL charge and says nothing about the
+		# report step.
+		return _charge_battery(item, false)
 	# A Usable item that can't fire right now (mid-report) — the slot stays, greyed,
 	# so the row doesn't reflow the moment a game is picked up.
 	var idle := Button.new()
@@ -222,10 +244,10 @@ static func item_hover(item: ItemData, active: bool, ready: bool, reporting: boo
 	if active:
 		if ready:
 			note = "▸ Click the tile above to use it."
-		elif reporting:
-			note = "▸ Report this game first."
 		elif item.is_charged():
 			note = "▸ Charging."
+		elif reporting:
+			note = "▸ Report this game first."
 	var lines: Array = [String(item.description)]
 	# ECHO CHAMBER NAMES WHAT IT IS HOLDING (§4.3). Its description says "the last
 	# 3 Loot you used" and the hover is where "which three" belongs — a relic that

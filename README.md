@@ -256,6 +256,19 @@ node and its script.
   raises mounts — so the door out of the application sat on top of the character
   picker, the Collection and the Atlas, live and clickable through their own
   backdrops. The corner is mounted under the modal layer now.
+  - **`Collection.gd`** — the compendium: Games, Items, Characters, Enemies,
+    Bosses, **Loot**, Events, Objects. **Loot is one tab with two sub-tabs** —
+    Scrolls and Pills — because they are one thing to the run: one 50/50 payout,
+    one nine-piece pack, one window, and two top-level tabs said the opposite.
+    Both halves are the **revealed reference**, which a run hides until you
+    identify it. A pill cell wears a **stand-in capsule and says so**: a pill
+    carries no art of its own (`PillData` has no image field) because its picture
+    is the colour the run deals it out of `PillSystem.COLORS`, and this screen
+    opens from the main menu where no run has dealt one — drawing each pill in
+    some particular colour would teach an association the game randomises on
+    purpose. It shows **both doses**, since the 5% horse roll is the same colour
+    and the same identification, and a card showing only the normal one would be
+    describing half of what taking it can do.
   - **`HowToPlayScreen.gd`** — **📖 How to Play**, the written manual: a chapter
     list down the left, one chapter down the right. Every word of it is data in
     **`HowToPlayText.gd`**, which the screen draws and does not read — so the
@@ -456,8 +469,35 @@ node and its script.
     boss portraits are **clickable**: each opens the ordinary `EnemyInfoCard` over
     the popup, read-only (no body exists yet, so no Push / Bomb), which is where
     "what does it want and what does it hit for" gets answered.
+  - **`PostCombatScreen.gd`** — **the screen a game ends on** (§18). A report used
+    to fire six independent surfaces — one relic modal per defeated body, the loot
+    payout, the event, the shop appearing under the board, the boss notice, toasts
+    under all of it — and the first two of those opened **on top of the resolve
+    animation**, which is the one place the run's consequences are ever shown. The
+    haul is one screen now, and it opens when the board has stopped moving: the
+    verdict, the fight in numbers (out of `beat_game`'s result, which used to be
+    thrown away), **every** relic chest down the left and the loot payout down the
+    right at once, the hub's shelf, and the boss warning as a banner. All the
+    chests together is the point: a queue hides what the *other* relics are, and
+    there is often an order worth taking them in. A chest banked while the screen
+    is up lands on it too (`add_chest`) rather than opening a `RewardScreen`
+    underneath it, and a section that raises its own card — the shelf's — is given
+    a layer that clears the screen. **The payout does not close on its last piece
+    and has no Take/Leave buttons**: the piece has just gone into the pack, and the
+    pack is the reason to still be looking.
+    **One button out**, which is the **event** when the node owes one — clicking it
+    is what opens the event — and "travel on" when it doesn't; it counts what it is
+    about to bin, because a Legendary left on the ground should be a decision and
+    not a side effect of pressing Continue. The sections are the **real modals,
+    embedded** (`ItemDropModal.embed` / `LootDropModal.embed` /
+    `BossNoticeModal.embed`): same cards, same drag, same signals, minus the
+    backdrop and the layer. The standalone modals stay, because
+    `GameState.offer_loot` fires from `EffectSystem` and a payout that didn't
+    arrive with a report has no haul screen to be part of. The shelf is
+    **borrowed**, not moved — the same `ShopPanel2` node is handed back to the page
+    on the way out, so §14's "a shop stays for the whole visit" still holds.
 - **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). Ordinary
-  enemy drops don't open it: they land in the loot tray beside the board.
+  enemy drops don't open it: they land on the post-combat screen (above).
 - **`RateGameModal.gd`** — the 1-10 tier-list score for a game. Strictly opt-in:
   it only ever opens from a **★ Rate** button (on the report panel while you're
   playing a game, and on the select screen for the game you last reported).

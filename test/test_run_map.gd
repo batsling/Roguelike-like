@@ -21,6 +21,10 @@ func before_each() -> void:
 	if _ui._phase == _ui.Phase.PLAYING:
 		_report_beat(_ui)
 		_ui._end_resolve()
+		# The report hands its haul to a PostCombatScreen now; walk off it, which
+		# is also what puts the map's own page back in front.
+		if _ui._post_screen != null and is_instance_valid(_ui._post_screen):
+			_ui._post_screen.dismiss()
 		_ui._drop_queue.clear()
 
 func after_each() -> void:

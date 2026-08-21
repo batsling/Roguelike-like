@@ -522,6 +522,8 @@ func test_the_route_set_is_rebuilt_when_the_run_moves() -> void:
 	# it, and the offering that appears is the one the move under test is made from.
 	_report_beat(ui)
 	ui._end_resolve()
+	if ui._post_screen != null and is_instance_valid(ui._post_screen):
+		ui._post_screen.dismiss()
 	ui.pick(0)
 	ui.report(false)
 	view._build_trail()

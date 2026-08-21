@@ -61,9 +61,20 @@ var allow_take: bool = false
 var show_use: bool = false
 # The bin will take a piece from this grid (LootTrash).
 var allow_discard: bool = false
-# Everything that spends or rearranges is off while a game is mid-report — the
-# report step is between "played the game" and "said what happened", and loot
-# cannot move in that gap.
+# MOVING is off while a game is mid-report — the report step is between "played
+# the game" and "said what happened", and the pack cannot be rearranged, taken from
+# or binned in that gap.
+#
+# SPENDING is not, and that is the narrower rule this used to get wrong (§4.3). A
+# piece of loot is spent for what it does to the run, and mid-game is exactly when
+# the player knows what they want: a Scare Monster on the body walking toward them,
+# a Fire on the front column, a capsule they are willing to gamble on. Being told
+# to finish their paperwork first is the run refusing the thing it wants them to
+# risk. A piece whose effect cannot land in that gap FIZZLES instead of being
+# refused — Teleportation and Telepills do not move a run halfway through a game
+# (Overworld2.loot_teleport) — and either way it is identified, because both
+# ScrollSystem.read_scroll and PillSystem.take_pill identify before they apply
+# anything.
 var locked: bool = false
 
 func _init() -> void:
@@ -223,7 +234,10 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	var use_cb: Callable = Callable()
 	if show_use:
 		use_cb = func(): use_requested.emit(slot.loot_index)
-	slot.add_child(_cell_body(entry, use_cb, locked))
+	# `false`: the lock holds the pack STILL, it does not stop a piece being spent
+	# (see `locked`). Kept as an argument rather than dropped, because the cell body
+	# is shared with the loose-offer layout and a future rule may want it back.
+	slot.add_child(_cell_body(entry, use_cb, false))
 	# CLICK READS, DRAG MOVES, THE BUTTON SPENDS. A relic in the pack opens its card
 	# on a click and spends only from its own button, and loot answered a click with
 	# nothing at all — the same object class with two different gestures. Now it
@@ -305,8 +319,7 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	if use_cb.is_valid():
 		var use := UITheme.confirm_button("Use", Vector2(0, LootSlot.USE_H), 10)
 		use.disabled = locked_now
-		use.tooltip_text = "Finish reporting this game first." if locked_now \
-			else "Spend it — this is how an unknown one gets identified."
+		use.tooltip_text = "Spend it — this is how an unknown one gets identified."
 		use.pressed.connect(use_cb)
 		col.add_child(use)
 	return col

@@ -53,10 +53,12 @@ func _open_at_first_offering() -> void:
 	# at all; the escort (§7.5) gives it a body to slide, so the playback is real
 	# now and has to be cut short deliberately.
 	_ui._board.clear_fx()
-	_ui._drop_queue.clear()        # the opening game's relic isn't what's under test
-	if _ui._drop_modal != null and is_instance_valid(_ui._drop_modal):
-		_ui._drop_modal.queue_free()
-		_ui._drop_modal = null
+	# …and walk off the screen the game ended on. Every report now hands its haul
+	# to one PostCombatScreen — the relics, the loot, the shelf, the boss warning —
+	# and its way out is what opens the event behind it, so a test that reports a
+	# game and then looks at the offering has to leave it the way a player does.
+	# The opening game's relic goes on the floor with it; it isn't what's under test.
+	_leave_post_game()
 	_dismiss_event()
 	# The opening game's ESCORT (§7.5) survived it — beating a game answers for its
 	# own enemy and nothing else — so a run that opens perfectly still walks away
@@ -119,6 +121,22 @@ func _playback_done() -> void:
 # through the modal's own path rather than freed, so the chain behind it still
 # runs — the shop a hub owes opens off `finished`, and half a dozen shop tests
 # depend on that.
+# Leave the screen a game ends on, and drop anything still on its table. The
+# player's own way out (`dismiss`), so the chain behind it runs exactly as it does
+# in a real run — which is what puts the event on screen for `_dismiss_event` to
+# find. `_drop_queue` is cleared afterwards for the drops that never reached the
+# screen at all (a test that queued one by hand).
+func _leave_post_game(page = null) -> void:
+	var ui = page if page != null else _ui
+	if ui._post_screen != null and is_instance_valid(ui._post_screen):
+		ui._post_screen.dismiss()
+	ui._post_screen = null
+	ui._post_snapshot = {}
+	ui._drop_queue.clear()
+	if ui._drop_modal != null and is_instance_valid(ui._drop_modal):
+		ui._drop_modal.queue_free()
+		ui._drop_modal = null
+
 func _dismiss_event() -> void:
 	if _ui._event_modal != null and is_instance_valid(_ui._event_modal):
 		_ui._event_modal._close()
@@ -164,18 +182,25 @@ func test_report_goal_met_defeats_and_drops() -> void:
 	assert_eq(GameLoop2.stack_size(), 1, "a met goal still leaves the escort standing")
 	assert_eq(_item_drops(), 1, "the kill queued a drop")
 
-# An enemy kill ASKS whether you want what fell off it (§8): a modal with the
-# item on it, Take or Leave, no tray to notice later. Taking it adds the item and
-# clears the drop.
-func test_defeat_drop_opens_a_take_it_or_leave_it_popup() -> void:
+# An enemy kill ASKS whether you want what fell off it (§8): the item at full
+# size, Take or Leave, no tray to notice later. What changed is WHERE it asks —
+# a chest is a section of the screen the game ends on (PostCombatScreen) rather
+# than a popup of its own, so the relic, the loot and the numbers are read as the
+# one haul they are. Taking it still adds the item and clears the drop.
+func test_defeat_drop_is_asked_about_on_the_screen_the_game_ends_on() -> void:
 	_ui.pick(0)
 	_report_beat(_ui)
 	assert_eq(_item_drops(), 1, "a drop is waiting to be asked about")
-	# The modal opens on the next idle frame — the defeat lands mid-resolve.
-	await wait_frames(2)
-	var modal = _ui._drop_modal
-	assert_not_null(modal, "the kill asked about its drop")
-	if modal == null:
+	assert_null(_ui._drop_modal,
+		"and it does NOT open over the board while the resolve is still playing")
+	_ui._end_resolve()                           # the board finishes its playback
+	var screen = _ui._post_screen
+	assert_not_null(screen, "the report ends on the haul screen")
+	if screen == null:
+		return
+	var chest = screen.chest()
+	assert_not_null(chest, "with the kill's chest on it")
+	if chest == null:
 		return
 	# No RewardScreen is opened for an enemy drop.
 	var found: RewardScreen = null
@@ -183,13 +208,70 @@ func test_defeat_drop_opens_a_take_it_or_leave_it_popup() -> void:
 		if c is RewardScreen:
 			found = c
 			break
-	assert_null(found, "enemy drops ask on their own screen, not a RewardScreen")
+	assert_null(found, "enemy drops ask on the haul screen, not a RewardScreen")
 	var inv_before: int = GameState.inventory.size()
-	modal.take()                                 # click Take it
-	assert_eq(_item_drops(), 0, "the drop was consumed")
+	chest.take()                                 # click Take it
+	assert_null(screen.chest(), "the chest was answered")
 	assert_eq(GameState.inventory.size(), inv_before + 1, "taking it adds the item")
 	assert_eq(_ui._items_box.get_child_count(), GameState.inventory.size(),
 		"and the pack strip above the board holds a token for it")
+	_leave_post_game()
+
+# The drops used to be pumped onto the screen on the next idle frame, in the
+# middle of the resolve animation — the one place the run's consequences are ever
+# SHOWN — so the player answered "do you want this relic" over the top of the blow
+# that had just taken Health off them. Nothing a report drops opens while the
+# board is still moving.
+#
+# Asserted against the RULE rather than against the clock. How long a playback
+# runs depends on what was on the board (an empty one animates nothing at all),
+# so waiting a fixed number of frames and looking tests the tween's length, not
+# the guard. `_resolving` is the whole condition `_pump_drops` spends, so the page
+# is put in that state and asked to pump — both ways round.
+func test_a_report_asks_nothing_while_the_board_is_still_moving() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._end_resolve()                           # land the playback, so the test owns the flag
+	_leave_post_game()
+	_dismiss_event()
+	_ui._resolving = true                        # as it is between a report and its playback
+	_ui._drop_queue.append({"item": Data.reward_item2_pool_of(0)[0]})
+	_ui._pump_drops()
+	await wait_frames(2)
+	assert_null(_ui._drop_modal,
+		"nothing opens over the strike-and-advance a report is still playing")
+	assert_eq(_ui._drop_queue.size(), 1, "the haul waits behind it")
+	_ui._resolving = false
+	_ui._pump_drops()
+	await wait_frames(2)
+	assert_not_null(_ui._drop_modal,
+		"and the same queue pumps the moment the board is not moving")
+	if _ui._drop_modal != null:
+		_ui._drop_modal.leave()
+
+# …and the whole queue goes to the haul screen when the playback does land, so
+# nothing is left behind on the page to open afterwards.
+func test_the_playback_landing_hands_the_whole_queue_to_the_haul_screen() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	assert_gt(_ui._drop_queue.size(), 0, "the report dropped something")
+	_ui._end_resolve()
+	assert_not_null(_ui._post_screen, "the haul screen took it")
+	assert_eq(_ui._drop_queue.size(), 0, "and the page's queue is empty behind it")
+	assert_null(_ui._drop_modal, "with no modal left over to open on top of it")
+	_leave_post_game()
+
+# A payout that does NOT arrive with a report still asks for itself, immediately,
+# on its own modal: GameState.offer_loot fires from EffectSystem, so an item, an
+# event or a machine can hand loot over at any moment and there is no haul screen
+# for it to be a section of.
+func test_an_out_of_band_payout_still_opens_its_own_modal() -> void:
+	_ui._drop_queue.clear()
+	GameState.offer_loot("loot", 1)
+	await wait_frames(2)
+	assert_not_null(_ui._drop_modal, "the offer asked on the spot")
+	if _ui._drop_modal != null:
+		_ui._drop_modal.leave()
 
 # …and it asks in the MIDDLE of the room it has. The modal is built with a width
 # and no height so it can size to whatever the relic needs, and a panel centred
@@ -201,11 +283,12 @@ func test_defeat_drop_opens_a_take_it_or_leave_it_popup() -> void:
 # (ModalScaffold.reserved_top): the bar is opaque and drawn over every modal, so a
 # modal centred on the whole screen loses its top row to it.
 func test_the_drop_asks_in_the_middle_of_the_screen() -> void:
-	_ui.pick(0)
-	_report_beat(_ui)
+	# An OUT-OF-BAND chest, since that is the one that is still a modal: a chest
+	# that arrives with a report is a section of the haul screen and is centred by
+	# that screen's layout rather than by ModalScaffold.
+	var modal := ItemDropModal.open(_ui, Data.reward_item2_pool_of(0)[0])
 	await wait_frames(4)
-	var modal = _ui._drop_modal
-	assert_not_null(modal, "the kill asked about its drop")
+	assert_not_null(modal, "the chest asked about itself")
 	if modal == null:
 		return
 	var panel: Control = null
@@ -230,32 +313,39 @@ func test_leaving_a_drop_discards_it() -> void:
 	_ui.pick(0)
 	_report_beat(_ui)
 	assert_eq(_item_drops(), 1)
-	await wait_frames(2)
-	var modal = _ui._drop_modal
-	assert_not_null(modal)
-	if modal == null:
+	_ui._end_resolve()
+	var chest = _ui._post_screen.chest()
+	assert_not_null(chest)
+	if chest == null:
 		return
 	var inv_before: int = GameState.inventory.size()
-	modal.leave()                                # click Leave it
-	assert_eq(_item_drops(), 0, "the drop was cleared")
+	chest.leave()                                # click Leave it
+	assert_null(_ui._post_screen.chest(), "the drop was cleared")
 	assert_eq(GameState.inventory.size(), inv_before, "leaving it keeps the inventory unchanged")
+	_leave_post_game()
 
 # Two kills in one report ask twice, one after the other, rather than stacking
-# two modals on top of each other.
+# two chests side by side: a chest is "which one of these", and two of those
+# wearing one answer is not a question anybody can read. They queue INSIDE the
+# haul screen now, with the loot and the numbers on it the whole time.
 func test_drops_are_asked_about_one_at_a_time() -> void:
 	_ui.pick(0)
 	_report_beat(_ui)
 	_ui._drop_queue.append({"item": Data.reward_item2_pool_of(0)[0]})
-	await wait_frames(2)
-	var first = _ui._drop_modal
-	assert_not_null(first, "the first drop is the question in front of you")
+	_ui._end_resolve()
+	var screen = _ui._post_screen
+	assert_not_null(screen, "the haul screen took both")
+	if screen == null:
+		return
+	var first = screen.chest()
+	assert_not_null(first, "the first chest is the question in front of you")
 	if first == null:
 		return
-	assert_eq(_item_drops(), 2, "the second is still queued behind it")
+	assert_eq(screen.chests_waiting(), 1, "the second is queued behind it")
 	first.leave()
-	await wait_frames(2)
-	assert_not_null(_ui._drop_modal, "and comes up once the first is answered")
-	assert_eq(_item_drops(), 1)
+	assert_not_null(screen.chest(), "and comes up once the first is answered")
+	assert_eq(screen.chests_waiting(), 0)
+	_leave_post_game()
 
 func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# Miss a goal so an enemy follows, then on the next game tick its fulfilment
@@ -2025,6 +2115,7 @@ func test_the_road_walked_carries_only_games_the_run_has_reached() -> void:
 	_ui.pick(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
+	_leave_post_game()
 	_ui._refresh()
 	var walked: Array = GameState.walked_path()
 	var stops: Array = _ui.route_strip_stops()
@@ -2329,10 +2420,8 @@ func test_the_scrollbars_are_dressed_in_the_projects_own_palette() -> void:
 	# parents and a modal hangs off a CanvasLayer, which is not one. Without this
 	# the scrollbar inside an event, a shop or a map came up in the stock grey
 	# however well the page behind it was dressed.
-	_ui.pick(0)
-	_report_beat(_ui)
+	var modal := ItemDropModal.open(_ui, Data.reward_item2_pool_of(0)[0])
 	await wait_frames(4)
-	var modal = _ui._drop_modal
 	assert_not_null(modal, "a modal to look at")
 	if modal == null:
 		return
@@ -4639,6 +4728,358 @@ func test_the_boss_warning_opens_once_for_the_round() -> void:
 	assert_null(_ui._boss_notice, "the same round warns once")
 
 # ---------------------------------------------------------------------------
+# The screen a game ends on (PostCombatScreen)
+#
+# One screen instead of six surfaces. What has to stay true is the SHAPE of it:
+# it opens when the board has stopped moving, it carries the whole haul, its way
+# out is what opens the event, and the shelf it borrows goes back to the page.
+# ---------------------------------------------------------------------------
+
+func _haul() -> PostCombatScreen:
+	return _ui._post_screen
+
+# Which of the three reports this was — and it is not a win/lose. You can beat a
+# game and clear nothing, miss the goal in one you finished, or walk away, and
+# the screen has to say which of those happened.
+func test_the_haul_screen_says_which_report_this_was() -> void:
+	_ui.pick(0)
+	var played: GameData = _ui._chosen.get("game")
+	_report_beat(_ui)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	assert_eq(screen.verdict(), "beaten", "the goal was met and the game finished")
+	assert_eq(screen.game(), played, "about the game that was just played")
+	assert_true(played.display_name in screen.subtitle(),
+		"which it names: %s" % screen.subtitle())
+	_leave_post_game()
+
+func test_a_missed_goal_and_a_walk_away_read_differently() -> void:
+	_ui.pick(0)
+	_ui.report(false)
+	_ui._end_resolve()
+	assert_eq(_haul().verdict(), "missed", "played it, goal unmet")
+	_leave_post_game()
+	_dismiss_event()
+	_clear_board()
+	_ui.pick(0)
+	_ui.report(false, [], true)                  # escaped
+	_ui._end_resolve()
+	assert_eq(_haul().verdict(), "escaped", "walked away from it")
+	_leave_post_game()
+
+# The numbers out of beat_game's result, which used to be thrown away the moment
+# the animation had played them: what it cost you, and what is still on your tail.
+func test_the_haul_screen_carries_the_fight_in_numbers() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	var keys: Array = []
+	for row in screen.tally():
+		keys.append(String(row[0]))
+	for expected in ["Damage taken", "Health", "Goals cleared", "Still following", "Difficulty"]:
+		assert_true(keys.has(expected), "the tally says %s: %s" % [expected, keys])
+	_leave_post_game()
+
+# THE WAY OUT IS THE EVENT. The event used to be dropped on the player the moment
+# the board stopped; it is now behind a button, so leaving the haul is what opens
+# it — and the button says which of the two things it is about to do.
+func test_the_way_out_names_the_event_and_is_what_opens_it() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	# Post an event at the node the run just played, the way an arrival rolls one.
+	var events: Array = Data.all_events2()
+	if events.is_empty():
+		return
+	_ui._pending_event = events[0]
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	assert_true(screen.exit_text().contains("what's here"),
+		"the button says an event is behind it: %s" % screen.exit_text())
+	assert_null(_ui._event_modal, "which has NOT been dropped on the player yet")
+	screen.dismiss()
+	assert_not_null(_ui._event_modal, "and pressing it is what opens the event")
+	_ui._post_screen = null
+	_dismiss_event()
+
+func test_the_way_out_says_travel_on_when_nothing_is_waiting() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._pending_event = null
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen != null:
+		assert_true(screen.exit_text().contains("Travel on"),
+			"nothing is waiting, so the button says so: %s" % screen.exit_text())
+	_leave_post_game()
+
+# Leaving with something still on the table BINS it, so the button says so first.
+# A Legendary left on the ground should be a decision and not a side effect of
+# pressing Continue.
+func test_the_way_out_counts_what_it_is_about_to_leave_behind() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	assert_not_null(screen.chest(), "there is a chest on the table")
+	assert_true(screen.exit_text().contains("leaving"),
+		"and the way out owns up to binning it: %s" % screen.exit_text())
+	_leave_post_game()
+
+# The payout is a column of the same screen rather than a modal after it, and it
+# is the REAL one — the same live 3x3, the same bin, the same "use it where you
+# stand" — so a piece taken here lands in the pack exactly as it does anywhere.
+func test_the_payout_is_a_column_of_the_haul_screen() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	var payout = screen.payout()
+	assert_not_null(payout, "the game's own loot is on the table")
+	if payout == null:
+		return
+	var carried: int = GameState.loot_items.size()
+	payout.take()
+	assert_eq(GameState.loot_items.size(), carried + 1, "taking it fills a slot")
+	assert_eq(payout.remaining(), 0, "and clears the table")
+	# …AND THE SECTION STAYS. As a modal, the last piece leaving the table is the
+	# end of the question. Here it is the opposite: the piece has just gone into the
+	# pack, and the pack is the reason to still be looking — the next thing a player
+	# usually wants is to spend it, and the 3x3 beside the offer is where they do
+	# that.
+	assert_not_null(screen.payout(),
+		"the payout column stays, with the pack it just filled still live on it")
+	_leave_post_game()
+
+# EVERY CHEST AT ONCE, which is the point of the screen. They were drained one at
+# a time at first — a queue hides the thing a player most needs when several relics
+# land together, which is what the OTHERS are, and whether there is an order worth
+# taking them in.
+func test_every_chest_the_report_dropped_is_on_the_screen_together() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._drop_queue.append({"items": [Data.reward_item2_pool_of(0)[0]]})
+	_ui._drop_queue.append({"items": [Data.reward_item2_pool_of(1)[0],
+		Data.reward_item2_pool_of(2)[0]]})
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	assert_eq(screen._chest_sections.size(), 3, "all three chests were mounted at once")
+	assert_eq(screen.chests_waiting(), 2, "two of them still unanswered besides the first")
+	# Answering one leaves the others exactly where they were.
+	screen.chest().leave()
+	assert_eq(screen.chests_waiting(), 1, "the rest are untouched")
+	_leave_post_game()
+
+# A relic is ALWAYS a picture. Both card layouts used to draw art only when
+# `item.image` was non-null, so an unarted row would come up as a name over a gap
+# on the screen where the player is deciding whether to take it.
+func test_every_relic_on_offer_is_drawn_with_a_picture() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	var cards: int = 0
+	for section in screen._chest_sections:
+		for card in section._cards:
+			cards += 1
+			var art: bool = false
+			for tr in (card["node"] as Control).find_children("*", "TextureRect", true, false):
+				if (tr as TextureRect).texture != null:
+					art = true
+			assert_true(art, "%s is drawn with its art" % card["item"].display_name)
+	assert_gt(cards, 0, "there was a relic on offer to check")
+	_leave_post_game()
+
+# …and an item with NO art still draws something rather than a hole.
+func test_an_unarted_relic_draws_a_stand_in_rather_than_a_gap() -> void:
+	var blank := ItemData.new()
+	blank.id = &"__artless__"
+	blank.display_name = "Artless Relic"
+	blank.description = "Nothing to look at."
+	var modal := ItemDropModal.open(_ui, blank)
+	await wait_frames(2)
+	var drawn: bool = false
+	for node in modal.find_children("*", "Control", true, false):
+		if (node as Control).custom_minimum_size.x >= 72.0:
+			drawn = true
+	assert_true(drawn, "a relic with no image still gets a tile the size of one")
+	modal.leave()
+
+# A chest banked AFTER the screen opened lands ON it. RewardScreen mounts as an
+# ordinary child of the page, BELOW this screen's CanvasLayer, so a level-up's
+# reward was invisible until the player had already left.
+func test_a_chest_banked_while_the_screen_is_up_lands_on_it() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	var before: int = screen._chest_sections.size()
+	GameState.grant_chest(1)
+	_ui._redeem_pending_chests()
+	assert_eq(screen._chest_sections.size(), before + 1,
+		"the banked chest is a section of the haul screen")
+	assert_eq(GameState.pending_chests, 0, "and the bank is drained")
+	var found: RewardScreen = null
+	for c in _ui.get_children():
+		if c is RewardScreen:
+			found = c
+	assert_null(found, "no RewardScreen opened underneath it")
+	_leave_post_game()
+
+# The shelf's own item card has to clear this screen. Its default layer is under
+# it, so clicking a shelf row opened a card nobody could see and then produced it
+# the moment the player left.
+func test_the_shelfs_item_card_opens_above_the_haul_screen() -> void:
+	var hub: StringName = _a_hub()
+	if hub == &"":
+		return
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._pending_shop = hub
+	GameState.current_game_id = hub
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null or screen._shop == null:
+		_leave_post_game()
+		return
+	assert_gt(screen._shop.card_layer, PostCombatScreen.LAYER,
+		"the shelf raises its card above the screen holding it")
+	screen._shop.open_card(0)
+	assert_not_null(screen._shop._card_layer, "and the card actually opened")
+	if screen._shop._card_layer != null:
+		assert_gt(screen._shop._card_layer.layer, PostCombatScreen.LAYER,
+			"on a layer that clears it")
+	screen.dismiss()
+	_ui._post_screen = null
+	assert_eq(_ui._shop_panel.card_layer, PostCombatScreen.SHOP_CARD_LAYER_ON_PAGE,
+		"and the panel goes back to the page's own layer with it")
+	_dismiss_event()
+
+# Loot granted WHILE the screen is up lands on it. A relic taken from one of its
+# own chests can pay out the instant it is picked up (Mom's Coin Purse is four
+# pills), and the table it belongs on is beside the card that paid it — queueing it
+# behind a screen nobody has left yet would hide the payout until after the
+# decision that earned it.
+func test_loot_granted_on_the_screen_lands_on_its_own_table() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	var payout = screen.payout()
+	assert_not_null(payout, "the game paid something of its own")
+	if payout == null:
+		return
+	var before: int = payout.remaining()
+	var queued: int = _ui._drop_queue.size()
+	GameState.offer_loot("loot", 2)
+	assert_eq(payout.remaining(), before + 2, "the grant is on the table already")
+	assert_eq(_ui._drop_queue.size(), queued,
+		"and nothing was queued behind the screen for later")
+	_leave_post_game()
+
+# A run saved with a payout still queued has to come back. The queue holds EITHER
+# shape — one entry for a game's own payout, a whole handful for a relic's grant —
+# and the save used to cast both to a Dictionary, which took the autosave down the
+# moment a grant was in it.
+func test_a_queued_payout_survives_a_save_in_either_shape() -> void:
+	_ui._drop_queue.clear()
+	_ui._drop_queue.append({"loot": {"type": "scroll", "id": &"scroll_of_fire"}})
+	_ui._drop_queue.append({"loot": [
+		{"type": "pill", "id": &"luck_up", "horse": false},
+		{"type": "pill", "id": &"health_up", "horse": false}]})
+	var view: Dictionary = _ui.capture_view_state()
+	var saved: Array = view.get("drops", [])
+	assert_eq(saved.size(), 2, "both queued payouts were written")
+	if saved.size() < 2:
+		return
+	assert_true(saved[0]["loot"] is Dictionary, "the single piece stays a single piece")
+	assert_true(saved[1]["loot"] is Array, "and the handful stays a handful")
+	assert_eq((saved[1]["loot"] as Array).size(), 2, "with both pills in it")
+	_ui._drop_queue.clear()
+	_ui.restore_view_state(view)
+	assert_eq(_ui._drop_queue.size(), 2, "and both come back")
+	assert_true(_ui._drop_queue[1]["loot"] is Array, "in the shape they went in")
+	_ui._drop_queue.clear()
+
+# §14's decision still holds: a shop blocks nothing and stays for the whole visit.
+# The haul screen only BORROWS the shelf for the moment of arrival — the one
+# moment it was never seen — and hands the same panel back on the way out.
+func test_the_shelf_is_borrowed_and_handed_back_to_the_page() -> void:
+	var hub: StringName = _a_hub()
+	if hub == &"":
+		return
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._pending_shop = hub
+	# _open_post_game only claims a shelf where the player is actually STANDING.
+	GameState.current_game_id = hub
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	var borrowed: ShopPanel2 = screen._shop
+	assert_not_null(borrowed, "the shelf is on the haul screen")
+	if borrowed == null:
+		return
+	assert_eq(borrowed.game_id(), hub, "and it is this hub's")
+	screen.dismiss()
+	_ui._post_screen = null
+	assert_eq(_ui._shop_panel, borrowed, "the SAME panel came back to the page")
+	assert_eq(_ui._shop_panel.get_parent(), _ui._right_col,
+		"under the board, where a shop lives for the rest of the visit")
+	_dismiss_event()
+
+# The boss warning is a banner on this screen rather than a sixth popup — a boss
+# round is announced between two games, and this screen is what stands between
+# them. Marking the round announced here is what stops the popup saying it again.
+func test_a_boss_round_warns_on_the_haul_screen_and_not_twice() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._boss_round = true
+	_ui._boss_notice_for = -1
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	assert_eq(_ui._boss_notice_for, GameState.games_played,
+		"the round is marked announced by the screen")
+	_leave_post_game()
+	_dismiss_event()
+	_ui._maybe_announce_boss()
+	assert_null(_ui._boss_notice, "so no popup arrives afterwards to repeat it")
+
+# ---------------------------------------------------------------------------
 # The shop is part of the page, under the board (§14)
 # ---------------------------------------------------------------------------
 
@@ -5238,9 +5679,130 @@ func test_the_report_step_hands_the_checklist_back_intact() -> void:
 		"the report step took the box over: %s" % playing)
 	_report_beat(_ui)
 	_ui._end_resolve()
-	_ui._drop_queue.clear()
+	_leave_post_game()
 	assert_true(_text_of(_ui._verify_box).contains("What you need to do"),
 		"and the standing list is back after the report")
+
+# ---------------------------------------------------------------------------
+# What can be spent WHILE a game is in play
+# ---------------------------------------------------------------------------
+
+# A FULL BAR MEANS READY, on every screen. Every active used to be held back until
+# the game had been reported — right for a Usable consumable, which wants a combat
+# or an event around it, and wrong for a CHARGED one in the way that shows: the
+# strip said the thing was ready and then refused to fire it. D6, Staff of Flame
+# and Mom's Bottle of Pills are all charged and all three do something wanted
+# precisely while the board is live.
+func test_a_charged_active_fires_while_a_game_is_in_play() -> void:
+	for id in [&"d6", &"staff_of_flame", &"moms_bottle_of_pills"]:
+		var template: ItemData = Data.get_item2(id)
+		assert_not_null(template, "%s is authored" % id)
+		if template == null:
+			continue
+		assert_true(template.is_charged(), "%s is a charged active" % id)
+		assert_true(PackStrip.fires_while_reporting(template, true),
+			"%s fires with a full bar mid-report" % id)
+
+func test_a_usable_consumable_still_waits_for_the_report() -> void:
+	var usable: ItemData = null
+	for item in Data.all_items2():
+		if item is ItemData and not item.is_charged() \
+				and item.kind == ItemData.ItemKind.USABLE:
+			usable = item
+			break
+	if usable == null:
+		# Nothing in the catalogue to check with — assert the rule directly instead
+		# of returning without asserting.
+		var stand_in := ItemData.new()
+		stand_in.kind = ItemData.ItemKind.USABLE
+		usable = stand_in
+	assert_false(PackStrip.fires_while_reporting(usable, true),
+		"a Usable consumable wants the game reported first")
+	assert_true(PackStrip.fires_while_reporting(usable, false),
+		"and fires on the offering like it always did")
+
+# THE LOCK HOLDS THE PACK STILL, IT DOES NOT STOP A SPEND. Mid-report nothing is
+# dragged, taken or binned — the gap between "played the game" and "said what
+# happened" is not a moment for the inventory to move — but every piece of loot can
+# be USED, scrolls included. Mid-game is exactly when the player knows what they
+# want out of one: the body walking toward them is right there.
+func test_the_mid_report_lock_stops_moving_but_never_spending() -> void:
+	GameState.loot_items.clear()
+	GameState.add_scroll_loot(&"scroll_of_fire")
+	GameState.add_pill_loot(&"luck_up")
+	var grid := LootGrid.new()
+	grid.show_use = true
+	grid.allow_reorder = true
+	grid.allow_discard = true
+	grid.locked = true
+	add_child_autofree(grid)
+	grid.rebuild()
+	assert_false(grid.can_trash({"kind": "loot_move", "from": 0, "index": 0}),
+		"the pack still cannot be binned from")
+	assert_null(grid.get_child(0)._get_drag_data(Vector2.ZERO),
+		"nor rearranged")
+	var live: int = 0
+	for slot in grid.get_children():
+		for btn in (slot as Control).find_children("*", "Button", true, false):
+			if (btn as Button).text == "Use" and not (btn as Button).disabled:
+				live += 1
+	assert_eq(live, GameState.loot_items.size(),
+		"but every carried piece can still be spent, scroll and pill alike")
+
+# …and one whose effect cannot land FIZZLES rather than being refused. Neither
+# Teleportation nor Telepills moves a run halfway through a game — but the piece
+# is identified either way, because both systems identify before they apply
+# anything, so the gamble still paid off.
+func test_a_teleport_fizzles_mid_game_and_the_piece_is_still_learned() -> void:
+	PillSystem.ensure_colors()
+	PillSystem.unidentify(&"telepills")
+	ScrollSystem.unidentify(&"scroll_of_teleportation")
+	_ui.pick(0)                                  # a game is now in play
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
+	assert_eq(_ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2}), "",
+		"the run does not move mid-game — the use screen says it fizzles")
+
+	var pill: Dictionary = PillSystem.take_pill({"type": "pill", "id": &"telepills",
+		"horse": false})
+	assert_true(PillSystem.is_identified(&"telepills"), "the colour is learned")
+	assert_false((pill.get("requests", []) as Array).is_empty(),
+		"the move was asked for; it is the overworld that declines it")
+
+	var scroll: ScrollData = Data.get_scroll(&"scroll_of_teleportation")
+	assert_not_null(scroll)
+	if scroll != null:
+		var read: Dictionary = ScrollSystem.read_scroll(scroll)
+		assert_true(ScrollSystem.is_identified(&"scroll_of_teleportation"),
+			"and so is the scroll, on exactly the same terms")
+		assert_false((read.get("requests", []) as Array).is_empty(),
+			"which also asks for a move it will not get")
+	_ui.report(false)
+	_ui._end_resolve()
+	_leave_post_game()
+	_dismiss_event()
+
+# Every other scroll op DOES land mid-game, which is why the gate went: only a
+# teleport needs the map. If a new op is authored that cannot work here, it needs
+# a fizzle of its own rather than the whole pack being locked again.
+func test_only_a_teleport_among_the_scroll_ops_needs_the_map() -> void:
+	var map_only := ["teleport"]
+	var seen: Array = []
+	for s in Data.all_scrolls():
+		if not (s is ScrollData):
+			continue
+		for e in s.effect:
+			if e is Dictionary:
+				var op: String = String(e.get("op", ""))
+				if not seen.has(op):
+					seen.append(op)
+	assert_gt(seen.size(), 1, "the roster uses several ops")
+	for op in seen:
+		if map_only.has(op):
+			continue
+		assert_true(op in ["apply_status", "apply_tile", "forget", "spawn_enemy",
+			"identify_scrolls", "stun_enemies"],
+			"%s is an op this rule has been thought about — a new one needs a "
+			% op + "fizzle of its own if it cannot land mid-game")
 
 # --- the controls row ------------------------------------------------------
 
@@ -5250,7 +5812,7 @@ func test_the_rate_button_appears_once_a_game_has_been_reported() -> void:
 	_ui.pick(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
-	_ui._drop_queue.clear()
+	_leave_post_game()
 	_ui._render_controls()
 	assert_true(_text_of(_ui._controls_row).contains("Rate"),
 		"the game just played is scorable from the offering")
