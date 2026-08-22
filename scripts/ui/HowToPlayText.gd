@@ -265,6 +265,19 @@ static func _ch_playing() -> Dictionary:
 			_p("Hover a row and the body it belongs to lights up on the board. "
 				+ "Hover a body and its row lights up. They are the same fact "
 				+ "written twice."),
+			_h("A tick happens NOW"),
+			_p("Tick a row the moment you do the thing. It asks you to confirm, "
+				+ "and then it RESOLVES — mid-game, while you are still playing. "
+				+ "The enemy dies and drops its chest onto the board. The reward "
+				+ "is paid. The level is taken."),
+			_p("You do not have to finish the game first, and losing runs does "
+				+ "not stop you: a goal you cleared in the first hour is worth "
+				+ "something for the rest of the evening rather than sitting there "
+				+ "waiting for you to press a button."),
+			_note("There are no take-backs. The confirm is the safeguard — an "
+				+ "enemy that is already dead cannot be un-killed. (Undo, beside "
+				+ "the lost-run tracker, is a different thing: it takes back a "
+				+ "TURN, which is the board's, not yours.)"),
 			_h("Reporting"),
 			_p("Press Completed Game when you are done with the game — done, not "
 				+ "necessarily victorious. Two different things are being claimed, "
@@ -274,7 +287,9 @@ static func _ch_playing() -> Dictionary:
 				+ "the run at the Amulet."),
 			_kv("The tick boxes", "One per enemy on the board — including whatever "
 				+ "walked on when you took this game. Ticking one says you did that "
-				+ "enemy's goal, and doing that is what kills it."),
+				+ "enemy's goal, and doing that is what kills it. They are answered "
+				+ "as you go, though, so by the time you press the button they are "
+				+ "usually all settled."),
 			_p("So you can finish a game and leave everything on the board still "
 				+ "following you, or clear three old goals during a game you never "
 				+ "finished. Neither is a failure state; an unticked enemy is a "

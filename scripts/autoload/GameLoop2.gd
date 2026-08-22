@@ -255,6 +255,74 @@ var won: bool = false
 var defeated_count: int = 0
 var games_beaten: int = 0
 
+# --- what the player has already ANSWERED FOR, this game (§2.1) -------------
+#
+# A goal ticked on the checklist is confirmed and resolves ON THE SPOT now: the
+# enemy takes its hit while you are still playing, its chest lands on the board,
+# a reward is paid the moment it is earned. That is the whole change — the report
+# used to be the only moment anything could happen, which meant a kill you had
+# already made sat there unpaid for the rest of the evening.
+#
+# It leaves the report with a bookkeeping job, and these four are it. Everything
+# here is scoped to ONE GAME and cleared when the next is chosen or this one is
+# handed in, because every question they answer is "what happened during THIS
+# game".
+
+# Bodies whose goal was met mid-game, instance -> true. A survivor among them is
+# ENGAGED: it holds its fire for every turn of the report, exactly as one cleared
+# at the report would (see beat_game step 2). Defeated ones stay in the record —
+# harmless, and cheaper than pruning.
+var cleared_this_game: Dictionary = {}
+
+# The same for bodies cleared the OTHER way (§13, Burn's `instead`). Engagement,
+# yes; a completed goal, no — the enemy's own condition was never set.
+var instead_this_game: Dictionary = {}
+
+# Player-side objectives already claimed this game, status id -> true. A `demand`
+# bites at the report for every game it went unanswered, and it must not bill a
+# player who answered it an hour ago (_resolve_status_demands).
+var answered_this_game: Dictionary = {}
+
+# How many goals were actually MET mid-game. The player's clauses tick once for a
+# game in which any goal was completed (_tick_player_clauses), and "any" has to
+# include the ones already resolved.
+var goals_met_this_game: int = 0
+
+# Bodies DEFEATED this game, instance -> the entry they were, so their optional
+# bonus objectives can still be claimed afterwards. The report always resolved
+# bonuses BEFORE goals for this reason ("an enemy you failed can still pay its
+# bonus"); with the goal resolving the moment it is ticked, the order is the
+# player's rather than the code's, and killing a body first must not silently
+# forfeit the bonus you had already earned off it.
+var _ghosts: Dictionary = {}
+
+# Checklist rows answered mid-game that the four records above have no room for:
+# an enemy BONUS claimed, a CURSE followed, the character's LEVEL-UP taken. Keys
+# are the checklist's own ("bonus:12:burn", "curse:0", "levelup"), because this is
+# the one thing the loop stores purely so a row can be drawn already-answered — it
+# does no work of its own with them.
+#
+# It lives here rather than on the checklist for the reason all of the above does:
+# the checklist is rebuilt whenever the page repaints, and a tick the player can
+# never take back must not be something a repaint can lose. It rides the save for
+# the same reason.
+var answered_rows: Dictionary = {}
+
+# The entry a body defeated THIS GAME used to be, or {} — what a checklist row
+# about it still reads (§2.1). Only for the game in play: the record goes when the
+# game is handed in.
+func ghost_for(instance: int) -> Dictionary:
+	var held = _ghosts.get(instance)
+	return held if held is Dictionary else {}
+
+# Has this checklist row already been answered this game? Keys are the caller's.
+func row_answered(key: String) -> bool:
+	return answered_rows.has(key)
+
+# Record one, once it has actually resolved.
+func mark_row_answered(key: String) -> void:
+	answered_rows[key] = true
+
 # The attempt tracker for the game currently being played (§3). One entry per try
 # the player has logged, in order, holding what that try spent: "shield", "bonus"
 # or "turn". The list is the undo record — a mistaken tick gives back exactly what
@@ -334,6 +402,7 @@ func reset() -> void:
 	units.clear()
 	drops.clear()
 	_clear_attempts()
+	_clear_game_record()
 	last_attempt_turn = {}
 	hurt_this_game = false
 	bashed.clear()
@@ -446,8 +515,24 @@ func serialize() -> Dictionary:
 		"attempt_costs": attempt_costs.duplicate(),
 		"attempt_payouts": _attempt_payouts.duplicate(),
 		"hurt_this_game": hurt_this_game,
+		# What the game in play has already been answered for (§2.1). Saved with
+		# the tracker and for the same reason: a run reloaded mid-game must not
+		# offer a goal the player already resolved, nor bill a demand they paid.
+		# JSON has no int keys, so the two instance sets go as lists.
+		"cleared_this_game": cleared_this_game.keys(),
+		"instead_this_game": instead_this_game.keys(),
+		"answered_this_game": _string_keys(answered_this_game),
+		"goals_met_this_game": goals_met_this_game,
+		"answered_rows": _string_keys(answered_rows),
 		"next_instance": _next_instance,
 	}
+
+# A StringName-keyed set as plain strings, for the save.
+func _string_keys(set: Dictionary) -> Array:
+	var out: Array = []
+	for k in set.keys():
+		out.append(String(k))
+	return out
 
 func restore(data: Dictionary) -> void:
 	reset()
@@ -530,6 +615,18 @@ func restore(data: Dictionary) -> void:
 	# again the first time a swing gets through, rather than being open on a run
 	# that never earned it.
 	hurt_this_game = bool(data.get("hurt_this_game", false))
+	# What the game in play was already answered for (§2.1). Absent from an older
+	# save, which loads as "nothing has been ticked yet" — the same safe direction
+	# the gate above takes.
+	for inst in data.get("cleared_this_game", []):
+		cleared_this_game[int(inst)] = true
+	for inst in data.get("instead_this_game", []):
+		instead_this_game[int(inst)] = true
+	for sid in data.get("answered_this_game", []):
+		answered_this_game[StringName(sid)] = true
+	goals_met_this_game = maxi(0, int(data.get("goals_met_this_game", 0)))
+	for key in data.get("answered_rows", []):
+		answered_rows[String(key)] = true
 	# Never hand out an instance handle something on the board already holds.
 	_next_instance = maxi(1, int(data.get("next_instance", 1)))
 	for entry in stack:
@@ -805,8 +902,10 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 		escort_tier: int = -1) -> int:
 	# A new game means a fresh tracker — whatever was logged against the last one
 	# is closed out — and a fresh escape gate with it: this game has not hurt you
-	# yet, whatever the last one did (§3.2).
+	# yet, whatever the last one did (§3.2). The same for what the last game's
+	# checklist answered (§2.1): those goals were that game's.
 	_clear_attempts()
+	_clear_game_record()
 	hurt_this_game = false
 	# The superseded bodies leave the board rather than lingering on it as ones
 	# nobody chose: they were never played for. Both of them — the escort only ever
@@ -959,10 +1058,20 @@ func attempt_turn() -> Dictionary:
 		"damage_taken": 0, "blocked": 0, "hp": GameState.hp,
 		"turns": ATTEMPT_TURNS, "attempt": true,
 	}
+	# WHOEVER YOU HAVE ALREADY ANSWERED FOR HOLDS ITS FIRE (§2.1). "Its goal was
+	# engaged this game" is a fact about the GAME, not about the report — so a body
+	# you cleared an hour ago sits out the turns your lost runs hand the board just
+	# as it sits out the ones the report does. Empty until something is ticked,
+	# which is what it used to be unconditionally.
+	var engaged: Dictionary = {}
+	for inst in cleared_this_game:
+		engaged[int(inst)] = true
+	for inst in instead_this_game:
+		engaged[int(inst)] = true
 	for turn in range(ATTEMPT_TURNS):
 		if run_over:
 			break
-		_resolve_enemy_turn(turn, {}, res)
+		_resolve_enemy_turn(turn, engaged, res)
 		(res["turn_frames"] as Array).append(_board_snapshot())
 	res["hp"] = GameState.hp
 	res["run_over"] = run_over
@@ -1024,6 +1133,15 @@ func _loop_snapshot() -> Dictionary:
 		"attempt_costs": attempt_costs.duplicate(),
 		"attempt_payouts": _attempt_payouts.duplicate(),
 		"hurt_this_game": hurt_this_game,
+		# What the checklist has already answered for (§2.1). A lost run's turn can
+		# kill a body a confirmed goal had engaged, so undoing the turn has to put
+		# the record back alongside the board.
+		"cleared_this_game": cleared_this_game.duplicate(),
+		"instead_this_game": instead_this_game.duplicate(),
+		"answered_this_game": answered_this_game.duplicate(),
+		"goals_met_this_game": goals_met_this_game,
+		"answered_rows": answered_rows.duplicate(),
+		"ghosts": _ghosts.duplicate(true),
 		"next_instance": _next_instance,
 		"last_result": last_result.duplicate(true),
 	}
@@ -1052,6 +1170,12 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	# whose turn first got through has to close the door again, or the undo would
 	# leave the player holding a way out they no longer paid for (§3.2).
 	hurt_this_game = bool(snap.get("hurt_this_game", false))
+	cleared_this_game = (snap.get("cleared_this_game", {}) as Dictionary).duplicate()
+	instead_this_game = (snap.get("instead_this_game", {}) as Dictionary).duplicate()
+	answered_this_game = (snap.get("answered_this_game", {}) as Dictionary).duplicate()
+	goals_met_this_game = int(snap.get("goals_met_this_game", 0))
+	answered_rows = (snap.get("answered_rows", {}) as Dictionary).duplicate()
+	_ghosts = (snap.get("ghosts", {}) as Dictionary).duplicate(true)
 	# The instance counter goes back too: a body defeated by the turn is about to
 	# stand on the board again, and an id handed out since would then be a second
 	# body wearing the same one.
@@ -1114,6 +1238,19 @@ func _clear_attempts() -> void:
 	attempt_costs.clear()
 	_attempt_payouts.clear()
 	_attempt_snapshots.clear()
+
+# Close the book on what was answered during a game (§2.1). SEPARATE from
+# _clear_attempts, and deliberately so: the tracker is finished the moment the
+# enemies have swung, but this record is still being read after that — step 3
+# asks it whether any goal was completed — so it is cleared at the very end of
+# beat_game rather than in the middle of it.
+func _clear_game_record() -> void:
+	cleared_this_game.clear()
+	instead_this_game.clear()
+	answered_this_game.clear()
+	goals_met_this_game = 0
+	answered_rows.clear()
+	_ghosts.clear()
 
 # How many goal completions it takes to defeat `enemy`: its sheet Health (1 for
 # all current content) plus the player's enemy_health item bonus (Alien Baby +1,
@@ -1254,12 +1391,23 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# real for the hit either way.
 	var instead_cleared: Array = _resolve_instead_claims(claims)
 	res["instead_cleared"] = instead_cleared
-	var goals_completed: bool = not to_hit.is_empty()
+	# A GOAL ALREADY ANSWERED FOR COUNTS (§2.1). Ticking one mid-game resolves it
+	# on the spot, so by the time the report runs there is nothing left of it to
+	# hit — but the game is still one in which a goal was completed, and a clause
+	# riding that goal has to tick for it.
+	var goals_completed: bool = not to_hit.is_empty() or goals_met_this_game > 0
 	for inst in instead_cleared:
 		if not to_hit.has(int(inst)):
 			to_hit.append(int(inst))
 
 	var hit_this_game: Dictionary = {}
+	# …and a survivor of one is ENGAGED for the whole game, not just for the turns
+	# after the report. An Alien-Baby-buffed body you took a point off this morning
+	# holds its fire tonight exactly as it would have if you had waited to tick it.
+	for inst in cleared_this_game:
+		hit_this_game[int(inst)] = true
+	for inst in instead_this_game:
+		hit_this_game[int(inst)] = true
 	for inst in to_hit:
 		var idx: int = _index_of(int(inst))
 		if idx < 0:
@@ -1344,6 +1492,10 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#    their say on the turns above before the count moves.
 	res["tiles_expired"] = _decay_tiles()
 
+	# Last of all, and after step 3 has read it: the game is over, so what its
+	# checklist answered stops being true of anything (§2.1).
+	_clear_game_record()
+
 	res["hp"] = GameState.hp
 	res["shields"] = GameState.shields
 	res["stack_size"] = stack.size()
@@ -1418,12 +1570,45 @@ func _resolve_enemy_turn(turn: int, hit_this_game: Dictionary, res: Dictionary) 
 # Fulfil a stacked enemy's goal outside a beat_game call (e.g. a scroll/UI path):
 # deals it one hit. Defeats it and drops its item only when its Health reaches 0
 # (an Alien-Baby-buffed enemy needs two). Returns true if it was on the stack.
-func fulfill(instance: int) -> bool:
+#
+# THIS IS ALSO THE CHECKLIST'S PATH NOW (§2.1). A goal ticked and confirmed while
+# the game is still being played resolves here, on the spot — the enemy dies now
+# and its chest lands on the board now (§8.2) — rather than waiting for the
+# report. `record` is what makes the two ends agree afterwards: the body counts as
+# ENGAGED for the rest of the game (it holds its fire through every extra turn,
+# exactly as one cleared at the report would) and the game counts as one where a
+# goal was completed, so a player clause riding it still ticks. A caller that is
+# not the self-report (a scroll firing off its own effect) passes false and
+# changes neither.
+func fulfill(instance: int, record: bool = false) -> bool:
 	var idx: int = _index_of(instance)
 	if idx < 0:
 		return false
 	var e: GoalEnemyData = stack[idx]["enemy"]
 	var fell: Vector2i = _drop_cell_of(stack[idx])
+	if record:
+		cleared_this_game[instance] = true
+		goals_met_this_game += 1
+	if _damage_enemy(idx, GOAL_HIT):
+		var res := {"defeats": [], "drops": 0}
+		_defeat(e, true, res, fell)
+		_admit_offgrid()
+	loop_changed.emit()
+	return true
+
+# The same hit for a goal met THE OTHER WAY (§13, Burn's `instead`): the player did
+# the alternative rather than the condition, so the body clears and is engaged, but
+# nothing about its own goal was ever true — no beat is recorded and no player
+# clause is satisfied by it. Refused, like every `instead`, on a boss.
+func fulfill_instead(instance: int, status_id: StringName) -> bool:
+	if not claim_enemy_alternative(instance, status_id):
+		return false
+	var idx: int = _index_of(instance)
+	if idx < 0:
+		return true
+	var e: GoalEnemyData = stack[idx]["enemy"]
+	var fell: Vector2i = _drop_cell_of(stack[idx])
+	instead_this_game[instance] = true
 	if _damage_enemy(idx, GOAL_HIT):
 		var res := {"defeats": [], "drops": 0}
 		_defeat(e, true, res, fell)
@@ -2750,6 +2935,10 @@ func _take_off_board(idx: int) -> void:
 	if idx < 0 or idx >= stack.size():
 		return
 	var inst: int = int(stack[idx].get("instance", 0))
+	# Kept for the rest of the game so its optional bonus can still be claimed off
+	# it (§2.1, see claim_enemy_bonus). A copy, because the entry is about to stop
+	# existing and the claim reads its statuses.
+	_ghosts[inst] = (stack[idx] as Dictionary).duplicate(true)
 	stack.remove_at(idx)
 	# A body bombed off the board before its game is reported must not leave a
 	# handle behind for the next Scramble to chase.
@@ -3082,6 +3271,12 @@ func _pay_status_reward(status: StatusData, which: StringName, stacks: int) -> v
 # reward, and a timer would only make it a worse item — but that is the sheet's
 # call now, not a rule baked in here.
 func claim_player_objective(status_id: StringName) -> bool:
+	# ANSWERED FIRST, and whatever else happens (§2.1). Both callers of this are
+	# "the player ticked this row", and what a `demand` charges at the end of the
+	# game is decided by whether the row was ticked — not by whether ticking it
+	# also paid out. The report reads its own ticks the same way
+	# (_resolve_status_demands); this is where the mid-game ones are recorded.
+	answered_this_game[status_id] = true
 	var stacks: int = GameState.status_stacks(status_id)
 	if stacks <= 0:
 		return false
@@ -3097,6 +3292,12 @@ func claim_player_objective(status_id: StringName) -> bool:
 # if that side decays, since the bonus was for doing the thing once.
 func claim_enemy_bonus(instance: int, status_id: StringName) -> bool:
 	var entry: Dictionary = entry_for(instance)
+	# A BODY YOU ALREADY KILLED THIS GAME STILL PAYS (§2.1). The report always
+	# resolved bonuses before goals for exactly this reason; now that a goal
+	# resolves the moment it is ticked, the order is the player's, and clearing an
+	# enemy before claiming the bonus you earned off it must not forfeit it.
+	if entry.is_empty():
+		entry = _ghosts.get(instance, {})
 	if entry.is_empty():
 		return false
 	var held: Dictionary = entry.get("statuses", {})
@@ -3171,6 +3372,11 @@ func _resolve_status_demands(claims: Dictionary, res: Dictionary) -> void:
 	var answered: Dictionary = {}
 	for raw in claims.get("status_goals", []):
 		answered[StringName(raw)] = true
+	# Including the ones answered HOURS AGO (§2.1). A demand ticked mid-game was
+	# paid the moment it was confirmed and is not in this report's claims at all;
+	# billing it here would charge a player for the one thing they did do.
+	for sid in answered_this_game:
+		answered[StringName(sid)] = true
 	for row in GameState.status_list():
 		var sd: StatusData = row["status"]
 		if not sd.is_demand(StatusData.PLAYER) or answered.has(sd.id):

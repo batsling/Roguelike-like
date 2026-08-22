@@ -68,6 +68,30 @@ func _open_at_first_offering() -> void:
 	# counts are the ones it put there itself.
 	_clear_board()
 
+# Tick a checklist box the way a player does (§2.1): the click, and then the
+# confirm it raises. A row only resolves once Yes is pressed — and once it has,
+# it is locked, so this is also the only way a test can put one in that state.
+func _tick(check, page = null) -> void:
+	if check == null or not is_instance_valid(check) or check.disabled:
+		return
+	check.button_pressed = true
+	_say_yes(page if page != null else _ui)
+
+# Answer the confirm standing over `host`, if there is one.
+func _say_yes(host) -> void:
+	var panel = host.get_node_or_null("Confirm")
+	if panel == null:
+		return
+	var ok = panel.find_child("OkBtn", true, false)
+	if ok != null:
+		ok.pressed.emit()
+
+# …and the other answer, for a test that only wanted the box's own behaviour.
+func _say_no(host) -> void:
+	var panel = host.get_node_or_null("Confirm")
+	if panel != null:
+		panel.dismiss()
+
 # How many RELIC drops are waiting. Every report also queues the game's own loot
 # payout (§4.3) — a scroll or a pill, asked about in the same queue — so a raw
 # _drop_queue.size() no longer counts what these tests are about.
@@ -374,7 +398,9 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# instead — and it is an ordinary row now (GameLoop2.arrivals).
 	assert_eq(_ui._fulfil_checks.size(), 3,
 		"the old follower is offered for fulfilment, and so is this game's pair")
-	_ui._fulfil_checks[0]["check"].button_pressed = true
+	# Ticked and CONFIRMED, so the follower is cleared on the spot (§2.1); the
+	# report below is the miss on the game in play and nothing else.
+	_tick(_ui._fulfil_checks[0]["check"])
 	_ui.report(false)                            # miss current, but fulfil the follower
 	assert_eq(_item_drops(), drops_before + 1, "the fulfilled follower dropped an item")
 	assert_eq(GameState.hp, hp_before, "fulfilling it before it hit means no damage")
@@ -695,7 +721,7 @@ func test_level_up_checkbox_grants_the_reward() -> void:
 	var lvl_before: int = GameState.player_level
 	_ui.pick(0)
 	assert_not_null(_ui._levelup_check, "Zoe has a level-up condition -> a checkbox")
-	_ui._levelup_check.button_pressed = true
+	_tick(_ui._levelup_check)
 	_report_beat(_ui)
 	assert_eq(GameState.dash_charges, dash_before + 1, "level-up granted +1 Dash")
 	assert_eq(GameState.player_level, lvl_before + 1, "player level advanced")
@@ -711,8 +737,7 @@ func test_isaac_level_up_grants_a_chest() -> void:
 	_reboot(&"isaac")                       # reward_type item -> Small Chest
 	var chests_before: int = GameState.pending_chests
 	_ui.pick(0)
-	if _ui._levelup_check != null:
-		_ui._levelup_check.button_pressed = true
+	_tick(_ui._levelup_check)
 	_ui.report(false)
 	assert_eq(GameState.pending_chests, chests_before + 1, "Isaac's level-up banks a chest")
 
@@ -720,8 +745,7 @@ func test_poe_level_up_grants_a_size_rolled_chest() -> void:
 	_reboot(&"poe_ratcho")                  # reward_type random_sized_chest
 	var chests_before: int = GameState.pending_chests
 	_ui.pick(0)
-	if _ui._levelup_check != null:
-		_ui._levelup_check.button_pressed = true
+	_tick(_ui._levelup_check)
 	_ui.report(false)
 	assert_eq(GameState.pending_chests, chests_before + 1, "Poe's level-up banks a chest")
 	var choices: int = GameState.pending_chest_choices.back()
@@ -2277,7 +2301,7 @@ func test_a_curse_you_ticked_costs_nothing() -> void:
 	var checks: Array = _curse_checks()
 	if checks.is_empty():
 		return
-	(checks[0] as CheckBox).button_pressed = true    # "I didn't use a rest site"
+	_tick(checks[0])                                 # "I didn't use a rest site"
 	_report_beat(_ui)
 	assert_eq(GameLoop2.stack_size(), 0,
 		"the goal was met and the curse was followed, so nothing is following")
@@ -2484,7 +2508,9 @@ func test_ticking_a_checklist_row_restyles_the_whole_row() -> void:
 	var before: StyleBox = row.get_theme_stylebox("panel")
 	check.button_pressed = true
 	assert_ne(row.get_theme_stylebox("panel"), before, "the row answers with the box")
-	check.button_pressed = false
+	# Answered NO, which is what a box unticks itself for: the confirm is the only
+	# thing standing between the click and a goal that cannot be taken back (§2.1).
+	_say_no(_ui)
 	assert_eq(row.get_theme_stylebox("panel"), before, "and goes back when unticked")
 
 # The offering moved out of the full-width band above the stage and into the LEFT
@@ -4934,18 +4960,21 @@ func test_the_haul_screen_carries_the_fight_in_numbers() -> void:
 # the board stopped; it is now behind a button, so leaving the haul is what opens
 # it — and the button says which of the two things it is about to do.
 func test_the_way_out_names_the_event_and_is_what_opens_it() -> void:
-	_ui.pick(0)
-	_report_beat(_ui)
-	# Post an event at the node the run just played, the way an arrival rolls one.
+	# Built with the event pending rather than reported into, for the reason the
+	# test below is: the resolve can land instantly (§7.4), so there is no moment
+	# between report() and the screen opening in which to post one.
 	var events: Array = Data.all_events2()
 	if events.is_empty():
 		return
+	_ui.pick(0)
 	_ui._pending_event = events[0]
-	_ui._end_resolve()
-	var screen := _haul()
-	assert_not_null(screen)
-	if screen == null:
-		return
+	var screen := PostCombatScreen.open(_ui,
+		{"game": _ui._chosen["game"], "beaten": true, "escaped": false,
+			"amulet": false, "res": {}}, [], true)
+	_ui._post_screen = screen
+	# The chain behind the screen is what OPENS the event, and it hangs off this
+	# signal — which _open_post_game normally wires. Built by hand, so wired by hand.
+	screen.finished.connect(func(): _ui._on_post_game_finished(screen))
 	assert_true(screen.exit_text().contains("what's here"),
 		"the button says an event is behind it: %s" % screen.exit_text())
 	assert_null(_ui._event_modal, "which has NOT been dropped on the player yet")
@@ -6064,3 +6093,140 @@ func test_a_chest_the_player_took_mid_game_is_not_swept_again() -> void:
 	_ui._drop_queue.clear()
 	_ui._sweep_floor_into_the_queue()
 	assert_eq(_item_drops(), 0, "it was answered on the board; there is nothing left to ask")
+
+# --- a tick is a confirm, and a confirm resolves NOW (§2.1) -----------------
+#
+# The report used to be the only moment anything on the checklist could happen.
+# Every box asks once now, and Yes resolves it on the spot — mid-game, with the
+# board still standing and the evening still going.
+
+func _confirm_panel() -> Node:
+	return _ui.get_node_or_null("Confirm")
+
+func test_ticking_a_goal_asks_before_it_does_anything() -> void:
+	_pick_solo(0)
+	if _ui._fulfil_checks.is_empty():
+		return
+	var standing: int = GameLoop2.stack_size()
+	var check: CheckBox = _ui._fulfil_checks[0]["check"]
+	check.button_pressed = true
+	assert_not_null(_confirm_panel(), "the click raises the question")
+	assert_eq(GameLoop2.stack_size(), standing, "and nothing has happened yet")
+	_say_no(_ui)
+	assert_false(check.button_pressed, "No puts the box back")
+	assert_false(check.disabled, "and leaves the row askable again")
+	assert_eq(GameLoop2.stack_size(), standing, "with the board untouched")
+
+func test_confirming_a_goal_kills_the_enemy_there_and_then() -> void:
+	_pick_solo(0)
+	if _ui._fulfil_checks.is_empty():
+		return
+	var inst: int = int(_ui._fulfil_checks[0]["instance"])
+	var check: CheckBox = _ui._fulfil_checks[0]["check"]
+	_tick(check)
+	assert_true(GameLoop2.entry_for(inst).is_empty(),
+		"the body came off the board while the game is still being played")
+	assert_true(GameLoop2.cleared_this_game.has(inst), "and the loop knows whose kill it was")
+	assert_false(GameLoop2.drop_cells().is_empty(),
+		"its chest is on the floor to go and pick up (§8.2)")
+
+func test_a_confirmed_row_cannot_be_taken_back() -> void:
+	# The level-up row is the one that stays on the list whatever it resolves —
+	# an enemy's row goes with the body — so it is where "locked" can be looked at.
+	_reboot(&"zoe")
+	_ui.pick(0)
+	if _ui._levelup_check == null:
+		return
+	var check: CheckBox = _ui._levelup_check
+	_tick(check)
+	assert_true(check.disabled, "an answered row is locked, so it takes no more input")
+	assert_true(check.button_pressed, "and stays ticked")
+	assert_true(GameLoop2.row_answered("levelup"),
+		"and the LOOP holds it, so nothing a repaint does can lose it")
+	check.button_pressed = false
+	assert_null(_ui.get_node_or_null("Confirm"),
+		"there is nothing left to raise a question about")
+	_ui._populate_play_panel()
+	assert_true(_ui._levelup_check.disabled, "the rebuilt row is locked again")
+	assert_true(_ui._levelup_check.button_pressed, "and still ticked")
+
+func test_the_report_does_not_hit_a_body_twice_for_one_goal() -> void:
+	_pick_solo(0)
+	if _ui._fulfil_checks.is_empty():
+		return
+	_tick(_ui._fulfil_checks[0]["check"])
+	await wait_frames(2)
+	assert_true(_ui._ticked_fulfilments().is_empty(),
+		"a resolved row is not a claim the report can spend again")
+	var standing: int = GameLoop2.stack_size()
+	_ui.report(false)
+	assert_lte(GameLoop2.stack_size(), standing,
+		"and the report hit nothing that was already down")
+	_ui._end_resolve()
+	_leave_post_game()
+	_dismiss_event()
+
+func test_a_goal_answered_mid_game_still_engages_the_body_that_survived_it() -> void:
+	# An Alien-Baby-buffed body needs two clears, so one leaves it standing — and a
+	# body whose goal you engaged holds its fire for the WHOLE game, whichever end
+	# of the game you engaged it at.
+	_pick_solo(0)
+	if _ui._fulfil_checks.is_empty():
+		return
+	var inst: int = int(_ui._fulfil_checks[0]["instance"])
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	if entry.is_empty():
+		return
+	entry["health"] = 2
+	entry["col"] = 1                       # in reach, so a turn would be a swing
+	_tick(_ui._fulfil_checks[0]["check"])
+	assert_false(GameLoop2.entry_for(inst).is_empty(), "it took the hit and lived")
+	GameState.max_hp = 40
+	GameState.hp = 40
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	GameLoop2.attempt_turn()
+	assert_eq(GameState.hp, 40, "and held its fire — its goal was engaged this game")
+
+func test_the_level_up_is_taken_the_moment_it_is_confirmed() -> void:
+	_reboot(&"zoe")
+	var dash_before: int = GameState.dash_charges
+	_ui.pick(0)
+	if _ui._levelup_check == null:
+		return
+	_tick(_ui._levelup_check)
+	assert_eq(GameState.dash_charges, dash_before + 1,
+		"the level landed mid-game, not at the report")
+	assert_true(_ui._levelup_check.disabled, "and the row is locked behind it")
+	_report_beat(_ui)
+	assert_eq(GameState.dash_charges, dash_before + 1,
+		"the report does not take it a second time")
+	_ui._end_resolve()
+	_leave_post_game()
+	_dismiss_event()
+
+func test_a_confirmed_goal_survives_the_checklist_being_rebuilt() -> void:
+	# The page rebuilds this list on every repaint. A tick that cannot be taken
+	# back must not be something a repaint can lose, which is why the loop and not
+	# the box is what remembers it.
+	_pick_solo(0)
+	if _ui._levelup_check == null:
+		return
+	_tick(_ui._levelup_check)
+	_ui._populate_play_panel()
+	assert_not_null(_ui._levelup_check)
+	assert_true(_ui._levelup_check.button_pressed, "the rebuilt row is still ticked")
+	assert_true(_ui._levelup_check.disabled, "and still locked")
+
+func test_the_answered_rows_go_with_the_game() -> void:
+	_pick_solo(0)
+	if _ui._levelup_check == null:
+		return
+	_tick(_ui._levelup_check)
+	assert_true(GameLoop2.row_answered("levelup"))
+	_report_beat(_ui)
+	assert_false(GameLoop2.row_answered("levelup"),
+		"what this game was answered for is not true of the next one")
+	_ui._end_resolve()
+	_leave_post_game()
+	_dismiss_event()

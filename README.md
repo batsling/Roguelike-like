@@ -293,7 +293,9 @@ node and its script.
   the run's first game, enemy and all), the offering of games
   (cover cards), and
   then a two-column stage — checklist on the left (the standing goals while you're
-  choosing, the honour-system report step + attempt tracker while you're playing),
+  choosing, the honour-system report step + attempt tracker while you're playing;
+  every box on it is a **confirm** that resolves the row on the spot, mid-game,
+  and locks — see spec §2.1),
   the battlefield on the right with the player's pack (items **and** scrolls,
   one strip of tokens) above it. **The two halves point at each other**: hovering
   a goal row lights the body it belongs to on the board, and hovering a body

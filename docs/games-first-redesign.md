@@ -50,6 +50,59 @@ so every number must stay small and glanceable.
      **bash** the game) also exist before you play.
 5. Repeat until the **Amulet** game is cleared (win) or **health = 0** (loss).
 
+### 2.1 A tick is a confirm, and a confirm resolves NOW
+
+The checklist (`ReportChecklist`) is the honour system, and every box on it is a
+**confirm**. Ticking one raises "did you really?"; answering Yes **resolves that
+row on the spot**, while the game is still being played:
+
+| Row | What Yes does, immediately |
+|---|---|
+| An enemy's goal | deals the goal's hit (`GameLoop2.fulfill(inst, true)`) — the body dies if that is enough, and its chest lands on the square it fell in (§8.2) |
+| …or instead (Burn, §13) | the same hit, by the other route (`fulfill_instead`) — engagement, but no beat on the record |
+| An enemy's bonus objective | pays it (`claim_enemy_bonus`) |
+| A player status goal / `demand` | pays it, and answers the demand so it cannot bill you at the end of the game |
+| The character's level-up | takes the level and its reward |
+| An event goal | claims it |
+| A curse | nothing to pay — what it buys is the penalty *not* firing at the report |
+
+**There are no take-backs.** The confirm is the safeguard; past it the row locks.
+An enemy that is already dead cannot be un-killed and a relic already in the pack
+cannot be handed back. (The **Undo** beside the lost-run tracker is a different
+thing: it takes back a *turn*, which is the board's, not yours.)
+
+This exists because the report used to be the only moment anything could happen.
+That was fine while a game was one long wait for a single point. It is wrong now
+that the board moves whenever you *fail* (§3.2) and a kill is something you can go
+and make: a goal you cleared in the first hour sat unpaid for the rest of the
+evening, and the reward for it was behind a screen you had not reached. **Losing
+runs does not gate any of it** — a lost run is the enemies' turn, not a lock on
+the checklist.
+
+**The loop remembers, not the boxes.** The page rebuilds this list on every
+repaint, so a tick that cannot be taken back must not be something a repaint can
+lose. `GameLoop2` keeps the per-game record and clears it when the game is chosen
+or handed in:
+
+- `cleared_this_game` / `instead_this_game` — bodies engaged mid-game. A survivor
+  among them **holds its fire for every turn of the report**, exactly as one
+  cleared at the report would.
+- `goals_met_this_game` — so a player clause riding a goal still ticks (§13) for a
+  game whose goals were all answered hours earlier.
+- `answered_this_game` — player objectives already claimed, so a `demand` does not
+  bill someone who answered it.
+- `answered_rows` — the rows the four above have no room for (a bonus, a curse, the
+  level-up), keyed by the checklist's own strings.
+- `_ghosts` — the entry a body defeated this game used to be. The report always
+  resolved bonuses *before* goals so that "an enemy you failed can still pay its
+  bonus" held; with the goal resolving when it is ticked the order is the
+  player's, so killing a body first must not forfeit the bonus you earned off it.
+  Its row stays on the list, and `claim_enemy_bonus` reads the ghost.
+
+The report then only deals with what is still **outstanding**: `ticked_fulfilments`
+and `ticked_status_claims` skip any row that is pressed *and* locked, which in
+practice is all of them.
+
 ---
 
 ## 3. Health & shield model

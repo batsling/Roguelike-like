@@ -1575,7 +1575,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 	# the graph slot rather than the game, because an event belongs to the place
 	# (a dead end, §1) — a transmuted card plays a different game on the same node.
 	var slot_here: StringName = StringName(_chosen.get("slot", &""))
-	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed
+	# …unless the level was already TAKEN mid-game (§2.1). Ticking that row is a
+	# confirm and it applies on the spot, so a locked box has been paid for and the
+	# report must not pay for it twice. `disabled` is the mark of a resolved row
+	# (ReportChecklist._lock_row).
+	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed \
+		and not _levelup_check.disabled
 	# Snapshot where everyone stands BEFORE the resolve, so the animation can play
 	# the strike and the advance back from the old positions to the new ones.
 	var before: Dictionary = _board.capture_positions()

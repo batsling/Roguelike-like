@@ -11,6 +11,42 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A tick is a confirm, and a confirm resolves NOW.**
+
+  The report was the only moment anything on the checklist could happen. That was
+  fine while a game was one long wait for a single point; it is wrong now that the
+  board moves whenever you *fail* and a kill is something you can go and make — a
+  goal cleared in the first hour sat unpaid for the rest of the evening, and its
+  reward was behind a screen you had not reached.
+
+  Every box on the checklist now asks once ("did you really?") and, on Yes,
+  **resolves on the spot, mid-game**: the enemy takes its hit and drops its chest
+  on the square it fell in, the bonus pays, the `demand` is answered, the level is
+  taken, the event goal is claimed. Every row type, and losing runs gates none of
+  it. **There are no take-backs** — the confirm is the safeguard, and past it the
+  row locks, ticked and done. (Undo, beside the lost-run tracker, still takes back
+  a *turn*; that one is the board's, not yours.)
+
+  **The loop remembers, not the boxes.** The page rebuilds the checklist on every
+  repaint, so `GameLoop2` keeps the per-game record instead: `cleared_this_game`
+  and `instead_this_game` (a survivor of a mid-game clear still holds its fire for
+  every turn of the report), `goals_met_this_game` (a player clause riding a goal
+  still ticks for it), `answered_this_game` (a `demand` answered at noon is not
+  billed at midnight), and `answered_rows` for the bonus / curse / level-up rows
+  the others have no room for. All of it clears when the game is chosen or handed
+  in, rides the undo snapshot, and is saved.
+
+  **A body you killed still pays its bonus.** The report always resolved bonuses
+  *before* goals so "an enemy you failed can still pay its bonus" held; with the
+  goal resolving when it is ticked, the order is the player's. `_ghosts` keeps the
+  entry a body defeated this game used to be, its row stays on the list, and
+  `claim_enemy_bonus` reads it — otherwise ticking in the "wrong" order silently
+  forfeited a reward that had been earned.
+
+  The report is left with what is still outstanding, which in practice is nothing:
+  `ticked_fulfilments` and `ticked_status_claims` skip any row that is pressed
+  *and* locked, so nothing is ever hit or paid twice.
+
 - **Chests land on the board, on the square the body fell in.**
 
   A defeated enemy's chest used to exist only as an entry in the page's drop

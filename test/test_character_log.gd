@@ -29,6 +29,19 @@ func after_each() -> void:
 
 # --- level-ups: the (game, character) pair --------------------------------
 
+# Tick a checklist box the way a player does (§2.1): the click, and then the
+# confirm it raises. A row only resolves once Yes is pressed.
+func _tick(check, host) -> void:
+	if check == null or not is_instance_valid(check) or check.disabled:
+		return
+	check.button_pressed = true
+	var panel = host.get_node_or_null("Confirm")
+	if panel == null:
+		return
+	var ok = panel.find_child("OkBtn", true, false)
+	if ok != null:
+		ok.pressed.emit()
+
 func test_nothing_is_logged_to_start_with() -> void:
 	assert_eq(GameStats.level_up_count(&"rogue", &"rodney"), 0)
 	assert_eq(GameStats.games_for_character(&"rodney").size(), 0)
@@ -163,8 +176,7 @@ func test_reporting_a_level_up_logs_it_against_the_game() -> void:
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	if ch == null or ch.level_up_condition == "":
 		return
-	if ui._levelup_check != null:
-		ui._levelup_check.button_pressed = true
+	_tick(ui._levelup_check, ui)
 	ui.report(false, [])
 	assert_eq(GameStats.level_up_count(game.id, GameState.character_id), 1,
 		"the level is banked against the game it was taken at")

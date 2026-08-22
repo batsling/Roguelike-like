@@ -89,6 +89,19 @@ func _register_player_clause(decay: bool = true) -> StatusData:
 # 1. The content
 # ---------------------------------------------------------------------------
 
+# Tick a checklist box the way a player does (§2.1): the click, and then the
+# confirm it raises. A row only resolves once Yes is pressed.
+func _tick(check, host) -> void:
+	if check == null or not is_instance_valid(check) or check.disabled:
+		return
+	check.button_pressed = true
+	var panel = host.get_node_or_null("Confirm")
+	if panel == null:
+		return
+	var ok = panel.find_child("OkBtn", true, false)
+	if ok != null:
+		ok.pressed.emit()
+
 func test_the_statuses_sheet_loaded() -> void:
 	assert_gt(Data.all_statuses().size(), 0, "data/statuses2.0 loaded at least one status")
 	for id in [&"strength", &"speed", &"dexterity", &"marked", &"burn"]:
@@ -990,7 +1003,7 @@ func test_clearing_a_goal_the_other_way_banks_no_record_of_the_beat() -> void:
 	# GameStats is a LIFETIME store that outlives the run, so the question is what
 	# this report added rather than what the tally reads.
 	var before: int = GameStats.enemy_beaten_count(game.id, enemy.id)
-	ui._instead_checks[0]["check"].button_pressed = true
+	_tick(ui._instead_checks[0]["check"], ui)
 	ui.report(true)
 	assert_eq(GameStats.enemy_beaten_count(game.id, enemy.id), before,
 		"no 'beaten in <game>' — its goal was never met")
