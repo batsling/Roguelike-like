@@ -4297,17 +4297,19 @@ func test_escaping_resolves_the_board_exactly_as_a_missed_report_does() -> void:
 	_ui.pick(0)
 	_mark_beaten_this_run(_ui._chosen["game"])
 	_ui.escape_game()
-	var follower: Dictionary = GameLoop2.stack[0]
-	var col_before: int = int(follower["col"])
-	var owed: int = GameLoop2.enemy_turns()
+	# ONE named body, followed by instance: the second escape stands another one on
+	# the board and the stack's order is not a promise.
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	var col_before: int = int(GameLoop2.stack[0]["col"])
 	# Take the next game the same way, so a second resolve runs.
 	_ui.pick(0)
 	_mark_beaten_this_run(_ui._chosen["game"])
+	var owed: int = GameLoop2.enemy_turns()
 	_ui.escape_game()
-	var still: Dictionary = GameLoop2.stack[0]
+	var still: Dictionary = GameLoop2.entry_for(inst)
+	assert_false(still.is_empty(), "the follower is still following")
 	assert_eq(int(still["col"]), maxi(1, col_before - owed),
 		"the escape resolved exactly the turns the road charges: %d" % owed)
-	assert_gt(GameLoop2.stack_size(), 0, "and the followers are still following")
 
 func test_beaten_this_run_is_false_with_no_game_in_hand() -> void:
 	assert_false(_ui.beaten_this_run(), "nothing is in play, so nothing is escapable")
@@ -4405,6 +4407,47 @@ func test_undoing_the_tick_that_drew_blood_takes_the_escape_away() -> void:
 	assert_false(GameLoop2.hurt_this_game, "the hit was undone with the turn")
 	assert_false(_ui.can_escape(), "the tracker is hand-driven, so this reverses too")
 	assert_false(_ui._escape_btn.visible, "and the button goes with it")
+
+func test_an_empty_board_is_a_way_out_on_its_own() -> void:
+	# Nothing on the board is nothing that can ever hurt you, so the hit gate could
+	# never open — a player standing on a game they cannot beat with a clear stack
+	# would be held there by the rule written to let them out (§3.2).
+	_pick_an_unplayed_game()
+	assert_false(_ui.can_escape(), "a board with bodies on it holds you until one lands a hit")
+	for entry in GameLoop2.stack.duplicate():
+		GameLoop2.despawn(int(entry["instance"]))
+	assert_true(GameLoop2.stack.is_empty(), "the board is clear")
+	_ui._refresh()
+	assert_true(_ui.can_escape(), "so the door is open")
+	assert_true(_ui._escape_btn.visible, "and the button is up")
+	assert_true(_ui._escape_btn.tooltip_text.contains("Nothing is on the board"),
+		"saying which door it is: %s" % _ui._escape_btn.tooltip_text)
+
+func test_escaping_still_owes_the_road_its_extra_turns() -> void:
+	# Walking away is FINISHING a game as far as the Amulet is concerned: the extra
+	# turns it charges (§7.4) resolve on the way out, exactly as they would for a
+	# missed report. Stood on the doorstep so there is something to owe.
+	var near: StringName = _a_game_at_hops(1)
+	if near == &"":
+		return
+	_ui.pick(0)
+	GameState.set_current_game(near)
+	assert_eq(GameLoop2.enemy_turns(), 2, "one hop out is two extra turns")
+	_mark_beaten_this_run(_ui._chosen["game"])
+	GameState.max_hp = 40
+	GameState.hp = 40
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	for entry in GameLoop2.stack:
+		entry["col"] = 1                       # in reach, so the turns are swings
+	var swingers: int = GameLoop2.stack.size()
+	var dmg: int = 0
+	for entry in GameLoop2.stack:
+		dmg += GameLoop2.enemy_damage(entry)
+	_ui.escape_game()
+	_ui._end_resolve()
+	assert_eq(40 - GameState.hp, dmg * 2,
+		"%d bodies swung on both of the road's turns as you left" % swingers)
 
 func test_the_door_closes_again_on_the_next_game() -> void:
 	# The gate is a fact about the game in play, not about the run: walking into a

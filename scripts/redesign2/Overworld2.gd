@@ -1132,20 +1132,30 @@ func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
 # report) — so an escape and a miss are alike in earning no repeat-beat Dash, no
 # Atlas mark and no movement in either beaten tally.
 #
-# TWO ways in. The hit is for a game this run has never got through: the way out
-# has to be earned, because the alternative is a player who quits the run
-# instead. A game this run has ALREADY BEATEN is the opposite case — there is
-# nothing left to prove, and being made to stand there and bleed to unlock the
-# door is a tax on the one card the run cannot make interesting, so that door is
-# open from the first second.
+# THREE ways in.
 #
-# It is the same escape either way: the enemy still walks onto the board, the
-# board still takes its turns, and the game still isn't credited. Only the gate
+# The HIT is for a game this run has never got through: the way out has to be
+# earned, because the alternative is a player who quits the run instead.
+#
+# A game this run has ALREADY BEATEN is the opposite case — there is nothing left
+# to prove, and being made to stand there and bleed to unlock the door is a tax
+# on the one card the run cannot make interesting, so that door is open from the
+# first second.
+#
+# AN EMPTY BOARD is the door that keeps the first one honest. Nothing on the
+# board means nothing that can ever hurt you, so the hit gate could never open —
+# a player standing on a game they cannot beat with a clear stack would be held
+# there by a rule that was written to let them out. It costs them the same as any
+# escape; there is simply nobody left for it to cost anything else.
+#
+# It is the same escape however you got in: the goal-enemy still follows you, the
+# board still takes the turns the road charges for finishing a game (§7.4, which
+# out in the wilds is none), and the game still isn't credited. Only the gate
 # moves.
 func can_escape() -> bool:
 	if _phase != Phase.PLAYING or _chosen.is_empty() or GameLoop2.run_over:
 		return false
-	return beaten_this_run() or GameLoop2.hurt_this_game
+	return beaten_this_run() or GameLoop2.hurt_this_game or GameLoop2.stack.is_empty()
 
 # Whether the game in play is one this RUN has already beaten — won, with the
 # goal met (see report(): "beaten means won").
@@ -1174,6 +1184,14 @@ func escape_game() -> void:
 	var msg: String = ("Escaped %s — its enemy comes with you." % game_name if tries == 0
 		else "Escaped %s after %d lost run%s — its enemy comes with you." % [
 			game_name, tries, "" if tries == 1 else "s"])
+	# Walking away is FINISHING a game as far as the road is concerned, so it is
+	# charged for like one: the extra turns the Amulet's pull owes (§7.4) resolve
+	# through the same report path a missed goal takes, below. Said out loud when
+	# there are any, because "I escaped and then got hit twice" is otherwise a
+	# surprise rather than a price.
+	var extra: int = GameLoop2.enemy_turns()
+	if extra > 0 and not GameLoop2.stack.is_empty():
+		msg += " They still get %s on the way out." % RunDifficulty.extra_text(extra)
 	GameLog.add(msg, UITheme.ACCENT)
 	Notifications.notify(msg, UITheme.ACCENT)
 	report(false, null, true)
@@ -4830,9 +4848,11 @@ func _refresh_attempts() -> void:
 	# this one and not that one" is the whole question the button raises.
 	if _escape_btn != null:
 		_escape_btn.visible = can_escape()
-		var why: String = ("You already beat this one this run, so there is nothing to prove — leave whenever you like."
-			if beaten_this_run()
-			else "Something on the board got through and took Health off you — that is enough.")
+		var why: String = "Something on the board got through and took Health off you — that is enough."
+		if beaten_this_run():
+			why = "You already beat this one this run, so there is nothing to prove — leave whenever you like."
+		elif GameLoop2.stack.is_empty():
+			why = "Nothing is on the board to hold you here."
 		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nWhatever walked on "
 			+ "when you took this game stays on the board and follows you, and every enemy "
 			+ "still takes its turns — escaping resolves the board exactly as an unticked "
