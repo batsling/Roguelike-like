@@ -50,12 +50,19 @@ func test_pick_spawns_enemy_and_beat_resolves() -> void:
 	_ui.beat(false)                    # fails goal -> spawn column, one-game grace
 	assert_eq(GameLoop2.stack_size(), 1)
 	assert_eq(GameState.hp, 10, "grace: no hit the game it stacked")
-	# It closes one column per game and only strikes once it reaches the front
-	# (§grid). Marched directly here so no extra picked enemies muddy the hp math.
-	while int(GameLoop2.stack[0].get("col", 1)) > 1:
-		GameLoop2.beat_game(false)     # closes one column per game
+	# It closes one column per TURN of the board and only strikes once it reaches
+	# the front (§grid). Marched with turns rather than reports: out in the wilds a
+	# reported game hands the board nothing (§7.4), so the turns a lost run buys
+	# are what moves anyone. Marched directly here so no extra picked enemies muddy
+	# the hp math.
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	for _i in range(GameLoop2.grid_cols() + 2):
+		if int(GameLoop2.stack[0].get("col", 1)) <= 1:
+			break
+		GameLoop2.attempt_turn()
 	assert_eq(GameState.hp, 10, "no hit while closing in")
-	GameLoop2.beat_game(false)         # the front-line enemy now hits for dmg
+	GameLoop2.attempt_turn()           # the front-line enemy now hits for dmg
 	assert_eq(GameState.hp, 10 - dmg, "the front-line enemy hits for its damage")
 	assert_eq(GameLoop2.stack_size(), 1)
 

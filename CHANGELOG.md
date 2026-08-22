@@ -11,6 +11,43 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Extra turns: reporting a game no longer moves the board.**
+
+  The amulet ladder was 1 / 2 / 3 turns per reported game, so every game handed
+  in moved the stack whether or not the player had struggled at it. It is 0 / 1 /
+  2 now, and the floor is the point: out in the wilds you can play a game, report
+  it and walk away with the board exactly where you left it. The stack moves for
+  two reasons and both are things that happened — **you failed** (a lost run, one
+  turn each) or **you are close to the win** (this ladder).
+
+  The readout says what it is: `⏱ EXTRA TURNS 0` / `1` / `2`, in the band's
+  colour, with the hop count that caused it. Cards quote the same price
+  ("Enemies speed up — 1 extra turn", "Still no extra turns"), the resolve's
+  counter reads `EXTRA TURN 1 / 2`, and `RunDifficulty` is authored in those terms
+  throughout (`EXTRA_FAR/MID/NEAR`, `extra_turns_for_hops`, `band_name`,
+  `extra_text`, `ladder_text`).
+
+  **The threat readouts had to move with it.** "2 swings landing for 2 damage next
+  game" now reads zero for a game you are about to report, which is true and
+  useless — so they are priced in LOST RUNS instead: "2 closing in, 2 swings for 4
+  damage on every lost run", per-body `⚔3` for the swing one turn would throw, and
+  `in 2` for the lost runs of walking it still owes. `attacks_next_game` →
+  `attacks_in_turns` (defaulting to one turn), `games_until_strike` →
+  `lost_runs_until_strike`, `stacked_damage_per_game` → `damage_per_lost_run`.
+
+  Found while fixing the suite: the tests' `_tick()` helper was `beat_game`, which
+  is how nearly every board test walked a body forward — and with a zero floor
+  that walks nowhere. It is `attempt_turn()` now (`_turn()`), with `_report()`
+  where a test is really about the end of a game. Two unbounded `while col > 1`
+  march loops in other files would have hung the suite outright rather than
+  failing; they are bounded and turn-driven now. And two test scripts were left
+  calling the old `RunDifficulty` API — GUT **silently skips a script that will
+  not parse**, so the suite came back green with 350 fewer tests in it. Both are
+  fixed; it is worth remembering that a passing run with a smaller `Tests` count
+  is a failing run.
+
+---
+
 - **Escape opens on the hit.**
 
   A game you cannot beat has always had a way out; the question was what earns

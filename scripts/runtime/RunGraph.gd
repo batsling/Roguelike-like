@@ -9,7 +9,7 @@ extends RefCounted
 # Path length tuning. The run opens with a CHOICE OF STARTING GAMES, each 4 to 7
 # games from the Amulet — so picking a start is a choice of genre, route, AND run
 # length. The length is not flavour: enemies get BONUS turns at the end of a game
-# the closer the run stands to the Amulet (RunDifficulty.bonus_turns_for_hops,
+# the closer the run stands to the Amulet (RunDifficulty.extra_turns_for_hops,
 # FAR_HOPS = 5), so a start 7 hops out opens with three games in the calm +0 band
 # while a start 4 hops out gets NONE — it begins already inside the +1 band.
 # Starting far is a longer run fought slowly; starting near is a short run fought
@@ -681,7 +681,7 @@ static func _draw_start(rec: Dictionary, rng: RandomNumberGenerator) -> Dictiona
 #
 # Distance is a real choice across the 4..7 band: enemies get bonus turns on the
 # end of a game the closer the run stands to the Amulet
-# (RunDifficulty.bonus_turns_for_hops), so a 7-hop card opens with three games in
+# (RunDifficulty.extra_turns_for_hops), so a 7-hop card opens with three games in
 # the calm band and a 4-hop card starts already out of it. Two cards at the same distance offer a genre and nothing else.
 #
 # It is a PREFERENCE, not a requirement. A few Amulets have every in-band start at

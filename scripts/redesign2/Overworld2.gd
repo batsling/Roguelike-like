@@ -593,15 +593,15 @@ func open_start_choice(index: int) -> GameChoiceModal:
 # the Amulet, said outright. Same ladder, same colours — only the sentence is
 # different, because there is no "here" to be faster or slower than.
 func _start_pace_note(hops: int) -> Dictionary:
-	var bonus: int = RunDifficulty.bonus_turns_for_hops(hops)
+	var extra: int = RunDifficulty.extra_turns_for_hops(hops)
 	return {
-		"text": ("⏱ Enemies act once a game there" if bonus <= 0
-			else "⏱ Enemies get +%d bonus turn%s there" % [bonus, "" if bonus == 1 else "s"]),
-		"color": RunDifficulty.bonus_band_color(bonus),
-		"turns": RunDifficulty.TURN_BASE + bonus,
-		"bonus": bonus,
-		"tip": "Standing there, every enemy acts once per game, %s at the end of it.\n\n%s" % [
-			RunDifficulty.bonus_text(bonus), RunDifficulty.bonus_ladder_text(bonus)],
+		"text": ("⏱ Reporting a game costs no turns there" if extra <= 0
+			else "⏱ Reporting a game costs %s there" % RunDifficulty.extra_text(extra)),
+		"color": RunDifficulty.band_color(extra),
+		"turns": extra,
+		"extra": extra,
+		"tip": "Standing there, handing a game in gives the enemies %s.\n\n%s" % [
+			RunDifficulty.extra_text(extra), RunDifficulty.ladder_text(extra)],
 	}
 
 # Take the offered start at `index` (choose-your-start, Phase.START_SELECT).
@@ -1371,50 +1371,50 @@ func route_note(choice: Dictionary) -> Dictionary:
 # What taking this card does to the PACE of the board (§7.4). The route badge
 # above says how much ground a card gives or takes; this says what that ground
 # costs, because the two are the same decision: every step toward the Amulet is a
-# step toward enemies that get bonus turns on the end of every game.
+# step toward enemies that take EXTRA TURNS every time you hand a game in.
 #
-# Said as the BONUS, not the total: the board's floor is one turn a game and
-# nothing moves it, so what a card is actually charging is the "+1" — and a badge
-# that read "×2 turns" would be quoting a stat where the player needs a price.
+# Out in the wilds that price is zero — reporting a game moves nobody, and the
+# only thing that does is losing runs at it (§3.2). So the card is quoting what
+# this stretch of road charges on top of your own failures.
 #
-# Returned as {"text", "color", "tip", "turns", "bonus"} — same shape as
-# route_note, with `turns` the TOTAL the card would leave you on and `bonus` the
-# Amulet's share of it, so a test can assert either without parsing the sentence.
+# Returned as {"text", "color", "tip", "turns", "extra"} — same shape as
+# route_note. `turns` and `extra` are the same number (every turn the end of a
+# game hands out is an extra one now); both are there so a caller can ask for
+# either without knowing that, and a test can assert the number without parsing
+# the sentence.
 func turn_note(choice: Dictionary) -> Dictionary:
 	var here: int = steps_to_amulet(GameState.current_game_id)
 	var there: int = steps_to_amulet(choice.get("slot", &""))
 	# The Amulet card ends the run on the spot: what the enemies would have done
-	# afterwards is moot, and saying "+2 bonus turns" there would just be alarming.
+	# afterwards is moot, and saying "+2 extra turns" there would just be alarming.
 	if bool(choice.get("amulet", false)):
 		there = 0
-	var now: int = RunDifficulty.bonus_turns_for_hops(here)
-	var then: int = RunDifficulty.bonus_turns_for_hops(there)
-	var color: Color = RunDifficulty.bonus_band_color(then)
-	var tip: String = ("Standing there, every enemy acts once per game, %s at the end of it.\n\n%s"
-		% [RunDifficulty.bonus_text(then), RunDifficulty.bonus_ladder_text(then)])
-	var total: int = RunDifficulty.TURN_BASE + then
+	var now: int = RunDifficulty.extra_turns_for_hops(here)
+	var then: int = RunDifficulty.extra_turns_for_hops(there)
+	var color: Color = RunDifficulty.band_color(then)
+	var tip: String = ("Standing there, handing a game in gives the enemies %s.\n\n%s"
+		% [RunDifficulty.extra_text(then), RunDifficulty.ladder_text(then)])
 	if bool(choice.get("amulet", false)):
-		return {"text": "", "color": color, "tip": tip, "turns": total, "bonus": then}
+		return {"text": "", "color": color, "tip": tip, "turns": then, "extra": then}
 	if then > now:
 		return {
-			"text": "⏱ Enemies speed up — +%d bonus turn%s" % [then, "" if then == 1 else "s"],
-			"color": color, "turns": total, "bonus": then,
+			"text": "⏱ Enemies speed up — %s" % RunDifficulty.extra_text(then),
+			"color": color, "turns": then, "extra": then,
 			"tip": "Closing on the Amulet is what wakes them up: %s here, %s there.\n\n%s"
-				% [RunDifficulty.bonus_text(now), RunDifficulty.bonus_text(then),
-					RunDifficulty.bonus_ladder_text(then)],
+				% [RunDifficulty.extra_text(now), RunDifficulty.extra_text(then),
+					RunDifficulty.ladder_text(then)],
 		}
 	if then < now:
 		return {
-			"text": ("⏱ Enemies slow down — no bonus turns" if then <= 0
-				else "⏱ Enemies slow down — +%d bonus turn%s" % [then, "" if then == 1 else "s"]),
-			"color": color, "turns": total, "bonus": then,
+			"text": "⏱ Enemies slow down — %s" % RunDifficulty.extra_text(then),
+			"color": color, "turns": then, "extra": then,
 			"tip": "Backing off buys you pace: %s here, %s there.\n\n%s"
-				% [RunDifficulty.bonus_text(now), RunDifficulty.bonus_text(then),
-					RunDifficulty.bonus_ladder_text(then)],
+				% [RunDifficulty.extra_text(now), RunDifficulty.extra_text(then),
+					RunDifficulty.ladder_text(then)],
 		}
 	return {
-		"text": "⏱ Still %s" % RunDifficulty.bonus_text(then),
-		"color": UITheme.TEXT_DIM, "turns": total, "bonus": then, "tip": tip,
+		"text": "⏱ Still %s" % RunDifficulty.extra_text(then),
+		"color": UITheme.TEXT_DIM, "turns": then, "extra": then, "tip": tip,
 	}
 
 # Spend the carried piece of loot at index `idx` (the loot window's Use button).
@@ -3820,11 +3820,16 @@ func _stack_summary() -> String:
 	var following: int = GameLoop2.stack.size()
 	if following == 0:
 		return "clear  —  nothing following you"
-	var dmg: int = GameLoop2.stacked_damage_per_game()
+	# Priced in LOST RUNS (§3.2), because that is the threat the player is deciding
+	# against: reporting a game moves nobody out in the wilds, and what the strip
+	# has to answer is "what does it cost me to go and fail at this again".
+	var dmg: int = GameLoop2.damage_per_lost_run()
 	var swings: int = 0
 	for entry in GameLoop2.stack:
-		swings += GameLoop2.attacks_next_game(entry)
-	return "%d closing in, %d swing%s landing for %d damage next game" % [
+		swings += GameLoop2.attacks_in_turns(entry)
+	if swings == 0:
+		return "%d closing in, none of them in reach yet" % following
+	return "%d closing in, %d swing%s for %d damage on every lost run" % [
 		following, swings, "" if swings == 1 else "s", dmg]
 
 

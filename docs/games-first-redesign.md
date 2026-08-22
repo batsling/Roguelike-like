@@ -962,7 +962,7 @@ add together:
   and a row**: 4x4 at Low, 5x5 Medium, 6x6 High, 7x7 Insane, and there it stops,
   because the tier does. This is the counterweight to §7.4 — the tier that makes
   the enemies heavier also gives you more ground to lose before they arrive, so
-  three turns a game at the high tiers is still a couple of games of warning.
+  two extra turns a game at the high tiers is still a couple of games of warning.
 - **Mine-r Construction** (Broomsweeper, Uncommon) adds another column and row
   **per copy owned** — a deeper board to cross before anything reaches you, and
   another lane to stand in, which also means one more body can pack the front
@@ -1028,55 +1028,57 @@ layers by **tree order, never `z_index`** — `z_index` is relative to the paren
 and would punch the board out through the enemy info card and the reward
 screens, which sit above the battlefield only because they're mounted after it.
 
-### 7.4 Amulet pressure — the enemies get bonus turns as you close in
+### 7.4 Amulet pressure — the extra turns you buy by closing in
 
 The run has two difficulty axes. The tier ladder (§7.1) is the clock: it ticks
 up on its own, every `GAMES_PER_TIER` games, and the player only rides it. This
 is the other one, and it's the one the player **steers**.
 
-**Every enemy takes one turn per game reported, wherever the run is standing.**
-That is the floor and nothing moves it. What closeness to the Amulet buys them is
-**BONUS TURNS on the end of the game** — taken after every enemy has had its own
-— read off how far you are in hops over the run graph:
+**REPORTING A GAME GIVES THE BOARD NOTHING.** Out in the wilds you can play a
+game, hand it in and walk away with the stack exactly where you left it. What
+moves the enemies is the runs you **lose** at a game — one turn each (§3.2) — and
+what closing on the Amulet buys them is **EXTRA TURNS at the end of every game
+you report**, read off how far you are in hops over the run graph:
 
-| Hops to the Amulet | Bonus turns | Total turns | Band |
-|---|---|---|---|
-| 5 or more | +0 | 1 | Distant |
-| 3 – 4 | +1 | 2 | Closing |
-| 2 – 0 | +2 | 3 | Doorstep |
+| Hops to the Amulet | Extra turns | Band |
+|---|---|---|
+| 5 or more | 0 | Distant |
+| 3 – 4 | 1 | Closing |
+| 2 – 0 | 2 | Doorstep |
 
 A **turn** is one action, and every enemy takes one on each of them: a body
 touching column 1 **strikes**, everything behind it **steps** a column closer. A
-turn is exactly the strike-then-advance the loop has always resolved, so the
-Distant band *is* the pre-ladder game and a bonus turn is that same beat again,
-at the end.
+turn is exactly the strike-then-advance the loop has always resolved — an extra
+turn is that same beat, handed out for finishing a game near the Amulet.
 
-**Authored as the bonus, not as a total.** The ladder used to be the turn count
-itself (1 / 2 / 3), and the number a player needs is what the route is *costing*
-them: `+1` is a price, `×2` is a stat. It also removes the wrong reading the
-total invited — the enemies never act twice in one beat; they act once, and then
-the Amulet hands them another beat. `TURN_BASE` is the floor, `BONUS_FAR/MID/NEAR`
-the ladder, and `turns_for_hops` is still there as base + bonus for the resolver,
-which counts turns rather than prices.
+**Zero is the floor, and that is the change.** The ladder used to be the turn
+count itself (1 / 2 / 3), so every reported game moved the board whether or not
+the player had struggled at it. Now the board moves for two reasons and both are
+things that happened: **you failed** (a lost run, §3.2) or **you are close to the
+win** (this ladder). A quiet game played far out costs nothing at all, which is
+what makes the routing decision a real one rather than a slower rate of decay.
 
 **Why.** The routing decision used to be one-directional: the Amulet is the win
 condition, so every step toward it was strictly good and the only reason to take
 the long way was to farm. This makes the long way a real option. Route wide and
 you fight a slow stack for more games; bum-rush the Amulet and you fight a fast
 one for fewer. Neither dominates, and the stack you've accumulated decides which
-is right — three followers on your tail is a very different calculation at +2
-than at +0.
+is right — three followers on your tail is a very different calculation at 2
+extra turns than at none.
 
 The consequences fall out of the same rule rather than being special-cased:
 
-- An enemy two columns back is no longer safe. At +2 it walks into range **and**
-  swings before the game is out, so "how far away is it" has to be measured in
-  turns, not columns (`GameLoop2.games_until_strike`).
-- **Stun** costs one turn, so it's worth a third of a game at the doorstep and a
-  whole one in the wilds — the same charge, priced by the pace.
+- An enemy two columns back is no longer safe. At 2 extra turns it walks into
+  range **and** swings before you have picked the next card, so "how far away is
+  it" is measured in turns, not columns. The board reads that distance in **lost
+  runs** (`GameLoop2.lost_runs_until_strike`), since that is the turn supply the
+  player controls.
+- **Stun** costs one turn, so it is worth a whole lost run wherever you stand,
+  and half of a reported game's cost at the doorstep — the same charge, priced by
+  the pace.
 - **Old-goal fulfilment** holds a follower's fire for the whole game, so it goes
   the other way and is worth *more* the closer you push (§7.2).
-- **Strength** buffs each hit, so a three-turn game is three buffed hits — the
+- **Strength** buffs each hit, so a two-extra-turn report is two buffed hits — the
   pace amplifies it like everything else. Aggravate Monsters hands it out to the
   whole board at once (§13.4), and unlike the temporary damage bonus it replaced,
   it never expires.
@@ -1089,28 +1091,27 @@ The consequences fall out of the same rule rather than being special-cased:
 **Where the player sees it.** All of it, before committing:
 
 - A **strip across the top of the battlefield**, in the band's colour, reading
-  `⏱ ENEMY TURNS 1 +N` (just `1` in the Distant band, because "no bonus" is a
-  state worth reading as calm), a three-rung ladder — first pip the turn every
-  game gives, the other two the Amulet's — and the hop count that put it there,
-  plus the board's current size and tier on the right, since §7.3 is the other
-  half of the same bargain.
-- Every **offered card** says what taking it does to the pace — *speeds up —
-  +1 bonus turn*, *slows down*, or *still no bonus turns* — next to the route
-  badge that says what it does to the distance, because they are the same
-  decision.
-- Each **body on the board** carries what it does on the next game reported:
-  `×2` for two swings, `in 2` for two games of walking still to do. Threat
-  colours follow that number rather than the raw column.
-- The **resolve plays turn by turn**, counter and all — `TURN 1 / 3` for the
-  game's own and `BONUS TURN 1 / 2` for the Amulet's, so what is being watched
-  says which half of the bargain it came from — instead of collapsing into one
+  `⏱ EXTRA TURNS N` — `0` out in the wilds, which is a state worth reading as
+  calm — with a two-rung ladder, the hop count that put it there, and the board's
+  current size and tier on the right, since §7.3 is the other half of the same
+  bargain.
+- Every **offered card** says what taking it does to the pace — *speeds up — 1
+  extra turn*, *slows down*, or *still no extra turns* — next to the route badge
+  that says what it does to the distance, because they are the same decision.
+- Each **body on the board** carries what **one lost run** would let it do: `⚔3`
+  for the swing it would throw, `in 2` for the lost runs of walking it still owes.
+  Threat colours follow that number rather than the raw column, because that is
+  the threat the player is deciding against — reporting a game out in the wilds
+  costs nothing.
+- The **resolve plays turn by turn**, counter and all — `EXTRA TURN 1 / 2` at the
+  end of a game, `TURN 1 / 1` for a lost run's — instead of collapsing into one
   slide.
 
-`RunDifficulty.bonus_turns_for_hops` owns the ladder, `turns_for_hops` adds the
-base turn to it and `GameLoop2.enemy_turns()` applies that; all three are pure,
-so the board, the cards and the resolver cannot disagree about the number. A run
-with no Amulet picked, or standing somewhere with no route to it, reads as
-Distant — nothing is closing in on a goal that isn't there.
+`RunDifficulty.extra_turns_for_hops` owns the ladder and `GameLoop2.enemy_turns()`
+applies it; both are pure, so the board, the cards and the resolver cannot
+disagree about the number. A run with no Amulet picked, or standing somewhere with
+no route to it, reads as Distant — nothing is closing in on a goal that isn't
+there.
 
 ### 7.5 The escort — nothing spawns alone
 

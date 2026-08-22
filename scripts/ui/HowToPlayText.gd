@@ -169,29 +169,31 @@ static func _ch_choosing() -> Dictionary:
 			_kv("🏆 THE AMULET", "This is the game the run is a search for. Beat "
 				+ "its goal and the run is won, on the spot."),
 			_h("Pressure: why the long way is a real option"),
-			_p("Every enemy on the board takes ONE turn per game you report, "
-				+ "wherever you are standing. Closing on the Amulet does not make "
-				+ "that turn come round faster — it adds BONUS TURNS on the end of "
-				+ "the game, after every enemy has taken its own:"),
-			_row(["Hops to the Amulet", "Bonus turns", "Band"], true),
+			_p("Handing a game in does not move the board. Out in the wilds you can "
+				+ "play a game, report it and walk away with the stack exactly where "
+				+ "you left it — what moves them is the runs you LOSE, one turn "
+				+ "each. What closing on the Amulet buys them is EXTRA TURNS at the "
+				+ "end of every game you report:"),
+			_row(["Hops to the Amulet", "Extra turns", "Band"], true),
 			_row(["%d or more" % RunDifficulty.FAR_HOPS,
-				"+%d" % RunDifficulty.BONUS_FAR, "Distant"]),
+				"%d" % RunDifficulty.EXTRA_FAR, "Distant"]),
 			_row(["%d – %d" % [RunDifficulty.MID_HOPS, RunDifficulty.FAR_HOPS - 1],
-				"+%d" % RunDifficulty.BONUS_MID, "Closing"]),
+				"%d" % RunDifficulty.EXTRA_MID, "Closing"]),
 			_row(["%d or fewer" % (RunDifficulty.MID_HOPS - 1),
-				"+%d" % RunDifficulty.BONUS_NEAR, "Doorstep"]),
+				"%d" % RunDifficulty.EXTRA_NEAR, "Doorstep"]),
 			_p("A turn is one action for every enemy on the board: anything in "
 				+ "your face swings, everything behind it steps a column closer. "
-				+ "So at the Amulet's doorstep a game ends in three swings from "
-				+ "every follower you left alive rather than one, and an enemy two "
-				+ "columns back is not safe any more — it can walk into range and "
-				+ "hit you inside the same game."),
+				+ "So on the Amulet's doorstep finishing a game is two free swings "
+				+ "from every follower you left alive, and an enemy two columns back "
+				+ "is not safe any more — it can walk into range and hit you before "
+				+ "you have chosen the next card."),
 			_p("This is the whole reason routing is a decision. Every step toward "
-				+ "the Amulet used to be strictly good. Now: route wide and you "
-				+ "fight a slow stack for more games; run at the Amulet and you "
-				+ "fight a fast one for fewer. Neither is correct in general. What "
-				+ "decides it is how many followers you are dragging — three of "
-				+ "them at +2 is a very different sum from three at +0."),
+				+ "the Amulet used to be strictly good. Now: route wide and the "
+				+ "board only moves when you fail; run at the Amulet and it moves "
+				+ "every time you finish anything. Neither is correct in general. "
+				+ "What decides it is how many followers you are dragging — three "
+				+ "of them at 2 extra turns is a very different sum from three at "
+				+ "none."),
 			_note("Taking the Amulet card itself carries no pace warning. There is "
 				+ "no next game for the enemies to act in — you have either won or "
 				+ "you have not."),
@@ -347,9 +349,10 @@ static func _ch_enemies() -> Dictionary:
 				+ "for its damage, forever, until its goal is met."),
 			_b("Damage is 1 to 3, tracking the enemy's tier. A shield stops the "
 				+ "whole swing if you have one; otherwise it all comes off Health."),
-			_p("Followers stack. Two followers is two hits a game; five is five. "
-				+ "And at the Amulet's doorstep every one of them swings three "
-				+ "times a game rather than once. This is how runs actually end."),
+			_p("Followers stack. Two followers in reach is two hits every lost run; "
+				+ "five is five. And on the Amulet's doorstep every one of them "
+				+ "swings twice more for each game you hand in. This is how runs "
+				+ "actually end."),
 			_h("Old goals never expire"),
 			_p("A follower's goal can be fulfilled during ANY later game. Do it "
 				+ "and the follower dies right there, drops its item and pays its "
@@ -817,9 +820,9 @@ static func _ch_wrong() -> Dictionary:
 			_h("I have four followers and they are killing me"),
 			_p("In rough order of what to try:"),
 			_b("ROUTE AWAY from the Amulet. Getting back to five or more hops "
-				+ "takes the bonus turns away entirely — every enemy back to one "
-				+ "turn a game instead of three. That is the biggest single lever "
-				+ "in the game and it costs only games."),
+				+ "takes the extra turns away entirely — the board stops moving "
+				+ "except when you lose a run. That is the biggest single lever in "
+				+ "the game and it costs only games."),
 			_b("Pick cards whose games can pay off SEVERAL old goals at once. Read "
 				+ "the checklist first and choose the game to fit it, rather than "
 				+ "the other way round."),
@@ -863,9 +866,9 @@ static func _ch_screen() -> Dictionary:
 			_kv("Gold", "A chip in the top bar."),
 			_kv("Board size and tier", "The right-hand end of the board's pressure "
 				+ "bar."),
-			_kv("Enemy turns per game", "The strip across the top of the board — "
-				+ "the one turn every game gives them, then the bonus the Amulet "
-				+ "adds — in the band's colour, with the hop count that caused it."),
+			_kv("Extra turns", "The strip across the top of the board: what "
+				+ "reporting a game hands the enemies, in the band's colour, with "
+				+ "the hop count that caused it. Zero out in the wilds."),
 			_kv("Push and Bomb charges", "On their own buttons, on the board's "
 				+ "toolbar."),
 			_kv("Bash, Dash, Transmute, Scramble", "Chips on the row under the "

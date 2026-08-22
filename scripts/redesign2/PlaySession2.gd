@@ -120,7 +120,7 @@ func _enemy_text() -> String:
 func _stack_text() -> String:
 	if GameLoop2.stack.is_empty():
 		return "[b]Following enemies:[/b] none"
-	var lines: Array = ["[b]Following enemies[/b] (%d/game):" % GameLoop2.stacked_damage_per_game()]
+	var lines: Array = ["[b]Following enemies[/b] (%d per lost run):" % GameLoop2.damage_per_lost_run()]
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
 		var stun: int = int(entry.get("stun", 0))

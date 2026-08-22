@@ -1114,19 +1114,18 @@ func hops_to_amulet() -> int:
 	var dist: Dictionary = RunGraph.bfs_distances(amulet)
 	return int(dist[here]) if dist.has(here) else -1
 
-# How many TURNS every enemy takes on the next game resolved. ONE always, plus
-# the BONUS turns this position on the route buys them — 0 out in the wilds, up
-# to 2 on the Amulet's doorstep (see RunDifficulty for the ladder and why it
-# exists). A turn is one action — attack from the front column, or step a column
-# closer from anywhere behind it.
+# How many TURNS every enemy takes when a game is REPORTED: the EXTRA turns this
+# position on the route buys them, and nothing else — 0 out in the wilds, up to 2
+# on the Amulet's doorstep (see RunDifficulty for the ladder and why it exists).
+#
+# Zero is the normal answer, and that is the design (§7.4). Handing a game in does
+# not move the board; LOSING RUNS at it does, one turn each (§3.2). What closing
+# on the Amulet buys the enemies is turns you did not pay for by failing.
+#
+# A turn is one action — attack from the front column, or step a column closer
+# from anywhere behind it.
 func enemy_turns() -> int:
-	return RunDifficulty.turns_for_hops(hops_to_amulet())
-
-# Just the bonus half — what closing on the Amulet is costing, as opposed to what
-# the board does anyway. The views say the bonus rather than the total (§7.4), so
-# they ask for it rather than subtracting the base themselves.
-func bonus_enemy_turns() -> int:
-	return RunDifficulty.bonus_turns_for_hops(hops_to_amulet())
+	return RunDifficulty.extra_turns_for_hops(hops_to_amulet())
 
 # Where every body on the board stands right now, as instance -> Vector2i(col,
 # row). Snapshotted after each turn so the board can play the turns back one at a
@@ -1157,15 +1156,15 @@ func _board_snapshot() -> Dictionary:
 # Returns last_result:
 #   {beaten, defeats:[enemy...], drops:int,
 #    attacks:[{instance, turn, damage|stunned|goal_hit}],
-#    turns:int, bonus_turns:int, turn_frames:[{instance: Vector2i(col,row)}, ...],
+#    turns:int, extra_turns:int, turn_frames:[{instance: Vector2i(col,row)}, ...],
 #    damage_taken, blocked, hp, shields, shields_expired, attempts, stack_size,
 #    status_rewards:int, statuses_ticked:[status_id...],
 #    instead_cleared:[instance...], status_penalties:[{status, damage, blocked}],
 #    run_over, won}
 # `blocked` is what the unspent shields absorbed; `shields_expired` is what was
 # left over afterwards and went away with the game (§3). `turns` is how many
-# actions each enemy got (enemy_turns()) and `bonus_turns` how many of those were
-# the Amulet's (§7.4) — the last N of them, taken after every enemy had its own —
+# actions each enemy got at the end of the game — all of them the Amulet's EXTRA
+# turns (§7.4), which is why `extra_turns` is the same number and not a subset —
 # while `turn_frames` holds the board after each one so the view can replay them
 # in order.
 # `clear_advertised` is a convenience for callers that have no report checklist to
@@ -1183,7 +1182,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	var turns: int = enemy_turns()
 	var res := {
 		"beaten": true, "defeats": [], "drops": 0, "attacks": [],
-		"turns": turns, "bonus_turns": bonus_enemy_turns(), "turn_frames": [],
+		"turns": turns, "extra_turns": turns, "turn_frames": [],
 		"damage_taken": 0, "blocked": 0, "hp": GameState.hp,
 		"shields": GameState.shields, "shields_expired": 0,
 		"attempts": attempts(), "stack_size": stack.size(),
@@ -1254,15 +1253,14 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# NEXT game's Scramble may not touch.
 	arrivals.clear()
 
-	# 2. THE ENEMY TURNS. Every enemy takes ONE turn for the game just played —
-	#    a STRIKE (from the front column) or a STEP (from anywhere behind it) —
-	#    and then, at the END of that, the BONUS turns the Amulet's pull has
-	#    bought them: 0 out in the wilds, up to 2 on its doorstep (§7.4).
+	# 2. THE EXTRA TURNS (§7.4). Reporting a game does not, by itself, move the
+	#    board: out in the wilds this loop runs zero times and the stack is exactly
+	#    where you left it. What runs it is the Amulet's pull — 1 turn inside 4
+	#    hops, 2 inside 2 — and each of those is the ordinary beat: a STRIKE from
+	#    the front column, a STEP from anywhere behind it.
 	#
-	#    Which is this one loop, because a bonus turn is not a different kind of
-	#    thing: it is the same beat again, taken after every enemy has had its
-	#    own. `turn` 0 is the game's; everything past it is bonus, which is what
-	#    `bonus_turns` in the result marks for the view.
+	#    The turns you PAY FOR by failing are elsewhere (attempt_turn, §3.2). These
+	#    are the ones the road charges.
 	for turn in range(turns):
 		if run_over:
 			break
@@ -2308,17 +2306,17 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 
 # --- HUD / query helpers --------------------------------------------------
 
-# How many times `entry` strikes on the next game beaten. Its distance from the
-# front is turns it spends WALKING, its stun is turns it spends frozen, and
-# whatever is left over is swings (§7.4). `turns` defaults to what this position
-# on the route buys the enemies.
+# How many times `entry` strikes across `turns` turns of the board. Its distance
+# from the front is turns it spends WALKING, its stun is turns it spends frozen,
+# and whatever is left over is swings (§7.4). `turns` defaults to ATTEMPT_TURNS —
+# what ONE LOST RUN buys the enemies — because that is the threat the board is
+# read against now: reporting a game moves nobody out in the wilds, and the
+# number a player is deciding about is what happens if they go and fail again.
 #
 # Assumes every step it wants is free. A jam in front of it can only make the
 # real number smaller, never larger, so this is the worst case — which is the
 # number worth putting in front of the player.
-func attacks_next_game(entry: Dictionary, turns: int = -1) -> int:
-	if turns < 0:
-		turns = enemy_turns()
+func attacks_in_turns(entry: Dictionary, turns: int = ATTEMPT_TURNS) -> int:
 	if entry.get("enemy") == null:
 		return 0
 	if int(entry.get("col", offgrid_col())) > grid_cols():
@@ -2330,32 +2328,30 @@ func attacks_next_game(entry: Dictionary, turns: int = -1) -> int:
 func _turns_owed(entry: Dictionary) -> int:
 	return maxi(0, _front_col(entry) - 1) + int(entry.get("stun", 0))
 
-# How many GAMES away this enemy's first strike is: 0 means it swings on the very
-# next game you report, 1 means the game after that. Off-grid bodies report -1 —
+# How many LOST RUNS away this enemy's first strike is: 0 means it swings the very
+# next time you tick one, 1 means the tick after that. Off-grid bodies report -1 —
 # they aren't on the board to start walking yet.
 #
 # This is the number the board's threat colours are read off, and it is why they
-# can't just be read off the column any more: at three turns a game an enemy
-# three columns back still reaches you and swings before the game is out, and
-# painting it "safely distant" gold would be a lie.
-func games_until_strike(entry: Dictionary) -> int:
+# can't just be read off the column: a body three columns back is three failures
+# from your face, and how many failures you have in you is the actual question.
+func lost_runs_until_strike(entry: Dictionary) -> int:
 	if entry.get("enemy") == null:
 		return -1
 	if int(entry.get("col", offgrid_col())) > grid_cols():
 		return -1
 	@warning_ignore("integer_division")
-	var games: int = _turns_owed(entry) / maxi(1, enemy_turns())
-	return games
+	var runs: int = _turns_owed(entry) / maxi(1, ATTEMPT_TURNS)
+	return runs
 
-# Total damage the stack would deal on the next game beaten, across every turn of
-# it — the "how bad is this going to be" number for the HUD (§9). At one turn a
-# game this is the front line and nothing else; at three it also counts the rank
-# behind them, which walks into range and swings before the game is out.
-func stacked_damage_per_game() -> int:
+# Total damage the stack would deal for ONE LOST RUN — the "how bad is this going
+# to be" number for the board's strip and the HUD (§9). The front line and
+# whatever a single turn walks into range, which at ATTEMPT_TURNS = 1 is the front
+# line alone.
+func damage_per_lost_run() -> int:
 	var total: int = 0
-	var turns: int = enemy_turns()
 	for entry in stack:
-		total += attacks_next_game(entry, turns) * enemy_damage(entry)
+		total += attacks_in_turns(entry) * enemy_damage(entry)
 	return total
 
 # Number of enemies waiting off the grid's edge (overflow queue) — never attacks,

@@ -156,11 +156,11 @@ func test_alien_baby_survivor_still_attacks_when_goal_missed() -> void:
 	_choose_solo(enemy)
 	GameLoop2.beat_game(true)                 # first hit -> survives, follows @ spawn col
 	assert_eq(GameLoop2.stack_size(), 1)
-	# March it to the front — it only strikes from column 1 (§grid).
-	while int(GameLoop2.stack[0].get("col", 1)) > 1:
-		GameLoop2.beat_game(false)
+	# March it to the front — it only strikes from column 1 (§grid) — with TURNS,
+	# since a reported game moves nobody out here (§7.4).
+	_march_to_front(int(GameLoop2.stack[0].get("instance", 0)))
 	var hp_before: int = GameState.hp
-	GameLoop2.beat_game(false)                # front-line strike on a missed game
+	GameLoop2.attempt_turn()                  # a lost run's turn: the front line swings
 	assert_lt(GameState.hp, hp_before, "the surviving enemy attacks from the front")
 
 # --- a pickup reports what it changed, immediately -------------------------
@@ -428,6 +428,7 @@ func test_a_lost_try_pays_and_undoing_it_takes_the_coin_back() -> void:
 	# the undo button is a coin press: tick, untick, tick, untick.
 	_give(&"piggy_bank")
 	var a: int = _choose_solo(_fighter(1))
+	GameLoop2.beat_game(false)        # released as a follower, so the next pick keeps it
 	_march_to_front(a)
 	_choose_solo(_fighter(0))         # a game in play, with nothing of its own to add
 	GameState.shields = 0
@@ -449,6 +450,7 @@ func test_every_undone_try_gives_back_its_own_winnings() -> void:
 	# Health comes off, and the relic pays on the loss like any other.
 	_give(&"piggy_bank")
 	var a: int = _choose_solo(_fighter(1))
+	GameLoop2.beat_game(false)        # released as a follower, so the next pick keeps it
 	_march_to_front(a)
 	_choose_solo(_fighter(0))         # a game in play, with nothing of its own to add
 	GameState.shields = 0
@@ -600,8 +602,9 @@ func test_the_trinkets_survive_an_attack_the_shields_eat():
 	GameLoop2.beat_game(false)
 	_march_to_front(inst)
 	GameState.shields = 3
-	GameLoop2.beat_game(false)
-	assert_eq(GameState.hp, 10, "the shields absorbed the swing")
+	GameState.bonus_shields = 0
+	GameLoop2.attempt_turn()
+	assert_eq(GameState.hp, 10, "the shield stopped the swing")
 	assert_true(GameState.inventory.has(hat), "so nothing broke")
 
 func test_a_swing_that_gets_past_the_shields_breaks_them() -> void:
@@ -612,7 +615,8 @@ func test_a_swing_that_gets_past_the_shields_breaks_them() -> void:
 	GameLoop2.beat_game(false)
 	_march_to_front(inst)
 	GameState.shields = 0
-	GameLoop2.beat_game(false)
+	GameState.bonus_shields = 0
+	GameLoop2.attempt_turn()
 	assert_eq(GameState.hp, 8, "the swing landed on Health")
 	assert_false(GameState.inventory.has(hat), "which is what breaks the hat")
 
@@ -631,7 +635,10 @@ func _march_to_front(instance: int) -> void:
 				col = int(entry.get("col", -1))
 		if col <= 1:
 			return
-		GameLoop2.beat_game(false)
+		# ONE TURN of the board, which is what a lost run buys (§3.2). Reporting a
+		# game hands the board nothing out here (§7.4), so a march built on
+		# beat_game would stand still.
+		GameLoop2.attempt_turn()
 
 # --- Charm of the Vampire: the first incremental relic -------------------
 

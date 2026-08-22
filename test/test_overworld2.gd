@@ -105,7 +105,7 @@ func _pick_solo(index: int) -> void:
 # Wait for the board's resolve playback to hand the screen back, however long it
 # runs. NOT a fixed sleep: a playback is one beat per TURN (§7.4) and a beat is
 # FX_ATTACK_TIME + FX_SLIDE_TIME = 0.89s, while the turn count is the run's
-# distance band (RunDifficulty.turns_for_hops) — 1 turn beyond 5 hops from the
+# distance band (RunDifficulty.extra_turns_for_hops) — no turns beyond 5 hops from the
 # Amulet, 2 inside that, 3 inside 3. So the same report plays for 0.89s, 1.78s
 # or 2.67s depending on where the RANDOM graph put the start.
 #
@@ -180,7 +180,12 @@ func test_report_goal_met_defeats_and_drops() -> void:
 	_ui.pick(0)
 	_report_beat(_ui)              # met -> defeat + a drop to be asked about
 	assert_eq(GameLoop2.stack_size(), 1, "a met goal still leaves the escort standing")
-	assert_eq(_item_drops(), 1, "the kill queued a drop")
+	# The drop is already ON the haul screen: the resolve lands instantly out in
+	# the wilds now (§7.4), and landing is what hands the queue over.
+	_ui._end_resolve()
+	assert_not_null(_ui._post_screen, "the report ended on the haul screen")
+	assert_eq(_ui._post_screen._chest_sections.size(), 1, "carrying the kill's chest")
+	_leave_post_game()
 
 # An enemy kill ASKS whether you want what fell off it (§8): the item at full
 # size, Take or Leave, no tray to notice later. What changed is WHERE it asks —
@@ -190,9 +195,8 @@ func test_report_goal_met_defeats_and_drops() -> void:
 func test_defeat_drop_is_asked_about_on_the_screen_the_game_ends_on() -> void:
 	_ui.pick(0)
 	_report_beat(_ui)
-	assert_eq(_item_drops(), 1, "a drop is waiting to be asked about")
 	assert_null(_ui._drop_modal,
-		"and it does NOT open over the board while the resolve is still playing")
+		"the kill does NOT open a modal of its own over the board")
 	_ui._end_resolve()                           # the board finishes its playback
 	var screen = _ui._post_screen
 	assert_not_null(screen, "the report ends on the haul screen")
@@ -254,9 +258,13 @@ func test_a_report_asks_nothing_while_the_board_is_still_moving() -> void:
 func test_the_playback_landing_hands_the_whole_queue_to_the_haul_screen() -> void:
 	_ui.pick(0)
 	_report_beat(_ui)
-	assert_gt(_ui._drop_queue.size(), 0, "the report dropped something")
+	# The playback can be instantaneous now — out in the wilds a report hands the
+	# board no turns at all (§7.4), so there may be nothing to animate and
+	# _end_resolve has already run. Either way the promise is the same: the queue
+	# ends up on the screen and nothing is left on the page behind it.
 	_ui._end_resolve()
 	assert_not_null(_ui._post_screen, "the haul screen took it")
+	assert_gt(_ui._post_screen._chest_sections.size(), 0, "the report's drop is on it")
 	assert_eq(_ui._drop_queue.size(), 0, "and the page's queue is empty behind it")
 	assert_null(_ui._drop_modal, "with no modal left over to open on top of it")
 	_leave_post_game()
@@ -312,7 +320,6 @@ func test_the_drop_asks_in_the_middle_of_the_screen() -> void:
 func test_leaving_a_drop_discards_it() -> void:
 	_ui.pick(0)
 	_report_beat(_ui)
-	assert_eq(_item_drops(), 1)
 	_ui._end_resolve()
 	var chest = _ui._post_screen.chest()
 	assert_not_null(chest)
@@ -330,8 +337,10 @@ func test_leaving_a_drop_discards_it() -> void:
 # haul screen now, with the loot and the numbers on it the whole time.
 func test_drops_are_asked_about_one_at_a_time() -> void:
 	_ui.pick(0)
-	_report_beat(_ui)
+	# Queued before the report, which is when the whole queue is handed over — the
+	# resolve can land instantly now (§7.4).
 	_ui._drop_queue.append({"item": Data.reward_item2_pool_of(0)[0]})
+	_report_beat(_ui)
 	_ui._end_resolve()
 	var screen = _ui._post_screen
 	assert_not_null(screen, "the haul screen took both")
@@ -1037,12 +1046,12 @@ func test_a_carried_item_carries_a_hover_card() -> void:
 		"testable thing", "with what it does on it")
 	GameState.inventory.erase(item)
 
-func test_the_enemy_turns_readout_carries_a_hover_card() -> void:
+func test_the_extra_turns_readout_carries_a_hover_card() -> void:
 	_ui._board.refresh()
 	var panel: Control = _ui._board._pressure_panel
 	assert_true(panel.has_meta(HoverCard.META), "the pressure readout carries a card")
 	var card: Dictionary = panel.get_meta(HoverCard.META)
-	assert_string_contains(String(card.get("title", "")), "Enemy turns",
+	assert_string_contains(String(card.get("title", "")), "Extra turns",
 		"named for what it is")
 	assert_string_contains("\n".join(PackedStringArray(card.get("lines", []))),
 		"Amulet", "and it says WHY the number is what it is")
@@ -2901,7 +2910,7 @@ func test_every_offered_start_sits_in_the_amulet_distance_band() -> void:
 
 # The two cards are a choice of RUN LENGTH as well as genre: distance from the
 # Amulet decides how many games the run gets in the calm 1-turn band before the
-# stack picks up its scent (RunDifficulty.turns_for_hops). Two cards at the same
+# stack picks up its scent (RunDifficulty.extra_turns_for_hops). Two cards at the same
 # distance would offer a genre and nothing else.
 #
 # It is a preference, not a promise — an Amulet can have every in-band start at a
@@ -3479,7 +3488,7 @@ func test_nothing_prints_the_swing_count_over_the_body() -> void:
 			"no swing count sitting on top of the art: %s" % t)
 		if String(t).begins_with("⚔"):
 			assert_eq(String(t), _ui._board._damage_badge_text(
-				GameLoop2.stack[0], GameLoop2.attacks_next_game(GameLoop2.stack[0])),
+				GameLoop2.stack[0], GameLoop2.attacks_in_turns(GameLoop2.stack[0])),
 				"the ⚔ badge is where the count went")
 
 func test_the_board_says_how_long_its_playback_runs() -> void:
@@ -3626,7 +3635,10 @@ func test_an_enemy_that_walks_onto_the_grid_reads_as_having_moved() -> void:
 	var before: Dictionary = _ui._board.capture_positions()
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	assert_true(before.has(inst), "picking the game stood its enemy on the board")
-	_ui.report(false)                      # missed -> it takes its step
+	# A LOST RUN moves it: reporting the game hands the board nothing out here
+	# (§7.4), so the tick is what there is to watch.
+	_ui.log_attempt()
+	_ui._end_resolve()
 	var after: Dictionary = _ui._board.capture_positions()
 	assert_true(after.has(inst), "and it is still on the grid, a column closer")
 	var moved: float = (after[inst] as Rect2).position.distance_to((before[inst] as Rect2).position)
@@ -3869,14 +3881,13 @@ func test_a_card_names_the_pace_it_would_put_you_on() -> void:
 		if gid == &"":
 			continue
 		var note: Dictionary = _ui.turn_note({"slot": gid, "amulet": false})
-		assert_eq(int(note["turns"]), RunDifficulty.turns_for_hops(hops),
+		assert_eq(int(note["turns"]), RunDifficulty.extra_turns_for_hops(hops),
 			"a card %d hops out reads the same rung the loop resolves on" % hops)
-		assert_eq(int(note["bonus"]), RunDifficulty.bonus_turns_for_hops(hops),
-			"and knows which half of that the Amulet is charging")
-		# The BONUS is what the card says out loud (§7.4) — "+1 bonus turn", or
-		# "no bonus turns" on the rung where it charges nothing.
-		var said: String = ("no bonus turns" if int(note["bonus"]) <= 0
-			else "+%d bonus turn" % int(note["bonus"]))
+		assert_eq(int(note["extra"]), RunDifficulty.extra_turns_for_hops(hops),
+			"and says so in the field the board reads")
+		# The EXTRA turns are what the card says out loud (§7.4) — "1 extra turn",
+		# or "no extra turns" on the rung where it charges nothing.
+		var said: String = RunDifficulty.extra_text(int(note["extra"]))
 		assert_true(String(note["text"]).contains(said),
 			"and says the price out loud: %s" % note["text"])
 
@@ -3889,10 +3900,10 @@ func test_stepping_toward_the_amulet_warns_that_they_speed_up() -> void:
 		return
 	GameState.set_current_game(here)
 	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
-	assert_eq(int(note["turns"]), 3, "one hop from the Amulet is the doorstep")
+	assert_eq(int(note["turns"]), 2, "one hop from the Amulet is the doorstep")
 	assert_true(String(note["text"]).contains("speed up"),
 		"the card warns before the click: %s" % note["text"])
-	assert_eq(note["color"], RunDifficulty.bonus_band_color(RunDifficulty.BONUS_NEAR),
+	assert_eq(note["color"], RunDifficulty.band_color(RunDifficulty.EXTRA_NEAR),
 		"in the band's own colour, same as the board's strip")
 
 func test_backing_off_reads_as_the_relief_it_is() -> void:
@@ -3902,7 +3913,7 @@ func test_backing_off_reads_as_the_relief_it_is() -> void:
 		return
 	GameState.set_current_game(here)
 	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
-	assert_eq(int(note["turns"]), 1)
+	assert_eq(int(note["turns"]), 0)
 	assert_true(String(note["text"]).contains("slow down"),
 		"walking away buys pace, and the card says so: %s" % note["text"])
 
@@ -4279,20 +4290,24 @@ func test_the_free_escape_still_costs_you_the_enemy() -> void:
 	assert_eq(GameLoop2.stack_size(), 1, "and its goal-enemy came with you")
 	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "back to a fresh offering")
 
-func test_the_enemies_keep_taking_turns_through_a_free_escape() -> void:
-	# The board is not paused by walking away — the whole point of the price.
+func test_escaping_resolves_the_board_exactly_as_a_missed_report_does() -> void:
+	# Walking away is not a pause: the board takes whatever the road charges for
+	# finishing a game (§7.4) — none of it out in the wilds, up to two turns on the
+	# Amulet's doorstep — and the enemy comes with you either way.
 	_ui.pick(0)
 	_mark_beaten_this_run(_ui._chosen["game"])
 	_ui.escape_game()
 	var follower: Dictionary = GameLoop2.stack[0]
 	var col_before: int = int(follower["col"])
+	var owed: int = GameLoop2.enemy_turns()
 	# Take the next game the same way, so a second resolve runs.
 	_ui.pick(0)
 	_mark_beaten_this_run(_ui._chosen["game"])
 	_ui.escape_game()
 	var still: Dictionary = GameLoop2.stack[0]
-	assert_lt(int(still["col"]), col_before,
-		"the follower closed a column while you were escaping")
+	assert_eq(int(still["col"]), maxi(1, col_before - owed),
+		"the escape resolved exactly the turns the road charges: %d" % owed)
+	assert_gt(GameLoop2.stack_size(), 0, "and the followers are still following")
 
 func test_beaten_this_run_is_false_with_no_game_in_hand() -> void:
 	assert_false(_ui.beaten_this_run(), "nothing is in play, so nothing is escapable")
@@ -4897,16 +4912,17 @@ func test_the_way_out_names_the_event_and_is_what_opens_it() -> void:
 	_dismiss_event()
 
 func test_the_way_out_says_travel_on_when_nothing_is_waiting() -> void:
-	_ui.pick(0)
-	_report_beat(_ui)
-	_ui._pending_event = null
-	_ui._end_resolve()
-	var screen := _haul()
-	assert_not_null(screen)
-	if screen != null:
-		assert_true(screen.exit_text().contains("Travel on"),
-			"nothing is waiting, so the button says so: %s" % screen.exit_text())
-	_leave_post_game()
+	# Built with nothing pending rather than reported into: an event fires after
+	# every game, and the resolve can now land instantly (§7.4), so there is no
+	# moment between the two in which to take the event away.
+	var screen := PostCombatScreen.open(_ui,
+		{"game": _ui._choices[0]["game"], "beaten": true, "escaped": false,
+			"amulet": false, "res": {}}, [], false)
+	_ui._post_screen = screen
+	assert_true(screen.exit_text().contains("Travel on"),
+		"nothing is waiting, so the button says so: %s" % screen.exit_text())
+	screen.dismiss()
+	_ui._post_screen = null
 
 # Leaving with something still on the table BINS it, so the button says so first.
 # A Legendary left on the ground should be a decision and not a side effect of
@@ -4958,10 +4974,12 @@ func test_the_payout_is_a_column_of_the_haul_screen() -> void:
 # taking them in.
 func test_every_chest_the_report_dropped_is_on_the_screen_together() -> void:
 	_ui.pick(0)
-	_report_beat(_ui)
+	# Queued BEFORE the report: the resolve can land instantly now (§7.4), and
+	# whenever it lands it takes the whole queue with it.
 	_ui._drop_queue.append({"items": [Data.reward_item2_pool_of(0)[0]]})
 	_ui._drop_queue.append({"items": [Data.reward_item2_pool_of(1)[0],
 		Data.reward_item2_pool_of(2)[0]]})
+	_report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
@@ -5122,12 +5140,16 @@ func test_the_shelf_is_borrowed_and_handed_back_to_the_page() -> void:
 	var hub: StringName = _a_hub()
 	if hub == &"":
 		return
-	_ui.pick(0)
-	_report_beat(_ui)
-	_ui._pending_shop = hub
-	# _open_post_game only claims a shelf where the player is actually STANDING.
+	# Standing IN the hub with its shelf owed — the state _open_post_game claims a
+	# shelf in. The screen is opened directly rather than reported into: a report
+	# moves the run to the card it just played and builds the screen in the same
+	# breath now that the resolve can land instantly (§7.4), so there is no moment
+	# in between to be standing somewhere else.
 	GameState.current_game_id = hub
-	_ui._end_resolve()
+	_ui._pending_shop = hub
+	_ui._post_snapshot = {"game": Data.get_game(hub), "beaten": true,
+		"escaped": false, "amulet": false, "res": {}}
+	_ui._open_post_game()
 	var screen := _haul()
 	assert_not_null(screen)
 	if screen == null:
@@ -5148,10 +5170,16 @@ func test_the_shelf_is_borrowed_and_handed_back_to_the_page() -> void:
 # round is announced between two games, and this screen is what stands between
 # them. Marking the round announced here is what stops the popup saying it again.
 func test_a_boss_round_warns_on_the_haul_screen_and_not_twice() -> void:
+	# A REAL boss round, arranged rather than injected: the report rebuilds the
+	# offering (and with it `_boss_round`) before the screen is built, and the
+	# resolve can land instantly now (§7.4), so there is no gap to set the flag in.
+	# One game short of a tier capstone is a boss round on the other side of it.
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+	_ui._build_choices()
 	_ui.pick(0)
-	_report_beat(_ui)
-	_ui._boss_round = true
 	_ui._boss_notice_for = -1
+	_report_beat(_ui)
+	assert_true(_ui._boss_round, "the game just played put the run on a boss round")
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
