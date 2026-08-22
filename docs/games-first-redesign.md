@@ -1387,6 +1387,44 @@ ladder as every other rarity draw in the game (`Data.roll_rarity_step` — 75% /
 / 5%, with the top step having a 10% chance to bump one further), so Small /
 Medium / Large / Huge come up at exactly those odds (`Data.CHEST_SIZE_CHOICES`).
 
+#### The floor — a chest lands where the body fell
+
+A defeated body's chest is **put on the board, on the square it died in**
+(`GameLoop2.drops`, keyed by cell). It stays there until the player takes it or
+the game is reported. That is the whole point of clearing a goal *during* a
+game: the reward is on the table in front of you rather than banked behind a
+screen you have not reached yet.
+
+- **Clicking it opens it.** The board draws a pressable ✦ token on the square
+  (`BattlefieldView._drop_node`) and reports the press
+  (`drop_clicked` → `Overworld2.collect_floor_drop`), which asks the same
+  `ItemDropModal` the haul screen would have asked with. The floor is a place a
+  chest can be answered **earlier**, not a second kind of reward.
+- **Its card does not say what is inside.** A chest is a "take one of these"
+  question, and reading the answer off a tooltip would make opening it a
+  formality. The card says how big the question is and that leaving it is
+  allowed — which is the interesting half of the decision while a body is still
+  walking toward you.
+- **A chest never blocks anybody.** `fits_at` does not consult the floor, so a
+  body walks onto the square and the chest is **shoved out of the way**
+  (`_displace_drop`, from `_move_entry`): to the nearest free square, measured in
+  squares walked, with ties broken **away from the player** — loot drifts back
+  toward the wilds rather than into your lap. A board with no room left for it
+  sends it **off field**, where it waits on the haul screen like any unclaimed
+  chest.
+- **A body that was not standing anywhere leaves no chest on the floor.** One
+  waiting in the off-grid queue has no square to fall in
+  (`_drop_cell_of` → `OFF_FIELD`), so its chest goes straight to the haul screen.
+- **Reporting the game sweeps the floor** (`sweep_drops`, called from
+  `Overworld2.report` the moment `beat_game` returns). The floor belongs to the
+  game being played; what nobody stopped to pick up — including whatever the
+  bodies that very report cleared just dropped — goes onto the haul screen (§18)
+  rather than vanishing with the board the next game rebuilds.
+
+The floor is saved with the rest of the loop (`_serialize_drops`), and an item id
+the catalog no longer serves is dropped on the way back in — a chest left with
+nothing in it goes with it.
+
 ---
 
 ## 9. OBS companion window
@@ -2433,6 +2471,13 @@ or a machine can hand over loot at any moment, and a payout that did not arrive
 with a report has no haul screen to be a section of. `Overworld2._pump_drops`
 suppresses itself only while `_resolving` — which only a report sets — so an
 out-of-band offer still asks for itself, on the spot.
+
+**The floor arrives here too.** A chest a body left on the board (§8.2) can be
+opened mid-game, on the square it fell in; the ones nobody stopped for are swept
+onto this screen the moment the game is reported
+(`Overworld2._sweep_floor_into_the_queue`, straight after `beat_game`). So the
+spoils column is the whole haul either way, and picking a relic up during the
+game is a matter of *when* you answer for it, never of whether you get to.
 
 **The shelf is borrowed, not moved.** §14's decision that a shop blocks nothing
 and stays for the whole visit is still right; what was missing was it being seen

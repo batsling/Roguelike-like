@@ -402,8 +402,10 @@ static func _ch_board() -> Dictionary:
 				+ "actually reach you down."),
 			_kv("Advance", "Each turn, anything not striking closes one column."),
 			_kv("Strike", "It attacks the moment ANY of its cells is in column 1."),
-			_p("How many turns happen per game is the pressure ladder from §2 — "
-				+ "one at a distance, three on the Amulet's doorstep."),
+			_p("Turns come from two places. Every run you LOSE at the game you "
+				+ "are playing gives the board one, straight away. Handing the "
+				+ "game in gives it only the EXTRA turns the Amulet's pull owes "
+				+ "— none out in the wilds, up to two on its doorstep."),
 			_h("Size is a real thing"),
 			_p("Enemies are not all one cell. A body two cells wide reaches the "
 				+ "front line in fewer games, because its leading edge starts "
@@ -434,6 +436,17 @@ static func _ch_board() -> Dictionary:
 				+ "Forward is legal too, and that is your business."),
 			_note("Clicking any body opens its card: its goal, its damage, its "
 				+ "tier, and the verbs aimed at it."),
+			_h("✦ Chests on the floor"),
+			_p("A body you clear drops its chest on the square it died in, and it "
+				+ "lies there for the rest of the game. Click it to open it — "
+				+ "same question as always, take one or leave it — without "
+				+ "waiting for the reward screen."),
+			_p("A body walking onto a chest SHOVES it: to the nearest free "
+				+ "square, and away from you when it has the choice. A board with "
+				+ "no room left pushes it off the field."),
+			_note("Nothing is ever lost by leaving one. Everything still on the "
+				+ "floor when you report the game goes to the reward screen with "
+				+ "the rest of the haul."),
 		],
 	}
 

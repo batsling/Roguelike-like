@@ -1792,3 +1792,138 @@ func _catalog_enemy() -> GoalEnemyData:
 func _any_status() -> StringName:
 	var all: Array = Data.all_statuses()
 	return (all[0] as StatusData).id if not all.is_empty() else &""
+
+# --- the floor: chests lying where their body fell (§8.2) -------------------
+
+# A pair of real item ids, so a chest laid on the floor survives the round trip
+# through a save (which resolves ids back through Data and drops the ones the
+# catalog no longer serves).
+func _floor_ids() -> Array:
+	return [&"anchor", &"barricade"]
+
+func test_a_chest_lies_on_the_square_it_was_dropped_on() -> void:
+	var at := Vector2i(2, 1)
+	assert_eq(GameLoop2.place_drop(at, _floor_ids()), at, "it went down where it was put")
+	assert_true(GameLoop2.has_drop(at), "and the square is holding it")
+	var held: Dictionary = GameLoop2.drop_at(at)
+	assert_eq((held.get("items", []) as Array).size(), 2, "both items, as one chest")
+	assert_false(bool(held.get("boss", false)), "nothing said a boss left it")
+
+func test_picking_a_chest_up_takes_it_off_the_floor() -> void:
+	var at := Vector2i(2, 1)
+	GameLoop2.place_drop(at, _floor_ids())
+	var held: Dictionary = GameLoop2.take_drop(at)
+	assert_eq((held.get("items", []) as Array).size(), 2, "the payload came back")
+	assert_false(GameLoop2.has_drop(at), "and the square is bare again")
+	assert_eq(GameLoop2.take_drop(at), {}, "taking from bare ground gets nothing")
+
+func test_two_chests_never_share_a_square() -> void:
+	var at := Vector2i(2, 1)
+	GameLoop2.place_drop(at, [&"anchor"])
+	var second: Vector2i = GameLoop2.place_drop(at, [&"barricade"])
+	assert_ne(second, at, "the second one went looking for room of its own")
+	assert_ne(second, GameLoop2.OFF_FIELD, "an empty board has plenty")
+	assert_eq(GameLoop2.drop_cells().size(), 2, "two chests, two squares")
+
+func test_a_chest_with_nothing_in_it_is_not_a_chest() -> void:
+	assert_eq(GameLoop2.place_drop(Vector2i(2, 1), []), GameLoop2.OFF_FIELD,
+		"an empty offer never reaches the floor")
+	assert_true(GameLoop2.drop_cells().is_empty())
+
+func test_a_body_walking_onto_a_chest_shoves_it_aside() -> void:
+	var inst: int = _choose_solo(_enemy(1))
+	var col: int = _col_of(inst)
+	var row: int = int(_entry(inst).get("row", 0))
+	# Directly in its path: the square it steps into on its next turn.
+	var ahead := Vector2i(col - 1, row)
+	assert_eq(GameLoop2.place_drop(ahead, _floor_ids()), ahead)
+	_turn()
+	assert_false(GameLoop2.has_drop(ahead), "the body is standing there now")
+	assert_eq(GameLoop2.drop_cells().size(), 1, "and the chest is still on the board")
+	var moved: Vector2i = GameLoop2.drop_cells()[0]
+	assert_eq((GameLoop2.drop_at(moved).get("items", []) as Array).size(), 2,
+		"with what was in it")
+
+func test_a_shoved_chest_drifts_away_from_the_player() -> void:
+	# Column 2, mid-board: the free squares one step away are column 1 (toward the
+	# player) and column 3 (away). The tie breaks away.
+	var at := Vector2i(2, 1)
+	GameLoop2.place_drop(at, _floor_ids())
+	var to: Vector2i = GameLoop2._displace_drop(at)
+	assert_eq(to.y, at.y, "it slid along the row it was on")
+	assert_gt(to.x, at.x, "and backward, toward the wilds rather than into your lap")
+
+func test_a_chest_with_nowhere_to_go_leaves_the_field() -> void:
+	# Fill every square on the board with a chest, then shove one more.
+	for col in range(1, GameLoop2.grid_cols() + 1):
+		for row in range(GameLoop2.grid_rows()):
+			GameLoop2.drops[Vector2i(col, row)] = {"items": [&"anchor"], "boss": false}
+	var full: int = GameLoop2.drop_cells().size()
+	assert_eq(GameLoop2._displace_drop(Vector2i(1, 0)), GameLoop2.OFF_FIELD,
+		"no room left anywhere")
+	assert_eq(GameLoop2.drop_cells().size(), full - 1,
+		"and the one that was shoved is gone from the board")
+
+func test_reporting_the_game_sweeps_the_floor() -> void:
+	GameLoop2.place_drop(Vector2i(2, 1), [&"anchor"])
+	GameLoop2.place_drop(Vector2i(3, 0), [&"barricade"])
+	var swept: Array = GameLoop2.sweep_drops()
+	assert_eq(swept.size(), 2, "both chests came off the floor together")
+	assert_true(GameLoop2.drop_cells().is_empty(), "and the floor is bare")
+	assert_true(GameLoop2.sweep_drops().is_empty(), "sweeping a bare floor finds nothing")
+
+func test_the_floor_survives_a_save() -> void:
+	var at := Vector2i(2, 1)
+	GameLoop2.place_drop(at, _floor_ids(), true)
+	var saved: Dictionary = GameLoop2.serialize()
+	GameLoop2.reset()
+	assert_true(GameLoop2.drop_cells().is_empty(), "reset cleared it")
+	GameLoop2.restore(saved)
+	assert_true(GameLoop2.has_drop(at), "and the save put it back where it lay")
+	var held: Dictionary = GameLoop2.drop_at(at)
+	assert_eq((held.get("items", []) as Array).size(), 2, "with both items")
+	assert_true(bool(held.get("boss", false)), "and still marked as a boss's")
+
+func test_a_save_drops_a_chest_the_catalog_no_longer_serves() -> void:
+	GameLoop2.place_drop(Vector2i(2, 1), [&"no_such_item_at_all"])
+	var saved: Dictionary = GameLoop2.serialize()
+	GameLoop2.reset()
+	GameLoop2.restore(saved)
+	assert_true(GameLoop2.drop_cells().is_empty(),
+		"a chest whose whole contents went stale is not restored empty")
+
+func test_a_defeat_says_which_square_the_body_fell_in() -> void:
+	var inst: int = _choose_solo(_enemy(1))
+	var entry: Dictionary = _entry(inst)
+	var where := Vector2i(int(entry.get("col", 0)), int(entry.get("row", 0)))
+	var fell: Array = []
+	GameLoop2.enemy_defeated.connect(func(_e, cell): fell.append(cell))
+	GameLoop2.beat_game(false, [inst])
+	assert_eq(fell.size(), 1, "one body cleared, one defeat announced")
+	assert_eq(fell[0], where, "and it says the square the body was standing in")
+
+func test_a_body_waiting_off_the_board_has_no_square_to_fall_in() -> void:
+	var inst: int = _choose_solo(_enemy(1))
+	# Park it in the off-grid queue, which is where a body with nowhere to stand
+	# waits — nothing there is on a square, so nothing can be laid on one.
+	for entry in GameLoop2.stack:
+		if int(entry.get("instance", -1)) == inst:
+			entry["col"] = GameLoop2.offgrid_col()
+	var fell: Array = []
+	GameLoop2.enemy_defeated.connect(func(_e, cell): fell.append(cell))
+	GameLoop2.beat_game(false, [inst])
+	assert_eq(fell.size(), 1)
+	assert_eq(fell[0], GameLoop2.OFF_FIELD, "its chest has nowhere on the board to land")
+
+func test_taking_back_a_lost_run_puts_the_floor_back_too() -> void:
+	var inst: int = _choose_solo(_enemy(1))
+	var col: int = _col_of(inst)
+	var row: int = int(_entry(inst).get("row", 0))
+	var ahead := Vector2i(col - 1, row)
+	GameLoop2.place_drop(ahead, _floor_ids())
+	GameLoop2.log_attempt()
+	assert_false(GameLoop2.has_drop(ahead), "the turn walked a body over it")
+	assert_eq(GameLoop2.undo_attempt(), "turn", "and the tick is taken back")
+	assert_true(GameLoop2.has_drop(ahead),
+		"so the chest is lying where it lay before the turn happened")
+	assert_eq(GameLoop2.drop_cells().size(), 1, "and only there")

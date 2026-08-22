@@ -53,16 +53,21 @@ extends Node
 #        whether it walked on this game or three games ago. Defeated + item drop at
 #        0 Health; a survivor (e.g. an Alien-Baby-buffed two-Health enemy) stays on
 #        the board and holds its fire for the whole game, because it was engaged.
-#     2. The stack takes its TURNS — one each for the game just played, plus the
-#        BONUS turns the Amulet's pull adds on the end (0 out in the wilds, up to
-#        2 on its doorstep, §7.4). Each turn every enemy acts once: the front
-#        column attacks for its damage (shields, then hp), everything behind it
-#        steps a column closer, and a stun costs one turn of either.
+#     2. The stack takes its EXTRA TURNS, and only those (§7.4): a game handed in
+#        moves nobody by itself, and what the Amulet's pull adds on the end is 0
+#        out in the wilds, 1 once they have your scent and 2 on its doorstep. Each
+#        turn every enemy acts once: the front column attacks for its damage
+#        (shields, then hp), everything behind it steps a column closer, and a
+#        stun costs one turn of either. The turns the board takes the REST of the
+#        time come one at a time, off the runs you lose at the game (§3.2).
 #     3. Any shields still standing expire — they belonged to that game.
 # Reach & clear the Amulet game (clear_amulet) to win; hp <= 0 to lose.
 
 signal loop_changed()                 # stack / arrivals / run-state mutated (HUD hook)
-signal enemy_defeated(enemy)          # a GoalEnemyData was defeated (drop granted)
+# A GoalEnemyData was defeated, and WHERE it fell (§8.2) — the cell its chest is
+# to be laid on. OFF_FIELD for a body that was not standing anywhere (one waiting
+# in the off-grid queue), which sends its chest straight to the haul screen.
+signal enemy_defeated(enemy, cell)
 signal player_hit(damage, blocked)    # a stacked enemy landed a hit this resolve
 # A try at the current game was logged or taken back. `cost` is "turn" — the one
 # thing a tick costs — or, from a save written before that was true, "shield" or
@@ -230,6 +235,21 @@ var bashed: Array[StringName] = []
 # node, so a transmute sticks to the SPOT rather than to one offering.
 var transmuted: Dictionary = {}
 
+# THE FLOOR (§8.2). Cell -> the chest a defeated body left where it fell:
+#   {"items": [item_id, …], "boss": bool}
+#
+# The loop owns WHERE a chest is, because the loop is the thing that walks bodies
+# over it — a body stepping onto a cell shoves the chest out of the way
+# (_displace_drop), and with nowhere left to shove it the chest goes OFF FIELD and
+# is banked for the screen the game ends on. The loop does not own what is IN one:
+# the offer is rolled by the overworld out of `Data` and stored here as ids, which
+# is what keeps this file scene-free and the save JSON-safe.
+var drops: Dictionary = {}
+
+# Where a chest goes when the board has no room left for it: not a cell, and not
+# lost either — the overworld sweeps these onto the haul screen (§18).
+const OFF_FIELD := Vector2i(-1, -1)
+
 var run_over: bool = false
 var won: bool = false
 var defeated_count: int = 0
@@ -312,6 +332,7 @@ func reset() -> void:
 	stack.clear()
 	tiles.clear()
 	units.clear()
+	drops.clear()
 	_clear_attempts()
 	last_attempt_turn = {}
 	hurt_this_game = false
@@ -415,6 +436,7 @@ func serialize() -> Dictionary:
 		# there was nothing to put there.
 		"tiles": _serialize_cells(tiles, "games"),
 		"units": _serialize_cells(units, "health"),
+		"drops": _serialize_drops(),
 		"bashed": bashed_ids,
 		"transmuted": _transmuted_ids(),
 		"run_over": run_over,
@@ -470,6 +492,7 @@ func restore(data: Dictionary) -> void:
 	# draw as a blank badge and trigger nothing.
 	tiles = _deserialize_cells(data.get("tiles", []), "games", func(id): return Data.get_tile(id) != null)
 	units = _deserialize_cells(data.get("units", []), "health", func(id): return Data.get_unit(id) != null)
+	_restore_drops(data.get("drops", []))
 	bashed.clear()
 	for gid in data.get("bashed", []):
 		bashed.append(StringName(gid))
@@ -991,6 +1014,7 @@ func _loop_snapshot() -> Dictionary:
 		"arrivals": arrivals.duplicate(),
 		"tiles": tiles.duplicate(true),
 		"units": units.duplicate(true),
+		"drops": drops.duplicate(true),
 		"bashed": bashed.duplicate(),
 		"transmuted": transmuted.duplicate(),
 		"run_over": run_over,
@@ -1013,6 +1037,7 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	arrivals = (snap.get("arrivals", []) as Array).duplicate()
 	tiles = (snap.get("tiles", {}) as Dictionary).duplicate(true)
 	units = (snap.get("units", {}) as Dictionary).duplicate(true)
+	drops = (snap.get("drops", {}) as Dictionary).duplicate(true)
 	bashed = (snap.get("bashed", []) as Array).duplicate()
 	transmuted = (snap.get("transmuted", {}) as Dictionary).duplicate()
 	run_over = bool(snap.get("run_over", false))
@@ -1244,8 +1269,11 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		# enemy dies to a goal it would otherwise have survived and a Dexterity
 		# one spends a shield instead of dying.
 		var e: GoalEnemyData = stack[idx]["enemy"]
+		# Where it is standing, read BEFORE the hit: a lethal one takes the body off
+		# the board, and the square it fell in is where its chest goes (§8.2).
+		var fell: Vector2i = _drop_cell_of(stack[idx])
 		if _damage_enemy(idx, GOAL_HIT):
-			_defeat(e, true, res)
+			_defeat(e, true, res, fell)
 		else:
 			hit_this_game[int(inst)] = true
 	# The game is over, so whatever arrived with it is released: those bodies
@@ -1395,9 +1423,10 @@ func fulfill(instance: int) -> bool:
 	if idx < 0:
 		return false
 	var e: GoalEnemyData = stack[idx]["enemy"]
+	var fell: Vector2i = _drop_cell_of(stack[idx])
 	if _damage_enemy(idx, GOAL_HIT):
 		var res := {"defeats": [], "drops": 0}
-		_defeat(e, true, res)
+		_defeat(e, true, res, fell)
 		_admit_offgrid()
 	loop_changed.emit()
 	return true
@@ -1601,6 +1630,173 @@ const ON_TURN_START := &"enemy_turn_start"
 # that braces.
 const MAX_CHAIN: int = 16
 var _chain_depth: int = 0
+
+# THE SQUARE A BODY'S CHEST IS LAID ON: its leading cell — the one nearest the
+# player — so a long enemy leaves its loot at the end you were looking at rather
+# than somewhere behind its own art. OFF_FIELD for a body that is not standing on
+# the board at all (one still waiting in the off-grid queue), whose chest has
+# nowhere to fall and goes to the haul screen instead.
+func _drop_cell_of(entry: Dictionary) -> Vector2i:
+	var cells: Array = entry_cells(entry)
+	if cells.is_empty():
+		return OFF_FIELD
+	var best: Vector2i = cells[0]
+	for cell in cells:
+		if int(cell.x) < best.x:
+			best = cell
+	return best
+
+# --- the floor: chests lying where their body fell (§8.2) -------------------
+#
+# A defeated body drops its chest ON THE SQUARE IT DIED IN, and it stays there
+# until the player picks it up or the game is reported. That is the whole of what
+# makes a kill worth making mid-game: the reward is on the table in front of you
+# rather than banked behind a screen you have not reached yet.
+#
+# A chest never blocks anybody. `fits_at` does not consult this dictionary, so a
+# body walks onto the square and the chest is SHOVED OUT OF THE WAY instead
+# (_displace_drop, from _move_entry) — which is the rule that keeps the board's
+# movement honest: loot can be pushed around by the fight but never stops it.
+
+# What is lying on `cell`, or {} for bare ground.
+func drop_at(cell: Vector2i) -> Dictionary:
+	var held = drops.get(cell)
+	return held if held is Dictionary else {}
+
+func has_drop(cell: Vector2i) -> bool:
+	return drops.has(cell)
+
+# Every square with something on it — what the board draws tokens for.
+func drop_cells() -> Array:
+	return drops.keys()
+
+# Put a chest on the board at `cell`. Something already lying there (or a cell
+# off the board) sends it looking for room the same way a body walking in would
+# (_free_drop_cell), and a board with no room at all sends it OFF FIELD. Returns
+# where it actually landed, or OFF_FIELD.
+func place_drop(cell: Vector2i, items: Array, from_boss: bool = false) -> Vector2i:
+	if items.is_empty():
+		return OFF_FIELD
+	var ids: Array = []
+	for id in items:
+		ids.append(StringName(id))
+	var at: Vector2i = cell
+	if not _on_board(at.x, at.y) or drops.has(at):
+		at = _free_drop_cell(cell)
+	if at == OFF_FIELD:
+		return OFF_FIELD
+	drops[at] = {"items": ids, "boss": from_boss}
+	loop_changed.emit()
+	return at
+
+# Take what is on `cell` — the player picked it up. Returns the payload, or {}.
+func take_drop(cell: Vector2i) -> Dictionary:
+	if not drops.has(cell):
+		return {}
+	var held: Dictionary = drops[cell]
+	drops.erase(cell)
+	loop_changed.emit()
+	return held
+
+# Sweep the floor: everything still lying on the board, taken off it. Called when
+# a game is reported — whatever the player did not pick up during the game goes
+# onto the haul screen instead of vanishing with the board (§18).
+func sweep_drops() -> Array:
+	var out: Array = []
+	for cell in drops.keys():
+		out.append(drops[cell])
+	drops.clear()
+	if not out.is_empty():
+		loop_changed.emit()
+	return out
+
+# A body is moving onto `cell` and something is lying there: shove it to the
+# NEAREST FREE SQUARE, preferring one FURTHER FROM THE PLAYER when two are equally
+# close. Loot drifts back toward the wilds rather than into your lap, so a
+# contested board makes reaching a chest worth something. Returns where it went,
+# or OFF_FIELD when the board has no room left for it.
+func _displace_drop(cell: Vector2i) -> Vector2i:
+	if not drops.has(cell):
+		return cell
+	var held: Dictionary = drops[cell]
+	drops.erase(cell)
+	# NEVER back onto the square it is being shoved off. In the live path the body
+	# has already moved in, so `occupancy` rules the cell out anyway — but "get out
+	# of the way" must not depend on the caller having moved first, or the rule
+	# reads as "sometimes".
+	var to: Vector2i = _free_drop_cell(cell, cell)
+	if to != OFF_FIELD:
+		drops[to] = held
+	return to
+
+# The nearest square to `from` that a chest can lie on: no body standing in it, no
+# unit on it, no other chest, and on the board. Ties break TOWARD THE BACK (the
+# higher column), which is away from the player. OFF_FIELD when there is none.
+# `avoid` is one more square that is out of bounds for this search — the one a
+# chest is being shoved OFF (see _displace_drop).
+#
+# Distance is measured in squares walked (Manhattan), not in a straight line: the
+# board is a grid the bodies cross a column at a time, and "nearest" should mean
+# the same thing to the loot as it does to them.
+func _free_drop_cell(from: Vector2i, avoid: Vector2i = OFF_FIELD) -> Vector2i:
+	var taken: Dictionary = occupancy()
+	var best: Vector2i = OFF_FIELD
+	var best_key: Array = []
+	for col in range(1, grid_cols() + 1):
+		for row in range(grid_rows()):
+			var cell := Vector2i(col, row)
+			if cell == avoid or taken.has(cell) or drops.has(cell) or units.has(cell):
+				continue
+			# distance first, then the FURTHEST column, then the nearest row — so a
+			# tie is broken away from the player and then stably.
+			var key: Array = [absi(col - from.x) + absi(row - from.y), -col,
+				absi(row - from.y)]
+			if best == OFF_FIELD or _key_before(key, best_key):
+				best = cell
+				best_key = key
+	return best
+
+# Lexicographic "is a closer match than", for _free_drop_cell's sort key.
+func _key_before(a: Array, b: Array) -> bool:
+	for i in range(mini(a.size(), b.size())):
+		if int(a[i]) != int(b[i]):
+			return int(a[i]) < int(b[i])
+	return false
+
+# The floor as JSON-safe rows, and back. Item ids that the catalog no longer
+# serves are dropped on the way in, and a chest left with nothing in it goes with
+# them — the same rule a stale enemy id gets.
+func _serialize_drops() -> Array:
+	var out: Array = []
+	for cell in drops.keys():
+		var held: Dictionary = drops[cell]
+		var ids: Array = []
+		for id in held.get("items", []):
+			ids.append(String(id))
+		out.append({"col": int(cell.x), "row": int(cell.y), "items": ids,
+			"boss": bool(held.get("boss", false))})
+	return out
+
+func _restore_drops(raw) -> void:
+	drops.clear()
+	if not (raw is Array):
+		return
+	for row in raw:
+		if not (row is Dictionary):
+			continue
+		var cell := Vector2i(int(row.get("col", 0)), int(row.get("row", 0)))
+		if not _on_board(cell.x, cell.y):
+			continue
+		var ids: Array = []
+		for id in row.get("items", []):
+			var sid := StringName(id)
+			if Data.get_item2(sid) != null:
+				ids.append(sid)
+		if ids.is_empty():
+			continue
+		drops[cell] = {"items": ids, "boss": bool(row.get("boss", false))}
+
+# --- the ground: tile effects and units (§17) -------------------------------
 
 # What is on `cell`, or null. The two lookups are separate because the two things
 # are: a caller asking "is this cell on fire" must not have to know that a mine
@@ -1862,6 +2058,12 @@ func _move_entry(entry: Dictionary, row: int, col: int) -> bool:
 			entered.append(cell)
 	if entered.is_empty():
 		return true
+	# ANYTHING LYING THERE GETS OUT OF THE WAY (§8.2). Before the ground's own
+	# triggers, because a chest is not part of the ground: it is loot on the floor,
+	# and a body walking over it shoves it aside rather than setting it off.
+	for cell in entered:
+		if drops.has(cell):
+			_displace_drop(cell)
 	return _fire_cell_triggers(entry, entered, ON_ENTER)
 
 # The tile effects burn down by one GAME. Called once from beat_game, when the
@@ -2400,7 +2602,8 @@ func escort_enemy() -> GoalEnemyData:
 
 # --- internals ------------------------------------------------------------
 
-func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
+func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary,
+		fell: Vector2i = OFF_FIELD) -> void:
 	defeated_count += 1
 	if res.has("defeats"):
 		res["defeats"].append(enemy)
@@ -2441,7 +2644,7 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
 	# sit here, under the same rule about what counts as a defeat: a bombed body
 	# never reaches this function (see `bomb`), so it feeds neither.
 	TriggerBus.enemy_killed.emit({"enemy": enemy})
-	enemy_defeated.emit(enemy)
+	enemy_defeated.emit(enemy, fell)
 
 # Applies `damage` to the player. ONE SHIELD STOPS ONE INSTANCE OF DAMAGE (§3) —
 # the whole of it, whatever its size — and with no shield left it comes off

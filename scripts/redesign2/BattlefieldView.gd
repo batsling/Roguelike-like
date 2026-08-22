@@ -39,6 +39,10 @@ signal item_aimed_at_cell(item: ItemData, cell: Vector2i)
 signal bomb_cell_requested(cell: Vector2i)
 # An enemy was clicked: the host opens the inspect card for it.
 signal enemy_inspected(entry: Dictionary, col: int)
+# A chest lying on the board was clicked (§8.2). The board knows where the thing
+# is; what is inside it and what taking it costs are the host's, so this carries
+# the square and nothing else.
+signal drop_clicked(cell: Vector2i)
 # The mouse moved onto (or off) a body. The host lights the checklist row that
 # body's goal is written on, so "which of these lines is that thing" is answered
 # by pointing at either half of the pair. `instance` is the body; `hovered` says
@@ -1082,6 +1086,13 @@ func _rebuild_ground() -> void:
 			_ground_layer.add_child(_unit_node(cell, unit))
 	for cell in furnished.keys():
 		_ground_layer.add_child(_ground_hover(cell))
+	# The chests LAST, so they take the press on a square that also has ground under
+	# them: tree order is input order here (see the header above), and a chest is the
+	# one thing on bare floor that answers a click rather than a hover. Bodies are
+	# mounted in the layer above and would still win — which never comes up, because
+	# a body moving onto a chest shoves it aside (GameLoop2._move_entry).
+	for cell in GameLoop2.drop_cells():
+		_ground_layer.add_child(_drop_node(cell))
 
 # The tile's art, sitting on the bottom half of its cell. THE ART AND NOTHING
 # ELSE — no panel behind it and no outline around it, so whatever the art doesn't
@@ -1121,6 +1132,70 @@ func _unit_node(cell: Vector2i, unit: UnitData) -> Control:
 		art.size = Vector2(side, side)
 		holder.add_child(art)
 	return holder
+
+# --- chests on the floor (§8.2) --------------------------------------------
+
+# The glyph a chest is drawn with, here and on the modal that opens it
+# (ItemDropModal's heading) — one symbol for the thing on the ground and the
+# question it asks, so a player who has seen one recognises the other.
+const CHEST_GLYPH := "✦"
+# The chest's gold, and how much of the cell the token takes. Smaller than a body
+# for the reason a unit is: this is something LYING on the square, not standing
+# on it.
+const CHEST_GOLD := Color(1.0, 0.83, 0.36)
+const CHEST_ART_FRACTION: float = 0.58
+
+# A chest lying on `cell`: a pressable token in the middle of the square. Pressing
+# it asks the host to open it (`drop_clicked`), which is the same modal the haul
+# screen would have asked with — the floor is a place a chest can be answered
+# EARLIER, not a second kind of reward.
+func _drop_node(cell: Vector2i) -> Control:
+	var held: Dictionary = GameLoop2.drop_at(cell)
+	var side: int = maxi(20, int(round(_cell * CHEST_ART_FRACTION)))
+	var btn := Button.new()
+	btn.position = _cell_pos(cell.y, cell.x) + Vector2((_cell - side) * 0.5, (_cell - side) * 0.5)
+	btn.size = Vector2(side, side)
+	btn.custom_minimum_size = Vector2(side, side)
+	btn.text = CHEST_GLYPH
+	btn.add_theme_color_override("font_color", CHEST_GOLD)
+	btn.add_theme_color_override("font_hover_color", Color.WHITE)
+	btn.add_theme_font_size_override("font_size", maxi(12, int(side * 0.5)))
+	# A boss's chest is ringed thicker, the same way its body is: what fell there is
+	# worth crossing the board for.
+	var ring: int = 3 if bool(held.get("boss", false)) else 2
+	btn.add_theme_stylebox_override("normal",
+		UITheme.flat(Color(CHEST_GOLD, 0.16), 6, 0, ring, CHEST_GOLD))
+	btn.add_theme_stylebox_override("hover",
+		UITheme.flat(Color(CHEST_GOLD, 0.40), 6, 0, ring, Color.WHITE))
+	btn.add_theme_stylebox_override("pressed",
+		UITheme.flat(Color(CHEST_GOLD, 0.58), 6, 0, ring, Color.WHITE))
+	btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 6, 0, 0))
+	HoverCard.attach(btn, drop_hover(cell))
+	btn.pressed.connect(func(): drop_clicked.emit(cell))
+	return btn
+
+# What a chest on the floor says when you point at it. It does NOT list what is
+# inside: a chest is a "take one of these" question and reading the answer off a
+# tooltip would make opening it a formality. It says how big the question is, and
+# that leaving it is allowed — because leaving it is the interesting half of the
+# decision while a body is still walking toward you.
+func drop_hover(cell: Vector2i) -> Dictionary:
+	var held: Dictionary = GameLoop2.drop_at(cell)
+	if held.is_empty():
+		return {}
+	var count: int = (held.get("items", []) as Array).size()
+	var lines: Array = [
+		"Click to open it: take one of %d, or leave it." % count,
+		"Left lying when you report the game, it goes to the haul screen with everything else.",
+	]
+	if bool(held.get("boss", false)):
+		lines.append("A boss left this.")
+	return {
+		"title": "%s Chest of %d" % [CHEST_GLYPH, count],
+		"subtitle": "On the floor, column %d, row %d" % [cell.x, cell.y + 1],
+		"lines": lines,
+		"accent": CHEST_GOLD,
+	}
 
 # The invisible hover region that reads a furnished cell. One per cell, carrying
 # the same HoverCard an enemy, an item and a status get — the ground used to

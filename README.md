@@ -498,7 +498,11 @@ node and its script.
     **borrowed**, not moved — the same `ShopPanel2` node is handed back to the page
     on the way out, so §14's "a shop stays for the whole visit" still holds.
 - **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). Ordinary
-  enemy drops don't open it: they land on the post-combat screen (above).
+  enemy drops don't open it: they land on the board, on the square the body fell
+  in (`GameLoop2.drops`, drawn as a pressable `✦` by `BattlefieldView._drop_node`
+  and opened mid-game by `Overworld2.collect_floor_drop`), and whatever is still
+  lying there when the game is reported is swept onto the post-combat screen
+  (above).
 - **`RateGameModal.gd`** — the 1-10 tier-list score for a game. Strictly opt-in:
   it only ever opens from a **★ Rate** button (on the report panel while you're
   playing a game, and on the select screen for the game you last reported).

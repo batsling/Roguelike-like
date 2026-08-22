@@ -1604,6 +1604,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 	# checklist lists the bodies that walked on this game among all the others, so
 	# they are already in `fulfilled_instances` if the player ticked them.
 	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims)
+	# THE FLOOR IS SWEPT AT THE REPORT (§8.2). A chest lying on the board belongs to
+	# the game being played; handing the game in ends that, so anything nobody
+	# stopped to pick up — including whatever the bodies this very report cleared
+	# just dropped — goes onto the haul screen instead of sitting on a board the
+	# next game rebuilds.
+	_sweep_floor_into_the_queue()
 	# What a status charged for a game it went unanswered (§13, Burn). GameLoop2 is
 	# a model node and says nothing to the player, so the bite is announced here,
 	# on the same terms as a curse's.
@@ -3864,7 +3870,7 @@ func _stack_summary() -> String:
 # size ladder a [chest reward] walks (Data.chest_reward_sizes), and a Medium chest
 # is the same modal offering two. A body that isn't a boss always drops the Small
 # one, so the common case is untouched — same single item, same two buttons.
-func _on_enemy_defeated(enemy: GoalEnemyData) -> void:
+func _on_enemy_defeated(enemy: GoalEnemyData, cell: Vector2i) -> void:
 	if GameLoop2.run_over:
 		return
 	var from_boss: bool = enemy != null and enemy.is_boss()
@@ -3877,10 +3883,68 @@ func _on_enemy_defeated(enemy: GoalEnemyData) -> void:
 		var offer: Array = _roll_chest(from_boss, int(Data.CHEST_SIZE_CHOICES[size]))
 		if offer.is_empty():
 			continue
+		# ON THE FLOOR, where the body fell (§8.2). A kill you make mid-game puts
+		# its reward on the board in front of you rather than behind a screen you
+		# have not reached yet — that is what makes clearing a goal DURING a game
+		# worth doing. What nobody picks up is swept onto the haul screen when the
+		# game is reported (_sweep_floor_into_the_queue).
+		var ids: Array = []
+		for item in offer:
+			ids.append((item as ItemData).id)
+		if cell != GameLoop2.OFF_FIELD \
+				and GameLoop2.place_drop(cell, ids, from_boss) != GameLoop2.OFF_FIELD:
+			continue
+		# Nowhere on the board for it: it goes straight to the screen the game ends
+		# on, which is where an unclaimed chest ends up anyway.
 		_drop_queue.append({"items": offer})
 		queued = true
 	if queued:
 		_pump_drops()
+	if _board != null:
+		_board.refresh()
+
+# A chest lying on the board, picked up (§8.2). The board reports the click; this
+# takes the payload off the floor and asks the ordinary chest question about it,
+# so a relic taken off the ground and one taken off the haul screen are granted,
+# logged and announced by exactly the same path.
+func collect_floor_drop(cell: Vector2i) -> void:
+	var held: Dictionary = GameLoop2.drop_at(cell)
+	if held.is_empty() or GameLoop2.run_over:
+		return
+	if _drop_modal != null and is_instance_valid(_drop_modal):
+		return
+	var offer: Array = _floor_items(held)
+	if offer.is_empty():
+		GameLoop2.take_drop(cell)
+		return
+	GameLoop2.take_drop(cell)
+	if _board != null:
+		_board.refresh()
+	# To the FRONT of the queue and pumped, not opened outright: a chest picked up
+	# by hand is the most immediate question on the page, but a board mid-playback
+	# is still no place for a modal (see _pump_drops) — a lost run's turn can be
+	# sliding bodies past the very chest that was clicked.
+	_drop_queue.push_front({"items": offer})
+	_pump_drops()
+
+# One floor chest's payload as the ItemData the modals deal in. The loop stores
+# ids (it is scene-free and its state is saved), so this is where they come back.
+func _floor_items(held: Dictionary) -> Array:
+	var out: Array = []
+	for id in held.get("items", []):
+		var item: ItemData = Data.get_item2(StringName(id))
+		if item != null:
+			out.append(item)
+	return out
+
+# Everything still lying on the board when a game is reported goes onto the haul
+# screen (§8.2/§18): the floor belongs to the game being played, and what the
+# player did not stop to pick up is still theirs to answer for once.
+func _sweep_floor_into_the_queue() -> void:
+	for held in GameLoop2.sweep_drops():
+		var offer: Array = _floor_items(held)
+		if not offer.is_empty():
+			_drop_queue.append({"items": offer})
 
 # Roll the game's loot payout and queue the question (§4.3). Queued rather than
 # granted so the nine-piece cap can be answered by the player: a full pack turns
@@ -4511,6 +4575,7 @@ func _build_ui() -> void:
 	_board.item_aimed.connect(_on_item_aimed)
 	_board.item_aimed_at_cell.connect(_on_item_aimed_at_cell)
 	_board.enemy_inspected.connect(_show_enemy_info)
+	_board.drop_clicked.connect(collect_floor_drop)
 	# The board points back at the checklist: hovering a body lights the goal row
 	# written about it (_bind_row_to_body).
 	_board.enemy_hovered.connect(_on_enemy_hovered)

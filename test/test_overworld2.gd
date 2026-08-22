@@ -5983,3 +5983,84 @@ func test_the_start_panel_empties_the_controls_row_for_good() -> void:
 	_ui._phase = _ui.Phase.SELECT
 	_ui._render_controls()
 	assert_true(true, "and the row can be filled again without a stale guard")
+
+# --- chests on the floor (§8.2) --------------------------------------------
+#
+# A body cleared while you are still playing leaves its chest ON THE BOARD, on the
+# square it fell in. What the page owes that is three things: draw it, open it
+# when it is clicked, and sweep whatever is left when the game is handed in.
+
+func _floor_chest(cell: Vector2i, ids: Array = [&"anchor"]) -> Vector2i:
+	return GameLoop2.place_drop(cell, ids)
+
+func test_a_chest_on_the_floor_is_drawn_as_a_pressable_token() -> void:
+	_pick_solo(0)
+	var at: Vector2i = _floor_chest(Vector2i(2, 1))
+	_ui._board.refresh()
+	var tokens: Array = []
+	for c in _ui._board._ground_layer.get_children():
+		if c is Button:
+			tokens.append(c)
+	assert_eq(tokens.size(), 1, "one chest on the floor, one thing to press")
+	assert_eq((tokens[0] as Button).text, _ui._board.CHEST_GLYPH,
+		"and it wears the same mark the chest modal does")
+	assert_true(GameLoop2.has_drop(at), "drawing it did not take it off the floor")
+
+func test_the_floor_chest_says_what_it_is_without_saying_what_is_in_it() -> void:
+	_pick_solo(0)
+	var at: Vector2i = _floor_chest(Vector2i(2, 1), [&"anchor", &"barricade"])
+	var card: Dictionary = _ui._board.drop_hover(at)
+	assert_true(String(card.get("title", "")).contains("2"),
+		"it says how big the question is")
+	var lines: String = "\n".join(card.get("lines", []) as Array)
+	assert_true(lines.contains("leave it"), "and that walking past it is allowed")
+	assert_false(lines.to_lower().contains("anchor"),
+		"but not which relics are in it — that is what opening it is for")
+	assert_eq(_ui._board.drop_hover(Vector2i(4, 3)), {}, "bare ground says nothing")
+
+func test_clicking_a_floor_chest_asks_the_ordinary_chest_question() -> void:
+	_pick_solo(0)
+	var at: Vector2i = _floor_chest(Vector2i(2, 1))
+	_ui._board.drop_clicked.emit(at)
+	assert_false(GameLoop2.has_drop(at), "the chest came off the floor with the press")
+	await wait_frames(2)
+	assert_not_null(_ui._drop_modal, "and asked on the spot, mid-game")
+	if _ui._drop_modal != null:
+		_ui._drop_modal.leave()
+	_ui._drop_queue.clear()
+
+func test_a_floor_chest_is_not_opened_twice() -> void:
+	_pick_solo(0)
+	var at: Vector2i = _floor_chest(Vector2i(2, 1))
+	_ui.collect_floor_drop(at)
+	await wait_frames(2)
+	var queued: int = _item_drops()
+	_ui.collect_floor_drop(at)
+	assert_eq(_item_drops(), queued, "the square is empty; a second press finds nothing")
+	if _ui._drop_modal != null:
+		_ui._drop_modal.leave()
+	_ui._drop_queue.clear()
+
+func test_reporting_the_game_sweeps_the_floor_onto_the_haul_screen() -> void:
+	_pick_solo(0)
+	_floor_chest(Vector2i(2, 1))
+	_floor_chest(Vector2i(3, 0), [&"barricade"])
+	_report_beat(_ui)
+	assert_true(GameLoop2.drop_cells().is_empty(),
+		"the floor belonged to the game that was just handed in")
+	_ui._end_resolve()
+	assert_not_null(_ui._post_screen, "and what was on it went where every haul goes")
+	assert_gt(_ui._post_screen._chest_sections.size(), 0)
+	_leave_post_game()
+	_dismiss_event()
+
+func test_a_chest_the_player_took_mid_game_is_not_swept_again() -> void:
+	_pick_solo(0)
+	var at: Vector2i = _floor_chest(Vector2i(2, 1))
+	_ui.collect_floor_drop(at)
+	await wait_frames(2)
+	if _ui._drop_modal != null:
+		_ui._drop_modal.leave()
+	_ui._drop_queue.clear()
+	_ui._sweep_floor_into_the_queue()
+	assert_eq(_item_drops(), 0, "it was answered on the board; there is nothing left to ask")

@@ -11,6 +11,38 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Chests land on the board, on the square the body fell in.**
+
+  A defeated enemy's chest used to exist only as an entry in the page's drop
+  queue, which meant the reward for clearing a goal was always *behind the report*
+  — you could not have it until you had handed the game in. Now the loop owns a
+  **floor** (`GameLoop2.drops`, cell → `{items, boss}`) and the chest is laid on
+  the square the body died in: its leading cell, the one nearest you, so a long
+  enemy leaves its loot at the end you were looking at.
+
+  The board draws a pressable `✦` token there (`BattlefieldView._drop_node`,
+  ringed thicker for a boss's) and reports the press through `drop_clicked` →
+  `Overworld2.collect_floor_drop`, which opens the same `ItemDropModal` the haul
+  screen would have used. The floor is a place a chest can be answered *earlier*,
+  not a second kind of reward. Its hover card says how big the question is and
+  that leaving it is allowed, and deliberately **does not list what is inside** —
+  reading the answer off a tooltip would make opening it a formality.
+
+  **A chest never blocks anybody.** `fits_at` does not consult the floor, so a
+  body walks onto the square and the chest is shoved aside instead
+  (`_displace_drop`, from `_move_entry`): nearest free square by squares walked,
+  ties broken **away from the player**, off field when the board is full. Loot
+  drifts back toward the wilds rather than into your lap, so crossing the board
+  for a chest is worth something. A body cleared while it was still waiting in the
+  off-grid queue has no square to fall in and its chest goes straight to the haul.
+
+  **Reporting the game sweeps the floor** (`sweep_drops`, called from `report` the
+  moment `beat_game` returns), so nothing is ever lost by walking past one — what
+  you did not stop for is on the reward screen with everything else, including
+  whatever the bodies that very report cleared just dropped. The floor saves and
+  restores with the rest of the loop, and an item id the catalog no longer serves
+  is dropped on the way in along with any chest it empties.
+
 - **Extra turns: reporting a game no longer moves the board.**
 
   The amulet ladder was 1 / 2 / 3 turns per reported game, so every game handed
