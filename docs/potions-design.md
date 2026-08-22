@@ -13,16 +13,21 @@ Status: **design decisions locked, unbuilt.** Nothing in `scripts/` knows what a
 potion is yet — but a surprising amount of the plumbing is already there, and §9.1
 is the list.
 
+*A bare §x.y is a section of this document. The spec's own §4.1 (scrolls) and §4.3
+(pills) collide with the numbering here, so those two are always written **spec
+§4.1** / **spec §4.3**; every other spec reference (§7.4, §13, §17, …) has no twin
+here and is left plain.*
+
 ---
 
 ## 1. Decisions locked
 
-Eight forks were settled before any code, in the same discovery-pass style as the
+Sixteen forks were settled before any code, in the same discovery-pass style as the
 [implementation plan](games-first-redesign-implementation-plan.md#1-decisions-locked-in-discovery):
 
 | # | Decision | Choice |
 |---|---|---|
-| 1 | **What a quaffed buff IS** | **Timed player statuses.** Potions introduce the first status with a clock on it, and Strength / Dexterity / Speed grow a player-facing combat side to be worth gaining (§5). |
+| 1 | **What a quaffed buff IS** | **The status's own player side, with a clock.** Strength / Dexterity / Speed already hand their holder a standing goal (§13); a potion grants that goal for one game. No new combat side, no `EnemyOnly` changes (§5.2). |
 | 2 | **What a throw is aimed at** | **A cell.** Red Candle's ground picker (`BattlefieldView.aim_cells`), every square legal, empty ground included — areas centre on the cell (§4.2). |
 | 3 | **Bottle art** | **All 37 colours, both sets mixed.** 15 potions bound per run, 22 sitting out (§6). |
 | 4 | **Loot income** | **Three-way split.** Beating a game pays 1 piece: ⅓ scroll, ⅓ pill, ⅓ potion (§8). |
@@ -30,6 +35,14 @@ Eight forks were settled before any code, in the same discovery-pass style as th
 | 6 | **How long "until the end of the next combat" is** | **Until the next game is resolved**, whichever game that is — it dies in `GameLoop2.beat_game` beside the tiles (§5.1). |
 | 7 | **Potion of Raise Level** | **A free level-up**: the character's normal reward path, without the condition being met (§7.3). |
 | 8 | **Scroll deltas** | **Same doc, same sheet pass** — the rarity column, Amnesia's widened forget and the rest are load-bearing for potions (§10). |
+| 9 | **How a one-game goal scales** | **X as authored.** A +5 potion asks for five of the thing in one game and pays for five: a longer shot at a bigger prize, not a strictly better bottle (§5.2). |
+| 10 | **A clause with a clock** | **Reads that way.** A thrown buff carries the same one-game clock on the body, and every line that quotes the goal says so out loud (§5.3). |
+| 11 | **Fire Potion's throw** | **The whole 3×3 catches fire** — tile, damage and Burn all cover the area (§7.3). |
+| 12 | **Healing thrown at a body** | **Max Health raises its maximum; healing heals it if it can be healed.** A full-health body is a wasted bottle (§4.6). |
+| 13 | **Scroll of Identify** | **Widens to any loot** — scroll, pill or potion — symmetric with Amnesia (§10). |
+| 14 | **Other potion sources** | **None yet.** The ⅓ loot payout is the only tap; shops, drops and boss rewards are later calls (§8). |
+| 15 | **The pack cap** | **Stays 9**, but `LOOT_CAPACITY` becomes a *function* so a future relic can raise it (§8.1). |
+| 16 | **What the run pays for a throw** | Same as a quaff: one piece of loot, echoed and remembered identically. A throw is not a bomb and spends no charge (§4.4). |
 
 ---
 
@@ -38,9 +51,9 @@ Eight forks were settled before any code, in the same discovery-pass style as th
 The run already has two consumables that are one effect behind a mask:
 
 - a **scroll** hides its *name* behind one shared Unidentified art, and reading it
-  is the gamble (§4.1);
+  is the gamble (spec §4.1);
 - a **pill** hides its *name* behind a colour dealt fresh each run, and swallowing
-  it is the gamble (§4.3).
+  it is the gamble (spec §4.3).
 
 A potion is the first one that is **two effects in one bottle**. Every row of
 `potions2.0` authors an `On Player` side and an `On Tile` side, and the player
@@ -111,7 +124,7 @@ Four things the table says out loud:
 The existing spend path, unchanged: the Use button in the loot window, on the info
 card, or on the drop modal's offer, going through `LootSystem.use_loot` /
 `use_entry` so the piece is consumed, echoed and remembered exactly like a pill
-(§4.3). `PotionSystem.quaff_potion` is the resolver, with `ScrollSystem.read_scroll`
+(spec §4.3). `PotionSystem.quaff_potion` is the resolver, with `ScrollSystem.read_scroll`
 and `PillSystem.take_pill`'s signature and answer shape:
 
 ```gdscript
@@ -184,13 +197,13 @@ An Explosive Ampoule looks like a bomb and must not *be* one. It resolves throug
 - it costs no Bomb charge, because it costs a bottle.
 
 What it *does* inherit is the fairness half of the bomb rules: a body killed by a
-thrown potion is **destroyed, not defeated** (no drop, no gold — §4), and a **boss
+thrown potion is **destroyed, not defeated** (no drop, no gold — spec §4), and a **boss
 takes no damage** from one, the same shrug it gives a bomb (§7.1). A Rare bottle
 that one-shot a boss's health would make §7.1 a suggestion.
 
 ### 4.5 Fizzles, not refusals
 
-The rule loot already lives by (§4.3): a Use button that will not press teaches the
+The rule loot already lives by (spec §4.3): a Use button that will not press teaches the
 player the piece is broken. Every dead end here is a fizzle instead, and the piece
 is **identified either way** — `PotionSystem` identifies before it applies anything,
 like both its siblings, so the gamble pays its information out even when the effect
@@ -204,6 +217,27 @@ lands on nothing:
   for unknowns would leak which bottles have no throw.
 - **Potion of Uselessness** does nothing, loudly, in both directions. It is the
   roster's joke and it should read as one on the outcome screen.
+
+### 4.6 Healing a body
+
+Decision #12. Board entries carry `health` and nothing else — how much a body
+*started* with is answered by `GameLoop2.effective_health(enemy)`, recomputed
+rather than stored. Two of the three healing potions need more than that, so an
+entry gains a **`max_health`**, seeded from `effective_health` the moment the body
+spawns and serialized beside `health` and `shield`:
+
+- **`grant_max_health`** (Fruit Juice) raises the ceiling *and* the current pool by
+  the same amount, so a full-health body stays full and a damaged one keeps the
+  damage it has taken. A 1-Health goblin becomes a 3-Health goblin: three bombs,
+  not one. That is the price of a misthrown Rare bottle.
+- **`grant_health`** (Potion of Healing, Extra Healing) heals **up to that
+  ceiling** and no further. Thrown at an undamaged body it is a wasted potion, and
+  the outcome screen says so — *"It is already whole."* Thrown at the boss you have
+  been chipping at for three games, it is a disaster.
+
+`max_health` is worth having anyway: it is the number an enemy health bar has been
+drawing without ever being told, and a bomb chipping a 3-Health body currently has
+nothing to draw a fraction against.
 
 ---
 
@@ -234,55 +268,92 @@ It also means the expiry is *reported*. `beat_game`'s result dict is what the re
 screen reads, so a buff running out says so on the screen where the game ended,
 rather than vanishing between one look at the HUD and the next.
 
-### 5.2 What the statuses have to DO first
+### 5.2 A quaffed buff is the status's OWN player side, borrowed for a game
 
-Here is the prerequisite, and it is bigger than the potion work around it. In
-`statuses2.0` today, Strength / Dexterity / Speed are all `EnemyOnly = Yes` (§13.4)
-— their combat side is felt by a body, and their **player** side is a standing goal
-clause. So "+5 Dexterity" on the player currently means *"if 5 bosses were beaten
-without getting hit, gain a chest"*, which is not a thing that can expire in a game
-and not what the potion means.
+Decision #1, and it is the decision that makes this whole feature small. A status
+already has a player side (§13): it hands its holder a **standing goal**. Dexterity
+on you is *"if X bosses were beaten without getting hit, gain a chest reward"*;
+Strength is *"if the difficulty is increased X times, gain a chest reward and +1
+Bash"*; Speed is *"if beaten in ⟨time⟩ or less, gain a chest reward and +1 Dash"*.
+**A potion grants that goal for one game.** The bottle contributes the clock, not a
+new meaning.
 
-Three of the four need a player-facing meaning:
+That kills the prerequisite this doc originally carried. `EnemyOnly` stays as it is,
+§13.4 does not move, no status grows a player-facing combat number, and no call site
+has to learn to read one. What the potions need is the clock and nothing else.
 
-| Status | On a body (today) | Proposed on the player |
-|---|---|---|
-| **Dexterity** | `shield +{X}` — a pool that eats hits | **The same**: X Shields, into the non-expiring pool (§4.3). Falls straight out of `_grant_shield_for`. |
-| **Strength** | `damage_dealt +{X}` — its hits land for more | **Damage the player deals**: +X on a bomb, a thrown potion, a Landmine. Today all of those are hardcoded to 1 (`BOMB_HIT`); this is what a player-side `damage_dealt` should read. |
-| **Speed** | `tile_move +{X}` — closes X extra columns per step | **Buys turns back**: −X enemy turns per game, floored at 0, against the §7.4 pressure. Speed's own vocabulary, pointed at the clock instead of at a lane. |
-| **Burn** | halves damage dealt | Already player-facing (`EnemyOnly = No`) — nothing to do. |
+It also changes what a buff potion *is*, and the change is for the better: a quaffed
+buff is an **opportunity, not a stat**. Flex Potion is not "you hit harder"; it is
+one game in which raising the difficulty five times pays a Huge chest and a Bash.
+You drink it because of the game you are about to take.
 
-`StatusData.combat_totals(held, StatusData.PLAYER)` already aggregates the player's
-side and `GameState.combat_totals()` already calls it; what is missing is `EnemyOnly`
-being cleared on those three rows and the two or three read sites that would then
-have something to read. **This is a sheet change plus a handful of call sites, and
-it should land before the potions do** — a potion that grants a status nothing reads
-is a potion that does nothing.
+**X is as authored** (decision #9). A +5 potion asks for five of the thing inside
+one game and pays for five of it; a +2 asks for two and pays for two. So Speed
+Potion (+5 Dexterity) is not a bigger Dexterity Potion (+2) — it is a longer shot at
+a bigger prize, and on most games it is a ticket that does not come in. That is
+accepted deliberately: both are known quantities the moment the bottle is
+identified, and choosing which game to spend the long shot on is the play. It does
+mean the four rows that move real numbers — Block, Fruit Juice, and the two healing
+potions — are the roster's reliable half, and the status rows are its swingy half.
 
-### 5.3 Where a clock lives
+**Not everything a potion applies is timed.** Fire Potion's `+3 Burn` on the drinker
+carries **no** clock: Burn is a debt (§13), and a debt that expires by itself is a
+suggestion. Only the rows whose prose says *"until the end of the next combat"* are
+authored with `games=1`.
 
-`GameState.player_statuses` is `id → stacks`, and a stack count has no room for an
-expiry. Two options, and the second is the recommendation:
+### 5.3 A clause with a clock has to read that way
 
-1. **A parallel dict** — `GameState.status_expiry: {id: games_left}`. Cheap, but it
-   means a status can be half-timed: 3 permanent stacks and 2 that expire, one
-   number, no way to know which go.
-2. **A timed *layer*** — `GameState.timed_statuses: Array[{id, stacks, games}]`,
-   summed into the existing reads (`status_stacks`, `combat_totals`,
-   `status_objectives`) rather than stored in them. A potion's stacks are a separate
-   row that expires whole; the permanent ones underneath never move. Two potions
-   drunk before one game are two rows, both dying at the same `beat_game`.
+Decision #10. Thrown, a buff lands on a **body**, where the same status is a
+`clause` — it ANDs onto that enemy's goal and tightens it. It carries the same
+one-game clock, and **every line that quotes the goal says so**:
 
-Option 2 saves as one more array of dictionaries alongside `player_statuses` in
-`SaveSystem`, draws as an ordinary status pip on the board's hero with a `⏱ 1 game`
-line in its tooltip, and is the only one of the two that survives a run holding both
-a permanent Dexterity and a Speed Potion.
+- `GameLoop2.goal_text_for(entry)` is THE goal line (§13.3) — the checklist, the
+  enemy card, the target pickers and the headless `PlaySession2` driver all read it.
+  A timed clause renders inline: *"…and the difficulty must be increased 3 times
+  (this game only)"*.
+- The player's claimable rows come from `GameState.status_objectives()`; a timed one
+  reads the same way on the report checklist.
+- The pips both sides draw go through `StatusData.tooltip_for`, the one place a
+  status's hover text is built, so a `⏱ this game` line there covers the board's
+  hero, the enemy box and the HUD chip at once — the shape a tile's `⏱ 2 games left`
+  already uses (§17.5).
+
+A clause the player cannot tell is temporary is a clause they will plan a route
+around and be wrong about, so this is not decoration: it is the difference between
+a thrown buff being a mistake and being a trap.
+
+### 5.4 Where the clock lives
+
+`GameState.player_statuses` is `id → stacks` and a board entry's `statuses` dict is
+the same shape. A stack count has no room for an expiry, so the clock rides beside
+it as a **timed layer** rather than inside it:
+
+```gdscript
+GameState.timed_statuses: Array   # [{id, stacks, games}, …]
+entry["timed_statuses"]: Array    # the same, per body
+```
+
+summed into the existing reads (`status_stacks`, `status_objectives`,
+`status_clauses`, `GameLoop2.enemy_combat`) rather than stored in them. The
+alternative — a parallel `{id: games_left}` dict — cannot describe a status that is
+half permanent and half borrowed, which is exactly what a run holding a permanent
+Dexterity and then drinking a Speed Potion has. A layer expires **whole**: two
+potions drunk before one game are two rows, both dying at the same `beat_game`.
+
+It saves as one more array beside `player_statuses` in `SaveSystem`, and inside
+`GameLoop2.serialize()` for the board's copy — the same place `statuses` and
+`shield` already live.
+
+One ordering rule while we are here: a status that decays on completion (§13.1)
+sheds its stack from the **timed** row first, since that row is leaving anyway.
+Nothing in the potion roster applies a decaying status, so this costs nothing today
+and stops the first one that does from quietly eating a permanent stack.
 
 ---
 
 ## 6. Identification — 37 bottles, 15 potions, 22 sitting out
 
-The pill pattern (§4.3) transplanted, and it is a better fit here than it was there:
+The pill pattern (spec §4.3) transplanted, and it is a better fit here than it was there:
 a potion has a colour *and* a real identity behind it, which is the classic
 roguelike shape the pills were an adaptation of.
 
@@ -308,7 +379,7 @@ that ships without being listed is art no run can ever show; do not inherit that
 The machinery for this already exists and was built for exactly this problem:
 `LootSystem.art_box` asks `PillSystem.art_scale` how much bigger a horse capsule's
 own file is than a normal one and sizes the box **from the art rather than from a
-constant** (§4.3). Potions want the opposite end of the same function: a *cap*, so
+constant** (spec §4.3). Potions want the opposite end of the same function: a *cap*, so
 that a 256px identified bottle and a 16px vial both land in the cell's band without
 one of them being a postage stamp. Route potion art through the same
 `art_tex` / `art_box` pair; do not let a fourth surface pass a raw constant to
@@ -318,7 +389,7 @@ one of them being a postage stamp. Route potion art through the same
 
 `File` → `res://images2.0/potions_identified/<File>.png`, resolved on identification.
 A potion with a blank `File` — or one whose file does not resolve — **falls back to
-the bottle it has been wearing all run**, which is the scroll rule (§4.1) pointed at
+the bottle it has been wearing all run**, which is the scroll rule (spec §4.1) pointed at
 the thing potions have and scrolls do not. Never a null texture, and never a fifth
 mystery art invented for the artless six.
 
@@ -355,7 +426,7 @@ verbs that already exist:
 |---|---|---|
 | `take_damage <n>` | items | damage through `GameLoop2.damage_player` — shields stop it |
 | `gain_hp <n>` / `gain_max_hp <n>` | pills | Health, Max Health |
-| `gain_stat bonus_shields <n>` | pills | the pool that does not expire (§4.3) |
+| `gain_stat bonus_shields <n>` | pills | the pool that does not expire (spec §4.3) |
 | `apply_status <status> <n> player` | scrolls | a status on the drinker |
 | `none` | items | authored nothing (Uselessness) |
 | **`games=<n>`** | **new** | on an `apply_status` clause: it expires after n games (§5.1). Default is permanent, so nothing already authored changes meaning. |
@@ -370,17 +441,18 @@ tile effect could not:
 | `apply_status <status> <n> [area=…] [games=…]` | a status on every body the area covers |
 | **`deal_damage <n> [area=…]`** | **new** — `_damage_enemy` per body, not a bomb (§4.4) |
 | **`grant_shield <n> [area=…]`** | **new** — shield points onto the entry, the pool `_grant_shield_for` fills |
-| **`grant_health <n> [area=…]`** | **new** — heals / raises a body's Health |
+| **`grant_health <n> [area=…]`** | **new** — heals a body, capped at its `max_health` (§4.6) |
+| **`grant_max_health <n> [area=…]`** | **new** — raises a body's ceiling and its current pool together (§4.6) |
 | `none` | the bottle smashes (§4.5) |
 
-Three new ops and one new token. Everything else is vocabulary the sheet already
+Four new ops and one new token. Everything else is vocabulary the sheet already
 speaks, which is the bar a new consumable should have to clear.
 
 ### 7.3 A proposed first pass at all 30 cells
 
 | Potion | `On Player Effect` | `On Tile Effect` |
 |---|---|---|
-| Fire Potion | `take_damage 3; apply_status burn 3 player` | `apply_tile fire area=cell; deal_damage 1 area=3x3; apply_status burn 3 area=3x3` |
+| Fire Potion | `take_damage 3; apply_status burn 3 player` | `apply_tile fire area=3x3; deal_damage 1 area=3x3; apply_status burn 3 area=3x3` |
 | Block Potion | `gain_stat bonus_shields 2` | `grant_shield 2 area=cell` |
 | Speed Potion | `apply_status dexterity 5 player games=1` | `apply_status dexterity 5 area=cell games=1` |
 | Flex Potion | `apply_status strength 5 player games=1` | `apply_status strength 5 area=cell games=1` |
@@ -388,13 +460,21 @@ speaks, which is the bar a new consumable should have to clear.
 | Strength Potion | `apply_status strength 2 player games=1` | `apply_status strength 1 area=cell games=1` |
 | Explosive Ampoule | `take_damage 3` | `deal_damage 1 area=row` |
 | Fysh Oil | `apply_status strength 1 player games=1; apply_status dexterity 1 player games=1` | `apply_status strength 1 area=cell games=1; apply_status dexterity 1 area=cell games=1` |
-| Fruit Juice | `gain_max_hp 2` | `grant_health 2 area=cell` |
+| Fruit Juice | `gain_max_hp 2` | `grant_max_health 2 area=cell` |
 | Potion of Healing | `gain_hp 2` | `grant_health 2 area=cell` |
 | Potion of Extra Healing | `gain_hp 5` | `grant_health 5 area=cell` |
 | Potion of Haste Self | `apply_status speed 2 player games=1` | `apply_status speed 2 area=cell games=1` |
 | Potion of Raise Level | `gain_level 1` | `none` |
 | Potion of Self-Mutilation | `take_damage 3` | `deal_damage 3 area=cell` |
 | Potion of Uselessness | `none` | `none` |
+
+**Fire Potion covers the whole 3×3 with all three clauses** (decision #11): nine
+squares of burning ground, 1 damage and +3 Burn on everything standing in them. On
+a 4×4 board that is nine of sixteen cells alight for three games, which makes a
+Common bottle the most board-changing thing in the loot pool — deliberately. It is
+the piece the run throws at a packed front line, and it is also 3 damage and 3 Burn
+on **you** if you drink it not knowing what it is. That asymmetry is the whole
+argument for the kind (§2), stated as loudly as the roster can state it.
 
 **`gain_level`** (decision #7) fires the character's ordinary level-up reward path —
 `GameState.apply_level_up_stats` with the character's `level_up_stats`, plus its
@@ -418,7 +498,7 @@ pool when the rolled bucket is empty.
 
 **The relics.** Sacred Bark's description already says *"all Loot consumables
 (Scrolls, Potions, etc)"* — it doubles a potion's named fields the moment potions
-exist, and it doubles the **Negative** rows too (§4.1's rule, and the reason the
+exist, and it doubles the **Negative** rows too (spec §4.1's rule, and the reason the
 Bark is a decision). Echo Chamber replays potions like anything else, at the same
 aimed cell (§4.2). **Lucky Foot stays pills-only**: its sheet cell is
 `pills_positive` and its whole text is about pills. Whether it should widen is a
@@ -427,6 +507,34 @@ balance call for later, not a consequence of this work.
 **No relic pays out a potion yet.** `EffectSystem` has `gain_scroll` / `gain_pill` /
 `gain_loot`; add `gain_potion` alongside them so the sheet can author one the day
 somebody wants to, and leave the roster alone in this pass.
+
+**And that payout is the only tap** (decision #14). No shop shelf slot, no enemy
+drop, no boss bonus — a kind that arrives from four directions at once is a kind
+nobody can balance the first time. The ⅓ is a number that can be turned; four
+sources are four numbers that have to be turned together.
+
+### 8.1 The pack, and a cap that can move
+
+Nine slots now hold three alphabets, and the squeeze is the point: a third kind
+makes *"leave it"* a harder answer, which is what the cap is for (spec §4.3). **It stays
+nine** (decision #15).
+
+But `GameState.LOOT_CAPACITY` is a `const`, and a future relic that hands the run a
+bigger bag would have to unpick every surface that reads it. So it becomes a
+**function** in this pass — `GameState.loot_capacity()`, base 9 plus whatever the
+inventory adds, the shape `GameLoop2.grid_cols()` already uses for the board — and
+the two things that hardcode a 3×3 read from it:
+
+- `LootGrid` derives its rows and columns from the capacity rather than from a
+  literal 3 (a 12-slot pack is 4×3), and the empty slots stay part of the drawing,
+  since "the grid is always the cap" is what makes the room left readable;
+- `LootWindow`'s toggle turns red at *capacity*, not at 9.
+
+**No relic ships with it.** This is the seam, not the feature — and the seam is
+cheap now and expensive later, because the loot window is fitted to a 720p canvas
+with about five pixels to spare (spec §4.3) and a fourth row is a fit test away from
+failing. Whoever authors the bigger bag inherits that problem knowingly rather than
+discovering it.
 
 ---
 
@@ -462,10 +570,11 @@ bearing in the best way — **the save format already has potions in it**:
 | `tools/generate_potion2_tres.py` | New generator → `data/potions2.0/`. Parses both effect columns with the scroll parser's clause loop plus `area=` / `games=`. |
 | `scripts/autoload/PotionSystem.gd` | New autoload (**#23**) — the colour deal, identification, art, `quaff_potion`, `throw_potion`. Registered in `project.godot` (`;` comments, never `#`). |
 | `scripts/autoload/Data.gd` | `_load_dir("res://data/potions2.0/", _potions)`, `get_potion` / `all_potions` / `roll_potion`. |
-| `scripts/autoload/GameState.gd` | The three-way loot roll; `_add_random_potion_loot`; `add_potion_loot` for DevTools; `loot_potions()`; the timed-status layer (§5.3). |
+| `scripts/autoload/GameState.gd` | The three-way loot roll; `_add_random_potion_loot`; `add_potion_loot` for DevTools; `loot_potions()`; the timed-status layer (§5.4); `LOOT_CAPACITY` → `loot_capacity()` (§8.1). |
 | `scripts/autoload/LootSystem.gd` | A `"potion"` arm in each dispatch, plus `can_throw(entry)` — the only kind that answers yes. |
-| `scripts/autoload/GameLoop2.gd` | `area_cells(cell, area)`; `_expire_timed_statuses()` in `beat_game`; a `grant_health` / `grant_shield` path onto an entry. |
+| `scripts/autoload/GameLoop2.gd` | `area_cells(cell, area)`; `_expire_timed_statuses()` in `beat_game`, for the player and every body; `max_health` on an entry (§4.6) and the `grant_health` / `grant_max_health` / `grant_shield` paths onto one; the timed half of `goal_text_for` (§5.3). |
 | `scripts/autoload/EffectSystem.gd` | `gain_potion`; `deal_damage`; `gain_level`; `games=` on `apply_status`. |
+| `scripts/resources/StatusData.gd` | `tooltip_for` grows the `⏱ this game` line, so every pip that draws a timed status says so (§5.3). |
 | `scripts/autoload/SaveSystem.gd` | Serialize the timed layer. The two potion fields are **already saved**. |
 | `scripts/redesign2/LootUseModal.gd` | A second button. **Quaff** and **Throw** side by side on a potion, one Use on everything else; the throw arms the picker, hides the modal, and resumes on the click. |
 | `scripts/redesign2/BattlefieldView.gd` | Generalise `aim_cells` past `ItemData` (§4.2); a throw-armed state beside `bomb_mode` / `aiming_item`. |
@@ -491,7 +600,11 @@ are actually about potions rather than about loot:
 - a thrown potion does not fire `bomb_used` and is not widened by Brimstone (§4.4);
 - a boss takes no damage from a thrown Ampoule;
 - a timed status is gone after one `beat_game` and a permanent one of the same id
-  underneath it is not (§5.3);
+  underneath it is not (§5.4) — on the player and on a body;
+- `goal_text_for` on a body carrying a timed clause contains the expiry wording, and
+  the same clause without a clock does not (§5.3);
+- a thrown healing potion on a full-health body heals nothing, and `grant_max_health`
+  raises the ceiling and the pool together (§4.6);
 - Sacred Bark doubles a Negative potion's damage as well as a Positive one's
   shields;
 - an echoed potion lands on the same cell as the throw that fired it.
@@ -510,53 +623,59 @@ both kinds go through the same rarity roller and the same identification plumbin
 | **Amnesia widened** | Prose now says *"Forget 1 random **Identified Loot**"*, but the Effect cell still says `forget scroll 1`, and `ScrollSystem._forget_scrolls` only knows scrolls. | Make `forget`'s `kind` mean it: `forget loot 1` unidentifies across scrolls, pills **and potions**. The pills' horse Amnesia already authors `forget loot all`, so the verb was always meant to be kind-blind — it just has no implementation for the wide case. |
 | **`Description` column added** | Authored prose the generator does not read; `LootSystem._scroll_line` reassembles a description from the ops instead. | Carry it onto `ScrollData.description` and prefer it where it is non-empty, falling back to the assembled line. Authored words beat generated ones, and potions should do this from day one rather than growing the same gap. |
 | **Identify's `Notes`: "+25% find rate"** | No such concept exists. | A `find_weight` multiplier on the resource, applied inside the bucket after the rarity roll. Small, and it wants to exist on `PotionData` too — but it is the one delta here that is a **new mechanic**, so it can land after the rest. |
+| **Identify widens with Amnesia** (decision #13) | `identify_scrolls choose 1` only ever offers carried **scrolls** (`ScrollSystem._carried_unidentified_scroll_ids`). | Rename the op `identify_loot` and let it offer any unidentified carried piece — scroll, pill or potion. With three alphabets in one pack a scroll-only Identify is dead weight two thirds of the time, and it is the exact mirror of the Amnesia change directly above: one verb that forgets loot, one that learns it. The picker in `LootUseModal._pick_identify` already lists candidates by name and art — it needs the candidate list widened, not rebuilt. Keep `identify_scrolls` parsing as an alias so an old cell still resolves. |
 
-None of this is potion work, but items 1, 3 and 4 are things potions would otherwise
-copy in their broken state.
+None of this is potion work, but every row except Remove Curse is something potions
+would otherwise copy in its broken state.
 
 ---
 
 ## 11. Build order
 
-1. **Statuses first** (§5.2) — clear `EnemyOnly` on Strength / Dexterity / Speed and
-   give the player side something to read. Without this, nine of fifteen potions
-   have no effect.
-2. **The timed layer** (§5.3) + the `beat_game` expiry, with tests. Still no potions.
-3. **The scroll deltas** (§10, items 1–4) — the generator fix and the widened
-   `forget`, so potions are born into a working roller.
-4. **Data**: `PotionData`, the generator, both Effect columns authored (§7.3),
+1. **The timed layer** (§5.4) + the `beat_game` expiry + the wording (§5.3), with
+   tests. No potions yet — this is the only genuinely new system, and it is testable
+   on its own by hand-applying a timed status.
+2. **The scroll deltas** (§10) — the generator's rarity fix, the widened `forget`,
+   the widened `identify`, `description`. Potions are then born into a roller and a
+   picker that already work for three kinds.
+3. **Data**: `PotionData`, the generator, both Effect columns authored (§7.3),
    `Data` wiring, the editor rescan.
-5. **`PotionSystem`**: the deal, identification, art, `quaff_potion`. Quaff only.
+4. **`PotionSystem`**: the deal, identification, art, `quaff_potion`. Quaff only.
    At this point a potion is a pill with better art and it is fully playable.
-6. **The throw**: `area_cells`, the three new ops, the picker generalisation, the
-   second button.
+5. **The throw**: `area_cells`, `max_health` on an entry, the four new ops, the
+   picker generalisation, the second button.
+6. **`loot_capacity()`** (§8.1) — the seam for a bigger bag, no relic.
 7. **The income switch** to a three-way split (§8) — last, so the run is not paying
    out a kind that is only half built.
 8. **README + CHANGELOG**, and `gain_potion` for whoever authors the first potion
    relic.
 
-Steps 1–2 are the risky ones; 4–5 are mostly transcription from `PillSystem`.
+Step 1 is the risky one. Steps 3–4 are mostly transcription from `PillSystem`, and
+step 5 is where the new gameplay actually is — which is a good argument for not
+letting steps 1 and 2 sprawl.
 
 ---
 
 ## 12. Open questions
 
-- **Fire Potion's tile clause.** *"Apply the Fire tile, Deal 1 Damage, and Apply +3
-  Burn to everything in a 3×3 area centered on this tile"* — does the **fire tile**
-  cover the whole 3×3, or only the aimed cell? §7.3 authors it as the centre cell
-  only, because nine burning squares out of a 4×4 board's sixteen, for three games,
-  off a **Common** bottle, is board-defining. Widening it is a one-token change
-  (`area=3x3`) if that is what was meant.
-- **Fruit Juice on a body.** "+2 Max Health" thrown at an enemy: §7.3 reads it as
-  `grant_health`, since board entries carry `health` and not a max. A body with 3
-  Health takes three bombs — which is the effect either way, and worth confirming
-  is the intended punishment for throwing a Rare good potion at something.
-- **Should a throw be spendable with an empty board?** §4.5 says yes (it is ground,
-  and Fire ahead of the stack is the point). Worth checking that a throw during the
-  **report step** is also fine — spending is allowed mid-report, only *moving* the
-  pack is not (§4.3).
-- **Does the pack cap want to move?** Three kinds sharing nine slots means a player
-  who wants one of each carries fewer of each. That may be exactly right, and may be
-  worth a re-look once potions are in a real run.
-- **Lucky Foot and Sacred Bark's reach** (§8) — pills-only and everything,
-  respectively, for now.
+- **A throw during the report step.** §4.5 says a throw at an empty board is fine
+  (it is ground, and Fire ahead of the stack is the point). Spending mid-report is
+  allowed — only *moving* the pack is not (spec §4.3) — so a throw should be too. Worth
+  confirming that arming a board picker while the report checklist is up is not a
+  way to click something the report has locked.
+- **Whether a thrown potion sets off a Landmine.** Fire meeting a mine annihilates
+  both (§17.2), so a thrown Fire Potion covering nine cells will clear a minefield —
+  that falls out of `apply_tile` for free and is probably right. Whether
+  `deal_damage` should detonate one is a separate call: a mine is a **proxy bomb**,
+  and a potion that sets one off is a potion borrowing the pack's bomb upgrades
+  through the back door.
+- **Fysh Oil's two clauses under Sacred Bark.** The Bark doubles *named fields per
+  op*, so a two-clause potion doubles both clauses — 2 Strength and 2 Dexterity.
+  Correct, but worth eyeballing against the one-clause rows once it is in.
+- **`Scroll of Remove Curse`** — generate it inert, or hold the row out until curses
+  return (§10). Recommendation stands: hold it out.
+- **`find_weight`** (§10, the "+25% find rate" note) is the one scroll delta that is
+  a new mechanic, and it wants to exist on `PotionData` too. It can land after
+  everything else here.
+- **Lucky Foot's reach** — pills-only for now (§8). Sacred Bark and Echo Chamber
+  already cover all three kinds.
