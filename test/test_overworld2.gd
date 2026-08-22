@@ -900,12 +900,12 @@ func test_the_tracker_is_only_live_while_a_game_is_in_play() -> void:
 func test_the_hover_line_previews_the_games_grant() -> void:
 	_ui._show_preview(0)                          # hovering the first card
 	var grant: int = GameLoop2.shields_for_game(_ui._choices[0]["game"])
-	assert_true(_ui._preview.text.contains("%d shields" % grant),
+	assert_true(_ui._preview.text.contains(GameState.temp_shields_text(grant)),
 		"hovering previews what that game grants: %s" % _ui._preview.text)
 	assert_true(_ui._preview.text.contains(_ui._choices[0]["enemy"].display_name),
 		"and what it would put on the board: %s" % _ui._preview.text)
 	_ui._clear_hover_grant()                      # mouse left the card
-	assert_false(_ui._preview.text.contains("shields"),
+	assert_false(_ui._preview.text.to_lower().contains("shield"),
 		"it can't advertise a game you're not pointing at: %s" % _ui._preview.text)
 
 # The pack panel carries no heading. A bordered strip of relic and scroll tiles
@@ -1095,7 +1095,7 @@ func test_the_popup_shows_the_shields_the_game_grants() -> void:
 	# cover and the name now — this is one of the facts that moved into the popup.
 	var modal = _ui.open_choice(0)
 	var grant: int = GameLoop2.shields_for_game(_ui._choices[0]["game"])
-	assert_true(_text_of(modal).contains("%d shields" % grant),
+	assert_true(_text_of(modal).contains(GameState.temp_shields_text(grant)),
 		"the popup states the game's shield grant: %s" % _text_of(modal))
 
 # --- the HUD carries the player, and only the player -----------------------

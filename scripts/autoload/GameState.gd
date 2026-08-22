@@ -418,29 +418,58 @@ var discovery: int = 0
 # base_max_hp at run start) and Dash reuses dash_charges above; only these are
 # new. Granted via CharacterData start_* loadout, item effects (gain_stat),
 # and level-up rewards. All default 0, so combat runs are unaffected.
-# Shields — the ARMOUR the game you're playing granted (§3). A game hands you
-# GameLoop2.shields_for_game() of them the moment you select it (3, or 5 for a
-# Traditional game), and EACH ONE STOPS ONE INSTANCE OF DAMAGE: a 3-damage swing
-# breaks a shield and lands for nothing, and so does a 1-damage one
+# TEMPORARY SHIELDS — the armour the game you're playing granted (§3). A game
+# hands you GameLoop2.shields_for_game() of them the moment you select it (3, or
+# 5 for a Traditional game), and EACH ONE STOPS ONE INSTANCE OF DAMAGE: a
+# 3-damage swing breaks one and lands for nothing, and so does a 1-damage one
 # (GameLoop2._take_hit). Losing a run does NOT spend them — that costs a turn of
 # the board instead (GameLoop2.log_attempt) — so what you carry into the report
 # step is what the followers have to get through.
 #
-# Then they EXPIRE: shields are per-game and do not carry into the next one
-# (GameLoop2.beat_game clears them after the enemies have struck and advanced),
-# unless Barricade banks the survivors into `bonus_shields` below. No cap.
-var shields: int = 0
-# BONUS SHIELDS — the pool that is not per-game (§4.3). Gained off the board
-# (Balls of Steel, horse Full Health) or banked out of a resolved game by
-# Barricade, and unlike `shields` they do NOT expire: they stay until something
-# breaks them, which is what makes one worth saving for the game after next.
+# Then they EXPIRE, which is the whole of what the word TEMPORARY is for: they do
+# not carry into the next game (GameLoop2.beat_game clears them after the enemies
+# have struck and advanced), unless Barricade banks the survivors into
+# `bonus_shields` below. No cap.
 #
-# Spent LAST: a hit breaks one of `shields` first and only reaches these once
-# those are gone. Drawn closest to
-# the player — nearest the portrait on the board's hero, and on the header's
-# Health chip, since a pool gained on the overworld has to be readable when no
-# board is on screen.
+# THE FIELD IS STILL `shields`, and deliberately: it is the key every save is
+# written with and the stat name authored content grants (`gain_stat shields 1`
+# is Anchor). Renaming it would flip the meaning of that word inside every
+# existing save and every .tres that says it — and `bonus_shields` would have to
+# take the name it just gave up, so a single missed site would silently fill the
+# wrong pool. The player-facing names live in TEMP_SHIELD_NAME / SHIELD_NAME
+# below, and every screen reads its words from there.
+var shields: int = 0
+# SHIELDS — the pool that is not per-game (§4.3). Gained off the board (Balls of
+# Steel, horse Full Health) or banked out of a resolved game by Barricade, and
+# unlike the temporary ones they do NOT expire: they stay until something breaks
+# them, which is what makes one worth saving for the game after next.
+#
+# Spent LAST: a hit breaks a temporary shield first and only reaches these once
+# those are gone. Drawn closest to the player — nearest the portrait on the
+# board's hero, and on the header's Health chip, since a pool gained on the
+# overworld has to be readable when no board is on screen.
 var bonus_shields: int = 0
+
+# THE TWO POOLS' PLAYER-FACING NAMES (§3.2), in one place because they are told
+# apart by exactly one fact — whether they survive the game — and a screen that
+# invented its own word for either would be describing a third thing.
+#
+#   `shields`        -> "Temporary Shield"   granted per game, expires with it
+#   `bonus_shields`  -> "Shield"             kept until something breaks it
+#
+# The mapping reads backwards from the field names, which is the cost of not
+# renaming the fields (see `shields` above). Everything the player reads goes
+# through the helpers below, so the two can never drift apart on screen.
+const TEMP_SHIELD_NAME := "Temporary Shield"
+const SHIELD_NAME := "Shield"
+
+# "1 Temporary Shield" / "3 Temporary Shields", and the same for the pool that
+# stays. `n` is the count; the plural agrees with it.
+static func temp_shields_text(n: int) -> String:
+	return "%d %s%s" % [n, TEMP_SHIELD_NAME, "" if n == 1 else "s"]
+
+static func shields_text(n: int) -> String:
+	return "%d %s%s" % [n, SHIELD_NAME, "" if n == 1 else "s"]
 var bash: int = 0
 # Push (Manager's signature verb, from Raccoin): spend a charge to shove a
 # following enemy back one space, delaying its next attack by a game (§7.2) —
@@ -1573,9 +1602,13 @@ func base_verb_value(stat: String) -> int:
 	return int(get(field)) - applied
 
 func _pretty_stat(stat: String) -> String:
-	# "block" is the legacy authoring name for the per-game tries; say Shields.
+	# "block" is the legacy authoring name for the per-game pool, and `shields` is
+	# its field name — both of them are what the player reads as TEMPORARY SHIELDS
+	# (§3.2). `bonus_shields` is the pool that stays, and is simply Shields.
 	if stat == "block" or stat == "shields":
-		return "Shields"
+		return TEMP_SHIELD_NAME + "s"
+	if stat == "bonus_shields":
+		return SHIELD_NAME + "s"
 	return stat.capitalize()
 
 # Alien Baby: extra Health every goal-enemy spawns with — i.e. how many EXTRA
@@ -1992,8 +2025,9 @@ func _any_item_flag(field: String) -> bool:
 			return true
 	return false
 
-# Barricade: what a resolved game left standing becomes Bonus Shields (§4.3)
-# instead of expiring with the game that granted it.
+# Barricade: the Temporary Shields a resolved game left standing become ordinary
+# Shields (§4.3) — the pool that stays — instead of expiring with the game that
+# granted them.
 func banks_shields() -> bool:
 	return _any_item_flag("bank_shields")
 

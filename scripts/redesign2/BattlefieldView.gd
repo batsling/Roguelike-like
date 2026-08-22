@@ -1814,19 +1814,19 @@ func refresh_hero() -> void:
 	# doesn't spend them, so there is no "already used" state to show; a shield is
 	# there until something hits it.
 	#
-	# BONUS SHIELDS SIT CLOSEST TO THE PLAYER (§4.3), at the head of the row and in
-	# their own glyph: they are a different pool, spent only once this game's are
-	# gone, and drawing them as more ◆ would promise armour that expires with the
-	# game when it doesn't. Their position is the reading — the further from the
-	# portrait a pip is, the sooner it goes.
+	# THE POOL THAT STAYS SITS CLOSEST TO THE PLAYER (§4.3), at the head of the row
+	# and in its own glyph ◈: the ◆ ones are TEMPORARY SHIELDS and expire with this
+	# game, and drawing the two alike would promise armour next game that isn't
+	# coming. Their position is the reading — the further from the portrait a pip
+	# is, the sooner it goes.
 	var left: int = GameState.shields
 	var bonus: int = GameState.bonus_shields
 	_hero_shields.text = "◈".repeat(bonus) + "◆".repeat(left)
-	_hero_shields.tooltip_text = ("%d shield(s) — each stops one hit outright, "
-		+ "however big, then expires with this game.") % left
+	_hero_shields.tooltip_text = ("◆ %s — each stops one hit outright, however "
+		+ "big, and they go when you report this game.") % GameState.temp_shields_text(left)
 	if bonus > 0:
-		_hero_shields.tooltip_text += ("\n◈ %d Bonus Shield(s) — spent after those,"
-			+ " and they don't expire with this game.") % bonus
+		_hero_shields.tooltip_text += ("\n◈ %s — used after those, and they stay: "
+			+ "nothing takes one but a hit.") % GameState.shields_text(bonus)
 
 # --- status pips (§13) ----------------------------------------------------
 #

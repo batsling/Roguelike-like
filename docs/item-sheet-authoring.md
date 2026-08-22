@@ -30,7 +30,7 @@ One item = `clause; clause; ...` (paren/bracket aware — a `;` inside `()`,
 | `weapon` / `verify` | `weapon_card_id` + `verification_*` | `weapon: barrel; verify: <q> => 1/2 random fish` |
 | `perfect` | `perfect_effects` / `perfect_save_chance` | `perfect: gain_hp 5` |
 | `status_amplify`, `status_immunity`, `attack_damage_bonus`, `upgrade_card_types`, `stat_mirror`, `stat_floor`, `stat_gain_bonus`, `negate_lethal`, `reroll_low_rarity`, `carries_leftover_energy`, `lower_hp_damage_mult`, `gold_spend_stat_per=N`, `level_up`, `charged (charge_cost N)` | the matching one-off `ItemData` field | `status_immunity: weak` (Ginger — the player can no longer gain that status) |
-| `bank_shields`, `bomb_stun`, `bomb_cardinal`, `grid_grow`, `pills_positive` | the games-first (2.0) run-loop rule flags — bare words, no payload | `bank_shields` (Barricade: a resolved game's unspent shields become Bonus Shields) |
+| `bank_shields`, `bomb_stun`, `bomb_cardinal`, `grid_grow`, `pills_positive` | the games-first (2.0) run-loop rule flags — bare words, no payload | `bank_shields` (Barricade: a resolved game's unspent Temporary Shields become Shields) |
 | `health_lost` | `triggers[{on:health_lost}]` (run-scope, scene-less; the PLAYER's Health went down, from any source anywhere in the run) | `health_lost: gain_gold 1` (Piggy Bank) |
 | `boss_chest_bonus: N` | `boss_chest_bonus` — chest POINTS added to a boss's drop, spent on `Data.chest_reward_sizes`' ladder | `boss_chest_bonus: 1` (There's Options: a boss's Small chest becomes a Medium, so its drop is 1-of-2) |
 
@@ -49,7 +49,7 @@ helpers) instead of firing an effect:
 
 | Flag | Item | Rule |
 | --- | --- | --- |
-| `bank_shields` | Barricade | What a resolved game left standing becomes **Bonus Shields** — the pool that does not expire and is spent last (§4.3). |
+| `bank_shields` | Barricade | The **Temporary Shields** a resolved game left standing become plain **Shields** — the pool that does not expire and is used last (§4.3). |
 | `pills_positive` | Lucky Foot | A **Negative** pill taken while it is held rerolls into a random Positive one. The colour still identifies as what it actually is (§4.3). |
 | `echo_loot N` | Echo Chamber | Using a piece of loot also uses a copy of the last N used since this was picked up. Carries a payload, unlike the bare words above; the DEEPEST copy wins rather than the sum. |
 | `bomb_stun` | Sticky Bombs | Anything a bomb hits and fails to destroy is stunned instead — in practice bosses, the only thing that survives one (§4). |
@@ -154,7 +154,7 @@ does not:
 | `echo_loot N` | Echo Chamber's memory depth. A count rather than a bool, in the shape `boss_chest_bonus: N` has. |
 
 **Barricade is `bank_shields`, not `keep_shields`.** The relic banks a resolved
-game's leftover shields into the Bonus Shield pool (§4.3) instead of stopping
+game's leftover Temporary Shields into the Shield pool (§4.3) instead of stopping
 them expiring, and the flag was renamed with the behaviour: `keep_shields` said
 the shields stay where they are, which is exactly what stopped being true.
 

@@ -11,6 +11,31 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The two shield pools are named for the one thing that separates them.**
+
+  What a game grants are **Temporary Shields** — they expire when it is reported.
+  What is gained off the board (a pill, Barricade banking a resolved game) are
+  plain **Shields** — they stay until something breaks one. That is the whole
+  distinction, so it is the whole of the name; "Bonus Shields" said where they
+  came from, which is the part nobody has to plan around.
+
+  The FIELDS keep their older names, `shields` and `bonus_shields`: those are the
+  keys every save is written with and the stat names authored content grants
+  (`gain_stat shields 1` is Anchor, `gain_stat bonus_shields 2` is Balls of
+  Steel), and swapping them would flip the meaning of a word inside every existing
+  save and every `.tres` that says it — with the two names trading places, a
+  single missed site would silently fill the wrong pool. So the mapping is stated
+  once, at the fields, and the words the player reads come from
+  `GameState.TEMP_SHIELD_NAME` / `SHIELD_NAME` through two helpers that agree
+  their own plurals. Nothing types either name inline any more.
+
+  Content text came from the sheet, not from a hand-edit: **Anchor** now reads
+  "Gain +1 Temporary Shield" and **Barricade** "unspent Temporary Shields become
+  Shields", edited in `tools/Roguelikes.xlsx` and regenerated. The pills needed no
+  change — "Gain +2 Shields" was already exactly right for the pool they fill.
+
+---
+
 - **Shields stop hits, not attempts — and one shield stops a whole hit.**
 
   Two mechanics were wearing one resource. Shields were the TRIES at a game (a
@@ -42,8 +67,8 @@ For how the project is laid out and how its systems fit together, see
   the board answer "what does a shield do" the same the day one isn't.
 
   Everything else about them is unchanged: granted on selection (3, or 5 for a
-  Traditional), per-game pool spent before Bonus Shields, and they expire when you
-  report the game unless Barricade banks them.
+  Traditional), per-game pool spent before the pool that stays, and they expire
+  when you report the game unless Barricade banks them.
 
   The word "tries" is gone from the UI with the mechanic — the manual, the card
   popup, the offering's hover line and the board's tooltips all say shields now,

@@ -435,11 +435,12 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # fired as effects, because they change a RULE rather than move a number. Each
 # has a GameState.has_* helper so the call sites stay a single bool.
 #
-# Barricade: what a resolved game left standing is BANKED as Bonus Shields
-# (§4.3) rather than expiring with the game that granted it. It used to simply
-# stop them expiring, which quietly made the per-game pool a second permanent
-# pool with its own spend order; now there is one pool that persists and this is
-# the relic that fills it. Read by GameLoop2.beat_game via GameState.banks_shields.
+# Barricade: the Temporary Shields a resolved game left standing are BANKED as
+# ordinary Shields (§4.3) — the pool that stays — rather than expiring with the
+# game that granted them. It used to simply stop them expiring, which quietly made
+# the temporary pool a second permanent one with its own spend order; now there is
+# one pool that persists and this is the relic that fills it. Read by
+# GameLoop2.beat_game via GameState.banks_shields.
 @export var bank_shields: bool = false
 
 # Lucky Foot: a NEGATIVE pill taken while this is held rerolls into a random

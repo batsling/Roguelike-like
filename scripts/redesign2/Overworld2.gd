@@ -640,7 +640,8 @@ func choose_start(index: int) -> void:
 			GameLoop2.game_type_key(game), _current_tier())
 		_log_escort()
 		var granted: int = GameLoop2.grant_selection_shields(game)
-		GameLog.add("%s — %d shields, one hit stopped each." % [game.display_name, granted],
+		GameLog.add("%s — %s, one hit stopped each." % [
+			game.display_name, GameState.temp_shields_text(granted)],
 			SHIELD_BLUE)
 		_phase = Phase.PLAYING
 		_populate_play_panel()
@@ -1003,7 +1004,8 @@ func pick(index: int) -> void:
 	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
 	# Traditional roguelike, plus whatever "when a game is selected" items add.
 	var granted: int = GameLoop2.grant_selection_shields(_chosen["game"])
-	GameLog.add("%s — %d shields, one hit stopped each." % [_chosen["game"].display_name, granted],
+	GameLog.add("%s — %s, one hit stopped each." % [
+		_chosen["game"].display_name, GameState.temp_shields_text(granted)],
 		SHIELD_BLUE)
 	# Move to the graph SLOT (a transmuted card plays an off-graph game but keeps
 	# its position on the route toward the amulet).
@@ -1185,9 +1187,9 @@ func undo_attempt() -> String:
 	# (GameLoop2.undo_attempt); a tick logged by this build always undoes a turn.
 	var what: String = "the enemies' turn"
 	if cost == "shield":
-		what = "1 shield"
+		what = GameState.temp_shields_text(1)
 	elif cost == "bonus":
-		what = "1 Bonus Shield"
+		what = GameState.shields_text(1)
 	GameLog.add("Took back an attempt (%s)." % what, UITheme.TEXT_DIM)
 	# The board is a different board now — bodies walked back, the ground it
 	# burned is unburnt — so it is rebuilt rather than repainted in place.
@@ -3526,7 +3528,7 @@ func _paint_gold_chip() -> void:
 func _paint_health_chip() -> void:
 	if _health_chip == null or not is_instance_valid(_health_chip):
 		return
-	# BONUS SHIELDS RIDE THE HEALTH CHIP (§4.3). They are the one pool gained off
+	# THE SHIELDS THAT STAY RIDE THE HEALTH CHIP (§4.3). They are the one pool gained off
 	# the board — a pill taken on the overworld, a game Barricade banked — so they
 	# have to be readable when no board is on screen, and the number they matter
 	# most beside is the one they are standing in front of.
@@ -3534,8 +3536,9 @@ func _paint_health_chip() -> void:
 	if GameState.bonus_shields > 0:
 		_health_chip.text += "   ◈ %d" % GameState.bonus_shields
 		_health_chip.tooltip_text = ("Health. At zero the run ends."
-			+ "\n\n◈ %d Bonus Shield(s) — gained off the board, spent after the game's"
-			+ " own are gone, and they never expire.") % GameState.bonus_shields
+			+ "\n\n◈ %s — gained off the board, used after the game's own Temporary"
+			+ " Shields are gone, and they never expire.") % GameState.shields_text(
+				GameState.bonus_shields)
 	else:
 		_health_chip.tooltip_text = "Health. At zero the run ends."
 	# It goes white-hot at a quarter left, because the number people miss is the
@@ -4074,7 +4077,8 @@ func _result_text(res: Dictionary) -> String:
 		parts.append("%d attempt(s)" % int(res["attempts"]))
 	# Shields belong to the game that granted them; say so when some went unused.
 	if int(res.get("shields_expired", 0)) > 0:
-		parts.append("%d shield(s) expired with the game" % int(res["shields_expired"]))
+		parts.append("%s expired with the game" % GameState.temp_shields_text(
+			int(res["shields_expired"])))
 	if parts.is_empty():
 		parts.append("no effect")
 	return "[i]Last game: %s.[/i]" % ", ".join(parts)
@@ -4787,14 +4791,14 @@ func _refresh_attempts() -> void:
 	_attempt_count.add_theme_color_override("font_color",
 		UITheme.TEXT if attempts == 0 else UITheme.ACCENT)
 	# The shields, and nothing hollow beside them: a lost run doesn't spend one, so
-	# there is no "already used" state to draw. Bonus Shields lead the row in their
-	# own glyph, the way the board's hero draws them (§4.3).
+	# there is no "already used" state to draw. The pool that STAYS leads the row in
+	# its own glyph, the way the board's hero draws them (§4.3).
 	_attempt_pips.text = "◈".repeat(bonus) + "◆".repeat(left)
-	_attempt_pips.tooltip_text = ("%d shield(s) — each one stops a single hit "
-		+ "outright, however big it is, and they expire when you report the game.") % left
+	_attempt_pips.tooltip_text = ("◆ %s — each one stops a single hit outright, "
+		+ "however big it is, and they go when you report the game.") % GameState.temp_shields_text(left)
 	if bonus > 0:
-		_attempt_pips.tooltip_text += ("\n◈ %d Bonus Shield(s) — used after those, "
-			+ "and they don't expire.") % bonus
+		_attempt_pips.tooltip_text += ("\n◈ %s — used after those, and they stay.") % (
+			GameState.shields_text(bonus))
 	# What the next press ACTUALLY does, in the terms the board is in: not a
 	# number off the corner of the screen but a move by everything standing on it.
 	# Said before it happens, because it is the reason to stop playing this game

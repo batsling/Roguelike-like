@@ -3,7 +3,7 @@ extends GutTest
 # Tests for the games-first (2.0) PILL system (docs/games-first-redesign.md §4.3):
 # the per-run colour deal, horse doses, colour-scoped identification, the ten
 # pills' effects, Bad Trip's health-dependent name, Lucky Foot's reroll, Bonus
-# Shields, and Echo Chamber's replay through LootSystem. Pure logic, no UI —
+# the Shields that stay, and Echo Chamber's replay through LootSystem. No UI —
 # movement surfaces as a `request` the tests assert on, as the scrolls' do.
 
 const PILL_IDS := [
@@ -264,7 +264,7 @@ func test_full_health_heals_and_its_horse_dose_also_banks_shields() -> void:
 	GameState.hp = 3
 	_take(&"full_health", true)
 	assert_eq(GameState.hp, 10)
-	assert_eq(GameState.bonus_shields, 3, "+3 Bonus Shields on the horse dose")
+	assert_eq(GameState.bonus_shields, 3, "+3 Shields on the horse dose — the pool that stays")
 
 func test_balls_of_steel_pays_the_pool_that_does_not_expire() -> void:
 	_take(&"balls_of_steel")
@@ -414,7 +414,7 @@ func test_every_dose_of_every_pill_says_something_about_itself() -> void:
 			assert_true(said or asked, "%s%s reports what it did" % [
 				"horse " if horse else "", pill.display_name])
 
-# --- Bonus Shields (§4.3) --------------------------------------------------
+# --- Shields, the pool that stays (§4.3) -----------------------------------
 
 func test_a_lost_run_spends_neither_pool() -> void:
 	# A tick costs a turn of the board and nothing else (§3.2) — the shields are

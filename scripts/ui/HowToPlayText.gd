@@ -153,8 +153,8 @@ static func _ch_choosing() -> Dictionary:
 				+ "be playing for, written out with any clauses your own statuses "
 				+ "add to it — plus a warning when an escort spawns with it, which "
 				+ "is every card that is not a boss."),
-			_kv("The shields", "How many hits that game's armour will stop for "
-				+ "you. See §3."),
+			_kv("The shields", "How many Temporary Shields that game hands you — "
+				+ "one hit stopped each. See §3."),
 			_kv("The pace", "What taking it does to how fast the board moves — "
 				+ "speeds up, slows down, or no change."),
 			_kv("Connections", "How many games it opens onto, how many of those "
@@ -212,26 +212,35 @@ static func _ch_playing() -> Dictionary:
 				+ "back — go and play. What follows is what the screen is for "
 				+ "while you are away and when you return."),
 			_h("Shields are hits you do not take"),
-			_p("Selecting a game hands you a number of SHIELDS, drawn as pips over "
-				+ "your character. Each one stops ONE INSTANCE of damage — the "
-				+ "whole of it, however big. A 3-damage swing breaks one shield and "
-				+ "lands for nothing; so does a 1-damage one."),
-			_kv("Any game", "%d shields" % GameLoop2.SHIELDS_PER_GAME),
-			_kv("A Traditional roguelike", "%d shields — the long haul gets more"
+			_p("A SHIELD stops ONE INSTANCE of damage — the whole of it, however "
+				+ "big. A 3-damage swing breaks one shield and lands for nothing; so "
+				+ "does a 1-damage one. They are drawn as pips over your character."),
+			_p("There are two kinds, and the only difference is whether they "
+				+ "survive the game:"),
+			_kv("%ss" % GameState.TEMP_SHIELD_NAME,
+				"What selecting a game hands you. They EXPIRE when you report it — "
+				+ "they are that game's armour and nobody else's."),
+			_kv("%ss" % GameState.SHIELD_NAME,
+				"Gained off the board (a pill, a relic). They STAY until something "
+				+ "breaks one, so they are worth carrying toward a game you expect "
+				+ "to hurt."),
+			_kv("Any game grants", "%d %ss" % [GameLoop2.SHIELDS_PER_GAME,
+				GameState.TEMP_SHIELD_NAME]),
+			_kv("A Traditional roguelike", "%d — the long haul gets more"
 				% GameLoop2.SHIELDS_TRADITIONAL),
-			_p("They expire when you report the game. Shields never carry into the "
-				+ "next one, so there is no saving them — the question is only "
-				+ "whether this game's stack gets through them."),
+			_p("A hit breaks a Temporary Shield first, every time. They are the "
+				+ "ones about to expire anyway, so spending the pool that survives "
+				+ "while one of them is still standing would be the wrong way round."),
 			_h("Losing a run gives the enemies a turn"),
 			_p("A roguelike is not beaten in one sitting, and you will lose runs of "
 				+ "it. Every time you do, you tick the attempt tracker yourself, "
 				+ "and each tick hands the enemies A TURN: the front line swings "
 				+ "and everything behind it walks a column closer, exactly as it "
 				+ "does when you report a game."),
-			_p("It costs you no shields. There is no limit on how many times you "
-				+ "may fail at a game — what there is, is a board that is one turn "
-				+ "closer every time you do, and shields that are one hit smaller "
-				+ "each time a swing gets through them."),
+			_p("It costs you no shields of either kind. There is no limit on how "
+				+ "many times you may fail at a game — what there is, is a board "
+				+ "that is one turn closer every time you do, and a pool that is "
+				+ "one shield smaller each time a swing gets through."),
 			_p("So a game you clear first try never lets the stack move at all. A "
 				+ "game that fights back walks it into your face and then makes you "
 				+ "report from there. That is the tension the whole run is built "
@@ -435,8 +444,9 @@ static func _ch_health() -> Dictionary:
 				+ "tiny so they fit on a stream overlay."),
 			_kv("Health", "Set by your character. Reaching 0 ends the run, "
 				+ "immediately, wherever you are."),
-			_kv("Shields", "Granted per game. Each stops one hit outright, however "
-				+ "big, and they expire when you report the game."),
+			_kv("Shields", "Each stops one hit outright, however big. The "
+				+ "Temporary ones a game grants expire when you report it; the "
+				+ "plain ones stay until something breaks them."),
 			_h("Everything that can take Health off you"),
 			_b("A follower striking you, for 1 to 3, after every game — times the "
 				+ "pressure multiplier."),
@@ -666,9 +676,9 @@ static func _ch_pack() -> Dictionary:
 			_kv("Strength", "Every hit that enemy lands is worth 1 more per stack."),
 			_kv("Speed", "It closes one extra tile per stack, every turn — so it "
 				+ "reaches you sooner than the board looks like it should."),
-			_kv("Dexterity", "It gets a Shield per stack. Each one soaks a point of "
-				+ "damage and is spent doing it, so a shielded enemy takes an extra "
-				+ "goal per shield to put down."),
+			_kv("Dexterity", "It gets a Shield per stack. Each one stops a whole hit "
+				+ "and is spent doing it, so a shielded enemy takes an extra goal "
+				+ "per shield to put down."),
 			_kv("Marked", "Everything that lands on it is DOUBLED and goes straight "
 				+ "through Shields. On YOU it is a debt as well: every game, get as "
 				+ "many achievements in the game you are playing as you have stacks "
@@ -844,7 +854,8 @@ static func _ch_screen() -> Dictionary:
 				+ "owns it, which takes a moment to learn and then never gets in "
 				+ "the way."),
 			_kv("Health, shields, statuses", "On the hero, on the left of the "
-				+ "board. Hearts under the portrait, shield pips over it."),
+				+ "board. Hearts under the portrait, shield pips over it — ◆ for "
+				+ "the Temporary ones, ◈ for the ones that stay."),
 			_kv("Gold", "A chip in the top bar."),
 			_kv("Board size and tier", "The right-hand end of the board's pressure "
 				+ "bar."),

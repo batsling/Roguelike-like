@@ -60,7 +60,8 @@ Kept deliberately tiny for HUD readability.
 |---|---|---|
 | Health | character-set (5–10) | Current HP. Lose at 0. |
 | Max Health | character-set | The cap Health heals up to; **items raise it** (`+N Max Health`). Raising it heals by the same amount — a container arrives full — so the item that means an *empty* one says so with its own token (`gain_empty_max_hp`, Hollow Heart). Lowering it is not the mirror: it takes the room and leaves the Health, which only moves when it no longer fits. |
-| Shields | granted per game, **no cap** | **The ARMOUR the game you selected granted** (see §3.2). Each one stops **one whole instance of damage**, however big, before `health` is touched — and they **expire with the game that granted them**. Losing a run does not spend them. |
+| Temporary Shields (`shields`) | granted per game, **no cap** | **The armour the game you selected granted** (see §3.2). Each stops **one whole instance of damage**, however big, before `health` is touched — and they **expire with the game that granted them**. Losing a run does not spend them. |
+| Shields (`bonus_shields`) | gained off the board, **no cap** | The same block, from a pill or a banked game (§4.3) — but they **stay** until something breaks one, and are used only once the Temporary ones are gone. |
 | Enemy damage | 1–3 (by tier) | Dealt by each stacked enemy after **every** game played, until its goal is fulfilled (Low 1 / Med 2 / High 3, per `enemies2.0`). |
 
 **Starting loadout depends on the chosen character** (`characters2.0`). Character
@@ -76,11 +77,22 @@ Current roster:
 | Ironclad | Slay the Spire | 10 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Burning Blood |
 | Manager | Raccoin: Coin Pusher Roguelike | 8 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — |
 
+**THE TWO POOLS ARE NAMED FOR WHETHER THEY SURVIVE THE GAME.** What a game
+grants are **Temporary Shields** — they expire when it is reported. What is
+gained off the board (a pill, Barricade banking a resolved game) are plain
+**Shields** — they stay until something breaks one, and are used only once the
+temporary ones are gone (§4.3).
+
+The FIELDS behind them keep their older names, `shields` and `bonus_shields`:
+those are the keys every save is written with and the stat names authored content
+grants (`gain_stat shields 1` is Anchor, `gain_stat bonus_shields 2` is Balls of
+Steel), and swapping them would flip the meaning of a word inside every existing
+save and every `.tres` that says it. The player-facing words live once, in
+`GameState.TEMP_SHIELD_NAME` / `SHIELD_NAME`, and every screen reads them from
+there.
+
 Shield sources beyond the per-game grant: items (**Anchor** — "when a game is
-selected, gain +1 Shield"), and future tag routes / scrolls. **Bonus Shields**
-(§4.3) are the one pool that is *not* per-game: gained off the board from a pill
-or banked out of a resolved game by Barricade, spent after the per-game shields
-are gone, and carried until something breaks them.
+selected, gain +1 Temporary Shield"), and future tag routes / scrolls.
 
 ### 3.1 Characters, Level Up & the reward loop
 
@@ -116,7 +128,9 @@ How it already works in the project (to be kept):
 
 These were one mechanic and are now two, which is the whole of this section.
 Losing a run of the real game moves the **board**; shields are **armour** and
-nothing but armour.
+nothing but armour. And the armour comes in two pools named for the one thing
+that separates them — **Temporary Shields** expire with the game that granted
+them, **Shields** do not.
 
 **A LOST RUN GIVES THE ENEMIES A TURN.** Every run of the game in play you lose
 is one tick of the attempt tracker, and a tick costs exactly one turn of the
@@ -151,7 +165,8 @@ one (`GameLoop2._take_hit`).
 - **Selecting a game grants them** — **3** for any game, **5** for a
   **Traditional** roguelike (the long haul); nothing else moves the number, so it
   reads straight off the game's type. Items hooked on *"when a game is selected"*
-  add to the grant, which is what **Anchor** now does (+1 Shield): the extra cover
+  add to the grant, which is what **Anchor** now does (+1 Temporary Shield): the
+  extra cover
   has to arrive *before* you go and play. The grant is part of the routing
   decision, so it's stated in the game's popup (§4.2) and on the card's hover
   line.
@@ -173,10 +188,13 @@ one (`GameLoop2._take_hit`).
   worth exactly 1 today, so it changes nothing right now — it is written that way
   so both sides of the board answer "what does a shield do" identically the day
   something hits for more.
-- **They expire when you report the game.** Shields never bank into the next one
-  on their own: an easy game cleared first try does not arm you for the next.
-  **Barricade** (§4.3) is the exception, and it banks the survivors into Bonus
-  Shields rather than stopping the expiry.
+- **The ones a game grants are TEMPORARY, and expire when you report it.** They
+  never bank into the next game on their own: an easy game cleared first try does
+  not arm you for the next. **Barricade** (§4.3) is the exception, and it banks
+  the survivors into the pool that stays rather than stopping the expiry.
+- **The ones gained off the board are just SHIELDS, and stay** (§4.3) — a pill's,
+  a banked game's. A hit breaks a Temporary Shield first, since those are the ones
+  about to expire anyway.
 
 The tension is *don't lose runs → the stack never moves, and the wall is still
 whole when you report.* A game cleared first try leaves the board where it was and
@@ -333,8 +351,8 @@ rather than a fact that was always true.
 | Health Up | Positive | +2 Max Health | +4 Max Health |
 | Health Down | Negative | −2 Max Health | −4 Max Health |
 | Bad Trip | Negative | −2 Health | −4 Health |
-| Full Health | Positive | Heal to full | Heal to full, +3 Bonus Shields |
-| Balls of Steel | Positive | +2 Bonus Shields | +4 Bonus Shields |
+| Full Health | Positive | Heal to full | Heal to full, +3 Shields |
+| Balls of Steel | Positive | +2 Shields | +4 Shields |
 | Amnesia | Negative | A random curse goal (§5) | A random curse goal, and forget every identified loot — **itself included** |
 
 **The colours.** `images2.0/pills/` ships **13 colours**, each with a horse twin
@@ -369,26 +387,29 @@ identified Bad Trip colour reads **Full Health** while you are in death range an
 **Bad Trip** the rest of the time. The label follows the current Health rather
 than the pill, which is why two colours can both claim to be Full Health.
 
-**Bonus Shields.** Shields can now be gained **outside a game** (Balls of Steel,
-horse Full Health), and those are a separate pool from the per-game shields of
-§3.2:
+**Shields (the pool that stays).** Shields can be gained **outside a game**
+(Balls of Steel, horse Full Health), and those are a separate pool from the
+**Temporary Shields** a game grants (§3.2). The name is the rule: a Temporary
+Shield expires with the game it came from, and a Shield does not.
 
-- They are drawn **closest to the player** — nearest the portrait on the board's
-  hero, and beside the always-visible Health chip in the header, because a pool
-  gained on the overworld has to be readable when no board is on screen.
-- They are **spent last**: a hit breaks one of the per-game shields first and
-  only reaches these once those are gone (§3.2). A lost run spends neither — it
-  costs a turn of the board and nothing else.
-- They **never expire.** The per-game pool dies with the game that granted it;
-  a bonus shield stays until something breaks it, which is what makes it worth
-  saving across several games.
+- They are drawn **closest to the player** — `◈` at the head of the pip row,
+  nearest the portrait on the board's hero, and beside the always-visible Health
+  chip in the header, because a pool gained on the overworld has to be readable
+  when no board is on screen. Position is the reading: the further from the
+  portrait a pip is, the sooner it goes.
+- They are **used last**: a hit breaks a Temporary Shield first and only reaches
+  these once those are gone (§3.2). A lost run breaks neither — it costs a turn
+  of the board and nothing else.
+- They **never expire.** The temporary pool dies with the game that granted it; a
+  Shield stays until something breaks it, which is what makes it worth carrying
+  toward a game you expect to hurt.
 
-**Barricade banks into that pool.** The relic used to stop the per-game shields
+**Barricade banks into that pool.** The relic used to stop the temporary shields
 expiring, which quietly made them a second non-expiring pool with its own rules.
-It now **converts what a resolved game left standing into Bonus Shields**, so
-there is one pool that persists and one relic that fills it. That is a small buff
-— banked shields are spent last too, where the old behaviour spent them first —
-and it is the right one: the relic is about the cover you *didn't need*.
+It now **converts what a resolved game left standing into Shields**, so there is
+one pool that persists and one relic that fills it. That is a small buff — banked
+shields are used last too, where the old behaviour spent them first — and it is
+the right one: the relic is about the cover you *didn't need*.
 
 **Where pills come from.** **Beating a game pays 1 random piece of loot** — a
 straight 50/50 between a scroll and a pill, and the run's baseline loot income.
@@ -1471,13 +1492,16 @@ Still open:
 Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
 
 **Resolved:**
-- **Shields are the TRIES at a game** (§3.2): granted on selection (3, or 5 for a
-  Traditional roguelike), one spent per lost run via the attempt tracker, **one
-  enemy turn** per lost run once they're gone (it used to be a flat 1 Health, which
-  billed a number the board could not see), leftovers absorb the followers' hits
-  and then expire with the game. This replaced the earlier "Block carries over between
-  games, no cap" rule. **Anchor** moved to the new **`game_selected`** trigger so
-  its +1 Shield is an extra try rather than a reward after the fact.
+- **Shields are ARMOUR, and a lost run is a TURN** (§3.2). Shields were once the
+  *tries* at a game — granted on selection, one spent per lost run — which made
+  one resource do two jobs and punished a bad evening twice. Now: a lost run costs
+  **one enemy turn** and no shields (it was a flat 1 Health before that, which
+  billed a number the board could not see), and a shield stops **one whole
+  instance of damage**. The pool a game grants is **Temporary** and expires with
+  it; what is gained off the board **stays** (§4.3). This replaced the earlier
+  "Block carries over between games, no cap" rule. **Anchor** moved to the
+  **`game_selected`** trigger so its +1 Temporary Shield arrives before you go and
+  play rather than as a reward after the fact.
 - **Level Up = the current project's mechanic** (per-game `level_up_condition`
   Yes/No → stats + reward, repeats each game). The stats left of the `Level Up`
   column are the character's **starting stats** (§3.1).

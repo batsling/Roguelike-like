@@ -511,7 +511,7 @@ func test_any_cell_in_the_front_column_counts_as_the_front_line() -> void:
 
 # --- shields absorb before hp, then expire with the game (§3.2) -----------
 #
-# Shields belong to the game in play, so these set them just before the resolve
+# Temporary Shields belong to the game in play, so these set them just before the resolve
 # that takes the hit — exactly where a selection grant would have put them.
 
 func test_a_shield_blocks_the_front_lines_swing_outright() -> void:
@@ -968,7 +968,7 @@ func test_barricade_banks_unspent_shields() -> void:
 	# lands in the pool that does not expire — which is also the pool spent LAST,
 	# so a banked shield outlives the game after next as well.
 	assert_eq(GameState.shields, 0, "the game's own tries still end with it")
-	assert_eq(GameState.bonus_shields, 4, "Barricade banks them as Bonus Shields")
+	assert_eq(GameState.bonus_shields, 4, "Barricade banks them into the pool that stays")
 
 # --- Mine-r Construction: the board grows (§7.3) --------------------------
 

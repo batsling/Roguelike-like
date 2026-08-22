@@ -1251,15 +1251,16 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	_resolve_status_demands(claims, res)
 
 	# The enemies have struck and moved, so this game is over — and with it go the
-	# shields it granted (§3). Shields are the armour of ONE game: what the front
-	# line didn't get through expires here rather than banking into the next game,
-	# which is what stops a quiet game from arming you for a loud one.
+	# shields it granted (§3). They are TEMPORARY SHIELDS (GameState): the armour of
+	# ONE game, so what the front line didn't get through expires here rather than
+	# banking into the next, which is what stops a quiet game from arming you for a
+	# loud one.
 	#
-	# Barricade (§4.3) BANKS them instead: the survivors become Bonus Shields, the
-	# pool that does not expire. Not "they stop expiring" — that quietly made the
-	# per-game pool a second permanent pool with its own spend order, and there is
-	# one permanent pool now. Banked shields are therefore spent LAST from here on,
-	# which is a small buff and the right one: the relic is about the cover you
+	# Barricade (§4.3) BANKS them instead: the survivors become ordinary Shields —
+	# the pool that stays. Not "they stop expiring", which quietly made the
+	# temporary pool a second permanent one with its own spend order; there is one
+	# permanent pool, and banked shields join it and are therefore used LAST from
+	# here on. A small buff and the right one: the relic is about the cover you
 	# didn't need.
 	if GameState.shields > 0:
 		if GameState.banks_shields():
@@ -2455,10 +2456,10 @@ func _take_hit(damage: int, res: Dictionary,
 		damage, int(totals["damage_taken"]), float(totals["damage_taken_mult"]))
 	if damage <= 0:
 		return {"damage": 0, "blocked": 0}
-	# THE PER-GAME POOL BLOCKS FIRST, THE BONUS POOL SECOND (§4.3): the per-game
-	# shields expire with this game whether or not they were used, so spending a
-	# Bonus Shield while one of them is still standing would be burning the pool
-	# that survives to save the one that doesn't. Pierce takes both past.
+	# THE TEMPORARY POOL BLOCKS FIRST (§4.3): those expire with this game whether or
+	# not anything hits them, so breaking a Shield that STAYS while one of them is
+	# still standing would be spending the pool that survives to save the one that
+	# doesn't. Pierce takes both past.
 	#
 	# ONE shield, whichever pool it comes out of, and the instance is gone.
 	var absorbed: int = 0

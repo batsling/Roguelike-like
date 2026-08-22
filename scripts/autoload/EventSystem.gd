@@ -135,7 +135,11 @@ const GATE_STAT_NAMES := {
 	"hp": "Health", "max_hp": "Max Health", "gold": "Gold",
 	"games": "Games played", "keys": "Keys", "bombs": "Bombs", "bash": "Bash",
 	"dash": "Dash", "push": "Push", "transmute": "Transmute",
-	"scramble": "Scramble", "shields": "Shields", "relics": "Tradeable Relics",
+	# `shields` is the PER-GAME pool, which the player reads as Temporary Shields
+	# (GameState.TEMP_SHIELD_NAME); `bonus_shields` is the one that stays and is
+	# simply Shields. The field names are the older ones — see GameState.
+	"scramble": "Scramble", "shields": "Temporary Shields",
+	"bonus_shields": "Shields", "relics": "Tradeable Relics",
 }
 
 # A Requirement dictionary in words: "Health <= 70%". One implementation, read by

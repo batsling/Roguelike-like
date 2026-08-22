@@ -238,7 +238,7 @@ func test_the_card_itself_is_just_the_cover_and_the_name() -> void:
 	var card: Control = _ui._choices_row.get_child(0)
 	var text: String = _text_of(card)
 	assert_true(text.contains(choice["game"].display_name), "the name stays: %s" % text)
-	for moved in ["shields", "Map", "OPTIMAL", "Detour", "Enemies speed up", "Beatable"]:
+	for moved in ["Shield", "Map", "OPTIMAL", "Detour", "Enemies speed up", "Beatable"]:
 		assert_false(text.contains(moved), "'%s' moved into the popup: %s" % [moved, text])
 
 func test_the_amulet_is_flagged_on_the_card_without_opening_anything() -> void:

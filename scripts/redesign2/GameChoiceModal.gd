@@ -5,7 +5,7 @@ extends Control
 #
 # Picking a game used to be one click on its cover, and every fact that click
 # needed had to be printed ON the cover: the route badge, the pace warning, the
-# shields it grants, the repeat bonus, a Map button, a Beatable row, and the
+# Temporary Shields it grants, the repeat bonus, a Map button, a Beatable row, and the
 # Bash/Transmute verbs. Seven stacked rows per card, which is why the covers had
 # to be halved to fit three of them side by side (COVER_SIZE), and the whole
 # offering still ran taller than the board beside it.
@@ -17,7 +17,7 @@ extends Control
 #   • the OPTIMAL PATH, drawn as the real route ladder (RouteLadder) — the same
 #     arrowed graph the 🗺 map window shows, for the road as it would stand if
 #     you took this game;
-#   • the GAME — its cover, its type and year, the shields it grants,
+#   • the GAME — its cover, its type and year, the Temporary Shields it grants,
 #     the pace it puts the board on, whether you've beaten it before;
 #   • the ENEMY waiting there — portrait, name and the goal you'd be playing for;
 #   • and the three things you can DO about it: travel, bash, transmute.
@@ -353,11 +353,12 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	# the run grants none of them: nothing is being committed to yet.
 	var shields: int = 0 if bool(_notes.get("move_only", false)) else int(_notes.get("shields", 0))
 	if shields > 0:
-		col.add_child(_fact_line("%s  %d shields" % ["◆".repeat(shields), shields],
+		col.add_child(_fact_line("%s  %s" % ["◆".repeat(shields),
+			GameState.temp_shields_text(shields)],
 			Overworld2.SHIELD_BLUE,
-			("Selecting %s grants %d shields. Each one stops a single hit outright, "
-				+ "however big, and whatever is left expires when you report the game.") % [
-				game.display_name, shields]))
+			("Selecting %s grants %s. Each one stops a single hit outright, however "
+				+ "big, and whatever is left expires when you report the game.") % [
+				game.display_name, GameState.temp_shields_text(shields)]))
 
 	# What taking this does to the board's PACE (§7.4). Also a fact about playing a
 	# game, so it goes with the shields on a move-only card.

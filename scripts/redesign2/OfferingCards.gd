@@ -199,7 +199,7 @@ const HOVER_ART := 30.0
 
 # The badge rows on a card: the name, plus two fixed-height flag lines above the
 # cover — the Amulet / event flag, and the repeat game's +1 Dash. Everything else
-# a card used to carry (the route, the pace, the shields, the map, the Beatable row,
+# a card used to carry (the route, the pace, the Temporary Shields, the map, the Beatable row,
 # the Bash/Transmute verbs) lives in the popup the card opens.
 const BADGE_FONT := 11
 const BADGE_LINE := 15               # one line of BADGE_FONT, in px
@@ -518,7 +518,7 @@ func escort_note(choice: Dictionary) -> String:
 	return ESCORT_WARNING if _escort_expected(choice) else ""
 
 # The hover, on ONE line: the enemy this card would put on the board, the goal you
-# would be playing for, and the SHIELDS it hands you. They used to be a slot on
+# would be playing for, and the TEMPORARY SHIELDS it hands you. They used to be a slot on
 # the HUD that previewed on hover; the HUD has gone, and this is the line that was
 # already answering "what is that card" — so the number rides here instead of
 # being the last thing keeping a panel alive.
@@ -529,8 +529,9 @@ func _hover_line(choice: Dictionary) -> String:
 		return "[b]%s[/b]  ·  [i]%s[/i]" % [game.display_name,
 			"stay here and carry on from this game"
 			if bool(choice["stay"]) else "head back and carry on from there"]
-	var tries: String = "  ·  [color=#%s]◆ %d shields[/color]" % [
-		_page.SHIELD_BLUE.to_html(false), _hover_grant] if _hover_grant >= 0 else ""
+	var tries: String = "  ·  [color=#%s]◆ %s[/color]" % [
+		_page.SHIELD_BLUE.to_html(false),
+		GameState.temp_shields_text(_hover_grant)] if _hover_grant >= 0 else ""
 	if e == null:
 		return "[b]%s[/b]  ·  [i]no enemy — free game[/i]%s" % [game.display_name, tries]
 	# The escort rides even the hidden line: the Dome hides WHAT is waiting, and how

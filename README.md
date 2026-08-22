@@ -364,7 +364,8 @@ node and its script.
   **Where the numbers are.** There is **no HUD strip** — every number is drawn
   once, by whatever owns it:
   - **the player** (Health, Shields, statuses) is on the **board's hero**:
-    `♥ hp/max` under the portrait, the shield pips over it, status pips between.
+    `♥ hp/max` under the portrait, the shield pips over it (`◆` the Temporary
+    Shields this game granted, `◈` the ones that stay), status pips between.
   - **the board's verbs** are on the **board's own bars**: its pressure bar ends
     `▦ 4×4 · Low` (that's the tier) and its toolbar buttons read `⇤ Push (1)` /
     `✸ Bomb (3)`.

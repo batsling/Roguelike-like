@@ -230,15 +230,17 @@ func tally() -> Array:
 	var following: int = int(res.get("stack_size", 0))
 	out.append(["Still following", str(following),
 		UITheme.DANGER if following > 0 else UITheme.TEXT_DIM])
-	# The tries that went unused. Barricade banks them instead, and a relic that is
-	# about the tries you didn't need should say so where they are counted.
+	# The Temporary Shields nothing hit. They expire here (§3.2) — Barricade banks
+	# them as the pool that stays instead, and a relic that is about the cover you
+	# didn't need should say so where it is counted.
 	var banked: int = int(res.get("shields_banked", 0))
 	if banked > 0:
-		out.append(["Tries banked", str(banked), UITheme.GOLD])
+		out.append(["Banked as %ss" % GameState.SHIELD_NAME, str(banked), UITheme.GOLD])
 	else:
 		var expired: int = int(res.get("shields_expired", 0))
 		if expired > 0:
-			out.append(["Tries left over", str(expired), UITheme.TEXT_DIM])
+			out.append(["%ss left over" % GameState.TEMP_SHIELD_NAME, str(expired),
+				UITheme.TEXT_DIM])
 	out.append(["Difficulty", RunDifficulty.tier_name(_tier_now()), UITheme.TEXT])
 	return out
 

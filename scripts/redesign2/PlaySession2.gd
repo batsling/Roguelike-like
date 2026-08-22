@@ -94,8 +94,8 @@ func _refresh(_a = null) -> void:
 	_set_pick_enabled(not GameLoop2.has_arrivals() and not GameLoop2.run_over)
 
 func _hud_text() -> String:
-	return "[b]Health[/b] %d/%d    [b]Shields[/b] %d        [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Push[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d    [b]Chests[/b] %d" % [
-		GameState.hp, GameState.max_hp, GameState.shields,
+	return "[b]Health[/b] %d/%d    [b]Temp Shields[/b] %d  [b]Shields[/b] %d        [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Push[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d    [b]Chests[/b] %d" % [
+		GameState.hp, GameState.max_hp, GameState.shields, GameState.bonus_shields,
 		GameState.bash, GameState.dash_charges, GameState.push, GameState.transmute,
 		GameState.scramble, GameState.bombs, GameState.keys, GameState.pending_chests,
 	]
