@@ -89,6 +89,19 @@ func _register_player_clause(decay: bool = true) -> StatusData:
 # 1. The content
 # ---------------------------------------------------------------------------
 
+# Tick a checklist box the way a player does (§2.1): the click, and then the
+# confirm it raises. A row only resolves once Yes is pressed.
+func _tick(check, host) -> void:
+	if check == null or not is_instance_valid(check) or check.disabled:
+		return
+	check.button_pressed = true
+	var panel = host.get_node_or_null("Confirm")
+	if panel == null:
+		return
+	var ok = panel.find_child("OkBtn", true, false)
+	if ok != null:
+		ok.pressed.emit()
+
 func test_the_statuses_sheet_loaded() -> void:
 	assert_gt(Data.all_statuses().size(), 0, "data/statuses2.0 loaded at least one status")
 	for id in [&"strength", &"speed", &"dexterity", &"marked", &"burn"]:
@@ -704,31 +717,35 @@ func test_a_burn_bites_every_game_it_goes_unanswered() -> void:
 	assert_eq(before - GameState.hp, 6, "two games, two bites")
 	assert_eq(GameState.status_stacks(&"burn"), 1, "and it is still on you")
 
-func test_the_tries_are_still_standing_when_a_burn_bites() -> void:
+func test_the_shields_are_still_standing_when_a_burn_bites() -> void:
 	# It lands at the end of the game but BEFORE the shields go with it (§3), so
-	# what you didn't spend on the game absorbs it.
+	# one of them stops it — the whole 3, for one shield, like any other instance.
 	GameState.apply_status(&"burn", 1)
 	GameState.shields = 5
+	GameState.bonus_shields = 0
 	_choose_solo(_enemy("Beat it"))
 	var before: int = GameState.hp
 	var res: Dictionary = GameLoop2.beat_game(true)
-	assert_eq(GameState.hp, before, "the tries took it")
-	assert_eq(int(res.get("blocked", 0)), 3, "all three points of it")
-	assert_eq(int(res.get("shields_expired", 0)), 2, "and the rest expired after")
+	assert_eq(GameState.hp, before, "a shield took it")
+	assert_eq(int(res.get("blocked", 0)), 3, "all three points of it, for one shield")
+	assert_eq(int(res.get("shields_expired", 0)), 4, "and the other four expired after")
 
 func test_a_burn_does_not_bite_a_run_the_enemies_already_ended() -> void:
 	# The bill comes after the swings, and there is no after for a run the swings
-	# ended.
+	# ended. The swings have to be BOUGHT here: a reported game hands the board
+	# only the Amulet's extra turns (§7.4), and a headless run has none.
 	GameState.apply_status(&"burn", 1)
 	GameState.shields = 0
+	GameState.bonus_shields = 0
 	_choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(false)                 # its enemy walks onto the board
 	_choose_solo(_enemy("Beat another"))
 	for entry in GameLoop2.stack:
 		entry["col"] = 1                       # everything is in the front column
 	GameState.hp = 1
-	var res: Dictionary = GameLoop2.beat_game(false)
+	GameLoop2.attempt_turn()                   # a lost run's turn: the front line swings
 	assert_true(GameLoop2.run_over, "the swings ended it")
+	var res: Dictionary = GameLoop2.beat_game(false)
 	assert_eq(res.get("status_penalties", []), [], "the burn never got its turn")
 
 func test_a_lethal_burn_ends_the_run() -> void:
@@ -741,13 +758,19 @@ func test_a_lethal_burn_ends_the_run() -> void:
 	assert_true(GameLoop2.run_over, "and the run went with it")
 
 func test_the_take_damage_verb_resolves_on_the_battlefield() -> void:
-	# Which is the whole difference between it and `lose_hp`: the tries get their
-	# say, because "take 3 Damage" has to mean in a status what it means in combat.
+	# Which is the whole difference between it and `lose_hp`: a shield stops it,
+	# because "take 3 Damage" has to mean in a status what it means in combat —
+	# one instance of damage, and one shield is enough to eat the whole of it.
 	GameState.shields = 2
+	GameState.bonus_shields = 0
 	var before: int = GameState.hp
 	EffectSystem.apply({"type": "take_damage", "value": 3}, {})
-	assert_eq(GameState.shields, 0, "the tries were spent on it")
-	assert_eq(before - GameState.hp, 1, "and only the overflow reached Health")
+	assert_eq(GameState.shields, 1, "one shield stopped it, whatever its size")
+	assert_eq(before - GameState.hp, 0, "so nothing reached Health")
+	EffectSystem.apply({"type": "take_damage", "value": 3}, {})
+	EffectSystem.apply({"type": "take_damage", "value": 3}, {})
+	assert_eq(GameState.shields, 0)
+	assert_eq(before - GameState.hp, 3, "the third one had nothing in front of it")
 
 func test_burn_halves_what_a_body_hits_for() -> void:
 	# Rounded the way every other hit is: a 2-damage body comes down to 1, and a
@@ -980,7 +1003,7 @@ func test_clearing_a_goal_the_other_way_banks_no_record_of_the_beat() -> void:
 	# GameStats is a LIFETIME store that outlives the run, so the question is what
 	# this report added rather than what the tally reads.
 	var before: int = GameStats.enemy_beaten_count(game.id, enemy.id)
-	ui._instead_checks[0]["check"].button_pressed = true
+	_tick(ui._instead_checks[0]["check"], ui)
 	ui.report(true)
 	assert_eq(GameStats.enemy_beaten_count(game.id, enemy.id), before,
 		"no 'beaten in <game>' — its goal was never met")
@@ -1185,9 +1208,11 @@ func test_a_strength_stack_is_felt_on_the_players_health() -> void:
 		entry["col"] = 1
 	var before: int = GameState.hp
 	var enemy_dmg: int = GameLoop2.enemy_damage(GameLoop2.stack[0])
-	GameLoop2.beat_game(false)
-	assert_eq(before - GameState.hp, enemy_dmg * GameLoop2.enemy_turns(),
-		"every swing landed for the buffed number")
+	# One turn, bought outright: what a report hands the board is the Amulet's
+	# ladder (§7.4) and a random graph puts this run anywhere on it.
+	GameLoop2.attempt_turn()
+	assert_eq(before - GameState.hp, enemy_dmg,
+		"the swing landed for the buffed number")
 
 func test_the_damage_badge_quotes_the_buffed_number() -> void:
 	# A badge reading the base stat would be telling the player the board is safer
@@ -1306,9 +1331,12 @@ func test_marked_on_the_player_doubles_what_lands_and_skips_the_tries() -> void:
 	GameState.max_hp = 40
 	GameState.hp = 40
 	var swing: int = GameLoop2.enemy_damage(GameLoop2.stack[0])
-	var turns: int = GameLoop2.enemy_turns()
+	# Two turns of the board, bought outright: reporting a game hands out only the
+	# Amulet's extra turns (§7.4) and this run's distance is whatever the random
+	# graph made it, so the count would otherwise be a coin toss.
+	var turns: int = 2
 	var before: int = GameState.hp
-	var res: Dictionary = GameLoop2.beat_game(false)
+	var res: Dictionary = _turns_then_report(turns)
 	# The SWINGS, read off the attack log rather than off the Health delta. Marked's
 	# player side is also a demand now (§13), and an unanswered one bills at the end
 	# of the same game — so the delta is the swings plus that bill, and measuring
@@ -1328,17 +1356,34 @@ func test_marked_on_the_player_doubles_what_lands_and_skips_the_tries() -> void:
 	# they were spent or merely lost.
 	assert_eq(int(res["blocked"]), 0, "the tries absorbed nothing")
 
-func test_an_unmarked_player_still_spends_shields_first() -> void:
+func test_an_unmarked_player_still_blocks_with_shields_first() -> void:
 	var ui = _booted()
 	ui.pick(0)
 	ui.report(false)
 	for entry in GameLoop2.stack:
 		entry["col"] = 1
 	GameState.shields = 10
+	GameState.bonus_shields = 0
 	var before: int = GameState.hp
-	var res: Dictionary = GameLoop2.beat_game(false)
-	assert_eq(GameState.hp, before, "the tries took it, as they always have")
+	var res: Dictionary = GameLoop2.attempt_turn()
+	assert_eq(GameState.hp, before, "the shields took it, as they always have")
 	assert_gt(int(res["blocked"]), 0, "and were spent doing so")
+
+# One turn of the board per `turns`, then the report — the shape a test needs
+# when it is about what SWINGS rather than about what the road charges: the
+# report's own turn count is the Amulet ladder (§7.4) and a headless run's
+# distance is whatever the random graph made it.
+func _turns_then_report(turns: int) -> Dictionary:
+	var out: Dictionary = {"attacks": [], "status_penalties": [], "blocked": 0}
+	for _i in range(turns):
+		var t: Dictionary = GameLoop2.attempt_turn()
+		(out["attacks"] as Array).append_array(t.get("attacks", []))
+		out["blocked"] = int(out["blocked"]) + int(t.get("blocked", 0))
+	var res: Dictionary = GameLoop2.beat_game(false)
+	(out["attacks"] as Array).append_array(res.get("attacks", []))
+	(out["status_penalties"] as Array).append_array(res.get("status_penalties", []))
+	out["blocked"] = int(out["blocked"]) + int(res.get("blocked", 0))
+	return out
 
 # --- Speed: extra tiles per turn ------------------------------------------
 

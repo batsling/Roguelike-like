@@ -15,13 +15,20 @@ const PANEL_W := 460
 
 # Raise a confirmation over `parent`. `on_ok` runs on confirm, and the panel
 # takes itself away either way.
+#
+# `on_cancel` runs on every OTHER way out — the Cancel button, Escape, or the
+# panel being taken down from underneath — and exists for the callers whose
+# question was raised by a control that has already changed state. A checklist box
+# ticks itself the moment it is clicked (§2.1); saying No has to put it back, and
+# only the panel knows when No happened.
 static func ask(parent: Node, title: String, body: String, ok_text: String,
-		on_ok: Callable) -> ConfirmPanel:
+		on_ok: Callable, on_cancel: Callable = Callable()) -> ConfirmPanel:
 	var panel := ConfirmPanel.new()
 	panel._title = title
 	panel._body = body
 	panel._ok_text = ok_text
 	panel._on_ok = on_ok
+	panel._on_cancel = on_cancel
 	parent.add_child(panel)
 	return panel
 
@@ -29,6 +36,10 @@ var _title: String = ""
 var _body: String = ""
 var _ok_text: String = "OK"
 var _on_ok: Callable = Callable()
+var _on_cancel: Callable = Callable()
+# Set the instant Yes is pressed, so the tear-down below knows not to also call
+# the No handler for the same question.
+var _answered: bool = false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -50,6 +61,12 @@ func _input(event: InputEvent) -> void:
 # frame gets renamed and a lookup for "Confirm" finds the panel on its way out.
 func dismiss() -> void:
 	name = "ConfirmClosing"
+	# Anything that is not a Yes is a No, including a panel closed by whatever
+	# raised it: a caller that has to undo a half-made change would rather be told
+	# once too often than not at all.
+	if not _answered and _on_cancel.is_valid():
+		_answered = true
+		_on_cancel.call()
 	queue_free()
 
 func _build() -> void:
@@ -119,6 +136,7 @@ func _build() -> void:
 	ok.add_theme_stylebox_override("normal", ok_style)
 	ok.add_theme_color_override("font_color", Color(1, 0.72, 0.68))
 	ok.pressed.connect(func() -> void:
+		_answered = true
 		if _on_ok.is_valid():
 			_on_ok.call()
 		dismiss())

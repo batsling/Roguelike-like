@@ -162,10 +162,12 @@ func test_standing_in_fire_burns_again_each_turn() -> void:
 	var entry: Dictionary = _park(inst, Vector2i(1, 0))
 	GameLoop2.apply_tile(Vector2i(1, 0), &"fire")
 	assert_eq(int(entry["statuses"].get(&"burn", 0)), 1, "one for the lighting")
-	var turns: int = GameLoop2.enemy_turns()
-	GameLoop2.beat_game(false)
+	# Two turns of the board, bought outright — a reported game hands out only the
+	# Amulet's extra turns (§7.4), and there is no amulet in a headless run.
+	GameLoop2.attempt_turn()
+	GameLoop2.attempt_turn()
 	assert_eq(int(GameLoop2.entry_for(inst)["statuses"].get(&"burn", 0)),
-		mini(1 + turns, Data.get_status(&"burn").max_stacks),
+		mini(1 + 2, Data.get_status(&"burn").max_stacks),
 		"and one for every turn it started there, up to Burn's own ceiling")
 
 func test_fire_burns_out_after_three_games() -> void:

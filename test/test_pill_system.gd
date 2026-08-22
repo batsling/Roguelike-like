@@ -3,7 +3,7 @@ extends GutTest
 # Tests for the games-first (2.0) PILL system (docs/games-first-redesign.md §4.3):
 # the per-run colour deal, horse doses, colour-scoped identification, the ten
 # pills' effects, Bad Trip's health-dependent name, Lucky Foot's reroll, Bonus
-# Shields, and Echo Chamber's replay through LootSystem. Pure logic, no UI —
+# the Shields that stay, and Echo Chamber's replay through LootSystem. No UI —
 # movement surfaces as a `request` the tests assert on, as the scrolls' do.
 
 const PILL_IDS := [
@@ -41,6 +41,14 @@ func _choose_solo(enemy: GoalEnemyData) -> int:
 	if GameLoop2.escort_instance() > 0:
 		GameLoop2.despawn(GameLoop2.escort_instance())
 	return inst
+
+# The grid column a stacked body stands in (1 = the front line), or -1 when it is
+# no longer on the board. What a turn moves, and so how these tests see one.
+func _col_of(instance: int) -> int:
+	for e in GameLoop2.stack:
+		if int(e["instance"]) == instance:
+			return int(e.get("col", -1))
+	return -1
 
 # --- Data ------------------------------------------------------------------
 
@@ -256,7 +264,7 @@ func test_full_health_heals_and_its_horse_dose_also_banks_shields() -> void:
 	GameState.hp = 3
 	_take(&"full_health", true)
 	assert_eq(GameState.hp, 10)
-	assert_eq(GameState.bonus_shields, 3, "+3 Bonus Shields on the horse dose")
+	assert_eq(GameState.bonus_shields, 3, "+3 Shields on the horse dose — the pool that stays")
 
 func test_balls_of_steel_pays_the_pool_that_does_not_expire() -> void:
 	_take(&"balls_of_steel")
@@ -406,39 +414,33 @@ func test_every_dose_of_every_pill_says_something_about_itself() -> void:
 			assert_true(said or asked, "%s%s reports what it did" % [
 				"horse " if horse else "", pill.display_name])
 
-# --- Bonus Shields (§4.3) --------------------------------------------------
+# --- Shields, the pool that stays (§4.3) -----------------------------------
 
-func test_a_lost_run_spends_the_games_own_tries_before_the_bonus_pool() -> void:
+func test_a_lost_run_spends_neither_pool() -> void:
+	# A tick costs a turn of the board and nothing else (§3.2) — the shields are
+	# armour now, so failing at a game does not thin the wall you meet the stack
+	# with.
+	var a: int = _choose_solo(_enemy(1))
 	GameState.shields = 1
 	GameState.bonus_shields = 2
-	var _a: int = _choose_solo(_enemy(1))
-	GameState.shields = 1                        # choosing granted more; pin it
-	assert_eq(GameLoop2.log_attempt(), "shield", "the per-game pool goes first")
-	assert_eq(GameState.bonus_shields, 2, "the bonus pool is untouched while it lasts")
-	assert_eq(GameLoop2.log_attempt(), "bonus", "then the pool that would have survived")
-	assert_eq(GameState.bonus_shields, 1)
+	var col: int = _col_of(a)
+	assert_eq(GameLoop2.log_attempt(), "turn")
+	assert_eq(GameState.shields, 1, "the per-game pool is untouched")
+	assert_eq(GameState.bonus_shields, 2, "and so is the bonus pool")
+	assert_eq(_col_of(a), col - 1, "what the tick moved was the board")
 
-func test_a_bonus_shield_pays_before_health_does() -> void:
-	GameState.max_hp = 10
-	GameState.hp = 10
-	var _a: int = _choose_solo(_enemy(1))
+func test_undoing_a_try_puts_the_board_back() -> void:
+	var a: int = _choose_solo(_enemy(1))
 	GameState.shields = 0
 	GameState.bonus_shields = 1
-	assert_eq(GameLoop2.log_attempt(), "bonus")
-	assert_eq(GameState.hp, 10, "Health is the last thing a lost run reaches")
-	assert_eq(GameLoop2.log_attempt(), "health")
-	assert_lt(GameState.hp, 10)
-
-func test_undoing_a_try_refunds_the_pool_it_actually_spent() -> void:
-	var _a: int = _choose_solo(_enemy(1))
-	GameState.shields = 0
-	GameState.bonus_shields = 1
+	var col: int = _col_of(a)
 	GameLoop2.log_attempt()
-	assert_eq(GameState.bonus_shields, 0)
+	assert_eq(_col_of(a), col - 1)
 	GameLoop2.undo_attempt()
-	assert_eq(GameState.bonus_shields, 1, "it goes back where it came from")
+	assert_eq(_col_of(a), col, "the body walks back to where it stood")
+	assert_eq(GameState.bonus_shields, 1, "and the pool it never spent is still there")
 
-func test_bonus_shields_absorb_damage_after_the_per_game_pool() -> void:
+func test_bonus_shields_block_after_the_per_game_pool() -> void:
 	# Straight through the resolver every hit on the player goes through, rather
 	# than through a game: an enemy does not swing on the game it spawned at (§7.2),
 	# so a beat_game here would be testing the timing model instead of the order.
@@ -447,16 +449,21 @@ func test_bonus_shields_absorb_damage_after_the_per_game_pool() -> void:
 	GameState.shields = 1
 	GameState.bonus_shields = 1
 	GameLoop2.damage_player(3)
-	assert_eq(GameState.shields, 0, "the tries went first")
-	assert_eq(GameState.bonus_shields, 0, "then the bonus pool")
-	assert_eq(GameState.hp, 9, "and only the last point reached Health")
+	assert_eq(GameState.shields, 0, "this game's shield went first — it expires anyway")
+	assert_eq(GameState.bonus_shields, 1, "the pool that survives is spent last")
+	assert_eq(GameState.hp, 10, "and one shield stopped the whole 3")
+	GameLoop2.damage_player(3)
+	assert_eq(GameState.bonus_shields, 0, "then the bonus one")
+	assert_eq(GameState.hp, 10)
+	GameLoop2.damage_player(3)
+	assert_eq(GameState.hp, 7, "with both pools gone, the third instance lands whole")
 
 func test_bonus_shields_survive_the_game_that_did_not_spend_them() -> void:
 	GameState.bonus_shields = 2
 	var _a: int = _choose_solo(_enemy(0))
 	GameState.shields = 3
 	GameLoop2.beat_game(true)
-	assert_eq(GameState.shields, 0, "the game's own tries expire with it")
+	assert_eq(GameState.shields, 0, "the game's own armour expires with it")
 	assert_eq(GameState.bonus_shields, 2, "the bonus pool does not")
 
 # --- Lucky Foot ------------------------------------------------------------

@@ -11,6 +11,280 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A tick is a confirm, and a confirm resolves NOW.**
+
+  The report was the only moment anything on the checklist could happen. That was
+  fine while a game was one long wait for a single point; it is wrong now that the
+  board moves whenever you *fail* and a kill is something you can go and make — a
+  goal cleared in the first hour sat unpaid for the rest of the evening, and its
+  reward was behind a screen you had not reached.
+
+  Every box on the checklist now asks once ("did you really?") and, on Yes,
+  **resolves on the spot, mid-game**: the enemy takes its hit and drops its chest
+  on the square it fell in, the bonus pays, the `demand` is answered, the level is
+  taken, the event goal is claimed. Every row type, and losing runs gates none of
+  it. **There are no take-backs** — the confirm is the safeguard, and past it the
+  row locks, ticked and done. (Undo, beside the lost-run tracker, still takes back
+  a *turn*; that one is the board's, not yours.)
+
+  **The loop remembers, not the boxes.** The page rebuilds the checklist on every
+  repaint, so `GameLoop2` keeps the per-game record instead: `cleared_this_game`
+  and `instead_this_game` (a survivor of a mid-game clear still holds its fire for
+  every turn of the report), `goals_met_this_game` (a player clause riding a goal
+  still ticks for it), `answered_this_game` (a `demand` answered at noon is not
+  billed at midnight), and `answered_rows` for the bonus / curse / level-up rows
+  the others have no room for. All of it clears when the game is chosen or handed
+  in, rides the undo snapshot, and is saved.
+
+  **A body you killed still pays its bonus.** The report always resolved bonuses
+  *before* goals so "an enemy you failed can still pay its bonus" held; with the
+  goal resolving when it is ticked, the order is the player's. `_ghosts` keeps the
+  entry a body defeated this game used to be, its row stays on the list, and
+  `claim_enemy_bonus` reads it — otherwise ticking in the "wrong" order silently
+  forfeited a reward that had been earned.
+
+  The report is left with what is still outstanding, which in practice is nothing:
+  `ticked_fulfilments` and `ticked_status_claims` skip any row that is pressed
+  *and* locked, so nothing is ever hit or paid twice.
+
+- **Chests land on the board, on the square the body fell in.**
+
+  A defeated enemy's chest used to exist only as an entry in the page's drop
+  queue, which meant the reward for clearing a goal was always *behind the report*
+  — you could not have it until you had handed the game in. Now the loop owns a
+  **floor** (`GameLoop2.drops`, cell → `{items, boss}`) and the chest is laid on
+  the square the body died in: its leading cell, the one nearest you, so a long
+  enemy leaves its loot at the end you were looking at.
+
+  The board draws a pressable `✦` token there (`BattlefieldView._drop_node`,
+  ringed thicker for a boss's) and reports the press through `drop_clicked` →
+  `Overworld2.collect_floor_drop`, which opens the same `ItemDropModal` the haul
+  screen would have used. The floor is a place a chest can be answered *earlier*,
+  not a second kind of reward. Its hover card says how big the question is and
+  that leaving it is allowed, and deliberately **does not list what is inside** —
+  reading the answer off a tooltip would make opening it a formality.
+
+  **A chest never blocks anybody.** `fits_at` does not consult the floor, so a
+  body walks onto the square and the chest is shoved aside instead
+  (`_displace_drop`, from `_move_entry`): nearest free square by squares walked,
+  ties broken **away from the player**, off field when the board is full. Loot
+  drifts back toward the wilds rather than into your lap, so crossing the board
+  for a chest is worth something. A body cleared while it was still waiting in the
+  off-grid queue has no square to fall in and its chest goes straight to the haul.
+
+  **Reporting the game sweeps the floor** (`sweep_drops`, called from `report` the
+  moment `beat_game` returns), so nothing is ever lost by walking past one — what
+  you did not stop for is on the reward screen with everything else, including
+  whatever the bodies that very report cleared just dropped. The floor saves and
+  restores with the rest of the loop, and an item id the catalog no longer serves
+  is dropped on the way in along with any chest it empties.
+
+- **Extra turns: reporting a game no longer moves the board.**
+
+  The amulet ladder was 1 / 2 / 3 turns per reported game, so every game handed
+  in moved the stack whether or not the player had struggled at it. It is 0 / 1 /
+  2 now, and the floor is the point: out in the wilds you can play a game, report
+  it and walk away with the board exactly where you left it. The stack moves for
+  two reasons and both are things that happened — **you failed** (a lost run, one
+  turn each) or **you are close to the win** (this ladder).
+
+  The readout says what it is: `⏱ EXTRA TURNS 0` / `1` / `2`, in the band's
+  colour, with the hop count that caused it. Cards quote the same price
+  ("Enemies speed up — 1 extra turn", "Still no extra turns"), the resolve's
+  counter reads `EXTRA TURN 1 / 2`, and `RunDifficulty` is authored in those terms
+  throughout (`EXTRA_FAR/MID/NEAR`, `extra_turns_for_hops`, `band_name`,
+  `extra_text`, `ladder_text`).
+
+  **The threat readouts had to move with it.** "2 swings landing for 2 damage next
+  game" now reads zero for a game you are about to report, which is true and
+  useless — so they are priced in LOST RUNS instead: "2 closing in, 2 swings for 4
+  damage on every lost run", per-body `⚔3` for the swing one turn would throw, and
+  `in 2` for the lost runs of walking it still owes. `attacks_next_game` →
+  `attacks_in_turns` (defaulting to one turn), `games_until_strike` →
+  `lost_runs_until_strike`, `stacked_damage_per_game` → `damage_per_lost_run`.
+
+  Found while fixing the suite: the tests' `_tick()` helper was `beat_game`, which
+  is how nearly every board test walked a body forward — and with a zero floor
+  that walks nowhere. It is `attempt_turn()` now (`_turn()`), with `_report()`
+  where a test is really about the end of a game. Two unbounded `while col > 1`
+  march loops in other files would have hung the suite outright rather than
+  failing; they are bounded and turn-driven now. And two test scripts were left
+  calling the old `RunDifficulty` API — GUT **silently skips a script that will
+  not parse**, so the suite came back green with 350 fewer tests in it. Both are
+  fixed; it is worth remembering that a passing run with a smaller `Tests` count
+  is a failing run.
+
+---
+
+- **Escape opens on the hit.**
+
+  A game you cannot beat has always had a way out; the question was what earns
+  it. It used to be five lost runs — a counter standing in for "this game is
+  hurting you", because back then nothing else measured that. The board measures
+  it directly now, so the gate is the thing itself: **Escape is offered the moment
+  an enemy's attack takes Health off you during the game in play.**
+
+  It falls straight out of the two changes above. Lose runs, the enemies take
+  turns; a Temporary Shield stops the first swings outright; the door opens on the
+  swing that gets past them. So the way out arrives exactly when the game starts
+  costing the one thing you cannot make more of — and never merely because you
+  were patient. `ESCAPE_AFTER_ATTEMPTS` is gone.
+
+  A **swing only**: Burn's bill and an event's price cost real Health and do not
+  open it, since neither is the game in front of you refusing to go down. It is a
+  fact about the game in play — `GameLoop2.hurt_this_game`, cleared when a game is
+  chosen and when one is reported, saved with the run, and rewound by an attempt's
+  undo, so taking back the tick whose turn drew blood shuts the door again. The
+  second door is untouched: a game this run has already beaten is escapable from
+  the first second, because there is nothing left to prove at that one.
+
+  The price is unchanged — the goal-enemy still follows you, the stack still takes
+  its turns, and no beat is banked. Only the gate moved.
+
+---
+
+- **The two shield pools are named for the one thing that separates them.**
+
+  What a game grants are **Temporary Shields** — they expire when it is reported.
+  What is gained off the board (a pill, Barricade banking a resolved game) are
+  plain **Shields** — they stay until something breaks one. That is the whole
+  distinction, so it is the whole of the name; "Bonus Shields" said where they
+  came from, which is the part nobody has to plan around.
+
+  The FIELDS keep their older names, `shields` and `bonus_shields`: those are the
+  keys every save is written with and the stat names authored content grants
+  (`gain_stat shields 1` is Anchor, `gain_stat bonus_shields 2` is Balls of
+  Steel), and swapping them would flip the meaning of a word inside every existing
+  save and every `.tres` that says it — with the two names trading places, a
+  single missed site would silently fill the wrong pool. So the mapping is stated
+  once, at the fields, and the words the player reads come from
+  `GameState.TEMP_SHIELD_NAME` / `SHIELD_NAME` through two helpers that agree
+  their own plurals. Nothing types either name inline any more.
+
+  Content text came from the sheet, not from a hand-edit: **Anchor** now reads
+  "Gain +1 Temporary Shield" and **Barricade** "unspent Temporary Shields become
+  Shields", edited in `tools/Roguelikes.xlsx` and regenerated. The pills needed no
+  change — "Gain +2 Shields" was already exactly right for the pool they fill.
+
+---
+
+- **Shields stop hits, not attempts — and one shield stops a whole hit.**
+
+  Two mechanics were wearing one resource. Shields were the TRIES at a game (a
+  lost run spent one) *and* the armour you met the stack with, so every failed
+  attempt at the real game was also a hole in the wall you were about to be hit
+  through — punished twice for the same bad evening. They are split now.
+
+  **A lost run costs a turn of the board and nothing else.** No shield is spent,
+  so there is no limit on how many times you may fail at a game; what there is, is
+  a board that is one turn closer every time you do. `next_attempt_cost` is gone
+  (there is only one thing a tick can cost) and `can_log_attempt` replaces it;
+  `attempts_on_shields` went with it, since no attempt is paid for with a shield
+  any more and nothing on the strip goes hollow.
+
+  **A shield stops one INSTANCE of damage** — the whole of it, whatever its size.
+  A 3-damage swing breaks one shield and lands for nothing; so does a 1-damage
+  one. That is deliberately blunt, and it is what makes the pool readable: three
+  shields is three hits you don't take, and "which hits do these five points
+  cover" is never a sum anyone has to do. It also makes a big hit the one you
+  *want* a shield to meet, which is a thing to play around — a Push, a Stun —
+  rather than arithmetic.
+
+  The rule holds wherever damage lands: a follower's swing, Burn's "take 3
+  Damage" bill, any `take_damage` effect, all through `_take_hit`. A `lose_hp`
+  bill (an event's price, a machine's lever) is not damage and never was — it does
+  not come through there and shields do not stop it. Marked still pierces. Enemy
+  shields read the same rule (`_damage_enemy`): identical in practice today, since
+  every hit in this game is worth exactly 1, and written that way so both sides of
+  the board answer "what does a shield do" the same the day one isn't.
+
+  Everything else about them is unchanged: granted on selection (3, or 5 for a
+  Traditional), per-game pool spent before the pool that stays, and they expire
+  when you report the game unless Barricade banks them.
+
+  The word "tries" is gone from the UI with the mechanic — the manual, the card
+  popup, the offering's hover line and the board's tooltips all say shields now,
+  and say what one does.
+
+---
+
+- **Amulet pressure is BONUS turns now, not the turn count.**
+
+  The ladder used to *be* how many turns the enemies took per game — ×1 out in
+  the wilds, ×3 on the Amulet's doorstep — which quoted a stat where the player
+  needed a price, and invited the wrong reading besides: that closing in makes
+  the enemies act twice inside one beat. It doesn't. **Every enemy takes one turn
+  per game reported, wherever the run is standing**, and closeness buys them
+  BONUS turns on the end of the game — +0 / +1 / +2 — taken after every enemy has
+  had its own.
+
+  The totals are the ones the game already had (1 / 2 / 3): what changed is what
+  the ladder is authored as and what the screens say. `RunDifficulty` owns
+  `TURN_BASE` and `BONUS_FAR/MID/NEAR` with `bonus_turns_for_hops` as the ladder;
+  `turns_for_hops` stays as base + bonus for the resolver, which counts turns
+  rather than prices. The band name, colour and ladder text are all keyed on the
+  bonus now, so nothing on this axis is left speaking the old units.
+
+  **What the player sees.** The board's strip reads `⏱ ENEMY TURNS 1 +1`, and
+  plain `1` in the Distant band — "no bonus" is a state worth reading as calm.
+  Its three rungs are the same gauge with a clearer story: first pip the turn
+  every game gives, the other two the Amulet's. Cards say the price — "Enemies
+  speed up — +1 bonus turn", "Still no bonus turns" — and the resolve's counter
+  names which half of the bargain each beat came from: `TURN 1 / 3`, then
+  `BONUS TURN 1 / 2`. `beat_game`'s result carries `bonus_turns` so the board can
+  say that without recomputing it.
+
+---
+
+- **A lost run gives the enemies a turn, and status goals wear their symbol.**
+
+  **Out of shields, the board takes a turn.** A lost run used to cost a flat
+  1 Health once the tries were gone, which billed the one price in the loop the
+  board could not see: the enemies walking at you are the whole tension of a game,
+  and running out of tries quietly stepped around them to move a number in the
+  corner. Now the tick hands the stack **one turn** — the same
+  `_resolve_enemy_turn` a reported game takes `enemy_turns()` of, so the ground
+  burns whoever is standing on it, everything touching the front column swings for
+  what its statuses make of its damage, everything behind it walks a column
+  closer, and a stun costs one turn of either. It still costs Health, usually more
+  than one; it costs it *through the board*, and it compounds, because the board a
+  tick moves is the board the next tick moves again. Nobody holds their fire —
+  that exemption is a fact about a *reported* game, and nothing has been reported.
+
+  **A board with nothing in reach charges nothing**, deliberately: the turn is the
+  cost, so a cleared stack has nothing to take and a body still walking in merely
+  walks. The tick is logged all the same — it is what the escape hatch counts and
+  what the pips draw.
+
+  **The undo became a restore.** A refund works for a shield; a turn walks bodies,
+  burns ground, breaks the trinkets that break on a hit and pays out whatever
+  losing Health pays out. So the tick snapshots the board (`GameLoop2.serialize`)
+  and the run's resources (`GameState.snapshot_run_resources` — Health, the purse,
+  both shield pools, banked chests, the player's statuses, the pack) before it
+  resolves, and the undo puts the whole thing back. Those snapshots are
+  runtime-only, since a save carries the run and not its undo history, so a turn
+  taken before a reload can't be taken back: `can_undo_attempt` says so and the
+  undo button greys out with a tooltip rather than half-undoing something. The
+  turn is watched, too — the board replays it with the same `animate_resolve` the
+  end of a game uses, and a lethal one holds the end-of-run screen until the blow
+  lands.
+
+  Found on the way: the three attempt lists (`attempt_costs`, the payouts and now
+  the snapshots) are indexed in lockstep but only the first was being cleared when
+  a game closed out, which left a payout to be handed to the *next* game's first
+  undo. They drop as one now (`_clear_attempts`).
+
+  **Status goals lead with the symbol.** A status row on the checklist opened with
+  its name and stack count ("Marked 3 —"), spending the widest part of a
+  glanceable list saying what the art beside every other reading of that status
+  already says. The row now leads with that same art and the prefix is the count
+  alone ("×3 —"), with the status's own hover card on the chip so the symbol
+  answers what it is rather than having to be memorised. The name comes back for a
+  status with no art. Both checklists, plus the bonus, "or instead" and nullified
+  rows.
+
+---
+
 - **The haul screen, second pass — and four things it turned up.**
 
   **Every chest at once.** They were drained one at a time, which is how the

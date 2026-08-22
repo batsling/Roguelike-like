@@ -153,7 +153,8 @@ static func _ch_choosing() -> Dictionary:
 				+ "be playing for, written out with any clauses your own statuses "
 				+ "add to it — plus a warning when an escort spawns with it, which "
 				+ "is every card that is not a boss."),
-			_kv("The tries", "How many attempts that game grants you. See §3."),
+			_kv("The shields", "How many Temporary Shields that game hands you — "
+				+ "one hit stopped each. See §3."),
 			_kv("The pace", "What taking it does to how fast the board moves — "
 				+ "speeds up, slows down, or no change."),
 			_kv("Connections", "How many games it opens onto, how many of those "
@@ -168,27 +169,31 @@ static func _ch_choosing() -> Dictionary:
 			_kv("🏆 THE AMULET", "This is the game the run is a search for. Beat "
 				+ "its goal and the run is won, on the spot."),
 			_h("Pressure: why the long way is a real option"),
-			_p("How many turns the enemies chasing you get, each game, is read off "
-				+ "how far you are from the Amulet in hops:"),
-			_row(["Hops to the Amulet", "Turns per game", "Band"], true),
+			_p("Handing a game in does not move the board. Out in the wilds you can "
+				+ "play a game, report it and walk away with the stack exactly where "
+				+ "you left it — what moves them is the runs you LOSE, one turn "
+				+ "each. What closing on the Amulet buys them is EXTRA TURNS at the "
+				+ "end of every game you report:"),
+			_row(["Hops to the Amulet", "Extra turns", "Band"], true),
 			_row(["%d or more" % RunDifficulty.FAR_HOPS,
-				"×%d" % RunDifficulty.TURNS_FAR, "Distant"]),
+				"%d" % RunDifficulty.EXTRA_FAR, "Distant"]),
 			_row(["%d – %d" % [RunDifficulty.MID_HOPS, RunDifficulty.FAR_HOPS - 1],
-				"×%d" % RunDifficulty.TURNS_MID, "Closing"]),
+				"%d" % RunDifficulty.EXTRA_MID, "Closing"]),
 			_row(["%d or fewer" % (RunDifficulty.MID_HOPS - 1),
-				"×%d" % RunDifficulty.TURNS_NEAR, "Doorstep"]),
+				"%d" % RunDifficulty.EXTRA_NEAR, "Doorstep"]),
 			_p("A turn is one action for every enemy on the board: anything in "
 				+ "your face swings, everything behind it steps a column closer. "
-				+ "So at the Amulet's doorstep a game is three swings from every "
-				+ "follower you left alive, and an enemy two columns back is not "
-				+ "safe any more — it can walk into range and hit you inside the "
-				+ "same game."),
+				+ "So on the Amulet's doorstep finishing a game is two free swings "
+				+ "from every follower you left alive, and an enemy two columns back "
+				+ "is not safe any more — it can walk into range and hit you before "
+				+ "you have chosen the next card."),
 			_p("This is the whole reason routing is a decision. Every step toward "
-				+ "the Amulet used to be strictly good. Now: route wide and you "
-				+ "fight a slow stack for more games; run at the Amulet and you "
-				+ "fight a fast one for fewer. Neither is correct in general. What "
-				+ "decides it is how many followers you are dragging — three of "
-				+ "them at ×3 is a very different sum from three at ×1."),
+				+ "the Amulet used to be strictly good. Now: route wide and the "
+				+ "board only moves when you fail; run at the Amulet and it moves "
+				+ "every time you finish anything. Neither is correct in general. "
+				+ "What decides it is how many followers you are dragging — three "
+				+ "of them at 2 extra turns is a very different sum from three at "
+				+ "none."),
 			_note("Taking the Amulet card itself carries no pace warning. There is "
 				+ "no next game for the enemies to act in — you have either won or "
 				+ "you have not."),
@@ -203,31 +208,49 @@ static func _ch_choosing() -> Dictionary:
 static func _ch_playing() -> Dictionary:
 	return {
 		"id": &"playing", "icon": "🎮", "title": "Playing the game",
-		"blurb": "Tries, the checklist, reporting, and getting out.",
+		"blurb": "Shields, lost runs, the checklist, and getting out.",
 		"blocks": [
 			_p("You have chosen a game. The app now does nothing until you come "
 				+ "back — go and play. What follows is what the screen is for "
 				+ "while you are away and when you return."),
-			_h("Tries are your runs at the real game"),
-			_p("A roguelike is not beaten in one sitting, so selecting a game "
-				+ "hands you a number of TRIES at it. They are drawn as shields."),
-			_kv("Any game", "%d tries" % GameLoop2.SHIELDS_PER_GAME),
-			_kv("A Traditional roguelike", "%d tries — the long haul gets more"
+			_h("Shields are hits you do not take"),
+			_p("A SHIELD stops ONE INSTANCE of damage — the whole of it, however "
+				+ "big. A 3-damage swing breaks one shield and lands for nothing; so "
+				+ "does a 1-damage one. They are drawn as pips over your character."),
+			_p("There are two kinds, and the only difference is whether they "
+				+ "survive the game:"),
+			_kv("%ss" % GameState.TEMP_SHIELD_NAME,
+				"What selecting a game hands you. They EXPIRE when you report it — "
+				+ "they are that game's armour and nobody else's."),
+			_kv("%ss" % GameState.SHIELD_NAME,
+				"Gained off the board (a pill, a relic). They STAY until something "
+				+ "breaks one, so they are worth carrying toward a game you expect "
+				+ "to hurt."),
+			_kv("Any game grants", "%d %ss" % [GameLoop2.SHIELDS_PER_GAME,
+				GameState.TEMP_SHIELD_NAME]),
+			_kv("A Traditional roguelike", "%d — the long haul gets more"
 				% GameLoop2.SHIELDS_TRADITIONAL),
-			_p("Every run of that game you LOSE, you tick the attempt tracker "
-				+ "yourself, and each tick spends a try. Run out of tries and a "
-				+ "lost run costs 1 Health instead."),
-			_p("Here is the part that matters: whatever tries you have LEFT when "
-				+ "you report the game become armour. They soak the followers' "
-				+ "hits before your Health does — and then they expire. Tries "
-				+ "never carry into the next game."),
-			_p("So a game you clear first try leaves the whole pool standing and "
-				+ "the stack cannot touch you. A game that fights back leaves you "
-				+ "wide open to it. That is the tension the whole run is built on: "
-				+ "your Health is only ever in danger when you are already having "
-				+ "a bad time."),
-			_note("Mis-clicked the tracker? Undo takes the tick back and refunds "
-				+ "exactly what it spent — a try, or the Health it cost you.")
+			_p("A hit breaks a Temporary Shield first, every time. They are the "
+				+ "ones about to expire anyway, so spending the pool that survives "
+				+ "while one of them is still standing would be the wrong way round."),
+			_h("Losing a run gives the enemies a turn"),
+			_p("A roguelike is not beaten in one sitting, and you will lose runs of "
+				+ "it. Every time you do, you tick the attempt tracker yourself, "
+				+ "and each tick hands the enemies A TURN: the front line swings "
+				+ "and everything behind it walks a column closer, exactly as it "
+				+ "does when you report a game."),
+			_p("It costs you no shields of either kind. There is no limit on how "
+				+ "many times you may fail at a game — what there is, is a board "
+				+ "that is one turn closer every time you do, and a pool that is "
+				+ "one shield smaller each time a swing gets through."),
+			_p("So a game you clear first try never lets the stack move at all. A "
+				+ "game that fights back walks it into your face and then makes you "
+				+ "report from there. That is the tension the whole run is built "
+				+ "on: your Health is only ever in danger when you are already "
+				+ "having a bad time."),
+			_note("Mis-clicked the tracker? Undo takes the tick back and puts the "
+				+ "whole board back where it was — the swings, the steps, all of "
+				+ "it. (Not after reloading the run: the undo is not saved.)")
 			,
 			_h("The checklist"),
 			_p("The left column is everything you are trying to do inside the real "
@@ -242,6 +265,19 @@ static func _ch_playing() -> Dictionary:
 			_p("Hover a row and the body it belongs to lights up on the board. "
 				+ "Hover a body and its row lights up. They are the same fact "
 				+ "written twice."),
+			_h("A tick happens NOW"),
+			_p("Tick a row the moment you do the thing. It asks you to confirm, "
+				+ "and then it RESOLVES — mid-game, while you are still playing. "
+				+ "The enemy dies and drops its chest onto the board. The reward "
+				+ "is paid. The level is taken."),
+			_p("You do not have to finish the game first, and losing runs does "
+				+ "not stop you: a goal you cleared in the first hour is worth "
+				+ "something for the rest of the evening rather than sitting there "
+				+ "waiting for you to press a button."),
+			_note("There are no take-backs. The confirm is the safeguard — an "
+				+ "enemy that is already dead cannot be un-killed. (Undo, beside "
+				+ "the lost-run tracker, is a different thing: it takes back a "
+				+ "TURN, which is the board's, not yours.)"),
 			_h("Reporting"),
 			_p("Press Completed Game when you are done with the game — done, not "
 				+ "necessarily victorious. Two different things are being claimed, "
@@ -251,7 +287,9 @@ static func _ch_playing() -> Dictionary:
 				+ "the run at the Amulet."),
 			_kv("The tick boxes", "One per enemy on the board — including whatever "
 				+ "walked on when you took this game. Ticking one says you did that "
-				+ "enemy's goal, and doing that is what kills it."),
+				+ "enemy's goal, and doing that is what kills it. They are answered "
+				+ "as you go, though, so by the time you press the button they are "
+				+ "usually all settled."),
 			_p("So you can finish a game and leave everything on the board still "
 				+ "following you, or clear three old goals during a game you never "
 				+ "finished. Neither is a failure state; an unticked enemy is a "
@@ -261,11 +299,15 @@ static func _ch_playing() -> Dictionary:
 				+ "moment it lands — you can bomb it, push it, or leave its goal "
 				+ "for three games and clear it later."),
 			_h("Escaping"),
-			_p(("If a game is going nowhere you can leave it. Escape is offered "
-				+ "after %d lost runs, or immediately if this run has already "
-				+ "beaten that game before. Its enemy comes with you, alive and "
-				+ "following — escape answers the goal with a no, it does not "
-				+ "delete the question.") % Overworld2.ESCAPE_AFTER_ATTEMPTS),
+			_p("If a game is going nowhere you can leave it — ONCE IT HAS DRAWN "
+				+ "BLOOD. Escape is offered the moment an enemy's attack takes "
+				+ "Health off you during this game, and immediately if this run has "
+				+ "already beaten that game before."),
+			_p("So the way out arrives when the board proves it is the problem: "
+				+ "lose runs, the enemies take turns, your shields stop what they "
+				+ "stop — and the swing that gets past them opens the door. Its "
+				+ "enemy comes with you, alive and following: escape answers the "
+				+ "goal with a no, it does not delete the question."),
 			_note("★ Rate is always optional and always available. Score a game "
 				+ "out of ten and write a note; it feeds the Tier List, which is "
 				+ "yours across every run and is not a game mechanic at all."),
@@ -320,11 +362,12 @@ static func _ch_enemies() -> Dictionary:
 				+ "is a distance rather than a rule."),
 			_b("Once it reaches the front it attacks after every game you play, "
 				+ "for its damage, forever, until its goal is met."),
-			_b("Damage is 1 to 3, tracking the enemy's tier. Your leftover tries "
-				+ "soak it first; the remainder comes off Health."),
-			_p("Followers stack. Two followers is two hits a game; five is five. "
-				+ "And at the Amulet's doorstep every one of them swings three "
-				+ "times a game rather than once. This is how runs actually end."),
+			_b("Damage is 1 to 3, tracking the enemy's tier. A shield stops the "
+				+ "whole swing if you have one; otherwise it all comes off Health."),
+			_p("Followers stack. Two followers in reach is two hits every lost run; "
+				+ "five is five. And on the Amulet's doorstep every one of them "
+				+ "swings twice more for each game you hand in. This is how runs "
+				+ "actually end."),
 			_h("Old goals never expire"),
 			_p("A follower's goal can be fulfilled during ANY later game. Do it "
 				+ "and the follower dies right there, drops its item and pays its "
@@ -374,8 +417,10 @@ static func _ch_board() -> Dictionary:
 				+ "actually reach you down."),
 			_kv("Advance", "Each turn, anything not striking closes one column."),
 			_kv("Strike", "It attacks the moment ANY of its cells is in column 1."),
-			_p("How many turns happen per game is the pressure ladder from §2 — "
-				+ "one at a distance, three on the Amulet's doorstep."),
+			_p("Turns come from two places. Every run you LOSE at the game you "
+				+ "are playing gives the board one, straight away. Handing the "
+				+ "game in gives it only the EXTRA turns the Amulet's pull owes "
+				+ "— none out in the wilds, up to two on its doorstep."),
 			_h("Size is a real thing"),
 			_p("Enemies are not all one cell. A body two cells wide reaches the "
 				+ "front line in fewer games, because its leading edge starts "
@@ -406,12 +451,23 @@ static func _ch_board() -> Dictionary:
 				+ "Forward is legal too, and that is your business."),
 			_note("Clicking any body opens its card: its goal, its damage, its "
 				+ "tier, and the verbs aimed at it."),
+			_h("✦ Chests on the floor"),
+			_p("A body you clear drops its chest on the square it died in, and it "
+				+ "lies there for the rest of the game. Click it to open it — "
+				+ "same question as always, take one or leave it — without "
+				+ "waiting for the reward screen."),
+			_p("A body walking onto a chest SHOVES it: to the nearest free "
+				+ "square, and away from you when it has the choice. A board with "
+				+ "no room left pushes it off the field."),
+			_note("Nothing is ever lost by leaving one. Everything still on the "
+				+ "floor when you report the game goes to the reward screen with "
+				+ "the rest of the haul."),
 		],
 	}
 
 
 # ---------------------------------------------------------------------------
-# 6. Health, tries and dying
+# 6. Health, shields and dying
 # ---------------------------------------------------------------------------
 
 static func _ch_health() -> Dictionary:
@@ -423,13 +479,14 @@ static func _ch_health() -> Dictionary:
 				+ "tiny so they fit on a stream overlay."),
 			_kv("Health", "Set by your character. Reaching 0 ends the run, "
 				+ "immediately, wherever you are."),
-			_kv("Tries", "Granted per game, spent on lost runs, and whatever is "
-				+ "left armours you until the next game replaces them."),
+			_kv("Shields", "Each stops one hit outright, however big. The "
+				+ "Temporary ones a game grants expire when you report it; the "
+				+ "plain ones stay until something breaks them."),
 			_h("Everything that can take Health off you"),
 			_b("A follower striking you, for 1 to 3, after every game — times the "
 				+ "pressure multiplier."),
-			_b("Losing a run of the current game when you have no tries left: 1 "
-				+ "Health."),
+			_b("The turn every lost run hands the enemies — whatever the front "
+				+ "line swings for, if no shield stops it."),
 			_b("A few events and machines, which always say so before you press "
 				+ "the button."),
 			_p("Note what is NOT on that list. Taking a detour costs no Health. "
@@ -654,9 +711,9 @@ static func _ch_pack() -> Dictionary:
 			_kv("Strength", "Every hit that enemy lands is worth 1 more per stack."),
 			_kv("Speed", "It closes one extra tile per stack, every turn — so it "
 				+ "reaches you sooner than the board looks like it should."),
-			_kv("Dexterity", "It gets a Shield per stack. Each one soaks a point of "
-				+ "damage and is spent doing it, so a shielded enemy takes an extra "
-				+ "goal per shield to put down."),
+			_kv("Dexterity", "It gets a Shield per stack. Each one stops a whole hit "
+				+ "and is spent doing it, so a shielded enemy takes an extra goal "
+				+ "per shield to put down."),
 			_kv("Marked", "Everything that lands on it is DOUBLED and goes straight "
 				+ "through Shields. On YOU it is a debt as well: every game, get as "
 				+ "many achievements in the game you are playing as you have stacks "
@@ -672,8 +729,8 @@ static func _ch_pack() -> Dictionary:
 				+ "rid of. Burn is bad for whoever is carrying it."),
 			_b("The buffs are felt by enemies only. Marked is a debuff, and a debuff "
 				+ "is felt by whoever is carrying it — Marked on YOU doubles every "
-				+ "hit you take and ignores the tries you were counting on to "
-				+ "absorb them. Burn's halving is the exception that proves it is a "
+				+ "hit you take and goes straight past the shields you were "
+				+ "counting on to stop it. Burn's halving is the exception that proves it is a "
 				+ "column and not a rule about the word: there is no attack of "
 				+ "yours for a halving to sit on, so the sheet says enemies only."),
 			_h("The ground: tiles and units"),
@@ -782,16 +839,18 @@ static func _ch_wrong() -> Dictionary:
 				+ "goes on your checklist where you can clear it in some LATER "
 				+ "game that happens to suit it. That is not a loss, it is a debt "
 				+ "— and debts in this game are payable in any currency."),
-			_h("I am out of tries and still losing"),
-			_p(("Each further lost run costs 1 Health. Escape is offered after %d "
-				+ "lost runs: take it. Escaping keeps the enemy but stops the "
-				+ "bleeding, and the goal stays on your checklist to clear "
-				+ "somewhere friendlier.") % Overworld2.ESCAPE_AFTER_ATTEMPTS),
+			_h("I keep losing runs of this game"),
+			_p("Each lost run hands the board a turn, and the board is closer "
+				+ "every time. As soon as one of them gets through your shields "
+				+ "and takes Health, Escape is offered: take it. Escaping keeps "
+				+ "the enemy but stops the bleeding, and the goal stays on your "
+				+ "checklist to clear somewhere friendlier."),
 			_h("I have four followers and they are killing me"),
 			_p("In rough order of what to try:"),
 			_b("ROUTE AWAY from the Amulet. Getting back to five or more hops "
-				+ "drops every enemy from three turns a game to one. That is the "
-				+ "biggest single lever in the game and it costs only games."),
+				+ "takes the extra turns away entirely — the board stops moving "
+				+ "except when you lose a run. That is the biggest single lever in "
+				+ "the game and it costs only games."),
 			_b("Pick cards whose games can pay off SEVERAL old goals at once. Read "
 				+ "the checklist first and choose the game to fit it, rather than "
 				+ "the other way round."),
@@ -801,9 +860,10 @@ static func _ch_wrong() -> Dictionary:
 				+ "is a dead enemy."),
 			_b("Push the front-line body backwards to buy a game, or sideways to "
 				+ "unjam a lane."),
-			_b("Bank your tries. Clearing a game first try leaves the whole pool "
-				+ "standing as armour, and a stack that cannot reach your Health "
-				+ "is a stack you can outlast."),
+			_b("Clear a game first try. Nothing you never lost is a turn the "
+				+ "stack never took, and the whole shield pool is still standing "
+				+ "when you report — a stack that cannot reach your Health is a "
+				+ "stack you can outlast."),
 			_h("The offering is all dead ends"),
 			_p("Dash is a total select — it ignores the offering and lets you move "
 				+ "to any connected game at all. It is the right answer to a bad "
@@ -828,13 +888,15 @@ static func _ch_screen() -> Dictionary:
 			_p("There is no HUD strip. Every number is drawn once, by whatever "
 				+ "owns it, which takes a moment to learn and then never gets in "
 				+ "the way."),
-			_kv("Health, tries, statuses", "On the hero, on the left of the board. "
-				+ "Hearts under the portrait, try-pips over it."),
+			_kv("Health, shields, statuses", "On the hero, on the left of the "
+				+ "board. Hearts under the portrait, shield pips over it — ◆ for "
+				+ "the Temporary ones, ◈ for the ones that stay."),
 			_kv("Gold", "A chip in the top bar."),
 			_kv("Board size and tier", "The right-hand end of the board's pressure "
 				+ "bar."),
-			_kv("Enemy turns per game", "The strip across the top of the board, in "
-				+ "the band's colour, with the hop count that caused it."),
+			_kv("Extra turns", "The strip across the top of the board: what "
+				+ "reporting a game hands the enemies, in the band's colour, with "
+				+ "the hop count that caused it. Zero out in the wilds."),
 			_kv("Push and Bomb charges", "On their own buttons, on the board's "
 				+ "toolbar."),
 			_kv("Bash, Dash, Transmute, Scramble", "Chips on the row under the "

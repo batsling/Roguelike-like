@@ -136,13 +136,16 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		stat_col.add_child(_stat_row("▦", "Size", _size_text(e), UITheme.TEXT_DIM))
 	var stun: int = int(entry.get("stun", 0))
 	if stun > 0:
-		# A stun costs one TURN, and how much of a game that is depends on how close
-		# the run is to the Amulet (§7.4) — so the card says turns AND what they are
-		# worth here rather than a "games" figure that is only true in the far band.
-		var turns: int = GameLoop2.enemy_turns()
-		stat_col.add_child(_stat_row("❄", "Frozen",
-			"loses its next %d turn(s) of %d per game" % [stun, turns],
-			Color(0.6, 0.8, 1.0)))
+		# A stun costs one TURN, and a turn is what a lost run buys the board (§3.2)
+		# — so a stun is a lost run this body sits out. Reporting a game adds the
+		# Amulet's extra turns on top (§7.4), and the card names those too when
+		# there are any, since they are turns the stun also eats.
+		var extra: int = GameLoop2.enemy_turns()
+		var worth: String = "sits out your next %d lost run(s)" % stun
+		if extra > 0:
+			worth += ", or %d of the %d turns reporting a game buys them" % [
+				mini(stun, extra), extra]
+		stat_col.add_child(_stat_row("❄", "Frozen", worth, Color(0.6, 0.8, 1.0)))
 	top.add_child(stat_col)
 	inner.add_child(top)
 

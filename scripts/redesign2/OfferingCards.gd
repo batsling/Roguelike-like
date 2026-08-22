@@ -199,7 +199,7 @@ const HOVER_ART := 30.0
 
 # The badge rows on a card: the name, plus two fixed-height flag lines above the
 # cover — the Amulet / event flag, and the repeat game's +1 Dash. Everything else
-# a card used to carry (the route, the pace, the tries, the map, the Beatable row,
+# a card used to carry (the route, the pace, the Temporary Shields, the map, the Beatable row,
 # the Bash/Transmute verbs) lives in the popup the card opens.
 const BADGE_FONT := 11
 const BADGE_LINE := 15               # one line of BADGE_FONT, in px
@@ -211,7 +211,7 @@ const NAME_BOX_H := 51               # three lines of NAME_FONT — "Shotgun Kin
 
 # One choice = the game's cover art, its name, and — when it is the game the whole
 # run is a search for — the Amulet's flag above it. Nothing else: clicking the
-# card opens GameChoiceModal, which is where the route, the enemy, the tries and
+# card opens GameChoiceModal, which is where the route, the enemy, the shields and
 # the verbs all get said properly, and where the game is actually chosen.
 #
 # Hover still updates the shared enemy preview under the row, so the offering can
@@ -425,7 +425,7 @@ func _beatable_pip(game: GameData, enemy: GoalEnemyData) -> Control:
 func show_preview(index: int) -> void:
 	if index < 0 or index >= _page._choices.size():
 		return
-	# A destination card grants no tries — it isn't a game being started (§10).
+	# A destination card grants no shields — it isn't a game being started (§10).
 	_hover_grant = -1 if _page._asking_return() else GameLoop2.shields_for_game(_page._choices[index]["game"])
 	_line.text = _hover_line(_page._choices[index])
 	_show_hover_art(_page._choices[index])
@@ -518,7 +518,7 @@ func escort_note(choice: Dictionary) -> String:
 	return ESCORT_WARNING if _escort_expected(choice) else ""
 
 # The hover, on ONE line: the enemy this card would put on the board, the goal you
-# would be playing for, and the TRIES it hands you. The tries used to be a slot on
+# would be playing for, and the TEMPORARY SHIELDS it hands you. They used to be a slot on
 # the HUD that previewed on hover; the HUD has gone, and this is the line that was
 # already answering "what is that card" — so the number rides here instead of
 # being the last thing keeping a panel alive.
@@ -529,8 +529,9 @@ func _hover_line(choice: Dictionary) -> String:
 		return "[b]%s[/b]  ·  [i]%s[/i]" % [game.display_name,
 			"stay here and carry on from this game"
 			if bool(choice["stay"]) else "head back and carry on from there"]
-	var tries: String = "  ·  [color=#%s]◆ %d tries[/color]" % [
-		_page.SHIELD_BLUE.to_html(false), _hover_grant] if _hover_grant >= 0 else ""
+	var tries: String = "  ·  [color=#%s]◆ %s[/color]" % [
+		_page.SHIELD_BLUE.to_html(false),
+		GameState.temp_shields_text(_hover_grant)] if _hover_grant >= 0 else ""
 	if e == null:
 		return "[b]%s[/b]  ·  [i]no enemy — free game[/i]%s" % [game.display_name, tries]
 	# The escort rides even the hidden line: the Dome hides WHAT is waiting, and how

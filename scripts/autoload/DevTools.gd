@@ -501,7 +501,9 @@ func _build_run_tab() -> void:
 	_body.add_child(_section("Board verbs"))
 	# Routed through grant_run_stat, the same call an item's gain_stat makes, so a
 	# verb nudged here goes through every amplifier a real grant would.
-	for spec in [{"label": "Shields", "stat": "shields"}, {"label": "Bash", "stat": "bash"},
+	for spec in [{"label": "Temporary Shields", "stat": "shields"},
+			{"label": "Shields", "stat": "bonus_shields"},
+			{"label": "Bash", "stat": "bash"},
 			{"label": "Dash", "stat": "dash"}, {"label": "Push", "stat": "push"},
 			{"label": "Transmute", "stat": "transmute"}, {"label": "Scramble", "stat": "scramble"},
 			{"label": "Bombs", "stat": "bombs"}, {"label": "Keys", "stat": "keys"}]:

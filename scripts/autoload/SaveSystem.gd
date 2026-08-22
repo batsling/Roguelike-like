@@ -248,10 +248,11 @@ func _build_payload() -> Dictionary:
 		# load restores the base and _recompute_item_bonuses re-applies the item
 		# half, so a passive (+1 Bash) can't compound across save/load cycles.
 		"shields": GameState.base_verb_value("shields"),
-		# The pool that does not expire (§4.3). Stored raw rather than through
-		# base_verb_value: nothing in the pack contributes a standing bonus to it —
-		# a Bonus Shield is granted once, by a pill or by Barricade banking a
-		# resolved game, and subtracting an item half would eat what was granted.
+		# The pool that does not expire — the plain Shields of §4.3, as against the
+		# Temporary ones above. Stored raw rather than through base_verb_value:
+		# nothing in the pack contributes a standing bonus to it — one is granted
+		# once, by a pill or by Barricade banking a resolved game, and subtracting
+		# an item half would eat what was granted.
 		"bonus_shields": GameState.bonus_shields,
 		"bash": GameState.base_verb_value("bash"),
 		"push": GameState.base_verb_value("push"),

@@ -9,14 +9,31 @@ extends Node
 # this autoload + GameState.
 #
 # The tiny run resources it moves live on GameState (hp / max_hp = Health /
-# Max Health, shields = the per-game tries, and the verb/consumable counts); this
+# Max Health, shields = the per-game armour, and the verb/consumable counts); this
 # node owns only the enemy-stack state machine on top of them.
 #
-# SHIELDS ARE THE TRIES (§3). Selecting a game grants shields_for_game() of them;
-# every run of that game you lose is one tick of the ATTEMPT TRACKER
-# (log_attempt), which spends a shield — or 1 Health once they're gone. Whatever
-# survives absorbs the followers' hits when you report the game, and then expires:
-# shields never carry into the next game.
+# THE TWO HALVES OF §3, and they are separate things that used to be one:
+#
+#   A LOST RUN GIVES THE ENEMIES A TURN. Every run of the game you lose is one
+#   tick of the ATTEMPT TRACKER (log_attempt), and the whole of what a tick costs
+#   is one turn of the board (attempt_turn): the front line swings, everything
+#   behind it closes a column, the ground burns whoever is standing on it. There
+#   is no limit on how many times you may fail — only a board that is a turn
+#   closer every time you do.
+#
+#   A SHIELD STOPS ONE INSTANCE OF DAMAGE. Selecting a game grants
+#   shields_for_game() of them, and each one blocks one hit outright, whatever its
+#   size — a 3-damage swing breaks a shield and lands for nothing, and so does a
+#   1-damage one (_take_hit). Whatever is left when you report the game expires
+#   with it, unless Barricade banks it (§4.3): shields do not carry into the next
+#   game on their own.
+#
+# The two were the same resource until now — shields were the tries AND the
+# armour, so every failed attempt at the real game was also a hole in the wall
+# you were about to meet the stack with. Splitting them makes each one legible:
+# the tracker is about the board's distance and the shields are about the board's
+# damage, and "how many tries do I get" stops having an answer that punishes you
+# twice.
 #
 # Lifecycle of one game (§7.2):
 #   choose_game(enemy)  — the enemy SPAWNS ONTO THE BOARD when you pick its game,
@@ -36,29 +53,39 @@ extends Node
 #        whether it walked on this game or three games ago. Defeated + item drop at
 #        0 Health; a survivor (e.g. an Alien-Baby-buffed two-Health enemy) stays on
 #        the board and holds its fire for the whole game, because it was engaged.
-#     2. The stack takes its TURNS — enemy_turns() of them, 1 out in the wilds
-#        and 3 on the Amulet's doorstep (§7.4). Each turn every enemy acts once:
-#        the front column attacks for its damage (shields, then hp), everything
-#        behind it steps a column closer, and a stun costs one turn of either.
+#     2. The stack takes its EXTRA TURNS, and only those (§7.4): a game handed in
+#        moves nobody by itself, and what the Amulet's pull adds on the end is 0
+#        out in the wilds, 1 once they have your scent and 2 on its doorstep. Each
+#        turn every enemy acts once: the front column attacks for its damage
+#        (shields, then hp), everything behind it steps a column closer, and a
+#        stun costs one turn of either. The turns the board takes the REST of the
+#        time come one at a time, off the runs you lose at the game (§3.2).
 #     3. Any shields still standing expire — they belonged to that game.
 # Reach & clear the Amulet game (clear_amulet) to win; hp <= 0 to lose.
 
 signal loop_changed()                 # stack / arrivals / run-state mutated (HUD hook)
-signal enemy_defeated(enemy)          # a GoalEnemyData was defeated (drop granted)
+# A GoalEnemyData was defeated, and WHERE it fell (§8.2) — the cell its chest is
+# to be laid on. OFF_FIELD for a body that was not standing anywhere (one waiting
+# in the off-grid queue), which sends its chest straight to the haul screen.
+signal enemy_defeated(enemy, cell)
 signal player_hit(damage, blocked)    # a stacked enemy landed a hit this resolve
-# A try at the current game was logged or taken back. `cost` is "shield" or
-# "health" (what that try spent), `undone` true when it was reversed. The board
-# animates off this, so it fires once per tick.
+# A try at the current game was logged or taken back. `cost` is "turn" — the one
+# thing a tick costs — or, from a save written before that was true, "shield" or
+# "bonus". `undone` is true when it was reversed. The board animates off this, so
+# it fires once per tick.
 signal attempt_logged(cost: String, undone: bool)
 signal run_lost()
 signal run_won()
 
-# Shields granted when a game is SELECTED — the tries you get at it (§3). A
-# Traditional roguelike is the long haul, so it grants more.
+# Shields granted when a game is SELECTED — the hits you get to not take at it
+# (§3). A Traditional roguelike is the long haul, so it grants more.
 const SHIELDS_PER_GAME: int = 3
 const SHIELDS_TRADITIONAL: int = 5
-# What one lost run costs once the shields are gone.
-const ATTEMPT_HEALTH_COST: int = 1
+# How many turns the board takes for one lost run (§3). One: the same beat the
+# stack takes per turn of a reported game, so a try and a game are measured in the
+# same unit and "how much did that cost me" is a question about the board rather
+# than about two different currencies.
+const ATTEMPT_TURNS: int = 1
 
 # What the player's two ways of hurting an enemy are worth, in the damage unit
 # `_damage_enemy` resolves. Both are 1: an enemy's Health is a count of goals it
@@ -208,26 +235,140 @@ var bashed: Array[StringName] = []
 # node, so a transmute sticks to the SPOT rather than to one offering.
 var transmuted: Dictionary = {}
 
+# THE FLOOR (§8.2). Cell -> the chest a defeated body left where it fell:
+#   {"items": [item_id, …], "boss": bool}
+#
+# The loop owns WHERE a chest is, because the loop is the thing that walks bodies
+# over it — a body stepping onto a cell shoves the chest out of the way
+# (_displace_drop), and with nowhere left to shove it the chest goes OFF FIELD and
+# is banked for the screen the game ends on. The loop does not own what is IN one:
+# the offer is rolled by the overworld out of `Data` and stored here as ids, which
+# is what keeps this file scene-free and the save JSON-safe.
+var drops: Dictionary = {}
+
+# Where a chest goes when the board has no room left for it: not a cell, and not
+# lost either — the overworld sweeps these onto the haul screen (§18).
+const OFF_FIELD := Vector2i(-1, -1)
+
 var run_over: bool = false
 var won: bool = false
 var defeated_count: int = 0
 var games_beaten: int = 0
 
+# --- what the player has already ANSWERED FOR, this game (§2.1) -------------
+#
+# A goal ticked on the checklist is confirmed and resolves ON THE SPOT now: the
+# enemy takes its hit while you are still playing, its chest lands on the board,
+# a reward is paid the moment it is earned. That is the whole change — the report
+# used to be the only moment anything could happen, which meant a kill you had
+# already made sat there unpaid for the rest of the evening.
+#
+# It leaves the report with a bookkeeping job, and these four are it. Everything
+# here is scoped to ONE GAME and cleared when the next is chosen or this one is
+# handed in, because every question they answer is "what happened during THIS
+# game".
+
+# Bodies whose goal was met mid-game, instance -> true. A survivor among them is
+# ENGAGED: it holds its fire for every turn of the report, exactly as one cleared
+# at the report would (see beat_game step 2). Defeated ones stay in the record —
+# harmless, and cheaper than pruning.
+var cleared_this_game: Dictionary = {}
+
+# The same for bodies cleared the OTHER way (§13, Burn's `instead`). Engagement,
+# yes; a completed goal, no — the enemy's own condition was never set.
+var instead_this_game: Dictionary = {}
+
+# Player-side objectives already claimed this game, status id -> true. A `demand`
+# bites at the report for every game it went unanswered, and it must not bill a
+# player who answered it an hour ago (_resolve_status_demands).
+var answered_this_game: Dictionary = {}
+
+# How many goals were actually MET mid-game. The player's clauses tick once for a
+# game in which any goal was completed (_tick_player_clauses), and "any" has to
+# include the ones already resolved.
+var goals_met_this_game: int = 0
+
+# Bodies DEFEATED this game, instance -> the entry they were, so their optional
+# bonus objectives can still be claimed afterwards. The report always resolved
+# bonuses BEFORE goals for this reason ("an enemy you failed can still pay its
+# bonus"); with the goal resolving the moment it is ticked, the order is the
+# player's rather than the code's, and killing a body first must not silently
+# forfeit the bonus you had already earned off it.
+var _ghosts: Dictionary = {}
+
+# Checklist rows answered mid-game that the four records above have no room for:
+# an enemy BONUS claimed, a CURSE followed, the character's LEVEL-UP taken. Keys
+# are the checklist's own ("bonus:12:burn", "curse:0", "levelup"), because this is
+# the one thing the loop stores purely so a row can be drawn already-answered — it
+# does no work of its own with them.
+#
+# It lives here rather than on the checklist for the reason all of the above does:
+# the checklist is rebuilt whenever the page repaints, and a tick the player can
+# never take back must not be something a repaint can lose. It rides the save for
+# the same reason.
+var answered_rows: Dictionary = {}
+
+# The entry a body defeated THIS GAME used to be, or {} — what a checklist row
+# about it still reads (§2.1). Only for the game in play: the record goes when the
+# game is handed in.
+func ghost_for(instance: int) -> Dictionary:
+	var held = _ghosts.get(instance)
+	return held if held is Dictionary else {}
+
+# Has this checklist row already been answered this game? Keys are the caller's.
+func row_answered(key: String) -> bool:
+	return answered_rows.has(key)
+
+# Record one, once it has actually resolved.
+func mark_row_answered(key: String) -> void:
+	answered_rows[key] = true
+
 # The attempt tracker for the game currently being played (§3). One entry per try
-# the player has logged, in order, holding what that try spent: "shield" or
-# "health". The list is the undo record — a mistaken tick gives back exactly what
+# the player has logged, in order, holding what that try spent: "shield", "bonus"
+# or "turn". The list is the undo record — a mistaken tick gives back exactly what
 # it took — and its size is the attempt count. Cleared when a new game is chosen.
 var attempt_costs: Array = []
 
-# Gold each logged try minted on its way through, parallel to `attempt_costs`
-# (Piggy Bank pays on a Health loss, and a try is a Health loss). Held so
-# undo_attempt can hand back exactly what the try it is undoing earned — see
-# log_attempt. 0 for a try that cost a shield or paid nothing.
+# Gold each logged try minted on its way through, parallel to `attempt_costs`.
+# Kept for a save written when a try could cost Health directly and Piggy Bank
+# paid on it; nothing mints into it now (a turn's winnings are inside the
+# snapshot the undo restores wholesale), and undo_attempt still hands back what
+# an OLD save recorded here.
 #
 # A parallel LIST rather than one "last payout" int, because the undo is a stack:
 # a player can untick three tries in a row, and each has to give back its own
 # winnings rather than the most recent one's.
 var _attempt_payouts: Array[int] = []
+
+# What a try that cost the board a TURN is taken back to, parallel to
+# `attempt_costs` — {} for a try that merely spent a shield (that one is undone
+# by handing the shield back). See _run_snapshot for what one holds and why an
+# enemy turn needs one at all.
+#
+# RUNTIME ONLY, deliberately: a snapshot names ItemData by reference and is a
+# whole second copy of the board, and neither belongs in a save file — a save is
+# a place the run is resumed from, not a place its undo history lives. So a run
+# reloaded mid-game cannot take back a turn it wasn't there for, which
+# can_undo_attempt says out loud and the button reads off (Overworld2).
+var _attempt_snapshots: Array = []
+
+# The turn a lost run just cost the player, in the same shape beat_game's result
+# carries it ({attacks, turn_frames, damage_taken, blocked, …}) — because it IS
+# one of those turns, and the board replays it with the same animate_resolve the
+# end of a game uses. {} until a try has cost one.
+var last_attempt_turn: Dictionary = {}
+
+# THE ESCAPE GATE (§3.2): true once an enemy's attack has taken HEALTH off the
+# player during the game in play. Set by _take_hit on the one source that counts
+# (a swing, not a status's bill and not an event's price), and cleared when a game
+# is chosen and when one is reported — it is a fact about the game you are in.
+#
+# It is what the Escape button waits for. A lost run hands the board a turn, the
+# turn swings, a shield stops the first swings outright — so the moment this goes
+# true is the moment the game has actually started costing you something no
+# resource of yours could absorb, which is the moment walking away stops being a
+# discount and starts being the point.
+var hurt_this_game: bool = false
 
 # Summary of the most recent beat_game(), for the log / HUD / tests. Rebuilt each
 # resolve; see beat_game for its shape.
@@ -259,8 +400,11 @@ func reset() -> void:
 	stack.clear()
 	tiles.clear()
 	units.clear()
-	attempt_costs.clear()
-	_attempt_payouts.clear()
+	drops.clear()
+	_clear_attempts()
+	_clear_game_record()
+	last_attempt_turn = {}
+	hurt_this_game = false
 	bashed.clear()
 	transmuted.clear()
 	run_over = false
@@ -361,6 +505,7 @@ func serialize() -> Dictionary:
 		# there was nothing to put there.
 		"tiles": _serialize_cells(tiles, "games"),
 		"units": _serialize_cells(units, "health"),
+		"drops": _serialize_drops(),
 		"bashed": bashed_ids,
 		"transmuted": _transmuted_ids(),
 		"run_over": run_over,
@@ -369,8 +514,25 @@ func serialize() -> Dictionary:
 		"games_beaten": games_beaten,
 		"attempt_costs": attempt_costs.duplicate(),
 		"attempt_payouts": _attempt_payouts.duplicate(),
+		"hurt_this_game": hurt_this_game,
+		# What the game in play has already been answered for (§2.1). Saved with
+		# the tracker and for the same reason: a run reloaded mid-game must not
+		# offer a goal the player already resolved, nor bill a demand they paid.
+		# JSON has no int keys, so the two instance sets go as lists.
+		"cleared_this_game": cleared_this_game.keys(),
+		"instead_this_game": instead_this_game.keys(),
+		"answered_this_game": _string_keys(answered_this_game),
+		"goals_met_this_game": goals_met_this_game,
+		"answered_rows": _string_keys(answered_rows),
 		"next_instance": _next_instance,
 	}
+
+# A StringName-keyed set as plain strings, for the save.
+func _string_keys(set: Dictionary) -> Array:
+	var out: Array = []
+	for k in set.keys():
+		out.append(String(k))
+	return out
 
 func restore(data: Dictionary) -> void:
 	reset()
@@ -415,6 +577,7 @@ func restore(data: Dictionary) -> void:
 	# draw as a blank badge and trigger nothing.
 	tiles = _deserialize_cells(data.get("tiles", []), "games", func(id): return Data.get_tile(id) != null)
 	units = _deserialize_cells(data.get("units", []), "health", func(id): return Data.get_unit(id) != null)
+	_restore_drops(data.get("drops", []))
 	bashed.clear()
 	for gid in data.get("bashed", []):
 		bashed.append(StringName(gid))
@@ -447,6 +610,23 @@ func restore(data: Dictionary) -> void:
 		_attempt_payouts.remove_at(0)
 	while _attempt_payouts.size() < attempt_costs.size():
 		_attempt_payouts.insert(0, 0)
+	# Absent from a save written before the escape gate existed, which loads as
+	# "this game has not hurt you yet" — the safe direction: the button is offered
+	# again the first time a swing gets through, rather than being open on a run
+	# that never earned it.
+	hurt_this_game = bool(data.get("hurt_this_game", false))
+	# What the game in play was already answered for (§2.1). Absent from an older
+	# save, which loads as "nothing has been ticked yet" — the same safe direction
+	# the gate above takes.
+	for inst in data.get("cleared_this_game", []):
+		cleared_this_game[int(inst)] = true
+	for inst in data.get("instead_this_game", []):
+		instead_this_game[int(inst)] = true
+	for sid in data.get("answered_this_game", []):
+		answered_this_game[StringName(sid)] = true
+	goals_met_this_game = maxi(0, int(data.get("goals_met_this_game", 0)))
+	for key in data.get("answered_rows", []):
+		answered_rows[String(key)] = true
 	# Never hand out an instance handle something on the board already holds.
 	_next_instance = maxi(1, int(data.get("next_instance", 1)))
 	for entry in stack:
@@ -720,9 +900,13 @@ func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 # did not have to widen.
 func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 		escort_tier: int = -1) -> int:
-	# A new game means a fresh set of tries — whatever was logged against the last
-	# one is closed out.
-	attempt_costs.clear()
+	# A new game means a fresh tracker — whatever was logged against the last one
+	# is closed out — and a fresh escape gate with it: this game has not hurt you
+	# yet, whatever the last one did (§3.2). The same for what the last game's
+	# checklist answered (§2.1): those goals were that game's.
+	_clear_attempts()
+	_clear_game_record()
+	hurt_this_game = false
 	# The superseded bodies leave the board rather than lingering on it as ones
 	# nobody chose: they were never played for. Both of them — the escort only ever
 	# stood there because the game it came with did.
@@ -786,16 +970,16 @@ func _clear_arrivals() -> void:
 			_take_off_board(idx)
 	arrivals.clear()
 
-# --- shields = the tries at a game (§3) -----------------------------------
+# --- shields = the armour a game grants (§3) -------------------------------
 
 # How many shields selecting `game` grants: the long haul of a Traditional
-# roguelike is worth more tries than anything else.
+# roguelike is worth more cover than anything else.
 func shields_for_game(game: GameData) -> int:
 	if game != null and game.type == GameData.GameType.TRADITIONAL:
 		return SHIELDS_TRADITIONAL
 	return SHIELDS_PER_GAME
 
-# Selecting a game hands the player their tries at it. Adds the grant on top of
+# Selecting a game hands the player their armour for it. Adds the grant on top of
 # whatever is carried (a shield from Anchor bought before this point still
 # counts), then announces the selection so items hooked on "when a game is
 # selected" — Anchor's +1 Shield — land on top of the grant. Returns the base
@@ -808,78 +992,265 @@ func grant_selection_shields(game: GameData) -> int:
 	loop_changed.emit()
 	return n
 
-# The tries logged against the game in play.
+# The lost runs logged against the game in play.
 func attempts() -> int:
 	return attempt_costs.size()
 
-# How many of those tries were paid for with a shield — the hollow pips the board
-# draws next to the ones still standing.
-func attempts_on_shields() -> int:
-	return attempt_costs.count("shield")
+# Whether a lost run can be logged at all: there has to be a game in play to be
+# losing runs of, and a run still going to lose them in. Asked by the overworld so
+# the board can be ready to animate before the tick lands.
+func can_log_attempt() -> bool:
+	return not run_over and not arrivals.is_empty()
 
-# ONE LOST RUN at the game being played (§3): it spends a shield, or
-# ATTEMPT_HEALTH_COST Health once the shields are gone — and Health reaching 0
-# ends the run right there, same as an enemy hit. Refused when no game is in play
-# or the run is already over. Returns the cost ("shield" / "bonus" / "health"), or
-# "" when nothing was logged.
+# ONE LOST RUN at the game being played (§3): THE ENEMIES TAKE A TURN. That is
+# the whole cost — they swing and close in, which can kill, same as an enemy hit
+# at the end of a game. Refused when no game is in play or the run is already
+# over. Returns "turn", or "" when nothing was logged.
 #
-# THE ORDER IS PER-GAME, THEN BONUS, THEN HEALTH (§4.3). The tries granted by the
-# game in play are spent first because they die with it anyway; a Bonus Shield is
-# spent only once they are gone, because it is the one that would still be there
-# next game. A lost run DOES eat them — they are shields, and a pool that only
-# stopped enemy damage would be a different resource wearing the same pips.
+# IT DOES NOT SPEND A SHIELD. Shields used to be the tries themselves — three
+# ticks and they were gone — which made them two things at once: a count of
+# attempts and a wall against damage. They are only the wall now (see _take_hit),
+# and a lost run is only a turn. So there is no limit on how many times you may
+# fail at a game; what there is, is a board that is one turn closer every time you
+# do, and the tries you never spent are the armour you meet it with.
+#
+# A BOARD WITH NOTHING ON IT CHARGES NOTHING, and that is the design rather than
+# an oversight: the turn is the cost, so a stack that has been cleared has nothing
+# to take. The tick is still logged — it is what the escape hatch counts (§3) and
+# what the tracker draws — it simply resolves to a turn in which nobody acts.
 func log_attempt() -> String:
-	if run_over or arrivals.is_empty():
+	if not can_log_attempt():
 		return ""
-	var cost: String = "health"
-	if GameState.shields > 0:
-		cost = "shield"
-	elif GameState.bonus_shields > 0:
-		cost = "bonus"
-	var payout: int = 0
-	if cost == "shield":
-		GameState.shields -= 1
-	elif cost == "bonus":
-		GameState.bonus_shields -= 1
-	else:
-		# What the Health cost PAID OUT, measured rather than assumed: losing
-		# Health is a trigger point (Piggy Bank), and a try is the one loss in the
-		# game that can be taken back. Without this the undo button is a gold
-		# faucet — tick, untick, tick, untick — so the tick's winnings are
-		# recorded here and handed back by undo_attempt below.
-		var purse: int = GameState.gold
-		GameState.change_hp(-ATTEMPT_HEALTH_COST)
-		payout = maxi(0, GameState.gold - purse)
-		if GameState.hp <= 0:
-			_finish_run(false)
-	attempt_costs.append(cost)
-	_attempt_payouts.append(payout)
-	attempt_logged.emit(cost, false)
+	# Taken BEFORE anything swings, because everything the turn is about to do —
+	# the Health, the ground it walks onto, a trinket the hit shatters — is what
+	# the undo has to put back (see _run_snapshot).
+	_attempt_snapshots.append(_run_snapshot())
+	last_attempt_turn = attempt_turn()
+	# One entry per tick, all of them "turn" now that there is only one thing a
+	# tick can cost. Kept as the list rather than collapsed to a count because it
+	# is what a save writes and what an older save reads back — and because the
+	# three attempt lists are indexed in lockstep (see _clear_attempts).
+	attempt_costs.append("turn")
+	# Nothing to record: what a turn minted is inside the snapshot the undo
+	# restores. Kept in step all the same, and an old save's payouts are still
+	# read back into it.
+	_attempt_payouts.append(0)
+	attempt_logged.emit("turn", false)
 	loop_changed.emit()
-	return cost
+	return "turn"
 
-# Take back the last logged try, refunding exactly what it spent — the tracker is
-# a hand-driven counter, so a mis-click has to be reversible. Refused once the run
-# is over (a run ended by that tick stays ended). Returns the cost it undid.
-func undo_attempt() -> String:
+# THE TURN A LOST RUN COSTS (§3), in the same shape and through the same resolver
+# one turn of a reported game uses — because it is one of those turns, and a
+# second implementation of "the front line swings and the field closes up" is a
+# second place for Strength, stuns, fire tiles and the off-grid queue to be
+# handled differently.
+#
+# Nobody holds their fire: `hit_this_game` is the goals the player reported, and a
+# game in play has not been reported yet. So every body in the front column
+# swings — and the shields standing at that moment stop what they stop (§3),
+# exactly as they would at the end of a reported game.
+#
+# Public because the dev panel and the text harness want the same beat without
+# having to fake a tracker tick around it.
+func attempt_turn() -> Dictionary:
+	var res := {
+		"attacks": [], "turn_frames": [], "defeats": [], "drops": 0,
+		"damage_taken": 0, "blocked": 0, "hp": GameState.hp,
+		"turns": ATTEMPT_TURNS, "attempt": true,
+	}
+	# WHOEVER YOU HAVE ALREADY ANSWERED FOR HOLDS ITS FIRE (§2.1). "Its goal was
+	# engaged this game" is a fact about the GAME, not about the report — so a body
+	# you cleared an hour ago sits out the turns your lost runs hand the board just
+	# as it sits out the ones the report does. Empty until something is ticked,
+	# which is what it used to be unconditionally.
+	var engaged: Dictionary = {}
+	for inst in cleared_this_game:
+		engaged[int(inst)] = true
+	for inst in instead_this_game:
+		engaged[int(inst)] = true
+	for turn in range(ATTEMPT_TURNS):
+		if run_over:
+			break
+		_resolve_enemy_turn(turn, engaged, res)
+		(res["turn_frames"] as Array).append(_board_snapshot())
+	res["hp"] = GameState.hp
+	res["run_over"] = run_over
+	return res
+
+# Everything an enemy turn can move, held so a mis-ticked try can be put back.
+#
+# A turn is not a number that can be handed back the way a shield is: it walks
+# bodies across the board, burns the ground under them, breaks the trinkets that
+# break on a hit (§8.1) and pays out whatever losing Health pays out. So the undo
+# is a RESTORE rather than a refund, and this is its scope: the board in full
+# (GameLoop2's own serialize, which is what a save is written from), and the
+# handful of run resources a swing reaches — Health, the purse it may have minted,
+# both shield pools, the chests a trigger banked, the player's own statuses, and
+# the inventory the hit may have thinned.
+#
+# `inventory` holds the ItemData REFERENCES, not ids: they are the same shared
+# resources `Data` serves, so putting the array back is putting the items back,
+# and _recompute_item_bonuses re-derives everything they were contributing.
+func _run_snapshot() -> Dictionary:
+	return {
+		"loop": _loop_snapshot(),
+		"state": GameState.snapshot_run_resources(),
+	}
+
+func _restore_snapshot(snap: Dictionary) -> void:
+	if snap.is_empty():
+		return
+	# The board first: restoring the run's resources re-derives the item bonuses,
+	# and sync_grid_bounds rides that — so the bodies want to be back on the board
+	# before anything can resize it under them.
+	_restore_loop_snapshot(snap.get("loop", {}))
+	GameState.restore_run_resources(snap.get("state", {}))
+
+# The loop's own state, copied IN MEMORY rather than through serialize/restore.
+# The same fields the save writes, but each held as the object it is: a save
+# names an enemy by id and looks it up again on load, which is right for a file
+# and wrong for an undo — a body the catalog has stopped serving would vanish
+# rather than come back, and a round trip through JSON shapes is work an undo
+# does not need to do. `duplicate(true)` copies the nested containers and leaves
+# the GoalEnemyData references alone, which is exactly the split wanted: the
+# entry is a new dictionary, the enemy in it is the same enemy.
+func _loop_snapshot() -> Dictionary:
+	var bodies: Array = []
+	for entry in stack:
+		bodies.append((entry as Dictionary).duplicate(true))
+	return {
+		"stack": bodies,
+		"arrivals": arrivals.duplicate(),
+		"tiles": tiles.duplicate(true),
+		"units": units.duplicate(true),
+		"drops": drops.duplicate(true),
+		"bashed": bashed.duplicate(),
+		"transmuted": transmuted.duplicate(),
+		"run_over": run_over,
+		"won": won,
+		"defeated_count": defeated_count,
+		"games_beaten": games_beaten,
+		"attempt_costs": attempt_costs.duplicate(),
+		"attempt_payouts": _attempt_payouts.duplicate(),
+		"hurt_this_game": hurt_this_game,
+		# What the checklist has already answered for (§2.1). A lost run's turn can
+		# kill a body a confirmed goal had engaged, so undoing the turn has to put
+		# the record back alongside the board.
+		"cleared_this_game": cleared_this_game.duplicate(),
+		"instead_this_game": instead_this_game.duplicate(),
+		"answered_this_game": answered_this_game.duplicate(),
+		"goals_met_this_game": goals_met_this_game,
+		"answered_rows": answered_rows.duplicate(),
+		"ghosts": _ghosts.duplicate(true),
+		"next_instance": _next_instance,
+		"last_result": last_result.duplicate(true),
+	}
+
+func _restore_loop_snapshot(snap: Dictionary) -> void:
+	if snap.is_empty():
+		return
+	stack.clear()
+	for entry in snap.get("stack", []):
+		stack.append((entry as Dictionary).duplicate(true))
+	arrivals = (snap.get("arrivals", []) as Array).duplicate()
+	tiles = (snap.get("tiles", {}) as Dictionary).duplicate(true)
+	units = (snap.get("units", {}) as Dictionary).duplicate(true)
+	drops = (snap.get("drops", {}) as Dictionary).duplicate(true)
+	bashed = (snap.get("bashed", []) as Array).duplicate()
+	transmuted = (snap.get("transmuted", {}) as Dictionary).duplicate()
+	run_over = bool(snap.get("run_over", false))
+	won = bool(snap.get("won", false))
+	defeated_count = int(snap.get("defeated_count", 0))
+	games_beaten = int(snap.get("games_beaten", 0))
+	attempt_costs = (snap.get("attempt_costs", []) as Array).duplicate()
+	_attempt_payouts.clear()
+	for paid in snap.get("attempt_payouts", []):
+		_attempt_payouts.append(int(paid))
+	# The escape gate goes back with the swing that opened it: undoing the tick
+	# whose turn first got through has to close the door again, or the undo would
+	# leave the player holding a way out they no longer paid for (§3.2).
+	hurt_this_game = bool(snap.get("hurt_this_game", false))
+	cleared_this_game = (snap.get("cleared_this_game", {}) as Dictionary).duplicate()
+	instead_this_game = (snap.get("instead_this_game", {}) as Dictionary).duplicate()
+	answered_this_game = (snap.get("answered_this_game", {}) as Dictionary).duplicate()
+	goals_met_this_game = int(snap.get("goals_met_this_game", 0))
+	answered_rows = (snap.get("answered_rows", {}) as Dictionary).duplicate()
+	_ghosts = (snap.get("ghosts", {}) as Dictionary).duplicate(true)
+	# The instance counter goes back too: a body defeated by the turn is about to
+	# stand on the board again, and an id handed out since would then be a second
+	# body wearing the same one.
+	_next_instance = int(snap.get("next_instance", _next_instance))
+	last_result = (snap.get("last_result", {}) as Dictionary).duplicate(true)
+
+# Whether the last logged try can be taken back. A turn can only be taken back by
+# the session that played it: its snapshot is runtime-only (see
+# `_attempt_snapshots`), so a run reloaded mid-game answers false here and the
+# undo button goes grey rather than half-undoing something.
+#
+# An OLD save may carry ticks that cost a shield, from when a try spent one. Those
+# are refundable without a snapshot, and undo_attempt still hands the shield back.
+func can_undo_attempt() -> bool:
 	if run_over or attempt_costs.is_empty():
+		return false
+	if String(attempt_costs[attempt_costs.size() - 1]) != "turn":
+		return true
+	return not _attempt_snapshots.is_empty() and not (
+		_attempt_snapshots[_attempt_snapshots.size() - 1] as Dictionary).is_empty()
+
+# Take back the last logged try, putting back exactly what it did — the tracker is
+# a hand-driven counter, so a mis-click has to be reversible. Refused once the run
+# is over (a run ended by that tick stays ended), and refused for a turn there is
+# no snapshot of (can_undo_attempt). Returns the cost it undid.
+func undo_attempt() -> String:
+	if not can_undo_attempt():
 		return ""
 	var cost: String = String(attempt_costs.pop_back())
-	# "Refunding exactly what it spent" has to include what it EARNED, or a Piggy
-	# Bank turns the undo into a coin press. Popped alongside the cost, so a try's
-	# winnings can only ever be clawed back once and only by its own undo.
+	# Only an OLD save records anything in these two: a payout from when a try
+	# could cost Health directly, and a shield from when a try spent one. A tick
+	# logged by this build costs a turn, and everything a turn did rides its
+	# snapshot. Popped alongside the cost either way, so a try's winnings can only
+	# ever be clawed back once and only by its own undo.
 	var payout: int = int(_attempt_payouts.pop_back()) if not _attempt_payouts.is_empty() else 0
+	var snap: Dictionary = _attempt_snapshots.pop_back() if not _attempt_snapshots.is_empty() else {}
 	if cost == "shield":
 		GameState.shields += 1
 	elif cost == "bonus":
 		GameState.bonus_shields += 1
 	else:
-		GameState.change_hp(ATTEMPT_HEALTH_COST)
+		# The snapshot was taken before the try was logged, so it also rewinds the
+		# tracker itself — which is why the pops above are the same lists this is
+		# about to overwrite with identical, one-shorter copies. The SNAPSHOT list
+		# is deliberately not in it: the tries before this one still have theirs,
+		# and undoing the second of two turns must not make the first un-undoable.
+		_restore_snapshot(snap)
+		last_attempt_turn = {}
 	if payout > 0:
 		GameState.change_gold(-payout)
 	attempt_logged.emit(cost, true)
 	loop_changed.emit()
 	return cost
+
+# The three attempt lists, dropped as one. They are indexed in lockstep by
+# log_attempt and popped in lockstep by undo_attempt, so anything that closes out
+# a game's tries has to drop all three — a payout or a snapshot left behind
+# outlives the try it belonged to and is then handed to the NEXT one's undo.
+func _clear_attempts() -> void:
+	attempt_costs.clear()
+	_attempt_payouts.clear()
+	_attempt_snapshots.clear()
+
+# Close the book on what was answered during a game (§2.1). SEPARATE from
+# _clear_attempts, and deliberately so: the tracker is finished the moment the
+# enemies have swung, but this record is still being read after that — step 3
+# asks it whether any goal was completed — so it is cleared at the very end of
+# beat_game rather than in the middle of it.
+func _clear_game_record() -> void:
+	cleared_this_game.clear()
+	instead_this_game.clear()
+	answered_this_game.clear()
+	goals_met_this_game = 0
+	answered_rows.clear()
+	_ghosts.clear()
 
 # How many goal completions it takes to defeat `enemy`: its sheet Health (1 for
 # all current content) plus the player's enemy_health item bonus (Alien Baby +1,
@@ -905,12 +1276,18 @@ func hops_to_amulet() -> int:
 	var dist: Dictionary = RunGraph.bfs_distances(amulet)
 	return int(dist[here]) if dist.has(here) else -1
 
-# How many TURNS every enemy takes on the next game resolved: 1 out in the wilds,
-# 3 on the Amulet's doorstep (see RunDifficulty.turns_for_hops for the ladder and
-# why it exists). A turn is one action — attack from the front column, or step a
-# column closer from anywhere behind it.
+# How many TURNS every enemy takes when a game is REPORTED: the EXTRA turns this
+# position on the route buys them, and nothing else — 0 out in the wilds, up to 2
+# on the Amulet's doorstep (see RunDifficulty for the ladder and why it exists).
+#
+# Zero is the normal answer, and that is the design (§7.4). Handing a game in does
+# not move the board; LOSING RUNS at it does, one turn each (§3.2). What closing
+# on the Amulet buys the enemies is turns you did not pay for by failing.
+#
+# A turn is one action — attack from the front column, or step a column closer
+# from anywhere behind it.
 func enemy_turns() -> int:
-	return RunDifficulty.turns_for_hops(hops_to_amulet())
+	return RunDifficulty.extra_turns_for_hops(hops_to_amulet())
 
 # Where every body on the board stands right now, as instance -> Vector2i(col,
 # row). Snapshotted after each turn so the board can play the turns back one at a
@@ -941,15 +1318,17 @@ func _board_snapshot() -> Dictionary:
 # Returns last_result:
 #   {beaten, defeats:[enemy...], drops:int,
 #    attacks:[{instance, turn, damage|stunned|goal_hit}],
-#    turns:int, turn_frames:[{instance: Vector2i(col,row)}, ...],
+#    turns:int, extra_turns:int, turn_frames:[{instance: Vector2i(col,row)}, ...],
 #    damage_taken, blocked, hp, shields, shields_expired, attempts, stack_size,
 #    status_rewards:int, statuses_ticked:[status_id...],
 #    instead_cleared:[instance...], status_penalties:[{status, damage, blocked}],
 #    run_over, won}
 # `blocked` is what the unspent shields absorbed; `shields_expired` is what was
 # left over afterwards and went away with the game (§3). `turns` is how many
-# actions each enemy got (enemy_turns()), and `turn_frames` holds the board after
-# each one so the view can replay them in order.
+# actions each enemy got at the end of the game — all of them the Amulet's EXTRA
+# turns (§7.4), which is why `extra_turns` is the same number and not a subset —
+# while `turn_frames` holds the board after each one so the view can replay them
+# in order.
 # `clear_advertised` is a convenience for callers that have no report checklist to
 # read — the text harness, and the tests that just want "and I did the goal of the
 # thing that walked on here". It adds the body the card ADVERTISED (arrivals[0])
@@ -965,7 +1344,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	var turns: int = enemy_turns()
 	var res := {
 		"beaten": true, "defeats": [], "drops": 0, "attacks": [],
-		"turns": turns, "turn_frames": [],
+		"turns": turns, "extra_turns": turns, "turn_frames": [],
 		"damage_taken": 0, "blocked": 0, "hp": GameState.hp,
 		"shields": GameState.shields, "shields_expired": 0,
 		"attempts": attempts(), "stack_size": stack.size(),
@@ -1012,12 +1391,23 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# real for the hit either way.
 	var instead_cleared: Array = _resolve_instead_claims(claims)
 	res["instead_cleared"] = instead_cleared
-	var goals_completed: bool = not to_hit.is_empty()
+	# A GOAL ALREADY ANSWERED FOR COUNTS (§2.1). Ticking one mid-game resolves it
+	# on the spot, so by the time the report runs there is nothing left of it to
+	# hit — but the game is still one in which a goal was completed, and a clause
+	# riding that goal has to tick for it.
+	var goals_completed: bool = not to_hit.is_empty() or goals_met_this_game > 0
 	for inst in instead_cleared:
 		if not to_hit.has(int(inst)):
 			to_hit.append(int(inst))
 
 	var hit_this_game: Dictionary = {}
+	# …and a survivor of one is ENGAGED for the whole game, not just for the turns
+	# after the report. An Alien-Baby-buffed body you took a point off this morning
+	# holds its fire tonight exactly as it would have if you had waited to tick it.
+	for inst in cleared_this_game:
+		hit_this_game[int(inst)] = true
+	for inst in instead_this_game:
+		hit_this_game[int(inst)] = true
 	for inst in to_hit:
 		var idx: int = _index_of(int(inst))
 		if idx < 0:
@@ -1027,8 +1417,11 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		# enemy dies to a goal it would otherwise have survived and a Dexterity
 		# one spends a shield instead of dying.
 		var e: GoalEnemyData = stack[idx]["enemy"]
+		# Where it is standing, read BEFORE the hit: a lethal one takes the body off
+		# the board, and the square it fell in is where its chest goes (§8.2).
+		var fell: Vector2i = _drop_cell_of(stack[idx])
 		if _damage_enemy(idx, GOAL_HIT):
-			_defeat(e, true, res)
+			_defeat(e, true, res, fell)
 		else:
 			hit_this_game[int(inst)] = true
 	# The game is over, so whatever arrived with it is released: those bodies
@@ -1036,12 +1429,14 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# NEXT game's Scramble may not touch.
 	arrivals.clear()
 
-	# 2. THE ENEMY TURNS. Every enemy gets `turns` actions this game — one out in
-	#    the wilds, three on the Amulet's doorstep (§7.4) — and each action is
-	#    either a STRIKE (from the front column) or a STEP (from anywhere behind
-	#    it). One turn is exactly the strike-then-advance the loop has always
-	#    resolved, so the far band is the old behaviour unchanged and the near
-	#    bands are that same beat, repeated.
+	# 2. THE EXTRA TURNS (§7.4). Reporting a game does not, by itself, move the
+	#    board: out in the wilds this loop runs zero times and the stack is exactly
+	#    where you left it. What runs it is the Amulet's pull — 1 turn inside 4
+	#    hops, 2 inside 2 — and each of those is the ordinary beat: a STRIKE from
+	#    the front column, a STEP from anywhere behind it.
+	#
+	#    The turns you PAY FOR by failing are elsewhere (attempt_turn, §3.2). These
+	#    are the ones the road charges.
 	for turn in range(turns):
 		if run_over:
 			break
@@ -1051,20 +1446,21 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# 2b. THE STATUSES' OWN BILL, once the enemies have finished swinging. Burn's 3
 	#     damage lands at the END of the game and after the attacks (§13) — it is
 	#     what a burn costs for a game you spent taking every item offered, and it
-	#     arrives while the tries are still standing, so what you didn't spend
-	#     absorbs it before it reaches Health.
+	#     arrives while the shields are still standing, so one of them stops it
+	#     outright before it reaches Health.
 	_resolve_status_demands(claims, res)
 
 	# The enemies have struck and moved, so this game is over — and with it go the
-	# shields it granted (§3). Shields are the tries at ONE game: what you didn't
-	# spend retrying, and what the front line didn't get through, expires here
-	# rather than banking into the next game.
+	# shields it granted (§3). They are TEMPORARY SHIELDS (GameState): the armour of
+	# ONE game, so what the front line didn't get through expires here rather than
+	# banking into the next, which is what stops a quiet game from arming you for a
+	# loud one.
 	#
-	# Barricade (§4.3) BANKS them instead: the survivors become Bonus Shields, the
-	# pool that does not expire. Not "they stop expiring" — that quietly made the
-	# per-game pool a second permanent pool with its own spend order, and there is
-	# one permanent pool now. Banked shields are therefore spent LAST from here on,
-	# which is a small buff and the right one: the relic is about the tries you
+	# Barricade (§4.3) BANKS them instead: the survivors become ordinary Shields —
+	# the pool that stays. Not "they stop expiring", which quietly made the
+	# temporary pool a second permanent one with its own spend order; there is one
+	# permanent pool, and banked shields join it and are therefore used LAST from
+	# here on. A small buff and the right one: the relic is about the cover you
 	# didn't need.
 	if GameState.shields > 0:
 		if GameState.banks_shields():
@@ -1074,9 +1470,12 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		else:
 			res["shields_expired"] = GameState.shields
 			GameState.shields = 0
-	# The tries went with it: `res` already carries the count for the log, and the
-	# board must not keep drawing a finished game's spent pips.
-	attempt_costs.clear()
+	# The tracker went with it: `res` already carries the count for the log, and the
+	# board must not keep counting a finished game's lost runs. The escape gate is
+	# the same kind of per-game fact and goes at the same moment — the swings above
+	# may well have opened it, and they opened it on a game that is now over.
+	_clear_attempts()
+	hurt_this_game = false
 
 	# 3. The player's clauses tick for the game just played. A clause rides every
 	#    enemy's goal, so completing ANY goal this game satisfied it once.
@@ -1092,6 +1491,10 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#    so a tile laid this game and a tile that expires this game have both had
 	#    their say on the turns above before the count moves.
 	res["tiles_expired"] = _decay_tiles()
+
+	# Last of all, and after step 3 has read it: the game is over, so what its
+	# checklist answered stops being true of anything (§2.1).
+	_clear_game_record()
 
 	res["hp"] = GameState.hp
 	res["shields"] = GameState.shields
@@ -1167,14 +1570,48 @@ func _resolve_enemy_turn(turn: int, hit_this_game: Dictionary, res: Dictionary) 
 # Fulfil a stacked enemy's goal outside a beat_game call (e.g. a scroll/UI path):
 # deals it one hit. Defeats it and drops its item only when its Health reaches 0
 # (an Alien-Baby-buffed enemy needs two). Returns true if it was on the stack.
-func fulfill(instance: int) -> bool:
+#
+# THIS IS ALSO THE CHECKLIST'S PATH NOW (§2.1). A goal ticked and confirmed while
+# the game is still being played resolves here, on the spot — the enemy dies now
+# and its chest lands on the board now (§8.2) — rather than waiting for the
+# report. `record` is what makes the two ends agree afterwards: the body counts as
+# ENGAGED for the rest of the game (it holds its fire through every extra turn,
+# exactly as one cleared at the report would) and the game counts as one where a
+# goal was completed, so a player clause riding it still ticks. A caller that is
+# not the self-report (a scroll firing off its own effect) passes false and
+# changes neither.
+func fulfill(instance: int, record: bool = false) -> bool:
 	var idx: int = _index_of(instance)
 	if idx < 0:
 		return false
 	var e: GoalEnemyData = stack[idx]["enemy"]
+	var fell: Vector2i = _drop_cell_of(stack[idx])
+	if record:
+		cleared_this_game[instance] = true
+		goals_met_this_game += 1
 	if _damage_enemy(idx, GOAL_HIT):
 		var res := {"defeats": [], "drops": 0}
-		_defeat(e, true, res)
+		_defeat(e, true, res, fell)
+		_admit_offgrid()
+	loop_changed.emit()
+	return true
+
+# The same hit for a goal met THE OTHER WAY (§13, Burn's `instead`): the player did
+# the alternative rather than the condition, so the body clears and is engaged, but
+# nothing about its own goal was ever true — no beat is recorded and no player
+# clause is satisfied by it. Refused, like every `instead`, on a boss.
+func fulfill_instead(instance: int, status_id: StringName) -> bool:
+	if not claim_enemy_alternative(instance, status_id):
+		return false
+	var idx: int = _index_of(instance)
+	if idx < 0:
+		return true
+	var e: GoalEnemyData = stack[idx]["enemy"]
+	var fell: Vector2i = _drop_cell_of(stack[idx])
+	instead_this_game[instance] = true
+	if _damage_enemy(idx, GOAL_HIT):
+		var res := {"defeats": [], "drops": 0}
+		_defeat(e, true, res, fell)
 		_admit_offgrid()
 	loop_changed.emit()
 	return true
@@ -1378,6 +1815,173 @@ const ON_TURN_START := &"enemy_turn_start"
 # that braces.
 const MAX_CHAIN: int = 16
 var _chain_depth: int = 0
+
+# THE SQUARE A BODY'S CHEST IS LAID ON: its leading cell — the one nearest the
+# player — so a long enemy leaves its loot at the end you were looking at rather
+# than somewhere behind its own art. OFF_FIELD for a body that is not standing on
+# the board at all (one still waiting in the off-grid queue), whose chest has
+# nowhere to fall and goes to the haul screen instead.
+func _drop_cell_of(entry: Dictionary) -> Vector2i:
+	var cells: Array = entry_cells(entry)
+	if cells.is_empty():
+		return OFF_FIELD
+	var best: Vector2i = cells[0]
+	for cell in cells:
+		if int(cell.x) < best.x:
+			best = cell
+	return best
+
+# --- the floor: chests lying where their body fell (§8.2) -------------------
+#
+# A defeated body drops its chest ON THE SQUARE IT DIED IN, and it stays there
+# until the player picks it up or the game is reported. That is the whole of what
+# makes a kill worth making mid-game: the reward is on the table in front of you
+# rather than banked behind a screen you have not reached yet.
+#
+# A chest never blocks anybody. `fits_at` does not consult this dictionary, so a
+# body walks onto the square and the chest is SHOVED OUT OF THE WAY instead
+# (_displace_drop, from _move_entry) — which is the rule that keeps the board's
+# movement honest: loot can be pushed around by the fight but never stops it.
+
+# What is lying on `cell`, or {} for bare ground.
+func drop_at(cell: Vector2i) -> Dictionary:
+	var held = drops.get(cell)
+	return held if held is Dictionary else {}
+
+func has_drop(cell: Vector2i) -> bool:
+	return drops.has(cell)
+
+# Every square with something on it — what the board draws tokens for.
+func drop_cells() -> Array:
+	return drops.keys()
+
+# Put a chest on the board at `cell`. Something already lying there (or a cell
+# off the board) sends it looking for room the same way a body walking in would
+# (_free_drop_cell), and a board with no room at all sends it OFF FIELD. Returns
+# where it actually landed, or OFF_FIELD.
+func place_drop(cell: Vector2i, items: Array, from_boss: bool = false) -> Vector2i:
+	if items.is_empty():
+		return OFF_FIELD
+	var ids: Array = []
+	for id in items:
+		ids.append(StringName(id))
+	var at: Vector2i = cell
+	if not _on_board(at.x, at.y) or drops.has(at):
+		at = _free_drop_cell(cell)
+	if at == OFF_FIELD:
+		return OFF_FIELD
+	drops[at] = {"items": ids, "boss": from_boss}
+	loop_changed.emit()
+	return at
+
+# Take what is on `cell` — the player picked it up. Returns the payload, or {}.
+func take_drop(cell: Vector2i) -> Dictionary:
+	if not drops.has(cell):
+		return {}
+	var held: Dictionary = drops[cell]
+	drops.erase(cell)
+	loop_changed.emit()
+	return held
+
+# Sweep the floor: everything still lying on the board, taken off it. Called when
+# a game is reported — whatever the player did not pick up during the game goes
+# onto the haul screen instead of vanishing with the board (§18).
+func sweep_drops() -> Array:
+	var out: Array = []
+	for cell in drops.keys():
+		out.append(drops[cell])
+	drops.clear()
+	if not out.is_empty():
+		loop_changed.emit()
+	return out
+
+# A body is moving onto `cell` and something is lying there: shove it to the
+# NEAREST FREE SQUARE, preferring one FURTHER FROM THE PLAYER when two are equally
+# close. Loot drifts back toward the wilds rather than into your lap, so a
+# contested board makes reaching a chest worth something. Returns where it went,
+# or OFF_FIELD when the board has no room left for it.
+func _displace_drop(cell: Vector2i) -> Vector2i:
+	if not drops.has(cell):
+		return cell
+	var held: Dictionary = drops[cell]
+	drops.erase(cell)
+	# NEVER back onto the square it is being shoved off. In the live path the body
+	# has already moved in, so `occupancy` rules the cell out anyway — but "get out
+	# of the way" must not depend on the caller having moved first, or the rule
+	# reads as "sometimes".
+	var to: Vector2i = _free_drop_cell(cell, cell)
+	if to != OFF_FIELD:
+		drops[to] = held
+	return to
+
+# The nearest square to `from` that a chest can lie on: no body standing in it, no
+# unit on it, no other chest, and on the board. Ties break TOWARD THE BACK (the
+# higher column), which is away from the player. OFF_FIELD when there is none.
+# `avoid` is one more square that is out of bounds for this search — the one a
+# chest is being shoved OFF (see _displace_drop).
+#
+# Distance is measured in squares walked (Manhattan), not in a straight line: the
+# board is a grid the bodies cross a column at a time, and "nearest" should mean
+# the same thing to the loot as it does to them.
+func _free_drop_cell(from: Vector2i, avoid: Vector2i = OFF_FIELD) -> Vector2i:
+	var taken: Dictionary = occupancy()
+	var best: Vector2i = OFF_FIELD
+	var best_key: Array = []
+	for col in range(1, grid_cols() + 1):
+		for row in range(grid_rows()):
+			var cell := Vector2i(col, row)
+			if cell == avoid or taken.has(cell) or drops.has(cell) or units.has(cell):
+				continue
+			# distance first, then the FURTHEST column, then the nearest row — so a
+			# tie is broken away from the player and then stably.
+			var key: Array = [absi(col - from.x) + absi(row - from.y), -col,
+				absi(row - from.y)]
+			if best == OFF_FIELD or _key_before(key, best_key):
+				best = cell
+				best_key = key
+	return best
+
+# Lexicographic "is a closer match than", for _free_drop_cell's sort key.
+func _key_before(a: Array, b: Array) -> bool:
+	for i in range(mini(a.size(), b.size())):
+		if int(a[i]) != int(b[i]):
+			return int(a[i]) < int(b[i])
+	return false
+
+# The floor as JSON-safe rows, and back. Item ids that the catalog no longer
+# serves are dropped on the way in, and a chest left with nothing in it goes with
+# them — the same rule a stale enemy id gets.
+func _serialize_drops() -> Array:
+	var out: Array = []
+	for cell in drops.keys():
+		var held: Dictionary = drops[cell]
+		var ids: Array = []
+		for id in held.get("items", []):
+			ids.append(String(id))
+		out.append({"col": int(cell.x), "row": int(cell.y), "items": ids,
+			"boss": bool(held.get("boss", false))})
+	return out
+
+func _restore_drops(raw) -> void:
+	drops.clear()
+	if not (raw is Array):
+		return
+	for row in raw:
+		if not (row is Dictionary):
+			continue
+		var cell := Vector2i(int(row.get("col", 0)), int(row.get("row", 0)))
+		if not _on_board(cell.x, cell.y):
+			continue
+		var ids: Array = []
+		for id in row.get("items", []):
+			var sid := StringName(id)
+			if Data.get_item2(sid) != null:
+				ids.append(sid)
+		if ids.is_empty():
+			continue
+		drops[cell] = {"items": ids, "boss": bool(row.get("boss", false))}
+
+# --- the ground: tile effects and units (§17) -------------------------------
 
 # What is on `cell`, or null. The two lookups are separate because the two things
 # are: a caller asking "is this cell on fire" must not have to know that a mine
@@ -1639,6 +2243,12 @@ func _move_entry(entry: Dictionary, row: int, col: int) -> bool:
 			entered.append(cell)
 	if entered.is_empty():
 		return true
+	# ANYTHING LYING THERE GETS OUT OF THE WAY (§8.2). Before the ground's own
+	# triggers, because a chest is not part of the ground: it is loot on the floor,
+	# and a body walking over it shoves it aside rather than setting it off.
+	for cell in entered:
+		if drops.has(cell):
+			_displace_drop(cell)
 	return _fire_cell_triggers(entry, entered, ON_ENTER)
 
 # The tile effects burn down by one GAME. Called once from beat_game, when the
@@ -2033,7 +2643,7 @@ func bash_game(game_id: StringName) -> bool:
 #
 # The replacement keeps the source's TYPE. **Traditional** is the one exception,
 # and it is a SETTING (Settings.traditional_transmute): a Traditional roguelike
-# is the run's long haul — it grants 5 tries rather than 3 for a reason — so
+# is the run's long haul — it grants 5 shields rather than 3 for a reason — so
 # trading one for another is arguably no relief at all, and ANY_OTHER lets a
 # Traditional transmute land on any other type instead. Default is SAME_TYPE,
 # the same rule every other type follows. Under ANY_OTHER the roll is flat
@@ -2083,17 +2693,17 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 
 # --- HUD / query helpers --------------------------------------------------
 
-# How many times `entry` strikes on the next game beaten. Its distance from the
-# front is turns it spends WALKING, its stun is turns it spends frozen, and
-# whatever is left over is swings (§7.4). `turns` defaults to what this position
-# on the route buys the enemies.
+# How many times `entry` strikes across `turns` turns of the board. Its distance
+# from the front is turns it spends WALKING, its stun is turns it spends frozen,
+# and whatever is left over is swings (§7.4). `turns` defaults to ATTEMPT_TURNS —
+# what ONE LOST RUN buys the enemies — because that is the threat the board is
+# read against now: reporting a game moves nobody out in the wilds, and the
+# number a player is deciding about is what happens if they go and fail again.
 #
 # Assumes every step it wants is free. A jam in front of it can only make the
 # real number smaller, never larger, so this is the worst case — which is the
 # number worth putting in front of the player.
-func attacks_next_game(entry: Dictionary, turns: int = -1) -> int:
-	if turns < 0:
-		turns = enemy_turns()
+func attacks_in_turns(entry: Dictionary, turns: int = ATTEMPT_TURNS) -> int:
 	if entry.get("enemy") == null:
 		return 0
 	if int(entry.get("col", offgrid_col())) > grid_cols():
@@ -2105,32 +2715,30 @@ func attacks_next_game(entry: Dictionary, turns: int = -1) -> int:
 func _turns_owed(entry: Dictionary) -> int:
 	return maxi(0, _front_col(entry) - 1) + int(entry.get("stun", 0))
 
-# How many GAMES away this enemy's first strike is: 0 means it swings on the very
-# next game you report, 1 means the game after that. Off-grid bodies report -1 —
+# How many LOST RUNS away this enemy's first strike is: 0 means it swings the very
+# next time you tick one, 1 means the tick after that. Off-grid bodies report -1 —
 # they aren't on the board to start walking yet.
 #
 # This is the number the board's threat colours are read off, and it is why they
-# can't just be read off the column any more: at three turns a game an enemy
-# three columns back still reaches you and swings before the game is out, and
-# painting it "safely distant" gold would be a lie.
-func games_until_strike(entry: Dictionary) -> int:
+# can't just be read off the column: a body three columns back is three failures
+# from your face, and how many failures you have in you is the actual question.
+func lost_runs_until_strike(entry: Dictionary) -> int:
 	if entry.get("enemy") == null:
 		return -1
 	if int(entry.get("col", offgrid_col())) > grid_cols():
 		return -1
 	@warning_ignore("integer_division")
-	var games: int = _turns_owed(entry) / maxi(1, enemy_turns())
-	return games
+	var runs: int = _turns_owed(entry) / maxi(1, ATTEMPT_TURNS)
+	return runs
 
-# Total damage the stack would deal on the next game beaten, across every turn of
-# it — the "how bad is this going to be" number for the HUD (§9). At one turn a
-# game this is the front line and nothing else; at three it also counts the rank
-# behind them, which walks into range and swings before the game is out.
-func stacked_damage_per_game() -> int:
+# Total damage the stack would deal for ONE LOST RUN — the "how bad is this going
+# to be" number for the board's strip and the HUD (§9). The front line and
+# whatever a single turn walks into range, which at ATTEMPT_TURNS = 1 is the front
+# line alone.
+func damage_per_lost_run() -> int:
 	var total: int = 0
-	var turns: int = enemy_turns()
 	for entry in stack:
-		total += attacks_next_game(entry, turns) * enemy_damage(entry)
+		total += attacks_in_turns(entry) * enemy_damage(entry)
 	return total
 
 # Number of enemies waiting off the grid's edge (overflow queue) — never attacks,
@@ -2179,7 +2787,8 @@ func escort_enemy() -> GoalEnemyData:
 
 # --- internals ------------------------------------------------------------
 
-func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
+func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary,
+		fell: Vector2i = OFF_FIELD) -> void:
 	defeated_count += 1
 	if res.has("defeats"):
 		res["defeats"].append(enemy)
@@ -2220,22 +2829,33 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
 	# sit here, under the same rule about what counts as a defeat: a bombed body
 	# never reaches this function (see `bomb`), so it feeds neither.
 	TriggerBus.enemy_killed.emit({"enemy": enemy})
-	enemy_defeated.emit(enemy)
+	enemy_defeated.emit(enemy, fell)
 
-# Applies `damage` to the player: unspent Shields absorb first (§3), the
-# remainder comes off Health. Ends the run on hp <= 0.
+# Applies `damage` to the player. ONE SHIELD STOPS ONE INSTANCE OF DAMAGE (§3) —
+# the whole of it, whatever its size — and with no shield left it comes off
+# Health. Ends the run on hp <= 0.
+#
+# A SHIELD IS A BLOCK, NOT A POINT. A 3-damage swing breaks one shield and lands
+# for nothing; so does a 1-damage one. That is a deliberately blunt rule and it is
+# what makes the pool readable: three shields is three hits you don't take, and
+# the arithmetic of "which hits do these five points cover" never has to be done.
+# It also means a big hit is the one you WANT a shield to meet — the same shield
+# spent on a chip hit is the worse trade, which is a decision the board can be
+# played around (a Push, a Stun) rather than a sum.
 #
 # The player's own statuses are folded in here, and this is where the promise that
 # a DEBUFF is felt by whoever carries it gets paid: Marked doubles what lands and
-# takes it straight past the tries the player was counting on to absorb it, which
+# takes it straight past the shields the player was counting on to stop it, which
 # is the same rule the enemy side of `_damage_enemy` runs. `_take_hit` is the only
 # way damage reaches the player, so there is nowhere for that rule to be missed.
+# A `lose_hp` bill (an event's price, §8) is not damage and never was: it does not
+# come through here and shields do not stop it.
 #
 # Returns {damage, blocked} — what the hit ACTUALLY landed for after the statuses
-# had their say, and how much of that the shields ate. Both, rather than just the
-# blocked count, because the attack log and the board's resolve animation quote
-# this number: a hit that reads "⚔2" while Health drops by four is a UI that is
-# lying about the rule it just applied.
+# had their say, and how much of that the shields ate (all of it, or none of it).
+# Both, rather than just the blocked count, because the attack log and the board's
+# resolve animation quote this number: a hit that reads "⚔2" while Health drops by
+# four is a UI that is lying about the rule it just applied.
 #
 # `source` names what threw it, for the health_lost hook alone (see
 # GameState.HEALTH_SOURCE_STATUS): a swing is the default because every caller but
@@ -2249,18 +2869,20 @@ func _take_hit(damage: int, res: Dictionary,
 		damage, int(totals["damage_taken"]), float(totals["damage_taken_mult"]))
 	if damage <= 0:
 		return {"damage": 0, "blocked": 0}
-	# THE PER-GAME POOL EATS FIRST, THE BONUS POOL SECOND (§4.3). Same order a lost
-	# run spends them in, and for the same reason: the tries expire with this game
-	# whether or not they were used, so spending a Bonus Shield while one of them is
-	# still standing would be burning the pool that survives to save the one that
+	# THE TEMPORARY POOL BLOCKS FIRST (§4.3): those expire with this game whether or
+	# not anything hits them, so breaking a Shield that STAYS while one of them is
+	# still standing would be spending the pool that survives to save the one that
 	# doesn't. Pierce takes both past.
+	#
+	# ONE shield, whichever pool it comes out of, and the instance is gone.
 	var absorbed: int = 0
 	if not bool(totals["pierce_shields"]):
-		absorbed = mini(GameState.shields, damage)
-		GameState.shields -= absorbed
-		var bonus_eaten: int = mini(GameState.bonus_shields, damage - absorbed)
-		GameState.bonus_shields -= bonus_eaten
-		absorbed += bonus_eaten
+		if GameState.shields > 0:
+			GameState.shields -= 1
+			absorbed = damage
+		elif GameState.bonus_shields > 0:
+			GameState.bonus_shields -= 1
+			absorbed = damage
 	var overflow: int = damage - absorbed
 	if overflow > 0:
 		# Tagged as what threw it: this is the ONLY path damage reaches Health by on
@@ -2268,16 +2890,22 @@ func _take_hit(damage: int, res: Dictionary,
 		# on an attack and survive both the Health a failed try charges and a
 		# status's own bill.
 		GameState.change_hp(-overflow, source)
+		# …and the same tag opens the escape hatch (§3.2). A SWING that got through
+		# is the gate; a status's bill and an event's price are not, because those
+		# are not the game in front of you refusing to go down.
+		if source == GameState.HEALTH_SOURCE_ENEMY_ATTACK:
+			hurt_this_game = true
 	res["blocked"] = int(res.get("blocked", 0)) + absorbed
 	res["damage_taken"] = int(res.get("damage_taken", 0)) + overflow
 	if GameState.hp <= 0 and not run_over:
 		_finish_run(false)
 	return {"damage": damage, "blocked": absorbed}
 
-# Damage the player from something that is NOT an enemy's swing — today, a
-# status's penalty (Burn's 3, §13). Goes through the same resolver a swing does,
-# deliberately: the tries absorb it and the player's own statuses scale it, because
-# "take 3 Damage" has to mean on the battlefield what it means everywhere else.
+# Damage the player from something that is NOT an enemy's swing — a status's
+# penalty (Burn's 3, §13), a `take_damage` effect from anywhere. Goes through the
+# same resolver a swing does, deliberately: a shield stops it exactly as it stops
+# a swing and the player's own statuses scale it, because "take 3 Damage" has to
+# mean on the battlefield what it means everywhere else.
 # `res` is the resolve's own summary when there is one to bill it to.
 func damage_player(amount: int, res: Dictionary = {}) -> Dictionary:
 	return _take_hit(amount, res, GameState.HEALTH_SOURCE_STATUS)
@@ -2307,6 +2935,10 @@ func _take_off_board(idx: int) -> void:
 	if idx < 0 or idx >= stack.size():
 		return
 	var inst: int = int(stack[idx].get("instance", 0))
+	# Kept for the rest of the game so its optional bonus can still be claimed off
+	# it (§2.1, see claim_enemy_bonus). A copy, because the entry is about to stop
+	# existing and the claim reads its statuses.
+	_ghosts[inst] = (stack[idx] as Dictionary).duplicate(true)
 	stack.remove_at(idx)
 	# A body bombed off the board before its game is reported must not leave a
 	# handle behind for the next Scramble to chase.
@@ -2611,11 +3243,13 @@ func _damage_enemy(idx: int, amount: int) -> bool:
 		amount, int(totals["damage_taken"]), float(totals["damage_taken_mult"]))
 	if dmg <= 0:
 		return false
-	if not bool(totals["pierce_shields"]):
-		var absorbed: int = mini(enemy_shield(entry), dmg)
-		entry["shield"] = enemy_shield(entry) - absorbed
-		dmg -= absorbed
-	if dmg <= 0:
+	# ONE SHIELD, ONE INSTANCE — the same rule the player's side runs (_take_hit).
+	# Every hit in this game is worth exactly 1 today, so it costs a Dexterity body
+	# nothing extra right now; it is written this way so that the day something
+	# hits for more, both sides of the board still answer "what does a shield do"
+	# the same way.
+	if not bool(totals["pierce_shields"]) and enemy_shield(entry) > 0:
+		entry["shield"] = enemy_shield(entry) - 1
 		return false
 	entry["health"] = int(entry.get("health", 1)) - dmg
 	if int(entry["health"]) > 0:
@@ -2637,6 +3271,12 @@ func _pay_status_reward(status: StatusData, which: StringName, stacks: int) -> v
 # reward, and a timer would only make it a worse item — but that is the sheet's
 # call now, not a rule baked in here.
 func claim_player_objective(status_id: StringName) -> bool:
+	# ANSWERED FIRST, and whatever else happens (§2.1). Both callers of this are
+	# "the player ticked this row", and what a `demand` charges at the end of the
+	# game is decided by whether the row was ticked — not by whether ticking it
+	# also paid out. The report reads its own ticks the same way
+	# (_resolve_status_demands); this is where the mid-game ones are recorded.
+	answered_this_game[status_id] = true
 	var stacks: int = GameState.status_stacks(status_id)
 	if stacks <= 0:
 		return false
@@ -2652,6 +3292,12 @@ func claim_player_objective(status_id: StringName) -> bool:
 # if that side decays, since the bonus was for doing the thing once.
 func claim_enemy_bonus(instance: int, status_id: StringName) -> bool:
 	var entry: Dictionary = entry_for(instance)
+	# A BODY YOU ALREADY KILLED THIS GAME STILL PAYS (§2.1). The report always
+	# resolved bonuses before goals for exactly this reason; now that a goal
+	# resolves the moment it is ticked, the order is the player's, and clearing an
+	# enemy before claiming the bonus you earned off it must not forfeit it.
+	if entry.is_empty():
+		entry = _ghosts.get(instance, {})
 	if entry.is_empty():
 		return false
 	var held: Dictionary = entry.get("statuses", {})
@@ -2726,6 +3372,11 @@ func _resolve_status_demands(claims: Dictionary, res: Dictionary) -> void:
 	var answered: Dictionary = {}
 	for raw in claims.get("status_goals", []):
 		answered[StringName(raw)] = true
+	# Including the ones answered HOURS AGO (§2.1). A demand ticked mid-game was
+	# paid the moment it was confirmed and is not in this report's claims at all;
+	# billing it here would charge a player for the one thing they did do.
+	for sid in answered_this_game:
+		answered[StringName(sid)] = true
 	for row in GameState.status_list():
 		var sd: StatusData = row["status"]
 		if not sd.is_demand(StatusData.PLAYER) or answered.has(sd.id):
@@ -2734,8 +3385,9 @@ func _resolve_status_demands(claims: Dictionary, res: Dictionary) -> void:
 		for eff in sd.penalty_effects(StatusData.PLAYER, stacks):
 			var d: Dictionary = eff
 			if String(d.get("type", "")) == "take_damage":
-				# Through the board's own resolver, so the tries get their say and a
-				# lethal burn ends the run where every other lethal hit does.
+				# Through the board's own resolver, so a shield can stop it like any
+				# other instance of damage and a lethal burn ends the run where every
+				# other lethal hit does.
 				var hit: Dictionary = damage_player(int(d.get("value", 0)), res)
 				(res["status_penalties"] as Array).append({
 					"status": sd.id, "damage": int(hit["damage"]),

@@ -8,11 +8,12 @@ extends RefCounted
 
 # Path length tuning. The run opens with a CHOICE OF STARTING GAMES, each 4 to 7
 # games from the Amulet — so picking a start is a choice of genre, route, AND run
-# length. The length is not flavour: enemies take more turns per game the closer
-# the run stands to the Amulet (RunDifficulty.turns_for_hops, FAR_HOPS = 5), so a
-# start 7 hops out opens with three games in the calm 1-turn band while a start 4
-# hops out gets NONE — it begins already inside the 2-turn band. Starting far is a
-# longer run fought slowly; starting near is a short run fought fast.
+# length. The length is not flavour: enemies get BONUS turns at the end of a game
+# the closer the run stands to the Amulet (RunDifficulty.extra_turns_for_hops,
+# FAR_HOPS = 5), so a start 7 hops out opens with three games in the calm +0 band
+# while a start 4 hops out gets NONE — it begins already inside the +1 band.
+# Starting far is a longer run fought slowly; starting near is a short run fought
+# fast.
 #
 # The band was 6..8, then 5..8, and is now 4..7 — the whole window slid down one.
 # The reason is that the route the player actually walks is rarely the optimal
@@ -678,10 +679,10 @@ static func _draw_start(rec: Dictionary, rng: RandomNumberGenerator) -> Dictiona
 # Pick `count` records out of `by_type` — one per genre, and at DIFFERENT
 # DISTANCES from the Amulet wherever the graph allows it.
 #
-# Distance is a real choice across the 4..7 band: enemies take more turns per game
-# the closer the run stands to the Amulet (RunDifficulty.turns_for_hops), so a
-# 7-hop card opens with three games in the calm band and a 4-hop card starts
-# already out of it. Two cards at the same distance offer a genre and nothing else.
+# Distance is a real choice across the 4..7 band: enemies get bonus turns on the
+# end of a game the closer the run stands to the Amulet
+# (RunDifficulty.extra_turns_for_hops), so a 7-hop card opens with three games in
+# the calm band and a 4-hop card starts already out of it. Two cards at the same distance offer a genre and nothing else.
 #
 # It is a PREFERENCE, not a requirement. A few Amulets have every in-band start at
 # one single distance — no differing-length pair exists at any price — and

@@ -67,16 +67,27 @@ func test_reading_learns_by_use() -> void:
 	ScrollSystem.read_scroll(s, {"rng": _rng()})
 	assert_true(ScrollSystem.is_identified(s.id), "reading a scroll identifies its type")
 
+# Walk the one body on the board into the front column, a TURN at a time — what a
+# lost run buys the enemies (§3.2). Bounded, so a board that cannot advance fails
+# the assertion rather than hanging the suite.
+func _march_to_front() -> void:
+	for _i in range(GameLoop2.grid_cols() + 2):
+		if GameLoop2.stack.is_empty() or int(GameLoop2.stack[0].get("col", 1)) <= 1:
+			return
+		GameLoop2.attempt_turn()
+
 # --- Effects ---------------------------------------------------------------
 
 func test_aggravate_puts_strength_on_every_body() -> void:
 	GameState.max_hp = 10
 	GameState.hp = 10
-	# Bring an enemy to the front line first, so the buffed hit lands this game
-	# rather than several games of walking later.
+	# Bring an enemy to the front line first, so the buffed hit lands now rather
+	# than several turns of walking later. Marched with TURNS: a reported game
+	# moves nobody out here (§7.4).
+	GameState.shields = 0
+	GameState.bonus_shields = 0
 	_choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)   # spawn column
-	while int(GameLoop2.stack[0].get("col", 1)) > 1:
-		GameLoop2.beat_game(false)                                  # -> front column
+	_march_to_front()
 	var s: ScrollData = Data.get_scroll(&"scroll_of_aggravate_monsters")
 	ScrollSystem.read_scroll(s, {"rng": _rng()})
 	var entry: Dictionary = GameLoop2.stack[0]
@@ -84,7 +95,7 @@ func test_aggravate_puts_strength_on_every_body() -> void:
 		"Aggravate is +1 Strength, on the body")
 	assert_eq(GameLoop2.enemy_damage(entry), 3, "which is 2 base + 1")
 	# And it lands: the front-line enemy hits for the buffed number.
-	GameLoop2.beat_game(false)
+	GameLoop2.attempt_turn()
 	assert_eq(GameState.hp, 7, "front-line enemy hit for 3")
 
 func test_aggravate_does_not_wear_off() -> void:
@@ -93,14 +104,15 @@ func test_aggravate_does_not_wear_off() -> void:
 	# lasting mistake.
 	GameState.max_hp = 20
 	GameState.hp = 20
+	GameState.shields = 0
+	GameState.bonus_shields = 0
 	_choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)
-	while int(GameLoop2.stack[0].get("col", 1)) > 1:
-		GameLoop2.beat_game(false)
+	_march_to_front()
 	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_aggravate_monsters"),
 		{"rng": _rng()})
-	GameLoop2.beat_game(false)
+	GameLoop2.attempt_turn()
 	var after_one: int = GameState.hp
-	GameLoop2.beat_game(false)
+	GameLoop2.attempt_turn()
 	assert_eq(after_one - GameState.hp, 3, "still hitting for the buffed number")
 
 func test_create_monster_grows_the_stack() -> void:
@@ -146,7 +158,8 @@ func test_teleport_returns_a_teleport_request() -> void:
 # grew semicolons and the reason `player` and `front` are targets at all.
 
 # Walk everything on the board up to the front column, so "the ones about to hit
-# you" is a set with something in it.
+# you" is a set with something in it. TURNS, not reports: a game handed in out in
+# the wilds hands the board nothing (§7.4).
 func _march_to_the_front() -> void:
 	for _i in range(GameLoop2.grid_cols() + 2):
 		var waiting: bool = false
@@ -155,7 +168,7 @@ func _march_to_the_front() -> void:
 				waiting = true
 		if not waiting:
 			return
-		GameLoop2.beat_game(false)
+		GameLoop2.attempt_turn()
 
 func test_fire_burns_the_reader_and_the_front_column() -> void:
 	GameState.max_hp = 20
@@ -173,9 +186,9 @@ func test_fire_leaves_the_back_of_the_board_alone() -> void:
 	# hitting everything.
 	_choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)
 	_march_to_the_front()
-	var far: int = _choose_solo(_enemy(2))       # fresh, out at the spawn column
-	GameLoop2.beat_game(false)
 	var near: int = int(GameLoop2.stack[0]["instance"])
+	var far: int = _choose_solo(_enemy(2))       # fresh, out at the spawn column
+	GameLoop2.beat_game(false)                   # released; nothing moves out here
 	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_fire"), {"rng": _rng()})
 	assert_true(GameLoop2.in_front(GameLoop2.entry_for(near)), "the near body is in front")
 	assert_eq(int((GameLoop2.entry_for(near)["statuses"] as Dictionary).get(&"burn", 0)), 3,
@@ -235,7 +248,7 @@ func test_stunning_says_which_enemy_and_what_it_cost_them() -> void:
 	var inst: int = GameLoop2.spawn_to_stack(_enemy(2))
 	var said: String = ScrollSystem.stun_enemies_chosen([inst])
 	assert_true(said.contains("Synthetic"), "it names the body it landed on: %s" % said)
-	assert_true(said.contains("turn") or said.contains("game"),
+	assert_true(said.contains("turn") or said.contains("lost run"),
 		"and prices the stun against the pace here rather than promising "
 		+ "'skips its next attack': %s" % said)
 

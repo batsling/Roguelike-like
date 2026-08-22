@@ -67,19 +67,13 @@ const DASH_BLUE := Color(0.5, 0.85, 1.0)
 # walk into, where this is a property of every roll.
 const LUCK_GREEN := Color(0.55, 0.9, 0.55)
 
-# Shields — the tries at the game in play (§3). One steel-blue used by the HUD
+# Shields — the armour the game in play granted (§3). One steel-blue used by the HUD
 # count, the attempt strip, and the pips on the board.
 const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
 
 # The currency and shop colours live on UITheme (COIN_GOLD / SHOP_GREEN, §14) —
 # the shop modal and the game popup need them too, and a modal reaching back into
 # the screen that mounted it for a constant is a dependency cycle.
-
-# Lost runs of the game in play before the Escape button appears on a game this
-# run has NOT already beaten (see can_escape — one it has is escapable from the
-# first second). Five is past the shields any game grants, so reaching it means
-# the player has been paying Health to keep trying.
-const ESCAPE_AFTER_ATTEMPTS := 5
 
 # The current offering. Each entry:
 #   {"game": GameData, "enemy": GoalEnemyData, "boss": bool, "amulet": bool,
@@ -120,7 +114,13 @@ var _visits: Dictionary = {}
 var _amulet_dist: Dictionary = {}
 # True between a report and the end of the board's playback of it: the run has
 # already moved on, but the screen is still showing how (see _hold_for_resolve).
+# A lost run's enemy turn (§3) raises it too — it is the same playback — which is
+# what `_attempt_resolve` below distinguishes.
 var _resolving: bool = false
+# …and true when the playback in flight is a TICK'S turn rather than a report's.
+# The two end differently: a report hands the screen on to the haul, an event, a
+# shop; a tick has none of those behind it and simply gives the board back.
+var _attempt_resolve: bool = false
 # An end-of-run screen owed to the player, held back until the board has finished
 # playing the resolve that ended the run.
 var _run_over_pending: bool = false
@@ -324,13 +324,13 @@ var _scroll: ScrollContainer
 # them (OfferingCards). Built in _build_ui, once the three containers it fills
 # exist. It also owns the hovered card's shield grant, which only its own hover
 # line reads.
-# Attempt tracker (§3) — the tries at the game in play.
+# Attempt tracker (§3) — the runs of the game in play you have lost.
 var _attempt_count: Label
 var _attempt_pips: Label
 var _attempt_hint: Label
 var _attempt_btn: Button
 var _attempt_undo: Button
-var _escape_btn: Button           # hidden until ESCAPE_AFTER_ATTEMPTS lost runs
+var _escape_btn: Button           # hidden until the game in play draws blood (can_escape)
 # The parts of the checklist panel that need a game in hand: the now-playing row,
 # the attempt strip and the Completed Game button. Hidden while you're choosing,
 # where the panel is the standing-goals list instead.
@@ -463,6 +463,7 @@ func start_run(character_id: StringName = &"") -> void:
 	_dismiss_run_over()
 	_dismiss_post_game()
 	_resolving = false
+	_attempt_resolve = false
 	_board.clear_fx()
 	_visits.clear()
 	_last_played_game = null
@@ -553,7 +554,7 @@ func _start_choice(index: int) -> Dictionary:
 	}
 
 # Clicking a start card opens the ordinary card popup over it — the enemy waiting
-# there, its goal, the tries the game grants, the connections it opens onto, and
+# there, its goal, the shields the game grants, the connections it opens onto, and
 # the route from it. Bash and Transmute are withheld: they reshape an OFFERING,
 # and the picker is three roads out of the same run rather than a table of cards
 # that can be refilled.
@@ -576,7 +577,7 @@ func open_start_choice(index: int) -> GameChoiceModal:
 		# position — and the amulet distances that comparison reads are not built
 		# until the first offering is.
 		"pace": _start_pace_note(int(opt["path_len"])),
-		"tries": GameLoop2.shields_for_game(choice["game"]),
+		"shields": GameLoop2.shields_for_game(choice["game"]),
 		"beatable": _beatable_row(choice),
 		"escort": _escort_note(choice),
 		"no_verbs": true,
@@ -592,13 +593,15 @@ func open_start_choice(index: int) -> GameChoiceModal:
 # the Amulet, said outright. Same ladder, same colours — only the sentence is
 # different, because there is no "here" to be faster or slower than.
 func _start_pace_note(hops: int) -> Dictionary:
-	var turns: int = RunDifficulty.turns_for_hops(hops)
+	var extra: int = RunDifficulty.extra_turns_for_hops(hops)
 	return {
-		"text": "⏱ Enemies act ×%d turn%s there" % [turns, "" if turns == 1 else "s"],
-		"color": RunDifficulty.turns_band_color(turns),
-		"turns": turns,
-		"tip": "Standing there, every enemy acts %d time%s per game.\n\n%s" % [
-			turns, "" if turns == 1 else "s", RunDifficulty.turns_ladder_text(turns)],
+		"text": ("⏱ Reporting a game costs no turns there" if extra <= 0
+			else "⏱ Reporting a game costs %s there" % RunDifficulty.extra_text(extra)),
+		"color": RunDifficulty.band_color(extra),
+		"turns": extra,
+		"extra": extra,
+		"tip": "Standing there, handing a game in gives the enemies %s.\n\n%s" % [
+			RunDifficulty.extra_text(extra), RunDifficulty.ladder_text(extra)],
 	}
 
 # Take the offered start at `index` (choose-your-start, Phase.START_SELECT).
@@ -606,7 +609,7 @@ func _start_pace_note(hops: int) -> Dictionary:
 # The start used to be a doorstep: you landed on the game, nothing spawned, no
 # shields were granted, and the run's first real game was whatever you travelled
 # to from it. It is a GAME now — its goal-enemy spawns and stands on the board
-# with the rest, it hands over its tries, and the run opens on the report panel
+# with the rest, it hands over its shields, and the run opens on the report panel
 # with something to beat. Mechanically this is the commit half of `pick`, which
 # is why it reads the same: one path, so a start and a travel cannot drift.
 func choose_start(index: int) -> void:
@@ -631,7 +634,8 @@ func choose_start(index: int) -> void:
 			GameLoop2.game_type_key(game), _current_tier())
 		_log_escort()
 		var granted: int = GameLoop2.grant_selection_shields(game)
-		GameLog.add("%s — %d shields to spend on tries." % [game.display_name, granted],
+		GameLog.add("%s — %s, one hit stopped each." % [
+			game.display_name, GameState.temp_shields_text(granted)],
 			SHIELD_BLUE)
 		_phase = Phase.PLAYING
 		_populate_play_panel()
@@ -943,7 +947,7 @@ func open_choice(index: int) -> GameChoiceModal:
 	var notes: Dictionary = {
 		"route": route_note(choice),
 		"pace": turn_note(choice),
-		"tries": GameLoop2.shields_for_game(choice["game"]),
+		"shields": GameLoop2.shields_for_game(choice["game"]),
 		"beatable": _beatable_row(choice),
 		"enemy_hidden": _enemy_hidden(choice),
 		"hidden_note": "The Runic Dome hides what is waiting there. You are routing on the game alone — the enemy, its goal and its damage are all found out on arrival.",
@@ -991,10 +995,11 @@ func pick(index: int) -> void:
 	GameLoop2.choose_game(_chosen["enemy"],
 		GameLoop2.game_type_key(_chosen["game"]), _current_tier())
 	_log_escort()
-	# Selecting the game hands over your TRIES at it (§3): 3 shields, 5 for a
+	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
 	# Traditional roguelike, plus whatever "when a game is selected" items add.
 	var granted: int = GameLoop2.grant_selection_shields(_chosen["game"])
-	GameLog.add("%s — %d shields to spend on tries." % [_chosen["game"].display_name, granted],
+	GameLog.add("%s — %s, one hit stopped each." % [
+		_chosen["game"].display_name, GameState.temp_shields_text(granted)],
 		SHIELD_BLUE)
 	# Move to the graph SLOT (a transmuted card plays an off-graph game but keeps
 	# its position on the route toward the amulet).
@@ -1019,7 +1024,7 @@ func pick(index: int) -> void:
 	# the top and the checklist under the grid is a scroll away.
 	_scroll_to_top()
 	# Committing to a game is a move worth recovering to — the shields it granted
-	# and the tries you're about to log all hang off it.
+	# and the lost runs you're about to log all hang off it.
 	autosave()
 
 # Say who came WITH the game's enemy (§7.5). Called at each of the three places a
@@ -1039,40 +1044,87 @@ func _log_escort() -> void:
 	Notifications.notify(msg, UITheme.DANGER)
 
 # The attempt tracker (§3): the player ticks this every time they LOSE a run of
-# the game they're playing. Each try spends a shield; once the shields are gone a
-# try costs Health, and Health hitting 0 ends the run right there. The board pops
-# a pip / flashes the hero off GameLoop2's attempt_logged signal.
+# the game they're playing. THE TICK COSTS A TURN OF THE BOARD — the enemies
+# swing and close in, which can kill — and it costs nothing else: the shields are
+# armour now, not tries, so failing at a game does not thin the wall you are
+# about to meet the stack with (GameLoop2.log_attempt).
+#
+# A turn is the same beat the end of a game plays, so it is watched the same way:
+# the positions are snapshotted first, the loop resolves, and the board replays
+# the strike and the advance out of the snapshot (animate_resolve). `_resolving`
+# goes up BEFORE the tick rather than after, because a lethal turn queues the
+# end-of-run screen from inside it and that screen has to wait for the blow that
+# caused it to land.
 func log_attempt() -> String:
+	if not GameLoop2.can_log_attempt():
+		return ""
+	var before: Dictionary = _board.capture_positions() if _board != null else {}
+	var hp_before: int = GameState.hp
+	_resolving = true
+	_attempt_resolve = true
 	var cost: String = GameLoop2.log_attempt()
 	if cost == "":
+		_resolving = false
+		_attempt_resolve = false
 		return ""
 	var game: GameData = _chosen.get("game")
-	var game_name: String = game.display_name if game != null else "this game"
-	if cost == "shield":
-		GameLog.add("Lost a run of %s — a shield goes (attempt %d)." % [game_name, GameLoop2.attempts()],
-			SHIELD_BLUE)
-	else:
-		var msg: String = "Out of shields on %s — a lost run costs %d Health." % [
-			game_name, GameLoop2.ATTEMPT_HEALTH_COST]
-		GameLog.add(msg, UITheme.DANGER)
-		Notifications.notify(msg, UITheme.DANGER)
+	_announce_attempt_turn(game.display_name if game != null else "this game",
+		GameLoop2.last_attempt_turn)
+	if GameLoop2.run_over:
+		_phase = Phase.OVER
 	_refresh()
+	# Repaint first, then replay: the board is already in the state the turn left
+	# it in, and the animation is how it got there (the same order report() uses).
+	if _board != null:
+		_hold_for_resolve(_board.animate_resolve(before, GameLoop2.last_attempt_turn, hp_before))
+	else:
+		_resolving = false
+		_attempt_resolve = false
 	return cost
+
+# What a lost run just did. Two facts, because they are the two the player has to
+# act on: the board took a turn (which is the price of every tick from the first
+# one), and this is what that turn did — the Health it took, the shields that
+# stopped it, or the fact that nobody was in reach and they all merely walked,
+# which is the version that reads as "nothing happened" if it isn't said.
+func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
+	var took: int = int(res.get("damage_taken", 0))
+	var blocked: int = int(res.get("blocked", 0))
+	var msg: String = "Lost a run of %s (attempt %d) — the enemies take a turn." % [
+		game_name, GameLoop2.attempts()]
+	if took > 0:
+		msg += " They hit you for %d." % took
+	elif blocked > 0:
+		msg += " Your shields stopped it."
+	elif not (res.get("attacks", []) as Array).is_empty():
+		msg += " Nothing landed."
+	else:
+		msg += " Nobody was in reach — they all close a column."
+	GameLog.add(msg, UITheme.DANGER)
+	Notifications.notify(msg, UITheme.DANGER)
 
 # --- escaping a game you can't beat ---------------------------------------
 #
 # Some games won't go down, and a run shouldn't end because one of them sat in
-# the way. The player may walk away from the game in play at any point, without
-# beating it — either after ESCAPE_AFTER_ATTEMPTS lost runs, or immediately on a
-# game this run has already beaten (see can_escape).
+# the way. The player may walk away from the game in play without beating it —
+# ONCE IT HAS DRAWN BLOOD: the door opens the moment an enemy's attack takes
+# Health off you during this game (GameLoop2.hurt_this_game), and it is open from
+# the first second on a game this run has already beaten (see can_escape).
+#
+# THE GATE IS THE HIT, not a count of tries. It used to be five lost runs, from
+# when a lost run spent a shield and then Health — a counter that stood in for
+# "this game is hurting you" because nothing else measured it. Now the board
+# measures it directly: a lost run hands the enemies a turn (§3.2), a Temporary
+# Shield stops the first swings outright, and the door opens on the swing that
+# gets past them. So the way out arrives exactly when the game has started
+# costing you the one thing you cannot make more of, and never merely because you
+# were patient.
 #
 # Escaping resolves the BOARD exactly as reporting a missed goal does: the
 # goal-enemy walks onto the board and follows you, and every enemy already on it
-# still takes its turns. That IS the price, and on the lost-runs route it has
-# already been paid twice over by the time the button appears — five lost runs is
-# the shields this game granted plus Health on top, with the front line closing in
-# the whole time. The button exists to make the way out VISIBLE to a stuck player,
-# not to discount it.
+# still takes its turns. That IS the price, and it has already been paid by the
+# time the button appears. The button exists to make the way out VISIBLE to a
+# stuck player, not to discount it.
 #
 # Where it PARTS from a missed report is the item trigger: the "after beating a
 # game" items fire on any game FINISHED, win or lose, and an escape is the one
@@ -1080,20 +1132,30 @@ func log_attempt() -> String:
 # report) — so an escape and a miss are alike in earning no repeat-beat Dash, no
 # Atlas mark and no movement in either beaten tally.
 #
-# TWO ways in. The five-lost-runs rule above is for a game this run has never got
-# through: the way out has to be earned because the alternative is a player who
-# quits the run instead. A game this run has ALREADY BEATEN is the opposite case —
-# there is nothing left to prove, and being made to lose at it five more times to
-# unlock the door is a tax on the one card the run cannot make interesting, so
-# that door is open from the first second.
+# THREE ways in.
 #
-# It is the same escape either way: the enemy still walks onto the board, the
-# board still takes its turns, and the game still isn't credited. Only the gate
+# The HIT is for a game this run has never got through: the way out has to be
+# earned, because the alternative is a player who quits the run instead.
+#
+# A game this run has ALREADY BEATEN is the opposite case — there is nothing left
+# to prove, and being made to stand there and bleed to unlock the door is a tax
+# on the one card the run cannot make interesting, so that door is open from the
+# first second.
+#
+# AN EMPTY BOARD is the door that keeps the first one honest. Nothing on the
+# board means nothing that can ever hurt you, so the hit gate could never open —
+# a player standing on a game they cannot beat with a clear stack would be held
+# there by a rule that was written to let them out. It costs them the same as any
+# escape; there is simply nobody left for it to cost anything else.
+#
+# It is the same escape however you got in: the goal-enemy still follows you, the
+# board still takes the turns the road charges for finishing a game (§7.4, which
+# out in the wilds is none), and the game still isn't credited. Only the gate
 # moves.
 func can_escape() -> bool:
 	if _phase != Phase.PLAYING or _chosen.is_empty() or GameLoop2.run_over:
 		return false
-	return beaten_this_run() or GameLoop2.attempts() >= ESCAPE_AFTER_ATTEMPTS
+	return beaten_this_run() or GameLoop2.hurt_this_game or GameLoop2.stack.is_empty()
 
 # Whether the game in play is one this RUN has already beaten — won, with the
 # goal met (see report(): "beaten means won").
@@ -1122,18 +1184,39 @@ func escape_game() -> void:
 	var msg: String = ("Escaped %s — its enemy comes with you." % game_name if tries == 0
 		else "Escaped %s after %d lost run%s — its enemy comes with you." % [
 			game_name, tries, "" if tries == 1 else "s"])
+	# Walking away is FINISHING a game as far as the road is concerned, so it is
+	# charged for like one: the extra turns the Amulet's pull owes (§7.4) resolve
+	# through the same report path a missed goal takes, below. Said out loud when
+	# there are any, because "I escaped and then got hit twice" is otherwise a
+	# surprise rather than a price.
+	var extra: int = GameLoop2.enemy_turns()
+	if extra > 0 and not GameLoop2.stack.is_empty():
+		msg += " They still get %s on the way out." % RunDifficulty.extra_text(extra)
 	GameLog.add(msg, UITheme.ACCENT)
 	Notifications.notify(msg, UITheme.ACCENT)
 	report(false, null, true)
 
 # Take back the last tick — the tracker is hand-driven, so a mis-click has to be
-# reversible. Refunds exactly what that try spent.
+# reversible. Puts the whole board the turn moved back where it was
+# (GameLoop2._run_snapshot).
 func undo_attempt() -> String:
 	var cost: String = GameLoop2.undo_attempt()
-	if cost != "":
-		GameLog.add("Took back an attempt (refunded 1 %s)." % ("shield" if cost == "shield" else "Health"),
-			UITheme.TEXT_DIM)
-		_refresh()
+	if cost == "":
+		return ""
+	# "shield" / "bonus" only come back from a save written when a try spent one
+	# (GameLoop2.undo_attempt); a tick logged by this build always undoes a turn.
+	var what: String = "the enemies' turn"
+	if cost == "shield":
+		what = GameState.temp_shields_text(1)
+	elif cost == "bonus":
+		what = GameState.shields_text(1)
+	GameLog.add("Took back an attempt (%s)." % what, UITheme.TEXT_DIM)
+	# The board is a different board now — bodies walked back, the ground it
+	# burned is unburnt — so it is rebuilt rather than repainted in place.
+	if cost == "turn" and _board != null:
+		_board.clear_fx()
+		_board.refresh()
+	_refresh()
 	return cost
 
 # Dash (§4): a TOTAL select — bypass the limited offering and show every connected
@@ -1306,42 +1389,50 @@ func route_note(choice: Dictionary) -> Dictionary:
 # What taking this card does to the PACE of the board (§7.4). The route badge
 # above says how much ground a card gives or takes; this says what that ground
 # costs, because the two are the same decision: every step toward the Amulet is a
-# step toward enemies that act three times a game instead of once.
+# step toward enemies that take EXTRA TURNS every time you hand a game in.
 #
-# Returned as {"text", "color", "tip", "turns"} — same shape as route_note, and
-# `turns` is the count the card would leave you on, so a test can assert the
-# number without parsing the sentence.
+# Out in the wilds that price is zero — reporting a game moves nobody, and the
+# only thing that does is losing runs at it (§3.2). So the card is quoting what
+# this stretch of road charges on top of your own failures.
+#
+# Returned as {"text", "color", "tip", "turns", "extra"} — same shape as
+# route_note. `turns` and `extra` are the same number (every turn the end of a
+# game hands out is an extra one now); both are there so a caller can ask for
+# either without knowing that, and a test can assert the number without parsing
+# the sentence.
 func turn_note(choice: Dictionary) -> Dictionary:
 	var here: int = steps_to_amulet(GameState.current_game_id)
 	var there: int = steps_to_amulet(choice.get("slot", &""))
 	# The Amulet card ends the run on the spot: what the enemies would have done
-	# afterwards is moot, and saying "×3 turns" there would just be alarming.
+	# afterwards is moot, and saying "+2 extra turns" there would just be alarming.
 	if bool(choice.get("amulet", false)):
 		there = 0
-	var now: int = RunDifficulty.turns_for_hops(here)
-	var then: int = RunDifficulty.turns_for_hops(there)
-	var color: Color = RunDifficulty.turns_band_color(then)
-	var tip: String = ("Standing there, every enemy acts %d time%s per game.\n\n%s"
-		% [then, "" if then == 1 else "s", RunDifficulty.turns_ladder_text(then)])
+	var now: int = RunDifficulty.extra_turns_for_hops(here)
+	var then: int = RunDifficulty.extra_turns_for_hops(there)
+	var color: Color = RunDifficulty.band_color(then)
+	var tip: String = ("Standing there, handing a game in gives the enemies %s.\n\n%s"
+		% [RunDifficulty.extra_text(then), RunDifficulty.ladder_text(then)])
 	if bool(choice.get("amulet", false)):
-		return {"text": "", "color": color, "tip": tip, "turns": then}
+		return {"text": "", "color": color, "tip": tip, "turns": then, "extra": then}
 	if then > now:
 		return {
-			"text": "⏱ Enemies speed up — ×%d turns" % then,
-			"color": color, "turns": then,
-			"tip": "Closing on the Amulet is what wakes them up: %d turns a game here, %d there.\n\n%s"
-				% [now, then, RunDifficulty.turns_ladder_text(then)],
+			"text": "⏱ Enemies speed up — %s" % RunDifficulty.extra_text(then),
+			"color": color, "turns": then, "extra": then,
+			"tip": "Closing on the Amulet is what wakes them up: %s here, %s there.\n\n%s"
+				% [RunDifficulty.extra_text(now), RunDifficulty.extra_text(then),
+					RunDifficulty.ladder_text(then)],
 		}
 	if then < now:
 		return {
-			"text": "⏱ Enemies slow down — ×%d turns" % then,
-			"color": color, "turns": then,
-			"tip": "Backing off buys you pace: %d turns a game here, %d there.\n\n%s"
-				% [now, then, RunDifficulty.turns_ladder_text(then)],
+			"text": "⏱ Enemies slow down — %s" % RunDifficulty.extra_text(then),
+			"color": color, "turns": then, "extra": then,
+			"tip": "Backing off buys you pace: %s here, %s there.\n\n%s"
+				% [RunDifficulty.extra_text(now), RunDifficulty.extra_text(then),
+					RunDifficulty.ladder_text(then)],
 		}
 	return {
-		"text": "⏱ Still ×%d turn%s" % [then, "" if then == 1 else "s"],
-		"color": UITheme.TEXT_DIM, "turns": then, "tip": tip,
+		"text": "⏱ Still %s" % RunDifficulty.extra_text(then),
+		"color": UITheme.TEXT_DIM, "turns": then, "extra": then, "tip": tip,
 	}
 
 # Spend the carried piece of loot at index `idx` (the loot window's Use button).
@@ -1484,7 +1575,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 	# the graph slot rather than the game, because an event belongs to the place
 	# (a dead end, §1) — a transmuted card plays a different game on the same node.
 	var slot_here: StringName = StringName(_chosen.get("slot", &""))
-	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed
+	# …unless the level was already TAKEN mid-game (§2.1). Ticking that row is a
+	# confirm and it applies on the spot, so a locked box has been paid for and the
+	# report must not pay for it twice. `disabled` is the mark of a resolved row
+	# (ReportChecklist._lock_row).
+	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed \
+		and not _levelup_check.disabled
 	# Snapshot where everyone stands BEFORE the resolve, so the animation can play
 	# the strike and the advance back from the old positions to the new ones.
 	var before: Dictionary = _board.capture_positions()
@@ -1513,6 +1609,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 	# checklist lists the bodies that walked on this game among all the others, so
 	# they are already in `fulfilled_instances` if the player ticked them.
 	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims)
+	# THE FLOOR IS SWEPT AT THE REPORT (§8.2). A chest lying on the board belongs to
+	# the game being played; handing the game in ends that, so anything nobody
+	# stopped to pick up — including whatever the bodies this very report cleared
+	# just dropped — goes onto the haul screen instead of sitting on a board the
+	# next game rebuilds.
+	_sweep_floor_into_the_queue()
 	# What a status charged for a game it went unanswered (§13, Burn). GameLoop2 is
 	# a model node and says nothing to the player, so the bite is announced here,
 	# on the same terms as a curse's.
@@ -1739,6 +1841,12 @@ func _end_resolve() -> void:
 		return
 	_resolving = false
 	_refresh_stage()
+	# The tracker's buttons go dead for the length of a playback (a second tick
+	# mid-animation would be resolving a turn onto a board still sliding through
+	# the last one), so the flag coming down has to repaint them. Without this a
+	# lost run's own playback left "Lost a run" and "Undo" greyed until something
+	# else happened to refresh the page.
+	_refresh_attempts()
 	# A pickup during the playback deferred its board repaint to here (see
 	# _on_inventory_changed) — the board is the player's again now.
 	if _board_dirty:
@@ -1754,7 +1862,16 @@ func _end_resolve() -> void:
 		_pending_event_node = &""
 		_pending_shop = &""
 		_post_snapshot = {}
+		_attempt_resolve = false
 		_show_run_over()
+		return
+	# A LOST RUN'S TURN (§3) ends here rather than going down the chain a report
+	# ends in: nothing was reported, so there is no haul, no event and no shop
+	# waiting behind the playback. What there CAN be is a drop the turn shook loose
+	# — a body a mine took off the board — held back while the board was moving.
+	if _attempt_resolve:
+		_attempt_resolve = false
+		_open_next_drop.call_deferred()
 		return
 	_open_post_game()
 
@@ -3442,7 +3559,7 @@ func _paint_gold_chip() -> void:
 func _paint_health_chip() -> void:
 	if _health_chip == null or not is_instance_valid(_health_chip):
 		return
-	# BONUS SHIELDS RIDE THE HEALTH CHIP (§4.3). They are the one pool gained off
+	# THE SHIELDS THAT STAY RIDE THE HEALTH CHIP (§4.3). They are the one pool gained off
 	# the board — a pill taken on the overworld, a game Barricade banked — so they
 	# have to be readable when no board is on screen, and the number they matter
 	# most beside is the one they are standing in front of.
@@ -3450,8 +3567,9 @@ func _paint_health_chip() -> void:
 	if GameState.bonus_shields > 0:
 		_health_chip.text += "   ◈ %d" % GameState.bonus_shields
 		_health_chip.tooltip_text = ("Health. At zero the run ends."
-			+ "\n\n◈ %d Bonus Shield(s) — gained off the board, spent after the game's"
-			+ " own tries are gone, and they never expire.") % GameState.bonus_shields
+			+ "\n\n◈ %s — gained off the board, used after the game's own Temporary"
+			+ " Shields are gone, and they never expire.") % GameState.shields_text(
+				GameState.bonus_shields)
 	else:
 		_health_chip.tooltip_text = "Health. At zero the run ends."
 	# It goes white-hot at a quarter left, because the number people miss is the
@@ -3731,11 +3849,16 @@ func _stack_summary() -> String:
 	var following: int = GameLoop2.stack.size()
 	if following == 0:
 		return "clear  —  nothing following you"
-	var dmg: int = GameLoop2.stacked_damage_per_game()
+	# Priced in LOST RUNS (§3.2), because that is the threat the player is deciding
+	# against: reporting a game moves nobody out in the wilds, and what the strip
+	# has to answer is "what does it cost me to go and fail at this again".
+	var dmg: int = GameLoop2.damage_per_lost_run()
 	var swings: int = 0
 	for entry in GameLoop2.stack:
-		swings += GameLoop2.attacks_next_game(entry)
-	return "%d closing in, %d swing%s landing for %d damage next game" % [
+		swings += GameLoop2.attacks_in_turns(entry)
+	if swings == 0:
+		return "%d closing in, none of them in reach yet" % following
+	return "%d closing in, %d swing%s for %d damage on every lost run" % [
 		following, swings, "" if swings == 1 else "s", dmg]
 
 
@@ -3752,7 +3875,7 @@ func _stack_summary() -> String:
 # size ladder a [chest reward] walks (Data.chest_reward_sizes), and a Medium chest
 # is the same modal offering two. A body that isn't a boss always drops the Small
 # one, so the common case is untouched — same single item, same two buttons.
-func _on_enemy_defeated(enemy: GoalEnemyData) -> void:
+func _on_enemy_defeated(enemy: GoalEnemyData, cell: Vector2i) -> void:
 	if GameLoop2.run_over:
 		return
 	var from_boss: bool = enemy != null and enemy.is_boss()
@@ -3765,10 +3888,68 @@ func _on_enemy_defeated(enemy: GoalEnemyData) -> void:
 		var offer: Array = _roll_chest(from_boss, int(Data.CHEST_SIZE_CHOICES[size]))
 		if offer.is_empty():
 			continue
+		# ON THE FLOOR, where the body fell (§8.2). A kill you make mid-game puts
+		# its reward on the board in front of you rather than behind a screen you
+		# have not reached yet — that is what makes clearing a goal DURING a game
+		# worth doing. What nobody picks up is swept onto the haul screen when the
+		# game is reported (_sweep_floor_into_the_queue).
+		var ids: Array = []
+		for item in offer:
+			ids.append((item as ItemData).id)
+		if cell != GameLoop2.OFF_FIELD \
+				and GameLoop2.place_drop(cell, ids, from_boss) != GameLoop2.OFF_FIELD:
+			continue
+		# Nowhere on the board for it: it goes straight to the screen the game ends
+		# on, which is where an unclaimed chest ends up anyway.
 		_drop_queue.append({"items": offer})
 		queued = true
 	if queued:
 		_pump_drops()
+	if _board != null:
+		_board.refresh()
+
+# A chest lying on the board, picked up (§8.2). The board reports the click; this
+# takes the payload off the floor and asks the ordinary chest question about it,
+# so a relic taken off the ground and one taken off the haul screen are granted,
+# logged and announced by exactly the same path.
+func collect_floor_drop(cell: Vector2i) -> void:
+	var held: Dictionary = GameLoop2.drop_at(cell)
+	if held.is_empty() or GameLoop2.run_over:
+		return
+	if _drop_modal != null and is_instance_valid(_drop_modal):
+		return
+	var offer: Array = _floor_items(held)
+	if offer.is_empty():
+		GameLoop2.take_drop(cell)
+		return
+	GameLoop2.take_drop(cell)
+	if _board != null:
+		_board.refresh()
+	# To the FRONT of the queue and pumped, not opened outright: a chest picked up
+	# by hand is the most immediate question on the page, but a board mid-playback
+	# is still no place for a modal (see _pump_drops) — a lost run's turn can be
+	# sliding bodies past the very chest that was clicked.
+	_drop_queue.push_front({"items": offer})
+	_pump_drops()
+
+# One floor chest's payload as the ItemData the modals deal in. The loop stores
+# ids (it is scene-free and its state is saved), so this is where they come back.
+func _floor_items(held: Dictionary) -> Array:
+	var out: Array = []
+	for id in held.get("items", []):
+		var item: ItemData = Data.get_item2(StringName(id))
+		if item != null:
+			out.append(item)
+	return out
+
+# Everything still lying on the board when a game is reported goes onto the haul
+# screen (§8.2/§18): the floor belongs to the game being played, and what the
+# player did not stop to pick up is still theirs to answer for once.
+func _sweep_floor_into_the_queue() -> void:
+	for held in GameLoop2.sweep_drops():
+		var offer: Array = _floor_items(held)
+		if not offer.is_empty():
+			_drop_queue.append({"items": offer})
 
 # Roll the game's loot payout and queue the question (§4.3). Queued rather than
 # granted so the nine-piece cap can be answered by the player: a full pack turns
@@ -3825,9 +4006,12 @@ func _pump_drops() -> void:
 	# here is what used to put "do you want this relic" over the top of the strike
 	# that had just taken eight Health off the player.
 	#
-	# Only a report sets `_resolving`, so an offer that lands at any other moment —
-	# a relic firing on the overworld, a machine, an event's payout — still asks
-	# for itself, on its own modal, immediately.
+	# A REPORT and A LOST RUN'S TURN (§3) both set `_resolving`, and both for the
+	# same reason: a board mid-playback is not a place to put a modal. The turn has
+	# no post-combat screen behind it to hand the queue to, so _end_resolve pumps
+	# it itself the moment the playback lands. An offer that arrives at any OTHER
+	# moment — a relic firing on the overworld, a machine, an event's payout —
+	# still asks for itself, on its own modal, immediately.
 	if _resolving:
 		return
 	_open_next_drop.call_deferred()
@@ -3987,7 +4171,8 @@ func _result_text(res: Dictionary) -> String:
 		parts.append("%d attempt(s)" % int(res["attempts"]))
 	# Shields belong to the game that granted them; say so when some went unused.
 	if int(res.get("shields_expired", 0)) > 0:
-		parts.append("%d shield(s) expired with the game" % int(res["shields_expired"]))
+		parts.append("%s expired with the game" % GameState.temp_shields_text(
+			int(res["shields_expired"])))
 	if parts.is_empty():
 		parts.append("no effect")
 	return "[i]Last game: %s.[/i]" % ", ".join(parts)
@@ -4395,6 +4580,7 @@ func _build_ui() -> void:
 	_board.item_aimed.connect(_on_item_aimed)
 	_board.item_aimed_at_cell.connect(_on_item_aimed_at_cell)
 	_board.enemy_inspected.connect(_show_enemy_info)
+	_board.drop_clicked.connect(collect_floor_drop)
 	# The board points back at the checklist: hovering a body lights the goal row
 	# written about it (_bind_row_to_body).
 	_board.enemy_hovered.connect(_on_enemy_hovered)
@@ -4652,8 +4838,11 @@ func _build_attempt_strip() -> Control:
 	wrap.add_child(row)
 
 	_attempt_btn = Button.new()
-	_attempt_btn.text = "Lost a run  −1"
-	_attempt_btn.tooltip_text = "Tick every run of this game you lose."
+	_attempt_btn.text = "Lost a run  ⚔"
+	_attempt_btn.tooltip_text = ("Tick every run of this game you lose.\n"
+		+ "Each tick gives the enemies a turn — they swing and close in. It costs "
+		+ "you no shields: there is no limit on how many times you may fail, only "
+		+ "a board that is a turn closer every time you do.")
 	_attempt_btn.custom_minimum_size = Vector2(0, 30)
 	_attempt_btn.add_theme_font_size_override("font_size", 13)
 	_attempt_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.62), 6, 8, 1, UITheme.DANGER.lerp(UITheme.BG, 0.35)))
@@ -4684,28 +4873,44 @@ func _build_attempt_strip() -> Control:
 	row.add_child(_attempt_hint)
 	return wrap
 
-# Repaint the attempt strip: the count, the pips (filled = shields still standing,
-# hollow = tries already spent on one), and what the next lost run will cost.
+# Repaint the attempt strip: how many runs have been lost, the shields still
+# standing (one pip each, and a lost run does not spend them), and what the next
+# press does.
 func _refresh_attempts() -> void:
 	if _attempt_count == null:
 		return
 	var attempts: int = GameLoop2.attempts()
-	var spent: int = GameLoop2.attempts_on_shields()
 	var left: int = GameState.shields
-	_attempt_count.text = "Attempts  %d" % attempts
+	var bonus: int = GameState.bonus_shields
+	_attempt_count.text = "Lost runs  %d" % attempts
 	_attempt_count.add_theme_color_override("font_color",
 		UITheme.TEXT if attempts == 0 else UITheme.ACCENT)
-	_attempt_pips.text = "◆".repeat(left) + "◇".repeat(spent)
-	_attempt_pips.tooltip_text = "%d shield(s) left of the %d this game granted." % [left, left + spent]
-	if left > 0:
-		_attempt_hint.text = "Shields %d — the next lost run spends one." % left
-		_attempt_hint.add_theme_color_override("font_color", SHIELD_BLUE)
-	else:
-		_attempt_hint.text = "No shields left — the next lost run costs %d Health." % GameLoop2.ATTEMPT_HEALTH_COST
-		_attempt_hint.add_theme_color_override("font_color", UITheme.DANGER)
+	# The shields, and nothing hollow beside them: a lost run doesn't spend one, so
+	# there is no "already used" state to draw. The pool that STAYS leads the row in
+	# its own glyph, the way the board's hero draws them (§4.3).
+	_attempt_pips.text = "◈".repeat(bonus) + "◆".repeat(left)
+	_attempt_pips.tooltip_text = ("◆ %s — each one stops a single hit outright, "
+		+ "however big it is, and they go when you report the game.") % GameState.temp_shields_text(left)
+	if bonus > 0:
+		_attempt_pips.tooltip_text += ("\n◈ %s — used after those, and they stay.") % (
+			GameState.shields_text(bonus))
+	# What the next press ACTUALLY does, in the terms the board is in: not a
+	# number off the corner of the screen but a move by everything standing on it.
+	# Said before it happens, because it is the reason to stop playing this game
+	# and report it (§3).
+	_attempt_hint.text = "Every lost run gives the enemies a turn — your shields stay."
+	_attempt_hint.add_theme_color_override("font_color", UITheme.DANGER)
 	var live: bool = _phase == Phase.PLAYING and not GameLoop2.run_over
-	_attempt_btn.disabled = not live
-	_attempt_undo.disabled = not live or attempts == 0
+	_attempt_btn.disabled = not live or _resolving
+	# A TURN CAN ONLY BE TAKEN BACK BY THE SESSION THAT PLAYED IT (§3): its undo is
+	# a snapshot of the board, and a save carries the run rather than its undo
+	# history. The button says which of the two it is rather than going grey with
+	# no explanation.
+	var can_undo: bool = live and attempts > 0 and not _resolving and GameLoop2.can_undo_attempt()
+	_attempt_undo.disabled = not can_undo
+	_attempt_undo.tooltip_text = ("Take back the last attempt."
+		if can_undo or attempts == 0 or _resolving
+		else "The enemies' turn was taken before this run was reloaded — it can't be taken back.")
 	# The escape hatch is up from the first second on a game the player has been
 	# through before, and otherwise only once they have lost enough runs to have
 	# earned it — where it goes away again if they undo back under the line. The
@@ -4713,9 +4918,11 @@ func _refresh_attempts() -> void:
 	# this one and not that one" is the whole question the button raises.
 	if _escape_btn != null:
 		_escape_btn.visible = can_escape()
-		var why: String = ("You already beat this one this run, so there is nothing to prove — leave whenever you like."
-			if beaten_this_run()
-			else "%d lost runs is enough." % GameLoop2.attempts())
+		var why: String = "Something on the board got through and took Health off you — that is enough."
+		if beaten_this_run():
+			why = "You already beat this one this run, so there is nothing to prove — leave whenever you like."
+		elif GameLoop2.stack.is_empty():
+			why = "Nothing is on the board to hold you here."
 		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nWhatever walked on "
 			+ "when you took this game stays on the board and follows you, and every enemy "
 			+ "still takes its turns — escaping resolves the board exactly as an unticked "

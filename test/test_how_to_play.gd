@@ -91,17 +91,22 @@ func test_no_format_specifier_survives_into_the_prose() -> void:
 
 # --- the manual agrees with the build ---------------------------------------
 
-func test_the_tries_the_manual_quotes_are_the_tries_the_build_grants() -> void:
+func test_the_shields_the_manual_quotes_are_the_shields_the_build_grants() -> void:
 	var text: String = _all_text()
-	assert_string_contains(text, "%d tries" % GameLoop2.SHIELDS_PER_GAME)
-	assert_string_contains(text, "%d tries" % GameLoop2.SHIELDS_TRADITIONAL)
+	assert_string_contains(text, "%d %ss" % [GameLoop2.SHIELDS_PER_GAME,
+		GameState.TEMP_SHIELD_NAME])
+	assert_string_contains(text, "%d — the long haul gets more" % GameLoop2.SHIELDS_TRADITIONAL)
+	# And the two pools are named the way the rest of the build names them, so a
+	# rename cannot leave the manual teaching a word nothing on screen says.
+	assert_string_contains(text, GameState.TEMP_SHIELD_NAME)
+	assert_string_contains(text, GameState.SHIELD_NAME)
 
 
 func test_the_pressure_ladder_the_manual_prints_is_the_real_one() -> void:
 	var text: String = _all_text()
 	for hops in [0, 2, 3, 4, 5, 9]:
-		var turns: int = RunDifficulty.turns_for_hops(hops)
-		assert_string_contains(text, "×%d" % turns)
+		var extra: int = RunDifficulty.extra_turns_for_hops(hops)
+		assert_string_contains(text, "%d" % extra)
 	assert_string_contains(text, "%d or more" % RunDifficulty.FAR_HOPS)
 
 
@@ -116,8 +121,13 @@ func test_the_economy_the_manual_quotes_is_the_real_one() -> void:
 
 
 func test_the_escape_rule_the_manual_quotes_is_the_real_one() -> void:
-	assert_string_contains(_all_text(),
-		"after %d lost runs" % Overworld2.ESCAPE_AFTER_ATTEMPTS)
+	# The gate is a HIT now, not a count of lost runs (§3.2) — so the manual must
+	# be teaching the hit, and must not be quoting a threshold that no longer
+	# exists anywhere in the build.
+	var text: String = _all_text()
+	assert_string_contains(text, "takes Health off you during this game")
+	assert_false(text.contains("lost runs, or immediately"),
+		"the old five-lost-runs gate is gone from the manual too")
 
 
 # --- the screen -------------------------------------------------------------

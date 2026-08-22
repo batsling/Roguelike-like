@@ -39,6 +39,10 @@ signal item_aimed_at_cell(item: ItemData, cell: Vector2i)
 signal bomb_cell_requested(cell: Vector2i)
 # An enemy was clicked: the host opens the inspect card for it.
 signal enemy_inspected(entry: Dictionary, col: int)
+# A chest lying on the board was clicked (§8.2). The board knows where the thing
+# is; what is inside it and what taking it costs are the host's, so this carries
+# the square and nothing else.
+signal drop_clicked(cell: Vector2i)
 # The mouse moved onto (or off) a body. The host lights the checklist row that
 # body's goal is written on, so "which of these lines is that thing" is answered
 # by pointing at either half of the pair. `instance` is the body; `hovered` says
@@ -62,7 +66,7 @@ var _pressure_panel: HoverPanel
 # and this is kept because it is the LONG form the same facts have — the manual
 # and any future full readout should quote this rather than re-derive it.
 var _pressure_ladder_text: String = ""
-var _pressure_turns: Label          # "⏱ ENEMY TURNS ×2"
+var _pressure_turns: Label          # "⏱ EXTRA TURNS 1"
 var _pressure_rungs: Array = []     # the three ladder pips, far -> near
 var _pressure_why: Label            # "Amulet 4 hops away — Closing"
 var _size_label: Label              # "▦ 5×5 · Medium"
@@ -80,9 +84,10 @@ var _hp_shown: int = -1
 # next one must not have its leftover timers keep subtracting from the new one's
 # Health.
 var _fx_gen: int = 0
-# Shields — the tries at the game in play (§3), drawn as pips over the hero:
-# filled for the ones still standing, hollow for the ones already spent on a lost
-# run. This is what the attempt tracker visibly drains.
+# Shields — the armour the game in play granted (§3), drawn as pips over the hero:
+# one per shield still standing, each of them one whole hit that will not land.
+# Nothing hollow beside them any more: a lost run costs a turn of the board, not
+# a shield, so they only ever go by being hit.
 var _hero_shields: Label
 var _field: Control                  # fixed-size board the two layers stack inside
 var _cell_layer: Control             # the static backdrop of empty cells
@@ -248,7 +253,7 @@ static func fitted_cell(cols: int, rows: int = -1) -> int:
 	var per_w: float = float(FIELD_WIDTH_BUDGET - (cols - 1) * CELL_SEP) / float(cols)
 	var per_h: float = float(_height_budget - (r - 1) * CELL_SEP) / float(r)
 	return clampi(int(floor(minf(per_w, per_h))), CELL_MIN, CELL_MAX)
-# Shields (the tries, §3) share the overworld's steel blue.
+# Shields (§3) share the overworld's steel blue.
 const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
 # Everything on the board layers by TREE ORDER, never z_index: z_index is relative
 # to the parent and would punch the board out through anything drawn later in the
@@ -404,12 +409,14 @@ func _build_pressure_bar() -> Control:
 	_pressure_turns.add_theme_font_size_override("font_size", 14)
 	row.add_child(_pressure_turns)
 
-	# The ladder: three pips, far band on the left. Filled up to where the run
-	# stands, so "how much worse can this get?" is answerable without a tooltip.
+	# The ladder: one pip per EXTRA turn the end of a game can ever hand the board.
+	# Filled up to where the run stands, so "how much worse can this get?" is
+	# answerable without a tooltip — and empty out in the wilds, which is the
+	# reading that matters: nothing is owed at the end of a game there.
 	var ladder := HBoxContainer.new()
 	ladder.add_theme_constant_override("separation", 2)
 	_pressure_rungs.clear()
-	for i in range(RunDifficulty.TURNS_NEAR):
+	for i in range(RunDifficulty.MAX_EXTRA_TURNS):
 		var pip := Label.new()
 		pip.add_theme_font_size_override("font_size", 15)
 		ladder.add_child(pip)
@@ -433,18 +440,22 @@ func _build_pressure_bar() -> Control:
 func _refresh_pressure() -> void:
 	if _pressure_turns == null:
 		return
-	var turns: int = GameLoop2.enemy_turns()
+	var extra: int = GameLoop2.enemy_turns()
 	var hops: int = GameLoop2.hops_to_amulet()
-	var band: Color = RunDifficulty.turns_band_color(turns)
+	var band: Color = RunDifficulty.band_color(extra)
 
 	_pressure_panel.add_theme_stylebox_override("panel",
 		UITheme.flat(band.lerp(UITheme.BG, 0.82), 6, 6, 1, band.lerp(UITheme.BG, 0.45)))
-	_pressure_turns.text = "⏱  ENEMY TURNS ×%d" % turns
+	# EXTRA TURNS, and the number is the whole of what the end of a game costs
+	# (§7.4). Zero is the normal reading and says so plainly: hand a game in out
+	# here and the board does not move. Everything else the stack does, it does
+	# because you lost runs at the game (§3.2).
+	_pressure_turns.text = "⏱  EXTRA TURNS  %d" % extra
 	_pressure_turns.add_theme_color_override("font_color", band)
 
 	for i in range(_pressure_rungs.size()):
 		var pip: Label = _pressure_rungs[i]
-		var lit: bool = i < turns
+		var lit: bool = i < extra
 		pip.text = RUNG_ON if lit else RUNG_OFF
 		pip.add_theme_color_override("font_color",
 			band if lit else UITheme.TEXT_FAINT)
@@ -454,29 +465,32 @@ func _refresh_pressure() -> void:
 	if hops < 0:
 		_pressure_why.text = "no route to the Amulet"
 	elif hops == 0:
-		_pressure_why.text = "standing ON the Amulet — %s" % RunDifficulty.turns_band_name(turns)
+		_pressure_why.text = "standing ON the Amulet — %s" % RunDifficulty.band_name(extra)
 	else:
 		_pressure_why.text = "Amulet %d hop%s away — %s" % [
-			hops, "" if hops == 1 else "s", RunDifficulty.turns_band_name(turns)]
+			hops, "" if hops == 1 else "s", RunDifficulty.band_name(extra)]
 
-	# ENEMY TURNS is the one readout on the board that is a CONSEQUENCE of a
+	# EXTRA TURNS is the one readout on the board that is a CONSEQUENCE of a
 	# decision made somewhere else — the route — so its hover has to answer "why is
 	# it that number" as well as "what does it mean". The ladder itself is the
-	# note: the whole table of hops-to-turns, which is where the answer is.
-	var ladder_tip: String = ("Every enemy acts %d time%s per game you report.\n"
-		+ "A turn is one action: strike from the front column, or step a column closer.\n\n"
-		+ "%s\n\nRush the Amulet and they get faster; take the long way and they stay slow.") % [
-			turns, "" if turns == 1 else "s", RunDifficulty.turns_ladder_text(turns)]
+	# note: the whole table of hops-to-extra, which is where the answer is.
+	var acts: String = ("Reporting a game hands the enemies %s"
+		% RunDifficulty.extra_text(extra))
+	var ladder_tip: String = ("%s.\n"
+		+ "A turn is one action: strike from the front column, or step a column closer.\n"
+		+ "Every run of the game you LOSE hands them one as well.\n\n"
+		+ "%s\n\nRush the Amulet and the end of a game costs you turns; take the long "
+		+ "way and only your own failures do.") % [acts, RunDifficulty.ladder_text(extra)]
 	HoverCard.attach(_pressure_panel, {
-		"title": "Enemy turns ×%d" % turns,
-		"subtitle": RunDifficulty.turns_band_name(turns),
+		"title": "Extra turns %d" % extra,
+		"subtitle": RunDifficulty.band_name(extra),
 		"accent": band,
 		"lines": [
-			"Every enemy on the board acts %d time%s per game you report — a strike from the front column, or a step closer." % [
-				turns, "" if turns == 1 else "s"],
+			"%s — a strike from the front column, or a step closer." % acts,
+			"A lost run hands them one turn wherever you are standing.",
 			_pressure_why.text,
 		],
-		"note": "Rush the Amulet and they get faster; take the long way and they stay slow.",
+		"note": "Rush the Amulet and the end of a game costs you turns; take the long way and only your own failures do.",
 	})
 	# The two labels inside it are MOUSE-TRANSPARENT so the panel owns the hover —
 	# a card that changed shape depending on which word of the strip the cursor
@@ -831,9 +845,9 @@ func _build() -> void:
 	hero_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	hero_box.add_theme_constant_override("separation", 4)
 	hero_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	# Pips ABOVE the portrait: the tries you have left at this game, in the same
-	# place the damage numbers land, so ticking a lost run reads as something being
-	# taken off the hero.
+	# Pips ABOVE the portrait: the hits you can still shrug off, in the same place
+	# the damage numbers land, so a swing that a shield eats reads as the two
+	# things meeting.
 	_hero_shields = Label.new()
 	_hero_shields.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hero_shields.add_theme_font_size_override("font_size", 18)
@@ -848,7 +862,7 @@ func _build() -> void:
 	hero_box.add_child(hero_frame)
 	_scale_hero()
 	# Statuses BETWEEN the portrait and the health, so the hero column reads
-	# top-to-bottom as "tries you have / who you are / what is riding you / what is
+	# top-to-bottom as "hits you can take / who you are / what is riding you / what is
 	# left of you" (§13). Hidden entirely when nothing is on the player.
 	_hero_statuses = HBoxContainer.new()
 	_hero_statuses.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1072,6 +1086,13 @@ func _rebuild_ground() -> void:
 			_ground_layer.add_child(_unit_node(cell, unit))
 	for cell in furnished.keys():
 		_ground_layer.add_child(_ground_hover(cell))
+	# The chests LAST, so they take the press on a square that also has ground under
+	# them: tree order is input order here (see the header above), and a chest is the
+	# one thing on bare floor that answers a click rather than a hover. Bodies are
+	# mounted in the layer above and would still win — which never comes up, because
+	# a body moving onto a chest shoves it aside (GameLoop2._move_entry).
+	for cell in GameLoop2.drop_cells():
+		_ground_layer.add_child(_drop_node(cell))
 
 # The tile's art, sitting on the bottom half of its cell. THE ART AND NOTHING
 # ELSE — no panel behind it and no outline around it, so whatever the art doesn't
@@ -1111,6 +1132,70 @@ func _unit_node(cell: Vector2i, unit: UnitData) -> Control:
 		art.size = Vector2(side, side)
 		holder.add_child(art)
 	return holder
+
+# --- chests on the floor (§8.2) --------------------------------------------
+
+# The glyph a chest is drawn with, here and on the modal that opens it
+# (ItemDropModal's heading) — one symbol for the thing on the ground and the
+# question it asks, so a player who has seen one recognises the other.
+const CHEST_GLYPH := "✦"
+# The chest's gold, and how much of the cell the token takes. Smaller than a body
+# for the reason a unit is: this is something LYING on the square, not standing
+# on it.
+const CHEST_GOLD := Color(1.0, 0.83, 0.36)
+const CHEST_ART_FRACTION: float = 0.58
+
+# A chest lying on `cell`: a pressable token in the middle of the square. Pressing
+# it asks the host to open it (`drop_clicked`), which is the same modal the haul
+# screen would have asked with — the floor is a place a chest can be answered
+# EARLIER, not a second kind of reward.
+func _drop_node(cell: Vector2i) -> Control:
+	var held: Dictionary = GameLoop2.drop_at(cell)
+	var side: int = maxi(20, int(round(_cell * CHEST_ART_FRACTION)))
+	var btn := Button.new()
+	btn.position = _cell_pos(cell.y, cell.x) + Vector2((_cell - side) * 0.5, (_cell - side) * 0.5)
+	btn.size = Vector2(side, side)
+	btn.custom_minimum_size = Vector2(side, side)
+	btn.text = CHEST_GLYPH
+	btn.add_theme_color_override("font_color", CHEST_GOLD)
+	btn.add_theme_color_override("font_hover_color", Color.WHITE)
+	btn.add_theme_font_size_override("font_size", maxi(12, int(side * 0.5)))
+	# A boss's chest is ringed thicker, the same way its body is: what fell there is
+	# worth crossing the board for.
+	var ring: int = 3 if bool(held.get("boss", false)) else 2
+	btn.add_theme_stylebox_override("normal",
+		UITheme.flat(Color(CHEST_GOLD, 0.16), 6, 0, ring, CHEST_GOLD))
+	btn.add_theme_stylebox_override("hover",
+		UITheme.flat(Color(CHEST_GOLD, 0.40), 6, 0, ring, Color.WHITE))
+	btn.add_theme_stylebox_override("pressed",
+		UITheme.flat(Color(CHEST_GOLD, 0.58), 6, 0, ring, Color.WHITE))
+	btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 6, 0, 0))
+	HoverCard.attach(btn, drop_hover(cell))
+	btn.pressed.connect(func(): drop_clicked.emit(cell))
+	return btn
+
+# What a chest on the floor says when you point at it. It does NOT list what is
+# inside: a chest is a "take one of these" question and reading the answer off a
+# tooltip would make opening it a formality. It says how big the question is, and
+# that leaving it is allowed — because leaving it is the interesting half of the
+# decision while a body is still walking toward you.
+func drop_hover(cell: Vector2i) -> Dictionary:
+	var held: Dictionary = GameLoop2.drop_at(cell)
+	if held.is_empty():
+		return {}
+	var count: int = (held.get("items", []) as Array).size()
+	var lines: Array = [
+		"Click to open it: take one of %d, or leave it." % count,
+		"Left lying when you report the game, it goes to the haul screen with everything else.",
+	]
+	if bool(held.get("boss", false)):
+		lines.append("A boss left this.")
+	return {
+		"title": "%s Chest of %d" % [CHEST_GLYPH, count],
+		"subtitle": "On the floor, column %d, row %d" % [cell.x, cell.y + 1],
+		"lines": lines,
+		"accent": CHEST_GOLD,
+	}
 
 # The invisible hover region that reads a furnished cell. One per cell, carrying
 # the same HoverCard an enemy, an item and a status get — the ground used to
@@ -1506,7 +1591,7 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 		front = mini(front, col + int(off.x))
 
 	var stun: int = int(entry.get("stun", 0))
-	var accent: Color = threat_color(front, e.is_boss(), GameLoop2.games_until_strike(entry))
+	var accent: Color = threat_color(front, e.is_boss(), GameLoop2.lost_runs_until_strike(entry))
 	if stun > 0:
 		accent = accent.lerp(Color(0.5, 0.7, 1.0), 0.5)
 	var inst: int = int(entry.get("instance", 0))
@@ -1628,7 +1713,9 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		_accent: Color, selected: bool) -> void:
 	var stun: int = int(entry.get("stun", 0))
-	var strikes: int = GameLoop2.attacks_next_game(entry)
+	# What ONE LOST RUN would buy it (§3.2) — the live threat, since reporting a
+	# game hands the board nothing out in the wilds.
+	var strikes: int = GameLoop2.attacks_in_turns(entry)
 
 	# ❤ health and ⚔ damage sit on the box's bottom EDGE rather than inside it, and
 	# small: printed over the art at full size they covered the enemy you were
@@ -1637,8 +1724,8 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	var hp: int = int(entry.get("health", e.health))
 	var hp_lbl := _corner_badge("❤%d" % hp, Color(1.0, 0.5, 0.5), STAT_BADGE_FONT)
 
-	# Damage per swing, and — once this body gets more than one swing on the next
-	# game — how many swings that is: "⚔3 ×2". The two numbers are one fact ("it
+	# Damage per swing, and — on the rare body that gets more than one swing out of
+	# a single turn — how many that is: "⚔3 ×2". The two numbers are one fact ("it
 	# hits you twice for 3"), so they read as one badge instead of the count
 	# sitting over the art.
 	var dmg_lbl := _corner_badge(_damage_badge_text(entry, strikes), Color(1.0, 0.8, 0.35),
@@ -1709,8 +1796,8 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		pin.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
 		holder.add_child(pin)
 
-# The ⚔ badge: damage per swing, with the multi-swing count appended when the
-# next game gives this body more than one. One swing needs no "x1" — that's the
+# The ⚔ badge: damage per swing, with the count appended when one turn of the
+# board gives this body more than one. One swing needs no "x1" — that's the
 # normal case and printing it everywhere is noise.
 func _damage_badge_text(entry: Dictionary, strikes: int) -> String:
 	# GameLoop2.enemy_damage, not the enemy's authored damage: a Strength stack is
@@ -1736,14 +1823,14 @@ func _damage_badge_text(entry: Dictionary, strikes: int) -> String:
 # you are being asked to go and do. Everything else — the full stat block, the
 # position, the verbs — is a click away and stays there.
 func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
-	var strikes: int = GameLoop2.attacks_next_game(entry)
-	var away: int = GameLoop2.games_until_strike(entry)
+	var strikes: int = GameLoop2.attacks_in_turns(entry)
+	var away: int = GameLoop2.lost_runs_until_strike(entry)
 	var timing: String = ""
 	if strikes > 0:
-		timing = "Strikes %d time%s next game — %d damage." % [
+		timing = "Strikes %d time%s per lost run — %d damage." % [
 			strikes, "" if strikes == 1 else "s", strikes * GameLoop2.enemy_damage(entry)]
 	elif away > 0:
-		timing = "%d game%s of walking from its first strike." % [
+		timing = "%d lost run%s of walking from its first strike." % [
 			away, "" if away == 1 else "s"]
 	else:
 		timing = "Waiting off the field — it can't reach you yet."
@@ -1799,21 +1886,24 @@ func refresh_hero() -> void:
 	_paint_hp()
 	_fill_status_strip(_hero_statuses, GameState.status_list(), StatusData.PLAYER,
 		STATUS_PIP_HERO)
-	# Filled pips = shields still standing, hollow = tries already spent on one.
+	# One pip per shield: each is one INSTANCE of damage it stops dead, whatever
+	# that instance was for (§3). Nothing is drawn hollow any more — a lost run
+	# doesn't spend them, so there is no "already used" state to show; a shield is
+	# there until something hits it.
 	#
-	# BONUS SHIELDS SIT CLOSEST TO THE PLAYER (§4.3), at the head of the row and in
-	# their own glyph: they are a different pool, spent only once the tries are
-	# gone, and drawing them as more ◆ would promise the player tries at THIS game
-	# that they do not have. Their position is the reading — the further from the
-	# portrait a pip is, the sooner it goes.
+	# THE POOL THAT STAYS SITS CLOSEST TO THE PLAYER (§4.3), at the head of the row
+	# and in its own glyph ◈: the ◆ ones are TEMPORARY SHIELDS and expire with this
+	# game, and drawing the two alike would promise armour next game that isn't
+	# coming. Their position is the reading — the further from the portrait a pip
+	# is, the sooner it goes.
 	var left: int = GameState.shields
-	var spent: int = GameLoop2.attempts_on_shields()
 	var bonus: int = GameState.bonus_shields
-	_hero_shields.text = "◈".repeat(bonus) + "◆".repeat(left) + "◇".repeat(spent)
-	_hero_shields.tooltip_text = "%d shield(s) left — one per lost run." % left
+	_hero_shields.text = "◈".repeat(bonus) + "◆".repeat(left)
+	_hero_shields.tooltip_text = ("◆ %s — each stops one hit outright, however "
+		+ "big, and they go when you report this game.") % GameState.temp_shields_text(left)
 	if bonus > 0:
-		_hero_shields.tooltip_text += ("\n◈ %d Bonus Shield(s) — spent after those,"
-			+ " and they don't expire with this game.") % bonus
+		_hero_shields.tooltip_text += ("\n◈ %s — used after those, and they stay: "
+			+ "nothing takes one but a hit.") % GameState.shields_text(bonus)
 
 # --- status pips (§13) ----------------------------------------------------
 #
@@ -2109,10 +2199,16 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1) -
 	# One playback per TURN (§7.4). Each turn is the same beat the board has
 	# always played — the front line strikes, then the field closes up — and the
 	# whole point of the mechanic is that near the Amulet you watch that beat land
-	# three times instead of once. Collapsing it into a single slide would hide
-	# exactly the thing the player needs to feel.
+	# twice over for having handed a game in at all. Collapsing it into a single
+	# slide would hide exactly the thing the player needs to feel.
 	var frames: Array = _turn_rect_frames(before, after, res)
 	var turns: int = maxi(1, frames.size() - 1)
+	# How many of those were the game's OWN, as against the Amulet's EXTRA ones
+	# (§7.4). A reported game has none of its own now — every turn at the end of
+	# one is the road charging you — but a LOST RUN'S playback is the other way
+	# round: its single turn is the tick's, not the Amulet's. Read off the result
+	# rather than the frame count, which a run that ended mid-playback cuts short.
+	var base_turns: int = maxi(0, int(res.get("turns", turns)) - int(res.get("extra_turns", 0)))
 	var elapsed: float = 0.0
 	for turn in range(turns):
 		var from_frame: Dictionary = frames[turn]
@@ -2128,7 +2224,8 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1) -
 			# The counter only earns its place when there is more than one turn to
 			# count; at one turn a game it would be noise over every single report.
 			if turns > 1:
-				_spawn_turn_counter(turn + 1, turns, elapsed)
+				_spawn_turn_counter(turn + 1, turns, base_turns,
+					int(res.get("extra_turns", 0)), elapsed)
 			elapsed = slide_at + (FX_SLIDE_TIME if slid else 0.0)
 	# Whatever the ghosts were standing in for comes back at the end of the whole
 	# playback, not at the end of each turn: a body that moved on turn 1 and then
@@ -2250,17 +2347,22 @@ func _after(delay: float, fn: Callable) -> void:
 	t.tween_interval(delay)
 	t.tween_callback(fn)
 
-# "TURN 2 / 3" over the board as each turn opens — the count is the mechanic, so
+# "TURN 1 / 2" over the board as each turn opens — the count is the mechanic, so
 # it is spelled out rather than left to be inferred from how many times the hero
-# flinched.
-func _spawn_turn_counter(turn: int, turns: int, delay: float) -> void:
+# flinched. The ones the AMULET bought say so ("EXTRA TURN 1 / 2"): they are the
+# last `extra` of the run, and a player watching the board move after handing a
+# game in is owed the reason why.
+func _spawn_turn_counter(turn: int, turns: int, base: int, extra_turns: int,
+		delay: float) -> void:
 	if _field == null:
 		return
-	var band: Color = RunDifficulty.turns_band_color(turns)
+	var band: Color = RunDifficulty.band_color(extra_turns)
 	var rect: Rect2 = _local_rect(_field)
+	var extra: int = turn - base                 # 1-based index into the extra turns
 	_after(delay, func():
 		var lbl := Label.new()
-		lbl.text = "TURN %d / %d" % [turn, turns]
+		lbl.text = ("EXTRA TURN %d / %d" % [extra, extra_turns] if extra > 0
+			else "TURN %d / %d" % [turn, turns])
 		lbl.add_theme_font_size_override("font_size", 28)
 		lbl.add_theme_color_override("font_color", band)
 		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
@@ -2278,19 +2380,21 @@ func _spawn_turn_counter(turn: int, turns: int, delay: float) -> void:
 		t.set_parallel(false)
 		t.tween_callback(lbl.queue_free))
 
-# A logged attempt, played on the hero (§3): a lost run pops one shield pip off and
-# floats what it cost. `cost` is "shield" while any are left, "health" once they're
-# gone — and that second case is a real hit, so it recoils the hero like an enemy
-# strike would. Called by the host off GameLoop2.attempt_logged.
+# A logged attempt, played on the hero (§3): a lost run pops one shield pip off
+# and floats what it cost. `cost` is "shield" or "bonus" while either pool lasts —
+# both are a pip, since both are shields.
+#
+# "turn" plays NOTHING here. Once the pools are gone a lost run hands the board a
+# turn instead, and that turn is shown the way every other turn in the game is:
+# the host replays it with animate_resolve, which throws the real damage numbers
+# from the bodies that threw them and recoils the hero for what actually landed.
+# A "-1 ♥" floated from here on top of that would be a second, invented number.
 func play_attempt_fx(cost: String) -> void:
 	if _fx_layer == null or not is_inside_tree():
 		return
-	if cost == "shield":
+	if cost == "shield" or cost == "bonus":
 		_float_over_hero("-1 ◆", SHIELD_BLUE)
 		_pop_shield_pips()
-	else:
-		_float_over_hero("-1 ♥", UITheme.DANGER)
-		_punch_hero()
 
 # A number rising off the hero — the attempt tracker's feedback, thrown from the
 # portrait rather than from an enemy since the player is the one spending here.
