@@ -121,8 +121,13 @@ func test_the_economy_the_manual_quotes_is_the_real_one() -> void:
 
 
 func test_the_escape_rule_the_manual_quotes_is_the_real_one() -> void:
-	assert_string_contains(_all_text(),
-		"after %d lost runs" % Overworld2.ESCAPE_AFTER_ATTEMPTS)
+	# The gate is a HIT now, not a count of lost runs (§3.2) — so the manual must
+	# be teaching the hit, and must not be quoting a threshold that no longer
+	# exists anywhere in the build.
+	var text: String = _all_text()
+	assert_string_contains(text, "takes Health off you during this game")
+	assert_false(text.contains("lost runs, or immediately"),
+		"the old five-lost-runs gate is gone from the manual too")
 
 
 # --- the screen -------------------------------------------------------------

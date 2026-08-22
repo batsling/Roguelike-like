@@ -282,11 +282,15 @@ static func _ch_playing() -> Dictionary:
 				+ "moment it lands — you can bomb it, push it, or leave its goal "
 				+ "for three games and clear it later."),
 			_h("Escaping"),
-			_p(("If a game is going nowhere you can leave it. Escape is offered "
-				+ "after %d lost runs, or immediately if this run has already "
-				+ "beaten that game before. Its enemy comes with you, alive and "
-				+ "following — escape answers the goal with a no, it does not "
-				+ "delete the question.") % Overworld2.ESCAPE_AFTER_ATTEMPTS),
+			_p("If a game is going nowhere you can leave it — ONCE IT HAS DRAWN "
+				+ "BLOOD. Escape is offered the moment an enemy's attack takes "
+				+ "Health off you during this game, and immediately if this run has "
+				+ "already beaten that game before."),
+			_p("So the way out arrives when the board proves it is the problem: "
+				+ "lose runs, the enemies take turns, your shields stop what they "
+				+ "stop — and the swing that gets past them opens the door. Its "
+				+ "enemy comes with you, alive and following: escape answers the "
+				+ "goal with a no, it does not delete the question."),
 			_note("★ Rate is always optional and always available. Score a game "
 				+ "out of ten and write a note; it feeds the Tier List, which is "
 				+ "yours across every run and is not a game mechanic at all."),
@@ -805,11 +809,11 @@ static func _ch_wrong() -> Dictionary:
 				+ "game that happens to suit it. That is not a loss, it is a debt "
 				+ "— and debts in this game are payable in any currency."),
 			_h("I keep losing runs of this game"),
-			_p(("Each lost run hands the board a turn, and the board is "
-				+ "closer every time. Escape is offered after %d lost runs: take "
-				+ "it. Escaping keeps the enemy but stops the bleeding, and the "
-				+ "goal stays on your checklist to clear somewhere friendlier.")
-				% Overworld2.ESCAPE_AFTER_ATTEMPTS),
+			_p("Each lost run hands the board a turn, and the board is closer "
+				+ "every time. As soon as one of them gets through your shields "
+				+ "and takes Health, Escape is offered: take it. Escaping keeps "
+				+ "the enemy but stops the bleeding, and the goal stays on your "
+				+ "checklist to clear somewhere friendlier."),
 			_h("I have four followers and they are killing me"),
 			_p("In rough order of what to try:"),
 			_b("ROUTE AWAY from the Amulet. Getting back to five or more hops "

@@ -75,12 +75,6 @@ const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
 # the shop modal and the game popup need them too, and a modal reaching back into
 # the screen that mounted it for a constant is a dependency cycle.
 
-# Lost runs of the game in play before the Escape button appears on a game this
-# run has NOT already beaten (see can_escape — one it has is escapable from the
-# first second). Five is past the shields any game grants, so reaching it means
-# the player has been paying Health to keep trying.
-const ESCAPE_AFTER_ATTEMPTS := 5
-
 # The current offering. Each entry:
 #   {"game": GameData, "enemy": GoalEnemyData, "boss": bool, "amulet": bool,
 #    "repeat": bool}
@@ -336,7 +330,7 @@ var _attempt_pips: Label
 var _attempt_hint: Label
 var _attempt_btn: Button
 var _attempt_undo: Button
-var _escape_btn: Button           # hidden until ESCAPE_AFTER_ATTEMPTS lost runs
+var _escape_btn: Button           # hidden until the game in play draws blood (can_escape)
 # The parts of the checklist panel that need a game in hand: the now-playing row,
 # the attempt strip and the Completed Game button. Hidden while you're choosing,
 # where the panel is the standing-goals list instead.
@@ -1112,17 +1106,25 @@ func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
 # --- escaping a game you can't beat ---------------------------------------
 #
 # Some games won't go down, and a run shouldn't end because one of them sat in
-# the way. The player may walk away from the game in play at any point, without
-# beating it — either after ESCAPE_AFTER_ATTEMPTS lost runs, or immediately on a
-# game this run has already beaten (see can_escape).
+# the way. The player may walk away from the game in play without beating it —
+# ONCE IT HAS DRAWN BLOOD: the door opens the moment an enemy's attack takes
+# Health off you during this game (GameLoop2.hurt_this_game), and it is open from
+# the first second on a game this run has already beaten (see can_escape).
+#
+# THE GATE IS THE HIT, not a count of tries. It used to be five lost runs, from
+# when a lost run spent a shield and then Health — a counter that stood in for
+# "this game is hurting you" because nothing else measured it. Now the board
+# measures it directly: a lost run hands the enemies a turn (§3.2), a Temporary
+# Shield stops the first swings outright, and the door opens on the swing that
+# gets past them. So the way out arrives exactly when the game has started
+# costing you the one thing you cannot make more of, and never merely because you
+# were patient.
 #
 # Escaping resolves the BOARD exactly as reporting a missed goal does: the
 # goal-enemy walks onto the board and follows you, and every enemy already on it
-# still takes its turns. That IS the price, and on the lost-runs route it has
-# already been paid twice over by the time the button appears — five lost runs is
-# the shields this game granted plus Health on top, with the front line closing in
-# the whole time. The button exists to make the way out VISIBLE to a stuck player,
-# not to discount it.
+# still takes its turns. That IS the price, and it has already been paid by the
+# time the button appears. The button exists to make the way out VISIBLE to a
+# stuck player, not to discount it.
 #
 # Where it PARTS from a missed report is the item trigger: the "after beating a
 # game" items fire on any game FINISHED, win or lose, and an escape is the one
@@ -1130,12 +1132,12 @@ func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
 # report) — so an escape and a miss are alike in earning no repeat-beat Dash, no
 # Atlas mark and no movement in either beaten tally.
 #
-# TWO ways in. The five-lost-runs rule above is for a game this run has never got
-# through: the way out has to be earned because the alternative is a player who
-# quits the run instead. A game this run has ALREADY BEATEN is the opposite case —
-# there is nothing left to prove, and being made to lose at it five more times to
-# unlock the door is a tax on the one card the run cannot make interesting, so
-# that door is open from the first second.
+# TWO ways in. The hit is for a game this run has never got through: the way out
+# has to be earned, because the alternative is a player who quits the run
+# instead. A game this run has ALREADY BEATEN is the opposite case — there is
+# nothing left to prove, and being made to stand there and bleed to unlock the
+# door is a tax on the one card the run cannot make interesting, so that door is
+# open from the first second.
 #
 # It is the same escape either way: the enemy still walks onto the board, the
 # board still takes its turns, and the game still isn't credited. Only the gate
@@ -1143,7 +1145,7 @@ func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
 func can_escape() -> bool:
 	if _phase != Phase.PLAYING or _chosen.is_empty() or GameLoop2.run_over:
 		return false
-	return beaten_this_run() or GameLoop2.attempts() >= ESCAPE_AFTER_ATTEMPTS
+	return beaten_this_run() or GameLoop2.hurt_this_game
 
 # Whether the game in play is one this RUN has already beaten — won, with the
 # goal met (see report(): "beaten means won").
@@ -4825,7 +4827,7 @@ func _refresh_attempts() -> void:
 		_escape_btn.visible = can_escape()
 		var why: String = ("You already beat this one this run, so there is nothing to prove — leave whenever you like."
 			if beaten_this_run()
-			else "%d lost runs is enough." % GameLoop2.attempts())
+			else "Something on the board got through and took Health off you — that is enough.")
 		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nWhatever walked on "
 			+ "when you took this game stays on the board and follows you, and every enemy "
 			+ "still takes its turns — escaping resolves the board exactly as an unticked "

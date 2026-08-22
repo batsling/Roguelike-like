@@ -4169,11 +4169,10 @@ func test_the_rule_promises_a_card_that_exists_not_an_invented_one() -> void:
 	assert_eq(_ui._guarantee_onward(offered.duplicate(), offered), offered,
 		"nothing onward in the pool leaves the offering as it was")
 
-# --- escaping a game you can't beat (ESCAPE_AFTER_ATTEMPTS) -----------------
+# --- escaping a game you can't beat (the gate is a HIT, §3.2) --------------
 
 # Lose `n` runs of the game in play, with enough Health banked to survive doing
-# it — past the shields a game grants, each lost run hands the board a turn and
-# whatever is in reach swings.
+# it — each lost run hands the board a turn and whatever is in reach swings.
 func _lose_runs(n: int) -> void:
 	GameState.max_hp = 99
 	GameState.hp = 99
@@ -4182,6 +4181,21 @@ func _lose_runs(n: int) -> void:
 		# A tick that cost a turn is played back on the board like a report is, and
 		# these tests are not waiting out animations — land it and carry on.
 		_ui._end_resolve()
+
+# Take a real HIT at the game in play: walk the board into reach, take the
+# shields off, and lose one run so the turn it buys lands on Health. That is the
+# escape gate, and these tests are about the door rather than about how many
+# lost runs it takes to reach it — a swing a shield stops is not a hit.
+func _bleed_at_the_game_in_play() -> void:
+	GameState.max_hp = 99
+	GameState.hp = 99
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	for entry in GameLoop2.stack:
+		entry["col"] = 1
+	var before: int = GameState.hp
+	_lose_runs(1)
+	assert_lt(GameState.hp, before, "something on the board got through")
 
 # Mark the game in play as already beaten THIS RUN, the way a real clear does.
 func _mark_beaten_this_run(game: GameData) -> void:
@@ -4197,24 +4211,49 @@ func _pick_an_unplayed_game() -> GameData:
 	assert_false(GameState.has_beaten_game(game.id), "this run has not beaten it")
 	return game
 
-func test_escape_is_locked_until_the_attempts_are_spent() -> void:
+func test_escape_is_locked_until_something_gets_through() -> void:
 	_pick_an_unplayed_game()
 	assert_false(_ui.can_escape(), "a game just started offers no way out")
-	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS - 1)
-	assert_false(_ui.can_escape(), "one short of the line is still locked")
+	# Lost runs alone are not the gate any more: the board takes its turns and the
+	# Temporary Shields stop what reaches you, and a swing a shield ate is not a
+	# hit. Walk everything into reach so the turns actually swing.
+	GameState.max_hp = 99
+	GameState.hp = 99
+	for entry in GameLoop2.stack:
+		entry["col"] = 1
+	GameState.shields = 9
+	GameState.bonus_shields = 0
+	_lose_runs(3)
+	assert_eq(GameState.hp, 99, "the shields stopped every swing")
+	assert_false(_ui.can_escape(), "so nothing has hurt you and the door is shut")
 	assert_false(_ui._escape_btn.visible, "and the button stays hidden")
 
-func test_escape_unlocks_on_the_fifth_lost_run() -> void:
+func test_escape_unlocks_the_moment_a_swing_takes_health() -> void:
 	_pick_an_unplayed_game()
-	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
-	assert_true(_ui.can_escape(), "five lost runs earns the way out")
+	_bleed_at_the_game_in_play()
+	assert_true(GameLoop2.hurt_this_game, "the loop recorded the hit")
+	assert_true(_ui.can_escape(), "a swing that got through earns the way out")
 	assert_true(_ui._escape_btn.visible, "and the button is there to press")
+
+func test_a_status_bill_is_not_the_hit_that_opens_the_door() -> void:
+	# The gate is an ENEMY'S ATTACK. Burn's "or take 3 Damage" resolves through the
+	# same hit path (§13) and costs real Health, but it is a bill for something you
+	# did in the real game — not the board refusing to go down.
+	_pick_an_unplayed_game()
+	GameState.max_hp = 99
+	GameState.hp = 99
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	GameLoop2.damage_player(3)
+	assert_lt(GameState.hp, 99, "the bill was paid in Health")
+	assert_false(GameLoop2.hurt_this_game, "but nothing on the board did it")
+	assert_false(_ui.can_escape(), "so the door stays shut")
 
 # --- the second door: a game you have been through before ------------------
 #
-# The five-lost-runs rule is for a game you have never got through. On one you
-# have, there is nothing left to prove and being made to lose at it five more
-# times to unlock the door is a tax on the least interesting thing in the run.
+# The hit rule is for a game you have never got through. On one you have, there
+# is nothing left to prove and being made to stand there and bleed to unlock the
+# door is a tax on the least interesting thing in the run.
 
 func test_a_game_you_have_played_before_can_be_left_immediately() -> void:
 	_ui.pick(0)
@@ -4222,6 +4261,7 @@ func test_a_game_you_have_played_before_can_be_left_immediately() -> void:
 	_mark_beaten_this_run(game)
 	assert_true(_ui.beaten_this_run(), "the run knows it already beat this one")
 	assert_eq(GameLoop2.attempts(), 0, "and not a single run has been lost")
+	assert_false(GameLoop2.hurt_this_game, "nor has anything laid a finger on you")
 	assert_true(_ui.can_escape(), "the door is open from the first second")
 	_ui._refresh()
 	assert_true(_ui._escape_btn.visible, "and the button is up to press")
@@ -4261,7 +4301,7 @@ func test_beaten_this_run_is_false_with_no_game_in_hand() -> void:
 func test_escaping_advances_the_run_and_the_enemy_follows() -> void:
 	_pick_solo(0)
 	var gp_before: int = GameState.games_played
-	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_bleed_at_the_game_in_play()
 	_ui.escape_game()
 	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
 	assert_eq(GameLoop2.stack_size(), 1,
@@ -4275,7 +4315,7 @@ func test_escaping_does_not_defeat_the_goal_enemy() -> void:
 	# GameStats is a LIFETIME store that outlives the run and the test, so the
 	# question is what this escape added, not what the tally reads.
 	var before: int = GameStats.enemy_beaten_count(game.id, enemy.id)
-	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_bleed_at_the_game_in_play()
 	_ui.escape_game()
 	assert_eq(GameStats.enemy_beaten_count(game.id, enemy.id), before,
 		"escaping is leaving, not killing")
@@ -4288,7 +4328,7 @@ func test_escaping_does_not_count_the_game_as_beaten() -> void:
 	var game: GameData = _ui._chosen["game"]
 	var lifetime_before: int = GameStats.beaten_count(game.id)
 	var run_before: int = GameState.total_games_beaten
-	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_bleed_at_the_game_in_play()
 	_ui.escape_game()
 	assert_false(GameState.has_beaten_game(game.id),
 		"escaping is leaving, not clearing")
@@ -4305,7 +4345,7 @@ func test_escaping_pays_no_repeat_beat_dash() -> void:
 	_ui._build_choices()
 	_ui.pick(0)
 	var dash_before: int = GameState.dash_charges
-	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_bleed_at_the_game_in_play()
 	_ui.escape_game()
 	assert_eq(GameState.dash_charges, dash_before,
 		"walking away from a game you'd beaten before earns nothing")
@@ -4315,7 +4355,7 @@ func test_escaping_still_advances_the_run_clock() -> void:
 	# board closed in, so the difficulty clock moves either way.
 	_ui.pick(0)
 	var gp_before: int = GameState.games_played
-	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_bleed_at_the_game_in_play()
 	_ui.escape_game()
 	assert_eq(GameState.games_played, gp_before + 1,
 		"games_played counts the game you walked away from")
@@ -4331,24 +4371,45 @@ func test_a_missed_report_is_not_a_beat_either() -> void:
 	assert_false(GameState.has_beaten_game(game.id),
 		"failing a game is not beating it, escape or no escape")
 
-func test_escape_refuses_before_the_line() -> void:
+func test_escape_refuses_before_anything_has_hurt_you() -> void:
 	_pick_an_unplayed_game()
 	var gp_before: int = GameState.games_played
-	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS - 1)
+	_lose_runs(2)
 	_ui.escape_game()
 	assert_eq(GameState.games_played, gp_before,
 		"pressing it early does nothing at all")
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "the game is still in play")
 
-func test_undoing_back_under_the_line_takes_the_escape_away() -> void:
-	# Only the lost-runs door reverses; a game you have a record at is escapable
-	# whatever the tracker says, so this has to be a game you have never played.
+func test_undoing_the_tick_that_drew_blood_takes_the_escape_away() -> void:
+	# Only the hit door reverses; a game you have a record at is escapable whatever
+	# the board did, so this has to be a game you have never played.
 	_pick_an_unplayed_game()
-	_lose_runs(OVERWORLD.ESCAPE_AFTER_ATTEMPTS)
+	_bleed_at_the_game_in_play()
 	assert_true(_ui.can_escape())
 	_ui.undo_attempt()
+	assert_false(GameLoop2.hurt_this_game, "the hit was undone with the turn")
 	assert_false(_ui.can_escape(), "the tracker is hand-driven, so this reverses too")
 	assert_false(_ui._escape_btn.visible, "and the button goes with it")
+
+func test_the_door_closes_again_on_the_next_game() -> void:
+	# The gate is a fact about the game in play, not about the run: walking into a
+	# fresh game means proving it again.
+	_pick_an_unplayed_game()
+	_bleed_at_the_game_in_play()
+	assert_true(_ui.can_escape())
+	_ui.escape_game()
+	_ui.pick(0)
+	assert_false(GameLoop2.hurt_this_game, "a new game has not hurt you yet")
+	# …so THIS door is shut. The other one is independent and the offering can
+	# legitimately hand back a game the run has already beaten (the graph allows
+	# revisits, and the opening game was beaten to get here), so which of the two
+	# answers is right depends on the card — assert whichever it is rather than
+	# assuming the common one, or this passes on most runs and fails on the rest.
+	if _ui.beaten_this_run():
+		assert_true(_ui.can_escape(),
+			"the card came back around, and a past beat opens the other door")
+	else:
+		assert_false(_ui.can_escape(), "so its door starts shut")
 
 # --- rating flows into the tier list ---------------------------------------
 

@@ -149,7 +149,7 @@ of a game.
 - **A board with nothing in reach charges nothing**, and that is the design
   rather than an oversight: the turn *is* the cost, so a cleared stack has
   nothing to take and a body still walking in merely walks. The tick is still
-  logged — it is what the escape hatch counts and what the tracker shows.
+  logged — it is what the tracker shows.
 - **The undo is a restore, not a refund.** A turn walks bodies, burns ground,
   breaks the trinkets that break on a hit (§8.1) and pays out whatever losing
   Health pays out, so `GameLoop2.log_attempt` snapshots the board and the run's
@@ -195,6 +195,28 @@ one (`GameLoop2._take_hit`).
 - **The ones gained off the board are just SHIELDS, and stay** (§4.3) — a pill's,
   a banked game's. A hit breaks a Temporary Shield first, since those are the ones
   about to expire anyway.
+
+**ESCAPE OPENS ON THE HIT.** A game you cannot beat is not a run-ender: you may
+walk away from the one in play, and the door opens **the moment an enemy's attack
+takes Health off you during it** (`GameLoop2.hurt_this_game`, set by `_take_hit`
+on the `enemy_attack` source alone). It is open from the first second on a game
+this run has **already beaten** — there is nothing left to prove at that one.
+
+- **The gate is the hit, not a count of tries.** It used to be five lost runs,
+  from when a lost run spent a shield and then Health: a counter standing in for
+  "this game is hurting you" because nothing else measured it. The board measures
+  it directly now — lose runs, the enemies take turns, a Temporary Shield stops
+  the first swings outright, and the door opens on the swing that gets past them.
+  The way out therefore arrives exactly when the game starts costing the one
+  thing you cannot make more of, and never merely because you were patient.
+- **A swing only.** Burn's bill and an event's price cost real Health and do not
+  open it: they are not the game in front of you refusing to go down.
+- **Per game.** Cleared when a game is chosen and when one is reported, saved
+  with the run, and rewound by an attempt's undo — taking back the tick whose
+  turn drew blood shuts the door again.
+- The price is unchanged: escaping resolves the board exactly as a missed report
+  does (the goal-enemy follows you, the stack takes its turns), and it banks no
+  beat. Only the gate moved.
 
 The tension is *don't lose runs → the stack never moves, and the wall is still
 whole when you report.* A game cleared first try leaves the board where it was and

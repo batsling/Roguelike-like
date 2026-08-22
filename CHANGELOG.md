@@ -11,6 +11,33 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Escape opens on the hit.**
+
+  A game you cannot beat has always had a way out; the question was what earns
+  it. It used to be five lost runs — a counter standing in for "this game is
+  hurting you", because back then nothing else measured that. The board measures
+  it directly now, so the gate is the thing itself: **Escape is offered the moment
+  an enemy's attack takes Health off you during the game in play.**
+
+  It falls straight out of the two changes above. Lose runs, the enemies take
+  turns; a Temporary Shield stops the first swings outright; the door opens on the
+  swing that gets past them. So the way out arrives exactly when the game starts
+  costing the one thing you cannot make more of — and never merely because you
+  were patient. `ESCAPE_AFTER_ATTEMPTS` is gone.
+
+  A **swing only**: Burn's bill and an event's price cost real Health and do not
+  open it, since neither is the game in front of you refusing to go down. It is a
+  fact about the game in play — `GameLoop2.hurt_this_game`, cleared when a game is
+  chosen and when one is reported, saved with the run, and rewound by an attempt's
+  undo, so taking back the tick whose turn drew blood shuts the door again. The
+  second door is untouched: a game this run has already beaten is escapable from
+  the first second, because there is nothing left to prove at that one.
+
+  The price is unchanged — the goal-enemy still follows you, the stack still takes
+  its turns, and no beat is banked. Only the gate moved.
+
+---
+
 - **The two shield pools are named for the one thing that separates them.**
 
   What a game grants are **Temporary Shields** — they expire when it is reported.

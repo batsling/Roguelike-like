@@ -270,6 +270,18 @@ var _attempt_snapshots: Array = []
 # end of a game uses. {} until a try has cost one.
 var last_attempt_turn: Dictionary = {}
 
+# THE ESCAPE GATE (§3.2): true once an enemy's attack has taken HEALTH off the
+# player during the game in play. Set by _take_hit on the one source that counts
+# (a swing, not a status's bill and not an event's price), and cleared when a game
+# is chosen and when one is reported — it is a fact about the game you are in.
+#
+# It is what the Escape button waits for. A lost run hands the board a turn, the
+# turn swings, a shield stops the first swings outright — so the moment this goes
+# true is the moment the game has actually started costing you something no
+# resource of yours could absorb, which is the moment walking away stops being a
+# discount and starts being the point.
+var hurt_this_game: bool = false
+
 # Summary of the most recent beat_game(), for the log / HUD / tests. Rebuilt each
 # resolve; see beat_game for its shape.
 var last_result: Dictionary = {}
@@ -302,6 +314,7 @@ func reset() -> void:
 	units.clear()
 	_clear_attempts()
 	last_attempt_turn = {}
+	hurt_this_game = false
 	bashed.clear()
 	transmuted.clear()
 	run_over = false
@@ -410,6 +423,7 @@ func serialize() -> Dictionary:
 		"games_beaten": games_beaten,
 		"attempt_costs": attempt_costs.duplicate(),
 		"attempt_payouts": _attempt_payouts.duplicate(),
+		"hurt_this_game": hurt_this_game,
 		"next_instance": _next_instance,
 	}
 
@@ -488,6 +502,11 @@ func restore(data: Dictionary) -> void:
 		_attempt_payouts.remove_at(0)
 	while _attempt_payouts.size() < attempt_costs.size():
 		_attempt_payouts.insert(0, 0)
+	# Absent from a save written before the escape gate existed, which loads as
+	# "this game has not hurt you yet" — the safe direction: the button is offered
+	# again the first time a swing gets through, rather than being open on a run
+	# that never earned it.
+	hurt_this_game = bool(data.get("hurt_this_game", false))
 	# Never hand out an instance handle something on the board already holds.
 	_next_instance = maxi(1, int(data.get("next_instance", 1)))
 	for entry in stack:
@@ -762,8 +781,10 @@ func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 		escort_tier: int = -1) -> int:
 	# A new game means a fresh tracker — whatever was logged against the last one
-	# is closed out.
+	# is closed out — and a fresh escape gate with it: this game has not hurt you
+	# yet, whatever the last one did (§3.2).
 	_clear_attempts()
+	hurt_this_game = false
 	# The superseded bodies leave the board rather than lingering on it as ones
 	# nobody chose: they were never played for. Both of them — the escort only ever
 	# stood there because the game it came with did.
@@ -978,6 +999,7 @@ func _loop_snapshot() -> Dictionary:
 		"games_beaten": games_beaten,
 		"attempt_costs": attempt_costs.duplicate(),
 		"attempt_payouts": _attempt_payouts.duplicate(),
+		"hurt_this_game": hurt_this_game,
 		"next_instance": _next_instance,
 		"last_result": last_result.duplicate(true),
 	}
@@ -1001,6 +1023,10 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	_attempt_payouts.clear()
 	for paid in snap.get("attempt_payouts", []):
 		_attempt_payouts.append(int(paid))
+	# The escape gate goes back with the swing that opened it: undoing the tick
+	# whose turn first got through has to close the door again, or the undo would
+	# leave the player holding a way out they no longer paid for (§3.2).
+	hurt_this_game = bool(snap.get("hurt_this_game", false))
 	# The instance counter goes back too: a body defeated by the turn is about to
 	# stand on the board again, and an id handed out since would then be a second
 	# body wearing the same one.
@@ -1271,8 +1297,11 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 			res["shields_expired"] = GameState.shields
 			GameState.shields = 0
 	# The tracker went with it: `res` already carries the count for the log, and the
-	# board must not keep counting a finished game's lost runs.
+	# board must not keep counting a finished game's lost runs. The escape gate is
+	# the same kind of per-game fact and goes at the same moment — the swings above
+	# may well have opened it, and they opened it on a game that is now over.
 	_clear_attempts()
+	hurt_this_game = false
 
 	# 3. The player's clauses tick for the game just played. A clause rides every
 	#    enemy's goal, so completing ANY goal this game satisfied it once.
@@ -2477,6 +2506,11 @@ func _take_hit(damage: int, res: Dictionary,
 		# on an attack and survive both the Health a failed try charges and a
 		# status's own bill.
 		GameState.change_hp(-overflow, source)
+		# …and the same tag opens the escape hatch (§3.2). A SWING that got through
+		# is the gate; a status's bill and an event's price are not, because those
+		# are not the game in front of you refusing to go down.
+		if source == GameState.HEALTH_SOURCE_ENEMY_ATTACK:
+			hurt_this_game = true
 	res["blocked"] = int(res.get("blocked", 0)) + absorbed
 	res["damage_taken"] = int(res.get("damage_taken", 0)) + overflow
 	if GameState.hp <= 0 and not run_over:
