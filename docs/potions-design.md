@@ -22,7 +22,7 @@ here and is left plain.*
 
 ## 1. Decisions locked
 
-Twenty-one forks were settled before any code, in the same discovery-pass style as the
+Twenty-five forks were settled before any code, in the same discovery-pass style as the
 [implementation plan](games-first-redesign-implementation-plan.md#1-decisions-locked-in-discovery):
 
 | # | Decision | Choice |
@@ -48,6 +48,10 @@ Twenty-one forks were settled before any code, in the same discovery-pass style 
 | 19 | **Sacred Bark's reach on a potion** | **Values AND geometry** — damage, healing, status stacks, shields, *and* the area: a 3×3 becomes 5×5, a line becomes the cross (§8.2). |
 | 20 | **`find_weight`** | **A weight inside the rarity bucket.** Identify is 1.25× as likely as the other Commons; rarity keeps meaning what it means (§10). |
 | 21 | **Scroll of Remove Curse** | **Ships with a real effect.** Curse GOALS are live (three authored, events and the Calling Bell hand them out) — `remove_curse choose 1` retires one (§10.1). |
+| 22 | **What identifying teaches** | **Both sides at once.** Identification is of the TYPE: drink the swirly one and you know what throwing it does too (§6.5). |
+| 23 | **A timed Dexterity's shields** | **Unspent shields expire with it.** A departure from §13.4's "handed out, not recomputed", and the one place a clock reaches back into a pool (§5.5). |
+| 24 | **The mine's damage trigger** | **A third trigger word**, `damaged:`, on `units2.0` — which makes it a §17.1 spec edit (§4.7). |
+| 25 | **Stacking** | **One piece, one slot.** Two Fire Potions cost two slots, like everything else in the pack (§8.1). |
 
 ---
 
@@ -272,9 +276,16 @@ Three consequences to build deliberately:
   it lays Hot Bombs' fire after its damage, so a body killed by the bottle is gone
   before the mine's blast looks for targets.
 
-The authoring shape for the new trigger is an open question (§12) — the two triggers
-today (`enemy_enters`, `enemy_turn_start`) are both about a *body*, and this one is
-about the unit itself.
+**It is authored as a third trigger word** (decision #24): `damaged: detonate` on the
+unit's Effect column, beside the two that exist. That makes it a **§17.1 spec edit**,
+because that section says the pair is the whole vocabulary on purpose — and the
+reason to spend the edit rather than infer the behaviour from the `Health` column is
+that the next unit will want to react to damage *differently*. A barrel that simply
+breaks, a totem that fires something off when shot: those are `damaged:` clauses that
+are not `detonate`, and a rule hardcoded to "0 Health runs your detonate" cannot
+express either. The trigger says what happens; the Health column says how much it
+takes. `generate_unit_tres.py` imports the tile generator's parsers, so the word is
+added once and both sheets can speak it.
 
 ---
 
@@ -386,6 +397,37 @@ sheds its stack from the **timed** row first, since that row is leaving anyway.
 Nothing in the potion roster applies a decaying status, so this costs nothing today
 and stops the first one that does from quietly eating a permanent stack.
 
+### 5.5 A timed Dexterity takes its shields back
+
+Decision #23, and it is the one rule in this doc that knowingly departs from the
+spec. §13.4 is explicit: **shields are a pool the status hands out, not a reading of
+the stack count.** Dexterity 2 grants two shield points, each stops one whole hit
+and is gone, and the body keeps its two Dexterity stacks afterwards with no shield
+left — which is why `shield` is saved on the board entry beside `health` rather than
+recomputed on load.
+
+A thrown Speed Potion is +5 Dexterity, so under that rule alone it hands a body
+**five shields**: five hits absorbed, from a Common bottle, permanently. So the clock
+reaches into the pool: **when a timed status expires, it takes back what it granted
+and has not been spent.**
+
+The bookkeeping is one field on the timed row rather than a new system:
+
+```gdscript
+{"id": &"dexterity", "stacks": 5, "games": 1, "granted_shield": 5}
+```
+
+and on expiry the body's pool drops by `min(granted_shield, current shield)`. That
+`min` is the whole rule, and it is what makes it honest when the shields came from
+more than one place: five granted and three already eaten means two come off, not
+five, and a pool refilled by something else in the meantime is not raided to pay a
+debt the potion no longer has.
+
+**Permanent Dexterity is untouched.** A status applied by an item, a location or a
+scroll grants its shields exactly as §13.4 says and never takes them back — the
+claw-back belongs to the clock, not to the status, which is what keeps this a potion
+rule rather than a rewrite of shields.
+
 ---
 
 ## 6. Identification — 37 bottles, 15 potions, 22 sitting out
@@ -456,6 +498,25 @@ So the file name is content: `Swirly_NetHack.png` → colour "Swirly", source
 "NetHack". The generator's job on `PotionSystem.COLORS` is to carry both halves,
 since the source game is worth showing on a card the same way every other row in
 this project credits where it came from.
+
+### 6.5 One bottle, one fact
+
+Decision #22: **identification is of the TYPE, and it covers both sides.** Drink an
+unknown swirly bottle, find out it was Fire Potion, and you now know what *throwing*
+a swirly one does as well — its card shows quaff and throw together from then on,
+and every future swirly bottle is a known quantity in both directions.
+
+This is the scroll's rule (identify a type, know the type) rather than a new one,
+and it is the version that keeps the *interesting* decision in front of the player.
+The alternative — learn only the side you used — is thirty facts instead of fifteen,
+and it turns the quaff-or-throw choice into a research task: you would throw bottles
+you had already drunk purely to fill in the other half of the page. The choice
+should be *which of these two things do I want right now*, and that only works once
+both halves are on the card.
+
+It also means the pill's rule about doses carries over cleanly: a pill is one colour
+learned from either dose (spec §4.3), and a potion is one colour learned from either
+verb.
 
 ---
 
@@ -594,6 +655,13 @@ the two things that hardcode a 3×3 read from it:
   since "the grid is always the cap" is what makes the room left readable;
 - `LootWindow`'s toggle turns red at *capacity*, not at 9.
 
+**And a piece is a piece** (decision #25). Two Fire Potions are two slots, and two
+bottles of the same unknown colour are two slots — no `×2` badges, no counts. The
+cap is the pressure, and a stack is a quiet way of raising it for whichever run got
+lucky with duplicates. It also keeps every surface that draws, drags, spends and
+bins a slot addressing exactly one entry, which is what makes the drop modal's
+offer-index tracking (spec §4.3) work at all.
+
 **No relic ships with it.** This is the seam, not the feature — and the seam is
 cheap now and expensive later, because the loot window is fitted to a 720p canvas
 with about five pixels to spare (spec §4.3) and a fourth row is a fit test away from
@@ -687,7 +755,7 @@ bearing in the best way — **the save format already has potions in it**:
 | `scripts/redesign2/BattlefieldView.gd` | Generalise `aim_cells` past `ItemData` (§4.2); a throw-armed state beside `bomb_mode` / `aiming_item`. |
 | `scripts/redesign2/LootInfoCard.gd`, `LootGrid.gd`, `LootDropModal.gd`, `LootWindow.gd`, `LootDiscoveries.gd` | Potions are loot: they draw, drag, bin, offer and get listed under *Known this run* with no per-kind branching beyond the glyph. `LootSystem.glyph` needs a third one — 🧪. |
 | `scripts/autoload/DevTools.gd` | Grant a named potion, identified or not, like `add_scroll_loot`. |
-| `tools/generate_unit_tres.py` + the `units2.0` sheet | The Landmine's damage trigger (§4.7) — a spec edit to §17.1's trigger vocabulary, whichever authoring shape wins. |
+| `tools/generate_unit_tres.py` + the `units2.0` sheet + spec §17.1 | The `damaged:` trigger and the Landmine's `damaged: detonate` (§4.7). §17.1's "the pair is the whole vocabulary" line becomes a trio. |
 | `test/test_potion_system.gd` | New suite (§9.3). |
 | `README.md` | The autoload table (22 → 23), the `data/` and `images2.0/` trees, the loot paragraphs. |
 | `CHANGELOG.md` | The narrative entry. |
@@ -723,7 +791,11 @@ are actually about potions rather than about loot:
 - Sacred Bark widens a 3×3 to 5×5 and a row to the cross, and leaves a `cell` alone
   (§8.2);
 - `remove_curse` lifts the Calling Bell's permanent row, and fizzles with no curse
-  held (§10.1).
+  held (§10.1);
+- a timed Dexterity's unspent shields come off the body when it expires, shields it
+  already spent do not come out of a later pool, and a PERMANENT Dexterity's shields
+  survive (§5.5);
+- quaffing an unknown potion identifies its throw side too (§6.5).
 
 ---
 
@@ -781,9 +853,9 @@ scroll is identified either way (§4.5).
 
 ## 11. Build order
 
-1. **The timed layer** (§5.4) + the `beat_game` expiry + the wording (§5.3), with
-   tests. No potions yet — this is the only genuinely new system, and it is testable
-   on its own by hand-applying a timed status.
+1. **The timed layer** (§5.4) + the `beat_game` expiry + the wording (§5.3) + the
+   shield claw-back (§5.5), with tests. No potions yet — this is the only genuinely
+   new system, and it is testable on its own by hand-applying a timed status.
 2. **The scroll deltas** (§10) — the generator's rarity fix, `description`, the
    widened `forget` and `identify`, `find_weight`, and `remove_curse` with its
    picker (§10.1). Potions are then born into a roller and a picker that already
@@ -814,14 +886,6 @@ letting steps 1 and 2 sprawl.
   allowed — only *moving* the pack is not (spec §4.3) — so a throw should be too. Worth
   confirming that arming a board picker while the report checklist is up is not a
   way to click something the report has locked.
-- **How the mine's new trigger is authored** (§4.7). The two triggers `tiles2.0` /
-  `units2.0` share today are both about a *body* arriving or lingering
-  (`enemy_enters`, `enemy_turn_start`), and "I took damage" is about the unit
-  itself. Either a third trigger word on the Effect column (`damaged: detonate`), or
-  a rule read off the `Health` column — a unit at 0 Health runs its `detonate`
-  — which needs no new vocabulary but makes Health mean something it currently does
-  not. §17.1 says the pair is the whole vocabulary on purpose, so this is a spec
-  edit either way.
 - **Fysh Oil's two clauses under Sacred Bark.** The Bark doubles *named fields per
   op*, so a two-clause potion doubles both clauses — 2 Strength and 2 Dexterity.
   Correct, but worth eyeballing against the one-clause rows once it is in.
